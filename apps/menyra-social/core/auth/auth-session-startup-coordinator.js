@@ -64,6 +64,15 @@ export function createAuthSessionStartupCoordinator({
     return String(state?.user?.uid || "").trim() === String(expectedUid || "").trim();
   }
 
+  function isQrMenuProfileLaunchActive() {
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    if (profileTopTab !== "menu") return false;
+    const menuAccessSource = String(state?.profileView?.menuAccessSource || "").trim().toLowerCase();
+    return menuAccessSource === "qr";
+  }
+
   function hasMeaningfulProfileHint(profile = null) {
     if (!profile || typeof profile !== "object") return false;
     const role = String(profile.role || "").trim().toLowerCase();
@@ -177,7 +186,7 @@ export function createAuthSessionStartupCoordinator({
         requestRender();
       }
       schedulePerfWarmMark();
-      if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+      if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         queueMicrotaskSafe(() => {
           void fetchPublicBootstrapPayload({

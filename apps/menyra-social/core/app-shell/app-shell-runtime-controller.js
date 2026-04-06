@@ -206,6 +206,7 @@ export function createAppShellRuntimeController(deps = {}) {
   let mapRefreshQueued = false;
   let lastHeaderRuntimeMode = "";
   let lastRuntimeDegradedBannerSignature = "";
+  let menuLazyImageObserver = null;
 
   function supportsRuntimePerf() {
     return typeof performance !== "undefined"
@@ -871,19 +872,153 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function bindImageFallbacks(root = doc) {
     if (!root) return;
+    const revealImage = (img) => {
+      if (!(img instanceof HTMLImageElement)) return;
+      if (img.dataset.imageReveal !== "menu") return;
+      if (img.dataset.imageRevealReady === "1") return;
+      img.dataset.imageRevealReady = "1";
+      img.style.opacity = "1";
+    };
+    const armImageReveal = (img) => {
+      if (!(img instanceof HTMLImageElement)) return;
+      if (img.dataset.imageReveal !== "menu") return;
+      const src = String(img.currentSrc || img.getAttribute("src") || "").trim();
+      if (!src) return;
+      if (img.dataset.imageRevealSrc !== src) {
+        img.dataset.imageRevealSrc = src;
+        img.dataset.imageRevealReady = "0";
+        if (img.dataset.imageRevealStyled !== "1") {
+          const existingTransition = String(img.style.transition || "").trim();
+          if (!existingTransition) {
+            img.style.transition = "opacity 180ms ease-out";
+          } else if (!/opacity/i.test(existingTransition)) {
+            img.style.transition = `${existingTransition}, opacity 180ms ease-out`;
+          }
+          img.dataset.imageRevealStyled = "1";
+        }
+        img.style.opacity = "0";
+      }
+      const revealWhenDecoded = () => {
+        if (img.dataset.imageRevealReady === "1") return;
+        if (typeof img.decode === "function") {
+          img.decode().catch(() => {}).finally(() => revealImage(img));
+          return;
+        }
+        revealImage(img);
+      };
+      if (img.complete && Number(img.naturalWidth || 0) > 0) {
+        revealWhenDecoded();
+      } else if (img.dataset.imageRevealLoadBound !== "1") {
+        img.dataset.imageRevealLoadBound = "1";
+        img.addEventListener("load", revealWhenDecoded);
+      }
+      if (img.dataset.imageRevealTimeoutBound !== "1") {
+        img.dataset.imageRevealTimeoutBound = "1";
+        win?.setTimeout?.(() => {
+          if (img.dataset.imageRevealReady === "1") return;
+          if (img.complete && Number(img.naturalWidth || 0) > 0) {
+            revealImage(img);
+          }
+        }, 8000);
+      }
+    };
+    const hydrateMenuLazyImage = (img) => {
+      if (!(img instanceof HTMLImageElement)) return;
+      if (img.dataset.menuLazyHydrated === "1") return;
+      const lazySrc = String(img.dataset.menuLazySrc || "").trim();
+      if (!lazySrc) return;
+      const lazyFallback = String(img.dataset.menuLazyFallback || "").trim();
+      const lazySrcset = String(img.dataset.menuLazySrcset || "").trim();
+      const lazySizes = String(img.dataset.menuLazySizes || "").trim();
+      if (lazySrcset) {
+        img.setAttribute("srcset", lazySrcset);
+      } else {
+        img.removeAttribute("srcset");
+      }
+      if (lazySizes) {
+        img.setAttribute("sizes", lazySizes);
+      } else {
+        img.removeAttribute("sizes");
+      }
+      if (lazyFallback) {
+        img.setAttribute("data-fallback-src", lazyFallback);
+      }
+      img.setAttribute("src", lazySrc);
+      img.dataset.menuLazyHydrated = "1";
+      img.removeAttribute("data-menu-lazy-src");
+      img.removeAttribute("data-menu-lazy-fallback");
+      img.removeAttribute("data-menu-lazy-srcset");
+      img.removeAttribute("data-menu-lazy-sizes");
+      if (menuLazyImageObserver) {
+        try {
+          menuLazyImageObserver.unobserve(img);
+        } catch {}
+      }
+      armImageReveal(img);
+    };
+    const shouldHydrateMenuLazyImageNow = (img) => {
+      if (!(img instanceof HTMLImageElement)) return false;
+      const rect = img.getBoundingClientRect();
+      const viewportHeight = Math.max(0, Number(win?.innerHeight || doc?.documentElement?.clientHeight || 0));
+      if (!viewportHeight) return true;
+      return rect.top <= viewportHeight + 120 && rect.bottom >= -64;
+    };
+    const ensureMenuLazyImageObserver = () => {
+      if (menuLazyImageObserver || typeof IntersectionObserver === "undefined") return menuLazyImageObserver;
+      menuLazyImageObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          hydrateMenuLazyImage(entry.target);
+        });
+      }, {
+        root: null,
+        rootMargin: "120px 0px",
+        threshold: 0.01
+      });
+      return menuLazyImageObserver;
+    };
+    root.querySelectorAll("img[data-menu-lazy-src]").forEach((img) => {
+      if (!(img instanceof HTMLImageElement)) return;
+      if (img.dataset.menuLazyHydrated === "1") return;
+      if (shouldHydrateMenuLazyImageNow(img)) {
+        hydrateMenuLazyImage(img);
+        return;
+      }
+      const observer = ensureMenuLazyImageObserver();
+      if (!observer) {
+        hydrateMenuLazyImage(img);
+        return;
+      }
+      if (img.dataset.menuLazyObserved !== "1") {
+        img.dataset.menuLazyObserved = "1";
+        observer.observe(img);
+      }
+    });
     root.querySelectorAll("img[data-fallback-src]").forEach((img) => {
       if (!(img instanceof HTMLImageElement)) return;
+      armImageReveal(img);
       if (img.dataset.fallbackBound === "true") return;
       img.dataset.fallbackBound = "true";
       img.addEventListener("error", () => {
         const fallback = img.dataset.fallbackSrc || "";
         const current = img.getAttribute("src") || "";
+        if (img.dataset.fallbackRetried !== "1" && current && current !== fallback && current !== PLACEHOLDER_IMAGE) {
+          img.dataset.fallbackRetried = "1";
+          img.removeAttribute("src");
+          win?.setTimeout?.(() => {
+            img.setAttribute("src", current);
+            armImageReveal(img);
+          }, 60);
+          return;
+        }
         if (fallback && current !== fallback) {
           img.setAttribute("src", fallback);
+          armImageReveal(img);
           return;
         }
         if (current !== PLACEHOLDER_IMAGE) {
           img.setAttribute("src", PLACEHOLDER_IMAGE);
+          armImageReveal(img);
         }
       });
     });

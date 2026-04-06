@@ -5,20 +5,20 @@
 // =========================================================
 export const FIREBASE_WEB_SDK_VERSION = "11.0.0";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { initializeApp } from "/shared/vendor/firebase/11.0.0/firebase-app.js";
 import {
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   getAuth,
   initializeAuth,
   indexedDBLocalPersistence,
   browserLocalPersistence,
   browserSessionPersistence
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 
 const firebaseConfig = Object.freeze({
   apiKey: "AIzaSyAq5kzdGITDekgajC0uUBny63JjS1DIPEU",

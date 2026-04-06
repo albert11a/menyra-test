@@ -11,6 +11,7 @@ const EXTERNAL_STATIC_HOSTS = new Set([
 ]);
 const NAVIGATION_FETCH_TIMEOUT_MS = 6500;
 const RUNTIME_FETCH_TIMEOUT_MS = 5200;
+const IMAGE_FALLBACK_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='#f1f5f9'/></svg>";
 
 function sanitizeCacheToken(value) {
   return String(value || "")
@@ -203,7 +204,17 @@ async function fetchWithTimeout(request, timeoutMs = RUNTIME_FETCH_TIMEOUT_MS) {
   }
 }
 
-async function staleWhileRevalidate(request) {
+function buildImageFallbackResponse() {
+  return new Response(IMAGE_FALLBACK_SVG, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Cache-Control": "no-store"
+    }
+  });
+}
+
+async function staleWhileRevalidate(request, { imageFallback = false } = {}) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
   const networkPromise = fetchWithTimeout(request)
@@ -222,7 +233,9 @@ async function staleWhileRevalidate(request) {
     return cached;
   }
   const network = await networkPromise;
-  return network || cached || new Response("", { status: 504, statusText: "Fetch failed" });
+  if (network || cached) return network || cached;
+  if (imageFallback) return buildImageFallbackResponse();
+  return new Response("", { status: 504, statusText: "Fetch failed" });
 }
 
 async function cacheFirst(request) {
@@ -291,12 +304,12 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isImage || (inScope && isStaticAsset)) {
-    event.respondWith(staleWhileRevalidate(req));
+    event.respondWith(staleWhileRevalidate(req, { imageFallback: isImage }));
     return;
   }
 
   if (isExternalStatic) {
-    event.respondWith(staleWhileRevalidate(req));
+    event.respondWith(staleWhileRevalidate(req, { imageFallback: req.destination === "image" }));
     return;
   }
 

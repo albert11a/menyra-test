@@ -174,6 +174,16 @@ export function createSocialEngagementRuntimeController({
   const getMenuItemSocialId = getMenuItemSocialIdFn;
   const menuItemMetaKey = menuItemMetaKeyFn;
 
+  function isQrGuestMenuSession() {
+    if (String(state?.user?.uid || "").trim()) return false;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    if (profileTopTab !== "menu") return false;
+    const menuAccessSource = String(state?.profileView?.menuAccessSource || "").trim().toLowerCase();
+    return menuAccessSource === "qr";
+  }
+
   function ensureMetaLoadState(meta) {
     if (!meta || typeof meta !== "object") {
       return {
@@ -1208,6 +1218,7 @@ export function createSocialEngagementRuntimeController({
 
   function attachMenuItemMetaListeners(item, restaurantId) {
     stopMenuItemMetaListeners();
+    if (isQrGuestMenuSession()) return;
     const ctx = getMenuDetailContext() || (() => {
       const ref = getMenuItemSocialDocRef(item, restaurantId);
       const itemId = getMenuItemSocialId(item);
@@ -1233,12 +1244,18 @@ export function createSocialEngagementRuntimeController({
 
   async function loadMenuItemMetaFromFirebase(item, restaurantId, options = {}) {
     const includeComments = options?.includeComments !== false;
-    const ref = getMenuItemSocialDocRef(item, restaurantId);
     const rid = restaurantId || state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "";
     const itemId = getMenuItemSocialId(item);
-    if (!ref || !rid || !itemId) return;
+    if (!rid || !itemId) return;
     const key = menuItemMetaKey(rid, itemId);
     const meta = ensureMenuItemMeta(key);
+    if (isQrGuestMenuSession()) {
+      state.menuItemMeta[key] = meta;
+      updateMenuCardCountNodes(itemId, resolveMenuItemCounts(meta));
+      return meta;
+    }
+    const ref = getMenuItemSocialDocRef(item, restaurantId);
+    if (!ref) return;
     const loadState = ensureMetaLoadState(meta);
     const userUid = String(state.user?.uid || "");
     const hasCommentsCache = !includeComments || (loadState.commentsHydrated && Array.isArray(meta.comments));

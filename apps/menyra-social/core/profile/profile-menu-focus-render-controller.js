@@ -489,12 +489,16 @@ const MENU_IMAGE_WIDTH_BY_SIZE = {
   large: 1280
 };
 
-function buildMenuImageAttrs({ mode = "profile", priorityIndex = -1, slideIndex = 0 } = {}) {
-  const isCritical = mode === "profile"
+function isCriticalMenuImage({ mode = "profile", priorityIndex = -1, slideIndex = 0 } = {}) {
+  return mode === "profile"
     && Number.isFinite(priorityIndex)
     && priorityIndex >= 0
     && priorityIndex < CRITICAL_MENU_IMAGE_COUNT
     && slideIndex === 0;
+}
+
+function buildMenuImageAttrs({ mode = "profile", priorityIndex = -1, slideIndex = 0 } = {}) {
+  const isCritical = isCriticalMenuImage({ mode, priorityIndex, slideIndex });
   const revealAttr = `data-image-reveal="menu"`;
   return isCritical
     ? `loading="eager" fetchpriority="high" ${revealAttr}`
@@ -523,10 +527,12 @@ function buildResponsiveMenuImageSources(
   const resolveOptions = mode === "profile" && stableKey
     ? { stableKey }
     : null;
+  const isCritical = isCriticalMenuImage({ mode, priorityIndex, slideIndex });
+  const shouldStrictLazy = mode === "profile" && !isCritical && variant !== "thumb";
   const resolvedImg = getOptimizedImageUrl(rawImg, preferredSize, resolveOptions);
-  const safeImg = isPlaceholderUrl(resolvedImg) ? PLACEHOLDER_IMAGE : resolvedImg;
+  const resolvedSafeImg = isPlaceholderUrl(resolvedImg) ? PLACEHOLDER_IMAGE : resolvedImg;
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
-  const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+  const resolvedFallbackImg = isDirectImageUrl(rawImg) && rawImg !== resolvedSafeImg ? rawImg : firebaseFallback;
   const srcsetParts = [];
   const seen = new Set();
   candidateSizes.forEach((sizeKey) => {
@@ -543,14 +549,25 @@ function buildResponsiveMenuImageSources(
   const sizesValue = srcsetValue
     ? resolveResponsiveMenuImageSizes({ variant })
     : "";
-  const srcsetAttr = srcsetValue ? ` srcset="${escapeHtml(srcsetValue)}"` : "";
-  const sizesAttr = sizesValue ? ` sizes="${escapeHtml(sizesValue)}"` : "";
+  const eagerSrcsetValue = shouldStrictLazy ? "" : srcsetValue;
+  const eagerSizesValue = shouldStrictLazy ? "" : sizesValue;
+  const srcsetAttr = eagerSrcsetValue ? ` srcset="${escapeHtml(eagerSrcsetValue)}"` : "";
+  const sizesAttr = eagerSizesValue ? ` sizes="${escapeHtml(eagerSizesValue)}"` : "";
   const loadingAttrs = buildMenuImageAttrs({ mode, priorityIndex, slideIndex });
   const imageAttrs = `${loadingAttrs}${srcsetAttr}${sizesAttr}`;
+  const lazyAttrs = shouldStrictLazy
+    ? [
+      `data-menu-lazy-src="${escapeHtml(resolvedSafeImg)}"`,
+      `data-menu-lazy-fallback="${escapeHtml(resolvedFallbackImg || PLACEHOLDER_IMAGE)}"`,
+      srcsetValue ? `data-menu-lazy-srcset="${escapeHtml(srcsetValue)}"` : "",
+      sizesValue ? `data-menu-lazy-sizes="${escapeHtml(sizesValue)}"` : ""
+    ].filter(Boolean).join(" ")
+    : "";
   return {
-    safeImg,
-    fallbackImg,
+    safeImg: shouldStrictLazy ? PLACEHOLDER_IMAGE : resolvedSafeImg,
+    fallbackImg: shouldStrictLazy ? PLACEHOLDER_IMAGE : resolvedFallbackImg,
     imageAttrs,
+    lazyAttrs: lazyAttrs ? ` ${lazyAttrs}` : "",
     srcsetValue,
     sizesValue,
     loadingAttrs
@@ -649,7 +666,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
   const menuDetailStableKey = mode === "profile"
     ? getMenuDetailImageStableKey(item, { index: 0 })
     : "";
-  const { safeImg, fallbackImg, imageAttrs } = buildResponsiveMenuImageSources(rawImg, {
+  const { safeImg, fallbackImg, imageAttrs, lazyAttrs } = buildResponsiveMenuImageSources(rawImg, {
     mode,
     priorityIndex,
     stableKey: menuDetailStableKey,
@@ -669,7 +686,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
     return `
       <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
         <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
-          <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+          <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between gap-3">
@@ -699,7 +716,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
   return `
     <div ${wrapperAttrs} class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between gap-4">
@@ -722,7 +739,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food", p
     ? getMenuDetailImageStableKey(item, { index: 0 })
     : "";
   const isDrink = variant === "drink";
-  const { safeImg, fallbackImg, imageAttrs } = buildResponsiveMenuImageSources(rawImg, {
+  const { safeImg, fallbackImg, imageAttrs, lazyAttrs } = buildResponsiveMenuImageSources(rawImg, {
     mode,
     priorityIndex,
     stableKey: menuDetailStableKey,
@@ -762,7 +779,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food", p
   return `
     <div ${wrapperAttrs} class="w-full ${isDrink ? "h-full p-3 rounded-[1.6rem] flex flex-col" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
       </div>
       ${isDrink ? `
         <div class="mt-3 flex flex-1 flex-col">
@@ -870,7 +887,7 @@ function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile
         ${focusItems.map((item, focusIndex) => {
           const rawImg = item.imageUrl || "";
           const focusStableKey = String(item.menuItemId || item.id || "").trim();
-          const { safeImg, fallbackImg, imageAttrs } = buildResponsiveMenuImageSources(rawImg, {
+          const { safeImg, fallbackImg, imageAttrs, lazyAttrs } = buildResponsiveMenuImageSources(rawImg, {
             mode,
             priorityIndex: focusIndex,
             preferredSize: "medium",
@@ -885,7 +902,7 @@ function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile
           return `
             <div ${wrapperAttrs} class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col group relative mb-2 ${wrapperAttrs ? "cursor-pointer" : ""}" style="box-shadow:0 4px 14px rgba(0,0,0,0.03);">
               <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative" style="aspect-ratio:16 / 9;">
-                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${item.objectPosition || "50% 50%"};" ${imageAttrs} decoding="async" />
+                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${item.objectPosition || "50% 50%"};" ${imageAttrs} decoding="async" />
                 <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50">
                   ${icon("sparkles", "w-3 h-3 text-amber-500")}
                   <span class="text-[10px] font-black text-slate-900 uppercase tracking-widest pt-[1px]">Tipp</span>
@@ -908,7 +925,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile", priorityIndex = 
   const menuDetailStableKey = mode === "profile"
     ? getMenuDetailImageStableKey(item, { index: 0 })
     : "";
-  const { safeImg, fallbackImg, imageAttrs } = buildResponsiveMenuImageSources(rawImg, {
+  const { safeImg, fallbackImg, imageAttrs, lazyAttrs } = buildResponsiveMenuImageSources(rawImg, {
     mode,
     priorityIndex,
     stableKey: menuDetailStableKey,
@@ -924,7 +941,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile", priorityIndex = 
   return `
     <div ${wrapperAttrs} class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
         <button
           type="button"
           data-menu-card-like="${escapeHtml(item.id)}"
@@ -973,7 +990,7 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default", 
     ? getMenuDetailImageStableKey(item, { index: 0 })
     : "";
   const heroVariant = size === "food";
-  const { safeImg, fallbackImg, imageAttrs } = buildResponsiveMenuImageSources(rawImg, {
+  const { safeImg, fallbackImg, imageAttrs, lazyAttrs } = buildResponsiveMenuImageSources(rawImg, {
     mode,
     priorityIndex,
     stableKey: menuDetailStableKey,
@@ -987,7 +1004,7 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default", 
   if (size === "food") {
     return `
       <div ${wrapperAttrs} class="rounded-[2.2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden mb-5 group aspect-[16/9] ${mode === "profile" ? "cursor-pointer" : ""}" style="border-radius:2.2rem;aspect-ratio:16 / 9;margin-bottom:20px;">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
         <div class="absolute top-3 right-3 w-8 h-8 min-w-[2rem] min-h-[2rem] bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white pointer-events-none shrink-0" style="aspect-ratio:1 / 1;">
           ${icon("arrow-right", "w-4 h-4")}
@@ -1003,7 +1020,7 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default", 
   }
   return `
     <div ${wrapperAttrs} class="bg-slate-900 p-1.5 rounded-[1.8rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col relative overflow-hidden h-full group ${mode === "profile" ? "cursor-pointer" : ""}">
-      <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+      <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
       <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
       <div class="absolute top-3 right-3 w-8 h-8 min-w-[2rem] min-h-[2rem] bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white pointer-events-none shrink-0" style="aspect-ratio:1 / 1;">
         ${icon("arrow-right", "w-4 h-4")}
@@ -1057,6 +1074,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
               const safeImg = shouldDeferSlide ? PLACEHOLDER_IMAGE : responsiveSource.safeImg;
               const fallbackImg = shouldDeferSlide ? PLACEHOLDER_IMAGE : responsiveSource.fallbackImg;
               const imageAttrs = shouldDeferSlide ? responsiveSource.loadingAttrs : responsiveSource.imageAttrs;
+              const lazyAttrs = shouldDeferSlide ? "" : (responsiveSource.lazyAttrs || "");
               const deferredAttrs = shouldDeferSlide
                 ? ` data-menu-card-deferred-src="${escapeHtml(responsiveSource.safeImg)}"
                     data-menu-card-deferred-fallback="${escapeHtml(responsiveSource.fallbackImg)}"
@@ -1065,7 +1083,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
                 : "";
               return `
                 <div class="min-w-full h-full snap-center relative" data-menu-card-gallery-slide="${index}" style="min-width:100%;width:100%;height:100%;scroll-snap-align:center;">
-                  <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${deferredAttrs} class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+                  <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs}${deferredAttrs} class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
                 </div>
               `;
             }).join("")}
@@ -1075,7 +1093,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
             const menuDetailStableKey = mode === "profile"
               ? getMenuDetailImageStableKey(item, { index })
               : "";
-            const { safeImg, fallbackImg, imageAttrs } = buildResponsiveMenuImageSources(image || "", {
+            const { safeImg, fallbackImg, imageAttrs, lazyAttrs } = buildResponsiveMenuImageSources(image || "", {
               mode,
               priorityIndex,
               slideIndex: index,
@@ -1086,7 +1104,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
             });
             return `
               <div class="w-full h-full">
-                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
               </div>
             `;
           }).join("")}
@@ -1498,7 +1516,7 @@ function renderFocusCarousel(profile) {
 
   const idx = getFocusIndex(items);
   const item = items[idx] || items[0];
-  const { safeImg, fallbackImg, imageAttrs } = buildResponsiveMenuImageSources(item.imageUrl || "", {
+  const { safeImg, fallbackImg, imageAttrs, lazyAttrs } = buildResponsiveMenuImageSources(item.imageUrl || "", {
     mode: "profile",
     priorityIndex: 0,
     preferredSize: "medium",
@@ -1524,7 +1542,7 @@ function renderFocusCarousel(profile) {
         ` : ""}
       </div>
       <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
-        <img data-focus-image src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        <img data-focus-image src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
       </div>
       <div class="mt-4">
         <p data-focus-title class="text-lg font-black text-slate-900">${escapeHtml(item.title || "Sot ne Fokus")}</p>

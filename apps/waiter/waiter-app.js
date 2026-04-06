@@ -3,7 +3,7 @@ import { createRuntimeErrorReporter } from "/shared/runtime-error-reporter.js?v=
 import {
   getApps,
   initializeApp
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-app.js";
 import {
   browserSessionPersistence,
   browserLocalPersistence,
@@ -14,7 +14,7 @@ import {
   setPersistence,
   signInWithEmailAndPassword,
   signOut
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 import {
   collection,
   doc,
@@ -32,13 +32,13 @@ import {
   setDoc,
   updateDoc,
   where
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   getMessaging,
   getToken,
   isSupported as isMessagingSupported,
   onMessage
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-messaging.js";
 
 const APP_ROOT = document.getElementById("app");
 const WAITER_FIREBASE_APP_NAME = "menyra-waiter";

@@ -140,6 +140,12 @@ export function ensureTabDataCore({
   }
 
   const activeUid = String(state.user?.uid || "").trim();
+  const isQrMenuProfileSession = (
+    !hasUser
+    && tab === "profile"
+    && String(state?.profileTopTab || "").trim().toLowerCase() === "menu"
+    && String(state?.profileView?.menuAccessSource || "").trim().toLowerCase() === "qr"
+  );
   const shouldSkipBootstrapAuthProfileLoad = (requestedTab = tab) => {
     const skipUid = String(state.__skipNextAuthProfileEnsureUid || "").trim();
     const skipTab = String(state.__skipNextAuthProfileEnsureTab || "").trim();
@@ -170,7 +176,7 @@ export function ensureTabDataCore({
     return nextPromise;
   };
 
-  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants;
+  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isQrMenuProfileSession;
   if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
     scheduleIdleSafe(() => {

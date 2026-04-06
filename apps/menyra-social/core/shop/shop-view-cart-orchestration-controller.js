@@ -85,8 +85,25 @@ export function createShopViewCartOrchestrationController({
           if (!sizedUrl || isPlaceholderUrlFn(sizedUrl)) return "";
           return `${escapeHtmlFn(sizedUrl)} ${width}w`;
         }).filter(Boolean);
-        const responsiveSrcset = responsiveEntries.length > 1
-          ? ` srcset="${responsiveEntries.join(", ")}" sizes="(max-width: 640px) 48vw, (max-width: 1200px) 28vw, 360px"`
+        const responsiveSrcsetValue = responsiveEntries.length > 1
+          ? responsiveEntries.join(", ")
+          : "";
+        const responsiveSizesValue = responsiveSrcsetValue
+          ? "(max-width: 640px) 48vw, (max-width: 1200px) 28vw, 360px"
+          : "";
+        const useStrictLazy = !isCriticalImage;
+        const renderedSrc = useStrictLazy ? placeholderImage : safeImg;
+        const renderedFallback = useStrictLazy ? placeholderImage : fallbackImg;
+        const responsiveSrcset = !useStrictLazy && responsiveSrcsetValue
+          ? ` srcset="${escapeHtmlFn(responsiveSrcsetValue)}" sizes="${escapeHtmlFn(responsiveSizesValue)}"`
+          : "";
+        const strictLazyAttrs = useStrictLazy
+          ? [
+            `data-menu-lazy-src="${escapeHtmlFn(safeImg)}"`,
+            `data-menu-lazy-fallback="${escapeHtmlFn(fallbackImg || placeholderImage)}"`,
+            responsiveSrcsetValue ? `data-menu-lazy-srcset="${escapeHtmlFn(responsiveSrcsetValue)}"` : "",
+            responsiveSizesValue ? `data-menu-lazy-sizes="${escapeHtmlFn(responsiveSizesValue)}"` : ""
+          ].filter(Boolean).join(" ")
           : "";
         const priceLabel = formatPriceFn(item.price);
         const stockRaw = item.stock;
@@ -103,7 +120,7 @@ export function createShopViewCartOrchestrationController({
         return `
           <article data-menu-open="${escapeHtmlFn(item.id)}" data-menu-open-source="${escapeHtmlFn(source)}"${restaurantAttr} role="button" tabindex="0" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col" style="touch-action:pan-y;">
             <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
-              <img src="${escapeHtmlFn(safeImg)}" data-fallback-src="${escapeHtmlFn(fallbackImg)}" data-image-reveal="menu" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPositionFn(item)};" width="480" height="600" ${imageLoadAttrs}${responsiveSrcset} decoding="async" />
+              <img src="${escapeHtmlFn(renderedSrc)}" data-fallback-src="${escapeHtmlFn(renderedFallback)}"${strictLazyAttrs ? ` ${strictLazyAttrs}` : ""} data-image-reveal="menu" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPositionFn(item)};" width="480" height="600" ${imageLoadAttrs}${responsiveSrcset} decoding="async" />
             </div>
             ${thumbImages.length ? `
               <div class="grid grid-cols-3 gap-2 mt-2">
@@ -112,9 +129,13 @@ export function createShopViewCartOrchestrationController({
                   const safeThumb = isPlaceholderUrlFn(thumbSrc) ? placeholderImage : thumbSrc;
                   const thumbStorageFallback = getFirebaseStorageUrlFn(thumb);
                   const thumbFallback = isDirectImageUrlFn(thumb) && thumb !== safeThumb ? thumb : thumbStorageFallback;
+                  const thumbStrictLazyAttrs = [
+                    `data-menu-lazy-src="${escapeHtmlFn(safeThumb)}"`,
+                    `data-menu-lazy-fallback="${escapeHtmlFn(thumbFallback || placeholderImage)}"`
+                  ].join(" ");
                   return `
                     <div class="rounded-xl overflow-hidden bg-slate-100 border border-slate-100" style="aspect-ratio:4 / 5;">
-                      <img src="${escapeHtmlFn(safeThumb)}" data-fallback-src="${escapeHtmlFn(thumbFallback)}" data-image-reveal="menu" class="w-full h-full object-cover" loading="lazy" fetchpriority="low" sizes="(max-width: 640px) 15vw, 110px" decoding="async" />
+                      <img src="${escapeHtmlFn(placeholderImage)}" data-fallback-src="${escapeHtmlFn(placeholderImage)}" ${thumbStrictLazyAttrs} data-image-reveal="menu" class="w-full h-full object-cover" loading="lazy" fetchpriority="low" sizes="(max-width: 640px) 15vw, 110px" decoding="async" />
                     </div>
                   `;
                 }).join("")}

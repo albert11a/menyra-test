@@ -118,6 +118,8 @@ export function createSessionDataRuntimeController({
   const menuCacheMap = menuCache || new Map();
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const subscribeSnapshot = typeof onSnapshotFn === "function" ? onSnapshotFn : null;
+  const menuPersistentCachePrefix = String(cacheKeys?.menu || "menyra_social_menu_cache_v1").trim() || "menyra_social_menu_cache_v1";
+  const menuPersistentCacheTtlMs = Math.max(0, Number(cacheTtl?.menu || (15 * 60 * 1000)) || 0);
   let menuMetaUnsub = null;
   let menuMetaRestaurantId = "";
   let restaurantsFreshReconcileQueued = false;
@@ -480,6 +482,38 @@ export function createSessionDataRuntimeController({
     }
     menuMetaUnsub = null;
     menuMetaRestaurantId = "";
+  }
+
+  function buildMenuPersistentCacheKey(restaurantId = "", source = "public") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeSource = String(source || "public").trim().toLowerCase() || "public";
+    if (!safeRestaurantId) return "";
+    return `${menuPersistentCachePrefix}::${safeRestaurantId}::${safeSource}`;
+  }
+
+  function readMenuPersistentCache(restaurantId = "", source = "public", { ignoreTtl = false } = {}) {
+    const cacheKey = buildMenuPersistentCacheKey(restaurantId, source);
+    if (!cacheKey || typeof readCacheFn !== "function") {
+      return { items: [], statusBadgeVisible: true, fresh: false };
+    }
+    const cached = readCacheFn(cacheKey, ignoreTtl ? null : menuPersistentCacheTtlMs);
+    const data = Array.isArray(cached?.data) ? cached.data : [];
+    const statusBadgeVisible = typeof cached?.meta?.statusBadgeVisible === "boolean"
+      ? cached.meta.statusBadgeVisible
+      : true;
+    return {
+      items: data,
+      statusBadgeVisible,
+      fresh: cached?.fresh === true
+    };
+  }
+
+  function writeMenuPersistentCache(restaurantId = "", source = "public", items = [], { statusBadgeVisible = true } = {}) {
+    const cacheKey = buildMenuPersistentCacheKey(restaurantId, source);
+    if (!cacheKey || typeof writeCacheFn !== "function" || !Array.isArray(items)) return;
+    writeCacheFn(cacheKey, items, {
+      statusBadgeVisible: typeof statusBadgeVisible === "boolean" ? statusBadgeVisible : true
+    });
   }
 
   function startMenuMetaListener(restaurantId) {
@@ -1172,6 +1206,34 @@ export function createSessionDataRuntimeController({
       }
       return;
     }
+    const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
+    if (persistedMenu.items.length && !force) {
+      state.menu = {
+        ...state.menu,
+        restaurantId: safeRestaurantId,
+        items: persistedMenu.items,
+        loading: false,
+        error: "",
+        source: safeSource,
+        statusBadgeVisible: persistedMenu.statusBadgeVisible
+      };
+      menuCacheMap.set(cacheKey, {
+        items: persistedMenu.items,
+        statusBadgeVisible: persistedMenu.statusBadgeVisible,
+        ts: Date.now()
+      });
+      requestRender();
+      if (!menuFreshReconcileQueuedKeys.has(cacheKey)) {
+        menuFreshReconcileQueuedKeys.add(cacheKey);
+        queueMicrotask(() => {
+          void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
+            .finally(() => {
+              menuFreshReconcileQueuedKeys.delete(cacheKey);
+            });
+        });
+      }
+      return;
+    }
     const inFlight = menuNetworkLoadPromises.get(cacheKey);
     if (inFlight) {
       await inFlight;
@@ -1225,6 +1287,7 @@ export function createSessionDataRuntimeController({
           statusBadgeVisible = meta.statusBadgeVisible;
         }
         menuCacheMap.set(cacheKey, { items, statusBadgeVisible, ts: Date.now() });
+        writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
@@ -1237,17 +1300,21 @@ export function createSessionDataRuntimeController({
         requestRender();
       } catch (err) {
         console.error(err);
+        const stalePersistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: true });
         const fallbackItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
           ? state.menu.items
-          : [];
+          : stalePersistedMenu.items;
+        const fallbackStatusBadgeVisible = typeof stalePersistedMenu.statusBadgeVisible === "boolean"
+          ? stalePersistedMenu.statusBadgeVisible
+          : true;
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: fallbackItems,
           loading: false,
-          error: "Menu laden fehlgeschlagen.",
+          error: fallbackItems.length ? "" : "Menu laden fehlgeschlagen.",
           source: safeSource,
-          statusBadgeVisible: true
+          statusBadgeVisible: fallbackStatusBadgeVisible
         };
         requestRender();
       } finally {

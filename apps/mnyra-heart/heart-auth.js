@@ -8,11 +8,11 @@ import {
   setPersistence,
   signInWithEmailAndPassword,
   signOut
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 import {
   doc,
   getDoc
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   ALBERT_CEO_UID,
   canAccessHeartAsCeo,

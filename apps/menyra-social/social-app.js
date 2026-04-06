@@ -2,7 +2,7 @@ import { auth, db, app } from "/shared/firebase-config.js?v=2026-03-10-startup-1
 import { BUNNY_EDGE_BASE, MEDIA_TICKET_ENDPOINT } from "/shared/bunny-edge.js";
 import { BRAND_UI } from "/shared/brand-ui.js";
 import { createRuntimeErrorReporter } from "/shared/runtime-error-reporter.js?v=2026-03-23-runtime-errors-1";
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { initializeApp, getApps } from "/shared/vendor/firebase/11.0.0/firebase-app.js";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -12,7 +12,7 @@ import {
   getAuth,
   setPersistence,
   browserLocalPersistence
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 import {
   collection,
   collectionGroup,
@@ -37,11 +37,11 @@ import {
   serverTimestamp,
   Timestamp,
   waitForPendingWrites
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   getFunctions,
   httpsCallable
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-functions.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-functions.js";
 import {
   ensureUserProfile,
   formatRelative,
@@ -407,7 +407,7 @@ import {
 } from "./core/app-events/app-events-crm-staff-bind-utils.js";
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 const appEl = document.getElementById("app");
-const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
+const FIREBASE_MESSAGING_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-messaging.js";
 const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "";
@@ -639,7 +639,8 @@ const CACHE_KEYS = {
   feed: "menyra_social_feed_cache_v1",
   restaurants: "menyra_social_restaurants_cache_v1",
   restaurantsPreview: "menyra_social_restaurants_preview_cache_v1",
-  stories: "menyra_social_stories_cache_v1"
+  stories: "menyra_social_stories_cache_v1",
+  menu: "menyra_social_menu_cache_v1"
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
 const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
@@ -880,6 +881,7 @@ const leadPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_leads_ca
 const customerPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_customers_cache_v1::${uid}::${scope}` : "");
 const CACHE_TTL_MS = {
   feed: 10 * 60 * 1000,
+  menu: 15 * 60 * 1000,
   posts: 10 * 60 * 1000,
   restaurants: 60 * 60 * 1000,
   stories: 10 * 60 * 1000,

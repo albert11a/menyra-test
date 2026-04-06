@@ -7,7 +7,7 @@ import {
   limit,
   orderBy,
   query
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { createStoryViewerRuntimeController } from "../core/stories/story-viewer-runtime-controller.js";
 
 const storyViewerRuntimeController = createStoryViewerRuntimeController({

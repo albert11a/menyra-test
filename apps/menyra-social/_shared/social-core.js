@@ -4,11 +4,11 @@ import {
   getDoc,
   setDoc,
   serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
   onAuthStateChanged,
   signOut
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+} from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 
 export function projectRoot() {
   const href = window.location.href;
