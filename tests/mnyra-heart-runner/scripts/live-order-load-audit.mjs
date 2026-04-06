@@ -112,6 +112,11 @@ function resolveGuestConfig(config = {}) {
       "#menuModal",
       "[data-menu-detail]"
     ),
+    detailCloseSelectors: uniqueList(
+      guest.productDetailCloseSelector,
+      "#menuModalClose",
+      "[data-menu-detail-close]"
+    ),
     addToCartSelectors: uniqueList(
       guest.addToCartSelector,
       "#menuDetailAddToCartBtn"
@@ -192,12 +197,18 @@ async function waitForAnySelector(page, selectors = [], timeoutMs = 15000) {
   const safeSelectors = uniqueList(selectors);
   if (!safeSelectors.length) return "";
   const deadline = Date.now() + Math.max(1000, timeoutMs);
+  const maxScanPerSelector = 24;
   while (Date.now() < deadline) {
     for (const selector of safeSelectors) {
-      const locator = page.locator(selector).first();
-      if (!await locator.count()) continue;
-      if (!await locator.isVisible().catch(() => false)) continue;
-      return selector;
+      const locator = page.locator(selector);
+      const count = await locator.count().catch(() => 0);
+      if (!count) continue;
+      const scanLimit = Math.min(count, maxScanPerSelector);
+      for (let idx = 0; idx < scanLimit; idx += 1) {
+        const candidate = locator.nth(idx);
+        if (!await candidate.isVisible().catch(() => false)) continue;
+        return selector;
+      }
     }
     await page.waitForTimeout(120).catch(() => undefined);
   }
@@ -208,19 +219,119 @@ async function clickFirstVisible(page, selectors = [], timeoutMs = 10000) {
   const safeSelectors = uniqueList(selectors);
   if (!safeSelectors.length) return "";
   const deadline = Date.now() + Math.max(1000, timeoutMs);
+  const maxScanPerSelector = 24;
   while (Date.now() < deadline) {
     for (const selector of safeSelectors) {
-      const locator = page.locator(selector).first();
-      if (!await locator.count()) continue;
-      try {
-        if (!await locator.isVisible().catch(() => false)) continue;
-        await locator.click({ timeout: 1800 });
-        return selector;
-      } catch {
-        // Keep trying while hydration settles.
+      const locator = page.locator(selector);
+      const count = await locator.count().catch(() => 0);
+      if (!count) continue;
+      const scanLimit = Math.min(count, maxScanPerSelector);
+      for (let idx = 0; idx < scanLimit; idx += 1) {
+        const candidate = locator.nth(idx);
+        try {
+          if (!await candidate.isVisible().catch(() => false)) continue;
+          await candidate.click({ timeout: 1800 });
+          return selector;
+        } catch {
+          // Keep trying while hydration settles.
+        }
       }
     }
     await page.waitForTimeout(120).catch(() => undefined);
+  }
+  return "";
+}
+
+async function waitForClickableSelector(page, selectors = [], timeoutMs = 3000) {
+  const safeSelectors = uniqueList(selectors);
+  if (!safeSelectors.length) return "";
+  const deadline = Date.now() + Math.max(1000, timeoutMs);
+  const maxScanPerSelector = 16;
+  while (Date.now() < deadline) {
+    for (const selector of safeSelectors) {
+      const locator = page.locator(selector);
+      const count = await locator.count().catch(() => 0);
+      if (!count) continue;
+      const scanLimit = Math.min(count, maxScanPerSelector);
+      for (let idx = 0; idx < scanLimit; idx += 1) {
+        const candidate = locator.nth(idx);
+        if (!await candidate.isVisible().catch(() => false)) continue;
+        const clickable = await candidate.evaluate((node) => {
+          if (!(node instanceof HTMLElement)) return false;
+          if (node.hasAttribute("disabled")) return false;
+          if (node.getAttribute("aria-disabled") === "true") return false;
+          const style = window.getComputedStyle(node);
+          if (style.visibility === "hidden" || style.display === "none") return false;
+          if (style.pointerEvents === "none") return false;
+          if (Number(style.opacity || "1") === 0) return false;
+          if (node.classList.contains("pointer-events-none")) return false;
+          return true;
+        }).catch(() => false);
+        if (clickable) return selector;
+      }
+    }
+    await page.waitForTimeout(120).catch(() => undefined);
+  }
+  return "";
+}
+
+async function closeDetailIfOpen(page, selectors = [], timeoutMs = 1500) {
+  const clicked = await clickFirstVisible(page, selectors, timeoutMs);
+  if (clicked) {
+    await page.waitForTimeout(120).catch(() => undefined);
+  }
+}
+
+async function openOrderableProductDetail(page, guestConfig = {}, { timeoutMs = 12000 } = {}) {
+  const safeProductSelectors = uniqueList(guestConfig.productOpenSelectors);
+  if (!safeProductSelectors.length) return "";
+  await waitForAnySelector(page, safeProductSelectors, timeoutMs);
+  const maxRounds = 2;
+  const maxCandidatesPerSelector = 10;
+  const seen = new Set();
+
+  for (let round = 0; round < maxRounds; round += 1) {
+    for (const selector of safeProductSelectors) {
+      const locator = page.locator(selector);
+      const count = await locator.count().catch(() => 0);
+      const limit = Math.min(Math.max(0, count), maxCandidatesPerSelector);
+      for (let idx = 0; idx < limit; idx += 1) {
+        const candidate = locator.nth(idx);
+        if (!await candidate.isVisible().catch(() => false)) continue;
+        const candidateKey = await candidate.evaluate((node, payload) => {
+          const id = String(node.getAttribute?.("data-menu-open") || "").trim();
+          if (id) return `${payload.selector}|${id}`;
+          const text = String((node.textContent || "").trim()).slice(0, 64);
+          return `${payload.selector}|${payload.index}|${text}`;
+        }, { selector, index: idx }).catch(() => `${selector}|${idx}`);
+        if (seen.has(candidateKey)) continue;
+        seen.add(candidateKey);
+        try {
+          await candidate.click({ timeout: 1800 });
+        } catch {
+          continue;
+        }
+        const detailOpened = await waitForAnySelector(
+          page,
+          guestConfig.detailVisibleSelectors,
+          3200
+        ).then(() => true).catch(() => false);
+        if (!detailOpened) continue;
+        const clickableAddSelector = await waitForClickableSelector(
+          page,
+          guestConfig.addToCartSelectors,
+          3200
+        );
+        if (clickableAddSelector) {
+          return clickableAddSelector;
+        }
+        await closeDetailIfOpen(page, guestConfig.detailCloseSelectors, 1200);
+      }
+    }
+    if (round === 0) {
+      await page.mouse.wheel(0, 280).catch(() => undefined);
+      await page.waitForTimeout(140).catch(() => undefined);
+    }
   }
   return "";
 }
@@ -433,22 +544,26 @@ async function runSingleOrderFlow({
 
     const menuStart = Date.now();
     await waitForAnySelector(page, guestConfig.menuVisibleSelectors, Math.max(8000, timeoutMs));
+    await waitForAnySelector(page, guestConfig.productOpenSelectors, Math.max(8000, timeoutMs));
     row.timings.menuVisibleMs = Date.now() - menuStart;
     row.images.menuImmediate = await readImageState(page);
     await page.waitForTimeout(1200).catch(() => undefined);
     row.images.menuAfter1200ms = await readImageState(page);
 
     const openStart = Date.now();
-    const openedSelector = await clickFirstVisible(page, guestConfig.productOpenSelectors, 12000);
-    if (!openedSelector) {
-      throw new Error("product-open-not-found");
+    const openableAddSelector = await openOrderableProductDetail(page, guestConfig, { timeoutMs: 12000 });
+    if (!openableAddSelector) {
+      const openedSelector = await clickFirstVisible(page, guestConfig.productOpenSelectors, 8000);
+      if (!openedSelector) {
+        throw new Error("product-open-not-found");
+      }
+      await waitForAnySelector(page, guestConfig.detailVisibleSelectors, 12000);
     }
-    await waitForAnySelector(page, guestConfig.detailVisibleSelectors, 12000);
     row.timings.productOpenMs = Date.now() - openStart;
     row.images.detailAfterOpen = await readImageState(page);
 
     const addStart = Date.now();
-    const addSelector = await clickFirstVisible(page, guestConfig.addToCartSelectors, 12000);
+    const addSelector = await clickFirstVisible(page, [openableAddSelector, ...guestConfig.addToCartSelectors], 12000);
     if (!addSelector) {
       throw new Error("add-to-cart-not-found");
     }
