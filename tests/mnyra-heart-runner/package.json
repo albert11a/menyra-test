@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "casarita-live": "node ./scripts/casarita-live-launch-audit.mjs",
+    "cold-audit": "node ./scripts/cold-load-audit.mjs",
+    "live-guest-order-audit": "node ./scripts/live-guest-order-audit.mjs",
+    "live-order-load-audit": "node ./scripts/live-order-load-audit.mjs",
     "guard-pack": "node ./src/run-pack.mjs guard-pack",
     "release-pack": "node ./src/run-pack.mjs release-pack",
     "health-pack": "node ./src/run-pack.mjs health-pack",

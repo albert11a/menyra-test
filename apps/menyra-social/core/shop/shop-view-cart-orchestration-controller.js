@@ -68,13 +68,26 @@ export function createShopViewCartOrchestrationController({
     }
     return `
     <div class="grid grid-cols-2 gap-4">
-      ${items.map((item) => {
+      ${items.map((item, index) => {
         const images = getMenuItemImagesFn(item);
         const rawImg = images[0] || resolveMenuItemHeroFn(item);
-        const imgSrc = getOptimizedImageUrlFn(rawImg, "large");
+        const isCriticalImage = index < 2;
+        const imageLoadAttrs = isCriticalImage
+          ? `loading="eager" fetchpriority="high"`
+          : `loading="lazy" fetchpriority="low"`;
+        const imgSrc = getOptimizedImageUrlFn(rawImg, isCriticalImage ? "medium" : "small");
         const safeImg = isPlaceholderUrlFn(imgSrc) ? placeholderImage : imgSrc;
         const firebaseFallback = getFirebaseStorageUrlFn(rawImg);
         const fallbackImg = isDirectImageUrlFn(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+        const responsiveEntries = ["small", "medium", "large"].map((sizeKey) => {
+          const width = sizeKey === "small" ? 480 : (sizeKey === "medium" ? 768 : 1280);
+          const sizedUrl = getOptimizedImageUrlFn(rawImg, sizeKey);
+          if (!sizedUrl || isPlaceholderUrlFn(sizedUrl)) return "";
+          return `${escapeHtmlFn(sizedUrl)} ${width}w`;
+        }).filter(Boolean);
+        const responsiveSrcset = responsiveEntries.length > 1
+          ? ` srcset="${responsiveEntries.join(", ")}" sizes="(max-width: 640px) 48vw, (max-width: 1200px) 28vw, 360px"`
+          : "";
         const priceLabel = formatPriceFn(item.price);
         const stockRaw = item.stock;
         const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
@@ -90,15 +103,21 @@ export function createShopViewCartOrchestrationController({
         return `
           <article data-menu-open="${escapeHtmlFn(item.id)}" data-menu-open-source="${escapeHtmlFn(source)}"${restaurantAttr} role="button" tabindex="0" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col" style="touch-action:pan-y;">
             <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
-              <img src="${escapeHtmlFn(safeImg)}" data-fallback-src="${escapeHtmlFn(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPositionFn(item)};" loading="lazy" decoding="async" />
+              <img src="${escapeHtmlFn(safeImg)}" data-fallback-src="${escapeHtmlFn(fallbackImg)}" data-image-reveal="menu" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPositionFn(item)};" width="480" height="600" ${imageLoadAttrs}${responsiveSrcset} decoding="async" />
             </div>
             ${thumbImages.length ? `
               <div class="grid grid-cols-3 gap-2 mt-2">
-                ${thumbImages.map((thumb) => `
-                  <div class="rounded-xl overflow-hidden bg-slate-100 border border-slate-100" style="aspect-ratio:4 / 5;">
-                    <img src="${escapeHtmlFn(getOptimizedImageUrlFn(thumb, "thumb"))}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
-                  </div>
-                `).join("")}
+                ${thumbImages.map((thumb) => {
+                  const thumbSrc = getOptimizedImageUrlFn(thumb, "thumb");
+                  const safeThumb = isPlaceholderUrlFn(thumbSrc) ? placeholderImage : thumbSrc;
+                  const thumbStorageFallback = getFirebaseStorageUrlFn(thumb);
+                  const thumbFallback = isDirectImageUrlFn(thumb) && thumb !== safeThumb ? thumb : thumbStorageFallback;
+                  return `
+                    <div class="rounded-xl overflow-hidden bg-slate-100 border border-slate-100" style="aspect-ratio:4 / 5;">
+                      <img src="${escapeHtmlFn(safeThumb)}" data-fallback-src="${escapeHtmlFn(thumbFallback)}" data-image-reveal="menu" class="w-full h-full object-cover" loading="lazy" fetchpriority="low" sizes="(max-width: 640px) 15vw, 110px" decoding="async" />
+                    </div>
+                  `;
+                }).join("")}
               </div>
             ` : ""}
               <div class="pt-3 flex-1 flex flex-col min-w-0">
@@ -385,9 +404,28 @@ export function createShopViewCartOrchestrationController({
 
   function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options = {}) {
     const forceAdd = options?.forceAdd === true;
-    if (!item || (!forceAdd && !canAddToShopCartFn(profile))) return;
+    if (!item) {
+      const nextCart = normalizeShopCartStateFn(state.shopCart);
+      nextCart.status = "Produkt konnte nicht hinzugefuegt werden.";
+      state.shopCart = nextCart;
+      renderFn();
+      return false;
+    }
+    if (!forceAdd && !canAddToShopCartFn(profile)) {
+      const nextCart = normalizeShopCartStateFn(state.shopCart);
+      nextCart.status = "Bitte Produkt erneut oeffnen und hinzufuegen.";
+      state.shopCart = nextCart;
+      renderFn();
+      return false;
+    }
     const context = resolveCartContextForItem(item, profile);
-    if (!context.restaurantId) return;
+    if (!context.restaurantId) {
+      const nextCart = normalizeShopCartStateFn(state.shopCart);
+      nextCart.status = "Shop-Zuordnung fehlt. Bitte neu laden.";
+      state.shopCart = nextCart;
+      renderFn();
+      return false;
+    }
     const resolvedItemId = String(
       item?.id
       || item?.itemId
@@ -395,11 +433,23 @@ export function createShopViewCartOrchestrationController({
       || item?.productId
       || ""
     ).trim();
-    if (!resolvedItemId) return;
+    if (!resolvedItemId) {
+      const nextCart = normalizeShopCartStateFn(state.shopCart);
+      nextCart.status = "Produkt-ID fehlt. Bitte neu laden.";
+      state.shopCart = nextCart;
+      renderFn();
+      return false;
+    }
     const currentRestaurantId = String(state.shopCart?.restaurantId || "").trim();
     if (currentRestaurantId && currentRestaurantId !== context.restaurantId) {
       const shouldReplace = confirmFn("Dein Warenkorb enthaelt Produkte von einem anderen Shop. Ersetzen?");
-      if (!shouldReplace) return;
+      if (!shouldReplace) {
+        const nextCart = normalizeShopCartStateFn(state.shopCart);
+        nextCart.status = "Produkt nicht hinzugefuegt (anderer Shop im Warenkorb).";
+        state.shopCart = nextCart;
+        renderFn();
+        return false;
+      }
       clearShopCart({ keepForm: true });
     }
     const nextCart = normalizeShopCartStateFn(state.shopCart);
@@ -444,6 +494,7 @@ export function createShopViewCartOrchestrationController({
     state.shopCart = nextCart;
     saveShopCartToStorageFn();
     renderFn();
+    return true;
   }
 
   function updateShopCartQuantity(itemId, delta) {

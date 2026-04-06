@@ -155,11 +155,12 @@ export function bindMenuDetailOverlayEventsCore({
       : Number(stockValue);
     const stock = parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
     if (item.available === false || stock === 0) return;
-    addMenuItemToShopCart(item, profile, {
+    const added = addMenuItemToShopCart(item, profile, {
       size: state.menuDetail.selectedSize || "",
       color: state.menuDetail.selectedColor || "",
       forceAdd: !!allowQrMenuCart && !allowShopCart
     });
+    if (!added) return;
     const targetRestaurantId = String(profile?.restaurantId || "").trim();
     closeMenuDetail({
       afterClose: () => {

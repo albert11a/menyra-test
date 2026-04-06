@@ -102,6 +102,51 @@ export function createOrdersRuntimeController({
   let ordersUnsub = null;
   let ordersListenerKey = "";
   let guestRecoveryLoadSeq = 0;
+  let checkoutSubmitInFlight = false;
+
+  function isTransientCheckoutError(err = null) {
+    const code = String(err?.code || err?.name || "").trim().toLowerCase();
+    const message = String(err?.message || "").trim().toLowerCase();
+    const markers = [
+      "unavailable",
+      "deadline-exceeded",
+      "cancelled",
+      "aborted",
+      "resource-exhausted",
+      "internal",
+      "network",
+      "offline",
+      "socket",
+      "timeout"
+    ];
+    return markers.some((marker) => code.includes(marker) || message.includes(marker));
+  }
+
+  async function commitBatchWithBackoff(buildBatch, {
+    attempts = 3,
+    baseDelayMs = 220
+  } = {}) {
+    const createBatch = typeof buildBatch === "function" ? buildBatch : null;
+    if (!createBatch) return;
+    const totalAttempts = Math.max(1, Math.round(Number(attempts) || 1));
+    let lastError = null;
+    for (let attempt = 0; attempt < totalAttempts; attempt += 1) {
+      try {
+        const batch = createBatch();
+        await batch.commit();
+        return;
+      } catch (err) {
+        lastError = err;
+        if (attempt >= totalAttempts - 1 || !isTransientCheckoutError(err)) {
+          throw err;
+        }
+        const baseDelay = Math.max(100, Number(baseDelayMs) || 100);
+        const delay = Math.round(baseDelay * (attempt + 1) * (0.65 + Math.random() * 0.35));
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw lastError || new Error("checkout-commit-retry-failed");
+  }
 
   function resolveActiveGuestScopeUid() {
     return String(resolveGuestScopeUid() || guestScopeUid || "").trim();
@@ -403,7 +448,7 @@ export function createOrdersRuntimeController({
 
   async function submitShopCheckout() {
     const cart = normalizeShopCartState(state?.shopCart);
-    if (cart.loading || !cart.restaurantId || !cart.items.length) return;
+    if (checkoutSubmitInFlight || cart.loading || !cart.restaurantId || !cart.items.length) return;
     if (!collection || !makeDocRef || !writeBatch || !db) return;
 
     const hasUser = !!String(state?.user?.uid || "").trim();
@@ -521,11 +566,17 @@ export function createOrdersRuntimeController({
     if (state) {
       state.shopCart = { ...cart, loading: true, status: "Bestellung wird gesendet..." };
     }
+    checkoutSubmitInFlight = true;
     renderFn();
     try {
-      const batch = writeBatch(db);
-      batch.set(orderRef, payload, { merge: true });
-      await batch.commit();
+      await commitBatchWithBackoff(() => {
+        const batch = writeBatch(db);
+        batch.set(orderRef, payload, { merge: true });
+        return batch;
+      }, {
+        attempts: 3,
+        baseDelayMs: 260
+      });
       if (!hasUser && state) {
         rememberGuestLookupEntry({
           restaurantId: cart.restaurantId,
@@ -580,6 +631,8 @@ export function createOrdersRuntimeController({
       }
       saveShopCartToStorage();
       renderFn();
+    } finally {
+      checkoutSubmitInFlight = false;
     }
   }
 

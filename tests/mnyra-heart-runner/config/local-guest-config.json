@@ -1,0 +1,68 @@
+{
+  "personas": {
+    "guest": {
+      "app": "social",
+      "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/",
+      "guestRouteUrl": "http://127.0.0.1:4173/apps/menyra-social/?tab=menu&src=qr&r=10Z8UNFsx4ha5wnZIloy&table=1"
+    },
+    "ceo": {
+      "app": "social",
+      "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/"
+    },
+    "business": {
+      "app": "social",
+      "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/"
+    },
+    "user": {
+      "app": "social",
+      "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/"
+    }
+  },
+  "actions": {
+    "guest": {
+      "qrMenu": {
+        "url": "http://127.0.0.1:4173/apps/menyra-social/?tab=menu&src=qr&r=10Z8UNFsx4ha5wnZIloy&table=1",
+        "menuVisibleSelector": "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
+        "productOpenSelector": "[data-menu-open]",
+        "productOpenSamples": 4,
+        "productOpenTimeoutMs": 12000,
+        "productDetailVisibleSelector": [
+          "#menuDetailAddToCartBtn",
+          "#menuModal",
+          "[data-menu-detail]"
+        ],
+        "productDetailCloseSelector": [
+          "#menuModalClose",
+          "[data-menu-detail-close]"
+        ],
+        "addToCartSelector": "#menuDetailAddToCartBtn",
+        "cartVisibleSelector": "[data-cart-checkout], [data-cart-qty]",
+        "orderOpenSelector": "[data-cart-checkout='open']",
+        "orderTriggerSelector": "[data-cart-checkout='submit']",
+        "orderSuccessTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ],
+        "orderFailureTexts": [
+          "Bestellung konnte nicht gesendet werden."
+        ],
+        "expectedProductCount": 27,
+        "strictProductCount": false,
+        "maxPendingImages": 5,
+        "menuScanMaxScrollSteps": 18,
+        "menuScanSettleMs": 300,
+        "menuScanScrollRatio": 0.82,
+        "menuVisibleWarnMs": 5000,
+        "menuVisibleFailMs": 14000,
+        "cartReadyWarnMs": 6500,
+        "cartReadyFailMs": 18000,
+        "productOpenWarnMs": 2800,
+        "productOpenFailMs": 7000,
+        "privilegedSelectors": [
+          "[data-business-edit]",
+          "[data-crm-create]"
+        ]
+      }
+    }
+  }
+}

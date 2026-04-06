@@ -232,6 +232,25 @@ export function bindAppMenuFocusEventsCore({
     const width = track.clientWidth || 1;
     const slides = track.querySelectorAll("[data-menu-card-gallery-slide]");
     const index = Math.max(0, Math.min(Math.max(slides.length - 1, 0), Math.round(track.scrollLeft / width)));
+    slides.forEach((slide, slideIndex) => {
+      if (!(slide instanceof Element)) return;
+      if (Math.abs(slideIndex - index) > 1) return;
+      const deferredImage = slide.querySelector("img[data-menu-card-deferred-src]");
+      if (!(deferredImage instanceof HTMLImageElement)) return;
+      const deferredSrc = String(deferredImage.getAttribute("data-menu-card-deferred-src") || "").trim();
+      if (!deferredSrc) return;
+      const deferredFallback = String(deferredImage.getAttribute("data-menu-card-deferred-fallback") || "").trim();
+      const deferredSrcset = String(deferredImage.getAttribute("data-menu-card-deferred-srcset") || "").trim();
+      const deferredSizes = String(deferredImage.getAttribute("data-menu-card-deferred-sizes") || "").trim();
+      if (deferredSrcset) deferredImage.setAttribute("srcset", deferredSrcset);
+      if (deferredSizes) deferredImage.setAttribute("sizes", deferredSizes);
+      deferredImage.setAttribute("src", deferredSrc);
+      if (deferredFallback) deferredImage.setAttribute("data-fallback-src", deferredFallback);
+      deferredImage.removeAttribute("data-menu-card-deferred-src");
+      deferredImage.removeAttribute("data-menu-card-deferred-fallback");
+      deferredImage.removeAttribute("data-menu-card-deferred-srcset");
+      deferredImage.removeAttribute("data-menu-card-deferred-sizes");
+    });
     doc.querySelectorAll(`[data-menu-card-gallery-dot="${galleryId}"]`).forEach((dot, dotIndex) => {
       dot.className = dotIndex === index
         ? "w-4 h-1.5 bg-white rounded-full shadow-sm"

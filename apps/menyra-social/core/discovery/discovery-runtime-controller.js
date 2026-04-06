@@ -7,8 +7,8 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const BRAND_UI = deps.brandUi;
   const LEAFLET_JS_URL = deps.LEAFLET_JS_URL || "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
   const LEAFLET_CSS_URL = deps.LEAFLET_CSS_URL || "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
-  const LEAFLET_JS_FALLBACK_URL = deps.LEAFLET_JS_FALLBACK_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-  const LEAFLET_CSS_FALLBACK_URL = deps.LEAFLET_CSS_FALLBACK_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  const LEAFLET_JS_FALLBACK_URL = deps.LEAFLET_JS_FALLBACK_URL || "";
+  const LEAFLET_CSS_FALLBACK_URL = deps.LEAFLET_CSS_FALLBACK_URL || "";
   const VENDOR_DEGRADED_EVENT = "menyra-social-vendor-degraded";
   const SEARCH_LIMITS = deps.searchLimits || { users: 10, businesses: 12 };
   const PLACEHOLDER_IMAGE = deps.placeholderImage;
@@ -1512,14 +1512,6 @@ function patchSearchUserList(users) {
   usersList.replaceChildren(fragment);
   users.forEach(updateSearchUserNodes);
   return true;
-}
-
-if (window) {
-  if (document?.readyState === "complete" || document?.readyState === "interactive") {
-    scheduleLeafletWarmup();
-  } else if (typeof window.addEventListener === "function") {
-    window.addEventListener("load", scheduleLeafletWarmup, { once: true });
-  }
 }
 
   return {

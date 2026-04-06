@@ -131,6 +131,67 @@ export function createSessionDataRuntimeController({
   let storiesRefreshUi = false;
   let renderRequested = false;
 
+  function isQrGuestMenuSessionForRestaurant(restaurantId = "") {
+    const hasUser = !!String(state?.user?.uid || "").trim();
+    if (hasUser) return false;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    if (profileTopTab !== "menu") return false;
+    const menuAccessSource = String(state?.profileView?.menuAccessSource || "").trim().toLowerCase();
+    if (menuAccessSource !== "qr") return false;
+    const expectedRestaurantId = String(
+      state?.profileView?.profile?.restaurantId
+      || state?.profileView?.restaurantId
+      || ""
+    ).trim();
+    const targetRestaurantId = String(restaurantId || "").trim();
+    if (!targetRestaurantId || !expectedRestaurantId) return true;
+    return expectedRestaurantId === targetRestaurantId;
+  }
+
+  function isTransientMenuLoadError(err = null) {
+    const code = String(err?.code || err?.name || "").trim().toLowerCase();
+    const message = String(err?.message || "").trim().toLowerCase();
+    const markers = [
+      "unavailable",
+      "deadline-exceeded",
+      "cancelled",
+      "aborted",
+      "resource-exhausted",
+      "internal",
+      "network",
+      "offline",
+      "socket",
+      "timeout"
+    ];
+    return markers.some((marker) => code.includes(marker) || message.includes(marker));
+  }
+
+  async function runMenuLoadWithBackoff(task, {
+    attempts = 3,
+    baseDelayMs = 220
+  } = {}) {
+    const runTask = typeof task === "function" ? task : null;
+    if (!runTask) return null;
+    const totalAttempts = Math.max(1, Math.round(Number(attempts) || 1));
+    let lastError = null;
+    for (let attempt = 0; attempt < totalAttempts; attempt += 1) {
+      try {
+        return await runTask();
+      } catch (err) {
+        lastError = err;
+        if (attempt >= totalAttempts - 1 || !isTransientMenuLoadError(err)) {
+          throw err;
+        }
+        const baseDelay = Math.max(80, Number(baseDelayMs) || 80);
+        const delay = Math.round(baseDelay * (attempt + 1) * (0.65 + Math.random() * 0.35));
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw lastError || new Error("menu-load-retry-failed");
+  }
+
   function isGenericBusinessLabel(value = "") {
     return String(value || "").trim().toLowerCase() === "business";
   }
@@ -423,6 +484,10 @@ export function createSessionDataRuntimeController({
 
   function startMenuMetaListener(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
+    if (isQrGuestMenuSessionForRestaurant(safeRestaurantId)) {
+      stopMenuMetaListener();
+      return;
+    }
     if (!safeRestaurantId || !db || !makeDocRef || !subscribeSnapshot) {
       stopMenuMetaListener();
       return;
@@ -1064,6 +1129,7 @@ export function createSessionDataRuntimeController({
     const safeSource = sourceRaw === "collection"
       ? "collection"
       : (sourceRaw === "migration" ? "migration" : "public");
+    const lightweightQrGuestFlow = isQrGuestMenuSessionForRestaurant(safeRestaurantId);
     if (!safeRestaurantId) {
       stopMenuMetaListener();
       state.menu = {
@@ -1077,7 +1143,11 @@ export function createSessionDataRuntimeController({
       };
       return;
     }
-    startMenuMetaListener(safeRestaurantId);
+    if (lightweightQrGuestFlow) {
+      stopMenuMetaListener();
+    } else {
+      startMenuMetaListener(safeRestaurantId);
+    }
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
     const cached = menuCacheMap.get(cacheKey);
     if (cached && cached.items?.length && !force) {
@@ -1091,7 +1161,7 @@ export function createSessionDataRuntimeController({
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
       };
       requestRender();
-      if (!menuFreshReconcileQueuedKeys.has(cacheKey)) {
+      if (!lightweightQrGuestFlow && !menuFreshReconcileQueuedKeys.has(cacheKey)) {
         menuFreshReconcileQueuedKeys.add(cacheKey);
         queueMicrotask(() => {
           void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
@@ -1121,17 +1191,34 @@ export function createSessionDataRuntimeController({
       try {
         let items = [];
         let statusBadgeVisible = true;
-        const metaPromise = Promise.resolve(loadMenuMetaFn(safeRestaurantId))
+        const metaPromise = lightweightQrGuestFlow
+          ? Promise.resolve({ statusBadgeVisible: true })
+          : Promise.resolve(runMenuLoadWithBackoff(
+            () => loadMenuMetaFn(safeRestaurantId),
+            { attempts: 3, baseDelayMs: 180 }
+          ))
           .catch((err) => {
             console.error(err);
             return { statusBadgeVisible: true };
           });
         if (safeSource === "collection") {
-          items = await loadMenuItemsFromCollectionFn(safeRestaurantId);
+          items = await runMenuLoadWithBackoff(
+            () => loadMenuItemsFromCollectionFn(safeRestaurantId),
+            { attempts: 3, baseDelayMs: 220 }
+          );
         } else if (safeSource === "migration") {
-          items = await loadMenuHybridFn(safeRestaurantId);
+          items = await runMenuLoadWithBackoff(
+            () => loadMenuHybridFn(safeRestaurantId),
+            { attempts: 3, baseDelayMs: 240 }
+          );
         } else {
-          items = await loadPublicMenuItemsFn(safeRestaurantId);
+          items = await runMenuLoadWithBackoff(
+            () => loadPublicMenuItemsFn(safeRestaurantId),
+            {
+              attempts: lightweightQrGuestFlow ? 4 : 3,
+              baseDelayMs: lightweightQrGuestFlow ? 260 : 220
+            }
+          );
         }
         const meta = await metaPromise;
         if (typeof meta?.statusBadgeVisible === "boolean") {

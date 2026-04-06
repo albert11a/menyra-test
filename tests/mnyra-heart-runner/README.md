@@ -32,6 +32,80 @@ npm run guest-pack
 npm run full-platform-pack
 ```
 
+## Casarita Live Launch-Check (Production)
+
+Gast-/QR-Livepfad in Produktion, ohne sichtbare UI-Aenderungen fuer Gaeste:
+
+Ein-Befehl-Lauf (Guest-Pack + Cold-Audit):
+
+```powershell
+cd tests/mnyra-heart-runner
+npm run casarita-live
+```
+
+Oder einzeln:
+
+```powershell
+cd tests/mnyra-heart-runner
+$env:MNYRA_HEART_PACK_CONFIG_FILE = "config/casarita-prod-config.json"
+$env:MNYRA_HEART_FAIL_ON_CONSOLE_ERRORS = "true"
+$env:MNYRA_HEART_FAIL_ON_REQUEST_FAILURES = "true"
+$env:MNYRA_HEART_FAIL_ON_HTTP_ERRORS = "true"
+node ./src/run-pack.mjs guest-pack
+```
+
+Was dabei zusaetzlich geprueft wird:
+- QR-Menue sichtbar + Timing
+- Menue-Deep-Scan (Scroll bis unten, Produktanzahl, Overflow, Bildintegritaet)
+- Produktdetail-Samples (mehrere Produkte oeffnen/schliessen + Timing)
+- Warenkorb-Erreichbarkeit
+- Schutz vor sichtbaren Business-Controls auf Gastseite
+
+Ergaenzender Cold-Load-Audit (mehrfach, inkl. `wifi` und `slow4g`):
+
+```powershell
+cd tests/mnyra-heart-runner
+$env:COLD_AUDIT_BASE_URL = "https://www.mnyra.com/social/"
+$env:COLD_AUDIT_RESTAURANT_ID = "Lzm6RpNu3ErSDtGCHxpi"
+$env:COLD_AUDIT_ITERATIONS = "5"
+$env:COLD_AUDIT_EXPECTED_PRODUCTS = "27"
+$env:COLD_AUDIT_STRICT_PRODUCT_COUNT = "true"
+$env:COLD_AUDIT_NETWORK_PROFILES = "wifi,slow4g"
+npm run cold-audit
+```
+
+Wichtige Schalter fuer die Bewertung:
+- `COLD_AUDIT_MAX_PENDING_IMAGES` (Standard `10`)
+- `COLD_AUDIT_MIN_PASS_RATE_PCT` (Standard `95`)
+- `COLD_AUDIT_FAIL_ON_REQUEST_FAILURES` (Standard `false`)
+
+Output:
+- `artifacts/<pack>-<timestamp>/...` fuer Pack-Laeufe
+- `artifacts/cold-load-audit-<timestamp>/cold-load-audit-report.json` fuer Cold-Audit
+
+## Live Order Load Audit (echte Bestellungen)
+
+Simuliert viele gleichzeitige Gast-Bestellungen inkl. Bild- und Timing-Metriken:
+
+```powershell
+cd tests/mnyra-heart-runner
+$env:MNYRA_HEART_PACK_CONFIG_FILE = "config/casarita-prod-config.json"
+$env:LOAD_ORDER_TOTAL_USERS = "200"
+$env:LOAD_ORDER_CONCURRENCY = "25"
+$env:LOAD_ORDER_TABLE_START = "1200"
+$env:LOAD_ORDER_NETWORK_PROFILE = "wifi"
+$env:LOAD_ORDER_MIN_PASS_RATE_PCT = "99"
+npm run live-order-load-audit
+```
+
+Wichtige Schalter:
+- `LOAD_ORDER_TOTAL_USERS`
+- `LOAD_ORDER_CONCURRENCY`
+- `LOAD_ORDER_TABLE_START`
+- `LOAD_ORDER_NETWORK_PROFILE` (`wifi` oder `slow4g`)
+- `LOAD_ORDER_TIMEOUT_MS`
+- `LOAD_ORDER_MIN_PASS_RATE_PCT`
+
 Sicherheitsregel:
 - Alle Packs laufen standardmaessig read-only.
 - Live-Schreibaktionen sind nur fuer den expliziten `mutation-pack` moeglich (mit `MNYRA_ALLOW_LIVE_MUTATIONS=true` und `MNYRA_SYNTHETIC_ISOLATION_KEY`).

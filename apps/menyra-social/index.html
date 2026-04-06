@@ -95,15 +95,6 @@
   <link rel="dns-prefetch" href="//us-central1-menyra-c0e68.cloudfunctions.net">
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link rel="dns-prefetch" href="//unpkg.com">
-  <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
-  <link rel="dns-prefetch" href="//basemaps.cartocdn.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
   <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-30-perf-sw-cache-02">
@@ -125,6 +116,7 @@
     body {
       min-height: 100%;
       overflow-anchor: none;
+      font-family: "Plus Jakarta Sans", "Segoe UI", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
     }
     html {
       background: #f8fafc;
@@ -618,6 +610,19 @@
         || (Number.isFinite(downlink) && downlink > 0 && downlink <= 1.5)
         || (Number.isFinite(rtt) && rtt >= 450);
       const BOOTSTRAP_TIMEOUT_MS = constrainedNetwork ? 3800 : 2200;
+      const searchParams = new URLSearchParams(window.location.search || "");
+      const routeSource = String(
+        searchParams.get("src")
+        || searchParams.get("source")
+        || searchParams.get("menuAccessSource")
+        || ""
+      ).trim().toLowerCase();
+      const routeTab = String(searchParams.get("tab") || "").trim().toLowerCase();
+      const isQrMenuStartup = routeSource === "qr" && (!routeTab || routeTab === "menu");
+      if (isQrMenuStartup) {
+        window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = null;
+        return;
+      }
       const ENDPOINT = String(
         window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__
         || "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed"
@@ -695,8 +700,8 @@
         const existing = document.querySelector('script[data-menyrasocial-lucide="1"]');
         if (existing) return;
         const sources = [
-          "https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js",
-          "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"
+          "/apps/menyra-social/vendor/lucide.min.js?v=2026-04-06-launch-hardening-01",
+          "https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"
         ];
         const loadFromSource = (index = 0) => {
           if (index >= sources.length) {
@@ -737,38 +742,7 @@
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
         ? window.__MENYRA_SOCIAL_SET_DEGRADED__
         : () => {};
-      if (!document.fonts?.load) {
-        setDegraded("fonts", {
-          active: true,
-          message: "Webfont-API nicht verfuegbar. App nutzt Systemschrift."
-        });
-        return;
-      }
-      const timeoutMs = 2800;
-      let timeoutId = null;
-      const timeoutPromise = new Promise((resolve) => {
-        timeoutId = window.setTimeout(() => resolve(false), timeoutMs);
-      });
-      Promise.race([
-        document.fonts.load('1em "Plus Jakarta Sans"').then(() => true).catch(() => false),
-        timeoutPromise
-      ]).then((loaded) => {
-        if (timeoutId) window.clearTimeout(timeoutId);
-        if (loaded) {
-          setDegraded("fonts", { active: false, message: "" });
-          return;
-        }
-        setDegraded("fonts", {
-          active: true,
-          message: "Font-CDN nicht erreichbar. App nutzt Systemschrift."
-        });
-      }).catch(() => {
-        if (timeoutId) window.clearTimeout(timeoutId);
-        setDegraded("fonts", {
-          active: true,
-          message: "Font-CDN nicht erreichbar. App nutzt Systemschrift."
-        });
-      });
+      setDegraded("fonts", { active: false, message: "" });
     })();
   </script>
   <script>
