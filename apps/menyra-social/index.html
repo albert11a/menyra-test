@@ -27,6 +27,7 @@
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
       const LIGHT_UI_COLOR = "#f8fafc";
+      const FEED_GATE_UI_COLOR = "#00cce5";
       const resolveUiChromeColor = () => {
         try {
           const raw = window.getComputedStyle?.(document.documentElement)?.getPropertyValue("--smart-header-theme-color")?.trim();
@@ -35,6 +36,11 @@
           return LIGHT_UI_COLOR;
         }
       };
+      const resolveStandaloneUiChromeColor = () => (
+        document.documentElement.classList.contains("feed-location-gate-active")
+          ? FEED_GATE_UI_COLOR
+          : LIGHT_UI_COLOR
+      );
       const ensureMeta = (name, content) => {
         let meta = document.querySelector(`meta[name="${name}"]`);
         if (!meta) {
@@ -45,7 +51,7 @@
         meta.setAttribute("content", content);
       };
       const forceLightUiChrome = () => {
-        const uiChromeColor = standalone ? LIGHT_UI_COLOR : resolveUiChromeColor();
+        const uiChromeColor = standalone ? resolveStandaloneUiChromeColor() : resolveUiChromeColor();
         const themeMetas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
         if (themeMetas.length) {
           themeMetas[0].setAttribute("content", uiChromeColor);
@@ -67,6 +73,12 @@
         const vp = document.querySelector('meta[name="viewport"]');
         if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
         document.documentElement.classList.add("is-standalone");
+        if ("MutationObserver" in window) {
+          const observer = new MutationObserver(() => {
+            forceLightUiChrome();
+          });
+          observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        }
       }
       const forceTop = () => {
         const y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -95,7 +107,7 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-07">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-08">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
@@ -698,7 +710,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-07"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-08"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -760,7 +772,7 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-07").catch(() => {});
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-08").catch(() => {});
       if ("requestIdleCallback" in window) {
         window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
       } else {
