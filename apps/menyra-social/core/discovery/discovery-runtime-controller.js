@@ -908,13 +908,17 @@ function resolveVerifiedMapCoords() {
 function hydrateMapSearchFromVerifiedLocation({ force = false } = {}) {
   const searchInput = document.getElementById("mapSearchInput");
   if (!(searchInput instanceof HTMLInputElement)) return false;
-  if (!force && String(searchInput.value || "").trim()) return false;
+  const currentQuery = String(searchInput.value || "").trim();
+  if (!force && currentQuery) return false;
   const verified = resolveVerifiedMapRecord();
   if (!verified) return false;
-  const query = String(verified.city || verified.label || "").trim();
-  if (!query) return false;
-  searchInput.value = query;
-  renderCurrentMapMarkerSet({ query, panToFirst: false });
+  const verifiedQuery = String(verified.city || verified.label || "").trim();
+  const preserveManualQuery = !!currentQuery
+    && currentQuery.toLowerCase() !== verifiedQuery.toLowerCase();
+  if (!preserveManualQuery) {
+    if (currentQuery) searchInput.value = "";
+    renderCurrentMapMarkerSet({ query: "", panToFirst: false });
+  }
   if (leafletMap) {
     focusLeafletMap(verified.lat, verified.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.24 });
     setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
