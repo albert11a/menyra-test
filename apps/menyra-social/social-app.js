@@ -2221,6 +2221,7 @@ const {
   closeLocationPicker,
   confirmLocation,
   getVerifiedMapLocation,
+  setVerifiedMapLocation,
   clearVerifiedMapLocation,
   createAuthUser,
   ensureRestaurantPublicMeta,
@@ -3669,7 +3670,9 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     updateFeedLogoNodes,
     updatePostCountNodes,
     ensureFeedRestaurantMetaListeners,
-    preloadFeedHeroImages
+    preloadFeedHeroImages,
+    getVerifiedMapLocation,
+    setVerifiedMapLocation
   },
   utilityApi: {
     normalizeSearchKey,

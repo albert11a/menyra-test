@@ -143,6 +143,8 @@ export function createBridgeShellRuntimeCluster({
     updatePostCountNodes: feedApi.updatePostCountNodes,
     ensureFeedRestaurantMetaListeners: feedApi.ensureFeedRestaurantMetaListeners,
     preloadFeedHeroImages: feedApi.preloadFeedHeroImages,
+    getVerifiedMapLocation: feedApi.getVerifiedMapLocation,
+    setVerifiedMapLocation: feedApi.setVerifiedMapLocation,
     buildStoriesRowSignature: storyApi.buildStoriesRowSignature,
     buildUrl: utilityApi.buildUrl,
     resolveRestaurantLogo: profileApi.resolveRestaurantLogo,

@@ -27,6 +27,7 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const getSelfAvatarUrl = deps.getSelfAvatarUrlFn;
   const isCeoUser = deps.isCeoUserFn;
   const getCeoGpsOverride = deps.getCeoGpsOverrideFn;
+  const getVerifiedMapLocation = deps.getVerifiedMapLocationFn;
   const icon = deps.iconFn;
   const getOptimizedImageUrl = deps.getOptimizedImageUrlFn;
   const resolveRestaurantLogo = deps.resolveRestaurantLogoFn;
@@ -655,7 +656,7 @@ function initLeafletIfNeeded() {
   renderCurrentMapMarkerSet();
   updateMapSheet();
   if (window.lucide?.createIcons) window.lucide.createIcons();
-  mapLocate();
+  mapLocate({ preferVerified: true });
   bindMapSearchInput();
   scheduleLeafletRefresh(3);
 }
@@ -822,7 +823,28 @@ function setUserMarker(lat, lng, label = "Deine Position") {
   }
 }
 
-function mapLocate() {
+function resolveVerifiedMapCoords() {
+  if (typeof getVerifiedMapLocation !== "function") return null;
+  let verified = null;
+  try {
+    verified = getVerifiedMapLocation();
+  } catch {}
+  return normalizeCoordPair(
+    verified?.lat ?? verified?.latitude,
+    verified?.lng ?? verified?.lon ?? verified?.longitude
+  );
+}
+
+function mapLocate(options = {}) {
+  const preferVerified = !!(options && typeof options === "object" && options.preferVerified === true);
+  const applyVerifiedLocation = (label = "Gesetzter Standort") => {
+    const verified = resolveVerifiedMapCoords();
+    if (!verified || !leafletMap) return false;
+    clearMapNotice({ refresh: true });
+    focusLeafletMap(verified.lat, verified.lng);
+    setUserMarker(verified.lat, verified.lng, label);
+    return true;
+  };
   const override = getCeoGpsOverride();
   if (isCeoUser() && override) {
     clearMapNotice({ refresh: true });
@@ -832,7 +854,11 @@ function mapLocate() {
     }
     return;
   }
+  if (preferVerified && applyVerifiedLocation()) {
+    return;
+  }
   if (!navigator.geolocation) {
+    if (applyVerifiedLocation()) return;
     setMapNotice("Standort ist auf diesem Geraet nicht verfuegbar.");
     return;
   }
@@ -846,7 +872,10 @@ function mapLocate() {
         setUserMarker(lat, lng, "Deine Position");
       }
     },
-    () => setMapNotice("Standort konnte nicht abgerufen werden. Bitte Berechtigung pruefen."),
+    () => {
+      if (applyVerifiedLocation()) return;
+      setMapNotice("Standort konnte nicht abgerufen werden. Bitte Berechtigung pruefen.");
+    },
     { enableHighAccuracy: false, timeout: 5500, maximumAge: 60000 }
   );
 }

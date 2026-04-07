@@ -228,6 +228,8 @@ export function createAppControllerBridge({
     resolveRestaurantLogoFn: feed.resolveRestaurantLogo,
     resolveStoryRenderIdentityFn: feed.resolveStoryRenderIdentity,
     getOptimizedImageUrlFn: feed.getOptimizedImageUrl,
+    getVerifiedMapLocationFn: feed.getVerifiedMapLocation,
+    setVerifiedMapLocationFn: feed.setVerifiedMapLocation,
     buildUploadStateForIntentFn: (intent = "", currentUpload = {}) => (
       typeof feed.buildUploadStateForIntent === "function"
         ? feed.buildUploadStateForIntent(intent, currentUpload)
@@ -265,6 +267,7 @@ export function createAppControllerBridge({
     getSelfAvatarUrlFn: discovery.getSelfAvatarUrl,
     isCeoUserFn: discovery.isCeoUser,
     getCeoGpsOverrideFn: discovery.getCeoGpsOverride,
+    getVerifiedMapLocationFn: discovery.getVerifiedMapLocation,
     alertFn: discovery.alert,
     iconFn: discovery.icon,
     getOptimizedImageUrlFn: discovery.getOptimizedImageUrl,

@@ -1103,87 +1103,28 @@ export function createAppShellRuntimeController(deps = {}) {
       return;
     }
 
-    const hasExistingBinding = typeof smartHeaderResizeListener === "function"
-      && smartHeaderBoundTopEl === topEl
-      && smartHeaderBoundTabsEl === (tabs || null)
-      && (tabs ? typeof smartHeaderScrollListener === "function" : true);
+    const hasExistingBinding = smartHeaderBoundTopEl === topEl
+      && smartHeaderBoundTabsEl === (tabs || null);
     if (hasExistingBinding) {
       if (syncSmartHeaderMetrics()) {
         smartHeaderLastScrollY = Math.max(0, Number(win.scrollY || 0));
         smartHeaderToggleAnchorY = smartHeaderLastScrollY;
-        armSmartHeaderScrollGuard();
       }
       return;
     }
 
-    const hadScrollHistory = smartHeaderToggleAnchorY > 0 || smartHeaderLastScrollY > 0 || smartHeaderVisible === false;
-    const previousVisible = smartHeaderVisible;
     stopSmartHeaderVisibilitySync({ resetState: false });
     syncSmartHeaderMetrics();
     smartHeaderLastScrollY = Math.max(0, Number(win.scrollY || 0));
     smartHeaderToggleAnchorY = smartHeaderLastScrollY;
-    if (smartHeaderLastScrollY <= SMART_HEADER_TOP_RESET_PX) {
-      smartHeaderVisible = true;
-    } else if (!hadScrollHistory) {
-      smartHeaderVisible = false;
-    } else {
-      smartHeaderVisible = previousVisible;
-    }
+    smartHeaderVisible = true;
     smartHeaderBoundTopEl = topEl;
     smartHeaderBoundTabsEl = tabs || null;
-    smartHeaderResizeListener = () => {
-      if (syncSmartHeaderMetrics()) {
-        smartHeaderLastScrollY = Math.max(0, Number(win.scrollY || 0));
-        smartHeaderToggleAnchorY = smartHeaderLastScrollY;
-        armSmartHeaderScrollGuard();
-      }
-    };
-    win.addEventListener("resize", smartHeaderResizeListener, { passive: true });
-    win.visualViewport?.addEventListener?.("resize", smartHeaderResizeListener, { passive: true });
+    smartHeaderResizeListener = null;
+    smartHeaderScrollListener = null;
     if (!tabs) return;
-    tabs.classList.toggle("smart-header-tabs--hidden", !smartHeaderVisible);
-    armSmartHeaderScrollGuard();
-
-    const handleScroll = () => {
-      const currentScrollY = Math.max(0, Number(win.scrollY || 0));
-      if (Date.now() < smartHeaderIgnoreScrollUntilTs) {
-        smartHeaderLastScrollY = currentScrollY;
-        smartHeaderToggleAnchorY = currentScrollY;
-        return;
-      }
-      const deltaY = currentScrollY - smartHeaderLastScrollY;
-      if (Math.abs(deltaY) < SMART_HEADER_SCROLL_JITTER_PX) return;
-      if (currentScrollY <= SMART_HEADER_TOP_RESET_PX) {
-        tabs.classList.remove("smart-header-tabs--hidden");
-        smartHeaderVisible = true;
-        smartHeaderLastScrollY = currentScrollY;
-        smartHeaderToggleAnchorY = currentScrollY;
-        return;
-      }
-
-      if (deltaY > 0) {
-        if (smartHeaderVisible && (currentScrollY - smartHeaderToggleAnchorY) >= SMART_HEADER_HIDE_DELTA_PX) {
-          tabs.classList.add("smart-header-tabs--hidden");
-          smartHeaderVisible = false;
-          smartHeaderToggleAnchorY = currentScrollY;
-        } else if (!smartHeaderVisible) {
-          smartHeaderToggleAnchorY = currentScrollY;
-        }
-      } else if (deltaY < 0) {
-        if (!smartHeaderVisible && (smartHeaderToggleAnchorY - currentScrollY) >= SMART_HEADER_SHOW_DELTA_PX) {
-          tabs.classList.remove("smart-header-tabs--hidden");
-          smartHeaderVisible = true;
-          smartHeaderToggleAnchorY = currentScrollY;
-        } else if (smartHeaderVisible) {
-          smartHeaderToggleAnchorY = currentScrollY;
-        }
-      }
-
-      smartHeaderLastScrollY = currentScrollY;
-    };
-
-    smartHeaderScrollListener = handleScroll;
-    win.addEventListener("scroll", smartHeaderScrollListener, { passive: true });
+    tabs.classList.remove("smart-header-tabs--hidden");
+    smartHeaderVisible = true;
   }
 
   function setBusinessTopTabsPinned(active) {
@@ -1230,6 +1171,20 @@ export function createAppShellRuntimeController(deps = {}) {
       win.visualViewport?.removeEventListener?.("resize", onResize);
       win.visualViewport?.removeEventListener?.("scroll", onScroll);
     };
+  }
+
+  function syncFeedLocationGateChromeState() {
+    if (!doc) return;
+    const bodyEl = doc.body;
+    const isFeedLocationGate = state.activeTab === "feed"
+      && String(doc.getElementById("feedView")?.dataset?.feedViewMode || "").trim().toLowerCase() === "location";
+    if (bodyEl) {
+      bodyEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);
+    }
+    const mainEl = doc.querySelector("main");
+    if (mainEl) {
+      mainEl.classList.toggle("feed-location-gate-main", !!isFeedLocationGate);
+    }
   }
 
   function render() {
@@ -1393,6 +1348,7 @@ export function createAppShellRuntimeController(deps = {}) {
       });
     }
 
+    syncFeedLocationGateChromeState();
     syncRuntimeDegradedBanner({ force: changed });
   }
 

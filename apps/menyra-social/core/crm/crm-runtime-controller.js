@@ -151,6 +151,7 @@ let locationPickerMap = null; // NEU: Fuer das Settings-Modal
 let locationPickerBizMarkers = [];
 let verifiedMapLocation = null; // NEU: Fuer die Koordinaten-Speicherung
 let locationPickerTarget = { addressInputId: "settingsAddress", coordsDisplayId: "coordsDisplay", context: "settings" };
+const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   let buildStatusFetchPromise = null;
   let buildStatusLoaded = false;
 
@@ -2514,8 +2515,20 @@ async function convertLeadToCustomer(leadId) {
     return verifiedMapLocation;
   }
 
+  function setVerifiedMapLocation(coords = null) {
+    const normalized = normalizeCoordPair(
+      coords?.lat ?? coords?.latitude,
+      coords?.lng ?? coords?.lon ?? coords?.longitude
+    );
+    verifiedMapLocation = normalized ? { lat: normalized.lat, lng: normalized.lng } : null;
+    return verifiedMapLocation;
+  }
+
   function clearVerifiedMapLocation() {
     verifiedMapLocation = null;
+    try {
+      window?.localStorage?.removeItem?.(FEED_VIEWER_LOCATION_STORAGE_KEY);
+    } catch {}
   }
 
   return {
@@ -2574,6 +2587,7 @@ async function convertLeadToCustomer(leadId) {
     saveCustomerFromModal,
     convertLeadToCustomer,
     getVerifiedMapLocation,
+    setVerifiedMapLocation,
     clearVerifiedMapLocation
   };
 }

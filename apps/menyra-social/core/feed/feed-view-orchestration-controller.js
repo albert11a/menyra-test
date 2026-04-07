@@ -22,6 +22,8 @@ export function createFeedViewOrchestrationController({
   resolveRestaurantLogoFn = () => "",
   resolveStoryRenderIdentityFn = null,
   getOptimizedImageUrlFn = () => "",
+  getVerifiedMapLocationFn = () => null,
+  setVerifiedMapLocationFn = null,
   buildUploadStateForIntentFn = (_intent = "", currentUpload = {}) => currentUpload,
   setStateFn = () => {},
   openGuestAuthPromptFn = () => false,
@@ -297,6 +299,729 @@ export function createFeedViewOrchestrationController({
       }
     }, 90);
   };
+  const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
+  const FEED_LOCATION_REMOTE_LIMIT = 14;
+  const FEED_LOCATION_REMOTE_ALLOWED_COUNTRY_CODES = new Set(["xk", "al", "rs"]);
+  const FEED_LOCATION_REMOTE_ALLOWED_OSM_VALUES = new Set(["city", "town", "village", "hamlet", "municipality"]);
+  const FEED_LOCATION_COUNTRY_ALIASES = new Map([
+    ["xk", "Kosove"],
+    ["kosove", "Kosove"],
+    ["kosova", "Kosove"],
+    ["kosovo", "Kosove"],
+    ["al", "Shqiperi"],
+    ["shqiperi", "Shqiperi"],
+    ["shqiperia", "Shqiperi"],
+    ["albania", "Shqiperi"],
+    ["rs", "Serbi"],
+    ["serbi", "Serbi"],
+    ["serbia", "Serbi"],
+    ["srbija", "Serbi"]
+  ]);
+  const FEED_LOCATION_COUNTRY_CODE_ALIASES = new Map([
+    ["xk", "xk"],
+    ["kosove", "xk"],
+    ["kosova", "xk"],
+    ["kosovo", "xk"],
+    ["al", "al"],
+    ["shqiperi", "al"],
+    ["shqiperia", "al"],
+    ["albania", "al"],
+    ["rs", "rs"],
+    ["serbi", "rs"],
+    ["serbia", "rs"],
+    ["srbija", "rs"]
+  ]);
+  const FEED_LOCATION_NON_SETTLEMENT_HINTS = [
+    "rruga", "street", "bulevard", "boulevard", "lagj", "district", "neighborhood", "quarter", "park", "mall", "plaza"
+  ];
+  const FEED_LOCATION_CITY_OPTIONS = Object.freeze([
+    { id: "prishtina", label: "Prishtina", lat: 42.6629, lng: 21.1655, aliases: ["prishtine", "prishtin"] },
+    { id: "prizren", label: "Prizren", lat: 42.2139, lng: 20.7397, aliases: ["prizr"] },
+    { id: "peja", label: "Peja", lat: 42.6591, lng: 20.2883, aliases: ["peje"] },
+    { id: "gjakova", label: "Gjakova", lat: 42.3803, lng: 20.4308, aliases: ["gjakove"] },
+    { id: "ferizaj", label: "Ferizaj", lat: 42.3706, lng: 21.1553, aliases: ["feri"] },
+    { id: "gjilan", label: "Gjilan", lat: 42.4635, lng: 21.4699, aliases: ["gjilani"] },
+    { id: "mitrovica", label: "Mitrovica", lat: 42.8914, lng: 20.8660, aliases: ["mitrovice", "mitro"] },
+    { id: "vushtrria", label: "Vushtrria", lat: 42.8231, lng: 20.9675, aliases: ["vushtrri"] },
+    { id: "podujeva", label: "Podujeva", lat: 42.9106, lng: 21.1930, aliases: ["podujeve", "podu"] },
+    { id: "tirana", label: "Tirana", lat: 41.3275, lng: 19.8187, aliases: ["tirane"], country: "Shqiperi" },
+    { id: "kukes", label: "Kukes", lat: 42.0769, lng: 20.4219, aliases: ["kukes albania"], country: "Shqiperi" },
+    { id: "smederevo", label: "Smederevo", lat: 44.6644, lng: 20.9276, aliases: ["smederevo serbia"], country: "Serbi" }
+  ]);
+  let sessionViewerLocation = null;
+  let locationRequestPending = false;
+  let locationGateStatus = "idle";
+  let locationGateMessage = "";
+  let locationRemoteSearchTimer = null;
+  let locationRemoteFetchController = null;
+  let locationRemoteFetchQueryKey = "";
+  const locationRemoteSuggestionCache = new Map();
+  const locationRemoteSuggestionById = new Map();
+  const normalizeLocationQuery = (value = "") => String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const toCountryCode = (value = "") => {
+    const normalized = normalizeLocationQuery(value);
+    if (!normalized) return "";
+    return FEED_LOCATION_COUNTRY_CODE_ALIASES.get(normalized) || "";
+  };
+  const toCountryLabel = (value = "") => {
+    const normalized = normalizeLocationQuery(value);
+    if (!normalized) return "";
+    return FEED_LOCATION_COUNTRY_ALIASES.get(normalized) || "";
+  };
+  const normalizeViewerCoords = (value = null) => {
+    const lat = Number(value?.lat ?? value?.latitude ?? value?.y);
+    const lng = Number(value?.lng ?? value?.lon ?? value?.longitude ?? value?.x);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  };
+  const normalizeViewerLocationRecord = (value = null) => {
+    const coords = normalizeViewerCoords(value);
+    if (!coords) return null;
+    const label = String(value?.label || value?.city || "").trim();
+    const city = String(value?.city || label).trim();
+    const source = String(value?.source || "").trim().toLowerCase();
+    return {
+      lat: coords.lat,
+      lng: coords.lng,
+      label,
+      city,
+      source: source || "manual",
+      savedAt: Number(value?.savedAt || Date.now()) || Date.now()
+    };
+  };
+  const readStoredViewerLocation = () => {
+    if (!win?.localStorage) return null;
+    try {
+      const raw = win.localStorage.getItem(FEED_LOCATION_STORAGE_KEY);
+      if (!raw) return null;
+      return normalizeViewerLocationRecord(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  };
+  const writeStoredViewerLocation = (record = null) => {
+    if (!win?.localStorage) return;
+    if (!record) {
+      try {
+        win.localStorage.removeItem(FEED_LOCATION_STORAGE_KEY);
+      } catch {}
+      return;
+    }
+    try {
+      win.localStorage.setItem(FEED_LOCATION_STORAGE_KEY, JSON.stringify(record));
+    } catch {}
+  };
+  const resolveViewerLocationRecord = () => {
+    const sessionRecord = normalizeViewerLocationRecord(sessionViewerLocation);
+    if (sessionRecord) return sessionRecord;
+    const storedRecord = readStoredViewerLocation();
+    if (storedRecord) {
+      sessionViewerLocation = storedRecord;
+      return storedRecord;
+    }
+    if (typeof getVerifiedMapLocationFn !== "function") return null;
+    let fromMap = null;
+    try {
+      fromMap = getVerifiedMapLocationFn();
+    } catch {}
+    const mapRecord = normalizeViewerLocationRecord({
+      ...(fromMap && typeof fromMap === "object" ? fromMap : {}),
+      source: "gps-map"
+    });
+    if (mapRecord) {
+      sessionViewerLocation = mapRecord;
+      writeStoredViewerLocation(mapRecord);
+      return mapRecord;
+    }
+    return null;
+  };
+  const hasViewerCoords = () => !!normalizeViewerLocationRecord(resolveViewerLocationRecord());
+  const isFeedLocationRequired = () => !hasViewerCoords();
+  const persistViewerLocation = (record = null) => {
+    const normalized = normalizeViewerLocationRecord(record);
+    if (!normalized) return false;
+    sessionViewerLocation = normalized;
+    writeStoredViewerLocation(normalized);
+    if (typeof setVerifiedMapLocationFn === "function") {
+      try {
+        setVerifiedMapLocationFn({ lat: normalized.lat, lng: normalized.lng });
+      } catch {}
+    }
+    return true;
+  };
+  const clearFeedLocationRemoteSearchTimer = () => {
+    if (!locationRemoteSearchTimer) return;
+    try {
+      clearTimeout(locationRemoteSearchTimer);
+    } catch {}
+    locationRemoteSearchTimer = null;
+  };
+  const clearFeedLocationRemoteLookup = () => {
+    clearFeedLocationRemoteSearchTimer();
+    if (!locationRemoteFetchController) return;
+    try {
+      locationRemoteFetchController.abort();
+    } catch {}
+    locationRemoteFetchController = null;
+    locationRemoteFetchQueryKey = "";
+  };
+  const resolveSuggestionCountryLabel = (entry = {}) => {
+    const fromCode = toCountryLabel(entry?.countryCode || entry?.country_code || "");
+    if (fromCode) return fromCode;
+    const fromCountry = toCountryLabel(entry?.country || "");
+    if (fromCountry) return fromCountry;
+    if (String(entry?.source || "").trim().toLowerCase() === "local") return "Kosove";
+    return String(entry?.country || "").trim();
+  };
+  const buildFeedLocationCityOption = ({
+    id = "",
+    label = "",
+    lat = null,
+    lng = null,
+    aliases = [],
+    source = "local",
+    country = "",
+    metaLabel = "",
+    importance = 0
+  } = {}) => {
+    const coords = normalizeViewerCoords({ lat, lng });
+    const cityLabel = String(label || "").trim();
+    if (!coords || !cityLabel) return null;
+    const sourceKey = String(source || "local").trim().toLowerCase();
+    const countryCode = toCountryCode(country);
+    const countryLabel = toCountryLabel(country) || toCountryLabel(countryCode) || (sourceKey === "local" ? "Kosove" : "");
+    const searchTerms = Array.from(new Set([
+      cityLabel,
+      countryLabel,
+      countryCode,
+      ...(Array.isArray(aliases) ? aliases : [])
+    ].map((entry) => normalizeLocationQuery(entry)).filter(Boolean)));
+    return Object.freeze({
+      id: String(id || cityLabel).trim().toLowerCase(),
+      label: cityLabel,
+      city: cityLabel,
+      lat: coords.lat,
+      lng: coords.lng,
+      source: sourceKey,
+      country: countryLabel,
+      countryCode,
+      metaLabel: String(metaLabel || "").trim(),
+      importance: Number(importance) || 0,
+      searchTerms
+    });
+  };
+  const resolveFeedLocationCityOptions = () => FEED_LOCATION_CITY_OPTIONS
+    .map((entry) => buildFeedLocationCityOption(entry))
+    .filter(Boolean);
+  const findFeedLocationCityOption = (cityId = "") => {
+    const lookupId = String(cityId || "").trim().toLowerCase();
+    if (!lookupId) return null;
+    const localMatch = resolveFeedLocationCityOptions().find((entry) => entry.id === lookupId) || null;
+    if (localMatch) return localMatch;
+    return locationRemoteSuggestionById.get(lookupId) || null;
+  };
+  const isLikelySettlementLabel = (value = "") => {
+    const normalized = normalizeLocationQuery(value);
+    if (!normalized) return false;
+    if (/[0-9]/.test(normalized)) return false;
+    const tokens = normalized.split(" ").filter(Boolean);
+    if (!tokens.length || tokens.length > 3) return false;
+    return !tokens.some((token) => FEED_LOCATION_NON_SETTLEMENT_HINTS.some((hint) => token.startsWith(hint)));
+  };
+  const scoreFeedLocationCandidate = (entry = {}, normalizedQuery = "") => {
+    if (!entry || !normalizedQuery) return -1;
+    const terms = Array.isArray(entry.searchTerms) ? entry.searchTerms : [];
+    let score = -1;
+    terms.forEach((term) => {
+      if (!term) return;
+      if (term === normalizedQuery) {
+        score = Math.max(score, 420);
+        return;
+      }
+      if (term.startsWith(normalizedQuery)) {
+        score = Math.max(score, 260 - Math.max(0, term.length - normalizedQuery.length));
+        return;
+      }
+      const index = term.indexOf(normalizedQuery);
+      if (index >= 0) {
+        score = Math.max(score, 170 - index);
+      }
+    });
+    if (score < 0) return -1;
+    if (String(entry?.source || "").toLowerCase() === "remote") {
+      score += 12 + Math.round(Math.max(0, Number(entry.importance || 0) * 10));
+    }
+    return score;
+  };
+  const mergeFeedLocationOptionCollections = (...collections) => {
+    const dedupe = new Map();
+    collections.forEach((rows) => {
+      (Array.isArray(rows) ? rows : []).forEach((entry) => {
+        if (!entry || typeof entry !== "object") return;
+        const key = `${normalizeLocationQuery(entry.label)}|${normalizeLocationQuery(resolveSuggestionCountryLabel(entry))}`;
+        if (!key.trim()) return;
+        if (!dedupe.has(key)) {
+          dedupe.set(key, entry);
+          return;
+        }
+        const current = dedupe.get(key);
+        if (String(current?.source || "").trim().toLowerCase() === "local") return;
+        dedupe.set(key, entry);
+      });
+    });
+    return Array.from(dedupe.values());
+  };
+  const buildFeedLocationRemoteSuggestionOptions = (rows = []) => {
+    if (!Array.isArray(rows)) return [];
+    return rows.map((row, index) => {
+      const properties = row?.properties && typeof row.properties === "object" ? row.properties : {};
+      const coords = normalizeViewerCoords({
+        lat: row?.geometry?.coordinates?.[1],
+        lng: row?.geometry?.coordinates?.[0]
+      });
+      const label = String(properties.name || properties.city || properties.locality || "").trim();
+      if (!coords || !label) return null;
+      if (!isLikelySettlementLabel(label)) return null;
+      const countryCode = toCountryCode(properties.countrycode || properties.country_code || properties.country || "");
+      if (!countryCode || !FEED_LOCATION_REMOTE_ALLOWED_COUNTRY_CODES.has(countryCode)) return null;
+      const osmValue = normalizeLocationQuery(properties.osm_value || properties.type || "");
+      if (!FEED_LOCATION_REMOTE_ALLOWED_OSM_VALUES.has(osmValue)) return null;
+      const countryLabel = toCountryLabel(countryCode) || "";
+      const region = String(properties.state || properties.county || "").trim();
+      const metaLabel = [region, countryLabel].filter(Boolean).join(" · ");
+      return buildFeedLocationCityOption({
+        id: `remote-${String(properties.osm_id || `${label}-${countryCode}-${index}`).trim().toLowerCase()}`,
+        label,
+        lat: coords.lat,
+        lng: coords.lng,
+        aliases: [properties.city, properties.state, properties.county, countryLabel].filter(Boolean),
+        source: "remote",
+        country: countryCode,
+        metaLabel,
+        importance: Number(properties.importance || row?.importance || 0)
+      });
+    }).filter(Boolean);
+  };
+  const requestRemoteFeedLocationSuggestions = async (query = "") => {
+    const queryText = String(query || "").trim();
+    const normalizedQuery = normalizeLocationQuery(queryText);
+    if (normalizedQuery.length < 2) return [];
+    if (locationRemoteSuggestionCache.has(normalizedQuery)) {
+      return locationRemoteSuggestionCache.get(normalizedQuery) || [];
+    }
+    const fetchClient = typeof win?.fetch === "function" ? win.fetch.bind(win) : null;
+    if (!fetchClient) return [];
+    if (locationRemoteFetchController && locationRemoteFetchQueryKey && locationRemoteFetchQueryKey !== normalizedQuery) {
+      try {
+        locationRemoteFetchController.abort();
+      } catch {}
+    }
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    locationRemoteFetchController = controller;
+    locationRemoteFetchQueryKey = normalizedQuery;
+    const endpoint = new URL("https://photon.komoot.io/api/");
+    endpoint.searchParams.set("limit", String(FEED_LOCATION_REMOTE_LIMIT));
+    endpoint.searchParams.set("lang", "en");
+    endpoint.searchParams.set("osm_tag", "place");
+    endpoint.searchParams.set("q", queryText);
+    try {
+      const response = await fetchClient(endpoint.toString(), {
+        method: "GET",
+        signal: controller?.signal,
+        headers: { "Accept-Language": "sq,sr,de,en" }
+      });
+      if (!response?.ok) throw new Error(`photon_${Number(response?.status || 0)}`);
+      const payload = await response.json();
+      const rows = Array.isArray(payload?.features) ? payload.features : [];
+      const options = buildFeedLocationRemoteSuggestionOptions(rows);
+      locationRemoteSuggestionCache.set(normalizedQuery, options);
+      options.forEach((entry) => {
+        locationRemoteSuggestionById.set(String(entry.id || "").trim().toLowerCase(), entry);
+      });
+      return options;
+    } catch (error) {
+      if (String(error?.name || "") !== "AbortError") {
+        locationRemoteSuggestionCache.set(normalizedQuery, []);
+      }
+      return [];
+    } finally {
+      if (locationRemoteFetchController === controller) {
+        locationRemoteFetchController = null;
+        locationRemoteFetchQueryKey = "";
+      }
+    }
+  };
+  const getFeedLocationCitySuggestions = (query = "", limit = 6) => {
+    const normalizedQuery = normalizeLocationQuery(query);
+    if (normalizedQuery.length < 2) return [];
+    const localOptions = resolveFeedLocationCityOptions();
+    const remoteOptions = locationRemoteSuggestionCache.get(normalizedQuery) || [];
+    const merged = mergeFeedLocationOptionCollections(localOptions, remoteOptions);
+    return merged
+      .map((entry) => {
+        const score = scoreFeedLocationCandidate(entry, normalizedQuery);
+        if (score < 0) return null;
+        return { ...entry, score };
+      })
+      .filter(Boolean)
+      .sort((a, b) => Number(b.score || 0) - Number(a.score || 0) || String(a.label || "").localeCompare(String(b.label || ""), "de"))
+      .slice(0, Math.max(1, Number(limit) || 6));
+  };
+  const buildFeedLocationSuggestionMarkup = (suggestions = []) => {
+    const rows = Array.isArray(suggestions) ? suggestions : [];
+    if (!rows.length) return "";
+    return rows.map((entry) => `
+      <button
+        type="button"
+        role="option"
+        aria-selected="false"
+        data-feed-city-suggestion="${escapeHtmlFn(entry.id)}"
+        class="feed-location-suggestion"
+      >
+        <span class="feed-location-suggestion__label">${escapeHtmlFn(entry.label)}</span>
+        <span class="feed-location-suggestion__meta">${escapeHtmlFn(resolveSuggestionCountryLabel(entry))}</span>
+      </button>
+    `).join("");
+  };
+  const hideFeedLocationSuggestions = ({ clearContent = true } = {}) => {
+    const suggestionsRoot = doc?.getElementById("feedLocationCitySuggestions");
+    const input = doc?.getElementById("feedLocationCityInput");
+    if (suggestionsRoot instanceof HTMLElement) {
+      suggestionsRoot.classList.remove("feed-location-suggestions--open");
+      suggestionsRoot.setAttribute("aria-hidden", "true");
+      if (clearContent) suggestionsRoot.innerHTML = "";
+    }
+    if (input instanceof HTMLElement) {
+      input.setAttribute("aria-expanded", "false");
+    }
+  };
+  const scheduleFeedLocationRemoteSearch = (query = "") => {
+    clearFeedLocationRemoteSearchTimer();
+    if (locationRequestPending) return;
+    const normalizedQuery = normalizeLocationQuery(query);
+    if (normalizedQuery.length < 2) return;
+    if (locationRemoteSuggestionCache.has(normalizedQuery)) return;
+    locationRemoteSearchTimer = setTimeoutFn(async () => {
+      locationRemoteSearchTimer = null;
+      const liveQuery = String(doc?.getElementById("feedLocationCityInput")?.value || "").trim();
+      if (normalizeLocationQuery(liveQuery) !== normalizedQuery) return;
+      await requestRemoteFeedLocationSuggestions(liveQuery);
+      const nextLiveQuery = String(doc?.getElementById("feedLocationCityInput")?.value || "").trim();
+      if (normalizeLocationQuery(nextLiveQuery) !== normalizedQuery) return;
+      syncFeedLocationSuggestionsDom(nextLiveQuery, { skipRemoteFetch: true });
+    }, 260);
+  };
+  const syncFeedLocationSuggestionsDom = (query = "", { skipRemoteFetch = false } = {}) => {
+    const suggestionsRoot = doc?.getElementById("feedLocationCitySuggestions");
+    const input = doc?.getElementById("feedLocationCityInput");
+    if (!(suggestionsRoot instanceof HTMLElement) || !(input instanceof HTMLElement)) return;
+    if (locationRequestPending) {
+      hideFeedLocationSuggestions();
+      return;
+    }
+    const normalizedQuery = normalizeLocationQuery(query);
+    if (normalizedQuery.length < 2) {
+      hideFeedLocationSuggestions();
+      return;
+    }
+    const suggestions = getFeedLocationCitySuggestions(query, 6);
+    if (!suggestions.length) {
+      hideFeedLocationSuggestions({ clearContent: false });
+      if (!skipRemoteFetch) scheduleFeedLocationRemoteSearch(query);
+      return;
+    }
+    suggestionsRoot.innerHTML = buildFeedLocationSuggestionMarkup(suggestions);
+    suggestionsRoot.classList.add("feed-location-suggestions--open");
+    suggestionsRoot.setAttribute("aria-hidden", "false");
+    input.setAttribute("aria-expanded", "true");
+    if (!skipRemoteFetch) scheduleFeedLocationRemoteSearch(query);
+  };
+  const resolveLocationGateStatusText = () => {
+    if (locationGateMessage) return locationGateMessage;
+    if (locationGateStatus === "requesting") return "Po kërkohet vendndodhja...";
+    if (locationGateStatus === "denied") return "Leja e vendndodhjes u refuzua.";
+    if (locationGateStatus === "timeout") return "Vendndodhja nuk u mor me kohe. Provo perseri.";
+    if (locationGateStatus === "unsupported") return "Vendndodhja nuk mbeshtetet ne kete pajisje.";
+    if (locationGateStatus === "error") return "Nuk arritem te marrim vendndodhjen.";
+    return "";
+  };
+  const syncFeedLocationGateDom = () => {
+    const requestBtn = doc?.getElementById("btnLocateMe");
+    const locateIcon = doc?.getElementById("locateIcon");
+    const locatePulse = doc?.getElementById("locatePulse");
+    const cityInput = doc?.getElementById("feedLocationCityInput");
+    const statusEl = doc?.getElementById("feedLocationStatus");
+    const viewerLocation = resolveViewerLocationRecord();
+    const hasLocation = !!normalizeViewerLocationRecord(viewerLocation);
+    if (requestBtn instanceof HTMLButtonElement) {
+      requestBtn.disabled = locationRequestPending;
+      requestBtn.classList.toggle("opacity-60", requestBtn.disabled);
+      requestBtn.classList.toggle("cursor-not-allowed", requestBtn.disabled);
+      requestBtn.classList.toggle("is-success", hasLocation);
+    }
+    if (locateIcon instanceof HTMLElement) {
+      locateIcon.classList.toggle("animate-spin", locationRequestPending);
+      locateIcon.setAttribute("data-lucide", hasLocation && !locationRequestPending ? "check" : "crosshair");
+    }
+    if (locatePulse instanceof HTMLElement) {
+      locatePulse.classList.toggle("opacity-100", locationRequestPending);
+      locatePulse.classList.toggle("opacity-0", !locationRequestPending);
+    }
+    if (cityInput instanceof HTMLInputElement) {
+      cityInput.disabled = locationRequestPending;
+      const savedLabel = String(viewerLocation?.label || viewerLocation?.city || "").trim();
+      if (savedLabel && !cityInput.value.trim() && doc?.activeElement !== cityInput) {
+        cityInput.value = savedLabel;
+      }
+    }
+    if (statusEl instanceof HTMLElement) {
+      const text = resolveLocationGateStatusText();
+      statusEl.textContent = text;
+      statusEl.classList.toggle("hidden", !text);
+    }
+    if (win?.lucide?.createIcons) win.lucide.createIcons();
+  };
+  const setLocationGateState = (status = "idle", message = "") => {
+    locationGateStatus = String(status || "idle").trim().toLowerCase();
+    locationGateMessage = String(message || "").trim();
+    syncFeedLocationGateDom();
+  };
+  const applyViewerLocationSelection = (record = null) => {
+    const normalized = normalizeViewerLocationRecord(record);
+    if (!normalized) return false;
+    locationRequestPending = false;
+    locationGateStatus = "granted";
+    locationGateMessage = "";
+    clearFeedLocationRemoteLookup();
+    hideFeedLocationSuggestions();
+    persistViewerLocation(normalized);
+    syncFeedLocationGateDom();
+    setStateFn({ activeTab: "feed" });
+    return true;
+  };
+  const requestViewerLocationAccess = ({ fallbackCity = null, forceExact = false } = {}) => {
+    const fallbackOption = fallbackCity && typeof fallbackCity === "object"
+      ? fallbackCity
+      : findFeedLocationCityOption(fallbackCity);
+    if (fallbackOption && !forceExact) {
+      applyViewerLocationSelection({
+        lat: fallbackOption.lat,
+        lng: fallbackOption.lng,
+        label: fallbackOption.label,
+        city: fallbackOption.city || fallbackOption.label,
+        source: "city-search"
+      });
+      return;
+    }
+    const geo = win?.navigator?.geolocation;
+    if (win && win.isSecureContext === false) {
+      if (fallbackOption) {
+        requestViewerLocationAccess({ fallbackCity: fallbackOption, forceExact: false });
+        return;
+      }
+      setLocationGateState("unsupported", "Vendndodhja kerkon HTTPS.");
+      return;
+    }
+    if (!geo || typeof geo.getCurrentPosition !== "function") {
+      if (fallbackOption) {
+        requestViewerLocationAccess({ fallbackCity: fallbackOption, forceExact: false });
+        return;
+      }
+      setLocationGateState("unsupported");
+      return;
+    }
+    if (locationRequestPending) return;
+    locationRequestPending = true;
+    clearFeedLocationRemoteLookup();
+    hideFeedLocationSuggestions();
+    setLocationGateState("requesting");
+    const requestStartedAt = Date.now();
+    const finalize = (fn) => {
+      const waitMs = Math.max(0, 900 - (Date.now() - requestStartedAt));
+      if (waitMs > 0) {
+        setTimeoutFn(fn, waitMs);
+      } else {
+        fn();
+      }
+    };
+    const currentLabel = String(doc?.getElementById("feedLocationCityInput")?.value || "").trim();
+    geo.getCurrentPosition(
+      (position) => {
+        finalize(() => {
+          const coords = normalizeViewerCoords({
+            lat: position?.coords?.latitude,
+            lng: position?.coords?.longitude
+          });
+          if (!coords) {
+            locationRequestPending = false;
+            setLocationGateState("error");
+            return;
+          }
+          applyViewerLocationSelection({
+            lat: coords.lat,
+            lng: coords.lng,
+            label: currentLabel || "Lokacioni aktual",
+            city: currentLabel || "",
+            source: "gps"
+          });
+        });
+      },
+      (error) => {
+        finalize(() => {
+          locationRequestPending = false;
+          if (fallbackOption) {
+            requestViewerLocationAccess({ fallbackCity: fallbackOption, forceExact: false });
+            return;
+          }
+          const code = Number(error?.code);
+          if (code === 1) {
+            setLocationGateState("denied");
+            return;
+          }
+          if (code === 3) {
+            setLocationGateState("timeout");
+            return;
+          }
+          setLocationGateState("error");
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+  function renderLocationGate() {
+    const viewerLocation = resolveViewerLocationRecord();
+    const cityValue = String(viewerLocation?.label || viewerLocation?.city || "").trim();
+    return `
+      <div id="feedLocationGate">
+        <style>
+          .smart-header-shell { background: #00cce5 !important; }
+          main.feed-location-gate-main { padding-top: 0 !important; }
+          .smart-header-top, .smart-header-tabs {
+            background: #00cce5 !important;
+            border-bottom: 0 !important;
+            border-bottom-color: transparent !important;
+            box-shadow: none !important;
+          }
+          #feedLocationGate { background: #f8fafc; color: #0f172a; }
+          #feedLocationGate .loc-shell { position: relative; background: #00cce5; }
+          #feedLocationGate .loc-glow-a, #feedLocationGate .loc-glow-b { position: absolute; border-radius: 9999px; pointer-events: none; }
+          #feedLocationGate .loc-glow-a { top: -12%; right: -12%; width: 16rem; height: 16rem; background: rgb(255 255 255 / 0.12); filter: blur(64px); }
+          #feedLocationGate .loc-glow-b { bottom: 20%; left: -10%; width: 12rem; height: 12rem; background: rgb(0 155 175 / 0.22); filter: blur(40px); }
+          #feedLocationGate .loc-top { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 5rem 1.5rem 5.25rem; background: #00cce5; }
+          #feedLocationGate .loc-title { width: 100%; max-width: 22rem; margin: 0 auto 2.15rem; color: #fff; font-size: clamp(1.65rem, 6.6vw, 2.2rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.08; }
+          #feedLocationGate .text-slider-wrapper { position: relative; height: 1.25em; width: 100%; overflow: hidden; margin-bottom: 0.2rem; }
+          #feedLocationGate .text-slide-item { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s ease-in-out infinite; will-change: transform, opacity; }
+          #feedLocationGate .text-slide-item:nth-child(1) { animation-delay: 0s; }
+          #feedLocationGate .text-slide-item:nth-child(2) { animation-delay: 3s; }
+          #feedLocationGate .text-slide-item:nth-child(3) { animation-delay: 6s; }
+          @keyframes feedLocationTextFadeSlide {
+            0% { opacity: 0; transform: translateY(100%); }
+            5%, 28% { opacity: 1; transform: translateY(0); }
+            33%, 100% { opacity: 0; transform: translateY(-100%); }
+          }
+          #feedLocationGate .loc-search-wrap { width: 100%; max-width: 22rem; margin: 0 auto; }
+          #feedLocationGate .loc-input-row { position: relative; }
+          #feedLocationGate .loc-pin { position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); color: rgb(148 163 184); pointer-events: none; }
+          #feedLocationGate .loc-input { width: 100%; border: 0; outline: none; color: #0f172a; background: #fff; border-radius: 9999px; padding: 1rem 4.2rem 1rem 3rem; font-size: 16px; line-height: 1.2; font-weight: 600; box-shadow: 0 8px 30px rgb(0 0 0 / 0.12); }
+          #feedLocationGate .loc-input::placeholder { color: rgb(148 163 184); opacity: 1; }
+          #feedLocationGate .loc-input:focus { box-shadow: 0 0 0 4px rgb(255 255 255 / 0.42), 0 8px 30px rgb(0 0 0 / 0.12); }
+          #feedLocationGate .loc-request-wrap { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
+          #feedLocationGate .loc-request-btn { position: relative; width: 2.5rem; height: 2.5rem; border: 0; border-radius: 9999px; background: #eafbfe; color: #00cce5; display: inline-flex; align-items: center; justify-content: center; transition: transform 160ms ease, background-color 160ms ease, color 160ms ease; }
+          #feedLocationGate .loc-request-btn:active { transform: scale(0.95); }
+          #feedLocationGate .loc-request-btn.is-success { background: rgb(236 253 245); color: rgb(16 185 129); }
+          #feedLocationGate .loc-request-pulse { position: absolute; inset: 0; border-radius: 9999px; background: rgb(0 204 229 / 0.2); opacity: 0; animation: ping 1.05s cubic-bezier(0, 0, 0.2, 1) infinite; }
+          #feedLocationGate .feed-location-suggestions { position: relative; z-index: 30; margin-top: 0; max-height: 0; opacity: 0; padding: 0; overflow: hidden; pointer-events: none; transform: translateY(-4px); border-radius: 1.4rem; background: rgb(255 255 255 / 0.98); border: 1px solid rgb(226 232 240 / 0.95); box-shadow: 0 18px 44px rgb(15 23 42 / 0.16); backdrop-filter: blur(18px); transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease, padding 220ms ease, transform 220ms ease; }
+          #feedLocationGate .feed-location-suggestions--open { margin-top: 0.75rem; max-height: 18rem; opacity: 1; padding: 0.5rem; pointer-events: auto; transform: translateY(0); }
+          #feedLocationGate .feed-location-suggestion { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; border: 0; background: transparent; border-radius: 1rem; padding: 0.85rem 0.95rem; text-align: left; color: rgb(15 23 42); font-weight: 700; }
+          #feedLocationGate .feed-location-suggestion:hover, #feedLocationGate .feed-location-suggestion:focus-visible { background: rgb(241 245 249); outline: none; }
+          #feedLocationGate .feed-location-suggestion__label { display: block; font-size: 0.92rem; line-height: 1.1rem; }
+          #feedLocationGate .feed-location-suggestion__meta { min-width: 3.7rem; text-align: center; padding: 0.3rem 0.6rem; border-radius: 9999px; background: rgb(236 254 255); color: rgb(8 145 178); font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; }
+          #feedLocationGate .loc-status { margin-top: 0.7rem; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.11em; color: rgb(255 255 255 / 0.9); }
+          #feedLocationGate .loc-status.hidden { display: none; }
+          #feedLocationGate .loc-bento { position: relative; z-index: 3; background: #f8fafc; border-top-left-radius: 2.5rem; border-top-right-radius: 2.5rem; padding: 2.35rem 1.25rem 2rem; }
+          #feedLocationGate .loc-bento-head { text-align: center; max-width: 22rem; margin: 0 auto 1.1rem; }
+          #feedLocationGate .loc-bento-line { display: inline-flex; align-items: center; gap: 0.7rem; opacity: 0.82; margin-bottom: 0.9rem; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.24em; color: rgb(100 116 139); }
+          #feedLocationGate .loc-bento-line::before, #feedLocationGate .loc-bento-line::after { content: ""; display: block; width: 1.5rem; height: 2px; border-radius: 999px; background: rgb(226 232 240); }
+          #feedLocationGate .loc-bento-title { margin: 0 0 0.6rem; font-size: 32px; line-height: 1; letter-spacing: -0.035em; font-weight: 900; color: rgb(15 23 42); }
+          #feedLocationGate .loc-bento-sub { margin: 0; font-size: 13px; line-height: 1.55; font-weight: 600; color: rgb(100 116 139); }
+          #feedLocationGate .loc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.875rem; max-width: 22rem; margin: 0 auto; }
+          #feedLocationGate .loc-card { position: relative; border-radius: 1.45rem; overflow: hidden; border: 1px solid rgb(241 245 249); background: #fff; padding: 1.2rem; transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+          #feedLocationGate .loc-card:hover { transform: translateY(-3px) scale(1.01); box-shadow: 0 14px 34px rgb(15 23 42 / 0.08); }
+          #feedLocationGate .loc-card.full { grid-column: span 2 / span 2; }
+          #feedLocationGate .loc-card.dark { background: rgb(15 23 42); border-color: rgb(30 41 59); color: #fff; }
+          #feedLocationGate .loc-card p { margin: 0; font-size: 11px; line-height: 1.45; font-weight: 600; color: rgb(100 116 139); }
+          #feedLocationGate .loc-card.dark p { color: rgb(203 213 225); }
+          #feedLocationGate .loc-card h4 { margin: 0 0 0.3rem; font-size: 1rem; line-height: 1.2; font-weight: 800; letter-spacing: -0.015em; color: inherit; }
+          #feedLocationGate .loc-icon { width: 2.75rem; height: 2.75rem; border-radius: 1rem; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.8rem; color: #fff; }
+          #feedLocationGate .loc-foot { text-align: center; margin-top: 1.35rem; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: rgb(148 163 184); }
+          #feedLocationGate .fade-in-up { opacity: 0; transform: translateY(30px); animation: feedLocationFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+          @keyframes feedLocationFadeUp { to { opacity: 1; transform: translateY(0); } }
+        </style>
+
+        <div class="loc-shell">
+          <div class="loc-glow-a"></div>
+          <div class="loc-glow-b"></div>
+          <div class="loc-top">
+            <div class="loc-title">
+              <div class="text-slider-wrapper">
+                <div class="text-slide-item">ZBULO VENDET.</div>
+                <div class="text-slide-item">GJEJ OFERTAT.</div>
+                <div class="text-slide-item">SHIJO QYTETIN.</div>
+              </div>
+              <div>PËRRETH TEJE.</div>
+            </div>
+
+            <div class="loc-search-wrap">
+              <div class="loc-input-row">
+                <span class="loc-pin">${iconFn("map-pin", "w-5 h-5")}</span>
+                <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="Vendos qytetin tënd..." class="loc-input" />
+                <div class="loc-request-wrap">
+                  <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn">
+                    <i id="locateIcon" data-lucide="crosshair" class="w-5 h-5 relative z-10"></i>
+                    <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
+                  </button>
+                </div>
+              </div>
+              <div id="feedLocationCitySuggestions" data-feed-location-city-suggestions role="listbox" aria-hidden="true" class="feed-location-suggestions"></div>
+              <p id="feedLocationStatus" class="loc-status hidden"></p>
+            </div>
+          </div>
+
+          <div class="loc-bento">
+            <div class="loc-bento-head fade-in-up" style="animation-delay:0.05s;">
+              <div class="loc-bento-line">Çfarë ofron Mnyra</div>
+              <h3 class="loc-bento-title">Gjithçka në një vend.</h3>
+              <p class="loc-bento-sub">Guida juaj personale. Zbuloni, rezervoni dhe përfitoni nga ofertat më të mira të qytetit çdo ditë.</p>
+            </div>
+
+            <div class="loc-grid">
+              <div class="loc-card full fade-in-up" style="animation-delay:0.12s;"><div class="loc-icon" style="background:rgb(79 70 229);">${iconFn("utensils-crossed", "w-5 h-5")}</div><h4>Eksploro & Shijo</h4><p>Gjej restorante, kafene dhe evente. Shiko stories, menutë me çmime dhe fotot reale. Rezervo tavolinën tënde me një klikim.</p></div>
+              <div class="loc-card full fade-in-up" style="animation-delay:0.2s;"><div class="loc-icon" style="background:rgb(244 63 94);">${iconFn("shopping-bag", "w-5 h-5")}</div><h4>Shopping pa kufi</h4><p>Nga markat tek butiqet lokale. Porosit për në shtëpi ose rezervo dhe merre direkt në dyqan.</p></div>
+              <div class="loc-card full dark fade-in-up" style="animation-delay:0.28s;"><div class="loc-icon" style="background:rgb(16 185 129 / 0.25);">${iconFn("badge-percent", "w-5 h-5")}</div><h4>ÇFARË KA NË AKSION SOT?</h4><p>Ofertat më të mira dhe zbritjet ekskluzive nga restorantet dhe dyqanet tuaja të preferuara.</p></div>
+              <div class="loc-card fade-in-up" style="animation-delay:0.36s; background:rgb(236 253 245 / 0.65); border-color:rgb(209 250 229 / 0.75);"><div class="loc-icon" style="background:rgb(16 185 129);">${iconFn("store", "w-5 h-5")}</div><h4>Supermarkete & Farmaci</h4><p>Gjej më të afërtat dhe shiko nëse janë hapur tani.</p></div>
+              <div class="loc-card fade-in-up" style="animation-delay:0.44s; background:rgb(236 254 255 / 0.7); border-color:rgb(207 250 254 / 0.75);"><div class="loc-icon" style="background:rgb(6 182 212);">${iconFn("bed-double", "w-5 h-5")}</div><h4>Hotele & Akomodim</h4><p>Oferta All-Inclusive, foto dhomash dhe rezervime direkte.</p></div>
+              <div class="loc-card full fade-in-up" style="animation-delay:0.52s;"><div class="loc-icon" style="background:linear-gradient(135deg, rgb(139 92 246), rgb(217 70 239));">${iconFn("users", "w-5 h-5")}</div><h4>Komuniteti MNYRA</h4><p>Krijo profilin, pëlqe, komento, bëj check-in dhe ndaj momente me miqtë e tu.</p></div>
+            </div>
+
+            <p class="loc-foot">Powered by MNYRA</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  function renderFeedLocationView() {
+    return `
+      <div id="feedView" data-feed-view-mode="location">
+        ${renderLocationGate()}
+      </div>
+    `;
+  }
 
   function renderFeedComposer() {
     if (!shouldShowFeedComposer()) return "";
@@ -544,6 +1269,13 @@ export function createFeedViewOrchestrationController({
   function updateFeedDom() {
     const feedView = doc?.getElementById("feedView");
     if (!feedView) return false;
+    const feedViewMode = String(feedView.dataset.feedViewMode || "feed").trim().toLowerCase();
+    if (feedViewMode === "location") {
+      bindFeedDelegation();
+      syncFeedLocationGateDom();
+      if (win?.lucide?.createIcons) win.lucide.createIcons();
+      return true;
+    }
     const feedPosts = state.feedPosts
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
@@ -576,12 +1308,15 @@ export function createFeedViewOrchestrationController({
   }
 
   function renderFeedView() {
+    if (isFeedLocationRequired()) {
+      return renderFeedLocationView();
+    }
     const feedPosts = state.feedPosts
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
     const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
     return `
-    <div id="feedView">
+    <div id="feedView" data-feed-view-mode="feed">
       <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-4 pb-8 no-scrollbar">
         ${renderStoriesRow(stories)}
       </div>
@@ -596,7 +1331,9 @@ export function createFeedViewOrchestrationController({
   function bindFeedDelegation() {
     const feedView = doc?.getElementById("feedView");
     if (!feedView || feedView.dataset.bound === "true") return;
+    const isLocationView = () => String(feedView.dataset.feedViewMode || "").trim().toLowerCase() === "location";
     const handleStoryWarmup = (target) => {
+      if (isLocationView()) return;
       if (!(target instanceof Element)) return;
       const storyLink = target.closest("[data-story-item]");
       if (!(storyLink instanceof Element)) return;
@@ -613,9 +1350,135 @@ export function createFeedViewOrchestrationController({
     feedView.addEventListener("touchstart", (event) => {
       handleStoryWarmup(event.target);
     }, { passive: true });
+    feedView.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      syncFeedLocationSuggestionsDom(cityInput.value);
+    });
+    feedView.addEventListener("pointerdown", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      if (doc?.activeElement === cityInput) return;
+      event.preventDefault();
+      try {
+        cityInput.focus({ preventScroll: true });
+      } catch {
+        cityInput.focus();
+      }
+    });
+    feedView.addEventListener("touchstart", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      if (doc?.activeElement === cityInput) return;
+      event.preventDefault();
+      try {
+        cityInput.focus({ preventScroll: true });
+      } catch {
+        cityInput.focus();
+      }
+    }, { passive: false });
+    feedView.addEventListener("focusin", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      syncFeedLocationSuggestionsDom(cityInput.value);
+    });
+    feedView.addEventListener("focusout", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!cityInput) return;
+      setTimeoutFn(() => {
+        const active = doc?.activeElement;
+        if (active instanceof Element && (active.closest("[data-feed-location-city-input]") || active.closest("[data-feed-city-suggestion]"))) {
+          return;
+        }
+        hideFeedLocationSuggestions();
+      }, 120);
+    });
+    feedView.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      const rawValue = String(cityInput.value || "").trim();
+      if (!rawValue) return;
+      const suggestion = getFeedLocationCitySuggestions(rawValue, 1)[0];
+      if (!suggestion) return;
+      if (normalizeLocationQuery(rawValue) !== normalizeLocationQuery(suggestion.label)) return;
+      hideFeedLocationSuggestions();
+      const applied = applyViewerLocationSelection({
+        lat: suggestion.lat,
+        lng: suggestion.lng,
+        label: suggestion.label,
+        city: suggestion.city || suggestion.label,
+        source: "city-search"
+      });
+      if (!applied) {
+        requestViewerLocationAccess({ fallbackCity: suggestion });
+      }
+    });
+    feedView.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      if (event.key === "Escape") {
+        hideFeedLocationSuggestions();
+        return;
+      }
+      if (event.key !== "Enter") return;
+      const suggestion = getFeedLocationCitySuggestions(cityInput.value, 1)[0];
+      if (!suggestion) return;
+      event.preventDefault();
+      cityInput.value = suggestion.label;
+      hideFeedLocationSuggestions();
+      const applied = applyViewerLocationSelection({
+        lat: suggestion.lat,
+        lng: suggestion.lng,
+        label: suggestion.label,
+        city: suggestion.city || suggestion.label,
+        source: "city-search"
+      });
+      if (!applied) {
+        requestViewerLocationAccess({ fallbackCity: suggestion });
+      }
+    });
     feedView.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      const citySuggestion = target.closest("[data-feed-city-suggestion]");
+      if (citySuggestion) {
+        const cityOption = findFeedLocationCityOption(citySuggestion.getAttribute("data-feed-city-suggestion") || "");
+        if (cityOption) {
+          const cityInput = doc?.getElementById("feedLocationCityInput");
+          if (cityInput instanceof HTMLInputElement) cityInput.value = cityOption.label;
+          hideFeedLocationSuggestions();
+          const applied = applyViewerLocationSelection({
+            lat: cityOption.lat,
+            lng: cityOption.lng,
+            label: cityOption.label,
+            city: cityOption.city || cityOption.label,
+            source: "city-search"
+          });
+          if (!applied) {
+            requestViewerLocationAccess({ fallbackCity: cityOption });
+          }
+        }
+        return;
+      }
+      const locationBtn = target.closest("[data-feed-location-request]");
+      if (locationBtn) {
+        requestViewerLocationAccess({ forceExact: true });
+        return;
+      }
       const storyLink = target.closest("[data-story-item]");
       if (storyLink) {
         handleStoryWarmup(storyLink);
@@ -718,6 +1581,9 @@ export function createFeedViewOrchestrationController({
         }, { showBack: false });
       }
     });
+    if (isLocationView()) {
+      syncFeedLocationGateDom();
+    }
     feedView.dataset.bound = "true";
   }
 
