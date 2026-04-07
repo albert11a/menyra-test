@@ -1178,7 +1178,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const htmlEl = doc.documentElement;
     const bodyEl = doc.body;
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-    const isFeedLocationGate = (activeTabKey === "feed" || activeTabKey === "location")
+    const isFeedLocationGate = (activeTabKey === "feed" || activeTabKey === "location" || activeTabKey === "home")
       && String(doc.getElementById("feedView")?.dataset?.feedViewMode || "").trim().toLowerCase() === "location";
     if (htmlEl) {
       htmlEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);

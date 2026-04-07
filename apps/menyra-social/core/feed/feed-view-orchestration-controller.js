@@ -34,6 +34,7 @@ export function createFeedViewOrchestrationController({
 } = {}) {
   if (!state) {
     return {
+      renderHomeView: () => "",
       renderFeedView: () => "",
       renderStoryItem: () => "",
       renderStoriesRow: () => "",
@@ -847,6 +848,18 @@ export function createFeedViewOrchestrationController({
     if (locationGateStatus === "error") return "Nuk arritem te marrim vendndodhjen.";
     return "";
   };
+  const resolveLocationScreenMode = () => {
+    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTabKey === "location") return "location";
+    if (activeTabKey === "home") return "home-intro";
+    return "feed-gate";
+  };
+  const getRenderedLocationScreenMode = () => {
+    const rootMode = String(doc?.getElementById("feedView")?.dataset?.locationScreenMode || "").trim().toLowerCase();
+    if (rootMode) return rootMode;
+    const gateMode = String(doc?.getElementById("feedLocationGate")?.dataset?.locationScreenMode || "").trim().toLowerCase();
+    return gateMode || resolveLocationScreenMode();
+  };
   const syncFeedLocationGateDom = () => {
     const requestBtn = doc?.getElementById("btnLocateMe");
     const locateIcon = doc?.getElementById("locateIcon");
@@ -902,17 +915,29 @@ export function createFeedViewOrchestrationController({
     clearFeedLocationRemoteLookup();
     hideFeedLocationSuggestions();
     persistViewerLocation(normalized);
-    feedEntranceAnimationQueued = true;
-    locationGateResolveTransitionPending = true;
     const gateRoot = doc?.getElementById("feedLocationGate");
-    gateRoot?.classList?.add?.("feed-location-gate--resolving");
+    const locationScreenMode = getRenderedLocationScreenMode();
+    const shouldStayOnLocationScreen = locationScreenMode === "location";
+    if (shouldStayOnLocationScreen) {
+      feedEntranceAnimationQueued = false;
+      locationGateResolveTransitionPending = false;
+      gateRoot?.classList?.remove?.("feed-location-gate--resolving");
+    } else {
+      feedEntranceAnimationQueued = true;
+      locationGateResolveTransitionPending = true;
+      gateRoot?.classList?.add?.("feed-location-gate--resolving");
+    }
     syncFeedLocationGateDom();
+    if (shouldStayOnLocationScreen) {
+      clearLocationGateResolveTimer();
+      return true;
+    }
     clearLocationGateResolveTimer();
     locationGateResolveTimer = setTimeoutFn(() => {
       locationGateResolveTimer = null;
       locationGateResolveTransitionPending = false;
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "location") {
+      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "home" && activeTabKey !== "location") {
         return;
       }
       setStateFn({ activeTab: "feed" });
@@ -1008,11 +1033,12 @@ export function createFeedViewOrchestrationController({
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
-  function renderLocationGate() {
+  function renderLocationGate({ mode = resolveLocationScreenMode() } = {}) {
     const viewerLocation = resolveViewerLocationRecord();
     const cityValue = String(viewerLocation?.label || viewerLocation?.city || "").trim();
+    const safeMode = String(mode || "feed-gate").trim().toLowerCase() || "feed-gate";
     return `
-      <div id="feedLocationGate">
+      <div id="feedLocationGate" data-location-screen-mode="${escapeHtmlFn(safeMode)}">
         <style>
           .smart-header-shell { background: #00cce5 !important; }
           main.feed-location-gate-main { padding-top: 0 !important; }
@@ -1113,7 +1139,7 @@ export function createFeedViewOrchestrationController({
             </div>
           </div>
 
-          <div class="loc-bento">
+          <div class="loc-bento" data-location-screen-content="${escapeHtmlFn(safeMode)}">
             <div class="loc-bento-head fade-in-up" style="animation-delay:0.05s;">
               <div class="loc-bento-line">Çfarë ofron Mnyra</div>
               <h3 class="loc-bento-title">Gjithçka në një vend.</h3>
@@ -1135,12 +1161,55 @@ export function createFeedViewOrchestrationController({
       </div>
     `;
   }
-  function renderFeedLocationView() {
+  function renderLocationHeroScreen(mode = resolveLocationScreenMode()) {
+    const safeMode = String(mode || "feed-gate").trim().toLowerCase() || "feed-gate";
     return `
-      <div id="feedView" data-feed-view-mode="location">
-        ${renderLocationGate()}
+      <div id="feedView" data-feed-view-mode="location" data-location-screen-mode="${escapeHtmlFn(safeMode)}">
+        ${renderLocationGate({ mode: safeMode })}
       </div>
     `;
+  }
+
+  function renderFeedLocationView() {
+    return renderLocationHeroScreen(resolveLocationScreenMode());
+  }
+
+  function renderHomeResolvedView() {
+    const viewerLocation = resolveViewerLocationRecord();
+    const locationLabel = String(viewerLocation?.label || viewerLocation?.city || "").trim() || "Noch kein Standort gespeichert";
+    return `
+      <section id="homeView" data-home-view-mode="resolved" class="px-6 pt-6 pb-24 space-y-4">
+        <div class="border border-slate-200 bg-white px-6 py-6 shadow-sm">
+          <p class="text-[10px] font-black uppercase tracking-[0.28em] text-sky-500">Startseite</p>
+          <h2 class="mt-3 text-2xl font-black tracking-tight text-slate-900">Willkommen zurück bei MNYRA.</h2>
+          <p class="mt-3 text-sm leading-6 text-slate-600">Hier kann später alles landen, was auf der Startseite sichtbar bleiben soll: Highlights, Neuigkeiten und kuratierte Hinweise. Feed, Feed-Gate und Standort bleiben davon getrennt.</p>
+        </div>
+        <div class="border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Aktiver Standort</p>
+          <div class="mt-3 flex items-start justify-between gap-4">
+            <div>
+              <h3 class="text-lg font-black tracking-tight text-slate-900">${escapeHtmlFn(locationLabel)}</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-600">Standort ändern läuft bewusst über den Standort-Tab. Deshalb bleibt die Startseite nach der ersten Auswahl im normalen weißen App-Layout.</p>
+            </div>
+            <button data-nav="location" type="button" class="shrink-0 border border-slate-300 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50">Standort</button>
+          </div>
+        </div>
+        <div class="border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Schnell weiter</p>
+          <div class="mt-4 flex flex-col gap-3">
+            <button data-nav="feed" type="button" class="w-full bg-slate-900 px-5 py-4 text-left text-[11px] font-black uppercase tracking-widest text-white transition-colors hover:bg-slate-800">Zum Feed</button>
+            <button data-nav="search" type="button" class="w-full border border-slate-300 bg-white px-5 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50">Suche Orte & Angebote</button>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderHomeView() {
+    if (isFeedLocationRequired()) {
+      return renderLocationHeroScreen("home-intro");
+    }
+    return renderHomeResolvedView();
   }
 
   function renderFeedComposer() {
@@ -1725,6 +1794,7 @@ export function createFeedViewOrchestrationController({
   }
 
   return {
+    renderHomeView,
     renderFeedView,
     renderStoryItem,
     renderStoriesRow,

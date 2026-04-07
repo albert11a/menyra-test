@@ -439,6 +439,7 @@ export function createAppControllerBridge({
     closeMenuDetail: overlayOrchestrationController.closeMenuDetail,
     setMenuDetailIndex: overlayOrchestrationController.setMenuDetailIndex,
     setMenuDetailVariant: overlayOrchestrationController.setMenuDetailVariant,
+    renderHomeView: feedViewOrchestrationController.renderHomeView,
     renderFeedView: feedViewOrchestrationController.renderFeedView,
     renderStoryItem: feedViewOrchestrationController.renderStoryItem,
     renderStoriesRow: feedViewOrchestrationController.renderStoriesRow,

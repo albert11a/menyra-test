@@ -1,5 +1,6 @@
 export function renderMainCore({
   state,
+  renderHomeViewFn,
   renderFeedViewFn,
   renderChatViewFn,
   renderSearchViewFn,
@@ -25,6 +26,7 @@ export function renderMainCore({
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+  const renderHomeView = typeof renderHomeViewFn === "function" ? renderHomeViewFn : (() => "");
   const renderFeedView = typeof renderFeedViewFn === "function" ? renderFeedViewFn : (() => "");
   const renderChatView = typeof renderChatViewFn === "function" ? renderChatViewFn : (() => "");
   const renderSearchView = typeof renderSearchViewFn === "function" ? renderSearchViewFn : (() => "");
@@ -69,6 +71,7 @@ export function renderMainCore({
       </section>
     `;
   } else {
+    if (state?.activeTab === "home") view = renderHomeView();
     if (state?.activeTab === "feed") view = renderFeedView();
     if (state?.activeTab === "location") view = renderFeedView();
     if (state?.activeTab === "chat") view = renderChatView();

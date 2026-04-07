@@ -207,24 +207,25 @@ export function createShellDomRuntimeController({
       || !!state?.roleSwitchRestaurantId
       || isRestaurantCafeProfile(state?.userProfile);
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
-    const hasFeedViewerLocation = hasResolvedFeedViewerLocation();
     const isLocationTabActive = String(state?.activeTab || "").trim().toLowerCase() === "location";
     const avatarUrl = resolveUserAvatar(state?.userProfile?.avatar);
     const avatarFit = logoFitClass(isLocalBusinessProfile(state?.userProfile));
     const navItems = isGuest
       ? [
+        { id: "home", label: "Start", icon: "star" },
         { id: "feed", label: "Feed", icon: "home" },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
-        { id: "location", label: "Standort", icon: "map-pin", hidden: !hasFeedViewerLocation },
+        { id: "location", label: "Standort", icon: "map-pin" },
         { id: "orders", label: "Bestellungen", icon: "shopping-cart" }
       ]
       : [
+        { id: "home", label: "Start", icon: "star" },
         { id: "feed", label: "Feed", icon: "home" },
         { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
-        { id: "location", label: "Standort", icon: "map-pin", hidden: !hasFeedViewerLocation },
+        { id: "location", label: "Standort", icon: "map-pin" },
         { id: "profile", label: "Profil", icon: "user" },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
         { id: "favorites", label: "Favoriten", icon: "bookmark", hidden: !isRegisteredUser },
@@ -303,7 +304,6 @@ export function createShellDomRuntimeController({
       || !!state?.roleSwitchRestaurantId
       || isRestaurantCafeProfile(state?.userProfile);
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
-    const hasFeedViewerLocation = hasResolvedFeedViewerLocation();
     const showCeoTabs = isCeoUser();
     const headerAvatar = doc?.getElementById("headerAvatar");
     if (headerAvatar) {
@@ -358,10 +358,6 @@ export function createShellDomRuntimeController({
     const favoritesNavBtn = doc?.querySelector('[data-nav="favorites"]');
     if (favoritesNavBtn) {
       favoritesNavBtn.classList.toggle("hidden", !isRegisteredUser);
-    }
-    const locationNavBtn = doc?.querySelector('[data-nav="location"]');
-    if (locationNavBtn) {
-      locationNavBtn.classList.toggle("hidden", !hasFeedViewerLocation);
     }
     const businessAccountsNavBtn = doc?.querySelector('[data-nav="businessAccounts"]');
     if (businessAccountsNavBtn) {
