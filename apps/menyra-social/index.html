@@ -36,8 +36,14 @@
           return LIGHT_UI_COLOR;
         }
       };
+      const isFeedLocationGateActive = () => {
+        if (!standalone) return false;
+        if (document.documentElement.classList.contains("feed-location-gate-active")) return true;
+        if (document.body?.classList?.contains("feed-location-gate-active")) return true;
+        return !!document.getElementById("feedLocationGate");
+      };
       const resolveGateAwareUiChromeColor = () => {
-        if (standalone && document.documentElement.classList.contains("feed-location-gate-active")) {
+        if (isFeedLocationGateActive()) {
           return FEED_GATE_UI_COLOR;
         }
         return standalone ? LIGHT_UI_COLOR : resolveUiChromeColor();
@@ -80,6 +86,18 @@
           forceLightUiChrome();
         });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        const observeBodyGateState = () => {
+          if (!document.body) return;
+          const bodyObserver = new MutationObserver(() => {
+            forceLightUiChrome();
+          });
+          bodyObserver.observe(document.body, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true });
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", observeBodyGateState, { once: true });
+        } else {
+          observeBodyGateState();
+        }
       }
       const forceTop = () => {
         const y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -108,7 +126,7 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-17">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-18">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
@@ -313,7 +331,13 @@
       transform: none !important;
     }
     html.is-standalone.feed-location-gate-active,
-    html.is-standalone.feed-location-gate-active body {
+    html.is-standalone:has(#feedLocationGate) {
+      --smart-header-content-gap: 0px;
+      background: #00cce5 !important;
+      background-color: #00cce5 !important;
+    }
+    html.is-standalone.feed-location-gate-active body,
+    html.is-standalone:has(#feedLocationGate) body {
       --smart-header-content-gap: 0px;
       background: #f8fafc !important;
       background-color: #f8fafc !important;
@@ -326,14 +350,16 @@
       ) !important;
       background-repeat: no-repeat !important;
       background-size: 100% 100vh !important;
-      background-attachment: fixed !important;
+      background-attachment: scroll !important;
     }
     html.is-standalone.feed-location-gate-active .smart-header-shell,
+    html.is-standalone:has(#feedLocationGate) .smart-header-shell,
     html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-shell {
       background: #00cce5 !important;
       isolation: isolate;
     }
     html.is-standalone.feed-location-gate-active .smart-header-shell::before,
+    html.is-standalone:has(#feedLocationGate) .smart-header-shell::before,
     html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-shell::before {
       content: "";
       position: absolute;
@@ -347,6 +373,8 @@
     }
     html.is-standalone.feed-location-gate-active .smart-header-top,
     html.is-standalone.feed-location-gate-active .smart-header-tabs,
+    html.is-standalone:has(#feedLocationGate) .smart-header-top,
+    html.is-standalone:has(#feedLocationGate) .smart-header-tabs,
     html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-top,
     html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-tabs {
       background: #00cce5 !important;
@@ -354,6 +382,8 @@
       border-bottom-color: transparent !important;
       box-shadow: none !important;
     }
+    html.is-standalone.feed-location-gate-active main.feed-location-gate-main,
+    html.is-standalone:has(#feedLocationGate) main.feed-location-gate-main,
     html.is-standalone.feed-location-gate-active body.feed-location-gate-active main.feed-location-gate-main {
       background: #f8fafc !important;
       padding-top: 0 !important;
@@ -728,7 +758,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-17"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-18"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -790,7 +820,7 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-17").catch(() => {});
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-18").catch(() => {});
       if ("requestIdleCallback" in window) {
         window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
       } else {
