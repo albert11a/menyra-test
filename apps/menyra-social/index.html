@@ -126,7 +126,7 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-18">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-19">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
@@ -333,24 +333,39 @@
     html.is-standalone.feed-location-gate-active,
     html.is-standalone:has(#feedLocationGate) {
       --smart-header-content-gap: 0px;
+      --smart-header-theme-color: #00cce5;
       background: #00cce5 !important;
       background-color: #00cce5 !important;
     }
     html.is-standalone.feed-location-gate-active body,
     html.is-standalone:has(#feedLocationGate) body {
       --smart-header-content-gap: 0px;
-      background: #f8fafc !important;
-      background-color: #f8fafc !important;
-      background-image: linear-gradient(
+      position: relative;
+      background: transparent !important;
+      background-color: transparent !important;
+      background-image: none !important;
+    }
+    html.is-standalone.feed-location-gate-active body::before,
+    html.is-standalone:has(#feedLocationGate) body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
         to bottom,
         #00cce5 0,
-        #00cce5 50vh,
-        #f8fafc 50vh,
-        #f8fafc 100vh
-      ) !important;
-      background-repeat: no-repeat !important;
-      background-size: 100% 100vh !important;
-      background-attachment: scroll !important;
+        #00cce5 calc(var(--safe-area-top) + 17rem),
+        #f8fafc calc(var(--safe-area-top) + 17rem),
+        #f8fafc 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+    html.is-standalone.feed-location-gate-active body #app,
+    html.is-standalone:has(#feedLocationGate) body #app,
+    html.is-standalone.feed-location-gate-active body #overlayRoot,
+    html.is-standalone:has(#feedLocationGate) body #overlayRoot {
+      position: relative;
+      z-index: 1;
     }
     html.is-standalone.feed-location-gate-active .smart-header-shell,
     html.is-standalone:has(#feedLocationGate) .smart-header-shell,
@@ -758,7 +773,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-18"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-19"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -820,7 +835,7 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-18").catch(() => {});
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-19").catch(() => {});
       if ("requestIdleCallback" in window) {
         window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
       } else {
