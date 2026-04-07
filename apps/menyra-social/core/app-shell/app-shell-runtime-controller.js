@@ -1180,6 +1180,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
     const isFeedLocationGate = (activeTabKey === "feed" || activeTabKey === "location")
       && String(doc.getElementById("feedView")?.dataset?.feedViewMode || "").trim().toLowerCase() === "location";
+    const isStandaloneGate = !!isFeedLocationGate && !!htmlEl?.classList?.contains("is-standalone");
     if (htmlEl) {
       htmlEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);
     }
@@ -1190,7 +1191,13 @@ export function createAppShellRuntimeController(deps = {}) {
     if (mainEl) {
       mainEl.classList.toggle("feed-location-gate-main", !!isFeedLocationGate);
       if (isFeedLocationGate) {
-        mainEl.style.setProperty("padding-top", "0px", "important");
+        mainEl.style.setProperty(
+          "padding-top",
+          isStandaloneGate
+            ? "var(--smart-header-total-height, var(--feed-location-gate-header-height))"
+            : "0px",
+          "important"
+        );
       } else {
         mainEl.style.removeProperty("padding-top");
       }
