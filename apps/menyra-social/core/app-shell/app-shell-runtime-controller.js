@@ -1289,6 +1289,9 @@ export function createAppShellRuntimeController(deps = {}) {
       } else if (preserveMainScroll) {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = prevScrollTop;
+      } else if (mode === "main") {
+        const nextMain = doc?.querySelector("main");
+        if (nextMain) nextMain.scrollTop = 0;
       }
       if (preservedMapSearchQuery && state.activeTab === "map") {
         const nextMapSearchInput = doc?.getElementById("mapSearchInput");

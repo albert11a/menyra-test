@@ -1523,7 +1523,7 @@ export function createFeedViewOrchestrationController({
       </style>
     ` : ""}
     <div id="feedView" data-feed-view-mode="feed" class="${withEntranceAnimation ? "feed-view-slide-enter" : ""}">
-      <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-4 pb-8 no-scrollbar">
+      <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-6 pb-8 no-scrollbar">
         ${renderStoriesRow(stories)}
       </div>
       ${renderFeedComposer()}
