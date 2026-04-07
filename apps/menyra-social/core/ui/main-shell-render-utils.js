@@ -71,7 +71,7 @@ export function renderMainCore({
       </section>
     `;
   } else {
-    if (state?.activeTab === "home") view = renderHomeView();
+    if (state?.activeTab === "home") view = renderFeedView();
     if (state?.activeTab === "feed") view = renderFeedView();
     if (state?.activeTab === "location") view = renderFeedView();
     if (state?.activeTab === "chat") view = renderChatView();

@@ -92,12 +92,6 @@ export function createShellDomRuntimeController({
     }
   }
 
-  function hasResolvedFeedViewerLocation() {
-    const verifiedCoords = normalizeViewerCoords(getVerifiedMapLocation());
-    if (verifiedCoords) return true;
-    return !!readStoredViewerLocation();
-  }
-
   function cleanupLegacyDrawerDocumentState() {
     if (!doc) return;
     doc.documentElement.classList.remove("drawer-open");
@@ -212,7 +206,6 @@ export function createShellDomRuntimeController({
     const avatarFit = logoFitClass(isLocalBusinessProfile(state?.userProfile));
     const navItems = isGuest
       ? [
-        { id: "home", label: "Start", icon: "star" },
         { id: "feed", label: "Feed", icon: "home" },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
@@ -220,7 +213,6 @@ export function createShellDomRuntimeController({
         { id: "orders", label: "Bestellungen", icon: "shopping-cart" }
       ]
       : [
-        { id: "home", label: "Start", icon: "star" },
         { id: "feed", label: "Feed", icon: "home" },
         { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
         { id: "search", label: "Suche", icon: "search" },

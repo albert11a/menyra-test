@@ -851,7 +851,6 @@ export function createFeedViewOrchestrationController({
   const resolveLocationScreenMode = () => {
     const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
     if (activeTabKey === "location") return "location";
-    if (activeTabKey === "home") return "home-intro";
     return "feed-gate";
   };
   const getRenderedLocationScreenMode = () => {
@@ -918,6 +917,14 @@ export function createFeedViewOrchestrationController({
     const gateRoot = doc?.getElementById("feedLocationGate");
     const locationScreenMode = getRenderedLocationScreenMode();
     const shouldStayOnLocationScreen = locationScreenMode === "location";
+    if (!shouldStayOnLocationScreen) {
+      const activeEl = doc?.activeElement;
+      if (activeEl && typeof activeEl.blur === "function") {
+        try {
+          activeEl.blur();
+        } catch {}
+      }
+    }
     if (shouldStayOnLocationScreen) {
       feedEntranceAnimationQueued = false;
       locationGateResolveTransitionPending = false;
@@ -937,7 +944,7 @@ export function createFeedViewOrchestrationController({
       locationGateResolveTimer = null;
       locationGateResolveTransitionPending = false;
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "home" && activeTabKey !== "location") {
+      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "location") {
         return;
       }
       setStateFn({ activeTab: "feed" });
@@ -1174,42 +1181,8 @@ export function createFeedViewOrchestrationController({
     return renderLocationHeroScreen(resolveLocationScreenMode());
   }
 
-  function renderHomeResolvedView() {
-    const viewerLocation = resolveViewerLocationRecord();
-    const locationLabel = String(viewerLocation?.label || viewerLocation?.city || "").trim() || "Noch kein Standort gespeichert";
-    return `
-      <section id="homeView" data-home-view-mode="resolved" class="px-6 pt-6 pb-24 space-y-4">
-        <div class="border border-slate-200 bg-white px-6 py-6 shadow-sm">
-          <p class="text-[10px] font-black uppercase tracking-[0.28em] text-sky-500">Startseite</p>
-          <h2 class="mt-3 text-2xl font-black tracking-tight text-slate-900">Willkommen zurück bei MNYRA.</h2>
-          <p class="mt-3 text-sm leading-6 text-slate-600">Hier kann später alles landen, was auf der Startseite sichtbar bleiben soll: Highlights, Neuigkeiten und kuratierte Hinweise. Feed, Feed-Gate und Standort bleiben davon getrennt.</p>
-        </div>
-        <div class="border border-slate-200 bg-white px-6 py-5 shadow-sm">
-          <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Aktiver Standort</p>
-          <div class="mt-3 flex items-start justify-between gap-4">
-            <div>
-              <h3 class="text-lg font-black tracking-tight text-slate-900">${escapeHtmlFn(locationLabel)}</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-600">Standort ändern läuft bewusst über den Standort-Tab. Deshalb bleibt die Startseite nach der ersten Auswahl im normalen weißen App-Layout.</p>
-            </div>
-            <button data-nav="location" type="button" class="shrink-0 border border-slate-300 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50">Standort</button>
-          </div>
-        </div>
-        <div class="border border-slate-200 bg-white px-6 py-5 shadow-sm">
-          <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Schnell weiter</p>
-          <div class="mt-4 flex flex-col gap-3">
-            <button data-nav="feed" type="button" class="w-full bg-slate-900 px-5 py-4 text-left text-[11px] font-black uppercase tracking-widest text-white transition-colors hover:bg-slate-800">Zum Feed</button>
-            <button data-nav="search" type="button" class="w-full border border-slate-300 bg-white px-5 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50">Suche Orte & Angebote</button>
-          </div>
-        </div>
-      </section>
-    `;
-  }
-
   function renderHomeView() {
-    if (isFeedLocationRequired()) {
-      return renderLocationHeroScreen("home-intro");
-    }
-    return renderHomeResolvedView();
+    return renderFeedView();
   }
 
   function renderFeedComposer() {

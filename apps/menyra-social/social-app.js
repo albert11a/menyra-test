@@ -1188,7 +1188,6 @@ let lastMenuOpenGestureAt = 0;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 const pendingRouteState = createPendingRouteStartupState();
-const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 let dataLoaded = {
   feed: false,
   profile: false,
@@ -1485,50 +1484,16 @@ const {
   getGuestScopeUid: () => getGuestScopeUid(),
   pendingRouteState
 });
-let startupHomeRouteResolved = false;
-
-function hasPendingStartupRouteIntent() {
-  const pending = pendingRouteState?.getPendingState?.() || {};
-  return !!(
-    String(pending.pendingProfileRestaurantId || "").trim()
-    || String(pending.pendingProfileTopTab || "").trim()
-    || String(pending.pendingNotificationId || "").trim()
-    || String(pending.pendingPostId || "").trim()
-    || String(pending.pendingChatUid || "").trim()
-    || String(pending.pendingInitialTab || "").trim()
-    || String(pending.pendingAuthMode || "").trim()
-  );
-}
-
-function hasBootstrapViewerLocationHint() {
-  try {
-    const fromRuntime = crmRuntimeController?.getVerifiedMapLocation?.();
-    const lat = Number(fromRuntime?.lat);
-    const lng = Number(fromRuntime?.lng);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return true;
-  } catch {}
-  try {
-    const raw = safeStorage?.getItem?.(FEED_VIEWER_LOCATION_STORAGE_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    const lat = Number(parsed?.lat);
-    const lng = Number(parsed?.lng);
-    return Number.isFinite(lat) && Number.isFinite(lng);
-  } catch {
-    return false;
-  }
+function normalizeLegacyHomeTab(tab) {
+  const nextTab = String(tab || "").trim().toLowerCase();
+  if (nextTab !== "home") return tab;
+  return "feed";
 }
 
 function applyPendingInitialRouteState() {
-  const hadPendingStartupIntent = !startupHomeRouteResolved && hasPendingStartupRouteIntent();
   applyPendingInitialRouteStateBase();
-  if (startupHomeRouteResolved) return;
-  startupHomeRouteResolved = true;
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-  if (hadPendingStartupIntent) return;
-  if (activeTabKey && activeTabKey !== "feed") return;
-  if (hasBootstrapViewerLocationHint()) return;
-  state.activeTab = "home";
+  if (activeTabKey === "home") state.activeTab = "feed";
 }
 const {
   normalizeLeadCountry,
@@ -2608,6 +2573,7 @@ function setState(patch) {
     patch.activeTab = sanitizeTabForSession(patch.activeTab, {
       hasProfileView: !!state.profileView
     });
+    patch.activeTab = normalizeLegacyHomeTab(patch.activeTab);
   }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {

@@ -208,6 +208,50 @@ export function createAppShellRuntimeController(deps = {}) {
   let lastRuntimeDegradedBannerSignature = "";
   let menuLazyImageObserver = null;
 
+  function getViewportScrollTop() {
+    const scrollingEl = doc?.scrollingElement || doc?.documentElement || doc?.body || null;
+    const rawTop = scrollingEl
+      ? Number(scrollingEl.scrollTop || 0)
+      : Number(win?.scrollY || 0);
+    return Math.max(0, rawTop);
+  }
+
+  function setViewportScrollTop(top = 0) {
+    const nextTop = Math.max(0, Number(top) || 0);
+    const scrollingEl = doc?.scrollingElement || doc?.documentElement || doc?.body || null;
+    if (scrollingEl && Math.abs(Number(scrollingEl.scrollTop || 0) - nextTop) >= 1) {
+      scrollingEl.scrollTop = nextTop;
+    }
+    if (doc?.documentElement && doc.documentElement !== scrollingEl) {
+      doc.documentElement.scrollTop = nextTop;
+    }
+    if (doc?.body && doc.body !== scrollingEl) {
+      doc.body.scrollTop = nextTop;
+    }
+    if (win?.scrollTo) {
+      try {
+        win.scrollTo({ top: nextTop, left: 0, behavior: "auto" });
+      } catch {
+        win.scrollTo(0, nextTop);
+      }
+    }
+  }
+
+  function scheduleViewportScrollTop(top = 0) {
+    const nextTop = Math.max(0, Number(top) || 0);
+    setViewportScrollTop(nextTop);
+    if (typeof win?.requestAnimationFrame === "function") {
+      win.requestAnimationFrame(() => {
+        setViewportScrollTop(nextTop);
+      });
+    }
+    if (typeof win?.setTimeout === "function") {
+      win.setTimeout(() => {
+        setViewportScrollTop(nextTop);
+      }, 0);
+    }
+  }
+
   function supportsRuntimePerf() {
     return typeof performance !== "undefined"
       && typeof performance.mark === "function"
@@ -1178,7 +1222,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const htmlEl = doc.documentElement;
     const bodyEl = doc.body;
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-    const isFeedLocationGate = (activeTabKey === "feed" || activeTabKey === "location" || activeTabKey === "home")
+    const isFeedLocationGate = (activeTabKey === "feed" || activeTabKey === "location")
       && String(doc.getElementById("feedView")?.dataset?.feedViewMode || "").trim().toLowerCase() === "location";
     if (htmlEl) {
       htmlEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);
@@ -1234,11 +1278,17 @@ export function createAppShellRuntimeController(deps = {}) {
         && state.activeTab === "chat"
         && !!state.chatModal.open
         && !!state.chatModal.profile;
+      const didMainTabChange = mode === "main"
+        && prevLastRenderMode === "main"
+        && !!prevLastRenderedMainTab
+        && state.activeTab !== prevLastRenderedMainTab;
       const preserveMainScroll = mode === "main"
         && prevLastRenderMode === "main"
         && state.activeTab === prevLastRenderedMainTab
         && !isChatThreadOpen;
-      const preserveWindowScroll = preserveMainScroll
+      const preserveViewportScroll = preserveMainScroll
+        && (!!doc?.scrollingElement || (!!win && typeof win.scrollTo === "function"));
+      const preserveSmartHeaderWindowScroll = preserveMainScroll
         && shouldShowSmartHeaderTabs()
         && !!win
         && typeof win.scrollTo === "function";
@@ -1253,8 +1303,9 @@ export function createAppShellRuntimeController(deps = {}) {
         ? String(doc?.getElementById("mapSearchInput")?.value || "")
         : "";
       const prevScrollTop = preserveMainScroll ? doc?.querySelector("main")?.scrollTop ?? 0 : 0;
-      const prevWindowScrollY = preserveWindowScroll ? Math.max(0, Number(win.scrollY || 0)) : 0;
-      if (preserveWindowScroll) armSmartHeaderScrollGuard();
+      const prevViewportScrollTop = preserveViewportScroll ? getViewportScrollTop() : 0;
+      let nextViewportScrollTop = null;
+      if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
       if (appEl) {
         appEl.innerHTML = nextHtml;
         appEl.removeAttribute("aria-busy");
@@ -1282,16 +1333,25 @@ export function createAppShellRuntimeController(deps = {}) {
           && reuseFeedViewMode === nextFeedViewMode;
         if (canReuseFeed) {
           nextFeed.replaceWith(reuseFeed);
+        } else {
+          const nextMain = doc?.querySelector("main");
+          if (nextMain) nextMain.scrollTop = 0;
+          nextViewportScrollTop = 0;
         }
-        const nextMain = doc?.querySelector("main");
-        if (nextMain) nextMain.scrollTop = prevScrollTop;
+        if (canReuseFeed) {
+          const nextMain = doc?.querySelector("main");
+          if (nextMain) nextMain.scrollTop = prevScrollTop;
+          nextViewportScrollTop = prevViewportScrollTop;
+        }
         updateFeedDomFn();
       } else if (preserveMainScroll) {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = prevScrollTop;
+        nextViewportScrollTop = prevViewportScrollTop;
       } else if (mode === "main") {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = 0;
+        nextViewportScrollTop = 0;
       }
       if (preservedMapSearchQuery && state.activeTab === "map") {
         const nextMapSearchInput = doc?.getElementById("mapSearchInput");
@@ -1299,11 +1359,9 @@ export function createAppShellRuntimeController(deps = {}) {
           nextMapSearchInput.value = preservedMapSearchQuery;
         }
       }
-      if (preserveWindowScroll) {
-        armSmartHeaderScrollGuard();
-        if (Math.abs(Math.max(0, Number(win.scrollY || 0)) - prevWindowScrollY) >= 1) {
-          win.scrollTo(Number(win.scrollX || 0), prevWindowScrollY);
-        }
+      if (nextViewportScrollTop !== null) {
+        if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
+        setViewportScrollTop(nextViewportScrollTop);
       }
       if (win?.lucide?.createIcons) win.lucide.createIcons();
       if (state.activeTab === "search" && state.search.keepFocus) {
@@ -1319,6 +1377,10 @@ export function createAppShellRuntimeController(deps = {}) {
         focusInputByIdFn("customersSearchInput");
       }
       restoreChatInputFocusStateFn(chatInputFocusState);
+      if (nextViewportScrollTop !== null && (didMainTabChange || preserveMainScroll)) {
+        if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
+        scheduleViewportScrollTop(nextViewportScrollTop);
+      }
       if (mode === "main") setLastRenderedMainTab(state.activeTab);
       else setLastRenderedMainTab("");
     }
