@@ -7,7 +7,7 @@
   <meta name="supported-color-schemes" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <script>
     (() => {
       window.__MENYRA_SOCIAL_DEGRADED__ = window.__MENYRA_SOCIAL_DEGRADED__ || {};
@@ -37,7 +37,7 @@
         }
       };
       const resolveGateAwareUiChromeColor = () => {
-        if (document.documentElement.classList.contains("feed-location-gate-active")) {
+        if (standalone && document.documentElement.classList.contains("feed-location-gate-active")) {
           return FEED_GATE_UI_COLOR;
         }
         return standalone ? LIGHT_UI_COLOR : resolveUiChromeColor();
@@ -61,7 +61,7 @@
         } else {
           ensureMeta("theme-color", uiChromeColor);
         }
-        ensureMeta("apple-mobile-web-app-status-bar-style", "default");
+        ensureMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
         ensureMeta("color-scheme", "light");
         ensureMeta("supported-color-schemes", "light");
       };
@@ -108,7 +108,7 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-14">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-16">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
@@ -312,17 +312,13 @@
     .smart-header-tabs--hidden {
       transform: none !important;
     }
-    html.feed-location-gate-active {
-      background: #00cce5 !important;
-      background-color: #00cce5 !important;
-    }
-    html.is-standalone.feed-location-gate-active {
-      background: #00cce5 !important;
-      background-color: #00cce5 !important;
-    }
-    html.is-standalone.feed-location-gate-active body {
+    html.is-standalone.feed-location-gate-active,
+    html.is-standalone.feed-location-gate-active body.feed-location-gate-active {
       background: #f8fafc !important;
       background-color: #f8fafc !important;
+    }
+    html.is-standalone.feed-location-gate-active body.feed-location-gate-active {
+      --smart-header-content-gap: 0px;
       background-image: linear-gradient(
         to bottom,
         #00cce5 0,
@@ -333,29 +329,31 @@
       background-repeat: no-repeat !important;
       background-attachment: fixed !important;
     }
-    html.is-standalone.feed-location-gate-active body.feed-location-gate-active::before {
+    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-shell {
+      background: #00cce5 !important;
+      isolation: isolate;
+    }
+    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-shell::before {
       content: "";
-      position: fixed;
-      top: 0;
+      position: absolute;
       left: 0;
       right: 0;
-      height: calc(var(--safe-area-top) + 6.5rem);
+      top: calc(-1 * (var(--safe-area-top) + 1px));
+      height: calc(var(--safe-area-top) + 1px);
       background: #00cce5;
       pointer-events: none;
-      z-index: 99;
+      z-index: 0;
     }
-    body.feed-location-gate-active .smart-header-top,
-    body.feed-location-gate-active .smart-header-tabs {
+    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-top,
+    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-tabs {
       background: #00cce5 !important;
       border-bottom: 0 !important;
       border-bottom-color: transparent !important;
       box-shadow: none !important;
     }
-    body.feed-location-gate-active main.feed-location-gate-main {
-      background: #f8fafc !important;
-    }
     html.is-standalone.feed-location-gate-active body.feed-location-gate-active main.feed-location-gate-main {
       background: #f8fafc !important;
+      padding-top: 0 !important;
     }
     .smart-header-tab,
     .smart-header-action {
@@ -727,7 +725,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-14"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-07-feed-gate-stability-16"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -789,7 +787,7 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-14").catch(() => {});
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-07-feed-gate-stability-16").catch(() => {});
       if ("requestIdleCallback" in window) {
         window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
       } else {
