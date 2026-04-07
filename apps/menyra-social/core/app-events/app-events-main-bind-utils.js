@@ -152,6 +152,7 @@ export function bindAppEventsCore({
     renderFn,
     ensureMenuDataForProfileFn,
     ensureFocusDataForProfileFn,
+    clearVerifiedMapLocationFn,
     openProfileViewFromBusinessFn
   });
 

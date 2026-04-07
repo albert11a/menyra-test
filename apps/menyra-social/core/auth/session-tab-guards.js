@@ -1,4 +1,4 @@
-const GUEST_ALLOWED_TABS = new Set(["feed", "search", "map", "orders", "profile"]);
+const GUEST_ALLOWED_TABS = new Set(["feed", "search", "map", "location", "orders", "profile"]);
 
 export function isGuestSessionCore(user = null) {
   return !user;

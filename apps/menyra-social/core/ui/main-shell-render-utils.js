@@ -70,6 +70,7 @@ export function renderMainCore({
     `;
   } else {
     if (state?.activeTab === "feed") view = renderFeedView();
+    if (state?.activeTab === "location") view = renderFeedView();
     if (state?.activeTab === "chat") view = renderChatView();
     if (state?.activeTab === "search") view = renderSearchView();
     if (state?.activeTab === "map") view = renderMapView();

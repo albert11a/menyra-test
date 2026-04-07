@@ -160,6 +160,25 @@ export function bindAppShellEventsCore({
     btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
       if (!tab) return;
+      if (tab === "location") {
+        setState({
+          activeTab: "location",
+          profileTopTab: state.profileTopTab,
+          drawerOpen: false,
+          chatSettingsOpen: false,
+          chatListScope: "inbox",
+          chatThreadMenuId: "",
+          settingsView: "main",
+          selectedBusiness: null,
+          profileView: null,
+          profileModal: { open: false, profile: null },
+          postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
+          likesModal: { open: false, postId: "", animate: false },
+          leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
+          customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
+        });
+        return;
+      }
       if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
         openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
         return;

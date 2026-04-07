@@ -301,6 +301,11 @@ export function createFeedViewOrchestrationController({
   };
   const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   const FEED_LOCATION_REMOTE_LIMIT = 14;
+  const FEED_LOCATION_REMOTE_MIN_QUERY_LENGTH = 3;
+  const FEED_LOCATION_REMOTE_CACHE_MAX_ENTRIES = 72;
+  const FEED_LOCATION_REMOTE_SUGGESTION_ID_CACHE_MAX = 620;
+  const FEED_LOCATION_REMOTE_TIMEOUT_MS = 4200;
+  const FEED_LOCATION_REMOTE_FAILURE_BACKOFF_MS = 120000;
   const FEED_LOCATION_REMOTE_ALLOWED_COUNTRY_CODES = new Set(["xk", "al", "rs"]);
   const FEED_LOCATION_REMOTE_ALLOWED_OSM_VALUES = new Set(["city", "town", "village", "hamlet", "municipality"]);
   const FEED_LOCATION_COUNTRY_ALIASES = new Map([
@@ -355,6 +360,11 @@ export function createFeedViewOrchestrationController({
   let locationRemoteSearchTimer = null;
   let locationRemoteFetchController = null;
   let locationRemoteFetchQueryKey = "";
+  let locationRemoteFetchPromise = null;
+  let locationRemoteDisabledUntilTs = 0;
+  let locationGateResolveTransitionPending = false;
+  let locationGateResolveTimer = null;
+  let feedEntranceAnimationQueued = false;
   const locationRemoteSuggestionCache = new Map();
   const locationRemoteSuggestionById = new Map();
   const normalizeLocationQuery = (value = "") => String(value || "")
@@ -400,7 +410,23 @@ export function createFeedViewOrchestrationController({
     try {
       const raw = win.localStorage.getItem(FEED_LOCATION_STORAGE_KEY);
       if (!raw) return null;
-      return normalizeViewerLocationRecord(JSON.parse(raw));
+      const normalized = normalizeViewerLocationRecord(JSON.parse(raw));
+      if (normalized) return normalized;
+      try {
+        win.localStorage.removeItem(FEED_LOCATION_STORAGE_KEY);
+      } catch {}
+      return null;
+    } catch {
+      try {
+        win.localStorage.removeItem(FEED_LOCATION_STORAGE_KEY);
+      } catch {}
+      return null;
+    }
+  };
+  const hasStoredViewerLocationEntry = () => {
+    if (!win?.localStorage) return null;
+    try {
+      return win.localStorage.getItem(FEED_LOCATION_STORAGE_KEY) !== null;
     } catch {
       return null;
     }
@@ -419,11 +445,27 @@ export function createFeedViewOrchestrationController({
   };
   const resolveViewerLocationRecord = () => {
     const sessionRecord = normalizeViewerLocationRecord(sessionViewerLocation);
-    if (sessionRecord) return sessionRecord;
     const storedRecord = readStoredViewerLocation();
     if (storedRecord) {
       sessionViewerLocation = storedRecord;
+      if (typeof setVerifiedMapLocationFn === "function") {
+        try {
+          setVerifiedMapLocationFn({
+            lat: storedRecord.lat,
+            lng: storedRecord.lng,
+            label: storedRecord.label,
+            city: storedRecord.city,
+            source: storedRecord.source,
+            savedAt: storedRecord.savedAt
+          });
+        } catch {}
+      }
       return storedRecord;
+    }
+    const hasStoredEntry = hasStoredViewerLocationEntry();
+    if (sessionRecord && hasStoredEntry !== false) return sessionRecord;
+    if (hasStoredEntry === false) {
+      sessionViewerLocation = null;
     }
     if (typeof getVerifiedMapLocationFn !== "function") return null;
     let fromMap = null;
@@ -450,7 +492,14 @@ export function createFeedViewOrchestrationController({
     writeStoredViewerLocation(normalized);
     if (typeof setVerifiedMapLocationFn === "function") {
       try {
-        setVerifiedMapLocationFn({ lat: normalized.lat, lng: normalized.lng });
+        setVerifiedMapLocationFn({
+          lat: normalized.lat,
+          lng: normalized.lng,
+          label: normalized.label,
+          city: normalized.city,
+          source: normalized.source,
+          savedAt: normalized.savedAt
+        });
       } catch {}
     }
     return true;
@@ -464,12 +513,38 @@ export function createFeedViewOrchestrationController({
   };
   const clearFeedLocationRemoteLookup = () => {
     clearFeedLocationRemoteSearchTimer();
-    if (!locationRemoteFetchController) return;
-    try {
-      locationRemoteFetchController.abort();
-    } catch {}
+    if (locationRemoteFetchController) {
+      try {
+        locationRemoteFetchController.abort();
+      } catch {}
+    }
+    locationRemoteFetchPromise = null;
     locationRemoteFetchController = null;
     locationRemoteFetchQueryKey = "";
+  };
+  const cacheFeedLocationRemoteSuggestions = (queryKey = "", options = []) => {
+    const normalizedKey = normalizeLocationQuery(queryKey);
+    if (!normalizedKey) return;
+    const rows = Array.isArray(options) ? options : [];
+    locationRemoteSuggestionCache.set(normalizedKey, rows);
+    while (locationRemoteSuggestionCache.size > FEED_LOCATION_REMOTE_CACHE_MAX_ENTRIES) {
+      const oldest = locationRemoteSuggestionCache.keys().next().value;
+      if (!oldest) break;
+      locationRemoteSuggestionCache.delete(oldest);
+    }
+    if (locationRemoteSuggestionById.size > FEED_LOCATION_REMOTE_SUGGESTION_ID_CACHE_MAX) {
+      locationRemoteSuggestionById.clear();
+    }
+    rows.forEach((entry) => {
+      locationRemoteSuggestionById.set(String(entry?.id || "").trim().toLowerCase(), entry);
+    });
+  };
+  const clearLocationGateResolveTimer = () => {
+    if (!locationGateResolveTimer) return;
+    try {
+      clearTimeout(locationGateResolveTimer);
+    } catch {}
+    locationGateResolveTimer = null;
   };
   const resolveSuggestionCountryLabel = (entry = {}) => {
     const fromCode = toCountryLabel(entry?.countryCode || entry?.country_code || "");
@@ -611,10 +686,14 @@ export function createFeedViewOrchestrationController({
   const requestRemoteFeedLocationSuggestions = async (query = "") => {
     const queryText = String(query || "").trim();
     const normalizedQuery = normalizeLocationQuery(queryText);
-    if (normalizedQuery.length < 2) return [];
+    if (normalizedQuery.length < FEED_LOCATION_REMOTE_MIN_QUERY_LENGTH) return [];
     if (locationRemoteSuggestionCache.has(normalizedQuery)) {
       return locationRemoteSuggestionCache.get(normalizedQuery) || [];
     }
+    if (locationRemoteFetchPromise && locationRemoteFetchQueryKey === normalizedQuery) {
+      return locationRemoteFetchPromise;
+    }
+    if (Date.now() < locationRemoteDisabledUntilTs) return [];
     const fetchClient = typeof win?.fetch === "function" ? win.fetch.bind(win) : null;
     if (!fetchClient) return [];
     if (locationRemoteFetchController && locationRemoteFetchQueryKey && locationRemoteFetchQueryKey !== normalizedQuery) {
@@ -623,39 +702,56 @@ export function createFeedViewOrchestrationController({
       } catch {}
     }
     const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timeoutHandle = null;
     locationRemoteFetchController = controller;
     locationRemoteFetchQueryKey = normalizedQuery;
+    if (controller) {
+      timeoutHandle = setTimeoutFn(() => {
+        try {
+          controller.abort();
+        } catch {}
+      }, FEED_LOCATION_REMOTE_TIMEOUT_MS);
+    }
     const endpoint = new URL("https://photon.komoot.io/api/");
     endpoint.searchParams.set("limit", String(FEED_LOCATION_REMOTE_LIMIT));
     endpoint.searchParams.set("lang", "en");
     endpoint.searchParams.set("osm_tag", "place");
     endpoint.searchParams.set("q", queryText);
-    try {
-      const response = await fetchClient(endpoint.toString(), {
-        method: "GET",
-        signal: controller?.signal,
-        headers: { "Accept-Language": "sq,sr,de,en" }
-      });
-      if (!response?.ok) throw new Error(`photon_${Number(response?.status || 0)}`);
-      const payload = await response.json();
-      const rows = Array.isArray(payload?.features) ? payload.features : [];
-      const options = buildFeedLocationRemoteSuggestionOptions(rows);
-      locationRemoteSuggestionCache.set(normalizedQuery, options);
-      options.forEach((entry) => {
-        locationRemoteSuggestionById.set(String(entry.id || "").trim().toLowerCase(), entry);
-      });
-      return options;
-    } catch (error) {
-      if (String(error?.name || "") !== "AbortError") {
-        locationRemoteSuggestionCache.set(normalizedQuery, []);
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetchClient(endpoint.toString(), {
+          method: "GET",
+          signal: controller?.signal,
+          headers: { "Accept-Language": "sq,sr,de,en" }
+        });
+        if (!response?.ok) throw new Error(`photon_${Number(response?.status || 0)}`);
+        const payload = await response.json();
+        const rows = Array.isArray(payload?.features) ? payload.features : [];
+        const options = buildFeedLocationRemoteSuggestionOptions(rows);
+        cacheFeedLocationRemoteSuggestions(normalizedQuery, options);
+        locationRemoteDisabledUntilTs = 0;
+        return options;
+      } catch (error) {
+        if (String(error?.name || "") !== "AbortError") {
+          locationRemoteDisabledUntilTs = Date.now() + FEED_LOCATION_REMOTE_FAILURE_BACKOFF_MS;
+          cacheFeedLocationRemoteSuggestions(normalizedQuery, []);
+        }
+        return [];
+      } finally {
+        if (timeoutHandle) {
+          try {
+            clearTimeout(timeoutHandle);
+          } catch {}
+        }
+        if (locationRemoteFetchController === controller && locationRemoteFetchQueryKey === normalizedQuery) {
+          locationRemoteFetchController = null;
+          locationRemoteFetchQueryKey = "";
+          locationRemoteFetchPromise = null;
+        }
       }
-      return [];
-    } finally {
-      if (locationRemoteFetchController === controller) {
-        locationRemoteFetchController = null;
-        locationRemoteFetchQueryKey = "";
-      }
-    }
+    })();
+    locationRemoteFetchPromise = fetchPromise;
+    return fetchPromise;
   };
   const getFeedLocationCitySuggestions = (query = "", limit = 6) => {
     const normalizedQuery = normalizeLocationQuery(query);
@@ -705,7 +801,7 @@ export function createFeedViewOrchestrationController({
     clearFeedLocationRemoteSearchTimer();
     if (locationRequestPending) return;
     const normalizedQuery = normalizeLocationQuery(query);
-    if (normalizedQuery.length < 2) return;
+    if (normalizedQuery.length < FEED_LOCATION_REMOTE_MIN_QUERY_LENGTH) return;
     if (locationRemoteSuggestionCache.has(normalizedQuery)) return;
     locationRemoteSearchTimer = setTimeoutFn(async () => {
       locationRemoteSearchTimer = null;
@@ -740,7 +836,7 @@ export function createFeedViewOrchestrationController({
     suggestionsRoot.classList.add("feed-location-suggestions--open");
     suggestionsRoot.setAttribute("aria-hidden", "false");
     input.setAttribute("aria-expanded", "true");
-    if (!skipRemoteFetch) scheduleFeedLocationRemoteSearch(query);
+    if (!skipRemoteFetch && suggestions.length < 3) scheduleFeedLocationRemoteSearch(query);
   };
   const resolveLocationGateStatusText = () => {
     if (locationGateMessage) return locationGateMessage;
@@ -759,15 +855,19 @@ export function createFeedViewOrchestrationController({
     const statusEl = doc?.getElementById("feedLocationStatus");
     const viewerLocation = resolveViewerLocationRecord();
     const hasLocation = !!normalizeViewerLocationRecord(viewerLocation);
+    const busy = locationRequestPending || locationGateResolveTransitionPending;
     if (requestBtn instanceof HTMLButtonElement) {
-      requestBtn.disabled = locationRequestPending;
+      requestBtn.disabled = busy;
       requestBtn.classList.toggle("opacity-60", requestBtn.disabled);
       requestBtn.classList.toggle("cursor-not-allowed", requestBtn.disabled);
-      requestBtn.classList.toggle("is-success", hasLocation);
+      requestBtn.classList.toggle("is-success", hasLocation && !busy);
+      requestBtn.classList.toggle("is-loading", locationGateResolveTransitionPending);
     }
     if (locateIcon instanceof HTMLElement) {
-      locateIcon.classList.toggle("animate-spin", locationRequestPending);
-      locateIcon.setAttribute("data-lucide", hasLocation && !locationRequestPending ? "check" : "crosshair");
+      locateIcon.classList.toggle("animate-spin", busy);
+      locateIcon.setAttribute("data-lucide", locationGateResolveTransitionPending
+        ? "loader-circle"
+        : (hasLocation && !locationRequestPending ? "check" : "crosshair"));
     }
     if (locatePulse instanceof HTMLElement) {
       locatePulse.classList.toggle("opacity-100", locationRequestPending);
@@ -795,14 +895,28 @@ export function createFeedViewOrchestrationController({
   const applyViewerLocationSelection = (record = null) => {
     const normalized = normalizeViewerLocationRecord(record);
     if (!normalized) return false;
+    if (locationGateResolveTransitionPending) return true;
     locationRequestPending = false;
     locationGateStatus = "granted";
     locationGateMessage = "";
     clearFeedLocationRemoteLookup();
     hideFeedLocationSuggestions();
     persistViewerLocation(normalized);
+    feedEntranceAnimationQueued = true;
+    locationGateResolveTransitionPending = true;
+    const gateRoot = doc?.getElementById("feedLocationGate");
+    gateRoot?.classList?.add?.("feed-location-gate--resolving");
     syncFeedLocationGateDom();
-    setStateFn({ activeTab: "feed" });
+    clearLocationGateResolveTimer();
+    locationGateResolveTimer = setTimeoutFn(() => {
+      locationGateResolveTimer = null;
+      locationGateResolveTransitionPending = false;
+      const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "location") {
+        return;
+      }
+      setStateFn({ activeTab: "feed" });
+    }, 360);
     return true;
   };
   const requestViewerLocationAccess = ({ fallbackCity = null, forceExact = false } = {}) => {
@@ -935,6 +1049,7 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate .loc-request-btn { position: relative; width: 2.5rem; height: 2.5rem; border: 0; border-radius: 9999px; background: #eafbfe; color: #00cce5; display: inline-flex; align-items: center; justify-content: center; transition: transform 160ms ease, background-color 160ms ease, color 160ms ease; }
           #feedLocationGate .loc-request-btn:active { transform: scale(0.95); }
           #feedLocationGate .loc-request-btn.is-success { background: rgb(236 253 245); color: rgb(16 185 129); }
+          #feedLocationGate .loc-request-btn.is-loading { background: rgb(255 255 255); color: rgb(14 165 233); box-shadow: 0 0 0 3px rgb(255 255 255 / 0.42); }
           #feedLocationGate .loc-request-pulse { position: absolute; inset: 0; border-radius: 9999px; background: rgb(0 204 229 / 0.2); opacity: 0; animation: ping 1.05s cubic-bezier(0, 0, 0.2, 1) infinite; }
           #feedLocationGate .feed-location-suggestions { position: relative; z-index: 30; margin-top: 0; max-height: 0; opacity: 0; padding: 0; overflow: hidden; pointer-events: none; transform: translateY(-4px); border-radius: 1.4rem; background: rgb(255 255 255 / 0.98); border: 1px solid rgb(226 232 240 / 0.95); box-shadow: 0 18px 44px rgb(15 23 42 / 0.16); backdrop-filter: blur(18px); transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease, padding 220ms ease, transform 220ms ease; }
           #feedLocationGate .feed-location-suggestions--open { margin-top: 0.75rem; max-height: 18rem; opacity: 1; padding: 0.5rem; pointer-events: auto; transform: translateY(0); }
@@ -962,6 +1077,11 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate .loc-foot { text-align: center; margin-top: 1.35rem; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: rgb(148 163 184); }
           #feedLocationGate .fade-in-up { opacity: 0; transform: translateY(30px); animation: feedLocationFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
           @keyframes feedLocationFadeUp { to { opacity: 1; transform: translateY(0); } }
+          #feedLocationGate.feed-location-gate--resolving { pointer-events: none; animation: feedLocationGateResolveOut 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+          @keyframes feedLocationGateResolveOut {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-42px); }
+          }
         </style>
 
         <div class="loc-shell">
@@ -1308,6 +1428,9 @@ export function createFeedViewOrchestrationController({
   }
 
   function renderFeedView() {
+    if (String(state?.activeTab || "").trim().toLowerCase() === "location") {
+      return renderFeedLocationView();
+    }
     if (isFeedLocationRequired()) {
       return renderFeedLocationView();
     }
@@ -1315,8 +1438,22 @@ export function createFeedViewOrchestrationController({
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
     const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+    const withEntranceAnimation = !!feedEntranceAnimationQueued;
+    feedEntranceAnimationQueued = false;
     return `
-    <div id="feedView" data-feed-view-mode="feed">
+    ${withEntranceAnimation ? `
+      <style>
+        #feedView.feed-view-slide-enter {
+          animation: feedViewSlideIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+          will-change: transform, opacity;
+        }
+        @keyframes feedViewSlideIn {
+          0% { opacity: 0; transform: translateY(44px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+      </style>
+    ` : ""}
+    <div id="feedView" data-feed-view-mode="feed" class="${withEntranceAnimation ? "feed-view-slide-enter" : ""}">
       <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-4 pb-8 no-scrollbar">
         ${renderStoriesRow(stories)}
       </div>

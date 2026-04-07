@@ -29,9 +29,6 @@ export function bindAppSettingsProfileEventsCore({
   const icon = typeof iconFn === "function" ? iconFn : (() => "");
   const saveAccountSettings = typeof saveAccountSettingsFn === "function" ? saveAccountSettingsFn : null;
   const openLocationPicker = typeof openLocationPickerFn === "function" ? openLocationPickerFn : null;
-  const clearVerifiedMapLocation = typeof clearVerifiedMapLocationFn === "function"
-    ? clearVerifiedMapLocationFn
-    : (() => {});
   const syncNotificationsPushRuntime = typeof syncNotificationsPushRuntimeFn === "function"
     ? syncNotificationsPushRuntimeFn
     : null;
@@ -96,7 +93,6 @@ export function bindAppSettingsProfileEventsCore({
   const settingsAddress = doc.getElementById("settingsAddress");
   if (settingsAddress) {
     settingsAddress.addEventListener("input", () => {
-      clearVerifiedMapLocation();
       const badge = doc.getElementById("coordsDisplay");
       if (badge) badge.classList.add("hidden");
     });

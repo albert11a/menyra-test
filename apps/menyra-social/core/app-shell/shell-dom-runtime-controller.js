@@ -42,6 +42,7 @@ export function createShellDomRuntimeController({
   openNotificationTarget = async () => {},
   render = () => {},
   getLastRenderMode = () => "",
+  getVerifiedMapLocationFn = () => null,
   isPlaceholderUrl = () => false,
   escapeHtml = (value = "") => String(value || ""),
   icon = () => "",
@@ -52,6 +53,50 @@ export function createShellDomRuntimeController({
   const win = windowObj || (typeof window === "undefined" ? null : window);
   const deleteDoc = typeof deleteDocFn === "function" ? deleteDocFn : (async () => {});
   const makeDocRef = typeof docFn === "function" ? docFn : null;
+  const getVerifiedMapLocation = typeof getVerifiedMapLocationFn === "function"
+    ? getVerifiedMapLocationFn
+    : (() => null);
+  const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
+
+  function normalizeViewerCoords(value = null) {
+    const lat = Number(value?.lat ?? value?.latitude ?? value?.y);
+    const lng = Number(value?.lng ?? value?.lon ?? value?.longitude ?? value?.x);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }
+
+  function readStoredViewerLocation() {
+    if (!win?.localStorage) return null;
+    try {
+      const raw = win.localStorage.getItem(FEED_VIEWER_LOCATION_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const coords = normalizeViewerCoords(parsed);
+      if (!coords) {
+        try {
+          win.localStorage.removeItem(FEED_VIEWER_LOCATION_STORAGE_KEY);
+        } catch {}
+        return null;
+      }
+      return {
+        lat: coords.lat,
+        lng: coords.lng,
+        city: String(parsed?.city || parsed?.label || "").trim(),
+        label: String(parsed?.label || parsed?.city || "").trim()
+      };
+    } catch {
+      try {
+        win.localStorage.removeItem(FEED_VIEWER_LOCATION_STORAGE_KEY);
+      } catch {}
+      return null;
+    }
+  }
+
+  function hasResolvedFeedViewerLocation() {
+    const verifiedCoords = normalizeViewerCoords(getVerifiedMapLocation());
+    if (verifiedCoords) return true;
+    return !!readStoredViewerLocation();
+  }
 
   function cleanupLegacyDrawerDocumentState() {
     if (!doc) return;
@@ -162,6 +207,8 @@ export function createShellDomRuntimeController({
       || !!state?.roleSwitchRestaurantId
       || isRestaurantCafeProfile(state?.userProfile);
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
+    const hasFeedViewerLocation = hasResolvedFeedViewerLocation();
+    const isLocationTabActive = String(state?.activeTab || "").trim().toLowerCase() === "location";
     const avatarUrl = resolveUserAvatar(state?.userProfile?.avatar);
     const avatarFit = logoFitClass(isLocalBusinessProfile(state?.userProfile));
     const navItems = isGuest
@@ -169,6 +216,7 @@ export function createShellDomRuntimeController({
         { id: "feed", label: "Feed", icon: "home" },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
+        { id: "location", label: "Standort", icon: "map-pin", hidden: !hasFeedViewerLocation },
         { id: "orders", label: "Bestellungen", icon: "shopping-cart" }
       ]
       : [
@@ -176,6 +224,7 @@ export function createShellDomRuntimeController({
         { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
+        { id: "location", label: "Standort", icon: "map-pin", hidden: !hasFeedViewerLocation },
         { id: "profile", label: "Profil", icon: "user" },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
         { id: "favorites", label: "Favoriten", icon: "bookmark", hidden: !isRegisteredUser },
@@ -213,9 +262,11 @@ export function createShellDomRuntimeController({
             const isFavoritesView = state?.activeTab === "profile" && state?.profileTopTab === "favorites";
             const isActive = item.id === "favorites"
               ? isFavoritesView
+              : (item.id === "location"
+                ? isLocationTabActive
               : (item.id === "profile"
                 ? (state?.activeTab === "profile" && !isFavoritesView)
-                : state?.activeTab === item.id);
+                : state?.activeTab === item.id));
             return `
             <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">
@@ -252,6 +303,7 @@ export function createShellDomRuntimeController({
       || !!state?.roleSwitchRestaurantId
       || isRestaurantCafeProfile(state?.userProfile);
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
+    const hasFeedViewerLocation = hasResolvedFeedViewerLocation();
     const showCeoTabs = isCeoUser();
     const headerAvatar = doc?.getElementById("headerAvatar");
     if (headerAvatar) {
@@ -306,6 +358,10 @@ export function createShellDomRuntimeController({
     const favoritesNavBtn = doc?.querySelector('[data-nav="favorites"]');
     if (favoritesNavBtn) {
       favoritesNavBtn.classList.toggle("hidden", !isRegisteredUser);
+    }
+    const locationNavBtn = doc?.querySelector('[data-nav="location"]');
+    if (locationNavBtn) {
+      locationNavBtn.classList.toggle("hidden", !hasFeedViewerLocation);
     }
     const businessAccountsNavBtn = doc?.querySelector('[data-nav="businessAccounts"]');
     if (businessAccountsNavBtn) {

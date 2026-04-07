@@ -1899,6 +1899,7 @@ shellDomRuntimeController = createShellDomRuntimeController({
   openNotificationTarget,
   render,
   getLastRenderMode: () => lastRenderMode,
+  getVerifiedMapLocationFn: (...args) => crmRuntimeController?.getVerifiedMapLocation?.(...args) || null,
   isPlaceholderUrl,
   escapeHtml,
   icon,

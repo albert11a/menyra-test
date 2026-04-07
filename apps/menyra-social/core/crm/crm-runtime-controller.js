@@ -2520,7 +2520,22 @@ async function convertLeadToCustomer(leadId) {
       coords?.lat ?? coords?.latitude,
       coords?.lng ?? coords?.lon ?? coords?.longitude
     );
-    verifiedMapLocation = normalized ? { lat: normalized.lat, lng: normalized.lng } : null;
+    if (!normalized) {
+      verifiedMapLocation = null;
+      return verifiedMapLocation;
+    }
+    const label = String(coords?.label || "").trim();
+    const city = String(coords?.city || label).trim();
+    const source = String(coords?.source || "").trim().toLowerCase();
+    const savedAt = Number(coords?.savedAt || Date.now()) || Date.now();
+    verifiedMapLocation = {
+      lat: normalized.lat,
+      lng: normalized.lng,
+      label,
+      city,
+      source,
+      savedAt
+    };
     return verifiedMapLocation;
   }
 

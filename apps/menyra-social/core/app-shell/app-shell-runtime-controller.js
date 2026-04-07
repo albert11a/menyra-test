@@ -1175,9 +1175,14 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function syncFeedLocationGateChromeState() {
     if (!doc) return;
+    const htmlEl = doc.documentElement;
     const bodyEl = doc.body;
-    const isFeedLocationGate = state.activeTab === "feed"
+    const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+    const isFeedLocationGate = (activeTabKey === "feed" || activeTabKey === "location")
       && String(doc.getElementById("feedView")?.dataset?.feedViewMode || "").trim().toLowerCase() === "location";
+    if (htmlEl) {
+      htmlEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);
+    }
     if (bodyEl) {
       bodyEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);
     }
@@ -1235,6 +1240,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const reuseFeed = preserveMainScroll && state.activeTab === "feed"
         ? doc?.getElementById("feedView")
         : null;
+      const reuseFeedViewMode = String(reuseFeed?.dataset?.feedViewMode || "").trim().toLowerCase();
       const reuseLeafletMapCanvas = preserveMainScroll && state.activeTab === "map"
         ? doc?.getElementById("leafletMap")
         : null;
@@ -1264,7 +1270,12 @@ export function createAppShellRuntimeController(deps = {}) {
       }
       if (reuseFeed) {
         const nextFeed = doc?.getElementById("feedView");
-        if (nextFeed && reuseFeed !== nextFeed) {
+        const nextFeedViewMode = String(nextFeed?.dataset?.feedViewMode || "").trim().toLowerCase();
+        const canReuseFeed = !!nextFeed
+          && reuseFeed !== nextFeed
+          && !!reuseFeedViewMode
+          && reuseFeedViewMode === nextFeedViewMode;
+        if (canReuseFeed) {
           nextFeed.replaceWith(reuseFeed);
         }
         const nextMain = doc?.querySelector("main");

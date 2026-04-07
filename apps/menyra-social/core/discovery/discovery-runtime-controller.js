@@ -84,6 +84,7 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const LOCATION_UNVERIFIED_LABEL = "Standort nicht verifiziert";
   const MAP_TILES_DEGRADED_NOTICE = "Kartenkacheln konnten nicht geladen werden. Es werden nur verifizierte Daten gezeigt.";
   const MAP_TILES_FALLBACK_NOTICE = "Primaere Kartenkacheln langsam. Fallback-Karte aktiv.";
+  const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 
 function emitVendorDegraded(kind = "map", active = false, message = "") {
   if (!window || typeof window.dispatchEvent !== "function") return;
@@ -603,6 +604,7 @@ function initLeafletIfNeeded() {
     try { leafletMap.invalidateSize(); } catch {}
     scheduleLeafletRefresh(2);
     bindMapSearchInput();
+    hydrateMapSearchFromVerifiedLocation();
     return;
   }
 
@@ -658,6 +660,7 @@ function initLeafletIfNeeded() {
   if (window.lucide?.createIcons) window.lucide.createIcons();
   mapLocate({ preferVerified: true });
   bindMapSearchInput();
+  hydrateMapSearchFromVerifiedLocation({ force: true });
   scheduleLeafletRefresh(3);
 }
 
@@ -738,13 +741,32 @@ function renderLeafletMarkers(locations) {
 }
 
 function filterMapLocationsByQuery(query) {
-  const key = String(query || "").toLowerCase().trim();
+  const normalizeToken = (value = "") => {
+    const raw = String(value || "");
+    const normalized = typeof normalizeSearchKey === "function"
+      ? normalizeSearchKey(raw)
+      : raw.toLowerCase();
+    return String(normalized || "").toLowerCase().trim();
+  };
+  const key = normalizeToken(query);
   const baseLocations = getDiscoverableMapLocations(state.businessLocations);
   if (!key) return baseLocations;
-  return baseLocations.filter((location) => (
-    String(location?.name || "").toLowerCase().includes(key)
-    || String(location?.address || location?.city || "").toLowerCase().includes(key)
-  ));
+  const filtered = baseLocations.filter((location) => {
+    const nameText = String(location?.name || "");
+    const locationText = String(location?.address || location?.city || "");
+    const directHaystack = `${nameText} ${locationText}`.toLowerCase();
+    if (directHaystack.includes(key)) return true;
+    const normalizedHaystack = normalizeToken(`${nameText} ${locationText}`);
+    return normalizedHaystack.includes(key);
+  });
+  if (filtered.length > 0) return filtered;
+  const verified = resolveVerifiedMapRecord();
+  const verifiedTokens = [verified?.city, verified?.label]
+    .map((entry) => normalizeToken(entry))
+    .filter(Boolean);
+  const isVerifiedCityQuery = verifiedTokens.some((token) => token === key || key.includes(token) || token.includes(key));
+  if (isVerifiedCityQuery) return baseLocations;
+  return filtered;
 }
 
 function renderCurrentMapMarkerSet({
@@ -823,16 +845,85 @@ function setUserMarker(lat, lng, label = "Deine Position") {
   }
 }
 
-function resolveVerifiedMapCoords() {
-  if (typeof getVerifiedMapLocation !== "function") return null;
+function readStoredViewerLocationRecord() {
+  if (!window?.localStorage) return null;
+  try {
+    const raw = window.localStorage.getItem(FEED_VIEWER_LOCATION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const coords = normalizeCoordPair(
+      parsed?.lat ?? parsed?.latitude,
+      parsed?.lng ?? parsed?.lon ?? parsed?.longitude
+    );
+    if (!coords) {
+      try {
+        window.localStorage.removeItem(FEED_VIEWER_LOCATION_STORAGE_KEY);
+      } catch {}
+      return null;
+    }
+    return {
+      lat: coords.lat,
+      lng: coords.lng,
+      city: String(parsed?.city || "").trim(),
+      label: String(parsed?.label || "").trim()
+    };
+  } catch {
+    try {
+      window.localStorage.removeItem(FEED_VIEWER_LOCATION_STORAGE_KEY);
+    } catch {}
+    return null;
+  }
+}
+
+function resolveVerifiedMapRecord() {
+  const stored = readStoredViewerLocationRecord();
+  if (typeof getVerifiedMapLocation !== "function") return stored;
   let verified = null;
   try {
     verified = getVerifiedMapLocation();
   } catch {}
-  return normalizeCoordPair(
+  const coords = normalizeCoordPair(
     verified?.lat ?? verified?.latitude,
     verified?.lng ?? verified?.lon ?? verified?.longitude
   );
+  const city = String(verified?.city || "").trim();
+  const label = String(verified?.label || "").trim();
+  if (coords) {
+    return {
+      lat: coords.lat,
+      lng: coords.lng,
+      city: city || String(stored?.city || "").trim(),
+      label: label || String(stored?.label || "").trim()
+    };
+  }
+  return stored;
+}
+
+function resolveVerifiedMapCoords() {
+  const verified = resolveVerifiedMapRecord();
+  if (!verified) return null;
+  return { lat: verified.lat, lng: verified.lng };
+}
+
+function hydrateMapSearchFromVerifiedLocation({ force = false } = {}) {
+  const searchInput = document.getElementById("mapSearchInput");
+  if (!(searchInput instanceof HTMLInputElement)) return false;
+  if (!force && String(searchInput.value || "").trim()) return false;
+  const verified = resolveVerifiedMapRecord();
+  if (!verified) return false;
+  const query = String(verified.city || verified.label || "").trim();
+  if (!query) return false;
+  searchInput.value = query;
+  renderCurrentMapMarkerSet({ query, panToFirst: false });
+  if (leafletMap) {
+    focusLeafletMap(verified.lat, verified.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.24 });
+    setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
+  }
+  if (state.selectedBusiness && !leafletBizMarkerMap.has(getSelectedMapMarkerKey())) {
+    state.selectedBusiness = null;
+  }
+  updateMapSheet();
+  return true;
 }
 
 function mapLocate(options = {}) {
@@ -845,6 +936,9 @@ function mapLocate(options = {}) {
     setUserMarker(verified.lat, verified.lng, label);
     return true;
   };
+  if (preferVerified && applyVerifiedLocation()) {
+    return;
+  }
   const override = getCeoGpsOverride();
   if (isCeoUser() && override) {
     clearMapNotice({ refresh: true });
@@ -852,9 +946,6 @@ function mapLocate(options = {}) {
       focusLeafletMap(override.lat, override.lng);
       setUserMarker(override.lat, override.lng, "Deine Position");
     }
-    return;
-  }
-  if (preferVerified && applyVerifiedLocation()) {
     return;
   }
   if (!navigator.geolocation) {
