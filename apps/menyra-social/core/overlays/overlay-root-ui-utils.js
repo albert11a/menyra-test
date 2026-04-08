@@ -82,9 +82,24 @@ function syncThemeColorMeta(doc, nextColor) {
   return meta;
 }
 
+function clearThemeColorMeta(doc) {
+  if (!doc?.head) return;
+  doc.head.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    try {
+      meta.remove();
+    } catch {}
+  });
+}
+
 function syncThemeColor(documentObj) {
   const doc = documentObj || null;
   if (!doc) return;
+  const win = doc.defaultView || null;
+  const standalone = !!(win?.matchMedia?.("(display-mode: standalone)")?.matches || win?.navigator?.standalone === true);
+  if (!standalone) {
+    clearThemeColorMeta(doc);
+    return;
+  }
   const useSurface = doc.documentElement.classList.contains("modal-open");
   const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
   syncThemeColorMeta(doc, nextColor);

@@ -8,6 +8,7 @@ export async function saveLeadFromModalCore({
   buildLeadContactName,
   buildLeadAccountEmail,
   normalizeLeadCountry,
+  resolveCurrencyCodeFromLeadCountry,
   normalizeLeadStatusKey,
   refineLeadLocationAddressIndex,
   readLeadModalLocationsFromForm,
@@ -58,6 +59,15 @@ export async function saveLeadFromModalCore({
   const normalizeCountry = typeof normalizeLeadCountry === "function"
     ? normalizeLeadCountry
     : ((value) => String(value || "").trim());
+  const resolveCurrencyCode = typeof resolveCurrencyCodeFromLeadCountry === "function"
+    ? resolveCurrencyCodeFromLeadCountry
+    : ((country, fallback = "EUR") => {
+      const key = String(country || "").trim().toLowerCase();
+      if (key === "serbien" || key === "serbia") return "RSD";
+      if (key === "albanien" || key === "albania") return "LEK";
+      if (key === "kosovo" || key === "kosova") return "EUR";
+      return String(fallback || "EUR").trim().toUpperCase() || "EUR";
+    });
   const normalizeStatus = typeof normalizeLeadStatusKey === "function"
     ? normalizeLeadStatusKey
     : ((value) => String(value || "").trim());
@@ -167,6 +177,7 @@ export async function saveLeadFromModalCore({
   const emailInput = docObj.getElementById("leadEmail")?.value?.trim() || (isInlineCreate ? buildEmail(businessName) : "");
   const passwordInput = String(docObj.getElementById("leadPassword")?.value || "").trim();
   const country = normalizeCountry(docObj.getElementById("leadCountry")?.value || lead.country || settings.defaultCountry);
+  const currencyCode = String(resolveCurrencyCode(country, "EUR") || "EUR").trim().toUpperCase() || "EUR";
   const city = docObj.getElementById("leadCity")?.value?.trim() || "";
   const addressInputValue = docObj.getElementById("leadAddress")?.value?.trim() || "";
   const zipCode = docObj.getElementById("leadZipCode")?.value?.trim() || lead.zipCode || "";
@@ -251,6 +262,8 @@ export async function saveLeadFromModalCore({
         restaurantName: businessName,
         type: customerType,
         country,
+        currencyCode,
+        currency: currencyCode,
         city,
         address,
         zipCode,
@@ -278,6 +291,8 @@ export async function saveLeadFromModalCore({
       restaurantName: businessName,
       type: customerType,
       country,
+      currencyCode,
+      currency: currencyCode,
       city,
       address,
       zipCode,
@@ -365,6 +380,8 @@ export async function saveLeadFromModalCore({
       googleMaps,
       email: loginEmail,
       country,
+      currencyCode,
+      currency: currencyCode,
       city,
       address,
       zipCode,

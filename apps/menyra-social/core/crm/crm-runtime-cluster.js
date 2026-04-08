@@ -49,6 +49,7 @@ export function createCrmRuntimeCluster({
     normalizeLeadLocations: geoApi.normalizeLeadLocations,
     getLeadCountryCenter: leadApi.getLeadCountryCenter,
     getLeadMonthlyPrice: leadApi.getLeadMonthlyPrice,
+    resolveCurrencyCodeFromLeadCountry: leadApi.resolveCurrencyCodeFromLeadCountry,
     buildLeadAccountEmail: leadApi.buildLeadAccountEmail,
     hasLeadLocationCoords: geoApi.hasLeadLocationCoords,
     normalizeLeadCountry: leadApi.normalizeLeadCountry,

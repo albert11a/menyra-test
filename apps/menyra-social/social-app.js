@@ -242,6 +242,11 @@ import {
   getFocusItemObjectPositionCore
 } from "./core/media/crop-utils.js";
 import { formatPriceCore as formatPrice, parsePriceValueCore as parsePriceValue } from "./core/common/price-utils.js";
+import {
+  normalizeCurrencyCodeCore as normalizeCurrencyCode,
+  resolveCurrencyCodeFromLeadCountryCore as resolveCurrencyCodeFromLeadCountry,
+  resolveEntityCurrencyCodeCore as resolveEntityCurrencyCode
+} from "./core/common/currency-utils.js";
 import { normalizeRestaurantTypeCore } from "./core/profile/restaurant-type-utils.js";
 import { normalizeLeadTypeKeyCore as normalizeLeadTypeKey } from "./core/leads/lead-type-utils.js";
 import { buildShopVariantKeyCore } from "./core/shop/shop-variant-utils.js";
@@ -1262,6 +1267,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     toDateSafeFn: toDateSafe,
     formatCountFn: formatCount,
     formatPriceFn: formatPrice,
+    resolveCurrencyCodeForMenuItemFn: (...args) => resolveCurrencyCodeForMenuItem(...args),
     parsePriceValueFn: parsePriceValue,
     getFirebaseStorageUrlFn: getFirebaseStorageUrl,
     isDirectImageUrlFn: (...args) => isDirectImageUrl(...args),
@@ -2098,6 +2104,7 @@ const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
     toDateSafe,
     getLeadCountryCenter,
     getLeadMonthlyPrice,
+    resolveCurrencyCodeFromLeadCountry,
     buildLeadAccountEmail,
     normalizeLeadCountry,
     buildLeadContactName,
@@ -2303,6 +2310,79 @@ function canAccessRestaurantOrders(profile = state.userProfile) {
 function getRestaurantMetaById(restaurantId) {
   if (!restaurantId) return null;
   return state.restaurants.find((rest) => String(rest.id) === String(restaurantId)) || null;
+}
+
+function getCatalogProfileByRestaurantId(restaurantId = "") {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) return null;
+  if (String(state.profileView?.profile?.restaurantId || "").trim() === rid) return state.profileView.profile;
+  if (String(state.userProfile?.restaurantId || "").trim() === rid) return state.userProfile;
+  return null;
+}
+
+function getLeadMetaByRestaurantId(restaurantId = "") {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) return null;
+  const leads = Array.isArray(state.leads?.items) ? state.leads.items : [];
+  return leads.find((lead) => String(lead?.restaurantId || "").trim() === rid) || null;
+}
+
+function getLeadMetaById(leadId = "") {
+  const lid = String(leadId || "").trim();
+  if (!lid) return null;
+  const leads = Array.isArray(state.leads?.items) ? state.leads.items : [];
+  return leads.find((lead) => String(lead?.id || "").trim() === lid) || null;
+}
+
+function getCustomerMetaByRestaurantId(restaurantId = "") {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) return null;
+  const customers = Array.isArray(state.customers?.items) ? state.customers.items : [];
+  return customers.find((customer) => String(customer?.id || customer?.restaurantId || "").trim() === rid) || null;
+}
+
+function resolveCurrencyCodeForMenuItem(item = null, { restaurantId = "" } = {}) {
+  const record = item && typeof item === "object" ? item : {};
+  const explicitItemCurrency = normalizeCurrencyCode(
+    record.currencyCode || record.currency || record.currency_code || "",
+    ""
+  );
+  if (explicitItemCurrency) return explicitItemCurrency;
+
+  const resolvedRestaurantId = String(
+    restaurantId
+      || record.restaurantId
+      || state.menuDetail?.restaurantId
+      || state.menu.restaurantId
+      || state.profileView?.profile?.restaurantId
+      || state.userProfile?.restaurantId
+      || ""
+  ).trim();
+  const restaurantMeta = resolvedRestaurantId ? getRestaurantMetaById(resolvedRestaurantId) : null;
+  const catalogProfile = getCatalogProfileByRestaurantId(resolvedRestaurantId);
+  const leadMeta = getLeadMetaByRestaurantId(resolvedRestaurantId);
+  const leadMetaById = getLeadMetaById(record.leadId || record.lead || "");
+  const customerMeta = getCustomerMetaByRestaurantId(resolvedRestaurantId);
+  return resolveEntityCurrencyCode({
+    currencyCode: restaurantMeta?.currencyCode
+      || restaurantMeta?.currency
+      || catalogProfile?.currencyCode
+      || catalogProfile?.currency
+      || leadMeta?.currencyCode
+      || leadMeta?.currency
+      || leadMetaById?.currencyCode
+      || leadMetaById?.currency
+      || customerMeta?.currencyCode
+      || customerMeta?.currency
+      || "",
+    country: record.country
+      || restaurantMeta?.country
+      || catalogProfile?.country
+      || leadMeta?.country
+      || leadMetaById?.country
+      || customerMeta?.country
+      || ""
+  }, "EUR");
 }
 
 function resolveHeaderBranding() {
@@ -3292,6 +3372,7 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
     getFirebaseStorageUrlFn: getFirebaseStorageUrl,
     isDirectImageUrlFn: isDirectImageUrl,
     formatPriceFn: formatPrice,
+    resolveCurrencyCodeForMenuItemFn: resolveCurrencyCodeForMenuItem,
     getMenuItemImagesFn: getMenuItemImages,
     getMenuItemObjectPositionFn: getMenuItemObjectPosition,
     getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,

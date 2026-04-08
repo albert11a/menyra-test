@@ -201,7 +201,6 @@ export function createShellDomRuntimeController({
       || !!state?.roleSwitchRestaurantId
       || isRestaurantCafeProfile(state?.userProfile);
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
-    const isLocationTabActive = String(state?.activeTab || "").trim().toLowerCase() === "location";
     const avatarUrl = resolveUserAvatar(state?.userProfile?.avatar);
     const avatarFit = logoFitClass(isLocalBusinessProfile(state?.userProfile));
     const navItems = isGuest
@@ -209,7 +208,6 @@ export function createShellDomRuntimeController({
         { id: "feed", label: "Feed", icon: "home" },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
-        { id: "location", label: "Standort", icon: "map-pin" },
         { id: "orders", label: "Bestellungen", icon: "shopping-cart" }
       ]
       : [
@@ -217,7 +215,6 @@ export function createShellDomRuntimeController({
         { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
-        { id: "location", label: "Standort", icon: "map-pin" },
         { id: "profile", label: "Profil", icon: "user" },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
         { id: "favorites", label: "Favoriten", icon: "bookmark", hidden: !isRegisteredUser },
@@ -255,11 +252,9 @@ export function createShellDomRuntimeController({
             const isFavoritesView = state?.activeTab === "profile" && state?.profileTopTab === "favorites";
             const isActive = item.id === "favorites"
               ? isFavoritesView
-              : (item.id === "location"
-                ? isLocationTabActive
               : (item.id === "profile"
                 ? (state?.activeTab === "profile" && !isFavoritesView)
-                : state?.activeTab === item.id));
+                : state?.activeTab === item.id);
             return `
             <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">

@@ -34,6 +34,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const getFirebaseStorageUrl = deps.getFirebaseStorageUrlFn;
   const isDirectImageUrl = deps.isDirectImageUrlFn;
   const formatPrice = deps.formatPriceFn;
+  const resolveCurrencyCodeForMenuItem = typeof deps.resolveCurrencyCodeForMenuItemFn === "function"
+    ? deps.resolveCurrencyCodeForMenuItemFn
+    : (() => "");
   const getMenuItemImages = deps.getMenuItemImagesFn;
   const getMenuItemObjectPosition = deps.getMenuItemObjectPositionFn;
   const getMenuItemSocialId = deps.getMenuItemSocialIdFn;
@@ -57,6 +60,12 @@ export function createProfileMenuFocusRenderController(deps = {}) {
     key: "",
     inFlightKey: ""
   };
+
+function formatMenuItemPrice(item = {}) {
+  const currencyCode = String(resolveCurrencyCodeForMenuItem(item) || "").trim();
+  if (currencyCode) return formatPrice(item?.price, currencyCode);
+  return formatPrice(item?.price);
+}
 
 function buildMenuCardViewerLikeHydrationKey(items = [], restaurantId = "", userUid = "") {
   const rid = String(restaurantId || "").trim();
@@ -194,7 +203,7 @@ function renderProfileCheckins() {
   const checkins = state.profileCheckins || [];
   if (!checkins.length) {
     return `
-      <div class="px-6 app-main-content-safe text-center">
+      <div class="app-content-inline app-main-content-safe text-center">
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
           ${icon("map-pin", "w-9 h-9")}
         </div>
@@ -203,7 +212,7 @@ function renderProfileCheckins() {
     `;
   }
   return `
-    <div class="px-6 flex flex-col gap-4 app-main-content-safe animate-in fade-in duration-300">
+    <div class="app-content-inline flex flex-col gap-4 app-main-content-safe animate-in fade-in duration-300">
       ${checkins.map((place) => {
         const imageUrl = getOptimizedImageUrl(place.image, "thumb");
         return `
@@ -277,7 +286,7 @@ function renderProfileTabs(profile = state.profileView?.profile || state.userPro
       { id: "checkins", label: "Check-ins" }
     ];
   return `
-    <div class="px-6 mb-6 mt-4">
+    <div class="app-content-inline mb-6 mt-4">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
         ${tabs.map((tab) => `
           <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
@@ -293,7 +302,7 @@ function renderProfileViewControls(profile = state.profileView?.profile || state
   const activeTab = resolveProfileContentTabForRendering(profile);
   if (activeTab === "checkins" || activeTab === "menu") return "";
   return `
-    <div class="flex items-center justify-between px-8 mb-6">
+    <div class="flex items-center justify-between app-content-inline mb-6">
       <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Ansicht</span>
       <div class="flex gap-1 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
         <button data-profile-view="grid" class="p-2.5 rounded-xl transition-all active:scale-95 ${state.profileViewMode === "grid" ? "bg-slate-900 text-white shadow-md" : "text-slate-300 active:text-slate-500"}">
@@ -339,7 +348,7 @@ function renderPublicProfileView() {
   return `
     <div class="app-main-content-safe">
       ${topTab === "profile" ? `
-      <div class="px-5 pb-2 ${topPaddingClass}">
+      <div class="app-content-inline pb-2 ${topPaddingClass}">
 
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="relative z-10">
@@ -399,12 +408,12 @@ function renderPublicProfileView() {
         ` : isCheckinTab ? `
           ${renderProfileCheckins()}
         ` : `
-          <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
+          <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"}">
             ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
           </div>
         `}
       ` : `
-        <div class="px-6 pt-4">
+        <div class="app-content-inline pt-4">
           <div class="bg-white rounded-[2.2rem] border border-slate-100 p-8 text-center">
             <div class="w-16 h-16 rounded-[1.6rem] bg-slate-100 text-slate-500 mx-auto flex items-center justify-center mb-4">
               ${icon("lock", "w-7 h-7")}
@@ -674,7 +683,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
     candidateSizes: ["thumb", "small"],
     variant: "thumb"
   });
-  const priceLabel = formatPrice(item.price);
+  const priceLabel = formatMenuItemPrice(item);
   const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
   const isShopMode = isShopCatalogProfile(catalogProfile);
   const typeLabel = isShopMode
@@ -747,7 +756,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food", p
     candidateSizes: isDrink ? ["small", "medium"] : ["small", "medium", "large"],
     variant: isDrink ? "grid" : "hero"
   });
-  const priceLabel = formatPrice(item.price);
+  const priceLabel = formatMenuItemPrice(item);
   const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
   const isShopMode = isShopCatalogProfile(catalogProfile);
   const typeLabel = isShopMode
@@ -933,7 +942,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile", priorityIndex = 
     candidateSizes: ["small", "medium"],
     variant: "grid"
   });
-  const priceLabel = formatPrice(item.price);
+  const priceLabel = formatMenuItemPrice(item);
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -1036,7 +1045,7 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default", 
 }
 
 function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } = {}) {
-  const priceLabel = formatPrice(item.price);
+  const priceLabel = formatMenuItemPrice(item);
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -1225,14 +1234,14 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
       <section class="menu-type-block relative" data-menu-type-block="${escapeHtml(menuType)}">
         ${bucket.gridItems.length ? `
           <div class="menu-category-section pb-6 pt-4" data-menu-type="${escapeHtml(menuType)}">
-            <div class="grid grid-cols-2 auto-rows-fr gap-3 px-5">
+            <div class="grid grid-cols-2 auto-rows-fr gap-3 app-content-inline">
               ${renderMenuItemsWithCategoryAnchors(bucket.gridItems, (item) => renderGridCard(item, nextPriorityIndex()), anchoredCategories)}
             </div>
           </div>
         ` : ""}
         ${bucket.foodItems.length ? `
           <div class="menu-category-section pb-6 pt-4" data-menu-type="${escapeHtml(menuType)}">
-            <div class="px-5">
+            <div class="app-content-inline">
               ${renderMenuItemsWithCategoryAnchors(bucket.foodItems, (item) => {
                 const style = resolveMenuCardStyle(item);
                 const priorityIndex = nextPriorityIndex();
@@ -1798,19 +1807,19 @@ function renderProfileMenuView(profile) {
     return `
       <div class="app-main-content-safe">
         ${isLoading ? `
-          <div class="px-5 pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
+          <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
         ` : `
           ${hasItems
             ? renderTestfirstMenuContent(profile, items, { mode: "profile" })
-            : `<div class="px-5 pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`
+            : `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`
           }
-          ${error ? `<div class="px-5 pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
+          ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         `}
       </div>
     `;
   }
   return `
-    <div class="px-5 app-main-content-safe space-y-5">
+    <div class="app-content-inline app-main-content-safe space-y-5">
       ${renderFocusCarousel(profile)}
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -1874,7 +1883,7 @@ function renderProfileView() {
   return `
     <div class="app-main-content-safe">
       ${topTab === "profile" ? `
-      <div class="px-5 pb-2 ${topPaddingClass}">
+      <div class="app-content-inline pb-2 ${topPaddingClass}">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="relative z-10">
@@ -1931,11 +1940,11 @@ function renderProfileView() {
       ` : isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `
-        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
+        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"}">
           ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
         </div>
         ${activeContentTab === "posts" ? `
-          <div class="px-6 mt-8 mb-4">
+          <div class="app-content-inline mt-8 mb-4">
             <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
               <span class="relative z-10 flex items-center gap-2">
                 ${icon("plus", "w-4 h-4")} Neuen Beitrag

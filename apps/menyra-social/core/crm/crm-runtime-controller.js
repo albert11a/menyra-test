@@ -35,6 +35,7 @@ export function createCrmRuntimeController(deps = {}) {
     normalizeLeadLocations,
     getLeadCountryCenter,
     getLeadMonthlyPrice,
+    resolveCurrencyCodeFromLeadCountry,
     buildLeadAccountEmail,
     hasLeadLocationCoords,
     normalizeLeadCountry,
@@ -476,6 +477,7 @@ function getCrmLazyRendererContext() {
     normalizeLeadLocations,
     getLeadCountryCenter,
     getLeadMonthlyPrice,
+    resolveCurrencyCodeFromLeadCountry,
     buildLeadAccountEmail,
     hasLeadLocationCoords,
     normalizeLeadCountry,
@@ -770,6 +772,18 @@ function getLeadFormCountryValue() {
   return normalizeLeadCountry(inputValue || getLeadSettingsConfig().defaultCountry);
 }
 
+function resolveLeadCurrencyCode(countryValue = "") {
+  const resolvedCountry = normalizeLeadCountry(countryValue || getLeadFormCountryValue());
+  if (typeof resolveCurrencyCodeFromLeadCountry === "function") {
+    const code = String(resolveCurrencyCodeFromLeadCountry(resolvedCountry, "EUR") || "").trim().toUpperCase();
+    if (code) return code;
+  }
+  const key = String(resolvedCountry || "").trim().toLowerCase();
+  if (key === "serbien" || key === "serbia") return "RSD";
+  if (key === "albanien" || key === "albania") return "LEK";
+  return "EUR";
+}
+
 function getLeadPlusCodeReference(value = "") {
   return getLeadCountryCenter(inferLeadCountryFromText(value, getLeadFormCountryValue()));
 }
@@ -836,6 +850,8 @@ async function hydrateLeadGeoFieldsFromCoords(coords, { sourceInputId = "" } = {
 
   const currentLead = { ...(state.leadModal.lead || {}) };
   currentLead.country = country;
+  currentLead.currencyCode = resolveLeadCurrencyCode(country);
+  currentLead.currency = currentLead.currencyCode;
   if (city) currentLead.city = city;
   if (address) currentLead.address = address;
   if (zipCode) currentLead.zipCode = zipCode;
@@ -843,6 +859,7 @@ async function hydrateLeadGeoFieldsFromCoords(coords, { sourceInputId = "" } = {
     currentLead.googleMaps = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
   }
   state.leadModal.lead = currentLead;
+  syncLeadDerivedFields();
 }
 
 function syncLeadDerivedFields() {
@@ -851,26 +868,37 @@ function syncLeadDerivedFields() {
   const businessName = String(document.getElementById("leadBusinessName")?.value || state.leadModal?.lead?.businessName || "").trim();
   const type = resolveCustomerType(document.getElementById("leadCustomerType")?.value || state.leadModal?.lead?.customerType || "cafe");
   const cycle = document.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
+  const country = normalizeLeadCountry(
+    document.getElementById("leadCountry")?.value
+      || state.leadModal?.lead?.country
+      || settings.defaultCountry
+  );
+  const currencyCode = resolveLeadCurrencyCode(country);
   const email = buildLeadAccountEmail(businessName);
   const monthly = getLeadMonthlyPrice(type, settings);
   const total = getLeadPriceForCycle(type, cycle, settings);
   const yearly = monthly * 12;
 
   const emailInput = document.getElementById("leadEmail");
+  const currencyInput = document.getElementById("leadCurrency");
   const monthlyInput = document.getElementById("leadMonthlyPrice");
   const yearlyInput = document.getElementById("leadAnnualPrice");
   const priceInput = document.getElementById("leadPriceValue");
 
   if (emailInput) emailInput.value = email;
-  if (monthlyInput) monthlyInput.value = monthly ? `${monthly.toFixed(2)} EUR / Monat` : "0.00 EUR / Monat";
-  if (yearlyInput) yearlyInput.value = yearly ? `${yearly.toFixed(2)} EUR / Jahr` : "0.00 EUR / Jahr";
-  if (priceInput) priceInput.value = total ? `${total.toFixed(2)} EUR` : "0.00 EUR";
+  if (currencyInput) currencyInput.value = currencyCode;
+  if (monthlyInput) monthlyInput.value = monthly ? `${monthly.toFixed(2)} ${currencyCode} / Monat` : `0.00 ${currencyCode} / Monat`;
+  if (yearlyInput) yearlyInput.value = yearly ? `${yearly.toFixed(2)} ${currencyCode} / Jahr` : `0.00 ${currencyCode} / Jahr`;
+  if (priceInput) priceInput.value = total ? `${total.toFixed(2)} ${currencyCode}` : `0.00 ${currencyCode}`;
 
   if (state.leadModal?.lead) {
     state.leadModal.lead = {
       ...state.leadModal.lead,
       businessName,
       customerType: type,
+      country,
+      currencyCode,
+      currency: currencyCode,
       email,
       billingCycle: cycle,
       monthlyPrice: monthly,
@@ -2098,6 +2126,8 @@ function syncLeadModalDraftFromForm() {
   lead.email = readText("leadEmail") || lead.email || "";
   lead.password = readValue("leadPassword");
   lead.country = normalizeLeadCountry(readValue("leadCountry") || lead.country || "");
+  lead.currencyCode = resolveLeadCurrencyCode(lead.country);
+  lead.currency = lead.currencyCode;
   lead.city = readText("leadCity") || lead.city || "";
   lead.zipCode = readText("leadZipCode") || lead.zipCode || "";
   lead.address = readText("leadAddress") || lead.address || "";
@@ -2148,6 +2178,7 @@ async function saveLeadFromModal() {
     buildLeadContactName,
     buildLeadAccountEmail,
     normalizeLeadCountry,
+    resolveCurrencyCodeFromLeadCountry,
     normalizeLeadStatusKey,
     refineLeadLocationAddressIndex,
     readLeadModalLocationsFromForm,

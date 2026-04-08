@@ -107,7 +107,7 @@ export function bindLeadInlineCreateEventsCore({
     });
   }
 
-  const syncIds = ["leadBusinessName", "leadCustomerType", "leadBillingCycle"];
+  const syncIds = ["leadBusinessName", "leadCustomerType", "leadBillingCycle", "leadCountry"];
   syncIds.forEach((id) => {
     const node = doc.getElementById(id);
     if (!node) return;

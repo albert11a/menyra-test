@@ -1222,13 +1222,19 @@ export function createAppShellRuntimeController(deps = {}) {
     const htmlEl = doc.documentElement;
     const bodyEl = doc.body;
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-    const isFeedLocationGate = (activeTabKey === "feed" || activeTabKey === "location")
-      && String(doc.getElementById("feedView")?.dataset?.feedViewMode || "").trim().toLowerCase() === "location";
+    const isFeedLocationScope = activeTabKey === "feed" || activeTabKey === "home";
+    const gateRoot = doc.getElementById("feedLocationGate");
+    const hasFeedLocationGateRoot = !!gateRoot;
+    const isFeedLocationGate = isFeedLocationScope && hasFeedLocationGateRoot;
+    const gateMode = String(gateRoot?.dataset?.locationScreenMode || "").trim().toLowerCase();
+    const isFeedLocationFeedStage = isFeedLocationGate && gateMode === "feed-stage";
     if (htmlEl) {
       htmlEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);
+      htmlEl.classList.toggle("feed-location-feed-stage-active", !!isFeedLocationFeedStage);
     }
     if (bodyEl) {
       bodyEl.classList.toggle("feed-location-gate-active", !!isFeedLocationGate);
+      bodyEl.classList.toggle("feed-location-feed-stage-active", !!isFeedLocationFeedStage);
     }
     const mainEl = doc.querySelector("main");
     if (mainEl) {

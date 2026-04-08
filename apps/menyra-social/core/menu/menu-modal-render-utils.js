@@ -586,7 +586,7 @@ export function renderMenuDetailModalCore({
       : entryFirebaseFallback;
     const entryName = String(entry.name || `Empfehlung ${index + 1}`).trim() || `Empfehlung ${index + 1}`;
     const entryCategory = String(entry.category || "Passt dazu").trim() || "Passt dazu";
-    const entryPrice = formatPriceLabel(entry.price);
+    const entryPrice = formatPriceLabel(entry.price, entry);
     return `
       <div class="group shrink-0 rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all" style="width:132px;min-width:132px;max-width:132px;flex:0 0 132px;">
         <div class="relative overflow-hidden rounded-[1.2rem] bg-slate-100 mx-auto" style="width:92px;height:92px;">
@@ -647,7 +647,7 @@ export function renderMenuDetailModalCore({
   const previewImgSrc = String(state.menuDetail?.previewImageSrc || "").trim();
   const useHeroPreview = !!previewImgSrc && !isPlaceholder(previewImgSrc);
   const handoffSheetAttr = useHeroPreview ? ` data-modal-hero-handoff="pending"` : "";
-  const priceLabel = formatPriceLabel(item.price);
+  const priceLabel = formatPriceLabel(item.price, item);
   const catalogProfile = getCatalogProfile(item);
   const typeLabel = isShopCatalog(catalogProfile)
     ? (normalizeType(item.type) === "drink" ? "Variante" : "Produkt")

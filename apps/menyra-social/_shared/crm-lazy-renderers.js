@@ -81,6 +81,7 @@ export function renderLeadCreationView(ctx = {}) {
     hasLeadLocationCoords,
     CEO_COUNTRIES,
     normalizeLeadCountry,
+    resolveCurrencyCodeFromLeadCountry,
     buildLeadContactName
   } = ctx;
   const lead = state.leadModal.lead || {};
@@ -92,7 +93,13 @@ export function renderLeadCreationView(ctx = {}) {
   const deleting = !!state.leadModal.deleting;
   const customerType = resolveCustomerType(lead.customerType || "cafe");
   const billingCycle = lead.billingCycle === "yearly" ? "yearly" : "monthly";
-  const locations = normalizeLeadLocations(state.leadModal.locations, lead.address || "", state.leadModal.coords || getLeadCountryCenter(lead.country || settings.defaultCountry));
+  const leadCountry = normalizeLeadCountry(lead.country || settings.defaultCountry);
+  const currencyCode = String(
+    typeof resolveCurrencyCodeFromLeadCountry === "function"
+      ? (resolveCurrencyCodeFromLeadCountry(leadCountry, "EUR") || "EUR")
+      : "EUR"
+  ).trim().toUpperCase() || "EUR";
+  const locations = normalizeLeadLocations(state.leadModal.locations, lead.address || "", state.leadModal.coords || getLeadCountryCenter(leadCountry));
   const monthlyPrice = getLeadMonthlyPrice(customerType, settings);
   const yearlyPrice = monthlyPrice * 12;
   const totalPrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
@@ -202,16 +209,16 @@ export function renderLeadCreationView(ctx = {}) {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis monatlich</label>
-              <input id="leadMonthlyPrice" type="text" value="${escapeHtml(monthlyPrice ? `${monthlyPrice.toFixed(2)} EUR / Monat` : "0.00 EUR / Monat")}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
+              <input id="leadMonthlyPrice" type="text" value="${escapeHtml(monthlyPrice ? `${monthlyPrice.toFixed(2)} ${currencyCode} / Monat` : `0.00 ${currencyCode} / Monat`)}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis jaehrlich</label>
-              <input id="leadAnnualPrice" type="text" value="${escapeHtml(yearlyPrice ? `${yearlyPrice.toFixed(2)} EUR / Jahr` : "0.00 EUR / Jahr")}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
+              <input id="leadAnnualPrice" type="text" value="${escapeHtml(yearlyPrice ? `${yearlyPrice.toFixed(2)} ${currencyCode} / Jahr` : `0.00 ${currencyCode} / Jahr`)}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
             </div>
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Aktueller Preis</label>
-            <input id="leadPriceValue" type="text" value="${escapeHtml(totalPrice ? `${totalPrice.toFixed(2)} EUR` : "0.00 EUR")}" readonly class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
+            <input id="leadPriceValue" type="text" value="${escapeHtml(totalPrice ? `${totalPrice.toFixed(2)} ${currencyCode}` : `0.00 ${currencyCode}`)}" readonly class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
@@ -242,10 +249,14 @@ export function renderLeadCreationView(ctx = {}) {
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Land</label>
             <div class="relative mt-2">
               <select id="leadCountry" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
-                ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${normalizeLeadCountry(lead.country || settings.defaultCountry) === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
+                ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${leadCountry === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
               </select>
               <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
             </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Waehrung</label>
+            <input id="leadCurrency" type="text" value="${escapeHtml(currencyCode)}" readonly class="w-full mt-2 px-5 py-4 bg-slate-100 rounded-2xl text-sm font-black text-slate-500 border-none outline-none" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Stadt</label>

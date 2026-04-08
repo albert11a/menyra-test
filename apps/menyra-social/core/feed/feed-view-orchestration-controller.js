@@ -366,6 +366,11 @@ export function createFeedViewOrchestrationController({
   let locationGateResolveTransitionPending = false;
   let locationGateResolveTimer = null;
   let feedEntranceAnimationQueued = false;
+  let feedStageAutoPinScrollQueued = false;
+  let feedStageAutoPinScrollFrame = null;
+  let feedStagePinSyncCleanup = null;
+  let feedStagePinSyncStageEl = null;
+  let feedStagePinSyncBentoEl = null;
   const locationRemoteSuggestionCache = new Map();
   const locationRemoteSuggestionById = new Map();
   const normalizeLocationQuery = (value = "") => String(value || "")
@@ -546,6 +551,131 @@ export function createFeedViewOrchestrationController({
       clearTimeout(locationGateResolveTimer);
     } catch {}
     locationGateResolveTimer = null;
+  };
+  const clearFeedStageAutoPinScrollFrame = () => {
+    if (!feedStageAutoPinScrollFrame) return;
+    if (typeof win?.cancelAnimationFrame === "function") {
+      try {
+        win.cancelAnimationFrame(feedStageAutoPinScrollFrame);
+      } catch {}
+    } else {
+      try {
+        clearTimeout(feedStageAutoPinScrollFrame);
+      } catch {}
+    }
+    feedStageAutoPinScrollFrame = null;
+  };
+  const resolveFeedStageAutoScrollHost = () => {
+    if (!win || !doc) return null;
+    const mainScrollHost = doc.querySelector("main.app-main-scroll");
+    if (!(mainScrollHost instanceof HTMLElement)) return null;
+    const style = win.getComputedStyle?.(mainScrollHost);
+    const overflowY = String(style?.overflowY || style?.overflow || "").trim().toLowerCase();
+    const usesOwnScroll = overflowY === "auto"
+      || overflowY === "scroll"
+      || overflowY === "overlay";
+    const hasScrollableRange = (Number(mainScrollHost.scrollHeight || 0) - Number(mainScrollHost.clientHeight || 0)) > 1;
+    if (!usesOwnScroll || !hasScrollableRange) return null;
+    return mainScrollHost;
+  };
+  const scrollFeedBentoIntoPinnedStop = ({ behavior = "smooth" } = {}) => {
+    if (!win || !doc) return false;
+    const gateRoot = doc.getElementById("feedLocationGate");
+    if (!(gateRoot instanceof HTMLElement)) return false;
+    const pinOutline = gateRoot.querySelector(".feed-bento-pin-outline");
+    if (!(pinOutline instanceof HTMLElement)) return false;
+    const mainScrollHost = resolveFeedStageAutoScrollHost();
+    const useMainScrollHost = mainScrollHost instanceof HTMLElement;
+    const stickyTop = Math.max(
+      0,
+      Math.round(parseFloat(win.getComputedStyle?.(pinOutline)?.top || "0") || 0)
+    );
+    const scrollViewportTop = useMainScrollHost
+      ? Math.round(Number(mainScrollHost.getBoundingClientRect().top || 0))
+      : 0;
+    const currentScrollY = useMainScrollHost
+      ? Math.max(0, Number(mainScrollHost.scrollTop || 0))
+      : Math.max(0, Number(win.scrollY || win.pageYOffset || doc?.documentElement?.scrollTop || 0));
+    const pinOutlineTop = Math.round(Number(pinOutline.getBoundingClientRect().top || 0));
+    const targetScrollY = Math.max(
+      0,
+      currentScrollY + (pinOutlineTop - (scrollViewportTop + stickyTop))
+    );
+    if (Math.abs(targetScrollY - currentScrollY) < 2) return true;
+    if (useMainScrollHost) {
+      try {
+        mainScrollHost.scrollTo({ top: targetScrollY, behavior });
+      } catch {
+        mainScrollHost.scrollTop = targetScrollY;
+      }
+      return true;
+    }
+    try {
+      win.scrollTo({ top: targetScrollY, behavior });
+    } catch {
+      win.scrollTo(0, targetScrollY);
+    }
+    return true;
+  };
+  const queueFeedStageAutoPinScroll = () => {
+    if (!feedStageAutoPinScrollQueued) return;
+    feedStageAutoPinScrollQueued = false;
+    clearFeedStageAutoPinScrollFrame();
+    let attempts = 0;
+    const maxAttempts = 4;
+    const initialRafPasses = 4;
+    const runAttempt = () => {
+      attempts += 1;
+      const behavior = attempts === 1 ? "smooth" : "auto";
+      scrollFeedBentoIntoPinnedStop({ behavior });
+      if (attempts >= maxAttempts) {
+        clearFeedStageAutoPinScrollFrame();
+        return;
+      }
+      feedStageAutoPinScrollFrame = setTimeoutFn(runAttempt, attempts === 1 ? 420 : 130);
+    };
+    if (typeof win?.requestAnimationFrame === "function") {
+      let rafPass = 0;
+      const scheduleNextPass = () => {
+        feedStageAutoPinScrollFrame = win.requestAnimationFrame(() => {
+          rafPass += 1;
+          if (rafPass < initialRafPasses) {
+            scheduleNextPass();
+            return;
+          }
+          feedStageAutoPinScrollFrame = null;
+          runAttempt();
+        });
+      };
+      scheduleNextPass();
+      return;
+    }
+    feedStageAutoPinScrollFrame = setTimeoutFn(() => {
+      feedStageAutoPinScrollFrame = null;
+      runAttempt();
+    }, 80);
+  };
+  const stopFeedStagePinSync = () => {
+    clearFeedStageAutoPinScrollFrame();
+    if (typeof feedStagePinSyncCleanup === "function") {
+      try {
+        feedStagePinSyncCleanup();
+      } catch {}
+    }
+    feedStagePinSyncCleanup = null;
+    feedStagePinSyncStageEl = null;
+    feedStagePinSyncBentoEl = null;
+  };
+  const bindFeedStagePinSync = (feedView = null) => {
+    stopFeedStagePinSync();
+    return;
+    if (!win || !(feedView instanceof HTMLElement)) {
+      return;
+    }
+    const mode = String(feedView.dataset.feedViewMode || "").trim().toLowerCase();
+    if (mode !== "feed") {
+      return;
+    }
   };
   const resolveSuggestionCountryLabel = (entry = {}) => {
     const fromCode = toCountryLabel(entry?.countryCode || entry?.country_code || "");
@@ -848,11 +978,7 @@ export function createFeedViewOrchestrationController({
     if (locationGateStatus === "error") return "Nuk arritem te marrim vendndodhjen.";
     return "";
   };
-  const resolveLocationScreenMode = () => {
-    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-    if (activeTabKey === "location") return "location";
-    return "feed-gate";
-  };
+  const resolveLocationScreenMode = () => "feed-gate";
   const getRenderedLocationScreenMode = () => {
     const rootMode = String(doc?.getElementById("feedView")?.dataset?.locationScreenMode || "").trim().toLowerCase();
     if (rootMode) return rootMode;
@@ -927,10 +1053,13 @@ export function createFeedViewOrchestrationController({
     }
     if (shouldStayOnLocationScreen) {
       feedEntranceAnimationQueued = false;
+      feedStageAutoPinScrollQueued = false;
+      clearFeedStageAutoPinScrollFrame();
       locationGateResolveTransitionPending = false;
       gateRoot?.classList?.remove?.("feed-location-gate--resolving");
     } else {
-      feedEntranceAnimationQueued = true;
+      feedEntranceAnimationQueued = false;
+      feedStageAutoPinScrollQueued = true;
       locationGateResolveTransitionPending = true;
       gateRoot?.classList?.add?.("feed-location-gate--resolving");
     }
@@ -944,10 +1073,12 @@ export function createFeedViewOrchestrationController({
       locationGateResolveTimer = null;
       locationGateResolveTransitionPending = false;
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "location") {
+      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "home") {
         return;
       }
       setStateFn({ activeTab: "feed" });
+      feedStageAutoPinScrollQueued = true;
+      queueFeedStageAutoPinScroll();
     }, 360);
     return true;
   };
@@ -1040,10 +1171,33 @@ export function createFeedViewOrchestrationController({
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
-  function renderLocationGate({ mode = resolveLocationScreenMode() } = {}) {
+  const renderFeedGateBentoContent = () => `
+    <div class="loc-bento-head fade-in-up" style="animation-delay:0.05s;">
+      <div class="loc-bento-line">Çfarë ofron Mnyra</div>
+      <h3 class="loc-bento-title">Gjithçka në një vend.</h3>
+      <p class="loc-bento-sub">Guida juaj personale. Zbuloni, rezervoni dhe përfitoni nga ofertat më të mira të qytetit çdo ditë.</p>
+    </div>
+
+    <div class="loc-grid">
+      <div class="loc-card full fade-in-up" style="animation-delay:0.12s;"><div class="loc-icon" style="background:rgb(79 70 229);">${iconFn("utensils-crossed", "w-5 h-5")}</div><h4>Eksploro & Shijo</h4><p>Gjej restorante, kafene dhe evente. Shiko stories, menutë me çmime dhe fotot reale. Rezervo tavolinën tënde me një klikim.</p></div>
+      <div class="loc-card full fade-in-up" style="animation-delay:0.2s;"><div class="loc-icon" style="background:rgb(244 63 94);">${iconFn("shopping-bag", "w-5 h-5")}</div><h4>Shopping pa kufi</h4><p>Nga markat tek butiqet lokale. Porosit për në shtëpi ose rezervo dhe merre direkt në dyqan.</p></div>
+      <div class="loc-card full dark fade-in-up" style="animation-delay:0.28s;"><div class="loc-icon" style="background:rgb(16 185 129 / 0.25);">${iconFn("badge-percent", "w-5 h-5")}</div><h4>ÇFARË KA NË AKSION SOT?</h4><p>Ofertat më të mira dhe zbritjet ekskluzive nga restorantet dhe dyqanet tuaja të preferuara.</p></div>
+      <div class="loc-card fade-in-up" style="animation-delay:0.36s; background:rgb(236 253 245 / 0.65); border-color:rgb(209 250 229 / 0.75);"><div class="loc-icon" style="background:rgb(16 185 129);">${iconFn("store", "w-5 h-5")}</div><h4>Supermarkete & Farmaci</h4><p>Gjej më të afërtat dhe shiko nëse janë hapur tani.</p></div>
+      <div class="loc-card fade-in-up" style="animation-delay:0.44s; background:rgb(236 254 255 / 0.7); border-color:rgb(207 250 254 / 0.75);"><div class="loc-icon" style="background:rgb(6 182 212);">${iconFn("bed-double", "w-5 h-5")}</div><h4>Hotele & Akomodim</h4><p>Oferta All-Inclusive, foto dhomash dhe rezervime direkte.</p></div>
+      <div class="loc-card full fade-in-up" style="animation-delay:0.52s;"><div class="loc-icon" style="background:linear-gradient(135deg, rgb(139 92 246), rgb(217 70 239));">${iconFn("users", "w-5 h-5")}</div><h4>Komuniteti MNYRA</h4><p>Krijo profilin, pëlqe, komento, bëj check-in dhe ndaj momente me miqtë e tu.</p></div>
+    </div>
+
+    <p class="loc-foot">Powered by MNYRA</p>
+  `;
+  function renderLocationGate({ mode = resolveLocationScreenMode(), bentoContentHtml = "" } = {}) {
     const viewerLocation = resolveViewerLocationRecord();
     const cityValue = String(viewerLocation?.label || viewerLocation?.city || "").trim();
     const safeMode = String(mode || "feed-gate").trim().toLowerCase() || "feed-gate";
+    const isFeedStageMode = safeMode === "feed-stage";
+    const customBentoContent = String(
+      bentoContentHtml
+      || renderFeedGateBentoContent()
+    ).trim();
     return `
       <div id="feedLocationGate" data-location-screen-mode="${escapeHtmlFn(safeMode)}">
         <style>
@@ -1055,11 +1209,36 @@ export function createFeedViewOrchestrationController({
             border-bottom-color: transparent !important;
             box-shadow: none !important;
           }
-          #feedLocationGate { background: #f8fafc; color: #0f172a; }
-          #feedLocationGate .loc-shell { position: relative; background: #00cce5; }
+          #feedLocationGate {
+            --feed-bento-surface: #f8fafc;
+            --feed-bento-pin-gap: 14px;
+            --feed-bento-pin-height: 2.6rem;
+            --feed-bento-outline-size: 1px;
+            --feed-bento-blue-shell-size: 30px;
+            --feed-bento-white-bridge-size: 30px;
+            --feed-bento-outline-drop-size: 3px;
+            background: #f8fafc;
+            color: #0f172a;
+          }
+          #feedLocationGate .loc-shell {
+            position: relative;
+            background: ${isFeedStageMode ? "#f8fafc" : "#00cce5"};
+          }
+          #feedLocationGate[data-location-screen-mode="feed-stage"] .loc-shell::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: calc(var(--feed-location-gate-header-height) + 17rem);
+            background: #00cce5;
+            pointer-events: none;
+            z-index: 0;
+          }
           #feedLocationGate .loc-glow-a, #feedLocationGate .loc-glow-b { position: absolute; border-radius: 9999px; pointer-events: none; }
           #feedLocationGate .loc-glow-a { top: -12%; right: -12%; width: 16rem; height: 16rem; background: rgb(255 255 255 / 0.12); filter: blur(64px); }
           #feedLocationGate .loc-glow-b { bottom: 20%; left: -10%; width: 12rem; height: 12rem; background: rgb(0 155 175 / 0.22); filter: blur(40px); }
+          #feedLocationGate[data-location-screen-mode="feed-stage"] .loc-glow-b { display: none; }
           #feedLocationGate .loc-top { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 5rem 1.5rem 5.25rem; background: #00cce5; }
           #feedLocationGate .loc-title { width: 100%; max-width: 22rem; margin: 0 auto 2.15rem; color: #fff; font-size: clamp(1.65rem, 6.6vw, 2.2rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.08; }
           #feedLocationGate .text-slider-wrapper { position: relative; height: 1.25em; width: 100%; overflow: hidden; margin-bottom: 0.2rem; }
@@ -1093,6 +1272,81 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate .loc-status { margin-top: 0.7rem; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.11em; color: rgb(255 255 255 / 0.9); }
           #feedLocationGate .loc-status.hidden { display: none; }
           #feedLocationGate .loc-bento { position: relative; z-index: 3; background: #f8fafc; border-top-left-radius: 2.5rem; border-top-right-radius: 2.5rem; padding: 2.35rem 1.25rem 2rem; }
+          #feedLocationGate .loc-bento.loc-bento--feed-content {
+            background: var(--feed-bento-surface);
+            border-top-left-radius: 2.5rem;
+            border-top-right-radius: 2.5rem;
+            padding: 0;
+            overflow: visible;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          #feedLocationGate .feed-bento-pin-backdrop {
+            position: -webkit-sticky;
+            position: sticky;
+            top: var(--feed-location-gate-header-height);
+            height: var(--feed-bento-pin-gap);
+            margin-bottom: calc(-1 * var(--feed-bento-pin-gap));
+            background: transparent;
+            pointer-events: none;
+            z-index: 6;
+            width: 100%;
+          }
+          #feedLocationGate .feed-bento-pin-outline {
+            position: -webkit-sticky;
+            position: sticky;
+            top: calc(var(--feed-location-gate-header-height) + var(--feed-bento-pin-gap));
+            height: var(--feed-bento-pin-height);
+            margin-bottom: calc(-1 * var(--feed-bento-pin-height));
+            border-top-left-radius: 2.5rem;
+            border-top-right-radius: 2.5rem;
+            background: transparent;
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: 7;
+            width: 100%;
+          }
+          #feedLocationGate .feed-bento-pin-outline::before {
+            content: "";
+            position: absolute;
+            top: calc(-1 * var(--feed-bento-outline-size));
+            right: 0;
+            left: 0;
+            bottom: calc(-1 * var(--feed-bento-outline-drop-size));
+            border-top-left-radius: calc(2.5rem + var(--feed-bento-outline-size));
+            border-top-right-radius: calc(2.5rem + var(--feed-bento-outline-size));
+            border: var(--feed-bento-outline-size) solid #fff;
+            border-bottom: 0;
+            box-sizing: border-box;
+            filter: drop-shadow(0 -6px 16px rgb(15 23 42 / 0.08)) drop-shadow(0 -16px 34px rgb(15 23 42 / 0.05));
+          }
+          #feedLocationGate .feed-bento-pin-outline::after {
+            content: "";
+            position: absolute;
+            top: calc(-1 * var(--feed-bento-outline-size));
+            right: calc(-1 * var(--feed-bento-outline-size));
+            left: calc(-1 * var(--feed-bento-outline-size));
+            bottom: var(--feed-bento-outline-drop-size);
+            border-top-left-radius: calc(2.5rem + var(--feed-bento-outline-size));
+            border-top-right-radius: calc(2.5rem + var(--feed-bento-outline-size));
+            box-shadow: 0 0 0 var(--feed-bento-blue-shell-size) #00cce5;
+            clip-path: inset(calc(-1 * var(--feed-bento-blue-shell-size)) calc(-1 * var(--feed-bento-outline-size)) var(--feed-bento-outline-drop-size) calc(-1 * var(--feed-bento-outline-size)));
+            z-index: -1;
+          }
+          #feedLocationGate .feed-stage-bento-scroll {
+            min-height: 0;
+            height: auto;
+            overflow: visible;
+            margin-top: calc(-1 * var(--feed-bento-white-bridge-size));
+            padding-top: var(--feed-bento-white-bridge-size);
+            position: relative;
+            z-index: 3;
+            background: var(--feed-bento-surface);
+            border-top-left-radius: 2.5rem;
+            border-top-right-radius: 2.5rem;
+            border: 0;
+            box-sizing: border-box;
+          }
           #feedLocationGate .loc-bento-head { text-align: center; max-width: 22rem; margin: 0 auto 1.1rem; }
           #feedLocationGate .loc-bento-line { display: inline-flex; align-items: center; gap: 0.7rem; opacity: 0.82; margin-bottom: 0.9rem; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.24em; color: rgb(100 116 139); }
           #feedLocationGate .loc-bento-line::before, #feedLocationGate .loc-bento-line::after { content: ""; display: block; width: 1.5rem; height: 2px; border-radius: 999px; background: rgb(226 232 240); }
@@ -1146,23 +1400,12 @@ export function createFeedViewOrchestrationController({
             </div>
           </div>
 
-          <div class="loc-bento" data-location-screen-content="${escapeHtmlFn(safeMode)}">
-            <div class="loc-bento-head fade-in-up" style="animation-delay:0.05s;">
-              <div class="loc-bento-line">Çfarë ofron Mnyra</div>
-              <h3 class="loc-bento-title">Gjithçka në një vend.</h3>
-              <p class="loc-bento-sub">Guida juaj personale. Zbuloni, rezervoni dhe përfitoni nga ofertat më të mira të qytetit çdo ditë.</p>
+          <div class="feed-bento-pin-backdrop" aria-hidden="true"></div>
+          <div class="feed-bento-pin-outline" aria-hidden="true"></div>
+          <div class="loc-bento loc-bento--feed-content" data-location-screen-content="${escapeHtmlFn(safeMode)}">
+            <div class="feed-stage-bento-scroll">
+              ${customBentoContent}
             </div>
-
-            <div class="loc-grid">
-              <div class="loc-card full fade-in-up" style="animation-delay:0.12s;"><div class="loc-icon" style="background:rgb(79 70 229);">${iconFn("utensils-crossed", "w-5 h-5")}</div><h4>Eksploro & Shijo</h4><p>Gjej restorante, kafene dhe evente. Shiko stories, menutë me çmime dhe fotot reale. Rezervo tavolinën tënde me një klikim.</p></div>
-              <div class="loc-card full fade-in-up" style="animation-delay:0.2s;"><div class="loc-icon" style="background:rgb(244 63 94);">${iconFn("shopping-bag", "w-5 h-5")}</div><h4>Shopping pa kufi</h4><p>Nga markat tek butiqet lokale. Porosit për në shtëpi ose rezervo dhe merre direkt në dyqan.</p></div>
-              <div class="loc-card full dark fade-in-up" style="animation-delay:0.28s;"><div class="loc-icon" style="background:rgb(16 185 129 / 0.25);">${iconFn("badge-percent", "w-5 h-5")}</div><h4>ÇFARË KA NË AKSION SOT?</h4><p>Ofertat më të mira dhe zbritjet ekskluzive nga restorantet dhe dyqanet tuaja të preferuara.</p></div>
-              <div class="loc-card fade-in-up" style="animation-delay:0.36s; background:rgb(236 253 245 / 0.65); border-color:rgb(209 250 229 / 0.75);"><div class="loc-icon" style="background:rgb(16 185 129);">${iconFn("store", "w-5 h-5")}</div><h4>Supermarkete & Farmaci</h4><p>Gjej më të afërtat dhe shiko nëse janë hapur tani.</p></div>
-              <div class="loc-card fade-in-up" style="animation-delay:0.44s; background:rgb(236 254 255 / 0.7); border-color:rgb(207 250 254 / 0.75);"><div class="loc-icon" style="background:rgb(6 182 212);">${iconFn("bed-double", "w-5 h-5")}</div><h4>Hotele & Akomodim</h4><p>Oferta All-Inclusive, foto dhomash dhe rezervime direkte.</p></div>
-              <div class="loc-card full fade-in-up" style="animation-delay:0.52s;"><div class="loc-icon" style="background:linear-gradient(135deg, rgb(139 92 246), rgb(217 70 239));">${iconFn("users", "w-5 h-5")}</div><h4>Komuniteti MNYRA</h4><p>Krijo profilin, pëlqe, komento, bëj check-in dhe ndaj momente me miqtë e tu.</p></div>
-            </div>
-
-            <p class="loc-foot">Powered by MNYRA</p>
           </div>
         </div>
       </div>
@@ -1188,7 +1431,7 @@ export function createFeedViewOrchestrationController({
   function renderFeedComposer() {
     if (!shouldShowFeedComposer()) return "";
     return `
-      <div data-feed-composer-wrap class="px-8 mb-6">
+      <div data-feed-composer-wrap class="app-content-inline mb-6">
         <button data-nav="upload" data-upload-intent="feed" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
           ${iconFn("plus-square", "w-4 h-4")} Neuer Feed Post
         </button>
@@ -1432,7 +1675,7 @@ export function createFeedViewOrchestrationController({
     const feedView = doc?.getElementById("feedView");
     if (!feedView) return false;
     const feedViewMode = String(feedView.dataset.feedViewMode || "feed").trim().toLowerCase();
-    if (feedViewMode === "location") {
+    if (feedViewMode !== "feed") {
       bindFeedDelegation();
       syncFeedLocationGateDom();
       if (win?.lucide?.createIcons) win.lucide.createIcons();
@@ -1470,16 +1713,24 @@ export function createFeedViewOrchestrationController({
   }
 
   function renderFeedView() {
-    if (String(state?.activeTab || "").trim().toLowerCase() === "location") {
-      return renderFeedLocationView();
+    const hasViewerLocation = !!normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const feedViewMode = hasViewerLocation ? "feed" : "feed-gate";
+    let feedBentoContent = renderFeedGateBentoContent();
+    if (hasViewerLocation) {
+      const feedPosts = state.feedPosts
+        .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
+        .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
+      const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+      feedBentoContent = `
+        <div id="storiesRow" class="flex gap-4 overflow-x-auto app-content-inline pt-6 pb-8 no-scrollbar">
+          ${renderStoriesRow(stories)}
+        </div>
+        ${renderFeedComposer()}
+        <div id="feedList" class="app-content-inline py-4 space-y-12">
+          ${renderFeedList(feedPosts)}
+        </div>
+      `;
     }
-    if (isFeedLocationRequired()) {
-      return renderFeedLocationView();
-    }
-    const feedPosts = state.feedPosts
-      .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
-      .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-    const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
     const withEntranceAnimation = !!feedEntranceAnimationQueued;
     feedEntranceAnimationQueued = false;
     return `
@@ -1495,22 +1746,31 @@ export function createFeedViewOrchestrationController({
         }
       </style>
     ` : ""}
-    <div id="feedView" data-feed-view-mode="feed" class="${withEntranceAnimation ? "feed-view-slide-enter" : ""}">
-      <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-6 pb-8 no-scrollbar">
-        ${renderStoriesRow(stories)}
-      </div>
-      ${renderFeedComposer()}
-      <div id="feedList" class="px-8 py-4 space-y-12">
-        ${renderFeedList(feedPosts)}
-      </div>
+    <div id="feedView" data-feed-view-mode="${feedViewMode}" class="${withEntranceAnimation ? "feed-view-slide-enter" : ""}">
+      ${renderLocationGate({ mode: "feed-gate", bentoContentHtml: feedBentoContent })}
     </div>
   `;
   }
 
   function bindFeedDelegation() {
     const feedView = doc?.getElementById("feedView");
-    if (!feedView || feedView.dataset.bound === "true") return;
-    const isLocationView = () => String(feedView.dataset.feedViewMode || "").trim().toLowerCase() === "location";
+    if (!feedView) {
+      stopFeedStagePinSync();
+      return;
+    }
+    bindFeedStagePinSync(feedView);
+    const feedViewMode = String(feedView.dataset.feedViewMode || "").trim().toLowerCase();
+    if (feedViewMode === "feed") {
+      queueFeedStageAutoPinScroll();
+    } else {
+      feedStageAutoPinScrollQueued = false;
+      clearFeedStageAutoPinScrollFrame();
+    }
+    if (feedView.dataset.bound === "true") {
+      syncFeedLocationGateDom();
+      return;
+    }
+    const isLocationView = () => String(feedView.dataset.feedViewMode || "").trim().toLowerCase() !== "feed";
     const handleStoryWarmup = (target) => {
       if (isLocationView()) return;
       if (!(target instanceof Element)) return;
@@ -1760,9 +2020,7 @@ export function createFeedViewOrchestrationController({
         }, { showBack: false });
       }
     });
-    if (isLocationView()) {
-      syncFeedLocationGateDom();
-    }
+    syncFeedLocationGateDom();
     feedView.dataset.bound = "true";
   }
 

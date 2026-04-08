@@ -1,4 +1,4 @@
-const GUEST_ALLOWED_TABS = new Set(["feed", "search", "map", "location", "orders", "profile"]);
+const GUEST_ALLOWED_TABS = new Set(["feed", "search", "map", "orders", "profile"]);
 
 export function isGuestSessionCore(user = null) {
   return !user;
@@ -14,7 +14,10 @@ export function sanitizeTabForSessionCore(tab, {
   hasProfileView = false,
   guestScopeUid = undefined
 } = {}) {
-  const next = String(tab || "").trim() || "feed";
+  const requestedTab = String(tab || "").trim().toLowerCase();
+  const next = requestedTab === "location"
+    ? "feed"
+    : (requestedTab || "feed");
   if (!isGuestSessionCore(user)) return next;
   if (!hasGuestScopeForSessionCore(guestScopeUid)) return "feed";
   if (!GUEST_ALLOWED_TABS.has(next)) return "feed";

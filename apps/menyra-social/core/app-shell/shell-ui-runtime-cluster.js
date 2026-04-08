@@ -66,6 +66,9 @@ export function createShellUiRuntimeCluster({
   const toDateSafe = typeof helperApi.toDateSafeFn === "function" ? helperApi.toDateSafeFn : ((value) => value);
   const formatCount = typeof helperApi.formatCountFn === "function" ? helperApi.formatCountFn : ((value) => String(value || "0"));
   const formatPrice = typeof helperApi.formatPriceFn === "function" ? helperApi.formatPriceFn : ((value) => String(value || ""));
+  const resolveCurrencyCodeForMenuItem = typeof helperApi.resolveCurrencyCodeForMenuItemFn === "function"
+    ? helperApi.resolveCurrencyCodeForMenuItemFn
+    : (() => "");
   const parsePriceValue = typeof helperApi.parsePriceValueFn === "function" ? helperApi.parsePriceValueFn : (() => 0);
   const getFirebaseStorageUrl = typeof helperApi.getFirebaseStorageUrlFn === "function" ? helperApi.getFirebaseStorageUrlFn : ((value) => String(value || ""));
   const isDirectImageUrl = typeof helperApi.isDirectImageUrlFn === "function" ? helperApi.isDirectImageUrlFn : (() => false);
@@ -267,7 +270,13 @@ export function createShellUiRuntimeCluster({
       PLACEHOLDER_IMAGE: constants.placeholderImage,
       getFirebaseStorageUrl,
       isDirectImageUrl,
-      formatPrice,
+      formatPrice: (value, itemContext = null) => {
+        const currencyCode = String(
+          resolveCurrencyCodeForMenuItem(itemContext || state?.menuDetail?.item || {})
+        ).trim();
+        if (currencyCode) return formatPrice(value, currencyCode);
+        return formatPrice(value);
+      },
       getMenuDetailRestaurantId: menuApi.getMenuDetailRestaurantIdFn,
       getMenuDetailCatalogProfile: menuApi.getMenuDetailCatalogProfileFn,
       isShopCatalogProfile: profileApi.isShopCatalogProfileFn,

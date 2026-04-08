@@ -378,6 +378,21 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
         name: displayName
       }, displayName),
       uid: String(restaurant?.ownerUid || restaurant?.ownerId || fallback?.uid || "").trim(),
+      country: String(restaurant?.country || fallback?.country || "").trim(),
+      currencyCode: String(
+        restaurant?.currencyCode
+        || restaurant?.currency
+        || fallback?.currencyCode
+        || fallback?.currency
+        || ""
+      ).trim().toUpperCase(),
+      currency: String(
+        restaurant?.currency
+        || restaurant?.currencyCode
+        || fallback?.currency
+        || fallback?.currencyCode
+        || ""
+      ).trim().toUpperCase(),
       bio: String(restaurant?.description || restaurant?.bio || fallback?.description || "").trim(),
       avatar: String(
         restaurant?.logoUrl
