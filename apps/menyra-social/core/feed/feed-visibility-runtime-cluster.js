@@ -2,6 +2,64 @@ import { buildStoriesSignatureCore } from "./feed-story-utils.js";
 import { normalizeUserPostDocCore } from "./post-doc-normalize-utils.js";
 import { projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
 
+const FEED_COUNTRY_CODE_ALIASES = new Map([
+  ["xk", "xk"],
+  ["kosove", "xk"],
+  ["kosova", "xk"],
+  ["kosovo", "xk"],
+  ["al", "al"],
+  ["shqiperi", "al"],
+  ["shqiperia", "al"],
+  ["albania", "al"],
+  ["rs", "rs"],
+  ["serbi", "rs"],
+  ["serbia", "rs"],
+  ["srbija", "rs"]
+]);
+const FEED_COUNTRY_LABEL_BY_CODE = Object.freeze({
+  xk: "Kosove",
+  al: "Shqiperi",
+  rs: "Serbi"
+});
+
+function normalizeLocationToken(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeFeedCountryCode(value = "") {
+  const normalized = normalizeLocationToken(value);
+  if (!normalized) return "";
+  return FEED_COUNTRY_CODE_ALIASES.get(normalized) || "";
+}
+
+function normalizeFeedCoordPair(latValue, lngValue) {
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return null;
+  if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+  if (Math.abs(lat) <= 180 && Math.abs(lng) <= 90) return { lat: lng, lng: lat };
+  return null;
+}
+
+function readFeedCoords(record = {}) {
+  if (!record || typeof record !== "object") return null;
+  return normalizeFeedCoordPair(record.lat, record.lng)
+    || normalizeFeedCoordPair(record.latitude, record.longitude)
+    || normalizeFeedCoordPair(record.gpsLat, record.gpsLng)
+    || normalizeFeedCoordPair(record.geo?.lat, record.geo?.lng)
+    || normalizeFeedCoordPair(record.geo?.latitude, record.geo?.longitude)
+    || normalizeFeedCoordPair(record.coords?.lat, record.coords?.lng)
+    || normalizeFeedCoordPair(record.coords?.latitude, record.coords?.longitude)
+    || normalizeFeedCoordPair(record.location?.lat, record.location?.lng);
+}
+
 export function createFeedVisibilityRuntimeCluster({
   state = null,
   firebaseApi = {},
@@ -103,6 +161,25 @@ export function createFeedVisibilityRuntimeCluster({
     if (!canShowFeedRestaurantId(restaurantId)) return null;
     const canonicalPost = resolveCanonicalPostById(row?.id, restaurantId);
     const restaurant = (state?.restaurants || []).find((entry) => entry?.id === restaurantId) || {};
+    const coords = readFeedCoords(restaurant) || readFeedCoords(row) || readFeedCoords(canonicalPost);
+    const countryCode = normalizeFeedCountryCode(
+      restaurant?.countryCode
+      || restaurant?.country_code
+      || restaurant?.country
+      || row?.countryCode
+      || row?.country_code
+      || row?.country
+      || canonicalPost?.countryCode
+      || canonicalPost?.country
+    );
+    const country = countryCode
+      ? (FEED_COUNTRY_LABEL_BY_CODE[countryCode] || "")
+      : String(
+        restaurant?.country
+        || row?.country
+        || canonicalPost?.country
+        || ""
+      ).trim();
     const thumb = row?.thumbUrl || row?.mediaUrl || row?.media?.[0]?.thumbUrl || row?.media?.[0]?.url || "";
     const rowLogo = row?.logoUrl || row?.logo || row?.logoURL || "";
     const caption = String(
@@ -127,6 +204,10 @@ export function createFeedVisibilityRuntimeCluster({
       business: row?.businessName || row?.restaurantName || restaurant?.name || restaurant?.restaurantName || "Business",
       logo: restaurant?.logoUrl || restaurant?.logo || rowLogo || "",
       location: row?.city || restaurant?.city || "",
+      country,
+      countryCode,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
       content: caption,
       image,
       likes: Number(row?.likesCount ?? row?.likes ?? canonicalPost?.likes ?? 0) || 0,

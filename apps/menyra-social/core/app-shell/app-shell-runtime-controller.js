@@ -191,6 +191,7 @@ export function createAppShellRuntimeController(deps = {}) {
   const SMART_HEADER_REBIND_GUARD_MS = 180;
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
+  const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   const RUNTIME_BUDGETS_MS = Object.freeze({
     cold_guest_landing: 2200,
     profile_open: 850,
@@ -206,6 +207,7 @@ export function createAppShellRuntimeController(deps = {}) {
   let mapRefreshQueued = false;
   let lastHeaderRuntimeMode = "";
   let lastRuntimeDegradedBannerSignature = "";
+  let lastFeedLocationRenderKey = "";
   let menuLazyImageObserver = null;
 
   function getViewportScrollTop() {
@@ -642,6 +644,75 @@ export function createAppShellRuntimeController(deps = {}) {
     };
   }
 
+  function normalizeFeedViewerCoords(value = null) {
+    const lat = Number(value?.lat ?? value?.latitude ?? value?.y);
+    const lng = Number(value?.lng ?? value?.lon ?? value?.longitude ?? value?.x);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }
+
+  function readStoredFeedViewerLocation() {
+    if (!win?.localStorage) return null;
+    try {
+      const raw = win.localStorage.getItem(FEED_VIEWER_LOCATION_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const coords = normalizeFeedViewerCoords(parsed);
+      if (!coords) return null;
+      const label = String(parsed?.label || parsed?.city || "").trim();
+      const city = String(parsed?.city || label).trim();
+      return {
+        lat: coords.lat,
+        lng: coords.lng,
+        label,
+        city,
+        country: String(parsed?.country || "").trim(),
+        countryCode: String(parsed?.countryCode || parsed?.country_code || "").trim().toLowerCase()
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function buildFeedLocationRenderKey(locationRecord = readStoredFeedViewerLocation()) {
+    const coords = normalizeFeedViewerCoords(locationRecord);
+    if (!coords) return "";
+    const latKey = Number(coords.lat).toFixed(6);
+    const lngKey = Number(coords.lng).toFixed(6);
+    const labelKey = String(locationRecord?.label || locationRecord?.city || "").trim().toLowerCase();
+    const cityKey = String(locationRecord?.city || locationRecord?.label || "").trim().toLowerCase();
+    const countryCodeKey = String(locationRecord?.countryCode || locationRecord?.country_code || "").trim().toLowerCase();
+    const countryKey = String(locationRecord?.country || "").trim().toLowerCase();
+    return `${latKey}|${lngKey}|${labelKey}|${cityKey}|${countryCodeKey}|${countryKey}`;
+  }
+
+  function shouldShowFeedLocationHeaderSearch(locationRecord = readStoredFeedViewerLocation()) {
+    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTabKey !== "feed" && activeTabKey !== "home") return false;
+    return !!locationRecord;
+  }
+
+  function renderFeedLocationHeaderSearch(locationLabel = "") {
+    return `
+      <div class="smart-header-feed-location" data-feed-location-scope="header">
+        <div class="loc-search-wrap">
+          <div class="loc-input-row">
+            <span class="loc-pin">${icon("map-pin", "w-3.5 h-3.5")}</span>
+            <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtml(locationLabel)}" placeholder="Vendos qytetin tënd..." class="loc-input" />
+            <div class="loc-request-wrap">
+              <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="Standort nutzen">
+                <i id="locateIcon" data-lucide="crosshair" class="w-3.5 h-3.5 relative z-10"></i>
+                <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
+              </button>
+            </div>
+          </div>
+          <div id="feedLocationCitySuggestions" data-feed-location-city-suggestions role="listbox" aria-hidden="true" class="feed-location-suggestions"></div>
+          <p id="feedLocationStatus" class="loc-status hidden"></p>
+        </div>
+      </div>
+    `;
+  }
+
   function renderBusinessHeaderCenter(profile = getActiveHeaderProfile()) {
     const viewportUi = resolveBusinessHeaderViewportUi();
     const businessName = String(profile?.name || profile?.restaurantName || profile?.businessName || "Business").trim() || "Business";
@@ -763,29 +834,49 @@ export function createAppShellRuntimeController(deps = {}) {
       ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
       : 0;
     const guestSession = isGuestSession();
+    const headerLocationRecord = readStoredFeedViewerLocation();
+    const showFeedLocationHeaderSearch = shouldShowFeedLocationHeaderSearch(headerLocationRecord);
+    const feedLocationLabel = String(
+      headerLocationRecord?.label
+      || headerLocationRecord?.city
+      || ""
+    ).trim();
+    const compactHeaderIcons = !!showFeedLocationHeaderSearch;
+    const drawerButtonClass = compactHeaderIcons
+      ? "text-slate-700 hover:bg-slate-100 w-9 h-9 p-2 -ml-1.5 rounded-full transition-colors active:scale-95 flex items-center justify-center"
+      : "text-slate-700 hover:bg-slate-100 p-2 -ml-2 rounded-full transition-colors active:scale-95 flex items-center justify-center";
+    const drawerIconClass = compactHeaderIcons ? "w-5 h-5" : "w-6 h-6";
+    const actionButtonClass = compactHeaderIcons
+      ? "w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
+      : "w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
+    const actionIconClass = compactHeaderIcons ? "w-5 h-5" : "w-5 h-5";
 
     return `
       <div class="smart-header-shell">
         <div id="smart-header-top" class="smart-header-top">
           <div class="px-5 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 p-2 -ml-2 rounded-full transition-colors active:scale-95 flex items-center justify-center">
-                ${icon("menu", "w-6 h-6")}
+            <div class="flex items-center gap-3${showFeedLocationHeaderSearch ? " flex-1 min-w-0 pr-2" : ""}">
+              <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="${drawerButtonClass}">
+                ${icon("menu", drawerIconClass)}
               </button>
-              <div class="flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
-                <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
-                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
-              </div>
+              ${showFeedLocationHeaderSearch
+                ? renderFeedLocationHeaderSearch(feedLocationLabel)
+                : `
+                  <div class="flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
+                    <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
+                    <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
+                  </div>
+                `}
             </div>
-            <div class="flex items-center gap-1.5 text-slate-600">
-              <button type="button" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95">
-                ${icon("globe", "w-5 h-5")}
+            <div class="flex shrink-0 items-center ${compactHeaderIcons ? "gap-1.5" : "gap-1.5"} text-slate-600">
+              <button type="button" class="${actionButtonClass}">
+                ${icon("globe", actionIconClass)}
               </button>
-              <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95">
-                ${icon("user", "w-5 h-5")}
+              <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${actionButtonClass}">
+                ${icon("user", actionIconClass)}
               </button>
-              <button type="button" data-action="cart" class="smart-header-cart-btn w-10 h-10 flex items-center justify-center text-slate-900 hover:bg-slate-100 rounded-full transition-colors active:scale-95">
-                ${icon("shopping-bag", "w-5 h-5")}
+              <button type="button" data-action="cart" class="smart-header-cart-btn ${actionButtonClass} text-slate-900">
+                ${icon("shopping-bag", actionIconClass)}
                 ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
               </button>
             </div>
@@ -1277,6 +1368,8 @@ export function createAppShellRuntimeController(deps = {}) {
     }
     const prevLastAppHtml = getLastAppHtml();
     const prevLastRenderMode = getLastRenderMode();
+    const currentFeedLocationRenderKey = buildFeedLocationRenderKey();
+    const didFeedLocationRenderKeyChange = currentFeedLocationRenderKey !== lastFeedLocationRenderKey;
     const changed = nextHtml !== prevLastAppHtml || mode !== prevLastRenderMode;
     if (changed) {
       const prevLastRenderedMainTab = getLastRenderedMainTab();
@@ -1298,7 +1391,9 @@ export function createAppShellRuntimeController(deps = {}) {
         && shouldShowSmartHeaderTabs()
         && !!win
         && typeof win.scrollTo === "function";
-      const reuseFeed = preserveMainScroll && state.activeTab === "feed"
+      const reuseFeed = preserveMainScroll
+        && state.activeTab === "feed"
+        && !didFeedLocationRenderKeyChange
         ? doc?.getElementById("feedView")
         : null;
       const reuseFeedViewMode = String(reuseFeed?.dataset?.feedViewMode || "").trim().toLowerCase();
@@ -1390,6 +1485,7 @@ export function createAppShellRuntimeController(deps = {}) {
       if (mode === "main") setLastRenderedMainTab(state.activeTab);
       else setLastRenderedMainTab("");
     }
+    lastFeedLocationRenderKey = currentFeedLocationRenderKey;
 
     const nextHeaderRuntimeMode = shouldUseSmartHeader() ? "smart" : "business-tabs";
     if (changed || nextHeaderRuntimeMode !== lastHeaderRuntimeMode) {

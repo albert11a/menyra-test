@@ -162,7 +162,95 @@ export function createFeedViewOrchestrationController({
   const findFeedPostById = (postId = "") => {
     const safePostId = String(postId || "").trim();
     if (!safePostId) return null;
-    return state.feedPosts.find((item) => String(item?.id || "").trim() === safePostId) || null;
+    const feedPosts = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
+    return feedPosts.find((item) => String(item?.id || "").trim() === safePostId) || null;
+  };
+  const toTimestampMs = (value = null) => {
+    const parsed = toDateSafeFn(value);
+    const millis = Number(parsed?.getTime?.() || 0);
+    return Number.isFinite(millis) ? millis : 0;
+  };
+  const resolveFeedRestaurantMap = () => {
+    const map = new Map();
+    const restaurants = Array.isArray(state?.restaurants) ? state.restaurants : [];
+    restaurants.forEach((restaurant) => {
+      const rid = String(restaurant?.id || restaurant?.restaurantId || "").trim();
+      if (!rid || map.has(rid)) return;
+      map.set(rid, restaurant);
+    });
+    return map;
+  };
+  const resolveFeedEntryRestaurantId = (entry = {}) => String(
+    entry?.restaurantId
+    || (String(entry?.ownerType || "").trim().toLowerCase() === "restaurant" ? entry?.ownerId : "")
+    || entry?.rid
+    || ""
+  ).trim();
+  const resolveFeedGeoScopedCollections = ({
+    feedPosts = [],
+    stories = []
+  } = {}) => {
+    const safeFeedPosts = Array.isArray(feedPosts) ? feedPosts : [];
+    const safeStories = Array.isArray(stories) ? stories : [];
+    const viewerLocation = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const viewerCountryCode = resolveCountryCodeFromAnyRecord(viewerLocation);
+    const viewerCoords = normalizeViewerCoords(viewerLocation);
+    const restaurantMap = resolveFeedRestaurantMap();
+    const shouldStrictCountryFilter = !!viewerCountryCode;
+    const withGeoMeta = (entry = {}, { type = "post", fallbackIndex = 0 } = {}) => {
+      const restaurantId = resolveFeedEntryRestaurantId(entry);
+      const restaurant = restaurantId ? restaurantMap.get(restaurantId) || null : null;
+      const countryCode = resolveCountryCodeFromAnyRecord({
+        ...(restaurant && typeof restaurant === "object" ? restaurant : {}),
+        ...(entry && typeof entry === "object" ? entry : {})
+      });
+      if (shouldStrictCountryFilter) {
+        if (!countryCode || countryCode !== viewerCountryCode) return null;
+      }
+      const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(entry);
+      const distanceKm = viewerCoords && coords
+        ? haversineDistanceKm(viewerCoords, coords)
+        : Number.POSITIVE_INFINITY;
+      return {
+        entry,
+        fallbackIndex,
+        distanceKm,
+        createdAtMs: type === "post"
+          ? toTimestampMs(entry?.createdAt || entry?.updatedAt)
+          : 0
+      };
+    };
+    const scopedFeedPosts = safeFeedPosts
+      .map((post, index) => withGeoMeta(post, { type: "post", fallbackIndex: index }))
+      .filter(Boolean)
+      .sort((a, b) => {
+        const aFinite = Number.isFinite(a.distanceKm);
+        const bFinite = Number.isFinite(b.distanceKm);
+        if (aFinite && bFinite && Math.abs(a.distanceKm - b.distanceKm) > 0.001) {
+          return a.distanceKm - b.distanceKm;
+        }
+        if (aFinite !== bFinite) return aFinite ? -1 : 1;
+        if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
+        return a.fallbackIndex - b.fallbackIndex;
+      })
+      .map((row) => row.entry);
+    const scopedStories = safeStories
+      .map((story, index) => withGeoMeta(story, { type: "story", fallbackIndex: index }))
+      .filter(Boolean)
+      .sort((a, b) => {
+        const aFinite = Number.isFinite(a.distanceKm);
+        const bFinite = Number.isFinite(b.distanceKm);
+        if (aFinite && bFinite && Math.abs(a.distanceKm - b.distanceKm) > 0.001) {
+          return a.distanceKm - b.distanceKm;
+        }
+        if (aFinite !== bFinite) return aFinite ? -1 : 1;
+        return a.fallbackIndex - b.fallbackIndex;
+      })
+      .map((row) => row.entry);
+    return {
+      feedPosts: scopedFeedPosts,
+      stories: scopedStories
+    };
   };
   const copyTextToClipboard = async (value = "") => {
     const safeValue = String(value || "");
@@ -354,6 +442,26 @@ export function createFeedViewOrchestrationController({
     { id: "kukes", label: "Kukes", lat: 42.0769, lng: 20.4219, aliases: ["kukes albania"], country: "Shqiperi" },
     { id: "smederevo", label: "Smederevo", lat: 44.6644, lng: 20.9276, aliases: ["smederevo serbia"], country: "Serbi" }
   ]);
+  const FEED_COUNTRY_BOUNDS = Object.freeze({
+    xk: Object.freeze({ minLat: 41.85, maxLat: 43.35, minLng: 20.0, maxLng: 21.85 }),
+    al: Object.freeze({ minLat: 39.55, maxLat: 42.75, minLng: 19.0, maxLng: 21.1 }),
+    rs: Object.freeze({ minLat: 42.2, maxLat: 46.3, minLng: 18.7, maxLng: 23.1 })
+  });
+  const FEED_COUNTRY_CITY_HINTS = Object.freeze({
+    xk: Object.freeze([
+      "prishtina", "prishtine", "prizren", "peja", "peje", "gjakova", "gjakove",
+      "ferizaj", "gjilan", "mitrovica", "mitrovice", "vushtrria", "vushtrri",
+      "podujeva", "podujeve"
+    ]),
+    al: Object.freeze([
+      "tirana", "tirane", "kukes", "durres", "vlore", "shkoder", "elbasan",
+      "fier", "korce", "sarande"
+    ]),
+    rs: Object.freeze([
+      "smederevo", "beograd", "belgrade", "novi sad", "nis", "kragujevac",
+      "subotica", "pancevo"
+    ])
+  });
   let sessionViewerLocation = null;
   let locationRequestPending = false;
   let locationGateStatus = "idle";
@@ -371,6 +479,8 @@ export function createFeedViewOrchestrationController({
   let feedStagePinSyncCleanup = null;
   let feedStagePinSyncStageEl = null;
   let feedStagePinSyncBentoEl = null;
+  let feedLocationControlDelegationBound = false;
+  let feedCountryCityHintMap = null;
   const locationRemoteSuggestionCache = new Map();
   const locationRemoteSuggestionById = new Map();
   const normalizeLocationQuery = (value = "") => String(value || "")
@@ -390,6 +500,118 @@ export function createFeedViewOrchestrationController({
     if (!normalized) return "";
     return FEED_LOCATION_COUNTRY_ALIASES.get(normalized) || "";
   };
+  const resolveCountryCodeFromCoords = (value = null) => {
+    const coords = normalizeViewerCoords(value);
+    if (!coords) return "";
+    const lat = Number(coords.lat);
+    const lng = Number(coords.lng);
+    const inBounds = (bounds = null) => !!bounds
+      && lat >= Number(bounds.minLat)
+      && lat <= Number(bounds.maxLat)
+      && lng >= Number(bounds.minLng)
+      && lng <= Number(bounds.maxLng);
+    // Keep Kosovo first because its box sits inside the wider Serbia region.
+    if (inBounds(FEED_COUNTRY_BOUNDS.xk)) return "xk";
+    if (inBounds(FEED_COUNTRY_BOUNDS.al)) return "al";
+    if (inBounds(FEED_COUNTRY_BOUNDS.rs)) return "rs";
+    return "";
+  };
+  const resolveFeedCountryCityHintMap = () => {
+    if (feedCountryCityHintMap instanceof Map) return feedCountryCityHintMap;
+    const map = new Map();
+    const register = (term = "", code = "") => {
+      const normalizedTerm = normalizeLocationQuery(term);
+      const normalizedCode = toCountryCode(code);
+      if (!normalizedTerm || !normalizedCode) return;
+      map.set(normalizedTerm, normalizedCode);
+    };
+    Object.entries(FEED_COUNTRY_CITY_HINTS).forEach(([code, hints]) => {
+      (Array.isArray(hints) ? hints : []).forEach((hint) => register(hint, code));
+    });
+    resolveFeedLocationCityOptions().forEach((option) => {
+      const optionCode = toCountryCode(option?.countryCode || option?.country);
+      if (!optionCode) return;
+      register(option?.label, optionCode);
+      register(option?.city, optionCode);
+      (Array.isArray(option?.searchTerms) ? option.searchTerms : []).forEach((term) => register(term, optionCode));
+    });
+    feedCountryCityHintMap = map;
+    return map;
+  };
+  const resolveCountryCodeFromTextHints = (...values) => {
+    const hintMap = resolveFeedCountryCityHintMap();
+    for (const value of values) {
+      const directCode = toCountryCode(value);
+      if (directCode) return directCode;
+      const normalized = normalizeLocationQuery(value);
+      if (!normalized) continue;
+      const directHint = hintMap.get(normalized);
+      if (directHint) return directHint;
+      const tokens = normalized.split(" ").filter(Boolean);
+      for (const token of tokens) {
+        const tokenHint = hintMap.get(token);
+        if (tokenHint) return tokenHint;
+      }
+    }
+    return "";
+  };
+  const resolveCountryCodeFromAnyRecord = (record = null) => {
+    if (!record || typeof record !== "object") return "";
+    return toCountryCode(
+      record?.countryCode
+      || record?.country_code
+      || record?.country
+      || record?.geo?.countryCode
+      || record?.geo?.country_code
+      || record?.geo?.country
+      || record?.coords?.countryCode
+      || record?.coords?.country
+      || record?.location?.countryCode
+      || record?.location?.country
+      || ""
+    )
+      || resolveCountryCodeFromTextHints(
+        record?.country,
+        record?.geo?.country,
+        record?.coords?.country,
+        record?.location?.country,
+        record?.city,
+        record?.geo?.city,
+        record?.coords?.city,
+        record?.location?.city,
+        record?.label,
+        record?.address,
+        record?.location
+      )
+      || resolveCountryCodeFromCoords(record);
+  };
+  const normalizeEntityCoords = (value = null) => {
+    if (!value || typeof value !== "object") return null;
+    return normalizeViewerCoords(value)
+      || normalizeViewerCoords({ lat: value?.latitude, lng: value?.longitude })
+      || normalizeViewerCoords({ lat: value?.gpsLat, lng: value?.gpsLng })
+      || normalizeViewerCoords({ lat: value?.geo?.lat, lng: value?.geo?.lng })
+      || normalizeViewerCoords({ lat: value?.geo?.latitude, lng: value?.geo?.longitude })
+      || normalizeViewerCoords({ lat: value?.coords?.lat, lng: value?.coords?.lng })
+      || normalizeViewerCoords({ lat: value?.coords?.latitude, lng: value?.coords?.longitude })
+      || normalizeViewerCoords({ lat: value?.location?.lat, lng: value?.location?.lng });
+  };
+  const haversineDistanceKm = (a = null, b = null) => {
+    const from = normalizeViewerCoords(a);
+    const to = normalizeViewerCoords(b);
+    if (!from || !to) return Number.POSITIVE_INFINITY;
+    const earthRadiusKm = 6371;
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const dLat = toRad(Number(to.lat) - Number(from.lat));
+    const dLng = toRad(Number(to.lng) - Number(from.lng));
+    const lat1 = toRad(Number(from.lat));
+    const lat2 = toRad(Number(to.lat));
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const aVal = sinDLat * sinDLat + (Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng);
+    const cVal = 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
+    return earthRadiusKm * cVal;
+  };
   const normalizeViewerCoords = (value = null) => {
     const lat = Number(value?.lat ?? value?.latitude ?? value?.y);
     const lng = Number(value?.lng ?? value?.lon ?? value?.longitude ?? value?.x);
@@ -402,11 +624,23 @@ export function createFeedViewOrchestrationController({
     const label = String(value?.label || value?.city || "").trim();
     const city = String(value?.city || label).trim();
     const source = String(value?.source || "").trim().toLowerCase();
+    const countryCode = resolveCountryCodeFromAnyRecord({
+      ...(value && typeof value === "object" ? value : {}),
+      lat: coords.lat,
+      lng: coords.lng,
+      label,
+      city
+    });
+    const country = toCountryLabel(value?.country || value?.countryCode || value?.country_code || countryCode)
+      || toCountryLabel(countryCode)
+      || "";
     return {
       lat: coords.lat,
       lng: coords.lng,
       label,
       city,
+      country,
+      countryCode,
       source: source || "manual",
       savedAt: Number(value?.savedAt || Date.now()) || Date.now()
     };
@@ -979,6 +1213,10 @@ export function createFeedViewOrchestrationController({
     return "";
   };
   const resolveLocationScreenMode = () => "feed-gate";
+  const isFeedLocationScopeActive = () => {
+    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+    return activeTabKey === "feed" || activeTabKey === "home";
+  };
   const getRenderedLocationScreenMode = () => {
     const rootMode = String(doc?.getElementById("feedView")?.dataset?.locationScreenMode || "").trim().toLowerCase();
     if (rootMode) return rootMode;
@@ -1043,6 +1281,9 @@ export function createFeedViewOrchestrationController({
     const gateRoot = doc?.getElementById("feedLocationGate");
     const locationScreenMode = getRenderedLocationScreenMode();
     const shouldStayOnLocationScreen = locationScreenMode === "location";
+    const feedViewMode = String(doc?.getElementById("feedView")?.dataset?.feedViewMode || "").trim().toLowerCase();
+    const isFeedAlreadyVisible = feedViewMode === "feed";
+    const shouldAnimateResolve = !shouldStayOnLocationScreen && !isFeedAlreadyVisible;
     if (!shouldStayOnLocationScreen) {
       const activeEl = doc?.activeElement;
       if (activeEl && typeof activeEl.blur === "function") {
@@ -1051,7 +1292,7 @@ export function createFeedViewOrchestrationController({
         } catch {}
       }
     }
-    if (shouldStayOnLocationScreen) {
+    if (shouldStayOnLocationScreen || !shouldAnimateResolve) {
       feedEntranceAnimationQueued = false;
       feedStageAutoPinScrollQueued = false;
       clearFeedStageAutoPinScrollFrame();
@@ -1068,10 +1309,19 @@ export function createFeedViewOrchestrationController({
       clearLocationGateResolveTimer();
       return true;
     }
+    if (!shouldAnimateResolve) {
+      clearLocationGateResolveTimer();
+      const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+      if (!activeTabKey || activeTabKey === "feed" || activeTabKey === "home") {
+        setStateFn({ activeTab: "feed" });
+      }
+      return true;
+    }
     clearLocationGateResolveTimer();
     locationGateResolveTimer = setTimeoutFn(() => {
       locationGateResolveTimer = null;
       locationGateResolveTransitionPending = false;
+      gateRoot?.classList?.remove?.("feed-location-gate--resolving");
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
       if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "home") {
         return;
@@ -1092,6 +1342,8 @@ export function createFeedViewOrchestrationController({
         lng: fallbackOption.lng,
         label: fallbackOption.label,
         city: fallbackOption.city || fallbackOption.label,
+        country: fallbackOption.country,
+        countryCode: fallbackOption.countryCode,
         source: "city-search"
       });
       return;
@@ -1145,6 +1397,7 @@ export function createFeedViewOrchestrationController({
             lng: coords.lng,
             label: currentLabel || "Lokacioni aktual",
             city: currentLabel || "",
+            countryCode: resolveCountryCodeFromCoords(coords),
             source: "gps"
           });
         });
@@ -1189,10 +1442,17 @@ export function createFeedViewOrchestrationController({
 
     <p class="loc-foot">Powered by MNYRA</p>
   `;
-  function renderLocationGate({ mode = resolveLocationScreenMode(), bentoContentHtml = "" } = {}) {
+  function renderLocationGate({
+    mode = resolveLocationScreenMode(),
+    bentoContentHtml = "",
+    showSearchControls = true,
+    showTopSection = true
+  } = {}) {
     const viewerLocation = resolveViewerLocationRecord();
     const cityValue = String(viewerLocation?.label || viewerLocation?.city || "").trim();
     const safeMode = String(mode || "feed-gate").trim().toLowerCase() || "feed-gate";
+    const shouldRenderSearchControls = showSearchControls !== false;
+    const shouldRenderTopSection = showTopSection !== false;
     const customBentoContent = String(
       bentoContentHtml
       || renderFeedGateBentoContent()
@@ -1213,6 +1473,7 @@ export function createFeedViewOrchestrationController({
             background: #00cce5;
           }
           #feedLocationGate .loc-top { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 5rem 1.5rem 5.25rem; background: #f8fafc; }
+          #feedLocationGate .loc-top.loc-top--searchless { padding-bottom: 3.35rem; }
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-top {
             background: #00cce5;
           }
@@ -1325,31 +1586,34 @@ export function createFeedViewOrchestrationController({
         </style>
 
         <div class="loc-shell">
-          <div class="loc-top">
-            <div class="loc-title">
-              <div class="text-slider-wrapper">
-                <div class="text-slide-item">ZBULO VENDET.</div>
-                <div class="text-slide-item">GJEJ OFERTAT.</div>
-                <div class="text-slide-item">SHIJO QYTETIN.</div>
-              </div>
-              <div>PËRRETH TEJE.</div>
-            </div>
-
-            <div class="loc-search-wrap">
-              <div class="loc-input-row">
-                <span class="loc-pin">${iconFn("map-pin", "w-5 h-5")}</span>
-                <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="Vendos qytetin tënd..." class="loc-input" />
-                <div class="loc-request-wrap">
-                  <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn">
-                    <i id="locateIcon" data-lucide="crosshair" class="w-5 h-5 relative z-10"></i>
-                    <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
-                  </button>
+          ${shouldRenderTopSection ? `
+            <div class="loc-top${shouldRenderSearchControls ? "" : " loc-top--searchless"}">
+              <div class="loc-title">
+                <div class="text-slider-wrapper">
+                  <div class="text-slide-item">ZBULO VENDET.</div>
+                  <div class="text-slide-item">GJEJ OFERTAT.</div>
+                  <div class="text-slide-item">SHIJO QYTETIN.</div>
                 </div>
+                <div>PËRRETH TEJE.</div>
               </div>
-              <div id="feedLocationCitySuggestions" data-feed-location-city-suggestions role="listbox" aria-hidden="true" class="feed-location-suggestions"></div>
-              <p id="feedLocationStatus" class="loc-status hidden"></p>
+              ${shouldRenderSearchControls ? `
+                <div class="loc-search-wrap">
+                  <div class="loc-input-row">
+                    <span class="loc-pin">${iconFn("map-pin", "w-5 h-5")}</span>
+                    <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="Vendos qytetin tënd..." class="loc-input" />
+                    <div class="loc-request-wrap">
+                      <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn">
+                        <i id="locateIcon" data-lucide="crosshair" class="w-5 h-5 relative z-10"></i>
+                        <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="feedLocationCitySuggestions" data-feed-location-city-suggestions role="listbox" aria-hidden="true" class="feed-location-suggestions"></div>
+                  <p id="feedLocationStatus" class="loc-status hidden"></p>
+                </div>
+              ` : ""}
             </div>
-          </div>
+          ` : ""}
 
           <div class="feed-bento-pin-backdrop" aria-hidden="true"></div>
           <div class="feed-bento-pin-outline" aria-hidden="true"></div>
@@ -1632,10 +1896,15 @@ export function createFeedViewOrchestrationController({
       if (win?.lucide?.createIcons) win.lucide.createIcons();
       return true;
     }
-    const feedPosts = state.feedPosts
+    const feedPostsSource = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
+    const categoryFeedPosts = feedPostsSource
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-    const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+    const baseStories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+    const { feedPosts, stories } = resolveFeedGeoScopedCollections({
+      feedPosts: categoryFeedPosts,
+      stories: baseStories
+    });
     const storiesRow = doc.getElementById("storiesRow");
     const nextSig = `${buildStoriesRowSignatureFn(stories)}|upload:${shouldShowStoryUploadSlot() ? "1" : "0"}`;
     if (storiesRow) {
@@ -1668,10 +1937,15 @@ export function createFeedViewOrchestrationController({
     const feedViewMode = hasViewerLocation ? "feed" : "feed-gate";
     let feedBentoContent = renderFeedGateBentoContent();
     if (hasViewerLocation) {
-      const feedPosts = state.feedPosts
+      const feedPostsSource = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
+      const categoryFeedPosts = feedPostsSource
         .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
         .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-      const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+      const baseStories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+      const { feedPosts, stories } = resolveFeedGeoScopedCollections({
+        feedPosts: categoryFeedPosts,
+        stories: baseStories
+      });
       feedBentoContent = `
         <div id="storiesRow" class="flex gap-4 overflow-x-auto app-content-inline pt-6 pb-8 no-scrollbar">
           ${renderStoriesRow(stories)}
@@ -1698,9 +1972,176 @@ export function createFeedViewOrchestrationController({
       </style>
     ` : ""}
     <div id="feedView" data-feed-view-mode="${feedViewMode}" class="${withEntranceAnimation ? "feed-view-slide-enter" : ""}">
-      ${renderLocationGate({ mode: "feed-gate", bentoContentHtml: feedBentoContent })}
+      ${renderLocationGate({
+        mode: "feed-gate",
+        bentoContentHtml: feedBentoContent,
+        showSearchControls: !hasViewerLocation,
+        showTopSection: !hasViewerLocation
+      })}
     </div>
   `;
+  }
+
+  function bindFeedLocationControlsDelegation() {
+    if (!doc || feedLocationControlDelegationBound) return;
+    feedLocationControlDelegationBound = true;
+
+    const isLocationControlScope = () => isFeedLocationScopeActive();
+
+    doc.addEventListener("input", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      syncFeedLocationSuggestionsDom(cityInput.value);
+    });
+
+    doc.addEventListener("pointerdown", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      if (doc?.activeElement === cityInput) return;
+      event.preventDefault();
+      try {
+        cityInput.focus({ preventScroll: true });
+      } catch {
+        cityInput.focus();
+      }
+    });
+
+    doc.addEventListener("touchstart", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      if (doc?.activeElement === cityInput) return;
+      event.preventDefault();
+      try {
+        cityInput.focus({ preventScroll: true });
+      } catch {
+        cityInput.focus();
+      }
+    }, { passive: false });
+
+    doc.addEventListener("focusin", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      syncFeedLocationSuggestionsDom(cityInput.value);
+    });
+
+    doc.addEventListener("focusout", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!cityInput) return;
+      setTimeoutFn(() => {
+        const active = doc?.activeElement;
+        if (active instanceof Element && (active.closest("[data-feed-location-city-input]") || active.closest("[data-feed-city-suggestion]"))) {
+          return;
+        }
+        hideFeedLocationSuggestions();
+      }, 120);
+    });
+
+    doc.addEventListener("change", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      const rawValue = String(cityInput.value || "").trim();
+      if (!rawValue) return;
+      const suggestion = getFeedLocationCitySuggestions(rawValue, 1)[0];
+      if (!suggestion) return;
+      if (normalizeLocationQuery(rawValue) !== normalizeLocationQuery(suggestion.label)) return;
+      hideFeedLocationSuggestions();
+      const applied = applyViewerLocationSelection({
+        lat: suggestion.lat,
+        lng: suggestion.lng,
+        label: suggestion.label,
+        city: suggestion.city || suggestion.label,
+        country: suggestion.country,
+        countryCode: suggestion.countryCode,
+        source: "city-search"
+      });
+      if (!applied) {
+        requestViewerLocationAccess({ fallbackCity: suggestion });
+      }
+    });
+
+    doc.addEventListener("keydown", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const cityInput = target.closest("[data-feed-location-city-input]");
+      if (!(cityInput instanceof HTMLInputElement)) return;
+      if (event.key === "Escape") {
+        hideFeedLocationSuggestions();
+        return;
+      }
+      if (event.key !== "Enter") return;
+      const suggestion = getFeedLocationCitySuggestions(cityInput.value, 1)[0];
+      if (!suggestion) return;
+      event.preventDefault();
+      cityInput.value = suggestion.label;
+      hideFeedLocationSuggestions();
+      const applied = applyViewerLocationSelection({
+        lat: suggestion.lat,
+        lng: suggestion.lng,
+        label: suggestion.label,
+        city: suggestion.city || suggestion.label,
+        country: suggestion.country,
+        countryCode: suggestion.countryCode,
+        source: "city-search"
+      });
+      if (!applied) {
+        requestViewerLocationAccess({ fallbackCity: suggestion });
+      }
+    });
+
+    doc.addEventListener("click", (event) => {
+      if (!isLocationControlScope()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const citySuggestion = target.closest("[data-feed-city-suggestion]");
+      if (citySuggestion) {
+        event.preventDefault();
+        event.stopPropagation();
+        const cityOption = findFeedLocationCityOption(citySuggestion.getAttribute("data-feed-city-suggestion") || "");
+        if (cityOption) {
+          const cityInput = doc?.getElementById("feedLocationCityInput");
+          if (cityInput instanceof HTMLInputElement) cityInput.value = cityOption.label;
+          hideFeedLocationSuggestions();
+          const applied = applyViewerLocationSelection({
+            lat: cityOption.lat,
+            lng: cityOption.lng,
+            label: cityOption.label,
+            city: cityOption.city || cityOption.label,
+            country: cityOption.country,
+            countryCode: cityOption.countryCode,
+            source: "city-search"
+          });
+          if (!applied) {
+            requestViewerLocationAccess({ fallbackCity: cityOption });
+          }
+        }
+        return;
+      }
+      const locationBtn = target.closest("[data-feed-location-request]");
+      if (locationBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        requestViewerLocationAccess({ forceExact: true });
+      }
+    });
   }
 
   function bindFeedDelegation() {
@@ -1709,6 +2150,7 @@ export function createFeedViewOrchestrationController({
       stopFeedStagePinSync();
       return;
     }
+    bindFeedLocationControlsDelegation();
     bindFeedStagePinSync(feedView);
     const feedViewMode = String(feedView.dataset.feedViewMode || "").trim().toLowerCase();
     if (feedViewMode === "feed") {
@@ -1740,135 +2182,9 @@ export function createFeedViewOrchestrationController({
     feedView.addEventListener("touchstart", (event) => {
       handleStoryWarmup(event.target);
     }, { passive: true });
-    feedView.addEventListener("input", (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const cityInput = target.closest("[data-feed-location-city-input]");
-      if (!(cityInput instanceof HTMLInputElement)) return;
-      syncFeedLocationSuggestionsDom(cityInput.value);
-    });
-    feedView.addEventListener("pointerdown", (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const cityInput = target.closest("[data-feed-location-city-input]");
-      if (!(cityInput instanceof HTMLInputElement)) return;
-      if (doc?.activeElement === cityInput) return;
-      event.preventDefault();
-      try {
-        cityInput.focus({ preventScroll: true });
-      } catch {
-        cityInput.focus();
-      }
-    });
-    feedView.addEventListener("touchstart", (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const cityInput = target.closest("[data-feed-location-city-input]");
-      if (!(cityInput instanceof HTMLInputElement)) return;
-      if (doc?.activeElement === cityInput) return;
-      event.preventDefault();
-      try {
-        cityInput.focus({ preventScroll: true });
-      } catch {
-        cityInput.focus();
-      }
-    }, { passive: false });
-    feedView.addEventListener("focusin", (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const cityInput = target.closest("[data-feed-location-city-input]");
-      if (!(cityInput instanceof HTMLInputElement)) return;
-      syncFeedLocationSuggestionsDom(cityInput.value);
-    });
-    feedView.addEventListener("focusout", (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const cityInput = target.closest("[data-feed-location-city-input]");
-      if (!cityInput) return;
-      setTimeoutFn(() => {
-        const active = doc?.activeElement;
-        if (active instanceof Element && (active.closest("[data-feed-location-city-input]") || active.closest("[data-feed-city-suggestion]"))) {
-          return;
-        }
-        hideFeedLocationSuggestions();
-      }, 120);
-    });
-    feedView.addEventListener("change", (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const cityInput = target.closest("[data-feed-location-city-input]");
-      if (!(cityInput instanceof HTMLInputElement)) return;
-      const rawValue = String(cityInput.value || "").trim();
-      if (!rawValue) return;
-      const suggestion = getFeedLocationCitySuggestions(rawValue, 1)[0];
-      if (!suggestion) return;
-      if (normalizeLocationQuery(rawValue) !== normalizeLocationQuery(suggestion.label)) return;
-      hideFeedLocationSuggestions();
-      const applied = applyViewerLocationSelection({
-        lat: suggestion.lat,
-        lng: suggestion.lng,
-        label: suggestion.label,
-        city: suggestion.city || suggestion.label,
-        source: "city-search"
-      });
-      if (!applied) {
-        requestViewerLocationAccess({ fallbackCity: suggestion });
-      }
-    });
-    feedView.addEventListener("keydown", (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const cityInput = target.closest("[data-feed-location-city-input]");
-      if (!(cityInput instanceof HTMLInputElement)) return;
-      if (event.key === "Escape") {
-        hideFeedLocationSuggestions();
-        return;
-      }
-      if (event.key !== "Enter") return;
-      const suggestion = getFeedLocationCitySuggestions(cityInput.value, 1)[0];
-      if (!suggestion) return;
-      event.preventDefault();
-      cityInput.value = suggestion.label;
-      hideFeedLocationSuggestions();
-      const applied = applyViewerLocationSelection({
-        lat: suggestion.lat,
-        lng: suggestion.lng,
-        label: suggestion.label,
-        city: suggestion.city || suggestion.label,
-        source: "city-search"
-      });
-      if (!applied) {
-        requestViewerLocationAccess({ fallbackCity: suggestion });
-      }
-    });
     feedView.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      const citySuggestion = target.closest("[data-feed-city-suggestion]");
-      if (citySuggestion) {
-        const cityOption = findFeedLocationCityOption(citySuggestion.getAttribute("data-feed-city-suggestion") || "");
-        if (cityOption) {
-          const cityInput = doc?.getElementById("feedLocationCityInput");
-          if (cityInput instanceof HTMLInputElement) cityInput.value = cityOption.label;
-          hideFeedLocationSuggestions();
-          const applied = applyViewerLocationSelection({
-            lat: cityOption.lat,
-            lng: cityOption.lng,
-            label: cityOption.label,
-            city: cityOption.city || cityOption.label,
-            source: "city-search"
-          });
-          if (!applied) {
-            requestViewerLocationAccess({ fallbackCity: cityOption });
-          }
-        }
-        return;
-      }
-      const locationBtn = target.closest("[data-feed-location-request]");
-      if (locationBtn) {
-        requestViewerLocationAccess({ forceExact: true });
-        return;
-      }
       const storyLink = target.closest("[data-story-item]");
       if (storyLink) {
         handleStoryWarmup(storyLink);
