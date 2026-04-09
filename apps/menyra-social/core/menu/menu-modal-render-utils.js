@@ -447,7 +447,7 @@ export function renderMenuItemModalCore({
   const animClass = "";
 
   return `
-    <div class="fixed inset-0 z-[75] modal-overlay">
+    <div class="fixed inset-0 z-[75] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
@@ -644,9 +644,6 @@ export function renderMenuDetailModalCore({
   const safeImg = isPlaceholder(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
   const firebaseFallback = getStorageUrl(rawImg);
   const fallbackImg = isDirectUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
-  const previewImgSrc = String(state.menuDetail?.previewImageSrc || "").trim();
-  const useHeroPreview = !!previewImgSrc && !isPlaceholder(previewImgSrc);
-  const handoffSheetAttr = useHeroPreview ? ` data-modal-hero-handoff="pending"` : "";
   const priceLabel = formatPriceLabel(item.price, item);
   const catalogProfile = getCatalogProfile(item);
   const typeLabel = isShopCatalog(catalogProfile)
@@ -774,8 +771,7 @@ export function renderMenuDetailModalCore({
     ? `
       <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll modal-handoff-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
         <div class="modal-handoff-hero relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y; aspect-ratio:4 / 5;">
-          ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
-          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
+          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
           ${images.length > 1 ? `
             <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-left", "w-4 h-4")}
@@ -847,8 +843,7 @@ export function renderMenuDetailModalCore({
     : `
       <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll modal-handoff-scroll px-7 py-6 bg-white/98">
         <div class="modal-handoff-hero relative h-56 rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
-          ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
-          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
+          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
           ${images.length > 1 ? `
             <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-left", "w-4 h-4")}
@@ -975,10 +970,10 @@ export function renderMenuDetailModalCore({
   const animClass = "";
 
   return `
-    <div class="fixed inset-0 z-[75] modal-overlay">
+    <div class="fixed inset-0 z-[75] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame menu-detail-modal-frame">
-        <div${handoffSheetAttr} class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border-x border-b border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet menu-detail-modal-sheet">
+        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border-x border-b border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet menu-detail-modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}

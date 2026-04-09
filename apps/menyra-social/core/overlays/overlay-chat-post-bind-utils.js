@@ -184,44 +184,6 @@ export function bindPostOverlayEventsCore({
   bindModalDismiss(postModalOverlay, closePostModal, { selfOnly: true });
   bindModalDismiss(postModalClose, closePostModal);
 
-  const postModalHeroImage = doc.getElementById("postModalHeroImage");
-  const postModalHeroPreview = doc.getElementById("postModalHeroPreview");
-  const postModalSheet = postModalHeroImage?.closest?.(".modal-sheet") || null;
-  const revealPostModalHeroImage = () => {
-    if (postModalHeroPreview) {
-      postModalHeroPreview.remove();
-    }
-    if (postModalHeroImage) {
-      postModalHeroImage.classList.remove("opacity-0");
-      postModalHeroImage.dataset.postModalHeroReady = "1";
-    }
-    if (postModalSheet?.dataset?.modalHeroHandoff === "pending") {
-      delete postModalSheet.dataset.modalHeroHandoff;
-    }
-    if (state?.postModal && typeof state.postModal === "object") {
-      state.postModal.previewImageSrc = "";
-    }
-  };
-  const queuePostModalHeroReveal = () => {
-    const finalizeReveal = () => {
-      win?.requestAnimationFrame?.(() => revealPostModalHeroImage());
-      if (!win?.requestAnimationFrame) win?.setTimeout?.(() => revealPostModalHeroImage(), 0);
-    };
-    if (!postModalHeroImage || typeof postModalHeroImage.decode !== "function") {
-      finalizeReveal();
-      return;
-    }
-    postModalHeroImage.decode().catch(() => {}).finally(finalizeReveal);
-  };
-  if (postModalHeroImage) {
-    if (postModalHeroImage.complete && Number(postModalHeroImage.naturalWidth || 0) > 0) {
-      queuePostModalHeroReveal();
-    } else {
-      postModalHeroImage.addEventListener("load", queuePostModalHeroReveal, { once: true });
-      postModalHeroImage.addEventListener("error", queuePostModalHeroReveal, { once: true });
-    }
-  }
-
   const postLikeBtn = doc.getElementById("postLikeBtn");
   if (postLikeBtn) {
     postLikeBtn.addEventListener("click", () => {

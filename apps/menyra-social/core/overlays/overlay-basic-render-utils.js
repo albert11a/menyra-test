@@ -24,7 +24,7 @@ export function renderChatModalCore({
   const avatarUrl = getImage(partner.avatar, "avatar");
   const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [];
   return `
-    <div class="fixed inset-0 z-[65] modal-overlay">
+    <div class="fixed inset-0 z-[65] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="chatModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 modal-sheet-85 flex flex-col overflow-hidden modal-sheet">
@@ -97,7 +97,7 @@ export function renderProfileModalCore({
   const typeLabel = p.restaurantId ? "Business" : "User";
   const avatarUrl = getImage(p.avatar, "avatar");
   return `
-    <div class="fixed inset-0 z-[60] modal-overlay">
+    <div class="fixed inset-0 z-[60] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="profileModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 modal-sheet-85 flex flex-col overflow-hidden modal-sheet">
@@ -177,7 +177,7 @@ export function renderLikesModalCore({
   const animClass = "";
 
   return `
-      <div class="fixed inset-0 z-[80] modal-overlay">
+      <div class="fixed inset-0 z-[80] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
         <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
@@ -258,9 +258,6 @@ export function renderPostModalCore({
   const imageUrl = getImage(rawImageUrl, "large", {
     stableKey: post?.id ? `post-modal:${String(post.id)}` : ""
   });
-  const previewImgSrc = String(state.postModal?.previewImageSrc || "").trim();
-  const useHeroPreview = !!previewImgSrc && !previewImgSrc.toLowerCase().startsWith("data:image/svg+xml");
-  const handoffSheetAttr = useHeroPreview ? ` data-modal-hero-handoff="pending"` : "";
   const comments = (meta.comments || []).map(ensureComment);
   const userBadge = getUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
@@ -268,12 +265,12 @@ export function renderPostModalCore({
   const animClass = "";
 
   return `
-      <div class="fixed inset-0 z-[70] modal-overlay">
+      <div class="fixed inset-0 z-[70] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
         <div class="modal-frame">
-          <div${handoffSheetAttr} class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
-            <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll modal-handoff-scroll p-7">
-              <div class="modal-handoff-chrome flex items-center justify-between mb-4">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
+            <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
+              <div class="flex items-center justify-between mb-4">
                 <div>
                   <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
                   <h3 class="text-xl font-black italic tracking-tighter">${esc(formatDate(post.createdAt || new Date()))}</h3>
@@ -282,40 +279,37 @@ export function renderPostModalCore({
                 <button id="postModalClose" type="button" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
               </div>
 
-              <div class="modal-handoff-hero relative rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                ${useHeroPreview ? `<img id="postModalHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-[22rem] object-cover pointer-events-none select-none" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
-                <img id="postModalHeroImage" src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover ${useHeroPreview ? "opacity-0" : ""}" loading="eager" fetchpriority="high" decoding="sync" />
+              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+                <img src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover" loading="eager" fetchpriority="high" decoding="sync" />
               </div>
 
-              <div class="modal-handoff-chrome">
-                ${caption ? `
-                  <div class="mt-4 text-sm text-slate-600 leading-relaxed">${esc(caption)}</div>
-                ` : ""}
+              ${caption ? `
+                <div class="mt-4 text-sm text-slate-600 leading-relaxed">${esc(caption)}</div>
+              ` : ""}
 
-                <div class="mt-4 flex items-center justify-between">
-                  <button id="postLikeBtn" data-post-id="${esc(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
-                    ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
-                  </button>
-                  <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    <button id="postLikesBtn" data-post-id="${esc(post.id)}" class="hover:text-slate-700">${esc(counts.likeLabel)} Likes</button>
-                    <span id="postCommentsCount">${esc(counts.commentLabel)} Kommentare</span>
-                  </div>
+              <div class="mt-4 flex items-center justify-between">
+                <button id="postLikeBtn" data-post-id="${esc(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
+                  ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+                </button>
+                <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <button id="postLikesBtn" data-post-id="${esc(post.id)}" class="hover:text-slate-700">${esc(counts.likeLabel)} Likes</button>
+                  <span id="postCommentsCount">${esc(counts.commentLabel)} Kommentare</span>
                 </div>
+              </div>
 
-                <div id="postModalComments" class="mt-5 space-y-4">
-                  ${renderComments(comments)}
-                </div>
+              <div id="postModalComments" class="mt-5 space-y-4">
+                ${renderComments(comments)}
+              </div>
 
-                ${replyTarget ? `
-                  <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${esc(replyTarget.handle)}</div>
-                    <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
-                  </div>
-                ` : ""}
+              ${replyTarget ? `
+                <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${esc(replyTarget.handle)}</div>
+                  <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
                 </div>
+              ` : ""}
             </div>
 
-            <div class="modal-handoff-chrome p-7 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
+            <div class="p-7 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
               <div class="flex gap-3">
                 <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${esc(state.postModal.commentText || "")}</textarea>
                 <button id="postCommentSend" type="button" data-post-id="${esc(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">

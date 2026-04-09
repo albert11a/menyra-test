@@ -12,6 +12,7 @@ const BETA_UPDATE_CHANNEL = "beta-auto-update-v2";
 const SOCIAL_SW_URL_BASE = "/apps/menyra-social/sw.js";
 const SOCIAL_SW_SCOPE = "/apps/menyra-social/";
 const SW_UPDATE_CHECK_INTERVAL_MS = 3 * 60 * 1000;
+const CACHE_PREFIX = "mnyra-social-cache-";
 
 let swUpdateTimer = null;
 const setVendorDegraded = (kind, payload = {}) => {
@@ -49,6 +50,44 @@ function buildUpdateChannel() {
   return `${BETA_UPDATE_CHANNEL}::${versionToken}`;
 }
 
+function isServiceWorkerDisabledByQuery() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    return params.get("sw-off") === "1";
+  } catch {
+    return false;
+  }
+}
+
+async function unregisterSocialServiceWorkers() {
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(
+      regs.map(async (reg) => {
+        const scope = String(reg?.scope || "");
+        if (!scope.includes(SOCIAL_SW_SCOPE)) return false;
+        try {
+          return await reg.unregister();
+        } catch {
+          return false;
+        }
+      })
+    );
+  } catch {}
+}
+
+async function clearSocialCaches() {
+  try {
+    if (!("caches" in window)) return;
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => String(key || "").startsWith(CACHE_PREFIX))
+        .map((key) => caches.delete(key).catch(() => false))
+    );
+  } catch {}
+}
+
 function scheduleSwUpdateChecks(reg) {
   const runUpdate = () => reg.update().catch(() => null);
   runUpdate();
@@ -68,6 +107,17 @@ async function registerSW() {
     setVendorDegraded("push", {
       active: true,
       message: "Service Worker wird nicht unterstuetzt. Push bleibt deaktiviert."
+    });
+    return;
+  }
+
+  if (isServiceWorkerDisabledByQuery()) {
+    await unregisterSocialServiceWorkers();
+    await clearSocialCaches();
+    log("service worker disabled by query param sw-off=1");
+    setVendorDegraded("push", {
+      active: true,
+      message: "Service Worker ist per sw-off=1 deaktiviert."
     });
     return;
   }

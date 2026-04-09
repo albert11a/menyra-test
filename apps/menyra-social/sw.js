@@ -295,11 +295,20 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (inScope && isCodeAsset) {
-    if (hasVersionToken) {
-      event.respondWith(cacheFirst(req));
-      return;
-    }
-    event.respondWith(staleWhileRevalidate(req));
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const networkReq = new Request(req, { cache: hasVersionToken ? "reload" : "no-cache" });
+        const networkResp = await fetchWithTimeout(networkReq, RUNTIME_FETCH_TIMEOUT_MS);
+        if (networkResp && (networkResp.ok || networkResp.type === "opaque")) {
+          cache.put(req, networkResp.clone()).catch(() => null);
+        }
+        return networkResp;
+      } catch {
+        const cached = await cache.match(req);
+        return cached || new Response("", { status: 504, statusText: "Code asset fetch failed" });
+      }
+    })());
     return;
   }
 

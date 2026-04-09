@@ -181,7 +181,7 @@ export function renderLeadModalCore({
   `;
 
   return `
-    <div class="fixed inset-0 z-[75] modal-overlay">
+    <div class="fixed inset-0 z-[75] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="leadModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">

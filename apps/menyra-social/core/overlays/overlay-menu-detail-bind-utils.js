@@ -93,54 +93,6 @@ export function bindMenuDetailOverlayEventsCore({
   bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
   bindModalDismiss(menuDetailClose, closeMenuDetail);
 
-  const menuDetailHeroImage = doc.getElementById("menuDetailHeroImage");
-  const menuDetailHeroPreview = doc.getElementById("menuDetailHeroPreview");
-  const menuDetailSheet = menuDetailHeroImage?.closest?.(".modal-sheet") || null;
-  const revealMenuDetailHeroImage = () => {
-    if (menuDetailHeroPreview) {
-      menuDetailHeroPreview.remove();
-    }
-    if (menuDetailHeroImage) {
-      menuDetailHeroImage.classList.remove("opacity-0");
-      menuDetailHeroImage.dataset.menuDetailHeroReady = "1";
-    }
-    if (menuDetailSheet?.dataset?.modalHeroHandoff === "pending") {
-      delete menuDetailSheet.dataset.modalHeroHandoff;
-    }
-    if (state?.menuDetail && typeof state.menuDetail === "object") {
-      state.menuDetail.previewImageSrc = "";
-    }
-  };
-  const queueMenuDetailHeroReveal = () => {
-    const finalizeReveal = () => {
-      win?.requestAnimationFrame?.(() => revealMenuDetailHeroImage());
-      if (!win?.requestAnimationFrame) win?.setTimeout?.(() => revealMenuDetailHeroImage(), 0);
-    };
-    if (!menuDetailHeroImage || typeof menuDetailHeroImage.decode !== "function") {
-      finalizeReveal();
-      return;
-    }
-    menuDetailHeroImage.decode().catch(() => {}).finally(finalizeReveal);
-  };
-  if (menuDetailHeroImage) {
-    if (menuDetailHeroImage.complete && Number(menuDetailHeroImage.naturalWidth || 0) > 0) {
-      queueMenuDetailHeroReveal();
-    } else {
-      menuDetailHeroImage.addEventListener("load", queueMenuDetailHeroReveal, { once: true });
-      menuDetailHeroImage.addEventListener("error", () => {
-        const fallbackSrc = String(menuDetailHeroImage.dataset.fallbackSrc || "").trim();
-        const currentSrc = String(
-          menuDetailHeroImage.currentSrc
-          || menuDetailHeroImage.getAttribute("src")
-          || ""
-        ).trim();
-        if (!fallbackSrc || currentSrc === fallbackSrc) {
-          queueMenuDetailHeroReveal();
-        }
-      }, { once: true });
-    }
-  }
-
   const handleAddToCart = () => {
     stopKeyboardGapTracking();
     const item = state.menuDetail.item;

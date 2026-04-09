@@ -12,97 +12,125 @@ function ensureChildNode(parent, documentObj, id, className = "") {
 const OVERLAY_CHROME_COLOR = "#ffffff";
 const APP_CHROME_COLOR = "#f8fafc";
 const OVERLAY_ROOT_Z_INDEX = "200";
-let modalScrollLockState = {
-  active: false,
-  scrollX: 0,
-  scrollY: 0,
-  bodyStyles: null
-};
-
-function lockModalScroll(doc, win) {
-  if (!doc?.body || !win || modalScrollLockState.active) return;
-  const bodyStyle = doc.body.style;
-  modalScrollLockState = {
-    active: true,
-    scrollX: Math.max(0, Number(win.scrollX || win.pageXOffset || 0)),
-    scrollY: Math.max(0, Number(win.scrollY || win.pageYOffset || doc.documentElement.scrollTop || 0)),
-    bodyStyles: {
-      position: bodyStyle.position,
-      top: bodyStyle.top,
-      left: bodyStyle.left,
-      right: bodyStyle.right,
-      width: bodyStyle.width,
-      overflow: bodyStyle.overflow
-    }
-  };
-  bodyStyle.position = "fixed";
-  bodyStyle.top = `${-modalScrollLockState.scrollY}px`;
-  bodyStyle.left = `${-modalScrollLockState.scrollX}px`;
-  bodyStyle.right = "0";
-  bodyStyle.width = "100%";
-  bodyStyle.overflow = "hidden";
-}
-
-function unlockModalScroll(doc, win) {
-  if (!doc?.body || !modalScrollLockState.active) return;
-  const {
-    scrollX,
-    scrollY,
-    bodyStyles
-  } = modalScrollLockState;
-  const bodyStyle = doc.body.style;
-  bodyStyle.position = bodyStyles?.position || "";
-  bodyStyle.top = bodyStyles?.top || "";
-  bodyStyle.left = bodyStyles?.left || "";
-  bodyStyle.right = bodyStyles?.right || "";
-  bodyStyle.width = bodyStyles?.width || "";
-  bodyStyle.overflow = bodyStyles?.overflow || "";
-  modalScrollLockState = {
-    active: false,
-    scrollX: 0,
-    scrollY: 0,
-    bodyStyles: null
-  };
-  if (!win?.scrollTo) return;
-  const currentX = Math.max(0, Number(win.scrollX || win.pageXOffset || 0));
-  const currentY = Math.max(0, Number(win.scrollY || win.pageYOffset || doc.documentElement.scrollTop || 0));
-  if (Math.abs(currentX - scrollX) < 1 && Math.abs(currentY - scrollY) < 1) return;
-  win.scrollTo(scrollX, scrollY);
-}
 
 function syncThemeColorMeta(doc, nextColor) {
   if (!doc?.head) return null;
-  let meta = doc.head.querySelector('meta[name="theme-color"]');
-  if (!meta) {
-    meta = doc.createElement("meta");
-    meta.setAttribute("name", "theme-color");
-    doc.head.appendChild(meta);
+  const win = doc.defaultView || null;
+  const normalizedColor = isConcreteColorToken(nextColor) ? String(nextColor).trim() : APP_CHROME_COLOR;
+  const writeMeta = () => {
+    const metas = Array.from(doc.head.querySelectorAll('meta[name="theme-color"]'));
+    let meta = metas[0] || null;
+    if (!meta) {
+      meta = doc.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      doc.head.appendChild(meta);
+    }
+    if (meta.getAttribute("content") !== normalizedColor) {
+      meta.setAttribute("content", normalizedColor);
+    }
+    for (let i = 1; i < metas.length; i += 1) {
+      try {
+        metas[i].remove();
+      } catch {}
+    }
+    return meta;
+  };
+
+  const committed = writeMeta();
+  if (win?.requestAnimationFrame) {
+    win.requestAnimationFrame(() => {
+      writeMeta();
+    });
   }
-  meta.setAttribute("content", nextColor);
-  return meta;
+  if (typeof win?.setTimeout === "function") {
+    win.setTimeout(() => {
+      writeMeta();
+    }, 80);
+  }
+  return committed;
 }
 
-function clearThemeColorMeta(doc) {
-  if (!doc?.head) return;
-  doc.head.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+function toFiniteNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function isConcreteColorToken(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  const lower = raw.toLowerCase();
+  if (lower.includes("var(")) return false;
+  if (lower === "transparent" || lower === "rgba(0, 0, 0, 0)" || lower === "rgba(0,0,0,0)") return false;
+  return true;
+}
+
+function normalizeChromeColor(value, fallback = APP_CHROME_COLOR) {
+  if (!isConcreteColorToken(value)) return fallback;
+  return String(value || "").trim();
+}
+
+function resolveModalSurfaceColor(doc, overlayEl) {
+  if (!doc || !overlayEl) return OVERLAY_CHROME_COLOR;
+  const declaredSurface = String(overlayEl.getAttribute("data-modal-surface") || "").trim();
+  if (isConcreteColorToken(declaredSurface)) return declaredSurface;
+  const inlineSurface = String(overlayEl.style?.getPropertyValue?.("--modal-surface") || "").trim();
+  if (isConcreteColorToken(inlineSurface)) return inlineSurface;
+  const win = doc.defaultView || null;
+  try {
+    const computedSurface = String(win?.getComputedStyle?.(overlayEl)?.getPropertyValue("--modal-surface") || "").trim();
+    if (isConcreteColorToken(computedSurface)) return computedSurface;
+  } catch {}
+  const modalSheet = overlayEl.querySelector(".modal-sheet");
+  if (modalSheet) {
     try {
-      meta.remove();
+      const sheetBackground = String(win?.getComputedStyle?.(modalSheet)?.backgroundColor || "").trim();
+      if (isConcreteColorToken(sheetBackground)) {
+        return sheetBackground;
+      }
     } catch {}
-  });
+  }
+  try {
+    const overlayBackground = String(win?.getComputedStyle?.(overlayEl)?.backgroundColor || "").trim();
+    if (isConcreteColorToken(overlayBackground)) {
+      return overlayBackground;
+    }
+  } catch {}
+  return OVERLAY_CHROME_COLOR;
 }
 
-function syncThemeColor(documentObj) {
+function resolveTopModalSurfaceColor(doc) {
+  if (!doc) return OVERLAY_CHROME_COLOR;
+  const overlays = Array.from(doc.querySelectorAll("#overlayRoot .modal-overlay"));
+  if (!overlays.length) return OVERLAY_CHROME_COLOR;
+  let topOverlay = overlays[0];
+  let topZIndex = -Infinity;
+  let topIndex = -1;
+  const win = doc.defaultView || null;
+  overlays.forEach((overlay, index) => {
+    let zIndex = 0;
+    try {
+      zIndex = toFiniteNumber(win?.getComputedStyle?.(overlay)?.zIndex, 0);
+    } catch {}
+    if (zIndex > topZIndex || (zIndex === topZIndex && index > topIndex)) {
+      topOverlay = overlay;
+      topZIndex = zIndex;
+      topIndex = index;
+    }
+  });
+  return resolveModalSurfaceColor(doc, topOverlay);
+}
+
+function syncThemeColor(documentObj, { anyModalOpen = false, activeModalSurface = OVERLAY_CHROME_COLOR } = {}) {
   const doc = documentObj || null;
   if (!doc) return;
-  const win = doc.defaultView || null;
-  const standalone = !!(win?.matchMedia?.("(display-mode: standalone)")?.matches || win?.navigator?.standalone === true);
-  if (!standalone) {
-    clearThemeColorMeta(doc);
-    return;
-  }
-  const useSurface = doc.documentElement.classList.contains("modal-open");
-  const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
+  const nextColor = anyModalOpen
+    ? normalizeChromeColor(activeModalSurface, OVERLAY_CHROME_COLOR)
+    : APP_CHROME_COLOR;
   syncThemeColorMeta(doc, nextColor);
+  try {
+    const forceUiChrome = doc.defaultView?.__MENYRA_SOCIAL_FORCE_UI_CHROME__;
+    if (typeof forceUiChrome === "function") forceUiChrome();
+  } catch {}
 }
 
 export function ensureOverlayRootCore({ documentObj } = {}) {
@@ -117,20 +145,27 @@ export function ensureOverlayRootCore({ documentObj } = {}) {
   root.style.position = "relative";
   root.style.zIndex = OVERLAY_ROOT_Z_INDEX;
   root.style.isolation = "isolate";
-  const safeAreaFill = ensureChildNode(
-    root,
-    doc,
-    "modalSafeAreaFill"
-  );
-  safeAreaFill.style.position = "fixed";
-  safeAreaFill.style.left = "0";
-  safeAreaFill.style.right = "0";
-  safeAreaFill.style.top = "0";
-  safeAreaFill.style.display = "none";
-  safeAreaFill.style.pointerEvents = "none";
-  safeAreaFill.style.height = "var(--safe-area-top)";
-  safeAreaFill.style.background = "var(--app-surface)";
-  safeAreaFill.style.zIndex = "120";
+  doc.documentElement.style.setProperty("--active-modal-surface", APP_CHROME_COLOR);
+  const safariChromeTintTop = ensureChildNode(doc.body, doc, "safariChromeTintTop");
+  safariChromeTintTop.style.position = "fixed";
+  safariChromeTintTop.style.left = "0";
+  safariChromeTintTop.style.right = "0";
+  safariChromeTintTop.style.top = "0";
+  safariChromeTintTop.style.height = "max(8px, var(--safe-area-top, 0px))";
+  safariChromeTintTop.style.background = "var(--active-modal-surface, #ffffff)";
+  safariChromeTintTop.style.pointerEvents = "none";
+  safariChromeTintTop.style.display = "none";
+  safariChromeTintTop.style.zIndex = "2147483000";
+  const safariChromeTintBottom = ensureChildNode(doc.body, doc, "safariChromeTintBottom");
+  safariChromeTintBottom.style.position = "fixed";
+  safariChromeTintBottom.style.left = "0";
+  safariChromeTintBottom.style.right = "0";
+  safariChromeTintBottom.style.bottom = "0";
+  safariChromeTintBottom.style.height = "max(8px, var(--safe-area-bottom, 0px))";
+  safariChromeTintBottom.style.background = "var(--active-modal-surface, #ffffff)";
+  safariChromeTintBottom.style.pointerEvents = "none";
+  safariChromeTintBottom.style.display = "none";
+  safariChromeTintBottom.style.zIndex = "2147483000";
   ensureChildNode(root, doc, "modalUnderlay", "fixed inset-0 bg-white z-[60] hidden pointer-events-none");
   ensureChildNode(root, doc, "profileOverlayRoot");
   ensureChildNode(root, doc, "chatOverlayRoot");
@@ -167,12 +202,10 @@ export function ensureModalEscapeHandlerCore({
 
 export function syncModalOpenUiStateCore({
   documentObj,
-  windowObj,
   isAnyModalOpenFn,
   ensureModalEscapeHandlerFn
 } = {}) {
   const doc = documentObj || null;
-  const win = windowObj || null;
   if (!doc) return;
   const isAnyModalOpen = typeof isAnyModalOpenFn === "function"
     ? isAnyModalOpenFn
@@ -181,21 +214,30 @@ export function syncModalOpenUiStateCore({
     ? ensureModalEscapeHandlerFn
     : (() => {});
 
-  const anyModalOpen = !!isAnyModalOpen();
+  const anyModalInDom = !!doc.querySelector("#overlayRoot .modal-overlay");
+  const anyModalOpen = !!isAnyModalOpen() || anyModalInDom;
+  const activeModalSurface = anyModalOpen
+    ? resolveTopModalSurfaceColor(doc)
+    : APP_CHROME_COLOR;
+  doc.documentElement.style.setProperty("--active-modal-surface", activeModalSurface);
   const underlay = doc.getElementById("modalUnderlay");
-  if (underlay) underlay.classList.add("hidden");
-  const safeAreaFill = doc.getElementById("modalSafeAreaFill");
-  if (safeAreaFill) {
-    safeAreaFill.style.display = anyModalOpen ? "block" : "none";
-    safeAreaFill.style.height = "var(--safe-area-top)";
-    safeAreaFill.style.background = "var(--app-surface)";
+  if (underlay) {
+    underlay.classList.toggle("hidden", !anyModalOpen);
+    underlay.style.background = activeModalSurface;
+  }
+  const safariChromeTintTop = doc.getElementById("safariChromeTintTop");
+  if (safariChromeTintTop) {
+    safariChromeTintTop.style.display = anyModalOpen ? "block" : "none";
+    safariChromeTintTop.style.background = activeModalSurface;
+  }
+  const safariChromeTintBottom = doc.getElementById("safariChromeTintBottom");
+  if (safariChromeTintBottom) {
+    safariChromeTintBottom.style.display = anyModalOpen ? "block" : "none";
+    safariChromeTintBottom.style.background = activeModalSurface;
   }
   doc.documentElement.classList.toggle("modal-open", anyModalOpen);
   doc.body.classList.toggle("modal-open", anyModalOpen);
-  if (anyModalOpen) {
-    lockModalScroll(doc, win);
-  } else {
-    unlockModalScroll(doc, win);
+  if (!anyModalOpen) {
     delete doc.documentElement.dataset.postCommentFocus;
     delete doc.documentElement.dataset.postFooterGap;
     delete doc.documentElement.dataset.menuDetailCommentFocus;
@@ -204,6 +246,6 @@ export function syncModalOpenUiStateCore({
     doc.body.classList.remove("menu-detail-comment-focus");
     doc.documentElement.style.removeProperty("--menu-detail-footer-gap");
   }
-  syncThemeColor(doc);
+  syncThemeColor(doc, { anyModalOpen, activeModalSurface });
   if (anyModalOpen) ensureModalEscapeHandler();
 }

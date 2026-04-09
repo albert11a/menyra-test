@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="supported-color-schemes" content="light" />
+  <meta name="theme-color" content="#f8fafc" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -26,42 +27,97 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
+      const APP_BUILD_TOKEN = "2026-04-09-modal-safearea-core-14";
+      window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       const LIGHT_UI_COLOR = "#f8fafc";
-      const FEED_GATE_UI_COLOR = "#00cce5";
-      const resolveUiChromeColor = () => {
+      const OVERLAY_UI_COLOR = "#ffffff";
+      const isConcreteColorToken = (value) => {
+        const raw = String(value || "").trim();
+        if (!raw) return false;
+        const lower = raw.toLowerCase();
+        if (lower.includes("var(")) return false;
+        if (lower === "transparent" || lower === "rgba(0, 0, 0, 0)" || lower === "rgba(0,0,0,0)") return false;
+        return true;
+      };
+      const mountBuildBadgeIfRequested = () => {
         try {
-          const raw = window.getComputedStyle?.(document.documentElement)?.getPropertyValue("--smart-header-theme-color")?.trim();
-          return raw || LIGHT_UI_COLOR;
+          const params = new URLSearchParams(window.location.search || "");
+          if (params.get("debug-build") !== "1") return;
+          const doc = window.document;
+          if (!doc?.body || doc.getElementById("mnyraBuildBadge")) return;
+          const badge = doc.createElement("div");
+          badge.id = "mnyraBuildBadge";
+          badge.textContent = `build ${APP_BUILD_TOKEN}`;
+          badge.style.position = "fixed";
+          badge.style.right = "10px";
+          badge.style.bottom = "10px";
+          badge.style.zIndex = "2147483647";
+          badge.style.padding = "4px 8px";
+          badge.style.borderRadius = "999px";
+          badge.style.background = "rgba(15,23,42,0.82)";
+          badge.style.color = "#fff";
+          badge.style.font = "600 10px/1.2 system-ui, -apple-system, Segoe UI, sans-serif";
+          badge.style.letterSpacing = "0.04em";
+          doc.body.appendChild(badge);
+        } catch {}
+      };
+      const resetServiceWorkerCachesIfRequested = async () => {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          if (params.get("sw-reset") !== "1") return;
+          const nav = window.navigator;
+          if ("serviceWorker" in nav) {
+            const registrations = await nav.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
+          }
+          if ("caches" in window) {
+            const cacheKeys = await caches.keys();
+            await Promise.all(
+              cacheKeys
+                .filter((key) => String(key || "").startsWith("mnyra-social-cache-"))
+                .map((key) => caches.delete(key).catch(() => false))
+            );
+          }
+          params.delete("sw-reset");
+          params.set("cb", `sw-reset-${Date.now()}`);
+          const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash || ""}`;
+          window.location.replace(nextUrl);
+        } catch {}
+      };
+      void resetServiceWorkerCachesIfRequested();
+      const resolveActiveModalSurface = () => {
+        try {
+          const raw = String(
+            window.getComputedStyle?.(document.documentElement)?.getPropertyValue("--active-modal-surface")
+            || ""
+          ).trim();
+          if (isConcreteColorToken(raw)) return raw;
+          const overlays = Array.from(document.querySelectorAll("#overlayRoot .modal-overlay"));
+          const topOverlay = overlays[overlays.length - 1] || null;
+          if (topOverlay) {
+            const overlayBg = String(window.getComputedStyle?.(topOverlay)?.backgroundColor || "").trim();
+            if (isConcreteColorToken(overlayBg)) return overlayBg;
+            const sheet = topOverlay.querySelector(".modal-sheet");
+            if (sheet) {
+              const sheetBg = String(window.getComputedStyle?.(sheet)?.backgroundColor || "").trim();
+              if (isConcreteColorToken(sheetBg)) return sheetBg;
+            }
+          }
+          return OVERLAY_UI_COLOR;
         } catch {
-          return LIGHT_UI_COLOR;
+          return OVERLAY_UI_COLOR;
         }
       };
-      const getFeedLocationGateMode = () => {
-        return String(document.getElementById("feedLocationGate")?.dataset?.locationScreenMode || "").trim().toLowerCase();
+      const isModalChromeActive = () => {
+        if (document.documentElement.classList.contains("modal-open")) return true;
+        if (document.body?.classList?.contains("modal-open")) return true;
+        return !!document.querySelector("#overlayRoot .modal-overlay");
       };
-      const isFeedLocationFeedStageActive = () => {
-        if (document.documentElement.classList.contains("feed-location-feed-stage-active")) return true;
-        if (document.body?.classList?.contains("feed-location-feed-stage-active")) return true;
-        return getFeedLocationGateMode() === "feed-stage";
+      const resolveUiChromeColor = () => {
+        if (isModalChromeActive()) return resolveActiveModalSurface();
+        return LIGHT_UI_COLOR;
       };
-      const isFeedLocationGateActive = () => {
-        if (!standalone) return false;
-        if (document.documentElement.classList.contains("feed-location-gate-active")) return true;
-        if (document.body?.classList?.contains("feed-location-gate-active")) return true;
-        return !!document.getElementById("feedLocationGate");
-      };
-      const resolveGateAwareUiChromeColor = () => {
-        if (!standalone) {
-          return LIGHT_UI_COLOR;
-        }
-        if (isFeedLocationFeedStageActive()) {
-          return LIGHT_UI_COLOR;
-        }
-        if (isFeedLocationGateActive()) {
-          return FEED_GATE_UI_COLOR;
-        }
-        return standalone ? LIGHT_UI_COLOR : resolveUiChromeColor();
-      };
+      const resolveStatusBarStyle = () => "black-translucent";
       const ensureMeta = (name, content) => {
         let meta = document.querySelector(`meta[name="${name}"]`);
         if (!meta) {
@@ -71,21 +127,8 @@
         }
         meta.setAttribute("content", content);
       };
-      const removeThemeColorMetas = () => {
-        document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-          try {
-            meta.remove();
-          } catch {}
-        });
-      };
       const forceLightUiChrome = () => {
-        if (!standalone) {
-          removeThemeColorMetas();
-          ensureMeta("color-scheme", "light");
-          ensureMeta("supported-color-schemes", "light");
-          return;
-        }
-        const uiChromeColor = resolveGateAwareUiChromeColor();
+        const uiChromeColor = resolveUiChromeColor();
         const themeMetas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
         if (themeMetas.length) {
           themeMetas[0].setAttribute("content", uiChromeColor);
@@ -94,10 +137,11 @@
         } else {
           ensureMeta("theme-color", uiChromeColor);
         }
-        ensureMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
+        ensureMeta("apple-mobile-web-app-status-bar-style", resolveStatusBarStyle());
         ensureMeta("color-scheme", "light");
         ensureMeta("supported-color-schemes", "light");
       };
+      window.__MENYRA_SOCIAL_FORCE_UI_CHROME__ = forceLightUiChrome;
 
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
@@ -112,7 +156,7 @@
         const observer = new MutationObserver(() => {
           forceLightUiChrome();
         });
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
         const observeBodyGateState = () => {
           if (!document.body) return;
           const bodyObserver = new MutationObserver(() => {
@@ -137,8 +181,10 @@
       window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change", forceLightUiChrome);
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", forceLightUiChrome, { once: true });
+        document.addEventListener("DOMContentLoaded", mountBuildBadgeIfRequested, { once: true });
       } else {
         forceLightUiChrome();
+        mountBuildBadgeIfRequested();
       }
     })();
   </script>
@@ -152,7 +198,7 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-08-feed-gate-stability-30">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-09-modal-safearea-core-14">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
@@ -213,6 +259,7 @@
       --app-content-inline: 1.5rem;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
+      --active-modal-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
       --smart-header-content-gap: 1.2rem;
       color-scheme: light;
@@ -248,12 +295,17 @@
     body.modal-open {
       overflow: hidden;
       overscroll-behavior: none;
-      background: var(--app-surface) !important;
-      background-color: var(--app-surface) !important;
+      background: var(--active-modal-surface, var(--app-surface)) !important;
+      background-color: var(--active-modal-surface, var(--app-surface)) !important;
+    }
+    html:has(#overlayRoot .modal-overlay),
+    body:has(#overlayRoot .modal-overlay) {
+      background: var(--active-modal-surface, var(--app-surface)) !important;
+      background-color: var(--active-modal-surface, var(--app-surface)) !important;
     }
     html.menu-detail-comment-focus,
     body.menu-detail-comment-focus {
-      background: var(--app-surface) !important;
+      background: var(--active-modal-surface, var(--app-surface)) !important;
     }
     body.modal-open.menu-detail-comment-focus::after {
       content: "";
@@ -262,31 +314,45 @@
       right: 0;
       bottom: 0;
       height: max(0px, var(--menu-detail-footer-gap));
-      background: rgb(255 255 255 / 0.98);
+      background: var(--active-modal-surface, rgb(255 255 255 / 0.98));
       pointer-events: none;
       z-index: 74;
     }
-    body.modal-open #app { pointer-events: none; }
+    body.modal-open #app {
+      pointer-events: none;
+      visibility: hidden;
+    }
+    body:has(#overlayRoot .modal-overlay) #app {
+      pointer-events: none;
+      visibility: hidden;
+    }
     body.modal-open #overlayRoot,
     body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }
-    .modal-overlay { position: fixed; inset: 0; }
+    body:has(#overlayRoot .modal-overlay) #overlayRoot,
+    body:has(#overlayRoot .modal-overlay) #overlayRoot > * { pointer-events: auto; visibility: visible; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      --modal-surface: var(--app-surface);
+      background: var(--modal-surface, var(--app-surface));
+    }
     .modal-sheet {
+      position: relative;
       height: 100% !important;
       max-height: 100% !important;
       box-sizing: border-box;
       padding-top: var(--safe-area-top);
+      background: var(--modal-surface, var(--app-surface)) !important;
       border-radius: 0 !important;
       border-bottom-width: 0 !important;
     }
     .menu-detail-modal-sheet {
       padding-top: 0 !important;
     }
-    .menu-detail-modal-frame {
-      background: var(--app-surface);
-    }
+    .menu-detail-modal-frame { background: var(--modal-surface, var(--app-surface)); }
     .menu-detail-modal-header {
       padding-top: calc(var(--safe-area-top) + 1.75rem) !important;
-      background: var(--app-surface) !important;
+      background: var(--modal-surface, var(--app-surface)) !important;
       -webkit-backdrop-filter: none !important;
       backdrop-filter: none !important;
     }
@@ -361,97 +427,6 @@
     }
     .smart-header-tabs--hidden {
       transform: none !important;
-    }
-    html.is-standalone.feed-location-gate-active,
-    html.is-standalone:has(#feedLocationGate) {
-      --smart-header-content-gap: 0px;
-      --smart-header-theme-color: #00cce5;
-    }
-    html.is-standalone.feed-location-gate-active:not(.feed-location-feed-stage-active),
-    html.is-standalone:has(#feedLocationGate:not([data-location-screen-mode="feed-stage"])) {
-      background: #00cce5 !important;
-      background-color: #00cce5 !important;
-    }
-    html.is-standalone.feed-location-gate-active:not(.feed-location-feed-stage-active) body,
-    html.is-standalone:has(#feedLocationGate:not([data-location-screen-mode="feed-stage"])) body {
-      position: relative;
-      background: transparent !important;
-      background-color: transparent !important;
-      background-image: none !important;
-    }
-    html.is-standalone.feed-location-gate-active:not(.feed-location-feed-stage-active) body::before,
-    html.is-standalone:has(#feedLocationGate:not([data-location-screen-mode="feed-stage"])) body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: #f8fafc;
-      pointer-events: none;
-      z-index: 0;
-    }
-    html.is-standalone.feed-location-gate-active:not(.feed-location-feed-stage-active) body::after,
-    html.is-standalone:has(#feedLocationGate:not([data-location-screen-mode="feed-stage"])) body::after {
-      content: "";
-      position: fixed;
-      top: 0;
-      right: 0;
-      left: 0;
-      height: calc(var(--safe-area-top) + 17rem);
-      background: #00cce5;
-      pointer-events: none;
-      z-index: 0;
-    }
-    html.is-standalone.feed-location-gate-active:not(.feed-location-feed-stage-active) body #app,
-    html.is-standalone:has(#feedLocationGate:not([data-location-screen-mode="feed-stage"])) body #app,
-    html.is-standalone.feed-location-gate-active:not(.feed-location-feed-stage-active) body #overlayRoot,
-    html.is-standalone:has(#feedLocationGate:not([data-location-screen-mode="feed-stage"])) body #overlayRoot {
-      position: relative;
-      z-index: 1;
-    }
-    html.is-standalone.feed-location-gate-active .smart-header-shell,
-    html.is-standalone:has(#feedLocationGate) .smart-header-shell,
-    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-shell {
-      background: #00cce5 !important;
-      isolation: isolate;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      width: 100%;
-      max-width: 28rem;
-      margin-left: auto;
-      margin-right: auto;
-      z-index: 100;
-    }
-    html.is-standalone.feed-location-gate-active .smart-header-shell::before,
-    html.is-standalone:has(#feedLocationGate) .smart-header-shell::before,
-    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-shell::before {
-      content: none;
-    }
-    html.is-standalone.feed-location-gate-active .smart-header-top,
-    html.is-standalone.feed-location-gate-active .smart-header-tabs,
-    html.is-standalone:has(#feedLocationGate) .smart-header-top,
-    html.is-standalone:has(#feedLocationGate) .smart-header-tabs,
-    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-top,
-    html.is-standalone.feed-location-gate-active body.feed-location-gate-active .smart-header-tabs {
-      background: #00cce5 !important;
-      border-bottom: 0 !important;
-      border-bottom-color: transparent !important;
-      box-shadow: none !important;
-    }
-    html.is-standalone.feed-location-gate-active #feedLocationGate .loc-shell,
-    html.is-standalone:has(#feedLocationGate) #feedLocationGate .loc-shell,
-    html.is-standalone.feed-location-gate-active body.feed-location-gate-active #feedLocationGate .loc-shell {
-      padding-top: var(--smart-header-total-height, var(--feed-location-gate-header-height)) !important;
-    }
-    html.is-standalone.feed-location-feed-stage-active #feedLocationGate .loc-shell,
-    html.is-standalone:has(#feedLocationGate[data-location-screen-mode="feed-stage"]) #feedLocationGate .loc-shell {
-      padding-top: var(--feed-location-gate-header-height) !important;
-    }
-    html.is-standalone.feed-location-gate-active main.feed-location-gate-main,
-    html.is-standalone:has(#feedLocationGate) main.feed-location-gate-main,
-    html.is-standalone.feed-location-gate-active body.feed-location-gate-active main.feed-location-gate-main {
-      background: #f8fafc !important;
-      padding-top: 0 !important;
     }
     html.feed-location-feed-stage-active,
     body.feed-location-feed-stage-active {
@@ -565,27 +540,6 @@
     }
     .modal-sheet-88 {
       height: 100% !important;
-    }
-    .modal-handoff-chrome {
-      transition: opacity 140ms ease;
-    }
-    .modal-sheet[data-modal-hero-handoff="pending"] {
-      background: transparent !important;
-      border-color: transparent !important;
-      box-shadow: none !important;
-    }
-    .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-scroll {
-      background: transparent !important;
-    }
-    .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-chrome {
-      opacity: 0 !important;
-      pointer-events: none !important;
-      user-select: none !important;
-    }
-    .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-hero {
-      background: transparent !important;
-      border-color: transparent !important;
-      box-shadow: none !important;
     }
     .modal-footer-safe {
       padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important;
@@ -901,7 +855,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-08-feed-gate-stability-30"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-09-modal-safearea-core-14"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -963,7 +917,7 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-08-feed-gate-stability-30").catch(() => {});
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-09-modal-safearea-core-14").catch(() => {});
       if ("requestIdleCallback" in window) {
         window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
       } else {

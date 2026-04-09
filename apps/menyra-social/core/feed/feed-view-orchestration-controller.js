@@ -1193,7 +1193,6 @@ export function createFeedViewOrchestrationController({
     const viewerLocation = resolveViewerLocationRecord();
     const cityValue = String(viewerLocation?.label || viewerLocation?.city || "").trim();
     const safeMode = String(mode || "feed-gate").trim().toLowerCase() || "feed-gate";
-    const isFeedStageMode = safeMode === "feed-stage";
     const customBentoContent = String(
       bentoContentHtml
       || renderFeedGateBentoContent()
@@ -1201,46 +1200,26 @@ export function createFeedViewOrchestrationController({
     return `
       <div id="feedLocationGate" data-location-screen-mode="${escapeHtmlFn(safeMode)}">
         <style>
-          .smart-header-shell { background: #00cce5 !important; }
-          main.feed-location-gate-main { padding-top: 0 !important; }
-          .smart-header-top, .smart-header-tabs {
-            background: #00cce5 !important;
-            border-bottom: 0 !important;
-            border-bottom-color: transparent !important;
-            box-shadow: none !important;
-          }
           #feedLocationGate {
             --feed-bento-surface: #f8fafc;
-            --feed-bento-pin-gap: 14px;
-            --feed-bento-pin-height: 2.6rem;
-            --feed-bento-outline-size: 1px;
-            --feed-bento-blue-shell-size: 30px;
-            --feed-bento-white-bridge-size: 30px;
-            --feed-bento-outline-drop-size: 3px;
             background: #f8fafc;
             color: #0f172a;
           }
           #feedLocationGate .loc-shell {
             position: relative;
-            background: ${isFeedStageMode ? "#f8fafc" : "#00cce5"};
+            background: #f8fafc;
           }
-          #feedLocationGate[data-location-screen-mode="feed-stage"] .loc-shell::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            left: 0;
-            height: calc(var(--feed-location-gate-header-height) + 17rem);
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-shell {
             background: #00cce5;
-            pointer-events: none;
-            z-index: 0;
           }
-          #feedLocationGate .loc-glow-a, #feedLocationGate .loc-glow-b { position: absolute; border-radius: 9999px; pointer-events: none; }
-          #feedLocationGate .loc-glow-a { top: -12%; right: -12%; width: 16rem; height: 16rem; background: rgb(255 255 255 / 0.12); filter: blur(64px); }
-          #feedLocationGate .loc-glow-b { bottom: 20%; left: -10%; width: 12rem; height: 12rem; background: rgb(0 155 175 / 0.22); filter: blur(40px); }
-          #feedLocationGate[data-location-screen-mode="feed-stage"] .loc-glow-b { display: none; }
-          #feedLocationGate .loc-top { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 5rem 1.5rem 5.25rem; background: #00cce5; }
-          #feedLocationGate .loc-title { width: 100%; max-width: 22rem; margin: 0 auto 2.15rem; color: #fff; font-size: clamp(1.65rem, 6.6vw, 2.2rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.08; }
+          #feedLocationGate .loc-top { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 5rem 1.5rem 5.25rem; background: #f8fafc; }
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-top {
+            background: #00cce5;
+          }
+          #feedLocationGate .loc-title { width: 100%; max-width: 22rem; margin: 0 auto 2.15rem; color: #0f172a; font-size: clamp(1.65rem, 6.6vw, 2.2rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.08; }
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-title {
+            color: #fff;
+          }
           #feedLocationGate .text-slider-wrapper { position: relative; height: 1.25em; width: 100%; overflow: hidden; margin-bottom: 0.2rem; }
           #feedLocationGate .text-slide-item { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s ease-in-out infinite; will-change: transform, opacity; }
           #feedLocationGate .text-slide-item:nth-child(1) { animation-delay: 0s; }
@@ -1269,7 +1248,10 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate .feed-location-suggestion:hover, #feedLocationGate .feed-location-suggestion:focus-visible { background: rgb(241 245 249); outline: none; }
           #feedLocationGate .feed-location-suggestion__label { display: block; font-size: 0.92rem; line-height: 1.1rem; }
           #feedLocationGate .feed-location-suggestion__meta { min-width: 3.7rem; text-align: center; padding: 0.3rem 0.6rem; border-radius: 9999px; background: rgb(236 254 255); color: rgb(8 145 178); font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; }
-          #feedLocationGate .loc-status { margin-top: 0.7rem; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.11em; color: rgb(255 255 255 / 0.9); }
+          #feedLocationGate .loc-status { margin-top: 0.7rem; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.11em; color: rgb(100 116 139); }
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-status {
+            color: rgb(255 255 255 / 0.9);
+          }
           #feedLocationGate .loc-status.hidden { display: none; }
           #feedLocationGate .loc-bento { position: relative; z-index: 3; background: #f8fafc; border-top-left-radius: 2.5rem; border-top-right-radius: 2.5rem; padding: 2.35rem 1.25rem 2rem; }
           #feedLocationGate .loc-bento.loc-bento--feed-content {
@@ -1285,8 +1267,8 @@ export function createFeedViewOrchestrationController({
             position: -webkit-sticky;
             position: sticky;
             top: var(--feed-location-gate-header-height);
-            height: var(--feed-bento-pin-gap);
-            margin-bottom: calc(-1 * var(--feed-bento-pin-gap));
+            height: 1px;
+            margin-bottom: -1px;
             background: transparent;
             pointer-events: none;
             z-index: 6;
@@ -1295,55 +1277,26 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate .feed-bento-pin-outline {
             position: -webkit-sticky;
             position: sticky;
-            top: calc(var(--feed-location-gate-header-height) + var(--feed-bento-pin-gap));
-            height: var(--feed-bento-pin-height);
-            margin-bottom: calc(-1 * var(--feed-bento-pin-height));
-            border-top-left-radius: 2.5rem;
-            border-top-right-radius: 2.5rem;
+            top: var(--feed-location-gate-header-height);
+            height: 1px;
+            margin-bottom: -1px;
             background: transparent;
             box-sizing: border-box;
             pointer-events: none;
             z-index: 7;
             width: 100%;
           }
-          #feedLocationGate .feed-bento-pin-outline::before {
-            content: "";
-            position: absolute;
-            top: calc(-1 * var(--feed-bento-outline-size));
-            right: 0;
-            left: 0;
-            bottom: calc(-1 * var(--feed-bento-outline-drop-size));
-            border-top-left-radius: calc(2.5rem + var(--feed-bento-outline-size));
-            border-top-right-radius: calc(2.5rem + var(--feed-bento-outline-size));
-            border: var(--feed-bento-outline-size) solid #fff;
-            border-bottom: 0;
-            box-sizing: border-box;
-            filter: drop-shadow(0 -6px 16px rgb(15 23 42 / 0.08)) drop-shadow(0 -16px 34px rgb(15 23 42 / 0.05));
-          }
-          #feedLocationGate .feed-bento-pin-outline::after {
-            content: "";
-            position: absolute;
-            top: calc(-1 * var(--feed-bento-outline-size));
-            right: calc(-1 * var(--feed-bento-outline-size));
-            left: calc(-1 * var(--feed-bento-outline-size));
-            bottom: var(--feed-bento-outline-drop-size);
-            border-top-left-radius: calc(2.5rem + var(--feed-bento-outline-size));
-            border-top-right-radius: calc(2.5rem + var(--feed-bento-outline-size));
-            box-shadow: 0 0 0 var(--feed-bento-blue-shell-size) #00cce5;
-            clip-path: inset(calc(-1 * var(--feed-bento-blue-shell-size)) calc(-1 * var(--feed-bento-outline-size)) var(--feed-bento-outline-drop-size) calc(-1 * var(--feed-bento-outline-size)));
-            z-index: -1;
-          }
           #feedLocationGate .feed-stage-bento-scroll {
             min-height: 0;
             height: auto;
             overflow: visible;
-            margin-top: calc(-1 * var(--feed-bento-white-bridge-size));
-            padding-top: var(--feed-bento-white-bridge-size);
+            margin-top: 0;
+            padding-top: 0;
             position: relative;
             z-index: 3;
             background: var(--feed-bento-surface);
-            border-top-left-radius: 2.5rem;
-            border-top-right-radius: 2.5rem;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
             border: 0;
             box-sizing: border-box;
           }
@@ -1372,8 +1325,6 @@ export function createFeedViewOrchestrationController({
         </style>
 
         <div class="loc-shell">
-          <div class="loc-glow-a"></div>
-          <div class="loc-glow-b"></div>
           <div class="loc-top">
             <div class="loc-title">
               <div class="text-slider-wrapper">
