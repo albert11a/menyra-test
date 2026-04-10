@@ -49,22 +49,10 @@ export function createFeedViewOrchestrationController({
 
   const doc = documentObj || (typeof document !== "undefined" ? document : null);
   const win = windowObj || (typeof window !== "undefined" ? window : null);
+  const HtmlVideoElementCtor = typeof HTMLVideoElement === "function" ? HTMLVideoElement : null;
   const storyViewerHintPrefix = "mnyra_story_viewer_hint_v1:";
   const hasProfileUid = () => !!String(state.userProfile?.uid || "").trim();
   const hasBusinessProfileHint = () => !!String(state.userProfile?.restaurantId || "").trim();
-  const hasCeoOwnerProfileHint = () => {
-    const roleKey = String(state.userProfile?.role || "").toLowerCase();
-    if (roleKey === "ceo" || roleKey === "business") return true;
-    const roles = Array.isArray(state.userProfile?.roles) ? state.userProfile.roles : [];
-    return roles.some((role) => {
-      const key = String(role || "").toLowerCase();
-      return key === "ceo" || key === "owner";
-    });
-  };
-  const shouldShowStoryUploadSlot = () => (
-    !!state.user
-    || (hasProfileUid() && (hasBusinessProfileHint() || hasCeoOwnerProfileHint()))
-  );
   const shouldShowFeedComposer = () => (
     !!isLocalBusinessProfileFn(state.userProfile)
     || (hasBusinessProfileHint() && (!!state.user || hasProfileUid()))
@@ -83,12 +71,119 @@ export function createFeedViewOrchestrationController({
     ).trim().toLowerCase();
     return source === "feed-fallback" ? "feed-fallback" : "canonical";
   };
+  const MAX_BEST_SPOT_ITEMS = 15;
+  const BEST_SPOT_HEAD_COUNT = 6;
+  const MAX_TRACK_STORY_ITEMS = 15;
+  const TRACK_CARD_WIDTH_STYLE = "flex:0 0 29%;width:29%;max-width:120px;";
+  const TRACK_CARD_HEIGHT_STYLE = "height:13rem;";
+  const TRACK_CARD_RADIUS_STYLE = "border-radius:1rem;";
+  const storyPreviewStateMap = new WeakMap();
+  let storyPreviewObserver = null;
+  let storyPreviewLifecycleBound = false;
+  const buildTrackCardShellStyle = ({ withMarginLeft = false } = {}) => (
+    `${TRACK_CARD_WIDTH_STYLE}${withMarginLeft ? "margin-left:1.25rem;" : ""}`
+  );
+  const buildTrackRowViewportStyle = () => (
+    "margin-left:calc(var(--app-content-inline,1.5rem) * -1);margin-right:calc(var(--app-content-inline,1.5rem) * -1);scroll-padding-left:1.25rem;overscroll-behavior-x:contain;touch-action:pan-x;-webkit-overflow-scrolling:touch;"
+  );
+  const buildTrackCardInnerStyle = (extra = "") => (
+    `${TRACK_CARD_HEIGHT_STYLE}${TRACK_CARD_RADIUS_STYLE}position:relative;overflow:hidden;${extra}`
+  );
+  const normalizeMetricNumber = (value = 0) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return parsed;
+  };
+  const toStoryTimestampMs = (story = {}) => toTimestampMs(
+    story?.createdAt
+    || story?.updatedAt
+    || story?.timestamp
+    || story?.ts
+    || story?.publishedAt
+    || null
+  );
+  const isLikelyVideoMediaUrl = (value = "") => {
+    const url = String(value || "").trim().toLowerCase();
+    if (!url) return false;
+    if (/\.m3u8($|\?)/.test(url)) return true;
+    if (/\.mpd($|\?)/.test(url)) return true;
+    if (/\.mp4($|\?)/.test(url)) return true;
+    if (/\.webm($|\?)/.test(url)) return true;
+    if (/\.mov($|\?)/.test(url)) return true;
+    if (/\.m4v($|\?)/.test(url)) return true;
+    if (/\.ogv($|\?)/.test(url)) return true;
+    return false;
+  };
+  const resolveStoryPreviewMedia = (story = {}) => {
+    const rawMediaType = String(story?.mediaType || story?.type || "").trim().toLowerCase();
+    const imageUrl = String(story?.imageUrl || story?.thumbUrl || "").trim();
+    const videoUrl = String(story?.videoUrl || story?.playbackUrl || "").trim();
+    const mediaUrl = String(story?.mediaUrl || story?.url || "").trim();
+    const embedUrl = String(story?.embedUrl || "").trim();
+    // Do not fall back to logo/avatar media for story preview cards.
+    const fallbackImage = String(
+      story?.img
+      || story?.image
+      || story?.thumbnail
+      || story?.thumbnailUrl
+      || story?.previewImage
+      || story?.previewUrl
+      || story?.coverImage
+      || story?.poster
+      || story?.posterUrl
+      || ""
+    ).trim();
+    const inferredVideo = isLikelyVideoMediaUrl(mediaUrl);
+    const resolvedVideoUrl = videoUrl || (rawMediaType === "video" ? mediaUrl : (inferredVideo ? mediaUrl : ""));
+    const resolvedImageUrl = imageUrl || (rawMediaType === "image" ? mediaUrl : "");
+    if (resolvedVideoUrl) {
+      return {
+        kind: "video",
+        src: resolvedVideoUrl,
+        poster: resolvedImageUrl || fallbackImage,
+        signature: `video:${resolvedVideoUrl}|${resolvedImageUrl || fallbackImage || ""}`
+      };
+    }
+    if (resolvedImageUrl) {
+      return {
+        kind: "image",
+        src: resolvedImageUrl,
+        poster: resolvedImageUrl,
+        signature: `image:${resolvedImageUrl}`
+      };
+    }
+    if (fallbackImage) {
+      return {
+        kind: "image",
+        src: fallbackImage,
+        poster: fallbackImage,
+        signature: `fallback:${fallbackImage}`
+      };
+    }
+    if (embedUrl) {
+      return {
+        kind: "embed",
+        src: embedUrl,
+        poster: "",
+        signature: `embed:${embedUrl}`
+      };
+    }
+    return {
+      kind: "none",
+      src: "",
+      poster: "",
+      signature: "none"
+    };
+  };
   const buildStoryRenderSignature = (story = {}) => {
     const truthSource = normalizeStoryTruthSource(story);
+    const preview = resolveStoryPreviewMedia(story);
     return [
       String(story?.restaurantId || story?.id || "").trim(),
       truthSource,
-      story?.isLive ? "1" : "0"
+      story?.isLive ? "1" : "0",
+      preview.signature,
+      String(toStoryTimestampMs(story) || 0)
     ].join("|");
   };
   const buildFeedRenderSignature = (post = {}) => ([
@@ -252,6 +347,392 @@ export function createFeedViewOrchestrationController({
       stories: scopedStories
     };
   };
+  const compareDistanceValues = (aDistance = Number.POSITIVE_INFINITY, bDistance = Number.POSITIVE_INFINITY) => {
+    const aFinite = Number.isFinite(aDistance);
+    const bFinite = Number.isFinite(bDistance);
+    if (aFinite && bFinite && Math.abs(aDistance - bDistance) > 0.001) {
+      return aDistance - bDistance;
+    }
+    if (aFinite !== bFinite) return aFinite ? -1 : 1;
+    return 0;
+  };
+  const compareBestSpotStrength = (a = {}, b = {}) => {
+    if (a.likes !== b.likes) return b.likes - a.likes;
+    if (a.visitors !== b.visitors) return b.visitors - a.visitors;
+    if (a.comments !== b.comments) return b.comments - a.comments;
+    if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
+    const distanceCompare = compareDistanceValues(a.distanceKm, b.distanceKm);
+    if (distanceCompare !== 0) return distanceCompare;
+    return a.fallbackIndex - b.fallbackIndex;
+  };
+  const resolveBestSpotTrackItems = (feedPosts = [], fallbackFeedPosts = []) => {
+    const safeFeedPosts = Array.isArray(feedPosts) ? feedPosts : [];
+    const safeFallbackFeedPosts = Array.isArray(fallbackFeedPosts) ? fallbackFeedPosts : [];
+    const sourcePosts = safeFeedPosts.length ? safeFeedPosts : safeFallbackFeedPosts;
+    const viewerLocation = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const viewerCoords = normalizeViewerCoords(viewerLocation);
+    const viewerCountryCode = resolveCountryCodeFromAnyRecord(viewerLocation);
+    const restaurantMap = resolveFeedRestaurantMap();
+    const bestBySpotId = new Map();
+    const putCandidate = (candidate = null) => {
+      if (!candidate || !candidate.spotId) return;
+      const existing = bestBySpotId.get(candidate.spotId);
+      if (!existing) {
+        bestBySpotId.set(candidate.spotId, candidate);
+        return;
+      }
+      if (compareBestSpotStrength(candidate, existing) < 0) {
+        bestBySpotId.set(candidate.spotId, candidate);
+      }
+    };
+    const toPostCandidate = (post = {}, fallbackIndex = 0) => {
+      const restaurantId = resolveFeedEntryRestaurantId(post);
+      const postId = String(post?.id || "").trim();
+      const spotId = restaurantId || (postId ? `post:${postId}` : `idx:${fallbackIndex}`);
+      const restaurant = restaurantId ? restaurantMap.get(restaurantId) || null : null;
+      const countryCode = resolveCountryCodeFromAnyRecord({
+        ...(restaurant && typeof restaurant === "object" ? restaurant : {}),
+        ...(post && typeof post === "object" ? post : {})
+      });
+      if (viewerCountryCode && (!countryCode || countryCode !== viewerCountryCode)) {
+        return null;
+      }
+      const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(post);
+      const distanceKm = viewerCoords && coords
+        ? haversineDistanceKm(viewerCoords, coords)
+        : Number.POSITIVE_INFINITY;
+      const likes = Math.max(
+        0,
+        normalizeMetricNumber(post?.likes),
+        normalizeMetricNumber(post?.likesCount)
+      );
+      const comments = Math.max(
+        0,
+        normalizeMetricNumber(post?.comments),
+        normalizeMetricNumber(post?.commentsCount)
+      );
+      const visitors = Math.max(
+        0,
+        normalizeMetricNumber(post?.visitors),
+        normalizeMetricNumber(post?.visitorCount),
+        normalizeMetricNumber(post?.visitorsCount),
+        normalizeMetricNumber(post?.views),
+        normalizeMetricNumber(post?.viewCount),
+        normalizeMetricNumber(post?.viewsCount),
+        normalizeMetricNumber(post?.reach),
+        normalizeMetricNumber(post?.reachCount),
+        normalizeMetricNumber(post?.impressions),
+        normalizeMetricNumber(post?.impressionsCount)
+      );
+      const rating = Math.max(
+        0,
+        normalizeMetricNumber(post?.rating),
+        normalizeMetricNumber(post?.score),
+        normalizeMetricNumber(post?.stars),
+        normalizeMetricNumber(restaurant?.rating),
+        normalizeMetricNumber(restaurant?.score),
+        normalizeMetricNumber(restaurant?.stars)
+      );
+      const createdAtMs = toTimestampMs(post?.createdAt || post?.updatedAt);
+      const displayName = String(
+        post?.business
+        || post?.restaurantName
+        || restaurant?.name
+        || restaurant?.restaurantName
+        || "Best Spot"
+      ).trim() || "Best Spot";
+      const logoSource = String(
+        restaurant?.logoUrl
+        || restaurant?.logo
+        || restaurant?.logoURL
+        || post?.logo
+        || post?.image
+        || post?.url
+        || ""
+      ).trim();
+      const avatarUrl = restaurantId
+        ? resolveRestaurantLogoFn(restaurantId, logoSource, "avatar", false)
+        : logoSource;
+      const profileUrl = restaurantId
+        ? buildUrlFn("apps/menyra-social/index.html", { r: restaurantId, tab: "profile", source: "best-spot" })
+        : buildUrlFn("apps/menyra-social/index.html", { tab: "feed", post: postId, source: "best-spot" });
+      return {
+        spotId,
+        postId,
+        restaurantId,
+        displayName,
+        avatarUrl,
+        profileUrl,
+        likes,
+        comments,
+        visitors,
+        rating,
+        distanceKm,
+        createdAtMs,
+        fallbackIndex
+      };
+    };
+    const toRestaurantCandidate = (restaurant = {}, fallbackIndex = 0) => {
+      const restaurantId = String(restaurant?.id || restaurant?.restaurantId || "").trim();
+      if (!restaurantId) return null;
+      const statusKey = String(restaurant?.status || "").trim().toLowerCase();
+      if (statusKey === "archived" || statusKey === "deleted" || statusKey === "blocked" || statusKey === "disabled") {
+        return null;
+      }
+      const countryCode = resolveCountryCodeFromAnyRecord(restaurant);
+      if (viewerCountryCode && (!countryCode || countryCode !== viewerCountryCode)) {
+        return null;
+      }
+      const coords = normalizeEntityCoords(restaurant);
+      const distanceKm = viewerCoords && coords
+        ? haversineDistanceKm(viewerCoords, coords)
+        : Number.POSITIVE_INFINITY;
+      const likes = Math.max(
+        0,
+        normalizeMetricNumber(restaurant?.likes),
+        normalizeMetricNumber(restaurant?.likesCount),
+        normalizeMetricNumber(restaurant?.likeCount),
+        normalizeMetricNumber(restaurant?.socialLikes),
+        normalizeMetricNumber(restaurant?.socialLikesCount),
+        normalizeMetricNumber(restaurant?.followersCount),
+        normalizeMetricNumber(restaurant?.followers)
+      );
+      const comments = Math.max(
+        0,
+        normalizeMetricNumber(restaurant?.comments),
+        normalizeMetricNumber(restaurant?.commentsCount),
+        normalizeMetricNumber(restaurant?.reviewCount),
+        normalizeMetricNumber(restaurant?.reviews),
+        normalizeMetricNumber(restaurant?.reviewsCount),
+        normalizeMetricNumber(restaurant?.ratingsCount)
+      );
+      const visitors = Math.max(
+        0,
+        normalizeMetricNumber(restaurant?.visitors),
+        normalizeMetricNumber(restaurant?.visitorCount),
+        normalizeMetricNumber(restaurant?.visitorsCount),
+        normalizeMetricNumber(restaurant?.views),
+        normalizeMetricNumber(restaurant?.viewCount),
+        normalizeMetricNumber(restaurant?.viewsCount),
+        normalizeMetricNumber(restaurant?.reach),
+        normalizeMetricNumber(restaurant?.reachCount),
+        normalizeMetricNumber(restaurant?.impressions),
+        normalizeMetricNumber(restaurant?.impressionsCount),
+        normalizeMetricNumber(restaurant?.ordersCount),
+        normalizeMetricNumber(restaurant?.orders)
+      );
+      const rating = Math.max(
+        0,
+        normalizeMetricNumber(restaurant?.rating),
+        normalizeMetricNumber(restaurant?.score),
+        normalizeMetricNumber(restaurant?.stars)
+      );
+      const createdAtMs = toTimestampMs(
+        restaurant?.createdAt
+        || restaurant?.updatedAt
+        || restaurant?.truthUpdatedAt
+      );
+      const displayName = String(
+        restaurant?.name
+        || restaurant?.restaurantName
+        || restaurant?.displayName
+        || restaurant?.businessName
+        || "Best Spot"
+      ).trim() || "Best Spot";
+      const logoSource = String(
+        restaurant?.logoUrl
+        || restaurant?.logo
+        || restaurant?.logoURL
+        || restaurant?.image
+        || restaurant?.coverImage
+        || ""
+      ).trim();
+      const avatarUrl = resolveRestaurantLogoFn(restaurantId, logoSource, "avatar", false);
+      const profileUrl = buildUrlFn("apps/menyra-social/index.html", {
+        r: restaurantId,
+        tab: "profile",
+        source: "best-spot"
+      });
+      return {
+        spotId: restaurantId,
+        postId: "",
+        restaurantId,
+        displayName,
+        avatarUrl,
+        profileUrl,
+        likes,
+        comments,
+        visitors,
+        rating,
+        distanceKm,
+        createdAtMs,
+        fallbackIndex
+      };
+    };
+
+    sourcePosts.forEach((post, index) => {
+      putCandidate(toPostCandidate(post, index));
+    });
+
+    if (!sourcePosts.length || bestBySpotId.size < MAX_BEST_SPOT_ITEMS) {
+      let fallbackOffset = sourcePosts.length + 1000;
+      Array.from(restaurantMap.values()).forEach((restaurant) => {
+        const candidate = toRestaurantCandidate(restaurant, fallbackOffset);
+        fallbackOffset += 1;
+        if (!candidate) return;
+        if (bestBySpotId.has(candidate.spotId)) return;
+        putCandidate(candidate);
+      });
+    }
+
+    const dedupedSpots = Array.from(bestBySpotId.values());
+    if (!dedupedSpots.length) return [];
+    const hasFiniteDistance = dedupedSpots.some((row) => Number.isFinite(row?.distanceKm));
+    const scopedSpots = hasFiniteDistance
+      ? dedupedSpots.filter((row) => Number.isFinite(row?.distanceKm))
+      : dedupedSpots;
+    if (!scopedSpots.length) return [];
+    const strongest = [...scopedSpots]
+      .sort(compareBestSpotStrength)
+      .slice(0, BEST_SPOT_HEAD_COUNT);
+    const strongestIds = new Set(strongest.map((row) => row.spotId));
+    const remaining = scopedSpots
+      .filter((row) => !strongestIds.has(row.spotId))
+      .sort((a, b) => {
+        const distanceCompare = compareDistanceValues(a.distanceKm, b.distanceKm);
+        if (distanceCompare !== 0) return distanceCompare;
+        return compareBestSpotStrength(a, b);
+      });
+    return [...strongest, ...remaining]
+      .slice(0, MAX_BEST_SPOT_ITEMS)
+      .map((row, index) => ({
+        ratingDisplay: (() => {
+          const explicit = normalizeMetricNumber(row?.rating);
+          if (explicit > 0) {
+            return Math.max(1, Math.min(5, explicit)).toFixed(1);
+          }
+          const signal = Math.max(
+            1,
+            normalizeMetricNumber(row?.likes) * 1.2
+            + normalizeMetricNumber(row?.visitors) * 0.05
+            + normalizeMetricNumber(row?.comments) * 0.6
+          );
+          const normalized = 4.2 + Math.min(0.75, Math.log10(1 + signal) / 4.5);
+          return normalized.toFixed(1);
+        })(),
+        ...row,
+        rank: index + 1,
+        renderSignature: [
+          row.spotId,
+          row.postId,
+          row.displayName,
+          row.avatarUrl,
+          String(index + 1),
+          String(row.rating || 0),
+          String(row.likes || 0),
+          String(row.visitors || 0),
+          Number(row.distanceKm).toFixed(3),
+          String(row.createdAtMs || 0)
+        ].join("|")
+      }));
+  };
+  const compareStoryDistanceFirst = (a = {}, b = {}) => {
+    const distanceCompare = compareDistanceValues(a.distanceKm, b.distanceKm);
+    if (distanceCompare !== 0) return distanceCompare;
+    const aLive = !!a.isLive;
+    const bLive = !!b.isLive;
+    if (aLive !== bLive) return aLive ? -1 : 1;
+    if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
+    return a.fallbackIndex - b.fallbackIndex;
+  };
+  const resolveStoryTrackItems = (stories = [], fallbackStories = []) => {
+    const safeStories = Array.isArray(stories) ? stories : [];
+    const safeFallbackStories = Array.isArray(fallbackStories) ? fallbackStories : [];
+    const sourceStories = safeStories.length ? safeStories : safeFallbackStories;
+    if (!sourceStories.length) return [];
+    const viewerLocation = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const viewerCoords = normalizeViewerCoords(viewerLocation);
+    const restaurantMap = resolveFeedRestaurantMap();
+    const dedupedStories = new Map();
+    sourceStories.forEach((story, fallbackIndex) => {
+      const identity = resolveStoryRenderIdentity(story);
+      const restaurantId = identity.storyRestaurantId;
+      if (!restaurantId) return;
+      const restaurant = restaurantMap.get(restaurantId) || null;
+      const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(story);
+      const distanceKm = viewerCoords && coords
+        ? haversineDistanceKm(viewerCoords, coords)
+        : Number.POSITIVE_INFINITY;
+      const createdAtMs = toStoryTimestampMs(story);
+      const preview = resolveStoryPreviewMedia(story);
+      const storyLabel = String(identity.storyLabel || "").trim() || "Story";
+      const storyUrl = buildStoryViewerUrlFn(restaurantId);
+      const profileImageUrl = resolveRestaurantLogoFn(
+        restaurantId,
+        String(identity.logoSource || "").trim(),
+        "thumb",
+        false
+      );
+      const candidate = {
+        ...story,
+        storyId: restaurantId,
+        restaurantId,
+        storyLabel,
+        storyUrl,
+        profileImageUrl,
+        preview,
+        distanceKm,
+        createdAtMs,
+        isLive: !!story?.isLive,
+        fallbackIndex
+      };
+      const existing = dedupedStories.get(restaurantId);
+      if (!existing) {
+        dedupedStories.set(restaurantId, candidate);
+        return;
+      }
+      if (compareStoryDistanceFirst(candidate, existing) < 0) {
+        dedupedStories.set(restaurantId, candidate);
+      }
+    });
+    const deduped = Array.from(dedupedStories.values());
+    const hasFiniteDistance = deduped.some((row) => Number.isFinite(row?.distanceKm));
+    const scopedStories = hasFiniteDistance
+      ? deduped.filter((row) => Number.isFinite(row?.distanceKm))
+      : deduped;
+    return scopedStories
+      .sort(compareStoryDistanceFirst)
+      .slice(0, MAX_TRACK_STORY_ITEMS);
+  };
+  const buildMixedSpotStoryTrackItems = ({ spots = [], stories = [] } = {}) => {
+    const safeSpots = Array.isArray(spots) ? spots : [];
+    const safeStories = Array.isArray(stories) ? stories : [];
+    if (!safeSpots.length && !safeStories.length) return [];
+    if (!safeStories.length) return safeSpots.map((spot) => ({ type: "spot", spot }));
+    if (!safeSpots.length) return safeStories.map((story) => ({ type: "story", story }));
+    const mixed = [];
+    let spotIndex = 0;
+    let storyIndex = 0;
+    while (spotIndex < safeSpots.length || storyIndex < safeStories.length) {
+      if (spotIndex < safeSpots.length) {
+        mixed.push({ type: "spot", spot: safeSpots[spotIndex] });
+        spotIndex += 1;
+      }
+      if (storyIndex < safeStories.length) {
+        mixed.push({ type: "story", story: safeStories[storyIndex] });
+        storyIndex += 1;
+      }
+    }
+    return mixed;
+  };
+  const buildSpotStoryTrackSignature = ({ spots = [], stories = [] } = {}) => buildMixedSpotStoryTrackItems({ spots, stories })
+    .map((entry) => {
+      if (entry.type === "spot") {
+        return `spot:${String(entry?.spot?.renderSignature || entry?.spot?.spotId || "").trim()}`;
+      }
+      return `story:${buildStoryRenderSignature(entry?.story || {})}`;
+    })
+    .join(",");
   const copyTextToClipboard = async (value = "") => {
     const safeValue = String(value || "");
     if (!safeValue) return false;
@@ -786,6 +1267,21 @@ export function createFeedViewOrchestrationController({
     } catch {}
     locationGateResolveTimer = null;
   };
+  const setFeedGateResolveChromeState = (active = false) => {
+    const next = !!active;
+    const htmlEl = doc?.documentElement || null;
+    const bodyEl = doc?.body || null;
+    htmlEl?.classList?.toggle?.("feed-location-gate-resolving", next);
+    bodyEl?.classList?.toggle?.("feed-location-gate-resolving", next);
+    try {
+      const setUiChromeMode = win?.__MENYRA_SOCIAL_SET_UI_CHROME_MODE__;
+      if (next && typeof setUiChromeMode === "function") {
+        setUiChromeMode("app");
+      }
+      const forceUiChrome = win?.__MENYRA_SOCIAL_FORCE_UI_CHROME__;
+      if (typeof forceUiChrome === "function") forceUiChrome();
+    } catch {}
+  };
   const clearFeedStageAutoPinScrollFrame = () => {
     if (!feedStageAutoPinScrollFrame) return;
     if (typeof win?.cancelAnimationFrame === "function") {
@@ -1298,11 +1794,13 @@ export function createFeedViewOrchestrationController({
       clearFeedStageAutoPinScrollFrame();
       locationGateResolveTransitionPending = false;
       gateRoot?.classList?.remove?.("feed-location-gate--resolving");
+      setFeedGateResolveChromeState(false);
     } else {
       feedEntranceAnimationQueued = false;
       feedStageAutoPinScrollQueued = true;
       locationGateResolveTransitionPending = true;
       gateRoot?.classList?.add?.("feed-location-gate--resolving");
+      setFeedGateResolveChromeState(true);
     }
     syncFeedLocationGateDom();
     if (shouldStayOnLocationScreen) {
@@ -1311,6 +1809,7 @@ export function createFeedViewOrchestrationController({
     }
     if (!shouldAnimateResolve) {
       clearLocationGateResolveTimer();
+      setFeedGateResolveChromeState(false);
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
       if (!activeTabKey || activeTabKey === "feed" || activeTabKey === "home") {
         setStateFn({ activeTab: "feed" });
@@ -1322,6 +1821,7 @@ export function createFeedViewOrchestrationController({
       locationGateResolveTimer = null;
       locationGateResolveTransitionPending = false;
       gateRoot?.classList?.remove?.("feed-location-gate--resolving");
+      setFeedGateResolveChromeState(false);
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
       if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "home") {
         return;
@@ -1462,20 +1962,24 @@ export function createFeedViewOrchestrationController({
         <style>
           #feedLocationGate {
             --feed-bento-surface: #f8fafc;
+            min-height: 100svh;
             background: #f8fafc;
             color: #0f172a;
           }
+          html.is-standalone #feedLocationGate {
+            min-height: 100dvh;
+          }
           #feedLocationGate .loc-shell {
             position: relative;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
             background: #f8fafc;
-          }
-          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-shell {
-            background: #00cce5;
           }
           #feedLocationGate .loc-top { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 5rem 1.5rem 5.25rem; background: #f8fafc; }
           #feedLocationGate .loc-top.loc-top--searchless { padding-bottom: 3.35rem; }
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-top {
-            background: #00cce5;
+            background: var(--feed-gate-chrome-color, #00cce5);
           }
           #feedLocationGate .loc-title { width: 100%; max-width: 22rem; margin: 0 auto 2.15rem; color: #0f172a; font-size: clamp(1.65rem, 6.6vw, 2.2rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.08; }
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-title {
@@ -1524,6 +2028,12 @@ export function createFeedViewOrchestrationController({
             width: 100%;
             box-sizing: border-box;
           }
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-bento.loc-bento--feed-content {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+          }
           #feedLocationGate .feed-bento-pin-backdrop {
             position: -webkit-sticky;
             position: sticky;
@@ -1560,6 +2070,9 @@ export function createFeedViewOrchestrationController({
             border-top-right-radius: 0;
             border: 0;
             box-sizing: border-box;
+          }
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .feed-stage-bento-scroll {
+            flex: 1 1 auto;
           }
           #feedLocationGate .loc-bento-head { text-align: center; max-width: 22rem; margin: 0 auto 1.1rem; }
           #feedLocationGate .loc-bento-line { display: inline-flex; align-items: center; gap: 0.7rem; opacity: 0.82; margin-bottom: 0.9rem; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.24em; color: rgb(100 116 139); }
@@ -1654,13 +2167,117 @@ export function createFeedViewOrchestrationController({
     `;
   }
 
+  function renderSpotStoryIntroCard() {
+    return `
+      <div class="flex-none w-[29%] sm:w-[120px] snap-start ml-5" style="${buildTrackCardShellStyle({ withMarginLeft: true })}">
+        <div class="relative h-52 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-gray-900 via-gray-800 to-black p-3 flex flex-col justify-between border border-white/10" style="${buildTrackCardInnerStyle("background:linear-gradient(145deg,#111827 0%,#1f2937 52%,#000000 100%);padding:0.75rem;display:flex;flex-direction:column;justify-content:space-between;")}">
+          <div class="relative z-10" style="position:relative;z-index:10;">
+            <div class="absolute top-[26px] left-[13px] h-6 border-l-2 border-dashed border-white/80" style="position:absolute;top:26px;left:13px;height:1.5rem;border-left:2px dashed rgba(255,255,255,0.8);"></div>
+            <div class="absolute top-[49px] left-[10px] w-2 h-2 rounded-full border border-white/70 bg-white/20 flex items-center justify-center shadow-sm" style="position:absolute;top:49px;left:10px;width:0.5rem;height:0.5rem;border-radius:9999px;border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
+              <div style="width:0.25rem;height:0.25rem;border-radius:9999px;background:#fff;"></div>
+            </div>
+            <div class="bg-gradient-to-b from-white/20 to-white/5 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 relative z-10 shadow-sm" style="position:relative;z-index:10;background:linear-gradient(180deg,rgba(255,255,255,0.22) 0%,rgba(255,255,255,0.06) 100%);">
+              ${iconFn("map-pin", "w-3.5 h-3.5 text-white")}
+            </div>
+          </div>
+          <div class="mt-auto relative z-10" style="margin-top:auto;position:relative;z-index:20;">
+            <h2 class="text-[22px] font-black text-white uppercase leading-[1.05] tracking-tight w-full mb-1.5 opacity-95" style="font-size:clamp(14px,4.2vw,18px);line-height:1.05;opacity:0.95;">
+              <span style="display:block;white-space:nowrap;">Spots &amp;</span>
+              <span style="display:block;white-space:nowrap;">Stories</span>
+            </h2>
+            <p class="text-[9px] text-gray-400 leading-tight mb-2" style="position:relative;z-index:20;font-size:9px;line-height:1.15;color:rgb(156 163 175);">Die besten Orte erleben.</p>
+            <div class="flex items-center gap-1 text-[8px] font-bold text-amber-400 uppercase tracking-widest mt-1" style="position:relative;z-index:20;color:rgb(251 191 36);">
+              <span>Swipe</span>
+              ${iconFn("arrow-right", "w-2.5 h-2.5")}
+            </div>
+          </div>
+          <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/5 rounded-full blur-xl pointer-events-none" style="position:absolute;right:-1rem;bottom:-1rem;width:6rem;height:6rem;border-radius:9999px;background:rgba(255,255,255,0.05);filter:blur(24px);pointer-events:none;z-index:0;"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderBestSpotItem(spot = {}, index = 0) {
+    const spotId = String(spot?.spotId || spot?.postId || "").trim();
+    const safeSpotId = escapeHtmlFn(spotId);
+    const avatarAttr = safeSpotId ? `data-best-spot-avatar="${safeSpotId}"` : "";
+    const avatarKeyAttr = safeSpotId ? `data-img-key="best-spot-avatar:${safeSpotId}"` : "";
+    const nameAttr = safeSpotId ? `data-best-spot-name="${safeSpotId}"` : "";
+    const href = String(spot?.profileUrl || buildUrlFn("apps/menyra-social/index.html", { tab: "feed", source: "best-spot" })).trim();
+    const restaurantId = String(spot?.restaurantId || "").trim();
+    const avatarUrl = String(spot?.avatarUrl || "").trim();
+    const label = String(spot?.displayName || "Best Spot").trim() || "Best Spot";
+    const eager = index < 4;
+    const ratingLabel = String(spot?.ratingDisplay || "4.8").trim() || "4.8";
+    const imgAttrs = eager
+      ? `loading="eager" fetchpriority="high"`
+      : `loading="lazy" fetchpriority="low"`;
+    const starBadgeIcon = `<svg viewBox="0 0 24 24" width="8" height="8" aria-hidden="true" focusable="false" style="display:block;color:#fbbf24;fill:currentColor;stroke:currentColor;stroke-width:1.5;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+    const visualLayer = avatarUrl
+      ? `<img src="${escapeHtmlFn(avatarUrl)}" ${imgAttrs} decoding="async" width="120" height="208" ${avatarAttr} ${avatarKeyAttr} class="absolute inset-0 w-full h-full object-cover" />`
+      : `<div class="absolute inset-0 flex items-center justify-center text-white/85" style="background:linear-gradient(145deg,#1f2937 0%,#0f172a 60%,#020617 100%);">${iconFn("map-pin", "w-6 h-6")}</div>`;
+    const openTag = restaurantId
+      ? `<button type="button" data-profile-business="${escapeHtmlFn(label)}" data-profile-id="${escapeHtmlFn(restaurantId)}" data-best-spot-item="${safeSpotId}" class="flex-none w-[29%] sm:w-[120px] snap-start cursor-pointer text-left" style="${buildTrackCardShellStyle()}">`
+      : `<a href="${escapeHtmlFn(href)}" data-best-spot-item="${safeSpotId}" class="flex-none w-[29%] sm:w-[120px] snap-start cursor-pointer" style="${buildTrackCardShellStyle()}">`;
+    const closeTag = restaurantId ? "</button>" : "</a>";
+    return `
+      ${openTag}
+        <div class="relative h-52 rounded-2xl overflow-hidden shadow-md" style="${buildTrackCardInnerStyle()}">
+          ${visualLayer}
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" style="background:linear-gradient(0deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.1) 45%,rgba(0,0,0,0) 100%);"></div>
+          <div class="absolute top-2 left-2" style="position:absolute;top:0.5rem;left:0.5rem;z-index:12;">
+            <div class="flex items-center gap-1 bg-white/20 backdrop-blur-md border border-white/30 px-1.5 py-0.5 rounded-md shadow-sm">
+              ${starBadgeIcon}
+              <span class="text-[9px] font-bold text-white pt-[1px]">${escapeHtmlFn(ratingLabel)}</span>
+            </div>
+          </div>
+          <div class="absolute top-2 right-2" style="position:absolute;top:0.5rem;right:0.5rem;z-index:12;">
+            <div class="p-1 bg-white/20 backdrop-blur-md rounded-full text-white border border-white/20 shadow-sm">
+              ${iconFn("arrow-right", "w-3 h-3")}
+            </div>
+          </div>
+          <div class="absolute bottom-2 left-2 right-2" style="position:absolute;left:0.5rem;right:0.5rem;bottom:0.5rem;z-index:12;">
+            <h3 class="font-medium text-[11px] text-white truncate drop-shadow-md" ${nameAttr}>${escapeHtmlFn(label)}</h3>
+          </div>
+        </div>
+      ${closeTag}
+    `;
+  }
+
+  function renderStoryPreviewMedia(story = {}, index = 0, storyId = "") {
+    const preview = resolveStoryPreviewMedia(story);
+    const eager = index < 2;
+    if (preview.kind === "video" && preview.src) {
+      const attrs = eager
+        ? `preload="auto" fetchpriority="high"`
+        : `preload="metadata" fetchpriority="low"`;
+      const posterAttr = preview.poster ? `poster="${escapeHtmlFn(preview.poster)}"` : "";
+      const storyPreviewIdAttr = storyId ? `data-story-preview-id="${escapeHtmlFn(storyId)}"` : "";
+      return `
+        <video src="${escapeHtmlFn(preview.src)}" ${posterAttr} ${attrs} data-story-preview-video ${storyPreviewIdAttr} autoplay muted loop playsinline draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>
+      `;
+    }
+    if (preview.src) {
+      const attrs = eager
+        ? `loading="eager" fetchpriority="high"`
+        : `loading="lazy" fetchpriority="low"`;
+      return `
+        <img src="${escapeHtmlFn(preview.src)}" ${attrs} decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />
+      `;
+    }
+    return `
+      <div class="absolute inset-0 flex items-center justify-center text-white/80" style="background:linear-gradient(145deg,#334155 0%,#1e293b 52%,#020617 100%);">
+        ${iconFn("camera", "w-7 h-7")}
+      </div>
+    `;
+  }
+
   function renderStoryItem(story, index = 0) {
     const identity = resolveStoryRenderIdentity(story);
     const storyRestaurantId = identity.storyRestaurantId;
     if (!storyRestaurantId) return "";
     const storyTruthSource = String(identity.truthSource || "canonical").trim().toLowerCase();
     const isFeedFallbackStory = storyTruthSource === "feed-fallback";
-    const borderClass = identity.borderClass || "border-slate-200";
     const storyUrl = isFeedFallbackStory
       ? buildUrlFn("apps/menyra-social/index.html", { r: storyRestaurantId, tab: "profile", source: "story-fallback" })
       : buildStoryViewerUrlFn(storyRestaurantId);
@@ -1675,39 +2292,47 @@ export function createFeedViewOrchestrationController({
     const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
     const storyTruthAttr = `data-story-truth="${escapeHtmlFn(storyTruthSource)}"`;
     const storyRenderAttr = `data-story-render-sig="${escapeHtmlFn(buildStoryRenderSignature(story))}"`;
-    const eager = index < 4;
-    const imgAttrs = eager
-      ? `loading="eager" fetchpriority="high"`
-      : `loading="lazy" fetchpriority="low"`;
     return `
-    <a href="${storyUrl}" ${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" ${storyTruthAttr} ${storyRenderAttr} class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
-      <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
-        <img src="${escapeHtmlFn(imgUrl)}" ${imgAttrs} decoding="async" width="80" height="80" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-[1.8rem] object-contain bg-white group-hover:scale-105 transition-transform" />
-      </div>
-      <div class="flex flex-col items-center gap-0.5">
-        <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtmlFn(storyLabel)}</span>
-        ${isFeedFallbackStory ? `<span class="text-[8px] font-black uppercase tracking-widest text-amber-600">Feed</span>` : ""}
-      </div>
-    </a>
-  `;
+      <a href="${storyUrl}" ${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" ${storyTruthAttr} ${storyRenderAttr} class="flex-none w-[29%] sm:w-[120px] snap-start cursor-pointer" style="${buildTrackCardShellStyle()}">
+        <div class="relative h-52 rounded-2xl overflow-hidden shadow-md" style="${buildTrackCardInnerStyle()}">
+          ${renderStoryPreviewMedia(story, index, storyRestaurantId)}
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20 pointer-events-none" style="background:linear-gradient(0deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.1) 45%,rgba(0,0,0,0.2) 100%);"></div>
+          <div class="absolute top-2 right-2" style="position:absolute;top:0.5rem;right:0.5rem;z-index:12;">
+            <div class="w-7 h-7 rounded-full p-[2px] bg-gradient-to-tr from-amber-500 to-fuchsia-600 shadow-sm" ${storyBorderAttr} style="padding:2px;background:linear-gradient(135deg,#f59e0b 0%,#db2777 100%);">
+              <img src="${escapeHtmlFn(imgUrl)}" loading="lazy" fetchpriority="low" decoding="async" width="28" height="28" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />
+            </div>
+          </div>
+          <div class="absolute bottom-2 left-2 right-2" style="position:absolute;left:0.5rem;right:0.5rem;bottom:0.5rem;z-index:12;">
+            <h3 class="font-medium text-[11px] text-white truncate drop-shadow-md" ${storyNameAttr}>${escapeHtmlFn(storyLabel)}</h3>
+          </div>
+        </div>
+      </a>
+    `;
   }
 
-  function renderStoriesRow(stories) {
-    const uploadSlot = shouldShowStoryUploadSlot() ? `
-    <div class="flex-shrink-0 flex flex-col items-center gap-2" data-story-upload-wrap data-nav="upload" data-upload-intent="chooser">
-      <div data-story-upload class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
-        <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
-        ${iconFn("camera", "w-7 h-7 relative z-10")}
-      </div>
-      <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
-    </div>
-  ` : "";
+  function renderStoriesRow(stories, feedPosts = [], {
+    fallbackFeedPosts = [],
+    fallbackStories = []
+  } = {}) {
+    const bestSpots = resolveBestSpotTrackItems(feedPosts, fallbackFeedPosts);
+    const storyTrackItems = resolveStoryTrackItems(stories, fallbackStories);
+    const mixedTrackItems = buildMixedSpotStoryTrackItems({
+      spots: bestSpots,
+      stories: storyTrackItems
+    });
+    const cards = mixedTrackItems.map((entry, index) => {
+      if (entry.type === "spot") {
+        return renderBestSpotItem(entry.spot, index);
+      }
+      return renderStoryItem(entry.story, index);
+    }).join("");
     return `
-    ${uploadSlot}
-    ${stories.length ? stories.map((story, index) => renderStoryItem(story, index)).join("") : `
-      <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
-    `}
-  `;
+      <div data-spot-story-track class="flex overflow-x-auto gap-2.5 pb-8 pt-2 snap-x snap-mandatory no-scrollbar scroll-pl-5" style="${buildTrackRowViewportStyle()}">
+        ${renderSpotStoryIntroCard()}
+        ${cards || `<div class="flex items-center text-slate-400 text-xs font-bold uppercase px-2">Keine Spots vorhanden</div>`}
+        <div class="flex-none w-1" aria-hidden="true"></div>
+      </div>
+    `;
   }
 
   function renderFeedItem(post, index) {
@@ -1832,39 +2457,267 @@ export function createFeedViewOrchestrationController({
     return true;
   }
 
-  function patchStoriesRow(stories) {
-    const storiesRow = doc?.getElementById("storiesRow");
-    if (!storiesRow) return false;
-    if (!Array.isArray(stories) || stories.length === 0) {
-      storiesRow.innerHTML = renderStoriesRow([]);
-      return true;
+  function bindStoryPreviewBoomerang(video) {
+    if (!HtmlVideoElementCtor || !(video instanceof HtmlVideoElementCtor)) return;
+    if (video.dataset.storyBoomerangBound === "1") return;
+    video.dataset.storyBoomerangBound = "1";
+    video.defaultMuted = true;
+    video.muted = true;
+    video.setAttribute("muted", "");
+    video.autoplay = true;
+    video.loop = false;
+    video.controls = false;
+    video.disablePictureInPicture = true;
+    video.preload = "metadata";
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    const ua = String(win?.navigator?.userAgent || "").toLowerCase();
+    const isTouchLike = !!win?.matchMedia?.("(pointer: coarse)")?.matches;
+    const isMobileUa = /android|iphone|ipad|ipod|mobile/.test(ua);
+    const isStandalone = !!win?.matchMedia?.("(display-mode: standalone)")?.matches
+      || !!win?.navigator?.standalone;
+    const forceLightweightLoop = isTouchLike || isMobileUa || isStandalone;
+    const allowReversePlayback = false;
+    let direction = 1;
+    let reverseSupported = allowReversePlayback && !forceLightweightLoop;
+    let previewEnd = 1.35;
+    const previewStart = 0.05;
+    storyPreviewStateMap.set(video, {
+      previewStart,
+      previewEnd,
+      active: false,
+      forceLightweightLoop
+    });
+    const markActive = (active = false) => {
+      const state = storyPreviewStateMap.get(video);
+      if (!state) return;
+      state.active = !!active;
+      state.previewEnd = previewEnd;
+      video.dataset.storyPreviewActive = active ? "1" : "0";
+    };
+    const applyDirection = (nextDirection) => {
+      direction = nextDirection >= 0 ? 1 : -1;
+      if (!reverseSupported) return;
+      try {
+        video.playbackRate = direction;
+        if (video.playbackRate !== direction) {
+          reverseSupported = false;
+          video.playbackRate = 1;
+        }
+      } catch {
+        reverseSupported = false;
+        try { video.playbackRate = 1; } catch {}
+      }
+    };
+    const syncPreviewBounds = () => {
+      const duration = Number(video.duration || 0);
+      if (!Number.isFinite(duration) || duration <= 0.05) {
+        previewEnd = 1.35;
+        const state = storyPreviewStateMap.get(video);
+        if (state) state.previewEnd = previewEnd;
+        return;
+      }
+      previewEnd = Math.max(previewStart + 0.45, Math.min(duration, 1.45));
+      const state = storyPreviewStateMap.get(video);
+      if (state) state.previewEnd = previewEnd;
+    };
+    const onTimeUpdate = () => {
+      const state = storyPreviewStateMap.get(video);
+      if (!state?.active) return;
+      syncPreviewBounds();
+      if (!reverseSupported) {
+        if (video.currentTime >= previewEnd) {
+          video.currentTime = previewStart + 0.01;
+          if (video.paused) {
+            void video.play().catch(() => {});
+          }
+        }
+        return;
+      }
+      if (direction > 0 && video.currentTime >= previewEnd) {
+        applyDirection(-1);
+      } else if (direction < 0 && video.currentTime <= previewStart) {
+        applyDirection(1);
+      }
+    };
+    video.addEventListener("loadedmetadata", syncPreviewBounds);
+    video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("stalled", () => {
+      const state = storyPreviewStateMap.get(video);
+      if (!state?.active) return;
+      void video.play().catch(() => {});
+    });
+    video.addEventListener("waiting", () => {
+      const state = storyPreviewStateMap.get(video);
+      if (!state?.active) return;
+      void video.play().catch(() => {});
+    });
+    video.addEventListener("ended", () => {
+      const state = storyPreviewStateMap.get(video);
+      if (!state?.active) return;
+      video.currentTime = previewStart;
+      applyDirection(1);
+      void video.play().catch(() => {});
+    });
+    applyDirection(1);
+    try {
+      video.currentTime = previewStart;
+    } catch {}
+    markActive(false);
+  }
+
+  function playStoryPreview(video, { reset = false } = {}) {
+    if (!HtmlVideoElementCtor || !(video instanceof HtmlVideoElementCtor)) return;
+    const state = storyPreviewStateMap.get(video);
+    if (!state) return;
+    if (reset || !Number.isFinite(video.currentTime) || video.currentTime > (state.previewEnd + 0.05)) {
+      try {
+        video.currentTime = state.previewStart;
+      } catch {}
     }
-    const uploadWrap = storiesRow.querySelector("[data-story-upload-wrap]");
-    if (!uploadWrap) {
-      storiesRow.innerHTML = renderStoriesRow(stories);
-      return true;
-    }
-    const existingItems = Array.from(storiesRow.querySelectorAll("[data-story-item]"));
-    const existingMap = new Map();
-    existingItems.forEach((el) => existingMap.set(el.dataset.storyItem || "", el));
-    const fragment = doc.createDocumentFragment();
-    fragment.appendChild(uploadWrap);
-    stories.forEach((story) => {
-      const id = String(story.restaurantId || "");
-      const existing = id ? existingMap.get(id) : null;
-      const nextSignature = buildStoryRenderSignature(story);
-      const currentSignature = String(existing?.getAttribute?.("data-story-render-sig") || "").trim();
-      if (existing && currentSignature === nextSignature) {
-        existingMap.delete(id);
-        fragment.appendChild(existing);
+    state.active = true;
+    video.dataset.storyPreviewActive = "1";
+    void video.play().catch(() => {});
+  }
+
+  function pauseStoryPreview(video) {
+    if (!HtmlVideoElementCtor || !(video instanceof HtmlVideoElementCtor)) return;
+    const state = storyPreviewStateMap.get(video);
+    if (state) state.active = false;
+    video.dataset.storyPreviewActive = "0";
+    try {
+      video.pause();
+    } catch {}
+  }
+
+  function ensureStoryPreviewObserver() {
+    if (!win?.IntersectionObserver || !HtmlVideoElementCtor) return null;
+    if (storyPreviewObserver) return storyPreviewObserver;
+    storyPreviewObserver = new win.IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target;
+        if (!(video instanceof HtmlVideoElementCtor)) return;
+        const ratio = entry.isIntersecting ? Number(entry.intersectionRatio || 0) : 0;
+        const visible = ratio >= 0.3;
+        video.dataset.storyPreviewVisible = visible ? "1" : "0";
+        if (visible) {
+          playStoryPreview(video);
+        } else {
+          pauseStoryPreview(video);
+        }
+      });
+    }, {
+      threshold: [0, 0.15, 0.3, 0.55, 0.85, 1]
+    });
+    return storyPreviewObserver;
+  }
+
+  function ensureStoryPreviewLifecycleBindings() {
+    if (!doc || storyPreviewLifecycleBound) return;
+    storyPreviewLifecycleBound = true;
+    doc.addEventListener("visibilitychange", () => {
+      const scope = doc.getElementById("storiesRow");
+      if (!scope) return;
+      const videos = Array.from(scope.querySelectorAll("video[data-story-preview-video]"));
+      if (doc.hidden) {
+        videos.forEach((video) => pauseStoryPreview(video));
+        return;
+      }
+      videos.forEach((video) => {
+        const isVisible = String(video.dataset.storyPreviewVisible || "0") === "1";
+        if (isVisible) {
+          playStoryPreview(video);
+        }
+      });
+    });
+    win?.addEventListener?.("pagehide", () => {
+      const scope = doc.getElementById("storiesRow");
+      if (!scope) return;
+      scope.querySelectorAll("video[data-story-preview-video]")?.forEach?.((video) => pauseStoryPreview(video));
+    });
+  }
+
+  function bindSpotStoryTrackEdgeSwipeGuard(root = null) {
+    if (!doc) return;
+    const scope = root && typeof root.querySelector === "function" ? root : doc;
+    const track = scope.querySelector?.("[data-spot-story-track]");
+    if (!(track instanceof HTMLElement)) return;
+    if (track.dataset.edgeSwipeGuardBound === "1") return;
+    track.dataset.edgeSwipeGuardBound = "1";
+
+    let isTouchActive = false;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+
+    const onTouchStart = (event) => {
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      isTouchActive = true;
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startScrollLeft = Number(track.scrollLeft || 0);
+    };
+
+    const onTouchMove = (event) => {
+      if (!isTouchActive) return;
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      if (Math.abs(dx) <= Math.abs(dy)) return;
+      const maxScrollLeft = Math.max(0, Number(track.scrollWidth || 0) - Number(track.clientWidth || 0));
+      const atStart = startScrollLeft <= 0.5 || Number(track.scrollLeft || 0) <= 0.5;
+      const atEnd = Math.abs(maxScrollLeft - Number(track.scrollLeft || 0)) <= 0.5;
+      const swipingPastStart = dx > 0 && atStart;
+      const swipingPastEnd = dx < 0 && atEnd;
+      if (swipingPastStart || swipingPastEnd) {
+        event.preventDefault();
+      }
+    };
+
+    const onTouchEnd = () => {
+      isTouchActive = false;
+    };
+
+    track.addEventListener("touchstart", onTouchStart, { passive: true });
+    track.addEventListener("touchmove", onTouchMove, { passive: false });
+    track.addEventListener("touchend", onTouchEnd, { passive: true });
+    track.addEventListener("touchcancel", onTouchEnd, { passive: true });
+  }
+
+  function syncStoryPreviewMotion(root = null) {
+    const scope = root && typeof root.querySelectorAll === "function"
+      ? root
+      : doc?.getElementById("storiesRow");
+    if (!scope) return;
+    const videos = Array.from(scope.querySelectorAll?.("video[data-story-preview-video]") || []);
+    const observer = ensureStoryPreviewObserver();
+    if (observer) observer.disconnect();
+    videos.forEach((video) => {
+      bindStoryPreviewBoomerang(video);
+      if (observer) {
+        observer.observe(video);
       } else {
-        const tpl = doc.createElement("template");
-        tpl.innerHTML = renderStoryItem(story);
-        const node = tpl.content.firstElementChild;
-        if (node) fragment.appendChild(node);
+        playStoryPreview(video, { reset: true });
       }
     });
-    storiesRow.replaceChildren(fragment);
+    bindSpotStoryTrackEdgeSwipeGuard(scope);
+    ensureStoryPreviewLifecycleBindings();
+  }
+
+  function patchStoriesRow(stories, feedPosts = [], {
+    fallbackFeedPosts = [],
+    fallbackStories = []
+  } = {}) {
+    const storiesRow = doc?.getElementById("storiesRow");
+    if (!storiesRow) return false;
+    storiesRow.innerHTML = renderStoriesRow(stories, feedPosts, {
+      fallbackFeedPosts,
+      fallbackStories
+    });
+    syncStoryPreviewMotion(storiesRow);
     return true;
   }
 
@@ -1905,22 +2758,25 @@ export function createFeedViewOrchestrationController({
       feedPosts: categoryFeedPosts,
       stories: baseStories
     });
+    const trackStories = stories;
+    const storyTrackItems = resolveStoryTrackItems(trackStories, trackStories);
+    const bestSpotItems = resolveBestSpotTrackItems(feedPosts, feedPosts);
     const storiesRow = doc.getElementById("storiesRow");
-    const nextSig = `${buildStoriesRowSignatureFn(stories)}|upload:${shouldShowStoryUploadSlot() ? "1" : "0"}`;
+    const nextSig = buildSpotStoryTrackSignature({ spots: bestSpotItems, stories: storyTrackItems });
     if (storiesRow) {
-      const renderedStoryCount = storiesRow.querySelectorAll("[data-story-item]").length;
-      const expectedStoryCount = Array.isArray(stories) ? stories.length : 0;
-      const hasUploadWrap = !!storiesRow.querySelector("[data-story-upload-wrap]");
-      const shouldShowUploadWrap = shouldShowStoryUploadSlot();
-      const needsStructurePatch = renderedStoryCount !== expectedStoryCount || hasUploadWrap !== shouldShowUploadWrap;
-      if (getStoriesRowSignatureFn() !== nextSig || needsStructurePatch) {
-        patchStoriesRow(stories);
+      const hasTrackContainer = !!storiesRow.querySelector("[data-spot-story-track]");
+      if (getStoriesRowSignatureFn() !== nextSig || !hasTrackContainer) {
+        patchStoriesRow(trackStories, feedPosts, {
+          fallbackFeedPosts: feedPosts,
+          fallbackStories: trackStories
+        });
         setStoriesRowSignatureFn(nextSig);
       }
-      stories.forEach((story) => {
+      storyTrackItems.forEach((story) => {
         updateStoryLogoNodesFn(story);
         updateStoryMetaNodesFn(story);
       });
+      syncStoryPreviewMotion(storiesRow);
     }
     ensureFeedComposerVisibility(feedView);
     patchFeedList(feedPosts);
@@ -1946,9 +2802,13 @@ export function createFeedViewOrchestrationController({
         feedPosts: categoryFeedPosts,
         stories: baseStories
       });
+      const trackStories = stories;
       feedBentoContent = `
-        <div id="storiesRow" class="flex gap-4 overflow-x-auto app-content-inline pt-6 pb-8 no-scrollbar">
-          ${renderStoriesRow(stories)}
+        <div id="storiesRow" class="app-content-inline pt-6">
+          ${renderStoriesRow(trackStories, feedPosts, {
+            fallbackFeedPosts: feedPosts,
+            fallbackStories: trackStories
+          })}
         </div>
         ${renderFeedComposer()}
         <div id="feedList" class="app-content-inline py-4 space-y-12">
@@ -1973,7 +2833,7 @@ export function createFeedViewOrchestrationController({
     ` : ""}
     <div id="feedView" data-feed-view-mode="${feedViewMode}" class="${withEntranceAnimation ? "feed-view-slide-enter" : ""}">
       ${renderLocationGate({
-        mode: "feed-gate",
+        mode: hasViewerLocation ? "feed-stage" : "feed-gate",
         bentoContentHtml: feedBentoContent,
         showSearchControls: !hasViewerLocation,
         showTopSection: !hasViewerLocation
@@ -2155,11 +3015,13 @@ export function createFeedViewOrchestrationController({
     const feedViewMode = String(feedView.dataset.feedViewMode || "").trim().toLowerCase();
     if (feedViewMode === "feed") {
       queueFeedStageAutoPinScroll();
+      syncStoryPreviewMotion();
     } else {
       feedStageAutoPinScrollQueued = false;
       clearFeedStageAutoPinScrollFrame();
     }
     if (feedView.dataset.bound === "true") {
+      syncStoryPreviewMotion();
       syncFeedLocationGateDom();
       return;
     }
@@ -2287,6 +3149,7 @@ export function createFeedViewOrchestrationController({
         }, { showBack: false });
       }
     });
+    syncStoryPreviewMotion();
     syncFeedLocationGateDom();
     feedView.dataset.bound = "true";
   }

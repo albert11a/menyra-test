@@ -1391,7 +1391,7 @@ const {
   renderBusinessTopTabs,
   renderMain,
   bindImageFallbacks,
-  render,
+  render: renderShell,
   bindAuthEvents,
   bindCrmAutoLoadObserver,
   bindAppEvents,
@@ -1406,6 +1406,42 @@ const {
   saveMenuItemFromModal,
   deleteMenuItemById
 } = shellUiRuntimeCluster;
+let lastSyncedTabRouteKey = "";
+function resolveRouteTabForState() {
+  const normalized = normalizeLegacyHomeTab(state.activeTab);
+  const safeTab = sanitizeTabForSession(normalized, {
+    hasProfileView: !!state.profileView
+  });
+  return String(safeTab || "feed").trim().toLowerCase();
+}
+
+function syncActiveTabRouteQuery() {
+  const win = typeof window === "undefined" ? null : window;
+  if (!win || !win.history?.replaceState) return;
+  const routeTab = resolveRouteTabForState();
+  if (!routeTab) return;
+  try {
+    const currentUrl = new URL(win.location?.href || "", win.location?.origin || "");
+    const currentTab = String(currentUrl.searchParams.get("tab") || "").trim().toLowerCase();
+    const routeKey = `${currentUrl.pathname}|${currentUrl.search}|${routeTab}`;
+    if (currentTab === routeTab) {
+      lastSyncedTabRouteKey = routeKey;
+      return;
+    }
+    if (lastSyncedTabRouteKey === routeKey) return;
+    currentUrl.searchParams.set("tab", routeTab);
+    const nextQuery = currentUrl.searchParams.toString();
+    const nextUrl = `${currentUrl.pathname}${nextQuery ? `?${nextQuery}` : ""}${currentUrl.hash || ""}`;
+    win.history.replaceState(win.history.state || {}, "", nextUrl);
+    lastSyncedTabRouteKey = `${currentUrl.pathname}|${currentUrl.search}|${routeTab}`;
+  } catch {}
+}
+
+function render(...args) {
+  const result = renderShell(...args);
+  syncActiveTabRouteQuery();
+  return result;
+}
 requestRuntimeUiRefresh = () => {
   if (!shellRuntimeController) {
     runtimeUiRefreshPending = true;

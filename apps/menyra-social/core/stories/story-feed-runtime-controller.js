@@ -91,6 +91,19 @@ export function createStoryFeedRuntimeController({
     return source === "feed-fallback" ? "feed-fallback" : "canonical";
   }
 
+  function isLikelyVideoMediaUrl(value = "") {
+    const url = String(value || "").trim().toLowerCase();
+    if (!url) return false;
+    if (/\.m3u8($|\?)/.test(url)) return true;
+    if (/\.mpd($|\?)/.test(url)) return true;
+    if (/\.mp4($|\?)/.test(url)) return true;
+    if (/\.webm($|\?)/.test(url)) return true;
+    if (/\.mov($|\?)/.test(url)) return true;
+    if (/\.m4v($|\?)/.test(url)) return true;
+    if (/\.ogv($|\?)/.test(url)) return true;
+    return false;
+  }
+
   function resolveStoryBusinessIdentity(restaurantId = "") {
     const rid = String(restaurantId || "").trim();
     if (!rid) {
@@ -205,6 +218,19 @@ export function createStoryFeedRuntimeController({
     const identity = resolveStoryRenderIdentity(item);
     const restaurantId = identity.storyRestaurantId;
     if (!restaurantId) return null;
+    const rawMediaType = String(item?.mediaType || item?.type || "").trim().toLowerCase();
+    const imageUrl = String(item?.imageUrl || item?.thumbUrl || "").trim();
+    const videoUrl = String(item?.videoUrl || item?.playbackUrl || "").trim();
+    const embedUrl = String(item?.embedUrl || "").trim();
+    const mediaUrl = String(item?.mediaUrl || item?.url || "").trim();
+    const inferredVideo = isLikelyVideoMediaUrl(mediaUrl);
+    const mediaType = rawMediaType === "video"
+      ? "video"
+      : (rawMediaType === "image"
+        ? "image"
+        : (videoUrl || inferredVideo ? "video" : "image"));
+    const resolvedVideoUrl = videoUrl || (mediaType === "video" ? mediaUrl : "");
+    const resolvedImageUrl = imageUrl || (mediaType === "image" ? mediaUrl : "");
     return {
       ...item,
       id: restaurantId,
@@ -212,7 +238,16 @@ export function createStoryFeedRuntimeController({
       name: sanitizeStoryBusinessName(identity.storyLabel || ""),
       img: String(identity.logoSource || "").trim(),
       isLive: !!item?.isLive,
-      truthSource: identity.truthSource
+      truthSource: identity.truthSource,
+      mediaType,
+      imageUrl: resolvedImageUrl,
+      videoUrl: resolvedVideoUrl,
+      embedUrl,
+      mediaUrl: mediaUrl || resolvedImageUrl || resolvedVideoUrl || embedUrl,
+      libraryId: String(item?.libraryId || "").trim(),
+      videoId: String(item?.videoId || "").trim(),
+      createdAt: item?.createdAt || item?.updatedAt || null,
+      updatedAt: item?.updatedAt || item?.createdAt || null
     };
   }
 
@@ -543,7 +578,16 @@ export function createStoryFeedRuntimeController({
         name: sanitizeStoryBusinessName(renderIdentity.storyLabel || ""),
         img: String(renderIdentity.logoSource || "").trim(),
         isLive: false,
-        truthSource: "feed-fallback"
+        truthSource: "feed-fallback",
+        mediaType: String(post?.isVideo ? "video" : "image"),
+        imageUrl: String(post?.image || "").trim(),
+        videoUrl: String(post?.isVideo ? (post?.image || post?.url || "") : "").trim(),
+        embedUrl: "",
+        mediaUrl: String(post?.image || post?.url || "").trim(),
+        libraryId: "",
+        videoId: "",
+        createdAt: post?.createdAt || post?.updatedAt || null,
+        updatedAt: post?.updatedAt || post?.createdAt || null
       });
     });
     return Array.from(map.values()).slice(0, fastLimits.stories);

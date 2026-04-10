@@ -150,6 +150,19 @@ export function createStorySystemController({
     return label.toLowerCase() === "business" ? "" : label;
   }
 
+  function isLikelyVideoMediaUrl(value = "") {
+    const url = String(value || "").trim().toLowerCase();
+    if (!url) return false;
+    if (/\.m3u8($|\?)/.test(url)) return true;
+    if (/\.mpd($|\?)/.test(url)) return true;
+    if (/\.mp4($|\?)/.test(url)) return true;
+    if (/\.webm($|\?)/.test(url)) return true;
+    if (/\.mov($|\?)/.test(url)) return true;
+    if (/\.m4v($|\?)/.test(url)) return true;
+    if (/\.ogv($|\?)/.test(url)) return true;
+    return false;
+  }
+
   function mapStorySnapshotRowsToFeedStories({
     docSnaps = [],
     restaurants = [],
@@ -175,16 +188,23 @@ export function createStorySystemController({
       const restaurantId = extractStoryRestaurantIdFromDoc(docSnap, data);
       if (!restaurantId || storyMap.has(restaurantId)) return;
       if (!canShowFeedRestaurantIdFn(restaurantId)) return;
-      const media = String(
-        data.imageUrl
-        || data.mediaUrl
-        || data.videoUrl
-        || data.embedUrl
-        || data.url
-        || data.media?.[0]?.url
-        || ""
-      ).trim();
-      if (!media && !(data.libraryId && data.videoId)) return;
+      const rawMediaType = String(data.mediaType || data.type || data.media?.[0]?.type || "").trim().toLowerCase();
+      const imageUrl = String(data.imageUrl || data.thumbUrl || data.mediaImage || "").trim();
+      const videoUrl = String(data.videoUrl || data.playbackUrl || "").trim();
+      const embedUrl = String(data.embedUrl || "").trim();
+      const mediaUrl = String(data.mediaUrl || data.url || data.media?.[0]?.url || "").trim();
+      const inferredVideo = isLikelyVideoMediaUrl(mediaUrl);
+      const resolvedMediaType = rawMediaType === "video"
+        ? "video"
+        : (rawMediaType === "image"
+          ? "image"
+          : (videoUrl || inferredVideo ? "video" : "image"));
+      const resolvedVideoUrl = videoUrl || (resolvedMediaType === "video" ? mediaUrl : "");
+      const resolvedImageUrl = imageUrl || (resolvedMediaType === "image" ? mediaUrl : "");
+      const hasMedia = !!embedUrl || !!resolvedVideoUrl || !!resolvedImageUrl || (!!data.libraryId && !!data.videoId);
+      if (!hasMedia) return;
+      const createdAt = data.createdAt || data.updatedAt || null;
+      const updatedAt = data.updatedAt || data.createdAt || null;
 
       const restaurant = restList.find((row) => String(row?.id || "").trim() === restaurantId) || {};
       const hasKnownRestaurantIdentity = !!restaurant?.id;
@@ -217,7 +237,16 @@ export function createStorySystemController({
           ? (canonicalName || sourceName || "")
           : (sourceName || ""),
         img: logoSource,
-        isLive: data.isLive !== undefined ? !!data.isLive : true
+        isLive: data.isLive !== undefined ? !!data.isLive : true,
+        mediaType: resolvedMediaType,
+        imageUrl: resolvedImageUrl,
+        videoUrl: resolvedVideoUrl,
+        embedUrl,
+        mediaUrl: mediaUrl || resolvedImageUrl || resolvedVideoUrl || embedUrl,
+        libraryId: String(data.libraryId || "").trim(),
+        videoId: String(data.videoId || "").trim(),
+        createdAt,
+        updatedAt
       });
     });
 

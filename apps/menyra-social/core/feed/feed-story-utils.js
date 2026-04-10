@@ -3,7 +3,25 @@ export function buildStoriesSignatureCore(storyItems = []) {
     .map((item) => {
       const restaurantId = String(item?.restaurantId || item?.id || "").trim();
       const isLive = item?.isLive ? "1" : "0";
-      return `${restaurantId}|${isLive}`;
+      const truth = String(
+        item?.truthSource
+        || item?.storyTruthSource
+        || item?.storyTruth
+        || ""
+      ).trim().toLowerCase() || "canonical";
+      const mediaType = String(item?.mediaType || item?.type || "").trim().toLowerCase();
+      const mediaSrc = String(
+        item?.videoUrl
+        || item?.imageUrl
+        || item?.mediaUrl
+        || item?.embedUrl
+        || item?.url
+        || ""
+      ).trim();
+      const createdAt = item?.createdAt?.seconds !== undefined
+        ? `${item.createdAt.seconds}:${Number(item.createdAt?.nanoseconds) || 0}`
+        : String(item?.createdAt || item?.updatedAt || "").trim();
+      return `${restaurantId}|${isLive}|${truth}|${mediaType}|${mediaSrc}|${createdAt}`;
     })
     .join(",");
 }
