@@ -1,10 +1,6 @@
 import { createAppControllerBridge } from "./app-controller-bridge.js";
 import { createAppShellRuntimeController } from "./app-shell-runtime-controller.js";
 import { createSessionDataRuntimeController } from "./session-data-runtime-controller.js";
-import { createSocialEngagementRuntimeController } from "../profile/social-engagement-runtime-controller.js";
-import { createChatRuntimeController } from "../chat/chat-runtime-controller.js";
-import { createCrmRuntimeController } from "../crm/crm-runtime-controller.js";
-import { createProfileMenuFocusRenderController } from "../profile/profile-menu-focus-render-controller.js";
 import { createStorySystemController } from "../stories/story-system-controller.js";
 
 export function buildStorySystemControllerDeps({

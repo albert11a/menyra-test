@@ -27,7 +27,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-04-11-feed-gate-loc-top-blue-01";
+      const APP_BUILD_TOKEN = "2026-04-11-cold-start-launch-02";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
@@ -198,13 +198,12 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-11-feed-gate-loc-top-blue-01">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-11-cold-start-launch-02">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-auth.js" crossorigin>
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-firestore.js" crossorigin>
-  <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-functions.js" crossorigin>
   <script type="importmap">
   {
     "imports": {
@@ -394,7 +393,7 @@
       --smart-header-surface-top: rgb(248 250 252 / 0.995);
       --smart-header-surface-mid: rgb(248 250 252 / 0.965);
       --smart-header-surface-dense: rgb(248 250 252 / 0.9);
-      --smart-header-border: rgb(226 232 240 / 0.62);
+      --smart-header-border: rgb(226 232 240 / 0.82);
       position: -webkit-sticky;
       position: sticky;
       top: 0;
@@ -403,6 +402,18 @@
       z-index: 100;
       pointer-events: none;
       isolation: isolate;
+      box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
+    }
+    .smart-header-shell::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -16px;
+      height: 16px;
+      pointer-events: none;
+      z-index: 0;
+      background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
     }
     .smart-header-top {
       position: relative;
@@ -411,6 +422,7 @@
       padding-top: max(0.5rem, var(--safe-area-top));
       background: #f8fafc;
       border-bottom: 1px solid var(--smart-header-border);
+      box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
     }
     .smart-header-tabs {
       position: relative;
@@ -421,7 +433,7 @@
       pointer-events: auto;
       background: #f8fafc;
       border-bottom: 1px solid var(--smart-header-border);
-      box-shadow: 0 4px 15px -10px rgba(0, 0, 0, 0.05);
+      box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
       transition: none;
       will-change: transform;
     }
@@ -941,9 +953,14 @@
   <script>
     (() => {
       const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
+      const BOOTSTRAP_CACHE_KEY = "mnyra.social.bootstrap.v1";
+      const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
+      const STARTUP_SNAPSHOT_KEY = "mnyra.social.startup-snapshot.v1";
+      const STARTUP_SNAPSHOT_TTL_MS = 15 * 60 * 1000;
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
         ? window.__MENYRA_SOCIAL_SET_DEGRADED__
         : () => {};
+      const appRoot = document.getElementById("app");
       const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
       const effectiveType = String(connection?.effectiveType || "").trim().toLowerCase();
       const downlink = Number(connection?.downlink || 0);
@@ -953,6 +970,7 @@
         || (Number.isFinite(downlink) && downlink > 0 && downlink <= 1.5)
         || (Number.isFinite(rtt) && rtt >= 450);
       const BOOTSTRAP_TIMEOUT_MS = constrainedNetwork ? 3800 : 2200;
+      window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
       const searchParams = new URLSearchParams(window.location.search || "");
       const routeSource = String(
         searchParams.get("src")
@@ -962,7 +980,90 @@
       ).trim().toLowerCase();
       const routeTab = String(searchParams.get("tab") || "").trim().toLowerCase();
       const isQrMenuStartup = routeSource === "qr" && (!routeTab || routeTab === "menu");
-      if (isQrMenuStartup) {
+      const startupSurface = routeTab === "menu" ? "menu" : "feed";
+      const shouldFetchBootstrap = !isQrMenuStartup && (!routeTab || routeTab === "feed" || routeTab === "home");
+      if (appRoot) {
+        appRoot.dataset.startupSurface = startupSurface;
+      }
+      const buildStartupRouteKey = () => {
+        try {
+          const currentUrl = new URL(window.location.href);
+          const params = new URLSearchParams(currentUrl.search || "");
+          [
+            "sw-reset",
+            "cb",
+            "debug-build",
+            "sw-off"
+          ].forEach((key) => params.delete(key));
+          const query = params.toString();
+          return `${currentUrl.pathname}?${query}${currentUrl.hash || ""}`;
+        } catch {
+          return `${window.location.pathname || "/"}?${window.location.search || ""}${window.location.hash || ""}`;
+        }
+      };
+      const restoreStartupSnapshot = () => {
+        try {
+          if (!appRoot) return false;
+          const raw = window.localStorage?.getItem?.(STARTUP_SNAPSHOT_KEY);
+          if (!raw) return false;
+          const parsed = JSON.parse(raw);
+          const html = String(parsed?.html || "");
+          const savedAt = Number(parsed?.savedAt || 0);
+          const routeKey = String(parsed?.routeKey || "");
+          const appVersion = String(parsed?.appVersion || "");
+          if (!html || !savedAt || !routeKey) return false;
+          if (Date.now() - savedAt > STARTUP_SNAPSHOT_TTL_MS) return false;
+          if (appVersion && appVersion !== String(window.__MENYRA_SOCIAL_APP_VERSION__ || "")) return false;
+          if (routeKey !== buildStartupRouteKey()) return false;
+          appRoot.innerHTML = html;
+          appRoot.dataset.startupSnapshot = "1";
+          appRoot.removeAttribute("aria-busy");
+          window.__MENYRA_SOCIAL_RESTORED_SNAPSHOT__ = true;
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      restoreStartupSnapshot();
+      const applyBootstrapPayload = (data, { dispatch = false } = {}) => {
+        if (!data || typeof data !== "object") return false;
+        window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__ = data;
+        if (dispatch) {
+          window.dispatchEvent(new CustomEvent(BOOTSTRAP_EVENT, { detail: data }));
+        }
+        return true;
+      };
+      const readBootstrapCache = () => {
+        try {
+          const raw = window.localStorage?.getItem?.(BOOTSTRAP_CACHE_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          const savedAt = Number(parsed?.savedAt || 0);
+          const payload = parsed?.payload;
+          if (!savedAt || !payload || typeof payload !== "object") return null;
+          if (Date.now() - savedAt > BOOTSTRAP_CACHE_TTL_MS) return null;
+          return payload;
+        } catch {
+          return null;
+        }
+      };
+      const writeBootstrapCache = (payload) => {
+        try {
+          if (!payload || typeof payload !== "object") return;
+          window.localStorage?.setItem?.(BOOTSTRAP_CACHE_KEY, JSON.stringify({
+            savedAt: Date.now(),
+            payload
+          }));
+        } catch {}
+      };
+      if (shouldFetchBootstrap) {
+        const cachedPayload = readBootstrapCache();
+        if (cachedPayload) {
+          applyBootstrapPayload(cachedPayload, { dispatch: false });
+          setDegraded("bootstrap", { active: false, message: "" });
+        }
+      }
+      if (!shouldFetchBootstrap) {
         window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = null;
         return;
       }
@@ -970,7 +1071,6 @@
         window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__
         || "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed"
       ).trim();
-      window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
       if (!ENDPOINT) {
         setDegraded("bootstrap", {
           active: true,
@@ -1006,14 +1106,16 @@
             return;
           }
           setDegraded("bootstrap", { active: false, message: "" });
-          window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__ = data;
-          window.dispatchEvent(new CustomEvent(BOOTSTRAP_EVENT, { detail: data }));
+          writeBootstrapCache(data);
+          applyBootstrapPayload(data, { dispatch: true });
           return data;
         } catch {
-          setDegraded("bootstrap", {
-            active: true,
-            message: "Schnellstart aktuell nicht verfuegbar. App laedt ohne Bootstrap-Preview."
-          });
+          if (!window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__) {
+            setDegraded("bootstrap", {
+              active: true,
+              message: "Schnellstart aktuell nicht verfuegbar. App laedt ohne Bootstrap-Preview."
+            });
+          }
         }
         finally {
           window.clearTimeout(timer);
@@ -1028,16 +1130,62 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-11-feed-gate-loc-top-blue-01"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-11-cold-start-launch-02"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
         ? window.__MENYRA_SOCIAL_SET_DEGRADED__
         : () => {};
-      const loadLucide = () => {
-        if (window.lucide?.createIcons) {
-          setDegraded("icons", { active: false, message: "" });
+      let started = false;
+      let hydrateScheduled = false;
+      let observingIcons = false;
+      const hasPendingLucideIcons = () => !!document.querySelector("[data-lucide]");
+      const hydrateIcons = () => {
+        if (!window.lucide?.createIcons) return;
+        setDegraded("icons", { active: false, message: "" });
+        try {
           window.lucide.createIcons();
+          window.dispatchEvent(new CustomEvent("menyra-social-icons-ready"));
+        } catch {}
+      };
+      const scheduleHydrateIcons = () => {
+        if (hydrateScheduled) return;
+        hydrateScheduled = true;
+        const run = () => {
+          hydrateScheduled = false;
+          hydrateIcons();
+        };
+        if ("requestAnimationFrame" in window) {
+          window.requestAnimationFrame(run);
+          return;
+        }
+        window.setTimeout(run, 16);
+      };
+      const observeLucideTargets = () => {
+        if (observingIcons || !("MutationObserver" in window)) return;
+        const root = document.getElementById("app") || document.body || document.documentElement;
+        if (!root) return;
+        observingIcons = true;
+        const observer = new MutationObserver((records) => {
+          if (!window.lucide?.createIcons) return;
+          for (const record of records) {
+            if (record.type !== "childList" || !record.addedNodes?.length) continue;
+            for (const node of record.addedNodes) {
+              if (node?.nodeType !== 1) continue;
+              if (node.matches?.("[data-lucide]") || node.querySelector?.("[data-lucide]")) {
+                scheduleHydrateIcons();
+                return;
+              }
+            }
+          }
+        });
+        observer.observe(root, { childList: true, subtree: true });
+      };
+      const loadLucide = () => {
+        if (started) return;
+        started = true;
+        if (window.lucide?.createIcons) {
+          scheduleHydrateIcons();
           return;
         }
         const existing = document.querySelector('script[data-menyrasocial-lucide="1"]');
@@ -1056,14 +1204,12 @@
           }
           const script = document.createElement("script");
           script.async = true;
+          script.fetchPriority = "low";
           script.src = sources[index];
           script.dataset.menyrasocialLucide = "1";
           script.addEventListener("load", () => {
             if (window.lucide?.createIcons) {
-              setDegraded("icons", { active: false, message: "" });
-              try {
-                window.lucide.createIcons();
-              } catch {}
+              scheduleHydrateIcons();
               return;
             }
             script.remove();
@@ -1077,7 +1223,31 @@
         };
         loadFromSource(0);
       };
-      loadLucide();
+      const scheduleLucideLoad = () => {
+        const start = () => loadLucide();
+        const isSlowStartup = Number(window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0) >= 3000;
+        const initialDelayMs = window.__MENYRA_SOCIAL_RESTORED_SNAPSHOT__
+          ? 0
+          : (isSlowStartup ? 900 : 350);
+        const attachInteractionStart = () => {
+          window.addEventListener("pointerdown", start, { once: true, passive: true });
+          window.addEventListener("keydown", start, { once: true });
+          window.addEventListener("touchstart", start, { once: true, passive: true });
+        };
+        attachInteractionStart();
+        const afterReady = () => {
+          if (!hasPendingLucideIcons()) return;
+          window.setTimeout(start, initialDelayMs);
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", afterReady, { once: true });
+          document.addEventListener("DOMContentLoaded", observeLucideTargets, { once: true });
+          return;
+        }
+        afterReady();
+        observeLucideTargets();
+      };
+      scheduleLucideLoad();
     })();
   </script>
   <script>
@@ -1090,12 +1260,22 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-11-feed-gate-loc-top-blue-01").catch(() => {});
-      if ("requestIdleCallback" in window) {
-        window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
-      } else {
-        window.setTimeout(loadPwa, 1200);
-      }
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-11-cold-start-launch-02").catch(() => {});
+      const schedulePwaLoad = () => {
+        const run = () => {
+          if ("requestIdleCallback" in window) {
+            window.requestIdleCallback(() => loadPwa(), { timeout: 5000 });
+            return;
+          }
+          window.setTimeout(loadPwa, 2200);
+        };
+        if (document.readyState === "complete") {
+          run();
+          return;
+        }
+        window.addEventListener("load", run, { once: true });
+      };
+      schedulePwaLoad();
     })();
   </script>
 </body>

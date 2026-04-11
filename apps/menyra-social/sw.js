@@ -70,6 +70,11 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     await self.clients.claim();
+    if (self.registration?.navigationPreload?.enable) {
+      try {
+        await self.registration.navigationPreload.enable();
+      } catch {}
+    }
     const keys = await caches.keys();
     await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)));
     await broadcastToClients({
@@ -253,6 +258,30 @@ async function cacheFirst(request) {
   }
 }
 
+async function cacheVersionedCodeAssetFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  const refreshRequest = new Request(request, { cache: "reload" });
+  const refreshPromise = fetchWithTimeout(refreshRequest, RUNTIME_FETCH_TIMEOUT_MS)
+    .then(async (response) => {
+      if (response && (response.ok || response.type === "opaque")) {
+        try {
+          await cache.put(request, response.clone());
+        } catch {}
+      }
+      return response;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    refreshPromise.catch(() => null);
+    return cached;
+  }
+
+  const network = await refreshPromise;
+  return network || cached || new Response("", { status: 504, statusText: "Versioned asset fetch failed" });
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -275,6 +304,15 @@ self.addEventListener("fetch", (event) => {
   if (isNavigation && inScope) {
     event.respondWith((async () => {
       try {
+        const preloadResponse = await event.preloadResponse;
+        if (preloadResponse && (preloadResponse.ok || preloadResponse.type === "opaque")) {
+          const cache = await caches.open(CACHE_NAME);
+          const cloneForIndex = preloadResponse.clone();
+          const cloneForScope = preloadResponse.clone();
+          cache.put(APP_SHELL_URL, cloneForIndex).catch(() => null);
+          cache.put(APP_SCOPE, cloneForScope).catch(() => null);
+          return preloadResponse;
+        }
         const navReq = new Request(req, { cache: "no-cache" });
         const networkResp = await fetchWithTimeout(navReq, NAVIGATION_FETCH_TIMEOUT_MS);
         if (!networkResp || (!networkResp.ok && networkResp.type !== "opaque")) {
@@ -295,6 +333,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (inScope && isCodeAsset) {
+    if (hasVersionToken) {
+      event.respondWith(cacheVersionedCodeAssetFirst(req));
+      return;
+    }
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       try {

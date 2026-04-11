@@ -259,7 +259,7 @@ export function createShellDomRuntimeController({
             <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">
                 ${item.id === "menu"
-                  ? `<i data-menu-nav-icon data-lucide="${item.icon}" class="w-4 h-4"></i><span data-menu-nav-label>${item.label}</span>`
+                  ? `${icon(item.icon, "w-4 h-4", { "data-menu-nav-icon": "" })}<span data-menu-nav-label>${item.label}</span>`
                   : `${icon(item.icon, "w-4 h-4")} ${item.label}`
                 }
               </div>

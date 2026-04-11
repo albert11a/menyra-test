@@ -57,8 +57,7 @@ export function createSessionRuntimeCluster({
     state: lifecycleApi.state,
     safeStorageObj: storageApi.safeStorageObj,
     notificationsKeyFn: storageApi.notificationsKeyFn,
-    functionsObj: firebaseApi.functionsObj,
-    httpsCallableFn: firebaseApi.httpsCallableFn
+    writeUserNotificationFn: firebaseApi.writeUserNotificationFn
   });
 
   pushRuntimeController = createPushRuntimeController({

@@ -1962,6 +1962,7 @@ export function createFeedViewOrchestrationController({
         <style>
           #feedLocationGate {
             --feed-bento-surface: #f8fafc;
+            --feed-location-gate-bento-radius: 2.5rem;
             min-height: 100svh;
             background: #f8fafc;
             color: #0f172a;
@@ -1980,6 +1981,11 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate .loc-top.loc-top--searchless { padding-bottom: 3.35rem; }
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-top {
             background: var(--feed-gate-chrome-color, #00cce5);
+            padding-top: 8rem;
+            padding-bottom: 10.75rem;
+          }
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-top.loc-top--searchless {
+            padding-bottom: 8.85rem;
           }
           #feedLocationGate .loc-title { width: 100%; max-width: 22rem; margin: 0 auto 2.15rem; color: #0f172a; font-size: clamp(1.65rem, 6.6vw, 2.2rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.08; }
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-title {
@@ -2018,11 +2024,11 @@ export function createFeedViewOrchestrationController({
             color: rgb(255 255 255 / 0.9);
           }
           #feedLocationGate .loc-status.hidden { display: none; }
-          #feedLocationGate .loc-bento { position: relative; z-index: 3; background: #f8fafc; border-top-left-radius: 2.5rem; border-top-right-radius: 2.5rem; padding: 2.35rem 1.25rem 2rem; }
+          #feedLocationGate .loc-bento { position: relative; z-index: 3; background: #f8fafc; border-top-left-radius: var(--feed-location-gate-bento-radius); border-top-right-radius: var(--feed-location-gate-bento-radius); padding: 2.35rem 1.25rem 2rem; }
           #feedLocationGate .loc-bento.loc-bento--feed-content {
             background: var(--feed-bento-surface);
-            border-top-left-radius: 2.5rem;
-            border-top-right-radius: 2.5rem;
+            border-top-left-radius: var(--feed-location-gate-bento-radius);
+            border-top-right-radius: var(--feed-location-gate-bento-radius);
             padding: 0;
             overflow: visible;
             width: 100%;
@@ -2033,6 +2039,10 @@ export function createFeedViewOrchestrationController({
             display: flex;
             flex-direction: column;
             min-height: 0;
+            margin-top: calc(var(--feed-location-gate-bento-radius) * -1);
+            padding: 2.35rem 1.25rem 2rem;
+            overflow: hidden;
+            box-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);
           }
           #feedLocationGate .feed-bento-pin-backdrop {
             position: -webkit-sticky;

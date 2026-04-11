@@ -39,10 +39,6 @@ import {
   waitForPendingWrites
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import {
-  getFunctions,
-  httpsCallable
-} from "/shared/vendor/firebase/11.0.0/firebase-functions.js";
-import {
   ensureUserProfile,
   formatRelative,
   getGeo,
@@ -413,6 +409,7 @@ import {
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-messaging.js";
+const FIREBASE_FUNCTIONS_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-functions.js";
 const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "";
@@ -1437,9 +1434,92 @@ function syncActiveTabRouteQuery() {
   } catch {}
 }
 
+const STARTUP_SNAPSHOT_STORAGE_KEY = "mnyra.social.startup-snapshot.v1";
+const STARTUP_SNAPSHOT_MAX_BYTES = 180000;
+const STARTUP_SNAPSHOT_ICON_RETRY_DELAY_MS = 800;
+const STARTUP_SNAPSHOT_MAX_ICON_RETRIES = 3;
+let startupSnapshotSaveToken = 0;
+
+function buildStartupSnapshotRouteKey() {
+  if (typeof window === "undefined") return "";
+  try {
+    const currentUrl = new URL(window.location.href);
+    const params = new URLSearchParams(currentUrl.search || "");
+    [
+      "sw-reset",
+      "cb",
+      "debug-build",
+      "sw-off"
+    ].forEach((key) => params.delete(key));
+    const query = params.toString();
+    return `${currentUrl.pathname}?${query}${currentUrl.hash || ""}`;
+  } catch {
+    return `${window.location.pathname || "/"}?${window.location.search || ""}${window.location.hash || ""}`;
+  }
+}
+
+function persistStartupSnapshot(iconRetryCount = 0) {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const appRoot = document.getElementById("app");
+  if (!appRoot) return;
+  const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+  if (!["feed", "menu"].includes(activeTabKey)) return;
+  if (state.auth?.open) return;
+  if (document.body?.classList?.contains("modal-open")) return;
+  if (document.querySelector("#overlayRoot .modal-overlay")) return;
+  if (appRoot.querySelector("i[data-lucide]")) {
+    if (iconRetryCount < STARTUP_SNAPSHOT_MAX_ICON_RETRIES) {
+      window.setTimeout(() => persistStartupSnapshot(iconRetryCount + 1), STARTUP_SNAPSHOT_ICON_RETRY_DELAY_MS);
+    }
+    return;
+  }
+  const html = String(appRoot.innerHTML || "");
+  if (!html.trim() || html.length > STARTUP_SNAPSHOT_MAX_BYTES) return;
+  try {
+    window.localStorage?.setItem?.(STARTUP_SNAPSHOT_STORAGE_KEY, JSON.stringify({
+      appVersion: String(window.__MENYRA_SOCIAL_APP_VERSION__ || ""),
+      savedAt: Date.now(),
+      routeKey: buildStartupSnapshotRouteKey(),
+      html
+    }));
+  } catch {}
+}
+
+function scheduleStartupSnapshotPersist() {
+  if (typeof window === "undefined") return;
+  const token = ++startupSnapshotSaveToken;
+  const run = () => {
+    if (token !== startupSnapshotSaveToken) return;
+    persistStartupSnapshot();
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, { timeout: 1500 });
+    return;
+  }
+  window.setTimeout(run, 240);
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("menyra-social-icons-ready", () => {
+    scheduleStartupSnapshotPersist();
+  });
+}
+
 function render(...args) {
   const result = renderShell(...args);
+  try {
+    if (typeof window !== "undefined") {
+      window.__MENYRA_SOCIAL_APP_MOUNTED__ = true;
+    }
+    const appRoot = typeof document === "undefined" ? null : document.getElementById("app");
+    if (appRoot) {
+      appRoot.removeAttribute("aria-busy");
+      appRoot.dataset.startupShell = "0";
+      appRoot.dataset.startupSnapshot = "0";
+    }
+  } catch {}
   syncActiveTabRouteQuery();
+  scheduleStartupSnapshotPersist();
   return result;
 }
 requestRuntimeUiRefresh = () => {
@@ -2560,8 +2640,93 @@ function coerceMenuItemsFromData(data) {
   });
 }
 
-function icon(name, className = "") {
-  return `<i data-lucide="${name}" class="${className}"></i>`;
+const INLINE_LUCIDE_SVG_ATTRS = Object.freeze({
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  "stroke-width": "2",
+  "stroke-linecap": "round",
+  "stroke-linejoin": "round"
+});
+
+const INLINE_LUCIDE_ICON_NODES = Object.freeze({
+  "plus": Object.freeze([["path", { d: "M5 12h14" }], ["path", { d: "M12 5v14" }]]),
+  "map-pin": Object.freeze([["path", { d: "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" }], ["circle", { cx: "12", cy: "10", r: "3" }]]),
+  "user": Object.freeze([["path", { d: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" }], ["circle", { cx: "12", cy: "7", r: "4" }]]),
+  "x": Object.freeze([["path", { d: "M18 6 6 18" }], ["path", { d: "m6 6 12 12" }]]),
+  "heart": Object.freeze([["path", { d: "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" }]]),
+  "arrow-left": Object.freeze([["path", { d: "m12 19-7-7 7-7" }], ["path", { d: "M19 12H5" }]]),
+  "search": Object.freeze([["circle", { cx: "11", cy: "11", r: "8" }], ["path", { d: "m21 21-4.3-4.3" }]]),
+  "chevron-down": Object.freeze([["path", { d: "m6 9 6 6 6-6" }]]),
+  "lock": Object.freeze([["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2" }], ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4" }]]),
+  "check-circle-2": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "m9 12 2 2 4-4" }]]),
+  "bell": Object.freeze([["path", { d: "M10.268 21a2 2 0 0 0 3.464 0" }], ["path", { d: "M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" }]]),
+  "settings": Object.freeze([["path", { d: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" }], ["circle", { cx: "12", cy: "12", r: "3" }]]),
+  "check": Object.freeze([["path", { d: "M20 6 9 17l-5-5" }]]),
+  "message-circle": Object.freeze([["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z" }]]),
+  "arrow-right": Object.freeze([["path", { d: "M5 12h14" }], ["path", { d: "m12 5 7 7-7 7" }]]),
+  "loader-2": Object.freeze([["path", { d: "M21 12a9 9 0 1 1-6.219-8.56" }]]),
+  "log-in": Object.freeze([["path", { d: "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" }], ["polyline", { points: "10 17 15 12 10 7" }], ["line", { x1: "15", x2: "3", y1: "12", y2: "12" }]]),
+  "globe": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" }], ["path", { d: "M2 12h20" }]]),
+  "shopping-bag": Object.freeze([["path", { d: "M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" }], ["path", { d: "M3 6h18" }], ["path", { d: "M16 10a4 4 0 0 1-8 0" }]]),
+  "menu": Object.freeze([["line", { x1: "4", x2: "20", y1: "12", y2: "12" }], ["line", { x1: "4", x2: "20", y1: "6", y2: "6" }], ["line", { x1: "4", x2: "20", y1: "18", y2: "18" }]]),
+  "home": Object.freeze([["path", { d: "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" }], ["path", { d: "M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }]]),
+  "map": Object.freeze([["path", { d: "M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" }], ["path", { d: "M15 5.764v15" }], ["path", { d: "M9 3.236v15" }]]),
+  "shopping-cart": Object.freeze([["circle", { cx: "8", cy: "21", r: "1" }], ["circle", { cx: "19", cy: "21", r: "1" }], ["path", { d: "M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" }]]),
+  "bookmark": Object.freeze([["path", { d: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" }]]),
+  "users-round": Object.freeze([["path", { d: "M18 21a8 8 0 0 0-16 0" }], ["circle", { cx: "10", cy: "8", r: "5" }], ["path", { d: "M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3" }]]),
+  "info": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 16v-4" }], ["path", { d: "M12 8h.01" }]]),
+  "navigation": Object.freeze([["polygon", { points: "3 11 22 2 13 21 11 13 3 11" }]]),
+  "more-horizontal": Object.freeze([["circle", { cx: "12", cy: "12", r: "1" }], ["circle", { cx: "19", cy: "12", r: "1" }], ["circle", { cx: "5", cy: "12", r: "1" }]]),
+  "trash-2": Object.freeze([["path", { d: "M3 6h18" }], ["path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }], ["path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" }], ["line", { x1: "10", x2: "10", y1: "11", y2: "17" }], ["line", { x1: "14", x2: "14", y1: "11", y2: "17" }]]),
+  "badge-check": Object.freeze([["path", { d: "M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" }], ["path", { d: "m9 12 2 2 4-4" }]]),
+  "chevron-right": Object.freeze([["path", { d: "m9 18 6-6-6-6" }]]),
+  "zap": Object.freeze([["path", { d: "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" }]]),
+  "mail": Object.freeze([["rect", { width: "20", height: "16", x: "2", y: "4", rx: "2" }], ["path", { d: "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" }]]),
+  "arrow-right-left": Object.freeze([["path", { d: "m16 3 4 4-4 4" }], ["path", { d: "M20 7H4" }], ["path", { d: "m8 21-4-4 4-4" }], ["path", { d: "M4 17h16" }]]),
+  "log-out": Object.freeze([["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }], ["polyline", { points: "16 17 21 12 16 7" }], ["line", { x1: "21", x2: "9", y1: "12", y2: "12" }]]),
+  "messages-square": Object.freeze([["path", { d: "M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" }], ["path", { d: "M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1" }]]),
+  "clipboard-list": Object.freeze([["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1" }], ["path", { d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" }], ["path", { d: "M12 11h4" }], ["path", { d: "M12 16h4" }], ["path", { d: "M8 11h.01" }], ["path", { d: "M8 16h.01" }]]),
+  "users": Object.freeze([["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }], ["circle", { cx: "9", cy: "7", r: "4" }], ["path", { d: "M22 21v-2a4 4 0 0 0-3-3.87" }], ["path", { d: "M16 3.13a4 4 0 0 1 0 7.75" }]])
+});
+
+function buildIconAttributeString(attributes = {}) {
+  return Object.entries(attributes).reduce((markup, [name, value]) => {
+    const safeName = String(name || "").trim();
+    if (!safeName || value == null || value === false) return markup;
+    if (value === true || value === "") return `${markup} ${safeName}`;
+    return `${markup} ${safeName}="${escapeHtml(String(value))}"`;
+  }, "");
+}
+
+function renderInlineLucideIcon(name, className = "", attributes = {}) {
+  const node = INLINE_LUCIDE_ICON_NODES[name];
+  if (!node) return "";
+  const svgAttrs = {
+    ...INLINE_LUCIDE_SVG_ATTRS,
+    class: className || null,
+    "aria-hidden": "true",
+    focusable: "false",
+    ...attributes
+  };
+  const body = node.map(([tagName, tagAttrs = {}]) => `<${tagName}${buildIconAttributeString(tagAttrs)}></${tagName}>`).join("");
+  return `<svg${buildIconAttributeString(svgAttrs)}>${body}</svg>`;
+}
+
+function icon(name, className = "", attributes = {}) {
+  const safeName = String(name || "").trim();
+  if (!safeName) return "";
+  const safeClassName = String(className || "").trim();
+  const inlineMarkup = renderInlineLucideIcon(safeName, safeClassName, attributes);
+  if (inlineMarkup) return inlineMarkup;
+  return `<i${buildIconAttributeString({
+    "data-lucide": safeName,
+    class: safeClassName,
+    ...attributes
+  })}></i>`;
 }
 
 function focusSearchInput() {
@@ -4190,8 +4355,7 @@ const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
     docFn: doc,
     setDocFn: setDoc,
     serverTimestampFn: serverTimestamp,
-    functionsObj: getFunctions(app, "us-central1"),
-    httpsCallableFn: httpsCallable
+    writeUserNotificationFn: writeUserNotificationViaCallable
   },
   storageApi: {
     safeStorageObj: safeStorage,
@@ -4344,6 +4508,35 @@ async function toggleFollow(handle, target = {}) {
 
 function isFollowingProfile(profile = {}) {
   return getFollowRuntimeController().isFollowingProfile(...arguments);
+}
+
+let firebaseFunctionsModulePromise = null;
+let writeUserNotificationPromise = null;
+
+async function ensureWriteUserNotificationFn() {
+  if (writeUserNotificationPromise) return writeUserNotificationPromise;
+  writeUserNotificationPromise = (async () => {
+    if (!firebaseFunctionsModulePromise) {
+      firebaseFunctionsModulePromise = import(FIREBASE_FUNCTIONS_MODULE_URL);
+    }
+    const firebaseFunctions = await firebaseFunctionsModulePromise;
+    const functionsObj = firebaseFunctions.getFunctions(app, "us-central1");
+    const callable = firebaseFunctions.httpsCallable(functionsObj, "writeUserNotification");
+    return async (input = {}) => {
+      const result = await callable(input);
+      return result?.data || null;
+    };
+  })().catch((err) => {
+    firebaseFunctionsModulePromise = null;
+    writeUserNotificationPromise = null;
+    throw err;
+  });
+  return writeUserNotificationPromise;
+}
+
+async function writeUserNotificationViaCallable(input = {}) {
+  const writer = await ensureWriteUserNotificationFn();
+  return await writer(input);
 }
 
 let authPersistenceReady = null;
