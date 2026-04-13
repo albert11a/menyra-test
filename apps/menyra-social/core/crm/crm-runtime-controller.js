@@ -685,6 +685,7 @@ function createLeadDraftState(mode = "create", lead = null) {
     billingCycle: lead?.billingCycle === "yearly" ? "yearly" : "monthly",
     monthlyPrice,
     yearlyPrice,
+    specialEnabled: lead?.specialEnabled === true || rest?.specialEnabled === true,
     lat: hasLeadLocationCoords(primary) ? primary.lat : (Number.isFinite(lat) ? lat : undefined),
     lng: hasLeadLocationCoords(primary) ? primary.lng : (Number.isFinite(lng) ? lng : undefined),
     locations,
@@ -1244,6 +1245,7 @@ function normalizeLeadDoc(docSnap) {
     gpsLng: Number.isFinite(Number(fallbackLng)) ? Number(fallbackLng) : null,
     locations,
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
+    specialEnabled: data.specialEnabled === true,
     note: data.note || "",
     status,
     restaurantId: data.restaurantId || data.restaurant || "",
@@ -1285,6 +1287,7 @@ function normalizeLeadFromRestaurant(rest) {
     city: data.city || "",
     address: locations[0]?.address || data.address || "",
     logoUrl: data.logoUrl || data.logo || "",
+    specialEnabled: data.specialEnabled === true,
     note: "",
     status,
     restaurantId: data.id,
@@ -2132,6 +2135,12 @@ function syncLeadModalDraftFromForm() {
   lead.zipCode = readText("leadZipCode") || lead.zipCode || "";
   lead.address = readText("leadAddress") || lead.address || "";
   lead.logoUrl = readText("leadLogoUrl") || lead.logoUrl || "";
+  const specialToggle = document.getElementById("leadSpecialEnabled");
+  if (specialToggle && "checked" in specialToggle) {
+    lead.specialEnabled = !!specialToggle.checked;
+  } else if (typeof lead.specialEnabled !== "boolean") {
+    lead.specialEnabled = false;
+  }
   lead.note = readText("leadNote") || lead.note || "";
   lead.billingCycle = readValue("leadBillingCycle") === "yearly" ? "yearly" : (lead.billingCycle || "monthly");
   lead.status = normalizeLeadStatusKey(readValue("leadStatus") || lead.status || "registered") || "registered";

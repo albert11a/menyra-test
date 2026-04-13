@@ -1404,6 +1404,37 @@ const {
   deleteMenuItemById
 } = shellUiRuntimeCluster;
 let lastSyncedTabRouteKey = "";
+const ROUTE_PROFILE_ID_QUERY_KEYS = ["restaurant", "restaurantId", "rid", "businessId"];
+const ROUTE_PROFILE_TOP_QUERY_KEYS = ["top"];
+const ROUTE_PROFILE_ACCESS_SOURCE_QUERY_KEYS = ["source", "menuSource", "menuAccessSource", "access"];
+const ROUTE_PROFILE_TABLE_QUERY_KEYS = ["tableNumber", "t"];
+const AUTH_RESTORE_PRESERVED_TABS = new Set([
+  "profile",
+  "menu",
+  "chat",
+  "notifications",
+  "settings",
+  "upload",
+  "leads",
+  "staff",
+  "customers",
+  "businessaccounts"
+]);
+const STARTUP_SNAPSHOT_ALLOWED_TABS = new Set([
+  "feed",
+  "chat",
+  "search",
+  "profile",
+  "menu",
+  "orders",
+  "notifications",
+  "settings",
+  "leads",
+  "staff",
+  "customers",
+  "businessAccounts"
+]);
+
 function resolveRouteTabForState() {
   const normalized = normalizeLegacyHomeTab(state.activeTab);
   const safeTab = sanitizeTabForSession(normalized, {
@@ -1412,29 +1443,115 @@ function resolveRouteTabForState() {
   return String(safeTab || "feed").trim().toLowerCase();
 }
 
+function setCanonicalRouteQueryParam(searchParams, primaryKey, aliasKeys = [], value = "") {
+  if (!(searchParams instanceof URLSearchParams)) return;
+  const primary = String(primaryKey || "").trim();
+  if (!primary) return;
+  const aliases = Array.from(new Set(
+    [primary, ...(Array.isArray(aliasKeys) ? aliasKeys : [])]
+      .map((key) => String(key || "").trim())
+      .filter(Boolean)
+  ));
+  aliases.forEach((key) => {
+    if (key !== primary) searchParams.delete(key);
+  });
+  const nextValue = String(value || "").trim();
+  if (!nextValue) {
+    searchParams.delete(primary);
+    return;
+  }
+  searchParams.set(primary, nextValue);
+}
+
+function resolveRouteQueryStateForCurrentView() {
+  const profileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
+  const profileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+  const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+  const tableNumber = Math.max(0, Number(state.profileView?.tableNumber || 0) || 0);
+  const routeState = {
+    tab: resolveRouteTabForState(),
+    profileRestaurantId: "",
+    profileTopTab: "",
+    profileAccessSource: "",
+    profileTableNumber: 0
+  };
+  if (state.activeTab !== "profile" || !profileRestaurantId) return routeState;
+  routeState.profileRestaurantId = profileRestaurantId;
+  if (profileTopTab === "menu") {
+    routeState.tab = "menu";
+    routeState.profileTopTab = "menu";
+    routeState.profileAccessSource = menuAccessSource === "qr" ? "qr" : "";
+    routeState.profileTableNumber = routeState.profileAccessSource === "qr" ? tableNumber : 0;
+    return routeState;
+  }
+  if (profileTopTab === "cart") {
+    routeState.profileTopTab = "cart";
+    return routeState;
+  }
+  routeState.profileTopTab = "profile";
+  return routeState;
+}
+
+function buildCurrentRouteSyncKey(url, routeState = {}) {
+  if (!(url instanceof URL)) return "";
+  const safeRouteState = routeState && typeof routeState === "object" ? routeState : {};
+  return [
+    url.pathname,
+    url.search,
+    url.hash || "",
+    String(safeRouteState.tab || "").trim().toLowerCase(),
+    String(safeRouteState.profileRestaurantId || "").trim(),
+    String(safeRouteState.profileTopTab || "").trim().toLowerCase(),
+    String(safeRouteState.profileAccessSource || "").trim().toLowerCase(),
+    String(safeRouteState.profileTableNumber || "").trim()
+  ].join("|");
+}
+
 function syncActiveTabRouteQuery() {
   const win = typeof window === "undefined" ? null : window;
   if (!win || !win.history?.replaceState) return;
-  const routeTab = resolveRouteTabForState();
-  if (!routeTab) return;
+  const routeState = resolveRouteQueryStateForCurrentView();
+  if (!routeState.tab) return;
   try {
     const currentUrl = new URL(win.location?.href || "", win.location?.origin || "");
-    const currentTab = String(currentUrl.searchParams.get("tab") || "").trim().toLowerCase();
-    const routeKey = `${currentUrl.pathname}|${currentUrl.search}|${routeTab}`;
-    if (currentTab === routeTab) {
+    const nextUrl = new URL(currentUrl.toString());
+    setCanonicalRouteQueryParam(nextUrl.searchParams, "tab", ["view"], routeState.tab);
+    setCanonicalRouteQueryParam(nextUrl.searchParams, "r", ROUTE_PROFILE_ID_QUERY_KEYS, routeState.profileRestaurantId);
+    setCanonicalRouteQueryParam(
+      nextUrl.searchParams,
+      "top",
+      ROUTE_PROFILE_TOP_QUERY_KEYS,
+      routeState.profileTopTab && routeState.profileTopTab !== "profile"
+        ? routeState.profileTopTab
+        : ""
+    );
+    setCanonicalRouteQueryParam(
+      nextUrl.searchParams,
+      "src",
+      ROUTE_PROFILE_ACCESS_SOURCE_QUERY_KEYS,
+      routeState.profileAccessSource
+    );
+    setCanonicalRouteQueryParam(
+      nextUrl.searchParams,
+      "table",
+      ROUTE_PROFILE_TABLE_QUERY_KEYS,
+      routeState.profileTableNumber > 0 ? String(routeState.profileTableNumber) : ""
+    );
+    const nextQuery = nextUrl.searchParams.toString();
+    const nextRoute = `${nextUrl.pathname}${nextQuery ? `?${nextQuery}` : ""}${nextUrl.hash || ""}`;
+    const currentRoute = `${currentUrl.pathname}${currentUrl.search || ""}${currentUrl.hash || ""}`;
+    const routeKey = buildCurrentRouteSyncKey(nextUrl, routeState);
+    if (currentRoute === nextRoute) {
       lastSyncedTabRouteKey = routeKey;
       return;
     }
     if (lastSyncedTabRouteKey === routeKey) return;
-    currentUrl.searchParams.set("tab", routeTab);
-    const nextQuery = currentUrl.searchParams.toString();
-    const nextUrl = `${currentUrl.pathname}${nextQuery ? `?${nextQuery}` : ""}${currentUrl.hash || ""}`;
-    win.history.replaceState(win.history.state || {}, "", nextUrl);
-    lastSyncedTabRouteKey = `${currentUrl.pathname}|${currentUrl.search}|${routeTab}`;
+    win.history.replaceState(win.history.state || {}, "", nextRoute);
+    lastSyncedTabRouteKey = routeKey;
   } catch {}
 }
 
-const STARTUP_SNAPSHOT_STORAGE_KEY = "mnyra.social.startup-snapshot.v1";
+const STARTUP_SNAPSHOT_STORAGE_KEY = "mnyra.social.startup-snapshot.v2";
 const STARTUP_SNAPSHOT_MAX_BYTES = 180000;
 const STARTUP_SNAPSHOT_ICON_RETRY_DELAY_MS = 800;
 const STARTUP_SNAPSHOT_MAX_ICON_RETRIES = 3;
@@ -1463,7 +1580,7 @@ function persistStartupSnapshot(iconRetryCount = 0) {
   const appRoot = document.getElementById("app");
   if (!appRoot) return;
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-  if (!["feed", "menu"].includes(activeTabKey)) return;
+  if (!STARTUP_SNAPSHOT_ALLOWED_TABS.has(activeTabKey)) return;
   if (state.auth?.open) return;
   if (document.body?.classList?.contains("modal-open")) return;
   if (document.querySelector("#overlayRoot .modal-overlay")) return;
@@ -1559,7 +1676,22 @@ function isGuestSession() {
   return isGuestSessionCore(state.user);
 }
 
+function isAuthRestorePendingProtectedRoute(tab = state.activeTab, { hasProfileView = !!state.profileView } = {}) {
+  const requestedTab = String(tab || "").trim().toLowerCase();
+  if (!AUTH_RESTORE_PRESERVED_TABS.has(requestedTab)) return false;
+  if (state.user) return false;
+  if (authInitialized) return false;
+  if (requestedTab === "profile" && hasProfileView) return true;
+  const snapshotUid = String(authBootstrapSnapshot?.uid || "").trim();
+  const profileUid = String(state.userProfile?.uid || "").trim();
+  const profileRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+  return !!(snapshotUid || profileUid || profileRestaurantId);
+}
+
 function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {}) {
+  if (isAuthRestorePendingProtectedRoute(tab, { hasProfileView })) {
+    return String(tab || "").trim().toLowerCase() || "feed";
+  }
   return sanitizeTabForSessionCore(tab, {
     user: state.user,
     hasProfileView,
@@ -1614,6 +1746,10 @@ function normalizeLegacyHomeTab(tab) {
 
 function applyPendingInitialRouteState() {
   applyPendingInitialRouteStateBase();
+  const pendingInitialTab = String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase();
+  if (isAuthRestorePendingProtectedRoute(pendingInitialTab)) {
+    state.activeTab = pendingInitialTab;
+  }
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
   if (activeTabKey === "home") state.activeTab = "feed";
 }
@@ -3178,6 +3314,8 @@ function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
   if (!head) return;
   const wildcard = `[${FEED_PRELOAD_ATTR}]`;
   head.querySelectorAll(wildcard).forEach((node) => node.remove());
+  const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+  if (activeTabKey !== "feed") return;
   feedPosts.slice(0, limit).forEach((post, index) => {
     const imageUrl = getOptimizedImageUrl(post.image, "medium");
     if (!imageUrl) return;
@@ -4566,6 +4704,8 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
 
 startAppStartupRuntimeCluster({
   loadPersistedFn: loadPersisted,
+  suspendRenderFn: suspendRender,
+  resumeRenderFn: resumeRender,
   startupDeps: {
     publicBootstrapDeps: {
       state,

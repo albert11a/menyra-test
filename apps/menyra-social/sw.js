@@ -9,6 +9,14 @@ const EXTERNAL_STATIC_HOSTS = new Set([
   "cdn.jsdelivr.net",
   "unpkg.com"
 ]);
+const MAP_TILE_HOST_SUFFIXES = [
+  "basemaps.cartocdn.com",
+  "tile.openstreetmap.org"
+];
+const LEAFLET_VENDOR_HOST_SUFFIXES = [
+  "cdn.jsdelivr.net",
+  "unpkg.com"
+];
 const NAVIGATION_FETCH_TIMEOUT_MS = 6500;
 const RUNTIME_FETCH_TIMEOUT_MS = 5200;
 const IMAGE_FALLBACK_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='#f1f5f9'/></svg>";
@@ -197,6 +205,29 @@ function isExternalStaticRequest(url, request) {
   return ["script", "style", "font", "image"].includes(request.destination);
 }
 
+function isMapTileRequest(url, request) {
+  const hostname = String(url?.hostname || "").toLowerCase();
+  const isKnownTileHost = MAP_TILE_HOST_SUFFIXES.some((suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`));
+  if (!isKnownTileHost) return false;
+  const destination = String(request?.destination || "");
+  if (!destination) return true;
+  return destination === "image";
+}
+
+function isLeafletVendorRequest(url, request) {
+  const hostname = String(url?.hostname || "").toLowerCase();
+  const isKnownVendorHost = LEAFLET_VENDOR_HOST_SUFFIXES.some((suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`));
+  if (!isKnownVendorHost) return false;
+  const path = String(url?.pathname || "").toLowerCase();
+  if (!path.includes("leaflet")) return false;
+  const destination = String(request?.destination || "");
+  if (!destination) return true;
+  return destination === "script"
+    || destination === "style"
+    || destination === "font"
+    || destination === "image";
+}
+
 async function fetchWithTimeout(request, timeoutMs = RUNTIME_FETCH_TIMEOUT_MS) {
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   const timer = controller
@@ -288,6 +319,8 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
   if (url.protocol !== "https:" && url.protocol !== "http:") return;
+  if (isLeafletVendorRequest(url, req)) return;
+  if (isMapTileRequest(url, req)) return;
 
   const inScope = isInSocialScope(url);
   const isNavigation = req.mode === "navigate";

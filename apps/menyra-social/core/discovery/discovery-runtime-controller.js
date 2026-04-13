@@ -7,8 +7,8 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const BRAND_UI = deps.brandUi;
   const LEAFLET_JS_URL = deps.LEAFLET_JS_URL || "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
   const LEAFLET_CSS_URL = deps.LEAFLET_CSS_URL || "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
-  const LEAFLET_JS_FALLBACK_URL = deps.LEAFLET_JS_FALLBACK_URL || "";
-  const LEAFLET_CSS_FALLBACK_URL = deps.LEAFLET_CSS_FALLBACK_URL || "";
+  const LEAFLET_JS_FALLBACK_URL = deps.LEAFLET_JS_FALLBACK_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+  const LEAFLET_CSS_FALLBACK_URL = deps.LEAFLET_CSS_FALLBACK_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
   const VENDOR_DEGRADED_EVENT = "menyra-social-vendor-degraded";
   const SEARCH_LIMITS = deps.searchLimits || { users: 10, businesses: 12 };
   const PLACEHOLDER_IMAGE = deps.placeholderImage;
@@ -58,6 +58,7 @@ export function createDiscoveryRuntimeController(deps = {}) {
 
   let leafletLoadPromise = null;
   let leafletLoadFailed = false;
+  let leafletLastLoadFailureAt = 0;
   let leafletWarmupScheduled = false;
   let leafletMap = null;
   let leafletBizMarkers = [];
@@ -72,7 +73,8 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const DISCOVERY_MAP_DEFAULT_ZOOM = 14;
   const DISCOVERY_MAP_MAX_ZOOM = 19;
   const DISCOVERY_MAP_FOCUS_ZOOM = Math.max(13, Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapFocusZoom || 16) || 16));
-  const LEAFLET_SOURCE_TIMEOUT_MS = Math.max(1600, Number(deps.leafletSourceTimeoutMs || 2600) || 2600);
+  const LEAFLET_SOURCE_TIMEOUT_MS = Math.max(6000, Number(deps.leafletSourceTimeoutMs || 12000) || 12000);
+  const LEAFLET_LOAD_RETRY_COOLDOWN_MS = Math.max(1200, Number(deps.leafletRetryCooldownMs || 2600) || 2600);
   const LEAFLET_TILE_PRIMARY_URL = String(
     deps.leafletTilePrimaryUrl
     || "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -158,10 +160,15 @@ async function ensureLeafletLoaded() {
     emitVendorDegraded("map", false, "");
     return true;
   }
-  if (leafletLoadFailed) return false;
+  if (leafletLoadFailed) {
+    const msSinceFailure = Date.now() - leafletLastLoadFailureAt;
+    if (msSinceFailure < LEAFLET_LOAD_RETRY_COOLDOWN_MS) return false;
+    leafletLoadFailed = false;
+  }
   if (leafletLoadPromise) return leafletLoadPromise;
   if (!document?.head) {
     leafletLoadFailed = true;
+    leafletLastLoadFailureAt = Date.now();
     emitVendorDegraded("map", true, "Kartenbibliothek konnte nicht initialisiert werden.");
     return false;
   }
@@ -173,6 +180,7 @@ async function ensureLeafletLoaded() {
     ].map((value) => String(value || "").trim()).filter(Boolean)));
     if (!sources.length) {
       leafletLoadFailed = true;
+      leafletLastLoadFailureAt = Date.now();
       emitVendorDegraded("map", true, "Kartenbibliothek ist nicht konfiguriert.");
       resolve(false);
       return;
@@ -181,6 +189,7 @@ async function ensureLeafletLoaded() {
       const src = sources[index];
       if (!src) {
         leafletLoadFailed = true;
+        leafletLastLoadFailureAt = Date.now();
         emitVendorDegraded("map", true, "Kartenbibliothek konnte nicht geladen werden.");
         resolve(false);
         return;
@@ -205,6 +214,7 @@ async function ensureLeafletLoaded() {
         }
         if (loaded) {
           leafletLoadFailed = false;
+          leafletLastLoadFailureAt = 0;
           emitVendorDegraded("map", false, "");
           resolve(true);
         }
@@ -564,19 +574,21 @@ function bindMapSheetEvents() {
 }
 
 function createLeafletTileLayer(urlTemplate = LEAFLET_TILE_PRIMARY_URL) {
-  return window.L.tileLayer(urlTemplate, {
+  const options = {
     maxZoom: DISCOVERY_MAP_MAX_ZOOM,
     keepBuffer: 8,
     updateWhenIdle: false,
-    updateWhenZooming: false,
-    subdomains: "abcd",
-    crossOrigin: true
-  });
+    updateWhenZooming: false
+  };
+  const safeTemplate = String(urlTemplate || "").toLowerCase();
+  if (safeTemplate.includes("{s}")) {
+    options.subdomains = safeTemplate.includes("tile.openstreetmap.org") ? "abc" : "abcd";
+  }
+  return window.L.tileLayer(urlTemplate, options);
 }
 
 function initLeafletIfNeeded() {
   if (state.activeTab !== "map") {
-    cleanupLeaflet();
     return;
   }
 
@@ -587,6 +599,18 @@ function initLeafletIfNeeded() {
       if (!loaded) {
         setMapNotice("Kartenbibliothek nicht verfuegbar. Karte bleibt im reduzierten Modus.");
         emitVendorDegraded("map", true, "Kartenbibliothek nicht verfuegbar. Karte im reduzierten Modus.");
+        if (window && typeof window.setTimeout === "function") {
+          window.setTimeout(() => {
+            if (state.activeTab !== "map") return;
+            if (window.L) {
+              initLeafletIfNeeded();
+              return;
+            }
+            if (leafletLoadPromise) return;
+            leafletLoadFailed = false;
+            initLeafletIfNeeded();
+          }, LEAFLET_LOAD_RETRY_COOLDOWN_MS);
+        }
         return;
       }
       if (state.activeTab !== "map") return;
@@ -617,34 +641,51 @@ function initLeafletIfNeeded() {
     markerZoomAnimation: true
   }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_DEFAULT_ZOOM);
   const primaryLayer = createLeafletTileLayer(LEAFLET_TILE_PRIMARY_URL);
+  const canUseFallbackLayer = !!LEAFLET_TILE_FALLBACK_URL && LEAFLET_TILE_FALLBACK_URL !== LEAFLET_TILE_PRIMARY_URL;
+  const PRIMARY_TILE_ERROR_THRESHOLD = 10;
+  let primaryTileErrorCount = 0;
+  let primaryTileLoadCount = 0;
+  let degradedNoticeShown = false;
+  const showDegradedNotice = () => {
+    if (degradedNoticeShown) return;
+    degradedNoticeShown = true;
+    setMapNotice(MAP_TILES_DEGRADED_NOTICE);
+    emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
+  };
   const onTileLoad = () => {
+    primaryTileLoadCount += 1;
+    degradedNoticeShown = false;
     const currentNotice = String(mapNotice || "").trim();
     if (currentNotice === MAP_TILES_DEGRADED_NOTICE || currentNotice === MAP_TILES_FALLBACK_NOTICE) {
       clearMapNotice();
     }
     emitVendorDegraded("map", false, "");
   };
+  const activateFallbackLayer = () => {
+    if (leafletTileFallbackActive || !canUseFallbackLayer) return false;
+    leafletTileFallbackActive = true;
+    setMapNotice(MAP_TILES_FALLBACK_NOTICE);
+    emitVendorDegraded("map", true, "Primaere Kartenkacheln nicht erreichbar. Fallback aktiv.");
+    try { leafletMap.removeLayer(primaryLayer); } catch {}
+    const fallbackLayer = createLeafletTileLayer(LEAFLET_TILE_FALLBACK_URL);
+    fallbackLayer.on("tileerror", showDegradedNotice);
+    fallbackLayer.on("load", onTileLoad);
+    fallbackLayer.addTo(leafletMap);
+    return true;
+  };
   const onPrimaryTileError = () => {
-    if (
-      !leafletTileFallbackActive
-      && LEAFLET_TILE_FALLBACK_URL
-      && LEAFLET_TILE_FALLBACK_URL !== LEAFLET_TILE_PRIMARY_URL
-    ) {
-      leafletTileFallbackActive = true;
-      setMapNotice(MAP_TILES_FALLBACK_NOTICE);
-      emitVendorDegraded("map", true, "Primaere Kartenkacheln nicht erreichbar. Fallback aktiv.");
-      try { leafletMap.removeLayer(primaryLayer); } catch {}
-      const fallbackLayer = createLeafletTileLayer(LEAFLET_TILE_FALLBACK_URL);
-      fallbackLayer.on("tileerror", () => {
-        setMapNotice(MAP_TILES_DEGRADED_NOTICE);
-        emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
-      });
-      fallbackLayer.on("load", onTileLoad);
-      fallbackLayer.addTo(leafletMap);
+    primaryTileErrorCount += 1;
+    const shouldSwitchToFallback = !leafletTileFallbackActive
+      && canUseFallbackLayer
+      && primaryTileLoadCount === 0
+      && primaryTileErrorCount >= PRIMARY_TILE_ERROR_THRESHOLD;
+    if (shouldSwitchToFallback) {
+      activateFallbackLayer();
       return;
     }
-    setMapNotice(MAP_TILES_DEGRADED_NOTICE);
-    emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
+    if (primaryTileErrorCount >= PRIMARY_TILE_ERROR_THRESHOLD) {
+      showDegradedNotice();
+    }
   };
   primaryLayer.on("tileerror", onPrimaryTileError);
   primaryLayer.on("load", onTileLoad);

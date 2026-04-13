@@ -1,5 +1,38 @@
 import { isTestfirstMenuProfileTypeCore, normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
 
+const MENU_CATEGORY_MASTER_LIST = Object.freeze([
+  "Fruehstueck",
+  "Brunch",
+  "Vorspeise",
+  "Suppe",
+  "Salat",
+  "Pasta",
+  "Pizza",
+  "Burger",
+  "Sandwich",
+  "Wrap",
+  "Grill",
+  "Fleisch",
+  "Fisch",
+  "Vegetarisch",
+  "Vegan",
+  "Beilage",
+  "Kinder",
+  "Dessert",
+  "Kuchen",
+  "Eis",
+  "Kaffee",
+  "Tee",
+  "Softdrink",
+  "Saft",
+  "Smoothie",
+  "Bier",
+  "Wein",
+  "Cocktail",
+  "Spirituose",
+  "Sonstiges"
+]);
+
 function parseMenuStockValue(value) {
   if (value === null || value === undefined) return null;
   const raw = typeof value === "string" ? value.trim() : value;
@@ -95,6 +128,17 @@ export function renderMenuItemModalCore({
   const crop = getCrop();
   const businessType = String(getBusinessType(state.userProfile) || "").trim().toLowerCase();
   const showCardStyleSelector = !isShop && isTestfirstMenuProfileTypeCore(businessType);
+  const resolveSpecialEnabled = () => {
+    const profileFlag = state?.userProfile?.specialEnabled;
+    if (typeof profileFlag === "boolean") return profileFlag;
+    const restaurantId = String(state?.userProfile?.restaurantId || "").trim();
+    if (!restaurantId) return false;
+    const restaurant = Array.isArray(state?.restaurants)
+      ? state.restaurants.find((entry) => String(entry?.id || "").trim() === restaurantId)
+      : null;
+    return restaurant?.specialEnabled === true;
+  };
+  const specialEnabled = resolveSpecialEnabled();
   const cardStyleValue = normalizeMenuCardStyleCore(item.cardStyle || "", typeValue);
   const isSpecialCard = cardStyleValue === "testfirst_special"
     || String(item.category || "").trim().toLowerCase() === "special";
@@ -108,26 +152,19 @@ export function renderMenuItemModalCore({
   };
   const cropPreset = resolveCropPreset(crop.x);
   const categoryValue = String(item.category || "Sonstiges").trim() || "Sonstiges";
-  const defaultCategories = [
-    "Fruehstueck",
-    "Lunch",
-    "Dinner",
-    "Vorspeise",
-    "Hauptgericht",
-    "Dessert",
-    "Getraenk",
-    "Kaffee",
-    "Cocktail",
-    "Special",
-    "Sonstiges"
-  ];
+  const categoryIsSpecial = (value) => String(value || "").trim().toLowerCase() === "special";
   const categoryOptions = Array.from(
     new Set([
       categoryValue,
       ...(Array.isArray(state.menu?.items) ? state.menu.items.map((entry) => String(entry?.category || "").trim()) : []),
-      ...defaultCategories
-    ].filter(Boolean))
+      ...MENU_CATEGORY_MASTER_LIST
+    ].filter((entry) => {
+      if (!entry) return false;
+      if (!specialEnabled && categoryIsSpecial(entry)) return false;
+      return true;
+    }))
   );
+  const categoryListId = "menuItemCategoryOptions";
   const specialSizeValue = String(item.specialSize || item.specialCardSize || "").trim().toLowerCase() === "food"
     ? "food"
     : "default";
@@ -272,11 +309,10 @@ export function renderMenuItemModalCore({
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
-            <select id="menuItemCategory" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-              ${categoryOptions.map((category) => `
-                <option value="${esc(category)}" ${categoryValue === category ? "selected" : ""}>${esc(category)}</option>
-              `).join("")}
-            </select>
+            <input id="menuItemCategory" list="${categoryListId}" type="text" value="${esc(categoryValue)}" placeholder="Kategorie eingeben" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <datalist id="${categoryListId}">
+              ${categoryOptions.map((category) => `<option value="${esc(category)}"></option>`).join("")}
+            </datalist>
           </div>
         </div>
         <div>
@@ -293,7 +329,7 @@ export function renderMenuItemModalCore({
             <option value="unavailable" ${visibilityValue === "unavailable" ? "selected" : ""}>Ausverkauft</option>
           </select>
         </div>
-        ${showCardStyleSelector && isSpecialCard ? `
+        ${specialEnabled && showCardStyleSelector && isSpecialCard ? `
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Position im aktiven Menue</label>
             <select id="menuItemOrderPosition" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
@@ -324,7 +360,7 @@ export function renderMenuItemModalCore({
             </select>
           </div>
         ` : ""}
-        ${showCardStyleSelector && isSpecialCard ? `
+        ${specialEnabled && showCardStyleSelector && isSpecialCard ? `
           <input id="menuItemCardStyle" type="hidden" value="testfirst_special" />
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Groesse</label>
@@ -376,29 +412,6 @@ export function renderMenuItemModalCore({
             <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Optional: wird im Produkt-Drawer angezeigt, wenn kein QR-Menuezugang aktiv ist.</p>
           </div>
         ` : ""}
-        ${!isShop && isFoodOrDrinkEditor ? `
-          <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Cross Selling (QR)</label>
-            <div class="mt-2 p-3 rounded-2xl border border-slate-200 bg-slate-50 max-h-48 overflow-y-auto no-scrollbar space-y-2">
-              ${crossSellCandidates.length ? crossSellCandidates.map((entry) => {
-                const entryId = String(entry?.id || "").trim();
-                const entryName = String(entry?.name || "Produkt").trim() || "Produkt";
-                const entryCategory = String(entry?.category || "").trim();
-                const entryPrice = formatEditorPrice(entry?.price);
-                return `
-                  <label class="flex items-start gap-3 p-2.5 rounded-xl bg-white border border-slate-200">
-                    <input type="checkbox" data-menu-cross-sell-option value="${esc(entryId)}" ${crossSellItemIds.includes(entryId) ? "checked" : ""} class="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" />
-                    <span class="min-w-0 flex-1">
-                      <span class="block text-xs font-black text-slate-800 truncate">${esc(entryName)}</span>
-                      <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400">${esc(entryCategory || "Produkt")} · ${esc(entryPrice)}</span>
-                    </span>
-                  </label>
-                `;
-              }).join("") : `<p class="text-[10px] font-bold uppercase tracking-wide text-slate-400 px-2 py-1">Keine weiteren Speisen/Getraenke verfuegbar</p>`}
-            </div>
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird nur im Produkt-Drawer gezeigt, wenn das Menue per QR-Code geoeffnet wurde.</p>
-          </div>
-        ` : ""}
         ${isShop ? `
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Details</label>
@@ -433,6 +446,29 @@ export function renderMenuItemModalCore({
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">${isShop ? "Hinweise" : "Allergene"}</label>
           <input id="menuItemAllergens" type="text" value="${esc(item.allergens || "")}" placeholder="${isShop ? "z.B. limitierte Edition, ohne Rueckgabe" : "z.B. Milch, Gluten"}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
+        ${!isShop && isFoodOrDrinkEditor ? `
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Cross Selling (QR)</label>
+            <div class="mt-2 p-3 rounded-2xl border border-slate-200 bg-slate-50 max-h-48 overflow-y-auto no-scrollbar space-y-2">
+              ${crossSellCandidates.length ? crossSellCandidates.map((entry) => {
+                const entryId = String(entry?.id || "").trim();
+                const entryName = String(entry?.name || "Produkt").trim() || "Produkt";
+                const entryCategory = String(entry?.category || "").trim();
+                const entryPrice = formatEditorPrice(entry?.price);
+                return `
+                  <label class="flex items-start gap-3 p-2.5 rounded-xl bg-white border border-slate-200">
+                    <input type="checkbox" data-menu-cross-sell-option value="${esc(entryId)}" ${crossSellItemIds.includes(entryId) ? "checked" : ""} class="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" />
+                    <span class="min-w-0 flex-1">
+                      <span class="block text-xs font-black text-slate-800 truncate">${esc(entryName)}</span>
+                      <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400">${esc(entryCategory || "Produkt")} · ${esc(entryPrice)}</span>
+                    </span>
+                  </label>
+                `;
+              }).join("") : `<p class="text-[10px] font-bold uppercase tracking-wide text-slate-400 px-2 py-1">Keine weiteren Speisen/Getraenke verfuegbar</p>`}
+            </div>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird nur im Produkt-Drawer gezeigt, wenn das Menue per QR-Code geoeffnet wurde.</p>
+          </div>
+        ` : ""}
       </div>
     </div>
   `;

@@ -420,6 +420,13 @@ export function createAppShellRuntimeController(deps = {}) {
     run();
   }
 
+  function shouldRecoverLeafletMapSurface(mode) {
+    if (mode !== "main" || state.activeTab !== "map") return false;
+    const mapCanvas = doc?.getElementById("leafletMap");
+    if (!mapCanvas) return false;
+    return !mapCanvas.querySelector(".leaflet-pane");
+  }
+
   function resolveRuntimeDegradedMessages() {
     const messages = [];
     const degraded = state.runtimeDegraded && typeof state.runtimeDegraded === "object"
@@ -567,7 +574,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
     if (requestedTopTab === "menu") return "menu";
     const requestedContentTab = String(state.profileContentTab || "").trim().toLowerCase();
-    if (requestedContentTab === "media" || requestedContentTab === "menu" || requestedContentTab === "posts") {
+    if (requestedContentTab === "menu" || requestedContentTab === "posts") {
       return requestedContentTab;
     }
     return "posts";
@@ -1514,8 +1521,9 @@ export function createAppShellRuntimeController(deps = {}) {
     updateFocusRotationFn();
 
     const nextMapRuntimeSignature = buildMapRuntimeSignature(mode);
+    const shouldRecoverMapSurface = shouldRecoverLeafletMapSurface(mode);
     if (mode === "main" && state.activeTab === "map") {
-      if (changed || nextMapRuntimeSignature !== lastMapRuntimeSignature) {
+      if (changed || nextMapRuntimeSignature !== lastMapRuntimeSignature || shouldRecoverMapSurface) {
         scheduleMapRuntimeRefresh();
       }
       lastMapRuntimeSignature = nextMapRuntimeSignature;

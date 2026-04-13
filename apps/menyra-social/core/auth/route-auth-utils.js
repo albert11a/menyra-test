@@ -22,6 +22,8 @@ export function normalizeInitialTab(value) {
     "profile",
     "menu",
     "orders",
+    "notifications",
+    "upload",
     "leads",
     "staff",
     "customers",

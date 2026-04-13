@@ -103,6 +103,7 @@ export function renderLeadCreationView(ctx = {}) {
   const monthlyPrice = getLeadMonthlyPrice(customerType, settings);
   const yearlyPrice = monthlyPrice * 12;
   const totalPrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
+  const specialEnabled = lead.specialEnabled === true;
   const coords = state.leadModal.coords && Number.isFinite(Number(state.leadModal.coords.lat)) && Number.isFinite(Number(state.leadModal.coords.lng))
     ? { lat: Number(state.leadModal.coords.lat), lng: Number(state.leadModal.coords.lng) }
     : null;
@@ -274,6 +275,10 @@ export function renderLeadCreationView(ctx = {}) {
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
             <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(lead.note || "")}</textarea>
           </div>
+          <label class="flex items-center justify-between gap-4 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100">
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Special aktivieren</span>
+            <input id="leadSpecialEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${specialEnabled ? "checked" : ""} />
+          </label>
         </div>
         <input id="leadLogoUrl" type="hidden" value="${escapeHtml(lead.logoUrl || "")}" />
         <input id="leadStatus" type="hidden" value="${escapeHtml(lead.status || "registered")}" />

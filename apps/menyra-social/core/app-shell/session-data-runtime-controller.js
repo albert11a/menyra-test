@@ -839,6 +839,9 @@ export function createSessionDataRuntimeController({
   async function loadRestaurants({ force = false } = {}) {
     const buildRestaurantIdentitySignature = (items = []) => buildRestaurantTruthSignatureCore(items);
     const refreshRestaurantDependentViews = () => {
+      const visibleLeafletMap = getLastRenderModeFn() === "main"
+        && typeof document !== "undefined"
+        && !!document.getElementById("leafletMap");
       rebuildBusinessLocationsFn();
       if (getLastRenderModeFn() === "main") updateShellDomFn();
       syncFeedPostLogosFn();
@@ -846,7 +849,9 @@ export function createSessionDataRuntimeController({
         refreshFeedStoriesFn({ force: true });
       }
       scheduleStoriesRefresh({ force: false, refreshUi: state.activeTab === "feed" });
-      cleanupLeafletFn();
+      if (state.activeTab !== "map" && !visibleLeafletMap) {
+        cleanupLeafletFn();
+      }
       const inMain = getLastRenderModeFn() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
       const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();

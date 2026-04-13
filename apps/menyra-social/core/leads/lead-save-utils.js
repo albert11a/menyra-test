@@ -181,6 +181,10 @@ export async function saveLeadFromModalCore({
   const city = docObj.getElementById("leadCity")?.value?.trim() || "";
   const addressInputValue = docObj.getElementById("leadAddress")?.value?.trim() || "";
   const zipCode = docObj.getElementById("leadZipCode")?.value?.trim() || lead.zipCode || "";
+  const specialToggle = docObj.getElementById("leadSpecialEnabled");
+  const specialEnabled = specialToggle && "checked" in specialToggle
+    ? !!specialToggle.checked
+    : (lead.specialEnabled === true);
   const logoUrlInput = docObj.getElementById("leadLogoUrl")?.value?.trim() || "";
   const note = docObj.getElementById("leadNote")?.value?.trim() || "";
   const billingCycle = docObj.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
@@ -269,6 +273,7 @@ export async function saveLeadFromModalCore({
         zipCode,
         ownerName: contactName || "",
         ownerEmail: emailInput || "",
+        specialEnabled,
         status: restaurantStatus,
         locations: locationPayload,
         ...creatorMeta,
@@ -304,6 +309,7 @@ export async function saveLeadFromModalCore({
       googleMaps,
       ownerName: contactName || "",
       ownerEmail: emailInput || "",
+      specialEnabled,
       contactFirstName,
       contactLastName,
       billingCycle,
@@ -387,6 +393,7 @@ export async function saveLeadFromModalCore({
       zipCode,
       locations: locationPayload,
       logoUrl,
+      specialEnabled,
       note,
       contactFirstName,
       contactLastName,

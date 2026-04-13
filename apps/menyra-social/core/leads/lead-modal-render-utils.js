@@ -45,6 +45,7 @@ export function renderLeadModalCore({
   const leadEmail = lead.socialEmail || lead.email || "";
   const leadStatus = normalizeStatus(lead.status || "registered") || "registered";
   const leadInstagram = lead.instagram || lead.insta || "";
+  const specialEnabled = lead.specialEnabled === true;
   const locations = normalizeLocations(state.leadModal.locations, lead.address || "", state.leadModal.coords || null);
   const canConvert = isEdit && !!lead.id && normalizeStatus(lead.status || "") !== "kunde";
 
@@ -162,6 +163,10 @@ export function renderLeadModalCore({
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
           <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(lead.note || "")}</textarea>
         </div>
+        <label class="flex items-center justify-between gap-4 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100">
+          <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Special aktivieren</span>
+          <input id="leadSpecialEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${specialEnabled ? "checked" : ""} />
+        </label>
       </div>
     </div>
   `;

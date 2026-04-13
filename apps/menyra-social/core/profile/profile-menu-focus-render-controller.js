@@ -114,6 +114,25 @@ function isFollowingProfile(profile = {}) {
   return !!(followKey && state.followingHandles.includes(followKey));
 }
 
+function isSpecialEnabledForProfile(profile = {}) {
+  if (profile?.specialEnabled === true) return true;
+  if (profile?.specialEnabled === false) return false;
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  if (!restaurantId) return false;
+  const restaurant = typeof getRestaurantMetaById === "function"
+    ? (getRestaurantMetaById(restaurantId) || null)
+    : null;
+  if (restaurant?.specialEnabled === true) return true;
+  if (restaurant?.specialEnabled === false) return false;
+  return false;
+}
+
+function isSpecialMenuItem(item = {}) {
+  const style = resolveMenuCardStyle(item);
+  if (style === "testfirst_special") return true;
+  return String(item?.category || "").trim().toLowerCase() === "special";
+}
+
 function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   const counts = resolvePostCounts(item);
   const postId = item.id ? String(item.id) : "";
@@ -246,7 +265,7 @@ function resolveProfileContentTabForRendering(profile = {}) {
   const requestedContentTab = String(state.profileContentTab || "").trim().toLowerCase();
   if (isBusinessProfileEntity(profile)) {
     if (requestedTopTab === "menu") return "menu";
-    if (requestedContentTab === "media" || requestedContentTab === "menu" || requestedContentTab === "posts") {
+    if (requestedContentTab === "menu" || requestedContentTab === "posts") {
       return requestedContentTab;
     }
     return "posts";
@@ -277,8 +296,7 @@ function renderProfileTabs(profile = state.profileView?.profile || state.userPro
   const tabs = isBusinessProfile
     ? [
       { id: "posts", label: "Beitraege" },
-      { id: "menu", label: "Menue" },
-      { id: "media", label: "Medien" }
+      { id: "menu", label: "Menue" }
     ]
     : [
       { id: "posts", label: "Beitraege" },
@@ -379,7 +397,7 @@ function renderPublicProfileView() {
 
             <div class="mb-8">
               <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
-              <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>
+              ${isBusinessProfile ? "" : `<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>`}
               <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
               <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
             </div>
@@ -1308,6 +1326,7 @@ function renderMenuFoodList(items, { mode = "profile", useTestfirstCardUi = fals
 
 function renderMenuList(items, { mode = "profile" } = {}) {
   if (mode === "admin") {
+    const activeFilter = String(state?.menu?.filter || "all").trim().toLowerCase();
     const drinkItems = items.filter((item) => normalizeMenuType(item?.type) === "drink");
     const foodItems = items.filter((item) => normalizeMenuType(item?.type) !== "drink");
     const renderSection = (title, list, { addType = "" } = {}) => `
@@ -1330,10 +1349,23 @@ function renderMenuList(items, { mode = "profile" } = {}) {
         }
       </div>
     `;
+    const sections = [
+      { title: "Getraenke", list: drinkItems, addType: "drink" },
+      { title: "Speisen", list: foodItems, addType: "food" }
+    ].filter((section) => section.list.length > 0);
+    if (!sections.length) {
+      const filterLabel = activeFilter === "drink"
+        ? "Keine Getraenke"
+        : (activeFilter === "food" ? "Keine Speisen" : "Keine Eintraege");
+      return `
+        <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(filterLabel)}</div>
+        </div>
+      `;
+    }
     return `
       <div>
-        ${renderSection("Getraenke", drinkItems, { addType: "drink" })}
-        ${renderSection("Speisen", foodItems, { addType: "food" })}
+        ${sections.map((section) => renderSection(section.title, section.list, { addType: section.addType })).join("")}
       </div>
     `;
   }
@@ -1412,7 +1444,7 @@ function renderFocusAdminSection(restaurantId) {
 
 function renderSpecialAdminSection(profile) {
   const isTestfirst = isTestfirstMenuProfile(profile);
-  if (!isTestfirst) return "";
+  if (!isTestfirst || !isSpecialEnabledForProfile(profile)) return "";
   const specialItems = sortMenuItemsByOrder(
     (state.menu.items || []).filter((item) => resolveMenuCardStyle(item) === "testfirst_special")
   );
@@ -1676,12 +1708,12 @@ function renderMenuAdminView() {
   const rawItems = hasAuthoringMenuTruth
     ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: state.menu.query })
     : [];
-  const items = sortMenuItemsByOrder(rawItems);
+  const specialEnabled = isSpecialEnabledForProfile(profile);
+  const scopedItems = specialEnabled
+    ? rawItems
+    : rawItems.filter((item) => !isSpecialMenuItem(item));
+  const items = sortMenuItemsByOrder(scopedItems);
   const countLabel = formatCount(items.length);
-  const profileUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId }) : "";
-  const menuUrl = restaurantId
-    ? buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "menu", source: "qr" })
-    : "";
 
   if (restaurantId && isEligible && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
@@ -1744,24 +1776,9 @@ function renderMenuAdminView() {
           : renderMenuList(items, { mode: "admin" })
         }
         ${state.menu.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mt-4">${escapeHtml(state.menu.error)}</div>` : ""}
+        ${renderTableQrAdminSection({ profile, restaurantId, catalogLabel })}
       ` : ""}
 
-      ${restaurantId ? `
-        <div class="mt-10">
-          <div class="flex items-end justify-between mb-4">
-            <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">QR Codes</span>
-              <h3 class="text-xl font-black italic tracking-tighter">Teilen</h3>
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Direkt zum Profil oder zu ${catalogLabel}</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            ${renderMenuQrCard({ label: "Profil", url: profileUrl, caption: "Social Profil" })}
-            ${renderMenuQrCard({ label: catalogLabel, url: menuUrl, caption: `${catalogLabel} & Preise` })}
-          </div>
-          ${renderTableQrAdminSection({ profile, restaurantId, catalogLabel })}
-        </div>
-      ` : ""}
     </div>
   `;
 }
@@ -1914,7 +1931,7 @@ function renderProfileView() {
 
             <div class="mb-8">
               <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
-              <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>
+              ${isBusiness ? "" : `<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>`}
               <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
               <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")}</p>
             </div>

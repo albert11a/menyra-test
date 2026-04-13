@@ -50,6 +50,17 @@ export async function saveMenuItemFromModalCore({
   const isShop = isShopCatalogProfile(state.userProfile);
   const businessType = String(getBusinessProfileType(state.userProfile) || "").trim().toLowerCase();
   const canPersistCardStyle = !isShop && isTestfirstMenuProfileTypeCore(businessType);
+  const resolveSpecialEnabled = () => {
+    const profileFlag = state?.userProfile?.specialEnabled;
+    if (typeof profileFlag === "boolean") return profileFlag;
+    const rid = String(restaurantId || "").trim();
+    if (!rid) return false;
+    const restaurant = Array.isArray(state?.restaurants)
+      ? state.restaurants.find((entry) => String(entry?.id || "").trim() === rid)
+      : null;
+    return restaurant?.specialEnabled === true;
+  };
+  const specialEnabled = resolveSpecialEnabled();
   const normalizeExternalUrl = (value = "") => {
     const raw = String(value || "").trim();
     if (!raw) return "";
@@ -86,6 +97,10 @@ export async function saveMenuItemFromModalCore({
   const name = documentObj.getElementById("menuItemName")?.value?.trim() || "";
   const price = documentObj.getElementById("menuItemPrice")?.value?.trim() || "";
   const category = documentObj.getElementById("menuItemCategory")?.value?.trim() || "";
+  const categoryIsSpecial = String(category || "").trim().toLowerCase() === "special";
+  const normalizedCategory = categoryIsSpecial && !specialEnabled
+    ? "Sonstiges"
+    : (category || "Sonstiges");
   const type = documentObj.getElementById("menuItemType")?.value || "food";
   const normalizedType = normalizeMenuType(type);
   const description = documentObj.getElementById("menuItemDesc")?.value?.trim() || "";
@@ -157,10 +172,13 @@ export async function saveMenuItemFromModalCore({
   const orderPositionInput = Number(orderPositionRaw);
   const hasOrderPositionInput = Number.isFinite(orderPositionInput) && orderPositionInput > 0;
   const cardStyleInput = documentObj.getElementById("menuItemCardStyle")?.value || state.menuModal.item?.cardStyle || "";
-  const normalizedCardStyle = canPersistCardStyle
+  const rawNormalizedCardStyle = canPersistCardStyle
     ? normalizeMenuCardStyleCore(cardStyleInput, normalizedType)
     : "";
-  const isSpecialCardStyle = normalizedCardStyle === "testfirst_special";
+  const normalizedCardStyle = (!specialEnabled && rawNormalizedCardStyle === "testfirst_special")
+    ? normalizeMenuCardStyleCore("", normalizedType)
+    : rawNormalizedCardStyle;
+  const isSpecialCardStyle = specialEnabled && normalizedCardStyle === "testfirst_special";
   const imageUrlInput = String(state.menuModal.imageUrlDraft || "").trim() || "";
   const stockInput = stockRaw === null || stockRaw === undefined ? "" : String(stockRaw).trim();
   const parsedStock = stockInput === "" ? null : Number(stockInput);
@@ -248,7 +266,7 @@ export async function saveMenuItemFromModalCore({
     const payload = {
       id,
       type: normalizedType,
-      category: category || "Sonstiges",
+      category: normalizedCategory,
       name,
       description,
       ingredients,

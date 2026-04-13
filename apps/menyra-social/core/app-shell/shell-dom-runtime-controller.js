@@ -171,10 +171,12 @@ export function createShellDomRuntimeController({
 
   function renderRoleSwitchLinks() {
     if (!(state?.user && state?.roleSwitchRoles?.length)) return "";
+    const visibleRoles = state.roleSwitchRoles.filter((role) => String(role || "").trim().toLowerCase() !== "owner");
+    if (!visibleRoles.length) return "";
     return `
     <div class="mt-6 space-y-2">
       <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
-      ${state.roleSwitchRoles.map((role) => {
+      ${visibleRoles.map((role) => {
         const label = roleLabel(role);
         const url = buildRoleSwitchUrl(role, state.userProfile, state.roleSwitchRestaurantId);
         return `

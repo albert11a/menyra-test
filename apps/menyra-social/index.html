@@ -27,7 +27,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-04-11-cold-start-launch-02";
+      const APP_BUILD_TOKEN = "2026-04-13-map-stability-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
@@ -198,7 +198,7 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-11-cold-start-launch-02">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-13-map-stability-01">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
@@ -374,9 +374,9 @@
       left: 0;
       right: 0;
       width: 100%;
-      max-width: 28rem;
-      margin-left: auto;
-      margin-right: auto;
+      max-width: none;
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
       z-index: 95;
       background: var(--app-bg);
     }
@@ -980,6 +980,7 @@
       ).trim().toLowerCase();
       const routeTab = String(searchParams.get("tab") || "").trim().toLowerCase();
       const isQrMenuStartup = routeSource === "qr" && (!routeTab || routeTab === "menu");
+      const isMapRouteStartup = routeTab === "map";
       const startupSurface = routeTab === "menu" ? "menu" : "feed";
       const shouldFetchBootstrap = !isQrMenuStartup && (!routeTab || routeTab === "feed" || routeTab === "home");
       if (appRoot) {
@@ -1004,6 +1005,7 @@
       const restoreStartupSnapshot = () => {
         try {
           if (!appRoot) return false;
+          if (isMapRouteStartup) return false;
           const raw = window.localStorage?.getItem?.(STARTUP_SNAPSHOT_KEY);
           if (!raw) return false;
           const parsed = JSON.parse(raw);
@@ -1130,7 +1132,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-11-cold-start-launch-02"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-13-map-stability-01"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -1260,7 +1262,7 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-11-cold-start-launch-02").catch(() => {});
+        const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-13-map-stability-01").catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
           if ("requestIdleCallback" in window) {
