@@ -1699,13 +1699,204 @@ export function createFeedViewOrchestrationController({
     input.setAttribute("aria-expanded", "true");
     if (!skipRemoteFetch && suggestions.length < 3) scheduleFeedLocationRemoteSearch(query);
   };
+  const FEED_GATE_I18N = Object.freeze({
+    en: Object.freeze({
+      locale: "en",
+      htmlLang: "en",
+      searchPlaceholder: "Enter your city...",
+      useLocationAriaLabel: "Use location",
+      currentLocationLabel: "Current location",
+      statusRequesting: "Requesting location...",
+      statusDenied: "Location access was denied.",
+      statusTimeout: "Location did not load in time. Please try again.",
+      statusUnsupported: "Location access is not supported on this device.",
+      statusError: "Location could not be determined.",
+      statusUnsupportedHttps: "Location access requires HTTPS.",
+      heroRailAriaLabel: "MNYRA city highlights",
+      topSliderItems: Object.freeze([
+        "DISCOVER SPOTS.",
+        "FIND OFFERS.",
+        "OPEN MENUS."
+      ]),
+      topCityLine: "IN YOUR CITY.",
+      heroTitleLines: Object.freeze([
+        Object.freeze({ before: "Your ", accent: "City", after: "" }),
+        Object.freeze({ before: "in your ", accent: "Pocket", after: "." })
+      ]),
+      heroCards: Object.freeze([
+        Object.freeze({ lines: Object.freeze(["Discover", "your city."]) }),
+        Object.freeze({ lines: Object.freeze(["Best", "restaurants", "& cafes."]) }),
+        Object.freeze({ lines: Object.freeze(["Grocery", "stores", "& healthy."]) }),
+        Object.freeze({ lines: Object.freeze(["Best", "hotels", "& motels."]) })
+      ]),
+      socialBlock: Object.freeze({
+        titleLines: Object.freeze([
+          Object.freeze({ before: "", accent: "Live", after: " now." }),
+          Object.freeze({ before: "Your ", accent: "Feed.", after: "" })
+        ]),
+        description: "Discover daily deals, follow stories from your favorite spots, and stay up to date.",
+        cardTitle: "Stories & Feed",
+        cardDescription: "Never miss exclusive deals. See what's happening in your city through stories and discover fresh offers right away.",
+        cardImageAlt: "Feed and stories",
+        storiesAriaLabel: "Feed stories",
+        postBrand: "MOKI'S",
+        postMeta: "2 hours ago • New offer",
+        offerPill: "-20% off lunch",
+        previewFallback: "Live feed preview is loading."
+      })
+    }),
+    sq: Object.freeze({
+      locale: "sq",
+      htmlLang: "sq",
+      searchPlaceholder: "Shkruaj qytetin...",
+      useLocationAriaLabel: "Perdor vendndodhjen",
+      currentLocationLabel: "Vendndodhja aktuale",
+      statusRequesting: "Po kerkohet vendndodhja...",
+      statusDenied: "Leja e vendndodhjes u refuzua.",
+      statusTimeout: "Vendndodhja nuk u mor me kohe. Provo perseri.",
+      statusUnsupported: "Vendndodhja nuk mbeshtetet ne kete pajisje.",
+      statusError: "Vendndodhja nuk u gjet.",
+      statusUnsupportedHttps: "Vendndodhja kerkon HTTPS.",
+      heroRailAriaLabel: "MNYRA highlights e qytetit",
+      topSliderItems: Object.freeze([
+        "ZBULO SPOTET.",
+        "GJEJ OFERTA.",
+        "HAP MENYTE."
+      ]),
+      topCityLine: "NE QYTETIN TEND.",
+      heroTitleLines: Object.freeze([
+        Object.freeze({ before: "", accent: "Qyteti", after: " yt" }),
+        Object.freeze({ before: "ne ", accent: "xhepin", after: " tend." })
+      ]),
+      heroCards: Object.freeze([
+        Object.freeze({ lines: Object.freeze(["Zbulo", "qytetin tend."]) }),
+        Object.freeze({ lines: Object.freeze(["Me te mirat", "restorante", "& kafe."]) }),
+        Object.freeze({ lines: Object.freeze(["Dyqane", "ushqimore", "& bio."]) }),
+        Object.freeze({ lines: Object.freeze(["Me te mirat", "hotele", "& motele."]) })
+      ]),
+      socialBlock: Object.freeze({
+        titleLines: Object.freeze([
+          Object.freeze({ before: "", accent: "Live", after: " tani." }),
+          Object.freeze({ before: "", accent: "Feed-i", after: " yt." })
+        ]),
+        description: "Zbulo ofertat e dites, ndiq story-t e spot-eve te preferuara dhe qendro gjithmone i perditesuar.",
+        cardTitle: "Story & Feed",
+        cardDescription: "Mos humb me ofertat ekskluzive. Shih menjehere ne story cfare po ndodh ne qytetin tend dhe zbulo ofertat e dites.",
+        cardImageAlt: "Feed dhe story",
+        storiesAriaLabel: "Story-t e feed-it",
+        postBrand: "MOKI'S",
+        postMeta: "Para 2 oresh • Oferte e re",
+        offerPill: "-20% per dreke",
+        previewFallback: "Parashikimi i feed-it po ngarkohet."
+      })
+    }),
+    sr: Object.freeze({
+      locale: "sr",
+      htmlLang: "sr",
+      searchPlaceholder: "Unesi svoj grad...",
+      useLocationAriaLabel: "Koristi lokaciju",
+      currentLocationLabel: "Trenutna lokacija",
+      statusRequesting: "Trazi se lokacija...",
+      statusDenied: "Pristup lokaciji je odbijen.",
+      statusTimeout: "Lokacija nije ucitana na vreme. Pokusaj ponovo.",
+      statusUnsupported: "Lokacija nije podrzana na ovom uredjaju.",
+      statusError: "Lokacija nije mogla da se odredi.",
+      statusUnsupportedHttps: "Pristup lokaciji zahteva HTTPS.",
+      heroRailAriaLabel: "MNYRA gradski highlights",
+      topSliderItems: Object.freeze([
+        "OTKRIJ MESTA.",
+        "NADJI PONUDE.",
+        "OTVORI MENIJE."
+      ]),
+      topCityLine: "U SVOM GRADU.",
+      heroTitleLines: Object.freeze([
+        Object.freeze({ before: "Tvoj ", accent: "grad", after: "" }),
+        Object.freeze({ before: "u tvom ", accent: "dzepu", after: "." })
+      ]),
+      heroCards: Object.freeze([
+        Object.freeze({ lines: Object.freeze(["Otkrij", "svoj grad."]) }),
+        Object.freeze({ lines: Object.freeze(["Najbolji", "restorani", "& kafici."]) }),
+        Object.freeze({ lines: Object.freeze(["Prodavnice", "prehrane", "& bio hrane."]) }),
+        Object.freeze({ lines: Object.freeze(["Najbolji", "hoteli", "& moteli."]) })
+      ]),
+      socialBlock: Object.freeze({
+        titleLines: Object.freeze([
+          Object.freeze({ before: "", accent: "Uzivo", after: " sada." }),
+          Object.freeze({ before: "Tvoj ", accent: "feed.", after: "" })
+        ]),
+        description: "Otkrij dnevne ponude, prati storije svojih omiljenih mesta i ostani uvek u toku.",
+        cardTitle: "Storiji & feed",
+        cardDescription: "Ne propusti ekskluzivne ponude. Odmah vidi sta se desava u tvom gradu kroz storije i otkrij nove dnevne ponude.",
+        cardImageAlt: "Feed i storiji",
+        storiesAriaLabel: "Storiji u feed-u",
+        postBrand: "MOKI'S",
+        postMeta: "Pre 2 sata • Nova ponuda",
+        offerPill: "-20% na rucak",
+        previewFallback: "Prikaz feed-a se ucitava."
+      })
+    })
+  });
+  const normalizeFeedGateLocale = (value = "") => {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "";
+    const base = raw.split(/[_-]/)[0];
+    if (["sq", "al", "alb"].includes(base)) return "sq";
+    if (["sr", "rs", "srb"].includes(base)) return "sr";
+    if (["en", "gb", "uk", "us"].includes(base)) return "en";
+    return "";
+  };
+  const readFeedGateLocaleParam = () => {
+    const locationObj = win?.location;
+    if (!locationObj) return "";
+    const paramKeys = ["lang", "locale", "hl"];
+    const tryParams = (queryText = "") => {
+      const params = new URLSearchParams(String(queryText || ""));
+      for (const key of paramKeys) {
+        const value = String(params.get(key) || "").trim();
+        if (value) return value;
+      }
+      return "";
+    };
+    const directQueryValue = tryParams(String(locationObj.search || "").replace(/^\?/, ""));
+    if (directQueryValue) return directQueryValue;
+    const hash = String(locationObj.hash || "");
+    if (hash) {
+      const queryIndex = hash.indexOf("?");
+      const hashQuery = queryIndex >= 0
+        ? hash.slice(queryIndex + 1)
+        : hash.replace(/^#\/?/, "");
+      const hashValue = tryParams(hashQuery);
+      if (hashValue) return hashValue;
+    }
+    const pathSegments = String(locationObj.pathname || "")
+      .split("/")
+      .map((segment) => String(segment || "").trim().toLowerCase())
+      .filter(Boolean);
+    for (let index = pathSegments.length - 1; index >= 0; index -= 1) {
+      const segment = pathSegments[index];
+      if (!segment || segment.includes(".")) continue;
+      if (normalizeFeedGateLocale(segment)) return segment;
+    }
+    return "";
+  };
+  const resolveFeedGateLocale = () => {
+    const explicit = normalizeFeedGateLocale(readFeedGateLocaleParam());
+    if (explicit) return explicit;
+    const navigatorLocales = Array.isArray(win?.navigator?.languages) ? win.navigator.languages : [];
+    const browserLocale = normalizeFeedGateLocale(
+      String(navigatorLocales[0] || win?.navigator?.language || "").trim()
+    );
+    return browserLocale || "en";
+  };
+  const resolveFeedGateCopy = () => FEED_GATE_I18N[resolveFeedGateLocale()] || FEED_GATE_I18N.en;
   const resolveLocationGateStatusText = () => {
+    const gateCopy = resolveFeedGateCopy();
     if (locationGateMessage) return locationGateMessage;
-    if (locationGateStatus === "requesting") return "Standort wird angefragt...";
-    if (locationGateStatus === "denied") return "Standortfreigabe wurde abgelehnt.";
-    if (locationGateStatus === "timeout") return "Standort konnte nicht rechtzeitig geladen werden. Bitte erneut versuchen.";
-    if (locationGateStatus === "unsupported") return "Standortfreigabe wird auf diesem Geraet nicht unterstuetzt.";
-    if (locationGateStatus === "error") return "Standort konnte nicht ermittelt werden.";
+    if (locationGateStatus === "requesting") return gateCopy.statusRequesting;
+    if (locationGateStatus === "denied") return gateCopy.statusDenied;
+    if (locationGateStatus === "timeout") return gateCopy.statusTimeout;
+    if (locationGateStatus === "unsupported") return gateCopy.statusUnsupported;
+    if (locationGateStatus === "error") return gateCopy.statusError;
     return "";
   };
   const resolveLocationScreenMode = () => "feed-gate";
@@ -1877,6 +2068,7 @@ export function createFeedViewOrchestrationController({
     return true;
   };
   const requestViewerLocationAccess = ({ fallbackCity = null, forceExact = false } = {}) => {
+    const gateCopy = resolveFeedGateCopy();
     const fallbackOption = fallbackCity && typeof fallbackCity === "object"
       ? fallbackCity
       : findFeedLocationCityOption(fallbackCity);
@@ -1898,7 +2090,7 @@ export function createFeedViewOrchestrationController({
         requestViewerLocationAccess({ fallbackCity: fallbackOption, forceExact: false });
         return;
       }
-      setLocationGateState("unsupported", "Standortfreigabe erfordert HTTPS.");
+      setLocationGateState("unsupported", gateCopy.statusUnsupportedHttps);
       return;
     }
     if (!geo || typeof geo.getCurrentPosition !== "function") {
@@ -1939,7 +2131,7 @@ export function createFeedViewOrchestrationController({
           applyViewerLocationSelection({
             lat: coords.lat,
             lng: coords.lng,
-            label: currentLabel || "Aktueller Standort",
+            label: currentLabel || gateCopy.currentLocationLabel,
             city: currentLabel || "",
             countryCode: resolveCountryCodeFromCoords(coords),
             source: "gps"
@@ -2001,7 +2193,44 @@ export function createFeedViewOrchestrationController({
       </div>
     </article>
   `;
-  const renderFeedGateBentoContent = () => {
+  const renderFeedGateSocialBlock = (gateCopy = resolveFeedGateCopy()) => {
+    const socialCopy = gateCopy?.socialBlock || {};
+    const titleLines = Array.isArray(socialCopy?.titleLines) ? socialCopy.titleLines : [];
+    return `
+      <section class="feed-gate-social-shell" data-feed-gate-social-block>
+        <div class="feed-gate-social-copy">
+          <h3 class="feed-gate-social-title">
+            ${titleLines.map((line, index) => `
+              <span class="feed-gate-social-title__line">
+                ${escapeHtmlFn(String(line?.before || ""))}${index === 0
+                  ? `<strong>${escapeHtmlFn(String(line?.accent || ""))}</strong>`
+                  : `<span class="feed-gate-social-title__accent">${escapeHtmlFn(String(line?.accent || ""))}</span>`}${escapeHtmlFn(String(line?.after || ""))}
+              </span>
+            `).join("")}
+          </h3>
+        </div>
+        <article class="feed-gate-social-card">
+          <div class="feed-gate-social-card__content">
+            <h4 class="feed-gate-social-card__title">${escapeHtmlFn(String(socialCopy?.cardTitle || ""))}</h4>
+            <p class="feed-gate-social-card__description">${escapeHtmlFn(String(socialCopy?.cardDescription || ""))}</p>
+          </div>
+          <div class="feed-gate-social-card__media">
+            <img
+              src="https://i.postimg.cc/pXYTM3Hp/IMG-5082.jpg"
+              alt="${escapeHtmlFn(String(socialCopy?.cardImageAlt || "Feed and stories"))}"
+              loading="lazy"
+              fetchpriority="low"
+              decoding="async"
+              class="feed-gate-social-card__image"
+            />
+          </div>
+        </article>
+      </section>
+    `;
+  };
+  const renderFeedGateBentoContent = (gateCopy = resolveFeedGateCopy()) => {
+    const titleLines = Array.isArray(gateCopy?.heroTitleLines) ? gateCopy.heroTitleLines : [];
+    const localizedHeroCards = Array.isArray(gateCopy?.heroCards) ? gateCopy.heroCards : [];
     const heroCards = [
       {
         id: "h0",
@@ -2009,7 +2238,7 @@ export function createFeedViewOrchestrationController({
         headerAccent: "#00cce5",
         cardAccent: "#cffafe",
         variant: "hero",
-        lines: ["Discover", "your city."],
+        lines: localizedHeroCards[0]?.lines || ["Discover", "your city."],
         accentLineIndex: 1
       },
       {
@@ -2018,7 +2247,7 @@ export function createFeedViewOrchestrationController({
         headerAccent: "#1e293b",
         cardAccent: "#818cf8",
         variant: "category",
-        lines: ["Best", "restaurants", "& cafes."],
+        lines: localizedHeroCards[1]?.lines || ["Best", "restaurants", "& cafes."],
         accentLineIndex: 1
       },
       {
@@ -2027,7 +2256,7 @@ export function createFeedViewOrchestrationController({
         headerAccent: "#047857",
         cardAccent: "#6ee7b7",
         variant: "category",
-        lines: ["Grocery", "stores", "& healthy."],
+        lines: localizedHeroCards[2]?.lines || ["Grocery", "stores", "& healthy."],
         accentLineIndex: 1
       },
       {
@@ -2036,7 +2265,7 @@ export function createFeedViewOrchestrationController({
         headerAccent: "#c2410c",
         cardAccent: "#fdba74",
         variant: "category",
-        lines: ["Best", "hotels", "& motels."],
+        lines: localizedHeroCards[3]?.lines || ["Best", "hotels", "& motels."],
         accentLineIndex: 1
       }
     ];
@@ -2049,12 +2278,11 @@ export function createFeedViewOrchestrationController({
       >
         <div class="feed-gate-hero-copy">
           <h2 class="feed-gate-hero-title">
-            <span class="feed-gate-hero-title__line">
-              Your <span class="feed-gate-hero-title__accent">City</span>
-            </span>
-            <span class="feed-gate-hero-title__line">
-              in your <span class="feed-gate-hero-title__accent">Pocket</span>.
-            </span>
+            ${titleLines.map((line) => `
+              <span class="feed-gate-hero-title__line">
+                ${escapeHtmlFn(String(line?.before || ""))}<span class="feed-gate-hero-title__accent">${escapeHtmlFn(String(line?.accent || ""))}</span>${escapeHtmlFn(String(line?.after || ""))}
+              </span>
+            `).join("")}
           </h2>
         </div>
 
@@ -2062,11 +2290,12 @@ export function createFeedViewOrchestrationController({
           class="feed-gate-hero-rail"
           data-feed-gate-hero-rail
           role="list"
-          aria-label="MNYRA City Highlights"
+          aria-label="${escapeHtmlFn(String(gateCopy?.heroRailAriaLabel || "MNYRA city highlights"))}"
         >
           ${heroCards.map((card, index) => renderFeedGateHeroCard(card, index)).join("")}
           <div class="feed-gate-hero-rail__endcap" aria-hidden="true"></div>
         </div>
+        ${renderFeedGateSocialBlock(gateCopy)}
         <div class="feed-gate-hero-scroll-spacer" aria-hidden="true"></div>
       </section>
     `;
@@ -2077,6 +2306,7 @@ export function createFeedViewOrchestrationController({
     showSearchControls = true,
     showTopSection = true
   } = {}) {
+    const gateCopy = resolveFeedGateCopy();
     const viewerLocation = resolveViewerLocationRecord();
     const cityValue = String(viewerLocation?.label || viewerLocation?.city || "").trim();
     const safeMode = String(mode || "feed-gate").trim().toLowerCase() || "feed-gate";
@@ -2084,10 +2314,10 @@ export function createFeedViewOrchestrationController({
     const shouldRenderTopSection = showTopSection !== false;
     const customBentoContent = String(
       bentoContentHtml
-      || renderFeedGateBentoContent()
+      || renderFeedGateBentoContent(gateCopy)
     ).trim();
     return `
-      <div id="feedLocationGate" data-location-screen-mode="${escapeHtmlFn(safeMode)}">
+      <div id="feedLocationGate" data-location-screen-mode="${escapeHtmlFn(safeMode)}" data-feed-gate-locale="${escapeHtmlFn(String(gateCopy?.locale || "en"))}" lang="${escapeHtmlFn(String(gateCopy?.htmlLang || "en"))}">
         <style>
           #feedLocationGate {
             --feed-bento-surface: #f8fafc;
@@ -2315,9 +2545,116 @@ export function createFeedViewOrchestrationController({
             flex: 0 0 1px;
             width: 1px;
           }
+          #feedLocationGate .feed-gate-social-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+            margin-top: 3.25rem;
+            padding: 0 1.5rem;
+          }
+          #feedLocationGate .feed-gate-social-copy {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            text-align: right;
+            width: 100%;
+            margin-left: auto;
+          }
+          #feedLocationGate .feed-gate-social-title {
+            margin: 0;
+            font-size: 1.42rem;
+            line-height: 1.05;
+            letter-spacing: -0.035em;
+            font-weight: 500;
+            color: rgb(17 24 39);
+          }
+          #feedLocationGate .feed-gate-social-title__line {
+            display: block;
+          }
+          #feedLocationGate .feed-gate-social-title__line + .feed-gate-social-title__line {
+            margin-top: 0.32rem;
+          }
+          #feedLocationGate .feed-gate-social-title strong {
+            font-weight: 700;
+          }
+          #feedLocationGate .feed-gate-social-title__accent {
+            font-weight: 700;
+            color: rgb(236 72 153);
+          }
+          #feedLocationGate .feed-gate-social-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            width: 100%;
+            min-height: 320px;
+            padding: 1.75rem;
+            background: #fff;
+            border: 1px solid rgb(243 244 246);
+            border-radius: 2rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            box-sizing: border-box;
+          }
+          #feedLocationGate .feed-gate-social-card__content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex: 1 1 auto;
+            min-width: 0;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 15.5rem;
+          }
+          #feedLocationGate .feed-gate-social-card__title {
+            margin: 0 0 0.75rem;
+            color: rgb(17 24 39);
+            font-size: 1.25rem;
+            line-height: 1.2;
+            font-weight: 700;
+          }
+          #feedLocationGate .feed-gate-social-card__description {
+            margin: 0;
+            color: rgb(75 85 99);
+            font-size: 0.875rem;
+            line-height: 1.7;
+            font-weight: 500;
+          }
+          #feedLocationGate .feed-gate-social-card__media {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 8.125rem;
+            width: 8.125rem;
+            max-width: 8.125rem;
+          }
+          #feedLocationGate .feed-gate-social-card__image {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 1.25rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            mix-blend-mode: darken;
+          }
+          @media (max-width: 380px) {
+            #feedLocationGate .feed-gate-social-shell {
+              gap: 2rem;
+            }
+            #feedLocationGate .feed-gate-social-card {
+              gap: 1rem;
+              padding: 1.35rem;
+            }
+            #feedLocationGate .feed-gate-social-card__media {
+              flex-basis: 6.75rem;
+              width: 6.75rem;
+              max-width: 6.75rem;
+            }
+          }
           #feedLocationGate .feed-gate-hero-scroll-spacer {
             width: 100%;
-            height: clamp(48rem, 175svh, 92rem);
+            height: clamp(18rem, 44svh, 30rem);
             flex: 0 0 auto;
           }
           @keyframes feedGateFadeScaleIn {
@@ -2349,19 +2686,19 @@ export function createFeedViewOrchestrationController({
             <div class="loc-top${shouldRenderSearchControls ? "" : " loc-top--searchless"}">
               <div class="loc-title">
                 <div class="text-slider-wrapper">
-                  <div class="text-slide-item">ENTDECKE SPOTS.</div>
-                  <div class="text-slide-item">FINDE ANGEBOTE.</div>
-                  <div class="text-slide-item">OEFFNE MENUES.</div>
+                  ${(Array.isArray(gateCopy?.topSliderItems) ? gateCopy.topSliderItems : []).map((item) => `
+                    <div class="text-slide-item">${escapeHtmlFn(String(item || ""))}</div>
+                  `).join("")}
                 </div>
-                <div>IN DEINER STADT.</div>
+                <div>${escapeHtmlFn(String(gateCopy?.topCityLine || ""))}</div>
               </div>
               ${shouldRenderSearchControls ? `
                 <div class="loc-search-wrap">
                   <div class="loc-input-row">
                     <span class="loc-pin">${iconFn("map-pin", "w-5 h-5")}</span>
-                    <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="Gib deine Stadt ein..." class="loc-input" />
+                    <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="${escapeHtmlFn(String(gateCopy?.searchPlaceholder || ""))}" class="loc-input" />
                     <div class="loc-request-wrap">
-                      <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="Standort nutzen">
+                      <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="${escapeHtmlFn(String(gateCopy?.useLocationAriaLabel || ""))}">
                         <i id="locateIcon" data-lucide="crosshair" class="w-5 h-5 relative z-10"></i>
                         <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
                       </button>
