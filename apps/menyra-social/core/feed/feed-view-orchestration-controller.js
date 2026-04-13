@@ -1701,11 +1701,11 @@ export function createFeedViewOrchestrationController({
   };
   const resolveLocationGateStatusText = () => {
     if (locationGateMessage) return locationGateMessage;
-    if (locationGateStatus === "requesting") return "Po kërkohet vendndodhja...";
-    if (locationGateStatus === "denied") return "Leja e vendndodhjes u refuzua.";
-    if (locationGateStatus === "timeout") return "Vendndodhja nuk u mor me kohe. Provo perseri.";
-    if (locationGateStatus === "unsupported") return "Vendndodhja nuk mbeshtetet ne kete pajisje.";
-    if (locationGateStatus === "error") return "Nuk arritem te marrim vendndodhjen.";
+    if (locationGateStatus === "requesting") return "Standort wird angefragt...";
+    if (locationGateStatus === "denied") return "Standortfreigabe wurde abgelehnt.";
+    if (locationGateStatus === "timeout") return "Standort konnte nicht rechtzeitig geladen werden. Bitte erneut versuchen.";
+    if (locationGateStatus === "unsupported") return "Standortfreigabe wird auf diesem Geraet nicht unterstuetzt.";
+    if (locationGateStatus === "error") return "Standort konnte nicht ermittelt werden.";
     return "";
   };
   const resolveLocationScreenMode = () => "feed-gate";
@@ -1718,6 +1718,49 @@ export function createFeedViewOrchestrationController({
     if (rootMode) return rootMode;
     const gateMode = String(doc?.getElementById("feedLocationGate")?.dataset?.locationScreenMode || "").trim().toLowerCase();
     return gateMode || resolveLocationScreenMode();
+  };
+  const syncFeedGateHeroCarouselDom = () => {
+    const heroRoot = doc?.querySelector?.("[data-feed-gate-hero]");
+    const rail = doc?.querySelector?.("[data-feed-gate-hero-rail]");
+    if (!(heroRoot instanceof HTMLElement) || !(rail instanceof HTMLElement)) return;
+    const cards = Array.from(rail.querySelectorAll("[data-feed-gate-hero-card]"))
+      .filter((card) => card instanceof HTMLElement);
+    if (!cards.length) return;
+    const applyActiveIndex = (rawIndex = 0) => {
+      const safeIndex = Math.max(0, Math.min(cards.length - 1, Number(rawIndex) || 0));
+      const activeCard = cards[safeIndex];
+      const accent = String(activeCard?.getAttribute("data-feed-gate-hero-header-accent") || "").trim()
+        || "#3f46e5";
+      heroRoot.style.setProperty("--feed-gate-hero-accent", accent);
+      heroRoot.dataset.feedGateHeroIndex = String(safeIndex);
+      cards.forEach((card, index) => {
+        card.setAttribute("data-active", index === safeIndex ? "true" : "false");
+      });
+    };
+    const resolveActiveIndex = () => {
+      const firstCard = cards[0];
+      const cardWidth = Number(firstCard?.clientWidth || 0);
+      if (!Number.isFinite(cardWidth) || cardWidth <= 0) return Number(heroRoot.dataset.feedGateHeroIndex || 0) || 0;
+      return Math.round(rail.scrollLeft / (cardWidth + 8));
+    };
+    if (rail.dataset.feedGateHeroBound !== "1") {
+      let frameId = 0;
+      const scheduleSync = () => {
+        if (frameId) return;
+        const flush = () => {
+          frameId = 0;
+          applyActiveIndex(resolveActiveIndex());
+        };
+        if (typeof win?.requestAnimationFrame === "function") {
+          frameId = win.requestAnimationFrame(flush);
+          return;
+        }
+        frameId = setTimeoutFn(flush, 16);
+      };
+      rail.addEventListener("scroll", scheduleSync, { passive: true });
+      rail.dataset.feedGateHeroBound = "1";
+    }
+    applyActiveIndex(resolveActiveIndex());
   };
   const syncFeedLocationGateDom = () => {
     const requestBtn = doc?.getElementById("btnLocateMe");
@@ -1757,6 +1800,7 @@ export function createFeedViewOrchestrationController({
       statusEl.textContent = text;
       statusEl.classList.toggle("hidden", !text);
     }
+    syncFeedGateHeroCarouselDom();
     if (win?.lucide?.createIcons) win.lucide.createIcons();
   };
   const setLocationGateState = (status = "idle", message = "") => {
@@ -1854,7 +1898,7 @@ export function createFeedViewOrchestrationController({
         requestViewerLocationAccess({ fallbackCity: fallbackOption, forceExact: false });
         return;
       }
-      setLocationGateState("unsupported", "Vendndodhja kerkon HTTPS.");
+      setLocationGateState("unsupported", "Standortfreigabe erfordert HTTPS.");
       return;
     }
     if (!geo || typeof geo.getCurrentPosition !== "function") {
@@ -1895,7 +1939,7 @@ export function createFeedViewOrchestrationController({
           applyViewerLocationSelection({
             lat: coords.lat,
             lng: coords.lng,
-            label: currentLabel || "Lokacioni aktual",
+            label: currentLabel || "Aktueller Standort",
             city: currentLabel || "",
             countryCode: resolveCountryCodeFromCoords(coords),
             source: "gps"
@@ -1924,24 +1968,109 @@ export function createFeedViewOrchestrationController({
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
-  const renderFeedGateBentoContent = () => `
-    <div class="loc-bento-head fade-in-up" style="animation-delay:0.05s;">
-      <div class="loc-bento-line">Çfarë ofron Mnyra</div>
-      <h3 class="loc-bento-title">Gjithçka në një vend.</h3>
-      <p class="loc-bento-sub">Guida juaj personale. Zbuloni, rezervoni dhe përfitoni nga ofertat më të mira të qytetit çdo ditë.</p>
-    </div>
-
-    <div class="loc-grid">
-      <div class="loc-card full fade-in-up" style="animation-delay:0.12s;"><div class="loc-icon" style="background:rgb(79 70 229);">${iconFn("utensils-crossed", "w-5 h-5")}</div><h4>Eksploro & Shijo</h4><p>Gjej restorante, kafene dhe evente. Shiko stories, menutë me çmime dhe fotot reale. Rezervo tavolinën tënde me një klikim.</p></div>
-      <div class="loc-card full fade-in-up" style="animation-delay:0.2s;"><div class="loc-icon" style="background:rgb(244 63 94);">${iconFn("shopping-bag", "w-5 h-5")}</div><h4>Shopping pa kufi</h4><p>Nga markat tek butiqet lokale. Porosit për në shtëpi ose rezervo dhe merre direkt në dyqan.</p></div>
-      <div class="loc-card full dark fade-in-up" style="animation-delay:0.28s;"><div class="loc-icon" style="background:rgb(16 185 129 / 0.25);">${iconFn("badge-percent", "w-5 h-5")}</div><h4>ÇFARË KA NË AKSION SOT?</h4><p>Ofertat më të mira dhe zbritjet ekskluzive nga restorantet dhe dyqanet tuaja të preferuara.</p></div>
-      <div class="loc-card fade-in-up" style="animation-delay:0.36s; background:rgb(236 253 245 / 0.65); border-color:rgb(209 250 229 / 0.75);"><div class="loc-icon" style="background:rgb(16 185 129);">${iconFn("store", "w-5 h-5")}</div><h4>Supermarkete & Farmaci</h4><p>Gjej më të afërtat dhe shiko nëse janë hapur tani.</p></div>
-      <div class="loc-card fade-in-up" style="animation-delay:0.44s; background:rgb(236 254 255 / 0.7); border-color:rgb(207 250 254 / 0.75);"><div class="loc-icon" style="background:rgb(6 182 212);">${iconFn("bed-double", "w-5 h-5")}</div><h4>Hotele & Akomodim</h4><p>Oferta All-Inclusive, foto dhomash dhe rezervime direkte.</p></div>
-      <div class="loc-card full fade-in-up" style="animation-delay:0.52s;"><div class="loc-icon" style="background:linear-gradient(135deg, rgb(139 92 246), rgb(217 70 239));">${iconFn("users", "w-5 h-5")}</div><h4>Komuniteti MNYRA</h4><p>Krijo profilin, pëlqe, komento, bëj check-in dhe ndaj momente me miqtë e tu.</p></div>
-    </div>
-
-    <p class="loc-foot">Powered by MNYRA</p>
+  const renderFeedGateHeroCard = ({
+    id = "",
+    background = "#3f46e5",
+    headerAccent = "#3f46e5",
+    cardAccent = "#bfdbfe",
+    variant = "hero",
+    lines = [],
+    accentLineIndex = -1
+  } = {}, index = 0) => `
+    <article
+      data-feed-gate-hero-card
+      data-feed-gate-hero-index="${escapeHtmlFn(String(index))}"
+      data-feed-gate-hero-header-accent="${escapeHtmlFn(headerAccent)}"
+      data-active="${index === 0 ? "true" : "false"}"
+      class="feed-gate-hero-card"
+      style="--feed-gate-hero-card-bg:${escapeHtmlFn(background)};--feed-gate-hero-card-accent:${escapeHtmlFn(cardAccent)};"
+      role="listitem"
+      aria-label="${escapeHtmlFn(String(id || `hero-${index}`))}"
+    >
+      <div class="feed-gate-hero-card__inner">
+        <h3 class="feed-gate-hero-card__headline feed-gate-hero-card__headline--${escapeHtmlFn(variant)}">
+          ${lines.map((line, lineIndex) => {
+            const safeLine = escapeHtmlFn(String(line || "").trim());
+            if (!safeLine) return "";
+            const content = lineIndex === accentLineIndex
+              ? `<span class="feed-gate-hero-card__headline-accent">${safeLine}</span>`
+              : safeLine;
+            return `<span class="feed-gate-hero-card__headline-line">${content}</span>`;
+          }).join("")}
+        </h3>
+      </div>
+    </article>
   `;
+  const renderFeedGateBentoContent = () => {
+    const heroCards = [
+      {
+        id: "h0",
+        background: "#00cce5",
+        headerAccent: "#00cce5",
+        cardAccent: "#cffafe",
+        variant: "hero",
+        lines: ["Discover", "your city."],
+        accentLineIndex: 1
+      },
+      {
+        id: "h1",
+        background: "#0f172a",
+        headerAccent: "#1e293b",
+        cardAccent: "#818cf8",
+        variant: "category",
+        lines: ["Best", "restaurants", "& cafes."],
+        accentLineIndex: 1
+      },
+      {
+        id: "h2",
+        background: "#065f46",
+        headerAccent: "#047857",
+        cardAccent: "#6ee7b7",
+        variant: "category",
+        lines: ["Grocery", "stores", "& healthy."],
+        accentLineIndex: 1
+      },
+      {
+        id: "h3",
+        background: "#7c2d12",
+        headerAccent: "#c2410c",
+        cardAccent: "#fdba74",
+        variant: "category",
+        lines: ["Best", "hotels", "& motels."],
+        accentLineIndex: 1
+      }
+    ];
+    return `
+      <section
+        class="feed-gate-hero-shell"
+        data-feed-gate-hero
+        data-feed-gate-hero-index="0"
+        style="--feed-gate-hero-accent:${escapeHtmlFn(heroCards[0].headerAccent)};"
+      >
+        <div class="feed-gate-hero-copy">
+          <h2 class="feed-gate-hero-title">
+            <span class="feed-gate-hero-title__line">
+              Your <span class="feed-gate-hero-title__accent">City</span>
+            </span>
+            <span class="feed-gate-hero-title__line">
+              in your <span class="feed-gate-hero-title__accent">Pocket</span>.
+            </span>
+          </h2>
+        </div>
+
+        <div
+          class="feed-gate-hero-rail"
+          data-feed-gate-hero-rail
+          role="list"
+          aria-label="MNYRA City Highlights"
+        >
+          ${heroCards.map((card, index) => renderFeedGateHeroCard(card, index)).join("")}
+          <div class="feed-gate-hero-rail__endcap" aria-hidden="true"></div>
+        </div>
+        <div class="feed-gate-hero-scroll-spacer" aria-hidden="true"></div>
+      </section>
+    `;
+  };
   function renderLocationGate({
     mode = resolveLocationScreenMode(),
     bentoContentHtml = "",
@@ -2084,27 +2213,134 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .feed-stage-bento-scroll {
             flex: 1 1 auto;
           }
-          #feedLocationGate .loc-bento-head { text-align: center; max-width: 22rem; margin: 0 auto 1.1rem; }
-          #feedLocationGate .loc-bento-line { display: inline-flex; align-items: center; gap: 0.7rem; opacity: 0.82; margin-bottom: 0.9rem; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.24em; color: rgb(100 116 139); }
-          #feedLocationGate .loc-bento-line::before, #feedLocationGate .loc-bento-line::after { content: ""; display: block; width: 1.5rem; height: 2px; border-radius: 999px; background: rgb(226 232 240); }
-          #feedLocationGate .loc-bento-title { margin: 0 0 0.6rem; font-size: 32px; line-height: 1; letter-spacing: -0.035em; font-weight: 900; color: rgb(15 23 42); }
-          #feedLocationGate .loc-bento-sub { margin: 0; font-size: 13px; line-height: 1.55; font-weight: 600; color: rgb(100 116 139); }
-          #feedLocationGate .loc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.875rem; max-width: 22rem; margin: 0 auto; }
-          #feedLocationGate .loc-card { position: relative; border-radius: 1.45rem; overflow: hidden; border: 1px solid rgb(241 245 249); background: #fff; padding: 1.2rem; transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1); }
-          #feedLocationGate .loc-card:hover { transform: translateY(-3px) scale(1.01); box-shadow: 0 14px 34px rgb(15 23 42 / 0.08); }
-          #feedLocationGate .loc-card.full { grid-column: span 2 / span 2; }
-          #feedLocationGate .loc-card.dark { background: rgb(15 23 42); border-color: rgb(30 41 59); color: #fff; }
-          #feedLocationGate .loc-card p { margin: 0; font-size: 11px; line-height: 1.45; font-weight: 600; color: rgb(100 116 139); }
-          #feedLocationGate .loc-card.dark p { color: rgb(203 213 225); }
-          #feedLocationGate .loc-card h4 { margin: 0 0 0.3rem; font-size: 1rem; line-height: 1.2; font-weight: 800; letter-spacing: -0.015em; color: inherit; }
-          #feedLocationGate .loc-icon { width: 2.75rem; height: 2.75rem; border-radius: 1rem; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.8rem; color: #fff; }
-          #feedLocationGate .loc-foot { text-align: center; margin-top: 1.35rem; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: rgb(148 163 184); }
+          #feedLocationGate .feed-gate-hero-shell {
+            --feed-gate-hero-accent: #3f46e5;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            margin: -2.35rem -1.25rem 0;
+            padding: 3.9rem 0 2.1rem;
+            background: #fff;
+            overflow: hidden;
+          }
+          #feedLocationGate .feed-gate-hero-copy {
+            width: 100%;
+            padding: 0 1.5rem;
+          }
+          #feedLocationGate .feed-gate-hero-title {
+            margin: 0;
+            font-size: 1.42rem;
+            line-height: 1.05;
+            letter-spacing: -0.035em;
+            font-weight: 500;
+            text-align: left;
+            color: rgb(17 24 39);
+          }
+          #feedLocationGate .feed-gate-hero-title__line {
+            display: block;
+          }
+          #feedLocationGate .feed-gate-hero-title__line + .feed-gate-hero-title__line {
+            margin-top: 0.16rem;
+          }
+          #feedLocationGate .feed-gate-hero-title__accent {
+            font-weight: 700;
+            color: var(--feed-gate-hero-accent);
+            transition: color 500ms ease;
+          }
+          #feedLocationGate .feed-gate-hero-rail {
+            display: flex;
+            overflow-x: auto;
+            gap: 0.5rem;
+            padding: 1.25rem 27% 3.35rem 1.5rem;
+            margin-top: -1.25rem;
+            scroll-snap-type: x mandatory;
+            scroll-padding-left: 1.5rem;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            overscroll-behavior-x: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: manipulation;
+          }
+          #feedLocationGate .feed-gate-hero-rail::-webkit-scrollbar { display: none; }
+          #feedLocationGate .feed-gate-hero-card {
+            position: relative;
+            flex: 0 0 72%;
+            width: 72%;
+            aspect-ratio: 9 / 14;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.06);
+            transition: opacity 500ms ease, transform 500ms ease;
+            transform: translateZ(0);
+            scroll-snap-align: start;
+            opacity: 0.5;
+          }
+          #feedLocationGate .feed-gate-hero-card[data-active="true"] { opacity: 1; }
+          #feedLocationGate .feed-gate-hero-card__inner {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 1.35rem;
+            background: var(--feed-gate-hero-card-bg);
+          }
+          #feedLocationGate .feed-gate-hero-card__headline {
+            margin: 0;
+            color: #fff;
+            opacity: 0;
+            animation: feedGateFadeScaleIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          }
+          #feedLocationGate .feed-gate-hero-card__headline--hero {
+            font-size: 1.72rem;
+            line-height: 1.1;
+            font-weight: 500;
+            letter-spacing: -0.03em;
+          }
+          #feedLocationGate .feed-gate-hero-card__headline--category {
+            font-size: 1.4rem;
+            line-height: 1.22;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+          }
+          #feedLocationGate .feed-gate-hero-card__headline-line {
+            display: block;
+          }
+          #feedLocationGate .feed-gate-hero-card__headline-accent {
+            color: var(--feed-gate-hero-card-accent);
+            font-weight: 700;
+          }
+          #feedLocationGate .feed-gate-hero-rail__endcap {
+            flex: 0 0 1px;
+            width: 1px;
+          }
+          #feedLocationGate .feed-gate-hero-scroll-spacer {
+            width: 100%;
+            height: clamp(48rem, 175svh, 92rem);
+            flex: 0 0 auto;
+          }
+          @keyframes feedGateFadeScaleIn {
+            0% { opacity: 0; transform: scale(0.92) translateY(8px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+          }
           #feedLocationGate .fade-in-up { opacity: 0; transform: translateY(30px); animation: feedLocationFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
           @keyframes feedLocationFadeUp { to { opacity: 1; transform: translateY(0); } }
           #feedLocationGate.feed-location-gate--resolving { pointer-events: none; animation: feedLocationGateResolveOut 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
           @keyframes feedLocationGateResolveOut {
             0% { opacity: 1; transform: translateY(0); }
             100% { opacity: 0; transform: translateY(-42px); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            #feedLocationGate .feed-gate-hero-title__accent,
+            #feedLocationGate .feed-gate-hero-card,
+            #feedLocationGate .feed-gate-hero-card__headline {
+              transition: none;
+              animation: none;
+            }
+            #feedLocationGate .feed-gate-hero-card__headline {
+              opacity: 1;
+            }
           }
         </style>
 
@@ -2113,19 +2349,19 @@ export function createFeedViewOrchestrationController({
             <div class="loc-top${shouldRenderSearchControls ? "" : " loc-top--searchless"}">
               <div class="loc-title">
                 <div class="text-slider-wrapper">
-                  <div class="text-slide-item">ZBULO VENDET.</div>
-                  <div class="text-slide-item">GJEJ OFERTAT.</div>
-                  <div class="text-slide-item">SHIJO QYTETIN.</div>
+                  <div class="text-slide-item">ENTDECKE SPOTS.</div>
+                  <div class="text-slide-item">FINDE ANGEBOTE.</div>
+                  <div class="text-slide-item">OEFFNE MENUES.</div>
                 </div>
-                <div>PËRRETH TEJE.</div>
+                <div>IN DEINER STADT.</div>
               </div>
               ${shouldRenderSearchControls ? `
                 <div class="loc-search-wrap">
                   <div class="loc-input-row">
                     <span class="loc-pin">${iconFn("map-pin", "w-5 h-5")}</span>
-                    <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="Vendos qytetin tënd..." class="loc-input" />
+                    <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="Gib deine Stadt ein..." class="loc-input" />
                     <div class="loc-request-wrap">
-                      <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn">
+                      <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="Standort nutzen">
                         <i id="locateIcon" data-lucide="crosshair" class="w-5 h-5 relative z-10"></i>
                         <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
                       </button>
