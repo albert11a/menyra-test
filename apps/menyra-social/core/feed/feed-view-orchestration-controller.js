@@ -2220,7 +2220,7 @@ export function createFeedViewOrchestrationController({
             flex-direction: column;
             gap: 1.25rem;
             margin: -2.35rem -1.25rem 0;
-            padding: 3.9rem 0 2.1rem;
+            padding: 4.6rem 0 2.1rem;
             background: #fff;
             overflow: hidden;
           }
@@ -2241,7 +2241,7 @@ export function createFeedViewOrchestrationController({
             display: block;
           }
           #feedLocationGate .feed-gate-hero-title__line + .feed-gate-hero-title__line {
-            margin-top: 0.16rem;
+            margin-top: 0.32rem;
           }
           #feedLocationGate .feed-gate-hero-title__accent {
             font-weight: 700;
@@ -2267,7 +2267,7 @@ export function createFeedViewOrchestrationController({
             position: relative;
             flex: 0 0 72%;
             width: 72%;
-            aspect-ratio: 9 / 14;
+            aspect-ratio: 9 / 13;
             border-radius: 1rem;
             overflow: hidden;
             box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.06);
