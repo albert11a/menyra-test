@@ -1670,6 +1670,14 @@ try {
     normalizeAuthMode
   });
   pendingRouteState.applyInitialRouteState(initialRouteState);
+  const eagerInitialTab = sanitizeTabForSessionCore(initialRouteState?.pendingInitialTab, {
+    user: state.user,
+    hasProfileView: !!state.profileView,
+    guestScopeUid: getGuestScopeUid()
+  });
+  if (String(eagerInitialTab || "").trim()) {
+    state.activeTab = eagerInitialTab;
+  }
 } catch {}
 
 function isGuestSession() {
