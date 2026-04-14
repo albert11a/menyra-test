@@ -31,8 +31,6 @@ export function bindAppShellEventsCore({
     ? clearAuthBootstrapSnapshotFn
     : (() => {});
   const safeStorage = safeStorageObj || null;
-  const profileKey = typeof profileKeyFn === "function" ? profileKeyFn : (() => "");
-  const avatarKey = typeof avatarKeyFn === "function" ? avatarKeyFn : (() => "");
   const notificationsKey = typeof notificationsKeyFn === "function" ? notificationsKeyFn : (() => "");
   const pushSeenKey = typeof pushSeenKeyFn === "function" ? pushSeenKeyFn : (() => "");
   const pushTokenMetaKey = typeof pushTokenMetaKeyFn === "function" ? pushTokenMetaKeyFn : (() => "");
@@ -139,8 +137,8 @@ export function bindAppShellEventsCore({
         await signOut(auth);
         clearAuthBootstrapSnapshot();
         if (state.user?.uid) {
-          safeStorage?.removeItem?.(profileKey(state.user.uid));
-          safeStorage?.removeItem?.(avatarKey(state.user.uid));
+          // Keep lightweight profile/avatar caches per UID so role tabs and shell identity
+          // can hydrate immediately on next login without waiting for network bootstrap.
           safeStorage?.removeItem?.(notificationsKey(state.user.uid));
           safeStorage?.removeItem?.(pushSeenKey(state.user.uid));
           safeStorage?.removeItem?.(pushTokenMetaKey(state.user.uid));
