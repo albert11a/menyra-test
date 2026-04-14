@@ -182,8 +182,7 @@ export function createFeedViewOrchestrationController({
       String(story?.restaurantId || story?.id || "").trim(),
       truthSource,
       story?.isLive ? "1" : "0",
-      preview.signature,
-      String(toStoryTimestampMs(story) || 0)
+      preview.signature
     ].join("|");
   };
   const buildFeedRenderSignature = (post = {}) => ([
@@ -194,6 +193,13 @@ export function createFeedViewOrchestrationController({
     String(post?.image || post?.url || "").trim(),
     post?.isLive ? "1" : "0"
   ].join("|"));
+  const buildFeedHeroPreloadSignature = (posts = []) => (Array.isArray(posts) ? posts : [])
+    .slice(0, 10)
+    .map((post) => ([
+      String(post?.id || "").trim(),
+      String(post?.image || post?.url || "").trim()
+    ].join("|")))
+    .join(",");
   const resolveStoryRenderIdentityLocal = (story = {}) => {
     const storyRestaurantId = String(story?.restaurantId || "").trim();
     const truthSource = normalizeStoryTruthSource(story);
@@ -728,7 +734,15 @@ export function createFeedViewOrchestrationController({
   const buildSpotStoryTrackSignature = ({ spots = [], stories = [] } = {}) => buildMixedSpotStoryTrackItems({ spots, stories })
     .map((entry) => {
       if (entry.type === "spot") {
-        return `spot:${String(entry?.spot?.renderSignature || entry?.spot?.spotId || "").trim()}`;
+        const spot = entry?.spot || {};
+        return [
+          "spot",
+          String(spot?.spotId || "").trim(),
+          String(spot?.postId || "").trim(),
+          String(spot?.displayName || "").trim(),
+          String(spot?.avatarUrl || "").trim(),
+          String(spot?.rank || "").trim()
+        ].join(":");
       }
       return `story:${buildStoryRenderSignature(entry?.story || {})}`;
     })
@@ -955,6 +969,7 @@ export function createFeedViewOrchestrationController({
   let locationGateResolveTransitionPending = false;
   let locationGateResolveTimer = null;
   let feedEntranceAnimationQueued = false;
+  let lastFeedHeroPreloadSignature = "";
   let feedStageAutoPinScrollQueued = false;
   let feedStageAutoPinScrollFrame = null;
   let feedStagePinSyncCleanup = null;
@@ -2829,7 +2844,7 @@ export function createFeedViewOrchestrationController({
 
   function renderStoryPreviewMedia(story = {}, index = 0, storyId = "") {
     const preview = resolveStoryPreviewMedia(story);
-    const eager = index < 2;
+    const eager = index < 5;
     if (preview.kind === "video" && preview.src) {
       const attrs = eager
         ? `preload="auto" fetchpriority="high"`
@@ -2875,6 +2890,9 @@ export function createFeedViewOrchestrationController({
     const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
     const storyTruthAttr = `data-story-truth="${escapeHtmlFn(storyTruthSource)}"`;
     const storyRenderAttr = `data-story-render-sig="${escapeHtmlFn(buildStoryRenderSignature(story))}"`;
+    const logoAttrs = index < 6
+      ? `loading="eager" fetchpriority="high"`
+      : `loading="lazy" fetchpriority="low"`;
     return `
       <a href="${storyUrl}" ${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" ${storyTruthAttr} ${storyRenderAttr} class="flex-none w-[29%] sm:w-[120px] snap-start cursor-pointer" style="${buildTrackCardShellStyle()}">
         <div class="relative h-52 rounded-2xl overflow-hidden shadow-md" style="${buildTrackCardInnerStyle()}">
@@ -2882,7 +2900,7 @@ export function createFeedViewOrchestrationController({
           <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20 pointer-events-none" style="background:linear-gradient(0deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.1) 45%,rgba(0,0,0,0.2) 100%);"></div>
           <div class="absolute top-2 right-2" style="position:absolute;top:0.5rem;right:0.5rem;z-index:12;">
             <div class="w-7 h-7 rounded-full p-[2px] bg-gradient-to-tr from-amber-500 to-fuchsia-600 shadow-sm" ${storyBorderAttr} style="padding:2px;background:linear-gradient(135deg,#f59e0b 0%,#db2777 100%);">
-              <img src="${escapeHtmlFn(imgUrl)}" loading="lazy" fetchpriority="low" decoding="async" width="28" height="28" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />
+              <img src="${escapeHtmlFn(imgUrl)}" ${logoAttrs} decoding="async" width="28" height="28" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />
             </div>
           </div>
           <div class="absolute bottom-2 left-2 right-2" style="position:absolute;left:0.5rem;right:0.5rem;bottom:0.5rem;z-index:12;">
@@ -2995,13 +3013,18 @@ export function createFeedViewOrchestrationController({
     const feedList = doc?.getElementById("feedList");
     if (!feedList) return false;
     if (!feedPosts.length) {
-      feedList.innerHTML = renderFeedList(feedPosts);
-      return true;
+      const nextHtml = renderFeedList(feedPosts);
+      if (feedList.innerHTML !== nextHtml) {
+        feedList.innerHTML = nextHtml;
+        return true;
+      }
+      return false;
     }
     const existingItems = Array.from(feedList.querySelectorAll("[data-feed-id]"));
     const currentIds = existingItems.map((el) => el.dataset.feedId || "");
     const nextIds = feedPosts.map((post) => String(post.id || ""));
     if (currentIds.join("|") === nextIds.join("|")) {
+      let didMutate = false;
       feedPosts.forEach((post, index) => {
         const existing = existingItems[index];
         if (!existing) return;
@@ -3013,10 +3036,11 @@ export function createFeedViewOrchestrationController({
         const nextNode = tpl.content.firstElementChild;
         if (!nextNode) return;
         existing.replaceWith(nextNode);
+        didMutate = true;
       });
       feedPosts.forEach(updatePostCountNodesFn);
       feedPosts.forEach(updateFeedLogoNodesFn);
-      return true;
+      return didMutate;
     }
     const existingMap = new Map();
     existingItems.forEach((el) => existingMap.set(el.dataset.feedId || "", el));
@@ -3305,21 +3329,25 @@ export function createFeedViewOrchestrationController({
   }
 
   function ensureFeedComposerVisibility(feedView) {
-    if (!doc || !feedView) return;
+    if (!doc || !feedView) return false;
     const feedList = doc.getElementById("feedList");
-    if (!feedList) return;
+    if (!feedList) return false;
     const existingComposer = feedView.querySelector("[data-feed-composer-wrap]");
     const showComposer = shouldShowFeedComposer();
     if (!showComposer) {
-      if (existingComposer) existingComposer.remove();
-      return;
+      if (existingComposer) {
+        existingComposer.remove();
+        return true;
+      }
+      return false;
     }
-    if (existingComposer) return;
+    if (existingComposer) return false;
     const tpl = doc.createElement("template");
     tpl.innerHTML = renderFeedComposer();
     const node = tpl.content.firstElementChild;
-    if (!node) return;
+    if (!node) return false;
     feedList.parentNode?.insertBefore(node, feedList);
+    return true;
   }
 
   function updateFeedDom() {
@@ -3346,6 +3374,7 @@ export function createFeedViewOrchestrationController({
     const bestSpotItems = resolveBestSpotTrackItems(feedPosts, feedPosts);
     const storiesRow = doc.getElementById("storiesRow");
     const nextSig = buildSpotStoryTrackSignature({ spots: bestSpotItems, stories: storyTrackItems });
+    let didPatchStoriesRow = false;
     if (storiesRow) {
       const hasTrackContainer = !!storiesRow.querySelector("[data-spot-story-track]");
       if (getStoriesRowSignatureFn() !== nextSig || !hasTrackContainer) {
@@ -3354,20 +3383,32 @@ export function createFeedViewOrchestrationController({
           fallbackStories: trackStories
         });
         setStoriesRowSignatureFn(nextSig);
+        didPatchStoriesRow = true;
       }
       storyTrackItems.forEach((story) => {
         updateStoryLogoNodesFn(story);
         updateStoryMetaNodesFn(story);
       });
-      syncStoryPreviewMotion(storiesRow);
+      const previewSyncSig = `motion:${nextSig}|${storyTrackItems.length}`;
+      const shouldSyncPreviewMotion = didPatchStoriesRow
+        || String(storiesRow.dataset.storyPreviewMotionSig || "") !== previewSyncSig;
+      if (shouldSyncPreviewMotion) {
+        syncStoryPreviewMotion(storiesRow);
+        storiesRow.dataset.storyPreviewMotionSig = previewSyncSig;
+      }
     }
-    ensureFeedComposerVisibility(feedView);
-    patchFeedList(feedPosts);
-    feedPosts.forEach(updateFeedLogoNodesFn);
+    const didComposerMutate = ensureFeedComposerVisibility(feedView);
+    const didFeedListMutate = patchFeedList(feedPosts);
     ensureFeedRestaurantMetaListenersFn(feedPosts);
     bindFeedDelegation();
-    preloadFeedHeroImagesFn(feedPosts);
-    if (win?.lucide?.createIcons) win.lucide.createIcons();
+    const preloadSignature = buildFeedHeroPreloadSignature(feedPosts);
+    if (preloadSignature !== lastFeedHeroPreloadSignature) {
+      lastFeedHeroPreloadSignature = preloadSignature;
+      preloadFeedHeroImagesFn(feedPosts);
+    }
+    if ((didPatchStoriesRow || didComposerMutate || didFeedListMutate) && win?.lucide?.createIcons) {
+      win.lucide.createIcons();
+    }
     return true;
   }
 

@@ -7,6 +7,7 @@ export function bindAppMenuFocusEventsCore({
   deleteMenuItemByIdFn,
   triggerMenuDetailOpenFromGestureFn,
   updateShopCartQuantityFn,
+  updateShopCartItemCommentFn,
   openShopCheckoutFn,
   submitShopCheckoutFn,
   updateShopCheckoutFieldFn,
@@ -38,6 +39,9 @@ export function bindAppMenuFocusEventsCore({
     : (() => {});
   const updateShopCartQuantity = typeof updateShopCartQuantityFn === "function"
     ? updateShopCartQuantityFn
+    : (() => {});
+  const updateShopCartItemComment = typeof updateShopCartItemCommentFn === "function"
+    ? updateShopCartItemCommentFn
     : (() => {});
   const openShopCheckout = typeof openShopCheckoutFn === "function" ? openShopCheckoutFn : (() => {});
   const submitShopCheckout = typeof submitShopCheckoutFn === "function" ? submitShopCheckoutFn : null;
@@ -537,6 +541,12 @@ export function bindAppMenuFocusEventsCore({
       if (action === "submit" && submitShopCheckout) {
         void submitShopCheckout();
       }
+    });
+  });
+
+  doc.querySelectorAll("[data-cart-item-comment]").forEach((input) => {
+    input.addEventListener("input", () => {
+      updateShopCartItemComment(input.dataset.cartItemComment || "", input.value || "");
     });
   });
 

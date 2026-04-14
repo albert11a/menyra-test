@@ -28,6 +28,7 @@ export function normalizeOrderItemCore(item, {
     quantity: Math.max(1, Number(item?.quantity || 1) || 1),
     imageUrl: String(item?.imageUrl || "").trim(),
     category: String(item?.category || "").trim(),
+    comment: String(item?.comment || item?.note || item?.message || "").trim(),
     selectedSize: String(item?.selectedSize || item?.size || "").trim(),
     selectedColor: String(item?.selectedColor || item?.color || "").trim(),
     cropX: clamp(item?.cropX ?? 50, 50),

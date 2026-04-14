@@ -50,6 +50,7 @@ export function createShopViewCartOrchestrationController({
       getShopCartProfileContext: () => ({ restaurantId: "", businessName: "", businessAvatar: "" }),
       addMenuItemToShopCart: () => {},
       updateShopCartQuantity: () => {},
+      updateShopCartItemComment: () => {},
       openShopCheckout: () => {},
       updateShopCheckoutField: () => {},
       getShopCartTotal: () => 0
@@ -329,19 +330,32 @@ export function createShopViewCartOrchestrationController({
         ` : items.length ? `
           <div class="space-y-3">
             ${items.map((item) => `
-              <div class="flex items-center gap-3 p-3 rounded-[1.6rem] bg-slate-50 border border-slate-100">
-                <div class="w-14 h-14 rounded-2xl overflow-hidden bg-white shrink-0">
-                  <img src="${escapeHtmlFn(getOptimizedImageUrlFn(item.imageUrl || "", "thumb"))}" class="w-full h-full object-cover" style="object-position:${clampCropPercentFn(item.cropX ?? 50, 50)}% ${clampCropPercentFn(item.cropY ?? 50, 50)}%;" />
+              <div class="p-3 rounded-[1.6rem] bg-slate-50 border border-slate-100 space-y-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-14 h-14 rounded-2xl overflow-hidden bg-white shrink-0">
+                    <img src="${escapeHtmlFn(getOptimizedImageUrlFn(item.imageUrl || "", "thumb"))}" class="w-full h-full object-cover" style="object-position:${clampCropPercentFn(item.cropX ?? 50, 50)}% ${clampCropPercentFn(item.cropY ?? 50, 50)}%;" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-black text-slate-900 truncate">${escapeHtmlFn(item.name)}</p>
+                    ${item.selectedSize || item.selectedColor ? `<p class="text-[9px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtmlFn([item.selectedSize, item.selectedColor].filter(Boolean).join(" / "))}</p>` : ""}
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${escapeHtmlFn(formatPriceFn(item.price))}</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="-1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${iconFn("minus", "w-3 h-3")}</button>
+                    <span class="w-6 text-center text-sm font-black text-slate-900">${escapeHtmlFn(item.quantity)}</span>
+                    <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${iconFn("plus", "w-3 h-3")}</button>
+                  </div>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-black text-slate-900 truncate">${escapeHtmlFn(item.name)}</p>
-                  ${item.selectedSize || item.selectedColor ? `<p class="text-[9px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtmlFn([item.selectedSize, item.selectedColor].filter(Boolean).join(" / "))}</p>` : ""}
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${escapeHtmlFn(formatPriceFn(item.price))}</p>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="-1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${iconFn("minus", "w-3 h-3")}</button>
-                  <span class="w-6 text-center text-sm font-black text-slate-900">${escapeHtmlFn(item.quantity)}</span>
-                  <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${iconFn("plus", "w-3 h-3")}</button>
+                <div>
+                  <input
+                    data-cart-item-comment="${escapeHtmlFn(item.cartKey || item.itemId)}"
+                    type="text"
+                    maxlength="180"
+                    aria-label="Koment per kamarierin"
+                    value="${escapeHtmlFn(item.comment || "")}"
+                    placeholder="Koment p&euml;r kamarierin..."
+                    class="w-full h-11 rounded-[1.2rem] border border-slate-200 bg-white/90 px-4 text-[13px] font-semibold text-slate-700 placeholder:text-slate-400 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100/70"
+                  />
                 </div>
               </div>
             `).join("")}
@@ -489,6 +503,7 @@ export function createShopViewCartOrchestrationController({
       category: String(item.category || "").trim(),
       selectedSize,
       selectedColor,
+      comment: "",
       cropX: clampCropPercentFn(item?.cropX ?? 50, 50),
       cropY: clampCropPercentFn(item?.cropY ?? 50, 50)
     };
@@ -539,6 +554,27 @@ export function createShopViewCartOrchestrationController({
     renderFn();
   }
 
+  function updateShopCartItemComment(itemId, value) {
+    const safeId = String(itemId || "").trim();
+    if (!safeId) return;
+    const nextCart = normalizeShopCartStateFn(state.shopCart);
+    const nextComment = String(value || "").replace(/\s+/g, " ").trimStart().slice(0, 180);
+    let changed = false;
+    nextCart.items = nextCart.items.map((entry) => {
+      if (String(entry.cartKey || entry.itemId) !== safeId) return entry;
+      if (String(entry.comment || "") === nextComment) return entry;
+      changed = true;
+      return {
+        ...entry,
+        comment: nextComment
+      };
+    });
+    if (!changed) return;
+    nextCart.status = "";
+    state.shopCart = nextCart;
+    saveShopCartToStorageFn();
+  }
+
   function openShopCheckout() {
     const nextCart = normalizeShopCartStateFn(state.shopCart);
     if (!nextCart.items.length) return;
@@ -577,6 +613,7 @@ export function createShopViewCartOrchestrationController({
     getShopCartProfileContext,
     addMenuItemToShopCart,
     updateShopCartQuantity,
+    updateShopCartItemComment,
     openShopCheckout,
     updateShopCheckoutField,
     getShopCartTotal

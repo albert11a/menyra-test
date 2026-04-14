@@ -612,6 +612,7 @@ export function createAppControllerBridge({
     getShopCartProfileContext: shopViewCartOrchestrationController.getShopCartProfileContext,
     addMenuItemToShopCart: shopViewCartOrchestrationController.addMenuItemToShopCart,
     updateShopCartQuantity: shopViewCartOrchestrationController.updateShopCartQuantity,
+    updateShopCartItemComment: shopViewCartOrchestrationController.updateShopCartItemComment,
     openShopCheckout: shopViewCartOrchestrationController.openShopCheckout,
     updateShopCheckoutField: shopViewCartOrchestrationController.updateShopCheckoutField,
     getShopCartTotal: shopViewCartOrchestrationController.getShopCartTotal,

@@ -92,6 +92,7 @@ export function createAppShellRuntimeController(deps = {}) {
     deleteMenuItemByIdFn,
     triggerMenuDetailOpenFromGestureFn,
     updateShopCartQuantityFn,
+    updateShopCartItemCommentFn,
     openShopCheckoutFn,
     submitShopCheckoutFn,
     updateShopCheckoutFieldFn,
@@ -427,12 +428,23 @@ export function createAppShellRuntimeController(deps = {}) {
     return !mapCanvas.querySelector(".leaflet-pane");
   }
 
+  function shouldShowBootstrapRuntimeBanner() {
+    try {
+      const params = new URLSearchParams(String(win?.location?.search || ""));
+      return params.get("debug-bootstrap") === "1" || params.get("debugBootstrapBanner") === "1";
+    } catch {
+      return false;
+    }
+  }
+
   function resolveRuntimeDegradedMessages() {
     const messages = [];
     const degraded = state.runtimeDegraded && typeof state.runtimeDegraded === "object"
       ? state.runtimeDegraded
       : {};
-    const vendorOrder = ["bootstrap", "map", "media", "icons", "fonts"];
+    const vendorOrder = shouldShowBootstrapRuntimeBanner()
+      ? ["bootstrap", "map", "media", "icons", "fonts"]
+      : ["map", "media", "icons", "fonts"];
     vendorOrder.forEach((key) => {
       const message = String(degraded?.[key] || "").trim();
       if (message) messages.push(message);
@@ -1378,6 +1390,13 @@ export function createAppShellRuntimeController(deps = {}) {
     const currentFeedLocationRenderKey = buildFeedLocationRenderKey();
     const didFeedLocationRenderKeyChange = currentFeedLocationRenderKey !== lastFeedLocationRenderKey;
     const changed = nextHtml !== prevLastAppHtml || mode !== prevLastRenderMode;
+    const existingMountedHtml = appEl ? String(appEl.innerHTML || "") : "";
+    const hasStartupSnapshotMounted = !!appEl
+      && String(appEl.dataset?.startupSnapshot || "").trim() === "1";
+    const shouldReuseExistingMountedHtml = changed
+      && !prevLastAppHtml
+      && hasStartupSnapshotMounted
+      && existingMountedHtml === nextHtml;
     if (changed) {
       const prevLastRenderedMainTab = getLastRenderedMainTab();
       const isChatThreadOpen = mode === "main"
@@ -1415,7 +1434,9 @@ export function createAppShellRuntimeController(deps = {}) {
       let nextViewportScrollTop = null;
       if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
       if (appEl) {
-        appEl.innerHTML = nextHtml;
+        if (!shouldReuseExistingMountedHtml) {
+          appEl.innerHTML = nextHtml;
+        }
         appEl.removeAttribute("aria-busy");
       }
       setLastAppHtml(nextHtml);
@@ -1690,6 +1711,7 @@ export function createAppShellRuntimeController(deps = {}) {
       deleteMenuItemByIdFn,
       triggerMenuDetailOpenFromGestureFn,
       updateShopCartQuantityFn: (...args) => runBudgetWrapped("add_to_cart", () => updateShopCartQuantityFn(...args)),
+      updateShopCartItemCommentFn,
       openShopCheckoutFn,
       submitShopCheckoutFn,
       updateShopCheckoutFieldFn,

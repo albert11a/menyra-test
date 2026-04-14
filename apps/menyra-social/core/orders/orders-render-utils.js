@@ -77,9 +77,12 @@ export function renderOrdersViewCore({
                 </div>
                 <div class="space-y-2">
                   ${orderItems.slice(0, 3).map((item) => `
-                    <div class="flex items-center justify-between text-sm">
-                      <span class="font-semibold text-slate-700 truncate pr-3">${escapeHtml(item.quantity)}x ${escapeHtml(item.name)}${item.selectedSize || item.selectedColor ? ` <span class="text-slate-400">(${escapeHtml([item.selectedSize, item.selectedColor].filter(Boolean).join(" / "))})</span>` : ""}</span>
-                      <span class="font-black text-slate-900">${escapeHtml(formatPrice(parsePriceValue(item.price) * item.quantity))}</span>
+                    <div class="flex items-start justify-between gap-3 text-sm">
+                      <div class="min-w-0">
+                        <span class="font-semibold text-slate-700 block truncate pr-3">${escapeHtml(item.quantity)}x ${escapeHtml(item.name)}${item.selectedSize || item.selectedColor ? ` <span class="text-slate-400">(${escapeHtml([item.selectedSize, item.selectedColor].filter(Boolean).join(" / "))})</span>` : ""}</span>
+                        ${item.comment ? `<p class="text-[10px] font-semibold text-slate-400 mt-1 truncate">Koment: ${escapeHtml(item.comment)}</p>` : ""}
+                      </div>
+                      <span class="font-black text-slate-900 shrink-0">${escapeHtml(formatPrice(parsePriceValue(item.price) * item.quantity))}</span>
                     </div>
                   `).join("")}
                   ${orderItems.length > 3 ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-300">+${escapeHtml(orderItems.length - 3)} weitere</p>` : ""}

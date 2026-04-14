@@ -69,9 +69,19 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let mapSearchLastPanKey = "";
   let mapNotice = "";
   let mapNoticeTimer = null;
+  let mapSearchUiExpanded = false;
+  let lastLeafletRefreshAt = 0;
+  let mapViewportAlignedAtLeastOnce = false;
+  const markerLogoPreloadSet = new Set();
+  let leafletSurfaceMissingSince = 0;
+  let mapRecoveryQueued = false;
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
   const DISCOVERY_MAP_DEFAULT_ZOOM = 14;
   const DISCOVERY_MAP_MAX_ZOOM = 19;
+  const DISCOVERY_MAP_START_MAX_ZOOM = Math.max(
+    15,
+    Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapStartMaxZoom || 16) || 16)
+  );
   const DISCOVERY_MAP_FOCUS_ZOOM = Math.max(13, Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapFocusZoom || 16) || 16));
   const LEAFLET_SOURCE_TIMEOUT_MS = Math.max(6000, Number(deps.leafletSourceTimeoutMs || 12000) || 12000);
   const LEAFLET_LOAD_RETRY_COOLDOWN_MS = Math.max(1200, Number(deps.leafletRetryCooldownMs || 2600) || 2600);
@@ -86,6 +96,8 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const LOCATION_UNVERIFIED_LABEL = "Standort nicht verifiziert";
   const MAP_TILES_DEGRADED_NOTICE = "Kartenkacheln konnten nicht geladen werden. Es werden nur verifizierte Daten gezeigt.";
   const MAP_TILES_FALLBACK_NOTICE = "Primaere Kartenkacheln langsam. Fallback-Karte aktiv.";
+  const MAP_SEARCH_PLACEHOLDER_COLLAPSED = "Stadt, Lokal suchen...";
+  const MAP_SEARCH_PLACEHOLDER_EXPANDED = "Suche dein Lieblingslokal";
   const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 
 function emitVendorDegraded(kind = "map", active = false, message = "") {
@@ -111,6 +123,43 @@ function getLeafletFocusZoom() {
   return DISCOVERY_MAP_FOCUS_ZOOM;
 }
 
+function resolveMapMarkerLogoUrl(raw = "", restaurantId = "") {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const safeRaw = String(raw || "").trim();
+  let resolved = "";
+  if (safeRestaurantId && typeof resolveRestaurantLogo === "function") {
+    try {
+      resolved = String(resolveRestaurantLogo(safeRestaurantId, safeRaw, "avatar") || "").trim();
+    } catch {}
+  }
+  if (!resolved && safeRaw) {
+    try {
+      resolved = String(getOptimizedImageUrl(safeRaw, "avatar") || "").trim();
+    } catch {}
+  }
+  if (!resolved) {
+    try {
+      resolved = String(getOptimizedImageUrl("", "avatar") || "").trim();
+    } catch {}
+  }
+  return resolved || PLACEHOLDER_IMAGE;
+}
+
+function isLeafletCenterClose(lat, lng, tolerance = 0.00075) {
+  if (!leafletMap || typeof leafletMap.getCenter !== "function") return false;
+  const coords = normalizeCoordPair(lat, lng);
+  if (!coords) return false;
+  try {
+    const center = leafletMap.getCenter();
+    const centerLat = Number(center?.lat);
+    const centerLng = Number(center?.lng);
+    if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) return false;
+    return Math.abs(centerLat - coords.lat) <= tolerance && Math.abs(centerLng - coords.lng) <= tolerance;
+  } catch {
+    return false;
+  }
+}
+
 function focusLeafletMap(lat, lng, options = {}) {
   if (!leafletMap) return;
   const coords = normalizeCoordPair(lat, lng);
@@ -118,6 +167,10 @@ function focusLeafletMap(lat, lng, options = {}) {
   const zoom = Number.isFinite(options.zoom) ? options.zoom : getLeafletFocusZoom();
   const duration = Number.isFinite(options.duration) ? options.duration : 0.5;
   try {
+    const currentZoom = typeof leafletMap.getZoom === "function" ? Number(leafletMap.getZoom()) : NaN;
+    const alreadyCentered = isLeafletCenterClose(coords.lat, coords.lng);
+    const alreadyZoomed = Number.isFinite(currentZoom) && Math.abs(currentZoom - Number(zoom)) < 0.01;
+    if (alreadyCentered && alreadyZoomed) return;
     leafletMap.setView([coords.lat, coords.lng], zoom, { animate: true, duration });
   } catch {}
 }
@@ -286,6 +339,8 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
   const normalizedCoords = preferred ? normalizeCoordPair(preferred.lat, preferred.lng) : null;
   const city = String(row.city || rest.city || "").trim();
   const address = String(row.address || rest.address || city || LOCATION_UNVERIFIED_LABEL).trim() || LOCATION_UNVERIFIED_LABEL;
+  const logoSource = rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "";
+  const markerLogo = resolveMapMarkerLogoUrl(logoSource, rest.id);
 
   return {
     id: rest.id,
@@ -299,7 +354,7 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
     address,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.8,
-    img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "",
+    img: markerLogo,
     desc: rest.description || rest.bio || `Offizielles Lokal auf ${BRAND_UI.upper}.`,
     hasVerifiedCoords: !!normalizedCoords,
     locationStatus: normalizedCoords ? "verified" : "unknown",
@@ -329,6 +384,11 @@ function cleanupLeaflet() {
     clearTimeout(mapSearchFilterTimer);
     mapSearchFilterTimer = null;
   }
+  mapSearchUiExpanded = false;
+  lastLeafletRefreshAt = 0;
+  mapViewportAlignedAtLeastOnce = false;
+  leafletSurfaceMissingSince = 0;
+  mapRecoveryQueued = false;
 }
 
 function isLeafletMapMountedOn(element) {
@@ -344,8 +404,21 @@ function isLeafletMapMountedOn(element) {
   }
 }
 
-function scheduleLeafletRefresh(retries = 3) {
+function hasLeafletSurface(element) {
+  if (!element) return false;
+  try {
+    return !!element.querySelector(".leaflet-pane, .leaflet-map-pane");
+  } catch {
+    return false;
+  }
+}
+
+function scheduleLeafletRefresh(retries = 3, { throttleMs = 0 } = {}) {
   if (!leafletMap || !document.getElementById("leafletMap")) return;
+  const safeThrottle = Math.max(0, Number(throttleMs) || 0);
+  const now = Date.now();
+  if (safeThrottle > 0 && (now - lastLeafletRefreshAt) < safeThrottle) return;
+  lastLeafletRefreshAt = now;
   const run = (left) => {
     if (!leafletMap) return;
     const el = document.getElementById("leafletMap");
@@ -355,6 +428,62 @@ function scheduleLeafletRefresh(retries = 3) {
     window.setTimeout(() => run(left - 1), 180);
   };
   run(Math.max(0, Number(retries) || 0));
+}
+
+function scheduleMapRecoveryCheck(delayMs = 140) {
+  if (mapRecoveryQueued || !window || typeof window.setTimeout !== "function") return;
+  mapRecoveryQueued = true;
+  window.setTimeout(() => {
+    mapRecoveryQueued = false;
+    if (state.activeTab !== "map") return;
+    initLeafletIfNeeded();
+  }, Math.max(60, Number(delayMs) || 140));
+}
+
+function primeMapMarkerLogos(locations = [], limit = 40) {
+  if (!window || typeof window.Image !== "function") return;
+  const rows = Array.isArray(locations) ? locations : [];
+  const maxItems = Math.max(0, Number(limit) || 0);
+  for (let i = 0; i < rows.length && i < maxItems; i += 1) {
+    const entry = rows[i] || {};
+    const logoUrl = resolveMapMarkerLogoUrl(
+      entry?.img || entry?.raw?.logoUrl || entry?.raw?.logo || entry?.raw?.heroUrl || entry?.raw?.coverUrl || "",
+      entry?.id || entry?.raw?.id || ""
+    );
+    if (!logoUrl || markerLogoPreloadSet.has(logoUrl)) continue;
+    markerLogoPreloadSet.add(logoUrl);
+    try {
+      const img = new window.Image();
+      img.decoding = "async";
+      img.src = logoUrl;
+      if (typeof img.decode === "function") {
+        img.decode().catch(() => {});
+      }
+    } catch {}
+  }
+}
+
+function fitLeafletToLocations(locations = [], { force = false, animate = false } = {}) {
+  if (!leafletMap || !window.L) return false;
+  if (!force && mapViewportAlignedAtLeastOnce) return false;
+  const visibleLocations = getDiscoverableMapLocations(locations);
+  const latLngPairs = visibleLocations
+    .map((entry) => normalizeCoordPair(entry?.lat, entry?.lng))
+    .filter(Boolean)
+    .map((coords) => [coords.lat, coords.lng]);
+  const selectedCoords = normalizeCoordPair(state.selectedBusiness?.lat, state.selectedBusiness?.lng);
+  const verifiedCoords = resolveVerifiedMapCoords();
+  const preferredCoords = selectedCoords || verifiedCoords || null;
+  const fallbackCoords = latLngPairs.length ? { lat: latLngPairs[0][0], lng: latLngPairs[0][1] } : null;
+  const anchor = preferredCoords || fallbackCoords;
+  if (!anchor) return false;
+  try {
+    leafletMap.setView([anchor.lat, anchor.lng], DISCOVERY_MAP_START_MAX_ZOOM, { animate: !!animate });
+    mapViewportAlignedAtLeastOnce = true;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function resolveLeafletMarkerKey(location = {}, fallbackIndex = 0) {
@@ -377,11 +506,12 @@ function buildMarkerVisualSignature(location = {}, { selected = false } = {}) {
 
 function makeBizDivIcon(b, { selected = false } = {}) {
   const isSelected = selected === true;
-  const safeImg = b.img && !isPlaceholderUrl(b.img) ? escapeHtml(b.img) : PLACEHOLDER_IMAGE;
+  const logoUrl = resolveMapMarkerLogoUrl(b?.img || "", b?.id || "");
+  const safeImg = logoUrl && !isPlaceholderUrl(logoUrl) ? escapeHtml(logoUrl) : PLACEHOLDER_IMAGE;
   const html = `
     <div class="relative flex flex-col items-center justify-center transition-all duration-300 ${isSelected ? 'scale-110 z-[500]' : 'hover:scale-105 z-[400]'}">
       <div class="w-12 h-12 rounded-[1rem] shadow-lg flex items-center justify-center border-[3px] ${isSelected ? 'border-indigo-600' : 'border-white'} bg-white overflow-hidden p-0.5">
-        <img src="${safeImg}" class="w-full h-full object-cover rounded-xl" onerror="this.src='${PLACEHOLDER_IMAGE}'"/>
+        <img src="${safeImg}" loading="eager" decoding="async" fetchpriority="${isSelected ? "high" : "auto"}" class="w-full h-full object-cover rounded-xl" onerror="this.src='${PLACEHOLDER_IMAGE}'"/>
       </div>
       <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${isSelected ? 'border-t-indigo-600' : 'border-t-white drop-shadow-md'} -mt-1"></div>
     </div>
@@ -532,7 +662,21 @@ function updateMapSheet() {
   )) {
     state.selectedBusiness = null;
   }
-  slot.innerHTML = state.selectedBusiness ? renderMapSheet(state.selectedBusiness) : "";
+  const selected = state.selectedBusiness || null;
+  const nextSheetSignature = selected
+    ? [
+      String(selected.markerKey || selected.id || ""),
+      Number(selected.lat || 0).toFixed(6),
+      Number(selected.lng || 0).toFixed(6),
+      String(selected.name || ""),
+      String(selected.address || ""),
+      String(selected.rating || "")
+    ].join("|")
+    : "none";
+  const prevSheetSignature = String(slot.dataset.mapSheetSignature || "");
+  if (nextSheetSignature === prevSheetSignature) return;
+  slot.innerHTML = selected ? renderMapSheet(selected) : "";
+  slot.dataset.mapSheetSignature = nextSheetSignature;
   bindMapSheetEvents();
   if (window.lucide?.createIcons) window.lucide.createIcons();
 }
@@ -623,12 +767,30 @@ function initLeafletIfNeeded() {
   if (leafletMap && !isLeafletMapMountedOn(el)) {
     cleanupLeaflet();
   }
+  if (leafletMap && !hasLeafletSurface(el)) {
+    const now = Date.now();
+    if (!leafletSurfaceMissingSince) {
+      leafletSurfaceMissingSince = now;
+    }
+    scheduleLeafletRefresh(2, { throttleMs: 90 });
+    if ((now - leafletSurfaceMissingSince) < 1100) {
+      scheduleMapRecoveryCheck(160);
+      return;
+    }
+    cleanupLeaflet();
+    leafletSurfaceMissingSince = 0;
+  }
 
   if (leafletMap) {
+    leafletSurfaceMissingSince = 0;
     try { leafletMap.invalidateSize(); } catch {}
-    scheduleLeafletRefresh(2);
+    scheduleLeafletRefresh(2, { throttleMs: 180 });
     bindMapSearchInput();
-    hydrateMapSearchFromVerifiedLocation();
+    const visibleLocations = renderCurrentMapMarkerSet({ query: getActiveMapSearchQuery(), panToFirst: false });
+    fitLeafletToLocations(visibleLocations, { force: false, animate: false });
+    hydrateMapSearchFromVerifiedLocation({ recenter: false });
+    const verified = resolveVerifiedMapCoords();
+    if (verified) setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
     return;
   }
 
@@ -640,6 +802,7 @@ function initLeafletIfNeeded() {
     zoomAnimation: true,
     markerZoomAnimation: true
   }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_DEFAULT_ZOOM);
+  leafletSurfaceMissingSince = 0;
   const primaryLayer = createLeafletTileLayer(LEAFLET_TILE_PRIMARY_URL);
   const canUseFallbackLayer = !!LEAFLET_TILE_FALLBACK_URL && LEAFLET_TILE_FALLBACK_URL !== LEAFLET_TILE_PRIMARY_URL;
   const PRIMARY_TILE_ERROR_THRESHOLD = 10;
@@ -692,17 +855,18 @@ function initLeafletIfNeeded() {
   primaryLayer.addTo(leafletMap);
   try {
     leafletMap.whenReady(() => {
-      scheduleLeafletRefresh(3);
+      scheduleLeafletRefresh(2);
     });
   } catch {}
 
-  renderCurrentMapMarkerSet();
+  const initialMarkerSet = renderCurrentMapMarkerSet({ query: "", panToFirst: false });
+  fitLeafletToLocations(initialMarkerSet, { force: true, animate: false });
   updateMapSheet();
   if (window.lucide?.createIcons) window.lucide.createIcons();
-  mapLocate({ preferVerified: true });
   bindMapSearchInput();
-  hydrateMapSearchFromVerifiedLocation({ force: true });
-  scheduleLeafletRefresh(3);
+  hydrateMapSearchFromVerifiedLocation({ force: true, recenter: false });
+  const verified = resolveVerifiedMapCoords();
+  if (verified) setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
 }
 
 function getSelectedMapMarkerKey() {
@@ -720,6 +884,7 @@ function getActiveMapSearchQuery() {
 function renderLeafletMarkers(locations) {
   if (!leafletMap || !window.L) return;
   const visibleLocations = getDiscoverableMapLocations(locations);
+  primeMapMarkerLogos(visibleLocations, 48);
   const selectedMarkerKey = getSelectedMapMarkerKey();
   const nextEntries = new Map();
   visibleLocations.forEach((entry, index) => {
@@ -743,14 +908,19 @@ function renderLeafletMarkers(locations) {
 
   nextEntries.forEach((entry, markerKey) => {
     let marker = leafletBizMarkerMap.get(markerKey) || null;
+    const isSelected = markerKey === selectedMarkerKey;
     if (!marker) {
       try {
-        marker = window.L.marker([entry.lat, entry.lng]).addTo(leafletMap);
+        marker = window.L.marker([entry.lat, entry.lng], {
+          icon: makeBizDivIcon(entry, { selected: isSelected }),
+          zIndexOffset: isSelected ? 1600 : 600
+        }).addTo(leafletMap);
       } catch (err) {
         console.warn("Skipping invalid map marker", entry?.id || "", err);
         return;
       }
       marker.__markerKey = markerKey;
+      marker.__visualSignature = buildMarkerVisualSignature(entry, { selected: isSelected });
       marker.on("click", () => {
         const selectedEntry = marker?.__biz || null;
         if (!selectedEntry) return;
@@ -772,7 +942,7 @@ function renderLeafletMarkers(locations) {
         marker.setLatLng([entry.lat, entry.lng]);
       }
     } catch {}
-    updateLeafletMarkerVisual(marker, { selected: markerKey === selectedMarkerKey });
+    updateLeafletMarkerVisual(marker, { selected: isSelected });
   });
 
   if (selectedMarkerKey && !leafletBizMarkerMap.has(selectedMarkerKey)) {
@@ -831,9 +1001,38 @@ function renderCurrentMapMarkerSet({
   return filtered;
 }
 
+function setMapSearchUiExpanded(expanded = true, { focus = false } = {}) {
+  mapSearchUiExpanded = expanded === true;
+  const searchShell = document.getElementById("mapSearchShell");
+  if (searchShell) {
+    searchShell.classList.toggle("map-search-shell--expanded", mapSearchUiExpanded);
+  }
+  const expandBtn = document.getElementById("mapSearchExpandBtn");
+  if (expandBtn) {
+    expandBtn.setAttribute("aria-expanded", mapSearchUiExpanded ? "true" : "false");
+  }
+  const searchInput = document.getElementById("mapSearchInput");
+  if (!(searchInput instanceof HTMLInputElement)) return;
+  const nextPlaceholder = mapSearchUiExpanded
+    ? MAP_SEARCH_PLACEHOLDER_EXPANDED
+    : MAP_SEARCH_PLACEHOLDER_COLLAPSED;
+  if (searchInput.placeholder !== nextPlaceholder) {
+    searchInput.placeholder = nextPlaceholder;
+  }
+  if (mapSearchUiExpanded && focus) {
+    try {
+      searchInput.focus({ preventScroll: true });
+    } catch {
+      searchInput.focus();
+    }
+  }
+}
+
 function bindMapSearchInput() {
   const searchInput = document.getElementById("mapSearchInput");
   if (!searchInput) return;
+  const expandBtn = document.getElementById("mapSearchExpandBtn");
+  setMapSearchUiExpanded(mapSearchUiExpanded, { focus: false });
   const applyFilter = ({ panToFirst = false } = {}) => {
     renderCurrentMapMarkerSet({
       query: searchInput.value,
@@ -844,8 +1043,32 @@ function bindMapSearchInput() {
     }
     updateMapSheet();
   };
+  if (expandBtn && expandBtn.dataset.bound !== "true") {
+    expandBtn.addEventListener("click", () => {
+      setMapSearchUiExpanded(true, { focus: true });
+    });
+    expandBtn.dataset.bound = "true";
+  }
+  if (searchInput.dataset.expandBound !== "true") {
+    searchInput.addEventListener("focus", () => {
+      setMapSearchUiExpanded(true, { focus: false });
+    });
+    searchInput.addEventListener("blur", () => {
+      window.setTimeout(() => {
+        const activeEl = document.activeElement;
+        const hasValue = !!String(searchInput.value || "").trim();
+        if (!hasValue && activeEl !== searchInput && activeEl !== expandBtn) {
+          setMapSearchUiExpanded(false, { focus: false });
+        }
+      }, 90);
+    });
+    searchInput.dataset.expandBound = "true";
+  }
   if (searchInput.dataset.bound !== "true") {
     searchInput.addEventListener("input", () => {
+      if (!mapSearchUiExpanded) {
+        setMapSearchUiExpanded(true, { focus: false });
+      }
       const queryLength = String(searchInput.value || "").trim().length;
       if (mapSearchFilterTimer) {
         clearTimeout(mapSearchFilterTimer);
@@ -946,7 +1169,7 @@ function resolveVerifiedMapCoords() {
   return { lat: verified.lat, lng: verified.lng };
 }
 
-function hydrateMapSearchFromVerifiedLocation({ force = false } = {}) {
+function hydrateMapSearchFromVerifiedLocation({ force = false, recenter = true } = {}) {
   const searchInput = document.getElementById("mapSearchInput");
   if (!(searchInput instanceof HTMLInputElement)) return false;
   const currentQuery = String(searchInput.value || "").trim();
@@ -961,7 +1184,10 @@ function hydrateMapSearchFromVerifiedLocation({ force = false } = {}) {
     renderCurrentMapMarkerSet({ query: "", panToFirst: false });
   }
   if (leafletMap) {
-    focusLeafletMap(verified.lat, verified.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.24 });
+    const shouldRefocus = recenter && (force || !isLeafletCenterClose(verified.lat, verified.lng));
+    if (shouldRefocus) {
+      focusLeafletMap(verified.lat, verified.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.24 });
+    }
     setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
   }
   if (state.selectedBusiness && !leafletBizMarkerMap.has(getSelectedMapMarkerKey())) {
@@ -1392,35 +1618,41 @@ function renderMapView() {
     ? "Karte konnte nicht geladen werden."
     : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
   const mapTruthState = renderMapTruthState();
+  const mapSearchExpanded = mapSearchUiExpanded === true;
+  const mapSearchPlaceholder = mapSearchExpanded
+    ? MAP_SEARCH_PLACEHOLDER_EXPANDED
+    : MAP_SEARCH_PLACEHOLDER_COLLAPSED;
   return `
-    <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-700">
-      <div class="mb-4 px-2 flex justify-between items-end">
+    <div class="map-view-root animate-in fade-in duration-700">
+      <div class="map-view-intro">
         <div>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
           <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
         </div>
       </div>
-      ${mapTruthState ? `<div class="mb-3 px-2">${mapTruthState}</div>` : ""}
+      ${mapTruthState ? `<div class="map-view-truth">${mapTruthState}</div>` : ""}
 
-      <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
+      <div class="map-view-surface">
         <div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>
         ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">${escapeHtml(mapInfoLabel)}</div>`}
         
-        <div class="absolute top-5 left-4 right-4 z-30">
+        <div class="map-view-overlay-top">
           <div id="mapNoticeSlot" class="mb-3">${renderMapNotice()}</div>
-          <div class="relative group shadow-lg rounded-2xl">
-            ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
-            <input id="mapSearchInput" type="text" placeholder="Stadt, Lokal suchen..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
+          <div id="mapSearchShell" class="map-search-shell${mapSearchExpanded ? " map-search-shell--expanded" : ""}">
+            <button id="mapSearchExpandBtn" type="button" aria-label="Suche oeffnen" aria-expanded="${mapSearchExpanded ? "true" : "false"}" class="map-search-expand-btn">
+              ${icon("search", "w-4 h-4")}
+            </button>
+            <input id="mapSearchInput" type="text" placeholder="${escapeHtml(mapSearchPlaceholder)}" class="map-search-input" />
           </div>
         </div>
 
-        <div class="absolute bottom-6 right-4 z-30 flex flex-col gap-3">
+        <div class="map-view-overlay-bottom-right">
           <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all">
             ${icon("navigation", "w-5 h-5 fill-white")}
           </button>
         </div>
 
-        <div id="mapSheetSlot" class="absolute bottom-4 left-4 right-4 z-40"></div>
+        <div id="mapSheetSlot" class="map-view-sheet-slot"></div>
       </div>
     </div>
   `;

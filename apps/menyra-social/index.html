@@ -261,6 +261,8 @@
       --active-modal-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
       --smart-header-content-gap: 1.2rem;
+      --viewport-height: 1vh;
+      --map-shell-height: calc(var(--viewport-height) * 100);
       color-scheme: light;
     }
     @supports (color-scheme: only light) {
@@ -356,12 +358,22 @@
       backdrop-filter: none !important;
     }
     .app-shell { min-height: 100svh; background: var(--app-bg); }
+    .app-shell--map {
+      min-height: var(--map-shell-height);
+      height: var(--map-shell-height);
+      display: flex;
+      flex-direction: column;
+    }
     .app-shell--chat-open {
       height: 100svh;
       max-height: 100svh;
       overflow: hidden;
     }
     html.is-standalone .app-shell { min-height: 100dvh; }
+    html.is-standalone .app-shell--map {
+      min-height: 100dvh;
+      height: 100dvh;
+    }
     html.is-standalone .app-shell--chat-open {
       height: 100dvh;
       max-height: 100dvh;
@@ -369,18 +381,25 @@
     .app-header-safe { padding-top: 1rem !important; }
     .app-main-scroll { padding-bottom: 1rem !important; }
     .map-fixed-page-header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      position: relative;
       width: 100%;
       max-width: none;
       padding-left: var(--safe-area-left);
       padding-right: var(--safe-area-right);
       z-index: 95;
       background: var(--app-bg);
+      flex: 0 0 auto;
     }
-    .app-main-scroll--with-map-fixed-header { padding-top: calc(var(--safe-area-top) + 5.5rem) !important; }
+    .app-main-scroll--with-map-fixed-header { padding-top: 0 !important; }
+    .app-main-scroll--map-fill {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 0 !important;
+      overflow: hidden;
+    }
     .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
     .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
     .app-main-content-safe { padding-bottom: 6rem !important; }
@@ -680,7 +699,12 @@
     }
     html.is-standalone .app-header-safe { padding-top: calc(var(--safe-area-top) + 1.25rem) !important; }
     html.is-standalone .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
-    html.is-standalone .app-main-scroll--with-map-fixed-header { padding-top: calc(var(--safe-area-top) + 5.75rem) !important; }
+    html.is-standalone .app-main-scroll--with-map-fixed-header { padding-top: 0 !important; }
+    html.is-standalone .app-main-scroll--map-fill {
+      min-height: 0;
+      height: auto;
+      padding-bottom: 0 !important;
+    }
     html.is-standalone .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
     html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
     html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
@@ -813,6 +837,178 @@
     .leaflet-container { background: #0f172a; }
     .leaflet-control-attribution { display: none !important; }
     .leaflet-control-zoom { display: none !important; }
+    .map-view-root {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    .map-view-intro {
+      margin-bottom: 1rem;
+      padding: 0 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .map-view-truth {
+      margin-bottom: 0.75rem;
+      padding: 0 0.5rem;
+    }
+    .map-view-surface {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+      background: #e2e8f0;
+      border-radius: 2.5rem;
+      overflow: hidden;
+      box-shadow: 0 20px 38px -24px rgb(15 23 42 / 0.45);
+      border: 1px solid rgb(226 232 240 / 0.5);
+    }
+    .map-view-overlay-top {
+      position: absolute;
+      top: 1.25rem;
+      left: 1rem;
+      right: 1rem;
+      z-index: 30;
+    }
+    .map-view-overlay-bottom-right {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1rem;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .map-view-sheet-slot {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      right: 1rem;
+      z-index: 40;
+    }
+    .map-search-shell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      width: 3.05rem;
+      max-width: 3.05rem;
+      min-height: 3.05rem;
+      border-radius: 9999px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      overflow: hidden;
+      transition: width 220ms ease, max-width 220ms ease;
+    }
+    .map-search-shell--expanded {
+      width: 100%;
+      max-width: 100%;
+      min-height: 3.5rem;
+      border-radius: 1rem;
+      border: 1px solid rgb(255 255 255 / 0.24);
+      background: rgb(255 255 255 / 0.92);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 12px 28px -18px rgb(15 23 42 / 0.35);
+      padding: 0.35rem;
+    }
+    .map-search-shell--expanded:focus-within {
+      border-color: rgb(99 102 241 / 0.45);
+      box-shadow: 0 0 0 2px rgb(99 102 241 / 0.16), 0 12px 28px -18px rgb(15 23 42 / 0.35);
+    }
+    .map-search-expand-btn {
+      width: 2.75rem;
+      height: 2.75rem;
+      flex: 0 0 2.75rem;
+      border: 0;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgb(255 255 255 / 0.95);
+      color: rgb(51 65 85);
+      box-shadow: 0 10px 22px -18px rgb(15 23 42 / 0.5), 0 0 0 1px rgb(148 163 184 / 0.18);
+      transition: transform 140ms ease, background-color 180ms ease, color 180ms ease;
+    }
+    .map-search-expand-btn:active {
+      transform: scale(0.95);
+    }
+    .map-search-shell--expanded .map-search-expand-btn {
+      background: rgb(79 70 229 / 0.16);
+      color: rgb(67 56 202);
+    }
+    .map-search-input {
+      width: 0;
+      max-width: 0;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      outline: none;
+      color: #0f172a;
+      font-size: 0.9rem;
+      line-height: 1.2rem;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      padding: 0;
+      transition: max-width 220ms ease, opacity 160ms ease, padding 200ms ease;
+    }
+    .map-search-input::placeholder {
+      color: rgb(148 163 184);
+      opacity: 1;
+    }
+    .map-search-shell--expanded .map-search-input {
+      width: 100%;
+      max-width: 520px;
+      opacity: 1;
+      pointer-events: auto;
+      padding-right: 0.5rem;
+    }
+    @media (max-width: 768px) {
+      .app-main-scroll--map-fill {
+        min-height: 0;
+        height: 100%;
+      }
+      .map-view-root {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+        padding: 0;
+      }
+      .map-view-intro,
+      .map-view-truth {
+        display: none;
+      }
+      .map-view-surface {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        border-radius: 0;
+        border: 0;
+        box-shadow: none;
+      }
+      .map-view-overlay-top {
+        top: 0.75rem;
+        left: 0.75rem;
+        right: 0.75rem;
+      }
+      .map-view-overlay-bottom-right {
+        bottom: 0.75rem;
+        right: 0.75rem;
+      }
+      .map-view-sheet-slot {
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 0.75rem;
+      }
+    }
     .custom-div-icon { background: transparent; border: none; overflow: visible; }
     .leaflet-marker-icon { overflow: visible; }
 
@@ -961,6 +1157,38 @@
         ? window.__MENYRA_SOCIAL_SET_DEGRADED__
         : () => {};
       const appRoot = document.getElementById("app");
+      const syncViewportHeightVar = () => {
+        try {
+          const vvHeight = Number(window?.visualViewport?.height || 0);
+          const innerHeight = Number(window?.innerHeight || 0);
+          const docHeight = Number(document?.documentElement?.clientHeight || 0);
+          const nextHeight = Math.max(vvHeight, innerHeight, docHeight);
+          if (nextHeight > 0) {
+            document.documentElement.style.setProperty("--viewport-height", `${(nextHeight * 0.01).toFixed(4)}px`);
+          }
+        } catch {}
+      };
+      syncViewportHeightVar();
+      try {
+        window.addEventListener("resize", syncViewportHeightVar, { passive: true });
+      } catch {}
+      try {
+        window.addEventListener("orientationchange", () => {
+          window.setTimeout(syncViewportHeightVar, 120);
+        });
+      } catch {}
+      try {
+        if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
+          window.visualViewport.addEventListener("resize", syncViewportHeightVar, { passive: true });
+          window.visualViewport.addEventListener("scroll", syncViewportHeightVar, { passive: true });
+        }
+      } catch {}
+      try {
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) return;
+          window.setTimeout(syncViewportHeightVar, 60);
+        });
+      } catch {}
       const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
       const effectiveType = String(connection?.effectiveType || "").trim().toLowerCase();
       const downlink = Number(connection?.downlink || 0);

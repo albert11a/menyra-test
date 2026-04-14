@@ -540,6 +540,7 @@ export function createOrdersRuntimeController({
         quantity: item.quantity,
         imageUrl: item.imageUrl,
         category: item.category,
+        comment: String(item.comment || "").trim(),
         cartKey: item.cartKey || buildShopVariantKey(item.itemId || item.id || "", {
           size: item.selectedSize || "",
           color: item.selectedColor || ""
