@@ -153,6 +153,29 @@ let locationPickerBizMarkers = [];
 let verifiedMapLocation = null; // NEU: Fuer die Koordinaten-Speicherung
 let locationPickerTarget = { addressInputId: "settingsAddress", coordsDisplayId: "coordsDisplay", context: "settings" };
 const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
+  const LEAD_LANDING_TEMPLATE_ID = "lead-screen-1";
+  const LEAD_LANDING_PUBLIC_ORIGIN = "https://mnyra.com";
+  const LEAD_LANDING_RESERVED_SLUGS = new Set([
+    "ceo",
+    "owner",
+    "staff",
+    "waiter",
+    "kitchen",
+    "social",
+    "heart",
+    "hub",
+    "apps",
+    "api",
+    "login",
+    "register",
+    "profile",
+    "post",
+    "story",
+    "menyra-restaurants",
+    "lp"
+  ]);
+  const leadLandingBackfillDone = new Set();
+  let leadLandingBackfillPromise = null;
   let buildStatusFetchPromise = null;
   let buildStatusLoaded = false;
 
@@ -164,6 +187,155 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     if (host.includes("vercel.app")) return "preview";
     if (host.endsWith(".menyra.com") || host.endsWith(".mnyra.com")) return "production";
     return "custom";
+  }
+
+  function isLocalLikeHostname(hostname = "") {
+    const host = String(hostname || "").trim().toLowerCase();
+    if (!host) return false;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".local")) return true;
+    if (/^10\./.test(host) || /^192\.168\./.test(host)) return true;
+    const privateMatch = host.match(/^172\.(\d{1,3})\./);
+    if (privateMatch) {
+      const second = Number(privateMatch[1]);
+      if (Number.isFinite(second) && second >= 16 && second <= 31) return true;
+    }
+    return false;
+  }
+
+  function normalizeLeadLandingSlugValue(value = "") {
+    let slug = String(value || "").trim().toLowerCase();
+    if (!slug) return "";
+    try {
+      if (typeof slug.normalize === "function") {
+        slug = slug.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+      }
+    } catch {}
+    return slug
+      .replace(/&/g, " and ")
+      .replace(/['"`]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 72);
+  }
+
+  function resolveLeadLandingSlugConflict(baseSlug = "", { restaurantId = "", leadId = "" } = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeLeadId = String(leadId || "").trim();
+    let candidate = normalizeLeadLandingSlugValue(baseSlug || safeRestaurantId || safeLeadId || "business");
+    if (!candidate) candidate = "business";
+
+    const restaurants = Array.isArray(state?.restaurants) ? state.restaurants : [];
+    const hasCollision = (slugValue = "") => restaurants.some((row) => {
+      const rowId = String(row?.id || "").trim();
+      if (rowId && safeRestaurantId && rowId === safeRestaurantId) return false;
+      const rowSlug = normalizeLeadLandingSlugValue(
+        row?.landingSlug || row?.name || row?.restaurantName || row?.leadId || rowId
+      );
+      return !!rowSlug && rowSlug === slugValue;
+    });
+
+    if (LEAD_LANDING_RESERVED_SLUGS.has(candidate) || hasCollision(candidate)) {
+      const suffixSource = normalizeLeadLandingSlugValue(safeRestaurantId || safeLeadId || "");
+      const suffix = suffixSource.replace(/-/g, "").slice(0, 6) || "biz";
+      candidate = `${candidate}-${suffix}`
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+    if (LEAD_LANDING_RESERVED_SLUGS.has(candidate)) {
+      candidate = `${candidate}-biz`;
+    }
+    return normalizeLeadLandingSlugValue(candidate) || "business";
+  }
+
+  function buildLeadLandingSlug(restaurantId = "", options = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const explicitSlug = normalizeLeadLandingSlugValue(safeOptions.landingSlug || "");
+    if (explicitSlug && !LEAD_LANDING_RESERVED_SLUGS.has(explicitSlug)) {
+      return resolveLeadLandingSlugConflict(explicitSlug, {
+        restaurantId: safeRestaurantId,
+        leadId: safeOptions.leadId || ""
+      });
+    }
+    const fromState = safeRestaurantId
+      ? (state?.restaurants || []).find((row) => String(row?.id || "").trim() === safeRestaurantId)
+      : null;
+    const derivedName = String(
+      safeOptions.businessName
+      || safeOptions.name
+      || safeOptions.restaurantName
+      || safeOptions.base?.name
+      || safeOptions.base?.restaurantName
+      || fromState?.name
+      || fromState?.restaurantName
+      || ""
+    ).trim();
+    const baseSlug = normalizeLeadLandingSlugValue(derivedName || safeRestaurantId || safeOptions.leadId || "");
+    return resolveLeadLandingSlugConflict(baseSlug, {
+      restaurantId: safeRestaurantId,
+      leadId: safeOptions.leadId || ""
+    });
+  }
+
+  function buildLeadLandingPagePath(restaurantId = "", options = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const landingSlug = buildLeadLandingSlug(safeRestaurantId, safeOptions);
+    if (!landingSlug) return "";
+    return `/${encodeURIComponent(landingSlug)}`;
+  }
+
+  function buildLeadLandingPageUrl(restaurantId = "", options = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const landingSlug = buildLeadLandingSlug(safeRestaurantId, safeOptions);
+    if (!landingSlug) return "";
+    const path = `/${encodeURIComponent(landingSlug)}`;
+    if (!path) return "";
+    const forcePublicOrigin = safeOptions.forcePublicOrigin === true;
+    if (!forcePublicOrigin && typeof window !== "undefined") {
+      const host = String(window.location?.hostname || "").trim().toLowerCase();
+      const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
+      if (isLocalLikeHostname(host)) {
+        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile&top=landing`;
+        return origin ? `${origin}${previewPath}` : previewPath;
+      }
+    }
+    const originRaw = String(safeOptions.origin || LEAD_LANDING_PUBLIC_ORIGIN || "").trim();
+    const origin = originRaw.replace(/\/+$/, "");
+    return origin ? `${origin}${path}` : path;
+  }
+
+  function buildLeadLandingScreenOnePayload({
+    restaurantId = "",
+    base = {}
+  } = {}) {
+    const businessName = String(base?.name || base?.restaurantName || base?.businessName || "Business").trim() || "Business";
+    const landingSlug = buildLeadLandingSlug(restaurantId, {
+      landingSlug: base?.landingSlug || "",
+      businessName,
+      leadId: base?.leadId || ""
+    });
+    const city = String(base?.city || "").trim();
+    const country = String(base?.country || "").trim();
+    const locationLabel = [city, country].filter(Boolean).join(", ");
+    const messageLine1 = locationLabel
+      ? `${businessName} in ${locationLabel} ist bereits in Mnyra vorbereitet.`
+      : `${businessName} ist bereits in Mnyra vorbereitet.`;
+    const messageLine2 = "Deine digitale Praesenz ist bereit zur Aktivierung.";
+    return {
+      version: 1,
+      template: LEAD_LANDING_TEMPLATE_ID,
+      restaurantId: String(restaurantId || "").trim(),
+      landingSlug,
+      businessName,
+      logoUrl: String(base?.logoUrl || base?.logo || "").trim(),
+      locationLabel,
+      city,
+      country,
+      messageLine1,
+      messageLine2
+    };
   }
 
   function normalizeBuildStatus(raw = {}) {
@@ -484,6 +656,7 @@ function getCrmLazyRendererContext() {
     buildLeadContactName,
     getCurrentCeoMeta,
     normalizeHandle,
+    buildLeadLandingPageUrl,
     getStaffFormEmail,
     getOptimizedImageUrl,
     isPlaceholderUrl,
@@ -1203,24 +1376,64 @@ async function createAuthUser(email, password) {
   }
 }
 
-async function ensureRestaurantPublicMeta(restaurantId, base) {
-  if (!restaurantId) return;
+async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  if (!safeRestaurantId) return;
+  const safeBase = base && typeof base === "object" ? base : {};
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const businessName = String(safeBase?.name || safeBase?.restaurantName || safeBase?.businessName || "Business").trim() || "Business";
+  const landingSlug = buildLeadLandingSlug(safeRestaurantId, {
+    landingSlug: safeOptions.landingSlug || safeBase?.landingSlug || "",
+    businessName,
+    leadId: safeOptions.leadId || safeBase?.leadId || ""
+  });
+  const landingUrl = buildLeadLandingPageUrl(safeRestaurantId, {
+    landingSlug,
+    businessName,
+    leadId: safeOptions.leadId || safeBase?.leadId || "",
+    forcePublicOrigin: true
+  });
+  const landingScreenOne = buildLeadLandingScreenOnePayload({
+    restaurantId: safeRestaurantId,
+    base: { ...safeBase, landingSlug }
+  });
   const payload = {
-    name: base?.name || base?.restaurantName || "",
-    restaurantName: base?.restaurantName || base?.name || "",
-    type: base?.type || "cafe",
-    city: base?.city || "",
-    logoUrl: base?.logoUrl || base?.logo || "",
-    logo: base?.logo || "",
+    name: safeBase?.name || safeBase?.restaurantName || "",
+    restaurantName: safeBase?.restaurantName || safeBase?.name || "",
+    type: safeBase?.type || "cafe",
+    city: safeBase?.city || "",
+    logoUrl: safeBase?.logoUrl || safeBase?.logo || "",
+    logo: safeBase?.logo || "",
+    landingEnabled: true,
+    landingTemplate: LEAD_LANDING_TEMPLATE_ID,
+    landingRestaurantId: safeRestaurantId,
+    landingSlug,
+    landingPageUrl: landingUrl,
+    landingScreenOne,
+    landingUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
-  await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), payload, { merge: true });
+  await setDoc(doc(db, "restaurants", safeRestaurantId, "public", "meta"), payload, { merge: true });
 }
 
 function normalizeLeadDoc(docSnap) {
   const sourceData = typeof docSnap?.data === "function" ? docSnap.data() : (docSnap?.data || docSnap || {});
   const data = applyKnownLeadOwnershipOverride(sourceData);
   const status = normalizeLeadStatusKey(data.status || "registered") || "registered";
+  const safeLeadId = String(docSnap?.id || data.id || "").trim();
+  const safeRestaurantId = String(data.restaurantId || data.restaurant || "").trim();
+  const safeLandingRestaurantId = String(data.landingRestaurantId || safeRestaurantId).trim();
+  const safeLandingSlug = String(data.landingSlug || "").trim();
+  const safeBusinessName = String(data.businessName || data.name || "").trim();
+  const hasLandingRouteKey = !!String(safeLandingRestaurantId || safeLandingSlug).trim();
+  const safeLandingPageUrl = String(data.landingPageUrl || "").trim()
+    || (hasLandingRouteKey
+      ? buildLeadLandingPageUrl(safeLandingRestaurantId, {
+          landingSlug: safeLandingSlug,
+          businessName: safeBusinessName,
+          leadId: safeLeadId
+        })
+      : "");
   const fallbackCoords = resolveCoordsFromEntity(data);
   const fallbackLat = fallbackCoords?.lat ?? null;
   const fallbackLng = fallbackCoords?.lng ?? null;
@@ -1230,7 +1443,7 @@ function normalizeLeadDoc(docSnap) {
   });
   const primary = getPrimaryLeadLocation(locations);
   return {
-    id: docSnap?.id || data.id || "",
+    id: safeLeadId,
     businessName: data.businessName || data.name || "",
     customerType: resolveCustomerType(data.customerType || data.type || "cafe"),
     contactName: data.contactName || data.contact || "",
@@ -1248,7 +1461,12 @@ function normalizeLeadDoc(docSnap) {
     specialEnabled: data.specialEnabled === true,
     note: data.note || "",
     status,
-    restaurantId: data.restaurantId || data.restaurant || "",
+    restaurantId: safeRestaurantId,
+    landingEnabled: data.landingEnabled !== false,
+    landingTemplate: data.landingTemplate || "",
+    landingRestaurantId: safeLandingRestaurantId,
+    landingSlug: safeLandingSlug,
+    landingPageUrl: safeLandingPageUrl,
     socialUid: data.socialUid || "",
     socialEmail: data.socialEmail || "",
     createdByUid: data.createdByUid || "",
@@ -1268,6 +1486,16 @@ function normalizeLeadFromRestaurant(rest) {
   if (!rest?.id) return null;
   const data = applyKnownLeadOwnershipOverride(rest);
   const status = normalizeLeadStatusKey(data.status || "registered") || "registered";
+  const safeRestaurantId = String(data.id || "").trim();
+  const safeLeadId = String(data.leadId || data.id || "").trim();
+  const safeBusinessName = String(data.name || data.restaurantName || "").trim();
+  const safeLandingSlug = String(data.landingSlug || "").trim();
+  const safeLandingPageUrl = String(data.landingPageUrl || "").trim()
+    || buildLeadLandingPageUrl(safeRestaurantId, {
+      landingSlug: safeLandingSlug,
+      businessName: safeBusinessName,
+      leadId: safeLeadId
+    });
   const fallbackCoords = resolveCoordsFromEntity(data);
   const fallbackLat = fallbackCoords?.lat ?? null;
   const fallbackLng = fallbackCoords?.lng ?? null;
@@ -1277,7 +1505,7 @@ function normalizeLeadFromRestaurant(rest) {
   });
   const primary = getPrimaryLeadLocation(locations);
   return {
-    id: data.leadId || data.id,
+    id: safeLeadId,
     businessName: data.name || data.restaurantName || "",
     customerType: resolveCustomerType(data.type || data.customerType || "cafe"),
     contactName: data.ownerName || "",
@@ -1290,7 +1518,15 @@ function normalizeLeadFromRestaurant(rest) {
     specialEnabled: data.specialEnabled === true,
     note: "",
     status,
-    restaurantId: data.id,
+    restaurantId: safeRestaurantId,
+    landingEnabled: true,
+    landingTemplate: data.landingTemplate || LEAD_LANDING_TEMPLATE_ID,
+    landingRestaurantId: safeRestaurantId,
+    landingSlug: safeLandingSlug || buildLeadLandingSlug(safeRestaurantId, {
+      businessName: safeBusinessName,
+      leadId: safeLeadId
+    }),
+    landingPageUrl: safeLandingPageUrl,
     socialUid: data.ownerUid || "",
     socialEmail: data.ownerEmail || "",
     createdByUid: data.createdByUid || "",
@@ -1558,6 +1794,142 @@ function syncVisibleLeadPageFromItems() {
   });
 }
 
+function patchLeadLandingInMemory(leadId = "", patch = {}) {
+  const safeLeadId = String(leadId || "").trim();
+  if (!safeLeadId || !patch || typeof patch !== "object") return;
+  const mergePatch = (entry = {}) => {
+    if (String(entry?.id || "").trim() !== safeLeadId) return entry;
+    return { ...entry, ...patch };
+  };
+  if (Array.isArray(state.leads.items)) {
+    state.leads.items = state.leads.items.map((entry) => mergePatch(entry));
+  }
+  if (state.leads.pages && typeof state.leads.pages === "object") {
+    Object.keys(state.leads.pages).forEach((scopeKey) => {
+      const page = Array.isArray(state.leads.pages[scopeKey]) ? state.leads.pages[scopeKey] : [];
+      state.leads.pages[scopeKey] = page.map((entry) => mergePatch(entry));
+    });
+  }
+}
+
+function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
+  const rest = restaurant || {};
+  const businessName = String(lead?.businessName || rest?.name || rest?.restaurantName || "Business").trim() || "Business";
+  const city = String(lead?.city || rest?.city || "").trim();
+  const country = String(lead?.country || rest?.country || "").trim();
+  const address = String(lead?.address || rest?.address || "").trim();
+  const logoUrl = String(lead?.logoUrl || lead?.logo || rest?.logoUrl || rest?.logo || "").trim();
+  const customerType = resolveCustomerType(lead?.customerType || rest?.type || rest?.customerType || "cafe");
+  const restaurantStatus = resolveRestaurantStatusFromLead(lead?.status || rest?.status || "registered", rest?.status || "");
+  const landingSlug = String(lead?.landingSlug || rest?.landingSlug || "").trim();
+  return {
+    ...(rest || {}),
+    name: businessName,
+    restaurantName: businessName,
+    type: customerType,
+    city,
+    country,
+    address,
+    logoUrl,
+    logo: logoUrl,
+    status: restaurantStatus,
+    leadId: String(lead?.id || rest?.leadId || "").trim(),
+    landingSlug
+  };
+}
+
+async function backfillLeadLandingForRows(rows = []) {
+  const list = Array.isArray(rows) ? rows : [];
+  let didPatch = false;
+  for (const lead of list.slice(0, 120)) {
+    const safeLeadId = String(lead?.id || "").trim();
+    let restaurantId = String(lead?.restaurantId || lead?.landingRestaurantId || "").trim();
+    let restaurant = null;
+    if (restaurantId) {
+      restaurant = (state.restaurants || []).find((row) => String(row?.id || "").trim() === restaurantId) || null;
+    }
+    if (!restaurantId && safeLeadId) {
+      restaurant = (state.restaurants || []).find((row) => String(row?.leadId || "").trim() === safeLeadId) || null;
+      restaurantId = String(restaurant?.id || "").trim();
+    }
+    if (!safeLeadId || !restaurantId) continue;
+    const dedupeKey = `${safeLeadId}:${restaurantId}`;
+    if (leadLandingBackfillDone.has(dedupeKey)) continue;
+
+    const businessName = String(lead?.businessName || restaurant?.name || restaurant?.restaurantName || "Business").trim() || "Business";
+    const landingSlug = buildLeadLandingSlug(restaurantId, {
+      landingSlug: lead?.landingSlug || restaurant?.landingSlug || "",
+      businessName,
+      leadId: safeLeadId
+    });
+    const landingPageUrl = buildLeadLandingPageUrl(restaurantId, {
+      landingSlug,
+      businessName,
+      leadId: safeLeadId,
+      forcePublicOrigin: true
+    });
+    const hasLeadLanding = (
+      String(lead?.landingTemplate || "").trim() === LEAD_LANDING_TEMPLATE_ID
+      && String(lead?.landingRestaurantId || "").trim() === restaurantId
+      && String(lead?.landingSlug || "").trim() === landingSlug
+      && String(lead?.landingPageUrl || "").trim() === landingPageUrl
+    );
+    const hasRestaurantLanding = (
+      String(restaurant?.landingTemplate || "").trim() === LEAD_LANDING_TEMPLATE_ID
+      && String(restaurant?.landingSlug || "").trim() === landingSlug
+      && String(restaurant?.landingPageUrl || "").trim() === landingPageUrl
+    );
+    if (hasLeadLanding && hasRestaurantLanding) {
+      leadLandingBackfillDone.add(dedupeKey);
+      continue;
+    }
+
+    try {
+      const metaBase = buildLeadLandingMetaBaseFromLead(
+        { ...(lead || {}), landingSlug },
+        { ...(restaurant || {}), landingSlug }
+      );
+      await ensureRestaurantPublicMeta(restaurantId, metaBase, { landingSlug, leadId: safeLeadId });
+      const restaurantPatch = {
+        landingEnabled: true,
+        landingTemplate: LEAD_LANDING_TEMPLATE_ID,
+        landingRestaurantId: restaurantId,
+        landingSlug,
+        landingPageUrl,
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(doc(db, "restaurants", restaurantId), restaurantPatch, { merge: true });
+      const patch = {
+        landingEnabled: true,
+        landingTemplate: LEAD_LANDING_TEMPLATE_ID,
+        landingRestaurantId: restaurantId,
+        landingSlug,
+        landingPageUrl,
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(doc(db, "leads", safeLeadId), patch, { merge: true });
+      patchLeadLandingInMemory(safeLeadId, patch);
+      leadLandingBackfillDone.add(dedupeKey);
+      didPatch = true;
+    } catch (err) {
+      console.warn("[mnyra][crm.leadLanding.backfill]", safeLeadId, err);
+    }
+  }
+  if (didPatch) render();
+}
+
+function queueLeadLandingBackfill(rows = []) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return;
+  if (leadLandingBackfillPromise) return;
+  leadLandingBackfillPromise = Promise.resolve()
+    .then(() => backfillLeadLandingForRows(list))
+    .catch(() => {})
+    .finally(() => {
+      leadLandingBackfillPromise = null;
+    });
+}
+
 async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
   if (!isCeoUser()) return;
   if (!hasStoredCeoCrmCounts(state.userProfile?.crmCounts) && !hasCeoCrmCountsPromise()) {
@@ -1602,6 +1974,7 @@ async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
       state.leads.loading = false;
       state.leads.loadingMore = false;
       state.leads.error = "";
+      queueLeadLandingBackfill(cachedRows);
       render();
       return;
     }
@@ -1640,6 +2013,7 @@ async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
     };
     state.leads.items = nextItems.slice();
     state.leads.error = "";
+    queueLeadLandingBackfill(nextItems);
     writeLeadScopeCache(currentUid, safeScope, nextItems, {
       hasMore: rows.length > nextSize,
       knownCount: rows.length,
@@ -2201,6 +2575,8 @@ async function saveLeadFromModal() {
     serverTimestamp,
     setDoc,
     ensureRestaurantPublicMeta,
+    buildLeadLandingPageUrl,
+    buildLeadLandingSlug,
     createAuthUser,
     buildLeadCrmContribution,
     buildCustomerCrmContribution,
@@ -2540,6 +2916,8 @@ async function convertLeadToCustomer(leadId) {
     db,
     setDoc,
     ensureRestaurantPublicMeta,
+    buildLeadLandingPageUrl,
+    buildLeadLandingSlug,
     accumulateCeoCrmDelta,
     buildCustomerCrmContribution,
     applyCeoCrmCountDeltas,

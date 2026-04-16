@@ -6,6 +6,7 @@ export function createPublicProfileRuntimeController({
   docFn = null,
   collectionFn = null,
   queryFn = null,
+  whereFn = null,
   orderByFn = null,
   limitFn = null,
   getDocFn = async () => null,
@@ -28,11 +29,93 @@ export function createPublicProfileRuntimeController({
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const makeCollectionRef = typeof collectionFn === "function" ? collectionFn : null;
   const buildQuery = typeof queryFn === "function" ? queryFn : null;
+  const buildWhere = typeof whereFn === "function" ? whereFn : null;
   const buildOrderBy = typeof orderByFn === "function" ? orderByFn : null;
   const buildLimit = typeof limitFn === "function" ? limitFn : null;
   const brandSocialName = String(brandUi?.social || "Menyra").trim() || "Menyra";
   const profilePostLimit = fastLimits?.profilePosts || fastLimits?.businessPosts || 12;
   let profileViewUnsub = null;
+
+  function normalizeLandingSlugKey(value = "") {
+    let key = String(value || "").trim().toLowerCase();
+    if (!key) return "";
+    try {
+      if (typeof key.normalize === "function") {
+        key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+      }
+    } catch {}
+    return key
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .trim();
+  }
+
+  function getFirstSnapshotDoc(snap = null) {
+    if (!snap) return null;
+    if (Array.isArray(snap.docs) && snap.docs.length) return snap.docs[0] || null;
+    let first = null;
+    if (typeof snap.forEach === "function") {
+      snap.forEach((docSnap) => {
+        if (!first) first = docSnap;
+      });
+    }
+    return first;
+  }
+
+  function findRestaurantInStateByRouteId(routeRestaurantId = "") {
+    const routeId = String(routeRestaurantId || "").trim();
+    if (!routeId) return null;
+    const rows = Array.isArray(state?.restaurants) ? state.restaurants : [];
+    const direct = rows.find((row) => String(row?.id || "").trim() === routeId) || null;
+    if (direct?.id) return direct;
+    const routeSlug = normalizeLandingSlugKey(routeId);
+    if (!routeSlug) return null;
+    return rows.find((row) => {
+      const rowSlug = normalizeLandingSlugKey(
+        row?.landingSlug || row?.handle || row?.name || row?.restaurantName || ""
+      );
+      return !!rowSlug && rowSlug === routeSlug;
+    }) || null;
+  }
+
+  async function resolveRestaurantDocByRouteId(routeRestaurantId = "", restaurant = null) {
+    const routeId = String(routeRestaurantId || restaurant?.id || "").trim();
+    const cachedRestaurant = restaurant || findRestaurantInStateByRouteId(routeId) || null;
+    const directRestaurantId = String(cachedRestaurant?.id || routeId || "").trim();
+
+    if (directRestaurantId && makeDocRef && db) {
+      try {
+        const snap = await getDocSafe(makeDocRef(db, "restaurants", directRestaurantId));
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
+          return { id: snap.id, data };
+        }
+      } catch {}
+    }
+
+    const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.landingSlug || "");
+    if (routeSlug && makeCollectionRef && buildQuery && buildWhere && db) {
+      try {
+        const ref = makeCollectionRef(db, "restaurants");
+        const constraints = [buildWhere("landingSlug", "==", routeSlug)];
+        if (buildLimit) constraints.push(buildLimit(1));
+        const snap = await getDocsSafe(buildQuery(ref, ...constraints));
+        const firstDoc = getFirstSnapshotDoc(snap);
+        if (firstDoc?.id) {
+          const data = firstDoc.data?.() || {};
+          if (!isPublicBusinessRecord({ id: firstDoc.id, ...data })) return null;
+          return { id: firstDoc.id, data };
+        }
+      } catch {}
+    }
+
+    if (cachedRestaurant?.id) {
+      if (!isPublicBusinessRecord(cachedRestaurant)) return null;
+      return { id: String(cachedRestaurant.id || "").trim(), data: cachedRestaurant };
+    }
+    return null;
+  }
 
   function getProfileViewUnsub() {
     return profileViewUnsub;
@@ -121,9 +204,14 @@ export function createPublicProfileRuntimeController({
     };
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = "posts";
-    state.profileTopTab = profile?.restaurantId
+    const resolvedTopTab = profile?.restaurantId
       ? (explicitTopTab || preservedTopTab || "profile")
       : "profile";
+    state.profileTopTab = resolvedTopTab;
+    if (resolvedTopTab === "landing") {
+      state.profileLandingStep = 0;
+      state.profileLandingGreetingIndex = 0;
+    }
     state.profileViewMode = "grid";
     state.profilePostMenuId = null;
     state.drawerOpen = false;
@@ -153,7 +241,12 @@ export function createPublicProfileRuntimeController({
       rest?.fans
     );
     const following = pickCountValue(data?.followingCount, data?.following, rest?.followingCount, rest?.following);
-    const restaurantId = data?.restaurantId || rest?.id || "";
+    const restaurantId = String(data?.restaurantId || data?.landingRestaurantId || profileDoc?.id || rest?.id || "").trim();
+    const landingEnabled = data?.landingEnabled ?? rest?.landingEnabled ?? true;
+    const landingTemplate = String(data?.landingTemplate || rest?.landingTemplate || "").trim();
+    const landingSlug = String(data?.landingSlug || rest?.landingSlug || "").trim();
+    const landingPageUrl = String(data?.landingPageUrl || rest?.landingPageUrl || "").trim();
+    const landingScreenOne = data?.landingScreenOne || rest?.landingScreenOne || null;
     const type = normalizeRestaurantType(
       data?.type
       || data?.customerType
@@ -176,6 +269,11 @@ export function createPublicProfileRuntimeController({
       privateAccount: false,
       role: "business",
       restaurantId,
+      landingEnabled: landingEnabled !== false,
+      landingTemplate,
+      landingSlug,
+      landingPageUrl,
+      ...(landingScreenOne && typeof landingScreenOne === "object" ? { landingScreenOne } : {}),
       ...(type ? { type, customerType: type } : {}),
       pendingFollowRequest: false,
       posts: posts || []
@@ -204,29 +302,17 @@ export function createPublicProfileRuntimeController({
   }
 
   async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
-    const rest = restaurant || (restaurantId ? state?.restaurants?.find?.((row) => row.id === restaurantId) : null) || null;
-    const restId = restaurantId || rest?.id || "";
-    if (restId && makeDocRef && db) {
-      try {
-        const snap = await getDocSafe(makeDocRef(db, "restaurants", restId));
-        if (snap.exists()) {
-          const data = snap.data() || {};
-          if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
-          return { id: snap.id, data };
-        }
-      } catch {}
-    }
-    if (rest?.id) {
-      if (!isPublicBusinessRecord(rest)) return null;
-      return { id: rest.id, data: rest };
-    }
-    return null;
+    return resolveRestaurantDocByRouteId(restaurantId, restaurant);
   }
 
   async function loadBusinessPostsForRestaurant(restaurantId) {
-    if (!restaurantId || !makeCollectionRef || !db) return [];
+    const routeRestaurantId = String(restaurantId || "").trim();
+    if (!routeRestaurantId || !makeCollectionRef || !db) return [];
+    const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
+    const effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
+    if (!effectiveRestaurantId) return [];
     try {
-      const ref = makeCollectionRef(db, "restaurants", restaurantId, "socialPosts");
+      const ref = makeCollectionRef(db, "restaurants", effectiveRestaurantId, "socialPosts");
       let snap = null;
       try {
         if (buildQuery && buildOrderBy && buildLimit) {
@@ -252,8 +338,8 @@ export function createPublicProfileRuntimeController({
           comments: row.commentsCount ?? row.comments ?? 0,
           isVideo: row.media?.[0]?.type === "video",
           ownerType: "restaurant",
-          ownerId: restaurantId,
-          restaurantId
+          ownerId: effectiveRestaurantId,
+          restaurantId: effectiveRestaurantId
         }))
         .filter((row) => row.url));
     } catch (err) {

@@ -991,6 +991,8 @@ const state = {
   profileViewMode: "grid",
   profileTopTab: "profile",
   profileContentTab: "posts",
+  profileLandingStep: 0,
+  profileLandingGreetingIndex: 0,
   profileCheckins: [],
   profilePostMenuId: null,
   profileModal: {
@@ -1488,6 +1490,10 @@ function resolveRouteQueryStateForCurrentView() {
     routeState.profileTopTab = "cart";
     return routeState;
   }
+  if (profileTopTab === "landing") {
+    routeState.profileTopTab = "landing";
+    return routeState;
+  }
   routeState.profileTopTab = "profile";
   return routeState;
 }
@@ -1666,6 +1672,7 @@ function resumeRender() {
 try {
   const initialRouteState = resolveInitialRouteState({
     qs,
+    pathname: typeof window !== "undefined" ? window.location?.pathname || "" : "",
     normalizeInitialTab,
     normalizeAuthMode
   });

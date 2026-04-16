@@ -42,10 +42,12 @@
     { "source": "/apps/menyra-owner/:path*", "destination": "/apps/menyra-social/index.html?tab=profile" },
     { "source": "/apps/menyra-staff/:path*", "destination": "/apps/menyra-social/index.html?tab=staff" },
     { "source": "/apps/menyra-restaurants/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/lp/:restaurantId", "destination": "/apps/menyra-social/index.html?r=:restaurantId&tab=profile&top=landing" },
     { "source": "/", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
-    { "source": "/menyra-restaurants/:path*", "destination": "/apps/menyra-social/index.html" }
+    { "source": "/menyra-restaurants/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/:landingSlug", "destination": "/apps/menyra-social/index.html?tab=profile&top=landing" }
   ],
   "headers": [
     {
@@ -62,6 +64,12 @@
     },
     {
       "source": "/apps/menyra-social/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/lead-landing/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]

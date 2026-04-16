@@ -593,6 +593,8 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function isBusinessProfileHeaderContext(profile = getActiveHeaderProfile()) {
+    const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    if (requestedTopTab === "landing") return false;
     return state.activeTab === "profile" && isBusinessHeaderProfile(profile);
   }
 
@@ -828,6 +830,8 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function renderSmartHeader() {
+    const isLandingTopTab = state.activeTab === "profile"
+      && String(state.profileTopTab || "").trim().toLowerCase() === "landing";
     const activeProfile = getActiveHeaderProfile();
     if (isBusinessProfileHeaderContext(activeProfile)) {
       const viewportUi = resolveBusinessHeaderViewportUi();
@@ -854,7 +858,7 @@ export function createAppShellRuntimeController(deps = {}) {
       : 0;
     const guestSession = isGuestSession();
     const headerLocationRecord = readStoredFeedViewerLocation();
-    const showFeedLocationHeaderSearch = shouldShowFeedLocationHeaderSearch(headerLocationRecord);
+    const showFeedLocationHeaderSearch = !isLandingTopTab && shouldShowFeedLocationHeaderSearch(headerLocationRecord);
     const feedLocationLabel = String(
       headerLocationRecord?.label
       || headerLocationRecord?.city

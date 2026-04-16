@@ -22,6 +22,8 @@ export async function saveLeadFromModalCore({
   serverTimestamp,
   setDoc,
   ensureRestaurantPublicMeta,
+  buildLeadLandingPageUrl,
+  buildLeadLandingSlug,
   createAuthUser,
   buildLeadCrmContribution,
   buildCustomerCrmContribution,
@@ -91,6 +93,68 @@ export async function saveLeadFromModalCore({
   const ensurePublicMeta = typeof ensureRestaurantPublicMeta === "function"
     ? ensureRestaurantPublicMeta
     : (async () => {});
+  const normalizeLandingSlug = (value = "") => {
+    let slug = String(value || "").trim().toLowerCase();
+    if (!slug) return "";
+    try {
+      if (typeof slug.normalize === "function") {
+        slug = slug.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+      }
+    } catch {}
+    return slug
+      .replace(/&/g, " and ")
+      .replace(/['"`]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 72);
+  };
+  const buildLandingSlug = typeof buildLeadLandingSlug === "function"
+    ? buildLeadLandingSlug
+    : ((restaurantId = "", options = {}) => {
+      const safeRestaurantId = String(restaurantId || "").trim();
+      const safeOptions = options && typeof options === "object" ? options : {};
+      const explicit = normalizeLandingSlug(safeOptions.landingSlug || "");
+      if (explicit) return explicit;
+      const fromName = normalizeLandingSlug(
+        safeOptions.businessName
+        || safeOptions.name
+        || safeOptions.restaurantName
+        || safeOptions.base?.name
+        || safeOptions.base?.restaurantName
+        || safeRestaurantId
+        || safeOptions.leadId
+        || "business"
+      );
+      return fromName || "business";
+    });
+  const isLocalLikeHostname = (hostname = "") => {
+    const host = String(hostname || "").trim().toLowerCase();
+    if (!host) return false;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".local")) return true;
+    if (/^10\./.test(host) || /^192\.168\./.test(host)) return true;
+    const privateMatch = host.match(/^172\.(\d{1,3})\./);
+    if (privateMatch) {
+      const second = Number(privateMatch[1]);
+      if (Number.isFinite(second) && second >= 16 && second <= 31) return true;
+    }
+    return false;
+  };
+  const buildLandingUrl = typeof buildLeadLandingPageUrl === "function"
+    ? buildLeadLandingPageUrl
+    : ((restaurantId = "", options = {}) => {
+      const safeRestaurantId = String(restaurantId || "").trim();
+      const safeOptions = options && typeof options === "object" ? options : {};
+      const landingSlug = buildLandingSlug(safeRestaurantId, safeOptions);
+      if (!landingSlug) return "";
+      if (!safeOptions.forcePublicOrigin && typeof window !== "undefined" && isLocalLikeHostname(window.location?.hostname || "")) {
+        const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
+        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile&top=landing`;
+        return origin ? `${origin}${previewPath}` : previewPath;
+      }
+      const origin = String(safeOptions.origin || "https://mnyra.com").trim().replace(/\/+$/, "");
+      const path = `/${encodeURIComponent(landingSlug)}`;
+      return origin ? `${origin}${path}` : path;
+    });
   const createUser = typeof createAuthUser === "function" ? createAuthUser : (async () => null);
   const buildLeadContribution = typeof buildLeadCrmContribution === "function"
     ? buildLeadCrmContribution
@@ -259,6 +323,17 @@ export async function saveLeadFromModalCore({
     const monthlyPrice = getMonthlyPrice(customerType, settings);
     const yearlyPrice = monthlyPrice * 12;
     const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
+    const landingSlug = buildLandingSlug(restaurantId, {
+      landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+      businessName,
+      leadId: lead?.id || ""
+    });
+    const landingPageUrl = buildLandingUrl(restaurantId, {
+      landingSlug,
+      businessName,
+      leadId: lead?.id || "",
+      forcePublicOrigin: true
+    });
     const shouldSeedRestaurantBeforeLogoUpload = !!restRef && !!state.leadModal.logoFile;
     if (shouldSeedRestaurantBeforeLogoUpload) {
       await setDoc(restRef, {
@@ -276,6 +351,11 @@ export async function saveLeadFromModalCore({
         specialEnabled,
         status: restaurantStatus,
         locations: locationPayload,
+        landingEnabled: true,
+        landingTemplate: "lead-screen-1",
+        landingRestaurantId: restaurantId,
+        landingSlug,
+        landingPageUrl,
         ...creatorMeta,
         createdAt: getTimestamp(),
         updatedAt: getTimestamp()
@@ -321,6 +401,11 @@ export async function saveLeadFromModalCore({
       status: restaurantStatus,
       leadId: lead.id || "",
       locations: locationPayload,
+      landingEnabled: true,
+      landingTemplate: "lead-screen-1",
+      landingRestaurantId: restaurantId,
+      landingSlug,
+      landingPageUrl,
       ...creatorMeta,
       updatedAt: getTimestamp()
     };
@@ -343,7 +428,7 @@ export async function saveLeadFromModalCore({
     } else {
       await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
     }
-    await ensurePublicMeta(restaurantId, restPayload);
+    await ensurePublicMeta(restaurantId, restPayload, { landingSlug, leadId: lead?.id || "" });
 
     let socialUid = lead.socialUid || "";
     let socialEmail = lead.socialEmail || "";
@@ -403,6 +488,11 @@ export async function saveLeadFromModalCore({
       price: activePrice,
       status: leadStatusKey,
       restaurantId,
+      landingEnabled: true,
+      landingTemplate: "lead-screen-1",
+      landingRestaurantId: restaurantId,
+      landingSlug,
+      landingPageUrl,
       socialUid,
       socialEmail,
       updatedAt: getTimestamp(),

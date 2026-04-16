@@ -104,13 +104,17 @@ export function renderMainCore({
     || (state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile);
   const isBusinessProfile = !!String(profile?.restaurantId || "").trim()
     || String(profile?.role || "").trim().toLowerCase() === "business";
+  const isLandingTopTab = state?.activeTab === "profile"
+    && String(state?.profileTopTab || "").trim().toLowerCase() === "landing";
   const hasSmartHeader = !!String(state?.activeTab || "").trim()
     && state?.activeTab !== "map"
     && !smartHeaderBlockedState;
+  const hasSmartHeaderContentGap = hasSmartHeader && !isLandingTopTab;
   const hasSmartHeaderTabs = hasSmartHeader
     && state?.activeTab === "profile"
     && isBusinessProfile
-    && !smartHeaderOverlayIsolationActive;
+    && !smartHeaderOverlayIsolationActive
+    && !isLandingTopTab;
   const isMapView = state?.activeTab === "map";
   const isChatThreadOpen = state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile;
   const shellClass = isChatThreadOpen
@@ -120,7 +124,7 @@ export function renderMainCore({
       : "app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans");
   const mainClass = isChatThreadOpen
     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
-    : `app-main-scroll${isMapView ? " app-main-scroll--with-map-fixed-header app-main-scroll--map-fill" : ""}${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}${hasSmartHeader ? " app-main-scroll--with-smart-header" : ""}${hasSmartHeaderTabs ? " app-main-scroll--with-smart-header-tabs" : ""}`;
+    : `app-main-scroll${isMapView ? " app-main-scroll--with-map-fixed-header app-main-scroll--map-fill" : ""}${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}${hasSmartHeaderContentGap ? " app-main-scroll--with-smart-header" : ""}${hasSmartHeaderTabs ? " app-main-scroll--with-smart-header-tabs" : ""}${isLandingTopTab ? " app-main-scroll--landing" : ""}`;
   const headerHtml = renderHeader();
   const shellHeaderHtml = isMapView
     ? `<div class="map-fixed-page-header">${headerHtml}</div>`

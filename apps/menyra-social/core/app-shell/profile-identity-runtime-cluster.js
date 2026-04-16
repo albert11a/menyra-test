@@ -63,6 +63,7 @@ export function createProfileIdentityRuntimeCluster({
     docFn: firebaseApi.docFn || null,
     collectionFn: firebaseApi.collectionFn || null,
     queryFn: firebaseApi.queryFn || null,
+    whereFn: firebaseApi.whereFn || null,
     orderByFn: firebaseApi.orderByFn || null,
     limitFn: firebaseApi.limitFn || null,
     getDocFn: firebaseApi.getDocFn || null,

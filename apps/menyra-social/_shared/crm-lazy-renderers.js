@@ -412,6 +412,7 @@ export function renderLeadsView(ctx = {}) {
     leadMatchesQuery,
     leadStatusTone,
     leadStatusLabel,
+    buildLeadLandingPageUrl,
     getOptimizedImageUrl,
     PLACEHOLDER_IMAGE,
     renderOwnershipPills,
@@ -456,6 +457,12 @@ export function renderLeadsView(ctx = {}) {
       const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
       const emailLine = lead.email || lead.socialEmail || "";
+      const landingRestaurantId = String(lead.landingRestaurantId || lead.restaurantId || rest?.id || "").trim();
+      const landingSlug = String(lead.landingSlug || rest?.landingSlug || "").trim();
+      const hasLandingRouteKey = !!String(landingRestaurantId || landingSlug).trim();
+      const landingUrl = hasLandingRouteKey && typeof buildLeadLandingPageUrl === "function"
+        ? String(buildLeadLandingPageUrl(landingRestaurantId, { landingSlug, businessName }) || "").trim()
+        : "";
       const ownershipHtml = renderOwnershipPills(lead, { hideOwn: scope === "own" });
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
@@ -471,6 +478,7 @@ export function renderLeadsView(ctx = {}) {
           </div>
           ${ownershipHtml}
           <div class="flex gap-2 mt-4">
+            ${landingUrl ? `<a href="${escapeHtml(landingUrl)}" target="_blank" rel="noopener noreferrer" class="px-4 py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500">Landing</a>` : ""}
             <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
           </div>
         </div>
