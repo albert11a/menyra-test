@@ -1,3 +1,13 @@
+const LANDING_GREETINGS_COUNT = 13;
+const LANDING_MAX_STEP = 2;
+const LANDING_SWIPE_VERTICAL_THRESHOLD_PX = 14;
+const LANDING_SWIPE_FAST_THRESHOLD_PX = 8;
+const LANDING_SWIPE_FAST_MAX_DURATION_MS = 220;
+const LANDING_SWIPE_HORIZONTAL_THRESHOLD_PX = 24;
+const LANDING_ANIMATION_LOCK_MS = 340;
+let landingGreetingIntervalId = null;
+let landingInteractionLockedUntilTs = 0;
+
 export function bindAppShellEventsCore({
   documentObj,
   state,
@@ -65,6 +75,45 @@ export function bindAppShellEventsCore({
     return String(profile?.role || "").trim().toLowerCase() === "business";
   };
   const isBusinessProfileView = () => state.activeTab === "profile" && isBusinessProfile();
+  const isLandingTopTabActive = () => state.activeTab === "profile"
+    && String(state.profileTopTab || "").trim().toLowerCase() === "landing";
+  const normalizeLandingStep = (value = 0) => {
+    const parsed = Math.round(Number(value || 0));
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.max(0, Math.min(LANDING_MAX_STEP, parsed));
+  };
+  const normalizeLandingGreetingIndex = (value = 0, length = LANDING_GREETINGS_COUNT) => {
+    const size = Math.max(1, Number(length || 0) || 1);
+    const parsed = Math.round(Number(value || 0));
+    if (!Number.isFinite(parsed)) return 0;
+    const normalized = parsed % size;
+    return normalized < 0 ? normalized + size : normalized;
+  };
+  const clearLandingGreetingCycle = () => {
+    const win = doc?.defaultView;
+    if (!win || !landingGreetingIntervalId) return;
+    win.clearInterval(landingGreetingIntervalId);
+    landingGreetingIntervalId = null;
+  };
+  const bindFastTap = (element, handler) => {
+    if (!(element instanceof HTMLElement)) return;
+    if (typeof handler !== "function") return;
+    if (element.dataset.fastTapBound === "1") return;
+    element.dataset.fastTapBound = "1";
+    let lastTouchTs = 0;
+    element.addEventListener("touchstart", () => {
+      lastTouchTs = Date.now();
+      handler();
+    }, { passive: true });
+    element.addEventListener("click", (event) => {
+      const elapsed = Date.now() - lastTouchTs;
+      if (elapsed >= 0 && elapsed < 450) {
+        if (event.cancelable) event.preventDefault();
+        return;
+      }
+      handler();
+    });
+  };
   const scrollWindowToTop = (smooth = false) => {
     if (!doc?.defaultView?.scrollTo) return;
     if (!smooth) {
@@ -120,6 +169,182 @@ export function bindAppShellEventsCore({
       doc.defaultView.scrollTo(0, nextTop);
     }
   };
+  const bindLandingSwipeExperience = () => {
+    clearLandingGreetingCycle();
+    const landingRoot = doc.querySelector("[data-landing-swipe-root=\"true\"]");
+    if (!(landingRoot instanceof HTMLElement)) return;
+    landingInteractionLockedUntilTs = 0;
+    const existingSwipeAbortController = landingRoot.__mnyraLandingSwipeAbortController;
+    if (existingSwipeAbortController && typeof existingSwipeAbortController.abort === "function") {
+      try {
+        existingSwipeAbortController.abort();
+      } catch {}
+    }
+    const swipeAbortController = doc?.defaultView?.AbortController
+      ? new doc.defaultView.AbortController()
+      : null;
+    if (swipeAbortController) {
+      landingRoot.__mnyraLandingSwipeAbortController = swipeAbortController;
+    } else {
+      landingRoot.__mnyraLandingSwipeAbortController = null;
+    }
+
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let touchStartAt = 0;
+
+    const syncLandingStepDom = (nextStepRaw = 0) => {
+      const nextStep = normalizeLandingStep(nextStepRaw);
+      const dots = Array.from(landingRoot.querySelectorAll("[data-landing-step-dot]"));
+      dots.forEach((dot) => {
+        if (!(dot instanceof HTMLElement)) return;
+        const dotStep = Math.round(Number(dot.dataset.landingStepDot || 0));
+        const isActive = dotStep === nextStep;
+        dot.classList.toggle("bg-indigo-600", isActive);
+        dot.classList.toggle("bg-slate-300", !isActive);
+        dot.classList.toggle("shadow-sm", isActive);
+        dot.style.transform = isActive ? "scale(1.25)" : "scale(1)";
+      });
+      const panel0 = landingRoot.querySelector("[data-landing-panel=\"0\"]");
+      const panel1 = landingRoot.querySelector("[data-landing-panel=\"1\"]");
+      const panel2 = landingRoot.querySelector("[data-landing-panel=\"2\"]");
+      if (panel0 instanceof HTMLElement) {
+        panel0.style.transform = nextStep === 0 ? "translateY(0%)" : "translateY(-100%)";
+        panel0.style.pointerEvents = nextStep === 0 ? "auto" : "none";
+      }
+      if (panel1 instanceof HTMLElement) {
+        panel1.style.transform = nextStep === 0
+          ? "translateY(100%)"
+          : (nextStep === 1 ? "translateY(0%)" : "translateY(-100%)");
+      }
+      if (panel2 instanceof HTMLElement) {
+        panel2.style.transform = nextStep <= 1 ? "translateY(100%)" : "translateY(0%)";
+      }
+    };
+
+    const syncLandingGreetingDom = (nextGreetingIndexRaw = 0) => {
+      const greetingItems = Array.from(landingRoot.querySelectorAll("[data-landing-greeting-item]"));
+      if (!greetingItems.length) return;
+      const safeIndex = normalizeLandingGreetingIndex(nextGreetingIndexRaw, greetingItems.length);
+      const prevIndex = (safeIndex - 1 + greetingItems.length) % greetingItems.length;
+      greetingItems.forEach((node, idx) => {
+        if (!(node instanceof HTMLElement)) return;
+        if (idx === safeIndex) {
+          node.style.opacity = "1";
+          node.style.transform = "translateY(0) scale(1)";
+          node.style.pointerEvents = "auto";
+          return;
+        }
+        node.style.opacity = "0";
+        if (idx === prevIndex) {
+          node.style.transform = "translateY(-1.5rem) scale(0.95)";
+        } else {
+          node.style.transform = "translateY(1.5rem) scale(0.95)";
+        }
+        node.style.pointerEvents = "none";
+      });
+    };
+
+    const goToStep = (nextStep = 0) => {
+      if (Date.now() < landingInteractionLockedUntilTs) return;
+      const currentStep = normalizeLandingStep(state.profileLandingStep);
+      const safeNextStep = normalizeLandingStep(nextStep);
+      if (currentStep === safeNextStep) return;
+      landingInteractionLockedUntilTs = Date.now() + LANDING_ANIMATION_LOCK_MS;
+      state.profileLandingStep = safeNextStep;
+      syncLandingStepDom(safeNextStep);
+    };
+
+    const goToNextStep = () => {
+      const currentStep = normalizeLandingStep(state.profileLandingStep);
+      goToStep(Math.min(LANDING_MAX_STEP, currentStep + 1));
+    };
+
+    const goToPrevStep = () => {
+      const currentStep = normalizeLandingStep(state.profileLandingStep);
+      goToStep(Math.max(0, currentStep - 1));
+    };
+
+    const resolveVerticalSwipeThreshold = (durationMs = 0) => {
+      if (durationMs > 0 && durationMs <= LANDING_SWIPE_FAST_MAX_DURATION_MS) {
+        return LANDING_SWIPE_FAST_THRESHOLD_PX;
+      }
+      return LANDING_SWIPE_VERTICAL_THRESHOLD_PX;
+    };
+
+    const touchStartOptions = swipeAbortController
+      ? { passive: true, signal: swipeAbortController.signal }
+      : { passive: true };
+    landingRoot.addEventListener("touchstart", (event) => {
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      touchStartY = Number(touch.clientY || 0);
+      touchStartX = Number(touch.clientX || 0);
+      touchStartAt = Date.now();
+    }, touchStartOptions);
+
+    const touchMoveOptions = swipeAbortController
+      ? { passive: false, signal: swipeAbortController.signal }
+      : { passive: false };
+    landingRoot.addEventListener("touchmove", (event) => {
+      if (event.cancelable) event.preventDefault();
+    }, touchMoveOptions);
+
+    const touchEndOptions = swipeAbortController
+      ? { passive: true, signal: swipeAbortController.signal }
+      : { passive: true };
+    landingRoot.addEventListener("touchend", (event) => {
+      if (Date.now() < landingInteractionLockedUntilTs) return;
+      const touch = event.changedTouches?.[0];
+      if (!touch) return;
+      const touchEndY = Number(touch.clientY || 0);
+      const touchEndX = Number(touch.clientX || 0);
+      const deltaY = touchStartY - touchEndY;
+      const deltaX = touchStartX - touchEndX;
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > LANDING_SWIPE_HORIZONTAL_THRESHOLD_PX) {
+        return;
+      }
+      const gestureDurationMs = touchStartAt > 0 ? Math.max(0, Date.now() - touchStartAt) : 0;
+      const verticalThreshold = resolveVerticalSwipeThreshold(gestureDurationMs);
+      if (deltaY > verticalThreshold) goToNextStep();
+      else if (deltaY < -verticalThreshold) goToPrevStep();
+    }, touchEndOptions);
+
+    const touchCancelOptions = swipeAbortController
+      ? { passive: true, signal: swipeAbortController.signal }
+      : { passive: true };
+    landingRoot.addEventListener("touchcancel", () => {
+      touchStartY = 0;
+      touchStartX = 0;
+      touchStartAt = 0;
+    }, touchCancelOptions);
+
+    const wheelOptions = swipeAbortController
+      ? { passive: false, signal: swipeAbortController.signal }
+      : { passive: false };
+    landingRoot.addEventListener("wheel", (event) => {
+      if (Date.now() < landingInteractionLockedUntilTs) return;
+      if (event.cancelable) event.preventDefault();
+      const deltaY = Number(event.deltaY || 0);
+      if (deltaY > LANDING_SWIPE_VERTICAL_THRESHOLD_PX) goToNextStep();
+      else if (deltaY < -LANDING_SWIPE_VERTICAL_THRESHOLD_PX) goToPrevStep();
+    }, wheelOptions);
+
+    syncLandingStepDom(state.profileLandingStep);
+    syncLandingGreetingDom(state.profileLandingGreetingIndex);
+
+    if (!isLandingTopTabActive()) return;
+    if (normalizeLandingStep(state.profileLandingStep) !== 0) return;
+    if (!doc?.defaultView?.setInterval) return;
+    landingGreetingIntervalId = doc.defaultView.setInterval(() => {
+      if (!isLandingTopTabActive()) return;
+      if (normalizeLandingStep(state.profileLandingStep) !== 0) return;
+      const currentGreetingIndex = Math.max(0, Number(state.profileLandingGreetingIndex || 0) || 0);
+      const nextGreetingIndex = (currentGreetingIndex + 1) % LANDING_GREETINGS_COUNT;
+      state.profileLandingGreetingIndex = nextGreetingIndex;
+      syncLandingGreetingDom(nextGreetingIndex);
+    }, 4000);
+  };
 
   const drawerToggle = doc.getElementById("drawerToggle");
   const drawerOverlay = doc.getElementById("drawerOverlay");
@@ -127,9 +352,9 @@ export function bindAppShellEventsCore({
   const logoutBtn = doc.getElementById("logoutBtn");
   const settingsLogout = doc.getElementById("settingsLogout");
 
-  if (drawerToggle) drawerToggle.addEventListener("click", () => setState({ drawerOpen: true }));
-  if (drawerOverlay) drawerOverlay.addEventListener("click", () => setState({ drawerOpen: false }));
-  if (drawerClose) drawerClose.addEventListener("click", () => setState({ drawerOpen: false }));
+  bindFastTap(drawerToggle, () => setState({ drawerOpen: true }));
+  bindFastTap(drawerOverlay, () => setState({ drawerOpen: false }));
+  bindFastTap(drawerClose, () => setState({ drawerOpen: false }));
 
   [logoutBtn, settingsLogout].forEach((btn) => {
     if (btn) {
@@ -256,6 +481,11 @@ export function bindAppShellEventsCore({
     if (forceProfile) state.activeTab = "profile";
     const shouldRouteMenuThroughContentTab = nextTab === "menu" && isBusinessProfileView();
     state.profileTopTab = nextTab;
+    if (nextTab === "landing") {
+      state.profileLandingStep = 0;
+      state.profileLandingGreetingIndex = 0;
+      landingInteractionLockedUntilTs = 0;
+    }
     if (shouldRouteMenuThroughContentTab) {
       state.profileContentTab = "menu";
     }
@@ -348,5 +578,6 @@ export function bindAppShellEventsCore({
     });
   });
 
+  bindLandingSwipeExperience();
   syncBusinessMenuCategoryUi();
 }

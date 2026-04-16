@@ -189,6 +189,10 @@
     })();
   </script>
   <title>MNYRA Social</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap"></noscript>
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
   <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin>
   <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev">
@@ -402,6 +406,13 @@
     }
     .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
     .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
+    .app-main-scroll--landing {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
     .app-main-content-safe { padding-bottom: 6rem !important; }
     .app-content-inline {
       padding-left: var(--app-content-inline) !important;
@@ -1055,7 +1066,16 @@
     body.fast-mode .transition-all { transition: none !important; }
     body.fast-mode .feed-card { contain: content; }
     body.fast-mode .animate-pulse { animation: none !important; }
+    body.fast-mode .animate-bounce { animation: none !important; }
     body.fast-mode .group-hover\:scale-105 { transform: none !important; }
+    body.fast-mode [data-landing-swipe-root="true"] {
+      --landing-panel-duration: 180ms !important;
+      --landing-greeting-duration: 220ms !important;
+    }
+    body.fast-mode [data-landing-swipe-root="true"] [data-landing-glow="1"] {
+      opacity: 0.5;
+      filter: none !important;
+    }
     @supports (position: sticky) {
       #feedLocationGate[data-location-screen-mode="feed-stage"],
       #feedLocationGate[data-sticky-feed-bento="true"] {

@@ -279,7 +279,7 @@ function resolveProfileContentTabForRendering(profile = {}) {
 function resolveProfilePrimaryTopTab(profile = {}) {
   const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
   if (isBusinessProfileEntity(profile)) {
-    if (requestedTopTab === "cart" || requestedTopTab === "favorites") {
+    if (requestedTopTab === "cart" || requestedTopTab === "favorites" || requestedTopTab === "landing") {
       return requestedTopTab;
     }
     return "profile";
@@ -288,6 +288,131 @@ function resolveProfilePrimaryTopTab(profile = {}) {
     return "favorites";
   }
   return "profile";
+}
+
+function normalizeLandingStep(value = 0) {
+  const parsed = Math.round(Number(value || 0));
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(2, parsed));
+}
+
+function normalizeLandingGreetingIndex(value = 0, length = 1) {
+  const size = Math.max(1, Number(length || 0) || 1);
+  const parsed = Math.round(Number(value || 0));
+  if (!Number.isFinite(parsed)) return 0;
+  const normalized = parsed % size;
+  return normalized < 0 ? normalized + size : normalized;
+}
+
+function renderBusinessLandingScreenOne(profile = {}) {
+  const greetings = [
+    "Mirë se vini",
+    "Welcome",
+    "Willkommen",
+    "Bienvenido",
+    "Bienvenue",
+    "Benvenuto",
+    "Olá",
+    "Welkom",
+    "Välkommen",
+    "Hoş geldiniz",
+    "Yokoso",
+    "Huānyíng",
+    "Namaste"
+  ];
+  const step = normalizeLandingStep(state.profileLandingStep);
+  const currentGreetingIndex = normalizeLandingGreetingIndex(state.profileLandingGreetingIndex, greetings.length);
+  const landing = profile?.landingScreenOne && typeof profile.landingScreenOne === "object"
+    ? profile.landingScreenOne
+    : {};
+  const businessName = String(
+    landing.businessName
+    || profile.name
+    || "casarita"
+  ).trim() || "casarita";
+  const businessHeading = businessName.endsWith(".") ? businessName : `${businessName}.`;
+  const logoUrl = getOptimizedImageUrl(
+    landing.logoUrl
+    || profile.avatar
+    || "",
+    "avatar"
+  );
+  const inlineLogoPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23f8fafc'/%3E%3Ccircle cx='48' cy='48' r='34' fill='%2394a3b8'/%3E%3Ctext x='48' y='54' text-anchor='middle' font-family='Arial,sans-serif' font-size='16' font-weight='700' fill='white'%3EM%3C/text%3E%3C/svg%3E";
+  const resolvedLogoUrl = String(logoUrl || "").trim() || inlineLogoPlaceholder;
+  const line1 = String(
+    landing.messageLine1
+    || "Lokali juaj është përgatitur tashmë në Mnyra."
+  ).trim();
+  const line2 = String(
+    landing.messageLine2
+    || "Prezenca juaj digjitale eshte gati për aktivizim."
+  ).trim();
+  return `
+    <section data-landing-swipe-root="true" class="relative w-full overflow-hidden font-sans" style="height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); overscroll-behavior: none; -webkit-overflow-scrolling: auto; touch-action: none; user-select: none; background: #F8F9FA; --landing-panel-duration: 560ms; --landing-greeting-duration: 760ms;">
+      <div class="absolute z-[70] flex flex-col" style="right: 1rem; top: 33.333333%; transform: translateY(-50%); gap: 0.75rem;">
+        ${[0, 1, 2].map((dotStep) => `
+          <div data-landing-step-dot="${dotStep}" class="rounded-full transition-all duration-300 ease-out ${step === dotStep ? "bg-indigo-600 shadow-sm" : "bg-slate-300"}" style="width: 8px; height: 8px; transform: scale(${step === dotStep ? "1.25" : "1"});"></div>
+        `).join("")}
+      </div>
+
+      <div data-landing-panel="0" class="absolute inset-0 z-50 flex flex-col items-start justify-center transition-transform ${step === 0 ? "translate-y-0" : "-translate-y-full pointer-events-none"}" style="background: #F8F9FA; color: #111827; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1);">
+        <div data-landing-glow="1" class="absolute rounded-full pointer-events-none" style="top: 33.333333%; left: 25%; width: 16rem; height: 16rem; background: radial-gradient(circle at center, rgb(224 231 255 / 0.7) 0%, rgb(224 231 255 / 0.45) 42%, rgb(224 231 255 / 0.06) 72%, rgb(224 231 255 / 0) 100%);"></div>
+        <div class="flex flex-col items-start relative z-10 w-full" style="padding-left: 2.5rem; padding-right: 2.5rem;">
+          <div class="relative w-full flex justify-start items-center mb-5" style="height: 40px;">
+            ${greetings.map((greet, idx) => {
+              const isActive = idx === currentGreetingIndex;
+              const isPrev = idx === (currentGreetingIndex - 1 + greetings.length) % greetings.length;
+              const isNext = !isActive && !isPrev;
+              const greetingStateStyle = isActive
+                ? "opacity: 1; transform: translateY(0) scale(1);"
+                : isPrev
+                  ? "opacity: 0; transform: translateY(-1.5rem) scale(0.95); pointer-events: none;"
+                  : isNext
+                    ? "opacity: 0; transform: translateY(1.5rem) scale(0.95); pointer-events: none;"
+                    : "opacity: 0;";
+              return `
+                <h1 data-landing-greeting-item="${idx}" class="absolute left-0 font-medium text-indigo-600 origin-left" style="font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 1.875rem; line-height: 2.25rem; transition: all var(--landing-greeting-duration) cubic-bezier(0.23,1,0.32,1); ${greetingStateStyle}">
+                  ${escapeHtml(greet)}
+                </h1>
+              `;
+            }).join("")}
+          </div>
+          <div class="flex items-center gap-3 mb-6">
+            <div class="rounded-full shadow-sm border border-slate-200 flex items-center justify-center overflow-hidden shrink-0" style="width:48px;height:48px;min-width:48px;min-height:48px;max-width:48px;max-height:48px;flex:0 0 48px;background:#f8fafc;">
+              <img src="${escapeHtml(resolvedLogoUrl)}" alt="${escapeHtml(`${businessName} Logo`)}" class="block rounded-full" style="width:100%;height:100%;min-width:100%;min-height:100%;object-fit:cover;object-position:center;max-width:none;max-height:none;" />
+            </div>
+            <h2 class="font-black text-left flex items-center" style="font-size:56px;line-height:48px;letter-spacing:-0.05em;color:#111827;">
+              ${escapeHtml(businessHeading)}
+            </h2>
+          </div>
+          <p class="text-slate-500 text-sm leading-relaxed font-medium text-left" style="max-width: 340px;">
+            ${escapeHtml(line1)}<br />
+            ${escapeHtml(line2)}
+          </p>
+        </div>
+        <div class="absolute w-full flex justify-center pointer-events-none" style="bottom: 3rem;">
+          <div class="flex flex-col items-center animate-bounce text-indigo-600/80">
+            <span class="text-[9px] font-bold tracking-[0.25em] uppercase mb-2">Swipe</span>
+            ${icon("chevron-down", "w-6 h-6 text-indigo-600")}
+          </div>
+        </div>
+      </div>
+
+      <div data-landing-panel="1" class="absolute inset-0 flex items-center justify-center transition-transform ${step === 0 ? "translate-y-full" : step === 1 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1);">
+        <div class="text-center">
+          <p class="text-indigo-600 font-bold mb-2">Schritt 1</p>
+          <p class="text-slate-400 font-medium">Hier kommen die Tabs hin...</p>
+        </div>
+      </div>
+
+      <div data-landing-panel="2" class="absolute inset-0 bg-white flex items-center justify-center transition-transform ${step <= 1 ? "translate-y-full" : "translate-y-0"}" style="transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1);">
+        <div class="text-center">
+          <p class="text-indigo-600 font-bold mb-2">Schritt 2</p>
+          <p class="text-slate-400 font-medium">Hier kommt das fertige Menü hin...</p>
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function renderProfileTabs(profile = state.profileView?.profile || state.userProfile) {
@@ -356,6 +481,9 @@ function renderPublicProfileView() {
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   const topTab = resolveProfilePrimaryTopTab(profile);
+  if (topTab === "landing") {
+    return renderBusinessLandingScreenOne(profile);
+  }
   const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
   const followTone = isFollowing

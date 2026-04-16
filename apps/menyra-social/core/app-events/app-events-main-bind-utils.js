@@ -157,125 +157,131 @@ export function bindAppEventsCore({
     openProfileViewFromBusinessFn
   });
 
-  const menuFocusBinding = bindAppMenuFocusEvents({
-    documentObj: doc,
-    state,
-    renderFn,
-    saveMenuLayoutToStorageFn,
-    openMenuModalFn,
-    deleteMenuItemByIdFn,
-    triggerMenuDetailOpenFromGestureFn,
-    updateShopCartQuantityFn,
-    updateShopCartItemCommentFn,
-    openShopCheckoutFn,
-    submitShopCheckoutFn,
-    updateShopCheckoutFieldFn,
-    saveTableQrConfigFn,
-    focusCache,
-    focusCacheKeyFn,
-    saveFocusEnabledFn,
-    openFocusModalFn,
-    deleteFocusItemByIdFn,
-    setFocusIndexFn,
-    toggleProfilePostMenuFn,
-    toggleProfilePostWidthFn,
-    deleteProfilePostFn,
-    setProfileMenuOpenFn,
-    profileMenuBound,
-    mapLocateFn,
-    bindNotificationsDelegationFn
-  });
-  setProfileMenuBound(!!menuFocusBinding?.profileMenuBound);
+  const activeTab = String(state.activeTab || "").trim().toLowerCase();
+  const profileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+  const isLandingTopTabActive = activeTab === "profile" && profileTopTab === "landing";
 
-  bindAppSettingsProfileEvents({
-    documentObj: doc,
-    state,
-    setStateFn,
-    renderFn,
-    iconFn,
-    saveAccountSettingsFn,
-    openLocationPickerFn,
-    clearVerifiedMapLocationFn,
-    syncNotificationsPushRuntimeFn,
-    saveSettingsFn,
-    disablePushDeviceRegistrationFn,
-    getPushActivationIssueMessageFn,
-    saveUserProfileToStorageFn,
-    persistPrivateAccountSettingFn,
-    uploadAvatarFn,
-    openProfileViewFromBusinessFn,
-    findPostByIdFn,
-    openPostModalFn,
-    getProfileViewUnsubFn,
-    setProfileViewUnsubFn,
-    toggleFollowFn,
-    alertFn
-  });
-
-  bindAppChatUploadEvents({
-    documentObj: doc,
-    state,
-    renderFn,
-    openChatWithProfileFn,
-    deleteChatThreadByIdFn,
-    setChatThreadArchivedByIdFn,
-    closeChatModalFn,
-    toggleChatMessageSavedFn,
-    toggleChatMessageLikedFn,
-    removePendingChatAttachmentFn,
-    addChatAttachmentsFn,
-    sendChatMessageFn,
-    scrollChatMessagesToBottomFn,
-    queueMicrotaskFn,
-    handleUploadPostFn
-  });
-
-  bindCrmStaffEvents({
-    documentObj: doc,
-    state,
-    renderFn,
-    openLeadCreatorFn,
-    openLeadSettingsViewFn,
-    closeLeadSubviewFn,
-    saveLeadSettingsFn,
-    isLeadInlineCreateViewFn,
-    bindLeadInlineCreateEventsFn: () => bindLeadInlineCreateEvents({
+  if (!isLandingTopTabActive) {
+    const menuFocusBinding = bindAppMenuFocusEvents({
       documentObj: doc,
       state,
       renderFn,
-      deleteLeadFromModalFn,
-      saveLeadFromModalFn,
-      syncLeadDerivedFieldsFn,
-      addLeadModalLocationRowFn,
-      removeLeadModalLocationRowFn,
-      syncLeadModalDraftFromFormFn,
-      openLocationPickerFn,
-      normalizeLeadLocationsFn,
-      createLeadLocationFn,
-      parseCoordsFromAddressInputFn,
-      getLeadPlusCodeReferenceFn,
-      hasLeadLocationCoordsFn,
-      getPrimaryLeadLocationFn,
-      hydrateLeadGeoFieldsFromCoordsFn,
-      refineLeadLocationAddressIndexFn
-    }),
-    normalizeLeadScopeKeyFn,
-    loadLeadsFn,
-    openLeadModalFn,
-    normalizeCustomerScopeKeyFn,
-    loadCustomersFn,
-    openCustomerModalFn,
-    closeStaffEditorFn,
-    openStaffEditorFn,
-    syncStaffDerivedEmailFieldFn,
-    normalizeCeoCountryFn,
-    syncStaffFormFromDomFn,
-    openLocationPickerFn,
-    saveCeoStaffFromViewFn,
-    deleteCeoStaffFromViewFn
-  });
+      saveMenuLayoutToStorageFn,
+      openMenuModalFn,
+      deleteMenuItemByIdFn,
+      triggerMenuDetailOpenFromGestureFn,
+      updateShopCartQuantityFn,
+      updateShopCartItemCommentFn,
+      openShopCheckoutFn,
+      submitShopCheckoutFn,
+      updateShopCheckoutFieldFn,
+      saveTableQrConfigFn,
+      focusCache,
+      focusCacheKeyFn,
+      saveFocusEnabledFn,
+      openFocusModalFn,
+      deleteFocusItemByIdFn,
+      setFocusIndexFn,
+      toggleProfilePostMenuFn,
+      toggleProfilePostWidthFn,
+      deleteProfilePostFn,
+      setProfileMenuOpenFn,
+      profileMenuBound,
+      mapLocateFn,
+      bindNotificationsDelegationFn
+    });
+    setProfileMenuBound(!!menuFocusBinding?.profileMenuBound);
 
-  bindImageFallbacks();
-  bindCrmAutoLoadObserver();
-  bindSearchEvents();
+    bindAppSettingsProfileEvents({
+      documentObj: doc,
+      state,
+      setStateFn,
+      renderFn,
+      iconFn,
+      saveAccountSettingsFn,
+      openLocationPickerFn,
+      clearVerifiedMapLocationFn,
+      syncNotificationsPushRuntimeFn,
+      saveSettingsFn,
+      disablePushDeviceRegistrationFn,
+      getPushActivationIssueMessageFn,
+      saveUserProfileToStorageFn,
+      persistPrivateAccountSettingFn,
+      uploadAvatarFn,
+      openProfileViewFromBusinessFn,
+      findPostByIdFn,
+      openPostModalFn,
+      getProfileViewUnsubFn,
+      setProfileViewUnsubFn,
+      toggleFollowFn,
+      alertFn
+    });
+
+    bindAppChatUploadEvents({
+      documentObj: doc,
+      state,
+      renderFn,
+      openChatWithProfileFn,
+      deleteChatThreadByIdFn,
+      setChatThreadArchivedByIdFn,
+      closeChatModalFn,
+      toggleChatMessageSavedFn,
+      toggleChatMessageLikedFn,
+      removePendingChatAttachmentFn,
+      addChatAttachmentsFn,
+      sendChatMessageFn,
+      scrollChatMessagesToBottomFn,
+      queueMicrotaskFn,
+      handleUploadPostFn
+    });
+
+    bindCrmStaffEvents({
+      documentObj: doc,
+      state,
+      renderFn,
+      openLeadCreatorFn,
+      openLeadSettingsViewFn,
+      closeLeadSubviewFn,
+      saveLeadSettingsFn,
+      isLeadInlineCreateViewFn,
+      bindLeadInlineCreateEventsFn: () => bindLeadInlineCreateEvents({
+        documentObj: doc,
+        state,
+        renderFn,
+        deleteLeadFromModalFn,
+        saveLeadFromModalFn,
+        syncLeadDerivedFieldsFn,
+        addLeadModalLocationRowFn,
+        removeLeadModalLocationRowFn,
+        syncLeadModalDraftFromFormFn,
+        openLocationPickerFn,
+        normalizeLeadLocationsFn,
+        createLeadLocationFn,
+        parseCoordsFromAddressInputFn,
+        getLeadPlusCodeReferenceFn,
+        hasLeadLocationCoordsFn,
+        getPrimaryLeadLocationFn,
+        hydrateLeadGeoFieldsFromCoordsFn,
+        refineLeadLocationAddressIndexFn
+      }),
+      normalizeLeadScopeKeyFn,
+      loadLeadsFn,
+      openLeadModalFn,
+      normalizeCustomerScopeKeyFn,
+      loadCustomersFn,
+      openCustomerModalFn,
+      closeStaffEditorFn,
+      openStaffEditorFn,
+      syncStaffDerivedEmailFieldFn,
+      normalizeCeoCountryFn,
+      syncStaffFormFromDomFn,
+      openLocationPickerFn,
+      saveCeoStaffFromViewFn,
+      deleteCeoStaffFromViewFn
+    });
+    bindCrmAutoLoadObserver();
+    bindSearchEvents();
+  }
+
+  bindImageFallbacks(doc?.getElementById?.("app") || doc);
 }
