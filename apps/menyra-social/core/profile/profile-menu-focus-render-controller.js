@@ -133,13 +133,13 @@ function isSpecialMenuItem(item = {}) {
   return String(item?.category || "").trim().toLowerCase() === "special";
 }
 
-function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
+function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeImageKey = true } = {}) {
   const counts = resolvePostCounts(item);
   const postId = item.id ? String(item.id) : "";
   const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
   const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
-  const imgKeyAttr = postId ? `data-img-key="profile-post:${escapeHtml(postId)}"` : "";
+  const imgKeyAttr = includeImageKey && postId ? `data-img-key="profile-post:${escapeHtml(postId)}"` : "";
   const isWide = item.type === "wide" || item.type === "hero";
   const colClass = isGrid && isWide ? "col-span-2" : "";
   const aspectClass = isGrid
@@ -193,7 +193,7 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   `;
 }
 
-function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
+function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { includeImageKeys = true } = {}) {
   const isGrid = viewMode === "grid";
   if (!posts.length) {
     return `
@@ -205,7 +205,7 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
       </div>
     `;
   }
-  const cards = posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu));
+  const cards = posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu, { includeImageKey: includeImageKeys }));
   const slotCount = posts.reduce((total, post) => {
     const isWide = post?.type === "wide" || post?.type === "hero";
     return total + (isWide ? 2 : 1);
@@ -293,7 +293,7 @@ function resolveProfilePrimaryTopTab(profile = {}) {
 function normalizeLandingStep(value = 0) {
   const parsed = Math.round(Number(value || 0));
   if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.min(2, parsed));
+  return Math.max(0, Math.min(3, parsed));
 }
 
 function normalizeLandingGreetingIndex(value = 0, length = 1) {
@@ -302,6 +302,10 @@ function normalizeLandingGreetingIndex(value = 0, length = 1) {
   if (!Number.isFinite(parsed)) return 0;
   const normalized = parsed % size;
   return normalized < 0 ? normalized + size : normalized;
+}
+
+function resolveLandingDotStep(step = 0) {
+  return normalizeLandingStep(step);
 }
 
 function renderBusinessLandingScreenOne(profile = {}) {
@@ -347,15 +351,32 @@ function renderBusinessLandingScreenOne(profile = {}) {
     landing.messageLine2
     || "Prezenca juaj digjitale eshte gati për aktivizim."
   ).trim();
-  return `
-    <section data-landing-swipe-root="true" class="relative w-full overflow-hidden font-sans" style="height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); overscroll-behavior: none; -webkit-overflow-scrolling: auto; touch-action: none; user-select: none; background: #F8F9FA; --landing-panel-duration: 560ms; --landing-greeting-duration: 760ms;">
-      <div class="absolute z-[70] flex flex-col" style="right: 1rem; top: 33.333333%; transform: translateY(-50%); gap: 0.75rem;">
-        ${[0, 1, 2].map((dotStep) => `
-          <div data-landing-step-dot="${dotStep}" class="rounded-full transition-all duration-300 ease-out ${step === dotStep ? "bg-indigo-600 shadow-sm" : "bg-slate-300"}" style="width: 8px; height: 8px; transform: scale(${step === dotStep ? "1.25" : "1"});"></div>
-        `).join("")}
+  const shouldRenderPostsSurface = step >= 2;
+  const shouldRenderMenuSurface = step >= 3;
+  const resolvedPosts = Array.isArray(state.profileView?.posts)
+    ? state.profileView.posts
+    : (Array.isArray(profile?.posts) ? profile.posts : []);
+  const activeDotStep = resolveLandingDotStep(step);
+  const landingSwipeHint = `
+    <div class="absolute w-full flex justify-center pointer-events-none" style="bottom: var(--landing-swipe-bottom);">
+      <div class="flex flex-col items-center animate-bounce text-indigo-600/80">
+        <span class="text-[9px] font-bold tracking-[0.25em] uppercase mb-2">Swipe</span>
+        ${icon("chevron-down", "w-6 h-6 text-indigo-600")}
       </div>
-
-      <div data-landing-panel="0" class="absolute inset-0 z-50 flex flex-col items-start justify-center transition-transform ${step === 0 ? "translate-y-0" : "-translate-y-full pointer-events-none"}" style="background: #F8F9FA; color: #111827; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1);">
+    </div>
+  `;
+  return `
+    <section data-landing-swipe-root="true" class="relative w-full overflow-hidden font-sans" style="height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); overscroll-behavior: none; -webkit-overflow-scrolling: auto; touch-action: none; user-select: none; background: #F8F9FA; --landing-panel-duration: 460ms; --landing-greeting-duration: 720ms; --landing-top-gap: 14px; --landing-swipe-bottom: 0.45rem;">
+      <div class="absolute z-[70] flex flex-col items-center" style="right: 0.75rem; top: 33.333333%; transform: translateY(-50%); gap: 0.56rem; padding: 0.35rem 0.3rem; border-radius: 999px; background: rgba(248,250,252,0.66); box-shadow: 0 8px 28px -20px rgba(15,23,42,0.45); backdrop-filter: blur(4px);">
+        ${[0, 1, 2, 3].map((dotStep) => {
+          const isActiveDot = activeDotStep === dotStep;
+          return `
+            <div data-landing-step-dot="${dotStep}" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(${isActiveDot ? "1.22" : "1"}); opacity: ${isActiveDot ? "1" : "0.88"}; background: ${isActiveDot ? "#4f46e5" : "rgba(100,116,139,0.58)"}; border: 1px solid ${isActiveDot ? "rgba(79,70,229,0.96)" : "rgba(255,255,255,0.95)"}; box-shadow: ${isActiveDot ? "0 6px 14px -8px rgba(79,70,229,0.95)" : "0 2px 6px -5px rgba(15,23,42,0.55)"};"></div>
+          `;
+        }).join("")}
+      </div>
+      
+      <div data-landing-panel="0" class="absolute inset-0 z-50 flex flex-col items-start justify-center transition-transform ${step === 0 ? "translate-y-0" : "-translate-y-full pointer-events-none"}" style="background: #F8F9FA; color: #111827; padding-top: var(--landing-top-gap); opacity: ${step === 0 ? "1" : "0"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
         <div data-landing-glow="1" class="absolute rounded-full pointer-events-none" style="top: 33.333333%; left: 25%; width: 16rem; height: 16rem; background: radial-gradient(circle at center, rgb(224 231 255 / 0.7) 0%, rgb(224 231 255 / 0.45) 42%, rgb(224 231 255 / 0.06) 72%, rgb(224 231 255 / 0) 100%);"></div>
         <div class="flex flex-col items-start relative z-10 w-full" style="padding-left: 2.5rem; padding-right: 2.5rem;">
           <div class="relative w-full flex justify-start items-center mb-5" style="height: 40px;">
@@ -390,34 +411,61 @@ function renderBusinessLandingScreenOne(profile = {}) {
             ${escapeHtml(line2)}
           </p>
         </div>
-        <div class="absolute w-full flex justify-center pointer-events-none" style="bottom: 3rem;">
-          <div class="flex flex-col items-center animate-bounce text-indigo-600/80">
-            <span class="text-[9px] font-bold tracking-[0.25em] uppercase mb-2">Swipe</span>
-            ${icon("chevron-down", "w-6 h-6 text-indigo-600")}
-          </div>
-        </div>
+        ${landingSwipeHint}
       </div>
 
-      <div data-landing-panel="1" class="absolute inset-0 flex items-center justify-center transition-transform ${step === 0 ? "translate-y-full" : step === 1 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1);">
-        <div class="text-center">
-          <p class="text-indigo-600 font-bold mb-2">Schritt 1</p>
-          <p class="text-slate-400 font-medium">Hier kommen die Tabs hin...</p>
+      <div data-landing-panel="1" class="absolute inset-0 transition-transform ${step < 1 ? "translate-y-full" : step === 1 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; opacity: ${step === 1 ? "1" : "0"}; pointer-events: ${step === 1 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+        <div data-landing-panel-scroll="1" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
+          ${renderPublicProfileSurface(profile, resolvedPosts, {
+            topTabOverride: "profile",
+            tutorialMode: true,
+            contentTabOverride: "posts",
+            landingHideContent: true,
+            collapseIdentity: false,
+            landingMode: true
+          })}
         </div>
+        ${landingSwipeHint}
       </div>
 
-      <div data-landing-panel="2" class="absolute inset-0 bg-white flex items-center justify-center transition-transform ${step <= 1 ? "translate-y-full" : "translate-y-0"}" style="transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1);">
-        <div class="text-center">
-          <p class="text-indigo-600 font-bold mb-2">Schritt 2</p>
-          <p class="text-slate-400 font-medium">Hier kommt das fertige Menü hin...</p>
+      <div data-landing-panel="2" class="absolute inset-0 transition-transform ${step < 2 ? "translate-y-full" : step === 2 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; opacity: ${step === 2 ? "1" : "0"}; pointer-events: ${step === 2 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+        <div data-landing-panel-scroll="2" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
+          ${shouldRenderPostsSurface ? renderPublicProfileSurface(profile, resolvedPosts, {
+            topTabOverride: "profile",
+            tutorialMode: true,
+            contentTabOverride: "posts",
+            landingHideContent: false,
+            collapseIdentity: true,
+            contentReveal: true,
+            landingMode: true
+          }) : ""}
+        </div>
+        ${landingSwipeHint}
+      </div>
+
+      <div data-landing-panel="3" class="absolute inset-0 transition-transform ${step < 3 ? "translate-y-full" : "translate-y-0"}" style="background: #F8F9FA; opacity: ${step === 3 ? "1" : "0"}; pointer-events: ${step === 3 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+        <div data-landing-panel-scroll="3" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
+          ${shouldRenderMenuSurface ? renderPublicProfileSurface(profile, resolvedPosts, {
+            topTabOverride: "profile",
+            tutorialMode: true,
+            contentTabOverride: "menu",
+            landingHideContent: false,
+            collapseIdentity: true,
+            contentReveal: true,
+            landingMode: true
+          }) : ""}
         </div>
       </div>
     </section>
   `;
 }
 
-function renderProfileTabs(profile = state.profileView?.profile || state.userProfile) {
+function renderProfileTabs(
+  profile = state.profileView?.profile || state.userProfile,
+  { landingPreview = false, selectedTabOverride = "", compact = false } = {}
+) {
   const isBusinessProfile = isBusinessProfileEntity(profile);
-  const activeTab = resolveProfileContentTabForRendering(profile);
+  const activeTab = String(selectedTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
   const tabs = isBusinessProfile
     ? [
       { id: "posts", label: "Beitraege" },
@@ -429,7 +477,7 @@ function renderProfileTabs(profile = state.profileView?.profile || state.userPro
       { id: "checkins", label: "Check-ins" }
     ];
   return `
-    <div class="app-content-inline mb-6 mt-4">
+    <div data-landing-tutorial-target="tabs" class="app-content-inline mb-6 ${compact ? "mt-2" : "mt-4"} ${landingPreview ? "pointer-events-auto" : ""}">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
         ${tabs.map((tab) => `
           <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
@@ -441,11 +489,15 @@ function renderProfileTabs(profile = state.profileView?.profile || state.userPro
   `;
 }
 
-function renderProfileViewControls(profile = state.profileView?.profile || state.userProfile) {
+function renderProfileViewControls(
+  profile = state.profileView?.profile || state.userProfile,
+  { disabled = false } = {}
+) {
   const activeTab = resolveProfileContentTabForRendering(profile);
   if (activeTab === "checkins" || activeTab === "menu") return "";
+  const wrapperClass = disabled ? "pointer-events-none opacity-70" : "";
   return `
-    <div class="flex items-center justify-between app-content-inline mb-6">
+    <div class="flex items-center justify-between app-content-inline mb-6 ${wrapperClass}">
       <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Ansicht</span>
       <div class="flex gap-1 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
         <button data-profile-view="grid" class="p-2.5 rounded-xl transition-all active:scale-95 ${state.profileViewMode === "grid" ? "bg-slate-900 text-white shadow-md" : "text-slate-300 active:text-slate-500"}">
@@ -459,11 +511,19 @@ function renderProfileViewControls(profile = state.profileView?.profile || state
   `;
 }
 
-function renderPublicProfileView() {
-  const view = state.profileView;
-  if (!view || !view.profile) return "";
-  const profile = view.profile;
-  const posts = view.posts || profile.posts || [];
+function renderPublicProfileSurface(
+  profile = {},
+  posts = [],
+  {
+    topTabOverride = "",
+    tutorialMode = false,
+    contentTabOverride = "",
+    landingHideContent = false,
+    collapseIdentity = false,
+    contentReveal = false,
+    landingMode = false
+  } = {}
+) {
   const isFollowing = isFollowingProfile(profile);
   const isLocked = !!profile.privateAccount && profile.uid && String(profile.uid) !== String(state.user?.uid || "") && !isFollowing;
   const hasPendingFollowRequest = !!profile.pendingFollowRequest && !isFollowing;
@@ -472,7 +532,7 @@ function renderPublicProfileView() {
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
   const isBusinessProfile = isBusinessProfileEntity(profile);
-  const activeContentTab = resolveProfileContentTabForRendering(profile);
+  const activeContentTab = String(contentTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
   const isMediaTab = activeContentTab === "media";
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
@@ -480,10 +540,8 @@ function renderPublicProfileView() {
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
-  const topTab = resolveProfilePrimaryTopTab(profile);
-  if (topTab === "landing") {
-    return renderBusinessLandingScreenOne(profile);
-  }
+  const avatarImgKeyAttr = landingMode ? "" : `data-img-key="avatar:public:${escapeHtml(avatarKey)}"`;
+  const topTab = String(topTabOverride || resolveProfilePrimaryTopTab(profile)).trim().toLowerCase() || "profile";
   const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
   const followTone = isFollowing
@@ -491,73 +549,97 @@ function renderPublicProfileView() {
     : (hasPendingFollowRequest
       ? "bg-amber-50 text-amber-700 shadow-none border border-amber-200"
       : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent");
+  const rootClass = tutorialMode ? "select-none" : "app-main-content-safe";
+  const disabledBlockClass = tutorialMode ? "pointer-events-none" : "";
+  const showIdentitySection = !collapseIdentity;
+  const shouldRenderContent = !landingHideContent;
+  const contentAnimationClass = contentReveal
+    ? (landingMode ? "transition-opacity duration-200" : "animate-in fade-in duration-300")
+    : "";
+  const postsLoaded = !landingMode || activeContentTab !== "posts" || profile?.postsLoaded === true;
   return `
-    <div class="app-main-content-safe">
+    <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
       ${topTab === "profile" ? `
-      <div class="app-content-inline pb-2 ${topPaddingClass}">
-
-        <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
-          <div class="relative z-10">
-            <div class="flex justify-between items-start mb-8">
-              <div class="relative">
-                <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" data-img-key="avatar:public:${escapeHtml(avatarKey)}" class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
-                </div>
-                ${profile.isPremium ? `
-                  <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
-                    ${icon("badge-check", "w-4 h-4 fill-blue-500 text-white")}
+      ${showIdentitySection ? `
+        <div class="app-content-inline pb-2 ${topPaddingClass}">
+          <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 ${disabledBlockClass}">
+            <div class="relative z-10">
+              <div class="flex justify-between items-start mb-8">
+                <div class="relative">
+                  <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
+                    <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
                   </div>
-                ` : ""}
+                  ${profile.isPremium ? `
+                    <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
+                      ${icon("badge-check", "w-4 h-4 fill-blue-500 text-white")}
+                    </div>
+                  ` : ""}
+                </div>
+
+                <div class="flex items-center gap-6 pt-3 pr-2">
+                   <div data-landing-tutorial-target="fans" class="flex flex-col items-center">
+                      <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span>
+                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
+                   </div>
+                   <div class="w-px h-8 bg-slate-100"></div>
+                   <div class="flex flex-col items-center">
+                      <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span>
+                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
+                   </div>
+                </div>
               </div>
 
-              <div class="flex items-center gap-6 pt-3 pr-2">
-                 <div class="flex flex-col items-center">
-                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
-                 </div>
-                 <div class="w-px h-8 bg-slate-100"></div>
-                 <div class="flex flex-col items-center">
-                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
-                 </div>
+              <div class="mb-8">
+                <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
+                ${isBusinessProfile ? "" : `<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>`}
+                <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
               </div>
-            </div>
 
-            <div class="mb-8">
-              <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
-              ${isBusinessProfile ? "" : `<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>`}
-              <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
-            </div>
-
-            <div class="flex gap-4">
-              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${followTone} ${hasPendingFollowRequest ? "opacity-90 cursor-default" : ""}">
-                <span class="relative z-10 flex items-center gap-2">
-                  ${isFollowing ? icon("check", "w-4 h-4") : ""}
-                  ${followLabel}
-                </span>
-              </button>
-              <button data-open-chat="profile" data-chat-uid="${escapeHtml(profile.uid || "")}" data-chat-handle="${escapeHtml(profile.handle || "")}" data-chat-name="${escapeHtml(profile.name || "")}" data-chat-avatar="${escapeHtml(profile.avatar || "")}" ${isLocked ? "disabled" : ""} class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-900 active:scale-[0.95]"} transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
-                ${icon("message-circle", "w-5 h-5")}
-              </button>
+              <div class="flex gap-4">
+                <button data-landing-tutorial-target="follow" data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${followTone} ${hasPendingFollowRequest ? "opacity-90 cursor-default" : ""}">
+                  <span class="relative z-10 flex items-center gap-2">
+                    ${isFollowing ? icon("check", "w-4 h-4") : ""}
+                    ${followLabel}
+                  </span>
+                </button>
+                <button data-landing-tutorial-target="chat" data-open-chat="profile" data-chat-uid="${escapeHtml(profile.uid || "")}" data-chat-handle="${escapeHtml(profile.handle || "")}" data-chat-name="${escapeHtml(profile.name || "")}" data-chat-avatar="${escapeHtml(profile.avatar || "")}" ${isLocked ? "disabled" : ""} class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-900 active:scale-[0.95]"} transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
+                  ${icon("message-circle", "w-5 h-5")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ` : ""}
 
       ${!isLocked ? `
-        ${renderProfileTabs(profile)}
-        ${renderProfileViewControls(profile)}
+        ${renderProfileTabs(profile, {
+          landingPreview: tutorialMode,
+          selectedTabOverride: activeContentTab,
+          compact: collapseIdentity
+        })}
+        ${shouldRenderContent ? renderProfileViewControls(profile, { disabled: tutorialMode }) : ""}
 
-        ${isMenuTab ? `
-          ${renderProfileMenuView(profile)}
-        ` : isCheckinTab ? `
-          ${renderProfileCheckins()}
-        ` : `
-          <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"}">
-            ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
+        ${shouldRenderContent ? (isMenuTab ? `
+          <div class="${disabledBlockClass} ${contentAnimationClass}">
+            ${renderProfileMenuView(profile, {
+              mode: landingMode ? "landing" : "profile",
+              allowAutoEnsure: !landingMode
+            })}
           </div>
-        `}
+        ` : isCheckinTab ? `
+          <div class="${disabledBlockClass} ${contentAnimationClass}">
+            ${renderProfileCheckins()}
+          </div>
+        ` : `
+          ${postsLoaded ? `
+            <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"} ${disabledBlockClass} ${contentAnimationClass}">
+              ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false, { includeImageKeys: !landingMode })}
+            </div>
+          ` : `
+            <div class="app-content-inline ${disabledBlockClass}" style="min-height: 34vh;"></div>
+          `}
+        `) : ""}
       ` : `
         <div class="app-content-inline pt-4">
           <div class="bg-white rounded-[2.2rem] border border-slate-100 p-8 text-center">
@@ -576,6 +658,18 @@ function renderPublicProfileView() {
       `}
     </div>
   `;
+}
+
+function renderPublicProfileView() {
+  const view = state.profileView;
+  if (!view || !view.profile) return "";
+  const profile = view.profile;
+  const posts = view.posts || profile.posts || [];
+  const topTab = resolveProfilePrimaryTopTab(profile);
+  if (topTab === "landing") {
+    return renderBusinessLandingScreenOne(profile);
+  }
+  return renderPublicProfileSurface(profile, posts, { topTabOverride: topTab, tutorialMode: false });
 }
 
 function getFilteredMenuItems(items, { filter = "all", query = "" } = {}) {
@@ -636,7 +730,7 @@ function normalizeMenuCategoryToken(value = "") {
   return folded.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-const CRITICAL_MENU_IMAGE_COUNT = 2;
+const CRITICAL_MENU_IMAGE_COUNT = 4;
 const MENU_IMAGE_WIDTH_BY_SIZE = {
   thumb: 160,
   small: 480,
@@ -645,7 +739,7 @@ const MENU_IMAGE_WIDTH_BY_SIZE = {
 };
 
 function isCriticalMenuImage({ mode = "profile", priorityIndex = -1, slideIndex = 0 } = {}) {
-  return mode === "profile"
+  return (mode === "profile" || mode === "landing")
     && Number.isFinite(priorityIndex)
     && priorityIndex >= 0
     && priorityIndex < CRITICAL_MENU_IMAGE_COUNT
@@ -654,10 +748,10 @@ function isCriticalMenuImage({ mode = "profile", priorityIndex = -1, slideIndex 
 
 function buildMenuImageAttrs({ mode = "profile", priorityIndex = -1, slideIndex = 0 } = {}) {
   const isCritical = isCriticalMenuImage({ mode, priorityIndex, slideIndex });
-  const revealAttr = `data-image-reveal="menu"`;
+  const revealAttr = mode === "profile" ? ` data-image-reveal="menu"` : "";
   return isCritical
-    ? `loading="eager" fetchpriority="high" ${revealAttr}`
-    : `loading="lazy" fetchpriority="low" ${revealAttr}`;
+    ? `loading="eager" fetchpriority="high"${revealAttr}`
+    : `loading="lazy" fetchpriority="low"${revealAttr}`;
 }
 
 function resolveResponsiveMenuImageSizes({ variant = "grid" } = {}) {
@@ -1911,7 +2005,7 @@ function renderMenuAdminView() {
   `;
 }
 
-function renderProfileMenuView(profile) {
+function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = true } = {}) {
   const restaurantId = profile?.restaurantId || "";
   if (!restaurantId) {
     return `
@@ -1923,10 +2017,11 @@ function renderProfileMenuView(profile) {
   const isSameRestaurant = state.menu.restaurantId === restaurantId;
   const menuSource = String(state.menu.source || "").trim().toLowerCase();
   const hasPublicMenuTruth = isSameRestaurant && menuSource === "public";
-  if (!state.menu.loading && !hasPublicMenuTruth) {
+  const isLandingMode = mode === "landing";
+  if (allowAutoEnsure && !state.menu.loading && !hasPublicMenuTruth) {
     ensureMenuDataForProfile(profile);
   }
-  if (!state.focus.loading && state.focus.restaurantId !== restaurantId) {
+  if (allowAutoEnsure && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
   }
   const isLoading = state.menu.loading || !hasPublicMenuTruth;
@@ -1948,6 +2043,9 @@ function renderProfileMenuView(profile) {
     primeMenuItemCounts(items, restaurantId);
     maybeHydrateMenuCardViewerLikes(items, restaurantId);
   }
+  if (isLandingMode && isLoading) {
+    return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
+  }
   if (useTestfirstCardUi) {
     return `
       <div class="app-main-content-safe">
@@ -1955,7 +2053,7 @@ function renderProfileMenuView(profile) {
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
         ` : `
           ${hasItems
-            ? renderTestfirstMenuContent(profile, items, { mode: "profile" })
+            ? renderTestfirstMenuContent(profile, items, { mode })
             : `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`
           }
           ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
@@ -1987,7 +2085,7 @@ function renderProfileMenuView(profile) {
                   <h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3>
                 </div>
                 <div data-menu-type="drink">
-                  ${renderMenuDrinkGrid(drinkItems, { mode: "profile", useTestfirstCardUi, seenCategories: anchoredCategories, priorityOffset: drinkPriorityOffset })}
+                  ${renderMenuDrinkGrid(drinkItems, { mode, useTestfirstCardUi, seenCategories: anchoredCategories, priorityOffset: drinkPriorityOffset })}
                 </div>
               </section>
             ` : ""}
@@ -1997,7 +2095,7 @@ function renderProfileMenuView(profile) {
                   <h3 class="text-lg font-black italic tracking-tighter">Speisen</h3>
                 </div>
                 <div data-menu-type="food">
-                  ${renderMenuFoodList(foodItems, { mode: "profile", useTestfirstCardUi, seenCategories: anchoredCategories, priorityOffset: foodPriorityOffset })}
+                  ${renderMenuFoodList(foodItems, { mode, useTestfirstCardUi, seenCategories: anchoredCategories, priorityOffset: foodPriorityOffset })}
                 </div>
               </section>
             ` : ""}

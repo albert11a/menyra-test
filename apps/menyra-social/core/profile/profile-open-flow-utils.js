@@ -110,11 +110,81 @@ export function createProfileOpenFlowControllerCore({
     }
   };
 
+  const normalizeBusinessLookupKey = (value = "") => {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "";
+    return raw
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  const humanizeBusinessLookupLabel = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const slug = normalizeBusinessLookupKey(raw);
+    if (!slug) return raw;
+    const parts = slug.split("-").filter(Boolean);
+    if (!parts.length) return raw;
+    return parts
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  };
+  const isLikelyOpaqueBusinessId = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return false;
+    if (/\s|\./.test(raw)) return false;
+    const compact = raw.replace(/[-_]/g, "");
+    if (!compact) return false;
+    if (/^[a-f0-9]{16,}$/i.test(compact)) return true;
+    if (/^[a-z0-9]{20,}$/i.test(compact)) return true;
+    const digits = (compact.match(/\d/g) || []).length;
+    return compact.length >= 16 && digits >= 4;
+  };
+
+  const resolveRestaurantByLookup = ({ restaurantId = "", lookupText = "" } = {}) => {
+    const targetId = String(restaurantId || "").trim();
+    const targetLookup = normalizeBusinessLookupKey(lookupText);
+    const list = Array.isArray(state?.restaurants) ? state.restaurants : [];
+    if (targetId) {
+      const direct = list.find((row) => String(row?.id || "").trim() === targetId);
+      if (direct) return direct;
+    }
+    if (!targetLookup) return null;
+    return list.find((row) => {
+      const rowLookup = normalizeBusinessLookupKey(
+        row?.landingSlug || row?.handle || row?.name || row?.restaurantName || ""
+      );
+      return !!rowLookup && rowLookup === targetLookup;
+    }) || null;
+  };
+
+  const resolveBusinessDisplayNameFallback = ({ safeName = "", rest = null, lookupKey = "" } = {}) => {
+    const preferred = String(
+      safeName
+      || rest?.name
+      || rest?.restaurantName
+      || rest?.landingSlug
+      || rest?.handle
+      || ""
+    ).trim();
+    if (preferred) {
+      return humanizeBusinessLookupLabel(preferred) || preferred;
+    }
+    const fallbackLookup = String(lookupKey || "").trim();
+    if (!fallbackLookup || isLikelyOpaqueBusinessId(fallbackLookup)) return "Lokal";
+    return humanizeBusinessLookupLabel(fallbackLookup) || "Lokal";
+  };
+
   const openProfileViewFromBusiness = async (input, { showBack = true, topTab, menuAccessSource = "", tableNumber = 0 } = {}) => {
     try {
       const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
-      const restaurantId = typeof input === "string" ? "" : (input?.id || "");
-      if (!safeName && !restaurantId) return;
+      const restaurantId = String(typeof input === "string" ? "" : (input?.id || "")).trim();
+      const lookupText = String(
+        typeof input === "string"
+          ? input
+          : (input?.landingSlug || input?.handle || input?.id || input?.name || "")
+      ).trim();
+      if (!safeName && !restaurantId && !lookupText) return;
       const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
       const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
       const isMenuTopTab = String(topTab || "").trim().toLowerCase() === "menu";
@@ -133,18 +203,23 @@ export function createProfileOpenFlowControllerCore({
         void hydrateRestaurants([restaurantId], { max: 1 });
       }
 
-      const rest = restaurantId
-        ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
-        : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
-      const targetRestaurantId = String(restaurantId || rest?.id || "").trim();
-      const targetMenuRestaurantId = targetRestaurantId;
+      const rest = resolveRestaurantByLookup({ restaurantId, lookupText })
+        || (restaurantId ? { id: restaurantId } : {});
+      const targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
+      const targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
       if (isMenuTopTab && targetMenuRestaurantId) {
         ensureMenuData({ restaurantId: targetMenuRestaurantId });
         ensureFocusData({ restaurantId: targetMenuRestaurantId });
       }
 
+      const loadingDisplayName = resolveBusinessDisplayNameFallback({
+        safeName,
+        rest,
+        lookupKey: targetRestaurantLookupId
+      });
+
       const loadingProfile = {
-        name: safeName || "Business",
+        name: loadingDisplayName,
         handle: "",
         uid: "",
         bio: "Profil wird geladen...",
@@ -154,8 +229,9 @@ export function createProfileOpenFlowControllerCore({
         following: 0,
         privateAccount: false,
         role: "business",
-        restaurantId: targetRestaurantId,
+        restaurantId: targetMenuRestaurantId || targetRestaurantLookupId,
         pendingFollowRequest: false,
+        postsLoaded: false,
         posts: [],
         truthState: "loading"
       };
@@ -167,21 +243,69 @@ export function createProfileOpenFlowControllerCore({
         tableNumber: safeTableNumber
       });
 
-      const [profileSnap, posts] = await Promise.all([
-        fetchBusinessProfile({ restaurantId: targetRestaurantId, restaurant: rest }),
-        targetRestaurantId ? loadBusinessPosts(targetRestaurantId) : Promise.resolve([])
-      ]);
+      const profileSnap = await fetchBusinessProfile({
+        restaurantId: targetRestaurantLookupId,
+        restaurant: rest
+      });
+
+      const resolvedDisplayName = resolveBusinessDisplayNameFallback({
+        safeName,
+        rest,
+        lookupKey: targetRestaurantLookupId
+      });
 
       const resolved = normalizeBusinessProfile({
         profileDoc: profileSnap,
         restaurant: rest,
-        fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-        posts: Array.isArray(posts) ? posts : []
+        fallbackName: resolvedDisplayName,
+        posts: []
       });
+      resolved.postsLoaded = false;
 
       if (state.activeTab !== "profile") return;
-      if (targetRestaurantId && state.profileView?.profile?.restaurantId !== targetRestaurantId) return;
-      showPublicProfileView(resolved, resolved.posts, {
+      const visibleRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
+      if (targetRestaurantLookupId && visibleRestaurantId && visibleRestaurantId !== targetRestaurantLookupId && visibleRestaurantId !== targetMenuRestaurantId) return;
+
+      showPublicProfileView(resolved, [], {
+        showBack,
+        topTab,
+        menuAccessSource: safeMenuAccessSource,
+        tableNumber: safeTableNumber
+      });
+
+      const resolvedRestaurantId = String(
+        resolved?.restaurantId
+        || targetMenuRestaurantId
+        || targetRestaurantLookupId
+        || ""
+      ).trim();
+      if (!resolvedRestaurantId) return;
+      const posts = await loadBusinessPosts(resolvedRestaurantId);
+      const latestRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
+      if (state.activeTab !== "profile") return;
+      if (latestRestaurantId && latestRestaurantId !== resolvedRestaurantId) return;
+
+      const resolvedWithPosts = {
+        ...resolved,
+        postsLoaded: true,
+        posts: Array.isArray(posts) ? posts : []
+      };
+      const safeLandingStep = Math.max(0, Number(state?.profileLandingStep || 0) || 0);
+      if (isLandingTopTab && safeLandingStep < 2) {
+        const liveView = state?.profileView;
+        const liveProfile = liveView?.profile;
+        const liveRestaurantId = String(liveProfile?.restaurantId || "").trim();
+        if (liveView && liveProfile && (!liveRestaurantId || liveRestaurantId === resolvedRestaurantId)) {
+          liveView.posts = resolvedWithPosts.posts;
+          liveView.profile = {
+            ...liveProfile,
+            postsLoaded: true,
+            posts: resolvedWithPosts.posts
+          };
+        }
+        return;
+      }
+      showPublicProfileView(resolvedWithPosts, resolvedWithPosts.posts, {
         showBack,
         topTab,
         menuAccessSource: safeMenuAccessSource,

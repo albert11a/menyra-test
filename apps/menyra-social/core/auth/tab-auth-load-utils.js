@@ -146,6 +146,10 @@ export function ensureTabDataCore({
     && String(state?.profileTopTab || "").trim().toLowerCase() === "menu"
     && String(state?.profileView?.menuAccessSource || "").trim().toLowerCase() === "qr"
   );
+  const isLandingProfileSession = (
+    tab === "profile"
+    && String(state?.profileTopTab || "").trim().toLowerCase() === "landing"
+  );
   const shouldSkipBootstrapAuthProfileLoad = (requestedTab = tab) => {
     const skipUid = String(state.__skipNextAuthProfileEnsureUid || "").trim();
     const skipTab = String(state.__skipNextAuthProfileEnsureTab || "").trim();
@@ -176,7 +180,7 @@ export function ensureTabDataCore({
     return nextPromise;
   };
 
-  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isQrMenuProfileSession;
+  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isQrMenuProfileSession && !isLandingProfileSession;
   if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
     scheduleIdleSafe(() => {
@@ -184,7 +188,7 @@ export function ensureTabDataCore({
     });
   }
 
-  if (hasUser && tab === "profile" && !dataLoaded.profile) {
+  if (hasUser && tab === "profile" && !dataLoaded.profile && !isLandingProfileSession) {
     dataLoaded.profile = true;
     const hasBusinessProfile = isBusinessProfile(state.userProfile);
     if (!hasBusinessProfile) {
@@ -194,7 +198,7 @@ export function ensureTabDataCore({
       void loadBusinessPostsSafe();
     }
   }
-  if (hasUser && tab === "profile") {
+  if (hasUser && tab === "profile" && !isLandingProfileSession) {
     void runAuthProfileLoad();
   }
 

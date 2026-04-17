@@ -50,6 +50,55 @@ export function createPublicProfileRuntimeController({
       .trim();
   }
 
+  function humanizeBusinessLabel(value = "") {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const slug = normalizeLandingSlugKey(raw);
+    if (!slug) return raw;
+    const parts = slug.split("-").filter(Boolean);
+    if (!parts.length) return raw;
+    return parts
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+
+  function isLikelyOpaqueBusinessId(value = "") {
+    const raw = String(value || "").trim();
+    if (!raw) return false;
+    if (/\s|\./.test(raw)) return false;
+    const compact = raw.replace(/[-_]/g, "");
+    if (!compact) return false;
+    if (/^[a-f0-9]{16,}$/i.test(compact)) return true;
+    if (/^[a-z0-9]{20,}$/i.test(compact)) return true;
+    const digits = (compact.match(/\d/g) || []).length;
+    return compact.length >= 16 && digits >= 4;
+  }
+
+  function resolveBusinessDisplayName(data = {}, rest = {}, fallbackName = "") {
+    const directName = String(
+      data?.displayName
+      || data?.name
+      || rest?.name
+      || rest?.restaurantName
+      || ""
+    ).trim();
+    if (directName) return directName;
+    const fallbackCandidates = [
+      fallbackName,
+      data?.landingSlug,
+      rest?.landingSlug,
+      data?.handle,
+      rest?.handle
+    ];
+    for (const candidateRaw of fallbackCandidates) {
+      const candidate = String(candidateRaw || "").trim();
+      if (!candidate) continue;
+      if (isLikelyOpaqueBusinessId(candidate)) continue;
+      return humanizeBusinessLabel(candidate) || candidate;
+    }
+    return "Lokal";
+  }
+
   function getFirstSnapshotDoc(snap = null) {
     if (!snap) return null;
     if (Array.isArray(snap.docs) && snap.docs.length) return snap.docs[0] || null;
@@ -96,6 +145,24 @@ export function createPublicProfileRuntimeController({
 
     const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.landingSlug || "");
     if (routeSlug && makeCollectionRef && buildQuery && buildWhere && db) {
+      const queryRestaurantByField = async (fieldName = "", fieldValue = "") => {
+        const safeFieldName = String(fieldName || "").trim();
+        const safeFieldValue = String(fieldValue || "").trim();
+        if (!safeFieldName || !safeFieldValue) return null;
+        try {
+          const ref = makeCollectionRef(db, "restaurants");
+          const constraints = [buildWhere(safeFieldName, "==", safeFieldValue)];
+          if (buildLimit) constraints.push(buildLimit(1));
+          const snap = await getDocsSafe(buildQuery(ref, ...constraints));
+          const firstDoc = getFirstSnapshotDoc(snap);
+          if (!firstDoc?.id) return null;
+          const data = firstDoc.data?.() || {};
+          if (!isPublicBusinessRecord({ id: firstDoc.id, ...data })) return null;
+          return { id: firstDoc.id, data };
+        } catch {
+          return null;
+        }
+      };
       try {
         const ref = makeCollectionRef(db, "restaurants");
         const constraints = [buildWhere("landingSlug", "==", routeSlug)];
@@ -108,6 +175,8 @@ export function createPublicProfileRuntimeController({
           return { id: firstDoc.id, data };
         }
       } catch {}
+      const handleMatch = await queryRestaurantByField("handle", routeSlug);
+      if (handleMatch) return handleMatch;
     }
 
     if (cachedRestaurant?.id) {
@@ -192,6 +261,22 @@ export function createPublicProfileRuntimeController({
     const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile.posts || []);
     const nextProfile = profile ? { ...profile, posts: projectedPosts } : profile;
     const sameVisibleProfile = isSameVisibleProfile(state?.profileView?.profile || null, nextProfile);
+    const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const preserveLandingState = sameVisibleProfile && previousTopTab === "landing";
+    const clampLandingStep = (value = 0) => {
+      const parsed = Math.round(Number(value || 0));
+      if (!Number.isFinite(parsed)) return 0;
+      return Math.max(0, Math.min(3, parsed));
+    };
+    const normalizeLandingIndex = (value = 0) => {
+      const parsed = Math.round(Number(value || 0));
+      if (!Number.isFinite(parsed)) return 0;
+      return Math.max(0, parsed);
+    };
+    const preservedLandingStep = preserveLandingState ? clampLandingStep(state?.profileLandingStep) : 0;
+    const preservedLandingGreetingIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingGreetingIndex) : 0;
+    const preservedLandingTourIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingTourIndex) : 0;
+    const previousContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
     const explicitTopTab = String(topTab || "").trim();
     const preservedTopTab = sameVisibleProfile
       ? String(state?.profileTopTab || "").trim()
@@ -203,14 +288,23 @@ export function createPublicProfileRuntimeController({
       tableNumber: safeTableNumber
     };
     state.profileModal = { open: false, profile: null };
-    state.profileContentTab = "posts";
+    state.profileContentTab = preserveLandingState && previousContentTab
+      ? previousContentTab
+      : "posts";
     const resolvedTopTab = profile?.restaurantId
       ? (explicitTopTab || preservedTopTab || "profile")
       : "profile";
     state.profileTopTab = resolvedTopTab;
     if (resolvedTopTab === "landing") {
-      state.profileLandingStep = 0;
-      state.profileLandingGreetingIndex = 0;
+      if (preserveLandingState) {
+        state.profileLandingStep = preservedLandingStep;
+        state.profileLandingGreetingIndex = preservedLandingGreetingIndex;
+        state.profileLandingTourIndex = preservedLandingTourIndex;
+      } else {
+        state.profileLandingStep = 0;
+        state.profileLandingGreetingIndex = 0;
+        state.profileLandingTourIndex = 0;
+      }
     }
     state.profileViewMode = "grid";
     state.profilePostMenuId = null;
@@ -228,7 +322,7 @@ export function createPublicProfileRuntimeController({
   function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
     const data = profileDoc?.data || profileDoc || {};
     const rest = restaurant || {};
-    const displayName = data?.displayName || data?.name || rest?.name || rest?.restaurantName || fallbackName || "Business";
+    const displayName = resolveBusinessDisplayName(data, rest, fallbackName);
     const handle = resolvePreferredHandle({ handle: data?.handle || rest?.handle || "", name: displayName }, displayName);
     const followers = pickCountValue(
       data?.followersCount,

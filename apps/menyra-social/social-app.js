@@ -993,6 +993,7 @@ const state = {
   profileContentTab: "posts",
   profileLandingStep: 0,
   profileLandingGreetingIndex: 0,
+  profileLandingTourIndex: 0,
   profileCheckins: [],
   profilePostMenuId: null,
   profileModal: {
