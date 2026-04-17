@@ -2,7 +2,6 @@ export function createPendingRouteStartupState() {
   const pendingState = {
     pendingProfileRestaurantId: "",
     pendingProfileTopTab: "",
-    pendingProfileLandingStep: 0,
     pendingProfileAccessSource: "",
     pendingProfileTableNumber: 0,
     pendingProfileHandled: false,
@@ -26,7 +25,6 @@ export function createPendingRouteStartupState() {
     if (!patch || typeof patch !== "object") return;
     if ("pendingProfileRestaurantId" in patch) pendingState.pendingProfileRestaurantId = patch.pendingProfileRestaurantId;
     if ("pendingProfileTopTab" in patch) pendingState.pendingProfileTopTab = patch.pendingProfileTopTab;
-    if ("pendingProfileLandingStep" in patch) pendingState.pendingProfileLandingStep = Number(patch.pendingProfileLandingStep || 0) || 0;
     if ("pendingProfileAccessSource" in patch) pendingState.pendingProfileAccessSource = patch.pendingProfileAccessSource;
     if ("pendingProfileTableNumber" in patch) pendingState.pendingProfileTableNumber = Number(patch.pendingProfileTableNumber || 0) || 0;
     if ("pendingProfileHandled" in patch) pendingState.pendingProfileHandled = !!patch.pendingProfileHandled;
@@ -44,7 +42,6 @@ export function createPendingRouteStartupState() {
     patchPendingState({
       pendingProfileRestaurantId: initialRouteState.pendingProfileRestaurantId || "",
       pendingProfileTopTab: initialRouteState.pendingProfileTopTab || "",
-      pendingProfileLandingStep: initialRouteState.pendingProfileLandingStep || 0,
       pendingProfileAccessSource: initialRouteState.pendingProfileAccessSource || "",
       pendingProfileTableNumber: initialRouteState.pendingProfileTableNumber || 0,
       pendingNotificationId: initialRouteState.pendingNotificationId || "",

@@ -41,11 +41,6 @@ export function resolveInitialRouteState({
     if (reserved.has(key)) return "";
     return slug;
   };
-  const clampLandingStep = (value = 0) => {
-    const parsed = Math.round(Number(value || 0));
-    if (!Number.isFinite(parsed)) return 0;
-    return Math.max(0, Math.min(5, parsed));
-  };
 
   const routeRestaurantId = (
     readQuery("r")
@@ -60,14 +55,6 @@ export function resolveInitialRouteState({
   const queryTab = readQuery("tab") || readQuery("view") || (landingSlug ? "landing" : "");
   const profileTopQuery = readQuery("top") || (pendingProfileRestaurantId ? queryTab : "");
   const pendingProfileTopTab = pendingProfileRestaurantId ? profileTopQuery : "";
-  const pendingProfileLandingStep = pendingProfileRestaurantId && String(profileTopQuery || "").trim().toLowerCase() === "landing"
-    ? clampLandingStep(
-      readQuery("ls")
-      || readQuery("landingStep")
-      || readQuery("step")
-      || 0
-    )
-    : 0;
   const profileAccessSourceRaw = (
     readQuery("src")
     || readQuery("source")
@@ -107,7 +94,6 @@ export function resolveInitialRouteState({
   return {
     pendingProfileRestaurantId,
     pendingProfileTopTab,
-    pendingProfileLandingStep,
     pendingProfileAccessSource,
     pendingProfileTableNumber,
     pendingNotificationId,

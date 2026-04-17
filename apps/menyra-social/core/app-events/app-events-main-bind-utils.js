@@ -22,7 +22,6 @@ export function bindAppEventsCore({
   renderFn,
   ensureMenuDataForProfileFn,
   ensureFocusDataForProfileFn,
-  refreshLandingMapRuntimeFn,
   bindAppMenuFocusEventsCoreFn,
   saveMenuLayoutToStorageFn,
   openMenuModalFn,
@@ -154,7 +153,6 @@ export function bindAppEventsCore({
     renderFn,
     ensureMenuDataForProfileFn,
     ensureFocusDataForProfileFn,
-    refreshLandingMapRuntimeFn,
     clearVerifiedMapLocationFn,
     openProfileViewFromBusinessFn
   });

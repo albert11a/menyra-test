@@ -1,6 +1,6 @@
 const LANDING_GREETINGS_COUNT = 13;
 const LANDING_TOUR_STEPS_COUNT = 5;
-const LANDING_MAX_STEP = 5;
+const LANDING_MAX_STEP = 3;
 const LANDING_SWIPE_VERTICAL_THRESHOLD_PX = 14;
 const LANDING_SWIPE_FAST_THRESHOLD_PX = 8;
 const LANDING_SWIPE_FAST_MAX_DURATION_MS = 220;
@@ -32,7 +32,6 @@ export function bindAppShellEventsCore({
   renderFn,
   ensureMenuDataForProfileFn,
   ensureFocusDataForProfileFn,
-  refreshLandingMapRuntimeFn,
   openProfileViewFromBusinessFn
 } = {}) {
   const doc = documentObj || null;
@@ -67,9 +66,6 @@ export function bindAppShellEventsCore({
   const ensureFocusDataForProfile = typeof ensureFocusDataForProfileFn === "function"
     ? ensureFocusDataForProfileFn
     : (() => {});
-  const refreshLandingMapRuntime = typeof refreshLandingMapRuntimeFn === "function"
-    ? refreshLandingMapRuntimeFn
-    : (() => false);
   const openProfileViewFromBusiness = typeof openProfileViewFromBusinessFn === "function"
     ? openProfileViewFromBusinessFn
     : null;
@@ -140,21 +136,6 @@ export function bindAppShellEventsCore({
     } catch {
       doc.defaultView.scrollTo(0, 0);
     }
-  };
-  const scheduleLandingMapRuntimeRefresh = () => {
-    const run = () => {
-      try {
-        refreshLandingMapRuntime();
-      } catch (err) {
-        console.warn("[landing] map runtime refresh failed", err);
-      }
-    };
-    const win = doc?.defaultView;
-    if (win && typeof win.requestAnimationFrame === "function") {
-      win.requestAnimationFrame(() => run());
-      return;
-    }
-    run();
   };
   const resolveBusinessMenuCategoryBaseClass = () => {
     const viewportWidth = Math.max(
@@ -478,19 +459,16 @@ export function bindAppShellEventsCore({
       if (currentStep === safeNextStep) return;
       landingInteractionLockedUntilTs = Date.now() + LANDING_ANIMATION_LOCK_MS;
       state.profileLandingStep = safeNextStep;
-      if (safeNextStep >= 1) {
+      if (safeNextStep === 2) {
+        state.profileContentTab = "posts";
+        ensureMenuDataForProfile();
+        ensureFocusDataForProfile();
+      } else if (safeNextStep === 3) {
+        state.profileContentTab = "menu";
         ensureMenuDataForProfile();
         ensureFocusDataForProfile();
       }
-      if (safeNextStep === 2 || safeNextStep === 3) {
-        state.profileContentTab = "posts";
-      } else if (safeNextStep >= 4) {
-        state.profileContentTab = "menu";
-      }
       syncLandingStepDom(safeNextStep);
-      if (safeNextStep === 1) {
-        scheduleLandingMapRuntimeRefresh();
-      }
       if (safeNextStep === 2) {
         const tourStepCount = resolveLandingTourSlideCount();
         if (tourStepCount > 0) {
@@ -639,13 +617,6 @@ export function bindAppShellEventsCore({
     }, wheelOptions);
 
     syncLandingStepDom(state.profileLandingStep);
-    if (normalizeLandingStep(state.profileLandingStep) === 1) {
-      scheduleLandingMapRuntimeRefresh();
-    }
-    if (normalizeLandingStep(state.profileLandingStep) >= 1) {
-      ensureMenuDataForProfile();
-      ensureFocusDataForProfile();
-    }
     syncLandingGreetingDom(state.profileLandingGreetingIndex);
     syncLandingTourDom(state.profileLandingTourIndex);
 

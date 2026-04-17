@@ -329,15 +329,7 @@ export function createSessionDataRuntimeController({
 
     scheduleIdleFn(() => {
       if (state.restaurants.length) {
-        const hadLocations = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
         rebuildBusinessLocationsFn();
-        const hasVisibleLeafletMap = getLastRenderModeFn() === "main"
-          && typeof document !== "undefined"
-          && !!document.getElementById("leafletMap");
-        const nextLocations = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
-        if (hasVisibleLeafletMap && nextLocations !== hadLocations) {
-          requestRender();
-        }
       }
 
       const feedUpdated = syncFeedPostLogosFn();
@@ -865,8 +857,6 @@ export function createSessionDataRuntimeController({
       const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();
       if (!updatedFeed && !updatedSearch) {
         if (!inMain) {
-          requestRender();
-        } else if (visibleLeafletMap) {
           requestRender();
         } else if (state.activeTab === "map") {
           requestRender();

@@ -278,7 +278,6 @@ export function createDeeplinkFlowControllerCore({
         pendingProfileHandled: true,
         pendingProfileRestaurantId: "",
         pendingProfileTopTab: "",
-        pendingProfileLandingStep: 0,
         pendingProfileAccessSource: "",
         pendingProfileTableNumber: 0
       });
@@ -286,14 +285,12 @@ export function createDeeplinkFlowControllerCore({
     }
 
     const nextTabRaw = pending.pendingProfileTopTab;
-    const nextLandingStep = Math.max(0, Math.min(5, Math.round(Number(pending.pendingProfileLandingStep || 0) || 0)));
     const nextAccessSourceRaw = pending.pendingProfileAccessSource;
     const nextTableNumber = normalizeTableNumberCore(pending.pendingProfileTableNumber || 0);
     patchPendingState({
       pendingProfileHandled: true,
       pendingProfileRestaurantId: "",
       pendingProfileTopTab: "",
-      pendingProfileLandingStep: 0,
       pendingProfileAccessSource: "",
       pendingProfileTableNumber: 0
     });
@@ -315,7 +312,6 @@ export function createDeeplinkFlowControllerCore({
       {
         showBack: false,
         topTab: nextTab,
-        landingStep: nextTab === "landing" ? nextLandingStep : 0,
         menuAccessSource: nextAccessSource,
         tableNumber: resolvedTableNumber
       }

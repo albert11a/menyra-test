@@ -166,13 +166,12 @@ function focusLeafletMap(lat, lng, options = {}) {
   if (!coords) return;
   const zoom = Number.isFinite(options.zoom) ? options.zoom : getLeafletFocusZoom();
   const duration = Number.isFinite(options.duration) ? options.duration : 0.5;
-  const animate = options.animate === false ? false : true;
   try {
     const currentZoom = typeof leafletMap.getZoom === "function" ? Number(leafletMap.getZoom()) : NaN;
     const alreadyCentered = isLeafletCenterClose(coords.lat, coords.lng);
     const alreadyZoomed = Number.isFinite(currentZoom) && Math.abs(currentZoom - Number(zoom)) < 0.01;
     if (alreadyCentered && alreadyZoomed) return;
-    leafletMap.setView([coords.lat, coords.lng], zoom, { animate, duration: animate ? duration : 0 });
+    leafletMap.setView([coords.lat, coords.lng], zoom, { animate: true, duration });
   } catch {}
 }
 
@@ -436,222 +435,9 @@ function scheduleMapRecoveryCheck(delayMs = 140) {
   mapRecoveryQueued = true;
   window.setTimeout(() => {
     mapRecoveryQueued = false;
-    if (!isMapSurfaceActive()) return;
+    if (state.activeTab !== "map") return;
     initLeafletIfNeeded();
   }, Math.max(60, Number(delayMs) || 140));
-}
-
-function isLandingDiscoverStepActive() {
-  const activeTab = String(state.activeTab || "").trim().toLowerCase();
-  if (activeTab !== "profile") return false;
-  const topTab = String(state.profileTopTab || "").trim().toLowerCase();
-  if (topTab !== "landing") return false;
-  return Number(state.profileLandingStep || 0) === 1;
-}
-
-function isMapSurfaceActive() {
-  const activeTab = String(state.activeTab || "").trim().toLowerCase();
-  if (activeTab === "map") return true;
-  return isLandingDiscoverStepActive();
-}
-
-function syncLeafletInteractionMode() {
-  if (!leafletMap) return;
-  const isStaticLanding = isLandingDiscoverStepActive();
-  const action = isStaticLanding ? "disable" : "enable";
-  const controls = [
-    leafletMap.dragging,
-    leafletMap.touchZoom,
-    leafletMap.doubleClickZoom,
-    leafletMap.scrollWheelZoom,
-    leafletMap.boxZoom,
-    leafletMap.keyboard,
-    leafletMap.tap
-  ];
-  controls.forEach((control) => {
-    if (!control || typeof control[action] !== "function") return;
-    try { control[action](); } catch {}
-  });
-  const container = typeof leafletMap.getContainer === "function" ? leafletMap.getContainer() : null;
-  if (container) {
-    container.style.touchAction = isStaticLanding ? "none" : "";
-    container.style.pointerEvents = isStaticLanding ? "none" : "";
-  }
-}
-
-function parseLooseCoord(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(String(value).trim().replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function resolveLandingMapFocusCoords() {
-  if (!isLandingDiscoverStepActive()) return null;
-  const panel = document.querySelector("[data-landing-discover-panel]");
-  if (!(panel instanceof HTMLElement)) return null;
-  const lat = parseLooseCoord(panel.dataset.landingMapFocusLat);
-  const lng = parseLooseCoord(panel.dataset.landingMapFocusLng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return normalizeCoordPair(lat, lng);
-}
-
-function readLandingMapFocusMeta() {
-  if (!isLandingDiscoverStepActive()) return null;
-  const panel = document.querySelector("[data-landing-discover-panel]");
-  const profile = state.profileView?.profile || state.userProfile || {};
-  const panelId = panel instanceof HTMLElement
-    ? String(panel.dataset.landingMapFocusId || "").trim()
-    : "";
-  const panelName = panel instanceof HTMLElement
-    ? String(panel.dataset.landingMapFocusName || "").trim()
-    : "";
-  const panelLogo = panel instanceof HTMLElement
-    ? String(panel.dataset.landingMapFocusLogo || "").trim()
-    : "";
-  const profileId = String(profile?.restaurantId || profile?.id || "").trim();
-  const profileName = String(profile?.name || "").trim();
-  const profileLogo = String(
-    profile?.landingScreenOne?.logoUrl
-    || profile?.logoUrl
-    || profile?.logo
-    || profile?.avatar
-    || ""
-  ).trim();
-  const id = panelId || profileId;
-  const name = panelName || profileName;
-  const logo = panelLogo || profileLogo;
-  const toNumber = (value) => parseLooseCoord(value);
-  const coordCandidates = [
-    [toNumber(panel instanceof HTMLElement ? panel.dataset.landingMapFocusLat : null), toNumber(panel instanceof HTMLElement ? panel.dataset.landingMapFocusLng : null)],
-    [toNumber(profile?.lat), toNumber(profile?.lng)],
-    [toNumber(profile?.latitude), toNumber(profile?.longitude)],
-    [toNumber(profile?.gpsLat), toNumber(profile?.gpsLng)]
-  ];
-  let coords = null;
-  for (const pair of coordCandidates) {
-    const lat = pair?.[0];
-    const lng = pair?.[1];
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    const normalized = normalizeCoordPair(lat, lng);
-    if (!normalized) continue;
-    coords = normalized;
-    break;
-  }
-  return {
-    id,
-    name,
-    logo,
-    lat: coords?.lat ?? null,
-    lng: coords?.lng ?? null
-  };
-}
-
-function resolveLandingMapFocusedBusiness(locations = state.businessLocations) {
-  const meta = readLandingMapFocusMeta();
-  if (!meta) return null;
-  const rows = Array.isArray(locations) ? locations : [];
-  const targetId = String(meta.id || "").trim();
-  const targetNameToken = String(meta.name || "").trim().toLowerCase();
-  const targetCoords = normalizeCoordPair(meta.lat, meta.lng);
-  const resolveRowId = (row = {}) => String(
-    row?.id
-    || row?.restaurantId
-    || row?.raw?.id
-    || ""
-  ).trim();
-  const resolveRowNameToken = (row = {}) => String(
-    row?.name
-    || row?.raw?.name
-    || ""
-  ).trim().toLowerCase();
-  const isSameCoords = (a, b) => {
-    if (!a || !b) return false;
-    return Math.abs(Number(a.lat) - Number(b.lat)) <= 0.0002
-      && Math.abs(Number(a.lng) - Number(b.lng)) <= 0.0002;
-  };
-
-  let match = null;
-  if (targetId) {
-    match = rows.find((row) => resolveRowId(row) === targetId) || null;
-  }
-  if (!match && targetNameToken) {
-    match = rows.find((row) => resolveRowNameToken(row) === targetNameToken) || null;
-  }
-  if (!match && targetCoords) {
-    match = rows.find((row) => {
-      const coords = normalizeCoordPair(row?.lat, row?.lng);
-      return isSameCoords(coords, targetCoords);
-    }) || null;
-  }
-
-  const fallbackCoords = targetCoords || normalizeCoordPair(match?.lat, match?.lng);
-  if (!fallbackCoords) return null;
-
-  if (!match) {
-    const fallbackId = targetId || "landing-focus";
-    const fallbackLogo = resolveMapMarkerLogoUrl(meta.logo || "", fallbackId);
-    return {
-      id: fallbackId,
-      markerKey: `landing:${fallbackId}`,
-      name: meta.name || "Business",
-      lat: fallbackCoords.lat,
-      lng: fallbackCoords.lng,
-      city: "",
-      address: "Standort verifiziert",
-      hours: "",
-      rating: 4.8,
-      img: fallbackLogo,
-      desc: "",
-      hasVerifiedCoords: true,
-      locationStatus: "verified",
-      raw: {}
-    };
-  }
-
-  const resolvedId = resolveRowId(match) || targetId || "landing-focus";
-  const resolvedName = String(match?.name || match?.raw?.name || meta.name || "Business").trim() || "Business";
-  const resolvedMarkerKey = String(match?.markerKey || `${resolvedId}:${Number(match?.locationIndex || 0) || 0}`).trim();
-  const resolvedImg = resolveMapMarkerLogoUrl(
-    match?.img
-    || match?.raw?.logoUrl
-    || match?.raw?.logo
-    || match?.raw?.heroUrl
-    || match?.raw?.coverUrl
-    || meta.logo
-    || "",
-    resolvedId
-  );
-  return {
-    ...match,
-    id: resolvedId,
-    markerKey: resolvedMarkerKey || `landing:${resolvedId}`,
-    name: resolvedName,
-    lat: fallbackCoords.lat,
-    lng: fallbackCoords.lng,
-    address: String(match?.address || match?.city || match?.raw?.address || "Standort verifiziert").trim() || "Standort verifiziert",
-    city: String(match?.city || match?.raw?.city || "").trim(),
-    rating: match?.rating || match?.raw?.rating || 4.8,
-    img: resolvedImg,
-    raw: match?.raw || match
-  };
-}
-
-function getLandingMapLocations(locations = state.businessLocations) {
-  if (!isLandingDiscoverStepActive()) return [];
-  const focusedBusiness = resolveLandingMapFocusedBusiness(locations);
-  if (focusedBusiness) return [focusedBusiness];
-  const rows = Array.isArray(locations) ? locations : [];
-  const fallback = rows.find((entry) => hasUsableMapCoords(entry))
-    || getDiscoverableMapLocations(rows)[0]
-    || null;
-  if (!fallback) return [];
-  const coords = normalizeCoordPair(fallback?.lat, fallback?.lng);
-  if (!coords) return [];
-  return [{
-    ...fallback,
-    lat: coords.lat,
-    lng: coords.lng
-  }];
 }
 
 function primeMapMarkerLogos(locations = [], limit = 40) {
@@ -680,18 +466,14 @@ function primeMapMarkerLogos(locations = [], limit = 40) {
 function fitLeafletToLocations(locations = [], { force = false, animate = false } = {}) {
   if (!leafletMap || !window.L) return false;
   if (!force && mapViewportAlignedAtLeastOnce) return false;
-  const landingMode = isLandingDiscoverStepActive();
-  const visibleLocations = landingMode
-    ? (Array.isArray(locations) ? locations : []).filter((entry) => hasUsableMapCoords(entry))
-    : getDiscoverableMapLocations(locations);
+  const visibleLocations = getDiscoverableMapLocations(locations);
   const latLngPairs = visibleLocations
     .map((entry) => normalizeCoordPair(entry?.lat, entry?.lng))
     .filter(Boolean)
     .map((coords) => [coords.lat, coords.lng]);
   const selectedCoords = normalizeCoordPair(state.selectedBusiness?.lat, state.selectedBusiness?.lng);
-  const landingFocusCoords = resolveLandingMapFocusCoords();
   const verifiedCoords = resolveVerifiedMapCoords();
-  const preferredCoords = selectedCoords || landingFocusCoords || verifiedCoords || null;
+  const preferredCoords = selectedCoords || verifiedCoords || null;
   const fallbackCoords = latLngPairs.length ? { lat: latLngPairs[0][0], lng: latLngPairs[0][1] } : null;
   const anchor = preferredCoords || fallbackCoords;
   if (!anchor) return false;
@@ -731,7 +513,7 @@ function makeBizDivIcon(b, { selected = false } = {}) {
       <div class="w-12 h-12 rounded-[1rem] shadow-lg flex items-center justify-center border-[3px] ${isSelected ? 'border-indigo-600' : 'border-white'} bg-white overflow-hidden p-0.5">
         <img src="${safeImg}" loading="eager" decoding="async" fetchpriority="${isSelected ? "high" : "auto"}" class="w-full h-full object-cover rounded-xl" onerror="this.src='${PLACEHOLDER_IMAGE}'"/>
       </div>
-      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${isSelected ? 'border-t-indigo-600' : 'border-t-white drop-shadow-md'}" style="margin-top:-2px;"></div>
+      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${isSelected ? 'border-t-indigo-600' : 'border-t-white drop-shadow-md'} -mt-1"></div>
     </div>
   `;
   return window.L.divIcon({ className: "custom-div-icon", html, iconSize: [48, 58], iconAnchor: [24, 58] });
@@ -874,15 +656,10 @@ function setMapNotice(message = "", { durationMs = 4200 } = {}) {
 function updateMapSheet() {
   const slot = document.getElementById("mapSheetSlot");
   if (!slot) return;
-  if (isLandingDiscoverStepActive() && !state.selectedBusiness) {
-    const landingFocus = getLandingMapLocations(state.businessLocations)[0] || null;
-    if (landingFocus) state.selectedBusiness = landingFocus;
-  }
-  const selectedIsInvalid = !!state.selectedBusiness && (
-    !hasUsableMapCoords(state.selectedBusiness)
-    || (!isLandingDiscoverStepActive() && !isDiscoverableMapBusiness(state.selectedBusiness))
-  );
-  if (selectedIsInvalid) {
+  if (state.selectedBusiness && (
+    !isDiscoverableMapBusiness(state.selectedBusiness)
+    || !hasUsableMapCoords(state.selectedBusiness)
+  )) {
     state.selectedBusiness = null;
   }
   const selected = state.selectedBusiness || null;
@@ -893,15 +670,7 @@ function updateMapSheet() {
       Number(selected.lng || 0).toFixed(6),
       String(selected.name || ""),
       String(selected.address || ""),
-      String(selected.rating || ""),
-      String(
-        selected.img
-        || selected.raw?.logoUrl
-        || selected.raw?.logo
-        || selected.raw?.heroUrl
-        || selected.raw?.coverUrl
-        || ""
-      )
+      String(selected.rating || "")
     ].join("|")
     : "none";
   const prevSheetSignature = String(slot.dataset.mapSheetSignature || "");
@@ -963,16 +732,12 @@ function createLeafletTileLayer(urlTemplate = LEAFLET_TILE_PRIMARY_URL) {
 }
 
 function initLeafletIfNeeded() {
-  if (!isMapSurfaceActive()) {
+  if (state.activeTab !== "map") {
     return;
   }
-  const landingMode = isLandingDiscoverStepActive();
 
   const el = document.getElementById("leafletMap");
   if (!el) return;
-  if (landingMode) {
-    updateMapSheet();
-  }
   if (!window.L) {
     void ensureLeafletLoaded().then((loaded) => {
       if (!loaded) {
@@ -980,7 +745,7 @@ function initLeafletIfNeeded() {
         emitVendorDegraded("map", true, "Kartenbibliothek nicht verfuegbar. Karte im reduzierten Modus.");
         if (window && typeof window.setTimeout === "function") {
           window.setTimeout(() => {
-            if (!isMapSurfaceActive()) return;
+            if (state.activeTab !== "map") return;
             if (window.L) {
               initLeafletIfNeeded();
               return;
@@ -992,7 +757,7 @@ function initLeafletIfNeeded() {
         }
         return;
       }
-      if (!isMapSurfaceActive()) return;
+      if (state.activeTab !== "map") return;
       initLeafletIfNeeded();
       render();
     });
@@ -1017,23 +782,12 @@ function initLeafletIfNeeded() {
   }
 
   if (leafletMap) {
-    syncLeafletInteractionMode();
     leafletSurfaceMissingSince = 0;
     try { leafletMap.invalidateSize(); } catch {}
     scheduleLeafletRefresh(2, { throttleMs: 180 });
-    if (!landingMode) {
-      bindMapSearchInput();
-    }
-    const visibleLocations = renderCurrentMapMarkerSet({ query: landingMode ? "" : getActiveMapSearchQuery(), panToFirst: false });
+    bindMapSearchInput();
+    const visibleLocations = renderCurrentMapMarkerSet({ query: getActiveMapSearchQuery(), panToFirst: false });
     fitLeafletToLocations(visibleLocations, { force: false, animate: false });
-    if (landingMode) {
-      const landingFocus = normalizeCoordPair(state.selectedBusiness?.lat, state.selectedBusiness?.lng) || resolveLandingMapFocusCoords();
-      if (landingFocus) {
-        focusLeafletMap(landingFocus.lat, landingFocus.lng, { duration: 0, animate: false });
-      }
-      updateMapSheet();
-      return;
-    }
     hydrateMapSearchFromVerifiedLocation({ recenter: false });
     const verified = resolveVerifiedMapCoords();
     if (verified) setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
@@ -1048,7 +802,6 @@ function initLeafletIfNeeded() {
     zoomAnimation: true,
     markerZoomAnimation: true
   }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_DEFAULT_ZOOM);
-  syncLeafletInteractionMode();
   leafletSurfaceMissingSince = 0;
   const primaryLayer = createLeafletTileLayer(LEAFLET_TILE_PRIMARY_URL);
   const canUseFallbackLayer = !!LEAFLET_TILE_FALLBACK_URL && LEAFLET_TILE_FALLBACK_URL !== LEAFLET_TILE_PRIMARY_URL;
@@ -1108,20 +861,12 @@ function initLeafletIfNeeded() {
 
   const initialMarkerSet = renderCurrentMapMarkerSet({ query: "", panToFirst: false });
   fitLeafletToLocations(initialMarkerSet, { force: true, animate: false });
-  if (!landingMode) {
-    updateMapSheet();
-    if (window.lucide?.createIcons) window.lucide.createIcons();
-    bindMapSearchInput();
-    hydrateMapSearchFromVerifiedLocation({ force: true, recenter: false });
-    const verified = resolveVerifiedMapCoords();
-    if (verified) setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
-    return;
-  }
-  const landingFocus = normalizeCoordPair(state.selectedBusiness?.lat, state.selectedBusiness?.lng) || resolveLandingMapFocusCoords();
-  if (landingFocus) {
-    focusLeafletMap(landingFocus.lat, landingFocus.lng, { duration: 0, animate: false });
-  }
   updateMapSheet();
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+  bindMapSearchInput();
+  hydrateMapSearchFromVerifiedLocation({ force: true, recenter: false });
+  const verified = resolveVerifiedMapCoords();
+  if (verified) setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
 }
 
 function getSelectedMapMarkerKey() {
@@ -1138,10 +883,7 @@ function getActiveMapSearchQuery() {
 
 function renderLeafletMarkers(locations) {
   if (!leafletMap || !window.L) return;
-  const landingMode = isLandingDiscoverStepActive();
-  const visibleLocations = landingMode
-    ? (Array.isArray(locations) ? locations : []).filter((entry) => hasUsableMapCoords(entry))
-    : getDiscoverableMapLocations(locations);
+  const visibleLocations = getDiscoverableMapLocations(locations);
   primeMapMarkerLogos(visibleLocations, 48);
   const selectedMarkerKey = getSelectedMapMarkerKey();
   const nextEntries = new Map();
@@ -1210,27 +952,6 @@ function renderLeafletMarkers(locations) {
 }
 
 function filterMapLocationsByQuery(query) {
-  if (isLandingDiscoverStepActive()) {
-    const landingLocations = getLandingMapLocations(state.businessLocations);
-    const focused = landingLocations[0] || null;
-    if (focused) {
-      const current = state.selectedBusiness || null;
-      const currentKey = String(current?.markerKey || current?.id || "").trim();
-      const focusedKey = String(focused?.markerKey || focused?.id || "").trim();
-      const currentLat = Number(current?.lat || 0);
-      const currentLng = Number(current?.lng || 0);
-      const focusedLat = Number(focused?.lat || 0);
-      const focusedLng = Number(focused?.lng || 0);
-      const sameFocus = !!focusedKey
-        && currentKey === focusedKey
-        && Math.abs(currentLat - focusedLat) < 0.000001
-        && Math.abs(currentLng - focusedLng) < 0.000001;
-      if (!sameFocus) {
-        state.selectedBusiness = focused;
-      }
-    }
-    return landingLocations;
-  }
   const normalizeToken = (value = "") => {
     const raw = String(value || "");
     const normalized = typeof normalizeSearchKey === "function"
@@ -1851,15 +1572,7 @@ function handleSearchInput(value) {
 }
 
 function renderMapSheet(selected) {
-  const imageUrl = resolveMapMarkerLogoUrl(
-    selected?.img
-    || selected?.raw?.logoUrl
-    || selected?.raw?.logo
-    || selected?.raw?.heroUrl
-    || selected?.raw?.coverUrl
-    || "",
-    selected?.id || selected?.raw?.id || ""
-  );
+  const imageUrl = getOptimizedImageUrl(selected.img, "thumb");
   return `
     <div class="animate-in slide-in-from-bottom-6 duration-300">
       <div class="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.25)] border border-slate-100/50 relative">
@@ -1870,8 +1583,8 @@ function renderMapSheet(selected) {
         </button>
 
         <div class="flex gap-4 pr-6 mt-2">
-          <div id="mapVisitProfileImgBtn" class="w-20 h-20 rounded-[1.5rem] bg-white p-1 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative group cursor-pointer">
-            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-contain rounded-[1.3rem] group-hover:scale-105 transition-transform bg-white" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+          <div id="mapVisitProfileImgBtn" class="w-20 h-20 rounded-[1.5rem] bg-slate-50 p-1 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative group cursor-pointer">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.3rem] group-hover:scale-105 transition-transform" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
           </div>
           <div class="flex-1 pt-1">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">Restaurant</span>
@@ -1900,27 +1613,10 @@ function renderMapSheet(selected) {
 }
 
 function renderMapView() {
-  const landingStaticMode = isLandingDiscoverStepActive();
   const hasLeaflet = !!window.L;
   const mapInfoLabel = leafletLoadFailed
     ? "Karte konnte nicht geladen werden."
     : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
-  if (landingStaticMode) {
-    return `
-      <div class="map-view-root animate-in fade-in duration-500">
-        <div class="map-view-surface" style="pointer-events:none;">
-          <div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>
-          ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">${escapeHtml(mapInfoLabel)}</div>`}
-          <div class="absolute top-4 left-4 z-30">
-            <div class="w-10 h-10 rounded-full bg-white/95 border border-white/70 shadow-[0_10px_24px_rgba(15,23,42,0.18)] flex items-center justify-center text-slate-700" aria-hidden="true">
-              ${icon("search", "w-4 h-4")}
-            </div>
-          </div>
-          <div id="mapSheetSlot" class="map-view-sheet-slot"></div>
-        </div>
-      </div>
-    `;
-  }
   const mapTruthState = renderMapTruthState();
   const mapSearchExpanded = mapSearchUiExpanded === true;
   const mapSearchPlaceholder = mapSearchExpanded
@@ -1936,7 +1632,7 @@ function renderMapView() {
       </div>
       ${mapTruthState ? `<div class="map-view-truth">${mapTruthState}</div>` : ""}
 
-      <div class="map-view-surface"${landingStaticMode ? ' style="pointer-events:none;"' : ""}>
+      <div class="map-view-surface">
         <div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>
         ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">${escapeHtml(mapInfoLabel)}</div>`}
         
@@ -1950,13 +1646,11 @@ function renderMapView() {
           </div>
         </div>
 
-        ${landingStaticMode ? "" : `
-          <div class="map-view-overlay-bottom-right">
-            <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all">
-              ${icon("navigation", "w-5 h-5 fill-white")}
-            </button>
-          </div>
-        `}
+        <div class="map-view-overlay-bottom-right">
+          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all">
+            ${icon("navigation", "w-5 h-5 fill-white")}
+          </button>
+        </div>
 
         <div id="mapSheetSlot" class="map-view-sheet-slot"></div>
       </div>

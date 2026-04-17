@@ -2754,8 +2754,7 @@ export function createFeedViewOrchestrationController({
     return renderFeedView();
   }
 
-  function renderFeedComposer({ disabled = false } = {}) {
-    if (disabled) return "";
+  function renderFeedComposer() {
     if (!shouldShowFeedComposer()) return "";
     return `
       <div data-feed-composer-wrap class="app-content-inline mb-6">
@@ -3003,13 +3002,11 @@ export function createFeedViewOrchestrationController({
   `;
   }
 
-  function renderFeedList(feedPosts, { maxItems = 10 } = {}) {
-    const items = Array.isArray(feedPosts) ? feedPosts : [];
-    const safeMaxItems = Math.max(1, Number(maxItems || 10) || 10);
-    if (!items.length) {
+  function renderFeedList(feedPosts) {
+    if (!feedPosts.length) {
       return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>`;
     }
-    return items.slice(0, safeMaxItems).map((post, index) => renderFeedItem(post, index)).join("");
+    return feedPosts.slice(0, 10).map((post, index) => renderFeedItem(post, index)).join("");
   }
 
   function patchFeedList(feedPosts) {
@@ -3415,38 +3412,20 @@ export function createFeedViewOrchestrationController({
     return true;
   }
 
-  function renderFeedView(options = {}) {
-    const normalizedOptions = options && typeof options === "object" ? options : {};
-    const forceFeedStage = normalizedOptions.forceFeedStage === true;
-    const disableComposer = normalizedOptions.disableComposer === true;
-    const skipGeoScope = normalizedOptions.skipGeoScope === true;
-    const maxFeedItems = Math.max(1, Number(normalizedOptions.maxFeedItems || 10) || 10);
-    const feedPostsOverride = Array.isArray(normalizedOptions.feedPostsOverride)
-      ? normalizedOptions.feedPostsOverride
-      : null;
-    const storiesOverride = Array.isArray(normalizedOptions.storiesOverride)
-      ? normalizedOptions.storiesOverride
-      : null;
-    const hasViewerLocation = forceFeedStage || !!normalizeViewerLocationRecord(resolveViewerLocationRecord());
+  function renderFeedView() {
+    const hasViewerLocation = !!normalizeViewerLocationRecord(resolveViewerLocationRecord());
     const feedViewMode = hasViewerLocation ? "feed" : "feed-gate";
     let feedBentoContent = renderFeedGateBentoContent();
     if (hasViewerLocation) {
-      const feedPostsSource = feedPostsOverride || (Array.isArray(state?.feedPosts) ? state.feedPosts : []);
-      const categoryFeedPosts = feedPostsOverride
-        ? feedPostsSource.slice()
-        : feedPostsSource
-          .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
-          .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-      const storiesSource = storiesOverride || (Array.isArray(state.stories) ? state.stories : []);
-      const baseStories = storiesSource.filter((story) => isRenderableStory(story));
-      const collections = skipGeoScope
-        ? { feedPosts: categoryFeedPosts, stories: baseStories }
-        : resolveFeedGeoScopedCollections({
-            feedPosts: categoryFeedPosts,
-            stories: baseStories
-          });
-      const feedPosts = Array.isArray(collections?.feedPosts) ? collections.feedPosts : [];
-      const stories = Array.isArray(collections?.stories) ? collections.stories : [];
+      const feedPostsSource = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
+      const categoryFeedPosts = feedPostsSource
+        .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
+        .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
+      const baseStories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+      const { feedPosts, stories } = resolveFeedGeoScopedCollections({
+        feedPosts: categoryFeedPosts,
+        stories: baseStories
+      });
       const trackStories = stories;
       feedBentoContent = `
         <div id="storiesRow" class="app-content-inline pt-6">
@@ -3455,9 +3434,9 @@ export function createFeedViewOrchestrationController({
             fallbackStories: trackStories
           })}
         </div>
-        ${renderFeedComposer({ disabled: disableComposer })}
+        ${renderFeedComposer()}
         <div id="feedList" class="app-content-inline py-4 space-y-12">
-          ${renderFeedList(feedPosts, { maxItems: maxFeedItems })}
+          ${renderFeedList(feedPosts)}
         </div>
       `;
     }

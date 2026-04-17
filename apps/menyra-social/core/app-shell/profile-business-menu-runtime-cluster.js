@@ -28,12 +28,6 @@ export function createProfileBusinessMenuRuntimeCluster({
   const renderShopProductList = typeof bridgeBindingsApi.renderShopProductListFn === "function"
     ? bridgeBindingsApi.renderShopProductListFn
     : (() => "");
-  const renderMapView = typeof bridgeBindingsApi.renderMapViewFn === "function"
-    ? bridgeBindingsApi.renderMapViewFn
-    : (() => "");
-  const renderFeedView = typeof bridgeBindingsApi.renderFeedViewFn === "function"
-    ? bridgeBindingsApi.renderFeedViewFn
-    : (() => "");
 
   const getMenuRestaurantForProfile = (profile) => getMenuRestaurantForProfileCore(profile);
 
@@ -61,9 +55,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     state: profileMenuDeps.state || state,
     renderProfileShopCartViewFn: (...args) => renderProfileShopCartView(...args),
     renderProfileShopFavoritesViewFn: (...args) => renderProfileShopFavoritesView(...args),
-    renderMapViewFn: (...args) => renderMapView(...args),
     renderShopProductListFn: (...args) => renderShopProductList(...args),
-    renderFeedViewFn: (...args) => renderFeedView(...args),
     ensureMenuDataForProfileFn: ensureMenuDataForProfile,
     ensureFocusDataForProfileFn: ensureFocusDataForProfile
   });
