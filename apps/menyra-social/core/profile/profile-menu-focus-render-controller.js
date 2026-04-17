@@ -56,6 +56,12 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const buildUrl = deps.buildUrlFn;
   const normalizeSearchKey = deps.normalizeSearchKeyFn;
   const normalizeFollowHandle = deps.normalizeFollowHandleFn;
+  const renderMapView = typeof deps.renderMapViewFn === "function"
+    ? deps.renderMapViewFn
+    : (() => "");
+  const renderFeedView = typeof deps.renderFeedViewFn === "function"
+    ? deps.renderFeedViewFn
+    : (() => "");
   const menuCardViewerLikeHydrationState = {
     key: "",
     inFlightKey: ""
@@ -293,7 +299,7 @@ function resolveProfilePrimaryTopTab(profile = {}) {
 function normalizeLandingStep(value = 0) {
   const parsed = Math.round(Number(value || 0));
   if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.min(3, parsed));
+  return Math.max(0, Math.min(5, parsed));
 }
 
 function normalizeLandingGreetingIndex(value = 0, length = 1) {
@@ -306,6 +312,317 @@ function normalizeLandingGreetingIndex(value = 0, length = 1) {
 
 function resolveLandingDotStep(step = 0) {
   return normalizeLandingStep(step);
+}
+
+function normalizeLandingBusinessToken(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (typeof normalizeSearchKey === "function") {
+    return String(normalizeSearchKey(raw) || "").trim().toLowerCase();
+  }
+  return raw.toLowerCase();
+}
+
+function resolveLandingProfileRestaurantId(profile = {}) {
+  return String(
+    profile?.restaurantId
+    || profile?.id
+    || profile?.rid
+    || ""
+  ).trim();
+}
+
+function pickLandingBusinessStory(profile = {}, fallbackName = "") {
+  const stories = Array.isArray(state.stories) ? state.stories : [];
+  if (!stories.length) return null;
+  const restaurantId = resolveLandingProfileRestaurantId(profile);
+  const businessToken = normalizeLandingBusinessToken(profile?.name || fallbackName || "");
+  const matchesById = (story = {}) => {
+    if (!restaurantId) return false;
+    const storyRestaurantId = String(
+      story?.restaurantId
+      || story?.id
+      || story?.rid
+      || story?.ownerId
+      || ""
+    ).trim();
+    return !!storyRestaurantId && storyRestaurantId === restaurantId;
+  };
+  const matchesByName = (story = {}) => {
+    if (!businessToken) return false;
+    const nameToken = normalizeLandingBusinessToken(
+      story?.businessName
+      || story?.restaurantName
+      || story?.name
+      || story?.label
+      || ""
+    );
+    return !!nameToken && nameToken === businessToken;
+  };
+  return stories.find(matchesById) || stories.find(matchesByName) || null;
+}
+
+function resolveLandingStoryPreview(story = {}, fallbackLogo = "") {
+  const mediaType = String(story?.mediaType || story?.type || "").trim().toLowerCase();
+  const videoSrc = String(
+    story?.videoUrl
+    || story?.video
+    || story?.mediaVideoUrl
+    || ""
+  ).trim();
+  const imageSrc = String(
+    story?.imageUrl
+    || story?.thumbnailUrl
+    || story?.posterUrl
+    || story?.coverUrl
+    || story?.mediaUrl
+    || story?.url
+    || ""
+  ).trim();
+  const src = imageSrc || fallbackLogo || "";
+  return {
+    src,
+    isVideo: !!videoSrc || mediaType === "video"
+  };
+}
+
+function pickLandingBusinessFeedPost(profile = {}, fallbackName = "", fallbackPosts = []) {
+  const feedPosts = Array.isArray(state.feedPosts) ? state.feedPosts : [];
+  const profilePosts = Array.isArray(fallbackPosts) ? fallbackPosts : [];
+  const restaurantId = resolveLandingProfileRestaurantId(profile);
+  const businessToken = normalizeLandingBusinessToken(profile?.name || fallbackName || "");
+  const matchesById = (post = {}) => {
+    if (!restaurantId) return false;
+    const postRestaurantId = String(
+      post?.restaurantId
+      || post?.ownerId
+      || post?.rid
+      || post?.businessId
+      || ""
+    ).trim();
+    return !!postRestaurantId && postRestaurantId === restaurantId;
+  };
+  const matchesByName = (post = {}) => {
+    if (!businessToken) return false;
+    const nameToken = normalizeLandingBusinessToken(
+      post?.business
+      || post?.restaurantName
+      || post?.name
+      || ""
+    );
+    return !!nameToken && nameToken === businessToken;
+  };
+  return (
+    feedPosts.find(matchesById)
+    || feedPosts.find(matchesByName)
+    || profilePosts.find(matchesById)
+    || profilePosts.find(matchesByName)
+    || null
+  );
+}
+
+function resolveLandingPostMedia(post = {}, fallbackLogo = "") {
+  const url = String(
+    post?.image
+    || post?.url
+    || post?.mediaUrl
+    || post?.thumbnailUrl
+    || post?.posterUrl
+    || post?.heroUrl
+    || ""
+  ).trim();
+  return url || fallbackLogo || PLACEHOLDER_IMAGE;
+}
+
+function buildLandingFeedFallbackStory(
+  profile = {},
+  {
+    businessName = "",
+    logoUrl = "",
+    fallbackPost = null
+  } = {}
+) {
+  const restaurantId = resolveLandingProfileRestaurantId(profile);
+  const mediaSource = String(
+    fallbackPost?.image
+    || fallbackPost?.url
+    || fallbackPost?.mediaUrl
+    || logoUrl
+    || PLACEHOLDER_IMAGE
+  ).trim();
+  if (!restaurantId && !mediaSource) return null;
+  return {
+    id: restaurantId || `landing-story-${normalizeLandingBusinessToken(businessName || "business") || "business"}`,
+    restaurantId,
+    businessName: businessName || profile?.name || "Business",
+    restaurantName: businessName || profile?.name || "Business",
+    name: businessName || profile?.name || "Business",
+    imageUrl: mediaSource,
+    mediaUrl: mediaSource,
+    mediaType: "image",
+    truthSource: "canonical",
+    isLive: false
+  };
+}
+
+function buildLandingFeedFallbackPost(
+  profile = {},
+  {
+    businessName = "",
+    logoUrl = "",
+    fallbackPosts = []
+  } = {}
+) {
+  const firstProfilePost = Array.isArray(fallbackPosts) && fallbackPosts.length ? fallbackPosts[0] : null;
+  const restaurantId = resolveLandingProfileRestaurantId(profile);
+  const postId = String(firstProfilePost?.id || "").trim();
+  const fallbackImage = resolveLandingPostMedia(firstProfilePost || {}, logoUrl);
+  return {
+    id: postId || `landing-feed-${restaurantId || normalizeLandingBusinessToken(businessName || "business") || "business"}`,
+    restaurantId,
+    ownerId: restaurantId,
+    ownerType: "restaurant",
+    business: businessName || profile?.name || "Business",
+    restaurantName: businessName || profile?.name || "Business",
+    location: String(profile?.location || firstProfilePost?.location || "Lokal").trim() || "Lokal",
+    content: String(
+      firstProfilePost?.content
+      || firstProfilePost?.caption
+      || firstProfilePost?.title
+      || "Dein Lokal ist jetzt sichtbar im Feed von Mnyra Social."
+    ).trim(),
+    image: fallbackImage,
+    url: fallbackImage,
+    logo: logoUrl || PLACEHOLDER_IMAGE,
+    likes: Number(firstProfilePost?.likes ?? 0) || 0,
+    comments: Number(firstProfilePost?.comments ?? 0) || 0,
+    createdAt: firstProfilePost?.createdAt || Date.now(),
+    truthSource: "canonical"
+  };
+}
+
+function renderLandingRealFeedScreen(
+  profile = {},
+  {
+    businessName = "",
+    logoUrl = "",
+    fallbackPosts = []
+  } = {}
+) {
+  const story = pickLandingBusinessStory(profile, businessName);
+  const post = pickLandingBusinessFeedPost(profile, businessName, fallbackPosts);
+  const resolvedStory = story || buildLandingFeedFallbackStory(profile, {
+    businessName,
+    logoUrl,
+    fallbackPost: post
+  });
+  const resolvedPost = post || buildLandingFeedFallbackPost(profile, {
+    businessName,
+    logoUrl,
+    fallbackPosts
+  });
+  const storyList = resolvedStory ? [resolvedStory] : [];
+  const postList = resolvedPost ? [resolvedPost] : [];
+  if (typeof renderFeedView !== "function") {
+    return renderLandingFeedPreviewScreen(profile, { businessName, logoUrl, fallbackPosts });
+  }
+  try {
+    const html = String(renderFeedView({
+      forceFeedStage: true,
+      skipGeoScope: true,
+      disableComposer: true,
+      maxFeedItems: 1,
+      storiesOverride: storyList,
+      feedPostsOverride: postList
+    }) || "").trim();
+    if (!html) {
+      return renderLandingFeedPreviewScreen(profile, { businessName, logoUrl, fallbackPosts });
+    }
+    return html.replace(
+      /id="feedView"/g,
+      'id="landingFeedView" data-landing-feed-view="true"'
+    );
+  } catch (err) {
+    console.warn("[landing] feed preview render fallback", err);
+    return renderLandingFeedPreviewScreen(profile, { businessName, logoUrl, fallbackPosts });
+  }
+}
+
+function renderLandingFeedPreviewScreen(
+  profile = {},
+  {
+    businessName = "",
+    logoUrl = "",
+    fallbackPosts = []
+  } = {}
+) {
+  const story = pickLandingBusinessStory(profile, businessName);
+  const post = pickLandingBusinessFeedPost(profile, businessName, fallbackPosts);
+  const storyPreview = resolveLandingStoryPreview(story, logoUrl);
+  const postImage = resolveLandingPostMedia(post, logoUrl);
+  const storyLabel = String(
+    story?.businessName
+    || story?.restaurantName
+    || story?.name
+    || businessName
+    || "Business"
+  ).trim() || "Business";
+  const postBusinessName = String(
+    post?.business
+    || post?.restaurantName
+    || post?.name
+    || businessName
+    || "Business"
+  ).trim() || "Business";
+  const postLocation = String(
+    post?.location
+    || post?.city
+    || profile?.location
+    || "Lokal"
+  ).trim() || "Lokal";
+  const postText = String(
+    post?.content
+    || post?.caption
+    || post?.title
+    || "Dein Lokal ist jetzt sichtbar im Feed von Mnyra Social."
+  ).trim();
+  return `
+    <div class="app-content-inline app-main-content-safe pt-5 pb-24 space-y-5">
+      <div class="bg-white rounded-[2.2rem] border border-slate-100 shadow-sm p-5">
+        <p class="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400 mb-3">Story</p>
+        <div class="flex items-center gap-3">
+          <div class="w-[68px] h-[118px] rounded-[1.25rem] overflow-hidden border border-slate-100 bg-slate-200 relative">
+            ${storyPreview.src ? `
+              <img src="${escapeHtml(getOptimizedImageUrl(storyPreview.src, "small"))}" decoding="async" class="w-full h-full object-cover" />
+            ` : `
+              <div class="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"></div>
+            `}
+            <div class="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/60 to-transparent"></div>
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(storyLabel)}</p>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${storyPreview.isVideo ? "Story Video" : "Story Bild"}</p>
+          </div>
+        </div>
+      </div>
+
+      <article class="bg-white rounded-[2.4rem] border border-slate-100 shadow-sm p-4">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-11 h-11 rounded-[1rem] overflow-hidden bg-slate-100 border border-slate-200">
+            <img src="${escapeHtml(getOptimizedImageUrl(logoUrl || PLACEHOLDER_IMAGE, "avatar"))}" decoding="async" class="w-full h-full object-cover" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-[13px] font-black text-slate-900 truncate">${escapeHtml(postBusinessName)}</p>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">${escapeHtml(postLocation)}</p>
+          </div>
+        </div>
+        <div class="rounded-[1.6rem] overflow-hidden bg-slate-200 mb-4">
+          <img src="${escapeHtml(getOptimizedImageUrl(postImage, "medium"))}" decoding="async" class="w-full h-[220px] object-cover" />
+        </div>
+        <p class="text-[13px] font-medium text-slate-700 leading-relaxed">${escapeHtml(postText)}</p>
+      </article>
+    </div>
+  `;
 }
 
 function renderBusinessLandingScreenOne(profile = {}) {
@@ -351,24 +668,70 @@ function renderBusinessLandingScreenOne(profile = {}) {
     landing.messageLine2
     || "Prezenca juaj digjitale eshte gati për aktivizim."
   ).trim();
-  const shouldRenderPostsSurface = step >= 2;
-  const shouldRenderMenuSurface = step >= 3;
+  const parseCoord = (value) => {
+    if (value === null || value === undefined || value === "") return null;
+    const num = Number(String(value).trim().replace(",", "."));
+    if (!Number.isFinite(num)) return null;
+    return num;
+  };
+  const focusCoordCandidates = [
+    [landing?.lat, landing?.lng],
+    [landing?.latitude, landing?.longitude],
+    [landing?.mapLat, landing?.mapLng],
+    [state?.selectedBusiness?.lat, state?.selectedBusiness?.lng],
+    [state?.selectedBusiness?.raw?.lat, state?.selectedBusiness?.raw?.lng],
+    [profile?.lat, profile?.lng],
+    [profile?.latitude, profile?.longitude],
+    [profile?.gpsLat, profile?.gpsLng]
+  ];
+  let focusCoords = null;
+  for (const pair of focusCoordCandidates) {
+    const lat = parseCoord(pair?.[0]);
+    const lng = parseCoord(pair?.[1]);
+    if (lat === null || lng === null) continue;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+    focusCoords = { lat, lng };
+    break;
+  }
+  const focusBusinessId = String(profile?.restaurantId || profile?.id || "").trim();
+  const focusBusinessName = String(profile?.name || businessName || "").trim();
+  const shouldRenderProfileSurface = step >= 2;
+  const shouldRenderPostsSurface = step >= 3;
+  const shouldRenderMenuSurface = step >= 4;
+  const shouldRenderFeedSurface = step >= 5;
   const resolvedPosts = Array.isArray(state.profileView?.posts)
     ? state.profileView.posts
     : (Array.isArray(profile?.posts) ? profile.posts : []);
   const activeDotStep = resolveLandingDotStep(step);
+  const maxLandingStep = 5;
+  const swipeIcon = step >= maxLandingStep ? "chevron-up" : "chevron-down";
   const landingSwipeHint = `
-    <div class="absolute w-full flex justify-center pointer-events-none" style="bottom: var(--landing-swipe-bottom);">
-      <div class="flex flex-col items-center animate-bounce text-indigo-600/80">
+    <div class="absolute w-full flex justify-center pointer-events-none z-[4200]" style="bottom: max(1.25rem, calc(var(--safe-area-bottom) + 0.85rem));">
+      <div class="flex flex-col items-center animate-bounce text-indigo-700">
         <span class="text-[9px] font-bold tracking-[0.25em] uppercase mb-2">Swipe</span>
-        ${icon("chevron-down", "w-6 h-6 text-indigo-600")}
+        <div class="w-8 h-8 rounded-full bg-white/90 border border-indigo-100 shadow-[0_8px_20px_-12px_rgba(79,70,229,0.75)] flex items-center justify-center">
+          ${icon(swipeIcon, "w-5 h-5 text-indigo-600")}
+        </div>
       </div>
+    </div>
+  `;
+  const renderLandingDiscoverMap = () => `
+    <div
+      data-landing-discover-panel="true"
+      data-landing-map-focus-id="${escapeHtml(focusBusinessId)}"
+      data-landing-map-focus-name="${escapeHtml(focusBusinessName)}"
+      data-landing-map-focus-logo="${escapeHtml(resolvedLogoUrl)}"
+      data-landing-map-focus-lat="${focusCoords ? escapeHtml(String(focusCoords.lat)) : ""}"
+      data-landing-map-focus-lng="${focusCoords ? escapeHtml(String(focusCoords.lng)) : ""}"
+      class="h-full w-full overflow-hidden bg-[#F8F9FA] flex flex-col"
+    >
+      ${renderMapView()}
     </div>
   `;
   return `
     <section data-landing-swipe-root="true" class="relative w-full overflow-hidden font-sans" style="height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); overscroll-behavior: none; -webkit-overflow-scrolling: auto; touch-action: none; user-select: none; background: #F8F9FA; --landing-panel-duration: 460ms; --landing-greeting-duration: 720ms; --landing-top-gap: 14px; --landing-swipe-bottom: 0.45rem;">
       <div class="absolute z-[70] flex flex-col items-center" style="right: 0.75rem; top: 33.333333%; transform: translateY(-50%); gap: 0.56rem; padding: 0.35rem 0.3rem; border-radius: 999px; background: rgba(248,250,252,0.66); box-shadow: 0 8px 28px -20px rgba(15,23,42,0.45); backdrop-filter: blur(4px);">
-        ${[0, 1, 2, 3].map((dotStep) => {
+        ${[0, 1, 2, 3, 4, 5].map((dotStep) => {
           const isActiveDot = activeDotStep === dotStep;
           return `
             <div data-landing-step-dot="${dotStep}" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(${isActiveDot ? "1.22" : "1"}); opacity: ${isActiveDot ? "1" : "0.88"}; background: ${isActiveDot ? "#4f46e5" : "rgba(100,116,139,0.58)"}; border: 1px solid ${isActiveDot ? "rgba(79,70,229,0.96)" : "rgba(255,255,255,0.95)"}; box-shadow: ${isActiveDot ? "0 6px 14px -8px rgba(79,70,229,0.95)" : "0 2px 6px -5px rgba(15,23,42,0.55)"};"></div>
@@ -411,25 +774,28 @@ function renderBusinessLandingScreenOne(profile = {}) {
             ${escapeHtml(line2)}
           </p>
         </div>
-        ${landingSwipeHint}
       </div>
 
       <div data-landing-panel="1" class="absolute inset-0 transition-transform ${step < 1 ? "translate-y-full" : step === 1 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; opacity: ${step === 1 ? "1" : "0"}; pointer-events: ${step === 1 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
-        <div data-landing-panel-scroll="1" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
-          ${renderPublicProfileSurface(profile, resolvedPosts, {
+        ${renderLandingDiscoverMap()}
+      </div>
+
+      <div data-landing-panel="2" class="absolute inset-0 transition-transform ${step < 2 ? "translate-y-full" : step === 2 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; opacity: ${step === 2 ? "1" : "0"}; pointer-events: ${step === 2 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+        <div data-landing-panel-scroll="2" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
+          ${shouldRenderProfileSurface ? renderPublicProfileSurface(profile, resolvedPosts, {
             topTabOverride: "profile",
             tutorialMode: true,
             contentTabOverride: "posts",
             landingHideContent: true,
             collapseIdentity: false,
+            contentReveal: false,
             landingMode: true
-          })}
+          }) : ""}
         </div>
-        ${landingSwipeHint}
       </div>
 
-      <div data-landing-panel="2" class="absolute inset-0 transition-transform ${step < 2 ? "translate-y-full" : step === 2 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; opacity: ${step === 2 ? "1" : "0"}; pointer-events: ${step === 2 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
-        <div data-landing-panel-scroll="2" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
+      <div data-landing-panel="3" class="absolute inset-0 transition-transform ${step < 3 ? "translate-y-full" : step === 3 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; opacity: ${step === 3 ? "1" : "0"}; pointer-events: ${step === 3 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+        <div data-landing-panel-scroll="3" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
           ${shouldRenderPostsSurface ? renderPublicProfileSurface(profile, resolvedPosts, {
             topTabOverride: "profile",
             tutorialMode: true,
@@ -440,11 +806,10 @@ function renderBusinessLandingScreenOne(profile = {}) {
             landingMode: true
           }) : ""}
         </div>
-        ${landingSwipeHint}
       </div>
 
-      <div data-landing-panel="3" class="absolute inset-0 transition-transform ${step < 3 ? "translate-y-full" : "translate-y-0"}" style="background: #F8F9FA; opacity: ${step === 3 ? "1" : "0"}; pointer-events: ${step === 3 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
-        <div data-landing-panel-scroll="3" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
+      <div data-landing-panel="4" class="absolute inset-0 transition-transform ${step < 4 ? "translate-y-full" : step === 4 ? "translate-y-0" : "-translate-y-full"}" style="background: #F8F9FA; opacity: ${step === 4 ? "1" : "0"}; pointer-events: ${step === 4 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+        <div data-landing-panel-scroll="4" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
           ${shouldRenderMenuSurface ? renderPublicProfileSurface(profile, resolvedPosts, {
             topTabOverride: "profile",
             tutorialMode: true,
@@ -456,6 +821,17 @@ function renderBusinessLandingScreenOne(profile = {}) {
           }) : ""}
         </div>
       </div>
+
+      <div data-landing-panel="5" class="absolute inset-0 transition-transform ${step < 5 ? "translate-y-full" : "translate-y-0"}" style="background: #F8F9FA; opacity: ${step === 5 ? "1" : "0"}; pointer-events: ${step === 5 ? "auto" : "none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+        <div data-landing-panel-scroll="5" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
+          ${shouldRenderFeedSurface ? renderLandingRealFeedScreen(profile, {
+            businessName,
+            logoUrl: resolvedLogoUrl,
+            fallbackPosts: resolvedPosts
+          }) : ""}
+        </div>
+      </div>
+      ${landingSwipeHint}
     </section>
   `;
 }
@@ -556,7 +932,10 @@ function renderPublicProfileSurface(
   const contentAnimationClass = contentReveal
     ? (landingMode ? "transition-opacity duration-200" : "animate-in fade-in duration-300")
     : "";
-  const postsLoaded = !landingMode || activeContentTab !== "posts" || profile?.postsLoaded === true;
+  const postsLoaded = !landingMode
+    || activeContentTab !== "posts"
+    || profile?.postsLoaded === true
+    || (Array.isArray(posts) && posts.length > 0);
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
       ${topTab === "profile" ? `
@@ -624,7 +1003,7 @@ function renderPublicProfileSurface(
           <div class="${disabledBlockClass} ${contentAnimationClass}">
             ${renderProfileMenuView(profile, {
               mode: landingMode ? "landing" : "profile",
-              allowAutoEnsure: !landingMode
+              allowAutoEnsure: true
             })}
           </div>
         ` : isCheckinTab ? `
@@ -2018,10 +2397,10 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const menuSource = String(state.menu.source || "").trim().toLowerCase();
   const hasPublicMenuTruth = isSameRestaurant && menuSource === "public";
   const isLandingMode = mode === "landing";
-  if (allowAutoEnsure && !state.menu.loading && !hasPublicMenuTruth) {
+  if (allowAutoEnsure && !hasPublicMenuTruth) {
     ensureMenuDataForProfile(profile);
   }
-  if (allowAutoEnsure && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
+  if (allowAutoEnsure && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
   }
   const isLoading = state.menu.loading || !hasPublicMenuTruth;
@@ -2044,7 +2423,13 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     maybeHydrateMenuCardViewerLikes(items, restaurantId);
   }
   if (isLandingMode && isLoading) {
-    return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
+    return `
+      <div class="app-content-inline app-main-content-safe pt-6">
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 text-center">
+          <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
+        </div>
+      </div>
+    `;
   }
   if (useTestfirstCardUi) {
     return `

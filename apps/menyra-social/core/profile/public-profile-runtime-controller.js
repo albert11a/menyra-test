@@ -255,7 +255,7 @@ export function createPublicProfileRuntimeController({
     });
   }
 
-  function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "", tableNumber = 0 } = {}) {
+  function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, landingStep = 0, menuAccessSource = "", tableNumber = 0 } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
     const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile.posts || []);
@@ -266,7 +266,7 @@ export function createPublicProfileRuntimeController({
     const clampLandingStep = (value = 0) => {
       const parsed = Math.round(Number(value || 0));
       if (!Number.isFinite(parsed)) return 0;
-      return Math.max(0, Math.min(3, parsed));
+      return Math.max(0, Math.min(5, parsed));
     };
     const normalizeLandingIndex = (value = 0) => {
       const parsed = Math.round(Number(value || 0));
@@ -276,6 +276,7 @@ export function createPublicProfileRuntimeController({
     const preservedLandingStep = preserveLandingState ? clampLandingStep(state?.profileLandingStep) : 0;
     const preservedLandingGreetingIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingGreetingIndex) : 0;
     const preservedLandingTourIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingTourIndex) : 0;
+    const requestedLandingStep = clampLandingStep(landingStep);
     const previousContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
     const explicitTopTab = String(topTab || "").trim();
     const preservedTopTab = sameVisibleProfile
@@ -301,7 +302,7 @@ export function createPublicProfileRuntimeController({
         state.profileLandingGreetingIndex = preservedLandingGreetingIndex;
         state.profileLandingTourIndex = preservedLandingTourIndex;
       } else {
-        state.profileLandingStep = 0;
+        state.profileLandingStep = requestedLandingStep;
         state.profileLandingGreetingIndex = 0;
         state.profileLandingTourIndex = 0;
       }
@@ -322,6 +323,33 @@ export function createPublicProfileRuntimeController({
   function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
     const data = profileDoc?.data || profileDoc || {};
     const rest = restaurant || {};
+    const parseCoordCandidate = (value = null) => {
+      if (value === null || value === undefined || value === "") return null;
+      const parsed = Number(String(value).trim().replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const resolveCoords = () => {
+      const candidates = [
+        [data?.lat, data?.lng],
+        [data?.latitude, data?.longitude],
+        [data?.gpsLat, data?.gpsLng],
+        [rest?.lat, rest?.lng],
+        [rest?.latitude, rest?.longitude],
+        [rest?.gpsLat, rest?.gpsLng],
+        [rest?.geo?.lat, rest?.geo?.lng],
+        [rest?.coords?.lat, rest?.coords?.lng],
+        [rest?.location?.lat, rest?.location?.lng]
+      ];
+      for (const pair of candidates) {
+        const lat = parseCoordCandidate(pair?.[0]);
+        const lng = parseCoordCandidate(pair?.[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) continue;
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+        if (Math.abs(lat) <= 180 && Math.abs(lng) <= 90) return { lat: lng, lng: lat };
+      }
+      return null;
+    };
     const displayName = resolveBusinessDisplayName(data, rest, fallbackName);
     const handle = resolvePreferredHandle({ handle: data?.handle || rest?.handle || "", name: displayName }, displayName);
     const followers = pickCountValue(
@@ -341,6 +369,7 @@ export function createPublicProfileRuntimeController({
     const landingSlug = String(data?.landingSlug || rest?.landingSlug || "").trim();
     const landingPageUrl = String(data?.landingPageUrl || rest?.landingPageUrl || "").trim();
     const landingScreenOne = data?.landingScreenOne || rest?.landingScreenOne || null;
+    const coords = resolveCoords();
     const type = normalizeRestaurantType(
       data?.type
       || data?.customerType
@@ -367,6 +396,14 @@ export function createPublicProfileRuntimeController({
       landingTemplate,
       landingSlug,
       landingPageUrl,
+      ...(coords ? {
+        lat: coords.lat,
+        lng: coords.lng,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        gpsLat: coords.lat,
+        gpsLng: coords.lng
+      } : {}),
       ...(landingScreenOne && typeof landingScreenOne === "object" ? { landingScreenOne } : {}),
       ...(type ? { type, customerType: type } : {}),
       pendingFollowRequest: false,

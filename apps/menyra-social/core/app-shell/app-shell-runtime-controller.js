@@ -393,9 +393,15 @@ export function createAppShellRuntimeController(deps = {}) {
     ].join("|");
   }
 
+  function isLandingMapPreviewActive() {
+    if (state.activeTab !== "profile") return false;
+    const topTab = String(state.profileTopTab || "").trim().toLowerCase();
+    if (topTab !== "landing") return false;
+    return Number(state.profileLandingStep || 0) === 1;
+  }
+
   function buildMapRuntimeSignature(mode = "") {
     if (mode !== "main") return "off";
-    if (state.activeTab !== "map") return `inactive:${String(state.activeTab || "")}`;
     const selectedBusiness = state.selectedBusiness || {};
     const selectedKey = String(
       selectedBusiness.markerKey
@@ -403,7 +409,15 @@ export function createAppShellRuntimeController(deps = {}) {
       || ""
     ).trim();
     const locationCount = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
-    return `map:${locationCount}:${selectedKey}`;
+    if (state.activeTab === "map") {
+      return `map:${locationCount}:${selectedKey}`;
+    }
+    if (isLandingMapPreviewActive()) {
+      const profile = state.profileView?.profile || state.userProfile || {};
+      const focusKey = String(profile?.restaurantId || profile?.id || profile?.name || "").trim();
+      return `landing-map:${locationCount}:${focusKey}:${selectedKey}`;
+    }
+    return `inactive:${String(state.activeTab || "")}:${String(state.profileTopTab || "")}:${Number(state.profileLandingStep || 0)}`;
   }
 
   function scheduleMapRuntimeRefresh() {
@@ -421,8 +435,83 @@ export function createAppShellRuntimeController(deps = {}) {
     run();
   }
 
+  function normalizeLookupToken(value = "") {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function resolveLandingMapProfileBusiness() {
+    const profile = state.profileView?.profile || state.userProfile || null;
+    if (!profile) return null;
+    const locations = Array.isArray(state.businessLocations) ? state.businessLocations : [];
+    if (!locations.length) return null;
+    const targetBusinessId = String(profile?.restaurantId || profile?.id || "").trim();
+    const targetNameToken = normalizeLookupToken(profile?.name || "");
+    const targetLat = Number(profile?.lat ?? profile?.latitude ?? profile?.gpsLat);
+    const targetLng = Number(profile?.lng ?? profile?.longitude ?? profile?.gpsLng);
+    const hasTargetCoords = Number.isFinite(targetLat) && Number.isFinite(targetLng);
+
+    const resolveEntryBusinessId = (entry = {}) => String(
+      entry?.id
+      || entry?.restaurantId
+      || entry?.raw?.id
+      || ""
+    ).trim();
+    const resolveEntryNameToken = (entry = {}) => normalizeLookupToken(
+      entry?.name
+      || entry?.raw?.name
+      || ""
+    );
+
+    if (targetBusinessId) {
+      const byId = locations.find((entry) => resolveEntryBusinessId(entry) === targetBusinessId);
+      if (byId) return byId;
+    }
+    if (targetNameToken) {
+      const byName = locations.find((entry) => resolveEntryNameToken(entry) === targetNameToken);
+      if (byName) return byName;
+    }
+    if (hasTargetCoords) {
+      const byCoords = locations.find((entry) => {
+        const lat = Number(entry?.lat);
+        const lng = Number(entry?.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+        return Math.abs(lat - targetLat) <= 0.0002 && Math.abs(lng - targetLng) <= 0.0002;
+      });
+      if (byCoords) return byCoords;
+    }
+    return null;
+  }
+
+  function syncLandingMapSelectionToProfile() {
+    const nextSelection = resolveLandingMapProfileBusiness();
+    if (!nextSelection) return false;
+    const currentSelection = state.selectedBusiness || {};
+    const currentKey = String(currentSelection?.markerKey || currentSelection?.id || "").trim();
+    const nextKey = String(nextSelection?.markerKey || nextSelection?.id || "").trim();
+    const currentLat = Number(currentSelection?.lat || 0);
+    const currentLng = Number(currentSelection?.lng || 0);
+    const nextLat = Number(nextSelection?.lat || 0);
+    const nextLng = Number(nextSelection?.lng || 0);
+    const isSameSelection = !!nextKey
+      && currentKey === nextKey
+      && Math.abs(currentLat - nextLat) < 0.000001
+      && Math.abs(currentLng - nextLng) < 0.000001;
+    if (isSameSelection) return false;
+    state.selectedBusiness = nextSelection;
+    return true;
+  }
+
+  function refreshLandingMapRuntime() {
+    syncLandingMapSelectionToProfile();
+    const mapCanvas = doc?.getElementById("leafletMap");
+    if (!mapCanvas) return false;
+    scheduleMapRuntimeRefresh();
+    return true;
+  }
+
   function shouldRecoverLeafletMapSurface(mode) {
-    if (mode !== "main" || state.activeTab !== "map") return false;
+    if (mode !== "main") return false;
+    if (state.activeTab !== "map" && !isLandingMapPreviewActive()) return false;
     const mapCanvas = doc?.getElementById("leafletMap");
     if (!mapCanvas) return false;
     return !mapCanvas.querySelector(".leaflet-pane");
@@ -1427,7 +1516,8 @@ export function createAppShellRuntimeController(deps = {}) {
         ? doc?.getElementById("feedView")
         : null;
       const reuseFeedViewMode = String(reuseFeed?.dataset?.feedViewMode || "").trim().toLowerCase();
-      const reuseLeafletMapCanvas = preserveMainScroll && state.activeTab === "map"
+      const mapSurfaceActive = state.activeTab === "map" || isLandingMapPreviewActive();
+      const reuseLeafletMapCanvas = preserveMainScroll && mapSurfaceActive
         ? doc?.getElementById("leafletMap")
         : null;
       const preservedMapSearchQuery = preserveMainScroll && state.activeTab === "map"
@@ -1547,7 +1637,8 @@ export function createAppShellRuntimeController(deps = {}) {
 
     const nextMapRuntimeSignature = buildMapRuntimeSignature(mode);
     const shouldRecoverMapSurface = shouldRecoverLeafletMapSurface(mode);
-    if (mode === "main" && state.activeTab === "map") {
+    const mapSurfaceActive = mode === "main" && (state.activeTab === "map" || isLandingMapPreviewActive());
+    if (mapSurfaceActive) {
       if (changed || nextMapRuntimeSignature !== lastMapRuntimeSignature || shouldRecoverMapSurface) {
         scheduleMapRuntimeRefresh();
       }
@@ -1709,6 +1800,7 @@ export function createAppShellRuntimeController(deps = {}) {
       renderFn: render,
       ensureMenuDataForProfileFn: (...args) => runBudgetWrapped("menu_open", () => ensureMenuDataForProfileFn(...args)),
       ensureFocusDataForProfileFn,
+      refreshLandingMapRuntimeFn: refreshLandingMapRuntime,
       bindAppMenuFocusEventsCoreFn,
       saveMenuLayoutToStorageFn,
       openMenuModalFn,

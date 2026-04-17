@@ -285,19 +285,45 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     return `/${encodeURIComponent(landingSlug)}`;
   }
 
+  function buildLeadLandingQueryString(restaurantId = "", options = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const params = new URLSearchParams();
+    const screenOne = buildLeadLandingScreenOnePayload({
+      restaurantId: safeRestaurantId,
+      base: safeOptions.base || safeOptions
+    });
+    const appendValue = (key = "", value = "") => {
+      const safeKey = String(key || "").trim();
+      const safeValue = String(value || "").trim();
+      if (!safeKey || !safeValue) return;
+      params.set(safeKey, safeValue);
+    };
+    appendValue("rid", safeRestaurantId);
+    appendValue("slug", screenOne?.landingSlug || safeOptions.landingSlug || "");
+    appendValue("bn", screenOne?.businessName || safeOptions.businessName || "");
+    appendValue("lg", screenOne?.logoUrl || safeOptions.logoUrl || safeOptions.logo || "");
+    appendValue("l1", screenOne?.messageLine1 || safeOptions.messageLine1 || "");
+    appendValue("l2", screenOne?.messageLine2 || safeOptions.messageLine2 || "");
+    return params.toString();
+  }
+
   function buildLeadLandingPageUrl(restaurantId = "", options = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     const safeOptions = options && typeof options === "object" ? options : {};
     const landingSlug = buildLeadLandingSlug(safeRestaurantId, safeOptions);
     if (!landingSlug) return "";
-    const path = `/${encodeURIComponent(landingSlug)}`;
+    const query = buildLeadLandingQueryString(safeRestaurantId, safeOptions);
+    const path = `/${encodeURIComponent(landingSlug)}${query ? `?${query}` : ""}`;
     if (!path) return "";
     const forcePublicOrigin = safeOptions.forcePublicOrigin === true;
     if (!forcePublicOrigin && typeof window !== "undefined") {
       const host = String(window.location?.hostname || "").trim().toLowerCase();
       const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
       if (isLocalLikeHostname(host)) {
-        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile&top=landing`;
+        const previewBase = `/apps/menyra-social/lead-landing/index.html?restaurantId=${encodeURIComponent(safeRestaurantId || "")}`;
+        const previewExtras = buildLeadLandingQueryString(safeRestaurantId, safeOptions);
+        const previewPath = `${previewBase}${previewExtras ? `&${previewExtras}` : ""}`;
         return origin ? `${origin}${previewPath}` : previewPath;
       }
     }
@@ -1426,14 +1452,17 @@ function normalizeLeadDoc(docSnap) {
   const safeLandingSlug = String(data.landingSlug || "").trim();
   const safeBusinessName = String(data.businessName || data.name || "").trim();
   const hasLandingRouteKey = !!String(safeLandingRestaurantId || safeLandingSlug).trim();
-  const safeLandingPageUrl = String(data.landingPageUrl || "").trim()
-    || (hasLandingRouteKey
-      ? buildLeadLandingPageUrl(safeLandingRestaurantId, {
-          landingSlug: safeLandingSlug,
-          businessName: safeBusinessName,
-          leadId: safeLeadId
-        })
-      : "");
+  const rebuiltLandingPageUrl = hasLandingRouteKey
+    ? buildLeadLandingPageUrl(safeLandingRestaurantId, {
+        landingSlug: safeLandingSlug,
+        businessName: safeBusinessName,
+        logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
+        city: data.city || "",
+        country: data.country || "",
+        leadId: safeLeadId
+      })
+    : "";
+  const safeLandingPageUrl = rebuiltLandingPageUrl || String(data.landingPageUrl || "").trim();
   const fallbackCoords = resolveCoordsFromEntity(data);
   const fallbackLat = fallbackCoords?.lat ?? null;
   const fallbackLng = fallbackCoords?.lng ?? null;
@@ -1490,12 +1519,14 @@ function normalizeLeadFromRestaurant(rest) {
   const safeLeadId = String(data.leadId || data.id || "").trim();
   const safeBusinessName = String(data.name || data.restaurantName || "").trim();
   const safeLandingSlug = String(data.landingSlug || "").trim();
-  const safeLandingPageUrl = String(data.landingPageUrl || "").trim()
-    || buildLeadLandingPageUrl(safeRestaurantId, {
-      landingSlug: safeLandingSlug,
-      businessName: safeBusinessName,
-      leadId: safeLeadId
-    });
+  const safeLandingPageUrl = buildLeadLandingPageUrl(safeRestaurantId, {
+    landingSlug: safeLandingSlug,
+    businessName: safeBusinessName,
+    logoUrl: data.logoUrl || data.logo || "",
+    city: data.city || "",
+    country: data.country || "",
+    leadId: safeLeadId
+  }) || String(data.landingPageUrl || "").trim();
   const fallbackCoords = resolveCoordsFromEntity(data);
   const fallbackLat = fallbackCoords?.lat ?? null;
   const fallbackLng = fallbackCoords?.lng ?? null;

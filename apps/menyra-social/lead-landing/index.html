@@ -3,16 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MNYRA Landing</title>
+  <meta name="theme-color" content="#F8F9FA" />
+  <title>MNYRA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap" /></noscript>
   <style>
     :root {
-      --bg: #f8f9fa;
-      --ink: #111827;
-      --muted: #64748b;
-      --accent: #4f46e5;
-      --panel: #ffffff;
-      --line: #e2e8f0;
-      --placeholder: #f1f5f9;
+      color-scheme: light;
+      --landing-bg: #f8f9fa;
+      --landing-ink: #111827;
+      --landing-muted: #64748b;
+      --landing-accent: #4f46e5;
+      --landing-dot-idle: rgba(100, 116, 139, 0.58);
+      --landing-dot-active: #4f46e5;
+      --landing-safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     * {
@@ -21,297 +27,997 @@
 
     html,
     body {
-      width: 100%;
-      height: 100%;
       margin: 0;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: "Manrope", "Segoe UI", sans-serif;
+      min-height: 100%;
+      width: 100%;
+      background: var(--landing-bg);
+      color: var(--landing-ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overscroll-behavior: none;
+    }
+
+    body {
+      min-height: 100dvh;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
     }
 
     .page {
       position: relative;
       min-height: 100dvh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
-      padding: 24px;
+      background: var(--landing-bg);
+    }
+
+    .stage {
+      position: relative;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 14px 2.5rem max(calc(var(--landing-safe-bottom) + 5.5rem), 5.5rem) 2.5rem;
+      background: var(--landing-bg);
     }
 
     .glow {
       position: absolute;
-      width: 340px;
-      height: 340px;
+      top: 33.333333%;
+      left: 25%;
+      width: 16rem;
+      height: 16rem;
       border-radius: 999px;
-      background: radial-gradient(circle, rgba(79, 70, 229, 0.2) 0%, rgba(79, 70, 229, 0) 70%);
-      top: 18%;
-      left: 14%;
-      filter: blur(18px);
       pointer-events: none;
+      background: radial-gradient(circle at center, rgb(224 231 255 / 0.7) 0%, rgb(224 231 255 / 0.45) 42%, rgb(224 231 255 / 0.06) 72%, rgb(224 231 255 / 0) 100%);
     }
 
-    .card {
-      width: min(540px, 100%);
-      position: relative;
-      z-index: 2;
+    .dots {
+      position: absolute;
+      z-index: 3;
+      right: 0.75rem;
+      top: 33.333333%;
+      transform: translateY(-50%);
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 0.56rem;
+      padding: 0.35rem 0.3rem;
+      border-radius: 999px;
+      background: rgba(248, 250, 252, 0.66);
+      box-shadow: 0 8px 28px -20px rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      transform: scale(1);
+      opacity: 0.88;
+      background: var(--landing-dot-idle);
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 6px -5px rgba(15, 23, 42, 0.55);
+      transition: transform 300ms ease, opacity 300ms ease, background-color 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+    }
+
+    .dot.is-active {
+      transform: scale(1.22);
+      opacity: 1;
+      background: var(--landing-dot-active);
+      border-color: rgba(79, 70, 229, 0.96);
+      box-shadow: 0 6px 14px -8px rgba(79, 70, 229, 0.95);
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
     }
 
     .greeting-wrap {
-      min-height: 44px;
-      display: flex;
-      align-items: center;
+      position: relative;
+      width: 100%;
+      height: 40px;
+      margin-bottom: 1.25rem;
     }
 
     .greeting {
+      position: absolute;
+      inset: 0 auto auto 0;
       margin: 0;
-      font-family: "Playfair Display", Georgia, serif;
-      font-size: clamp(26px, 5vw, 34px);
-      color: var(--accent);
+      color: var(--landing-accent);
+      font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+      font-size: 1.875rem;
+      line-height: 2.25rem;
+      font-weight: 500;
+      transform-origin: left center;
       opacity: 0;
-      transform: translateY(10px) scale(0.98);
-      transition: opacity 320ms ease, transform 320ms ease;
+      transform: translateY(1.5rem) scale(0.95);
+      transition: transform 720ms cubic-bezier(0.23, 1, 0.32, 1), opacity 720ms cubic-bezier(0.23, 1, 0.32, 1);
     }
 
-    .greeting.is-visible {
+    .greeting.is-active {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+
+    .greeting.is-prev {
+      transform: translateY(-1.5rem) scale(0.95);
     }
 
     .brand-row {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
     }
 
-    .logo-box {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+    .logo-shell {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      min-height: 48px;
+      flex: 0 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
-      flex-shrink: 0;
-      display: grid;
-      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+      background: #f8fafc;
     }
 
-    .logo-box img {
+    .logo-shell img {
       width: 100%;
       height: 100%;
+      border-radius: 999px;
       object-fit: cover;
-      background: var(--placeholder);
+      object-position: center;
+      background: #f8fafc;
     }
 
     .brand-name {
       margin: 0;
-      font-size: clamp(42px, 10vw, 56px);
+      color: var(--landing-ink);
+      font-size: 56px;
+      line-height: 48px;
       font-weight: 900;
-      line-height: 0.92;
-      letter-spacing: -0.04em;
+      letter-spacing: -0.05em;
+      word-break: break-word;
     }
 
-    .copy {
+    .message {
       margin: 0;
-      color: var(--muted);
+      max-width: 340px;
+      color: var(--landing-muted);
       font-size: 14px;
-      font-weight: 600;
-      line-height: 1.65;
-      max-width: 380px;
+      line-height: 1.625;
+      font-weight: 500;
     }
 
-    .copy span {
+    .message span {
       display: block;
     }
 
-    .status {
-      margin-top: 10px;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-      opacity: 0.7;
+    .swipe-hint {
+      position: absolute;
+      left: 50%;
+      bottom: max(1.25rem, calc(var(--landing-safe-bottom) + 0.85rem));
+      z-index: 4;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #4338ca;
+      pointer-events: none;
+      user-select: none;
     }
 
-    .error {
+    .swipe-label {
+      margin: 0 0 0.5rem;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+    }
+
+    .swipe-pill {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgb(224 231 255 / 0.96);
+      box-shadow: 0 8px 20px -12px rgba(79, 70, 229, 0.75);
+      animation: landing-bounce 1.7s infinite;
+    }
+
+    .swipe-pill svg {
+      width: 20px;
+      height: 20px;
+      stroke: #4f46e5;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .status {
+      position: absolute;
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: calc(var(--landing-safe-bottom) + 0.5rem);
+      z-index: 5;
+      margin: 0;
       color: #be123c;
-      opacity: 1;
+      font-size: 11px;
+      line-height: 1.4;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: opacity 180ms ease;
+    }
+
+    .status.is-visible {
+      opacity: 0.92;
+    }
+
+    @keyframes landing-bounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .stage {
+        padding-left: 1.85rem;
+        padding-right: 1.85rem;
+      }
+
+      .brand-name {
+        font-size: 46px;
+        line-height: 42px;
+      }
     }
 
     @media (max-width: 420px) {
-      .page {
-        padding: 18px;
+      .stage {
+        padding-left: 1.45rem;
+        padding-right: 1.45rem;
       }
 
-      .card {
-        gap: 14px;
+      .brand-row {
+        gap: 0.65rem;
       }
 
-      .copy {
+      .brand-name {
+        font-size: 40px;
+        line-height: 38px;
+      }
+
+      .message {
         font-size: 13px;
       }
     }
   </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;800;900&family=Playfair+Display:wght@500&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div class="page">
     <div class="glow" aria-hidden="true"></div>
-    <main class="card" aria-live="polite">
-      <div class="greeting-wrap">
-        <h1 id="greeting" class="greeting is-visible">Willkommen</h1>
-      </div>
 
-      <div class="brand-row">
-        <div class="logo-box">
-          <img id="logo" src="https://placehold.co/200x200/f8fafc/94a3b8?text=LOGO" alt="Business Logo" />
+    <div id="landingDots" class="dots" aria-hidden="true">
+      <span class="dot is-active"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </div>
+
+    <main class="stage" id="landingStage">
+      <div class="content">
+        <div class="greeting-wrap" id="greetingWrap"></div>
+
+        <div class="brand-row">
+          <div class="logo-shell">
+            <img id="businessLogo" alt="Business Logo" decoding="async" />
+          </div>
+          <h1 class="brand-name" id="businessTitle">business.</h1>
         </div>
-        <h2 id="brandName" class="brand-name">business.</h2>
+
+        <p class="message" id="businessCopy">
+          <span>Business ist bereits in Mnyra vorbereitet.</span>
+          <span>Deine digitale Praesenz ist bereit zur Aktivierung.</span>
+        </p>
       </div>
-
-      <p class="copy" id="message">
-        <span>Dein Business ist bereits in Mnyra vorbereitet.</span>
-        <span>Deine digitale Praesenz ist bereit zur Aktivierung.</span>
-      </p>
-
-      <div id="status" class="status">Landing wird geladen...</div>
     </main>
+
+    <div class="swipe-hint" aria-hidden="true">
+      <p class="swipe-label">Swipe</p>
+      <div class="swipe-pill">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 9l6 6 6-6"></path>
+        </svg>
+      </div>
+    </div>
+
+    <p id="debugLine" class="status" aria-live="polite"></p>
   </div>
 
-  <script type="module">
-    import { db } from "/shared/firebase-config.js";
-    import { doc, getDoc } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
+  <script>
+    (() => {
+      "use strict";
 
-    const greetings = [
-      "Mire se vini",
-      "Welcome",
-      "Willkommen",
-      "Bienvenido",
-      "Bienvenue",
-      "Benvenuto",
-      "Ola",
-      "Welkom",
-      "Valkommen",
-      "Hos geldiniz",
-      "Yokoso",
-      "Huanying",
-      "Namaste"
-    ];
+      const FIRESTORE_PROJECT_ID = "menyra-c0e68";
+      const FIRESTORE_API_KEY = "AIzaSyAq5kzdGITDekgajC0uUBny63JjS1DIPEU";
+      const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
+      const LANDING_CACHE_PREFIX = "mnyra.lead-landing.v2";
+      const LANDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+      const STARTUP_SNAPSHOT_STORAGE_KEY = "mnyra.social.startup-snapshot.v2";
+      const RESERVED_PUBLIC_SLUGS = new Set([
+        "ceo",
+        "owner",
+        "staff",
+        "waiter",
+        "kitchen",
+        "social",
+        "heart",
+        "hub",
+        "apps",
+        "api",
+        "login",
+        "register",
+        "profile",
+        "post",
+        "story",
+        "menyra-restaurants",
+        "lp"
+      ]);
+      const GREETINGS = [
+        "Mir\u00eb se vini",
+        "Welcome",
+        "Willkommen",
+        "Bienvenido",
+        "Bienvenue",
+        "Benvenuto",
+        "Ol\u00e1",
+        "Welkom",
+        "V\u00e4lkommen",
+        "Ho\u015f geldiniz",
+        "Yokoso",
+        "Hu\u0101ny\u00edng",
+        "Namaste"
+      ];
+      const INLINE_LOGO_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23f8fafc'/%3E%3Ccircle cx='48' cy='48' r='34' fill='%2394a3b8'/%3E%3Ctext x='48' y='54' text-anchor='middle' font-family='Arial,sans-serif' font-size='16' font-weight='700' fill='white'%3EM%3C/text%3E%3C/svg%3E";
+      const DEFAULT_PAYLOAD = {
+        restaurantId: "",
+        landingSlug: "",
+        businessName: "Business",
+        logoUrl: INLINE_LOGO_PLACEHOLDER,
+        messageLine1: "Business ist bereits in Mnyra vorbereitet.",
+        messageLine2: "Deine digitale Praesenz ist bereit zur Aktivierung.",
+        source: "fallback",
+        resolvedAt: 0
+      };
 
-    const greetingNode = document.getElementById("greeting");
-    const logoNode = document.getElementById("logo");
-    const brandNode = document.getElementById("brandName");
-    const messageNode = document.getElementById("message");
-    const statusNode = document.getElementById("status");
+      const greetingWrap = document.getElementById("greetingWrap");
+      const businessLogo = document.getElementById("businessLogo");
+      const businessTitle = document.getElementById("businessTitle");
+      const businessCopy = document.getElementById("businessCopy");
+      const debugLine = document.getElementById("debugLine");
+      const state = {
+        greetingIndex: 0,
+        greetingTimer: 0,
+        openingApp: false,
+        currentPayload: { ...DEFAULT_PAYLOAD }
+      };
 
-    let greetingIndex = 0;
+      const toText = (value = "") => {
+        if (value === null || value === undefined) return "";
+        return String(value).trim();
+      };
 
-    function setStatus(text, isError = false) {
-      statusNode.textContent = String(text || "");
-      statusNode.classList.toggle("error", !!isError);
-    }
+      const safeDecode = (value = "") => {
+        const raw = String(value || "");
+        if (!raw) return "";
+        try {
+          return decodeURIComponent(raw);
+        } catch {
+          return raw;
+        }
+      };
 
-    function cycleGreeting() {
-      window.setInterval(() => {
-        greetingNode.classList.remove("is-visible");
-        window.setTimeout(() => {
-          greetingIndex = (greetingIndex + 1) % greetings.length;
-          greetingNode.textContent = greetings[greetingIndex];
-          greetingNode.classList.add("is-visible");
-        }, 210);
-      }, 4000);
-    }
+      const normalizeSlug = (value = "") => {
+        const safeValue = toText(value).toLowerCase();
+        if (!safeValue) return "";
+        return safeValue
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      };
 
-    function readRestaurantIdFromPath() {
-      const path = String(window.location.pathname || "");
-      const match = path.match(/\/lp\/([^/?#]+)/i);
-      if (!match || !match[1]) return "";
-      try {
-        return decodeURIComponent(match[1]);
-      } catch {
-        return match[1];
-      }
-    }
+      const pickFirstText = (...values) => {
+        for (const value of values) {
+          const safeValue = toText(value);
+          if (safeValue) return safeValue;
+        }
+        return "";
+      };
 
-    function readRestaurantIdFromQuery() {
-      const params = new URLSearchParams(window.location.search);
-      return String(
-        params.get("rid")
-        || params.get("r")
-        || params.get("restaurantId")
-        || params.get("restaurant")
-        || ""
-      ).trim();
-    }
+      const escapeHtml = (value = "") => String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
-    function resolveLogoUrl(...values) {
-      for (const value of values) {
-        const next = String(value || "").trim();
-        if (next) return next;
-      }
-      return "https://placehold.co/200x200/f8fafc/94a3b8?text=LOGO";
-    }
+      const buildBusinessHeading = (value = "") => {
+        const safeValue = pickFirstText(value, DEFAULT_PAYLOAD.businessName);
+        return safeValue.endsWith(".") ? safeValue : `${safeValue}.`;
+      };
 
-    function renderScreenOne(payload = {}) {
-      const businessName = String(payload.businessName || "Business").trim() || "Business";
-      const logoUrl = resolveLogoUrl(payload.logoUrl, payload.logo);
-      const line1 = String(payload.messageLine1 || `${businessName} ist bereits in Mnyra vorbereitet.`).trim();
-      const line2 = String(payload.messageLine2 || "Deine digitale Praesenz ist bereit zur Aktivierung.").trim();
+      const buildLocationLabel = ({ city = "", country = "" } = {}) => {
+        return [toText(city), toText(country)].filter(Boolean).join(", ");
+      };
 
-      logoNode.src = logoUrl;
-      logoNode.alt = `${businessName} Logo`;
-      brandNode.textContent = businessName.endsWith(".") ? businessName : `${businessName}.`;
-      messageNode.textContent = "";
-      const firstLineNode = document.createElement("span");
-      const secondLineNode = document.createElement("span");
-      firstLineNode.textContent = line1;
-      secondLineNode.textContent = line2;
-      messageNode.appendChild(firstLineNode);
-      messageNode.appendChild(secondLineNode);
-      setStatus("Lead Landing aktiv.");
-    }
+      const buildFallbackMessageLine1 = ({ businessName = "", city = "", country = "" } = {}) => {
+        const safeBusinessName = pickFirstText(businessName, DEFAULT_PAYLOAD.businessName);
+        const locationLabel = buildLocationLabel({ city, country });
+        return locationLabel
+          ? `${safeBusinessName} in ${locationLabel} ist bereits in Mnyra vorbereitet.`
+          : `${safeBusinessName} ist bereits in Mnyra vorbereitet.`;
+      };
 
-    async function loadLanding() {
-      const restaurantId = readRestaurantIdFromQuery() || readRestaurantIdFromPath();
-      if (!restaurantId) {
-        setStatus("Keine Restaurant-ID gefunden.", true);
-        return;
-      }
+      const finalizePayload = (payload = {}) => {
+        const safePayload = payload && typeof payload === "object" ? payload : {};
+        const businessName = pickFirstText(safePayload.businessName, DEFAULT_PAYLOAD.businessName);
+        const city = pickFirstText(safePayload.city);
+        const country = pickFirstText(safePayload.country);
+        return {
+          restaurantId: pickFirstText(safePayload.restaurantId),
+          landingSlug: normalizeSlug(safePayload.landingSlug),
+          businessName,
+          logoUrl: pickFirstText(safePayload.logoUrl, DEFAULT_PAYLOAD.logoUrl),
+          messageLine1: pickFirstText(safePayload.messageLine1) || buildFallbackMessageLine1({ businessName, city, country }),
+          messageLine2: pickFirstText(safePayload.messageLine2, DEFAULT_PAYLOAD.messageLine2),
+          city,
+          country,
+          source: pickFirstText(safePayload.source, DEFAULT_PAYLOAD.source),
+          resolvedAt: Number(safePayload.resolvedAt || 0) || Date.now()
+        };
+      };
 
-      try {
-        const [metaSnap, restaurantSnap] = await Promise.all([
-          getDoc(doc(db, "restaurants", restaurantId, "public", "meta")),
-          getDoc(doc(db, "restaurants", restaurantId))
-        ]);
+      const buildRouteDescriptor = () => {
+        const pathname = String(window.location.pathname || "");
+        const params = new URLSearchParams(window.location.search || "");
+        const queryRestaurantId = pickFirstText(params.get("restaurantId"), params.get("rid"), params.get("r"), params.get("restaurant"));
+        const querySlug = normalizeSlug(params.get("slug"));
+        const lpMatch = pathname.match(/^\/lp\/([^/?#]+)/i);
+        if (lpMatch && lpMatch[1]) {
+          return {
+            pathType: "restaurant",
+            restaurantId: safeDecode(lpMatch[1]),
+            landingSlug: querySlug
+          };
+        }
+        if (/\/apps\/menyra-social\/lead-landing\/index\.html$/i.test(pathname) && queryRestaurantId) {
+          return {
+            pathType: "restaurant",
+            restaurantId: queryRestaurantId,
+            landingSlug: querySlug
+          };
+        }
+        const segments = pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+        if (segments.length === 1) {
+          const routeSlug = safeDecode(segments[0]);
+          const normalized = normalizeSlug(routeSlug);
+          if (normalized && !routeSlug.includes(".") && !RESERVED_PUBLIC_SLUGS.has(normalized)) {
+            return {
+              pathType: "slug",
+              restaurantId: queryRestaurantId,
+              landingSlug: normalized
+            };
+          }
+        }
+        return {
+          pathType: queryRestaurantId ? "restaurant" : "unknown",
+          restaurantId: queryRestaurantId,
+          landingSlug: querySlug
+        };
+      };
 
-        const meta = metaSnap.exists() ? (metaSnap.data() || {}) : {};
-        const restaurant = restaurantSnap.exists() ? (restaurantSnap.data() || {}) : {};
-        const screenOne = meta.landingScreenOne && typeof meta.landingScreenOne === "object"
-          ? meta.landingScreenOne
-          : {};
+      const buildCacheKeys = (input = {}) => {
+        const pathname = String(window.location.pathname || "").trim() || "/";
+        const restaurantId = pickFirstText(input.restaurantId);
+        const landingSlug = normalizeSlug(input.landingSlug);
+        const keys = [`path:${pathname}`];
+        if (restaurantId) keys.push(`rid:${restaurantId}`);
+        if (landingSlug) keys.push(`slug:${landingSlug}`);
+        return Array.from(new Set(keys));
+      };
 
-        renderScreenOne({
-          businessName: screenOne.businessName || meta.name || meta.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-          logoUrl: screenOne.logoUrl || meta.logoUrl || meta.logo || restaurant.logoUrl || restaurant.logo,
-          logo: restaurant.logo,
-          messageLine1: screenOne.messageLine1,
-          messageLine2: screenOne.messageLine2
+      const readCachedPayload = (descriptor = {}) => {
+        try {
+          for (const cacheKey of buildCacheKeys(descriptor)) {
+            const raw = window.localStorage.getItem(`${LANDING_CACHE_PREFIX}:${cacheKey}`);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            const savedAt = Number(parsed && parsed.savedAt ? parsed.savedAt : 0);
+            if (!savedAt || (Date.now() - savedAt) > LANDING_CACHE_TTL_MS) continue;
+            if (!parsed || typeof parsed.payload !== "object") continue;
+            return finalizePayload(parsed.payload);
+          }
+        } catch {}
+        return null;
+      };
+
+      const writeCachedPayload = (payload = {}) => {
+        const finalPayload = finalizePayload(payload);
+        try {
+          for (const cacheKey of buildCacheKeys(finalPayload)) {
+            window.localStorage.setItem(`${LANDING_CACHE_PREFIX}:${cacheKey}`, JSON.stringify({
+              savedAt: Date.now(),
+              payload: finalPayload
+            }));
+          }
+        } catch {}
+      };
+
+      const readQueryPayload = (descriptor = {}) => {
+        const params = new URLSearchParams(window.location.search || "");
+        const payload = {
+          restaurantId: pickFirstText(params.get("rid"), params.get("r"), params.get("restaurantId"), params.get("restaurant")),
+          landingSlug: normalizeSlug(params.get("slug")),
+          businessName: pickFirstText(params.get("bn")),
+          logoUrl: pickFirstText(params.get("lg")),
+          messageLine1: pickFirstText(params.get("l1")),
+          messageLine2: pickFirstText(params.get("l2")),
+          source: "query"
+        };
+        const descriptorRestaurantId = pickFirstText(descriptor.restaurantId);
+        const descriptorSlug = normalizeSlug(descriptor.landingSlug);
+        const routeRestaurantId = pickFirstText(payload.restaurantId, descriptorRestaurantId);
+        const routeSlug = normalizeSlug(payload.landingSlug || descriptorSlug);
+        const routeMatches = (!descriptorRestaurantId || !payload.restaurantId || descriptorRestaurantId === payload.restaurantId)
+          && (!descriptorSlug || !payload.landingSlug || descriptorSlug === payload.landingSlug);
+        const hasContent = !!pickFirstText(payload.businessName, payload.logoUrl, payload.messageLine1, payload.messageLine2);
+        if (!routeMatches || (!routeRestaurantId && !routeSlug) || !hasContent) return null;
+        return finalizePayload({
+          ...payload,
+          restaurantId: routeRestaurantId,
+          landingSlug: routeSlug
         });
-      } catch (err) {
-        console.error(err);
-        setStatus("Landing konnte nicht geladen werden.", true);
-      }
-    }
+      };
 
-    cycleGreeting();
-    loadLanding();
+      const setDebugLine = (text = "") => {
+        const safeText = toText(text);
+        debugLine.textContent = safeText;
+        debugLine.classList.toggle("is-visible", !!safeText);
+      };
+
+      const renderGreetingNodes = () => {
+        greetingWrap.innerHTML = GREETINGS.map((greeting, index) => `
+          <h2 class="greeting${index === 0 ? " is-active" : ""}" data-greeting-index="${index}">${escapeHtml(greeting)}</h2>
+        `).join("");
+      };
+
+      const syncGreeting = (nextIndex = 0) => {
+        const items = Array.from(greetingWrap.querySelectorAll("[data-greeting-index]"));
+        const safeIndex = ((Math.round(Number(nextIndex || 0)) % GREETINGS.length) + GREETINGS.length) % GREETINGS.length;
+        const previousIndex = (safeIndex - 1 + GREETINGS.length) % GREETINGS.length;
+        items.forEach((node, index) => {
+          node.classList.toggle("is-active", index === safeIndex);
+          node.classList.toggle("is-prev", index === previousIndex && index !== safeIndex);
+        });
+      };
+
+      const startGreetingLoop = () => {
+        if (state.greetingTimer) window.clearInterval(state.greetingTimer);
+        state.greetingTimer = window.setInterval(() => {
+          state.greetingIndex = (state.greetingIndex + 1) % GREETINGS.length;
+          syncGreeting(state.greetingIndex);
+        }, 4000);
+      };
+
+      const renderPayload = (payload = {}) => {
+        const finalPayload = finalizePayload(payload);
+        state.currentPayload = finalPayload;
+        businessLogo.src = finalPayload.logoUrl || INLINE_LOGO_PLACEHOLDER;
+        businessLogo.alt = `${finalPayload.businessName} Logo`;
+        businessTitle.textContent = buildBusinessHeading(finalPayload.businessName);
+        businessCopy.innerHTML = "";
+        [finalPayload.messageLine1, finalPayload.messageLine2].forEach((line) => {
+          const span = document.createElement("span");
+          span.textContent = line;
+          businessCopy.appendChild(span);
+        });
+        document.title = `${finalPayload.businessName} | MNYRA`;
+      };
+
+      businessLogo.addEventListener("error", () => {
+        businessLogo.src = INLINE_LOGO_PLACEHOLDER;
+      });
+
+      const parseFirestoreValue = (value) => {
+        if (!value || typeof value !== "object") return null;
+        if ("stringValue" in value) return String(value.stringValue || "");
+        if ("integerValue" in value) {
+          const parsed = Number(value.integerValue);
+          return Number.isFinite(parsed) ? parsed : String(value.integerValue || "");
+        }
+        if ("doubleValue" in value) return Number(value.doubleValue || 0);
+        if ("booleanValue" in value) return !!value.booleanValue;
+        if ("timestampValue" in value) return String(value.timestampValue || "");
+        if ("nullValue" in value) return null;
+        if ("mapValue" in value) {
+          const fields = value.mapValue && value.mapValue.fields ? value.mapValue.fields : {};
+          const output = {};
+          Object.keys(fields).forEach((key) => {
+            output[key] = parseFirestoreValue(fields[key]);
+          });
+          return output;
+        }
+        if ("arrayValue" in value) {
+          const rows = value.arrayValue && Array.isArray(value.arrayValue.values)
+            ? value.arrayValue.values
+            : [];
+          return rows.map((entry) => parseFirestoreValue(entry));
+        }
+        return null;
+      };
+
+      const parseFirestoreDocument = (documentNode = null) => {
+        if (!documentNode || typeof documentNode !== "object") return null;
+        const fields = documentNode.fields && typeof documentNode.fields === "object"
+          ? documentNode.fields
+          : {};
+        const data = {};
+        Object.keys(fields).forEach((key) => {
+          data[key] = parseFirestoreValue(fields[key]);
+        });
+        const name = String(documentNode.name || "");
+        const id = name ? name.split("/").pop() : "";
+        return { id, data };
+      };
+
+      const fetchJson = async (url, options = {}) => {
+        const response = await fetch(url, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "omit",
+          ...options
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      };
+
+      const fetchDocumentByPath = async (path = "") => {
+        const safePath = String(path || "").replace(/^\/+|\/+$/g, "");
+        if (!safePath) return null;
+        try {
+          const documentNode = await fetchJson(`${FIRESTORE_BASE_URL}/${safePath}?key=${encodeURIComponent(FIRESTORE_API_KEY)}`);
+          return parseFirestoreDocument(documentNode);
+        } catch {
+          return null;
+        }
+      };
+
+      const runRestaurantFieldQuery = async (fieldName = "", fieldValue = "") => {
+        const safeFieldName = toText(fieldName);
+        const safeFieldValue = toText(fieldValue);
+        if (!safeFieldName || !safeFieldValue) return null;
+        try {
+          const rows = await fetchJson(`${FIRESTORE_BASE_URL}:runQuery?key=${encodeURIComponent(FIRESTORE_API_KEY)}`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              structuredQuery: {
+                from: [{ collectionId: "restaurants" }],
+                where: {
+                  fieldFilter: {
+                    field: { fieldPath: safeFieldName },
+                    op: "EQUAL",
+                    value: { stringValue: safeFieldValue }
+                  }
+                },
+                limit: 1
+              }
+            })
+          });
+          if (!Array.isArray(rows)) return null;
+          for (const row of rows) {
+            if (!row || !row.document) continue;
+            const parsed = parseFirestoreDocument(row.document);
+            if (parsed && parsed.id) return parsed;
+          }
+        } catch {}
+        return null;
+      };
+
+      const normalizeRestaurantPayload = (restaurantRecord = null, metaRecord = null, descriptor = {}) => {
+        const restaurant = restaurantRecord && restaurantRecord.data ? restaurantRecord.data : {};
+        const meta = metaRecord && metaRecord.data ? metaRecord.data : {};
+        const landing = meta.landingScreenOne && typeof meta.landingScreenOne === "object"
+          ? meta.landingScreenOne
+          : (restaurant.landingScreenOne && typeof restaurant.landingScreenOne === "object" ? restaurant.landingScreenOne : {});
+        const restaurantId = pickFirstText(
+          restaurantRecord && restaurantRecord.id,
+          meta.landingRestaurantId,
+          meta.restaurantId,
+          restaurant.id,
+          restaurant.restaurantId,
+          descriptor.restaurantId
+        );
+        const landingSlug = normalizeSlug(pickFirstText(
+          landing.landingSlug,
+          meta.landingSlug,
+          restaurant.landingSlug,
+          restaurant.handle,
+          descriptor.landingSlug
+        ));
+        const businessName = pickFirstText(
+          landing.businessName,
+          meta.name,
+          meta.restaurantName,
+          restaurant.name,
+          restaurant.restaurantName,
+          DEFAULT_PAYLOAD.businessName
+        );
+        const city = pickFirstText(landing.city, meta.city, restaurant.city);
+        const country = pickFirstText(landing.country, meta.country, restaurant.country);
+        return finalizePayload({
+          restaurantId,
+          landingSlug,
+          businessName,
+          logoUrl: pickFirstText(
+            landing.logoUrl,
+            meta.logoUrl,
+            meta.logo,
+            restaurant.logoUrl,
+            restaurant.logo,
+            restaurant.avatar
+          ),
+          messageLine1: pickFirstText(landing.messageLine1),
+          messageLine2: pickFirstText(landing.messageLine2, meta.messageLine2, restaurant.messageLine2),
+          city,
+          country,
+          source: "verified",
+          resolvedAt: Date.now()
+        });
+      };
+
+      const resolveVerifiedPayload = async (descriptor = {}) => {
+        const restaurantId = pickFirstText(descriptor.restaurantId);
+        const landingSlug = normalizeSlug(descriptor.landingSlug);
+        let restaurantRecord = restaurantId
+          ? await fetchDocumentByPath(`restaurants/${encodeURIComponent(restaurantId)}`)
+          : null;
+
+        if (!restaurantRecord && landingSlug) {
+          restaurantRecord = await runRestaurantFieldQuery("landingSlug", landingSlug);
+        }
+
+        if (!restaurantRecord && landingSlug) {
+          restaurantRecord = await runRestaurantFieldQuery("handle", landingSlug);
+        }
+
+        if (!restaurantRecord || !restaurantRecord.id) return null;
+
+        const metaRecord = await fetchDocumentByPath(`restaurants/${encodeURIComponent(restaurantRecord.id)}/public/meta`);
+        return normalizeRestaurantPayload(restaurantRecord, metaRecord, descriptor);
+      };
+
+      const buildAppRouteUrl = (payload = {}, descriptor = {}) => {
+        const finalPayload = finalizePayload({
+          ...descriptor,
+          ...payload
+        });
+        const routeId = pickFirstText(finalPayload.restaurantId, finalPayload.landingSlug);
+        if (!routeId) return "";
+        const target = new URL("/apps/menyra-social/index.html", window.location.origin);
+        target.searchParams.set("r", routeId);
+        target.searchParams.set("tab", "profile");
+        target.searchParams.set("top", "landing");
+        target.searchParams.set("ls", "1");
+        return target.toString();
+      };
+
+      const buildRouteKeyFromUrl = (url = "") => {
+        if (!url) return "";
+        try {
+          const parsed = new URL(url, window.location.origin);
+          const params = new URLSearchParams(parsed.search || "");
+          ["sw-reset", "cb", "debug-build", "sw-off"].forEach((key) => params.delete(key));
+          const query = params.toString();
+          return `${parsed.pathname}?${query}${parsed.hash || ""}`;
+        } catch {
+          return "";
+        }
+      };
+
+      const buildStartupSnapshotHtml = (payload = {}) => {
+        const finalPayload = finalizePayload(payload);
+        const safeLogoUrl = escapeHtml(finalPayload.logoUrl || INLINE_LOGO_PLACEHOLDER);
+        const safeBusinessName = escapeHtml(finalPayload.businessName);
+        const safeHeading = escapeHtml(buildBusinessHeading(finalPayload.businessName));
+        const safeLine1 = escapeHtml(finalPayload.messageLine1);
+        const safeLine2 = escapeHtml(finalPayload.messageLine2);
+        return `
+          <section data-landing-swipe-root="true" class="relative w-full overflow-hidden font-sans" style="height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-total-height, 4.5rem)); overscroll-behavior: none; -webkit-overflow-scrolling: auto; touch-action: none; user-select: none; background: #F8F9FA; --landing-panel-duration: 460ms; --landing-greeting-duration: 720ms; --landing-top-gap: 14px; --landing-swipe-bottom: 0.45rem;">
+            <div class="absolute z-[70] flex flex-col items-center" style="right: 0.75rem; top: 33.333333%; transform: translateY(-50%); gap: 0.56rem; padding: 0.35rem 0.3rem; border-radius: 999px; background: rgba(248,250,252,0.66); box-shadow: 0 8px 28px -20px rgba(15,23,42,0.45); backdrop-filter: blur(4px);">
+              <div data-landing-step-dot="0" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(1.22); opacity: 1; background: #4f46e5; border: 1px solid rgba(79,70,229,0.96); box-shadow: 0 6px 14px -8px rgba(79,70,229,0.95);"></div>
+              <div data-landing-step-dot="1" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(1); opacity: 0.88; background: rgba(100,116,139,0.58); border: 1px solid rgba(255,255,255,0.95); box-shadow: 0 2px 6px -5px rgba(15,23,42,0.55);"></div>
+              <div data-landing-step-dot="2" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(1); opacity: 0.88; background: rgba(100,116,139,0.58); border: 1px solid rgba(255,255,255,0.95); box-shadow: 0 2px 6px -5px rgba(15,23,42,0.55);"></div>
+              <div data-landing-step-dot="3" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(1); opacity: 0.88; background: rgba(100,116,139,0.58); border: 1px solid rgba(255,255,255,0.95); box-shadow: 0 2px 6px -5px rgba(15,23,42,0.55);"></div>
+              <div data-landing-step-dot="4" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(1); opacity: 0.88; background: rgba(100,116,139,0.58); border: 1px solid rgba(255,255,255,0.95); box-shadow: 0 2px 6px -5px rgba(15,23,42,0.55);"></div>
+              <div data-landing-step-dot="5" class="rounded-full transition-all duration-300 ease-out" style="width: 9px; height: 9px; transform: scale(1); opacity: 0.88; background: rgba(100,116,139,0.58); border: 1px solid rgba(255,255,255,0.95); box-shadow: 0 2px 6px -5px rgba(15,23,42,0.55);"></div>
+            </div>
+            <div data-landing-panel="0" class="absolute inset-0 z-50 flex flex-col items-start justify-center translate-y-0" style="background: #F8F9FA; color: #111827; padding-top: var(--landing-top-gap); opacity: 1; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
+              <div data-landing-glow="1" class="absolute rounded-full pointer-events-none" style="top: 33.333333%; left: 25%; width: 16rem; height: 16rem; background: radial-gradient(circle at center, rgb(224 231 255 / 0.7) 0%, rgb(224 231 255 / 0.45) 42%, rgb(224 231 255 / 0.06) 72%, rgb(224 231 255 / 0) 100%);"></div>
+              <div class="flex flex-col items-start relative z-10 w-full" style="padding-left: 2.5rem; padding-right: 2.5rem;">
+                <div class="relative w-full flex justify-start items-center mb-5" style="height: 40px;">
+                  <h1 data-landing-greeting-item="0" class="absolute left-0 font-medium text-indigo-600 origin-left" style="font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 1.875rem; line-height: 2.25rem; transition: all var(--landing-greeting-duration) cubic-bezier(0.23,1,0.32,1); opacity: 1; transform: translateY(0) scale(1);">Mir&euml; se vini</h1>
+                </div>
+                <div class="flex items-center gap-3 mb-6">
+                  <div class="rounded-full shadow-sm border border-slate-200 flex items-center justify-center overflow-hidden shrink-0" style="width:48px;height:48px;min-width:48px;min-height:48px;max-width:48px;max-height:48px;flex:0 0 48px;background:#f8fafc;">
+                    <img src="${safeLogoUrl}" alt="${safeBusinessName} Logo" class="block rounded-full" style="width:100%;height:100%;min-width:100%;min-height:100%;object-fit:cover;object-position:center;max-width:none;max-height:none;" />
+                  </div>
+                  <h2 class="font-black text-left flex items-center" style="font-size:56px;line-height:48px;letter-spacing:-0.05em;color:#111827;">
+                    ${safeHeading}
+                  </h2>
+                </div>
+                <p class="text-slate-500 text-sm leading-relaxed font-medium text-left" style="max-width: 340px;">
+                  ${safeLine1}<br />
+                  ${safeLine2}
+                </p>
+              </div>
+            </div>
+            <div class="absolute w-full flex justify-center pointer-events-none z-[4200]" style="bottom: max(1.25rem, calc(var(--safe-area-bottom) + 0.85rem));">
+              <div class="flex flex-col items-center animate-bounce text-indigo-700">
+                <span class="text-[9px] font-bold tracking-[0.25em] uppercase mb-2">Swipe</span>
+                <div class="w-8 h-8 rounded-full bg-white/90 border border-indigo-100 shadow-[0_8px_20px_-12px_rgba(79,70,229,0.75)] flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;stroke:#4f46e5;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;"><path d="M6 9l6 6 6-6"></path></svg>
+                </div>
+              </div>
+            </div>
+          </section>
+        `.trim();
+      };
+
+      const writeStartupSnapshot = (payload = {}, descriptor = {}) => {
+        const routeUrl = buildAppRouteUrl(payload, descriptor);
+        const routeKey = buildRouteKeyFromUrl(routeUrl);
+        if (!routeKey) return;
+        const html = buildStartupSnapshotHtml(payload);
+        if (!html) return;
+        try {
+          window.localStorage.setItem(STARTUP_SNAPSHOT_STORAGE_KEY, JSON.stringify({
+            savedAt: Date.now(),
+            routeKey,
+            html
+          }));
+        } catch {}
+      };
+
+      const prefetchAppRoute = (payload = {}, descriptor = {}) => {
+        const routeUrl = buildAppRouteUrl(payload, descriptor);
+        if (!routeUrl) return;
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const effectiveType = String(connection && connection.effectiveType ? connection.effectiveType : "").toLowerCase();
+        const constrainedNetwork = !!(connection && connection.saveData) || effectiveType === "slow-2g" || effectiveType === "2g";
+        if (constrainedNetwork) return;
+        const prefetch = () => {
+          let link = document.getElementById("appRoutePrefetch");
+          if (!(link instanceof HTMLLinkElement)) {
+            link = document.createElement("link");
+            link.id = "appRoutePrefetch";
+            link.rel = "prefetch";
+            link.as = "document";
+            document.head.appendChild(link);
+          }
+          link.href = routeUrl;
+        };
+        if (typeof window.requestIdleCallback === "function") {
+          window.requestIdleCallback(prefetch, { timeout: 1200 });
+          return;
+        }
+        window.setTimeout(prefetch, 220);
+      };
+
+      const openAppLanding = (descriptor = {}) => {
+        if (state.openingApp) return;
+        const routeUrl = buildAppRouteUrl(state.currentPayload, descriptor);
+        if (!routeUrl) return;
+        state.openingApp = true;
+        writeStartupSnapshot(state.currentPayload, descriptor);
+        window.location.assign(routeUrl);
+      };
+
+      const bindLandingOpenInteractions = (descriptor = {}) => {
+        let touchStartY = 0;
+        let touchStartX = 0;
+        let touchStarted = false;
+        const SWIPE_THRESHOLD = 48;
+        window.addEventListener("wheel", (event) => {
+          if (Number(event.deltaY || 0) <= 28) return;
+          event.preventDefault();
+          openAppLanding(descriptor);
+        }, { passive: false });
+        window.addEventListener("touchstart", (event) => {
+          const touch = event.touches && event.touches[0];
+          if (!touch) return;
+          touchStartY = Number(touch.clientY || 0);
+          touchStartX = Number(touch.clientX || 0);
+          touchStarted = true;
+        }, { passive: true });
+        window.addEventListener("touchend", (event) => {
+          if (!touchStarted) return;
+          touchStarted = false;
+          const touch = event.changedTouches && event.changedTouches[0];
+          if (!touch) return;
+          const deltaY = touchStartY - Number(touch.clientY || 0);
+          const deltaX = touchStartX - Number(touch.clientX || 0);
+          if (Math.abs(deltaY) <= Math.abs(deltaX)) return;
+          if (deltaY > SWIPE_THRESHOLD) openAppLanding(descriptor);
+        }, { passive: true });
+        window.addEventListener("keydown", (event) => {
+          const safeKey = String(event.key || "");
+          if (!["Enter", " ", "Spacebar", "ArrowDown", "PageDown"].includes(safeKey)) return;
+          event.preventDefault();
+          openAppLanding(descriptor);
+        });
+      };
+
+      const init = async () => {
+        renderGreetingNodes();
+        syncGreeting(0);
+        startGreetingLoop();
+
+        const descriptor = buildRouteDescriptor();
+        const queryPayload = readQueryPayload(descriptor);
+        const cachedPayload = readCachedPayload(descriptor);
+        const initialPayload = queryPayload || cachedPayload || finalizePayload(descriptor);
+
+        renderPayload(initialPayload);
+        writeStartupSnapshot(initialPayload, descriptor);
+        prefetchAppRoute(initialPayload, descriptor);
+        bindLandingOpenInteractions(descriptor);
+
+        try {
+          const verifiedPayload = await resolveVerifiedPayload(descriptor);
+          if (!verifiedPayload) {
+            if (!queryPayload && !cachedPayload) {
+              setDebugLine("Landing aktuell nicht verfuegbar.");
+            }
+            return;
+          }
+          renderPayload(verifiedPayload);
+          writeCachedPayload(verifiedPayload);
+          writeStartupSnapshot(verifiedPayload, descriptor);
+          prefetchAppRoute(verifiedPayload, descriptor);
+          setDebugLine("");
+        } catch {
+          if (!queryPayload && !cachedPayload) {
+            setDebugLine("Landing aktuell nicht verfuegbar.");
+          }
+        }
+      };
+
+      init();
+
+    })();
   </script>
 </body>
 </html>

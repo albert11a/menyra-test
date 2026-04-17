@@ -3753,7 +3753,9 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
   bridgeBindingsApi: {
     renderProfileShopCartViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderProfileShopCartView?.(...args) || "",
     renderProfileShopFavoritesViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderProfileShopFavoritesView?.(...args) || "",
-    renderShopProductListFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderShopProductList?.(...args) || ""
+    renderMapViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderMapView?.(...args) || "",
+    renderShopProductListFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderShopProductList?.(...args) || "",
+    renderFeedViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderFeedView?.(...args) || ""
   }
 });
 const {

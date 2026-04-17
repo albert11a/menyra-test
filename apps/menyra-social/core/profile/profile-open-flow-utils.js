@@ -175,7 +175,7 @@ export function createProfileOpenFlowControllerCore({
     return humanizeBusinessLookupLabel(fallbackLookup) || "Lokal";
   };
 
-  const openProfileViewFromBusiness = async (input, { showBack = true, topTab, menuAccessSource = "", tableNumber = 0 } = {}) => {
+  const openProfileViewFromBusiness = async (input, { showBack = true, topTab, landingStep = 0, menuAccessSource = "", tableNumber = 0 } = {}) => {
     try {
       const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
       const restaurantId = String(typeof input === "string" ? "" : (input?.id || "")).trim();
@@ -205,6 +205,42 @@ export function createProfileOpenFlowControllerCore({
 
       const rest = resolveRestaurantByLookup({ restaurantId, lookupText })
         || (restaurantId ? { id: restaurantId } : {});
+      const parseCoordCandidate = (value = null) => {
+        if (value === null || value === undefined || value === "") return null;
+        const parsed = Number(String(value).trim().replace(",", "."));
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+      const resolveInitialCoords = () => {
+        const sources = [];
+        if (input && typeof input === "object") {
+          sources.push(input);
+          if (input.geo && typeof input.geo === "object") sources.push(input.geo);
+          if (input.coords && typeof input.coords === "object") sources.push(input.coords);
+          if (input.location && typeof input.location === "object") sources.push(input.location);
+        }
+        if (rest && typeof rest === "object") {
+          sources.push(rest);
+          if (rest.geo && typeof rest.geo === "object") sources.push(rest.geo);
+          if (rest.coords && typeof rest.coords === "object") sources.push(rest.coords);
+          if (rest.location && typeof rest.location === "object") sources.push(rest.location);
+        }
+        for (const source of sources) {
+          const pairs = [
+            [source?.lat, source?.lng],
+            [source?.latitude, source?.longitude],
+            [source?.gpsLat, source?.gpsLng]
+          ];
+          for (const pair of pairs) {
+            const lat = parseCoordCandidate(pair?.[0]);
+            const lng = parseCoordCandidate(pair?.[1]);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+            if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) continue;
+            if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+            if (Math.abs(lat) <= 180 && Math.abs(lng) <= 90) return { lat: lng, lng: lat };
+          }
+        }
+        return null;
+      };
       const targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
       const targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
       if (isMenuTopTab && targetMenuRestaurantId) {
@@ -217,6 +253,7 @@ export function createProfileOpenFlowControllerCore({
         rest,
         lookupKey: targetRestaurantLookupId
       });
+      const initialCoords = resolveInitialCoords();
 
       const loadingProfile = {
         name: loadingDisplayName,
@@ -235,10 +272,19 @@ export function createProfileOpenFlowControllerCore({
         posts: [],
         truthState: "loading"
       };
+      if (initialCoords) {
+        loadingProfile.lat = initialCoords.lat;
+        loadingProfile.lng = initialCoords.lng;
+        loadingProfile.latitude = initialCoords.lat;
+        loadingProfile.longitude = initialCoords.lng;
+        loadingProfile.gpsLat = initialCoords.lat;
+        loadingProfile.gpsLng = initialCoords.lng;
+      }
 
       showPublicProfileView(loadingProfile, [], {
         showBack,
         topTab,
+        landingStep,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber
       });
@@ -269,6 +315,7 @@ export function createProfileOpenFlowControllerCore({
       showPublicProfileView(resolved, [], {
         showBack,
         topTab,
+        landingStep,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber
       });
@@ -291,7 +338,7 @@ export function createProfileOpenFlowControllerCore({
         posts: Array.isArray(posts) ? posts : []
       };
       const safeLandingStep = Math.max(0, Number(state?.profileLandingStep || 0) || 0);
-      if (isLandingTopTab && safeLandingStep < 2) {
+      if (isLandingTopTab && safeLandingStep < 3) {
         const liveView = state?.profileView;
         const liveProfile = liveView?.profile;
         const liveRestaurantId = String(liveProfile?.restaurantId || "").trim();
@@ -308,6 +355,7 @@ export function createProfileOpenFlowControllerCore({
       showPublicProfileView(resolvedWithPosts, resolvedWithPosts.posts, {
         showBack,
         topTab,
+        landingStep,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber
       });
