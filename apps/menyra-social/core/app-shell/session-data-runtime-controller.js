@@ -101,7 +101,8 @@ export function createSessionDataRuntimeController({
   loadMenuMetaFn = async () => ({ statusBadgeVisible: true }),
   loadMenuItemsFromCollectionFn = async () => [],
   loadPublicMenuItemsFn = async () => [],
-  loadMenuHybridFn = async () => []
+  loadMenuHybridFn = async () => [],
+  publishMenuToPublicFn = null
 } = {}) {
   const safeStorage = safeStorageObj || {
     getItem: () => null,
@@ -128,10 +129,15 @@ export function createSessionDataRuntimeController({
   const menuNetworkLoadPromises = new Map();
   const menuFreshReconcileQueuedKeys = new Set();
   const menuFreshReconcileAtByKey = new Map();
+  const menuPublicRepairPendingIds = new Set();
+  const menuPublicRepairAtByRestaurant = new Map();
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
   let renderRequested = false;
+  const publishMenuToPublicSafe = typeof publishMenuToPublicFn === "function"
+    ? publishMenuToPublicFn
+    : null;
 
   function isQrGuestMenuSessionForRestaurant(restaurantId = "") {
     const hasUser = !!String(state?.user?.uid || "").trim();
@@ -453,6 +459,62 @@ export function createSessionDataRuntimeController({
       renderRequested = false;
       renderFn();
     });
+  }
+
+  function ensureRuntimeMetricsState() {
+    if (!state || typeof state !== "object") return null;
+    if (!state.runtimeMetrics || typeof state.runtimeMetrics !== "object") {
+      state.runtimeMetrics = {};
+    }
+    return state.runtimeMetrics;
+  }
+
+  function recordMenuUsableMetric({
+    restaurantId = "",
+    source = "public",
+    requestStartedAt = 0,
+    itemCount = 0,
+    truthSource = "network"
+  } = {}) {
+    const metrics = ensureRuntimeMetricsState();
+    if (!metrics) return;
+    const startedAt = Number(requestStartedAt || 0);
+    const now = Date.now();
+    const durationMs = startedAt > 0 ? Math.max(0, now - startedAt) : 0;
+    metrics.menuUsableMs = durationMs;
+    metrics.menuUsableAt = now;
+    metrics.menuUsableRestaurantId = String(restaurantId || "").trim();
+    metrics.menuUsableSource = String(source || "public").trim().toLowerCase() || "public";
+    metrics.menuUsableItems = Math.max(0, Number(itemCount || 0) || 0);
+    metrics.menuUsableTruthSource = String(truthSource || "network").trim().toLowerCase() || "network";
+  }
+
+  function queueMenuPublicTruthRepair(restaurantId = "", items = [], { reason = "" } = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return;
+    if (!publishMenuToPublicSafe) return;
+    if (!Array.isArray(items) || !items.length) return;
+    if (menuPublicRepairPendingIds.has(safeRestaurantId)) return;
+    const now = Date.now();
+    const lastRepairAt = Number(menuPublicRepairAtByRestaurant.get(safeRestaurantId) || 0);
+    if (now - lastRepairAt < 120000) return;
+    menuPublicRepairAtByRestaurant.set(safeRestaurantId, now);
+    menuPublicRepairPendingIds.add(safeRestaurantId);
+    Promise.resolve(publishMenuToPublicSafe(safeRestaurantId, items))
+      .then(() => {
+        const metrics = ensureRuntimeMetricsState();
+        if (!metrics) return;
+        metrics.menuPublicRepairCount = Math.max(0, Number(metrics.menuPublicRepairCount || 0) || 0) + 1;
+        metrics.menuPublicRepairLastAt = Date.now();
+        metrics.menuPublicRepairRestaurantId = safeRestaurantId;
+        metrics.menuPublicRepairReason = String(reason || "").trim();
+      })
+      .catch((err) => {
+        console.error(`[mnyra][menu.public-repair] ${safeRestaurantId}`, err);
+      })
+      .finally(() => {
+        menuPublicRepairPendingIds.delete(safeRestaurantId);
+      });
   }
 
   function resolveMenuStatusBadgeVisible(value, fallback = true) {
@@ -1169,6 +1231,7 @@ export function createSessionDataRuntimeController({
     const safeSource = sourceRaw === "collection"
       ? "collection"
       : (sourceRaw === "migration" ? "migration" : "public");
+    const requestStartedAt = Date.now();
     const buildMenuTruthSignature = (items = [], statusBadgeVisible = true) => {
       const list = Array.isArray(items) ? items : [];
       const rows = list.map((item, idx) => {
@@ -1238,6 +1301,13 @@ export function createSessionDataRuntimeController({
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
       };
       requestRender();
+      recordMenuUsableMetric({
+        restaurantId: safeRestaurantId,
+        source: safeSource,
+        requestStartedAt,
+        itemCount: Array.isArray(cached.items) ? cached.items.length : 0,
+        truthSource: "memory-cache"
+      });
       queueMenuFreshReconcile();
       return;
     }
@@ -1258,6 +1328,13 @@ export function createSessionDataRuntimeController({
         ts: Date.now()
       });
       requestRender();
+      recordMenuUsableMetric({
+        restaurantId: safeRestaurantId,
+        source: safeSource,
+        requestStartedAt,
+        itemCount: Array.isArray(persistedMenu.items) ? persistedMenu.items.length : 0,
+        truthSource: "persistent-cache"
+      });
       queueMenuFreshReconcile();
       return;
     }
@@ -1303,13 +1380,61 @@ export function createSessionDataRuntimeController({
             { attempts: 3, baseDelayMs: 240 }
           );
         } else {
-          items = await runMenuLoadWithBackoff(
+          const publicItems = await runMenuLoadWithBackoff(
             () => loadPublicMenuItemsFn(safeRestaurantId),
             {
               attempts: lightweightQrGuestFlow ? 4 : 3,
               baseDelayMs: lightweightQrGuestFlow ? 260 : 220
             }
           );
+          items = Array.isArray(publicItems) ? publicItems : [];
+          const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
+          const canRepairOwnPublicMenu = (
+            !!String(state?.user?.uid || "").trim()
+            && ownRestaurantId
+            && ownRestaurantId === safeRestaurantId
+          );
+          let collectionItems = [];
+          if (!items.length) {
+            const hybridFallback = await runMenuLoadWithBackoff(
+              () => loadMenuHybridFn(safeRestaurantId),
+              { attempts: 2, baseDelayMs: 260 }
+            ).catch(() => []);
+            if (Array.isArray(hybridFallback) && hybridFallback.length) {
+              items = hybridFallback;
+            }
+          }
+          if (canRepairOwnPublicMenu) {
+            collectionItems = await runMenuLoadWithBackoff(
+              () => loadMenuItemsFromCollectionFn(safeRestaurantId),
+              { attempts: 2, baseDelayMs: 200 }
+            ).catch(() => []);
+            if (Array.isArray(collectionItems) && collectionItems.length) {
+              const publicSignature = buildMenuTruthSignature(items, true);
+              const collectionSignature = buildMenuTruthSignature(collectionItems, true);
+              const hasDrift = publicSignature !== collectionSignature;
+              if (hasDrift) {
+                const missingCount = Math.max(0, collectionItems.length - items.length);
+                const metrics = ensureRuntimeMetricsState();
+                if (metrics) {
+                  metrics.menuMissingItemCount = missingCount;
+                  metrics.menuDriftDetectedAt = Date.now();
+                  metrics.menuDriftRestaurantId = safeRestaurantId;
+                  metrics.menuDriftSource = "public_vs_collection";
+                }
+                items = collectionItems;
+                queueMenuPublicTruthRepair(safeRestaurantId, collectionItems, {
+                  reason: missingCount > 0 ? "collection_has_more_items" : "collection_public_drift"
+                });
+              } else {
+                const metrics = ensureRuntimeMetricsState();
+                if (metrics) {
+                  metrics.menuMissingItemCount = 0;
+                  metrics.menuDriftRestaurantId = safeRestaurantId;
+                }
+              }
+            }
+          }
         }
         const meta = await metaPromise;
         if (typeof meta?.statusBadgeVisible === "boolean") {
@@ -1344,6 +1469,13 @@ export function createSessionDataRuntimeController({
           };
           requestRender();
         }
+        recordMenuUsableMetric({
+          restaurantId: safeRestaurantId,
+          source: safeSource,
+          requestStartedAt,
+          itemCount: Array.isArray(items) ? items.length : 0,
+          truthSource: runBackground ? "background-reconcile" : "network"
+        });
       } catch (err) {
         console.error(err);
         const hasLiveItems = state.menu.restaurantId === safeRestaurantId
@@ -1369,6 +1501,15 @@ export function createSessionDataRuntimeController({
           statusBadgeVisible: fallbackStatusBadgeVisible
         };
         requestRender();
+        if (Array.isArray(fallbackItems) && fallbackItems.length) {
+          recordMenuUsableMetric({
+            restaurantId: safeRestaurantId,
+            source: safeSource,
+            requestStartedAt,
+            itemCount: fallbackItems.length,
+            truthSource: "fallback-cache"
+          });
+        }
       } finally {
         menuNetworkLoadPromises.delete(cacheKey);
       }

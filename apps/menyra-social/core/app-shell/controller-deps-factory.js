@@ -704,7 +704,8 @@ export function buildSessionDataRuntimeControllerDeps({
   loadPublicMenuItems,
   loadLegacyMenuItems,
   fillMenuImagesFromFallback,
-  loadMenuHybrid
+  loadMenuHybrid,
+  publishMenuToPublic
 } = {}) {
   return {
     state,
@@ -812,7 +813,8 @@ export function buildSessionDataRuntimeControllerDeps({
     loadPublicMenuItemsFn: loadPublicMenuItems,
     loadLegacyMenuItemsFn: loadLegacyMenuItems,
     fillMenuImagesFromFallbackFn: fillMenuImagesFromFallback,
-    loadMenuHybridFn: loadMenuHybrid
+    loadMenuHybridFn: loadMenuHybrid,
+    publishMenuToPublicFn: publishMenuToPublic
   };
 }
 

@@ -1170,6 +1170,26 @@ const state = {
     open: false
   },
   runtimeBudgets: {},
+  runtimeMetrics: {
+    profileSettleMs: 0,
+    profileSettledAt: 0,
+    profileSettleMode: "",
+    menuUsableMs: 0,
+    menuUsableAt: 0,
+    menuUsableRestaurantId: "",
+    menuUsableSource: "",
+    menuUsableItems: 0,
+    menuUsableTruthSource: "",
+    menuMissingItemCount: 0,
+    menuDriftDetectedAt: 0,
+    menuDriftRestaurantId: "",
+    menuDriftSource: "",
+    menuPublicRepairCount: 0,
+    menuPublicRepairLastAt: 0,
+    menuPublicRepairRestaurantId: "",
+    menuPublicRepairReason: "",
+    imageFlashCount: 0
+  },
   runtimeDegraded: {
     bootstrap: "",
     map: "",
@@ -3874,7 +3894,8 @@ sessionDataRuntimeController = createSessionDataRuntimeCluster({
     loadPublicMenuItems,
     loadLegacyMenuItems,
     fillMenuImagesFromFallback,
-    loadMenuHybrid
+    loadMenuHybrid,
+    publishMenuToPublic
   }
 });
 

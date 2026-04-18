@@ -284,6 +284,11 @@ export async function loadAuthProfileCore({
   loadUserProfile
 } = {}) {
   if (!user || !state) return;
+  const resolveUid = String(user?.uid || "").trim();
+  if (resolveUid) {
+    state.__authProfileResolveInFlightUid = resolveUid;
+    state.__authProfileResolveStartedAt = Date.now();
+  }
   const normalizeRoles = typeof normalizeRoleList === "function" ? normalizeRoleList : (() => []);
   const isRestaurantDeleted = typeof isRestaurantMarkedDeleted === "function" ? isRestaurantMarkedDeleted : (() => false);
   if (

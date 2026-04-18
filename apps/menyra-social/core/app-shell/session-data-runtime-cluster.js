@@ -112,6 +112,7 @@ export function createSessionDataRuntimeCluster({
     loadPublicMenuItems: menuApi.loadPublicMenuItems,
     loadLegacyMenuItems: menuApi.loadLegacyMenuItems,
     fillMenuImagesFromFallback: menuApi.fillMenuImagesFromFallback,
-    loadMenuHybrid: menuApi.loadMenuHybrid
+    loadMenuHybrid: menuApi.loadMenuHybrid,
+    publishMenuToPublic: menuApi.publishMenuToPublic
   }));
 }

@@ -363,6 +363,16 @@ export function createAppShellRuntimeController(deps = {}) {
     }
   }
 
+  function incrementImageFlashCount(amount = 1) {
+    const nextAmount = Math.max(1, Number(amount) || 1);
+    if (!state.runtimeMetrics || typeof state.runtimeMetrics !== "object") {
+      state.runtimeMetrics = {};
+    }
+    const current = Math.max(0, Number(state.runtimeMetrics.imageFlashCount || 0) || 0);
+    state.runtimeMetrics.imageFlashCount = current + nextAmount;
+    state.runtimeMetrics.imageFlashLastAt = Date.now();
+  }
+
   function buildOverlayRenderSignature() {
     return [
       state.profileModal?.open ? "1" : "0",
@@ -1149,6 +1159,7 @@ export function createAppShellRuntimeController(deps = {}) {
           img.style.opacity = "1";
         } else {
           img.style.opacity = "0";
+          incrementImageFlashCount(1);
         }
       }
       const revealWhenDecoded = () => {

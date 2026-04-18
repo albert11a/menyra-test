@@ -152,6 +152,24 @@ export function createSelfProfileRuntimeController({
     render();
   }
 
+  function markAuthProfileSettled(user = null, mode = "user") {
+    const uid = String(user?.uid || "").trim();
+    if (!uid) return;
+    const inFlightUid = String(state?.__authProfileResolveInFlightUid || "").trim();
+    if (!inFlightUid || inFlightUid !== uid) return;
+    const startedAt = Number(state?.__authProfileResolveStartedAt || 0);
+    const now = Date.now();
+    const durationMs = startedAt > 0 ? Math.max(0, now - startedAt) : 0;
+    if (!state.runtimeMetrics || typeof state.runtimeMetrics !== "object") {
+      state.runtimeMetrics = {};
+    }
+    state.runtimeMetrics.profileSettleMs = durationMs;
+    state.runtimeMetrics.profileSettledAt = now;
+    state.runtimeMetrics.profileSettleMode = String(mode || "user").trim().toLowerCase() || "user";
+    state.__authProfileResolveInFlightUid = "";
+    state.__authProfileResolveStartedAt = 0;
+  }
+
   function stopCurrentUserProfileListener() {
     if (typeof userDocUnsub === "function") {
       try {
@@ -1129,6 +1147,7 @@ export function createSelfProfileRuntimeController({
       primeSelfAvatarCache(resolvedAvatar);
     }
     refreshProfileUi();
+    markAuthProfileSettled(user, "user");
     return normalized;
   }
 
@@ -1182,6 +1201,7 @@ export function createSelfProfileRuntimeController({
       rebuildBusinessLocations();
     }
     refreshProfileUi();
+    markAuthProfileSettled(user, "business");
   }
 
   async function loadBusinessStaffProfile(user, { restaurant = null, staffData = null, force = false } = {}) {
@@ -1240,6 +1260,7 @@ export function createSelfProfileRuntimeController({
     state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...rest }]);
     rebuildBusinessLocations();
     refreshProfileUi();
+    markAuthProfileSettled(user, "staff_business");
   }
 
   return {
