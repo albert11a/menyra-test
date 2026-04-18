@@ -199,9 +199,22 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
   `;
 }
 
-function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { includeImageKeys = true } = {}) {
+function renderProfilePostsFancy(posts, viewMode, allowMenu = true, {
+  includeImageKeys = true,
+  loading = false
+} = {}) {
   const isGrid = viewMode === "grid";
   if (!posts.length) {
+    if (loading) {
+      return `
+        <div class="col-span-2 py-24 text-center">
+          <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
+            ${icon("loader", "w-9 h-9 animate-spin")}
+          </div>
+          <p class="text-slate-400 text-sm font-bold tracking-wide">Inhalte werden geladen...</p>
+        </div>
+      `;
+    }
     return `
       <div class="col-span-2 py-24 text-center">
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
@@ -2496,6 +2509,13 @@ function renderProfileView() {
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(isBusiness);
   const topTab = resolveProfilePrimaryTopTab(profile);
+  const activeUid = String(state?.user?.uid || "").trim();
+  const profileResolveInFlight = (
+    !!activeUid
+    && String(state?.__authProfileResolveInFlightUid || "").trim() === activeUid
+  );
+  const profilePostsWarmupPending = Math.max(0, Number(state?.__profilePostsWarmupPendingCount || 0) || 0) > 0;
+  const showProfilePostsLoading = profileResolveInFlight || profilePostsWarmupPending || !!state?.__profilePostsWarmupInFlight;
   const topPaddingClass = isBusiness ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
     <div class="app-main-content-safe">
@@ -2558,7 +2578,7 @@ function renderProfileView() {
         ${renderProfileCheckins()}
       ` : `
         <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"}">
-          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
+          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, true, { loading: showProfilePostsLoading })}
         </div>
         ${activeContentTab === "posts" ? `
           <div class="app-content-inline mt-8 mb-4">

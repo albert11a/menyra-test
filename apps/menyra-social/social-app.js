@@ -4618,6 +4618,15 @@ getPushRuntimeController = sessionRuntimeClusterGetters.getPushRuntimeController
 getNotificationsRuntimeController = sessionRuntimeClusterGetters.getNotificationsRuntimeController;
 getNotificationSupportRuntimeController = sessionRuntimeClusterGetters.getNotificationSupportRuntimeController;
 getSessionTabLifecycleRuntimeController = sessionRuntimeClusterGetters.getSessionTabLifecycleRuntimeController;
+state.__ensureTabDataForProfile = () => {
+  const controller = typeof getSessionTabLifecycleRuntimeController === "function"
+    ? getSessionTabLifecycleRuntimeController()
+    : null;
+  if (!controller || typeof controller.ensureTabData !== "function") {
+    return Promise.resolve();
+  }
+  return controller.ensureTabData("profile");
+};
 
 shellRuntimeController = createShellRuntimeController();
 if (runtimeUiRefreshPending) {

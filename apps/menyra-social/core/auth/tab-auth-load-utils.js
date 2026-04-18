@@ -179,6 +179,52 @@ export function ensureTabDataCore({
     state.__authProfileLoadUid = activeUid;
     return nextPromise;
   };
+  const getProfilePostsWarmupPendingCount = () => Math.max(0, Number(state.__profilePostsWarmupPendingCount || 0) || 0);
+  const bumpProfilePostsWarmupPending = (delta = 0) => {
+    const nextCount = Math.max(0, getProfilePostsWarmupPendingCount() + Number(delta || 0));
+    state.__profilePostsWarmupPendingCount = nextCount;
+    state.__profilePostsWarmupInFlight = nextCount > 0;
+  };
+  const ensureProfilePostsForCurrentRole = ({ force = false } = {}) => {
+    const currentUid = String(state?.user?.uid || "").trim();
+    if (!currentUid) return Promise.resolve();
+    const hasBusinessProfile = isBusinessProfile(state.userProfile);
+    const currentOwnerType = String(state.__profilePostsOwnerType || "").trim().toLowerCase();
+    if (hasBusinessProfile) {
+      const shouldLoadBusinessPosts = (
+        force
+        || !dataLoaded.businessPosts
+        || currentOwnerType !== "business"
+      );
+      state.__profilePostsOwnerType = "business";
+      if (!shouldLoadBusinessPosts) return Promise.resolve();
+      dataLoaded.businessPosts = true;
+      bumpProfilePostsWarmupPending(1);
+      return Promise.resolve(loadBusinessPostsSafe({ force }))
+        .catch((err) => {
+          reportAuthFlowWarning("auth-tab.profile.loadBusinessPosts", err);
+        })
+        .finally(() => {
+          bumpProfilePostsWarmupPending(-1);
+        });
+    }
+    const shouldLoadUserPosts = (
+      force
+      || !dataLoaded.userPosts
+      || currentOwnerType !== "user"
+    );
+    state.__profilePostsOwnerType = "user";
+    if (!shouldLoadUserPosts) return Promise.resolve();
+    dataLoaded.userPosts = true;
+    bumpProfilePostsWarmupPending(1);
+    return Promise.resolve(loadUserPostsSafe({ force }))
+      .catch((err) => {
+        reportAuthFlowWarning("auth-tab.profile.loadUserPosts", err);
+      })
+      .finally(() => {
+        bumpProfilePostsWarmupPending(-1);
+      });
+  };
 
   const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isQrMenuProfileSession && !isLandingProfileSession;
   if (shouldPrimeRestaurantTruth) {
@@ -188,18 +234,19 @@ export function ensureTabDataCore({
     });
   }
 
-  if (hasUser && tab === "profile" && !dataLoaded.profile && !isLandingProfileSession) {
-    dataLoaded.profile = true;
-    const hasBusinessProfile = isBusinessProfile(state.userProfile);
-    if (!hasBusinessProfile) {
-      void loadUserPostsSafe();
-    }
-    if (hasBusinessProfile) {
-      void loadBusinessPostsSafe();
-    }
-  }
   if (hasUser && tab === "profile" && !isLandingProfileSession) {
-    void runAuthProfileLoad();
+    if (!dataLoaded.profile) {
+      dataLoaded.profile = true;
+    }
+    void ensureProfilePostsForCurrentRole({ force: false });
+    void runAuthProfileLoad()
+      .then(() => {
+        if (activeUid !== String(state.user?.uid || "").trim()) return;
+        return ensureProfilePostsForCurrentRole({ force: false });
+      })
+      .catch((err) => {
+        reportAuthFlowWarning("auth-tab.profile.loadAuthProfile", err);
+      });
   }
 
   if (hasUser && tab === "menu") {
@@ -628,6 +675,26 @@ export async function loadAuthProfileCore({
               __resolvedAt: Date.now()
             };
           }
+          const lockedUid = String(state.__authIdentityGateLockedUid || "").trim();
+          const activeTab = String(state.activeTab || "").trim().toLowerCase();
+          const shouldPromoteNow = (
+            lockedUid === reconcileUid
+            && (activeTab === "profile" || activeTab === "menu")
+          );
+          if (!shouldPromoteNow) return;
+          state.__authIdentityGateLockedUid = "";
+          return Promise.resolve(loadBusinessProfile(user, { restaurant: resolved, force: true }))
+            .then(() => {
+              const ensureProfileTabData = state?.__ensureTabDataForProfile;
+              if (typeof ensureProfileTabData === "function") {
+                Promise.resolve(ensureProfileTabData()).catch((err) => {
+                  reportAuthFlowWarning("auth-profile.backgroundBusinessReconcile.ensureProfileTabData", err);
+                });
+              }
+            })
+            .catch((err) => {
+              reportAuthFlowWarning("auth-profile.backgroundBusinessReconcile.promote", err);
+            });
         })
         .catch((err) => {
           reportAuthFlowWarning("auth-profile.backgroundBusinessReconcile", err);
