@@ -3,9 +3,13 @@ export function normalizeLeadCountryCore(value, {
   fallbackCountry = ""
 } = {}) {
   const safe = String(value || "").trim().toLowerCase();
-  if (safe === "serbia" || safe === "serbien") return "Serbien";
-  if (safe === "albania" || safe === "albanien") return "Albanien";
-  if (safe === "kosovo" || safe === "kosova") return "Kosovo";
+  const normalized = typeof safe.normalize === "function"
+    ? safe.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    : safe;
+  if (["serbia", "serbien", "srbija", "rs"].includes(normalized)) return "Serbien";
+  if (["albania", "albanien", "shqiperi", "shqiperia", "al"].includes(normalized)) return "Albanien";
+  if (["kosovo", "kosova", "kosove", "xk"].includes(normalized)) return "Kosovo";
+  if (["austria", "osterreich", "oesterreich", "at", "aut"].includes(normalized)) return "Oesterreich";
   const original = String(value || "").trim();
   return allowedCountries.includes(original) ? original : fallbackCountry;
 }
@@ -30,8 +34,21 @@ export function inferLeadCountryFromTextCore(text = "", fallbackCountry = "", {
     ? normalizeLeadCountryFn
     : ((value) => String(value || "").trim());
   const value = normalizeSearch(text);
-  if (value.includes("serbien") || value.includes("serbia") || value.includes("beograd") || value.includes("belgrad")) return "Serbien";
-  if (value.includes("albanien") || value.includes("albania") || value.includes("tirana")) return "Albanien";
-  if (value.includes("kosovo") || value.includes("kosova") || value.includes("prishtina") || value.includes("pristina")) return "Kosovo";
+  const normalizedValue = typeof value.normalize === "function"
+    ? value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    : value;
+  if (normalizedValue.includes("serbien") || normalizedValue.includes("serbia") || normalizedValue.includes("beograd") || normalizedValue.includes("belgrad")) return "Serbien";
+  if (normalizedValue.includes("albanien") || normalizedValue.includes("albania") || normalizedValue.includes("tirana")) return "Albanien";
+  if (normalizedValue.includes("kosovo") || normalizedValue.includes("kosova") || normalizedValue.includes("prishtina") || normalizedValue.includes("pristina")) return "Kosovo";
+  if (
+    normalizedValue.includes("oesterreich")
+    || normalizedValue.includes("osterreich")
+    || normalizedValue.includes("austria")
+    || normalizedValue.includes("wien")
+    || normalizedValue.includes("vienna")
+    || /(^|[^a-z])(at|aut)([^a-z]|$)/.test(normalizedValue)
+  ) {
+    return "Oesterreich";
+  }
   return normalizeCountry(fallbackCountry);
 }

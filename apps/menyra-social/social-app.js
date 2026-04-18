@@ -542,12 +542,13 @@ const ALBERT_OWNED_LEAD_BUSINESSES = Object.freeze([
   "pizzeria don napoletano",
   "antica"
 ]);
-const CEO_COUNTRIES = Object.freeze(["Albanien", "Kosovo", "Serbien"]);
+const CEO_COUNTRIES = Object.freeze(["Albanien", "Kosovo", "Serbien", "Oesterreich"]);
 const LEAD_SETTINGS_DEFAULT_COUNTRY = "Kosovo";
 const LEAD_COUNTRY_CENTERS = Object.freeze({
   Kosovo: Object.freeze({ lat: 42.6629, lng: 21.1655 }),
   Serbien: Object.freeze({ lat: 44.7866, lng: 20.4489 }),
-  Albanien: Object.freeze({ lat: 41.3275, lng: 19.8187 })
+  Albanien: Object.freeze({ lat: 41.3275, lng: 19.8187 }),
+  Oesterreich: Object.freeze({ lat: 47.5932, lng: 14.1246 })
 });
 const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
 

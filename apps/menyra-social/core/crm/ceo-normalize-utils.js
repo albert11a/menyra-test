@@ -17,12 +17,16 @@ export function normalizeCeoCountryCore(value, {
 } = {}) {
   const countries = Array.isArray(allowedCountries) && allowedCountries.length
     ? allowedCountries
-    : ["Kosovo", "Albanien", "Serbien"];
-  const raw = String(value || "").trim().toLowerCase();
+    : ["Kosovo", "Albanien", "Serbien", "Oesterreich"];
+  const rawValue = String(value || "").trim().toLowerCase();
+  const raw = typeof rawValue.normalize === "function"
+    ? rawValue.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    : rawValue;
   if (!raw) return countries[0];
   if (["xk", "kosovo", "kosove", "kosova"].includes(raw)) return "Kosovo";
   if (["al", "albania", "albanien", "shqiperi", "shqiperia"].includes(raw)) return "Albanien";
   if (["rs", "serbia", "serbien", "srbija"].includes(raw)) return "Serbien";
+  if (["at", "aut", "austria", "osterreich", "oesterreich"].includes(raw)) return "Oesterreich";
   const match = countries.find((entry) => entry.toLowerCase() === raw);
   return match || countries[0];
 }
