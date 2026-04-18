@@ -1442,11 +1442,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const mainEl = doc.querySelector("main");
     if (mainEl) {
       mainEl.classList.toggle("feed-location-gate-main", !!isFeedLocationGate);
-      if (isFeedLocationGate) {
-        mainEl.style.setProperty("padding-top", "0px", "important");
-      } else {
-        mainEl.style.removeProperty("padding-top");
-      }
+      mainEl.style.removeProperty("padding-top");
     }
   }
 

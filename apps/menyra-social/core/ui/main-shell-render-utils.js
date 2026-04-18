@@ -109,7 +109,7 @@ export function renderMainCore({
   const hasSmartHeader = !!String(state?.activeTab || "").trim()
     && state?.activeTab !== "map"
     && !smartHeaderBlockedState;
-  const hasSmartHeaderContentGap = hasSmartHeader && !isLandingTopTab;
+  const hasSmartHeaderContentGap = hasSmartHeader;
   const hasSmartHeaderTabs = hasSmartHeader
     && state?.activeTab === "profile"
     && isBusinessProfile
