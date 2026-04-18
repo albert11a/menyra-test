@@ -258,7 +258,7 @@
       --safe-area-bottom: 0px;
       --safe-area-left: 0px;
       --menu-detail-footer-gap: 0px;
-      --feed-location-gate-header-height: calc(var(--safe-area-top) + 4.5rem);
+      --feed-location-gate-header-height: var(--smart-header-total-height, calc(var(--safe-area-top) + 4.5rem));
       --app-content-inline: 1.5rem;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
@@ -409,6 +409,12 @@
     }
     .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
     .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
+    .app-main-scroll--with-smart-header.app-main-scroll--landing,
+    .app-main-scroll--with-smart-header-tabs.app-main-scroll--landing,
+    .feed-location-gate-main.app-main-scroll--with-smart-header,
+    .feed-location-gate-main.app-main-scroll--with-smart-header-tabs {
+      padding-top: var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) !important;
+    }
     .app-main-scroll--landing {
       padding-bottom: 0 !important;
       overflow: hidden;
@@ -726,6 +732,12 @@
     }
     html.is-standalone .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
     html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
+    html.is-standalone .app-main-scroll--with-smart-header.app-main-scroll--landing,
+    html.is-standalone .app-main-scroll--with-smart-header-tabs.app-main-scroll--landing,
+    html.is-standalone .feed-location-gate-main.app-main-scroll--with-smart-header,
+    html.is-standalone .feed-location-gate-main.app-main-scroll--with-smart-header-tabs {
+      padding-top: var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) !important;
+    }
     html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
     .business-top-tabs-sticky {
       display: block;
