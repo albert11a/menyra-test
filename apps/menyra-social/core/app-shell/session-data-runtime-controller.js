@@ -126,6 +126,8 @@ export function createSessionDataRuntimeController({
   let restaurantsNetworkLoadPromise = null;
   let feedNetworkLoadPromise = null;
   const menuNetworkLoadPromises = new Map();
+  const menuFreshReconcileQueuedKeys = new Set();
+  const menuFreshReconcileAtByKey = new Map();
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
@@ -1161,12 +1163,48 @@ export function createSessionDataRuntimeController({
     }
   }
 
-  async function loadMenuForRestaurant(restaurantId, { force = false, source = "public" } = {}) {
+  async function loadMenuForRestaurant(restaurantId, { force = false, source = "public", background = false } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     const sourceRaw = String(source || "public").trim().toLowerCase();
     const safeSource = sourceRaw === "collection"
       ? "collection"
       : (sourceRaw === "migration" ? "migration" : "public");
+    const buildMenuTruthSignature = (items = [], statusBadgeVisible = true) => {
+      const list = Array.isArray(items) ? items : [];
+      const rows = list.map((item, idx) => {
+        const id = String(item?.id || item?.itemId || item?.menuItemId || `item_${idx}`).trim();
+        const orderIndex = Number.isFinite(Number(item?.orderIndex)) ? Number(item.orderIndex) : idx;
+        const name = String(item?.name || "").trim();
+        const price = String(item?.price ?? "").trim();
+        const available = item?.available === false ? "0" : "1";
+        const hidden = (item?.menuHidden === true || item?.hidden === true) ? "1" : "0";
+        return `${id}#${orderIndex}#${name}#${price}#${available}#${hidden}`;
+      });
+      return `${list.length}|${statusBadgeVisible ? "1" : "0"}|${rows.join("||")}`;
+    };
+    const queueMenuFreshReconcile = () => {
+      if (force) return;
+      if (lightweightQrGuestFlow) return;
+      if (!cacheKey) return;
+      if (menuFreshReconcileQueuedKeys.has(cacheKey)) return;
+      const now = Date.now();
+      const lastRunAt = Number(menuFreshReconcileAtByKey.get(cacheKey) || 0);
+      if (now - lastRunAt < 20000) return;
+      menuFreshReconcileAtByKey.set(cacheKey, now);
+      menuFreshReconcileQueuedKeys.add(cacheKey);
+      const defer = typeof queueMicrotask === "function"
+        ? queueMicrotask
+        : (fn) => Promise.resolve().then(fn);
+      defer(() => {
+        void loadMenuForRestaurant(safeRestaurantId, {
+          force: true,
+          source: safeSource,
+          background: true
+        }).finally(() => {
+          menuFreshReconcileQueuedKeys.delete(cacheKey);
+        });
+      });
+    };
     const lightweightQrGuestFlow = isQrGuestMenuSessionForRestaurant(safeRestaurantId);
     if (!safeRestaurantId) {
       stopMenuMetaListener();
@@ -1187,6 +1225,7 @@ export function createSessionDataRuntimeController({
       startMenuMetaListener(safeRestaurantId);
     }
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
+    const runBackground = background === true;
     const cached = menuCacheMap.get(cacheKey);
     if (cached && cached.items?.length && !force) {
       state.menu = {
@@ -1199,6 +1238,7 @@ export function createSessionDataRuntimeController({
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
       };
       requestRender();
+      queueMenuFreshReconcile();
       return;
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
@@ -1218,6 +1258,7 @@ export function createSessionDataRuntimeController({
         ts: Date.now()
       });
       requestRender();
+      queueMenuFreshReconcile();
       return;
     }
     const inFlight = menuNetworkLoadPromises.get(cacheKey);
@@ -1226,15 +1267,17 @@ export function createSessionDataRuntimeController({
       return;
     }
     const keepCurrentItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items);
-    state.menu = {
-      ...state.menu,
-      restaurantId: safeRestaurantId,
-      items: keepCurrentItems ? state.menu.items : [],
-      loading: true,
-      error: "",
-      source: safeSource
-    };
-    requestRender();
+    if (!runBackground || !keepCurrentItems) {
+      state.menu = {
+        ...state.menu,
+        restaurantId: safeRestaurantId,
+        items: keepCurrentItems ? state.menu.items : [],
+        loading: true,
+        error: "",
+        source: safeSource
+      };
+      requestRender();
+    }
     const request = (async () => {
       try {
         let items = [];
@@ -1274,18 +1317,41 @@ export function createSessionDataRuntimeController({
         }
         menuCacheMap.set(cacheKey, { items, statusBadgeVisible, ts: Date.now() });
         writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
-        state.menu = {
-          ...state.menu,
-          restaurantId: safeRestaurantId,
-          items,
-          loading: false,
-          error: "",
-          source: safeSource,
-          statusBadgeVisible
-        };
-        requestRender();
+        const liveItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
+          ? state.menu.items
+          : [];
+        const liveStatusBadgeVisible = typeof state.menu.statusBadgeVisible === "boolean"
+          ? state.menu.statusBadgeVisible
+          : true;
+        const nextSignature = buildMenuTruthSignature(items, statusBadgeVisible);
+        const liveSignature = buildMenuTruthSignature(liveItems, liveStatusBadgeVisible);
+        const shouldUpdateMenuState = (
+          nextSignature !== liveSignature
+          || state.menu.loading
+          || String(state.menu.error || "").trim().length > 0
+          || state.menu.source !== safeSource
+          || state.menu.restaurantId !== safeRestaurantId
+        );
+        if (shouldUpdateMenuState) {
+          state.menu = {
+            ...state.menu,
+            restaurantId: safeRestaurantId,
+            items,
+            loading: false,
+            error: "",
+            source: safeSource,
+            statusBadgeVisible
+          };
+          requestRender();
+        }
       } catch (err) {
         console.error(err);
+        const hasLiveItems = state.menu.restaurantId === safeRestaurantId
+          && Array.isArray(state.menu.items)
+          && state.menu.items.length > 0;
+        if (runBackground && hasLiveItems) {
+          return;
+        }
         const stalePersistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: true });
         const fallbackItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
           ? state.menu.items
