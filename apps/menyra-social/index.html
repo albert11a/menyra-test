@@ -264,6 +264,9 @@
       --app-surface: #ffffff;
       --active-modal-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
+      --smart-header-top-height: calc(var(--safe-area-top) + 4rem);
+      --smart-header-tabs-height: 0px;
+      --smart-header-total-height: calc(var(--smart-header-top-height) + var(--smart-header-tabs-height));
       --smart-header-content-gap: 1.2rem;
       --viewport-height: 1vh;
       --map-shell-height: calc(var(--viewport-height) * 100);
@@ -404,8 +407,8 @@
       padding-bottom: 0 !important;
       overflow: hidden;
     }
-    .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
-    .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
+    .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
+    .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
     .app-main-scroll--landing {
       padding-top: 0 !important;
       padding-bottom: 0 !important;
@@ -424,10 +427,11 @@
       --smart-header-surface-mid: rgb(248 250 252 / 0.965);
       --smart-header-surface-dense: rgb(248 250 252 / 0.9);
       --smart-header-border: rgb(226 232 240 / 0.82);
-      position: -webkit-sticky;
-      position: sticky;
+      position: fixed;
       top: 0;
-      width: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(calc(100vw - var(--safe-area-left) - var(--safe-area-right)), 28rem);
       max-width: 100%;
       z-index: 100;
       pointer-events: none;
@@ -721,8 +725,8 @@
       height: auto;
       padding-bottom: 0 !important;
     }
-    html.is-standalone .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
-    html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
+    html.is-standalone .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
+    html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 4rem)) + var(--smart-header-content-gap)) !important; }
     html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
     .business-top-tabs-sticky {
       display: block;
