@@ -312,21 +312,22 @@ export function createProfileOpenFlowControllerCore({
       const visibleRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
       if (targetRestaurantLookupId && visibleRestaurantId && visibleRestaurantId !== targetRestaurantLookupId && visibleRestaurantId !== targetMenuRestaurantId) return;
 
-      showPublicProfileView(resolved, [], {
-        showBack,
-        topTab,
-        landingStep,
-        menuAccessSource: safeMenuAccessSource,
-        tableNumber: safeTableNumber
-      });
-
       const resolvedRestaurantId = String(
         resolved?.restaurantId
         || targetMenuRestaurantId
         || targetRestaurantLookupId
         || ""
       ).trim();
-      if (!resolvedRestaurantId) return;
+      if (!resolvedRestaurantId) {
+        showPublicProfileView(resolved, [], {
+          showBack,
+          topTab,
+          landingStep,
+          menuAccessSource: safeMenuAccessSource,
+          tableNumber: safeTableNumber
+        });
+        return;
+      }
       const posts = await loadBusinessPosts(resolvedRestaurantId);
       const latestRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
       if (state.activeTab !== "profile") return;
@@ -346,6 +347,7 @@ export function createProfileOpenFlowControllerCore({
           liveView.posts = resolvedWithPosts.posts;
           liveView.profile = {
             ...liveProfile,
+            ...resolved,
             postsLoaded: true,
             posts: resolvedWithPosts.posts
           };

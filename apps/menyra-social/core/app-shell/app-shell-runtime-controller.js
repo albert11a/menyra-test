@@ -1132,6 +1132,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const src = String(img.currentSrc || img.getAttribute("src") || "").trim();
       if (!src) return;
       if (img.dataset.imageRevealSrc !== src) {
+        const keepVisible = img.dataset.imageRevealKeepVisibleOnce === "1";
         img.dataset.imageRevealSrc = src;
         img.dataset.imageRevealReady = "0";
         if (img.dataset.imageRevealStyled !== "1") {
@@ -1143,7 +1144,12 @@ export function createAppShellRuntimeController(deps = {}) {
           }
           img.dataset.imageRevealStyled = "1";
         }
-        img.style.opacity = "0";
+        if (keepVisible) {
+          img.dataset.imageRevealKeepVisibleOnce = "0";
+          img.style.opacity = "1";
+        } else {
+          img.style.opacity = "0";
+        }
       }
       const revealWhenDecoded = () => {
         if (img.dataset.imageRevealReady === "1") return;
@@ -1241,6 +1247,20 @@ export function createAppShellRuntimeController(deps = {}) {
         observer.observe(img);
       }
     });
+    const withImageRetryToken = (url = "") => {
+      const raw = String(url || "").trim();
+      if (!raw) return "";
+      if (/^(data|blob):/i.test(raw)) return "";
+      const token = Date.now().toString(36);
+      const hashIndex = raw.indexOf("#");
+      const hash = hashIndex >= 0 ? raw.slice(hashIndex) : "";
+      const baseWithQuery = hashIndex >= 0 ? raw.slice(0, hashIndex) : raw;
+      const base = baseWithQuery
+        .replace(/([?&])__mnyra_retry=[^&]*/gi, "$1")
+        .replace(/[?&]$/, "");
+      const joiner = base.includes("?") ? "&" : "?";
+      return `${base}${joiner}__mnyra_retry=${encodeURIComponent(token)}${hash}`;
+    };
     root.querySelectorAll("img[data-fallback-src]").forEach((img) => {
       if (!(img instanceof HTMLImageElement)) return;
       armImageReveal(img);
@@ -1250,20 +1270,23 @@ export function createAppShellRuntimeController(deps = {}) {
         const fallback = img.dataset.fallbackSrc || "";
         const current = img.getAttribute("src") || "";
         if (img.dataset.fallbackRetried !== "1" && current && current !== fallback && current !== PLACEHOLDER_IMAGE) {
-          img.dataset.fallbackRetried = "1";
-          img.removeAttribute("src");
-          win?.setTimeout?.(() => {
-            img.setAttribute("src", current);
+          const retrySrc = withImageRetryToken(current);
+          if (retrySrc && retrySrc !== current) {
+            img.dataset.fallbackRetried = "1";
+            img.dataset.imageRevealKeepVisibleOnce = "1";
+            img.setAttribute("src", retrySrc);
             armImageReveal(img);
-          }, 60);
-          return;
+            return;
+          }
         }
         if (fallback && current !== fallback) {
+          img.dataset.imageRevealKeepVisibleOnce = "1";
           img.setAttribute("src", fallback);
           armImageReveal(img);
           return;
         }
         if (current !== PLACEHOLDER_IMAGE) {
+          img.dataset.imageRevealKeepVisibleOnce = "1";
           img.setAttribute("src", PLACEHOLDER_IMAGE);
           armImageReveal(img);
         }

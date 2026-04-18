@@ -518,8 +518,17 @@ export async function loadAuthProfileCore({
     const emailMatch = !!email && ownerEmailFields.some((value) => String(value || "").trim().toLowerCase() === email);
     return uidMatch || emailMatch;
   };
+  const readBackgroundBusinessCandidate = () => {
+    const candidate = state?.__authBackgroundBusinessRestaurant;
+    if (!candidate || typeof candidate !== "object") return null;
+    if (!matchesOwnerIdentity(candidate)) return null;
+    return normalizeAuthRestaurant(candidate);
+  };
   const resolveBusinessRestaurant = async ({ preferCached = true, includeFallback = true } = {}) => {
-    let rest = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached }));
+    let rest = preferCached ? readBackgroundBusinessCandidate() : null;
+    if (!rest) {
+      rest = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached }));
+    }
     if (!rest && includeFallback && user?.uid) {
       const leadByUid = await resolveLeadByUid(user.uid);
       if (leadByUid) {
@@ -605,10 +614,15 @@ export async function loadAuthProfileCore({
       : (fn) => Promise.resolve().then(fn);
     defer(() => {
       Promise.resolve(resolveBusinessRestaurant({ preferCached: false, includeFallback: true }))
-        .then(async (resolved) => {
+        .then((resolved) => {
           if (!resolved) return;
           if (String(state.user?.uid || "").trim() !== reconcileUid) return;
-          await loadBusinessProfile(user, { restaurant: resolved, force: true });
+          if (resolved.id) {
+            state.__authBackgroundBusinessRestaurant = {
+              ...resolved,
+              __resolvedAt: Date.now()
+            };
+          }
         })
         .catch((err) => {
           reportAuthFlowWarning("auth-profile.backgroundBusinessReconcile", err);
@@ -621,11 +635,12 @@ export async function loadAuthProfileCore({
     });
   };
   if (hasTrustedNonBusinessHint && !force) {
-    const profile = await loadUserProfile(user, { force });
-    const normalizedRoles = normalizeRoles(profile?.roles || profile?.role || "");
-    const normalizedRoleKey = String(profile?.role || "").toLowerCase();
-    const hasBusinessProfile = !!String(profile?.restaurantId || "").trim() || normalizedRoleKey === "business" || normalizedRoles.includes("owner");
-    if (!hasBusinessProfile) {
+    const gateUid = String(user?.uid || "").trim();
+    const authIdentityGateLocked = (
+      !!gateUid
+      && String(state.__authIdentityGateLockedUid || "").trim() === gateUid
+    );
+    if (!authIdentityGateLocked) {
       const cachedOwned = Array.isArray(state.restaurants)
         ? state.restaurants.find((row) => matchesOwnerIdentity(row))
         : null;
@@ -633,18 +648,39 @@ export async function loadAuthProfileCore({
         await loadBusinessProfile(user, { restaurant: cachedOwned, force: true });
         return;
       }
+      const hintedOwned = readBackgroundBusinessCandidate();
+      if (hintedOwned) {
+        await loadBusinessProfile(user, { restaurant: hintedOwned, force: true });
+        return;
+      }
       const quickRest = await resolveBusinessRestaurant({ preferCached: true, includeFallback: false });
       if (quickRest) {
         await loadBusinessProfile(user, { restaurant: quickRest, force: true });
         return;
       }
+    }
+    const profile = await loadUserProfile(user, { force });
+    const normalizedRoles = normalizeRoles(profile?.roles || profile?.role || "");
+    const normalizedRoleKey = String(profile?.role || "").toLowerCase();
+    const hasBusinessProfile = !!String(profile?.restaurantId || "").trim() || normalizedRoleKey === "business" || normalizedRoles.includes("owner");
+    if (!hasBusinessProfile) {
+      if (gateUid) {
+        state.__authIdentityGateLockedUid = gateUid;
+      }
       scheduleBackgroundBusinessReconcile();
       return;
+    }
+    if (gateUid && String(state.__authIdentityGateLockedUid || "").trim() === gateUid) {
+      state.__authIdentityGateLockedUid = "";
     }
   }
   const rest = await resolveBusinessRestaurant({ preferCached: !force, includeFallback: true });
   if (rest) {
     await loadBusinessProfile(user, { restaurant: rest, force });
+    const currentUid = String(user?.uid || "").trim();
+    if (currentUid && String(state.__authIdentityGateLockedUid || "").trim() === currentUid) {
+      state.__authIdentityGateLockedUid = "";
+    }
     return;
   }
   await loadUserProfile(user, { force });

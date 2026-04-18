@@ -122,12 +122,10 @@ export function createSessionDataRuntimeController({
   const menuPersistentCacheTtlMs = Math.max(0, Number(cacheTtl?.menu || (15 * 60 * 1000)) || 0);
   let menuMetaUnsub = null;
   let menuMetaRestaurantId = "";
-  let restaurantsFreshReconcileQueued = false;
   let feedFreshReconcileQueued = false;
   let restaurantsNetworkLoadPromise = null;
   let feedNetworkLoadPromise = null;
   const menuNetworkLoadPromises = new Map();
-  const menuFreshReconcileQueuedKeys = new Set();
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
@@ -912,15 +910,6 @@ export function createSessionDataRuntimeController({
         reconcileRestaurantMeta(cached.data, { shouldWriteCache: true });
       }
       if (cached.fresh && !force) {
-        if (!restaurantsFreshReconcileQueued) {
-          restaurantsFreshReconcileQueued = true;
-          queueMicrotask(() => {
-            void loadRestaurants({ force: true })
-              .finally(() => {
-                restaurantsFreshReconcileQueued = false;
-              });
-          });
-        }
         return;
       }
     }
@@ -1210,15 +1199,6 @@ export function createSessionDataRuntimeController({
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
       };
       requestRender();
-      if (!lightweightQrGuestFlow && !menuFreshReconcileQueuedKeys.has(cacheKey)) {
-        menuFreshReconcileQueuedKeys.add(cacheKey);
-        queueMicrotask(() => {
-          void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
-            .finally(() => {
-              menuFreshReconcileQueuedKeys.delete(cacheKey);
-            });
-        });
-      }
       return;
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
@@ -1238,15 +1218,6 @@ export function createSessionDataRuntimeController({
         ts: Date.now()
       });
       requestRender();
-      if (!menuFreshReconcileQueuedKeys.has(cacheKey)) {
-        menuFreshReconcileQueuedKeys.add(cacheKey);
-        queueMicrotask(() => {
-          void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
-            .finally(() => {
-              menuFreshReconcileQueuedKeys.delete(cacheKey);
-            });
-        });
-      }
       return;
     }
     const inFlight = menuNetworkLoadPromises.get(cacheKey);
