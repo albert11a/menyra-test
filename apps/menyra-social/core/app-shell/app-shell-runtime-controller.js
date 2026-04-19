@@ -808,7 +808,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function shouldShowFeedLocationHeaderSearch(locationRecord = readStoredFeedViewerLocation()) {
     const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-    if (activeTabKey !== "feed" && activeTabKey !== "home") return false;
+    if (activeTabKey !== "feed") return false;
     return !!locationRecord;
   }
 
@@ -1459,7 +1459,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const htmlEl = doc.documentElement;
     const bodyEl = doc.body;
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-    const isFeedLocationScope = activeTabKey === "feed" || activeTabKey === "home";
+    const isFeedLocationScope = activeTabKey === "feed";
     const gateRoot = doc.getElementById("feedLocationGate");
     const hasFeedLocationGateRoot = !!gateRoot;
     const isFeedLocationGate = isFeedLocationScope && hasFeedLocationGateRoot;

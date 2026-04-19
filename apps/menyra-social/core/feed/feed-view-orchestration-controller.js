@@ -34,7 +34,6 @@ export function createFeedViewOrchestrationController({
 } = {}) {
   if (!state) {
     return {
-      renderHomeView: () => "",
       renderFeedView: () => "",
       renderStoryItem: () => "",
       renderStoriesRow: () => "",
@@ -1917,7 +1916,7 @@ export function createFeedViewOrchestrationController({
   const resolveLocationScreenMode = () => "feed-gate";
   const isFeedLocationScopeActive = () => {
     const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-    return activeTabKey === "feed" || activeTabKey === "home";
+    return activeTabKey === "feed";
   };
   const getRenderedLocationScreenMode = () => {
     const rootMode = String(doc?.getElementById("feedView")?.dataset?.locationScreenMode || "").trim().toLowerCase();
@@ -2061,7 +2060,7 @@ export function createFeedViewOrchestrationController({
       clearLocationGateResolveTimer();
       setFeedGateResolveChromeState(false);
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-      if (!activeTabKey || activeTabKey === "feed" || activeTabKey === "home") {
+      if (!activeTabKey || activeTabKey === "feed") {
         setStateFn({ activeTab: "feed" });
       }
       return true;
@@ -2073,7 +2072,7 @@ export function createFeedViewOrchestrationController({
       gateRoot?.classList?.remove?.("feed-location-gate--resolving");
       setFeedGateResolveChromeState(false);
       const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-      if (activeTabKey && activeTabKey !== "feed" && activeTabKey !== "home") {
+      if (activeTabKey && activeTabKey !== "feed") {
         return;
       }
       setStateFn({ activeTab: "feed" });
@@ -2748,10 +2747,6 @@ export function createFeedViewOrchestrationController({
 
   function renderFeedLocationView() {
     return renderLocationHeroScreen(resolveLocationScreenMode());
-  }
-
-  function renderHomeView() {
-    return renderFeedView();
   }
 
   function renderFeedComposer({ disabled = false } = {}) {
@@ -3800,7 +3795,6 @@ export function createFeedViewOrchestrationController({
   }
 
   return {
-    renderHomeView,
     renderFeedView,
     renderStoryItem,
     renderStoriesRow,

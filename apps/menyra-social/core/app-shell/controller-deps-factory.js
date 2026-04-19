@@ -1838,7 +1838,6 @@ export function createBridgeShellBootstrapBundle({
     isAnyModalOpen: bridgeApi.isAnyModalOpen,
     openPostModal: bridgeApi.openPostModal,
     closePostModal: bridgeApi.closePostModal,
-    renderHomeView: bridgeApi.renderHomeView,
     renderFeedView: bridgeApi.renderFeedView,
     renderStoryItem: bridgeApi.renderStoryItem,
     renderStoriesRow: bridgeApi.renderStoriesRow,
