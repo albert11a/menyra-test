@@ -121,8 +121,9 @@ export async function ensureUserProfile(user, overrides = {}) {
       patch.avatarUrl = user.photoURL;
     }
 
-    if (!existing.displayName && user?.displayName) {
-      patch.displayName = user.displayName;
+    if (!existing.displayName) {
+      if (existing.name) patch.displayName = existing.name;
+      else if (user?.displayName) patch.displayName = user.displayName;
     }
 
     if (Object.keys(patch).length) {

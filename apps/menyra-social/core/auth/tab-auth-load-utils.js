@@ -148,6 +148,7 @@ export function ensureTabDataCore({
   );
   const isLandingProfileSession = (
     tab === "profile"
+    && !!state?.profileView?.profile
     && String(state?.profileTopTab || "").trim().toLowerCase() === "landing"
   );
   const shouldSkipBootstrapAuthProfileLoad = (requestedTab = tab) => {
@@ -202,6 +203,7 @@ export function ensureTabDataCore({
       bumpProfilePostsWarmupPending(1);
       return Promise.resolve(loadBusinessPostsSafe({ force }))
         .catch((err) => {
+          dataLoaded.businessPosts = false;
           reportAuthFlowWarning("auth-tab.profile.loadBusinessPosts", err);
         })
         .finally(() => {
@@ -219,6 +221,7 @@ export function ensureTabDataCore({
     bumpProfilePostsWarmupPending(1);
     return Promise.resolve(loadUserPostsSafe({ force }))
       .catch((err) => {
+        dataLoaded.userPosts = false;
         reportAuthFlowWarning("auth-tab.profile.loadUserPosts", err);
       })
       .finally(() => {
@@ -230,7 +233,10 @@ export function ensureTabDataCore({
   if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
     scheduleIdleSafe(() => {
-      loadRestaurantsSafe().catch((err) => console.error(err));
+      loadRestaurantsSafe().catch((err) => {
+        dataLoaded.restaurants = false;
+        console.error(err);
+      });
     });
   }
 
@@ -369,6 +375,26 @@ export async function loadAuthProfileCore({
   const authPermissions = authUserData?.permissions && typeof authUserData.permissions === "object"
     ? authUserData.permissions
     : {};
+  const profileHint = state.userProfile || {};
+  const hintRoles = normalizeRoles(profileHint.roles || profileHint.role || "");
+  const hintRoleKey = String(profileHint.role || "").trim().toLowerCase();
+  const hintSourceUserRole = String(profileHint.sourceUserRole || "").trim().toLowerCase();
+  const hintedRestaurantId = String(profileHint.restaurantId || "").trim();
+  const hintedStaffRestaurantId = String(profileHint.staffRestaurantId || profileHint.waiterRestaurantId || "").trim();
+  const hasStructuredAccessHint = !!(
+    hintedRestaurantId
+    || hintedStaffRestaurantId
+    || hintRoleKey === "business"
+    || hintRoleKey === "ceo"
+    || hintRoleKey === "staff"
+    || hintSourceUserRole === "business"
+    || hintSourceUserRole === "ceo"
+    || hintSourceUserRole === "staff"
+    || hintRoles.includes("business")
+    || hintRoles.includes("owner")
+    || hintRoles.includes("ceo")
+    || hintRoles.includes("staff")
+  );
   const isStaffAccount = authUserRole === "staff"
     || !!String(
       authUserData?.staffRestaurantId
@@ -379,7 +405,8 @@ export async function loadAuthProfileCore({
   const explicitRestaurantId = String(authUserData?.restaurantId || "").trim();
   const canFastPathNonBusiness = !isStaffAccount
     && !explicitRestaurantId
-    && (authUserRole === "user" || authUserRole === "ceo");
+    && authUserRole === "user"
+    && !hasStructuredAccessHint;
   const getRestaurantById = async (restaurantId = "") => {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return null;
@@ -528,22 +555,33 @@ export async function loadAuthProfileCore({
     }
     return;
   }
-  const profileHint = state.userProfile || {};
-  const hintRoles = normalizeRoles(profileHint.roles || profileHint.role || "");
-  const hintRoleKey = String(profileHint.role || "").toLowerCase();
   const hasStoredProfileHint = (
     hintRoles.length > 0
     || !!String(profileHint.name || "").trim()
     || !!String(profileHint.handle || "").trim()
     || !!String(profileHint.ceoParentUid || profileHint.ceoRootUid || "").trim()
-    || !!String(profileHint.restaurantId || "").trim()
+    || !!hintedRestaurantId
+    || !!hintedStaffRestaurantId
+    || !!hintSourceUserRole
     || hintRoleKey !== "user"
   );
-  const hasBusinessHint = !!String(profileHint.restaurantId || "").trim() || hintRoleKey === "business" || hintRoles.includes("owner");
+  const hasBusinessHint = (
+    !!hintedRestaurantId
+    || hintRoleKey === "business"
+    || hintSourceUserRole === "business"
+    || hintRoles.includes("business")
+    || hintRoles.includes("owner")
+  );
+  const hasCeoHint = authUserRole === "ceo"
+    || hintRoleKey === "ceo"
+    || hintSourceUserRole === "ceo"
+    || hintRoles.includes("ceo");
   const hasTrustedNonBusinessHint = hasStoredProfileHint && !hasBusinessHint && (
     hintRoleKey === "ceo"
     || hintRoleKey === "staff"
     || hintRoleKey === "user"
+    || hintSourceUserRole === "ceo"
+    || hintSourceUserRole === "staff"
     || hintRoles.includes("ceo")
     || hintRoles.includes("staff")
   );
@@ -578,6 +616,12 @@ export async function loadAuthProfileCore({
   };
   const resolveBusinessRestaurant = async ({ preferCached = true, includeFallback = true } = {}) => {
     let rest = preferCached ? readBackgroundBusinessCandidate() : null;
+    if (!rest) {
+      const cachedOwned = Array.isArray(state.restaurants)
+        ? state.restaurants.find((row) => matchesOwnerIdentity(row))
+        : null;
+      rest = normalizeAuthRestaurant(cachedOwned);
+    }
     if (!rest) {
       rest = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached }));
     }
@@ -729,6 +773,13 @@ export async function loadAuthProfileCore({
       if (quickRest) {
         await loadBusinessProfile(user, { restaurant: quickRest, force: true });
         return;
+      }
+      if (hasCeoHint) {
+        const resolvedRest = await resolveBusinessRestaurant({ preferCached: true, includeFallback: true });
+        if (resolvedRest) {
+          await loadBusinessProfile(user, { restaurant: resolvedRest, force: true });
+          return;
+        }
       }
     }
     const profile = await loadUserProfile(user, { force });

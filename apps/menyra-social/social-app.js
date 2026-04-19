@@ -1432,6 +1432,25 @@ const ROUTE_PROFILE_ID_QUERY_KEYS = ["restaurant", "restaurantId", "rid", "busin
 const ROUTE_PROFILE_TOP_QUERY_KEYS = ["top"];
 const ROUTE_PROFILE_ACCESS_SOURCE_QUERY_KEYS = ["source", "menuSource", "menuAccessSource", "access"];
 const ROUTE_PROFILE_TABLE_QUERY_KEYS = ["tableNumber", "t"];
+const RESERVED_LANDING_ROUTE_SEGMENTS = new Set([
+  "ceo",
+  "owner",
+  "staff",
+  "waiter",
+  "kitchen",
+  "social",
+  "heart",
+  "hub",
+  "apps",
+  "api",
+  "login",
+  "register",
+  "profile",
+  "post",
+  "story",
+  "menyra-restaurants",
+  "lp"
+]);
 const AUTH_RESTORE_PRESERVED_TABS = new Set([
   "profile",
   "menu",
@@ -1446,17 +1465,8 @@ const AUTH_RESTORE_PRESERVED_TABS = new Set([
 ]);
 const STARTUP_SNAPSHOT_ALLOWED_TABS = new Set([
   "feed",
-  "chat",
   "search",
-  "profile",
-  "menu",
-  "orders",
-  "notifications",
-  "settings",
-  "leads",
-  "staff",
-  "customers",
-  "businessAccounts"
+  "profile"
 ]);
 
 function resolveRouteTabForState() {
@@ -1485,6 +1495,51 @@ function setCanonicalRouteQueryParam(searchParams, primaryKey, aliasKeys = [], v
     return;
   }
   searchParams.set(primary, nextValue);
+}
+
+function resolveLandingSlugFromPathname(rawPath = "") {
+  const safePath = String(rawPath || "").split("?")[0].split("#")[0].trim();
+  if (!safePath) return "";
+  const segments = safePath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  if (segments.length !== 1) return "";
+  const slug = String(segments[0] || "").trim();
+  if (!slug || slug.includes(".")) return "";
+  const key = slug.toLowerCase();
+  if (RESERVED_LANDING_ROUTE_SEGMENTS.has(key)) return "";
+  return slug;
+}
+
+function resolveCanonicalAppPathname() {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return "/apps/menyra-social/index.html";
+  }
+  const candidates = [
+    document.querySelector('script[src*="/apps/menyra-social/social-app.js"]')?.getAttribute("src"),
+    document.querySelector('link[rel="manifest"][href*="/apps/menyra-social/manifest.webmanifest"]')?.getAttribute("href")
+  ];
+  for (const raw of candidates) {
+    const safeRaw = String(raw || "").trim();
+    if (!safeRaw) continue;
+    try {
+      const parsed = new URL(safeRaw, window.location.origin);
+      const pathname = String(parsed.pathname || "").trim();
+      if (!pathname.includes("/apps/menyra-social/")) continue;
+      return pathname.replace(/\/(?:social-app\.js|manifest\.webmanifest)$/i, "/index.html");
+    } catch {}
+  }
+  return "/apps/menyra-social/index.html";
+}
+
+function resolveRoutePathnameForCurrentView(currentUrl, routeState = {}) {
+  if (!(currentUrl instanceof URL)) return "";
+  const currentPathname = String(currentUrl.pathname || "").trim() || "/";
+  const landingSlug = resolveLandingSlugFromPathname(currentPathname);
+  if (!landingSlug) return currentPathname;
+  const safeRouteState = routeState && typeof routeState === "object" ? routeState : {};
+  if (String(safeRouteState.profileRestaurantId || "").trim()) {
+    return currentPathname;
+  }
+  return resolveCanonicalAppPathname();
 }
 
 function resolveRouteQueryStateForCurrentView() {
@@ -1543,6 +1598,7 @@ function syncActiveTabRouteQuery() {
   try {
     const currentUrl = new URL(win.location?.href || "", win.location?.origin || "");
     const nextUrl = new URL(currentUrl.toString());
+    nextUrl.pathname = resolveRoutePathnameForCurrentView(currentUrl, routeState) || nextUrl.pathname;
     setCanonicalRouteQueryParam(nextUrl.searchParams, "tab", ["view"], routeState.tab);
     setCanonicalRouteQueryParam(nextUrl.searchParams, "r", ROUTE_PROFILE_ID_QUERY_KEYS, routeState.profileRestaurantId);
     setCanonicalRouteQueryParam(
@@ -1603,12 +1659,21 @@ function buildStartupSnapshotRouteKey() {
   }
 }
 
+function shouldPersistStartupSnapshotForCurrentView() {
+  const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+  if (!STARTUP_SNAPSHOT_ALLOWED_TABS.has(activeTabKey)) return false;
+  if (state.user) return false;
+  if (activeTabKey === "profile") {
+    return !!String(state.profileView?.profile?.restaurantId || "").trim();
+  }
+  return true;
+}
+
 function persistStartupSnapshot(iconRetryCount = 0) {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   const appRoot = document.getElementById("app");
   if (!appRoot) return;
-  const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-  if (!STARTUP_SNAPSHOT_ALLOWED_TABS.has(activeTabKey)) return;
+  if (!shouldPersistStartupSnapshotForCurrentView()) return;
   if (state.auth?.open) return;
   if (document.body?.classList?.contains("modal-open")) return;
   if (document.querySelector("#overlayRoot .modal-overlay")) return;

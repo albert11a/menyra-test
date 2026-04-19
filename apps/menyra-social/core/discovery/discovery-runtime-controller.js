@@ -444,6 +444,7 @@ function scheduleMapRecoveryCheck(delayMs = 140) {
 function isLandingDiscoverStepActive() {
   const activeTab = String(state.activeTab || "").trim().toLowerCase();
   if (activeTab !== "profile") return false;
+  if (!state.profileView?.profile) return false;
   const topTab = String(state.profileTopTab || "").trim().toLowerCase();
   if (topTab !== "landing") return false;
   return Number(state.profileLandingStep || 0) === 1;
@@ -1638,6 +1639,16 @@ function buildLocalBusinessResults(queryKey) {
   return filtered.sort((a, b) => (b._score || 0) - (a._score || 0)).slice(0, SEARCH_LIMITS.businesses);
 }
 
+function hasSearchFallbackResults(queryRaw = "") {
+  const queryKey = normalizeSearchKey(queryRaw);
+  const localBusinesses = buildLocalBusinessResults(queryKey);
+  return (
+    (Array.isArray(state.search?.userResults) && state.search.userResults.length > 0)
+    || (Array.isArray(state.search?.businessResults) && state.search.businessResults.length > 0)
+    || localBusinesses.length > 0
+  );
+}
+
 function normalizeUserSearchResult(doc) {
   const data = typeof doc?.data === "function" ? doc.data() : (doc?.data || doc || {});
   const rawName = data.displayName || data.name || data.handle || "";
@@ -1666,6 +1677,10 @@ function isBusinessSearchUser(user) {
 }
 
 async function searchUsersRemote(queryRaw, token) {
+  if (!db || !collection || !query || !orderBy || !startAt || !endAt || !limit || !getDocs) {
+    state.search.userResults = [];
+    return;
+  }
   if (isGuestSession()) {
     state.search.userResults = [];
     return;
@@ -1742,11 +1757,18 @@ async function searchUsersRemote(queryRaw, token) {
     state.search.userResults = results;
   } catch (err) {
     if (token !== searchToken) return;
+    if (hasSearchFallbackResults(queryRaw)) {
+      state.search.error = "";
+      return;
+    }
     state.search.error = "Suche fehlgeschlagen.";
   }
 }
 
 async function searchBusinessesRemote(queryRaw, token) {
+  if (!db || !collection || !query || !orderBy || !startAt || !endAt || !limit || !getDocs) {
+    return;
+  }
   const queryKey = normalizeSearchQuery(queryRaw);
   const key = normalizeSearchKey(queryRaw);
   if (!key) return;
@@ -1801,6 +1823,10 @@ async function searchBusinessesRemote(queryRaw, token) {
     }
   } catch (err) {
     if (token !== searchToken) return;
+    if (hasSearchFallbackResults(queryRaw)) {
+      state.search.error = "";
+      return;
+    }
     state.search.error = "Suche fehlgeschlagen.";
   }
 }
@@ -1847,7 +1873,7 @@ function handleSearchInput(value) {
   if (!refreshSearchView()) render();
   searchTimer = window.setTimeout(() => {
     void searchRemote(raw);
-  }, 450);
+  }, 220);
 }
 
 function renderMapSheet(selected) {

@@ -405,6 +405,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function isLandingMapPreviewActive() {
     if (state.activeTab !== "profile") return false;
+    if (!state.profileView?.profile) return false;
     const topTab = String(state.profileTopTab || "").trim().toLowerCase();
     if (topTab !== "landing") return false;
     return Number(state.profileLandingStep || 0) === 1;
@@ -693,7 +694,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function isBusinessProfileHeaderContext(profile = getActiveHeaderProfile()) {
     const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
-    if (requestedTopTab === "landing") return false;
+    if (requestedTopTab === "landing" && state.profileView?.profile) return false;
     return state.activeTab === "profile" && isBusinessHeaderProfile(profile);
   }
 
@@ -930,6 +931,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function renderSmartHeader() {
     const isLandingTopTab = state.activeTab === "profile"
+      && !!state.profileView?.profile
       && String(state.profileTopTab || "").trim().toLowerCase() === "landing";
     const activeProfile = getActiveHeaderProfile();
     if (isBusinessProfileHeaderContext(activeProfile)) {

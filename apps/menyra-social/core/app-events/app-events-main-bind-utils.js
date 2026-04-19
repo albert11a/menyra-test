@@ -161,7 +161,9 @@ export function bindAppEventsCore({
 
   const activeTab = String(state.activeTab || "").trim().toLowerCase();
   const profileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
-  const isLandingTopTabActive = activeTab === "profile" && profileTopTab === "landing";
+  const isLandingTopTabActive = activeTab === "profile"
+    && !!state.profileView?.profile
+    && profileTopTab === "landing";
 
   if (!isLandingTopTabActive) {
     const menuFocusBinding = bindAppMenuFocusEvents({

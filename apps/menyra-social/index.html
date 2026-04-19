@@ -1317,6 +1317,9 @@
       const startupSurface = effectiveRouteTab === "menu"
         ? "menu"
         : (hasLandingRouteHint ? "profile" : "feed");
+      const isPublicProfileStartup = !!(routeRestaurantId || landingSlugFromPath);
+      const canRestoreStartupSnapshot = startupSurface === "feed"
+        || (startupSurface === "profile" && isPublicProfileStartup);
       const shouldFetchBootstrap = !isQrMenuStartup
         && !hasLandingRouteHint
         && (!effectiveRouteTab || effectiveRouteTab === "feed" || effectiveRouteTab === "home");
@@ -1343,6 +1346,7 @@
         try {
           if (!appRoot) return false;
           if (isMapRouteStartup) return false;
+          if (!canRestoreStartupSnapshot) return false;
           let parsed = null;
           for (const snapshotKey of STARTUP_SNAPSHOT_KEYS) {
             const raw = window.localStorage?.getItem?.(snapshotKey);

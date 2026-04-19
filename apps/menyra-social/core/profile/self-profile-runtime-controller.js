@@ -578,7 +578,12 @@ export function createSelfProfileRuntimeController({
   }
 
   function normalizeProfile(data, user) {
-    const displayName = data?.displayName || user?.displayName || user?.email?.split("@")[0] || "User";
+    const displayName = data?.displayName
+      || data?.name
+      || data?.fullName
+      || user?.displayName
+      || user?.email?.split("@")[0]
+      || "User";
     const roles = normalizeRoleList(data?.roles || data?.role || "");
     const lat = data?.gpsLat ?? data?.lat ?? null;
     const lng = data?.gpsLng ?? data?.lng ?? null;
@@ -588,11 +593,11 @@ export function createSelfProfileRuntimeController({
     const sourceUserRole = String(data?.sourceUserRole || data?.role || "user").trim().toLowerCase() || "user";
     return {
       name: displayName,
-      handle: data?.handle || normalizeHandle(displayName),
-      bio: data?.bio || data?.description || "",
-      avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
-      location: data?.city || "Prishtina",
-      address: data?.address || "",
+      handle: data?.handle || data?.username || data?.userName || normalizeHandle(displayName),
+      bio: data?.bio || data?.description || data?.about || "",
+      avatar: data?.avatarUrl || data?.avatar || data?.photoURL || user?.photoURL || "",
+      location: data?.city || data?.location || data?.locationLabel || "Prishtina",
+      address: data?.address || data?.streetAddress || "",
       followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans),
       following: pickCountValue(data?.followingCount, data?.following),
       privateAccount: !!data?.privateAccount,
@@ -615,7 +620,7 @@ export function createSelfProfileRuntimeController({
       staffActive: data?.staffActive === false ? false : String(data?.staffStatus || "").trim().toLowerCase() !== "disabled",
       staffStatus: data?.staffStatus || "",
       leadSettings: normalizeLeadSettings(data?.leadSettings || null),
-      country: normalizeCeoCountry(data?.country),
+      country: normalizeCeoCountry(data?.country || data?.countryName || data?.countryLabel),
       ceoParentUid: data?.ceoParentUid || data?.parentCeoUid || "",
       ceoParentName: data?.ceoParentName || data?.parentCeoName || "",
       ceoRootUid: data?.ceoRootUid || data?.rootCeoUid || "",
@@ -1131,8 +1136,32 @@ export function createSelfProfileRuntimeController({
     const ensured = await ensureUserProfile(user, { city: "Prishtina" });
     void force;
     const data = ensured && typeof ensured === "object" ? ensured : {};
+    const prevProfile = state?.userProfile && typeof state.userProfile === "object"
+      ? state.userProfile
+      : {};
     const prevAvatar = state.userProfile?.avatar || "";
     const normalized = normalizeProfile(data, user);
+    if (!String(data?.handle || data?.username || data?.userName || "").trim() && String(prevProfile.handle || "").trim()) {
+      normalized.handle = prevProfile.handle;
+    }
+    if (!String(data?.bio || data?.description || data?.about || "").trim() && String(prevProfile.bio || "").trim()) {
+      normalized.bio = prevProfile.bio;
+    }
+    if (!String(data?.city || data?.location || data?.locationLabel || "").trim() && String(prevProfile.location || "").trim()) {
+      normalized.location = prevProfile.location;
+    }
+    if (!String(data?.address || data?.streetAddress || "").trim() && String(prevProfile.address || "").trim()) {
+      normalized.address = prevProfile.address;
+    }
+    if (!hasCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans)) {
+      normalized.followers = prevProfile.followers ?? normalized.followers;
+    }
+    if (!hasCountValue(data?.followingCount, data?.following)) {
+      normalized.following = prevProfile.following ?? normalized.following;
+    }
+    if (!String(data?.country || data?.countryName || data?.countryLabel || "").trim() && String(prevProfile.country || "").trim()) {
+      normalized.country = prevProfile.country;
+    }
     const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
     if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) {
       normalized.avatar = prevAvatar;

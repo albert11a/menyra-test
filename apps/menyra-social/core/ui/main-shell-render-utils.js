@@ -102,6 +102,7 @@ export function renderMainCore({
   const isBusinessProfile = !!String(profile?.restaurantId || "").trim()
     || String(profile?.role || "").trim().toLowerCase() === "business";
   const isLandingTopTab = state?.activeTab === "profile"
+    && !!state?.profileView?.profile
     && String(state?.profileTopTab || "").trim().toLowerCase() === "landing";
   const hasSmartHeader = !!String(state?.activeTab || "").trim()
     && state?.activeTab !== "map"

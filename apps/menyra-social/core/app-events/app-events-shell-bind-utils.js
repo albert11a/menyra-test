@@ -81,6 +81,7 @@ export function bindAppShellEventsCore({
   };
   const isBusinessProfileView = () => state.activeTab === "profile" && isBusinessProfile();
   const isLandingTopTabActive = () => state.activeTab === "profile"
+    && !!state.profileView?.profile
     && String(state.profileTopTab || "").trim().toLowerCase() === "landing";
   const normalizeLandingStep = (value = 0) => {
     const parsed = Math.round(Number(value || 0));

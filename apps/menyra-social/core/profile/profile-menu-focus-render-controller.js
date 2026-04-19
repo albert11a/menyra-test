@@ -298,7 +298,8 @@ function resolveProfileContentTabForRendering(profile = {}) {
 function resolveProfilePrimaryTopTab(profile = {}) {
   const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
   if (isBusinessProfileEntity(profile)) {
-    if (requestedTopTab === "cart" || requestedTopTab === "favorites" || requestedTopTab === "landing") {
+    const allowLandingTopTab = requestedTopTab === "landing" && !!state.profileView?.profile;
+    if (requestedTopTab === "cart" || requestedTopTab === "favorites" || allowLandingTopTab) {
       return requestedTopTab;
     }
     return "profile";
