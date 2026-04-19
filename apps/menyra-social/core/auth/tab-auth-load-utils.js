@@ -7,6 +7,19 @@ function reportAuthFlowWarning(scope = "", err = null) {
   console.warn(`[mnyra][${safeScope}] operation failed`);
 }
 
+function runNonBlockingAuthTask(scope = "auth-flow", task = null) {
+  try {
+    const pending = typeof task === "function" ? task() : null;
+    if (pending && typeof pending.then === "function") {
+      pending.catch((err) => {
+        reportAuthFlowWarning(scope, err);
+      });
+    }
+  } catch (err) {
+    reportAuthFlowWarning(scope, err);
+  }
+}
+
 export function ensureTabDataCore({
   tab,
   state,
@@ -183,9 +196,13 @@ export function ensureTabDataCore({
   const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isQrMenuProfileSession && !isLandingProfileSession;
   if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
-    scheduleIdleSafe(() => {
-      loadRestaurantsSafe().catch((err) => console.error(err));
-    });
+    if (hasUser) {
+      runNonBlockingAuthTask("auth-tab.restaurants.prime", () => loadRestaurantsSafe());
+    } else {
+      scheduleIdleSafe(() => {
+        runNonBlockingAuthTask("auth-tab.restaurants.primeIdle", () => loadRestaurantsSafe());
+      });
+    }
   }
 
   if (hasUser && tab === "profile" && !dataLoaded.profile && !isLandingProfileSession) {
@@ -368,12 +385,11 @@ export async function loadAuthProfileCore({
       if (!String(explicitRestaurant.ownerEmail || "").trim() && user?.email) ownerPatch.ownerEmail = user.email;
       if (Object.keys(ownerPatch).length && explicitRestaurant.id) {
         ownerPatch.updatedAt = serverTimestamp();
-        try {
-          await setDoc(doc(db, "restaurants", explicitRestaurant.id), ownerPatch, { merge: true });
-          explicitRestaurant = { ...explicitRestaurant, ...ownerPatch };
-        } catch (err) {
-          reportAuthFlowWarning("auth-profile.ownerRestaurant.patch", err);
-        }
+        runNonBlockingAuthTask(
+          "auth-profile.ownerRestaurant.patch",
+          () => setDoc(doc(db, "restaurants", explicitRestaurant.id), ownerPatch, { merge: true })
+        );
+        explicitRestaurant = { ...explicitRestaurant, ...ownerPatch };
       }
       await loadBusinessProfile(user, { restaurant: explicitRestaurant, force });
       return;
@@ -570,7 +586,10 @@ export async function loadAuthProfileCore({
               }
               if (Object.keys(patch).length) {
                 patch.updatedAt = serverTimestamp();
-                await setDoc(doc(db, "restaurants", restId), patch, { merge: true });
+                runNonBlockingAuthTask(
+                  "auth-profile.resolveBusinessRestaurant.legacyPatch",
+                  () => setDoc(doc(db, "restaurants", restId), patch, { merge: true })
+                );
               }
               const candidate = { id: restSnap.id, ...restData, ...patch };
               rest = normalizeAuthRestaurant(candidate);
@@ -588,7 +607,10 @@ export async function loadAuthProfileCore({
       if (email && !rest.ownerEmail) patch.ownerEmail = email;
       if (Object.keys(patch).length && rest.id) {
         patch.updatedAt = serverTimestamp();
-        await setDoc(doc(db, "restaurants", rest.id), patch, { merge: true });
+        runNonBlockingAuthTask(
+          "auth-profile.resolveBusinessRestaurant.ownerPatch",
+          () => setDoc(doc(db, "restaurants", rest.id), patch, { merge: true })
+        );
         rest = { ...rest, ...patch };
       }
     }

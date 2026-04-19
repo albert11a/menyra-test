@@ -220,6 +220,36 @@ export function createPublicProfileRuntimeController({
     return !!currentHandle && currentHandle === nextHandle;
   }
 
+  function haveSamePostIdentity(currentPosts = [], nextPosts = []) {
+    if (!Array.isArray(currentPosts) || !Array.isArray(nextPosts)) return false;
+    if (currentPosts.length !== nextPosts.length) return false;
+    for (let i = 0; i < currentPosts.length; i += 1) {
+      const currentId = String(currentPosts[i]?.id || "").trim();
+      const nextId = String(nextPosts[i]?.id || "").trim();
+      if (currentId !== nextId) return false;
+    }
+    return true;
+  }
+
+  function buildProfileRenderSignature(profile = null) {
+    if (!profile || typeof profile !== "object") return "";
+    return [
+      String(profile.uid || "").trim(),
+      String(profile.restaurantId || "").trim(),
+      String(profile.name || "").trim(),
+      String(profile.handle || "").trim().toLowerCase(),
+      String(profile.avatar || "").trim(),
+      String(profile.location || "").trim(),
+      String(profile.bio || "").trim(),
+      String(profile.role || "").trim().toLowerCase(),
+      String(profile.truthState || "").trim().toLowerCase(),
+      String(profile.postsLoaded === true ? "1" : "0"),
+      String(Number(profile.followers) || 0),
+      String(Number(profile.following) || 0),
+      String(profile.pendingFollowRequest === true ? "1" : "0")
+    ].join("::");
+  }
+
   function attachProfileViewListener(profile) {
     stopProfileViewListener();
     if (!profile || !makeDocRef || !onSnapshotSafe || !db) return;
@@ -281,19 +311,45 @@ export function createPublicProfileRuntimeController({
     const preservedTopTab = sameVisibleProfile
       ? String(state?.profileTopTab || "").trim()
       : "";
+    const resolvedTopTab = profile?.restaurantId
+      ? (explicitTopTab || preservedTopTab || "profile")
+      : "profile";
+    const nextProfileBackTab = showBack
+      ? (backTab || state.activeTab || "feed")
+      : "";
+    const normalizedMenuAccessSource = safeMenuAccessSource === "qr" ? "qr" : "";
+    const currentView = state?.profileView || null;
+    const currentProfile = currentView?.profile || null;
+    const currentPosts = Array.isArray(currentView?.posts) ? currentView.posts : [];
+    const currentSignature = buildProfileRenderSignature(currentProfile);
+    const nextSignature = buildProfileRenderSignature(nextProfile);
+    const currentTopTab = String(state?.profileTopTab || "").trim();
+    const currentMenuAccessSource = String(currentView?.menuAccessSource || "").trim().toLowerCase();
+    const currentTableNumber = Math.max(0, Number(currentView?.tableNumber || 0) || 0);
+    if (
+      sameVisibleProfile
+      && currentSignature
+      && currentSignature === nextSignature
+      && haveSamePostIdentity(currentPosts, projectedPosts)
+      && currentTopTab === String(resolvedTopTab || "").trim()
+      && currentMenuAccessSource === normalizedMenuAccessSource
+      && currentTableNumber === safeTableNumber
+      && String(state?.profileBackTab || "") === String(nextProfileBackTab || "")
+      && String(state?.activeTab || "").trim().toLowerCase() === "profile"
+    ) {
+      attachProfileViewListener(nextProfile);
+      return;
+    }
     state.profileView = {
       profile: nextProfile,
       posts: projectedPosts,
-      menuAccessSource: safeMenuAccessSource === "qr" ? "qr" : "",
+      menuAccessSource: normalizedMenuAccessSource,
       tableNumber: safeTableNumber
     };
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = preserveLandingState && previousContentTab
       ? previousContentTab
       : "posts";
-    const resolvedTopTab = profile?.restaurantId
-      ? (explicitTopTab || preservedTopTab || "profile")
-      : "profile";
     state.profileTopTab = resolvedTopTab;
     if (resolvedTopTab === "landing") {
       if (preserveLandingState) {
@@ -309,11 +365,7 @@ export function createPublicProfileRuntimeController({
     state.profileViewMode = "grid";
     state.profilePostMenuId = null;
     state.drawerOpen = false;
-    if (showBack) {
-      state.profileBackTab = backTab || state.activeTab || "feed";
-    } else {
-      state.profileBackTab = "";
-    }
+    state.profileBackTab = nextProfileBackTab;
     state.activeTab = "profile";
     renderApp();
     attachProfileViewListener(nextProfile);

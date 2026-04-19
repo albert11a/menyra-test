@@ -126,6 +126,10 @@ export function createSessionDataRuntimeController({
   let feedFreshReconcileQueued = false;
   let restaurantsNetworkLoadPromise = null;
   let feedNetworkLoadPromise = null;
+  let userPostsNetworkLoadPromise = null;
+  let userPostsNetworkLoadUid = "";
+  let businessPostsNetworkLoadPromise = null;
+  let businessPostsNetworkLoadRestaurantId = "";
   const menuNetworkLoadPromises = new Map();
   const menuFreshReconcileQueuedKeys = new Set();
   let storiesRefreshQueued = false;
@@ -730,6 +734,10 @@ export function createSessionDataRuntimeController({
     state.__authProfileLoadUid = "";
     state.__skipNextAuthProfileEnsureUid = "";
     state.__skipNextAuthProfileEnsureTab = "";
+    state.__authBootstrapInFlightUid = "";
+    state.__authBootstrapSettledUid = "";
+    state.__criticalProfilePreloadPromise = null;
+    state.__criticalProfilePreloadUid = "";
     commentAvatarCacheMap.clear();
     commentAvatarPendingMap.clear();
     userSearchAvatarCacheMap.clear();
@@ -825,6 +833,10 @@ export function createSessionDataRuntimeController({
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
     state.userProfile = { ...defaultProfile };
+    userPostsNetworkLoadPromise = null;
+    userPostsNetworkLoadUid = "";
+    businessPostsNetworkLoadPromise = null;
+    businessPostsNetworkLoadRestaurantId = "";
     setUserAvatarCacheFn("");
     setLastShellAvatarUrlFn("");
     dataLoaded.profile = false;
@@ -1029,58 +1041,80 @@ export function createSessionDataRuntimeController({
 
   async function loadUserPosts({ force = false } = {}) {
     if (!state.user) return;
+    const uid = String(state.user.uid || "").trim();
+    if (!uid) return;
     const cacheTtlPosts = cacheTtl.posts;
-    const cacheKey = userPostsKeyFn(state.user.uid);
+    const cacheKey = userPostsKeyFn(uid);
     const cached = readCacheFn(cacheKey, cacheTtlPosts);
       if (cached?.data?.length) {
         if (!state.userPosts.length) {
         state.userPosts = projectPostCollectionThroughEntityMap(state, cached.data.map((post) => ({
           ...post,
           ownerType: post.ownerType || "user",
-          ownerId: post.ownerId || state.user.uid
+          ownerId: post.ownerId || uid
         })));
         requestRender();
       }
       if (cached.fresh && !force) return;
     }
     if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
-    try {
-      const ref = collectionFn(db, "users", state.user.uid, "posts");
-      let snap = null;
-      try {
-        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.userPosts)));
-      } catch (err) {
-        snap = await getDocsFn(ref);
-      }
-      const rows = [];
-      snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-      const next = rows.map((row) => ({
-        id: row.id,
-        url: row.url,
-        type: row.type || "square",
-        title: row.title || "",
-        caption: row.caption || "",
-        createdAt: row.createdAt,
-        likes: row.likesCount ?? row.likes ?? 0,
-        comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: !!row.isVideo,
-        ownerType: "user",
-        ownerId: state.user.uid
-      }));
-      writeCacheFn(cacheKey, next);
-      if (!havePostCollectionsChanged(state.userPosts, next)) return;
-      state.userPosts = projectPostCollectionThroughEntityMap(state, next);
-      requestRender();
-    } catch (err) {
-      console.error(err);
+    if (userPostsNetworkLoadPromise && userPostsNetworkLoadUid === uid) {
+      await userPostsNetworkLoadPromise;
+      return;
     }
+    const request = (async () => {
+      try {
+        const ref = collectionFn(db, "users", uid, "posts");
+        let snap = null;
+        try {
+          snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.userPosts)));
+        } catch (err) {
+          snap = await getDocsFn(ref);
+        }
+        const rows = [];
+        snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+        const next = rows.map((row) => ({
+          id: row.id,
+          url: row.url,
+          type: row.type || "square",
+          title: row.title || "",
+          caption: row.caption || "",
+          createdAt: row.createdAt,
+          likes: row.likesCount ?? row.likes ?? 0,
+          comments: row.commentsCount ?? row.comments ?? 0,
+          isVideo: !!row.isVideo,
+          ownerType: "user",
+          ownerId: uid
+        }));
+        writeCacheFn(cacheKey, next);
+        if (!havePostCollectionsChanged(state.userPosts, next)) return;
+        state.userPosts = projectPostCollectionThroughEntityMap(state, next);
+        requestRender();
+      } catch (err) {
+        console.error(err);
+      }
+    })().finally(() => {
+      if (userPostsNetworkLoadPromise === request) {
+        userPostsNetworkLoadPromise = null;
+        userPostsNetworkLoadUid = "";
+      }
+    });
+    userPostsNetworkLoadPromise = request;
+    userPostsNetworkLoadUid = uid;
+    await request;
   }
 
   async function loadBusinessPosts({ force = false } = {}) {
-    const restaurantId = state.userProfile.restaurantId;
+    const restaurantId = String(state.userProfile.restaurantId || "").trim();
     if (!restaurantId) {
-      state.businessPosts = [];
-      requestRender();
+      const activeUid = String(state.user?.uid || "").trim();
+      const bootstrapUid = String(state.__authBootstrapInFlightUid || "").trim();
+      const isAuthBootstrapProfilePending = !!activeUid && bootstrapUid === activeUid;
+      if (isAuthBootstrapProfilePending) return;
+      if (Array.isArray(state.businessPosts) && state.businessPosts.length) {
+        state.businessPosts = [];
+        requestRender();
+      }
       return;
     }
     const cacheKey = businessPostsKeyFn(restaurantId);
@@ -1098,40 +1132,54 @@ export function createSessionDataRuntimeController({
       if (cached.fresh && !force) return;
     }
     if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
-    try {
-      const ref = collectionFn(db, "restaurants", restaurantId, "socialPosts");
-      let snap = null;
-      try {
-        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.businessPosts)));
-      } catch (err) {
-        snap = await getDocsFn(ref);
-      }
-      const rows = [];
-      snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-      const next = rows
-        .filter((row) => (row.status || "active") === "active")
-        .map((row) => ({
-          id: row.id,
-          url: row.media?.[0]?.url || row.mediaUrl || "",
-          type: row.type || "square",
-          title: "",
-          caption: row.caption || "",
-          createdAt: row.createdAt,
-          likes: row.likesCount ?? row.likes ?? 0,
-          comments: row.commentsCount ?? row.comments ?? 0,
-          isVideo: row.media?.[0]?.type === "video",
-          ownerType: "restaurant",
-          ownerId: restaurantId,
-          restaurantId
-        }))
-        .filter((row) => row.url);
-      writeCacheFn(cacheKey, next);
-      if (!havePostCollectionsChanged(state.businessPosts, next)) return;
-      state.businessPosts = projectPostCollectionThroughEntityMap(state, next);
-      requestRender();
-    } catch (err) {
-      console.error(err);
+    if (businessPostsNetworkLoadPromise && businessPostsNetworkLoadRestaurantId === restaurantId) {
+      await businessPostsNetworkLoadPromise;
+      return;
     }
+    const request = (async () => {
+      try {
+        const ref = collectionFn(db, "restaurants", restaurantId, "socialPosts");
+        let snap = null;
+        try {
+          snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.businessPosts)));
+        } catch (err) {
+          snap = await getDocsFn(ref);
+        }
+        const rows = [];
+        snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+        const next = rows
+          .filter((row) => (row.status || "active") === "active")
+          .map((row) => ({
+            id: row.id,
+            url: row.media?.[0]?.url || row.mediaUrl || "",
+            type: row.type || "square",
+            title: "",
+            caption: row.caption || "",
+            createdAt: row.createdAt,
+            likes: row.likesCount ?? row.likes ?? 0,
+            comments: row.commentsCount ?? row.comments ?? 0,
+            isVideo: row.media?.[0]?.type === "video",
+            ownerType: "restaurant",
+            ownerId: restaurantId,
+            restaurantId
+          }))
+          .filter((row) => row.url);
+        writeCacheFn(cacheKey, next);
+        if (!havePostCollectionsChanged(state.businessPosts, next)) return;
+        state.businessPosts = projectPostCollectionThroughEntityMap(state, next);
+        requestRender();
+      } catch (err) {
+        console.error(err);
+      }
+    })().finally(() => {
+      if (businessPostsNetworkLoadPromise === request) {
+        businessPostsNetworkLoadPromise = null;
+        businessPostsNetworkLoadRestaurantId = "";
+      }
+    });
+    businessPostsNetworkLoadPromise = request;
+    businessPostsNetworkLoadRestaurantId = restaurantId;
+    await request;
   }
 
   async function loadFocusForRestaurant(restaurantId, { force = false } = {}) {
@@ -1334,6 +1382,34 @@ export function createSessionDataRuntimeController({
     await bootstrapAuthenticatedSessionCoreFn({
       user,
       loadAuthProfile: (currentUser) => loadAuthProfileFn(currentUser),
+      primeCriticalProfile: (currentUser) => {
+        const preloadUid = String(currentUser?.uid || "").trim();
+        if (!preloadUid) return Promise.resolve(null);
+        if (String(state.user?.uid || "").trim() !== preloadUid) return Promise.resolve(null);
+        const existingPromise = state.__criticalProfilePreloadPromise;
+        if (existingPromise && state.__criticalProfilePreloadUid === preloadUid) {
+          return existingPromise;
+        }
+        const preloadTasks = [];
+        if (!dataLoaded.restaurants) {
+          preloadTasks.push(loadRestaurants({ force: false }));
+        }
+        const hasBusinessProfile = !!String(state.userProfile?.restaurantId || "").trim();
+        preloadTasks.push(
+          hasBusinessProfile
+            ? loadBusinessPosts({ force: false })
+            : loadUserPosts({ force: false })
+        );
+        const preloadPromise = Promise.allSettled(preloadTasks)
+          .finally(() => {
+            if (state.__criticalProfilePreloadPromise === preloadPromise) {
+              state.__criticalProfilePreloadPromise = null;
+            }
+          });
+        state.__criticalProfilePreloadUid = preloadUid;
+        state.__criticalProfilePreloadPromise = preloadPromise;
+        return preloadPromise;
+      },
       markBootstrapAuthProfileLoaded: (currentUser, { activeTab = "" } = {}) => {
         const uid = String(currentUser?.uid || "").trim();
         const safeTab = String(activeTab || "").trim();

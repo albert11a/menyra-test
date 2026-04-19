@@ -1160,15 +1160,6 @@ export function createAppShellRuntimeController(deps = {}) {
       img.addEventListener("error", () => {
         const fallback = img.dataset.fallbackSrc || "";
         const current = img.getAttribute("src") || "";
-        if (img.dataset.fallbackRetried !== "1" && current && current !== fallback && current !== PLACEHOLDER_IMAGE) {
-          img.dataset.fallbackRetried = "1";
-          img.removeAttribute("src");
-          win?.setTimeout?.(() => {
-            img.setAttribute("src", current);
-            armImageReveal(img);
-          }, 60);
-          return;
-        }
         if (fallback && current !== fallback) {
           img.setAttribute("src", fallback);
           armImageReveal(img);

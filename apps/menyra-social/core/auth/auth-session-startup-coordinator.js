@@ -58,6 +58,40 @@ export function createAuthSessionStartupCoordinator({
     });
   }
 
+  function readBootstrapInFlightUid() {
+    return String(state?.__authBootstrapInFlightUid || "").trim();
+  }
+
+  function readBootstrapSettledUid() {
+    return String(state?.__authBootstrapSettledUid || "").trim();
+  }
+
+  function markBootstrapInFlight(uid = "") {
+    if (!state) return;
+    const safeUid = String(uid || "").trim();
+    state.__authBootstrapInFlightUid = safeUid;
+    if (safeUid) {
+      state.__authBootstrapSettledUid = "";
+    }
+  }
+
+  function clearBootstrapInFlight(uid = "") {
+    if (!state) return;
+    const safeUid = String(uid || "").trim();
+    if (!safeUid || readBootstrapInFlightUid() === safeUid) {
+      state.__authBootstrapInFlightUid = "";
+    }
+  }
+
+  function markBootstrapSettled(uid = "") {
+    if (!state) return;
+    const safeUid = String(uid || "").trim();
+    state.__authBootstrapSettledUid = safeUid;
+    if (!safeUid || readBootstrapInFlightUid() === safeUid) {
+      state.__authBootstrapInFlightUid = "";
+    }
+  }
+
   function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
     if (transitionSeq !== authTransitionSeq) return false;
     if (!expectedUid) return true;
@@ -87,22 +121,6 @@ export function createAuthSessionStartupCoordinator({
       || (role && role !== "user")
       || roles.length
     );
-  }
-
-  function buildAuthProfileRenderSignature(profile = null) {
-    if (!profile || typeof profile !== "object") return "";
-    const roles = Array.isArray(profile.roles) ? profile.roles : [];
-    return [
-      String(profile.name || "").trim(),
-      String(profile.handle || "").trim().toLowerCase(),
-      String(profile.role || "").trim().toLowerCase(),
-      roles.map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean).sort().join("|"),
-      String(profile.restaurantId || "").trim(),
-      String(profile.staffRestaurantId || "").trim(),
-      String(profile.waiterRestaurantId || "").trim(),
-      String(profile.sourceUserRole || "").trim().toLowerCase(),
-      String(profile.socialAccessMode || "").trim().toLowerCase()
-    ].join("::");
   }
 
   function primeFastAuthProfileHints(user, snapshot = null) {
@@ -207,9 +225,27 @@ export function createAuthSessionStartupCoordinator({
 
   function handleAuthStateChanged(user) {
     setAuthInitialized(true);
+    const nextUid = String(user?.uid || "").trim();
+    const prevUid = String(lastAuthUid || "").trim();
+    const hasPendingRouteReplay = !!postLoginRouteOpen?.resolvePendingRouteFlags?.()?.hasAny;
+    const bootstrapInFlightUid = readBootstrapInFlightUid();
+    const bootstrapSettledUid = readBootstrapSettledUid();
+    if (
+      !hasPendingRouteReplay
+      &&
+      nextUid
+      && nextUid === prevUid
+      && (
+        bootstrapInFlightUid === nextUid
+        || (bootstrapSettledUid === nextUid && state?.auth?.loading === false)
+      )
+    ) {
+      if (state) {
+        state.user = user;
+      }
+      return;
+    }
     const transitionSeq = ++authTransitionSeq;
-    const nextUid = user?.uid || "";
-    const prevUid = lastAuthUid;
     if (shouldResetUserScopedStateCore({ prevUid, nextUid })) {
       resetUserScopedState();
     }
@@ -221,6 +257,7 @@ export function createAuthSessionStartupCoordinator({
       if (state?.auth) {
         state.auth.open = false;
       }
+      markBootstrapInFlight(nextUid);
       loadUserScopedPersisted(user);
       primeFastAuthProfileHints(user);
       const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
@@ -235,6 +272,7 @@ export function createAuthSessionStartupCoordinator({
             if (state?.auth) {
               state.auth.loading = false;
             }
+            markBootstrapSettled(nextUid);
             requestRender();
           } catch (err) {
             reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
@@ -242,35 +280,44 @@ export function createAuthSessionStartupCoordinator({
               if (state?.auth) {
                 state.auth.loading = false;
               }
+              clearBootstrapInFlight(nextUid);
               requestRender();
             }
           } finally {
+            clearBootstrapInFlight(nextUid);
             resumeRender();
           }
         })();
       } else {
-        if (state?.auth) {
-          state.auth.loading = false;
-        }
-        requestRender();
-        const profileSignatureBeforeBootstrap = buildAuthProfileRenderSignature(state?.userProfile);
-        void bootstrapUser(user, { transitionSeq })
-          .then(() => {
+        suspendRender();
+        void (async () => {
+          try {
+            await bootstrapUser(user, { transitionSeq });
             if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            postLoginRouteOpen.openNonBlockingRoutes();
-            const profileSignatureAfterBootstrap = buildAuthProfileRenderSignature(state?.userProfile);
-            if (profileSignatureAfterBootstrap !== profileSignatureBeforeBootstrap) {
-              requestRender();
+            await postLoginRouteOpen.openNonBlockingRoutes();
+            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+            if (state?.auth) {
+              state.auth.loading = false;
             }
-          })
-          .catch((err) => {
+            markBootstrapSettled(nextUid);
+            requestRender();
+          } catch (err) {
             reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
             if (isCurrentAuthTransition(transitionSeq, nextUid)) {
+              if (state?.auth) {
+                state.auth.loading = false;
+              }
+              clearBootstrapInFlight(nextUid);
               requestRender();
             }
-          });
+          } finally {
+            clearBootstrapInFlight(nextUid);
+            resumeRender();
+          }
+        })();
       }
     } else {
+      markBootstrapSettled("");
       clearAuthBootstrapSnapshot();
       if (state) {
         state.roleSwitchRoles = [];

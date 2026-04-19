@@ -105,6 +105,19 @@ export function initials(name) {
   return parts.map((p) => p.charAt(0).toUpperCase()).join("");
 }
 
+function runNonBlockingUserProfileWrite(task, scope = "ensureUserProfile") {
+  try {
+    const pending = typeof task === "function" ? task() : null;
+    if (pending && typeof pending.then === "function") {
+      pending.catch((err) => {
+        console.warn(`[mnyra][${scope}]`, err);
+      });
+    }
+  } catch (err) {
+    console.warn(`[mnyra][${scope}]`, err);
+  }
+}
+
 export async function ensureUserProfile(user, overrides = {}) {
   if (!user) return null;
   const ref = doc(db, "users", user.uid);
@@ -127,7 +140,10 @@ export async function ensureUserProfile(user, overrides = {}) {
 
     if (Object.keys(patch).length) {
       patch.updatedAt = serverTimestamp();
-      await setDoc(ref, patch, { merge: true });
+      runNonBlockingUserProfileWrite(
+        () => setDoc(ref, patch, { merge: true }),
+        "ensureUserProfile.selfHealPatch"
+      );
       return { ...existing, ...patch };
     }
 

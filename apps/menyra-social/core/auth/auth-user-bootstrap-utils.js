@@ -1,6 +1,7 @@
 export async function bootstrapAuthenticatedSessionCore({
   user = null,
   loadAuthProfile,
+  primeCriticalProfile,
   markBootstrapAuthProfileLoaded,
   getRestaurantId,
   hydrateRestaurantsByIds,
@@ -18,6 +19,9 @@ export async function bootstrapAuthenticatedSessionCore({
     : (async () => {});
   const markBootstrapProfileLoaded = typeof markBootstrapAuthProfileLoaded === "function"
     ? markBootstrapAuthProfileLoaded
+    : (() => {});
+  const primeCritical = typeof primeCriticalProfile === "function"
+    ? primeCriticalProfile
     : (() => {});
   const readRestaurantId = typeof getRestaurantId === "function"
     ? getRestaurantId
@@ -66,6 +70,7 @@ export async function bootstrapAuthenticatedSessionCore({
 
   await loadProfile(user);
   if (!canContinue()) return false;
+  runNonBlocking("auth-bootstrap.primeCriticalProfile", () => primeCritical(user));
   const restaurantId = String(readRestaurantId(user) || "").trim();
   const blockingTasks = [];
   if (restaurantId) {

@@ -73,6 +73,36 @@ export function createProfileOpenFlowControllerCore({
   const loadUserPosts = typeof loadUserPostsForUser === "function"
     ? loadUserPostsForUser
     : (() => Promise.resolve([]));
+  const pickFirstText = (...values) => {
+    for (const value of values) {
+      const text = String(value || "").trim();
+      if (text) return text;
+    }
+    return "";
+  };
+  const normalizeHandleValue = (value = "") => String(value || "").replace(/^@/, "").trim().toLowerCase();
+  const isSameBusinessProfileTarget = (profile = null, {
+    restaurantId = "",
+    lookupId = ""
+  } = {}) => {
+    if (!profile || typeof profile !== "object") return false;
+    const currentRestaurantId = String(profile.restaurantId || "").trim();
+    if (!currentRestaurantId) return false;
+    const directId = String(restaurantId || "").trim();
+    const fallbackId = String(lookupId || "").trim();
+    if (directId && currentRestaurantId === directId) return true;
+    if (fallbackId && currentRestaurantId === fallbackId) return true;
+    return false;
+  };
+  const isSameUserProfileTarget = (profile = null, { uid = "", handle = "" } = {}) => {
+    if (!profile || typeof profile !== "object") return false;
+    const targetUid = String(uid || "").trim();
+    const profileUid = String(profile.uid || "").trim();
+    if (targetUid && profileUid && targetUid === profileUid) return true;
+    const targetHandle = normalizeHandleValue(handle);
+    const profileHandle = normalizeHandleValue(profile.handle || profile.name || "");
+    return !!targetHandle && !!profileHandle && targetHandle === profileHandle;
+  };
 
   const isOwnBusinessTarget = ({ restaurantId = "", name = "" } = {}) => {
     if (!isLocalBusiness(state?.userProfile)) return false;
@@ -207,6 +237,19 @@ export function createProfileOpenFlowControllerCore({
         || (restaurantId ? { id: restaurantId } : {});
       const targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
       const targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      const liveView = state?.profileView;
+      const liveProfile = liveView?.profile && typeof liveView.profile === "object"
+        ? liveView.profile
+        : null;
+      const stableBusinessProfile = isSameBusinessProfileTarget(liveProfile, {
+        restaurantId: targetMenuRestaurantId,
+        lookupId: targetRestaurantLookupId
+      })
+        ? liveProfile
+        : null;
+      const stableBusinessPosts = stableBusinessProfile && Array.isArray(liveView?.posts)
+        ? liveView.posts
+        : [];
       if (isMenuTopTab && targetMenuRestaurantId) {
         ensureMenuData({ restaurantId: targetMenuRestaurantId });
         ensureFocusData({ restaurantId: targetMenuRestaurantId });
@@ -220,23 +263,23 @@ export function createProfileOpenFlowControllerCore({
 
       const loadingProfile = {
         name: loadingDisplayName,
-        handle: "",
-        uid: "",
-        bio: "Profil wird geladen...",
-        avatar: "",
-        location: "",
-        followers: 0,
-        following: 0,
-        privateAccount: false,
+        handle: pickFirstText(stableBusinessProfile?.handle, rest?.handle),
+        uid: pickFirstText(stableBusinessProfile?.uid),
+        bio: pickFirstText(stableBusinessProfile?.bio, rest?.bio, rest?.description, "Profil wird geladen..."),
+        avatar: pickFirstText(stableBusinessProfile?.avatar, rest?.logoUrl, rest?.logo, rest?.avatar),
+        location: pickFirstText(stableBusinessProfile?.location, rest?.city, rest?.address),
+        followers: stableBusinessProfile?.followers ?? 0,
+        following: stableBusinessProfile?.following ?? 0,
+        privateAccount: stableBusinessProfile?.privateAccount === true,
         role: "business",
         restaurantId: targetMenuRestaurantId || targetRestaurantLookupId,
-        pendingFollowRequest: false,
-        postsLoaded: false,
-        posts: [],
-        truthState: "loading"
+        pendingFollowRequest: stableBusinessProfile?.pendingFollowRequest === true,
+        postsLoaded: stableBusinessPosts.length > 0,
+        posts: stableBusinessPosts,
+        truthState: stableBusinessProfile ? String(stableBusinessProfile.truthState || "stable") : "loading"
       };
 
-      showPublicProfileView(loadingProfile, [], {
+      showPublicProfileView(loadingProfile, loadingProfile.posts, {
         showBack,
         topTab,
         menuAccessSource: safeMenuAccessSource,
@@ -265,8 +308,16 @@ export function createProfileOpenFlowControllerCore({
       if (state.activeTab !== "profile") return;
       const visibleRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
       if (targetRestaurantLookupId && visibleRestaurantId && visibleRestaurantId !== targetRestaurantLookupId && visibleRestaurantId !== targetMenuRestaurantId) return;
+      const interimPosts = stableBusinessPosts.length
+        ? stableBusinessPosts
+        : [];
+      const resolvedInterim = {
+        ...resolved,
+        postsLoaded: interimPosts.length > 0,
+        posts: interimPosts
+      };
 
-      showPublicProfileView(resolved, [], {
+      showPublicProfileView(resolvedInterim, interimPosts, {
         showBack,
         topTab,
         menuAccessSource: safeMenuAccessSource,
@@ -362,10 +413,24 @@ export function createProfileOpenFlowControllerCore({
         showPublicProfileView(cached, cached.posts || []);
         return;
       }
+      const liveView = state?.profileView;
+      const liveProfile = liveView?.profile && typeof liveView.profile === "object"
+        ? liveView.profile
+        : null;
+      const stableUserProfile = isSameUserProfileTarget(liveProfile, { uid, handle })
+        ? liveProfile
+        : null;
+      const stableUserPosts = stableUserProfile && Array.isArray(liveView?.posts)
+        ? liveView.posts
+        : [];
 
-      const fallbackProfile = normalizeExternalUserProfileFn({ userDoc: null, fallback: input || {}, posts: [] });
+      const fallbackProfile = normalizeExternalUserProfileFn({
+        userDoc: null,
+        fallback: stableUserProfile || input || {},
+        posts: stableUserPosts
+      });
       fallbackProfile.pendingFollowRequest = await checkPendingFollowRequest(fallbackProfile.uid || uid || "");
-      showPublicProfileView(fallbackProfile, []);
+      showPublicProfileView(fallbackProfile, stableUserPosts);
 
       let userDoc = null;
       if (uid) {

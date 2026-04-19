@@ -1562,7 +1562,15 @@ const STARTUP_SNAPSHOT_STORAGE_KEY = "mnyra.social.startup-snapshot.v2";
 const STARTUP_SNAPSHOT_MAX_BYTES = 180000;
 const STARTUP_SNAPSHOT_ICON_RETRY_DELAY_MS = 800;
 const STARTUP_SNAPSHOT_MAX_ICON_RETRIES = 3;
+const ENABLE_STARTUP_SNAPSHOT = typeof window !== "undefined"
+  && window.__MENYRA_SOCIAL_ENABLE_STARTUP_SNAPSHOT__ === true;
 let startupSnapshotSaveToken = 0;
+
+if (!ENABLE_STARTUP_SNAPSHOT && typeof window !== "undefined") {
+  try {
+    window.localStorage?.removeItem?.(STARTUP_SNAPSHOT_STORAGE_KEY);
+  } catch {}
+}
 
 function buildStartupSnapshotRouteKey() {
   if (typeof window === "undefined") return "";
@@ -1583,6 +1591,7 @@ function buildStartupSnapshotRouteKey() {
 }
 
 function persistStartupSnapshot(iconRetryCount = 0) {
+  if (!ENABLE_STARTUP_SNAPSHOT) return;
   if (typeof window === "undefined" || typeof document === "undefined") return;
   const appRoot = document.getElementById("app");
   if (!appRoot) return;
@@ -1610,6 +1619,7 @@ function persistStartupSnapshot(iconRetryCount = 0) {
 }
 
 function scheduleStartupSnapshotPersist() {
+  if (!ENABLE_STARTUP_SNAPSHOT) return;
   if (typeof window === "undefined") return;
   const token = ++startupSnapshotSaveToken;
   const run = () => {
