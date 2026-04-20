@@ -152,6 +152,24 @@ export function createAuthSessionStartupCoordinator({
     return profileTopTab === "menu" || profileTopTab === "profile";
   }
 
+  function readWebDirectEntryState() {
+    const candidate = state?.__webDirectEntry;
+    if (!candidate || typeof candidate !== "object") return null;
+    return candidate;
+  }
+
+  function isWebDirectGuestProfileLaunchActive() {
+    if (state?.user) return false;
+    const entry = readWebDirectEntryState();
+    if (!entry || entry.active !== true || entry.webPriority !== true) return false;
+    const surface = String(entry.surface || "").trim().toLowerCase();
+    if (surface !== "profile" && surface !== "menu") return false;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    return profileTopTab === "profile" || profileTopTab === "menu";
+  }
+
   function runNonBlockingRouteOpenWithTimeline() {
     markStartup("non-blocking route open start");
     try {
@@ -221,7 +239,8 @@ export function createAuthSessionStartupCoordinator({
 
   function scheduleGuestTabEnsure({
     prioritize = false,
-    visiblePath = false
+    visiblePath = false,
+    delayMs = 140
   } = {}) {
     const runEnsure = (scope) => {
       const activeTab = String(state?.activeTab || "").trim().toLowerCase();
@@ -239,7 +258,7 @@ export function createAuthSessionStartupCoordinator({
       schedulePostVisibleStartupTask(() => {
         runEnsure("startup.ensureTabData.guestVisiblePath");
       }, {
-        delayMs: 140
+        delayMs
       });
       return;
     }
@@ -305,8 +324,17 @@ export function createAuthSessionStartupCoordinator({
       }
       applyPendingInitialRouteState();
       const prioritizeGuestSurface = isGuestDeepRouteLaunchActive();
-      if (prioritizeGuestSurface) {
-        runNonBlockingRouteOpenWithTimeline();
+      const webDirectGuestProfileSurface = isWebDirectGuestProfileLaunchActive();
+      if (prioritizeGuestSurface || webDirectGuestProfileSurface) {
+        if (webDirectGuestProfileSurface) {
+          schedulePostVisibleStartupTask(() => {
+            runNonBlockingRouteOpenWithTimeline();
+          }, {
+            delayMs: 40
+          });
+        } else {
+          runNonBlockingRouteOpenWithTimeline();
+        }
       } else {
         queueMicrotaskSafe(() => {
           runNonBlockingRouteOpenWithTimeline();
@@ -317,7 +345,8 @@ export function createAuthSessionStartupCoordinator({
       if (!state?.user) {
         scheduleGuestTabEnsure({
           prioritize: false,
-          visiblePath: prioritizeGuestSurface
+          visiblePath: prioritizeGuestSurface || webDirectGuestProfileSurface,
+          delayMs: webDirectGuestProfileSurface ? 960 : 140
         });
       }
       if (!state?.user && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
@@ -330,9 +359,9 @@ export function createAuthSessionStartupCoordinator({
               : null
           });
         };
-        if (prioritizeGuestSurface) {
+        if (prioritizeGuestSurface || webDirectGuestProfileSurface) {
           schedulePostVisibleStartupTask(runPublicBootstrapFetch, {
-            delayMs: 780
+            delayMs: webDirectGuestProfileSurface ? 1480 : 780
           });
         } else {
           queueMicrotaskSafe(runPublicBootstrapFetch);
@@ -417,11 +446,18 @@ export function createAuthSessionStartupCoordinator({
         state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
       }
       requestRender();
-      queueMicrotaskSafe(() => {
+      const runSignedOutEnsure = () => {
         void ensureTabData(state?.activeTab || "").catch((err) => {
           reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
         });
-      });
+      };
+      if (isWebDirectGuestProfileLaunchActive()) {
+        schedulePostVisibleStartupTask(runSignedOutEnsure, {
+          delayMs: 960
+        });
+      } else {
+        queueMicrotaskSafe(runSignedOutEnsure);
+      }
     }
     lastAuthUid = nextUid;
   }

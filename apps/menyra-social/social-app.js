@@ -1237,6 +1237,19 @@ const state = {
     activeSurface: "feed",
     profile: "ready",
     menu: "ready"
+  },
+  __webDirectEntry: {
+    active: false,
+    restaurantId: "",
+    surface: "",
+    topTab: "",
+    contentTab: "",
+    explicitLanding: false,
+    menuFirst: false,
+    postsFirst: false,
+    webPriority: false,
+    phase: "",
+    ts: 0
   }
 };
 
@@ -2002,21 +2015,33 @@ function applyPendingInitialRouteState() {
       currentProfileTruthState
     });
     if (!pendingProfileAlreadyOpen) {
-      setStartupSurfaceStatus("profile", "pending");
+      setStartupSurfaceStatus("profile", "loading");
       if (pendingDirectEntry.topTab === "menu") {
-        setStartupSurfaceStatus("menu", "pending");
+        setStartupSurfaceStatus("menu", "loading");
         state.startupSurface.activeSurface = "menu";
       } else {
         state.startupSurface.activeSurface = "profile";
       }
-      setStartupSurfaceStatus("active", "pending");
-      publicProfileDirectEntryController.seedPendingDirectEntry(pendingRoute);
+      setStartupSurfaceStatus("active", "loading");
+      publicProfileDirectEntryController.seedPendingDirectEntry(pendingRoute, {
+        phase: "seeded"
+      });
       resolveVisibleProfileSurfaceSnapshot({
         profileView: state.profileView,
         profileTopTab: state.profileTopTab,
         profileContentTab: state.profileContentTab
       });
+    } else {
+      publicProfileDirectEntryController.writeWebDirectEntryState(pendingDirectEntry, {
+        active: pendingDirectEntry.webPriority === true,
+        phase: "loading"
+      });
     }
+  } else {
+    publicProfileDirectEntryController.writeWebDirectEntryState({}, {
+      active: false,
+      phase: ""
+    });
   }
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
   if (activeTabKey === "home") state.activeTab = "feed";

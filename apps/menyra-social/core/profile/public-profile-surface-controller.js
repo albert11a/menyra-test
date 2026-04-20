@@ -14,7 +14,7 @@ function normalizeTruthyCount(value) {
 function resolveProfileTruthState(value = "") {
   const truthState = safeLower(value);
   if (!truthState) return "";
-  if (truthState === "route-pending-loading") return "pending";
+  if (truthState === "route-pending-loading") return "loading";
   if (truthState.includes("pending")) return "pending";
   if (truthState.includes("loading")) return "loading";
   if (truthState === "stable" || truthState === "ready") return "ready";
@@ -205,6 +205,8 @@ export function resolveVisibleProfileSurface(state = {}, {
     directEntry?.contentTab || "",
     directEntryTopTab === "menu" ? "menu" : "posts"
   );
+  const directEntryPhase = safeLower(directEntry?.phase || "");
+  const directEntryOwner = safeLower(directEntry?.owner || "");
   const profile = view?.profile && typeof view.profile === "object"
     ? view.profile
     : null;
@@ -241,7 +243,7 @@ export function resolveVisibleProfileSurface(state = {}, {
   }), "loading");
   const menuStatus = normalizeProfileSurfaceStatus(resolveMenuStatus(state, { restaurantId: targetRestaurantId }), "loading");
   const focusStatus = normalizeProfileSurfaceStatus(resolveFocusStatus(state, { restaurantId: targetRestaurantId }), "loading");
-  const visibleStatus = normalizeProfileSurfaceStatus(resolveContractStatus({
+  let visibleStatus = normalizeProfileSurfaceStatus(resolveContractStatus({
     activeTab,
     activeTopTab,
     activeContentTab,
@@ -249,6 +251,9 @@ export function resolveVisibleProfileSurface(state = {}, {
     menuStatus,
     focusStatus
   }), "loading");
+  if (directEntryActive && directEntryPhase === "seeded" && visibleStatus === "pending") {
+    visibleStatus = "loading";
+  }
   const startupActiveSurface = activeTab !== "profile"
     ? (activeTab || "feed")
     : (activeTopTab === "menu" ? "menu" : "profile");
@@ -293,6 +298,7 @@ export function resolveVisibleProfileSurface(state = {}, {
     directEntry: {
       active: directEntryActive,
       phase: safeLower(directEntry?.phase || ""),
+      owner: directEntryActive ? directEntryOwner : "",
       topTab: directEntryActive ? directEntryTopTab : "",
       contentTab: directEntryActive ? directEntryContentTab : ""
     },

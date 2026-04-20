@@ -320,8 +320,16 @@ export function createSessionDataRuntimeController({
     const safeOptions = options && typeof options === "object" ? options : {};
     const phase = String(safeOptions.phase || safeOptions.mode || "").trim().toLowerCase();
     const isCriticalPhase = phase === "critical";
+    const isDeferredPhase = phase === "deferred";
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
     const profileTopTabKey = String(state.profileTopTab || "").trim().toLowerCase();
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      ? state.__webDirectEntry
+      : null;
+    const webDirectVisibleProfilePath = activeTabKey === "profile"
+      && webDirectEntry?.active === true
+      && webDirectEntry?.webPriority === true
+      && (profileTopTabKey === "profile" || profileTopTabKey === "menu");
     const prioritizeProfileSurface = activeTabKey === "profile"
       && (profileTopTabKey === "profile" || profileTopTabKey === "menu");
     const shouldRefreshVisibleFeedSurface = () => {
@@ -339,7 +347,7 @@ export function createSessionDataRuntimeController({
       try { state.menuLayout = { ...defaultMenuLayout, ...JSON.parse(savedMenuLayout) }; } catch {}
     }
     state.postMeta = {};
-    if (isCriticalPhase && prioritizeProfileSurface) {
+    if ((isCriticalPhase && prioritizeProfileSurface) || (isDeferredPhase && webDirectVisibleProfilePath)) {
       return;
     }
 
@@ -1344,12 +1352,22 @@ export function createSessionDataRuntimeController({
     const hasVisibleMenuSeed = state.menu.restaurantId === safeRestaurantId
       && Array.isArray(state.menu.items)
       && state.menu.items.length > 0;
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      ? state.__webDirectEntry
+      : null;
+    const webDirectMenuFirstVisiblePath = safeSource === "public"
+      && webDirectEntry?.active === true
+      && webDirectEntry?.menuFirst === true
+      && String(webDirectEntry?.restaurantId || "").trim() === safeRestaurantId
+      && String(state?.activeTab || "").trim().toLowerCase() === "profile"
+      && String(state?.profileTopTab || "").trim().toLowerCase() === "menu";
     const prioritizeVisibleMenuTruth = !force
       && isVisiblePublicMenuSurface(safeRestaurantId, safeSource)
       && !hasVisibleMenuSeed;
+    const shouldPrioritizeVisibleMenuTruth = prioritizeVisibleMenuTruth && !webDirectMenuFirstVisiblePath;
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
     const cached = menuCacheMap.get(cacheKey);
-    if (cached && cached.items?.length && !force && !prioritizeVisibleMenuTruth) {
+    if (cached && cached.items?.length && !force && !shouldPrioritizeVisibleMenuTruth) {
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -1372,7 +1390,7 @@ export function createSessionDataRuntimeController({
       return;
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
-    if (persistedMenu.items.length && !force && !prioritizeVisibleMenuTruth) {
+    if (persistedMenu.items.length && !force && !shouldPrioritizeVisibleMenuTruth) {
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -1406,7 +1424,7 @@ export function createSessionDataRuntimeController({
     }
     const keepCurrentItems = state.menu.restaurantId === safeRestaurantId
       && Array.isArray(state.menu.items)
-      && (!prioritizeVisibleMenuTruth || state.menu.items.length > 0);
+      && (!shouldPrioritizeVisibleMenuTruth || state.menu.items.length > 0);
     state.menu = {
       ...state.menu,
       restaurantId: safeRestaurantId,
@@ -1471,7 +1489,7 @@ export function createSessionDataRuntimeController({
         const sameRestaurantItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
           ? state.menu.items
           : [];
-        const allowStaleFallback = !prioritizeVisibleMenuTruth || sameRestaurantItems.length > 0;
+        const allowStaleFallback = !shouldPrioritizeVisibleMenuTruth || sameRestaurantItems.length > 0;
         const fallbackItems = sameRestaurantItems.length
           ? sameRestaurantItems
           : (allowStaleFallback ? stalePersistedMenu.items : []);

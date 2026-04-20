@@ -267,17 +267,27 @@ export function createPublicBootstrapRuntimeController({
     if (!payload || typeof payload !== "object" || !state) return false;
     void mergeRestaurants;
     void rebuildBusinessLocations;
+    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      ? state.__webDirectEntry
+      : null;
+    const isWebDirectProfileVisiblePath = activeTabKey === "profile"
+      && webDirectEntry?.active === true
+      && webDirectEntry?.webPriority === true;
     const incomingRestaurants = normalizePublicBootstrapRestaurants(payload.restaurants, {
       normalizeRestaurantType
     });
-    const incomingFeedPosts = normalizePublicBootstrapFeedPosts(payload.feedPosts || payload.feed || payload.posts, {
-      toDateSafe,
-      formatRelative
-    });
-    const incomingStories = normalizePublicBootstrapStories(payload.stories);
+    const incomingFeedPosts = isWebDirectProfileVisiblePath
+      ? []
+      : normalizePublicBootstrapFeedPosts(payload.feedPosts || payload.feed || payload.posts, {
+        toDateSafe,
+        formatRelative
+      });
+    const incomingStories = isWebDirectProfileVisiblePath
+      ? []
+      : normalizePublicBootstrapStories(payload.stories);
     let changed = false;
     let previewChanged = false;
-    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
     const deferFeedBootstrapPostProcessing = activeTabKey === "profile";
 
     if (incomingRestaurants.length) {

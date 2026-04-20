@@ -38,6 +38,15 @@ function isQrLikeProfileAccessSource(value = "") {
     || safeAccessSource === "scan-qr";
 }
 
+function normalizeDirectEntryPhase(value = "", fallback = "seeded") {
+  const phase = safeLower(value);
+  if (phase === "seeded") return "seeded";
+  if (phase === "loading") return "loading";
+  if (phase === "ready") return "ready";
+  if (phase === "error") return "error";
+  return safeLower(fallback) || "seeded";
+}
+
 export function createPublicProfileDirectEntryController({
   state = null,
   resolveVisibleProfileSurface = () => null
@@ -56,16 +65,27 @@ export function createPublicProfileDirectEntryController({
         contentTab: "posts",
         menuAccessSource: "",
         tableNumber: 0,
-        explicitLanding: false
+        explicitLanding: false,
+        visibleSurface: "",
+        webPriority: false,
+        menuFirst: false,
+        postsFirst: false
       };
     }
     const requestedTopTab = normalizeProfileTopTabFromRouteCore(pendingRoute?.pendingProfileTopTab || "");
+    const explicitLanding = requestedTopTab === "landing";
     const resolvedTopTab = normalizeProfileTopTab(requestedTopTab || "profile", "profile");
     const resolvedMenuAccessSource = resolvedTopTab === "menu" && isQrLikeProfileAccessSource(pendingRoute?.pendingProfileAccessSource || "")
       ? "qr"
       : "";
     const pendingTableNumber = Math.max(0, Number(pendingRoute?.pendingProfileTableNumber || 0) || 0);
     const resolvedTableNumber = resolvedMenuAccessSource === "qr" ? pendingTableNumber : 0;
+    const visibleSurface = resolvedTopTab === "menu"
+      ? "menu"
+      : (resolvedTopTab === "landing" ? "landing" : "profile");
+    const menuFirst = visibleSurface === "menu";
+    const postsFirst = visibleSurface === "profile";
+    const webPriority = menuFirst || postsFirst;
     return {
       active: true,
       restaurantId: pendingProfileRestaurantId,
@@ -73,11 +93,57 @@ export function createPublicProfileDirectEntryController({
       contentTab: normalizeProfileContentTabForTopTab(resolvedTopTab, ""),
       menuAccessSource: resolvedMenuAccessSource,
       tableNumber: resolvedTableNumber,
-      explicitLanding: resolvedTopTab === "landing"
+      explicitLanding,
+      visibleSurface,
+      webPriority,
+      menuFirst,
+      postsFirst
     };
   }
 
-  function seedPendingDirectEntry(pendingRoute = {}) {
+  function writeWebDirectEntryState(entry = {}, {
+    phase = "seeded",
+    active = true
+  } = {}) {
+    if (!state || typeof state !== "object") return null;
+    const safeEntry = entry && typeof entry === "object" ? entry : {};
+    const restaurantId = String(safeEntry.restaurantId || "").trim();
+    const visibleSurface = String(safeEntry.visibleSurface || "").trim().toLowerCase();
+    if (!restaurantId || !visibleSurface) {
+      state.__webDirectEntry = {
+        active: false,
+        restaurantId: "",
+        surface: "",
+        topTab: "",
+        contentTab: "",
+        explicitLanding: false,
+        menuFirst: false,
+        postsFirst: false,
+        webPriority: false,
+        phase: "",
+        ts: 0
+      };
+      return state.__webDirectEntry;
+    }
+    state.__webDirectEntry = {
+      active: !!active,
+      restaurantId,
+      surface: visibleSurface,
+      topTab: String(safeEntry.topTab || "").trim().toLowerCase(),
+      contentTab: String(safeEntry.contentTab || "").trim().toLowerCase(),
+      explicitLanding: safeEntry.explicitLanding === true,
+      menuFirst: safeEntry.menuFirst === true,
+      postsFirst: safeEntry.postsFirst === true,
+      webPriority: safeEntry.webPriority === true,
+      phase: normalizeDirectEntryPhase(phase, "seeded"),
+      ts: Date.now()
+    };
+    return state.__webDirectEntry;
+  }
+
+  function seedPendingDirectEntry(pendingRoute = {}, {
+    phase = "seeded"
+  } = {}) {
     if (!state || typeof state !== "object") return null;
     const entry = resolvePendingDirectEntry(pendingRoute);
     if (!entry.active || !entry.restaurantId) return null;
@@ -97,8 +163,8 @@ export function createPublicProfileDirectEntryController({
         pendingFollowRequest: false,
         postsLoaded: false,
         posts: [],
-        identityTruthState: "pending",
-        truthState: "route-pending-loading"
+        identityTruthState: "loading",
+        truthState: "loading"
       },
       posts: [],
       menuAccessSource: entry.menuAccessSource,
@@ -106,7 +172,12 @@ export function createPublicProfileDirectEntryController({
       directEntry: {
         active: true,
         source: "route",
-        phase: "pending",
+        owner: "web-direct",
+        routeFirst: true,
+        webPriority: entry.webPriority === true,
+        menuFirst: entry.menuFirst === true,
+        postsFirst: entry.postsFirst === true,
+        phase: normalizeDirectEntryPhase(phase, "seeded"),
         topTab: entry.topTab,
         contentTab: entry.contentTab,
         explicitLanding: entry.explicitLanding
@@ -125,6 +196,10 @@ export function createPublicProfileDirectEntryController({
     state.profileBackTab = "";
     state.drawerOpen = false;
     state.activeTab = "profile";
+    writeWebDirectEntryState(entry, {
+      active: entry.webPriority === true,
+      phase
+    });
     const nextSurface = resolveVisibleProfileSurfaceSafe(state, {
       profileView: state.profileView,
       profileTopTab: state.profileTopTab,
@@ -138,6 +213,7 @@ export function createPublicProfileDirectEntryController({
 
   return {
     resolvePendingDirectEntry,
-    seedPendingDirectEntry
+    seedPendingDirectEntry,
+    writeWebDirectEntryState
   };
 }

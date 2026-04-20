@@ -211,6 +211,63 @@ export function createPublicProfileRuntimeController({
     profileViewUnsub = null;
   }
 
+  function normalizeDirectEntryPhase(value = "", fallback = "loading") {
+    const phase = String(value || "").trim().toLowerCase();
+    if (phase === "seeded") return "seeded";
+    if (phase === "loading") return "loading";
+    if (phase === "ready") return "ready";
+    if (phase === "error") return "error";
+    const fallbackPhase = String(fallback || "").trim().toLowerCase();
+    if (fallbackPhase === "seeded" || fallbackPhase === "loading" || fallbackPhase === "ready" || fallbackPhase === "error") {
+      return fallbackPhase;
+    }
+    return "loading";
+  }
+
+  function syncWebDirectEntryState({
+    restaurantId = "",
+    topTab = "",
+    contentTab = "",
+    directEntry = null
+  } = {}) {
+    if (!state || typeof state !== "object") return;
+    const current = state.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      ? state.__webDirectEntry
+      : null;
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const entry = directEntry && typeof directEntry === "object" ? directEntry : null;
+    const entryOwner = String(entry?.owner || "").trim().toLowerCase();
+    const isDirectWebOwner = entryOwner === "web-direct";
+    if (!safeRestaurantId || !entry || entry.active === false || !isDirectWebOwner) {
+      if (current?.active === true && (!safeRestaurantId || String(current.restaurantId || "").trim() === safeRestaurantId)) {
+        state.__webDirectEntry = {
+          ...current,
+          active: false,
+          phase: "",
+          ts: Date.now()
+        };
+      }
+      return;
+    }
+    const safeTopTab = String(topTab || entry?.topTab || "").trim().toLowerCase();
+    const safeContentTab = String(contentTab || entry?.contentTab || "").trim().toLowerCase();
+    const surface = safeTopTab === "menu" ? "menu" : "profile";
+    state.__webDirectEntry = {
+      ...(current || {}),
+      active: true,
+      restaurantId: safeRestaurantId,
+      surface,
+      topTab: safeTopTab || surface,
+      contentTab: safeContentTab || (surface === "menu" ? "menu" : "posts"),
+      explicitLanding: entry?.explicitLanding === true,
+      menuFirst: surface === "menu",
+      postsFirst: surface === "profile",
+      webPriority: surface === "menu" || surface === "profile",
+      phase: normalizeDirectEntryPhase(entry?.phase || "", "loading"),
+      ts: Date.now()
+    };
+  }
+
   function isSameVisibleProfile(currentProfile = null, nextProfile = null) {
     if (!currentProfile || !nextProfile) return false;
     const currentRestaurantId = String(currentProfile?.restaurantId || "").trim();
@@ -409,10 +466,32 @@ export function createPublicProfileRuntimeController({
     const explicitDirectEntry = directEntry && typeof directEntry === "object"
       ? directEntry
       : null;
+    const isWebEntryTopTab = resolvedTopTab === "profile" || resolvedTopTab === "menu" || resolvedTopTab === "landing";
+    const baseDirectEntry = explicitDirectEntry
+      || (sameVisibleProfile && currentDirectEntry?.active === true ? currentDirectEntry : null);
+    const requestedDirectEntryPhase = normalizeDirectEntryPhase(
+      baseDirectEntry?.phase || "",
+      incomingProfileSettling ? "loading" : "ready"
+    );
+    const currentDirectEntryPhase = normalizeDirectEntryPhase(currentDirectEntry?.phase || "", requestedDirectEntryPhase);
+    const stableDirectEntryPhase = currentDirectEntryPhase === "ready"
+      && (requestedDirectEntryPhase === "seeded" || requestedDirectEntryPhase === "loading")
+      ? "ready"
+      : requestedDirectEntryPhase;
+    const directEntryOwner = String(
+      baseDirectEntry?.owner
+      || (showBack === false && isWebEntryTopTab ? "web-direct" : "")
+    ).trim().toLowerCase();
     const nextDirectEntry = explicitDirectEntry
       ? {
         ...explicitDirectEntry,
         active: explicitDirectEntry.active !== false,
+        owner: directEntryOwner,
+        routeFirst: explicitDirectEntry.routeFirst === true || (showBack === false && isWebEntryTopTab),
+        webPriority: explicitDirectEntry.webPriority === true || (showBack === false && (resolvedTopTab === "menu" || resolvedTopTab === "profile")),
+        menuFirst: explicitDirectEntry.menuFirst === true || resolvedTopTab === "menu",
+        postsFirst: explicitDirectEntry.postsFirst === true || (resolvedTopTab === "profile" && nextContentTab !== "menu"),
+        phase: stableDirectEntryPhase,
         topTab: resolvedTopTab,
         contentTab: nextContentTab,
         explicitLanding: resolvedTopTab === "landing"
@@ -421,7 +500,12 @@ export function createPublicProfileRuntimeController({
         ? {
           active: true,
           source: "route",
-          phase: incomingProfileSettling ? "loading" : "ready",
+          owner: directEntryOwner || (isWebEntryTopTab ? "web-direct" : "route"),
+          routeFirst: showBack === false && isWebEntryTopTab,
+          webPriority: isWebEntryTopTab && (resolvedTopTab === "menu" || resolvedTopTab === "profile"),
+          menuFirst: resolvedTopTab === "menu",
+          postsFirst: resolvedTopTab === "profile" && nextContentTab !== "menu",
+          phase: stableDirectEntryPhase,
           topTab: resolvedTopTab,
           contentTab: nextContentTab,
           explicitLanding: resolvedTopTab === "landing"
@@ -429,7 +513,12 @@ export function createPublicProfileRuntimeController({
         : (sameVisibleProfile && currentDirectEntry?.active === true
           ? {
             ...currentDirectEntry,
-            phase: incomingProfileSettling ? "loading" : "ready",
+            owner: directEntryOwner,
+            routeFirst: currentDirectEntry?.routeFirst === true,
+            webPriority: currentDirectEntry?.webPriority === true,
+            menuFirst: currentDirectEntry?.menuFirst === true || resolvedTopTab === "menu",
+            postsFirst: currentDirectEntry?.postsFirst === true || (resolvedTopTab === "profile" && nextContentTab !== "menu"),
+            phase: stableDirectEntryPhase,
             topTab: resolvedTopTab,
             contentTab: nextContentTab,
             explicitLanding: resolvedTopTab === "landing"
@@ -487,6 +576,12 @@ export function createPublicProfileRuntimeController({
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
     ) {
       state.profileSurface = nextSurface;
+      syncWebDirectEntryState({
+        restaurantId: String(nextProfile?.restaurantId || "").trim(),
+        topTab: resolvedTopTab,
+        contentTab: nextContentTab,
+        directEntry: nextDirectEntry
+      });
       attachProfileViewListener(nextProfile);
       return;
     }
@@ -518,6 +613,12 @@ export function createPublicProfileRuntimeController({
       profileView: nextView,
       profileTopTab: resolvedTopTab,
       profileContentTab: nextContentTab
+    });
+    syncWebDirectEntryState({
+      restaurantId: String(nextProfile?.restaurantId || "").trim(),
+      topTab: resolvedTopTab,
+      contentTab: nextContentTab,
+      directEntry: nextDirectEntry
     });
     renderApp();
     attachProfileViewListener(nextProfile);

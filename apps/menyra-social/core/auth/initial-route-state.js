@@ -92,8 +92,8 @@ export function resolveInitialRouteState({
   const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
   let pendingInitialTab = toInitialTab(queryTab || profileTopQuery || "");
   if (pendingProfileRestaurantId) {
-    // Deep public profile routes should always open the profile route surface first.
-    if (!pendingInitialTab || pendingInitialTab === "menu") pendingInitialTab = "profile";
+    // Direct public profile/menu URLs are always route-first profile surfaces.
+    pendingInitialTab = "profile";
   }
   if (landingSlug) pendingInitialTab = "profile";
   if (!pendingInitialTab && pendingChatUid) pendingInitialTab = "chat";

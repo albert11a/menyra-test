@@ -267,16 +267,25 @@ export function createProfileOpenFlowControllerCore({
       const requestedTopTab = String(topTab || "").trim().toLowerCase();
       const isMenuTopTab = requestedTopTab === "menu";
       const isLandingTopTab = requestedTopTab === "landing";
+      const isDirectWebEntryRequest = showBack === false;
       const resolvedTopTab = isLandingTopTab
         ? "landing"
         : (isMenuTopTab ? "menu" : "profile");
       const resolvedContentTab = resolvedTopTab === "menu" ? "menu" : "posts";
+      const isWebRoutePriorityPath = isDirectWebEntryRequest && (resolvedTopTab === "menu" || resolvedTopTab === "profile");
+      const isWebPostsFirstPath = isWebRoutePriorityPath && resolvedTopTab === "profile" && resolvedContentTab === "posts";
       const isQrMenuOpen = isMenuTopTab && safeMenuAccessSource === "qr";
       // For deeplinks like ?r=...&tab=menu we always want the public profile menu view,
       // never the owner editor tab, even when the target is the own business account.
       const isDeeplinkMenuOpen = isMenuTopTab && !showBack;
 
-      if (!isDeeplinkMenuOpen && !isQrMenuOpen && !isLandingTopTab && isOwnBusinessTarget({ restaurantId, name: safeName })) {
+      if (
+        !isDirectWebEntryRequest
+        && !isDeeplinkMenuOpen
+        && !isQrMenuOpen
+        && !isLandingTopTab
+        && isOwnBusinessTarget({ restaurantId, name: safeName })
+      ) {
         openOwnBusinessProfile({ showBack, topTab });
         return;
       }
@@ -289,6 +298,19 @@ export function createProfileOpenFlowControllerCore({
         || (restaurantId ? { id: restaurantId } : {});
       targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
       targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      const buildDirectEntryMeta = (phase = "loading") => ({
+        active: true,
+        source: "route",
+        owner: isDirectWebEntryRequest ? "web-direct" : "route",
+        routeFirst: isDirectWebEntryRequest,
+        webPriority: isWebRoutePriorityPath,
+        menuFirst: resolvedTopTab === "menu",
+        postsFirst: resolvedTopTab === "profile" && resolvedContentTab === "posts",
+        phase,
+        topTab: resolvedTopTab,
+        contentTab: resolvedContentTab,
+        explicitLanding: isLandingTopTab
+      });
       const requestedContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
       const prioritizePostsSurface = !isMenuTopTab
         && (requestedContentTab === "" || requestedContentTab === "posts" || requestedContentTab === "media");
@@ -321,8 +343,15 @@ export function createProfileOpenFlowControllerCore({
         ? liveView.posts
         : [];
       if (isMenuTopTab && targetMenuRestaurantId) {
-        ensureMenuData({ restaurantId: targetMenuRestaurantId });
-        ensureFocusData({ restaurantId: targetMenuRestaurantId });
+        if (isWebRoutePriorityPath) {
+          Promise.resolve().then(() => {
+            ensureMenuData({ restaurantId: targetMenuRestaurantId });
+            ensureFocusData({ restaurantId: targetMenuRestaurantId });
+          });
+        } else {
+          ensureMenuData({ restaurantId: targetMenuRestaurantId });
+          ensureFocusData({ restaurantId: targetMenuRestaurantId });
+        }
       }
 
       const loadingDisplayName = resolveBusinessDisplayNameFallback({
@@ -357,13 +386,42 @@ export function createProfileOpenFlowControllerCore({
         topTab: resolvedTopTab,
         contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
-        tableNumber: safeTableNumber
+        tableNumber: safeTableNumber,
+        directEntry: buildDirectEntryMeta("seeded")
       });
 
-      const profileSnap = await fetchBusinessProfile({
+      const profileSnapPromise = fetchBusinessProfile({
         restaurantId: targetRestaurantLookupId,
         restaurant: rest
       });
+      let earlyPostsResult = null;
+      if (isWebPostsFirstPath && earlyPostsPromise) {
+        earlyPostsResult = await earlyPostsPromise;
+        if (earlyPostsResult?.ok && Array.isArray(earlyPostsResult.posts) && earlyPostsResult.posts.length) {
+          const liveRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
+          if (
+            state.activeTab === "profile"
+            && (!liveRestaurantId || liveRestaurantId === targetRestaurantLookupId || liveRestaurantId === targetMenuRestaurantId)
+          ) {
+            const earlyPostsProfile = applySurfaceTruthPatch({
+              ...loadingProfileWithSurfaceTruth,
+              posts: earlyPostsResult.posts
+            }, {
+              identityStatus: resolveLoadingIdentityTruthState(stableBusinessProfile),
+              postsStatus: "ready"
+            });
+            showPublicProfileView(earlyPostsProfile, earlyPostsResult.posts, {
+              showBack,
+              topTab: resolvedTopTab,
+              contentTab: resolvedContentTab,
+              menuAccessSource: safeMenuAccessSource,
+              tableNumber: safeTableNumber,
+              directEntry: buildDirectEntryMeta("loading")
+            });
+          }
+        }
+      }
+      const profileSnap = await profileSnapPromise;
 
       const resolvedDisplayName = resolveBusinessDisplayNameFallback({
         safeName,
@@ -395,13 +453,17 @@ export function createProfileOpenFlowControllerCore({
         postsStatus: interimPosts.length > 0 ? "ready" : "loading"
       });
 
-      showPublicProfileView(resolvedInterim, interimPosts, {
-        showBack,
-        topTab: resolvedTopTab,
-        contentTab: resolvedContentTab,
-        menuAccessSource: safeMenuAccessSource,
-        tableNumber: safeTableNumber
-      });
+      const shouldShowInterimSurface = !isWebRoutePriorityPath || isMenuTopTab;
+      if (shouldShowInterimSurface) {
+        showPublicProfileView(resolvedInterim, interimPosts, {
+          showBack,
+          topTab: resolvedTopTab,
+          contentTab: resolvedContentTab,
+          menuAccessSource: safeMenuAccessSource,
+          tableNumber: safeTableNumber,
+          directEntry: buildDirectEntryMeta(isMenuTopTab ? "ready" : "loading")
+        });
+      }
 
       const resolvedRestaurantId = String(
         resolved?.restaurantId
@@ -411,8 +473,12 @@ export function createProfileOpenFlowControllerCore({
       ).trim();
       if (!resolvedRestaurantId) return;
       let posts = null;
-      if (earlyPostsPromise) {
-        const earlyResult = await earlyPostsPromise;
+      if (isMenuTopTab && isWebRoutePriorityPath) {
+        posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
+      } else if (earlyPostsResult?.ok && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
+        posts = earlyPostsResult.posts;
+      } else if (earlyPostsPromise) {
+        const earlyResult = earlyPostsResult || await earlyPostsPromise;
         if (earlyResult?.ok && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
           posts = earlyResult.posts;
         }
@@ -453,7 +519,8 @@ export function createProfileOpenFlowControllerCore({
         topTab: resolvedTopTab,
         contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
-        tableNumber: safeTableNumber
+        tableNumber: safeTableNumber,
+        directEntry: buildDirectEntryMeta("ready")
       });
     } catch (err) {
       console.error(err);
