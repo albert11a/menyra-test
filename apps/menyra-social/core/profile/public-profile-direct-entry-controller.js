@@ -47,6 +47,29 @@ function normalizeDirectEntryPhase(value = "", fallback = "seeded") {
   return safeLower(fallback) || "seeded";
 }
 
+function normalizeSeedBusinessLabel(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "Lokal";
+  const slug = raw.startsWith("@") ? raw.slice(1) : raw;
+  const compact = String(slug || "").trim();
+  if (!compact) return "Lokal";
+  const alphaNumeric = compact.replace(/[-_]/g, "");
+  const likelyOpaqueId = /^[a-f0-9]{16,}$/i.test(alphaNumeric)
+    || /^[a-z0-9]{20,}$/i.test(alphaNumeric)
+    || (alphaNumeric.length >= 16 && (alphaNumeric.match(/\d/g) || []).length >= 4);
+  if (likelyOpaqueId) return "Lokal";
+  const words = compact
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return "Lokal";
+  return words
+    .slice(0, 4)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export function createPublicProfileDirectEntryController({
   state = null,
   resolveVisibleProfileSurface = () => null
@@ -147,12 +170,13 @@ export function createPublicProfileDirectEntryController({
     if (!state || typeof state !== "object") return null;
     const entry = resolvePendingDirectEntry(pendingRoute);
     if (!entry.active || !entry.restaurantId) return null;
+    const seedBusinessName = normalizeSeedBusinessLabel(entry.restaurantId);
     state.profileView = {
       profile: {
-        name: "Profil wird geladen...",
+        name: seedBusinessName,
         handle: "",
         uid: "",
-        bio: "Profil wird geladen...",
+        bio: "",
         avatar: "",
         location: "",
         followers: null,
@@ -164,7 +188,7 @@ export function createPublicProfileDirectEntryController({
         postsLoaded: false,
         posts: [],
         identityTruthState: "loading",
-        truthState: "loading"
+        truthState: "route-pending-loading"
       },
       posts: [],
       menuAccessSource: entry.menuAccessSource,

@@ -327,10 +327,8 @@ export function createAuthSessionStartupCoordinator({
       const webDirectGuestProfileSurface = isWebDirectGuestProfileLaunchActive();
       if (prioritizeGuestSurface || webDirectGuestProfileSurface) {
         if (webDirectGuestProfileSurface) {
-          schedulePostVisibleStartupTask(() => {
+          queueMicrotaskSafe(() => {
             runNonBlockingRouteOpenWithTimeline();
-          }, {
-            delayMs: 40
           });
         } else {
           runNonBlockingRouteOpenWithTimeline();

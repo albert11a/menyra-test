@@ -11,7 +11,13 @@ export function isPendingProfileAlreadyOpenCore({
   const currentId = String(currentProfileRestaurantId || "").trim();
   if (!pendingId || !currentId) return false;
   const truthState = String(currentProfileTruthState || "").trim().toLowerCase();
-  if (truthState === "route-pending-loading") return false;
+  if (
+    truthState === "route-pending-loading"
+    || truthState === "loading"
+    || truthState === "pending"
+  ) {
+    return false;
+  }
   return pendingId === currentId;
 }
 

@@ -1361,10 +1361,12 @@ export function createSessionDataRuntimeController({
       && String(webDirectEntry?.restaurantId || "").trim() === safeRestaurantId
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
       && String(state?.profileTopTab || "").trim().toLowerCase() === "menu";
+    const webDirectMenuReady = webDirectMenuFirstVisiblePath
+      && String(webDirectEntry?.phase || "").trim().toLowerCase() === "ready";
     const prioritizeVisibleMenuTruth = !force
       && isVisiblePublicMenuSurface(safeRestaurantId, safeSource)
       && !hasVisibleMenuSeed;
-    const shouldPrioritizeVisibleMenuTruth = prioritizeVisibleMenuTruth && !webDirectMenuFirstVisiblePath;
+    const shouldPrioritizeVisibleMenuTruth = prioritizeVisibleMenuTruth && !webDirectMenuReady;
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
     const cached = menuCacheMap.get(cacheKey);
     if (cached && cached.items?.length && !force && !shouldPrioritizeVisibleMenuTruth) {
