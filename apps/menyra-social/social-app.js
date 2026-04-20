@@ -138,6 +138,10 @@ import {
   normalizeProfileTopTabFromRouteCore
 } from "./core/profile/profile-route-open-utils.js";
 import {
+  normalizeProfileSurfaceStatus,
+  resolveVisibleProfileSurface
+} from "./core/profile/public-profile-surface-controller.js";
+import {
   isPushOpenTargetMessageCore,
   parsePushOpenTargetPayloadCore,
   shouldHandlePushOpenTargetCore
@@ -1024,6 +1028,23 @@ const state = {
   profileViewMode: "grid",
   profileTopTab: "profile",
   profileContentTab: "posts",
+  profileSurface: {
+    target: { key: "", restaurantId: "", uid: "", handle: "" },
+    header: { status: "loading", truthState: "", identityTruthState: "" },
+    posts: { status: "loading", count: 0, loaded: false },
+    menu: { status: "ready", restaurantId: "", source: "", count: 0 },
+    focus: { status: "ready", restaurantId: "", count: 0 },
+    activeTab: "feed",
+    activeTopTab: "profile",
+    activeContentTab: "posts",
+    status: "ready",
+    startup: {
+      profileStatus: "loading",
+      menuStatus: "ready",
+      activeStatus: "ready",
+      activeSurface: "feed"
+    }
+  },
   profileLandingStep: 0,
   profileLandingGreetingIndex: 0,
   profileLandingTourIndex: 0,
@@ -1653,13 +1674,7 @@ if (ENABLE_STARTUP_TIMELINE && typeof window !== "undefined") {
 }
 
 function normalizeStartupSurfaceStatus(value = "", fallback = "ready") {
-  const safeStatus = String(value || "").trim().toLowerCase();
-  if (safeStatus === "pending") return "pending";
-  if (safeStatus === "loading") return "loading";
-  if (safeStatus === "ready") return "ready";
-  if (safeStatus === "empty") return "empty";
-  if (safeStatus === "error") return "error";
-  return String(fallback || "ready").trim().toLowerCase() || "ready";
+  return normalizeProfileSurfaceStatus(value, fallback);
 }
 
 function setStartupSurfaceStatus(surface = "", status = "ready") {
@@ -1676,58 +1691,27 @@ function setStartupSurfaceStatus(surface = "", status = "ready") {
   state.startupSurface[key] = normalizeStartupSurfaceStatus(status, "ready");
 }
 
-function resolveProfileStartupSurfaceStatus() {
-  const profileView = state.profileView && typeof state.profileView === "object"
-    ? state.profileView
-    : null;
-  const profile = profileView?.profile && typeof profileView.profile === "object"
-    ? profileView.profile
-    : null;
-  if (!profile) return "loading";
-  const posts = Array.isArray(profileView?.posts)
-    ? profileView.posts
-    : (Array.isArray(profile.posts) ? profile.posts : []);
-  const truthState = String(profile.truthState || "").trim().toLowerCase();
-  const truthPending = truthState === "route-pending-loading"
-    || truthState.includes("pending")
-    || truthState.includes("loading");
-  if (posts.length) return "ready";
-  if (profile.postsLoaded === true) {
-    if (truthPending) return "loading";
-    return truthState === "error" ? "error" : "empty";
-  }
-  if (truthState === "route-pending-loading" || truthState.includes("pending")) return "pending";
-  if (truthPending) return "loading";
-  if (truthState === "error") return "error";
-  return "loading";
+function resolveVisibleProfileSurfaceSnapshot(overrides = {}) {
+  const snapshot = resolveVisibleProfileSurface(state, overrides);
+  state.profileSurface = snapshot;
+  return snapshot;
 }
 
-function resolveMenuStartupSurfaceStatus({ strict = false } = {}) {
-  const profile = state.profileView?.profile || null;
-  const restaurantId = String(profile?.restaurantId || "").trim();
-  if (!restaurantId) return strict ? "error" : "ready";
-  const menuRestaurantId = String(state.menu?.restaurantId || "").trim();
-  const sameRestaurant = menuRestaurantId && menuRestaurantId === restaurantId;
-  const menuSource = String(state.menu?.source || "").trim().toLowerCase();
-  const hasPublicMenuTruth = !!sameRestaurant && menuSource === "public";
-  const items = hasPublicMenuTruth && Array.isArray(state.menu?.items)
-    ? state.menu.items
-    : [];
-  if (items.length) return "ready";
-  if (sameRestaurant && state.menu?.loading) return "loading";
-  if (hasPublicMenuTruth) {
-    const error = String(state.menu?.error || "").trim();
-    if (error) return "error";
-    return "empty";
-  }
-  const profileTruthState = String(profile?.truthState || "").trim().toLowerCase();
-  if (profileTruthState === "route-pending-loading" || profileTruthState.includes("pending")) {
-    return "pending";
-  }
-  return "loading";
+function resolveProfileStartupSurfaceStatus(surfaceSnapshot = null) {
+  const snapshot = surfaceSnapshot || resolveVisibleProfileSurfaceSnapshot();
+  return normalizeStartupSurfaceStatus(snapshot?.startup?.profileStatus || "", "loading");
 }
 
-function resolveActiveStartupSurfaceSnapshot() {
+function resolveMenuStartupSurfaceStatus({ strict = false, surfaceSnapshot = null } = {}) {
+  const snapshot = surfaceSnapshot || resolveVisibleProfileSurfaceSnapshot();
+  const status = normalizeStartupSurfaceStatus(snapshot?.startup?.menuStatus || "", strict ? "error" : "ready");
+  if (!strict) return status;
+  const restaurantId = String(snapshot?.target?.restaurantId || "").trim();
+  if (!restaurantId && status === "ready") return "error";
+  return status;
+}
+
+function resolveActiveStartupSurfaceSnapshot(surfaceSnapshot = null) {
   const activeTab = String(state.activeTab || "").trim().toLowerCase() || "feed";
   if (activeTab !== "profile") {
     return {
@@ -1737,27 +1721,28 @@ function resolveActiveStartupSurfaceSnapshot() {
       profileTopTab: ""
     };
   }
-  const profileTopTab = normalizeProfileTopTabFromRouteCore(state.profileTopTab || "") || "profile";
-  if (profileTopTab === "menu") {
-    return {
-      surface: "menu",
-      status: resolveMenuStartupSurfaceStatus({ strict: true }),
-      activeTab,
-      profileTopTab
-    };
-  }
+  const snapshot = surfaceSnapshot || resolveVisibleProfileSurfaceSnapshot();
+  const profileTopTab = String(snapshot?.activeTopTab || normalizeProfileTopTabFromRouteCore(state.profileTopTab || "") || "profile").trim().toLowerCase();
+  const activeSurface = String(snapshot?.startup?.activeSurface || "").trim().toLowerCase() || (profileTopTab === "menu" ? "menu" : "profile");
+  const activeStatus = normalizeStartupSurfaceStatus(
+    snapshot?.startup?.activeStatus || "",
+    activeSurface === "menu"
+      ? resolveMenuStartupSurfaceStatus({ strict: true, surfaceSnapshot: snapshot })
+      : resolveProfileStartupSurfaceStatus(snapshot)
+  );
   return {
-    surface: "profile",
-    status: resolveProfileStartupSurfaceStatus(),
+    surface: activeSurface,
+    status: activeStatus,
     activeTab,
     profileTopTab
   };
 }
 
 function syncStartupSurfaceStatus() {
-  const snapshot = resolveActiveStartupSurfaceSnapshot();
-  setStartupSurfaceStatus("profile", resolveProfileStartupSurfaceStatus());
-  setStartupSurfaceStatus("menu", resolveMenuStartupSurfaceStatus());
+  const surfaceSnapshot = resolveVisibleProfileSurfaceSnapshot();
+  const snapshot = resolveActiveStartupSurfaceSnapshot(surfaceSnapshot);
+  setStartupSurfaceStatus("profile", resolveProfileStartupSurfaceStatus(surfaceSnapshot));
+  setStartupSurfaceStatus("menu", resolveMenuStartupSurfaceStatus({ surfaceSnapshot }));
   setStartupSurfaceStatus("active", snapshot.status);
   state.startupSurface.activeSurface = snapshot.surface;
   return snapshot;
@@ -2065,6 +2050,11 @@ function applyPendingInitialRouteState() {
       state.profileBackTab = "";
       state.drawerOpen = false;
       state.activeTab = "profile";
+      resolveVisibleProfileSurfaceSnapshot({
+        profileView: state.profileView,
+        profileTopTab: state.profileTopTab,
+        profileContentTab: state.profileContentTab
+      });
     }
   }
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();

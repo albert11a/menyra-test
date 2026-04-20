@@ -1,4 +1,8 @@
 import { normalizeMenuCardStyleCore } from "../menu/menu-card-style-utils.js";
+import {
+  isSettlingProfileSurfaceStatus,
+  resolveVisibleProfileSurface
+} from "./public-profile-surface-controller.js";
 
 export function createProfileMenuFocusRenderController(deps = {}) {
   const state = deps.state;
@@ -532,28 +536,27 @@ function renderPublicProfileSurface(
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
   const isBusinessProfile = isBusinessProfileEntity(profile);
+  const topTab = String(topTabOverride || resolveProfilePrimaryTopTab(profile)).trim().toLowerCase() || "profile";
   const activeContentTab = String(contentTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
   const isMediaTab = activeContentTab === "media";
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
-  const profileTruthState = String(profile?.truthState || "").trim().toLowerCase();
-  const identityTruthStateRaw = String(profile?.identityTruthState || "").trim().toLowerCase();
-  const normalizeIdentityStatus = (value = "") => {
-    const safeValue = String(value || "").trim().toLowerCase();
-    if (safeValue === "pending") return "pending";
-    if (safeValue === "loading") return "loading";
-    if (safeValue === "ready") return "ready";
-    if (safeValue === "error") return "error";
-    return "";
+  const baseProfileView = state?.profileView && typeof state.profileView === "object"
+    ? state.profileView
+    : {};
+  const surfaceProfileView = {
+    ...baseProfileView,
+    profile,
+    posts: Array.isArray(filteredPosts) ? filteredPosts : []
   };
-  const fallbackIdentityStatus = (() => {
-    if (profileTruthState === "route-pending-loading" || profileTruthState.includes("pending")) return "pending";
-    if (profileTruthState.includes("loading")) return "loading";
-    if (profileTruthState === "error") return "error";
-    return "ready";
-  })();
-  const identityStatus = normalizeIdentityStatus(identityTruthStateRaw) || fallbackIdentityStatus;
+  const surfaceSnapshot = resolveVisibleProfileSurface(state, {
+    profileView: surfaceProfileView,
+    profileTopTab: topTab,
+    profileContentTab: activeContentTab
+  });
+  const headerStatus = String(surfaceSnapshot?.header?.status || "").trim().toLowerCase() || "loading";
+  const postsStatus = String(surfaceSnapshot?.posts?.status || "").trim().toLowerCase() || "loading";
   const avatarRaw = String(profile?.avatar || "").trim();
   const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : "";
   const avatarFit = logoFitClass(!!profile.restaurantId);
@@ -568,11 +571,10 @@ function renderPublicProfileSurface(
   const hasIdentityDataSeed = hasAvatarTruth
     || hasCountSeed(profile?.followers)
     || hasCountSeed(profile?.following);
-  const showIdentityPendingState = (identityStatus === "pending" || identityStatus === "loading") && !hasIdentityDataSeed;
+  const showIdentityPendingState = isSettlingProfileSurfaceStatus(headerStatus) && !hasIdentityDataSeed;
   const renderAvatarImage = !!String(avatarUrl || "").trim() && hasAvatarTruth;
   const followersLabel = showIdentityPendingState ? "..." : formatCount(profile.followers);
   const followingLabel = showIdentityPendingState ? "..." : formatCount(profile.following);
-  const topTab = String(topTabOverride || resolveProfilePrimaryTopTab(profile)).trim().toLowerCase() || "profile";
   const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
   const followTone = isFollowing
@@ -587,19 +589,14 @@ function renderPublicProfileSurface(
   const contentAnimationClass = contentReveal
     ? (landingMode ? "transition-opacity duration-200" : "animate-in fade-in duration-300")
     : "";
-  const profileSurfaceStatus = String(state?.startupSurface?.profile || "").trim().toLowerCase();
-  const profileTruthPending = profileTruthState === "route-pending-loading"
-    || profileTruthState.includes("pending")
-    || profileTruthState.includes("loading");
-  const postsSurfacePending = activeContentTab === "posts"
-    && (profileSurfaceStatus === "pending" || profileSurfaceStatus === "loading");
   const hasRenderablePosts = activeContentTab === "posts" && filteredPosts.length > 0;
   const postsLoaded = activeContentTab !== "posts"
     || hasRenderablePosts
-    || (!postsSurfacePending && !profileTruthPending && profile?.postsLoaded === true);
+    || postsStatus === "empty"
+    || postsStatus === "error";
   const showPostsError = activeContentTab === "posts"
     && !hasRenderablePosts
-    && profileSurfaceStatus === "error";
+    && postsStatus === "error";
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
       ${topTab === "profile" ? `

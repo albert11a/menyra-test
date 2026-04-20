@@ -1,4 +1,5 @@
 import { clearPostEntityMap, projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
+import { resolveVisibleProfileSurface } from "../profile/public-profile-surface-controller.js";
 import {
   buildRestaurantTruthSignatureCore,
   isBootstrapRestaurantPreviewRecordCore
@@ -473,11 +474,18 @@ export function createSessionDataRuntimeController({
     return buildPostCollectionSignature(prev) !== buildPostCollectionSignature(next);
   }
 
+  function syncVisibleProfileSurfaceState() {
+    if (!state || typeof state !== "object") return;
+    if (!state.profileView || typeof state.profileView !== "object") return;
+    state.profileSurface = resolveVisibleProfileSurface(state);
+  }
+
   function requestRender() {
     if (renderRequested) return;
     renderRequested = true;
     Promise.resolve().then(() => {
       renderRequested = false;
+      syncVisibleProfileSurfaceState();
       renderFn();
     });
   }

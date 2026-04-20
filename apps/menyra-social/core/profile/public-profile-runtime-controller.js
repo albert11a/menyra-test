@@ -1,4 +1,10 @@
 import { projectPostCollectionThroughEntityMap } from "./post-entity-registry-utils.js";
+import {
+  isProfileSettling,
+  isSettlingProfileSurfaceStatus,
+  isVisibleProfileSettledForShortCircuit,
+  resolveVisibleProfileSurface
+} from "./public-profile-surface-controller.js";
 
 export function createPublicProfileRuntimeController({
   state = null,
@@ -222,35 +228,6 @@ export function createPublicProfileRuntimeController({
     return !!currentHandle && currentHandle === nextHandle;
   }
 
-  function isPendingOrLoadingState(value = "") {
-    const safeValue = String(value || "").trim().toLowerCase();
-    if (!safeValue) return false;
-    if (safeValue === "route-pending-loading") return true;
-    return safeValue.includes("pending") || safeValue.includes("loading");
-  }
-
-  function isProfileSurfaceSettling(profile = null) {
-    if (!profile || typeof profile !== "object") return false;
-    const truthState = String(profile?.truthState || "").trim().toLowerCase();
-    const identityTruthState = String(profile?.identityTruthState || "").trim().toLowerCase();
-    return isPendingOrLoadingState(truthState) || isPendingOrLoadingState(identityTruthState);
-  }
-
-  function isVisiblePublicProfileSettled(currentProfile = null, nextProfile = null) {
-    if (isProfileSurfaceSettling(currentProfile) || isProfileSurfaceSettling(nextProfile)) {
-      return false;
-    }
-    const startupActiveSurfaceStatus = String(state?.startupSurface?.active || "").trim().toLowerCase();
-    const startupProfileSurfaceStatus = String(state?.startupSurface?.profile || "").trim().toLowerCase();
-    if (
-      isPendingOrLoadingState(startupActiveSurfaceStatus)
-      || isPendingOrLoadingState(startupProfileSurfaceStatus)
-    ) {
-      return false;
-    }
-    return true;
-  }
-
   function haveSamePostIdentity(currentPosts = [], nextPosts = []) {
     if (!Array.isArray(currentPosts) || !Array.isArray(nextPosts)) return false;
     if (currentPosts.length !== nextPosts.length) return false;
@@ -311,6 +288,11 @@ export function createPublicProfileRuntimeController({
         viewProfile.name = data.displayName || viewProfile.name;
         viewProfile.location = data.city || viewProfile.location;
       }
+      state.profileSurface = resolveVisibleProfileSurface(state, {
+        profileView: state?.profileView || null,
+        profileTopTab: state?.profileTopTab || "",
+        profileContentTab: state?.profileContentTab || ""
+      });
       renderApp();
     }, (err) => {
       console.error(`[mnyra][firestore.listen.publicProfile] ${listenerPath}`, err);
@@ -320,10 +302,47 @@ export function createPublicProfileRuntimeController({
   function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "", tableNumber = 0 } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
-    const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile?.posts || []);
-    const nextProfile = profile ? { ...profile, posts: projectedPosts } : profile;
+    const currentView = state?.profileView || null;
+    const currentProfile = currentView?.profile || null;
+    const currentPosts = Array.isArray(currentView?.posts) ? currentView.posts : [];
+    const sameVisibleIncomingProfile = isSameVisibleProfile(currentProfile || null, profile || null);
+    const incomingProjectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile?.posts || []);
+    const incomingProfileSettling = isProfileSettling(profile);
+    const currentSurface = resolveVisibleProfileSurface(state, {
+      profileView: currentView,
+      profileTopTab: state?.profileTopTab || "",
+      profileContentTab: state?.profileContentTab || ""
+    });
+    const shouldPreserveVisiblePosts = sameVisibleIncomingProfile
+      && currentPosts.length > 0
+      && incomingProjectedPosts.length === 0
+      && incomingProfileSettling
+      && currentSurface?.posts?.status === "ready"
+      && profile?.postsLoaded !== true;
+    const projectedPosts = shouldPreserveVisiblePosts
+      ? currentPosts
+      : incomingProjectedPosts;
+    const shouldPreserveHeaderSeed = sameVisibleIncomingProfile
+      && currentProfile
+      && incomingProfileSettling;
+    const nextProfile = profile ? {
+      ...profile,
+      ...(shouldPreserveHeaderSeed ? {
+        name: String(profile?.name || "").trim() ? profile.name : currentProfile?.name,
+        handle: String(profile?.handle || "").trim() ? profile.handle : currentProfile?.handle,
+        bio: String(profile?.bio || "").trim() ? profile.bio : currentProfile?.bio,
+        avatar: String(profile?.avatar || "").trim() ? profile.avatar : currentProfile?.avatar,
+        location: String(profile?.location || "").trim() ? profile.location : currentProfile?.location,
+        followers: profile?.followers ?? currentProfile?.followers,
+        following: profile?.following ?? currentProfile?.following,
+        pendingFollowRequest: typeof profile?.pendingFollowRequest === "boolean"
+          ? profile.pendingFollowRequest
+          : currentProfile?.pendingFollowRequest
+      } : {}),
+      posts: projectedPosts
+    } : profile;
 
-    const sameVisibleProfile = isSameVisibleProfile(state?.profileView?.profile || null, nextProfile);
+    const sameVisibleProfile = isSameVisibleProfile(currentProfile || null, nextProfile);
     const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
     const preserveLandingState = sameVisibleProfile && previousTopTab === "landing";
     const clampLandingStep = (value = 0) => {
@@ -351,17 +370,33 @@ export function createPublicProfileRuntimeController({
       ? (backTab || state.activeTab || "feed")
       : "";
     const normalizedMenuAccessSource = safeMenuAccessSource === "qr" ? "qr" : "";
-    const currentView = state?.profileView || null;
-    const currentProfile = currentView?.profile || null;
-    const currentPosts = Array.isArray(currentView?.posts) ? currentView.posts : [];
+    const nextContentTab = preserveLandingState && previousContentTab
+      ? previousContentTab
+      : "posts";
+    const nextView = {
+      profile: nextProfile,
+      posts: projectedPosts,
+      menuAccessSource: normalizedMenuAccessSource,
+      tableNumber: safeTableNumber
+    };
     const currentSignature = buildProfileRenderSignature(currentProfile);
     const nextSignature = buildProfileRenderSignature(nextProfile);
     const currentTopTab = String(state?.profileTopTab || "").trim();
     const currentMenuAccessSource = String(currentView?.menuAccessSource || "").trim().toLowerCase();
     const currentTableNumber = Math.max(0, Number(currentView?.tableNumber || 0) || 0);
-    const visibleProfileSettled = isVisiblePublicProfileSettled(currentProfile, nextProfile);
+    const nextSurface = resolveVisibleProfileSurface(state, {
+      profileView: nextView,
+      profileTopTab: resolvedTopTab,
+      profileContentTab: nextContentTab
+    });
+    const canShortCircuitSurface = isVisibleProfileSettledForShortCircuit(state, {
+      currentProfile,
+      nextProfile
+    })
+      && !isSettlingProfileSurfaceStatus(currentSurface?.status || "")
+      && !isSettlingProfileSurfaceStatus(nextSurface?.status || "");
     if (
-      visibleProfileSettled
+      canShortCircuitSurface
       && sameVisibleProfile
       && currentSignature
       && currentSignature === nextSignature
@@ -372,19 +407,13 @@ export function createPublicProfileRuntimeController({
       && String(state?.profileBackTab || "") === String(nextProfileBackTab || "")
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
     ) {
+      state.profileSurface = nextSurface;
       attachProfileViewListener(nextProfile);
       return;
     }
-    state.profileView = {
-      profile: nextProfile,
-      posts: projectedPosts,
-      menuAccessSource: normalizedMenuAccessSource,
-      tableNumber: safeTableNumber
-    };
+    state.profileView = nextView;
     state.profileModal = { open: false, profile: null };
-    state.profileContentTab = preserveLandingState && previousContentTab
-      ? previousContentTab
-      : "posts";
+    state.profileContentTab = nextContentTab;
     state.profileTopTab = resolvedTopTab;
     if (resolvedTopTab === "landing") {
       if (preserveLandingState) {
@@ -402,6 +431,11 @@ export function createPublicProfileRuntimeController({
     state.drawerOpen = false;
     state.profileBackTab = nextProfileBackTab;
     state.activeTab = "profile";
+    state.profileSurface = resolveVisibleProfileSurface(state, {
+      profileView: nextView,
+      profileTopTab: resolvedTopTab,
+      profileContentTab: nextContentTab
+    });
     renderApp();
     attachProfileViewListener(nextProfile);
   }
