@@ -1497,6 +1497,44 @@ export function createSessionDataRuntimeController({
   }
 
   async function bootstrapUser(user) {
+    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+    const isRoleCriticalTab = activeTabKey === "leads"
+      || activeTabKey === "staff"
+      || activeTabKey === "customers"
+      || activeTabKey === "businessaccounts";
+    const deferGlobalBootstrapWork = !isRoleCriticalTab;
+    const runDeferredBootstrapTask = (scope = "", task = null) => {
+      if (typeof task !== "function") return;
+      try {
+        Promise.resolve()
+          .then(() => task())
+          .catch((err) => {
+            console.warn(`[mnyra][${scope || "auth.bootstrap.defer"}]`, err);
+          });
+      } catch (err) {
+        console.warn(`[mnyra][${scope || "auth.bootstrap.defer"}]`, err);
+      }
+    };
+    const hydrateRestaurantsForBootstrap = (ids, options) => {
+      if (!deferGlobalBootstrapWork) {
+        return hydrateRestaurantsByIdsFn(ids, options);
+      }
+      runDeferredBootstrapTask(
+        "auth.bootstrap.defer.hydrateRestaurants",
+        () => hydrateRestaurantsByIdsFn(ids, options)
+      );
+      return Promise.resolve();
+    };
+    const resolveRoleSwitchTargetsForBootstrap = (currentUser) => {
+      if (!deferGlobalBootstrapWork) {
+        return resolveRoleSwitchTargetsFn(currentUser);
+      }
+      runDeferredBootstrapTask(
+        "auth.bootstrap.defer.resolveRoleSwitchTargets",
+        () => resolveRoleSwitchTargetsFn(currentUser)
+      );
+      return Promise.resolve();
+    };
     await bootstrapAuthenticatedSessionCoreFn({
       user,
       loadAuthProfile: (currentUser) => loadAuthProfileFn(currentUser),
@@ -1540,8 +1578,8 @@ export function createSessionDataRuntimeController({
         state.__skipNextAuthProfileEnsureTab = safeTab;
       },
       getRestaurantId: () => state.userProfile.restaurantId || "",
-      hydrateRestaurantsByIds: (ids, options) => hydrateRestaurantsByIdsFn(ids, options),
-      resolveRoleSwitchTargets: (currentUser) => resolveRoleSwitchTargetsFn(currentUser),
+      hydrateRestaurantsByIds: (ids, options) => hydrateRestaurantsForBootstrap(ids, options),
+      resolveRoleSwitchTargets: (currentUser) => resolveRoleSwitchTargetsForBootstrap(currentUser),
       ensureFollowingLoaded: () => {
         if (!dataLoaded.following) dataLoaded.following = true;
       },

@@ -70,6 +70,29 @@ export function createAuthSessionStartupCoordinator({
     });
   }
 
+  function schedulePostVisibleStartupTask(task, {
+    delayMs = 0,
+    fallbackDelayMs = 120
+  } = {}) {
+    if (typeof task !== "function") return;
+    const run = () => {
+      const safeDelay = Math.max(0, Number(delayMs) || 0);
+      if (safeDelay > 0) {
+        setTimeoutSafe(task, safeDelay);
+        return;
+      }
+      queueMicrotaskSafe(task);
+    };
+    if (windowObj && typeof windowObj.requestAnimationFrame === "function") {
+      windowObj.requestAnimationFrame(() => {
+        windowObj.requestAnimationFrame(run);
+      });
+      return;
+    }
+    const safeFallbackDelay = Math.max(0, Number(fallbackDelayMs) || 0);
+    setTimeoutSafe(run, safeFallbackDelay);
+  }
+
   function readBootstrapInFlightUid() {
     return String(state?.__authBootstrapInFlightUid || "").trim();
   }
@@ -138,6 +161,22 @@ export function createAuthSessionStartupCoordinator({
     }
   }
 
+  function schedulePendingRouteReplayWithTimeline() {
+    const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
+    if (!pendingRouteFlags.hasAny) {
+      runNonBlockingRouteOpenWithTimeline();
+      return;
+    }
+    markStartup("pending route open start");
+    void Promise.resolve(postLoginRouteOpen.openPendingRoutes())
+      .catch((err) => {
+        reportCriticalRuntimeFailure("auth.pendingRouteOpen", err);
+      })
+      .finally(() => {
+        markStartup("pending route open end");
+      });
+  }
+
   function hasMeaningfulProfileHint(profile = null) {
     if (!profile || typeof profile !== "object") return false;
     const role = String(profile.role || "").trim().toLowerCase();
@@ -180,7 +219,10 @@ export function createAuthSessionStartupCoordinator({
     return true;
   }
 
-  function scheduleGuestTabEnsure({ prioritize = false } = {}) {
+  function scheduleGuestTabEnsure({
+    prioritize = false,
+    visiblePath = false
+  } = {}) {
     const runEnsure = (scope) => {
       const activeTab = String(state?.activeTab || "").trim().toLowerCase();
       markStartup("guest ensureTabData start", { scope, tab: activeTab || "feed" });
@@ -193,6 +235,14 @@ export function createAuthSessionStartupCoordinator({
           markStartup("guest ensureTabData end", { scope, tab: activeTab || "feed" });
         });
     };
+    if (visiblePath) {
+      schedulePostVisibleStartupTask(() => {
+        runEnsure("startup.ensureTabData.guestVisiblePath");
+      }, {
+        delayMs: 140
+      });
+      return;
+    }
     if (prioritize) {
       queueMicrotaskSafe(() => {
         runEnsure("startup.ensureTabData.guestPriority");
@@ -265,9 +315,12 @@ export function createAuthSessionStartupCoordinator({
       requestRender("initialize");
       schedulePerfWarmMark();
       if (!state?.user) {
-        scheduleGuestTabEnsure({ prioritize: prioritizeGuestSurface });
+        scheduleGuestTabEnsure({
+          prioritize: false,
+          visiblePath: prioritizeGuestSurface
+        });
       }
-      if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
+      if (!state?.user && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({
@@ -278,7 +331,9 @@ export function createAuthSessionStartupCoordinator({
           });
         };
         if (prioritizeGuestSurface) {
-          setTimeoutSafe(runPublicBootstrapFetch, 120);
+          schedulePostVisibleStartupTask(runPublicBootstrapFetch, {
+            delayMs: 780
+          });
         } else {
           queueMicrotaskSafe(runPublicBootstrapFetch);
         }
@@ -322,68 +377,29 @@ export function createAuthSessionStartupCoordinator({
     if (user) {
       if (state?.auth) {
         state.auth.open = false;
+        state.auth.loading = false;
       }
       markBootstrapInFlight(nextUid);
       loadUserScopedPersisted(user);
       primeFastAuthProfileHints(user);
-      const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
-      if (pendingRouteFlags.hasAny) {
-        suspendRender();
-        void (async () => {
-          try {
-            await bootstrapUser(user, { transitionSeq });
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            await postLoginRouteOpen.openPendingRoutes();
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            if (state?.auth) {
-              state.auth.loading = false;
-            }
-            markBootstrapSettled(nextUid);
-            requestRender();
-          } catch (err) {
-            reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
-            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
-              if (state?.auth) {
-                state.auth.loading = false;
-              }
-              clearBootstrapInFlight(nextUid);
-              requestRender();
-            }
-          } finally {
+      schedulePendingRouteReplayWithTimeline();
+      requestRender();
+      void (async () => {
+        try {
+          await bootstrapUser(user, { transitionSeq });
+          if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+          markBootstrapSettled(nextUid);
+          requestRender();
+        } catch (err) {
+          reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
+          if (isCurrentAuthTransition(transitionSeq, nextUid)) {
             clearBootstrapInFlight(nextUid);
-            resumeRender();
+            requestRender();
           }
-        })();
-      } else {
-        if (state?.auth) {
-          state.auth.loading = false;
+        } finally {
+          clearBootstrapInFlight(nextUid);
         }
-        requestRender();
-        void (async () => {
-          try {
-            await bootstrapUser(user, { transitionSeq });
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            await runNonBlockingRouteOpenWithTimeline();
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            if (state?.auth) {
-              state.auth.loading = false;
-            }
-            markBootstrapSettled(nextUid);
-            requestRender();
-          } catch (err) {
-            reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
-            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
-              if (state?.auth) {
-                state.auth.loading = false;
-              }
-              clearBootstrapInFlight(nextUid);
-              requestRender();
-            }
-          } finally {
-            clearBootstrapInFlight(nextUid);
-          }
-        })();
-      }
+      })();
     } else {
       markBootstrapSettled("");
       clearAuthBootstrapSnapshot();

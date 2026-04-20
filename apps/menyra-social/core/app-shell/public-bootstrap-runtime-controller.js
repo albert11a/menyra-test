@@ -176,6 +176,20 @@ export function createPublicBootstrapRuntimeController({
     });
   }
 
+  function scheduleNonCriticalTask(task, delayMs = 180) {
+    if (typeof task !== "function") return;
+    const safeDelay = Math.max(0, Number(delayMs) || 0);
+    if (win && typeof win.setTimeout === "function") {
+      win.setTimeout(task, safeDelay);
+      return;
+    }
+    if (typeof setTimeout === "function") {
+      setTimeout(task, safeDelay);
+      return;
+    }
+    Promise.resolve().then(task);
+  }
+
   function toMillisSafe(value) {
     const parsed = toDateSafe(value);
     if (parsed && typeof parsed.getTime === "function") {
@@ -263,6 +277,8 @@ export function createPublicBootstrapRuntimeController({
     const incomingStories = normalizePublicBootstrapStories(payload.stories);
     let changed = false;
     let previewChanged = false;
+    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+    const deferFeedBootstrapPostProcessing = activeTabKey === "profile";
 
     if (incomingRestaurants.length) {
       const existingPreview = Array.isArray(state.bootstrapRestaurantPreview)
@@ -314,11 +330,22 @@ export function createPublicBootstrapRuntimeController({
       }
     }
 
-    if (syncFeedPostLogos()) {
-      changed = true;
-    }
-    if (state.stories.length) {
-      queueStoryIdentityHydration(state.stories, { max: fastLimits.storyIdentityHydration });
+    if (deferFeedBootstrapPostProcessing) {
+      scheduleNonCriticalTask(() => {
+        try {
+          syncFeedPostLogos();
+          if (state.stories.length) {
+            queueStoryIdentityHydration(state.stories, { max: fastLimits.storyIdentityHydration });
+          }
+        } catch {}
+      }, 260);
+    } else {
+      if (syncFeedPostLogos()) {
+        changed = true;
+      }
+      if (state.stories.length) {
+        queueStoryIdentityHydration(state.stories, { max: fastLimits.storyIdentityHydration });
+      }
     }
 
     if (changed) {
