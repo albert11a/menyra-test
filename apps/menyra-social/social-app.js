@@ -1776,6 +1776,63 @@ function applyPendingInitialRouteState() {
   if (isAuthRestorePendingProtectedRoute(pendingInitialTab)) {
     state.activeTab = pendingInitialTab;
   }
+  const pendingRoute = pendingRouteState.getPendingState?.() || {};
+  const pendingProfileRestaurantId = normalizePendingProfileRestaurantIdCore(pendingRoute.pendingProfileRestaurantId || "");
+  if (pendingProfileRestaurantId) {
+    const currentProfileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
+    const currentProfileTruthState = String(state.profileView?.profile?.truthState || "").trim().toLowerCase();
+    const pendingProfileAlreadyOpen = isPendingProfileAlreadyOpenCore({
+      pendingProfileRestaurantId,
+      currentProfileRestaurantId,
+      currentProfileTruthState
+    });
+    if (!pendingProfileAlreadyOpen) {
+      const requestedTopTab = normalizeProfileTopTabFromRouteCore(pendingRoute.pendingProfileTopTab || "");
+      const safeAccessSourceRaw = String(pendingRoute.pendingProfileAccessSource || "").trim().toLowerCase();
+      const isQrLikeAccessSource = safeAccessSourceRaw === "qr"
+        || safeAccessSourceRaw === "qrcode"
+        || safeAccessSourceRaw === "qr-code"
+        || safeAccessSourceRaw === "menuqr"
+        || safeAccessSourceRaw === "menu-qr"
+        || safeAccessSourceRaw === "scanqr"
+        || safeAccessSourceRaw === "scan-qr";
+      const normalizedMenuAccessSource = requestedTopTab === "menu" && isQrLikeAccessSource
+        ? "qr"
+        : "";
+      const pendingTableNumber = Math.max(0, Number(pendingRoute.pendingProfileTableNumber || 0) || 0);
+      const normalizedTableNumber = normalizedMenuAccessSource === "qr" ? pendingTableNumber : 0;
+      state.profileView = {
+        profile: {
+          name: "Profil wird geladen...",
+          handle: "",
+          uid: "",
+          bio: "Profil wird geladen...",
+          avatar: "",
+          location: "",
+          followers: 0,
+          following: 0,
+          privateAccount: false,
+          role: "business",
+          restaurantId: pendingProfileRestaurantId,
+          pendingFollowRequest: false,
+          postsLoaded: false,
+          posts: [],
+          truthState: "route-pending-loading"
+        },
+        posts: [],
+        menuAccessSource: normalizedMenuAccessSource,
+        tableNumber: normalizedTableNumber
+      };
+      state.profileModal = { open: false, profile: null };
+      state.profileContentTab = "posts";
+      state.profileTopTab = requestedTopTab || "profile";
+      state.profileViewMode = "grid";
+      state.profilePostMenuId = null;
+      state.profileBackTab = "";
+      state.drawerOpen = false;
+      state.activeTab = "profile";
+    }
+  }
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
   if (activeTabKey === "home") state.activeTab = "feed";
 }

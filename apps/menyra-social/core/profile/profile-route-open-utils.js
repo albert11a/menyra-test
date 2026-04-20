@@ -4,11 +4,14 @@ export function normalizePendingProfileRestaurantIdCore(value = "") {
 
 export function isPendingProfileAlreadyOpenCore({
   pendingProfileRestaurantId = "",
-  currentProfileRestaurantId = ""
+  currentProfileRestaurantId = "",
+  currentProfileTruthState = ""
 } = {}) {
   const pendingId = String(pendingProfileRestaurantId || "").trim();
   const currentId = String(currentProfileRestaurantId || "").trim();
   if (!pendingId || !currentId) return false;
+  const truthState = String(currentProfileTruthState || "").trim().toLowerCase();
+  if (truthState === "route-pending-loading") return false;
   return pendingId === currentId;
 }
 

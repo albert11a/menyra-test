@@ -152,7 +152,8 @@ export function createAppControllerBridge({
     normalizePendingProfileRestaurantId: (value) => deeplink.normalizePendingProfileRestaurantIdCore(value),
     isPendingProfileAlreadyOpen: ({ pendingProfileRestaurantId = "" } = {}) => deeplink.isPendingProfileAlreadyOpenCore({
       pendingProfileRestaurantId,
-      currentProfileRestaurantId: deeplink.state.profileView?.profile?.restaurantId || ""
+      currentProfileRestaurantId: deeplink.state.profileView?.profile?.restaurantId || "",
+      currentProfileTruthState: deeplink.state.profileView?.profile?.truthState || ""
     }),
     normalizeProfileTopTabFromRoute: (value) => deeplink.normalizeProfileTopTabFromRouteCore(value),
     openProfileViewFromBusiness: (input, options = {}) => openProfileViewFromBusiness(input, options),
