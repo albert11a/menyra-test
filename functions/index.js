@@ -1331,6 +1331,735 @@ async function queryActiveStories(limitCount = 12) {
   }
 }
 
+const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
+  "ceo",
+  "owner",
+  "staff",
+  "waiter",
+  "kitchen",
+  "social",
+  "heart",
+  "hub",
+  "apps",
+  "api",
+  "login",
+  "register",
+  "profile",
+  "post",
+  "story",
+  "menyra-restaurants",
+  "lp",
+  "index.html"
+]);
+
+function safeLowerText(value = "") {
+  return asText(value).toLowerCase();
+}
+
+function normalizePublicRouteSlug(value = "") {
+  let key = asText(value).toLowerCase();
+  if (!key) return "";
+  try {
+    if (typeof key.normalize === "function") {
+      key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    }
+  } catch {}
+  return key
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .trim();
+}
+
+function normalizePublicProfileTopTab(value = "", fallback = "profile") {
+  const topTab = safeLowerText(value);
+  if (topTab === "menu" || topTab === "karte" || topTab === "speisekarte" || topTab === "shop") return "menu";
+  if (topTab === "qr" || topTab === "menuqr" || topTab === "scan-qr" || topTab === "scanqr") return "menu";
+  if (topTab === "profile" || topTab === "posts" || topTab === "home" || topTab === "overview") return "profile";
+  if (topTab === "landing" || topTab === "welcome" || topTab === "onboarding") return "landing";
+  if (topTab === "cart" || topTab === "basket" || topTab === "warenkorb") return "cart";
+  return safeLowerText(fallback) || "profile";
+}
+
+function isQrLikePublicAccessSource(value = "") {
+  const source = safeLowerText(value);
+  return source === "qr"
+    || source === "qrcode"
+    || source === "qr-code"
+    || source === "menuqr"
+    || source === "menu-qr"
+    || source === "scanqr"
+    || source === "scan-qr";
+}
+
+function normalizePathRestaurantSlug(value = "") {
+  const raw = asText(value);
+  if (!raw) return "";
+  const stripped = raw.startsWith("@") ? raw.slice(1) : raw;
+  const slug = asText(stripped);
+  if (!slug || slug.includes(".")) return "";
+  const key = slug.toLowerCase();
+  if (RESERVED_PUBLIC_ROUTE_SEGMENTS.has(key)) return "";
+  return slug;
+}
+
+function resolvePathPublicProfileRoute(rawPath = "") {
+  const safePath = asText(rawPath).split("?")[0].split("#")[0].trim();
+  if (!safePath) return { restaurantId: "", topTab: "", accessSource: "" };
+  let segments = safePath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  if (!segments.length) return { restaurantId: "", topTab: "", accessSource: "" };
+  const appRootIndex = segments.findIndex((seg) => safeLowerText(seg) === "menyra-social");
+  if (appRootIndex >= 0 && appRootIndex < segments.length - 1) {
+    segments = segments.slice(appRootIndex + 1);
+  }
+  if (segments[0] && safeLowerText(segments[0]) === "index.html") {
+    segments = segments.slice(1);
+  }
+  if (!segments.length) return { restaurantId: "", topTab: "", accessSource: "" };
+  const tailSegments = segments.length > 2 ? segments.slice(-2) : segments.slice();
+  const first = asText(tailSegments[0]);
+  const second = asText(tailSegments[1]);
+  const firstTopTab = normalizePublicProfileTopTab(first, "");
+  const secondTopTab = normalizePublicProfileTopTab(second, "");
+  const firstQrHint = isQrLikePublicAccessSource(first);
+  const secondQrHint = isQrLikePublicAccessSource(second);
+  const firstSlug = normalizePathRestaurantSlug(first);
+  const secondSlug = normalizePathRestaurantSlug(second);
+  if (tailSegments.length === 1 && firstSlug) {
+    return {
+      restaurantId: firstSlug,
+      topTab: "",
+      accessSource: ""
+    };
+  }
+  if (tailSegments.length >= 2 && firstTopTab && secondSlug) {
+    return {
+      restaurantId: secondSlug,
+      topTab: firstTopTab,
+      accessSource: firstQrHint ? "qr" : ""
+    };
+  }
+  if (tailSegments.length >= 2 && secondTopTab && firstSlug) {
+    return {
+      restaurantId: firstSlug,
+      topTab: secondTopTab,
+      accessSource: secondQrHint ? "qr" : ""
+    };
+  }
+  return { restaurantId: "", topTab: "", accessSource: "" };
+}
+
+function resolveCountOrNull(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) continue;
+    return Math.max(0, Math.round(numeric));
+  }
+  return null;
+}
+
+function normalizeBootstrapOrderIndex(value, fallback = 0) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Math.max(0, Number(fallback) || 0);
+  return Math.max(0, Math.floor(numeric));
+}
+
+function normalizeExternalBootstrapUrl(value = "") {
+  const raw = asText(value);
+  if (!raw) return "";
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+  return `https://${raw.replace(/^\/+/, "")}`;
+}
+
+function normalizeBootstrapMenuImage(value = "", depth = 0) {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const text = asText(value);
+    if (!text) return "";
+    const lower = text.toLowerCase();
+    if (lower === "null" || lower === "undefined" || lower === "data") return "";
+    if ((text.startsWith("{") && text.endsWith("}")) || (text.startsWith("[") && text.endsWith("]"))) {
+      try {
+        return normalizeBootstrapMenuImage(JSON.parse(text), depth + 1);
+      } catch {
+        return text;
+      }
+    }
+    return text;
+  }
+  if (depth > 2 || typeof value !== "object") return "";
+  const candidate = value.url
+    || value.src
+    || value.imageUrl
+    || value.imageURL
+    || value.image_url
+    || value.imagePath
+    || value.image_path
+    || value.imageSrc
+    || value.image_src
+    || value.path
+    || value.cdnUrl
+    || value.cdnURL
+    || value.downloadURL
+    || value.downloadUrl
+    || value.photoUrl
+    || value.photoURL
+    || value.photo_url
+    || value.picture
+    || value.pictureUrl
+    || value.pictureURL
+    || value.photo
+    || value.img
+    || value.imgUrl
+    || value.imgURL
+    || value.img_src
+    || value.imgSrc
+    || value.thumbnail
+    || value.thumbnailUrl
+    || value.thumbnailURL
+    || value.thumb
+    || value.original
+    || value.file
+    || value.fileUrl
+    || value.fileURL
+    || value.publicUrl
+    || value.publicURL
+    || value.secure_url
+    || value.secureUrl;
+  const resolved = normalizeBootstrapMenuImage(candidate, depth + 1);
+  if (resolved) return resolved;
+  for (const nested of Object.values(value)) {
+    const next = normalizeBootstrapMenuImage(nested, depth + 1);
+    if (next) return next;
+  }
+  return "";
+}
+
+function normalizeBootstrapCrossSellItemIds(value = "", { excludeId = "" } = {}) {
+  const blocked = asText(excludeId);
+  const seen = new Set();
+  const push = (entry) => {
+    if (entry === null || entry === undefined) return;
+    if (Array.isArray(entry)) {
+      entry.forEach(push);
+      return;
+    }
+    const raw = typeof entry === "object"
+      ? (entry.id || entry.itemId || entry.productId || entry.menuItemId || "")
+      : entry;
+    const str = asText(raw);
+    if (!str) return;
+    str.split(",").forEach((part) => {
+      const next = asText(part);
+      if (!next || next === blocked || seen.has(next)) return;
+      seen.add(next);
+    });
+  };
+  push(value);
+  return Array.from(seen);
+}
+
+function normalizeBootstrapMenuItem(item = {}, restaurantId = "", index = 0) {
+  const row = item && typeof item === "object" ? item : {};
+  const safeRestaurantId = asText(restaurantId || row.restaurantId);
+  const explicitId = asText(
+    row.id
+    || row.itemId
+    || row.menuItemId
+    || row.productId
+  );
+  const fallbackNameToken = normalizePublicRouteSlug(row.name || row.title || row.category || "item") || "item";
+  const resolvedId = explicitId || `${fallbackNameToken}_${Math.max(0, Number(index) || 0)}`;
+  const rawImageValues = [];
+  [
+    row.imageUrl,
+    row.imageURL,
+    row.image_url,
+    row.image,
+    row.photoUrl,
+    row.photoURL,
+    row.photo_url,
+    row.img,
+    row.imgUrl,
+    row.imgURL,
+    row.thumbnail,
+    row.thumb,
+    row.cover,
+    row.coverUrl,
+    row.coverURL
+  ].forEach((entry) => {
+    if (entry !== null && entry !== undefined) rawImageValues.push(entry);
+  });
+  [
+    row.imageUrls,
+    row.images,
+    row.gallery,
+    row.photos,
+    row.media,
+    row.mediaUrls,
+    row.photoUrls,
+    row.pictureUrls
+  ].forEach((list) => {
+    if (Array.isArray(list)) rawImageValues.push(...list);
+    else if (list !== null && list !== undefined) rawImageValues.push(list);
+  });
+  const imageUrls = Array.from(new Set(rawImageValues
+    .map((entry) => normalizeBootstrapMenuImage(entry))
+    .filter(Boolean)));
+  const imageUrl = asText(row.imageUrl || imageUrls[0]);
+  const menuSectionRaw = safeLowerText(row.menuSection || row.displaySection || row.menuPlacement || "");
+  const typeRaw = safeLowerText(row.type || row.menuType || row.kind || row.group || row.section || "");
+  const normalizedType = typeRaw === "drink" ? "drink" : "food";
+  const menuSection = menuSectionRaw === "drink" || menuSectionRaw === "food"
+    ? menuSectionRaw
+    : normalizedType;
+  const orderIndex = normalizeBootstrapOrderIndex(
+    row.orderIndex ?? row.sortOrder ?? row.position ?? row.rank,
+    index
+  );
+  const statusVisibilityRaw = safeLowerText(row.statusVisibility || "");
+  const visibilityRaw = safeLowerText(row.visibility || row.status || "");
+  const statusHidden = row.statusHidden === true
+    || statusVisibilityRaw === "hidden"
+    || row.hidden === true
+    || row.visible === false
+    || visibilityRaw === "hidden";
+  const menuVisibilityRaw = safeLowerText(row.menuVisibility || "");
+  const hidden = row.menuHidden === true || menuVisibilityRaw === "hidden";
+  const specialSizeRaw = safeLowerText(row.specialSize || row.specialCardSize || "");
+  const specialActionPayload = row.specialAction && typeof row.specialAction === "object"
+    ? row.specialAction
+    : {};
+  const specialActionTypeRaw = safeLowerText(
+    row.specialActionType
+    || row.actionType
+    || specialActionPayload.type
+    || ""
+  );
+  const specialActionType = specialActionTypeRaw === "link" || specialActionTypeRaw === "product"
+    ? specialActionTypeRaw
+    : "self";
+  const stockRaw = row.stock ?? row.stockCount ?? row.inventory ?? row.quantity ?? null;
+  const stockNumber = Number(stockRaw);
+  return {
+    id: resolvedId,
+    restaurantId: safeRestaurantId,
+    type: normalizedType,
+    menuSection,
+    orderIndex,
+    category: asText(row.category, "Sonstiges"),
+    name: asText(row.name || row.title, "Produkt"),
+    description: asText(row.description || row.desc),
+    ingredients: asText(row.ingredients || row.ingredient || row.inhaltsstoffe),
+    longDescription: asText(row.longDescription),
+    allergens: asText(row.allergens || row.allergen),
+    brand: asText(row.brand || row.manufacturer),
+    sku: asText(row.sku || row.articleNumber || row.articleNo || row.code),
+    stock: stockRaw === null || stockRaw === undefined || asText(stockRaw) === ""
+      ? null
+      : (Number.isFinite(stockNumber) ? Math.max(0, Math.round(stockNumber)) : null),
+    sizes: Array.isArray(row.sizes) ? row.sizes : [],
+    colors: Array.isArray(row.colors) ? row.colors : [],
+    cropX: Number.isFinite(Number(row.cropX)) ? Number(row.cropX) : 50,
+    cropY: Number.isFinite(Number(row.cropY)) ? Number(row.cropY) : 50,
+    price: row.price ?? "",
+    available: row.available !== false,
+    hidden,
+    statusHidden,
+    statusVisibility: statusHidden ? "hidden" : "auto",
+    cardStyle: asText(row.cardStyle || row.menuCardStyle || row.cardLayout || row.layoutStyle),
+    specialSize: specialSizeRaw === "food" ? "food" : "default",
+    specialActionType,
+    specialActionUrl: specialActionType === "link"
+      ? asText(row.specialActionUrl || row.linkUrl || row.actionUrl || specialActionPayload.url)
+      : "",
+    specialActionProductId: specialActionType === "product"
+      ? asText(row.specialActionProductId || row.targetProductId || row.productId || specialActionPayload.productId)
+      : "",
+    crossSellItemIds: normalizeBootstrapCrossSellItemIds(
+      row.crossSellItemIds
+      || row.crossSellIds
+      || row.crossSellProducts
+      || row.crossSelling
+      || row.crossSell,
+      { excludeId: resolvedId }
+    ),
+    woltUrl: normalizeExternalBootstrapUrl(
+      row.woltUrl
+      || row.woltLink
+      || row.woltURL
+      || row.deliveryUrl
+      || row.deliveryURL
+      || ""
+    ),
+    imageUrl,
+    imageUrls
+  };
+}
+
+function coerceBootstrapMenuItemsFromData(data = {}) {
+  const source = data && typeof data === "object" ? data : {};
+  const directList = source.items || source.menu || source.menuItems || source.products || source.data || [];
+  if (Array.isArray(directList)) return directList;
+  if (directList && typeof directList === "object") {
+    return Object.values(directList);
+  }
+  return [];
+}
+
+async function queryPublicMenuItemsForRestaurant(restaurantId = "") {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return [];
+  try {
+    const snap = await db
+      .collection("restaurants")
+      .doc(safeRestaurantId)
+      .collection("public")
+      .doc("menu")
+      .get();
+    if (!snap.exists) return [];
+    const raw = coerceBootstrapMenuItemsFromData(snap.data() || {});
+    return raw
+      .map((item, index) => normalizeBootstrapMenuItem(item, safeRestaurantId, index))
+      .sort((a, b) => normalizeBootstrapOrderIndex(a?.orderIndex) - normalizeBootstrapOrderIndex(b?.orderIndex));
+  } catch {
+    return [];
+  }
+}
+
+async function queryPublicMenuMetaForRestaurant(restaurantId = "") {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) {
+    return { statusBadgeVisible: true };
+  }
+  try {
+    const snap = await db
+      .collection("restaurants")
+      .doc(safeRestaurantId)
+      .collection("public")
+      .doc("meta")
+      .get();
+    if (!snap.exists) {
+      return { statusBadgeVisible: true };
+    }
+    const data = snap.data() || {};
+    if (typeof data.menuStatusBadgeVisible === "boolean") {
+      return { statusBadgeVisible: data.menuStatusBadgeVisible };
+    }
+    if (typeof data.menuAvailabilityBadgeVisible === "boolean") {
+      return { statusBadgeVisible: data.menuAvailabilityBadgeVisible };
+    }
+    return { statusBadgeVisible: true };
+  } catch {
+    return { statusBadgeVisible: true };
+  }
+}
+
+async function queryPublicPostsForRestaurant(restaurantId = "", limitCount = 12) {
+  const safeRestaurantId = asText(restaurantId);
+  const safeLimit = Math.max(1, Number(limitCount) || 12);
+  if (!safeRestaurantId) return null;
+  const ref = db.collection("restaurants").doc(safeRestaurantId).collection("socialPosts");
+  try {
+    return await ref
+      .where("status", "==", "active")
+      .orderBy("createdAt", "desc")
+      .limit(safeLimit)
+      .get();
+  } catch {
+    try {
+      return await ref
+        .orderBy("createdAt", "desc")
+        .limit(safeLimit)
+        .get();
+    } catch {
+      return ref.limit(safeLimit).get();
+    }
+  }
+}
+
+function resolveMenuLayoutColorFromRestaurant(data = {}) {
+  const source = data && typeof data === "object" ? data : {};
+  return safeLowerText(
+    source.menuCardColor
+    || source.menuLayoutColor
+    || source.menuLayout?.cardColor
+    || source.layout?.menuCardColor
+    || source.menu?.cardColor
+    || "white"
+  ) || "white";
+}
+
+function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
+  const type = asText(
+    data.type
+    || data.customerType
+    || data.category
+    || data.kind
+    || data.restaurantType
+  );
+  return {
+    id: asText(restaurantId),
+    name: asText(data.name || data.restaurantName || data.displayName),
+    restaurantName: asText(data.restaurantName || data.name),
+    handle: asText(data.handle || data.landingSlug),
+    landingSlug: asText(data.landingSlug),
+    logoUrl: asText(data.logoUrl || data.logo || data.logoURL),
+    city: asText(data.city || data.address),
+    ...(type ? { type, customerType: type } : {})
+  };
+}
+
+function mapPublicRoutePostSeed({
+  docId = "",
+  data = {},
+  restaurantId = ""
+} = {}) {
+  const source = data && typeof data === "object" ? data : {};
+  const postId = asText(docId || source.id);
+  const safeRestaurantId = asText(restaurantId || source.restaurantId || source.rid || source.ownerId);
+  if (!postId || !safeRestaurantId) return null;
+  const status = safeLowerText(source.status || "active");
+  if (status && status !== "active" && status !== "live") return null;
+  if (source.active === false || source.isActive === false) return null;
+  const mediaRow = Array.isArray(source.media) && source.media.length
+    ? source.media[0]
+    : null;
+  const url = asText(
+    source.thumbUrl
+    || source.mediaUrl
+    || mediaRow?.thumbUrl
+    || mediaRow?.url
+    || source.imageUrl
+    || source.url
+  );
+  if (!url) return null;
+  const mediaType = safeLowerText(mediaRow?.type || source.mediaType || source.type);
+  return {
+    id: postId,
+    restaurantId: safeRestaurantId,
+    url,
+    image: url,
+    type: asText(source.type || source.postType, "square"),
+    caption: asText(source.caption || source.captionShort),
+    content: asText(source.caption || source.captionShort),
+    createdAt: toMillis(source.createdAt),
+    likes: Number(source.likesCount || source.likes || 0) || 0,
+    comments: Number(source.commentsCount || source.comments || 0) || 0,
+    isVideo: mediaType === "video",
+    ownerType: "restaurant",
+    ownerId: safeRestaurantId
+  };
+}
+
+function mapPublicRouteFeedPost(post = {}, restaurant = {}) {
+  const safeRestaurantId = asText(post.restaurantId || post.ownerId);
+  if (!safeRestaurantId) return null;
+  return {
+    id: asText(post.id),
+    restaurantId: safeRestaurantId,
+    business: asText(restaurant.name || restaurant.restaurantName, "Business"),
+    logo: asText(restaurant.logoUrl),
+    location: asText(restaurant.city, "Prishtina"),
+    content: asText(post.caption || post.content),
+    image: asText(post.url || post.image),
+    likes: Number(post.likes || 0) || 0,
+    comments: Number(post.comments || 0) || 0,
+    createdAt: Number(post.createdAt || 0) || 0,
+    category: asText(post.type, "food"),
+    isLive: false,
+    ownerType: "restaurant",
+    ownerId: safeRestaurantId
+  };
+}
+
+async function resolveBootstrapRestaurantDocByRouteId(routeLookupId = "") {
+  const safeLookupId = asText(routeLookupId);
+  if (!safeLookupId) return null;
+  try {
+    const directSnap = await db.collection("restaurants").doc(safeLookupId).get();
+    if (directSnap.exists) {
+      return {
+        id: asText(directSnap.id),
+        data: directSnap.data() || {}
+      };
+    }
+  } catch {}
+  const routeSlug = normalizePublicRouteSlug(safeLookupId);
+  if (!routeSlug) return null;
+  const queryByField = async (fieldName = "", fieldValue = "") => {
+    const safeFieldName = asText(fieldName);
+    const safeFieldValue = asText(fieldValue);
+    if (!safeFieldName || !safeFieldValue) return null;
+    try {
+      const snap = await db
+        .collection("restaurants")
+        .where(safeFieldName, "==", safeFieldValue)
+        .limit(1)
+        .get();
+      const first = snap.docs?.[0] || null;
+      if (!first?.id) return null;
+      return {
+        id: asText(first.id),
+        data: first.data() || {}
+      };
+    } catch {
+      return null;
+    }
+  };
+  const byLandingSlug = await queryByField("landingSlug", routeSlug);
+  if (byLandingSlug) return byLandingSlug;
+  const byHandle = await queryByField("handle", routeSlug);
+  if (byHandle) return byHandle;
+  return null;
+}
+
+function parseSocialBootstrapRouteContext(req) {
+  const query = req?.query && typeof req.query === "object" ? req.query : {};
+  const readQueryValue = (...keys) => {
+    for (const key of keys) {
+      const value = query?.[key];
+      if (Array.isArray(value)) {
+        const first = asText(value[0]);
+        if (first) return first;
+      } else {
+        const text = asText(value);
+        if (text) return text;
+      }
+    }
+    return "";
+  };
+  const routeRestaurantId = readQueryValue("r", "restaurant", "restaurantId", "rid", "businessId");
+  const routeTab = safeLowerText(readQueryValue("tab", "view"));
+  const routeTopTab = safeLowerText(readQueryValue("top", "surface", "screen"));
+  const routeSource = safeLowerText(readQueryValue("src", "source", "menuSource", "menuAccessSource", "access"));
+  const qrFlagRaw = safeLowerText(readQueryValue("qr", "isQr", "menuQr"));
+  const qrFlagEnabled = qrFlagRaw === "1" || qrFlagRaw === "true" || qrFlagRaw === "yes" || qrFlagRaw === "qr";
+  const routePathname = readQueryValue("pathname", "path");
+  const pathProfileRoute = routeRestaurantId
+    ? { restaurantId: "", topTab: "", accessSource: "" }
+    : resolvePathPublicProfileRoute(routePathname);
+  const restaurantLookupId = asText(routeRestaurantId || pathProfileRoute.restaurantId);
+  const accessSource = safeLowerText(routeSource || pathProfileRoute.accessSource || (qrFlagEnabled ? "qr" : ""));
+  const fallbackTopTab = restaurantLookupId && isQrLikePublicAccessSource(accessSource)
+    ? "menu"
+    : "";
+  const requestedTopTab = restaurantLookupId
+    ? (routeTopTab || routeTab || pathProfileRoute.topTab || fallbackTopTab)
+    : "";
+  const resolvedTopTab = normalizePublicProfileTopTab(requestedTopTab || (isQrLikePublicAccessSource(accessSource) ? "menu" : "profile"), "profile");
+  const explicitLanding = resolvedTopTab === "landing";
+  const routeTableNumber = restaurantLookupId
+    ? Math.max(
+      0,
+      Number(readQueryValue("table", "tableNumber", "t")) || 0
+    )
+    : 0;
+  const surface = resolvedTopTab === "menu" ? "menu" : "profile";
+  const isDirectPublicRoute = !!restaurantLookupId
+    && !explicitLanding
+    && (surface === "menu" || surface === "profile");
+  return {
+    restaurantLookupId,
+    routePathname: asText(routePathname),
+    topTab: resolvedTopTab,
+    surface,
+    accessSource: isQrLikePublicAccessSource(accessSource) ? "qr" : "",
+    tableNumber: routeTableNumber,
+    explicitLanding,
+    isDirectPublicRoute
+  };
+}
+
+async function buildPublicRouteBootstrapPayload(routeContext = {}) {
+  const safeRouteContext = routeContext && typeof routeContext === "object" ? routeContext : {};
+  if (!safeRouteContext.isDirectPublicRoute) return null;
+  const restaurantLookupId = asText(safeRouteContext.restaurantLookupId);
+  if (!restaurantLookupId) return null;
+  const restaurantDoc = await resolveBootstrapRestaurantDocByRouteId(restaurantLookupId);
+  if (!restaurantDoc?.id) return null;
+  const restaurantId = asText(restaurantDoc.id);
+  const restaurantData = restaurantDoc.data || {};
+  const restaurantPreview = mapPublicRestaurantPreview(restaurantId, restaurantData);
+  const surface = safeRouteContext.surface === "menu" ? "menu" : "profile";
+  const [postsSnap, menuItems, menuMeta] = await Promise.all([
+    surface === "profile"
+      ? queryPublicPostsForRestaurant(restaurantId, 14)
+      : Promise.resolve(null),
+    surface === "menu"
+      ? queryPublicMenuItemsForRestaurant(restaurantId)
+      : Promise.resolve([]),
+    surface === "menu"
+      ? queryPublicMenuMetaForRestaurant(restaurantId)
+      : Promise.resolve({ statusBadgeVisible: true })
+  ]);
+  const postsSeed = [];
+  if (postsSnap && typeof postsSnap.forEach === "function") {
+    postsSnap.forEach((docSnap) => {
+      const normalized = mapPublicRoutePostSeed({
+        docId: docSnap.id,
+        data: docSnap.data() || {},
+        restaurantId
+      });
+      if (!normalized) return;
+      postsSeed.push(normalized);
+    });
+  }
+  const menuSeed = Array.isArray(menuItems) ? menuItems.slice(0, 140) : [];
+  const routePayload = {
+    owner: "web-direct",
+    routeFirst: true,
+    restaurantId,
+    surface,
+    topTab: surface === "menu" ? "menu" : "profile",
+    contentTab: surface === "menu" ? "menu" : "posts",
+    menuAccessSource: safeRouteContext.accessSource === "qr" ? "qr" : "",
+    tableNumber: Math.max(0, Number(safeRouteContext.tableNumber || 0) || 0),
+    phase: "ready",
+    identity: {
+      name: asText(restaurantPreview.name || restaurantPreview.restaurantName),
+      handle: asText(restaurantPreview.handle || restaurantPreview.landingSlug),
+      avatar: asText(restaurantPreview.logoUrl),
+      location: asText(restaurantPreview.city),
+      followers: resolveCountOrNull(
+        restaurantData.followersCount,
+        restaurantData.followers,
+        restaurantData.fansCount,
+        restaurantData.fans
+      ),
+      following: resolveCountOrNull(
+        restaurantData.followingCount,
+        restaurantData.following
+      ),
+      type: asText(restaurantPreview.type || restaurantPreview.customerType),
+      customerType: asText(restaurantPreview.customerType || restaurantPreview.type)
+    },
+    posts: {
+      count: postsSeed.length,
+      seeded: postsSeed.length > 0,
+      items: postsSeed
+    },
+    menu: {
+      count: menuSeed.length,
+      seeded: menuSeed.length > 0,
+      items: menuSeed,
+      statusBadgeVisible: menuMeta?.statusBadgeVisible !== false
+    },
+    layout: {
+      menuCardColor: resolveMenuLayoutColorFromRestaurant(restaurantData)
+    },
+    ts: Date.now()
+  };
+  return {
+    restaurants: [restaurantPreview],
+    feedPosts: postsSeed
+      .map((post) => mapPublicRouteFeedPost(post, restaurantPreview))
+      .filter(Boolean),
+    stories: [],
+    publicRoute: routePayload
+  };
+}
+
 exports.issueMediaActionTicket = functions
   .region("us-central1")
   .https.onRequest(async (req, res) => {
@@ -1534,6 +2263,34 @@ exports.socialBootstrapFeed = functions
     }
 
     try {
+      const routeContext = parseSocialBootstrapRouteContext(req);
+      if (routeContext.isDirectPublicRoute) {
+        const directPayload = await buildPublicRouteBootstrapPayload(routeContext);
+        if (directPayload?.publicRoute?.restaurantId) {
+          res.set("Cache-Control", "no-store, max-age=0");
+          logFunctionInfo(flow, {
+            ...logContext,
+            status: "served_direct_route",
+            routeRestaurantId: asText(directPayload.publicRoute.restaurantId),
+            surface: asText(directPayload.publicRoute.surface),
+            topTab: asText(directPayload.publicRoute.topTab),
+            posts: Number(directPayload.publicRoute?.posts?.count || 0) || 0,
+            menuItems: Number(directPayload.publicRoute?.menu?.count || 0) || 0
+          });
+          res.status(200).json({
+            ok: true,
+            ts: Date.now(),
+            data: {
+              restaurants: Array.isArray(directPayload.restaurants) ? directPayload.restaurants : [],
+              feedPosts: Array.isArray(directPayload.feedPosts) ? directPayload.feedPosts : [],
+              stories: Array.isArray(directPayload.stories) ? directPayload.stories : [],
+              publicRoute: directPayload.publicRoute
+            }
+          });
+          return;
+        }
+      }
+
       const FEED_BOOTSTRAP_LIMIT = 20;
       const [restaurantsSnap, feedSnap, storiesSnap] = await Promise.all([
         db.collection("restaurants").limit(120).get(),
@@ -1635,7 +2392,8 @@ exports.socialBootstrapFeed = functions
         data: {
           restaurants: restaurants.slice(0, 120),
           feedPosts: feedPosts.slice(0, FEED_BOOTSTRAP_LIMIT),
-          stories
+          stories,
+          publicRoute: null
         }
       });
     } catch (err) {

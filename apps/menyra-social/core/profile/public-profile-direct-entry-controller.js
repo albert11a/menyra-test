@@ -157,21 +157,37 @@ function resolveSeedPostsForRoute(state = null, restaurantId = "", { max = 8 } =
   return next;
 }
 
+function resolveRouteBootstrapSeedForEntry(state = null, entry = null) {
+  if (!state || typeof state !== "object") return null;
+  const safeEntry = entry && typeof entry === "object" ? entry : {};
+  const safeRestaurantId = String(safeEntry.restaurantId || "").trim();
+  if (!safeRestaurantId) return null;
+  const candidate = state.__publicRouteBootstrap;
+  if (!candidate || typeof candidate !== "object") return null;
+  if (String(candidate.restaurantId || "").trim() !== safeRestaurantId) return null;
+  return candidate;
+}
+
 function buildRoutePayloadSeed({
   state = null,
   entry = null,
   profile = null,
   posts = [],
+  routeBootstrap = null,
   phase = "seeded"
 } = {}) {
   const safeEntry = entry && typeof entry === "object" ? entry : {};
   const safeProfile = profile && typeof profile === "object" ? profile : {};
   const safePosts = Array.isArray(posts) ? posts : [];
   const safeRestaurantId = String(safeProfile.restaurantId || safeEntry.restaurantId || "").trim();
+  const safeRouteBootstrap = routeBootstrap && typeof routeBootstrap === "object" ? routeBootstrap : null;
   const menu = state?.menu || {};
+  const routeMenuCount = Math.max(0, Number(safeRouteBootstrap?.menu?.count || 0) || 0);
+  const routePostsCount = Math.max(0, Number(safeRouteBootstrap?.posts?.count || 0) || 0);
   const menuCount = String(menu.restaurantId || "").trim() === safeRestaurantId && Array.isArray(menu.items)
     ? menu.items.length
-    : 0;
+    : routeMenuCount;
+  const postsCount = safePosts.length > 0 ? safePosts.length : routePostsCount;
   return {
     owner: "web-direct",
     routeFirst: true,
@@ -179,7 +195,12 @@ function buildRoutePayloadSeed({
     surface: safeEntry.visibleSurface || (safeEntry.topTab === "menu" ? "menu" : "profile"),
     topTab: safeEntry.topTab || "profile",
     contentTab: safeEntry.contentTab || (safeEntry.topTab === "menu" ? "menu" : "posts"),
-    phase: normalizeDirectEntryPhase(phase, "seeded"),
+    phase: normalizeDirectEntryPhase(
+      safeRouteBootstrap?.phase || phase,
+      "seeded"
+    ),
+    menuAccessSource: String(safeRouteBootstrap?.menuAccessSource || safeEntry.menuAccessSource || "").trim().toLowerCase(),
+    tableNumber: Math.max(0, Number(safeRouteBootstrap?.tableNumber || safeEntry.tableNumber || 0) || 0),
     identity: {
       name: String(safeProfile.name || "").trim(),
       handle: String(safeProfile.handle || "").trim(),
@@ -189,15 +210,22 @@ function buildRoutePayloadSeed({
       following: normalizeCountOrNull(safeProfile.following)
     },
     posts: {
-      count: safePosts.length,
-      seeded: safePosts.length > 0
+      count: postsCount,
+      seeded: safePosts.length > 0 || safeRouteBootstrap?.posts?.seeded === true,
+      items: Array.isArray(safeRouteBootstrap?.posts?.items) ? safeRouteBootstrap.posts.items : safePosts
     },
     menu: {
       count: menuCount,
-      seeded: menuCount > 0
+      seeded: menuCount > 0 || safeRouteBootstrap?.menu?.seeded === true,
+      items: Array.isArray(safeRouteBootstrap?.menu?.items) ? safeRouteBootstrap.menu.items : [],
+      statusBadgeVisible: safeRouteBootstrap?.menu?.statusBadgeVisible !== false
     },
     layout: {
-      menuCardColor: String(state?.menuLayout?.cardColor || "").trim().toLowerCase() || "white"
+      menuCardColor: String(
+        state?.menuLayout?.cardColor
+        || safeRouteBootstrap?.layout?.menuCardColor
+        || ""
+      ).trim().toLowerCase() || "white"
     },
     ts: Date.now()
   };
@@ -303,27 +331,56 @@ export function createPublicProfileDirectEntryController({
     if (!state || typeof state !== "object") return null;
     const entry = resolvePendingDirectEntry(pendingRoute);
     if (!entry.active || !entry.restaurantId) return null;
+    const routeBootstrap = resolveRouteBootstrapSeedForEntry(state, entry);
+    const routeIdentity = routeBootstrap?.identity && typeof routeBootstrap.identity === "object"
+      ? routeBootstrap.identity
+      : null;
+    const routePostsSeed = Array.isArray(routeBootstrap?.posts?.items)
+      ? routeBootstrap.posts.items
+      : [];
+    const routeMenuSeed = Array.isArray(routeBootstrap?.menu?.items)
+      ? routeBootstrap.menu.items
+      : [];
+    const routeLayoutColor = String(routeBootstrap?.layout?.menuCardColor || "").trim().toLowerCase();
     const preview = resolveRestaurantPreviewForRoute(state, entry.restaurantId);
     const seedBusinessName = String(
-      preview?.name
+      routeIdentity?.name
+      || preview?.name
       || preview?.restaurantName
       || normalizeSeedBusinessLabel(entry.restaurantId)
     ).trim() || normalizeSeedBusinessLabel(entry.restaurantId);
-    const seedHandle = String(preview?.handle || "").trim().replace(/^@/, "").toLowerCase();
-    const seedAvatar = String(preview?.logoUrl || preview?.logo || preview?.avatar || "").trim();
-    const seedLocation = String(preview?.city || preview?.address || "").trim();
+    const seedHandle = String(routeIdentity?.handle || preview?.handle || "").trim().replace(/^@/, "").toLowerCase();
+    const seedAvatar = String(routeIdentity?.avatar || preview?.logoUrl || preview?.logo || preview?.avatar || "").trim();
+    const seedLocation = String(routeIdentity?.location || preview?.city || preview?.address || "").trim();
     const seedFollowers = normalizeCountOrNull(
-      preview?.followersCount
+      routeIdentity?.followers
+      ?? preview?.followersCount
       ?? preview?.followers
       ?? preview?.fansCount
       ?? preview?.fans
     );
-    const seedFollowing = normalizeCountOrNull(preview?.followingCount ?? preview?.following);
+    const seedFollowing = normalizeCountOrNull(
+      routeIdentity?.following
+      ?? preview?.followingCount
+      ?? preview?.following
+    );
     const seededPosts = entry.postsFirst
-      ? resolveSeedPostsForRoute(state, entry.restaurantId, { max: 8 })
+      ? (routePostsSeed.length
+        ? routePostsSeed.slice(0, 12)
+        : resolveSeedPostsForRoute(state, entry.restaurantId, { max: 8 }))
       : [];
+    const postsKnownEmptyFromRoute = entry.postsFirst
+      && !!routeBootstrap
+      && Number(routeBootstrap?.posts?.count || 0) === 0
+      && routeBootstrap?.posts?.seeded !== true;
     const hasHeaderTruth = !!(seedBusinessName || seedHandle || seedAvatar || seedLocation || seedFollowers !== null || seedFollowing !== null);
-    const postsReadySeed = seededPosts.length > 0;
+    const postsReadySeed = seededPosts.length > 0 || postsKnownEmptyFromRoute;
+    if (routeLayoutColor && String(state?.menuLayout?.cardColor || "").trim().toLowerCase() !== routeLayoutColor) {
+      state.menuLayout = {
+        ...(state?.menuLayout || {}),
+        cardColor: routeLayoutColor
+      };
+    }
     const seededProfile = {
       name: seedBusinessName,
       handle: seedHandle,
@@ -340,13 +397,16 @@ export function createPublicProfileDirectEntryController({
       postsLoaded: postsReadySeed,
       posts: seededPosts,
       identityTruthState: hasHeaderTruth ? "ready" : "loading",
-      truthState: postsReadySeed ? "stable" : "route-pending-loading"
+      truthState: postsReadySeed
+        ? (seededPosts.length > 0 ? "stable" : "empty")
+        : "route-pending-loading"
     };
     const routePayloadSeed = buildRoutePayloadSeed({
       state,
       entry,
       profile: seededProfile,
       posts: seededPosts,
+      routeBootstrap,
       phase
     });
     state.profileView = {
@@ -363,21 +423,52 @@ export function createPublicProfileDirectEntryController({
         webPriority: entry.webPriority === true,
         menuFirst: entry.menuFirst === true,
         postsFirst: entry.postsFirst === true,
-        phase: normalizeDirectEntryPhase(phase, "seeded"),
+        phase: normalizeDirectEntryPhase(
+          routeBootstrap?.phase || phase,
+          "seeded"
+        ),
         topTab: entry.topTab,
         contentTab: entry.contentTab,
         explicitLanding: entry.explicitLanding
       }
     };
     if (entry.menuFirst && state.menu && typeof state.menu === "object") {
-      state.menu = {
-        ...state.menu,
-        restaurantId: entry.restaurantId,
-        items: [],
-        loading: true,
-        error: "",
-        source: "public"
-      };
+      const menuKnownEmptyFromRoute = !!routeBootstrap
+        && Number(routeBootstrap?.menu?.count || 0) === 0
+        && routeBootstrap?.menu?.seeded !== true;
+      if (routeMenuSeed.length) {
+        state.menu = {
+          ...state.menu,
+          restaurantId: entry.restaurantId,
+          items: routeMenuSeed,
+          loading: false,
+          error: "",
+          source: "public",
+          statusBadgeVisible: routeBootstrap?.menu?.statusBadgeVisible !== false,
+          routeSeed: true
+        };
+      } else if (menuKnownEmptyFromRoute) {
+        state.menu = {
+          ...state.menu,
+          restaurantId: entry.restaurantId,
+          items: [],
+          loading: false,
+          error: "",
+          source: "public",
+          statusBadgeVisible: routeBootstrap?.menu?.statusBadgeVisible !== false,
+          routeSeed: false
+        };
+      } else {
+        state.menu = {
+          ...state.menu,
+          restaurantId: entry.restaurantId,
+          items: [],
+          loading: true,
+          error: "",
+          source: "public",
+          routeSeed: false
+        };
+      }
     }
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = entry.contentTab;
@@ -394,7 +485,7 @@ export function createPublicProfileDirectEntryController({
     state.activeTab = "profile";
     writeWebDirectEntryState(entry, {
       active: entry.webPriority === true,
-      phase
+      phase: routeBootstrap?.phase || phase
     });
     const nextSurface = resolveVisibleProfileSurfaceSafe(state, {
       profileView: state.profileView,

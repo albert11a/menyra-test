@@ -333,6 +333,9 @@ export function createPublicProfileRuntimeController({
     const currentPayload = basePayload && typeof basePayload === "object" ? basePayload : null;
     if (!isWebDirectRoute && !currentPayload) return null;
     const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const safeIdentity = currentPayload?.identity && typeof currentPayload.identity === "object"
+      ? currentPayload.identity
+      : {};
     const safePosts = Array.isArray(posts) ? posts : [];
     const safeRestaurantId = String(
       safeProfile.restaurantId
@@ -345,9 +348,15 @@ export function createPublicProfileRuntimeController({
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
     const menu = state?.menu || {};
     const sameRestaurantMenu = String(menu.restaurantId || "").trim() === safeRestaurantId;
-    const menuCount = sameRestaurantMenu && Array.isArray(menu.items)
+    const menuCountFromLive = sameRestaurantMenu && Array.isArray(menu.items)
       ? menu.items.length
-      : Math.max(0, Number(currentPayload?.menu?.count || 0) || 0);
+      : 0;
+    const menuCountFromPayload = Math.max(0, Number(currentPayload?.menu?.count || 0) || 0);
+    const menuCount = Math.max(menuCountFromLive, menuCountFromPayload);
+    const postsCountFromPayload = Math.max(0, Number(currentPayload?.posts?.count || 0) || 0);
+    const postsCount = Math.max(safePosts.length, postsCountFromPayload);
+    const postsSeeded = safePosts.length > 0 || currentPayload?.posts?.seeded === true;
+    const menuSeeded = menuCount > 0 || currentPayload?.menu?.seeded === true;
     const followersValue = Number(safeProfile.followers);
     const followingValue = Number(safeProfile.following);
     return {
@@ -362,20 +371,26 @@ export function createPublicProfileRuntimeController({
       menuAccessSource: safeMenuAccessSource,
       tableNumber: safeTableNumber,
       identity: {
-        name: String(safeProfile.name || "").trim(),
-        handle: String(safeProfile.handle || "").trim(),
-        avatar: String(safeProfile.avatar || "").trim(),
-        location: String(safeProfile.location || "").trim(),
-        followers: Number.isFinite(followersValue) ? followersValue : null,
-        following: Number.isFinite(followingValue) ? followingValue : null
+        name: String(safeProfile.name || safeIdentity?.name || "").trim(),
+        handle: String(safeProfile.handle || safeIdentity?.handle || "").trim(),
+        avatar: String(safeProfile.avatar || safeIdentity?.avatar || "").trim(),
+        location: String(safeProfile.location || safeIdentity?.location || "").trim(),
+        followers: Number.isFinite(followersValue)
+          ? followersValue
+          : (Number.isFinite(Number(safeIdentity?.followers)) ? Number(safeIdentity.followers) : null),
+        following: Number.isFinite(followingValue)
+          ? followingValue
+          : (Number.isFinite(Number(safeIdentity?.following)) ? Number(safeIdentity.following) : null)
       },
       posts: {
-        count: safePosts.length,
-        seeded: safePosts.length > 0
+        ...(currentPayload?.posts && typeof currentPayload.posts === "object" ? currentPayload.posts : {}),
+        count: postsCount,
+        seeded: postsSeeded
       },
       menu: {
+        ...(currentPayload?.menu && typeof currentPayload.menu === "object" ? currentPayload.menu : {}),
         count: menuCount,
-        seeded: menuCount > 0
+        seeded: menuSeeded
       },
       layout: {
         menuCardColor: String(
@@ -503,20 +518,40 @@ export function createPublicProfileRuntimeController({
       profileTopTab: state?.profileTopTab || "",
       profileContentTab: state?.profileContentTab || ""
     });
+    const currentRoutePayloadIsWebDirect = String(currentRoutePayload?.owner || "").trim().toLowerCase() === "web-direct"
+      && currentRoutePayload?.routeFirst === true;
+    const currentRoutePayloadHasPostsTruth = currentRoutePayloadIsWebDirect
+      && (
+        Number(currentRoutePayload?.posts?.count || 0) > 0
+        || currentRoutePayload?.posts?.seeded === true
+      );
+    const currentRoutePayloadHasIdentityTruth = currentRoutePayloadIsWebDirect
+      && !!(
+        String(currentRoutePayload?.identity?.name || "").trim()
+        || String(currentRoutePayload?.identity?.avatar || "").trim()
+        || String(currentRoutePayload?.identity?.handle || "").trim()
+      );
+    const preserveWebDirectRouteTruth = sameVisibleIncomingProfile && currentRoutePayloadIsWebDirect;
     const shouldPreserveVisiblePosts = sameVisibleIncomingProfile
       && currentPosts.length > 0
       && incomingProjectedPosts.length === 0
       && incomingProfileSettling
       && currentSurface?.posts?.status === "ready"
       && profile?.postsLoaded !== true
-      && !blockStaleCarryForWebDirect;
+      && (
+        !blockStaleCarryForWebDirect
+        || (preserveWebDirectRouteTruth && currentRoutePayloadHasPostsTruth)
+      );
     const projectedPosts = shouldPreserveVisiblePosts
       ? currentPosts
       : incomingProjectedPosts;
     const shouldPreserveHeaderSeed = sameVisibleIncomingProfile
       && currentProfile
       && incomingProfileSettling
-      && !blockStaleCarryForWebDirect;
+      && (
+        !blockStaleCarryForWebDirect
+        || (preserveWebDirectRouteTruth && currentRoutePayloadHasIdentityTruth)
+      );
     const nextProfile = profile ? {
       ...profile,
       ...(shouldPreserveHeaderSeed ? {

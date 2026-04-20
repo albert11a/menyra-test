@@ -1393,7 +1393,8 @@ export function createSessionDataRuntimeController({
         loading: false,
         error: "",
         source: safeSource,
-        statusBadgeVisible: true
+        statusBadgeVisible: true,
+        routeSeed: false
       };
       return;
     }
@@ -1405,6 +1406,8 @@ export function createSessionDataRuntimeController({
     const hasVisibleMenuSeed = state.menu.restaurantId === safeRestaurantId
       && Array.isArray(state.menu.items)
       && state.menu.items.length > 0;
+    const hasRouteBootstrapMenuSeed = hasVisibleMenuSeed
+      && state.menu.routeSeed === true;
     const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
       ? state.__webDirectEntry
       : null;
@@ -1416,7 +1419,7 @@ export function createSessionDataRuntimeController({
       && String(state?.profileTopTab || "").trim().toLowerCase() === "menu";
     const webDirectMenuFreshPath = webDirectMenuFirstVisiblePath
       && webDirectEntry?.webPriority === true;
-    const blockWebDirectMenuCacheSeed = webDirectMenuFreshPath && !force;
+    const blockWebDirectMenuCacheSeed = webDirectMenuFreshPath && !force && !hasRouteBootstrapMenuSeed;
     const prioritizeVisibleMenuTruth = !force
       && isVisiblePublicMenuSurface(safeRestaurantId, safeSource)
       && (!hasVisibleMenuSeed || webDirectMenuFreshPath);
@@ -1431,7 +1434,8 @@ export function createSessionDataRuntimeController({
         loading: false,
         error: "",
         source: safeSource,
-        statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
+        statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true,
+        routeSeed: false
       };
       requestRender();
       if (!lightweightQrGuestFlow && !menuFreshReconcileQueuedKeys.has(cacheKey)) {
@@ -1454,7 +1458,8 @@ export function createSessionDataRuntimeController({
         loading: false,
         error: "",
         source: safeSource,
-        statusBadgeVisible: persistedMenu.statusBadgeVisible
+        statusBadgeVisible: persistedMenu.statusBadgeVisible,
+        routeSeed: false
       };
       menuCacheMap.set(cacheKey, {
         items: persistedMenu.items,
@@ -1488,7 +1493,8 @@ export function createSessionDataRuntimeController({
       items: keepCurrentItems ? state.menu.items : [],
       loading: true,
       error: "",
-      source: safeSource
+      source: safeSource,
+      routeSeed: keepCurrentItems ? state.menu.routeSeed === true : false
     };
     requestRender();
     const request = (async () => {
@@ -1537,7 +1543,8 @@ export function createSessionDataRuntimeController({
           loading: false,
           error: "",
           source: safeSource,
-          statusBadgeVisible
+          statusBadgeVisible,
+          routeSeed: false
         };
         requestRender();
       } catch (err) {
@@ -1561,7 +1568,8 @@ export function createSessionDataRuntimeController({
           loading: false,
           error: fallbackItems.length ? "" : "Menu laden fehlgeschlagen.",
           source: safeSource,
-          statusBadgeVisible: fallbackStatusBadgeVisible
+          statusBadgeVisible: fallbackStatusBadgeVisible,
+          routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true
         };
         requestRender();
       } finally {

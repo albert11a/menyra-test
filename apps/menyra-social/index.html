@@ -1283,6 +1283,12 @@
       const routeTab = String(searchParams.get("tab") || "").trim().toLowerCase();
       const routeTopTab = String(searchParams.get("top") || "").trim().toLowerCase();
       const landingSlugFromPath = resolveLandingSlugFromPathname(window.location.pathname || "");
+      const routeTableNumber = Math.max(0, Number(
+        searchParams.get("table")
+        || searchParams.get("tableNumber")
+        || searchParams.get("t")
+        || 0
+      ) || 0);
       const routeSource = String(
         searchParams.get("src")
         || searchParams.get("source")
@@ -1290,6 +1296,9 @@
         || ""
       ).trim().toLowerCase();
       const effectiveRouteTab = routeTab || (landingSlugFromPath ? "landing" : "");
+      const effectiveProfileRouteTab = routeTopTab || effectiveRouteTab;
+      const isExplicitLandingRoute = effectiveProfileRouteTab === "landing";
+      const hasDirectRouteTarget = !!(routeRestaurantId || landingSlugFromPath);
       const hasLandingRouteHint = !!(
         routeRestaurantId
         || landingSlugFromPath
@@ -1300,12 +1309,27 @@
       );
       const isQrMenuStartup = routeSource === "qr" && (!routeTab || routeTab === "menu");
       const isMapRouteStartup = routeTab === "map";
-      const startupSurface = effectiveRouteTab === "menu"
+      const isDirectPublicWebRoute = hasDirectRouteTarget
+        && !isExplicitLandingRoute
+        && (
+          routeSource === "qr"
+          || effectiveProfileRouteTab === "menu"
+          || effectiveProfileRouteTab === "profile"
+          || !effectiveProfileRouteTab
+        );
+      const startupSurface = effectiveProfileRouteTab === "menu"
         ? "menu"
         : (hasLandingRouteHint ? "profile" : "feed");
-      const shouldFetchBootstrap = !isQrMenuStartup
-        && !hasLandingRouteHint
-        && (!effectiveRouteTab || effectiveRouteTab === "feed" || effectiveRouteTab === "home");
+      const shouldFetchBootstrap = !isMapRouteStartup
+        && (
+          isDirectPublicWebRoute
+          || (
+            !isQrMenuStartup
+            && !hasLandingRouteHint
+            && (!effectiveRouteTab || effectiveRouteTab === "feed" || effectiveRouteTab === "home")
+          )
+        );
+      const shouldUseBootstrapCache = shouldFetchBootstrap && !isDirectPublicWebRoute;
       if (appRoot) {
         appRoot.dataset.startupSurface = startupSurface;
       }
@@ -1389,7 +1413,7 @@
           }));
         } catch {}
       };
-      if (shouldFetchBootstrap) {
+      if (shouldUseBootstrapCache) {
         const cachedPayload = readBootstrapCache();
         if (cachedPayload) {
           applyBootstrapPayload(cachedPayload, { dispatch: false });
@@ -1411,11 +1435,41 @@
         });
         return;
       }
+      const buildBootstrapEndpointUrl = (baseEndpoint) => {
+        const endpoint = String(baseEndpoint || "").trim();
+        if (!endpoint) return "";
+        try {
+          const url = new URL(endpoint, window.location.href);
+          const hasRouteContext = isDirectPublicWebRoute
+            || hasDirectRouteTarget
+            || !!routeTab
+            || !!routeTopTab
+            || !!routeSource;
+          if (!hasRouteContext) return url.toString();
+          const bootstrapRouteId = routeRestaurantId || landingSlugFromPath;
+          if (bootstrapRouteId) {
+            url.searchParams.set("r", bootstrapRouteId);
+          }
+          if (routeTab) url.searchParams.set("tab", routeTab);
+          if (routeTopTab) url.searchParams.set("top", routeTopTab);
+          if (routeSource) url.searchParams.set("src", routeSource);
+          if (routeTableNumber > 0) {
+            url.searchParams.set("table", String(routeTableNumber));
+          }
+          if (window.location.pathname) {
+            url.searchParams.set("pathname", window.location.pathname);
+          }
+          return url.toString();
+        } catch {
+          return endpoint;
+        }
+      };
+      const BOOTSTRAP_REQUEST_URL = buildBootstrapEndpointUrl(ENDPOINT) || ENDPOINT;
       const fetchBootstrap = async () => {
         const controller = ("AbortController" in window) ? new AbortController() : null;
         const timer = window.setTimeout(() => controller?.abort(), BOOTSTRAP_TIMEOUT_MS);
         try {
-          const response = await fetch(ENDPOINT, {
+          const response = await fetch(BOOTSTRAP_REQUEST_URL, {
             method: "GET",
             mode: "cors",
             credentials: "omit",
@@ -1439,7 +1493,9 @@
             return;
           }
           setDegraded("bootstrap", { active: false, message: "" });
-          writeBootstrapCache(data);
+          if (shouldUseBootstrapCache) {
+            writeBootstrapCache(data);
+          }
           applyBootstrapPayload(data, { dispatch: true });
           return data;
         } catch {
