@@ -191,6 +191,20 @@ export function resolveVisibleProfileSurface(state = {}, {
   const view = profileView && typeof profileView === "object"
     ? profileView
     : (state?.profileView && typeof state.profileView === "object" ? state.profileView : null);
+  const directEntry = view?.directEntry && typeof view.directEntry === "object"
+    ? view.directEntry
+    : null;
+  const directEntryTopTabRaw = normalizeProfileTopTab(directEntry?.topTab || "", "");
+  const directEntryTopTab = directEntryTopTabRaw === "landing" && directEntry?.explicitLanding !== true
+    ? "profile"
+    : directEntryTopTabRaw;
+  const directEntryActive = activeTab === "profile"
+    && !!directEntryTopTab
+    && directEntry?.active !== false;
+  const directEntryContentTab = normalizeProfileContentTab(
+    directEntry?.contentTab || "",
+    directEntryTopTab === "menu" ? "menu" : "posts"
+  );
   const profile = view?.profile && typeof view.profile === "object"
     ? view.profile
     : null;
@@ -200,13 +214,19 @@ export function resolveVisibleProfileSurface(state = {}, {
   const targetRestaurantId = String(profile?.restaurantId || "").trim();
   const targetUid = String(profile?.uid || "").trim();
   const targetHandle = String(profile?.handle || profile?.name || "").trim().toLowerCase();
+  const requestedTopTab = directEntryActive
+    ? directEntryTopTab
+    : (profileTopTab || state?.profileTopTab || "");
   const activeTopTab = normalizeProfileTopTab(
-    profileTopTab || state?.profileTopTab || "",
+    requestedTopTab,
     profile?.restaurantId ? "profile" : "profile"
   );
+  const requestedContentTab = directEntryActive
+    ? directEntryContentTab
+    : (profileContentTab || state?.profileContentTab || "");
   const activeContentTab = resolveActiveProfileContentTab({
     topTab: activeTopTab,
-    contentTab: profileContentTab || state?.profileContentTab || ""
+    contentTab: requestedContentTab
   });
   const headerStatus = normalizeProfileSurfaceStatus(resolveHeaderStatus(profile), "loading");
   const profileStatus = normalizeProfileSurfaceStatus(resolvePostsStatus({
@@ -270,6 +290,12 @@ export function resolveVisibleProfileSurface(state = {}, {
     activeTab,
     activeTopTab,
     activeContentTab,
+    directEntry: {
+      active: directEntryActive,
+      phase: safeLower(directEntry?.phase || ""),
+      topTab: directEntryActive ? directEntryTopTab : "",
+      contentTab: directEntryActive ? directEntryContentTab : ""
+    },
     status: visibleStatus,
     startup: {
       profileStatus,

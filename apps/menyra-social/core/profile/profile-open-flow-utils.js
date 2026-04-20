@@ -264,8 +264,13 @@ export function createProfileOpenFlowControllerCore({
       if (!safeName && !restaurantId && !lookupText) return;
       const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
       const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
-      const isMenuTopTab = String(topTab || "").trim().toLowerCase() === "menu";
-      const isLandingTopTab = String(topTab || "").trim().toLowerCase() === "landing";
+      const requestedTopTab = String(topTab || "").trim().toLowerCase();
+      const isMenuTopTab = requestedTopTab === "menu";
+      const isLandingTopTab = requestedTopTab === "landing";
+      const resolvedTopTab = isLandingTopTab
+        ? "landing"
+        : (isMenuTopTab ? "menu" : "profile");
+      const resolvedContentTab = resolvedTopTab === "menu" ? "menu" : "posts";
       const isQrMenuOpen = isMenuTopTab && safeMenuAccessSource === "qr";
       // For deeplinks like ?r=...&tab=menu we always want the public profile menu view,
       // never the owner editor tab, even when the target is the own business account.
@@ -349,7 +354,8 @@ export function createProfileOpenFlowControllerCore({
 
       showPublicProfileView(loadingProfileWithSurfaceTruth, loadingProfileWithSurfaceTruth.posts, {
         showBack,
-        topTab,
+        topTab: resolvedTopTab,
+        contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber
       });
@@ -391,7 +397,8 @@ export function createProfileOpenFlowControllerCore({
 
       showPublicProfileView(resolvedInterim, interimPosts, {
         showBack,
-        topTab,
+        topTab: resolvedTopTab,
+        contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber
       });
@@ -443,7 +450,8 @@ export function createProfileOpenFlowControllerCore({
       }
       showPublicProfileView(resolvedWithPosts, resolvedWithPosts.posts, {
         showBack,
-        topTab,
+        topTab: resolvedTopTab,
+        contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber
       });

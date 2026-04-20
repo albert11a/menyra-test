@@ -52,7 +52,7 @@ export function resolveInitialRouteState({
   );
   const landingSlug = routeRestaurantId ? "" : resolveLandingSlugFromPathname(readPathname);
   const pendingProfileRestaurantId = routeRestaurantId || landingSlug;
-  const queryTab = readQuery("tab") || readQuery("view") || (landingSlug ? "landing" : "");
+  const queryTab = readQuery("tab") || readQuery("view") || "";
   const profileTopQuery = readQuery("top") || (pendingProfileRestaurantId ? queryTab : "");
   const profileAccessSourceRaw = (
     readQuery("src")
@@ -92,7 +92,7 @@ export function resolveInitialRouteState({
   const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
   let pendingInitialTab = toInitialTab(queryTab || profileTopQuery || "");
   if (pendingProfileRestaurantId) {
-    // Deep profile routes must always enter through the profile shell first.
+    // Deep public profile routes should always open the profile route surface first.
     if (!pendingInitialTab || pendingInitialTab === "menu") pendingInitialTab = "profile";
   }
   if (landingSlug) pendingInitialTab = "profile";

@@ -299,12 +299,40 @@ export function createPublicProfileRuntimeController({
     });
   }
 
-  function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "", tableNumber = 0 } = {}) {
+  function showPublicProfile(profile, posts, {
+    showBack = true,
+    backTab,
+    topTab,
+    contentTab = "",
+    menuAccessSource = "",
+    tableNumber = 0,
+    directEntry = null
+  } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
+    const normalizeTopTab = (value = "", fallback = "profile") => {
+      const key = String(value || "").trim().toLowerCase();
+      if (key === "profile") return "profile";
+      if (key === "menu") return "menu";
+      if (key === "landing") return "landing";
+      if (key === "cart") return "cart";
+      if (key === "favorites") return "favorites";
+      return String(fallback || "profile").trim().toLowerCase() || "profile";
+    };
+    const normalizeContentTab = (value = "", fallback = "posts") => {
+      const key = String(value || "").trim().toLowerCase();
+      if (key === "posts") return "posts";
+      if (key === "media") return "media";
+      if (key === "menu") return "menu";
+      if (key === "checkins") return "checkins";
+      return String(fallback || "posts").trim().toLowerCase() || "posts";
+    };
     const currentView = state?.profileView || null;
     const currentProfile = currentView?.profile || null;
     const currentPosts = Array.isArray(currentView?.posts) ? currentView.posts : [];
+    const currentDirectEntry = currentView?.directEntry && typeof currentView.directEntry === "object"
+      ? currentView.directEntry
+      : null;
     const sameVisibleIncomingProfile = isSameVisibleProfile(currentProfile || null, profile || null);
     const incomingProjectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile?.posts || []);
     const incomingProfileSettling = isProfileSettling(profile);
@@ -344,7 +372,16 @@ export function createPublicProfileRuntimeController({
 
     const sameVisibleProfile = isSameVisibleProfile(currentProfile || null, nextProfile);
     const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
-    const preserveLandingState = sameVisibleProfile && previousTopTab === "landing";
+    const explicitTopTab = String(topTab || "").trim();
+    const preservedTopTab = sameVisibleProfile
+      ? String(state?.profileTopTab || "").trim()
+      : "";
+    const resolvedTopTab = profile?.restaurantId
+      ? normalizeTopTab(explicitTopTab || preservedTopTab || "profile", "profile")
+      : "profile";
+    const preserveLandingState = sameVisibleProfile
+      && previousTopTab === "landing"
+      && resolvedTopTab === "landing";
     const clampLandingStep = (value = 0) => {
       const parsed = Math.round(Number(value || 0));
       if (!Number.isFinite(parsed)) return 0;
@@ -359,31 +396,71 @@ export function createPublicProfileRuntimeController({
     const preservedLandingGreetingIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingGreetingIndex) : 0;
     const preservedLandingTourIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingTourIndex) : 0;
     const previousContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
-    const explicitTopTab = String(topTab || "").trim();
-    const preservedTopTab = sameVisibleProfile
-      ? String(state?.profileTopTab || "").trim()
-      : "";
-    const resolvedTopTab = profile?.restaurantId
-      ? (explicitTopTab || preservedTopTab || "profile")
-      : "profile";
     const nextProfileBackTab = showBack
       ? (backTab || state.activeTab || "feed")
       : "";
     const normalizedMenuAccessSource = safeMenuAccessSource === "qr" ? "qr" : "";
-    const nextContentTab = preserveLandingState && previousContentTab
-      ? previousContentTab
-      : "posts";
+    const explicitContentTab = String(contentTab || "").trim().toLowerCase();
+    const nextContentTab = resolvedTopTab === "menu"
+      ? "menu"
+      : (preserveLandingState && previousContentTab
+        ? previousContentTab
+        : normalizeContentTab(explicitContentTab || "posts", "posts"));
+    const explicitDirectEntry = directEntry && typeof directEntry === "object"
+      ? directEntry
+      : null;
+    const nextDirectEntry = explicitDirectEntry
+      ? {
+        ...explicitDirectEntry,
+        active: explicitDirectEntry.active !== false,
+        topTab: resolvedTopTab,
+        contentTab: nextContentTab,
+        explicitLanding: resolvedTopTab === "landing"
+      }
+      : (showBack === false
+        ? {
+          active: true,
+          source: "route",
+          phase: incomingProfileSettling ? "loading" : "ready",
+          topTab: resolvedTopTab,
+          contentTab: nextContentTab,
+          explicitLanding: resolvedTopTab === "landing"
+        }
+        : (sameVisibleProfile && currentDirectEntry?.active === true
+          ? {
+            ...currentDirectEntry,
+            phase: incomingProfileSettling ? "loading" : "ready",
+            topTab: resolvedTopTab,
+            contentTab: nextContentTab,
+            explicitLanding: resolvedTopTab === "landing"
+          }
+          : null));
     const nextView = {
       profile: nextProfile,
       posts: projectedPosts,
       menuAccessSource: normalizedMenuAccessSource,
-      tableNumber: safeTableNumber
+      tableNumber: safeTableNumber,
+      directEntry: nextDirectEntry
     };
     const currentSignature = buildProfileRenderSignature(currentProfile);
     const nextSignature = buildProfileRenderSignature(nextProfile);
     const currentTopTab = String(state?.profileTopTab || "").trim();
+    const currentContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
     const currentMenuAccessSource = String(currentView?.menuAccessSource || "").trim().toLowerCase();
     const currentTableNumber = Math.max(0, Number(currentView?.tableNumber || 0) || 0);
+    const serializeDirectEntry = (entry = null) => {
+      if (!entry || typeof entry !== "object") return "";
+      return [
+        entry.active === false ? "0" : "1",
+        String(entry.source || "").trim().toLowerCase(),
+        String(entry.phase || "").trim().toLowerCase(),
+        String(entry.topTab || "").trim().toLowerCase(),
+        String(entry.contentTab || "").trim().toLowerCase(),
+        entry.explicitLanding === true ? "1" : "0"
+      ].join("::");
+    };
+    const currentDirectEntrySignature = serializeDirectEntry(currentDirectEntry);
+    const nextDirectEntrySignature = serializeDirectEntry(nextDirectEntry);
     const nextSurface = resolveVisibleProfileSurface(state, {
       profileView: nextView,
       profileTopTab: resolvedTopTab,
@@ -402,8 +479,10 @@ export function createPublicProfileRuntimeController({
       && currentSignature === nextSignature
       && haveSamePostIdentity(currentPosts, projectedPosts)
       && currentTopTab === String(resolvedTopTab || "").trim()
+      && currentContentTab === String(nextContentTab || "").trim().toLowerCase()
       && currentMenuAccessSource === normalizedMenuAccessSource
       && currentTableNumber === safeTableNumber
+      && currentDirectEntrySignature === nextDirectEntrySignature
       && String(state?.profileBackTab || "") === String(nextProfileBackTab || "")
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
     ) {
@@ -425,6 +504,10 @@ export function createPublicProfileRuntimeController({
         state.profileLandingGreetingIndex = 0;
         state.profileLandingTourIndex = 0;
       }
+    } else {
+      state.profileLandingStep = 0;
+      state.profileLandingGreetingIndex = 0;
+      state.profileLandingTourIndex = 0;
     }
     state.profileViewMode = "grid";
     state.profilePostMenuId = null;

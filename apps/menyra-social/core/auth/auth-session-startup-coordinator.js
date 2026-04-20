@@ -255,10 +255,14 @@ export function createAuthSessionStartupCoordinator({
       }
       applyPendingInitialRouteState();
       const prioritizeGuestSurface = isGuestDeepRouteLaunchActive();
-      requestRender("initialize");
-      queueMicrotaskSafe(() => {
+      if (prioritizeGuestSurface) {
         runNonBlockingRouteOpenWithTimeline();
-      });
+      } else {
+        queueMicrotaskSafe(() => {
+          runNonBlockingRouteOpenWithTimeline();
+        });
+      }
+      requestRender("initialize");
       schedulePerfWarmMark();
       if (!state?.user) {
         scheduleGuestTabEnsure({ prioritize: prioritizeGuestSurface });

@@ -137,6 +137,7 @@ import {
   isPendingProfileAlreadyOpenCore,
   normalizeProfileTopTabFromRouteCore
 } from "./core/profile/profile-route-open-utils.js";
+import { createPublicProfileDirectEntryController } from "./core/profile/public-profile-direct-entry-controller.js";
 import {
   normalizeProfileSurfaceStatus,
   resolveVisibleProfileSurface
@@ -1979,6 +1980,11 @@ function normalizeLegacyHomeTab(tab) {
   return "feed";
 }
 
+const publicProfileDirectEntryController = createPublicProfileDirectEntryController({
+  state,
+  resolveVisibleProfileSurface
+});
+
 function applyPendingInitialRouteState() {
   applyPendingInitialRouteStateBase();
   const pendingInitialTab = String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase();
@@ -1986,70 +1992,25 @@ function applyPendingInitialRouteState() {
     state.activeTab = pendingInitialTab;
   }
   const pendingRoute = pendingRouteState.getPendingState?.() || {};
-  const pendingProfileRestaurantId = normalizePendingProfileRestaurantIdCore(pendingRoute.pendingProfileRestaurantId || "");
-  if (pendingProfileRestaurantId) {
+  const pendingDirectEntry = publicProfileDirectEntryController.resolvePendingDirectEntry(pendingRoute);
+  if (pendingDirectEntry.active) {
     const currentProfileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
     const currentProfileTruthState = String(state.profileView?.profile?.truthState || "").trim().toLowerCase();
     const pendingProfileAlreadyOpen = isPendingProfileAlreadyOpenCore({
-      pendingProfileRestaurantId,
+      pendingProfileRestaurantId: pendingDirectEntry.restaurantId,
       currentProfileRestaurantId,
       currentProfileTruthState
     });
     if (!pendingProfileAlreadyOpen) {
-      const requestedTopTab = normalizeProfileTopTabFromRouteCore(pendingRoute.pendingProfileTopTab || "");
-      const resolvedTopTab = requestedTopTab || "profile";
-      const safeAccessSourceRaw = String(pendingRoute.pendingProfileAccessSource || "").trim().toLowerCase();
-      const isQrLikeAccessSource = safeAccessSourceRaw === "qr"
-        || safeAccessSourceRaw === "qrcode"
-        || safeAccessSourceRaw === "qr-code"
-        || safeAccessSourceRaw === "menuqr"
-        || safeAccessSourceRaw === "menu-qr"
-        || safeAccessSourceRaw === "scanqr"
-        || safeAccessSourceRaw === "scan-qr";
-      const normalizedMenuAccessSource = requestedTopTab === "menu" && isQrLikeAccessSource
-        ? "qr"
-        : "";
-      const pendingTableNumber = Math.max(0, Number(pendingRoute.pendingProfileTableNumber || 0) || 0);
-      const normalizedTableNumber = normalizedMenuAccessSource === "qr" ? pendingTableNumber : 0;
       setStartupSurfaceStatus("profile", "pending");
-      if (resolvedTopTab === "menu") {
+      if (pendingDirectEntry.topTab === "menu") {
         setStartupSurfaceStatus("menu", "pending");
         state.startupSurface.activeSurface = "menu";
       } else {
         state.startupSurface.activeSurface = "profile";
       }
       setStartupSurfaceStatus("active", "pending");
-      state.profileView = {
-        profile: {
-          name: "Profil wird geladen...",
-          handle: "",
-          uid: "",
-          bio: "Profil wird geladen...",
-          avatar: "",
-          location: "",
-          followers: null,
-          following: null,
-          privateAccount: false,
-          role: "business",
-          restaurantId: pendingProfileRestaurantId,
-          pendingFollowRequest: false,
-          postsLoaded: false,
-          posts: [],
-          identityTruthState: "pending",
-          truthState: "route-pending-loading"
-        },
-        posts: [],
-        menuAccessSource: normalizedMenuAccessSource,
-        tableNumber: normalizedTableNumber
-      };
-      state.profileModal = { open: false, profile: null };
-      state.profileContentTab = "posts";
-      state.profileTopTab = resolvedTopTab;
-      state.profileViewMode = "grid";
-      state.profilePostMenuId = null;
-      state.profileBackTab = "";
-      state.drawerOpen = false;
-      state.activeTab = "profile";
+      publicProfileDirectEntryController.seedPendingDirectEntry(pendingRoute);
       resolveVisibleProfileSurfaceSnapshot({
         profileView: state.profileView,
         profileTopTab: state.profileTopTab,

@@ -283,7 +283,12 @@ function resolveProfileContentTabForRendering(profile = {}) {
 function resolveProfilePrimaryTopTab(profile = {}) {
   const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
   if (isBusinessProfileEntity(profile)) {
-    if (requestedTopTab === "cart" || requestedTopTab === "favorites" || requestedTopTab === "landing") {
+    if (
+      requestedTopTab === "menu"
+      || requestedTopTab === "cart"
+      || requestedTopTab === "favorites"
+      || requestedTopTab === "landing"
+    ) {
       return requestedTopTab;
     }
     return "profile";
@@ -599,7 +604,7 @@ function renderPublicProfileSurface(
     && postsStatus === "error";
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
-      ${topTab === "profile" ? `
+      ${topTab === "profile" || topTab === "menu" ? `
       ${showIdentitySection ? `
         <div class="app-content-inline pb-2 ${topPaddingClass}">
           <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 ${disabledBlockClass}">
