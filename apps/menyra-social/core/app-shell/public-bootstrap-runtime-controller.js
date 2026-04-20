@@ -158,6 +158,17 @@ function normalizeCountOrNull(value) {
   return Math.max(0, Math.round(numeric));
 }
 
+function normalizeTruthState(value = "", fallback = "unknown") {
+  const truth = String(value || "").trim().toLowerCase();
+  if (truth === "seeded") return "seeded";
+  if (truth === "knownempty" || truth === "known-empty") return "knownEmpty";
+  if (truth === "unknown") return "unknown";
+  const fallbackTruth = String(fallback || "").trim().toLowerCase();
+  if (fallbackTruth === "seeded") return "seeded";
+  if (fallbackTruth === "knownempty" || fallbackTruth === "known-empty") return "knownEmpty";
+  return "unknown";
+}
+
 function normalizeBootstrapMenuOrderIndex(value, fallback = 0) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return Math.max(0, Number(fallback) || 0);
@@ -203,9 +214,32 @@ function normalizeWebRouteMenuItem(item = {}, restaurantId = "", index = 0) {
   };
 }
 
+function normalizeWebRouteFocusItem(item = {}, index = 0) {
+  const row = item && typeof item === "object" ? item : {};
+  const id = String(row?.id || row?._id || `focus_${Math.max(0, Number(index) || 0)}`).trim();
+  if (!id) return null;
+  return {
+    id,
+    title: String(row?.title || row?.name || "Sot ne Fokus").trim() || "Sot ne Fokus",
+    text: String(row?.text || row?.desc || row?.description || "").trim(),
+    imageUrl: String(row?.imageUrl || row?.image || row?.photoUrl || "").trim(),
+    cropX: Number.isFinite(Number(row?.cropX)) ? Number(row.cropX) : 50,
+    cropY: Number.isFinite(Number(row?.cropY)) ? Number(row.cropY) : 50,
+    active: row?.active !== false
+  };
+}
+
 function normalizeIncomingWebRoutePayload(payload = null) {
   if (!payload || typeof payload !== "object") return null;
-  const restaurantId = String(payload?.restaurantId || payload?.targetRestaurantId || "").trim();
+  const snapshotPayload = payload?.businessSnapshot && typeof payload.businessSnapshot === "object"
+    ? payload.businessSnapshot
+    : null;
+  const restaurantId = String(
+    payload?.restaurantId
+    || payload?.targetRestaurantId
+    || snapshotPayload?.restaurantId
+    || ""
+  ).trim();
   if (!restaurantId) return null;
   const surface = String(payload?.surface || payload?.topTab || "").trim().toLowerCase() === "menu"
     ? "menu"
@@ -213,30 +247,160 @@ function normalizeIncomingWebRoutePayload(payload = null) {
   const topTab = String(payload?.topTab || surface).trim().toLowerCase() || surface;
   const contentTab = String(payload?.contentTab || (surface === "menu" ? "menu" : "posts")).trim().toLowerCase()
     || (surface === "menu" ? "menu" : "posts");
-  const identity = payload?.identity && typeof payload.identity === "object"
-    ? payload.identity
+  const identity = snapshotPayload?.identity && typeof snapshotPayload.identity === "object"
+    ? snapshotPayload.identity
+    : (payload?.identity && typeof payload.identity === "object"
+      ? payload.identity
+      : {});
+  const snapshotPosts = snapshotPayload?.posts && typeof snapshotPayload.posts === "object"
+    ? snapshotPayload.posts
     : {};
-  const postsItemsRaw = Array.isArray(payload?.posts?.items)
-    ? payload.posts.items
-    : (Array.isArray(payload?.postItems) ? payload.postItems : []);
+  const snapshotMenu = snapshotPayload?.menu && typeof snapshotPayload.menu === "object"
+    ? snapshotPayload.menu
+    : {};
+  const snapshotFocus = snapshotPayload?.focus && typeof snapshotPayload.focus === "object"
+    ? snapshotPayload.focus
+    : {};
+  const postsItemsRaw = Array.isArray(snapshotPosts?.items)
+    ? snapshotPosts.items
+    : (Array.isArray(payload?.posts?.items)
+      ? payload.posts.items
+      : (Array.isArray(payload?.postItems) ? payload.postItems : []));
   const postsItems = postsItemsRaw
     .map((row) => normalizeWebRouteSeedPost(row, restaurantId))
     .filter(Boolean);
-  const menuItemsRaw = Array.isArray(payload?.menu?.items)
-    ? payload.menu.items
-    : (Array.isArray(payload?.menuItems) ? payload.menuItems : []);
+  const menuItemsRaw = Array.isArray(snapshotMenu?.items)
+    ? snapshotMenu.items
+    : (Array.isArray(payload?.menu?.items)
+      ? payload.menu.items
+      : (Array.isArray(payload?.menuItems) ? payload.menuItems : []));
   const menuItems = menuItemsRaw
     .map((row, index) => normalizeWebRouteMenuItem(row, restaurantId, index))
     .filter(Boolean)
     .sort((a, b) => normalizeBootstrapMenuOrderIndex(a?.orderIndex) - normalizeBootstrapMenuOrderIndex(b?.orderIndex));
-  const requestedPostsCount = Number(payload?.posts?.count);
-  const requestedMenuCount = Number(payload?.menu?.count);
+  const focusItemsRaw = Array.isArray(snapshotFocus?.items)
+    ? snapshotFocus.items
+    : (Array.isArray(payload?.focus?.items)
+      ? payload.focus.items
+      : (Array.isArray(payload?.highlights?.items)
+        ? payload.highlights.items
+        : []));
+  const focusItems = focusItemsRaw
+    .map((row, index) => normalizeWebRouteFocusItem(row, index))
+    .filter(Boolean)
+    .filter((row) => row.active !== false);
+  const resolveSectionTruthState = (section = {}, fallbackCount = 0) => {
+    const explicitState = String(section?.state || "").trim().toLowerCase();
+    if (explicitState) return normalizeTruthState(explicitState, "unknown");
+    if (section?.seeded === true || fallbackCount > 0 || Number(section?.count) > 0) return "seeded";
+    if (section?.knownEmpty === true || (Number(section?.count) === 0 && section?.unknown !== true)) return "knownEmpty";
+    return "unknown";
+  };
+  const postsState = resolveSectionTruthState(snapshotPosts?.state ? snapshotPosts : payload?.posts, postsItems.length);
+  const menuState = resolveSectionTruthState(snapshotMenu?.state ? snapshotMenu : payload?.menu, menuItems.length);
+  const focusState = resolveSectionTruthState(snapshotFocus?.state ? snapshotFocus : payload?.focus, focusItems.length);
+  const requestedPostsCount = Number(snapshotPosts?.count ?? payload?.posts?.count);
+  const requestedMenuCount = Number(snapshotMenu?.count ?? payload?.menu?.count);
+  const requestedFocusCount = Number(snapshotFocus?.count ?? payload?.focus?.count);
   const postsCount = Number.isFinite(requestedPostsCount)
     ? Math.max(postsItems.length, Math.max(0, Math.round(requestedPostsCount)))
     : postsItems.length;
   const menuCount = Number.isFinite(requestedMenuCount)
     ? Math.max(menuItems.length, Math.max(0, Math.round(requestedMenuCount)))
     : menuItems.length;
+  const focusCount = Number.isFinite(requestedFocusCount)
+    ? Math.max(focusItems.length, Math.max(0, Math.round(requestedFocusCount)))
+    : focusItems.length;
+  const snapshotVersion = String(
+    snapshotPayload?.snapshotVersion
+    || payload?.snapshotVersion
+    || "business-page-v1"
+  ).trim() || "business-page-v1";
+  const snapshotUpdatedAt = Math.max(
+    0,
+    Number(snapshotPayload?.updatedAt || payload?.snapshotUpdatedAt || 0) || 0
+  ) || Date.now();
+  const snapshotVersionKey = String(
+    snapshotPayload?.version
+    || payload?.snapshotVersionKey
+    || `${restaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`
+  ).trim() || `${restaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`;
+  const menuStatusBadgeVisible = snapshotMenu?.statusBadgeVisible !== false
+    && payload?.menu?.statusBadgeVisible !== false;
+  const focusEnabled = snapshotFocus?.enabled !== false
+    && payload?.focus?.enabled !== false;
+  const truthPayload = snapshotPayload?.truth && typeof snapshotPayload.truth === "object"
+    ? snapshotPayload.truth
+    : (payload?.truth && typeof payload.truth === "object" ? payload.truth : {});
+  const identityTruth = normalizeTruthState(truthPayload?.identity || "", (
+    String(identity?.name || "").trim()
+    || String(identity?.handle || "").trim()
+    || String(identity?.avatar || "").trim()
+  ) ? "seeded" : "unknown");
+  const bioTruth = normalizeTruthState(truthPayload?.bio || "", String(identity?.bio || "").trim() ? "seeded" : "knownEmpty");
+  const avatarTruth = normalizeTruthState(truthPayload?.avatar || "", String(identity?.avatar || "").trim() ? "seeded" : "knownEmpty");
+  const countsTruth = normalizeTruthState(truthPayload?.counts || "", (
+    normalizeCountOrNull(identity?.followers) !== null
+    || normalizeCountOrNull(identity?.following) !== null
+  ) ? "seeded" : "unknown");
+  const layoutMenuCardColor = String(payload?.layout?.menuCardColor || snapshotPayload?.layout?.menuCardColor || "").trim().toLowerCase() || "white";
+  const layoutTruth = normalizeTruthState(truthPayload?.layout || "", layoutMenuCardColor ? "seeded" : "unknown");
+  const businessSnapshot = {
+    snapshotVersion,
+    version: snapshotVersionKey,
+    updatedAt: snapshotUpdatedAt,
+    restaurantId,
+    identity: {
+      name: String(identity?.name || "").trim(),
+      handle: String(identity?.handle || "").trim(),
+      avatar: String(identity?.avatar || "").trim(),
+      location: String(identity?.location || "").trim(),
+      bio: String(identity?.bio || "").trim(),
+      followers: normalizeCountOrNull(identity?.followers),
+      following: normalizeCountOrNull(identity?.following),
+      type: String(identity?.type || identity?.customerType || "").trim(),
+      customerType: String(identity?.customerType || identity?.type || "").trim()
+    },
+    posts: {
+      state: postsState,
+      seeded: postsState === "seeded",
+      knownEmpty: postsState === "knownEmpty",
+      unknown: postsState === "unknown",
+      count: postsCount,
+      items: postsItems
+    },
+    menu: {
+      state: menuState,
+      seeded: menuState === "seeded",
+      knownEmpty: menuState === "knownEmpty",
+      unknown: menuState === "unknown",
+      count: menuCount,
+      items: menuItems,
+      statusBadgeVisible: menuStatusBadgeVisible
+    },
+    focus: {
+      state: focusState,
+      seeded: focusState === "seeded",
+      knownEmpty: focusState === "knownEmpty",
+      unknown: focusState === "unknown",
+      count: focusCount,
+      items: focusItems,
+      enabled: focusEnabled
+    },
+    layout: {
+      menuCardColor: layoutMenuCardColor
+    },
+    truth: {
+      identity: identityTruth,
+      bio: bioTruth,
+      avatar: avatarTruth,
+      counts: countsTruth,
+      posts: postsState,
+      menu: menuState,
+      focus: focusState,
+      layout: layoutTruth
+    }
+  };
   return {
     owner: "web-direct",
     routeFirst: true,
@@ -248,29 +412,59 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     menuAccessSource: String(payload?.menuAccessSource || "").trim().toLowerCase(),
     tableNumber: Math.max(0, Number(payload?.tableNumber || 0) || 0),
     identity: {
-      name: String(identity?.name || "").trim(),
-      handle: String(identity?.handle || "").trim(),
-      avatar: String(identity?.avatar || "").trim(),
-      location: String(identity?.location || "").trim(),
-      followers: normalizeCountOrNull(identity?.followers),
-      following: normalizeCountOrNull(identity?.following),
-      type: String(identity?.type || identity?.customerType || "").trim(),
-      customerType: String(identity?.customerType || identity?.type || "").trim()
+      name: businessSnapshot.identity.name,
+      handle: businessSnapshot.identity.handle,
+      avatar: businessSnapshot.identity.avatar,
+      location: businessSnapshot.identity.location,
+      bio: businessSnapshot.identity.bio,
+      followers: businessSnapshot.identity.followers,
+      following: businessSnapshot.identity.following,
+      type: businessSnapshot.identity.type,
+      customerType: businessSnapshot.identity.customerType
     },
     posts: {
-      count: postsCount,
-      seeded: postsItems.length > 0 || payload?.posts?.seeded === true,
-      items: postsItems
+      state: businessSnapshot.posts.state,
+      count: businessSnapshot.posts.count,
+      seeded: businessSnapshot.posts.seeded,
+      knownEmpty: businessSnapshot.posts.knownEmpty,
+      unknown: businessSnapshot.posts.unknown,
+      items: businessSnapshot.posts.items
     },
     menu: {
-      count: menuCount,
-      seeded: menuItems.length > 0 || payload?.menu?.seeded === true,
-      items: menuItems,
-      statusBadgeVisible: payload?.menu?.statusBadgeVisible !== false
+      state: businessSnapshot.menu.state,
+      count: businessSnapshot.menu.count,
+      seeded: businessSnapshot.menu.seeded,
+      knownEmpty: businessSnapshot.menu.knownEmpty,
+      unknown: businessSnapshot.menu.unknown,
+      items: businessSnapshot.menu.items,
+      statusBadgeVisible: businessSnapshot.menu.statusBadgeVisible
+    },
+    focus: {
+      state: businessSnapshot.focus.state,
+      count: businessSnapshot.focus.count,
+      seeded: businessSnapshot.focus.seeded,
+      knownEmpty: businessSnapshot.focus.knownEmpty,
+      unknown: businessSnapshot.focus.unknown,
+      items: businessSnapshot.focus.items,
+      enabled: businessSnapshot.focus.enabled
     },
     layout: {
-      menuCardColor: String(payload?.layout?.menuCardColor || "").trim().toLowerCase() || "white"
+      menuCardColor: businessSnapshot.layout.menuCardColor
     },
+    truth: {
+      identity: businessSnapshot.truth.identity,
+      bio: businessSnapshot.truth.bio,
+      avatar: businessSnapshot.truth.avatar,
+      counts: businessSnapshot.truth.counts,
+      posts: businessSnapshot.truth.posts,
+      menu: businessSnapshot.truth.menu,
+      focus: businessSnapshot.truth.focus,
+      layout: businessSnapshot.truth.layout
+    },
+    snapshotVersion: businessSnapshot.snapshotVersion,
+    snapshotUpdatedAt: businessSnapshot.updatedAt,
+    snapshotVersionKey: businessSnapshot.version,
+    businessSnapshot,
     ts: Number(payload?.ts || 0) || Date.now()
   };
 }
@@ -303,22 +497,47 @@ function applyWebDirectRouteSeedFromBootstrap({
   const directEntry = view?.directEntry && typeof view.directEntry === "object" ? view.directEntry : null;
   const directOwner = String(directEntry?.owner || "").trim().toLowerCase();
   if (directOwner !== "web-direct") return false;
-  const directTopTab = String(directEntry?.topTab || "").trim().toLowerCase();
-  const directWebPriority = directEntry?.webPriority === true && directEntry?.routeFirst === true;
   const safeRoutePayload = resolveWebRoutePayloadForRestaurant(routePayload, safeRestaurantId);
-  const routeIdentity = safeRoutePayload?.identity && typeof safeRoutePayload.identity === "object"
-    ? safeRoutePayload.identity
+  if (!safeRoutePayload) return false;
+  const routeSnapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+    ? safeRoutePayload.businessSnapshot
     : null;
-  const routePostsSeed = Array.isArray(safeRoutePayload?.posts?.items)
-    ? safeRoutePayload.posts.items
-    : [];
-  const routeMenuSeed = Array.isArray(safeRoutePayload?.menu?.items)
-    ? safeRoutePayload.menu.items
-    : [];
+  const routeIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
+    ? routeSnapshot.identity
+    : (safeRoutePayload?.identity && typeof safeRoutePayload.identity === "object"
+      ? safeRoutePayload.identity
+      : null);
+  const routePostsSeed = Array.isArray(routeSnapshot?.posts?.items)
+    ? routeSnapshot.posts.items
+    : (Array.isArray(safeRoutePayload?.posts?.items) ? safeRoutePayload.posts.items : []);
+  const routeMenuSeed = Array.isArray(routeSnapshot?.menu?.items)
+    ? routeSnapshot.menu.items
+    : (Array.isArray(safeRoutePayload?.menu?.items) ? safeRoutePayload.menu.items : []);
+  const routeFocusSeed = Array.isArray(routeSnapshot?.focus?.items)
+    ? routeSnapshot.focus.items
+    : (Array.isArray(safeRoutePayload?.focus?.items) ? safeRoutePayload.focus.items : []);
+  const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
+    ? routeSnapshot.truth
+    : (safeRoutePayload?.truth && typeof safeRoutePayload.truth === "object" ? safeRoutePayload.truth : {});
+  const routePostsState = normalizeTruthState(routeSnapshot?.posts?.state || safeRoutePayload?.posts?.state || routeTruth?.posts || "", (
+    routePostsSeed.length ? "seeded" : "unknown"
+  ));
+  const routeMenuState = normalizeTruthState(routeSnapshot?.menu?.state || safeRoutePayload?.menu?.state || routeTruth?.menu || "", (
+    routeMenuSeed.length ? "seeded" : "unknown"
+  ));
+  const routeFocusState = normalizeTruthState(routeSnapshot?.focus?.state || safeRoutePayload?.focus?.state || routeTruth?.focus || "", (
+    routeFocusSeed.length ? "seeded" : "unknown"
+  ));
+  const routeIdentityState = normalizeTruthState(routeTruth?.identity || "", (
+    routeIdentity?.name || routeIdentity?.avatar || routeIdentity?.handle
+  ) ? "seeded" : "unknown");
+  const routeBioState = normalizeTruthState(routeTruth?.bio || "", String(routeIdentity?.bio || "").trim() ? "seeded" : "knownEmpty");
+  const routeFocusEnabled = routeSnapshot?.focus?.enabled !== false
+    && safeRoutePayload?.focus?.enabled !== false;
+  const routeMenuStatusBadgeVisible = routeSnapshot?.menu?.statusBadgeVisible !== false
+    && safeRoutePayload?.menu?.statusBadgeVisible !== false;
   const routeLayoutColor = String(safeRoutePayload?.layout?.menuCardColor || "").trim().toLowerCase();
-  const allowPostsSeedFromRoutePayload = directTopTab === "profile" && routePostsSeed.length > 0;
-  const allowPostsSeedFromFeed = directTopTab === "profile" && !directWebPriority && !routePostsSeed.length;
-  const allowPostsSeed = allowPostsSeedFromRoutePayload || allowPostsSeedFromFeed;
+  const safeMaxPosts = Math.max(1, Number(maxPosts) || 8);
   let changed = false;
   const restaurantPreview = (Array.isArray(incomingRestaurants) ? incomingRestaurants : [])
     .find((row) => String(row?.id || "").trim() === safeRestaurantId) || null;
@@ -348,6 +567,7 @@ function applyWebDirectRouteSeedFromBootstrap({
   ).trim();
   const nextFollowers = normalizeCountOrNull(routeIdentity?.followers);
   const nextFollowing = normalizeCountOrNull(routeIdentity?.following);
+  const nextBio = String(routeIdentity?.bio || "").trim();
   if (!String(profile.restaurantId || "").trim()) {
     profile.restaurantId = safeRestaurantId;
     changed = true;
@@ -368,6 +588,13 @@ function applyWebDirectRouteSeedFromBootstrap({
     profile.location = nextLocation;
     changed = true;
   }
+  if (routeBioState !== "unknown") {
+    const resolvedBio = nextBio || (routeBioState === "knownEmpty" ? "" : String(profile.bio || "").trim());
+    if (resolvedBio !== String(profile.bio || "").trim()) {
+      profile.bio = resolvedBio;
+      changed = true;
+    }
+  }
   if (nextType && nextType !== String(profile.type || "").trim()) {
     profile.type = nextType;
     profile.customerType = nextType;
@@ -381,19 +608,14 @@ function applyWebDirectRouteSeedFromBootstrap({
     profile.following = nextFollowing;
     changed = true;
   }
-  if (profile.identityTruthState !== "ready" && (nextName || nextAvatar || nextLocation || nextHandle)) {
-    profile.identityTruthState = "ready";
+  const nextIdentityTruthState = routeIdentityState === "seeded" || (nextName || nextAvatar || nextLocation || nextHandle)
+    ? "ready"
+    : "loading";
+  if (String(profile.identityTruthState || "").trim().toLowerCase() !== nextIdentityTruthState) {
+    profile.identityTruthState = nextIdentityTruthState;
     changed = true;
   }
-  if (
-    directTopTab === "menu"
-    && routeMenuSeed.length
-    && (
-      String(state?.menu?.restaurantId || "").trim() !== safeRestaurantId
-      || !Array.isArray(state?.menu?.items)
-      || state.menu.items.length === 0
-    )
-  ) {
+  if (routeMenuState === "seeded") {
     state.menu = {
       ...(state?.menu || {}),
       restaurantId: safeRestaurantId,
@@ -401,18 +623,12 @@ function applyWebDirectRouteSeedFromBootstrap({
       loading: false,
       error: "",
       source: "public",
-      statusBadgeVisible: safeRoutePayload?.menu?.statusBadgeVisible !== false,
-      routeSeed: true
+      statusBadgeVisible: routeMenuStatusBadgeVisible,
+      routeSeed: true,
+      truthState: "seeded"
     };
     changed = true;
-  } else if (
-    directTopTab === "menu"
-    && safeRoutePayload
-    && Number(safeRoutePayload?.menu?.count || 0) === 0
-    && safeRoutePayload?.menu?.seeded !== true
-    && String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
-    && state?.menu?.loading
-  ) {
+  } else if (routeMenuState === "knownEmpty") {
     state.menu = {
       ...(state?.menu || {}),
       restaurantId: safeRestaurantId,
@@ -420,8 +636,66 @@ function applyWebDirectRouteSeedFromBootstrap({
       loading: false,
       error: "",
       source: "public",
-      statusBadgeVisible: safeRoutePayload?.menu?.statusBadgeVisible !== false,
-      routeSeed: false
+      statusBadgeVisible: routeMenuStatusBadgeVisible,
+      routeSeed: false,
+      truthState: "knownEmpty"
+    };
+    changed = true;
+  } else if (routeMenuState === "unknown") {
+    const sameRestaurantItems = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+      && Array.isArray(state?.menu?.items)
+      ? state.menu.items
+      : [];
+    state.menu = {
+      ...(state?.menu || {}),
+      restaurantId: safeRestaurantId,
+      items: sameRestaurantItems,
+      loading: true,
+      error: "",
+      source: "public",
+      statusBadgeVisible: routeMenuStatusBadgeVisible,
+      routeSeed: false,
+      truthState: "unknown"
+    };
+    changed = true;
+  }
+  if (routeFocusState === "seeded") {
+    state.focus = {
+      ...(state?.focus || {}),
+      restaurantId: safeRestaurantId,
+      items: routeFocusSeed,
+      enabled: routeFocusEnabled,
+      loading: false,
+      error: "",
+      index: 0,
+      truthState: "seeded"
+    };
+    changed = true;
+  } else if (routeFocusState === "knownEmpty") {
+    state.focus = {
+      ...(state?.focus || {}),
+      restaurantId: safeRestaurantId,
+      items: [],
+      enabled: routeFocusEnabled,
+      loading: false,
+      error: "",
+      index: 0,
+      truthState: "knownEmpty"
+    };
+    changed = true;
+  } else if (routeFocusState === "unknown") {
+    const sameRestaurantItems = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+      && Array.isArray(state?.focus?.items)
+      ? state.focus.items
+      : [];
+    state.focus = {
+      ...(state?.focus || {}),
+      restaurantId: safeRestaurantId,
+      items: sameRestaurantItems,
+      enabled: routeFocusEnabled,
+      loading: true,
+      error: "",
+      truthState: "unknown"
     };
     changed = true;
   }
@@ -435,21 +709,10 @@ function applyWebDirectRouteSeedFromBootstrap({
   if (restaurantPreview) {
     profile.restaurantId = String(profile.restaurantId || safeRestaurantId).trim() || safeRestaurantId;
   }
-  const safeMaxPosts = Math.max(1, Number(maxPosts) || 8);
-  const feedRows = Array.isArray(normalizedFeedPosts) ? normalizedFeedPosts : [];
-  const seededPosts = allowPostsSeedFromRoutePayload
-    ? routePostsSeed.slice(0, safeMaxPosts)
-    : (allowPostsSeedFromFeed
-      ? feedRows
-        .filter((row) => String(row?.restaurantId || "").trim() === safeRestaurantId)
-        .map((row) => normalizeWebRouteSeedPost(row, safeRestaurantId))
-        .filter(Boolean)
-        .slice(0, safeMaxPosts)
-      : []);
-  const currentPosts = Array.isArray(view.posts) ? view.posts : [];
-  const canOverrideVisiblePosts = allowPostsSeedFromRoutePayload
-    || !currentPosts.length;
-  if (allowPostsSeed && canOverrideVisiblePosts && seededPosts.length) {
+  if (routePostsState === "seeded") {
+    const seededPosts = routePostsSeed.length
+      ? routePostsSeed.slice(0, safeMaxPosts)
+      : [];
     const projected = projectPostCollectionThroughEntityMap(state, seededPosts);
     if (projected.length) {
       view.posts = projected;
@@ -457,92 +720,194 @@ function applyWebDirectRouteSeedFromBootstrap({
       profile.postsLoaded = true;
       profile.truthState = "stable";
       changed = true;
-    }
-  } else if (
-    directTopTab === "profile"
-    && safeRoutePayload
-    && Number(safeRoutePayload?.posts?.count || 0) === 0
-    && safeRoutePayload?.posts?.seeded !== true
-    && !currentPosts.length
-  ) {
-    if (profile.postsLoaded !== true || String(profile.truthState || "").trim().toLowerCase() !== "empty") {
+    } else if (seededPosts.length === 0) {
+      view.posts = [];
+      profile.posts = [];
       profile.postsLoaded = true;
       profile.truthState = "empty";
       changed = true;
     }
+  } else if (routePostsState === "knownEmpty") {
+    view.posts = [];
+    profile.posts = [];
+    profile.postsLoaded = true;
+    profile.truthState = "empty";
+    changed = true;
+  } else {
+    if (!Array.isArray(view.posts)) view.posts = [];
+    if (!Array.isArray(profile.posts)) profile.posts = [];
+    profile.postsLoaded = false;
+    profile.truthState = "route-pending-loading";
+    changed = true;
   }
   if (changed) {
-    const routePayload = view.routePayload && typeof view.routePayload === "object"
-      ? view.routePayload
-      : null;
     const activePosts = Array.isArray(view.posts) ? view.posts : [];
-    const menuCount = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId && Array.isArray(state?.menu?.items)
-      ? state.menu.items.length
-      : Math.max(
-        0,
-        Number(safeRoutePayload?.menu?.count || routePayload?.menu?.count || 0) || 0
-      );
+    const menuCount = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+      ? (Array.isArray(state?.menu?.items) ? state.menu.items.length : 0)
+      : Math.max(0, Number(routeSnapshot?.menu?.count || safeRoutePayload?.menu?.count || 0) || 0);
+    const focusCount = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+      ? (Array.isArray(state?.focus?.items) ? state.focus.items.length : 0)
+      : Math.max(0, Number(routeSnapshot?.focus?.count || safeRoutePayload?.focus?.count || 0) || 0);
     const activePostsCount = activePosts.length > 0
       ? activePosts.length
-      : Math.max(0, Number(safeRoutePayload?.posts?.count || routePayload?.posts?.count || 0) || 0);
-    const readyFromMenuSeed = directTopTab === "menu" && (
-      menuCount > 0
-      || safeRoutePayload?.menu?.seeded === true
-      || (safeRoutePayload?.menu?.seeded === false && Number(safeRoutePayload?.menu?.count || 0) === 0)
-    );
-    const readyFromPostsSeed = directTopTab === "profile" && (
-      activePostsCount > 0
-      || safeRoutePayload?.posts?.seeded === true
-      || (safeRoutePayload?.posts?.seeded === false && Number(safeRoutePayload?.posts?.count || 0) === 0)
-    );
+      : Math.max(0, Number(routeSnapshot?.posts?.count || safeRoutePayload?.posts?.count || 0) || 0);
+    const snapshotPhaseReady = routePostsState !== "unknown"
+      && routeMenuState !== "unknown"
+      && routeFocusState !== "unknown"
+      && nextIdentityTruthState === "ready";
+    const nextSnapshot = {
+      ...(routeSnapshot && typeof routeSnapshot === "object" ? routeSnapshot : {}),
+      snapshotVersion: String(
+        routeSnapshot?.snapshotVersion
+        || safeRoutePayload?.snapshotVersion
+        || "business-page-v1"
+      ).trim() || "business-page-v1",
+      version: String(
+        routeSnapshot?.version
+        || safeRoutePayload?.snapshotVersionKey
+        || `${safeRestaurantId}:${Date.now()}:business-page-v1`
+      ).trim(),
+      updatedAt: Math.max(
+        0,
+        Number(routeSnapshot?.updatedAt || safeRoutePayload?.snapshotUpdatedAt || 0) || 0
+      ) || Date.now(),
+      restaurantId: safeRestaurantId,
+      identity: {
+        name: String(profile.name || "").trim(),
+        handle: String(profile.handle || "").trim(),
+        avatar: String(profile.avatar || "").trim(),
+        location: String(profile.location || "").trim(),
+        bio: String(profile.bio || "").trim(),
+        followers: profile.followers ?? null,
+        following: profile.following ?? null,
+        type: String(profile.type || profile.customerType || "").trim(),
+        customerType: String(profile.customerType || profile.type || "").trim()
+      },
+      posts: {
+        state: routePostsState,
+        seeded: routePostsState === "seeded",
+        knownEmpty: routePostsState === "knownEmpty",
+        unknown: routePostsState === "unknown",
+        count: activePostsCount,
+        items: activePosts
+      },
+      menu: {
+        state: routeMenuState,
+        seeded: routeMenuState === "seeded",
+        knownEmpty: routeMenuState === "knownEmpty",
+        unknown: routeMenuState === "unknown",
+        count: menuCount,
+        items: Array.isArray(state?.menu?.items) ? state.menu.items : [],
+        statusBadgeVisible: state?.menu?.statusBadgeVisible !== false
+      },
+      focus: {
+        state: routeFocusState,
+        seeded: routeFocusState === "seeded",
+        knownEmpty: routeFocusState === "knownEmpty",
+        unknown: routeFocusState === "unknown",
+        count: focusCount,
+        items: Array.isArray(state?.focus?.items) ? state.focus.items : [],
+        enabled: state?.focus?.enabled !== false
+      },
+      layout: {
+        menuCardColor: String(
+          state?.menuLayout?.cardColor
+          || safeRoutePayload?.layout?.menuCardColor
+          || ""
+        ).trim().toLowerCase() || "white"
+      },
+      truth: {
+        identity: nextIdentityTruthState === "ready" ? "seeded" : "unknown",
+        bio: routeBioState,
+        avatar: String(profile.avatar || "").trim() ? "seeded" : "knownEmpty",
+        counts: (normalizeCountOrNull(profile.followers) !== null || normalizeCountOrNull(profile.following) !== null)
+          ? "seeded"
+          : "unknown",
+        posts: routePostsState,
+        menu: routeMenuState,
+        focus: routeFocusState,
+        layout: "seeded"
+      }
+    };
     view.routePayload = {
-      ...(routePayload || {}),
+      ...(safeRoutePayload || {}),
       owner: "web-direct",
       routeFirst: true,
       restaurantId: safeRestaurantId,
       surface: String(view?.directEntry?.topTab || "").trim().toLowerCase() === "menu" ? "menu" : "profile",
       topTab: String(view?.directEntry?.topTab || "").trim().toLowerCase() || "profile",
       contentTab: String(view?.directEntry?.contentTab || "").trim().toLowerCase() || "posts",
-      phase: readyFromMenuSeed || readyFromPostsSeed
-        ? "ready"
-        : (String(view?.directEntry?.phase || routePayload?.phase || "").trim().toLowerCase() || "loading"),
-      menuAccessSource: String(safeRoutePayload?.menuAccessSource || routePayload?.menuAccessSource || "").trim().toLowerCase(),
-      tableNumber: Math.max(0, Number(safeRoutePayload?.tableNumber || routePayload?.tableNumber || 0) || 0),
+      phase: snapshotPhaseReady ? "ready" : "loading",
+      menuAccessSource: String(safeRoutePayload?.menuAccessSource || "").trim().toLowerCase(),
+      tableNumber: Math.max(0, Number(safeRoutePayload?.tableNumber || 0) || 0),
       identity: {
         name: String(profile.name || "").trim(),
         handle: String(profile.handle || "").trim(),
         avatar: String(profile.avatar || "").trim(),
         location: String(profile.location || "").trim(),
+        bio: String(profile.bio || "").trim(),
         followers: profile.followers ?? null,
         following: profile.following ?? null
       },
       posts: {
+        state: routePostsState,
         count: activePostsCount,
-        seeded: activePosts.length > 0 || safeRoutePayload?.posts?.seeded === true,
-        items: Array.isArray(safeRoutePayload?.posts?.items) ? safeRoutePayload.posts.items : []
+        seeded: routePostsState === "seeded",
+        knownEmpty: routePostsState === "knownEmpty",
+        unknown: routePostsState === "unknown",
+        items: activePosts
       },
       menu: {
+        state: routeMenuState,
         count: menuCount,
-        seeded: menuCount > 0 || safeRoutePayload?.menu?.seeded === true,
-        items: Array.isArray(safeRoutePayload?.menu?.items) ? safeRoutePayload.menu.items : [],
-        statusBadgeVisible: safeRoutePayload?.menu?.statusBadgeVisible !== false
+        seeded: routeMenuState === "seeded",
+        knownEmpty: routeMenuState === "knownEmpty",
+        unknown: routeMenuState === "unknown",
+        items: Array.isArray(state?.menu?.items) ? state.menu.items : [],
+        statusBadgeVisible: state?.menu?.statusBadgeVisible !== false
+      },
+      focus: {
+        state: routeFocusState,
+        count: focusCount,
+        seeded: routeFocusState === "seeded",
+        knownEmpty: routeFocusState === "knownEmpty",
+        unknown: routeFocusState === "unknown",
+        items: Array.isArray(state?.focus?.items) ? state.focus.items : [],
+        enabled: state?.focus?.enabled !== false
       },
       layout: {
         menuCardColor: String(
           state?.menuLayout?.cardColor
           || safeRoutePayload?.layout?.menuCardColor
-          || routePayload?.layout?.menuCardColor
           || ""
         ).trim().toLowerCase() || "white"
       },
+      truth: {
+        identity: nextIdentityTruthState === "ready" ? "seeded" : "unknown",
+        bio: routeBioState,
+        avatar: String(profile.avatar || "").trim() ? "seeded" : "knownEmpty",
+        counts: (normalizeCountOrNull(profile.followers) !== null || normalizeCountOrNull(profile.following) !== null)
+          ? "seeded"
+          : "unknown",
+        posts: routePostsState,
+        menu: routeMenuState,
+        focus: routeFocusState,
+        layout: "seeded"
+      },
+      snapshotVersion: nextSnapshot.snapshotVersion,
+      snapshotUpdatedAt: nextSnapshot.updatedAt,
+      snapshotVersionKey: nextSnapshot.version,
+      businessSnapshot: nextSnapshot,
       ts: Date.now()
     };
     if (
-      (readyFromPostsSeed || readyFromMenuSeed)
+      snapshotPhaseReady
       && view?.directEntry
       && String(view.directEntry.owner || "").trim().toLowerCase() === "web-direct"
     ) {
       view.directEntry.phase = "ready";
+    } else if (view?.directEntry && String(view.directEntry.owner || "").trim().toLowerCase() === "web-direct") {
+      view.directEntry.phase = "loading";
     }
   }
   return changed;

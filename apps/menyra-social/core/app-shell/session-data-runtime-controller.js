@@ -1326,13 +1326,22 @@ export function createSessionDataRuntimeController({
 
   async function loadFocusForRestaurant(restaurantId, { force = false } = {}) {
     if (!restaurantId) {
-      state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "" };
+      state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "", truthState: "unknown" };
       return;
     }
     const cacheKey = focusCacheKeyFn(restaurantId);
     const cached = focusCacheMap.get(cacheKey);
     if (cached && cached.items?.length && !force) {
-      state.focus = { ...state.focus, restaurantId, items: cached.items, enabled: cached.enabled, loading: false, error: "", index: 0 };
+      state.focus = {
+        ...state.focus,
+        restaurantId,
+        items: cached.items,
+        enabled: cached.enabled,
+        loading: false,
+        error: "",
+        index: 0,
+        truthState: "seeded"
+      };
       return;
     }
     const sameRestaurant = state.focus.restaurantId === restaurantId;
@@ -1348,7 +1357,8 @@ export function createSessionDataRuntimeController({
       items: stableItems,
       enabled: stableEnabled,
       loading: true,
-      error: ""
+      error: "",
+      truthState: stableItems.length ? "seeded" : "unknown"
     };
     requestRender();
     try {
@@ -1357,7 +1367,16 @@ export function createSessionDataRuntimeController({
         loadFocusMetaFn(restaurantId)
       ]);
       focusCacheMap.set(cacheKey, { items, enabled, ts: Date.now() });
-      state.focus = { ...state.focus, restaurantId, items, enabled, loading: false, error: "", index: 0 };
+      state.focus = {
+        ...state.focus,
+        restaurantId,
+        items,
+        enabled,
+        loading: false,
+        error: "",
+        index: 0,
+        truthState: Array.isArray(items) && items.length > 0 ? "seeded" : "knownEmpty"
+      };
       requestRender();
     } catch (err) {
       console.error(err);
@@ -1371,7 +1390,8 @@ export function createSessionDataRuntimeController({
         items: fallbackItems,
         enabled: state.focus.enabled !== false,
         loading: false,
-        error: hasFallbackItems ? "" : "Fokus laden fehlgeschlagen."
+        error: hasFallbackItems ? "" : "Fokus laden fehlgeschlagen.",
+        truthState: hasFallbackItems ? "seeded" : "unknown"
       };
       requestRender();
     }
@@ -1394,7 +1414,8 @@ export function createSessionDataRuntimeController({
         error: "",
         source: safeSource,
         statusBadgeVisible: true,
-        routeSeed: false
+        routeSeed: false,
+        truthState: "unknown"
       };
       return;
     }
@@ -1435,7 +1456,8 @@ export function createSessionDataRuntimeController({
         error: "",
         source: safeSource,
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true,
-        routeSeed: false
+        routeSeed: false,
+        truthState: "seeded"
       };
       requestRender();
       if (!lightweightQrGuestFlow && !menuFreshReconcileQueuedKeys.has(cacheKey)) {
@@ -1459,7 +1481,8 @@ export function createSessionDataRuntimeController({
         error: "",
         source: safeSource,
         statusBadgeVisible: persistedMenu.statusBadgeVisible,
-        routeSeed: false
+        routeSeed: false,
+        truthState: "seeded"
       };
       menuCacheMap.set(cacheKey, {
         items: persistedMenu.items,
@@ -1494,7 +1517,10 @@ export function createSessionDataRuntimeController({
       loading: true,
       error: "",
       source: safeSource,
-      routeSeed: keepCurrentItems ? state.menu.routeSeed === true : false
+      routeSeed: keepCurrentItems ? state.menu.routeSeed === true : false,
+      truthState: keepCurrentItems
+        ? String(state.menu.truthState || "").trim().toLowerCase() || "seeded"
+        : "unknown"
     };
     requestRender();
     const request = (async () => {
@@ -1544,7 +1570,8 @@ export function createSessionDataRuntimeController({
           error: "",
           source: safeSource,
           statusBadgeVisible,
-          routeSeed: false
+          routeSeed: false,
+          truthState: Array.isArray(items) && items.length > 0 ? "seeded" : "knownEmpty"
         };
         requestRender();
       } catch (err) {
@@ -1569,7 +1596,8 @@ export function createSessionDataRuntimeController({
           error: fallbackItems.length ? "" : "Menu laden fehlgeschlagen.",
           source: safeSource,
           statusBadgeVisible: fallbackStatusBadgeVisible,
-          routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true
+          routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true,
+          truthState: fallbackItems.length > 0 ? "seeded" : "unknown"
         };
         requestRender();
       } finally {

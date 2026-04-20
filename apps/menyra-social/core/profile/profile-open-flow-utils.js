@@ -119,6 +119,16 @@ export function createProfileOpenFlowControllerCore({
     if (next === "error") return "loading";
     return next;
   };
+  const normalizeTruthState = (value = "", fallback = "unknown") => {
+    const safeValue = String(value || "").trim().toLowerCase();
+    if (safeValue === "seeded") return "seeded";
+    if (safeValue === "knownempty" || safeValue === "known-empty") return "knownEmpty";
+    if (safeValue === "unknown") return "unknown";
+    const safeFallback = String(fallback || "").trim().toLowerCase();
+    if (safeFallback === "seeded") return "seeded";
+    if (safeFallback === "knownempty" || safeFallback === "known-empty") return "knownEmpty";
+    return "unknown";
+  };
   const applySurfaceTruthPatch = (
     profile = {},
     {
@@ -323,6 +333,94 @@ export function createProfileOpenFlowControllerCore({
         || (restaurantId ? { id: restaurantId } : {});
       targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
       targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      const resolveDirectRouteBootstrapSeed = () => {
+        const candidate = state?.__publicRouteBootstrap && typeof state.__publicRouteBootstrap === "object"
+          ? state.__publicRouteBootstrap
+          : null;
+        if (!candidate) return null;
+        const candidateRestaurantId = String(candidate?.restaurantId || "").trim();
+        const lookupKey = normalizeBusinessLookupKey(targetRestaurantLookupId || lookupText || "");
+        if (targetMenuRestaurantId && candidateRestaurantId && targetMenuRestaurantId === candidateRestaurantId) {
+          return candidate;
+        }
+        const candidateLookupKey = normalizeBusinessLookupKey(candidateRestaurantId);
+        if (lookupKey && candidateLookupKey && lookupKey === candidateLookupKey) {
+          return candidate;
+        }
+        const candidateHandleKey = normalizeBusinessLookupKey(
+          candidate?.businessSnapshot?.identity?.handle
+          || candidate?.identity?.handle
+          || ""
+        );
+        if (lookupKey && candidateHandleKey && lookupKey === candidateHandleKey) {
+          return candidate;
+        }
+        if (!targetMenuRestaurantId && !lookupKey && candidateRestaurantId) {
+          return candidate;
+        }
+        if (!targetMenuRestaurantId && candidateRestaurantId) {
+          return candidate;
+        }
+        return null;
+      };
+      const routeBootstrapSeed = isDirectWebEntryRequest
+        ? resolveDirectRouteBootstrapSeed()
+        : null;
+      const routeSnapshotSeed = routeBootstrapSeed?.businessSnapshot && typeof routeBootstrapSeed.businessSnapshot === "object"
+        ? routeBootstrapSeed.businessSnapshot
+        : null;
+      const routeTruthSeed = routeSnapshotSeed?.truth && typeof routeSnapshotSeed.truth === "object"
+        ? routeSnapshotSeed.truth
+        : (routeBootstrapSeed?.truth && typeof routeBootstrapSeed.truth === "object" ? routeBootstrapSeed.truth : {});
+      const routeIdentitySeed = routeSnapshotSeed?.identity && typeof routeSnapshotSeed.identity === "object"
+        ? routeSnapshotSeed.identity
+        : (routeBootstrapSeed?.identity && typeof routeBootstrapSeed.identity === "object" ? routeBootstrapSeed.identity : {});
+      const routePostsSeed = Array.isArray(routeSnapshotSeed?.posts?.items)
+        ? routeSnapshotSeed.posts.items
+        : (Array.isArray(routeBootstrapSeed?.posts?.items) ? routeBootstrapSeed.posts.items : []);
+      const routeMenuSeed = Array.isArray(routeSnapshotSeed?.menu?.items)
+        ? routeSnapshotSeed.menu.items
+        : (Array.isArray(routeBootstrapSeed?.menu?.items) ? routeBootstrapSeed.menu.items : []);
+      const routeFocusSeed = Array.isArray(routeSnapshotSeed?.focus?.items)
+        ? routeSnapshotSeed.focus.items
+        : (Array.isArray(routeBootstrapSeed?.focus?.items) ? routeBootstrapSeed.focus.items : []);
+      const routePostsState = normalizeTruthState(
+        routeSnapshotSeed?.posts?.state
+        || routeBootstrapSeed?.posts?.state
+        || routeTruthSeed?.posts
+        || "",
+        routePostsSeed.length ? "seeded" : "unknown"
+      );
+      const routeMenuState = normalizeTruthState(
+        routeSnapshotSeed?.menu?.state
+        || routeBootstrapSeed?.menu?.state
+        || routeTruthSeed?.menu
+        || "",
+        routeMenuSeed.length ? "seeded" : "unknown"
+      );
+      const routeFocusState = normalizeTruthState(
+        routeSnapshotSeed?.focus?.state
+        || routeBootstrapSeed?.focus?.state
+        || routeTruthSeed?.focus
+        || "",
+        routeFocusSeed.length ? "seeded" : "unknown"
+      );
+      const routeIdentityState = normalizeTruthState(
+        routeTruthSeed?.identity || "",
+        (
+          String(routeIdentitySeed?.name || "").trim()
+          || String(routeIdentitySeed?.handle || "").trim()
+          || String(routeIdentitySeed?.avatar || "").trim()
+        ) ? "seeded" : "unknown"
+      );
+      const routeSnapshotRestaurantId = String(
+        routeSnapshotSeed?.restaurantId
+        || routeBootstrapSeed?.restaurantId
+        || ""
+      ).trim();
+      if (!targetMenuRestaurantId && routeSnapshotRestaurantId) {
+        targetMenuRestaurantId = routeSnapshotRestaurantId;
+      }
       const buildDirectEntryMeta = (phase = "loading") => ({
         active: true,
         source: "route",
@@ -351,13 +449,156 @@ export function createProfileOpenFlowControllerCore({
           || ""
         ).trim();
         const menu = state?.menu || {};
-        const menuCount = String(menu.restaurantId || "").trim() === safeRestaurantId && Array.isArray(menu.items)
-          ? menu.items.length
-          : 0;
+        const focus = state?.focus || {};
+        const sameRestaurantMenu = String(menu.restaurantId || "").trim() === safeRestaurantId;
+        const sameRestaurantFocus = String(focus.restaurantId || "").trim() === safeRestaurantId;
+        const menuItems = sameRestaurantMenu && Array.isArray(menu.items)
+          ? menu.items
+          : [];
+        const focusItems = sameRestaurantFocus && Array.isArray(focus.items)
+          ? focus.items
+          : [];
+        const postsTruthState = normalizeTruthState(
+          routeSnapshotSeed?.posts?.state
+          || routeBootstrapSeed?.posts?.state
+          || routeTruthSeed?.posts
+          || "",
+          safePosts.length > 0 ? "seeded" : (safeProfile.postsLoaded === true ? "knownEmpty" : "unknown")
+        );
+        const menuTruthState = normalizeTruthState(
+          menu.truthState
+          || routeSnapshotSeed?.menu?.state
+          || routeBootstrapSeed?.menu?.state
+          || routeTruthSeed?.menu
+          || "",
+          menuItems.length > 0 ? "seeded" : (menu.loading ? "unknown" : "knownEmpty")
+        );
+        const focusTruthState = normalizeTruthState(
+          focus.truthState
+          || routeSnapshotSeed?.focus?.state
+          || routeBootstrapSeed?.focus?.state
+          || routeTruthSeed?.focus
+          || "",
+          focusItems.length > 0 ? "seeded" : (focus.loading ? "unknown" : "knownEmpty")
+        );
+        const identityTruthState = normalizeTruthState(
+          routeTruthSeed?.identity || "",
+          (
+            String(safeProfile.name || routeIdentitySeed?.name || "").trim()
+            || String(safeProfile.handle || routeIdentitySeed?.handle || "").trim()
+            || String(safeProfile.avatar || routeIdentitySeed?.avatar || "").trim()
+          ) ? "seeded" : "unknown"
+        );
+        const identityBio = String(safeProfile.bio || routeIdentitySeed?.bio || "").trim();
+        const resolvedMenuItems = menuTruthState === "seeded"
+          ? menuItems
+          : (menuTruthState === "knownEmpty"
+            ? []
+            : (Array.isArray(routeSnapshotSeed?.menu?.items) ? routeSnapshotSeed.menu.items : []));
+        const resolvedFocusItems = focusTruthState === "seeded"
+          ? focusItems
+          : (focusTruthState === "knownEmpty"
+            ? []
+            : (Array.isArray(routeSnapshotSeed?.focus?.items) ? routeSnapshotSeed.focus.items : []));
+        const menuCount = menuTruthState === "seeded"
+          ? resolvedMenuItems.length
+          : (menuTruthState === "knownEmpty"
+            ? 0
+            : Math.max(0, Number(routeSnapshotSeed?.menu?.count || routeBootstrapSeed?.menu?.count || 0) || 0));
+        const focusCount = focusTruthState === "seeded"
+          ? resolvedFocusItems.length
+          : (focusTruthState === "knownEmpty"
+            ? 0
+            : Math.max(0, Number(routeSnapshotSeed?.focus?.count || routeBootstrapSeed?.focus?.count || 0) || 0));
+        const postsCount = postsTruthState === "seeded"
+          ? safePosts.length
+          : (postsTruthState === "knownEmpty"
+            ? 0
+            : Math.max(0, Number(routeSnapshotSeed?.posts?.count || routeBootstrapSeed?.posts?.count || 0) || 0));
+        const snapshotVersion = String(
+          routeSnapshotSeed?.snapshotVersion
+          || routeBootstrapSeed?.snapshotVersion
+          || "business-page-v1"
+        ).trim() || "business-page-v1";
+        const hasCountSeed = (
+          safeProfile.followers !== null
+          && safeProfile.followers !== undefined
+          && Number.isFinite(Number(safeProfile.followers))
+        ) || (
+          safeProfile.following !== null
+          && safeProfile.following !== undefined
+          && Number.isFinite(Number(safeProfile.following))
+        );
+        const snapshotUpdatedAt = Math.max(
+          0,
+          Number(routeSnapshotSeed?.updatedAt || routeBootstrapSeed?.snapshotUpdatedAt || 0) || 0
+        ) || Date.now();
+        const snapshotVersionKey = String(
+          routeSnapshotSeed?.version
+          || routeBootstrapSeed?.snapshotVersionKey
+          || `${safeRestaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`
+        ).trim() || `${safeRestaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`;
+        const nextSnapshot = {
+          snapshotVersion,
+          version: snapshotVersionKey,
+          updatedAt: snapshotUpdatedAt,
+          restaurantId: safeRestaurantId,
+          identity: {
+            name: String(safeProfile.name || routeIdentitySeed?.name || "").trim(),
+            handle: String(safeProfile.handle || routeIdentitySeed?.handle || "").trim(),
+            avatar: String(safeProfile.avatar || routeIdentitySeed?.avatar || "").trim(),
+            location: String(safeProfile.location || routeIdentitySeed?.location || "").trim(),
+            bio: identityBio,
+            followers: safeProfile.followers ?? null,
+            following: safeProfile.following ?? null,
+            type: String(safeProfile.type || safeProfile.customerType || routeIdentitySeed?.type || routeIdentitySeed?.customerType || "").trim(),
+            customerType: String(safeProfile.customerType || safeProfile.type || routeIdentitySeed?.customerType || routeIdentitySeed?.type || "").trim()
+          },
+          posts: {
+            state: postsTruthState,
+            seeded: postsTruthState === "seeded",
+            knownEmpty: postsTruthState === "knownEmpty",
+            unknown: postsTruthState === "unknown",
+            count: postsCount,
+            items: safePosts
+          },
+          menu: {
+            state: menuTruthState,
+            seeded: menuTruthState === "seeded",
+            knownEmpty: menuTruthState === "knownEmpty",
+            unknown: menuTruthState === "unknown",
+            count: menuCount,
+            items: resolvedMenuItems,
+            statusBadgeVisible: menu.statusBadgeVisible !== false
+          },
+          focus: {
+            state: focusTruthState,
+            seeded: focusTruthState === "seeded",
+            knownEmpty: focusTruthState === "knownEmpty",
+            unknown: focusTruthState === "unknown",
+            count: focusCount,
+            items: resolvedFocusItems,
+            enabled: focus.enabled !== false
+          },
+          layout: {
+            menuCardColor: String(state?.menuLayout?.cardColor || routeSnapshotSeed?.layout?.menuCardColor || "").trim().toLowerCase() || "white"
+          },
+          truth: {
+            identity: identityTruthState,
+            bio: normalizeTruthState(routeTruthSeed?.bio || "", identityBio ? "seeded" : "knownEmpty"),
+            avatar: normalizeTruthState(routeTruthSeed?.avatar || "", String(safeProfile.avatar || routeIdentitySeed?.avatar || "").trim() ? "seeded" : "knownEmpty"),
+            counts: normalizeTruthState(routeTruthSeed?.counts || "", hasCountSeed ? "seeded" : "unknown"),
+            posts: postsTruthState,
+            menu: menuTruthState,
+            focus: focusTruthState,
+            layout: "seeded"
+          }
+        };
         const directMeta = directEntry && typeof directEntry === "object"
           ? directEntry
           : buildDirectEntryMeta(phase);
         return {
+          ...(routeBootstrapSeed || {}),
           owner: "web-direct",
           routeFirst: isDirectWebEntryRequest,
           restaurantId: safeRestaurantId,
@@ -368,24 +609,59 @@ export function createProfileOpenFlowControllerCore({
           menuAccessSource: safeMenuAccessSource,
           tableNumber: safeTableNumber,
           identity: {
-            name: String(safeProfile.name || "").trim(),
-            handle: String(safeProfile.handle || "").trim(),
-            avatar: String(safeProfile.avatar || "").trim(),
-            location: String(safeProfile.location || "").trim(),
-            followers: safeProfile.followers ?? null,
-            following: safeProfile.following ?? null
+            name: nextSnapshot.identity.name,
+            handle: nextSnapshot.identity.handle,
+            avatar: nextSnapshot.identity.avatar,
+            location: nextSnapshot.identity.location,
+            bio: nextSnapshot.identity.bio,
+            followers: nextSnapshot.identity.followers,
+            following: nextSnapshot.identity.following,
+            type: nextSnapshot.identity.type,
+            customerType: nextSnapshot.identity.customerType
           },
           posts: {
-            count: safePosts.length,
-            seeded: safePosts.length > 0
+            state: nextSnapshot.posts.state,
+            count: nextSnapshot.posts.count,
+            seeded: nextSnapshot.posts.seeded,
+            knownEmpty: nextSnapshot.posts.knownEmpty,
+            unknown: nextSnapshot.posts.unknown,
+            items: safePosts
           },
           menu: {
-            count: menuCount,
-            seeded: menuCount > 0
+            state: nextSnapshot.menu.state,
+            count: nextSnapshot.menu.count,
+            seeded: nextSnapshot.menu.seeded,
+            knownEmpty: nextSnapshot.menu.knownEmpty,
+            unknown: nextSnapshot.menu.unknown,
+            items: nextSnapshot.menu.items,
+            statusBadgeVisible: nextSnapshot.menu.statusBadgeVisible
+          },
+          focus: {
+            state: nextSnapshot.focus.state,
+            count: nextSnapshot.focus.count,
+            seeded: nextSnapshot.focus.seeded,
+            knownEmpty: nextSnapshot.focus.knownEmpty,
+            unknown: nextSnapshot.focus.unknown,
+            items: nextSnapshot.focus.items,
+            enabled: nextSnapshot.focus.enabled
           },
           layout: {
-            menuCardColor: String(state?.menuLayout?.cardColor || "").trim().toLowerCase() || "white"
+            menuCardColor: nextSnapshot.layout.menuCardColor
           },
+          truth: {
+            identity: nextSnapshot.truth.identity,
+            bio: nextSnapshot.truth.bio,
+            avatar: nextSnapshot.truth.avatar,
+            counts: nextSnapshot.truth.counts,
+            posts: nextSnapshot.truth.posts,
+            menu: nextSnapshot.truth.menu,
+            focus: nextSnapshot.truth.focus,
+            layout: nextSnapshot.truth.layout
+          },
+          snapshotVersion: nextSnapshot.snapshotVersion,
+          snapshotUpdatedAt: nextSnapshot.updatedAt,
+          snapshotVersionKey: nextSnapshot.version,
+          businessSnapshot: nextSnapshot,
           ts: Date.now()
         };
       };
@@ -409,15 +685,130 @@ export function createProfileOpenFlowControllerCore({
       const liveProfile = liveView?.profile && typeof liveView.profile === "object"
         ? liveView.profile
         : null;
-      const stableBusinessProfile = isSameBusinessProfileTarget(liveProfile, {
+      const liveBusinessProfile = isSameBusinessProfileTarget(liveProfile, {
         restaurantId: targetMenuRestaurantId,
         lookupId: targetRestaurantLookupId
       })
         ? liveProfile
         : null;
-      const stableBusinessPosts = stableBusinessProfile && Array.isArray(liveView?.posts)
+      const liveBusinessPosts = liveBusinessProfile && Array.isArray(liveView?.posts)
         ? liveView.posts
         : [];
+      const routeSeedPosts = routePostsState === "seeded"
+        ? routePostsSeed
+        : [];
+      const routeSeedProfile = routeSnapshotSeed
+        ? applySurfaceTruthPatch({
+          name: String(routeIdentitySeed?.name || "").trim() || resolveBusinessDisplayNameFallback({
+            safeName,
+            rest,
+            lookupKey: targetRestaurantLookupId
+          }),
+          handle: pickFirstText(routeIdentitySeed?.handle, rest?.handle, liveBusinessProfile?.handle),
+          uid: pickFirstText(liveBusinessProfile?.uid),
+          bio: String(routeIdentitySeed?.bio || "").trim() || pickFirstText(liveBusinessProfile?.bio, rest?.bio, rest?.description),
+          avatar: pickFirstText(routeIdentitySeed?.avatar, liveBusinessProfile?.avatar, rest?.logoUrl, rest?.logo, rest?.avatar),
+          location: pickFirstText(routeIdentitySeed?.location, liveBusinessProfile?.location, rest?.city, rest?.address),
+          followers: routeIdentitySeed?.followers ?? liveBusinessProfile?.followers ?? null,
+          following: routeIdentitySeed?.following ?? liveBusinessProfile?.following ?? null,
+          privateAccount: false,
+          role: "business",
+          restaurantId: targetMenuRestaurantId || targetRestaurantLookupId || routeSnapshotRestaurantId,
+          pendingFollowRequest: liveBusinessProfile?.pendingFollowRequest === true,
+          posts: routeSeedPosts
+        }, {
+          identityStatus: routeIdentityState === "seeded" ? "ready" : "loading",
+          postsStatus: routePostsState === "seeded"
+            ? "ready"
+            : (routePostsState === "knownEmpty" ? "empty" : "loading")
+        })
+        : null;
+      const stableBusinessProfile = liveBusinessProfile || routeSeedProfile;
+      const stableBusinessPosts = liveBusinessProfile
+        ? liveBusinessPosts
+        : routeSeedPosts;
+      if (routeSnapshotSeed && targetMenuRestaurantId) {
+        if (routeMenuState === "seeded") {
+          state.menu = {
+            ...state.menu,
+            restaurantId: targetMenuRestaurantId,
+            items: routeMenuSeed,
+            loading: false,
+            error: "",
+            source: "public",
+            statusBadgeVisible: routeSnapshotSeed?.menu?.statusBadgeVisible !== false,
+            routeSeed: true,
+            truthState: "seeded"
+          };
+        } else if (routeMenuState === "knownEmpty") {
+          state.menu = {
+            ...state.menu,
+            restaurantId: targetMenuRestaurantId,
+            items: [],
+            loading: false,
+            error: "",
+            source: "public",
+            statusBadgeVisible: routeSnapshotSeed?.menu?.statusBadgeVisible !== false,
+            routeSeed: false,
+            truthState: "knownEmpty"
+          };
+        } else {
+          state.menu = {
+            ...state.menu,
+            restaurantId: targetMenuRestaurantId,
+            items: Array.isArray(state.menu?.items) && String(state.menu?.restaurantId || "").trim() === targetMenuRestaurantId
+              ? state.menu.items
+              : [],
+            loading: true,
+            error: "",
+            source: "public",
+            routeSeed: false,
+            truthState: "unknown"
+          };
+        }
+        if (routeFocusState === "seeded") {
+          state.focus = {
+            ...state.focus,
+            restaurantId: targetMenuRestaurantId,
+            items: routeFocusSeed,
+            enabled: routeSnapshotSeed?.focus?.enabled !== false,
+            loading: false,
+            error: "",
+            index: 0,
+            truthState: "seeded"
+          };
+        } else if (routeFocusState === "knownEmpty") {
+          state.focus = {
+            ...state.focus,
+            restaurantId: targetMenuRestaurantId,
+            items: [],
+            enabled: routeSnapshotSeed?.focus?.enabled !== false,
+            loading: false,
+            error: "",
+            index: 0,
+            truthState: "knownEmpty"
+          };
+        } else {
+          state.focus = {
+            ...state.focus,
+            restaurantId: targetMenuRestaurantId,
+            items: Array.isArray(state.focus?.items) && String(state.focus?.restaurantId || "").trim() === targetMenuRestaurantId
+              ? state.focus.items
+              : [],
+            enabled: routeSnapshotSeed?.focus?.enabled !== false,
+            loading: true,
+            error: "",
+            truthState: "unknown"
+          };
+        }
+        const routeLayoutColor = String(routeSnapshotSeed?.layout?.menuCardColor || "").trim().toLowerCase();
+        if (routeLayoutColor && String(state?.menuLayout?.cardColor || "").trim().toLowerCase() !== routeLayoutColor) {
+          state.menuLayout = {
+            ...(state?.menuLayout || {}),
+            cardColor: routeLayoutColor
+          };
+        }
+      }
       if (isMenuTopTab && targetMenuRestaurantId) {
         if (isWebRoutePriorityPath) {
           Promise.resolve().then(() => {
@@ -452,11 +843,22 @@ export function createProfileOpenFlowControllerCore({
         posts: stableBusinessPosts,
       };
       const loadingProfileWithSurfaceTruth = applySurfaceTruthPatch(loadingProfile, {
-        identityStatus: resolveLoadingIdentityTruthState(stableBusinessProfile),
-        // Canonical business profile request has started.
-        postsStatus: stableBusinessPosts.length > 0 ? "ready" : "loading"
+        identityStatus: routeIdentityState === "seeded"
+          ? "ready"
+          : resolveLoadingIdentityTruthState(stableBusinessProfile),
+        postsStatus: stableBusinessPosts.length > 0
+          ? "ready"
+          : (routePostsState === "knownEmpty" ? "empty" : "loading")
       });
-      const loadingDirectEntry = buildDirectEntryMeta("seeded");
+      const routeSnapshotPhaseReady = routeIdentityState === "seeded"
+        && routePostsState !== "unknown"
+        && routeMenuState !== "unknown"
+        && routeFocusState !== "unknown";
+      const loadingDirectEntry = buildDirectEntryMeta(
+        routeSnapshotSeed
+          ? (routeSnapshotPhaseReady ? "ready" : "loading")
+          : "seeded"
+      );
 
       showPublicProfileView(loadingProfileWithSurfaceTruth, loadingProfileWithSurfaceTruth.posts, {
         showBack,
@@ -545,10 +947,12 @@ export function createProfileOpenFlowControllerCore({
         posts: interimPosts,
       }, {
         identityStatus: "ready",
-        postsStatus: interimPosts.length > 0 ? "ready" : "loading"
+        postsStatus: interimPosts.length > 0
+          ? "ready"
+          : (routePostsState === "knownEmpty" ? "empty" : "loading")
       });
       const resolvedInterimDirectEntry = buildDirectEntryMeta(
-        isMenuTopTab || interimPosts.length > 0 ? "ready" : "loading"
+        (isMenuTopTab || interimPosts.length > 0 || routePostsState === "knownEmpty") ? "ready" : "loading"
       );
 
       showPublicProfileView(resolvedInterim, interimPosts, {

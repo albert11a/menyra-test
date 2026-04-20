@@ -1077,7 +1077,8 @@ const state = {
     filter: "all",
     query: "",
     source: "public",
-    statusBadgeVisible: true
+    statusBadgeVisible: true,
+    truthState: "unknown"
   },
   menuModal: {
     open: false,
@@ -1102,7 +1103,8 @@ const state = {
     loading: false,
     enabled: true,
     error: "",
-    index: 0
+    index: 0,
+    truthState: "unknown"
   },
   focusModal: {
     open: false,

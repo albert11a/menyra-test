@@ -1707,9 +1707,48 @@ function coerceBootstrapMenuItemsFromData(data = {}) {
   return [];
 }
 
-async function queryPublicMenuItemsForRestaurant(restaurantId = "") {
+function normalizePublicRouteTruthState(value = "", fallback = "unknown") {
+  const truth = safeLowerText(value);
+  if (truth === "seeded") return "seeded";
+  if (truth === "knownempty" || truth === "known-empty") return "knownEmpty";
+  if (truth === "unknown") return "unknown";
+  const fallbackTruth = safeLowerText(fallback);
+  if (fallbackTruth === "seeded") return "seeded";
+  if (fallbackTruth === "knownempty" || fallbackTruth === "known-empty") return "knownEmpty";
+  return "unknown";
+}
+
+function buildPublicRouteTruthSection({
+  state = "unknown",
+  count = 0,
+  items = [],
+  extras = {}
+} = {}) {
+  const truthState = normalizePublicRouteTruthState(state, "unknown");
+  const list = Array.isArray(items) ? items : [];
+  const safeCount = Math.max(0, Number(count) || 0);
+  return {
+    state: truthState,
+    seeded: truthState === "seeded",
+    knownEmpty: truthState === "knownEmpty",
+    unknown: truthState === "unknown",
+    count: safeCount,
+    items: list,
+    ...(extras && typeof extras === "object" ? extras : {})
+  };
+}
+
+async function queryPublicMenuItemsForRestaurant(restaurantId = "", { limitCount = 56 } = {}) {
   const safeRestaurantId = asText(restaurantId);
-  if (!safeRestaurantId) return [];
+  const safeLimit = Math.max(1, Number(limitCount) || 56);
+  if (!safeRestaurantId) {
+    return {
+      state: "unknown",
+      items: [],
+      count: 0,
+      updatedAt: 0
+    };
+  }
   try {
     const snap = await db
       .collection("restaurants")
@@ -1717,13 +1756,38 @@ async function queryPublicMenuItemsForRestaurant(restaurantId = "") {
       .collection("public")
       .doc("menu")
       .get();
-    if (!snap.exists) return [];
+    if (!snap.exists) {
+      return {
+        state: "knownEmpty",
+        items: [],
+        count: 0,
+        updatedAt: 0
+      };
+    }
     const raw = coerceBootstrapMenuItemsFromData(snap.data() || {});
-    return raw
+    const normalized = raw
       .map((item, index) => normalizeBootstrapMenuItem(item, safeRestaurantId, index))
       .sort((a, b) => normalizeBootstrapOrderIndex(a?.orderIndex) - normalizeBootstrapOrderIndex(b?.orderIndex));
+    const count = normalized.length;
+    const limitedItems = normalized.slice(0, safeLimit);
+    const data = snap.data() || {};
+    const updatedAt = Math.max(
+      0,
+      toMillis(data.updatedAt || data.lastUpdatedAt || data.ts || data.modifiedAt || 0)
+    );
+    return {
+      state: count > 0 ? "seeded" : "knownEmpty",
+      items: limitedItems,
+      count,
+      updatedAt
+    };
   } catch {
-    return [];
+    return {
+      state: "unknown",
+      items: [],
+      count: 0,
+      updatedAt: 0
+    };
   }
 }
 
@@ -1758,23 +1822,161 @@ async function queryPublicMenuMetaForRestaurant(restaurantId = "") {
 async function queryPublicPostsForRestaurant(restaurantId = "", limitCount = 12) {
   const safeRestaurantId = asText(restaurantId);
   const safeLimit = Math.max(1, Number(limitCount) || 12);
-  if (!safeRestaurantId) return null;
+  if (!safeRestaurantId) {
+    return {
+      state: "unknown",
+      items: [],
+      count: 0,
+      updatedAt: 0
+    };
+  }
   const ref = db.collection("restaurants").doc(safeRestaurantId).collection("socialPosts");
   try {
-    return await ref
-      .where("status", "==", "active")
-      .orderBy("createdAt", "desc")
-      .limit(safeLimit)
-      .get();
-  } catch {
+    let snap = null;
     try {
-      return await ref
+      snap = await ref
+        .where("status", "==", "active")
         .orderBy("createdAt", "desc")
         .limit(safeLimit)
         .get();
     } catch {
-      return ref.limit(safeLimit).get();
+      try {
+        snap = await ref
+          .orderBy("createdAt", "desc")
+          .limit(safeLimit)
+          .get();
+      } catch {
+        snap = await ref.limit(safeLimit).get();
+      }
     }
+    const posts = [];
+    let maxUpdatedAt = 0;
+    if (snap && typeof snap.forEach === "function") {
+      snap.forEach((docSnap) => {
+        const row = docSnap.data() || {};
+        const normalized = mapPublicRoutePostSeed({
+          docId: docSnap.id,
+          data: row,
+          restaurantId: safeRestaurantId
+        });
+        if (!normalized) return;
+        posts.push(normalized);
+        maxUpdatedAt = Math.max(
+          maxUpdatedAt,
+          toMillis(
+            row.updatedAt
+            || row.modifiedAt
+            || row.createdAt
+            || 0
+          )
+        );
+      });
+    }
+    return {
+      state: posts.length > 0 ? "seeded" : "knownEmpty",
+      items: posts,
+      count: posts.length,
+      updatedAt: maxUpdatedAt
+    };
+  } catch {
+    return {
+      state: "unknown",
+      items: [],
+      count: 0,
+      updatedAt: 0
+    };
+  }
+}
+
+function normalizePublicRouteFocusItem(item = {}, fallbackId = "") {
+  const source = item && typeof item === "object" ? item : {};
+  const id = asText(source.id || source._id || fallbackId);
+  if (!id) return null;
+  return {
+    id,
+    title: asText(source.title || source.name || "Sot ne Fokus", "Sot ne Fokus"),
+    text: asText(source.text || source.desc || source.description),
+    imageUrl: asText(source.imageUrl || source.image || source.photoUrl),
+    cropX: Number.isFinite(Number(source.cropX)) ? Number(source.cropX) : 50,
+    cropY: Number.isFinite(Number(source.cropY)) ? Number(source.cropY) : 50,
+    active: source.active !== false
+  };
+}
+
+async function queryPublicFocusSeedForRestaurant(restaurantId = "", { limitCount = 8 } = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  const safeLimit = Math.max(1, Number(limitCount) || 8);
+  if (!safeRestaurantId) {
+    return {
+      state: "unknown",
+      items: [],
+      count: 0,
+      enabled: true,
+      updatedAt: 0
+    };
+  }
+  let enabled = true;
+  let metaUpdatedAt = 0;
+  try {
+    const metaSnap = await db
+      .collection("restaurants")
+      .doc(safeRestaurantId)
+      .collection("public")
+      .doc("meta")
+      .get();
+    if (metaSnap.exists) {
+      const data = metaSnap.data() || {};
+      if (typeof data.offersEnabled === "boolean") {
+        enabled = data.offersEnabled;
+      }
+      metaUpdatedAt = Math.max(
+        0,
+        toMillis(data.updatedAt || data.lastUpdatedAt || data.ts || data.modifiedAt || 0)
+      );
+    }
+  } catch {}
+  try {
+    const offersSnap = await db
+      .collection("restaurants")
+      .doc(safeRestaurantId)
+      .collection("public")
+      .doc("offers")
+      .get();
+    if (!offersSnap.exists) {
+      return {
+        state: "knownEmpty",
+        items: [],
+        count: 0,
+        enabled,
+        updatedAt: metaUpdatedAt
+      };
+    }
+    const data = offersSnap.data() || {};
+    const rawItems = Array.isArray(data.items) ? data.items : [];
+    const normalizedItems = rawItems
+      .map((row, index) => normalizePublicRouteFocusItem(row, `focus_${index}`))
+      .filter(Boolean)
+      .filter((row) => row.active !== false)
+      .slice(0, safeLimit);
+    const updatedAt = Math.max(
+      metaUpdatedAt,
+      toMillis(data.updatedAt || data.lastUpdatedAt || data.ts || data.modifiedAt || 0)
+    );
+    return {
+      state: normalizedItems.length > 0 ? "seeded" : "knownEmpty",
+      items: normalizedItems,
+      count: normalizedItems.length,
+      enabled,
+      updatedAt
+    };
+  } catch {
+    return {
+      state: "unknown",
+      items: [],
+      count: 0,
+      enabled,
+      updatedAt: metaUpdatedAt
+    };
   }
 }
 
@@ -1982,30 +2184,111 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   const restaurantData = restaurantDoc.data || {};
   const restaurantPreview = mapPublicRestaurantPreview(restaurantId, restaurantData);
   const surface = safeRouteContext.surface === "menu" ? "menu" : "profile";
-  const [postsSnap, menuItems, menuMeta] = await Promise.all([
-    surface === "profile"
-      ? queryPublicPostsForRestaurant(restaurantId, 14)
-      : Promise.resolve(null),
-    surface === "menu"
-      ? queryPublicMenuItemsForRestaurant(restaurantId)
-      : Promise.resolve([]),
+  const postsLimit = surface === "profile" ? 14 : 8;
+  const menuLimit = surface === "menu" ? 72 : 28;
+  const [postsSeedData, menuSeedData, menuMeta, focusSeedData] = await Promise.all([
+    queryPublicPostsForRestaurant(restaurantId, postsLimit),
+    queryPublicMenuItemsForRestaurant(restaurantId, { limitCount: menuLimit }),
     surface === "menu"
       ? queryPublicMenuMetaForRestaurant(restaurantId)
-      : Promise.resolve({ statusBadgeVisible: true })
+      : Promise.resolve({ statusBadgeVisible: true }),
+    queryPublicFocusSeedForRestaurant(restaurantId, { limitCount: 8 })
   ]);
-  const postsSeed = [];
-  if (postsSnap && typeof postsSnap.forEach === "function") {
-    postsSnap.forEach((docSnap) => {
-      const normalized = mapPublicRoutePostSeed({
-        docId: docSnap.id,
-        data: docSnap.data() || {},
-        restaurantId
-      });
-      if (!normalized) return;
-      postsSeed.push(normalized);
-    });
-  }
-  const menuSeed = Array.isArray(menuItems) ? menuItems.slice(0, 140) : [];
+  const postsSeed = Array.isArray(postsSeedData?.items) ? postsSeedData.items : [];
+  const menuSeed = Array.isArray(menuSeedData?.items) ? menuSeedData.items : [];
+  const focusSeed = Array.isArray(focusSeedData?.items) ? focusSeedData.items : [];
+  const postsState = normalizePublicRouteTruthState(postsSeedData?.state || "", "unknown");
+  const menuState = normalizePublicRouteTruthState(menuSeedData?.state || "", "unknown");
+  const focusState = normalizePublicRouteTruthState(focusSeedData?.state || "", "unknown");
+  const identityName = asText(restaurantPreview.name || restaurantPreview.restaurantName);
+  const identityHandle = asText(restaurantPreview.handle || restaurantPreview.landingSlug);
+  const identityAvatar = asText(restaurantPreview.logoUrl);
+  const identityLocation = asText(restaurantPreview.city);
+  const identityBio = asText(
+    restaurantData.bio
+    || restaurantData.description
+    || restaurantData.about
+  );
+  const identityFollowers = resolveCountOrNull(
+    restaurantData.followersCount,
+    restaurantData.followers,
+    restaurantData.fansCount,
+    restaurantData.fans
+  );
+  const identityFollowing = resolveCountOrNull(
+    restaurantData.followingCount,
+    restaurantData.following
+  );
+  const layoutMenuCardColor = resolveMenuLayoutColorFromRestaurant(restaurantData);
+  const identityTruth = (identityName || identityHandle || identityAvatar || identityLocation)
+    ? "seeded"
+    : "unknown";
+  const bioTruth = identityBio ? "seeded" : "knownEmpty";
+  const avatarTruth = identityAvatar ? "seeded" : "knownEmpty";
+  const countsTruth = (identityFollowers !== null || identityFollowing !== null)
+    ? "seeded"
+    : "unknown";
+  const layoutTruth = layoutMenuCardColor ? "seeded" : "unknown";
+  const routeUpdatedAt = Math.max(
+    0,
+    toMillis(restaurantData.updatedAt || restaurantData.lastUpdatedAt || restaurantData.createdAt || 0),
+    Number(postsSeedData?.updatedAt || 0) || 0,
+    Number(menuSeedData?.updatedAt || 0) || 0,
+    Number(focusSeedData?.updatedAt || 0) || 0
+  );
+  const snapshotUpdatedAt = routeUpdatedAt > 0 ? routeUpdatedAt : Date.now();
+  const snapshotVersion = "business-page-v1";
+  const snapshot = {
+    snapshotVersion,
+    version: `${restaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`,
+    updatedAt: snapshotUpdatedAt,
+    restaurantId,
+    identity: {
+      name: identityName,
+      handle: identityHandle,
+      avatar: identityAvatar,
+      location: identityLocation,
+      bio: identityBio,
+      followers: identityFollowers,
+      following: identityFollowing,
+      type: asText(restaurantPreview.type || restaurantPreview.customerType),
+      customerType: asText(restaurantPreview.customerType || restaurantPreview.type)
+    },
+    posts: buildPublicRouteTruthSection({
+      state: postsState,
+      count: Number(postsSeedData?.count || postsSeed.length || 0) || 0,
+      items: postsSeed
+    }),
+    menu: buildPublicRouteTruthSection({
+      state: menuState,
+      count: Number(menuSeedData?.count || menuSeed.length || 0) || 0,
+      items: menuSeed,
+      extras: {
+        statusBadgeVisible: menuMeta?.statusBadgeVisible !== false
+      }
+    }),
+    focus: buildPublicRouteTruthSection({
+      state: focusState,
+      count: Number(focusSeedData?.count || focusSeed.length || 0) || 0,
+      items: focusSeed,
+      extras: {
+        enabled: focusSeedData?.enabled !== false
+      }
+    }),
+    layout: {
+      menuCardColor: layoutMenuCardColor
+    },
+    truth: {
+      identity: normalizePublicRouteTruthState(identityTruth, "unknown"),
+      bio: normalizePublicRouteTruthState(bioTruth, "unknown"),
+      avatar: normalizePublicRouteTruthState(avatarTruth, "unknown"),
+      counts: normalizePublicRouteTruthState(countsTruth, "unknown"),
+      posts: postsState,
+      menu: menuState,
+      focus: focusState,
+      layout: normalizePublicRouteTruthState(layoutTruth, "unknown")
+    }
+  };
   const routePayload = {
     owner: "web-direct",
     routeFirst: true,
@@ -2017,37 +2300,56 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     tableNumber: Math.max(0, Number(safeRouteContext.tableNumber || 0) || 0),
     phase: "ready",
     identity: {
-      name: asText(restaurantPreview.name || restaurantPreview.restaurantName),
-      handle: asText(restaurantPreview.handle || restaurantPreview.landingSlug),
-      avatar: asText(restaurantPreview.logoUrl),
-      location: asText(restaurantPreview.city),
-      followers: resolveCountOrNull(
-        restaurantData.followersCount,
-        restaurantData.followers,
-        restaurantData.fansCount,
-        restaurantData.fans
-      ),
-      following: resolveCountOrNull(
-        restaurantData.followingCount,
-        restaurantData.following
-      ),
-      type: asText(restaurantPreview.type || restaurantPreview.customerType),
-      customerType: asText(restaurantPreview.customerType || restaurantPreview.type)
+      name: snapshot.identity.name,
+      handle: snapshot.identity.handle,
+      avatar: snapshot.identity.avatar,
+      location: snapshot.identity.location,
+      bio: snapshot.identity.bio,
+      followers: snapshot.identity.followers,
+      following: snapshot.identity.following,
+      type: snapshot.identity.type,
+      customerType: snapshot.identity.customerType
     },
     posts: {
-      count: postsSeed.length,
-      seeded: postsSeed.length > 0,
-      items: postsSeed
+      state: snapshot.posts.state,
+      count: snapshot.posts.count,
+      seeded: snapshot.posts.seeded,
+      knownEmpty: snapshot.posts.knownEmpty,
+      unknown: snapshot.posts.unknown
     },
     menu: {
-      count: menuSeed.length,
-      seeded: menuSeed.length > 0,
-      items: menuSeed,
+      state: snapshot.menu.state,
+      count: snapshot.menu.count,
+      seeded: snapshot.menu.seeded,
+      knownEmpty: snapshot.menu.knownEmpty,
+      unknown: snapshot.menu.unknown,
       statusBadgeVisible: menuMeta?.statusBadgeVisible !== false
     },
-    layout: {
-      menuCardColor: resolveMenuLayoutColorFromRestaurant(restaurantData)
+    focus: {
+      state: snapshot.focus.state,
+      count: snapshot.focus.count,
+      seeded: snapshot.focus.seeded,
+      knownEmpty: snapshot.focus.knownEmpty,
+      unknown: snapshot.focus.unknown,
+      enabled: snapshot.focus.enabled !== false
     },
+    layout: {
+      menuCardColor: layoutMenuCardColor
+    },
+    truth: {
+      identity: snapshot.truth.identity,
+      bio: snapshot.truth.bio,
+      avatar: snapshot.truth.avatar,
+      counts: snapshot.truth.counts,
+      posts: snapshot.truth.posts,
+      menu: snapshot.truth.menu,
+      focus: snapshot.truth.focus,
+      layout: snapshot.truth.layout
+    },
+    snapshotVersion: snapshot.snapshotVersion,
+    snapshotUpdatedAt: snapshot.updatedAt,
+    snapshotVersionKey: snapshot.version,
+    businessSnapshot: snapshot,
     ts: Date.now()
   };
   return {
