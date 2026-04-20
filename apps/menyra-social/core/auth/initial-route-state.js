@@ -10,36 +10,84 @@ export function resolveInitialRouteState({
   const toInitialTab = typeof normalizeInitialTab === "function" ? normalizeInitialTab : ((value) => String(value || "").trim());
   const toAuthMode = typeof normalizeAuthMode === "function" ? normalizeAuthMode : ((value) => String(value || "").trim());
   const readPathname = String(pathname || "").trim();
-  const resolveLandingSlugFromPathname = (rawPath = "") => {
-    const safePath = String(rawPath || "").split("?")[0].split("#")[0].trim();
-    if (!safePath) return "";
-    const segments = safePath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
-    if (segments.length !== 1) return "";
-    const slug = String(segments[0] || "").trim();
-    if (!slug) return "";
-    if (slug.includes(".")) return "";
+  const RESERVED_PATH_SEGMENTS = new Set([
+    "ceo",
+    "owner",
+    "staff",
+    "waiter",
+    "kitchen",
+    "social",
+    "heart",
+    "hub",
+    "apps",
+    "api",
+    "login",
+    "register",
+    "profile",
+    "post",
+    "story",
+    "menyra-restaurants",
+    "lp",
+    "index.html"
+  ]);
+  const normalizeTopTabFromPathSegment = (value = "") => {
+    const key = String(value || "").trim().toLowerCase();
+    if (!key) return "";
+    if (key === "menu" || key === "karte" || key === "speisekarte" || key === "shop") return "menu";
+    if (key === "profile" || key === "posts" || key === "home" || key === "overview") return "profile";
+    if (key === "landing" || key === "welcome" || key === "onboarding") return "landing";
+    if (key === "cart" || key === "basket" || key === "warenkorb") return "cart";
+    return "";
+  };
+  const normalizePathRestaurantSlug = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const stripped = raw.startsWith("@") ? raw.slice(1) : raw;
+    const slug = String(stripped || "").trim();
+    if (!slug || slug.includes(".")) return "";
     const key = slug.toLowerCase();
-    const reserved = new Set([
-      "ceo",
-      "owner",
-      "staff",
-      "waiter",
-      "kitchen",
-      "social",
-      "heart",
-      "hub",
-      "apps",
-      "api",
-      "login",
-      "register",
-      "profile",
-      "post",
-      "story",
-      "menyra-restaurants",
-      "lp"
-    ]);
-    if (reserved.has(key)) return "";
+    if (RESERVED_PATH_SEGMENTS.has(key)) return "";
     return slug;
+  };
+  const resolvePathProfileRoute = (rawPath = "") => {
+    const safePath = String(rawPath || "").split("?")[0].split("#")[0].trim();
+    if (!safePath) return { restaurantId: "", topTab: "" };
+    let segments = safePath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+    if (!segments.length) return { restaurantId: "", topTab: "" };
+    const appRootIndex = segments.findIndex((seg) => String(seg || "").trim().toLowerCase() === "menyra-social");
+    if (appRootIndex >= 0 && appRootIndex < segments.length - 1) {
+      segments = segments.slice(appRootIndex + 1);
+    }
+    if (segments[0] && String(segments[0] || "").trim().toLowerCase() === "index.html") {
+      segments = segments.slice(1);
+    }
+    if (!segments.length) return { restaurantId: "", topTab: "" };
+    const tailSegments = segments.length > 2 ? segments.slice(-2) : segments.slice();
+    const first = String(tailSegments[0] || "").trim();
+    const second = String(tailSegments[1] || "").trim();
+    const firstTopTab = normalizeTopTabFromPathSegment(first);
+    const secondTopTab = normalizeTopTabFromPathSegment(second);
+    const firstSlug = normalizePathRestaurantSlug(first);
+    const secondSlug = normalizePathRestaurantSlug(second);
+    if (tailSegments.length === 1 && firstSlug) {
+      return {
+        restaurantId: firstSlug,
+        topTab: ""
+      };
+    }
+    if (tailSegments.length >= 2 && firstTopTab && secondSlug) {
+      return {
+        restaurantId: secondSlug,
+        topTab: firstTopTab
+      };
+    }
+    if (tailSegments.length >= 2 && secondTopTab && firstSlug) {
+      return {
+        restaurantId: firstSlug,
+        topTab: secondTopTab
+      };
+    }
+    return { restaurantId: "", topTab: "" };
   };
 
   const routeRestaurantId = (
@@ -50,7 +98,10 @@ export function resolveInitialRouteState({
     || readQuery("businessId")
     || ""
   );
-  const landingSlug = routeRestaurantId ? "" : resolveLandingSlugFromPathname(readPathname);
+  const pathProfileRoute = routeRestaurantId
+    ? { restaurantId: "", topTab: "" }
+    : resolvePathProfileRoute(readPathname);
+  const landingSlug = routeRestaurantId ? "" : pathProfileRoute.restaurantId;
   const pendingProfileRestaurantId = routeRestaurantId || landingSlug;
   const queryTab = readQuery("tab") || readQuery("view") || "";
   const profileTopQuery = readQuery("top") || (pendingProfileRestaurantId ? queryTab : "");
@@ -74,7 +125,7 @@ export function resolveInitialRouteState({
     ? "menu"
     : "";
   const pendingProfileTopTab = pendingProfileRestaurantId
-    ? (profileTopQuery || fallbackProfileTopTab)
+    ? (profileTopQuery || pathProfileRoute.topTab || fallbackProfileTopTab)
     : "";
   const pendingProfileAccessSource = pendingProfileRestaurantId
     ? profileAccessSource

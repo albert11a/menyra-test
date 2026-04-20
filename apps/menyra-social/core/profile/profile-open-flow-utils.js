@@ -80,6 +80,31 @@ export function createProfileOpenFlowControllerCore({
     }
     return "";
   };
+  const withTimeoutFallback = (promiseLike, {
+    timeoutMs = 0,
+    fallbackValue = null
+  } = {}) => {
+    const safePromise = Promise.resolve(promiseLike).catch(() => fallbackValue);
+    const safeTimeoutMs = Math.max(0, Number(timeoutMs) || 0);
+    if (!safeTimeoutMs) return safePromise;
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timerId);
+        resolve(value);
+      };
+      const timerId = setTimeout(() => {
+        finish(fallbackValue);
+      }, safeTimeoutMs);
+      safePromise.then((value) => {
+        finish(value);
+      }).catch(() => {
+        finish(fallbackValue);
+      });
+    });
+  };
   const normalizeIdentityTruthState = (value = "", fallback = "ready") => {
     const safeValue = String(value || "").trim().toLowerCase();
     if (safeValue === "pending") return "pending";
@@ -390,9 +415,12 @@ export function createProfileOpenFlowControllerCore({
         directEntry: buildDirectEntryMeta("seeded")
       });
 
-      const profileSnapPromise = fetchBusinessProfile({
+      const profileSnapPromise = withTimeoutFallback(fetchBusinessProfile({
         restaurantId: targetRestaurantLookupId,
         restaurant: rest
+      }), {
+        timeoutMs: isWebRoutePriorityPath ? 1800 : 0,
+        fallbackValue: null
       });
       let earlyPostsResult = null;
       if (isWebPostsFirstPath && earlyPostsPromise) {
@@ -545,11 +573,18 @@ export function createProfileOpenFlowControllerCore({
         )
       ) {
         const livePosts = Array.isArray(liveView.posts) ? liveView.posts : [];
+        const liveIdentityState = normalizeIdentityTruthState(
+          liveProfile.identityTruthState,
+          livePosts.length ? "ready" : "error"
+        );
+        const resolvedIdentityStatus = livePosts.length
+          ? "ready"
+          : (liveIdentityState === "ready" ? "ready" : "error");
         liveView.profile = applySurfaceTruthPatch({
           ...liveProfile,
           posts: livePosts
         }, {
-          identityStatus: normalizeIdentityTruthState(liveProfile.identityTruthState, livePosts.length ? "ready" : "error"),
+          identityStatus: resolvedIdentityStatus,
           postsStatus: livePosts.length ? "ready" : "error"
         });
         renderApp();

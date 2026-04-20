@@ -38,6 +38,9 @@ export function createAuthStartupStateHelpers({
   const readPendingInitialTab = typeof pendingRouteState?.getPendingInitialTab === "function"
     ? pendingRouteState.getPendingInitialTab
     : (typeof getPendingInitialTab === "function" ? getPendingInitialTab : (() => ""));
+  const readPendingState = typeof pendingRouteState?.getPendingState === "function"
+    ? pendingRouteState.getPendingState
+    : (() => ({}));
   const writePendingInitialTab = typeof pendingRouteState?.setPendingInitialTab === "function"
     ? pendingRouteState.setPendingInitialTab
     : (typeof setPendingInitialTab === "function" ? setPendingInitialTab : (() => {}));
@@ -51,10 +54,12 @@ export function createAuthStartupStateHelpers({
 
   function applyPendingInitialRouteState() {
     if (!state) return;
+    const pendingState = readPendingState() || {};
+    const hasPendingProfileRoute = !!String(pendingState?.pendingProfileRestaurantId || "").trim();
     const next = applyPendingInitialRouteStateCore({
       activeTab: state.activeTab,
       user: state.user,
-      hasProfileView: !!state.profileView,
+      hasProfileView: !!state.profileView || hasPendingProfileRoute,
       guestScopeUid: readGuestScopeUid(),
       profileTopTab: state.profileTopTab,
       pendingInitialTab: readPendingInitialTab(),

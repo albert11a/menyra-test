@@ -39,6 +39,7 @@ export function resolveRouteStateFromTargetUrlCore({
     const parsed = new URL(safeRawUrl, win.location?.origin || "");
     return resolveInitialRouteState({
       qs: (key) => String(parsed.searchParams.get(String(key || "")) || ""),
+      pathname: String(parsed.pathname || ""),
       normalizeInitialTab,
       normalizeAuthMode
     });

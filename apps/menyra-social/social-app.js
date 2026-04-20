@@ -1516,8 +1516,16 @@ const STARTUP_SNAPSHOT_ALLOWED_TABS = new Set([
 
 function resolveRouteTabForState() {
   const normalized = normalizeLegacyHomeTab(state.activeTab);
+  const pendingProfileRoute = pendingRouteState.getPendingState?.() || {};
+  const hasPendingProfileRoute = !!String(pendingProfileRoute.pendingProfileRestaurantId || "").trim();
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    ? state.__webDirectEntry
+    : null;
+  const hasActiveWebDirectRoute = webDirectEntry?.active === true
+    && webDirectEntry?.webPriority === true
+    && String(webDirectEntry?.restaurantId || "").trim().length > 0;
   const safeTab = sanitizeTabForSession(normalized, {
-    hasProfileView: !!state.profileView
+    hasProfileView: !!state.profileView || hasPendingProfileRoute || hasActiveWebDirectRoute
   });
   return String(safeTab || "feed").trim().toLowerCase();
 }
@@ -1543,7 +1551,17 @@ function setCanonicalRouteQueryParam(searchParams, primaryKey, aliasKeys = [], v
 }
 
 function resolveRouteQueryStateForCurrentView() {
-  const profileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
+  const pendingRoute = pendingRouteState.getPendingState?.() || {};
+  const pendingProfileRestaurantId = normalizePendingProfileRestaurantIdCore(pendingRoute.pendingProfileRestaurantId || "");
+  const pendingProfileTopTab = String(
+    normalizeProfileTopTabFromRouteCore(pendingRoute.pendingProfileTopTab || "")
+    || "profile"
+  ).trim().toLowerCase();
+  const pendingProfileAccessSource = String(pendingRoute.pendingProfileAccessSource || "").trim().toLowerCase();
+  const pendingProfileTableNumber = Math.max(0, Number(pendingRoute.pendingProfileTableNumber || 0) || 0);
+  const resolvedProfileRestaurantIdFromView = String(state.profileView?.profile?.restaurantId || "").trim();
+  const profileRestaurantId = String(resolvedProfileRestaurantIdFromView || pendingProfileRestaurantId || "").trim();
+  const usingPendingProfileRoute = !resolvedProfileRestaurantIdFromView && !!pendingProfileRestaurantId;
   const profileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
   const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
   const tableNumber = Math.max(0, Number(state.profileView?.tableNumber || 0) || 0);
@@ -1556,18 +1574,32 @@ function resolveRouteQueryStateForCurrentView() {
   };
   if (state.activeTab !== "profile" || !profileRestaurantId) return routeState;
   routeState.profileRestaurantId = profileRestaurantId;
-  if (profileTopTab === "menu") {
+  const effectiveTopTab = usingPendingProfileRoute
+    ? pendingProfileTopTab
+    : (profileTopTab || "profile");
+  if (effectiveTopTab === "menu") {
     routeState.tab = "menu";
     routeState.profileTopTab = "menu";
-    routeState.profileAccessSource = menuAccessSource === "qr" ? "qr" : "";
+    const effectiveAccessSource = usingPendingProfileRoute
+      ? pendingProfileAccessSource
+      : menuAccessSource;
+    routeState.profileAccessSource = effectiveAccessSource === "qr" ? "qr" : "";
+    const effectiveTableNumber = usingPendingProfileRoute
+      ? pendingProfileTableNumber
+      : tableNumber;
     routeState.profileTableNumber = routeState.profileAccessSource === "qr" ? tableNumber : 0;
+    if (routeState.profileAccessSource === "qr") {
+      routeState.profileTableNumber = Math.max(0, Number(effectiveTableNumber || 0) || 0);
+    } else {
+      routeState.profileTableNumber = 0;
+    }
     return routeState;
   }
-  if (profileTopTab === "cart") {
+  if (effectiveTopTab === "cart") {
     routeState.profileTopTab = "cart";
     return routeState;
   }
-  if (profileTopTab === "landing") {
+  if (effectiveTopTab === "landing") {
     routeState.profileTopTab = "landing";
     return routeState;
   }
@@ -1911,9 +1943,10 @@ try {
     pendingInitialTab: String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase(),
     pendingProfileRestaurantId: String(pendingRouteState.getPendingState?.()?.pendingProfileRestaurantId || "").trim()
   });
+  const hasPendingProfileRoute = !!normalizePendingProfileRestaurantIdCore(initialRouteState?.pendingProfileRestaurantId || "");
   const eagerInitialTab = sanitizeTabForSessionCore(initialRouteState?.pendingInitialTab, {
     user: state.user,
-    hasProfileView: !!state.profileView,
+    hasProfileView: hasPendingProfileRoute || !!state.profileView,
     guestScopeUid: getGuestScopeUid()
   });
   if (String(eagerInitialTab || "").trim()) {
