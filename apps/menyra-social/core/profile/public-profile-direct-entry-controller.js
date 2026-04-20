@@ -370,22 +370,14 @@ export function createPublicProfileDirectEntryController({
       }
     };
     if (entry.menuFirst && state.menu && typeof state.menu === "object") {
-      const sameMenuRestaurant = String(state.menu.restaurantId || "").trim() === entry.restaurantId;
-      if (!sameMenuRestaurant) {
-        state.menu = {
-          ...state.menu,
-          restaurantId: entry.restaurantId,
-          items: [],
-          loading: true,
-          error: "",
-          source: "public"
-        };
-      } else if (String(state.menu.source || "").trim().toLowerCase() !== "public") {
-        state.menu = {
-          ...state.menu,
-          source: "public"
-        };
-      }
+      state.menu = {
+        ...state.menu,
+        restaurantId: entry.restaurantId,
+        items: [],
+        loading: true,
+        error: "",
+        source: "public"
+      };
     }
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = entry.contentTab;

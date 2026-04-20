@@ -170,7 +170,8 @@ function applyWebDirectRouteSeedFromBootstrap({
   const directOwner = String(directEntry?.owner || "").trim().toLowerCase();
   if (directOwner !== "web-direct") return false;
   const directTopTab = String(directEntry?.topTab || "").trim().toLowerCase();
-  const allowPostsSeed = directTopTab === "profile";
+  const directWebPriority = directEntry?.webPriority === true && directEntry?.routeFirst === true;
+  const allowPostsSeed = directTopTab === "profile" && !directWebPriority;
   let changed = false;
   const restaurantPreview = (Array.isArray(incomingRestaurants) ? incomingRestaurants : [])
     .find((row) => String(row?.id || "").trim() === safeRestaurantId) || null;

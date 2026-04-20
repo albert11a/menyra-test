@@ -1,4 +1,5 @@
 const CACHE_PREFIX = "mnyra-social-cache-";
+const CACHE_SCHEMA_TOKEN = "web-fresh-v1";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
 const BETA_UPDATE_CHANNEL_BASE = "beta-auto-update-v2";
@@ -18,8 +19,36 @@ const LEAFLET_VENDOR_HOST_SUFFIXES = [
   "unpkg.com"
 ];
 const NAVIGATION_FETCH_TIMEOUT_MS = 6500;
+const STRICT_PUBLIC_NAVIGATION_FETCH_TIMEOUT_MS = 9000;
 const RUNTIME_FETCH_TIMEOUT_MS = 5200;
 const IMAGE_FALLBACK_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='#f1f5f9'/></svg>";
+const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
+  "ceo",
+  "owner",
+  "staff",
+  "waiter",
+  "kitchen",
+  "social",
+  "heart",
+  "hub",
+  "apps",
+  "api",
+  "login",
+  "register",
+  "profile",
+  "post",
+  "story",
+  "menyra-restaurants",
+  "lp",
+  "index.html",
+  "assets",
+  "_shared",
+  "core",
+  "lead-landing"
+]);
+const PUBLIC_QUERY_RESTAURANT_KEYS = ["r", "restaurant", "restaurantId", "rid", "businessId"];
+const PUBLIC_QUERY_TOP_TAB_KEYS = ["top", "surface", "screen", "tab", "view"];
+const PUBLIC_QUERY_SOURCE_KEYS = ["src", "source", "menuSource", "menuAccessSource", "access"];
 
 function sanitizeCacheToken(value) {
   return String(value || "")
@@ -30,15 +59,19 @@ function sanitizeCacheToken(value) {
 function resolveSwVersionToken() {
   try {
     const parsed = new URL(self.location.href);
-    const token = sanitizeCacheToken(parsed.searchParams.get("v"));
+    const token = sanitizeCacheToken(
+      parsed.searchParams.get("v")
+      || parsed.searchParams.get("version")
+      || parsed.searchParams.get("build")
+    );
     if (token) return token;
   } catch {}
-  return "legacy";
+  return "buildless";
 }
 
 const SW_VERSION_TOKEN = resolveSwVersionToken();
-const CACHE_NAME = `${CACHE_PREFIX}${SW_VERSION_TOKEN}`;
-const BETA_UPDATE_CHANNEL = `${BETA_UPDATE_CHANNEL_BASE}::${SW_VERSION_TOKEN}`;
+const CACHE_NAME = `${CACHE_PREFIX}${CACHE_SCHEMA_TOKEN}-${SW_VERSION_TOKEN}`;
+const BETA_UPDATE_CHANNEL = `${BETA_UPDATE_CHANNEL_BASE}::${CACHE_SCHEMA_TOKEN}-${SW_VERSION_TOKEN}`;
 
 async function broadcastToClients(payload) {
   const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -200,6 +233,105 @@ function isInSocialScope(url) {
   );
 }
 
+function normalizePublicRouteTopTab(value = "") {
+  const key = String(value || "").trim().toLowerCase();
+  if (!key) return "";
+  if (key === "menu" || key === "karte" || key === "speisekarte" || key === "shop") return "menu";
+  if (key === "qr" || key === "menuqr" || key === "scan-qr" || key === "scanqr") return "menu";
+  if (key === "profile" || key === "posts" || key === "home" || key === "overview") return "profile";
+  if (key === "landing" || key === "welcome" || key === "onboarding") return "landing";
+  if (key === "cart" || key === "basket" || key === "warenkorb") return "cart";
+  return "";
+}
+
+function normalizePublicRouteSlug(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const withoutAt = raw.startsWith("@") ? raw.slice(1) : raw;
+  const slug = String(withoutAt || "").trim().toLowerCase();
+  if (!slug || slug.includes(".")) return "";
+  if (RESERVED_PUBLIC_ROUTE_SEGMENTS.has(slug)) return "";
+  return slug;
+}
+
+function resolvePathPublicRouteHint(url) {
+  const fullPath = String(url?.pathname || "");
+  if (!fullPath.startsWith(APP_SCOPE)) {
+    return { restaurantId: "", topTab: "", accessSource: "" };
+  }
+  let path = fullPath.slice(APP_SCOPE.length).replace(/^\/+|\/+$/g, "");
+  if (!path || path === "index.html") {
+    return { restaurantId: "", topTab: "", accessSource: "" };
+  }
+  const segments = path.split("/").filter(Boolean);
+  if (!segments.length) {
+    return { restaurantId: "", topTab: "", accessSource: "" };
+  }
+  const tail = segments.length > 2 ? segments.slice(-2) : segments.slice();
+  const first = String(tail[0] || "").trim();
+  const second = String(tail[1] || "").trim();
+  const firstTopTab = normalizePublicRouteTopTab(first);
+  const secondTopTab = normalizePublicRouteTopTab(second);
+  const firstSlug = normalizePublicRouteSlug(first);
+  const secondSlug = normalizePublicRouteSlug(second);
+  const firstQrHint = firstTopTab === "menu"
+    && ["qr", "menuqr", "scan-qr", "scanqr"].includes(String(first || "").trim().toLowerCase());
+  const secondQrHint = secondTopTab === "menu"
+    && ["qr", "menuqr", "scan-qr", "scanqr"].includes(String(second || "").trim().toLowerCase());
+
+  if (tail.length === 1 && firstSlug) {
+    return { restaurantId: firstSlug, topTab: "profile", accessSource: "" };
+  }
+  if (tail.length >= 2 && firstTopTab && secondSlug) {
+    return {
+      restaurantId: secondSlug,
+      topTab: firstTopTab,
+      accessSource: firstQrHint ? "qr" : ""
+    };
+  }
+  if (tail.length >= 2 && secondTopTab && firstSlug) {
+    return {
+      restaurantId: firstSlug,
+      topTab: secondTopTab,
+      accessSource: secondQrHint ? "qr" : ""
+    };
+  }
+  return { restaurantId: "", topTab: "", accessSource: "" };
+}
+
+function isDirectPublicProfileNavigation(url) {
+  const routeRestaurantId = PUBLIC_QUERY_RESTAURANT_KEYS
+    .map((key) => String(url?.searchParams?.get(key) || "").trim())
+    .find(Boolean) || "";
+  const routeTopTabRaw = PUBLIC_QUERY_TOP_TAB_KEYS
+    .map((key) => String(url?.searchParams?.get(key) || "").trim())
+    .find(Boolean) || "";
+  const routeSourceRaw = PUBLIC_QUERY_SOURCE_KEYS
+    .map((key) => String(url?.searchParams?.get(key) || "").trim())
+    .find(Boolean) || "";
+  const qrFlagRaw = String(
+    url?.searchParams?.get("qr")
+    || url?.searchParams?.get("isQr")
+    || url?.searchParams?.get("menuQr")
+    || ""
+  ).trim().toLowerCase();
+  const qrFlagEnabled = qrFlagRaw === "1"
+    || qrFlagRaw === "true"
+    || qrFlagRaw === "yes"
+    || qrFlagRaw === "qr";
+  const routeSource = String(routeSourceRaw || "").trim().toLowerCase();
+  const routeTopTab = normalizePublicRouteTopTab(routeTopTabRaw);
+  if (routeRestaurantId) {
+    const resolvedTopTab = routeTopTab || ((routeSource === "qr" || qrFlagEnabled) ? "menu" : "profile");
+    return resolvedTopTab === "profile" || resolvedTopTab === "menu";
+  }
+  const pathHint = resolvePathPublicRouteHint(url);
+  if (!pathHint.restaurantId) return false;
+  const resolvedPathTopTab = normalizePublicRouteTopTab(pathHint.topTab || "")
+    || (pathHint.accessSource === "qr" ? "menu" : "profile");
+  return resolvedPathTopTab === "profile" || resolvedPathTopTab === "menu";
+}
+
 function isExternalStaticRequest(url, request) {
   if (!EXTERNAL_STATIC_HOSTS.has(url.hostname)) return false;
   return ["script", "style", "font", "image"].includes(request.destination);
@@ -335,29 +467,40 @@ self.addEventListener("fetch", (event) => {
   if (!inScope && !isImage && !isExternalStatic) return;
 
   if (isNavigation && inScope) {
+    const strictPublicNavigation = isDirectPublicProfileNavigation(url);
     event.respondWith((async () => {
+      const navTimeoutMs = strictPublicNavigation
+        ? STRICT_PUBLIC_NAVIGATION_FETCH_TIMEOUT_MS
+        : NAVIGATION_FETCH_TIMEOUT_MS;
       try {
-        const preloadResponse = await event.preloadResponse;
-        if (preloadResponse && (preloadResponse.ok || preloadResponse.type === "opaque")) {
-          const cache = await caches.open(CACHE_NAME);
-          const cloneForIndex = preloadResponse.clone();
-          const cloneForScope = preloadResponse.clone();
-          cache.put(APP_SHELL_URL, cloneForIndex).catch(() => null);
-          cache.put(APP_SCOPE, cloneForScope).catch(() => null);
-          return preloadResponse;
+        if (!strictPublicNavigation) {
+          const preloadResponse = await event.preloadResponse;
+          if (preloadResponse && (preloadResponse.ok || preloadResponse.type === "opaque")) {
+            const cache = await caches.open(CACHE_NAME);
+            const cloneForIndex = preloadResponse.clone();
+            const cloneForScope = preloadResponse.clone();
+            cache.put(APP_SHELL_URL, cloneForIndex).catch(() => null);
+            cache.put(APP_SCOPE, cloneForScope).catch(() => null);
+            return preloadResponse;
+          }
         }
-        const navReq = new Request(req, { cache: "no-cache" });
-        const networkResp = await fetchWithTimeout(navReq, NAVIGATION_FETCH_TIMEOUT_MS);
+        const navReq = new Request(req, { cache: strictPublicNavigation ? "reload" : "no-cache" });
+        const networkResp = await fetchWithTimeout(navReq, navTimeoutMs);
         if (!networkResp || (!networkResp.ok && networkResp.type !== "opaque")) {
           throw new Error(`navigation-response-not-ok:${networkResp?.status || 0}`);
         }
-        const cache = await caches.open(CACHE_NAME);
-        const cloneForIndex = networkResp.clone();
-        const cloneForScope = networkResp.clone();
-        cache.put(APP_SHELL_URL, cloneForIndex).catch(() => null);
-        cache.put(APP_SCOPE, cloneForScope).catch(() => null);
+        if (!strictPublicNavigation) {
+          const cache = await caches.open(CACHE_NAME);
+          const cloneForIndex = networkResp.clone();
+          const cloneForScope = networkResp.clone();
+          cache.put(APP_SHELL_URL, cloneForIndex).catch(() => null);
+          cache.put(APP_SCOPE, cloneForScope).catch(() => null);
+        }
         return networkResp;
       } catch {
+        if (strictPublicNavigation) {
+          return new Response("Offline", { status: 503, statusText: "Offline" });
+        }
         const cachedShell = await getCachedAppShellResponse();
         return cachedShell || new Response("Offline", { status: 503, statusText: "Offline" });
       }

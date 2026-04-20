@@ -483,7 +483,11 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
-const PUSH_SW_URL = "/apps/menyra-social/sw.js";
+const PUSH_SW_URL = (() => {
+  const safeVersionToken = String(globalThis?.__MENYRA_SOCIAL_APP_VERSION__ || "").trim();
+  if (!safeVersionToken) return "";
+  return `/apps/menyra-social/sw.js?v=${encodeURIComponent(safeVersionToken)}`;
+})();
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-03-11-superadmin-buildstatus-2";

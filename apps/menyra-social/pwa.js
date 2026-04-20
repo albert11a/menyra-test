@@ -37,17 +37,17 @@ function readSocialAppVersionToken() {
   }
 }
 
-function buildSocialSwUrl() {
-  const versionToken = readSocialAppVersionToken();
-  if (!versionToken) return SOCIAL_SW_URL_BASE;
+function buildSocialSwUrl(versionToken = "") {
+  const safeVersionToken = String(versionToken || "").trim();
+  if (!safeVersionToken) return "";
   const separator = SOCIAL_SW_URL_BASE.includes("?") ? "&" : "?";
-  return `${SOCIAL_SW_URL_BASE}${separator}v=${encodeURIComponent(versionToken)}`;
+  return `${SOCIAL_SW_URL_BASE}${separator}v=${encodeURIComponent(safeVersionToken)}`;
 }
 
-function buildUpdateChannel() {
-  const versionToken = readSocialAppVersionToken();
-  if (!versionToken) return BETA_UPDATE_CHANNEL;
-  return `${BETA_UPDATE_CHANNEL}::${versionToken}`;
+function buildUpdateChannel(versionToken = "") {
+  const safeVersionToken = String(versionToken || "").trim();
+  if (!safeVersionToken) return `${BETA_UPDATE_CHANNEL}::disabled-no-version`;
+  return `${BETA_UPDATE_CHANNEL}::${safeVersionToken}`;
 }
 
 function isServiceWorkerDisabledByQuery() {
@@ -122,9 +122,21 @@ async function registerSW() {
     return;
   }
 
+  const versionToken = readSocialAppVersionToken();
+  if (!versionToken) {
+    await unregisterSocialServiceWorkers();
+    await clearSocialCaches();
+    document.documentElement.dataset.pwaUpdateChannel = buildUpdateChannel("");
+    setVendorDegraded("push", {
+      active: true,
+      message: "Service Worker deaktiviert: Build-Version fehlt."
+    });
+    return;
+  }
+
   try {
-    const swUrl = buildSocialSwUrl();
-    const updateChannel = buildUpdateChannel();
+    const swUrl = buildSocialSwUrl(versionToken);
+    const updateChannel = buildUpdateChannel(versionToken);
     const reg = await navigator.serviceWorker.register(swUrl, {
       scope: SOCIAL_SW_SCOPE,
       updateViaCache: "none"

@@ -487,6 +487,14 @@ export function createPublicProfileRuntimeController({
     const currentRoutePayload = currentView?.routePayload && typeof currentView.routePayload === "object"
       ? currentView.routePayload
       : null;
+    const incomingDirectEntry = directEntry && typeof directEntry === "object"
+      ? directEntry
+      : null;
+    const directEntryStalePolicy = incomingDirectEntry || currentDirectEntry || null;
+    const blockStaleCarryForWebDirect = String(directEntryStalePolicy?.owner || "").trim().toLowerCase() === "web-direct"
+      && directEntryStalePolicy?.routeFirst === true
+      && directEntryStalePolicy?.webPriority === true
+      && directEntryStalePolicy?.active !== false;
     const sameVisibleIncomingProfile = isSameVisibleProfile(currentProfile || null, profile || null);
     const incomingProjectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile?.posts || []);
     const incomingProfileSettling = isProfileSettling(profile);
@@ -500,13 +508,15 @@ export function createPublicProfileRuntimeController({
       && incomingProjectedPosts.length === 0
       && incomingProfileSettling
       && currentSurface?.posts?.status === "ready"
-      && profile?.postsLoaded !== true;
+      && profile?.postsLoaded !== true
+      && !blockStaleCarryForWebDirect;
     const projectedPosts = shouldPreserveVisiblePosts
       ? currentPosts
       : incomingProjectedPosts;
     const shouldPreserveHeaderSeed = sameVisibleIncomingProfile
       && currentProfile
-      && incomingProfileSettling;
+      && incomingProfileSettling
+      && !blockStaleCarryForWebDirect;
     const nextProfile = profile ? {
       ...profile,
       ...(shouldPreserveHeaderSeed ? {
@@ -560,9 +570,7 @@ export function createPublicProfileRuntimeController({
       : (preserveLandingState && previousContentTab
         ? previousContentTab
         : normalizeContentTab(explicitContentTab || "posts", "posts"));
-    const explicitDirectEntry = directEntry && typeof directEntry === "object"
-      ? directEntry
-      : null;
+    const explicitDirectEntry = incomingDirectEntry;
     const isWebEntryTopTab = resolvedTopTab === "profile" || resolvedTopTab === "menu" || resolvedTopTab === "landing";
     const baseDirectEntry = explicitDirectEntry
       || (sameVisibleProfile && currentDirectEntry?.active === true ? currentDirectEntry : null);
