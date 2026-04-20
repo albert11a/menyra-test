@@ -2059,11 +2059,19 @@ function applyPendingInitialRouteState() {
       publicProfileDirectEntryController.seedPendingDirectEntry(pendingRoute, {
         phase: "seeded"
       });
-      resolveVisibleProfileSurfaceSnapshot({
+      const seededSurfaceSnapshot = resolveVisibleProfileSurfaceSnapshot({
         profileView: state.profileView,
         profileTopTab: state.profileTopTab,
         profileContentTab: state.profileContentTab
       });
+      if (pendingDirectEntry.postsFirst && String(seededSurfaceSnapshot?.posts?.status || "").trim().toLowerCase() === "ready") {
+        setStartupSurfaceStatus("profile", "ready");
+        setStartupSurfaceStatus("active", "ready");
+      }
+      if (pendingDirectEntry.menuFirst && String(seededSurfaceSnapshot?.menu?.status || "").trim().toLowerCase() === "ready") {
+        setStartupSurfaceStatus("menu", "ready");
+        setStartupSurfaceStatus("active", "ready");
+      }
     } else {
       publicProfileDirectEntryController.writeWebDirectEntryState(pendingDirectEntry, {
         active: pendingDirectEntry.webPriority === true,

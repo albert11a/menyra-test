@@ -129,6 +129,145 @@ function normalizePublicBootstrapStories(rows = []) {
     .filter(Boolean);
 }
 
+function normalizeWebRouteSeedPost(post = {}, restaurantId = "") {
+  const id = String(post?.id || "").trim();
+  const url = String(post?.image || post?.url || "").trim();
+  if (!id || !url) return null;
+  const safeRestaurantId = String(restaurantId || post?.restaurantId || post?.ownerId || "").trim();
+  if (!safeRestaurantId) return null;
+  return {
+    id,
+    url,
+    type: String(post?.type || "square").trim() || "square",
+    title: "",
+    caption: String(post?.content || "").trim(),
+    createdAt: post?.createdAt || null,
+    likes: Number.isFinite(Number(post?.likes)) ? Number(post.likes) : 0,
+    comments: Number.isFinite(Number(post?.comments)) ? Number(post.comments) : 0,
+    isVideo: !!post?.isVideo,
+    ownerType: "restaurant",
+    ownerId: safeRestaurantId,
+    restaurantId: safeRestaurantId
+  };
+}
+
+function applyWebDirectRouteSeedFromBootstrap({
+  state = null,
+  routeRestaurantId = "",
+  incomingRestaurants = [],
+  normalizedFeedPosts = [],
+  maxPosts = 8
+} = {}) {
+  if (!state || typeof state !== "object") return false;
+  const safeRestaurantId = String(routeRestaurantId || "").trim();
+  if (!safeRestaurantId) return false;
+  const view = state.profileView && typeof state.profileView === "object" ? state.profileView : null;
+  const profile = view?.profile && typeof view.profile === "object" ? view.profile : null;
+  if (!view || !profile) return false;
+  const visibleRestaurantId = String(profile.restaurantId || "").trim();
+  if (visibleRestaurantId && visibleRestaurantId !== safeRestaurantId) return false;
+  const directEntry = view?.directEntry && typeof view.directEntry === "object" ? view.directEntry : null;
+  const directOwner = String(directEntry?.owner || "").trim().toLowerCase();
+  if (directOwner !== "web-direct") return false;
+  const directTopTab = String(directEntry?.topTab || "").trim().toLowerCase();
+  const allowPostsSeed = directTopTab === "profile";
+  let changed = false;
+  const restaurantPreview = (Array.isArray(incomingRestaurants) ? incomingRestaurants : [])
+    .find((row) => String(row?.id || "").trim() === safeRestaurantId) || null;
+  if (restaurantPreview) {
+    const nextName = String(restaurantPreview?.name || restaurantPreview?.restaurantName || "").trim();
+    const nextAvatar = String(restaurantPreview?.logoUrl || "").trim();
+    const nextLocation = String(restaurantPreview?.city || "").trim();
+    const nextType = String(restaurantPreview?.type || restaurantPreview?.customerType || "").trim();
+    if (nextName && nextName !== String(profile.name || "").trim()) {
+      profile.name = nextName;
+      changed = true;
+    }
+    if (nextAvatar && nextAvatar !== String(profile.avatar || "").trim()) {
+      profile.avatar = nextAvatar;
+      changed = true;
+    }
+    if (nextLocation && nextLocation !== String(profile.location || "").trim()) {
+      profile.location = nextLocation;
+      changed = true;
+    }
+    if (nextType && nextType !== String(profile.type || "").trim()) {
+      profile.type = nextType;
+      profile.customerType = nextType;
+      changed = true;
+    }
+    if (profile.identityTruthState !== "ready" && (nextName || nextAvatar || nextLocation)) {
+      profile.identityTruthState = "ready";
+      changed = true;
+    }
+  }
+  const safeMaxPosts = Math.max(1, Number(maxPosts) || 8);
+  const feedRows = Array.isArray(normalizedFeedPosts) ? normalizedFeedPosts : [];
+  const seededPosts = allowPostsSeed
+    ? feedRows
+      .filter((row) => String(row?.restaurantId || "").trim() === safeRestaurantId)
+      .map((row) => normalizeWebRouteSeedPost(row, safeRestaurantId))
+      .filter(Boolean)
+      .slice(0, safeMaxPosts)
+    : [];
+  const currentPosts = Array.isArray(view.posts) ? view.posts : [];
+  if (allowPostsSeed && !currentPosts.length && seededPosts.length) {
+    const projected = projectPostCollectionThroughEntityMap(state, seededPosts);
+    if (projected.length) {
+      view.posts = projected;
+      profile.posts = projected;
+      profile.postsLoaded = true;
+      profile.truthState = "stable";
+      changed = true;
+    }
+  }
+  if (changed) {
+    const routePayload = view.routePayload && typeof view.routePayload === "object"
+      ? view.routePayload
+      : null;
+    const activePosts = Array.isArray(view.posts) ? view.posts : [];
+    const menuCount = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId && Array.isArray(state?.menu?.items)
+      ? state.menu.items.length
+      : Math.max(0, Number(routePayload?.menu?.count || 0) || 0);
+    view.routePayload = {
+      ...(routePayload || {}),
+      owner: "web-direct",
+      routeFirst: true,
+      restaurantId: safeRestaurantId,
+      surface: String(view?.directEntry?.topTab || "").trim().toLowerCase() === "menu" ? "menu" : "profile",
+      topTab: String(view?.directEntry?.topTab || "").trim().toLowerCase() || "profile",
+      contentTab: String(view?.directEntry?.contentTab || "").trim().toLowerCase() || "posts",
+      phase: allowPostsSeed && activePosts.length > 0
+        ? "ready"
+        : (String(view?.directEntry?.phase || routePayload?.phase || "").trim().toLowerCase() || "loading"),
+      identity: {
+        name: String(profile.name || "").trim(),
+        handle: String(profile.handle || "").trim(),
+        avatar: String(profile.avatar || "").trim(),
+        location: String(profile.location || "").trim(),
+        followers: profile.followers ?? null,
+        following: profile.following ?? null
+      },
+      posts: {
+        count: activePosts.length,
+        seeded: activePosts.length > 0
+      },
+      menu: {
+        count: menuCount,
+        seeded: menuCount > 0
+      },
+      layout: {
+        menuCardColor: String(state?.menuLayout?.cardColor || routePayload?.layout?.menuCardColor || "").trim().toLowerCase() || "white"
+      },
+      ts: Date.now()
+    };
+    if (allowPostsSeed && activePosts.length > 0 && view?.directEntry && String(view.directEntry.owner || "").trim().toLowerCase() === "web-direct") {
+      view.directEntry.phase = "ready";
+    }
+  }
+  return changed;
+}
+
 export function createPublicBootstrapRuntimeController({
   state = null,
   windowObj = null,
@@ -274,21 +413,38 @@ export function createPublicBootstrapRuntimeController({
     const isWebDirectProfileVisiblePath = activeTabKey === "profile"
       && webDirectEntry?.active === true
       && webDirectEntry?.webPriority === true;
+    const webDirectRouteRestaurantId = isWebDirectProfileVisiblePath
+      ? String(webDirectEntry?.restaurantId || "").trim()
+      : "";
     const incomingRestaurants = normalizePublicBootstrapRestaurants(payload.restaurants, {
       normalizeRestaurantType
     });
+    const normalizedFeedPosts = normalizePublicBootstrapFeedPosts(payload.feedPosts || payload.feed || payload.posts, {
+      toDateSafe,
+      formatRelative
+    });
     const incomingFeedPosts = isWebDirectProfileVisiblePath
       ? []
-      : normalizePublicBootstrapFeedPosts(payload.feedPosts || payload.feed || payload.posts, {
-        toDateSafe,
-        formatRelative
-      });
+      : normalizedFeedPosts;
     const incomingStories = isWebDirectProfileVisiblePath
       ? []
       : normalizePublicBootstrapStories(payload.stories);
     let changed = false;
     let previewChanged = false;
     const deferFeedBootstrapPostProcessing = activeTabKey === "profile";
+    const webDirectRouteSeedChanged = isWebDirectProfileVisiblePath
+      && webDirectRouteRestaurantId
+      ? applyWebDirectRouteSeedFromBootstrap({
+        state,
+        routeRestaurantId: webDirectRouteRestaurantId,
+        incomingRestaurants,
+        normalizedFeedPosts,
+        maxPosts: fastLimits?.profilePosts || 8
+      })
+      : false;
+    if (webDirectRouteSeedChanged) {
+      changed = true;
+    }
 
     if (incomingRestaurants.length) {
       const existingPreview = Array.isArray(state.bootstrapRestaurantPreview)
@@ -364,7 +520,8 @@ export function createPublicBootstrapRuntimeController({
       const activeTab = String(state.activeTab || "").trim().toLowerCase();
       const shouldRefreshVisibleBootstrapSurface = activeTab === "feed"
         || activeTab === "search"
-        || activeTab === "map";
+        || activeTab === "map"
+        || (activeTab === "profile" && webDirectRouteSeedChanged);
       if (!updatedFeed && shouldRefreshVisibleBootstrapSurface) {
         requestRender();
       }

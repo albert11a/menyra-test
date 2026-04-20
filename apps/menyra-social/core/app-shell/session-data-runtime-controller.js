@@ -285,6 +285,55 @@ export function createSessionDataRuntimeController({
     return next;
   }
 
+  function mergeBootstrapRestaurantPreviewSeed(existing = [], incoming = []) {
+    const byId = new Map();
+    (Array.isArray(existing) ? existing : []).forEach((row) => {
+      const id = String(row?.id || "").trim();
+      if (!id) return;
+      byId.set(id, row);
+    });
+    (Array.isArray(incoming) ? incoming : []).forEach((row) => {
+      const id = String(row?.id || row?.restaurantId || "").trim();
+      if (!id) return;
+      const previous = byId.get(id) || {};
+      byId.set(id, {
+        ...previous,
+        ...row,
+        id,
+        __truthSource: previous.__truthSource || "cache-preview",
+        __truthPartial: true,
+        __isPreview: true
+      });
+    });
+    return Array.from(byId.values());
+  }
+
+  function hydrateRouteFirstRestaurantSeedFromCache() {
+    const previewCache = readCacheFn(cacheKeys.restaurantsPreview);
+    if (previewCache?.data?.length) {
+      const existingPreview = Array.isArray(state.bootstrapRestaurantPreview)
+        ? state.bootstrapRestaurantPreview
+        : [];
+      const mergedPreview = mergeBootstrapRestaurantPreviewSeed(existingPreview, previewCache.data);
+      const prevSignature = buildRestaurantTruthSignatureCore(existingPreview);
+      const nextSignature = buildRestaurantTruthSignatureCore(mergedPreview);
+      if (nextSignature && nextSignature !== prevSignature) {
+        state.bootstrapRestaurantPreview = mergedPreview;
+      }
+    }
+    const restaurantsCache = readCacheFn(cacheKeys.restaurants);
+    if (restaurantsCache?.data?.length) {
+      const canonicalCachedRestaurants = filterCanonicalRestaurants(restaurantsCache.data);
+      if (canonicalCachedRestaurants.length) {
+        const previousSignature = buildRestaurantTruthSignatureCore(state.restaurants || []);
+        const nextSignature = buildRestaurantTruthSignatureCore(canonicalCachedRestaurants);
+        if (nextSignature && nextSignature !== previousSignature) {
+          state.restaurants = canonicalCachedRestaurants;
+        }
+      }
+    }
+  }
+
   const LEGACY_GLOBAL_GUEST_SCOPE_UID = "guest";
   const resolveGuestScopeUid = () => String(guestScopeUid || "").trim();
   const pruneLegacyGlobalGuestCartStorage = (currentGuestScopeUid = resolveGuestScopeUid()) => {
@@ -347,7 +396,11 @@ export function createSessionDataRuntimeController({
       try { state.menuLayout = { ...defaultMenuLayout, ...JSON.parse(savedMenuLayout) }; } catch {}
     }
     state.postMeta = {};
-    if ((isCriticalPhase && prioritizeProfileSurface) || (isDeferredPhase && webDirectVisibleProfilePath)) {
+    if (isCriticalPhase && prioritizeProfileSurface) {
+      hydrateRouteFirstRestaurantSeedFromCache();
+      return;
+    }
+    if (isDeferredPhase && webDirectVisibleProfilePath) {
       return;
     }
 

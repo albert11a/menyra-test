@@ -240,8 +240,10 @@ export function createAuthSessionStartupCoordinator({
   function scheduleGuestTabEnsure({
     prioritize = false,
     visiblePath = false,
-    delayMs = 140
+    delayMs = 140,
+    skip = false
   } = {}) {
+    if (skip) return;
     const runEnsure = (scope) => {
       const activeTab = String(state?.activeTab || "").trim().toLowerCase();
       markStartup("guest ensureTabData start", { scope, tab: activeTab || "feed" });
@@ -344,7 +346,8 @@ export function createAuthSessionStartupCoordinator({
         scheduleGuestTabEnsure({
           prioritize: false,
           visiblePath: prioritizeGuestSurface || webDirectGuestProfileSurface,
-          delayMs: webDirectGuestProfileSurface ? 960 : 140
+          delayMs: webDirectGuestProfileSurface ? 960 : 140,
+          skip: webDirectGuestProfileSurface
         });
       }
       if (!state?.user && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
@@ -449,11 +452,7 @@ export function createAuthSessionStartupCoordinator({
           reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
         });
       };
-      if (isWebDirectGuestProfileLaunchActive()) {
-        schedulePostVisibleStartupTask(runSignedOutEnsure, {
-          delayMs: 960
-        });
-      } else {
+      if (!isWebDirectGuestProfileLaunchActive()) {
         queueMicrotaskSafe(runSignedOutEnsure);
       }
     }

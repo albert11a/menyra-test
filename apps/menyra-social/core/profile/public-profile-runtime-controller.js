@@ -316,6 +316,99 @@ export function createPublicProfileRuntimeController({
     ].join("::");
   }
 
+  function buildWebDirectRoutePayload(basePayload = null, {
+    profile = null,
+    posts = [],
+    topTab = "profile",
+    contentTab = "posts",
+    directEntry = null,
+    menuAccessSource = "",
+    tableNumber = 0
+  } = {}) {
+    const entry = directEntry && typeof directEntry === "object" ? directEntry : null;
+    const entryOwner = String(entry?.owner || "").trim().toLowerCase();
+    const isWebDirectRoute = entry?.active !== false
+      && entryOwner === "web-direct"
+      && entry?.routeFirst === true;
+    const currentPayload = basePayload && typeof basePayload === "object" ? basePayload : null;
+    if (!isWebDirectRoute && !currentPayload) return null;
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const safePosts = Array.isArray(posts) ? posts : [];
+    const safeRestaurantId = String(
+      safeProfile.restaurantId
+      || currentPayload?.restaurantId
+      || ""
+    ).trim();
+    const safeTopTab = String(topTab || "").trim().toLowerCase() || "profile";
+    const safeContentTab = String(contentTab || "").trim().toLowerCase() || (safeTopTab === "menu" ? "menu" : "posts");
+    const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
+    const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
+    const menu = state?.menu || {};
+    const sameRestaurantMenu = String(menu.restaurantId || "").trim() === safeRestaurantId;
+    const menuCount = sameRestaurantMenu && Array.isArray(menu.items)
+      ? menu.items.length
+      : Math.max(0, Number(currentPayload?.menu?.count || 0) || 0);
+    const followersValue = Number(safeProfile.followers);
+    const followingValue = Number(safeProfile.following);
+    return {
+      ...(currentPayload || {}),
+      owner: "web-direct",
+      routeFirst: true,
+      restaurantId: safeRestaurantId,
+      surface: safeTopTab === "menu" ? "menu" : "profile",
+      topTab: safeTopTab,
+      contentTab: safeContentTab,
+      phase: normalizeDirectEntryPhase(entry?.phase || currentPayload?.phase || "", "loading"),
+      menuAccessSource: safeMenuAccessSource,
+      tableNumber: safeTableNumber,
+      identity: {
+        name: String(safeProfile.name || "").trim(),
+        handle: String(safeProfile.handle || "").trim(),
+        avatar: String(safeProfile.avatar || "").trim(),
+        location: String(safeProfile.location || "").trim(),
+        followers: Number.isFinite(followersValue) ? followersValue : null,
+        following: Number.isFinite(followingValue) ? followingValue : null
+      },
+      posts: {
+        count: safePosts.length,
+        seeded: safePosts.length > 0
+      },
+      menu: {
+        count: menuCount,
+        seeded: menuCount > 0
+      },
+      layout: {
+        menuCardColor: String(
+          state?.menuLayout?.cardColor
+          || currentPayload?.layout?.menuCardColor
+          || ""
+        ).trim().toLowerCase() || "white"
+      },
+      ts: Date.now()
+    };
+  }
+
+  function serializeRoutePayload(payload = null) {
+    if (!payload || typeof payload !== "object") return "";
+    return [
+      String(payload?.restaurantId || "").trim(),
+      String(payload?.surface || "").trim().toLowerCase(),
+      String(payload?.topTab || "").trim().toLowerCase(),
+      String(payload?.contentTab || "").trim().toLowerCase(),
+      String(payload?.phase || "").trim().toLowerCase(),
+      String(payload?.identity?.name || "").trim(),
+      String(payload?.identity?.avatar || "").trim(),
+      String(payload?.identity?.location || "").trim(),
+      String(payload?.identity?.followers ?? ""),
+      String(payload?.identity?.following ?? ""),
+      String(payload?.posts?.count ?? ""),
+      String(payload?.menu?.count ?? ""),
+      String(payload?.layout?.menuCardColor || "").trim().toLowerCase(),
+      String(payload?.menuAccessSource || "").trim().toLowerCase(),
+      String(Math.max(0, Number(payload?.tableNumber || 0) || 0))
+    ].join("::");
+  }
+
   function attachProfileViewListener(profile) {
     stopProfileViewListener();
     if (!profile || !makeDocRef || !onSnapshotSafe || !db) return;
@@ -363,7 +456,8 @@ export function createPublicProfileRuntimeController({
     contentTab = "",
     menuAccessSource = "",
     tableNumber = 0,
-    directEntry = null
+    directEntry = null,
+    routePayload = null
   } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
@@ -389,6 +483,9 @@ export function createPublicProfileRuntimeController({
     const currentPosts = Array.isArray(currentView?.posts) ? currentView.posts : [];
     const currentDirectEntry = currentView?.directEntry && typeof currentView.directEntry === "object"
       ? currentView.directEntry
+      : null;
+    const currentRoutePayload = currentView?.routePayload && typeof currentView.routePayload === "object"
+      ? currentView.routePayload
       : null;
     const sameVisibleIncomingProfile = isSameVisibleProfile(currentProfile || null, profile || null);
     const incomingProjectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile?.posts || []);
@@ -524,11 +621,26 @@ export function createPublicProfileRuntimeController({
             explicitLanding: resolvedTopTab === "landing"
           }
           : null));
+    const explicitRoutePayload = routePayload && typeof routePayload === "object"
+      ? routePayload
+      : null;
+    const baseRoutePayload = explicitRoutePayload
+      || (sameVisibleProfile ? currentRoutePayload : null);
+    const nextRoutePayload = buildWebDirectRoutePayload(baseRoutePayload, {
+      profile: nextProfile,
+      posts: projectedPosts,
+      topTab: resolvedTopTab,
+      contentTab: nextContentTab,
+      directEntry: nextDirectEntry,
+      menuAccessSource: normalizedMenuAccessSource,
+      tableNumber: safeTableNumber
+    });
     const nextView = {
       profile: nextProfile,
       posts: projectedPosts,
       menuAccessSource: normalizedMenuAccessSource,
       tableNumber: safeTableNumber,
+      routePayload: nextRoutePayload,
       directEntry: nextDirectEntry
     };
     const currentSignature = buildProfileRenderSignature(currentProfile);
@@ -550,6 +662,8 @@ export function createPublicProfileRuntimeController({
     };
     const currentDirectEntrySignature = serializeDirectEntry(currentDirectEntry);
     const nextDirectEntrySignature = serializeDirectEntry(nextDirectEntry);
+    const currentRoutePayloadSignature = serializeRoutePayload(currentRoutePayload);
+    const nextRoutePayloadSignature = serializeRoutePayload(nextRoutePayload);
     const nextSurface = resolveVisibleProfileSurface(state, {
       profileView: nextView,
       profileTopTab: resolvedTopTab,
@@ -572,6 +686,7 @@ export function createPublicProfileRuntimeController({
       && currentMenuAccessSource === normalizedMenuAccessSource
       && currentTableNumber === safeTableNumber
       && currentDirectEntrySignature === nextDirectEntrySignature
+      && currentRoutePayloadSignature === nextRoutePayloadSignature
       && String(state?.profileBackTab || "") === String(nextProfileBackTab || "")
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
     ) {

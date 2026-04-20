@@ -34,10 +34,18 @@ export function resolveInitialRouteState({
     const key = String(value || "").trim().toLowerCase();
     if (!key) return "";
     if (key === "menu" || key === "karte" || key === "speisekarte" || key === "shop") return "menu";
+    if (key === "qr" || key === "menuqr" || key === "scan-qr" || key === "scanqr") return "menu";
     if (key === "profile" || key === "posts" || key === "home" || key === "overview") return "profile";
     if (key === "landing" || key === "welcome" || key === "onboarding") return "landing";
     if (key === "cart" || key === "basket" || key === "warenkorb") return "cart";
     return "";
+  };
+  const isQrPathSegment = (value = "") => {
+    const key = String(value || "").trim().toLowerCase();
+    return key === "qr"
+      || key === "menuqr"
+      || key === "scan-qr"
+      || key === "scanqr";
   };
   const normalizePathRestaurantSlug = (value = "") => {
     const raw = String(value || "").trim();
@@ -51,9 +59,9 @@ export function resolveInitialRouteState({
   };
   const resolvePathProfileRoute = (rawPath = "") => {
     const safePath = String(rawPath || "").split("?")[0].split("#")[0].trim();
-    if (!safePath) return { restaurantId: "", topTab: "" };
+    if (!safePath) return { restaurantId: "", topTab: "", accessSource: "" };
     let segments = safePath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
-    if (!segments.length) return { restaurantId: "", topTab: "" };
+    if (!segments.length) return { restaurantId: "", topTab: "", accessSource: "" };
     const appRootIndex = segments.findIndex((seg) => String(seg || "").trim().toLowerCase() === "menyra-social");
     if (appRootIndex >= 0 && appRootIndex < segments.length - 1) {
       segments = segments.slice(appRootIndex + 1);
@@ -61,33 +69,38 @@ export function resolveInitialRouteState({
     if (segments[0] && String(segments[0] || "").trim().toLowerCase() === "index.html") {
       segments = segments.slice(1);
     }
-    if (!segments.length) return { restaurantId: "", topTab: "" };
+    if (!segments.length) return { restaurantId: "", topTab: "", accessSource: "" };
     const tailSegments = segments.length > 2 ? segments.slice(-2) : segments.slice();
     const first = String(tailSegments[0] || "").trim();
     const second = String(tailSegments[1] || "").trim();
     const firstTopTab = normalizeTopTabFromPathSegment(first);
     const secondTopTab = normalizeTopTabFromPathSegment(second);
+    const firstQrHint = isQrPathSegment(first);
+    const secondQrHint = isQrPathSegment(second);
     const firstSlug = normalizePathRestaurantSlug(first);
     const secondSlug = normalizePathRestaurantSlug(second);
     if (tailSegments.length === 1 && firstSlug) {
       return {
         restaurantId: firstSlug,
-        topTab: ""
+        topTab: "",
+        accessSource: ""
       };
     }
     if (tailSegments.length >= 2 && firstTopTab && secondSlug) {
       return {
         restaurantId: secondSlug,
-        topTab: firstTopTab
+        topTab: firstTopTab,
+        accessSource: firstQrHint ? "qr" : ""
       };
     }
     if (tailSegments.length >= 2 && secondTopTab && firstSlug) {
       return {
         restaurantId: firstSlug,
-        topTab: secondTopTab
+        topTab: secondTopTab,
+        accessSource: secondQrHint ? "qr" : ""
       };
     }
-    return { restaurantId: "", topTab: "" };
+    return { restaurantId: "", topTab: "", accessSource: "" };
   };
 
   const routeRestaurantId = (
@@ -99,12 +112,12 @@ export function resolveInitialRouteState({
     || ""
   );
   const pathProfileRoute = routeRestaurantId
-    ? { restaurantId: "", topTab: "" }
+    ? { restaurantId: "", topTab: "", accessSource: "" }
     : resolvePathProfileRoute(readPathname);
   const landingSlug = routeRestaurantId ? "" : pathProfileRoute.restaurantId;
   const pendingProfileRestaurantId = routeRestaurantId || landingSlug;
   const queryTab = readQuery("tab") || readQuery("view") || "";
-  const profileTopQuery = readQuery("top") || (pendingProfileRestaurantId ? queryTab : "");
+  const profileTopQuery = readQuery("top") || readQuery("surface") || readQuery("screen") || (pendingProfileRestaurantId ? queryTab : "");
   const profileAccessSourceRaw = (
     readQuery("src")
     || readQuery("source")
@@ -120,7 +133,9 @@ export function resolveInitialRouteState({
     || ""
   ).trim().toLowerCase();
   const qrFlagEnabled = qrFlagRaw === "1" || qrFlagRaw === "true" || qrFlagRaw === "yes" || qrFlagRaw === "qr";
-  const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase() || (qrFlagEnabled ? "qr" : "");
+  const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase()
+    || String(pathProfileRoute.accessSource || "").trim().toLowerCase()
+    || (qrFlagEnabled ? "qr" : "");
   const fallbackProfileTopTab = pendingProfileRestaurantId && profileAccessSource === "qr"
     ? "menu"
     : "";

@@ -164,6 +164,33 @@ function resolveContractStatus({
   return profileStatus;
 }
 
+function hasRoutePayloadIdentitySeed(routePayload = null) {
+  if (!routePayload || typeof routePayload !== "object") return false;
+  const identity = routePayload.identity && typeof routePayload.identity === "object"
+    ? routePayload.identity
+    : {};
+  const hasName = !!String(identity.name || "").trim();
+  const hasHandle = !!String(identity.handle || "").trim();
+  const hasAvatar = !!String(identity.avatar || "").trim();
+  const hasFollowers = normalizeTruthyCount(identity.followers);
+  const hasFollowing = normalizeTruthyCount(identity.following);
+  return hasName || hasHandle || hasAvatar || hasFollowers || hasFollowing;
+}
+
+function hasRoutePayloadPostsSeed(routePayload = null) {
+  if (!routePayload || typeof routePayload !== "object") return false;
+  const count = Number(routePayload?.posts?.count);
+  if (Number.isFinite(count) && count > 0) return true;
+  return routePayload?.posts?.seeded === true;
+}
+
+function hasRoutePayloadMenuSeed(routePayload = null) {
+  if (!routePayload || typeof routePayload !== "object") return false;
+  const count = Number(routePayload?.menu?.count);
+  if (Number.isFinite(count) && count > 0) return true;
+  return routePayload?.menu?.seeded === true;
+}
+
 export function normalizeProfileSurfaceStatus(value = "", fallback = "loading") {
   const status = safeLower(value);
   if (SURFACE_STATUSES.has(status)) return status;
@@ -207,6 +234,9 @@ export function resolveVisibleProfileSurface(state = {}, {
   );
   const directEntryPhase = safeLower(directEntry?.phase || "");
   const directEntryOwner = safeLower(directEntry?.owner || "");
+  const routePayload = view?.routePayload && typeof view.routePayload === "object"
+    ? view.routePayload
+    : null;
   const profile = view?.profile && typeof view.profile === "object"
     ? view.profile
     : null;
@@ -230,19 +260,34 @@ export function resolveVisibleProfileSurface(state = {}, {
     topTab: activeTopTab,
     contentTab: requestedContentTab
   });
-  const headerStatus = normalizeProfileSurfaceStatus(resolveHeaderStatus(profile), "loading");
-  const profileStatus = normalizeProfileSurfaceStatus(resolvePostsStatus({
+  let headerStatus = normalizeProfileSurfaceStatus(resolveHeaderStatus(profile), "loading");
+  let profileStatus = normalizeProfileSurfaceStatus(resolvePostsStatus({
     profile,
     posts,
     contentTab: "posts"
   }), "loading");
-  const postsStatus = normalizeProfileSurfaceStatus(resolvePostsStatus({
+  let postsStatus = normalizeProfileSurfaceStatus(resolvePostsStatus({
     profile,
     posts,
     contentTab: activeContentTab
   }), "loading");
-  const menuStatus = normalizeProfileSurfaceStatus(resolveMenuStatus(state, { restaurantId: targetRestaurantId }), "loading");
+  let menuStatus = normalizeProfileSurfaceStatus(resolveMenuStatus(state, { restaurantId: targetRestaurantId }), "loading");
   const focusStatus = normalizeProfileSurfaceStatus(resolveFocusStatus(state, { restaurantId: targetRestaurantId }), "loading");
+  if (directEntryActive && directEntryOwner === "web-direct") {
+    const routePayloadIdentityReady = hasRoutePayloadIdentitySeed(routePayload);
+    if (routePayloadIdentityReady && isSettlingProfileSurfaceStatus(headerStatus)) {
+      headerStatus = "ready";
+    }
+    const routePayloadPostsReady = hasRoutePayloadPostsSeed(routePayload);
+    if (routePayloadPostsReady && activeTopTab === "profile" && (activeContentTab === "posts" || activeContentTab === "media")) {
+      if (isSettlingProfileSurfaceStatus(postsStatus)) postsStatus = "ready";
+      if (isSettlingProfileSurfaceStatus(profileStatus)) profileStatus = "ready";
+    }
+    const routePayloadMenuReady = hasRoutePayloadMenuSeed(routePayload);
+    if (routePayloadMenuReady && activeTopTab === "menu" && isSettlingProfileSurfaceStatus(menuStatus)) {
+      menuStatus = "ready";
+    }
+  }
   let visibleStatus = normalizeProfileSurfaceStatus(resolveContractStatus({
     activeTab,
     activeTopTab,

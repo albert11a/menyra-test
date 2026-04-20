@@ -336,9 +336,60 @@ export function createProfileOpenFlowControllerCore({
         contentTab: resolvedContentTab,
         explicitLanding: isLandingTopTab
       });
-      const requestedContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
-      const prioritizePostsSurface = !isMenuTopTab
-        && (requestedContentTab === "" || requestedContentTab === "posts" || requestedContentTab === "media");
+      const buildRoutePayloadMeta = (phase = "loading", {
+        profile = null,
+        posts = [],
+        directEntry = null
+      } = {}) => {
+        if (!isDirectWebEntryRequest) return null;
+        const safeProfile = profile && typeof profile === "object" ? profile : {};
+        const safePosts = Array.isArray(posts) ? posts : [];
+        const safeRestaurantId = String(
+          safeProfile.restaurantId
+          || targetMenuRestaurantId
+          || targetRestaurantLookupId
+          || ""
+        ).trim();
+        const menu = state?.menu || {};
+        const menuCount = String(menu.restaurantId || "").trim() === safeRestaurantId && Array.isArray(menu.items)
+          ? menu.items.length
+          : 0;
+        const directMeta = directEntry && typeof directEntry === "object"
+          ? directEntry
+          : buildDirectEntryMeta(phase);
+        return {
+          owner: "web-direct",
+          routeFirst: isDirectWebEntryRequest,
+          restaurantId: safeRestaurantId,
+          surface: resolvedTopTab === "menu" ? "menu" : "profile",
+          topTab: resolvedTopTab,
+          contentTab: resolvedContentTab,
+          phase: String(directMeta?.phase || phase || "loading").trim().toLowerCase() || "loading",
+          menuAccessSource: safeMenuAccessSource,
+          tableNumber: safeTableNumber,
+          identity: {
+            name: String(safeProfile.name || "").trim(),
+            handle: String(safeProfile.handle || "").trim(),
+            avatar: String(safeProfile.avatar || "").trim(),
+            location: String(safeProfile.location || "").trim(),
+            followers: safeProfile.followers ?? null,
+            following: safeProfile.following ?? null
+          },
+          posts: {
+            count: safePosts.length,
+            seeded: safePosts.length > 0
+          },
+          menu: {
+            count: menuCount,
+            seeded: menuCount > 0
+          },
+          layout: {
+            menuCardColor: String(state?.menuLayout?.cardColor || "").trim().toLowerCase() || "white"
+          },
+          ts: Date.now()
+        };
+      };
+      const prioritizePostsSurface = resolvedTopTab === "profile" && resolvedContentTab === "posts";
       const earlyPostsRestaurantId = String(targetMenuRestaurantId || "").trim();
       const earlyPostsPromise = prioritizePostsSurface && earlyPostsRestaurantId
         ? Promise.resolve(loadBusinessPosts(earlyPostsRestaurantId, { skipProfileResolve: true }))
@@ -405,6 +456,7 @@ export function createProfileOpenFlowControllerCore({
         // Canonical business profile request has started.
         postsStatus: stableBusinessPosts.length > 0 ? "ready" : "loading"
       });
+      const loadingDirectEntry = buildDirectEntryMeta("seeded");
 
       showPublicProfileView(loadingProfileWithSurfaceTruth, loadingProfileWithSurfaceTruth.posts, {
         showBack,
@@ -412,7 +464,12 @@ export function createProfileOpenFlowControllerCore({
         contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber,
-        directEntry: buildDirectEntryMeta("seeded")
+        directEntry: loadingDirectEntry,
+        routePayload: buildRoutePayloadMeta("seeded", {
+          profile: loadingProfileWithSurfaceTruth,
+          posts: loadingProfileWithSurfaceTruth.posts,
+          directEntry: loadingDirectEntry
+        })
       });
 
       const profileSnapPromise = withTimeoutFallback(fetchBusinessProfile({
@@ -442,13 +499,19 @@ export function createProfileOpenFlowControllerCore({
               identityStatus: resolveLoadingIdentityTruthState(stableBusinessProfile),
               postsStatus: "ready"
             });
+            const earlyPostsDirectEntry = buildDirectEntryMeta("ready");
             showPublicProfileView(earlyPostsProfile, result.posts, {
               showBack,
               topTab: resolvedTopTab,
               contentTab: resolvedContentTab,
               menuAccessSource: safeMenuAccessSource,
               tableNumber: safeTableNumber,
-              directEntry: buildDirectEntryMeta("loading")
+              directEntry: earlyPostsDirectEntry,
+              routePayload: buildRoutePayloadMeta("ready", {
+                profile: earlyPostsProfile,
+                posts: result.posts,
+                directEntry: earlyPostsDirectEntry
+              })
             });
           })
           .catch(() => null);
@@ -484,6 +547,9 @@ export function createProfileOpenFlowControllerCore({
         identityStatus: "ready",
         postsStatus: interimPosts.length > 0 ? "ready" : "loading"
       });
+      const resolvedInterimDirectEntry = buildDirectEntryMeta(
+        isMenuTopTab || interimPosts.length > 0 ? "ready" : "loading"
+      );
 
       showPublicProfileView(resolvedInterim, interimPosts, {
         showBack,
@@ -491,7 +557,12 @@ export function createProfileOpenFlowControllerCore({
         contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber,
-        directEntry: buildDirectEntryMeta(isMenuTopTab ? "ready" : "loading")
+        directEntry: resolvedInterimDirectEntry,
+        routePayload: buildRoutePayloadMeta(resolvedInterimDirectEntry.phase, {
+          profile: resolvedInterim,
+          posts: interimPosts,
+          directEntry: resolvedInterimDirectEntry
+        })
       });
 
       const resolvedRestaurantId = String(
@@ -533,6 +604,7 @@ export function createProfileOpenFlowControllerCore({
         identityStatus: "ready",
         postsStatus: Array.isArray(posts) && posts.length > 0 ? "ready" : "empty"
       });
+      const resolvedReadyDirectEntry = buildDirectEntryMeta("ready");
       const safeLandingStep = Math.max(0, Number(state?.profileLandingStep || 0) || 0);
       if (isLandingTopTab && safeLandingStep < 2) {
         const liveView = state?.profileView;
@@ -556,7 +628,12 @@ export function createProfileOpenFlowControllerCore({
         contentTab: resolvedContentTab,
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber,
-        directEntry: buildDirectEntryMeta("ready")
+        directEntry: resolvedReadyDirectEntry,
+        routePayload: buildRoutePayloadMeta("ready", {
+          profile: resolvedWithPosts,
+          posts: resolvedWithPosts.posts,
+          directEntry: resolvedReadyDirectEntry
+        })
       });
     } catch (err) {
       console.error(err);
