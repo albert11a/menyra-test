@@ -14,6 +14,31 @@ export function preparePublicBootstrapStartup({
   const markStartupTimeline = typeof startupTimelineMark === "function"
     ? startupTimelineMark
     : (() => {});
+  const shouldForceImmediateInlineApply = (payload = null) => {
+    if (!payload || typeof payload !== "object") return false;
+    const routePayload = payload?.publicRoute && typeof payload.publicRoute === "object"
+      ? payload.publicRoute
+      : payload;
+    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
+      ? routePayload.businessSnapshot
+      : null;
+    const restaurantId = String(
+      routePayload?.restaurantId
+      || routePayload?.targetRestaurantId
+      || routeSnapshot?.restaurantId
+      || ""
+    ).trim();
+    if (!restaurantId) return false;
+    const routeTopTab = String(
+      routePayload?.topTab
+      || routePayload?.surface
+      || routePayload?.contentTab
+      || ""
+    ).trim().toLowerCase();
+    return routeTopTab === "menu"
+      || routeTopTab === "profile"
+      || !routeTopTab;
+  };
   const applyInlinePayloadWithTimeline = (payload, source = "inline") => {
     markStartupTimeline("public bootstrap start", { source });
     try {
@@ -53,10 +78,14 @@ export function preparePublicBootstrapStartup({
   const inlineBootstrap = windowObj.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__;
   if (inlineBootstrap && typeof inlineBootstrap === "object") {
     hasInlineBootstrapPayload = true;
-    if (deferInlinePayloadApply) {
+    const forceImmediateApply = shouldForceImmediateInlineApply(inlineBootstrap);
+    if (deferInlinePayloadApply && !forceImmediateApply) {
       scheduleDeferredInlinePayloadApply(inlineBootstrap);
     } else {
-      applyInlinePayloadWithTimeline(inlineBootstrap, "inline");
+      applyInlinePayloadWithTimeline(
+        inlineBootstrap,
+        forceImmediateApply ? "inline-route-critical" : "inline"
+      );
     }
   }
   hasWindowBootstrapPromise = !!windowObj.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__

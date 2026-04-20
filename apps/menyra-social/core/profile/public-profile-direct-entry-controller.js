@@ -665,6 +665,9 @@ export function createPublicProfileDirectEntryController({
           truthState: "knownEmpty"
         };
       } else {
+        const existingMenuTruth = String(state.menu.truthState || "").trim().toLowerCase();
+        const hasKnownMenuTruth = String(state.menu.restaurantId || "").trim() === entry.restaurantId
+          && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
         const existingItems = String(state.menu.restaurantId || "").trim() === entry.restaurantId && Array.isArray(state.menu.items)
           ? state.menu.items
           : [];
@@ -672,11 +675,13 @@ export function createPublicProfileDirectEntryController({
           ...state.menu,
           restaurantId: entry.restaurantId,
           items: existingItems,
-          loading: true,
+          loading: hasKnownMenuTruth ? false : true,
           error: "",
           source: "public",
-          routeSeed: false,
-          truthState: "unknown"
+          routeSeed: hasKnownMenuTruth ? state.menu.routeSeed === true : false,
+          truthState: hasKnownMenuTruth
+            ? (existingMenuTruth === "seeded" ? "seeded" : "knownEmpty")
+            : "unknown"
         };
       }
     }
@@ -704,6 +709,9 @@ export function createPublicProfileDirectEntryController({
           truthState: "knownEmpty"
         };
       } else {
+        const existingFocusTruth = String(state.focus.truthState || "").trim().toLowerCase();
+        const hasKnownFocusTruth = String(state.focus.restaurantId || "").trim() === entry.restaurantId
+          && (existingFocusTruth === "seeded" || existingFocusTruth === "knownempty" || existingFocusTruth === "known-empty");
         const existingItems = String(state.focus.restaurantId || "").trim() === entry.restaurantId && Array.isArray(state.focus.items)
           ? state.focus.items
           : [];
@@ -712,9 +720,11 @@ export function createPublicProfileDirectEntryController({
           restaurantId: entry.restaurantId,
           items: existingItems,
           enabled: routeBootstrap?.focus?.enabled !== false,
-          loading: true,
+          loading: hasKnownFocusTruth ? false : true,
           error: "",
-          truthState: "unknown"
+          truthState: hasKnownFocusTruth
+            ? (existingFocusTruth === "seeded" ? "seeded" : "knownEmpty")
+            : "unknown"
         };
       }
     }

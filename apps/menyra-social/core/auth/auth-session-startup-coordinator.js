@@ -360,9 +360,11 @@ export function createAuthSessionStartupCoordinator({
               : null
           });
         };
-        if (prioritizeGuestSurface || webDirectGuestProfileSurface) {
+        if (webDirectGuestProfileSurface) {
+          queueMicrotaskSafe(runPublicBootstrapFetch);
+        } else if (prioritizeGuestSurface) {
           schedulePostVisibleStartupTask(runPublicBootstrapFetch, {
-            delayMs: webDirectGuestProfileSurface ? 1480 : 780
+            delayMs: 780
           });
         } else {
           queueMicrotaskSafe(runPublicBootstrapFetch);

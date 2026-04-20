@@ -6,12 +6,18 @@ import { createAuthSessionStartupCoordinator } from "../auth/auth-session-startu
 function shouldDeferInlineBootstrapApply(startupPrepDeps = {}) {
   const state = startupPrepDeps?.state || null;
   if (!state || typeof state !== "object") return false;
-  const activeTab = String(state.activeTab || "").trim().toLowerCase();
-  if (activeTab !== "profile") return false;
   const pendingRouteState = startupPrepDeps?.pendingRouteState || null;
   const pendingState = typeof pendingRouteState?.getPendingState === "function"
     ? pendingRouteState.getPendingState()
     : null;
+  const pendingProfileRestaurantId = String(pendingState?.pendingProfileRestaurantId || "").trim();
+  if (pendingProfileRestaurantId) return false;
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    ? state.__webDirectEntry
+    : null;
+  if (webDirectEntry?.active === true && webDirectEntry?.webPriority === true) return false;
+  const activeTab = String(state.activeTab || "").trim().toLowerCase();
+  if (activeTab !== "profile") return false;
   const pendingTopTab = String(pendingState?.pendingProfileTopTab || "").trim().toLowerCase();
   const profileTopTab = pendingTopTab || String(state.profileTopTab || "").trim().toLowerCase() || "profile";
   return profileTopTab === "profile" || profileTopTab === "menu";

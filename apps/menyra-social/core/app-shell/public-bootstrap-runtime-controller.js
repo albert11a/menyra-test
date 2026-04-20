@@ -528,6 +528,9 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routeFocusState = normalizeTruthState(routeSnapshot?.focus?.state || safeRoutePayload?.focus?.state || routeTruth?.focus || "", (
     routeFocusSeed.length ? "seeded" : "unknown"
   ));
+  let resolvedRoutePostsState = routePostsState;
+  let resolvedRouteMenuState = routeMenuState;
+  let resolvedRouteFocusState = routeFocusState;
   const routeIdentityState = normalizeTruthState(routeTruth?.identity || "", (
     routeIdentity?.name || routeIdentity?.avatar || routeIdentity?.handle
   ) ? "seeded" : "unknown");
@@ -615,7 +618,7 @@ function applyWebDirectRouteSeedFromBootstrap({
     profile.identityTruthState = nextIdentityTruthState;
     changed = true;
   }
-  if (routeMenuState === "seeded") {
+  if (resolvedRouteMenuState === "seeded") {
     state.menu = {
       ...(state?.menu || {}),
       restaurantId: safeRestaurantId,
@@ -628,7 +631,7 @@ function applyWebDirectRouteSeedFromBootstrap({
       truthState: "seeded"
     };
     changed = true;
-  } else if (routeMenuState === "knownEmpty") {
+  } else if (resolvedRouteMenuState === "knownEmpty") {
     state.menu = {
       ...(state?.menu || {}),
       restaurantId: safeRestaurantId,
@@ -641,25 +644,47 @@ function applyWebDirectRouteSeedFromBootstrap({
       truthState: "knownEmpty"
     };
     changed = true;
-  } else if (routeMenuState === "unknown") {
-    const sameRestaurantItems = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
-      && Array.isArray(state?.menu?.items)
-      ? state.menu.items
-      : [];
-    state.menu = {
-      ...(state?.menu || {}),
-      restaurantId: safeRestaurantId,
-      items: sameRestaurantItems,
-      loading: true,
-      error: "",
-      source: "public",
-      statusBadgeVisible: routeMenuStatusBadgeVisible,
-      routeSeed: false,
-      truthState: "unknown"
-    };
-    changed = true;
+  } else if (resolvedRouteMenuState === "unknown") {
+    const currentMenuTruth = String(state?.menu?.truthState || "").trim().toLowerCase();
+    const hasSeededMenuTruth = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+      && (currentMenuTruth === "seeded" || currentMenuTruth === "knownempty" || currentMenuTruth === "known-empty");
+    if (hasSeededMenuTruth) {
+      resolvedRouteMenuState = currentMenuTruth === "seeded" ? "seeded" : "knownEmpty";
+      const mergedMenuState = {
+        ...(state?.menu || {}),
+        restaurantId: safeRestaurantId,
+        source: "public",
+        statusBadgeVisible: routeMenuStatusBadgeVisible,
+        loading: false
+      };
+      if (
+        mergedMenuState.source !== state?.menu?.source
+        || mergedMenuState.statusBadgeVisible !== state?.menu?.statusBadgeVisible
+        || mergedMenuState.loading !== state?.menu?.loading
+      ) {
+        state.menu = mergedMenuState;
+        changed = true;
+      }
+    } else {
+      const sameRestaurantItems = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+        && Array.isArray(state?.menu?.items)
+        ? state.menu.items
+        : [];
+      state.menu = {
+        ...(state?.menu || {}),
+        restaurantId: safeRestaurantId,
+        items: sameRestaurantItems,
+        loading: true,
+        error: "",
+        source: "public",
+        statusBadgeVisible: routeMenuStatusBadgeVisible,
+        routeSeed: false,
+        truthState: "unknown"
+      };
+      changed = true;
+    }
   }
-  if (routeFocusState === "seeded") {
+  if (resolvedRouteFocusState === "seeded") {
     state.focus = {
       ...(state?.focus || {}),
       restaurantId: safeRestaurantId,
@@ -671,7 +696,7 @@ function applyWebDirectRouteSeedFromBootstrap({
       truthState: "seeded"
     };
     changed = true;
-  } else if (routeFocusState === "knownEmpty") {
+  } else if (resolvedRouteFocusState === "knownEmpty") {
     state.focus = {
       ...(state?.focus || {}),
       restaurantId: safeRestaurantId,
@@ -683,21 +708,41 @@ function applyWebDirectRouteSeedFromBootstrap({
       truthState: "knownEmpty"
     };
     changed = true;
-  } else if (routeFocusState === "unknown") {
-    const sameRestaurantItems = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
-      && Array.isArray(state?.focus?.items)
-      ? state.focus.items
-      : [];
-    state.focus = {
-      ...(state?.focus || {}),
-      restaurantId: safeRestaurantId,
-      items: sameRestaurantItems,
-      enabled: routeFocusEnabled,
-      loading: true,
-      error: "",
-      truthState: "unknown"
-    };
-    changed = true;
+  } else if (resolvedRouteFocusState === "unknown") {
+    const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
+    const hasSeededFocusTruth = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+      && (currentFocusTruth === "seeded" || currentFocusTruth === "knownempty" || currentFocusTruth === "known-empty");
+    if (hasSeededFocusTruth) {
+      resolvedRouteFocusState = currentFocusTruth === "seeded" ? "seeded" : "knownEmpty";
+      const mergedFocusState = {
+        ...(state?.focus || {}),
+        restaurantId: safeRestaurantId,
+        enabled: routeFocusEnabled,
+        loading: false
+      };
+      if (
+        mergedFocusState.enabled !== state?.focus?.enabled
+        || mergedFocusState.loading !== state?.focus?.loading
+      ) {
+        state.focus = mergedFocusState;
+        changed = true;
+      }
+    } else {
+      const sameRestaurantItems = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+        && Array.isArray(state?.focus?.items)
+        ? state.focus.items
+        : [];
+      state.focus = {
+        ...(state?.focus || {}),
+        restaurantId: safeRestaurantId,
+        items: sameRestaurantItems,
+        enabled: routeFocusEnabled,
+        loading: true,
+        error: "",
+        truthState: "unknown"
+      };
+      changed = true;
+    }
   }
   if (routeLayoutColor && String(state?.menuLayout?.cardColor || "").trim().toLowerCase() !== routeLayoutColor) {
     state.menuLayout = {
@@ -709,7 +754,7 @@ function applyWebDirectRouteSeedFromBootstrap({
   if (restaurantPreview) {
     profile.restaurantId = String(profile.restaurantId || safeRestaurantId).trim() || safeRestaurantId;
   }
-  if (routePostsState === "seeded") {
+  if (resolvedRoutePostsState === "seeded") {
     const seededPosts = routePostsSeed.length
       ? routePostsSeed.slice(0, safeMaxPosts)
       : [];
@@ -727,18 +772,41 @@ function applyWebDirectRouteSeedFromBootstrap({
       profile.truthState = "empty";
       changed = true;
     }
-  } else if (routePostsState === "knownEmpty") {
+  } else if (resolvedRoutePostsState === "knownEmpty") {
     view.posts = [];
     profile.posts = [];
     profile.postsLoaded = true;
     profile.truthState = "empty";
     changed = true;
   } else {
-    if (!Array.isArray(view.posts)) view.posts = [];
-    if (!Array.isArray(profile.posts)) profile.posts = [];
-    profile.postsLoaded = false;
-    profile.truthState = "route-pending-loading";
-    changed = true;
+    const existingPosts = Array.isArray(view.posts) ? view.posts : [];
+    const currentPostsTruth = String(profile.truthState || "").trim().toLowerCase();
+    const hasSeededPostsTruth = existingPosts.length > 0
+      || profile.postsLoaded === true
+      || currentPostsTruth === "stable"
+      || currentPostsTruth === "empty";
+    if (hasSeededPostsTruth) {
+      resolvedRoutePostsState = existingPosts.length > 0 ? "seeded" : "knownEmpty";
+      if (!Array.isArray(profile.posts)) {
+        profile.posts = existingPosts.slice();
+        changed = true;
+      }
+      if (profile.postsLoaded !== true) {
+        profile.postsLoaded = true;
+        changed = true;
+      }
+      const nextTruthState = existingPosts.length > 0 ? "stable" : "empty";
+      if (String(profile.truthState || "").trim().toLowerCase() !== nextTruthState) {
+        profile.truthState = nextTruthState;
+        changed = true;
+      }
+    } else {
+      if (!Array.isArray(view.posts)) view.posts = [];
+      if (!Array.isArray(profile.posts)) profile.posts = [];
+      profile.postsLoaded = false;
+      profile.truthState = "route-pending-loading";
+      changed = true;
+    }
   }
   if (changed) {
     const activePosts = Array.isArray(view.posts) ? view.posts : [];
@@ -751,9 +819,9 @@ function applyWebDirectRouteSeedFromBootstrap({
     const activePostsCount = activePosts.length > 0
       ? activePosts.length
       : Math.max(0, Number(routeSnapshot?.posts?.count || safeRoutePayload?.posts?.count || 0) || 0);
-    const snapshotPhaseReady = routePostsState !== "unknown"
-      && routeMenuState !== "unknown"
-      && routeFocusState !== "unknown"
+    const snapshotPhaseReady = resolvedRoutePostsState !== "unknown"
+      && resolvedRouteMenuState !== "unknown"
+      && resolvedRouteFocusState !== "unknown"
       && nextIdentityTruthState === "ready";
     const nextSnapshot = {
       ...(routeSnapshot && typeof routeSnapshot === "object" ? routeSnapshot : {}),
@@ -784,27 +852,27 @@ function applyWebDirectRouteSeedFromBootstrap({
         customerType: String(profile.customerType || profile.type || "").trim()
       },
       posts: {
-        state: routePostsState,
-        seeded: routePostsState === "seeded",
-        knownEmpty: routePostsState === "knownEmpty",
-        unknown: routePostsState === "unknown",
+        state: resolvedRoutePostsState,
+        seeded: resolvedRoutePostsState === "seeded",
+        knownEmpty: resolvedRoutePostsState === "knownEmpty",
+        unknown: resolvedRoutePostsState === "unknown",
         count: activePostsCount,
         items: activePosts
       },
       menu: {
-        state: routeMenuState,
-        seeded: routeMenuState === "seeded",
-        knownEmpty: routeMenuState === "knownEmpty",
-        unknown: routeMenuState === "unknown",
+        state: resolvedRouteMenuState,
+        seeded: resolvedRouteMenuState === "seeded",
+        knownEmpty: resolvedRouteMenuState === "knownEmpty",
+        unknown: resolvedRouteMenuState === "unknown",
         count: menuCount,
         items: Array.isArray(state?.menu?.items) ? state.menu.items : [],
         statusBadgeVisible: state?.menu?.statusBadgeVisible !== false
       },
       focus: {
-        state: routeFocusState,
-        seeded: routeFocusState === "seeded",
-        knownEmpty: routeFocusState === "knownEmpty",
-        unknown: routeFocusState === "unknown",
+        state: resolvedRouteFocusState,
+        seeded: resolvedRouteFocusState === "seeded",
+        knownEmpty: resolvedRouteFocusState === "knownEmpty",
+        unknown: resolvedRouteFocusState === "unknown",
         count: focusCount,
         items: Array.isArray(state?.focus?.items) ? state.focus.items : [],
         enabled: state?.focus?.enabled !== false
@@ -823,9 +891,9 @@ function applyWebDirectRouteSeedFromBootstrap({
         counts: (normalizeCountOrNull(profile.followers) !== null || normalizeCountOrNull(profile.following) !== null)
           ? "seeded"
           : "unknown",
-        posts: routePostsState,
-        menu: routeMenuState,
-        focus: routeFocusState,
+        posts: resolvedRoutePostsState,
+        menu: resolvedRouteMenuState,
+        focus: resolvedRouteFocusState,
         layout: "seeded"
       }
     };
@@ -850,28 +918,28 @@ function applyWebDirectRouteSeedFromBootstrap({
         following: profile.following ?? null
       },
       posts: {
-        state: routePostsState,
+        state: resolvedRoutePostsState,
         count: activePostsCount,
-        seeded: routePostsState === "seeded",
-        knownEmpty: routePostsState === "knownEmpty",
-        unknown: routePostsState === "unknown",
+        seeded: resolvedRoutePostsState === "seeded",
+        knownEmpty: resolvedRoutePostsState === "knownEmpty",
+        unknown: resolvedRoutePostsState === "unknown",
         items: activePosts
       },
       menu: {
-        state: routeMenuState,
+        state: resolvedRouteMenuState,
         count: menuCount,
-        seeded: routeMenuState === "seeded",
-        knownEmpty: routeMenuState === "knownEmpty",
-        unknown: routeMenuState === "unknown",
+        seeded: resolvedRouteMenuState === "seeded",
+        knownEmpty: resolvedRouteMenuState === "knownEmpty",
+        unknown: resolvedRouteMenuState === "unknown",
         items: Array.isArray(state?.menu?.items) ? state.menu.items : [],
         statusBadgeVisible: state?.menu?.statusBadgeVisible !== false
       },
       focus: {
-        state: routeFocusState,
+        state: resolvedRouteFocusState,
         count: focusCount,
-        seeded: routeFocusState === "seeded",
-        knownEmpty: routeFocusState === "knownEmpty",
-        unknown: routeFocusState === "unknown",
+        seeded: resolvedRouteFocusState === "seeded",
+        knownEmpty: resolvedRouteFocusState === "knownEmpty",
+        unknown: resolvedRouteFocusState === "unknown",
         items: Array.isArray(state?.focus?.items) ? state.focus.items : [],
         enabled: state?.focus?.enabled !== false
       },
@@ -889,9 +957,9 @@ function applyWebDirectRouteSeedFromBootstrap({
         counts: (normalizeCountOrNull(profile.followers) !== null || normalizeCountOrNull(profile.following) !== null)
           ? "seeded"
           : "unknown",
-        posts: routePostsState,
-        menu: routeMenuState,
-        focus: routeFocusState,
+        posts: resolvedRoutePostsState,
+        menu: resolvedRouteMenuState,
+        focus: resolvedRouteFocusState,
         layout: "seeded"
       },
       snapshotVersion: nextSnapshot.snapshotVersion,

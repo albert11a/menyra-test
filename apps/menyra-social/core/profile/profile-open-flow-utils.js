@@ -405,6 +405,9 @@ export function createProfileOpenFlowControllerCore({
         || "",
         routeFocusSeed.length ? "seeded" : "unknown"
       );
+      let effectiveRoutePostsState = routePostsState;
+      let effectiveRouteMenuState = routeMenuState;
+      let effectiveRouteFocusState = routeFocusState;
       const routeIdentityState = normalizeTruthState(
         routeTruthSeed?.identity || "",
         (
@@ -728,7 +731,7 @@ export function createProfileOpenFlowControllerCore({
         ? liveBusinessPosts
         : routeSeedPosts;
       if (routeSnapshotSeed && targetMenuRestaurantId) {
-        if (routeMenuState === "seeded") {
+        if (effectiveRouteMenuState === "seeded") {
           state.menu = {
             ...state.menu,
             restaurantId: targetMenuRestaurantId,
@@ -740,7 +743,7 @@ export function createProfileOpenFlowControllerCore({
             routeSeed: true,
             truthState: "seeded"
           };
-        } else if (routeMenuState === "knownEmpty") {
+        } else if (effectiveRouteMenuState === "knownEmpty") {
           state.menu = {
             ...state.menu,
             restaurantId: targetMenuRestaurantId,
@@ -753,20 +756,28 @@ export function createProfileOpenFlowControllerCore({
             truthState: "knownEmpty"
           };
         } else {
+          const existingMenuTruth = String(state.menu?.truthState || "").trim().toLowerCase();
+          const hasKnownMenuTruth = String(state.menu?.restaurantId || "").trim() === targetMenuRestaurantId
+            && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
+          if (hasKnownMenuTruth) {
+            effectiveRouteMenuState = existingMenuTruth === "seeded" ? "seeded" : "knownEmpty";
+          }
           state.menu = {
             ...state.menu,
             restaurantId: targetMenuRestaurantId,
             items: Array.isArray(state.menu?.items) && String(state.menu?.restaurantId || "").trim() === targetMenuRestaurantId
               ? state.menu.items
               : [],
-            loading: true,
+            loading: hasKnownMenuTruth ? false : true,
             error: "",
             source: "public",
-            routeSeed: false,
-            truthState: "unknown"
+            routeSeed: hasKnownMenuTruth ? state.menu.routeSeed === true : false,
+            truthState: hasKnownMenuTruth
+              ? (existingMenuTruth === "seeded" ? "seeded" : "knownEmpty")
+              : "unknown"
           };
         }
-        if (routeFocusState === "seeded") {
+        if (effectiveRouteFocusState === "seeded") {
           state.focus = {
             ...state.focus,
             restaurantId: targetMenuRestaurantId,
@@ -777,7 +788,7 @@ export function createProfileOpenFlowControllerCore({
             index: 0,
             truthState: "seeded"
           };
-        } else if (routeFocusState === "knownEmpty") {
+        } else if (effectiveRouteFocusState === "knownEmpty") {
           state.focus = {
             ...state.focus,
             restaurantId: targetMenuRestaurantId,
@@ -789,6 +800,12 @@ export function createProfileOpenFlowControllerCore({
             truthState: "knownEmpty"
           };
         } else {
+          const existingFocusTruth = String(state.focus?.truthState || "").trim().toLowerCase();
+          const hasKnownFocusTruth = String(state.focus?.restaurantId || "").trim() === targetMenuRestaurantId
+            && (existingFocusTruth === "seeded" || existingFocusTruth === "knownempty" || existingFocusTruth === "known-empty");
+          if (hasKnownFocusTruth) {
+            effectiveRouteFocusState = existingFocusTruth === "seeded" ? "seeded" : "knownEmpty";
+          }
           state.focus = {
             ...state.focus,
             restaurantId: targetMenuRestaurantId,
@@ -796,9 +813,11 @@ export function createProfileOpenFlowControllerCore({
               ? state.focus.items
               : [],
             enabled: routeSnapshotSeed?.focus?.enabled !== false,
-            loading: true,
+            loading: hasKnownFocusTruth ? false : true,
             error: "",
-            truthState: "unknown"
+            truthState: hasKnownFocusTruth
+              ? (existingFocusTruth === "seeded" ? "seeded" : "knownEmpty")
+              : "unknown"
           };
         }
         const routeLayoutColor = String(routeSnapshotSeed?.layout?.menuCardColor || "").trim().toLowerCase();
@@ -810,22 +829,38 @@ export function createProfileOpenFlowControllerCore({
         }
       }
       if (isMenuTopTab && targetMenuRestaurantId) {
+        const skipFirstVisibleMenuEnsure = isWebRoutePriorityPath
+          && (effectiveRouteMenuState === "seeded" || effectiveRouteMenuState === "knownEmpty");
+        const skipFirstVisibleFocusEnsure = isWebRoutePriorityPath
+          && (effectiveRouteFocusState === "seeded" || effectiveRouteFocusState === "knownEmpty");
         if (isWebRoutePriorityPath) {
           Promise.resolve().then(() => {
-            ensureMenuData({ restaurantId: targetMenuRestaurantId });
-            ensureFocusData({ restaurantId: targetMenuRestaurantId });
+            if (!skipFirstVisibleMenuEnsure) {
+              ensureMenuData({ restaurantId: targetMenuRestaurantId });
+            }
+            if (!skipFirstVisibleFocusEnsure) {
+              ensureFocusData({ restaurantId: targetMenuRestaurantId });
+            }
           });
         } else {
-          ensureMenuData({ restaurantId: targetMenuRestaurantId });
-          ensureFocusData({ restaurantId: targetMenuRestaurantId });
+          if (!skipFirstVisibleMenuEnsure) {
+            ensureMenuData({ restaurantId: targetMenuRestaurantId });
+          }
+          if (!skipFirstVisibleFocusEnsure) {
+            ensureFocusData({ restaurantId: targetMenuRestaurantId });
+          }
         }
       }
 
-      const loadingDisplayName = resolveBusinessDisplayNameFallback({
-        safeName,
-        rest,
-        lookupKey: targetRestaurantLookupId
-      });
+      const loadingDisplayName = pickFirstText(
+        stableBusinessProfile?.name,
+        routeIdentitySeed?.name,
+        resolveBusinessDisplayNameFallback({
+          safeName,
+          rest,
+          lookupKey: targetRestaurantLookupId
+        })
+      );
 
       const loadingProfile = {
         name: loadingDisplayName,
@@ -848,12 +883,12 @@ export function createProfileOpenFlowControllerCore({
           : resolveLoadingIdentityTruthState(stableBusinessProfile),
         postsStatus: stableBusinessPosts.length > 0
           ? "ready"
-          : (routePostsState === "knownEmpty" ? "empty" : "loading")
+          : (effectiveRoutePostsState === "knownEmpty" ? "empty" : "loading")
       });
       const routeSnapshotPhaseReady = routeIdentityState === "seeded"
-        && routePostsState !== "unknown"
-        && routeMenuState !== "unknown"
-        && routeFocusState !== "unknown";
+        && effectiveRoutePostsState !== "unknown"
+        && effectiveRouteMenuState !== "unknown"
+        && effectiveRouteFocusState !== "unknown";
       const loadingDirectEntry = buildDirectEntryMeta(
         routeSnapshotSeed
           ? (routeSnapshotPhaseReady ? "ready" : "loading")

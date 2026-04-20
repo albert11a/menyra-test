@@ -2075,10 +2075,51 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const menuSource = String(state.menu.source || "").trim().toLowerCase();
   const hasPublicMenuTruth = isSameRestaurant && menuSource === "public";
   const isLandingMode = mode === "landing";
-  if (allowAutoEnsure && !state.menu.loading && !hasPublicMenuTruth) {
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    ? state.__webDirectEntry
+    : null;
+  const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
+    ? state.profileView.routePayload
+    : null;
+  const routeMenuState = String(routePayload?.menu?.state || "").trim().toLowerCase();
+  const routeFocusState = String(routePayload?.focus?.state || "").trim().toLowerCase();
+  const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
+  const isWebDirectFirstVisibleMenuPath = webDirectEntry?.active === true
+    && webDirectEntry?.webPriority === true
+    && webDirectEntry?.menuFirst === true
+    && String(state?.activeTab || "").trim().toLowerCase() === "profile"
+    && String(state?.profileTopTab || "").trim().toLowerCase() === "menu"
+    && String(webDirectEntry?.restaurantId || "").trim() === restaurantId;
+  const skipFirstVisibleMenuEnsure = isWebDirectFirstVisibleMenuPath
+    && (
+      hasPublicMenuTruth
+      || routeMenuState === "seeded"
+      || routeMenuState === "knownempty"
+      || routeMenuState === "known-empty"
+    );
+  const skipFirstVisibleFocusEnsure = isWebDirectFirstVisibleMenuPath
+    && (
+      routeFocusState === "seeded"
+      || routeFocusState === "knownempty"
+      || routeFocusState === "known-empty"
+      || (
+        String(state?.focus?.restaurantId || "").trim() === restaurantId
+        && (
+          currentFocusTruth === "seeded"
+          || currentFocusTruth === "knownempty"
+          || currentFocusTruth === "known-empty"
+        )
+      )
+    );
+  if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !state.menu.loading && !hasPublicMenuTruth) {
     ensureMenuDataForProfile(profile);
   }
-  if (allowAutoEnsure && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
+  if (
+    allowAutoEnsure
+    && !skipFirstVisibleFocusEnsure
+    && !state.focus.loading
+    && state.focus.restaurantId !== restaurantId
+  ) {
     ensureFocusDataForProfile(profile);
   }
   const items = hasPublicMenuTruth
