@@ -331,7 +331,7 @@ export function createProfileOpenFlowControllerCore({
         || ""
       ).trim();
       if (!resolvedRestaurantId) return;
-      const posts = await loadBusinessPosts(resolvedRestaurantId);
+      const posts = await loadBusinessPosts(resolvedRestaurantId, { skipProfileResolve: true });
       const latestRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
       if (state.activeTab !== "profile") return;
       if (latestRestaurantId && latestRestaurantId !== resolvedRestaurantId) return;

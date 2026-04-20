@@ -738,6 +738,8 @@ export function createSessionDataRuntimeController({
     state.__authBootstrapSettledUid = "";
     state.__criticalProfilePreloadPromise = null;
     state.__criticalProfilePreloadUid = "";
+    state.__userPostsLoadingUid = "";
+    state.__businessPostsLoadingRestaurantId = "";
     commentAvatarCacheMap.clear();
     commentAvatarPendingMap.clear();
     userSearchAvatarCacheMap.clear();
@@ -833,6 +835,8 @@ export function createSessionDataRuntimeController({
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
     state.userProfile = { ...defaultProfile };
+    state.__userPostsLoadingUid = "";
+    state.__businessPostsLoadingRestaurantId = "";
     userPostsNetworkLoadPromise = null;
     userPostsNetworkLoadUid = "";
     businessPostsNetworkLoadPromise = null;
@@ -1042,7 +1046,13 @@ export function createSessionDataRuntimeController({
   async function loadUserPosts({ force = false } = {}) {
     if (!state.user) return;
     const uid = String(state.user.uid || "").trim();
-    if (!uid) return;
+    if (!uid) {
+      if (state.__userPostsLoadingUid) {
+        state.__userPostsLoadingUid = "";
+      }
+      return;
+    }
+    state.__userPostsLoadingUid = uid;
     const cacheTtlPosts = cacheTtl.posts;
     const cacheKey = userPostsKeyFn(uid);
     const cached = readCacheFn(cacheKey, cacheTtlPosts);
@@ -1055,9 +1065,19 @@ export function createSessionDataRuntimeController({
         })));
         requestRender();
       }
-      if (cached.fresh && !force) return;
+      if (cached.fresh && !force) {
+        if (state.__userPostsLoadingUid === uid) {
+          state.__userPostsLoadingUid = "";
+        }
+        return;
+      }
     }
-    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
+    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") {
+      if (state.__userPostsLoadingUid === uid) {
+        state.__userPostsLoadingUid = "";
+      }
+      return;
+    }
     if (userPostsNetworkLoadPromise && userPostsNetworkLoadUid === uid) {
       await userPostsNetworkLoadPromise;
       return;
@@ -1098,6 +1118,10 @@ export function createSessionDataRuntimeController({
         userPostsNetworkLoadPromise = null;
         userPostsNetworkLoadUid = "";
       }
+      if (state.__userPostsLoadingUid === uid) {
+        state.__userPostsLoadingUid = "";
+      }
+      requestRender();
     });
     userPostsNetworkLoadPromise = request;
     userPostsNetworkLoadUid = uid;
@@ -1107,6 +1131,9 @@ export function createSessionDataRuntimeController({
   async function loadBusinessPosts({ force = false } = {}) {
     const restaurantId = String(state.userProfile.restaurantId || "").trim();
     if (!restaurantId) {
+      if (state.__businessPostsLoadingRestaurantId) {
+        state.__businessPostsLoadingRestaurantId = "";
+      }
       const activeUid = String(state.user?.uid || "").trim();
       const bootstrapUid = String(state.__authBootstrapInFlightUid || "").trim();
       const isAuthBootstrapProfilePending = !!activeUid && bootstrapUid === activeUid;
@@ -1117,6 +1144,7 @@ export function createSessionDataRuntimeController({
       }
       return;
     }
+    state.__businessPostsLoadingRestaurantId = restaurantId;
     const cacheKey = businessPostsKeyFn(restaurantId);
     const cached = readCacheFn(cacheKey, cacheTtl.posts);
     if (cached?.data?.length) {
@@ -1129,9 +1157,19 @@ export function createSessionDataRuntimeController({
         })));
         requestRender();
       }
-      if (cached.fresh && !force) return;
+      if (cached.fresh && !force) {
+        if (state.__businessPostsLoadingRestaurantId === restaurantId) {
+          state.__businessPostsLoadingRestaurantId = "";
+        }
+        return;
+      }
     }
-    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
+    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") {
+      if (state.__businessPostsLoadingRestaurantId === restaurantId) {
+        state.__businessPostsLoadingRestaurantId = "";
+      }
+      return;
+    }
     if (businessPostsNetworkLoadPromise && businessPostsNetworkLoadRestaurantId === restaurantId) {
       await businessPostsNetworkLoadPromise;
       return;
@@ -1176,6 +1214,10 @@ export function createSessionDataRuntimeController({
         businessPostsNetworkLoadPromise = null;
         businessPostsNetworkLoadRestaurantId = "";
       }
+      if (state.__businessPostsLoadingRestaurantId === restaurantId) {
+        state.__businessPostsLoadingRestaurantId = "";
+      }
+      requestRender();
     });
     businessPostsNetworkLoadPromise = request;
     businessPostsNetworkLoadRestaurantId = restaurantId;

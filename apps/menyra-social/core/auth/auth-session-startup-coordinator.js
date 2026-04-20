@@ -289,7 +289,10 @@ export function createAuthSessionStartupCoordinator({
           }
         })();
       } else {
-        suspendRender();
+        if (state?.auth) {
+          state.auth.loading = false;
+        }
+        requestRender();
         void (async () => {
           try {
             await bootstrapUser(user, { transitionSeq });
@@ -312,7 +315,6 @@ export function createAuthSessionStartupCoordinator({
             }
           } finally {
             clearBootstrapInFlight(nextUid);
-            resumeRender();
           }
         })();
       }

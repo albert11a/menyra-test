@@ -35,6 +35,8 @@ export function createPublicProfileRuntimeController({
   const brandSocialName = String(brandUi?.social || "Menyra").trim() || "Menyra";
   const profilePostLimit = fastLimits?.profilePosts || fastLimits?.businessPosts || 12;
   let profileViewUnsub = null;
+  const publicBusinessPostsCache = new Map();
+  const publicBusinessPostsInFlight = new Map();
 
   function normalizeLandingSlugKey(value = "") {
     let key = String(value || "").trim().toLowerCase();
@@ -451,47 +453,75 @@ export function createPublicProfileRuntimeController({
     return resolveRestaurantDocByRouteId(restaurantId, restaurant);
   }
 
-  async function loadBusinessPostsForRestaurant(restaurantId) {
+  async function loadBusinessPostsForRestaurant(restaurantId, { skipProfileResolve = false } = {}) {
     const routeRestaurantId = String(restaurantId || "").trim();
     if (!routeRestaurantId || !makeCollectionRef || !db) return [];
-    const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
-    const effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
-    if (!effectiveRestaurantId) return [];
-    try {
-      const ref = makeCollectionRef(db, "restaurants", effectiveRestaurantId, "socialPosts");
-      let snap = null;
+    const directCached = publicBusinessPostsCache.get(routeRestaurantId);
+    if (Array.isArray(directCached)) return directCached;
+    const inFlight = publicBusinessPostsInFlight.get(routeRestaurantId);
+    if (inFlight) {
+      return inFlight;
+    }
+    const request = (async () => {
+      let effectiveRestaurantId = routeRestaurantId;
+      if (!skipProfileResolve) {
+        const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
+        effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
+      }
+      if (!effectiveRestaurantId) return [];
+      const resolvedCached = publicBusinessPostsCache.get(effectiveRestaurantId);
+      if (Array.isArray(resolvedCached)) {
+        if (routeRestaurantId !== effectiveRestaurantId) {
+          publicBusinessPostsCache.set(routeRestaurantId, resolvedCached);
+        }
+        return resolvedCached;
+      }
       try {
-        if (buildQuery && buildOrderBy && buildLimit) {
-          snap = await getDocsSafe(buildQuery(ref, buildOrderBy("createdAt", "desc"), buildLimit(profilePostLimit)));
-        } else {
+        const ref = makeCollectionRef(db, "restaurants", effectiveRestaurantId, "socialPosts");
+        let snap = null;
+        try {
+          if (buildQuery && buildOrderBy && buildLimit) {
+            snap = await getDocsSafe(buildQuery(ref, buildOrderBy("createdAt", "desc"), buildLimit(profilePostLimit)));
+          } else {
+            snap = await getDocsSafe(ref);
+          }
+        } catch {
           snap = await getDocsSafe(ref);
         }
-      } catch {
-        snap = await getDocsSafe(ref);
+        const rows = [];
+        snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+        const normalizedPosts = projectPostCollectionThroughEntityMap(state, rows
+          .filter((row) => (row.status || "active") === "active")
+          .map((row) => ({
+            id: row.id,
+            url: row.media?.[0]?.url || row.mediaUrl || "",
+            type: row.type || "square",
+            title: "",
+            caption: row.caption || "",
+            createdAt: row.createdAt,
+            likes: row.likesCount ?? row.likes ?? 0,
+            comments: row.commentsCount ?? row.comments ?? 0,
+            isVideo: row.media?.[0]?.type === "video",
+            ownerType: "restaurant",
+            ownerId: effectiveRestaurantId,
+            restaurantId: effectiveRestaurantId
+          }))
+          .filter((row) => row.url));
+        publicBusinessPostsCache.set(effectiveRestaurantId, normalizedPosts);
+        if (routeRestaurantId !== effectiveRestaurantId) {
+          publicBusinessPostsCache.set(routeRestaurantId, normalizedPosts);
+        }
+        return normalizedPosts;
+      } catch (err) {
+        console.error(err);
+        const fallbackCached = publicBusinessPostsCache.get(effectiveRestaurantId) || publicBusinessPostsCache.get(routeRestaurantId);
+        return Array.isArray(fallbackCached) ? fallbackCached : [];
       }
-      const rows = [];
-      snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-      return projectPostCollectionThroughEntityMap(state, rows
-        .filter((row) => (row.status || "active") === "active")
-        .map((row) => ({
-          id: row.id,
-          url: row.media?.[0]?.url || row.mediaUrl || "",
-          type: row.type || "square",
-          title: "",
-          caption: row.caption || "",
-          createdAt: row.createdAt,
-          likes: row.likesCount ?? row.likes ?? 0,
-          comments: row.commentsCount ?? row.comments ?? 0,
-          isVideo: row.media?.[0]?.type === "video",
-          ownerType: "restaurant",
-          ownerId: effectiveRestaurantId,
-          restaurantId: effectiveRestaurantId
-        }))
-        .filter((row) => row.url));
-    } catch (err) {
-      console.error(err);
-      return [];
-    }
+    })().finally(() => {
+      publicBusinessPostsInFlight.delete(routeRestaurantId);
+    });
+    publicBusinessPostsInFlight.set(routeRestaurantId, request);
+    return request;
   }
 
   return {

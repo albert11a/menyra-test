@@ -2111,6 +2111,17 @@ function renderProfileView() {
   const profile = state.userProfile;
   const isBusiness = isLocalBusinessProfile(profile);
   const posts = isBusiness ? state.businessPosts : state.userPosts;
+  const activeUid = String(state.user?.uid || profile?.uid || "").trim();
+  const activeRestaurantId = String(profile?.restaurantId || "").trim();
+  const userPostsLoadingUid = String(state.__userPostsLoadingUid || "").trim();
+  const businessPostsLoadingRestaurantId = String(state.__businessPostsLoadingRestaurantId || "").trim();
+  const bootstrapInFlightUid = String(state.__authBootstrapInFlightUid || "").trim();
+  const isUserPostsLoading = !!activeUid && userPostsLoadingUid === activeUid;
+  const isBusinessPostsLoading = !!activeRestaurantId && businessPostsLoadingRestaurantId === activeRestaurantId;
+  const isBootstrapPendingForProfile = !!activeUid && bootstrapInFlightUid === activeUid;
+  const isPostsLoading = isBusiness
+    ? (isBusinessPostsLoading || (isBootstrapPendingForProfile && !posts.length))
+    : (isUserPostsLoading || (isBootstrapPendingForProfile && !posts.length));
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
@@ -2183,19 +2194,27 @@ function renderProfileView() {
       ` : isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `
-        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"}">
-          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
-        </div>
-        ${activeContentTab === "posts" ? `
-          <div class="app-content-inline mt-8 mb-4">
-            <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
-              <span class="relative z-10 flex items-center gap-2">
-                ${icon("plus", "w-4 h-4")} Neuen Beitrag
-              </span>
-              <div class="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            </button>
+        ${isPostsLoading && !filteredPosts.length ? `
+          <div class="app-content-inline">
+            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Beitraege werden geladen...</div>
+            </div>
           </div>
-        ` : ""}
+        ` : `
+          <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"}">
+            ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
+          </div>
+          ${activeContentTab === "posts" ? `
+            <div class="app-content-inline mt-8 mb-4">
+              <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
+                <span class="relative z-10 flex items-center gap-2">
+                  ${icon("plus", "w-4 h-4")} Neuen Beitrag
+                </span>
+                <div class="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              </button>
+            </div>
+          ` : ""}
+        `}
       `}
       ` : `
         ${topTab === "cart"

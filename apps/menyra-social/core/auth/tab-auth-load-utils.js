@@ -192,6 +192,11 @@ export function ensureTabDataCore({
     state.__authProfileLoadUid = activeUid;
     return nextPromise;
   };
+  const loadSelfProfilePosts = () => {
+    const hasBusinessProfile = isBusinessProfile(state.userProfile);
+    if (hasBusinessProfile) return loadBusinessPostsSafe();
+    return loadUserPostsSafe();
+  };
 
   const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isQrMenuProfileSession && !isLandingProfileSession;
   if (shouldPrimeRestaurantTruth) {
@@ -205,18 +210,20 @@ export function ensureTabDataCore({
     }
   }
 
-  if (hasUser && tab === "profile" && !dataLoaded.profile && !isLandingProfileSession) {
-    dataLoaded.profile = true;
-    const hasBusinessProfile = isBusinessProfile(state.userProfile);
-    if (!hasBusinessProfile) {
-      void loadUserPostsSafe();
-    }
-    if (hasBusinessProfile) {
-      void loadBusinessPostsSafe();
-    }
-  }
   if (hasUser && tab === "profile" && !isLandingProfileSession) {
-    void runAuthProfileLoad();
+    if (!dataLoaded.profile) {
+      dataLoaded.profile = true;
+    }
+    void loadSelfProfilePosts();
+    void runAuthProfileLoad()
+      .then(() => {
+        if (activeUid !== String(state.user?.uid || "").trim()) return;
+        if (String(state.activeTab || "").trim().toLowerCase() !== "profile") return;
+        return loadSelfProfilePosts();
+      })
+      .catch((err) => {
+        reportAuthFlowWarning("auth-tab.profile.authProfileLoad", err);
+      });
   }
 
   if (hasUser && tab === "menu") {
