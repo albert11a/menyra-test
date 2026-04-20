@@ -290,8 +290,11 @@ export function createPublicProfileRuntimeController({
   function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "", tableNumber = 0 } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
+    
     const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile.posts || []);
+    
     const nextProfile = profile ? { ...profile, posts: projectedPosts } : profile;
+
     const sameVisibleProfile = isSameVisibleProfile(state?.profileView?.profile || null, nextProfile);
     const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
     const preserveLandingState = sameVisibleProfile && previousTopTab === "landing";

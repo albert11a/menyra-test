@@ -332,7 +332,11 @@ export async function loadAuthProfileCore({
   );
   let authUserData = {};
   try {
-    const userSnap = await getDoc(doc(db, "users", user.uid));
+    // STEP 2b: PARALLEL BACKGROUND LOADS - No render blocking
+    const [userSnap, restSnap] = await Promise.all([
+      getDoc(doc(db, "users", user.uid)),
+      resolveRestaurantForAuthUser(user, { preferCached: !force })
+    ]);
     if (userSnap.exists()) {
       authUserData = userSnap.data() || {};
     }
