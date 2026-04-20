@@ -3,17 +3,44 @@ import { preparePublicBootstrapStartup } from "./public-bootstrap-startup-utils.
 import { createPostLoginRouteOpenCoordinator } from "../auth/auth-post-login-route-open-utils.js";
 import { createAuthSessionStartupCoordinator } from "../auth/auth-session-startup-coordinator.js";
 
+function shouldDeferInlineBootstrapApply(startupPrepDeps = {}) {
+  const state = startupPrepDeps?.state || null;
+  if (!state || typeof state !== "object") return false;
+  const activeTab = String(state.activeTab || "").trim().toLowerCase();
+  if (activeTab !== "profile") return false;
+  const pendingRouteState = startupPrepDeps?.pendingRouteState || null;
+  const pendingState = typeof pendingRouteState?.getPendingState === "function"
+    ? pendingRouteState.getPendingState()
+    : null;
+  const pendingTopTab = String(pendingState?.pendingProfileTopTab || "").trim().toLowerCase();
+  const profileTopTab = pendingTopTab || String(state.profileTopTab || "").trim().toLowerCase() || "profile";
+  return profileTopTab === "profile" || profileTopTab === "menu";
+}
+
 export function startAppStartupBootstrap({
   publicBootstrapDeps = {},
   startupPrepDeps = {},
   routeOpenDeps = {},
-  authStartupDeps = {}
+  authStartupDeps = {},
+  startupTimelineMark = () => {}
 } = {}) {
+  const markStartupTimeline = typeof startupTimelineMark === "function"
+    ? startupTimelineMark
+    : (() => {});
   const {
     applyPublicBootstrapPayload,
     fetchPublicBootstrapPayload,
     bindPublicBootstrapPayloadListener
   } = createPublicBootstrapRuntimeController(publicBootstrapDeps);
+  const fetchPublicBootstrapPayloadWithTimeline = async (...args) => {
+    markStartupTimeline("public bootstrap start", { source: "fetch" });
+    try {
+      return await fetchPublicBootstrapPayload(...args);
+    } finally {
+      markStartupTimeline("public bootstrap end", { source: "fetch" });
+    }
+  };
+  const deferInlineBootstrapApply = shouldDeferInlineBootstrapApply(startupPrepDeps);
 
   const {
     hasInlineBootstrapPayload,
@@ -21,13 +48,16 @@ export function startAppStartupBootstrap({
   } = preparePublicBootstrapStartup({
     ...startupPrepDeps,
     bindPublicBootstrapPayloadListener,
-    applyPublicBootstrapPayload
+    applyPublicBootstrapPayload,
+    deferInlinePayloadApply: deferInlineBootstrapApply,
+    startupTimelineMark: markStartupTimeline
   });
 
   const postLoginRouteOpenCoordinator = createPostLoginRouteOpenCoordinator(routeOpenDeps);
   const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
     ...authStartupDeps,
-    fetchPublicBootstrapPayload,
+    fetchPublicBootstrapPayload: fetchPublicBootstrapPayloadWithTimeline,
+    markStartupTimeline,
     postLoginRouteOpenCoordinator
   });
 

@@ -324,7 +324,11 @@ export function createPublicBootstrapRuntimeController({
     if (changed) {
       const inMain = getLastRenderMode() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-      if (!updatedFeed) {
+      const activeTab = String(state.activeTab || "").trim().toLowerCase();
+      const shouldRefreshVisibleBootstrapSurface = activeTab === "feed"
+        || activeTab === "search"
+        || activeTab === "map";
+      if (!updatedFeed && shouldRefreshVisibleBootstrapSurface) {
         requestRender();
       }
     } else if (previewChanged && refreshUi) {

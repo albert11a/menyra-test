@@ -657,6 +657,7 @@ const SOCIAL_RUNTIME_BUDGETS_MS = Object.freeze({
 const socialRuntimeBudgetMarks = new Map();
 let runtimeDegradedBridgeBound = false;
 let runtimeMediaProbeBound = false;
+let runtimeDiagnosticsStartupScheduled = false;
 let requestRuntimeUiRefresh = () => {};
 let runtimeUiRefreshPending = false;
 const MEDIA_EDGE_HOST = (() => {
@@ -874,6 +875,38 @@ function scheduleMediaEdgeProbe() {
     window.setTimeout(() => { void probe(); }, 1600);
   }
   window.addEventListener("online", () => { void probe(); });
+}
+
+function scheduleRuntimeDiagnosticsStartup() {
+  if (runtimeDiagnosticsStartupScheduled) return;
+  runtimeDiagnosticsStartupScheduled = true;
+  const runDiagnostics = () => {
+    markStartupTimeline("runtime diagnostics start");
+    try {
+      bindRuntimeDegradedBridge();
+      hydrateRuntimeDegradedFromWindow();
+      scheduleMediaEdgeProbe();
+    } finally {
+      markStartupTimeline("runtime diagnostics end");
+    }
+  };
+  if (typeof window === "undefined") {
+    runDiagnostics();
+    return;
+  }
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        runDiagnostics();
+      });
+    });
+    return;
+  }
+  if (typeof window.setTimeout === "function") {
+    window.setTimeout(runDiagnostics, 160);
+    return;
+  }
+  runDiagnostics();
 }
 
 const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v2::${uid}` : "");
@@ -1176,6 +1209,12 @@ const state = {
     push: "",
     icons: "",
     fonts: ""
+  },
+  startupSurface: {
+    active: "ready",
+    activeSurface: "feed",
+    profile: "ready",
+    menu: "ready"
   }
 };
 
@@ -1193,6 +1232,8 @@ let lastMenuOpenGestureAt = 0;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 const pendingRouteState = createPendingRouteStartupState();
+const STARTUP_SURFACE_FINAL_STATUSES = new Set(["ready", "empty", "error"]);
+let startupFirstFinalSurfaceRenderMarked = false;
 let dataLoaded = {
   feed: false,
   profile: false,
@@ -1558,6 +1599,170 @@ function syncActiveTabRouteQuery() {
   } catch {}
 }
 
+const ENABLE_STARTUP_TIMELINE = (() => {
+  if (typeof window === "undefined") return false;
+  if (window.__MENYRA_SOCIAL_ENABLE_STARTUP_TIMELINE__ === true) return true;
+  const hostname = String(window.location?.hostname || "").trim().toLowerCase();
+  const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".local");
+  if (!isLocalHost) return false;
+  try {
+    const params = new URLSearchParams(window.location?.search || "");
+    return params.get("debug-startup") === "1"
+      || params.get("startupTimeline") === "1"
+      || params.get("debugStartupTimeline") === "1";
+  } catch {
+    return false;
+  }
+})();
+const STARTUP_TIMELINE_T0 = (
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now()
+);
+
+function markStartupTimeline(event = "", detail = {}) {
+  if (!ENABLE_STARTUP_TIMELINE) return;
+  if (typeof window === "undefined") return;
+  const safeEvent = String(event || "").trim();
+  if (!safeEvent) return;
+  const nowPerf = typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+  const deltaMs = Math.max(0, nowPerf - STARTUP_TIMELINE_T0);
+  const timeline = Array.isArray(window.__MENYRA_SOCIAL_STARTUP_TIMELINE__)
+    ? window.__MENYRA_SOCIAL_STARTUP_TIMELINE__
+    : [];
+  if (!Array.isArray(window.__MENYRA_SOCIAL_STARTUP_TIMELINE__)) {
+    window.__MENYRA_SOCIAL_STARTUP_TIMELINE__ = timeline;
+  }
+  const entry = {
+    event: safeEvent,
+    deltaMs: Number(deltaMs.toFixed(1)),
+    at: Date.now(),
+    detail: detail && typeof detail === "object" ? detail : {}
+  };
+  timeline.push(entry);
+  window.__MENYRA_SOCIAL_LAST_STARTUP_TIMELINE_EVENT__ = entry;
+  try {
+    console.debug(`[mnyra][startup] +${entry.deltaMs}ms ${safeEvent}`, entry.detail);
+  } catch {}
+}
+
+if (ENABLE_STARTUP_TIMELINE && typeof window !== "undefined") {
+  window.__MENYRA_SOCIAL_MARK_STARTUP_TIMELINE__ = markStartupTimeline;
+}
+
+function normalizeStartupSurfaceStatus(value = "", fallback = "ready") {
+  const safeStatus = String(value || "").trim().toLowerCase();
+  if (safeStatus === "pending") return "pending";
+  if (safeStatus === "loading") return "loading";
+  if (safeStatus === "ready") return "ready";
+  if (safeStatus === "empty") return "empty";
+  if (safeStatus === "error") return "error";
+  return String(fallback || "ready").trim().toLowerCase() || "ready";
+}
+
+function setStartupSurfaceStatus(surface = "", status = "ready") {
+  if (!state.startupSurface || typeof state.startupSurface !== "object") {
+    state.startupSurface = {
+      active: "ready",
+      activeSurface: "feed",
+      profile: "ready",
+      menu: "ready"
+    };
+  }
+  const key = String(surface || "").trim().toLowerCase();
+  if (!key) return;
+  state.startupSurface[key] = normalizeStartupSurfaceStatus(status, "ready");
+}
+
+function resolveProfileStartupSurfaceStatus() {
+  const profileView = state.profileView && typeof state.profileView === "object"
+    ? state.profileView
+    : null;
+  const profile = profileView?.profile && typeof profileView.profile === "object"
+    ? profileView.profile
+    : null;
+  if (!profile) return "loading";
+  const posts = Array.isArray(profileView?.posts)
+    ? profileView.posts
+    : (Array.isArray(profile.posts) ? profile.posts : []);
+  const truthState = String(profile.truthState || "").trim().toLowerCase();
+  const truthPending = truthState === "route-pending-loading"
+    || truthState.includes("pending")
+    || truthState.includes("loading");
+  if (posts.length) return "ready";
+  if (profile.postsLoaded === true) {
+    if (truthPending) return "loading";
+    return truthState === "error" ? "error" : "empty";
+  }
+  if (truthState === "route-pending-loading" || truthState.includes("pending")) return "pending";
+  if (truthPending) return "loading";
+  if (truthState === "error") return "error";
+  return "loading";
+}
+
+function resolveMenuStartupSurfaceStatus({ strict = false } = {}) {
+  const profile = state.profileView?.profile || null;
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  if (!restaurantId) return strict ? "error" : "ready";
+  const menuRestaurantId = String(state.menu?.restaurantId || "").trim();
+  const sameRestaurant = menuRestaurantId && menuRestaurantId === restaurantId;
+  const menuSource = String(state.menu?.source || "").trim().toLowerCase();
+  const hasPublicMenuTruth = !!sameRestaurant && menuSource === "public";
+  const items = hasPublicMenuTruth && Array.isArray(state.menu?.items)
+    ? state.menu.items
+    : [];
+  if (items.length) return "ready";
+  if (sameRestaurant && state.menu?.loading) return "loading";
+  if (hasPublicMenuTruth) {
+    const error = String(state.menu?.error || "").trim();
+    if (error) return "error";
+    return "empty";
+  }
+  const profileTruthState = String(profile?.truthState || "").trim().toLowerCase();
+  if (profileTruthState === "route-pending-loading" || profileTruthState.includes("pending")) {
+    return "pending";
+  }
+  return "loading";
+}
+
+function resolveActiveStartupSurfaceSnapshot() {
+  const activeTab = String(state.activeTab || "").trim().toLowerCase() || "feed";
+  if (activeTab !== "profile") {
+    return {
+      surface: activeTab,
+      status: "ready",
+      activeTab,
+      profileTopTab: ""
+    };
+  }
+  const profileTopTab = normalizeProfileTopTabFromRouteCore(state.profileTopTab || "") || "profile";
+  if (profileTopTab === "menu") {
+    return {
+      surface: "menu",
+      status: resolveMenuStartupSurfaceStatus({ strict: true }),
+      activeTab,
+      profileTopTab
+    };
+  }
+  return {
+    surface: "profile",
+    status: resolveProfileStartupSurfaceStatus(),
+    activeTab,
+    profileTopTab
+  };
+}
+
+function syncStartupSurfaceStatus() {
+  const snapshot = resolveActiveStartupSurfaceSnapshot();
+  setStartupSurfaceStatus("profile", resolveProfileStartupSurfaceStatus());
+  setStartupSurfaceStatus("menu", resolveMenuStartupSurfaceStatus());
+  setStartupSurfaceStatus("active", snapshot.status);
+  state.startupSurface.activeSurface = snapshot.surface;
+  return snapshot;
+}
+
 const STARTUP_SNAPSHOT_STORAGE_KEY = "mnyra.social.startup-snapshot.v2";
 const STARTUP_SNAPSHOT_MAX_BYTES = 180000;
 const STARTUP_SNAPSHOT_ICON_RETRY_DELAY_MS = 800;
@@ -1640,6 +1845,7 @@ if (typeof window !== "undefined") {
 }
 
 function render(...args) {
+  const activeSurfaceSnapshot = syncStartupSurfaceStatus();
   const result = renderShell(...args);
   try {
     if (typeof window !== "undefined") {
@@ -1652,6 +1858,18 @@ function render(...args) {
       appRoot.dataset.startupSnapshot = "0";
     }
   } catch {}
+  if (
+    !startupFirstFinalSurfaceRenderMarked
+    && STARTUP_SURFACE_FINAL_STATUSES.has(String(activeSurfaceSnapshot?.status || "").trim().toLowerCase())
+  ) {
+    startupFirstFinalSurfaceRenderMarked = true;
+    markStartupTimeline("first final surface render", {
+      surface: String(activeSurfaceSnapshot?.surface || "").trim().toLowerCase() || "feed",
+      status: String(activeSurfaceSnapshot?.status || "").trim().toLowerCase() || "ready",
+      tab: String(activeSurfaceSnapshot?.activeTab || "").trim().toLowerCase() || "feed",
+      topTab: String(activeSurfaceSnapshot?.profileTopTab || "").trim().toLowerCase()
+    });
+  }
   syncActiveTabRouteQuery();
   scheduleStartupSnapshotPersist();
   return result;
@@ -1664,9 +1882,6 @@ requestRuntimeUiRefresh = () => {
   runtimeUiRefreshPending = false;
   render();
 };
-bindRuntimeDegradedBridge();
-hydrateRuntimeDegradedFromWindow();
-scheduleMediaEdgeProbe();
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1687,7 +1902,16 @@ try {
     normalizeInitialTab,
     normalizeAuthMode
   });
+  markStartupTimeline("route parsed", {
+    pendingInitialTab: String(initialRouteState?.pendingInitialTab || "").trim().toLowerCase(),
+    pendingProfileRestaurantId: String(initialRouteState?.pendingProfileRestaurantId || "").trim(),
+    pendingProfileTopTab: String(initialRouteState?.pendingProfileTopTab || "").trim().toLowerCase()
+  });
   pendingRouteState.applyInitialRouteState(initialRouteState);
+  markStartupTimeline("pending route applied", {
+    pendingInitialTab: String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase(),
+    pendingProfileRestaurantId: String(pendingRouteState.getPendingState?.()?.pendingProfileRestaurantId || "").trim()
+  });
   const eagerInitialTab = sanitizeTabForSessionCore(initialRouteState?.pendingInitialTab, {
     user: state.user,
     hasProfileView: !!state.profileView,
@@ -1788,6 +2012,7 @@ function applyPendingInitialRouteState() {
     });
     if (!pendingProfileAlreadyOpen) {
       const requestedTopTab = normalizeProfileTopTabFromRouteCore(pendingRoute.pendingProfileTopTab || "");
+      const resolvedTopTab = requestedTopTab || "profile";
       const safeAccessSourceRaw = String(pendingRoute.pendingProfileAccessSource || "").trim().toLowerCase();
       const isQrLikeAccessSource = safeAccessSourceRaw === "qr"
         || safeAccessSourceRaw === "qrcode"
@@ -1801,6 +2026,14 @@ function applyPendingInitialRouteState() {
         : "";
       const pendingTableNumber = Math.max(0, Number(pendingRoute.pendingProfileTableNumber || 0) || 0);
       const normalizedTableNumber = normalizedMenuAccessSource === "qr" ? pendingTableNumber : 0;
+      setStartupSurfaceStatus("profile", "pending");
+      if (resolvedTopTab === "menu") {
+        setStartupSurfaceStatus("menu", "pending");
+        state.startupSurface.activeSurface = "menu";
+      } else {
+        state.startupSurface.activeSurface = "profile";
+      }
+      setStartupSurfaceStatus("active", "pending");
       state.profileView = {
         profile: {
           name: "Profil wird geladen...",
@@ -1809,14 +2042,15 @@ function applyPendingInitialRouteState() {
           bio: "Profil wird geladen...",
           avatar: "",
           location: "",
-          followers: 0,
-          following: 0,
+          followers: null,
+          following: null,
           privateAccount: false,
           role: "business",
           restaurantId: pendingProfileRestaurantId,
           pendingFollowRequest: false,
           postsLoaded: false,
           posts: [],
+          identityTruthState: "pending",
           truthState: "route-pending-loading"
         },
         posts: [],
@@ -1825,7 +2059,7 @@ function applyPendingInitialRouteState() {
       };
       state.profileModal = { open: false, profile: null };
       state.profileContentTab = "posts";
-      state.profileTopTab = requestedTopTab || "profile";
+      state.profileTopTab = resolvedTopTab;
       state.profileViewMode = "grid";
       state.profilePostMenuId = null;
       state.profileBackTab = "";
@@ -3376,8 +3610,14 @@ function saveFeedPosts(posts, extraMeta = {}) {
 }
 
 function loadPersisted() {
+  const options = arguments[0] && typeof arguments[0] === "object"
+    ? arguments[0]
+    : {};
+  const phase = String(options.phase || options.mode || "").trim().toLowerCase();
   const result = sessionDataRuntimeController.loadPersisted(...arguments);
-  syncPersistedStories();
+  if (phase !== "critical") {
+    syncPersistedStories();
+  }
   return result;
 }
 function loadUserScopedPersisted(user) {
@@ -4818,7 +5058,9 @@ startAppStartupRuntimeCluster({
       fastLimits: FAST_LIMITS
     },
     startupPrepDeps: {
-      windowObj: typeof window === "undefined" ? null : window
+      windowObj: typeof window === "undefined" ? null : window,
+      state,
+      pendingRouteState
     },
     routeOpenDeps: {
       pendingRouteState,
@@ -4853,9 +5095,11 @@ startAppStartupRuntimeCluster({
       resumeRender,
       reportCriticalRuntimeFailure,
       runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user)
-    }
+    },
+    startupTimelineMark: markStartupTimeline
   },
   browserApi: {
     windowObj: typeof window === "undefined" ? null : window
   }
 });
+scheduleRuntimeDiagnosticsStartup();

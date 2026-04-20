@@ -80,6 +80,20 @@ export function createProfileOpenFlowControllerCore({
     }
     return "";
   };
+  const normalizeIdentityTruthState = (value = "", fallback = "ready") => {
+    const safeValue = String(value || "").trim().toLowerCase();
+    if (safeValue === "pending") return "pending";
+    if (safeValue === "loading") return "loading";
+    if (safeValue === "ready") return "ready";
+    if (safeValue === "error") return "error";
+    return String(fallback || "ready").trim().toLowerCase() || "ready";
+  };
+  const resolveLoadingIdentityTruthState = (profile = null) => {
+    const next = normalizeIdentityTruthState(profile?.identityTruthState || "", "loading");
+    if (next === "ready") return "ready";
+    if (next === "error") return "loading";
+    return next;
+  };
   const normalizeHandleValue = (value = "") => String(value || "").replace(/^@/, "").trim().toLowerCase();
   const isSameBusinessProfileTarget = (profile = null, {
     restaurantId = "",
@@ -206,6 +220,8 @@ export function createProfileOpenFlowControllerCore({
   };
 
   const openProfileViewFromBusiness = async (input, { showBack = true, topTab, menuAccessSource = "", tableNumber = 0 } = {}) => {
+    let targetRestaurantLookupId = "";
+    let targetMenuRestaurantId = "";
     try {
       const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
       const restaurantId = String(typeof input === "string" ? "" : (input?.id || "")).trim();
@@ -235,8 +251,26 @@ export function createProfileOpenFlowControllerCore({
 
       const rest = resolveRestaurantByLookup({ restaurantId, lookupText })
         || (restaurantId ? { id: restaurantId } : {});
-      const targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
-      const targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
+      targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      const requestedContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
+      const prioritizePostsSurface = !isMenuTopTab
+        && (requestedContentTab === "" || requestedContentTab === "posts" || requestedContentTab === "media");
+      const earlyPostsRestaurantId = String(targetMenuRestaurantId || "").trim();
+      const earlyPostsPromise = prioritizePostsSurface && earlyPostsRestaurantId
+        ? Promise.resolve(loadBusinessPosts(earlyPostsRestaurantId, { skipProfileResolve: true }))
+          .then((rows) => ({
+            ok: true,
+            posts: Array.isArray(rows) ? rows : []
+          }))
+          .catch((err) => {
+            console.error(err);
+            return {
+              ok: false,
+              posts: []
+            };
+          })
+        : null;
       const liveView = state?.profileView;
       const liveProfile = liveView?.profile && typeof liveView.profile === "object"
         ? liveView.profile
@@ -268,15 +302,17 @@ export function createProfileOpenFlowControllerCore({
         bio: pickFirstText(stableBusinessProfile?.bio, rest?.bio, rest?.description, "Profil wird geladen..."),
         avatar: pickFirstText(stableBusinessProfile?.avatar, rest?.logoUrl, rest?.logo, rest?.avatar),
         location: pickFirstText(stableBusinessProfile?.location, rest?.city, rest?.address),
-        followers: stableBusinessProfile?.followers ?? 0,
-        following: stableBusinessProfile?.following ?? 0,
+        followers: stableBusinessProfile?.followers ?? null,
+        following: stableBusinessProfile?.following ?? null,
         privateAccount: stableBusinessProfile?.privateAccount === true,
         role: "business",
         restaurantId: targetMenuRestaurantId || targetRestaurantLookupId,
         pendingFollowRequest: stableBusinessProfile?.pendingFollowRequest === true,
         postsLoaded: stableBusinessPosts.length > 0,
         posts: stableBusinessPosts,
-        truthState: stableBusinessProfile ? String(stableBusinessProfile.truthState || "stable") : "loading"
+        identityTruthState: resolveLoadingIdentityTruthState(stableBusinessProfile),
+        // Canonical business profile request has started.
+        truthState: "loading"
       };
 
       showPublicProfileView(loadingProfile, loadingProfile.posts, {
@@ -304,6 +340,8 @@ export function createProfileOpenFlowControllerCore({
         posts: []
       });
       resolved.postsLoaded = false;
+      resolved.identityTruthState = "ready";
+      resolved.truthState = "loading";
 
       if (state.activeTab !== "profile") return;
       const visibleRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
@@ -314,7 +352,9 @@ export function createProfileOpenFlowControllerCore({
       const resolvedInterim = {
         ...resolved,
         postsLoaded: interimPosts.length > 0,
-        posts: interimPosts
+        posts: interimPosts,
+        identityTruthState: "ready",
+        truthState: interimPosts.length > 0 ? "stable" : "loading"
       };
 
       showPublicProfileView(resolvedInterim, interimPosts, {
@@ -331,7 +371,16 @@ export function createProfileOpenFlowControllerCore({
         || ""
       ).trim();
       if (!resolvedRestaurantId) return;
-      const posts = await loadBusinessPosts(resolvedRestaurantId, { skipProfileResolve: true });
+      let posts = null;
+      if (earlyPostsPromise) {
+        const earlyResult = await earlyPostsPromise;
+        if (earlyResult?.ok && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
+          posts = earlyResult.posts;
+        }
+      }
+      if (!Array.isArray(posts)) {
+        posts = await loadBusinessPosts(resolvedRestaurantId, { skipProfileResolve: true });
+      }
       const latestRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
       if (state.activeTab !== "profile") return;
       if (latestRestaurantId && latestRestaurantId !== resolvedRestaurantId) return;
@@ -339,7 +388,9 @@ export function createProfileOpenFlowControllerCore({
       const resolvedWithPosts = {
         ...resolved,
         postsLoaded: true,
-        posts: Array.isArray(posts) ? posts : []
+        posts: Array.isArray(posts) ? posts : [],
+        identityTruthState: "ready",
+        truthState: "stable"
       };
       const safeLandingStep = Math.max(0, Number(state?.profileLandingStep || 0) || 0);
       if (isLandingTopTab && safeLandingStep < 2) {
@@ -350,7 +401,9 @@ export function createProfileOpenFlowControllerCore({
           liveView.posts = resolvedWithPosts.posts;
           liveView.profile = {
             ...liveProfile,
+            truthState: resolvedWithPosts.posts.length ? "stable" : "empty",
             postsLoaded: true,
+            identityTruthState: "ready",
             posts: resolvedWithPosts.posts
           };
         }
@@ -364,6 +417,28 @@ export function createProfileOpenFlowControllerCore({
       });
     } catch (err) {
       console.error(err);
+      const liveView = state?.profileView;
+      const liveProfile = liveView?.profile;
+      const liveRestaurantId = String(liveProfile?.restaurantId || "").trim();
+      if (
+        liveView
+        && liveProfile
+        && (
+          !liveRestaurantId
+          || liveRestaurantId === String(targetRestaurantLookupId || "").trim()
+          || liveRestaurantId === String(targetMenuRestaurantId || "").trim()
+        )
+      ) {
+        const livePosts = Array.isArray(liveView.posts) ? liveView.posts : [];
+        liveView.profile = {
+          ...liveProfile,
+          postsLoaded: liveProfile.postsLoaded === true || !livePosts.length,
+          identityTruthState: normalizeIdentityTruthState(liveProfile.identityTruthState, livePosts.length ? "ready" : "error"),
+          truthState: livePosts.length ? "stable" : "error",
+          posts: livePosts
+        };
+        renderApp();
+      }
     }
   };
 
@@ -397,9 +472,13 @@ export function createProfileOpenFlowControllerCore({
       openGuestAuth("Bitte einloggen, um User-Profile zu sehen.");
       return;
     }
+    let targetUid = "";
+    let targetHandle = "";
     try {
       const uid = typeof input === "string" ? input : (input?.uid || "");
       const handle = String(typeof input === "string" ? "" : (input?.handle || input?.name || "")).replace(/^@/, "");
+      targetUid = uid;
+      targetHandle = handle;
       if (!uid && !handle) return;
       if (isOwnUserTarget({ uid, handle })) {
         openOwnUserProfile({ showBack: true });
@@ -410,6 +489,10 @@ export function createProfileOpenFlowControllerCore({
       const cached = userProfileCacheMap.get(cacheKey);
       if (cached) {
         cached.pendingFollowRequest = await checkPendingFollowRequest(cached.uid || uid || "");
+        cached.postsLoaded = cached.postsLoaded === true
+          || (Array.isArray(cached.posts) && cached.posts.length > 0);
+        cached.identityTruthState = normalizeIdentityTruthState(cached.identityTruthState, "ready");
+        cached.truthState = String(cached.truthState || "").trim().toLowerCase() || "stable";
         showPublicProfileView(cached, cached.posts || []);
         return;
       }
@@ -430,6 +513,9 @@ export function createProfileOpenFlowControllerCore({
         posts: stableUserPosts
       });
       fallbackProfile.pendingFollowRequest = await checkPendingFollowRequest(fallbackProfile.uid || uid || "");
+      fallbackProfile.postsLoaded = stableUserPosts.length > 0;
+      fallbackProfile.identityTruthState = resolveLoadingIdentityTruthState(stableUserProfile);
+      fallbackProfile.truthState = stableUserPosts.length > 0 ? "stable" : "loading";
       showPublicProfileView(fallbackProfile, stableUserPosts);
 
       let userDoc = null;
@@ -441,7 +527,24 @@ export function createProfileOpenFlowControllerCore({
         if (resolved?.id) userDoc = { id: resolved.id, data: resolved.data };
       }
 
-      if (!userDoc) return;
+      if (!userDoc) {
+        if (state.activeTab === "profile") {
+          const liveView = state?.profileView;
+          const liveProfile = liveView?.profile;
+          if (liveView && liveProfile && isSameUserProfileTarget(liveProfile, { uid, handle })) {
+            liveView.profile = {
+              ...liveProfile,
+              postsLoaded: true,
+              identityTruthState: normalizeIdentityTruthState(liveProfile.identityTruthState, "error"),
+              truthState: "error",
+              posts: []
+            };
+            liveView.posts = [];
+            renderApp();
+          }
+        }
+        return;
+      }
       const posts = await loadUserPosts(userDoc.id);
       const resolvedProfile = normalizeExternalUserProfileFn({
         userDoc,
@@ -449,12 +552,30 @@ export function createProfileOpenFlowControllerCore({
         posts
       });
       resolvedProfile.pendingFollowRequest = await checkPendingFollowRequest(resolvedProfile.uid || "");
+      resolvedProfile.postsLoaded = true;
+      resolvedProfile.identityTruthState = "ready";
+      resolvedProfile.truthState = "stable";
       userProfileCacheMap.set(cacheKey, resolvedProfile);
       if (state.activeTab !== "profile") return;
       if (uid && state.profileView?.profile?.uid !== uid) return;
       showPublicProfileView(resolvedProfile, resolvedProfile.posts);
     } catch (err) {
       console.error(err);
+      if (state.activeTab === "profile") {
+        const liveView = state?.profileView;
+        const liveProfile = liveView?.profile;
+        if (liveView && liveProfile && isSameUserProfileTarget(liveProfile, { uid: targetUid, handle: targetHandle })) {
+          const livePosts = Array.isArray(liveView.posts) ? liveView.posts : [];
+          liveView.profile = {
+            ...liveProfile,
+            postsLoaded: true,
+            identityTruthState: normalizeIdentityTruthState(liveProfile.identityTruthState, livePosts.length ? "ready" : "error"),
+            truthState: livePosts.length ? "stable" : "error",
+            posts: livePosts
+          };
+          renderApp();
+        }
+      }
     }
   };
 

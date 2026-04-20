@@ -156,6 +156,23 @@ export function createSessionDataRuntimeController({
     return expectedRestaurantId === targetRestaurantId;
   }
 
+  function isVisiblePublicMenuSurface(restaurantId = "", source = "public") {
+    const safeSource = String(source || "public").trim().toLowerCase();
+    if (safeSource !== "public") return false;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    if (profileTopTab !== "menu") return false;
+    const visibleRestaurantId = String(
+      state?.profileView?.profile?.restaurantId
+      || state?.profileView?.restaurantId
+      || ""
+    ).trim();
+    const targetRestaurantId = String(restaurantId || "").trim();
+    if (!targetRestaurantId || !visibleRestaurantId) return true;
+    return targetRestaurantId === visibleRestaurantId;
+  }
+
   function isTransientMenuLoadError(err = null) {
     const code = String(err?.code || err?.name || "").trim().toLowerCase();
     const message = String(err?.message || "").trim().toLowerCase();
@@ -298,15 +315,31 @@ export function createSessionDataRuntimeController({
     };
   }
 
-  function loadPersisted() {
+  function loadPersisted(options = {}) {
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const phase = String(safeOptions.phase || safeOptions.mode || "").trim().toLowerCase();
+    const isCriticalPhase = phase === "critical";
+    const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+    const profileTopTabKey = String(state.profileTopTab || "").trim().toLowerCase();
+    const prioritizeProfileSurface = activeTabKey === "profile"
+      && (profileTopTabKey === "profile" || profileTopTabKey === "menu");
+    const shouldRefreshVisibleFeedSurface = () => {
+      const tabKey = String(state.activeTab || "").trim().toLowerCase();
+      return tabKey === "feed" || tabKey === "search";
+    };
     loadLogoCacheFn();
     const savedSettings = safeStorage.getItem(storageKeys.settings);
     if (savedSettings) {
       try { state.settings = { ...defaultSettings, ...JSON.parse(savedSettings) }; } catch {}
     }
     const savedMenuLayout = safeStorage.getItem(storageKeys.menuLayout);
-    if (savedMenuLayout) {
+    const deferMenuLayoutHydration = prioritizeProfileSurface;
+    if (savedMenuLayout && !deferMenuLayoutHydration) {
       try { state.menuLayout = { ...defaultMenuLayout, ...JSON.parse(savedMenuLayout) }; } catch {}
+    }
+    state.postMeta = {};
+    if (isCriticalPhase && prioritizeProfileSurface) {
+      return;
     }
 
     const restaurantsCache = readCacheFn(cacheKeys.restaurants);
@@ -329,8 +362,6 @@ export function createSessionDataRuntimeController({
     const storiesCache = readCacheFn(cacheKeys.stories);
     if (!state.stories.length && storiesCache?.data?.length) state.stories = storiesCache.data;
 
-    state.postMeta = {};
-
     scheduleIdleFn(() => {
       if (state.restaurants.length) {
         rebuildBusinessLocationsFn();
@@ -345,7 +376,7 @@ export function createSessionDataRuntimeController({
       if (feedUpdated || storiesUpdated) {
         const inMain = getLastRenderModeFn() === "main";
         const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
-        if (!updatedFeed) requestRender();
+        if (!updatedFeed && shouldRefreshVisibleFeedSurface()) requestRender();
       }
 
       if (needsRestaurantMetaHydration) {
@@ -363,7 +394,7 @@ export function createSessionDataRuntimeController({
             if (feedChanged || storiesChanged) {
               const inMain = getLastRenderModeFn() === "main";
               const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
-              if (!updatedFeed) requestRender();
+              if (!updatedFeed && shouldRefreshVisibleFeedSurface()) requestRender();
             }
           })
           .catch(() => null);
@@ -1235,7 +1266,21 @@ export function createSessionDataRuntimeController({
       state.focus = { ...state.focus, restaurantId, items: cached.items, enabled: cached.enabled, loading: false, error: "", index: 0 };
       return;
     }
-    state.focus = { ...state.focus, restaurantId, loading: true, error: "" };
+    const sameRestaurant = state.focus.restaurantId === restaurantId;
+    const stableItems = sameRestaurant && Array.isArray(state.focus.items)
+      ? state.focus.items.slice()
+      : [];
+    const stableEnabled = sameRestaurant
+      ? state.focus.enabled !== false
+      : true;
+    state.focus = {
+      ...state.focus,
+      restaurantId,
+      items: stableItems,
+      enabled: stableEnabled,
+      loading: true,
+      error: ""
+    };
     requestRender();
     try {
       const [items, enabled] = await Promise.all([
@@ -1247,7 +1292,18 @@ export function createSessionDataRuntimeController({
       requestRender();
     } catch (err) {
       console.error(err);
-      state.focus = { ...state.focus, restaurantId, items: [], loading: false, error: "Fokus laden fehlgeschlagen." };
+      const fallbackItems = state.focus.restaurantId === restaurantId && Array.isArray(state.focus.items)
+        ? state.focus.items
+        : stableItems;
+      const hasFallbackItems = fallbackItems.length > 0;
+      state.focus = {
+        ...state.focus,
+        restaurantId,
+        items: fallbackItems,
+        enabled: state.focus.enabled !== false,
+        loading: false,
+        error: hasFallbackItems ? "" : "Fokus laden fehlgeschlagen."
+      };
       requestRender();
     }
   }
@@ -1277,9 +1333,15 @@ export function createSessionDataRuntimeController({
     } else {
       startMenuMetaListener(safeRestaurantId);
     }
+    const hasVisibleMenuSeed = state.menu.restaurantId === safeRestaurantId
+      && Array.isArray(state.menu.items)
+      && state.menu.items.length > 0;
+    const prioritizeVisibleMenuTruth = !force
+      && isVisiblePublicMenuSurface(safeRestaurantId, safeSource)
+      && !hasVisibleMenuSeed;
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
     const cached = menuCacheMap.get(cacheKey);
-    if (cached && cached.items?.length && !force) {
+    if (cached && cached.items?.length && !force && !prioritizeVisibleMenuTruth) {
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -1302,7 +1364,7 @@ export function createSessionDataRuntimeController({
       return;
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
-    if (persistedMenu.items.length && !force) {
+    if (persistedMenu.items.length && !force && !prioritizeVisibleMenuTruth) {
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -1334,7 +1396,9 @@ export function createSessionDataRuntimeController({
       await inFlight;
       return;
     }
-    const keepCurrentItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items);
+    const keepCurrentItems = state.menu.restaurantId === safeRestaurantId
+      && Array.isArray(state.menu.items)
+      && (!prioritizeVisibleMenuTruth || state.menu.items.length > 0);
     state.menu = {
       ...state.menu,
       restaurantId: safeRestaurantId,
@@ -1396,9 +1460,13 @@ export function createSessionDataRuntimeController({
       } catch (err) {
         console.error(err);
         const stalePersistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: true });
-        const fallbackItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
+        const sameRestaurantItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
           ? state.menu.items
-          : stalePersistedMenu.items;
+          : [];
+        const allowStaleFallback = !prioritizeVisibleMenuTruth || sameRestaurantItems.length > 0;
+        const fallbackItems = sameRestaurantItems.length
+          ? sameRestaurantItems
+          : (allowStaleFallback ? stalePersistedMenu.items : []);
         const fallbackStatusBadgeVisible = typeof stalePersistedMenu.statusBadgeVisible === "boolean"
           ? stalePersistedMenu.statusBadgeVisible
           : true;

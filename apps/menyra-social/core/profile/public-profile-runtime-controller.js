@@ -244,6 +244,7 @@ export function createPublicProfileRuntimeController({
       String(profile.location || "").trim(),
       String(profile.bio || "").trim(),
       String(profile.role || "").trim().toLowerCase(),
+      String(profile.identityTruthState || "").trim().toLowerCase(),
       String(profile.truthState || "").trim().toLowerCase(),
       String(profile.postsLoaded === true ? "1" : "0"),
       String(Number(profile.followers) || 0),
@@ -427,6 +428,7 @@ export function createPublicProfileRuntimeController({
       ...(landingScreenOne && typeof landingScreenOne === "object" ? { landingScreenOne } : {}),
       ...(type ? { type, customerType: type } : {}),
       pendingFollowRequest: false,
+      identityTruthState: "ready",
       posts: posts || []
     };
   }
@@ -448,6 +450,7 @@ export function createPublicProfileRuntimeController({
       privateAccount: !!data?.privateAccount,
       role: data?.role || fallback?.role || "user",
       pendingFollowRequest: false,
+      identityTruthState: "ready",
       posts: posts || []
     };
   }

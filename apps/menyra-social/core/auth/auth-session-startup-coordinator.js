@@ -30,6 +30,7 @@ export function createAuthSessionStartupCoordinator({
   resumeRender = () => {},
   reportCriticalRuntimeFailure = () => {},
   runBootstrapUser = async () => false,
+  markStartupTimeline = () => {},
   postLoginRouteOpenCoordinator = null
 } = {}) {
   const queueMicrotaskSafe = typeof queueMicrotaskFn === "function"
@@ -44,12 +45,23 @@ export function createAuthSessionStartupCoordinator({
     && typeof postLoginRouteOpenCoordinator.openNonBlockingRoutes === "function"
     ? postLoginRouteOpenCoordinator
     : createPostLoginRouteOpenCoordinator();
+  const markStartup = typeof markStartupTimeline === "function"
+    ? markStartupTimeline
+    : (() => {});
   let lastAuthUid = "";
   let authTransitionSeq = 0;
   let authStateListenerBound = false;
   let renderRequested = false;
+  let firstShellRenderRequested = false;
+  let pushOpenTargetMessageHandlerBound = false;
 
-  function requestRender() {
+  function requestRender(reason = "") {
+    if (!firstShellRenderRequested) {
+      firstShellRenderRequested = true;
+      markStartup("first shell render requested", {
+        reason: String(reason || "").trim() || "startup"
+      });
+    }
     if (renderRequested) return;
     renderRequested = true;
     queueMicrotaskSafe(() => {
@@ -107,6 +119,25 @@ export function createAuthSessionStartupCoordinator({
     return menuAccessSource === "qr";
   }
 
+  function isGuestDeepRouteLaunchActive() {
+    if (state?.user) return false;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const restaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
+    if (!restaurantId) return false;
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    return profileTopTab === "menu" || profileTopTab === "profile";
+  }
+
+  function runNonBlockingRouteOpenWithTimeline() {
+    markStartup("non-blocking route open start");
+    try {
+      return postLoginRouteOpen.openNonBlockingRoutes();
+    } finally {
+      markStartup("non-blocking route open end");
+    }
+  }
+
   function hasMeaningfulProfileHint(profile = null) {
     if (!profile || typeof profile !== "object") return false;
     const role = String(profile.role || "").trim().toLowerCase();
@@ -149,12 +180,25 @@ export function createAuthSessionStartupCoordinator({
     return true;
   }
 
-  function scheduleGuestTabEnsure() {
+  function scheduleGuestTabEnsure({ prioritize = false } = {}) {
     const runEnsure = (scope) => {
-      void ensureTabData(state?.activeTab || "").catch((err) => {
-        reportCriticalRuntimeFailure(scope, err);
-      });
+      const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+      markStartup("guest ensureTabData start", { scope, tab: activeTab || "feed" });
+      void Promise.resolve()
+        .then(() => ensureTabData(state?.activeTab || ""))
+        .catch((err) => {
+          reportCriticalRuntimeFailure(scope, err);
+        })
+        .finally(() => {
+          markStartup("guest ensureTabData end", { scope, tab: activeTab || "feed" });
+        });
     };
+    if (prioritize) {
+      queueMicrotaskSafe(() => {
+        runEnsure("startup.ensureTabData.guestPriority");
+      });
+      return;
+    }
     if (windowObj && typeof windowObj.requestAnimationFrame === "function") {
       windowObj.requestAnimationFrame(() => {
         runEnsure("startup.ensureTabData.guestRaf");
@@ -166,6 +210,20 @@ export function createAuthSessionStartupCoordinator({
     }, 0);
   }
 
+  function schedulePushOpenTargetMessageHandlerBinding() {
+    if (pushOpenTargetMessageHandlerBound) return;
+    queueMicrotaskSafe(() => {
+      if (pushOpenTargetMessageHandlerBound) return;
+      pushOpenTargetMessageHandlerBound = true;
+      markStartup("push target bind start");
+      try {
+        bindPushOpenTargetMessageHandler();
+      } finally {
+        markStartup("push target bind end");
+      }
+    });
+  }
+
   function initialize({
     hasInlineBootstrapPayload = false,
     hasWindowBootstrapPromise = false
@@ -174,7 +232,7 @@ export function createAuthSessionStartupCoordinator({
     try {
       const snapshot = readAuthBootstrapSnapshot();
       setAuthBootstrapSnapshot(snapshot);
-      bindPushOpenTargetMessageHandler();
+      schedulePushOpenTargetMessageHandlerBinding();
       if (state) {
         state.user = auth?.currentUser || null;
       }
@@ -196,27 +254,30 @@ export function createAuthSessionStartupCoordinator({
         lastAuthUid = snapshotUid;
       }
       applyPendingInitialRouteState();
-      // Open pending deep-link profile routes immediately (also for guest sessions),
-      // so QR menu links do not flash feed before routing to the restaurant menu.
-      const routeOpenResult = postLoginRouteOpen.openNonBlockingRoutes();
-      const openedProfileRoute = !!routeOpenResult?.openedProfile;
-      if (!openedProfileRoute || !state?.profileView?.profile) {
-        requestRender();
-      }
+      const prioritizeGuestSurface = isGuestDeepRouteLaunchActive();
+      requestRender("initialize");
+      queueMicrotaskSafe(() => {
+        runNonBlockingRouteOpenWithTimeline();
+      });
       schedulePerfWarmMark();
+      if (!state?.user) {
+        scheduleGuestTabEnsure({ prioritize: prioritizeGuestSurface });
+      }
       if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
-        queueMicrotaskSafe(() => {
+        const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({
             force: false,
             timeoutMs: Number.isFinite(bootstrapTimeoutMs) && bootstrapTimeoutMs > 0
               ? bootstrapTimeoutMs
               : null
           });
-        });
-      }
-      if (!state?.user) {
-        scheduleGuestTabEnsure();
+        };
+        if (prioritizeGuestSurface) {
+          setTimeoutSafe(runPublicBootstrapFetch, 120);
+        } else {
+          queueMicrotaskSafe(runPublicBootstrapFetch);
+        }
       }
     } finally {
       resumeRender();
@@ -226,6 +287,7 @@ export function createAuthSessionStartupCoordinator({
   function handleAuthStateChanged(user) {
     setAuthInitialized(true);
     const nextUid = String(user?.uid || "").trim();
+    markStartup("auth state changed", { uid: nextUid, authenticated: !!nextUid });
     const prevUid = String(lastAuthUid || "").trim();
     const hasPendingRouteReplay = !!postLoginRouteOpen?.resolvePendingRouteFlags?.()?.hasAny;
     const bootstrapInFlightUid = readBootstrapInFlightUid();
@@ -297,7 +359,7 @@ export function createAuthSessionStartupCoordinator({
           try {
             await bootstrapUser(user, { transitionSeq });
             if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            await postLoginRouteOpen.openNonBlockingRoutes();
+            await runNonBlockingRouteOpenWithTimeline();
             if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
             if (state?.auth) {
               state.auth.loading = false;

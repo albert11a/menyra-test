@@ -54,7 +54,6 @@ export function resolveInitialRouteState({
   const pendingProfileRestaurantId = routeRestaurantId || landingSlug;
   const queryTab = readQuery("tab") || readQuery("view") || (landingSlug ? "landing" : "");
   const profileTopQuery = readQuery("top") || (pendingProfileRestaurantId ? queryTab : "");
-  const pendingProfileTopTab = pendingProfileRestaurantId ? profileTopQuery : "";
   const profileAccessSourceRaw = (
     readQuery("src")
     || readQuery("source")
@@ -71,6 +70,12 @@ export function resolveInitialRouteState({
   ).trim().toLowerCase();
   const qrFlagEnabled = qrFlagRaw === "1" || qrFlagRaw === "true" || qrFlagRaw === "yes" || qrFlagRaw === "qr";
   const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase() || (qrFlagEnabled ? "qr" : "");
+  const fallbackProfileTopTab = pendingProfileRestaurantId && profileAccessSource === "qr"
+    ? "menu"
+    : "";
+  const pendingProfileTopTab = pendingProfileRestaurantId
+    ? (profileTopQuery || fallbackProfileTopTab)
+    : "";
   const pendingProfileAccessSource = pendingProfileRestaurantId
     ? profileAccessSource
     : "";
@@ -86,6 +91,10 @@ export function resolveInitialRouteState({
   const pendingPostId = readQuery("post") || readQuery("postId") || "";
   const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
   let pendingInitialTab = toInitialTab(queryTab || profileTopQuery || "");
+  if (pendingProfileRestaurantId) {
+    // Deep profile routes must always enter through the profile shell first.
+    if (!pendingInitialTab || pendingInitialTab === "menu") pendingInitialTab = "profile";
+  }
   if (landingSlug) pendingInitialTab = "profile";
   if (!pendingInitialTab && pendingChatUid) pendingInitialTab = "chat";
   if (!pendingInitialTab && pendingPostId) pendingInitialTab = "feed";

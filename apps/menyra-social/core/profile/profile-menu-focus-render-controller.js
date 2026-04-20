@@ -537,10 +537,41 @@ function renderPublicProfileSurface(
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
-  const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
+  const profileTruthState = String(profile?.truthState || "").trim().toLowerCase();
+  const identityTruthStateRaw = String(profile?.identityTruthState || "").trim().toLowerCase();
+  const normalizeIdentityStatus = (value = "") => {
+    const safeValue = String(value || "").trim().toLowerCase();
+    if (safeValue === "pending") return "pending";
+    if (safeValue === "loading") return "loading";
+    if (safeValue === "ready") return "ready";
+    if (safeValue === "error") return "error";
+    return "";
+  };
+  const fallbackIdentityStatus = (() => {
+    if (profileTruthState === "route-pending-loading" || profileTruthState.includes("pending")) return "pending";
+    if (profileTruthState.includes("loading")) return "loading";
+    if (profileTruthState === "error") return "error";
+    return "ready";
+  })();
+  const identityStatus = normalizeIdentityStatus(identityTruthStateRaw) || fallbackIdentityStatus;
+  const avatarRaw = String(profile?.avatar || "").trim();
+  const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : "";
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   const avatarImgKeyAttr = landingMode ? "" : `data-img-key="avatar:public:${escapeHtml(avatarKey)}"`;
+  const hasAvatarTruth = !!avatarRaw;
+  const hasCountSeed = (value) => {
+    if (value === null || value === undefined) return false;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0;
+  };
+  const hasIdentityDataSeed = hasAvatarTruth
+    || hasCountSeed(profile?.followers)
+    || hasCountSeed(profile?.following);
+  const showIdentityPendingState = (identityStatus === "pending" || identityStatus === "loading") && !hasIdentityDataSeed;
+  const renderAvatarImage = !!String(avatarUrl || "").trim() && hasAvatarTruth;
+  const followersLabel = showIdentityPendingState ? "..." : formatCount(profile.followers);
+  const followingLabel = showIdentityPendingState ? "..." : formatCount(profile.following);
   const topTab = String(topTabOverride || resolveProfilePrimaryTopTab(profile)).trim().toLowerCase() || "profile";
   const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
@@ -556,7 +587,19 @@ function renderPublicProfileSurface(
   const contentAnimationClass = contentReveal
     ? (landingMode ? "transition-opacity duration-200" : "animate-in fade-in duration-300")
     : "";
-  const postsLoaded = !landingMode || activeContentTab !== "posts" || profile?.postsLoaded === true;
+  const profileSurfaceStatus = String(state?.startupSurface?.profile || "").trim().toLowerCase();
+  const profileTruthPending = profileTruthState === "route-pending-loading"
+    || profileTruthState.includes("pending")
+    || profileTruthState.includes("loading");
+  const postsSurfacePending = activeContentTab === "posts"
+    && (profileSurfaceStatus === "pending" || profileSurfaceStatus === "loading");
+  const hasRenderablePosts = activeContentTab === "posts" && filteredPosts.length > 0;
+  const postsLoaded = activeContentTab !== "posts"
+    || hasRenderablePosts
+    || (!postsSurfacePending && !profileTruthPending && profile?.postsLoaded === true);
+  const showPostsError = activeContentTab === "posts"
+    && !hasRenderablePosts
+    && profileSurfaceStatus === "error";
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
       ${topTab === "profile" ? `
@@ -567,7 +610,10 @@ function renderPublicProfileSurface(
               <div class="flex justify-between items-start mb-8">
                 <div class="relative">
                   <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                    <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
+                    ${renderAvatarImage
+                      ? `<img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />`
+                      : `<div class="w-full h-full rounded-[1.8rem] border-2 border-white bg-slate-100 flex items-center justify-center ${showIdentityPendingState ? "animate-pulse" : ""}">${icon(profile.restaurantId ? "store" : "user", "w-8 h-8 text-slate-300")}</div>`
+                    }
                   </div>
                   ${profile.isPremium ? `
                     <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -578,12 +624,12 @@ function renderPublicProfileSurface(
 
                 <div class="flex items-center gap-6 pt-3 pr-2">
                    <div data-landing-tutorial-target="fans" class="flex flex-col items-center">
-                      <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span>
+                      <span class="font-black text-2xl ${showIdentityPendingState ? "text-slate-300" : "text-slate-900"} leading-none mb-1">${escapeHtml(followersLabel)}</span>
                       <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
                    </div>
                    <div class="w-px h-8 bg-slate-100"></div>
                    <div class="flex flex-col items-center">
-                      <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span>
+                      <span class="font-black text-2xl ${showIdentityPendingState ? "text-slate-300" : "text-slate-900"} leading-none mb-1">${escapeHtml(followingLabel)}</span>
                       <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
                    </div>
                 </div>
@@ -594,6 +640,7 @@ function renderPublicProfileSurface(
                 ${isBusinessProfile ? "" : `<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>`}
                 <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
+                ${showIdentityPendingState ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">Profilkopf wird geladen...</p>` : ""}
               </div>
 
               <div class="flex gap-4">
@@ -633,9 +680,17 @@ function renderPublicProfileSurface(
           </div>
         ` : `
           ${postsLoaded ? `
-            <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"} ${disabledBlockClass} ${contentAnimationClass}">
-              ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false, { includeImageKeys: !landingMode })}
-            </div>
+            ${showPostsError ? `
+              <div class="app-content-inline ${disabledBlockClass}">
+                <div class="py-16 text-center">
+                  <p class="text-[10px] font-black uppercase tracking-widest text-rose-500">Inhalte konnten nicht geladen werden</p>
+                </div>
+              </div>
+            ` : `
+              <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"} ${disabledBlockClass} ${contentAnimationClass}">
+                ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false, { includeImageKeys: !landingMode })}
+              </div>
+            `}
           ` : `
             <div class="app-content-inline ${disabledBlockClass}" style="min-height: 34vh;"></div>
           `}
@@ -2024,25 +2079,41 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   if (allowAutoEnsure && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
   }
-  const isLoading = state.menu.loading || !hasPublicMenuTruth;
   const items = hasPublicMenuTruth
     ? sortMenuItemsByOrder(getFilteredMenuItems(state.menu.items, { filter: "all", query: "" }))
       .filter((item) => !isMenuItemHidden(item))
     : [];
+  const hasItems = items.length > 0;
+  const isLoading = !hasItems && (state.menu.loading || !hasPublicMenuTruth);
   const isShop = isShopCatalogProfile(profile);
   const catalogLabel = getBusinessCatalogLabel(profile);
   const error = hasPublicMenuTruth ? state.menu.error : "";
+  const hasError = !!String(error || "").trim();
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
   const foodPriorityOffset = drinkItems.length;
   const useTestfirstCardUi = isTestfirstMenuProfile(profile);
-  const hasItems = items.length > 0;
   const anchoredCategories = new Set();
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
     maybeHydrateMenuCardViewerLikes(items, restaurantId);
   }
+  const testfirstFocusItemsFromState = restaurantId
+    ? (() => {
+      const focusState = getFocusStateForRestaurant(restaurantId);
+      if (!focusState.enabled) return [];
+      return (Array.isArray(focusState.items) ? focusState.items : [])
+        .map((item) => buildFocusCardItem({
+          ...item,
+          objectPosition: getFocusItemObjectPosition(item)
+        }))
+        .filter(Boolean);
+    })()
+    : [];
+  const testfirstStableFocusSection = testfirstFocusItemsFromState.length
+    ? renderTestfirstFocusSection(profile, testfirstFocusItemsFromState, { mode })
+    : "";
   if (isLandingMode && isLoading) {
     return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
   }
@@ -2050,11 +2121,14 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     return `
       <div class="app-main-content-safe">
         ${isLoading ? `
+          ${testfirstStableFocusSection}
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
         ` : `
           ${hasItems
             ? renderTestfirstMenuContent(profile, items, { mode })
-            : `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`
+            : (hasError
+              ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">Menu konnte nicht geladen werden</div>`
+              : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`))
           }
           ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         `}
@@ -2070,11 +2144,19 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
         </div>
       ` : `
         ${!hasItems ? `
-          <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-            <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
-              Keine Produkte
+          ${hasError ? `
+            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <div class="text-center py-16 text-rose-500 font-black uppercase text-[10px] tracking-[0.3em]">
+                Menu konnte nicht geladen werden
+              </div>
             </div>
-          </div>
+          ` : `
+            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
+                Keine Produkte
+              </div>
+            </div>
+          `}
         ` : `
           ${isShop ? `
             ${renderShopProductList(items, { profile })}
