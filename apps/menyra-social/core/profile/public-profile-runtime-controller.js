@@ -222,6 +222,35 @@ export function createPublicProfileRuntimeController({
     return !!currentHandle && currentHandle === nextHandle;
   }
 
+  function isPendingOrLoadingState(value = "") {
+    const safeValue = String(value || "").trim().toLowerCase();
+    if (!safeValue) return false;
+    if (safeValue === "route-pending-loading") return true;
+    return safeValue.includes("pending") || safeValue.includes("loading");
+  }
+
+  function isProfileSurfaceSettling(profile = null) {
+    if (!profile || typeof profile !== "object") return false;
+    const truthState = String(profile?.truthState || "").trim().toLowerCase();
+    const identityTruthState = String(profile?.identityTruthState || "").trim().toLowerCase();
+    return isPendingOrLoadingState(truthState) || isPendingOrLoadingState(identityTruthState);
+  }
+
+  function isVisiblePublicProfileSettled(currentProfile = null, nextProfile = null) {
+    if (isProfileSurfaceSettling(currentProfile) || isProfileSurfaceSettling(nextProfile)) {
+      return false;
+    }
+    const startupActiveSurfaceStatus = String(state?.startupSurface?.active || "").trim().toLowerCase();
+    const startupProfileSurfaceStatus = String(state?.startupSurface?.profile || "").trim().toLowerCase();
+    if (
+      isPendingOrLoadingState(startupActiveSurfaceStatus)
+      || isPendingOrLoadingState(startupProfileSurfaceStatus)
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   function haveSamePostIdentity(currentPosts = [], nextPosts = []) {
     if (!Array.isArray(currentPosts) || !Array.isArray(nextPosts)) return false;
     if (currentPosts.length !== nextPosts.length) return false;
@@ -291,9 +320,7 @@ export function createPublicProfileRuntimeController({
   function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "", tableNumber = 0 } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
-    
-    const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile.posts || []);
-    
+    const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile?.posts || []);
     const nextProfile = profile ? { ...profile, posts: projectedPosts } : profile;
 
     const sameVisibleProfile = isSameVisibleProfile(state?.profileView?.profile || null, nextProfile);
@@ -332,8 +359,10 @@ export function createPublicProfileRuntimeController({
     const currentTopTab = String(state?.profileTopTab || "").trim();
     const currentMenuAccessSource = String(currentView?.menuAccessSource || "").trim().toLowerCase();
     const currentTableNumber = Math.max(0, Number(currentView?.tableNumber || 0) || 0);
+    const visibleProfileSettled = isVisiblePublicProfileSettled(currentProfile, nextProfile);
     if (
-      sameVisibleProfile
+      visibleProfileSettled
+      && sameVisibleProfile
       && currentSignature
       && currentSignature === nextSignature
       && haveSamePostIdentity(currentPosts, projectedPosts)
