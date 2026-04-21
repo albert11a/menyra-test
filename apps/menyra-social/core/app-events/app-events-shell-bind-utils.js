@@ -30,6 +30,7 @@ export function bindAppShellEventsCore({
   openGuestAuthPromptFn,
   normalizeAuthModeFn,
   renderFn,
+  ensurePostsDataForProfileFn,
   ensureMenuDataForProfileFn,
   ensureFocusDataForProfileFn,
   openProfileViewFromBusinessFn
@@ -60,6 +61,9 @@ export function bindAppShellEventsCore({
     ? normalizeAuthModeFn
     : ((mode) => String(mode || "").trim());
   const render = typeof renderFn === "function" ? renderFn : (() => {});
+  const ensurePostsDataForProfile = typeof ensurePostsDataForProfileFn === "function"
+    ? ensurePostsDataForProfileFn
+    : (() => {});
   const ensureMenuDataForProfile = typeof ensureMenuDataForProfileFn === "function"
     ? ensureMenuDataForProfileFn
     : (() => {});
@@ -738,6 +742,8 @@ export function bindAppShellEventsCore({
         if (tab === "menu") {
           ensureMenuDataForProfile();
           ensureFocusDataForProfile();
+        } else if (tab === "posts") {
+          ensurePostsDataForProfile();
         }
         scrollWindowToTop(true);
       }

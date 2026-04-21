@@ -69,6 +69,7 @@ export function createBridgeShellRuntimeCluster({
     getRestaurantMetaById: profileApi.getRestaurantMetaById,
     normalizeSearchKey: utilityApi.normalizeSearchKey,
     render: feedApi.render,
+    ensurePostsDataForProfile: profileApi.ensurePostsDataForProfile,
     ensureMenuDataForProfile: profileApi.ensureMenuDataForProfile,
     ensureFocusDataForProfile: profileApi.ensureFocusDataForProfile,
     hydrateRestaurantsByIds: feedApi.hydrateRestaurantsByIds,

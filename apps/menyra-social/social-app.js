@@ -4224,6 +4224,7 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
   }
 });
 const {
+  ensurePostsDataForProfile,
   ensureMenuDataForProfile,
   ensureFocusDataForProfile,
   loadBusinessAccounts,
@@ -4517,6 +4518,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
   profileApi: {
     isLocalBusinessProfile,
     getRestaurantMetaById,
+    ensurePostsDataForProfile,
     ensureMenuDataForProfile,
     ensureFocusDataForProfile,
     normalizeExternalProfile,

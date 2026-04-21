@@ -1230,7 +1230,21 @@
       const BOOTSTRAP_TIMEOUT_MS = constrainedNetwork ? 3800 : 2200;
       window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
       const searchParams = new URLSearchParams(window.location.search || "");
-      const pathRoute = parseSiteRoutePathCore(window.location.pathname || "");
+      const readSiteRoutePath = typeof parseSiteRoutePathCore === "function"
+        ? parseSiteRoutePathCore
+        : (() => ({
+          matched: false,
+          kind: "unknown",
+          tab: "",
+          authMode: "",
+          canonicalPath: "",
+          routePath: "",
+          restaurantId: "",
+          profileTopTab: "",
+          profileContentTab: "",
+          accessSource: ""
+        }));
+      const pathRoute = readSiteRoutePath(window.location.pathname || "");
       const routeRestaurantId = String(
         searchParams.get("r")
         || searchParams.get("restaurant")
