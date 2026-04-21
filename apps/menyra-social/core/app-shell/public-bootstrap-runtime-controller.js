@@ -47,8 +47,9 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
         landingSlug: String(row?.landingSlug || publicSlug).trim(),
         handle: String(row?.handle || publicSlug).trim(),
         canonicalPublicPath: String(
-          row?.canonicalPublicPath
-          || (publicSlug ? `/b/${encodeURIComponent(publicSlug)}` : "")
+          publicSlug
+            ? `/${encodeURIComponent(publicSlug)}`
+            : (row?.canonicalPublicPath || "")
         ).trim(),
         logoUrl,
         city,

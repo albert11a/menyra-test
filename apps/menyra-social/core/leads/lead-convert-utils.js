@@ -86,11 +86,11 @@ export async function convertLeadToCustomerCore({
       if (!landingSlug) return "";
       if (!safeOptions.forcePublicOrigin && typeof window !== "undefined" && isLocalLikeHostname(window.location?.hostname || "")) {
         const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
-        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile`;
+        const previewPath = `/${encodeURIComponent(landingSlug)}`;
         return origin ? `${origin}${previewPath}` : previewPath;
       }
       const origin = String(safeOptions.origin || "https://mnyra.com").trim().replace(/\/+$/, "");
-      const path = `/b/${encodeURIComponent(landingSlug)}`;
+      const path = `/${encodeURIComponent(landingSlug)}`;
       return origin ? `${origin}${path}` : path;
     });
 
@@ -160,7 +160,7 @@ export async function convertLeadToCustomerCore({
         businessName,
         leadId: lead?.id || ""
       });
-    const canonicalPublicPath = landingSlug ? `/b/${encodeURIComponent(landingSlug)}` : "";
+    const canonicalPublicPath = landingSlug ? `/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLandingUrl(restaurantId, {
       publicSlug: landingSlug,
       landingSlug,

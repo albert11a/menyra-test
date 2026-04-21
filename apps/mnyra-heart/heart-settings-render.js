@@ -98,7 +98,7 @@ function renderRestaurantSearch(setupState = {}) {
           </label>
           <label class="heart-input-field heart-input-field--wide">
             <span>Gast- / QR-Link</span>
-            <input type="url" name="guestRouteUrl" value="${escapeHtml(setupData.guestRouteUrl || "")}" placeholder="https://mnyra.com/social/?tab=menu&src=qr&r=..." />
+            <input type="url" name="guestRouteUrl" value="${escapeHtml(setupData.guestRouteUrl || "")}" placeholder="https://mnyra.com/menu?r=RESTAURANT_ID&src=qr" />
           </label>
         </div>
         <label class="heart-toggle-row">

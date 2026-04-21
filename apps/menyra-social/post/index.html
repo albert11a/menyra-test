@@ -14,11 +14,10 @@
     body { visibility: hidden; }
   </style>
   <script>
-    const target = new URL("/apps/menyra-social/index.html", window.location.origin);
+    const target = new URL("/feed", window.location.origin);
     const incoming = new URLSearchParams(window.location.search);
     const legacyId = incoming.get("id");
     const postId = incoming.get("post") || incoming.get("postId") || legacyId || "";
-    target.searchParams.set("tab", "feed");
     if (postId) target.searchParams.set("post", postId);
     incoming.forEach((value, key) => {
       if (["id", "post", "postId"].includes(key)) return;

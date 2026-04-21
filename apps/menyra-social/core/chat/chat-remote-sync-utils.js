@@ -128,7 +128,7 @@ export function buildChatMessageNotificationCore({
       text: String(preview || "Neue Nachricht"),
       ownerType: "chat",
       ownerId: safeSenderUid,
-      link: `/apps/menyra-social/?tab=chat&chat=${encode(safeSenderUid)}`
+      link: `/chat?chat=${encode(safeSenderUid)}`
     }
   };
 }

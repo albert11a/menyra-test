@@ -1333,6 +1333,7 @@ async function queryActiveStories(limitCount = 12) {
 
 const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
   "b",
+  "feed",
   "admin",
   "ceo",
   "owner",
@@ -1357,17 +1358,26 @@ const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
   "discover",
   "map",
   "location",
+  "user",
   "orders",
   "notifications",
   "settings",
   "upload",
   "leads",
   "customers",
+  "business-accounts",
   "businessaccounts",
   "menyra-restaurants",
   "lp",
   "index.html",
+  "manifest.webmanifest",
+  "manifest.json",
+  "sw.js",
+  "favicon.ico",
+  "robots.txt",
+  "sitemap.xml",
   "assets",
+  "shared",
   "_shared",
   "core",
   "lead-landing"
@@ -1426,7 +1436,7 @@ function buildCanonicalPublicRoutePath(slugValue = "", topTab = "profile") {
   const safeSlug = normalizePathRestaurantSlug(slugValue);
   if (!safeSlug) return "";
   const safeTopTab = normalizePublicProfileTopTab(topTab, "profile");
-  const basePath = `/b/${encodeURIComponent(safeSlug)}`;
+  const basePath = `/${encodeURIComponent(safeSlug)}`;
   if (safeTopTab === "menu") return `${basePath}/menu`;
   return basePath;
 }
@@ -1444,10 +1454,10 @@ function resolvePathPublicProfileRoute(rawPath = "") {
     segments = segments.slice(1);
   }
   if (!segments.length) return { restaurantId: "", topTab: "", accessSource: "" };
-  if (safeLowerText(segments[0]) === "b") {
-    const slug = normalizePathRestaurantSlug(segments[1]);
-    if (!slug) return { restaurantId: "", topTab: "", accessSource: "" };
-    const surfaceSegment = safeLowerText(segments[2]);
+  const usesLegacyPrefix = safeLowerText(segments[0]) === "b";
+  const slug = normalizePathRestaurantSlug(usesLegacyPrefix ? segments[1] : segments[0]);
+  const surfaceSegment = safeLowerText(usesLegacyPrefix ? segments[2] : segments[1]);
+  if (slug) {
     if (!surfaceSegment) {
       return {
         restaurantId: slug,
@@ -1476,7 +1486,6 @@ function resolvePathPublicProfileRoute(rawPath = "") {
         accessSource: "qr"
       };
     }
-    return { restaurantId: "", topTab: "", accessSource: "" };
   }
   const tailSegments = segments.length > 2 ? segments.slice(-2) : segments.slice();
   const first = asText(tailSegments[0]);
@@ -2130,7 +2139,7 @@ async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data 
     ...source,
     publicSlug: resolvedPublicSlug,
     landingSlug: nextLandingSlug,
-    canonicalPublicPath: asText(source.canonicalPublicPath || canonicalPublicPath),
+    canonicalPublicPath,
     landingRestaurantId: asText(source.landingRestaurantId || safeRestaurantId)
   };
   const needsWrite = asText(source.publicSlug) !== resolvedPublicSlug
@@ -2164,10 +2173,9 @@ function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
     || data.restaurantType
   );
   const publicSlug = normalizePathRestaurantSlug(data.publicSlug || data.landingSlug || data.handle);
-  const canonicalPublicPath = asText(
-    data.canonicalPublicPath
-    || buildCanonicalPublicRoutePath(publicSlug, "profile")
-  );
+  const canonicalPublicPath = publicSlug
+    ? buildCanonicalPublicRoutePath(publicSlug, "profile")
+    : asText(data.canonicalPublicPath);
   return {
     id: asText(restaurantId),
     name: asText(data.name || data.restaurantName || data.displayName),

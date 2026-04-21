@@ -14,8 +14,7 @@
     body { visibility: hidden; }
   </style>
   <script>
-    const target = new URL("/apps/menyra-social/index.html", window.location.origin);
-    target.searchParams.set("tab", "search");
+    const target = new URL("/search", window.location.origin);
     const incoming = new URLSearchParams(window.location.search);
     incoming.forEach((value, key) => {
       if (!target.searchParams.has(key)) target.searchParams.set(key, value);

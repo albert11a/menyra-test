@@ -21,7 +21,7 @@ const storyViewerRuntimeController = createStoryViewerRuntimeController({
   getDocsFn: getDocs,
   windowObj: typeof window === "undefined" ? null : window,
   documentObj: typeof document === "undefined" ? null : document,
-  feedFallbackUrl: "/apps/menyra-social/index.html?tab=feed"
+  feedFallbackUrl: "/feed"
 });
 
 void storyViewerRuntimeController.start().catch((err) => {

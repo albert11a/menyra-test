@@ -32,8 +32,8 @@ export function buildNativePushAlertPayloadCore({
   const notifId = String(notif?.id || "");
   const icon = String(resolveAvatar(notif) || "/apps/menyra-social/assets/icon-192.png");
   const deepLink = notifId
-    ? `/apps/menyra-social/?notif=${encode(notifId)}`
-    : "/apps/menyra-social/";
+    ? `/notifications?notif=${encode(notifId)}`
+    : "/notifications";
   return {
     title: String(brandTitle || "").trim() || "MNYRA",
     body: resolveNativePushBodyCore(notif),

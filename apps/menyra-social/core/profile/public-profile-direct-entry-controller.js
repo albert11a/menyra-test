@@ -151,7 +151,7 @@ function resolveRestaurantPreviewForRoute(state = null, restaurantId = "") {
 function resolveCanonicalPublicPath(publicSlug = "") {
   const safeSlug = normalizeLookupSlug(publicSlug);
   if (!safeSlug) return "";
-  return `/b/${encodeURIComponent(safeSlug)}`;
+  return `/${encodeURIComponent(safeSlug)}`;
 }
 
 function resolveProfileSeedPublicSlug(routeIdentity = null, preview = null) {

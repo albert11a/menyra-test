@@ -1,8 +1,14 @@
 import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
 import {
   isQrLikePublicBusinessAccessSourceCore,
-  parsePublicBusinessRoutePathCore
+  normalizePublicUserContentTabCore,
+  normalizePublicUserRouteIdCore,
+  parseSiteRoutePathCore
 } from "../router/public-business-route-utils.js";
+
+function safeLowerText(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
 
 export function resolveInitialRouteState({
   qs,
@@ -11,9 +17,14 @@ export function resolveInitialRouteState({
   normalizeAuthMode
 } = {}) {
   const readQuery = typeof qs === "function" ? qs : (() => "");
-  const toInitialTab = typeof normalizeInitialTab === "function" ? normalizeInitialTab : ((value) => String(value || "").trim());
-  const toAuthMode = typeof normalizeAuthMode === "function" ? normalizeAuthMode : ((value) => String(value || "").trim());
+  const toInitialTab = typeof normalizeInitialTab === "function"
+    ? normalizeInitialTab
+    : ((value) => String(value || "").trim());
+  const toAuthMode = typeof normalizeAuthMode === "function"
+    ? normalizeAuthMode
+    : ((value) => String(value || "").trim());
   const readPathname = String(pathname || "").trim();
+  const pathRoute = parseSiteRoutePathCore(readPathname);
 
   const routeRestaurantId = (
     readQuery("r")
@@ -23,13 +34,37 @@ export function resolveInitialRouteState({
     || readQuery("businessId")
     || ""
   );
-  const pathProfileRoute = routeRestaurantId
-    ? { restaurantId: "", topTab: "", accessSource: "" }
-    : parsePublicBusinessRoutePathCore(readPathname);
-  const landingSlug = routeRestaurantId ? "" : pathProfileRoute.restaurantId;
-  const pendingProfileRestaurantId = routeRestaurantId || landingSlug;
+  const routeUserId = routeRestaurantId
+    ? ""
+    : (
+      readQuery("uid")
+      || readQuery("user")
+      || readQuery("userId")
+      || readQuery("u")
+      || readQuery("handle")
+      || ""
+    );
+
+  const pathBusinessRoute = routeRestaurantId
+    ? null
+    : (
+      pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
+        ? pathRoute
+        : null
+    );
+  const pendingProfileRestaurantId = String(
+    routeRestaurantId
+    || pathBusinessRoute?.restaurantId
+    || ""
+  ).trim();
+
   const queryTab = readQuery("tab") || readQuery("view") || "";
-  const profileTopQuery = readQuery("top") || readQuery("surface") || readQuery("screen") || (pendingProfileRestaurantId ? queryTab : "");
+  const profileTopQuery = (
+    readQuery("top")
+    || readQuery("surface")
+    || readQuery("screen")
+    || (pendingProfileRestaurantId ? queryTab : "")
+  );
   const profileAccessSourceRaw = (
     readQuery("src")
     || readQuery("source")
@@ -38,21 +73,32 @@ export function resolveInitialRouteState({
     || readQuery("access")
     || ""
   );
-  const qrFlagRaw = String(
+  const qrFlagRaw = safeLowerText(
     readQuery("qr")
     || readQuery("isQr")
     || readQuery("menuQr")
     || ""
-  ).trim().toLowerCase();
+  );
   const qrFlagEnabled = qrFlagRaw === "1" || qrFlagRaw === "true" || qrFlagRaw === "yes" || qrFlagRaw === "qr";
-  const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase()
-    || String(pathProfileRoute.accessSource || "").trim().toLowerCase()
-    || (qrFlagEnabled ? "qr" : "");
+  const profileAccessSource = String(
+    profileAccessSourceRaw
+    || pathBusinessRoute?.accessSource
+    || (qrFlagEnabled ? "qr" : "")
+  ).trim().toLowerCase();
   const fallbackProfileTopTab = pendingProfileRestaurantId && profileAccessSource === "qr"
     ? "menu"
     : "";
   const pendingProfileTopTab = pendingProfileRestaurantId
-    ? (profileTopQuery || pathProfileRoute.topTab || fallbackProfileTopTab)
+    ? (
+      profileTopQuery
+      || pathBusinessRoute?.profileTopTab
+      || (
+        safeLowerText(pathRoute.tab || "") === "menu"
+          ? "menu"
+          : ""
+      )
+      || fallbackProfileTopTab
+    )
     : "";
   const pendingProfileAccessSource = pendingProfileRestaurantId
     ? (isQrLikePublicBusinessAccessSourceCore(profileAccessSource) ? "qr" : "")
@@ -65,24 +111,59 @@ export function resolveInitialRouteState({
       || ""
     )
     : 0;
+
+  const pathUserRoute = pendingProfileRestaurantId
+    ? null
+    : (pathRoute.kind === "user" ? pathRoute : null);
+  const pendingUserRouteId = pendingProfileRestaurantId
+    ? ""
+    : normalizePublicUserRouteIdCore(routeUserId || pathUserRoute?.userId || "");
+  const queryUserContentTab = (
+    readQuery("content")
+    || readQuery("contentTab")
+    || readQuery("section")
+    || (
+      safeLowerText(readQuery("media")) === "1"
+      || safeLowerText(readQuery("media")) === "true"
+      || safeLowerText(readQuery("media")) === "yes"
+        ? "media"
+        : ""
+    )
+  );
+  const pendingUserContentTab = pendingUserRouteId
+    ? normalizePublicUserContentTabCore(
+      queryUserContentTab
+      || (
+        queryTab === "media" || queryTab === "posts"
+          ? queryTab
+          : ""
+      )
+      || pathUserRoute?.userContentTab
+      || "",
+      "profile"
+    )
+    : "";
+
   const pendingNotificationId = readQuery("notif") || readQuery("notification") || readQuery("nid") || "";
   const pendingPostId = readQuery("post") || readQuery("postId") || "";
   const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
-  let pendingInitialTab = toInitialTab(queryTab || profileTopQuery || "");
-  if (pendingProfileRestaurantId) {
-    // Direct public profile/menu URLs are always route-first profile surfaces.
+
+  let pendingInitialTab = toInitialTab(queryTab || pathRoute.tab || profileTopQuery || "");
+  if (pendingProfileRestaurantId || pendingUserRouteId) {
     pendingInitialTab = "profile";
   }
-  if (landingSlug) pendingInitialTab = "profile";
   if (!pendingInitialTab && pendingChatUid) pendingInitialTab = "chat";
   if (!pendingInitialTab && pendingPostId) pendingInitialTab = "feed";
-  const pendingAuthMode = toAuthMode(readQuery("auth") || "");
+
+  const pendingAuthMode = toAuthMode(readQuery("auth") || pathRoute.authMode || "");
 
   return {
     pendingProfileRestaurantId,
     pendingProfileTopTab,
     pendingProfileAccessSource,
     pendingProfileTableNumber,
+    pendingUserRouteId,
+    pendingUserContentTab,
     pendingNotificationId,
     pendingPostId,
     pendingChatUid,

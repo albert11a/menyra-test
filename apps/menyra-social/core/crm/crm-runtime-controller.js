@@ -368,7 +368,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     const safeOptions = options && typeof options === "object" ? options : {};
     const landingSlug = buildLeadLandingSlug(safeRestaurantId, safeOptions);
     if (!landingSlug) return "";
-    return `/b/${encodeURIComponent(landingSlug)}`;
+    return `/${encodeURIComponent(landingSlug)}`;
   }
 
   function buildLeadLandingPageUrl(restaurantId = "", options = {}) {
@@ -376,14 +376,14 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     const safeOptions = options && typeof options === "object" ? options : {};
     const landingSlug = buildLeadLandingSlug(safeRestaurantId, safeOptions);
     if (!landingSlug) return "";
-    const path = `/b/${encodeURIComponent(landingSlug)}`;
+    const path = `/${encodeURIComponent(landingSlug)}`;
     if (!path) return "";
     const forcePublicOrigin = safeOptions.forcePublicOrigin === true;
     if (!forcePublicOrigin && typeof window !== "undefined") {
       const host = String(window.location?.hostname || "").trim().toLowerCase();
       const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
       if (isLocalLikeHostname(host)) {
-        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile`;
+        const previewPath = `/${encodeURIComponent(landingSlug)}`;
         return origin ? `${origin}${previewPath}` : previewPath;
       }
     }
@@ -1475,7 +1475,7 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     businessName,
     leadId: safeOptions.leadId || safeBase?.leadId || ""
   });
-  const canonicalPublicPath = `/b/${encodeURIComponent(landingSlug)}`;
+  const canonicalPublicPath = `/${encodeURIComponent(landingSlug)}`;
   const landingUrl = buildLeadLandingPageUrl(safeRestaurantId, {
     publicSlug: landingSlug,
     landingSlug,
@@ -1566,7 +1566,7 @@ function normalizeLeadDoc(docSnap) {
     status,
     restaurantId: safeRestaurantId,
     publicSlug: safeLandingSlug,
-    canonicalPublicPath: String(data.canonicalPublicPath || (safeLandingSlug ? `/b/${encodeURIComponent(safeLandingSlug)}` : "")).trim(),
+    canonicalPublicPath: String(safeLandingSlug ? `/${encodeURIComponent(safeLandingSlug)}` : "").trim(),
     landingEnabled: data.landingEnabled !== false,
     landingTemplate: data.landingTemplate || "",
     landingRestaurantId: safeLandingRestaurantId,
@@ -1629,8 +1629,7 @@ function normalizeLeadFromRestaurant(rest) {
     status,
     restaurantId: safeRestaurantId,
     publicSlug: resolvedPublicSlug,
-    canonicalPublicPath: String(data.canonicalPublicPath || "").trim()
-      || (resolvedPublicSlug ? `/b/${encodeURIComponent(resolvedPublicSlug)}` : ""),
+    canonicalPublicPath: resolvedPublicSlug ? `/${encodeURIComponent(resolvedPublicSlug)}` : "",
     landingEnabled: true,
     landingTemplate: data.landingTemplate || LEAD_LANDING_TEMPLATE_ID,
     landingRestaurantId: safeRestaurantId,
@@ -1944,7 +1943,7 @@ function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
     status: restaurantStatus,
     leadId: String(lead?.id || rest?.leadId || "").trim(),
     publicSlug: landingSlug,
-    canonicalPublicPath: landingSlug ? `/b/${encodeURIComponent(landingSlug)}` : "",
+    canonicalPublicPath: landingSlug ? `/${encodeURIComponent(landingSlug)}` : "",
     landingSlug
   };
 }
@@ -1974,7 +1973,7 @@ async function backfillLeadLandingForRows(rows = []) {
       businessName,
       leadId: safeLeadId
     });
-    const canonicalPublicPath = landingSlug ? `/b/${encodeURIComponent(landingSlug)}` : "";
+    const canonicalPublicPath = landingSlug ? `/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLeadLandingPageUrl(restaurantId, {
       publicSlug: landingSlug,
       landingSlug,

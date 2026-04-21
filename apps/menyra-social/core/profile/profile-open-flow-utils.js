@@ -1133,28 +1133,80 @@ export function createProfileOpenFlowControllerCore({
     renderApp();
   };
 
-  const openProfileFromUser = async (input) => {
-    if (!state?.user) {
-      openGuestAuth("Bitte einloggen, um User-Profile zu sehen.");
-      return;
-    }
+  const normalizeRouteUserContentTab = (value = "") => {
+    const key = String(value || "").trim().toLowerCase();
+    return key === "media" ? "media" : "posts";
+  };
+
+  const isLikelyOpaqueUserUid = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw || /\s|\./.test(raw)) return false;
+    const compact = raw.replace(/[-_]/g, "");
+    if (!compact) return false;
+    if (/^[A-Za-z0-9]{20,}$/i.test(raw)) return true;
+    if (/^[a-f0-9]{16,}$/i.test(compact)) return true;
+    const digits = (compact.match(/\d/g) || []).length;
+    return compact.length >= 16 && digits >= 4;
+  };
+
+  const openProfileFromUser = async (input, {
+    showBack = true,
+    contentTab = "",
+    directEntry = null
+  } = {}) => {
     let targetUid = "";
     let targetHandle = "";
+    let targetRouteId = "";
     try {
-      const uid = typeof input === "string" ? input : (input?.uid || "");
-      const handle = String(typeof input === "string" ? "" : (input?.handle || input?.name || "")).replace(/^@/, "");
-      targetUid = uid;
-      targetHandle = handle;
-      if (!uid && !handle) return;
-      if (isOwnUserTarget({ uid, handle })) {
-        openOwnUserProfile({ showBack: true });
+      const safeInput = input && typeof input === "object" ? input : {};
+      const routeId = String(
+        typeof input === "string"
+          ? input
+          : (
+            safeInput.routeId
+            || safeInput.id
+            || safeInput.uid
+            || safeInput.handle
+            || safeInput.name
+            || ""
+          )
+      ).replace(/^@/, "").trim();
+      const explicitUid = String(typeof input === "string" ? "" : (safeInput.uid || "")).trim();
+      const explicitHandle = String(typeof input === "string" ? "" : (safeInput.handle || safeInput.name || "")).replace(/^@/, "").trim();
+      const safeContentTab = normalizeRouteUserContentTab(contentTab);
+      const explicitDirectEntry = directEntry && typeof directEntry === "object" ? directEntry : null;
+      const isDirectRouteRequest = showBack === false || !!explicitDirectEntry;
+      const buildUserDirectEntry = (phase = "loading") => {
+        if (!isDirectRouteRequest) return null;
+        return {
+          ...(explicitDirectEntry || {}),
+          active: true,
+          source: "route",
+          owner: String(explicitDirectEntry?.owner || "web-direct").trim().toLowerCase() || "web-direct",
+          routeFirst: explicitDirectEntry?.routeFirst === true || showBack === false,
+          webPriority: explicitDirectEntry?.webPriority === true || showBack === false,
+          menuFirst: false,
+          postsFirst: safeContentTab !== "media",
+          phase,
+          topTab: "profile",
+          contentTab: safeContentTab,
+          explicitLanding: false
+        };
+      };
+
+      targetUid = explicitUid;
+      targetHandle = explicitHandle;
+      targetRouteId = routeId;
+      if (!explicitUid && !explicitHandle && !routeId) return;
+      if (!isDirectRouteRequest && isOwnUserTarget({ uid: explicitUid || routeId, handle: explicitHandle || routeId })) {
+        openOwnUserProfile({ showBack });
         return;
       }
 
-      const cacheKey = uid || handle;
+      const cacheKey = explicitUid || explicitHandle || routeId;
       const cached = userProfileCacheMap.get(cacheKey);
       if (cached) {
-        cached.pendingFollowRequest = await checkPendingFollowRequest(cached.uid || uid || "");
+        cached.pendingFollowRequest = await checkPendingFollowRequest(cached.uid || explicitUid || "");
         const cachedPosts = Array.isArray(cached.posts) ? cached.posts : [];
         const cachedTruthState = String(cached.truthState || "").trim().toLowerCase();
         const cachedPostsStatus = cachedPosts.length
@@ -1167,14 +1219,22 @@ export function createProfileOpenFlowControllerCore({
           identityStatus: normalizeIdentityTruthState(cached.identityTruthState, "ready"),
           postsStatus: cachedPostsStatus
         }));
-        showPublicProfileView(cached, cached.posts || []);
+        showPublicProfileView(cached, cached.posts || [], {
+          showBack,
+          topTab: "profile",
+          contentTab: safeContentTab,
+          directEntry: buildUserDirectEntry(cachedPosts.length ? "ready" : "loading")
+        });
         return;
       }
       const liveView = state?.profileView;
       const liveProfile = liveView?.profile && typeof liveView.profile === "object"
         ? liveView.profile
         : null;
-      const stableUserProfile = isSameUserProfileTarget(liveProfile, { uid, handle })
+      const stableUserProfile = isSameUserProfileTarget(liveProfile, {
+        uid: explicitUid || routeId,
+        handle: explicitHandle || routeId
+      })
         ? liveProfile
         : null;
       const stableUserPosts = stableUserProfile && Array.isArray(liveView?.posts)
@@ -1183,10 +1243,10 @@ export function createProfileOpenFlowControllerCore({
 
       const fallbackProfile = normalizeExternalUserProfileFn({
         userDoc: null,
-        fallback: stableUserProfile || input || {},
+        fallback: stableUserProfile || safeInput || { uid: explicitUid, handle: explicitHandle || routeId, routeId },
         posts: stableUserPosts
       });
-      fallbackProfile.pendingFollowRequest = await checkPendingFollowRequest(fallbackProfile.uid || uid || "");
+      fallbackProfile.pendingFollowRequest = await checkPendingFollowRequest(fallbackProfile.uid || explicitUid || "");
       const fallbackProfileWithSurfaceTruth = applySurfaceTruthPatch({
         ...fallbackProfile,
         posts: stableUserPosts
@@ -1194,22 +1254,53 @@ export function createProfileOpenFlowControllerCore({
         identityStatus: resolveLoadingIdentityTruthState(stableUserProfile),
         postsStatus: stableUserPosts.length > 0 ? "ready" : "loading"
       });
-      showPublicProfileView(fallbackProfileWithSurfaceTruth, stableUserPosts);
+      showPublicProfileView(fallbackProfileWithSurfaceTruth, stableUserPosts, {
+        showBack,
+        topTab: "profile",
+        contentTab: safeContentTab,
+        directEntry: buildUserDirectEntry(stableUserPosts.length ? "ready" : "loading")
+      });
 
       let userDoc = null;
-      if (uid) {
-        const snap = await fetchUserByUid(uid);
+      const tryResolveByUid = async (uidValue = "") => {
+        const safeUid = String(uidValue || "").trim();
+        if (!safeUid) return null;
+        const snap = await fetchUserByUid(safeUid);
         if (snap?.exists?.()) userDoc = snap;
-      } else if (handle) {
-        const resolved = await resolveUserByHandleFn(handle);
+        return userDoc;
+      };
+      const tryResolveByHandle = async (handleValue = "") => {
+        const safeHandle = String(handleValue || "").replace(/^@/, "").trim();
+        if (!safeHandle) return null;
+        const resolved = await resolveUserByHandleFn(safeHandle);
         if (resolved?.id) userDoc = { id: resolved.id, data: resolved.data };
+        return userDoc;
+      };
+
+      if (explicitUid) {
+        await tryResolveByUid(explicitUid);
+      }
+      if (!userDoc && explicitHandle) {
+        await tryResolveByHandle(explicitHandle);
+      }
+      if (!userDoc && routeId) {
+        if (isLikelyOpaqueUserUid(routeId)) {
+          await tryResolveByUid(routeId);
+          if (!userDoc) await tryResolveByHandle(routeId);
+        } else {
+          await tryResolveByHandle(routeId);
+          if (!userDoc) await tryResolveByUid(routeId);
+        }
       }
 
       if (!userDoc) {
         if (state.activeTab === "profile") {
           const liveView = state?.profileView;
           const liveProfile = liveView?.profile;
-          if (liveView && liveProfile && isSameUserProfileTarget(liveProfile, { uid, handle })) {
+          if (liveView && liveProfile && isSameUserProfileTarget(liveProfile, {
+            uid: explicitUid || routeId,
+            handle: explicitHandle || routeId
+          })) {
             liveView.profile = applySurfaceTruthPatch({
               ...liveProfile,
               posts: []
@@ -1226,7 +1317,7 @@ export function createProfileOpenFlowControllerCore({
       const posts = await loadUserPosts(userDoc.id);
       const resolvedProfile = normalizeExternalUserProfileFn({
         userDoc,
-        fallback: input || {},
+        fallback: safeInput || { uid: explicitUid, handle: explicitHandle || routeId, routeId },
         posts
       });
       resolvedProfile.pendingFollowRequest = await checkPendingFollowRequest(resolvedProfile.uid || "");
@@ -1236,14 +1327,22 @@ export function createProfileOpenFlowControllerCore({
       }));
       userProfileCacheMap.set(cacheKey, resolvedProfile);
       if (state.activeTab !== "profile") return;
-      if (uid && state.profileView?.profile?.uid !== uid) return;
-      showPublicProfileView(resolvedProfile, resolvedProfile.posts);
+      if (explicitUid && state.profileView?.profile?.uid !== explicitUid) return;
+      showPublicProfileView(resolvedProfile, resolvedProfile.posts, {
+        showBack,
+        topTab: "profile",
+        contentTab: safeContentTab,
+        directEntry: buildUserDirectEntry("ready")
+      });
     } catch (err) {
       console.error(err);
       if (state.activeTab === "profile") {
         const liveView = state?.profileView;
         const liveProfile = liveView?.profile;
-        if (liveView && liveProfile && isSameUserProfileTarget(liveProfile, { uid: targetUid, handle: targetHandle })) {
+        if (liveView && liveProfile && isSameUserProfileTarget(liveProfile, {
+          uid: targetUid || targetRouteId,
+          handle: targetHandle || targetRouteId
+        })) {
           const livePosts = Array.isArray(liveView.posts) ? liveView.posts : [];
           liveView.profile = applySurfaceTruthPatch({
             ...liveProfile,

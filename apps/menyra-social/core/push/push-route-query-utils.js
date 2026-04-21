@@ -63,6 +63,18 @@ export function applyPendingRouteStateCore({
     next.pendingProfileTopTab = routeState.pendingProfileTopTab || "";
     next.pendingProfileAccessSource = routeState.pendingProfileAccessSource || "";
     next.pendingProfileTableNumber = Number(routeState.pendingProfileTableNumber || 0) || 0;
+    next.pendingUserRouteId = "";
+    next.pendingUserContentTab = "";
+    next.pendingProfileHandled = false;
+    changed = true;
+  }
+  if (routeState.pendingUserRouteId) {
+    next.pendingProfileRestaurantId = "";
+    next.pendingProfileTopTab = "";
+    next.pendingProfileAccessSource = "";
+    next.pendingProfileTableNumber = 0;
+    next.pendingUserRouteId = routeState.pendingUserRouteId;
+    next.pendingUserContentTab = routeState.pendingUserContentTab || "";
     next.pendingProfileHandled = false;
     changed = true;
   }

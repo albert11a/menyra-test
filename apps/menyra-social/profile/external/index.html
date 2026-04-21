@@ -14,10 +14,29 @@
     body { visibility: hidden; }
   </style>
   <script>
-    const target = new URL("/apps/menyra-social/index.html", window.location.origin);
-    target.searchParams.set("tab", "profile");
     const incoming = new URLSearchParams(window.location.search);
+    const userRouteId = (
+      incoming.get("uid")
+      || incoming.get("user")
+      || incoming.get("userId")
+      || incoming.get("u")
+      || incoming.get("handle")
+      || ""
+    ).replace(/^@/, "");
+    const contentTab = String(
+      incoming.get("content")
+      || incoming.get("contentTab")
+      || incoming.get("section")
+      || ""
+    ).trim().toLowerCase();
+    const target = userRouteId
+      ? new URL(
+        `/user/${encodeURIComponent(userRouteId)}${contentTab === "media" ? "/media" : (contentTab === "posts" ? "/posts" : "")}`,
+        window.location.origin
+      )
+      : new URL("/profile", window.location.origin);
     incoming.forEach((value, key) => {
+      if (["uid", "user", "userId", "u", "handle", "content", "contentTab", "section"].includes(key)) return;
       if (!target.searchParams.has(key)) target.searchParams.set(key, value);
     });
     window.location.replace(`${target.pathname}${target.search}${window.location.hash || ""}`);

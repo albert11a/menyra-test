@@ -41,10 +41,16 @@ function projectRoot(){
 
 function buildLinks(rid, tid){
   const root = projectRoot();
-  const qR = `?r=${encodeURIComponent(rid)}`;
-  const socialBase = `${root}apps/menyra-social/index.html`;
-  const socialMenu = `${socialBase}?r=${encodeURIComponent(rid)}&tab=menu`;
-  const socialProfile = `${socialBase}?r=${encodeURIComponent(rid)}&tab=profile`;
+  const buildAppUrl = (pathname, params = {}) => {
+    const url = new URL(pathname, root);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") return;
+      url.searchParams.set(key, String(value));
+    });
+    return url.toString();
+  };
+  const socialMenu = buildAppUrl("/menu", { r: rid, ...(tid ? { t: tid } : {}) });
+  const socialProfile = buildAppUrl("/profile", { r: rid });
 
   return {
     main: socialProfile,
@@ -54,14 +60,14 @@ function buildLinks(rid, tid){
     story: socialProfile,
     owner: socialProfile,
     waiter: socialMenu,
-    kitchen: socialMenu,
-    ceo: `${socialBase}?tab=leads`,
-    staff: `${socialBase}?tab=staff`,
-    socialFeed: socialBase,
-    socialDiscover: `${socialBase}?tab=search`,
-    socialProfile: `${socialBase}?tab=profile`,
-    socialLogin: `${socialBase}?auth=login`,
-    socialRegister: `${socialBase}?auth=register`
+    kitchen: buildAppUrl("/kitchen", { r: rid }),
+    ceo: buildAppUrl("/ceo"),
+    staff: buildAppUrl("/staff"),
+    socialFeed: buildAppUrl("/feed"),
+    socialDiscover: buildAppUrl("/search"),
+    socialProfile: buildAppUrl("/profile"),
+    socialLogin: buildAppUrl("/login"),
+    socialRegister: buildAppUrl("/register")
   };
 }
 

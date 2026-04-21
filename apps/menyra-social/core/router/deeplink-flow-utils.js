@@ -31,6 +31,7 @@ export function createDeeplinkFlowControllerCore({
   isPendingProfileAlreadyOpen,
   normalizeProfileTopTabFromRoute,
   openProfileViewFromBusiness,
+  openProfileFromUser,
   parsePushOpenTargetPayload,
   shouldHandlePushOpenTarget,
   applyPendingInitialRouteState,
@@ -114,6 +115,9 @@ export function createDeeplinkFlowControllerCore({
     : ((value) => String(value || "").trim());
   const openBusinessProfile = typeof openProfileViewFromBusiness === "function"
     ? openProfileViewFromBusiness
+    : (() => {});
+  const openUserProfile = typeof openProfileFromUser === "function"
+    ? openProfileFromUser
     : (() => {});
   const parsePushPayload = typeof parsePushOpenTargetPayload === "function"
     ? parsePushOpenTargetPayload
@@ -270,7 +274,65 @@ export function createDeeplinkFlowControllerCore({
   const maybeOpenProfileFromQuery = () => {
     const pending = readPendingState();
     if (pending.pendingProfileHandled) return false;
-    if (!pending.pendingProfileRestaurantId) return false;
+    const pendingUserRouteId = String(pending.pendingUserRouteId || "").replace(/^@/, "").trim();
+    if (!pending.pendingProfileRestaurantId && !pendingUserRouteId) return false;
+
+    if (pendingUserRouteId) {
+      const liveProfile = state?.profileView?.profile && typeof state.profileView.profile === "object"
+        ? state.profileView.profile
+        : null;
+      const liveRestaurantId = String(liveProfile?.restaurantId || "").trim();
+      const liveTruthState = String(liveProfile?.truthState || "").trim().toLowerCase();
+      const liveUid = String(liveProfile?.uid || "").trim();
+      const liveHandle = String(liveProfile?.handle || liveProfile?.name || "").replace(/^@/, "").trim().toLowerCase();
+      const targetRouteId = pendingUserRouteId.toLowerCase();
+      const isUserAlreadyOpen = !!liveProfile
+        && !liveRestaurantId
+        && liveTruthState !== "route-pending-loading"
+        && liveTruthState !== "loading"
+        && liveTruthState !== "pending"
+        && (
+          (liveUid && liveUid === pendingUserRouteId)
+          || (liveHandle && liveHandle === targetRouteId)
+        );
+      if (isUserAlreadyOpen) {
+        patchPendingState({
+          pendingProfileHandled: true,
+          pendingUserRouteId: "",
+          pendingUserContentTab: ""
+        });
+        return true;
+      }
+      const nextUserContentTab = String(pending.pendingUserContentTab || "").trim().toLowerCase() === "media"
+        ? "media"
+        : "posts";
+      patchPendingState({
+        pendingProfileHandled: true,
+        pendingProfileRestaurantId: "",
+        pendingProfileTopTab: "",
+        pendingProfileAccessSource: "",
+        pendingProfileTableNumber: 0,
+        pendingUserRouteId: "",
+        pendingUserContentTab: ""
+      });
+      openUserProfile(
+        { routeId: pendingUserRouteId },
+        {
+          showBack: false,
+          contentTab: nextUserContentTab,
+          directEntry: {
+            active: true,
+            source: "route",
+            owner: "web-direct",
+            routeFirst: true,
+            webPriority: true,
+            topTab: "profile",
+            contentTab: nextUserContentTab
+          }
+        }
+      );
+      return true;
+    }
 
     const safeRestaurantId = normalizeProfileRestaurantId(pending.pendingProfileRestaurantId);
     if (isProfileAlreadyOpen({ pendingProfileRestaurantId: safeRestaurantId })) {
@@ -279,7 +341,9 @@ export function createDeeplinkFlowControllerCore({
         pendingProfileRestaurantId: "",
         pendingProfileTopTab: "",
         pendingProfileAccessSource: "",
-        pendingProfileTableNumber: 0
+        pendingProfileTableNumber: 0,
+        pendingUserRouteId: "",
+        pendingUserContentTab: ""
       });
       return true;
     }
@@ -292,7 +356,9 @@ export function createDeeplinkFlowControllerCore({
       pendingProfileRestaurantId: "",
       pendingProfileTopTab: "",
       pendingProfileAccessSource: "",
-      pendingProfileTableNumber: 0
+      pendingProfileTableNumber: 0,
+      pendingUserRouteId: "",
+      pendingUserContentTab: ""
     });
     const nextTab = normalizeProfileTopTab(nextTabRaw);
     const safeAccessSource = String(nextAccessSourceRaw || "").trim().toLowerCase();

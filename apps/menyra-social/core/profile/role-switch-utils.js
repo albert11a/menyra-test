@@ -24,14 +24,20 @@ export function buildRoleSwitchUrlCore({
   profile,
   restaurantIdOverride = "",
   roleTabMap = {},
-  buildUrlFn
+  buildUrlFn,
+  buildPathFn
 } = {}) {
   const buildUrlSafe = typeof buildUrlFn === "function" ? buildUrlFn : null;
   if (!buildUrlSafe) return "";
   const ownerRestaurantId = restaurantIdOverride || profile?.restaurantId || "";
   const tab = roleTabMap?.[role] || "";
+  const buildPathSafe = typeof buildPathFn === "function" ? buildPathFn : null;
   const params = {};
-  if (tab) params.tab = tab;
+  let targetPath = "";
+  if (buildPathSafe && tab) {
+    targetPath = String(buildPathSafe(tab) || "").trim();
+  }
+  if (!targetPath && tab) params.tab = tab;
   if (role === "owner" && ownerRestaurantId) params.r = ownerRestaurantId;
-  return buildUrlSafe("apps/menyra-social/index.html", params);
+  return buildUrlSafe(targetPath || "apps/menyra-social/index.html", params);
 }

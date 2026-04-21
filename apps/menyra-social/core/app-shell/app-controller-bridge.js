@@ -157,6 +157,7 @@ export function createAppControllerBridge({
     }),
     normalizeProfileTopTabFromRoute: (value) => deeplink.normalizeProfileTopTabFromRouteCore(value),
     openProfileViewFromBusiness: (input, options = {}) => openProfileViewFromBusiness(input, options),
+    openProfileFromUser: (input, options = {}) => openProfileFromUser(input, options),
     parsePushOpenTargetPayload: (payload = {}) => deeplink.parsePushOpenTargetPayloadCore(payload),
     shouldHandlePushOpenTarget: ({ notificationId = "", hasRouteFromUrl = false } = {}) => deeplink.shouldHandlePushOpenTargetCore({
       notificationId,

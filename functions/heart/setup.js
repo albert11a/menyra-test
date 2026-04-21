@@ -72,6 +72,28 @@ function buildUrl(baseUrl = "", params = {}) {
   }
 }
 
+function buildAppPathUrl(baseUrl = "", pathname = "/", params = {}) {
+  const safePath = `/${asText(pathname).replace(/^\/+/, "")}`.replace(/\/+$/, "") || "/";
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    const safeValue = asText(value);
+    if (!safeValue) return;
+    search.set(key, safeValue);
+  });
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  const safeBaseUrl = asText(baseUrl);
+  if (!safeBaseUrl) return `${safePath}${suffix}`;
+  try {
+    const url = new URL(safePath, safeBaseUrl);
+    search.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
+    return url.toString();
+  } catch {
+    return `${safePath}${suffix}`;
+  }
+}
+
 function rebaseUrlToBase(baseUrl = "", targetUrl = "") {
   const safeBaseUrl = asText(baseUrl);
   const safeTargetUrl = asText(targetUrl);
@@ -92,18 +114,16 @@ function rebaseUrlToBase(baseUrl = "", targetUrl = "") {
 }
 
 function buildGuestRouteUrl(socialBaseUrl = "", restaurantId = "") {
-  return buildUrl(socialBaseUrl, {
-    tab: "menu",
+  return buildAppPathUrl(socialBaseUrl, "/menu", {
     src: "qr",
     r: restaurantId
   });
 }
 
-function buildProfileUrl(socialBaseUrl = "", handle = "") {
-  return buildUrl(socialBaseUrl, {
-    tab: "profile",
-    handle
-  });
+function buildProfileUrl(socialBaseUrl = "", routeId = "") {
+  const safeRouteId = asText(routeId).replace(/^@/, "");
+  if (!safeRouteId) return "";
+  return buildAppPathUrl(socialBaseUrl, `/user/${encodeURIComponent(safeRouteId)}`);
 }
 
 function parseHandleFromUrl(url = "") {
@@ -117,15 +137,21 @@ function parseHandleFromUrl(url = "") {
 }
 
 function buildRestaurantProfileUrl(socialBaseUrl = "", restaurantId = "", topTab = "profile") {
-  return buildUrl(socialBaseUrl, {
-    tab: topTab,
-    r: restaurantId
+  const safeRestaurantId = asText(restaurantId);
+  const safeTopTab = asText(topTab).toLowerCase();
+  if (safeTopTab === "menu" || safeTopTab === "focus") {
+    return buildAppPathUrl(socialBaseUrl, "/menu", {
+      r: safeRestaurantId,
+      top: safeTopTab === "focus" ? "focus" : ""
+    });
+  }
+  return buildAppPathUrl(socialBaseUrl, "/profile", {
+    r: safeRestaurantId
   });
 }
 
 function buildChatRouteUrl(socialBaseUrl = "", targetUid = "") {
-  return buildUrl(socialBaseUrl, {
-    tab: "chat",
+  return buildAppPathUrl(socialBaseUrl, "/chat", {
     chat: targetUid
   });
 }
@@ -205,11 +231,11 @@ function buildDefaultPackConfig({
     : "";
   const businessMenuUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "menu")
-    : buildUrl(socialBaseUrl, { tab: "menu" });
+    : buildAppPathUrl(socialBaseUrl, "/menu");
   const businessFocusUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "focus")
-    : buildUrl(socialBaseUrl, { tab: "focus" });
-  const uploadUrl = buildUrl(socialBaseUrl, { tab: "upload" });
+    : buildAppPathUrl(socialBaseUrl, "/menu", { top: "focus" });
+  const uploadUrl = buildAppPathUrl(socialBaseUrl, "/upload");
   const userTargetProfileUrl = userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "";
   const stableSocialTargetUrl = businessProfileUrl;
   return {
@@ -230,12 +256,12 @@ function buildDefaultPackConfig({
           verifySelector: "[data-public-profile-follow] svg"
         },
         like: {
-          url: buildUrl(socialBaseUrl, { tab: "feed" }),
+          url: buildAppPathUrl(socialBaseUrl, "/feed"),
           triggerSelector: "[data-feed-post-like], [data-post-like-btn], #postLikeBtn",
           countSelector: "[data-post-like-count], #postLikesBtn"
         },
         commentCreate: {
-          url: buildUrl(socialBaseUrl, { tab: "feed" }),
+          url: buildAppPathUrl(socialBaseUrl, "/feed"),
           openComposerSelector: "[data-feed-post-comment]",
           inputSelector: "#postCommentInput",
           submitSelector: "#postCommentSend",
@@ -305,7 +331,7 @@ function buildDefaultPackConfig({
       },
       chat: {
         send: {
-          url: buildUrl(socialBaseUrl, { tab: "chat" }),
+          url: buildAppPathUrl(socialBaseUrl, "/chat"),
           targetUid: businessUid,
           userTargetUid: userUid,
           threadUrl: businessUid ? buildChatRouteUrl(socialBaseUrl, businessUid) : "",
@@ -324,14 +350,14 @@ function buildDefaultPackConfig({
       },
       discovery: {
         search: {
-          url: buildUrl(socialBaseUrl, { tab: "search" }),
+          url: buildAppPathUrl(socialBaseUrl, "/search"),
           inputSelector: "#searchInput",
           businessResultSelector: "[data-search-business]",
           profileReadySelector: "[data-public-profile-follow], [data-business-top-tab], [data-profile-top-tab]",
           query: asText(restaurantName, personas.business?.displayName, personas.business?.handle)
         },
         map: {
-          url: buildUrl(socialBaseUrl, { tab: "map" }),
+          url: buildAppPathUrl(socialBaseUrl, "/map"),
           inputSelector: "#mapSearchInput",
           businessResultSelector: "[data-search-business]",
           profileReadySelector: "[data-public-profile-follow], [data-business-top-tab], [data-profile-top-tab]",
@@ -340,7 +366,7 @@ function buildDefaultPackConfig({
       },
       crm: {
         leadCreate: {
-          url: buildUrl(socialBaseUrl, { tab: "leads" }),
+          url: buildAppPathUrl(socialBaseUrl, "/leads"),
           openSelector: "#newLeadBtn",
           nameSelector: "#leadBusinessName",
           emailSelector: "#leadEmail",
@@ -348,7 +374,7 @@ function buildDefaultPackConfig({
           verifyText: "TEST_RUN_<runId>_LEAD_1"
         },
         leadEdit: {
-          url: buildUrl(socialBaseUrl, { tab: "leads" }),
+          url: buildAppPathUrl(socialBaseUrl, "/leads"),
           openSelector: "[data-lead-edit]",
           inputSelector: "#leadBusinessName",
           saveSelector: "#leadModalSave, #leadInlineSaveBtn",
@@ -465,9 +491,9 @@ function normalizeHeartPackConfig(packConfig = {}, {
   const publicBusinessFocusUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "focus")
     : "";
-  const stableBusinessMenuUrl = buildUrl(socialBaseUrl, { tab: "menu" });
-  const stableBusinessFocusUrl = buildUrl(socialBaseUrl, { tab: "focus" });
-  const stableUploadUrl = buildUrl(socialBaseUrl, { tab: "upload" });
+  const stableBusinessMenuUrl = buildAppPathUrl(socialBaseUrl, "/menu");
+  const stableBusinessFocusUrl = buildAppPathUrl(socialBaseUrl, "/menu", { top: "focus" });
+  const stableUploadUrl = buildAppPathUrl(socialBaseUrl, "/upload");
   const stableBusinessChatUid = asText(personas.business?.uid);
   const stableUserChatUid = asText(personas.user?.uid);
 
@@ -525,7 +551,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
 
   if (!asText(socialLike.url)) {
-    socialLike.url = buildUrl(socialBaseUrl, { tab: "feed" });
+    socialLike.url = buildAppPathUrl(socialBaseUrl, "/feed");
   }
   if (!asText(socialLike.triggerSelector) || asText(socialLike.triggerSelector) === "[data-like-toggle]") {
     socialLike.triggerSelector = "[data-feed-post-like], [data-post-like-btn], #postLikeBtn";
@@ -535,7 +561,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
 
   if (!asText(socialCommentCreate.url)) {
-    socialCommentCreate.url = buildUrl(socialBaseUrl, { tab: "feed" });
+    socialCommentCreate.url = buildAppPathUrl(socialBaseUrl, "/feed");
   }
   if (!asText(socialCommentCreate.openComposerSelector) || asText(socialCommentCreate.openComposerSelector) === "[data-comment-open]") {
     socialCommentCreate.openComposerSelector = "[data-feed-post-comment]";
@@ -553,7 +579,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
   if (
     !asText(socialPostCreate.url)
-    || asText(socialPostCreate.url) === buildUrl(socialBaseUrl, { tab: "feed" })
+    || asText(socialPostCreate.url) === buildAppPathUrl(socialBaseUrl, "/feed")
   ) {
     socialPostCreate.url = stableUploadUrl;
   }
@@ -578,7 +604,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
 
   if (!asText(chatSend.url)) {
-    chatSend.url = buildUrl(socialBaseUrl, { tab: "chat" });
+    chatSend.url = buildAppPathUrl(socialBaseUrl, "/chat");
   }
   if (!asText(chatSend.targetUid) && stableBusinessChatUid) {
     chatSend.targetUid = stableBusinessChatUid;
@@ -609,7 +635,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   chatSend.openTargetSelector = asText(chatSend.openTargetSelector, "[data-open-chat], #profileChatBtn, #chatBtn");
 
   if (!asText(discoverySearch.url)) {
-    discoverySearch.url = buildUrl(socialBaseUrl, { tab: "search" });
+    discoverySearch.url = buildAppPathUrl(socialBaseUrl, "/search");
   }
   discoverySearch.inputSelector = asText(discoverySearch.inputSelector, "#searchInput");
   discoverySearch.businessResultSelector = asText(discoverySearch.businessResultSelector, "[data-search-business]");
@@ -617,7 +643,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   discoverySearch.query = asText(discoverySearch.query, restaurantName, personas.business?.displayName, personas.business?.handle);
 
   if (!asText(discoveryMap.url)) {
-    discoveryMap.url = buildUrl(socialBaseUrl, { tab: "map" });
+    discoveryMap.url = buildAppPathUrl(socialBaseUrl, "/map");
   }
   discoveryMap.inputSelector = asText(discoveryMap.inputSelector, "#mapSearchInput");
   discoveryMap.businessResultSelector = asText(discoveryMap.businessResultSelector, "[data-search-business]");
@@ -660,21 +686,21 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
   if (
     !asText(next.actions.business.menu?.url)
-    || asText(next.actions.business.menu.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(next.actions.business.menu.url) === buildAppPathUrl(socialBaseUrl, "/menu")
     || asText(next.actions.business.menu.url) === publicBusinessMenuUrl
   ) {
     next.actions.business.menu.url = stableBusinessMenuUrl;
   }
   if (
     !asText(next.actions.business.focus?.url)
-    || asText(next.actions.business.focus.url) === buildUrl(socialBaseUrl, { tab: "focus" })
+    || asText(next.actions.business.focus.url) === buildAppPathUrl(socialBaseUrl, "/menu", { top: "focus" })
     || asText(next.actions.business.focus.url) === publicBusinessFocusUrl
   ) {
     next.actions.business.focus.url = stableBusinessFocusUrl;
   }
   if (
     !asText(productCreate.url)
-    || asText(productCreate.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(productCreate.url) === buildAppPathUrl(socialBaseUrl, "/menu")
     || asText(productCreate.url) === publicBusinessMenuUrl
   ) {
     productCreate.url = stableBusinessMenuUrl;
@@ -691,7 +717,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
   if (
     !asText(productEdit.url)
-    || asText(productEdit.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(productEdit.url) === buildAppPathUrl(socialBaseUrl, "/menu")
     || asText(productEdit.url) === publicBusinessMenuUrl
   ) {
     productEdit.url = stableBusinessMenuUrl;
@@ -708,7 +734,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
   if (
     !asText(productDelete.url)
-    || asText(productDelete.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(productDelete.url) === buildAppPathUrl(socialBaseUrl, "/menu")
     || asText(productDelete.url) === publicBusinessMenuUrl
   ) {
     productDelete.url = stableBusinessMenuUrl;

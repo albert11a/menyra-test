@@ -1034,9 +1034,9 @@ export function createPublicProfileRuntimeController({
     const publicSlug = String(data?.publicSlug || rest?.publicSlug || data?.landingSlug || rest?.landingSlug || "").trim();
     const landingSlug = String(data?.landingSlug || rest?.landingSlug || publicSlug).trim();
     const canonicalPublicPath = String(
-      data?.canonicalPublicPath
-      || rest?.canonicalPublicPath
-      || (publicSlug ? `/b/${encodeURIComponent(publicSlug)}` : "")
+      publicSlug
+        ? `/${encodeURIComponent(publicSlug)}`
+        : (data?.canonicalPublicPath || rest?.canonicalPublicPath || "")
     ).trim();
     const landingPageUrl = String(data?.landingPageUrl || rest?.landingPageUrl || "").trim();
     const landingScreenOne = data?.landingScreenOne || rest?.landingScreenOne || null;

@@ -1,73 +1,216 @@
 {
   "redirects": [
-    { "source": "/hub", "destination": "/hub/", "permanent": false },
-    { "source": "/ceo", "destination": "/ceo/", "permanent": false },
-    { "source": "/owner", "destination": "/owner/", "permanent": false },
-    { "source": "/staff", "destination": "/staff/", "permanent": false },
-    { "source": "/waiter", "destination": "/waiter/", "permanent": false },
-    { "source": "/kitchen", "destination": "/kitchen/", "permanent": false },
-    { "source": "/social", "destination": "/social/", "permanent": false },
-    { "source": "/heart", "destination": "/heart/", "permanent": false },
-    { "source": "/", "has": [{ "type": "host", "value": "waiter.menyra.com" }], "destination": "/waiter/", "permanent": false },
-    { "source": "/", "has": [{ "type": "host", "value": "waiter.mnyra.com" }], "destination": "/waiter/", "permanent": false }
+    { "source": "/", "has": [{ "type": "host", "value": "ceo.menyra.com" }], "destination": "/ceo", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "ceo.mnyra.com" }], "destination": "/ceo", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "owner.menyra.com" }], "destination": "/owner", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "owner.mnyra.com" }], "destination": "/owner", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "staff.menyra.com" }], "destination": "/staff", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "staff.mnyra.com" }], "destination": "/staff", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "waiter.menyra.com" }], "destination": "/waiter", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "waiter.mnyra.com" }], "destination": "/waiter", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "kitchen.menyra.com" }], "destination": "/kitchen", "permanent": false },
+    { "source": "/", "has": [{ "type": "host", "value": "kitchen.mnyra.com" }], "destination": "/kitchen", "permanent": false },
+    { "source": "/hub/", "destination": "/hub", "permanent": false },
+    { "source": "/heart/", "destination": "/heart", "permanent": false },
+    { "source": "/discover", "destination": "/search", "permanent": false },
+    { "source": "/discover/", "destination": "/search", "permanent": false },
+    { "source": "/social", "destination": "/feed", "permanent": false },
+    { "source": "/social/", "destination": "/feed", "permanent": false },
+    { "source": "/b/:slug/menu", "destination": "/:slug/menu", "permanent": false },
+    { "source": "/b/:slug/posts", "destination": "/:slug/posts", "permanent": false },
+    { "source": "/b/:slug/qr", "destination": "/:slug/menu?src=qr", "permanent": false },
+    { "source": "/b/:slug", "destination": "/:slug", "permanent": false },
+    { "source": "/apps/menyra-ceo/:path*", "destination": "/ceo", "permanent": false },
+    { "source": "/apps/menyra-owner/:path*", "destination": "/owner", "permanent": false },
+    { "source": "/apps/menyra-staff/:path*", "destination": "/staff", "permanent": false },
+    { "source": "/apps/menyra-restaurants/:path*", "destination": "/feed", "permanent": false },
+    { "source": "/menyra-restaurants/:path*", "destination": "/feed", "permanent": false },
+    { "source": "/", "destination": "/feed", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/", "has": [{ "type": "host", "value": "ceo.menyra.com" }], "destination": "/apps/menyra-social/index.html?tab=leads" },
-    { "source": "/", "has": [{ "type": "host", "value": "ceo.mnyra.com" }], "destination": "/apps/menyra-social/index.html?tab=leads" },
-    { "source": "/", "has": [{ "type": "host", "value": "owner.menyra.com" }], "destination": "/apps/menyra-social/index.html?tab=profile" },
-    { "source": "/", "has": [{ "type": "host", "value": "owner.mnyra.com" }], "destination": "/apps/menyra-social/index.html?tab=profile" },
-    { "source": "/", "has": [{ "type": "host", "value": "staff.menyra.com" }], "destination": "/apps/menyra-social/index.html?tab=staff" },
-    { "source": "/", "has": [{ "type": "host", "value": "staff.mnyra.com" }], "destination": "/apps/menyra-social/index.html?tab=staff" },
-    { "source": "/", "has": [{ "type": "host", "value": "waiter.menyra.com" }], "destination": "/apps/waiter/index.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "waiter.mnyra.com" }], "destination": "/apps/waiter/index.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "kitchen.menyra.com" }], "destination": "/apps/menyra-social/index.html?tab=menu" },
-    { "source": "/", "has": [{ "type": "host", "value": "kitchen.mnyra.com" }], "destination": "/apps/menyra-social/index.html?tab=menu" },
-    { "source": "/hub/", "destination": "/hub/index.html" },
-    { "source": "/heart/", "destination": "/apps/mnyra-heart/index.html" },
+    { "source": "/hub", "destination": "/hub/index.html" },
+    { "source": "/heart", "destination": "/apps/mnyra-heart/index.html" },
     { "source": "/heart/:path*", "destination": "/apps/mnyra-heart/:path*" },
     { "source": "/api/heart/:path*", "destination": "https://us-central1-menyra-c0e68.cloudfunctions.net/:path*" },
-    { "source": "/ceo/", "destination": "/apps/menyra-social/index.html?tab=leads" },
-    { "source": "/ceo/:path*", "destination": "/apps/menyra-social/index.html?tab=leads" },
-    { "source": "/owner/", "destination": "/apps/menyra-social/index.html?tab=profile" },
-    { "source": "/owner/:path*", "destination": "/apps/menyra-social/index.html?tab=profile" },
-    { "source": "/staff/", "destination": "/apps/menyra-social/index.html?tab=staff" },
-    { "source": "/staff/:path*", "destination": "/apps/menyra-social/index.html?tab=staff" },
+    { "source": "/feed", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/search", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/map", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/location", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/profile", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/menu", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/orders", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/notifications", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/settings", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/upload", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/leads", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/ceo", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/admin", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/owner", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/staff", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/kitchen", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/customers", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/business-accounts", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/businessaccounts", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/chat", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/login", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/register", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/ceo/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/admin/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/owner/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/staff/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/kitchen/:path*", "destination": "/apps/menyra-social/index.html" },
     { "source": "/waiter/sw.js", "destination": "/apps/waiter/sw.js" },
     { "source": "/waiter/manifest.webmanifest", "destination": "/apps/waiter/manifest.webmanifest" },
-    { "source": "/waiter/", "destination": "/apps/waiter/index.html" },
+    { "source": "/waiter", "destination": "/apps/waiter/index.html" },
     { "source": "/waiter/:path*", "destination": "/apps/waiter/index.html" },
-    { "source": "/kitchen/", "destination": "/apps/menyra-social/index.html?tab=menu" },
-    { "source": "/kitchen/:path*", "destination": "/apps/menyra-social/index.html?tab=menu" },
-    { "source": "/b/:slug", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/b/:slug/menu", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/b/:slug/posts", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/b/:slug/qr", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/apps/menyra-ceo/:path*", "destination": "/apps/menyra-social/index.html?tab=leads" },
-    { "source": "/apps/menyra-owner/:path*", "destination": "/apps/menyra-social/index.html?tab=profile" },
-    { "source": "/apps/menyra-staff/:path*", "destination": "/apps/menyra-social/index.html?tab=staff" },
-    { "source": "/apps/menyra-restaurants/:path*", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/lp/:restaurantId", "destination": "/apps/menyra-social/index.html?r=:restaurantId&tab=profile&top=landing" },
-    { "source": "/", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/lp/:restaurantId", "destination": "/apps/menyra-social/index.html?r=:restaurantId&top=landing" },
+    { "source": "/user/:id/:surface", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/user/:id", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
-    { "source": "/menyra-restaurants/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/:landingSlug/:surface", "destination": "/apps/menyra-social/index.html" },
     { "source": "/:landingSlug", "destination": "/apps/menyra-social/index.html" }
   ],
   "headers": [
     {
-      "source": "/",
+      "source": "/feed",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     },
     {
-      "source": "/social/",
+      "source": "/search",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     },
     {
-      "source": "/b/:path*",
+      "source": "/map",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/user/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/lp/:restaurantId",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/profile",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/menu",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/orders",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/notifications",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/settings",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/upload",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/leads",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/ceo",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/admin",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/owner",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/staff",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/kitchen",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/customers",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/business-accounts",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/chat",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/login",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/register",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/:landingSlug",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/:landingSlug/:surface",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
@@ -91,7 +234,7 @@
       ]
     },
     {
-      "source": "/heart/",
+      "source": "/heart",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
