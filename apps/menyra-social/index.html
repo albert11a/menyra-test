@@ -1229,7 +1229,44 @@
       const BOOTSTRAP_TIMEOUT_MS = constrainedNetwork ? 3800 : 2200;
       window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
       const searchParams = new URLSearchParams(window.location.search || "");
-      const normalizeLandingSlugKey = (value = "") => {
+      const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
+        "b",
+        "admin",
+        "ceo",
+        "owner",
+        "staff",
+        "waiter",
+        "wr",
+        "kitchen",
+        "social",
+        "heart",
+        "hub",
+        "apps",
+        "api",
+        "login",
+        "register",
+        "profile",
+        "post",
+        "posts",
+        "story",
+        "stories",
+        "menu",
+        "search",
+        "discover",
+        "map",
+        "location",
+        "orders",
+        "notifications",
+        "settings",
+        "upload",
+        "leads",
+        "customers",
+        "businessaccounts",
+        "menyra-restaurants",
+        "lp",
+        "index.html"
+      ]);
+      const normalizeLandingSlugKey = (value = "", { allowReserved = false } = {}) => {
         let key = String(value || "").trim().toLowerCase();
         if (!key) return "";
         try {
@@ -1237,40 +1274,81 @@
             key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
           }
         } catch {}
-        return key
+        const slug = key
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-+|-+$/g, "")
           .trim();
+        if (!slug) return "";
+        if (!allowReserved && RESERVED_PUBLIC_ROUTE_SEGMENTS.has(slug)) return "";
+        return slug;
       };
-      const resolveLandingSlugFromPathname = (rawPath = "") => {
+      const normalizeTopTabFromRouteSegment = (value = "") => {
+        const key = String(value || "").trim().toLowerCase();
+        if (!key) return "";
+        if (key === "menu" || key === "karte" || key === "speisekarte" || key === "shop") return "menu";
+        if (key === "qr" || key === "menuqr" || key === "scan-qr" || key === "scanqr") return "menu";
+        if (key === "profile" || key === "posts" || key === "home" || key === "overview") return "profile";
+        if (key === "landing" || key === "welcome" || key === "onboarding") return "landing";
+        if (key === "cart" || key === "basket" || key === "warenkorb") return "cart";
+        return "";
+      };
+      const isQrLikeRouteSegment = (value = "") => {
+        const key = String(value || "").trim().toLowerCase();
+        return key === "qr"
+          || key === "menuqr"
+          || key === "scan-qr"
+          || key === "scanqr";
+      };
+      const resolvePublicRouteFromPathname = (rawPath = "") => {
         const safePath = String(rawPath || "").split("?")[0].split("#")[0].trim();
-        if (!safePath) return "";
+        if (!safePath) return { restaurantId: "", topTab: "", accessSource: "" };
         const segments = safePath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
-        if (segments.length !== 1) return "";
-        const slug = String(segments[0] || "").trim();
-        if (!slug || slug.includes(".")) return "";
-        const key = slug.toLowerCase();
-        const reserved = new Set([
-          "ceo",
-          "owner",
-          "staff",
-          "waiter",
-          "kitchen",
-          "social",
-          "heart",
-          "hub",
-          "apps",
-          "api",
-          "login",
-          "register",
-          "profile",
-          "post",
-          "story",
-          "menyra-restaurants",
-          "lp"
-        ]);
-        if (reserved.has(key)) return "";
-        return normalizeLandingSlugKey(slug);
+        if (!segments.length) return { restaurantId: "", topTab: "", accessSource: "" };
+        if (String(segments[0] || "").trim().toLowerCase() === "b") {
+          const slug = normalizeLandingSlugKey(segments[1] || "");
+          if (!slug) return { restaurantId: "", topTab: "", accessSource: "" };
+          const surface = String(segments[2] || "").trim().toLowerCase();
+          if (!surface) {
+            return { restaurantId: slug, topTab: "profile", accessSource: "" };
+          }
+          if (surface === "menu") {
+            return { restaurantId: slug, topTab: "menu", accessSource: "" };
+          }
+          if (surface === "posts" || surface === "profile") {
+            return { restaurantId: slug, topTab: "profile", accessSource: "" };
+          }
+          if (surface === "qr") {
+            return { restaurantId: slug, topTab: "menu", accessSource: "qr" };
+          }
+          return { restaurantId: "", topTab: "", accessSource: "" };
+        }
+        const tailSegments = segments.length > 2 ? segments.slice(-2) : segments.slice();
+        const first = String(tailSegments[0] || "").trim();
+        const second = String(tailSegments[1] || "").trim();
+        const firstTopTab = normalizeTopTabFromRouteSegment(first);
+        const secondTopTab = normalizeTopTabFromRouteSegment(second);
+        const firstQrHint = isQrLikeRouteSegment(first);
+        const secondQrHint = isQrLikeRouteSegment(second);
+        const firstSlug = normalizeLandingSlugKey(first);
+        const secondSlug = normalizeLandingSlugKey(second);
+        if (tailSegments.length === 1 && firstSlug) {
+          return { restaurantId: firstSlug, topTab: "profile", accessSource: "" };
+        }
+        if (tailSegments.length >= 2 && firstTopTab && secondSlug) {
+          return {
+            restaurantId: secondSlug,
+            topTab: firstTopTab,
+            accessSource: firstQrHint ? "qr" : ""
+          };
+        }
+        if (tailSegments.length >= 2 && secondTopTab && firstSlug) {
+          return {
+            restaurantId: firstSlug,
+            topTab: secondTopTab,
+            accessSource: secondQrHint ? "qr" : ""
+          };
+        }
+        return { restaurantId: "", topTab: "", accessSource: "" };
       };
       const routeRestaurantId = String(
         searchParams.get("r")
@@ -1282,7 +1360,8 @@
       ).trim();
       const routeTab = String(searchParams.get("tab") || "").trim().toLowerCase();
       const routeTopTab = String(searchParams.get("top") || "").trim().toLowerCase();
-      const landingSlugFromPath = resolveLandingSlugFromPathname(window.location.pathname || "");
+      const pathPublicRoute = resolvePublicRouteFromPathname(window.location.pathname || "");
+      const landingSlugFromPath = String(pathPublicRoute.restaurantId || "").trim();
       const routeTableNumber = Math.max(0, Number(
         searchParams.get("table")
         || searchParams.get("tableNumber")
@@ -1293,10 +1372,16 @@
         searchParams.get("src")
         || searchParams.get("source")
         || searchParams.get("menuAccessSource")
+        || pathPublicRoute.accessSource
         || ""
       ).trim().toLowerCase();
-      const effectiveRouteTab = routeTab || (landingSlugFromPath ? "landing" : "");
-      const effectiveProfileRouteTab = routeTopTab || effectiveRouteTab;
+      const effectiveRouteTab = routeTab
+        || routeTopTab
+        || String(pathPublicRoute.topTab || "").trim().toLowerCase()
+        || (landingSlugFromPath ? (routeSource === "qr" ? "menu" : "profile") : "");
+      const effectiveProfileRouteTab = routeTopTab
+        || String(pathPublicRoute.topTab || "").trim().toLowerCase()
+        || effectiveRouteTab;
       const isExplicitLandingRoute = effectiveProfileRouteTab === "landing";
       const hasDirectRouteTarget = !!(routeRestaurantId || landingSlugFromPath);
       const hasLandingRouteHint = !!(
@@ -1451,7 +1536,7 @@
             url.searchParams.set("r", bootstrapRouteId);
           }
           if (routeTab) url.searchParams.set("tab", routeTab);
-          if (routeTopTab) url.searchParams.set("top", routeTopTab);
+          if (effectiveProfileRouteTab) url.searchParams.set("top", effectiveProfileRouteTab);
           if (routeSource) url.searchParams.set("src", routeSource);
           if (routeTableNumber > 0) {
             url.searchParams.set("table", String(routeTableNumber));

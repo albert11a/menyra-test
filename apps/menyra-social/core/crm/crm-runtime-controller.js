@@ -156,10 +156,13 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   const LEAD_LANDING_TEMPLATE_ID = "lead-screen-1";
   const LEAD_LANDING_PUBLIC_ORIGIN = "https://mnyra.com";
   const LEAD_LANDING_RESERVED_SLUGS = new Set([
+    "b",
+    "admin",
     "ceo",
     "owner",
     "staff",
     "waiter",
+    "wr",
     "kitchen",
     "social",
     "heart",
@@ -170,7 +173,21 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     "register",
     "profile",
     "post",
+    "posts",
     "story",
+    "stories",
+    "menu",
+    "search",
+    "discover",
+    "map",
+    "location",
+    "orders",
+    "notifications",
+    "settings",
+    "upload",
+    "leads",
+    "customers",
+    "businessaccounts",
     "menyra-restaurants",
     "lp"
   ]);
@@ -218,23 +235,34 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       .slice(0, 72);
   }
 
+  function hasLeadLandingSlugCollisionInState(slugValue = "", { restaurantId = "" } = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeSlugValue = normalizeLeadLandingSlugValue(slugValue || "");
+    if (!safeSlugValue) return false;
+    const restaurants = Array.isArray(state?.restaurants) ? state.restaurants : [];
+    return restaurants.some((row) => {
+      const rowId = String(row?.id || "").trim();
+      if (rowId && safeRestaurantId && rowId === safeRestaurantId) return false;
+      const rowSlug = normalizeLeadLandingSlugValue(
+        row?.publicSlug
+        || row?.landingSlug
+        || row?.handle
+        || row?.name
+        || row?.restaurantName
+        || row?.leadId
+        || rowId
+      );
+      return !!rowSlug && rowSlug === safeSlugValue;
+    });
+  }
+
   function resolveLeadLandingSlugConflict(baseSlug = "", { restaurantId = "", leadId = "" } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     const safeLeadId = String(leadId || "").trim();
     let candidate = normalizeLeadLandingSlugValue(baseSlug || safeRestaurantId || safeLeadId || "business");
     if (!candidate) candidate = "business";
 
-    const restaurants = Array.isArray(state?.restaurants) ? state.restaurants : [];
-    const hasCollision = (slugValue = "") => restaurants.some((row) => {
-      const rowId = String(row?.id || "").trim();
-      if (rowId && safeRestaurantId && rowId === safeRestaurantId) return false;
-      const rowSlug = normalizeLeadLandingSlugValue(
-        row?.landingSlug || row?.name || row?.restaurantName || row?.leadId || rowId
-      );
-      return !!rowSlug && rowSlug === slugValue;
-    });
-
-    if (LEAD_LANDING_RESERVED_SLUGS.has(candidate) || hasCollision(candidate)) {
+    if (LEAD_LANDING_RESERVED_SLUGS.has(candidate) || hasLeadLandingSlugCollisionInState(candidate, { restaurantId: safeRestaurantId })) {
       const suffixSource = normalizeLeadLandingSlugValue(safeRestaurantId || safeLeadId || "");
       const suffix = suffixSource.replace(/-/g, "").slice(0, 6) || "biz";
       candidate = `${candidate}-${suffix}`
@@ -250,7 +278,13 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   function buildLeadLandingSlug(restaurantId = "", options = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     const safeOptions = options && typeof options === "object" ? options : {};
-    const explicitSlug = normalizeLeadLandingSlugValue(safeOptions.landingSlug || "");
+    const explicitSlug = normalizeLeadLandingSlugValue(
+      safeOptions.publicSlug
+      || safeOptions.landingSlug
+      || safeOptions.base?.publicSlug
+      || safeOptions.base?.landingSlug
+      || ""
+    );
     if (explicitSlug && !LEAD_LANDING_RESERVED_SLUGS.has(explicitSlug)) {
       return resolveLeadLandingSlugConflict(explicitSlug, {
         restaurantId: safeRestaurantId,
@@ -264,8 +298,12 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       safeOptions.businessName
       || safeOptions.name
       || safeOptions.restaurantName
+      || safeOptions.base?.publicSlug
+      || safeOptions.base?.handle
       || safeOptions.base?.name
       || safeOptions.base?.restaurantName
+      || fromState?.publicSlug
+      || fromState?.handle
       || fromState?.name
       || fromState?.restaurantName
       || ""
@@ -277,12 +315,60 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     });
   }
 
+  async function findLeadLandingSlugConflictDoc(slugValue = "", { restaurantId = "" } = {}) {
+    const safeSlugValue = normalizeLeadLandingSlugValue(slugValue || "");
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeSlugValue || !collection || !query || !where || !limit || !getDocs || !db) return null;
+    const fields = ["publicSlug", "landingSlug", "handle"];
+    for (const fieldName of fields) {
+      try {
+        const snap = await getDocs(query(collection(db, "restaurants"), where(fieldName, "==", safeSlugValue), limit(3)));
+        const conflict = snap.docs.find((docSnap) => String(docSnap?.id || "").trim() !== safeRestaurantId) || null;
+        if (conflict?.id) {
+          return {
+            id: String(conflict.id || "").trim(),
+            data: conflict.data?.() || {}
+          };
+        }
+      } catch {}
+    }
+    return null;
+  }
+
+  async function resolveLeadLandingSlugUnique(restaurantId = "", options = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const baseCandidate = buildLeadLandingSlug(safeRestaurantId, safeOptions) || "business";
+    const suffixSeed = normalizeLeadLandingSlugValue(
+      safeRestaurantId
+      || safeOptions.leadId
+      || safeOptions.publicSlug
+      || safeOptions.landingSlug
+      || safeOptions.businessName
+      || safeOptions.name
+      || "biz"
+    ).replace(/-/g, "");
+    const suffix = suffixSeed.slice(0, 6) || "biz";
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const candidate = normalizeLeadLandingSlugValue(
+        attempt === 0
+          ? baseCandidate
+          : `${baseCandidate}-${suffix}${attempt > 1 ? attempt : ""}`
+      );
+      if (!candidate || LEAD_LANDING_RESERVED_SLUGS.has(candidate)) continue;
+      if (hasLeadLandingSlugCollisionInState(candidate, { restaurantId: safeRestaurantId })) continue;
+      const remoteConflict = await findLeadLandingSlugConflictDoc(candidate, { restaurantId: safeRestaurantId });
+      if (!remoteConflict?.id) return candidate;
+    }
+    return normalizeLeadLandingSlugValue(`${baseCandidate}-${suffix}-${Date.now().toString(36).slice(-4)}`) || "business";
+  }
+
   function buildLeadLandingPagePath(restaurantId = "", options = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     const safeOptions = options && typeof options === "object" ? options : {};
     const landingSlug = buildLeadLandingSlug(safeRestaurantId, safeOptions);
     if (!landingSlug) return "";
-    return `/${encodeURIComponent(landingSlug)}`;
+    return `/b/${encodeURIComponent(landingSlug)}`;
   }
 
   function buildLeadLandingPageUrl(restaurantId = "", options = {}) {
@@ -290,14 +376,14 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     const safeOptions = options && typeof options === "object" ? options : {};
     const landingSlug = buildLeadLandingSlug(safeRestaurantId, safeOptions);
     if (!landingSlug) return "";
-    const path = `/${encodeURIComponent(landingSlug)}`;
+    const path = `/b/${encodeURIComponent(landingSlug)}`;
     if (!path) return "";
     const forcePublicOrigin = safeOptions.forcePublicOrigin === true;
     if (!forcePublicOrigin && typeof window !== "undefined") {
       const host = String(window.location?.hostname || "").trim().toLowerCase();
       const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
       if (isLocalLikeHostname(host)) {
-        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile&top=landing`;
+        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile`;
         return origin ? `${origin}${previewPath}` : previewPath;
       }
     }
@@ -312,6 +398,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   } = {}) {
     const businessName = String(base?.name || base?.restaurantName || base?.businessName || "Business").trim() || "Business";
     const landingSlug = buildLeadLandingSlug(restaurantId, {
+      publicSlug: base?.publicSlug || "",
       landingSlug: base?.landingSlug || "",
       businessName,
       leadId: base?.leadId || ""
@@ -1382,12 +1469,15 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
   const safeBase = base && typeof base === "object" ? base : {};
   const safeOptions = options && typeof options === "object" ? options : {};
   const businessName = String(safeBase?.name || safeBase?.restaurantName || safeBase?.businessName || "Business").trim() || "Business";
-  const landingSlug = buildLeadLandingSlug(safeRestaurantId, {
+  const landingSlug = await resolveLeadLandingSlugUnique(safeRestaurantId, {
+    publicSlug: safeOptions.publicSlug || safeBase?.publicSlug || "",
     landingSlug: safeOptions.landingSlug || safeBase?.landingSlug || "",
     businessName,
     leadId: safeOptions.leadId || safeBase?.leadId || ""
   });
+  const canonicalPublicPath = `/b/${encodeURIComponent(landingSlug)}`;
   const landingUrl = buildLeadLandingPageUrl(safeRestaurantId, {
+    publicSlug: landingSlug,
     landingSlug,
     businessName,
     leadId: safeOptions.leadId || safeBase?.leadId || "",
@@ -1407,12 +1497,25 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     landingEnabled: true,
     landingTemplate: LEAD_LANDING_TEMPLATE_ID,
     landingRestaurantId: safeRestaurantId,
+    publicSlug: landingSlug,
+    canonicalPublicPath,
     landingSlug,
     landingPageUrl: landingUrl,
     landingScreenOne,
     landingUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
+  await setDoc(doc(db, "restaurants", safeRestaurantId), {
+    publicSlug: landingSlug,
+    canonicalPublicPath,
+    landingEnabled: true,
+    landingTemplate: LEAD_LANDING_TEMPLATE_ID,
+    landingRestaurantId: safeRestaurantId,
+    landingSlug,
+    landingPageUrl: landingUrl,
+    publicMetaUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
   await setDoc(doc(db, "restaurants", safeRestaurantId, "public", "meta"), payload, { merge: true });
 }
 
@@ -1423,7 +1526,7 @@ function normalizeLeadDoc(docSnap) {
   const safeLeadId = String(docSnap?.id || data.id || "").trim();
   const safeRestaurantId = String(data.restaurantId || data.restaurant || "").trim();
   const safeLandingRestaurantId = String(data.landingRestaurantId || safeRestaurantId).trim();
-  const safeLandingSlug = String(data.landingSlug || "").trim();
+  const safeLandingSlug = String(data.publicSlug || data.landingSlug || "").trim();
   const safeBusinessName = String(data.businessName || data.name || "").trim();
   const hasLandingRouteKey = !!String(safeLandingRestaurantId || safeLandingSlug).trim();
   const safeLandingPageUrl = String(data.landingPageUrl || "").trim()
@@ -1462,6 +1565,8 @@ function normalizeLeadDoc(docSnap) {
     note: data.note || "",
     status,
     restaurantId: safeRestaurantId,
+    publicSlug: safeLandingSlug,
+    canonicalPublicPath: String(data.canonicalPublicPath || (safeLandingSlug ? `/b/${encodeURIComponent(safeLandingSlug)}` : "")).trim(),
     landingEnabled: data.landingEnabled !== false,
     landingTemplate: data.landingTemplate || "",
     landingRestaurantId: safeLandingRestaurantId,
@@ -1489,10 +1594,14 @@ function normalizeLeadFromRestaurant(rest) {
   const safeRestaurantId = String(data.id || "").trim();
   const safeLeadId = String(data.leadId || data.id || "").trim();
   const safeBusinessName = String(data.name || data.restaurantName || "").trim();
-  const safeLandingSlug = String(data.landingSlug || "").trim();
+  const safeLandingSlug = String(data.publicSlug || data.landingSlug || "").trim();
+  const resolvedPublicSlug = safeLandingSlug || buildLeadLandingSlug(safeRestaurantId, {
+    businessName: safeBusinessName,
+    leadId: safeLeadId
+  });
   const safeLandingPageUrl = String(data.landingPageUrl || "").trim()
     || buildLeadLandingPageUrl(safeRestaurantId, {
-      landingSlug: safeLandingSlug,
+      landingSlug: resolvedPublicSlug,
       businessName: safeBusinessName,
       leadId: safeLeadId
     });
@@ -1519,13 +1628,13 @@ function normalizeLeadFromRestaurant(rest) {
     note: "",
     status,
     restaurantId: safeRestaurantId,
+    publicSlug: resolvedPublicSlug,
+    canonicalPublicPath: String(data.canonicalPublicPath || "").trim()
+      || (resolvedPublicSlug ? `/b/${encodeURIComponent(resolvedPublicSlug)}` : ""),
     landingEnabled: true,
     landingTemplate: data.landingTemplate || LEAD_LANDING_TEMPLATE_ID,
     landingRestaurantId: safeRestaurantId,
-    landingSlug: safeLandingSlug || buildLeadLandingSlug(safeRestaurantId, {
-      businessName: safeBusinessName,
-      leadId: safeLeadId
-    }),
+    landingSlug: resolvedPublicSlug,
     landingPageUrl: safeLandingPageUrl,
     socialUid: data.ownerUid || "",
     socialEmail: data.ownerEmail || "",
@@ -1821,7 +1930,7 @@ function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
   const logoUrl = String(lead?.logoUrl || lead?.logo || rest?.logoUrl || rest?.logo || "").trim();
   const customerType = resolveCustomerType(lead?.customerType || rest?.type || rest?.customerType || "cafe");
   const restaurantStatus = resolveRestaurantStatusFromLead(lead?.status || rest?.status || "registered", rest?.status || "");
-  const landingSlug = String(lead?.landingSlug || rest?.landingSlug || "").trim();
+  const landingSlug = String(lead?.publicSlug || lead?.landingSlug || rest?.publicSlug || rest?.landingSlug || "").trim();
   return {
     ...(rest || {}),
     name: businessName,
@@ -1834,6 +1943,8 @@ function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
     logo: logoUrl,
     status: restaurantStatus,
     leadId: String(lead?.id || rest?.leadId || "").trim(),
+    publicSlug: landingSlug,
+    canonicalPublicPath: landingSlug ? `/b/${encodeURIComponent(landingSlug)}` : "",
     landingSlug
   };
 }
@@ -1858,11 +1969,14 @@ async function backfillLeadLandingForRows(rows = []) {
 
     const businessName = String(lead?.businessName || restaurant?.name || restaurant?.restaurantName || "Business").trim() || "Business";
     const landingSlug = buildLeadLandingSlug(restaurantId, {
+      publicSlug: lead?.publicSlug || restaurant?.publicSlug || "",
       landingSlug: lead?.landingSlug || restaurant?.landingSlug || "",
       businessName,
       leadId: safeLeadId
     });
+    const canonicalPublicPath = landingSlug ? `/b/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLeadLandingPageUrl(restaurantId, {
+      publicSlug: landingSlug,
       landingSlug,
       businessName,
       leadId: safeLeadId,
@@ -1871,11 +1985,15 @@ async function backfillLeadLandingForRows(rows = []) {
     const hasLeadLanding = (
       String(lead?.landingTemplate || "").trim() === LEAD_LANDING_TEMPLATE_ID
       && String(lead?.landingRestaurantId || "").trim() === restaurantId
+      && String(lead?.publicSlug || "").trim() === landingSlug
+      && String(lead?.canonicalPublicPath || "").trim() === canonicalPublicPath
       && String(lead?.landingSlug || "").trim() === landingSlug
       && String(lead?.landingPageUrl || "").trim() === landingPageUrl
     );
     const hasRestaurantLanding = (
       String(restaurant?.landingTemplate || "").trim() === LEAD_LANDING_TEMPLATE_ID
+      && String(restaurant?.publicSlug || "").trim() === landingSlug
+      && String(restaurant?.canonicalPublicPath || "").trim() === canonicalPublicPath
       && String(restaurant?.landingSlug || "").trim() === landingSlug
       && String(restaurant?.landingPageUrl || "").trim() === landingPageUrl
     );
@@ -1886,14 +2004,20 @@ async function backfillLeadLandingForRows(rows = []) {
 
     try {
       const metaBase = buildLeadLandingMetaBaseFromLead(
-        { ...(lead || {}), landingSlug },
-        { ...(restaurant || {}), landingSlug }
+        { ...(lead || {}), publicSlug: landingSlug, landingSlug },
+        { ...(restaurant || {}), publicSlug: landingSlug, landingSlug }
       );
-      await ensureRestaurantPublicMeta(restaurantId, metaBase, { landingSlug, leadId: safeLeadId });
+      await ensureRestaurantPublicMeta(restaurantId, metaBase, {
+        publicSlug: landingSlug,
+        landingSlug,
+        leadId: safeLeadId
+      });
       const restaurantPatch = {
         landingEnabled: true,
         landingTemplate: LEAD_LANDING_TEMPLATE_ID,
         landingRestaurantId: restaurantId,
+        publicSlug: landingSlug,
+        canonicalPublicPath,
         landingSlug,
         landingPageUrl,
         updatedAt: serverTimestamp()
@@ -1903,6 +2027,8 @@ async function backfillLeadLandingForRows(rows = []) {
         landingEnabled: true,
         landingTemplate: LEAD_LANDING_TEMPLATE_ID,
         landingRestaurantId: restaurantId,
+        publicSlug: landingSlug,
+        canonicalPublicPath,
         landingSlug,
         landingPageUrl,
         updatedAt: serverTimestamp()
@@ -2577,6 +2703,7 @@ async function saveLeadFromModal() {
     ensureRestaurantPublicMeta,
     buildLeadLandingPageUrl,
     buildLeadLandingSlug,
+    resolveLeadLandingSlugUnique,
     createAuthUser,
     buildLeadCrmContribution,
     buildCustomerCrmContribution,
@@ -2918,6 +3045,7 @@ async function convertLeadToCustomer(leadId) {
     ensureRestaurantPublicMeta,
     buildLeadLandingPageUrl,
     buildLeadLandingSlug,
+    resolveLeadLandingSlugUnique,
     accumulateCeoCrmDelta,
     buildCustomerCrmContribution,
     applyCeoCrmCountDeltas,

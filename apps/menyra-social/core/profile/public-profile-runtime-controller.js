@@ -93,6 +93,8 @@ export function createPublicProfileRuntimeController({
     if (directName) return directName;
     const fallbackCandidates = [
       fallbackName,
+      data?.publicSlug,
+      rest?.publicSlug,
       data?.landingSlug,
       rest?.landingSlug,
       data?.handle,
@@ -129,7 +131,7 @@ export function createPublicProfileRuntimeController({
     if (!routeSlug) return null;
     return rows.find((row) => {
       const rowSlug = normalizeLandingSlugKey(
-        row?.landingSlug || row?.handle || row?.name || row?.restaurantName || ""
+        row?.publicSlug || row?.landingSlug || row?.handle || row?.name || row?.restaurantName || ""
       );
       return !!rowSlug && rowSlug === routeSlug;
     }) || null;
@@ -151,7 +153,7 @@ export function createPublicProfileRuntimeController({
       } catch {}
     }
 
-    const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.landingSlug || "");
+    const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.publicSlug || cachedRestaurant?.landingSlug || "");
     if (routeSlug && makeCollectionRef && buildQuery && buildWhere && db) {
       const queryRestaurantByField = async (fieldName = "", fieldValue = "") => {
         const safeFieldName = String(fieldName || "").trim();
@@ -171,6 +173,8 @@ export function createPublicProfileRuntimeController({
           return null;
         }
       };
+      const publicSlugMatch = await queryRestaurantByField("publicSlug", routeSlug);
+      if (publicSlugMatch) return publicSlugMatch;
       try {
         const ref = makeCollectionRef(db, "restaurants");
         const constraints = [buildWhere("landingSlug", "==", routeSlug)];
@@ -1027,7 +1031,13 @@ export function createPublicProfileRuntimeController({
     const restaurantId = String(data?.restaurantId || data?.landingRestaurantId || profileDoc?.id || rest?.id || "").trim();
     const landingEnabled = data?.landingEnabled ?? rest?.landingEnabled ?? true;
     const landingTemplate = String(data?.landingTemplate || rest?.landingTemplate || "").trim();
-    const landingSlug = String(data?.landingSlug || rest?.landingSlug || "").trim();
+    const publicSlug = String(data?.publicSlug || rest?.publicSlug || data?.landingSlug || rest?.landingSlug || "").trim();
+    const landingSlug = String(data?.landingSlug || rest?.landingSlug || publicSlug).trim();
+    const canonicalPublicPath = String(
+      data?.canonicalPublicPath
+      || rest?.canonicalPublicPath
+      || (publicSlug ? `/b/${encodeURIComponent(publicSlug)}` : "")
+    ).trim();
     const landingPageUrl = String(data?.landingPageUrl || rest?.landingPageUrl || "").trim();
     const landingScreenOne = data?.landingScreenOne || rest?.landingScreenOne || null;
     const type = normalizeRestaurantType(
@@ -1052,6 +1062,8 @@ export function createPublicProfileRuntimeController({
       privateAccount: false,
       role: "business",
       restaurantId,
+      publicSlug,
+      canonicalPublicPath,
       landingEnabled: landingEnabled !== false,
       landingTemplate,
       landingSlug,

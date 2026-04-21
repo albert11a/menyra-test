@@ -1332,10 +1332,13 @@ async function queryActiveStories(limitCount = 12) {
 }
 
 const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
+  "b",
+  "admin",
   "ceo",
   "owner",
   "staff",
   "waiter",
+  "wr",
   "kitchen",
   "social",
   "heart",
@@ -1346,10 +1349,28 @@ const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
   "register",
   "profile",
   "post",
+  "posts",
   "story",
+  "stories",
+  "menu",
+  "search",
+  "discover",
+  "map",
+  "location",
+  "orders",
+  "notifications",
+  "settings",
+  "upload",
+  "leads",
+  "customers",
+  "businessaccounts",
   "menyra-restaurants",
   "lp",
-  "index.html"
+  "index.html",
+  "assets",
+  "_shared",
+  "core",
+  "lead-landing"
 ]);
 
 function safeLowerText(value = "") {
@@ -1395,11 +1416,19 @@ function normalizePathRestaurantSlug(value = "") {
   const raw = asText(value);
   if (!raw) return "";
   const stripped = raw.startsWith("@") ? raw.slice(1) : raw;
-  const slug = asText(stripped);
-  if (!slug || slug.includes(".")) return "";
-  const key = slug.toLowerCase();
-  if (RESERVED_PUBLIC_ROUTE_SEGMENTS.has(key)) return "";
+  if (!stripped || stripped.includes(".")) return "";
+  const slug = normalizePublicRouteSlug(stripped);
+  if (!slug || RESERVED_PUBLIC_ROUTE_SEGMENTS.has(slug)) return "";
   return slug;
+}
+
+function buildCanonicalPublicRoutePath(slugValue = "", topTab = "profile") {
+  const safeSlug = normalizePathRestaurantSlug(slugValue);
+  if (!safeSlug) return "";
+  const safeTopTab = normalizePublicProfileTopTab(topTab, "profile");
+  const basePath = `/b/${encodeURIComponent(safeSlug)}`;
+  if (safeTopTab === "menu") return `${basePath}/menu`;
+  return basePath;
 }
 
 function resolvePathPublicProfileRoute(rawPath = "") {
@@ -1415,6 +1444,40 @@ function resolvePathPublicProfileRoute(rawPath = "") {
     segments = segments.slice(1);
   }
   if (!segments.length) return { restaurantId: "", topTab: "", accessSource: "" };
+  if (safeLowerText(segments[0]) === "b") {
+    const slug = normalizePathRestaurantSlug(segments[1]);
+    if (!slug) return { restaurantId: "", topTab: "", accessSource: "" };
+    const surfaceSegment = safeLowerText(segments[2]);
+    if (!surfaceSegment) {
+      return {
+        restaurantId: slug,
+        topTab: "profile",
+        accessSource: ""
+      };
+    }
+    if (surfaceSegment === "menu") {
+      return {
+        restaurantId: slug,
+        topTab: "menu",
+        accessSource: ""
+      };
+    }
+    if (surfaceSegment === "posts" || surfaceSegment === "profile") {
+      return {
+        restaurantId: slug,
+        topTab: "profile",
+        accessSource: ""
+      };
+    }
+    if (surfaceSegment === "qr") {
+      return {
+        restaurantId: slug,
+        topTab: "menu",
+        accessSource: "qr"
+      };
+    }
+    return { restaurantId: "", topTab: "", accessSource: "" };
+  }
   const tailSegments = segments.length > 2 ? segments.slice(-2) : segments.slice();
   const first = asText(tailSegments[0]);
   const second = asText(tailSegments[1]);
@@ -1427,7 +1490,7 @@ function resolvePathPublicProfileRoute(rawPath = "") {
   if (tailSegments.length === 1 && firstSlug) {
     return {
       restaurantId: firstSlug,
-      topTab: "",
+      topTab: "profile",
       accessSource: ""
     };
   }
@@ -1992,6 +2055,106 @@ function resolveMenuLayoutColorFromRestaurant(data = {}) {
   ) || "white";
 }
 
+async function findBootstrapPublicSlugConflictDoc(slugValue = "", { restaurantId = "" } = {}) {
+  const safeSlugValue = normalizePublicRouteSlug(slugValue);
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeSlugValue) return null;
+  const fields = ["publicSlug", "landingSlug", "handle"];
+  for (const fieldName of fields) {
+    try {
+      const snap = await db
+        .collection("restaurants")
+        .where(fieldName, "==", safeSlugValue)
+        .limit(1)
+        .get();
+      const first = snap.docs?.[0] || null;
+      if (!first?.id) continue;
+      if (safeRestaurantId && asText(first.id) === safeRestaurantId) continue;
+      return {
+        id: asText(first.id),
+        data: first.data() || {}
+      };
+    } catch {}
+  }
+  return null;
+}
+
+async function resolveBootstrapPublicSlugUnique(restaurantId = "", data = {}, routeLookupId = "") {
+  const safeRestaurantId = asText(restaurantId);
+  const source = data && typeof data === "object" ? data : {};
+  const routeSlugCandidate = safeRestaurantId && asText(routeLookupId) === safeRestaurantId
+    ? ""
+    : normalizePublicRouteSlug(routeLookupId);
+  const baseCandidate = normalizePublicRouteSlug(
+    source.publicSlug
+    || source.landingSlug
+    || source.handle
+    || routeSlugCandidate
+    || source.name
+    || source.restaurantName
+    || source.displayName
+    || safeRestaurantId
+    || "business"
+  ) || "business";
+  const suffixSeed = normalizePublicRouteSlug(safeRestaurantId).slice(-8)
+    || safeRestaurantId.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(-8)
+    || "business";
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const candidate = normalizePublicRouteSlug(
+      attempt === 0
+        ? baseCandidate
+        : `${baseCandidate}-${suffixSeed}${attempt === 1 ? "" : attempt}`
+    );
+    if (!candidate || RESERVED_PUBLIC_ROUTE_SEGMENTS.has(candidate)) continue;
+    const conflict = await findBootstrapPublicSlugConflictDoc(candidate, { restaurantId: safeRestaurantId });
+    if (!conflict) return candidate;
+  }
+  return normalizePublicRouteSlug(`${baseCandidate}-${Date.now().toString(36).slice(-4)}`) || "business";
+}
+
+async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data = {}, { routeLookupId = "" } = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  const source = data && typeof data === "object" ? data : {};
+  if (!safeRestaurantId) {
+    return {
+      data: source,
+      publicSlug: "",
+      canonicalPublicPath: ""
+    };
+  }
+  const resolvedPublicSlug = normalizePathRestaurantSlug(source.publicSlug)
+    || await resolveBootstrapPublicSlugUnique(safeRestaurantId, source, routeLookupId);
+  const canonicalPublicPath = buildCanonicalPublicRoutePath(resolvedPublicSlug, "profile");
+  const nextLandingSlug = asText(source.landingSlug || resolvedPublicSlug);
+  const nextData = {
+    ...source,
+    publicSlug: resolvedPublicSlug,
+    landingSlug: nextLandingSlug,
+    canonicalPublicPath: asText(source.canonicalPublicPath || canonicalPublicPath),
+    landingRestaurantId: asText(source.landingRestaurantId || safeRestaurantId)
+  };
+  const needsWrite = asText(source.publicSlug) !== resolvedPublicSlug
+    || asText(source.canonicalPublicPath) !== nextData.canonicalPublicPath
+    || (!asText(source.landingSlug) && !!nextLandingSlug)
+    || (!asText(source.landingRestaurantId) && !!nextData.landingRestaurantId);
+  if (needsWrite) {
+    try {
+      await db.collection("restaurants").doc(safeRestaurantId).set({
+        publicSlug: resolvedPublicSlug,
+        landingSlug: nextLandingSlug,
+        canonicalPublicPath: nextData.canonicalPublicPath,
+        landingRestaurantId: nextData.landingRestaurantId,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    } catch {}
+  }
+  return {
+    data: nextData,
+    publicSlug: resolvedPublicSlug,
+    canonicalPublicPath: nextData.canonicalPublicPath
+  };
+}
+
 function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
   const type = asText(
     data.type
@@ -2000,12 +2163,19 @@ function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
     || data.kind
     || data.restaurantType
   );
+  const publicSlug = normalizePathRestaurantSlug(data.publicSlug || data.landingSlug || data.handle);
+  const canonicalPublicPath = asText(
+    data.canonicalPublicPath
+    || buildCanonicalPublicRoutePath(publicSlug, "profile")
+  );
   return {
     id: asText(restaurantId),
     name: asText(data.name || data.restaurantName || data.displayName),
     restaurantName: asText(data.restaurantName || data.name),
-    handle: asText(data.handle || data.landingSlug),
-    landingSlug: asText(data.landingSlug),
+    handle: asText(data.handle || publicSlug),
+    publicSlug,
+    landingSlug: asText(data.landingSlug || publicSlug),
+    canonicalPublicPath,
     logoUrl: asText(data.logoUrl || data.logo || data.logoURL),
     city: asText(data.city || data.address),
     ...(type ? { type, customerType: type } : {})
@@ -2109,6 +2279,8 @@ async function resolveBootstrapRestaurantDocByRouteId(routeLookupId = "") {
       return null;
     }
   };
+  const byPublicSlug = await queryByField("publicSlug", routeSlug);
+  if (byPublicSlug) return byPublicSlug;
   const byLandingSlug = await queryByField("landingSlug", routeSlug);
   if (byLandingSlug) return byLandingSlug;
   const byHandle = await queryByField("handle", routeSlug);
@@ -2182,7 +2354,11 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   if (!restaurantDoc?.id) return null;
   const restaurantId = asText(restaurantDoc.id);
   const restaurantData = restaurantDoc.data || {};
-  const restaurantPreview = mapPublicRestaurantPreview(restaurantId, restaurantData);
+  const publicRouteMeta = await ensureBootstrapRestaurantPublicRouteMeta(restaurantId, restaurantData, {
+    routeLookupId: restaurantLookupId
+  });
+  const normalizedRestaurantData = publicRouteMeta?.data || restaurantData;
+  const restaurantPreview = mapPublicRestaurantPreview(restaurantId, normalizedRestaurantData);
   const surface = safeRouteContext.surface === "menu" ? "menu" : "profile";
   const postsLimit = surface === "profile" ? 14 : 8;
   const menuLimit = surface === "menu" ? 72 : 28;
@@ -2201,25 +2377,25 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   const menuState = normalizePublicRouteTruthState(menuSeedData?.state || "", "unknown");
   const focusState = normalizePublicRouteTruthState(focusSeedData?.state || "", "unknown");
   const identityName = asText(restaurantPreview.name || restaurantPreview.restaurantName);
-  const identityHandle = asText(restaurantPreview.handle || restaurantPreview.landingSlug);
+  const identityHandle = asText(restaurantPreview.handle || restaurantPreview.publicSlug || restaurantPreview.landingSlug);
   const identityAvatar = asText(restaurantPreview.logoUrl);
   const identityLocation = asText(restaurantPreview.city);
   const identityBio = asText(
-    restaurantData.bio
-    || restaurantData.description
-    || restaurantData.about
+    normalizedRestaurantData.bio
+    || normalizedRestaurantData.description
+    || normalizedRestaurantData.about
   );
   const identityFollowers = resolveCountOrNull(
-    restaurantData.followersCount,
-    restaurantData.followers,
-    restaurantData.fansCount,
-    restaurantData.fans
+    normalizedRestaurantData.followersCount,
+    normalizedRestaurantData.followers,
+    normalizedRestaurantData.fansCount,
+    normalizedRestaurantData.fans
   );
   const identityFollowing = resolveCountOrNull(
-    restaurantData.followingCount,
-    restaurantData.following
+    normalizedRestaurantData.followingCount,
+    normalizedRestaurantData.following
   );
-  const layoutMenuCardColor = resolveMenuLayoutColorFromRestaurant(restaurantData);
+  const layoutMenuCardColor = resolveMenuLayoutColorFromRestaurant(normalizedRestaurantData);
   const identityTruth = (identityName || identityHandle || identityAvatar || identityLocation)
     ? "seeded"
     : "unknown";
@@ -2231,7 +2407,7 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   const layoutTruth = layoutMenuCardColor ? "seeded" : "unknown";
   const routeUpdatedAt = Math.max(
     0,
-    toMillis(restaurantData.updatedAt || restaurantData.lastUpdatedAt || restaurantData.createdAt || 0),
+    toMillis(normalizedRestaurantData.updatedAt || normalizedRestaurantData.lastUpdatedAt || normalizedRestaurantData.createdAt || 0),
     Number(postsSeedData?.updatedAt || 0) || 0,
     Number(menuSeedData?.updatedAt || 0) || 0,
     Number(focusSeedData?.updatedAt || 0) || 0
@@ -2246,6 +2422,8 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     identity: {
       name: identityName,
       handle: identityHandle,
+      publicSlug: asText(restaurantPreview.publicSlug),
+      canonicalPublicPath: asText(restaurantPreview.canonicalPublicPath),
       avatar: identityAvatar,
       location: identityLocation,
       bio: identityBio,
@@ -2293,6 +2471,8 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     owner: "web-direct",
     routeFirst: true,
     restaurantId,
+    publicSlug: asText(restaurantPreview.publicSlug),
+    canonicalPublicPath: asText(restaurantPreview.canonicalPublicPath),
     surface,
     topTab: surface === "menu" ? "menu" : "profile",
     contentTab: surface === "menu" ? "menu" : "posts",
@@ -2302,6 +2482,8 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     identity: {
       name: snapshot.identity.name,
       handle: snapshot.identity.handle,
+      publicSlug: snapshot.identity.publicSlug,
+      canonicalPublicPath: snapshot.identity.canonicalPublicPath,
       avatar: snapshot.identity.avatar,
       location: snapshot.identity.location,
       bio: snapshot.identity.bio,

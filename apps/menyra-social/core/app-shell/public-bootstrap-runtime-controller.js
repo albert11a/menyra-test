@@ -9,10 +9,11 @@ function buildRestaurantBootstrapSignature(restaurants = []) {
     .map((rest) => {
       const id = String(rest?.id || "").trim();
       const name = String(rest?.name || rest?.restaurantName || "").trim();
+      const publicSlug = String(rest?.publicSlug || rest?.landingSlug || rest?.handle || "").trim();
       const logo = String(rest?.logoUrl || rest?.logo || "").trim();
       const city = String(rest?.city || rest?.address || "").trim();
       const type = String(rest?.type || rest?.customerType || rest?.restaurantType || "").trim();
-      return `${id}|${name}|${logo}|${city}|${type}`;
+      return `${id}|${name}|${publicSlug}|${logo}|${city}|${type}`;
     })
     .join(",");
 }
@@ -26,6 +27,7 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
       seen.add(id);
       const nameRaw = String(row?.name || row?.restaurantName || row?.displayName || row?.businessName || "").trim();
       const name = isGenericBusinessBootstrapLabel(nameRaw) ? "" : nameRaw;
+      const publicSlug = String(row?.publicSlug || row?.landingSlug || row?.handle || "").trim();
       const logoUrl = String(row?.logoUrl || row?.logo || row?.logoURL || "").trim();
       const city = String(row?.city || "").trim();
       const type = normalizeRestaurantType(
@@ -41,6 +43,13 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
         id,
         name,
         restaurantName: String(row?.restaurantName || "").trim(),
+        publicSlug,
+        landingSlug: String(row?.landingSlug || publicSlug).trim(),
+        handle: String(row?.handle || publicSlug).trim(),
+        canonicalPublicPath: String(
+          row?.canonicalPublicPath
+          || (publicSlug ? `/b/${encodeURIComponent(publicSlug)}` : "")
+        ).trim(),
         logoUrl,
         city,
         ...(type ? { type, customerType: type } : {})
@@ -353,6 +362,7 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     identity: {
       name: String(identity?.name || "").trim(),
       handle: String(identity?.handle || "").trim(),
+      publicSlug: String(identity?.publicSlug || identity?.landingSlug || "").trim(),
       avatar: String(identity?.avatar || "").trim(),
       location: String(identity?.location || "").trim(),
       bio: String(identity?.bio || "").trim(),
@@ -414,6 +424,7 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     identity: {
       name: businessSnapshot.identity.name,
       handle: businessSnapshot.identity.handle,
+      publicSlug: businessSnapshot.identity.publicSlug,
       avatar: businessSnapshot.identity.avatar,
       location: businessSnapshot.identity.location,
       bio: businessSnapshot.identity.bio,
@@ -843,6 +854,7 @@ function applyWebDirectRouteSeedFromBootstrap({
       identity: {
         name: String(profile.name || "").trim(),
         handle: String(profile.handle || "").trim(),
+        publicSlug: String(profile.publicSlug || profile.landingSlug || "").trim(),
         avatar: String(profile.avatar || "").trim(),
         location: String(profile.location || "").trim(),
         bio: String(profile.bio || "").trim(),
@@ -911,6 +923,7 @@ function applyWebDirectRouteSeedFromBootstrap({
       identity: {
         name: String(profile.name || "").trim(),
         handle: String(profile.handle || "").trim(),
+        publicSlug: String(profile.publicSlug || profile.landingSlug || "").trim(),
         avatar: String(profile.avatar || "").trim(),
         location: String(profile.location || "").trim(),
         bio: String(profile.bio || "").trim(),

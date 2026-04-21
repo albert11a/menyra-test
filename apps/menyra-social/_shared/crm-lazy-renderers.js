@@ -458,10 +458,10 @@ export function renderLeadsView(ctx = {}) {
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
       const emailLine = lead.email || lead.socialEmail || "";
       const landingRestaurantId = String(lead.landingRestaurantId || lead.restaurantId || rest?.id || "").trim();
-      const landingSlug = String(lead.landingSlug || rest?.landingSlug || "").trim();
+      const landingSlug = String(lead.publicSlug || lead.landingSlug || rest?.publicSlug || rest?.landingSlug || "").trim();
       const hasLandingRouteKey = !!String(landingRestaurantId || landingSlug).trim();
       const landingUrl = hasLandingRouteKey && typeof buildLeadLandingPageUrl === "function"
-        ? String(buildLeadLandingPageUrl(landingRestaurantId, { landingSlug, businessName }) || "").trim()
+        ? String(buildLeadLandingPageUrl(landingRestaurantId, { publicSlug: landingSlug, landingSlug, businessName }) || "").trim()
         : "";
       const ownershipHtml = renderOwnershipPills(lead, { hideOwn: scope === "own" });
       return `
@@ -478,7 +478,7 @@ export function renderLeadsView(ctx = {}) {
           </div>
           ${ownershipHtml}
           <div class="flex gap-2 mt-4">
-            ${landingUrl ? `<a href="${escapeHtml(landingUrl)}" target="_blank" rel="noopener noreferrer" class="px-4 py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500">Landing</a>` : ""}
+            ${landingUrl ? `<a href="${escapeHtml(landingUrl)}" target="_blank" rel="noopener noreferrer" class="px-4 py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500">Profil</a>` : ""}
             <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
           </div>
         </div>

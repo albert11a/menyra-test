@@ -16,6 +16,7 @@ export async function convertLeadToCustomerCore({
   ensureRestaurantPublicMeta,
   buildLeadLandingPageUrl,
   buildLeadLandingSlug,
+  resolveLeadLandingSlugUnique,
   accumulateCeoCrmDelta,
   buildCustomerCrmContribution,
   applyCeoCrmCountDeltas,
@@ -85,11 +86,11 @@ export async function convertLeadToCustomerCore({
       if (!landingSlug) return "";
       if (!safeOptions.forcePublicOrigin && typeof window !== "undefined" && isLocalLikeHostname(window.location?.hostname || "")) {
         const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
-        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile&top=landing`;
+        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile`;
         return origin ? `${origin}${previewPath}` : previewPath;
       }
       const origin = String(safeOptions.origin || "https://mnyra.com").trim().replace(/\/+$/, "");
-      const path = `/${encodeURIComponent(landingSlug)}`;
+      const path = `/b/${encodeURIComponent(landingSlug)}`;
       return origin ? `${origin}${path}` : path;
     });
 
@@ -146,12 +147,22 @@ export async function convertLeadToCustomerCore({
       const restRef = doc(collection(db, "restaurants"));
       restaurantId = restRef.id;
     }
-    const landingSlug = buildLandingSlug(restaurantId, {
-      landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
-      businessName,
-      leadId: lead?.id || ""
-    });
+    const landingSlug = typeof resolveLeadLandingSlugUnique === "function"
+      ? await resolveLeadLandingSlugUnique(restaurantId, {
+        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
+        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+        businessName,
+        leadId: lead?.id || ""
+      })
+      : buildLandingSlug(restaurantId, {
+        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
+        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+        businessName,
+        leadId: lead?.id || ""
+      });
+    const canonicalPublicPath = landingSlug ? `/b/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLandingUrl(restaurantId, {
+      publicSlug: landingSlug,
       landingSlug,
       businessName,
       leadId: lead?.id || "",
@@ -162,6 +173,8 @@ export async function convertLeadToCustomerCore({
       landingEnabled: true,
       landingTemplate: "lead-screen-1",
       landingRestaurantId: restaurantId,
+      publicSlug: landingSlug,
+      canonicalPublicPath,
       landingSlug,
       landingPageUrl
     };
@@ -176,7 +189,11 @@ export async function convertLeadToCustomerCore({
     } else {
       await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
     }
-    await ensureRestaurantPublicMeta(restaurantId, restPayload, { landingSlug, leadId: lead?.id || "" });
+    await ensureRestaurantPublicMeta(restaurantId, restPayload, {
+      publicSlug: landingSlug,
+      landingSlug,
+      leadId: lead?.id || ""
+    });
 
     const socialUid = lead.socialUid || "";
     const socialEmail = lead.socialEmail || lead.email || "";
@@ -197,6 +214,8 @@ export async function convertLeadToCustomerCore({
       landingEnabled: true,
       landingTemplate: "lead-screen-1",
       landingRestaurantId: restaurantId,
+      publicSlug: landingSlug,
+      canonicalPublicPath,
       landingSlug,
       landingPageUrl,
       socialUid,

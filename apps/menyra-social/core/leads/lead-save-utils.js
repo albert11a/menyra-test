@@ -24,6 +24,7 @@ export async function saveLeadFromModalCore({
   ensureRestaurantPublicMeta,
   buildLeadLandingPageUrl,
   buildLeadLandingSlug,
+  resolveLeadLandingSlugUnique,
   createAuthUser,
   buildLeadCrmContribution,
   buildCustomerCrmContribution,
@@ -148,11 +149,11 @@ export async function saveLeadFromModalCore({
       if (!landingSlug) return "";
       if (!safeOptions.forcePublicOrigin && typeof window !== "undefined" && isLocalLikeHostname(window.location?.hostname || "")) {
         const origin = String(window.location?.origin || "").trim().replace(/\/+$/, "");
-        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile&top=landing`;
+        const previewPath = `/apps/menyra-social/index.html?r=${encodeURIComponent(landingSlug)}&tab=profile`;
         return origin ? `${origin}${previewPath}` : previewPath;
       }
       const origin = String(safeOptions.origin || "https://mnyra.com").trim().replace(/\/+$/, "");
-      const path = `/${encodeURIComponent(landingSlug)}`;
+      const path = `/b/${encodeURIComponent(landingSlug)}`;
       return origin ? `${origin}${path}` : path;
     });
   const createUser = typeof createAuthUser === "function" ? createAuthUser : (async () => null);
@@ -323,12 +324,22 @@ export async function saveLeadFromModalCore({
     const monthlyPrice = getMonthlyPrice(customerType, settings);
     const yearlyPrice = monthlyPrice * 12;
     const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
-    const landingSlug = buildLandingSlug(restaurantId, {
-      landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
-      businessName,
-      leadId: lead?.id || ""
-    });
+    const landingSlug = typeof resolveLeadLandingSlugUnique === "function"
+      ? await resolveLeadLandingSlugUnique(restaurantId, {
+        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
+        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+        businessName,
+        leadId: lead?.id || ""
+      })
+      : buildLandingSlug(restaurantId, {
+        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
+        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+        businessName,
+        leadId: lead?.id || ""
+      });
+    const canonicalPublicPath = landingSlug ? `/b/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLandingUrl(restaurantId, {
+      publicSlug: landingSlug,
       landingSlug,
       businessName,
       leadId: lead?.id || "",
@@ -351,6 +362,8 @@ export async function saveLeadFromModalCore({
         specialEnabled,
         status: restaurantStatus,
         locations: locationPayload,
+        publicSlug: landingSlug,
+        canonicalPublicPath,
         landingEnabled: true,
         landingTemplate: "lead-screen-1",
         landingRestaurantId: restaurantId,
@@ -401,6 +414,8 @@ export async function saveLeadFromModalCore({
       status: restaurantStatus,
       leadId: lead.id || "",
       locations: locationPayload,
+      publicSlug: landingSlug,
+      canonicalPublicPath,
       landingEnabled: true,
       landingTemplate: "lead-screen-1",
       landingRestaurantId: restaurantId,
@@ -428,7 +443,11 @@ export async function saveLeadFromModalCore({
     } else {
       await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
     }
-    await ensurePublicMeta(restaurantId, restPayload, { landingSlug, leadId: lead?.id || "" });
+    await ensurePublicMeta(restaurantId, restPayload, {
+      publicSlug: landingSlug,
+      landingSlug,
+      leadId: lead?.id || ""
+    });
 
     let socialUid = lead.socialUid || "";
     let socialEmail = lead.socialEmail || "";
@@ -488,6 +507,8 @@ export async function saveLeadFromModalCore({
       price: activePrice,
       status: leadStatusKey,
       restaurantId,
+      publicSlug: landingSlug,
+      canonicalPublicPath,
       landingEnabled: true,
       landingTemplate: "lead-screen-1",
       landingRestaurantId: restaurantId,

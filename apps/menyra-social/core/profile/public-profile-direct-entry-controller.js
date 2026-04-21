@@ -134,7 +134,8 @@ function resolveRestaurantPreviewForRoute(state = null, restaurantId = "") {
   for (const list of listGroups) {
     const bySlug = list.find((row) => {
       const rowSlug = normalizeLookupSlug(
-        row?.landingSlug
+        row?.publicSlug
+        || row?.landingSlug
         || row?.handle
         || row?.name
         || row?.restaurantName
@@ -145,6 +146,28 @@ function resolveRestaurantPreviewForRoute(state = null, restaurantId = "") {
     if (bySlug) return bySlug;
   }
   return null;
+}
+
+function resolveCanonicalPublicPath(publicSlug = "") {
+  const safeSlug = normalizeLookupSlug(publicSlug);
+  if (!safeSlug) return "";
+  return `/b/${encodeURIComponent(safeSlug)}`;
+}
+
+function resolveProfileSeedPublicSlug(routeIdentity = null, preview = null) {
+  const routeSlug = normalizeLookupSlug(
+    routeIdentity?.publicSlug
+    || routeIdentity?.landingSlug
+    || routeIdentity?.handle
+    || ""
+  );
+  if (routeSlug) return routeSlug;
+  return normalizeLookupSlug(
+    preview?.publicSlug
+    || preview?.landingSlug
+    || preview?.handle
+    || ""
+  );
 }
 
 function resolveSeedPostsForRoute(state = null, restaurantId = "", { max = 8 } = {}) {
@@ -553,6 +576,7 @@ export function createPublicProfileDirectEntryController({
       || normalizeSeedBusinessLabel(entry.restaurantId)
     ).trim() || normalizeSeedBusinessLabel(entry.restaurantId);
     const seedHandle = String(routeIdentity?.handle || preview?.handle || "").trim().replace(/^@/, "").toLowerCase();
+    const seedPublicSlug = resolveProfileSeedPublicSlug(routeIdentity, preview);
     const seedAvatar = String(routeIdentity?.avatar || preview?.logoUrl || preview?.logo || preview?.avatar || "").trim();
     const seedLocation = String(routeIdentity?.location || preview?.city || preview?.address || "").trim();
     const seedBio = String(routeIdentity?.bio || "").trim();
@@ -595,6 +619,9 @@ export function createPublicProfileDirectEntryController({
       privateAccount: false,
       role: "business",
       restaurantId: entry.restaurantId,
+      publicSlug: seedPublicSlug,
+      landingSlug: seedPublicSlug,
+      canonicalPublicPath: resolveCanonicalPublicPath(seedPublicSlug),
       pendingFollowRequest: false,
       postsLoaded: postsReadySeed,
       posts: seededPosts,

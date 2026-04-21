@@ -262,7 +262,7 @@ export function createProfileOpenFlowControllerCore({
     if (!targetLookup) return null;
     return list.find((row) => {
       const rowLookup = normalizeBusinessLookupKey(
-        row?.landingSlug || row?.handle || row?.name || row?.restaurantName || ""
+        row?.publicSlug || row?.landingSlug || row?.handle || row?.name || row?.restaurantName || ""
       );
       return !!rowLookup && rowLookup === targetLookup;
     }) || null;
