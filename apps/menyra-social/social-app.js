@@ -4188,6 +4188,9 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
     normalizeFollowHandleFn: normalizeFollowHandle
   },
   dataLoaders: {
+    showPublicProfileFn: (...args) => showPublicProfile(...args),
+    fetchBusinessProfileDocFn: (...args) => fetchBusinessProfileDoc(...args),
+    loadBusinessPostsForRestaurantFn: (...args) => loadBusinessPostsForRestaurant(...args),
     loadMenuForRestaurantFn: (...args) => loadMenuForRestaurant(...args),
     loadFocusForRestaurantFn: (...args) => loadFocusForRestaurant(...args)
   },

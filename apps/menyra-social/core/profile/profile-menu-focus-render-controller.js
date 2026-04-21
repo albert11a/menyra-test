@@ -19,6 +19,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const formatCount = deps.formatCountFn;
   const renderProfileShopCartView = deps.renderProfileShopCartViewFn;
   const renderProfileShopFavoritesView = deps.renderProfileShopFavoritesViewFn;
+  const ensurePostsDataForProfile = typeof deps.ensurePostsDataForProfileFn === "function"
+    ? deps.ensurePostsDataForProfileFn
+    : (() => {});
   const ensureMenuDataForProfile = deps.ensureMenuDataForProfileFn;
   const ensureFocusDataForProfile = deps.ensureFocusDataForProfileFn;
   const ensureTableQrStateForProfile = deps.ensureTableQrStateForProfileFn;
@@ -602,6 +605,14 @@ function renderPublicProfileSurface(
   const showPostsError = activeContentTab === "posts"
     && !hasRenderablePosts
     && postsStatus === "error";
+  if (
+    !tutorialMode
+    && (activeContentTab === "posts" || activeContentTab === "media")
+    && profile?.restaurantId
+    && isSettlingProfileSurfaceStatus(postsStatus)
+  ) {
+    ensurePostsDataForProfile(profile);
+  }
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
       ${topTab === "profile" || topTab === "menu" ? `
@@ -694,7 +705,11 @@ function renderPublicProfileSurface(
               </div>
             `}
           ` : `
-            <div class="app-content-inline ${disabledBlockClass}" style="min-height: 34vh;"></div>
+            <div class="app-content-inline ${disabledBlockClass}">
+              <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm ${contentAnimationClass}">
+                <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Beitraege werden geladen...</div>
+              </div>
+            </div>
           `}
         `) : ""}
       ` : `
@@ -2074,6 +2089,8 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const isSameRestaurant = state.menu.restaurantId === restaurantId;
   const menuSource = String(state.menu.source || "").trim().toLowerCase();
   const hasPublicMenuTruth = isSameRestaurant && menuSource === "public";
+  const menuTruthState = String(state?.menu?.truthState || "").trim().toLowerCase();
+  const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
   const isLandingMode = mode === "landing";
   const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
     ? state.__webDirectEntry
@@ -2083,7 +2100,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     : null;
   const routeMenuState = String(routePayload?.menu?.state || "").trim().toLowerCase();
   const routeFocusState = String(routePayload?.focus?.state || "").trim().toLowerCase();
-  const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
   const isWebDirectFirstVisibleMenuPath = webDirectEntry?.active === true
     && webDirectEntry?.webPriority === true
     && webDirectEntry?.menuFirst === true
@@ -2111,15 +2127,22 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
         )
       )
     );
-  if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !state.menu.loading && !hasPublicMenuTruth) {
+  const hasSettledPublicMenuTruth = hasPublicMenuTruth
+    && (
+      menuTruthState === "seeded"
+      || menuTruthState === "knownempty"
+      || menuTruthState === "known-empty"
+    );
+  const hasSettledFocusTruth = String(state?.focus?.restaurantId || "").trim() === restaurantId
+    && (
+      currentFocusTruth === "seeded"
+      || currentFocusTruth === "knownempty"
+      || currentFocusTruth === "known-empty"
+    );
+  if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
     ensureMenuDataForProfile(profile);
   }
-  if (
-    allowAutoEnsure
-    && !skipFirstVisibleFocusEnsure
-    && !state.focus.loading
-    && state.focus.restaurantId !== restaurantId
-  ) {
+  if (allowAutoEnsure && !skipFirstVisibleFocusEnsure && !hasSettledFocusTruth) {
     ensureFocusDataForProfile(profile);
   }
   const items = hasPublicMenuTruth
@@ -2261,7 +2284,7 @@ function renderProfileView() {
   const topPaddingClass = isBusiness ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
     <div class="app-main-content-safe">
-      ${topTab === "profile" ? `
+      ${topTab === "profile" || topTab === "menu" ? `
       <div class="app-content-inline pb-2 ${topPaddingClass}">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
