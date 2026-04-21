@@ -1702,6 +1702,14 @@ function syncActiveTabRouteQuery() {
     const currentUrl = new URL(win.location?.href || "", win.location?.origin || "");
     const nextUrl = new URL(currentUrl.toString());
     const currentPathRoute = parseSiteRoutePathCore(currentUrl.pathname || "");
+    if (
+      routeState.routeKind === "business"
+      && !String(routeState.canonicalPublicSlug || "").trim()
+      && currentPathRoute.kind === "business"
+      && currentPathRoute.isLegacy !== true
+    ) {
+      routeState.canonicalPublicSlug = String(currentPathRoute.restaurantId || "").trim().toLowerCase();
+    }
 
     setCanonicalRouteQueryParam(nextUrl.searchParams, "tab", ["view"], "");
 

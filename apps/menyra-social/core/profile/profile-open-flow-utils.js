@@ -250,6 +250,23 @@ export function createProfileOpenFlowControllerCore({
     const digits = (compact.match(/\d/g) || []).length;
     return compact.length >= 16 && digits >= 4;
   };
+  const normalizeCanonicalBusinessSlug = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw || isLikelyOpaqueBusinessId(raw)) return "";
+    return normalizeBusinessLookupKey(raw);
+  };
+  const resolveCanonicalBusinessRouteFields = (...candidates) => {
+    for (const candidate of candidates) {
+      const slug = normalizeCanonicalBusinessSlug(candidate);
+      if (!slug) continue;
+      return {
+        publicSlug: slug,
+        landingSlug: slug,
+        canonicalPublicPath: `/${encodeURIComponent(slug)}`
+      };
+    }
+    return {};
+  };
 
   const resolveRestaurantByLookup = ({ restaurantId = "", lookupText = "" } = {}) => {
     const targetId = String(restaurantId || "").trim();
@@ -717,6 +734,14 @@ export function createProfileOpenFlowControllerCore({
           privateAccount: false,
           role: "business",
           restaurantId: targetMenuRestaurantId || targetRestaurantLookupId || routeSnapshotRestaurantId,
+          ...resolveCanonicalBusinessRouteFields(
+            routeIdentitySeed?.publicSlug,
+            routeIdentitySeed?.landingSlug,
+            rest?.publicSlug,
+            rest?.landingSlug,
+            rest?.handle,
+            targetRestaurantLookupId
+          ),
           pendingFollowRequest: liveBusinessProfile?.pendingFollowRequest === true,
           posts: routeSeedPosts
         }, {
@@ -874,6 +899,16 @@ export function createProfileOpenFlowControllerCore({
         privateAccount: stableBusinessProfile?.privateAccount === true,
         role: "business",
         restaurantId: targetMenuRestaurantId || targetRestaurantLookupId,
+        ...resolveCanonicalBusinessRouteFields(
+          stableBusinessProfile?.publicSlug,
+          stableBusinessProfile?.landingSlug,
+          routeIdentitySeed?.publicSlug,
+          routeIdentitySeed?.landingSlug,
+          rest?.publicSlug,
+          rest?.landingSlug,
+          rest?.handle,
+          targetRestaurantLookupId
+        ),
         pendingFollowRequest: stableBusinessProfile?.pendingFollowRequest === true,
         posts: stableBusinessPosts,
       };
@@ -961,12 +996,22 @@ export function createProfileOpenFlowControllerCore({
         lookupKey: targetRestaurantLookupId
       });
 
-      const resolved = applySurfaceTruthPatch(normalizeBusinessProfile({
-        profileDoc: profileSnap,
-        restaurant: rest,
-        fallbackName: resolvedDisplayName,
-        posts: []
-      }), {
+      const resolved = applySurfaceTruthPatch({
+        ...normalizeBusinessProfile({
+          profileDoc: profileSnap,
+          restaurant: rest,
+          fallbackName: resolvedDisplayName,
+          posts: []
+        }),
+        ...resolveCanonicalBusinessRouteFields(
+          profileSnap?.data?.publicSlug,
+          profileSnap?.data?.landingSlug,
+          rest?.publicSlug,
+          rest?.landingSlug,
+          rest?.handle,
+          targetRestaurantLookupId
+        )
+      }, {
         identityStatus: "ready",
         postsStatus: "loading"
       });
@@ -1023,7 +1068,12 @@ export function createProfileOpenFlowControllerCore({
         }
       }
       if (!Array.isArray(posts)) {
-        posts = await loadBusinessPosts(resolvedRestaurantId, { skipProfileResolve: true });
+        const shouldResolvePostsViaRouteLookup = isWebRoutePriorityPath
+          && targetRestaurantLookupId
+          && resolvedRestaurantId === targetRestaurantLookupId;
+        posts = shouldResolvePostsViaRouteLookup
+          ? await loadBusinessPosts(targetRestaurantLookupId)
+          : await loadBusinessPosts(resolvedRestaurantId, { skipProfileResolve: true });
       }
       const latestRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
       if (state.activeTab !== "profile") return;
