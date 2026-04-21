@@ -14,7 +14,7 @@ export function projectRoot() {
   const href = window.location.href;
   const idx = href.indexOf("/apps/");
   if (idx !== -1) return href.slice(0, idx + 1);
-  return href.replace(/index\.html.*$/, "");
+  return new URL("/", href).toString();
 }
 
 export function buildUrl(pathFromRoot, params = {}) {
