@@ -2156,13 +2156,28 @@ function applyPendingInitialRouteState() {
   const pendingRoute = pendingRouteState.getPendingState?.() || {};
   const pendingDirectEntry = publicProfileDirectEntryController.resolvePendingDirectEntry(pendingRoute);
   if (pendingDirectEntry.active) {
+    const currentProfileView = state.profileView && typeof state.profileView === "object"
+      ? state.profileView
+      : null;
     const currentProfileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
     const currentProfileTruthState = String(state.profileView?.profile?.truthState || "").trim().toLowerCase();
+    const currentProfileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    const currentBusinessSurfaceTopTab = currentProfileTopTab === "menu" ? "menu" : "profile";
+    const pendingBusinessSurfaceTopTab = pendingDirectEntry.topTab === "menu" ? "menu" : "profile";
+    const currentDirectEntry = currentProfileView?.directEntry && typeof currentProfileView.directEntry === "object"
+      ? currentProfileView.directEntry
+      : null;
+    const isPendingRouteSeedContinuation = String(currentDirectEntry?.owner || "").trim().toLowerCase() === "web-direct"
+      && currentDirectEntry?.routeFirst === true
+      && currentDirectEntry?.active !== false
+      && currentProfileRestaurantId === pendingDirectEntry.restaurantId;
     const pendingProfileAlreadyOpen = isPendingProfileAlreadyOpenCore({
       pendingProfileRestaurantId: pendingDirectEntry.restaurantId,
       currentProfileRestaurantId,
       currentProfileTruthState
-    });
+    })
+      && !isPendingRouteSeedContinuation
+      && currentBusinessSurfaceTopTab === pendingBusinessSurfaceTopTab;
     if (!pendingProfileAlreadyOpen) {
       setStartupSurfaceStatus("profile", "loading");
       if (pendingDirectEntry.topTab === "menu") {

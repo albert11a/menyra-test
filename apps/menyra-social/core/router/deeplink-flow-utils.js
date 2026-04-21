@@ -335,7 +335,26 @@ export function createDeeplinkFlowControllerCore({
     }
 
     const safeRestaurantId = normalizeProfileRestaurantId(pending.pendingProfileRestaurantId);
-    if (isProfileAlreadyOpen({ pendingProfileRestaurantId: safeRestaurantId })) {
+    const requestedTopTab = normalizeProfileTopTab(pending.pendingProfileTopTab);
+    const liveProfileView = state?.profileView && typeof state.profileView === "object"
+      ? state.profileView
+      : null;
+    const liveProfile = liveProfileView?.profile && typeof liveProfileView.profile === "object"
+      ? liveProfileView.profile
+      : null;
+    const liveProfileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const liveSurfaceTopTab = liveProfileTopTab === "menu" ? "menu" : "profile";
+    const liveDirectEntry = liveProfileView?.directEntry && typeof liveProfileView.directEntry === "object"
+      ? liveProfileView.directEntry
+      : null;
+    const isPendingRouteSeedContinuation = String(liveDirectEntry?.owner || "").trim().toLowerCase() === "web-direct"
+      && liveDirectEntry?.routeFirst === true
+      && liveDirectEntry?.active !== false
+      && String(liveProfile?.restaurantId || "").trim() === safeRestaurantId;
+    const liveBusinessSurfaceMatchesRoute = liveSurfaceTopTab === (requestedTopTab === "menu" ? "menu" : "profile");
+    const canShortCircuitBusinessRoute = !isPendingRouteSeedContinuation
+      && liveBusinessSurfaceMatchesRoute;
+    if (canShortCircuitBusinessRoute && isProfileAlreadyOpen({ pendingProfileRestaurantId: safeRestaurantId })) {
       patchPendingState({
         pendingProfileHandled: true,
         pendingProfileRestaurantId: "",
