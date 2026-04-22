@@ -354,11 +354,9 @@ export function resolveVisibleProfileSurface(state = {}, {
     : directEntryTopTabRaw;
   const explicitTopTab = String(profileTopTab || "").trim();
   const explicitContentTab = String(profileContentTab || "").trim();
-  const hasExplicitSurfaceSelection = !!explicitTopTab || !!explicitContentTab;
   const directEntryActive = activeTab === "profile"
     && !!directEntryTopTab
-    && directEntry?.active !== false
-    && !hasExplicitSurfaceSelection;
+    && directEntry?.active !== false;
   const directEntryContentTab = normalizeProfileContentTab(
     directEntry?.contentTab || "",
     directEntryTopTab === "menu" ? "menu" : "posts"
