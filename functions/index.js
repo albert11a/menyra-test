@@ -2159,7 +2159,10 @@ async function resolveBootstrapPublicSlugUnique(restaurantId = "", data = {}, ro
   return normalizePublicRouteSlug(`${baseCandidate}-${Date.now().toString(36).slice(-4)}`) || "business";
 }
 
-async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data = {}, { routeLookupId = "" } = {}) {
+async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data = {}, {
+  routeLookupId = "",
+  allowWrite = true
+} = {}) {
   const safeRestaurantId = asText(restaurantId);
   const source = data && typeof data === "object" ? data : {};
   if (!safeRestaurantId) {
@@ -2184,7 +2187,7 @@ async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data 
     || asText(source.canonicalPublicPath) !== nextData.canonicalPublicPath
     || (!asText(source.landingSlug) && !!nextLandingSlug)
     || (!asText(source.landingRestaurantId) && !!nextData.landingRestaurantId);
-  if (needsWrite) {
+  if (needsWrite && allowWrite) {
     try {
       await db.collection("restaurants").doc(safeRestaurantId).set({
         publicSlug: resolvedPublicSlug,
@@ -2410,7 +2413,8 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   const restaurantData = restaurantDoc.data || {};
   if (!isBootstrapRestaurantPublicRecord({ id: restaurantId, ...restaurantData })) return null;
   const publicRouteMeta = await ensureBootstrapRestaurantPublicRouteMeta(restaurantId, restaurantData, {
-    routeLookupId: restaurantLookupId
+    routeLookupId: restaurantLookupId,
+    allowWrite: false
   });
   const normalizedRestaurantData = publicRouteMeta?.data || restaurantData;
   const restaurantPreview = mapPublicRestaurantPreview(restaurantId, normalizedRestaurantData);
