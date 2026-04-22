@@ -3,25 +3,84 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MNYRA</title>
-  <meta http-equiv="refresh" content="0;url=/feed" />
-  <script>
-    location.replace("/feed");
-  </script>
+  <title>MNYRA | Public Website</title>
+  <meta name="description" content="MNYRA Public Website Startseite. Öffentliche Profile und Speisekarten laufen Website-First, die App bleibt optional." />
   <style>
+    :root {
+      --bg: #f4f6fb;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #d6deea;
+      --panel: #ffffff;
+      --accent: #0ea5a5;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html,
     body {
       margin: 0;
+      min-height: 100%;
+    }
+    body {
       min-height: 100vh;
       display: grid;
       place-items: center;
-      font-family: Arial, sans-serif;
-      background: #f8fafc;
-      color: #0f172a;
+      font-family: "Satoshi", "Plus Jakarta Sans", "Manrope", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 22% 15%, rgb(14 165 165 / 0.1), transparent 38%), var(--bg);
+      color: var(--ink);
+      padding: 1rem;
     }
-    a { color: #0f172a; }
+    main {
+      width: min(660px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: var(--panel);
+      padding: 1rem 1.1rem;
+      box-shadow: 0 20px 40px -36px rgb(15 23 42 / 0.45);
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.45rem;
+    }
+    p {
+      margin: 0.7rem 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 0.95rem;
+    }
+    a {
+      display: inline-block;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.42rem 0.8rem;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 0.9rem;
+      background: #f8fafc;
+    }
+    a.primary {
+      background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+      color: #ffffff;
+      border-color: transparent;
+    }
   </style>
 </head>
 <body>
-  <p>Weiterleitung zu MNYRA. Test Hub: <a href="/hub/">/hub/</a></p>
+  <main>
+    <h1>MNYRA Public Website</h1>
+    <p>Öffentliche Profile und Speisekarten werden Website-First gerendert. Für volle In-App-Funktionen steht die SPA weiterhin bereit.</p>
+    <div class="links">
+      <a class="primary" href="/feed">App öffnen</a>
+      <a href="/hub/">Test Hub</a>
+      <a href="/apps/menyra-social/public/index.html">Public Entry</a>
+    </div>
+  </main>
 </body>
 </html>

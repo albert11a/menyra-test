@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f8fafc" />
+  <meta name="description" content="MNYRA zeigt Restaurant-Profile und Speisekarten als schnelle öffentliche Website ohne App-Blocker." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="MNYRA" />
+  <meta property="og:title" content="MNYRA | Restaurant-Profile und Speisekarten" />
+  <meta property="og:description" content="MNYRA zeigt Restaurant-Profile und Speisekarten als schnelle öffentliche Website ohne App-Blocker." />
+  <meta property="og:url" content="/" />
+  <meta property="og:image" content="/apps/menyra-social/assets/icon-512.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MNYRA | Restaurant-Profile und Speisekarten" />
+  <meta name="twitter:description" content="MNYRA zeigt Restaurant-Profile und Speisekarten als schnelle öffentliche Website ohne App-Blocker." />
+  <meta name="twitter:image" content="/apps/menyra-social/assets/icon-512.png" />
+  <link rel="canonical" href="/" />
+  <title>MNYRA | Restaurant-Profile und Speisekarten</title>
+  <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
+  <link rel="preconnect" href="https://us-central1-menyra-c0e68.cloudfunctions.net" crossorigin />
+  <link rel="dns-prefetch" href="//us-central1-menyra-c0e68.cloudfunctions.net" />
+  <script>
+    (() => {
+      const cleanPath = (() => {
+        const raw = String(window.location.pathname || "/").trim();
+        if (!raw || raw === "/") return "/";
+        const stripped = raw.replace(/\/+$/, "");
+        return stripped || "/";
+      })();
+      const segments = cleanPath.split("/").filter(Boolean);
+      const routeHint = {
+        slug: segments[0] || "",
+        surface: String(segments[1] || "").toLowerCase() === "menu" ? "menu" : "profile",
+        isHome: segments.length === 0
+      };
+      window.__MNYRA_PUBLIC_ROUTE_HINT__ = routeHint;
+      const slugLabel = routeHint.slug
+        ? routeHint.slug
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase())
+        : "MNYRA";
+      const canonicalPath = routeHint.isHome
+        ? "/"
+        : (routeHint.surface === "menu" ? `/${routeHint.slug}/menu` : `/${routeHint.slug}`);
+      const title = routeHint.isHome
+        ? "MNYRA | Restaurant-Profile und Speisekarten"
+        : (routeHint.surface === "menu"
+          ? `Speisekarte | ${slugLabel} | MNYRA`
+          : `${slugLabel} | MNYRA Restaurant-Profil`);
+      const description = routeHint.isHome
+        ? "MNYRA zeigt Restaurant-Profile und Speisekarten als schnelle öffentliche Website ohne App-Blocker."
+        : (routeHint.surface === "menu"
+          ? `${slugLabel}: öffentliche Speisekarte mit stabiler, schneller Erstansicht.`
+          : `${slugLabel}: öffentliches Restaurant-Profil mit schneller Erstansicht.`);
+      const absoluteUrl = `${window.location.origin}${canonicalPath}`;
+      const updateMeta = (selector, attribute, value) => {
+        const node = document.querySelector(selector);
+        if (!node) return;
+        node.setAttribute(attribute, value);
+      };
+      document.title = title;
+      updateMeta('meta[name="description"]', "content", description);
+      updateMeta('meta[property="og:title"]', "content", title);
+      updateMeta('meta[property="og:description"]', "content", description);
+      updateMeta('meta[property="og:url"]', "content", absoluteUrl);
+      updateMeta('meta[name="twitter:title"]', "content", title);
+      updateMeta('meta[name="twitter:description"]', "content", description);
+      updateMeta('link[rel="canonical"]', "href", absoluteUrl);
+    })();
+  </script>
+  <link rel="stylesheet" href="/apps/menyra-social/public/public-entry.css?v=2026-04-22-web-first-01" />
+</head>
+<body>
+  <main class="public-shell" id="publicShell" data-surface="home">
+    <section class="hero" aria-labelledby="heroTitle">
+      <p class="eyebrow" id="routeLabel">MNYRA Public</p>
+      <h1 id="heroTitle">Restaurant-Profil und Speisekarte laden zuerst als Website.</h1>
+      <p id="heroDescription">
+        Stabile erste Ansicht ohne Snapshot-Replay. Die App bleibt optional und wird erst nach dem Public-Render nachgeladen.
+      </p>
+      <div class="hero-actions">
+        <a id="profileLink" class="btn btn-secondary" href="/" hidden>Zum Profil</a>
+        <a id="menuLink" class="btn btn-secondary" href="/" hidden>Zum Menü</a>
+        <a id="appLink" class="btn btn-primary" href="/feed">Vollansicht in der App</a>
+      </div>
+    </section>
+
+    <section class="public-grid" aria-live="polite">
+      <article class="panel panel-brand" id="brandPanel">
+        <div class="brand-head">
+          <img
+            id="brandLogo"
+            src="/apps/menyra-social/assets/icon-192.png"
+            width="72"
+            height="72"
+            alt="MNYRA Business Logo"
+            loading="eager"
+            decoding="async"
+          />
+          <div>
+            <p class="label">Business</p>
+            <h2 id="businessName">MNYRA Business</h2>
+            <p class="muted" id="businessHandle">@mnyra</p>
+          </div>
+        </div>
+        <p class="muted" id="businessBio">
+          Diese öffentliche Ansicht priorisiert stabilen First Paint und lädt Business-Daten danach kontrolliert nach.
+        </p>
+        <dl class="stats" id="statsBlock">
+          <div>
+            <dt>Beiträge</dt>
+            <dd id="postsCount">-</dd>
+          </div>
+          <div>
+            <dt>Menü</dt>
+            <dd id="menuCount">-</dd>
+          </div>
+          <div>
+            <dt>Highlights</dt>
+            <dd id="focusCount">-</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="panel" id="menuPanel" hidden>
+        <h3>Speisekarte</h3>
+        <ul id="menuList" class="list">
+          <li class="placeholder">Menüdaten werden geladen ...</li>
+        </ul>
+      </article>
+
+      <article class="panel" id="postsPanel" hidden>
+        <h3>Neueste Beiträge</h3>
+        <ul id="postsList" class="list">
+          <li class="placeholder">Beitragsdaten werden geladen ...</li>
+        </ul>
+      </article>
+
+      <article class="panel panel-status" id="statusPanel">
+        <h3>Status</h3>
+        <p id="statusLine">Public-Seite wird initialisiert ...</p>
+        <p id="statusHint" class="muted">Website-First aktiv, App-Logik ist entkoppelt.</p>
+      </article>
+    </section>
+
+    <noscript>
+      <section class="noscript-box" aria-live="off">
+        JavaScript ist deaktiviert. Die öffentliche Basisansicht bleibt sichtbar, dynamische Restaurant-Daten benötigen JavaScript.
+      </section>
+    </noscript>
+  </main>
+
+  <script type="module" src="/apps/menyra-social/public/public-entry.js?v=2026-04-22-web-first-01"></script>
+</body>
+</html>

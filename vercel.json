@@ -24,8 +24,7 @@
     { "source": "/apps/menyra-owner/:path*", "destination": "/owner", "permanent": false },
     { "source": "/apps/menyra-staff/:path*", "destination": "/staff", "permanent": false },
     { "source": "/apps/menyra-restaurants/:path*", "destination": "/feed", "permanent": false },
-    { "source": "/menyra-restaurants/:path*", "destination": "/feed", "permanent": false },
-    { "source": "/", "destination": "/feed", "permanent": false }
+    { "source": "/menyra-restaurants/:path*", "destination": "/feed", "permanent": false }
   ],
   "rewrites": [
     { "source": "/hub", "destination": "/hub/index.html" },
@@ -67,10 +66,21 @@
     { "source": "/user/:id/:surface", "destination": "/apps/menyra-social/index.html" },
     { "source": "/user/:id", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
+    { "source": "/", "destination": "/apps/menyra-social/public/index.html" },
+    { "source": "/:landingSlug/menu", "has": [{ "type": "query", "key": "app", "value": "1" }], "destination": "/apps/menyra-social/index.html" },
+    { "source": "/:landingSlug", "has": [{ "type": "query", "key": "app", "value": "1" }], "destination": "/apps/menyra-social/index.html" },
+    { "source": "/:landingSlug/menu", "destination": "/apps/menyra-social/public/index.html" },
+    { "source": "/:landingSlug", "destination": "/apps/menyra-social/public/index.html" },
     { "source": "/:landingSlug/:surface", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/:landingSlug", "destination": "/apps/menyra-social/index.html" }
+    { "source": "/:landingSlug/:surface/:rest*", "destination": "/apps/menyra-social/index.html" }
   ],
   "headers": [
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
     {
       "source": "/feed",
       "headers": [
@@ -222,6 +232,12 @@
       ]
     },
     {
+      "source": "/apps/menyra-social/public/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
       "source": "/apps/menyra-social/lead-landing/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
@@ -361,6 +377,18 @@
     },
     {
       "source": "/apps/menyra-social/styles/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/public/public-entry.css",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/public/public-entry.js",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]

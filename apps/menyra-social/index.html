@@ -1332,7 +1332,18 @@
       const startupSurface = effectiveProfileRouteTab === "menu"
         ? "menu"
         : (hasLandingRouteHint || isUserRouteStartup ? "profile" : "feed");
-      const shouldFetchBootstrap = !isMapRouteStartup
+      const isPublicWebsiteFirstRoute = pathRoute.kind === "business"
+        && !isUserRouteStartup
+        && !isExplicitLandingRoute
+        && (
+          effectiveProfileRouteTab === "menu"
+          || effectiveProfileRouteTab === "profile"
+          || !effectiveProfileRouteTab
+        );
+      const shouldUseVolatileStartupReplay = !isPublicWebsiteFirstRoute;
+      window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_FIRST_ROUTE__ = isPublicWebsiteFirstRoute;
+      const shouldFetchBootstrap = shouldUseVolatileStartupReplay
+        && !isMapRouteStartup
         && !isUserRouteStartup
         && (
           isDirectPublicWebRoute
@@ -1342,7 +1353,9 @@
             && (!effectiveRouteTab || effectiveRouteTab === "feed" || effectiveRouteTab === "home")
           )
         );
-      const shouldUseBootstrapCache = shouldFetchBootstrap && !isDirectPublicWebRoute;
+      const shouldUseBootstrapCache = shouldUseVolatileStartupReplay
+        && shouldFetchBootstrap
+        && !isDirectPublicWebRoute;
       if (appRoot) {
         appRoot.dataset.startupSurface = startupSurface;
       }
@@ -1364,6 +1377,7 @@
       };
       const restoreStartupSnapshot = () => {
         try {
+          if (!shouldUseVolatileStartupReplay) return false;
           if (!ENABLE_STARTUP_SNAPSHOT) return false;
           if (!appRoot) return false;
           if (isMapRouteStartup) return false;
