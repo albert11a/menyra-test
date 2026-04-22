@@ -572,18 +572,8 @@ export function createPublicProfileDirectEntryController({
     const seedAvatar = String(routeIdentity?.avatar || preview?.logoUrl || preview?.logo || preview?.avatar || "").trim();
     const seedLocation = String(routeIdentity?.location || preview?.city || preview?.address || "").trim();
     const seedBio = String(routeIdentity?.bio || "").trim();
-    const seedFollowers = normalizeCountOrNull(
-      routeIdentity?.followers
-      ?? preview?.followersCount
-      ?? preview?.followers
-      ?? preview?.fansCount
-      ?? preview?.fans
-    );
-    const seedFollowing = normalizeCountOrNull(
-      routeIdentity?.following
-      ?? preview?.followingCount
-      ?? preview?.following
-    );
+    const seedFollowers = normalizeCountOrNull(routeIdentity?.followers);
+    const seedFollowing = normalizeCountOrNull(routeIdentity?.following);
     const hasCanonicalSnapshot = !!routeSnapshot;
     const seededPosts = routePostsState === "seeded"
       ? (routePostsSeed.length

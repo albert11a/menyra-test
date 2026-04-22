@@ -2444,16 +2444,9 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     || normalizedRestaurantData.description
     || normalizedRestaurantData.about
   );
-  const identityFollowers = resolveCountOrNull(
-    normalizedRestaurantData.followersCount,
-    normalizedRestaurantData.followers,
-    normalizedRestaurantData.fansCount,
-    normalizedRestaurantData.fans
-  );
-  const identityFollowing = resolveCountOrNull(
-    normalizedRestaurantData.followingCount,
-    normalizedRestaurantData.following
-  );
+  // Public route bootstrap should not promote mixed preview/seed counts as canonical truth.
+  const identityFollowers = null;
+  const identityFollowing = null;
   const layoutMenuCardColor = resolveMenuLayoutColorFromRestaurant(normalizedRestaurantData);
   const identityTruth = (identityName || identityHandle || identityAvatar || identityLocation)
     ? "seeded"
