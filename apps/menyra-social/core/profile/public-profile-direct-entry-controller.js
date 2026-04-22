@@ -8,6 +8,7 @@ import {
   normalizePublicBusinessContentTabCore,
   normalizePublicBusinessSlugCore
 } from "../router/public-business-route-utils.js";
+import { isBootstrapRestaurantPreviewRecordCore } from "../common/restaurant-identity-runtime-controller.js";
 
 function safeLower(value = "") {
   return String(value || "").trim().toLowerCase();
@@ -114,9 +115,12 @@ function resolveRestaurantPreviewForRoute(state = null, restaurantId = "") {
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId || !state || typeof state !== "object") return null;
   const routeSlug = normalizeLookupSlug(safeRestaurantId);
+  const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
+  const canonicalRestaurants = restaurants.filter((row) => !isBootstrapRestaurantPreviewRecordCore(row));
   const listGroups = [
-    Array.isArray(state.bootstrapRestaurantPreview) ? state.bootstrapRestaurantPreview : [],
-    Array.isArray(state.restaurants) ? state.restaurants : []
+    canonicalRestaurants,
+    restaurants,
+    Array.isArray(state.bootstrapRestaurantPreview) ? state.bootstrapRestaurantPreview : []
   ];
   for (const list of listGroups) {
     const byId = list.find((row) => String(row?.id || "").trim() === safeRestaurantId);
