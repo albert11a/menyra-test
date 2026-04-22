@@ -344,7 +344,13 @@ export function createDeeplinkFlowControllerCore({
       ? liveProfileView.profile
       : null;
     const liveProfileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const liveProfileContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
     const liveSurfaceTopTab = liveProfileTopTab === "menu" ? "menu" : "profile";
+    const liveSurfaceContentTab = liveSurfaceTopTab === "menu"
+      ? "menu"
+      : (liveProfileContentTab === "media" ? "media" : "posts");
+    const requestedSurfaceTopTab = requestedTopTab === "menu" ? "menu" : "profile";
+    const requestedSurfaceContentTab = requestedSurfaceTopTab === "menu" ? "menu" : "posts";
     const liveDirectEntry = liveProfileView?.directEntry && typeof liveProfileView.directEntry === "object"
       ? liveProfileView.directEntry
       : null;
@@ -352,7 +358,8 @@ export function createDeeplinkFlowControllerCore({
       && liveDirectEntry?.routeFirst === true
       && liveDirectEntry?.active !== false
       && String(liveProfile?.restaurantId || "").trim() === safeRestaurantId;
-    const liveBusinessSurfaceMatchesRoute = liveSurfaceTopTab === (requestedTopTab === "menu" ? "menu" : "profile");
+    const liveBusinessSurfaceMatchesRoute = liveSurfaceTopTab === requestedSurfaceTopTab
+      && liveSurfaceContentTab === requestedSurfaceContentTab;
     const canShortCircuitBusinessRoute = !isPendingRouteSeedContinuation
       && liveBusinessSurfaceMatchesRoute;
     if (canShortCircuitBusinessRoute && isProfileAlreadyOpen({ pendingProfileRestaurantId: safeRestaurantId })) {

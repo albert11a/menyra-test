@@ -2170,8 +2170,15 @@ function applyPendingInitialRouteState() {
     const currentProfileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
     const currentProfileTruthState = String(state.profileView?.profile?.truthState || "").trim().toLowerCase();
     const currentProfileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    const currentProfileContentTab = String(state.profileContentTab || "").trim().toLowerCase();
     const currentBusinessSurfaceTopTab = currentProfileTopTab === "menu" ? "menu" : "profile";
     const pendingBusinessSurfaceTopTab = pendingDirectEntry.topTab === "menu" ? "menu" : "profile";
+    const currentBusinessSurfaceContentTab = currentBusinessSurfaceTopTab === "menu"
+      ? "menu"
+      : (currentProfileContentTab === "media" ? "media" : "posts");
+    const pendingBusinessSurfaceContentTab = pendingBusinessSurfaceTopTab === "menu"
+      ? "menu"
+      : (String(pendingDirectEntry.contentTab || "").trim().toLowerCase() === "media" ? "media" : "posts");
     const currentDirectEntry = currentProfileView?.directEntry && typeof currentProfileView.directEntry === "object"
       ? currentProfileView.directEntry
       : null;
@@ -2185,7 +2192,8 @@ function applyPendingInitialRouteState() {
       currentProfileTruthState
     })
       && !isPendingRouteSeedContinuation
-      && currentBusinessSurfaceTopTab === pendingBusinessSurfaceTopTab;
+      && currentBusinessSurfaceTopTab === pendingBusinessSurfaceTopTab
+      && currentBusinessSurfaceContentTab === pendingBusinessSurfaceContentTab;
     if (!pendingProfileAlreadyOpen) {
       setStartupSurfaceStatus("profile", "loading");
       if (pendingDirectEntry.topTab === "menu") {

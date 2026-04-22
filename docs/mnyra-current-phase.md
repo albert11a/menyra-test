@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 # Mnyra Current Phase
 
@@ -9,7 +9,10 @@ Last updated: 2026-04-22
 - Schritt 2 ist jetzt dokumentiert.
 - Schritt 3 ist abgeschlossen: Public-Route-Vertragskern zentralisiert.
 - Bewertung von Schritt 3: `bestanden mit kleinem Rest-Risiko`.
+- Schritt 4 ist abgeschlossen: Public-Core-Routen First-Render-Stabilitaet fuer `/:slug`, `/:slug/menu`, `/:slug/posts` gehaertet.
+- Bewertung von Schritt 4: `bestanden mit kleinem Rest-Risiko`.
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
+- Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
 
 ## Harte Invariante (verbindlich)
 
