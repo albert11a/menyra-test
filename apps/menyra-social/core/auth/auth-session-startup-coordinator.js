@@ -350,7 +350,14 @@ export function createAuthSessionStartupCoordinator({
           skip: webDirectGuestProfileSurface
         });
       }
-      if (!state?.user && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
+      const skipStartupPublicBootstrapFetch = webDirectGuestProfileSurface;
+      if (
+        !state?.user
+        && !hasInlineBootstrapPayload
+        && !hasWindowBootstrapPromise
+        && !isQrMenuProfileLaunchActive()
+        && !skipStartupPublicBootstrapFetch
+      ) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({

@@ -1329,11 +1329,14 @@
           || effectiveProfileRouteTab === "profile"
           || !effectiveProfileRouteTab
         );
+      const isPublicCoreWebRouteStartup = isDirectPublicWebRoute
+        && routeSource !== "qr";
       const startupSurface = effectiveProfileRouteTab === "menu"
         ? "menu"
         : (hasLandingRouteHint || isUserRouteStartup ? "profile" : "feed");
       const shouldFetchBootstrap = !isMapRouteStartup
         && !isUserRouteStartup
+        && !isPublicCoreWebRouteStartup
         && (
           isDirectPublicWebRoute
           || (
