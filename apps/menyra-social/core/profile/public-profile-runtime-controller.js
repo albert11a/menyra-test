@@ -1106,7 +1106,7 @@ export function createPublicProfileRuntimeController({
     const routeRestaurantId = String(restaurantId || "").trim();
     if (!routeRestaurantId || !makeCollectionRef || !db) return [];
     const directCached = publicBusinessPostsCache.get(routeRestaurantId);
-    if (Array.isArray(directCached)) return directCached;
+    if (Array.isArray(directCached) && directCached.length > 0) return directCached;
     const inFlight = publicBusinessPostsInFlight.get(routeRestaurantId);
     if (inFlight) {
       return inFlight;
@@ -1119,7 +1119,7 @@ export function createPublicProfileRuntimeController({
       }
       if (!effectiveRestaurantId) return [];
       const resolvedCached = publicBusinessPostsCache.get(effectiveRestaurantId);
-      if (Array.isArray(resolvedCached)) {
+      if (Array.isArray(resolvedCached) && resolvedCached.length > 0) {
         if (routeRestaurantId !== effectiveRestaurantId) {
           publicBusinessPostsCache.set(routeRestaurantId, resolvedCached);
         }
@@ -1156,9 +1156,14 @@ export function createPublicProfileRuntimeController({
             restaurantId: effectiveRestaurantId
           }))
           .filter((row) => row.url));
-        publicBusinessPostsCache.set(effectiveRestaurantId, normalizedPosts);
-        if (routeRestaurantId !== effectiveRestaurantId) {
-          publicBusinessPostsCache.set(routeRestaurantId, normalizedPosts);
+        if (normalizedPosts.length > 0) {
+          publicBusinessPostsCache.set(effectiveRestaurantId, normalizedPosts);
+          if (routeRestaurantId !== effectiveRestaurantId) {
+            publicBusinessPostsCache.set(routeRestaurantId, normalizedPosts);
+          }
+        } else {
+          publicBusinessPostsCache.delete(effectiveRestaurantId);
+          publicBusinessPostsCache.delete(routeRestaurantId);
         }
         return normalizedPosts;
       } catch (err) {

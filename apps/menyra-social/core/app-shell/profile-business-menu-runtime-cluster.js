@@ -144,18 +144,52 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!visibleProfileView) return;
     if (publicProfilePostsEnsurePromise && publicProfilePostsEnsureTargetId === requestedRestaurantId) return;
     const request = Promise.resolve().then(async () => {
-      const restaurantId = await resolveProfileRestaurantId(profile);
-      if (!restaurantId) return;
-      const posts = await loadBusinessPostsForRestaurant(restaurantId);
+      const safeProfile = profile && typeof profile === "object" ? profile : {};
+      const canonicalRestaurantId = await resolveProfileRestaurantId(safeProfile);
+      const candidateRestaurantIds = Array.from(new Set(
+        [
+          requestedRestaurantId,
+          canonicalRestaurantId,
+          String(safeProfile.publicSlug || "").trim(),
+          String(safeProfile.landingSlug || "").trim(),
+          String(safeProfile.handle || "").trim().replace(/^@/, "").toLowerCase()
+        ]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+      ));
+      if (!candidateRestaurantIds.length) return;
+      let restaurantId = canonicalRestaurantId || requestedRestaurantId;
+      let posts = [];
+      for (const candidateId of candidateRestaurantIds) {
+        const next = await loadBusinessPostsForRestaurant(candidateId);
+        const nextPosts = Array.isArray(next) ? next : [];
+        if (!nextPosts.length) continue;
+        posts = nextPosts;
+        const resolvedFromPosts = String(nextPosts[0]?.restaurantId || nextPosts[0]?.ownerId || "").trim();
+        restaurantId = resolvedFromPosts || candidateId || restaurantId;
+        break;
+      }
+      if (!posts.length) {
+        const fallback = await loadBusinessPostsForRestaurant(restaurantId || requestedRestaurantId);
+        posts = Array.isArray(fallback) ? fallback : [];
+      }
       const liveProfileView = getVisiblePublicProfileView();
       if (!liveProfileView) return;
       const liveRestaurantId = String(liveProfileView.restaurantId || "").trim();
-      const stillSameRequestedTarget = liveRestaurantId
-        && liveRestaurantId === requestedRestaurantId;
-      if (liveRestaurantId !== restaurantId && !stillSameRequestedTarget) return;
+      const acceptedRestaurantIds = new Set(
+        [
+          requestedRestaurantId,
+          canonicalRestaurantId,
+          restaurantId,
+          ...candidateRestaurantIds
+        ]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+      );
+      if (liveRestaurantId && !acceptedRestaurantIds.has(liveRestaurantId)) return;
       const nextPosts = Array.isArray(posts) ? posts : [];
       refreshVisiblePublicProfile({
-        restaurantId,
+        restaurantId: restaurantId || canonicalRestaurantId || requestedRestaurantId,
         postsLoaded: true,
         truthState: nextPosts.length ? "stable" : "empty"
       }, nextPosts);
