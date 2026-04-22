@@ -32,6 +32,9 @@ function resolveRoutePayloadSectionState(routePayload = null, section = "") {
   const payloadSection = routePayload?.[sectionKey] && typeof routePayload[sectionKey] === "object"
     ? routePayload[sectionKey]
     : null;
+  const items = Array.isArray(snapshotSection?.items)
+    ? snapshotSection.items
+    : (Array.isArray(payloadSection?.items) ? payloadSection.items : []);
   const truthState = normalizeSectionTruthState(
     snapshotSection?.state
     || payloadSection?.state
@@ -39,15 +42,13 @@ function resolveRoutePayloadSectionState(routePayload = null, section = "") {
     || routePayload?.truth?.[sectionKey]
     || ""
   );
-  if (truthState) return truthState;
-  const items = Array.isArray(snapshotSection?.items)
-    ? snapshotSection.items
-    : (Array.isArray(payloadSection?.items) ? payloadSection.items : []);
+  if (truthState === "seeded") return items.length > 0 ? "seeded" : "unknown";
+  if (truthState === "knownEmpty") return "knownEmpty";
+  if (truthState === "unknown") return "unknown";
   if (items.length > 0) return "seeded";
   if (payloadSection?.knownEmpty === true || snapshotSection?.knownEmpty === true) return "knownEmpty";
   if (payloadSection?.unknown === true || snapshotSection?.unknown === true) return "unknown";
   const count = Number(snapshotSection?.count ?? payloadSection?.count);
-  if (Number.isFinite(count) && count > 0) return "seeded";
   if (Number.isFinite(count) && count === 0 && payloadSection?.seeded !== true && snapshotSection?.seeded !== true) {
     return "knownEmpty";
   }
@@ -281,24 +282,40 @@ function hasRoutePayloadIdentitySeed(routePayload = null) {
   return hasName || hasHandle || hasAvatar || hasFollowers || hasFollowing;
 }
 
+function getRoutePayloadSectionItems(routePayload = null, section = "") {
+  if (!routePayload || typeof routePayload !== "object") return [];
+  const sectionKey = String(section || "").trim().toLowerCase();
+  if (!sectionKey) return [];
+  const snapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
+    ? routePayload.businessSnapshot
+    : null;
+  const snapshotSection = snapshot?.[sectionKey] && typeof snapshot[sectionKey] === "object"
+    ? snapshot[sectionKey]
+    : null;
+  const payloadSection = routePayload?.[sectionKey] && typeof routePayload[sectionKey] === "object"
+    ? routePayload[sectionKey]
+    : null;
+  if (Array.isArray(snapshotSection?.items)) return snapshotSection.items;
+  if (Array.isArray(payloadSection?.items)) return payloadSection.items;
+  return [];
+}
+
 function hasRoutePayloadPostsSeed(routePayload = null) {
   if (!routePayload || typeof routePayload !== "object") return false;
   const routePostsState = resolveRoutePayloadSectionState(routePayload, "posts");
-  if (routePostsState === "seeded" || routePostsState === "knownEmpty") return true;
+  if (routePostsState === "knownEmpty") return true;
   if (routePostsState === "unknown") return false;
-  const count = Number(routePayload?.posts?.count);
-  if (Number.isFinite(count) && count > 0) return true;
-  return routePayload?.posts?.seeded === true;
+  const items = getRoutePayloadSectionItems(routePayload, "posts");
+  return items.length > 0;
 }
 
 function hasRoutePayloadMenuSeed(routePayload = null) {
   if (!routePayload || typeof routePayload !== "object") return false;
   const routeMenuState = resolveRoutePayloadSectionState(routePayload, "menu");
-  if (routeMenuState === "seeded" || routeMenuState === "knownEmpty") return true;
+  if (routeMenuState === "knownEmpty") return true;
   if (routeMenuState === "unknown") return false;
-  const count = Number(routePayload?.menu?.count);
-  if (Number.isFinite(count) && count > 0) return true;
-  return routePayload?.menu?.seeded === true;
+  const items = getRoutePayloadSectionItems(routePayload, "menu");
+  return items.length > 0;
 }
 
 export function normalizeProfileSurfaceStatus(value = "", fallback = "loading") {

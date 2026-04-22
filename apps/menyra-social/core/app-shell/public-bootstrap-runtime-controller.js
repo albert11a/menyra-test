@@ -300,9 +300,12 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     .filter(Boolean)
     .filter((row) => row.active !== false);
   const resolveSectionTruthState = (section = {}, fallbackCount = 0) => {
-    const explicitState = String(section?.state || "").trim().toLowerCase();
-    if (explicitState) return normalizeTruthState(explicitState, "unknown");
-    if (section?.seeded === true || fallbackCount > 0 || Number(section?.count) > 0) return "seeded";
+    const explicitState = normalizeTruthState(String(section?.state || "").trim().toLowerCase(), "unknown");
+    if (explicitState === "knownEmpty") return "knownEmpty";
+    if (explicitState === "seeded") return fallbackCount > 0 ? "seeded" : "unknown";
+    if (explicitState === "unknown") return "unknown";
+    if (section?.seeded === true) return fallbackCount > 0 ? "seeded" : "unknown";
+    if (fallbackCount > 0) return "seeded";
     if (section?.knownEmpty === true || (Number(section?.count) === 0 && section?.unknown !== true)) return "knownEmpty";
     return "unknown";
   };
@@ -780,8 +783,9 @@ function applyWebDirectRouteSeedFromBootstrap({
     } else if (seededPosts.length === 0) {
       view.posts = [];
       profile.posts = [];
-      profile.postsLoaded = true;
-      profile.truthState = "empty";
+      profile.postsLoaded = false;
+      profile.truthState = "route-pending-loading";
+      resolvedRoutePostsState = "unknown";
       changed = true;
     }
   } else if (resolvedRoutePostsState === "knownEmpty") {

@@ -746,7 +746,7 @@ export function createProfileOpenFlowControllerCore({
           posts: routeSeedPosts
         }, {
           identityStatus: routeIdentityState === "seeded" ? "ready" : "loading",
-          postsStatus: routePostsState === "seeded"
+          postsStatus: (routePostsState === "seeded" && routeSeedPosts.length > 0)
             ? "ready"
             : (routePostsState === "knownEmpty" ? "empty" : "loading")
         })
@@ -1015,10 +1015,26 @@ export function createProfileOpenFlowControllerCore({
         identityStatus: "ready",
         postsStatus: "loading"
       });
+      const resolvedProfileRestaurantId = String(resolved?.restaurantId || "").trim();
+      const acceptedRestaurantIds = new Set(
+        [
+          targetRestaurantLookupId,
+          targetMenuRestaurantId,
+          routeSnapshotRestaurantId,
+          resolvedProfileRestaurantId
+        ]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+      );
+      const restaurantMatchesRouteTarget = (restaurantId = "") => {
+        const safeRestaurantId = String(restaurantId || "").trim();
+        if (!safeRestaurantId) return true;
+        return acceptedRestaurantIds.has(safeRestaurantId);
+      };
 
       if (state.activeTab !== "profile") return;
       const visibleRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
-      if (targetRestaurantLookupId && visibleRestaurantId && visibleRestaurantId !== targetRestaurantLookupId && visibleRestaurantId !== targetMenuRestaurantId) return;
+      if (!restaurantMatchesRouteTarget(visibleRestaurantId)) return;
       const interimPosts = stableBusinessPosts.length
         ? stableBusinessPosts
         : [];
@@ -1050,12 +1066,13 @@ export function createProfileOpenFlowControllerCore({
       });
 
       const resolvedRestaurantId = String(
-        resolved?.restaurantId
+        resolvedProfileRestaurantId
         || targetMenuRestaurantId
         || targetRestaurantLookupId
         || ""
       ).trim();
       if (!resolvedRestaurantId) return;
+      acceptedRestaurantIds.add(resolvedRestaurantId);
       let posts = null;
       if (isMenuTopTab && isWebRoutePriorityPath) {
         posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
@@ -1077,14 +1094,7 @@ export function createProfileOpenFlowControllerCore({
       }
       const latestRestaurantId = String(state?.profileView?.profile?.restaurantId || "").trim();
       if (state.activeTab !== "profile") return;
-      if (
-        latestRestaurantId
-        && latestRestaurantId !== resolvedRestaurantId
-        && latestRestaurantId !== targetRestaurantLookupId
-        && latestRestaurantId !== targetMenuRestaurantId
-      ) {
-        return;
-      }
+      if (!restaurantMatchesRouteTarget(latestRestaurantId)) return;
 
       const resolvedWithPosts = applySurfaceTruthPatch({
         ...resolved,
@@ -1129,14 +1139,14 @@ export function createProfileOpenFlowControllerCore({
       const liveView = state?.profileView;
       const liveProfile = liveView?.profile;
       const liveRestaurantId = String(liveProfile?.restaurantId || "").trim();
+      const liveRestaurantMatchesTarget = !liveRestaurantId
+        || liveRestaurantId === String(targetRestaurantLookupId || "").trim()
+        || liveRestaurantId === String(targetMenuRestaurantId || "").trim()
+        || liveRestaurantId === String(routeSnapshotRestaurantId || "").trim();
       if (
         liveView
         && liveProfile
-        && (
-          !liveRestaurantId
-          || liveRestaurantId === String(targetRestaurantLookupId || "").trim()
-          || liveRestaurantId === String(targetMenuRestaurantId || "").trim()
-        )
+        && liveRestaurantMatchesTarget
       ) {
         const livePosts = Array.isArray(liveView.posts) ? liveView.posts : [];
         const liveIdentityState = normalizeIdentityTruthState(

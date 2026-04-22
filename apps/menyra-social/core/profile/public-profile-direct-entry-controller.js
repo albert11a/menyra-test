@@ -598,7 +598,8 @@ export function createPublicProfileDirectEntryController({
         ? routePostsSeed.slice(0, 12)
         : (hasCanonicalSnapshot ? [] : resolveSeedPostsForRoute(state, entry.restaurantId, { max: 8 })))
       : [];
-    const postsReadySeed = routePostsState !== "unknown";
+    const hasRouteSeededPosts = routePostsState === "seeded" && seededPosts.length > 0;
+    const postsReadySeed = hasRouteSeededPosts || routePostsState === "knownEmpty";
     const hasHeaderTruth = routeIdentityState === "seeded"
       || !!(seedBusinessName || seedHandle || seedAvatar || seedLocation || seedFollowers !== null || seedFollowing !== null);
     if (routeLayoutColor && String(state?.menuLayout?.cardColor || "").trim().toLowerCase() !== routeLayoutColor) {
@@ -626,7 +627,7 @@ export function createPublicProfileDirectEntryController({
       postsLoaded: postsReadySeed,
       posts: seededPosts,
       identityTruthState: hasHeaderTruth ? "ready" : "loading",
-      truthState: routePostsState === "seeded"
+      truthState: hasRouteSeededPosts
         ? "stable"
         : (routePostsState === "knownEmpty" ? "empty" : "route-pending-loading")
     };

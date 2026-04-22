@@ -149,7 +149,10 @@ export function createProfileBusinessMenuRuntimeCluster({
       const posts = await loadBusinessPostsForRestaurant(restaurantId);
       const liveProfileView = getVisiblePublicProfileView();
       if (!liveProfileView) return;
-      if (liveProfileView.restaurantId !== restaurantId) return;
+      const liveRestaurantId = String(liveProfileView.restaurantId || "").trim();
+      const stillSameRequestedTarget = liveRestaurantId
+        && liveRestaurantId === requestedRestaurantId;
+      if (liveRestaurantId !== restaurantId && !stillSameRequestedTarget) return;
       const nextPosts = Array.isArray(posts) ? posts : [];
       refreshVisiblePublicProfile({
         restaurantId,
