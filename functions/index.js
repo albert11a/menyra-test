@@ -1387,6 +1387,43 @@ function safeLowerText(value = "") {
   return asText(value).toLowerCase();
 }
 
+function isBootstrapRestaurantPublicRecord(rest = {}) {
+  const source = rest && typeof rest === "object" ? rest : {};
+  if (source.deleted === true || source.isDeleted === true || source.hiddenFromDiscover === true) return false;
+  if (source.deletedAt) return false;
+  const status = safeLowerText(
+    source.status
+    || source.state
+    || source.businessStatus
+    || source.lifecycleStatus
+    || ""
+  );
+  if (status === "deleted") return false;
+  const visibility = safeLowerText(
+    source.visibility
+    || source.publicVisibility
+    || source.discoveryVisibility
+    || source.profileVisibility
+    || ""
+  );
+  if (visibility === "hidden" || visibility === "private") return false;
+  return true;
+}
+
+function isBootstrapMenuItemPubliclyVisible(item = {}) {
+  const source = item && typeof item === "object" ? item : {};
+  if (source.menuHidden === true || source.statusHidden === true || source.hidden === true || source.visible === false) {
+    return false;
+  }
+  const menuVisibility = safeLowerText(source.menuVisibility || "");
+  const statusVisibility = safeLowerText(source.statusVisibility || "");
+  const visibility = safeLowerText(source.visibility || source.status || "");
+  if (menuVisibility === "hidden" || statusVisibility === "hidden" || visibility === "hidden") {
+    return false;
+  }
+  return true;
+}
+
 function normalizePublicRouteSlug(value = "") {
   let key = asText(value).toLowerCase();
   if (!key) return "";
@@ -1839,6 +1876,7 @@ async function queryPublicMenuItemsForRestaurant(restaurantId = "", { limitCount
     const raw = coerceBootstrapMenuItemsFromData(snap.data() || {});
     const normalized = raw
       .map((item, index) => normalizeBootstrapMenuItem(item, safeRestaurantId, index))
+      .filter((item) => isBootstrapMenuItemPubliclyVisible(item))
       .sort((a, b) => normalizeBootstrapOrderIndex(a?.orderIndex) - normalizeBootstrapOrderIndex(b?.orderIndex));
     const count = normalized.length;
     const limitedItems = normalized.slice(0, safeLimit);
@@ -2259,9 +2297,13 @@ async function resolveBootstrapRestaurantDocByRouteId(routeLookupId = "") {
   try {
     const directSnap = await db.collection("restaurants").doc(safeLookupId).get();
     if (directSnap.exists) {
+      const data = directSnap.data() || {};
+      if (!isBootstrapRestaurantPublicRecord({ id: directSnap.id, ...data })) {
+        return null;
+      }
       return {
         id: asText(directSnap.id),
-        data: directSnap.data() || {}
+        data
       };
     }
   } catch {}
@@ -2279,9 +2321,13 @@ async function resolveBootstrapRestaurantDocByRouteId(routeLookupId = "") {
         .get();
       const first = snap.docs?.[0] || null;
       if (!first?.id) return null;
+      const data = first.data() || {};
+      if (!isBootstrapRestaurantPublicRecord({ id: first.id, ...data })) {
+        return null;
+      }
       return {
         id: asText(first.id),
-        data: first.data() || {}
+        data
       };
     } catch {
       return null;
@@ -2362,6 +2408,7 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   if (!restaurantDoc?.id) return null;
   const restaurantId = asText(restaurantDoc.id);
   const restaurantData = restaurantDoc.data || {};
+  if (!isBootstrapRestaurantPublicRecord({ id: restaurantId, ...restaurantData })) return null;
   const publicRouteMeta = await ensureBootstrapRestaurantPublicRouteMeta(restaurantId, restaurantData, {
     routeLookupId: restaurantLookupId
   });
@@ -2792,44 +2839,77 @@ exports.socialBootstrapFeed = functions
 
       const restaurants = [];
       const restaurantMap = new Map();
+      const restaurantIdSet = new Set();
       restaurantsSnap.forEach((docSnap) => {
         const data = docSnap.data() || {};
         const id = asText(docSnap.id);
         if (!id) return;
-        const rest = {
-          id,
-          name: asText(data.name || data.restaurantName || data.displayName),
-          restaurantName: asText(data.restaurantName || data.name),
-          logoUrl: asText(data.logoUrl || data.logo || data.logoURL),
-          city: asText(data.city),
-          type: asText(data.type || data.customerType || data.category || data.kind || data.restaurantType)
-        };
+        if (!isBootstrapRestaurantPublicRecord({ id, ...data })) return;
+        const rest = mapPublicRestaurantPreview(id, data);
+        if (!rest?.id) return;
         restaurants.push(rest);
         restaurantMap.set(id, rest);
+        restaurantIdSet.add(id);
       });
+
+      const referencedRestaurantIds = new Set();
+      feedSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const rid = asText(data.rid || data.restaurantId);
+        if (rid) referencedRestaurantIds.add(rid);
+      });
+      storiesSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const rid = extractStoryRestaurantId(docSnap, data);
+        if (rid) referencedRestaurantIds.add(rid);
+      });
+      const missingRestaurantIds = Array.from(referencedRestaurantIds.values())
+        .filter((rid) => !restaurantMap.has(rid));
+      if (missingRestaurantIds.length) {
+        const resolvedMissing = await Promise.allSettled(
+          missingRestaurantIds.map(async (rid) => {
+            const snap = await db.collection("restaurants").doc(rid).get();
+            if (!snap.exists) return null;
+            const data = snap.data() || {};
+            if (!isBootstrapRestaurantPublicRecord({ id: snap.id, ...data })) return null;
+            return mapPublicRestaurantPreview(snap.id, data);
+          })
+        );
+        resolvedMissing.forEach((result) => {
+          if (result.status !== "fulfilled") return;
+          const rest = result.value && typeof result.value === "object" ? result.value : null;
+          const id = asText(rest?.id);
+          if (!id || restaurantMap.has(id)) return;
+          restaurantMap.set(id, rest);
+          if (!restaurantIdSet.has(id)) {
+            restaurantIdSet.add(id);
+            restaurants.push(rest);
+          }
+        });
+      }
 
       const feedPosts = [];
       feedSnap.forEach((docSnap) => {
         const data = docSnap.data() || {};
         const rid = asText(data.rid || data.restaurantId);
-        if (!rid) return;
+        if (!rid || !restaurantMap.has(rid)) return;
+        const normalizedPost = mapPublicRoutePostSeed({
+          docId: docSnap.id,
+          data,
+          restaurantId: rid
+        });
+        if (!normalizedPost) return;
         const rest = restaurantMap.get(rid) || {};
-        const mediaRow = Array.isArray(data.media) && data.media.length ? data.media[0] : null;
+        const feedRow = mapPublicRouteFeedPost(normalizedPost, rest);
+        if (!feedRow) return;
         feedPosts.push({
-          id: asText(docSnap.id),
-          restaurantId: rid,
-          business: asText(data.businessName || data.restaurantName || rest.name || rest.restaurantName, "Business"),
-          logo: asText(rest.logoUrl || rest.logo || data.logoUrl || data.logo || data.logoURL),
-          location: asText(data.city || rest.city, "Prishtina"),
-          content: asText(data.caption || data.captionShort),
-          image: asText(data.thumbUrl || data.mediaUrl || mediaRow?.thumbUrl || mediaRow?.url || data.imageUrl || data.url),
-          likes: Number(data.likesCount || data.likes || 0) || 0,
-          comments: Number(data.commentsCount || data.comments || 0) || 0,
-          createdAt: toMillis(data.createdAt),
-          category: asText(data.postType, "food"),
-          isLive: !!data.isLive,
-          ownerType: "restaurant",
-          ownerId: rid
+          ...feedRow,
+          business: asText(data.businessName || data.restaurantName || feedRow.business, "Business"),
+          logo: asText(feedRow.logo || data.logoUrl || data.logo || data.logoURL),
+          location: asText(data.city || feedRow.location, "Prishtina"),
+          content: asText(feedRow.content || data.captionShort),
+          category: asText(feedRow.category || data.postType, "food"),
+          isLive: !!data.isLive
         });
       });
 
@@ -2840,7 +2920,7 @@ exports.socialBootstrapFeed = functions
         if (status && status !== "active" && status !== "live") return;
         if (data.active === false || data.isActive === false) return;
         const rid = extractStoryRestaurantId(docSnap, data);
-        if (!rid || storiesByRestaurant.has(rid)) return;
+        if (!rid || storiesByRestaurant.has(rid) || !restaurantMap.has(rid)) return;
         const rest = restaurantMap.get(rid) || {};
         const canonicalName = normalizeStoryName(rest.name || rest.restaurantName || rest.displayName || "");
         const sourceName = normalizeStoryName(data.businessName || data.restaurantName || "");
