@@ -1074,7 +1074,8 @@ export function createProfileOpenFlowControllerCore({
       if (!resolvedRestaurantId) return;
       acceptedRestaurantIds.add(resolvedRestaurantId);
       let posts = null;
-      if (isMenuTopTab && isWebRoutePriorityPath) {
+      const deferPostsResolutionToVisiblePostsSurface = isMenuTopTab && isWebRoutePriorityPath;
+      if (deferPostsResolutionToVisiblePostsSurface) {
         posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
       } else if (earlyPostsResult?.ok && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
         posts = earlyPostsResult.posts;
@@ -1096,12 +1097,20 @@ export function createProfileOpenFlowControllerCore({
       if (state.activeTab !== "profile") return;
       if (!restaurantMatchesRouteTarget(latestRestaurantId)) return;
 
+      const resolvedPosts = Array.isArray(posts) ? posts : [];
+      const resolvedPostsStatus = resolvedPosts.length > 0
+        ? "ready"
+        : (
+          deferPostsResolutionToVisiblePostsSurface
+            ? (routePostsState === "knownEmpty" ? "empty" : "loading")
+            : "empty"
+        );
       const resolvedWithPosts = applySurfaceTruthPatch({
         ...resolved,
-        posts: Array.isArray(posts) ? posts : [],
+        posts: resolvedPosts,
       }, {
         identityStatus: "ready",
-        postsStatus: Array.isArray(posts) && posts.length > 0 ? "ready" : "empty"
+        postsStatus: resolvedPostsStatus
       });
       const resolvedReadyDirectEntry = buildDirectEntryMeta("ready");
       const safeLandingStep = Math.max(0, Number(state?.profileLandingStep || 0) || 0);
@@ -1116,7 +1125,7 @@ export function createProfileOpenFlowControllerCore({
             posts: resolvedWithPosts.posts
           }, {
             identityStatus: "ready",
-            postsStatus: resolvedWithPosts.posts.length > 0 ? "ready" : "empty"
+            postsStatus: resolvedPostsStatus
           });
         }
         return;
