@@ -352,9 +352,13 @@ export function resolveVisibleProfileSurface(state = {}, {
   const directEntryTopTab = directEntryTopTabRaw === "landing" && directEntry?.explicitLanding !== true
     ? "profile"
     : directEntryTopTabRaw;
+  const explicitTopTab = String(profileTopTab || "").trim();
+  const explicitContentTab = String(profileContentTab || "").trim();
+  const hasExplicitSurfaceSelection = !!explicitTopTab || !!explicitContentTab;
   const directEntryActive = activeTab === "profile"
     && !!directEntryTopTab
-    && directEntry?.active !== false;
+    && directEntry?.active !== false
+    && !hasExplicitSurfaceSelection;
   const directEntryContentTab = normalizeProfileContentTab(
     directEntry?.contentTab || "",
     directEntryTopTab === "menu" ? "menu" : "posts"
@@ -373,16 +377,16 @@ export function resolveVisibleProfileSurface(state = {}, {
   const targetRestaurantId = String(profile?.restaurantId || "").trim();
   const targetUid = String(profile?.uid || "").trim();
   const targetHandle = String(profile?.handle || profile?.name || "").trim().toLowerCase();
-  const requestedTopTab = directEntryActive
-    ? directEntryTopTab
-    : (profileTopTab || state?.profileTopTab || "");
+  const requestedTopTab = explicitTopTab
+    ? explicitTopTab
+    : (directEntryActive ? directEntryTopTab : (state?.profileTopTab || ""));
   const activeTopTab = normalizeProfileTopTab(
     requestedTopTab,
     profile?.restaurantId ? "profile" : "profile"
   );
-  const requestedContentTab = directEntryActive
-    ? directEntryContentTab
-    : (profileContentTab || state?.profileContentTab || "");
+  const requestedContentTab = explicitContentTab
+    ? explicitContentTab
+    : (directEntryActive ? directEntryContentTab : (state?.profileContentTab || ""));
   const activeContentTab = resolveActiveProfileContentTab({
     topTab: activeTopTab,
     contentTab: requestedContentTab
