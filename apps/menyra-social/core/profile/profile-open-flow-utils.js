@@ -1,3 +1,8 @@
+import {
+  buildCanonicalPublicBusinessPathCore,
+  normalizePublicBusinessSlugCore
+} from "../router/public-business-route-utils.js";
+
 export function createProfileOpenFlowControllerCore({
   state,
   isLocalBusinessProfile,
@@ -253,7 +258,9 @@ export function createProfileOpenFlowControllerCore({
   const normalizeCanonicalBusinessSlug = (value = "") => {
     const raw = String(value || "").trim();
     if (!raw || isLikelyOpaqueBusinessId(raw)) return "";
-    return normalizeBusinessLookupKey(raw);
+    const slug = normalizePublicBusinessSlugCore(raw);
+    if (!slug || isLikelyOpaqueBusinessId(slug)) return "";
+    return slug;
   };
   const resolveCanonicalBusinessRouteFields = (...candidates) => {
     for (const candidate of candidates) {
@@ -262,7 +269,7 @@ export function createProfileOpenFlowControllerCore({
       return {
         publicSlug: slug,
         landingSlug: slug,
-        canonicalPublicPath: `/${encodeURIComponent(slug)}`
+        canonicalPublicPath: buildCanonicalPublicBusinessPathCore({ slug })
       };
     }
     return {};

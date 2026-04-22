@@ -1,3 +1,5 @@
+import { normalizePublicBusinessTopTabCore } from "../router/public-business-route-utils.js";
+
 export function normalizePendingProfileRestaurantIdCore(value = "") {
   return String(value || "").trim();
 }
@@ -22,11 +24,8 @@ export function isPendingProfileAlreadyOpenCore({
 }
 
 export function normalizeProfileTopTabFromRouteCore(value = "") {
-  const key = String(value || "").trim().toLowerCase();
+  const key = normalizePublicBusinessTopTabCore(value, "");
   if (!key) return "";
-  if (key === "landing" || key === "onboarding" || key === "welcome") return "landing";
-  if (key === "menu" || key === "karte" || key === "speisekarte" || key === "shop") return "menu";
-  if (key === "cart" || key === "basket" || key === "warenkorb") return "cart";
-  if (key === "profile" || key === "home" || key === "overview") return "profile";
+  if (key === "landing" || key === "menu" || key === "cart" || key === "profile") return key;
   return "";
 }

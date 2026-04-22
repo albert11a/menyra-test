@@ -2,6 +2,12 @@ import {
   normalizePendingProfileRestaurantIdCore,
   normalizeProfileTopTabFromRouteCore
 } from "./profile-route-open-utils.js";
+import {
+  buildCanonicalPublicBusinessPathCore,
+  isQrLikePublicBusinessAccessSourceCore,
+  normalizePublicBusinessContentTabCore,
+  normalizePublicBusinessSlugCore
+} from "../router/public-business-route-utils.js";
 
 function safeLower(value = "") {
   return String(value || "").trim().toLowerCase();
@@ -15,12 +21,7 @@ function normalizeCountOrNull(value) {
 }
 
 function normalizeLookupSlug(value = "") {
-  const raw = String(value || "").trim().toLowerCase();
-  if (!raw) return "";
-  return raw
-    .replace(/^@+/, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return normalizePublicBusinessSlugCore(value || "");
 }
 
 function mapFeedPostToProfileSeedPost(post = {}, restaurantId = "") {
@@ -56,23 +57,14 @@ function normalizeProfileTopTab(value = "", fallback = "profile") {
 
 function normalizeProfileContentTabForTopTab(topTab = "", value = "") {
   const safeTopTab = normalizeProfileTopTab(topTab, "profile");
-  if (safeTopTab === "menu") return "menu";
-  const contentTab = safeLower(value);
-  if (contentTab === "media") return "media";
-  if (contentTab === "checkins") return "checkins";
-  if (contentTab === "menu") return "menu";
-  return "posts";
+  if (safeTopTab === "menu") {
+    return normalizePublicBusinessContentTabCore(value || "menu", "menu");
+  }
+  return normalizePublicBusinessContentTabCore(value || "posts", "posts");
 }
 
 function isQrLikeProfileAccessSource(value = "") {
-  const safeAccessSource = safeLower(value);
-  return safeAccessSource === "qr"
-    || safeAccessSource === "qrcode"
-    || safeAccessSource === "qr-code"
-    || safeAccessSource === "menuqr"
-    || safeAccessSource === "menu-qr"
-    || safeAccessSource === "scanqr"
-    || safeAccessSource === "scan-qr";
+  return isQrLikePublicBusinessAccessSourceCore(value);
 }
 
 function normalizeDirectEntryPhase(value = "", fallback = "seeded") {
@@ -149,9 +141,9 @@ function resolveRestaurantPreviewForRoute(state = null, restaurantId = "") {
 }
 
 function resolveCanonicalPublicPath(publicSlug = "") {
-  const safeSlug = normalizeLookupSlug(publicSlug);
-  if (!safeSlug) return "";
-  return `/${encodeURIComponent(safeSlug)}`;
+  return buildCanonicalPublicBusinessPathCore({
+    slug: publicSlug
+  });
 }
 
 function resolveProfileSeedPublicSlug(routeIdentity = null, preview = null) {

@@ -1,4 +1,5 @@
 import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
+import { isQrLikePublicBusinessAccessSourceCore } from "./public-business-route-utils.js";
 
 const NOTIFICATION_QUERY_KEYS = ["notif", "notification", "nid"];
 const POST_QUERY_KEYS = ["post", "postId"];
@@ -381,13 +382,7 @@ export function createDeeplinkFlowControllerCore({
     });
     const nextTab = normalizeProfileTopTab(nextTabRaw);
     const safeAccessSource = String(nextAccessSourceRaw || "").trim().toLowerCase();
-    const isQrLikeAccessSource = safeAccessSource === "qr"
-      || safeAccessSource === "qrcode"
-      || safeAccessSource === "qr-code"
-      || safeAccessSource === "menuqr"
-      || safeAccessSource === "menu-qr"
-      || safeAccessSource === "scanqr"
-      || safeAccessSource === "scan-qr";
+    const isQrLikeAccessSource = isQrLikePublicBusinessAccessSourceCore(safeAccessSource);
     const nextAccessSource = nextTab === "menu" && isQrLikeAccessSource
       ? "qr"
       : "";

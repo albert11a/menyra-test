@@ -85,7 +85,8 @@ export function resolveInitialRouteState({
     || pathBusinessRoute?.accessSource
     || (qrFlagEnabled ? "qr" : "")
   ).trim().toLowerCase();
-  const fallbackProfileTopTab = pendingProfileRestaurantId && profileAccessSource === "qr"
+  const hasQrProfileAccessSource = isQrLikePublicBusinessAccessSourceCore(profileAccessSource);
+  const fallbackProfileTopTab = pendingProfileRestaurantId && hasQrProfileAccessSource
     ? "menu"
     : "";
   const pendingProfileTopTab = pendingProfileRestaurantId
@@ -101,7 +102,7 @@ export function resolveInitialRouteState({
     )
     : "";
   const pendingProfileAccessSource = pendingProfileRestaurantId
-    ? (isQrLikePublicBusinessAccessSourceCore(profileAccessSource) ? "qr" : "")
+    ? (hasQrProfileAccessSource ? "qr" : "")
     : "";
   const pendingProfileTableNumber = pendingProfileRestaurantId
     ? normalizeTableNumberCore(
