@@ -25,12 +25,19 @@ Last updated: 2026-04-23
 - Bewertung von Schritt 8: `analysiert, noch nicht umgesetzt`.
 - Wichtigster Befund aus Schritt 8:
   schwerer Refresh-Pfad entsteht vor allem durch fehlenden kanonischen Restaurant-ID-Handoff plus Doppelarbeit zwischen Direct-Route-Bootstrap und Client-Live-Load.
+- Schritt 9 ist dokumentiert: frische Mainline-Analyse fuer den sichtbaren Cold-Start-Gap zwischen Header und Posts/Menu auf `/:slug`, `/:slug/posts`, `/:slug/menu`.
+- Bewertung von Schritt 9: `analysiert, noch nicht umgesetzt`.
+- Wichtigster Befund aus Schritt 9:
+  der Header wird bewusst frueh ueber Route-/Preview-/Fallback-Identitaet als `ready` gewertet,
+  waehrend Posts/Menu weiter an spaeteren Ensure-/Resolver-Pfaden haengen;
+  die wahrscheinlichste Hauptursache bleibt der fehlende saubere Handoff der kanonischen `restaurantId`.
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
 - Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
 - Referenz: [docs/mnyra-step5-isolation-public-bootstrap-rollback.md](./mnyra-step5-isolation-public-bootstrap-rollback.md)
 - Referenz: [docs/mnyra-step6-public-profile-delayed-content-analysis.md](./mnyra-step6-public-profile-delayed-content-analysis.md)
 - Referenz: [docs/mnyra-step7-public-guest-ensure-loop-stability-fix.md](./mnyra-step7-public-guest-ensure-loop-stability-fix.md)
 - Referenz: [docs/mnyra-step8-public-cold-start-request-analysis.md](./mnyra-step8-public-cold-start-request-analysis.md)
+- Referenz: [docs/mnyra-step9-mainline-public-delayed-content-analysis.md](./mnyra-step9-mainline-public-delayed-content-analysis.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -57,7 +64,8 @@ Last updated: 2026-04-23
 ## Naechster Schritt
 
 Wenn das Restproblem weiter adressiert wird, dann als kleinster Minischritt:
-kanonische `restaurantId` aus Bootstrap-/Open-Flow sauber in die Public-Ensure-Pfade weiterreichen;
+kanonische `restaurantId` aus Direct-Route-Bootstrap/Open-Flow als `canonicalRestaurantId`
+sauber in die Public-Ensure-Pfade weiterreichen;
 kein Bootstrap-Umbau, kein Routing-Umbau, kein breiter Performance-Refactor.
 
 ## Guardrails fuer die naechsten Schritte
