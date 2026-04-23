@@ -41,6 +41,7 @@ export function createPublicProfileRuntimeController({
   const brandSocialName = String(brandUi?.social || "Menyra").trim() || "Menyra";
   const profilePostLimit = fastLimits?.profilePosts || fastLimits?.businessPosts || 12;
   let profileViewUnsub = null;
+  let profileViewListenerKey = "";
   const publicBusinessPostsCache = new Map();
   const publicBusinessPostsInFlight = new Map();
 
@@ -213,6 +214,7 @@ export function createPublicProfileRuntimeController({
       } catch {}
     }
     profileViewUnsub = null;
+    profileViewListenerKey = "";
   }
 
   function normalizeDirectEntryPhase(value = "", fallback = "loading") {
@@ -642,15 +644,32 @@ export function createPublicProfileRuntimeController({
   }
 
   function attachProfileViewListener(profile) {
-    stopProfileViewListener();
-    if (!profile || !makeDocRef || !onSnapshotSafe || !db) return;
+    if (!profile || !makeDocRef || !onSnapshotSafe || !db) {
+      stopProfileViewListener();
+      return;
+    }
     const listenerPath = profile.restaurantId
       ? `restaurants/${profile.restaurantId}`
       : (profile.uid ? `users/${profile.uid}` : "");
     const ref = profile.restaurantId
       ? makeDocRef(db, "restaurants", profile.restaurantId)
       : (profile.uid ? makeDocRef(db, "users", profile.uid) : null);
-    if (!ref) return;
+    if (!ref) {
+      stopProfileViewListener();
+      return;
+    }
+    const nextListenerKey = profile.restaurantId
+      ? `restaurant:${profile.restaurantId}`
+      : `user:${profile.uid || ""}`;
+    if (
+      nextListenerKey
+      && profileViewListenerKey === nextListenerKey
+      && typeof profileViewUnsub === "function"
+    ) {
+      return;
+    }
+    stopProfileViewListener();
+    profileViewListenerKey = nextListenerKey;
     profileViewUnsub = onSnapshotSafe(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data() || {};
@@ -679,6 +698,10 @@ export function createPublicProfileRuntimeController({
     }, (err) => {
       console.error(`[mnyra][firestore.listen.publicProfile] ${listenerPath}`, err);
     });
+    if (typeof profileViewUnsub !== "function") {
+      profileViewUnsub = null;
+      profileViewListenerKey = "";
+    }
   }
 
   function showPublicProfile(profile, posts, {

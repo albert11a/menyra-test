@@ -174,6 +174,14 @@ export function createSessionDataRuntimeController({
     return targetRestaurantId === visibleRestaurantId;
   }
 
+  function shouldUseRealtimeMenuMetaListener(restaurantId = "", source = "public") {
+    const safeSource = String(source || "public").trim().toLowerCase();
+    const hasAuthenticatedUser = !!String(state?.user?.uid || "").trim();
+    if (!hasAuthenticatedUser && safeSource === "public") return false;
+    if (isQrGuestMenuSessionForRestaurant(restaurantId)) return false;
+    return true;
+  }
+
   function isTransientMenuLoadError(err = null) {
     const code = String(err?.code || err?.name || "").trim().toLowerCase();
     const message = String(err?.message || "").trim().toLowerCase();
@@ -620,9 +628,9 @@ export function createSessionDataRuntimeController({
     });
   }
 
-  function startMenuMetaListener(restaurantId) {
+  function startMenuMetaListener(restaurantId, { source = "public" } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
-    if (isQrGuestMenuSessionForRestaurant(safeRestaurantId)) {
+    if (!shouldUseRealtimeMenuMetaListener(safeRestaurantId, source)) {
       stopMenuMetaListener();
       return;
     }
@@ -1419,10 +1427,10 @@ export function createSessionDataRuntimeController({
       };
       return;
     }
-    if (lightweightQrGuestFlow) {
+    if (!shouldUseRealtimeMenuMetaListener(safeRestaurantId, safeSource)) {
       stopMenuMetaListener();
     } else {
-      startMenuMetaListener(safeRestaurantId);
+      startMenuMetaListener(safeRestaurantId, { source: safeSource });
     }
     const hasVisibleMenuSeed = state.menu.restaurantId === safeRestaurantId
       && Array.isArray(state.menu.items)
