@@ -181,7 +181,7 @@ function resolvePostsStatus({
   const routePostsState = resolveRoutePayloadSectionState(routePayload, "posts");
   if (routePostsState === "seeded") return "ready";
   if (routePostsState === "knownEmpty") return "empty";
-  if (routePostsState === "unknown") return "loading";
+  if (routePostsState === "unknown" && profile?.postsLoaded !== true) return "loading";
   const truthState = resolveProfileTruthState(profile?.truthState || "");
   if (profile?.postsLoaded === true) {
     if (truthState === "error") return "error";

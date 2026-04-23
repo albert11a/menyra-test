@@ -19,10 +19,13 @@ Last updated: 2026-04-23
 - Der Request-/Listener-Sturm im Menu ist im aktuellen Ruecksetzungsstand verschwunden.
 - Der vorherige Cold-Load-Ansatz aus Schritt-5 (`Public-Web-Direct-Bootstrap-Unterdrueckungen`) wird in dieser Form nicht weiterverwendet.
 - Offenes Restthema: Bei Refresh/Cold-Start kommen Posts/Menu haeufig spaeter als der Header.
+- Schritt 7 ist abgeschlossen: Public-Guest-Ensure-/Fetch-Reentry fuer Posts/Menu/Fokus wurde mit kleinem Blast Radius stabilisiert.
+- Bewertung von Schritt 7: `bestanden mit kleinem Rest-Risiko`.
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
 - Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
 - Referenz: [docs/mnyra-step5-isolation-public-bootstrap-rollback.md](./mnyra-step5-isolation-public-bootstrap-rollback.md)
 - Referenz: [docs/mnyra-step6-public-profile-delayed-content-analysis.md](./mnyra-step6-public-profile-delayed-content-analysis.md)
+- Referenz: [docs/mnyra-step7-public-guest-ensure-loop-stability-fix.md](./mnyra-step7-public-guest-ensure-loop-stability-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -47,8 +50,8 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Kleiner, sicherer Folgeschritt nur im Public-Profile-Ladepfad:
-bereits aufgeloeste canonical `restaurantId` ohne neue Route-/Bootstrap-Experimente durchgaengig als First-Choice in Posts/Menu-Ensure verwenden.
+Manuelle Verifikation der Public-Pfade (`/:slug`, `/:slug/posts`, `/:slug/menu`) und echter QR-Links auf stabilen Settled-State;
+nur bei klar reproduzierbarem Restproblem ein weiterer Minischritt im selben Public-Ensure-/Surface-Kern.
 
 ## Guardrails fuer die naechsten Schritte
 
