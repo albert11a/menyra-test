@@ -37,6 +37,14 @@ Last updated: 2026-04-23
 - Wichtigster Effekt aus Schritt 10:
   weniger Realtime-Dauerlast im Public-Gast-Pfad bei Refresh/Cold-Start;
   bestehende Profil-/Posts-/Menu-Surface-Logik bleibt unveraendert.
+- Schritt 11 ist dokumentiert: Core-Architektur fuer den gesamten oeffentlichen Profilpfad
+  `/:slug`, `/:slug/posts`, `/:slug/menu` inklusive QR -> Profil mit offenem Menu.
+- Bewertung von Schritt 11: `analysiert, noch nicht umgesetzt`.
+- Wichtigster Befund aus Schritt 11:
+  der Pfad hat bereits route-first Seed plus read-once Guest-Profilread,
+  aber noch keinen erstklassigen, durchgaengigen Handoff der kanonischen `restaurantId`;
+  die Hauptkomplexitaet sitzt jetzt in mehrfacher Route-/Slug-/Resolver-Arbeit zwischen
+  `index.html`, Bootstrap, Open-Flow, Ensure-Cluster und Surface-Loadern.
 - Fehlgeschlagener Versuch nach Schritt 9:
   `4805fcf` (canonicalRestaurantId-Hint-Fix) wurde wieder zurueckgenommen.
 - Grund fuer die Ruecknahme:
@@ -51,6 +59,7 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step8-public-cold-start-request-analysis.md](./mnyra-step8-public-cold-start-request-analysis.md)
 - Referenz: [docs/mnyra-step9-mainline-public-delayed-content-analysis.md](./mnyra-step9-mainline-public-delayed-content-analysis.md)
 - Referenz: [docs/mnyra-step10-mainline-public-guest-read-path-stability-fix.md](./mnyra-step10-mainline-public-guest-read-path-stability-fix.md)
+- Referenz: [docs/mnyra-step11-public-profile-core-architecture.md](./mnyra-step11-public-profile-core-architecture.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -76,10 +85,11 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Wenn das Restproblem weiter adressiert wird, dann als kleinster Minischritt:
-kanonische `restaurantId` aus Direct-Route-Bootstrap/Open-Flow als `canonicalRestaurantId`
-sauber in die Public-Ensure-Pfade weiterreichen;
-kein Bootstrap-Umbau, kein Routing-Umbau, kein breiter Performance-Refactor.
+Wenn der erste technische Kernumbau nach Schritt 11 startet, dann als kleinster Minischritt:
+bestehende kanonische `restaurantId` aus Direct-Route-Bootstrap/Open-Flow
+als erstklassiges Feld `canonicalRestaurantId` in den sichtbaren Public-Profile-State
+und in die drei Public-Ensure-Pfade weiterreichen;
+kein Bootstrap-Slimming, kein Routing-Umbau, kein Surface-Refactor, kein breiter Performance-Refactor.
 
 Der fehlgeschlagene Versuch `4805fcf` gilt dabei nicht als stabiler Ausgangspunkt.
 
