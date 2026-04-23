@@ -31,6 +31,12 @@ Last updated: 2026-04-23
   der Header wird bewusst frueh ueber Route-/Preview-/Fallback-Identitaet als `ready` gewertet,
   waehrend Posts/Menu weiter an spaeteren Ensure-/Resolver-Pfaden haengen;
   die wahrscheinlichste Hauptursache bleibt der fehlende saubere Handoff der kanonischen `restaurantId`.
+- Schritt 10 ist abgeschlossen: Public-Gast-Profilpfad nutzt fuer `/:slug`, `/:slug/posts`, `/:slug/menu`
+  keinen dauerhaften Profil-Realtime-Listener mehr, sondern einen stabilen einmaligen Profil-Read pro Kontext.
+- Bewertung von Schritt 10: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 10:
+  weniger Realtime-Dauerlast im Public-Gast-Pfad bei Refresh/Cold-Start;
+  bestehende Profil-/Posts-/Menu-Surface-Logik bleibt unveraendert.
 - Fehlgeschlagener Versuch nach Schritt 9:
   `4805fcf` (canonicalRestaurantId-Hint-Fix) wurde wieder zurueckgenommen.
 - Grund fuer die Ruecknahme:
@@ -44,6 +50,7 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step7-public-guest-ensure-loop-stability-fix.md](./mnyra-step7-public-guest-ensure-loop-stability-fix.md)
 - Referenz: [docs/mnyra-step8-public-cold-start-request-analysis.md](./mnyra-step8-public-cold-start-request-analysis.md)
 - Referenz: [docs/mnyra-step9-mainline-public-delayed-content-analysis.md](./mnyra-step9-mainline-public-delayed-content-analysis.md)
+- Referenz: [docs/mnyra-step10-mainline-public-guest-read-path-stability-fix.md](./mnyra-step10-mainline-public-guest-read-path-stability-fix.md)
 
 ## Harte Invariante (verbindlich)
 

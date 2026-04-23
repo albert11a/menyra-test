@@ -42,6 +42,9 @@ export function createPublicProfileRuntimeController({
   const profilePostLimit = fastLimits?.profilePosts || fastLimits?.businessPosts || 12;
   let profileViewUnsub = null;
   let profileViewListenerKey = "";
+  let profileViewReadOnceKey = "";
+  const profileViewReadOnceCompletedKeys = new Set();
+  const profileViewReadOnceInFlight = new Map();
   const publicBusinessPostsCache = new Map();
   const publicBusinessPostsInFlight = new Map();
 
@@ -215,6 +218,128 @@ export function createPublicProfileRuntimeController({
     }
     profileViewUnsub = null;
     profileViewListenerKey = "";
+    profileViewReadOnceKey = "";
+  }
+
+  function resolveProfileViewListenerTarget(profile = null) {
+    const safeProfile = profile && typeof profile === "object" ? profile : null;
+    if (!safeProfile || !makeDocRef || !db) {
+      return { ref: null, listenerPath: "", listenerKey: "" };
+    }
+    const restaurantId = String(safeProfile.restaurantId || "").trim();
+    if (restaurantId) {
+      return {
+        ref: makeDocRef(db, "restaurants", restaurantId),
+        listenerPath: `restaurants/${restaurantId}`,
+        listenerKey: `restaurant:${restaurantId}`
+      };
+    }
+    const uid = String(safeProfile.uid || "").trim();
+    if (uid) {
+      return {
+        ref: makeDocRef(db, "users", uid),
+        listenerPath: `users/${uid}`,
+        listenerKey: `user:${uid}`
+      };
+    }
+    return { ref: null, listenerPath: "", listenerKey: "" };
+  }
+
+  function isGuestPublicBusinessRouteContext(profile = null) {
+    const safeProfile = profile && typeof profile === "object" ? profile : null;
+    if (!safeProfile) return false;
+    const restaurantId = String(safeProfile.restaurantId || "").trim();
+    if (!restaurantId) return false;
+    const hasAuthenticatedSession = !!String(state?.user?.uid || "").trim();
+    if (hasAuthenticatedSession) return false;
+    const directEntry = state?.profileView?.directEntry && typeof state.profileView.directEntry === "object"
+      ? state.profileView.directEntry
+      : (state?.__webDirectEntry && typeof state.__webDirectEntry === "object" ? state.__webDirectEntry : null);
+    const directEntryOwner = String(directEntry?.owner || "").trim().toLowerCase();
+    const isWebDirectRoute = directEntry?.active !== false
+      && directEntryOwner === "web-direct"
+      && directEntry?.routeFirst === true;
+    if (isWebDirectRoute) return true;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    const topTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const hasBackTab = !!String(state?.profileBackTab || "").trim();
+    const isPublicTopTab = !topTab || topTab === "profile" || topTab === "menu" || topTab === "landing";
+    return (activeTab === "profile" || !activeTab) && isPublicTopTab && !hasBackTab;
+  }
+
+  function applyProfileViewDocToVisibleState(profile = null, data = {}) {
+    const viewProfile = state?.profileView?.profile;
+    if (!viewProfile) return false;
+    if (!isSameVisibleProfile(viewProfile, profile)) return false;
+    let changed = false;
+    const assignIfDefined = (key, value) => {
+      if (value === undefined) return;
+      if (viewProfile[key] === value) return;
+      viewProfile[key] = value;
+      changed = true;
+    };
+    if (profile?.restaurantId) {
+      assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
+      assignIfDefined("following", data.followingCount ?? viewProfile.following);
+      assignIfDefined("avatar", data.logoUrl || data.logo || viewProfile.avatar);
+      assignIfDefined("name", data.name || data.restaurantName || viewProfile.name);
+      assignIfDefined("location", data.city || viewProfile.location);
+    } else {
+      assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
+      assignIfDefined("following", data.followingCount ?? viewProfile.following);
+      assignIfDefined("privateAccount", !!data.privateAccount);
+      assignIfDefined("avatar", data.avatarUrl || data.avatar || viewProfile.avatar);
+      assignIfDefined("name", data.displayName || viewProfile.name);
+      assignIfDefined("location", data.city || viewProfile.location);
+    }
+    if (!changed) return false;
+    state.profileSurface = resolveVisibleProfileSurface(state, {
+      profileView: state?.profileView || null,
+      profileTopTab: state?.profileTopTab || "",
+      profileContentTab: state?.profileContentTab || ""
+    });
+    renderApp();
+    return true;
+  }
+
+  function refreshProfileViewOnce(profile = null, {
+    ref = null,
+    listenerPath = "",
+    listenerKey = ""
+  } = {}) {
+    const safeListenerKey = String(listenerKey || "").trim();
+    if (!safeListenerKey || !ref) return null;
+    if (profileViewReadOnceCompletedKeys.has(safeListenerKey)) {
+      return null;
+    }
+    const inFlight = profileViewReadOnceInFlight.get(safeListenerKey);
+    if (inFlight) {
+      return inFlight;
+    }
+    profileViewReadOnceKey = safeListenerKey;
+    const request = Promise.resolve(getDocSafe(ref))
+      .then((snap) => {
+        if (!snap?.exists?.()) {
+          profileViewReadOnceCompletedKeys.add(safeListenerKey);
+          return;
+        }
+        const data = snap.data() || {};
+        applyProfileViewDocToVisibleState(profile, data);
+        profileViewReadOnceCompletedKeys.add(safeListenerKey);
+      })
+      .catch((err) => {
+        console.error(`[mnyra][firestore.read.publicProfileOnce] ${listenerPath}`, err);
+      })
+      .finally(() => {
+        if (profileViewReadOnceInFlight.get(safeListenerKey) === request) {
+          profileViewReadOnceInFlight.delete(safeListenerKey);
+        }
+        if (profileViewReadOnceKey === safeListenerKey) {
+          profileViewReadOnceKey = "";
+        }
+      });
+    profileViewReadOnceInFlight.set(safeListenerKey, request);
+    return request;
   }
 
   function normalizeDirectEntryPhase(value = "", fallback = "loading") {
@@ -644,23 +769,20 @@ export function createPublicProfileRuntimeController({
   }
 
   function attachProfileViewListener(profile) {
-    if (!profile || !makeDocRef || !onSnapshotSafe || !db) {
+    if (!profile || !makeDocRef || !db) {
       stopProfileViewListener();
       return;
     }
-    const listenerPath = profile.restaurantId
-      ? `restaurants/${profile.restaurantId}`
-      : (profile.uid ? `users/${profile.uid}` : "");
-    const ref = profile.restaurantId
-      ? makeDocRef(db, "restaurants", profile.restaurantId)
-      : (profile.uid ? makeDocRef(db, "users", profile.uid) : null);
-    if (!ref) {
+    const { ref, listenerPath, listenerKey: nextListenerKey } = resolveProfileViewListenerTarget(profile);
+    if (!ref || !nextListenerKey) {
       stopProfileViewListener();
       return;
     }
-    const nextListenerKey = profile.restaurantId
-      ? `restaurant:${profile.restaurantId}`
-      : `user:${profile.uid || ""}`;
+    if (!onSnapshotSafe || isGuestPublicBusinessRouteContext(profile)) {
+      stopProfileViewListener();
+      void refreshProfileViewOnce(profile, { ref, listenerPath, listenerKey: nextListenerKey });
+      return;
+    }
     if (
       nextListenerKey
       && profileViewListenerKey === nextListenerKey
@@ -673,28 +795,7 @@ export function createPublicProfileRuntimeController({
     profileViewUnsub = onSnapshotSafe(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data() || {};
-      const viewProfile = state?.profileView?.profile;
-      if (!viewProfile) return;
-      if (profile.restaurantId) {
-        viewProfile.followers = data.followersCount ?? viewProfile.followers;
-        viewProfile.following = data.followingCount ?? viewProfile.following;
-        viewProfile.avatar = data.logoUrl || data.logo || viewProfile.avatar;
-        viewProfile.name = data.name || data.restaurantName || viewProfile.name;
-        viewProfile.location = data.city || viewProfile.location;
-      } else {
-        viewProfile.followers = data.followersCount ?? viewProfile.followers;
-        viewProfile.following = data.followingCount ?? viewProfile.following;
-        viewProfile.privateAccount = !!data.privateAccount;
-        viewProfile.avatar = data.avatarUrl || data.avatar || viewProfile.avatar;
-        viewProfile.name = data.displayName || viewProfile.name;
-        viewProfile.location = data.city || viewProfile.location;
-      }
-      state.profileSurface = resolveVisibleProfileSurface(state, {
-        profileView: state?.profileView || null,
-        profileTopTab: state?.profileTopTab || "",
-        profileContentTab: state?.profileContentTab || ""
-      });
-      renderApp();
+      applyProfileViewDocToVisibleState(profile, data);
     }, (err) => {
       console.error(`[mnyra][firestore.listen.publicProfile] ${listenerPath}`, err);
     });
