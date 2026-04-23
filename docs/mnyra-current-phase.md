@@ -88,6 +88,17 @@ Last updated: 2026-04-23
   sichtbaren Surface-Kontext. Dadurch sollen doppelte sichtbare Ladephasen,
   unnoetige Reentry-Loads und der schwere Refresh-Eindruck weiter reduziert
   werden; QR bleibt unveraendert.
+- Schritt 16 ist abgeschlossen: Der Public-Route-Vertrag fuer Business-Web-
+  Profile wurde auf Runtime-/Startup-Ebene gehaertet, damit genau ein
+  oeffentlicher Profilpfad mit stabilen Surface-URLs laeuft.
+- Bewertung von Schritt 16: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 16:
+  bei Business-Pfaden wird der Startup-URL-Kontext auf kanonischen Path plus
+  kanonische Query reduziert (keine konkurrierenden `r`/`top`/Alias-Parameter),
+  Initial-Route-Truth priorisiert den Path vor widerspruechlichen Query-IDs,
+  und der Wechsel von `/:slug/menu` nach Posts schreibt konsistent auf
+  `/:slug/posts`. Dadurch werden Parallelpfade und widerspruechliche Route-
+  Wahrheiten weiter reduziert; QR-Kontext bleibt kompatibel.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -104,6 +115,7 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step13-public-profile-simplification-analysis.md](./mnyra-step13-public-profile-simplification-analysis.md)
 - Referenz: [docs/mnyra-step14-web-direct-menu-surface-stability-fix.md](./mnyra-step14-web-direct-menu-surface-stability-fix.md)
 - Referenz: [docs/mnyra-step15-public-web-profile-speed-reliability-overhaul.md](./mnyra-step15-public-web-profile-speed-reliability-overhaul.md)
+- Referenz: [docs/mnyra-step16-public-route-contract-hardening.md](./mnyra-step16-public-route-contract-hardening.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -129,10 +141,10 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Nach Schritt 15 ist der naechste moegliche separate Folgeschritt:
-gezielte Restkanten-Absicherung fuer seltene Reentry-Pfade (nur falls in
-manuellen Tests noch reproduzierbar) ohne Scope-Ausweitung ausserhalb des
-oeffentlichen Web-Profilpfads.
+Nach Schritt 16 ist der naechste moegliche separate Folgeschritt:
+gezielte Restkanten-Absicherung fuer seltene Reentry-Pfade unter echten
+Cold-Start-Bedingungen (ohne Cache) innerhalb derselben Public-Web-Profil-
+Scope-Grenze.
 
 ## Guardrails fuer die naechsten Schritte
 

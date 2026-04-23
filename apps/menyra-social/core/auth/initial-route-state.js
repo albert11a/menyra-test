@@ -26,7 +26,7 @@ export function resolveInitialRouteState({
   const readPathname = String(pathname || "").trim();
   const pathRoute = parseSiteRoutePathCore(readPathname);
 
-  const routeRestaurantId = (
+  const routeRestaurantIdFromQuery = (
     readQuery("r")
     || readQuery("restaurant")
     || readQuery("restaurantId")
@@ -34,27 +34,22 @@ export function resolveInitialRouteState({
     || readQuery("businessId")
     || ""
   );
-  const routeUserId = routeRestaurantId
-    ? ""
-    : (
-      readQuery("uid")
-      || readQuery("user")
-      || readQuery("userId")
-      || readQuery("u")
-      || readQuery("handle")
-      || ""
-    );
-
-  const pathBusinessRoute = routeRestaurantId
-    ? null
-    : (
-      pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
-        ? pathRoute
-        : null
-    );
+  const routeUserIdFromQuery = (
+    readQuery("uid")
+    || readQuery("user")
+    || readQuery("userId")
+    || readQuery("u")
+    || readQuery("handle")
+    || ""
+  );
+  const pathBusinessRoute = (
+    pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
+      ? pathRoute
+      : null
+  );
   const pendingProfileRestaurantId = String(
-    routeRestaurantId
-    || pathBusinessRoute?.restaurantId
+    pathBusinessRoute?.restaurantId
+    || routeRestaurantIdFromQuery
     || ""
   ).trim();
 
@@ -91,8 +86,8 @@ export function resolveInitialRouteState({
     : "";
   const pendingProfileTopTab = pendingProfileRestaurantId
     ? (
-      profileTopQuery
-      || pathBusinessRoute?.profileTopTab
+      pathBusinessRoute?.profileTopTab
+      || profileTopQuery
       || (
         safeLowerText(pathRoute.tab || "") === "menu"
           ? "menu"
@@ -118,7 +113,7 @@ export function resolveInitialRouteState({
     : (pathRoute.kind === "user" ? pathRoute : null);
   const pendingUserRouteId = pendingProfileRestaurantId
     ? ""
-    : normalizePublicUserRouteIdCore(routeUserId || pathUserRoute?.userId || "");
+    : normalizePublicUserRouteIdCore(routeUserIdFromQuery || pathUserRoute?.userId || "");
   const queryUserContentTab = (
     readQuery("content")
     || readQuery("contentTab")

@@ -1229,7 +1229,7 @@
         || (Number.isFinite(rtt) && rtt >= 450);
       const BOOTSTRAP_TIMEOUT_MS = constrainedNetwork ? 3800 : 2200;
       window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
-      const searchParams = new URLSearchParams(window.location.search || "");
+      let searchParams = new URLSearchParams(window.location.search || "");
       const readSiteRoutePath = typeof parseSiteRoutePathCore === "function"
         ? parseSiteRoutePathCore
         : (() => ({
@@ -1244,7 +1244,72 @@
           profileContentTab: "",
           accessSource: ""
         }));
-      const pathRoute = readSiteRoutePath(window.location.pathname || "");
+      let pathRoute = readSiteRoutePath(window.location.pathname || "");
+      const readFirstRouteQueryValue = (params, keys = []) => {
+        if (!(params instanceof URLSearchParams)) return "";
+        for (const key of keys) {
+          const safeKey = String(key || "").trim();
+          if (!safeKey) continue;
+          const value = String(params.get(safeKey) || "").trim();
+          if (value) return value;
+        }
+        return "";
+      };
+      const setCanonicalRouteQueryParam = (params, primaryKey, aliasKeys = [], value = "") => {
+        if (!(params instanceof URLSearchParams)) return;
+        const primary = String(primaryKey || "").trim();
+        if (!primary) return;
+        const aliases = Array.from(new Set(
+          [primary, ...(Array.isArray(aliasKeys) ? aliasKeys : [])]
+            .map((key) => String(key || "").trim())
+            .filter(Boolean)
+        ));
+        aliases.forEach((key) => {
+          if (key !== primary) params.delete(key);
+        });
+        const nextValue = String(value || "").trim();
+        if (!nextValue) {
+          params.delete(primary);
+          return;
+        }
+        params.set(primary, nextValue);
+      };
+      if (pathRoute.kind === "business") {
+        try {
+          const currentPath = String(window.location.pathname || "").trim() || "/";
+          const canonicalPath = String(pathRoute.canonicalPath || "").trim() || currentPath;
+          const normalizedParams = new URLSearchParams(searchParams.toString());
+          const routeSourceRaw = String(
+            readFirstRouteQueryValue(normalizedParams, ["src", "source", "menuSource", "menuAccessSource", "access"])
+            || pathRoute.accessSource
+            || ""
+          ).trim().toLowerCase();
+          const routeTableRaw = readFirstRouteQueryValue(normalizedParams, ["table", "tableNumber", "t"]);
+          const routeSource = routeSourceRaw === "qr" ? "qr" : "";
+          setCanonicalRouteQueryParam(normalizedParams, "r", ["restaurant", "restaurantId", "rid", "businessId"], "");
+          setCanonicalRouteQueryParam(normalizedParams, "top", ["surface", "screen"], "");
+          setCanonicalRouteQueryParam(normalizedParams, "tab", ["view"], "");
+          setCanonicalRouteQueryParam(normalizedParams, "uid", ["user", "userId", "u"], "");
+          setCanonicalRouteQueryParam(normalizedParams, "handle", [], "");
+          setCanonicalRouteQueryParam(normalizedParams, "content", ["contentTab", "section"], "");
+          setCanonicalRouteQueryParam(normalizedParams, "src", ["source", "menuSource", "menuAccessSource", "access"], routeSource);
+          setCanonicalRouteQueryParam(normalizedParams, "table", ["tableNumber", "t"], routeTableRaw);
+          const currentQuery = searchParams.toString();
+          const normalizedQuery = normalizedParams.toString();
+          if (
+            window.history?.replaceState
+            && (
+              canonicalPath !== currentPath
+              || normalizedQuery !== currentQuery
+            )
+          ) {
+            const nextRoute = `${canonicalPath}${normalizedQuery ? `?${normalizedQuery}` : ""}${window.location.hash || ""}`;
+            window.history.replaceState(window.history.state || {}, "", nextRoute);
+          }
+          searchParams = normalizedParams;
+          pathRoute = readSiteRoutePath(canonicalPath);
+        } catch {}
+      }
       const routeRestaurantId = String(
         searchParams.get("r")
         || searchParams.get("restaurant")

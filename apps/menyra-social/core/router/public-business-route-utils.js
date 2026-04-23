@@ -708,7 +708,8 @@ export function buildCanonicalPublicBusinessPathCore({
   topTab = "",
   contentTab = "",
   accessSource = "",
-  pathnameHint = ""
+  pathnameHint = "",
+  forcePostsPath = false
 } = {}) {
   const safeSlug = normalizePublicBusinessSlugCore(slug || "");
   if (!safeSlug) return "";
@@ -719,6 +720,9 @@ export function buildCanonicalPublicBusinessPathCore({
   );
   const basePath = `/${encodeURIComponent(safeSlug)}`;
   if (safeTopTab === "menu" || safeContentTab === "menu") return `${basePath}/menu`;
+  if (safeTopTab === "profile" && safeContentTab === "posts" && forcePostsPath === true) {
+    return `${basePath}/posts`;
+  }
   const pathnameRoute = parsePublicBusinessRoutePathCore(pathnameHint, {
     allowLegacyRootSlug: false
   });

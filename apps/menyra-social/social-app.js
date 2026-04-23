@@ -1706,6 +1706,10 @@ function syncActiveTabRouteQuery() {
     const currentUrl = new URL(win.location?.href || "", win.location?.origin || "");
     const nextUrl = new URL(currentUrl.toString());
     const currentPathRoute = parseSiteRoutePathCore(currentUrl.pathname || "");
+    const forceBusinessPostsPathFromMenuSurface = routeState.routeKind === "business"
+      && routeState.profileTopTab === "profile"
+      && currentPathRoute.kind === "business"
+      && currentPathRoute.profileTopTab === "menu";
     if (
       routeState.routeKind === "business"
       && !String(routeState.canonicalPublicSlug || "").trim()
@@ -1726,7 +1730,8 @@ function syncActiveTabRouteQuery() {
         topTab: routeState.profileTopTab,
         contentTab: routeState.profileContentTab,
         accessSource: routeState.profileAccessSource,
-        pathnameHint: currentPathRoute.kind === "business" ? currentUrl.pathname : ""
+        pathnameHint: currentPathRoute.kind === "business" ? currentUrl.pathname : "",
+        forcePostsPath: forceBusinessPostsPathFromMenuSurface
       }) || currentUrl.pathname;
       clearProfileRouteQueryParams(nextUrl.searchParams);
       setCanonicalRouteQueryParam(
