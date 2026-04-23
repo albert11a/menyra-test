@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MNYRA Testfirst</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f8fafc;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+      font-family: "Plus Jakarta Sans", sans-serif;
+    }
+    .app-main-content-safe {
+      padding-bottom: 40px;
+    }
+    .app-header-safe {
+      position: sticky;
+      top: 0;
+      z-index: 45;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .horizontal-safe-scroll {
+      padding-left: 20px;
+      padding-right: 20px;
+      scroll-padding-left: 20px;
+      scroll-padding-right: 20px;
+      box-sizing: border-box;
+    }
+    .custom-notification {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #0f172a;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 99px;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    }
+    .custom-notification.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-10px);
+    }
+    .line-clamp-2 {
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    details > summary {
+      list-style: none;
+    }
+    details > summary::-webkit-details-marker {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+  <div
+    id="safe-area-top-fill"
+    aria-hidden="true"
+    style="position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background-color: #f8fafc; z-index: 39; display: none; pointer-events: none;"
+  ></div>
+
+  <div id="testfirstShell" class="max-w-md mx-auto relative">
+    <div id="app"></div>
+  </div>
+
+  <div id="notification" class="custom-notification" hidden>Aktion ausgeführt</div>
+
+  <script>
+    const TESTFIRST_STORAGE_KEY = "mnyra:testfirst:public-restaurant-business-view:v2";
+    const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=800&q=80";
+    const CATEGORY_SCAN_PADDING = 14;
+
+    function createSeedState() {
+      return {
+        activeTab: "profile",
+        user: { uid: "viewer-1" },
+        profileTopTab: "menu",
+        profileContentTab: "posts",
+        profileViewMode: "grid",
+        isProgrammaticScroll: false,
+        focus: {
+          loading: false,
+          restaurantId: "rest-1",
+          enabled: true,
+          items: [
+            {
+              id: "focus-1",
+              title: "Sot ne Fokus",
+              text: "Signature brunch with seasonal toppings and fresh house coffee.",
+              imageUrl: "https://images.unsplash.com/photo-1481833761820-0509d3217039?auto=format&fit=crop&w=1200&q=80"
+            },
+            {
+              id: "focus-2",
+              title: "Weekend Dessert Drop",
+              text: "Fresh tiramisu jars and berry pancakes served until late afternoon.",
+              imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80"
+            }
+          ]
+        },
+        special: {
+          badge: "Special",
+          title: "Summer\nVibes",
+          imageUrl: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=500&q=80"
+        },
+        menu: {
+          loading: false,
+          restaurantId: "rest-1",
+          error: "",
+          activeType: "drink",
+          activeCategory: "Drinks",
+          items: [
+            { id: "m3", type: "drink", name: "Iced Matcha", price: 4.8, category: "Drinks", description: "Premium ceremonial grade matcha.", imageUrl: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 91, commentsCount: 5 },
+            { id: "m4", type: "drink", name: "House Lemonade", price: 4.5, category: "Drinks", description: "Fresh lemons with sparkling water.", imageUrl: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 42, commentsCount: 1 },
+            { id: "m5", type: "drink", name: "Fresh Orange", price: 3.8, category: "Drinks", description: "100% freshly squeezed oranges.", imageUrl: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 76, commentsCount: 2 },
+            { id: "m6", type: "drink", name: "Berry Smoothie", price: 5.5, category: "Drinks", description: "Mixed berries, yogurt and honey.", imageUrl: "https://images.unsplash.com/photo-1505252585461-04db1eb84625?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 120, commentsCount: 8 },
+            { id: "m7", type: "drink", name: "Iced Peach Tea", price: 4.2, category: "Drinks", description: "Black tea, peach syrup, fresh mint.", imageUrl: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 54, commentsCount: 0 },
+            { id: "m8", type: "drink", name: "Cold Brew", price: 3.9, category: "Coffee", description: "Slow steeped for 18 hours.", imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 64, commentsCount: 3 },
+            { id: "m10", type: "food", name: "Caesar Salad", price: 11.5, category: "Starters", description: "Crispy romaine lettuce, parmesan shavings, garlic croutons and house-made caesar dressing.", imageUrl: "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 112, commentsCount: 6 },
+            { id: "m11", type: "food", name: "Burrata & Tomato", price: 13.0, category: "Starters", description: "Fresh Italian burrata with heirloom tomatoes, basil, and balsamic glaze.", imageUrl: "https://images.unsplash.com/photo-1608897013039-887f214b985c?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 184, commentsCount: 9 },
+            { id: "m1", type: "food", name: "Truffle Eggs Royale", price: 12.5, category: "Brunch", description: "Poached eggs, toasted artisan brioche, rich parmesan cream and seasonal micro greens.", imageUrl: "https://images.unsplash.com/photo-1494859802809-d069c3b71a8a?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 224, commentsCount: 18 },
+            { id: "m12", type: "food", name: "Avocado Smash", price: 10.5, category: "Brunch", description: "Smashed avocado on sourdough with cherry tomatoes, feta, and chili flakes.", imageUrl: "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 310, commentsCount: 25 },
+            { id: "m13", type: "food", name: "Classic Pancakes", price: 9.0, category: "Brunch", description: "Fluffy stacked pancakes served with pure maple syrup and fresh seasonal berries.", imageUrl: "https://images.unsplash.com/photo-1528207776546-3221b79f6e16?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 420, commentsCount: 32 },
+            { id: "m14", type: "food", name: "Wagyu Burger", price: 18.5, category: "Mains", description: "Premium wagyu beef patty, caramelized onions, aged cheddar, and special house sauce.", imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 560, commentsCount: 45 },
+            { id: "m15", type: "food", name: "Truffle Tagliatelle", price: 19.0, category: "Mains", description: "Handmade tagliatelle pasta tossed in a creamy black truffle and parmesan sauce.", imageUrl: "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 385, commentsCount: 28 },
+            { id: "m2", type: "food", name: "Pistachio French Toast", price: 10.9, category: "Dessert", description: "Thick cut brioche, infused mascarpone, roasted pistachio crumbs and warm maple syrup.", imageUrl: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 182, commentsCount: 11 },
+            { id: "m16", type: "food", name: "Basque Cheesecake", price: 8.5, category: "Dessert", description: "Caramelized top with a perfectly creamy, melt-in-your-mouth rich center.", imageUrl: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=900&q=80", available: true, likesCount: 275, commentsCount: 14 }
+          ]
+        },
+        profileView: {
+          profile: {
+            uid: "owner-restaurant-1",
+            restaurantId: "rest-1",
+            name: "Menyra House",
+            handle: "menyra.house",
+            bio: "Modern brunch, coffee & desserts.\nSignature plates all day.",
+            avatar: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=700&q=80",
+            followers: 15420,
+            following: 218,
+            location: "Prishtina",
+            isPremium: true,
+            privateAccount: false,
+            pendingFollowRequest: false
+          },
+          posts: [
+            { id: "p1", url: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80", likesCount: 1842, commentsCount: 132, type: "wide", isVideo: false },
+            { id: "p2", url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80", likesCount: 986, commentsCount: 61, type: "square", isVideo: false },
+            { id: "p3", url: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=900&q=80", likesCount: 1211, commentsCount: 48, type: "square", isVideo: false },
+            { id: "p4", url: "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=900&q=80", likesCount: 2204, commentsCount: 205, type: "hero", isVideo: true }
+          ],
+          checkins: [
+            { name: "Menyra Rooftop", city: "Prishtina", image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=500&q=80" },
+            { name: "Brunch Corner", city: "Prizren", image: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=500&q=80" }
+          ]
+        },
+        followingHandles: [],
+        followingTargetIds: [],
+        menuMeta: new Map()
+      };
+    }
+
+    const state = loadState();
+
+    let notificationHideTimer = null;
+    let notificationCleanupTimer = null;
+
+    function showNotification(text) {
+      const el = document.getElementById("notification");
+      if (!el) return;
+
+      window.clearTimeout(notificationHideTimer);
+      window.clearTimeout(notificationCleanupTimer);
+
+      el.innerText = text;
+      el.hidden = false;
+      el.classList.remove("show");
+      void el.offsetWidth;
+      el.classList.add("show");
+
+      notificationHideTimer = window.setTimeout(() => {
+        el.classList.remove("show");
+        notificationCleanupTimer = window.setTimeout(() => {
+          if (!el.classList.contains("show")) {
+            el.hidden = true;
+          }
+        }, 300);
+      }, 2000);
+    }
+
+    function escapeHtml(value = "") {
+      return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+    }
+
+    function normalizeHandle(value = "") {
+      return String(value || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, ".");
+    }
+
+    function getOptimizedImageUrl(value = "") {
+      return String(value || "").trim();
+    }
+
+    function isPlaceholderUrl(value = "") {
+      return !String(value || "").trim();
+    }
+
+    function isDataUrl(value = "") {
+      return String(value || "").trim().startsWith("data:");
+    }
+
+    function logoFitClass() {
+      return "object-cover";
+    }
+
+    function formatCount(value) {
+      const num = Number(value || 0);
+      if (num >= 1000000) return `${(num / 1000000).toFixed(num >= 10000000 ? 0 : 1)}M`;
+      if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K`;
+      return String(num);
+    }
+
+    function formatPrice(value) {
+      return `€${Number(value || 0).toFixed(2)}`;
+    }
+
+    function icon(name, classes = "") {
+      return `<i data-lucide="${escapeHtml(name)}" class="${escapeHtml(classes)}"></i>`;
+    }
+
+    function getFocusItemObjectPosition() {
+      return "center center";
+    }
+
+    function normalizeMenuType(value = "") {
+      return String(value || "").trim().toLowerCase() === "drink" ? "drink" : "food";
+    }
+
+    function isRestaurantCafeProfile(profile = {}) {
+      return !!String(profile?.restaurantId || "").trim();
+    }
+
+    function getCategoryIcon(cat) {
+      const map = {
+        "Starters": "salad",
+        "Mains": "beef",
+        "Brunch": "utensils",
+        "Dessert": "cake-slice",
+        "Drinks": "glass-water",
+        "Coffee": "coffee"
+      };
+      return map[cat] || "utensils-crossed";
+    }
+
+    function getSafeImage(value = "") {
+      const url = getOptimizedImageUrl(value);
+      return isPlaceholderUrl(url) ? PLACEHOLDER_IMAGE : url;
+    }
+
+    function slugify(value = "") {
+      return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "section";
+    }
+
+    function getSectionId(menuType, category) {
+      return `section-${slugify(menuType)}-${slugify(category)}`;
+    }
+
+    function getMenuTypeLabel(menuType) {
+      return menuType === "food" ? "Speisen" : "Getr&auml;nke";
+    }
+
+    function getCategoriesForType(menuType, items = state.menu.items) {
+      return [...new Set(
+        (items || [])
+          .filter((item) => normalizeMenuType(item.type) === menuType)
+          .map((item) => String(item?.category || "").trim())
+          .filter(Boolean)
+      )];
+    }
+
+    function getAllCategories(items = state.menu.items) {
+      return [...new Set((items || []).map((item) => String(item?.category || "").trim()).filter(Boolean))];
+    }
+
+    function ensureActiveCategory() {
+      const drinkCategories = getCategoriesForType("drink");
+      const foodCategories = getCategoriesForType("food");
+      if (!drinkCategories.length && !foodCategories.length) {
+        state.menu.activeType = "drink";
+        state.menu.activeCategory = "";
+        return;
+      }
+      const activeType = state.menu.activeType === "food" ? "food" : "drink";
+      const categories = activeType === "food" ? foodCategories : drinkCategories;
+      if (categories.includes(state.menu.activeCategory)) {
+        return;
+      }
+      if (drinkCategories.length) {
+        state.menu.activeType = "drink";
+        state.menu.activeCategory = drinkCategories[0];
+        return;
+      }
+      state.menu.activeType = "food";
+      state.menu.activeCategory = foodCategories[0] || "";
+    }
+
+    function buildPersistedState() {
+      return {
+        profileTopTab: state.profileTopTab === "settings" ? "settings" : "menu",
+        focus: {
+          enabled: !!state.focus.enabled,
+          items: state.focus.items.map((item) => ({
+            id: String(item.id || ""),
+            title: String(item.title || ""),
+            text: String(item.text || ""),
+            imageUrl: String(item.imageUrl || "")
+          }))
+        },
+        special: {
+          badge: String(state.special.badge || ""),
+          title: String(state.special.title || ""),
+          imageUrl: String(state.special.imageUrl || "")
+        },
+        menu: {
+          activeType: state.menu.activeType === "food" ? "food" : "drink",
+          activeCategory: String(state.menu.activeCategory || ""),
+          items: state.menu.items.map((item) => ({
+            id: String(item.id || ""),
+            type: normalizeMenuType(item.type),
+            name: String(item.name || ""),
+            price: Number(item.price || 0),
+            category: String(item.category || ""),
+            description: String(item.description || ""),
+            imageUrl: String(item.imageUrl || ""),
+            available: !!item.available,
+            likesCount: Number(item.likesCount || 0),
+            commentsCount: Number(item.commentsCount || 0)
+          }))
+        },
+        profileView: {
+          profile: {
+            name: String(state.profileView.profile.name || ""),
+            handle: normalizeHandle(state.profileView.profile.handle || ""),
+            bio: String(state.profileView.profile.bio || ""),
+            avatar: String(state.profileView.profile.avatar || ""),
+            location: String(state.profileView.profile.location || "")
+          }
+        }
+      };
+    }
+
+    function persistState() {
+      ensureActiveCategory();
+      try {
+        window.localStorage.setItem(TESTFIRST_STORAGE_KEY, JSON.stringify(buildPersistedState()));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function normalizePersistedMenuItem(raw = {}, fallback = {}) {
+      return {
+        id: String(raw.id || fallback.id || createId("menu")),
+        type: normalizeMenuType(raw.type || fallback.type),
+        name: String(raw.name || fallback.name || ""),
+        price: Number(raw.price || fallback.price || 0),
+        category: String(raw.category || fallback.category || ""),
+        description: String(raw.description || fallback.description || ""),
+        imageUrl: String(raw.imageUrl || fallback.imageUrl || ""),
+        available: typeof raw.available === "boolean" ? raw.available : !!fallback.available,
+        likesCount: Number(raw.likesCount || fallback.likesCount || 0),
+        commentsCount: Number(raw.commentsCount || fallback.commentsCount || 0)
+      };
+    }
+
+    function normalizePersistedFocusItem(raw = {}, fallback = {}) {
+      return {
+        id: String(raw.id || fallback.id || createId("focus")),
+        title: String(raw.title || fallback.title || ""),
+        text: String(raw.text || fallback.text || ""),
+        imageUrl: String(raw.imageUrl || fallback.imageUrl || "")
+      };
+    }
+
+    function normalizePersistedSpecial(raw = {}, fallback = {}) {
+      return {
+        badge: String(raw.badge || fallback.badge || "Special"),
+        title: String(raw.title || fallback.title || "Summer\nVibes"),
+        imageUrl: String(raw.imageUrl || fallback.imageUrl || "")
+      };
+    }
+
+    function loadState() {
+      const nextState = createSeedState();
+      try {
+        const raw = window.localStorage.getItem(TESTFIRST_STORAGE_KEY);
+        if (!raw) {
+          const drinkCategories = getCategoriesForType("drink", nextState.menu.items);
+          const foodCategories = getCategoriesForType("food", nextState.menu.items);
+          if (drinkCategories.length) {
+            nextState.menu.activeType = "drink";
+            nextState.menu.activeCategory = drinkCategories[0];
+          } else if (foodCategories.length) {
+            nextState.menu.activeType = "food";
+            nextState.menu.activeCategory = foodCategories[0];
+          }
+          return nextState;
+        }
+        const parsed = JSON.parse(raw);
+        if (parsed?.profileTopTab === "settings") {
+          nextState.profileTopTab = "settings";
+        }
+        if (parsed?.focus && Array.isArray(parsed.focus.items)) {
+          nextState.focus.enabled = typeof parsed.focus.enabled === "boolean" ? parsed.focus.enabled : nextState.focus.enabled;
+          nextState.focus.items = parsed.focus.items.map((item, index) => normalizePersistedFocusItem(item, nextState.focus.items[index] || {}));
+        }
+        if (parsed?.special) {
+          nextState.special = normalizePersistedSpecial(parsed.special, nextState.special);
+        }
+        if (parsed?.menu && Array.isArray(parsed.menu.items)) {
+          nextState.menu.items = parsed.menu.items.map((item, index) => normalizePersistedMenuItem(item, nextState.menu.items[index] || {}));
+          nextState.menu.activeType = parsed.menu.activeType === "food" ? "food" : nextState.menu.activeType;
+          nextState.menu.activeCategory = String(parsed.menu.activeCategory || nextState.menu.activeCategory || "");
+        }
+        if (parsed?.profileView?.profile) {
+          nextState.profileView.profile.name = String(parsed.profileView.profile.name || nextState.profileView.profile.name || "");
+          nextState.profileView.profile.handle = normalizeHandle(parsed.profileView.profile.handle || nextState.profileView.profile.handle || "");
+          nextState.profileView.profile.bio = String(parsed.profileView.profile.bio || nextState.profileView.profile.bio || "");
+          nextState.profileView.profile.avatar = String(parsed.profileView.profile.avatar || nextState.profileView.profile.avatar || "");
+          nextState.profileView.profile.location = String(parsed.profileView.profile.location || nextState.profileView.profile.location || "");
+        }
+      } catch {}
+      const drinkCategories = getCategoriesForType("drink", nextState.menu.items);
+      const foodCategories = getCategoriesForType("food", nextState.menu.items);
+      const activeType = nextState.menu.activeType === "food" ? "food" : "drink";
+      const categories = activeType === "food" ? foodCategories : drinkCategories;
+      if (!categories.includes(nextState.menu.activeCategory)) {
+        if (drinkCategories.length) {
+          nextState.menu.activeType = "drink";
+          nextState.menu.activeCategory = drinkCategories[0] || "";
+        } else {
+          nextState.menu.activeType = "food";
+          nextState.menu.activeCategory = foodCategories[0] || "";
+        }
+      }
+      return nextState;
+    }
+
+    function createId(prefix) {
+      if (window.crypto?.randomUUID) return `${prefix}-${window.crypto.randomUUID()}`;
+      return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    }
+
+    function renderHeaderAvatar(profile) {
+      const avatar = String(profile?.avatar || "").trim();
+      if (!isPlaceholderUrl(avatar)) {
+        return `
+          <div class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30">
+            <img src="${escapeHtml(getSafeImage(avatar))}" class="w-full h-full rounded-[1.4rem] ${logoFitClass()}" />
+          </div>
+        `;
+      }
+      return `
+        <div class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 text-sm font-black italic uppercase">
+          TF
+        </div>
+      `;
+    }
+
+    function renderSocialHeader(profile) {
+      const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
+      return `
+        <header class="app-header-safe p-6 pb-2 flex justify-between items-center gap-3 relative bg-slate-50">
+          <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
+            <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
+            <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
+            <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
+          </div>
+          <div class="flex-1 min-w-0 text-center">
+            <h1 class="${titleClass}">mnyra social</h1>
+          </div>
+          ${renderHeaderAvatar(profile)}
+        </header>
+      `;
+    }
+
+    function renderBusinessTopSwitch() {
+      const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
+      return `
+        <div class="px-6 pb-3">
+          <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
+            ${[
+              { id: "menu", label: "Speisekarte" },
+              { id: "settings", label: "Einstellungen" }
+            ].map((tab) => `
+              <button type="button" data-business-top-tab="${tab.id}" class="${base} ${state.profileTopTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+                ${tab.label}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRestaurantIdentityCard(profile) {
+      const handle = String(profile.handle || normalizeHandle(profile.name || "restaurant")).replace(/^@/, "");
+      const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
+      return `
+        <div class="px-5 pb-2 pt-2">
+          <div class="bg-white rounded-[2.5rem] p-6 relative overflow-hidden border border-slate-100 shadow-sm">
+            <div class="flex items-start gap-4">
+              <div class="relative w-[78px] h-[78px] rounded-[1.7rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500 shadow-md shrink-0">
+                <img src="${escapeHtml(getSafeImage(profile.avatar))}" class="w-full h-full rounded-[1.5rem] ${logoFitClass()} border-2 border-white" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <h2 class="font-black text-[23px] text-slate-900 tracking-tight leading-none mb-2">${escapeHtml(profile.name || "Restaurant")}</h2>
+                <p class="text-[12px] font-bold text-indigo-500 mb-3">@${escapeHtml(handle)}</p>
+                <p class="text-[14px] text-slate-600 font-medium leading-relaxed">${safeBio}</p>
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-4 flex items-center gap-1">
+                  ${icon("map-pin", "w-3 h-3")} ${escapeHtml(profile.location || "-")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMenuCategoryRow(categories, menuType) {
+      return `
+        <div class="menu-type-row" data-menu-type-row="${escapeHtml(menuType)}">
+          <div class="py-3">
+            <div class="flex gap-2.5 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-1">
+              ${categories.map(cat => {
+                const isActive = state.menu.activeType === menuType && state.menu.activeCategory === cat;
+                return `
+                  <button data-category="${escapeHtml(cat)}" data-menu-type="${escapeHtml(menuType)}" class="category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold flex items-center gap-2 border ${
+                    isActive ? "bg-slate-800 text-white border-slate-800 shadow-sm" : "bg-white text-slate-500 border-slate-200 shadow-sm hover:bg-slate-50"
+                  }">
+                    ${icon(getCategoryIcon(cat), `w-4 h-4 ${isActive ? "text-white" : "text-slate-500"}`)}
+                    ${escapeHtml(cat)}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMenuTypeStickyHeader(categories, menuType) {
+      return `
+        <div class="menu-type-sticky relative z-[40] bg-slate-50 border-b border-slate-200" data-menu-type-sticky="${escapeHtml(menuType)}">
+          ${renderMenuCategoryRow(categories, menuType)}
+        </div>
+      `;
+    }
+
+    function renderMenuTypeBlock(categories, menuType) {
+      return `
+        <div class="bg-slate-50 border-b border-slate-200" data-menu-type-block-header="${escapeHtml(menuType)}">
+          ${renderMenuCategoryRow(categories, menuType)}
+        </div>
+      `;
+    }
+
+    function renderFocusCarouselAppStyle(profile) {
+      const restaurantId = profile?.restaurantId || "";
+      if (!restaurantId || !isRestaurantCafeProfile(profile)) return "";
+      const { items, enabled } = state.focus;
+      if (!enabled || !items.length) return "";
+
+      return `
+        <div class="pt-2 pb-4">
+          <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-2">
+            ${items.map(item => {
+              const safeImg = getSafeImage(item.imageUrl || "");
+              return `
+                <div class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col group relative">
+                  <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative">
+                    <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="object-position:${getFocusItemObjectPosition(item)};" />
+                    <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50">
+                      ${icon("sparkles", "w-3 h-3 text-amber-500")}
+                      <span class="text-[10px] font-black text-slate-900 uppercase tracking-widest pt-[1px]">Tipp</span>
+                    </div>
+                  </div>
+                  <div class="px-2 py-4">
+                    <h3 class="text-[17px] font-black text-slate-900 leading-tight">${escapeHtml(item.title)}</h3>
+                    <p class="text-[13px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(item.text)}</p>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDrinkGridCard(item) {
+      const safeImg = getSafeImage(item.imageUrl);
+      const priceLabel = formatPrice(item.price);
+      return `
+        <div class="bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative">
+          <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
+            <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" />
+            <button data-action="notify" data-message="Geliked!" class="absolute top-2 right-2 w-7 h-7 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:scale-110 transition-all shadow-sm z-10">
+              ${icon("heart", "w-3.5 h-3.5 fill-current opacity-80")}
+            </button>
+          </div>
+          <div class="px-1.5 pb-1 flex flex-col flex-1">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <h4 class="text-[14px] font-black text-slate-900 leading-tight">${escapeHtml(item.name)}</h4>
+              ${item.available
+                ? `<span class="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Verfügbar</span>`
+                : `<span class="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded-full">Aus</span>`
+              }
+            </div>
+            <p class="text-[12px] text-slate-500 leading-relaxed mb-3">${escapeHtml(item.description)}</p>
+            <div class="mt-auto pt-2 flex items-center justify-between">
+              <span class="text-[14px] font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+              <button data-action="notify" data-message="Getränk hinzugefügt" class="w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md hover:bg-indigo-600 transition-colors active:scale-95">
+                ${icon("plus", "w-4 h-4")}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPromoCard() {
+      const special = state.special || {};
+      const safeImg = getSafeImage(special.imageUrl);
+      const badgeLabel = String(special.badge || "Special").trim() || "Special";
+      const titleHtml = escapeHtml(String(special.title || "Summer\nVibes")).replace(/\n/g, "<br>");
+      return `
+        <div class="bg-slate-900 p-1.5 rounded-[1.8rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col relative overflow-hidden h-full group">
+          <img src="${escapeHtml(safeImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
+          <div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+            <div>
+              <span class="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1.5 inline-block shadow-sm">${escapeHtml(badgeLabel)}</span>
+              <h4 class="text-white text-[14px] font-black leading-tight drop-shadow-md">${titleHtml}</h4>
+            </div>
+            <button data-action="notify" data-message="Special geöffnet" class="w-8 h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-colors">
+              ${icon("arrow-right", "w-4 h-4")}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFoodCard(item) {
+      const safeImg = getSafeImage(item.imageUrl);
+      const priceLabel = formatPrice(item.price);
+      return `
+        <div class="bg-white p-3.5 rounded-[2.2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 group relative">
+          <div class="w-full aspect-[16/9] rounded-[1.8rem] overflow-hidden bg-slate-100 mb-4 relative">
+            <div class="w-full h-full flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory hide-scrollbar">
+              <div class="min-w-full h-full snap-center relative">
+                <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover select-none pointer-events-none" draggable="false" />
+              </div>
+              <div class="min-w-full h-full snap-center relative">
+                <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover brightness-95 scale-105 select-none pointer-events-none" draggable="false" />
+              </div>
+            </div>
+            <button data-action="notify" data-message="Geliked!" class="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:scale-110 transition-all shadow-sm z-10">
+              ${icon("heart", "w-4 h-4 fill-current opacity-80")}
+            </button>
+            <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10 pointer-events-none">
+              <div class="w-4 h-1.5 bg-white rounded-full shadow-sm"></div>
+              <div class="w-1.5 h-1.5 bg-white/60 rounded-full shadow-sm"></div>
+            </div>
+          </div>
+          <div class="px-2">
+            <div class="flex items-start justify-between gap-3 mb-1.5">
+              <div>
+                <h4 class="text-[18px] font-black text-slate-900 leading-snug">${escapeHtml(item.name)}</h4>
+                <span class="inline-flex mt-2 text-[10px] font-black uppercase tracking-widest ${item.available ? "text-emerald-600" : "text-rose-600"}">${item.available ? "Verfügbar" : "Nicht verfügbar"}</span>
+              </div>
+              <span class="text-[17px] font-black text-slate-900 whitespace-nowrap">${escapeHtml(priceLabel)}</span>
+            </div>
+            <p class="text-[14px] text-slate-500 line-clamp-2 leading-relaxed mb-4">${escapeHtml(item.description)}</p>
+            <div class="flex items-center justify-between border-t border-slate-50 pt-4 pb-1">
+              <div class="flex items-center gap-2">
+                ${(item.likesCount || item.commentsCount) ? `
+                  <div class="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-[12px] font-bold">
+                    ${icon("heart", "w-3.5 h-3.5 fill-rose-500")}
+                    ${formatCount(item.likesCount || 0)}
+                    <span class="text-slate-300">/</span>
+                    ${formatCount(item.commentsCount || 0)}
+                  </div>
+                ` : ""}
+              </div>
+              <button data-action="notify" data-message="Speise hinzugefügt" class="bg-slate-900 text-white pl-4 pr-2 py-2 rounded-2xl text-[13px] font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center gap-2 active:scale-95">
+                <span>Hinzufügen</span>
+                <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center pointer-events-none">
+                  ${icon("plus", "w-4 h-4 text-white")}
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfileMenuView(profile) {
+      const restaurantId = profile?.restaurantId || "";
+      if (!restaurantId) return `<div class="p-10 text-center text-slate-400 font-bold">Keine Restaurant-ID gefunden</div>`;
+
+      const allItems = state.menu.items || [];
+      const drinkItems = allItems.filter((item) => normalizeMenuType(item.type) === "drink");
+      const foodItems = allItems.filter((item) => normalizeMenuType(item.type) !== "drink");
+      const drinkCategories = getCategoriesForType("drink", drinkItems);
+      const foodCategories = getCategoriesForType("food", foodItems);
+
+      let drinksHtml = "";
+      let foodsHtml = "";
+
+      if (drinkItems.length > 0) {
+        drinksHtml += `<section class="menu-type-block relative" data-menu-type-block="drink">`;
+        drinksHtml += renderMenuTypeStickyHeader(drinkCategories, "drink");
+        drinkCategories.forEach(cat => {
+          const catItems = drinkItems.filter(i => i.category === cat);
+          if (catItems.length === 0) return;
+          drinksHtml += `<div id="${escapeHtml(getSectionId("drink", cat))}" class="menu-category-section pb-6 pt-4" data-category="${escapeHtml(cat)}" data-menu-type="drink">`;
+          drinksHtml += `<div class="grid grid-cols-2 gap-3 px-5">`;
+          catItems.forEach((item, index) => {
+            if (cat === "Drinks" && index === 3) {
+              drinksHtml += renderPromoCard();
+            }
+            drinksHtml += renderDrinkGridCard(item);
+          });
+          drinksHtml += `</div></div>`;
+        });
+        drinksHtml += `</section>`;
+      }
+
+      if (foodItems.length > 0) {
+        foodsHtml += `<section class="menu-type-block relative" data-menu-type-block="food">`;
+        foodsHtml += renderMenuTypeBlock(foodCategories, "food");
+        foodCategories.forEach(cat => {
+          const catItems = foodItems.filter(i => i.category === cat);
+          if (catItems.length === 0) return;
+          foodsHtml += `<div id="${escapeHtml(getSectionId("food", cat))}" class="menu-category-section pb-6 pt-4" data-category="${escapeHtml(cat)}" data-menu-type="food">`;
+          foodsHtml += `<div class="px-5">${catItems.map(item => renderFoodCard(item)).join("")}</div>`;
+          foodsHtml += `</div>`;
+        });
+        foodsHtml += `</section>`;
+      }
+
+      return `
+        <div>
+          ${renderFocusCarouselAppStyle(profile)}
+          <div id="menu-section">
+            ${drinksHtml}
+            ${foodsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEditorInput(label, dataset, value = "", type = "text", extra = "") {
+      return `
+        <label class="block">
+          <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${escapeHtml(label)}</span>
+          <input type="${escapeHtml(type)}" value="${escapeHtml(String(value ?? ""))}" ${extra} class="w-full bg-white border border-slate-200 rounded-[1.2rem] px-4 py-3 text-[14px] font-semibold text-slate-900 outline-none focus:border-slate-400" ${dataset} />
+        </label>
+      `;
+    }
+
+    function renderEditorTextarea(label, dataset, value = "", rows = 3) {
+      return `
+        <label class="block">
+          <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${escapeHtml(label)}</span>
+          <textarea rows="${rows}" class="w-full bg-white border border-slate-200 rounded-[1.2rem] px-4 py-3 text-[14px] font-semibold text-slate-900 outline-none focus:border-slate-400 resize-y" ${dataset}>${escapeHtml(String(value ?? ""))}</textarea>
+        </label>
+      `;
+    }
+
+    function renderImageUploadEditor({ value = "", title = "Bild", text = "Lokal hochladen oder per URL ersetzen.", inputDataset = "", triggerDataset = "", emptyLabel = "Bild" } = {}) {
+      const safeImg = getSafeImage(value);
+      const showPreview = !isPlaceholderUrl(value);
+      return `
+        <input type="file" class="hidden" accept="image/*" ${inputDataset} />
+        <div class="flex items-center gap-4 p-4 bg-white rounded-[1.4rem] border border-slate-200">
+          <div class="w-20 h-20 rounded-[1.2rem] overflow-hidden bg-slate-100 shrink-0">
+            ${showPreview
+              ? `<img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" />`
+              : `<div class="w-full h-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-400">${escapeHtml(emptyLabel)}</div>`
+            }
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-[13px] font-black uppercase tracking-widest text-slate-900">${escapeHtml(title)}</p>
+            <p class="text-[12px] text-slate-500 mt-1 leading-relaxed">${escapeHtml(text)}</p>
+            ${isDataUrl(value)
+              ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mt-2">Lokales Bild aktiv</p>`
+              : ""
+            }
+            <button type="button" ${triggerDataset} class="mt-3 inline-flex items-center px-4 py-2.5 rounded-[1rem] bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-800 transition-colors">
+              Bild hochladen
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSettingsHeader(title, text, actions = "") {
+      return `
+        <div class="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-[20px] font-black tracking-tight text-slate-900">${escapeHtml(title)}</h2>
+            <p class="text-[13px] text-slate-500 mt-1 leading-relaxed">${escapeHtml(text)}</p>
+          </div>
+          ${actions}
+        </div>
+      `;
+    }
+
+    function renderRestaurantBasicsEditor(profile) {
+      const avatarValue = String(profile.avatar || "");
+      return `
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5">
+          ${renderSettingsHeader("Restaurant Basis", "Diese Felder speisen direkt die lokale Speisekarte-Vorschau.")}
+          <div class="space-y-4">
+            <input type="file" id="testfirstAvatarInput" class="hidden" accept="image/*" />
+            <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-[1.7rem] border border-slate-100">
+              <button type="button" id="testfirstAvatarTrigger" class="relative w-20 h-20 rounded-[1.8rem] overflow-hidden bg-white border border-slate-200 shadow-sm shrink-0">
+                ${!isPlaceholderUrl(avatarValue)
+                  ? `<img src="${escapeHtml(getSafeImage(avatarValue))}" class="w-full h-full ${logoFitClass()}" />`
+                  : `<span class="w-full h-full flex items-center justify-center text-slate-900 text-lg font-black italic uppercase">TF</span>`
+                }
+                <span class="absolute -bottom-1 -right-1 w-8 h-8 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-md pointer-events-none">
+                  ${icon("camera", "w-3.5 h-3.5")}
+                </span>
+              </button>
+              <div class="min-w-0">
+                <p class="text-[13px] font-black uppercase tracking-widest text-slate-900">Profilbild</p>
+                <p class="text-[12px] text-slate-500 mt-1 leading-relaxed">Lokal hochladen oder per URL ersetzen. Bleibt in /testfirst localStorage.</p>
+                ${isDataUrl(avatarValue)
+                  ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mt-2">Lokales Bild aktiv</p>`
+                  : ""
+                }
+              </div>
+            </div>
+            ${renderEditorInput("Restaurantname", 'data-restaurant-field="name"', profile.name)}
+            ${renderEditorInput("Handle", 'data-restaurant-field="handle"', profile.handle)}
+            ${renderEditorTextarea("Bio", 'data-restaurant-field="bio"', profile.bio, 4)}
+            ${renderEditorInput("Avatar Bild-URL", 'data-restaurant-field="avatar"', isDataUrl(avatarValue) ? "" : avatarValue, "url")}
+            ${renderEditorInput("Standort", 'data-restaurant-field="location"', profile.location)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFocusEditorItem(item) {
+      return `
+        <details class="bg-slate-50 rounded-[1.7rem] border border-slate-100 p-4">
+          <summary class="cursor-pointer">
+            <div class="flex items-center gap-3">
+              <img src="${escapeHtml(getSafeImage(item.imageUrl))}" class="w-16 h-16 rounded-[1.2rem] object-cover bg-slate-200 shrink-0" />
+              <div class="min-w-0 flex-1">
+                <h3 class="text-[15px] font-black text-slate-900 truncate">${escapeHtml(item.title || "Neues Highlight")}</h3>
+                <p class="text-[12px] text-slate-500 line-clamp-2 mt-1">${escapeHtml(item.text || "Noch kein Text")}</p>
+              </div>
+              <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Bearbeiten</span>
+            </div>
+          </summary>
+          <div class="mt-4 space-y-4">
+            ${renderEditorInput("Titel", `data-focus-id="${escapeHtml(item.id)}" data-focus-field="title"`, item.title)}
+            ${renderEditorTextarea("Text", `data-focus-id="${escapeHtml(item.id)}" data-focus-field="text"`, item.text, 3)}
+            ${renderEditorInput("Bild-URL", `data-focus-id="${escapeHtml(item.id)}" data-focus-field="imageUrl"`, item.imageUrl, "url")}
+            <div class="flex justify-end">
+              <button type="button" data-delete-focus="${escapeHtml(item.id)}" class="px-4 py-2.5 rounded-[1rem] bg-rose-50 text-rose-600 text-[12px] font-black uppercase tracking-widest hover:bg-rose-100 transition-colors">
+                Entfernen
+              </button>
+            </div>
+          </div>
+        </details>
+      `;
+    }
+
+    function renderFocusEditor() {
+      const actions = `
+        <button type="button" data-add-focus="true" class="px-4 py-2.5 rounded-[1rem] bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-800 transition-colors">
+          Highlight
+        </button>
+      `;
+      return `
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5">
+          ${renderSettingsHeader("Highlights", "Nahezu unverändert an deine Carousel-Logik gekoppelt.", actions)}
+          <div class="space-y-4">
+            ${state.focus.items.length
+              ? state.focus.items.map(renderFocusEditorItem).join("")
+              : `<div class="bg-slate-50 rounded-[1.7rem] border border-dashed border-slate-200 p-6 text-center text-[13px] font-bold text-slate-400">Noch keine Highlights vorhanden.</div>`
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSpecialEditor() {
+      const special = state.special || {};
+      return `
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5">
+          ${renderSettingsHeader("Special-Karte", "Steuert die feste Special-Karte im Getraenke-Bereich. Bild und Texte bleiben lokal editierbar.")}
+          <div class="space-y-4">
+            ${renderImageUploadEditor({
+              value: special.imageUrl,
+              title: "Special-Bild",
+              text: "Lokal hochladen oder per URL ersetzen.",
+              inputDataset: 'data-special-image-input="true"',
+              triggerDataset: 'data-trigger-special-image="true"',
+              emptyLabel: "Special"
+            })}
+            ${renderEditorInput("Badge", 'data-special-field="badge"', special.badge)}
+            ${renderEditorTextarea("Titel", 'data-special-field="title"', special.title, 2)}
+            ${renderEditorInput("Bild-URL", 'data-special-field="imageUrl"', isDataUrl(special.imageUrl) ? "" : special.imageUrl, "url")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMenuTypeSelect(item) {
+      return `
+        <label class="block">
+          <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Typ</span>
+          <select data-menu-id="${escapeHtml(item.id)}" data-menu-field="type" class="w-full bg-white border border-slate-200 rounded-[1.2rem] px-4 py-3 text-[14px] font-semibold text-slate-900 outline-none focus:border-slate-400">
+            <option value="food" ${normalizeMenuType(item.type) === "food" ? "selected" : ""}>Food</option>
+            <option value="drink" ${normalizeMenuType(item.type) === "drink" ? "selected" : ""}>Drink</option>
+          </select>
+        </label>
+      `;
+    }
+
+    function renderMenuAvailabilityToggle(item) {
+      return `
+        <label class="flex items-center justify-between bg-white border border-slate-200 rounded-[1.2rem] px-4 py-3">
+          <div>
+            <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">Verfügbarkeit</span>
+            <span class="block text-[13px] font-semibold text-slate-900 mt-1">${item.available ? "Wird in der Vorschau gezeigt" : "Wird als nicht verfügbar markiert"}</span>
+          </div>
+          <input type="checkbox" ${item.available ? "checked" : ""} data-menu-id="${escapeHtml(item.id)}" data-menu-field="available" class="w-5 h-5 accent-slate-900" />
+        </label>
+      `;
+    }
+
+    function renderMenuEditorItem(item) {
+      const typeLabel = normalizeMenuType(item.type) === "drink" ? "Drink" : "Food";
+      return `
+        <details class="bg-slate-50 rounded-[1.7rem] border border-slate-100 p-4">
+          <summary class="cursor-pointer">
+            <div class="flex items-center gap-3">
+              <img src="${escapeHtml(getSafeImage(item.imageUrl))}" class="w-16 h-16 rounded-[1.2rem] object-cover bg-slate-200 shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="px-2 py-1 rounded-full bg-white text-[10px] font-black uppercase tracking-widest text-slate-500">${escapeHtml(typeLabel)}</span>
+                  ${item.category ? `<span class="px-2 py-1 rounded-full bg-white text-[10px] font-black uppercase tracking-widest text-slate-500">${escapeHtml(item.category)}</span>` : ""}
+                </div>
+                <h3 class="text-[15px] font-black text-slate-900 truncate">${escapeHtml(item.name || "Neues Menü-Item")}</h3>
+                <p class="text-[12px] text-slate-500 truncate mt-1">${escapeHtml(formatPrice(item.price))} · ${item.available ? "verfügbar" : "nicht verfügbar"}</p>
+              </div>
+              <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Bearbeiten</span>
+            </div>
+          </summary>
+          <div class="mt-4 space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              ${renderMenuTypeSelect(item)}
+              ${renderEditorInput("Preis", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="price"`, item.price, "number", 'step="0.01" min="0"')}
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              ${renderEditorInput("Name", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="name"`, item.name)}
+              ${renderEditorInput("Kategorie", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="category"`, item.category)}
+            </div>
+            ${renderEditorTextarea("Beschreibung", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="description"`, item.description, 3)}
+            ${renderImageUploadEditor({
+              value: item.imageUrl,
+              title: `${typeLabel}-Bild`,
+              text: "Lokal hochladen oder per URL ersetzen.",
+              inputDataset: `data-menu-image-input="${escapeHtml(item.id)}"`,
+              triggerDataset: `data-trigger-menu-image="${escapeHtml(item.id)}"`,
+              emptyLabel: typeLabel
+            })}
+            ${renderEditorInput("Bild-URL", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="imageUrl"`, isDataUrl(item.imageUrl) ? "" : item.imageUrl, "url")}
+            ${renderMenuAvailabilityToggle(item)}
+            <div class="grid grid-cols-2 gap-3">
+              ${renderEditorInput("Likes", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="likesCount"`, item.likesCount, "number", 'step="1" min="0"')}
+              ${renderEditorInput("Kommentare", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="commentsCount"`, item.commentsCount, "number", 'step="1" min="0"')}
+            </div>
+            <div class="flex justify-end">
+              <button type="button" data-delete-menu-item="${escapeHtml(item.id)}" class="px-4 py-2.5 rounded-[1rem] bg-rose-50 text-rose-600 text-[12px] font-black uppercase tracking-widest hover:bg-rose-100 transition-colors">
+                Entfernen
+              </button>
+            </div>
+          </div>
+        </details>
+      `;
+    }
+
+    function renderMenuEditor() {
+      const categories = getAllCategories();
+      const actions = `
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button" data-add-menu-item="food" class="px-4 py-2.5 rounded-[1rem] bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-800 transition-colors">
+            Speise
+          </button>
+          <button type="button" data-add-menu-item="drink" class="px-4 py-2.5 rounded-[1rem] bg-white border border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-colors">
+            Getränk
+          </button>
+        </div>
+      `;
+      return `
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5">
+          ${renderSettingsHeader("Menü-Items", "Kategorien bleiben dicht an deiner Original-Logik und entstehen direkt aus den Item-Feldern.", actions)}
+          <div class="flex flex-wrap gap-2 mb-4">
+            ${categories.length
+              ? categories.map((cat) => `<span class="px-3 py-1.5 rounded-full bg-slate-100 text-[11px] font-black uppercase tracking-widest text-slate-500">${escapeHtml(cat)}</span>`).join("")
+              : `<span class="px-3 py-1.5 rounded-full bg-slate-100 text-[11px] font-black uppercase tracking-widest text-slate-400">Keine Kategorien</span>`
+            }
+          </div>
+          <div class="space-y-4">
+            ${state.menu.items.length
+              ? state.menu.items.map(renderMenuEditorItem).join("")
+              : `<div class="bg-slate-50 rounded-[1.7rem] border border-dashed border-slate-200 p-6 text-center text-[13px] font-bold text-slate-400">Noch keine Menü-Items vorhanden.</div>`
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSettingsView() {
+      const profile = state.profileView.profile;
+      return `
+        <div class="app-main-content-safe px-5 pt-2 space-y-4">
+          <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-[20px] font-black tracking-tight text-slate-900">Lokaler Builder</h2>
+                <p class="text-[13px] text-slate-500 mt-1">Nur local state + localStorage. Keine Firestore-Anbindung in /testfirst.</p>
+              </div>
+              <span class="px-3 py-1.5 rounded-full bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500">Isoliert</span>
+            </div>
+          </div>
+          ${renderRestaurantBasicsEditor(profile)}
+          ${renderFocusEditor()}
+          ${renderSpecialEditor()}
+          ${renderMenuEditor()}
+        </div>
+      `;
+    }
+
+    function renderPublicProfileView() {
+      const view = state.profileView;
+      if (!view || !view.profile) return "";
+      const profile = view.profile;
+      const topTab = state.profileTopTab === "settings" ? "settings" : "menu";
+
+      return `
+        <div>
+          ${renderSocialHeader(profile)}
+          ${renderBusinessTopSwitch()}
+          ${topTab === "settings" ? renderSettingsView() : renderProfileMenuView(profile)}
+        </div>
+      `;
+    }
+
+    function getPinnedMenuBlockElement() {
+      const block = document.querySelector('[data-menu-type-block-header="food"]');
+      if (!(block instanceof HTMLElement)) return null;
+      return block.dataset.pinned === "true" ? block : null;
+    }
+
+    function resetPinnedMenuTypeBlock(block, section) {
+      if (section instanceof HTMLElement) {
+        section.style.paddingTop = "";
+      }
+      if (!(block instanceof HTMLElement)) return;
+
+      block.dataset.pinned = "false";
+      block.style.position = "";
+      block.style.top = "";
+      block.style.left = "";
+      block.style.width = "";
+      block.style.zIndex = "";
+    }
+
+    function syncPinnedMenuTypeBlock() {
+      const block = document.querySelector('[data-menu-type-block-header="food"]');
+      const section = block?.closest('.menu-type-block');
+      const shell = document.getElementById("testfirstShell");
+
+      if (!(block instanceof HTMLElement) || !(section instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+        resetPinnedMenuTypeBlock(block, section);
+        return;
+      }
+
+      const blockRect = block.getBoundingClientRect();
+      const sectionRect = section.getBoundingClientRect();
+      const blockHeight = Math.ceil(blockRect.height || block.offsetHeight || 0);
+      const shouldPin = sectionRect.top <= 0 && sectionRect.bottom > blockHeight;
+
+      if (shouldPin) {
+        const shellRect = shell.getBoundingClientRect();
+        section.style.paddingTop = `${blockHeight}px`;
+        block.dataset.pinned = "true";
+        block.style.position = "fixed";
+        block.style.top = "0";
+        block.style.left = `${shellRect.left}px`;
+        block.style.width = `${shellRect.width}px`;
+        block.style.zIndex = "40";
+        return;
+      }
+
+      resetPinnedMenuTypeBlock(block, section);
+    }
+
+    function getCurrentStickyHeaderBottom() {
+      let currentBottom = 0;
+
+      const appHeader = document.querySelector(".app-header-safe");
+      if (appHeader instanceof HTMLElement) {
+        const rect = appHeader.getBoundingClientRect();
+        if (rect.bottom > 0) {
+          currentBottom = Math.max(currentBottom, rect.bottom);
+        }
+      }
+
+      const drinksTab = document.querySelector('[data-menu-type-sticky="drink"]');
+      if (drinksTab instanceof HTMLElement && drinksTab.dataset.following === "true") {
+        const rect = drinksTab.getBoundingClientRect();
+        if (rect.bottom > 0) {
+          currentBottom = Math.max(currentBottom, rect.bottom);
+        }
+      }
+
+      const pinnedBlock = getPinnedMenuBlockElement();
+      if (pinnedBlock instanceof HTMLElement) {
+        const rect = pinnedBlock.getBoundingClientRect();
+        if (rect.bottom > 0) {
+          currentBottom = Math.max(currentBottom, rect.bottom);
+        }
+      }
+
+      return currentBottom;
+    }
+
+    function syncTopSafeAreaFill() {
+      const safeAreaFill = document.getElementById("safe-area-top-fill");
+      if (!(safeAreaFill instanceof HTMLElement)) return;
+
+      if (state.profileTopTab !== "menu") {
+        safeAreaFill.style.display = "none";
+        return;
+      }
+
+      const header = document.querySelector(".app-header-safe");
+      if (header instanceof HTMLElement) {
+        safeAreaFill.style.display = "block";
+        return;
+      }
+
+      safeAreaFill.style.display = "none";
+    }
+
+    function resetDrinksTabPosition(tab, section) {
+      if (section instanceof HTMLElement) {
+        section.style.paddingTop = "";
+      }
+
+      if (!(tab instanceof HTMLElement)) return;
+
+      tab.style.position = "";
+      tab.style.top = "";
+      tab.style.left = "";
+      tab.style.width = "";
+      tab.style.zIndex = "";
+      tab.style.transform = "";
+      delete tab.dataset.following;
+    }
+
+    function syncDrinksTabFollowingHeader() {
+      const tab = document.querySelector('[data-menu-type-sticky="drink"]');
+      const section = tab?.closest('[data-menu-type-block="drink"]');
+      const shell = document.getElementById("testfirstShell");
+      const header = document.querySelector(".app-header-safe");
+
+      if (!(tab instanceof HTMLElement) || !(section instanceof HTMLElement) || !(shell instanceof HTMLElement) || !(header instanceof HTMLElement)) {
+        resetDrinksTabPosition(tab, section);
+        return;
+      }
+
+      if (state.profileTopTab !== "menu") {
+        resetDrinksTabPosition(tab, section);
+        return;
+      }
+
+      const headerRect = header.getBoundingClientRect();
+      const sectionRect = section.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      const tabHeight = Math.ceil(tab.offsetHeight || 0);
+      const headerBottom = Math.ceil(headerRect.bottom || 0);
+
+      const shouldFollow =
+        sectionRect.top <= headerBottom &&
+        sectionRect.bottom > headerBottom + tabHeight;
+
+      if (!shouldFollow) {
+        resetDrinksTabPosition(tab, section);
+        return;
+      }
+
+      section.style.paddingTop = `${tabHeight}px`;
+      tab.dataset.following = "true";
+      tab.style.position = "fixed";
+      tab.style.top = `${headerBottom}px`;
+      tab.style.left = `${shellRect.left}px`;
+      tab.style.width = `${shellRect.width}px`;
+      tab.style.zIndex = "44";
+      tab.style.transform = "translateZ(0)";
+    }
+
+    function getStickyHeaderForSection(section) {
+      if (section?.dataset.menuType === "food") {
+        return getPinnedMenuBlockElement() || document.querySelector('[data-menu-type-sticky="drink"]');
+      }
+
+      return document.querySelector('[data-menu-type-sticky="drink"]');
+    }
+
+    function getCategoryScrollOffset(section) {
+      const header = getStickyHeaderForSection(section);
+      return Math.ceil(header?.offsetHeight || 0) + 8;
+    }
+
+    function scrollCategoryPillIntoRow(pill, behavior = "auto") {
+      const row = pill?.parentElement;
+      if (!(row instanceof HTMLElement)) return;
+
+      const rowRect = row.getBoundingClientRect();
+      const pillRect = pill.getBoundingClientRect();
+      const safePadding = 20;
+      const visibleLeft = rowRect.left + safePadding;
+      const visibleRight = rowRect.right - safePadding;
+      const isFullyVisible = pillRect.left >= visibleLeft && pillRect.right <= visibleRight;
+      if (isFullyVisible) return;
+
+      const desiredLeft = row.scrollLeft + (pillRect.left - rowRect.left) - ((row.clientWidth - pillRect.width) / 2);
+      const maxScrollLeft = Math.max(0, row.scrollWidth - row.clientWidth);
+      const nextLeft = Math.max(0, Math.min(maxScrollLeft, desiredLeft));
+      row.scrollTo({ left: nextLeft, behavior });
+    }
+
+    function updateActivePillDOM(currentCategory, currentType = state.menu.activeType, pillScrollBehavior = "auto") {
+      if (!currentCategory) return;
+      const normalizedType = currentType === "food" ? "food" : "drink";
+      const isAlreadyActive = state.menu.activeCategory === currentCategory && state.menu.activeType === normalizedType;
+      state.menu.activeType = normalizedType;
+      state.menu.activeCategory = currentCategory;
+
+      if (!isAlreadyActive) {
+        document.querySelectorAll(".category-pill").forEach((pill) => {
+          const cat = pill.dataset.category;
+          const pillType = pill.dataset.menuType === "food" ? "food" : "drink";
+          const isActive = cat === currentCategory && pillType === normalizedType;
+          const svgEl = pill.querySelector(".lucide");
+
+          if (isActive) {
+            pill.className = "category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold flex items-center gap-2 border bg-slate-800 text-white border-slate-800 shadow-sm";
+            if (svgEl) {
+              svgEl.classList.remove("text-slate-500");
+              svgEl.classList.add("text-white");
+            }
+          } else {
+            pill.className = "category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold flex items-center gap-2 border bg-white text-slate-500 border-slate-200 shadow-sm hover:bg-slate-50";
+            if (svgEl) {
+              svgEl.classList.remove("text-white");
+              svgEl.classList.add("text-slate-500");
+            }
+          }
+        });
+      }
+
+      const selectorValue = window.CSS?.escape ? window.CSS.escape(currentCategory) : currentCategory.replace(/"/g, '\\"');
+      document.querySelectorAll(`.category-pill[data-menu-type="${normalizedType}"][data-category="${selectorValue}"]`).forEach((pill) => {
+        scrollCategoryPillIntoRow(pill, pillScrollBehavior);
+      });
+    }
+
+    let isScrolling = false;
+    function handleScroll() {
+      if (state.profileTopTab !== "menu") {
+        syncTopSafeAreaFill();
+        syncDrinksTabFollowingHeader();
+        return;
+      }
+
+      if (state.isProgrammaticScroll) {
+        syncPinnedMenuTypeBlock();
+        syncDrinksTabFollowingHeader();
+        syncTopSafeAreaFill();
+        return;
+      }
+
+      if (!isScrolling) {
+        window.requestAnimationFrame(() => {
+          syncPinnedMenuTypeBlock();
+          syncDrinksTabFollowingHeader();
+          syncTopSafeAreaFill();
+
+          const sections = document.querySelectorAll(".menu-category-section");
+          let currentCategory = state.menu.activeCategory;
+          let currentType = getPinnedMenuBlockElement() ? "food" : state.menu.activeType;
+          const scanLine = getCurrentStickyHeaderBottom() + CATEGORY_SCAN_PADDING;
+
+          sections.forEach(sec => {
+            const rect = sec.getBoundingClientRect();
+            if (rect.top <= scanLine && rect.bottom >= scanLine) {
+              currentCategory = sec.dataset.category;
+              currentType = sec.dataset.menuType === "food" ? "food" : "drink";
+            }
+          });
+
+          updateActivePillDOM(currentCategory, currentType);
+          isScrolling = false;
+        });
+        isScrolling = true;
+      }
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("file_read_failed"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImage(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("image_load_failed"));
+        img.src = dataUrl;
+      });
+    }
+
+    async function optimizeImageForStorage(file, { maxSize = 640, quality = 0.82 } = {}) {
+      const dataUrl = await readFileAsDataUrl(file);
+      if (!file?.type?.startsWith("image/")) return dataUrl;
+      const img = await loadImage(dataUrl);
+      const longestSide = Math.max(img.width || 0, img.height || 0) || 1;
+      const scale = Math.min(1, maxSize / longestSide);
+      const width = Math.max(1, Math.round((img.width || 1) * scale));
+      const height = Math.max(1, Math.round((img.height || 1) * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return dataUrl;
+      ctx.drawImage(img, 0, 0, width, height);
+      return canvas.toDataURL("image/jpeg", quality);
+    }
+
+    async function handleAvatarUpload(file) {
+      if (!file) return;
+      try {
+        const nextAvatar = await optimizeImageForStorage(file);
+        state.profileView.profile.avatar = nextAvatar;
+        const saved = persistState();
+        render();
+        showNotification(saved ? "Profilbild aktualisiert" : "Profilbild gesetzt, aber localStorage ist voll");
+      } catch {
+        showNotification("Profilbild konnte nicht geladen werden");
+      }
+    }
+
+    async function handleSpecialImageUpload(file) {
+      if (!file) return;
+      try {
+        const nextImage = await optimizeImageForStorage(file);
+        state.special.imageUrl = nextImage;
+        const saved = persistState();
+        render();
+        showNotification(saved ? "Special-Bild aktualisiert" : "Special-Bild gesetzt, aber localStorage ist voll");
+      } catch {
+        showNotification("Special-Bild konnte nicht geladen werden");
+      }
+    }
+
+    async function handleMenuImageUpload(id, file) {
+      if (!id || !file) return;
+      const item = state.menu.items.find((entry) => entry.id === id);
+      if (!item) return;
+      try {
+        const nextImage = await optimizeImageForStorage(file);
+        item.imageUrl = nextImage;
+        const saved = persistState();
+        render();
+        showNotification(saved ? "Menübild aktualisiert" : "Menübild gesetzt, aber localStorage ist voll");
+      } catch {
+        showNotification("Menübild konnte nicht geladen werden");
+      }
+    }
+
+    function createFocusItem() {
+      return {
+        id: createId("focus"),
+        title: "Neues Highlight",
+        text: "Beschreibe hier den neuen Fokus-Inhalt.",
+        imageUrl: ""
+      };
+    }
+
+    function createMenuItem(type = "food") {
+      const nextType = normalizeMenuType(type);
+      return {
+        id: createId("menu"),
+        type: nextType,
+        name: nextType === "drink" ? "Neues Getränk" : "Neue Speise",
+        price: 0,
+        category: nextType === "drink" ? "Drinks" : "Mains",
+        description: "",
+        imageUrl: "",
+        available: true,
+        likesCount: 0,
+        commentsCount: 0
+      };
+    }
+
+    function readFieldValue(target) {
+      if (target.type === "checkbox") return target.checked;
+      if (target.type === "number") return target.value;
+      return target.value;
+    }
+
+    function updateRestaurantField(field, value) {
+      if (field === "handle") {
+        state.profileView.profile.handle = normalizeHandle(value);
+        return;
+      }
+      state.profileView.profile[field] = String(value || "");
+    }
+
+    function updateFocusField(id, field, value) {
+      const item = state.focus.items.find((entry) => entry.id === id);
+      if (!item) return;
+      item[field] = String(value || "");
+    }
+
+    function updateSpecialField(field, value) {
+      if (!state.special) return;
+      state.special[field] = String(value || "");
+    }
+
+    function updateMenuField(id, field, value) {
+      const item = state.menu.items.find((entry) => entry.id === id);
+      if (!item) return;
+      if (field === "type") {
+        item.type = normalizeMenuType(value);
+        return;
+      }
+      if (field === "available") {
+        item.available = !!value;
+        return;
+      }
+      if (field === "price") {
+        item.price = Number(value || 0);
+        return;
+      }
+      if (field === "likesCount" || field === "commentsCount") {
+        item[field] = Math.max(0, Number(value || 0));
+        return;
+      }
+      item[field] = String(value || "");
+    }
+
+    function bindEditorUpdates(target) {
+      const restaurantField = target.dataset.restaurantField;
+      if (restaurantField) {
+        updateRestaurantField(restaurantField, readFieldValue(target));
+        persistState();
+        return;
+      }
+      const focusId = target.dataset.focusId;
+      const focusField = target.dataset.focusField;
+      if (focusId && focusField) {
+        updateFocusField(focusId, focusField, readFieldValue(target));
+        persistState();
+        return;
+      }
+      const specialField = target.dataset.specialField;
+      if (specialField) {
+        updateSpecialField(specialField, readFieldValue(target));
+        persistState();
+        return;
+      }
+      const menuId = target.dataset.menuId;
+      const menuField = target.dataset.menuField;
+      if (menuId && menuField) {
+        updateMenuField(menuId, menuField, readFieldValue(target));
+        ensureActiveCategory();
+        persistState();
+      }
+    }
+
+    function setupGlobalEvents() {
+      window.addEventListener("scroll", handleScroll, { passive: true });
+
+      window.addEventListener("resize", () => {
+        syncPinnedMenuTypeBlock();
+        syncDrinksTabFollowingHeader();
+        syncTopSafeAreaFill();
+
+        if (state.profileTopTab !== "menu") return;
+        handleScroll();
+      });
+
+      const app = document.getElementById("app");
+      app.addEventListener("click", (e) => {
+        const topTabBtn = e.target.closest("[data-business-top-tab]");
+        if (topTabBtn) {
+          state.profileTopTab = topTabBtn.dataset.businessTopTab === "settings" ? "settings" : "menu";
+          persistState();
+          render();
+          return;
+        }
+
+        const avatarTrigger = e.target.closest("#testfirstAvatarTrigger");
+        if (avatarTrigger) {
+          document.getElementById("testfirstAvatarInput")?.click();
+          return;
+        }
+
+        const specialImageTrigger = e.target.closest("[data-trigger-special-image]");
+        if (specialImageTrigger) {
+          app.querySelector('[data-special-image-input="true"]')?.click();
+          return;
+        }
+
+        const menuImageTrigger = e.target.closest("[data-trigger-menu-image]");
+        if (menuImageTrigger) {
+          const itemId = menuImageTrigger.dataset.triggerMenuImage;
+          app.querySelector(`[data-menu-image-input="${itemId}"]`)?.click();
+          return;
+        }
+
+        const catBtn = e.target.closest("[data-category]");
+        if (catBtn) {
+          const cat = catBtn.dataset.category;
+          const menuType = catBtn.dataset.menuType === "food" ? "food" : "drink";
+          const section = document.getElementById(getSectionId(menuType, cat));
+          if (section) {
+            state.isProgrammaticScroll = true;
+            updateActivePillDOM(cat, menuType, "smooth");
+            persistState();
+            const y = section.getBoundingClientRect().top + window.scrollY - getCategoryScrollOffset(section);
+            window.scrollTo({ top: y, behavior: "smooth" });
+
+            setTimeout(() => {
+              state.isProgrammaticScroll = false;
+              syncPinnedMenuTypeBlock();
+              syncDrinksTabFollowingHeader();
+              syncTopSafeAreaFill();
+              handleScroll();
+            }, 800);
+          }
+          return;
+        }
+
+        const addFocusBtn = e.target.closest("[data-add-focus]");
+        if (addFocusBtn) {
+          state.focus.items.unshift(createFocusItem());
+          persistState();
+          render();
+          showNotification("Highlight hinzugefügt");
+          return;
+        }
+
+        const deleteFocusBtn = e.target.closest("[data-delete-focus]");
+        if (deleteFocusBtn) {
+          const id = deleteFocusBtn.dataset.deleteFocus;
+          state.focus.items = state.focus.items.filter((item) => item.id !== id);
+          persistState();
+          render();
+          showNotification("Highlight entfernt");
+          return;
+        }
+
+        const addMenuBtn = e.target.closest("[data-add-menu-item]");
+        if (addMenuBtn) {
+          state.menu.items.unshift(createMenuItem(addMenuBtn.dataset.addMenuItem || "food"));
+          ensureActiveCategory();
+          persistState();
+          render();
+          showNotification("Menü-Item hinzugefügt");
+          return;
+        }
+
+        const deleteMenuBtn = e.target.closest("[data-delete-menu-item]");
+        if (deleteMenuBtn) {
+          const id = deleteMenuBtn.dataset.deleteMenuItem;
+          state.menu.items = state.menu.items.filter((item) => item.id !== id);
+          ensureActiveCategory();
+          persistState();
+          render();
+          showNotification("Menü-Item entfernt");
+          return;
+        }
+
+        const notifyBtn = e.target.closest('[data-action="notify"]');
+        if (notifyBtn) {
+          showNotification(notifyBtn.dataset.message);
+        }
+      });
+
+      app.addEventListener("input", (e) => {
+        const target = e.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) return;
+        bindEditorUpdates(target);
+      });
+
+      app.addEventListener("change", async (e) => {
+        const target = e.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) return;
+        if (target.id === "testfirstAvatarInput") {
+          await handleAvatarUpload(target.files?.[0]);
+          target.value = "";
+          return;
+        }
+        if (target instanceof HTMLInputElement && target.dataset.specialImageInput) {
+          await handleSpecialImageUpload(target.files?.[0]);
+          target.value = "";
+          return;
+        }
+        if (target instanceof HTMLInputElement && target.dataset.menuImageInput) {
+          await handleMenuImageUpload(target.dataset.menuImageInput, target.files?.[0]);
+          target.value = "";
+          return;
+        }
+        bindEditorUpdates(target);
+      });
+    }
+
+    function render() {
+      ensureActiveCategory();
+      document.getElementById("app").innerHTML = renderPublicProfileView();
+      window.lucide.createIcons();
+
+      syncPinnedMenuTypeBlock();
+      syncDrinksTabFollowingHeader();
+      syncTopSafeAreaFill();
+
+      if (state.profileTopTab === "menu") {
+        setTimeout(() => {
+          syncPinnedMenuTypeBlock();
+          syncDrinksTabFollowingHeader();
+          syncTopSafeAreaFill();
+          updateActivePillDOM(state.menu.activeCategory, state.menu.activeType);
+          handleScroll();
+        }, 50);
+      } else {
+        syncTopSafeAreaFill();
+        syncDrinksTabFollowingHeader();
+      }
+    }
+
+    setupGlobalEvents();
+    render();
+  </script>
+</body>
+</html>

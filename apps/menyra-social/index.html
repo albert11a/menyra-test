@@ -1,0 +1,1684 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <meta name="theme-color" content="#f8fafc" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <script type="module">
+    import { parseSiteRoutePathCore } from "/apps/menyra-social/core/router/public-business-route-utils.js";
+    (() => {
+      window.__MENYRA_SOCIAL_DEGRADED__ = window.__MENYRA_SOCIAL_DEGRADED__ || {};
+      window.__MENYRA_SOCIAL_SET_DEGRADED__ = (kind, payload = {}) => {
+        const safeKind = String(kind || "").trim().toLowerCase();
+        if (!safeKind) return;
+        const next = {
+          active: payload?.active === true,
+          message: String(payload?.message || "").trim()
+        };
+        window.__MENYRA_SOCIAL_DEGRADED__[safeKind] = next;
+        window.dispatchEvent(new CustomEvent("menyra-social-vendor-degraded", {
+          detail: { kind: safeKind, ...next }
+        }));
+      };
+      try {
+        window.performance?.mark?.("mnyra.social.cold_guest.start");
+      } catch {}
+      const APP_BUILD_TOKEN = "2026-04-16-landing-coldstart-fast-04";
+      window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
+      const LIGHT_UI_COLOR = "#f8fafc";
+      const OVERLAY_UI_COLOR = "#ffffff";
+      const isConcreteColorToken = (value) => {
+        const raw = String(value || "").trim();
+        if (!raw) return false;
+        const lower = raw.toLowerCase();
+        if (lower.includes("var(")) return false;
+        if (lower === "transparent" || lower === "rgba(0, 0, 0, 0)" || lower === "rgba(0,0,0,0)") return false;
+        return true;
+      };
+      const mountBuildBadgeIfRequested = () => {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          if (params.get("debug-build") !== "1") return;
+          const doc = window.document;
+          if (!doc?.body || doc.getElementById("mnyraBuildBadge")) return;
+          const badge = doc.createElement("div");
+          badge.id = "mnyraBuildBadge";
+          badge.textContent = `build ${APP_BUILD_TOKEN}`;
+          badge.style.position = "fixed";
+          badge.style.right = "10px";
+          badge.style.bottom = "10px";
+          badge.style.zIndex = "2147483647";
+          badge.style.padding = "4px 8px";
+          badge.style.borderRadius = "999px";
+          badge.style.background = "rgba(15,23,42,0.82)";
+          badge.style.color = "#fff";
+          badge.style.font = "600 10px/1.2 system-ui, -apple-system, Segoe UI, sans-serif";
+          badge.style.letterSpacing = "0.04em";
+          doc.body.appendChild(badge);
+        } catch {}
+      };
+      const resetServiceWorkerCachesIfRequested = async () => {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          if (params.get("sw-reset") !== "1") return;
+          const nav = window.navigator;
+          if ("serviceWorker" in nav) {
+            const registrations = await nav.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
+          }
+          if ("caches" in window) {
+            const cacheKeys = await caches.keys();
+            await Promise.all(
+              cacheKeys
+                .filter((key) => String(key || "").startsWith("mnyra-social-cache-"))
+                .map((key) => caches.delete(key).catch(() => false))
+            );
+          }
+          params.delete("sw-reset");
+          params.set("cb", `sw-reset-${Date.now()}`);
+          const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash || ""}`;
+          window.location.replace(nextUrl);
+        } catch {}
+      };
+      void resetServiceWorkerCachesIfRequested();
+      const resolveActiveModalSurface = () => {
+        try {
+          const raw = String(
+            window.getComputedStyle?.(document.documentElement)?.getPropertyValue("--active-modal-surface")
+            || ""
+          ).trim();
+          if (isConcreteColorToken(raw)) return raw;
+          const overlays = Array.from(document.querySelectorAll("#overlayRoot .modal-overlay"));
+          const topOverlay = overlays[overlays.length - 1] || null;
+          if (topOverlay) {
+            const overlayBg = String(window.getComputedStyle?.(topOverlay)?.backgroundColor || "").trim();
+            if (isConcreteColorToken(overlayBg)) return overlayBg;
+            const sheet = topOverlay.querySelector(".modal-sheet");
+            if (sheet) {
+              const sheetBg = String(window.getComputedStyle?.(sheet)?.backgroundColor || "").trim();
+              if (isConcreteColorToken(sheetBg)) return sheetBg;
+            }
+          }
+          return OVERLAY_UI_COLOR;
+        } catch {
+          return OVERLAY_UI_COLOR;
+        }
+      };
+      const isModalChromeActive = () => {
+        if (document.documentElement.classList.contains("modal-open")) return true;
+        if (document.body?.classList?.contains("modal-open")) return true;
+        return !!document.querySelector("#overlayRoot .modal-overlay");
+      };
+      const resolveUiChromeColor = () => {
+        if (isModalChromeActive()) return resolveActiveModalSurface();
+        return LIGHT_UI_COLOR;
+      };
+      const resolveStatusBarStyle = () => "black-translucent";
+      const ensureMeta = (name, content) => {
+        let meta = document.querySelector(`meta[name="${name}"]`);
+        if (!meta) {
+          meta = document.createElement("meta");
+          meta.setAttribute("name", name);
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute("content", content);
+      };
+      const forceLightUiChrome = () => {
+        const uiChromeColor = resolveUiChromeColor();
+        const themeMetas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
+        if (themeMetas.length) {
+          themeMetas[0].setAttribute("content", uiChromeColor);
+          themeMetas[0].removeAttribute("media");
+          for (let i = 1; i < themeMetas.length; i += 1) themeMetas[i].remove();
+        } else {
+          ensureMeta("theme-color", uiChromeColor);
+        }
+        ensureMeta("apple-mobile-web-app-status-bar-style", resolveStatusBarStyle());
+        ensureMeta("color-scheme", "light");
+        ensureMeta("supported-color-schemes", "light");
+      };
+      window.__MENYRA_SOCIAL_FORCE_UI_CHROME__ = forceLightUiChrome;
+
+      if ("scrollRestoration" in window.history) {
+        window.history.scrollRestoration = "manual";
+      }
+      const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+      if (standalone) {
+        const vp = document.querySelector('meta[name="viewport"]');
+        if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+        document.documentElement.classList.add("is-standalone");
+      }
+      if ("MutationObserver" in window) {
+        const observer = new MutationObserver(() => {
+          forceLightUiChrome();
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+        const observeBodyGateState = () => {
+          if (!document.body) return;
+          const bodyObserver = new MutationObserver(() => {
+            forceLightUiChrome();
+          });
+          bodyObserver.observe(document.body, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true });
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", observeBodyGateState, { once: true });
+        } else {
+          observeBodyGateState();
+        }
+      }
+      const forceTop = () => {
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if (y > 0) window.scrollTo(0, 0);
+      };
+      window.addEventListener("pageshow", () => {
+        forceLightUiChrome();
+        window.requestAnimationFrame(forceTop);
+      }, { once: true });
+      window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change", forceLightUiChrome);
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", forceLightUiChrome, { once: true });
+        document.addEventListener("DOMContentLoaded", mountBuildBadgeIfRequested, { once: true });
+      } else {
+        forceLightUiChrome();
+        mountBuildBadgeIfRequested();
+      }
+    })();
+  </script>
+  <title>MNYRA Social</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap"></noscript>
+  <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
+  <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin>
+  <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev">
+  <link rel="preconnect" href="https://us-central1-menyra-c0e68.cloudfunctions.net" crossorigin>
+  <link rel="dns-prefetch" href="//us-central1-menyra-c0e68.cloudfunctions.net">
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="dns-prefetch" href="//firestore.googleapis.com">
+  <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-16-landing-coldstart-fast-04">
+  <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
+  <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
+  <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
+  <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-auth.js" crossorigin>
+  <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-firestore.js" crossorigin>
+  <script type="importmap">
+  {
+    "imports": {
+      "@shared/": "/shared/",
+      "@apps/": "/apps/"
+    }
+  }
+  </script>
+  <style>
+    html,
+    body {
+      min-height: 100%;
+      overflow-anchor: none;
+      font-family: "Plus Jakarta Sans", "Segoe UI", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    }
+    html {
+      background: #f8fafc;
+      background: var(--app-bg);
+    }
+    body { background: #f8fafc; background: var(--app-bg); color: #0f172a; margin: 0; }
+    body {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: auto;
+    }
+    html,
+    body {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+    #app {
+      min-height: 100svh;
+      overflow-x: clip;
+      overflow-y: visible;
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
+      box-sizing: border-box;
+    }
+    html.is-standalone #app { min-height: 100dvh; }
+    :root {
+      --safe-area-top: 0px;
+      --safe-area-right: 0px;
+      --safe-area-bottom: 0px;
+      --safe-area-left: 0px;
+      --menu-detail-footer-gap: 0px;
+      --feed-location-gate-header-height: calc(var(--safe-area-top) + 4.5rem);
+      --app-content-inline: 1.5rem;
+      --app-bg: #f8fafc;
+      --app-surface: #ffffff;
+      --active-modal-surface: #ffffff;
+      --smart-header-theme-color: rgb(248 250 252 / 0.9);
+      --smart-header-content-gap: 1.2rem;
+      --viewport-height: 1vh;
+      --map-shell-height: calc(var(--viewport-height) * 100);
+      color-scheme: light;
+    }
+    @supports (color-scheme: only light) {
+      :root { color-scheme: only light; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root,
+      html,
+      body {
+        background: #f8fafc !important;
+        color: #0f172a !important;
+      }
+    }
+    @supports (padding: env(safe-area-inset-top)) {
+      :root {
+        --safe-area-top: env(safe-area-inset-top);
+        --safe-area-right: env(safe-area-inset-right);
+        --safe-area-bottom: env(safe-area-inset-bottom);
+        --safe-area-left: env(safe-area-inset-left);
+      }
+    }
+    @supports (padding: constant(safe-area-inset-top)) {
+      :root {
+        --safe-area-top: constant(safe-area-inset-top);
+        --safe-area-right: constant(safe-area-inset-right);
+        --safe-area-bottom: constant(safe-area-inset-bottom);
+        --safe-area-left: constant(safe-area-inset-left);
+      }
+    }
+    html.modal-open,
+    body.modal-open {
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--active-modal-surface, var(--app-surface)) !important;
+      background-color: var(--active-modal-surface, var(--app-surface)) !important;
+    }
+    html:has(#overlayRoot .modal-overlay),
+    body:has(#overlayRoot .modal-overlay) {
+      background: var(--active-modal-surface, var(--app-surface)) !important;
+      background-color: var(--active-modal-surface, var(--app-surface)) !important;
+    }
+    html.menu-detail-comment-focus,
+    body.menu-detail-comment-focus {
+      background: var(--active-modal-surface, var(--app-surface)) !important;
+    }
+    body.modal-open.menu-detail-comment-focus::after {
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: max(0px, var(--menu-detail-footer-gap));
+      background: var(--active-modal-surface, rgb(255 255 255 / 0.98));
+      pointer-events: none;
+      z-index: 74;
+    }
+    body.modal-open #app {
+      pointer-events: none;
+      visibility: hidden;
+    }
+    body:has(#overlayRoot .modal-overlay) #app {
+      pointer-events: none;
+      visibility: hidden;
+    }
+    body.modal-open #overlayRoot,
+    body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }
+    body:has(#overlayRoot .modal-overlay) #overlayRoot,
+    body:has(#overlayRoot .modal-overlay) #overlayRoot > * { pointer-events: auto; visibility: visible; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      --modal-surface: var(--app-surface);
+      background: var(--modal-surface, var(--app-surface));
+    }
+    .modal-sheet {
+      position: relative;
+      height: 100% !important;
+      max-height: 100% !important;
+      box-sizing: border-box;
+      padding-top: var(--safe-area-top);
+      background: var(--modal-surface, var(--app-surface)) !important;
+      border-radius: 0 !important;
+      border-bottom-width: 0 !important;
+    }
+    .menu-detail-modal-sheet {
+      padding-top: 0 !important;
+    }
+    .menu-detail-modal-frame { background: var(--modal-surface, var(--app-surface)); }
+    .menu-detail-modal-header {
+      padding-top: calc(var(--safe-area-top) + 1.75rem) !important;
+      background: var(--modal-surface, var(--app-surface)) !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+    .app-shell { min-height: 100svh; background: var(--app-bg); }
+    .app-shell--map {
+      min-height: var(--map-shell-height);
+      height: var(--map-shell-height);
+      display: flex;
+      flex-direction: column;
+    }
+    .app-shell--chat-open {
+      height: 100svh;
+      max-height: 100svh;
+      overflow: hidden;
+    }
+    html.is-standalone .app-shell { min-height: 100dvh; }
+    html.is-standalone .app-shell--map {
+      min-height: 100dvh;
+      height: 100dvh;
+    }
+    html.is-standalone .app-shell--chat-open {
+      height: 100dvh;
+      max-height: 100dvh;
+    }
+    .app-header-safe { padding-top: 1rem !important; }
+    .app-main-scroll { padding-bottom: 1rem !important; }
+    .map-fixed-page-header {
+      position: relative;
+      width: 100%;
+      max-width: none;
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
+      z-index: 95;
+      background: var(--app-bg);
+      flex: 0 0 auto;
+    }
+    .app-main-scroll--with-map-fixed-header { padding-top: 0 !important; }
+    .app-main-scroll--map-fill {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 0 !important;
+      overflow: hidden;
+    }
+    .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
+    .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
+    .app-main-scroll--landing {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+    .app-main-content-safe { padding-bottom: 6rem !important; }
+    .app-content-inline {
+      padding-left: var(--app-content-inline) !important;
+      padding-right: var(--app-content-inline) !important;
+    }
+    .smart-header-shell {
+      --smart-header-surface: var(--smart-header-theme-color);
+      --smart-header-surface-top: rgb(248 250 252 / 0.995);
+      --smart-header-surface-mid: rgb(248 250 252 / 0.965);
+      --smart-header-surface-dense: rgb(248 250 252 / 0.9);
+      --smart-header-border: rgb(226 232 240 / 0.82);
+      position: -webkit-sticky;
+      position: sticky;
+      top: 0;
+      width: 100%;
+      max-width: 100%;
+      z-index: 100;
+      pointer-events: none;
+      isolation: isolate;
+      box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
+    }
+    .smart-header-shell::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -16px;
+      height: 16px;
+      pointer-events: none;
+      z-index: 0;
+      background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
+    }
+    .smart-header-top {
+      position: relative;
+      z-index: 2;
+      pointer-events: auto;
+      padding-top: max(0.5rem, var(--safe-area-top));
+      background: #f8fafc;
+      border-bottom: 1px solid var(--smart-header-border);
+      box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
+    }
+    .smart-header-tabs {
+      position: relative;
+      left: 0;
+      right: 0;
+      top: 0;
+      z-index: 1;
+      pointer-events: auto;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--smart-header-border);
+      box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
+      transition: none;
+      will-change: transform;
+    }
+    .smart-header-tabs--hidden {
+      transform: none !important;
+    }
+    html.feed-location-feed-stage-active,
+    body.feed-location-feed-stage-active {
+      background: var(--app-bg) !important;
+      background-color: var(--app-bg) !important;
+    }
+    .smart-header-tab,
+    .smart-header-action {
+      flex: 1 1 0;
+      position: relative;
+      padding-top: 1.25rem;
+      padding-bottom: 1rem;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      font-weight: 700;
+      transition: color 300ms ease, opacity 300ms ease, transform 120ms ease;
+    }
+    .smart-header-tab::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      height: 2px;
+      width: 0;
+      border-radius: 999px 999px 0 0;
+      transform: translateX(-50%);
+      transition: width 300ms ease, background-color 300ms ease;
+      background: transparent;
+    }
+    .smart-header-tab--active {
+      color: #0f172a;
+      font-weight: 900;
+    }
+    .smart-header-tab--active::after {
+      width: 100%;
+      background: #0f172a;
+    }
+    .smart-header-tab--inactive,
+    .smart-header-action {
+      color: #94a3b8;
+    }
+    .smart-header-cart-btn {
+      position: relative;
+    }
+    .smart-header-cart-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 2px;
+      border-radius: 999px;
+      border: 1.5px solid #fff;
+      background: #f43f5e;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 900;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
+      pointer-events: none;
+    }
+    .smart-header-feed-location {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .smart-header-feed-location .loc-search-wrap {
+      width: 100%;
+      position: relative;
+    }
+    .smart-header-feed-location .loc-input-row {
+      position: relative;
+    }
+    .smart-header-feed-location .loc-pin {
+      position: absolute;
+      left: 0.74rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgb(148 163 184);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .smart-header-feed-location .loc-input {
+      width: 100%;
+      border: 1px solid rgb(226 232 240 / 0.95);
+      outline: none;
+      color: #0f172a;
+      background: #fff;
+      border-radius: 9999px;
+      height: 2rem;
+      padding: 0 2.7rem 0 1.9rem;
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 700;
+      box-shadow: none;
+    }
+    .smart-header-feed-location .loc-input::placeholder {
+      color: rgb(148 163 184);
+      opacity: 1;
+    }
+    .smart-header-feed-location .loc-input:focus {
+      border-color: rgb(125 211 252 / 0.95);
+      box-shadow: 0 0 0 2px rgb(224 242 254 / 0.95);
+    }
+    .smart-header-feed-location .loc-request-wrap {
+      position: absolute;
+      right: 0.3rem;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .smart-header-feed-location .loc-request-btn {
+      position: relative;
+      width: 1.72rem;
+      height: 1.72rem;
+      border: 0;
+      border-radius: 9999px;
+      background: #eafbfe;
+      color: #00cce5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+    }
+    .smart-header-feed-location .loc-request-btn:active {
+      transform: scale(0.95);
+    }
+    .smart-header-feed-location .loc-request-btn.is-success {
+      background: rgb(236 253 245);
+      color: rgb(16 185 129);
+    }
+    .smart-header-feed-location .loc-request-btn.is-loading {
+      background: rgb(255 255 255);
+      color: rgb(14 165 233);
+      box-shadow: none;
+    }
+    .smart-header-feed-location .loc-request-pulse {
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background: rgb(0 204 229 / 0.2);
+      opacity: 0;
+      animation: ping 1.05s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    .smart-header-feed-location .feed-location-suggestions {
+      position: absolute;
+      top: calc(100% + 0.45rem);
+      left: 0;
+      right: 0;
+      z-index: 130;
+      margin-top: 0;
+      max-height: 0;
+      opacity: 0;
+      padding: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transform: translateY(-4px);
+      border-radius: 1.2rem;
+      background: rgb(255 255 255 / 0.98);
+      border: 1px solid rgb(226 232 240 / 0.95);
+      box-shadow: none;
+      backdrop-filter: blur(18px);
+      transition: max-height 220ms ease, opacity 180ms ease, padding 220ms ease, transform 220ms ease;
+    }
+    .smart-header-feed-location .feed-location-suggestions--open {
+      max-height: 16rem;
+      opacity: 1;
+      padding: 0.45rem;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .smart-header-feed-location .feed-location-suggestion {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border: 0;
+      background: transparent;
+      border-radius: 1rem;
+      padding: 0.75rem 0.9rem;
+      text-align: left;
+      color: rgb(15 23 42);
+      font-weight: 700;
+    }
+    .smart-header-feed-location .feed-location-suggestion:hover,
+    .smart-header-feed-location .feed-location-suggestion:focus-visible {
+      background: rgb(241 245 249);
+      outline: none;
+    }
+    .smart-header-feed-location .feed-location-suggestion__label {
+      display: block;
+      font-size: 0.85rem;
+      line-height: 1.1rem;
+    }
+    .smart-header-feed-location .feed-location-suggestion__meta {
+      min-width: 3.5rem;
+      text-align: center;
+      padding: 0.28rem 0.55rem;
+      border-radius: 9999px;
+      background: rgb(236 254 255);
+      color: rgb(8 145 178);
+      font-size: 0.58rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+    }
+    .smart-header-feed-location .loc-status {
+      position: absolute;
+      top: calc(100% + 0.45rem);
+      left: 0.5rem;
+      right: 0.5rem;
+      margin-top: 0;
+      font-size: 0.64rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgb(71 85 105);
+      background: rgb(255 255 255 / 0.92);
+      border: 1px solid rgb(226 232 240 / 0.88);
+      border-radius: 9999px;
+      padding: 0.28rem 0.5rem;
+      text-align: center;
+      backdrop-filter: blur(6px);
+      box-shadow: none;
+      pointer-events: none;
+      z-index: 129;
+    }
+    .smart-header-feed-location .feed-location-suggestions--open + .loc-status {
+      display: none !important;
+    }
+    .smart-header-feed-location .loc-status.hidden {
+      display: none;
+    }
+    html.is-standalone .app-header-safe { padding-top: calc(var(--safe-area-top) + 1.25rem) !important; }
+    html.is-standalone .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
+    html.is-standalone .app-main-scroll--landing {
+      padding-bottom: 0 !important;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+    html.is-standalone .app-main-scroll--with-map-fixed-header { padding-top: 0 !important; }
+    html.is-standalone .app-main-scroll--map-fill {
+      min-height: 0;
+      height: auto;
+      padding-bottom: 0 !important;
+    }
+    html.is-standalone .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
+    html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
+    html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
+    .business-top-tabs-sticky {
+      display: block;
+      position: -webkit-sticky;
+      position: sticky;
+      top: var(--safe-area-top);
+      z-index: 45;
+      background: var(--app-bg);
+      border-bottom: 0;
+    }
+    .business-top-tabs-sticky--pinned {
+      isolation: isolate;
+    }
+    .business-top-tabs-sticky--pinned::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(-1 * (var(--safe-area-top) + 1px));
+      height: calc(var(--safe-area-top) + 1px);
+      background: var(--app-bg);
+      pointer-events: none;
+    }
+    .modal-frame {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+      max-width: none;
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
+      box-sizing: border-box;
+    }
+    .modal-sheet-85 {
+      height: 100% !important;
+    }
+    .modal-sheet-88 {
+      height: 100% !important;
+    }
+    .modal-footer-safe {
+      padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important;
+    }
+    .fullscreen-safe-pad {
+      padding-top: calc(var(--safe-area-top) + 0.75rem) !important;
+      padding-right: calc(var(--safe-area-right) + 1rem) !important;
+      padding-bottom: calc(var(--safe-area-bottom) + 0.75rem) !important;
+      padding-left: calc(var(--safe-area-left) + 1rem) !important;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .horizontal-safe-scroll {
+      padding-left: 20px;
+      padding-right: 20px;
+      scroll-padding-left: 20px;
+      scroll-padding-right: 20px;
+      box-sizing: border-box;
+    }
+    /* Testfirst menu utility fallbacks (static Tailwind build does not include all core/**/*.js classes). */
+    .p-3\.5 { padding: 0.875rem; }
+    .pl-4 { padding-left: 1rem; }
+    .pt-\[1px\] { padding-top: 1px; }
+    .mb-1\.5 { margin-bottom: 0.375rem; }
+    .-mr-1 { margin-right: -0.25rem; }
+    .text-\[12px\] { font-size: 12px; }
+    .text-\[14px\] { font-size: 14px; }
+    .text-\[17px\] { font-size: 17px; }
+    .text-\[18px\] { font-size: 18px; }
+    .aspect-\[16\/9\] { aspect-ratio: 16 / 9; }
+    .rounded-\[1\.65rem\] { border-radius: 1.65rem; }
+    .bg-white\/98 { background-color: rgb(255 255 255 / 0.98); }
+    .min-w-\[85\%\] { min-width: 85%; }
+    .min-w-full { min-width: 100%; }
+    .whitespace-nowrap { white-space: nowrap; }
+    .overflow-y-hidden { overflow-y: hidden; }
+    .select-none { user-select: none; -webkit-user-select: none; }
+    .brightness-95 { --tw-brightness: brightness(.95); filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow); }
+    .right-0 { right: 0; }
+    .bottom-3 { bottom: 0.75rem; }
+    .border-white\/30 { border-color: rgb(255 255 255 / 0.3); }
+    .from-black\/80 { --tw-gradient-from: rgb(0 0 0 / 0.8) var(--tw-gradient-from-position); --tw-gradient-to: rgb(0 0 0 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+    .via-black\/20 { --tw-gradient-to: rgb(0 0 0 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), rgb(0 0 0 / 0.2) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+    .hover\:bg-indigo-600:hover { background-color: rgb(79 70 229 / 1); }
+    .hover\:bg-white\/40:hover { background-color: rgb(255 255 255 / 0.4); }
+    .hover\:scale-110:hover { --tw-scale-x: 1.1; --tw-scale-y: 1.1; transform: translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y)); }
+    .snap-x { scroll-snap-type: x var(--tw-scroll-snap-strictness); }
+    .snap-mandatory { --tw-scroll-snap-strictness: mandatory; }
+    .snap-center { scroll-snap-align: center; }
+    .shadow-\[0_8px_30px_rgb\(0\2c 0\2c 0\2c 0\.03\)\] {
+      --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.03);
+      --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+      box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+    }
+    .shadow-\[0_8px_30px_rgb\(0\2c 0\2c 0\2c 0\.04\)\] {
+      --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+      --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+      box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+    }
+    .shadow-\[0_8px_30px_rgb\(0\2c 0\2c 0\2c 0\.06\)\] {
+      --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.06);
+      --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+      box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+    }
+    .shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.03\)\] {
+      --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.03);
+      --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+      box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+    }
+    .shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.04\)\] {
+      --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+      --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+      box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+    }
+    .shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.06\)\] {
+      --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.06);
+      --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+      box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+    }
+    @media (min-width: 640px) {
+      .sm\:min-w-\[300px\] { min-width: 300px; }
+    }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .leaflet-container { background: #0f172a; }
+    .leaflet-control-attribution { display: none !important; }
+    .leaflet-control-zoom { display: none !important; }
+    .map-view-root {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    .map-view-intro {
+      margin-bottom: 1rem;
+      padding: 0 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .map-view-truth {
+      margin-bottom: 0.75rem;
+      padding: 0 0.5rem;
+    }
+    .map-view-surface {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+      background: #e2e8f0;
+      border-radius: 2.5rem;
+      overflow: hidden;
+      box-shadow: 0 20px 38px -24px rgb(15 23 42 / 0.45);
+      border: 1px solid rgb(226 232 240 / 0.5);
+    }
+    .map-view-overlay-top {
+      position: absolute;
+      top: 1.25rem;
+      left: 1rem;
+      right: 1rem;
+      z-index: 30;
+    }
+    .map-view-overlay-bottom-right {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1rem;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .map-view-sheet-slot {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      right: 1rem;
+      z-index: 40;
+    }
+    .map-search-shell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      width: 3.05rem;
+      max-width: 3.05rem;
+      min-height: 3.05rem;
+      border-radius: 9999px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      overflow: hidden;
+      transition: width 220ms ease, max-width 220ms ease;
+    }
+    .map-search-shell--expanded {
+      width: 100%;
+      max-width: 100%;
+      min-height: 3.5rem;
+      border-radius: 1rem;
+      border: 1px solid rgb(255 255 255 / 0.24);
+      background: rgb(255 255 255 / 0.92);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 12px 28px -18px rgb(15 23 42 / 0.35);
+      padding: 0.35rem;
+    }
+    .map-search-shell--expanded:focus-within {
+      border-color: rgb(99 102 241 / 0.45);
+      box-shadow: 0 0 0 2px rgb(99 102 241 / 0.16), 0 12px 28px -18px rgb(15 23 42 / 0.35);
+    }
+    .map-search-expand-btn {
+      width: 2.75rem;
+      height: 2.75rem;
+      flex: 0 0 2.75rem;
+      border: 0;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgb(255 255 255 / 0.95);
+      color: rgb(51 65 85);
+      box-shadow: 0 10px 22px -18px rgb(15 23 42 / 0.5), 0 0 0 1px rgb(148 163 184 / 0.18);
+      transition: transform 140ms ease, background-color 180ms ease, color 180ms ease;
+    }
+    .map-search-expand-btn:active {
+      transform: scale(0.95);
+    }
+    .map-search-shell--expanded .map-search-expand-btn {
+      background: rgb(79 70 229 / 0.16);
+      color: rgb(67 56 202);
+    }
+    .map-search-input {
+      width: 0;
+      max-width: 0;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      outline: none;
+      color: #0f172a;
+      font-size: 0.9rem;
+      line-height: 1.2rem;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      padding: 0;
+      transition: max-width 220ms ease, opacity 160ms ease, padding 200ms ease;
+    }
+    .map-search-input::placeholder {
+      color: rgb(148 163 184);
+      opacity: 1;
+    }
+    .map-search-shell--expanded .map-search-input {
+      width: 100%;
+      max-width: 520px;
+      opacity: 1;
+      pointer-events: auto;
+      padding-right: 0.5rem;
+    }
+    @media (max-width: 768px) {
+      .app-main-scroll--map-fill {
+        min-height: 0;
+        height: 100%;
+      }
+      .map-view-root {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+        padding: 0;
+      }
+      .map-view-intro,
+      .map-view-truth {
+        display: none;
+      }
+      .map-view-surface {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        border-radius: 0;
+        border: 0;
+        box-shadow: none;
+      }
+      .map-view-overlay-top {
+        top: 0.75rem;
+        left: 0.75rem;
+        right: 0.75rem;
+      }
+      .map-view-overlay-bottom-right {
+        bottom: 0.75rem;
+        right: 0.75rem;
+      }
+      .map-view-sheet-slot {
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 0.75rem;
+      }
+    }
+    .custom-div-icon { background: transparent; border: none; overflow: visible; }
+    .leaflet-marker-icon { overflow: visible; }
+
+    /* Pulsierender Radar-Effekt fuer User-Standort */
+    .user-radar { position: relative; z-index: 1; }
+    .user-radar::before {
+      content: '';
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.4);
+      animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+      z-index: -1;
+    }
+    @keyframes radar-ping {
+      75%, 100% { transform: scale(1.8); opacity: 0; }
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slide-in-left { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes slide-in-right { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes slide-in-bottom { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fade-in 0.4s ease-out forwards; }
+    .slide-in-from-left-10 { animation: slide-in-left 0.5s ease-out forwards; }
+    .slide-in-from-right-10 { animation: slide-in-right 0.5s ease-out forwards; }
+    .slide-in-from-bottom-10 { animation: slide-in-bottom 0.6s ease-out forwards; }
+    .slide-in-from-bottom-6 { animation: slide-in-bottom 0.3s ease-out forwards; }
+    body.fast-mode .animate-in,
+    body.fast-mode .slide-in-from-left-10,
+    body.fast-mode .slide-in-from-right-10,
+    body.fast-mode .slide-in-from-bottom-10,
+    body.fast-mode .slide-in-from-bottom-6 { animation: none !important; }
+    body.fast-mode .backdrop-blur,
+    body.fast-mode .backdrop-blur-sm,
+    body.fast-mode .backdrop-blur-md,
+    body.fast-mode .backdrop-blur-lg,
+    body.fast-mode .backdrop-blur-xl { backdrop-filter: none !important; }
+    body.fast-mode .shadow-2xl,
+    body.fast-mode .shadow-xl,
+    body.fast-mode .shadow-lg,
+    body.fast-mode .shadow-md,
+    body.fast-mode .shadow-sm { box-shadow: none !important; }
+    body.fast-mode img { background: #e2e8f0; }
+    body.fast-mode .transition-transform,
+    body.fast-mode .transition-all { transition: none !important; }
+    body.fast-mode .feed-card { contain: content; }
+    body.fast-mode .animate-pulse { animation: none !important; }
+    body.fast-mode .animate-bounce { animation: none !important; }
+    body.fast-mode .group-hover\:scale-105 { transform: none !important; }
+    body.fast-mode [data-landing-swipe-root="true"] {
+      --landing-panel-duration: 180ms !important;
+      --landing-greeting-duration: 220ms !important;
+    }
+    body.fast-mode [data-landing-swipe-root="true"] [data-landing-glow="1"] {
+      opacity: 0.5;
+      filter: none !important;
+    }
+    @supports (position: sticky) {
+      #feedLocationGate[data-location-screen-mode="feed-stage"],
+      #feedLocationGate[data-sticky-feed-bento="true"] {
+        --feed-stage-bento-stop-offset: 42px;
+        --feed-stage-bento-top: calc(var(--feed-location-gate-header-height) + var(--feed-stage-bento-stop-offset));
+        --feed-stage-bento-scroll-padding-bottom: 1rem;
+        --feed-stage-viewport-height: 100vh;
+        --feed-stage-bento-height: max(18rem, calc(var(--feed-stage-viewport-height) - var(--feed-stage-bento-top)));
+      }
+      @supports (height: 100lvh) {
+        #feedLocationGate[data-location-screen-mode="feed-stage"],
+        #feedLocationGate[data-sticky-feed-bento="true"] {
+          --feed-stage-viewport-height: 100lvh;
+        }
+      }
+      html.is-standalone #feedLocationGate[data-location-screen-mode="feed-stage"],
+      html.is-standalone #feedLocationGate[data-sticky-feed-bento="true"] {
+        --feed-stage-bento-scroll-padding-bottom: calc(var(--safe-area-bottom) + 1rem);
+        --feed-stage-viewport-height: 100dvh;
+      }
+      #feedLocationGate[data-location-screen-mode="feed-stage"] .feed-stage-pin-sentinel,
+      #feedLocationGate[data-sticky-feed-bento="true"] .feed-stage-pin-sentinel {
+        position: relative;
+        z-index: 2;
+        height: 1px;
+        margin-bottom: -1px;
+        pointer-events: none;
+      }
+      #feedLocationGate[data-location-screen-mode="feed-stage"] .feed-stage-scroll-track,
+      #feedLocationGate[data-sticky-feed-bento="true"] .feed-stage-scroll-track {
+        position: relative;
+        z-index: 1;
+        height: var(--feed-stage-scroll-track-height, 0px);
+        pointer-events: none;
+      }
+      #feedLocationGate[data-location-screen-mode="feed-stage"] .loc-bento.loc-bento--feed-stage,
+      #feedLocationGate[data-sticky-feed-bento="true"] .loc-bento.loc-bento--feed-stage {
+        position: -webkit-sticky;
+        position: sticky;
+        display: flex;
+        flex-direction: column;
+        top: var(--feed-stage-bento-top);
+        min-height: var(--feed-stage-bento-height);
+        max-height: var(--feed-stage-bento-height);
+        padding: 0;
+        overflow: hidden;
+      }
+      #feedLocationGate[data-location-screen-mode="feed-stage"] .feed-stage-bento-scroll,
+      #feedLocationGate[data-sticky-feed-bento="true"] .feed-stage-bento-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        overflow-y: hidden;
+        overscroll-behavior-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        overflow-anchor: none;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding-bottom: var(--feed-stage-bento-scroll-padding-bottom);
+        box-sizing: border-box;
+      }
+      #feedLocationGate[data-location-screen-mode="feed-stage"] .feed-stage-bento-scroll::-webkit-scrollbar,
+      #feedLocationGate[data-sticky-feed-bento="true"] .feed-stage-bento-scroll::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+      }
+      html.is-standalone #feedLocationGate[data-location-screen-mode="feed-stage"] .loc-bento.loc-bento--feed-stage.feed-stage-bento--pinned .feed-stage-bento-scroll,
+      html.is-standalone #feedLocationGate[data-sticky-feed-bento="true"] .loc-bento.loc-bento--feed-stage.feed-stage-bento--pinned .feed-stage-bento-scroll {
+        overflow-y: auto;
+      }
+    }
+    .feed-card {
+      content-visibility: auto;
+      contain-intrinsic-size: 620px;
+    }
+    img { display: block; background: transparent; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+    .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    @supports (-webkit-touch-callout: none) {
+      input,
+      textarea,
+      select {
+        font-size: 16px !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div id="app" aria-busy="true"></div>
+  <script>
+    (() => {
+      const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
+      const BOOTSTRAP_CACHE_KEY = "mnyra.social.bootstrap.v1";
+      const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
+      const STARTUP_SNAPSHOT_KEYS = [
+        "mnyra.social.startup-snapshot.v2",
+        "mnyra.social.startup-snapshot.v1"
+      ];
+      const ENABLE_STARTUP_SNAPSHOT = window.__MENYRA_SOCIAL_ENABLE_STARTUP_SNAPSHOT__ === true;
+      const STARTUP_SNAPSHOT_TTL_MS = 15 * 60 * 1000;
+      const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
+        ? window.__MENYRA_SOCIAL_SET_DEGRADED__
+        : () => {};
+      const appRoot = document.getElementById("app");
+      const syncViewportHeightVar = () => {
+        try {
+          const vvHeight = Number(window?.visualViewport?.height || 0);
+          const innerHeight = Number(window?.innerHeight || 0);
+          const docHeight = Number(document?.documentElement?.clientHeight || 0);
+          const nextHeight = Math.max(vvHeight, innerHeight, docHeight);
+          if (nextHeight > 0) {
+            document.documentElement.style.setProperty("--viewport-height", `${(nextHeight * 0.01).toFixed(4)}px`);
+          }
+        } catch {}
+      };
+      syncViewportHeightVar();
+      try {
+        window.addEventListener("resize", syncViewportHeightVar, { passive: true });
+      } catch {}
+      try {
+        window.addEventListener("orientationchange", () => {
+          window.setTimeout(syncViewportHeightVar, 120);
+        });
+      } catch {}
+      try {
+        if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
+          window.visualViewport.addEventListener("resize", syncViewportHeightVar, { passive: true });
+          window.visualViewport.addEventListener("scroll", syncViewportHeightVar, { passive: true });
+        }
+      } catch {}
+      try {
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) return;
+          window.setTimeout(syncViewportHeightVar, 60);
+        });
+      } catch {}
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+      const effectiveType = String(connection?.effectiveType || "").trim().toLowerCase();
+      const downlink = Number(connection?.downlink || 0);
+      const rtt = Number(connection?.rtt || 0);
+      const constrainedNetwork = !!connection?.saveData
+        || ["slow-2g", "2g", "3g"].includes(effectiveType)
+        || (Number.isFinite(downlink) && downlink > 0 && downlink <= 1.5)
+        || (Number.isFinite(rtt) && rtt >= 450);
+      const BOOTSTRAP_TIMEOUT_MS = constrainedNetwork ? 3800 : 2200;
+      window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
+      const searchParams = new URLSearchParams(window.location.search || "");
+      const readSiteRoutePath = typeof parseSiteRoutePathCore === "function"
+        ? parseSiteRoutePathCore
+        : (() => ({
+          matched: false,
+          kind: "unknown",
+          tab: "",
+          authMode: "",
+          canonicalPath: "",
+          routePath: "",
+          restaurantId: "",
+          profileTopTab: "",
+          profileContentTab: "",
+          accessSource: ""
+        }));
+      const pathRoute = readSiteRoutePath(window.location.pathname || "");
+      const routeRestaurantId = String(
+        searchParams.get("r")
+        || searchParams.get("restaurant")
+        || searchParams.get("restaurantId")
+        || searchParams.get("rid")
+        || searchParams.get("businessId")
+        || ""
+      ).trim();
+      const routeTab = String(
+        searchParams.get("tab")
+        || searchParams.get("view")
+        || (
+          pathRoute.kind === "system" || pathRoute.kind === "auth"
+            ? pathRoute.tab
+            : ""
+        )
+        || ""
+      ).trim().toLowerCase();
+      const routeTopTab = String(
+        searchParams.get("top")
+        || searchParams.get("surface")
+        || searchParams.get("screen")
+        || (
+          pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
+            ? pathRoute.profileTopTab
+            : ""
+        )
+        || ""
+      ).trim().toLowerCase();
+      const landingSlugFromPath = String(
+        pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
+          ? pathRoute.restaurantId || ""
+          : ""
+      ).trim();
+      const isUserRouteStartup = pathRoute.kind === "user";
+      const routeTableNumber = Math.max(0, Number(
+        searchParams.get("table")
+        || searchParams.get("tableNumber")
+        || searchParams.get("t")
+        || 0
+      ) || 0);
+      const routeSource = String(
+        searchParams.get("src")
+        || searchParams.get("source")
+        || searchParams.get("menuAccessSource")
+        || (
+          pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
+            ? pathRoute.accessSource || ""
+            : ""
+        )
+        || ""
+      ).trim().toLowerCase();
+      const effectiveRouteTab = routeTab
+        || routeTopTab
+        || String(pathRoute.tab || "").trim().toLowerCase()
+        || (landingSlugFromPath ? (routeSource === "qr" ? "menu" : "profile") : "");
+      const effectiveProfileRouteTab = routeTopTab
+        || String(
+          pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
+            ? pathRoute.profileTopTab || ""
+            : ""
+        ).trim().toLowerCase()
+        || effectiveRouteTab;
+      const isExplicitLandingRoute = effectiveProfileRouteTab === "landing";
+      const hasDirectRouteTarget = !!(routeRestaurantId || landingSlugFromPath);
+      const hasLandingRouteHint = !!(
+        routeRestaurantId
+        || landingSlugFromPath
+        || effectiveRouteTab === "landing"
+        || effectiveRouteTab === "profile"
+        || routeTopTab === "landing"
+        || routeTopTab === "profile"
+      );
+      const isQrMenuStartup = routeSource === "qr" && (!routeTab || routeTab === "menu");
+      const isMapRouteStartup = effectiveRouteTab === "map";
+      const isDirectPublicWebRoute = !isUserRouteStartup
+        && hasDirectRouteTarget
+        && !isExplicitLandingRoute
+        && (
+          routeSource === "qr"
+          || effectiveProfileRouteTab === "menu"
+          || effectiveProfileRouteTab === "profile"
+          || !effectiveProfileRouteTab
+        );
+      const startupSurface = effectiveProfileRouteTab === "menu"
+        ? "menu"
+        : (hasLandingRouteHint || isUserRouteStartup ? "profile" : "feed");
+      const shouldFetchBootstrap = !isMapRouteStartup
+        && !isUserRouteStartup
+        && (
+          isDirectPublicWebRoute
+          || (
+            !isQrMenuStartup
+            && !hasLandingRouteHint
+            && (!effectiveRouteTab || effectiveRouteTab === "feed" || effectiveRouteTab === "home")
+          )
+        );
+      const shouldUseBootstrapCache = shouldFetchBootstrap && !isDirectPublicWebRoute;
+      if (appRoot) {
+        appRoot.dataset.startupSurface = startupSurface;
+      }
+      const buildStartupRouteKey = () => {
+        try {
+          const currentUrl = new URL(window.location.href);
+          const params = new URLSearchParams(currentUrl.search || "");
+          [
+            "sw-reset",
+            "cb",
+            "debug-build",
+            "sw-off"
+          ].forEach((key) => params.delete(key));
+          const query = params.toString();
+          return `${currentUrl.pathname}?${query}${currentUrl.hash || ""}`;
+        } catch {
+          return `${window.location.pathname || "/"}?${window.location.search || ""}${window.location.hash || ""}`;
+        }
+      };
+      const restoreStartupSnapshot = () => {
+        try {
+          if (!ENABLE_STARTUP_SNAPSHOT) return false;
+          if (!appRoot) return false;
+          if (isMapRouteStartup) return false;
+          let parsed = null;
+          for (const snapshotKey of STARTUP_SNAPSHOT_KEYS) {
+            const raw = window.localStorage?.getItem?.(snapshotKey);
+            if (!raw) continue;
+            try {
+              parsed = JSON.parse(raw);
+              break;
+            } catch {}
+          }
+          if (!parsed || typeof parsed !== "object") return false;
+          const html = String(parsed?.html || "");
+          const savedAt = Number(parsed?.savedAt || 0);
+          const routeKey = String(parsed?.routeKey || "");
+          const appVersion = String(parsed?.appVersion || "");
+          if (!html || !savedAt || !routeKey) return false;
+          if (Date.now() - savedAt > STARTUP_SNAPSHOT_TTL_MS) return false;
+          if (appVersion && appVersion !== String(window.__MENYRA_SOCIAL_APP_VERSION__ || "")) return false;
+          if (routeKey !== buildStartupRouteKey()) return false;
+          appRoot.innerHTML = html;
+          appRoot.dataset.startupSnapshot = "1";
+          appRoot.removeAttribute("aria-busy");
+          window.__MENYRA_SOCIAL_RESTORED_SNAPSHOT__ = true;
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      restoreStartupSnapshot();
+      const applyBootstrapPayload = (data, { dispatch = false } = {}) => {
+        if (!data || typeof data !== "object") return false;
+        window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__ = data;
+        if (dispatch) {
+          window.dispatchEvent(new CustomEvent(BOOTSTRAP_EVENT, { detail: data }));
+        }
+        return true;
+      };
+      const readBootstrapCache = () => {
+        try {
+          const raw = window.localStorage?.getItem?.(BOOTSTRAP_CACHE_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          const savedAt = Number(parsed?.savedAt || 0);
+          const payload = parsed?.payload;
+          if (!savedAt || !payload || typeof payload !== "object") return null;
+          if (Date.now() - savedAt > BOOTSTRAP_CACHE_TTL_MS) return null;
+          return payload;
+        } catch {
+          return null;
+        }
+      };
+      const writeBootstrapCache = (payload) => {
+        try {
+          if (!payload || typeof payload !== "object") return;
+          window.localStorage?.setItem?.(BOOTSTRAP_CACHE_KEY, JSON.stringify({
+            savedAt: Date.now(),
+            payload
+          }));
+        } catch {}
+      };
+      if (shouldUseBootstrapCache) {
+        const cachedPayload = readBootstrapCache();
+        if (cachedPayload) {
+          applyBootstrapPayload(cachedPayload, { dispatch: false });
+          setDegraded("bootstrap", { active: false, message: "" });
+        }
+      }
+      if (!shouldFetchBootstrap) {
+        window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = null;
+        return;
+      }
+      const ENDPOINT = String(
+        window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__
+        || "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed"
+      ).trim();
+      if (!ENDPOINT) {
+        setDegraded("bootstrap", {
+          active: true,
+          message: "Schnellstart-Endpunkt fehlt. App laedt ohne Bootstrap-Preview."
+        });
+        return;
+      }
+      const buildBootstrapEndpointUrl = (baseEndpoint) => {
+        const endpoint = String(baseEndpoint || "").trim();
+        if (!endpoint) return "";
+        try {
+          const url = new URL(endpoint, window.location.href);
+          const hasRouteContext = isDirectPublicWebRoute
+            || hasDirectRouteTarget
+            || !!routeTab
+            || !!routeTopTab
+            || !!routeSource;
+          if (!hasRouteContext) return url.toString();
+          const bootstrapRouteId = routeRestaurantId || landingSlugFromPath;
+          if (bootstrapRouteId) {
+            url.searchParams.set("r", bootstrapRouteId);
+          }
+          if (routeTab) url.searchParams.set("tab", routeTab);
+          if (effectiveProfileRouteTab) url.searchParams.set("top", effectiveProfileRouteTab);
+          if (routeSource) url.searchParams.set("src", routeSource);
+          if (routeTableNumber > 0) {
+            url.searchParams.set("table", String(routeTableNumber));
+          }
+          if (window.location.pathname) {
+            url.searchParams.set("pathname", window.location.pathname);
+          }
+          return url.toString();
+        } catch {
+          return endpoint;
+        }
+      };
+      const BOOTSTRAP_REQUEST_URL = buildBootstrapEndpointUrl(ENDPOINT) || ENDPOINT;
+      const fetchBootstrap = async () => {
+        const controller = ("AbortController" in window) ? new AbortController() : null;
+        const timer = window.setTimeout(() => controller?.abort(), BOOTSTRAP_TIMEOUT_MS);
+        try {
+          const response = await fetch(BOOTSTRAP_REQUEST_URL, {
+            method: "GET",
+            mode: "cors",
+            credentials: "omit",
+            cache: "no-store",
+            signal: controller?.signal
+          });
+          if (!response.ok) {
+            setDegraded("bootstrap", {
+              active: true,
+              message: "Schnellstart momentan nicht erreichbar. App startet direkt mit Live-Load."
+            });
+            return;
+          }
+          const payload = await response.json();
+          const data = payload && typeof payload === "object" ? payload.data : null;
+          if (!data || typeof data !== "object") {
+            setDegraded("bootstrap", {
+              active: true,
+              message: "Schnellstart lieferte unvollstaendige Daten. App nutzt nur Live-Load."
+            });
+            return;
+          }
+          setDegraded("bootstrap", { active: false, message: "" });
+          if (shouldUseBootstrapCache) {
+            writeBootstrapCache(data);
+          }
+          applyBootstrapPayload(data, { dispatch: true });
+          return data;
+        } catch {
+          if (!window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__) {
+            setDegraded("bootstrap", {
+              active: true,
+              message: "Schnellstart aktuell nicht verfuegbar. App laedt ohne Bootstrap-Preview."
+            });
+          }
+        }
+        finally {
+          window.clearTimeout(timer);
+        }
+      };
+      const bootstrapPromise = fetchBootstrap().catch(() => null);
+      window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = bootstrapPromise;
+      bootstrapPromise.finally(() => {
+        if (window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ === bootstrapPromise) {
+          window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = null;
+        }
+      });
+    })();
+  </script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-16-landing-coldstart-fast-04"></script>
+  <script>
+    (() => {
+      const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
+        ? window.__MENYRA_SOCIAL_SET_DEGRADED__
+        : () => {};
+      let started = false;
+      let hydrateScheduled = false;
+      let observingIcons = false;
+      const hasPendingLucideIcons = () => !!document.querySelector("[data-lucide]");
+      const hydrateIcons = () => {
+        if (!window.lucide?.createIcons) return;
+        setDegraded("icons", { active: false, message: "" });
+        try {
+          window.lucide.createIcons();
+          window.dispatchEvent(new CustomEvent("menyra-social-icons-ready"));
+        } catch {}
+      };
+      const scheduleHydrateIcons = () => {
+        if (hydrateScheduled) return;
+        hydrateScheduled = true;
+        const run = () => {
+          hydrateScheduled = false;
+          hydrateIcons();
+        };
+        if ("requestAnimationFrame" in window) {
+          window.requestAnimationFrame(run);
+          return;
+        }
+        window.setTimeout(run, 16);
+      };
+      const observeLucideTargets = () => {
+        if (observingIcons || !("MutationObserver" in window)) return;
+        const root = document.getElementById("app") || document.body || document.documentElement;
+        if (!root) return;
+        observingIcons = true;
+        const observer = new MutationObserver((records) => {
+          if (!window.lucide?.createIcons) return;
+          for (const record of records) {
+            if (record.type !== "childList" || !record.addedNodes?.length) continue;
+            for (const node of record.addedNodes) {
+              if (node?.nodeType !== 1) continue;
+              if (node.matches?.("[data-lucide]") || node.querySelector?.("[data-lucide]")) {
+                scheduleHydrateIcons();
+                return;
+              }
+            }
+          }
+        });
+        observer.observe(root, { childList: true, subtree: true });
+      };
+      const loadLucide = () => {
+        if (started) return;
+        started = true;
+        if (window.lucide?.createIcons) {
+          scheduleHydrateIcons();
+          return;
+        }
+        const existing = document.querySelector('script[data-menyrasocial-lucide="1"]');
+        if (existing) return;
+        const sources = [
+          "/apps/menyra-social/vendor/lucide.min.js?v=2026-04-06-launch-hardening-01",
+          "https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"
+        ];
+        const loadFromSource = (index = 0) => {
+          if (index >= sources.length) {
+            setDegraded("icons", {
+              active: true,
+              message: "Icon-CDN nicht erreichbar. UI zeigt reduzierte Icon-Darstellung."
+            });
+            return;
+          }
+          const script = document.createElement("script");
+          script.async = true;
+          script.fetchPriority = "low";
+          script.src = sources[index];
+          script.dataset.menyrasocialLucide = "1";
+          script.addEventListener("load", () => {
+            if (window.lucide?.createIcons) {
+              scheduleHydrateIcons();
+              return;
+            }
+            script.remove();
+            loadFromSource(index + 1);
+          }, { once: true });
+          script.addEventListener("error", () => {
+            script.remove();
+            loadFromSource(index + 1);
+          }, { once: true });
+          (document.head || document.documentElement).appendChild(script);
+        };
+        loadFromSource(0);
+      };
+      const scheduleLucideLoad = () => {
+        const start = () => loadLucide();
+        const isSlowStartup = Number(window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0) >= 3000;
+        const initialDelayMs = window.__MENYRA_SOCIAL_RESTORED_SNAPSHOT__
+          ? 0
+          : (isSlowStartup ? 900 : 350);
+        const attachInteractionStart = () => {
+          window.addEventListener("pointerdown", start, { once: true, passive: true });
+          window.addEventListener("keydown", start, { once: true });
+          window.addEventListener("touchstart", start, { once: true, passive: true });
+        };
+        attachInteractionStart();
+        const afterReady = () => {
+          if (!hasPendingLucideIcons()) return;
+          window.setTimeout(start, initialDelayMs);
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", afterReady, { once: true });
+          document.addEventListener("DOMContentLoaded", observeLucideTargets, { once: true });
+          return;
+        }
+        afterReady();
+        observeLucideTargets();
+      };
+      scheduleLucideLoad();
+    })();
+  </script>
+  <script>
+    (() => {
+      const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
+        ? window.__MENYRA_SOCIAL_SET_DEGRADED__
+        : () => {};
+      setDegraded("fonts", { active: false, message: "" });
+    })();
+  </script>
+  <script>
+    (() => {
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-16-landing-coldstart-fast-04").catch(() => {});
+      const schedulePwaLoad = () => {
+        const run = () => {
+          if ("requestIdleCallback" in window) {
+            window.requestIdleCallback(() => loadPwa(), { timeout: 5000 });
+            return;
+          }
+          window.setTimeout(loadPwa, 2200);
+        };
+        if (document.readyState === "complete") {
+          run();
+          return;
+        }
+        window.addEventListener("load", run, { once: true });
+      };
+      schedulePwaLoad();
+    })();
+  </script>
+</body>
+</html>

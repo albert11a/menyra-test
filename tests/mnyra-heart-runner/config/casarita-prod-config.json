@@ -1,0 +1,75 @@
+{
+  "personas": {
+    "guest": {
+      "app": "social",
+      "baseUrl": "https://www.mnyra.com/social/",
+      "guestRouteUrl": "https://www.mnyra.com/social/?tab=menu&src=qr&r=Lzm6RpNu3ErSDtGCHxpi&table=1"
+    },
+    "ceo": {
+      "app": "social",
+      "baseUrl": "https://www.mnyra.com/social/"
+    },
+    "business": {
+      "app": "social",
+      "baseUrl": "https://www.mnyra.com/social/"
+    },
+    "user": {
+      "app": "social",
+      "baseUrl": "https://www.mnyra.com/social/"
+    }
+  },
+  "actions": {
+    "guest": {
+      "qrMenu": {
+        "url": "https://www.mnyra.com/social/?tab=menu&src=qr&r=Lzm6RpNu3ErSDtGCHxpi&table=1",
+        "menuVisibleSelector": "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
+        "productOpenSelector": "[data-menu-open]",
+        "productOpenSamples": 6,
+        "productOpenTimeoutMs": 15000,
+        "productDetailVisibleSelector": [
+          "#menuDetailAddToCartBtn",
+          "#menuModal",
+          "[data-menu-detail]"
+        ],
+        "productDetailCloseSelector": [
+          "#menuModalClose",
+          "[data-menu-detail-close]"
+        ],
+        "addToCartSelector": "#menuDetailAddToCartBtn",
+        "cartVisibleSelector": "[data-cart-checkout], [data-cart-qty]",
+        "cartVisibleText": [
+          "In den Warenkorb",
+          "Checkout starten",
+          "Bestellung absenden",
+          "Tischbestellung absenden",
+          "wurde zum Warenkorb hinzugefuegt"
+        ],
+        "orderOpenSelector": "[data-cart-checkout='open']",
+        "orderTriggerSelector": "[data-cart-checkout='submit']",
+        "orderSuccessTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ],
+        "orderFailureTexts": [
+          "Bestellung konnte nicht gesendet werden."
+        ],
+        "expectedProductCount": 27,
+        "strictProductCount": true,
+        "maxPendingImages": 4,
+        "menuScanMaxScrollSteps": 22,
+        "menuScanSettleMs": 360,
+        "menuScanScrollRatio": 0.82,
+        "menuVisibleWarnMs": 4500,
+        "menuVisibleFailMs": 12000,
+        "cartReadyWarnMs": 6000,
+        "cartReadyFailMs": 18000,
+        "productOpenWarnMs": 2500,
+        "productOpenFailMs": 7000,
+        "privilegedSelectors": [
+          "[data-business-edit]",
+          "[data-crm-create]"
+        ]
+      }
+    }
+  }
+}

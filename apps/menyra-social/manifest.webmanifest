@@ -1,0 +1,26 @@
+{
+  "name": "MNYRA Social",
+  "short_name": "MNYRA",
+  "description": "MNYRA Social feed, discover, and profile.",
+  "id": "/apps/menyra-social/index.html",
+  "start_url": "/apps/menyra-social/index.html",
+  "scope": "/apps/menyra-social/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#f8fafc",
+  "icons": [
+    {
+      "src": "/apps/menyra-social/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apps/menyra-social/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

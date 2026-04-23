@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MNYRA Social</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #f8fafc;
+    }
+    body { visibility: hidden; }
+  </style>
+  <script>
+    const incoming = new URLSearchParams(window.location.search);
+    const userRouteId = (
+      incoming.get("uid")
+      || incoming.get("user")
+      || incoming.get("userId")
+      || incoming.get("u")
+      || incoming.get("handle")
+      || ""
+    ).replace(/^@/, "");
+    const contentTab = String(
+      incoming.get("content")
+      || incoming.get("contentTab")
+      || incoming.get("section")
+      || ""
+    ).trim().toLowerCase();
+    const target = userRouteId
+      ? new URL(
+        `/user/${encodeURIComponent(userRouteId)}${contentTab === "media" ? "/media" : (contentTab === "posts" ? "/posts" : "")}`,
+        window.location.origin
+      )
+      : new URL("/profile", window.location.origin);
+    incoming.forEach((value, key) => {
+      if (["uid", "user", "userId", "u", "handle", "content", "contentTab", "section"].includes(key)) return;
+      if (!target.searchParams.has(key)) target.searchParams.set(key, value);
+    });
+    window.location.replace(`${target.pathname}${target.search}${window.location.hash || ""}`);
+  </script>
+</head>
+<body aria-hidden="true"></body>
+</html>

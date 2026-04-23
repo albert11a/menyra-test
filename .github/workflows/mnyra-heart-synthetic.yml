@@ -1,0 +1,193 @@
+name: mnyra-heart-synthetic
+
+on:
+  workflow_dispatch:
+    inputs:
+      heart_run_id:
+        description: Heart run id
+        required: true
+        type: string
+      heart_mode:
+        description: Run mode label
+        required: false
+        default: synthetic
+        type: string
+      heart_pack:
+        description: Heart pack key
+        required: false
+        default: full-platform-pack
+        type: string
+      heart_environment:
+        description: Target environment label
+        required: false
+        default: production
+        type: string
+      heart_actor_uid:
+        description: Triggering CEO uid
+        required: false
+        type: string
+      heart_actor_email:
+        description: Triggering CEO email
+        required: false
+        type: string
+      heart_actor_name:
+        description: Triggering CEO name
+        required: false
+        type: string
+      heart_base_url:
+        description: Heart app base url
+        required: false
+        default: https://menyra.com/heart/
+        type: string
+      social_base_url:
+        description: Menyra Social base url
+        required: false
+        default: https://www.mnyra.com/social/
+        type: string
+      waiter_base_url:
+        description: Menyra Waiter base url
+        required: false
+        default: https://www.mnyra.com/waiter/
+        type: string
+
+jobs:
+  synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: tests/mnyra-heart-runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install runner dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Load Heart runner config
+        run: node ./scripts/fetch-heart-runner-config.mjs
+        env:
+          HEART_RUNNER_CONFIG_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartGetRunnerConfig
+          HEART_WEBHOOK_SECRET: ${{ secrets.HEART_WEBHOOK_SECRET }}
+          MNYRA_SOCIAL_BASE_URL: ${{ inputs.social_base_url }}
+          MNYRA_WAITER_BASE_URL: ${{ inputs.waiter_base_url }}
+          MNYRA_CEO_EMAIL: ${{ secrets.MNYRA_CEO_EMAIL }}
+          MNYRA_CEO_PASSWORD: ${{ secrets.MNYRA_CEO_PASSWORD }}
+          MNYRA_BUSINESS_EMAIL: ${{ secrets.MNYRA_BUSINESS_EMAIL }}
+          MNYRA_BUSINESS_PASSWORD: ${{ secrets.MNYRA_BUSINESS_PASSWORD }}
+          MNYRA_STAFF_EMAIL: ${{ secrets.MNYRA_STAFF_EMAIL }}
+          MNYRA_STAFF_PASSWORD: ${{ secrets.MNYRA_STAFF_PASSWORD }}
+          MNYRA_USER_EMAIL: ${{ secrets.MNYRA_USER_EMAIL }}
+          MNYRA_USER_PASSWORD: ${{ secrets.MNYRA_USER_PASSWORD }}
+          MNYRA_HEART_PACK_CONFIG_JSON: ${{ vars.MNYRA_HEART_PACK_CONFIG_JSON }}
+          MNYRA_ALLOW_LIVE_MUTATIONS: ${{ vars.MNYRA_ALLOW_LIVE_MUTATIONS }}
+          MNYRA_SYNTHETIC_ISOLATION_KEY: ${{ secrets.MNYRA_SYNTHETIC_ISOLATION_KEY }}
+          MNYRA_BUSINESS_BASE_URL: ${{ vars.MNYRA_BUSINESS_BASE_URL }}
+          MNYRA_STAFF_BASE_URL: ${{ vars.MNYRA_STAFF_BASE_URL }}
+          MNYRA_USER_BASE_URL: ${{ vars.MNYRA_USER_BASE_URL }}
+          MNYRA_GUEST_QR_URL: ${{ vars.MNYRA_GUEST_QR_URL }}
+          MNYRA_SMOKE_BUSINESS_PROFILE_URL: ${{ vars.MNYRA_SMOKE_BUSINESS_PROFILE_URL }}
+          MNYRA_SMOKE_CHAT_TARGET_URL: ${{ vars.MNYRA_SMOKE_CHAT_TARGET_URL }}
+          MNYRA_SMOKE_CHAT_COMPOSER_SELECTOR: ${{ vars.MNYRA_SMOKE_CHAT_COMPOSER_SELECTOR }}
+          MNYRA_SMOKE_CHAT_SEND_SELECTOR: ${{ vars.MNYRA_SMOKE_CHAT_SEND_SELECTOR }}
+          MNYRA_SMOKE_CHAT_MESSAGE: ${{ vars.MNYRA_SMOKE_CHAT_MESSAGE }}
+          MNYRA_SMOKE_CART_URL: ${{ vars.MNYRA_SMOKE_CART_URL }}
+          MNYRA_SMOKE_CART_TRIGGER_SELECTOR: ${{ vars.MNYRA_SMOKE_CART_TRIGGER_SELECTOR }}
+          MNYRA_SMOKE_CART_REMOVAL_SELECTOR: ${{ vars.MNYRA_SMOKE_CART_REMOVAL_SELECTOR }}
+          MNYRA_SMOKE_ORDER_TRIGGER_SELECTOR: ${{ vars.MNYRA_SMOKE_ORDER_TRIGGER_SELECTOR }}
+          MNYRA_SMOKE_ORDER_SUCCESS_TEXT: ${{ vars.MNYRA_SMOKE_ORDER_SUCCESS_TEXT }}
+          MNYRA_USER_TARGET_PROFILE_URL: ${{ vars.MNYRA_USER_TARGET_PROFILE_URL }}
+          MNYRA_USER_FOLLOW_TRIGGER_SELECTOR: ${{ vars.MNYRA_USER_FOLLOW_TRIGGER_SELECTOR }}
+          MNYRA_USER_FOLLOW_VERIFY_SELECTOR: ${{ vars.MNYRA_USER_FOLLOW_VERIFY_SELECTOR }}
+          MNYRA_USER_FOLLOW_VERIFY_TEXT: ${{ vars.MNYRA_USER_FOLLOW_VERIFY_TEXT }}
+          MNYRA_USER_LIKE_URL: ${{ vars.MNYRA_USER_LIKE_URL }}
+          MNYRA_USER_LIKE_TRIGGER_SELECTOR: ${{ vars.MNYRA_USER_LIKE_TRIGGER_SELECTOR }}
+          MNYRA_USER_LIKE_COUNT_SELECTOR: ${{ vars.MNYRA_USER_LIKE_COUNT_SELECTOR }}
+          MNYRA_USER_COMMENT_URL: ${{ vars.MNYRA_USER_COMMENT_URL }}
+          MNYRA_USER_COMMENT_OPEN_SELECTOR: ${{ vars.MNYRA_USER_COMMENT_OPEN_SELECTOR }}
+          MNYRA_USER_COMMENT_INPUT_SELECTOR: ${{ vars.MNYRA_USER_COMMENT_INPUT_SELECTOR }}
+          MNYRA_USER_COMMENT_SUBMIT_SELECTOR: ${{ vars.MNYRA_USER_COMMENT_SUBMIT_SELECTOR }}
+          MNYRA_USER_COMMENT_VERIFY_TEXT: ${{ vars.MNYRA_USER_COMMENT_VERIFY_TEXT }}
+          MNYRA_USER_POST_URL: ${{ vars.MNYRA_USER_POST_URL }}
+          MNYRA_USER_POST_OPEN_SELECTOR: ${{ vars.MNYRA_USER_POST_OPEN_SELECTOR }}
+          MNYRA_USER_POST_INPUT_SELECTOR: ${{ vars.MNYRA_USER_POST_INPUT_SELECTOR }}
+          MNYRA_USER_POST_SUBMIT_SELECTOR: ${{ vars.MNYRA_USER_POST_SUBMIT_SELECTOR }}
+          MNYRA_USER_POST_VERIFY_TEXT: ${{ vars.MNYRA_USER_POST_VERIFY_TEXT }}
+          MNYRA_CRM_LEAD_URL: ${{ vars.MNYRA_CRM_LEAD_URL }}
+          MNYRA_CRM_LEAD_OPEN_SELECTOR: ${{ vars.MNYRA_CRM_LEAD_OPEN_SELECTOR }}
+          MNYRA_CRM_LEAD_NAME_SELECTOR: ${{ vars.MNYRA_CRM_LEAD_NAME_SELECTOR }}
+          MNYRA_CRM_LEAD_EMAIL_SELECTOR: ${{ vars.MNYRA_CRM_LEAD_EMAIL_SELECTOR }}
+          MNYRA_CRM_LEAD_SAVE_SELECTOR: ${{ vars.MNYRA_CRM_LEAD_SAVE_SELECTOR }}
+          MNYRA_CRM_LEAD_VERIFY_TEXT: ${{ vars.MNYRA_CRM_LEAD_VERIFY_TEXT }}
+          MNYRA_CRM_LEAD_EDIT_OPEN_SELECTOR: ${{ vars.MNYRA_CRM_LEAD_EDIT_OPEN_SELECTOR }}
+          MNYRA_CRM_LEAD_EDIT_INPUT_SELECTOR: ${{ vars.MNYRA_CRM_LEAD_EDIT_INPUT_SELECTOR }}
+          MNYRA_CRM_LEAD_EDIT_SAVE_SELECTOR: ${{ vars.MNYRA_CRM_LEAD_EDIT_SAVE_SELECTOR }}
+          MNYRA_CRM_LEAD_EDIT_VERIFY_TEXT: ${{ vars.MNYRA_CRM_LEAD_EDIT_VERIFY_TEXT }}
+          MNYRA_BUSINESS_MENU_URL: ${{ vars.MNYRA_BUSINESS_MENU_URL }}
+          MNYRA_BUSINESS_FOCUS_URL: ${{ vars.MNYRA_BUSINESS_FOCUS_URL }}
+          MNYRA_BUSINESS_PRODUCT_CREATE_OPEN_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_CREATE_OPEN_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_NAME_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_NAME_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_SAVE_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_SAVE_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_VERIFY_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_VERIFY_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_VERIFY_TEXT: ${{ vars.MNYRA_BUSINESS_PRODUCT_VERIFY_TEXT }}
+          MNYRA_BUSINESS_PRODUCT_EDIT_OPEN_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_EDIT_OPEN_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_EDIT_INPUT_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_EDIT_INPUT_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_EDIT_SAVE_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_EDIT_SAVE_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_EDIT_VERIFY_TEXT: ${{ vars.MNYRA_BUSINESS_PRODUCT_EDIT_VERIFY_TEXT }}
+          MNYRA_BUSINESS_PRODUCT_DELETE_OPEN_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_DELETE_OPEN_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_DELETE_CONFIRM_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_DELETE_CONFIRM_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_DELETE_REMOVED_SELECTOR: ${{ vars.MNYRA_BUSINESS_PRODUCT_DELETE_REMOVED_SELECTOR }}
+          MNYRA_BUSINESS_PRODUCT_DELETE_REMOVED_TEXT: ${{ vars.MNYRA_BUSINESS_PRODUCT_DELETE_REMOVED_TEXT }}
+          MNYRA_GUEST_MENU_VISIBLE_SELECTOR: ${{ vars.MNYRA_GUEST_MENU_VISIBLE_SELECTOR }}
+          MNYRA_GUEST_CART_VISIBLE_SELECTOR: ${{ vars.MNYRA_GUEST_CART_VISIBLE_SELECTOR }}
+          MNYRA_GUEST_PRIVILEGED_SELECTORS: ${{ vars.MNYRA_GUEST_PRIVILEGED_SELECTORS }}
+          MNYRA_STAFF_ORDER_VISIBLE_SELECTOR: ${{ vars.MNYRA_STAFF_ORDER_VISIBLE_SELECTOR }}
+          MNYRA_STAFF_STATUS_ACTION_SELECTOR: ${{ vars.MNYRA_STAFF_STATUS_ACTION_SELECTOR }}
+          MNYRA_STAFF_STATUS_VERIFY_SELECTOR: ${{ vars.MNYRA_STAFF_STATUS_VERIFY_SELECTOR }}
+          MNYRA_STAFF_STATUS_VERIFY_TEXT: ${{ vars.MNYRA_STAFF_STATUS_VERIFY_TEXT }}
+          MNYRA_JOURNEY_MODAL_OPEN_SELECTOR: ${{ vars.MNYRA_JOURNEY_MODAL_OPEN_SELECTOR }}
+          MNYRA_JOURNEY_MODAL_CLOSE_SELECTOR: ${{ vars.MNYRA_JOURNEY_MODAL_CLOSE_SELECTOR }}
+
+      - name: Run heart pack
+        run: node ./src/run-pack.mjs "${{ inputs.heart_pack }}"
+        env:
+          HEART_RUN_ID: ${{ inputs.heart_run_id }}
+          HEART_STATUS_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestRunStatus
+          HEART_REPORT_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestRunReport
+          HEART_INCIDENT_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestIncident
+          HEART_ARTIFACT_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartUploadRunArtifact
+          HEART_WEBHOOK_SECRET: ${{ secrets.HEART_WEBHOOK_SECRET }}
+          MNYRA_HEART_HEADLESS: true
+          MNYRA_HEART_RUNTIME_DIAGNOSTICS: ${{ vars.MNYRA_HEART_RUNTIME_DIAGNOSTICS }}
+          MNYRA_HEART_RUNTIME_MAX_SAMPLES: ${{ vars.MNYRA_HEART_RUNTIME_MAX_SAMPLES }}
+          MNYRA_HEART_COLD_START_WARN_MS: ${{ vars.MNYRA_HEART_COLD_START_WARN_MS }}
+          MNYRA_HEART_COLD_START_FAIL_MS: ${{ vars.MNYRA_HEART_COLD_START_FAIL_MS }}
+          MNYRA_HEART_FCP_WARN_MS: ${{ vars.MNYRA_HEART_FCP_WARN_MS }}
+          MNYRA_HEART_FCP_FAIL_MS: ${{ vars.MNYRA_HEART_FCP_FAIL_MS }}
+          MNYRA_HEART_FAIL_ON_PAGE_ERRORS: ${{ vars.MNYRA_HEART_FAIL_ON_PAGE_ERRORS }}
+          MNYRA_HEART_FAIL_ON_CONSOLE_ERRORS: ${{ vars.MNYRA_HEART_FAIL_ON_CONSOLE_ERRORS }}
+          MNYRA_HEART_FAIL_ON_REQUEST_FAILURES: ${{ vars.MNYRA_HEART_FAIL_ON_REQUEST_FAILURES }}
+          MNYRA_HEART_FAIL_ON_HTTP_ERRORS: ${{ vars.MNYRA_HEART_FAIL_ON_HTTP_ERRORS }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          MNYRA_SYNTHETIC_PREFIX: mnyra-heart-synth-${{ github.run_id }}
+
+      - name: Upload synthetic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mnyra-heart-${{ inputs.heart_pack }}-${{ inputs.heart_run_id }}
+          path: tests/mnyra-heart-runner/artifacts/
+          if-no-files-found: warn

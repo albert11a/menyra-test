@@ -1,0 +1,27 @@
+{
+  "name": "mnyra-heart-runner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "casarita-live": "node ./scripts/casarita-live-launch-audit.mjs",
+    "cold-audit": "node ./scripts/cold-load-audit.mjs",
+    "live-guest-order-audit": "node ./scripts/live-guest-order-audit.mjs",
+    "live-order-load-audit": "node ./scripts/live-order-load-audit.mjs",
+    "guard-pack": "node ./src/run-pack.mjs guard-pack",
+    "release-pack": "node ./src/run-pack.mjs release-pack",
+    "health-pack": "node ./src/run-pack.mjs health-pack",
+    "smoke": "node ./src/run-pack.mjs smoke",
+    "synthetic": "node ./src/run-pack.mjs full-platform-pack",
+    "ceo-pack": "node ./src/run-pack.mjs ceo-pack",
+    "business-pack": "node ./src/run-pack.mjs business-pack",
+    "staff-pack": "node ./src/run-pack.mjs staff-pack",
+    "user-pack": "node ./src/run-pack.mjs user-pack",
+    "guest-pack": "node ./src/run-pack.mjs guest-pack",
+    "mutation-pack": "node ./src/run-pack.mjs mutation-pack",
+    "journey-pack": "node ./src/run-pack.mjs journey-pack",
+    "full-platform-pack": "node ./src/run-pack.mjs full-platform-pack"
+  },
+  "dependencies": {
+    "playwright": "^1.54.0"
+  }
+}

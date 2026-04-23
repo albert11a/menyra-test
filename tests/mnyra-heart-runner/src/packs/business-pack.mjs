@@ -1,0 +1,46 @@
+import { runBusinessMutationChecks, runBusinessSurfaceChecks } from "../actions/business-actions.mjs";
+import { runChatChecks } from "../actions/chat-actions.mjs";
+import { runDiscoveryChecks } from "../actions/discovery-actions.mjs";
+import { acceptPendingFollowRequestsInScopedSession } from "../actions/follow-request-actions.mjs";
+import { runPwaChecks } from "../actions/journey-actions.mjs";
+import { ensurePersonaSession } from "../actions/persona-actions.mjs";
+import { runSocialInteractionChecks, runSocialSurfaceChecks } from "../actions/social-actions.mjs";
+
+export async function runBusinessPack({
+  page,
+  env,
+  heart,
+  personas,
+  emitStatus = async () => {},
+  createScopedPage
+} = {}) {
+  const business = personas.business;
+  const auth = await ensurePersonaSession({ page, heart, persona: business, moduleKey: "auth" });
+  if (!auth.ok) {
+    heart.setSummary("Business-Test konnte nicht starten, weil die Business-Zugangsdaten fehlen.");
+    return;
+  }
+
+  await emitStatus("Business / Oberflaechen", "running", "Heart prueft die Business-Oberflaechen.");
+  await runSocialSurfaceChecks({ page, env, heart, persona: business });
+  await runSocialInteractionChecks({
+    page,
+    env,
+    heart,
+    persona: business,
+    includePostCreate: false,
+    includeLikeAction: false
+  });
+  await acceptPendingFollowRequestsInScopedSession({
+    createScopedPage,
+    heart,
+    approverPersona: personas.user,
+    requesterPersona: business
+  });
+  await runBusinessSurfaceChecks({ page, env, heart, persona: business });
+  await runBusinessMutationChecks({ page, env, heart, persona: business });
+  await runChatChecks({ page, env, heart, persona: business });
+  await runDiscoveryChecks({ page, env, heart, persona: business });
+  await runPwaChecks({ page, heart, persona: business });
+  heart.setSummary("Business-Volltest beendet. Business, Social, Karte, Suche, Chat und Menue wurden aus Betreiber-Sicht geprueft.");
+}

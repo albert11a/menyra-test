@@ -1,0 +1,617 @@
+import {
+  buildStoriesSignatureCore,
+  refreshFeedStoriesCore
+} from "../feed/feed-story-utils.js";
+
+export function createStoryFeedRuntimeController({
+  state = null,
+  db = null,
+  readCacheFn = () => null,
+  writeCacheFn = () => {},
+  cacheKeys = {},
+  cacheTtlMs = {},
+  fastMode = false,
+  allowFeedDerivedStoryFallback = false,
+  fastLimits = {},
+  collectionGroupFn = null,
+  getDocsFn = null,
+  queryFn = null,
+  whereFn = null,
+  orderByFn = null,
+  limitFn = null,
+  mapStorySnapshotRowsToFeedStoriesFn = () => [],
+  canShowFeedRestaurantIdFn = () => true,
+  queueStoryIdentityHydrationFn = () => {},
+  queueMicrotaskFn = null,
+  updateFeedDomFn = () => false,
+  renderFn = () => {},
+  getLastRenderModeFn = () => "",
+  resolveRestaurantLogoFn = (_restaurantId, source = "") => String(source || ""),
+  isPlaceholderUrlFn = () => false,
+  escapeSelectorFn = (value) => String(value || ""),
+  documentObj = null,
+  toDateSafeFn = (value) => value
+} = {}) {
+  const readCache = typeof readCacheFn === "function" ? readCacheFn : (() => null);
+  const writeCache = typeof writeCacheFn === "function" ? writeCacheFn : (() => {});
+  const collectionGroup = typeof collectionGroupFn === "function" ? collectionGroupFn : null;
+  const getDocs = typeof getDocsFn === "function" ? getDocsFn : null;
+  const query = typeof queryFn === "function" ? queryFn : null;
+  const where = typeof whereFn === "function" ? whereFn : null;
+  const orderBy = typeof orderByFn === "function" ? orderByFn : null;
+  const limit = typeof limitFn === "function" ? limitFn : null;
+  const mapStorySnapshotRowsToFeedStories = typeof mapStorySnapshotRowsToFeedStoriesFn === "function"
+    ? mapStorySnapshotRowsToFeedStoriesFn
+    : (() => []);
+  const canShowFeedRestaurantId = typeof canShowFeedRestaurantIdFn === "function"
+    ? canShowFeedRestaurantIdFn
+    : (() => true);
+  const queueStoryIdentityHydration = typeof queueStoryIdentityHydrationFn === "function"
+    ? queueStoryIdentityHydrationFn
+    : (() => {});
+  const queueMicrotaskSafe = typeof queueMicrotaskFn === "function"
+    ? queueMicrotaskFn
+    : ((fn) => fn?.());
+  const updateFeedDom = typeof updateFeedDomFn === "function" ? updateFeedDomFn : (() => false);
+  const render = typeof renderFn === "function" ? renderFn : (() => {});
+  const getLastRenderMode = typeof getLastRenderModeFn === "function" ? getLastRenderModeFn : (() => "");
+  const resolveRestaurantLogo = typeof resolveRestaurantLogoFn === "function"
+    ? resolveRestaurantLogoFn
+    : ((_restaurantId, source = "") => String(source || ""));
+  const isPlaceholderUrl = typeof isPlaceholderUrlFn === "function" ? isPlaceholderUrlFn : (() => false);
+  const escapeSelector = typeof escapeSelectorFn === "function" ? escapeSelectorFn : ((value) => String(value || ""));
+  const doc = documentObj || (typeof document !== "undefined" ? document : null);
+  const HtmlImageElementCtor = typeof HTMLImageElement === "function" ? HTMLImageElement : null;
+  const HtmlElementCtor = typeof HTMLElement === "function" ? HTMLElement : null;
+  let feedStoriesSignature = "";
+  let storiesFreshReconcileQueued = false;
+  let storiesNetworkLoadPromise = null;
+
+  function buildStoriesSignature(storyItems = []) {
+    return buildStoriesSignatureCore(storyItems);
+  }
+
+  function isGenericStoryBusinessLabel(value = "") {
+    return String(value || "").trim().toLowerCase() === "business";
+  }
+
+  function sanitizeStoryBusinessName(value = "") {
+    const label = String(value || "").trim();
+    if (!label) return "";
+    return isGenericStoryBusinessLabel(label) ? "" : label;
+  }
+
+  function normalizeStoryTruthSource(item = {}) {
+    const source = String(
+      item?.truthSource
+      || item?.storyTruthSource
+      || item?.storyTruth
+      || ""
+    ).trim().toLowerCase();
+    return source === "feed-fallback" ? "feed-fallback" : "canonical";
+  }
+
+  function isLikelyVideoMediaUrl(value = "") {
+    const url = String(value || "").trim().toLowerCase();
+    if (!url) return false;
+    if (/\.m3u8($|\?)/.test(url)) return true;
+    if (/\.mpd($|\?)/.test(url)) return true;
+    if (/\.mp4($|\?)/.test(url)) return true;
+    if (/\.webm($|\?)/.test(url)) return true;
+    if (/\.mov($|\?)/.test(url)) return true;
+    if (/\.m4v($|\?)/.test(url)) return true;
+    if (/\.ogv($|\?)/.test(url)) return true;
+    return false;
+  }
+
+  function resolveStoryBusinessIdentity(restaurantId = "") {
+    const rid = String(restaurantId || "").trim();
+    if (!rid) {
+      return {
+        restaurantId: "",
+        known: false,
+        hasCanonicalRestaurant: false,
+        name: "",
+        avatar: "",
+        ownStory: false,
+        restaurant: null
+      };
+    }
+    const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
+    const ownStory = !!ownRestaurantId && ownRestaurantId === rid;
+    const restaurant = (state?.restaurants || []).find((row) => String(row?.id || "").trim() === rid) || null;
+    const hasCanonicalRestaurant = !!restaurant?.id;
+    const ownFallbackName = ownStory ? sanitizeStoryBusinessName(state?.userProfile?.name || "") : "";
+    const ownFallbackAvatar = ownStory ? String(state?.userProfile?.avatar || "").trim() : "";
+    const canonicalName = sanitizeStoryBusinessName(
+      restaurant?.name
+      || restaurant?.restaurantName
+      || restaurant?.displayName
+      || restaurant?.businessName
+      || ""
+    );
+    const canonicalAvatar = String(
+      restaurant?.logoUrl
+      || restaurant?.logo
+      || restaurant?.logoURL
+      || ""
+    ).trim();
+    const name = hasCanonicalRestaurant ? canonicalName : ownFallbackName;
+    const avatar = hasCanonicalRestaurant ? canonicalAvatar : ownFallbackAvatar;
+    return {
+      restaurantId: rid,
+      known: !!(hasCanonicalRestaurant || ownStory),
+      hasCanonicalRestaurant,
+      name,
+      avatar,
+      ownStory,
+      restaurant
+    };
+  }
+
+  function resolveStoryFeedFallback(restaurantId = "") {
+    const rid = String(restaurantId || "").trim();
+    if (!rid) return { name: "", logo: "" };
+    const feedRow = (state?.feedPosts || []).find((post) => (
+      String(post?.restaurantId || post?.ownerId || "").trim() === rid
+    )) || null;
+    if (!feedRow) return { name: "", logo: "" };
+    return {
+      name: sanitizeStoryBusinessName(
+        feedRow?.business
+        || feedRow?.restaurantName
+        || feedRow?.name
+        || ""
+      ),
+      logo: String(feedRow?.logo || "").trim()
+    };
+  }
+
+  function resolveStoryRenderIdentity(story = {}) {
+    const storyRestaurantId = String(story?.restaurantId || story?.id || story?.rid || "").trim();
+    const truthSource = normalizeStoryTruthSource(story);
+    const isFeedFallbackStory = truthSource === "feed-fallback";
+    if (!storyRestaurantId) {
+      return {
+        storyRestaurantId: "",
+        hasCanonicalRestaurant: false,
+        storyLabel: "",
+        logoSource: "",
+        borderClass: story?.isLive
+          ? "border-red-500 animate-pulse"
+          : (isFeedFallbackStory ? "border-amber-300 border-dashed" : "border-slate-200"),
+        truthSource
+      };
+    }
+    const identity = resolveStoryBusinessIdentity(storyRestaurantId);
+    const feedFallback = resolveStoryFeedFallback(storyRestaurantId);
+    const sourceName = sanitizeStoryBusinessName(
+      story?.name
+      || story?.businessName
+      || story?.restaurantName
+      || story?.business
+      || feedFallback.name
+      || ""
+    );
+    const sourceLogo = String(story?.img || story?.logo || story?.logoUrl || feedFallback.logo || "").trim();
+    const canonicalName = sanitizeStoryBusinessName(identity.name || "");
+    const canonicalLogo = String(identity.avatar || "").trim();
+    const storyLabel = identity.hasCanonicalRestaurant
+      ? (canonicalName || sourceName || "Restaurant")
+      : sanitizeStoryBusinessName(identity.name || sourceName || "Restaurant");
+    const logoSource = identity.hasCanonicalRestaurant
+      ? (canonicalLogo || sourceLogo || "")
+      : String(identity.avatar || sourceLogo || "").trim();
+    return {
+      storyRestaurantId,
+      hasCanonicalRestaurant: !!identity.hasCanonicalRestaurant,
+      storyLabel,
+      logoSource,
+      borderClass: story?.isLive
+        ? "border-red-500 animate-pulse"
+        : (isFeedFallbackStory ? "border-amber-300 border-dashed" : "border-slate-200"),
+      truthSource
+    };
+  }
+
+  function normalizeStoryItemForDisplay(item = {}) {
+    const identity = resolveStoryRenderIdentity(item);
+    const restaurantId = identity.storyRestaurantId;
+    if (!restaurantId) return null;
+    const rawMediaType = String(item?.mediaType || item?.type || "").trim().toLowerCase();
+    const imageUrl = String(item?.imageUrl || item?.thumbUrl || "").trim();
+    const videoUrl = String(item?.videoUrl || item?.playbackUrl || "").trim();
+    const embedUrl = String(item?.embedUrl || "").trim();
+    const mediaUrl = String(item?.mediaUrl || item?.url || "").trim();
+    const inferredVideo = isLikelyVideoMediaUrl(mediaUrl);
+    const mediaType = rawMediaType === "video"
+      ? "video"
+      : (rawMediaType === "image"
+        ? "image"
+        : (videoUrl || inferredVideo ? "video" : "image"));
+    const resolvedVideoUrl = videoUrl || (mediaType === "video" ? mediaUrl : "");
+    const resolvedImageUrl = imageUrl || (mediaType === "image" ? mediaUrl : "");
+    return {
+      ...item,
+      id: restaurantId,
+      restaurantId,
+      name: sanitizeStoryBusinessName(identity.storyLabel || ""),
+      img: String(identity.logoSource || "").trim(),
+      isLive: !!item?.isLive,
+      truthSource: identity.truthSource,
+      mediaType,
+      imageUrl: resolvedImageUrl,
+      videoUrl: resolvedVideoUrl,
+      embedUrl,
+      mediaUrl: mediaUrl || resolvedImageUrl || resolvedVideoUrl || embedUrl,
+      libraryId: String(item?.libraryId || "").trim(),
+      videoId: String(item?.videoId || "").trim(),
+      createdAt: item?.createdAt || item?.updatedAt || null,
+      updatedAt: item?.updatedAt || item?.createdAt || null
+    };
+  }
+
+  function normalizeStoryItemsForDisplay(items = []) {
+    return (Array.isArray(items) ? items : [])
+      .map((item) => normalizeStoryItemForDisplay(item))
+      .filter(Boolean);
+  }
+
+  function stabilizeStoryOrder(nextStories = [], previousStories = []) {
+    const prevRows = Array.isArray(previousStories) ? previousStories : [];
+    if (!prevRows.length || !Array.isArray(nextStories) || !nextStories.length) {
+      return Array.isArray(nextStories) ? nextStories : [];
+    }
+    const previousOrder = new Map();
+    prevRows.forEach((item, index) => {
+      const id = String(item?.restaurantId || item?.id || "").trim();
+      if (!id || previousOrder.has(id)) return;
+      previousOrder.set(id, index);
+    });
+    const originalOrder = new Map();
+    nextStories.forEach((item, index) => {
+      const id = String(item?.restaurantId || item?.id || "").trim();
+      if (!id || originalOrder.has(id)) return;
+      originalOrder.set(id, index);
+    });
+    return [...nextStories].sort((a, b) => {
+      const aId = String(a?.restaurantId || a?.id || "").trim();
+      const bId = String(b?.restaurantId || b?.id || "").trim();
+      const aPrev = previousOrder.get(aId);
+      const bPrev = previousOrder.get(bId);
+      const aKnown = Number.isInteger(aPrev);
+      const bKnown = Number.isInteger(bPrev);
+      if (aKnown && bKnown) return aPrev - bPrev;
+      if (aKnown) return -1;
+      if (bKnown) return 1;
+      return (originalOrder.get(aId) ?? 0) - (originalOrder.get(bId) ?? 0);
+    });
+  }
+
+  function syncPersistedStories() {
+    if (Array.isArray(state?.stories) && state.stories.length) {
+      const nextStories = normalizeStoryItemsForDisplay(state.stories);
+      state.stories = nextStories;
+      feedStoriesSignature = buildStoriesSignature(nextStories);
+      queueStoryIdentityHydration(nextStories, { max: fastLimits.storyIdentityHydration });
+      return;
+    }
+    feedStoriesSignature = "";
+  }
+
+  function syncStoryIdentityWithCanonicalBusiness() {
+    if (!Array.isArray(state?.stories) || !state.stories.length) return false;
+    const nextStories = normalizeStoryItemsForDisplay(state.stories);
+    const prevSignature = buildStoriesSignature(state.stories);
+    const nextSignature = buildStoriesSignature(nextStories);
+    if (prevSignature === nextSignature) return false;
+    state.stories = nextStories;
+    feedStoriesSignature = nextSignature;
+    writeCache(cacheKeys.stories, nextStories);
+    return true;
+  }
+
+  function syncFeedPostLogos() {
+    const storiesChanged = syncStoryIdentityWithCanonicalBusiness();
+    if (!Array.isArray(state?.feedPosts) || !state.feedPosts.length) return storiesChanged;
+    const restMap = new Map();
+    (state?.restaurants || []).forEach((rest) => {
+      if (rest?.id) restMap.set(rest.id, rest);
+    });
+    let changed = false;
+    const next = [];
+    state.feedPosts.forEach((post) => {
+      const rid = String(post?.restaurantId || post?.ownerId || "").trim();
+      if (!rid) {
+        next.push(post);
+        return;
+      }
+      const restaurant = restMap.get(rid) || {};
+      if (restaurant?.id && !canShowFeedRestaurantId(rid)) {
+        changed = true;
+        return;
+      }
+      const bestLogo = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
+      const resolved = resolveRestaurantLogo(rid, bestLogo, "avatar");
+      if (isPlaceholderUrl(resolved) || resolved === post.logo) {
+        next.push(post);
+        return;
+      }
+      changed = true;
+      next.push({ ...post, logo: resolved });
+    });
+    const feedLengthChanged = next.length !== state.feedPosts.length;
+    if (!changed && !feedLengthChanged && !storiesChanged) return false;
+    if (changed || feedLengthChanged) {
+      state.feedPosts = next;
+    }
+    return changed || feedLengthChanged || storiesChanged;
+  }
+
+  function refreshFeedStories({ posts = state?.feedPosts, force = false } = {}) {
+    if (Array.isArray(state?.stories) && state.stories.length) {
+      if (!feedStoriesSignature) {
+        feedStoriesSignature = buildStoriesSignature(state.stories);
+      }
+      return false;
+    }
+    const result = refreshFeedStoriesCore({
+      posts,
+      force,
+      fastMode,
+      allowFeedFallback: !!allowFeedDerivedStoryFallback,
+      buildStoriesFromFeed,
+      currentSignature: feedStoriesSignature
+    });
+    if (!result.updated) return false;
+    const normalizedStories = normalizeStoryItemsForDisplay(result.stories);
+    feedStoriesSignature = buildStoriesSignature(normalizedStories);
+    state.stories = normalizedStories;
+    writeCache(cacheKeys.stories, normalizedStories);
+    queueStoryIdentityHydration(normalizedStories, { max: fastLimits.storyIdentityHydration });
+    return true;
+  }
+
+  async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
+    const cached = readCache(cacheKeys.stories, cacheTtlMs.stories);
+    if (cached?.data?.length) {
+      const normalizedCachedStories = normalizeStoryItemsForDisplay(cached.data);
+      state.stories = normalizedCachedStories;
+      feedStoriesSignature = buildStoriesSignature(state.stories);
+      queueStoryIdentityHydration(normalizedCachedStories, { max: fastLimits.storyIdentityHydration });
+      if (cached.fresh && !force) {
+        if (!storiesFreshReconcileQueued) {
+          storiesFreshReconcileQueued = true;
+          queueMicrotaskSafe(() => {
+            void loadStoriesForFeed({ force: true, refreshUi: state?.activeTab === "feed" })
+              .finally(() => {
+                storiesFreshReconcileQueued = false;
+              });
+          });
+        }
+        return true;
+      }
+    }
+
+    if (!db || !collectionGroup || !getDocs || !query || !limit) return false;
+    if (storiesNetworkLoadPromise) return storiesNetworkLoadPromise;
+
+    const request = (async () => {
+      try {
+        const storiesRef = collectionGroup(db, "stories");
+        let snap = null;
+        try {
+          snap = await getDocs(query(
+            storiesRef,
+            where("status", "==", "active"),
+            orderBy("createdAt", "desc"),
+            limit(fastLimits.storiesFallback)
+          ));
+        } catch {
+          try {
+            snap = await getDocs(query(
+              storiesRef,
+              orderBy("createdAt", "desc"),
+              limit(fastLimits.storiesFallback)
+            ));
+          } catch {
+            snap = await getDocs(query(storiesRef, limit(fastLimits.storiesFallback)));
+          }
+        }
+        const docSnaps = [];
+        snap.forEach((docSnap) => docSnaps.push(docSnap));
+        const previousStories = Array.isArray(state?.stories) ? state.stories : [];
+        let nextStories = normalizeStoryItemsForDisplay(
+          mapStorySnapshotRowsToFeedStories({
+            docSnaps,
+            restaurants: state?.restaurants,
+            canShowFeedRestaurantIdFn: canShowFeedRestaurantId,
+            maxItems: fastLimits.stories,
+            toDateSafeFn
+          })
+        );
+        nextStories = stabilizeStoryOrder(nextStories, previousStories);
+        const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
+        const pendingOwnStoryRestaurantId = String(state?.__pendingOwnStoryRestaurantId || "").trim();
+        const pendingOwnStoryUntil = Number(state?.__pendingOwnStoryUntil || 0);
+        if (pendingOwnStoryRestaurantId) {
+          const pendingExpired = !Number.isFinite(pendingOwnStoryUntil) || pendingOwnStoryUntil <= Date.now();
+          const pendingOwnStoryMismatch = !!ownRestaurantId && pendingOwnStoryRestaurantId !== ownRestaurantId;
+          if (pendingOwnStoryMismatch || pendingExpired) {
+            state.__pendingOwnStoryRestaurantId = "";
+            state.__pendingOwnStoryUntil = 0;
+          } else {
+            const hasPendingOwnStory = nextStories.some(
+              (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
+            );
+            if (hasPendingOwnStory) {
+              state.__pendingOwnStoryRestaurantId = "";
+              state.__pendingOwnStoryUntil = 0;
+            } else {
+              const pendingFromState = normalizeStoryItemForDisplay(
+                (state?.stories || []).find(
+                  (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
+                ) || {}
+              );
+              if (pendingFromState) {
+                nextStories = [pendingFromState, ...nextStories].slice(0, fastLimits.stories);
+              }
+            }
+          }
+        }
+        const shouldRefreshUi = !!refreshUi || state?.activeTab === "feed";
+        if (!nextStories.length) {
+          if (!state?.stories?.length) return false;
+          state.stories = [];
+          feedStoriesSignature = "";
+          writeCache(cacheKeys.stories, []);
+          if (shouldRefreshUi) {
+            const inMain = getLastRenderMode() === "main";
+            const updatedFeed = state?.activeTab === "feed" && inMain && updateFeedDom();
+            if (!updatedFeed && state?.activeTab === "feed") {
+              render();
+            }
+          }
+          return true;
+        }
+
+        const prevSignature = buildStoriesSignature(state?.stories);
+        const nextSignature = buildStoriesSignature(nextStories);
+        if (prevSignature === nextSignature) {
+          feedStoriesSignature = nextSignature;
+          return true;
+        }
+
+        state.stories = nextStories;
+        feedStoriesSignature = nextSignature;
+        writeCache(cacheKeys.stories, nextStories);
+        queueStoryIdentityHydration(nextStories, { max: fastLimits.storyIdentityHydration });
+
+        if (shouldRefreshUi) {
+          const inMain = getLastRenderMode() === "main";
+          const updatedFeed = state?.activeTab === "feed" && inMain && updateFeedDom();
+          if (!updatedFeed && state?.activeTab === "feed") {
+            render();
+          }
+        }
+        return true;
+      } catch (err) {
+        console.error(err);
+        return false;
+      }
+    })();
+    const settledRequest = request.finally(() => {
+      if (storiesNetworkLoadPromise === settledRequest) {
+        storiesNetworkLoadPromise = null;
+      }
+    });
+    storiesNetworkLoadPromise = settledRequest;
+    return settledRequest;
+  }
+
+  function updateFeedLogoNodes(post) {
+    if (!doc || !post?.id) return;
+    const postId = escapeSelector(post.id);
+    const restaurant = (state?.restaurants || []).find((row) => row?.id === (post.restaurantId || post.ownerId)) || {};
+    const logoSource = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
+    const logoUrl = resolveRestaurantLogo(post.restaurantId || post.ownerId, logoSource, "avatar");
+    doc.querySelectorAll(`[data-feed-logo="${postId}"]`).forEach((img) => {
+      if (HtmlImageElementCtor && !(img instanceof HtmlImageElementCtor)) return;
+      if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
+    });
+  }
+
+  function updateStoryLogoNodes(story) {
+    if (!doc) return;
+    const renderIdentity = resolveStoryRenderIdentity(story);
+    if (!renderIdentity.storyRestaurantId) return;
+    const storyId = escapeSelector(renderIdentity.storyRestaurantId);
+    const logoUrl = resolveRestaurantLogo(
+      renderIdentity.storyRestaurantId,
+      renderIdentity.logoSource || "",
+      "thumb",
+      false
+    );
+    doc.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
+      if (HtmlImageElementCtor && !(img instanceof HtmlImageElementCtor)) return;
+      if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
+    });
+  }
+
+  function updateStoryMetaNodes(story) {
+    if (!doc) return;
+    const renderIdentity = resolveStoryRenderIdentity(story);
+    if (!renderIdentity.storyRestaurantId) return;
+    const storyId = escapeSelector(renderIdentity.storyRestaurantId);
+    const label = sanitizeStoryBusinessName(renderIdentity.storyLabel || "") || "Restaurant";
+    const live = !!story?.isLive;
+    const isFeedFallbackStory = String(renderIdentity.truthSource || "").trim().toLowerCase() === "feed-fallback";
+    doc.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
+      if (HtmlElementCtor && !(el instanceof HtmlElementCtor)) return;
+      el.classList.toggle("border-red-500", live);
+      el.classList.toggle("animate-pulse", live);
+      el.classList.toggle("border-slate-200", !live && !isFeedFallbackStory);
+      el.classList.toggle("border-amber-300", !live && isFeedFallbackStory);
+      el.classList.toggle("border-dashed", !live && isFeedFallbackStory);
+    });
+    doc.querySelectorAll(`[data-story-name="${storyId}"]`).forEach((el) => {
+      if (HtmlElementCtor && !(el instanceof HtmlElementCtor)) return;
+      if (el.textContent !== label) el.textContent = label;
+    });
+  }
+
+  function buildStoriesFromFeed(posts) {
+    if (!Array.isArray(posts)) return [];
+    const map = new Map();
+    posts.forEach((post) => {
+      const rid = String(post?.restaurantId || post?.ownerId || "").trim();
+      if (!rid || map.has(rid) || !canShowFeedRestaurantId(rid)) return;
+      const renderIdentity = resolveStoryRenderIdentity({
+        restaurantId: rid,
+        name: post.business || post.restaurantName || "",
+        img: post.logo || "",
+        isLive: false
+      });
+      map.set(rid, {
+        id: rid,
+        restaurantId: rid,
+        name: sanitizeStoryBusinessName(renderIdentity.storyLabel || ""),
+        img: String(renderIdentity.logoSource || "").trim(),
+        isLive: false,
+        truthSource: "feed-fallback",
+        mediaType: String(post?.isVideo ? "video" : "image"),
+        imageUrl: String(post?.image || "").trim(),
+        videoUrl: String(post?.isVideo ? (post?.image || post?.url || "") : "").trim(),
+        embedUrl: "",
+        mediaUrl: String(post?.image || post?.url || "").trim(),
+        libraryId: "",
+        videoId: "",
+        createdAt: post?.createdAt || post?.updatedAt || null,
+        updatedAt: post?.updatedAt || post?.createdAt || null
+      });
+    });
+    return Array.from(map.values()).slice(0, fastLimits.stories);
+  }
+
+  function setFeedStoriesSignature(next) {
+    feedStoriesSignature = String(next || "");
+  }
+
+  return {
+    buildStoriesSignature,
+    isGenericStoryBusinessLabel,
+    sanitizeStoryBusinessName,
+    resolveStoryRenderIdentity,
+    normalizeStoryItemForDisplay,
+    normalizeStoryItemsForDisplay,
+    syncPersistedStories,
+    setFeedStoriesSignature,
+    syncFeedPostLogos,
+    refreshFeedStories,
+    loadStoriesForFeed,
+    updateFeedLogoNodes,
+    updateStoryLogoNodes,
+    updateStoryMetaNodes,
+    buildStoriesFromFeed
+  };
+}

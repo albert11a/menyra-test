@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Firebase CLI debug artifacts
+firebase-debug.log
+firebase-debug.*.log
+
+# Runner artifacts
+tests/mnyra-heart-runner/artifacts/
+tests/mnyra-heart-runner/tmp-*.png
+tmp/

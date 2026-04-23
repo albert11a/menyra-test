@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MNYRA Social</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #f8fafc;
+    }
+    body { visibility: hidden; }
+  </style>
+  <script>
+    const target = new URL("/feed", window.location.origin);
+    const incoming = new URLSearchParams(window.location.search);
+    const legacyId = incoming.get("id");
+    const postId = incoming.get("post") || incoming.get("postId") || legacyId || "";
+    if (postId) target.searchParams.set("post", postId);
+    incoming.forEach((value, key) => {
+      if (["id", "post", "postId"].includes(key)) return;
+      if (!target.searchParams.has(key)) target.searchParams.set(key, value);
+    });
+    window.location.replace(`${target.pathname}${target.search}${window.location.hash || ""}`);
+  </script>
+</head>
+<body aria-hidden="true"></body>
+</html>

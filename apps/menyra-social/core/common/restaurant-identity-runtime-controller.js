@@ -1,0 +1,627 @@
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "string") {
+    const cleaned = value.trim().replace(",", ".");
+    if (!cleaned) return null;
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toMillisLoose(value) {
+  if (!value && value !== 0) return 0;
+  if (value instanceof Date) {
+    const millis = value.getTime();
+    return Number.isFinite(millis) ? millis : 0;
+  }
+  if (typeof value?.toMillis === "function") {
+    const millis = Number(value.toMillis());
+    return Number.isFinite(millis) ? millis : 0;
+  }
+  if (typeof value?.seconds === "number") {
+    const seconds = Number(value.seconds);
+    const nanos = Number(value.nanoseconds || 0);
+    if (Number.isFinite(seconds) && Number.isFinite(nanos)) {
+      return (seconds * 1000) + Math.floor(nanos / 1000000);
+    }
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 1000000000000) return numeric;
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeCoordPairLoose(latValue, lngValue) {
+  const lat = toFiniteNumber(latValue);
+  const lng = toFiniteNumber(lngValue);
+  if (lat === null || lng === null) return null;
+  if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return null;
+  if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+  if (Math.abs(lat) <= 180 && Math.abs(lng) <= 90) return { lat: lng, lng: lat };
+  return null;
+}
+
+function readCoordsFromRecord(record = {}) {
+  if (!record || typeof record !== "object") return null;
+  return normalizeCoordPairLoose(record.lat, record.lng)
+    || normalizeCoordPairLoose(record.latitude, record.longitude)
+    || normalizeCoordPairLoose(record.gpsLat, record.gpsLng)
+    || normalizeCoordPairLoose(record.geo?.lat, record.geo?.lng)
+    || normalizeCoordPairLoose(record.geo?.latitude, record.geo?.longitude)
+    || normalizeCoordPairLoose(record.coords?.lat, record.coords?.lng)
+    || normalizeCoordPairLoose(record.coords?.latitude, record.coords?.longitude)
+    || normalizeCoordPairLoose(record.location?.lat, record.location?.lng);
+}
+
+function isGenericBusinessLabel(value = "") {
+  return String(value || "").trim().toLowerCase() === "business";
+}
+
+export function isBootstrapRestaurantPreviewRecordCore(record = {}) {
+  if (!record || typeof record !== "object") return false;
+  if (record.__truthPartial === true || record.__isPreview === true) return true;
+  const source = String(
+    record.__truthSource
+    || record.truthSource
+    || record.source
+    || ""
+  ).trim().toLowerCase();
+  return source === "bootstrap-preview" || source === "preview";
+}
+
+function pickFirstMillis(candidates = []) {
+  for (const candidate of candidates) {
+    const millis = toMillisLoose(candidate);
+    if (millis > 0) return millis;
+  }
+  return 0;
+}
+
+function pickHighestVersion(candidates = []) {
+  let highest = 0;
+  candidates.forEach((candidate) => {
+    const parsed = toFiniteNumber(candidate);
+    if (parsed !== null && parsed > highest) highest = parsed;
+  });
+  return highest;
+}
+
+export function readRestaurantTruthMetaCore(record = {}) {
+  const row = record && typeof record === "object" ? record : {};
+  const version = pickHighestVersion([
+    row.version,
+    row.revision,
+    row.rev,
+    row.identityVersion,
+    row.profileVersion,
+    row.metaVersion,
+    row.geoVersion
+  ]);
+  const updatedAtMs = pickFirstMillis([
+    row.updatedAt,
+    row.updated_at,
+    row.modifiedAt,
+    row.modified_at,
+    row.lastUpdatedAt,
+    row.lastUpdateAt,
+    row.geoUpdatedAt,
+    row.coordsUpdatedAt,
+    row.locationUpdatedAt,
+    row.metaUpdatedAt,
+    row.publicMetaUpdatedAt,
+    row.geo?.updatedAt,
+    row.coords?.updatedAt
+  ]);
+  const deletedAtMs = pickFirstMillis([
+    row.deletedAt,
+    row.removedAt
+  ]);
+  const sourceRank = isBootstrapRestaurantPreviewRecordCore(row) ? 1 : 3;
+  return {
+    version,
+    updatedAtMs,
+    deletedAtMs,
+    sourceRank
+  };
+}
+
+function hasMeaningfulValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "boolean") return true;
+  if (value instanceof Date) return Number.isFinite(value.getTime());
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") {
+    if (typeof value.toMillis === "function") return true;
+    return Object.keys(value).length > 0;
+  }
+  return true;
+}
+
+function mergeDefinedRestaurantFields(base = {}, patch = {}) {
+  const next = { ...(base || {}) };
+  Object.entries(patch || {}).forEach(([key, value]) => {
+    if (!hasMeaningfulValue(value)) return;
+    next[key] = value;
+  });
+  return next;
+}
+
+function computeRestaurantTruthCompletenessScore(record = {}, {
+  normalizeRestaurantTypeFn
+} = {}) {
+  const normalizeRestaurantType = typeof normalizeRestaurantTypeFn === "function"
+    ? normalizeRestaurantTypeFn
+    : (value) => String(value || "").trim().toLowerCase();
+  const row = record && typeof record === "object" ? record : {};
+  const name = String(
+    row.name
+    || row.restaurantName
+    || row.displayName
+    || row.businessName
+    || ""
+  ).trim();
+  const logo = String(row.logoUrl || row.logo || row.logoURL || "").trim();
+  const type = normalizeRestaurantType(
+    row.type
+    || row.customerType
+    || row.category
+    || row.kind
+    || row.restaurantType
+    || ""
+  );
+  const city = String(row.city || "").trim();
+  const address = String(row.address || row.location || "").trim();
+  const coords = readCoordsFromRecord(row);
+  const truthMeta = readRestaurantTruthMetaCore(row);
+  let score = 0;
+  if (name && !isGenericBusinessLabel(name)) score += 2;
+  if (logo) score += 2;
+  if (type) score += 1;
+  if (city || address) score += 1;
+  if (coords) score += 2;
+  if (truthMeta.version > 0 || truthMeta.updatedAtMs > 0) score += 1;
+  if (!isBootstrapRestaurantPreviewRecordCore(row)) score += 1;
+  return score;
+}
+
+export function buildRestaurantTruthSignatureCore(items = [], {
+  normalizeRestaurantTypeFn
+} = {}) {
+  const normalizeRestaurantType = typeof normalizeRestaurantTypeFn === "function"
+    ? normalizeRestaurantTypeFn
+    : (value) => String(value || "").trim().toLowerCase();
+  return (Array.isArray(items) ? items : [])
+    .map((record) => {
+      const row = record && typeof record === "object" ? record : {};
+      const coords = readCoordsFromRecord(row);
+      const truthMeta = readRestaurantTruthMetaCore(row);
+      const name = String(
+        row.name
+        || row.restaurantName
+        || row.displayName
+        || row.businessName
+        || ""
+      ).trim();
+      const logo = String(row.logoUrl || row.logo || row.logoURL || "").trim();
+      const type = normalizeRestaurantType(
+        row.type
+        || row.customerType
+        || row.category
+        || row.kind
+        || row.restaurantType
+        || ""
+      );
+      const city = String(row.city || "").trim();
+      const address = String(row.address || row.location || "").trim();
+      const lat = coords ? Number(coords.lat).toFixed(6) : "";
+      const lng = coords ? Number(coords.lng).toFixed(6) : "";
+      return [
+        String(row.id || "").trim(),
+        name,
+        logo,
+        type,
+        city,
+        address,
+        lat,
+        lng,
+        String(truthMeta.version || 0),
+        String(truthMeta.updatedAtMs || 0),
+        String(truthMeta.deletedAtMs || 0),
+        String(truthMeta.sourceRank || 0)
+      ].join("|");
+    })
+    .join(",");
+}
+
+export function reconcileRestaurantTruthRecordCore(existing = {}, incoming = {}, {
+  normalizeRestaurantTypeFn
+} = {}) {
+  const existingRow = existing && typeof existing === "object" ? existing : {};
+  const incomingRow = incoming && typeof incoming === "object" ? incoming : {};
+  const existingMeta = readRestaurantTruthMetaCore(existingRow);
+  const incomingMeta = readRestaurantTruthMetaCore(incomingRow);
+  const existingScore = computeRestaurantTruthCompletenessScore(existingRow, {
+    normalizeRestaurantTypeFn
+  });
+  const incomingScore = computeRestaurantTruthCompletenessScore(incomingRow, {
+    normalizeRestaurantTypeFn
+  });
+
+  let preferIncoming = true;
+  if (incomingMeta.version > existingMeta.version) {
+    preferIncoming = true;
+  } else if (existingMeta.version > incomingMeta.version) {
+    preferIncoming = false;
+  } else if (incomingMeta.updatedAtMs > existingMeta.updatedAtMs) {
+    preferIncoming = true;
+  } else if (existingMeta.updatedAtMs > incomingMeta.updatedAtMs) {
+    preferIncoming = false;
+  } else if (incomingMeta.sourceRank > existingMeta.sourceRank) {
+    preferIncoming = true;
+  } else if (existingMeta.sourceRank > incomingMeta.sourceRank) {
+    preferIncoming = false;
+  } else {
+    preferIncoming = incomingScore >= existingScore;
+  }
+
+  const merged = preferIncoming
+    ? mergeDefinedRestaurantFields(existingRow, incomingRow)
+    : mergeDefinedRestaurantFields(incomingRow, existingRow);
+
+  const keepPreview = isBootstrapRestaurantPreviewRecordCore(existingRow)
+    && isBootstrapRestaurantPreviewRecordCore(incomingRow);
+  if (!keepPreview) {
+    delete merged.__truthPartial;
+    delete merged.__isPreview;
+    if (String(merged.__truthSource || "").trim().toLowerCase() === "bootstrap-preview") {
+      delete merged.__truthSource;
+    }
+  }
+  return merged;
+}
+
+export function createRestaurantIdentityRuntimeController({
+  state = null,
+  db = null,
+  docFn = null,
+  getDocFn = async () => null,
+  normalizeRestaurantType = (value) => value,
+  isGenericStoryBusinessLabel = () => false,
+  queueMicrotaskFn = null,
+  buildRestaurantLocationsFn = () => [],
+  resolveRestaurantLogoFn = (_restaurantId, source = "") => String(source || ""),
+  isPublicBusinessRecordFn = () => true,
+  syncFeedPostLogos = () => false,
+  refreshFeedStories = () => false,
+  render = () => {},
+  updateFeedDom = () => {},
+  getLastRenderMode = () => ""
+} = {}) {
+  const queueMicrotaskSafe = typeof queueMicrotaskFn === "function"
+    ? queueMicrotaskFn
+    : ((fn) => fn?.());
+  const getDocSafe = typeof getDocFn === "function" ? getDocFn : (async () => null);
+  const makeDocRef = typeof docFn === "function" ? docFn : null;
+  const buildRestaurantLocations = typeof buildRestaurantLocationsFn === "function"
+    ? buildRestaurantLocationsFn
+    : (() => []);
+  const resolveRestaurantLogo = typeof resolveRestaurantLogoFn === "function"
+    ? resolveRestaurantLogoFn
+    : ((_restaurantId, source = "") => String(source || ""));
+  const isPublicBusinessRecord = typeof isPublicBusinessRecordFn === "function"
+    ? isPublicBusinessRecordFn
+    : (() => true);
+  const pendingStoryIdentityHydrationIds = new Set();
+  const restaurantMetaUnsubs = new Map();
+  let storyIdentityHydrationQueued = false;
+
+  function mergeRestaurants(existing = [], additions = []) {
+    if (!additions.length) return existing;
+    const orderedIds = [];
+    const map = new Map();
+    existing.forEach((rest) => {
+      if (!rest?.id) return;
+      orderedIds.push(rest.id);
+      map.set(rest.id, rest);
+    });
+    additions.forEach((rest) => {
+      if (!rest?.id) return;
+      if (!map.has(rest.id)) orderedIds.push(rest.id);
+      const previous = map.get(rest.id) || {};
+      map.set(rest.id, reconcileRestaurantTruthRecordCore(previous, rest, {
+        normalizeRestaurantTypeFn: normalizeRestaurantType
+      }));
+    });
+    return orderedIds.map((id) => map.get(id)).filter(Boolean);
+  }
+
+  function collectFeedHydrationIds(feedRows = [], { max = 6 } = {}) {
+    if (!Array.isArray(feedRows) || !feedRows.length) return [];
+    const existing = new Map((state?.restaurants || []).map((rest) => [String(rest?.id || "").trim(), rest]));
+    const ids = [];
+    const seen = new Set();
+    for (const row of feedRows) {
+      if (ids.length >= max) break;
+      const rid = String(row?.restaurantId || row?.rid || row?.ownerId || "").trim();
+      if (!rid || seen.has(rid)) continue;
+      seen.add(rid);
+      const cached = existing.get(rid) || null;
+      const cachedName = String(cached?.name || cached?.restaurantName || cached?.displayName || "").trim();
+      const cachedLogo = String(cached?.logoUrl || cached?.logo || cached?.logoURL || "").trim();
+      const hasCachedName = !!cachedName && !isGenericStoryBusinessLabel(cachedName);
+      const rowName = String(row?.businessName || row?.restaurantName || row?.business || "").trim();
+      const hasRowName = !!rowName && !isGenericStoryBusinessLabel(rowName);
+      const rowLogo = String(row?.logoUrl || row?.logo || row?.logoURL || "").trim();
+      if ((hasCachedName && cachedLogo) || (hasRowName && rowLogo)) continue;
+      ids.push(rid);
+    }
+    return ids;
+  }
+
+  function collectStoryHydrationIds(storyRows = [], { max = 12 } = {}) {
+    if (!Array.isArray(storyRows) || !storyRows.length) return [];
+    const existing = new Map((state?.restaurants || []).map((rest) => [String(rest?.id || "").trim(), rest]));
+    const ids = [];
+    const seen = new Set();
+    for (const row of storyRows) {
+      if (ids.length >= max) break;
+      const rid = String(row?.restaurantId || row?.id || row?.rid || "").trim();
+      if (!rid || seen.has(rid)) continue;
+      seen.add(rid);
+      const cached = existing.get(rid) || null;
+      const cachedName = String(
+        cached?.name
+        || cached?.restaurantName
+        || cached?.displayName
+        || cached?.businessName
+        || ""
+      ).trim();
+      const cachedLogo = String(cached?.logoUrl || cached?.logo || cached?.logoURL || "").trim();
+      const hasCachedName = !!cachedName && !isGenericStoryBusinessLabel(cachedName);
+      const hasCachedLogo = !!cachedLogo;
+      if (hasCachedName && hasCachedLogo) continue;
+      ids.push(rid);
+    }
+    return ids;
+  }
+
+  function queueStoryIdentityHydration(storyRows = state?.stories, { max = 12 } = {}) {
+    const ids = collectStoryHydrationIds(storyRows, { max });
+    if (!ids.length) return;
+    ids.forEach((id) => pendingStoryIdentityHydrationIds.add(id));
+    if (storyIdentityHydrationQueued) return;
+    storyIdentityHydrationQueued = true;
+    queueMicrotaskSafe(() => {
+      storyIdentityHydrationQueued = false;
+      const nextIds = Array.from(pendingStoryIdentityHydrationIds);
+      pendingStoryIdentityHydrationIds.clear();
+      if (!nextIds.length) return;
+      void hydrateRestaurantsByIds(nextIds, { max: nextIds.length });
+    });
+  }
+
+  function rebuildBusinessLocations() {
+    state.businessLocations = (state?.restaurants || [])
+      .filter((rest) => isPublicBusinessRecord(rest))
+      .flatMap((rest, idx) => buildRestaurantLocations(rest, idx));
+    (state?.restaurants || []).forEach((rest) => {
+      if (!rest?.id) return;
+      const rawLogo = rest.logoUrl || rest.logo || rest.logoURL || "";
+      if (rawLogo) resolveRestaurantLogo(rest.id, rawLogo, "avatar");
+    });
+  }
+
+  function mergeRestaurantMeta(rest, meta) {
+    if (!rest) return rest;
+    const data = meta || {};
+    const name = data.name || data.restaurantName || rest.name || rest.restaurantName || "";
+    const logoUrl = data.logoUrl || data.logo || rest.logoUrl || rest.logo || rest.logoURL || "";
+    const city = data.city || rest.city || "";
+    const address = data.address || data.location || rest.address || rest.location || "";
+    const type = normalizeRestaurantType(
+      data.type
+      || data.customerType
+      || rest.type
+      || rest.customerType
+      || rest.category
+      || rest.kind
+      || rest.restaurantType
+      || ""
+    );
+    const merged = {
+      ...rest,
+      name: name || rest.name || "",
+      restaurantName: rest.restaurantName || "",
+      logoUrl,
+      city,
+      address,
+      ...(type ? { type, customerType: type } : {})
+    };
+    const coords = readCoordsFromRecord(data) || readCoordsFromRecord(rest);
+    if (coords) {
+      merged.lat = coords.lat;
+      merged.lng = coords.lng;
+    }
+    if (hasMeaningfulValue(data.updatedAt)) merged.updatedAt = data.updatedAt;
+    if (hasMeaningfulValue(data.modifiedAt)) merged.modifiedAt = data.modifiedAt;
+    if (hasMeaningfulValue(data.version)) merged.version = data.version;
+    if (hasMeaningfulValue(data.revision)) merged.revision = data.revision;
+    if (hasMeaningfulValue(data.geo)) merged.geo = data.geo;
+    if (hasMeaningfulValue(data.coords)) merged.coords = data.coords;
+    return reconcileRestaurantTruthRecordCore(rest, merged, {
+      normalizeRestaurantTypeFn: normalizeRestaurantType
+    });
+  }
+
+  function stopRestaurantMetaListeners() {
+    restaurantMetaUnsubs.forEach((unsub) => {
+      try { unsub(); } catch {}
+    });
+    restaurantMetaUnsubs.clear();
+  }
+
+  function ensureFeedRestaurantMetaListeners(feedPosts = state?.feedPosts, { limit = 12 } = {}) {
+    void feedPosts;
+    void limit;
+    stopRestaurantMetaListeners();
+  }
+
+  async function enrichRestaurantsWithPublicMeta(restaurants) {
+    if (!Array.isArray(restaurants) || !restaurants.length) return restaurants || [];
+    const lookups = restaurants.map((rest) => {
+      const rid = rest?.id || "";
+      if (!rid || !makeDocRef || !db) return Promise.resolve(null);
+      const hasCoreName = !!String(rest?.name || rest?.restaurantName || "").trim();
+      const hasCoreLogo = !!String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
+      const hasCoreCity = !!String(rest?.city || rest?.address || rest?.location || "").trim();
+      const hasCoreType = !!normalizeRestaurantType(
+        rest?.type
+        || rest?.customerType
+        || rest?.category
+        || rest?.kind
+        || rest?.restaurantType
+        || ""
+      );
+      const hasCoords = !!readCoordsFromRecord(rest);
+      const isPreview = isBootstrapRestaurantPreviewRecordCore(rest);
+      if (hasCoreName && hasCoreLogo && hasCoreCity && hasCoreType && hasCoords && !isPreview) {
+        return Promise.resolve(null);
+      }
+      return getDocSafe(makeDocRef(db, "restaurants", rid, "public", "meta")).catch(() => null);
+    });
+    const metaSnaps = await Promise.all(lookups);
+    return restaurants.map((rest, idx) => {
+      const snap = metaSnaps[idx];
+      const meta = snap && typeof snap.exists === "function" && snap.exists() ? (snap.data() || {}) : {};
+      return mergeRestaurantMeta(rest, meta);
+    });
+  }
+
+  async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
+    if (!Array.isArray(restaurantIds) || restaurantIds.length === 0) return;
+    const uniqueIds = Array.from(new Set(restaurantIds.filter(Boolean)));
+    if (!uniqueIds.length) return;
+    const existing = new Map((state?.restaurants || []).map((rest) => [rest.id, rest]));
+    const missing = uniqueIds.filter((id) => {
+      const stored = existing.get(id);
+      if (!stored) return true;
+      if (isBootstrapRestaurantPreviewRecordCore(stored)) return true;
+      const name = String(
+        stored.name
+        || stored.restaurantName
+        || stored.displayName
+        || stored.businessName
+        || ""
+      ).trim();
+      const logo = String(stored.logoUrl || stored.logo || stored.logoURL || "").trim();
+      const type = normalizeRestaurantType(
+        stored.type
+        || stored.customerType
+        || stored.category
+        || stored.kind
+        || stored.restaurantType
+        || ""
+      );
+      const city = String(stored.city || stored.address || stored.location || "").trim();
+      const coords = readCoordsFromRecord(stored);
+      const hasUsableName = !!name && !isGenericStoryBusinessLabel(name);
+      const hasUsableLogo = !!logo;
+      const hasUsableType = !!type;
+      const hasUsableCity = !!city;
+      const hasUsableCoords = !!coords;
+      return !(hasUsableName && hasUsableLogo && hasUsableType && hasUsableCity && hasUsableCoords);
+    }).slice(0, max);
+    if (missing.length === 0 || !makeDocRef || !db) return;
+
+    const loaded = (await Promise.all(missing.map(async (rid) => {
+      try {
+        const stored = existing.get(rid) || {};
+        let metaData = {};
+        try {
+          const metaSnap = await getDocSafe(makeDocRef(db, "restaurants", rid, "public", "meta"));
+          if (metaSnap.exists()) metaData = metaSnap.data() || {};
+        } catch {}
+
+        let restData = stored;
+        const currentName = metaData.name || metaData.restaurantName || stored.name || stored.restaurantName || "";
+        const currentLogo = metaData.logoUrl || metaData.logo || stored.logoUrl || stored.logo || stored.logoURL || "";
+        if (!currentName || !currentLogo) {
+          try {
+            const restSnap = await getDocSafe(makeDocRef(db, "restaurants", rid));
+            if (restSnap.exists()) {
+              restData = { ...restData, ...(restSnap.data() || {}) };
+            }
+          } catch {}
+        }
+
+        const name = metaData.name || metaData.restaurantName || restData.name || restData.restaurantName || "";
+        const logoUrl = metaData.logoUrl || metaData.logo || restData.logoUrl || restData.logo || restData.logoURL || "";
+        const city = metaData.city || restData.city || "";
+        const address = metaData.address || metaData.location || restData.address || restData.location || "";
+        const coords = readCoordsFromRecord(metaData) || readCoordsFromRecord(restData);
+        const type = normalizeRestaurantType(
+          metaData.type
+          || metaData.customerType
+          || restData.type
+          || restData.customerType
+          || restData.category
+          || restData.kind
+          || restData.restaurantType
+          || ""
+        );
+        if (!(name || logoUrl || city || type || address || coords)) return null;
+        const next = {
+          id: rid,
+          name,
+          restaurantName: restData.restaurantName || "",
+          logoUrl,
+          city,
+          address,
+          ...(type ? { type, customerType: type } : {})
+        };
+        if (coords) {
+          next.lat = coords.lat;
+          next.lng = coords.lng;
+        }
+        if (hasMeaningfulValue(restData.updatedAt)) next.updatedAt = restData.updatedAt;
+        if (hasMeaningfulValue(restData.modifiedAt)) next.modifiedAt = restData.modifiedAt;
+        if (hasMeaningfulValue(restData.version)) next.version = restData.version;
+        if (hasMeaningfulValue(restData.revision)) next.revision = restData.revision;
+        if (hasMeaningfulValue(restData.geo)) next.geo = restData.geo;
+        if (hasMeaningfulValue(restData.coords)) next.coords = restData.coords;
+        return next;
+      } catch (err) {
+        console.warn("hydrateRestaurantsByIds failed for", rid, err);
+        return null;
+      }
+    }))).filter(Boolean);
+
+    if (loaded.length) {
+      state.restaurants = mergeRestaurants(state.restaurants, loaded);
+      rebuildBusinessLocations();
+      const feedUpdated = syncFeedPostLogos();
+      const storiesUpdated = state?.stories?.length ? false : refreshFeedStories({ force: true });
+      if ((feedUpdated || storiesUpdated) && state?.activeTab === "feed" && getLastRenderMode() === "main") {
+        updateFeedDom();
+      } else if (feedUpdated || storiesUpdated) {
+        render();
+      }
+    }
+  }
+
+  return {
+    collectFeedHydrationIds,
+    queueStoryIdentityHydration,
+    hydrateRestaurantsByIds,
+    mergeRestaurants,
+    rebuildBusinessLocations,
+    stopRestaurantMetaListeners,
+    ensureFeedRestaurantMetaListeners,
+    enrichRestaurantsWithPublicMeta
+  };
+}
+

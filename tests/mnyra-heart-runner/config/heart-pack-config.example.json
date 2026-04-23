@@ -1,0 +1,155 @@
+{
+  "personas": {
+    "ceo": {
+      "app": "social",
+      "baseUrl": "https://menyra-test.vercel.app/social/"
+    },
+    "business": {
+      "app": "social",
+      "baseUrl": "https://menyra-test.vercel.app/social/"
+    },
+    "staff": {
+      "app": "waiter",
+      "baseUrl": "https://menyra-test.vercel.app/waiter/"
+    },
+    "user": {
+      "app": "social",
+      "baseUrl": "https://menyra-test.vercel.app/social/"
+    },
+    "guest": {
+      "app": "social",
+      "guestRouteUrl": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID"
+    }
+  },
+  "actions": {
+    "social": {
+      "businessProfile": {
+        "url": "https://menyra-test.vercel.app/social/?tab=profile&handle=testbusiness"
+      },
+      "userTargetProfile": {
+        "url": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser"
+      },
+      "follow": {
+        "url": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser",
+        "triggerSelector": "[data-public-profile-follow]",
+        "verifySelector": "[data-public-profile-follow] svg"
+      },
+      "like": {
+        "url": "https://menyra-test.vercel.app/social/?tab=feed",
+        "triggerSelector": "[data-feed-post-like], [data-post-like-btn], #postLikeBtn",
+        "countSelector": "[data-post-like-count], #postLikesBtn"
+      },
+      "commentCreate": {
+        "url": "https://menyra-test.vercel.app/social/?tab=feed",
+        "openComposerSelector": "[data-feed-post-comment]",
+        "inputSelector": "#postCommentInput",
+        "submitSelector": "#postCommentSend",
+        "verifySelector": "#postModalComments",
+        "verifyText": "TEST_RUN_<runId>_COMMENT_1"
+      },
+      "postCreate": {
+        "url": "https://menyra-test.vercel.app/social/?tab=feed",
+        "openSelector": "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']",
+        "fileInputSelector": "#uploadFileInput",
+        "filePath": "apps/mnyra-heart/assets/icon-192.png",
+        "inputSelector": "#uploadCaption",
+        "submitSelector": "#uploadPostBtn",
+        "verifyText": "TEST_RUN_<runId>_POST_1"
+      }
+    },
+    "business": {
+      "menu": {
+        "url": "https://menyra-test.vercel.app/social/?tab=menu"
+      },
+      "focus": {
+        "url": "https://menyra-test.vercel.app/social/?tab=focus"
+      },
+      "productCreate": {
+        "url": "https://menyra-test.vercel.app/social/?tab=menu",
+        "openSelector": "[data-menu-add], [data-menu-add-food]",
+        "nameSelector": "#menuItemName",
+        "saveSelector": "#menuModalSave",
+        "verifyText": "TEST_RUN_<runId>_PRODUCT_1"
+      }
+    },
+    "commerce": {
+      "cart": {
+        "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
+        "openSelector": "[data-menu-open]",
+        "triggerSelector": "#menuDetailAddToCartBtn",
+        "verifySelector": "[data-cart-checkout], [data-cart-qty]",
+        "removalSelector": "[data-cart-qty][data-cart-delta='-1']"
+      },
+      "order": {
+        "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
+        "openSelector": "[data-cart-checkout='open']",
+        "triggerSelector": "[data-cart-checkout='submit']",
+        "successText": "Bestellung gesendet",
+        "successTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ],
+        "failureTexts": [
+          "Bestellung konnte nicht gesendet werden."
+        ]
+      }
+    },
+    "chat": {
+      "send": {
+        "url": "https://menyra-test.vercel.app/social/?tab=chat",
+        "targetProfileUrl": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser",
+        "composerSelector": "#chatMessageInput",
+        "sendSelector": "#chatSendBtn",
+        "threadViewSelector": "#chatThreadView",
+        "messagesSelector": "#chatMessages",
+        "threadListSelector": "#chatListView",
+        "openThreadSelector": "[data-chat-open-thread]",
+        "openTargetSelector": "[data-open-chat], #profileChatBtn, #chatBtn",
+        "verifyText": "TEST_RUN_<runId>_CHAT_1"
+      }
+    },
+    "crm": {
+      "leadCreate": {
+        "url": "https://menyra-test.vercel.app/social/?tab=leads",
+        "openSelector": "#newLeadBtn",
+        "nameSelector": "#leadBusinessName",
+        "emailSelector": "#leadEmail",
+        "saveSelector": "#leadModalSave",
+        "verifyText": "TEST_RUN_<runId>_LEAD_1"
+      }
+    },
+    "guest": {
+      "qrMenu": {
+        "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
+        "menuVisibleSelector": "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
+        "productOpenSelector": "[data-menu-open]",
+        "addToCartSelector": "#menuDetailAddToCartBtn",
+        "cartVisibleSelector": "[data-cart-checkout], [data-cart-qty]",
+        "orderOpenSelector": "[data-cart-checkout='open']",
+        "orderTriggerSelector": "[data-cart-checkout='submit']",
+        "orderSuccessTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ],
+        "orderFailureTexts": [
+          "Bestellung konnte nicht gesendet werden."
+        ],
+        "privilegedSelectors": [
+          "[data-business-edit]",
+          "[data-crm-create]"
+        ]
+      }
+    },
+    "staff": {
+      "waiter": {
+        "url": "https://menyra-test.vercel.app/waiter/",
+        "orderVisibleSelector": "main, [data-tab], [data-order-action], #logoutBtn",
+        "statusActionSelector": "[data-order-action='angenommen']"
+      }
+    },
+    "journey": {
+      "modalOpenSelector": "[data-feed-post-comment], [data-menu-open]",
+      "modalCloseSelector": "#postModalClose, #menuModalClose"
+    }
+  }
+}
