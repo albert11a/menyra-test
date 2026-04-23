@@ -445,6 +445,7 @@ export function createProfileOpenFlowControllerCore({
         || routeBootstrapSeed?.restaurantId
         || ""
       ).trim();
+      let canonicalRestaurantIdHint = routeSnapshotRestaurantId;
       if (!targetMenuRestaurantId && routeSnapshotRestaurantId) {
         targetMenuRestaurantId = routeSnapshotRestaurantId;
       }
@@ -741,6 +742,7 @@ export function createProfileOpenFlowControllerCore({
           privateAccount: false,
           role: "business",
           restaurantId: targetMenuRestaurantId || targetRestaurantLookupId || routeSnapshotRestaurantId,
+          ...(canonicalRestaurantIdHint ? { canonicalRestaurantId: canonicalRestaurantIdHint } : {}),
           ...resolveCanonicalBusinessRouteFields(
             routeIdentitySeed?.publicSlug,
             routeIdentitySeed?.landingSlug,
@@ -865,21 +867,25 @@ export function createProfileOpenFlowControllerCore({
           && (effectiveRouteMenuState === "seeded" || effectiveRouteMenuState === "knownEmpty");
         const skipFirstVisibleFocusEnsure = isWebRoutePriorityPath
           && (effectiveRouteFocusState === "seeded" || effectiveRouteFocusState === "knownEmpty");
+        const firstVisibleEnsureProfile = {
+          restaurantId: targetMenuRestaurantId,
+          ...(canonicalRestaurantIdHint ? { canonicalRestaurantId: canonicalRestaurantIdHint } : {})
+        };
         if (isWebRoutePriorityPath) {
           Promise.resolve().then(() => {
             if (!skipFirstVisibleMenuEnsure) {
-              ensureMenuData({ restaurantId: targetMenuRestaurantId });
+              ensureMenuData(firstVisibleEnsureProfile);
             }
             if (!skipFirstVisibleFocusEnsure) {
-              ensureFocusData({ restaurantId: targetMenuRestaurantId });
+              ensureFocusData(firstVisibleEnsureProfile);
             }
           });
         } else {
           if (!skipFirstVisibleMenuEnsure) {
-            ensureMenuData({ restaurantId: targetMenuRestaurantId });
+            ensureMenuData(firstVisibleEnsureProfile);
           }
           if (!skipFirstVisibleFocusEnsure) {
-            ensureFocusData({ restaurantId: targetMenuRestaurantId });
+            ensureFocusData(firstVisibleEnsureProfile);
           }
         }
       }
@@ -906,6 +912,7 @@ export function createProfileOpenFlowControllerCore({
         privateAccount: stableBusinessProfile?.privateAccount === true,
         role: "business",
         restaurantId: targetMenuRestaurantId || targetRestaurantLookupId,
+        ...(canonicalRestaurantIdHint ? { canonicalRestaurantId: canonicalRestaurantIdHint } : {}),
         ...resolveCanonicalBusinessRouteFields(
           stableBusinessProfile?.publicSlug,
           stableBusinessProfile?.landingSlug,
@@ -1003,7 +1010,7 @@ export function createProfileOpenFlowControllerCore({
         lookupKey: targetRestaurantLookupId
       });
 
-      const resolved = applySurfaceTruthPatch({
+      const resolvedBase = applySurfaceTruthPatch({
         ...normalizeBusinessProfile({
           profileDoc: profileSnap,
           restaurant: rest,
@@ -1022,9 +1029,20 @@ export function createProfileOpenFlowControllerCore({
         identityStatus: "ready",
         postsStatus: "loading"
       });
+      const resolvedCanonicalRestaurantId = String(profileSnap?.id || resolvedBase?.restaurantId || "").trim();
+      if (resolvedCanonicalRestaurantId) {
+        canonicalRestaurantIdHint = resolvedCanonicalRestaurantId;
+      }
+      const resolved = resolvedCanonicalRestaurantId
+        ? {
+          ...resolvedBase,
+          canonicalRestaurantId: resolvedCanonicalRestaurantId
+        }
+        : resolvedBase;
       const resolvedProfileRestaurantId = String(resolved?.restaurantId || "").trim();
       const acceptedRestaurantIds = new Set(
         [
+          canonicalRestaurantIdHint,
           targetRestaurantLookupId,
           targetMenuRestaurantId,
           routeSnapshotRestaurantId,

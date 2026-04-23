@@ -87,6 +87,11 @@ export function createProfileBusinessMenuRuntimeCluster({
     return true;
   };
 
+  const resolveCanonicalRestaurantIdHint = (profile = {}) => {
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    return String(safeProfile.canonicalRestaurantId || "").trim();
+  };
+
   const resolveCanonicalRestaurantId = async (profile = {}) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId || !fetchBusinessProfileDoc) return requestedRestaurantId;
@@ -110,11 +115,27 @@ export function createProfileBusinessMenuRuntimeCluster({
   const resolveProfileRestaurantId = async (profile = {}) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId) return "";
+    const canonicalRestaurantIdHint = resolveCanonicalRestaurantIdHint(profile);
+    if (canonicalRestaurantIdHint) {
+      if (canonicalRestaurantIdHint !== requestedRestaurantId) {
+        const visibleProfileView = getVisiblePublicProfileView();
+        if (visibleProfileView?.restaurantId === requestedRestaurantId) {
+          refreshVisiblePublicProfile({
+            restaurantId: canonicalRestaurantIdHint,
+            canonicalRestaurantId: canonicalRestaurantIdHint
+          });
+        }
+      }
+      return canonicalRestaurantIdHint;
+    }
     const canonicalRestaurantId = await resolveCanonicalRestaurantId(profile);
     if (canonicalRestaurantId && canonicalRestaurantId !== requestedRestaurantId) {
       const visibleProfileView = getVisiblePublicProfileView();
       if (visibleProfileView?.restaurantId === requestedRestaurantId) {
-        refreshVisiblePublicProfile({ restaurantId: canonicalRestaurantId });
+        refreshVisiblePublicProfile({
+          restaurantId: canonicalRestaurantId,
+          canonicalRestaurantId: canonicalRestaurantId
+        });
       }
     }
     return canonicalRestaurantId || requestedRestaurantId;
@@ -145,9 +166,12 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (publicProfilePostsEnsurePromise && publicProfilePostsEnsureTargetId === requestedRestaurantId) return;
     const request = Promise.resolve().then(async () => {
       const safeProfile = profile && typeof profile === "object" ? profile : {};
+      const canonicalRestaurantIdHint = resolveCanonicalRestaurantIdHint(safeProfile);
       const canonicalRestaurantId = await resolveProfileRestaurantId(safeProfile);
+      const preferredCanonicalRestaurantId = String(canonicalRestaurantIdHint || canonicalRestaurantId || "").trim();
       const candidateRestaurantIds = Array.from(new Set(
         [
+          preferredCanonicalRestaurantId,
           requestedRestaurantId,
           canonicalRestaurantId,
           String(safeProfile.publicSlug || "").trim(),
@@ -161,7 +185,11 @@ export function createProfileBusinessMenuRuntimeCluster({
       let restaurantId = canonicalRestaurantId || requestedRestaurantId;
       let posts = [];
       for (const candidateId of candidateRestaurantIds) {
-        const next = await loadBusinessPostsForRestaurant(candidateId);
+        const skipProfileResolveForCandidate = !!preferredCanonicalRestaurantId
+          && candidateId === preferredCanonicalRestaurantId;
+        const next = await loadBusinessPostsForRestaurant(candidateId, {
+          skipProfileResolve: skipProfileResolveForCandidate
+        });
         const nextPosts = Array.isArray(next) ? next : [];
         if (!nextPosts.length) continue;
         posts = nextPosts;
@@ -170,7 +198,12 @@ export function createProfileBusinessMenuRuntimeCluster({
         break;
       }
       if (!posts.length) {
-        const fallback = await loadBusinessPostsForRestaurant(restaurantId || requestedRestaurantId);
+        const fallbackRestaurantId = restaurantId || requestedRestaurantId;
+        const fallbackSkipProfileResolve = !!preferredCanonicalRestaurantId
+          && fallbackRestaurantId === preferredCanonicalRestaurantId;
+        const fallback = await loadBusinessPostsForRestaurant(fallbackRestaurantId, {
+          skipProfileResolve: fallbackSkipProfileResolve
+        });
         posts = Array.isArray(fallback) ? fallback : [];
       }
       const liveProfileView = getVisiblePublicProfileView();
@@ -179,6 +212,7 @@ export function createProfileBusinessMenuRuntimeCluster({
       const acceptedRestaurantIds = new Set(
         [
           requestedRestaurantId,
+          preferredCanonicalRestaurantId,
           canonicalRestaurantId,
           restaurantId,
           ...candidateRestaurantIds
@@ -190,6 +224,10 @@ export function createProfileBusinessMenuRuntimeCluster({
       const nextPosts = Array.isArray(posts) ? posts : [];
       refreshVisiblePublicProfile({
         restaurantId: restaurantId || canonicalRestaurantId || requestedRestaurantId,
+        canonicalRestaurantId: preferredCanonicalRestaurantId
+          || restaurantId
+          || canonicalRestaurantId
+          || requestedRestaurantId,
         postsLoaded: true,
         truthState: nextPosts.length ? "stable" : "empty"
       }, nextPosts);

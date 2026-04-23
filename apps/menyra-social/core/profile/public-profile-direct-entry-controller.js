@@ -563,6 +563,11 @@ export function createPublicProfileDirectEntryController({
       routeTruth?.bio || "",
       String(routeIdentity?.bio || "").trim() ? "seeded" : "knownEmpty"
     );
+    const routeSnapshotRestaurantId = String(
+      routeSnapshot?.restaurantId
+      || routeBootstrap?.restaurantId
+      || ""
+    ).trim();
     const routeLayoutColor = String(routeBootstrap?.layout?.menuCardColor || "").trim().toLowerCase();
     const preview = resolveRestaurantPreviewForRoute(state, entry.restaurantId);
     const seedBusinessName = String(
@@ -606,6 +611,7 @@ export function createPublicProfileDirectEntryController({
       privateAccount: false,
       role: "business",
       restaurantId: entry.restaurantId,
+      ...(routeSnapshotRestaurantId ? { canonicalRestaurantId: routeSnapshotRestaurantId } : {}),
       publicSlug: seedPublicSlug,
       landingSlug: seedPublicSlug,
       canonicalPublicPath: resolveCanonicalPublicPath(seedPublicSlug),
