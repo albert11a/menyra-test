@@ -11,13 +11,10 @@ Last updated: 2026-04-23
 - Bewertung von Schritt 3: `bestanden mit kleinem Rest-Risiko`.
 - Schritt 4 ist abgeschlossen: Public-Core-Routen First-Render-Stabilitaet fuer `/:slug`, `/:slug/menu`, `/:slug/posts` gehaertet.
 - Bewertung von Schritt 4: `bestanden mit kleinem Rest-Risiko`.
-- Schritt 5 ist abgeschlossen: Public-Core-Routen Cold-Load-Kern fuer `/:slug`, `/:slug/menu`, `/:slug/posts` entlastet (ohne UI-/Design-Aenderung).
-- Bewertung von Schritt 5: `sauber bestanden`.
 - Isolationsschritt zu Schritt 5 ist dokumentiert: temporaere Ruecknahme der zwei Public-Core-Web-Direct-Bootstrap-Unterdrueckungen zur Ursachenpruefung Request-/Listener-Sturm im Menu.
 - Bewertung Isolationsschritt: `noch unklar` (manuelle Verifikation ausstehend).
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
 - Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
-- Referenz: [docs/mnyra-step5-public-core-routes-cold-load-kernel.md](./mnyra-step5-public-core-routes-cold-load-kernel.md)
 - Referenz: [docs/mnyra-step5-isolation-public-bootstrap-rollback.md](./mnyra-step5-isolation-public-bootstrap-rollback.md)
 
 ## Harte Invariante (verbindlich)
