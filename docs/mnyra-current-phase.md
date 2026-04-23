@@ -76,6 +76,18 @@ Last updated: 2026-04-23
   sollen zwei sichtbare `Menu wird geladen`-Phasen fuer denselben Refresh
   verschwinden oder deutlich reduziert werden. QR-Logik, QR-URLs und
   Tisch-/Bestellkontext bleiben unveraendert.
+- Schritt 15 ist abgeschlossen: Der gesamte oeffentliche Web-Profilpfad
+  `/:slug`, `/:slug/posts`, `/:slug/menu` wurde als zusammenhaengender
+  Route->Open-Flow->Ensure->Surface-Pfad erneut voll analysiert und im Kern
+  vereinfacht.
+- Bewertung von Schritt 15: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 15:
+  der normale Web-Direct-Entry-Pfad vermeidet jetzt zusaetzliche schwere
+  Re-Resolve-Schritte im Menu-First-Fall, und Posts/Menu/Fokus-Ensures sowie
+  Menu-Loader erkennen Slug-/Lookup-/kanonische IDs konsistent als denselben
+  sichtbaren Surface-Kontext. Dadurch sollen doppelte sichtbare Ladephasen,
+  unnoetige Reentry-Loads und der schwere Refresh-Eindruck weiter reduziert
+  werden; QR bleibt unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -91,6 +103,7 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step12-public-profile-core-implementation.md](./mnyra-step12-public-profile-core-implementation.md)
 - Referenz: [docs/mnyra-step13-public-profile-simplification-analysis.md](./mnyra-step13-public-profile-simplification-analysis.md)
 - Referenz: [docs/mnyra-step14-web-direct-menu-surface-stability-fix.md](./mnyra-step14-web-direct-menu-surface-stability-fix.md)
+- Referenz: [docs/mnyra-step15-public-web-profile-speed-reliability-overhaul.md](./mnyra-step15-public-web-profile-speed-reliability-overhaul.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -116,11 +129,10 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Nach Schritt 14 ist der naechste moegliche separate Folgeschritt:
-Direct-Public-Bootstrap im oeffentlichen Profilkern auf Main-Surface ausrichten
-(Profil/Posts-default vs Menu-first).
-
-Dieser Schritt ist groesser und soll nicht nebenbei erfolgen.
+Nach Schritt 15 ist der naechste moegliche separate Folgeschritt:
+gezielte Restkanten-Absicherung fuer seltene Reentry-Pfade (nur falls in
+manuellen Tests noch reproduzierbar) ohne Scope-Ausweitung ausserhalb des
+oeffentlichen Web-Profilpfads.
 
 ## Guardrails fuer die naechsten Schritte
 

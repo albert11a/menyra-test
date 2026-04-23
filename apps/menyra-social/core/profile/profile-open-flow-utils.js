@@ -1018,6 +1018,16 @@ export function createProfileOpenFlowControllerCore({
         })
       });
 
+      const canShortCircuitNormalWebDirectMenuPath = isWebRoutePriorityPath
+        && isMenuTopTab
+        && safeMenuAccessSource !== "qr"
+        && !!routeSnapshotSeed
+        && routeIdentityState === "seeded"
+        && !!loadingCanonicalRestaurantId;
+      if (canShortCircuitNormalWebDirectMenuPath) {
+        return;
+      }
+
       const profileLookupRestaurantId = resolveCanonicalRestaurantIdCandidate(
         targetCanonicalRestaurantId,
         targetMenuRestaurantId,

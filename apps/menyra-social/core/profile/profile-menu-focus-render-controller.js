@@ -1869,7 +1869,33 @@ function renderFocusCarousel(profile, {
   const restaurantId = String(restaurantIdOverride || profile?.canonicalRestaurantId || profile?.restaurantId || "").trim();
   if (!restaurantId) return "";
   if (!isRestaurantCafeProfile(profile)) return "";
-  if (allowAutoEnsure && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
+  const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
+    ? state.profileView.routePayload
+    : null;
+  const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
+    ? routePayload.businessSnapshot
+    : null;
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    ? state.__webDirectEntry
+    : null;
+  const focusSurfaceTargetIds = new Set(
+    [
+      restaurantId,
+      profile?.canonicalRestaurantId,
+      profile?.restaurantId,
+      routePayload?.canonicalRestaurantId,
+      routePayload?.restaurantId,
+      routeSnapshot?.restaurantId,
+      webDirectEntry?.canonicalRestaurantId,
+      webDirectEntry?.restaurantId
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+  );
+  const focusRestaurantId = String(state?.focus?.restaurantId || "").trim();
+  const hasMatchingFocusSurface = !!focusRestaurantId
+    && (focusRestaurantId === restaurantId || focusSurfaceTargetIds.has(focusRestaurantId));
+  if (allowAutoEnsure && !state.focus.loading && !hasMatchingFocusSurface) {
     ensureFocusDataForProfile(buildMenuSurfaceProfile(profile, restaurantId));
   }
   const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId);
@@ -2126,12 +2152,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     `;
   }
   const surfaceProfile = buildMenuSurfaceProfile(profile, restaurantId);
-  const isSameRestaurant = state.menu.restaurantId === restaurantId;
-  const menuSource = String(state.menu.source || "").trim().toLowerCase();
-  const hasPublicMenuTruth = isSameRestaurant && menuSource === "public";
-  const menuTruthState = String(state?.menu?.truthState || "").trim().toLowerCase();
-  const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
-  const isLandingMode = mode === "landing";
   const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
     ? state.__webDirectEntry
     : null;
@@ -2155,6 +2175,23 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       .map((value) => String(value || "").trim())
       .filter(Boolean)
   );
+  const menuRestaurantId = String(state?.menu?.restaurantId || "").trim();
+  const focusRestaurantId = String(state?.focus?.restaurantId || "").trim();
+  const menuSource = String(state.menu.source || "").trim().toLowerCase();
+  const hasMenuSurfaceMatch = !!menuRestaurantId
+    && (
+      menuRestaurantId === restaurantId
+      || webDirectSurfaceTargetIds.has(menuRestaurantId)
+    );
+  const hasFocusSurfaceMatch = !!focusRestaurantId
+    && (
+      focusRestaurantId === restaurantId
+      || webDirectSurfaceTargetIds.has(focusRestaurantId)
+    );
+  const hasPublicMenuTruth = hasMenuSurfaceMatch && menuSource === "public";
+  const menuTruthState = String(state?.menu?.truthState || "").trim().toLowerCase();
+  const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
+  const isLandingMode = mode === "landing";
   const menuAccessSource = String(
     state?.profileView?.menuAccessSource
     || webDirectEntry?.menuAccessSource
@@ -2185,7 +2222,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       || routeFocusState === "knownempty"
       || routeFocusState === "known-empty"
       || (
-        String(state?.focus?.restaurantId || "").trim() === restaurantId
+        hasFocusSurfaceMatch
         && (
           currentFocusTruth === "seeded"
           || currentFocusTruth === "knownempty"
@@ -2199,7 +2236,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       || menuTruthState === "knownempty"
       || menuTruthState === "known-empty"
     );
-  const hasSettledFocusTruth = String(state?.focus?.restaurantId || "").trim() === restaurantId
+  const hasSettledFocusTruth = hasFocusSurfaceMatch
     && (
       currentFocusTruth === "seeded"
       || currentFocusTruth === "knownempty"

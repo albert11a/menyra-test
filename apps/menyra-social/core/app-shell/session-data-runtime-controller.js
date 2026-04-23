@@ -1478,7 +1478,14 @@ export function createSessionDataRuntimeController({
     } else {
       startMenuMetaListener(safeRestaurantId, { source: safeSource });
     }
-    const hasVisibleMenuSeed = state.menu.restaurantId === safeRestaurantId
+    const visibleMenuTargetIds = collectVisiblePublicMenuTargetIds();
+    const currentMenuRestaurantId = String(state?.menu?.restaurantId || "").trim();
+    const menuStateMatchesVisibleSurface = !!currentMenuRestaurantId
+      && (
+        currentMenuRestaurantId === safeRestaurantId
+        || visibleMenuTargetIds.has(currentMenuRestaurantId)
+      );
+    const hasVisibleMenuSeed = menuStateMatchesVisibleSurface
       && Array.isArray(state.menu.items)
       && state.menu.items.length > 0;
     const hasRouteBootstrapMenuSeed = hasVisibleMenuSeed
@@ -1486,7 +1493,6 @@ export function createSessionDataRuntimeController({
     const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
       ? state.__webDirectEntry
       : null;
-    const visibleMenuTargetIds = collectVisiblePublicMenuTargetIds();
     const webDirectEntryRestaurantId = String(
       webDirectEntry?.canonicalRestaurantId
       || webDirectEntry?.restaurantId
@@ -1569,7 +1575,7 @@ export function createSessionDataRuntimeController({
       await inFlight;
       return;
     }
-    const keepCurrentItems = state.menu.restaurantId === safeRestaurantId
+    const keepCurrentItems = menuStateMatchesVisibleSurface
       && Array.isArray(state.menu.items)
       && !blockWebDirectMenuCacheSeed
       && (!shouldPrioritizeVisibleMenuTruth || state.menu.items.length > 0);
@@ -1640,7 +1646,13 @@ export function createSessionDataRuntimeController({
       } catch (err) {
         console.error(err);
         const stalePersistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: true });
-        const sameRestaurantItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
+        const liveMenuRestaurantId = String(state?.menu?.restaurantId || "").trim();
+        const liveMenuMatchesVisibleSurface = !!liveMenuRestaurantId
+          && (
+            liveMenuRestaurantId === safeRestaurantId
+            || collectVisiblePublicMenuTargetIds().has(liveMenuRestaurantId)
+          );
+        const sameRestaurantItems = liveMenuMatchesVisibleSurface && Array.isArray(state.menu.items)
           ? state.menu.items
           : [];
         const blockStaleFallback = blockWebDirectMenuCacheSeed || shouldPrioritizeVisibleMenuTruth;

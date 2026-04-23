@@ -157,6 +157,16 @@ export function createProfileBusinessMenuRuntimeCluster({
     return menuAccessSource !== "qr";
   };
 
+  const isNormalWebDirectProfileVisible = () => {
+    const webDirectEntry = getWebDirectEntryState();
+    if (webDirectEntry?.active !== true || webDirectEntry?.webPriority !== true || webDirectEntry?.postsFirst !== true) {
+      return false;
+    }
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    return activeTab === "profile" && profileTopTab === "profile";
+  };
+
   const hasMatchingVisibleMenuEnsureInFlight = (targetId = "", requestedId = "", profile = {}) => {
     if (!publicProfileMenuEnsurePromise) return false;
     const activeTargetId = String(publicProfileMenuEnsureTargetId || "").trim();
@@ -165,6 +175,21 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!activeTargetId) return false;
     if (activeTargetId === safeTargetId || activeTargetId === safeRequestedId) return true;
     if (!isNormalWebDirectMenuVisible()) return false;
+    const visibleTargetIds = collectVisibleMenuTargetIds(profile);
+    return visibleTargetIds.has(activeTargetId)
+      && (!!safeTargetId && visibleTargetIds.has(safeTargetId)
+        || !!safeRequestedId && visibleTargetIds.has(safeRequestedId));
+  };
+
+  const hasMatchingVisiblePostsEnsureInFlight = (targetId = "", requestedId = "", profile = {}) => {
+    if (!publicProfilePostsEnsurePromise) return false;
+    const activeTargetId = String(publicProfilePostsEnsureTargetId || "").trim();
+    const safeTargetId = String(targetId || "").trim();
+    const safeRequestedId = String(requestedId || "").trim();
+    if (!activeTargetId) return false;
+    if (activeTargetId === safeTargetId || activeTargetId === safeRequestedId) return true;
+    const isWebDirectVisible = isNormalWebDirectMenuVisible() || isNormalWebDirectProfileVisible();
+    if (!isWebDirectVisible) return false;
     const visibleTargetIds = collectVisibleMenuTargetIds(profile);
     return visibleTargetIds.has(activeTargetId)
       && (!!safeTargetId && visibleTargetIds.has(safeTargetId)
@@ -219,15 +244,44 @@ export function createProfileBusinessMenuRuntimeCluster({
     return true;
   };
 
+  const resolveRouteCanonicalRestaurantIdHint = (profile = {}) => {
+    const routePayload = getVisibleRoutePayload();
+    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
+      ? routePayload.businessSnapshot
+      : {};
+    const webDirectEntry = getWebDirectEntryState();
+    return String(
+      routePayload?.canonicalRestaurantId
+      || routeSnapshot?.restaurantId
+      || webDirectEntry?.canonicalRestaurantId
+      || ""
+    ).trim();
+  };
+
   const resolveCanonicalRestaurantId = async (profile = {}) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId) return "";
     const cachedCanonicalRestaurantId = String(canonicalRestaurantIdCache.get(requestedRestaurantId) || "").trim();
     const canonicalRestaurantIdHint = String(profile?.canonicalRestaurantId || "").trim();
+    const routeCanonicalRestaurantId = resolveRouteCanonicalRestaurantIdHint(profile);
+    const visibleTargetIds = collectVisibleMenuTargetIds(profile);
+    const isCanonicalHintTrustedByRoute = !!canonicalRestaurantIdHint
+      && !!routeCanonicalRestaurantId
+      && canonicalRestaurantIdHint === routeCanonicalRestaurantId;
+    const shouldTrustCanonicalHintFromVisibleTargets = !!canonicalRestaurantIdHint
+      && canonicalRestaurantIdHint !== requestedRestaurantId
+      && (isNormalWebDirectMenuVisible() || isNormalWebDirectProfileVisible())
+      && visibleTargetIds.has(canonicalRestaurantIdHint)
+      && visibleTargetIds.has(requestedRestaurantId);
     if (canonicalRestaurantIdHint) {
       const hintEqualsRequested = canonicalRestaurantIdHint === requestedRestaurantId;
       const hasTrustedCachedHint = cachedCanonicalRestaurantId && cachedCanonicalRestaurantId === canonicalRestaurantIdHint;
-      if (!hintEqualsRequested || !fetchBusinessProfileDoc || hasTrustedCachedHint) {
+      const trustCanonicalHint = !hintEqualsRequested
+        || !fetchBusinessProfileDoc
+        || hasTrustedCachedHint
+        || isCanonicalHintTrustedByRoute
+        || shouldTrustCanonicalHintFromVisibleTargets;
+      if (trustCanonicalHint) {
         canonicalRestaurantIdCache.set(requestedRestaurantId, canonicalRestaurantIdHint);
         canonicalRestaurantIdCache.set(canonicalRestaurantIdHint, canonicalRestaurantIdHint);
         return canonicalRestaurantIdHint;
@@ -320,9 +374,10 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!showPublicProfile) return;
     const visibleProfileView = getVisiblePublicProfileView();
     if (!visibleProfileView) return;
-    if (publicProfilePostsEnsurePromise && publicProfilePostsEnsureTargetId === requestedRestaurantId) return;
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const surfaceTargetRestaurantId = resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
+    if (hasMatchingVisiblePostsEnsureInFlight(surfaceTargetRestaurantId, requestedRestaurantId, safeProfile)) return;
     const request = Promise.resolve().then(async () => {
-      const safeProfile = profile && typeof profile === "object" ? profile : {};
       const canonicalRestaurantId = await resolveProfileRestaurantId(safeProfile);
       const targetRestaurantId = String(canonicalRestaurantId || requestedRestaurantId || "").trim();
       if (!targetRestaurantId) return;
@@ -366,7 +421,7 @@ export function createProfileBusinessMenuRuntimeCluster({
       }
     });
     publicProfilePostsEnsurePromise = request;
-    publicProfilePostsEnsureTargetId = requestedRestaurantId;
+    publicProfilePostsEnsureTargetId = surfaceTargetRestaurantId;
   };
 
   const businessAccountsRuntimeController = createBusinessAccountsRuntimeController({
