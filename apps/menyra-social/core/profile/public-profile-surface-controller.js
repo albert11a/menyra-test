@@ -318,6 +318,22 @@ function hasRoutePayloadMenuSeed(routePayload = null) {
   return items.length > 0;
 }
 
+function resolveProfileCanonicalRestaurantId(profile = null, routePayload = null) {
+  const safeProfile = profile && typeof profile === "object" ? profile : null;
+  const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : null;
+  const snapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+    ? safeRoutePayload.businessSnapshot
+    : null;
+  return String(
+    safeProfile?.canonicalRestaurantId
+    || safeProfile?.restaurantId
+    || safeRoutePayload?.canonicalRestaurantId
+    || safeRoutePayload?.restaurantId
+    || snapshot?.restaurantId
+    || ""
+  ).trim();
+}
+
 export function normalizeProfileSurfaceStatus(value = "", fallback = "loading") {
   const status = safeLower(value);
   if (SURFACE_STATUSES.has(status)) return status;
@@ -372,7 +388,7 @@ export function resolveVisibleProfileSurface(state = {}, {
   const posts = Array.isArray(view?.posts)
     ? view.posts
     : (Array.isArray(profile?.posts) ? profile.posts : []);
-  const targetRestaurantId = String(profile?.restaurantId || "").trim();
+  const targetRestaurantId = resolveProfileCanonicalRestaurantId(profile, routePayload);
   const targetUid = String(profile?.uid || "").trim();
   const targetHandle = String(profile?.handle || profile?.name || "").trim().toLowerCase();
   const requestedTopTab = explicitTopTab
@@ -380,7 +396,7 @@ export function resolveVisibleProfileSurface(state = {}, {
     : (directEntryActive ? directEntryTopTab : (state?.profileTopTab || ""));
   const activeTopTab = normalizeProfileTopTab(
     requestedTopTab,
-    profile?.restaurantId ? "profile" : "profile"
+    targetRestaurantId ? "profile" : "profile"
   );
   const requestedContentTab = explicitContentTab
     ? explicitContentTab
@@ -455,6 +471,7 @@ export function resolveVisibleProfileSurface(state = {}, {
     target: {
       key: targetRestaurantId || targetUid || targetHandle || "",
       restaurantId: targetRestaurantId,
+      canonicalRestaurantId: String(profile?.canonicalRestaurantId || "").trim(),
       uid: targetUid,
       handle: targetHandle
     },

@@ -45,6 +45,15 @@ Last updated: 2026-04-23
   aber noch keinen erstklassigen, durchgaengigen Handoff der kanonischen `restaurantId`;
   die Hauptkomplexitaet sitzt jetzt in mehrfacher Route-/Slug-/Resolver-Arbeit zwischen
   `index.html`, Bootstrap, Open-Flow, Ensure-Cluster und Surface-Loadern.
+- Schritt 12 ist abgeschlossen: Public-Profile-Core fuer `/:slug`, `/:slug/posts`, `/:slug/menu`
+  inklusive QR -> dieselbe Profilwelt mit offenem Menu wurde auf kanonische
+  `restaurantId` als sichtbare Runtime-Wahrheit umgestellt.
+- Bewertung von Schritt 12: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 12:
+  `canonicalRestaurantId` wird jetzt durchgaengig vom Route-/Direct-Entry-Seed
+  ueber Loading/Resolved-State bis in Posts/Menu/Fokus-Ensure getragen;
+  Public-Guest-Reads bleiben read-once und unnoetige zweite/dritte Resolve-Ketten
+  im Kernpfad wurden reduziert.
 - Fehlgeschlagener Versuch nach Schritt 9:
   `4805fcf` (canonicalRestaurantId-Hint-Fix) wurde wieder zurueckgenommen.
 - Grund fuer die Ruecknahme:
@@ -60,6 +69,7 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step9-mainline-public-delayed-content-analysis.md](./mnyra-step9-mainline-public-delayed-content-analysis.md)
 - Referenz: [docs/mnyra-step10-mainline-public-guest-read-path-stability-fix.md](./mnyra-step10-mainline-public-guest-read-path-stability-fix.md)
 - Referenz: [docs/mnyra-step11-public-profile-core-architecture.md](./mnyra-step11-public-profile-core-architecture.md)
+- Referenz: [docs/mnyra-step12-public-profile-core-implementation.md](./mnyra-step12-public-profile-core-implementation.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -85,13 +95,12 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Wenn der erste technische Kernumbau nach Schritt 11 startet, dann als kleinster Minischritt:
-bestehende kanonische `restaurantId` aus Direct-Route-Bootstrap/Open-Flow
-als erstklassiges Feld `canonicalRestaurantId` in den sichtbaren Public-Profile-State
-und in die drei Public-Ensure-Pfade weiterreichen;
-kein Bootstrap-Slimming, kein Routing-Umbau, kein Surface-Refactor, kein breiter Performance-Refactor.
+Nach Schritt 12 ist der erste technische Kernumbau abgeschlossen.
 
-Der fehlgeschlagene Versuch `4805fcf` gilt dabei nicht als stabiler Ausgangspunkt.
+Naechster moeglicher Folgeschritt (noch offen, separater Schritt):
+Direct-Public-Bootstrap im oeffentlichen Profilkern auf Main-Surface ausrichten
+(Profil/Posts-default vs Menu-first), ohne UI-Aenderung, ohne Routing-Umbau
+und ohne Scope-Erweiterung in andere Domains.
 
 ## Guardrails fuer die naechsten Schritte
 

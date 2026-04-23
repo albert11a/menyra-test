@@ -1584,7 +1584,11 @@ function resolveRouteQueryStateForCurrentView() {
   const activeProfile = state.profileView?.profile && typeof state.profileView.profile === "object"
     ? state.profileView.profile
     : null;
-  const resolvedProfileRestaurantIdFromView = String(activeProfile?.restaurantId || "").trim();
+  const resolvedProfileRestaurantIdFromView = String(
+    activeProfile?.canonicalRestaurantId
+    || activeProfile?.restaurantId
+    || ""
+  ).trim();
   const liveUserRouteId = resolvedProfileRestaurantIdFromView
     ? ""
     : extractPublicUserRouteIdCore(activeProfile || {});

@@ -246,7 +246,8 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     ? payload.businessSnapshot
     : null;
   const restaurantId = String(
-    payload?.restaurantId
+    payload?.canonicalRestaurantId
+    || payload?.restaurantId
     || payload?.targetRestaurantId
     || snapshotPayload?.restaurantId
     || ""
@@ -420,6 +421,7 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     owner: "web-direct",
     routeFirst: true,
     restaurantId,
+    canonicalRestaurantId: restaurantId,
     surface,
     topTab,
     contentTab,
@@ -489,7 +491,12 @@ function resolveWebRoutePayloadForRestaurant(routePayload = null, restaurantId =
   if (!routePayload || typeof routePayload !== "object") return null;
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId) return null;
-  return String(routePayload?.restaurantId || "").trim() === safeRestaurantId
+  const payloadRestaurantId = String(
+    routePayload?.canonicalRestaurantId
+    || routePayload?.restaurantId
+    || ""
+  ).trim();
+  return payloadRestaurantId === safeRestaurantId
     ? routePayload
     : null;
 }
@@ -623,6 +630,10 @@ function applyWebDirectRouteSeedFromBootstrap({
   const nextFollowers = normalizeCountOrNull(routeIdentity?.followers);
   const nextFollowing = normalizeCountOrNull(routeIdentity?.following);
   const nextBio = String(routeIdentity?.bio || "").trim();
+  if (String(profile.canonicalRestaurantId || "").trim() !== safeRestaurantId) {
+    profile.canonicalRestaurantId = safeRestaurantId;
+    changed = true;
+  }
   if (!String(profile.restaurantId || "").trim()) {
     profile.restaurantId = safeRestaurantId;
     changed = true;
@@ -956,6 +967,7 @@ function applyWebDirectRouteSeedFromBootstrap({
       owner: "web-direct",
       routeFirst: true,
       restaurantId: safeRestaurantId,
+      canonicalRestaurantId: safeRestaurantId,
       surface: String(view?.directEntry?.topTab || "").trim().toLowerCase() === "menu" ? "menu" : "profile",
       topTab: String(view?.directEntry?.topTab || "").trim().toLowerCase() || "profile",
       contentTab: String(view?.directEntry?.contentTab || "").trim().toLowerCase() || "posts",
@@ -1231,7 +1243,9 @@ export function createPublicBootstrapRuntimeController({
         ? state.__webDirectEntry
         : null;
       const routeRestaurantId = String(
-        webDirectEntry?.restaurantId
+        webDirectEntry?.canonicalRestaurantId
+        || webDirectEntry?.restaurantId
+        || state?.profileView?.profile?.canonicalRestaurantId
         || state?.profileView?.profile?.restaurantId
         || ""
       ).trim();
@@ -1279,7 +1293,7 @@ export function createPublicBootstrapRuntimeController({
       && webDirectEntry?.active === true
       && webDirectEntry?.webPriority === true;
     const webDirectRouteRestaurantId = isWebDirectProfileVisiblePath
-      ? String(webDirectEntry?.restaurantId || "").trim()
+      ? String(webDirectEntry?.canonicalRestaurantId || webDirectEntry?.restaurantId || "").trim()
       : "";
     const incomingRoutePayload = resolveIncomingRouteBootstrapPayload(payload);
     if (incomingRoutePayload) {

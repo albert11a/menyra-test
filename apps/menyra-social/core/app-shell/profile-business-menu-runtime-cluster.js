@@ -53,7 +53,7 @@ export function createProfileBusinessMenuRuntimeCluster({
       ? view.profile
       : null;
     if (!view || !profile) return null;
-    const restaurantId = String(profile.restaurantId || "").trim();
+    const restaurantId = String(profile.canonicalRestaurantId || profile.restaurantId || "").trim();
     if (!restaurantId) return null;
     return { view, profile, restaurantId };
   };
@@ -136,7 +136,10 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (canonicalRestaurantId && canonicalRestaurantId !== requestedRestaurantId) {
       const visibleProfileView = getVisiblePublicProfileView();
       if (visibleProfileView?.restaurantId === requestedRestaurantId) {
-        refreshVisiblePublicProfile({ restaurantId: canonicalRestaurantId });
+        refreshVisiblePublicProfile({
+          restaurantId: canonicalRestaurantId,
+          canonicalRestaurantId
+        });
       }
     }
     return canonicalRestaurantId || requestedRestaurantId;
@@ -188,31 +191,14 @@ export function createProfileBusinessMenuRuntimeCluster({
     const request = Promise.resolve().then(async () => {
       const safeProfile = profile && typeof profile === "object" ? profile : {};
       const canonicalRestaurantId = await resolveProfileRestaurantId(safeProfile);
-      const candidateRestaurantIds = Array.from(new Set(
-        [
-          requestedRestaurantId,
-          canonicalRestaurantId,
-          String(safeProfile.publicSlug || "").trim(),
-          String(safeProfile.landingSlug || "").trim(),
-          String(safeProfile.handle || "").trim().replace(/^@/, "").toLowerCase()
-        ]
-          .map((value) => String(value || "").trim())
-          .filter(Boolean)
-      ));
-      if (!candidateRestaurantIds.length) return;
-      let restaurantId = canonicalRestaurantId || requestedRestaurantId;
-      let posts = [];
-      for (const candidateId of candidateRestaurantIds) {
-        const next = await loadBusinessPostsForRestaurant(candidateId);
-        const nextPosts = Array.isArray(next) ? next : [];
-        if (!nextPosts.length) continue;
-        posts = nextPosts;
-        const resolvedFromPosts = String(nextPosts[0]?.restaurantId || nextPosts[0]?.ownerId || "").trim();
-        restaurantId = resolvedFromPosts || candidateId || restaurantId;
-        break;
-      }
-      if (!posts.length) {
-        const fallback = await loadBusinessPostsForRestaurant(restaurantId || requestedRestaurantId);
+      const targetRestaurantId = String(canonicalRestaurantId || requestedRestaurantId || "").trim();
+      if (!targetRestaurantId) return;
+      let posts = await loadBusinessPostsForRestaurant(targetRestaurantId, {
+        skipProfileResolve: !!canonicalRestaurantId
+      });
+      posts = Array.isArray(posts) ? posts : [];
+      if (!posts.length && !canonicalRestaurantId && requestedRestaurantId && requestedRestaurantId !== targetRestaurantId) {
+        const fallback = await loadBusinessPostsForRestaurant(requestedRestaurantId);
         posts = Array.isArray(fallback) ? fallback : [];
       }
       const liveProfileView = getVisiblePublicProfileView();
@@ -222,16 +208,21 @@ export function createProfileBusinessMenuRuntimeCluster({
         [
           requestedRestaurantId,
           canonicalRestaurantId,
-          restaurantId,
-          ...candidateRestaurantIds
+          targetRestaurantId
         ]
           .map((value) => String(value || "").trim())
           .filter(Boolean)
       );
       if (liveRestaurantId && !acceptedRestaurantIds.has(liveRestaurantId)) return;
       const nextPosts = Array.isArray(posts) ? posts : [];
+      const resolvedRestaurantId = String(
+        nextPosts[0]?.restaurantId
+        || nextPosts[0]?.ownerId
+        || targetRestaurantId
+      ).trim() || targetRestaurantId;
       refreshVisiblePublicProfile({
-        restaurantId: restaurantId || canonicalRestaurantId || requestedRestaurantId,
+        restaurantId: resolvedRestaurantId,
+        canonicalRestaurantId: canonicalRestaurantId || resolvedRestaurantId,
         postsLoaded: true,
         truthState: nextPosts.length ? "stable" : "empty"
       }, nextPosts);

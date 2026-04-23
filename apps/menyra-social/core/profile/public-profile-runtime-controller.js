@@ -221,12 +221,33 @@ export function createPublicProfileRuntimeController({
     profileViewReadOnceKey = "";
   }
 
+  function resolveProfileCanonicalRestaurantId(profile = null, routePayload = null) {
+    const safeProfile = profile && typeof profile === "object" ? profile : null;
+    const safeRoutePayload = routePayload && typeof routePayload === "object"
+      ? routePayload
+      : null;
+    const snapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+      ? safeRoutePayload.businessSnapshot
+      : null;
+    return String(
+      safeProfile?.canonicalRestaurantId
+      || safeProfile?.restaurantId
+      || safeRoutePayload?.canonicalRestaurantId
+      || safeRoutePayload?.restaurantId
+      || snapshot?.restaurantId
+      || ""
+    ).trim();
+  }
+
   function resolveProfileViewListenerTarget(profile = null) {
     const safeProfile = profile && typeof profile === "object" ? profile : null;
     if (!safeProfile || !makeDocRef || !db) {
       return { ref: null, listenerPath: "", listenerKey: "" };
     }
-    const restaurantId = String(safeProfile.restaurantId || "").trim();
+    const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
+      ? state.profileView.routePayload
+      : null;
+    const restaurantId = resolveProfileCanonicalRestaurantId(safeProfile, routePayload);
     if (restaurantId) {
       return {
         ref: makeDocRef(db, "restaurants", restaurantId),
@@ -248,7 +269,10 @@ export function createPublicProfileRuntimeController({
   function isGuestPublicBusinessRouteContext(profile = null) {
     const safeProfile = profile && typeof profile === "object" ? profile : null;
     if (!safeProfile) return false;
-    const restaurantId = String(safeProfile.restaurantId || "").trim();
+    const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
+      ? state.profileView.routePayload
+      : null;
+    const restaurantId = resolveProfileCanonicalRestaurantId(safeProfile, routePayload);
     if (!restaurantId) return false;
     const hasAuthenticatedSession = !!String(state?.user?.uid || "").trim();
     if (hasAuthenticatedSession) return false;
@@ -375,6 +399,7 @@ export function createPublicProfileRuntimeController({
 
   function syncWebDirectEntryState({
     restaurantId = "",
+    canonicalRestaurantId = "",
     topTab = "",
     contentTab = "",
     directEntry = null
@@ -384,6 +409,7 @@ export function createPublicProfileRuntimeController({
       ? state.__webDirectEntry
       : null;
     const safeRestaurantId = String(restaurantId || "").trim();
+    const safeCanonicalRestaurantId = String(canonicalRestaurantId || safeRestaurantId).trim();
     const entry = directEntry && typeof directEntry === "object" ? directEntry : null;
     const entryOwner = String(entry?.owner || "").trim().toLowerCase();
     const isDirectWebOwner = entryOwner === "web-direct";
@@ -405,6 +431,7 @@ export function createPublicProfileRuntimeController({
       ...(current || {}),
       active: true,
       restaurantId: safeRestaurantId,
+      canonicalRestaurantId: safeCanonicalRestaurantId || safeRestaurantId,
       surface,
       topTab: safeTopTab || surface,
       contentTab: safeContentTab || (surface === "menu" ? "menu" : "posts"),
@@ -419,8 +446,19 @@ export function createPublicProfileRuntimeController({
 
   function isSameVisibleProfile(currentProfile = null, nextProfile = null) {
     if (!currentProfile || !nextProfile) return false;
+    const currentCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(currentProfile);
+    const nextCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(nextProfile);
+    if (currentCanonicalRestaurantId && nextCanonicalRestaurantId) {
+      return currentCanonicalRestaurantId === nextCanonicalRestaurantId;
+    }
     const currentRestaurantId = String(currentProfile?.restaurantId || "").trim();
     const nextRestaurantId = String(nextProfile?.restaurantId || "").trim();
+    if (currentCanonicalRestaurantId && nextRestaurantId) {
+      return currentCanonicalRestaurantId === nextRestaurantId;
+    }
+    if (nextCanonicalRestaurantId && currentRestaurantId) {
+      return nextCanonicalRestaurantId === currentRestaurantId;
+    }
     if (currentRestaurantId && nextRestaurantId) {
       return currentRestaurantId === nextRestaurantId;
     }
@@ -447,9 +485,11 @@ export function createPublicProfileRuntimeController({
 
   function buildProfileRenderSignature(profile = null) {
     if (!profile || typeof profile !== "object") return "";
+    const canonicalRestaurantId = resolveProfileCanonicalRestaurantId(profile);
     return [
       String(profile.uid || "").trim(),
       String(profile.restaurantId || "").trim(),
+      String(canonicalRestaurantId || "").trim(),
       String(profile.name || "").trim(),
       String(profile.handle || "").trim().toLowerCase(),
       String(profile.avatar || "").trim(),
@@ -487,7 +527,9 @@ export function createPublicProfileRuntimeController({
       : {};
     const safePosts = Array.isArray(posts) ? posts : [];
     const safeRestaurantId = String(
-      safeProfile.restaurantId
+      safeProfile.canonicalRestaurantId
+      || safeProfile.restaurantId
+      || currentPayload?.canonicalRestaurantId
       || currentPayload?.restaurantId
       || ""
     ).trim();
@@ -672,6 +714,7 @@ export function createPublicProfileRuntimeController({
       owner: "web-direct",
       routeFirst: true,
       restaurantId: safeRestaurantId,
+      canonicalRestaurantId: safeRestaurantId,
       surface: safeTopTab === "menu" ? "menu" : "profile",
       topTab: safeTopTab,
       contentTab: safeContentTab,
@@ -740,6 +783,7 @@ export function createPublicProfileRuntimeController({
     if (!payload || typeof payload !== "object") return "";
     return [
       String(payload?.restaurantId || "").trim(),
+      String(payload?.canonicalRestaurantId || "").trim(),
       String(payload?.surface || "").trim().toLowerCase(),
       String(payload?.topTab || "").trim().toLowerCase(),
       String(payload?.contentTab || "").trim().toLowerCase(),
@@ -843,6 +887,9 @@ export function createPublicProfileRuntimeController({
     const currentRoutePayload = currentView?.routePayload && typeof currentView.routePayload === "object"
       ? currentView.routePayload
       : null;
+    const incomingRoutePayload = routePayload && typeof routePayload === "object"
+      ? routePayload
+      : null;
     const incomingDirectEntry = directEntry && typeof directEntry === "object"
       ? directEntry
       : null;
@@ -906,8 +953,23 @@ export function createPublicProfileRuntimeController({
         !blockStaleCarryForWebDirect
         || (preserveWebDirectRouteTruth && currentRoutePayloadHasIdentityTruth)
       );
+    const currentCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(currentProfile, currentRoutePayload);
+    const incomingCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(profile, incomingRoutePayload || currentRoutePayload);
+    const resolvedCanonicalRestaurantId = String(
+      incomingCanonicalRestaurantId
+      || currentCanonicalRestaurantId
+      || profile?.restaurantId
+      || currentProfile?.restaurantId
+      || ""
+    ).trim();
     const nextProfile = profile ? {
       ...profile,
+      ...(resolvedCanonicalRestaurantId ? { canonicalRestaurantId: resolvedCanonicalRestaurantId } : {}),
+      ...(
+        resolvedCanonicalRestaurantId && !String(profile?.restaurantId || "").trim()
+          ? { restaurantId: resolvedCanonicalRestaurantId }
+          : {}
+      ),
       ...(shouldPreserveHeaderSeed ? {
         name: String(profile?.name || "").trim() ? profile.name : currentProfile?.name,
         handle: String(profile?.handle || "").trim() ? profile.handle : currentProfile?.handle,
@@ -929,7 +991,7 @@ export function createPublicProfileRuntimeController({
     const preservedTopTab = sameVisibleProfile
       ? String(state?.profileTopTab || "").trim()
       : "";
-    const resolvedTopTab = profile?.restaurantId
+    const resolvedTopTab = (nextProfile?.canonicalRestaurantId || nextProfile?.restaurantId)
       ? normalizeTopTab(explicitTopTab || preservedTopTab || "profile", "profile")
       : "profile";
     const preserveLandingState = sameVisibleProfile
@@ -1018,9 +1080,7 @@ export function createPublicProfileRuntimeController({
             explicitLanding: resolvedTopTab === "landing"
           }
           : null));
-    const explicitRoutePayload = routePayload && typeof routePayload === "object"
-      ? routePayload
-      : null;
+    const explicitRoutePayload = incomingRoutePayload;
     const baseRoutePayload = explicitRoutePayload
       || (sameVisibleProfile ? currentRoutePayload : null);
     const nextRoutePayload = buildWebDirectRoutePayload(baseRoutePayload, {
@@ -1032,6 +1092,7 @@ export function createPublicProfileRuntimeController({
       menuAccessSource: normalizedMenuAccessSource,
       tableNumber: safeTableNumber
     });
+    const nextCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(nextProfile, nextRoutePayload);
     const nextView = {
       profile: nextProfile,
       posts: projectedPosts,
@@ -1089,7 +1150,8 @@ export function createPublicProfileRuntimeController({
     ) {
       state.profileSurface = nextSurface;
       syncWebDirectEntryState({
-        restaurantId: String(nextProfile?.restaurantId || "").trim(),
+        restaurantId: String(nextProfile?.restaurantId || nextCanonicalRestaurantId || "").trim(),
+        canonicalRestaurantId: nextCanonicalRestaurantId,
         topTab: resolvedTopTab,
         contentTab: nextContentTab,
         directEntry: nextDirectEntry
@@ -1127,7 +1189,8 @@ export function createPublicProfileRuntimeController({
       profileContentTab: nextContentTab
     });
     syncWebDirectEntryState({
-      restaurantId: String(nextProfile?.restaurantId || "").trim(),
+      restaurantId: String(nextProfile?.restaurantId || nextCanonicalRestaurantId || "").trim(),
+      canonicalRestaurantId: nextCanonicalRestaurantId,
       topTab: resolvedTopTab,
       contentTab: nextContentTab,
       directEntry: nextDirectEntry
@@ -1186,6 +1249,7 @@ export function createPublicProfileRuntimeController({
       privateAccount: false,
       role: "business",
       restaurantId,
+      canonicalRestaurantId: restaurantId,
       publicSlug,
       canonicalPublicPath,
       landingEnabled: landingEnabled !== false,

@@ -1,5 +1,5 @@
 export function getMenuRestaurantForProfileCore(profile = {}) {
-  return profile?.restaurantId || "";
+  return profile?.canonicalRestaurantId || profile?.restaurantId || "";
 }
 
 export function ensureMenuDataForProfileCore(profile = {}, {
@@ -8,7 +8,7 @@ export function ensureMenuDataForProfileCore(profile = {}, {
 } = {}) {
   const getMenuRestaurantForProfile = typeof getMenuRestaurantForProfileFn === "function"
     ? getMenuRestaurantForProfileFn
-    : ((value) => value?.restaurantId || "");
+    : ((value) => value?.canonicalRestaurantId || value?.restaurantId || "");
   const loadMenuForRestaurant = typeof loadMenuForRestaurantFn === "function"
     ? loadMenuForRestaurantFn
     : null;
@@ -24,7 +24,7 @@ export function ensureFocusDataForProfileCore(profile = {}, {
 } = {}) {
   const getMenuRestaurantForProfile = typeof getMenuRestaurantForProfileFn === "function"
     ? getMenuRestaurantForProfileFn
-    : ((value) => value?.restaurantId || "");
+    : ((value) => value?.canonicalRestaurantId || value?.restaurantId || "");
   const loadFocusForRestaurant = typeof loadFocusForRestaurantFn === "function"
     ? loadFocusForRestaurantFn
     : null;

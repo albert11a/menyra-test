@@ -190,12 +190,28 @@ function resolveSeedPostsForRoute(state = null, restaurantId = "", { max = 8 } =
 function resolveRouteBootstrapSeedForEntry(state = null, entry = null) {
   if (!state || typeof state !== "object") return null;
   const safeEntry = entry && typeof entry === "object" ? entry : {};
-  const safeRestaurantId = String(safeEntry.restaurantId || "").trim();
-  if (!safeRestaurantId) return null;
+  const safeRouteRestaurantId = String(safeEntry.restaurantId || "").trim();
+  if (!safeRouteRestaurantId) return null;
   const candidate = state.__publicRouteBootstrap;
   if (!candidate || typeof candidate !== "object") return null;
-  if (String(candidate.restaurantId || "").trim() !== safeRestaurantId) return null;
-  return candidate;
+  const candidateRestaurantId = String(candidate.restaurantId || "").trim();
+  if (!candidateRestaurantId) return null;
+  if (candidateRestaurantId === safeRouteRestaurantId) return candidate;
+  const safeRouteLookup = normalizeLookupSlug(safeRouteRestaurantId);
+  if (!safeRouteLookup) return null;
+  const candidateRestaurantLookup = normalizeLookupSlug(candidateRestaurantId);
+  if (candidateRestaurantLookup && candidateRestaurantLookup === safeRouteLookup) return candidate;
+  const candidateIdentity = candidate?.businessSnapshot?.identity && typeof candidate.businessSnapshot.identity === "object"
+    ? candidate.businessSnapshot.identity
+    : (candidate?.identity && typeof candidate.identity === "object" ? candidate.identity : {});
+  const candidateIdentityLookup = normalizeLookupSlug(
+    candidateIdentity?.publicSlug
+    || candidateIdentity?.landingSlug
+    || candidateIdentity?.handle
+    || ""
+  );
+  if (candidateIdentityLookup && candidateIdentityLookup === safeRouteLookup) return candidate;
+  return null;
 }
 
 function buildRoutePayloadSeed({
@@ -359,6 +375,7 @@ function buildRoutePayloadSeed({
     owner: "web-direct",
     routeFirst: true,
     restaurantId: safeRestaurantId,
+    canonicalRestaurantId: safeRestaurantId,
     surface: safeEntry.visibleSurface || (safeEntry.topTab === "menu" ? "menu" : "profile"),
     topTab: safeEntry.topTab || "profile",
     contentTab: safeEntry.contentTab || (safeEntry.topTab === "menu" ? "menu" : "posts"),
@@ -437,6 +454,7 @@ export function createPublicProfileDirectEntryController({
       return {
         active: false,
         restaurantId: "",
+        canonicalRestaurantId: "",
         topTab: "profile",
         contentTab: "posts",
         menuAccessSource: "",
@@ -465,6 +483,7 @@ export function createPublicProfileDirectEntryController({
     return {
       active: true,
       restaurantId: pendingProfileRestaurantId,
+      canonicalRestaurantId: "",
       topTab: resolvedTopTab,
       contentTab: normalizeProfileContentTabForTopTab(resolvedTopTab, ""),
       menuAccessSource: resolvedMenuAccessSource,
@@ -489,6 +508,7 @@ export function createPublicProfileDirectEntryController({
       state.__webDirectEntry = {
         active: false,
         restaurantId: "",
+        canonicalRestaurantId: "",
         surface: "",
         topTab: "",
         contentTab: "",
@@ -504,6 +524,7 @@ export function createPublicProfileDirectEntryController({
     state.__webDirectEntry = {
       active: !!active,
       restaurantId,
+      canonicalRestaurantId: String(safeEntry.canonicalRestaurantId || restaurantId).trim() || restaurantId,
       surface: visibleSurface,
       topTab: String(safeEntry.topTab || "").trim().toLowerCase(),
       contentTab: String(safeEntry.contentTab || "").trim().toLowerCase(),
@@ -530,6 +551,13 @@ export function createPublicProfileDirectEntryController({
     const routeSnapshot = routeBootstrap?.businessSnapshot && typeof routeBootstrap.businessSnapshot === "object"
       ? routeBootstrap.businessSnapshot
       : null;
+    const canonicalRestaurantId = String(
+      routeSnapshot?.restaurantId
+      || routeBootstrap?.restaurantId
+      || entry.restaurantId
+      || ""
+    ).trim();
+    const entryRestaurantId = canonicalRestaurantId || String(entry.restaurantId || "").trim();
     const routePostsSeed = Array.isArray(routeBootstrap?.posts?.items)
       ? routeBootstrap.posts.items
       : [];
@@ -564,13 +592,13 @@ export function createPublicProfileDirectEntryController({
       String(routeIdentity?.bio || "").trim() ? "seeded" : "knownEmpty"
     );
     const routeLayoutColor = String(routeBootstrap?.layout?.menuCardColor || "").trim().toLowerCase();
-    const preview = resolveRestaurantPreviewForRoute(state, entry.restaurantId);
+    const preview = resolveRestaurantPreviewForRoute(state, entryRestaurantId || entry.restaurantId);
     const seedBusinessName = String(
       routeIdentity?.name
       || preview?.name
       || preview?.restaurantName
-      || normalizeSeedBusinessLabel(entry.restaurantId)
-    ).trim() || normalizeSeedBusinessLabel(entry.restaurantId);
+      || normalizeSeedBusinessLabel(entryRestaurantId || entry.restaurantId)
+    ).trim() || normalizeSeedBusinessLabel(entryRestaurantId || entry.restaurantId);
     const seedHandle = String(routeIdentity?.handle || preview?.handle || "").trim().replace(/^@/, "").toLowerCase();
     const seedPublicSlug = resolveProfileSeedPublicSlug(routeIdentity, preview);
     const seedAvatar = String(routeIdentity?.avatar || preview?.logoUrl || preview?.logo || preview?.avatar || "").trim();
@@ -582,7 +610,7 @@ export function createPublicProfileDirectEntryController({
     const seededPosts = routePostsState === "seeded"
       ? (routePostsSeed.length
         ? routePostsSeed.slice(0, 12)
-        : (hasCanonicalSnapshot ? [] : resolveSeedPostsForRoute(state, entry.restaurantId, { max: 8 })))
+        : (hasCanonicalSnapshot ? [] : resolveSeedPostsForRoute(state, entryRestaurantId || entry.restaurantId, { max: 8 })))
       : [];
     const hasRouteSeededPosts = routePostsState === "seeded" && seededPosts.length > 0;
     const postsReadySeed = hasRouteSeededPosts || routePostsState === "knownEmpty";
@@ -605,7 +633,8 @@ export function createPublicProfileDirectEntryController({
       following: seedFollowing,
       privateAccount: false,
       role: "business",
-      restaurantId: entry.restaurantId,
+      restaurantId: entryRestaurantId,
+      canonicalRestaurantId: entryRestaurantId,
       publicSlug: seedPublicSlug,
       landingSlug: seedPublicSlug,
       canonicalPublicPath: resolveCanonicalPublicPath(seedPublicSlug),
@@ -625,9 +654,14 @@ export function createPublicProfileDirectEntryController({
       routeBootstrap?.phase || phase,
       routeSnapshotReady ? "ready" : "loading"
     );
+    const entryForSeed = {
+      ...entry,
+      restaurantId: entryRestaurantId,
+      canonicalRestaurantId: entryRestaurantId
+    };
     const routePayloadSeed = buildRoutePayloadSeed({
       state,
-      entry,
+      entry: entryForSeed,
       profile: seededProfile,
       posts: seededPosts,
       routeBootstrap,
@@ -644,6 +678,7 @@ export function createPublicProfileDirectEntryController({
         source: "route",
         owner: "web-direct",
         routeFirst: true,
+        canonicalRestaurantId: entryRestaurantId,
         webPriority: entry.webPriority === true,
         menuFirst: entry.menuFirst === true,
         postsFirst: entry.postsFirst === true,
@@ -657,7 +692,7 @@ export function createPublicProfileDirectEntryController({
       if (routeMenuState === "seeded") {
         state.menu = {
           ...state.menu,
-          restaurantId: entry.restaurantId,
+          restaurantId: entryRestaurantId,
           items: routeMenuSeed,
           loading: false,
           error: "",
@@ -669,7 +704,7 @@ export function createPublicProfileDirectEntryController({
       } else if (routeMenuState === "knownEmpty") {
         state.menu = {
           ...state.menu,
-          restaurantId: entry.restaurantId,
+          restaurantId: entryRestaurantId,
           items: [],
           loading: false,
           error: "",
@@ -680,14 +715,14 @@ export function createPublicProfileDirectEntryController({
         };
       } else {
         const existingMenuTruth = String(state.menu.truthState || "").trim().toLowerCase();
-        const hasKnownMenuTruth = String(state.menu.restaurantId || "").trim() === entry.restaurantId
+        const hasKnownMenuTruth = String(state.menu.restaurantId || "").trim() === entryRestaurantId
           && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
-        const existingItems = String(state.menu.restaurantId || "").trim() === entry.restaurantId && Array.isArray(state.menu.items)
+        const existingItems = String(state.menu.restaurantId || "").trim() === entryRestaurantId && Array.isArray(state.menu.items)
           ? state.menu.items
           : [];
         state.menu = {
           ...state.menu,
-          restaurantId: entry.restaurantId,
+          restaurantId: entryRestaurantId,
           items: existingItems,
           loading: hasKnownMenuTruth ? false : true,
           error: "",
@@ -703,7 +738,7 @@ export function createPublicProfileDirectEntryController({
       if (routeFocusState === "seeded") {
         state.focus = {
           ...state.focus,
-          restaurantId: entry.restaurantId,
+          restaurantId: entryRestaurantId,
           items: routeFocusSeed,
           enabled: routeBootstrap?.focus?.enabled !== false,
           loading: false,
@@ -714,7 +749,7 @@ export function createPublicProfileDirectEntryController({
       } else if (routeFocusState === "knownEmpty") {
         state.focus = {
           ...state.focus,
-          restaurantId: entry.restaurantId,
+          restaurantId: entryRestaurantId,
           items: [],
           enabled: routeBootstrap?.focus?.enabled !== false,
           loading: false,
@@ -724,14 +759,14 @@ export function createPublicProfileDirectEntryController({
         };
       } else {
         const existingFocusTruth = String(state.focus.truthState || "").trim().toLowerCase();
-        const hasKnownFocusTruth = String(state.focus.restaurantId || "").trim() === entry.restaurantId
+        const hasKnownFocusTruth = String(state.focus.restaurantId || "").trim() === entryRestaurantId
           && (existingFocusTruth === "seeded" || existingFocusTruth === "knownempty" || existingFocusTruth === "known-empty");
-        const existingItems = String(state.focus.restaurantId || "").trim() === entry.restaurantId && Array.isArray(state.focus.items)
+        const existingItems = String(state.focus.restaurantId || "").trim() === entryRestaurantId && Array.isArray(state.focus.items)
           ? state.focus.items
           : [];
         state.focus = {
           ...state.focus,
-          restaurantId: entry.restaurantId,
+          restaurantId: entryRestaurantId,
           items: existingItems,
           enabled: routeBootstrap?.focus?.enabled !== false,
           loading: hasKnownFocusTruth ? false : true,
@@ -755,7 +790,7 @@ export function createPublicProfileDirectEntryController({
     state.profileBackTab = "";
     state.drawerOpen = false;
     state.activeTab = "profile";
-    writeWebDirectEntryState(entry, {
+    writeWebDirectEntryState(entryForSeed, {
       active: entry.webPriority === true,
       phase: directPhase
     });
@@ -767,7 +802,7 @@ export function createPublicProfileDirectEntryController({
     if (nextSurface) {
       state.profileSurface = nextSurface;
     }
-    return entry;
+    return entryForSeed;
   }
 
   return {
