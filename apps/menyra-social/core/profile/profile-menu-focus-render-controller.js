@@ -293,7 +293,7 @@ function renderProfileCheckins() {
 }
 
 function isBusinessProfileEntity(profile = {}) {
-  const restaurantId = String(profile?.restaurantId || "").trim();
+  const restaurantId = String(profile?.canonicalRestaurantId || profile?.restaurantId || "").trim();
   if (restaurantId) return true;
   return String(profile?.role || "").trim().toLowerCase() === "business";
 }

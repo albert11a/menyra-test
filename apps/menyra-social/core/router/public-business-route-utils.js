@@ -720,25 +720,11 @@ export function buildCanonicalPublicBusinessPathCore({
   );
   const basePath = `/${encodeURIComponent(safeSlug)}`;
   if (safeTopTab === "menu" || safeContentTab === "menu") return `${basePath}/menu`;
-  if (safeTopTab === "profile" && safeContentTab === "posts" && forcePostsPath === true) {
-    return `${basePath}/posts`;
-  }
-  const pathnameRoute = parsePublicBusinessRoutePathCore(pathnameHint, {
-    allowLegacyRootSlug: false
-  });
-  if (
-    pathnameRoute.matched
-    && pathnameRoute.restaurantId === safeSlug
-    && pathnameRoute.contentTab === "posts"
-    && safeContentTab === "posts"
-    && safeTopTab === "profile"
-    && safeLowerText(pathnameHint).endsWith("/posts")
-  ) {
-    return `${basePath}/posts`;
-  }
   if (isQrLikePublicBusinessAccessSourceCore(accessSource)) {
     return `${basePath}/menu`;
   }
+  void pathnameHint;
+  void forcePostsPath;
   return basePath;
 }
 

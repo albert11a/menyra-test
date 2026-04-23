@@ -992,11 +992,37 @@ export function createPublicProfileRuntimeController({
     const sameVisibleProfile = isSameVisibleProfile(currentProfile || null, nextProfile);
     const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
     const explicitTopTab = String(topTab || "").trim();
+    const normalizedExplicitTopTab = explicitTopTab
+      ? normalizeTopTab(explicitTopTab, "profile")
+      : "";
+    const liveTopTabValue = String(state?.profileTopTab || "").trim();
+    const normalizedCurrentTopTab = liveTopTabValue
+      ? normalizeTopTab(liveTopTabValue, "profile")
+      : "";
+    const currentDirectEntryTopTab = String(currentDirectEntry?.topTab || "").trim();
+    const normalizedCurrentDirectEntryTopTab = currentDirectEntryTopTab
+      ? normalizeTopTab(currentDirectEntryTopTab, "profile")
+      : "";
+    const preserveLiveBusinessTopTab = sameVisibleProfile
+      && normalizedExplicitTopTab
+      && normalizedCurrentTopTab
+      && normalizedExplicitTopTab !== normalizedCurrentTopTab
+      && normalizedCurrentTopTab !== normalizedCurrentDirectEntryTopTab
+      && currentDirectEntry?.routeFirst === true
+      && String(state?.activeTab || "").trim().toLowerCase() === "profile"
+      && !!String(
+        nextProfile?.canonicalRestaurantId
+        || nextProfile?.restaurantId
+        || currentProfile?.canonicalRestaurantId
+        || currentProfile?.restaurantId
+        || ""
+      ).trim();
+    const effectiveExplicitTopTab = preserveLiveBusinessTopTab ? "" : explicitTopTab;
     const preservedTopTab = sameVisibleProfile
       ? String(state?.profileTopTab || "").trim()
       : "";
     const resolvedTopTab = (nextProfile?.canonicalRestaurantId || nextProfile?.restaurantId)
-      ? normalizeTopTab(explicitTopTab || preservedTopTab || "profile", "profile")
+      ? normalizeTopTab(effectiveExplicitTopTab || preservedTopTab || "profile", "profile")
       : "profile";
     const preserveLandingState = sameVisibleProfile
       && previousTopTab === "landing"
@@ -1020,11 +1046,12 @@ export function createPublicProfileRuntimeController({
       : "";
     const normalizedMenuAccessSource = safeMenuAccessSource === "qr" ? "qr" : "";
     const explicitContentTab = String(contentTab || "").trim().toLowerCase();
+    const effectiveExplicitContentTab = preserveLiveBusinessTopTab ? "" : explicitContentTab;
     const nextContentTab = resolvedTopTab === "menu"
       ? "menu"
       : (preserveLandingState && previousContentTab
         ? previousContentTab
-        : normalizeContentTab(explicitContentTab || "posts", "posts"));
+        : normalizeContentTab(effectiveExplicitContentTab || "posts", "posts"));
     const explicitDirectEntry = incomingDirectEntry;
     const isWebEntryTopTab = resolvedTopTab === "profile" || resolvedTopTab === "menu" || resolvedTopTab === "landing";
     const baseDirectEntry = explicitDirectEntry

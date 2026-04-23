@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 # Mnyra Current Phase
 
@@ -95,10 +95,18 @@ Last updated: 2026-04-23
 - Wichtigster Effekt aus Schritt 16:
   bei Business-Pfaden wird der Startup-URL-Kontext auf kanonischen Path plus
   kanonische Query reduziert (keine konkurrierenden `r`/`top`/Alias-Parameter),
-  Initial-Route-Truth priorisiert den Path vor widerspruechlichen Query-IDs,
-  und der Wechsel von `/:slug/menu` nach Posts schreibt konsistent auf
-  `/:slug/posts`. Dadurch werden Parallelpfade und widerspruechliche Route-
-  Wahrheiten weiter reduziert; QR-Kontext bleibt kompatibel.
+  Initial-Route-Truth priorisiert den Path vor widerspruechlichen Query-IDs.
+- Schritt 17 ist abgeschlossen: Der Business-Public-Web-Profilpfad wurde fuer
+  URL-/Surface-Sync weiter vereinfacht und gegen stale Async-TopTab-Rewrites
+  gehaertet.
+- Bewertung von Schritt 17: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 17:
+  aktive Business-URLs sind jetzt `/:slug` (Profil/Posts) und `/:slug/menu`;
+  `/:slug/posts` bleibt Kompatibilitaets-Alias und normalisiert sofort auf
+  `/:slug`. Zusaetzlich kann ein alter asynchroner Open-Flow den vom Nutzer
+  bereits gewechselten TopTab nicht mehr einfach zurueck auf den initialen
+  Request-Tab druecken. Dadurch bleibt Tab<->URL-Sync stabiler; QR bleibt
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -141,7 +149,7 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Nach Schritt 16 ist der naechste moegliche separate Folgeschritt:
+Nach Schritt 17 ist der naechste moegliche separate Folgeschritt:
 gezielte Restkanten-Absicherung fuer seltene Reentry-Pfade unter echten
 Cold-Start-Bedingungen (ohne Cache) innerhalb derselben Public-Web-Profil-
 Scope-Grenze.

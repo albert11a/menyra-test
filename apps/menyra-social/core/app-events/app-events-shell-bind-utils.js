@@ -75,7 +75,14 @@ export function bindAppShellEventsCore({
     : null;
   const getActiveProfile = () => state.profileView?.profile || state.userProfile || {};
   const isBusinessProfile = (profile = getActiveProfile()) => {
-    const restaurantId = String(profile?.restaurantId || "").trim();
+    const restaurantId = String(
+      profile?.canonicalRestaurantId
+      || profile?.restaurantId
+      || state?.profileView?.routePayload?.canonicalRestaurantId
+      || state?.profileView?.routePayload?.restaurantId
+      || state?.profileView?.routePayload?.businessSnapshot?.restaurantId
+      || ""
+    ).trim();
     if (restaurantId) return true;
     return String(profile?.role || "").trim().toLowerCase() === "business";
   };
@@ -774,7 +781,8 @@ export function bindAppShellEventsCore({
       return;
     }
     if (forceProfile) state.activeTab = "profile";
-    const shouldRouteMenuThroughContentTab = nextTab === "menu" && isBusinessProfileView();
+    const isBusinessProfileRoute = isBusinessProfileView();
+    const shouldRouteMenuThroughContentTab = nextTab === "menu" && isBusinessProfileRoute;
     state.profileTopTab = nextTab;
     if (nextTab === "landing") {
       state.profileLandingStep = 0;
@@ -784,6 +792,8 @@ export function bindAppShellEventsCore({
     }
     if (shouldRouteMenuThroughContentTab) {
       state.profileContentTab = "menu";
+    } else if (isBusinessProfileRoute && nextTab === "profile") {
+      state.profileContentTab = "posts";
     }
     state.drawerOpen = false;
     if (nextTab === "menu" || nextTab === "favorites" || nextTab === "cart") {

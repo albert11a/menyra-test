@@ -1,155 +1,180 @@
 Status: DOCUMENTED
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 # Mnyra Schritt 15: Public Web Profile Speed & Reliability Overhaul
 
 ## Schrittziel
 
-Den oeffentlichen Web-Profilpfad fuer `/:slug`, `/:slug/posts`, `/:slug/menu`
-als zusammenhaengenden Kernpfad vereinfachen, damit Content frueher und ruhiger
-erscheint, ohne QR-Flow zu veraendern.
+Den oeffentlichen Business-Web-Profilpfad fuer `/:slug`, `/:slug/posts`, `/:slug/menu`
+zu vereinfachen, so dass:
+
+- Content frueh und ruhig erscheint,
+- URL und aktiver Tab stabil zusammenlaufen,
+- Refresh/Cold-Start leicht wirkt,
+- keine unnoetigen Mehrfach-Aufloesungen oder sichtbaren Reentry-Phasen entstehen,
+- QR unveraendert kompatibel bleibt.
 
 ## Scope
 
 Geaendert wurden nur diese Dateien:
 
-- `apps/menyra-social/core/profile/profile-open-flow-utils.js`
-- `apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`
+- `apps/menyra-social/core/router/public-business-route-utils.js`
+- `apps/menyra-social/social-app.js`
+- `apps/menyra-social/core/profile/public-profile-runtime-controller.js`
+- `apps/menyra-social/core/app-events/app-events-shell-bind-utils.js`
 - `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
-- `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
 - `docs/mnyra-current-phase.md`
 - `docs/mnyra-step15-public-web-profile-speed-reliability-overhaul.md`
+
+Keine UI-/Design-Aenderung, keine `/login`-/Root-/Functions-/Rules-Aenderung,
+kein Smoke-Test, kein Playwright.
 
 ## Phase 1: Vollanalyse (A bis Z)
 
 ### Route-Kontext, Slug-Aufloesung, kanonische `restaurantId`
 
-Normaler Kern:
+Normal:
 
-- Route wird frueh geparst (`/:slug`, `/:slug/posts`, `/:slug/menu` inkl. Source).
-- Web-Direct-Entry seedet Profilsicht und Route-Payload.
-- Kanonische `restaurantId` wird im Kernpfad bereits als Ziel genutzt.
+- Route-Parsen fuer Business (`/:slug`, `/:slug/posts`, `/:slug/menu`) funktioniert.
+- Kanonische `restaurantId` ist in Runtime/Route-Payload grundsaetzlich verfuegbar.
 
 Unnoetig schwer:
 
-- Slug-/Lookup-/kanonische IDs wurden in mehreren Schichten teils strikt getrennt
-  verglichen (Open-Flow, Ensure-Cluster, Menu-/Focus-Surface).
-- Derselbe sichtbare Screen konnte dadurch als neuer Zielkontext gewertet werden.
+- Business-Path-Building konservierte weiterhin `/posts` als dauerhafte aktive URL-Variante.
+- URL-Sync hatte Sonderpfad fuer `menu -> posts` auf `/posts` statt klarer Basis-Kanonik.
 
 ### Bootstrap, Direct-Entry, Open-Flow
 
 Normal:
 
-- Route-first Loading-State wird frueh gesetzt (Header/Profil sichtbar).
-- Danach folgen Posts/Menu/Fokus-Ensures.
+- Route-first Seed zeigt Header frueh.
+- Public-Guest bleibt read-once-orientiert.
 
-Unnoetig schwer / blockierend:
+Wirklich blockierend:
 
-- Im normalen Web-Direct-Menu-First-Pfad lief nach seeded Route-Snapshot oft
-  trotzdem noch ein zusaetzlicher schwerer Live-Resolve-Abschnitt, obwohl
-  fuer den ersten stabilen Screen bereits genug Wahrheit vorhanden war.
+- Asynchrone Business-Open-Updates konnten spaeter erneut mit dem urspruenglichen
+  Request-TopTab (`menu` oder `profile`) in den sichtbaren State schreiben.
+- Wenn Nutzer in der Zwischenzeit Tab gewechselt hat, wurde TopTab teils wieder
+  auf den alten Request-Wert zurueckgedrueckt.
 
 ### Sichtbarer Public-Profile-/Header-/Posts-/Menu-/Fokus-State
 
 Normal:
 
-- Header darf frueh sichtbar sein.
-- Menu/Fokus/Post-Truth werden separat aufgebaut.
+- Header darf vor Posts/Menu final ready sein.
+- Menu/Fokus sind eigene Surface-Reads.
 
-Blockierend:
+Symptomatisch (nicht Kernursache):
 
-- Dedupe und Truth-Matching waren an mehreren Stellen zu streng auf exakt eine
-  ID gebunden.
-- Beim Slug->kanonisch Uebergang konnten Ensures/Loader erneut anspringen und
-  zweite sichtbare Ladephasen ausloesen.
+- URL blieb zeitweise auf `.../menu`, obwohl Nutzer auf Posts gewechselt hatte.
+- Tab/URL-Verhalten wirkte inkonsistent nach Refresh.
 
-### Ensure-Pfade, Loader, Fallbacks, Reentry, Listener
+### Ensure-, Reentry-, URL-Sync-Verhalten
 
-Normal:
+Wirklich blockierend:
 
-- Public-Gast bleibt read-once-orientiert.
-- Realtime-Menu-Meta-Listener fuer Public-Gast bleibt grundsaetzlich aus.
+- URL-Sync hatte einen zusaetzlichen RouteKey-Dedupe-Return, der in Drift-Faellen
+  noetige Korrektur-Replaces unterdruecken konnte.
+- Business-Erkennung in Event-/Render-Schicht stuetzte sich teils nur auf
+  `profile.restaurantId`; bei kanonischer ID im Seed konnte Business-Handling
+  kurzfristig ausfallen.
 
-Blockierend:
+## Einordnung der Befunde
 
-- Menu- und Fokus-Truth-Matching sowie Menu-Fallback-Entscheidungen konnten den
-  aktiven Surface bei ID-Wechsel als "nicht passend" einstufen.
-- Dadurch entstanden Reentry-Loads und sichtbares Pendeln im selben Screen.
+### Was normal ist
 
-Symptome (nicht Hauptursache):
+- Frueher Header-Seed.
+- Read-once Public-Guest-Reads.
+- Alias-Parsing fuer Legacy-/Kompatibilitaetspfade.
 
-- zweite `Menu wird geladen`-Phase,
-- sichtbares Wechseln zwischen Fokus-/Menu-Ladezustaenden,
-- schwerer Refresh/Cold-Start-Eindruck.
+### Was unnoetig schwer ist
+
+- Dauerhafte Beibehaltung von `/posts` als gleichwertige aktive Business-URL.
+- Zusatzlogik fuer `menu -> posts` als eigener URL-Pfad.
+
+### Was wirklich blockiert
+
+1. Stale TopTab-Ueberschreibung aus asynchronen Direct-Open-Updates.
+2. Potenziell unterdrueckte URL-Korrektur durch extra RouteKey-Dedupe-Return.
+3. Fragile Business-Erkennung bei kanonischer ID im Seed-/Route-Payload-Kontext.
+
+### Was nur Symptom ist
+
+- Haengenbleiben auf `.../menu` in einzelnen Wechseln.
+- Inkonsistentes URL-Mitziehen zwischen Menu und Beitraegen.
 
 ## Priorisierung der Ursachen
 
 1. Wichtigste Ursache:
-   Striktes ID-Matching ueber mehrere Ebenen (Ensure/Loader/Render) statt
-   einheitlichem Surface-Zielkontext fuer denselben sichtbaren Public-Screen.
-2. Zweitwichtigste Ursache:
-   Zu schwerer Open-Flow im Web-Direct-Menu-First-Fall trotz seeded Route-Wahrheit.
-3. Drittwichtigste Ursache:
-   Unvollstaendige Dedupe-Strategie bei Posts/Fokus/Menu-Ensures im Slug->Canonical-Handoff.
-4. Weitere relevante Ursachen:
-   konservativer Canonical-Resolver (zusaetzlicher Profil-Doc-Resolve trotz
-   bereits vertrauenswuerdiger Route-Hints) und inkonsistente Fallback-Entscheidungen.
+   stale asynchrone TopTab-Rewrites im Business-Open-Flow (gleiches Profil, alter Request-Tab).
+2. Zweitwichtigste:
+   URL-Sync-Dedupe konnte erforderliche Replace-Korrekturen blockieren.
+3. Drittwichtigste:
+   nicht robuste Business-Erkennung bei kanonischer Restaurant-ID ohne fruehes `restaurantId`-Feld.
+4. Weitere relevante Ursache:
+   zu breite aktive URL-Kanonik (`/:slug` plus persistentes `/posts`).
 
 ## Phase 2: Umsetzung (saubere Vereinfachung)
 
-### A. Open-Flow im normalen Web-Direct-Menu-Pfad gekuerzt
+### 1. Business-URL-Kanonik auf 2 aktive URLs vereinfacht
 
-Datei: `profile-open-flow-utils.js`
+Datei: `core/router/public-business-route-utils.js`
 
-- Nach seeded Loading-Render wird im normalen Web-Direct-Menu-First-Pfad
-  (nicht QR) kurzgeschlossen, wenn Route-Snapshot + Identity-Seed + kanonische
-  ID bereits vorliegen.
-- Das entfernt unnoetige weitere schwere Resolve-Schritte im First-Pass.
+- `buildCanonicalPublicBusinessPathCore(...)` liefert fuer Business-Posts/Profile
+  jetzt immer `/:slug`.
+- `/:slug/menu` bleibt aktive Menu-URL.
+- `/:slug/posts` bleibt parsebar als Kompatibilitaets-Alias, wird aber bei URL-Sync
+  sofort auf `/:slug` normalisiert.
 
-### B. Kanonische ID-Hinweise frueher vertrauen
+### 2. URL-Sync beruhigt und entkoppelt
 
-Datei: `profile-business-menu-runtime-cluster.js`
+Datei: `social-app.js`
 
-- Resolver nutzt jetzt Route-/Snapshot-/WebDirect-Hints fuer
-  `canonicalRestaurantId` als zusaetzliche Vertrauensbasis.
-- Dadurch werden unnoetige zweite Profil-Doc-Resolves im sichtbaren Pfad reduziert.
+- Sonderpfad `forceBusinessPostsPathFromMenuSurface` entfernt.
+- Extra-Return `if (lastSyncedTabRouteKey === routeKey) return;` entfernt,
+  damit noetige Replace-Korrekturen nicht unterdrueckt werden.
 
-### C. Posts-Ensure auf sichtbaren Surface-Kontext dedupliziert
+### 3. Pending-Route-Override enger auf Startup begrenzt
 
-Datei: `profile-business-menu-runtime-cluster.js`
+Datei: `social-app.js`
 
-- Fuer Posts wurde dieselbe Surface-Dedupe-Idee wie bei Menu/Fokus umgesetzt.
-- Ein laufender Ensure fuer denselben sichtbaren Screen wird nicht erneut
-  gestartet, nur weil der Eingangsschluessel von Slug auf kanonische ID wechselt.
+- Pending-Business-TopTab wird nur noch bevorzugt, solange keine live erkennbare
+  Business-Entitaet vorhanden ist.
+- Live-Business-State bekommt frueher Prioritaet gegenueber stale Pending-Werten.
 
-### D. Menu-/Fokus-Render auf gemeinsame Surface-Target-Ids gehoben
+### 4. Business-Erkennung robust gegen kanonische ID-Seeds
 
-Datei: `profile-menu-focus-render-controller.js`
+Dateien:
 
-- Menu-Truth/Fokus-Truth nutzen jetzt Surface-Target-Matching statt nur
-  `state.*.restaurantId === restaurantId`.
-- Fokus-Auto-Ensure laeuft nur, wenn Fokus wirklich nicht zur aktuellen
-  sichtbaren Surface gehoert.
-- Ziel: weniger sichtbares Pendeln, ruhigere erste stabile Darstellung.
+- `core/app-events/app-events-shell-bind-utils.js`
+- `core/profile/profile-menu-focus-render-controller.js`
 
-### E. Menu-Loader/Fallbacks erkennen denselben sichtbaren Screen robuster
+- Business-Detection nutzt jetzt auch `canonicalRestaurantId` sowie Route-Payload-
+  Restaurant-Hints.
+- Dadurch bleiben Menu-/Posts-Tab-Interaktionen stabiler, auch in Seed-/Uebergangsphasen.
 
-Datei: `session-data-runtime-controller.js`
+### 5. Schutz gegen stale TopTab-Rueckschreiben aus async Updates
 
-- Menu-Load-Entscheidungen (`hasVisibleMenuSeed`, `keepCurrentItems`,
-  Error-Fallback) nutzen jetzt Surface-Matching gegen sichtbare Target-Ids.
-- Dadurch weniger unnoetiges Leeren/Neuaufbauen bei Slug->Canonical-Uebergang.
+Datei: `core/profile/public-profile-runtime-controller.js`
 
-## Warum der Pfad jetzt leichter und zuverlaessiger ist
+- Bei Updates auf dasselbe sichtbare Business-Profil wird ein expliziter TopTab-
+  Override aus altem Route-Request nicht mehr blind angewandt, wenn der Nutzer
+  bereits sichtbar auf einen anderen TopTab gewechselt hat.
+- Gleichzeitig bleibt absichtlicher Route-Wechsel (z. B. echte Navigation)
+  weiterhin moeglich.
 
-- Ein oeffentlicher Surface-Kontext wird durchgaengiger gleich bewertet.
-- Weniger doppelte Resolve-/Ensure-Pfade fuer denselben sichtbaren Screen.
-- Weniger sichtbare zweite/dritte Ladephase im selben Refresh.
-- Public-Gast bleibt read-once-orientiert, ohne Request-/Listener-Sturm.
+## Warum es jetzt leichter und zuverlaessiger laedt
+
+- Ein klarerer URL-Vertrag reduziert Drift (`/:slug` und `/:slug/menu`).
+- Der aktive Nutzer-Tab wird nicht mehr spaet von alten async Request-Parametern
+  zurueckgesetzt.
+- URL-Sync korrigiert konsistenter und haengt weniger von einem zusaetzlichen
+  Dedupe-Guard ab.
+- Business-Tab-Handling bleibt auch in Seed-/Cold-Start-Uebergaengen konsistent.
 
 ## QR-Invariante
 
-Bewusst unveraendert:
+Unveraendert belassen:
 
 - QR-URLs
 - QR-Logik
@@ -158,28 +183,28 @@ Bewusst unveraendert:
 
 ## Bewusst nicht geaendert
 
-- Keine UI-/Design-Aenderungen.
-- `/login` unveraendert.
-- Root `/` unveraendert.
+- Keine UI-/Design-Anpassung.
+- Kein `/login`-Umbau.
+- Kein Root `/`-Umbau.
 - Keine Firebase Functions.
 - Keine Firestore Rules.
-- Keine anderen Produktbereiche ausserhalb Public-Web-Profilpfad.
-- Kein Smoke-Test, kein Playwright.
+- Keine anderen Produktbereiche ausserhalb Public-Business-Profilpfad.
 
 ## Technische Selbstpruefung
 
-- `node --check apps/menyra-social/core/profile/profile-open-flow-utils.js`
-- `node --check apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`
+- `node --check apps/menyra-social/core/router/public-business-route-utils.js`
+- `node --check apps/menyra-social/social-app.js`
+- `node --check apps/menyra-social/core/profile/public-profile-runtime-controller.js`
+- `node --check apps/menyra-social/core/app-events/app-events-shell-bind-utils.js`
 - `node --check apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
-- `node --check apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
 
 ## Manuelle Testliste
 
-1. `/:slug` hard refresh: Header + Posts erscheinen ruhig und ohne sichtbare Reentry-Spruenge.
-2. `/:slug/posts` hard refresh: Posts erscheinen zuverlaessig, Tab bleibt klickbar.
-3. `/:slug/menu` hard refresh: Produkte erscheinen (wenn vorhanden) ohne doppelte sichtbare Menu-Loading-Phase.
-4. Zwischen `/:slug`, `/:slug/posts`, `/:slug/menu` wechseln: keine Lade-Schleifen, Menu-/Posts-Tab bleiben klickbar.
-5. QR-Link oeffnen: landet weiter im Profil mit offenem Menu, Tisch-/Bestellkontext bleibt korrekt.
+1. `/:slug` laden und zwischen Menu/Beitraege wechseln: URL folgt stabil (`/:slug` <-> `/:slug/menu`).
+2. `/:slug/posts` direkt laden: URL normalisiert sofort auf `/:slug`, Inhalte bleiben sichtbar.
+3. `/:slug/menu` Refresh (Cold Start): Menu-Produkte erscheinen, danach mehrmals Tab-Wechsel ohne URL-Haenger.
+4. Mehrfaches Hin-und-her zwischen Menu und Beitraegen ohne Refresh: URL bleibt synchron.
+5. QR-Link oeffnen: weiterhin Menu offen mit unveraendertem Tisch-/Bestellkontext.
 
 ## Bewertung
 
