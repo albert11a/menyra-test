@@ -225,11 +225,24 @@ function buildRoutePayloadSeed({
   const safeEntry = entry && typeof entry === "object" ? entry : {};
   const safeProfile = profile && typeof profile === "object" ? profile : {};
   const safePosts = Array.isArray(posts) ? posts : [];
-  const safeRestaurantId = String(safeProfile.restaurantId || safeEntry.restaurantId || "").trim();
   const safeRouteBootstrap = routeBootstrap && typeof routeBootstrap === "object" ? routeBootstrap : null;
   const safeSnapshot = safeRouteBootstrap?.businessSnapshot && typeof safeRouteBootstrap.businessSnapshot === "object"
     ? safeRouteBootstrap.businessSnapshot
     : null;
+  const safeCanonicalRestaurantId = String(
+    safeProfile.canonicalRestaurantId
+    || safeEntry.canonicalRestaurantId
+    || safeRouteBootstrap?.canonicalRestaurantId
+    || safeSnapshot?.restaurantId
+    || safeRouteBootstrap?.restaurantId
+    || ""
+  ).trim();
+  const safeRestaurantId = String(
+    safeCanonicalRestaurantId
+    || safeProfile.restaurantId
+    || safeEntry.restaurantId
+    || ""
+  ).trim();
   const safeTruth = safeSnapshot?.truth && typeof safeSnapshot.truth === "object"
     ? safeSnapshot.truth
     : (safeRouteBootstrap?.truth && typeof safeRouteBootstrap.truth === "object" ? safeRouteBootstrap.truth : {});
@@ -375,7 +388,7 @@ function buildRoutePayloadSeed({
     owner: "web-direct",
     routeFirst: true,
     restaurantId: safeRestaurantId,
-    canonicalRestaurantId: safeRestaurantId,
+    canonicalRestaurantId: safeCanonicalRestaurantId,
     surface: safeEntry.visibleSurface || (safeEntry.topTab === "menu" ? "menu" : "profile"),
     topTab: safeEntry.topTab || "profile",
     contentTab: safeEntry.contentTab || (safeEntry.topTab === "menu" ? "menu" : "posts"),
@@ -524,7 +537,7 @@ export function createPublicProfileDirectEntryController({
     state.__webDirectEntry = {
       active: !!active,
       restaurantId,
-      canonicalRestaurantId: String(safeEntry.canonicalRestaurantId || restaurantId).trim() || restaurantId,
+      canonicalRestaurantId: String(safeEntry.canonicalRestaurantId || "").trim(),
       surface: visibleSurface,
       topTab: String(safeEntry.topTab || "").trim().toLowerCase(),
       contentTab: String(safeEntry.contentTab || "").trim().toLowerCase(),
@@ -553,8 +566,8 @@ export function createPublicProfileDirectEntryController({
       : null;
     const canonicalRestaurantId = String(
       routeSnapshot?.restaurantId
+      || routeBootstrap?.canonicalRestaurantId
       || routeBootstrap?.restaurantId
-      || entry.restaurantId
       || ""
     ).trim();
     const entryRestaurantId = canonicalRestaurantId || String(entry.restaurantId || "").trim();
@@ -634,7 +647,7 @@ export function createPublicProfileDirectEntryController({
       privateAccount: false,
       role: "business",
       restaurantId: entryRestaurantId,
-      canonicalRestaurantId: entryRestaurantId,
+      canonicalRestaurantId,
       publicSlug: seedPublicSlug,
       landingSlug: seedPublicSlug,
       canonicalPublicPath: resolveCanonicalPublicPath(seedPublicSlug),
@@ -657,7 +670,7 @@ export function createPublicProfileDirectEntryController({
     const entryForSeed = {
       ...entry,
       restaurantId: entryRestaurantId,
-      canonicalRestaurantId: entryRestaurantId
+      canonicalRestaurantId
     };
     const routePayloadSeed = buildRoutePayloadSeed({
       state,
@@ -678,7 +691,7 @@ export function createPublicProfileDirectEntryController({
         source: "route",
         owner: "web-direct",
         routeFirst: true,
-        canonicalRestaurantId: entryRestaurantId,
+        canonicalRestaurantId,
         webPriority: entry.webPriority === true,
         menuFirst: entry.menuFirst === true,
         postsFirst: entry.postsFirst === true,

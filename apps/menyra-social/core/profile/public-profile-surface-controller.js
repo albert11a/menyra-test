@@ -326,10 +326,10 @@ function resolveProfileCanonicalRestaurantId(profile = null, routePayload = null
     : null;
   return String(
     safeProfile?.canonicalRestaurantId
-    || safeProfile?.restaurantId
     || safeRoutePayload?.canonicalRestaurantId
-    || safeRoutePayload?.restaurantId
     || snapshot?.restaurantId
+    || safeProfile?.restaurantId
+    || safeRoutePayload?.restaurantId
     || ""
   ).trim();
 }
@@ -471,7 +471,12 @@ export function resolveVisibleProfileSurface(state = {}, {
     target: {
       key: targetRestaurantId || targetUid || targetHandle || "",
       restaurantId: targetRestaurantId,
-      canonicalRestaurantId: String(profile?.canonicalRestaurantId || "").trim(),
+      canonicalRestaurantId: String(
+        profile?.canonicalRestaurantId
+        || routePayload?.canonicalRestaurantId
+        || routePayload?.businessSnapshot?.restaurantId
+        || ""
+      ).trim(),
       uid: targetUid,
       handle: targetHandle
     },

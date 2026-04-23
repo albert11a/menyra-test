@@ -53,13 +53,11 @@ Last updated: 2026-04-23
   `canonicalRestaurantId` wird jetzt durchgaengig vom Route-/Direct-Entry-Seed
   ueber Loading/Resolved-State bis in Posts/Menu/Fokus-Ensure getragen;
   Public-Guest-Reads bleiben read-once und unnoetige zweite/dritte Resolve-Ketten
-  im Kernpfad wurden reduziert.
-- Fehlgeschlagener Versuch nach Schritt 9:
-  `4805fcf` (canonicalRestaurantId-Hint-Fix) wurde wieder zurueckgenommen.
-- Grund fuer die Ruecknahme:
-  `/:slug/menu` zeigt nach Refresh keine Produkte.
-- Aktueller Stand:
-  Wir sind wieder auf dem letzten stabilen Stand vor diesem fehlgeschlagenen Fix.
+  im Kernpfad wurden reduziert; insbesondere wird ein unaufgeloester Slug nicht mehr
+  vorschnell als kanonische ID festgeschrieben.
+- Historischer Hinweis:
+  Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
+  der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
 - Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
 - Referenz: [docs/mnyra-step5-isolation-public-bootstrap-rollback.md](./mnyra-step5-isolation-public-bootstrap-rollback.md)

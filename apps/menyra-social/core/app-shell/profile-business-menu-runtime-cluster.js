@@ -95,13 +95,17 @@ export function createProfileBusinessMenuRuntimeCluster({
   const resolveCanonicalRestaurantId = async (profile = {}) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId) return "";
+    const cachedCanonicalRestaurantId = String(canonicalRestaurantIdCache.get(requestedRestaurantId) || "").trim();
     const canonicalRestaurantIdHint = String(profile?.canonicalRestaurantId || "").trim();
     if (canonicalRestaurantIdHint) {
-      canonicalRestaurantIdCache.set(requestedRestaurantId, canonicalRestaurantIdHint);
-      canonicalRestaurantIdCache.set(canonicalRestaurantIdHint, canonicalRestaurantIdHint);
-      return canonicalRestaurantIdHint;
+      const hintEqualsRequested = canonicalRestaurantIdHint === requestedRestaurantId;
+      const hasTrustedCachedHint = cachedCanonicalRestaurantId && cachedCanonicalRestaurantId === canonicalRestaurantIdHint;
+      if (!hintEqualsRequested || !fetchBusinessProfileDoc || hasTrustedCachedHint) {
+        canonicalRestaurantIdCache.set(requestedRestaurantId, canonicalRestaurantIdHint);
+        canonicalRestaurantIdCache.set(canonicalRestaurantIdHint, canonicalRestaurantIdHint);
+        return canonicalRestaurantIdHint;
+      }
     }
-    const cachedCanonicalRestaurantId = String(canonicalRestaurantIdCache.get(requestedRestaurantId) || "").trim();
     if (cachedCanonicalRestaurantId) return cachedCanonicalRestaurantId;
     if (!fetchBusinessProfileDoc) {
       canonicalRestaurantIdCache.set(requestedRestaurantId, requestedRestaurantId);

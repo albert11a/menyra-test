@@ -231,10 +231,10 @@ export function createPublicProfileRuntimeController({
       : null;
     return String(
       safeProfile?.canonicalRestaurantId
-      || safeProfile?.restaurantId
       || safeRoutePayload?.canonicalRestaurantId
-      || safeRoutePayload?.restaurantId
       || snapshot?.restaurantId
+      || safeProfile?.restaurantId
+      || safeRoutePayload?.restaurantId
       || ""
     ).trim();
   }
@@ -409,7 +409,7 @@ export function createPublicProfileRuntimeController({
       ? state.__webDirectEntry
       : null;
     const safeRestaurantId = String(restaurantId || "").trim();
-    const safeCanonicalRestaurantId = String(canonicalRestaurantId || safeRestaurantId).trim();
+    const safeCanonicalRestaurantId = String(canonicalRestaurantId || "").trim();
     const entry = directEntry && typeof directEntry === "object" ? directEntry : null;
     const entryOwner = String(entry?.owner || "").trim().toLowerCase();
     const isDirectWebOwner = entryOwner === "web-direct";
@@ -431,7 +431,7 @@ export function createPublicProfileRuntimeController({
       ...(current || {}),
       active: true,
       restaurantId: safeRestaurantId,
-      canonicalRestaurantId: safeCanonicalRestaurantId || safeRestaurantId,
+      canonicalRestaurantId: safeCanonicalRestaurantId,
       surface,
       topTab: safeTopTab || surface,
       contentTab: safeContentTab || (surface === "menu" ? "menu" : "posts"),
@@ -525,12 +525,21 @@ export function createPublicProfileRuntimeController({
     const safeIdentity = currentPayload?.identity && typeof currentPayload.identity === "object"
       ? currentPayload.identity
       : {};
+    const currentSnapshot = currentPayload?.businessSnapshot && typeof currentPayload.businessSnapshot === "object"
+      ? currentPayload.businessSnapshot
+      : null;
     const safePosts = Array.isArray(posts) ? posts : [];
-    const safeRestaurantId = String(
+    const safeCanonicalRestaurantId = String(
       safeProfile.canonicalRestaurantId
-      || safeProfile.restaurantId
       || currentPayload?.canonicalRestaurantId
+      || currentSnapshot?.restaurantId
+      || ""
+    ).trim();
+    const safeRestaurantId = String(
+      safeCanonicalRestaurantId
+      || safeProfile.restaurantId
       || currentPayload?.restaurantId
+      || currentSnapshot?.restaurantId
       || ""
     ).trim();
     const safeTopTab = String(topTab || "").trim().toLowerCase() || "profile";
@@ -549,9 +558,6 @@ export function createPublicProfileRuntimeController({
     const postsCount = Math.max(safePosts.length, postsCountFromPayload);
     const menuCount = Math.max(menuItemsFromLive.length, menuCountFromPayload);
     const focusCount = Math.max(focusItemsFromLive.length, focusCountFromPayload);
-    const currentSnapshot = currentPayload?.businessSnapshot && typeof currentPayload.businessSnapshot === "object"
-      ? currentPayload.businessSnapshot
-      : null;
     let postsTruthState = normalizeTruthState(
       currentSnapshot?.posts?.state
       || currentPayload?.posts?.state
@@ -714,7 +720,7 @@ export function createPublicProfileRuntimeController({
       owner: "web-direct",
       routeFirst: true,
       restaurantId: safeRestaurantId,
-      canonicalRestaurantId: safeRestaurantId,
+      canonicalRestaurantId: safeCanonicalRestaurantId,
       surface: safeTopTab === "menu" ? "menu" : "profile",
       topTab: safeTopTab,
       contentTab: safeContentTab,
@@ -958,8 +964,6 @@ export function createPublicProfileRuntimeController({
     const resolvedCanonicalRestaurantId = String(
       incomingCanonicalRestaurantId
       || currentCanonicalRestaurantId
-      || profile?.restaurantId
-      || currentProfile?.restaurantId
       || ""
     ).trim();
     const nextProfile = profile ? {
@@ -1092,7 +1096,12 @@ export function createPublicProfileRuntimeController({
       menuAccessSource: normalizedMenuAccessSource,
       tableNumber: safeTableNumber
     });
-    const nextCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(nextProfile, nextRoutePayload);
+    const nextCanonicalRestaurantId = String(
+      nextProfile?.canonicalRestaurantId
+      || nextRoutePayload?.canonicalRestaurantId
+      || nextRoutePayload?.businessSnapshot?.restaurantId
+      || ""
+    ).trim();
     const nextView = {
       profile: nextProfile,
       posts: projectedPosts,

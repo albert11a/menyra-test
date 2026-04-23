@@ -491,14 +491,45 @@ function resolveWebRoutePayloadForRestaurant(routePayload = null, restaurantId =
   if (!routePayload || typeof routePayload !== "object") return null;
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId) return null;
+  const normalizeRouteLookupKey = (value = "") => String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const snapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
+    ? routePayload.businessSnapshot
+    : null;
   const payloadRestaurantId = String(
     routePayload?.canonicalRestaurantId
+    || snapshot?.restaurantId
     || routePayload?.restaurantId
     || ""
   ).trim();
-  return payloadRestaurantId === safeRestaurantId
-    ? routePayload
+  if (payloadRestaurantId && payloadRestaurantId === safeRestaurantId) {
+    return routePayload;
+  }
+  const requestedLookup = normalizeRouteLookupKey(safeRestaurantId);
+  if (!requestedLookup) return null;
+  const snapshotIdentity = snapshot?.identity && typeof snapshot.identity === "object"
+    ? snapshot.identity
     : null;
+  const payloadIdentity = routePayload?.identity && typeof routePayload.identity === "object"
+    ? routePayload.identity
+    : null;
+  const payloadLookupCandidates = [
+    snapshotIdentity?.publicSlug,
+    snapshotIdentity?.landingSlug,
+    snapshotIdentity?.handle,
+    payloadIdentity?.publicSlug,
+    payloadIdentity?.landingSlug,
+    payloadIdentity?.handle,
+    payloadRestaurantId
+  ];
+  const hasLookupMatch = payloadLookupCandidates.some((candidate) => {
+    const normalized = normalizeRouteLookupKey(candidate);
+    return !!normalized && normalized === requestedLookup;
+  });
+  return hasLookupMatch ? routePayload : null;
 }
 
 function applyWebDirectRouteSeedFromBootstrap({
@@ -510,21 +541,39 @@ function applyWebDirectRouteSeedFromBootstrap({
   maxPosts = 8
 } = {}) {
   if (!state || typeof state !== "object") return false;
-  const safeRestaurantId = String(routeRestaurantId || "").trim();
-  if (!safeRestaurantId) return false;
+  const requestedRouteRestaurantId = String(routeRestaurantId || "").trim();
+  if (!requestedRouteRestaurantId) return false;
   const view = state.profileView && typeof state.profileView === "object" ? state.profileView : null;
   const profile = view?.profile && typeof view.profile === "object" ? view.profile : null;
   if (!view || !profile) return false;
-  const visibleRestaurantId = String(profile.restaurantId || "").trim();
-  if (visibleRestaurantId && visibleRestaurantId !== safeRestaurantId) return false;
   const directEntry = view?.directEntry && typeof view.directEntry === "object" ? view.directEntry : null;
   const directOwner = String(directEntry?.owner || "").trim().toLowerCase();
   if (directOwner !== "web-direct") return false;
-  const safeRoutePayload = resolveWebRoutePayloadForRestaurant(routePayload, safeRestaurantId);
+  const safeRoutePayload = resolveWebRoutePayloadForRestaurant(routePayload, requestedRouteRestaurantId);
   if (!safeRoutePayload) return false;
   const routeSnapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
     ? safeRoutePayload.businessSnapshot
     : null;
+  const safeRestaurantId = String(
+    safeRoutePayload?.canonicalRestaurantId
+    || routeSnapshot?.restaurantId
+    || safeRoutePayload?.restaurantId
+    || requestedRouteRestaurantId
+    || ""
+  ).trim();
+  if (!safeRestaurantId) return false;
+  const visibleRestaurantId = String(
+    profile.canonicalRestaurantId
+    || profile.restaurantId
+    || ""
+  ).trim();
+  if (
+    visibleRestaurantId
+    && visibleRestaurantId !== requestedRouteRestaurantId
+    && visibleRestaurantId !== safeRestaurantId
+  ) {
+    return false;
+  }
   const routeIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
     ? routeSnapshot.identity
     : (safeRoutePayload?.identity && typeof safeRoutePayload.identity === "object"
