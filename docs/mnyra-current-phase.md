@@ -31,8 +31,12 @@ Last updated: 2026-04-23
   der Header wird bewusst frueh ueber Route-/Preview-/Fallback-Identitaet als `ready` gewertet,
   waehrend Posts/Menu weiter an spaeteren Ensure-/Resolver-Pfaden haengen;
   die wahrscheinlichste Hauptursache bleibt der fehlende saubere Handoff der kanonischen `restaurantId`.
-- Schritt 10 ist abgeschlossen: kanonische `restaurantId` wird jetzt als enger Hint in den Public-Web-Direct-Seed-/Bootstrap-/Visible-Profile-Pfad mitgetragen und im Posts/Menu/Fokus-Ensure als First-Choice genutzt.
-- Bewertung von Schritt 10: `bestanden mit kleinem Rest-Risiko`.
+- Fehlgeschlagener Versuch nach Schritt 9:
+  `4805fcf` (canonicalRestaurantId-Hint-Fix) wurde wieder zurueckgenommen.
+- Grund fuer die Ruecknahme:
+  `/:slug/menu` zeigt nach Refresh keine Produkte.
+- Aktueller Stand:
+  Wir sind wieder auf dem letzten stabilen Stand vor diesem fehlgeschlagenen Fix.
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
 - Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
 - Referenz: [docs/mnyra-step5-isolation-public-bootstrap-rollback.md](./mnyra-step5-isolation-public-bootstrap-rollback.md)
@@ -40,7 +44,6 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step7-public-guest-ensure-loop-stability-fix.md](./mnyra-step7-public-guest-ensure-loop-stability-fix.md)
 - Referenz: [docs/mnyra-step8-public-cold-start-request-analysis.md](./mnyra-step8-public-cold-start-request-analysis.md)
 - Referenz: [docs/mnyra-step9-mainline-public-delayed-content-analysis.md](./mnyra-step9-mainline-public-delayed-content-analysis.md)
-- Referenz: [docs/mnyra-step10-public-canonical-restaurantid-hint-fix.md](./mnyra-step10-public-canonical-restaurantid-hint-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -66,9 +69,12 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Nur wenn nach manueller Pruefung noch ein sichtbarer Rest-Gap bleibt:
-erneut klein analysieren, ob danach noch ein enger Folgeschritt noetig ist.
-Kein breiter Bootstrap-, Routing- oder Surface-Umbau ohne neuen klaren Befund.
+Wenn das Restproblem weiter adressiert wird, dann als kleinster Minischritt:
+kanonische `restaurantId` aus Direct-Route-Bootstrap/Open-Flow als `canonicalRestaurantId`
+sauber in die Public-Ensure-Pfade weiterreichen;
+kein Bootstrap-Umbau, kein Routing-Umbau, kein breiter Performance-Refactor.
+
+Der fehlgeschlagene Versuch `4805fcf` gilt dabei nicht als stabiler Ausgangspunkt.
 
 ## Guardrails fuer die naechsten Schritte
 

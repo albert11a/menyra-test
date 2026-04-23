@@ -194,20 +194,7 @@ function resolveRouteBootstrapSeedForEntry(state = null, entry = null) {
   if (!safeRestaurantId) return null;
   const candidate = state.__publicRouteBootstrap;
   if (!candidate || typeof candidate !== "object") return null;
-  const candidateRestaurantId = String(candidate.restaurantId || "").trim();
-  if (candidateRestaurantId === safeRestaurantId) return candidate;
-  const entryLookupSlug = normalizeLookupSlug(safeRestaurantId);
-  if (!entryLookupSlug) return null;
-  const candidateLookupSlug = normalizeLookupSlug(
-    candidate?.businessSnapshot?.identity?.publicSlug
-    || candidate?.identity?.publicSlug
-    || candidate?.businessSnapshot?.identity?.landingSlug
-    || candidate?.identity?.landingSlug
-    || candidate?.businessSnapshot?.identity?.handle
-    || candidate?.identity?.handle
-    || ""
-  );
-  if (candidateLookupSlug !== entryLookupSlug) return null;
+  if (String(candidate.restaurantId || "").trim() !== safeRestaurantId) return null;
   return candidate;
 }
 
@@ -578,11 +565,6 @@ export function createPublicProfileDirectEntryController({
     );
     const routeLayoutColor = String(routeBootstrap?.layout?.menuCardColor || "").trim().toLowerCase();
     const preview = resolveRestaurantPreviewForRoute(state, entry.restaurantId);
-    const seedCanonicalRestaurantId = String(
-      routeSnapshot?.restaurantId
-      || routeBootstrap?.restaurantId
-      || ""
-    ).trim();
     const seedBusinessName = String(
       routeIdentity?.name
       || preview?.name
@@ -624,7 +606,6 @@ export function createPublicProfileDirectEntryController({
       privateAccount: false,
       role: "business",
       restaurantId: entry.restaurantId,
-      canonicalRestaurantId: seedCanonicalRestaurantId,
       publicSlug: seedPublicSlug,
       landingSlug: seedPublicSlug,
       canonicalPublicPath: resolveCanonicalPublicPath(seedPublicSlug),

@@ -5,13 +5,6 @@ function isGenericBusinessBootstrapLabel(value = "") {
   return String(value || "").trim().toLowerCase() === "business";
 }
 
-function normalizeBootstrapBusinessLookup(value = "") {
-  return String(value || "").trim().toLowerCase()
-    .replace(/^@+/, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function buildRestaurantBootstrapSignature(restaurants = []) {
   return (Array.isArray(restaurants) ? restaurants : [])
     .map((rest) => {
@@ -496,20 +489,9 @@ function resolveWebRoutePayloadForRestaurant(routePayload = null, restaurantId =
   if (!routePayload || typeof routePayload !== "object") return null;
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId) return null;
-  const routeRestaurantId = String(routePayload?.restaurantId || "").trim();
-  if (routeRestaurantId === safeRestaurantId) return routePayload;
-  const requestedLookup = normalizeBootstrapBusinessLookup(safeRestaurantId);
-  if (!requestedLookup) return null;
-  const routeLookup = normalizeBootstrapBusinessLookup(
-    routePayload?.businessSnapshot?.identity?.publicSlug
-    || routePayload?.identity?.publicSlug
-    || routePayload?.businessSnapshot?.identity?.landingSlug
-    || routePayload?.identity?.landingSlug
-    || routePayload?.businessSnapshot?.identity?.handle
-    || routePayload?.identity?.handle
-    || ""
-  );
-  return routeLookup === requestedLookup ? routePayload : null;
+  return String(routePayload?.restaurantId || "").trim() === safeRestaurantId
+    ? routePayload
+    : null;
 }
 
 function applyWebDirectRouteSeedFromBootstrap({
@@ -641,17 +623,8 @@ function applyWebDirectRouteSeedFromBootstrap({
   const nextFollowers = normalizeCountOrNull(routeIdentity?.followers);
   const nextFollowing = normalizeCountOrNull(routeIdentity?.following);
   const nextBio = String(routeIdentity?.bio || "").trim();
-  const canonicalRestaurantId = String(
-    safeRoutePayload?.restaurantId
-    || routeSnapshot?.restaurantId
-    || ""
-  ).trim();
   if (!String(profile.restaurantId || "").trim()) {
     profile.restaurantId = safeRestaurantId;
-    changed = true;
-  }
-  if (canonicalRestaurantId && canonicalRestaurantId !== String(profile.canonicalRestaurantId || "").trim()) {
-    profile.canonicalRestaurantId = canonicalRestaurantId;
     changed = true;
   }
   if (nextName && nextName !== String(profile.name || "").trim()) {
