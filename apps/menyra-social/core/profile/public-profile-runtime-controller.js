@@ -819,6 +819,8 @@ export function createPublicProfileRuntimeController({
           ? profile.pendingFollowRequest
           : currentProfile?.pendingFollowRequest
       } : {}),
+      canonicalRestaurantId: String(profile?.canonicalRestaurantId || "").trim()
+        || (sameVisibleIncomingProfile ? String(currentProfile?.canonicalRestaurantId || "").trim() : ""),
       posts: projectedPosts
     } : profile;
 
