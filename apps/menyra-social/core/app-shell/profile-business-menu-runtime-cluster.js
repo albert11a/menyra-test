@@ -38,7 +38,12 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   let publicProfilePostsEnsurePromise = null;
   let publicProfilePostsEnsureTargetId = "";
+  let publicProfileMenuEnsurePromise = null;
+  let publicProfileMenuEnsureTargetId = "";
+  let publicProfileFocusEnsurePromise = null;
+  let publicProfileFocusEnsureTargetId = "";
   const canonicalRestaurantIdPromises = new Map();
+  const canonicalRestaurantIdCache = new Map();
 
   const getVisiblePublicProfileView = () => {
     const view = state?.profileView && typeof state.profileView === "object"
@@ -89,7 +94,19 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   const resolveCanonicalRestaurantId = async (profile = {}) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
-    if (!requestedRestaurantId || !fetchBusinessProfileDoc) return requestedRestaurantId;
+    if (!requestedRestaurantId) return "";
+    const canonicalRestaurantIdHint = String(profile?.canonicalRestaurantId || "").trim();
+    if (canonicalRestaurantIdHint) {
+      canonicalRestaurantIdCache.set(requestedRestaurantId, canonicalRestaurantIdHint);
+      canonicalRestaurantIdCache.set(canonicalRestaurantIdHint, canonicalRestaurantIdHint);
+      return canonicalRestaurantIdHint;
+    }
+    const cachedCanonicalRestaurantId = String(canonicalRestaurantIdCache.get(requestedRestaurantId) || "").trim();
+    if (cachedCanonicalRestaurantId) return cachedCanonicalRestaurantId;
+    if (!fetchBusinessProfileDoc) {
+      canonicalRestaurantIdCache.set(requestedRestaurantId, requestedRestaurantId);
+      return requestedRestaurantId;
+    }
     const currentPromise = canonicalRestaurantIdPromises.get(requestedRestaurantId);
     if (currentPromise) return currentPromise;
     const nextPromise = Promise.resolve(
@@ -98,7 +115,12 @@ export function createProfileBusinessMenuRuntimeCluster({
         restaurant: profile
       })
     )
-      .then((profileDoc) => String(profileDoc?.id || requestedRestaurantId).trim() || requestedRestaurantId)
+      .then((profileDoc) => {
+        const resolvedRestaurantId = String(profileDoc?.id || requestedRestaurantId).trim() || requestedRestaurantId;
+        canonicalRestaurantIdCache.set(requestedRestaurantId, resolvedRestaurantId);
+        canonicalRestaurantIdCache.set(resolvedRestaurantId, resolvedRestaurantId);
+        return resolvedRestaurantId;
+      })
       .catch(() => requestedRestaurantId)
       .finally(() => {
         canonicalRestaurantIdPromises.delete(requestedRestaurantId);
@@ -121,19 +143,39 @@ export function createProfileBusinessMenuRuntimeCluster({
   };
 
   const ensureMenuDataForProfile = (profile = state?.profileView?.profile || state?.userProfile) => {
-    void Promise.resolve().then(async () => {
+    const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
+    if (!requestedRestaurantId) return;
+    if (publicProfileMenuEnsurePromise && publicProfileMenuEnsureTargetId === requestedRestaurantId) return;
+    const request = Promise.resolve().then(async () => {
       const restaurantId = await resolveProfileRestaurantId(profile);
       if (!restaurantId) return;
-      void loadMenuForRestaurant(restaurantId, { source: "public" });
+      await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
+    }).finally(() => {
+      if (publicProfileMenuEnsurePromise === request) {
+        publicProfileMenuEnsurePromise = null;
+        publicProfileMenuEnsureTargetId = "";
+      }
     });
+    publicProfileMenuEnsurePromise = request;
+    publicProfileMenuEnsureTargetId = requestedRestaurantId;
   };
 
   const ensureFocusDataForProfile = (profile = state?.profileView?.profile || state?.userProfile) => {
-    void Promise.resolve().then(async () => {
+    const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
+    if (!requestedRestaurantId) return;
+    if (publicProfileFocusEnsurePromise && publicProfileFocusEnsureTargetId === requestedRestaurantId) return;
+    const request = Promise.resolve().then(async () => {
       const restaurantId = await resolveProfileRestaurantId(profile);
       if (!restaurantId) return;
-      void loadFocusForRestaurant(restaurantId);
+      await Promise.resolve(loadFocusForRestaurant(restaurantId));
+    }).finally(() => {
+      if (publicProfileFocusEnsurePromise === request) {
+        publicProfileFocusEnsurePromise = null;
+        publicProfileFocusEnsureTargetId = "";
+      }
     });
+    publicProfileFocusEnsurePromise = request;
+    publicProfileFocusEnsureTargetId = requestedRestaurantId;
   };
 
   const ensurePostsDataForProfile = (profile = state?.profileView?.profile || state?.userProfile) => {

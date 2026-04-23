@@ -8,6 +8,7 @@ import {
   normalizePublicBusinessContentTabCore,
   normalizePublicBusinessSlugCore
 } from "../router/public-business-route-utils.js";
+import { isBootstrapRestaurantPreviewRecordCore } from "../common/restaurant-identity-runtime-controller.js";
 
 function safeLower(value = "") {
   return String(value || "").trim().toLowerCase();
@@ -114,9 +115,12 @@ function resolveRestaurantPreviewForRoute(state = null, restaurantId = "") {
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId || !state || typeof state !== "object") return null;
   const routeSlug = normalizeLookupSlug(safeRestaurantId);
+  const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
+  const canonicalRestaurants = restaurants.filter((row) => !isBootstrapRestaurantPreviewRecordCore(row));
   const listGroups = [
-    Array.isArray(state.bootstrapRestaurantPreview) ? state.bootstrapRestaurantPreview : [],
-    Array.isArray(state.restaurants) ? state.restaurants : []
+    canonicalRestaurants,
+    restaurants,
+    Array.isArray(state.bootstrapRestaurantPreview) ? state.bootstrapRestaurantPreview : []
   ];
   for (const list of listGroups) {
     const byId = list.find((row) => String(row?.id || "").trim() === safeRestaurantId);
@@ -572,18 +576,8 @@ export function createPublicProfileDirectEntryController({
     const seedAvatar = String(routeIdentity?.avatar || preview?.logoUrl || preview?.logo || preview?.avatar || "").trim();
     const seedLocation = String(routeIdentity?.location || preview?.city || preview?.address || "").trim();
     const seedBio = String(routeIdentity?.bio || "").trim();
-    const seedFollowers = normalizeCountOrNull(
-      routeIdentity?.followers
-      ?? preview?.followersCount
-      ?? preview?.followers
-      ?? preview?.fansCount
-      ?? preview?.fans
-    );
-    const seedFollowing = normalizeCountOrNull(
-      routeIdentity?.following
-      ?? preview?.followingCount
-      ?? preview?.following
-    );
+    const seedFollowers = normalizeCountOrNull(routeIdentity?.followers);
+    const seedFollowing = normalizeCountOrNull(routeIdentity?.following);
     const hasCanonicalSnapshot = !!routeSnapshot;
     const seededPosts = routePostsState === "seeded"
       ? (routePostsSeed.length

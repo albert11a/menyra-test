@@ -1,4 +1,5 @@
 import { projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
+import { isBootstrapRestaurantPreviewRecordCore } from "../common/restaurant-identity-runtime-controller.js";
 
 function isGenericBusinessBootstrapLabel(value = "") {
   return String(value || "").trim().toLowerCase() === "business";
@@ -559,28 +560,64 @@ function applyWebDirectRouteSeedFromBootstrap({
   let changed = false;
   const restaurantPreview = (Array.isArray(incomingRestaurants) ? incomingRestaurants : [])
     .find((row) => String(row?.id || "").trim() === safeRestaurantId) || null;
+  const canonicalRestaurant = (Array.isArray(state?.restaurants) ? state.restaurants : [])
+    .find((row) => String(row?.id || "").trim() === safeRestaurantId && !isBootstrapRestaurantPreviewRecordCore(row))
+    || null;
+  const stateRestaurantPreview = canonicalRestaurant
+    ? null
+    : ((Array.isArray(state?.restaurants) ? state.restaurants : [])
+      .find((row) => String(row?.id || "").trim() === safeRestaurantId && isBootstrapRestaurantPreviewRecordCore(row)) || null);
+  const previewFallback = restaurantPreview || stateRestaurantPreview;
+  const currentName = String(profile.name || "").trim();
+  const currentHandle = String(profile.handle || "").trim();
+  const currentAvatar = String(profile.avatar || "").trim();
+  const currentLocation = String(profile.location || "").trim();
+  const currentType = String(profile.type || profile.customerType || "").trim();
+  const canUsePreviewName = !currentName || isGenericBusinessBootstrapLabel(currentName);
+  const canUsePreviewHandle = !currentHandle;
+  const canUsePreviewAvatar = !currentAvatar;
+  const canUsePreviewLocation = !currentLocation;
+  const canUsePreviewType = !currentType;
   const nextName = String(
     routeIdentity?.name
-    || restaurantPreview?.name
-    || restaurantPreview?.restaurantName
+    || canonicalRestaurant?.name
+    || canonicalRestaurant?.restaurantName
+    || (canUsePreviewName ? (previewFallback?.name || previewFallback?.restaurantName || "") : "")
     || ""
   ).trim();
-  const nextHandle = String(routeIdentity?.handle || "").trim();
+  const nextHandle = String(
+    routeIdentity?.handle
+    || canonicalRestaurant?.handle
+    || canonicalRestaurant?.publicSlug
+    || canonicalRestaurant?.landingSlug
+    || (canUsePreviewHandle ? (previewFallback?.handle || previewFallback?.publicSlug || previewFallback?.landingSlug || "") : "")
+    || ""
+  ).trim();
   const nextAvatar = String(
     routeIdentity?.avatar
-    || restaurantPreview?.logoUrl
+    || canonicalRestaurant?.logoUrl
+    || canonicalRestaurant?.logo
+    || canonicalRestaurant?.logoURL
+    || (canUsePreviewAvatar ? (previewFallback?.logoUrl || previewFallback?.logo || previewFallback?.logoURL || "") : "")
     || ""
   ).trim();
   const nextLocation = String(
     routeIdentity?.location
-    || restaurantPreview?.city
+    || canonicalRestaurant?.city
+    || canonicalRestaurant?.address
+    || canonicalRestaurant?.location
+    || (canUsePreviewLocation ? (previewFallback?.city || previewFallback?.address || previewFallback?.location || "") : "")
     || ""
   ).trim();
   const nextType = String(
     routeIdentity?.type
     || routeIdentity?.customerType
-    || restaurantPreview?.type
-    || restaurantPreview?.customerType
+    || canonicalRestaurant?.type
+    || canonicalRestaurant?.customerType
+    || canonicalRestaurant?.restaurantType
+    || (canUsePreviewType
+      ? (previewFallback?.type || previewFallback?.customerType || previewFallback?.restaurantType || "")
+      : "")
     || ""
   ).trim();
   const nextFollowers = normalizeCountOrNull(routeIdentity?.followers);
