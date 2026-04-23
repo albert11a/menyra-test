@@ -365,7 +365,9 @@ export function createAuthSessionStartupCoordinator({
               : null
           });
         };
-        if (prioritizeGuestSurface) {
+        if (webDirectGuestProfileSurface) {
+          queueMicrotaskSafe(runPublicBootstrapFetch);
+        } else if (prioritizeGuestSurface) {
           schedulePostVisibleStartupTask(runPublicBootstrapFetch, {
             delayMs: 780
           });
