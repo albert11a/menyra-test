@@ -65,6 +65,17 @@ Last updated: 2026-04-23
   Menu-/Fokus-Surface-Logik; auf `/:slug/menu` kann der Wechsel von Slug/Lookup
   auf kanonische `restaurantId` zusammen mit getrennten Menu-/Focus-Ensures eine
   zweite sichtbare Menu-Loading-Phase ausloesen.
+- Schritt 14 ist abgeschlossen: Der normale Web-Direct-Menu-Pfad auf `/:slug/menu`
+  nutzt fuer Render-/Ensure-/Menu-Load-Entscheidungen einen kanonischen
+  Menu-Surface-Zielkontext und beruhigt Fokus-Loading waehrend Menu der
+  Haupt-Surface ist.
+- Bewertung von Schritt 14: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 14:
+  Slug-/Lookup-Kontext und kanonische `restaurantId` werden im normalen
+  Web-Direct-Menu-Pfad als derselbe sichtbare Menu-Screen behandelt; dadurch
+  sollen zwei sichtbare `Menu wird geladen`-Phasen fuer denselben Refresh
+  verschwinden oder deutlich reduziert werden. QR-Logik, QR-URLs und
+  Tisch-/Bestellkontext bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -79,6 +90,7 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step11-public-profile-core-architecture.md](./mnyra-step11-public-profile-core-architecture.md)
 - Referenz: [docs/mnyra-step12-public-profile-core-implementation.md](./mnyra-step12-public-profile-core-implementation.md)
 - Referenz: [docs/mnyra-step13-public-profile-simplification-analysis.md](./mnyra-step13-public-profile-simplification-analysis.md)
+- Referenz: [docs/mnyra-step14-web-direct-menu-surface-stability-fix.md](./mnyra-step14-web-direct-menu-surface-stability-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -104,18 +116,11 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Nach Schritt 13 ist der naechste empfohlene kleine Folgeschritt:
-den sichtbaren Web-Direct-Menu-Pfad auf genau einen kanonischen Menu-Surface-
-Zielkontext beruhigen, damit Slug/Lookup und kanonische `restaurantId` nicht
-zwei sichtbare Menu-Loading-Phasen fuer denselben `/:slug/menu`-Refresh erzeugen.
-
-Dieser Schritt soll ohne UI-/Design-Aenderung, ohne QR-Aenderung, ohne
-Routing-Umbau, ohne Functions-/Rules-Aenderung und ohne Scope-Erweiterung
-in andere Domains erfolgen.
-
-Danach erst als separater moeglicher Folgeschritt:
+Nach Schritt 14 ist der naechste moegliche separate Folgeschritt:
 Direct-Public-Bootstrap im oeffentlichen Profilkern auf Main-Surface ausrichten
 (Profil/Posts-default vs Menu-first).
+
+Dieser Schritt ist groesser und soll nicht nebenbei erfolgen.
 
 ## Guardrails fuer die naechsten Schritte
 

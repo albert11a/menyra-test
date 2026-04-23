@@ -138,6 +138,51 @@ export function createSessionDataRuntimeController({
   let storiesRefreshUi = false;
   let renderRequested = false;
 
+  function addVisibleMenuTargetId(targetSet, value = "") {
+    const safeValue = String(value || "").trim();
+    if (safeValue) targetSet.add(safeValue);
+  }
+
+  function collectVisiblePublicMenuTargetIds() {
+    const ids = new Set();
+    const profile = state?.profileView?.profile && typeof state.profileView.profile === "object"
+      ? state.profileView.profile
+      : {};
+    const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
+      ? state.profileView.routePayload
+      : {};
+    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
+      ? routePayload.businessSnapshot
+      : {};
+    const routeIdentity = routePayload?.identity && typeof routePayload.identity === "object"
+      ? routePayload.identity
+      : {};
+    const snapshotIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
+      ? routeSnapshot.identity
+      : {};
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      ? state.__webDirectEntry
+      : {};
+    [
+      profile.canonicalRestaurantId,
+      profile.restaurantId,
+      profile.publicSlug,
+      profile.landingSlug,
+      profile.handle,
+      routePayload.canonicalRestaurantId,
+      routePayload.restaurantId,
+      routePayload.publicSlug,
+      routeIdentity.publicSlug,
+      routeIdentity.handle,
+      routeSnapshot.restaurantId,
+      snapshotIdentity.publicSlug,
+      snapshotIdentity.handle,
+      webDirectEntry.canonicalRestaurantId,
+      webDirectEntry.restaurantId
+    ].forEach((value) => addVisibleMenuTargetId(ids, value));
+    return ids;
+  }
+
   function isQrGuestMenuSessionForRestaurant(restaurantId = "") {
     const hasUser = !!String(state?.user?.uid || "").trim();
     if (hasUser) return false;
@@ -165,13 +210,14 @@ export function createSessionDataRuntimeController({
     const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
     if (profileTopTab !== "menu") return false;
     const visibleRestaurantId = String(
-      state?.profileView?.profile?.restaurantId
+      state?.profileView?.profile?.canonicalRestaurantId
+      || state?.profileView?.profile?.restaurantId
       || state?.profileView?.restaurantId
       || ""
     ).trim();
     const targetRestaurantId = String(restaurantId || "").trim();
     if (!targetRestaurantId || !visibleRestaurantId) return true;
-    return targetRestaurantId === visibleRestaurantId;
+    return collectVisiblePublicMenuTargetIds().has(targetRestaurantId);
   }
 
   function shouldUseRealtimeMenuMetaListener(restaurantId = "", source = "public") {
@@ -1440,10 +1486,19 @@ export function createSessionDataRuntimeController({
     const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
       ? state.__webDirectEntry
       : null;
+    const visibleMenuTargetIds = collectVisiblePublicMenuTargetIds();
+    const webDirectEntryRestaurantId = String(
+      webDirectEntry?.canonicalRestaurantId
+      || webDirectEntry?.restaurantId
+      || ""
+    ).trim();
     const webDirectMenuFirstVisiblePath = safeSource === "public"
       && webDirectEntry?.active === true
       && webDirectEntry?.menuFirst === true
-      && String(webDirectEntry?.restaurantId || "").trim() === safeRestaurantId
+      && (
+        webDirectEntryRestaurantId === safeRestaurantId
+        || visibleMenuTargetIds.has(safeRestaurantId)
+      )
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
       && String(state?.profileTopTab || "").trim().toLowerCase() === "menu";
     const webDirectMenuFreshPath = webDirectMenuFirstVisiblePath

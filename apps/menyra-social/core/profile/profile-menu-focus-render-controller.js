@@ -68,6 +68,37 @@ export function createProfileMenuFocusRenderController(deps = {}) {
     inFlightKey: ""
   };
 
+function resolveMenuSurfaceRestaurantId(profile = null, routePayload = null) {
+  const safeProfile = profile && typeof profile === "object" ? profile : {};
+  const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : {};
+  const routeSnapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+    ? safeRoutePayload.businessSnapshot
+    : {};
+  return String(
+    safeProfile.canonicalRestaurantId
+    || safeRoutePayload.canonicalRestaurantId
+    || routeSnapshot.restaurantId
+    || safeProfile.restaurantId
+    || safeRoutePayload.restaurantId
+    || ""
+  ).trim();
+}
+
+function buildMenuSurfaceProfile(profile = null, restaurantId = "") {
+  if (!profile || typeof profile !== "object") return profile;
+  const safeRestaurantId = String(restaurantId || "").trim();
+  if (!safeRestaurantId) return profile;
+  const canonicalRestaurantId = String(profile.canonicalRestaurantId || "").trim();
+  if (String(profile.restaurantId || "").trim() === safeRestaurantId && canonicalRestaurantId) {
+    return profile;
+  }
+  return {
+    ...profile,
+    restaurantId: safeRestaurantId,
+    ...(canonicalRestaurantId ? { canonicalRestaurantId } : {})
+  };
+}
+
 function formatMenuItemPrice(item = {}) {
   const currencyCode = String(resolveCurrencyCodeForMenuItem(item) || "").trim();
   if (currencyCode) return formatPrice(item?.price, currencyCode);
@@ -1830,16 +1861,21 @@ function renderMenuOrderSection(items = []) {
   `;
 }
 
-function renderFocusCarousel(profile) {
-  const restaurantId = profile?.restaurantId || "";
+function renderFocusCarousel(profile, {
+  restaurantId: restaurantIdOverride = "",
+  suppressLoading = false,
+  allowAutoEnsure = true
+} = {}) {
+  const restaurantId = String(restaurantIdOverride || profile?.canonicalRestaurantId || profile?.restaurantId || "").trim();
   if (!restaurantId) return "";
   if (!isRestaurantCafeProfile(profile)) return "";
-  if (!state.focus.loading && state.focus.restaurantId !== restaurantId) {
-    ensureFocusDataForProfile(profile);
+  if (allowAutoEnsure && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
+    ensureFocusDataForProfile(buildMenuSurfaceProfile(profile, restaurantId));
   }
   const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId);
   if (!enabled) return "";
   if (!items.length && !loading) return "";
+  if (suppressLoading && loading && !items.length) return "";
   if (loading && !items.length) {
     const focusCardClass = getFocusCardClass();
     return `
@@ -2078,7 +2114,10 @@ function renderMenuAdminView() {
 }
 
 function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = true } = {}) {
-  const restaurantId = profile?.restaurantId || "";
+  const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
+    ? state.profileView.routePayload
+    : null;
+  const restaurantId = resolveMenuSurfaceRestaurantId(profile, routePayload);
   if (!restaurantId) {
     return `
       <div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
@@ -2086,6 +2125,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       </div>
     `;
   }
+  const surfaceProfile = buildMenuSurfaceProfile(profile, restaurantId);
   const isSameRestaurant = state.menu.restaurantId === restaurantId;
   const menuSource = String(state.menu.source || "").trim().toLowerCase();
   const hasPublicMenuTruth = isSameRestaurant && menuSource === "public";
@@ -2095,17 +2135,43 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
     ? state.__webDirectEntry
     : null;
-  const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
-    ? state.profileView.routePayload
-    : null;
   const routeMenuState = String(routePayload?.menu?.state || "").trim().toLowerCase();
   const routeFocusState = String(routePayload?.focus?.state || "").trim().toLowerCase();
+  const webDirectEntryRestaurantId = String(
+    webDirectEntry?.canonicalRestaurantId
+    || webDirectEntry?.restaurantId
+    || ""
+  ).trim();
+  const webDirectSurfaceTargetIds = new Set(
+    [
+      webDirectEntry?.canonicalRestaurantId,
+      webDirectEntry?.restaurantId,
+      profile?.canonicalRestaurantId,
+      profile?.restaurantId,
+      routePayload?.canonicalRestaurantId,
+      routePayload?.restaurantId,
+      routePayload?.businessSnapshot?.restaurantId
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+  );
+  const menuAccessSource = String(
+    state?.profileView?.menuAccessSource
+    || webDirectEntry?.menuAccessSource
+    || routePayload?.menuAccessSource
+    || ""
+  ).trim().toLowerCase();
+  const isQrMenuAccess = menuAccessSource === "qr";
   const isWebDirectFirstVisibleMenuPath = webDirectEntry?.active === true
     && webDirectEntry?.webPriority === true
     && webDirectEntry?.menuFirst === true
     && String(state?.activeTab || "").trim().toLowerCase() === "profile"
     && String(state?.profileTopTab || "").trim().toLowerCase() === "menu"
-    && String(webDirectEntry?.restaurantId || "").trim() === restaurantId;
+    && (
+      webDirectEntryRestaurantId === restaurantId
+      || webDirectSurfaceTargetIds.has(restaurantId)
+    );
+  const isNormalWebDirectFirstVisibleMenuPath = isWebDirectFirstVisibleMenuPath && !isQrMenuAccess;
   const skipFirstVisibleMenuEnsure = isWebDirectFirstVisibleMenuPath
     && (
       hasPublicMenuTruth
@@ -2140,10 +2206,15 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       || currentFocusTruth === "known-empty"
     );
   if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
-    ensureMenuDataForProfile(profile);
+    ensureMenuDataForProfile(surfaceProfile);
   }
-  if (allowAutoEnsure && !skipFirstVisibleFocusEnsure && !hasSettledFocusTruth) {
-    ensureFocusDataForProfile(profile);
+  if (
+    allowAutoEnsure
+    && !skipFirstVisibleFocusEnsure
+    && !hasSettledFocusTruth
+    && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth)
+  ) {
+    ensureFocusDataForProfile(surfaceProfile);
   }
   const items = hasPublicMenuTruth
     ? sortMenuItemsByOrder(getFilteredMenuItems(state.menu.items, { filter: "all", query: "" }))
@@ -2178,7 +2249,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     })()
     : [];
   const testfirstStableFocusSection = testfirstFocusItemsFromState.length
-    ? renderTestfirstFocusSection(profile, testfirstFocusItemsFromState, { mode })
+    ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode })
     : "";
   if (isLandingMode && isLoading) {
     return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
@@ -2191,7 +2262,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
         ` : `
           ${hasItems
-            ? renderTestfirstMenuContent(profile, items, { mode })
+            ? renderTestfirstMenuContent(surfaceProfile, items, { mode })
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">Menu konnte nicht geladen werden</div>`
               : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`))
@@ -2203,7 +2274,11 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   }
   return `
     <div class="app-content-inline app-main-content-safe space-y-5">
-      ${renderFocusCarousel(profile)}
+      ${renderFocusCarousel(surfaceProfile, {
+        restaurantId,
+        suppressLoading: isNormalWebDirectFirstVisibleMenuPath && isLoading,
+        allowAutoEnsure: !isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth
+      })}
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
           <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
