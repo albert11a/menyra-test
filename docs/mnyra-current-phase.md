@@ -55,6 +55,16 @@ Last updated: 2026-04-23
   Public-Guest-Reads bleiben read-once und unnoetige zweite/dritte Resolve-Ketten
   im Kernpfad wurden reduziert; insbesondere wird ein unaufgeloester Slug nicht mehr
   vorschnell als kanonische ID festgeschrieben.
+- Schritt 13 ist dokumentiert: Public-Web-Profilpfad nach Schritt 12 auf weitere
+  Vereinfachung analysiert, inklusive konkreter Ladefolge auf `/:slug/menu`
+  (`Fokus wird geladen`, `Menu wird geladen`, erneutes `Menu wird geladen`).
+- Bewertung von Schritt 13: `analysiert, noch nicht umgesetzt`.
+- Wichtigster Befund aus Schritt 13:
+  der Web-Profilpfad ist nicht mehr primaer durch den alten Canonical-Handoff
+  blockiert, sondern durch einen zu schweren First-Pass und eine gesplittete
+  Menu-/Fokus-Surface-Logik; auf `/:slug/menu` kann der Wechsel von Slug/Lookup
+  auf kanonische `restaurantId` zusammen mit getrennten Menu-/Focus-Ensures eine
+  zweite sichtbare Menu-Loading-Phase ausloesen.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -68,6 +78,7 @@ Last updated: 2026-04-23
 - Referenz: [docs/mnyra-step10-mainline-public-guest-read-path-stability-fix.md](./mnyra-step10-mainline-public-guest-read-path-stability-fix.md)
 - Referenz: [docs/mnyra-step11-public-profile-core-architecture.md](./mnyra-step11-public-profile-core-architecture.md)
 - Referenz: [docs/mnyra-step12-public-profile-core-implementation.md](./mnyra-step12-public-profile-core-implementation.md)
+- Referenz: [docs/mnyra-step13-public-profile-simplification-analysis.md](./mnyra-step13-public-profile-simplification-analysis.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -93,12 +104,18 @@ Last updated: 2026-04-23
 
 ## Naechster Schritt
 
-Nach Schritt 12 ist der erste technische Kernumbau abgeschlossen.
+Nach Schritt 13 ist der naechste empfohlene kleine Folgeschritt:
+den sichtbaren Web-Direct-Menu-Pfad auf genau einen kanonischen Menu-Surface-
+Zielkontext beruhigen, damit Slug/Lookup und kanonische `restaurantId` nicht
+zwei sichtbare Menu-Loading-Phasen fuer denselben `/:slug/menu`-Refresh erzeugen.
 
-Naechster moeglicher Folgeschritt (noch offen, separater Schritt):
+Dieser Schritt soll ohne UI-/Design-Aenderung, ohne QR-Aenderung, ohne
+Routing-Umbau, ohne Functions-/Rules-Aenderung und ohne Scope-Erweiterung
+in andere Domains erfolgen.
+
+Danach erst als separater moeglicher Folgeschritt:
 Direct-Public-Bootstrap im oeffentlichen Profilkern auf Main-Surface ausrichten
-(Profil/Posts-default vs Menu-first), ohne UI-Aenderung, ohne Routing-Umbau
-und ohne Scope-Erweiterung in andere Domains.
+(Profil/Posts-default vs Menu-first).
 
 ## Guardrails fuer die naechsten Schritte
 
