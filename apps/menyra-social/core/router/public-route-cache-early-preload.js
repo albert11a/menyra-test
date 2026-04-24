@@ -11,10 +11,10 @@ import {
 
 const PUBLIC_ROUTE_CACHE_GLOBAL_KEY = "__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__";
 const PUBLIC_ROUTE_EARLY_PRELOAD_DONE_KEY = "__MENYRA_PUBLIC_ROUTE_EARLY_PRELOAD_DONE__";
-const PUBLIC_ROUTE_EARLY_PRELOAD_TIMEOUT_MS = 850;
+const PUBLIC_ROUTE_EARLY_PRELOAD_TIMEOUT_MS = 2600;
 const RESTAURANT_SLUG_FIELDS = Object.freeze([
-  "publicSlug",
   "landingSlug",
+  "publicSlug",
   "businessSlug",
   "routeSlug",
   "slug",
@@ -200,42 +200,58 @@ async function readRestaurantByDocId(slug = "") {
   }
 }
 
+async function readRestaurantByFieldValue(slug = "", field = "", value = "") {
+  const safeSlug = normalizeSlug(slug);
+  const safeField = safeText(field);
+  const safeValue = safeText(value);
+  if (!safeSlug || !safeField || !safeValue) return null;
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, "restaurants"),
+      where(safeField, "==", safeValue),
+      limit(1)
+    ));
+    const docSnap = snapshot?.docs?.[0] || null;
+    return normalizeRestaurantDoc(safeSlug, docSnap);
+  } catch {
+    return null;
+  }
+}
+
 async function readRestaurantBySlugField(slug = "") {
   const safeSlug = normalizeSlug(slug);
   if (!safeSlug) return null;
+  const tasks = [];
   for (const field of RESTAURANT_SLUG_FIELDS) {
-    try {
-      const exactSnapshot = await getDocs(query(
-        collection(db, "restaurants"),
-        where(field, "==", safeSlug),
-        limit(1)
-      ));
-      const exactDoc = exactSnapshot?.docs?.[0] || null;
-      const exactResolution = normalizeRestaurantDoc(safeSlug, exactDoc);
-      if (exactResolution?.found && exactResolution.restaurantId) return exactResolution;
-    } catch {}
-    try {
-      const rawSnapshot = await getDocs(query(
-        collection(db, "restaurants"),
-        where(field, "==", slug),
-        limit(1)
-      ));
-      const rawDoc = rawSnapshot?.docs?.[0] || null;
-      const rawResolution = normalizeRestaurantDoc(safeSlug, rawDoc);
-      if (rawResolution?.found && rawResolution.restaurantId) return rawResolution;
-    } catch {}
+    tasks.push(readRestaurantByFieldValue(safeSlug, field, safeSlug));
+    if (slug !== safeSlug) tasks.push(readRestaurantByFieldValue(safeSlug, field, slug));
+  }
+  const settled = await Promise.allSettled(tasks);
+  for (const result of settled) {
+    if (result.status !== "fulfilled") continue;
+    const resolution = result.value;
+    if (resolution?.found && resolution.restaurantId) return resolution;
   }
   return null;
 }
 
 async function readRestaurantRoute(slug = "") {
-  return await readRestaurantByDocId(slug)
-    || await readRestaurantBySlugField(slug);
+  const settled = await Promise.allSettled([
+    readRestaurantByDocId(slug),
+    readRestaurantBySlugField(slug)
+  ]);
+  for (const result of settled) {
+    if (result.status !== "fulfilled") continue;
+    const resolution = result.value;
+    if (resolution?.found && resolution.restaurantId) return resolution;
+  }
+  return null;
 }
 
 async function readCanonicalPublicRoute(slug = "") {
-  return await readPublicRoute(slug)
-    || await readRestaurantRoute(slug);
+  const publicRoute = await readPublicRoute(slug);
+  if (publicRoute?.found && publicRoute.restaurantId) return publicRoute;
+  return readRestaurantRoute(slug);
 }
 
 async function preloadEarlyPublicRouteCache() {
