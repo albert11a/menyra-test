@@ -72,11 +72,16 @@ export async function bootstrapAuthenticatedSessionCore({
   if (!canContinue()) return false;
 
   // Account recognition must happen as soon as the canonical auth profile is known.
-  // Slower secondary work (restaurant hydration, role switch targets) must not delay
-  // the UI from knowing who logged in and which account shell/tabs to show.
+  // Slower secondary work must not delay the UI from knowing who logged in.
   const currentTab = readActiveTab();
   markBootstrapProfileLoaded(user, { activeTab: currentTab });
   runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
+
+  // Also warm the self-profile content immediately after login even when the user
+  // stays on feed/search/etc. This keeps profile tabs/posts ready before tapping Profile.
+  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
+    runNonBlocking("auth-bootstrap.preloadSelfProfile", () => ensureTab("profile", { preloadOnly: true }));
+  }
 
   runNonBlocking("auth-bootstrap.primeCriticalProfile", () => primeCritical(user));
   const restaurantId = String(readRestaurantId(user) || "").trim();
