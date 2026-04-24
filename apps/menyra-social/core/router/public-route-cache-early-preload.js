@@ -20,6 +20,13 @@ const RESTAURANT_SLUG_FIELDS = Object.freeze([
   "slug",
   "handle"
 ]);
+const RESTAURANT_ID_FIELDS = Object.freeze([
+  "restaurantId",
+  "landingRestaurantId",
+  "canonicalRestaurantId",
+  "businessId",
+  "id"
+]);
 
 function safeText(value = "") {
   return String(value || "").trim();
@@ -122,9 +129,18 @@ function resolveCanonicalSlugFromRestaurant(slug = "", data = null) {
   return normalizeSlug(slug);
 }
 
+function resolveRestaurantIdFromData(snapshot = null, data = null) {
+  const safeData = data && typeof data === "object" ? data : {};
+  for (const field of RESTAURANT_ID_FIELDS) {
+    const candidate = safeText(safeData[field] || "");
+    if (candidate) return candidate;
+  }
+  return safeText(snapshot?.id || "");
+}
+
 function normalizeRouteDoc(slug = "", data = null) {
   if (!data || typeof data !== "object") return null;
-  const restaurantId = safeText(data.restaurantId || data.canonicalRestaurantId || "");
+  const restaurantId = resolveRestaurantIdFromData(null, data);
   const canonicalSlug = normalizeSlug(data.canonicalSlug || data.slug || slug);
   const status = normalizeStatus(data.status || "active");
   if (!restaurantId || !canonicalSlug) return null;
@@ -143,7 +159,7 @@ function normalizeRestaurantDoc(slug = "", snapshot = null) {
   try {
     const data = typeof snapshot.data === "function" ? snapshot.data() : null;
     if (!data || typeof data !== "object") return null;
-    const restaurantId = safeText(data.restaurantId || data.id || snapshot.id || "");
+    const restaurantId = resolveRestaurantIdFromData(snapshot, data);
     const canonicalSlug = resolveCanonicalSlugFromRestaurant(slug, data);
     const status = normalizeStatus(data.publicRouteStatus || data.status || "active");
     if (!restaurantId || !canonicalSlug) return null;
