@@ -153,6 +153,13 @@ export function createProfileBusinessMenuRuntimeCluster({
     return true;
   };
 
+  const isQrPublicMenuVisible = () => {
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const menuAccessSource = String(state?.profileView?.menuAccessSource || "").trim().toLowerCase();
+    return activeTab === "profile" && profileTopTab === "menu" && menuAccessSource === "qr";
+  };
+
   const isNormalWebDirectProfileVisible = () => {
     const webDirectEntry = getWebDirectEntryState();
     if (webDirectEntry?.active !== true || webDirectEntry?.webPriority !== true || webDirectEntry?.postsFirst !== true) {
@@ -254,6 +261,62 @@ export function createProfileBusinessMenuRuntimeCluster({
     ).trim();
   };
 
+  const resolveLatestCanonicalMenuRestaurantId = (fallbackId = "") => {
+    const visibleProfileView = getVisiblePublicProfileView();
+    const routePayload = getVisibleRoutePayload();
+    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
+      ? routePayload.businessSnapshot
+      : {};
+    const webDirectEntry = getWebDirectEntryState();
+    const candidates = [
+      visibleProfileView?.profile?.canonicalRestaurantId,
+      routePayload?.canonicalRestaurantId,
+      routeSnapshot?.restaurantId,
+      webDirectEntry?.canonicalRestaurantId,
+      fallbackId
+    ];
+    for (const candidate of candidates) {
+      const safeCandidate = String(candidate || "").trim();
+      if (safeCandidate) return safeCandidate;
+    }
+    return "";
+  };
+
+  const clearAliasMenuEmptyStateForCanonicalLoad = ({
+    requestedRestaurantId = "",
+    canonicalRestaurantId = "",
+    profile = {}
+  } = {}) => {
+    const safeCanonicalRestaurantId = String(canonicalRestaurantId || "").trim();
+    if (!safeCanonicalRestaurantId || !state?.menu || typeof state.menu !== "object") return;
+    const currentMenuRestaurantId = String(state.menu.restaurantId || "").trim();
+    if (!currentMenuRestaurantId || currentMenuRestaurantId === safeCanonicalRestaurantId) return;
+    const visibleTargetIds = collectVisibleMenuTargetIds(profile);
+    const safeRequestedRestaurantId = String(requestedRestaurantId || "").trim();
+    const isVisibleAlias = currentMenuRestaurantId === safeRequestedRestaurantId
+      || visibleTargetIds.has(currentMenuRestaurantId);
+    if (!isVisibleAlias) return;
+    const truthState = String(state.menu.truthState || "").trim().toLowerCase();
+    const items = Array.isArray(state.menu.items) ? state.menu.items : [];
+    const isBlockingEmptyState = !items.length
+      && (
+        truthState === "knownempty"
+        || truthState === "known-empty"
+        || truthState === "unknown"
+        || truthState === ""
+      );
+    if (!isBlockingEmptyState) return;
+    state.menu = {
+      ...state.menu,
+      restaurantId: safeCanonicalRestaurantId,
+      loading: true,
+      error: "",
+      source: "public",
+      routeSeed: false,
+      truthState: "unknown"
+    };
+  };
+
   const resolveCanonicalRestaurantId = async (profile = {}) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId) return "";
@@ -333,8 +396,27 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (hasMatchingVisibleMenuEnsureInFlight(targetRestaurantId, requestedRestaurantId, profile)) return;
     const request = Promise.resolve().then(async () => {
       const restaurantId = await resolveProfileRestaurantId(profile);
-      if (!restaurantId) return;
-      await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
+      const canonicalMenuRestaurantId = resolveLatestCanonicalMenuRestaurantId(restaurantId);
+      const loadIds = [];
+      [restaurantId, canonicalMenuRestaurantId].forEach((candidate) => {
+        const safeCandidate = String(candidate || "").trim();
+        if (safeCandidate && !loadIds.includes(safeCandidate)) loadIds.push(safeCandidate);
+      });
+      if (!loadIds.length) return;
+      if (
+        canonicalMenuRestaurantId
+        && canonicalMenuRestaurantId !== requestedRestaurantId
+        && (isQrPublicMenuVisible() || isWebDirectMenuVisible())
+      ) {
+        clearAliasMenuEmptyStateForCanonicalLoad({
+          requestedRestaurantId,
+          canonicalRestaurantId: canonicalMenuRestaurantId,
+          profile
+        });
+      }
+      for (const loadRestaurantId of loadIds) {
+        await Promise.resolve(loadMenuForRestaurant(loadRestaurantId, { source: "public" }));
+      }
     }).finally(() => {
       if (publicProfileMenuEnsurePromise === request) {
         publicProfileMenuEnsurePromise = null;
