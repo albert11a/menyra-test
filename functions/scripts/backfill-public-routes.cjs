@@ -19,6 +19,13 @@ const RESTAURANT_SLUG_FIELDS = [
   "slug",
   "handle"
 ];
+const RESTAURANT_ID_FIELDS = [
+  "restaurantId",
+  "landingRestaurantId",
+  "canonicalRestaurantId",
+  "businessId",
+  "id"
+];
 
 function safeText(value = "") {
   return String(value || "").trim();
@@ -43,7 +50,11 @@ function normalizeSlug(value = "") {
 }
 
 function resolveRestaurantId(docSnap, data = {}) {
-  return safeText(data.restaurantId || data.id || docSnap.id);
+  for (const field of RESTAURANT_ID_FIELDS) {
+    const candidate = safeText(data[field] || "");
+    if (candidate) return candidate;
+  }
+  return safeText(docSnap.id);
 }
 
 function resolveExistingSlug(data = {}) {
@@ -129,6 +140,7 @@ async function main() {
       slug,
       canonicalSlug: slug,
       restaurantId,
+      landingRestaurantId: data.landingRestaurantId || restaurantId,
       status: "active",
       type: "business",
       source: "restaurants-backfill",
@@ -137,6 +149,8 @@ async function main() {
     const restaurantPatch = {
       publicSlug: slug,
       canonicalSlug: data.canonicalSlug || slug,
+      restaurantId,
+      landingRestaurantId: data.landingRestaurantId || restaurantId,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
