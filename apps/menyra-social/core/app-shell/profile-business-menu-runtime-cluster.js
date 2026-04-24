@@ -345,21 +345,6 @@ export function createProfileBusinessMenuRuntimeCluster({
     visiblePublicIdentityHydrationPromises.set(restaurantId, request);
     return request;
   };
-
-  const resolveRouteCanonicalRestaurantIdHint = (profile = {}) => {
-    const routePayload = getVisibleRoutePayload();
-    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
-      ? routePayload.businessSnapshot
-      : {};
-    const webDirectEntry = getWebDirectEntryState();
-    return String(
-      routePayload?.canonicalRestaurantId
-      || routeSnapshot?.restaurantId
-      || webDirectEntry?.canonicalRestaurantId
-      || ""
-    ).trim();
-  };
-
   const resolveLatestCanonicalMenuRestaurantId = (fallbackId = "") => {
     const visibleProfileView = getVisiblePublicProfileView();
     const routePayload = getVisibleRoutePayload();
@@ -547,24 +532,12 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!requestedRestaurantId) return "";
     const cachedCanonicalRestaurantId = String(canonicalRestaurantIdCache.get(requestedRestaurantId) || "").trim();
     const canonicalRestaurantIdHint = String(profile?.canonicalRestaurantId || "").trim();
-    const routeCanonicalRestaurantId = resolveRouteCanonicalRestaurantIdHint(profile);
-    const visibleTargetIds = collectVisibleMenuTargetIds(profile);
-    const isCanonicalHintTrustedByRoute = !!canonicalRestaurantIdHint
-      && !!routeCanonicalRestaurantId
-      && canonicalRestaurantIdHint === routeCanonicalRestaurantId;
-    const shouldTrustCanonicalHintFromVisibleTargets = !!canonicalRestaurantIdHint
-      && canonicalRestaurantIdHint !== requestedRestaurantId
-      && isVisiblePublicBusinessSurface()
-      && visibleTargetIds.has(canonicalRestaurantIdHint)
-      && visibleTargetIds.has(requestedRestaurantId);
     if (canonicalRestaurantIdHint) {
       const hintEqualsRequested = canonicalRestaurantIdHint === requestedRestaurantId;
       const hasTrustedCachedHint = cachedCanonicalRestaurantId && cachedCanonicalRestaurantId === canonicalRestaurantIdHint;
       const trustCanonicalHint = !hintEqualsRequested
         || !fetchBusinessProfileDoc
-        || hasTrustedCachedHint
-        || isCanonicalHintTrustedByRoute
-        || shouldTrustCanonicalHintFromVisibleTargets;
+        || hasTrustedCachedHint;
       if (trustCanonicalHint) {
         canonicalRestaurantIdCache.set(requestedRestaurantId, canonicalRestaurantIdHint);
         canonicalRestaurantIdCache.set(canonicalRestaurantIdHint, canonicalRestaurantIdHint);

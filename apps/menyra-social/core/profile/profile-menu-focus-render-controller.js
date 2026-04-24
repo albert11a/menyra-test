@@ -2188,12 +2188,18 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       || webDirectSurfaceTargetIds.has(restaurantId)
     );
   const isNormalWebDirectFirstVisibleMenuPath = isWebDirectFirstVisibleMenuPath && !isQrMenuAccess;
+  const hasSettledPublicMenuTruth = hasStrictPublicMenuTruth
+    && (
+      menuTruthState === "seeded"
+      || menuTruthState === "knownempty"
+      || menuTruthState === "known-empty"
+    );
+  const routeMenuKnownEmpty = routeMenuState === "knownempty" || routeMenuState === "known-empty";
   const skipFirstVisibleMenuEnsure = isWebDirectFirstVisibleMenuPath
     && (
-      hasStrictPublicMenuTruth
+      hasSettledPublicMenuTruth
       || routeMenuState === "seeded"
-      || routeMenuState === "knownempty"
-      || routeMenuState === "known-empty"
+      || (routeMenuKnownEmpty && !isQrMenuAccess)
     );
   const skipFirstVisibleFocusEnsure = isWebDirectFirstVisibleMenuPath
     && (
@@ -2208,12 +2214,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
           || currentFocusTruth === "known-empty"
         )
       )
-    );
-  const hasSettledPublicMenuTruth = hasStrictPublicMenuTruth
-    && (
-      menuTruthState === "seeded"
-      || menuTruthState === "knownempty"
-      || menuTruthState === "known-empty"
     );
   const hasSettledFocusTruth = hasStrictFocusSurfaceMatch
     && (
