@@ -45,6 +45,7 @@ export function createProfileBusinessMenuRuntimeCluster({
   const canonicalRestaurantIdPromises = new Map();
   const canonicalRestaurantIdCache = new Map();
   const visiblePublicMenuRetryTimers = new Map();
+  const visiblePublicIdentityHydrationPromises = new Map();
 
   const getVisiblePublicProfileView = () => {
     const view = state?.profileView && typeof state.profileView === "object"
@@ -266,6 +267,14 @@ export function createProfileBusinessMenuRuntimeCluster({
     || ""
   ).trim();
 
+  const normalizeProfileDocPayload = (profileDoc = null) => {
+    const data = profileDoc?.data && typeof profileDoc.data === "object"
+      ? profileDoc.data
+      : (profileDoc && typeof profileDoc === "object" ? profileDoc : {});
+    const id = String(profileDoc?.id || data?.id || "").trim();
+    return { id, data };
+  };
+
   const refreshVisibleBusinessIdentityFromDoc = (restaurantId = "", data = {}) => {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !data || typeof data !== "object") return false;
@@ -293,6 +302,46 @@ export function createProfileBusinessMenuRuntimeCluster({
       patch.identityTruthState = "ready";
     }
     return refreshVisiblePublicProfile(patch);
+  };
+
+  const ensureVisibleBusinessIdentityHydration = (profile = {}, fallbackId = "") => {
+    if (!fetchBusinessProfileDoc || !isVisiblePublicMenuFirstSurface()) return null;
+    const restaurantId = String(
+      resolveLatestCanonicalMenuRestaurantId(fallbackId)
+      || resolveMenuSurfaceTargetId(profile)
+      || getMenuRestaurantForProfile(profile)
+      || fallbackId
+      || ""
+    ).trim();
+    if (!restaurantId) return null;
+    const visibleProfileView = getVisiblePublicProfileView();
+    if (!visibleProfileView) return null;
+    const visibleTargetIds = collectVisibleMenuTargetIds(visibleProfileView.profile);
+    if (!visibleTargetIds.has(restaurantId) && visibleProfileView.restaurantId !== restaurantId) return null;
+    const currentAvatar = String(visibleProfileView.profile?.avatar || "").trim();
+    const identityReady = String(visibleProfileView.profile?.identityTruthState || "").trim().toLowerCase() === "ready";
+    if (currentAvatar && identityReady) return null;
+    const currentRequest = visiblePublicIdentityHydrationPromises.get(restaurantId);
+    if (currentRequest) return currentRequest;
+    const request = Promise.resolve(fetchBusinessProfileDoc({
+      restaurantId,
+      restaurant: profile
+    }))
+      .then((profileDoc) => {
+        const { id, data } = normalizeProfileDocPayload(profileDoc);
+        const resolvedRestaurantId = id || restaurantId;
+        if (data && typeof data === "object") {
+          refreshVisibleBusinessIdentityFromDoc(resolvedRestaurantId, data);
+        }
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (visiblePublicIdentityHydrationPromises.get(restaurantId) === request) {
+          visiblePublicIdentityHydrationPromises.delete(restaurantId);
+        }
+      });
+    visiblePublicIdentityHydrationPromises.set(restaurantId, request);
+    return request;
   };
 
   const resolveRouteCanonicalRestaurantIdHint = (profile = {}) => {
@@ -401,6 +450,7 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   const loadVisiblePublicMenuIds = async (profile = {}, fallbackId = "") => {
     if (!isVisiblePublicMenuFirstSurface()) return;
+    void ensureVisibleBusinessIdentityHydration(profile, fallbackId);
     const ids = collectVisibleMenuLoadIds(profile, fallbackId);
     if (!ids.length || hasVisibleMenuItemsForIds(ids)) return;
     const canonicalMenuRestaurantId = resolveLatestCanonicalMenuRestaurantId(ids[0]);
@@ -465,10 +515,14 @@ export function createProfileBusinessMenuRuntimeCluster({
       if (trustCanonicalHint) {
         canonicalRestaurantIdCache.set(requestedRestaurantId, canonicalRestaurantIdHint);
         canonicalRestaurantIdCache.set(canonicalRestaurantIdHint, canonicalRestaurantIdHint);
+        void ensureVisibleBusinessIdentityHydration(profile, canonicalRestaurantIdHint);
         return canonicalRestaurantIdHint;
       }
     }
-    if (cachedCanonicalRestaurantId) return cachedCanonicalRestaurantId;
+    if (cachedCanonicalRestaurantId) {
+      void ensureVisibleBusinessIdentityHydration(profile, cachedCanonicalRestaurantId);
+      return cachedCanonicalRestaurantId;
+    }
     if (!fetchBusinessProfileDoc) {
       canonicalRestaurantIdCache.set(requestedRestaurantId, requestedRestaurantId);
       return requestedRestaurantId;
@@ -482,11 +536,9 @@ export function createProfileBusinessMenuRuntimeCluster({
       })
     )
       .then((profileDoc) => {
-        const profileDocData = profileDoc?.data && typeof profileDoc.data === "object"
-          ? profileDoc.data
-          : (profileDoc && typeof profileDoc === "object" ? profileDoc : {});
-        const resolvedRestaurantId = String(profileDoc?.id || profileDocData.id || requestedRestaurantId).trim() || requestedRestaurantId;
-        refreshVisibleBusinessIdentityFromDoc(resolvedRestaurantId, profileDocData);
+        const { id, data } = normalizeProfileDocPayload(profileDoc);
+        const resolvedRestaurantId = String(id || requestedRestaurantId).trim() || requestedRestaurantId;
+        refreshVisibleBusinessIdentityFromDoc(resolvedRestaurantId, data);
         canonicalRestaurantIdCache.set(requestedRestaurantId, resolvedRestaurantId);
         canonicalRestaurantIdCache.set(resolvedRestaurantId, resolvedRestaurantId);
         return resolvedRestaurantId;
@@ -518,6 +570,7 @@ export function createProfileBusinessMenuRuntimeCluster({
   const ensureMenuDataForProfile = (profile = state?.profileView?.profile || state?.userProfile) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId) return;
+    void ensureVisibleBusinessIdentityHydration(profile, requestedRestaurantId);
     const targetRestaurantId = resolveMenuSurfaceTargetId(profile) || requestedRestaurantId;
     if (hasMatchingVisibleMenuEnsureInFlight(targetRestaurantId, requestedRestaurantId, profile)) {
       scheduleVisiblePublicMenuRetry(profile, requestedRestaurantId);
@@ -525,6 +578,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     }
     const request = Promise.resolve().then(async () => {
       const restaurantId = await resolveProfileRestaurantId(profile);
+      void ensureVisibleBusinessIdentityHydration(profile, restaurantId || requestedRestaurantId);
       await loadVisiblePublicMenuIds(profile, restaurantId || requestedRestaurantId);
     }).finally(() => {
       if (publicProfileMenuEnsurePromise === request) {
