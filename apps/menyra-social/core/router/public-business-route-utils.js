@@ -111,6 +111,15 @@ const BUSINESS_MENU_SEGMENTS = new Set([
   "highlight"
 ]);
 
+const LAUNCH_PUBLIC_BUSINESS_ROUTE_ALIASES = Object.freeze({
+  casarita: "Lzm6RpNu3ErSDtGCHxpi",
+  "casa-rita": "Lzm6RpNu3ErSDtGCHxpi"
+});
+
+const LAUNCH_PUBLIC_BUSINESS_CANONICAL_SLUGS = Object.freeze({
+  lzm6rpnu3ersdtgchxpi: "casarita"
+});
+
 function safeLowerText(value = "") {
   return String(value || "").trim().toLowerCase();
 }
@@ -127,6 +136,19 @@ function safeDecodePathSegment(value = "") {
 
 function isDotLikePathSegment(value = "") {
   return String(value || "").trim().includes(".");
+}
+
+function resolveLaunchPublicBusinessRouteId(value = "") {
+  const key = safeLowerText(value);
+  return LAUNCH_PUBLIC_BUSINESS_ROUTE_ALIASES[key] || String(value || "").trim();
+}
+
+function resolveLaunchPublicBusinessCanonicalSlug(value = "") {
+  const raw = String(value || "").trim();
+  const lookup = raw.toLowerCase();
+  if (LAUNCH_PUBLIC_BUSINESS_CANONICAL_SLUGS[lookup]) return LAUNCH_PUBLIC_BUSINESS_CANONICAL_SLUGS[lookup];
+  const normalized = normalizePublicBusinessSlugCore(raw || "");
+  return LAUNCH_PUBLIC_BUSINESS_CANONICAL_SLUGS[normalized] || normalized;
 }
 
 function stripAppShellSegments(rawPath = "") {
@@ -272,7 +294,7 @@ function extractSlugFromCanonicalPath(path = "") {
   const parsed = parsePublicBusinessRoutePathCore(path, {
     allowLegacyRootSlug: false
   });
-  return parsed.matched ? normalizePublicBusinessSlugCore(parsed.restaurantId || "") : "";
+  return parsed.matched ? resolveLaunchPublicBusinessCanonicalSlug(parsed.restaurantId || "") : "";
 }
 
 export function extractPublicBusinessSlugCore(source = {}, {
@@ -296,7 +318,7 @@ export function extractPublicBusinessSlugCore(source = {}, {
     );
   }
   for (const candidate of candidates) {
-    const slug = normalizePublicBusinessSlugCore(candidate || "");
+    const slug = resolveLaunchPublicBusinessCanonicalSlug(candidate || "");
     if (slug) return slug;
   }
   return "";
@@ -428,6 +450,7 @@ function parseCanonicalBusinessPathSegments(segments = []) {
   const slug = normalizePublicBusinessSlugCore(
     first === "b" ? rawSlug : safeDecodePathSegment(segments[0] || "")
   );
+  const routeRestaurantId = resolveLaunchPublicBusinessRouteId(slug);
   if (!slug) {
     return {
       matched: false,
@@ -457,7 +480,7 @@ function parseCanonicalBusinessPathSegments(segments = []) {
       matched: true,
       isCanonical: first !== "b",
       isLegacy: first === "b",
-      restaurantId: slug,
+      restaurantId: routeRestaurantId,
       topTab: "profile",
       contentTab: "posts",
       accessSource: ""
@@ -468,7 +491,7 @@ function parseCanonicalBusinessPathSegments(segments = []) {
       matched: true,
       isCanonical: first !== "b",
       isLegacy: first === "b",
-      restaurantId: slug,
+      restaurantId: routeRestaurantId,
       topTab: "menu",
       contentTab: "menu",
       accessSource: ""
@@ -479,7 +502,7 @@ function parseCanonicalBusinessPathSegments(segments = []) {
       matched: true,
       isCanonical: first !== "b",
       isLegacy: first === "b",
-      restaurantId: slug,
+      restaurantId: routeRestaurantId,
       topTab: "profile",
       contentTab: "posts",
       accessSource: ""
@@ -490,7 +513,7 @@ function parseCanonicalBusinessPathSegments(segments = []) {
       matched: true,
       isCanonical: false,
       isLegacy: true,
-      restaurantId: slug,
+      restaurantId: routeRestaurantId,
       topTab: "menu",
       contentTab: "menu",
       accessSource: "qr"
@@ -566,7 +589,7 @@ export function parsePublicBusinessRoutePathCore(pathname = "", {
       matched: true,
       isCanonical: false,
       isLegacy: true,
-      restaurantId: firstSlug,
+      restaurantId: resolveLaunchPublicBusinessRouteId(firstSlug),
       topTab: "profile",
       contentTab: "posts",
       accessSource: ""
@@ -577,7 +600,7 @@ export function parsePublicBusinessRoutePathCore(pathname = "", {
       matched: true,
       isCanonical: false,
       isLegacy: true,
-      restaurantId: secondSlug,
+      restaurantId: resolveLaunchPublicBusinessRouteId(secondSlug),
       topTab: firstTopTab,
       contentTab: firstTopTab === "menu" ? "menu" : "posts",
       accessSource: firstQrHint ? "qr" : ""
@@ -588,7 +611,7 @@ export function parsePublicBusinessRoutePathCore(pathname = "", {
       matched: true,
       isCanonical: false,
       isLegacy: true,
-      restaurantId: firstSlug,
+      restaurantId: resolveLaunchPublicBusinessRouteId(firstSlug),
       topTab: secondTopTab,
       contentTab: secondTopTab === "menu" ? "menu" : "posts",
       accessSource: secondQrHint ? "qr" : ""
@@ -711,7 +734,7 @@ export function buildCanonicalPublicBusinessPathCore({
   pathnameHint = "",
   forcePostsPath = false
 } = {}) {
-  const safeSlug = normalizePublicBusinessSlugCore(slug || "");
+  const safeSlug = resolveLaunchPublicBusinessCanonicalSlug(slug || "");
   if (!safeSlug) return "";
   const safeTopTab = normalizePublicBusinessTopTabCore(topTab || "", "profile");
   const safeContentTab = normalizePublicBusinessContentTabCore(
