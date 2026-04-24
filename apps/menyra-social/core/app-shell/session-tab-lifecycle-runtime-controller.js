@@ -46,12 +46,77 @@ export function createSessionTabLifecycleRuntimeController({
   let feedDeltaTimer = null;
   let feedUnsub = null;
   let storiesUnsub = null;
+  let preloadProfilePromise = null;
+  let preloadMenuPromise = null;
+
+  function reportPreloadWarning(scope = "tab-preload", err = null) {
+    const safeScope = String(scope || "tab-preload").trim() || "tab-preload";
+    if (err) {
+      console.warn(`[mnyra][${safeScope}]`, err);
+      return;
+    }
+    console.warn(`[mnyra][${safeScope}] operation failed`);
+  }
+
+  async function preloadProfileData() {
+    if (!state?.user) return;
+    if (preloadProfilePromise) return preloadProfilePromise;
+    preloadProfilePromise = (async () => {
+      if (dataLoaded && typeof dataLoaded === "object") {
+        dataLoaded.profile = true;
+      }
+      await loadAuthProfileFn(state.user);
+      const hasBusinessProfile = isLocalBusinessProfileFn(state.userProfile);
+      if (hasBusinessProfile) {
+        await loadBusinessPostsFn();
+        return;
+      }
+      await loadUserPostsFn();
+    })().catch((err) => {
+      reportPreloadWarning("auth-tab.preloadProfile", err);
+    }).finally(() => {
+      preloadProfilePromise = null;
+    });
+    return preloadProfilePromise;
+  }
+
+  async function preloadMenuData() {
+    if (!state?.user) return;
+    if (preloadMenuPromise) return preloadMenuPromise;
+    preloadMenuPromise = (async () => {
+      await loadAuthProfileFn(state.user);
+      const restaurantId = String(state.userProfile?.restaurantId || "").trim();
+      if (!restaurantId) return;
+      await Promise.all([
+        loadMenuForRestaurantFn(restaurantId, { source: "collection" }),
+        loadFocusForRestaurantFn(restaurantId)
+      ]);
+    })().catch((err) => {
+      reportPreloadWarning("auth-tab.preloadMenu", err);
+    }).finally(() => {
+      preloadMenuPromise = null;
+    });
+    return preloadMenuPromise;
+  }
+
+  async function preloadTabData(tab) {
+    const safeTab = String(tab || "").trim().toLowerCase();
+    if (safeTab === "profile") {
+      return preloadProfileData();
+    }
+    if (safeTab === "menu") {
+      return preloadMenuData();
+    }
+    return undefined;
+  }
 
   async function ensureTabData(tab, options = {}) {
     const safeOptions = options && typeof options === "object" ? options : {};
+    if (safeOptions.preloadOnly === true) {
+      return preloadTabData(tab);
+    }
     return ensureTabDataCore({
       tab,
-      preloadOnly: safeOptions.preloadOnly === true,
       state,
       dataLoaded,
       FAST_MODE,
