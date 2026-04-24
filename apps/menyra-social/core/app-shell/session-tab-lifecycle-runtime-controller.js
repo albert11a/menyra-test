@@ -47,9 +47,11 @@ export function createSessionTabLifecycleRuntimeController({
   let feedUnsub = null;
   let storiesUnsub = null;
 
-  async function ensureTabData(tab) {
+  async function ensureTabData(tab, options = {}) {
+    const safeOptions = options && typeof options === "object" ? options : {};
     return ensureTabDataCore({
       tab,
+      preloadOnly: safeOptions.preloadOnly === true,
       state,
       dataLoaded,
       FAST_MODE,
