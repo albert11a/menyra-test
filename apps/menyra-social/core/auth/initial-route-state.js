@@ -1,3 +1,5 @@
+import "../router/public-route-cache-boot-hook.js";
+
 import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
 import {
   normalizePublicBusinessRouteResolutionCore,
