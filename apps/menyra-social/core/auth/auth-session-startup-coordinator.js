@@ -170,6 +170,25 @@ export function createAuthSessionStartupCoordinator({
     return profileTopTab === "profile" || profileTopTab === "menu";
   }
 
+  function shouldHoldAuthProfileCanonicalRender() {
+    if (!state?.user) return false;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const profileTopTab = String(state?.profileTopTab || "profile").trim().toLowerCase() || "profile";
+    if (profileTopTab !== "profile") return false;
+    const profileView = state?.profileView && typeof state.profileView === "object" ? state.profileView : null;
+    const directOwner = String(profileView?.directEntry?.owner || "").trim().toLowerCase();
+    if (directOwner === "web-direct" || directOwner === "route") return false;
+    const visibleRestaurantId = String(
+      profileView?.profile?.canonicalRestaurantId
+      || profileView?.profile?.restaurantId
+      || ""
+    ).trim();
+    const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
+    if (visibleRestaurantId && (!ownRestaurantId || visibleRestaurantId !== ownRestaurantId)) return false;
+    return true;
+  }
+
   function runNonBlockingRouteOpenWithTimeline() {
     markStartup("non-blocking route open start");
     try {
@@ -340,7 +359,11 @@ export function createAuthSessionStartupCoordinator({
           runNonBlockingRouteOpenWithTimeline();
         });
       }
-      requestRender("initialize");
+      if (shouldHoldAuthProfileCanonicalRender()) {
+        markStartup("first shell render held", { reason: "auth-self-profile-canonical-pending" });
+      } else {
+        requestRender("initialize");
+      }
       schedulePerfWarmMark();
       if (!state?.user) {
         scheduleGuestTabEnsure({
@@ -415,7 +438,11 @@ export function createAuthSessionStartupCoordinator({
       loadUserScopedPersisted(user);
       primeFastAuthProfileHints(user);
       schedulePendingRouteReplayWithTimeline();
-      requestRender();
+      if (shouldHoldAuthProfileCanonicalRender()) {
+        markStartup("auth self profile render held", { uid: nextUid });
+      } else {
+        requestRender();
+      }
       void (async () => {
         try {
           await bootstrapUser(user, { transitionSeq });
