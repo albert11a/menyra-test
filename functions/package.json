@@ -6,7 +6,9 @@
     "node": "20"
   },
   "scripts": {
-    "sync-heart-shared": "node ./scripts/sync-heart-shared.cjs"
+    "sync-heart-shared": "node ./scripts/sync-heart-shared.cjs",
+    "routes:backfill:check": "node ./scripts/backfill-public-routes.cjs",
+    "routes:backfill:write": "node ./scripts/backfill-public-routes.cjs --write"
   },
   "dependencies": {
     "busboy": "^1.6.0",
