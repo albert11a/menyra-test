@@ -745,6 +745,7 @@ export function bindAppShellEventsCore({
       if (landingPreviewActive) return;
       state.profileContentTab = tab;
       if (isBusinessProfileView()) {
+        state.__nextRouteHistoryMode = "push";
         state.profileTopTab = tab === "menu" ? "menu" : "profile";
         if (tab === "menu") {
           ensureMenuDataForProfile();
@@ -764,6 +765,7 @@ export function bindAppShellEventsCore({
   doc.querySelectorAll("[data-business-profile-home]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!isBusinessProfileView()) return;
+      state.__nextRouteHistoryMode = "push";
       state.activeTab = "profile";
       state.profileTopTab = "profile";
       state.profileContentTab = "posts";
@@ -783,6 +785,9 @@ export function bindAppShellEventsCore({
     if (forceProfile) state.activeTab = "profile";
     const isBusinessProfileRoute = isBusinessProfileView();
     const shouldRouteMenuThroughContentTab = nextTab === "menu" && isBusinessProfileRoute;
+    if (isBusinessProfileRoute) {
+      state.__nextRouteHistoryMode = "push";
+    }
     state.profileTopTab = nextTab;
     if (nextTab === "landing") {
       state.profileLandingStep = 0;

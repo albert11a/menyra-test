@@ -43,16 +43,25 @@ export function createPendingRouteStartupState() {
   }
 
   function applyInitialRouteState(initialRouteState = {}) {
+    const nextProfileRestaurantId = initialRouteState.pendingProfileRestaurantId || "";
+    const nextUserRouteId = initialRouteState.pendingUserRouteId || "";
+    const nextNotificationId = initialRouteState.pendingNotificationId || "";
+    const nextPostId = initialRouteState.pendingPostId || "";
+    const nextChatUid = initialRouteState.pendingChatUid || "";
     patchPendingState({
-      pendingProfileRestaurantId: initialRouteState.pendingProfileRestaurantId || "",
+      pendingProfileRestaurantId: nextProfileRestaurantId,
       pendingProfileTopTab: initialRouteState.pendingProfileTopTab || "",
       pendingProfileAccessSource: initialRouteState.pendingProfileAccessSource || "",
       pendingProfileTableNumber: initialRouteState.pendingProfileTableNumber || 0,
-      pendingUserRouteId: initialRouteState.pendingUserRouteId || "",
+      pendingUserRouteId: nextUserRouteId,
       pendingUserContentTab: initialRouteState.pendingUserContentTab || "",
-      pendingNotificationId: initialRouteState.pendingNotificationId || "",
-      pendingPostId: initialRouteState.pendingPostId || "",
-      pendingChatUid: initialRouteState.pendingChatUid || "",
+      pendingProfileHandled: false,
+      pendingNotificationId: nextNotificationId,
+      pendingNotificationHandled: false,
+      pendingPostId: nextPostId,
+      pendingPostHandled: false,
+      pendingChatUid: nextChatUid,
+      pendingChatHandled: false,
       pendingInitialTab: initialRouteState.pendingInitialTab || "",
       pendingAuthMode: initialRouteState.pendingAuthMode || ""
     });

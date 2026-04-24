@@ -107,6 +107,18 @@ Last updated: 2026-04-24
   bereits gewechselten TopTab nicht mehr einfach zurueck auf den initialen
   Request-Tab druecken. Dadurch bleibt Tab<->URL-Sync stabiler; QR bleibt
   unveraendert.
+- Schritt 18 ist abgeschlossen: Public-/QR-/Profile-/Menu-/Posts-Orchestrierung
+  wurde auf eine konsistente Route-/Kontext-Weitergabe und stabilere
+  History-Rekonstruktion gehaertet.
+- Bewertung von Schritt 18: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 18:
+  QR-Kontext (`src=qr`, `table`) bleibt jetzt auch auf `/:slug` (Posts/Profile)
+  erhalten, wird nicht mehr implizit auf `/:slug/menu` umgeschrieben und wird
+  bei Tabwechsel/Refresh/Back-Forward konsistenter rekonstruiert. Parallel
+  wurde der Business-Route-Popstate-Pfad aktiviert, ein push/replace-
+  History-Modus fuer Surface-Wechsel eingefuehrt und die kanonische
+  `restaurantId`-Aufloesung fuer Public-Posts/Profile per Route->Doc-Cache
+  stabilisiert, um doppelte Resolve-/Load-Pfade zu reduzieren.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -124,6 +136,7 @@ Last updated: 2026-04-24
 - Referenz: [docs/mnyra-step14-web-direct-menu-surface-stability-fix.md](./mnyra-step14-web-direct-menu-surface-stability-fix.md)
 - Referenz: [docs/mnyra-step15-public-web-profile-speed-reliability-overhaul.md](./mnyra-step15-public-web-profile-speed-reliability-overhaul.md)
 - Referenz: [docs/mnyra-step16-public-route-contract-hardening.md](./mnyra-step16-public-route-contract-hardening.md)
+- Referenz: [docs/mnyra-public-profile-orchestration-fix.md](./mnyra-public-profile-orchestration-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -149,10 +162,11 @@ Last updated: 2026-04-24
 
 ## Naechster Schritt
 
-Nach Schritt 17 ist der naechste moegliche separate Folgeschritt:
+Nach Schritt 18 ist der naechste moegliche separate Folgeschritt:
 gezielte Restkanten-Absicherung fuer seltene Reentry-Pfade unter echten
 Cold-Start-Bedingungen (ohne Cache) innerhalb derselben Public-Web-Profil-
-Scope-Grenze.
+Scope-Grenze, plus fokussierte manuelle Regression auf QR->Posts->Refresh
+und Browser-Back/Forward unter wechselnden Netzwerkbedingungen.
 
 ## Guardrails fuer die naechsten Schritte
 

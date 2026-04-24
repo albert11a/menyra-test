@@ -1194,7 +1194,9 @@ export function createProfileOpenFlowControllerCore({
       if (!resolvedRestaurantId) return;
       acceptedRestaurantIds.add(resolvedRestaurantId);
       let posts = null;
-      const deferPostsResolutionToVisiblePostsSurface = isMenuTopTab && isWebRoutePriorityPath;
+      const deferPostsResolutionToVisiblePostsSurface = isMenuTopTab
+        && isWebRoutePriorityPath
+        && safeMenuAccessSource !== "qr";
       if (deferPostsResolutionToVisiblePostsSurface) {
         posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
       } else if (earlyPostsResult?.ok && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {

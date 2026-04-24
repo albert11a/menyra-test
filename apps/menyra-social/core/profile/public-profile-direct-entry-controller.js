@@ -482,7 +482,7 @@ export function createPublicProfileDirectEntryController({
     const requestedTopTab = normalizeProfileTopTabFromRouteCore(pendingRoute?.pendingProfileTopTab || "");
     const explicitLanding = requestedTopTab === "landing";
     const resolvedTopTab = normalizeProfileTopTab(requestedTopTab || "profile", "profile");
-    const resolvedMenuAccessSource = resolvedTopTab === "menu" && isQrLikeProfileAccessSource(pendingRoute?.pendingProfileAccessSource || "")
+    const resolvedMenuAccessSource = isQrLikeProfileAccessSource(pendingRoute?.pendingProfileAccessSource || "")
       ? "qr"
       : "";
     const pendingTableNumber = Math.max(0, Number(pendingRoute?.pendingProfileTableNumber || 0) || 0);
@@ -525,6 +525,8 @@ export function createPublicProfileDirectEntryController({
         surface: "",
         topTab: "",
         contentTab: "",
+        menuAccessSource: "",
+        tableNumber: 0,
         explicitLanding: false,
         menuFirst: false,
         postsFirst: false,
@@ -541,6 +543,8 @@ export function createPublicProfileDirectEntryController({
       surface: visibleSurface,
       topTab: String(safeEntry.topTab || "").trim().toLowerCase(),
       contentTab: String(safeEntry.contentTab || "").trim().toLowerCase(),
+      menuAccessSource: String(safeEntry.menuAccessSource || "").trim().toLowerCase() === "qr" ? "qr" : "",
+      tableNumber: Math.max(0, Number(safeEntry.tableNumber || 0) || 0),
       explicitLanding: safeEntry.explicitLanding === true,
       menuFirst: safeEntry.menuFirst === true,
       postsFirst: safeEntry.postsFirst === true,

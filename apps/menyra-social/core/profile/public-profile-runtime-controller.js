@@ -47,6 +47,9 @@ export function createPublicProfileRuntimeController({
   const profileViewReadOnceInFlight = new Map();
   const publicBusinessPostsCache = new Map();
   const publicBusinessPostsInFlight = new Map();
+  const restaurantDocRouteCache = new Map();
+  const restaurantDocRouteInFlight = new Map();
+  const canonicalRestaurantIdByRouteId = new Map();
 
   function normalizeLandingSlugKey(value = "") {
     let key = String(value || "").trim().toLowerCase();
@@ -125,6 +128,49 @@ export function createPublicProfileRuntimeController({
     return first;
   }
 
+  function buildRestaurantRouteCacheKeys(routeRestaurantId = "", restaurant = null) {
+    const keys = new Set();
+    const addKey = (value = "") => {
+      const raw = String(value || "").trim();
+      if (!raw) return;
+      keys.add(raw);
+      const slugKey = normalizeLandingSlugKey(raw);
+      if (slugKey) keys.add(slugKey);
+    };
+    addKey(routeRestaurantId);
+    addKey(restaurant?.id);
+    addKey(restaurant?.publicSlug);
+    addKey(restaurant?.landingSlug);
+    addKey(restaurant?.handle);
+    return Array.from(keys.values());
+  }
+
+  function cacheResolvedRestaurantDoc(routeRestaurantId = "", restaurant = null, resolved = null) {
+    const safeResolved = resolved && typeof resolved === "object" ? resolved : null;
+    if (!safeResolved?.id) return;
+    const cacheKeys = new Set(buildRestaurantRouteCacheKeys(routeRestaurantId, restaurant));
+    const resolvedData = safeResolved?.data && typeof safeResolved.data === "object"
+      ? safeResolved.data
+      : {};
+    [
+      safeResolved.id,
+      resolvedData.publicSlug,
+      resolvedData.landingSlug,
+      resolvedData.handle
+    ].forEach((value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return;
+      cacheKeys.add(raw);
+      const slugKey = normalizeLandingSlugKey(raw);
+      if (slugKey) cacheKeys.add(slugKey);
+    });
+    cacheKeys.forEach((key) => {
+      restaurantDocRouteCache.set(key, safeResolved);
+      canonicalRestaurantIdByRouteId.set(key, String(safeResolved.id || "").trim());
+    });
+    canonicalRestaurantIdByRouteId.set(String(safeResolved.id || "").trim(), String(safeResolved.id || "").trim());
+  }
+
   function findRestaurantInStateByRouteId(routeRestaurantId = "") {
     const routeId = String(routeRestaurantId || "").trim();
     if (!routeId) return null;
@@ -143,63 +189,91 @@ export function createPublicProfileRuntimeController({
 
   async function resolveRestaurantDocByRouteId(routeRestaurantId = "", restaurant = null) {
     const routeId = String(routeRestaurantId || restaurant?.id || "").trim();
-    const cachedRestaurant = restaurant || findRestaurantInStateByRouteId(routeId) || null;
-    const directRestaurantId = String(cachedRestaurant?.id || routeId || "").trim();
-
-    if (directRestaurantId && makeDocRef && db) {
-      try {
-        const snap = await getDocSafe(makeDocRef(db, "restaurants", directRestaurantId));
-        if (snap.exists()) {
-          const data = snap.data() || {};
-          if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
-          return { id: snap.id, data };
-        }
-      } catch {}
+    const cacheKeys = buildRestaurantRouteCacheKeys(routeId, restaurant);
+    for (const key of cacheKeys) {
+      const cached = restaurantDocRouteCache.get(key);
+      if (cached?.id) return cached;
     }
+    const inFlightKey = cacheKeys[0] || routeId;
+    const inFlightRequest = restaurantDocRouteInFlight.get(inFlightKey);
+    if (inFlightRequest) {
+      return inFlightRequest;
+    }
+    const request = (async () => {
+      const cachedRestaurant = restaurant || findRestaurantInStateByRouteId(routeId) || null;
+      const directRestaurantId = String(cachedRestaurant?.id || routeId || "").trim();
 
-    const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.publicSlug || cachedRestaurant?.landingSlug || "");
-    if (routeSlug && makeCollectionRef && buildQuery && buildWhere && db) {
-      const queryRestaurantByField = async (fieldName = "", fieldValue = "") => {
-        const safeFieldName = String(fieldName || "").trim();
-        const safeFieldValue = String(fieldValue || "").trim();
-        if (!safeFieldName || !safeFieldValue) return null;
+      if (directRestaurantId && makeDocRef && db) {
+        try {
+          const snap = await getDocSafe(makeDocRef(db, "restaurants", directRestaurantId));
+          if (snap.exists()) {
+            const data = snap.data() || {};
+            if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
+            const resolved = { id: snap.id, data };
+            cacheResolvedRestaurantDoc(routeId, cachedRestaurant, resolved);
+            return resolved;
+          }
+        } catch {}
+      }
+
+      const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.publicSlug || cachedRestaurant?.landingSlug || "");
+      if (routeSlug && makeCollectionRef && buildQuery && buildWhere && db) {
+        const queryRestaurantByField = async (fieldName = "", fieldValue = "") => {
+          const safeFieldName = String(fieldName || "").trim();
+          const safeFieldValue = String(fieldValue || "").trim();
+          if (!safeFieldName || !safeFieldValue) return null;
+          try {
+            const ref = makeCollectionRef(db, "restaurants");
+            const constraints = [buildWhere(safeFieldName, "==", safeFieldValue)];
+            if (buildLimit) constraints.push(buildLimit(1));
+            const snap = await getDocsSafe(buildQuery(ref, ...constraints));
+            const firstDoc = getFirstSnapshotDoc(snap);
+            if (!firstDoc?.id) return null;
+            const data = firstDoc.data?.() || {};
+            if (!isPublicBusinessRecord({ id: firstDoc.id, ...data })) return null;
+            return { id: firstDoc.id, data };
+          } catch {
+            return null;
+          }
+        };
+        const publicSlugMatch = await queryRestaurantByField("publicSlug", routeSlug);
+        if (publicSlugMatch) {
+          cacheResolvedRestaurantDoc(routeId, cachedRestaurant, publicSlugMatch);
+          return publicSlugMatch;
+        }
         try {
           const ref = makeCollectionRef(db, "restaurants");
-          const constraints = [buildWhere(safeFieldName, "==", safeFieldValue)];
+          const constraints = [buildWhere("landingSlug", "==", routeSlug)];
           if (buildLimit) constraints.push(buildLimit(1));
           const snap = await getDocsSafe(buildQuery(ref, ...constraints));
           const firstDoc = getFirstSnapshotDoc(snap);
-          if (!firstDoc?.id) return null;
-          const data = firstDoc.data?.() || {};
-          if (!isPublicBusinessRecord({ id: firstDoc.id, ...data })) return null;
-          return { id: firstDoc.id, data };
-        } catch {
-          return null;
+          if (firstDoc?.id) {
+            const data = firstDoc.data?.() || {};
+            if (!isPublicBusinessRecord({ id: firstDoc.id, ...data })) return null;
+            const resolved = { id: firstDoc.id, data };
+            cacheResolvedRestaurantDoc(routeId, cachedRestaurant, resolved);
+            return resolved;
+          }
+        } catch {}
+        const handleMatch = await queryRestaurantByField("handle", routeSlug);
+        if (handleMatch) {
+          cacheResolvedRestaurantDoc(routeId, cachedRestaurant, handleMatch);
+          return handleMatch;
         }
-      };
-      const publicSlugMatch = await queryRestaurantByField("publicSlug", routeSlug);
-      if (publicSlugMatch) return publicSlugMatch;
-      try {
-        const ref = makeCollectionRef(db, "restaurants");
-        const constraints = [buildWhere("landingSlug", "==", routeSlug)];
-        if (buildLimit) constraints.push(buildLimit(1));
-        const snap = await getDocsSafe(buildQuery(ref, ...constraints));
-        const firstDoc = getFirstSnapshotDoc(snap);
-        if (firstDoc?.id) {
-          const data = firstDoc.data?.() || {};
-          if (!isPublicBusinessRecord({ id: firstDoc.id, ...data })) return null;
-          return { id: firstDoc.id, data };
-        }
-      } catch {}
-      const handleMatch = await queryRestaurantByField("handle", routeSlug);
-      if (handleMatch) return handleMatch;
-    }
+      }
 
-    if (cachedRestaurant?.id) {
-      if (!isPublicBusinessRecord(cachedRestaurant)) return null;
-      return { id: String(cachedRestaurant.id || "").trim(), data: cachedRestaurant };
-    }
-    return null;
+      if (cachedRestaurant?.id) {
+        if (!isPublicBusinessRecord(cachedRestaurant)) return null;
+        const resolved = { id: String(cachedRestaurant.id || "").trim(), data: cachedRestaurant };
+        cacheResolvedRestaurantDoc(routeId, cachedRestaurant, resolved);
+        return resolved;
+      }
+      return null;
+    })().finally(() => {
+      restaurantDocRouteInFlight.delete(inFlightKey);
+    });
+    restaurantDocRouteInFlight.set(inFlightKey, request);
+    return request;
   }
 
   function getProfileViewUnsub() {
@@ -402,6 +476,8 @@ export function createPublicProfileRuntimeController({
     canonicalRestaurantId = "",
     topTab = "",
     contentTab = "",
+    menuAccessSource = "",
+    tableNumber = 0,
     directEntry = null
   } = {}) {
     if (!state || typeof state !== "object") return;
@@ -426,6 +502,12 @@ export function createPublicProfileRuntimeController({
     }
     const safeTopTab = String(topTab || entry?.topTab || "").trim().toLowerCase();
     const safeContentTab = String(contentTab || entry?.contentTab || "").trim().toLowerCase();
+    const safeMenuAccessSource = String(menuAccessSource || entry?.menuAccessSource || "").trim().toLowerCase() === "qr"
+      ? "qr"
+      : "";
+    const safeTableNumber = safeMenuAccessSource === "qr"
+      ? Math.max(0, Number(tableNumber || entry?.tableNumber || 0) || 0)
+      : 0;
     const surface = safeTopTab === "menu" ? "menu" : "profile";
     state.__webDirectEntry = {
       ...(current || {}),
@@ -435,6 +517,8 @@ export function createPublicProfileRuntimeController({
       surface,
       topTab: safeTopTab || surface,
       contentTab: safeContentTab || (surface === "menu" ? "menu" : "posts"),
+      menuAccessSource: safeMenuAccessSource,
+      tableNumber: safeTableNumber,
       explicitLanding: entry?.explicitLanding === true,
       menuFirst: surface === "menu",
       postsFirst: surface === "profile",
@@ -860,13 +944,19 @@ export function createPublicProfileRuntimeController({
     backTab,
     topTab,
     contentTab = "",
-    menuAccessSource = "",
-    tableNumber = 0,
+    menuAccessSource = null,
+    tableNumber = null,
     directEntry = null,
     routePayload = null
   } = {}) {
-    const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
-    const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
+    const hasExplicitMenuAccessSource = menuAccessSource !== null && menuAccessSource !== undefined;
+    const requestedMenuAccessSource = hasExplicitMenuAccessSource
+      ? String(menuAccessSource || "").trim().toLowerCase()
+      : "";
+    const hasExplicitTableNumber = tableNumber !== null && tableNumber !== undefined;
+    const requestedTableNumber = hasExplicitTableNumber
+      ? Math.max(0, Number(tableNumber || 0) || 0)
+      : 0;
     const normalizeTopTab = (value = "", fallback = "profile") => {
       const key = String(value || "").trim().toLowerCase();
       if (key === "profile") return "profile";
@@ -887,6 +977,8 @@ export function createPublicProfileRuntimeController({
     const currentView = state?.profileView || null;
     const currentProfile = currentView?.profile || null;
     const currentPosts = Array.isArray(currentView?.posts) ? currentView.posts : [];
+    const currentMenuAccessSource = String(currentView?.menuAccessSource || "").trim().toLowerCase();
+    const currentTableNumber = Math.max(0, Number(currentView?.tableNumber || 0) || 0);
     const currentDirectEntry = currentView?.directEntry && typeof currentView.directEntry === "object"
       ? currentView.directEntry
       : null;
@@ -905,6 +997,16 @@ export function createPublicProfileRuntimeController({
       && directEntryStalePolicy?.webPriority === true
       && directEntryStalePolicy?.active !== false;
     const sameVisibleIncomingProfile = isSameVisibleProfile(currentProfile || null, profile || null);
+    const normalizedMenuAccessSource = hasExplicitMenuAccessSource
+      ? (requestedMenuAccessSource === "qr" ? "qr" : "")
+      : (sameVisibleIncomingProfile && currentMenuAccessSource === "qr" ? "qr" : "");
+    const safeTableNumber = normalizedMenuAccessSource === "qr"
+      ? (
+        hasExplicitTableNumber
+          ? requestedTableNumber
+          : (sameVisibleIncomingProfile ? currentTableNumber : 0)
+      )
+      : 0;
     const incomingProjectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile?.posts || []);
     const incomingProfileSettling = isProfileSettling(profile);
     const currentSurface = resolveVisibleProfileSurface(state, {
@@ -1044,7 +1146,6 @@ export function createPublicProfileRuntimeController({
     const nextProfileBackTab = showBack
       ? (backTab || state.activeTab || "feed")
       : "";
-    const normalizedMenuAccessSource = safeMenuAccessSource === "qr" ? "qr" : "";
     const explicitContentTab = String(contentTab || "").trim().toLowerCase();
     const effectiveExplicitContentTab = preserveLiveBusinessTopTab ? "" : explicitContentTab;
     const nextContentTab = resolvedTopTab === "menu"
@@ -1141,8 +1242,8 @@ export function createPublicProfileRuntimeController({
     const nextSignature = buildProfileRenderSignature(nextProfile);
     const currentTopTab = String(state?.profileTopTab || "").trim();
     const currentContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
-    const currentMenuAccessSource = String(currentView?.menuAccessSource || "").trim().toLowerCase();
-    const currentTableNumber = Math.max(0, Number(currentView?.tableNumber || 0) || 0);
+    const currentMenuAccessSourceSignature = currentMenuAccessSource;
+    const currentTableNumberSignature = currentTableNumber;
     const serializeDirectEntry = (entry = null) => {
       if (!entry || typeof entry !== "object") return "";
       return [
@@ -1177,8 +1278,8 @@ export function createPublicProfileRuntimeController({
       && haveSamePostIdentity(currentPosts, projectedPosts)
       && currentTopTab === String(resolvedTopTab || "").trim()
       && currentContentTab === String(nextContentTab || "").trim().toLowerCase()
-      && currentMenuAccessSource === normalizedMenuAccessSource
-      && currentTableNumber === safeTableNumber
+      && currentMenuAccessSourceSignature === normalizedMenuAccessSource
+      && currentTableNumberSignature === safeTableNumber
       && currentDirectEntrySignature === nextDirectEntrySignature
       && currentRoutePayloadSignature === nextRoutePayloadSignature
       && String(state?.profileBackTab || "") === String(nextProfileBackTab || "")
@@ -1190,6 +1291,8 @@ export function createPublicProfileRuntimeController({
         canonicalRestaurantId: nextCanonicalRestaurantId,
         topTab: resolvedTopTab,
         contentTab: nextContentTab,
+        menuAccessSource: normalizedMenuAccessSource,
+        tableNumber: safeTableNumber,
         directEntry: nextDirectEntry
       });
       attachProfileViewListener(nextProfile);
@@ -1229,6 +1332,8 @@ export function createPublicProfileRuntimeController({
       canonicalRestaurantId: nextCanonicalRestaurantId,
       topTab: resolvedTopTab,
       contentTab: nextContentTab,
+      menuAccessSource: normalizedMenuAccessSource,
+      tableNumber: safeTableNumber,
       directEntry: nextDirectEntry
     });
     renderApp();
@@ -1337,9 +1442,22 @@ export function createPublicProfileRuntimeController({
     }
     const request = (async () => {
       let effectiveRestaurantId = routeRestaurantId;
-      if (!skipProfileResolve) {
+      let shouldSkipProfileResolve = !!skipProfileResolve;
+      const cachedCanonicalRestaurantId = String(
+        canonicalRestaurantIdByRouteId.get(routeRestaurantId)
+        || canonicalRestaurantIdByRouteId.get(normalizeLandingSlugKey(routeRestaurantId))
+        || ""
+      ).trim();
+      if (cachedCanonicalRestaurantId) {
+        effectiveRestaurantId = cachedCanonicalRestaurantId;
+        shouldSkipProfileResolve = true;
+      }
+      if (!shouldSkipProfileResolve) {
         const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
         effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
+        if (resolvedDoc?.id) {
+          cacheResolvedRestaurantDoc(routeRestaurantId, null, resolvedDoc);
+        }
       }
       if (!effectiveRestaurantId) return [];
       const resolvedCached = publicBusinessPostsCache.get(effectiveRestaurantId);

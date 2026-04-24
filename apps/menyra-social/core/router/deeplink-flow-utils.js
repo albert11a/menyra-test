@@ -337,6 +337,12 @@ export function createDeeplinkFlowControllerCore({
 
     const safeRestaurantId = normalizeProfileRestaurantId(pending.pendingProfileRestaurantId);
     const requestedTopTab = normalizeProfileTopTab(pending.pendingProfileTopTab);
+    const nextAccessSourceRaw = pending.pendingProfileAccessSource;
+    const nextTableNumber = normalizeTableNumberCore(pending.pendingProfileTableNumber || 0);
+    const requestedAccessSource = isQrLikePublicBusinessAccessSourceCore(nextAccessSourceRaw || "")
+      ? "qr"
+      : "";
+    const requestedTableNumber = requestedAccessSource === "qr" ? nextTableNumber : 0;
     const liveProfileView = state?.profileView && typeof state.profileView === "object"
       ? state.profileView
       : null;
@@ -354,6 +360,13 @@ export function createDeeplinkFlowControllerCore({
     const liveDirectEntry = liveProfileView?.directEntry && typeof liveProfileView.directEntry === "object"
       ? liveProfileView.directEntry
       : null;
+    const liveMenuAccessSource = String(liveProfileView?.menuAccessSource || "").trim().toLowerCase();
+    const liveTableNumber = normalizeTableNumberCore(liveProfileView?.tableNumber || 0);
+    const liveRouteContextMatches = liveMenuAccessSource === requestedAccessSource
+      && (
+        requestedAccessSource !== "qr"
+        || liveTableNumber === requestedTableNumber
+      );
     const isPendingRouteSeedContinuation = String(liveDirectEntry?.owner || "").trim().toLowerCase() === "web-direct"
       && liveDirectEntry?.routeFirst === true
       && liveDirectEntry?.active !== false
@@ -361,7 +374,8 @@ export function createDeeplinkFlowControllerCore({
     const liveBusinessSurfaceMatchesRoute = liveSurfaceTopTab === requestedSurfaceTopTab
       && liveSurfaceContentTab === requestedSurfaceContentTab;
     const canShortCircuitBusinessRoute = !isPendingRouteSeedContinuation
-      && liveBusinessSurfaceMatchesRoute;
+      && liveBusinessSurfaceMatchesRoute
+      && liveRouteContextMatches;
     if (canShortCircuitBusinessRoute && isProfileAlreadyOpen({ pendingProfileRestaurantId: safeRestaurantId })) {
       patchPendingState({
         pendingProfileHandled: true,
@@ -376,8 +390,6 @@ export function createDeeplinkFlowControllerCore({
     }
 
     const nextTabRaw = pending.pendingProfileTopTab;
-    const nextAccessSourceRaw = pending.pendingProfileAccessSource;
-    const nextTableNumber = normalizeTableNumberCore(pending.pendingProfileTableNumber || 0);
     patchPendingState({
       pendingProfileHandled: true,
       pendingProfileRestaurantId: "",
@@ -388,12 +400,8 @@ export function createDeeplinkFlowControllerCore({
       pendingUserContentTab: ""
     });
     const nextTab = normalizeProfileTopTab(nextTabRaw);
-    const safeAccessSource = String(nextAccessSourceRaw || "").trim().toLowerCase();
-    const isQrLikeAccessSource = isQrLikePublicBusinessAccessSourceCore(safeAccessSource);
-    const nextAccessSource = nextTab === "menu" && isQrLikeAccessSource
-      ? "qr"
-      : "";
-    const resolvedTableNumber = nextAccessSource === "qr" ? nextTableNumber : 0;
+    const nextAccessSource = requestedAccessSource;
+    const resolvedTableNumber = requestedTableNumber;
     openBusinessProfile(
       { id: safeRestaurantId },
       {
