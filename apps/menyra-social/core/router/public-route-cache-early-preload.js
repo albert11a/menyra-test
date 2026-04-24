@@ -1,12 +1,25 @@
 import { db } from "/shared/firebase-config.js?v=2026-03-10-startup-1";
 import {
+  collection,
   doc,
-  getDoc
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  where
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 
 const PUBLIC_ROUTE_CACHE_GLOBAL_KEY = "__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__";
 const PUBLIC_ROUTE_EARLY_PRELOAD_DONE_KEY = "__MENYRA_PUBLIC_ROUTE_EARLY_PRELOAD_DONE__";
-const PUBLIC_ROUTE_EARLY_PRELOAD_TIMEOUT_MS = 650;
+const PUBLIC_ROUTE_EARLY_PRELOAD_TIMEOUT_MS = 850;
+const RESTAURANT_SLUG_FIELDS = Object.freeze([
+  "publicSlug",
+  "landingSlug",
+  "businessSlug",
+  "routeSlug",
+  "slug",
+  "handle"
+]);
 
 function safeText(value = "") {
   return String(value || "").trim();
@@ -100,6 +113,15 @@ function normalizeStatus(value = "") {
   return "active";
 }
 
+function resolveCanonicalSlugFromRestaurant(slug = "", data = null) {
+  const safeData = data && typeof data === "object" ? data : {};
+  for (const field of ["canonicalSlug", ...RESTAURANT_SLUG_FIELDS]) {
+    const candidate = normalizeSlug(safeData[field] || "");
+    if (candidate) return candidate;
+  }
+  return normalizeSlug(slug);
+}
+
 function normalizeRouteDoc(slug = "", data = null) {
   if (!data || typeof data !== "object") return null;
   const restaurantId = safeText(data.restaurantId || data.canonicalRestaurantId || "");
@@ -112,8 +134,30 @@ function normalizeRouteDoc(slug = "", data = null) {
     inputSlug: slug,
     canonicalSlug,
     restaurantId,
-    source: "firestore"
+    source: "publicRoutes"
   };
+}
+
+function normalizeRestaurantDoc(slug = "", snapshot = null) {
+  if (!snapshot) return null;
+  try {
+    const data = typeof snapshot.data === "function" ? snapshot.data() : null;
+    if (!data || typeof data !== "object") return null;
+    const restaurantId = safeText(data.restaurantId || data.id || snapshot.id || "");
+    const canonicalSlug = resolveCanonicalSlugFromRestaurant(slug, data);
+    const status = normalizeStatus(data.publicRouteStatus || data.status || "active");
+    if (!restaurantId || !canonicalSlug) return null;
+    return {
+      found: status !== "inactive" && status !== "not-found",
+      status,
+      inputSlug: slug,
+      canonicalSlug,
+      restaurantId,
+      source: "restaurants"
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function readPublicRoute(slug = "") {
@@ -128,6 +172,56 @@ async function readPublicRoute(slug = "") {
   }
 }
 
+async function readRestaurantByDocId(slug = "") {
+  const safeSlug = normalizeSlug(slug);
+  if (!safeSlug) return null;
+  try {
+    const snapshot = await getDoc(doc(db, "restaurants", safeSlug));
+    if (!snapshot.exists()) return null;
+    return normalizeRestaurantDoc(safeSlug, snapshot);
+  } catch {
+    return null;
+  }
+}
+
+async function readRestaurantBySlugField(slug = "") {
+  const safeSlug = normalizeSlug(slug);
+  if (!safeSlug) return null;
+  for (const field of RESTAURANT_SLUG_FIELDS) {
+    try {
+      const exactSnapshot = await getDocs(query(
+        collection(db, "restaurants"),
+        where(field, "==", safeSlug),
+        limit(1)
+      ));
+      const exactDoc = exactSnapshot?.docs?.[0] || null;
+      const exactResolution = normalizeRestaurantDoc(safeSlug, exactDoc);
+      if (exactResolution?.found && exactResolution.restaurantId) return exactResolution;
+    } catch {}
+    try {
+      const rawSnapshot = await getDocs(query(
+        collection(db, "restaurants"),
+        where(field, "==", slug),
+        limit(1)
+      ));
+      const rawDoc = rawSnapshot?.docs?.[0] || null;
+      const rawResolution = normalizeRestaurantDoc(safeSlug, rawDoc);
+      if (rawResolution?.found && rawResolution.restaurantId) return rawResolution;
+    } catch {}
+  }
+  return null;
+}
+
+async function readRestaurantRoute(slug = "") {
+  return await readRestaurantByDocId(slug)
+    || await readRestaurantBySlugField(slug);
+}
+
+async function readCanonicalPublicRoute(slug = "") {
+  return await readPublicRoute(slug)
+    || await readRestaurantRoute(slug);
+}
+
 async function preloadEarlyPublicRouteCache() {
   const slugs = collectSlugs();
   if (!slugs.length) return [];
@@ -135,7 +229,7 @@ async function preloadEarlyPublicRouteCache() {
   const results = [];
   for (const slug of slugs) {
     const resolution = await Promise.race([
-      readPublicRoute(slug),
+      readCanonicalPublicRoute(slug),
       new Promise((resolve) => setTimeout(() => resolve(null), PUBLIC_ROUTE_EARLY_PRELOAD_TIMEOUT_MS))
     ]);
     if (!resolution?.found || !resolution.restaurantId) continue;
