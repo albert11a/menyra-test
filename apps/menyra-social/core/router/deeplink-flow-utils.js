@@ -1,9 +1,17 @@
 import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
+import { resolveLaunchPublicBusinessRouteCore } from "./public-business-route-resolver.js";
 import { isQrLikePublicBusinessAccessSourceCore } from "./public-business-route-utils.js";
 
 const NOTIFICATION_QUERY_KEYS = ["notif", "notification", "nid"];
 const POST_QUERY_KEYS = ["post", "postId"];
 const CHAT_QUERY_KEYS = ["chat", "thread"];
+
+function resolvePublicBusinessRestaurantIdAlias(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const resolved = resolveLaunchPublicBusinessRouteCore(raw);
+  return String(resolved?.restaurantId || raw).trim();
+}
 
 export function createDeeplinkFlowControllerCore({
   state,
@@ -169,7 +177,11 @@ export function createDeeplinkFlowControllerCore({
     const current = readPendingState();
     const applied = applyPendingRouteStateFn(current, routeState);
     if (!applied?.changed || !applied?.next) return false;
-    patchPendingState(applied.next);
+    const next = { ...applied.next };
+    if (next.pendingProfileRestaurantId) {
+      next.pendingProfileRestaurantId = resolvePublicBusinessRestaurantIdAlias(next.pendingProfileRestaurantId);
+    }
+    patchPendingState(next);
     return true;
   };
 
@@ -335,7 +347,9 @@ export function createDeeplinkFlowControllerCore({
       return true;
     }
 
-    const safeRestaurantId = normalizeProfileRestaurantId(pending.pendingProfileRestaurantId);
+    const safeRestaurantId = resolvePublicBusinessRestaurantIdAlias(
+      normalizeProfileRestaurantId(pending.pendingProfileRestaurantId)
+    );
     const requestedTopTab = normalizeProfileTopTab(pending.pendingProfileTopTab);
     const nextAccessSourceRaw = pending.pendingProfileAccessSource;
     const nextTableNumber = normalizeTableNumberCore(pending.pendingProfileTableNumber || 0);
