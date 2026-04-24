@@ -346,11 +346,11 @@ export function createAuthSessionStartupCoordinator({
         scheduleGuestTabEnsure({
           prioritize: false,
           visiblePath: prioritizeGuestSurface || webDirectGuestProfileSurface,
-          delayMs: webDirectGuestProfileSurface ? 960 : 140,
-          skip: webDirectGuestProfileSurface
+          delayMs: webDirectGuestProfileSurface ? 520 : 140,
+          skip: false
         });
       }
-      if (!state?.user && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise && !isQrMenuProfileLaunchActive()) {
+      if (!state?.user && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({

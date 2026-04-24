@@ -51,7 +51,7 @@ export function createPublicProfileRuntimeController({
   const restaurantDocRouteCache = new Map();
   const restaurantDocRouteInFlight = new Map();
   const canonicalRestaurantIdByRouteId = new Map();
-  const PUBLIC_BUSINESS_EMPTY_POSTS_TTL_MS = 60_000;
+  const PUBLIC_BUSINESS_EMPTY_POSTS_TTL_MS = 15_000;
 
   function normalizeLandingSlugKey(value = "") {
     let key = String(value || "").trim().toLowerCase();
@@ -272,7 +272,18 @@ export function createPublicProfileRuntimeController({
     profileViewUnsub = typeof next === "function" ? next : null;
   }
 
+  function clearProfileViewReadOnceState(...listenerKeys) {
+    for (const listenerKeyRaw of listenerKeys) {
+      const listenerKey = String(listenerKeyRaw || "").trim();
+      if (!listenerKey) continue;
+      profileViewReadOnceCompletedKeys.delete(listenerKey);
+      profileViewReadOnceInFlight.delete(listenerKey);
+    }
+  }
+
   function stopProfileViewListener() {
+    const previousListenerKey = String(profileViewListenerKey || "").trim();
+    const previousReadOnceKey = String(profileViewReadOnceKey || "").trim();
     if (typeof profileViewUnsub === "function") {
       try {
         profileViewUnsub();
@@ -281,6 +292,7 @@ export function createPublicProfileRuntimeController({
     profileViewUnsub = null;
     profileViewListenerKey = "";
     profileViewReadOnceKey = "";
+    clearProfileViewReadOnceState(previousListenerKey, previousReadOnceKey);
   }
 
   function resolveProfileCanonicalRestaurantId(profile = null, routePayload = null) {

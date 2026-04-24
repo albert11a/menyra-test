@@ -137,6 +137,17 @@ Last updated: 2026-04-24
   QR-Kontext nicht auf `posts/profile` zurueckfaellt. Zusaetzlich wurde die
   Slug->Restaurant-Aufloesung im Public-Profilpfad parallelisiert und der
   QR-Menu-Backoff fuer schnellere First-Content-Reaktion reduziert.
+- Schritt 21 ist abgeschlossen: verbleibende Public-Web-/QR-Owner-,
+  Bootstrap- und Loader-Konflikte wurden im bestehenden Client-Pfad gehaertet.
+- Bewertung von Schritt 21: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 21:
+  spaete Bootstrap-Route-Seeds duerfen eine bereits settled Web-Direct-
+  Public-Surface nicht mehr ueberschreiben; QR nutzt wieder denselben
+  Canonical-/Ensure-Dedupe-Pfad wie normaler Web-Direct; Public Guest Startup
+  blockiert weder QR-Bootstrap noch den spaeteren Ensure-Fallback; der
+  frische sichtbare Menu-Pfad darf route-keyed Bootstrap-/Persisted-/Memory-
+  Seeds wieder sinnvoll nutzen, und Posts werden im Menu-First-Pfad frueher
+  aufgewarmt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -157,6 +168,7 @@ Last updated: 2026-04-24
 - Referenz: [docs/mnyra-public-profile-orchestration-fix.md](./mnyra-public-profile-orchestration-fix.md)
 - Referenz: [docs/mnyra-step19-public-qr-cold-open-reliability-hardening.md](./mnyra-step19-public-qr-cold-open-reliability-hardening.md)
 - Referenz: [docs/mnyra-step20-qr-menu-main-refresh-hardening.md](./mnyra-step20-qr-menu-main-refresh-hardening.md)
+- Referenz: [docs/mnyra-step21-public-web-qr-owner-loader-hardening.md](./mnyra-step21-public-web-qr-owner-loader-hardening.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -182,11 +194,11 @@ Last updated: 2026-04-24
 
 ## Naechster Schritt
 
-Nach Schritt 20 ist der naechste moegliche separate Folgeschritt:
-gezielte Restkanten-Absicherung fuer seltene Reentry-Pfade unter echten
-Cold-Start-Bedingungen (ohne Cache) innerhalb derselben Public-Web-Profil-
-Scope-Grenze, plus fokussierte manuelle Regression auf QR->Menu->Posts->Refresh
-und Browser-Back/Forward unter wechselnden Netzwerkbedingungen.
+Nach Schritt 21 ist der naechste moegliche separate Folgeschritt:
+fokussierte manuelle Regression unter echten Netzwerkbedingungen fuer
+QR->Menu->Posts->Refresh, `/:slug/menu` Cold-Refresh und Browser-Back/Forward.
+Ein weiterer technischer Schritt waere erst dann sinnvoll, wenn diese
+manuellen Flows noch konkrete Restfehler zeigen.
 
 ## Guardrails fuer die naechsten Schritte
 

@@ -1407,7 +1407,7 @@
             && (!effectiveRouteTab || effectiveRouteTab === "feed" || effectiveRouteTab === "home")
           )
         );
-      const shouldUseBootstrapCache = shouldFetchBootstrap && !isDirectPublicWebRoute;
+      const shouldUseBootstrapCache = shouldFetchBootstrap;
       if (appRoot) {
         appRoot.dataset.startupSurface = startupSurface;
       }
@@ -1427,6 +1427,7 @@
           return `${window.location.pathname || "/"}?${window.location.search || ""}${window.location.hash || ""}`;
         }
       };
+      const currentStartupRouteKey = buildStartupRouteKey();
       const restoreStartupSnapshot = () => {
         try {
           if (!ENABLE_STARTUP_SNAPSHOT) return false;
@@ -1449,7 +1450,7 @@
           if (!html || !savedAt || !routeKey) return false;
           if (Date.now() - savedAt > STARTUP_SNAPSHOT_TTL_MS) return false;
           if (appVersion && appVersion !== String(window.__MENYRA_SOCIAL_APP_VERSION__ || "")) return false;
-          if (routeKey !== buildStartupRouteKey()) return false;
+          if (routeKey !== currentStartupRouteKey) return false;
           appRoot.innerHTML = html;
           appRoot.dataset.startupSnapshot = "1";
           appRoot.removeAttribute("aria-busy");
@@ -1475,8 +1476,11 @@
           const parsed = JSON.parse(raw);
           const savedAt = Number(parsed?.savedAt || 0);
           const payload = parsed?.payload;
+          const routeKey = String(parsed?.routeKey || "");
           if (!savedAt || !payload || typeof payload !== "object") return null;
           if (Date.now() - savedAt > BOOTSTRAP_CACHE_TTL_MS) return null;
+          if (routeKey && routeKey !== currentStartupRouteKey) return null;
+          if (!routeKey && isDirectPublicWebRoute) return null;
           return payload;
         } catch {
           return null;
@@ -1487,6 +1491,7 @@
           if (!payload || typeof payload !== "object") return;
           window.localStorage?.setItem?.(BOOTSTRAP_CACHE_KEY, JSON.stringify({
             savedAt: Date.now(),
+            routeKey: currentStartupRouteKey,
             payload
           }));
         } catch {}

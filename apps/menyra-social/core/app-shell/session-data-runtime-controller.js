@@ -172,10 +172,13 @@ export function createSessionDataRuntimeController({
       routePayload.canonicalRestaurantId,
       routePayload.restaurantId,
       routePayload.publicSlug,
+      routePayload.landingSlug,
       routeIdentity.publicSlug,
+      routeIdentity.landingSlug,
       routeIdentity.handle,
       routeSnapshot.restaurantId,
       snapshotIdentity.publicSlug,
+      snapshotIdentity.landingSlug,
       snapshotIdentity.handle,
       webDirectEntry.canonicalRestaurantId,
       webDirectEntry.restaurantId
@@ -1491,10 +1494,17 @@ export function createSessionDataRuntimeController({
         currentMenuRestaurantId === safeRestaurantId
         || visibleMenuTargetIds.has(currentMenuRestaurantId)
       );
-    const hasVisibleMenuSeed = menuStateMatchesVisibleSurface
+    const hasVisibleMenuItems = menuStateMatchesVisibleSurface
       && Array.isArray(state.menu.items)
       && state.menu.items.length > 0;
-    const hasRouteBootstrapMenuSeed = hasVisibleMenuSeed
+    const currentMenuTruthState = String(state?.menu?.truthState || "").trim().toLowerCase();
+    const hasVisibleSettledMenuTruth = menuStateMatchesVisibleSurface
+      && (
+        currentMenuTruthState === "seeded"
+        || currentMenuTruthState === "knownempty"
+        || currentMenuTruthState === "known-empty"
+      );
+    const hasRouteBootstrapMenuSeed = hasVisibleMenuItems
       && state.menu.routeSeed === true;
     const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
       ? state.__webDirectEntry
@@ -1515,12 +1525,23 @@ export function createSessionDataRuntimeController({
       && String(state?.profileTopTab || "").trim().toLowerCase() === "menu";
     const webDirectMenuFreshPath = webDirectMenuFirstVisiblePath
       && webDirectEntry?.webPriority === true;
-    const blockWebDirectMenuCacheSeed = webDirectMenuFreshPath && !force && !hasRouteBootstrapMenuSeed;
+    const shouldPreserveVisibleMenuTruth = hasRouteBootstrapMenuSeed || hasVisibleSettledMenuTruth;
+    const blockWebDirectMenuCacheSeed = webDirectMenuFreshPath && !force && shouldPreserveVisibleMenuTruth;
     const prioritizeVisibleMenuTruth = !force
       && isVisiblePublicMenuSurface(safeRestaurantId, safeSource)
-      && (!hasVisibleMenuSeed || webDirectMenuFreshPath);
+      && shouldPreserveVisibleMenuTruth;
     const shouldPrioritizeVisibleMenuTruth = prioritizeVisibleMenuTruth;
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
+    const queueFreshMenuReconcile = () => {
+      if (menuFreshReconcileQueuedKeys.has(cacheKey)) return;
+      menuFreshReconcileQueuedKeys.add(cacheKey);
+      queueMicrotask(() => {
+        void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
+          .finally(() => {
+            menuFreshReconcileQueuedKeys.delete(cacheKey);
+          });
+      });
+    };
     const cached = menuCacheMap.get(cacheKey);
     if (cached && cached.items?.length && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
       state.menu = {
@@ -1535,15 +1556,7 @@ export function createSessionDataRuntimeController({
         truthState: "seeded"
       };
       requestRender();
-      if (!lightweightQrGuestFlow && !menuFreshReconcileQueuedKeys.has(cacheKey)) {
-        menuFreshReconcileQueuedKeys.add(cacheKey);
-        queueMicrotask(() => {
-          void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
-            .finally(() => {
-              menuFreshReconcileQueuedKeys.delete(cacheKey);
-            });
-        });
-      }
+      queueFreshMenuReconcile();
       return;
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
@@ -1565,15 +1578,7 @@ export function createSessionDataRuntimeController({
         ts: Date.now()
       });
       requestRender();
-      if (!lightweightQrGuestFlow && !menuFreshReconcileQueuedKeys.has(cacheKey)) {
-        menuFreshReconcileQueuedKeys.add(cacheKey);
-        queueMicrotask(() => {
-          void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
-            .finally(() => {
-              menuFreshReconcileQueuedKeys.delete(cacheKey);
-            });
-        });
-      }
+      queueFreshMenuReconcile();
       return;
     }
     const inFlight = menuNetworkLoadPromises.get(cacheKey);

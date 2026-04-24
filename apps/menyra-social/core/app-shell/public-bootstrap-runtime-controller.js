@@ -574,6 +574,49 @@ function applyWebDirectRouteSeedFromBootstrap({
   ) {
     return false;
   }
+  const currentRoutePayload = view?.routePayload && typeof view.routePayload === "object"
+    ? view.routePayload
+    : null;
+  const currentDirectEntryPhase = String(view?.directEntry?.phase || "").trim().toLowerCase();
+  const currentRoutePayloadOwner = String(currentRoutePayload?.owner || "").trim().toLowerCase();
+  const currentRoutePayloadRestaurantId = String(
+    currentRoutePayload?.canonicalRestaurantId
+    || currentRoutePayload?.businessSnapshot?.restaurantId
+    || currentRoutePayload?.restaurantId
+    || ""
+  ).trim();
+  const currentMenuTruthState = String(state?.menu?.truthState || "").trim().toLowerCase();
+  const currentFocusTruthState = String(state?.focus?.truthState || "").trim().toLowerCase();
+  const currentIdentityReady = String(profile?.identityTruthState || "").trim().toLowerCase() === "ready"
+    || !!(
+      String(profile?.name || "").trim()
+      || String(profile?.avatar || "").trim()
+      || String(profile?.handle || "").trim()
+    );
+  const currentPostsSettled = profile?.postsLoaded === true
+    || ["stable", "empty"].includes(String(profile?.truthState || "").trim().toLowerCase());
+  const currentMenuSettled = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+    && (
+      currentMenuTruthState === "seeded"
+      || currentMenuTruthState === "knownempty"
+      || currentMenuTruthState === "known-empty"
+    );
+  const currentFocusSettled = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+    && (
+      currentFocusTruthState === "seeded"
+      || currentFocusTruthState === "knownempty"
+      || currentFocusTruthState === "known-empty"
+    );
+  const currentWebDirectSurfaceSettled = currentDirectEntryPhase === "ready"
+    && currentRoutePayloadOwner === "web-direct"
+    && currentRoutePayloadRestaurantId === safeRestaurantId
+    && currentIdentityReady
+    && currentPostsSettled
+    && currentMenuSettled
+    && currentFocusSettled;
+  if (currentWebDirectSurfaceSettled) {
+    return false;
+  }
   const routeIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
     ? routeSnapshot.identity
     : (safeRoutePayload?.identity && typeof safeRoutePayload.identity === "object"
@@ -612,6 +655,18 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routeMenuStatusBadgeVisible = routeSnapshot?.menu?.statusBadgeVisible !== false
     && safeRoutePayload?.menu?.statusBadgeVisible !== false;
   const routeLayoutColor = String(safeRoutePayload?.layout?.menuCardColor || "").trim().toLowerCase();
+  const currentMenuAccessSource = String(
+    view?.menuAccessSource
+    || safeRoutePayload?.menuAccessSource
+    || currentRoutePayload?.menuAccessSource
+    || ""
+  ).trim().toLowerCase();
+  const currentTableNumber = Math.max(0, Number(
+    view?.tableNumber
+    || safeRoutePayload?.tableNumber
+    || currentRoutePayload?.tableNumber
+    || 0
+  ) || 0);
   const safeMaxPosts = Math.max(1, Number(maxPosts) || 8);
   let changed = false;
   const restaurantPreview = (Array.isArray(incomingRestaurants) ? incomingRestaurants : [])
@@ -1021,8 +1076,8 @@ function applyWebDirectRouteSeedFromBootstrap({
       topTab: String(view?.directEntry?.topTab || "").trim().toLowerCase() || "profile",
       contentTab: String(view?.directEntry?.contentTab || "").trim().toLowerCase() || "posts",
       phase: snapshotPhaseReady ? "ready" : "loading",
-      menuAccessSource: String(safeRoutePayload?.menuAccessSource || "").trim().toLowerCase(),
-      tableNumber: Math.max(0, Number(safeRoutePayload?.tableNumber || 0) || 0),
+      menuAccessSource: currentMenuAccessSource === "qr" ? "qr" : "",
+      tableNumber: currentMenuAccessSource === "qr" ? currentTableNumber : 0,
       identity: {
         name: String(profile.name || "").trim(),
         handle: String(profile.handle || "").trim(),

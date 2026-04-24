@@ -153,12 +153,6 @@ export function ensureTabDataCore({
   }
 
   const activeUid = String(state.user?.uid || "").trim();
-  const isQrMenuProfileSession = (
-    !hasUser
-    && tab === "profile"
-    && String(state?.profileTopTab || "").trim().toLowerCase() === "menu"
-    && String(state?.profileView?.menuAccessSource || "").trim().toLowerCase() === "qr"
-  );
   const isLandingProfileSession = (
     tab === "profile"
     && String(state?.profileTopTab || "").trim().toLowerCase() === "landing"
@@ -198,7 +192,7 @@ export function ensureTabDataCore({
     return loadUserPostsSafe();
   };
 
-  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isQrMenuProfileSession && !isLandingProfileSession;
+  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isLandingProfileSession;
   if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
     if (hasUser) {

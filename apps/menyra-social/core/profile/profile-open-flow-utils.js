@@ -726,10 +726,19 @@ export function createProfileOpenFlowControllerCore({
       };
       const prioritizePostsSurface = resolvedTopTab === "profile" && resolvedContentTab === "posts";
       const earlyPostsRestaurantId = resolveCanonicalRestaurantIdCandidate(
-        targetCanonicalRestaurantId
+        targetCanonicalRestaurantId,
+        routeSnapshotRestaurantId,
+        targetMenuRestaurantId
       );
-      const earlyPostsPromise = prioritizePostsSurface && earlyPostsRestaurantId
-        ? Promise.resolve(loadBusinessPosts(earlyPostsRestaurantId, { skipProfileResolve: true }))
+      const earlyPostsSkipProfileResolve = !!resolveCanonicalRestaurantIdCandidate(
+        targetCanonicalRestaurantId,
+        routeSnapshotRestaurantId
+      );
+      const shouldWarmPostsForWebRoute = isWebRoutePriorityPath && !!earlyPostsRestaurantId;
+      const earlyPostsPromise = shouldWarmPostsForWebRoute && earlyPostsRestaurantId
+        ? Promise.resolve(loadBusinessPosts(earlyPostsRestaurantId, {
+          skipProfileResolve: earlyPostsSkipProfileResolve
+        }))
           .then((rows) => ({
             ok: true,
             posts: Array.isArray(rows) ? rows : []

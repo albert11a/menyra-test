@@ -109,10 +109,13 @@ export function createProfileBusinessMenuRuntimeCluster({
       routePayload?.canonicalRestaurantId,
       routePayload?.restaurantId,
       routePayload?.publicSlug,
+      routePayload?.landingSlug,
       routeIdentity.publicSlug,
+      routeIdentity.landingSlug,
       routeIdentity.handle,
       routeSnapshot.restaurantId,
       snapshotIdentity.publicSlug,
+      snapshotIdentity.landingSlug,
       snapshotIdentity.handle,
       webDirectEntry?.canonicalRestaurantId,
       webDirectEntry?.restaurantId
@@ -139,7 +142,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     ).trim();
   };
 
-  const isNormalWebDirectMenuVisible = () => {
+  const isWebDirectMenuVisible = () => {
     const webDirectEntry = getWebDirectEntryState();
     if (webDirectEntry?.active !== true || webDirectEntry?.webPriority !== true || webDirectEntry?.menuFirst !== true) {
       return false;
@@ -147,14 +150,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const activeTab = String(state?.activeTab || "").trim().toLowerCase();
     const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
     if (activeTab !== "profile" || profileTopTab !== "menu") return false;
-    const routePayload = getVisibleRoutePayload();
-    const menuAccessSource = String(
-      state?.profileView?.menuAccessSource
-      || webDirectEntry?.menuAccessSource
-      || routePayload?.menuAccessSource
-      || ""
-    ).trim().toLowerCase();
-    return menuAccessSource !== "qr";
+    return true;
   };
 
   const isNormalWebDirectProfileVisible = () => {
@@ -174,7 +170,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const safeRequestedId = String(requestedId || "").trim();
     if (!activeTargetId) return false;
     if (activeTargetId === safeTargetId || activeTargetId === safeRequestedId) return true;
-    if (!isNormalWebDirectMenuVisible()) return false;
+    if (!isWebDirectMenuVisible()) return false;
     const visibleTargetIds = collectVisibleMenuTargetIds(profile);
     return visibleTargetIds.has(activeTargetId)
       && (!!safeTargetId && visibleTargetIds.has(safeTargetId)
@@ -188,7 +184,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const safeRequestedId = String(requestedId || "").trim();
     if (!activeTargetId) return false;
     if (activeTargetId === safeTargetId || activeTargetId === safeRequestedId) return true;
-    const isWebDirectVisible = isNormalWebDirectMenuVisible() || isNormalWebDirectProfileVisible();
+    const isWebDirectVisible = isWebDirectMenuVisible() || isNormalWebDirectProfileVisible();
     if (!isWebDirectVisible) return false;
     const visibleTargetIds = collectVisibleMenuTargetIds(profile);
     return visibleTargetIds.has(activeTargetId)
@@ -203,7 +199,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const safeRequestedId = String(requestedId || "").trim();
     if (!activeTargetId) return false;
     if (activeTargetId === safeTargetId || activeTargetId === safeRequestedId) return true;
-    if (!isNormalWebDirectMenuVisible()) return false;
+    if (!isWebDirectMenuVisible()) return false;
     const visibleTargetIds = collectVisibleMenuTargetIds(profile);
     return visibleTargetIds.has(activeTargetId)
       && (!!safeTargetId && visibleTargetIds.has(safeTargetId)
@@ -270,7 +266,7 @@ export function createProfileBusinessMenuRuntimeCluster({
       && canonicalRestaurantIdHint === routeCanonicalRestaurantId;
     const shouldTrustCanonicalHintFromVisibleTargets = !!canonicalRestaurantIdHint
       && canonicalRestaurantIdHint !== requestedRestaurantId
-      && (isNormalWebDirectMenuVisible() || isNormalWebDirectProfileVisible())
+      && (isWebDirectMenuVisible() || isNormalWebDirectProfileVisible())
       && visibleTargetIds.has(canonicalRestaurantIdHint)
       && visibleTargetIds.has(requestedRestaurantId);
     if (canonicalRestaurantIdHint) {
