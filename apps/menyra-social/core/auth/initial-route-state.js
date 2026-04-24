@@ -10,16 +10,34 @@ import {
   parseSiteRoutePathCore
 } from "../router/public-business-route-utils.js";
 
+const PUBLIC_ROUTE_CACHE_GLOBAL_KEY = "__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__";
+
 function safeLowerText(value = "") {
   return String(value || "").trim().toLowerCase();
 }
 
-function readCachedPublicRouteResolution(value = "", readPublicRouteResolution = null) {
-  if (typeof readPublicRouteResolution !== "function") return null;
+function readGlobalPublicRouteResolution(value = "") {
   const raw = String(value || "").trim();
   if (!raw) return null;
   try {
-    const resolution = normalizePublicBusinessRouteResolutionCore(readPublicRouteResolution(raw));
+    const cache = globalThis?.[PUBLIC_ROUTE_CACHE_GLOBAL_KEY];
+    if (!cache || typeof cache !== "object") return null;
+    if (typeof cache.get === "function") return cache.get(raw) || cache.get(raw.toLowerCase()) || null;
+    return cache[raw] || cache[raw.toLowerCase()] || null;
+  } catch {
+    return null;
+  }
+}
+
+function readCachedPublicRouteResolution(value = "", readPublicRouteResolution = null) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const explicitResolution = typeof readPublicRouteResolution === "function"
+      ? readPublicRouteResolution(raw)
+      : null;
+    const globalResolution = explicitResolution || readGlobalPublicRouteResolution(raw);
+    const resolution = normalizePublicBusinessRouteResolutionCore(globalResolution);
     return resolution?.found && resolution.restaurantId ? resolution : null;
   } catch {
     return null;
