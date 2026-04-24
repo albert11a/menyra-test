@@ -1,5 +1,6 @@
 import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
 import {
+  normalizePublicBusinessRouteResolutionCore,
   resolveLaunchPublicBusinessRouteCore
 } from "../router/public-business-route-resolver.js";
 import {
@@ -13,9 +14,23 @@ function safeLowerText(value = "") {
   return String(value || "").trim().toLowerCase();
 }
 
-function resolveInitialPublicBusinessRestaurantId(value = "") {
+function readCachedPublicRouteResolution(value = "", readPublicRouteResolution = null) {
+  if (typeof readPublicRouteResolution !== "function") return null;
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const resolution = normalizePublicBusinessRouteResolutionCore(readPublicRouteResolution(raw));
+    return resolution?.found && resolution.restaurantId ? resolution : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveInitialPublicBusinessRestaurantId(value = "", readPublicRouteResolution = null) {
   const raw = String(value || "").trim();
   if (!raw) return "";
+  const cached = readCachedPublicRouteResolution(raw, readPublicRouteResolution);
+  if (cached?.restaurantId) return String(cached.restaurantId || "").trim();
   const resolved = resolveLaunchPublicBusinessRouteCore(raw);
   return String(resolved?.restaurantId || raw).trim();
 }
@@ -24,7 +39,8 @@ export function resolveInitialRouteState({
   qs,
   pathname = "",
   normalizeInitialTab,
-  normalizeAuthMode
+  normalizeAuthMode,
+  readPublicRouteResolution = null
 } = {}) {
   const readQuery = typeof qs === "function" ? qs : (() => "");
   const toInitialTab = typeof normalizeInitialTab === "function"
@@ -42,7 +58,8 @@ export function resolveInitialRouteState({
     || readQuery("restaurantId")
     || readQuery("rid")
     || readQuery("businessId")
-    || ""
+    || "",
+    readPublicRouteResolution
   );
   const routeUserIdFromQuery = (
     readQuery("uid")
@@ -58,7 +75,7 @@ export function resolveInitialRouteState({
       : null
   );
   const pendingProfileRestaurantId = String(
-    resolveInitialPublicBusinessRestaurantId(pathBusinessRoute?.restaurantId || "")
+    resolveInitialPublicBusinessRestaurantId(pathBusinessRoute?.restaurantId || "", readPublicRouteResolution)
     || routeRestaurantIdFromQuery
     || ""
   ).trim();
