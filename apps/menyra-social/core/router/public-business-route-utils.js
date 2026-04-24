@@ -720,9 +720,7 @@ export function buildCanonicalPublicBusinessPathCore({
   );
   const basePath = `/${encodeURIComponent(safeSlug)}`;
   if (safeTopTab === "menu" || safeContentTab === "menu") return `${basePath}/menu`;
-  // QR context is preserved via query params (`src`, `table`), not by forcing
-  // a menu pathname. This keeps `/:slug` usable for posts/profile recovery.
-  void accessSource;
+  if (isQrLikePublicBusinessAccessSourceCore(accessSource)) return `${basePath}/menu`;
   void pathnameHint;
   void forcePostsPath;
   return basePath;

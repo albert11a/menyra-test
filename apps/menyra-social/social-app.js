@@ -1673,6 +1673,10 @@ function resolveRouteQueryStateForCurrentView() {
       ? pendingProfileAccessSource
       : menuAccessSource;
     routeState.profileAccessSource = effectiveAccessSource === "qr" ? "qr" : "";
+    if (routeState.profileAccessSource === "qr") {
+      routeState.profileTopTab = "menu";
+      routeState.profileContentTab = "menu";
+    }
     const effectiveTableNumber = usingPendingBusinessRoute
       ? pendingProfileTableNumber
       : tableNumber;

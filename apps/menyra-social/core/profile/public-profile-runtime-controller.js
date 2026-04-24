@@ -238,29 +238,15 @@ export function createPublicProfileRuntimeController({
             return null;
           }
         };
-        const publicSlugMatch = await queryRestaurantByField("publicSlug", routeSlug);
-        if (publicSlugMatch) {
-          cacheResolvedRestaurantDoc(routeId, cachedRestaurant, publicSlugMatch);
-          return publicSlugMatch;
-        }
-        try {
-          const ref = makeCollectionRef(db, "restaurants");
-          const constraints = [buildWhere("landingSlug", "==", routeSlug)];
-          if (buildLimit) constraints.push(buildLimit(1));
-          const snap = await getDocsSafe(buildQuery(ref, ...constraints));
-          const firstDoc = getFirstSnapshotDoc(snap);
-          if (firstDoc?.id) {
-            const data = firstDoc.data?.() || {};
-            if (!isPublicBusinessRecord({ id: firstDoc.id, ...data })) return null;
-            const resolved = { id: firstDoc.id, data };
-            cacheResolvedRestaurantDoc(routeId, cachedRestaurant, resolved);
-            return resolved;
-          }
-        } catch {}
-        const handleMatch = await queryRestaurantByField("handle", routeSlug);
-        if (handleMatch) {
-          cacheResolvedRestaurantDoc(routeId, cachedRestaurant, handleMatch);
-          return handleMatch;
+        const [publicSlugMatch, landingSlugMatch, handleMatch] = await Promise.all([
+          queryRestaurantByField("publicSlug", routeSlug),
+          queryRestaurantByField("landingSlug", routeSlug),
+          queryRestaurantByField("handle", routeSlug)
+        ]);
+        const routeFieldMatch = publicSlugMatch || landingSlugMatch || handleMatch;
+        if (routeFieldMatch) {
+          cacheResolvedRestaurantDoc(routeId, cachedRestaurant, routeFieldMatch);
+          return routeFieldMatch;
         }
       }
 

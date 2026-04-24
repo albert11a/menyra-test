@@ -1627,7 +1627,7 @@ export function createSessionDataRuntimeController({
             () => loadPublicMenuItemsFn(safeRestaurantId),
             {
               attempts: lightweightQrGuestFlow ? 4 : 3,
-              baseDelayMs: lightweightQrGuestFlow ? 260 : 220
+              baseDelayMs: lightweightQrGuestFlow ? 140 : 220
             }
           );
         }

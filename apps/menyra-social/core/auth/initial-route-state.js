@@ -84,16 +84,24 @@ export function resolveInitialRouteState({
   const fallbackProfileTopTab = pendingProfileRestaurantId && hasQrProfileAccessSource
     ? "menu"
     : "";
+  const explicitProfileTopTab = safeLowerText(profileTopQuery || "");
+  const routeInferredProfileTopTab = safeLowerText(
+    pathBusinessRoute?.profileTopTab
+    || (
+      safeLowerText(pathRoute.tab || "") === "menu"
+        ? "menu"
+        : ""
+    )
+  );
   const pendingProfileTopTab = pendingProfileRestaurantId
     ? (
-      pathBusinessRoute?.profileTopTab
-      || profileTopQuery
-      || (
-        safeLowerText(pathRoute.tab || "") === "menu"
-          ? "menu"
-          : ""
-      )
-      || fallbackProfileTopTab
+      hasQrProfileAccessSource
+        ? "menu"
+        : (
+          explicitProfileTopTab
+          || routeInferredProfileTopTab
+          || fallbackProfileTopTab
+        )
     )
     : "";
   const pendingProfileAccessSource = pendingProfileRestaurantId

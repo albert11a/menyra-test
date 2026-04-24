@@ -128,6 +128,15 @@ Last updated: 2026-04-24
   Restaurant-ID den nachfolgenden Ensure-Pfad nicht mehr blockieren kann.
   Zusaetzlich wurde QR-Session-Erkennung fuer canonical IDs gehaertet und
   unnoetige Reconcile-/Replay-Last reduziert.
+- Schritt 20 ist abgeschlossen: QR-Caltstart/Refresh wurde auf
+  `menu-first` zurueckgefuehrt und fuer kalte Scans beschleunigt.
+- Bewertung von Schritt 20: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 20:
+  QR-Kontext erzwingt jetzt wieder konsistent `menu` als Surface-Wahrheit
+  (Initial-Route + URL-Kanonisierung + Route-Sync), sodass Refresh im
+  QR-Kontext nicht auf `posts/profile` zurueckfaellt. Zusaetzlich wurde die
+  Slug->Restaurant-Aufloesung im Public-Profilpfad parallelisiert und der
+  QR-Menu-Backoff fuer schnellere First-Content-Reaktion reduziert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -147,6 +156,7 @@ Last updated: 2026-04-24
 - Referenz: [docs/mnyra-step16-public-route-contract-hardening.md](./mnyra-step16-public-route-contract-hardening.md)
 - Referenz: [docs/mnyra-public-profile-orchestration-fix.md](./mnyra-public-profile-orchestration-fix.md)
 - Referenz: [docs/mnyra-step19-public-qr-cold-open-reliability-hardening.md](./mnyra-step19-public-qr-cold-open-reliability-hardening.md)
+- Referenz: [docs/mnyra-step20-qr-menu-main-refresh-hardening.md](./mnyra-step20-qr-menu-main-refresh-hardening.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -172,10 +182,10 @@ Last updated: 2026-04-24
 
 ## Naechster Schritt
 
-Nach Schritt 18 ist der naechste moegliche separate Folgeschritt:
+Nach Schritt 20 ist der naechste moegliche separate Folgeschritt:
 gezielte Restkanten-Absicherung fuer seltene Reentry-Pfade unter echten
 Cold-Start-Bedingungen (ohne Cache) innerhalb derselben Public-Web-Profil-
-Scope-Grenze, plus fokussierte manuelle Regression auf QR->Posts->Refresh
+Scope-Grenze, plus fokussierte manuelle Regression auf QR->Menu->Posts->Refresh
 und Browser-Back/Forward unter wechselnden Netzwerkbedingungen.
 
 ## Guardrails fuer die naechsten Schritte
