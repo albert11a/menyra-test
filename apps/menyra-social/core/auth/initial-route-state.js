@@ -1,5 +1,8 @@
 import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
 import {
+  resolveLaunchPublicBusinessRouteCore
+} from "../router/public-business-route-resolver.js";
+import {
   isQrLikePublicBusinessAccessSourceCore,
   normalizePublicUserContentTabCore,
   normalizePublicUserRouteIdCore,
@@ -8,6 +11,13 @@ import {
 
 function safeLowerText(value = "") {
   return String(value || "").trim().toLowerCase();
+}
+
+function resolveInitialPublicBusinessRestaurantId(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const resolved = resolveLaunchPublicBusinessRouteCore(raw);
+  return String(resolved?.restaurantId || raw).trim();
 }
 
 export function resolveInitialRouteState({
@@ -26,7 +36,7 @@ export function resolveInitialRouteState({
   const readPathname = String(pathname || "").trim();
   const pathRoute = parseSiteRoutePathCore(readPathname);
 
-  const routeRestaurantIdFromQuery = (
+  const routeRestaurantIdFromQuery = resolveInitialPublicBusinessRestaurantId(
     readQuery("r")
     || readQuery("restaurant")
     || readQuery("restaurantId")
@@ -48,7 +58,7 @@ export function resolveInitialRouteState({
       : null
   );
   const pendingProfileRestaurantId = String(
-    pathBusinessRoute?.restaurantId
+    resolveInitialPublicBusinessRestaurantId(pathBusinessRoute?.restaurantId || "")
     || routeRestaurantIdFromQuery
     || ""
   ).trim();
