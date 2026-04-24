@@ -192,13 +192,19 @@ export function createSessionDataRuntimeController({
     if (profileTopTab !== "menu") return false;
     const menuAccessSource = String(state?.profileView?.menuAccessSource || "").trim().toLowerCase();
     if (menuAccessSource !== "qr") return false;
+    const targetRestaurantId = String(restaurantId || "").trim();
+    if (!targetRestaurantId) return true;
+    const visibleTargetIds = collectVisiblePublicMenuTargetIds();
+    if (visibleTargetIds.size > 0) {
+      return visibleTargetIds.has(targetRestaurantId);
+    }
     const expectedRestaurantId = String(
-      state?.profileView?.profile?.restaurantId
+      state?.profileView?.profile?.canonicalRestaurantId
+      || state?.profileView?.profile?.restaurantId
       || state?.profileView?.restaurantId
       || ""
     ).trim();
-    const targetRestaurantId = String(restaurantId || "").trim();
-    if (!targetRestaurantId || !expectedRestaurantId) return true;
+    if (!expectedRestaurantId) return true;
     return expectedRestaurantId === targetRestaurantId;
   }
 
@@ -1559,7 +1565,7 @@ export function createSessionDataRuntimeController({
         ts: Date.now()
       });
       requestRender();
-      if (!menuFreshReconcileQueuedKeys.has(cacheKey)) {
+      if (!lightweightQrGuestFlow && !menuFreshReconcileQueuedKeys.has(cacheKey)) {
         menuFreshReconcileQueuedKeys.add(cacheKey);
         queueMicrotask(() => {
           void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })

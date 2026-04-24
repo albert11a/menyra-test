@@ -119,6 +119,15 @@ Last updated: 2026-04-24
   History-Modus fuer Surface-Wechsel eingefuehrt und die kanonische
   `restaurantId`-Aufloesung fuer Public-Posts/Profile per Route->Doc-Cache
   stabilisiert, um doppelte Resolve-/Load-Pfade zu reduzieren.
+- Schritt 19 ist abgeschlossen: QR-Cold-Open-Restinstabilitaeten wurden mit
+  niedrigem Blast Radius gegen `main` verifiziert und gehaertet.
+- Bewertung von Schritt 19: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 19:
+  ein zentraler Regression-Punkt (Slug/Canonical-Alias als "settled" Menu/Fokus-
+  Wahrheit) wurde entfernt, sodass ein fruehes `knownEmpty` auf falscher
+  Restaurant-ID den nachfolgenden Ensure-Pfad nicht mehr blockieren kann.
+  Zusaetzlich wurde QR-Session-Erkennung fuer canonical IDs gehaertet und
+  unnoetige Reconcile-/Replay-Last reduziert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -137,6 +146,7 @@ Last updated: 2026-04-24
 - Referenz: [docs/mnyra-step15-public-web-profile-speed-reliability-overhaul.md](./mnyra-step15-public-web-profile-speed-reliability-overhaul.md)
 - Referenz: [docs/mnyra-step16-public-route-contract-hardening.md](./mnyra-step16-public-route-contract-hardening.md)
 - Referenz: [docs/mnyra-public-profile-orchestration-fix.md](./mnyra-public-profile-orchestration-fix.md)
+- Referenz: [docs/mnyra-step19-public-qr-cold-open-reliability-hardening.md](./mnyra-step19-public-qr-cold-open-reliability-hardening.md)
 
 ## Harte Invariante (verbindlich)
 

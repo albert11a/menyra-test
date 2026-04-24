@@ -4881,6 +4881,9 @@ const {
   closeMenuModal
 } = bridgeShellRuntimeCluster.bridgeBindings;
 let browserPopstateRouteSyncBound = false;
+let lastPopstateReplayLocationKey = "";
+let lastPopstateReplayAtMs = 0;
+const POPSTATE_REPLAY_DEDUP_WINDOW_MS = 120;
 
 function resolveInitialRouteStateFromWindowLocation() {
   if (typeof window === "undefined") return null;
@@ -4894,6 +4897,16 @@ function resolveInitialRouteStateFromWindowLocation() {
     });
   } catch {
     return null;
+  }
+}
+
+function resolveWindowLocationReplayKey() {
+  if (typeof window === "undefined") return "";
+  try {
+    const url = new URL(window.location.href);
+    return `${String(url.pathname || "")}|${String(url.search || "")}|${String(url.hash || "")}`;
+  } catch {
+    return `${String(window.location.pathname || "")}|${String(window.location.search || "")}|${String(window.location.hash || "")}`;
   }
 }
 
@@ -4922,6 +4935,17 @@ function bindBrowserPopstateRouteSync() {
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
   browserPopstateRouteSyncBound = true;
   window.addEventListener("popstate", () => {
+    const replayLocationKey = resolveWindowLocationReplayKey();
+    const nowMs = Date.now();
+    if (
+      replayLocationKey
+      && replayLocationKey === lastPopstateReplayLocationKey
+      && (nowMs - lastPopstateReplayAtMs) < POPSTATE_REPLAY_DEDUP_WINDOW_MS
+    ) {
+      return;
+    }
+    lastPopstateReplayLocationKey = replayLocationKey;
+    lastPopstateReplayAtMs = nowMs;
     state.__nextRouteHistoryMode = "";
     replayRouteFromWindowLocation();
   });
