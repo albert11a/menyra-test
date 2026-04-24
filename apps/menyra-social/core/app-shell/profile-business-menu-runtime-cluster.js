@@ -250,6 +250,51 @@ export function createProfileBusinessMenuRuntimeCluster({
     return true;
   };
 
+  const resolveBusinessAvatarUrl = (data = {}) => String(
+    data?.logoUrl
+    || data?.logoURL
+    || data?.logo
+    || data?.avatarUrl
+    || data?.avatarURL
+    || data?.avatar
+    || data?.photoURL
+    || data?.photoUrl
+    || data?.imageUrl
+    || data?.imageURL
+    || data?.image
+    || data?.coverLogoUrl
+    || ""
+  ).trim();
+
+  const refreshVisibleBusinessIdentityFromDoc = (restaurantId = "", data = {}) => {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId || !data || typeof data !== "object") return false;
+    const visibleProfileView = getVisiblePublicProfileView();
+    if (!visibleProfileView) return false;
+    const visibleTargetIds = collectVisibleMenuTargetIds(visibleProfileView.profile);
+    if (!visibleTargetIds.has(safeRestaurantId) && visibleProfileView.restaurantId !== safeRestaurantId) return false;
+    const avatar = resolveBusinessAvatarUrl(data);
+    const name = String(data.name || data.restaurantName || data.displayName || data.businessName || "").trim();
+    const location = String(data.city || data.address || data.location || "").trim();
+    const bio = String(data.bio || data.description || data.about || "").trim();
+    const followers = data.followersCount ?? data.followers;
+    const following = data.followingCount ?? data.following;
+    const patch = {
+      restaurantId: safeRestaurantId,
+      canonicalRestaurantId: safeRestaurantId
+    };
+    if (avatar) patch.avatar = avatar;
+    if (name) patch.name = name;
+    if (location) patch.location = location;
+    if (bio) patch.bio = bio;
+    if (followers !== undefined) patch.followers = followers;
+    if (following !== undefined) patch.following = following;
+    if (avatar || name || location || bio || followers !== undefined || following !== undefined) {
+      patch.identityTruthState = "ready";
+    }
+    return refreshVisiblePublicProfile(patch);
+  };
+
   const resolveRouteCanonicalRestaurantIdHint = (profile = {}) => {
     const routePayload = getVisibleRoutePayload();
     const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
@@ -437,7 +482,11 @@ export function createProfileBusinessMenuRuntimeCluster({
       })
     )
       .then((profileDoc) => {
-        const resolvedRestaurantId = String(profileDoc?.id || requestedRestaurantId).trim() || requestedRestaurantId;
+        const profileDocData = profileDoc?.data && typeof profileDoc.data === "object"
+          ? profileDoc.data
+          : (profileDoc && typeof profileDoc === "object" ? profileDoc : {});
+        const resolvedRestaurantId = String(profileDoc?.id || profileDocData.id || requestedRestaurantId).trim() || requestedRestaurantId;
+        refreshVisibleBusinessIdentityFromDoc(resolvedRestaurantId, profileDocData);
         canonicalRestaurantIdCache.set(requestedRestaurantId, resolvedRestaurantId);
         canonicalRestaurantIdCache.set(resolvedRestaurantId, resolvedRestaurantId);
         return resolvedRestaurantId;
