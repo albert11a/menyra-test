@@ -56,6 +56,38 @@ test("initial route state can use a cached publicRoutes resolution for query res
   assert.equal(state.pendingProfileTableNumber, 7);
 });
 
+test("initial route state can use global public route resolution cache by default", () => {
+  const previous = globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__;
+  globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__ = new Map([
+    ["antica", {
+      found: true,
+      status: "active",
+      inputSlug: "antica",
+      canonicalSlug: "antica",
+      restaurantId: "restaurant-antica-123456",
+      source: "firestore"
+    }]
+  ]);
+  try {
+    const state = resolveInitialRouteState({
+      qs: makeQs({}),
+      pathname: "/antica/menu",
+      normalizeInitialTab: (value) => value,
+      normalizeAuthMode: (value) => value
+    });
+
+    assert.equal(state.pendingProfileRestaurantId, "restaurant-antica-123456");
+    assert.equal(state.pendingProfileTopTab, "menu");
+    assert.equal(state.pendingInitialTab, "profile");
+  } finally {
+    if (previous === undefined) {
+      delete globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__;
+    } else {
+      globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__ = previous;
+    }
+  }
+});
+
 test("initial route state still falls back to launch alias when cache misses", () => {
   const state = resolveInitialRouteState({
     qs: makeQs({}),
