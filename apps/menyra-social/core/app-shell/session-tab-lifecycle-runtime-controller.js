@@ -58,8 +58,32 @@ export function createSessionTabLifecycleRuntimeController({
     console.warn(`[mnyra][${safeScope}] operation failed`);
   }
 
-  function renderAfterPreload(scope = "tab-preload") {
+  function capturePreloadNavigation() {
+    if (!state) return null;
+    return {
+      activeTab: String(state.activeTab || "").trim(),
+      profileTopTab: String(state.profileTopTab || "").trim(),
+      profileContentTab: String(state.profileContentTab || "").trim()
+    };
+  }
+
+  function restorePreloadNavigation(snapshot = null) {
+    if (!state || !snapshot) return;
+    const beforeTab = String(snapshot.activeTab || "").trim();
+    const currentTab = String(state.activeTab || "").trim();
+    if (!beforeTab || beforeTab === "profile" || currentTab !== "profile") return;
+    state.activeTab = beforeTab;
+    if (snapshot.profileTopTab) {
+      state.profileTopTab = snapshot.profileTopTab;
+    }
+    if (snapshot.profileContentTab) {
+      state.profileContentTab = snapshot.profileContentTab;
+    }
+  }
+
+  function renderAfterPreload(scope = "tab-preload", navigationSnapshot = null) {
     try {
+      restorePreloadNavigation(navigationSnapshot);
       renderFn();
     } catch (err) {
       reportPreloadWarning(`${scope}.render`, err);
@@ -69,19 +93,21 @@ export function createSessionTabLifecycleRuntimeController({
   async function preloadProfileData() {
     if (!state?.user) return;
     if (preloadProfilePromise) return preloadProfilePromise;
+    const navigationSnapshot = capturePreloadNavigation();
     preloadProfilePromise = (async () => {
       if (dataLoaded && typeof dataLoaded === "object") {
         dataLoaded.profile = true;
       }
       await loadAuthProfileFn(state.user);
+      restorePreloadNavigation(navigationSnapshot);
       const hasBusinessProfile = isLocalBusinessProfileFn(state.userProfile);
       if (hasBusinessProfile) {
         await loadBusinessPostsFn();
-        renderAfterPreload("auth-tab.preloadProfile.business");
+        renderAfterPreload("auth-tab.preloadProfile.business", navigationSnapshot);
         return;
       }
       await loadUserPostsFn();
-      renderAfterPreload("auth-tab.preloadProfile.user");
+      renderAfterPreload("auth-tab.preloadProfile.user", navigationSnapshot);
     })().catch((err) => {
       reportPreloadWarning("auth-tab.preloadProfile", err);
     }).finally(() => {
@@ -93,15 +119,17 @@ export function createSessionTabLifecycleRuntimeController({
   async function preloadMenuData() {
     if (!state?.user) return;
     if (preloadMenuPromise) return preloadMenuPromise;
+    const navigationSnapshot = capturePreloadNavigation();
     preloadMenuPromise = (async () => {
       await loadAuthProfileFn(state.user);
+      restorePreloadNavigation(navigationSnapshot);
       const restaurantId = String(state.userProfile?.restaurantId || "").trim();
       if (!restaurantId) return;
       await Promise.all([
         loadMenuForRestaurantFn(restaurantId, { source: "collection" }),
         loadFocusForRestaurantFn(restaurantId)
       ]);
-      renderAfterPreload("auth-tab.preloadMenu");
+      renderAfterPreload("auth-tab.preloadMenu", navigationSnapshot);
     })().catch((err) => {
       reportPreloadWarning("auth-tab.preloadMenu", err);
     }).finally(() => {
