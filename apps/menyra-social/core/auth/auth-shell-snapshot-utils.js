@@ -84,6 +84,17 @@ function pickNumber(value, fallback = 0) {
   return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : fallback;
 }
 
+function buildUnreadPlaceholders(count = 0) {
+  const total = Math.min(NOTIFICATION_LIMIT, Math.max(0, Math.round(Number(count) || 0)));
+  return Array.from({ length: total }, (_, index) => ({
+    id: `cached-shell-unread-${index + 1}`,
+    type: "cached_shell_unread",
+    text: "Cached unread update",
+    read: false,
+    __shellSnapshotPlaceholder: true
+  }));
+}
+
 export function seedAuthShellSnapshot({
   state = null,
   safeStorage = null,
@@ -119,6 +130,14 @@ export function seedAuthShellSnapshot({
   state.__shellSnapshotAvatar = hasResolvedAvatar ? resolvedAvatar : normalizeString(state.__shellSnapshotAvatar || "");
   state.__shellSnapshotUnreadNotificationsCount = unreadNotificationsCount;
   state.__shellSnapshotChatUnreadCount = chatUnreadCount;
+
+  if (!Array.isArray(state.notifications) || state.notifications.length === 0) {
+    if (Array.isArray(cachedNotifications) && cachedNotifications.length) {
+      state.notifications = cachedNotifications.slice(0, NOTIFICATION_LIMIT);
+    } else if (unreadNotificationsCount > 0) {
+      state.notifications = buildUnreadPlaceholders(unreadNotificationsCount);
+    }
+  }
 
   state.userProfile = {
     ...defaultProfile,
