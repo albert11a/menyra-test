@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/local-dev-server.mjs",
+    "dev:social": "node scripts/local-dev-server.mjs",
+    "dev:local": "node scripts/local-dev-server.mjs"
+  }
+}
