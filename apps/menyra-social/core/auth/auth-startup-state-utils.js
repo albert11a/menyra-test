@@ -5,6 +5,7 @@ import {
   clearAuthBootstrapSnapshotStorage,
   applyAuthBootstrapSnapshotToProfile
 } from "./auth-bootstrap-snapshot.js";
+import { seedAuthShellSnapshot } from "./auth-shell-snapshot-utils.js";
 import { applyPendingInitialRouteStateCore } from "./session-tab-guards.js";
 
 const AUTH_NOTIFICATIONS_STORAGE_PREFIX = "menyra_social_notifications_v1";
@@ -167,7 +168,20 @@ export function createAuthStartupStateHelpers({
     if (!state) return false;
     const safeUid = String(uid || "").trim();
     if (!safeUid) return false;
-    let changed = false;
+    let changed = seedAuthShellSnapshot({
+      state,
+      safeStorage,
+      uid: safeUid,
+      user: state.user,
+      defaultProfile,
+      profileKey: resolveProfileKey,
+      sanitizeDisplayName,
+      getOptimizedImageUrl,
+      isPlaceholderUrl,
+      setUserAvatarCache: writeUserAvatarCache,
+      setLastShellAvatarUrl: writeLastShellAvatarUrl,
+      now
+    });
     const raw = safeStorage?.getItem?.(resolveProfileKey(safeUid));
     if (raw) {
       try {
@@ -211,19 +225,19 @@ export function createAuthStartupStateHelpers({
           socialAccessMode: hasOwn("socialAccessMode") ? socialAccessMode : state.userProfile.socialAccessMode,
           name: name || state.userProfile.name,
           handle: handle || state.userProfile.handle,
-          avatar: avatar || state.userProfile.avatar
+          avatar: avatar || state.userProfile.avatar || state.__shellSnapshotAvatar || ""
         };
         changed = true;
       } catch {}
     }
     if (seedCachedNotifications(safeUid)) changed = true;
     if (changed) {
-      primeShellAvatar(state.userProfile?.avatar || "");
+      primeShellAvatar(state.userProfile?.avatar || state.__shellSnapshotAvatar || "");
       writeAuthBootstrapSnapshot({
         uid: safeUid,
         name: state.userProfile?.name || "",
         handle: state.userProfile?.handle || "",
-        avatar: state.userProfile?.avatar || ""
+        avatar: state.userProfile?.avatar || state.__shellSnapshotAvatar || ""
       });
     }
     return changed;
@@ -240,7 +254,7 @@ export function createAuthStartupStateHelpers({
       uid,
       name: nextProfile?.name || state?.user?.displayName || "",
       handle: nextProfile?.handle || "",
-      avatar: nextProfile?.avatar || state?.user?.photoURL || readUserAvatarCache() || ""
+      avatar: nextProfile?.avatar || state?.user?.photoURL || readUserAvatarCache() || state.__shellSnapshotAvatar || ""
     });
   }
 
