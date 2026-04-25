@@ -1,6 +1,11 @@
 function getUnreadNotificationsCount(state = null) {
-  if (!state || !Array.isArray(state.notifications)) return 0;
-  return state.notifications.filter((item) => !item?.read).length;
+  if (!state) return 0;
+  if (Array.isArray(state.notifications) && state.notifications.length > 0) {
+    return state.notifications.filter((item) => !item?.read).length;
+  }
+  if (state.__shellNotificationsHydrated === true) return 0;
+  const cachedCount = Number(state.__shellSnapshotUnreadNotificationsCount || 0);
+  return Number.isFinite(cachedCount) ? Math.max(0, Math.round(cachedCount)) : 0;
 }
 
 function getBadgeText(count) {
@@ -57,6 +62,7 @@ export function createShellDomRuntimeController({
     ? getVerifiedMapLocationFn
     : (() => null);
   const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
+  const SHELL_SNAPSHOT_PREFIX = "menyra_social_shell_snapshot_v1";
 
   function normalizeViewerCoords(value = null) {
     const lat = Number(value?.lat ?? value?.latitude ?? value?.y);
@@ -107,6 +113,53 @@ export function createShellDomRuntimeController({
 
   function syncDrawerOpenUiState() {
     cleanupLegacyDrawerDocumentState();
+  }
+
+  function persistShellSnapshot({ unread = 0, chatUnread = 0, avatar = "" } = {}) {
+    const uid = String(state?.user?.uid || state?.userProfile?.uid || "").trim();
+    if (!uid || !win?.localStorage) return;
+    const profile = state?.userProfile && typeof state.userProfile === "object" ? state.userProfile : {};
+    const nextAvatar = String(avatar || profile.avatar || state?.__shellSnapshotAvatar || state?.user?.photoURL || "").trim();
+    let previous = {};
+    try {
+      previous = JSON.parse(win.localStorage.getItem(`${SHELL_SNAPSHOT_PREFIX}::${uid}`) || "{}") || {};
+    } catch { previous = {}; }
+    const payload = {
+      ...previous,
+      uid,
+      name: String(profile.name || previous.name || state?.user?.displayName || "").trim(),
+      handle: String(profile.handle || previous.handle || "").trim(),
+      avatar: nextAvatar && !isPlaceholderUrl(nextAvatar) ? nextAvatar : String(previous.avatar || "").trim(),
+      role: profile.role ?? previous.role,
+      roles: Array.isArray(profile.roles) ? profile.roles.slice() : (Array.isArray(previous.roles) ? previous.roles : []),
+      restaurantId: String(profile.restaurantId || previous.restaurantId || "").trim(),
+      sourceUserRole: String(profile.sourceUserRole || previous.sourceUserRole || "").trim(),
+      staffRestaurantId: String(profile.staffRestaurantId || previous.staffRestaurantId || "").trim(),
+      waiterRestaurantId: String(profile.waiterRestaurantId || previous.waiterRestaurantId || "").trim(),
+      businessAccess: profile.businessAccess === true || previous.businessAccess === true,
+      waiterAccess: profile.waiterAccess === true || previous.waiterAccess === true,
+      unreadNotificationsCount: Math.max(0, Math.round(Number(unread) || 0)),
+      chatUnreadCount: Math.max(0, Math.round(Number(chatUnread) || 0)),
+      updatedAt: Date.now()
+    };
+    try {
+      win.localStorage.setItem(`${SHELL_SNAPSHOT_PREFIX}::${uid}`, JSON.stringify(payload));
+      state.__shellSnapshot = payload;
+      state.__shellSnapshotAvatar = payload.avatar || state.__shellSnapshotAvatar || "";
+      state.__shellSnapshotUnreadNotificationsCount = payload.unreadNotificationsCount;
+      state.__shellSnapshotChatUnreadCount = payload.chatUnreadCount;
+    } catch {}
+  }
+
+  function resolveDrawerAvatarUrl() {
+    const raw = state?.userProfile?.avatar || state?.__shellSnapshotAvatar || state?.user?.photoURL || "";
+    return resolveUserAvatar(raw);
+  }
+
+  function resolveShellAvatarWithFallback() {
+    const primary = resolveShellAvatarUrl();
+    if (primary && !isPlaceholderUrl(primary)) return primary;
+    return resolveUserAvatar(state?.userProfile?.avatar || state?.__shellSnapshotAvatar || state?.user?.photoURL || "");
   }
 
   function renderAuthScreen() {
@@ -192,7 +245,9 @@ export function createShellDomRuntimeController({
   function renderDrawer() {
     const isGuest = isGuestSession();
     const unread = isGuest ? 0 : getUnreadNotificationsCount(state);
-    const chatUnread = isGuest ? 0 : getChatUnreadCount();
+    const chatUnreadLive = isGuest ? 0 : getChatUnreadCount();
+    const chatUnreadCached = Number(state?.__shellSnapshotChatUnreadCount || 0);
+    const chatUnread = chatUnreadLive > 0 ? chatUnreadLive : Math.max(0, Math.round(Number(chatUnreadCached) || 0));
     const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
     const isCeo = isCeoUser();
     const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
@@ -203,7 +258,7 @@ export function createShellDomRuntimeController({
       || !!state?.roleSwitchRestaurantId
       || isRestaurantCafeProfile(state?.userProfile);
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
-    const avatarUrl = resolveUserAvatar(state?.userProfile?.avatar);
+    const avatarUrl = resolveDrawerAvatarUrl();
     const avatarFit = logoFitClass(isLocalBusinessProfile(state?.userProfile));
     const navItems = isGuest
       ? [
@@ -282,7 +337,7 @@ export function createShellDomRuntimeController({
 
   function updateShellDom() {
     syncDrawerOpenUiState();
-    const avatarUrl = resolveShellAvatarUrl();
+    const avatarUrl = resolveShellAvatarWithFallback();
     const isBusiness = isLocalBusinessProfile(state?.userProfile);
     const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
     const branding = resolveHeaderBranding();
@@ -378,11 +433,14 @@ export function createShellDomRuntimeController({
 
   function updateNotificationBadges() {
     const unread = isGuestSession() ? 0 : getUnreadNotificationsCount(state);
-    const chatUnread = isGuestSession() ? 0 : getChatUnreadCount();
+    const chatUnreadLive = isGuestSession() ? 0 : getChatUnreadCount();
+    const chatUnreadCached = Number(state?.__shellSnapshotChatUnreadCount || 0);
+    const chatUnread = chatUnreadLive > 0 ? chatUnreadLive : Math.max(0, Math.round(Number(chatUnreadCached) || 0));
     const headerUnread = unread + chatUnread;
     const headerBadgeText = getBadgeText(headerUnread);
     const notifBadgeText = getBadgeText(unread);
     const chatBadgeText = getBadgeText(chatUnread);
+    persistShellSnapshot({ unread, chatUnread, avatar: state?.userProfile?.avatar || state?.__shellSnapshotAvatar || "" });
     const headerBadgeAnchor = doc?.querySelector?.('[data-header-badge-anchor="true"]')
       || doc?.getElementById("drawerToggle");
     if (headerBadgeAnchor) {
@@ -491,6 +549,7 @@ export function createShellDomRuntimeController({
 
   function handleNotificationsUpdate(items) {
     state.notifications = Array.isArray(items) ? items : [];
+    state.__shellNotificationsHydrated = true;
     saveNotifications(state.notifications);
     const updated = updateNotificationsDom();
     if (!updated && state?.activeTab === "notifications") {
