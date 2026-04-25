@@ -158,6 +158,16 @@ Last updated: 2026-04-26
   das eigene Business-Profil-Menu nicht dauerhaft bei `Menu wird geladen...`,
   nur weil noch keine passende `source: "public"`-Menu-Wahrheit im State liegt.
   Auf Nutzerwunsch wurde dieser Schritt auf Branch `bauloginstart` umgesetzt.
+- Schritt 23 ist abgeschlossen: Der Wechsel von einem oeffentlichen Business-
+  Profil zurueck ins eigene Business-Profil-Menu wurde gegen stale Public-
+  Route-/WebDirect-IDs gehaertet.
+- Bewertung von Schritt 23: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 23:
+  Das eigene Business-Profil-Menu sammelt fuer seinen Public-Menu-Nachladepfad
+  nur noch eigene Restaurant-IDs und keinen alten Public-Kontext aus
+  `profileView`, RoutePayload oder `__webDirectEntry`. Dadurch kann ein bereits
+  geladenes fremdes Public-Menu den eigenen Menu-Load nicht mehr ueberspringen;
+  der bisher noetige Refresh nach dem Profilwechsel sollte entfallen.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -180,6 +190,7 @@ Last updated: 2026-04-26
 - Referenz: [docs/mnyra-step20-qr-menu-main-refresh-hardening.md](./mnyra-step20-qr-menu-main-refresh-hardening.md)
 - Referenz: [docs/mnyra-step21-public-web-qr-owner-loader-hardening.md](./mnyra-step21-public-web-qr-owner-loader-hardening.md)
 - Referenz: [docs/mnyra-step22-own-business-profile-menu-load-fix.md](./mnyra-step22-own-business-profile-menu-load-fix.md)
+- Referenz: [docs/mnyra-step23-own-profile-menu-stale-public-id-fix.md](./mnyra-step23-own-profile-menu-stale-public-id-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -205,7 +216,7 @@ Last updated: 2026-04-26
 
 ## Naechster Schritt
 
-Nach Schritt 22 ist der naechste moegliche separate Folgeschritt:
+Nach Schritt 23 ist der naechste moegliche separate Folgeschritt:
 fokussierte manuelle Regression unter echten Netzwerkbedingungen fuer das
 eigene Business-Profil-Menu, QR->Menu->Posts->Refresh, `/:slug/menu`
 Cold-Refresh und Browser-Back/Forward. Ein weiterer technischer Schritt waere

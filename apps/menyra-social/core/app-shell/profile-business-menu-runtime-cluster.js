@@ -200,6 +200,20 @@ export function createProfileBusinessMenuRuntimeCluster({
     return Array.from(profileIds).some((id) => ownProfileIds.has(id));
   };
 
+  const collectOwnBusinessMenuLoadIds = (profile = {}, fallbackId = "") => {
+    const ids = [];
+    const addId = (value = "") => {
+      const safeValue = String(value || "").trim();
+      if (safeValue && !ids.includes(safeValue)) ids.push(safeValue);
+    };
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    addId(safeProfile.canonicalRestaurantId);
+    addId(safeProfile.restaurantId);
+    addId(getMenuRestaurantForProfile(safeProfile));
+    addId(fallbackId);
+    return ids;
+  };
+
   const isPublicMenuLoadSurface = (profile = {}) => {
     return isVisiblePublicBusinessSurface() || isOwnBusinessProfileMenuSurface(profile);
   };
@@ -470,11 +484,16 @@ export function createProfileBusinessMenuRuntimeCluster({
   };
 
   const loadVisiblePublicMenuIds = async (profile = {}, fallbackId = "") => {
+    const ownBusinessProfileMenuSurface = isOwnBusinessProfileMenuSurface(profile);
     if (!isPublicMenuLoadSurface(profile)) return;
     void ensureVisibleBusinessIdentityHydration(profile, fallbackId);
-    const ids = collectVisibleMenuLoadIds(profile, fallbackId);
+    const ids = ownBusinessProfileMenuSurface
+      ? collectOwnBusinessMenuLoadIds(profile, fallbackId)
+      : collectVisibleMenuLoadIds(profile, fallbackId);
     if (!ids.length || hasVisiblePublicMenuItemsForIds(ids)) return;
-    const canonicalMenuRestaurantId = resolveLatestCanonicalMenuRestaurantId(ids[0]);
+    const canonicalMenuRestaurantId = ownBusinessProfileMenuSurface
+      ? ids[0]
+      : resolveLatestCanonicalMenuRestaurantId(ids[0]);
     if (canonicalMenuRestaurantId) {
       clearAliasMenuEmptyStateForCanonicalLoad({
         requestedRestaurantId: fallbackId || getMenuRestaurantForProfile(profile),
@@ -516,7 +535,9 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   const scheduleVisiblePublicMenuRetry = (profile = {}, fallbackId = "") => {
     if (!isPublicMenuLoadSurface(profile)) return;
-    const ids = collectVisibleMenuLoadIds(profile, fallbackId);
+    const ids = isOwnBusinessProfileMenuSurface(profile)
+      ? collectOwnBusinessMenuLoadIds(profile, fallbackId)
+      : collectVisibleMenuLoadIds(profile, fallbackId);
     const retryKey = ids.join("|");
     if (!retryKey || visiblePublicMenuRetryTimers.has(retryKey)) return;
     const delays = [120, 450, 1200];
