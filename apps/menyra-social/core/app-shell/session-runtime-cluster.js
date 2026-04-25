@@ -115,6 +115,7 @@ export function createSessionRuntimeCluster({
     FAST_MODE: config.fastMode,
     sanitizeTabForSession: lifecycleApi.sanitizeTabForSession,
     renderFn: renderApi.renderFn,
+    updateShellDomFn: renderApi.updateShellDomFn,
     startChatThreadsListenerFn: lifecycleApi.startChatThreadsListenerFn,
     stopChatThreadsListenerFn: lifecycleApi.stopChatThreadsListenerFn,
     stopActiveChatMessagesListenerFn: lifecycleApi.stopActiveChatMessagesListenerFn,
