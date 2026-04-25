@@ -1,3 +1,25 @@
+const LEGACY_MENU_PERSISTENT_CACHE_PREFIX = "menyra_social_menu_cache_v1::";
+const LEGACY_MENU_CACHE_PURGE_MARKER = "menyra_social_menu_surface_contract_legacy_cache_purged_v1";
+
+function purgeLegacyMenuFirstPaintCacheOnce() {
+  try {
+    const storage = globalThis?.localStorage;
+    if (!storage) return;
+    if (storage.getItem(LEGACY_MENU_CACHE_PURGE_MARKER) === "1") return;
+    const keys = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = String(storage.key(index) || "");
+      if (key.startsWith(LEGACY_MENU_PERSISTENT_CACHE_PREFIX)) {
+        keys.push(key);
+      }
+    }
+    keys.forEach((key) => storage.removeItem(key));
+    storage.setItem(LEGACY_MENU_CACHE_PURGE_MARKER, "1");
+  } catch {}
+}
+
+purgeLegacyMenuFirstPaintCacheOnce();
+
 export const MENU_SURFACE_SOURCES = Object.freeze({
   COLLECTION: "collection",
   PUBLIC: "public",
