@@ -1,13 +1,24 @@
 import { resolvePendingAuthRouteFlagsCore } from "./auth-bootstrap-flow-utils.js";
 
+function hasPendingProfileRoute(pendingState = null) {
+  if (!pendingState || typeof pendingState !== "object") return false;
+  return !!(
+    String(pendingState.pendingProfileRestaurantId || "").trim()
+    || String(pendingState.pendingUserRouteId || "").trim()
+  );
+}
+
 export async function runPostLoginPendingRouteOpenFlowCore({
   openProfileFromQuery,
   openNotificationFromQuery,
   openPostFromQuery,
   openChatFromQuery,
-  renderFallback
+  renderFallback,
+  allowProfileOpen = false
 } = {}) {
-  void openProfileFromQuery;
+  const openProfile = typeof openProfileFromQuery === "function"
+    ? openProfileFromQuery
+    : (() => false);
   const openNotification = typeof openNotificationFromQuery === "function"
     ? openNotificationFromQuery
     : (async () => false);
@@ -21,19 +32,23 @@ export async function runPostLoginPendingRouteOpenFlowCore({
     ? renderFallback
     : (() => {});
 
+  const openedProfile = allowProfileOpen === true ? !!openProfile() : false;
   const openedNotification = await openNotification();
   const openedPost = await openPost();
   const openedChat = openChat();
-  if (!openedNotification && !openedPost && !openedChat) render();
+  if (!openedProfile && !openedNotification && !openedPost && !openedChat) render();
 }
 
 export function runPostLoginNonBlockingRouteOpenFlowCore({
   openProfileFromQuery,
   openNotificationFromQuery,
   openPostFromQuery,
-  openChatFromQuery
+  openChatFromQuery,
+  allowProfileOpen = false
 } = {}) {
-  void openProfileFromQuery;
+  const openProfile = typeof openProfileFromQuery === "function"
+    ? openProfileFromQuery
+    : (() => false);
   const openNotification = typeof openNotificationFromQuery === "function"
     ? openNotificationFromQuery
     : (() => Promise.resolve(false));
@@ -44,10 +59,11 @@ export function runPostLoginNonBlockingRouteOpenFlowCore({
     ? openChatFromQuery
     : (() => false);
 
+  const openedProfile = allowProfileOpen === true ? !!openProfile() : false;
   void openNotification();
   void openPost();
   openChat();
-  return { openedProfile: false };
+  return { openedProfile };
 }
 
 export function createPostLoginRouteOpenCoordinator({
@@ -57,11 +73,14 @@ export function createPostLoginRouteOpenCoordinator({
   getPendingNotificationId = () => "",
   getPendingPostId = () => "",
   getPendingChatUid = () => "",
-  openProfileFromQuery = () => {},
+  openProfileFromQuery = () => false,
   openNotificationFromQuery = async () => false,
   openPostFromQuery = async () => false,
   openChatFromQuery = () => false
 } = {}) {
+  const readPendingState = typeof pendingRouteState?.getPendingState === "function"
+    ? pendingRouteState.getPendingState
+    : (() => ({}));
   const readPendingNotificationId = typeof pendingRouteState?.getPendingNotificationId === "function"
     ? pendingRouteState.getPendingNotificationId
     : (typeof getPendingNotificationId === "function" ? getPendingNotificationId : (() => ""));
@@ -73,7 +92,7 @@ export function createPostLoginRouteOpenCoordinator({
     : (typeof getPendingChatUid === "function" ? getPendingChatUid : (() => ""));
   const openProfile = typeof routeOpenApi?.openProfileFromQuery === "function"
     ? routeOpenApi.openProfileFromQuery
-    : (typeof openProfileFromQuery === "function" ? openProfileFromQuery : (() => {}));
+    : (typeof openProfileFromQuery === "function" ? openProfileFromQuery : (() => false));
   const openNotification = typeof routeOpenApi?.openNotificationFromQuery === "function"
     ? routeOpenApi.openNotificationFromQuery
     : (typeof openNotificationFromQuery === "function" ? openNotificationFromQuery : (async () => false));
@@ -92,13 +111,18 @@ export function createPostLoginRouteOpenCoordinator({
     });
   }
 
+  function canOpenProfileForCurrentRoute() {
+    return hasPendingProfileRoute(readPendingState());
+  }
+
   async function openPendingRoutes() {
     return runPostLoginPendingRouteOpenFlowCore({
       openProfileFromQuery: openProfile,
       openNotificationFromQuery: openNotification,
       openPostFromQuery: openPost,
       openChatFromQuery: openChat,
-      renderFallback
+      renderFallback,
+      allowProfileOpen: canOpenProfileForCurrentRoute()
     });
   }
 
@@ -107,7 +131,8 @@ export function createPostLoginRouteOpenCoordinator({
       openProfileFromQuery: openProfile,
       openNotificationFromQuery: openNotification,
       openPostFromQuery: openPost,
-      openChatFromQuery: openChat
+      openChatFromQuery: openChat,
+      allowProfileOpen: canOpenProfileForCurrentRoute()
     });
   }
 
