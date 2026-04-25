@@ -71,19 +71,10 @@ export async function bootstrapAuthenticatedSessionCore({
   await loadProfile(user);
   if (!canContinue()) return false;
 
-  // Account recognition must happen as soon as the canonical auth profile is known.
-  // Slower secondary work must not delay the UI from knowing who logged in.
-  const currentTab = readActiveTab();
-  markBootstrapProfileLoaded(user, { activeTab: currentTab });
-  runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
-
-  // Also warm the self-profile content immediately after login even when the user
-  // stays on feed/search/etc. This keeps profile tabs/posts ready before tapping Profile.
-  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
-    runNonBlocking("auth-bootstrap.preloadSelfProfile", () => ensureTab("profile", { preloadOnly: true }));
-  }
-
-  runNonBlocking("auth-bootstrap.primeCriticalProfile", () => primeCritical(user));
+  // Website contract: the authenticated shell must not become final while
+  // role/restaurant/workspace identity is still being reconciled. Cached hints
+  // may support preview UI, but tabs and workspace loaders need canonical auth
+  // profile data first.
   const restaurantId = String(readRestaurantId(user) || "").trim();
   const blockingTasks = [];
   if (restaurantId) {
@@ -95,7 +86,19 @@ export async function bootstrapAuthenticatedSessionCore({
   }
   if (!canContinue()) return false;
 
+  const currentTab = readActiveTab();
+  markBootstrapProfileLoaded(user, { activeTab: currentTab });
+
+  // After the canonical profile/role gate opens, load only the visible tab first;
+  // secondary work remains non-blocking so guest/public cold start stays fast.
+  runNonBlocking("auth-bootstrap.ensureTabData.afterCanonicalProfile", () => ensureTab(currentTab));
+
+  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
+    runNonBlocking("auth-bootstrap.preloadSelfProfile.afterCanonicalProfile", () => ensureTab("profile", { preloadOnly: true }));
+  }
+
+  runNonBlocking("auth-bootstrap.primeCriticalProfile.afterCanonicalProfile", () => primeCritical(user));
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
-  runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
+  runNonBlocking("auth-bootstrap.startLiveListeners.afterCanonicalProfile", () => startLive(user));
   return true;
 }
