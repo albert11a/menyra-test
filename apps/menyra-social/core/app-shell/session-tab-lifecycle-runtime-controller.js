@@ -134,10 +134,6 @@ export function createSessionTabLifecycleRuntimeController({
       if (isBusinessOwnerWorkspace) {
         runShellWarmTask("auth-shell.business.accounts.preload", () => loadBusinessAccountsFn());
       }
-      if (restaurantId) {
-        runShellWarmTask("auth-shell.business.menu.preload", () => loadMenuForRestaurantFn(restaurantId, { source: "collection" }));
-        runShellWarmTask("auth-shell.business.focus.preload", () => loadFocusForRestaurantFn(restaurantId));
-      }
     } else {
       runShellWarmTask("auth-shell.user.posts.preload", () => loadUserPostsFn());
     }

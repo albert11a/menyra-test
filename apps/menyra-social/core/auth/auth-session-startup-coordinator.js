@@ -352,6 +352,7 @@ export function createAuthSessionStartupCoordinator({
       if (state?.user) {
         const currentUser = state.user;
         const currentUid = String(currentUser?.uid || "").trim();
+        markBootstrapInFlight(currentUid);
         const reuseInteractivePrime = isFreshInteractivePrime(currentUid, { requirePersisted: true });
         if (reuseInteractivePrime) {
           markStartup("auth interactive prime reuse initialize", { uid: currentUid });
@@ -431,17 +432,13 @@ export function createAuthSessionStartupCoordinator({
     markStartup("auth state changed", { uid: nextUid, authenticated: !!nextUid });
     const prevUid = String(lastAuthUid || "").trim();
     const hasPendingRouteReplay = !!postLoginRouteOpen?.resolvePendingRouteFlags?.()?.hasAny;
-    const bootstrapInFlightUid = readBootstrapInFlightUid();
     const bootstrapSettledUid = readBootstrapSettledUid();
     if (
       !hasPendingRouteReplay
-      &&
-      nextUid
+      && nextUid
       && nextUid === prevUid
-      && (
-        bootstrapInFlightUid === nextUid
-        || (bootstrapSettledUid === nextUid && state?.auth?.loading === false)
-      )
+      && bootstrapSettledUid === nextUid
+      && state?.auth?.loading === false
     ) {
       if (state) {
         state.user = user;
@@ -472,7 +469,6 @@ export function createAuthSessionStartupCoordinator({
       if (reuseInteractivePrime) {
         clearInteractivePrime(nextUid);
       }
-      scheduleEagerAuthenticatedTabEnsure();
       schedulePendingRouteReplayWithTimeline();
       requestRender();
       void (async () => {
