@@ -12,6 +12,13 @@ export const MENU_SURFACE_STATUS = Object.freeze({
   ERROR: "error"
 });
 
+export const MENU_SURFACE_SOURCE_PRIORITY = Object.freeze([
+  MENU_SURFACE_SOURCES.COLLECTION,
+  MENU_SURFACE_SOURCES.PUBLIC,
+  MENU_SURFACE_SOURCES.LEGACY,
+  MENU_SURFACE_SOURCES.MIGRATION
+]);
+
 export function normalizeMenuSurfaceSource(value = "") {
   const source = String(value || "").trim().toLowerCase();
   if (source === MENU_SURFACE_SOURCES.COLLECTION) return MENU_SURFACE_SOURCES.COLLECTION;
@@ -54,6 +61,27 @@ export function resolveMenuSurfacePrimaryItems({
     items: [],
     source: MENU_SURFACE_SOURCES.COLLECTION,
     fallbackItems: []
+  };
+}
+
+export function resolveCanonicalMenuItems({
+  collectionItems = [],
+  publicItems = [],
+  legacyItems = [],
+  mergeFallback = null
+} = {}) {
+  const resolved = resolveMenuSurfacePrimaryItems({
+    collectionItems,
+    publicItems,
+    legacyItems
+  });
+  const merge = typeof mergeFallback === "function" ? mergeFallback : null;
+  const items = merge && resolved.items.length && resolved.fallbackItems.length
+    ? merge(resolved.items, resolved.fallbackItems)
+    : resolved.items;
+  return {
+    ...resolved,
+    items: Array.isArray(items) ? items : []
   };
 }
 
