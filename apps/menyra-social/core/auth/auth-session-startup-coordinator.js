@@ -310,6 +310,7 @@ export function createAuthSessionStartupCoordinator({
       setAuthInitialized(false);
       if (state?.user) {
         const currentUser = state.user;
+        markBootstrapInFlight(currentUser.uid || "");
         loadUserScopedPersisted(currentUser);
         primeFastAuthProfileHints(currentUser, snapshot);
         if (hasMeaningfulProfileHint(state?.userProfile)) {
