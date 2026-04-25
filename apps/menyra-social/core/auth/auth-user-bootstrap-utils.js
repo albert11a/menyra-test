@@ -3,6 +3,7 @@ export async function bootstrapAuthenticatedSessionCore({
   loadAuthProfile,
   primeCriticalProfile,
   markBootstrapAuthProfileLoaded,
+  afterAuthShellReady,
   getRestaurantId,
   hydrateRestaurantsByIds,
   resolveRoleSwitchTargets,
@@ -14,39 +15,18 @@ export async function bootstrapAuthenticatedSessionCore({
 } = {}) {
   if (!user) return false;
 
-  const loadProfile = typeof loadAuthProfile === "function"
-    ? loadAuthProfile
-    : (async () => {});
-  const markBootstrapProfileLoaded = typeof markBootstrapAuthProfileLoaded === "function"
-    ? markBootstrapAuthProfileLoaded
-    : (() => {});
-  const primeCritical = typeof primeCriticalProfile === "function"
-    ? primeCriticalProfile
-    : (() => {});
-  const readRestaurantId = typeof getRestaurantId === "function"
-    ? getRestaurantId
-    : (() => "");
-  const hydrateRestaurants = typeof hydrateRestaurantsByIds === "function"
-    ? hydrateRestaurantsByIds
-    : (async () => {});
-  const resolveRoles = typeof resolveRoleSwitchTargets === "function"
-    ? resolveRoleSwitchTargets
-    : (async () => {});
-  const ensureFollowing = typeof ensureFollowingLoaded === "function"
-    ? ensureFollowingLoaded
-    : (() => {});
-  const startLive = typeof startLiveListeners === "function"
-    ? startLiveListeners
-    : (() => {});
-  const ensureTab = typeof ensureTabData === "function"
-    ? ensureTabData
-    : (() => {});
-  const readActiveTab = typeof activeTab === "function"
-    ? activeTab
-    : (() => activeTab);
-  const canContinue = typeof shouldContinue === "function"
-    ? shouldContinue
-    : (() => true);
+  const loadProfile = typeof loadAuthProfile === "function" ? loadAuthProfile : (async () => {});
+  const markBootstrapProfileLoaded = typeof markBootstrapAuthProfileLoaded === "function" ? markBootstrapAuthProfileLoaded : (() => {});
+  const commitAuthShellReady = typeof afterAuthShellReady === "function" ? afterAuthShellReady : (() => {});
+  const primeCritical = typeof primeCriticalProfile === "function" ? primeCriticalProfile : (() => {});
+  const readRestaurantId = typeof getRestaurantId === "function" ? getRestaurantId : (() => "");
+  const hydrateRestaurants = typeof hydrateRestaurantsByIds === "function" ? hydrateRestaurantsByIds : (async () => {});
+  const resolveRoles = typeof resolveRoleSwitchTargets === "function" ? resolveRoleSwitchTargets : (async () => {});
+  const ensureFollowing = typeof ensureFollowingLoaded === "function" ? ensureFollowingLoaded : (() => {});
+  const startLive = typeof startLiveListeners === "function" ? startLiveListeners : (() => {});
+  const ensureTab = typeof ensureTabData === "function" ? ensureTabData : (() => {});
+  const readActiveTab = typeof activeTab === "function" ? activeTab : (() => activeTab);
+  const canContinue = typeof shouldContinue === "function" ? shouldContinue : (() => true);
   const reportBootstrapNonBlockingFailure = (scope = "", err = null) => {
     const safeScope = String(scope || "auth-bootstrap").trim() || "auth-bootstrap";
     if (err) {
@@ -59,9 +39,7 @@ export async function bootstrapAuthenticatedSessionCore({
     try {
       const pending = fn();
       if (pending && typeof pending.then === "function") {
-        pending.catch((err) => {
-          reportBootstrapNonBlockingFailure(scope, err);
-        });
+        pending.catch((err) => reportBootstrapNonBlockingFailure(scope, err));
       }
     } catch (err) {
       reportBootstrapNonBlockingFailure(scope, err);
@@ -71,28 +49,22 @@ export async function bootstrapAuthenticatedSessionCore({
   await loadProfile(user);
   if (!canContinue()) return false;
 
-  // Website auth contract: tabs, listeners, and self-profile preload must not
-  // decide from a half-known account. Resolve the restaurant/workspace role
-  // context immediately after the canonical auth profile, then release the
-  // authenticated shell work.
   const restaurantId = String(readRestaurantId(user) || "").trim();
   const blockingTasks = [];
-  if (restaurantId) {
-    blockingTasks.push(hydrateRestaurants([restaurantId], { max: 1 }));
-  }
+  if (restaurantId) blockingTasks.push(hydrateRestaurants([restaurantId], { max: 1 }));
   blockingTasks.push(resolveRoles(user));
-  if (blockingTasks.length) {
-    await Promise.all(blockingTasks);
-  }
+  if (blockingTasks.length) await Promise.all(blockingTasks);
   if (!canContinue()) return false;
 
   const currentTab = readActiveTab();
   markBootstrapProfileLoaded(user, { activeTab: currentTab });
 
-  // Start live profile/notification/follow listeners before background tab
-  // preload. The self-profile listener already commits state.userProfile and
-  // refreshes the shell DOM, so Drawer avatar, account badges, and burger badges
-  // can update without requiring a manual Profile tab click.
+  try {
+    commitAuthShellReady(user, { activeTab: currentTab });
+  } catch (err) {
+    reportBootstrapNonBlockingFailure("auth-bootstrap.afterAuthShellReady", err);
+  }
+
   try {
     startLive(user);
   } catch (err) {
@@ -101,9 +73,6 @@ export async function bootstrapAuthenticatedSessionCore({
 
   runNonBlocking("auth-bootstrap.ensureTabData.afterRoleContext", () => ensureTab(currentTab));
 
-  // Also warm the self-profile content immediately after the role context is
-  // settled, even when the user stays on feed/search/etc. This keeps profile
-  // tabs/posts ready before tapping Profile without using unsafe cached identity.
   if (String(currentTab || "").trim().toLowerCase() !== "profile") {
     runNonBlocking("auth-bootstrap.preloadSelfProfile.afterRoleContext", () => ensureTab("profile", { preloadOnly: true }));
   }
