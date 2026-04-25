@@ -47,45 +47,9 @@ export function renderMainCore({
   const renderBusinessTopTabs = typeof renderBusinessTopTabsFn === "function" ? renderBusinessTopTabsFn : (() => "");
   const socialAccessMode = String(state?.userProfile?.socialAccessMode || "").trim().toLowerCase();
   const hasRestrictedSocialAccess = socialAccessMode === "waiteronly" || socialAccessMode === "blocked";
-  const authUid = String(state?.user?.uid || "").trim();
-  const authBootstrapInFlightUid = String(state?.__authBootstrapInFlightUid || "").trim();
-  const authBootstrapSettledUid = String(state?.__authBootstrapSettledUid || "").trim();
-  const authBootstrapInFlight = !!authUid
-    && authBootstrapInFlightUid === authUid
-    && authBootstrapSettledUid !== authUid;
-
-  function renderAuthenticatedStartupView() {
-    const name = String(state?.userProfile?.name || state?.user?.displayName || "").trim();
-    const label = name ? `Profil für ${escapeHtml(name)} vorbereiten...` : "Profil vorbereiten...";
-    return `
-      <section class="p-6 pb-24" aria-busy="true" aria-live="polite">
-        <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6">
-          <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-[1.5rem] bg-slate-200 animate-pulse"></div>
-            <div class="min-w-0 flex-1">
-              <div class="h-4 w-36 rounded-full bg-slate-200 animate-pulse"></div>
-              <div class="mt-3 h-3 w-24 rounded-full bg-slate-100 animate-pulse"></div>
-            </div>
-          </div>
-          <p class="mt-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">${label}</p>
-          <div class="mt-6 grid grid-cols-3 gap-2">
-            <div class="h-10 rounded-2xl bg-slate-100 animate-pulse"></div>
-            <div class="h-10 rounded-2xl bg-slate-100 animate-pulse"></div>
-            <div class="h-10 rounded-2xl bg-slate-100 animate-pulse"></div>
-          </div>
-          <div class="mt-6 space-y-3">
-            <div class="h-24 rounded-[2rem] bg-slate-100 animate-pulse"></div>
-            <div class="h-24 rounded-[2rem] bg-slate-100 animate-pulse"></div>
-          </div>
-        </div>
-      </section>
-    `;
-  }
 
   let view = "";
-  if (authBootstrapInFlight) {
-    view = renderAuthenticatedStartupView();
-  } else if (hasRestrictedSocialAccess) {
+  if (hasRestrictedSocialAccess) {
     const restrictedTitle = socialAccessMode === "waiteronly"
       ? "Nur Waiter-App freigegeben"
       : "Account gesperrt";
@@ -123,9 +87,9 @@ export function renderMainCore({
     if (state?.activeTab === "notifications") view = renderNotificationsView();
     if (state?.activeTab === "upload") view = renderUploadView();
   }
-  const businessTopTabsHtml = authBootstrapInFlight ? "" : renderBusinessTopTabs();
+  const businessTopTabsHtml = renderBusinessTopTabs();
   const hasBusinessTopTabs = !!String(businessTopTabsHtml || "").trim();
-  const profile = authBootstrapInFlight ? null : (state?.profileView?.profile || state?.userProfile || null);
+  const profile = state?.profileView?.profile || state?.userProfile || null;
   const smartHeaderOverlayIsolationActive = !!state?.profileModal?.open
     || !!state?.postModal?.open
     || !!state?.likesModal?.open
@@ -142,8 +106,7 @@ export function renderMainCore({
     || String(profile?.role || "").trim().toLowerCase() === "business";
   const isLandingTopTab = state?.activeTab === "profile"
     && String(state?.profileTopTab || "").trim().toLowerCase() === "landing";
-  const hasSmartHeader = !authBootstrapInFlight
-    && !!String(state?.activeTab || "").trim()
+  const hasSmartHeader = !!String(state?.activeTab || "").trim()
     && state?.activeTab !== "map"
     && !smartHeaderBlockedState;
   const hasSmartHeaderContentGap = hasSmartHeader && !isLandingTopTab;
@@ -152,8 +115,8 @@ export function renderMainCore({
     && isBusinessProfile
     && !smartHeaderOverlayIsolationActive
     && !isLandingTopTab;
-  const isMapView = !authBootstrapInFlight && state?.activeTab === "map";
-  const isChatThreadOpen = !authBootstrapInFlight && state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile;
+  const isMapView = state?.activeTab === "map";
+  const isChatThreadOpen = state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile;
   const shellClass = isChatThreadOpen
     ? "app-shell app-shell--chat-open bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans"
     : (isMapView
@@ -162,7 +125,7 @@ export function renderMainCore({
   const mainClass = isChatThreadOpen
     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
     : `app-main-scroll${isMapView ? " app-main-scroll--with-map-fixed-header app-main-scroll--map-fill" : ""}${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}${hasSmartHeaderContentGap ? " app-main-scroll--with-smart-header" : ""}${hasSmartHeaderTabs ? " app-main-scroll--with-smart-header-tabs" : ""}${isLandingTopTab ? " app-main-scroll--landing" : ""}`;
-  const headerHtml = authBootstrapInFlight ? "" : renderHeader();
+  const headerHtml = renderHeader();
   const shellHeaderHtml = isMapView
     ? `<div class="map-fixed-page-header">${headerHtml}</div>`
     : (hasSmartHeader ? headerHtml : "");
@@ -174,7 +137,7 @@ export function renderMainCore({
 
   return `
     <div class="${shellClass}">
-      ${authBootstrapInFlight ? "" : renderDrawer()}
+      ${renderDrawer()}
       ${shellHeaderHtml}
       <main class="${mainClass}">
         ${mainHeaderHtml}
