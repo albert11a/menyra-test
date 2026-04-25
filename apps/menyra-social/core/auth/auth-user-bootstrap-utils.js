@@ -72,6 +72,15 @@ export async function bootstrapAuthenticatedSessionCore({
     }
   };
 
+  if (!canContinue()) return false;
+
+  // Mobile Safari can be noticeably slower on the canonical auth profile read.
+  // Badges, chats, and notification listeners only need the uid, so start them
+  // immediately instead of waiting for loadAuthProfile(). This keeps the web
+  // shell responsive while the canonical profile still resolves in the background.
+  runNonBlocking("auth-bootstrap.startLiveListeners.instant", () => startLive(user));
+  runNonBlocking("auth-bootstrap.primeCriticalProfile.instant", () => primeCritical(user));
+
   await loadProfile(user);
   if (!canContinue()) return false;
 
@@ -84,7 +93,6 @@ export async function bootstrapAuthenticatedSessionCore({
   } catch (err) {
     reportBootstrapNonBlockingFailure("auth-bootstrap.afterAuthShellReady", err);
   }
-  runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
   runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
 
   // Also warm the self-profile content immediately after login even when the user
@@ -93,7 +101,6 @@ export async function bootstrapAuthenticatedSessionCore({
     runNonBlocking("auth-bootstrap.preloadSelfProfile", () => ensureTab("profile", { preloadOnly: true }));
   }
 
-  runNonBlocking("auth-bootstrap.primeCriticalProfile", () => primeCritical(user));
   const restaurantId = String(readRestaurantId(user) || "").trim();
   const blockingTasks = [];
   if (restaurantId) {
