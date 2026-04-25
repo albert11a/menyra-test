@@ -90,10 +90,36 @@ export function createSessionTabLifecycleRuntimeController({
     if (!uid || shellWarmUid === uid) return;
     shellWarmUid = uid;
 
+    const profile = state?.userProfile && typeof state.userProfile === "object"
+      ? state.userProfile
+      : {};
+    const roleKey = String(profile.role || "").trim().toLowerCase();
+    const sourceUserRoleKey = String(profile.sourceUserRole || "").trim().toLowerCase();
+    const restaurantId = String(
+      profile.restaurantId
+      || profile.staffRestaurantId
+      || profile.waiterRestaurantId
+      || ""
+    ).trim();
+    const permissions = profile.permissions && typeof profile.permissions === "object"
+      ? profile.permissions
+      : {};
+    const hasBusinessWorkspaceAccess = profile.businessAccess === true || permissions.businessAccess === true;
+    const hasWaiterWorkspaceAccess = profile.waiterAccess === true || permissions.waiterAccess === true;
+    const isBusinessOwnerWorkspace = roleKey === "business" && sourceUserRoleKey !== "staff";
+    const shouldWarmRestaurantWorkspace = !!restaurantId && (
+      isBusinessOwnerWorkspace
+      || sourceUserRoleKey === "staff"
+      || hasBusinessWorkspaceAccess
+      || hasWaiterWorkspaceAccess
+    );
+
     ensureChatThreadsLive(user);
 
     // Badges and role-specific surfaces must begin loading as soon as the
     // authenticated shell exists, not only after the user taps those tabs.
+    runShellWarmTask("auth-shell.feed.preload", () => loadFeedPostsFn());
+    runShellWarmTask("auth-shell.restaurants.preload", () => loadRestaurantsFn({ force: false }));
     runShellWarmTask("auth-shell.notifications.fetch", () => loadNotificationsFromFirebaseFn({ force: true }));
 
     if (isCeoUserFn()) {
@@ -103,10 +129,11 @@ export function createSessionTabLifecycleRuntimeController({
       runShellWarmTask("auth-shell.staff.preload", () => loadCeoStaffFn());
     }
 
-    if (isLocalBusinessProfileFn(state?.userProfile)) {
-      const restaurantId = String(state?.userProfile?.restaurantId || "").trim();
+    if (shouldWarmRestaurantWorkspace) {
       runShellWarmTask("auth-shell.business.posts.preload", () => loadBusinessPostsFn());
-      runShellWarmTask("auth-shell.business.accounts.preload", () => loadBusinessAccountsFn());
+      if (isBusinessOwnerWorkspace) {
+        runShellWarmTask("auth-shell.business.accounts.preload", () => loadBusinessAccountsFn());
+      }
       if (restaurantId) {
         runShellWarmTask("auth-shell.business.menu.preload", () => loadMenuForRestaurantFn(restaurantId, { source: "collection" }));
         runShellWarmTask("auth-shell.business.focus.preload", () => loadFocusForRestaurantFn(restaurantId));

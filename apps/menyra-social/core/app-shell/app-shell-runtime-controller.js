@@ -1622,8 +1622,21 @@ export function createAppShellRuntimeController(deps = {}) {
           const immediateUid = String(immediateUser?.uid || "").trim();
           if (immediateUid) {
             const schedulePostAuthTask = typeof queueMicrotaskFn === "function"
-              ? queueMicrotaskFn
-              : ((fn) => Promise.resolve().then(() => fn?.()).catch(() => {}));
+              ? (fn) => {
+                try { queueMicrotaskFn(fn); } catch {}
+              }
+              : (typeof win?.requestAnimationFrame === "function"
+                ? (fn) => win.requestAnimationFrame(() => {
+                  try { fn?.(); } catch {}
+                })
+                : ((fn) => Promise.resolve().then(() => fn?.()).catch(() => {})));
+            let interactivePersistedLoaded = false;
+            if (typeof loadUserScopedPersistedFn === "function") {
+              try {
+                loadUserScopedPersistedFn(immediateUser);
+                interactivePersistedLoaded = true;
+              } catch {}
+            }
             const nextDisplayName = String(
               immediateUser?.displayName
               || name
@@ -1646,6 +1659,9 @@ export function createAppShellRuntimeController(deps = {}) {
                 error: ""
               },
               drawerOpen: false,
+              __authInteractivePrimeUid: immediateUid,
+              __authInteractivePrimeAt: Date.now(),
+              __authInteractivePrimePersisted: interactivePersistedLoaded,
               userProfile: {
                 ...state.userProfile,
                 uid: immediateUid,
@@ -1658,11 +1674,14 @@ export function createAppShellRuntimeController(deps = {}) {
             immediateAuthTransitionApplied = true;
             schedulePostAuthTask(() => {
               try {
-                if (typeof loadUserScopedPersistedFn === "function") {
+                if (!interactivePersistedLoaded && typeof loadUserScopedPersistedFn === "function") {
                   loadUserScopedPersistedFn(immediateUser);
+                  state.__authInteractivePrimePersisted = true;
                 }
               } catch {}
               render();
+              const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+              if (activeTab !== "profile") return;
               try {
                 ensurePostsDataForProfileFn(state?.profileView?.profile || state?.userProfile || {});
               } catch {}
