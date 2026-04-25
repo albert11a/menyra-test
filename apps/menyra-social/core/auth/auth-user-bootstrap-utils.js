@@ -71,19 +71,10 @@ export async function bootstrapAuthenticatedSessionCore({
   await loadProfile(user);
   if (!canContinue()) return false;
 
-  // Account recognition must happen as soon as the canonical auth profile is known.
-  // Slower secondary work must not delay the UI from knowing who logged in.
-  const currentTab = readActiveTab();
-  markBootstrapProfileLoaded(user, { activeTab: currentTab });
-  runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
-
-  // Also warm the self-profile content immediately after login even when the user
-  // stays on feed/search/etc. This keeps profile tabs/posts ready before tapping Profile.
-  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
-    runNonBlocking("auth-bootstrap.preloadSelfProfile", () => ensureTab("profile", { preloadOnly: true }));
-  }
-
-  runNonBlocking("auth-bootstrap.primeCriticalProfile", () => primeCritical(user));
+  // Website auth contract: tabs, listeners, and self-profile preload must not
+  // decide from a half-known account. Resolve the restaurant/workspace role
+  // context immediately after the canonical auth profile, then release the
+  // authenticated shell work.
   const restaurantId = String(readRestaurantId(user) || "").trim();
   const blockingTasks = [];
   if (restaurantId) {
@@ -95,7 +86,19 @@ export async function bootstrapAuthenticatedSessionCore({
   }
   if (!canContinue()) return false;
 
+  const currentTab = readActiveTab();
+  markBootstrapProfileLoaded(user, { activeTab: currentTab });
+  runNonBlocking("auth-bootstrap.ensureTabData.afterRoleContext", () => ensureTab(currentTab));
+
+  // Also warm the self-profile content immediately after the role context is
+  // settled, even when the user stays on feed/search/etc. This keeps profile
+  // tabs/posts ready before tapping Profile without using unsafe cached identity.
+  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
+    runNonBlocking("auth-bootstrap.preloadSelfProfile.afterRoleContext", () => ensureTab("profile", { preloadOnly: true }));
+  }
+
+  runNonBlocking("auth-bootstrap.primeCriticalProfile.afterRoleContext", () => primeCritical(user));
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
-  runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
+  runNonBlocking("auth-bootstrap.startLiveListeners.afterRoleContext", () => startLive(user));
   return true;
 }
