@@ -1,4 +1,5 @@
 import { normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
+import { resolveCanonicalMenuItems } from "./menu-surface-contract.js";
 
 export function createMenuPublicRuntimeController({
   state = null,
@@ -687,19 +688,18 @@ export function createMenuPublicRuntimeController({
   async function loadMenuHybrid(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return [];
-    const publicItems = await loadPublicMenuItems(safeRestaurantId);
-    if (publicItems.length) return publicItems;
-    const [collectionItems, legacyItems] = await Promise.all([
+    const [collectionItems, publicItems, legacyItems] = await Promise.all([
       loadMenuItemsFromCollection(safeRestaurantId),
+      loadPublicMenuItems(safeRestaurantId),
       loadLegacyMenuItems(safeRestaurantId)
     ]);
-    if (collectionItems.length) {
-      return collectionItems;
-    }
-    if (legacyItems.length) {
-      return legacyItems;
-    }
-    return [];
+    const resolved = resolveCanonicalMenuItems({
+      collectionItems,
+      publicItems,
+      legacyItems,
+      mergeFallback: fillMenuImagesFromFallback
+    });
+    return resolved.items;
   }
 
   function menuCacheKey(restaurantId, source) {
