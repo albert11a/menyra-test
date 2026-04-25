@@ -195,6 +195,31 @@ export function createAuthSessionStartupCoordinator({
       });
   }
 
+  function shouldForceInstantAccountOpenAfterInteractiveAuth({
+    hasPendingRouteReplay = false
+  } = {}) {
+    if (hasPendingRouteReplay) return false;
+    const authState = state?.auth;
+    if (!authState || typeof authState !== "object") return false;
+    const interactiveAuthInFlight = authState.loading === true || authState.open === true;
+    if (!interactiveAuthInFlight) return false;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    const hasPublicProfileSurface = !!state?.profileView;
+    if (activeTab === "profile" && !hasPublicProfileSurface) return false;
+    return true;
+  }
+
+  function applyInstantAccountSurface() {
+    if (!state || typeof state !== "object") return;
+    state.activeTab = "profile";
+    state.profileTopTab = "profile";
+    state.profileContentTab = "posts";
+    state.profileView = null;
+    state.profileModal = { open: false, profile: null };
+    state.profilePostMenuId = null;
+    state.drawerOpen = false;
+  }
+
   function hasMeaningfulProfileHint(profile = null) {
     if (!profile || typeof profile !== "object") return false;
     const role = String(profile.role || "").trim().toLowerCase();
@@ -414,6 +439,10 @@ export function createAuthSessionStartupCoordinator({
       markBootstrapInFlight(nextUid);
       loadUserScopedPersisted(user);
       primeFastAuthProfileHints(user);
+      if (shouldForceInstantAccountOpenAfterInteractiveAuth({ hasPendingRouteReplay })) {
+        markStartup("interactive auth instant account open");
+        applyInstantAccountSurface();
+      }
       schedulePendingRouteReplayWithTimeline();
       requestRender();
       void (async () => {
