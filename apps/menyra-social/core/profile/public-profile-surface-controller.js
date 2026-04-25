@@ -200,14 +200,10 @@ function resolveMenuStatus(state = {}, { restaurantId = "", routePayload = null 
   const menu = state?.menu || {};
   const menuRestaurantId = String(menu.restaurantId || "").trim();
   const sameRestaurant = menuRestaurantId && menuRestaurantId === safeRestaurantId;
-  const menuSource = safeLower(menu.source || "");
-  const hasPublicMenuTruth = !!sameRestaurant && menuSource === "public";
-  const menuItems = hasPublicMenuTruth && Array.isArray(menu.items)
-    ? menu.items
-    : [];
+  const menuItems = sameRestaurant && Array.isArray(menu.items) ? menu.items : [];
   if (menuItems.length) return "ready";
   if (sameRestaurant && menu.loading) return "loading";
-  const menuTruthState = normalizeSectionTruthState(menu.truthState || "");
+  const menuTruthState = sameRestaurant ? normalizeSectionTruthState(menu.truthState || "") : "";
   if (menuTruthState === "knownEmpty") return "empty";
   if (menuTruthState === "unknown") return "loading";
   if (menuTruthState === "seeded") return "ready";
@@ -215,7 +211,7 @@ function resolveMenuStatus(state = {}, { restaurantId = "", routePayload = null 
   if (routeMenuState === "knownEmpty") return "empty";
   if (routeMenuState === "unknown") return "loading";
   if (routeMenuState === "seeded") return "ready";
-  if (hasPublicMenuTruth) {
+  if (sameRestaurant) {
     const error = String(menu.error || "").trim();
     if (error) return "error";
     return "empty";
