@@ -82,6 +82,14 @@ export function createAuthStartupStateHelpers({
     });
   }
 
+  function primeShellAvatar(avatar = "") {
+    const resolvedAvatar = getOptimizedImageUrl(String(avatar || "").trim(), "avatar");
+    if (!resolvedAvatar || isPlaceholderUrl(resolvedAvatar)) return false;
+    writeUserAvatarCache(resolvedAvatar);
+    writeLastShellAvatarUrl(resolvedAvatar);
+    return true;
+  }
+
   function writeAuthBootstrapSnapshot(snapshot = null) {
     const payload = buildAuthBootstrapSnapshotPayload({
       snapshot,
@@ -121,10 +129,7 @@ export function createAuthStartupStateHelpers({
     });
     if (!result.applied) return false;
     state.userProfile = result.nextProfile;
-    if (result.resolvedAvatar && !isPlaceholderUrl(result.resolvedAvatar)) {
-      writeUserAvatarCache(result.resolvedAvatar);
-      writeLastShellAvatarUrl(result.resolvedAvatar);
-    }
+    primeShellAvatar(result.resolvedAvatar || state.userProfile?.avatar || "");
     return true;
   }
 
@@ -177,6 +182,13 @@ export function createAuthStartupStateHelpers({
         handle: handle || state.userProfile.handle,
         avatar: avatar || state.userProfile.avatar
       };
+      primeShellAvatar(state.userProfile.avatar || avatar);
+      writeAuthBootstrapSnapshot({
+        uid: safeUid,
+        name: state.userProfile.name || "",
+        handle: state.userProfile.handle || "",
+        avatar: state.userProfile.avatar || ""
+      });
       return true;
     } catch {
       return false;

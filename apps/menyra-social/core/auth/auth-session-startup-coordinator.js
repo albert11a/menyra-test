@@ -202,6 +202,7 @@ export function createAuthSessionStartupCoordinator({
     return !!(
       String(profile.name || "").trim()
       || String(profile.handle || "").trim()
+      || String(profile.avatar || "").trim()
       || String(profile.restaurantId || "").trim()
       || String(profile.staffRestaurantId || "").trim()
       || String(profile.waiterRestaurantId || "").trim()

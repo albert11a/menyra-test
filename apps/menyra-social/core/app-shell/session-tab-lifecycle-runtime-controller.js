@@ -58,6 +58,20 @@ export function createSessionTabLifecycleRuntimeController({
     console.warn(`[mnyra][${safeScope}] operation failed`);
   }
 
+  function runShellWarmTask(scope = "tab-preload.warm", task = null) {
+    if (typeof task !== "function") return;
+    try {
+      const pending = task();
+      if (pending && typeof pending.then === "function") {
+        pending.catch((err) => {
+          reportPreloadWarning(scope, err);
+        });
+      }
+    } catch (err) {
+      reportPreloadWarning(scope, err);
+    }
+  }
+
   async function preloadProfileData() {
     if (!state?.user) return;
     if (preloadProfilePromise) return preloadProfilePromise;
@@ -69,6 +83,22 @@ export function createSessionTabLifecycleRuntimeController({
       const hasBusinessProfile = isLocalBusinessProfileFn(state.userProfile);
       if (hasBusinessProfile) {
         await loadBusinessPostsFn();
+        const restaurantId = String(
+          state.userProfile?.restaurantId
+          || state.userProfile?.staffRestaurantId
+          || state.userProfile?.waiterRestaurantId
+          || ""
+        ).trim();
+        if (restaurantId) {
+          runShellWarmTask(
+            "auth-tab.preloadProfile.businessMenu",
+            () => loadMenuForRestaurantFn(restaurantId, { source: "collection" })
+          );
+          runShellWarmTask(
+            "auth-tab.preloadProfile.businessFocus",
+            () => loadFocusForRestaurantFn(restaurantId)
+          );
+        }
         return;
       }
       await loadUserPostsFn();

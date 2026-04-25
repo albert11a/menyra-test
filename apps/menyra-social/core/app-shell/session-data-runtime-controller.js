@@ -1733,6 +1733,28 @@ export function createSessionDataRuntimeController({
       );
       return Promise.resolve();
     };
+    const commitAuthShellReady = () => {
+      try {
+        updateShellDomFn();
+        const renderMode = String(getLastRenderModeFn() || "").trim().toLowerCase();
+        const visibleTab = String(state?.activeTab || "").trim().toLowerCase();
+        if (renderMode === "main" && visibleTab === "feed" && updateFeedDomFn()) {
+          updateShellDomFn();
+          return;
+        }
+        if (renderMode === "main" && visibleTab === "search" && refreshSearchViewFn()) {
+          updateShellDomFn();
+          return;
+        }
+        renderFn();
+        updateShellDomFn();
+      } catch (err) {
+        console.warn("[mnyra][auth-shell-ready]", err);
+        try {
+          renderFn();
+        } catch {}
+      }
+    };
     await bootstrapAuthenticatedSessionCoreFn({
       user,
       loadAuthProfile: (currentUser) => loadAuthProfileFn(currentUser),
@@ -1778,11 +1800,12 @@ export function createSessionDataRuntimeController({
       getRestaurantId: () => state.userProfile.restaurantId || "",
       hydrateRestaurantsByIds: (ids, options) => hydrateRestaurantsForBootstrap(ids, options),
       resolveRoleSwitchTargets: (currentUser) => resolveRoleSwitchTargetsForBootstrap(currentUser),
+      afterAuthShellReady: commitAuthShellReady,
       ensureFollowingLoaded: () => {
         if (!dataLoaded.following) dataLoaded.following = true;
       },
       startLiveListeners: (currentUser) => startLiveListenersFn(currentUser),
-      ensureTabData: (tab) => ensureTabDataFn(tab),
+      ensureTabData: (tab, options) => ensureTabDataFn(tab, options),
       activeTab: () => state.activeTab
     });
   }

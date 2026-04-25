@@ -3,6 +3,7 @@ export async function bootstrapAuthenticatedSessionCore({
   loadAuthProfile,
   primeCriticalProfile,
   markBootstrapAuthProfileLoaded,
+  afterAuthShellReady,
   getRestaurantId,
   hydrateRestaurantsByIds,
   resolveRoleSwitchTargets,
@@ -19,6 +20,9 @@ export async function bootstrapAuthenticatedSessionCore({
     : (async () => {});
   const markBootstrapProfileLoaded = typeof markBootstrapAuthProfileLoaded === "function"
     ? markBootstrapAuthProfileLoaded
+    : (() => {});
+  const commitAuthShellReady = typeof afterAuthShellReady === "function"
+    ? afterAuthShellReady
     : (() => {});
   const primeCritical = typeof primeCriticalProfile === "function"
     ? primeCriticalProfile
@@ -75,6 +79,11 @@ export async function bootstrapAuthenticatedSessionCore({
   // Slower secondary work must not delay the UI from knowing who logged in.
   const currentTab = readActiveTab();
   markBootstrapProfileLoaded(user, { activeTab: currentTab });
+  try {
+    commitAuthShellReady(user, { activeTab: currentTab });
+  } catch (err) {
+    reportBootstrapNonBlockingFailure("auth-bootstrap.afterAuthShellReady", err);
+  }
   runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
 
   // Also warm the self-profile content immediately after login even when the user
