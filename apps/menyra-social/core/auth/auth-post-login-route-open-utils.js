@@ -7,9 +7,7 @@ export async function runPostLoginPendingRouteOpenFlowCore({
   openChatFromQuery,
   renderFallback
 } = {}) {
-  const openProfile = typeof openProfileFromQuery === "function"
-    ? openProfileFromQuery
-    : (() => {});
+  void openProfileFromQuery;
   const openNotification = typeof openNotificationFromQuery === "function"
     ? openNotificationFromQuery
     : (async () => false);
@@ -23,7 +21,6 @@ export async function runPostLoginPendingRouteOpenFlowCore({
     ? renderFallback
     : (() => {});
 
-  openProfile();
   const openedNotification = await openNotification();
   const openedPost = await openPost();
   const openedChat = openChat();
@@ -36,9 +33,7 @@ export function runPostLoginNonBlockingRouteOpenFlowCore({
   openPostFromQuery,
   openChatFromQuery
 } = {}) {
-  const openProfile = typeof openProfileFromQuery === "function"
-    ? openProfileFromQuery
-    : (() => {});
+  void openProfileFromQuery;
   const openNotification = typeof openNotificationFromQuery === "function"
     ? openNotificationFromQuery
     : (() => Promise.resolve(false));
@@ -49,11 +44,10 @@ export function runPostLoginNonBlockingRouteOpenFlowCore({
     ? openChatFromQuery
     : (() => false);
 
-  const openedProfile = !!openProfile();
   void openNotification();
   void openPost();
   openChat();
-  return { openedProfile };
+  return { openedProfile: false };
 }
 
 export function createPostLoginRouteOpenCoordinator({

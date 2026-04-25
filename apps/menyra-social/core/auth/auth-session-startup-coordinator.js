@@ -225,6 +225,17 @@ export function createAuthSessionStartupCoordinator({
       });
   }
 
+  function scheduleEagerAuthenticatedTabEnsure(scope = "auth.ensureTabData.eagerSignIn") {
+    const safeTab = String(state?.activeTab || "").trim() || "feed";
+    queueMicrotaskSafe(() => {
+      void Promise.resolve()
+        .then(() => ensureTabData(safeTab))
+        .catch((err) => {
+          reportCriticalRuntimeFailure(scope, err);
+        });
+    });
+  }
+
   function hasMeaningfulProfileHint(profile = null) {
     if (!profile || typeof profile !== "object") return false;
     const role = String(profile.role || "").trim().toLowerCase();
@@ -461,6 +472,7 @@ export function createAuthSessionStartupCoordinator({
       if (reuseInteractivePrime) {
         clearInteractivePrime(nextUid);
       }
+      scheduleEagerAuthenticatedTabEnsure();
       schedulePendingRouteReplayWithTimeline();
       requestRender();
       void (async () => {

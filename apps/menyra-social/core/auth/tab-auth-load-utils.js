@@ -326,11 +326,9 @@ export async function loadAuthProfileCore({
   );
   let authUserData = {};
   try {
-    // STEP 2b: PARALLEL BACKGROUND LOADS - No render blocking
-    const [userSnap, restSnap] = await Promise.all([
-      getDoc(doc(db, "users", user.uid)),
-      resolveRestaurantForAuthUser(user, { preferCached: !force })
-    ]);
+    // Read the auth user document first; restaurant resolution is only needed
+    // for business/staff branches and should not block user/ceo fast paths.
+    const userSnap = await getDoc(doc(db, "users", user.uid));
     if (userSnap.exists()) {
       authUserData = userSnap.data() || {};
     }
