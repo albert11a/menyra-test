@@ -6,6 +6,7 @@ export function createSessionTabLifecycleRuntimeController({
   FAST_MODE = false,
   sanitizeTabForSession = (tab) => tab,
   renderFn = () => {},
+  updateShellDomFn = () => {},
   stopRestaurantsListenerFn = () => {},
   startChatThreadsListenerFn = () => {},
   stopChatThreadsListenerFn = () => {},
@@ -81,10 +82,25 @@ export function createSessionTabLifecycleRuntimeController({
     }
   }
 
+  function refreshShellAfterPreload(scope = "tab-preload") {
+    try {
+      updateShellDomFn();
+    } catch (err) {
+      reportPreloadWarning(`${scope}.updateShellDom`, err);
+    }
+    try {
+      updateNotificationsDomFn();
+    } catch (err) {
+      reportPreloadWarning(`${scope}.updateNotificationsDom`, err);
+    }
+  }
+
   function renderAfterPreload(scope = "tab-preload", navigationSnapshot = null) {
     try {
       restorePreloadNavigation(navigationSnapshot);
       renderFn();
+      restorePreloadNavigation(navigationSnapshot);
+      refreshShellAfterPreload(scope);
     } catch (err) {
       reportPreloadWarning(`${scope}.render`, err);
     }
