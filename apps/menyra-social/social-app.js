@@ -2195,7 +2195,42 @@ const publicProfileDirectEntryController = createPublicProfileDirectEntryControl
 });
 
 function applyPendingInitialRouteState() {
+  const prevActiveTab = String(state.activeTab || "").trim().toLowerCase() || "feed";
+  const interactivePrimeUid = String(state.__authInteractivePrimeUid || "").trim();
+  const currentUid = String(state.user?.uid || "").trim();
+  const interactivePrimeAt = Number(state.__authInteractivePrimeAt || 0);
+  const hasFreshInteractivePrime = !!(
+    interactivePrimeUid
+    && currentUid
+    && interactivePrimeUid === currentUid
+    && Number.isFinite(interactivePrimeAt)
+    && interactivePrimeAt > 0
+    && (Date.now() - interactivePrimeAt) <= 15000
+  );
   applyPendingInitialRouteStateBase();
+  if (hasFreshInteractivePrime) {
+    const pendingAfterBase = pendingRouteState.getPendingState?.() || {};
+    const hasExplicitOpenTarget = !!(
+      String(pendingAfterBase.pendingNotificationId || "").trim()
+      || String(pendingAfterBase.pendingPostId || "").trim()
+      || String(pendingAfterBase.pendingChatUid || "").trim()
+    );
+    if (!hasExplicitOpenTarget) {
+      state.activeTab = sanitizeTabForSession(prevActiveTab, {
+        hasProfileView: !!state.profileView
+      });
+      pendingRouteState.setPendingInitialTab?.("");
+      pendingRouteState.patchPendingState?.({
+        pendingProfileRestaurantId: "",
+        pendingProfileTopTab: "",
+        pendingProfileAccessSource: "",
+        pendingProfileTableNumber: 0,
+        pendingUserRouteId: "",
+        pendingUserContentTab: "",
+        pendingProfileHandled: true
+      });
+    }
+  }
   const pendingInitialTab = String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase();
   if (isAuthRestorePendingProtectedRoute(pendingInitialTab)) {
     state.activeTab = pendingInitialTab;
