@@ -623,6 +623,14 @@ export function createPublicProfileDirectEntryController({
     const seedBio = String(routeIdentity?.bio || "").trim();
     const seedFollowers = normalizeCountOrNull(routeIdentity?.followers);
     const seedFollowing = normalizeCountOrNull(routeIdentity?.following);
+    const seedProfileType = String(
+      routeIdentity?.type
+      || routeIdentity?.customerType
+      || preview?.type
+      || preview?.customerType
+      || preview?.restaurantType
+      || ""
+    ).trim();
     const hasCanonicalSnapshot = !!routeSnapshot;
     const seededPosts = routePostsState === "seeded"
       ? (routePostsSeed.length
@@ -650,6 +658,8 @@ export function createPublicProfileDirectEntryController({
       following: seedFollowing,
       privateAccount: false,
       role: "business",
+      type: seedProfileType,
+      customerType: seedProfileType,
       restaurantId: entryRestaurantId,
       canonicalRestaurantId,
       publicSlug: seedPublicSlug,

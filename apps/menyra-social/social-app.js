@@ -1995,6 +1995,18 @@ function persistStartupSnapshot(iconRetryCount = 0) {
   const appRoot = document.getElementById("app");
   if (!appRoot) return;
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+  const activeDirectEntry = state?.profileView?.directEntry && typeof state.profileView.directEntry === "object"
+    ? state.profileView.directEntry
+    : (state?.__webDirectEntry && typeof state.__webDirectEntry === "object" ? state.__webDirectEntry : null);
+  const isDirectPublicProfileSurface = activeTabKey === "profile"
+    && String(activeDirectEntry?.owner || "").trim().toLowerCase() === "web-direct"
+    && activeDirectEntry?.routeFirst === true;
+  if (
+    window.__MENYRA_SOCIAL_DISABLE_STARTUP_SNAPSHOT_FOR_ROUTE__ === true
+    && isDirectPublicProfileSurface
+  ) {
+    return;
+  }
   if (!STARTUP_SNAPSHOT_ALLOWED_TABS.has(activeTabKey)) return;
   if (state.auth?.open) return;
   if (document.body?.classList?.contains("modal-open")) return;

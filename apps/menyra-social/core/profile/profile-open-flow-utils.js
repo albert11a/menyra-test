@@ -771,6 +771,15 @@ export function createProfileOpenFlowControllerCore({
         targetCanonicalRestaurantId,
         routeSnapshotRestaurantId
       );
+      const routeSeedProfileType = pickFirstText(
+        routeIdentitySeed?.type,
+        routeIdentitySeed?.customerType,
+        liveBusinessProfile?.type,
+        liveBusinessProfile?.customerType,
+        rest?.type,
+        rest?.customerType,
+        rest?.restaurantType
+      );
       const routeSeedProfile = routeSnapshotSeed
         ? applySurfaceTruthPatch({
           name: String(routeIdentitySeed?.name || "").trim() || resolveBusinessDisplayNameFallback({
@@ -787,6 +796,8 @@ export function createProfileOpenFlowControllerCore({
           following: routeIdentitySeed?.following ?? liveBusinessProfile?.following ?? null,
           privateAccount: false,
           role: "business",
+          type: routeSeedProfileType,
+          customerType: routeSeedProfileType,
           restaurantId: routeSeedCanonicalRestaurantId || targetMenuRestaurantId || targetRestaurantLookupId || routeSnapshotRestaurantId,
           canonicalRestaurantId: routeSeedCanonicalRestaurantId,
           ...resolveCanonicalBusinessRouteFields(
@@ -968,6 +979,15 @@ export function createProfileOpenFlowControllerCore({
         routeSeedCanonicalRestaurantId,
         routeSnapshotRestaurantId
       );
+      const loadingProfileType = pickFirstText(
+        stableBusinessProfile?.type,
+        stableBusinessProfile?.customerType,
+        routeIdentitySeed?.type,
+        routeIdentitySeed?.customerType,
+        rest?.type,
+        rest?.customerType,
+        rest?.restaurantType
+      );
 
       const loadingProfile = {
         name: loadingDisplayName,
@@ -980,6 +1000,8 @@ export function createProfileOpenFlowControllerCore({
         following: stableBusinessProfile?.following ?? null,
         privateAccount: stableBusinessProfile?.privateAccount === true,
         role: "business",
+        type: loadingProfileType,
+        customerType: loadingProfileType,
         restaurantId: loadingCanonicalRestaurantId || targetMenuRestaurantId || targetRestaurantLookupId,
         canonicalRestaurantId: loadingCanonicalRestaurantId,
         ...resolveCanonicalBusinessRouteFields(
