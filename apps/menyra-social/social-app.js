@@ -4797,6 +4797,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     bindAppShellEventsCore,
     signOut,
     clearAuthBootstrapSnapshot,
+    loadUserScopedPersisted,
     safeStorage,
     profileKey,
     avatarKey,

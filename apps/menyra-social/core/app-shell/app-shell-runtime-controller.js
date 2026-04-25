@@ -72,6 +72,7 @@ export function createAppShellRuntimeController(deps = {}) {
     setStateFn,
     signOutFn,
     clearAuthBootstrapSnapshotFn,
+    loadUserScopedPersistedFn,
     safeStorageObj,
     profileKeyFn,
     avatarKeyFn,
@@ -1620,6 +1621,9 @@ export function createAppShellRuntimeController(deps = {}) {
           const immediateUser = authCredential?.user || auth?.currentUser || null;
           const immediateUid = String(immediateUser?.uid || "").trim();
           if (immediateUid) {
+            const schedulePostAuthTask = typeof queueMicrotaskFn === "function"
+              ? queueMicrotaskFn
+              : ((fn) => Promise.resolve().then(() => fn?.()).catch(() => {}));
             const nextDisplayName = String(
               immediateUser?.displayName
               || name
@@ -1641,16 +1645,7 @@ export function createAppShellRuntimeController(deps = {}) {
                 loading: false,
                 error: ""
               },
-              activeTab: "profile",
               drawerOpen: false,
-              profileView: null,
-              profileTopTab: "profile",
-              profileContentTab: "posts",
-              profilePostMenuId: null,
-              profileModal: {
-                open: false,
-                profile: null
-              },
               userProfile: {
                 ...state.userProfile,
                 uid: immediateUid,
@@ -1661,6 +1656,23 @@ export function createAppShellRuntimeController(deps = {}) {
               }
             });
             immediateAuthTransitionApplied = true;
+            schedulePostAuthTask(() => {
+              try {
+                if (typeof loadUserScopedPersistedFn === "function") {
+                  loadUserScopedPersistedFn(immediateUser);
+                }
+              } catch {}
+              render();
+              try {
+                ensurePostsDataForProfileFn(state?.profileView?.profile || state?.userProfile || {});
+              } catch {}
+              try {
+                ensureMenuDataForProfileFn(state?.profileView?.profile || state?.userProfile || {});
+              } catch {}
+              try {
+                ensureFocusDataForProfileFn(state?.profileView?.profile || state?.userProfile || {});
+              } catch {}
+            });
           }
         } catch (err) {
           state.auth.error = err?.message || "Login fehlgeschlagen.";
