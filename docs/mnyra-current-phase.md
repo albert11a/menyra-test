@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-04-24
+Last updated: 2026-04-26
 
 # Mnyra Current Phase
 
@@ -148,6 +148,16 @@ Last updated: 2026-04-24
   frische sichtbare Menu-Pfad darf route-keyed Bootstrap-/Persisted-/Memory-
   Seeds wieder sinnvoll nutzen, und Posts werden im Menu-First-Pfad frueher
   aufgewarmt.
+- Schritt 22 ist abgeschlossen: Das eigene Business-Profil-Menu darf seinen
+  Public-Menu-Stand gezielt nachladen, wenn der eigene Profil-Menu-Tab sichtbar
+  ist.
+- Bewertung von Schritt 22: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 22:
+  `source: "collection"` aus dem Authoring-/Editor-Pfad blockiert den Public-
+  Menu-Load fuer die sichtbare Profil-Menu-Ansicht nicht mehr. Dadurch bleibt
+  das eigene Business-Profil-Menu nicht dauerhaft bei `Menu wird geladen...`,
+  nur weil noch keine passende `source: "public"`-Menu-Wahrheit im State liegt.
+  Auf Nutzerwunsch wurde dieser Schritt auf Branch `bauloginstart` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -169,6 +179,7 @@ Last updated: 2026-04-24
 - Referenz: [docs/mnyra-step19-public-qr-cold-open-reliability-hardening.md](./mnyra-step19-public-qr-cold-open-reliability-hardening.md)
 - Referenz: [docs/mnyra-step20-qr-menu-main-refresh-hardening.md](./mnyra-step20-qr-menu-main-refresh-hardening.md)
 - Referenz: [docs/mnyra-step21-public-web-qr-owner-loader-hardening.md](./mnyra-step21-public-web-qr-owner-loader-hardening.md)
+- Referenz: [docs/mnyra-step22-own-business-profile-menu-load-fix.md](./mnyra-step22-own-business-profile-menu-load-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -194,11 +205,11 @@ Last updated: 2026-04-24
 
 ## Naechster Schritt
 
-Nach Schritt 21 ist der naechste moegliche separate Folgeschritt:
-fokussierte manuelle Regression unter echten Netzwerkbedingungen fuer
-QR->Menu->Posts->Refresh, `/:slug/menu` Cold-Refresh und Browser-Back/Forward.
-Ein weiterer technischer Schritt waere erst dann sinnvoll, wenn diese
-manuellen Flows noch konkrete Restfehler zeigen.
+Nach Schritt 22 ist der naechste moegliche separate Folgeschritt:
+fokussierte manuelle Regression unter echten Netzwerkbedingungen fuer das
+eigene Business-Profil-Menu, QR->Menu->Posts->Refresh, `/:slug/menu`
+Cold-Refresh und Browser-Back/Forward. Ein weiterer technischer Schritt waere
+erst dann sinnvoll, wenn diese manuellen Flows noch konkrete Restfehler zeigen.
 
 ## Guardrails fuer die naechsten Schritte
 

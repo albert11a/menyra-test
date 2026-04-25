@@ -177,6 +177,33 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   const isVisiblePublicBusinessSurface = () => isVisiblePublicMenuFirstSurface() || isNormalWebDirectProfileVisible();
 
+  const collectProfileRestaurantIds = (profile = {}) => {
+    const ids = new Set();
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    [
+      safeProfile.canonicalRestaurantId,
+      safeProfile.restaurantId,
+      getMenuRestaurantForProfile(safeProfile)
+    ].forEach((value) => addTargetId(ids, value));
+    return ids;
+  };
+
+  const isOwnBusinessProfileMenuSurface = (profile = {}) => {
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const profileContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
+    if (activeTab !== "profile" || (profileTopTab !== "menu" && profileContentTab !== "menu")) return false;
+    if (state?.profileView?.profile) return false;
+    const profileIds = collectProfileRestaurantIds(profile);
+    const ownProfileIds = collectProfileRestaurantIds(state?.userProfile);
+    if (!profileIds.size || !ownProfileIds.size) return false;
+    return Array.from(profileIds).some((id) => ownProfileIds.has(id));
+  };
+
+  const isPublicMenuLoadSurface = (profile = {}) => {
+    return isVisiblePublicBusinessSurface() || isOwnBusinessProfileMenuSurface(profile);
+  };
+
   const hasMatchingVisibleMenuEnsureInFlight = (targetId = "", requestedId = "", profile = {}) => {
     if (!publicProfileMenuEnsurePromise) return false;
     const activeTargetId = String(publicProfileMenuEnsureTargetId || "").trim();
@@ -391,8 +418,10 @@ export function createProfileBusinessMenuRuntimeCluster({
     return ids;
   };
 
-  const hasVisibleMenuItemsForIds = (ids = []) => {
+  const hasVisiblePublicMenuItemsForIds = (ids = []) => {
     if (!state?.menu || typeof state.menu !== "object") return false;
+    const menuSource = String(state.menu.source || "").trim().toLowerCase();
+    if (menuSource !== "public") return false;
     const items = Array.isArray(state.menu.items) ? state.menu.items : [];
     if (!items.length) return false;
     const currentMenuRestaurantId = String(state.menu.restaurantId || "").trim();
@@ -441,10 +470,10 @@ export function createProfileBusinessMenuRuntimeCluster({
   };
 
   const loadVisiblePublicMenuIds = async (profile = {}, fallbackId = "") => {
-    if (!isVisiblePublicBusinessSurface()) return;
+    if (!isPublicMenuLoadSurface(profile)) return;
     void ensureVisibleBusinessIdentityHydration(profile, fallbackId);
     const ids = collectVisibleMenuLoadIds(profile, fallbackId);
-    if (!ids.length || hasVisibleMenuItemsForIds(ids)) return;
+    if (!ids.length || hasVisiblePublicMenuItemsForIds(ids)) return;
     const canonicalMenuRestaurantId = resolveLatestCanonicalMenuRestaurantId(ids[0]);
     if (canonicalMenuRestaurantId) {
       clearAliasMenuEmptyStateForCanonicalLoad({
@@ -454,8 +483,8 @@ export function createProfileBusinessMenuRuntimeCluster({
       });
     }
     for (const restaurantId of ids) {
-      if (!isVisiblePublicBusinessSurface()) return;
-      if (hasVisibleMenuItemsForIds(ids)) return;
+      if (!isPublicMenuLoadSurface(profile)) return;
+      if (hasVisiblePublicMenuItemsForIds(ids)) return;
       await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
     }
   };
@@ -486,7 +515,7 @@ export function createProfileBusinessMenuRuntimeCluster({
   };
 
   const scheduleVisiblePublicMenuRetry = (profile = {}, fallbackId = "") => {
-    if (!isVisiblePublicBusinessSurface()) return;
+    if (!isPublicMenuLoadSurface(profile)) return;
     const ids = collectVisibleMenuLoadIds(profile, fallbackId);
     const retryKey = ids.join("|");
     if (!retryKey || visiblePublicMenuRetryTimers.has(retryKey)) return;
