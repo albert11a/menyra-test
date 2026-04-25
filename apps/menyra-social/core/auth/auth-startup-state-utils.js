@@ -7,6 +7,9 @@ import {
 } from "./auth-bootstrap-snapshot.js";
 import { applyPendingInitialRouteStateCore } from "./session-tab-guards.js";
 
+const AUTH_NOTIFICATIONS_STORAGE_PREFIX = "menyra_social_notifications_v1";
+const AUTH_NOTIFICATIONS_SEED_LIMIT = 50;
+
 export function createAuthStartupStateHelpers({
   state = null,
   defaultProfile = {},
@@ -133,66 +136,97 @@ export function createAuthStartupStateHelpers({
     return true;
   }
 
-  function applyPersistedAuthProfileHints(uid = "") {
-    if (!state) return false;
+  function seedCachedNotifications(uid = "") {
     const safeUid = String(uid || "").trim();
-    if (!safeUid) return false;
-    const raw = safeStorage?.getItem?.(resolveProfileKey(safeUid));
+    if (!state || !safeUid) return false;
+    const raw = safeStorage?.getItem?.(`${AUTH_NOTIFICATIONS_STORAGE_PREFIX}::${safeUid}`);
     if (!raw) return false;
     try {
-      const parsed = JSON.parse(raw) || {};
-      const hasOwn = (key) => Object.prototype.hasOwnProperty.call(parsed || {}, key);
-      const restaurantId = String(parsed.restaurantId || "").trim();
-      const role = String(parsed.role || "").trim();
-      const roles = Array.isArray(parsed.roles) ? parsed.roles.slice() : [];
-      const sourceUserRole = String(parsed.sourceUserRole || "").trim();
-      const staffRestaurantId = String(parsed.staffRestaurantId || "").trim();
-      const waiterRestaurantId = String(parsed.waiterRestaurantId || "").trim();
-      const staffRole = String(parsed.staffRole || "").trim();
-      const businessOwnerUid = String(parsed.businessOwnerUid || "").trim();
-      const staffStatus = String(parsed.staffStatus || "").trim();
-      const socialAccessMode = String(parsed.socialAccessMode || "").trim();
-      const name = sanitizeDisplayName(parsed.name || "", "");
-      const handle = String(parsed.handle || "").replace(/^@/, "").trim();
-      const avatar = String(parsed.avatar || "").trim();
-      const businessAccess = parsed.businessAccess === true;
-      const waiterAccess = parsed.waiterAccess === true;
-      const staffActive = parsed.staffActive === false ? false : true;
-      state.userProfile = {
-        ...state.userProfile,
-        uid: safeUid,
-        role: hasOwn("role") ? role : state.userProfile.role,
-        roles: Array.isArray(parsed.roles) ? roles : state.userProfile.roles,
-        restaurantId: hasOwn("restaurantId") ? restaurantId : state.userProfile.restaurantId,
-        sourceUserRole: hasOwn("sourceUserRole") ? sourceUserRole : state.userProfile.sourceUserRole,
-        staffRestaurantId: hasOwn("staffRestaurantId") ? staffRestaurantId : state.userProfile.staffRestaurantId,
-        waiterRestaurantId: hasOwn("waiterRestaurantId") ? waiterRestaurantId : state.userProfile.waiterRestaurantId,
-        businessAccess: hasOwn("businessAccess") ? businessAccess : state.userProfile.businessAccess === true,
-        waiterAccess: hasOwn("waiterAccess") ? waiterAccess : state.userProfile.waiterAccess === true,
-        permissions: {
-          businessAccess: hasOwn("businessAccess") ? businessAccess : state.userProfile.businessAccess === true,
-          waiterAccess: hasOwn("waiterAccess") ? waiterAccess : state.userProfile.waiterAccess === true
-        },
-        staffRole: hasOwn("staffRole") ? staffRole : state.userProfile.staffRole,
-        businessOwnerUid: hasOwn("businessOwnerUid") ? businessOwnerUid : state.userProfile.businessOwnerUid,
-        staffActive: hasOwn("staffActive") ? staffActive : state.userProfile.staffActive,
-        staffStatus: hasOwn("staffStatus") ? staffStatus : state.userProfile.staffStatus,
-        socialAccessMode: hasOwn("socialAccessMode") ? socialAccessMode : state.userProfile.socialAccessMode,
-        name: name || state.userProfile.name,
-        handle: handle || state.userProfile.handle,
-        avatar: avatar || state.userProfile.avatar
-      };
-      primeShellAvatar(state.userProfile.avatar || avatar);
-      writeAuthBootstrapSnapshot({
-        uid: safeUid,
-        name: state.userProfile.name || "",
-        handle: state.userProfile.handle || "",
-        avatar: state.userProfile.avatar || ""
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return false;
+      const seen = new Set();
+      const next = [];
+      parsed.forEach((item) => {
+        if (!item || typeof item !== "object" || next.length >= AUTH_NOTIFICATIONS_SEED_LIMIT) return;
+        const id = String(item.id || item.notificationId || "").trim();
+        const fallbackId = id || [item.type, item.text, item.time, item.createdAt]
+          .map((part) => String(part || "").trim())
+          .join("|");
+        if (!fallbackId || seen.has(fallbackId)) return;
+        seen.add(fallbackId);
+        next.push({ ...item, id: id || fallbackId, read: item.read === true });
       });
+      state.notifications = next;
       return true;
     } catch {
       return false;
     }
+  }
+
+  function applyPersistedAuthProfileHints(uid = "") {
+    if (!state) return false;
+    const safeUid = String(uid || "").trim();
+    if (!safeUid) return false;
+    let changed = false;
+    const raw = safeStorage?.getItem?.(resolveProfileKey(safeUid));
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) || {};
+        const hasOwn = (key) => Object.prototype.hasOwnProperty.call(parsed || {}, key);
+        const restaurantId = String(parsed.restaurantId || "").trim();
+        const role = String(parsed.role || "").trim();
+        const roles = Array.isArray(parsed.roles) ? parsed.roles.slice() : [];
+        const sourceUserRole = String(parsed.sourceUserRole || "").trim();
+        const staffRestaurantId = String(parsed.staffRestaurantId || "").trim();
+        const waiterRestaurantId = String(parsed.waiterRestaurantId || "").trim();
+        const staffRole = String(parsed.staffRole || "").trim();
+        const businessOwnerUid = String(parsed.businessOwnerUid || "").trim();
+        const staffStatus = String(parsed.staffStatus || "").trim();
+        const socialAccessMode = String(parsed.socialAccessMode || "").trim();
+        const name = sanitizeDisplayName(parsed.name || "", "");
+        const handle = String(parsed.handle || "").replace(/^@/, "").trim();
+        const avatar = String(parsed.avatar || "").trim();
+        const businessAccess = parsed.businessAccess === true;
+        const waiterAccess = parsed.waiterAccess === true;
+        const staffActive = parsed.staffActive === false ? false : true;
+        state.userProfile = {
+          ...state.userProfile,
+          uid: safeUid,
+          role: hasOwn("role") ? role : state.userProfile.role,
+          roles: Array.isArray(parsed.roles) ? roles : state.userProfile.roles,
+          restaurantId: hasOwn("restaurantId") ? restaurantId : state.userProfile.restaurantId,
+          sourceUserRole: hasOwn("sourceUserRole") ? sourceUserRole : state.userProfile.sourceUserRole,
+          staffRestaurantId: hasOwn("staffRestaurantId") ? staffRestaurantId : state.userProfile.staffRestaurantId,
+          waiterRestaurantId: hasOwn("waiterRestaurantId") ? waiterRestaurantId : state.userProfile.waiterRestaurantId,
+          businessAccess: hasOwn("businessAccess") ? businessAccess : state.userProfile.businessAccess === true,
+          waiterAccess: hasOwn("waiterAccess") ? waiterAccess : state.userProfile.waiterAccess === true,
+          permissions: {
+            businessAccess: hasOwn("businessAccess") ? businessAccess : state.userProfile.businessAccess === true,
+            waiterAccess: hasOwn("waiterAccess") ? waiterAccess : state.userProfile.waiterAccess === true
+          },
+          staffRole: hasOwn("staffRole") ? staffRole : state.userProfile.staffRole,
+          businessOwnerUid: hasOwn("businessOwnerUid") ? businessOwnerUid : state.userProfile.businessOwnerUid,
+          staffActive: hasOwn("staffActive") ? staffActive : state.userProfile.staffActive,
+          staffStatus: hasOwn("staffStatus") ? staffStatus : state.userProfile.staffStatus,
+          socialAccessMode: hasOwn("socialAccessMode") ? socialAccessMode : state.userProfile.socialAccessMode,
+          name: name || state.userProfile.name,
+          handle: handle || state.userProfile.handle,
+          avatar: avatar || state.userProfile.avatar
+        };
+        changed = true;
+      } catch {}
+    }
+    if (seedCachedNotifications(safeUid)) changed = true;
+    if (changed) {
+      primeShellAvatar(state.userProfile?.avatar || "");
+      writeAuthBootstrapSnapshot({
+        uid: safeUid,
+        name: state.userProfile?.name || "",
+        handle: state.userProfile?.handle || "",
+        avatar: state.userProfile?.avatar || ""
+      });
+    }
+    return changed;
   }
 
   function saveUserProfileToStorage(profile = state?.userProfile) {
