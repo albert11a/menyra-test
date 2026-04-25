@@ -33,21 +33,15 @@ export function createAuthSessionStartupCoordinator({
   markStartupTimeline = () => {},
   postLoginRouteOpenCoordinator = null
 } = {}) {
-  const queueMicrotaskSafe = typeof queueMicrotaskFn === "function"
-    ? queueMicrotaskFn
-    : ((fn) => fn?.());
-  const setTimeoutSafe = typeof setTimeoutFn === "function"
-    ? setTimeoutFn
-    : (() => {});
+  const queueMicrotaskSafe = typeof queueMicrotaskFn === "function" ? queueMicrotaskFn : ((fn) => fn?.());
+  const setTimeoutSafe = typeof setTimeoutFn === "function" ? setTimeoutFn : (() => {});
   const postLoginRouteOpen = postLoginRouteOpenCoordinator
     && typeof postLoginRouteOpenCoordinator.resolvePendingRouteFlags === "function"
     && typeof postLoginRouteOpenCoordinator.openPendingRoutes === "function"
     && typeof postLoginRouteOpenCoordinator.openNonBlockingRoutes === "function"
     ? postLoginRouteOpenCoordinator
     : createPostLoginRouteOpenCoordinator();
-  const markStartup = typeof markStartupTimeline === "function"
-    ? markStartupTimeline
-    : (() => {});
+  const markStartup = typeof markStartupTimeline === "function" ? markStartupTimeline : (() => {});
   let lastAuthUid = "";
   let authTransitionSeq = 0;
   let authStateListenerBound = false;
@@ -58,9 +52,7 @@ export function createAuthSessionStartupCoordinator({
   function requestRender(reason = "") {
     if (!firstShellRenderRequested) {
       firstShellRenderRequested = true;
-      markStartup("first shell render requested", {
-        reason: String(reason || "").trim() || "startup"
-      });
+      markStartup("first shell render requested", { reason: String(reason || "").trim() || "startup" });
     }
     if (renderRequested) return;
     renderRequested = true;
@@ -70,10 +62,7 @@ export function createAuthSessionStartupCoordinator({
     });
   }
 
-  function schedulePostVisibleStartupTask(task, {
-    delayMs = 0,
-    fallbackDelayMs = 120
-  } = {}) {
+  function schedulePostVisibleStartupTask(task, { delayMs = 0, fallbackDelayMs = 120 } = {}) {
     if (typeof task !== "function") return;
     const run = () => {
       const safeDelay = Math.max(0, Number(delayMs) || 0);
@@ -84,13 +73,10 @@ export function createAuthSessionStartupCoordinator({
       queueMicrotaskSafe(task);
     };
     if (windowObj && typeof windowObj.requestAnimationFrame === "function") {
-      windowObj.requestAnimationFrame(() => {
-        windowObj.requestAnimationFrame(run);
-      });
+      windowObj.requestAnimationFrame(() => windowObj.requestAnimationFrame(run));
       return;
     }
-    const safeFallbackDelay = Math.max(0, Number(fallbackDelayMs) || 0);
-    setTimeoutSafe(run, safeFallbackDelay);
+    setTimeoutSafe(run, Math.max(0, Number(fallbackDelayMs) || 0));
   }
 
   function readBootstrapInFlightUid() {
@@ -105,26 +91,20 @@ export function createAuthSessionStartupCoordinator({
     if (!state) return;
     const safeUid = String(uid || "").trim();
     state.__authBootstrapInFlightUid = safeUid;
-    if (safeUid) {
-      state.__authBootstrapSettledUid = "";
-    }
+    if (safeUid) state.__authBootstrapSettledUid = "";
   }
 
   function clearBootstrapInFlight(uid = "") {
     if (!state) return;
     const safeUid = String(uid || "").trim();
-    if (!safeUid || readBootstrapInFlightUid() === safeUid) {
-      state.__authBootstrapInFlightUid = "";
-    }
+    if (!safeUid || readBootstrapInFlightUid() === safeUid) state.__authBootstrapInFlightUid = "";
   }
 
   function markBootstrapSettled(uid = "") {
     if (!state) return;
     const safeUid = String(uid || "").trim();
     state.__authBootstrapSettledUid = safeUid;
-    if (!safeUid || readBootstrapInFlightUid() === safeUid) {
-      state.__authBootstrapInFlightUid = "";
-    }
+    if (!safeUid || readBootstrapInFlightUid() === safeUid) state.__authBootstrapInFlightUid = "";
   }
 
   function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
@@ -172,11 +152,8 @@ export function createAuthSessionStartupCoordinator({
 
   function runNonBlockingRouteOpenWithTimeline() {
     markStartup("non-blocking route open start");
-    try {
-      return postLoginRouteOpen.openNonBlockingRoutes();
-    } finally {
-      markStartup("non-blocking route open end");
-    }
+    try { return postLoginRouteOpen.openNonBlockingRoutes(); }
+    finally { markStartup("non-blocking route open end"); }
   }
 
   function schedulePendingRouteReplayWithTimeline() {
@@ -187,12 +164,8 @@ export function createAuthSessionStartupCoordinator({
     }
     markStartup("pending route open start");
     void Promise.resolve(postLoginRouteOpen.openPendingRoutes())
-      .catch((err) => {
-        reportCriticalRuntimeFailure("auth.pendingRouteOpen", err);
-      })
-      .finally(() => {
-        markStartup("pending route open end");
-      });
+      .catch((err) => reportCriticalRuntimeFailure("auth.pendingRouteOpen", err))
+      .finally(() => markStartup("pending route open end"));
   }
 
   function hasMeaningfulProfileHint(profile = null) {
@@ -202,6 +175,7 @@ export function createAuthSessionStartupCoordinator({
     return !!(
       String(profile.name || "").trim()
       || String(profile.handle || "").trim()
+      || String(profile.avatar || "").trim()
       || String(profile.restaurantId || "").trim()
       || String(profile.staffRestaurantId || "").trim()
       || String(profile.waiterRestaurantId || "").trim()
@@ -218,13 +192,9 @@ export function createAuthSessionStartupCoordinator({
     const authSnapshot = snapshot && typeof snapshot === "object" ? snapshot : readAuthBootstrapSnapshot();
     const snapshotUid = String(authSnapshot?.uid || "").trim();
     if (snapshotUid && snapshotUid === uid) {
-      if (applyAuthBootstrapSnapshot(authSnapshot)) {
-        changed = true;
-      }
+      if (applyAuthBootstrapSnapshot(authSnapshot)) changed = true;
     }
-    if (applyPersistedAuthProfileHints(uid)) {
-      changed = true;
-    }
+    if (applyPersistedAuthProfileHints(uid)) changed = true;
     return changed;
   }
 
@@ -237,48 +207,29 @@ export function createAuthSessionStartupCoordinator({
     return true;
   }
 
-  function scheduleGuestTabEnsure({
-    prioritize = false,
-    visiblePath = false,
-    delayMs = 140,
-    skip = false
-  } = {}) {
+  function scheduleGuestTabEnsure({ prioritize = false, visiblePath = false, delayMs = 140, skip = false } = {}) {
     if (skip) return;
     const runEnsure = (scope) => {
       const activeTab = String(state?.activeTab || "").trim().toLowerCase();
       markStartup("guest ensureTabData start", { scope, tab: activeTab || "feed" });
       void Promise.resolve()
         .then(() => ensureTabData(state?.activeTab || ""))
-        .catch((err) => {
-          reportCriticalRuntimeFailure(scope, err);
-        })
-        .finally(() => {
-          markStartup("guest ensureTabData end", { scope, tab: activeTab || "feed" });
-        });
+        .catch((err) => reportCriticalRuntimeFailure(scope, err))
+        .finally(() => markStartup("guest ensureTabData end", { scope, tab: activeTab || "feed" }));
     };
     if (visiblePath) {
-      schedulePostVisibleStartupTask(() => {
-        runEnsure("startup.ensureTabData.guestVisiblePath");
-      }, {
-        delayMs
-      });
+      schedulePostVisibleStartupTask(() => runEnsure("startup.ensureTabData.guestVisiblePath"), { delayMs });
       return;
     }
     if (prioritize) {
-      queueMicrotaskSafe(() => {
-        runEnsure("startup.ensureTabData.guestPriority");
-      });
+      queueMicrotaskSafe(() => runEnsure("startup.ensureTabData.guestPriority"));
       return;
     }
     if (windowObj && typeof windowObj.requestAnimationFrame === "function") {
-      windowObj.requestAnimationFrame(() => {
-        runEnsure("startup.ensureTabData.guestRaf");
-      });
+      windowObj.requestAnimationFrame(() => runEnsure("startup.ensureTabData.guestRaf"));
       return;
     }
-    setTimeoutSafe(() => {
-      runEnsure("startup.ensureTabData.guestTimeout");
-    }, 0);
+    setTimeoutSafe(() => runEnsure("startup.ensureTabData.guestTimeout"), 0);
   }
 
   function schedulePushOpenTargetMessageHandlerBinding() {
@@ -287,58 +238,39 @@ export function createAuthSessionStartupCoordinator({
       if (pushOpenTargetMessageHandlerBound) return;
       pushOpenTargetMessageHandlerBound = true;
       markStartup("push target bind start");
-      try {
-        bindPushOpenTargetMessageHandler();
-      } finally {
-        markStartup("push target bind end");
-      }
+      try { bindPushOpenTargetMessageHandler(); }
+      finally { markStartup("push target bind end"); }
     });
   }
 
-  function initialize({
-    hasInlineBootstrapPayload = false,
-    hasWindowBootstrapPromise = false
-  } = {}) {
+  function initialize({ hasInlineBootstrapPayload = false, hasWindowBootstrapPromise = false } = {}) {
     suspendRender();
     try {
       const snapshot = readAuthBootstrapSnapshot();
       setAuthBootstrapSnapshot(snapshot);
       schedulePushOpenTargetMessageHandlerBinding();
-      if (state) {
-        state.user = auth?.currentUser || null;
-      }
+      if (state) state.user = auth?.currentUser || null;
       setAuthInitialized(false);
       if (state?.user) {
         const currentUser = state.user;
         loadUserScopedPersisted(currentUser);
         primeFastAuthProfileHints(currentUser, snapshot);
-        if (hasMeaningfulProfileHint(state?.userProfile)) {
-          writeAuthBootstrapSnapshot();
-        }
+        if (hasMeaningfulProfileHint(state?.userProfile)) writeAuthBootstrapSnapshot();
         lastAuthUid = currentUser.uid || "";
       } else {
         const appliedSnapshot = applyAuthBootstrapSnapshot(snapshot);
         const snapshotUid = appliedSnapshot ? String(snapshot?.uid || "").trim() : "";
-        if (snapshotUid) {
-          applyPersistedAuthProfileHints(snapshotUid);
-        }
+        if (snapshotUid) applyPersistedAuthProfileHints(snapshotUid);
         lastAuthUid = snapshotUid;
       }
       applyPendingInitialRouteState();
       const prioritizeGuestSurface = isGuestDeepRouteLaunchActive();
       const webDirectGuestProfileSurface = isWebDirectGuestProfileLaunchActive();
       if (prioritizeGuestSurface || webDirectGuestProfileSurface) {
-        if (webDirectGuestProfileSurface) {
-          queueMicrotaskSafe(() => {
-            runNonBlockingRouteOpenWithTimeline();
-          });
-        } else {
-          runNonBlockingRouteOpenWithTimeline();
-        }
+        if (webDirectGuestProfileSurface) queueMicrotaskSafe(() => runNonBlockingRouteOpenWithTimeline());
+        else runNonBlockingRouteOpenWithTimeline();
       } else {
-        queueMicrotaskSafe(() => {
-          runNonBlockingRouteOpenWithTimeline();
-        });
+        queueMicrotaskSafe(() => runNonBlockingRouteOpenWithTimeline());
       }
       requestRender("initialize");
       schedulePerfWarmMark();
@@ -355,20 +287,12 @@ export function createAuthSessionStartupCoordinator({
         const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({
             force: false,
-            timeoutMs: Number.isFinite(bootstrapTimeoutMs) && bootstrapTimeoutMs > 0
-              ? bootstrapTimeoutMs
-              : null
+            timeoutMs: Number.isFinite(bootstrapTimeoutMs) && bootstrapTimeoutMs > 0 ? bootstrapTimeoutMs : null
           });
         };
-        if (webDirectGuestProfileSurface) {
-          queueMicrotaskSafe(runPublicBootstrapFetch);
-        } else if (prioritizeGuestSurface) {
-          schedulePostVisibleStartupTask(runPublicBootstrapFetch, {
-            delayMs: 780
-          });
-        } else {
-          queueMicrotaskSafe(runPublicBootstrapFetch);
-        }
+        if (webDirectGuestProfileSurface) queueMicrotaskSafe(runPublicBootstrapFetch);
+        else if (prioritizeGuestSurface) schedulePostVisibleStartupTask(runPublicBootstrapFetch, { delayMs: 780 });
+        else queueMicrotaskSafe(runPublicBootstrapFetch);
       }
     } finally {
       resumeRender();
@@ -383,50 +307,35 @@ export function createAuthSessionStartupCoordinator({
     const hasPendingRouteReplay = !!postLoginRouteOpen?.resolvePendingRouteFlags?.()?.hasAny;
     const bootstrapInFlightUid = readBootstrapInFlightUid();
     const bootstrapSettledUid = readBootstrapSettledUid();
-    if (
-      !hasPendingRouteReplay
-      &&
-      nextUid
-      && nextUid === prevUid
-      && (
-        bootstrapInFlightUid === nextUid
-        || (bootstrapSettledUid === nextUid && state?.auth?.loading === false)
-      )
-    ) {
-      if (state) {
-        state.user = user;
-      }
+    if (!hasPendingRouteReplay && nextUid && nextUid === prevUid && (bootstrapInFlightUid === nextUid || (bootstrapSettledUid === nextUid && state?.auth?.loading === false))) {
+      if (state) state.user = user;
       return;
     }
     const transitionSeq = ++authTransitionSeq;
-    if (shouldResetUserScopedStateCore({ prevUid, nextUid })) {
-      resetUserScopedState();
-    }
-    if (state) {
-      state.user = user;
-    }
+    if (shouldResetUserScopedStateCore({ prevUid, nextUid })) resetUserScopedState();
+    if (state) state.user = user;
     applyPendingInitialRouteState();
     if (user) {
+      markBootstrapInFlight(nextUid);
+      loadUserScopedPersisted(user);
+      primeFastAuthProfileHints(user);
       if (state?.auth) {
         state.auth.open = false;
         state.auth.loading = false;
       }
-      markBootstrapInFlight(nextUid);
-      loadUserScopedPersisted(user);
-      primeFastAuthProfileHints(user);
       schedulePendingRouteReplayWithTimeline();
-      requestRender();
+      requestRender("auth-shell-hints");
       void (async () => {
         try {
           await bootstrapUser(user, { transitionSeq });
           if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
           markBootstrapSettled(nextUid);
-          requestRender();
+          requestRender("auth-bootstrap-settled");
         } catch (err) {
           reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
           if (isCurrentAuthTransition(transitionSeq, nextUid)) {
             clearBootstrapInFlight(nextUid);
-            requestRender();
+            requestRender("auth-bootstrap-error");
           }
         } finally {
           clearBootstrapInFlight(nextUid);
@@ -445,18 +354,12 @@ export function createAuthSessionStartupCoordinator({
         state.auth.loading = false;
       }
       loadGuestScopedPersisted();
-      if (state) {
-        state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
-      }
-      requestRender();
+      if (state) state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
+      requestRender("signout");
       const runSignedOutEnsure = () => {
-        void ensureTabData(state?.activeTab || "").catch((err) => {
-          reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
-        });
+        void ensureTabData(state?.activeTab || "").catch((err) => reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err));
       };
-      if (!isWebDirectGuestProfileLaunchActive()) {
-        queueMicrotaskSafe(runSignedOutEnsure);
-      }
+      if (!isWebDirectGuestProfileLaunchActive()) queueMicrotaskSafe(runSignedOutEnsure);
     }
     lastAuthUid = nextUid;
   }
@@ -465,26 +368,13 @@ export function createAuthSessionStartupCoordinator({
     if (authStateListenerBound) return;
     if (!auth || typeof onAuthStateChangedFn !== "function") return;
     authStateListenerBound = true;
-    onAuthStateChangedFn(auth, (user) => {
-      handleAuthStateChanged(user);
-    });
+    onAuthStateChangedFn(auth, (user) => handleAuthStateChanged(user));
   }
 
-  function start({
-    hasInlineBootstrapPayload = false,
-    hasWindowBootstrapPromise = false
-  } = {}) {
-    initialize({
-      hasInlineBootstrapPayload,
-      hasWindowBootstrapPromise
-    });
+  function start({ hasInlineBootstrapPayload = false, hasWindowBootstrapPromise = false } = {}) {
+    initialize({ hasInlineBootstrapPayload, hasWindowBootstrapPromise });
     bindAuthStateListener();
   }
 
-  return {
-    initialize,
-    handleAuthStateChanged,
-    bindAuthStateListener,
-    start
-  };
+  return { initialize, handleAuthStateChanged, bindAuthStateListener, start };
 }
