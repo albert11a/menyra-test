@@ -258,6 +258,11 @@ export function createMenuPublicRuntimeController({
     return `item_${Math.max(0, Number(idx) || 0)}`;
   }
 
+  function resolveMenuItemStyleFallbackType(item = {}) {
+    const type = String(item?.type || item?.menuSection || "").trim().toLowerCase();
+    return type === "drink" ? "drink" : "food";
+  }
+
   function normalizeMenuItemIdentity(item, restaurantId = "", idx = 0) {
     const safeRestaurantId = String(restaurantId || item?.restaurantId || "").trim();
     const explicitId = String(
@@ -269,11 +274,13 @@ export function createMenuPublicRuntimeController({
     ).trim();
     const resolvedId = explicitId || buildFallbackMenuItemId(item, idx);
     const images = getMenuItemImages(item);
+    const fallbackType = resolveMenuItemStyleFallbackType(item);
     return {
       ...(item || {}),
       id: resolvedId,
       restaurantId: safeRestaurantId || String(item?.restaurantId || "").trim(),
       orderIndex: normalizeOrderIndex(item?.orderIndex, idx),
+      cardStyle: normalizeMenuCardStyleCore(item?.cardStyle || "", fallbackType),
       imageUrl: String(item?.imageUrl || images[0] || "").trim(),
       imageUrls: images,
       crossSellItemIds: normalizeCrossSellItemIds(
