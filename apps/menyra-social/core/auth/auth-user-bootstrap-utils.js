@@ -88,6 +88,17 @@ export async function bootstrapAuthenticatedSessionCore({
 
   const currentTab = readActiveTab();
   markBootstrapProfileLoaded(user, { activeTab: currentTab });
+
+  // Start live profile/notification/follow listeners before background tab
+  // preload. The self-profile listener already commits state.userProfile and
+  // refreshes the shell DOM, so Drawer avatar, account badges, and burger badges
+  // can update without requiring a manual Profile tab click.
+  try {
+    startLive(user);
+  } catch (err) {
+    reportBootstrapNonBlockingFailure("auth-bootstrap.startLiveListeners.afterRoleContext", err);
+  }
+
   runNonBlocking("auth-bootstrap.ensureTabData.afterRoleContext", () => ensureTab(currentTab));
 
   // Also warm the self-profile content immediately after the role context is
@@ -99,6 +110,5 @@ export async function bootstrapAuthenticatedSessionCore({
 
   runNonBlocking("auth-bootstrap.primeCriticalProfile.afterRoleContext", () => primeCritical(user));
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
-  runNonBlocking("auth-bootstrap.startLiveListeners.afterRoleContext", () => startLive(user));
   return true;
 }
