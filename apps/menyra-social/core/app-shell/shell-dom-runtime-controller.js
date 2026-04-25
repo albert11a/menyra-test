@@ -352,7 +352,7 @@ export function createShellDomRuntimeController({
     if (businessAccountsNavBtn) {
       businessAccountsNavBtn.classList.toggle("hidden", !isBusinessOwner);
     }
-    doc?.querySelectorAll?.('[data-nav="leads"], [data-nav="customers"]')?.forEach((btn) => {
+    doc?.querySelectorAll?.('[data-nav="leads"], [data-nav="staff"], [data-nav="customers"]')?.forEach((btn) => {
       btn.classList.toggle("hidden", !showCeoTabs);
     });
     refreshSelfCommentAvatars({ attempt: 0, maxAttempts: 2 });
@@ -491,6 +491,7 @@ export function createShellDomRuntimeController({
   function handleNotificationsUpdate(items) {
     state.notifications = Array.isArray(items) ? items : [];
     saveNotifications(state.notifications);
+    updateShellDom();
     const updated = updateNotificationsDom();
     if (!updated && state?.activeTab === "notifications") {
       render();
