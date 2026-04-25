@@ -127,6 +127,20 @@ export function createAuthSessionStartupCoordinator({
     }
   }
 
+  function markPendingAuthRestore(uid = "") {
+    if (!state) return;
+    state.__authPendingRestoreUid = String(uid || "").trim();
+  }
+
+  function clearPendingAuthRestore(uid = "") {
+    if (!state) return;
+    const safeUid = String(uid || "").trim();
+    const pendingUid = String(state.__authPendingRestoreUid || "").trim();
+    if (!safeUid || !pendingUid || pendingUid === safeUid) {
+      state.__authPendingRestoreUid = "";
+    }
+  }
+
   function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
     if (transitionSeq !== authTransitionSeq) return false;
     if (!expectedUid) return true;
@@ -229,6 +243,23 @@ export function createAuthSessionStartupCoordinator({
     return changed;
   }
 
+  function primeAuthenticatedShell(user, snapshot = null) {
+    const uid = String(user?.uid || "").trim();
+    if (!state || !uid) return false;
+    state.user = user;
+    if (state.auth) {
+      state.auth.open = false;
+      state.auth.loading = false;
+    }
+    clearPendingAuthRestore(uid);
+    loadUserScopedPersisted(user);
+    const changed = primeFastAuthProfileHints(user, snapshot);
+    if (hasMeaningfulProfileHint(state.userProfile)) {
+      writeAuthBootstrapSnapshot();
+    }
+    return changed;
+  }
+
   async function bootstrapUser(user, { transitionSeq = 0 } = {}) {
     const expectedUid = String(user?.uid || "").trim();
     if (!expectedUid) return false;
@@ -309,19 +340,20 @@ export function createAuthSessionStartupCoordinator({
         state.user = auth?.currentUser || null;
       }
       setAuthInitialized(false);
+      let pendingRestoreUid = "";
       if (state?.user) {
         const currentUser = state.user;
-        loadUserScopedPersisted(currentUser);
-        primeFastAuthProfileHints(currentUser, snapshot);
-        if (hasMeaningfulProfileHint(state?.userProfile)) {
-          writeAuthBootstrapSnapshot();
-        }
+        primeAuthenticatedShell(currentUser, snapshot);
         lastAuthUid = currentUser.uid || "";
       } else {
         const appliedSnapshot = applyAuthBootstrapSnapshot(snapshot);
         const snapshotUid = appliedSnapshot ? String(snapshot?.uid || "").trim() : "";
         if (snapshotUid) {
           applyPersistedAuthProfileHints(snapshotUid);
+          pendingRestoreUid = snapshotUid;
+          markPendingAuthRestore(snapshotUid);
+        } else {
+          markPendingAuthRestore("");
         }
         lastAuthUid = snapshotUid;
       }
@@ -343,7 +375,7 @@ export function createAuthSessionStartupCoordinator({
       }
       requestRender("initialize");
       schedulePerfWarmMark();
-      if (!state?.user) {
+      if (!state?.user && !pendingRestoreUid) {
         scheduleGuestTabEnsure({
           prioritize: false,
           visiblePath: prioritizeGuestSurface || webDirectGuestProfileSurface,
@@ -351,7 +383,7 @@ export function createAuthSessionStartupCoordinator({
           skip: false
         });
       }
-      if (!state?.user && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+      if (!state?.user && !pendingRestoreUid && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({
@@ -394,9 +426,8 @@ export function createAuthSessionStartupCoordinator({
         || (bootstrapSettledUid === nextUid && state?.auth?.loading === false)
       )
     ) {
-      if (state) {
-        state.user = user;
-      }
+      primeAuthenticatedShell(user);
+      requestRender("auth.sameUserShellSeed");
       return;
     }
     const transitionSeq = ++authTransitionSeq;
@@ -408,32 +439,28 @@ export function createAuthSessionStartupCoordinator({
     }
     applyPendingInitialRouteState();
     if (user) {
-      if (state?.auth) {
-        state.auth.open = false;
-        state.auth.loading = false;
-      }
       markBootstrapInFlight(nextUid);
-      loadUserScopedPersisted(user);
-      primeFastAuthProfileHints(user);
+      primeAuthenticatedShell(user);
       schedulePendingRouteReplayWithTimeline();
-      requestRender();
+      requestRender("auth.userShellSeed");
       void (async () => {
         try {
           await bootstrapUser(user, { transitionSeq });
           if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
           markBootstrapSettled(nextUid);
-          requestRender();
+          requestRender("auth.bootstrapSettled");
         } catch (err) {
           reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
           if (isCurrentAuthTransition(transitionSeq, nextUid)) {
             clearBootstrapInFlight(nextUid);
-            requestRender();
+            requestRender("auth.bootstrapFailed");
           }
         } finally {
           clearBootstrapInFlight(nextUid);
         }
       })();
     } else {
+      clearPendingAuthRestore();
       markBootstrapSettled("");
       clearAuthBootstrapSnapshot();
       if (state) {
@@ -449,7 +476,7 @@ export function createAuthSessionStartupCoordinator({
       if (state) {
         state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
       }
-      requestRender();
+      requestRender("auth.signedOut");
       const runSignedOutEnsure = () => {
         void ensureTabData(state?.activeTab || "").catch((err) => {
           reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
