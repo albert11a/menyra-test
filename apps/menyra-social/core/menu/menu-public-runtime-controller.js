@@ -687,14 +687,17 @@ export function createMenuPublicRuntimeController({
   async function loadMenuHybrid(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return [];
-    const publicItems = await loadPublicMenuItems(safeRestaurantId);
-    if (publicItems.length) return publicItems;
-    const [collectionItems, legacyItems] = await Promise.all([
+    const [publicItems, collectionItems, legacyItems] = await Promise.all([
+      loadPublicMenuItems(safeRestaurantId),
       loadMenuItemsFromCollection(safeRestaurantId),
       loadLegacyMenuItems(safeRestaurantId)
     ]);
     if (collectionItems.length) {
-      return collectionItems;
+      const fallbackItems = publicItems.length ? publicItems : legacyItems;
+      return fillMenuImagesFromFallback(collectionItems, fallbackItems);
+    }
+    if (publicItems.length) {
+      return legacyItems.length ? fillMenuImagesFromFallback(publicItems, legacyItems) : publicItems;
     }
     if (legacyItems.length) {
       return legacyItems;
