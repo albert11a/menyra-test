@@ -382,17 +382,13 @@ export function createAuthSessionStartupCoordinator({
     markStartup("auth state changed", { uid: nextUid, authenticated: !!nextUid });
     const prevUid = String(lastAuthUid || "").trim();
     const hasPendingRouteReplay = !!postLoginRouteOpen?.resolvePendingRouteFlags?.()?.hasAny;
-    const bootstrapInFlightUid = readBootstrapInFlightUid();
     const bootstrapSettledUid = readBootstrapSettledUid();
     if (
       !hasPendingRouteReplay
-      &&
-      nextUid
+      && nextUid
       && nextUid === prevUid
-      && (
-        bootstrapInFlightUid === nextUid
-        || (bootstrapSettledUid === nextUid && state?.auth?.loading === false)
-      )
+      && bootstrapSettledUid === nextUid
+      && state?.auth?.loading === false
     ) {
       if (state) {
         state.user = user;
