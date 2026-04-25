@@ -238,15 +238,15 @@ export function createSessionTabLifecycleRuntimeController({
     attachCurrentUserProfileListenerFn();
     startFollowingListenerFn(user);
     startChatThreadsListenerFn(user);
+    updateNotificationsDomFn();
 
     if (!sameUserAlreadyLive || typeof getNotificationsUnsubFn() !== "function") {
+      void loadNotificationsFromFirebaseFn({ force: false });
       void syncNotificationsPushRuntimeFn({
         user,
         interactive: false,
         enabled: state?.settings?.pushNotifs
       });
-    } else {
-      updateNotificationsDomFn();
     }
   }
 
