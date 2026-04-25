@@ -154,6 +154,16 @@ export function createSessionTabLifecycleRuntimeController({
       const hasBusinessProfile = isLocalBusinessProfileFn(state.userProfile);
       if (hasBusinessProfile) {
         await loadBusinessPostsFn();
+        const restaurantId = String(
+          state.userProfile?.restaurantId
+          || state.userProfile?.staffRestaurantId
+          || state.userProfile?.waiterRestaurantId
+          || ""
+        ).trim();
+        if (restaurantId) {
+          runShellWarmTask("auth-tab.preloadProfile.businessMenu", () => loadMenuForRestaurantFn(restaurantId, { source: "collection" }));
+          runShellWarmTask("auth-tab.preloadProfile.businessFocus", () => loadFocusForRestaurantFn(restaurantId));
+        }
         return;
       }
       await loadUserPostsFn();
