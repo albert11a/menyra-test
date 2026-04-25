@@ -49,16 +49,9 @@ export async function bootstrapAuthenticatedSessionCore({
   await loadProfile(user);
   if (!canContinue()) return false;
 
-  const currentTab = readActiveTab();
-  markBootstrapProfileLoaded(user, { activeTab: currentTab });
-  runNonBlocking("auth-bootstrap.startLiveListeners.fastAfterProfile", () => startLive(user));
-  runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
-
-  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
-    runNonBlocking("auth-bootstrap.preloadSelfProfile", () => ensureTab("profile", { preloadOnly: true }));
-  }
-
-  runNonBlocking("auth-bootstrap.primeCriticalProfile", () => primeCritical(user));
+  // Website contract: do not finalize the authenticated shell from cached
+  // profile hints. Role/workspace identity must settle before tabs and
+  // workspace listeners decide what the logged-in user can see.
   const restaurantId = String(readRestaurantId(user) || "").trim();
   const blockingTasks = [];
   if (restaurantId) {
@@ -70,7 +63,17 @@ export async function bootstrapAuthenticatedSessionCore({
   }
   if (!canContinue()) return false;
 
-  runNonBlocking("auth-bootstrap.startLiveListeners.afterRoleResolution", () => startLive(user));
+  const currentTab = readActiveTab();
+  markBootstrapProfileLoaded(user, { activeTab: currentTab });
+
+  runNonBlocking("auth-bootstrap.ensureTabData.afterCanonicalProfile", () => ensureTab(currentTab));
+
+  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
+    runNonBlocking("auth-bootstrap.preloadSelfProfile.afterCanonicalProfile", () => ensureTab("profile", { preloadOnly: true }));
+  }
+
+  runNonBlocking("auth-bootstrap.primeCriticalProfile.afterCanonicalProfile", () => primeCritical(user));
+  runNonBlocking("auth-bootstrap.startLiveListeners.afterCanonicalProfile", () => startLive(user));
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
   return true;
 }
