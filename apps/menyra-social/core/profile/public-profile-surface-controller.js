@@ -194,12 +194,30 @@ function resolvePostsStatus({
   return "loading";
 }
 
-function resolveMenuStatus(state = {}, { restaurantId = "", routePayload = null } = {}) {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  if (!safeRestaurantId) return "ready";
+function resolveProfileRestaurantIds(profile = null, routePayload = null) {
+  const safeProfile = profile && typeof profile === "object" ? profile : null;
+  const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : null;
+  const snapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+    ? safeRoutePayload.businessSnapshot
+    : null;
+  return Array.from(new Set([
+    safeProfile?.canonicalRestaurantId,
+    safeRoutePayload?.canonicalRestaurantId,
+    snapshot?.restaurantId,
+    safeProfile?.restaurantId,
+    safeRoutePayload?.restaurantId
+  ].map((value) => String(value || "").trim()).filter(Boolean)));
+}
+
+function resolveMenuStatus(state = {}, { restaurantId = "", restaurantIds = [], routePayload = null } = {}) {
+  const restaurantIdSet = new Set([
+    restaurantId,
+    ...(Array.isArray(restaurantIds) ? restaurantIds : [])
+  ].map((value) => String(value || "").trim()).filter(Boolean));
+  if (!restaurantIdSet.size) return "ready";
   const menu = state?.menu || {};
   const menuRestaurantId = String(menu.restaurantId || "").trim();
-  const sameRestaurant = menuRestaurantId && menuRestaurantId === safeRestaurantId;
+  const sameRestaurant = menuRestaurantId && restaurantIdSet.has(menuRestaurantId);
   const menuItems = sameRestaurant && Array.isArray(menu.items) ? menu.items : [];
   if (menuItems.length) return "ready";
   if (sameRestaurant && menu.loading) return "loading";
@@ -219,16 +237,19 @@ function resolveMenuStatus(state = {}, { restaurantId = "", routePayload = null 
   return "loading";
 }
 
-function resolveFocusStatus(state = {}, { restaurantId = "", routePayload = null } = {}) {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  if (!safeRestaurantId) return "ready";
+function resolveFocusStatus(state = {}, { restaurantId = "", restaurantIds = [], routePayload = null } = {}) {
+  const restaurantIdSet = new Set([
+    restaurantId,
+    ...(Array.isArray(restaurantIds) ? restaurantIds : [])
+  ].map((value) => String(value || "").trim()).filter(Boolean));
+  if (!restaurantIdSet.size) return "ready";
   const focus = state?.focus || {};
   const focusRestaurantId = String(focus.restaurantId || "").trim();
-  const sameRestaurant = focusRestaurantId && focusRestaurantId === safeRestaurantId;
+  const sameRestaurant = focusRestaurantId && restaurantIdSet.has(focusRestaurantId);
   const focusItems = sameRestaurant && Array.isArray(focus.items) ? focus.items : [];
   if (focusItems.length && focus.enabled !== false) return "ready";
   if (sameRestaurant && focus.loading) return "loading";
-  const focusTruthState = normalizeSectionTruthState(focus.truthState || "");
+  const focusTruthState = sameRestaurant ? normalizeSectionTruthState(focus.truthState || "") : "";
   if (focusTruthState === "knownEmpty") return "empty";
   if (focusTruthState === "unknown") return "loading";
   if (focusTruthState === "seeded") return "ready";
@@ -315,19 +336,7 @@ function hasRoutePayloadMenuSeed(routePayload = null) {
 }
 
 function resolveProfileCanonicalRestaurantId(profile = null, routePayload = null) {
-  const safeProfile = profile && typeof profile === "object" ? profile : null;
-  const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : null;
-  const snapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
-    ? safeRoutePayload.businessSnapshot
-    : null;
-  return String(
-    safeProfile?.canonicalRestaurantId
-    || safeRoutePayload?.canonicalRestaurantId
-    || snapshot?.restaurantId
-    || safeProfile?.restaurantId
-    || safeRoutePayload?.restaurantId
-    || ""
-  ).trim();
+  return resolveProfileRestaurantIds(profile, routePayload)[0] || "";
 }
 
 export function normalizeProfileSurfaceStatus(value = "", fallback = "loading") {
@@ -384,7 +393,8 @@ export function resolveVisibleProfileSurface(state = {}, {
   const posts = Array.isArray(view?.posts)
     ? view.posts
     : (Array.isArray(profile?.posts) ? profile.posts : []);
-  const targetRestaurantId = resolveProfileCanonicalRestaurantId(profile, routePayload);
+  const targetRestaurantIds = resolveProfileRestaurantIds(profile, routePayload);
+  const targetRestaurantId = targetRestaurantIds[0] || "";
   const targetUid = String(profile?.uid || "").trim();
   const targetHandle = String(profile?.handle || profile?.name || "").trim().toLowerCase();
   const requestedTopTab = explicitTopTab
@@ -416,10 +426,12 @@ export function resolveVisibleProfileSurface(state = {}, {
   }), "loading");
   let menuStatus = normalizeProfileSurfaceStatus(resolveMenuStatus(state, {
     restaurantId: targetRestaurantId,
+    restaurantIds: targetRestaurantIds,
     routePayload
   }), "loading");
   const focusStatus = normalizeProfileSurfaceStatus(resolveFocusStatus(state, {
     restaurantId: targetRestaurantId,
+    restaurantIds: targetRestaurantIds,
     routePayload
   }), "loading");
   if (directEntryActive && directEntryOwner === "web-direct") {
@@ -467,6 +479,7 @@ export function resolveVisibleProfileSurface(state = {}, {
     target: {
       key: targetRestaurantId || targetUid || targetHandle || "",
       restaurantId: targetRestaurantId,
+      restaurantIds: targetRestaurantIds,
       canonicalRestaurantId: String(
         profile?.canonicalRestaurantId
         || routePayload?.canonicalRestaurantId
@@ -489,12 +502,14 @@ export function resolveVisibleProfileSurface(state = {}, {
     menu: {
       status: menuStatus,
       restaurantId: targetRestaurantId,
+      restaurantIds: targetRestaurantIds,
       source: safeLower(state?.menu?.source || ""),
       count: Array.isArray(state?.menu?.items) ? state.menu.items.length : 0
     },
     focus: {
       status: focusStatus,
       restaurantId: targetRestaurantId,
+      restaurantIds: targetRestaurantIds,
       count: Array.isArray(state?.focus?.items) ? state.focus.items.length : 0
     },
     activeTab,
