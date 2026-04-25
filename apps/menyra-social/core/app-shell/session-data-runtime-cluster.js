@@ -12,6 +12,35 @@ export function createSessionDataRuntimeCluster({
   feedApi = {},
   menuApi = {}
 } = {}) {
+  const projectAuthShellImmediately = () => {
+    try {
+      const state = stateDeps?.state;
+      if (!state?.user) return;
+      const lastMode = typeof renderApi.getLastRenderMode === "function"
+        ? String(renderApi.getLastRenderMode() || "").trim().toLowerCase()
+        : "";
+      if (lastMode === "main") {
+        const activeTab = String(state.activeTab || "").trim().toLowerCase();
+        if (activeTab === "feed" && typeof renderApi.updateFeedDom === "function") {
+          renderApi.updateFeedDom();
+        } else if (activeTab === "search" && typeof renderApi.refreshSearchView === "function") {
+          renderApi.refreshSearchView();
+        }
+      }
+      if (typeof renderApi.updateShellDom === "function") {
+        renderApi.updateShellDom();
+      }
+      if (typeof renderApi.render === "function") {
+        renderApi.render();
+      }
+      if (typeof renderApi.updateShellDom === "function") {
+        renderApi.updateShellDom();
+      }
+    } catch (err) {
+      console.warn("[mnyra][auth-shell-ready]", err);
+    }
+  };
+
   return createSessionDataRuntimeController(buildSessionDataRuntimeControllerDeps({
     state: stateDeps.state,
     dataLoaded: stateDeps.dataLoaded,
@@ -82,7 +111,10 @@ export function createSessionDataRuntimeCluster({
     setUserAvatarCache: profileApi.setUserAvatarCache,
     getLastShellAvatarUrl: profileApi.getLastShellAvatarUrl,
     setLastShellAvatarUrl: profileApi.setLastShellAvatarUrl,
-    bootstrapAuthenticatedSessionCore: authApi.bootstrapAuthenticatedSessionCore,
+    bootstrapAuthenticatedSessionCore: async (options = {}) => await authApi.bootstrapAuthenticatedSessionCore({
+      ...(options || {}),
+      afterAuthShellReady: projectAuthShellImmediately
+    }),
     loadAuthProfile: authApi.loadAuthProfile,
     resolveRoleSwitchTargets: authApi.resolveRoleSwitchTargets,
     startLiveListeners: authApi.startLiveListeners,

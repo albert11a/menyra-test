@@ -3,6 +3,7 @@ export async function bootstrapAuthenticatedSessionCore({
   loadAuthProfile,
   primeCriticalProfile,
   markBootstrapAuthProfileLoaded,
+  afterAuthShellReady,
   getRestaurantId,
   hydrateRestaurantsByIds,
   resolveRoleSwitchTargets,
@@ -14,39 +15,18 @@ export async function bootstrapAuthenticatedSessionCore({
 } = {}) {
   if (!user) return false;
 
-  const loadProfile = typeof loadAuthProfile === "function"
-    ? loadAuthProfile
-    : (async () => {});
-  const markBootstrapProfileLoaded = typeof markBootstrapAuthProfileLoaded === "function"
-    ? markBootstrapAuthProfileLoaded
-    : (() => {});
-  const primeCritical = typeof primeCriticalProfile === "function"
-    ? primeCriticalProfile
-    : (() => {});
-  const readRestaurantId = typeof getRestaurantId === "function"
-    ? getRestaurantId
-    : (() => "");
-  const hydrateRestaurants = typeof hydrateRestaurantsByIds === "function"
-    ? hydrateRestaurantsByIds
-    : (async () => {});
-  const resolveRoles = typeof resolveRoleSwitchTargets === "function"
-    ? resolveRoleSwitchTargets
-    : (async () => {});
-  const ensureFollowing = typeof ensureFollowingLoaded === "function"
-    ? ensureFollowingLoaded
-    : (() => {});
-  const startLive = typeof startLiveListeners === "function"
-    ? startLiveListeners
-    : (() => {});
-  const ensureTab = typeof ensureTabData === "function"
-    ? ensureTabData
-    : (() => {});
-  const readActiveTab = typeof activeTab === "function"
-    ? activeTab
-    : (() => activeTab);
-  const canContinue = typeof shouldContinue === "function"
-    ? shouldContinue
-    : (() => true);
+  const loadProfile = typeof loadAuthProfile === "function" ? loadAuthProfile : (async () => {});
+  const markBootstrapProfileLoaded = typeof markBootstrapAuthProfileLoaded === "function" ? markBootstrapAuthProfileLoaded : (() => {});
+  const commitAuthShellReady = typeof afterAuthShellReady === "function" ? afterAuthShellReady : (() => {});
+  const primeCritical = typeof primeCriticalProfile === "function" ? primeCriticalProfile : (() => {});
+  const readRestaurantId = typeof getRestaurantId === "function" ? getRestaurantId : (() => "");
+  const hydrateRestaurants = typeof hydrateRestaurantsByIds === "function" ? hydrateRestaurantsByIds : (async () => {});
+  const resolveRoles = typeof resolveRoleSwitchTargets === "function" ? resolveRoleSwitchTargets : (async () => {});
+  const ensureFollowing = typeof ensureFollowingLoaded === "function" ? ensureFollowingLoaded : (() => {});
+  const startLive = typeof startLiveListeners === "function" ? startLiveListeners : (() => {});
+  const ensureTab = typeof ensureTabData === "function" ? ensureTabData : (() => {});
+  const readActiveTab = typeof activeTab === "function" ? activeTab : (() => activeTab);
+  const canContinue = typeof shouldContinue === "function" ? shouldContinue : (() => true);
   const reportBootstrapNonBlockingFailure = (scope = "", err = null) => {
     const safeScope = String(scope || "auth-bootstrap").trim() || "auth-bootstrap";
     if (err) {
@@ -59,9 +39,7 @@ export async function bootstrapAuthenticatedSessionCore({
     try {
       const pending = fn();
       if (pending && typeof pending.then === "function") {
-        pending.catch((err) => {
-          reportBootstrapNonBlockingFailure(scope, err);
-        });
+        pending.catch((err) => reportBootstrapNonBlockingFailure(scope, err));
       }
     } catch (err) {
       reportBootstrapNonBlockingFailure(scope, err);
@@ -71,31 +49,35 @@ export async function bootstrapAuthenticatedSessionCore({
   await loadProfile(user);
   if (!canContinue()) return false;
 
-  // Account recognition must happen as soon as the canonical auth profile is known.
-  // Slower secondary work must not delay the UI from knowing who logged in.
-  const currentTab = readActiveTab();
-  markBootstrapProfileLoaded(user, { activeTab: currentTab });
-  runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
-
-  // Also warm the self-profile content immediately after login even when the user
-  // stays on feed/search/etc. This keeps profile tabs/posts ready before tapping Profile.
-  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
-    runNonBlocking("auth-bootstrap.preloadSelfProfile", () => ensureTab("profile", { preloadOnly: true }));
-  }
-
-  runNonBlocking("auth-bootstrap.primeCriticalProfile", () => primeCritical(user));
   const restaurantId = String(readRestaurantId(user) || "").trim();
   const blockingTasks = [];
-  if (restaurantId) {
-    blockingTasks.push(hydrateRestaurants([restaurantId], { max: 1 }));
-  }
+  if (restaurantId) blockingTasks.push(hydrateRestaurants([restaurantId], { max: 1 }));
   blockingTasks.push(resolveRoles(user));
-  if (blockingTasks.length) {
-    await Promise.all(blockingTasks);
-  }
+  if (blockingTasks.length) await Promise.all(blockingTasks);
   if (!canContinue()) return false;
 
+  const currentTab = readActiveTab();
+  markBootstrapProfileLoaded(user, { activeTab: currentTab });
+
+  try {
+    commitAuthShellReady(user, { activeTab: currentTab });
+  } catch (err) {
+    reportBootstrapNonBlockingFailure("auth-bootstrap.afterAuthShellReady", err);
+  }
+
+  try {
+    startLive(user);
+  } catch (err) {
+    reportBootstrapNonBlockingFailure("auth-bootstrap.startLiveListeners.afterRoleContext", err);
+  }
+
+  runNonBlocking("auth-bootstrap.ensureTabData.afterRoleContext", () => ensureTab(currentTab));
+
+  if (String(currentTab || "").trim().toLowerCase() !== "profile") {
+    runNonBlocking("auth-bootstrap.preloadSelfProfile.afterRoleContext", () => ensureTab("profile", { preloadOnly: true }));
+  }
+
+  runNonBlocking("auth-bootstrap.primeCriticalProfile.afterRoleContext", () => primeCritical(user));
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
-  runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
   return true;
 }
