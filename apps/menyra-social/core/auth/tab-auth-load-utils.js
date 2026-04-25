@@ -116,7 +116,7 @@ export function ensureTabDataCore({
   stopRestaurants();
   if (hasUser && tab === "chat") {
     startChatThreads(state.user);
-  } else {
+  } else if (!hasUser) {
     stopChatThreads();
   }
   if (tab === "orders") {

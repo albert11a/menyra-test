@@ -84,6 +84,7 @@ export async function bootstrapAuthenticatedSessionCore({
   } catch (err) {
     reportBootstrapNonBlockingFailure("auth-bootstrap.afterAuthShellReady", err);
   }
+  runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
   runNonBlocking("auth-bootstrap.ensureTabData.fastAfterProfile", () => ensureTab(currentTab));
 
   // Also warm the self-profile content immediately after login even when the user
@@ -105,6 +106,5 @@ export async function bootstrapAuthenticatedSessionCore({
   if (!canContinue()) return false;
 
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
-  runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
   return true;
 }

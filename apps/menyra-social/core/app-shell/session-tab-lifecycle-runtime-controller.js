@@ -225,6 +225,8 @@ export function createSessionTabLifecycleRuntimeController({
     if (!user) return;
     attachCurrentUserProfileListenerFn();
     startFollowingListenerFn(user);
+    startChatThreadsListenerFn(user);
+    updateNotificationsDomFn();
     void syncNotificationsPushRuntimeFn({
       user,
       interactive: false,

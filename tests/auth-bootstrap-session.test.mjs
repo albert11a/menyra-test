@@ -49,6 +49,9 @@ test("authenticated bootstrap commits the shell immediately after canonical prof
     "loadProfile",
     "markProfileLoaded",
     "shellReady",
+    "startLive"
+  ]);
+  assert.deepEqual(calls.slice(4, 5), [
     "ensure:feed:full"
   ]);
   assert.ok(calls.includes("ensure:profile:preload"));

@@ -356,6 +356,7 @@ export function createShellDomRuntimeController({
       btn.classList.toggle("hidden", !showCeoTabs);
     });
     refreshSelfCommentAvatars({ attempt: 0, maxAttempts: 2 });
+    updateNotificationBadges();
   }
 
   function updateDrawerDom() {
