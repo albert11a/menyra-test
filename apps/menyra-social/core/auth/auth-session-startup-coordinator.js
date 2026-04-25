@@ -48,6 +48,7 @@ export function createAuthSessionStartupCoordinator({
   const markStartup = typeof markStartupTimeline === "function"
     ? markStartupTimeline
     : (() => {});
+  const interactivePrimeMaxAgeMs = 15000;
   let lastAuthUid = "";
   let authTransitionSeq = 0;
   let authStateListenerBound = false;
@@ -127,6 +128,35 @@ export function createAuthSessionStartupCoordinator({
     }
   }
 
+  function readInteractivePrimeUid() {
+    return String(state?.__authInteractivePrimeUid || "").trim();
+  }
+
+  function readInteractivePrimeAgeMs() {
+    const at = Number(state?.__authInteractivePrimeAt || 0);
+    if (!Number.isFinite(at) || at <= 0) return Number.POSITIVE_INFINITY;
+    return Math.max(0, Date.now() - at);
+  }
+
+  function isFreshInteractivePrime(uid = "", { requirePersisted = true } = {}) {
+    const safeUid = String(uid || "").trim();
+    if (!safeUid || readInteractivePrimeUid() !== safeUid) return false;
+    const ageMs = readInteractivePrimeAgeMs();
+    if (!Number.isFinite(ageMs) || ageMs > interactivePrimeMaxAgeMs) return false;
+    if (requirePersisted && state?.__authInteractivePrimePersisted !== true) return false;
+    return true;
+  }
+
+  function clearInteractivePrime(uid = "") {
+    if (!state) return;
+    const safeUid = String(uid || "").trim();
+    const currentPrimeUid = readInteractivePrimeUid();
+    if (safeUid && currentPrimeUid && safeUid !== currentPrimeUid) return;
+    state.__authInteractivePrimeUid = "";
+    state.__authInteractivePrimeAt = 0;
+    state.__authInteractivePrimePersisted = false;
+  }
+
   function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
     if (transitionSeq !== authTransitionSeq) return false;
     if (!expectedUid) return true;
@@ -193,6 +223,17 @@ export function createAuthSessionStartupCoordinator({
       .finally(() => {
         markStartup("pending route open end");
       });
+  }
+
+  function scheduleEagerAuthenticatedTabEnsure(scope = "auth.ensureTabData.eagerSignIn") {
+    const safeTab = String(state?.activeTab || "").trim() || "feed";
+    queueMicrotaskSafe(() => {
+      void Promise.resolve()
+        .then(() => ensureTabData(safeTab))
+        .catch((err) => {
+          reportCriticalRuntimeFailure(scope, err);
+        });
+    });
   }
 
   function hasMeaningfulProfileHint(profile = null) {
@@ -310,12 +351,22 @@ export function createAuthSessionStartupCoordinator({
       setAuthInitialized(false);
       if (state?.user) {
         const currentUser = state.user;
-        loadUserScopedPersisted(currentUser);
+        const currentUid = String(currentUser?.uid || "").trim();
+        markBootstrapInFlight(currentUid);
+        const reuseInteractivePrime = isFreshInteractivePrime(currentUid, { requirePersisted: true });
+        if (reuseInteractivePrime) {
+          markStartup("auth interactive prime reuse initialize", { uid: currentUid });
+        } else {
+          loadUserScopedPersisted(currentUser);
+        }
         primeFastAuthProfileHints(currentUser, snapshot);
         if (hasMeaningfulProfileHint(state?.userProfile)) {
           writeAuthBootstrapSnapshot();
         }
-        lastAuthUid = currentUser.uid || "";
+        if (reuseInteractivePrime) {
+          clearInteractivePrime(currentUid);
+        }
+        lastAuthUid = currentUid;
       } else {
         const appliedSnapshot = applyAuthBootstrapSnapshot(snapshot);
         const snapshotUid = appliedSnapshot ? String(snapshot?.uid || "").trim() : "";
@@ -381,17 +432,13 @@ export function createAuthSessionStartupCoordinator({
     markStartup("auth state changed", { uid: nextUid, authenticated: !!nextUid });
     const prevUid = String(lastAuthUid || "").trim();
     const hasPendingRouteReplay = !!postLoginRouteOpen?.resolvePendingRouteFlags?.()?.hasAny;
-    const bootstrapInFlightUid = readBootstrapInFlightUid();
     const bootstrapSettledUid = readBootstrapSettledUid();
     if (
       !hasPendingRouteReplay
-      &&
-      nextUid
+      && nextUid
       && nextUid === prevUid
-      && (
-        bootstrapInFlightUid === nextUid
-        || (bootstrapSettledUid === nextUid && state?.auth?.loading === false)
-      )
+      && bootstrapSettledUid === nextUid
+      && state?.auth?.loading === false
     ) {
       if (state) {
         state.user = user;
@@ -412,8 +459,16 @@ export function createAuthSessionStartupCoordinator({
         state.auth.loading = false;
       }
       markBootstrapInFlight(nextUid);
-      loadUserScopedPersisted(user);
+      const reuseInteractivePrime = isFreshInteractivePrime(nextUid, { requirePersisted: true });
+      if (reuseInteractivePrime) {
+        markStartup("auth interactive prime reuse transition", { uid: nextUid });
+      } else {
+        loadUserScopedPersisted(user);
+      }
       primeFastAuthProfileHints(user);
+      if (reuseInteractivePrime) {
+        clearInteractivePrime(nextUid);
+      }
       schedulePendingRouteReplayWithTimeline();
       requestRender();
       void (async () => {
@@ -433,9 +488,12 @@ export function createAuthSessionStartupCoordinator({
         }
       })();
     } else {
+      clearInteractivePrime();
       markBootstrapSettled("");
       clearAuthBootstrapSnapshot();
       if (state) {
+        state.__authStayOnTab = "";
+        state.__authStayOnTabAt = 0;
         state.roleSwitchRoles = [];
         state.roleSwitchRestaurantId = "";
       }

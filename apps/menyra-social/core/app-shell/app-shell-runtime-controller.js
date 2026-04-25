@@ -72,6 +72,7 @@ export function createAppShellRuntimeController(deps = {}) {
     setStateFn,
     signOutFn,
     clearAuthBootstrapSnapshotFn,
+    loadUserScopedPersistedFn,
     safeStorageObj,
     profileKeyFn,
     avatarKeyFn,
@@ -1583,9 +1584,13 @@ export function createAppShellRuntimeController(deps = {}) {
     if (authForm) {
       authForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const preserveTab = String(state?.activeTab || "").trim().toLowerCase() || "feed";
+        state.__authStayOnTab = preserveTab;
+        state.__authStayOnTabAt = Date.now();
         const email = doc?.getElementById("authEmail")?.value?.trim() || "";
         const password = doc?.getElementById("authPassword")?.value || "";
         const name = doc?.getElementById("authName")?.value?.trim() || "";
+        let immediateAuthTransitionApplied = false;
 
         state.auth.loading = true;
         state.auth.error = "";
@@ -1593,15 +1598,16 @@ export function createAppShellRuntimeController(deps = {}) {
 
         try {
           await ensureAuthLocalPersistenceFn();
+          let authCredential = null;
           if (state.auth.mode === "login") {
-            await signInWithEmailAndPasswordFn(auth, email, password);
+            authCredential = await signInWithEmailAndPasswordFn(auth, email, password);
           } else {
             if (!name || !email || !password) {
               throw new Error("Bitte alles ausfuellen.");
             }
-            const cred = await createUserWithEmailAndPasswordFn(auth, email, password);
-            await updateProfileFn(cred.user, { displayName: name });
-            await setDocFn(docFn(db, "users", cred.user.uid), {
+            authCredential = await createUserWithEmailAndPasswordFn(auth, email, password);
+            await updateProfileFn(authCredential.user, { displayName: name });
+            await setDocFn(docFn(db, "users", authCredential.user.uid), {
               displayName: name,
               handle: normalizeHandleFn(name),
               city: "Prishtina",
@@ -1615,13 +1621,92 @@ export function createAppShellRuntimeController(deps = {}) {
               updatedAt: serverTimestampFn()
             }, { merge: true });
           }
+          const immediateUser = authCredential?.user || auth?.currentUser || null;
+          const immediateUid = String(immediateUser?.uid || "").trim();
+          if (immediateUid) {
+            const schedulePostAuthTask = typeof queueMicrotaskFn === "function"
+              ? (fn) => {
+                try { queueMicrotaskFn(fn); } catch {}
+              }
+              : (typeof win?.requestAnimationFrame === "function"
+                ? (fn) => win.requestAnimationFrame(() => {
+                  try { fn?.(); } catch {}
+                })
+                : ((fn) => Promise.resolve().then(() => fn?.()).catch(() => {})));
+            let interactivePersistedLoaded = false;
+            if (typeof loadUserScopedPersistedFn === "function") {
+              try {
+                loadUserScopedPersistedFn(immediateUser);
+                interactivePersistedLoaded = true;
+              } catch {}
+            }
+            const nextDisplayName = String(
+              immediateUser?.displayName
+              || name
+              || state?.userProfile?.name
+              || ""
+            ).trim() || "User";
+            const nextHandle = String(state?.userProfile?.handle || "").trim()
+              || normalizeHandleFn(nextDisplayName);
+            const nextAvatar = String(
+              immediateUser?.photoURL
+              || state?.userProfile?.avatar
+              || ""
+            ).trim();
+            setStateFn({
+              user: immediateUser,
+              auth: {
+                ...state.auth,
+                open: false,
+                loading: false,
+                error: ""
+              },
+              drawerOpen: false,
+              __authInteractivePrimeUid: immediateUid,
+              __authInteractivePrimeAt: Date.now(),
+              __authInteractivePrimePersisted: interactivePersistedLoaded,
+              userProfile: {
+                ...state.userProfile,
+                uid: immediateUid,
+                email: String(immediateUser?.email || email || state?.userProfile?.email || "").trim(),
+                name: nextDisplayName,
+                handle: nextHandle,
+                avatar: nextAvatar
+              }
+            });
+            immediateAuthTransitionApplied = true;
+            schedulePostAuthTask(() => {
+              try {
+                if (!interactivePersistedLoaded && typeof loadUserScopedPersistedFn === "function") {
+                  loadUserScopedPersistedFn(immediateUser);
+                  state.__authInteractivePrimePersisted = true;
+                }
+              } catch {}
+              render();
+              const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+              if (activeTab !== "profile") return;
+              try {
+                ensurePostsDataForProfileFn(state?.profileView?.profile || state?.userProfile || {});
+              } catch {}
+              try {
+                ensureMenuDataForProfileFn(state?.profileView?.profile || state?.userProfile || {});
+              } catch {}
+              try {
+                ensureFocusDataForProfileFn(state?.profileView?.profile || state?.userProfile || {});
+              } catch {}
+            });
+          }
         } catch (err) {
           state.auth.error = err?.message || "Login fehlgeschlagen.";
         } finally {
           if (!auth?.currentUser) {
             state.auth.loading = false;
+            state.__authStayOnTab = "";
+            state.__authStayOnTabAt = 0;
           }
-          render();
+          if (!immediateAuthTransitionApplied) {
+            render();
+          }
         }
       });
     }

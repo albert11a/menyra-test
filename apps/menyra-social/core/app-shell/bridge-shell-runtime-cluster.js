@@ -297,6 +297,7 @@ export function createBridgeShellRuntimeCluster({
     bindAppShellEventsCore: shellApi.bindAppShellEventsCore,
     signOut: shellApi.signOut,
     clearAuthBootstrapSnapshot: shellApi.clearAuthBootstrapSnapshot,
+    loadUserScopedPersisted: shellApi.loadUserScopedPersisted,
     safeStorage: shellApi.safeStorage,
     profileKey: shellApi.profileKey,
     avatarKey: shellApi.avatarKey,
