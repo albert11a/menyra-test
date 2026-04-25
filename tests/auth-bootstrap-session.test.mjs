@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { bootstrapAuthenticatedSessionCore } from "../apps/menyra-social/core/auth/auth-user-bootstrap-utils.js";
 
-test("authenticated bootstrap commits the shell immediately after canonical profile load", async () => {
+test("authenticated bootstrap starts badge listeners before canonical profile load", async () => {
   const calls = [];
   const user = { uid: "user-123" };
   let profileLoaded = false;
@@ -24,6 +24,7 @@ test("authenticated bootstrap commits the shell immediately after canonical prof
     },
     startLiveListeners: () => {
       calls.push("startLive");
+      assert.equal(profileLoaded, false);
     },
     ensureTabData: (tab, options = {}) => {
       const mode = options?.preloadOnly === true ? "preload" : "full";
@@ -32,6 +33,7 @@ test("authenticated bootstrap commits the shell immediately after canonical prof
     },
     primeCriticalProfile: () => {
       calls.push("primeCritical");
+      assert.equal(profileLoaded, false);
     },
     getRestaurantId: () => "",
     hydrateRestaurantsByIds: async () => {
@@ -45,21 +47,21 @@ test("authenticated bootstrap commits the shell immediately after canonical prof
     }
   });
 
-  assert.deepEqual(calls.slice(0, 4), [
+  assert.deepEqual(calls.slice(0, 5), [
+    "startLive",
+    "primeCritical",
     "loadProfile",
     "markProfileLoaded",
-    "shellReady",
-    "startLive"
+    "shellReady"
   ]);
-  assert.deepEqual(calls.slice(4, 5), [
+  assert.deepEqual(calls.slice(5, 6), [
     "ensure:feed:full"
   ]);
   assert.ok(calls.includes("ensure:profile:preload"));
-  assert.ok(calls.indexOf("primeCritical") > calls.indexOf("shellReady"));
-  assert.ok(calls.indexOf("resolveRoles") > calls.indexOf("primeCritical"));
+  assert.ok(calls.indexOf("resolveRoles") > calls.indexOf("shellReady"));
 });
 
-test("authenticated bootstrap does not run shell work after a stale auth transition", async () => {
+test("authenticated bootstrap does not start shell work after a stale auth transition", async () => {
   const calls = [];
 
   const result = await bootstrapAuthenticatedSessionCore({
@@ -76,9 +78,12 @@ test("authenticated bootstrap does not run shell work after a stale auth transit
     },
     startLiveListeners: () => {
       calls.push("startLive");
+    },
+    primeCriticalProfile: () => {
+      calls.push("primeCritical");
     }
   });
 
   assert.equal(result, false);
-  assert.deepEqual(calls, ["loadProfile"]);
+  assert.deepEqual(calls, []);
 });
