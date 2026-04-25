@@ -165,25 +165,30 @@ export function createNotificationsRuntimeFlowControllerCore({
       setPushIssue("Kein angemeldeter User fuer Push-Registrierung.");
       return false;
     }
+
+    // Mobile Safari can spend noticeable time in permission/service-worker work.
+    // Badge correctness must not wait for push setup, so start the Firestore
+    // listener immediately and upgrade native-push behavior only after registration.
+    startNotificationsListener(user, { enableNativePush: false });
+
     if (!enabled) {
       clearPushIssue();
-      startNotificationsListener(user, { enableNativePush: false });
       return false;
     }
     clearPushIssue();
 
     const granted = await ensureNotificationPermissionFn({ interactive, silent: !interactive });
     if (!granted) {
-      startNotificationsListener(user, { enableNativePush: false });
       return false;
     }
     const registered = await syncPushDeviceRegistrationFn({ interactive, force: interactive, enabled, silent: !interactive });
-    // Avoid duplicate system notifications: native snapshot alerts are fallback only.
-    startNotificationsListener(user, { enableNativePush: !registered });
-    if (interactive && !registered && !readPushIssue()) {
-      setPushIssue("Push-Registrierung fehlgeschlagen.");
+    if (!registered) {
+      if (interactive && !readPushIssue()) {
+        setPushIssue("Push-Registrierung fehlgeschlagen.");
+      }
+      return false;
     }
-    return registered;
+    return true;
   };
 
   const loadNotificationsFromFirebase = async ({ force = false } = {}) => {
