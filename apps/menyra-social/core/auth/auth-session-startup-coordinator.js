@@ -496,6 +496,8 @@ export function createAuthSessionStartupCoordinator({
       markBootstrapSettled("");
       clearAuthBootstrapSnapshot();
       if (state) {
+        state.__authStayOnTab = "";
+        state.__authStayOnTabAt = 0;
         state.roleSwitchRoles = [];
         state.roleSwitchRestaurantId = "";
       }

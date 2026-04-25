@@ -2039,6 +2039,12 @@ if (typeof window !== "undefined") {
 }
 
 function render(...args) {
+  const authStayTab = resolveAuthStayOnTabOverride(state.activeTab, {
+    hasProfileView: !!state.profileView
+  });
+  if (authStayTab) {
+    state.activeTab = authStayTab;
+  }
   const activeSurfaceSnapshot = syncStartupSurfaceStatus();
   const result = renderShell(...args);
   try {
@@ -2144,6 +2150,46 @@ function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {
   });
 }
 
+function resolveAuthStayOnTabOverride(nextTab = state.activeTab, { hasProfileView = !!state.profileView } = {}) {
+  const currentUid = String(state?.user?.uid || "").trim();
+  const requestedTab = String(nextTab || "").trim().toLowerCase();
+  const stayTab = String(state?.__authStayOnTab || "").trim().toLowerCase();
+  const stayAt = Number(state?.__authStayOnTabAt || 0);
+  const interactivePrimeUid = String(state?.__authInteractivePrimeUid || "").trim();
+  const interactivePrimeAt = Number(state?.__authInteractivePrimeAt || 0);
+  const bootstrapInFlightUid = String(state?.__authBootstrapInFlightUid || "").trim();
+  const bootstrapSettledUid = String(state?.__authBootstrapSettledUid || "").trim();
+  const hasFreshStayTab = !!(
+    currentUid
+    && stayTab
+    && Number.isFinite(stayAt)
+    && stayAt > 0
+    && (Date.now() - stayAt) <= 45000
+  );
+  const hasFreshInteractivePrime = !!(
+    currentUid
+    && interactivePrimeUid === currentUid
+    && Number.isFinite(interactivePrimeAt)
+    && interactivePrimeAt > 0
+    && (Date.now() - interactivePrimeAt) <= 15000
+  );
+  const bootstrapWindowActive = !!currentUid && (
+    bootstrapInFlightUid === currentUid
+    || (
+      bootstrapSettledUid !== currentUid
+      && (hasFreshInteractivePrime || hasFreshStayTab)
+    )
+  );
+  if (!bootstrapWindowActive) return "";
+  if (requestedTab !== "profile" && requestedTab !== "menu") return "";
+  const targetTab = sanitizeTabForSession(stayTab || "feed", {
+    hasProfileView
+  });
+  if (!targetTab) return "";
+  if (targetTab === requestedTab) return "";
+  return targetTab;
+}
+
 function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um diese Funktion zu nutzen.") {
   if (!isGuestSession()) return false;
   state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
@@ -2199,6 +2245,8 @@ function applyPendingInitialRouteState() {
   const interactivePrimeUid = String(state.__authInteractivePrimeUid || "").trim();
   const currentUid = String(state.user?.uid || "").trim();
   const interactivePrimeAt = Number(state.__authInteractivePrimeAt || 0);
+  const authStayOnTab = String(state.__authStayOnTab || "").trim().toLowerCase();
+  const authStayOnTabAt = Number(state.__authStayOnTabAt || 0);
   const hasFreshInteractivePrime = !!(
     interactivePrimeUid
     && currentUid
@@ -2207,29 +2255,41 @@ function applyPendingInitialRouteState() {
     && interactivePrimeAt > 0
     && (Date.now() - interactivePrimeAt) <= 15000
   );
+  const hasFreshAuthStayOnTab = !!(
+    authStayOnTab
+    && currentUid
+    && Number.isFinite(authStayOnTabAt)
+    && authStayOnTabAt > 0
+    && (Date.now() - authStayOnTabAt) <= 45000
+  );
   applyPendingInitialRouteStateBase();
-  if (hasFreshInteractivePrime) {
+  if (hasFreshInteractivePrime || hasFreshAuthStayOnTab) {
+    const requestedStayTab = authStayOnTab || prevActiveTab;
+    state.activeTab = sanitizeTabForSession(requestedStayTab, {
+      hasProfileView: !!state.profileView
+    });
     const pendingAfterBase = pendingRouteState.getPendingState?.() || {};
-    const hasExplicitOpenTarget = !!(
-      String(pendingAfterBase.pendingNotificationId || "").trim()
-      || String(pendingAfterBase.pendingPostId || "").trim()
-      || String(pendingAfterBase.pendingChatUid || "").trim()
-    );
-    if (!hasExplicitOpenTarget) {
-      state.activeTab = sanitizeTabForSession(prevActiveTab, {
-        hasProfileView: !!state.profileView
-      });
+    const pendingInitialTabAfterBase = String(
+      pendingAfterBase.pendingInitialTab
+      || pendingRouteState.getPendingInitialTab?.()
+      || ""
+    ).trim().toLowerCase();
+    if (pendingInitialTabAfterBase === "profile" || pendingInitialTabAfterBase === "menu") {
       pendingRouteState.setPendingInitialTab?.("");
-      pendingRouteState.patchPendingState?.({
-        pendingProfileRestaurantId: "",
-        pendingProfileTopTab: "",
-        pendingProfileAccessSource: "",
-        pendingProfileTableNumber: 0,
-        pendingUserRouteId: "",
-        pendingUserContentTab: "",
-        pendingProfileHandled: true
-      });
     }
+    pendingRouteState.patchPendingState?.({
+      pendingProfileRestaurantId: "",
+      pendingProfileTopTab: "",
+      pendingProfileAccessSource: "",
+      pendingProfileTableNumber: 0,
+      pendingUserRouteId: "",
+      pendingUserContentTab: "",
+      pendingProfileHandled: true
+    });
+    publicProfileDirectEntryController.writeWebDirectEntryState?.({}, {
+      active: false,
+      phase: ""
+    });
   }
   const pendingInitialTab = String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase();
   if (isAuthRestorePendingProtectedRoute(pendingInitialTab)) {
@@ -3546,6 +3606,12 @@ function setState(patch) {
       hasProfileView: !!state.profileView
     });
     patch.activeTab = normalizeLegacyHomeTab(patch.activeTab);
+    const authStayTab = resolveAuthStayOnTabOverride(patch.activeTab, {
+      hasProfileView: !!state.profileView
+    });
+    if (authStayTab) {
+      patch.activeTab = authStayTab;
+    }
   }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {

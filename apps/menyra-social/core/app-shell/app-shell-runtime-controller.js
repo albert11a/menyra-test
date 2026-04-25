@@ -1584,6 +1584,9 @@ export function createAppShellRuntimeController(deps = {}) {
     if (authForm) {
       authForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const preserveTab = String(state?.activeTab || "").trim().toLowerCase() || "feed";
+        state.__authStayOnTab = preserveTab;
+        state.__authStayOnTabAt = Date.now();
         const email = doc?.getElementById("authEmail")?.value?.trim() || "";
         const password = doc?.getElementById("authPassword")?.value || "";
         const name = doc?.getElementById("authName")?.value?.trim() || "";
@@ -1698,6 +1701,8 @@ export function createAppShellRuntimeController(deps = {}) {
         } finally {
           if (!auth?.currentUser) {
             state.auth.loading = false;
+            state.__authStayOnTab = "";
+            state.__authStayOnTabAt = 0;
           }
           if (!immediateAuthTransitionApplied) {
             render();
