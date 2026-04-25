@@ -48,6 +48,8 @@ export function createSessionTabLifecycleRuntimeController({
   let storiesUnsub = null;
   let preloadProfilePromise = null;
   let preloadMenuPromise = null;
+  let liveChatThreadsUid = "";
+  let shellWarmUid = "";
 
   function reportPreloadWarning(scope = "tab-preload", err = null) {
     const safeScope = String(scope || "tab-preload").trim() || "tab-preload";
@@ -56,6 +58,62 @@ export function createSessionTabLifecycleRuntimeController({
       return;
     }
     console.warn(`[mnyra][${safeScope}] operation failed`);
+  }
+
+  function runShellWarmTask(scope = "shell-warm", task = null) {
+    try {
+      const pending = typeof task === "function" ? task() : null;
+      if (pending && typeof pending.then === "function") {
+        pending.catch((err) => {
+          reportPreloadWarning(scope, err);
+        });
+      }
+    } catch (err) {
+      reportPreloadWarning(scope, err);
+    }
+  }
+
+  function ensureChatThreadsLive(user = state?.user) {
+    const uid = String(user?.uid || "").trim();
+    if (!uid) {
+      liveChatThreadsUid = "";
+      stopChatThreadsListenerFn();
+      return;
+    }
+    if (liveChatThreadsUid === uid) return;
+    liveChatThreadsUid = uid;
+    startChatThreadsListenerFn(user);
+  }
+
+  function warmAuthenticatedShellData(user = state?.user) {
+    const uid = String(user?.uid || "").trim();
+    if (!uid || shellWarmUid === uid) return;
+    shellWarmUid = uid;
+
+    ensureChatThreadsLive(user);
+
+    // Badges and role-specific surfaces must begin loading as soon as the
+    // authenticated shell exists, not only after the user taps those tabs.
+    runShellWarmTask("auth-shell.notifications.fetch", () => loadNotificationsFromFirebaseFn({ force: true }));
+
+    if (isCeoUserFn()) {
+      queueCrmLazyRenderersPrefetchFn();
+      runShellWarmTask("auth-shell.leads.preload", () => loadLeadsFn({ scope: state?.leads?.scope }));
+      runShellWarmTask("auth-shell.customers.preload", () => loadCustomersFn({ scope: state?.customers?.scope }));
+      runShellWarmTask("auth-shell.staff.preload", () => loadCeoStaffFn());
+    }
+
+    if (isLocalBusinessProfileFn(state?.userProfile)) {
+      const restaurantId = String(state?.userProfile?.restaurantId || "").trim();
+      runShellWarmTask("auth-shell.business.posts.preload", () => loadBusinessPostsFn());
+      runShellWarmTask("auth-shell.business.accounts.preload", () => loadBusinessAccountsFn());
+      if (restaurantId) {
+        runShellWarmTask("auth-shell.business.menu.preload", () => loadMenuForRestaurantFn(restaurantId, { source: "collection" }));
+        runShellWarmTask("auth-shell.business.focus.preload", () => loadFocusForRestaurantFn(restaurantId));
+      }
+    } else {
+      runShellWarmTask("auth-shell.user.posts.preload", () => loadUserPostsFn());
+    }
   }
 
   async function preloadProfileData() {
@@ -123,8 +181,12 @@ export function createSessionTabLifecycleRuntimeController({
       sanitizeTabForSession,
       render: renderFn,
       stopRestaurantsListener: stopRestaurantsListenerFn,
-      startChatThreadsListener: startChatThreadsListenerFn,
-      stopChatThreadsListener: stopChatThreadsListenerFn,
+      startChatThreadsListener: (user) => ensureChatThreadsLive(user),
+      stopChatThreadsListener: () => {
+        if (state?.user) return;
+        liveChatThreadsUid = "";
+        stopChatThreadsListenerFn();
+      },
       startOrdersListener: startOrdersListenerFn,
       stopOrdersListener: stopOrdersListenerFn,
       stopRestaurantMetaListeners: stopRestaurantMetaListenersFn,
@@ -166,6 +228,8 @@ export function createSessionTabLifecycleRuntimeController({
 
   function stopLiveListeners() {
     stopChatThreadsListenerFn();
+    liveChatThreadsUid = "";
+    shellWarmUid = "";
     stopActiveChatMessagesListenerFn();
     stopOrdersListenerFn();
     if (feedDeltaTimer) {
@@ -194,7 +258,9 @@ export function createSessionTabLifecycleRuntimeController({
     stopLiveListeners();
     if (!user) return;
     attachCurrentUserProfileListenerFn();
+    ensureChatThreadsLive(user);
     startFollowingListenerFn(user);
+    warmAuthenticatedShellData(user);
     void syncNotificationsPushRuntimeFn({
       user,
       interactive: false,
