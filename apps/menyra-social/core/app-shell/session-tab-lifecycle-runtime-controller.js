@@ -48,6 +48,7 @@ export function createSessionTabLifecycleRuntimeController({
   let storiesUnsub = null;
   let preloadProfilePromise = null;
   let preloadMenuPromise = null;
+  let liveListenersUid = "";
 
   function reportPreloadWarning(scope = "tab-preload", err = null) {
     const safeScope = String(scope || "tab-preload").trim() || "tab-preload";
@@ -195,6 +196,7 @@ export function createSessionTabLifecycleRuntimeController({
   }
 
   function stopLiveListeners() {
+    liveListenersUid = "";
     stopChatThreadsListenerFn();
     stopActiveChatMessagesListenerFn();
     stopOrdersListenerFn();
@@ -221,17 +223,31 @@ export function createSessionTabLifecycleRuntimeController({
   }
 
   function startLiveListeners(user = state?.user) {
-    stopLiveListeners();
-    if (!user) return;
+    const uid = String(user?.uid || "").trim();
+    if (!uid) {
+      stopLiveListeners();
+      return;
+    }
+
+    const sameUserAlreadyLive = liveListenersUid === uid;
+    if (!sameUserAlreadyLive) {
+      stopLiveListeners();
+      liveListenersUid = uid;
+    }
+
     attachCurrentUserProfileListenerFn();
     startFollowingListenerFn(user);
     startChatThreadsListenerFn(user);
-    updateNotificationsDomFn();
-    void syncNotificationsPushRuntimeFn({
-      user,
-      interactive: false,
-      enabled: state?.settings?.pushNotifs
-    });
+
+    if (!sameUserAlreadyLive || typeof getNotificationsUnsubFn() !== "function") {
+      void syncNotificationsPushRuntimeFn({
+        user,
+        interactive: false,
+        enabled: state?.settings?.pushNotifs
+      });
+    } else {
+      updateNotificationsDomFn();
+    }
   }
 
   return {
