@@ -320,8 +320,9 @@ export function createFocusRuntimeController({
         nextItems.unshift(payload);
       }
       await publishFocusItems(restaurantId, nextItems);
-      focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, ts: Date.now() });
-      state.focus = { ...state.focus, restaurantId, items: nextItems, loading: false, error: "" };
+      const truthState = nextItems.length ? "seeded" : "knownEmpty";
+      focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, truthSource: "public-menu", truthState, ts: Date.now() });
+      state.focus = { ...state.focus, restaurantId, items: nextItems, loading: false, error: "", truthSource: "public-menu", truthState };
 
       state.focusModal.loading = false;
       state.focusModal.status = "Gespeichert.";
@@ -343,8 +344,9 @@ export function createFocusRuntimeController({
     try {
       const nextItems = (state.focus.items || []).filter((item) => String(item.id) !== String(itemId));
       await publishFocusItems(restaurantId, nextItems);
-      focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, ts: Date.now() });
-      state.focus = { ...state.focus, restaurantId, items: nextItems };
+      const truthState = nextItems.length ? "seeded" : "knownEmpty";
+      focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, truthSource: "public-menu", truthState, ts: Date.now() });
+      state.focus = { ...state.focus, restaurantId, items: nextItems, truthSource: "public-menu", truthState };
       renderFn();
     } catch (err) {
       console.error(err);

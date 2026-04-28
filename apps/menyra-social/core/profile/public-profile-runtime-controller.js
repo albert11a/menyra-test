@@ -632,16 +632,21 @@ export function createPublicProfileRuntimeController({
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
     const menu = state?.menu || {};
     const focus = state?.focus || {};
-    const sameRestaurantMenu = String(menu.restaurantId || "").trim() === safeRestaurantId;
-    const sameRestaurantFocus = String(focus.restaurantId || "").trim() === safeRestaurantId;
+    const sameRestaurantMenu = String(menu.restaurantId || "").trim() === safeRestaurantId
+      && String(menu.source || "").trim().toLowerCase() === "public";
+    const publicMenuHasItems = sameRestaurantMenu
+      && String(menu.truthState || "").trim().toLowerCase() === "seeded"
+      && Array.isArray(menu.items)
+      && menu.items.length > 0;
+    const sameRestaurantFocus = publicMenuHasItems
+      && String(focus.restaurantId || "").trim() === safeRestaurantId
+      && String(focus.truthSource || "").trim().toLowerCase() === "public-menu";
     const menuItemsFromLive = sameRestaurantMenu && Array.isArray(menu.items) ? menu.items : [];
     const focusItemsFromLive = sameRestaurantFocus && Array.isArray(focus.items) ? focus.items : [];
-    const menuCountFromPayload = Math.max(0, Number(currentPayload?.menu?.count || 0) || 0);
-    const focusCountFromPayload = Math.max(0, Number(currentPayload?.focus?.count || 0) || 0);
     const postsCountFromPayload = Math.max(0, Number(currentPayload?.posts?.count || 0) || 0);
     const postsCount = Math.max(safePosts.length, postsCountFromPayload);
-    const menuCount = Math.max(menuItemsFromLive.length, menuCountFromPayload);
-    const focusCount = Math.max(focusItemsFromLive.length, focusCountFromPayload);
+    const menuCount = menuItemsFromLive.length;
+    const focusCount = focusItemsFromLive.length;
     let postsTruthState = normalizeTruthState(
       currentSnapshot?.posts?.state
       || currentPayload?.posts?.state
@@ -656,11 +661,7 @@ export function createPublicProfileRuntimeController({
       ? (menuItemsFromLive.length ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
       : "unknown";
     let menuTruthState = normalizeTruthState(
-      menu.truthState
-      || currentSnapshot?.menu?.state
-      || currentPayload?.menu?.state
-      || currentPayload?.truth?.menu
-      || "",
+      sameRestaurantMenu ? (menu.truthState || "") : "",
       menuTruthFallback
     );
     if (menuItemsFromLive.length > 0) menuTruthState = "seeded";
@@ -668,11 +669,7 @@ export function createPublicProfileRuntimeController({
       ? (focusItemsFromLive.length ? "seeded" : (focus.loading ? "unknown" : "knownEmpty"))
       : "unknown";
     let focusTruthState = normalizeTruthState(
-      focus.truthState
-      || currentSnapshot?.focus?.state
-      || currentPayload?.focus?.state
-      || currentPayload?.truth?.focus
-      || "",
+      sameRestaurantFocus ? (focus.truthState || "") : "",
       focusTruthFallback
     );
     if (focusItemsFromLive.length > 0) focusTruthState = "seeded";
@@ -735,10 +732,10 @@ export function createPublicProfileRuntimeController({
     ).trim() || `${safeRestaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`;
     const resolvedMenuItems = menuTruthState === "seeded"
       ? menuItemsFromLive
-      : (menuTruthState === "knownEmpty" ? [] : (Array.isArray(currentSnapshot?.menu?.items) ? currentSnapshot.menu.items : []));
+      : [];
     const resolvedFocusItems = focusTruthState === "seeded"
       ? focusItemsFromLive
-      : (focusTruthState === "knownEmpty" ? [] : (Array.isArray(currentSnapshot?.focus?.items) ? currentSnapshot.focus.items : []));
+      : [];
     const nextSnapshot = {
       snapshotVersion,
       version: snapshotVersionKey,
@@ -1460,15 +1457,15 @@ export function createPublicProfileRuntimeController({
     return true;
   }
 
-  async function loadBusinessPostsForRestaurant(restaurantId, { skipProfileResolve = false } = {}) {
+  async function loadBusinessPostsForRestaurant(restaurantId, { skipProfileResolve = false, force = false } = {}) {
     const routeRestaurantId = String(restaurantId || "").trim();
     if (!routeRestaurantId || !makeCollectionRef || !db) return [];
     const directCached = publicBusinessPostsCache.get(routeRestaurantId);
-    if (Array.isArray(directCached) && directCached.length > 0) {
+    if (!force && Array.isArray(directCached) && directCached.length > 0) {
       clearBusinessPostsKnownEmpty(routeRestaurantId);
       return directCached;
     }
-    if (isBusinessPostsKnownEmpty(routeRestaurantId)) return [];
+    if (!force && isBusinessPostsKnownEmpty(routeRestaurantId)) return [];
     const inFlight = publicBusinessPostsInFlight.get(routeRestaurantId);
     if (inFlight) {
       return inFlight;
@@ -1494,14 +1491,14 @@ export function createPublicProfileRuntimeController({
       }
       if (!effectiveRestaurantId) return [];
       const resolvedCached = publicBusinessPostsCache.get(effectiveRestaurantId);
-      if (Array.isArray(resolvedCached) && resolvedCached.length > 0) {
+      if (!force && Array.isArray(resolvedCached) && resolvedCached.length > 0) {
         clearBusinessPostsKnownEmpty(effectiveRestaurantId, routeRestaurantId);
         if (routeRestaurantId !== effectiveRestaurantId) {
           publicBusinessPostsCache.set(routeRestaurantId, resolvedCached);
         }
         return resolvedCached;
       }
-      if (isBusinessPostsKnownEmpty(effectiveRestaurantId)) {
+      if (!force && isBusinessPostsKnownEmpty(effectiveRestaurantId)) {
         markBusinessPostsKnownEmpty(effectiveRestaurantId, routeRestaurantId);
         return [];
       }

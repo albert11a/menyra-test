@@ -206,16 +206,12 @@ function resolveMenuStatus(state = {}, { restaurantId = "", routePayload = null 
     ? menu.items
     : [];
   if (menuItems.length) return "ready";
-  if (sameRestaurant && menu.loading) return "loading";
-  const menuTruthState = normalizeSectionTruthState(menu.truthState || "");
-  if (menuTruthState === "knownEmpty") return "empty";
-  if (menuTruthState === "unknown") return "loading";
-  if (menuTruthState === "seeded") return "ready";
-  const routeMenuState = resolveRoutePayloadSectionState(routePayload, "menu");
-  if (routeMenuState === "knownEmpty") return "empty";
-  if (routeMenuState === "unknown") return "loading";
-  if (routeMenuState === "seeded") return "ready";
   if (hasPublicMenuTruth) {
+    if (menu.loading) return "loading";
+    const menuTruthState = normalizeSectionTruthState(menu.truthState || "");
+    if (menuTruthState === "knownEmpty") return "empty";
+    if (menuTruthState === "unknown") return "loading";
+    if (menuTruthState === "seeded") return "ready";
     const error = String(menu.error || "").trim();
     if (error) return "error";
     return "empty";
@@ -226,20 +222,32 @@ function resolveMenuStatus(state = {}, { restaurantId = "", routePayload = null 
 function resolveFocusStatus(state = {}, { restaurantId = "", routePayload = null } = {}) {
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId) return "ready";
+  const menu = state?.menu || {};
+  const menuHasPublicItems = String(menu.restaurantId || "").trim() === safeRestaurantId
+    && safeLower(menu.source || "") === "public"
+    && normalizeSectionTruthState(menu.truthState || "") === "seeded"
+    && Array.isArray(menu.items)
+    && menu.items.length > 0;
+  if (!menuHasPublicItems) {
+    const menuSameRestaurant = String(menu.restaurantId || "").trim() === safeRestaurantId
+      && safeLower(menu.source || "") === "public";
+    const menuTruthState = normalizeSectionTruthState(menu.truthState || "");
+    return menuSameRestaurant && menuTruthState === "knownEmpty" ? "empty" : "loading";
+  }
   const focus = state?.focus || {};
   const focusRestaurantId = String(focus.restaurantId || "").trim();
-  const sameRestaurant = focusRestaurantId && focusRestaurantId === safeRestaurantId;
+  const sameRestaurant = focusRestaurantId
+    && focusRestaurantId === safeRestaurantId
+    && safeLower(focus.truthSource || "") === "public-menu";
   const focusItems = sameRestaurant && Array.isArray(focus.items) ? focus.items : [];
   if (focusItems.length && focus.enabled !== false) return "ready";
   if (sameRestaurant && focus.loading) return "loading";
-  const focusTruthState = normalizeSectionTruthState(focus.truthState || "");
+  const focusTruthState = sameRestaurant
+    ? normalizeSectionTruthState(focus.truthState || "")
+    : "unknown";
   if (focusTruthState === "knownEmpty") return "empty";
   if (focusTruthState === "unknown") return "loading";
   if (focusTruthState === "seeded") return "ready";
-  const routeFocusState = resolveRoutePayloadSectionState(routePayload, "focus");
-  if (routeFocusState === "knownEmpty") return "empty";
-  if (routeFocusState === "unknown") return "loading";
-  if (routeFocusState === "seeded") return "ready";
   if (sameRestaurant) {
     const error = String(focus.error || "").trim();
     if (error) return "error";
@@ -256,12 +264,19 @@ function resolveContractStatus({
   menuStatus = "loading",
   focusStatus = "loading"
 } = {}) {
+  const resolveMenuExperienceStatus = () => {
+    const safeMenuStatus = safeLower(menuStatus) || "loading";
+    const safeFocusStatus = safeLower(focusStatus) || "loading";
+    if (safeMenuStatus !== "ready") return safeMenuStatus;
+    if (safeFocusStatus === "loading" || safeFocusStatus === "pending") return "loading";
+    return "ready";
+  };
   const tabKey = safeLower(activeTab) || "feed";
   if (tabKey !== "profile") return "ready";
-  if (activeTopTab === "menu") return menuStatus;
+  if (activeTopTab === "menu") return resolveMenuExperienceStatus();
   if (activeTopTab === "landing") return profileStatus;
   if (activeTopTab !== "profile") return "ready";
-  if (activeContentTab === "menu") return menuStatus;
+  if (activeContentTab === "menu") return resolveMenuExperienceStatus();
   if (activeContentTab === "checkins") return focusStatus;
   return profileStatus;
 }
@@ -439,12 +454,7 @@ export function resolveVisibleProfileSurface(state = {}, {
       if (isSettlingProfileSurfaceStatus(postsStatus)) postsStatus = routePayloadPostsStatus;
       if (isSettlingProfileSurfaceStatus(profileStatus)) profileStatus = routePayloadPostsStatus;
     }
-    const routePayloadMenuState = resolveRoutePayloadSectionState(routePayload, "menu");
-    const routePayloadMenuStatus = resolveSectionSurfaceStatusFromTruthState(routePayloadMenuState, "loading");
-    const routePayloadMenuReady = hasRoutePayloadMenuSeed(routePayload);
-    if (routePayloadMenuReady && activeTopTab === "menu" && isSettlingProfileSurfaceStatus(menuStatus)) {
-      menuStatus = routePayloadMenuStatus;
-    }
+    // Route payloads are transport hints; public/menu remains the only menu truth.
   }
   let visibleStatus = normalizeProfileSurfaceStatus(resolveContractStatus({
     activeTab,
@@ -466,6 +476,13 @@ export function resolveVisibleProfileSurface(state = {}, {
       : (startupActiveSurface === "menu" ? menuStatus : profileStatus),
     "loading"
   );
+  const hasPublicMenuCount = safeLower(state?.menu?.source || "") === "public"
+    && String(state?.menu?.restaurantId || "").trim() === targetRestaurantId
+    && Array.isArray(state?.menu?.items);
+  const hasPublicFocusCount = hasPublicMenuCount
+    && safeLower(state?.focus?.truthSource || "") === "public-menu"
+    && String(state?.focus?.restaurantId || "").trim() === targetRestaurantId
+    && Array.isArray(state?.focus?.items);
 
   return {
     target: {
@@ -494,12 +511,12 @@ export function resolveVisibleProfileSurface(state = {}, {
       status: menuStatus,
       restaurantId: targetRestaurantId,
       source: safeLower(state?.menu?.source || ""),
-      count: Array.isArray(state?.menu?.items) ? state.menu.items.length : 0
+      count: hasPublicMenuCount ? state.menu.items.length : 0
     },
     focus: {
       status: focusStatus,
       restaurantId: targetRestaurantId,
-      count: Array.isArray(state?.focus?.items) ? state.focus.items.length : 0
+      count: hasPublicFocusCount ? state.focus.items.length : 0
     },
     activeTab,
     activeTopTab,

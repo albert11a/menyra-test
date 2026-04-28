@@ -626,7 +626,8 @@ export function createAppShellRuntimeController(deps = {}) {
   function getBusinessHeaderMenuCategories(profile = getActiveHeaderProfile()) {
     const restaurantId = String(profile?.restaurantId || "").trim();
     if (!restaurantId || !isRestaurantCafeProfile(profile)) return [];
-    const sameRestaurant = state.menu.restaurantId === restaurantId;
+    const sameRestaurant = state.menu.restaurantId === restaurantId
+      && String(state.menu.source || "").trim().toLowerCase() === "public";
     const items = sameRestaurant && Array.isArray(state.menu?.items)
       ? state.menu.items.filter((item) => isMenuItemVisibleForHeader(item))
       : [];

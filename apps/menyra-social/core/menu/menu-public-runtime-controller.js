@@ -407,6 +407,24 @@ export function createMenuPublicRuntimeController({
     }
   }
 
+  function setMenuCacheEntry(restaurantId, source = "public", items = [], {
+    statusBadgeVisible = state?.menu?.statusBadgeVisible
+  } = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return [];
+    const safeSource = String(source || "public").trim().toLowerCase() || "public";
+    const list = normalizeMenuItemsForRestaurant(items, safeRestaurantId);
+    const nextStatusBadgeVisible = resolveMenuStatusBadgeVisible(statusBadgeVisible);
+    menuCacheMap.set(menuCacheKey(safeRestaurantId, safeSource), {
+      items: list,
+      statusBadgeVisible: nextStatusBadgeVisible,
+      truthSource: safeSource === "public" ? "public-menu" : safeSource,
+      truthState: list.length ? "seeded" : "knownEmpty",
+      ts: Date.now()
+    });
+    return list;
+  }
+
   async function loadLegacyMenuItems(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !getDoc || !db) return [];
@@ -682,8 +700,25 @@ export function createMenuPublicRuntimeController({
       publishedAt: serverTimestamp()
     };
     await setDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "menu"), payload, { merge: true });
+    const publicItems = setMenuCacheEntry(safeRestaurantId, "public", payload.items, {
+      statusBadgeVisible: state?.menu?.statusBadgeVisible
+    });
+    if (
+      state?.menu?.restaurantId === safeRestaurantId
+      && String(state?.menu?.source || "").trim().toLowerCase() === "public"
+    ) {
+      state.menu = {
+        ...state.menu,
+        items: publicItems,
+        loading: false,
+        error: "",
+        routeSeed: false,
+        truthState: publicItems.length ? "seeded" : "knownEmpty"
+      };
+    }
   }
 
+  // Internal migration helper only. Guest-facing menu views must call loadPublicMenuItems.
   async function loadMenuHybrid(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return [];
@@ -706,31 +741,23 @@ export function createMenuPublicRuntimeController({
     return `${restaurantId || ""}::${source || "public"}`;
   }
 
-  function syncMenuCaches(restaurantId, items, { statusBadgeVisible = state?.menu?.statusBadgeVisible } = {}) {
+  function syncMenuCaches(restaurantId, items, {
+    statusBadgeVisible = state?.menu?.statusBadgeVisible,
+    includePublic = false
+  } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return;
-    const list = normalizeMenuItemsForRestaurant(items, safeRestaurantId);
-    const nextStatusBadgeVisible = resolveMenuStatusBadgeVisible(statusBadgeVisible);
-    menuCacheMap.set(menuCacheKey(safeRestaurantId, "collection"), {
-      items: list,
-      statusBadgeVisible: nextStatusBadgeVisible,
-      ts: Date.now()
-    });
-    menuCacheMap.set(menuCacheKey(safeRestaurantId, "public"), {
-      items: list,
-      statusBadgeVisible: nextStatusBadgeVisible,
-      ts: Date.now()
-    });
-    menuCacheMap.set(menuCacheKey(safeRestaurantId, "migration"), {
-      items: list,
-      statusBadgeVisible: nextStatusBadgeVisible,
-      ts: Date.now()
-    });
-    if (state?.menu?.restaurantId === safeRestaurantId) {
+    const list = setMenuCacheEntry(safeRestaurantId, "collection", items, { statusBadgeVisible });
+    setMenuCacheEntry(safeRestaurantId, "migration", items, { statusBadgeVisible });
+    if (includePublic) {
+      setMenuCacheEntry(safeRestaurantId, "public", items, { statusBadgeVisible });
+    }
+    const currentSource = String(state?.menu?.source || "").trim().toLowerCase() || "public";
+    if (state?.menu?.restaurantId === safeRestaurantId && (includePublic || currentSource !== "public")) {
       state.menu = {
         ...state.menu,
         items: list,
-        statusBadgeVisible: nextStatusBadgeVisible,
+        statusBadgeVisible: resolveMenuStatusBadgeVisible(statusBadgeVisible),
         loading: false,
         error: ""
       };

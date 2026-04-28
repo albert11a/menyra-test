@@ -281,22 +281,12 @@ function normalizeIncomingWebRoutePayload(payload = null) {
   const postsItems = postsItemsRaw
     .map((row) => normalizeWebRouteSeedPost(row, restaurantId))
     .filter(Boolean);
-  const menuItemsRaw = Array.isArray(snapshotMenu?.items)
-    ? snapshotMenu.items
-    : (Array.isArray(payload?.menu?.items)
-      ? payload.menu.items
-      : (Array.isArray(payload?.menuItems) ? payload.menuItems : []));
+  const menuItemsRaw = [];
   const menuItems = menuItemsRaw
     .map((row, index) => normalizeWebRouteMenuItem(row, restaurantId, index))
     .filter(Boolean)
     .sort((a, b) => normalizeBootstrapMenuOrderIndex(a?.orderIndex) - normalizeBootstrapMenuOrderIndex(b?.orderIndex));
-  const focusItemsRaw = Array.isArray(snapshotFocus?.items)
-    ? snapshotFocus.items
-    : (Array.isArray(payload?.focus?.items)
-      ? payload.focus.items
-      : (Array.isArray(payload?.highlights?.items)
-        ? payload.highlights.items
-        : []));
+  const focusItemsRaw = [];
   const focusItems = focusItemsRaw
     .map((row, index) => normalizeWebRouteFocusItem(row, index))
     .filter(Boolean)
@@ -312,20 +302,14 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     return "unknown";
   };
   const postsState = resolveSectionTruthState(snapshotPosts?.state ? snapshotPosts : payload?.posts, postsItems.length);
-  const menuState = resolveSectionTruthState(snapshotMenu?.state ? snapshotMenu : payload?.menu, menuItems.length);
-  const focusState = resolveSectionTruthState(snapshotFocus?.state ? snapshotFocus : payload?.focus, focusItems.length);
+  const menuState = "unknown";
+  const focusState = "unknown";
   const requestedPostsCount = Number(snapshotPosts?.count ?? payload?.posts?.count);
-  const requestedMenuCount = Number(snapshotMenu?.count ?? payload?.menu?.count);
-  const requestedFocusCount = Number(snapshotFocus?.count ?? payload?.focus?.count);
   const postsCount = Number.isFinite(requestedPostsCount)
     ? Math.max(postsItems.length, Math.max(0, Math.round(requestedPostsCount)))
     : postsItems.length;
-  const menuCount = Number.isFinite(requestedMenuCount)
-    ? Math.max(menuItems.length, Math.max(0, Math.round(requestedMenuCount)))
-    : menuItems.length;
-  const focusCount = Number.isFinite(requestedFocusCount)
-    ? Math.max(focusItems.length, Math.max(0, Math.round(requestedFocusCount)))
-    : focusItems.length;
+  const menuCount = 0;
+  const focusCount = 0;
   const snapshotVersion = String(
     snapshotPayload?.snapshotVersion
     || payload?.snapshotVersion
@@ -601,7 +585,14 @@ function applyWebDirectRouteSeedFromBootstrap({
       || currentMenuTruthState === "knownempty"
       || currentMenuTruthState === "known-empty"
     );
+  const currentPublicMenuHasItems = currentMenuSettled
+    && String(state?.menu?.source || "").trim().toLowerCase() === "public"
+    && currentMenuTruthState === "seeded"
+    && Array.isArray(state?.menu?.items)
+    && state.menu.items.length > 0;
   const currentFocusSettled = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+    && currentPublicMenuHasItems
+    && String(state?.focus?.truthSource || "").trim().toLowerCase() === "public-menu"
     && (
       currentFocusTruthState === "seeded"
       || currentFocusTruthState === "knownempty"
@@ -625,24 +616,16 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routePostsSeed = Array.isArray(routeSnapshot?.posts?.items)
     ? routeSnapshot.posts.items
     : (Array.isArray(safeRoutePayload?.posts?.items) ? safeRoutePayload.posts.items : []);
-  const routeMenuSeed = Array.isArray(routeSnapshot?.menu?.items)
-    ? routeSnapshot.menu.items
-    : (Array.isArray(safeRoutePayload?.menu?.items) ? safeRoutePayload.menu.items : []);
-  const routeFocusSeed = Array.isArray(routeSnapshot?.focus?.items)
-    ? routeSnapshot.focus.items
-    : (Array.isArray(safeRoutePayload?.focus?.items) ? safeRoutePayload.focus.items : []);
+  const routeMenuSeed = [];
+  const routeFocusSeed = [];
   const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
     ? routeSnapshot.truth
     : (safeRoutePayload?.truth && typeof safeRoutePayload.truth === "object" ? safeRoutePayload.truth : {});
   const routePostsState = normalizeTruthState(routeSnapshot?.posts?.state || safeRoutePayload?.posts?.state || routeTruth?.posts || "", (
     routePostsSeed.length ? "seeded" : "unknown"
   ));
-  const routeMenuState = normalizeTruthState(routeSnapshot?.menu?.state || safeRoutePayload?.menu?.state || routeTruth?.menu || "", (
-    routeMenuSeed.length ? "seeded" : "unknown"
-  ));
-  const routeFocusState = normalizeTruthState(routeSnapshot?.focus?.state || safeRoutePayload?.focus?.state || routeTruth?.focus || "", (
-    routeFocusSeed.length ? "seeded" : "unknown"
-  ));
+  const routeMenuState = "unknown";
+  const routeFocusState = "unknown";
   let resolvedRoutePostsState = routePostsState;
   let resolvedRouteMenuState = routeMenuState;
   let resolvedRouteFocusState = routeFocusState;
@@ -650,8 +633,7 @@ function applyWebDirectRouteSeedFromBootstrap({
     routeIdentity?.name || routeIdentity?.avatar || routeIdentity?.handle
   ) ? "seeded" : "unknown");
   const routeBioState = normalizeTruthState(routeTruth?.bio || "", String(routeIdentity?.bio || "").trim() ? "seeded" : "knownEmpty");
-  const routeFocusEnabled = routeSnapshot?.focus?.enabled !== false
-    && safeRoutePayload?.focus?.enabled !== false;
+  const routeFocusEnabled = true;
   const routeMenuStatusBadgeVisible = routeSnapshot?.menu?.statusBadgeVisible !== false
     && safeRoutePayload?.menu?.statusBadgeVisible !== false;
   const routeLayoutColor = String(safeRoutePayload?.layout?.menuCardColor || "").trim().toLowerCase();
@@ -814,6 +796,7 @@ function applyWebDirectRouteSeedFromBootstrap({
   } else if (resolvedRouteMenuState === "unknown") {
     const currentMenuTruth = String(state?.menu?.truthState || "").trim().toLowerCase();
     const hasSeededMenuTruth = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+      && String(state?.menu?.source || "").trim().toLowerCase() === "public"
       && (currentMenuTruth === "seeded" || currentMenuTruth === "knownempty" || currentMenuTruth === "known-empty");
     if (hasSeededMenuTruth) {
       resolvedRouteMenuState = currentMenuTruth === "seeded" ? "seeded" : "knownEmpty";
@@ -834,6 +817,7 @@ function applyWebDirectRouteSeedFromBootstrap({
       }
     } else {
       const sameRestaurantItems = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+        && String(state?.menu?.source || "").trim().toLowerCase() === "public"
         && Array.isArray(state?.menu?.items)
         ? state.menu.items
         : [];
@@ -877,7 +861,14 @@ function applyWebDirectRouteSeedFromBootstrap({
     changed = true;
   } else if (resolvedRouteFocusState === "unknown") {
     const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
+    const publicMenuHasItemsForFocus = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+      && String(state?.menu?.source || "").trim().toLowerCase() === "public"
+      && String(state?.menu?.truthState || "").trim().toLowerCase() === "seeded"
+      && Array.isArray(state?.menu?.items)
+      && state.menu.items.length > 0;
     const hasSeededFocusTruth = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+      && publicMenuHasItemsForFocus
+      && String(state?.focus?.truthSource || "").trim().toLowerCase() === "public-menu"
       && (currentFocusTruth === "seeded" || currentFocusTruth === "knownempty" || currentFocusTruth === "known-empty");
     if (hasSeededFocusTruth) {
       resolvedRouteFocusState = currentFocusTruth === "seeded" ? "seeded" : "knownEmpty";
@@ -896,6 +887,8 @@ function applyWebDirectRouteSeedFromBootstrap({
       }
     } else {
       const sameRestaurantItems = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+        && publicMenuHasItemsForFocus
+        && String(state?.focus?.truthSource || "").trim().toLowerCase() === "public-menu"
         && Array.isArray(state?.focus?.items)
         ? state.focus.items
         : [];
@@ -978,12 +971,19 @@ function applyWebDirectRouteSeedFromBootstrap({
   }
   if (changed) {
     const activePosts = Array.isArray(view.posts) ? view.posts : [];
+    const hasPublicMenuStateForRoute = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+      && String(state?.menu?.source || "").trim().toLowerCase() === "public"
+      && Array.isArray(state?.menu?.items);
     const menuCount = String(state?.menu?.restaurantId || "").trim() === safeRestaurantId
+      && String(state?.menu?.source || "").trim().toLowerCase() === "public"
       ? (Array.isArray(state?.menu?.items) ? state.menu.items.length : 0)
-      : Math.max(0, Number(routeSnapshot?.menu?.count || safeRoutePayload?.menu?.count || 0) || 0);
-    const focusCount = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+      : 0;
+    const hasPublicFocusStateForRoute = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId
+      && String(state?.focus?.truthSource || "").trim().toLowerCase() === "public-menu"
+      && hasPublicMenuStateForRoute;
+    const focusCount = hasPublicFocusStateForRoute
       ? (Array.isArray(state?.focus?.items) ? state.focus.items.length : 0)
-      : Math.max(0, Number(routeSnapshot?.focus?.count || safeRoutePayload?.focus?.count || 0) || 0);
+      : 0;
     const activePostsCount = activePosts.length > 0
       ? activePosts.length
       : Math.max(0, Number(routeSnapshot?.posts?.count || safeRoutePayload?.posts?.count || 0) || 0);
@@ -1034,7 +1034,7 @@ function applyWebDirectRouteSeedFromBootstrap({
         knownEmpty: resolvedRouteMenuState === "knownEmpty",
         unknown: resolvedRouteMenuState === "unknown",
         count: menuCount,
-        items: Array.isArray(state?.menu?.items) ? state.menu.items : [],
+        items: hasPublicMenuStateForRoute ? state.menu.items : [],
         statusBadgeVisible: state?.menu?.statusBadgeVisible !== false
       },
       focus: {
@@ -1043,7 +1043,7 @@ function applyWebDirectRouteSeedFromBootstrap({
         knownEmpty: resolvedRouteFocusState === "knownEmpty",
         unknown: resolvedRouteFocusState === "unknown",
         count: focusCount,
-        items: Array.isArray(state?.focus?.items) ? state.focus.items : [],
+        items: hasPublicFocusStateForRoute && Array.isArray(state?.focus?.items) ? state.focus.items : [],
         enabled: state?.focus?.enabled !== false
       },
       layout: {
@@ -1102,7 +1102,7 @@ function applyWebDirectRouteSeedFromBootstrap({
         seeded: resolvedRouteMenuState === "seeded",
         knownEmpty: resolvedRouteMenuState === "knownEmpty",
         unknown: resolvedRouteMenuState === "unknown",
-        items: Array.isArray(state?.menu?.items) ? state.menu.items : [],
+        items: hasPublicMenuStateForRoute ? state.menu.items : [],
         statusBadgeVisible: state?.menu?.statusBadgeVisible !== false
       },
       focus: {
@@ -1111,7 +1111,7 @@ function applyWebDirectRouteSeedFromBootstrap({
         seeded: resolvedRouteFocusState === "seeded",
         knownEmpty: resolvedRouteFocusState === "knownEmpty",
         unknown: resolvedRouteFocusState === "unknown",
-        items: Array.isArray(state?.focus?.items) ? state.focus.items : [],
+        items: hasPublicFocusStateForRoute && Array.isArray(state?.focus?.items) ? state.focus.items : [],
         enabled: state?.focus?.enabled !== false
       },
       layout: {
