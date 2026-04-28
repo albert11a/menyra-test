@@ -117,16 +117,19 @@ export function createFocusRuntimeController({
   async function publishFocusItems(restaurantId, items) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !setDoc || !db) return;
+    const normalizedItems = (items || []).map((item) => ({
+      id: item.id || "",
+      title: item.title || "",
+      text: item.text || "",
+      imageUrl: item.imageUrl || "",
+      cropX: clampCropPercent(item.cropX ?? 50, 50),
+      cropY: clampCropPercent(item.cropY ?? 50, 50),
+      active: item.active !== false
+    }));
     const payload = {
-      items: (items || []).map((item) => ({
-        id: item.id || "",
-        title: item.title || "",
-        text: item.text || "",
-        imageUrl: item.imageUrl || "",
-        cropX: clampCropPercent(item.cropX ?? 50, 50),
-        cropY: clampCropPercent(item.cropY ?? 50, 50),
-        active: item.active !== false
-      })),
+      items: normalizedItems,
+      truthSource: "public-menu",
+      truthState: normalizedItems.length ? "seeded" : "knownEmpty",
       updatedAt: serverTimestamp()
     };
     await setDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "offers"), payload, { merge: true });

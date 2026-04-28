@@ -93,6 +93,52 @@ export async function convertLeadToCustomerCore({
       const path = `/${encodeURIComponent(landingSlug)}`;
       return origin ? `${origin}${path}` : path;
     });
+  const buildBusinessUserBootstrapPayload = ({
+    uid = "",
+    email = "",
+    restaurantId = "",
+    restaurant = {},
+    creatorMeta = {}
+  } = {}) => {
+    const safeUid = String(uid || "").trim();
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeUid || !safeRestaurantId) return null;
+    const displayName = String(
+      restaurant.ownerName
+      || restaurant.name
+      || restaurant.restaurantName
+      || email
+      || "Business"
+    ).trim();
+    const actorUid = String(state?.user?.uid || "").trim();
+    const creatorPatch = { ...(creatorMeta || {}) };
+    if (actorUid) {
+      const path = Array.isArray(creatorPatch.ceoPath) ? creatorPatch.ceoPath : [];
+      creatorPatch.ceoPath = Array.from(new Set([...path, actorUid].map((entry) => String(entry || "").trim()).filter(Boolean)));
+      if (!String(creatorPatch.createdByUid || "").trim()) creatorPatch.createdByUid = actorUid;
+      if (!String(creatorPatch.createdByRole || "").trim()) creatorPatch.createdByRole = "ceo";
+    }
+    const payload = {
+      uid: safeUid,
+      role: "business",
+      status: "active",
+      restaurantId: safeRestaurantId,
+      businessName: String(restaurant.name || restaurant.restaurantName || "").trim(),
+      displayName,
+      name: displayName,
+      email: String(email || restaurant.ownerEmail || restaurant.email || "").trim(),
+      logoUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
+      avatarUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
+      publicSlug: String(restaurant.publicSlug || "").trim(),
+      landingSlug: String(restaurant.landingSlug || "").trim(),
+      updatedAt: serverTimestamp(),
+      ...creatorPatch
+    };
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === "") delete payload[key];
+    });
+    return payload;
+  };
 
   try {
     const prevLeadContribution = buildLeadCrmContribution(lead);
@@ -205,6 +251,18 @@ export async function convertLeadToCustomerCore({
       if (Object.keys(ownerPatch).length) {
         ownerPatch.updatedAt = serverTimestamp();
         await setDoc(doc(db, "restaurants", restaurantId), ownerPatch, { merge: true });
+      }
+    }
+    if (socialUid && restaurantId) {
+      const userBootstrapPayload = buildBusinessUserBootstrapPayload({
+        uid: socialUid,
+        email: socialEmail,
+        restaurantId,
+        restaurant: { ...restPayload, ownerEmail: socialEmail, ownerName: lead.contactName || businessName },
+        creatorMeta
+      });
+      if (userBootstrapPayload) {
+        await setDoc(doc(db, "users", socialUid), userBootstrapPayload, { merge: true });
       }
     }
 

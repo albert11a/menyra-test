@@ -119,7 +119,7 @@ export function createSessionTabLifecycleRuntimeController({
       const restaurantId = String(state.userProfile?.restaurantId || "").trim();
       if (!restaurantId) return;
       await Promise.all([
-        loadMenuForRestaurantFn(restaurantId, { source: "collection" }),
+        loadMenuForRestaurantFn(restaurantId, { source: "public" }),
         loadFocusForRestaurantFn(restaurantId)
       ]);
     })().catch((err) => {

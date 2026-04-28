@@ -220,6 +220,59 @@ export async function saveLeadFromModalCore({
       ceoPath
     };
   };
+  const buildBusinessUserBootstrapPayload = ({
+    uid = "",
+    email = "",
+    restaurantId = "",
+    restaurant = {},
+    leadStatus = "",
+    creatorMeta = {},
+    includeCreatedAt = false
+  } = {}) => {
+    const safeUid = String(uid || "").trim();
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeUid || !safeRestaurantId) return null;
+    const statusKey = String(leadStatus || restaurant?.status || "").trim().toLowerCase();
+    const isActive = statusKey === "kunde" || statusKey === "active" || statusKey === "customer";
+    const displayName = String(
+      restaurant.ownerName
+      || restaurant.name
+      || restaurant.restaurantName
+      || email
+      || "Business"
+    ).trim();
+    const actorUid = String(state?.user?.uid || "").trim();
+    const creatorPatch = { ...(creatorMeta || {}) };
+    if (actorUid) {
+      const path = Array.isArray(creatorPatch.ceoPath) ? creatorPatch.ceoPath : [];
+      creatorPatch.ceoPath = Array.from(new Set([...path, actorUid].map((entry) => String(entry || "").trim()).filter(Boolean)));
+      if (!String(creatorPatch.createdByUid || "").trim()) creatorPatch.createdByUid = actorUid;
+      if (!String(creatorPatch.createdByRole || "").trim()) creatorPatch.createdByRole = "ceo";
+    }
+    const payload = {
+      uid: safeUid,
+      role: "business",
+      restaurantId: safeRestaurantId,
+      businessName: String(restaurant.name || restaurant.restaurantName || "").trim(),
+      displayName,
+      name: displayName,
+      email: String(email || restaurant.ownerEmail || restaurant.email || "").trim(),
+      logoUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
+      avatarUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
+      publicSlug: String(restaurant.publicSlug || "").trim(),
+      landingSlug: String(restaurant.landingSlug || "").trim(),
+      updatedAt: getTimestamp(),
+      ...creatorPatch
+    };
+    if (isActive || includeCreatedAt) {
+      payload.status = isActive ? "active" : "pending";
+    }
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === "") delete payload[key];
+    });
+    if (includeCreatedAt) payload.createdAt = getTimestamp();
+    return payload;
+  };
 
   const lead = state.leadModal.lead || {};
   const isInlineCreate = isInlineCreateView();
@@ -453,6 +506,7 @@ export async function saveLeadFromModalCore({
     let socialEmail = lead.socialEmail || "";
     const loginEmail = emailInput || socialEmail || "";
     let loginError = "";
+    const leadStatusKey = normalizeStatus(statusValue) || "registered";
     if (!socialUid && loginEmail && passwordInput) {
       try {
         const user = await createUser(loginEmail, passwordInput);
@@ -474,10 +528,23 @@ export async function saveLeadFromModalCore({
         await setDoc(doc(db, "restaurants", restaurantId), ownerPatch, { merge: true });
       }
     }
+    if (socialUid && restaurantId) {
+      const userBootstrapPayload = buildBusinessUserBootstrapPayload({
+        uid: socialUid,
+        email: loginEmail || socialEmail,
+        restaurantId,
+        restaurant: { ...restPayload, ownerEmail: loginEmail || socialEmail, ownerName: contactName || businessName },
+        leadStatus: leadStatusKey,
+        creatorMeta,
+        includeCreatedAt: !lead.socialUid
+      });
+      if (userBootstrapPayload) {
+        await setDoc(doc(db, "users", socialUid), userBootstrapPayload, { merge: true });
+      }
+    }
 
     const leadRef = lead.id ? doc(db, "leads", lead.id) : doc(collection(db, "leads"));
     const leadId = lead.id || leadRef.id;
-    const leadStatusKey = normalizeStatus(statusValue) || "registered";
     const leadPayload = {
       businessName,
       customerType,

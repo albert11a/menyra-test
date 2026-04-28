@@ -138,6 +138,23 @@ export async function ensureUserProfile(user, overrides = {}) {
       patch.displayName = user.displayName;
     }
 
+    if (!existing.uid) {
+      patch.uid = user.uid;
+    }
+
+    if (!String(existing.status || "").trim()) {
+      patch.status = "active";
+    }
+
+    if (
+      !String(existing.role || "").trim()
+      && !(Array.isArray(existing.roles) && existing.roles.length)
+      && !String(existing.restaurantId || existing.staffRestaurantId || existing.waiterRestaurantId || "").trim()
+      && !String(existing.ceoParentUid || existing.ceoRootUid || existing.createdByRole || "").trim()
+    ) {
+      patch.role = "user";
+    }
+
     if (Object.keys(patch).length) {
       patch.updatedAt = serverTimestamp();
       runNonBlockingUserProfileWrite(
@@ -152,8 +169,11 @@ export async function ensureUserProfile(user, overrides = {}) {
 
   const displayName = overrides.displayName || user.displayName || user.email?.split("@")[0] || "User";
   const payload = {
+    uid: user.uid,
     displayName,
     email: overrides.email || user.email || "",
+    role: overrides.role || "user",
+    status: overrides.status || "active",
     bio: "",
     city: overrides.city || "Prishtina",
     score: 0,
@@ -162,7 +182,6 @@ export async function ensureUserProfile(user, overrides = {}) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
-  if (overrides.role) payload.role = overrides.role;
   if (overrides.avatarUrl) payload.avatarUrl = overrides.avatarUrl;
   await setDoc(ref, payload, { merge: true });
   return payload;

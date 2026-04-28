@@ -55,6 +55,83 @@ export function createAuthSessionStartupCoordinator({
   let firstShellRenderRequested = false;
   let pushOpenTargetMessageHandlerBound = false;
 
+  function setStartupAuthState({
+    authRestoreState = "",
+    profileTruthState = "",
+    sessionTruthState,
+    startupRestoring,
+    actionsLockedUntilAuthReady,
+    trustedCachedAuthUid
+  } = {}) {
+    if (!state || typeof state !== "object") return;
+    const nextAuthRestoreState = String(authRestoreState || "").trim();
+    const nextProfileTruthState = String(profileTruthState || "").trim();
+    if (nextAuthRestoreState) {
+      state.authRestoreState = nextAuthRestoreState;
+      state.__authRestoreState = nextAuthRestoreState;
+    }
+    if (nextProfileTruthState) {
+      state.profileTruthState = nextProfileTruthState;
+      state.__profileTruthState = nextProfileTruthState;
+    }
+    if (sessionTruthState !== undefined) {
+      const nextSessionTruthState = String(sessionTruthState || "").trim();
+      state.sessionTruthState = nextSessionTruthState;
+      state.__sessionTruthState = nextSessionTruthState;
+    }
+    if (startupRestoring !== undefined) {
+      state.startupRestoring = !!startupRestoring;
+    }
+    if (actionsLockedUntilAuthReady !== undefined) {
+      state.actionsLockedUntilAuthReady = !!actionsLockedUntilAuthReady;
+    }
+    if (trustedCachedAuthUid !== undefined) {
+      state.__trustedCachedAuthUid = String(trustedCachedAuthUid || "").trim();
+    }
+  }
+
+  function markProfileTruthLoading() {
+    setStartupAuthState({
+      authRestoreState: "authenticated",
+      profileTruthState: "loading",
+      sessionTruthState: "authenticated",
+      startupRestoring: true,
+      actionsLockedUntilAuthReady: true
+    });
+  }
+
+  function markProfileTruthReady() {
+    setStartupAuthState({
+      authRestoreState: "authenticated",
+      profileTruthState: "ready",
+      sessionTruthState: "authenticated",
+      startupRestoring: false,
+      actionsLockedUntilAuthReady: false,
+      trustedCachedAuthUid: ""
+    });
+  }
+
+  function markProfileTruthError() {
+    setStartupAuthState({
+      authRestoreState: "authenticated",
+      profileTruthState: "error",
+      sessionTruthState: "authenticated",
+      startupRestoring: false,
+      actionsLockedUntilAuthReady: true
+    });
+  }
+
+  function markCachedReturningUser(uid = "") {
+    setStartupAuthState({
+      authRestoreState: "cachedReturningUser",
+      profileTruthState: "cachedStale",
+      sessionTruthState: "cached",
+      startupRestoring: true,
+      actionsLockedUntilAuthReady: true,
+      trustedCachedAuthUid: uid
+    });
+  }
+
   function requestRender(reason = "") {
     if (!firstShellRenderRequested) {
       firstShellRenderRequested = true;
@@ -107,6 +184,7 @@ export function createAuthSessionStartupCoordinator({
     state.__authBootstrapInFlightUid = safeUid;
     if (safeUid) {
       state.__authBootstrapSettledUid = "";
+      markProfileTruthLoading();
     }
   }
 
@@ -125,6 +203,9 @@ export function createAuthSessionStartupCoordinator({
     if (!safeUid || readBootstrapInFlightUid() === safeUid) {
       state.__authBootstrapInFlightUid = "";
     }
+    if (safeUid) {
+      markProfileTruthReady();
+    }
   }
 
   function markPendingAuthRestore(uid = "") {
@@ -139,6 +220,22 @@ export function createAuthSessionStartupCoordinator({
     if (!safeUid || !pendingUid || pendingUid === safeUid) {
       state.__authPendingRestoreUid = "";
     }
+  }
+
+  function createCachedAuthUser(uid = "") {
+    const safeUid = String(uid || "").trim();
+    if (!safeUid) return null;
+    const profile = state?.userProfile && typeof state.userProfile === "object"
+      ? state.userProfile
+      : {};
+    return {
+      uid: safeUid,
+      displayName: String(profile.name || "").trim(),
+      email: String(profile.email || "").trim(),
+      photoURL: String(profile.avatar || "").trim(),
+      __cachedAuthUser: true,
+      __cachedAuthRestoring: true
+    };
   }
 
   function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
@@ -172,8 +269,7 @@ export function createAuthSessionStartupCoordinator({
     return candidate;
   }
 
-  function isWebDirectGuestProfileLaunchActive() {
-    if (state?.user) return false;
+  function isWebDirectProfileLaunchActive() {
     const entry = readWebDirectEntryState();
     if (!entry || entry.active !== true || entry.webPriority !== true) return false;
     const surface = String(entry.surface || "").trim().toLowerCase();
@@ -184,7 +280,20 @@ export function createAuthSessionStartupCoordinator({
     return profileTopTab === "profile" || profileTopTab === "menu";
   }
 
+  function isWebDirectGuestProfileLaunchActive() {
+    if (state?.user) return false;
+    return isWebDirectProfileLaunchActive();
+  }
+
+  function isSafePublicRouteLaunchActive() {
+    return isQrMenuProfileLaunchActive() || isWebDirectProfileLaunchActive();
+  }
+
   function runNonBlockingRouteOpenWithTimeline() {
+    if (state?.user?.__cachedAuthUser === true) {
+      markStartup("non-blocking route open skipped", { reason: "cached-auth-restore" });
+      return { skipped: true };
+    }
     markStartup("non-blocking route open start");
     try {
       return postLoginRouteOpen.openNonBlockingRoutes();
@@ -333,6 +442,14 @@ export function createAuthSessionStartupCoordinator({
   } = {}) {
     suspendRender();
     try {
+      setStartupAuthState({
+        authRestoreState: "pending",
+        profileTruthState: "unknown",
+        sessionTruthState: "pending",
+        startupRestoring: true,
+        actionsLockedUntilAuthReady: true,
+        trustedCachedAuthUid: ""
+      });
       const snapshot = readAuthBootstrapSnapshot();
       setAuthBootstrapSnapshot(snapshot);
       schedulePushOpenTargetMessageHandlerBinding();
@@ -341,9 +458,14 @@ export function createAuthSessionStartupCoordinator({
       }
       setAuthInitialized(false);
       let pendingRestoreUid = "";
+      let routeStateApplied = false;
       if (state?.user) {
         const currentUser = state.user;
+        markProfileTruthLoading();
         primeAuthenticatedShell(currentUser, snapshot);
+        if (hasMeaningfulProfileHint(state.userProfile)) {
+          state.__trustedCachedAuthUid = String(currentUser.uid || "").trim();
+        }
         lastAuthUid = currentUser.uid || "";
       } else {
         const appliedSnapshot = applyAuthBootstrapSnapshot(snapshot);
@@ -352,14 +474,43 @@ export function createAuthSessionStartupCoordinator({
           applyPersistedAuthProfileHints(snapshotUid);
           pendingRestoreUid = snapshotUid;
           markPendingAuthRestore(snapshotUid);
+          lastAuthUid = snapshotUid;
+          applyPendingInitialRouteState();
+          routeStateApplied = true;
+          if (!isSafePublicRouteLaunchActive()) {
+            const cachedUser = createCachedAuthUser(snapshotUid);
+            if (cachedUser) {
+              state.user = cachedUser;
+              loadUserScopedPersisted(cachedUser);
+              primeFastAuthProfileHints(cachedUser, snapshot);
+              if (hasMeaningfulProfileHint(state.userProfile)) {
+                state.user = createCachedAuthUser(snapshotUid);
+                markCachedReturningUser(snapshotUid);
+                applyPendingInitialRouteState();
+              } else {
+                state.user = null;
+                setStartupAuthState({
+                  authRestoreState: "pending",
+                  profileTruthState: "unknown",
+                  sessionTruthState: "pending",
+                  startupRestoring: true,
+                  actionsLockedUntilAuthReady: true,
+                  trustedCachedAuthUid: ""
+                });
+              }
+            }
+          }
         } else {
           markPendingAuthRestore("");
+          lastAuthUid = "";
         }
-        lastAuthUid = snapshotUid;
       }
-      applyPendingInitialRouteState();
+      if (!routeStateApplied) {
+        applyPendingInitialRouteState();
+      }
       const prioritizeGuestSurface = isGuestDeepRouteLaunchActive();
       const webDirectGuestProfileSurface = isWebDirectGuestProfileLaunchActive();
+      const safePublicRouteSurface = isSafePublicRouteLaunchActive();
       if (prioritizeGuestSurface || webDirectGuestProfileSurface) {
         if (webDirectGuestProfileSurface) {
           queueMicrotaskSafe(() => {
@@ -375,7 +526,7 @@ export function createAuthSessionStartupCoordinator({
       }
       requestRender("initialize");
       schedulePerfWarmMark();
-      if (!state?.user && !pendingRestoreUid) {
+      if ((!state?.user && !pendingRestoreUid) || safePublicRouteSurface) {
         scheduleGuestTabEnsure({
           prioritize: false,
           visiblePath: prioritizeGuestSurface || webDirectGuestProfileSurface,
@@ -383,7 +534,7 @@ export function createAuthSessionStartupCoordinator({
           skip: false
         });
       }
-      if (!state?.user && !pendingRestoreUid && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+      if (((!state?.user && !pendingRestoreUid) || safePublicRouteSurface) && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({
@@ -426,6 +577,11 @@ export function createAuthSessionStartupCoordinator({
         || (bootstrapSettledUid === nextUid && state?.auth?.loading === false)
       )
     ) {
+      if (bootstrapSettledUid === nextUid && state?.auth?.loading === false) {
+        markProfileTruthReady();
+      } else {
+        markProfileTruthLoading();
+      }
       primeAuthenticatedShell(user);
       requestRender("auth.sameUserShellSeed");
       return;
@@ -439,8 +595,12 @@ export function createAuthSessionStartupCoordinator({
     }
     applyPendingInitialRouteState();
     if (user) {
+      markProfileTruthLoading();
       markBootstrapInFlight(nextUid);
       primeAuthenticatedShell(user);
+      if (hasMeaningfulProfileHint(state?.userProfile)) {
+        state.__trustedCachedAuthUid = nextUid;
+      }
       schedulePendingRouteReplayWithTimeline();
       requestRender("auth.userShellSeed");
       void (async () => {
@@ -452,6 +612,7 @@ export function createAuthSessionStartupCoordinator({
         } catch (err) {
           reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
           if (isCurrentAuthTransition(transitionSeq, nextUid)) {
+            markProfileTruthError();
             clearBootstrapInFlight(nextUid);
             requestRender("auth.bootstrapFailed");
           }
@@ -460,6 +621,14 @@ export function createAuthSessionStartupCoordinator({
         }
       })();
     } else {
+      setStartupAuthState({
+        authRestoreState: "guest",
+        profileTruthState: "ready",
+        sessionTruthState: "guest",
+        startupRestoring: false,
+        actionsLockedUntilAuthReady: false,
+        trustedCachedAuthUid: ""
+      });
       clearPendingAuthRestore();
       markBootstrapSettled("");
       clearAuthBootstrapSnapshot();

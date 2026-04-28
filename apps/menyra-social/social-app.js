@@ -79,6 +79,7 @@ import {
 } from "./core/auth/auth-startup-state-utils.js";
 import { createPendingRouteStartupState } from "./core/auth/pending-route-startup-state.js";
 import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
+import { resolveStartupRenderGate } from "./core/auth/startup-render-gate-utils.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
   resolveRouteStateFromTargetUrlCore,
@@ -1237,6 +1238,11 @@ const state = {
     error: "",
     open: false
   },
+  authRestoreState: "pending",
+  profileTruthState: "unknown",
+  sessionTruthState: "pending",
+  startupRestoring: true,
+  actionsLockedUntilAuthReady: true,
   runtimeBudgets: {},
   runtimeDegraded: {
     bootstrap: "",
@@ -1994,6 +2000,8 @@ function persistStartupSnapshot(iconRetryCount = 0) {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   const appRoot = document.getElementById("app");
   if (!appRoot) return;
+  if (appRoot.querySelector("[data-startup-render-gate]")) return;
+  if (String(appRoot.dataset?.startupActionsLocked || "").trim() === "1") return;
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
   if (!STARTUP_SNAPSHOT_ALLOWED_TABS.has(activeTabKey)) return;
   if (state.auth?.open) return;
@@ -2040,6 +2048,7 @@ if (typeof window !== "undefined") {
 
 function render(...args) {
   const activeSurfaceSnapshot = syncStartupSurfaceStatus();
+  const startupRenderGate = resolveStartupRenderGate(state);
   const result = renderShell(...args);
   try {
     if (typeof window !== "undefined") {
@@ -2054,6 +2063,8 @@ function render(...args) {
   } catch {}
   if (
     !startupFirstFinalSurfaceRenderMarked
+    && !startupRenderGate.showNeutralShell
+    && !startupRenderGate.actionsLocked
     && STARTUP_SURFACE_FINAL_STATUSES.has(String(activeSurfaceSnapshot?.status || "").trim().toLowerCase())
   ) {
     startupFirstFinalSurfaceRenderMarked = true;
@@ -3986,19 +3997,37 @@ function ensureCommentShape(comment) {
   return getSocialEngagementSupportRuntimeController().ensureCommentShape(...arguments);
 }
 
+function isStartupActionLocked() {
+  if (state?.actionsLockedUntilAuthReady === true) return true;
+  return resolveStartupRenderGate(state).actionsLocked === true;
+}
+
+function canRunConfirmedAuthAction(scope = "") {
+  if (!isStartupActionLocked()) return true;
+  state.__startupLockedAction = {
+    scope: String(scope || "startup.action").trim() || "startup.action",
+    at: Date.now()
+  };
+  return false;
+}
+
 async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0, skipRemote = false } = {}) {
   return socialEngagementRuntimeController.updatePostCounts(...arguments);
 }
 async function addComment(postId, text, replyTo) {
+  if (!canRunConfirmedAuthAction("post.comment.add")) return false;
   return socialEngagementRuntimeController.addComment(...arguments);
 }
 async function togglePostLike(postId) {
+  if (!canRunConfirmedAuthAction("post.like.toggle")) return false;
   return socialEngagementRuntimeController.togglePostLike(...arguments);
 }
 async function toggleMenuItemLike() {
+  if (!canRunConfirmedAuthAction("menu.item.like.toggle")) return false;
   return socialEngagementRuntimeController.toggleMenuItemLike(...arguments);
 }
 async function toggleMenuItemLikeFromCard(itemId, restaurantId = "") {
+  if (!canRunConfirmedAuthAction("menu.card.like.toggle")) return false;
   const safeItemId = String(itemId || "").trim();
   if (!safeItemId) return;
   const safeRestaurantId = String(restaurantId || "").trim();
@@ -4042,6 +4071,7 @@ if (typeof window !== "undefined") {
   window.__MENYRA_TOGGLE_MENU_ITEM_LIKE_FROM_CARD__ = toggleMenuItemLikeFromCard;
 }
 async function reorderMenuItemFromAdmin(sourceItemId, targetItemId) {
+  if (!canRunConfirmedAuthAction("menu.admin.reorder")) return false;
   const sourceId = String(sourceItemId || "").trim();
   const targetId = String(targetItemId || "").trim();
   if (!sourceId || !targetId || sourceId === targetId) return;
@@ -4069,23 +4099,10 @@ async function reorderMenuItemFromAdmin(sourceItemId, targetItemId) {
     orderIndex: idx
   }));
 
-  syncMenuCaches(restaurantId, orderedItems);
+  syncMenuCaches(restaurantId, orderedItems, { includePublic: true });
   render();
 
   try {
-    if (typeof writeBatch === "function" && typeof doc === "function" && db) {
-      const batch = writeBatch(db);
-      orderedItems.forEach((item, idx) => {
-        const id = String(item?.id || "").trim();
-        if (!id) return;
-        batch.set(
-          doc(db, "restaurants", restaurantId, "menuItems", id),
-          { orderIndex: idx, updatedAt: serverTimestamp() },
-          { merge: true }
-        );
-      });
-      await batch.commit();
-    }
     await publishMenuToPublic(restaurantId, orderedItems);
   } catch (err) {
     reportCriticalRuntimeFailure("menu-reorder", err);
@@ -4095,9 +4112,11 @@ if (typeof window !== "undefined") {
   window.__MENYRA_REORDER_MENU_ITEM_FROM_ADMIN__ = reorderMenuItemFromAdmin;
 }
 async function addMenuItemComment(text) {
+  if (!canRunConfirmedAuthAction("menu.item.comment.add")) return false;
   return socialEngagementRuntimeController.addMenuItemComment(...arguments);
 }
 async function toggleCommentLike(postId, commentId, replyId) {
+  if (!canRunConfirmedAuthAction("comment.like.toggle")) return false;
   return socialEngagementRuntimeController.toggleCommentLike(...arguments);
 }
 

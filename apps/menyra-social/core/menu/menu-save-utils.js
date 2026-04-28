@@ -14,7 +14,6 @@ export async function saveMenuItemFromModalCore({
   db,
   normalizeMenuType,
   serverTimestamp,
-  setDoc,
   normalizeMenuItemDoc,
   syncMenuCaches,
   publishMenuToPublic,
@@ -36,7 +35,6 @@ export async function saveMenuItemFromModalCore({
     || !db
     || typeof normalizeMenuType !== "function"
     || typeof serverTimestamp !== "function"
-    || typeof setDoc !== "function"
     || typeof normalizeMenuItemDoc !== "function"
     || typeof syncMenuCaches !== "function"
     || typeof publishMenuToPublic !== "function"
@@ -305,8 +303,6 @@ export async function saveMenuItemFromModalCore({
     };
     if (mode !== "edit") payload.createdAt = serverTimestamp();
 
-    await setDoc(ref, payload, { merge: true });
-
     const nextItems = Array.isArray(state.menu.items) ? state.menu.items.slice() : [];
     const idx = nextItems.findIndex((it) => String(it.id) === String(id));
     const normalized = normalizeMenuItemDoc(payload, id);
@@ -333,18 +329,7 @@ export async function saveMenuItemFromModalCore({
       ...entry,
       orderIndex: idxOrder
     }));
-    await Promise.all(
-      orderedItems.map((entry, idxOrder) => {
-        const entryId = String(entry?.id || "").trim();
-        if (!entryId) return Promise.resolve();
-        return setDoc(
-          doc(db, "restaurants", restaurantId, "menuItems", entryId),
-          { orderIndex: idxOrder },
-          { merge: true }
-        );
-      })
-    );
-    syncMenuCaches(restaurantId, orderedItems);
+    syncMenuCaches(restaurantId, orderedItems, { includePublic: true });
     await publishMenuToPublic(restaurantId, orderedItems);
 
     state.menuModal.status = "Gespeichert.";

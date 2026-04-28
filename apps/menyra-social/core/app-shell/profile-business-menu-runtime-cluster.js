@@ -471,15 +471,18 @@ export function createProfileBusinessMenuRuntimeCluster({
     return ids;
   };
 
-  const hasVisiblePublicMenuItemsForIds = (ids = []) => {
+  const hasSettledVisiblePublicMenuTruthForIds = (ids = []) => {
     if (!state?.menu || typeof state.menu !== "object") return false;
     const menuSource = String(state.menu.source || "").trim().toLowerCase();
     if (menuSource !== "public") return false;
-    const items = Array.isArray(state.menu.items) ? state.menu.items : [];
-    if (!items.length) return false;
     const currentMenuRestaurantId = String(state.menu.restaurantId || "").trim();
     if (!currentMenuRestaurantId) return false;
-    return ids.map((value) => String(value || "").trim()).filter(Boolean).includes(currentMenuRestaurantId);
+    const matchesVisibleId = ids.map((value) => String(value || "").trim()).filter(Boolean).includes(currentMenuRestaurantId);
+    if (!matchesVisibleId) return false;
+    const menuTruthState = String(state.menu.truthState || "").trim().toLowerCase();
+    return menuTruthState === "seeded"
+      || menuTruthState === "knownempty"
+      || menuTruthState === "known-empty";
   };
 
   const hasConfirmedPublicMenuItemsForFocus = (ids = []) => {
@@ -543,7 +546,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const ids = ownBusinessProfileMenuSurface
       ? collectOwnBusinessMenuLoadIds(profile, fallbackId)
       : collectVisibleMenuLoadIds(profile, fallbackId);
-    if (!ids.length || hasVisiblePublicMenuItemsForIds(ids)) return;
+    if (!ids.length || hasSettledVisiblePublicMenuTruthForIds(ids)) return;
     const canonicalMenuRestaurantId = ownBusinessProfileMenuSurface
       ? ids[0]
       : resolveLatestCanonicalMenuRestaurantId(ids[0]);
@@ -556,7 +559,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     }
     for (const restaurantId of ids) {
       if (!isPublicMenuLoadSurface(profile)) return;
-      if (hasVisiblePublicMenuItemsForIds(ids)) return;
+      if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
       const existingFocusRequest = hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)
         ? publicProfileFocusEnsurePromise
         : null;

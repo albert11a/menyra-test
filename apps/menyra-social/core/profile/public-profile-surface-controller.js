@@ -1,3 +1,5 @@
+import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
+
 const SURFACE_STATUSES = new Set(["pending", "loading", "ready", "empty", "error"]);
 const SETTLING_SURFACE_STATUSES = new Set(["pending", "loading"]);
 
@@ -195,65 +197,21 @@ function resolvePostsStatus({
 }
 
 function resolveMenuStatus(state = {}, { restaurantId = "", routePayload = null } = {}) {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  if (!safeRestaurantId) return "ready";
-  const menu = state?.menu || {};
-  const menuRestaurantId = String(menu.restaurantId || "").trim();
-  const sameRestaurant = menuRestaurantId && menuRestaurantId === safeRestaurantId;
-  const menuSource = safeLower(menu.source || "");
-  const hasPublicMenuTruth = !!sameRestaurant && menuSource === "public";
-  const menuItems = hasPublicMenuTruth && Array.isArray(menu.items)
-    ? menu.items
-    : [];
-  if (menuItems.length) return "ready";
-  if (hasPublicMenuTruth) {
-    if (menu.loading) return "loading";
-    const menuTruthState = normalizeSectionTruthState(menu.truthState || "");
-    if (menuTruthState === "knownEmpty") return "empty";
-    if (menuTruthState === "unknown") return "loading";
-    if (menuTruthState === "seeded") return "ready";
-    const error = String(menu.error || "").trim();
-    if (error) return "error";
-    return "empty";
-  }
-  return "loading";
+  const surface = resolveVisiblePublicMenuSurfaceState(state, {
+    restaurantId,
+    routePayload,
+    webDirectEntry: state?.__webDirectEntry
+  });
+  return normalizeProfileSurfaceStatus(surface.menu.status, "loading");
 }
 
 function resolveFocusStatus(state = {}, { restaurantId = "", routePayload = null } = {}) {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  if (!safeRestaurantId) return "ready";
-  const menu = state?.menu || {};
-  const menuHasPublicItems = String(menu.restaurantId || "").trim() === safeRestaurantId
-    && safeLower(menu.source || "") === "public"
-    && normalizeSectionTruthState(menu.truthState || "") === "seeded"
-    && Array.isArray(menu.items)
-    && menu.items.length > 0;
-  if (!menuHasPublicItems) {
-    const menuSameRestaurant = String(menu.restaurantId || "").trim() === safeRestaurantId
-      && safeLower(menu.source || "") === "public";
-    const menuTruthState = normalizeSectionTruthState(menu.truthState || "");
-    return menuSameRestaurant && menuTruthState === "knownEmpty" ? "empty" : "loading";
-  }
-  const focus = state?.focus || {};
-  const focusRestaurantId = String(focus.restaurantId || "").trim();
-  const sameRestaurant = focusRestaurantId
-    && focusRestaurantId === safeRestaurantId
-    && safeLower(focus.truthSource || "") === "public-menu";
-  const focusItems = sameRestaurant && Array.isArray(focus.items) ? focus.items : [];
-  if (focusItems.length && focus.enabled !== false) return "ready";
-  if (sameRestaurant && focus.loading) return "loading";
-  const focusTruthState = sameRestaurant
-    ? normalizeSectionTruthState(focus.truthState || "")
-    : "unknown";
-  if (focusTruthState === "knownEmpty") return "empty";
-  if (focusTruthState === "unknown") return "loading";
-  if (focusTruthState === "seeded") return "ready";
-  if (sameRestaurant) {
-    const error = String(focus.error || "").trim();
-    if (error) return "error";
-    return "empty";
-  }
-  return "loading";
+  const surface = resolveVisiblePublicMenuSurfaceState(state, {
+    restaurantId,
+    routePayload,
+    webDirectEntry: state?.__webDirectEntry
+  });
+  return surface.focus.status === "ready" ? "ready" : "empty";
 }
 
 function resolveContractStatus({
@@ -266,10 +224,7 @@ function resolveContractStatus({
 } = {}) {
   const resolveMenuExperienceStatus = () => {
     const safeMenuStatus = safeLower(menuStatus) || "loading";
-    const safeFocusStatus = safeLower(focusStatus) || "loading";
-    if (safeMenuStatus !== "ready") return safeMenuStatus;
-    if (safeFocusStatus === "loading" || safeFocusStatus === "pending") return "loading";
-    return "ready";
+    return safeMenuStatus;
   };
   const tabKey = safeLower(activeTab) || "feed";
   if (tabKey !== "profile") return "ready";
@@ -441,6 +396,12 @@ export function resolveVisibleProfileSurface(state = {}, {
     restaurantId: targetRestaurantId,
     routePayload
   }), "loading");
+  const menuSurfaceState = resolveVisiblePublicMenuSurfaceState(state, {
+    profile,
+    routePayload,
+    webDirectEntry: state?.__webDirectEntry,
+    restaurantId: targetRestaurantId
+  });
   if (directEntryActive && directEntryOwner === "web-direct") {
     const routePayloadIdentityState = resolveRoutePayloadIdentityState(routePayload);
     const routePayloadIdentityStatus = resolveSectionSurfaceStatusFromTruthState(routePayloadIdentityState, "loading");
@@ -476,14 +437,6 @@ export function resolveVisibleProfileSurface(state = {}, {
       : (startupActiveSurface === "menu" ? menuStatus : profileStatus),
     "loading"
   );
-  const hasPublicMenuCount = safeLower(state?.menu?.source || "") === "public"
-    && String(state?.menu?.restaurantId || "").trim() === targetRestaurantId
-    && Array.isArray(state?.menu?.items);
-  const hasPublicFocusCount = hasPublicMenuCount
-    && safeLower(state?.focus?.truthSource || "") === "public-menu"
-    && String(state?.focus?.restaurantId || "").trim() === targetRestaurantId
-    && Array.isArray(state?.focus?.items);
-
   return {
     target: {
       key: targetRestaurantId || targetUid || targetHandle || "",
@@ -511,12 +464,12 @@ export function resolveVisibleProfileSurface(state = {}, {
       status: menuStatus,
       restaurantId: targetRestaurantId,
       source: safeLower(state?.menu?.source || ""),
-      count: hasPublicMenuCount ? state.menu.items.length : 0
+      count: Array.isArray(menuSurfaceState.menu.items) ? menuSurfaceState.menu.items.length : 0
     },
     focus: {
       status: focusStatus,
       restaurantId: targetRestaurantId,
-      count: hasPublicFocusCount ? state.focus.items.length : 0
+      count: Array.isArray(menuSurfaceState.focus.items) ? menuSurfaceState.focus.items.length : 0
     },
     activeTab,
     activeTopTab,

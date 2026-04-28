@@ -1,3 +1,5 @@
+import { resolveStartupRenderGate } from "../auth/startup-render-gate-utils.js";
+
 export function createAppShellRuntimeController(deps = {}) {
   const {
     state,
@@ -522,6 +524,72 @@ export function createAppShellRuntimeController(deps = {}) {
     const previousMainTab = String(getLastRenderedMainTab() || "").trim();
     const nextTab = String(state?.activeTab || "").trim();
     return !!previousMainTab && !!nextTab && previousMainTab !== nextTab;
+  }
+
+  function isStartupActionLocked() {
+    if (state?.actionsLockedUntilAuthReady === true) return true;
+    return resolveStartupRenderGate(state).actionsLocked === true;
+  }
+
+  function requireConfirmedSessionForMutation(scope = "") {
+    if (!isStartupActionLocked()) return true;
+    const safeScope = String(scope || "startup.action").trim() || "startup.action";
+    if (state && typeof state === "object") {
+      state.__startupLockedAction = {
+        scope: safeScope,
+        at: Date.now()
+      };
+    }
+    return false;
+  }
+
+  function guardConfirmedAuthAction(scope = "", fn = null, fallback = undefined) {
+    return (...args) => {
+      if (!requireConfirmedSessionForMutation(scope)) return fallback;
+      if (typeof fn !== "function") return fallback;
+      return fn(...args);
+    };
+  }
+
+  function renderStartupNeutralShell(gate = null) {
+    const safeReason = escapeHtml(String(gate?.reason || "startup-render-gate").trim() || "startup-render-gate");
+    return `
+      <div class="app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans" data-startup-render-gate="${safeReason}">
+        <main class="app-main-scroll" aria-busy="true" aria-label="Mnyra wird geladen">
+          <section class="p-6 pb-24">
+            <div class="flex items-center justify-between mb-8">
+              <div class="w-14 h-14 rounded-3xl bg-white border border-slate-100 shadow-sm overflow-hidden p-4">
+                <div class="w-full h-0.5 rounded-full bg-slate-200 animate-pulse mb-1.5"></div>
+                <div class="w-2/3 h-0.5 rounded-full bg-slate-200 animate-pulse mb-1.5"></div>
+                <div class="w-5/6 h-0.5 rounded-full bg-slate-200 animate-pulse"></div>
+              </div>
+              <div class="text-center">
+                <div class="h-7 w-28 rounded-xl bg-slate-200 animate-pulse"></div>
+                <div class="h-2.5 w-14 rounded-full bg-slate-200 animate-pulse mx-auto mt-2"></div>
+              </div>
+              <div class="w-14 h-14 rounded-3xl bg-white border border-slate-100 shadow-sm overflow-hidden p-1">
+                <div class="w-full h-full rounded-[1.4rem] bg-slate-200 animate-pulse"></div>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="rounded-[2rem] bg-white border border-slate-100 shadow-sm p-4">
+                <div class="h-36 rounded-[1.5rem] bg-slate-200 animate-pulse"></div>
+                <div class="mt-4 h-4 w-2/3 rounded-full bg-slate-200 animate-pulse"></div>
+                <div class="mt-3 h-3 w-5/6 rounded-full bg-slate-100 animate-pulse"></div>
+              </div>
+              <div class="rounded-[2rem] bg-white border border-slate-100 shadow-sm p-4">
+                <div class="h-4 w-1/2 rounded-full bg-slate-200 animate-pulse"></div>
+                <div class="mt-4 grid grid-cols-3 gap-3">
+                  <div class="h-20 rounded-2xl bg-slate-100 animate-pulse"></div>
+                  <div class="h-20 rounded-2xl bg-slate-100 animate-pulse"></div>
+                  <div class="h-20 rounded-2xl bg-slate-100 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    `;
   }
 
   function renderHeaderActionButton(avatarUrl, avatarFit) {
@@ -1359,6 +1427,9 @@ export function createAppShellRuntimeController(deps = {}) {
       setRenderQueued(true);
       return;
     }
+    const startupRenderGate = resolveStartupRenderGate(state);
+    const startupActionsLocked = startupRenderGate.actionsLocked === true;
+    const startupInteractionSafety = String(startupRenderGate.interactionSafety || "").trim() || "fullyInteractive";
     if (shouldResetDrawerStateBeforeRender()) {
       state.drawerOpen = false;
     }
@@ -1374,7 +1445,10 @@ export function createAppShellRuntimeController(deps = {}) {
     let nextHtml = "";
     let mode = "";
     const showGuestAuth = !state.user && !!state.auth.open;
-    if (showGuestAuth) {
+    if (startupRenderGate.showNeutralShell) {
+      nextHtml = renderStartupNeutralShell(startupRenderGate);
+      mode = "startup";
+    } else if (showGuestAuth) {
       nextHtml = renderAuthScreen();
       mode = "auth";
     } else {
@@ -1435,6 +1509,8 @@ export function createAppShellRuntimeController(deps = {}) {
           appEl.innerHTML = nextHtml;
         }
         appEl.removeAttribute("aria-busy");
+        appEl.dataset.startupInteractionSafety = startupInteractionSafety;
+        appEl.dataset.startupActionsLocked = startupActionsLocked ? "1" : "0";
       }
       setLastAppHtml(nextHtml);
       setLastRenderMode(mode);
@@ -1510,11 +1586,20 @@ export function createAppShellRuntimeController(deps = {}) {
       if (mode === "main") setLastRenderedMainTab(state.activeTab);
       else setLastRenderedMainTab("");
     }
+    if (appEl && !changed) {
+      appEl.dataset.startupInteractionSafety = startupInteractionSafety;
+      appEl.dataset.startupActionsLocked = startupActionsLocked ? "1" : "0";
+    }
     lastFeedLocationRenderKey = currentFeedLocationRenderKey;
 
-    const nextHeaderRuntimeMode = shouldUseSmartHeader() ? "smart" : "business-tabs";
+    const nextHeaderRuntimeMode = mode === "startup"
+      ? "startup"
+      : (shouldUseSmartHeader() ? "smart" : "business-tabs");
     if (changed || nextHeaderRuntimeMode !== lastHeaderRuntimeMode) {
-      if (nextHeaderRuntimeMode === "smart") {
+      if (nextHeaderRuntimeMode === "startup") {
+        stopBusinessTopTabsPinSync();
+        stopSmartHeaderVisibilitySync();
+      } else if (nextHeaderRuntimeMode === "smart") {
         stopBusinessTopTabsPinSync();
         initSmartHeaderVisibilitySync();
       } else {
@@ -1603,11 +1688,13 @@ export function createAppShellRuntimeController(deps = {}) {
             const cred = await createUserWithEmailAndPasswordFn(auth, email, password);
             await updateProfileFn(cred.user, { displayName: name });
             await setDocFn(docFn(db, "users", cred.user.uid), {
+              uid: cred.user.uid,
               displayName: name,
               handle: normalizeHandleFn(name),
               city: "Prishtina",
               email,
               role: "user",
+              status: "active",
               bio: "",
               score: 0,
               followersCount: 0,
@@ -1678,6 +1765,7 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function bindAppEvents() {
+    const confirmed = guardConfirmedAuthAction;
     return bindAppEventsMainCoreFn({
       documentObj: doc,
       state,
@@ -1704,28 +1792,28 @@ export function createAppShellRuntimeController(deps = {}) {
       ensureMenuDataForProfileFn: (...args) => runBudgetWrapped("menu_open", () => ensureMenuDataForProfileFn(...args)),
       ensureFocusDataForProfileFn,
       bindAppMenuFocusEventsCoreFn,
-      saveMenuLayoutToStorageFn,
-      openMenuModalFn,
-      deleteMenuItemByIdFn,
+      saveMenuLayoutToStorageFn: confirmed("menu.layout.save", saveMenuLayoutToStorageFn),
+      openMenuModalFn: confirmed("menu.editor.open", openMenuModalFn),
+      deleteMenuItemByIdFn: confirmed("menu.item.delete", deleteMenuItemByIdFn),
       triggerMenuDetailOpenFromGestureFn,
       updateShopCartQuantityFn: (...args) => runBudgetWrapped("add_to_cart", () => updateShopCartQuantityFn(...args)),
       updateShopCartItemCommentFn,
       openShopCheckoutFn,
       submitShopCheckoutFn,
       updateShopCheckoutFieldFn,
-      saveTableQrConfigFn,
+      saveTableQrConfigFn: confirmed("table.qr.save", saveTableQrConfigFn),
       menuCache,
       menuCacheKeyFn,
-      saveMenuStatusBadgeVisibleFn,
+      saveMenuStatusBadgeVisibleFn: confirmed("menu.statusBadge.save", saveMenuStatusBadgeVisibleFn),
       focusCache,
       focusCacheKeyFn,
-      saveFocusEnabledFn,
-      openFocusModalFn,
-      deleteFocusItemByIdFn,
+      saveFocusEnabledFn: confirmed("focus.enabled.save", saveFocusEnabledFn),
+      openFocusModalFn: confirmed("focus.editor.open", openFocusModalFn),
+      deleteFocusItemByIdFn: confirmed("focus.item.delete", deleteFocusItemByIdFn),
       setFocusIndexFn,
       toggleProfilePostMenuFn,
-      toggleProfilePostWidthFn,
-      deleteProfilePostFn,
+      toggleProfilePostWidthFn: confirmed("profile.post.layout", toggleProfilePostWidthFn),
+      deleteProfilePostFn: confirmed("profile.post.delete", deleteProfilePostFn),
       setProfileMenuOpenFn,
       profileMenuBound: !!getProfileMenuBound(),
       setProfileMenuBoundFn: (next) => {
@@ -1735,16 +1823,16 @@ export function createAppShellRuntimeController(deps = {}) {
       bindNotificationsDelegationFn,
       bindAppSettingsProfileEventsCoreFn,
       iconFn: icon,
-      saveAccountSettingsFn,
+      saveAccountSettingsFn: confirmed("profile.settings.save", saveAccountSettingsFn),
       openLocationPickerFn,
       clearVerifiedMapLocationFn,
-      syncNotificationsPushRuntimeFn,
-      saveSettingsFn,
-      disablePushDeviceRegistrationFn,
+      syncNotificationsPushRuntimeFn: confirmed("settings.push.sync", syncNotificationsPushRuntimeFn, false),
+      saveSettingsFn: confirmed("settings.save", saveSettingsFn),
+      disablePushDeviceRegistrationFn: confirmed("settings.push.disable", disablePushDeviceRegistrationFn),
       getPushActivationIssueMessageFn,
-      saveUserProfileToStorageFn,
-      persistPrivateAccountSettingFn,
-      uploadAvatarFn,
+      saveUserProfileToStorageFn: confirmed("profile.storage.save", saveUserProfileToStorageFn),
+      persistPrivateAccountSettingFn: confirmed("profile.private.persist", persistPrivateAccountSettingFn),
+      uploadAvatarFn: confirmed("profile.avatar.upload", uploadAvatarFn),
       openProfileViewFromBusinessFn: (...args) => runBudgetWrapped("profile_open", () => openProfileViewFromBusinessFn(...args)),
       findPostByIdFn,
       openPostModalFn,
@@ -1752,34 +1840,34 @@ export function createAppShellRuntimeController(deps = {}) {
       setProfileViewUnsubFn: (next) => {
         setProfileViewUnsub(next);
       },
-      toggleFollowFn,
+      toggleFollowFn: confirmed("profile.follow.toggle", toggleFollowFn),
       alertFn,
       bindAppChatUploadEventsCoreFn,
       openChatWithProfileFn,
-      deleteChatThreadByIdFn,
-      setChatThreadArchivedByIdFn,
+      deleteChatThreadByIdFn: confirmed("chat.thread.delete", deleteChatThreadByIdFn),
+      setChatThreadArchivedByIdFn: confirmed("chat.thread.archive", setChatThreadArchivedByIdFn),
       closeChatModalFn,
-      toggleChatMessageSavedFn,
-      toggleChatMessageLikedFn,
-      removePendingChatAttachmentFn,
-      addChatAttachmentsFn,
-      sendChatMessageFn,
+      toggleChatMessageSavedFn: confirmed("chat.message.save", toggleChatMessageSavedFn),
+      toggleChatMessageLikedFn: confirmed("chat.message.like", toggleChatMessageLikedFn),
+      removePendingChatAttachmentFn: confirmed("chat.attachment.remove", removePendingChatAttachmentFn),
+      addChatAttachmentsFn: confirmed("chat.attachment.add", addChatAttachmentsFn, false),
+      sendChatMessageFn: confirmed("chat.message.send", sendChatMessageFn),
       scrollChatMessagesToBottomFn,
       queueMicrotaskFn,
-      handleUploadPostFn,
+      handleUploadPostFn: confirmed("post.upload.create", handleUploadPostFn),
       bindCrmStaffEventsCoreFn,
-      openLeadCreatorFn,
-      openLeadSettingsViewFn,
+      openLeadCreatorFn: confirmed("lead.create.open", openLeadCreatorFn),
+      openLeadSettingsViewFn: confirmed("lead.settings.open", openLeadSettingsViewFn),
       closeLeadSubviewFn,
-      saveLeadSettingsFn,
+      saveLeadSettingsFn: confirmed("lead.settings.save", saveLeadSettingsFn),
       isLeadInlineCreateViewFn,
       bindLeadInlineCreateEventsCoreFn,
-      deleteLeadFromModalFn,
-      saveLeadFromModalFn,
+      deleteLeadFromModalFn: confirmed("lead.delete", deleteLeadFromModalFn),
+      saveLeadFromModalFn: confirmed("lead.save", saveLeadFromModalFn),
       syncLeadDerivedFieldsFn,
-      addLeadModalLocationRowFn,
-      removeLeadModalLocationRowFn,
-      syncLeadModalDraftFromFormFn,
+      addLeadModalLocationRowFn: confirmed("lead.location.add", addLeadModalLocationRowFn),
+      removeLeadModalLocationRowFn: confirmed("lead.location.remove", removeLeadModalLocationRowFn),
+      syncLeadModalDraftFromFormFn: confirmed("lead.modal.sync", syncLeadModalDraftFromFormFn),
       normalizeLeadLocationsFn,
       createLeadLocationFn,
       parseCoordsFromAddressInputFn,
@@ -1790,17 +1878,17 @@ export function createAppShellRuntimeController(deps = {}) {
       refineLeadLocationAddressIndexFn,
       normalizeLeadScopeKeyFn,
       loadLeadsFn,
-      openLeadModalFn,
+      openLeadModalFn: confirmed("lead.modal.open", openLeadModalFn),
       normalizeCustomerScopeKeyFn,
       loadCustomersFn,
-      openCustomerModalFn,
+      openCustomerModalFn: confirmed("customer.modal.open", openCustomerModalFn),
       closeStaffEditorFn,
-      openStaffEditorFn,
+      openStaffEditorFn: confirmed("staff.editor.open", openStaffEditorFn),
       syncStaffDerivedEmailFieldFn,
       normalizeCeoCountryFn,
       syncStaffFormFromDomFn,
-      saveCeoStaffFromViewFn,
-      deleteCeoStaffFromViewFn,
+      saveCeoStaffFromViewFn: confirmed("staff.save", saveCeoStaffFromViewFn),
+      deleteCeoStaffFromViewFn: confirmed("staff.delete", deleteCeoStaffFromViewFn),
       bindImageFallbacksFn: bindImageFallbacks,
       bindCrmAutoLoadObserverFn: bindCrmAutoLoadObserver,
       bindSearchEventsFn: bindSearchEvents

@@ -697,6 +697,10 @@ export function createMenuPublicRuntimeController({
         imageUrl: item.imageUrl || null,
         imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : []
       })),
+      statusBadgeVisible: resolveMenuStatusBadgeVisible(state?.menu?.statusBadgeVisible),
+      menuTruthSource: "public-menu",
+      menuTruthState: orderedItems.length ? "seeded" : "knownEmpty",
+      updatedAt: serverTimestamp(),
       publishedAt: serverTimestamp()
     };
     await setDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "menu"), payload, { merge: true });

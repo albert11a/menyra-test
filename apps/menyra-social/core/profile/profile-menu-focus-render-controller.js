@@ -3,6 +3,10 @@ import {
   isSettlingProfileSurfaceStatus,
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
+import {
+  normalizePublicMenuTruthState,
+  resolveVisiblePublicMenuSurfaceState
+} from "./public-menu-surface-state-utils.js";
 
 export function createProfileMenuFocusRenderController(deps = {}) {
   const state = deps.state;
@@ -69,19 +73,11 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   };
 
 function resolveMenuSurfaceRestaurantId(profile = null, routePayload = null) {
-  const safeProfile = profile && typeof profile === "object" ? profile : {};
-  const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : {};
-  const routeSnapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
-    ? safeRoutePayload.businessSnapshot
-    : {};
-  return String(
-    safeProfile.canonicalRestaurantId
-    || safeRoutePayload.canonicalRestaurantId
-    || routeSnapshot.restaurantId
-    || safeProfile.restaurantId
-    || safeRoutePayload.restaurantId
-    || ""
-  ).trim();
+  return resolveVisiblePublicMenuSurfaceState(state, {
+    profile,
+    routePayload,
+    webDirectEntry: state?.__webDirectEntry
+  }).restaurantId;
 }
 
 function buildMenuSurfaceProfile(profile = null, restaurantId = "") {
@@ -102,56 +98,25 @@ function buildMenuSurfaceProfile(profile = null, restaurantId = "") {
 function hasConfirmedPublicMenuItemsForRestaurant(restaurantId = "") {
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId) return false;
-  const menu = state?.menu || {};
-  const menuTruthState = String(menu.truthState || "").trim().toLowerCase();
-  return String(menu.restaurantId || "").trim() === safeRestaurantId
-    && String(menu.source || "").trim().toLowerCase() === "public"
-    && menuTruthState === "seeded"
-    && Array.isArray(menu.items)
-    && menu.items.length > 0;
+  const surface = resolveVisiblePublicMenuSurfaceState(state, {
+    profile: state?.profileView?.profile || state?.userProfile,
+    routePayload: state?.profileView?.routePayload,
+    webDirectEntry: state?.__webDirectEntry,
+    restaurantId: safeRestaurantId
+  });
+  return surface.menu.status === "ready";
 }
 
 function hasPublicFocusTruthForRestaurant(restaurantId = "") {
   const safeRestaurantId = String(restaurantId || "").trim();
-  if (!hasConfirmedPublicMenuItemsForRestaurant(safeRestaurantId)) return false;
-  const focus = state?.focus || {};
-  return String(focus.restaurantId || "").trim() === safeRestaurantId
-    && String(focus.truthSource || "").trim().toLowerCase() === "public-menu";
-}
-
-function normalizePublicMenuTruthState(value = "") {
-  const key = String(value || "").trim().toLowerCase();
-  if (key === "knownempty" || key === "known-empty") return "knownEmpty";
-  if (key === "seeded") return "seeded";
-  if (key === "unknown") return "unknown";
-  return key;
-}
-
-function hasSettledPublicFocusTruthForRestaurant(restaurantId = "") {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  if (!hasPublicFocusTruthForRestaurant(safeRestaurantId)) return false;
-  const focusTruthState = normalizePublicMenuTruthState(state?.focus?.truthState || "");
-  return focusTruthState === "seeded" || focusTruthState === "knownEmpty";
-}
-
-function resolvePublicMenuExperienceState(restaurantId = "") {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  const menu = state?.menu || {};
-  const samePublicMenu = !!safeRestaurantId
-    && String(menu.restaurantId || "").trim() === safeRestaurantId
-    && String(menu.source || "").trim().toLowerCase() === "public";
-  const menuTruthState = samePublicMenu
-    ? normalizePublicMenuTruthState(menu.truthState || "")
-    : "unknown";
-  if (!samePublicMenu) {
-    return { ready: false, menuTruthState, focusReady: false };
-  }
-  if (menuTruthState === "knownEmpty") {
-    return { ready: true, menuTruthState, focusReady: true };
-  }
-  const focusReady = menuTruthState === "seeded"
-    && hasSettledPublicFocusTruthForRestaurant(safeRestaurantId);
-  return { ready: focusReady, menuTruthState, focusReady };
+  if (!safeRestaurantId) return false;
+  const surface = resolveVisiblePublicMenuSurfaceState(state, {
+    profile: state?.profileView?.profile || state?.userProfile,
+    routePayload: state?.profileView?.routePayload,
+    webDirectEntry: state?.__webDirectEntry,
+    restaurantId: safeRestaurantId
+  });
+  return surface.focus.canRenderFocus;
 }
 
 function formatMenuItemPrice(item = {}) {
@@ -1564,13 +1529,18 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
   `;
 }
 
-function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
+function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMenuSurfaceState = null } = {}) {
   const allItems = sortMenuItemsByOrder(Array.isArray(items) ? items : []);
   const restaurantId = String(profile?.restaurantId || "").trim();
   const canUseFocusState = mode === "admin" || hasPublicFocusTruthForRestaurant(restaurantId);
-  const focusState = restaurantId && canUseFocusState
+  const focusState = publicMenuSurfaceState?.focus?.canRenderFocus
+    ? {
+      items: Array.isArray(publicMenuSurfaceState.focus.items) ? publicMenuSurfaceState.focus.items : [],
+      enabled: true
+    }
+    : (restaurantId && canUseFocusState
     ? getFocusStateForRestaurant(restaurantId)
-    : { items: [], enabled: false };
+    : { items: [], enabled: false });
   const focusItemsFromState = focusState.enabled
     ? (Array.isArray(focusState.items) ? focusState.items : []).map((item) => buildFocusCardItem({
       ...item,
@@ -1926,21 +1896,25 @@ function renderFocusCarousel(profile, {
   const restaurantId = String(restaurantIdOverride || profile?.canonicalRestaurantId || profile?.restaurantId || "").trim();
   if (!restaurantId) return "";
   if (!isRestaurantCafeProfile(profile)) return "";
-  if (requirePublicMenuTruth && !hasConfirmedPublicMenuItemsForRestaurant(restaurantId)) return "";
-  const hasPublicFocusTruth = !requirePublicMenuTruth || hasPublicFocusTruthForRestaurant(restaurantId);
+  const surface = resolveVisiblePublicMenuSurfaceState(state, {
+    profile,
+    routePayload: state?.profileView?.routePayload,
+    webDirectEntry: state?.__webDirectEntry,
+    restaurantId
+  });
+  if (requirePublicMenuTruth && surface.menu.status !== "ready") return "";
+  const hasPublicFocusTruth = !requirePublicMenuTruth || surface.focus.canRenderFocus;
   if (allowAutoEnsure && !state.focus.loading && !hasPublicFocusTruth) {
     ensureFocusDataForProfile(buildMenuSurfaceProfile(profile, restaurantId));
   }
-  if (requirePublicMenuTruth && !hasPublicFocusTruth) {
-    if (state.focus?.restaurantId !== restaurantId || !state.focus?.loading || suppressLoading) return "";
-    const focusCardClass = getFocusCardClass();
-    return `
-      <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm">
-        <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div>
-      </div>
-    `;
-  }
-  const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId);
+  if (requirePublicMenuTruth && !hasPublicFocusTruth) return "";
+  const { items, loading } = hasPublicFocusTruth
+    ? {
+      items: Array.isArray(surface.focus.items) ? surface.focus.items : [],
+      loading: surface.focus.loading
+    }
+    : getFocusStateForRestaurant(restaurantId);
+  const enabled = hasPublicFocusTruth ? true : getFocusStateForRestaurant(restaurantId).enabled;
   if (!enabled) return "";
   if (!items.length && !loading) return "";
   if (suppressLoading && loading && !items.length) return "";
@@ -2101,7 +2075,7 @@ function renderMenuAdminView() {
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
   const sameRestaurant = restaurantId && state.menu.restaurantId === restaurantId;
   const menuSource = String(state.menu.source || "").trim().toLowerCase();
-  const hasAuthoringMenuTruth = !!sameRestaurant && menuSource === "collection";
+  const hasAuthoringMenuTruth = !!sameRestaurant && menuSource === "public";
   const isLoading = restaurantId && (state.menu.loading || !hasAuthoringMenuTruth);
   const rawItems = hasAuthoringMenuTruth
     ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: state.menu.query })
@@ -2185,7 +2159,15 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
     ? state.profileView.routePayload
     : null;
-  const restaurantId = resolveMenuSurfaceRestaurantId(profile, routePayload);
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    ? state.__webDirectEntry
+    : null;
+  const menuSurfaceState = resolveVisiblePublicMenuSurfaceState(state, {
+    profile,
+    routePayload,
+    webDirectEntry
+  });
+  const restaurantId = menuSurfaceState.restaurantId || resolveMenuSurfaceRestaurantId(profile, routePayload);
   if (!restaurantId) {
     return `
       <div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
@@ -2194,43 +2176,15 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     `;
   }
   const surfaceProfile = buildMenuSurfaceProfile(profile, restaurantId);
-  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
-    ? state.__webDirectEntry
-    : null;
   const webDirectEntryRestaurantId = String(
     webDirectEntry?.canonicalRestaurantId
     || webDirectEntry?.restaurantId
     || ""
   ).trim();
-  const webDirectSurfaceTargetIds = new Set(
-    [
-      webDirectEntry?.canonicalRestaurantId,
-      webDirectEntry?.restaurantId,
-      profile?.canonicalRestaurantId,
-      profile?.restaurantId,
-      routePayload?.canonicalRestaurantId,
-      routePayload?.restaurantId,
-      routePayload?.businessSnapshot?.restaurantId
-    ]
-      .map((value) => String(value || "").trim())
-      .filter(Boolean)
-  );
-  const menuRestaurantId = String(state?.menu?.restaurantId || "").trim();
-  const focusRestaurantId = String(state?.focus?.restaurantId || "").trim();
-  const menuSource = String(state.menu.source || "").trim().toLowerCase();
-  const hasStrictMenuSurfaceMatch = !!menuRestaurantId && menuRestaurantId === restaurantId;
-  const hasMenuSurfaceMatch = hasStrictMenuSurfaceMatch
-    || (
-      !!menuRestaurantId
-      && webDirectSurfaceTargetIds.has(menuRestaurantId)
-    );
-  const hasStrictFocusSurfaceMatch = !!focusRestaurantId && focusRestaurantId === restaurantId;
-  const hasStrictPublicMenuTruth = hasStrictMenuSurfaceMatch && menuSource === "public";
-  const menuTruthState = String(state?.menu?.truthState || "").trim().toLowerCase();
-  const currentFocusTruth = String(state?.focus?.truthState || "").trim().toLowerCase();
-  const hasConfirmedPublicMenuItems = hasConfirmedPublicMenuItemsForRestaurant(restaurantId);
-  const hasPublicFocusTruth = hasPublicFocusTruthForRestaurant(restaurantId);
-  const publicMenuExperienceState = resolvePublicMenuExperienceState(restaurantId);
+  const webDirectSurfaceTargetIds = new Set(menuSurfaceState.targetIds);
+  const currentFocusTruth = normalizePublicMenuTruthState(menuSurfaceState.focus.truthState || "");
+  const hasConfirmedPublicMenuItems = menuSurfaceState.menu.status === "ready";
+  const hasPublicFocusTruth = menuSurfaceState.focus.canRenderFocus;
   const isLandingMode = mode === "landing";
   const menuAccessSource = String(
     state?.profileView?.menuAccessSource
@@ -2249,22 +2203,14 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       || webDirectSurfaceTargetIds.has(restaurantId)
     );
   const isNormalWebDirectFirstVisibleMenuPath = isWebDirectFirstVisibleMenuPath && !isQrMenuAccess;
-  const hasSettledPublicMenuTruth = hasStrictPublicMenuTruth
-    && (
-      menuTruthState === "seeded"
-      || menuTruthState === "knownempty"
-      || menuTruthState === "known-empty"
-    );
+  const hasSettledPublicMenuTruth = ["ready", "empty", "error"].includes(menuSurfaceState.menu.status);
   const skipFirstVisibleMenuEnsure = isWebDirectFirstVisibleMenuPath
     && hasSettledPublicMenuTruth;
-  const skipFirstVisibleFocusEnsure = isWebDirectFirstVisibleMenuPath && publicMenuExperienceState.focusReady;
-  const hasSettledFocusTruth = hasStrictFocusSurfaceMatch
-    && publicMenuExperienceState.focusReady
-    && (
-      currentFocusTruth === "seeded"
-      || currentFocusTruth === "knownempty"
-      || currentFocusTruth === "known-empty"
-    );
+  const skipFirstVisibleFocusEnsure = isWebDirectFirstVisibleMenuPath
+    && (menuSurfaceState.focus.status === "ready" || menuSurfaceState.menu.status !== "ready");
+  const hasSettledFocusTruth = menuSurfaceState.focus.status === "ready"
+    || currentFocusTruth === "knownEmpty"
+    || menuSurfaceState.menu.status !== "ready";
   if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
     ensureMenuDataForProfile(surfaceProfile);
   }
@@ -2277,16 +2223,16 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   ) {
     ensureFocusDataForProfile(surfaceProfile);
   }
-  const items = hasStrictPublicMenuTruth
-    ? sortMenuItemsByOrder(getFilteredMenuItems(state.menu.items, { filter: "all", query: "" }))
+  const items = menuSurfaceState.menu.canRenderItems
+    ? sortMenuItemsByOrder(getFilteredMenuItems(menuSurfaceState.menu.items, { filter: "all", query: "" }))
       .filter((item) => !isMenuItemHidden(item))
     : [];
   const hasItems = items.length > 0;
   const isShop = isShopCatalogProfile(profile);
   const catalogLabel = getBusinessCatalogLabel(profile);
-  const error = hasStrictPublicMenuTruth ? state.menu.error : "";
+  const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
-  const isLoading = !publicMenuExperienceState.ready && !(hasError && !state.menu.loading);
+  const isLoading = menuSurfaceState.menu.status === "loading";
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
@@ -2299,9 +2245,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   }
   const testfirstFocusItemsFromState = restaurantId && hasPublicFocusTruth
     ? (() => {
-      const focusState = getFocusStateForRestaurant(restaurantId);
-      if (!focusState.enabled) return [];
-      return (Array.isArray(focusState.items) ? focusState.items : [])
+      return (Array.isArray(menuSurfaceState.focus.items) ? menuSurfaceState.focus.items : [])
         .map((item) => buildFocusCardItem({
           ...item,
           objectPosition: getFocusItemObjectPosition(item)
@@ -2323,7 +2267,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
         ` : `
           ${hasItems
-            ? renderTestfirstMenuContent(surfaceProfile, items, { mode })
+            ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">Menu konnte nicht geladen werden</div>`
               : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`))
@@ -2337,7 +2281,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     <div class="app-content-inline app-main-content-safe space-y-5">
       ${renderFocusCarousel(surfaceProfile, {
         restaurantId,
-        suppressLoading: isLoading,
+        suppressLoading: true,
         allowAutoEnsure: hasConfirmedPublicMenuItems && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth),
         requirePublicMenuTruth: true
       })}

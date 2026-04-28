@@ -314,6 +314,7 @@ export function createBusinessAccountsRuntimeController({
         email,
         role: "staff",
         roles: ["staff"],
+        status: active ? "active" : "disabled",
         staffRole: role,
         permissions,
         businessAccess,
@@ -386,6 +387,7 @@ export function createBusinessAccountsRuntimeController({
         permissions,
         staffActive: active,
         staffStatus: active ? "active" : "disabled",
+        status: active ? "active" : "disabled",
         restaurantId: permissions.businessAccess ? restaurantId : "",
         updatedAt: serverTimestamp()
       }, { merge: true });

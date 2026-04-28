@@ -5,6 +5,7 @@ import {
   isVisibleProfileSettledForShortCircuit,
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
+import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
 
 export function createPublicProfileRuntimeController({
   state = null,
@@ -632,17 +633,18 @@ export function createPublicProfileRuntimeController({
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
     const menu = state?.menu || {};
     const focus = state?.focus || {};
-    const sameRestaurantMenu = String(menu.restaurantId || "").trim() === safeRestaurantId
-      && String(menu.source || "").trim().toLowerCase() === "public";
-    const publicMenuHasItems = sameRestaurantMenu
-      && String(menu.truthState || "").trim().toLowerCase() === "seeded"
-      && Array.isArray(menu.items)
-      && menu.items.length > 0;
-    const sameRestaurantFocus = publicMenuHasItems
-      && String(focus.restaurantId || "").trim() === safeRestaurantId
-      && String(focus.truthSource || "").trim().toLowerCase() === "public-menu";
-    const menuItemsFromLive = sameRestaurantMenu && Array.isArray(menu.items) ? menu.items : [];
-    const focusItemsFromLive = sameRestaurantFocus && Array.isArray(focus.items) ? focus.items : [];
+    const menuSurfaceState = resolveVisiblePublicMenuSurfaceState(state, {
+      profile: safeProfile,
+      routePayload: currentPayload,
+      webDirectEntry: state?.__webDirectEntry,
+      restaurantId: safeRestaurantId
+    });
+    const sameRestaurantMenu = menuSurfaceState.menu.matches === true;
+    const sameRestaurantFocus = menuSurfaceState.focus.matches === true;
+    const menuItemsFromLive = Array.isArray(menuSurfaceState.menu.items) ? menuSurfaceState.menu.items : [];
+    const focusItemsFromLive = menuSurfaceState.focus.canRenderFocus && Array.isArray(menuSurfaceState.focus.items)
+      ? menuSurfaceState.focus.items
+      : [];
     const postsCountFromPayload = Math.max(0, Number(currentPayload?.posts?.count || 0) || 0);
     const postsCount = Math.max(safePosts.length, postsCountFromPayload);
     const menuCount = menuItemsFromLive.length;
@@ -658,20 +660,23 @@ export function createPublicProfileRuntimeController({
     );
     if (safePosts.length > 0) postsTruthState = "seeded";
     const menuTruthFallback = sameRestaurantMenu
-      ? (menuItemsFromLive.length ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
+      ? (menuItemsFromLive.length ? "seeded" : (menuSurfaceState.menu.status === "loading" ? "unknown" : "knownEmpty"))
       : "unknown";
     let menuTruthState = normalizeTruthState(
-      sameRestaurantMenu ? (menu.truthState || "") : "",
+      sameRestaurantMenu ? (menuSurfaceState.menu.truthState || "") : "",
       menuTruthFallback
     );
     if (menuItemsFromLive.length > 0) menuTruthState = "seeded";
-    const focusTruthFallback = sameRestaurantFocus
-      ? (focusItemsFromLive.length ? "seeded" : (focus.loading ? "unknown" : "knownEmpty"))
-      : "unknown";
+    const focusTruthFallback = menuTruthState === "knownEmpty"
+      ? "knownEmpty"
+      : (sameRestaurantFocus
+        ? (focusItemsFromLive.length ? "seeded" : (menuSurfaceState.focus.loading ? "unknown" : "knownEmpty"))
+        : "unknown");
     let focusTruthState = normalizeTruthState(
-      sameRestaurantFocus ? (focus.truthState || "") : "",
+      sameRestaurantFocus ? (menuSurfaceState.focus.truthState || "") : "",
       focusTruthFallback
     );
+    if (menuTruthState === "knownEmpty") focusTruthState = "knownEmpty";
     if (focusItemsFromLive.length > 0) focusTruthState = "seeded";
     const followersValue = normalizeCountOrNull(safeProfile.followers ?? safeIdentity?.followers);
     const followingValue = normalizeCountOrNull(safeProfile.following ?? safeIdentity?.following);

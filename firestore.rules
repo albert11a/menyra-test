@@ -215,6 +215,7 @@ service cloud.firestore {
         "waiterAccess",
         "staffActive",
         "staffStatus",
+        "status",
         "staffRestaurantId",
         "waiterRestaurantId",
         "restaurantId",
@@ -238,6 +239,7 @@ service cloud.firestore {
         "waiterAccess",
         "staffActive",
         "staffStatus",
+        "status",
         "staffRestaurantId",
         "waiterRestaurantId",
         "restaurantId",
@@ -261,9 +263,10 @@ service cloud.firestore {
 
     function validOwnerManagedStaffStatus(data) {
       return data.staffActive is bool
+        && data.status is string
         && (
-          (data.staffActive == true && data.staffStatus == "active")
-          || (data.staffActive == false && data.staffStatus == "disabled")
+          (data.staffActive == true && data.staffStatus == "active" && data.status == "active")
+          || (data.staffActive == false && data.staffStatus == "disabled" && data.status == "disabled")
         );
     }
 
@@ -364,14 +367,54 @@ service cloud.firestore {
       ];
     }
 
+    function privilegedUserFieldsExceptRole() {
+      return [
+        "roles",
+        "ceoParentUid",
+        "ceoParentName",
+        "ceoRootUid",
+        "ceoRootName",
+        "ceoPath",
+        "crmCounts",
+        "businessStatus",
+        "businessDeleted",
+        "deletedRestaurantId",
+        "createdByUid",
+        "createdByRole",
+        "createdByName",
+        "createdByHandle"
+      ];
+    }
+
+    function safeSelfBootstrapRoleAllowed(data) {
+      return !data.keys().hasAny(["role"])
+        || data.role == "user"
+        || (
+          data.role == "business"
+          && data.restaurantId is string
+          && data.restaurantId != ""
+          && isRestaurantOwner(data.restaurantId)
+        );
+    }
+
+    function safeSelfBootstrapRoleUpdateAllowed() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(["role"])
+        || (
+          (!resource.data.keys().hasAny(["role"]) || resource.data.role == "user")
+          && safeSelfBootstrapRoleAllowed(request.resource.data)
+        );
+    }
+
     function selfUserCreateAllowed(userId) {
       return isSelf(userId)
-        && !request.resource.data.keys().hasAny(privilegedUserFields());
+        && !request.resource.data.keys().hasAny(privilegedUserFieldsExceptRole())
+        && safeSelfBootstrapRoleAllowed(request.resource.data);
     }
 
     function selfUserUpdateAllowed(userId) {
       return isSelf(userId)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(privilegedUserFields());
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(privilegedUserFieldsExceptRole())
+        && safeSelfBootstrapRoleUpdateAllowed();
     }
 
     function ceoManagedUserWriteAllowed(userId) {
@@ -519,6 +562,11 @@ service cloud.firestore {
       match /menuFavorites/{favoriteId} {
         allow get, list, create, update, delete: if isSelf(userId);
       }
+    }
+
+    match /publicRoutes/{slug} {
+      allow read: if true;
+      allow create, update, delete: if false;
     }
 
     match /restaurants/{restaurantId} {

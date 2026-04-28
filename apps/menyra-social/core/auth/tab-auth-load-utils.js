@@ -225,7 +225,7 @@ export function ensureTabDataCore({
       if (activeUid !== String(state.user?.uid || "").trim()) return;
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
-        void loadMenuForRestaurantSafe(restaurantId, { source: "collection" });
+        void loadMenuForRestaurantSafe(restaurantId, { source: "public" });
         void loadFocusForRestaurantSafe(restaurantId);
       }
     });
@@ -326,11 +326,7 @@ export async function loadAuthProfileCore({
   );
   let authUserData = {};
   try {
-    // STEP 2b: PARALLEL BACKGROUND LOADS - No render blocking
-    const [userSnap, restSnap] = await Promise.all([
-      getDoc(doc(db, "users", user.uid)),
-      resolveRestaurantForAuthUser(user, { preferCached: !force })
-    ]);
+    const userSnap = await getDoc(doc(db, "users", user.uid));
     if (userSnap.exists()) {
       authUserData = userSnap.data() || {};
     }
@@ -360,6 +356,56 @@ export async function loadAuthProfileCore({
       }
     } catch {}
     return null;
+  };
+  const syncBusinessUserBootstrap = (restaurant = {}) => {
+    const safeRestaurantId = String(restaurant?.id || restaurant?.restaurantId || "").trim();
+    const safeUid = String(user?.uid || "").trim();
+    if (!safeUid || !safeRestaurantId) return;
+    const restaurantStatus = String(restaurant?.status || "").trim().toLowerCase();
+    const bootstrapStatus = (
+      restaurantStatus === "active"
+      || restaurantStatus === "kunde"
+      || restaurantStatus === "customer"
+    )
+      ? "active"
+      : (
+        restaurantStatus === "disabled"
+        || restaurantStatus === "deleted"
+        ? "disabled"
+        : (
+          restaurantStatus === "blocked"
+            ? "blocked"
+            : (
+              restaurantStatus === "pending"
+              || restaurantStatus === "registered"
+              || restaurantStatus === "lead"
+                ? "pending"
+                : ""
+            )
+        )
+      );
+    const payload = {
+      uid: safeUid,
+      role: "business",
+      restaurantId: safeRestaurantId,
+      businessName: String(restaurant.name || restaurant.restaurantName || "").trim(),
+      displayName: String(restaurant.ownerName || restaurant.name || restaurant.restaurantName || user.displayName || user.email || "").trim(),
+      name: String(restaurant.ownerName || restaurant.name || restaurant.restaurantName || user.displayName || user.email || "").trim(),
+      email: String(user.email || restaurant.ownerEmail || restaurant.email || "").trim(),
+      logoUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
+      avatarUrl: String(restaurant.logoUrl || restaurant.logo || user.photoURL || "").trim(),
+      publicSlug: String(restaurant.publicSlug || "").trim(),
+      landingSlug: String(restaurant.landingSlug || "").trim(),
+      updatedAt: serverTimestamp()
+    };
+    if (bootstrapStatus) payload.status = bootstrapStatus;
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === "") delete payload[key];
+    });
+    runNonBlockingAuthTask(
+      "auth-profile.userBootstrap.patch",
+      () => setDoc(doc(db, "users", safeUid), payload, { merge: true })
+    );
   };
   if (canFastPathNonBusiness && !force) {
     const profile = await loadUserProfile(user, { force: false });
@@ -397,6 +443,7 @@ export async function loadAuthProfileCore({
         explicitRestaurant = { ...explicitRestaurant, ...ownerPatch };
       }
       await loadBusinessProfile(user, { restaurant: explicitRestaurant, force });
+      syncBusinessUserBootstrap(explicitRestaurant);
       return;
     }
   }
@@ -636,6 +683,7 @@ export async function loadAuthProfileCore({
           if (!resolved) return;
           if (String(state.user?.uid || "").trim() !== reconcileUid) return;
           await loadBusinessProfile(user, { restaurant: resolved, force: true });
+          syncBusinessUserBootstrap(resolved);
         })
         .catch((err) => {
           reportAuthFlowWarning("auth-profile.backgroundBusinessReconcile", err);
@@ -658,11 +706,13 @@ export async function loadAuthProfileCore({
         : null;
       if (cachedOwned) {
         await loadBusinessProfile(user, { restaurant: cachedOwned, force: true });
+        syncBusinessUserBootstrap(cachedOwned);
         return;
       }
       const quickRest = await resolveBusinessRestaurant({ preferCached: true, includeFallback: false });
       if (quickRest) {
         await loadBusinessProfile(user, { restaurant: quickRest, force: true });
+        syncBusinessUserBootstrap(quickRest);
         return;
       }
       scheduleBackgroundBusinessReconcile();
@@ -672,6 +722,7 @@ export async function loadAuthProfileCore({
   const rest = await resolveBusinessRestaurant({ preferCached: !force, includeFallback: true });
   if (rest) {
     await loadBusinessProfile(user, { restaurant: rest, force });
+    syncBusinessUserBootstrap(rest);
     return;
   }
   await loadUserProfile(user, { force });

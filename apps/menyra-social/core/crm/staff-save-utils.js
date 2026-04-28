@@ -173,6 +173,7 @@ export async function saveCeoStaffFromViewCore({
     if (!isEditing) superadminPayload.createdAt = getTimestamp();
     await setDocSafe(docSafe(db, "superadmins", uid), superadminPayload, { merge: true });
     const userPayload = {
+      uid,
       displayName: name,
       name,
       firstName,
@@ -187,6 +188,7 @@ export async function saveCeoStaffFromViewCore({
       country,
       role: "ceo",
       roles: ["ceo"],
+      status: "active",
       ceoParentUid,
       ceoParentName,
       ceoRootUid,
