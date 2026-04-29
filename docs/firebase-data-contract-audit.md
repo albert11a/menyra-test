@@ -636,7 +636,62 @@ Dry-run only. No production writes without a reviewed migration.
    - Treat as legacy/editor write-through until a separate reviewed migration retires it.
    - Do not delete while editor code still writes it.
 
-## 13. Required Code Fixes
+## 13. Next Dry-run Backfill Plan
+
+Dry-run helper:
+
+`functions/scripts/backfill-mnyra-data-contract-dryrun.cjs`
+
+This helper must remain dry-run-only until a later explicit migration review. It refuses `APPLY=1`, `--apply`, and write-like flags. It reads Firebase, proposes JSON changes, separates conflicts, and does not write Firestore.
+
+Safe automatic candidates for a later reviewed migration:
+
+- `publicRoutes/{slug}` for unique, non-conflicting restaurant slugs where the target restaurant is unambiguous.
+- `public/menu` truth metadata only when `items` is already an array and existing truth fields are missing.
+- `public/offers` truth metadata only when `items` is already an array and existing truth fields are missing.
+- `users/{uid}.uid = doc id` only when the field is missing and the user doc id is not malformed.
+- `users/{uid}.status` only when the conservative status can be derived from existing role/link truth.
+
+Manual-review-only cases:
+
+- Any `ownerUid` conflict or missing `users/{ownerUid}` relation.
+- Any `uid` field that differs from the user document id.
+- Malformed-looking user document ids such as `users/.fieldPaths=...`.
+- Duplicate slug candidates or existing `publicRoutes/{slug}` docs pointing to another restaurant.
+- Public menu shape conflicts where `items` is not an array.
+- Existing truth metadata with a value different from the expected value.
+- Missing `public/menu` or `public/offers` docs. These should not be created automatically until product intent is clear.
+- `menuItems` versus `public/menu` count mismatches, especially `CiLBuUs4R71wqFCyzCFu`.
+
+Why `publicRoutes` and truth metadata should be first:
+
+- `publicRoutes` fixes the highest-level route contract without changing menu, posts, order, or owner data.
+- Truth metadata on existing `public/menu` and `public/offers` docs makes `seeded` versus `knownEmpty` explicit without changing item content.
+- These changes reduce route/loading ambiguity while avoiding destructive or semantic data changes.
+
+Why ownerUid conflicts must be reviewed manually:
+
+- `ownerUid` controls write authority through Firestore Rules.
+- Many restaurants point to UIDs that do not exist in the audited user collection.
+- Matching by email can suggest a possible mapping, but it is not enough to overwrite ownership automatically.
+
+Why `menuItems` should not become active truth again:
+
+- The current public viewer direction is already `restaurants/{restaurantId}/public/menu`.
+- The broad sample found no case where `public/menu` was empty/missing while `menuItems` had items.
+- Reverting public surfaces to `menuItems` would reintroduce legacy fallback ambiguity and risk QR/public profile regressions.
+- `menuItems` can remain editor/internal write-through until a separate reviewed migration retires it.
+
+Focused dry-run examples:
+
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\read-only-service-account.json"
+node functions/scripts/backfill-mnyra-data-contract-dryrun.cjs --restaurantId Lzm6RpNu3ErSDtGCHxpi --out C:\mnyra-secrets\mnyra-dryrun-Lzm6RpNu3ErSDtGCHxpi.json
+node functions/scripts/backfill-mnyra-data-contract-dryrun.cjs --uid XTn4oQqz3zdNiedL7MafwzDgus32 --out C:\mnyra-secrets\mnyra-dryrun-owner.json
+node functions/scripts/backfill-mnyra-data-contract-dryrun.cjs --slug casarita-lzm6rp --out C:\mnyra-secrets\mnyra-dryrun-slug.json
+```
+
+## 14. Required Code Fixes
 
 Do not implement in this audit step.
 
@@ -650,7 +705,7 @@ Recommended next code/data actions:
 - Keep focus rendering dependent on stable public menu state.
 - Add targeted code checks only after data truth is fixed, especially for any restaurant still showing `Menu wird geladen`.
 
-## 14. Safety Rules
+## 15. Safety Rules
 
 - No production writes without an explicit reviewed migration.
 - Every migration must have a dry-run report first.
@@ -659,7 +714,7 @@ Recommended next code/data actions:
 - Do not deploy rules as part of data audit.
 - Do not delete legacy `menuItems` until editor ownership is settled.
 
-## 15. Appendix
+## 16. Appendix
 
 ### Firestore Rules Static Mapping
 
@@ -727,4 +782,3 @@ Staff/orders/posts:
 | Orders audited by count | 1956 |
 | Restaurant social posts audited by count | 26 |
 | `socialFeed` docs | 26 |
-
