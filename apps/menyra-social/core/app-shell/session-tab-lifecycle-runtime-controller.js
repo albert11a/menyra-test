@@ -118,10 +118,11 @@ export function createSessionTabLifecycleRuntimeController({
       await loadAuthProfileFn(state.user);
       const restaurantId = String(state.userProfile?.restaurantId || "").trim();
       if (!restaurantId) return;
-      await Promise.all([
-        loadMenuForRestaurantFn(restaurantId, { source: "public" }),
-        loadFocusForRestaurantFn(restaurantId)
-      ]);
+      await loadMenuForRestaurantFn(restaurantId, { source: "collection" });
+      runShellWarmTask(
+        "auth-tab.preloadMenu.publicFocus",
+        () => loadFocusForRestaurantFn(restaurantId)
+      );
     })().catch((err) => {
       reportPreloadWarning("auth-tab.preloadMenu", err);
     }).finally(() => {

@@ -27,6 +27,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
     ? deps.ensurePostsDataForProfileFn
     : (() => {});
   const ensureMenuDataForProfile = deps.ensureMenuDataForProfileFn;
+  const ensureEditorMenuDataForProfile = typeof deps.ensureEditorMenuDataForProfileFn === "function"
+    ? deps.ensureEditorMenuDataForProfileFn
+    : (() => {});
   const ensureFocusDataForProfile = deps.ensureFocusDataForProfileFn;
   const ensureTableQrStateForProfile = deps.ensureTableQrStateForProfileFn;
   const isShopCatalogProfile = deps.isShopCatalogProfileFn;
@@ -2063,6 +2066,14 @@ function renderTableQrAdminSection({
 function renderMenuAdminView() {
   const profile = state.userProfile;
   const restaurantId = profile.restaurantId || "";
+  const activeUid = String(state.user?.uid || "").trim();
+  const bootstrapInFlightUid = String(state.__authBootstrapInFlightUid || "").trim();
+  const isResolvingRestaurantId = !restaurantId
+    && !!activeUid
+    && (
+      !!state.__authProfileLoadPromise
+      || bootstrapInFlightUid === activeUid
+    );
   const isEligible = isRestaurantCafeProfile(profile);
   const publicMenuProfile = state.profileView?.profile?.restaurantId
     ? state.profileView.profile
@@ -2075,8 +2086,9 @@ function renderMenuAdminView() {
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
   const sameRestaurant = restaurantId && state.menu.restaurantId === restaurantId;
   const menuSource = String(state.menu.source || "").trim().toLowerCase();
-  const hasAuthoringMenuTruth = !!sameRestaurant && menuSource === "public";
-  const isLoading = restaurantId && (state.menu.loading || !hasAuthoringMenuTruth);
+  const hasAuthoringMenuTruth = !!sameRestaurant && menuSource === "collection";
+  const isAuthoringMenuLoading = !!sameRestaurant && menuSource === "collection" && state.menu.loading;
+  const isLoading = !!restaurantId && (isAuthoringMenuLoading || !hasAuthoringMenuTruth);
   const rawItems = hasAuthoringMenuTruth
     ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: state.menu.query })
     : [];
@@ -2086,6 +2098,10 @@ function renderMenuAdminView() {
     : rawItems.filter((item) => !isSpecialMenuItem(item));
   const items = sortMenuItemsByOrder(scopedItems);
   const countLabel = formatCount(items.length);
+
+  if (restaurantId && isEligible && !hasAuthoringMenuTruth && !isAuthoringMenuLoading) {
+    ensureEditorMenuDataForProfile(profile);
+  }
 
   if (restaurantId && isEligible && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
@@ -2125,15 +2141,19 @@ function renderMenuAdminView() {
             <p class="text-lg font-black text-slate-900">${escapeHtml(countLabel)}</p>
           </div>
         </div>
+      ` : (isResolvingRestaurantId ? `
+        <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
+          <p class="text-sm font-bold text-slate-500">Business wird geladen...</p>
+        </div>
       ` : `
         <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
           <p class="text-sm font-bold text-slate-500 mb-4">Bitte zuerst dein Business im Account auswaehlen.</p>
           <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Zu den Einstellungen</button>
         </div>
-      `}
+      `)}
 
       ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
-      ${restaurantId ? renderSpecialAdminSection(profile) : ""}
+      ${restaurantId && hasAuthoringMenuTruth ? renderSpecialAdminSection(profile) : ""}
 
       ${restaurantId ? `
         <div class="mb-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">

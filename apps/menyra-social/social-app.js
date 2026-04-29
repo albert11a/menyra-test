@@ -4099,10 +4099,18 @@ async function reorderMenuItemFromAdmin(sourceItemId, targetItemId) {
     orderIndex: idx
   }));
 
-  syncMenuCaches(restaurantId, orderedItems, { includePublic: true });
-  render();
-
   try {
+    await Promise.all(orderedItems.map((item, idx) => {
+      const itemId = String(item?.id || "").trim();
+      if (!itemId) return Promise.resolve();
+      return setDoc(doc(db, "restaurants", restaurantId, "menuItems", itemId), {
+        id: itemId,
+        orderIndex: idx,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }));
+    syncMenuCaches(restaurantId, orderedItems, { includePublic: true });
+    render();
     await publishMenuToPublic(restaurantId, orderedItems);
   } catch (err) {
     reportCriticalRuntimeFailure("menu-reorder", err);

@@ -35,6 +35,11 @@ export function createProfileBusinessMenuRuntimeCluster({
     : (() => "");
 
   const getMenuRestaurantForProfile = (profile) => getMenuRestaurantForProfileCore(profile);
+  const ensureEditorMenuDataForProfile = (profile = {}) => {
+    const restaurantId = getMenuRestaurantForProfile(profile);
+    if (!restaurantId) return;
+    void loadMenuForRestaurant(restaurantId, { source: "collection" });
+  };
 
   let publicProfilePostsEnsurePromise = null;
   let publicProfilePostsEnsureTargetId = "";
@@ -844,6 +849,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     renderShopProductListFn: (...args) => renderShopProductList(...args),
     ensurePostsDataForProfileFn: ensurePostsDataForProfile,
     ensureMenuDataForProfileFn: ensureMenuDataForProfile,
+    ensureEditorMenuDataForProfileFn: ensureEditorMenuDataForProfile,
     ensureFocusDataForProfileFn: ensureFocusDataForProfile
   });
 
@@ -851,6 +857,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     getMenuRestaurantForProfile,
     ensurePostsDataForProfile,
     ensureMenuDataForProfile,
+    ensureEditorMenuDataForProfile,
     ensureFocusDataForProfile,
     loadBusinessAccounts: (options = {}) => businessAccountsRuntimeController.loadBusinessAccounts(options),
     renderBusinessAccountsView: () => businessAccountsRuntimeController.renderBusinessAccountsView(),

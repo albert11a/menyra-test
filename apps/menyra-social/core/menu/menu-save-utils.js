@@ -14,6 +14,7 @@ export async function saveMenuItemFromModalCore({
   db,
   normalizeMenuType,
   serverTimestamp,
+  setDoc,
   normalizeMenuItemDoc,
   syncMenuCaches,
   publishMenuToPublic,
@@ -35,6 +36,7 @@ export async function saveMenuItemFromModalCore({
     || !db
     || typeof normalizeMenuType !== "function"
     || typeof serverTimestamp !== "function"
+    || typeof setDoc !== "function"
     || typeof normalizeMenuItemDoc !== "function"
     || typeof syncMenuCaches !== "function"
     || typeof publishMenuToPublic !== "function"
@@ -329,6 +331,12 @@ export async function saveMenuItemFromModalCore({
       ...entry,
       orderIndex: idxOrder
     }));
+    const orderedPayload = orderedItems.find((entry) => String(entry?.id || "") === String(id)) || normalized;
+    await setDoc(ref, {
+      ...orderedPayload,
+      updatedAt: serverTimestamp(),
+      ...(mode !== "edit" ? { createdAt: payload.createdAt || serverTimestamp() } : {})
+    }, { merge: true });
     syncMenuCaches(restaurantId, orderedItems, { includePublic: true });
     await publishMenuToPublic(restaurantId, orderedItems);
 

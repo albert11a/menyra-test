@@ -225,7 +225,7 @@ export function ensureTabDataCore({
       if (activeUid !== String(state.user?.uid || "").trim()) return;
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
-        void loadMenuForRestaurantSafe(restaurantId, { source: "public" });
+        void loadMenuForRestaurantSafe(restaurantId, { source: "collection" });
         void loadFocusForRestaurantSafe(restaurantId);
       }
     });

@@ -1632,8 +1632,7 @@ export function createSessionDataRuntimeController({
     const canUseMemoryMenuCache = isFreshMenuMemoryCacheEntry(cached, safeSource);
     const cachedItems = Array.isArray(cached?.items) ? cached.items : [];
     const cachedTruthState = String(cached?.truthState || "").trim().toLowerCase();
-    const hasKnownEmptyMemoryMenu = safeSource === "public"
-      && (cachedTruthState === "knownempty" || cachedTruthState === "known-empty");
+    const hasKnownEmptyMemoryMenu = cachedTruthState === "knownempty" || cachedTruthState === "known-empty";
     if (cached && canUseMemoryMenuCache && (cachedItems.length || hasKnownEmptyMemoryMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
       const cachedPayload = {
         items: cachedItems,
@@ -1657,7 +1656,7 @@ export function createSessionDataRuntimeController({
       return cachedPayload;
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
-    const hasKnownEmptyPersistedMenu = safeSource === "public" && persistedMenu.truthState === "knownEmpty";
+    const hasKnownEmptyPersistedMenu = persistedMenu.truthState === "knownEmpty";
     if ((persistedMenu.items.length || hasKnownEmptyPersistedMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
       const persistedPayload = {
         items: persistedMenu.items,
@@ -1853,7 +1852,9 @@ export function createSessionDataRuntimeController({
         const allowExpiredPersistedFallback = safeSource !== "public";
         const stalePersistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: allowExpiredPersistedFallback });
         const liveMenuRestaurantId = String(state?.menu?.restaurantId || "").trim();
-        const liveMenuMatchesVisibleSurface = !!liveMenuRestaurantId
+        const liveMenuSource = String(state?.menu?.source || "").trim().toLowerCase() || "public";
+        const liveMenuMatchesVisibleSurface = liveMenuSource === safeSource
+          && !!liveMenuRestaurantId
           && (
             liveMenuRestaurantId === safeRestaurantId
             || collectVisiblePublicMenuTargetIds().has(liveMenuRestaurantId)
