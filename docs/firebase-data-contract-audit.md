@@ -4,6 +4,8 @@ Status: CURRENT
 Generated: 2026-04-29
 Branch audited: `fixmai`
 Live report: `C:\mnyra-secrets\mnyra-full-data-contract-audit.json`
+Route safe apply report: `C:\mnyra-secrets\mnyra-public-routes-safe-apply-report.json`
+Route after-apply audit: `C:\mnyra-secrets\mnyra-public-routes-after-apply-audit.json`
 
 This document is based on a read-only Firebase Admin SDK audit plus static code/rules review. The Admin SDK audit validates stored data, but it bypasses Firestore Security Rules. Rule behavior below is therefore a static mapping, not an emulator result.
 
@@ -13,7 +15,7 @@ The current Firebase structure is broadly aligned with the website-first directi
 
 Big findings:
 
-- `publicRoutes` is empty in live Firebase. The code has a `publicRoutes/{slug}` reader and route cache, but current live data has 0 route docs. Public slug routing therefore depends on fallback code paths instead of the intended slug index.
+- The original audit found `publicRoutes` empty. On 2026-04-30, the reviewed safe route apply created 112 `publicRoutes/{slug}` docs from `safeRouteCandidate` entries only. The after-apply audit shows 112 total route docs, 0 slug mismatches, and 2 remaining missing mappings for the duplicate review slug `il-gusto`.
 - `restaurants/{restaurantId}/public/menu` is already the active public menu truth in code. In the audited sample, 83 of 102 audited restaurants have a `public/menu` doc, 38 have public menu items, 45 have an empty public menu doc, and 19 have no public menu doc.
 - No audited restaurant had the dangerous case `public/menu` missing/empty while `menuItems` had items. So the broad sample does not show a live backfill blocker from `menuItems` into `public/menu`.
 - 10 restaurants still have `restaurants/{restaurantId}/menuItems` data. In all 10, `public/menu` also has items. One restaurant has a count difference: `CiLBuUs4R71wqFCyzCFu` has 2 public menu items and 1 legacy `menuItems` item.
@@ -34,7 +36,7 @@ Big findings:
 | `users` sampled | 37 |
 | `restaurants` total | 113 |
 | `restaurants` audited | 102 |
-| `publicRoutes` total | 0 |
+| `publicRoutes` total | 112 after 2026-04-30 safe route apply |
 | `restaurants/{rid}/public/menu` audited | 102 |
 | `restaurants/{rid}/menuItems` audited | 102 |
 | `restaurants/{rid}/public/offers` audited | 102 |
@@ -117,11 +119,14 @@ Important relation finding: most audited restaurants have an `ownerUid`, but tha
 
 Observed:
 
-- `publicRoutes` total count is 0.
-- 102 audited restaurants have slugs but no matching `publicRoutes/{slug}` entry.
-- No stale `publicRoutes` entries were found because the collection is empty.
+- The original 2026-04-29 audit observed `publicRoutes` total count as 0.
+- The 2026-04-30 safe route apply created 112 reviewed route docs.
+- The after-apply audit observed `publicRoutes` total count as 112.
+- No slug restaurant mismatches were found after apply.
+- No route docs pointing to missing restaurants were found after apply.
+- 2 audited restaurant slug mappings remain missing because both point to duplicate slug `il-gusto`, which is review-only.
 
-This is the largest route-contract gap. Code contains a `publicRoutes/{slug}` reader, but live Firebase has no route index.
+This was the largest route-contract gap. Code contains a `publicRoutes/{slug}` reader and live Firebase now has a route index for the reviewed safe lead/demo candidates. The remaining gap is the duplicate `il-gusto` route review.
 
 ### Menu Data
 
@@ -534,8 +539,9 @@ Correct route mapping:
 
 Current live problem:
 
-- `publicRoutes` has 0 docs.
-- 102 audited restaurants have slugs but no `publicRoutes/{slug}` doc.
+- The original audit found `publicRoutes` had 0 docs.
+- The 2026-04-30 after-apply audit found 112 `publicRoutes` docs.
+- 2 restaurant slug mappings remain without a route doc because duplicate slug `il-gusto` needs manual review.
 - Code has fallback paths, including launch aliases and direct id fallback, but that is not the desired commercial contract.
 
 Required route backfill:
@@ -581,6 +587,17 @@ Route alignment dry-run generated 2026-04-30:
 - Safe route status distribution: 112 `lead`
 - Review reason: one duplicate slug, `il-gusto`, across two restaurant ids.
 
+Safe route apply completed 2026-04-30:
+
+- Apply report: `C:\mnyra-secrets\mnyra-public-routes-safe-apply-report.json`
+- Created: 112 `publicRoutes` docs
+- Updated: 0
+- Skipped safe candidates: 0
+- Conflicts: 0
+- Review skipped: 1 (`il-gusto`)
+- Firebase writes were limited to `publicRoutes/{slug}` merge writes.
+- No owner/user/restaurant/menu/offers/order/QR/waiter/cart data was touched.
+
 ## 10. Staff / Waiter / Orders Contract
 
 Staff login needs both a fast user-level link and a restaurant staff document:
@@ -604,8 +621,9 @@ Observed order data is present and should not be redesigned in this step.
 
 ### Critical / Launch Contract
 
-- `publicRoutes` is empty: 0 docs.
-- 102 audited restaurants have slugs but no `publicRoutes/{slug}` entry.
+- Original audit: `publicRoutes` was empty with 0 docs.
+- After 2026-04-30 safe route apply: `publicRoutes` has 112 docs.
+- Remaining route mismatch: duplicate slug `il-gusto` across two restaurants still has no route doc and needs manual review.
 
 ### User Contract
 
@@ -807,8 +825,8 @@ Route state:
 
 | State | Count |
 | --- | ---: |
-| `publicRoutes` docs | 0 |
-| Audited restaurant slugs without route doc | 102 |
+| `publicRoutes` docs | 112 after safe apply |
+| Audited restaurant slugs without route doc | 2 after safe apply |
 | Slug route mismatches | 0 |
 | Stale route docs | 0 |
 
