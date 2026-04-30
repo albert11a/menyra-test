@@ -333,11 +333,12 @@ Required:
 
 - `restaurantId`
 - `canonicalSlug`
-- `status`: `active`, `redirect`, `inactive`, or `not-found`
+- `status`: `active`, `preview`, `lead`, `inactive`, `redirect`, or `not-found`
+- `restaurantStatus`: original `restaurants/{restaurantId}.status`
 - optional `redirectTo`
 - optional `updatedAt`
 
-`publicRoutes` should be the fast public route truth. Restaurant slug fields are source fields; `publicRoutes` is the route index.
+`publicRoutes` should be the fast public route truth. Restaurant slug fields are source fields; `publicRoutes` is the route index. `publicRoutes.status` is route resolution metadata only and must not grant owner/admin write access.
 
 ### restaurants/{restaurantId}/public/menu
 
@@ -540,9 +541,45 @@ Current live problem:
 Required route backfill:
 
 - Create `publicRoutes/{publicSlug}` or `publicRoutes/{landingSlug}` for each public restaurant slug.
-- Store `restaurantId`, `canonicalSlug`, and `status`.
+- Store `restaurantId`, `canonicalSlug`, `status`, `restaurantStatus`, and `updatedAt`.
 - Add redirect docs for aliases if a slug changes.
 - Keep reserved route segments blocked.
+
+## 9.1 Lead Restaurants and Public Route Visibility
+
+`restaurants/{restaurantId}.status` is currently a CRM/account status, not the complete public route visibility contract. Values such as `lead`, `active`, `pending`, or `disabled` describe the commercial/account state of the restaurant record.
+
+Public/demo/profile route visibility must be represented separately by `publicRoutes/{slug}.status`. A restaurant may be routable even when `restaurants/{restaurantId}.status === "lead"` if it has a clean unique slug and is intentionally used as a demo, prospect, or public preview page.
+
+Runtime route target:
+
+- `/:slug` reads `publicRoutes/{slug}` first.
+- If a route doc exists, the route uses `restaurantId` directly.
+- The public profile then reads `restaurants/{restaurantId}`, `restaurants/{restaurantId}/public/menu`, `restaurants/{restaurantId}/public/offers`, and `restaurants/{restaurantId}/socialPosts`.
+- `lead` and `preview` route statuses are routable metadata states, not write-permission states.
+- `inactive`, `disabled`, `deleted`, `blocked`, duplicate, malformed, or conflicting routes remain review-only and must not be auto-created.
+
+Backfill target for lead/demo restaurants:
+
+- `publicRoutes/{slug}.status` should be `lead` or `preview`, not `active`, unless the restaurant is actually active.
+- `publicRoutes/{slug}.restaurantStatus` should preserve the original `restaurants/{restaurantId}.status`.
+- Owner/admin writes still depend on auth and Firestore owner/staff permissions, not on `publicRoutes.status`.
+
+Current code-status audit:
+
+- No reviewed public profile/menu path was found that directly rejects `restaurants/{restaurantId}.status === "lead"`.
+- The previous route status normalizers treated unknown route statuses as `active`, which meant future `publicRoutes.status = "lead"` or `"preview"` would not be preserved as contract truth.
+- The route dry-run previously sent lead routes to review because it treated only active/customer restaurant statuses as safe route candidates.
+
+Route alignment dry-run generated 2026-04-30:
+
+- Report: `C:\mnyra-secrets\mnyra-public-routes-alignment-dryrun.json`
+- Scope read by this dry-run: 114 restaurants, 38 users, 0 existing `publicRoutes` docs.
+- `safeRouteCandidate`: 112
+- `needsReview`: 1
+- `doNotTouch`: 0
+- Safe route status distribution: 112 `lead`
+- Review reason: one duplicate slug, `il-gusto`, across two restaurant ids.
 
 ## 10. Staff / Waiter / Orders Contract
 
@@ -620,7 +657,8 @@ Dry-run only. No production writes without a reviewed migration.
 
 3. `publicRoutes/{slug}`
    - Backfill route docs for every public/landing slug.
-   - Include `restaurantId`, `canonicalSlug`, `status`, and `updatedAt`.
+   - Include `restaurantId`, `canonicalSlug`, `status`, `restaurantStatus`, and `updatedAt`.
+   - Preserve lead/demo route state as `lead` or `preview`; do not mark lead restaurants as `active`.
    - Add redirect docs for aliases.
 
 4. `restaurants/{restaurantId}/public/menu`
@@ -646,7 +684,7 @@ This helper must remain dry-run-only until a later explicit migration review. It
 
 Safe automatic candidates for a later reviewed migration:
 
-- `publicRoutes/{slug}` for unique, non-conflicting restaurant slugs where the target restaurant is unambiguous.
+- `publicRoutes/{slug}` for unique, non-conflicting restaurant slugs where the target restaurant is unambiguous, including lead/demo restaurants when the route status is preserved as `lead` or `preview`.
 - `public/menu` truth metadata only when `items` is already an array and existing truth fields are missing.
 - `public/offers` truth metadata only when `items` is already an array and existing truth fields are missing.
 - `users/{uid}.uid = doc id` only when the field is missing and the user doc id is not malformed.

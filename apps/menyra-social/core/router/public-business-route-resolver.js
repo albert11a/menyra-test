@@ -26,11 +26,17 @@ function normalizeRouteSlug(value = "") {
 function normalizeRouteStatus(value = "") {
   const status = safeLowerText(value);
   if (status === "active") return "active";
+  if (status === "preview" || status === "demo") return "preview";
+  if (status === "lead" || status === "prospect") return "lead";
   if (status === "redirect") return "redirect";
-  if (status === "inactive") return "inactive";
+  if (status === "inactive" || status === "disabled" || status === "deleted" || status === "blocked" || status === "archived" || status === "private") return "inactive";
   if (status === "not-found" || status === "notfound") return "not-found";
   if (status === "fallback") return "fallback";
   return "active";
+}
+
+function isRoutableRouteStatus(status = "") {
+  return status !== "inactive" && status !== "not-found";
 }
 
 function looksLikeDirectRestaurantId(value = "") {
@@ -87,7 +93,7 @@ function normalizePublicRouteDoc(inputSlug = "", doc = null) {
     source: "firestore"
   };
   return {
-    found: status !== "inactive" && status !== "not-found",
+    found: isRoutableRouteStatus(status),
     status,
     inputSlug: input,
     canonicalSlug,
@@ -152,7 +158,7 @@ export function normalizePublicBusinessRouteResolutionCore(resolution = null) {
   const restaurantId = safeText(resolution.restaurantId || resolution.canonicalRestaurantId || "");
   const status = normalizeRouteStatus(resolution.status || (restaurantId ? "active" : "not-found"));
   return {
-    found: !!restaurantId && status !== "inactive" && status !== "not-found",
+    found: !!restaurantId && isRoutableRouteStatus(status),
     status,
     inputSlug,
     canonicalSlug,

@@ -34,6 +34,8 @@ const ROUTE_SLUG_FIELDS = Object.freeze(["publicSlug", "landingSlug"]);
 const ACTIVE_RESTAURANT_STATUSES = new Set(["active", "kunde", "customer"]);
 const INACTIVE_RESTAURANT_STATUSES = new Set(["inactive", "disabled", "deleted", "blocked"]);
 const REVIEW_RESTAURANT_STATUSES = new Set(["lead", "pending", "registered"]);
+const LEAD_ROUTE_RESTAURANT_STATUSES = new Set(["lead", "prospect"]);
+const PREVIEW_ROUTE_RESTAURANT_STATUSES = new Set(["preview", "demo"]);
 
 function text(value = "") {
   return String(value || "").trim();
@@ -241,21 +243,29 @@ function pickRestaurant(docSnap) {
 function routeStatusProposal(restaurantStatus = "") {
   const status = lower(restaurantStatus);
   if (ACTIVE_RESTAURANT_STATUSES.has(status)) {
-    return { status: "active", safe: true, reason: "restaurant status is active/customer" };
+    return { status: "active", safe: true, category: "safeRouteCandidate", reason: "restaurant status is active/customer" };
+  }
+  if (LEAD_ROUTE_RESTAURANT_STATUSES.has(status)) {
+    return { status: "lead", safe: true, category: "safeRouteCandidate", reason: "lead restaurant is intentionally routable when slug is unique" };
+  }
+  if (PREVIEW_ROUTE_RESTAURANT_STATUSES.has(status)) {
+    return { status: "preview", safe: true, category: "safeRouteCandidate", reason: "preview/demo restaurant is intentionally routable when slug is unique" };
   }
   if (INACTIVE_RESTAURANT_STATUSES.has(status)) {
-    return { status: "inactive", safe: true, reason: "restaurant status is inactive/disabled/deleted/blocked" };
+    return { status: "inactive", safe: false, category: "needsReview", reason: "restaurant status is inactive/disabled/deleted/blocked; do not create route automatically" };
   }
   if (REVIEW_RESTAURANT_STATUSES.has(status)) {
     return {
-      status,
+      status: status || "needsReview",
       safe: false,
-      reason: "restaurant status is not an active route status; review before applying"
+      category: "needsReview",
+      reason: "restaurant status is not a confirmed route status; review route visibility before applying"
     };
   }
   return {
     status: status || "needsReview",
     safe: false,
+    category: "needsReview",
     reason: "restaurant status is missing or not recognized; review before applying"
   };
 }
@@ -376,15 +386,18 @@ async function loadUsers(db, args, report) {
 async function loadTargetRestaurants(db, args, usersById, report) {
   const restaurantIds = [];
   const addRestaurantId = (value = "") => addUnique(restaurantIds, value);
+  const hasExplicitTarget = !!(args.uid || args.restaurantId || args.slug);
 
   addRestaurantId(args.restaurantId);
-  usersById.forEach((user) => {
-    if (!args.uid || user.id === args.uid) {
-      addRestaurantId(user.public.restaurantId);
-      addRestaurantId(user.public.staffRestaurantId);
-      addRestaurantId(user.public.waiterRestaurantId);
-    }
-  });
+  if (args.uid) {
+    usersById.forEach((user) => {
+      if (user.id === args.uid) {
+        addRestaurantId(user.public.restaurantId);
+        addRestaurantId(user.public.staffRestaurantId);
+        addRestaurantId(user.public.waiterRestaurantId);
+      }
+    });
+  }
 
   if (args.slug) {
     const routeResult = await safeGetDoc(db.collection("publicRoutes").doc(args.slug), report, `publicRoutes/${args.slug}`);
@@ -409,9 +422,18 @@ async function loadTargetRestaurants(db, args, usersById, report) {
     for (const restaurantId of restaurantIds.slice(0, args.limit)) {
       const result = await safeGetDoc(db.collection("restaurants").doc(restaurantId), report, `restaurants/${restaurantId}`);
       if (result.snap?.exists) addDocs([result.snap]);
-      else if (restaurantId) report.review.missingRestaurantTargets.push({ restaurantId, path: `restaurants/${restaurantId}` });
+      else if (restaurantId) {
+        const missingTarget = { restaurantId, path: `restaurants/${restaurantId}` };
+        report.review.missingRestaurantTargets.push(missingTarget);
+        report.routeAlignment.needsReview.push({
+          ...missingTarget,
+          category: "needsReview",
+          reason: "missing restaurant doc",
+          action: "manual review"
+        });
+      }
     }
-  } else {
+  } else if (!hasExplicitTarget) {
     const sample = await safeGetQuery(db.collection("restaurants").limit(args.limit), report, `restaurants limit ${args.limit}`);
     addDocs(sample.snap?.docs || []);
   }
@@ -457,8 +479,22 @@ function proposePublicRoutes(restaurantsById, routesBySlug, report) {
   const slugOwners = new Map();
   restaurantsById.forEach((restaurant) => {
     ROUTE_SLUG_FIELDS.forEach((field) => {
-      const slug = normalizeSlug(restaurant.data[field] || "");
-      if (!slug) return;
+      const rawSlug = text(restaurant.data[field] || "");
+      const slug = normalizeSlug(rawSlug);
+      if (!slug) {
+        if (rawSlug) {
+          report.routeAlignment.needsReview.push({
+            restaurantId: restaurant.id,
+            path: restaurant.path,
+            sourceSlugField: field,
+            sourceSlugValue: rawSlug,
+            category: "needsReview",
+            reason: "malformed slug",
+            action: "manual review"
+          });
+        }
+        return;
+      }
       if (!slugOwners.has(slug)) slugOwners.set(slug, []);
       slugOwners.get(slug).push({ restaurant, field });
     });
@@ -467,10 +503,16 @@ function proposePublicRoutes(restaurantsById, routesBySlug, report) {
   slugOwners.forEach((owners, slug) => {
     const uniqueRestaurantIds = Array.from(new Set(owners.map((entry) => entry.restaurant.id)));
     if (uniqueRestaurantIds.length > 1) {
-      report.conflicts.duplicateSlugs.push({
+      const duplicate = {
         slug,
         restaurantIds: uniqueRestaurantIds,
         action: "skip publicRoutes proposal"
+      };
+      report.conflicts.duplicateSlugs.push(duplicate);
+      report.routeAlignment.needsReview.push({
+        ...duplicate,
+        category: "needsReview",
+        reason: "duplicate slug"
       });
       return;
     }
@@ -479,11 +521,18 @@ function proposePublicRoutes(restaurantsById, routesBySlug, report) {
     const route = routesBySlug.get(slug);
     const routeRestaurantId = text(route?.data?.restaurantId || route?.data?.canonicalRestaurantId || "");
     if (route && routeRestaurantId && routeRestaurantId !== restaurant.id) {
-      report.conflicts.publicRouteTargetConflicts.push({
+      const conflict = {
         path: `publicRoutes/${slug}`,
+        slug,
         existingRestaurantId: routeRestaurantId,
         proposedRestaurantId: restaurant.id,
         action: "skip"
+      };
+      report.conflicts.publicRouteTargetConflicts.push(conflict);
+      report.routeAlignment.doNotTouch.push({
+        ...conflict,
+        category: "doNotTouch",
+        reason: "existing publicRoutes doc points to another restaurant"
       });
       return;
     }
@@ -495,14 +544,29 @@ function proposePublicRoutes(restaurantsById, routesBySlug, report) {
       restaurantId: restaurant.id,
       canonicalSlug: slug,
       status: status.status,
+      restaurantStatus: restaurant.public.status,
       updatedAt: "[serverTimestamp()]",
       sourceRestaurantPath: restaurant.path,
       sourceSlugFields: owners.map((entry) => entry.field),
       safeToApplyLater: status.safe,
+      category: status.category,
       reason: status.reason
     };
-    if (status.safe) report.proposals.publicRoutes.push(proposal);
-    else report.review.publicRoutesNeedsReview.push(proposal);
+    if (status.safe) {
+      report.proposals.publicRoutes.push(proposal);
+      report.routeAlignment.safeRouteCandidate.push({
+        ...proposal,
+        slugClean: true,
+        restaurantExists: true
+      });
+    } else {
+      report.review.publicRoutesNeedsReview.push(proposal);
+      report.routeAlignment.needsReview.push({
+        ...proposal,
+        slugClean: true,
+        restaurantExists: true
+      });
+    }
   });
 }
 
@@ -781,6 +845,11 @@ function summarize(report) {
       + report.conflicts.ownerUserRestaurantMismatch.length,
     menuItemsMismatches: report.conflicts.menuItemsCountMismatches.length,
     duplicateSlugConflicts: report.conflicts.duplicateSlugs.length,
+    publicRoutesCandidateCounts: {
+      safeRouteCandidate: report.routeAlignment.safeRouteCandidate.length,
+      needsReview: report.routeAlignment.needsReview.length,
+      doNotTouch: report.routeAlignment.doNotTouch.length
+    },
     warnings: report.warnings.length
   };
 }
@@ -802,6 +871,11 @@ function createReport(args) {
     },
     pathsRead: [],
     warnings: [],
+    routeAlignment: {
+      safeRouteCandidate: [],
+      needsReview: [],
+      doNotTouch: []
+    },
     counts: {
       usersTotal: null,
       usersRead: 0,
@@ -881,6 +955,9 @@ async function main() {
   console.log(`- users read: ${report.counts.usersRead}`);
   console.log(`- restaurants read: ${report.counts.restaurantsRead}`);
   console.log(`- publicRoutes proposals: ${report.proposals.publicRoutes.length}`);
+  console.log(`- publicRoutes safeRouteCandidate: ${report.routeAlignment.safeRouteCandidate.length}`);
+  console.log(`- publicRoutes needsReview: ${report.routeAlignment.needsReview.length}`);
+  console.log(`- publicRoutes doNotTouch: ${report.routeAlignment.doNotTouch.length}`);
   console.log(`- public/menu metadata proposals: ${report.proposals.publicMenuMetadata.length}`);
   console.log(`- public/offers metadata proposals: ${report.proposals.publicOffersMetadata.length}`);
   console.log(`- user contract proposals: ${report.proposals.users.length}`);

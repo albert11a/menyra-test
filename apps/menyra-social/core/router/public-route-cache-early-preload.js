@@ -114,10 +114,17 @@ function collectSlugs() {
 
 function normalizeStatus(value = "") {
   const status = safeText(value).toLowerCase();
+  if (status === "active" || status === "kunde" || status === "customer") return "active";
+  if (status === "preview" || status === "demo") return "preview";
+  if (status === "lead" || status === "prospect") return "lead";
   if (status === "redirect") return "redirect";
-  if (status === "inactive") return "inactive";
+  if (status === "inactive" || status === "disabled" || status === "deleted" || status === "blocked" || status === "archived" || status === "private") return "inactive";
   if (status === "not-found" || status === "notfound") return "not-found";
   return "active";
+}
+
+function isRoutableStatus(status = "") {
+  return status !== "inactive" && status !== "not-found";
 }
 
 function resolveCanonicalSlugFromRestaurant(slug = "", data = null) {
@@ -145,7 +152,7 @@ function normalizeRouteDoc(slug = "", data = null) {
   const status = normalizeStatus(data.status || "active");
   if (!restaurantId || !canonicalSlug) return null;
   return {
-    found: status !== "inactive" && status !== "not-found",
+    found: isRoutableStatus(status),
     status,
     inputSlug: slug,
     canonicalSlug,
@@ -164,7 +171,7 @@ function normalizeRestaurantDoc(slug = "", snapshot = null) {
     const status = normalizeStatus(data.publicRouteStatus || data.status || "active");
     if (!restaurantId || !canonicalSlug) return null;
     return {
-      found: status !== "inactive" && status !== "not-found",
+      found: isRoutableStatus(status),
       status,
       inputSlug: slug,
       canonicalSlug,
