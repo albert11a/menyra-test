@@ -2240,6 +2240,132 @@ function buildNumberedPublicRouteSlug(baseSlug = "", attempt = 0) {
   return normalizePathRestaurantSlug(attempt === 0 ? safeBase : `${safeBase}-${attempt + 1}`);
 }
 
+function publicRouteData(routeDocOrData = {}) {
+  if (routeDocOrData && typeof routeDocOrData.data === "function") {
+    return routeDocOrData.data() || {};
+  }
+  return routeDocOrData && typeof routeDocOrData === "object" ? routeDocOrData : {};
+}
+
+function routeBelongsToSameRestaurant(routeDocOrData = {}, restaurantId = "") {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return false;
+  const routeData = publicRouteData(routeDocOrData);
+  const routeRestaurantId = asText(routeData.restaurantId || routeData.canonicalRestaurantId);
+  return !!routeRestaurantId && routeRestaurantId === safeRestaurantId;
+}
+
+function extractSlugFromCanonicalPublicPath(pathValue = "") {
+  const raw = asText(pathValue).replace(/^https?:\/\/[^/]+/i, "");
+  const firstSegment = raw.split(/[?#]/)[0].split("/").filter(Boolean)[0] || "";
+  try {
+    return normalizePathRestaurantSlug(decodeURIComponent(firstSegment));
+  } catch {
+    return normalizePathRestaurantSlug(firstSegment);
+  }
+}
+
+function uniquePublicRouteSlugCandidates(values = []) {
+  const seen = new Set();
+  const out = [];
+  values.forEach((value) => {
+    const slug = normalizePathRestaurantSlug(value);
+    if (!slug || seen.has(slug)) return;
+    seen.add(slug);
+    out.push(slug);
+  });
+  return out;
+}
+
+function restaurantRouteSlugCandidates(source = {}) {
+  return uniquePublicRouteSlugCandidates([
+    source.publicSlug,
+    source.landingSlug,
+    source.handle,
+    extractSlugFromCanonicalPublicPath(source.canonicalPublicPath)
+  ]);
+}
+
+function buildMissingPublicRoutePatch({ slug = "", restaurantId = "", routeData = {}, routeStatus = "", restaurantStatus = "" } = {}) {
+  const patch = {};
+  if (!asText(routeData.restaurantId)) patch.restaurantId = asText(restaurantId);
+  if (!asText(routeData.canonicalSlug)) patch.canonicalSlug = asText(slug);
+  if (!asText(routeData.status) && asText(routeStatus)) patch.status = safeLowerText(routeStatus);
+  if (!asText(routeData.restaurantStatus) && asText(restaurantStatus)) patch.restaurantStatus = asText(restaurantStatus);
+  return patch;
+}
+
+async function mergeMissingPublicRouteMetadata({
+  slug = "",
+  restaurantId = "",
+  routeStatus = "",
+  restaurantStatus = "",
+  routeRef = null,
+  routeData = {}
+} = {}) {
+  const safeSlug = normalizePathRestaurantSlug(slug);
+  if (!safeSlug || !routeBelongsToSameRestaurant(routeData, restaurantId)) {
+    return { slug: safeSlug, action: "skipped" };
+  }
+  const patch = buildMissingPublicRoutePatch({
+    slug: safeSlug,
+    restaurantId,
+    routeData,
+    routeStatus,
+    restaurantStatus
+  });
+  if (!Object.keys(patch).length) {
+    return { slug: safeSlug, action: "unchanged", alreadyOwned: true };
+  }
+  patch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+  await (routeRef || db.collection("publicRoutes").doc(safeSlug)).set(patch, { merge: true });
+  return { slug: safeSlug, action: "metadata-updated", alreadyOwned: true };
+}
+
+async function findExistingOwnedPublicRouteForRestaurant({
+  restaurantId = "",
+  data = {},
+  routeStatus = ""
+} = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return null;
+  const source = data && typeof data === "object" ? data : {};
+  const restaurantStatus = asText(source.status || source.state || source.businessStatus || source.lifecycleStatus);
+  const candidates = restaurantRouteSlugCandidates(source);
+  for (const slug of candidates) {
+    try {
+      const routeRef = db.collection("publicRoutes").doc(slug);
+      const routeSnap = await routeRef.get();
+      if (!routeSnap.exists) continue;
+      const routeData = routeSnap.data() || {};
+      if (!routeBelongsToSameRestaurant(routeData, safeRestaurantId)) continue;
+      return mergeMissingPublicRouteMetadata({
+        slug,
+        restaurantId: safeRestaurantId,
+        routeStatus,
+        restaurantStatus,
+        routeRef,
+        routeData
+      });
+    } catch {}
+  }
+  return null;
+}
+
+async function findNextAvailableSlugOnlyForDifferentRestaurant({
+  baseSlug = "",
+  restaurantId = "",
+  data = {},
+  routeStatus = ""
+} = {}) {
+  return claimUniquePublicRouteForRestaurant({
+    restaurantId,
+    data,
+    baseSlug,
+    routeStatus
+  });
+}
+
 async function claimUniquePublicRouteForRestaurant({
   restaurantId = "",
   data = {},
@@ -2261,7 +2387,7 @@ async function claimUniquePublicRouteForRestaurant({
       if (routeSnap.exists) {
         const routeData = routeSnap.data() || {};
         const routeRestaurantId = asText(routeData.restaurantId || routeData.canonicalRestaurantId);
-        if (routeRestaurantId && routeRestaurantId !== safeRestaurantId) {
+        if (routeRestaurantId && !routeBelongsToSameRestaurant(routeData, safeRestaurantId)) {
           return { conflict: true, slug, existingRestaurantId: routeRestaurantId };
         }
         const patch = {};
@@ -2300,6 +2426,17 @@ async function ensurePublicRouteForRestaurantWrite(restaurantId = "", data = {})
   }
   const routeStatus = resolveRouteStatusForRestaurant(source);
   if (!routeStatus) return { slug: "", action: "skipped" };
+  const existingOwnedRoute = await findExistingOwnedPublicRouteForRestaurant({
+    restaurantId: safeRestaurantId,
+    data: source,
+    routeStatus
+  });
+  if (existingOwnedRoute?.slug) {
+    return {
+      ...existingOwnedRoute,
+      restaurantPatchFields: []
+    };
+  }
   const baseSlug = normalizePathRestaurantSlug(
     source.publicSlug
     || source.landingSlug
@@ -2310,7 +2447,7 @@ async function ensurePublicRouteForRestaurantWrite(restaurantId = "", data = {})
     || safeRestaurantId
   );
   if (!baseSlug) return { slug: "", action: "skipped" };
-  const result = await claimUniquePublicRouteForRestaurant({
+  const result = await findNextAvailableSlugOnlyForDifferentRestaurant({
     restaurantId: safeRestaurantId,
     data: source,
     baseSlug,
@@ -2320,10 +2457,13 @@ async function ensurePublicRouteForRestaurantWrite(restaurantId = "", data = {})
   if (!finalSlug) return result;
   const canonicalPublicPath = buildCanonicalPublicRoutePath(finalSlug, "profile");
   const restaurantPatch = {};
-  if (asText(source.publicSlug) !== finalSlug) restaurantPatch.publicSlug = finalSlug;
-  if (asText(source.landingSlug) !== finalSlug) restaurantPatch.landingSlug = finalSlug;
-  if (asText(source.canonicalPublicPath) !== canonicalPublicPath) restaurantPatch.canonicalPublicPath = canonicalPublicPath;
-  if (!asText(source.landingRestaurantId)) restaurantPatch.landingRestaurantId = safeRestaurantId;
+  const shouldStoreNewClaim = result.action === "created"
+    || !normalizePathRestaurantSlug(source.publicSlug)
+    || !normalizePathRestaurantSlug(source.landingSlug);
+  if (shouldStoreNewClaim && asText(source.publicSlug) !== finalSlug) restaurantPatch.publicSlug = finalSlug;
+  if (shouldStoreNewClaim && asText(source.landingSlug) !== finalSlug) restaurantPatch.landingSlug = finalSlug;
+  if (shouldStoreNewClaim && asText(source.canonicalPublicPath) !== canonicalPublicPath) restaurantPatch.canonicalPublicPath = canonicalPublicPath;
+  if (shouldStoreNewClaim && !asText(source.landingRestaurantId)) restaurantPatch.landingRestaurantId = safeRestaurantId;
   if (Object.keys(restaurantPatch).length) {
     restaurantPatch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
     await db.collection("restaurants").doc(safeRestaurantId).set(restaurantPatch, { merge: true });

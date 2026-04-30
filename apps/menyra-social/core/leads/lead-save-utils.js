@@ -1,3 +1,11 @@
+import {
+  findNextAvailableSlugOnlyForDifferentRestaurant,
+  getStableLeadSlug,
+  resolveStableLeadIdentity,
+  shouldClaimRouteForLead,
+  shouldPreserveExistingSlug
+} from "./lead-identity-contract-utils.js";
+
 export async function saveLeadFromModalCore({
   state,
   documentObj,
@@ -350,36 +358,47 @@ export async function saveLeadFromModalCore({
   renderLeadEditor();
 
   try {
-    const originalLeadId = String(lead?.id || "").trim();
-    let leadId = originalLeadId
-      || String(state.leadModal.pendingLeadId || lead.pendingLeadId || "").trim();
+    const identity = resolveStableLeadIdentity({
+      state,
+      lead,
+      mode: state.leadModal.mode || ""
+    });
+    const originalLeadId = identity.existingLeadId;
+    let leadId = identity.leadId;
+    if (identity.isExistingUpdate && !leadId) {
+      throw new Error("Bestehende Lead-ID fehlt. Bitte neu oeffnen und erneut speichern.");
+    }
     const leadRef = leadId ? doc(db, "leads", leadId) : doc(collection(db, "leads"));
     if (!leadId) {
       leadId = leadRef.id;
       state.leadModal.pendingLeadId = leadId;
     }
-    const isNewLead = !originalLeadId;
+    const isNewLead = !identity.isExistingUpdate;
 
-    const originalRestaurantId = String(lead.restaurantId || "").trim();
-    let restaurantId = originalRestaurantId
-      || String(state.leadModal.pendingRestaurantId || lead.pendingRestaurantId || "").trim();
+    const originalRestaurantId = identity.directRestaurantId || identity.linkedRestaurantId;
+    let restaurantId = identity.restaurantId;
+    if (identity.isExistingUpdate && !restaurantId) {
+      throw new Error("Bestehende Restaurant-ID fehlt. Es wurde kein neuer Restaurant-Datensatz angelegt.");
+    }
     let restRef = null;
     if (!restaurantId) {
       restRef = doc(collection(db, "restaurants"));
       restaurantId = restRef.id;
       state.leadModal.pendingRestaurantId = restaurantId;
-    } else if (!originalRestaurantId) {
+    } else if (isNewLead && !identity.hasExistingRestaurantId) {
       restRef = doc(db, "restaurants", restaurantId);
     }
     state.leadModal.lead = {
       ...lead,
       ...(originalLeadId ? { id: leadId } : {}),
       ...(originalRestaurantId ? { restaurantId } : {}),
+      landingRestaurantId: restaurantId,
       pendingLeadId: leadId,
       pendingRestaurantId: restaurantId
     };
 
-    const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
+    const existingRest = identity.existingRestaurant
+      || (restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null);
     const prevLeadContribution = lead?.id ? buildLeadContribution(lead) : null;
     const prevCustomerContribution = existingRest ? buildCustomerContribution(existingRest) : null;
     const restaurantStatus = resolveRestStatus(statusValue, existingRest?.status || "");
@@ -405,19 +424,44 @@ export async function saveLeadFromModalCore({
     const monthlyPrice = getMonthlyPrice(customerType, settings);
     const yearlyPrice = monthlyPrice * 12;
     const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
-    const landingSlug = typeof resolveLeadLandingSlugUnique === "function"
-      ? await resolveLeadLandingSlugUnique(restaurantId, {
-        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
-        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+    const pendingLandingSlug = getStableLeadSlug({
+      publicSlug: state.leadModal.pendingPublicSlug || lead.pendingPublicSlug || "",
+      landingSlug: state.leadModal.pendingLandingSlug || lead.pendingLandingSlug || ""
+    });
+    const stableExistingSlug = getStableLeadSlug(lead, existingRest);
+    const slugChangedExplicitly = false; // Future explicit rename flow belongs behind its own contract.
+    const preserveExistingSlug = !isNewLead && shouldPreserveExistingSlug(
+      { lead, restaurant: existingRest },
+      { slugChangedExplicitly }
+    );
+    const hasExistingValidRoute = preserveExistingSlug && !!stableExistingSlug;
+    const shouldClaimRoute = shouldClaimRouteForLead({
+      isCreate: isNewLead && !pendingLandingSlug,
+      hasExistingValidRoute,
+      slugChangedExplicitly
+    });
+    let landingSlug = preserveExistingSlug
+      ? stableExistingSlug
+      : pendingLandingSlug;
+    if (!landingSlug && shouldClaimRoute) {
+      landingSlug = await findNextAvailableSlugOnlyForDifferentRestaurant({
+        restaurantId,
         businessName,
-        leadId
-      })
-      : buildLandingSlug(restaurantId, {
-        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
-        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+        leadId,
+        resolveLeadLandingSlugUnique,
+        buildLeadLandingSlug: buildLandingSlug
+      });
+    }
+    if (!landingSlug) {
+      landingSlug = buildLandingSlug(restaurantId, {
         businessName,
         leadId
       });
+    }
+    if (isNewLead && landingSlug) {
+      state.leadModal.pendingPublicSlug = landingSlug;
+      state.leadModal.pendingLandingSlug = landingSlug;
+    }
     const canonicalPublicPath = landingSlug ? `/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLandingUrl(restaurantId, {
       publicSlug: landingSlug,
@@ -535,22 +579,32 @@ export async function saveLeadFromModalCore({
     }
 
     if (restRef) {
+      const createPatch = !identity.hasExistingRestaurantId ? { createdAt: getTimestamp() } : {};
       if (hasPendingLeadLogoUpload) {
-        await setDoc(restRef, restPayload, { merge: true });
+        await setDoc(restRef, { ...restPayload, ...createPatch }, { merge: true });
       } else {
         await setDoc(restRef, {
           ...restPayload,
-          createdAt: getTimestamp()
-        });
+          ...createPatch
+        }, { merge: true });
       }
     } else {
       await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
     }
-    await ensurePublicMeta(restaurantId, restPayload, {
+    const publicMetaPromise = ensurePublicMeta(restaurantId, restPayload, {
       publicSlug: landingSlug,
       landingSlug,
-      leadId
+      leadId,
+      slugAlreadyResolved: true,
+      preserveExistingSlug
     });
+    if (isNewLead || !hasExistingValidRoute) {
+      await publicMetaPromise;
+    } else {
+      publicMetaPromise.catch((err) => {
+        console.warn("[mnyra][lead.publicMeta.bestEffort]", err?.message || err);
+      });
+    }
 
     let socialUid = lead.socialUid || "";
     let socialEmail = lead.socialEmail || "";
@@ -682,6 +736,8 @@ export async function saveLeadFromModalCore({
     state.leadModal.saving = false;
     delete state.leadModal.pendingLeadId;
     delete state.leadModal.pendingRestaurantId;
+    delete state.leadModal.pendingPublicSlug;
+    delete state.leadModal.pendingLandingSlug;
     if (isInlineCreate) {
       state.leads.view = "list";
       resetDraft();

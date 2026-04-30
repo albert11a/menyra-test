@@ -74,7 +74,7 @@ export function bindLeadInlineCreateEventsCore({
   const leadPasswordInput = doc.getElementById("leadPassword");
   if (leadInlineSaveBtn) {
     leadInlineSaveBtn.addEventListener("click", () => {
-      if (state.leadModal.loading || !saveLeadFromModal) return;
+      if (state.leadModal.loading || state.leadModal.saving || !saveLeadFromModal) return;
       void saveLeadFromModal();
     });
   }

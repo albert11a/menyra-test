@@ -1,3 +1,9 @@
+import {
+  getStableLeadSlug,
+  resolveExistingRestaurantForLead,
+  routeBelongsToSameRestaurant
+} from "../leads/lead-identity-contract-utils.js";
+
 export function createCrmRuntimeController(deps = {}) {
   const {
     state,
@@ -287,6 +293,13 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     const fromState = safeRestaurantId
       ? (state?.restaurants || []).find((row) => String(row?.id || "").trim() === safeRestaurantId)
       : null;
+    const stableStateSlug = normalizeLeadLandingSlugValue(fromState?.publicSlug || fromState?.landingSlug || "");
+    if (stableStateSlug && !LEAD_LANDING_RESERVED_SLUGS.has(stableStateSlug)) {
+      return resolveLeadLandingSlugConflict(stableStateSlug, {
+        restaurantId: safeRestaurantId,
+        leadId: safeOptions.leadId || ""
+      });
+    }
     const derivedName = String(
       safeOptions.businessName
       || safeOptions.name
@@ -317,8 +330,8 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
         const routeSnap = await getDoc(doc(db, "publicRoutes", safeSlugValue));
         if (routeSnap?.exists?.()) {
           const routeData = routeSnap.data?.() || {};
-          const routeRestaurantId = String(routeData.restaurantId || routeData.canonicalRestaurantId || "").trim();
-          if (!routeRestaurantId || routeRestaurantId !== safeRestaurantId) {
+          if (!routeBelongsToSameRestaurant(routeData, safeRestaurantId)) {
+            const routeRestaurantId = String(routeData.restaurantId || routeData.canonicalRestaurantId || "").trim();
             return {
               id: routeRestaurantId || `publicRoutes/${safeSlugValue}`,
               data: routeData,
@@ -345,10 +358,11 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     return null;
   }
 
-  async function resolveLeadLandingSlugUnique(restaurantId = "", options = {}) {
+  async function findNextAvailableSlugOnlyForDifferentRestaurant(baseSlug = "", { restaurantId = "", leadId = "", businessName = "" } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
-    const safeOptions = options && typeof options === "object" ? options : {};
-    const baseCandidate = buildLeadLandingSlug(safeRestaurantId, safeOptions) || "business";
+    const safeLeadId = String(leadId || "").trim();
+    const safeBusinessName = String(businessName || "").trim();
+    const baseCandidate = normalizeLeadLandingSlugValue(baseSlug || safeBusinessName || safeRestaurantId || safeLeadId || "business") || "business";
     for (let attempt = 0; attempt < 25; attempt += 1) {
       const candidate = normalizeLeadLandingSlugValue(
         attempt === 0
@@ -361,6 +375,17 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       if (!remoteConflict?.id) return candidate;
     }
     throw new Error("Kein freier Public Slug gefunden.");
+  }
+
+  async function resolveLeadLandingSlugUnique(restaurantId = "", options = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const baseCandidate = buildLeadLandingSlug(safeRestaurantId, safeOptions) || "business";
+    return findNextAvailableSlugOnlyForDifferentRestaurant(baseCandidate, {
+      restaurantId: safeRestaurantId,
+      leadId: safeOptions.leadId || "",
+      businessName: safeOptions.businessName || ""
+    });
   }
 
   function buildLeadLandingPagePath(restaurantId = "", options = {}) {
@@ -910,7 +935,7 @@ function resetLeadDraft() {
 }
 
 function createLeadDraftState(mode = "create", lead = null) {
-  const rest = lead?.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
+  const rest = resolveExistingRestaurantForLead(state, lead || {});
   const leadCoords = resolveCoordsFromEntity(lead || {});
   const restCoords = resolveCoordsFromEntity(rest || {});
   const coords = preferStableCoords(leadCoords, restCoords);
@@ -929,6 +954,12 @@ function createLeadDraftState(mode = "create", lead = null) {
   const country = normalizeLeadCountry(lead?.country || rest?.country || settings.defaultCountry);
   const merged = {
     ...(lead || {}),
+    restaurantId: lead?.restaurantId || rest?.id || lead?.landingRestaurantId || "",
+    landingRestaurantId: lead?.landingRestaurantId || lead?.restaurantId || rest?.id || "",
+    publicSlug: lead?.publicSlug || rest?.publicSlug || rest?.landingSlug || "",
+    landingSlug: lead?.landingSlug || lead?.publicSlug || rest?.landingSlug || rest?.publicSlug || "",
+    canonicalPublicPath: lead?.canonicalPublicPath || rest?.canonicalPublicPath || "",
+    landingPageUrl: lead?.landingPageUrl || rest?.landingPageUrl || "",
     businessName,
     city: lead?.city || rest?.city || "",
     address: locations[0]?.address || lead?.address || rest?.address || "",
@@ -1475,12 +1506,25 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
   const safeBase = base && typeof base === "object" ? base : {};
   const safeOptions = options && typeof options === "object" ? options : {};
   const businessName = String(safeBase?.name || safeBase?.restaurantName || safeBase?.businessName || "Business").trim() || "Business";
-  const landingSlug = await resolveLeadLandingSlugUnique(safeRestaurantId, {
-    publicSlug: safeOptions.publicSlug || safeBase?.publicSlug || "",
-    landingSlug: safeOptions.landingSlug || safeBase?.landingSlug || "",
-    businessName,
-    leadId: safeOptions.leadId || safeBase?.leadId || ""
-  });
+  const providedSlug = normalizeLeadLandingSlugValue(
+    safeOptions.publicSlug
+    || safeOptions.landingSlug
+    || safeBase?.publicSlug
+    || safeBase?.landingSlug
+    || ""
+  );
+  const canUseProvidedSlug = providedSlug && (
+    safeOptions.slugAlreadyResolved === true
+    || safeOptions.preserveExistingSlug === true
+  );
+  const landingSlug = canUseProvidedSlug
+    ? providedSlug
+    : await resolveLeadLandingSlugUnique(safeRestaurantId, {
+      publicSlug: safeOptions.publicSlug || safeBase?.publicSlug || "",
+      landingSlug: safeOptions.landingSlug || safeBase?.landingSlug || "",
+      businessName,
+      leadId: safeOptions.leadId || safeBase?.leadId || ""
+    });
   const canonicalPublicPath = `/${encodeURIComponent(landingSlug)}`;
   const landingUrl = buildLeadLandingPageUrl(safeRestaurantId, {
     publicSlug: landingSlug,
@@ -1963,23 +2007,15 @@ async function backfillLeadLandingForRows(rows = []) {
   let didPatch = false;
   for (const lead of list.slice(0, 120)) {
     const safeLeadId = String(lead?.id || "").trim();
-    let restaurantId = String(lead?.restaurantId || lead?.landingRestaurantId || "").trim();
-    let restaurant = null;
-    if (restaurantId) {
-      restaurant = (state.restaurants || []).find((row) => String(row?.id || "").trim() === restaurantId) || null;
-    }
-    if (!restaurantId && safeLeadId) {
-      restaurant = (state.restaurants || []).find((row) => String(row?.leadId || "").trim() === safeLeadId) || null;
-      restaurantId = String(restaurant?.id || "").trim();
-    }
+    const restaurant = resolveExistingRestaurantForLead(state, lead || {});
+    const restaurantId = String(lead?.restaurantId || lead?.landingRestaurantId || restaurant?.id || "").trim();
     if (!safeLeadId || !restaurantId) continue;
     const dedupeKey = `${safeLeadId}:${restaurantId}`;
     if (leadLandingBackfillDone.has(dedupeKey)) continue;
 
     const businessName = String(lead?.businessName || restaurant?.name || restaurant?.restaurantName || "Business").trim() || "Business";
-    const landingSlug = buildLeadLandingSlug(restaurantId, {
-      publicSlug: lead?.publicSlug || restaurant?.publicSlug || "",
-      landingSlug: lead?.landingSlug || restaurant?.landingSlug || "",
+    const preservedLandingSlug = getStableLeadSlug(lead, restaurant);
+    const landingSlug = preservedLandingSlug || buildLeadLandingSlug(restaurantId, {
       businessName,
       leadId: safeLeadId
     });
@@ -2019,7 +2055,9 @@ async function backfillLeadLandingForRows(rows = []) {
       await ensureRestaurantPublicMeta(restaurantId, metaBase, {
         publicSlug: landingSlug,
         landingSlug,
-        leadId: safeLeadId
+        leadId: safeLeadId,
+        slugAlreadyResolved: !!preservedLandingSlug,
+        preserveExistingSlug: !!preservedLandingSlug
       });
       const restaurantPatch = {
         landingEnabled: true,

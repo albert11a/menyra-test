@@ -1,3 +1,11 @@
+import {
+  findNextAvailableSlugOnlyForDifferentRestaurant,
+  getStableLeadSlug,
+  resolveStableLeadIdentity,
+  shouldClaimRouteForLead,
+  shouldPreserveExistingSlug
+} from "./lead-identity-contract-utils.js";
+
 export async function convertLeadToCustomerCore({
   leadId,
   state,
@@ -158,8 +166,14 @@ export async function convertLeadToCustomerCore({
 
   try {
     const prevLeadContribution = buildLeadCrmContribution(lead);
-    let restaurantId = lead.restaurantId || "";
-    let existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
+    const identity = resolveStableLeadIdentity({
+      state,
+      lead,
+      mode: "update"
+    });
+    let restaurantId = identity.restaurantId || "";
+    let existingRest = identity.existingRestaurant
+      || (restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null);
     const businessName = lead.businessName || "Neuer Kunde";
     const type = resolveCustomerType(lead.customerType || "cafe");
     const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
@@ -207,23 +221,39 @@ export async function convertLeadToCustomerCore({
       restPayloadBase.lng = Number(lead.lng);
     }
 
+    let createdRestaurantForConversion = false;
     if (!restaurantId) {
       const restRef = doc(collection(db, "restaurants"));
       restaurantId = restRef.id;
+      createdRestaurantForConversion = true;
     }
-    const landingSlug = typeof resolveLeadLandingSlugUnique === "function"
-      ? await resolveLeadLandingSlugUnique(restaurantId, {
-        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
-        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+    const slugChangedExplicitly = false;
+    const preserveExistingSlug = shouldPreserveExistingSlug(
+      { lead, restaurant: existingRest },
+      { slugChangedExplicitly }
+    );
+    const stableExistingSlug = getStableLeadSlug(lead, existingRest);
+    const shouldClaimRoute = shouldClaimRouteForLead({
+      isCreate: createdRestaurantForConversion,
+      hasExistingValidRoute: preserveExistingSlug && !!stableExistingSlug,
+      slugChangedExplicitly
+    });
+    let landingSlug = preserveExistingSlug ? stableExistingSlug : "";
+    if (!landingSlug && shouldClaimRoute) {
+      landingSlug = await findNextAvailableSlugOnlyForDifferentRestaurant({
+        restaurantId,
         businessName,
-        leadId: lead?.id || ""
-      })
-      : buildLandingSlug(restaurantId, {
-        publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
-        landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
+        leadId: lead?.id || "",
+        resolveLeadLandingSlugUnique,
+        buildLeadLandingSlug: buildLandingSlug
+      });
+    }
+    if (!landingSlug) {
+      landingSlug = buildLandingSlug(restaurantId, {
         businessName,
         leadId: lead?.id || ""
       });
+    }
     const canonicalPublicPath = landingSlug ? `/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLandingUrl(restaurantId, {
       publicSlug: landingSlug,
@@ -245,7 +275,7 @@ export async function convertLeadToCustomerCore({
     if (!existingRest && restaurantId) {
       existingRest = state.restaurants.find((r) => String(r.id) === String(restaurantId)) || existingRest;
     }
-    if (!lead.restaurantId) {
+    if (createdRestaurantForConversion) {
       await setDoc(doc(db, "restaurants", restaurantId), {
         ...restPayload,
         createdAt: serverTimestamp()
@@ -256,7 +286,9 @@ export async function convertLeadToCustomerCore({
     await ensureRestaurantPublicMeta(restaurantId, restPayload, {
       publicSlug: landingSlug,
       landingSlug,
-      leadId: lead?.id || ""
+      leadId: lead?.id || "",
+      slugAlreadyResolved: true,
+      preserveExistingSlug
     });
 
     const socialUid = lead.socialUid || "";

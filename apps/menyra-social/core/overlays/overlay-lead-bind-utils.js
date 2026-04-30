@@ -86,7 +86,7 @@ export function bindLeadOverlayEventsCore({
   bindModalDismiss(leadClose, closeLeadModal);
   if (leadSave) {
     leadSave.addEventListener("click", () => {
-      if (state.leadModal.loading) return;
+      if (state.leadModal.loading || state.leadModal.saving) return;
       if (!saveLeadFromModal) return;
       void saveLeadFromModal();
     });
