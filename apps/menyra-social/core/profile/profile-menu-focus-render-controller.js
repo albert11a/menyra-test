@@ -1703,19 +1703,26 @@ function renderMenuList(items, { mode = "profile" } = {}) {
         }
       </div>
     `;
-    const sections = [
+    const allSections = [
       { title: "Getraenke", list: drinkItems, addType: "drink" },
       { title: "Speisen", list: foodItems, addType: "food" }
-    ].filter((section) => section.list.length > 0);
-    if (!sections.length) {
-      const filterLabel = activeFilter === "drink"
-        ? "Keine Getraenke"
-        : (activeFilter === "food" ? "Keine Speisen" : "Keine Eintraege");
+    ];
+    if (activeFilter === "all") {
       return `
-        <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(filterLabel)}</div>
+        <div>
+          ${allSections.map((section) => renderSection(section.title, section.list, { addType: section.addType })).join("")}
         </div>
       `;
+    }
+    const sections = allSections.filter((section) => section.list.length > 0);
+    if (!sections.length) {
+      if (activeFilter === "drink") {
+        return renderSection("Getraenke", [], { addType: "drink" });
+      }
+      if (activeFilter === "food") {
+        return renderSection("Speisen", [], { addType: "food" });
+      }
+      return "";
     }
     return `
       <div>

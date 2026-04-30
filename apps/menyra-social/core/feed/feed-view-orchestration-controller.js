@@ -1968,6 +1968,15 @@ export function createFeedViewOrchestrationController({
     }
     applyActiveIndex(resolveActiveIndex());
   };
+  const renderFeedLocationLocateIcon = (name = "crosshair", className = "w-5 h-5 relative z-10") => {
+    const allowedName = String(name || "").trim().toLowerCase();
+    const safeName = allowedName === "check" || allowedName === "loader-circle" ? allowedName : "crosshair";
+    const safeClassName = String(className || "").trim() || "w-5 h-5 relative z-10";
+    return iconFn(safeName, safeClassName, {
+      id: "locateIcon",
+      "data-feed-location-current-icon": safeName
+    }) || `<i id="locateIcon" data-lucide="${escapeHtmlFn(safeName)}" data-feed-location-current-icon="${escapeHtmlFn(safeName)}" class="${escapeHtmlFn(safeClassName)}"></i>`;
+  };
   const syncFeedLocationGateDom = () => {
     const requestBtn = doc?.getElementById("btnLocateMe");
     const locateIcon = doc?.getElementById("locateIcon");
@@ -1985,10 +1994,24 @@ export function createFeedViewOrchestrationController({
       requestBtn.classList.toggle("is-loading", locationGateResolveTransitionPending);
     }
     if (locateIcon instanceof HTMLElement) {
-      locateIcon.classList.toggle("animate-spin", busy);
-      locateIcon.setAttribute("data-lucide", locationGateResolveTransitionPending
+      const nextIconName = locationGateResolveTransitionPending
         ? "loader-circle"
-        : (hasLocation && !locationRequestPending ? "check" : "crosshair"));
+        : (hasLocation && !locationRequestPending ? "check" : "crosshair");
+      const iconBaseClass = String(locateIcon.getAttribute("class") || "w-5 h-5 relative z-10")
+        .replace(/\banimate-spin\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim() || "w-5 h-5 relative z-10";
+      if (String(locateIcon.getAttribute("data-feed-location-current-icon") || "").trim() !== nextIconName && doc) {
+        const tpl = doc.createElement("template");
+        tpl.innerHTML = renderFeedLocationLocateIcon(nextIconName, iconBaseClass).trim();
+        const nextIcon = tpl.content.firstElementChild;
+        if (nextIcon instanceof HTMLElement || (typeof SVGElement === "function" && nextIcon instanceof SVGElement)) {
+          nextIcon.classList.toggle("animate-spin", busy);
+          locateIcon.replaceWith(nextIcon);
+        }
+      } else {
+        locateIcon.classList.toggle("animate-spin", busy);
+      }
     }
     if (locatePulse instanceof HTMLElement) {
       locatePulse.classList.toggle("opacity-100", locationRequestPending);
@@ -2714,7 +2737,7 @@ export function createFeedViewOrchestrationController({
                     <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtmlFn(cityValue)}" placeholder="${escapeHtmlFn(String(gateCopy?.searchPlaceholder || ""))}" class="loc-input" />
                     <div class="loc-request-wrap">
                       <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="${escapeHtmlFn(String(gateCopy?.useLocationAriaLabel || ""))}">
-                        <i id="locateIcon" data-lucide="crosshair" class="w-5 h-5 relative z-10"></i>
+                        ${renderFeedLocationLocateIcon("crosshair", "w-5 h-5 relative z-10")}
                         <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
                       </button>
                     </div>
