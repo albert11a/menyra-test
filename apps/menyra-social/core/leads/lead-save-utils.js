@@ -426,12 +426,15 @@ export async function saveLeadFromModalCore({
       leadId,
       forcePublicOrigin: true
     });
-    const shouldSeedRestaurantBeforeLogoUpload = !!restRef && (
+    const hasPendingLeadLogoUpload = (
       !!state.leadModal.logoFile
       || !!state.leadModal.bestSpotLogoFile
     );
-    if (shouldSeedRestaurantBeforeLogoUpload) {
-      await setDoc(restRef, {
+    const preUploadRestaurantRef = hasPendingLeadLogoUpload && restaurantId
+      ? (restRef || doc(db, "restaurants", restaurantId))
+      : null;
+    if (preUploadRestaurantRef) {
+      const preUploadRestaurantPayload = {
         name: businessName,
         restaurantName: businessName,
         type: customerType,
@@ -454,9 +457,10 @@ export async function saveLeadFromModalCore({
         landingSlug,
         landingPageUrl,
         ...creatorMeta,
-        createdAt: getTimestamp(),
         updatedAt: getTimestamp()
-      });
+      };
+      if (!originalRestaurantId) preUploadRestaurantPayload.createdAt = getTimestamp();
+      await setDoc(preUploadRestaurantRef, preUploadRestaurantPayload, { merge: true });
     }
 
     let logoUrl = logoUrlInput || state.leadModal.logoPreview || lead.logoUrl || "";
@@ -531,7 +535,7 @@ export async function saveLeadFromModalCore({
     }
 
     if (restRef) {
-      if (shouldSeedRestaurantBeforeLogoUpload) {
+      if (hasPendingLeadLogoUpload) {
         await setDoc(restRef, restPayload, { merge: true });
       } else {
         await setDoc(restRef, {
