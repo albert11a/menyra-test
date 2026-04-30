@@ -270,6 +270,12 @@ function routeStatusProposal(restaurantStatus = "") {
   };
 }
 
+function numberedSlugCandidate(baseSlug = "", index = 0) {
+  const base = normalizeSlug(baseSlug);
+  if (!base) return "";
+  return normalizeSlug(index === 0 ? base : `${base}-${index + 1}`);
+}
+
 function expectedTruthState(items = []) {
   return Array.isArray(items) && items.length > 0 ? "seeded" : "knownEmpty";
 }
@@ -503,16 +509,76 @@ function proposePublicRoutes(restaurantsById, routesBySlug, report) {
   slugOwners.forEach((owners, slug) => {
     const uniqueRestaurantIds = Array.from(new Set(owners.map((entry) => entry.restaurant.id)));
     if (uniqueRestaurantIds.length > 1) {
+      const route = routesBySlug.get(slug);
+      const routeRestaurantId = text(route?.data?.restaurantId || route?.data?.canonicalRestaurantId || "");
+      if (route && routeRestaurantId && !uniqueRestaurantIds.includes(routeRestaurantId)) {
+        const conflict = {
+          path: `publicRoutes/${slug}`,
+          slug,
+          existingRestaurantId: routeRestaurantId,
+          duplicateRestaurantIds: uniqueRestaurantIds,
+          action: "skip"
+        };
+        report.conflicts.publicRouteTargetConflicts.push(conflict);
+        report.routeAlignment.doNotTouch.push({
+          ...conflict,
+          category: "doNotTouch",
+          reason: "existing publicRoutes doc points outside duplicate restaurant set"
+        });
+        return;
+      }
+      const primaryRestaurantId = routeRestaurantId || uniqueRestaurantIds.slice().sort()[0];
+      const orderedRestaurantIds = [
+        primaryRestaurantId,
+        ...uniqueRestaurantIds.filter((id) => id !== primaryRestaurantId).sort()
+      ];
+      const numberedCandidates = orderedRestaurantIds.map((restaurantId, index) => ({
+        restaurantId,
+        proposedSlug: numberedSlugCandidate(slug, index),
+        path: `publicRoutes/${numberedSlugCandidate(slug, index)}`
+      }));
       const duplicate = {
         slug,
         restaurantIds: uniqueRestaurantIds,
+        numberedCandidates,
         action: "skip publicRoutes proposal"
       };
       report.conflicts.duplicateSlugs.push(duplicate);
       report.routeAlignment.needsReview.push({
         ...duplicate,
         category: "needsReview",
-        reason: "duplicate slug"
+        reason: routeRestaurantId
+          ? "duplicate slug; existing route establishes the primary slug and remaining duplicates need numbered slug review"
+          : "duplicate slug; deterministic numbered slug proposal needs manual primary selection"
+      });
+      numberedCandidates.slice(1).forEach((candidate) => {
+        const restaurant = owners.find((entry) => entry.restaurant.id === candidate.restaurantId)?.restaurant;
+        if (!restaurant) return;
+        const status = routeStatusProposal(restaurant.public.status);
+        const proposal = {
+          path: candidate.path,
+          operation: "create",
+          restaurantId: restaurant.id,
+          canonicalSlug: candidate.proposedSlug,
+          status: status.status,
+          restaurantStatus: restaurant.public.status,
+          updatedAt: "[serverTimestamp()]",
+          sourceRestaurantPath: restaurant.path,
+          sourceSlugFields: owners
+            .filter((entry) => entry.restaurant.id === restaurant.id)
+            .map((entry) => entry.field),
+          duplicateSourceSlug: slug,
+          requiresRestaurantSlugUpdate: true,
+          safeToApplyLater: false,
+          category: "needsReview",
+          reason: "duplicate slug has a deterministic numbered route candidate; review restaurant slug update before applying"
+        };
+        report.review.publicRoutesNeedsReview.push(proposal);
+        report.routeAlignment.needsReview.push({
+          ...proposal,
+          slugClean: true,
+          restaurantExists: true
+        });
       });
       return;
     }

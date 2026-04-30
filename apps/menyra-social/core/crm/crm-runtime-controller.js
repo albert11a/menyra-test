@@ -262,15 +262,8 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     let candidate = normalizeLeadLandingSlugValue(baseSlug || safeRestaurantId || safeLeadId || "business");
     if (!candidate) candidate = "business";
 
-    if (LEAD_LANDING_RESERVED_SLUGS.has(candidate) || hasLeadLandingSlugCollisionInState(candidate, { restaurantId: safeRestaurantId })) {
-      const suffixSource = normalizeLeadLandingSlugValue(safeRestaurantId || safeLeadId || "");
-      const suffix = suffixSource.replace(/-/g, "").slice(0, 6) || "biz";
-      candidate = `${candidate}-${suffix}`
-        .replace(/-+/g, "-")
-        .replace(/^-+|-+$/g, "");
-    }
     if (LEAD_LANDING_RESERVED_SLUGS.has(candidate)) {
-      candidate = `${candidate}-biz`;
+      candidate = `${candidate}-2`;
     }
     return normalizeLeadLandingSlugValue(candidate) || "business";
   }
@@ -318,7 +311,24 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   async function findLeadLandingSlugConflictDoc(slugValue = "", { restaurantId = "" } = {}) {
     const safeSlugValue = normalizeLeadLandingSlugValue(slugValue || "");
     const safeRestaurantId = String(restaurantId || "").trim();
-    if (!safeSlugValue || !collection || !query || !where || !limit || !getDocs || !db) return null;
+    if (!safeSlugValue || !db) return null;
+    if (typeof getDoc === "function" && typeof doc === "function") {
+      try {
+        const routeSnap = await getDoc(doc(db, "publicRoutes", safeSlugValue));
+        if (routeSnap?.exists?.()) {
+          const routeData = routeSnap.data?.() || {};
+          const routeRestaurantId = String(routeData.restaurantId || routeData.canonicalRestaurantId || "").trim();
+          if (!routeRestaurantId || routeRestaurantId !== safeRestaurantId) {
+            return {
+              id: routeRestaurantId || `publicRoutes/${safeSlugValue}`,
+              data: routeData,
+              source: "publicRoutes"
+            };
+          }
+        }
+      } catch {}
+    }
+    if (!collection || !query || !where || !limit || !getDocs) return null;
     const fields = ["publicSlug", "landingSlug", "handle"];
     for (const fieldName of fields) {
       try {
@@ -339,28 +349,18 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     const safeRestaurantId = String(restaurantId || "").trim();
     const safeOptions = options && typeof options === "object" ? options : {};
     const baseCandidate = buildLeadLandingSlug(safeRestaurantId, safeOptions) || "business";
-    const suffixSeed = normalizeLeadLandingSlugValue(
-      safeRestaurantId
-      || safeOptions.leadId
-      || safeOptions.publicSlug
-      || safeOptions.landingSlug
-      || safeOptions.businessName
-      || safeOptions.name
-      || "biz"
-    ).replace(/-/g, "");
-    const suffix = suffixSeed.slice(0, 6) || "biz";
     for (let attempt = 0; attempt < 25; attempt += 1) {
       const candidate = normalizeLeadLandingSlugValue(
         attempt === 0
           ? baseCandidate
-          : `${baseCandidate}-${suffix}${attempt > 1 ? attempt : ""}`
+          : `${baseCandidate}-${attempt + 1}`
       );
       if (!candidate || LEAD_LANDING_RESERVED_SLUGS.has(candidate)) continue;
       if (hasLeadLandingSlugCollisionInState(candidate, { restaurantId: safeRestaurantId })) continue;
       const remoteConflict = await findLeadLandingSlugConflictDoc(candidate, { restaurantId: safeRestaurantId });
       if (!remoteConflict?.id) return candidate;
     }
-    return normalizeLeadLandingSlugValue(`${baseCandidate}-${suffix}-${Date.now().toString(36).slice(-4)}`) || "business";
+    throw new Error("Kein freier Public Slug gefunden.");
   }
 
   function buildLeadLandingPagePath(restaurantId = "", options = {}) {

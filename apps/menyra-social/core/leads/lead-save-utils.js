@@ -274,6 +274,10 @@ export async function saveLeadFromModalCore({
     return payload;
   };
 
+  if (!state.leadModal || state.leadModal.loading || state.leadModal.saving) return;
+  state.leadModal.saving = true;
+
+  try {
   const lead = state.leadModal.lead || {};
   const isInlineCreate = isInlineCreateView();
   const settings = getSettings();
@@ -334,6 +338,7 @@ export async function saveLeadFromModalCore({
 
   if (!businessName) {
     state.leadModal.status = "Bitte Business Name eingeben.";
+    state.leadModal.saving = false;
     renderLeadEditor();
     return;
   }
@@ -344,12 +349,34 @@ export async function saveLeadFromModalCore({
   renderLeadEditor();
 
   try {
-    let restaurantId = lead.restaurantId || "";
+    const originalLeadId = String(lead?.id || "").trim();
+    let leadId = originalLeadId
+      || String(state.leadModal.pendingLeadId || lead.pendingLeadId || "").trim();
+    const leadRef = leadId ? doc(db, "leads", leadId) : doc(collection(db, "leads"));
+    if (!leadId) {
+      leadId = leadRef.id;
+      state.leadModal.pendingLeadId = leadId;
+    }
+    const isNewLead = !originalLeadId;
+
+    const originalRestaurantId = String(lead.restaurantId || "").trim();
+    let restaurantId = originalRestaurantId
+      || String(state.leadModal.pendingRestaurantId || lead.pendingRestaurantId || "").trim();
     let restRef = null;
     if (!restaurantId) {
       restRef = doc(collection(db, "restaurants"));
       restaurantId = restRef.id;
+      state.leadModal.pendingRestaurantId = restaurantId;
+    } else if (!originalRestaurantId) {
+      restRef = doc(db, "restaurants", restaurantId);
     }
+    state.leadModal.lead = {
+      ...lead,
+      ...(originalLeadId ? { id: leadId } : {}),
+      ...(originalRestaurantId ? { restaurantId } : {}),
+      pendingLeadId: leadId,
+      pendingRestaurantId: restaurantId
+    };
 
     const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
     const prevLeadContribution = lead?.id ? buildLeadContribution(lead) : null;
@@ -382,20 +409,20 @@ export async function saveLeadFromModalCore({
         publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
         landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
         businessName,
-        leadId: lead?.id || ""
+        leadId
       })
       : buildLandingSlug(restaurantId, {
         publicSlug: lead?.publicSlug || existingRest?.publicSlug || "",
         landingSlug: lead?.landingSlug || existingRest?.landingSlug || "",
         businessName,
-        leadId: lead?.id || ""
+        leadId
       });
     const canonicalPublicPath = landingSlug ? `/${encodeURIComponent(landingSlug)}` : "";
     const landingPageUrl = buildLandingUrl(restaurantId, {
       publicSlug: landingSlug,
       landingSlug,
       businessName,
-      leadId: lead?.id || "",
+      leadId,
       forcePublicOrigin: true
     });
     const shouldSeedRestaurantBeforeLogoUpload = !!restRef && !!state.leadModal.logoFile;
@@ -465,7 +492,7 @@ export async function saveLeadFromModalCore({
       logoUrl,
       logo: logoUrl,
       status: restaurantStatus,
-      leadId: lead.id || "",
+      leadId,
       locations: locationPayload,
       publicSlug: landingSlug,
       canonicalPublicPath,
@@ -499,7 +526,7 @@ export async function saveLeadFromModalCore({
     await ensurePublicMeta(restaurantId, restPayload, {
       publicSlug: landingSlug,
       landingSlug,
-      leadId: lead?.id || ""
+      leadId
     });
 
     let socialUid = lead.socialUid || "";
@@ -542,9 +569,6 @@ export async function saveLeadFromModalCore({
         await setDoc(doc(db, "users", socialUid), userBootstrapPayload, { merge: true });
       }
     }
-
-    const leadRef = lead.id ? doc(db, "leads", lead.id) : doc(collection(db, "leads"));
-    const leadId = lead.id || leadRef.id;
     const leadPayload = {
       businessName,
       customerType,
@@ -592,7 +616,7 @@ export async function saveLeadFromModalCore({
       leadPayload.gpsLat = coords.lat;
       leadPayload.gpsLng = coords.lng;
     }
-    if (!lead.id) {
+    if (isNewLead) {
       leadPayload.createdAt = getTimestamp();
     }
     await setDoc(leadRef, leadPayload, { merge: true });
@@ -630,6 +654,9 @@ export async function saveLeadFromModalCore({
     refreshCustomers();
 
     state.leadModal.loading = false;
+    state.leadModal.saving = false;
+    delete state.leadModal.pendingLeadId;
+    delete state.leadModal.pendingRestaurantId;
     if (isInlineCreate) {
       state.leads.view = "list";
       resetDraft();
@@ -645,6 +672,14 @@ export async function saveLeadFromModalCore({
     console.error(err);
     state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
     state.leadModal.loading = false;
+    state.leadModal.saving = false;
+    renderLeadEditor();
+  }
+  } catch (err) {
+    console.error(err);
+    state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.leadModal.loading = false;
+    state.leadModal.saving = false;
     renderLeadEditor();
   }
 }

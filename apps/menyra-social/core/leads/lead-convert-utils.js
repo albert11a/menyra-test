@@ -30,7 +30,23 @@ export async function convertLeadToCustomerCore({
   if (!state || !state.user || !leadId) return false;
   const lead = state.leads.items.find((item) => String(item.id) === String(leadId));
   if (!lead) return false;
-  if (!confirmFn("Lead als Kunde aktivieren?")) return false;
+  const convertingKey = String(leadId || "").trim();
+  if (!state.leads.convertingIds) state.leads.convertingIds = new Set();
+  if (state.leads.convertingIds.has(convertingKey)) return false;
+  state.leads.convertingIds.add(convertingKey);
+  let confirmed = false;
+  try {
+    confirmed = typeof confirmFn === "function" ? confirmFn("Lead als Kunde aktivieren?") : false;
+  } catch (err) {
+    console.error(err);
+    if (typeof alertFn === "function") alertFn(err?.message || "Umwandlung fehlgeschlagen.");
+    state.leads.convertingIds.delete(convertingKey);
+    return false;
+  }
+  if (!confirmed) {
+    state.leads.convertingIds.delete(convertingKey);
+    return false;
+  }
   const normalizeLandingSlug = (value = "") => {
     let slug = String(value || "").trim().toLowerCase();
     if (!slug) return "";
@@ -292,10 +308,12 @@ export async function convertLeadToCustomerCore({
     rebuildBusinessLocations();
     refreshCustomersFromRestaurants();
     render();
+    state.leads.convertingIds.delete(convertingKey);
     return true;
   } catch (err) {
     console.error(err);
     alertFn(err?.message || "Umwandlung fehlgeschlagen.");
+    state.leads.convertingIds.delete(convertingKey);
     return false;
   }
 }

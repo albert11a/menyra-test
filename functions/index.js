@@ -2106,20 +2106,34 @@ async function findBootstrapPublicSlugConflictDoc(slugValue = "", { restaurantId
   const safeSlugValue = normalizePublicRouteSlug(slugValue);
   const safeRestaurantId = asText(restaurantId);
   if (!safeSlugValue) return null;
+  try {
+    const routeSnap = await db.collection("publicRoutes").doc(safeSlugValue).get();
+    if (routeSnap.exists) {
+      const routeData = routeSnap.data() || {};
+      const routeRestaurantId = asText(routeData.restaurantId || routeData.canonicalRestaurantId);
+      if (!routeRestaurantId || routeRestaurantId !== safeRestaurantId) {
+        return {
+          id: routeRestaurantId || `publicRoutes/${safeSlugValue}`,
+          data: routeData,
+          source: "publicRoutes"
+        };
+      }
+    }
+  } catch {}
   const fields = ["publicSlug", "landingSlug", "handle"];
   for (const fieldName of fields) {
     try {
       const snap = await db
         .collection("restaurants")
         .where(fieldName, "==", safeSlugValue)
-        .limit(1)
+        .limit(3)
         .get();
-      const first = snap.docs?.[0] || null;
+      const first = (snap.docs || []).find((docSnap) => asText(docSnap.id) !== safeRestaurantId) || null;
       if (!first?.id) continue;
-      if (safeRestaurantId && asText(first.id) === safeRestaurantId) continue;
       return {
         id: asText(first.id),
-        data: first.data() || {}
+        data: first.data() || {},
+        source: `restaurants.${fieldName}`
       };
     } catch {}
   }
@@ -2143,20 +2157,17 @@ async function resolveBootstrapPublicSlugUnique(restaurantId = "", data = {}, ro
     || safeRestaurantId
     || "business"
   ) || "business";
-  const suffixSeed = normalizePublicRouteSlug(safeRestaurantId).slice(-8)
-    || safeRestaurantId.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(-8)
-    || "business";
   for (let attempt = 0; attempt < 16; attempt += 1) {
     const candidate = normalizePublicRouteSlug(
       attempt === 0
         ? baseCandidate
-        : `${baseCandidate}-${suffixSeed}${attempt === 1 ? "" : attempt}`
+        : `${baseCandidate}-${attempt + 1}`
     );
     if (!candidate || RESERVED_PUBLIC_ROUTE_SEGMENTS.has(candidate)) continue;
     const conflict = await findBootstrapPublicSlugConflictDoc(candidate, { restaurantId: safeRestaurantId });
     if (!conflict) return candidate;
   }
-  return normalizePublicRouteSlug(`${baseCandidate}-${Date.now().toString(36).slice(-4)}`) || "business";
+  throw new Error("No unique public route slug available.");
 }
 
 async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data = {}, {
@@ -2204,6 +2215,143 @@ async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data 
     canonicalPublicPath: nextData.canonicalPublicPath
   };
 }
+
+function resolveRouteStatusForRestaurant(data = {}) {
+  const source = data && typeof data === "object" ? data : {};
+  const status = safeLowerText(
+    source.status
+    || source.state
+    || source.businessStatus
+    || source.lifecycleStatus
+    || ""
+  );
+  if (status === "active" || status === "kunde" || status === "customer") return "active";
+  if (status === "preview" || status === "demo" || status === "testphase") return "preview";
+  if (status === "lead" || status === "prospect" || status === "registered" || status === "contacted" || status === "pending") {
+    return "lead";
+  }
+  if (status === "inactive" || status === "disabled" || status === "deleted" || status === "blocked") return "";
+  return "";
+}
+
+function buildNumberedPublicRouteSlug(baseSlug = "", attempt = 0) {
+  const safeBase = normalizePathRestaurantSlug(baseSlug);
+  if (!safeBase) return "";
+  return normalizePathRestaurantSlug(attempt === 0 ? safeBase : `${safeBase}-${attempt + 1}`);
+}
+
+async function claimUniquePublicRouteForRestaurant({
+  restaurantId = "",
+  data = {},
+  baseSlug = "",
+  routeStatus = ""
+} = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  const source = data && typeof data === "object" ? data : {};
+  const safeRouteStatus = safeLowerText(routeStatus);
+  const restaurantStatus = asText(source.status || source.state || source.businessStatus || source.lifecycleStatus);
+  if (!safeRestaurantId || !safeRouteStatus) return { slug: "", action: "skipped" };
+
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    const slug = buildNumberedPublicRouteSlug(baseSlug, attempt);
+    if (!slug || RESERVED_PUBLIC_ROUTE_SEGMENTS.has(slug)) continue;
+    const routeRef = db.collection("publicRoutes").doc(slug);
+    const result = await db.runTransaction(async (transaction) => {
+      const routeSnap = await transaction.get(routeRef);
+      if (routeSnap.exists) {
+        const routeData = routeSnap.data() || {};
+        const routeRestaurantId = asText(routeData.restaurantId || routeData.canonicalRestaurantId);
+        if (routeRestaurantId && routeRestaurantId !== safeRestaurantId) {
+          return { conflict: true, slug, existingRestaurantId: routeRestaurantId };
+        }
+        const patch = {};
+        if (!asText(routeData.restaurantId)) patch.restaurantId = safeRestaurantId;
+        if (!asText(routeData.canonicalSlug)) patch.canonicalSlug = slug;
+        if (!asText(routeData.status)) patch.status = safeRouteStatus;
+        if (!asText(routeData.restaurantStatus) && restaurantStatus) patch.restaurantStatus = restaurantStatus;
+        if (Object.keys(patch).length) {
+          patch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+          transaction.set(routeRef, patch, { merge: true });
+          return { slug, action: "updated" };
+        }
+        return { slug, action: "unchanged" };
+      }
+      transaction.set(routeRef, {
+        restaurantId: safeRestaurantId,
+        canonicalSlug: slug,
+        status: safeRouteStatus,
+        restaurantStatus,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return { slug, action: "created" };
+    });
+    if (result.conflict) continue;
+    return result;
+  }
+  return { slug: "", action: "conflict" };
+}
+
+async function ensurePublicRouteForRestaurantWrite(restaurantId = "", data = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  const source = data && typeof data === "object" ? data : {};
+  if (!safeRestaurantId || !isBootstrapRestaurantPublicRecord({ id: safeRestaurantId, ...source })) {
+    return { slug: "", action: "skipped" };
+  }
+  const routeStatus = resolveRouteStatusForRestaurant(source);
+  if (!routeStatus) return { slug: "", action: "skipped" };
+  const baseSlug = normalizePathRestaurantSlug(
+    source.publicSlug
+    || source.landingSlug
+    || source.handle
+    || source.name
+    || source.restaurantName
+    || source.businessName
+    || safeRestaurantId
+  );
+  if (!baseSlug) return { slug: "", action: "skipped" };
+  const result = await claimUniquePublicRouteForRestaurant({
+    restaurantId: safeRestaurantId,
+    data: source,
+    baseSlug,
+    routeStatus
+  });
+  const finalSlug = asText(result.slug);
+  if (!finalSlug) return result;
+  const canonicalPublicPath = buildCanonicalPublicRoutePath(finalSlug, "profile");
+  const restaurantPatch = {};
+  if (asText(source.publicSlug) !== finalSlug) restaurantPatch.publicSlug = finalSlug;
+  if (asText(source.landingSlug) !== finalSlug) restaurantPatch.landingSlug = finalSlug;
+  if (asText(source.canonicalPublicPath) !== canonicalPublicPath) restaurantPatch.canonicalPublicPath = canonicalPublicPath;
+  if (!asText(source.landingRestaurantId)) restaurantPatch.landingRestaurantId = safeRestaurantId;
+  if (Object.keys(restaurantPatch).length) {
+    restaurantPatch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+    await db.collection("restaurants").doc(safeRestaurantId).set(restaurantPatch, { merge: true });
+  }
+  return {
+    ...result,
+    restaurantPatchFields: Object.keys(restaurantPatch)
+  };
+}
+
+exports.ensurePublicRouteOnRestaurantWrite = functions
+  .firestore
+  .document("restaurants/{restaurantId}")
+  .onWrite(async (change, context) => {
+    if (!change.after.exists) return null;
+    const restaurantId = asText(context?.params?.restaurantId);
+    const data = change.after.data() || {};
+    try {
+      return await ensurePublicRouteForRestaurantWrite(restaurantId, data);
+    } catch (error) {
+      logFunctionWarn("publicRoute.ensure.failed", {
+        restaurantId,
+        errorCode: asText(error?.code),
+        errorMessage: asText(error?.message || error)
+      });
+      return null;
+    }
+  });
 
 function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
   const type = asText(
