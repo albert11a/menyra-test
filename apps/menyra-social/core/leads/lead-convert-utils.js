@@ -191,6 +191,8 @@ export async function convertLeadToCustomerCore({
       ownerEmail: lead.email || lead.socialEmail || "",
       logoUrl: lead.logoUrl || "",
       logo: lead.logoUrl || "",
+      bestSpotLogoUrl: lead.bestSpotLogoUrl || lead.spotLogoUrl || existingRest?.bestSpotLogoUrl || existingRest?.spotLogoUrl || "",
+      spotLogoUrl: lead.bestSpotLogoUrl || lead.spotLogoUrl || existingRest?.bestSpotLogoUrl || existingRest?.spotLogoUrl || "",
       status: "active",
       leadId: lead.id || "",
       locations: locationPayload,

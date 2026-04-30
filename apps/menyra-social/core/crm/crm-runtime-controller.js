@@ -902,6 +902,8 @@ function resetLeadDraft() {
     actionsOpen: false,
     logoFile: null,
     logoPreview: "",
+    bestSpotLogoFile: null,
+    bestSpotLogoPreview: "",
     coords: null,
     locations: []
   };
@@ -936,6 +938,8 @@ function createLeadDraftState(mode = "create", lead = null) {
     tiktok: lead?.tiktok || rest?.tiktok || "",
     googleMaps: lead?.googleMaps || rest?.googleMaps || "",
     logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
+    bestSpotLogoUrl: lead?.bestSpotLogoUrl || lead?.spotLogoUrl || rest?.bestSpotLogoUrl || rest?.spotLogoUrl || "",
+    spotLogoUrl: lead?.bestSpotLogoUrl || lead?.spotLogoUrl || rest?.bestSpotLogoUrl || rest?.spotLogoUrl || "",
     email: lead?.email || lead?.socialEmail || buildLeadAccountEmail(businessName),
     password: "",
     country,
@@ -961,6 +965,8 @@ function createLeadDraftState(mode = "create", lead = null) {
     actionsOpen: false,
     logoFile: null,
     logoPreview: merged.logoUrl || "",
+    bestSpotLogoFile: null,
+    bestSpotLogoPreview: merged.bestSpotLogoUrl || "",
     coords: hasLeadLocationCoords(primary)
       ? { lat: primary.lat, lng: primary.lng }
       : (coords || getLeadCountryCenter(country)),
@@ -1561,6 +1567,8 @@ function normalizeLeadDoc(docSnap) {
     gpsLng: Number.isFinite(Number(fallbackLng)) ? Number(fallbackLng) : null,
     locations,
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
+    bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
+    spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     specialEnabled: data.specialEnabled === true,
     note: data.note || "",
     status,
@@ -1624,6 +1632,8 @@ function normalizeLeadFromRestaurant(rest) {
     city: data.city || "",
     address: locations[0]?.address || data.address || "",
     logoUrl: data.logoUrl || data.logo || "",
+    bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
+    spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     specialEnabled: data.specialEnabled === true,
     note: "",
     status,
@@ -2634,6 +2644,8 @@ function syncLeadModalDraftFromForm() {
   lead.zipCode = readText("leadZipCode") || lead.zipCode || "";
   lead.address = readText("leadAddress") || lead.address || "";
   lead.logoUrl = readText("leadLogoUrl") || lead.logoUrl || "";
+  lead.bestSpotLogoUrl = readText("leadBestSpotLogoUrl") || lead.bestSpotLogoUrl || "";
+  lead.spotLogoUrl = lead.bestSpotLogoUrl || lead.spotLogoUrl || "";
   const specialToggle = document.getElementById("leadSpecialEnabled");
   if (specialToggle && "checked" in specialToggle) {
     lead.specialEnabled = !!specialToggle.checked;

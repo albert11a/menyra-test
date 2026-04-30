@@ -308,6 +308,7 @@ export async function saveLeadFromModalCore({
     ? !!specialToggle.checked
     : (lead.specialEnabled === true);
   const logoUrlInput = docObj.getElementById("leadLogoUrl")?.value?.trim() || "";
+  const bestSpotLogoUrlInput = docObj.getElementById("leadBestSpotLogoUrl")?.value?.trim() || "";
   const note = docObj.getElementById("leadNote")?.value?.trim() || "";
   const billingCycle = docObj.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
   const statusValue = docObj.getElementById("leadStatus")?.value || lead.status || "registered";
@@ -425,7 +426,10 @@ export async function saveLeadFromModalCore({
       leadId,
       forcePublicOrigin: true
     });
-    const shouldSeedRestaurantBeforeLogoUpload = !!restRef && !!state.leadModal.logoFile;
+    const shouldSeedRestaurantBeforeLogoUpload = !!restRef && (
+      !!state.leadModal.logoFile
+      || !!state.leadModal.bestSpotLogoFile
+    );
     if (shouldSeedRestaurantBeforeLogoUpload) {
       await setDoc(restRef, {
         name: businessName,
@@ -464,6 +468,19 @@ export async function saveLeadFromModalCore({
       );
       logoUrl = cdnUrl || logoUrl;
     }
+    let bestSpotLogoUrl = bestSpotLogoUrlInput
+      || state.leadModal.bestSpotLogoPreview
+      || lead.bestSpotLogoUrl
+      || lead.spotLogoUrl
+      || "";
+    if (state.leadModal.bestSpotLogoFile) {
+      const { cdnUrl } = await uploadImage(
+        state.leadModal.bestSpotLogoFile,
+        restaurantId || state.user.uid,
+        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
+      );
+      bestSpotLogoUrl = cdnUrl || bestSpotLogoUrl;
+    }
     const restPayload = {
       name: businessName,
       restaurantName: businessName,
@@ -491,6 +508,8 @@ export async function saveLeadFromModalCore({
       price: activePrice,
       logoUrl,
       logo: logoUrl,
+      bestSpotLogoUrl,
+      spotLogoUrl: bestSpotLogoUrl,
       status: restaurantStatus,
       leadId,
       locations: locationPayload,
@@ -588,6 +607,8 @@ export async function saveLeadFromModalCore({
       zipCode,
       locations: locationPayload,
       logoUrl,
+      bestSpotLogoUrl,
+      spotLogoUrl: bestSpotLogoUrl,
       specialEnabled,
       note,
       contactFirstName,

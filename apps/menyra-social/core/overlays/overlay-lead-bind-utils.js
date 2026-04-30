@@ -77,6 +77,9 @@ export function bindLeadOverlayEventsCore({
   const leadLogoTrigger = doc.getElementById("leadLogoTrigger");
   const leadLogoInput = doc.getElementById("leadLogoInput");
   const leadLogoUrl = doc.getElementById("leadLogoUrl");
+  const leadBestSpotLogoTrigger = doc.getElementById("leadBestSpotLogoTrigger");
+  const leadBestSpotLogoInput = doc.getElementById("leadBestSpotLogoInput");
+  const leadBestSpotLogoUrl = doc.getElementById("leadBestSpotLogoUrl");
   const leadPassword = doc.getElementById("leadPassword");
 
   bindModalDismiss(leadOverlay, closeLeadModal, { selfOnly: true });
@@ -120,6 +123,37 @@ export function bindLeadOverlayEventsCore({
       const val = leadLogoUrl.value.trim();
       const img = doc.getElementById("leadLogoPreview");
       if (img) img.setAttribute("src", val || placeholderImage);
+    });
+  }
+  if (leadBestSpotLogoTrigger && leadBestSpotLogoInput) {
+    leadBestSpotLogoTrigger.addEventListener("click", () => leadBestSpotLogoInput.click());
+  }
+  if (leadBestSpotLogoInput) {
+    leadBestSpotLogoInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      state.leadModal.bestSpotLogoFile = file;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const preview = String(reader.result || "");
+        state.leadModal.bestSpotLogoPreview = preview;
+        const img = doc.getElementById("leadBestSpotLogoPreview");
+        if (img && preview) img.setAttribute("src", preview);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  if (leadBestSpotLogoUrl) {
+    leadBestSpotLogoUrl.addEventListener("input", () => {
+      const val = leadBestSpotLogoUrl.value.trim();
+      const fallback = state.leadModal.logoPreview || state.leadModal.lead?.logoUrl || placeholderImage;
+      const img = doc.getElementById("leadBestSpotLogoPreview");
+      if (img) img.setAttribute("src", val || fallback);
+      state.leadModal.lead = {
+        ...(state.leadModal.lead || {}),
+        bestSpotLogoUrl: val,
+        spotLogoUrl: val
+      };
     });
   }
   if (leadPassword) {

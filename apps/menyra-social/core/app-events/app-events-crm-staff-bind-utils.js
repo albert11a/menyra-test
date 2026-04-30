@@ -106,6 +106,26 @@ export function bindLeadInlineCreateEventsCore({
       reader.readAsDataURL(file);
     });
   }
+  const leadBestSpotLogoTrigger = doc.getElementById("leadBestSpotLogoTrigger");
+  const leadBestSpotLogoInput = doc.getElementById("leadBestSpotLogoInput");
+  if (leadBestSpotLogoTrigger && leadBestSpotLogoInput) {
+    leadBestSpotLogoTrigger.addEventListener("click", () => leadBestSpotLogoInput.click());
+  }
+  if (leadBestSpotLogoInput) {
+    leadBestSpotLogoInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      state.leadModal.bestSpotLogoFile = file;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const preview = String(reader.result || "");
+        state.leadModal.bestSpotLogoPreview = preview;
+        const img = doc.getElementById("leadBestSpotLogoPreview");
+        if (img && preview) img.setAttribute("src", preview);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   const syncIds = ["leadBusinessName", "leadCustomerType", "leadBillingCycle", "leadCountry"];
   syncIds.forEach((id) => {

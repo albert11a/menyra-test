@@ -40,6 +40,8 @@ export function renderLeadModalCore({
   const isEdit = state.leadModal.mode === "edit";
   const logoRaw = state.leadModal.logoPreview || lead.logoUrl || lead.logo || lead.imageUrl || "";
   const logoUrl = logoRaw ? getOptimizedImage(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const bestSpotLogoRaw = state.leadModal.bestSpotLogoPreview || lead.bestSpotLogoUrl || lead.spotLogoUrl || logoRaw;
+  const bestSpotLogoUrl = bestSpotLogoRaw ? getOptimizedImage(bestSpotLogoRaw, "avatar") : PLACEHOLDER_IMAGE;
   const status = state.leadModal.status || "";
   const customerType = resolveCustomer(lead.customerType || "cafe");
   const leadEmail = lead.socialEmail || lead.email || "";
@@ -69,6 +71,13 @@ export function renderLeadModalCore({
       </div>
       <button id="leadLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
         Logo hochladen
+      </button>
+      <input type="file" id="leadBestSpotLogoInput" class="hidden" accept="image/*" />
+      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img id="leadBestSpotLogoPreview" src="${esc(bestSpotLogoUrl)}" class="w-full h-44 object-cover bg-white" />
+      </div>
+      <button id="leadBestSpotLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
+        Best-Spot-Logo hochladen
       </button>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
@@ -150,6 +159,10 @@ export function renderLeadModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
           <input id="leadLogoUrl" type="text" value="${esc(lead.logoUrl || lead.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Best Spot Logo URL (optional)</label>
+          <input id="leadBestSpotLogoUrl" type="text" value="${esc(lead.bestSpotLogoUrl || lead.spotLogoUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>

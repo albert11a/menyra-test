@@ -88,6 +88,8 @@ export function renderLeadCreationView(ctx = {}) {
   const settings = getLeadSettingsConfig();
   const logoRaw = state.leadModal.logoPreview || lead.logoUrl || "";
   const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const bestSpotLogoRaw = state.leadModal.bestSpotLogoPreview || lead.bestSpotLogoUrl || lead.spotLogoUrl || logoRaw;
+  const bestSpotLogoUrl = bestSpotLogoRaw ? getOptimizedImageUrl(bestSpotLogoRaw, "avatar") : PLACEHOLDER_IMAGE;
   const isEdit = state.leadModal.mode === "edit" && !!lead.id;
   const actionsOpen = !!state.leadModal.actionsOpen;
   const deleting = !!state.leadModal.deleting;
@@ -135,6 +137,11 @@ export function renderLeadCreationView(ctx = {}) {
           <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
         </div>
         <button id="leadLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Logo hochladen</button>
+        <input type="file" id="leadBestSpotLogoInput" class="hidden" accept="image/*" />
+        <div class="mt-4 rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+          <img id="leadBestSpotLogoPreview" src="${escapeHtml(bestSpotLogoUrl)}" class="w-full h-44 object-cover bg-white" />
+        </div>
+        <button id="leadBestSpotLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">Best-Spot-Logo hochladen</button>
         <div class="mt-5 space-y-4">
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
@@ -281,6 +288,7 @@ export function renderLeadCreationView(ctx = {}) {
           </label>
         </div>
         <input id="leadLogoUrl" type="hidden" value="${escapeHtml(lead.logoUrl || "")}" />
+        <input id="leadBestSpotLogoUrl" type="hidden" value="${escapeHtml(lead.bestSpotLogoUrl || lead.spotLogoUrl || "")}" />
         <input id="leadStatus" type="hidden" value="${escapeHtml(lead.status || "registered")}" />
         <input id="leadContactName" type="hidden" value="${escapeHtml(buildLeadContactName(lead.contactFirstName, lead.contactLastName, lead.contactName || ""))}" />
         <div class="mt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leadModal.status || "")}</div>

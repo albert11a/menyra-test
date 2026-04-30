@@ -1184,6 +1184,8 @@ const state = {
     actionsOpen: false,
     logoFile: null,
     logoPreview: "",
+    bestSpotLogoFile: null,
+    bestSpotLogoPreview: "",
     coords: null,
     locations: []
   },

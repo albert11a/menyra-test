@@ -371,7 +371,27 @@ export function createFeedViewOrchestrationController({
     if (distanceCompare !== 0) return distanceCompare;
     return a.fallbackIndex - b.fallbackIndex;
   };
-  const resolveBestSpotTrackItems = (feedPosts = [], fallbackFeedPosts = []) => {
+  const normalizeRestaurantIdSet = (values = null) => {
+    const ids = new Set();
+    const source = values instanceof Set ? Array.from(values) : (Array.isArray(values) ? values : []);
+    source.forEach((value) => {
+      const id = String(value || "").trim();
+      if (id) ids.add(id);
+    });
+    return ids;
+  };
+  const buildStoryRestaurantIdSet = (...storyGroups) => {
+    const ids = new Set();
+    storyGroups.forEach((stories) => {
+      (Array.isArray(stories) ? stories : []).forEach((story) => {
+        const identity = resolveStoryRenderIdentity(story);
+        const id = String(story?.restaurantId || story?.storyId || identity.storyRestaurantId || "").trim();
+        if (id) ids.add(id);
+      });
+    });
+    return ids;
+  };
+  const resolveBestSpotTrackItems = (feedPosts = [], fallbackFeedPosts = [], excludedRestaurantIds = null) => {
     const safeFeedPosts = Array.isArray(feedPosts) ? feedPosts : [];
     const safeFallbackFeedPosts = Array.isArray(fallbackFeedPosts) ? fallbackFeedPosts : [];
     const sourcePosts = safeFeedPosts.length ? safeFeedPosts : safeFallbackFeedPosts;
@@ -379,6 +399,7 @@ export function createFeedViewOrchestrationController({
     const viewerCoords = normalizeViewerCoords(viewerLocation);
     const viewerCountryCode = resolveCountryCodeFromAnyRecord(viewerLocation);
     const restaurantMap = resolveFeedRestaurantMap();
+    const excludedRestaurantIdSet = normalizeRestaurantIdSet(excludedRestaurantIds);
     const bestBySpotId = new Map();
     const putCandidate = (candidate = null) => {
       if (!candidate || !candidate.spotId) return;
@@ -448,9 +469,15 @@ export function createFeedViewOrchestrationController({
         || "Best Spot"
       ).trim() || "Best Spot";
       const logoSource = String(
-        restaurant?.logoUrl
+        restaurant?.bestSpotLogoUrl
+        || restaurant?.spotLogoUrl
+        || restaurant?.bestSpotLogo
+        || restaurant?.spotLogo
+        || restaurant?.logoUrl
         || restaurant?.logo
         || restaurant?.logoURL
+        || post?.bestSpotLogoUrl
+        || post?.spotLogoUrl
         || post?.logo
         || post?.image
         || post?.url
@@ -546,7 +573,11 @@ export function createFeedViewOrchestrationController({
         || "Best Spot"
       ).trim() || "Best Spot";
       const logoSource = String(
-        restaurant?.logoUrl
+        restaurant?.bestSpotLogoUrl
+        || restaurant?.spotLogoUrl
+        || restaurant?.bestSpotLogo
+        || restaurant?.spotLogo
+        || restaurant?.logoUrl
         || restaurant?.logo
         || restaurant?.logoURL
         || restaurant?.image
@@ -591,7 +622,11 @@ export function createFeedViewOrchestrationController({
       });
     }
 
-    const dedupedSpots = Array.from(bestBySpotId.values());
+    const dedupedSpots = Array.from(bestBySpotId.values()).filter((row) => {
+      if (!excludedRestaurantIdSet.size) return true;
+      const restaurantId = String(row?.restaurantId || "").trim();
+      return !restaurantId || !excludedRestaurantIdSet.has(restaurantId);
+    });
     if (!dedupedSpots.length) return [];
     const hasFiniteDistance = dedupedSpots.some((row) => Number.isFinite(row?.distanceKm));
     const scopedSpots = hasFiniteDistance
@@ -2938,8 +2973,12 @@ export function createFeedViewOrchestrationController({
     fallbackFeedPosts = [],
     fallbackStories = []
   } = {}) {
-    const bestSpots = resolveBestSpotTrackItems(feedPosts, fallbackFeedPosts);
     const storyTrackItems = resolveStoryTrackItems(stories, fallbackStories);
+    const bestSpots = resolveBestSpotTrackItems(
+      feedPosts,
+      fallbackFeedPosts,
+      buildStoryRestaurantIdSet(storyTrackItems, stories, fallbackStories)
+    );
     const mixedTrackItems = buildMixedSpotStoryTrackItems({
       spots: bestSpots,
       stories: storyTrackItems
@@ -3394,7 +3433,11 @@ export function createFeedViewOrchestrationController({
     });
     const trackStories = stories;
     const storyTrackItems = resolveStoryTrackItems(trackStories, trackStories);
-    const bestSpotItems = resolveBestSpotTrackItems(feedPosts, feedPosts);
+    const bestSpotItems = resolveBestSpotTrackItems(
+      feedPosts,
+      feedPosts,
+      buildStoryRestaurantIdSet(storyTrackItems, trackStories)
+    );
     const storiesRow = doc.getElementById("storiesRow");
     const nextSig = buildSpotStoryTrackSignature({ spots: bestSpotItems, stories: storyTrackItems });
     let didPatchStoriesRow = false;
@@ -3781,7 +3824,7 @@ export function createFeedViewOrchestrationController({
             profileModal: { open: false, profile: null },
             postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
             likesModal: { open: false, postId: "", animate: false },
-            leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
+            leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", bestSpotLogoFile: null, bestSpotLogoPreview: "", coords: null, locations: [] },
             customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" },
             ...uploadPatch
           });
