@@ -1,3 +1,5 @@
+import { markMnyraLoadingEventCore as markLoadingEvent } from "../core/common/loading-diagnostics-utils.js";
+
 function formatBuildTimestamp(value = "") {
   const raw = String(value || "").trim();
   if (!raw) return "unbekannt";
@@ -449,18 +451,63 @@ export function renderLeadsView(ctx = {}) {
   const archivedCount = hasStoredCeoCrmCounts(state.userProfile?.crmCounts)
     ? String(profileCounts.archivedLeads)
     : resolveKnownScopeCountLabel(knownCount.archived, !!countExact.archived, !!scopeLoaded.archived);
+  const renderStartMs = (() => {
+    try {
+      return typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+    } catch {
+      return Date.now();
+    }
+  })();
   let items = Array.isArray(scopePages[scope]) ? scopePages[scope].slice() : [];
   if (statusFilter && scope !== "archived") {
     items = items.filter((lead) => normalizeLeadStatusKey(lead.status) === statusFilter);
   }
-  items = items.filter((lead) => leadMatchesQuery(lead, queryKey));
+  const buildLeadSearchKey = (lead, rest = null) => {
+    const locationText = Array.isArray(lead?.locations)
+      ? lead.locations.map((item) => item?.address || item?.city || "").join(" ")
+      : "";
+    return String(lead?._searchKey || "").trim() || normalizeSearchKey([
+      lead?.businessName,
+      lead?.restaurantName,
+      lead?.name,
+      rest?.name,
+      rest?.restaurantName,
+      lead?.contactName,
+      lead?.phone,
+      lead?.email,
+      lead?.socialEmail,
+      lead?.instagram,
+      lead?.city,
+      lead?.address,
+      lead?.publicSlug,
+      lead?.landingSlug,
+      rest?.publicSlug,
+      rest?.landingSlug,
+      lead?.canonicalPublicPath,
+      lead?.status,
+      leadStatusLabel(lead?.status),
+      lead?.customerType,
+      locationText
+    ].filter(Boolean).join(" "));
+  };
+  const leadRows = items.map((lead) => {
+    const rest = lead.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
+    const searchKey = buildLeadSearchKey(lead, rest);
+    return {
+      lead,
+      rest,
+      searchKey,
+      matches: !queryKey || leadMatchesQuery({ ...lead, _searchKey: searchKey }, queryKey)
+    };
+  });
+  const visibleLeadCount = leadRows.filter((row) => row.matches).length;
 
   const listHtml = state.leads.loading
     ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Leads laden...</div>`
-    : (items.length ? items.map((lead) => {
+    : (leadRows.length ? `
+      ${leadRows.map(({ lead, rest, searchKey, matches }) => {
       const tone = leadStatusTone(lead.status);
       const statusLabel = leadStatusLabel(lead.status);
-      const rest = lead.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
       const logoRaw = lead.logoUrl || lead.logo || rest?.logoUrl || rest?.logo || "";
       const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
@@ -473,7 +520,7 @@ export function renderLeadsView(ctx = {}) {
         : "";
       const ownershipHtml = renderOwnershipPills(lead, { hideOwn: scope === "own" });
       return `
-        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+        <div data-lead-row="true" data-lead-search-key="${escapeHtml(searchKey)}" class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm" ${matches ? "" : "hidden"}>
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden flex items-center justify-center">
               <img src="${escapeHtml(logoUrl)}" class="w-full h-full object-contain bg-white" />
@@ -491,7 +538,22 @@ export function renderLeadsView(ctx = {}) {
           </div>
         </div>
       `;
-    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Leads</div>`);
+      }).join("")}
+      <div id="leadsNoResults" class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16" ${visibleLeadCount ? "hidden" : ""}>Keine Leads</div>
+    ` : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Leads</div>`);
+  const renderEndMs = (() => {
+    try {
+      return typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+    } catch {
+      return Date.now();
+    }
+  })();
+  markLoadingEvent("lead list render", {
+    scope,
+    count: leadRows.length,
+    items: visibleLeadCount,
+    elapsedMs: renderEndMs - renderStartMs
+  });
 
   return `
     <div id="leadsView" class="p-6 animate-in slide-in-from-right-10 duration-500">
@@ -535,7 +597,7 @@ export function renderLeadsView(ctx = {}) {
         </div>
       ` : ""}
       ${state.leads.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.leads.error)}</div>` : ""}
-      <div class="space-y-4">${listHtml}</div>
+      <div id="leadsList" class="space-y-4">${listHtml}</div>
       ${state.leads.hasMore?.[scope] ? `
         <div id="leadsLoadMoreSentinel" class="w-full mt-4 py-4 rounded-[1.8rem] bg-white text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm text-center">
           ${escapeHtml(state.leads.loadingMore ? "Laedt..." : "Scrollt weiter...")}

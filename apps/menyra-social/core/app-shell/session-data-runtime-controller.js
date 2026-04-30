@@ -4,6 +4,10 @@ import {
   buildRestaurantTruthSignatureCore,
   isBootstrapRestaurantPreviewRecordCore
 } from "../common/restaurant-identity-runtime-controller.js";
+import {
+  markMnyraLoadingEventCore as markLoadingEvent,
+  timeMnyraLoadingAsyncCore as timeLoadingAsync
+} from "../common/loading-diagnostics-utils.js";
 
 export function createSessionDataRuntimeController({
   state = null,
@@ -1366,14 +1370,26 @@ export function createSessionDataRuntimeController({
       await businessPostsNetworkLoadPromise;
       return;
     }
+    markLoadingEvent("socialPosts load requested", {
+      restaurantId,
+      source: "restaurants.socialPosts"
+    });
     const request = (async () => {
       try {
         const ref = collectionFn(db, "restaurants", restaurantId, "socialPosts");
         let snap = null;
         try {
-          snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.businessPosts)));
+          snap = await timeLoadingAsync("socialPosts load", () => (
+            getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.businessPosts)))
+          ), {
+            restaurantId,
+            source: "restaurants.socialPosts"
+          });
         } catch (err) {
-          snap = await getDocsFn(ref);
+          snap = await timeLoadingAsync("socialPosts load fallback", () => getDocsFn(ref), {
+            restaurantId,
+            source: "restaurants.socialPosts"
+          });
         }
         const rows = [];
         snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
@@ -1469,7 +1485,11 @@ export function createSessionDataRuntimeController({
     if (prefetchOnly) {
       try {
         const [items, enabled] = await Promise.all([
-          loadFocusItemsFn(restaurantId),
+          timeLoadingAsync("public/offers load", () => loadFocusItemsFn(restaurantId), {
+            restaurantId,
+            prefetchOnly: true,
+            source: "public/offers"
+          }),
           loadFocusMetaFn(restaurantId)
         ]);
         const safeItems = Array.isArray(items) ? items : [];
@@ -1501,7 +1521,10 @@ export function createSessionDataRuntimeController({
     requestRender();
     try {
       const [items, enabled] = await Promise.all([
-        loadFocusItemsFn(restaurantId),
+        timeLoadingAsync("public/offers load", () => loadFocusItemsFn(restaurantId), {
+          restaurantId,
+          source: "public/offers"
+        }),
         loadFocusMetaFn(restaurantId)
       ]);
       const truthState = Array.isArray(items) && items.length > 0 ? "seeded" : "knownEmpty";
@@ -1544,6 +1567,11 @@ export function createSessionDataRuntimeController({
     const safeSource = sourceRaw === "collection"
       ? "collection"
       : (sourceRaw === "migration" ? "migration" : "public");
+    const timeMenuItemsLoad = (label, task, meta = {}) => timeLoadingAsync(label, task, {
+      restaurantId: safeRestaurantId,
+      source: safeSource,
+      ...meta
+    });
     const lightweightQrGuestFlow = isQrGuestMenuSessionForRestaurant(safeRestaurantId);
     if (!safeRestaurantId) {
       if (prefetchOnly) return { items: [], statusBadgeVisible: true, truthState: "unknown" };
@@ -1720,12 +1748,16 @@ export function createSessionDataRuntimeController({
       const request = (async () => {
         try {
           const [itemsResult, meta] = await Promise.all([
-            runMenuLoadWithBackoff(
-              () => loadPublicMenuItemsFn(safeRestaurantId),
-              {
-                attempts: lightweightQrGuestFlow ? 4 : 3,
-                baseDelayMs: lightweightQrGuestFlow ? 140 : 220
-              }
+            timeMenuItemsLoad(
+              "public/menu load",
+              () => runMenuLoadWithBackoff(
+                () => loadPublicMenuItemsFn(safeRestaurantId),
+                {
+                  attempts: lightweightQrGuestFlow ? 4 : 3,
+                  baseDelayMs: lightweightQrGuestFlow ? 140 : 220
+                }
+              ),
+              { prefetchOnly: true }
             ),
             Promise.resolve(runMenuLoadWithBackoff(
               () => loadMenuMetaFn(safeRestaurantId),
@@ -1791,22 +1823,31 @@ export function createSessionDataRuntimeController({
             return { statusBadgeVisible: true };
           });
         if (safeSource === "collection") {
-          items = await runMenuLoadWithBackoff(
-            () => loadMenuItemsFromCollectionFn(safeRestaurantId),
-            { attempts: 3, baseDelayMs: 220 }
+          items = await timeMenuItemsLoad(
+            "menuItems load",
+            () => runMenuLoadWithBackoff(
+              () => loadMenuItemsFromCollectionFn(safeRestaurantId),
+              { attempts: 3, baseDelayMs: 220 }
+            )
           );
         } else if (safeSource === "migration") {
-          items = await runMenuLoadWithBackoff(
-            () => loadMenuHybridFn(safeRestaurantId),
-            { attempts: 3, baseDelayMs: 240 }
+          items = await timeMenuItemsLoad(
+            "menu hybrid load",
+            () => runMenuLoadWithBackoff(
+              () => loadMenuHybridFn(safeRestaurantId),
+              { attempts: 3, baseDelayMs: 240 }
+            )
           );
         } else {
-          items = await runMenuLoadWithBackoff(
-            () => loadPublicMenuItemsFn(safeRestaurantId),
-            {
-              attempts: lightweightQrGuestFlow ? 4 : 3,
-              baseDelayMs: lightweightQrGuestFlow ? 140 : 220
-            }
+          items = await timeMenuItemsLoad(
+            "public/menu load",
+            () => runMenuLoadWithBackoff(
+              () => loadPublicMenuItemsFn(safeRestaurantId),
+              {
+                attempts: lightweightQrGuestFlow ? 4 : 3,
+                baseDelayMs: lightweightQrGuestFlow ? 140 : 220
+              }
+            )
           );
         }
         const meta = await metaPromise;

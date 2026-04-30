@@ -2,6 +2,7 @@ import {
   buildCanonicalPublicBusinessPathCore,
   normalizePublicBusinessSlugCore
 } from "../router/public-business-route-utils.js";
+import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
 
 function pickBusinessProfileText(...values) {
   for (const value of values) {
@@ -451,6 +452,11 @@ export function createProfileOpenFlowControllerCore({
       const safeTargetSource = String(businessTarget.source || "").trim().toLowerCase();
       targetCanonicalRestaurantId = String(businessTarget.canonicalRestaurantId || "").trim();
       if (!safeName && !restaurantId && !lookupText) return;
+      markLoadingEvent("profile open source", {
+        source: safeTargetSource || "profile-open",
+        restaurantId: restaurantId || targetCanonicalRestaurantId || "",
+        targetId: targetCanonicalRestaurantId || businessTarget.id || ""
+      });
       const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
       const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
       const requestedTopTab = String(topTab || "").trim().toLowerCase();
@@ -496,6 +502,12 @@ export function createProfileOpenFlowControllerCore({
         || (restaurantId ? { id: restaurantId } : {});
       targetRestaurantLookupId = String(restaurantId || businessTarget.id || rest?.id || lookupText || "").trim();
       targetMenuRestaurantId = String(targetCanonicalRestaurantId || restaurantId || rest?.id || "").trim();
+      markLoadingEvent("profile restaurant resolved", {
+        source: safeTargetSource || "profile-open",
+        requestedId: targetRestaurantLookupId,
+        restaurantId: targetMenuRestaurantId,
+        targetId: targetCanonicalRestaurantId || targetMenuRestaurantId
+      });
       const resolveDirectRouteBootstrapSeed = () => {
         const candidate = state?.__publicRouteBootstrap && typeof state.__publicRouteBootstrap === "object"
           ? state.__publicRouteBootstrap

@@ -1,6 +1,7 @@
 import { createBusinessAccountsRuntimeController } from "../business-accounts/business-accounts-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "../profile/profile-menu-focus-render-controller.js";
 import { getMenuRestaurantForProfileCore } from "../profile/profile-menu-focus-utils.js";
+import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
 
 export function createProfileBusinessMenuRuntimeCluster({
   state = null,
@@ -574,7 +575,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const ids = ownBusinessProfileMenuSurface
       ? collectOwnBusinessMenuLoadIds(profile, fallbackId)
       : collectVisibleMenuLoadIds(profile, fallbackId);
-    if (!ids.length || hasSettledVisiblePublicMenuTruthForIds(ids)) return;
+    if (!ids.length) return;
     const canonicalMenuRestaurantId = ownBusinessProfileMenuSurface
       ? ids[0]
       : resolveLatestCanonicalMenuRestaurantId(ids[0]);
@@ -585,6 +586,7 @@ export function createProfileBusinessMenuRuntimeCluster({
         profile
       });
     }
+    if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
     for (const restaurantId of ids) {
       if (!isPublicMenuLoadSurface(profile)) return;
       if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
@@ -761,9 +763,21 @@ export function createProfileBusinessMenuRuntimeCluster({
       return;
     }
     const request = Promise.resolve().then(async () => {
+      markLoadingEvent("profile.menu.ensure", {
+        requestedId: requestedRestaurantId,
+        targetId: targetRestaurantId,
+        source: "public"
+      });
+      const firstLoadId = targetRestaurantId || requestedRestaurantId;
+      const firstLoad = firstLoadId
+        ? Promise.resolve(loadVisiblePublicMenuIds(profile, firstLoadId)).catch(() => null)
+        : Promise.resolve(null);
       const restaurantId = await resolveProfileRestaurantId(profile);
       void ensureVisibleBusinessIdentityHydration(profile, restaurantId || requestedRestaurantId);
-      await loadVisiblePublicMenuIds(profile, restaurantId || requestedRestaurantId);
+      if (restaurantId && restaurantId !== firstLoadId) {
+        await loadVisiblePublicMenuIds(profile, restaurantId);
+      }
+      await firstLoad;
     }).finally(() => {
       if (publicProfileMenuEnsurePromise === request) {
         publicProfileMenuEnsurePromise = null;

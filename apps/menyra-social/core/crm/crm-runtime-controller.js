@@ -3,6 +3,7 @@ import {
   resolveExistingRestaurantForLead,
   routeBelongsToSameRestaurant
 } from "../leads/lead-identity-contract-utils.js";
+import { timeMnyraLoadingAsyncCore as timeLoadingAsync } from "../common/loading-diagnostics-utils.js";
 
 export function createCrmRuntimeController(deps = {}) {
   const {
@@ -1569,6 +1570,38 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
   await setDoc(doc(db, "restaurants", safeRestaurantId, "public", "meta"), payload, { merge: true });
 }
 
+function buildLeadSearchKey(lead = {}) {
+  const locationText = Array.isArray(lead.locations)
+    ? lead.locations.map((item) => item?.address || item?.city || "").join(" ")
+    : "";
+  return normalizeSearchKey([
+    lead.businessName,
+    lead.restaurantName,
+    lead.name,
+    lead.contactName,
+    lead.phone,
+    lead.email,
+    lead.socialEmail,
+    lead.instagram,
+    lead.city,
+    lead.address,
+    lead.publicSlug,
+    lead.landingSlug,
+    lead.canonicalPublicPath,
+    lead.status,
+    typeof leadStatusLabel === "function" ? leadStatusLabel(lead.status) : "",
+    lead.customerType,
+    locationText
+  ].filter(Boolean).join(" "));
+}
+
+function withLeadSearchKey(lead = {}) {
+  return {
+    ...lead,
+    _searchKey: buildLeadSearchKey(lead)
+  };
+}
+
 function normalizeLeadDoc(docSnap) {
   const sourceData = typeof docSnap?.data === "function" ? docSnap.data() : (docSnap?.data || docSnap || {});
   const data = applyKnownLeadOwnershipOverride(sourceData);
@@ -1595,9 +1628,11 @@ function normalizeLeadDoc(docSnap) {
     lng: fallbackLng
   });
   const primary = getPrimaryLeadLocation(locations);
-  return {
+  return withLeadSearchKey({
     id: safeLeadId,
     businessName: data.businessName || data.name || "",
+    restaurantName: data.restaurantName || data.name || data.businessName || "",
+    name: data.name || data.businessName || data.restaurantName || "",
     customerType: resolveCustomerType(data.customerType || data.type || "cafe"),
     contactName: data.contactName || data.contact || "",
     phone: data.phone || "",
@@ -1636,7 +1671,7 @@ function normalizeLeadDoc(docSnap) {
     ceoPath: normalizeCeoPath(data.ceoPath),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt
-  };
+  });
 }
 
 function normalizeLeadFromRestaurant(rest) {
@@ -1665,9 +1700,11 @@ function normalizeLeadFromRestaurant(rest) {
     lng: fallbackLng
   });
   const primary = getPrimaryLeadLocation(locations);
-  return {
+  return withLeadSearchKey({
     id: safeLeadId,
     businessName: data.name || data.restaurantName || "",
+    restaurantName: data.restaurantName || data.name || "",
+    name: data.name || data.restaurantName || "",
     customerType: resolveCustomerType(data.type || data.customerType || "cafe"),
     contactName: data.ownerName || "",
     phone: data.phone || "",
@@ -1706,7 +1743,7 @@ function normalizeLeadFromRestaurant(rest) {
     gpsLat: Number.isFinite(Number(fallbackLat)) ? Number(fallbackLat) : null,
     gpsLng: Number.isFinite(Number(fallbackLng)) ? Number(fallbackLng) : null,
     locations
-  };
+  });
 }
 
 function isRestaurantLeadCandidate(rest = {}) {
@@ -1743,19 +1780,7 @@ function resolveRestaurantStatusFromLead(leadStatus, currentStatus = "") {
 
 function leadMatchesQuery(lead, queryKey) {
   if (!queryKey) return true;
-  const locationText = Array.isArray(lead.locations)
-    ? lead.locations.map((item) => item?.address || "").join(" ")
-    : "";
-  const hay = normalizeSearchKey([
-    lead.businessName,
-    lead.contactName,
-    lead.phone,
-    lead.email,
-    lead.instagram,
-    lead.city,
-    lead.customerType,
-    locationText
-  ].filter(Boolean).join(" "));
+  const hay = String(lead?._searchKey || "").trim() || buildLeadSearchKey(lead);
   return hay.includes(queryKey);
 }
 
@@ -2162,7 +2187,11 @@ async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
   if (!grow) state.leads.error = "";
   render();
   try {
-    const rows = await fetchLeadScopeRows(safeScope, nextSize);
+    const rows = await timeLoadingAsync("lead list load", () => fetchLeadScopeRows(safeScope, nextSize), {
+      scope: safeScope,
+      source: "leads",
+      count: nextSize
+    });
     const nextItems = rows.slice(0, nextSize);
     state.leads.pages = {
       ...state.leads.pages,

@@ -1,3 +1,39 @@
+import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
+
+function getNowMs() {
+  try {
+    return typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+  } catch {
+    return Date.now();
+  }
+}
+
+function normalizeInlineSearchKey(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function applyLeadSearchFilter(doc, queryValue = "") {
+  const list = doc?.getElementById?.("leadsList");
+  if (!list) return;
+  const startedAt = getNowMs();
+  const queryKey = normalizeInlineSearchKey(queryValue);
+  const rows = Array.from(list.querySelectorAll("[data-lead-row]"));
+  let visible = 0;
+  rows.forEach((row) => {
+    const searchKey = normalizeInlineSearchKey(row.getAttribute("data-lead-search-key") || "");
+    const matches = !queryKey || searchKey.includes(queryKey);
+    row.hidden = !matches;
+    if (matches) visible += 1;
+  });
+  const empty = doc.getElementById("leadsNoResults");
+  if (empty) empty.hidden = visible > 0;
+  markLoadingEvent("lead search filter", {
+    count: rows.length,
+    items: visible,
+    elapsedMs: getNowMs() - startedAt
+  });
+}
+
 export function bindLeadInlineCreateEventsCore({
   documentObj,
   state,
@@ -281,10 +317,21 @@ export function bindCrmStaffEventsCore({
 
   const leadsSearchInput = doc.getElementById("leadsSearchInput");
   if (leadsSearchInput) {
+    let leadSearchFrame = 0;
     leadsSearchInput.addEventListener("input", () => {
       state.leads.query = leadsSearchInput.value || "";
-      state.leads.keepFocus = true;
-      render();
+      const apply = () => {
+        leadSearchFrame = 0;
+        applyLeadSearchFilter(doc, state.leads.query || "");
+      };
+      if (leadSearchFrame && typeof window !== "undefined" && typeof window.cancelAnimationFrame === "function") {
+        window.cancelAnimationFrame(leadSearchFrame);
+      }
+      if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+        leadSearchFrame = window.requestAnimationFrame(apply);
+      } else {
+        setTimeout(apply, 0);
+      }
     });
   }
 
