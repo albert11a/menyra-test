@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-04-26
+Last updated: 2026-04-30
 
 # Mnyra Current Phase
 
@@ -168,6 +168,17 @@ Last updated: 2026-04-26
   `profileView`, RoutePayload oder `__webDirectEntry`. Dadurch kann ein bereits
   geladenes fremdes Public-Menu den eigenen Menu-Load nicht mehr ueberspringen;
   der bisher noetige Refresh nach dem Profilwechsel sollte entfallen.
+- Schritt 24 ist abgeschlossen: Public Profile/Menu/Fokus rendert Menu und
+  Fokus jetzt als koordinierte sichtbare Surface-Entscheidung.
+- Bewertung von Schritt 24: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 24:
+  Das sichtbare Public-Menu wartet nicht mehr auf einen separaten spaeten Fokus-
+  Render, sondern entscheidet pro aktuellem Restaurant-Ziel gemeinsam:
+  entweder Menu mit gueltigem Fokus oder Menu ohne Fokus. Fokus-Eintraege werden
+  gegen das geladene Public-Menu validiert; ungueltige/fehlende/fehlgeschlagene
+  Fokusdaten blockieren das Menu nicht dauerhaft. Spaete Menu-/Fokus-Antworten
+  duerfen den sichtbaren State nur noch mutieren, wenn sie weiter zum aktuellen
+  Profile/Menu-Ziel passen.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -191,6 +202,7 @@ Last updated: 2026-04-26
 - Referenz: [docs/mnyra-step21-public-web-qr-owner-loader-hardening.md](./mnyra-step21-public-web-qr-owner-loader-hardening.md)
 - Referenz: [docs/mnyra-step22-own-business-profile-menu-load-fix.md](./mnyra-step22-own-business-profile-menu-load-fix.md)
 - Referenz: [docs/mnyra-step23-own-profile-menu-stale-public-id-fix.md](./mnyra-step23-own-profile-menu-stale-public-id-fix.md)
+- Referenz: [docs/mnyra-step24-public-menu-focus-coordinated-render-state.md](./mnyra-step24-public-menu-focus-coordinated-render-state.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -216,11 +228,12 @@ Last updated: 2026-04-26
 
 ## Naechster Schritt
 
-Nach Schritt 23 ist der naechste moegliche separate Folgeschritt:
-fokussierte manuelle Regression unter echten Netzwerkbedingungen fuer das
-eigene Business-Profil-Menu, QR->Menu->Posts->Refresh, `/:slug/menu`
-Cold-Refresh und Browser-Back/Forward. Ein weiterer technischer Schritt waere
-erst dann sinnvoll, wenn diese manuellen Flows noch konkrete Restfehler zeigen.
+Nach Schritt 24 ist der naechste moegliche separate Folgeschritt:
+fokussierte manuelle Regression unter echten Netzwerkbedingungen fuer Public-
+Profile aus Map, Profil A -> B, `/:slug/menu` mit und ohne Fokus, QR/Table-
+Kontext, Lead Search und Browser-Back/Forward. Ein weiterer technischer Schritt
+waere erst dann sinnvoll, wenn diese manuellen Flows noch konkrete Restfehler
+zeigen.
 
 ## Guardrails fuer die naechsten Schritte
 

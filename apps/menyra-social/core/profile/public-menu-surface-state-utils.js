@@ -64,6 +64,59 @@ export function isVisiblePublicMenuSurfaceIdMatch(value = "", targetIds = []) {
     .includes(safeValue);
 }
 
+function normalizeFocusTargetKey(value = "") {
+  let key = String(value || "").trim().toLowerCase();
+  if (!key) return "";
+  try {
+    if (typeof key.normalize === "function") {
+      key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    }
+  } catch {}
+  return key
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildMenuFocusTargetIndex(menuItems = []) {
+  const ids = new Set();
+  const categories = new Set();
+  (Array.isArray(menuItems) ? menuItems : []).forEach((item) => {
+    [
+      item?.id,
+      item?.itemId,
+      item?.menuItemId,
+      item?.productId
+    ].forEach((value) => {
+      const id = String(value || "").trim();
+      if (id) ids.add(id);
+    });
+    const categoryKey = normalizeFocusTargetKey(item?.category || "");
+    if (categoryKey) categories.add(categoryKey);
+  });
+  return { ids, categories };
+}
+
+function focusItemMatchesLoadedMenu(item = {}, menuIndex = {}) {
+  const itemTarget = String(
+    item?.targetMenuItemId
+    || item?.menuItemId
+    || item?.targetItemId
+    || item?.itemId
+    || item?.targetProductId
+    || item?.productId
+    || ""
+  ).trim();
+  if (itemTarget) return menuIndex?.ids?.has?.(itemTarget) === true;
+  const categoryTarget = normalizeFocusTargetKey(
+    item?.targetCategory
+    || item?.categoryTarget
+    || item?.menuCategory
+    || ""
+  );
+  if (categoryTarget) return menuIndex?.categories?.has?.(categoryTarget) === true;
+  return true;
+}
+
 export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   profile = null,
   routePayload = null,
@@ -105,11 +158,33 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   const focusTruthState = normalizePublicMenuTruthState(focus.truthState || "");
   const samePublicFocus = focusTruthSource === "public-menu"
     && isVisiblePublicMenuSurfaceIdMatch(focusRestaurantId, surfaceIds.targetIds);
-  const focusItems = samePublicFocus && Array.isArray(focus.items) ? focus.items : [];
-  const canRenderFocus = menuStatus === "ready"
-    && samePublicFocus
+  const rawFocusItems = samePublicFocus && Array.isArray(focus.items) ? focus.items : [];
+  const menuFocusTargetIndex = buildMenuFocusTargetIndex(menuItems);
+  const focusItems = rawFocusItems.filter((item) => focusItemMatchesLoadedMenu(item, menuFocusTargetIndex));
+  const focusInvalidForMenu = samePublicFocus
     && focusTruthState === "seeded"
-    && focus.enabled !== false
+    && rawFocusItems.length > 0
+    && focusItems.length === 0;
+  let focusStatus = "hidden";
+  if (menuStatus === "ready") {
+    if (!samePublicFocus) {
+      focusStatus = "unknown";
+    } else if (focusTruthState === "seeded") {
+      focusStatus = focus.enabled !== false && focusItems.length > 0 ? "ready" : "empty";
+    } else if (focusTruthState === "knownEmpty") {
+      focusStatus = "empty";
+    } else if (focusTruthState === "error" || (String(focus.error || "").trim() && !focus.loading)) {
+      focusStatus = "error";
+    } else if (focus.loading) {
+      focusStatus = "loading";
+    } else {
+      focusStatus = "unknown";
+    }
+  } else if (samePublicFocus && focus.loading) {
+    focusStatus = "loading";
+  }
+  const canRenderFocus = focusStatus === "ready"
+    && samePublicFocus
     && focusItems.length > 0;
 
   return {
@@ -127,14 +202,17 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
       error: menuError
     },
     focus: {
-      status: canRenderFocus ? "ready" : "hidden",
+      status: focusStatus,
       matches: samePublicFocus,
       restaurantId: samePublicFocus ? focusRestaurantId : surfaceIds.restaurantId,
       truthSource: samePublicFocus ? "public-menu" : focusTruthSource,
       truthState: samePublicFocus ? focusTruthState : "unknown",
       loading: samePublicFocus ? !!focus.loading : false,
       items: canRenderFocus ? focusItems : [],
-      canRenderFocus
+      rawItems: rawFocusItems,
+      canRenderFocus,
+      settled: focusStatus === "ready" || focusStatus === "empty" || focusStatus === "error",
+      invalidForMenu: focusInvalidForMenu
     }
   };
 }

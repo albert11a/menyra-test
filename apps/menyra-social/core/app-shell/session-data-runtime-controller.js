@@ -234,6 +234,23 @@ export function createSessionDataRuntimeController({
     return collectVisiblePublicMenuTargetIds().has(targetRestaurantId);
   }
 
+  function isPublicProfileMenuVisible() {
+    return String(state?.activeTab || "").trim().toLowerCase() === "profile"
+      && String(state?.profileTopTab || "").trim().toLowerCase() === "menu";
+  }
+
+  function shouldCommitVisiblePublicMenuState(restaurantId = "", source = "public") {
+    const safeSource = String(source || "public").trim().toLowerCase();
+    if (safeSource !== "public") return true;
+    if (!isPublicProfileMenuVisible()) return true;
+    return isVisiblePublicMenuSurface(restaurantId, safeSource);
+  }
+
+  function shouldCommitVisiblePublicFocusState(restaurantId = "") {
+    if (!isPublicProfileMenuVisible()) return true;
+    return isVisiblePublicMenuSurface(restaurantId, "public");
+  }
+
   function shouldUseRealtimeMenuMetaListener(restaurantId = "", source = "public") {
     const safeSource = String(source || "public").trim().toLowerCase();
     const hasAuthenticatedUser = !!String(state?.user?.uid || "").trim();
@@ -1438,6 +1455,9 @@ export function createSessionDataRuntimeController({
       state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "", truthState: "unknown" };
       return;
     }
+    if (!prefetchOnly && !shouldCommitVisiblePublicFocusState(restaurantId)) {
+      return loadFocusForRestaurant(restaurantId, { force, prefetchOnly: true });
+    }
     const cacheKey = focusCacheKeyFn(restaurantId);
     const queueFreshFocusReconcile = () => {
       if (prefetchOnly || focusFreshReconcileQueuedKeys.has(cacheKey)) return;
@@ -1465,6 +1485,7 @@ export function createSessionDataRuntimeController({
         truthState: cachedItems.length ? "seeded" : "knownEmpty"
       };
       if (prefetchOnly) return cachedPayload;
+      if (!shouldCommitVisiblePublicFocusState(restaurantId)) return cachedPayload;
       state.focus = {
         ...state.focus,
         restaurantId,
@@ -1509,16 +1530,19 @@ export function createSessionDataRuntimeController({
     const stableEnabled = sameRestaurant
       ? state.focus.enabled !== false
       : true;
-    state.focus = {
-      ...state.focus,
-      restaurantId,
-      items: stableItems,
-      enabled: stableEnabled,
-      loading: true,
-      error: "",
-      truthState: stableItems.length ? "seeded" : "unknown"
-    };
-    requestRender();
+    if (shouldCommitVisiblePublicFocusState(restaurantId)) {
+      state.focus = {
+        ...state.focus,
+        restaurantId,
+        items: stableItems,
+        enabled: stableEnabled,
+        loading: true,
+        error: "",
+        truthSource: "public-menu",
+        truthState: stableItems.length ? "seeded" : "unknown"
+      };
+      requestRender();
+    }
     try {
       const [items, enabled] = await Promise.all([
         timeLoadingAsync("public/offers load", () => loadFocusItemsFn(restaurantId), {
@@ -1527,12 +1551,15 @@ export function createSessionDataRuntimeController({
         }),
         loadFocusMetaFn(restaurantId)
       ]);
-      const truthState = Array.isArray(items) && items.length > 0 ? "seeded" : "knownEmpty";
-      focusCacheMap.set(cacheKey, { items, enabled, truthSource: "public-menu", truthState, ts: Date.now() });
+      const safeItems = Array.isArray(items) ? items : [];
+      const truthState = safeItems.length > 0 ? "seeded" : "knownEmpty";
+      const payload = { items: safeItems, enabled, truthSource: "public-menu", truthState };
+      focusCacheMap.set(cacheKey, { ...payload, ts: Date.now() });
+      if (!shouldCommitVisiblePublicFocusState(restaurantId)) return payload;
       state.focus = {
         ...state.focus,
         restaurantId,
-        items,
+        items: safeItems,
         enabled,
         loading: false,
         error: "",
@@ -1541,23 +1568,32 @@ export function createSessionDataRuntimeController({
         truthState
       };
       requestRender();
+      return payload;
     } catch (err) {
       console.error(err);
       const fallbackItems = state.focus.restaurantId === restaurantId && Array.isArray(state.focus.items)
         ? state.focus.items
         : stableItems;
       const hasFallbackItems = fallbackItems.length > 0;
+      const fallbackPayload = {
+        items: fallbackItems,
+        enabled: state.focus.enabled !== false,
+        truthSource: hasFallbackItems ? state.focus.truthSource : "public-menu",
+        truthState: hasFallbackItems ? "seeded" : "knownEmpty"
+      };
+      if (!shouldCommitVisiblePublicFocusState(restaurantId)) return fallbackPayload;
       state.focus = {
         ...state.focus,
         restaurantId,
         items: fallbackItems,
-        enabled: state.focus.enabled !== false,
+        enabled: fallbackPayload.enabled,
         loading: false,
         error: hasFallbackItems ? "" : "Fokus laden fehlgeschlagen.",
-        truthSource: hasFallbackItems ? state.focus.truthSource : "public-menu",
-        truthState: hasFallbackItems ? "seeded" : "knownEmpty"
+        truthSource: fallbackPayload.truthSource,
+        truthState: fallbackPayload.truthState
       };
       requestRender();
+      return fallbackPayload;
     }
   }
 
@@ -1591,6 +1627,9 @@ export function createSessionDataRuntimeController({
     }
     if (prefetchOnly && safeSource !== "public") {
       return { items: [], statusBadgeVisible: true, truthState: "unknown" };
+    }
+    if (!prefetchOnly && !shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) {
+      return loadMenuForRestaurant(safeRestaurantId, { force, source: safeSource, prefetchOnly: true });
     }
     if (!prefetchOnly) {
       if (!shouldUseRealtimeMenuMetaListener(safeRestaurantId, safeSource)) {
@@ -1668,6 +1707,7 @@ export function createSessionDataRuntimeController({
         truthState: cachedItems.length ? "seeded" : "knownEmpty"
       };
       if (prefetchOnly) return cachedPayload;
+      if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return cachedPayload;
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -1701,6 +1741,7 @@ export function createSessionDataRuntimeController({
         });
         return persistedPayload;
       }
+      if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return persistedPayload;
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -1726,7 +1767,12 @@ export function createSessionDataRuntimeController({
     const inFlight = menuNetworkLoadPromises.get(cacheKey);
     if (inFlight) {
       const inFlightResult = await inFlight;
-      if (!prefetchOnly && inFlightResult && Array.isArray(inFlightResult.items)) {
+      if (
+        !prefetchOnly
+        && inFlightResult
+        && Array.isArray(inFlightResult.items)
+        && shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)
+      ) {
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
@@ -1795,19 +1841,21 @@ export function createSessionDataRuntimeController({
       && Array.isArray(state.menu.items)
       && !blockWebDirectMenuCacheSeed
       && (!shouldPrioritizeVisibleMenuTruth || state.menu.items.length > 0);
-    state.menu = {
-      ...state.menu,
-      restaurantId: safeRestaurantId,
-      items: keepCurrentItems ? state.menu.items : [],
-      loading: true,
-      error: "",
-      source: safeSource,
-      routeSeed: keepCurrentItems ? state.menu.routeSeed === true : false,
-      truthState: keepCurrentItems
-        ? String(state.menu.truthState || "").trim().toLowerCase() || "seeded"
-        : "unknown"
-    };
-    requestRender();
+    if (shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) {
+      state.menu = {
+        ...state.menu,
+        restaurantId: safeRestaurantId,
+        items: keepCurrentItems ? state.menu.items : [],
+        loading: true,
+        error: "",
+        source: safeSource,
+        routeSeed: keepCurrentItems ? state.menu.routeSeed === true : false,
+        truthState: keepCurrentItems
+          ? String(state.menu.truthState || "").trim().toLowerCase() || "seeded"
+          : "unknown"
+      };
+      requestRender();
+    }
     const request = (async () => {
       try {
         let items = [];
@@ -1854,14 +1902,18 @@ export function createSessionDataRuntimeController({
         if (typeof meta?.statusBadgeVisible === "boolean") {
           statusBadgeVisible = meta.statusBadgeVisible;
         }
+        items = Array.isArray(items) ? items : [];
+        const truthState = items.length > 0 ? "seeded" : "knownEmpty";
+        const payload = { items, statusBadgeVisible, truthState };
         menuCacheMap.set(cacheKey, {
           items,
           statusBadgeVisible,
           truthSource: safeSource === "public" ? "public-menu" : safeSource,
-          truthState: Array.isArray(items) && items.length > 0 ? "seeded" : "knownEmpty",
+          truthState,
           ts: Date.now()
         });
         writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
+        if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return payload;
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
@@ -1871,9 +1923,9 @@ export function createSessionDataRuntimeController({
           source: safeSource,
           statusBadgeVisible,
           routeSeed: false,
-          truthState: Array.isArray(items) && items.length > 0 ? "seeded" : "knownEmpty"
+          truthState
         };
-        if (safeSource === "public" && (!Array.isArray(items) || items.length === 0)) {
+        if (safeSource === "public" && items.length === 0) {
           const currentFocusRestaurantId = String(state?.focus?.restaurantId || "").trim();
           if (currentFocusRestaurantId === safeRestaurantId) {
             state.focus = {
@@ -1888,6 +1940,7 @@ export function createSessionDataRuntimeController({
           }
         }
         requestRender();
+        return payload;
       } catch (err) {
         console.error(err);
         const allowExpiredPersistedFallback = safeSource !== "public";
@@ -1911,6 +1964,12 @@ export function createSessionDataRuntimeController({
         const fallbackStatusBadgeVisible = typeof stalePersistedMenu.statusBadgeVisible === "boolean"
           ? stalePersistedMenu.statusBadgeVisible
           : true;
+        const fallbackPayload = {
+          items: fallbackItems,
+          statusBadgeVisible: fallbackStatusBadgeVisible,
+          truthState: fallbackItems.length > 0 ? "seeded" : "unknown"
+        };
+        if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return fallbackPayload;
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
@@ -1920,15 +1979,16 @@ export function createSessionDataRuntimeController({
           source: safeSource,
           statusBadgeVisible: fallbackStatusBadgeVisible,
           routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true,
-          truthState: fallbackItems.length > 0 ? "seeded" : "unknown"
+          truthState: fallbackPayload.truthState
         };
         requestRender();
+        return fallbackPayload;
       } finally {
         menuNetworkLoadPromises.delete(cacheKey);
       }
     })();
     menuNetworkLoadPromises.set(cacheKey, request);
-    await request;
+    return await request;
   }
 
   async function bootstrapUser(user) {

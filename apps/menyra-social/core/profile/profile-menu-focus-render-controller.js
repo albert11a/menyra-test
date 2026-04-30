@@ -1243,13 +1243,14 @@ function resolveMenuCardStyle(item) {
 
 function buildFocusCardItem(item, { menuItemId = "" } = {}) {
   if (!item) return null;
+  const resolvedMenuItemId = String(menuItemId || item.menuItemId || item.itemId || item.productId || "").trim();
   return {
     id: item.id || "",
     title: item.name || item.title || "Sot ne Fokus",
     text: item.description || item.text || "",
     imageUrl: resolveMenuItemHero(item) || item.imageUrl || "",
     objectPosition: item.objectPosition || getMenuItemObjectPosition(item),
-    menuItemId: String(menuItemId || "").trim()
+    menuItemId: resolvedMenuItemId
   };
 }
 
@@ -2212,6 +2213,10 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const currentFocusTruth = normalizePublicMenuTruthState(menuSurfaceState.focus.truthState || "");
   const hasConfirmedPublicMenuItems = menuSurfaceState.menu.status === "ready";
   const hasPublicFocusTruth = menuSurfaceState.focus.canRenderFocus;
+  const shouldCoordinatePublicFocus = hasConfirmedPublicMenuItems && isRestaurantCafeProfile(surfaceProfile);
+  const focusPendingForMenu = shouldCoordinatePublicFocus
+    && (menuSurfaceState.focus.status === "unknown" || menuSurfaceState.focus.status === "loading");
+  const focusLoadingForSurface = menuSurfaceState.focus.matches === true && menuSurfaceState.focus.loading === true;
   const isLandingMode = mode === "landing";
   const menuAccessSource = String(
     state?.profileView?.menuAccessSource
@@ -2234,8 +2239,9 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const skipFirstVisibleMenuEnsure = isWebDirectFirstVisibleMenuPath
     && hasSettledPublicMenuTruth;
   const skipFirstVisibleFocusEnsure = isWebDirectFirstVisibleMenuPath
-    && (menuSurfaceState.focus.status === "ready" || menuSurfaceState.menu.status !== "ready");
-  const hasSettledFocusTruth = menuSurfaceState.focus.status === "ready"
+    && (!shouldCoordinatePublicFocus || menuSurfaceState.menu.status !== "ready");
+  const hasSettledFocusTruth = !shouldCoordinatePublicFocus
+    || menuSurfaceState.focus.settled === true
     || currentFocusTruth === "knownEmpty"
     || menuSurfaceState.menu.status !== "ready";
   if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
@@ -2245,12 +2251,16 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     allowAutoEnsure
     && !skipFirstVisibleFocusEnsure
     && !hasSettledFocusTruth
+    && !focusLoadingForSurface
     && hasConfirmedPublicMenuItems
     && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth)
   ) {
     ensureFocusDataForProfile(surfaceProfile);
   }
-  const items = menuSurfaceState.menu.canRenderItems
+  // Public focus is optional, but when it is still being resolved for this menu
+  // surface the visible menu commit waits so the focus block cannot jump in later.
+  const canRenderCoordinatedMenu = menuSurfaceState.menu.canRenderItems && !focusPendingForMenu;
+  const items = canRenderCoordinatedMenu
     ? sortMenuItemsByOrder(getFilteredMenuItems(menuSurfaceState.menu.items, { filter: "all", query: "" }))
       .filter((item) => !isMenuItemHidden(item))
     : [];
@@ -2259,7 +2269,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const catalogLabel = getBusinessCatalogLabel(profile);
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
-  const isLoading = menuSurfaceState.menu.status === "loading";
+  const isLoading = menuSurfaceState.menu.status === "loading" || focusPendingForMenu;
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;

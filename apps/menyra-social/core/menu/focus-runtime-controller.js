@@ -63,6 +63,9 @@ export function createFocusRuntimeController({
     const crop = getFocusItemCrop(item);
     return {
       id,
+      menuItemId: String(item.menuItemId || item.targetMenuItemId || item.itemId || item.targetItemId || "").trim(),
+      productId: String(item.productId || item.targetProductId || "").trim(),
+      targetCategory: String(item.targetCategory || item.categoryTarget || item.menuCategory || "").trim(),
       title: item.title || item.name || "Sot ne Fokus",
       text: item.text || item.desc || item.description || "",
       imageUrl: item.imageUrl || item.image || item.photoUrl || "",
