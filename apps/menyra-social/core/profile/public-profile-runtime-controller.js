@@ -220,6 +220,35 @@ export function createPublicProfileRuntimeController({
       }
 
       const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.publicSlug || cachedRestaurant?.landingSlug || "");
+      if (routeSlug && makeDocRef && db) {
+        try {
+          const routeSnap = await getDocSafe(makeDocRef(db, "publicRoutes", routeSlug));
+          if (routeSnap?.exists?.()) {
+            const routeData = routeSnap.data() || {};
+            const routeStatus = String(routeData.status || routeData.publicRouteStatus || "active").trim().toLowerCase();
+            if (["inactive", "disabled", "deleted", "blocked", "archived", "private", "not-found", "notfound"].includes(routeStatus)) {
+              return null;
+            }
+            const routeRestaurantId = String(
+              routeData.restaurantId
+              || routeData.canonicalRestaurantId
+              || ""
+            ).trim();
+            if (routeRestaurantId) {
+              const restaurantSnap = await getDocSafe(makeDocRef(db, "restaurants", routeRestaurantId));
+              if (restaurantSnap.exists()) {
+                const data = restaurantSnap.data() || {};
+                if (isPublicBusinessRecord({ id: restaurantSnap.id, ...data })) {
+                  const resolved = { id: restaurantSnap.id, data };
+                  cacheResolvedRestaurantDoc(routeSlug, cachedRestaurant, resolved);
+                  cacheResolvedRestaurantDoc(routeId, cachedRestaurant, resolved);
+                  return resolved;
+                }
+              }
+            }
+          }
+        } catch {}
+      }
       if (routeSlug && makeCollectionRef && buildQuery && buildWhere && db) {
         const queryRestaurantByField = async (fieldName = "", fieldValue = "") => {
           const safeFieldName = String(fieldName || "").trim();

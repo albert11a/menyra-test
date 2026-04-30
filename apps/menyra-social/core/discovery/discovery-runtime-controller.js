@@ -332,6 +332,12 @@ function hasUsableMapCoords(value = {}) {
 function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0) {
   const geo = getGeo(rest);
   const row = location || {};
+  const restaurantId = String(rest?.restaurantId || rest?.id || "").trim();
+  const canonicalRestaurantId = String(rest?.canonicalRestaurantId || rest?.restaurantId || rest?.id || "").trim();
+  const documentId = String(rest?.id || "").trim();
+  const publicSlug = String(rest?.publicSlug || rest?.slug || "").trim();
+  const landingSlug = String(rest?.landingSlug || "").trim();
+  const handle = String(rest?.handle || "").trim();
   const rowCoords = resolveCoordsFromEntity(row);
   const restCoords = resolveCoordsFromEntity(rest)
     || normalizeCoordPair(rest?.lat ?? geo?.lat, rest?.lng ?? geo?.lng);
@@ -340,11 +346,17 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
   const city = String(row.city || rest.city || "").trim();
   const address = String(row.address || rest.address || city || LOCATION_UNVERIFIED_LABEL).trim() || LOCATION_UNVERIFIED_LABEL;
   const logoSource = rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "";
-  const markerLogo = resolveMapMarkerLogoUrl(logoSource, rest.id);
+  const markerLogo = resolveMapMarkerLogoUrl(logoSource, restaurantId || documentId);
 
   return {
-    id: rest.id,
-    markerKey: `${rest.id || "biz"}:${locationIndex}`,
+    id: restaurantId || documentId,
+    restaurantId: restaurantId || documentId,
+    canonicalRestaurantId,
+    documentId,
+    publicSlug,
+    landingSlug,
+    handle,
+    markerKey: `${restaurantId || documentId || "biz"}:${locationIndex}`,
     locationIndex,
     name: rest.name || rest.restaurantName || "Business",
     type: rest.type || "food",
@@ -708,9 +720,28 @@ function bindMapSheetEvents() {
     if (btn) {
       btn.addEventListener("click", () => {
         if (!state.selectedBusiness) return;
+        const selected = state.selectedBusiness;
+        const raw = selected.raw && typeof selected.raw === "object" ? selected.raw : {};
+        const restaurantId = String(selected.restaurantId || raw.restaurantId || selected.id || raw.id || "").trim();
+        const canonicalRestaurantId = String(
+          selected.canonicalRestaurantId
+          || raw.canonicalRestaurantId
+          || raw.restaurantId
+          || raw.id
+          || selected.documentId
+          || ""
+        ).trim();
         openProfileViewFromBusiness({
-          id: state.selectedBusiness.id,
-          name: state.selectedBusiness.name
+          id: canonicalRestaurantId || restaurantId || selected.publicSlug || selected.landingSlug || raw.publicSlug || raw.landingSlug || "",
+          restaurantId,
+          canonicalRestaurantId,
+          documentId: selected.documentId || raw.id || "",
+          publicSlug: selected.publicSlug || raw.publicSlug || "",
+          landingSlug: selected.landingSlug || raw.landingSlug || "",
+          handle: selected.handle || raw.handle || "",
+          name: selected.name,
+          source: "map",
+          initialSnapshot: Object.keys(raw).length ? raw : selected
         });
       });
     }

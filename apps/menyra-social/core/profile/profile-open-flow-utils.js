@@ -3,6 +3,116 @@ import {
   normalizePublicBusinessSlugCore
 } from "../router/public-business-route-utils.js";
 
+function pickBusinessProfileText(...values) {
+  for (const value of values) {
+    const text = String(value || "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+export function normalizeBusinessProfileTarget(input, { source = "" } = {}) {
+  const inputIsObject = input && typeof input === "object";
+  const safeInput = inputIsObject ? input : {};
+  const initialSnapshot = (
+    safeInput.initialSnapshot
+    || safeInput.snapshot
+    || safeInput.restaurant
+    || safeInput.raw
+    || null
+  );
+  const safeSnapshot = initialSnapshot && typeof initialSnapshot === "object"
+    ? initialSnapshot
+    : {};
+  const documentId = pickBusinessProfileText(
+    safeInput.documentId,
+    safeInput.docId,
+    safeInput.restaurantDocumentId,
+    safeSnapshot.documentId,
+    safeSnapshot.docId,
+    safeSnapshot.id
+  );
+  const explicitCanonicalRestaurantId = pickBusinessProfileText(
+    safeInput.canonicalRestaurantId,
+    safeInput.canonicalId,
+    safeInput.restaurantCanonicalId,
+    safeSnapshot.canonicalRestaurantId
+  );
+  const restaurantId = pickBusinessProfileText(
+    safeInput.restaurantId,
+    safeInput.id,
+    safeSnapshot.restaurantId,
+    safeSnapshot.id,
+    documentId
+  );
+  const publicSlug = pickBusinessProfileText(
+    safeInput.publicSlug,
+    safeInput.slug,
+    safeSnapshot.publicSlug,
+    safeSnapshot.slug
+  );
+  const landingSlug = pickBusinessProfileText(
+    safeInput.landingSlug,
+    safeSnapshot.landingSlug
+  );
+  const handle = pickBusinessProfileText(
+    safeInput.handle,
+    safeSnapshot.handle
+  );
+  const canonicalRestaurantId = pickBusinessProfileText(
+    explicitCanonicalRestaurantId,
+    safeInput.restaurantId,
+    safeSnapshot.restaurantId,
+    documentId
+  );
+  const stringInput = typeof input === "string" ? String(input || "").trim() : "";
+  const lookupText = pickBusinessProfileText(
+    safeInput.lookupText,
+    publicSlug,
+    landingSlug,
+    handle,
+    stringInput,
+    safeInput.id,
+    safeInput.name,
+    safeSnapshot.name,
+    safeSnapshot.restaurantName
+  );
+  const name = pickBusinessProfileText(
+    stringInput,
+    safeInput.name,
+    safeInput.restaurantName,
+    safeInput.businessName,
+    safeSnapshot.name,
+    safeSnapshot.restaurantName,
+    safeSnapshot.businessName
+  );
+  const id = pickBusinessProfileText(
+    canonicalRestaurantId,
+    restaurantId,
+    publicSlug,
+    landingSlug,
+    handle,
+    stringInput
+  );
+  return {
+    id,
+    restaurantId,
+    canonicalRestaurantId,
+    documentId,
+    publicSlug,
+    landingSlug,
+    handle,
+    slug: publicSlug || landingSlug || handle,
+    lookupText,
+    name,
+    source: pickBusinessProfileText(safeInput.source, source, "profile-open"),
+    routeContext: safeInput.routeContext && typeof safeInput.routeContext === "object"
+      ? safeInput.routeContext
+      : null,
+    initialSnapshot: initialSnapshot && typeof initialSnapshot === "object" ? initialSnapshot : null
+  };
+}
+
 export function createProfileOpenFlowControllerCore({
   state,
   isLocalBusinessProfile,
@@ -334,13 +444,12 @@ export function createProfileOpenFlowControllerCore({
     let targetMenuRestaurantId = "";
     let targetCanonicalRestaurantId = "";
     try {
-      const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
-      const restaurantId = String(typeof input === "string" ? "" : (input?.id || "")).trim();
-      const lookupText = String(
-        typeof input === "string"
-          ? input
-          : (input?.landingSlug || input?.handle || input?.id || input?.name || "")
-      ).trim();
+      const businessTarget = normalizeBusinessProfileTarget(input);
+      const safeName = String(businessTarget.name || "").trim();
+      const restaurantId = String(businessTarget.restaurantId || "").trim();
+      const lookupText = String(businessTarget.lookupText || businessTarget.id || "").trim();
+      const safeTargetSource = String(businessTarget.source || "").trim().toLowerCase();
+      targetCanonicalRestaurantId = String(businessTarget.canonicalRestaurantId || "").trim();
       if (!safeName && !restaurantId && !lookupText) return;
       const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
       const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
@@ -374,10 +483,19 @@ export function createProfileOpenFlowControllerCore({
         void hydrateRestaurants([restaurantId], { max: 1 });
       }
 
-      const rest = resolveRestaurantByLookup({ restaurantId, lookupText })
+      const snapshotRest = businessTarget.initialSnapshot && typeof businessTarget.initialSnapshot === "object"
+        ? {
+          ...businessTarget.initialSnapshot,
+          ...(businessTarget.documentId && !String(businessTarget.initialSnapshot.id || "").trim()
+            ? { id: businessTarget.documentId }
+            : {})
+        }
+        : null;
+      const rest = snapshotRest
+        || resolveRestaurantByLookup({ restaurantId, lookupText })
         || (restaurantId ? { id: restaurantId } : {});
-      targetRestaurantLookupId = String(restaurantId || rest?.id || lookupText || "").trim();
-      targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      targetRestaurantLookupId = String(restaurantId || businessTarget.id || rest?.id || lookupText || "").trim();
+      targetMenuRestaurantId = String(targetCanonicalRestaurantId || restaurantId || rest?.id || "").trim();
       const resolveDirectRouteBootstrapSeed = () => {
         const candidate = state?.__publicRouteBootstrap && typeof state.__publicRouteBootstrap === "object"
           ? state.__publicRouteBootstrap
@@ -452,7 +570,8 @@ export function createProfileOpenFlowControllerCore({
       ).trim();
       targetCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
         routeSnapshotRestaurantId,
-        routeBootstrapSeed?.canonicalRestaurantId
+        routeBootstrapSeed?.canonicalRestaurantId,
+        targetCanonicalRestaurantId
       );
       if (targetCanonicalRestaurantId) {
         targetMenuRestaurantId = targetCanonicalRestaurantId;
@@ -717,8 +836,16 @@ export function createProfileOpenFlowControllerCore({
         targetCanonicalRestaurantId,
         routeSnapshotRestaurantId
       );
-      const shouldWarmPostsForWebRoute = isWebRoutePriorityPath && !!earlyPostsRestaurantId;
-      const earlyPostsPromise = shouldWarmPostsForWebRoute && earlyPostsRestaurantId
+      const shouldWarmPostsForSurface = !!earlyPostsRestaurantId
+        && (
+          isWebRoutePriorityPath
+          || safeTargetSource === "map"
+          || safeTargetSource === "discovery"
+          || safeTargetSource === "search"
+          || safeTargetSource === "feed"
+          || safeTargetSource === "profile-open"
+        );
+      const earlyPostsPromise = shouldWarmPostsForSurface && earlyPostsRestaurantId
         ? Promise.resolve(loadBusinessPosts(earlyPostsRestaurantId, {
           skipProfileResolve: earlyPostsSkipProfileResolve
         }))
@@ -1020,6 +1147,26 @@ export function createProfileOpenFlowControllerCore({
           directEntry: loadingDirectEntry
         })
       });
+
+      const shouldWarmPublicMenuBundle = !!(loadingCanonicalRestaurantId || targetMenuRestaurantId)
+        && !isLandingTopTab
+        && safeMenuAccessSource !== "qr";
+      if (shouldWarmPublicMenuBundle) {
+        Promise.resolve().then(() => {
+          const warmCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
+            loadingCanonicalRestaurantId,
+            targetCanonicalRestaurantId,
+            targetMenuRestaurantId
+          );
+          const warmRestaurantId = warmCanonicalRestaurantId || targetMenuRestaurantId;
+          if (!warmRestaurantId) return;
+          ensureMenuData({
+            ...loadingProfileWithSurfaceTruth,
+            restaurantId: warmRestaurantId,
+            canonicalRestaurantId: warmCanonicalRestaurantId || warmRestaurantId
+          });
+        });
+      }
 
       const canShortCircuitNormalWebDirectMenuPath = isWebRoutePriorityPath
         && isMenuTopTab

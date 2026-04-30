@@ -183,6 +183,27 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   const isVisiblePublicBusinessSurface = () => isVisiblePublicMenuFirstSurface() || isNormalWebDirectProfileVisible();
 
+  const isVisiblePublicProfileBusinessSurface = (profile = {}) => {
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "profile") return false;
+    const visibleProfileView = getVisiblePublicProfileView();
+    if (!visibleProfileView) return false;
+    const visibleProfileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const visibleProfileContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
+    const publicProfileSurfaceVisible = (
+      visibleProfileTopTab === "profile"
+      || visibleProfileTopTab === "menu"
+      || visibleProfileTopTab === "cart"
+      || visibleProfileContentTab === "posts"
+      || visibleProfileContentTab === "menu"
+    );
+    if (!publicProfileSurfaceVisible) return false;
+    const visibleTargetIds = collectVisibleMenuTargetIds(profile);
+    return visibleTargetIds.has(visibleProfileView.restaurantId)
+      || visibleTargetIds.has(String(visibleProfileView.profile?.restaurantId || "").trim())
+      || visibleTargetIds.has(String(visibleProfileView.profile?.canonicalRestaurantId || "").trim());
+  };
+
   const collectProfileRestaurantIds = (profile = {}) => {
     const ids = new Set();
     const safeProfile = profile && typeof profile === "object" ? profile : {};
@@ -221,7 +242,9 @@ export function createProfileBusinessMenuRuntimeCluster({
   };
 
   const isPublicMenuLoadSurface = (profile = {}) => {
-    return isVisiblePublicBusinessSurface() || isOwnBusinessProfileMenuSurface(profile);
+    return isVisiblePublicBusinessSurface()
+      || isVisiblePublicProfileBusinessSurface(profile)
+      || isOwnBusinessProfileMenuSurface(profile);
   };
 
   const hasMatchingVisibleMenuEnsureInFlight = (targetId = "", requestedId = "", profile = {}) => {
