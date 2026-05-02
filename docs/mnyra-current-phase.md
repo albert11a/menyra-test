@@ -218,6 +218,16 @@ Last updated: 2026-05-02
   mehr direkt beim Start laden/initialisieren. Checkout, Orders-Tab und Upload
   laden die benoetigten Controller bei Nutzung nach. Sichtbare Oberflaeche, QR,
   Warenkorb, Tischkontext, Routing-Design und Produktlogik bleiben unveraendert.
+- Schritt 29 ist abgeschlossen: Public-Website-Starts haben jetzt eine eigene
+  HTML-/Boot-Entry-Grenze.
+- Bewertung von Schritt 29: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 29:
+  `index.html` erkennt Public-Website-Starts synchron und laedt dafuer den
+  kleinen `social-public-entry.js`, waehrend Nicht-Public-App-Pfade weiter
+  direkt `social-app.js` laden. Aggressive `social-app.js`-/Firebase-
+  Modulepreloads laufen nur noch fuer App-Starts. Der Public-Entry importiert
+  die bestehende App noch nach, damit die sichtbare Produktoberflaeche stabil
+  bleibt; ein echter leichter Public-Renderer bleibt ein Folgeschritt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -246,6 +256,7 @@ Last updated: 2026-05-02
 - Referenz: [docs/mnyra-step26-discovery-map-profile-data-isolation.md](./mnyra-step26-discovery-map-profile-data-isolation.md)
 - Referenz: [docs/mnyra-step27-public-menu-focus-nonblocking-load.md](./mnyra-step27-public-menu-focus-nonblocking-load.md)
 - Referenz: [docs/mnyra-step28-public-startup-defer-upload-orders.md](./mnyra-step28-public-startup-defer-upload-orders.md)
+- Referenz: [docs/mnyra-step29-public-web-entry-boundary.md](./mnyra-step29-public-web-entry-boundary.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -271,12 +282,13 @@ Last updated: 2026-05-02
 
 ## Naechster Schritt
 
-Nach Schritt 25 ist der naechste sinnvolle separate Folgeschritt:
-fokussierte manuelle Smartphone-Regression unter echten Netzwerkbedingungen fuer
-`/:slug`, `/:slug/menu`, QR/Table-Kontext, Login/App-Pfade und Browser-
-Back/Forward. Danach kann entschieden werden, ob der naechste technische
-Performance-Schritt ein eigener leichter Public-Web-Entry oder zuerst Menu-
-Bootstrap-/Render-Chunking sein soll.
+Nach Schritt 29 ist der naechste sinnvolle separate Folgeschritt:
+den neuen Public-Entry schrittweise mit einem echten leichten Public-Renderer
+fuellen, statt sofort die gesamte App nachzuladen. Der erste sichere Kandidat
+ist `/:slug/menu`, weil der Zielzustand dort fachlich eng ist: Profilkopf,
+Menu, QR-/Tisch-/Warenkorb-Kompatibilitaet und kein Chat/CRM/Feed/Upload-
+Startpfad. Vor diesem Schritt sollte der Nutzer die aktuellen Public- und
+App-Pfade einmal manuell auf Smartphone testen.
 
 ## Guardrails fuer die naechsten Schritte
 

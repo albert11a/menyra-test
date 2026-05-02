@@ -9,8 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <script type="module">
-    import { parseSiteRoutePathCore } from "/apps/menyra-social/core/router/public-business-route-utils.js";
+  <script>
     (() => {
       window.__MENYRA_SOCIAL_DEGRADED__ = window.__MENYRA_SOCIAL_DEGRADED__ || {};
       window.__MENYRA_SOCIAL_SET_DEGRADED__ = (kind, payload = {}) => {
@@ -25,13 +24,143 @@
           detail: { kind: safeKind, ...next }
         }));
       };
+      const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set(
+        "b feed search discover map location user waiter wr leads admin ceo owner staff kitchen profile menu orders notifications settings upload customers business-accounts businessaccounts chat social heart hub apps api shared assets _shared core login register post posts story stories lp lead-landing index.html manifest.webmanifest manifest.json sw.js favicon.ico robots.txt sitemap.xml menyra-restaurants"
+          .split(" ")
+      );
+      const BUSINESS_POST_SEGMENTS = new Set("posts post profile home overview".split(" "));
+      const BUSINESS_MENU_SEGMENTS = new Set("menu karte speisekarte shop focus highlights highlight".split(" "));
+      const safeLowerText = (value = "") => String(value || "").trim().toLowerCase();
+      const safeDecodePathSegment = (value = "") => {
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+        try {
+          return decodeURIComponent(raw);
+        } catch {
+          return raw;
+        }
+      };
+      const stripAppShellSegments = (rawPath = "") => {
+        const safePath = String(rawPath || "").split("?")[0].split("#")[0].trim();
+        if (!safePath) return [];
+        let segments = safePath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+        if (!segments.length) return [];
+        const appRootIndex = segments.findIndex((segment) => safeLowerText(segment) === "menyra-social");
+        if (appRootIndex >= 0 && appRootIndex < segments.length - 1) {
+          segments = segments.slice(appRootIndex + 1);
+        }
+        if (safeLowerText(segments[0]) === "index.html") {
+          segments = segments.slice(1);
+        }
+        return segments;
+      };
+      const normalizePublicBusinessSlug = (value = "", { allowReserved = false } = {}) => {
+        let slug = safeDecodePathSegment(value).toLowerCase();
+        if (!slug || slug.includes(".")) return "";
+        try {
+          if (typeof slug.normalize === "function") {
+            slug = slug.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+          }
+        } catch {}
+        slug = slug
+          .replace(/^@+/, "")
+          .replace(/&/g, " and ")
+          .replace(/['"`]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 72);
+        if (!slug) return "";
+        if (!allowReserved && RESERVED_PUBLIC_ROUTE_SEGMENTS.has(slug)) return "";
+        return slug;
+      };
+      const normalizePublicUserRouteId = (value = "") => {
+        const raw = safeDecodePathSegment(value).replace(/^@+/, "").trim();
+        if (!raw) return "";
+        const safeValue = /^[A-Za-z0-9._-]{2,128}$/.test(raw)
+          ? raw
+          : raw
+            .replace(/[^A-Za-z0-9._-]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 128);
+        if (!safeValue || safeValue.includes(".")) return "";
+        const likelyUid = /[A-Z]/.test(safeValue) || safeValue.length >= 20;
+        const normalized = likelyUid ? safeValue : safeValue.toLowerCase();
+        if (RESERVED_PUBLIC_ROUTE_SEGMENTS.has(normalized.toLowerCase())) return "";
+        return normalized;
+      };
+      const isQrLikePublicBusinessAccessSource = (value = "") => {
+        const source = safeLowerText(value);
+        return source === "qr"
+          || source === "qrcode"
+          || source === "qr-code"
+          || source === "menuqr"
+          || source === "menu-qr"
+          || source === "scanqr"
+          || source === "scan-qr";
+      };
+      const isSupportedBusinessSurface = (value = "") => {
+        const key = safeLowerText(value);
+        if (!key) return true;
+        return BUSINESS_MENU_SEGMENTS.has(key)
+          || BUSINESS_POST_SEGMENTS.has(key)
+          || key === "qr"
+          || key === "menuqr"
+          || key === "scan-qr"
+          || key === "scanqr"
+          || key === "landing"
+          || key === "welcome"
+          || key === "onboarding"
+          || key === "cart"
+          || key === "basket"
+          || key === "warenkorb";
+      };
+      const readPublicStartupRoute = (pathname = "") => {
+        const segments = stripAppShellSegments(pathname);
+        const first = safeLowerText(segments[0] || "");
+        if (!segments.length || !first) return { kind: "unknown" };
+        if (first === "user") {
+          return normalizePublicUserRouteId(segments[1] || "") && segments.length <= 3
+            ? { kind: "user" }
+            : { kind: "unknown" };
+        }
+        if (first === "lp") {
+          const landingId = safeDecodePathSegment(segments[1] || "").trim();
+          return landingId && !landingId.includes(".") ? { kind: "landingBusiness" } : { kind: "unknown" };
+        }
+        if (first === "b") {
+          const slug = normalizePublicBusinessSlug(segments[1] || "", { allowReserved: false });
+          const surface = safeLowerText(segments[2] || "");
+          return slug && segments.length <= 3 && isSupportedBusinessSurface(surface)
+            ? { kind: "business" }
+            : { kind: "unknown" };
+        }
+        const rootSlug = normalizePublicBusinessSlug(segments[0] || "", { allowReserved: false });
+        const rootSurface = safeLowerText(segments[1] || "");
+        if (rootSlug && segments.length <= 2 && isSupportedBusinessSurface(rootSurface)) {
+          return { kind: "business" };
+        }
+        const tail = segments.length > 2 ? segments.slice(-2) : segments.slice();
+        const firstTail = safeLowerText(tail[0] || "");
+        const secondTail = safeLowerText(tail[1] || "");
+        const firstTailSlug = normalizePublicBusinessSlug(firstTail, { allowReserved: false });
+        const secondTailSlug = normalizePublicBusinessSlug(secondTail, { allowReserved: false });
+        if (tail.length === 1 && firstTailSlug) return { kind: "business" };
+        if (tail.length >= 2 && firstTailSlug && (isSupportedBusinessSurface(secondTail) || isQrLikePublicBusinessAccessSource(secondTail))) {
+          return { kind: "business" };
+        }
+        if (tail.length >= 2 && secondTailSlug && (isSupportedBusinessSurface(firstTail) || isQrLikePublicBusinessAccessSource(firstTail))) {
+          return { kind: "business" };
+        }
+        return { kind: "unknown" };
+      };
+      window.__MENYRA_SOCIAL_READ_PUBLIC_STARTUP_ROUTE__ = readPublicStartupRoute;
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-05-02-public-startup-diet-01";
+      const APP_BUILD_TOKEN = "2026-05-02-public-entry-boundary-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       try {
-        const initialRoute = parseSiteRoutePathCore(window.location.pathname || "");
+        const initialRoute = readPublicStartupRoute(window.location.pathname || "");
         const routeKind = String(initialRoute?.kind || "").trim();
         window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ = routeKind === "business"
           || routeKind === "user"
@@ -39,6 +168,11 @@
       } catch {
         window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ = false;
       }
+    })();
+  </script>
+  <script type="module">
+    (() => {
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim() || "2026-05-02-public-entry-boundary-01";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -225,12 +359,37 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-05-02-public-startup-diet-01">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
-  <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
-  <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-auth.js" crossorigin>
-  <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-firestore.js" crossorigin>
+  <script>
+    (() => {
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
+      const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
+      const addModulePreload = (href, { crossorigin = false, fetchPriority = "" } = {}) => {
+        const safeHref = String(href || "").trim();
+        if (!safeHref) return;
+        if (document.querySelector(`link[rel="modulepreload"][href="${safeHref}"]`)) return;
+        const link = document.createElement("link");
+        link.rel = "modulepreload";
+        link.href = safeHref;
+        if (crossorigin) link.crossOrigin = "anonymous";
+        if (fetchPriority) link.fetchPriority = fetchPriority;
+        document.head.appendChild(link);
+      };
+      if (isPublicWebsiteStartup) {
+        addModulePreload(`/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`, {
+          fetchPriority: "high"
+        });
+        return;
+      }
+      addModulePreload(`/apps/menyra-social/social-app.js?v=${encodeURIComponent(appBuildToken)}`, {
+        fetchPriority: "high"
+      });
+      addModulePreload("/shared/vendor/firebase/11.0.0/firebase-app.js", { crossorigin: true });
+      addModulePreload("/shared/vendor/firebase/11.0.0/firebase-auth.js", { crossorigin: true });
+      addModulePreload("/shared/vendor/firebase/11.0.0/firebase-firestore.js", { crossorigin: true });
+    })();
+  </script>
   <script type="importmap">
   {
     "imports": {
@@ -1624,7 +1783,20 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-05-02-public-startup-diet-01"></script>
+  <script>
+    (() => {
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
+      const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
+      const script = document.createElement("script");
+      script.type = "module";
+      script.fetchPriority = isPublicWebsiteStartup ? "auto" : "high";
+      script.src = isPublicWebsiteStartup
+        ? `/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`
+        : `/apps/menyra-social/social-app.js?v=${encodeURIComponent(appBuildToken)}`;
+      (document.currentScript?.parentNode || document.body || document.documentElement)
+        .insertBefore(script, document.currentScript?.nextSibling || null);
+    })();
+  </script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -1758,7 +1930,8 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-05-02-public-startup-diet-01").catch(() => {});
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
+      const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
           const afterDelay = () => {
