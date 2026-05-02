@@ -9,6 +9,7 @@ import { initializeApp } from "/shared/vendor/firebase/11.0.0/firebase-app.js";
 import {
   getFirestore,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
@@ -32,14 +33,28 @@ const firebaseConfig = Object.freeze({
 
 const app = initializeApp(firebaseConfig);
 
+function isPublicWebsiteStartup() {
+  try {
+    return globalThis?.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
+  } catch {
+    return false;
+  }
+}
+
 let db;
 try {
+  const usePublicMemoryCache = isPublicWebsiteStartup();
   db = initializeFirestore(app, {
     experimentalAutoDetectLongPolling: true,
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
+    localCache: usePublicMemoryCache
+      ? memoryLocalCache()
+      : persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
   });
+  try {
+    globalThis.__MENYRA_FIRESTORE_LOCAL_CACHE_KIND__ = usePublicMemoryCache ? "memory-public-website" : "persistent-multitab";
+  } catch {}
 } catch {
   db = getFirestore(app);
 }

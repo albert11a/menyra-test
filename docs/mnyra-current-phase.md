@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-04-30
+Last updated: 2026-05-02
 
 # Mnyra Current Phase
 
@@ -179,6 +179,17 @@ Last updated: 2026-04-30
   Fokusdaten blockieren das Menu nicht dauerhaft. Spaete Menu-/Fokus-Antworten
   duerfen den sichtbaren State nur noch mutieren, wenn sie weiter zum aktuellen
   Profile/Menu-Ziel passen.
+- Schritt 25 ist abgeschlossen: Public Website Startup-Diaet fuer den
+  oeffentlichen Smartphone-Web-Start wurde mit niedrigem Blast Radius umgesetzt.
+- Bewertung von Schritt 25: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 25:
+  oeffentliche Website-Starts markieren ihren Public-Startup-Kontext frueh,
+  nutzen fuer Firestore einen Memory-Cache statt persistentem Multi-Tab-Cache,
+  entschaerfen den Body-Observer, decken fehlende Icons inline ab und schieben
+  Lucide-Fallback, PWA/Service-Worker-Registration sowie Runtime-Diagnostics
+  weiter nach hinten. Sichtbare Oberflaeche, QR, Warenkorb, Routing und
+  Produktlogik bleiben unveraendert. Auf Nutzerwunsch wurde dieser Schritt auf
+  Branch `fixmai` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -203,6 +214,7 @@ Last updated: 2026-04-30
 - Referenz: [docs/mnyra-step22-own-business-profile-menu-load-fix.md](./mnyra-step22-own-business-profile-menu-load-fix.md)
 - Referenz: [docs/mnyra-step23-own-profile-menu-stale-public-id-fix.md](./mnyra-step23-own-profile-menu-stale-public-id-fix.md)
 - Referenz: [docs/mnyra-step24-public-menu-focus-coordinated-render-state.md](./mnyra-step24-public-menu-focus-coordinated-render-state.md)
+- Referenz: [docs/mnyra-step25-public-website-startup-diet.md](./mnyra-step25-public-website-startup-diet.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -228,12 +240,12 @@ Last updated: 2026-04-30
 
 ## Naechster Schritt
 
-Nach Schritt 24 ist der naechste moegliche separate Folgeschritt:
-fokussierte manuelle Regression unter echten Netzwerkbedingungen fuer Public-
-Profile aus Map, Profil A -> B, `/:slug/menu` mit und ohne Fokus, QR/Table-
-Kontext, Lead Search und Browser-Back/Forward. Ein weiterer technischer Schritt
-waere erst dann sinnvoll, wenn diese manuellen Flows noch konkrete Restfehler
-zeigen.
+Nach Schritt 25 ist der naechste sinnvolle separate Folgeschritt:
+fokussierte manuelle Smartphone-Regression unter echten Netzwerkbedingungen fuer
+`/:slug`, `/:slug/menu`, QR/Table-Kontext, Login/App-Pfade und Browser-
+Back/Forward. Danach kann entschieden werden, ob der naechste technische
+Performance-Schritt ein eigener leichter Public-Web-Entry oder zuerst Menu-
+Bootstrap-/Render-Chunking sein soll.
 
 ## Guardrails fuer die naechsten Schritte
 

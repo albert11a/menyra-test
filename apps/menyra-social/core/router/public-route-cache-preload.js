@@ -1,4 +1,4 @@
-import { db } from "/shared/firebase-config.js?v=2026-03-10-startup-1";
+import { db } from "/shared/firebase-config.js?v=2026-05-02-public-startup-diet-01";
 import {
   doc,
   getDoc

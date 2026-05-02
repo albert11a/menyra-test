@@ -28,8 +28,17 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-04-16-landing-coldstart-fast-04";
+      const APP_BUILD_TOKEN = "2026-05-02-public-startup-diet-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
+      try {
+        const initialRoute = parseSiteRoutePathCore(window.location.pathname || "");
+        const routeKind = String(initialRoute?.kind || "").trim();
+        window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ = routeKind === "business"
+          || routeKind === "user"
+          || routeKind === "landingBusiness";
+      } catch {
+        window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ = false;
+      }
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -143,6 +152,19 @@
         ensureMeta("supported-color-schemes", "light");
       };
       window.__MENYRA_SOCIAL_FORCE_UI_CHROME__ = forceLightUiChrome;
+      let pendingUiChromeFrame = 0;
+      const scheduleForceLightUiChrome = () => {
+        if (pendingUiChromeFrame) return;
+        const run = () => {
+          pendingUiChromeFrame = 0;
+          forceLightUiChrome();
+        };
+        if ("requestAnimationFrame" in window) {
+          pendingUiChromeFrame = window.requestAnimationFrame(run);
+          return;
+        }
+        pendingUiChromeFrame = window.setTimeout(run, 16);
+      };
 
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
@@ -155,15 +177,15 @@
       }
       if ("MutationObserver" in window) {
         const observer = new MutationObserver(() => {
-          forceLightUiChrome();
+          scheduleForceLightUiChrome();
         });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
         const observeBodyGateState = () => {
           if (!document.body) return;
           const bodyObserver = new MutationObserver(() => {
-            forceLightUiChrome();
+            scheduleForceLightUiChrome();
           });
-          bodyObserver.observe(document.body, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true });
+          bodyObserver.observe(document.body, { attributes: true, attributeFilter: ["class"] });
         };
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", observeBodyGateState, { once: true });
@@ -203,7 +225,7 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-04-16-landing-coldstart-fast-04">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-05-02-public-startup-diet-01">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="/shared/vendor/firebase/11.0.0/firebase-app.js" crossorigin>
@@ -1602,7 +1624,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-04-16-landing-coldstart-fast-04"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-05-02-public-startup-diet-01"></script>
   <script>
     (() => {
       const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
@@ -1611,6 +1633,7 @@
       let started = false;
       let hydrateScheduled = false;
       let observingIcons = false;
+      const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const hasPendingLucideIcons = () => !!document.querySelector("[data-lucide]");
       const hydrateIcons = () => {
         if (!window.lucide?.createIcons) return;
@@ -1618,6 +1641,7 @@
         try {
           window.lucide.createIcons();
           window.dispatchEvent(new CustomEvent("menyra-social-icons-ready"));
+          observeLucideTargets();
         } catch {}
       };
       const scheduleHydrateIcons = () => {
@@ -1696,11 +1720,14 @@
         loadFromSource(0);
       };
       const scheduleLucideLoad = () => {
-        const start = () => loadLucide();
+        const start = () => {
+          if (!hasPendingLucideIcons()) return;
+          loadLucide();
+        };
         const isSlowStartup = Number(window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0) >= 3000;
         const initialDelayMs = window.__MENYRA_SOCIAL_RESTORED_SNAPSHOT__
           ? 0
-          : (isSlowStartup ? 900 : 350);
+          : (isPublicWebsiteStartup ? 12000 : (isSlowStartup ? 900 : 350));
         const attachInteractionStart = () => {
           window.addEventListener("pointerdown", start, { once: true, passive: true });
           window.addEventListener("keydown", start, { once: true });
@@ -1713,11 +1740,9 @@
         };
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", afterReady, { once: true });
-          document.addEventListener("DOMContentLoaded", observeLucideTargets, { once: true });
           return;
         }
         afterReady();
-        observeLucideTargets();
       };
       scheduleLucideLoad();
     })();
@@ -1732,14 +1757,22 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-04-16-landing-coldstart-fast-04").catch(() => {});
+      const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-05-02-public-startup-diet-01").catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
-          if ("requestIdleCallback" in window) {
-            window.requestIdleCallback(() => loadPwa(), { timeout: 5000 });
+          const afterDelay = () => {
+            if ("requestIdleCallback" in window) {
+              window.requestIdleCallback(() => loadPwa(), { timeout: isPublicWebsiteStartup ? 8000 : 5000 });
+              return;
+            }
+            window.setTimeout(loadPwa, isPublicWebsiteStartup ? 6000 : 2200);
+          };
+          if (isPublicWebsiteStartup) {
+            window.setTimeout(afterDelay, 14000);
             return;
           }
-          window.setTimeout(loadPwa, 2200);
+          afterDelay();
         };
         if (document.readyState === "complete") {
           run();
