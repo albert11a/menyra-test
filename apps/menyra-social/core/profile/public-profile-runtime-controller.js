@@ -501,6 +501,168 @@ export function createPublicProfileRuntimeController({
     return Math.max(0, Math.round(numeric));
   }
 
+  function addPublicSurfaceTargetId(targetSet, value = "") {
+    const safeValue = String(value || "").trim();
+    if (safeValue) targetSet.add(safeValue);
+  }
+
+  function collectProfilePublicSurfaceTargetIds({
+    profile = null,
+    routePayload = null,
+    directEntry = null,
+    restaurantId = ""
+  } = {}) {
+    const ids = new Set();
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : {};
+    const routeSnapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+      ? safeRoutePayload.businessSnapshot
+      : {};
+    const routeIdentity = safeRoutePayload?.identity && typeof safeRoutePayload.identity === "object"
+      ? safeRoutePayload.identity
+      : {};
+    const snapshotIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
+      ? routeSnapshot.identity
+      : {};
+    const safeDirectEntry = directEntry && typeof directEntry === "object" && directEntry.active !== false
+      ? directEntry
+      : {};
+    [
+      restaurantId,
+      safeProfile.canonicalRestaurantId,
+      safeProfile.restaurantId,
+      safeProfile.publicSlug,
+      safeProfile.landingSlug,
+      safeProfile.handle,
+      safeRoutePayload.canonicalRestaurantId,
+      safeRoutePayload.restaurantId,
+      safeRoutePayload.publicSlug,
+      safeRoutePayload.landingSlug,
+      routeIdentity.publicSlug,
+      routeIdentity.landingSlug,
+      routeIdentity.handle,
+      routeSnapshot.restaurantId,
+      snapshotIdentity.publicSlug,
+      snapshotIdentity.landingSlug,
+      snapshotIdentity.handle,
+      safeDirectEntry.canonicalRestaurantId,
+      safeDirectEntry.restaurantId
+    ].forEach((value) => addPublicSurfaceTargetId(ids, value));
+    return ids;
+  }
+
+  function resolvePrimaryPublicSurfaceTargetId({
+    profile = null,
+    routePayload = null,
+    directEntry = null,
+    restaurantId = ""
+  } = {}) {
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : {};
+    const routeSnapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+      ? safeRoutePayload.businessSnapshot
+      : {};
+    const safeDirectEntry = directEntry && typeof directEntry === "object" && directEntry.active !== false
+      ? directEntry
+      : {};
+    return String(
+      restaurantId
+      || safeProfile.canonicalRestaurantId
+      || safeRoutePayload.canonicalRestaurantId
+      || routeSnapshot.restaurantId
+      || safeDirectEntry.canonicalRestaurantId
+      || safeProfile.restaurantId
+      || safeRoutePayload.restaurantId
+      || safeDirectEntry.restaurantId
+      || ""
+    ).trim();
+  }
+
+  function resetStalePublicMenuStateForProfileSwitch({
+    sameVisibleProfile = false,
+    profile = null,
+    routePayload = null,
+    directEntry = null,
+    restaurantId = "",
+    topTab = "",
+    contentTab = ""
+  } = {}) {
+    if (sameVisibleProfile || !state || typeof state !== "object") return false;
+    const targetIds = collectProfilePublicSurfaceTargetIds({
+      profile,
+      routePayload,
+      directEntry,
+      restaurantId
+    });
+    if (!targetIds.size) return false;
+    const nextRestaurantId = resolvePrimaryPublicSurfaceTargetId({
+      profile,
+      routePayload,
+      directEntry,
+      restaurantId
+    });
+    const shouldLoadMenuSurface = String(topTab || "").trim().toLowerCase() === "menu"
+      || String(contentTab || "").trim().toLowerCase() === "menu";
+    let changed = false;
+    const currentMenu = state.menu && typeof state.menu === "object" ? state.menu : null;
+    const currentMenuRestaurantId = String(currentMenu?.restaurantId || "").trim();
+    const currentMenuSource = String(currentMenu?.source || "").trim().toLowerCase() || "public";
+    if (currentMenu && currentMenuSource === "public") {
+      const currentMenuTruth = String(currentMenu.truthState || "").trim().toLowerCase();
+      const currentMenuHasPayload = !!currentMenuRestaurantId
+        || (Array.isArray(currentMenu.items) && currentMenu.items.length > 0)
+        || currentMenu.loading === true
+        || (!!currentMenuTruth && currentMenuTruth !== "unknown");
+      const currentMenuMatchesTarget = !!currentMenuRestaurantId && targetIds.has(currentMenuRestaurantId);
+      if (currentMenuHasPayload && !currentMenuMatchesTarget) {
+        state.menu = {
+          ...currentMenu,
+          restaurantId: nextRestaurantId,
+          items: [],
+          loading: shouldLoadMenuSurface,
+          error: "",
+          source: "public",
+          statusBadgeVisible: currentMenu.statusBadgeVisible !== false,
+          routeSeed: false,
+          truthState: "unknown"
+        };
+        changed = true;
+      }
+    }
+    const currentFocus = state.focus && typeof state.focus === "object" ? state.focus : null;
+    const currentFocusRestaurantId = String(currentFocus?.restaurantId || "").trim();
+    const currentFocusTruthSource = String(currentFocus?.truthSource || "").trim().toLowerCase();
+    const currentFocusTruth = String(currentFocus?.truthState || "").trim().toLowerCase();
+    const currentFocusLooksPublic = currentFocusTruthSource === "public-menu"
+      || (
+        currentMenuSource === "public"
+        && !!currentFocusRestaurantId
+        && currentFocusRestaurantId === currentMenuRestaurantId
+      );
+    if (currentFocus && currentFocusLooksPublic) {
+      const currentFocusHasPayload = !!currentFocusRestaurantId
+        || (Array.isArray(currentFocus.items) && currentFocus.items.length > 0)
+        || currentFocus.loading === true
+        || (!!currentFocusTruth && currentFocusTruth !== "unknown");
+      const currentFocusMatchesTarget = !!currentFocusRestaurantId && targetIds.has(currentFocusRestaurantId);
+      if (currentFocusHasPayload && !currentFocusMatchesTarget) {
+        state.focus = {
+          ...currentFocus,
+          restaurantId: nextRestaurantId,
+          items: [],
+          loading: shouldLoadMenuSurface,
+          enabled: currentFocus.enabled !== false,
+          error: "",
+          index: 0,
+          truthSource: "public-menu",
+          truthState: "unknown"
+        };
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
   function syncWebDirectEntryState({
     restaurantId = "",
     canonicalRestaurantId = "",
@@ -520,7 +682,7 @@ export function createPublicProfileRuntimeController({
     const entryOwner = String(entry?.owner || "").trim().toLowerCase();
     const isDirectWebOwner = entryOwner === "web-direct";
     if (!safeRestaurantId || !entry || entry.active === false || !isDirectWebOwner) {
-      if (current?.active === true && (!safeRestaurantId || String(current.restaurantId || "").trim() === safeRestaurantId)) {
+      if (current?.active === true) {
         state.__webDirectEntry = {
           ...current,
           active: false,
@@ -1093,10 +1255,11 @@ export function createPublicProfileRuntimeController({
         || (preserveWebDirectRouteTruth && currentRoutePayloadHasIdentityTruth)
       );
     const currentCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(currentProfile, currentRoutePayload);
-    const incomingCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(profile, incomingRoutePayload || currentRoutePayload);
+    const incomingCanonicalRoutePayload = incomingRoutePayload || (sameVisibleIncomingProfile ? currentRoutePayload : null);
+    const incomingCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(profile, incomingCanonicalRoutePayload);
     const resolvedCanonicalRestaurantId = String(
       incomingCanonicalRestaurantId
-      || currentCanonicalRestaurantId
+      || (sameVisibleIncomingProfile ? currentCanonicalRestaurantId : "")
       || ""
     ).trim();
     const nextProfile = profile ? {
@@ -1353,6 +1516,15 @@ export function createPublicProfileRuntimeController({
     state.drawerOpen = false;
     state.profileBackTab = nextProfileBackTab;
     state.activeTab = "profile";
+    resetStalePublicMenuStateForProfileSwitch({
+      sameVisibleProfile,
+      profile: nextProfile,
+      routePayload: nextRoutePayload,
+      directEntry: nextDirectEntry,
+      restaurantId: nextCanonicalRestaurantId || nextProfile?.restaurantId || "",
+      topTab: resolvedTopTab,
+      contentTab: nextContentTab
+    });
     state.profileSurface = resolveVisibleProfileSurface(state, {
       profileView: nextView,
       profileTopTab: resolvedTopTab,

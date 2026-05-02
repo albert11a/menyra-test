@@ -12,7 +12,7 @@ function shouldDeferInlineBootstrapApply(startupPrepDeps = {}) {
     : null;
   const pendingProfileRestaurantId = String(pendingState?.pendingProfileRestaurantId || "").trim();
   if (pendingProfileRestaurantId) return false;
-  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
     ? state.__webDirectEntry
     : null;
   if (webDirectEntry?.active === true && webDirectEntry?.webPriority === true) return false;

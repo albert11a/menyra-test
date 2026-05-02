@@ -78,7 +78,7 @@ export function createProfileBusinessMenuRuntimeCluster({
   };
 
   const getWebDirectEntryState = () => (
-    state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
       ? state.__webDirectEntry
       : null
   );

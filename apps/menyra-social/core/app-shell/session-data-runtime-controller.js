@@ -165,7 +165,7 @@ export function createSessionDataRuntimeController({
     const snapshotIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
       ? routeSnapshot.identity
       : {};
-    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
       ? state.__webDirectEntry
       : {};
     [
@@ -457,7 +457,7 @@ export function createSessionDataRuntimeController({
     const isDeferredPhase = phase === "deferred";
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
     const profileTopTabKey = String(state.profileTopTab || "").trim().toLowerCase();
-    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
       ? state.__webDirectEntry
       : null;
     const webDirectVisibleProfilePath = activeTabKey === "profile"
@@ -1659,7 +1659,7 @@ export function createSessionDataRuntimeController({
       );
     const hasRouteBootstrapMenuSeed = hasVisibleMenuItems
       && state.menu.routeSeed === true;
-    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
       ? state.__webDirectEntry
       : null;
     const webDirectEntryRestaurantId = String(

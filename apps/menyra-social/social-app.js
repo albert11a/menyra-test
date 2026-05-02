@@ -1558,7 +1558,7 @@ function resolveRouteTabForState() {
   const pendingProfileRoute = pendingRouteState.getPendingState?.() || {};
   const hasPendingProfileRoute = !!String(pendingProfileRoute.pendingProfileRestaurantId || "").trim()
     || !!String(pendingProfileRoute.pendingUserRouteId || "").trim();
-  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
     ? state.__webDirectEntry
     : null;
   const hasActiveWebDirectRoute = webDirectEntry?.active === true
@@ -1628,7 +1628,7 @@ function resolveRouteQueryStateForCurrentView() {
   const activeRoutePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
     ? state.profileView.routePayload
     : null;
-  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
     ? state.__webDirectEntry
     : null;
   const menuAccessSource = String(

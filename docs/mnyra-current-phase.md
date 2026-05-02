@@ -190,6 +190,16 @@ Last updated: 2026-05-02
   weiter nach hinten. Sichtbare Oberflaeche, QR, Warenkorb, Routing und
   Produktlogik bleiben unveraendert. Auf Nutzerwunsch wurde dieser Schritt auf
   Branch `fixmai` umgesetzt.
+- Schritt 26 ist abgeschlossen: Entdecker-Karten-Profilwechsel duerfen keinen
+  alten Public-/Web-Direct-/Menu-Kontext mehr in ein anderes Business-Profil
+  tragen.
+- Bewertung von Schritt 26: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 26:
+  ein ueber die Entdecker-Karte geoeffnetes Business-Profil nutzt seinen
+  eigenen Canonical-/Menu-/Fokus-Zielkontext. Alte RoutePayload-,
+  `__webDirectEntry`-, Menu- und Fokusdaten werden beim Wechsel auf ein anderes
+  Business nicht mehr als passend akzeptiert. Sichtbare Oberflaeche, QR,
+  Warenkorb, Routing-Design und Produktlogik bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -215,6 +225,7 @@ Last updated: 2026-05-02
 - Referenz: [docs/mnyra-step23-own-profile-menu-stale-public-id-fix.md](./mnyra-step23-own-profile-menu-stale-public-id-fix.md)
 - Referenz: [docs/mnyra-step24-public-menu-focus-coordinated-render-state.md](./mnyra-step24-public-menu-focus-coordinated-render-state.md)
 - Referenz: [docs/mnyra-step25-public-website-startup-diet.md](./mnyra-step25-public-website-startup-diet.md)
+- Referenz: [docs/mnyra-step26-discovery-map-profile-data-isolation.md](./mnyra-step26-discovery-map-profile-data-isolation.md)
 
 ## Harte Invariante (verbindlich)
 

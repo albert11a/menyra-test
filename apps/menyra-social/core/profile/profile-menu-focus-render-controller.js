@@ -2187,7 +2187,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
     ? state.profileView.routePayload
     : null;
-  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
     ? state.__webDirectEntry
     : null;
   const menuSurfaceState = resolveVisiblePublicMenuSurfaceState(state, {

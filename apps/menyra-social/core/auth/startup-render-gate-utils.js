@@ -63,7 +63,7 @@ function readRoutePayload(profileView = null) {
 }
 
 function readWebDirectEntry(state = {}) {
-  return state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+  return state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
     ? state.__webDirectEntry
     : null;
 }

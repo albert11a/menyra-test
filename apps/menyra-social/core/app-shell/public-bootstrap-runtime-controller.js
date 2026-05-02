@@ -546,14 +546,17 @@ function applyWebDirectRouteSeedFromBootstrap({
     || ""
   ).trim();
   if (!safeRestaurantId) return false;
+  const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
+    ? state.__webDirectEntry
+    : null;
   const routeTargetIds = [
     safeRestaurantId,
     requestedRouteRestaurantId,
     safeRoutePayload?.canonicalRestaurantId,
     routeSnapshot?.restaurantId,
     safeRoutePayload?.restaurantId,
-    state?.__webDirectEntry?.canonicalRestaurantId,
-    state?.__webDirectEntry?.restaurantId
+    webDirectEntry?.canonicalRestaurantId,
+    webDirectEntry?.restaurantId
   ].map((value) => String(value || "").trim()).filter(Boolean);
   const isRouteTargetId = (value = "") => routeTargetIds.includes(String(value || "").trim());
   const visibleRestaurantId = String(
@@ -1383,7 +1386,7 @@ export function createPublicBootstrapRuntimeController({
       if (routePathname) {
         url.searchParams.set("pathname", routePathname);
       }
-      const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
         ? state.__webDirectEntry
         : null;
       const routeRestaurantId = String(
@@ -1430,7 +1433,7 @@ export function createPublicBootstrapRuntimeController({
     void mergeRestaurants;
     void rebuildBusinessLocations;
     const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
       ? state.__webDirectEntry
       : null;
     const isWebDirectProfileVisiblePath = activeTabKey === "profile"
