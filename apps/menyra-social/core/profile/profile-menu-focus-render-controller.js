@@ -2214,8 +2214,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const hasConfirmedPublicMenuItems = menuSurfaceState.menu.status === "ready";
   const hasPublicFocusTruth = menuSurfaceState.focus.canRenderFocus;
   const shouldCoordinatePublicFocus = hasConfirmedPublicMenuItems && isRestaurantCafeProfile(surfaceProfile);
-  const focusPendingForMenu = shouldCoordinatePublicFocus
-    && (menuSurfaceState.focus.status === "unknown" || menuSurfaceState.focus.status === "loading");
   const focusLoadingForSurface = menuSurfaceState.focus.matches === true && menuSurfaceState.focus.loading === true;
   const isLandingMode = mode === "landing";
   const menuAccessSource = String(
@@ -2257,9 +2255,9 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   ) {
     ensureFocusDataForProfile(surfaceProfile);
   }
-  // Public focus is optional, but when it is still being resolved for this menu
-  // surface the visible menu commit waits so the focus block cannot jump in later.
-  const canRenderCoordinatedMenu = menuSurfaceState.menu.canRenderItems && !focusPendingForMenu;
+  // Public focus is optional; the menu should not stay in loading state while
+  // the focus/offers request settles.
+  const canRenderCoordinatedMenu = menuSurfaceState.menu.canRenderItems;
   const items = canRenderCoordinatedMenu
     ? sortMenuItemsByOrder(getFilteredMenuItems(menuSurfaceState.menu.items, { filter: "all", query: "" }))
       .filter((item) => !isMenuItemHidden(item))
@@ -2269,7 +2267,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const catalogLabel = getBusinessCatalogLabel(profile);
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
-  const isLoading = menuSurfaceState.menu.status === "loading" || focusPendingForMenu;
+  const isLoading = menuSurfaceState.menu.status === "loading";
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;

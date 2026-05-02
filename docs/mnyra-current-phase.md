@@ -200,6 +200,15 @@ Last updated: 2026-05-02
   `__webDirectEntry`-, Menu- und Fokusdaten werden beim Wechsel auf ein anderes
   Business nicht mehr als passend akzeptiert. Sichtbare Oberflaeche, QR,
   Warenkorb, Routing-Design und Produktlogik bleiben unveraendert.
+- Schritt 27 ist abgeschlossen: Public-Fokus/Angebote blockieren den sichtbaren
+  Menu-Screen nicht mehr, wenn das eigentliche Public-Menu bereits bereit ist.
+- Bewertung von Schritt 27: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 27:
+  Nach Entdecker-Karten-Profilwechseln soll `Menu wird geladen` nicht mehr
+  weiter sichtbar bleiben, nur weil Fokus-/Angebotsdaten noch ausstehen. Das
+  Menu rendert sobald Menu-Items bereit sind; Fokus bleibt optional und kann
+  nachgelagert erscheinen. Design, QR, Warenkorb und Produktlogik bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -226,6 +235,7 @@ Last updated: 2026-05-02
 - Referenz: [docs/mnyra-step24-public-menu-focus-coordinated-render-state.md](./mnyra-step24-public-menu-focus-coordinated-render-state.md)
 - Referenz: [docs/mnyra-step25-public-website-startup-diet.md](./mnyra-step25-public-website-startup-diet.md)
 - Referenz: [docs/mnyra-step26-discovery-map-profile-data-isolation.md](./mnyra-step26-discovery-map-profile-data-isolation.md)
+- Referenz: [docs/mnyra-step27-public-menu-focus-nonblocking-load.md](./mnyra-step27-public-menu-focus-nonblocking-load.md)
 
 ## Harte Invariante (verbindlich)
 
