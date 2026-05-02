@@ -209,6 +209,15 @@ Last updated: 2026-05-02
   Menu rendert sobald Menu-Items bereit sind; Fokus bleibt optional und kann
   nachgelagert erscheinen. Design, QR, Warenkorb und Produktlogik bleiben
   unveraendert.
+- Schritt 28 ist abgeschlossen: Upload-/Bildkompression- und Orders-Runtime
+  werden aus dem normalen Public-Gast-Startup herausgenommen und erst bei
+  echter Nutzung dynamisch geladen.
+- Bewertung von Schritt 28: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 28:
+  Public-Website-Starts muessen Media-Upload, Bildkompression und Orders nicht
+  mehr direkt beim Start laden/initialisieren. Checkout, Orders-Tab und Upload
+  laden die benoetigten Controller bei Nutzung nach. Sichtbare Oberflaeche, QR,
+  Warenkorb, Tischkontext, Routing-Design und Produktlogik bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -236,6 +245,7 @@ Last updated: 2026-05-02
 - Referenz: [docs/mnyra-step25-public-website-startup-diet.md](./mnyra-step25-public-website-startup-diet.md)
 - Referenz: [docs/mnyra-step26-discovery-map-profile-data-isolation.md](./mnyra-step26-discovery-map-profile-data-isolation.md)
 - Referenz: [docs/mnyra-step27-public-menu-focus-nonblocking-load.md](./mnyra-step27-public-menu-focus-nonblocking-load.md)
+- Referenz: [docs/mnyra-step28-public-startup-defer-upload-orders.md](./mnyra-step28-public-startup-defer-upload-orders.md)
 
 ## Harte Invariante (verbindlich)
 

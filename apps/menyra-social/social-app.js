@@ -46,7 +46,6 @@ import {
   buildUrl,
   qs
 } from "./_shared/social-core.js";
-import { compressImage } from "./_shared/image-compressor.js";
 import { getOptimizedImageUrl, getFirebaseStorageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
 import {
   safeStorage,
@@ -105,8 +104,6 @@ import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
 import { createTableQrRuntimeController } from "./core/menu/table-qr-runtime-controller.js";
-import { createMediaUploadRuntimeCluster } from "./core/media/media-upload-runtime-cluster.js";
-import { createOrdersRuntimeController } from "./core/orders/orders-runtime-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
@@ -1328,6 +1325,12 @@ let menuPublicRuntimeController = null;
 let focusRuntimeController = null;
 let tableQrRuntimeController = null;
 let mediaUploadRuntimeController = null;
+let mediaUploadRuntimeControllerInstance = null;
+let mediaUploadRuntimeControllerPromise = null;
+let imageCompressorModulePromise = null;
+let ordersRuntimeController = null;
+let ordersRuntimeControllerPromise = null;
+let ordersRuntimeStopRequested = false;
 let bridgeShellRuntimeCluster = null;
 let getFollowRuntimeController = null;
 let getPushRuntimeController = null;
@@ -2814,39 +2817,92 @@ const {
   renderFn: render,
   storageObj: safeStorage
 }));
+
+function createOrdersRuntimeControllerConfig() {
+  return {
+    state,
+    db,
+    collectionFn: collection,
+    docFn: doc,
+    getDocFn: getDoc,
+    queryFn: query,
+    orderByFn: orderBy,
+    limitFn: limit,
+    onSnapshotFn: onSnapshot,
+    writeBatchFn: writeBatch,
+    serverTimestampFn: serverTimestamp,
+    normalizeShopCartStateFn: normalizeShopCartState,
+    isLocalBusinessProfileFn: isLocalBusinessProfile,
+    canAccessRestaurantOrdersFn: canAccessRestaurantOrders,
+    resolveProfileRestaurantIdFn: resolveProfileRestaurantId,
+    getRestaurantMetaByIdFn: getRestaurantMetaById,
+    normalizeHandleFn: normalizeHandle,
+    buildShopVariantKeyFn: buildShopVariantKey,
+    clampCropPercentFn: clampCropPercent,
+    parsePriceValueFn: parsePriceValue,
+    saveShopCartToStorageFn: saveShopCartToStorage,
+    clearShopCartFn: (...args) => clearShopCart(...args),
+    renderFn: render,
+    getLastRenderModeFn: () => lastRenderMode,
+    safeStorageObj: safeStorage,
+    guestScopeUid: getGuestScopeUid(),
+    resolveGuestScopeUidFn: () => getGuestScopeUid()
+  };
+}
+
+async function ensureOrdersRuntimeController() {
+  if (ordersRuntimeController) return ordersRuntimeController;
+  if (!ordersRuntimeControllerPromise) {
+    ordersRuntimeControllerPromise = import("./core/orders/orders-runtime-controller.js")
+      .then((module) => {
+        const createOrders = module?.createOrdersRuntimeController;
+        if (typeof createOrders !== "function") {
+          throw new Error("createOrdersRuntimeController unavailable");
+        }
+        ordersRuntimeController = createOrders(createOrdersRuntimeControllerConfig());
+        return ordersRuntimeController;
+      })
+      .catch((err) => {
+        ordersRuntimeControllerPromise = null;
+        reportCriticalRuntimeFailure("orders-runtime", err, { suppressAbort: true });
+        throw err;
+      });
+  }
+  return ordersRuntimeControllerPromise;
+}
+
+function createDeferredOrdersRuntimeController() {
+  return {
+    stopOrdersListener() {
+      ordersRuntimeStopRequested = true;
+      if (ordersRuntimeController && typeof ordersRuntimeController.stopOrdersListener === "function") {
+        ordersRuntimeController.stopOrdersListener();
+      }
+    },
+    startOrdersListener(user = state?.user) {
+      ordersRuntimeStopRequested = false;
+      void ensureOrdersRuntimeController()
+        .then((controller) => {
+          if (ordersRuntimeStopRequested) return;
+          if (typeof controller?.startOrdersListener === "function") {
+            controller.startOrdersListener(user);
+          }
+        })
+        .catch(() => null);
+    },
+    async submitShopCheckout(...args) {
+      ordersRuntimeStopRequested = false;
+      const controller = await ensureOrdersRuntimeController();
+      return controller.submitShopCheckout(...args);
+    }
+  };
+}
+
 const {
   stopOrdersListener,
   startOrdersListener,
   submitShopCheckout
-} = createOrdersRuntimeController({
-  state,
-  db,
-  collectionFn: collection,
-  docFn: doc,
-  getDocFn: getDoc,
-  queryFn: query,
-  orderByFn: orderBy,
-  limitFn: limit,
-  onSnapshotFn: onSnapshot,
-  writeBatchFn: writeBatch,
-  serverTimestampFn: serverTimestamp,
-  normalizeShopCartStateFn: normalizeShopCartState,
-  isLocalBusinessProfileFn: isLocalBusinessProfile,
-  canAccessRestaurantOrdersFn: canAccessRestaurantOrders,
-  resolveProfileRestaurantIdFn: resolveProfileRestaurantId,
-  getRestaurantMetaByIdFn: getRestaurantMetaById,
-  normalizeHandleFn: normalizeHandle,
-  buildShopVariantKeyFn: buildShopVariantKey,
-  clampCropPercentFn: clampCropPercent,
-  parsePriceValueFn: parsePriceValue,
-  saveShopCartToStorageFn: saveShopCartToStorage,
-  clearShopCartFn: (...args) => clearShopCart(...args),
-  renderFn: render,
-  getLastRenderModeFn: () => lastRenderMode,
-  safeStorageObj: safeStorage,
-  guestScopeUid: getGuestScopeUid(),
-  resolveGuestScopeUidFn: () => getGuestScopeUid()
-});
+} = createDeferredOrdersRuntimeController();
 
 const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
   stateDeps: { state, dataLoaded },
@@ -5008,37 +5064,7 @@ function bindBrowserPopstateRouteSync() {
 
 bindBrowserPopstateRouteSync();
 
-mediaUploadRuntimeController = createMediaUploadRuntimeCluster({
-  stateDeps: {
-    state,
-    auth,
-    documentObj: typeof document === "undefined" ? null : document,
-    writeCacheFn: writeCache,
-    setStateFn: setState,
-    setFeedStoriesSignatureFn: (next) => setFeedStoriesSignature(next)
-  },
-  constants: { mediaBaseUrl: BUNNY_EDGE_BASE, mediaTicketEndpoint: MEDIA_TICKET_ENDPOINT, cacheKeys: CACHE_KEYS, fastLimits: FAST_LIMITS },
-  firebaseApi: { db, collectionFn: collection, docFn: doc, setDocFn: setDoc, serverTimestampFn: serverTimestamp },
-  mediaApi: { fetchFn: typeof fetch === "function" ? fetch : null, compressImageFn: compressImage },
-  storyApi: {
-    storySystemController,
-    isLocalBusinessProfileFn: isLocalBusinessProfile,
-    normalizeStoryItemForDisplayFn: normalizeStoryItemForDisplay,
-    buildStoriesSignatureFn: buildStoriesSignature,
-    loadStoriesForFeedFn: (...args) => loadStoriesForFeed(...args),
-    loadFeedPostsFn: (...args) => loadFeedPosts(...args),
-    loadBusinessPostsFn: (...args) => loadBusinessPosts(...args),
-    loadUserPostsFn: (...args) => loadUserPosts(...args)
-  },
-  renderApi: {
-    getOptimizedImageUrlFn: getOptimizedImageUrl,
-    escapeHtmlFn: escapeHtml,
-    iconFn: icon,
-    renderFn: render,
-    updateFeedDomFn: (...args) => updateFeedDom(...args),
-    getLastRenderModeFn: () => lastRenderMode
-  }
-});
+mediaUploadRuntimeController = createDeferredMediaUploadRuntimeController();
 
 chatRuntimeController = createChatRuntimeCluster({
   stateDeps: { state, safeStorage, chatIndexKey },
@@ -5344,6 +5370,103 @@ function getSocialEngagementSupportRuntimeController() {
     throw new Error("socialEngagementSupportRuntimeController not initialized");
   }
   return socialEngagementSupportRuntimeController;
+}
+
+async function compressImage(file, maxSize, quality, mimeType = "image/jpeg") {
+  if (!imageCompressorModulePromise) {
+    imageCompressorModulePromise = import("./_shared/image-compressor.js")
+      .catch((err) => {
+        imageCompressorModulePromise = null;
+        throw err;
+      });
+  }
+  const module = await imageCompressorModulePromise;
+  const compressor = module?.compressImage;
+  if (typeof compressor !== "function") return file;
+  return compressor(file, maxSize, quality, mimeType);
+}
+
+function createMediaUploadRuntimeControllerConfig() {
+  return {
+    stateDeps: {
+      state,
+      auth,
+      documentObj: typeof document === "undefined" ? null : document,
+      writeCacheFn: writeCache,
+      setStateFn: setState,
+      setFeedStoriesSignatureFn: (next) => setFeedStoriesSignature(next)
+    },
+    constants: {
+      mediaBaseUrl: BUNNY_EDGE_BASE,
+      mediaTicketEndpoint: MEDIA_TICKET_ENDPOINT,
+      cacheKeys: CACHE_KEYS,
+      fastLimits: FAST_LIMITS
+    },
+    firebaseApi: {
+      db,
+      collectionFn: collection,
+      docFn: doc,
+      setDocFn: setDoc,
+      serverTimestampFn: serverTimestamp
+    },
+    mediaApi: {
+      fetchFn: typeof fetch === "function" ? fetch : null,
+      compressImageFn: compressImage
+    },
+    storyApi: {
+      storySystemController,
+      isLocalBusinessProfileFn: isLocalBusinessProfile,
+      normalizeStoryItemForDisplayFn: normalizeStoryItemForDisplay,
+      buildStoriesSignatureFn: buildStoriesSignature,
+      loadStoriesForFeedFn: (...args) => loadStoriesForFeed(...args),
+      loadFeedPostsFn: (...args) => loadFeedPosts(...args),
+      loadBusinessPostsFn: (...args) => loadBusinessPosts(...args),
+      loadUserPostsFn: (...args) => loadUserPosts(...args)
+    },
+    renderApi: {
+      getOptimizedImageUrlFn: getOptimizedImageUrl,
+      escapeHtmlFn: escapeHtml,
+      iconFn: icon,
+      renderFn: render,
+      updateFeedDomFn: (...args) => updateFeedDom(...args),
+      getLastRenderModeFn: () => lastRenderMode
+    }
+  };
+}
+
+async function ensureMediaUploadRuntimeController() {
+  if (mediaUploadRuntimeControllerInstance) return mediaUploadRuntimeControllerInstance;
+  if (!mediaUploadRuntimeControllerPromise) {
+    mediaUploadRuntimeControllerPromise = import("./core/media/media-upload-runtime-cluster.js")
+      .then((module) => {
+        const createMediaUpload = module?.createMediaUploadRuntimeCluster;
+        if (typeof createMediaUpload !== "function") {
+          throw new Error("createMediaUploadRuntimeCluster unavailable");
+        }
+        mediaUploadRuntimeControllerInstance = createMediaUpload(createMediaUploadRuntimeControllerConfig());
+        mediaUploadRuntimeController = mediaUploadRuntimeControllerInstance;
+        return mediaUploadRuntimeControllerInstance;
+      })
+      .catch((err) => {
+        mediaUploadRuntimeControllerPromise = null;
+        reportCriticalRuntimeFailure("media-upload-runtime", err, { suppressAbort: true });
+        throw err;
+      });
+  }
+  return mediaUploadRuntimeControllerPromise;
+}
+
+function createDeferredMediaUploadRuntimeController() {
+  return {
+    async uploadCompressedImage(...args) {
+      const controller = await ensureMediaUploadRuntimeController();
+      return controller.uploadCompressedImage(...args);
+    },
+    async handleUploadPost(...args) {
+      const controller = await ensureMediaUploadRuntimeController();
+      return controller.handleUploadPost(...args);
+    }
+  };
 }
 
 function getMediaUploadRuntimeController() {
