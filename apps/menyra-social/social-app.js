@@ -104,6 +104,10 @@ import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
 import { createTableQrRuntimeController } from "./core/menu/table-qr-runtime-controller.js";
+import {
+  detectUploadMediaTypeCore,
+  renderUploadViewCore
+} from "./core/media/media-upload-view-render-utils.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
@@ -5458,6 +5462,20 @@ async function ensureMediaUploadRuntimeController() {
 
 function createDeferredMediaUploadRuntimeController() {
   return {
+    detectUploadMediaType(file) {
+      return detectUploadMediaTypeCore(file);
+    },
+    renderUploadView() {
+      return renderUploadViewCore({
+        state,
+        storySystemController,
+        isLocalBusinessProfileFn: isLocalBusinessProfile,
+        getOptimizedImageUrlFn: getOptimizedImageUrl,
+        escapeHtmlFn: escapeHtml,
+        iconFn: icon,
+        detectUploadMediaTypeFn: detectUploadMediaTypeCore
+      });
+    },
     async uploadCompressedImage(...args) {
       const controller = await ensureMediaUploadRuntimeController();
       return controller.uploadCompressedImage(...args);

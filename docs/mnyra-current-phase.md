@@ -228,6 +228,14 @@ Last updated: 2026-05-02
   Modulepreloads laufen nur noch fuer App-Starts. Der Public-Entry importiert
   die bestehende App noch nach, damit die sichtbare Produktoberflaeche stabil
   bleibt; ein echter leichter Public-Renderer bleibt ein Folgeschritt.
+- Schritt 31 ist abgeschlossen: Profil-Upload-Actions funktionieren trotz
+  deferred Media-/Upload-Runtime wieder.
+- Bewertung von Schritt 31: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 31:
+  `+ Status`, `+ Neuen Beitrag` und Upload-Einstiege koennen die Upload-Ansicht
+  wieder direkt rendern, obwohl der schwere Media-/Upload-Controller weiterhin
+  erst bei echter Upload-Aktion dynamisch geladen wird. Sichtbare UI, Labels,
+  Upload-Regeln, Routing, QR und Produktlogik bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
@@ -257,6 +265,7 @@ Last updated: 2026-05-02
 - Referenz: [docs/mnyra-step27-public-menu-focus-nonblocking-load.md](./mnyra-step27-public-menu-focus-nonblocking-load.md)
 - Referenz: [docs/mnyra-step28-public-startup-defer-upload-orders.md](./mnyra-step28-public-startup-defer-upload-orders.md)
 - Referenz: [docs/mnyra-step29-public-web-entry-boundary.md](./mnyra-step29-public-web-entry-boundary.md)
+- Referenz: [docs/mnyra-step31-profile-upload-deferred-render-fix.md](./mnyra-step31-profile-upload-deferred-render-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -282,13 +291,12 @@ Last updated: 2026-05-02
 
 ## Naechster Schritt
 
-Nach Schritt 29 ist der naechste sinnvolle separate Folgeschritt:
-den neuen Public-Entry schrittweise mit einem echten leichten Public-Renderer
-fuellen, statt sofort die gesamte App nachzuladen. Der erste sichere Kandidat
-ist `/:slug/menu`, weil der Zielzustand dort fachlich eng ist: Profilkopf,
-Menu, QR-/Tisch-/Warenkorb-Kompatibilitaet und kein Chat/CRM/Feed/Upload-
-Startpfad. Vor diesem Schritt sollte der Nutzer die aktuellen Public- und
-App-Pfade einmal manuell auf Smartphone testen.
+Nach Schritt 31 ist der naechste sinnvolle separate Folgeschritt:
+Profil-Upload-Actions und Public-Menu auf echtem Smartphone manuell pruefen.
+Erst wenn Upload-Einstiege, Menu, Produktmodal, Warenkorb, QR-/Tisch-Kontext
+und Entdecker-Karten-Profilwechsel stabil bleiben, kann der neue Public-Entry
+schrittweise mit einem echten leichten Public-Renderer fuer `/:slug/menu`
+gefuellt werden.
 
 ## Guardrails fuer die naechsten Schritte
 
