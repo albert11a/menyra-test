@@ -5,7 +5,7 @@
     "dev": "node scripts/local-dev-server.mjs",
     "dev:social": "node scripts/local-dev-server.mjs",
     "dev:local": "node scripts/local-dev-server.mjs",
-    "build": "npm run build:menyra-social:bundle",
+    "build": "npm run build:menyra-social:bundle && node scripts/build-vercel-static-output.mjs",
     "build:menyra-social:bundle": "vite build --config vite.config.mjs"
   },
   "devDependencies": {

@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "dist",
   "redirects": [
     { "source": "/", "has": [{ "type": "host", "value": "ceo.menyra.com" }], "destination": "/ceo", "permanent": false },
     { "source": "/", "has": [{ "type": "host", "value": "ceo.mnyra.com" }], "destination": "/ceo", "permanent": false },
