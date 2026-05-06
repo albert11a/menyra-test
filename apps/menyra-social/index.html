@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-05-02-public-entry-boundary-01";
+      const APP_BUILD_TOKEN = "2026-05-06-vite-prod-bundle-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       try {
         const initialRoute = readPublicStartupRoute(window.location.pathname || "");
@@ -172,7 +172,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim() || "2026-05-02-public-entry-boundary-01";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-06-vite-prod-bundle-01").trim() || "2026-05-06-vite-prod-bundle-01";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -363,8 +363,27 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-06-vite-prod-bundle-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
+      const BUNDLED_BASE = "/apps/menyra-social/bundled/";
+      const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
+      const BUNDLE_MANIFEST_TIMEOUT_MS = 2500;
+      const BUNDLE_ENTRY_KEYS = {
+        public: "apps/menyra-social/social-public-bundled-entry.js",
+        app: "apps/menyra-social/social-app.js"
+      };
+      const selectedEntryKey = isPublicWebsiteStartup ? BUNDLE_ENTRY_KEYS.public : BUNDLE_ENTRY_KEYS.app;
+      const rawEntryUrl = isPublicWebsiteStartup
+        ? `/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`
+        : `/apps/menyra-social/social-app.js?v=${encodeURIComponent(appBuildToken)}`;
+      const shouldForceRawEntry = () => {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          return params.get("mnyra-raw-entry") === "1" || params.get("raw-entry") === "1";
+        } catch {
+          return false;
+        }
+      };
       const addModulePreload = (href, { crossorigin = false, fetchPriority = "" } = {}) => {
         const safeHref = String(href || "").trim();
         if (!safeHref) return;
@@ -376,18 +395,73 @@
         if (fetchPriority) link.fetchPriority = fetchPriority;
         document.head.appendChild(link);
       };
-      if (isPublicWebsiteStartup) {
-        addModulePreload(`/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`, {
-          fetchPriority: "high"
+      const resolveBundledUrl = (path = "") => {
+        const cleanPath = String(path || "").trim().replace(/^\/+/, "");
+        return cleanPath ? `${BUNDLED_BASE}${cleanPath}` : "";
+      };
+      const findManifestEntry = (manifest, key) => {
+        if (!manifest || typeof manifest !== "object") return null;
+        const safeKey = String(key || "").trim();
+        if (!safeKey) return null;
+        return manifest[safeKey]
+          || manifest[`/${safeKey}`]
+          || Object.values(manifest).find((entry) => String(entry?.src || "").trim() === safeKey)
+          || null;
+      };
+      const preloadManifestEntry = (manifest, entry, seen = new Set()) => {
+        const file = String(entry?.file || "").trim();
+        if (!file || seen.has(file)) return;
+        seen.add(file);
+        addModulePreload(resolveBundledUrl(file), { fetchPriority: "high" });
+        (entry.imports || []).forEach((importKey) => {
+          const importEntry = manifest?.[importKey] || manifest?.[`/${importKey}`];
+          preloadManifestEntry(manifest, importEntry, seen);
         });
-        return;
-      }
-      addModulePreload(`/apps/menyra-social/social-app.js?v=${encodeURIComponent(appBuildToken)}`, {
-        fetchPriority: "high"
+      };
+      const preloadRawEntry = () => {
+        addModulePreload(rawEntryUrl, { fetchPriority: "high" });
+        if (!isPublicWebsiteStartup) {
+          addModulePreload("/shared/vendor/firebase/11.0.0/firebase-app.js", { crossorigin: true });
+          addModulePreload("/shared/vendor/firebase/11.0.0/firebase-auth.js", { crossorigin: true });
+          addModulePreload("/shared/vendor/firebase/11.0.0/firebase-firestore.js", { crossorigin: true });
+        }
+      };
+      const loadBundleManifest = async () => {
+        if (shouldForceRawEntry()) return null;
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        const timeoutId = controller
+          ? window.setTimeout(() => controller.abort(), BUNDLE_MANIFEST_TIMEOUT_MS)
+          : 0;
+        try {
+          const response = await fetch(BUNDLE_MANIFEST_URL, {
+            cache: "no-store",
+            credentials: "same-origin",
+            signal: controller?.signal
+          });
+          if (!response?.ok) return null;
+          const manifest = await response.json();
+          return manifest && typeof manifest === "object" ? manifest : null;
+        } catch {
+          return null;
+        } finally {
+          if (timeoutId) window.clearTimeout(timeoutId);
+        }
+      };
+      const manifestPromise = loadBundleManifest();
+      window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_PROMISE__ = manifestPromise;
+      window.__MENYRA_SOCIAL_BUNDLE_ENTRY_KEY__ = selectedEntryKey;
+      window.__MENYRA_SOCIAL_RAW_ENTRY_URL__ = rawEntryUrl;
+      window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ = BUNDLE_MANIFEST_URL;
+      window.__MENYRA_SOCIAL_RESOLVE_BUNDLED_URL__ = resolveBundledUrl;
+      window.__MENYRA_SOCIAL_RESOLVE_BUNDLE_MANIFEST_ENTRY__ = findManifestEntry;
+      manifestPromise.then((manifest) => {
+        const entry = findManifestEntry(manifest, selectedEntryKey);
+        if (entry?.file) {
+          preloadManifestEntry(manifest, entry);
+          return;
+        }
+        preloadRawEntry();
       });
-      addModulePreload("/shared/vendor/firebase/11.0.0/firebase-app.js", { crossorigin: true });
-      addModulePreload("/shared/vendor/firebase/11.0.0/firebase-auth.js", { crossorigin: true });
-      addModulePreload("/shared/vendor/firebase/11.0.0/firebase-firestore.js", { crossorigin: true });
     })();
   </script>
   <script type="importmap">
@@ -1785,16 +1859,118 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-06-vite-prod-bundle-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const script = document.createElement("script");
-      script.type = "module";
-      script.fetchPriority = isPublicWebsiteStartup ? "auto" : "high";
-      script.src = isPublicWebsiteStartup
-        ? `/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`
-        : `/apps/menyra-social/social-app.js?v=${encodeURIComponent(appBuildToken)}`;
-      (document.currentScript?.parentNode || document.body || document.documentElement)
-        .insertBefore(script, document.currentScript?.nextSibling || null);
+      const BUNDLED_BASE = "/apps/menyra-social/bundled/";
+      const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
+      const BUNDLE_MANIFEST_TIMEOUT_MS = 2500;
+      const selectedEntryKey = String(
+        window.__MENYRA_SOCIAL_BUNDLE_ENTRY_KEY__
+        || (
+          isPublicWebsiteStartup
+            ? "apps/menyra-social/social-public-bundled-entry.js"
+            : "apps/menyra-social/social-app.js"
+        )
+      ).trim();
+      const rawEntryUrl = String(
+        window.__MENYRA_SOCIAL_RAW_ENTRY_URL__
+        || (
+          isPublicWebsiteStartup
+            ? `/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`
+            : `/apps/menyra-social/social-app.js?v=${encodeURIComponent(appBuildToken)}`
+        )
+      ).trim();
+      const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
+        ? window.__MENYRA_SOCIAL_SET_DEGRADED__
+        : () => {};
+      const shouldForceRawEntry = () => {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          return params.get("mnyra-raw-entry") === "1" || params.get("raw-entry") === "1";
+        } catch {
+          return false;
+        }
+      };
+      const resolveBundledUrl = typeof window.__MENYRA_SOCIAL_RESOLVE_BUNDLED_URL__ === "function"
+        ? window.__MENYRA_SOCIAL_RESOLVE_BUNDLED_URL__
+        : (path = "") => {
+          const cleanPath = String(path || "").trim().replace(/^\/+/, "");
+          return cleanPath ? `${BUNDLED_BASE}${cleanPath}` : "";
+        };
+      const findManifestEntry = typeof window.__MENYRA_SOCIAL_RESOLVE_BUNDLE_MANIFEST_ENTRY__ === "function"
+        ? window.__MENYRA_SOCIAL_RESOLVE_BUNDLE_MANIFEST_ENTRY__
+        : (manifest, key) => {
+          if (!manifest || typeof manifest !== "object") return null;
+          const safeKey = String(key || "").trim();
+          if (!safeKey) return null;
+          return manifest[safeKey]
+            || manifest[`/${safeKey}`]
+            || Object.values(manifest).find((entry) => String(entry?.src || "").trim() === safeKey)
+            || null;
+        };
+      const loadManifest = async () => {
+        if (shouldForceRawEntry()) return null;
+        try {
+          const existingPromise = window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_PROMISE__;
+          if (existingPromise && typeof existingPromise.then === "function") {
+            return await existingPromise;
+          }
+        } catch {}
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        const timeoutId = controller
+          ? window.setTimeout(() => controller.abort(), BUNDLE_MANIFEST_TIMEOUT_MS)
+          : 0;
+        try {
+          const response = await fetch(BUNDLE_MANIFEST_URL, {
+            cache: "no-store",
+            credentials: "same-origin",
+            signal: controller?.signal
+          });
+          if (!response?.ok) return null;
+          const manifest = await response.json();
+          return manifest && typeof manifest === "object" ? manifest : null;
+        } catch {
+          return null;
+        } finally {
+          if (timeoutId) window.clearTimeout(timeoutId);
+        }
+      };
+      const loadRawEntry = () => new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.type = "module";
+        script.fetchPriority = isPublicWebsiteStartup ? "auto" : "high";
+        script.src = rawEntryUrl;
+        script.addEventListener("load", resolve, { once: true });
+        script.addEventListener("error", () => {
+          setDegraded("app-entry", {
+            active: true,
+            message: "Website konnte nicht vollstaendig geladen werden."
+          });
+          reject(new Error("raw social entry failed"));
+        }, { once: true });
+        (document.currentScript?.parentNode || document.body || document.documentElement)
+          .insertBefore(script, document.currentScript?.nextSibling || null);
+      });
+      (async () => {
+        if (!shouldForceRawEntry()) {
+          try {
+            const manifest = await loadManifest();
+            const entry = findManifestEntry(manifest, selectedEntryKey);
+            const entryUrl = resolveBundledUrl(entry?.file || "");
+            if (!entryUrl) throw new Error("vite manifest entry unavailable");
+            await import(entryUrl);
+            window.__MENYRA_SOCIAL_BUNDLED_ENTRY_ACTIVE__ = true;
+            setDegraded("app-entry", { active: false, message: "" });
+            return;
+          } catch (err) {
+            window.__MENYRA_SOCIAL_BUNDLED_ENTRY_FALLBACK__ = true;
+            console.warn("[mnyra][entry] bundled social entry unavailable, loading raw fallback", err);
+          }
+        }
+        await loadRawEntry().catch((err) => {
+          console.error("[mnyra][entry] raw social entry failed", err);
+        });
+      })();
     })();
   </script>
   <script>
@@ -1930,7 +2106,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-06-vite-prod-bundle-01").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {

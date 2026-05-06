@@ -300,6 +300,42 @@
       ]
     },
     {
+      "source": "/apps/menyra-social/social-public-entry.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/social-public-bundled-entry.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/bundled/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/bundled/entry/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/bundled/chunks/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/bundled/assets/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
       "source": "/apps/menyra-social/pwa.js",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
