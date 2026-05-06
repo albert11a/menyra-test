@@ -1,4 +1,18 @@
-import { resolvePendingAuthRouteFlagsCore } from "./auth-bootstrap-flow-utils.js";
+function resolvePendingAuthRouteFlagsCore({
+  pendingNotificationId = "",
+  pendingPostId = "",
+  pendingChatUid = ""
+} = {}) {
+  const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
+  const hasPendingPostQuery = !!String(pendingPostId || "").trim();
+  const hasPendingChatQuery = !!String(pendingChatUid || "").trim();
+  return {
+    hasPendingNotificationQuery,
+    hasPendingPostQuery,
+    hasPendingChatQuery,
+    hasAny: hasPendingNotificationQuery || hasPendingPostQuery || hasPendingChatQuery
+  };
+}
 
 export async function runPostLoginPendingRouteOpenFlowCore({
   openProfileFromQuery,

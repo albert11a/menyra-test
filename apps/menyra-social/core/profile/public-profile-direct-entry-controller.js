@@ -259,6 +259,8 @@ function buildRoutePayloadSeed({
     ? safeSnapshot.focus
     : (safeRouteBootstrap?.focus && typeof safeRouteBootstrap.focus === "object" ? safeRouteBootstrap.focus : {});
   const routePostsItems = Array.isArray(routePosts?.items) ? routePosts.items : [];
+  const routeMenuSeedItems = Array.isArray(routeMenu?.items) ? routeMenu.items : [];
+  const routeFocusSeedItems = Array.isArray(routeFocus?.items) ? routeFocus.items : [];
   const menu = state?.menu || {};
   const hasLivePublicMenu = String(menu.restaurantId || "").trim() === safeRestaurantId
     && String(menu.source || "").trim().toLowerCase() === "public"
@@ -272,7 +274,13 @@ function buildRoutePayloadSeed({
       ? (livePublicMenuItems.length ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
       : "unknown"
   );
-  const routeMenuItems = livePublicMenuState === "seeded" ? livePublicMenuItems : [];
+  const routeMenuSeedState = normalizeTruthState(
+    routeMenu?.truthState || routeMenu?.state || safeTruth?.menu || "",
+    routeMenuSeedItems.length ? "seeded" : "unknown"
+  );
+  const routeMenuItems = livePublicMenuState === "seeded"
+    ? livePublicMenuItems
+    : (routeMenuSeedState === "seeded" ? routeMenuSeedItems : []);
   const focus = state?.focus || {};
   const livePublicFocusItems = hasLivePublicMenu
     && String(focus.restaurantId || "").trim() === safeRestaurantId
@@ -280,12 +288,16 @@ function buildRoutePayloadSeed({
     && Array.isArray(focus.items)
     ? focus.items
     : [];
-  const routeFocusItems = livePublicFocusItems;
+  const routeFocusSeedState = normalizeTruthState(
+    routeFocus?.truthState || routeFocus?.state || safeTruth?.focus || "",
+    routeFocusSeedItems.length ? "seeded" : "unknown"
+  );
+  const routeFocusItems = livePublicFocusItems.length ? livePublicFocusItems : (routeFocusSeedState === "seeded" ? routeFocusSeedItems : []);
   const routePostsState = normalizeTruthState(routePosts?.state || safeTruth?.posts || "", (
     safePosts.length || routePostsItems.length ? "seeded" : "unknown"
   ));
-  const routeMenuState = hasLivePublicMenu ? livePublicMenuState : "unknown";
-  const routeFocusState = livePublicFocusItems.length ? "seeded" : "unknown";
+  const routeMenuState = hasLivePublicMenu ? livePublicMenuState : routeMenuSeedState;
+  const routeFocusState = livePublicFocusItems.length ? "seeded" : routeFocusSeedState;
   const routeIdentityState = normalizeTruthState(safeTruth?.identity || "", (
     String(routeIdentity?.name || "").trim()
     || String(routeIdentity?.handle || "").trim()
@@ -301,9 +313,9 @@ function buildRoutePayloadSeed({
   const nextFocusItems = routeFocusState === "seeded"
     ? routeFocusItems
     : [];
-  const routeMenuCount = 0;
+  const routeMenuCount = Math.max(0, Number(routeMenu?.count || routeMenuSeedItems.length || 0) || 0);
   const routePostsCount = Math.max(0, Number(routePosts?.count || 0) || 0);
-  const routeFocusCount = 0;
+  const routeFocusCount = Math.max(0, Number(routeFocus?.count || routeFocusSeedItems.length || 0) || 0);
   const menuCount = routeMenuState === "seeded"
     ? nextMenuItems.length
     : (routeMenuState === "knownEmpty"
@@ -600,8 +612,14 @@ export function createPublicProfileDirectEntryController({
     const routePostsSeed = Array.isArray(routeBootstrap?.posts?.items)
       ? routeBootstrap.posts.items
       : [];
-    const routeMenuSeed = [];
-    const routeFocusSeed = [];
+    const routeMenuSection = routeSnapshot?.menu && typeof routeSnapshot.menu === "object"
+      ? routeSnapshot.menu
+      : (routeBootstrap?.menu && typeof routeBootstrap.menu === "object" ? routeBootstrap.menu : {});
+    const routeFocusSection = routeSnapshot?.focus && typeof routeSnapshot.focus === "object"
+      ? routeSnapshot.focus
+      : (routeBootstrap?.focus && typeof routeBootstrap.focus === "object" ? routeBootstrap.focus : {});
+    const routeMenuSeed = Array.isArray(routeMenuSection?.items) ? routeMenuSection.items : [];
+    const routeFocusSeed = Array.isArray(routeFocusSection?.items) ? routeFocusSection.items : [];
     const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
       ? routeSnapshot.truth
       : (routeBootstrap?.truth && typeof routeBootstrap.truth === "object" ? routeBootstrap.truth : {});
@@ -609,8 +627,14 @@ export function createPublicProfileDirectEntryController({
       routeSnapshot?.posts?.state || routeBootstrap?.posts?.state || routeTruth?.posts || "",
       routePostsSeed.length ? "seeded" : "unknown"
     );
-    const routeMenuState = "unknown";
-    const routeFocusState = "unknown";
+    const routeMenuState = normalizeTruthState(
+      routeMenuSection?.state || routeBootstrap?.menu?.state || routeTruth?.menu || "",
+      routeMenuSeed.length ? "seeded" : "unknown"
+    );
+    const routeFocusState = normalizeTruthState(
+      routeFocusSection?.state || routeBootstrap?.focus?.state || routeTruth?.focus || "",
+      routeFocusSeed.length ? "seeded" : "unknown"
+    );
     const routeIdentityState = normalizeTruthState(routeTruth?.identity || "", (
       String(routeIdentity?.name || "").trim()
       || String(routeIdentity?.handle || "").trim()

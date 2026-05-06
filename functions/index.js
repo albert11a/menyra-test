@@ -1901,10 +1901,48 @@ async function queryPublicMenuItemsForRestaurant(restaurantId = "", { limitCount
   }
 }
 
+function mapPublicMetaSeed(data = {}) {
+  const source = data && typeof data === "object" ? data : {};
+  const tableCountRaw = source.tableQrCount
+    ?? source.tableCount
+    ?? source.tableQrTables
+    ?? source.tablesCount
+    ?? null;
+  const tableCountNumber = Number(tableCountRaw);
+  const meta = {};
+  if (typeof source.menuStatusBadgeVisible === "boolean") {
+    meta.menuStatusBadgeVisible = source.menuStatusBadgeVisible;
+  }
+  if (typeof source.menuAvailabilityBadgeVisible === "boolean") {
+    meta.menuAvailabilityBadgeVisible = source.menuAvailabilityBadgeVisible;
+  }
+  if (typeof source.offersEnabled === "boolean") {
+    meta.offersEnabled = source.offersEnabled;
+  }
+  if (typeof source.tableQrEnabled === "boolean") {
+    meta.tableQrEnabled = source.tableQrEnabled;
+  }
+  if (Number.isFinite(tableCountNumber)) {
+    meta.tableQrCount = Math.max(0, Math.min(200, Math.trunc(tableCountNumber)));
+  }
+  return meta;
+}
+
+function resolvePublicMenuStatusBadgeVisible(data = {}) {
+  const source = data && typeof data === "object" ? data : {};
+  if (typeof source.menuStatusBadgeVisible === "boolean") {
+    return source.menuStatusBadgeVisible;
+  }
+  if (typeof source.menuAvailabilityBadgeVisible === "boolean") {
+    return source.menuAvailabilityBadgeVisible;
+  }
+  return true;
+}
+
 async function queryPublicMenuMetaForRestaurant(restaurantId = "") {
   const safeRestaurantId = asText(restaurantId);
   if (!safeRestaurantId) {
-    return { statusBadgeVisible: true };
+    return { statusBadgeVisible: true, meta: {}, updatedAt: 0 };
   }
   try {
     const snap = await db
@@ -1914,18 +1952,20 @@ async function queryPublicMenuMetaForRestaurant(restaurantId = "") {
       .doc("meta")
       .get();
     if (!snap.exists) {
-      return { statusBadgeVisible: true };
+      return { statusBadgeVisible: true, meta: {}, updatedAt: 0 };
     }
     const data = snap.data() || {};
-    if (typeof data.menuStatusBadgeVisible === "boolean") {
-      return { statusBadgeVisible: data.menuStatusBadgeVisible };
-    }
-    if (typeof data.menuAvailabilityBadgeVisible === "boolean") {
-      return { statusBadgeVisible: data.menuAvailabilityBadgeVisible };
-    }
-    return { statusBadgeVisible: true };
+    const updatedAt = Math.max(
+      0,
+      toMillis(data.updatedAt || data.lastUpdatedAt || data.ts || data.modifiedAt || 0)
+    );
+    return {
+      statusBadgeVisible: resolvePublicMenuStatusBadgeVisible(data),
+      meta: mapPublicMetaSeed(data),
+      updatedAt
+    };
   } catch {
-    return { statusBadgeVisible: true };
+    return { statusBadgeVisible: true, meta: {}, updatedAt: 0 };
   }
 }
 
@@ -2004,6 +2044,9 @@ function normalizePublicRouteFocusItem(item = {}, fallbackId = "") {
   if (!id) return null;
   return {
     id,
+    menuItemId: asText(source.menuItemId || source.targetMenuItemId || source.itemId || source.targetItemId),
+    productId: asText(source.productId || source.targetProductId),
+    targetCategory: asText(source.targetCategory || source.categoryTarget || source.menuCategory),
     title: asText(source.title || source.name || "Sot ne Fokus", "Sot ne Fokus"),
     text: asText(source.text || source.desc || source.description),
     imageUrl: asText(source.imageUrl || source.image || source.photoUrl),
@@ -2514,8 +2557,12 @@ function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
     landingSlug: asText(data.landingSlug || publicSlug),
     canonicalPublicPath,
     logoUrl: asText(data.logoUrl || data.logo || data.logoURL),
+    logo: asText(data.logo || data.logoUrl || data.logoURL),
+    avatar: asText(data.avatar || data.avatarUrl || data.photoUrl || data.logoUrl || data.logo || data.logoURL),
     city: asText(data.city || data.address),
-    ...(type ? { type, customerType: type } : {})
+    address: asText(data.address || data.city),
+    location: asText(data.location || data.city || data.address),
+    ...(type ? { type, customerType: type, category: type, restaurantType: type } : {})
   };
 }
 
@@ -2582,6 +2629,52 @@ function mapPublicRouteFeedPost(post = {}, restaurant = {}) {
   };
 }
 
+function normalizeBootstrapPublicRouteStatus(value = "") {
+  const status = safeLowerText(value);
+  if (!status) return "active";
+  if (status === "active" || status === "preview" || status === "demo" || status === "lead" || status === "prospect" || status === "redirect") {
+    return status === "demo" ? "preview" : (status === "prospect" ? "lead" : status);
+  }
+  if (status === "inactive" || status === "disabled" || status === "deleted" || status === "blocked" || status === "archived" || status === "private") {
+    return "inactive";
+  }
+  if (status === "not-found" || status === "notfound") return "not-found";
+  return "active";
+}
+
+function isBootstrapPublicRouteRoutable(routeData = {}) {
+  const status = normalizeBootstrapPublicRouteStatus(routeData?.status || "");
+  return status !== "inactive" && status !== "not-found";
+}
+
+async function resolveBootstrapRestaurantDocByPublicRoute(routeSlug = "") {
+  const safeRouteSlug = normalizePublicRouteSlug(routeSlug);
+  if (!safeRouteSlug) return null;
+  try {
+    const routeSnap = await db.collection("publicRoutes").doc(safeRouteSlug).get();
+    if (!routeSnap.exists) return null;
+    const routeData = routeSnap.data() || {};
+    if (!isBootstrapPublicRouteRoutable(routeData)) return null;
+    const routeRestaurantId = asText(routeData.restaurantId || routeData.canonicalRestaurantId);
+    if (!routeRestaurantId) return null;
+    const restaurantSnap = await db.collection("restaurants").doc(routeRestaurantId).get();
+    if (!restaurantSnap.exists) return null;
+    const restaurantData = restaurantSnap.data() || {};
+    if (!isBootstrapRestaurantPublicRecord({ id: restaurantSnap.id, ...restaurantData })) {
+      return null;
+    }
+    return {
+      id: asText(restaurantSnap.id),
+      data: restaurantData,
+      routeData,
+      routeSlug: safeRouteSlug,
+      routeSource: "publicRoutes"
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function resolveBootstrapRestaurantDocByRouteId(routeLookupId = "") {
   const safeLookupId = asText(routeLookupId);
   if (!safeLookupId) return null;
@@ -2594,12 +2687,17 @@ async function resolveBootstrapRestaurantDocByRouteId(routeLookupId = "") {
       }
       return {
         id: asText(directSnap.id),
-        data
+        data,
+        routeData: null,
+        routeSlug: "",
+        routeSource: "restaurants.direct"
       };
     }
   } catch {}
   const routeSlug = normalizePublicRouteSlug(safeLookupId);
   if (!routeSlug) return null;
+  const byPublicRoute = await resolveBootstrapRestaurantDocByPublicRoute(routeSlug);
+  if (byPublicRoute) return byPublicRoute;
   const queryByField = async (fieldName = "", fieldValue = "") => {
     const safeFieldName = asText(fieldName);
     const safeFieldValue = asText(fieldValue);
@@ -2618,7 +2716,10 @@ async function resolveBootstrapRestaurantDocByRouteId(routeLookupId = "") {
       }
       return {
         id: asText(first.id),
-        data
+        data,
+        routeData: null,
+        routeSlug,
+        routeSource: `restaurants.${safeFieldName}`
       };
     } catch {
       return null;
@@ -2699,6 +2800,9 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   if (!restaurantDoc?.id) return null;
   const restaurantId = asText(restaurantDoc.id);
   const restaurantData = restaurantDoc.data || {};
+  const routeData = restaurantDoc.routeData && typeof restaurantDoc.routeData === "object"
+    ? restaurantDoc.routeData
+    : {};
   if (!isBootstrapRestaurantPublicRecord({ id: restaurantId, ...restaurantData })) return null;
   const publicRouteMeta = await ensureBootstrapRestaurantPublicRouteMeta(restaurantId, restaurantData, {
     routeLookupId: restaurantLookupId,
@@ -2707,6 +2811,20 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   const normalizedRestaurantData = publicRouteMeta?.data || restaurantData;
   const restaurantPreview = mapPublicRestaurantPreview(restaurantId, normalizedRestaurantData);
   const surface = safeRouteContext.surface === "menu" ? "menu" : "profile";
+  const publicSlug = normalizePathRestaurantSlug(
+    restaurantPreview.publicSlug
+    || routeData.canonicalSlug
+    || routeData.slug
+    || restaurantDoc.routeSlug
+    || restaurantLookupId
+  );
+  const landingSlug = asText(restaurantPreview.landingSlug || publicSlug);
+  const canonicalPublicPath = asText(restaurantPreview.canonicalPublicPath || buildCanonicalPublicRoutePath(publicSlug, surface));
+  const accessSource = safeRouteContext.accessSource === "qr" ? "qr" : "";
+  const tableNumber = Math.max(0, Number(safeRouteContext.tableNumber || 0) || 0);
+  const tableLabel = tableNumber > 0 ? `Tisch ${tableNumber}` : "";
+  const generatedAt = Date.now();
+  const cacheTtlMs = 5 * 60 * 1000;
   const postsLimit = surface === "profile" ? 14 : 8;
   const menuLimit = surface === "menu" ? 72 : 28;
   const [postsSeedData, menuSeedData, menuMeta, focusSeedData] = await Promise.all([
@@ -2750,9 +2868,10 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     toMillis(normalizedRestaurantData.updatedAt || normalizedRestaurantData.lastUpdatedAt || normalizedRestaurantData.createdAt || 0),
     Number(postsSeedData?.updatedAt || 0) || 0,
     Number(menuSeedData?.updatedAt || 0) || 0,
+    Number(menuMeta?.updatedAt || 0) || 0,
     Number(focusSeedData?.updatedAt || 0) || 0
   );
-  const snapshotUpdatedAt = routeUpdatedAt > 0 ? routeUpdatedAt : Date.now();
+  const snapshotUpdatedAt = routeUpdatedAt > 0 ? routeUpdatedAt : generatedAt;
   const snapshotVersion = "business-page-v1";
   const snapshot = {
     snapshotVersion,
@@ -2762,8 +2881,9 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     identity: {
       name: identityName,
       handle: identityHandle,
-      publicSlug: asText(restaurantPreview.publicSlug),
-      canonicalPublicPath: asText(restaurantPreview.canonicalPublicPath),
+      publicSlug,
+      landingSlug,
+      canonicalPublicPath,
       avatar: identityAvatar,
       location: identityLocation,
       bio: identityBio,
@@ -2782,7 +2902,8 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
       count: Number(menuSeedData?.count || menuSeed.length || 0) || 0,
       items: menuSeed,
       extras: {
-        statusBadgeVisible: menuMeta?.statusBadgeVisible !== false
+        statusBadgeVisible: menuMeta?.statusBadgeVisible !== false,
+        meta: menuMeta?.meta && typeof menuMeta.meta === "object" ? menuMeta.meta : {}
       }
     }),
     focus: buildPublicRouteTruthSection({
@@ -2807,22 +2928,71 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
       layout: normalizePublicRouteTruthState(layoutTruth, "unknown")
     }
   };
+  const routeSeed = {
+    slug: publicSlug || normalizePathRestaurantSlug(restaurantLookupId),
+    surface,
+    accessSource,
+    tableNumber,
+    tableLabel,
+    restaurantId,
+    canonicalRestaurantId: restaurantId,
+    publicSlug,
+    landingSlug,
+    canonicalPublicPath,
+    source: asText(restaurantDoc.routeSource || "public-bootstrap"),
+    status: normalizeBootstrapPublicRouteStatus(routeData.status || "")
+  };
+  const businessPreview = {
+    ...restaurantPreview,
+    id: restaurantId,
+    restaurantId,
+    canonicalRestaurantId: restaurantId,
+    publicSlug,
+    landingSlug,
+    canonicalPublicPath
+  };
+  const publicMenuSeed = {
+    ...snapshot.menu,
+    truthState: snapshot.menu.state
+  };
+  const publicFocusSeed = {
+    ...snapshot.focus,
+    truthState: snapshot.focus.state
+  };
+  const publicPostsPreviewSeed = {
+    ...snapshot.posts,
+    truthState: snapshot.posts.state
+  };
   const routePayload = {
     owner: "web-direct",
     routeFirst: true,
     restaurantId,
-    publicSlug: asText(restaurantPreview.publicSlug),
-    canonicalPublicPath: asText(restaurantPreview.canonicalPublicPath),
+    canonicalRestaurantId: restaurantId,
+    slug: routeSeed.slug,
+    publicSlug,
+    landingSlug,
+    canonicalPublicPath,
     surface,
     topTab: surface === "menu" ? "menu" : "profile",
     contentTab: surface === "menu" ? "menu" : "posts",
-    menuAccessSource: safeRouteContext.accessSource === "qr" ? "qr" : "",
-    tableNumber: Math.max(0, Number(safeRouteContext.tableNumber || 0) || 0),
+    accessSource,
+    menuAccessSource: accessSource,
+    tableNumber,
+    tableLabel,
     phase: "ready",
+    route: routeSeed,
+    businessPreview,
+    publicMenuSeed,
+    publicFocusSeed,
+    publicPostsPreviewSeed,
+    generatedAt,
+    cacheTtlMs,
+    source: "public-bootstrap",
     identity: {
       name: snapshot.identity.name,
       handle: snapshot.identity.handle,
       publicSlug: snapshot.identity.publicSlug,
+      landingSlug: snapshot.identity.landingSlug,
       canonicalPublicPath: snapshot.identity.canonicalPublicPath,
       avatar: snapshot.identity.avatar,
       location: snapshot.identity.location,
@@ -2872,14 +3042,22 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
     snapshotUpdatedAt: snapshot.updatedAt,
     snapshotVersionKey: snapshot.version,
     businessSnapshot: snapshot,
-    ts: Date.now()
+    ts: generatedAt
   };
   return {
-    restaurants: [restaurantPreview],
+    restaurants: [businessPreview],
     feedPosts: postsSeed
-      .map((post) => mapPublicRouteFeedPost(post, restaurantPreview))
+      .map((post) => mapPublicRouteFeedPost(post, businessPreview))
       .filter(Boolean),
     stories: [],
+    route: routeSeed,
+    businessPreview,
+    publicMenuSeed,
+    publicFocusSeed,
+    publicPostsPreviewSeed,
+    generatedAt,
+    cacheTtlMs,
+    source: "public-bootstrap",
     publicRoute: routePayload
   };
 }
@@ -3108,6 +3286,14 @@ exports.socialBootstrapFeed = functions
               restaurants: Array.isArray(directPayload.restaurants) ? directPayload.restaurants : [],
               feedPosts: Array.isArray(directPayload.feedPosts) ? directPayload.feedPosts : [],
               stories: Array.isArray(directPayload.stories) ? directPayload.stories : [],
+              route: directPayload.route || null,
+              businessPreview: directPayload.businessPreview || null,
+              publicMenuSeed: directPayload.publicMenuSeed || null,
+              publicFocusSeed: directPayload.publicFocusSeed || null,
+              publicPostsPreviewSeed: directPayload.publicPostsPreviewSeed || null,
+              generatedAt: directPayload.generatedAt || Date.now(),
+              cacheTtlMs: directPayload.cacheTtlMs || 0,
+              source: directPayload.source || "public-bootstrap",
               publicRoute: directPayload.publicRoute
             }
           });

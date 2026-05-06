@@ -4,6 +4,10 @@
   "scripts": {
     "dev": "node scripts/local-dev-server.mjs",
     "dev:social": "node scripts/local-dev-server.mjs",
-    "dev:local": "node scripts/local-dev-server.mjs"
+    "dev:local": "node scripts/local-dev-server.mjs",
+    "build:menyra-social:bundle": "vite build --config vite.config.mjs"
+  },
+  "devDependencies": {
+    "vite": "^7.1.4"
   }
 }

@@ -359,12 +359,67 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
       const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
+      const bundledManifestUrl = "/apps/menyra-social/bundled/manifest.json";
+      const bundledPublicEntryManifestKey = "apps/menyra-social/social-public-bundled-entry.js";
+      const bundledAppEntryManifestKey = "apps/menyra-social/social-app.js";
+      const bundledBaseUrl = "/apps/menyra-social/bundled/";
+      const hasBundleFlag = () => {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          return params.get("bundle") === "1" || params.get("mnyraBundle") === "1";
+        } catch {
+          return false;
+        }
+      };
+      const withBuildToken = (url) => {
+        const safeUrl = String(url || "").trim();
+        if (!safeUrl || !appBuildToken) return safeUrl;
+        const separator = safeUrl.includes("?") ? "&" : "?";
+        return `${safeUrl}${separator}v=${encodeURIComponent(appBuildToken)}`;
+      };
+      const resolveBundledEntryUrl = async (manifestKey = "", promiseKey = "") => {
+        const safeManifestKey = String(manifestKey || "").trim();
+        const safePromiseKey = String(promiseKey || "").trim();
+        if (!safeManifestKey || !hasBundleFlag()) return "";
+        const existingPromise = safePromiseKey ? window[safePromiseKey] : null;
+        if (existingPromise && typeof existingPromise.then === "function") {
+          return await existingPromise;
+        }
+        const promise = fetch(withBuildToken(bundledManifestUrl), { cache: "no-store" })
+          .then((response) => {
+            if (!response?.ok) throw new Error("bundled manifest unavailable");
+            return response.json();
+          })
+          .then((manifest) => {
+            const file = String(manifest?.[safeManifestKey]?.file || "").trim();
+            if (!file) throw new Error("bundled entry missing");
+            return withBuildToken(`${bundledBaseUrl}${file.replace(/^\/+/, "")}`);
+          })
+          .catch(() => "");
+        try {
+          if (safePromiseKey) window[safePromiseKey] = promise;
+        } catch {}
+        return await promise;
+      };
+      const resolveBundledPublicEntryUrl = async () => {
+        if (!isPublicWebsiteStartup) return "";
+        return await resolveBundledEntryUrl(
+          bundledPublicEntryManifestKey,
+          "__MENYRA_SOCIAL_BUNDLED_PUBLIC_ENTRY_PROMISE__"
+        );
+      };
+      const resolveBundledAppEntryUrl = async () => {
+        if (isPublicWebsiteStartup) return "";
+        return await resolveBundledEntryUrl(
+          bundledAppEntryManifestKey,
+          "__MENYRA_SOCIAL_BUNDLED_APP_ENTRY_PROMISE__"
+        );
+      };
       const addModulePreload = (href, { crossorigin = false, fetchPriority = "" } = {}) => {
         const safeHref = String(href || "").trim();
         if (!safeHref) return;
@@ -377,8 +432,20 @@
         document.head.appendChild(link);
       };
       if (isPublicWebsiteStartup) {
+        if (hasBundleFlag()) {
+          void resolveBundledPublicEntryUrl().then((bundledEntryUrl) => {
+            addModulePreload(bundledEntryUrl, { fetchPriority: "high" });
+          });
+          return;
+        }
         addModulePreload(`/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`, {
           fetchPriority: "high"
+        });
+        return;
+      }
+      if (hasBundleFlag()) {
+        void resolveBundledAppEntryUrl().then((bundledEntryUrl) => {
+          addModulePreload(bundledEntryUrl, { fetchPriority: "high" });
         });
         return;
       }
@@ -1787,14 +1854,97 @@
     (() => {
       const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-05-02-public-entry-boundary-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const script = document.createElement("script");
-      script.type = "module";
-      script.fetchPriority = isPublicWebsiteStartup ? "auto" : "high";
-      script.src = isPublicWebsiteStartup
+      const bundledManifestUrl = "/apps/menyra-social/bundled/manifest.json";
+      const bundledPublicEntryManifestKey = "apps/menyra-social/social-public-bundled-entry.js";
+      const bundledAppEntryManifestKey = "apps/menyra-social/social-app.js";
+      const bundledBaseUrl = "/apps/menyra-social/bundled/";
+      const rawEntrySrc = isPublicWebsiteStartup
         ? `/apps/menyra-social/social-public-entry.js?v=${encodeURIComponent(appBuildToken)}`
         : `/apps/menyra-social/social-app.js?v=${encodeURIComponent(appBuildToken)}`;
-      (document.currentScript?.parentNode || document.body || document.documentElement)
-        .insertBefore(script, document.currentScript?.nextSibling || null);
+      const insertionParent = document.currentScript?.parentNode || document.body || document.documentElement;
+      const insertionBefore = document.currentScript?.nextSibling || null;
+      const hasBundleFlag = () => {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          return params.get("bundle") === "1" || params.get("mnyraBundle") === "1";
+        } catch {
+          return false;
+        }
+      };
+      const withBuildToken = (url) => {
+        const safeUrl = String(url || "").trim();
+        if (!safeUrl || !appBuildToken) return safeUrl;
+        const separator = safeUrl.includes("?") ? "&" : "?";
+        return `${safeUrl}${separator}v=${encodeURIComponent(appBuildToken)}`;
+      };
+      const resolveBundledEntryUrl = async (manifestKey = "", promiseKey = "") => {
+        const safeManifestKey = String(manifestKey || "").trim();
+        const safePromiseKey = String(promiseKey || "").trim();
+        if (!safeManifestKey || !hasBundleFlag()) return "";
+        const existingPromise = safePromiseKey ? window[safePromiseKey] : null;
+        if (existingPromise && typeof existingPromise.then === "function") {
+          return await existingPromise;
+        }
+        const promise = fetch(withBuildToken(bundledManifestUrl), { cache: "no-store" })
+          .then((response) => {
+            if (!response?.ok) throw new Error("bundled manifest unavailable");
+            return response.json();
+          })
+          .then((manifest) => {
+            const file = String(manifest?.[safeManifestKey]?.file || "").trim();
+            if (!file) throw new Error("bundled entry missing");
+            return withBuildToken(`${bundledBaseUrl}${file.replace(/^\/+/, "")}`);
+          })
+          .catch(() => "");
+        try {
+          if (safePromiseKey) window[safePromiseKey] = promise;
+        } catch {}
+        return await promise;
+      };
+      const resolveBundledPublicEntryUrl = async () => {
+        if (!isPublicWebsiteStartup) return "";
+        return await resolveBundledEntryUrl(
+          bundledPublicEntryManifestKey,
+          "__MENYRA_SOCIAL_BUNDLED_PUBLIC_ENTRY_PROMISE__"
+        );
+      };
+      const resolveBundledAppEntryUrl = async () => {
+        if (isPublicWebsiteStartup) return "";
+        return await resolveBundledEntryUrl(
+          bundledAppEntryManifestKey,
+          "__MENYRA_SOCIAL_BUNDLED_APP_ENTRY_PROMISE__"
+        );
+      };
+      const loadModuleScript = (src, { allowRawFallback = false } = {}) => {
+        const script = document.createElement("script");
+        script.type = "module";
+        script.fetchPriority = isPublicWebsiteStartup ? "auto" : "high";
+        script.src = src;
+        if (allowRawFallback && src !== rawEntrySrc) {
+          script.addEventListener("error", () => {
+            loadModuleScript(rawEntrySrc);
+          }, { once: true });
+        }
+        insertionParent.insertBefore(script, insertionBefore);
+      };
+      void (async () => {
+        const shouldTryBundledEntry = hasBundleFlag();
+        if (shouldTryBundledEntry) {
+          console.info(`[mnyra] bundled ${isPublicWebsiteStartup ? "public" : "app"} entry requested`);
+        }
+        const bundledEntrySrc = shouldTryBundledEntry
+          ? await (isPublicWebsiteStartup ? resolveBundledPublicEntryUrl() : resolveBundledAppEntryUrl())
+          : "";
+        if (bundledEntrySrc) {
+          try {
+            window.__MENYRA_SOCIAL_BUNDLED_ENTRY_ACTIVE__ = true;
+            window.__MENYRA_SOCIAL_BUNDLED_ENTRY_MODE__ = isPublicWebsiteStartup ? "public" : "app";
+          } catch {}
+        }
+        loadModuleScript(bundledEntrySrc || rawEntrySrc, {
+          allowRawFallback: !!bundledEntrySrc
+        });
+      })();
     })();
   </script>
   <script>
@@ -1859,8 +2009,7 @@
         const existing = document.querySelector('script[data-menyrasocial-lucide="1"]');
         if (existing) return;
         const sources = [
-          "/apps/menyra-social/vendor/lucide.min.js?v=2026-04-06-launch-hardening-01",
-          "https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"
+          "/apps/menyra-social/vendor/lucide.min.js?v=2026-04-06-launch-hardening-01"
         ];
         const loadFromSource = (index = 0) => {
           if (index >= sources.length) {

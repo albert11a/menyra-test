@@ -1,5 +1,14 @@
-import { shouldResetUserScopedStateCore } from "./auth-bootstrap-flow-utils.js";
 import { createPostLoginRouteOpenCoordinator } from "./auth-post-login-route-open-utils.js";
+
+function shouldResetUserScopedStateCore({
+  prevUid = "",
+  nextUid = ""
+} = {}) {
+  const previous = String(prevUid || "").trim();
+  const next = String(nextUid || "").trim();
+  if (!previous) return false;
+  return !next || previous !== next;
+}
 
 export function createAuthSessionStartupCoordinator({
   state = null,

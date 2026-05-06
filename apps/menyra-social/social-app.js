@@ -77,7 +77,6 @@ import {
   createAuthStartupStateHelpers
 } from "./core/auth/auth-startup-state-utils.js";
 import { createPendingRouteStartupState } from "./core/auth/pending-route-startup-state.js";
-import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
 import { resolveStartupRenderGate } from "./core/auth/startup-render-gate-utils.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
@@ -112,25 +111,6 @@ import { createSocialEngagementRuntimeController } from "./core/profile/social-e
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
-import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
-import { createChatRuntimeCluster } from "./core/chat/chat-runtime-cluster.js";
-import {
-  markNotificationReadInListCore,
-  markAllNotificationsReadInListCore
-} from "./core/notifications/notification-read-state-utils.js";
-import {
-  isChatNotificationTypeCore,
-  isFollowNotificationTypeCore,
-  isPostNotificationTypeCore,
-  buildNotificationChatTargetCore,
-  buildNotificationProfileTargetCore
-} from "./core/notifications/notification-target-utils.js";
-import {
-  buildFollowRequestDocPayloadCore,
-  buildFollowRequestNotificationPayloadCore,
-  buildAcceptedFollowRecordPayloadCore,
-  buildFollowAcceptedNotificationPayloadCore
-} from "./core/follow/follow-request-payload-utils.js";
 import {
   normalizePendingChatUidCore,
   isSelfPendingChatTargetCore,
@@ -158,25 +138,9 @@ import {
   shouldHandlePushOpenTargetCore
 } from "./core/push/push-open-target-message-utils.js";
 import {
-  normalizeUserPostDocCore,
-  normalizeRestaurantPostDocCore
-} from "./core/feed/post-doc-normalize-utils.js";
-import {
   normalizePendingPostIdCore,
   findPostInLocalSourcesCore
 } from "./core/notifications/post-notification-open-utils.js";
-import {
-  readNotificationPostLookupCore,
-  shouldFetchUserNotificationPostCore,
-  shouldFetchRestaurantNotificationPostCore
-} from "./core/notifications/post-notification-fetch-utils.js";
-import { highlightCommentInModalCore } from "./core/notifications/notification-comment-highlight-utils.js";
-import { buildFollowAcceptedFollowingStateCore } from "./core/follow/follow-accepted-state-utils.js";
-import {
-  buildResolveUserByHandleCandidatesCore,
-  deriveFollowTargetIdentityCore,
-  isSelfFollowTargetCore
-} from "./core/follow/follow-target-utils.js";
 import {
   isGuestSessionCore,
   sanitizeTabForSessionCore
@@ -294,105 +258,6 @@ import {
   saveFeedPostsCore
 } from "./core/feed/feed-cache-utils.js";
 import {
-  getChatThreadIdCore,
-  chatThreadStorageKeyCore,
-  chatThreadDocRefCore,
-  chatMessageDocRefCore,
-  chatMessagesCollectionRefCore,
-  getChatMessageTimestampCore,
-  pruneChatMessagesCore,
-  buildChatPreviewTextCore
-} from "./core/chat/chat-utils.js";
-import {
-  saveChatThreadIndexCore,
-  readChatThreadIndexListCore,
-  buildChatThreadSummaryFromMessagesCore,
-  rebuildLegacyChatThreadIndexFromStorageCore,
-  mergeChatThreadListsCore,
-  loadChatThreadIndexCore,
-  sortChatThreadsCore,
-  rebuildChatThreadIndexFromStorageCore
-} from "./core/chat/chat-thread-index-utils.js";
-import {
-  normalizeChatThreadSummaryCore,
-  getChatUnreadCountCore,
-  upsertChatThreadListCore,
-  isChatThreadArchivedCore,
-  getChatThreadByIdCore,
-  getActiveChatThreadSummaryCore
-} from "./core/chat/chat-thread-state-utils.js";
-import {
-  getStringByteSizeCore,
-  isChatInlineDataUrlCore,
-  sanitizeChatAttachmentsForSyncCore,
-  normalizeChatMessageRecordCore,
-  loadLegacyChatThreadMessagesCore,
-  readFileAsDataUrlCore,
-  buildInlineChatAttachmentCore,
-  loadChatThreadMessagesCore,
-  saveChatThreadMessagesCore
-} from "./core/chat/chat-message-utils.js";
-import {
-  buildChatThreadPatchFromMessagesCore,
-  markIncomingChatMessagesAsReadCore,
-  updateChatMessageListCore
-} from "./core/chat/chat-message-state-utils.js";
-import {
-  buildChatMessageSyncContextCore,
-  buildChatRemotePayloadBundleCore,
-  buildChatMessageNotificationCore
-} from "./core/chat/chat-remote-sync-utils.js";
-import {
-  collectUnreadIncomingChatMessagesCore,
-  buildChatListenerLocalSeedCore,
-  shouldUseChatLocalSeedCore,
-  buildChatLocalMessageMapCore,
-  buildSortedRemoteChatMessagesCore,
-  hasUnreadIncomingRemoteMessagesCore
-} from "./core/chat/chat-read-sync-utils.js";
-import {
-  shouldIgnoreChatMessagesSnapshotCore,
-  resolveChatMessagesAfterSnapshotCore
-} from "./core/chat/chat-message-listener-utils.js";
-import {
-  collectUnreadIncomingChatMessageIdsCore,
-  buildChatUnreadResetPatchCore,
-  buildChatMessageReadPatchCore
-} from "./core/chat/chat-remote-read-write-utils.js";
-import {
-  normalizeRemoteChatReadSyncInputsCore,
-  buildRemoteChatReadSyncWriteTasksCore
-} from "./core/chat/chat-remote-read-sync-plan-utils.js";
-import {
-  renderChatMessagesPanelCore,
-  renderChatPendingAttachmentsCore
-} from "./core/chat/chat-render-utils.js";
-import { renderChatListPanelCore } from "./core/chat/chat-list-render-utils.js";
-import {
-  mapChatThreadDocsToSummariesCore,
-  buildMergedChatThreadsFromRemoteCore,
-  shouldRenderChatThreadListAfterRemoteSyncCore
-} from "./core/chat/chat-thread-listener-utils.js";
-import {
-  normalizeChatOpenProfileCore,
-  buildChatModalStateOnOpenCore,
-  buildClosedChatModalStateCore,
-  buildFallbackChatThreadProfileCore,
-  getSafeChatThreadIdFromThreadCore,
-  shouldCloseChatModalForThreadCore,
-  filterChatThreadsAfterDeleteCore
-} from "./core/chat/chat-thread-action-state-utils.js";
-import {
-  buildNextChatAttachmentsCore,
-  removePendingChatAttachmentCore,
-  toggleChatMessageFlagCore,
-  createOutgoingChatMessageCore
-} from "./core/chat/chat-compose-utils.js";
-import {
-  resolveChatSendPayloadCore,
-  buildChatSendLocalUpdateCore
-} from "./core/chat/chat-send-flow-utils.js";
-import {
   captureChatInputFocusStateCore,
   restoreChatInputFocusStateCore,
   scrollChatMessagesToBottomCore,
@@ -416,11 +281,6 @@ import { bindMenuDetailOverlayEventsCore } from "./core/overlays/overlay-menu-de
 import { bindAppShellEventsCore } from "./core/app-events/app-events-shell-bind-utils.js";
 import { bindAppMenuFocusEventsCore } from "./core/app-events/app-events-menu-focus-bind-utils.js";
 import { bindAppSettingsProfileEventsCore } from "./core/app-events/app-events-settings-profile-bind-utils.js";
-import { bindAppChatUploadEventsCore } from "./core/app-events/app-events-chat-upload-bind-utils.js";
-import {
-  bindCrmStaffEventsCore,
-  bindLeadInlineCreateEventsCore
-} from "./core/app-events/app-events-crm-staff-bind-utils.js";
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-messaging.js";
@@ -429,6 +289,137 @@ const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "";
 const LEAFLET_CSS_FALLBACK_URL = "";
+const CHAT_RUNTIME_MODULE_URL = "./core/chat/chat-runtime-cluster.js";
+const CRM_DOMAIN_RUNTIME_MODULE_URL = "./core/crm/crm-domain-runtime-cluster.js";
+const CHAT_UPLOAD_EVENTS_MODULE_URL = "./core/app-events/app-events-chat-upload-bind-utils.js";
+const CRM_STAFF_EVENTS_MODULE_URL = "./core/app-events/app-events-crm-staff-bind-utils.js";
+const CHAT_UPLOAD_EVENT_TARGET_SELECTOR = [
+  "[data-open-chat]",
+  "[data-chat-open-thread]",
+  "[data-chat-list-tab]",
+  "[data-chat-thread-menu-toggle]",
+  "[data-chat-thread-menu-close]",
+  "[data-chat-thread-action]",
+  "[data-chat-back]",
+  "[data-chat-save]",
+  "[data-chat-like]",
+  "[data-chat-retry]",
+  "[data-chat-remove-attachment]",
+  "[data-upload-mode]",
+  "#chatAttachmentTrigger",
+  "#chatAttachmentInput",
+  "#chatSendBtn",
+  "#chatMessageInput",
+  "#chatMessages",
+  "#uploadFileInput",
+  "#uploadFileTrigger",
+  "#uploadSubmit",
+  "#uploadCaption"
+].join(",");
+const CRM_STAFF_EVENT_TARGET_SELECTOR = [
+  "#newLeadBtn",
+  "#leadSettingsBtn",
+  "#leadSettingsSaveBtn",
+  "#leadsSearchInput",
+  "#leadsStatusFilter",
+  "#customersSearchInput",
+  "#staffNewBtn",
+  "#staffCountry",
+  "#staffAvatarTrigger",
+  "#staffAvatarInput",
+  "#staffLocationPickBtn",
+  "#staffSaveBtn",
+  "#staffDeleteBtn",
+  "#leadInlineActionsToggle",
+  "#leadInlineActionsBackdrop",
+  "#leadInlineDeleteBtn",
+  "#leadInlineSaveBtn",
+  "#leadPassword",
+  "#leadLogoTrigger",
+  "#leadLogoInput",
+  "#leadBestSpotLogoTrigger",
+  "#leadBestSpotLogoInput",
+  "[data-leads-back]",
+  "[data-lead-scope]",
+  "[data-lead-edit]",
+  "[data-customer-scope]",
+  "[data-customer-edit]",
+  "[data-staff-back]",
+  "[data-staff-edit]",
+  "[data-lead-location-add]",
+  "[data-lead-location-remove]",
+  "[data-lead-location-pick]",
+  "[data-lead-location-address]"
+].join(",");
+let chatUploadEventsModulePromise = null;
+let crmStaffEventsModulePromise = null;
+
+function hasDomTarget(documentObj, selector = "") {
+  const doc = documentObj || null;
+  if (!doc || typeof doc.querySelector !== "function" || !selector) return false;
+  try {
+    return !!doc.querySelector(selector);
+  } catch {
+    return false;
+  }
+}
+
+function bindAppChatUploadEventsCore(args = {}) {
+  const documentObj = args?.documentObj || (typeof document === "undefined" ? null : document);
+  if (!hasDomTarget(documentObj, CHAT_UPLOAD_EVENT_TARGET_SELECTOR)) return;
+  if (!chatUploadEventsModulePromise) {
+    chatUploadEventsModulePromise = import("./core/app-events/app-events-chat-upload-bind-utils.js");
+  }
+  void chatUploadEventsModulePromise
+    .then((module) => {
+      const bindAppChatUploadEvents = module?.bindAppChatUploadEventsCore;
+      if (typeof bindAppChatUploadEvents === "function") {
+        bindAppChatUploadEvents(args);
+      }
+    })
+    .catch((err) => {
+      console.warn("[mnyra][chat-upload-events] lazy bind failed", err);
+      chatUploadEventsModulePromise = null;
+    });
+}
+
+function bindLeadInlineCreateEventsCore(args = {}) {
+  const documentObj = args?.documentObj || (typeof document === "undefined" ? null : document);
+  if (!hasDomTarget(documentObj, CRM_STAFF_EVENT_TARGET_SELECTOR)) return;
+  if (!crmStaffEventsModulePromise) {
+    crmStaffEventsModulePromise = import("./core/app-events/app-events-crm-staff-bind-utils.js");
+  }
+  void crmStaffEventsModulePromise
+    .then((module) => {
+      const bindLeadInlineCreateEvents = module?.bindLeadInlineCreateEventsCore;
+      if (typeof bindLeadInlineCreateEvents === "function") {
+        bindLeadInlineCreateEvents(args);
+      }
+    })
+    .catch((err) => {
+      console.warn("[mnyra][lead-inline-events] lazy bind failed", err);
+      crmStaffEventsModulePromise = null;
+    });
+}
+
+function bindCrmStaffEventsCore(args = {}) {
+  const documentObj = args?.documentObj || (typeof document === "undefined" ? null : document);
+  if (!hasDomTarget(documentObj, CRM_STAFF_EVENT_TARGET_SELECTOR)) return;
+  if (!crmStaffEventsModulePromise) {
+    crmStaffEventsModulePromise = import("./core/app-events/app-events-crm-staff-bind-utils.js");
+  }
+  void crmStaffEventsModulePromise
+    .then((module) => {
+      const bindCrmStaffEvents = module?.bindCrmStaffEventsCore;
+      if (typeof bindCrmStaffEvents === "function") {
+        bindCrmStaffEvents(args);
+      }
+    })
+    .catch((err) => {
+      console.warn("[mnyra][crm-staff-events] lazy bind failed", err);
+      crmStaffEventsModulePromise = null;
+    });
+}
 
 const DEFAULT_PROFILE = {
   name: "",
@@ -620,6 +611,7 @@ const userProfileCache = new Map();
 const restaurantOwnerCache = new Map();
 const menuCache = new Map();
 const focusCache = new Map();
+const publicMetaDocInFlight = new Map();
 const menuItemCountsRequested = new Set();
 const PERF_WARM_KEY = "menyra_social_perf_warm_v1";
 const PERF_CONNECTION = typeof navigator !== "undefined"
@@ -651,6 +643,24 @@ const FAST_LIMITS = {
   likes: PERF_CONSTRAINED ? 12 : 20,
   comments: PERF_CONSTRAINED ? 24 : 40
 };
+
+function loadPublicMetaDocSnapshot(restaurantId = "") {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  if (!safeRestaurantId || !db || typeof doc !== "function" || typeof getDoc !== "function") {
+    return Promise.resolve(null);
+  }
+  const current = publicMetaDocInFlight.get(safeRestaurantId);
+  if (current) return current;
+  const request = Promise.resolve()
+    .then(() => getDoc(doc(db, "restaurants", safeRestaurantId, "public", "meta")))
+    .finally(() => {
+      if (publicMetaDocInFlight.get(safeRestaurantId) === request) {
+        publicMetaDocInFlight.delete(safeRestaurantId);
+      }
+    });
+  publicMetaDocInFlight.set(safeRestaurantId, request);
+  return request;
+}
 const SEARCH_LIMITS = {
   users: PERF_CONSTRAINED ? 8 : 10,
   businesses: PERF_CONSTRAINED ? 10 : 12
@@ -1325,6 +1335,8 @@ let socialEngagementRuntimeController = null;
 let socialEngagementSupportRuntimeController = null;
 let crmRuntimeController = null;
 let chatRuntimeController = null;
+let chatRuntimeControllerInstance = null;
+let chatRuntimeControllerPromise = null;
 let menuPublicRuntimeController = null;
 let focusRuntimeController = null;
 let tableQrRuntimeController = null;
@@ -2065,6 +2077,236 @@ if (typeof window !== "undefined") {
   });
 }
 
+const BUNDLED_FEATURE_IMPORTERS = Object.freeze({
+  chat: () => import("./core/chat/chat-runtime-cluster.js"),
+  notifications: () => import("./core/notifications/notifications-runtime-controller.js"),
+  crm: () => import("./core/crm/crm-domain-runtime-cluster.js"),
+  crmEvents: () => import("./core/app-events/app-events-crm-staff-bind-utils.js"),
+  businessAccounts: () => import("./core/business-accounts/business-accounts-runtime-controller.js"),
+  media: () => import("./core/media/media-upload-runtime-cluster.js"),
+  chatUploadEvents: () => import("./core/app-events/app-events-chat-upload-bind-utils.js")
+});
+const bundledFeatureImportPromises = new Map();
+const bundledFeatureWarmupCompletedScopes = new Set();
+const bundledFeatureWarmupScheduledScopes = new Set();
+let bundledFeatureInteractionPreloadBound = false;
+
+function isBundledFeaturePreloadActive() {
+  if (typeof window === "undefined") return false;
+  return window.__MENYRA_SOCIAL_BUNDLED_ENTRY_ACTIVE__ === true
+    || window.__MENYRA_SOCIAL_BUNDLED_ENTRY_PREPARED__ === true;
+}
+
+function normalizeBundledFeatureKey(feature = "") {
+  const key = String(feature || "").trim();
+  const lower = key.toLowerCase();
+  if (lower === "updates") return "notifications";
+  if (lower === "notification") return "notifications";
+  if (lower === "admin" || lower === "owner" || lower === "leads" || lower === "customers" || lower === "staff") return "crm";
+  if (lower === "businessaccounts" || lower === "business-accounts" || lower === "businessaccount") return "businessAccounts";
+  if (lower === "upload" || lower === "uploads") return "media";
+  if (lower === "chat-upload-events" || lower === "chatUploadEvents".toLowerCase()) return "chatUploadEvents";
+  if (lower === "crm-events" || lower === "crmEvents".toLowerCase()) return "crmEvents";
+  return key;
+}
+
+function preloadFeatureRuntimeModule(feature = "", options = {}) {
+  if (!isBundledFeaturePreloadActive()) return Promise.resolve(null);
+  const key = normalizeBundledFeatureKey(feature);
+  const importer = BUNDLED_FEATURE_IMPORTERS[key];
+  if (typeof importer !== "function") return Promise.resolve(null);
+  const existing = bundledFeatureImportPromises.get(key);
+  if (existing && typeof existing.then === "function") return existing;
+  const source = String(options?.source || "feature-preload").trim() || "feature-preload";
+  const promise = Promise.resolve()
+    .then(() => importer())
+    .catch((err) => {
+      bundledFeatureImportPromises.delete(key);
+      console.warn(`[mnyra][${source}] ${key} preload failed`, err);
+      return null;
+    });
+  bundledFeatureImportPromises.set(key, promise);
+  return promise;
+}
+
+function preloadFeatureRuntimeModules(features = [], options = {}) {
+  if (!isBundledFeaturePreloadActive()) return Promise.resolve([]);
+  const uniqueFeatures = Array.from(new Set(
+    (Array.isArray(features) ? features : [features])
+      .map((feature) => normalizeBundledFeatureKey(feature))
+      .filter(Boolean)
+  ));
+  if (!uniqueFeatures.length) return Promise.resolve([]);
+  return Promise.all(uniqueFeatures.map((feature) => preloadFeatureRuntimeModule(feature, options)));
+}
+
+function scheduleBundledFeatureWarmup(scope = "", features = [], options = {}) {
+  if (!isBundledFeaturePreloadActive()) return;
+  const safeScope = String(scope || "").trim();
+  if (!safeScope) return;
+  const uniqueFeatures = Array.from(new Set(
+    (Array.isArray(features) ? features : [features])
+      .map((feature) => normalizeBundledFeatureKey(feature))
+      .filter(Boolean)
+  ));
+  if (!uniqueFeatures.length) return;
+  if (bundledFeatureWarmupCompletedScopes.has(safeScope) || bundledFeatureWarmupScheduledScopes.has(safeScope)) return;
+  bundledFeatureWarmupScheduledScopes.add(safeScope);
+  const timeout = Math.max(250, Number(options?.timeout || 2500) || 2500);
+  const run = () => {
+    bundledFeatureWarmupScheduledScopes.delete(safeScope);
+    bundledFeatureWarmupCompletedScopes.add(safeScope);
+    void preloadFeatureRuntimeModules(uniqueFeatures, { source: safeScope });
+  };
+  const scheduleIdle = () => {
+    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(run, { timeout });
+      return;
+    }
+    window.setTimeout(run, Math.min(900, timeout));
+  };
+  const delay = Math.max(0, Number(options?.delay || 0) || 0);
+  if (delay > 0 && typeof window !== "undefined") {
+    window.setTimeout(scheduleIdle, delay);
+    return;
+  }
+  scheduleIdle();
+}
+
+function hasAuthenticatedUser() {
+  return !!String(state?.user?.uid || "").trim();
+}
+
+function hasLikelyOwnerAdminContext() {
+  if (!hasAuthenticatedUser()) return false;
+  try {
+    if (typeof isCeoUser === "function" && isCeoUser()) return true;
+  } catch {}
+  const profile = state?.userProfile && typeof state.userProfile === "object" ? state.userProfile : {};
+  if (isLocalBusinessProfile(profile)) return true;
+  const roleText = [
+    profile.role,
+    profile.sourceUserRole,
+    ...(Array.isArray(profile.roles) ? profile.roles : [])
+  ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean).join(" ");
+  if (/\b(ceo|admin|owner|business|staff)\b/.test(roleText)) return true;
+  return !!String(
+    profile.restaurantId
+    || profile.staffRestaurantId
+    || profile.waiterRestaurantId
+    || profile.businessOwnerUid
+    || ""
+  ).trim();
+}
+
+function isAuthenticatedAccountSurface() {
+  if (!hasAuthenticatedUser()) return false;
+  const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+  if (!activeTab) return false;
+  if (activeTab === "profile" && state?.profileView) return false;
+  return [
+    "profile",
+    "menu",
+    "settings",
+    "leads",
+    "customers",
+    "staff",
+    "businessaccounts",
+    "chat",
+    "notifications",
+    "upload"
+  ].includes(activeTab);
+}
+
+function isPublicMenuSurfaceWarmupReady(surfaceSnapshot = {}) {
+  const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+  const topTab = String(state?.profileTopTab || "").trim().toLowerCase();
+  const contentTab = String(state?.profileContentTab || "").trim().toLowerCase();
+  if (activeTab !== "profile" || !state?.profileView) return false;
+  if (topTab !== "menu" && contentTab !== "menu") return false;
+  const status = String(surfaceSnapshot?.status || "").trim().toLowerCase();
+  if (!STARTUP_SURFACE_FINAL_STATUSES.has(status)) return false;
+  const menuState = state?.menu && typeof state.menu === "object" ? state.menu : {};
+  if (menuState.loading === true) return false;
+  const truthState = String(menuState.truthState || "").trim().toLowerCase();
+  return !!truthState || Array.isArray(menuState.items);
+}
+
+function getFeaturesForTabPreload(tab = "") {
+  const safeTab = String(tab || "").trim().toLowerCase();
+  const authed = hasAuthenticatedUser();
+  const ownerAdmin = hasLikelyOwnerAdminContext();
+  if (safeTab === "chat") return authed ? ["chat", "chatUploadEvents"] : [];
+  if (safeTab === "notifications") return authed ? ["notifications"] : [];
+  if (safeTab === "upload") return authed ? ["media", "chatUploadEvents"] : [];
+  if (safeTab === "leads" || safeTab === "customers" || safeTab === "staff") {
+    return authed && ownerAdmin ? ["crm", "crmEvents"] : [];
+  }
+  if (safeTab === "businessaccounts") {
+    return authed && ownerAdmin ? ["businessAccounts"] : [];
+  }
+  if (safeTab === "profile" || safeTab === "menu" || safeTab === "settings") {
+    return authed && ownerAdmin ? ["crm", "businessAccounts", "media"] : [];
+  }
+  return [];
+}
+
+function preloadFeatureRuntimeForTab(tab = "", options = {}) {
+  return preloadFeatureRuntimeModules(getFeaturesForTabPreload(tab), {
+    source: String(options?.source || `tab.${tab || "unknown"}`).trim()
+  });
+}
+
+function scheduleBundledFeatureWarmupForVisibleSurface(surfaceSnapshot = {}) {
+  if (!isBundledFeaturePreloadActive()) return;
+  bindBundledFeatureInteractionPreload();
+  const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+  if (isPublicMenuSurfaceWarmupReady(surfaceSnapshot)) {
+    scheduleBundledFeatureWarmup("public-menu-ready", ["media"], { timeout: 3500, delay: 120 });
+  }
+  if (isAuthenticatedAccountSurface()) {
+    const features = ["chat", "notifications"];
+    if (hasLikelyOwnerAdminContext()) {
+      features.push("crm", "businessAccounts");
+    }
+    if (activeTab === "upload" || activeTab === "profile" || activeTab === "menu" || activeTab === "settings") {
+      features.push("media", "chatUploadEvents");
+    }
+    scheduleBundledFeatureWarmup(`auth-account-ready:${String(state.user?.uid || "")}`, features, {
+      timeout: 3000,
+      delay: 80
+    });
+  }
+  void preloadFeatureRuntimeForTab(activeTab, { source: `visible-tab.${activeTab || "unknown"}` });
+}
+
+function bindBundledFeatureInteractionPreload() {
+  if (bundledFeatureInteractionPreloadBound) return;
+  if (typeof document === "undefined" || typeof window === "undefined") return;
+  bundledFeatureInteractionPreloadBound = true;
+  const handleInteraction = (event) => {
+    if (!isBundledFeaturePreloadActive()) return;
+    const target = event?.target;
+    if (!(target instanceof Element)) return;
+    const navTarget = target.closest("[data-nav]");
+    if (navTarget) {
+      void preloadFeatureRuntimeForTab(navTarget.getAttribute("data-nav") || "", { source: "interaction.nav" });
+    }
+    if (target.closest("[data-open-chat], [data-chat-open-thread]") && hasAuthenticatedUser()) {
+      void preloadFeatureRuntimeModule("chat", { source: "interaction.chat" });
+    }
+    if (target.closest("[data-upload-mode], #uploadFileTrigger, #uploadPostBtn")) {
+      void preloadFeatureRuntimeModules(["media", "chatUploadEvents"], { source: "interaction.upload" });
+    }
+    if (target.closest("[data-lead-edit], [data-customer-edit], [data-staff-edit], [data-leads-back], [data-staff-back], #leadInlineSaveBtn, #staffSaveBtn")) {
+      void preloadFeatureRuntimeModules(["crm", "crmEvents"], { source: "interaction.crm" });
+    }
+  };
+  window.addEventListener("pointerdown", handleInteraction, { capture: true, passive: true });
+  window.addEventListener("touchstart", handleInteraction, { capture: true, passive: true });
+  window.addEventListener("click", handleInteraction, { capture: true });
+}
+
 function render(...args) {
   const activeSurfaceSnapshot = syncStartupSurfaceStatus();
   const startupRenderGate = resolveStartupRenderGate(state);
@@ -2094,6 +2336,7 @@ function render(...args) {
       topTab: String(activeSurfaceSnapshot?.profileTopTab || "").trim().toLowerCase()
     });
   }
+  scheduleBundledFeatureWarmupForVisibleSurface(activeSurfaceSnapshot);
   syncActiveTabRouteQuery();
   scheduleStartupSnapshotPersist();
   return result;
@@ -2752,6 +2995,7 @@ const {
   limitFn: limit,
   docFn: doc,
   getDocFn: getDoc,
+  loadPublicMetaDocFn: loadPublicMetaDocSnapshot,
   getDocsFn: getDocs,
   setDocFn: setDoc,
   serverTimestampFn: serverTimestamp,
@@ -2788,6 +3032,7 @@ const {
   focusCache,
   docFn: doc,
   getDocFn: getDoc,
+  loadPublicMetaDocFn: loadPublicMetaDocSnapshot,
   setDocFn: setDoc,
   serverTimestampFn: serverTimestamp,
   uploadCompressedImageFn: uploadCompressedImage,
@@ -2908,7 +3153,8 @@ const {
   submitShopCheckout
 } = createDeferredOrdersRuntimeController();
 
-const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
+function createCrmDomainRuntimeClusterConfig() {
+  return {
   stateDeps: { state, dataLoaded },
   constants: {
     LEAD_SETTINGS_DEFAULT_COUNTRY,
@@ -3067,7 +3313,267 @@ const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
     closeLeadModal: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.closeLeadModal?.(...args),
     closeCustomerModal: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.closeCustomerModal?.(...args)
   }
-});
+  };
+}
+
+let crmDomainRuntimeClusterInstance = null;
+let crmDomainRuntimeClusterPromise = null;
+let deferredVerifiedMapLocation = null;
+
+async function ensureCrmDomainRuntimeCluster() {
+  if (crmDomainRuntimeClusterInstance) return crmDomainRuntimeClusterInstance;
+  if (!crmDomainRuntimeClusterPromise) {
+    crmDomainRuntimeClusterPromise = import("./core/crm/crm-domain-runtime-cluster.js")
+      .then((module) => {
+        const createCrmDomainRuntimeCluster = module?.createCrmDomainRuntimeCluster;
+        if (typeof createCrmDomainRuntimeCluster !== "function") {
+          throw new Error("createCrmDomainRuntimeCluster unavailable");
+        }
+        crmDomainRuntimeClusterInstance = createCrmDomainRuntimeCluster(createCrmDomainRuntimeClusterConfig());
+        crmRuntimeController = crmDomainRuntimeClusterInstance.crmRuntimeController || null;
+        if (deferredVerifiedMapLocation && typeof crmDomainRuntimeClusterInstance.setVerifiedMapLocation === "function") {
+          crmDomainRuntimeClusterInstance.setVerifiedMapLocation(deferredVerifiedMapLocation);
+        }
+        return crmDomainRuntimeClusterInstance;
+      })
+      .then((cluster) => {
+        const activeTab = String(state.activeTab || "").trim().toLowerCase();
+        if (activeTab === "leads" || activeTab === "customers" || activeTab === "staff" || activeTab === "businessaccounts") {
+          render();
+        }
+        return cluster;
+      })
+      .catch((err) => {
+        crmDomainRuntimeClusterPromise = null;
+        reportCriticalRuntimeFailure("crm-domain-runtime", err, { suppressAbort: true });
+        throw err;
+      });
+  }
+  return crmDomainRuntimeClusterPromise;
+}
+
+function getLoadedCrmDomainRuntimeCluster() {
+  return crmDomainRuntimeClusterInstance;
+}
+
+function renderDeferredCrmDomainView(label = "CRM laden...") {
+  void ensureCrmDomainRuntimeCluster().catch(() => null);
+  return renderCrmLazyLoadingView(label);
+}
+
+function fallbackSetVerifiedMapLocation(coords = null) {
+  const normalized = normalizeCoordPair(
+    coords?.lat ?? coords?.latitude,
+    coords?.lng ?? coords?.lon ?? coords?.longitude
+  );
+  if (!normalized) {
+    deferredVerifiedMapLocation = null;
+    return deferredVerifiedMapLocation;
+  }
+  const label = String(coords?.label || "").trim();
+  const city = String(coords?.city || label).trim();
+  const source = String(coords?.source || "").trim().toLowerCase();
+  const savedAt = Number(coords?.savedAt || Date.now()) || Date.now();
+  deferredVerifiedMapLocation = {
+    lat: normalized.lat,
+    lng: normalized.lng,
+    label,
+    city,
+    source,
+    savedAt
+  };
+  return deferredVerifiedMapLocation;
+}
+
+function createDeferredCrmDomainRuntimeCluster() {
+  const callLoaded = (methodName, args = [], fallbackValue = undefined) => {
+    const cluster = getLoadedCrmDomainRuntimeCluster();
+    return typeof cluster?.[methodName] === "function" ? cluster[methodName](...args) : fallbackValue;
+  };
+  const callAsync = async (methodName, args = [], fallbackValue = undefined) => {
+    const cluster = await ensureCrmDomainRuntimeCluster();
+    return typeof cluster?.[methodName] === "function" ? await cluster[methodName](...args) : fallbackValue;
+  };
+  const queueCall = (methodName, args = []) => {
+    void ensureCrmDomainRuntimeCluster()
+      .then((cluster) => cluster?.[methodName]?.(...args))
+      .catch(() => null);
+  };
+
+  return {
+    get crmRuntimeController() {
+      return crmRuntimeController;
+    },
+    queueCrmLazyRenderersPrefetch(...args) {
+      queueCall("queueCrmLazyRenderersPrefetch", args);
+    },
+    renderLeadsView(...args) {
+      return callLoaded("renderLeadsView", args, renderDeferredCrmDomainView("Leads laden..."));
+    },
+    isLeadInlineCreateView() {
+      return callLoaded("isLeadInlineCreateView", [], state.activeTab === "leads" && state.leads?.view === "create");
+    },
+    renderLeadEditorUi(...args) {
+      queueCall("renderLeadEditorUi", args);
+    },
+    async refineLeadLocationAddressIndex(...args) {
+      return await callAsync("refineLeadLocationAddressIndex", args, null);
+    },
+    renderLeadSettingsView(...args) {
+      return callLoaded("renderLeadSettingsView", args, renderDeferredCrmDomainView("Lead-Einstellungen laden..."));
+    },
+    renderLeadCreationView(...args) {
+      return callLoaded("renderLeadCreationView", args, renderDeferredCrmDomainView("Lead laden..."));
+    },
+    resetLeadDraft(...args) {
+      queueCall("resetLeadDraft", args);
+    },
+    createLeadDraftState(mode = "create", lead = null) {
+      return callLoaded("createLeadDraftState", [mode, lead], {
+        open: true,
+        mode,
+        lead,
+        locations: [],
+        status: "",
+        error: ""
+      });
+    },
+    openLeadCreator(...args) {
+      queueCall("openLeadCreator", args);
+    },
+    openLeadSettingsView(...args) {
+      queueCall("openLeadSettingsView", args);
+    },
+    closeLeadSubview(...args) {
+      queueCall("closeLeadSubview", args);
+    },
+    async saveLeadSettings(...args) {
+      return await callAsync("saveLeadSettings", args, false);
+    },
+    getLeadPlusCodeReference(...args) {
+      return callLoaded("getLeadPlusCodeReference", args, PRISHTINA_COORDS);
+    },
+    async hydrateLeadGeoFieldsFromCoords(...args) {
+      return await callAsync("hydrateLeadGeoFieldsFromCoords", args, null);
+    },
+    syncLeadDerivedFields(...args) {
+      queueCall("syncLeadDerivedFields", args);
+    },
+    renderCustomersView(...args) {
+      return callLoaded("renderCustomersView", args, renderDeferredCrmDomainView("Customers laden..."));
+    },
+    renderStaffEditorView(...args) {
+      return callLoaded("renderStaffEditorView", args, renderDeferredCrmDomainView("Staff laden..."));
+    },
+    renderStaffView(...args) {
+      return callLoaded("renderStaffView", args, renderDeferredCrmDomainView("Staff laden..."));
+    },
+    ensureLocationPickerModal(...args) {
+      queueCall("ensureLocationPickerModal", args);
+    },
+    bindLocationPickerEvents(...args) {
+      queueCall("bindLocationPickerEvents", args);
+    },
+    openLocationPicker(...args) {
+      queueCall("openLocationPicker", args);
+    },
+    closeLocationPicker(...args) {
+      queueCall("closeLocationPicker", args);
+    },
+    confirmLocation(...args) {
+      queueCall("confirmLocation", args);
+    },
+    getVerifiedMapLocation(...args) {
+      return callLoaded("getVerifiedMapLocation", args, deferredVerifiedMapLocation);
+    },
+    setVerifiedMapLocation(...args) {
+      const fallbackValue = fallbackSetVerifiedMapLocation(args[0]);
+      return callLoaded("setVerifiedMapLocation", args, fallbackValue);
+    },
+    clearVerifiedMapLocation(...args) {
+      deferredVerifiedMapLocation = null;
+      return callLoaded("clearVerifiedMapLocation", args, undefined);
+    },
+    async createAuthUser(...args) {
+      return await callAsync("createAuthUser", args, null);
+    },
+    async ensureRestaurantPublicMeta(...args) {
+      return callLoaded("ensureRestaurantPublicMeta", args, null);
+    },
+    normalizeLeadDoc(docSnap) {
+      return callLoaded("normalizeLeadDoc", [docSnap], docSnap || {});
+    },
+    normalizeLeadFromRestaurant(rest) {
+      return callLoaded("normalizeLeadFromRestaurant", [rest], rest || {});
+    },
+    resolveRestaurantStatusFromLead(leadStatus, currentStatus = "") {
+      return callLoaded(
+        "resolveRestaurantStatusFromLead",
+        [leadStatus, currentStatus],
+        String(leadStatus || currentStatus || "").trim()
+      );
+    },
+    async loadLeads(...args) {
+      return await callAsync("loadLeads", args, []);
+    },
+    async loadCustomers(...args) {
+      return await callAsync("loadCustomers", args, []);
+    },
+    isHiddenLegacyCeoEmail(...args) {
+      return callLoaded("isHiddenLegacyCeoEmail", args, false);
+    },
+    applyKnownLeadOwnershipOverride(lead) {
+      return callLoaded("applyKnownLeadOwnershipOverride", [lead], lead || {});
+    },
+    getStaffFormEmail(...args) {
+      return callLoaded("getStaffFormEmail", args, "");
+    },
+    syncStaffDerivedEmailField(...args) {
+      queueCall("syncStaffDerivedEmailField", args);
+    },
+    openStaffEditor(...args) {
+      queueCall("openStaffEditor", args);
+    },
+    closeStaffEditor(...args) {
+      queueCall("closeStaffEditor", args);
+    },
+    syncStaffFormFromDom(...args) {
+      queueCall("syncStaffFormFromDom", args);
+    },
+    async loadCeoStaff(...args) {
+      return await callAsync("loadCeoStaff", args, []);
+    },
+    async saveCeoStaffFromView(...args) {
+      return await callAsync("saveCeoStaffFromView", args, false);
+    },
+    async deleteCeoStaffFromView(...args) {
+      return await callAsync("deleteCeoStaffFromView", args, false);
+    },
+    syncLeadModalDraftFromForm(...args) {
+      queueCall("syncLeadModalDraftFromForm", args);
+    },
+    addLeadModalLocationRow(...args) {
+      queueCall("addLeadModalLocationRow", args);
+    },
+    removeLeadModalLocationRow(...args) {
+      queueCall("removeLeadModalLocationRow", args);
+    },
+    async saveLeadFromModal(...args) {
+      return await callAsync("saveLeadFromModal", args, false);
+    },
+    async deleteLeadFromModal(...args) {
+      return await callAsync("deleteLeadFromModal", args, false);
+    },
+    async saveCustomerFromModal(...args) {
+      return await callAsync("saveCustomerFromModal", args, false);
+    },
+    async convertLeadToCustomer(...args) {
+      return await callAsync("convertLeadToCustomer", args, false);
+    }
+  };
+}
+
+const crmDomainRuntimeCluster = createDeferredCrmDomainRuntimeCluster();
 crmRuntimeController = crmDomainRuntimeCluster.crmRuntimeController;
 const {
   queueCrmLazyRenderersPrefetch,
@@ -3437,6 +3943,14 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "log-out": Object.freeze([["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }], ["polyline", { points: "16 17 21 12 16 7" }], ["line", { x1: "21", x2: "9", y1: "12", y2: "12" }]]),
   "square": Object.freeze([["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }]]),
   "messages-square": Object.freeze([["path", { d: "M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" }], ["path", { d: "M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1" }]]),
+  "camera": Object.freeze([["path", { d: "M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" }], ["circle", { cx: "12", cy: "13", r: "3" }]]),
+  "external-link": Object.freeze([["path", { d: "M15 3h6v6" }], ["path", { d: "M10 14 21 3" }], ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }]]),
+  "maximize-2": Object.freeze([["path", { d: "M15 3h6v6" }], ["path", { d: "m21 3-7 7" }], ["path", { d: "m3 21 7-7" }], ["path", { d: "M9 21H3v-6" }]]),
+  "minimize-2": Object.freeze([["path", { d: "M4 14h6v6" }], ["path", { d: "m3 21 7-7" }], ["path", { d: "M20 10h-6V4" }], ["path", { d: "m14 10 7-7" }]]),
+  "minus": Object.freeze([["path", { d: "M5 12h14" }]]),
+  "send": Object.freeze([["path", { d: "m22 2-7 20-4-9-9-4Z" }], ["path", { d: "M22 2 11 13" }]]),
+  "store": Object.freeze([["path", { d: "m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" }], ["path", { d: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" }], ["path", { d: "M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" }], ["path", { d: "M2 7h20" }], ["path", { d: "M22 7v3a2 2 0 0 1-4 0V7" }], ["path", { d: "M18 7v3a2 2 0 0 1-4 0V7" }], ["path", { d: "M14 7v3a2 2 0 0 1-4 0V7" }], ["path", { d: "M10 7v3a2 2 0 0 1-4 0V7" }], ["path", { d: "M6 7v3a2 2 0 0 1-4 0V7" }]]),
+  "message-square": Object.freeze([["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }]]),
   "clipboard-list": Object.freeze([["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1" }], ["path", { d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" }], ["path", { d: "M12 11h4" }], ["path", { d: "M12 16h4" }], ["path", { d: "M8 11h.01" }], ["path", { d: "M8 16h.01" }]]),
   "users": Object.freeze([["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }], ["circle", { cx: "9", cy: "7", r: "4" }], ["path", { d: "M22 21v-2a4 4 0 0 0-3-3.87" }], ["path", { d: "M16 3.13a4 4 0 0 1 0 7.75" }]]),
   "upload": Object.freeze([["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }], ["polyline", { points: "17 8 12 3 7 8" }], ["line", { x1: "12", x2: "12", y1: "3", y2: "15" }]]),
@@ -3606,6 +4120,7 @@ function setState(patch) {
       hasProfileView: !!state.profileView
     });
     patch.activeTab = normalizeLegacyHomeTab(patch.activeTab);
+    void preloadFeatureRuntimeForTab(patch.activeTab, { source: "state.activeTab" });
   }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {
@@ -4464,7 +4979,6 @@ sessionDataRuntimeController = createSessionDataRuntimeCluster({
     stopActiveChatMessagesListener,
     stopRestaurantMetaListeners,
     stopMenuItemMetaListeners,
-    bootstrapAuthenticatedSessionCore,
     loadAuthProfile,
     resolveRoleSwitchTargets,
     startLiveListeners: (...args) => getSessionTabLifecycleRuntimeController().startLiveListeners(...args),
@@ -5032,8 +5546,10 @@ function replayRouteFromWindowLocation() {
   applyPendingInitialRouteState();
   const openedProfile = !!routeOpenApi?.openProfileFromQuery?.();
   if (state?.user?.uid) {
+    void preloadFeatureRuntimeForTab("notifications", { source: "route.notifications" });
     void routeOpenApi?.openNotificationFromQuery?.();
     void routeOpenApi?.openPostFromQuery?.();
+    void preloadFeatureRuntimeForTab("chat", { source: "route.chat" });
     routeOpenApi?.openChatFromQuery?.();
   }
   if (!openedProfile) {
@@ -5070,77 +5586,554 @@ bindBrowserPopstateRouteSync();
 
 mediaUploadRuntimeController = createDeferredMediaUploadRuntimeController();
 
-chatRuntimeController = createChatRuntimeCluster({
-  stateDeps: { state, safeStorage, chatIndexKey },
-  constants: {
-    STORAGE_KEYS,
-    toDateSafe,
-    normalizeHandle,
-    normalizeFollowHandle,
-    compressImage,
-    CHAT_ATTACHMENT_INLINE_MAX_BYTES,
-    CHAT_MESSAGE_TTL_MS,
-    CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS,
-    CHAT_MESSAGE_READ_LIMIT
-  },
-  firebaseApi: {
-    db,
-    collection,
-    query,
-    orderBy,
-    where,
-    limit,
-    onSnapshot,
-    doc,
-    getDoc,
-    getDocs,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    increment,
-    serverTimestamp,
-    runTransaction
-  },
-  renderApi: {
-    currentUserBadge,
-    render,
-    renderOverlays,
-    updateNotificationBadges,
-    saveNotifications,
-    updateNotificationsDom,
-    openPostModal,
-    openChatWithProfile,
-    openProfileFromUser,
-    openGuestAuthPrompt
-  },
-  followApi: {
-    applyFollowingHandles,
-    getFollowDocId,
-    isLocalBusinessProfile,
-    saveFollowing,
-    businessProfileCache,
-    findPostById,
-    normalizeFeedPost,
-    pushUserNotification,
-    pushUserNotificationWithId
-  },
-  stateApi: {
-    getPendingCommentHighlight: () => pendingCommentHighlight,
-    setPendingCommentHighlight: (value) => { pendingCommentHighlight = value; },
-    getLastRenderMode: () => lastRenderMode,
-    getDocumentObj: () => (typeof document === "undefined" ? null : document),
-    getWindowObj: () => (typeof window === "undefined" ? null : window)
-  },
-  uiApi: {
-    escapeHtml,
-    icon,
-    formatRelative,
-    getOptimizedImageUrl,
-    alertFn: (message) => alert(message),
-    queueMicrotaskFn: (fn) => queueMicrotask(fn),
-    setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
+function createChatRuntimeControllerConfig() {
+  return {
+    stateDeps: { state, safeStorage, chatIndexKey },
+    constants: {
+      STORAGE_KEYS,
+      toDateSafe,
+      normalizeHandle,
+      normalizeFollowHandle,
+      compressImage,
+      CHAT_ATTACHMENT_INLINE_MAX_BYTES,
+      CHAT_MESSAGE_TTL_MS,
+      CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS,
+      CHAT_MESSAGE_READ_LIMIT
+    },
+    firebaseApi: {
+      db,
+      collection,
+      query,
+      orderBy,
+      where,
+      limit,
+      onSnapshot,
+      doc,
+      getDoc,
+      getDocs,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      increment,
+      serverTimestamp,
+      runTransaction
+    },
+    renderApi: {
+      currentUserBadge,
+      render,
+      renderOverlays,
+      updateNotificationBadges,
+      saveNotifications,
+      updateNotificationsDom,
+      openPostModal,
+      openChatWithProfile,
+      openProfileFromUser,
+      openGuestAuthPrompt
+    },
+    followApi: {
+      applyFollowingHandles,
+      getFollowDocId,
+      isLocalBusinessProfile,
+      saveFollowing,
+      businessProfileCache,
+      findPostById,
+      normalizeFeedPost,
+      pushUserNotification,
+      pushUserNotificationWithId
+    },
+    stateApi: {
+      getPendingCommentHighlight: () => pendingCommentHighlight,
+      setPendingCommentHighlight: (value) => { pendingCommentHighlight = value; },
+      getLastRenderMode: () => lastRenderMode,
+      getDocumentObj: () => (typeof document === "undefined" ? null : document),
+      getWindowObj: () => (typeof window === "undefined" ? null : window)
+    },
+    uiApi: {
+      escapeHtml,
+      icon,
+      formatRelative,
+      getOptimizedImageUrl,
+      alertFn: (message) => alert(message),
+      queueMicrotaskFn: (fn) => queueMicrotask(fn),
+      setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
+    }
+  };
+}
+
+async function ensureChatRuntimeController() {
+  if (chatRuntimeControllerInstance) return chatRuntimeControllerInstance;
+  if (!chatRuntimeControllerPromise) {
+    chatRuntimeControllerPromise = import("./core/chat/chat-runtime-cluster.js")
+      .then((module) => {
+        const createChatRuntimeCluster = module?.createChatRuntimeCluster;
+        if (typeof createChatRuntimeCluster !== "function") {
+          throw new Error("createChatRuntimeCluster unavailable");
+        }
+        chatRuntimeControllerInstance = createChatRuntimeCluster(createChatRuntimeControllerConfig());
+        return chatRuntimeControllerInstance;
+      })
+      .then((controller) => {
+        if (String(state.activeTab || "").trim().toLowerCase() === "chat") {
+          render();
+        }
+        return controller;
+      })
+      .catch((err) => {
+        chatRuntimeControllerPromise = null;
+        reportCriticalRuntimeFailure("chat-runtime", err, { suppressAbort: true });
+        throw err;
+      });
   }
-});
+  return chatRuntimeControllerPromise;
+}
+
+function getLoadedChatRuntimeController() {
+  return chatRuntimeControllerInstance;
+}
+
+function fallbackGetChatThreadId(profile = null) {
+  return String(profile?.uid || profile?.restaurantId || profile?.handle || profile?.id || "")
+    .replace(/^@/, "")
+    .trim();
+}
+
+function fallbackChatThreadStorageKey(profile = state.chatModal.profile) {
+  const threadId = fallbackGetChatThreadId(profile);
+  const uid = String(state.user?.uid || "guest").trim();
+  if (!threadId || !uid) return "";
+  return `${STORAGE_KEYS.chatThreads}::${uid}::${threadId}`;
+}
+
+function readChatJsonArray(key = "") {
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return [];
+  try {
+    const parsed = JSON.parse(safeStorage.getItem(safeKey) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function fallbackSaveChatThreadIndex(threads = []) {
+  const uid = String(state.user?.uid || "").trim();
+  const key = uid ? chatIndexKey(uid) : "";
+  if (!key) return;
+  safeStorage.setItem(key, JSON.stringify(Array.isArray(threads) ? threads : []));
+}
+
+function fallbackLoadChatThreadIndex(uid = state.user?.uid || "") {
+  const key = chatIndexKey(uid);
+  return readChatJsonArray(key);
+}
+
+function fallbackSortChatThreads(threads = []) {
+  return (Array.isArray(threads) ? threads : [])
+    .slice()
+    .sort((a, b) => Number(b?.updatedAt || 0) - Number(a?.updatedAt || 0));
+}
+
+function fallbackGetChatMessageTimestamp(message = null) {
+  return toDateSafe(message?.createdAt)?.getTime() || Number(message?.createdAt || 0) || 0;
+}
+
+function fallbackBuildChatPreviewText(message = null) {
+  if (!message) return "";
+  const text = String(message.text || "").trim();
+  if (text) return text;
+  const count = Array.isArray(message.attachments) ? message.attachments.length : 0;
+  if (!count) return "Chat";
+  return count === 1 ? "1 Anhang" : `${count} Anhaenge`;
+}
+
+function fallbackIsChatThreadArchived(thread = null) {
+  return thread?.archivedByOwner === true || thread?.archived === true;
+}
+
+function fallbackGetChatThreadById(threadId = "") {
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeThreadId) return null;
+  return (Array.isArray(state.chatThreads) ? state.chatThreads : [])
+    .find((thread) => String(thread?.id || "") === safeThreadId) || null;
+}
+
+function fallbackGetActiveChatThreadSummary(profile = state.chatModal.profile) {
+  return fallbackGetChatThreadById(fallbackGetChatThreadId(profile));
+}
+
+function fallbackUpsertChatThread(profile = null, patch = {}) {
+  const threadId = fallbackGetChatThreadId(profile);
+  if (!threadId) return null;
+  const threads = Array.isArray(state.chatThreads) ? state.chatThreads : [];
+  const existingIndex = threads.findIndex((thread) => String(thread?.id || "") === threadId);
+  const existing = existingIndex >= 0 ? threads[existingIndex] : {};
+  const nextThread = {
+    ...existing,
+    id: threadId,
+    uid: profile?.uid || existing.uid || "",
+    restaurantId: profile?.restaurantId || existing.restaurantId || "",
+    handle: String(profile?.handle || existing.handle || threadId).replace(/^@/, ""),
+    name: profile?.name || existing.name || "User",
+    avatar: profile?.avatar || existing.avatar || "",
+    updatedAt: Number(patch?.updatedAt || existing.updatedAt || Date.now()),
+    ...patch
+  };
+  const nextThreads = existingIndex >= 0
+    ? threads.map((thread, index) => (index === existingIndex ? nextThread : thread))
+    : [nextThread, ...threads];
+  state.chatThreads = fallbackSortChatThreads(nextThreads);
+  fallbackSaveChatThreadIndex(state.chatThreads);
+  return nextThread;
+}
+
+function fallbackLoadChatThreadMessages(profile = state.chatModal.profile) {
+  return readChatJsonArray(fallbackChatThreadStorageKey(profile));
+}
+
+function fallbackSaveChatThreadMessages(profile = state.chatModal.profile, messages = []) {
+  const key = fallbackChatThreadStorageKey(profile);
+  if (!key) return;
+  safeStorage.setItem(key, JSON.stringify(Array.isArray(messages) ? messages : []));
+}
+
+function fallbackMarkChatThreadAsRead(profile = state.chatModal.profile, messages = null) {
+  const threadId = fallbackGetChatThreadId(profile);
+  const nextMessages = Array.isArray(messages) ? messages : fallbackLoadChatThreadMessages(profile);
+  if (threadId && Array.isArray(state.chatThreads)) {
+    state.chatThreads = state.chatThreads.map((thread) => (
+      String(thread?.id || "") === threadId ? { ...thread, unreadCount: 0 } : thread
+    ));
+    fallbackSaveChatThreadIndex(state.chatThreads);
+  }
+  return nextMessages;
+}
+
+function fallbackNormalizeChatOpenProfile(profile = null) {
+  if (!profile) return null;
+  return {
+    uid: profile.uid || "",
+    restaurantId: profile.restaurantId || "",
+    handle: String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, ""),
+    name: profile.name || "User",
+    avatar: profile.avatar || ""
+  };
+}
+
+function fallbackBuildChatModalStateOnOpen({ currentChatModal = {}, nextProfile = null, nextMessages = [] } = {}) {
+  const sameThread = !!currentChatModal?.open
+    && fallbackGetChatThreadId(currentChatModal?.profile) === fallbackGetChatThreadId(nextProfile);
+  return {
+    open: true,
+    profile: nextProfile,
+    messages: Array.isArray(nextMessages) ? nextMessages : [],
+    draft: sameThread ? (currentChatModal?.draft || "") : "",
+    attachments: sameThread ? (currentChatModal?.attachments || []) : []
+  };
+}
+
+function fallbackBuildClosedChatModalState(currentChatModal = {}) {
+  return {
+    ...currentChatModal,
+    open: false,
+    profile: null,
+    messages: [],
+    draft: "",
+    attachments: []
+  };
+}
+
+function normalizeChatOpenProfileCore(options = {}) {
+  return chatRuntimeController?.normalizeChatOpenProfileCore?.(options)
+    || fallbackNormalizeChatOpenProfile(options?.profile);
+}
+
+function buildChatModalStateOnOpenCore(options = {}) {
+  return chatRuntimeController?.buildChatModalStateOnOpenCore?.(options)
+    || fallbackBuildChatModalStateOnOpen(options);
+}
+
+function buildClosedChatModalStateCore(currentChatModal = {}) {
+  return chatRuntimeController?.buildClosedChatModalStateCore?.(currentChatModal)
+    || fallbackBuildClosedChatModalState(currentChatModal);
+}
+
+function createDeferredChatRuntimeController() {
+  const getRuntime = () => getLoadedChatRuntimeController();
+  const callLoaded = (methodName, args = [], fallbackValue = undefined) => {
+    const runtime = getRuntime();
+    return typeof runtime?.[methodName] === "function" ? runtime[methodName](...args) : fallbackValue;
+  };
+  const callAsync = async (methodName, args = [], fallbackValue = undefined) => {
+    const runtime = await ensureChatRuntimeController();
+    return typeof runtime?.[methodName] === "function" ? await runtime[methodName](...args) : fallbackValue;
+  };
+  const queueCall = (methodName, args = []) => {
+    void ensureChatRuntimeController()
+      .then((runtime) => runtime?.[methodName]?.(...args))
+      .catch(() => null);
+  };
+
+  return {
+    saveChatThreadIndex(threads) {
+      return callLoaded("saveChatThreadIndex", [threads], fallbackSaveChatThreadIndex(threads));
+    },
+    readChatThreadIndexList(key) {
+      return callLoaded("readChatThreadIndexList", [key], readChatJsonArray(key));
+    },
+    buildChatThreadSummaryFromMessages(threadId, value, fallback = {}) {
+      return callLoaded("buildChatThreadSummaryFromMessages", [threadId, value, fallback], {
+        ...fallback,
+        id: String(threadId || fallback?.id || "").trim(),
+        lastMessage: fallbackBuildChatPreviewText(Array.isArray(value) ? value[value.length - 1] : null)
+      });
+    },
+    rebuildLegacyChatThreadIndexFromStorage() {
+      return callLoaded("rebuildLegacyChatThreadIndexFromStorage", [], []);
+    },
+    mergeChatThreadLists(...lists) {
+      const fallbackMap = new Map();
+      lists.flat().filter(Boolean).forEach((thread) => {
+        const id = String(thread?.id || "").trim();
+        if (id) fallbackMap.set(id, { ...(fallbackMap.get(id) || {}), ...thread });
+      });
+      return callLoaded("mergeChatThreadLists", lists, fallbackSortChatThreads(Array.from(fallbackMap.values())));
+    },
+    loadChatThreadIndex(uid = state.user?.uid || "") {
+      return callLoaded("loadChatThreadIndex", [uid], fallbackLoadChatThreadIndex(uid));
+    },
+    sortChatThreads(threads) {
+      return callLoaded("sortChatThreads", [threads], fallbackSortChatThreads(threads));
+    },
+    rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
+      return callLoaded("rebuildChatThreadIndexFromStorage", [uid], fallbackLoadChatThreadIndex(uid));
+    },
+    getChatUnreadCount() {
+      const fallbackCount = (Array.isArray(state.chatThreads) ? state.chatThreads : []).reduce((sum, thread) => {
+        if (fallbackIsChatThreadArchived(thread)) return sum;
+        const muted = Number(thread?.muteUntilMs || 0) > Date.now();
+        if (muted) return sum;
+        const count = Number(thread?.unreadCount || 0);
+        return sum + (Number.isFinite(count) ? count : 0);
+      }, 0);
+      return callLoaded("getChatUnreadCount", [], fallbackCount);
+    },
+    upsertChatThread(profile, patch = {}) {
+      return callLoaded("upsertChatThread", [profile, patch], fallbackUpsertChatThread(profile, patch));
+    },
+    isChatThreadArchived(thread) {
+      return callLoaded("isChatThreadArchived", [thread], fallbackIsChatThreadArchived(thread));
+    },
+    getChatThreadById(threadId) {
+      return callLoaded("getChatThreadById", [threadId], fallbackGetChatThreadById(threadId));
+    },
+    async setChatThreadArchivedById(...args) {
+      return await callAsync("setChatThreadArchivedById", args, false);
+    },
+    async deleteChatThreadById(...args) {
+      return await callAsync("deleteChatThreadById", args, false);
+    },
+    getActiveChatThreadSummary(profile = state.chatModal.profile) {
+      return callLoaded("getActiveChatThreadSummary", [profile], fallbackGetActiveChatThreadSummary(profile));
+    },
+    isActiveChatThreadBlocked(profile = state.chatModal.profile) {
+      const fallbackThread = fallbackGetActiveChatThreadSummary(profile);
+      return callLoaded("isActiveChatThreadBlocked", [profile], !!fallbackThread?.blockedByOwner);
+    },
+    getChatThreadId(profile = state.chatModal.profile) {
+      return callLoaded("getChatThreadId", [profile], fallbackGetChatThreadId(profile));
+    },
+    chatThreadStorageKey(profile = state.chatModal.profile) {
+      return callLoaded("chatThreadStorageKey", [profile], fallbackChatThreadStorageKey(profile));
+    },
+    chatThreadDocRef(ownerUid, threadId) {
+      const safeOwnerUid = String(ownerUid || "").trim();
+      const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+      const fallbackRef = safeOwnerUid && safeThreadId ? doc(db, "users", safeOwnerUid, "chatThreads", safeThreadId) : null;
+      return callLoaded("chatThreadDocRef", [ownerUid, threadId], fallbackRef);
+    },
+    chatMessageDocRef(ownerUid, threadId, messageId) {
+      const safeOwnerUid = String(ownerUid || "").trim();
+      const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+      const safeMessageId = String(messageId || "").trim();
+      const fallbackRef = safeOwnerUid && safeThreadId && safeMessageId
+        ? doc(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "messages", safeMessageId)
+        : null;
+      return callLoaded("chatMessageDocRef", [ownerUid, threadId, messageId], fallbackRef);
+    },
+    chatMessagesCollectionRef(ownerUid, threadId) {
+      const safeOwnerUid = String(ownerUid || "").trim();
+      const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+      const fallbackRef = safeOwnerUid && safeThreadId
+        ? collection(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "messages")
+        : null;
+      return callLoaded("chatMessagesCollectionRef", [ownerUid, threadId], fallbackRef);
+    },
+    normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
+      return callLoaded("normalizeChatThreadSummary", [threadId, data, fallback], {
+        ...fallback,
+        ...data,
+        id: String(threadId || data?.id || fallback?.id || "").trim()
+      });
+    },
+    getCurrentChatSenderProfile() {
+      return callLoaded("getCurrentChatSenderProfile", [], currentUserBadge());
+    },
+    getStringByteSize(value) {
+      return callLoaded("getStringByteSize", [value], new Blob([String(value || "")]).size);
+    },
+    isChatInlineDataUrl(dataUrl) {
+      return callLoaded("isChatInlineDataUrl", [dataUrl], String(dataUrl || "").startsWith("data:"));
+    },
+    sanitizeChatAttachmentsForSync(attachments) {
+      return callLoaded("sanitizeChatAttachmentsForSync", [attachments], Array.isArray(attachments) ? attachments : []);
+    },
+    normalizeChatMessageRecord(messageId, data = {}, localMap = new Map()) {
+      return callLoaded("normalizeChatMessageRecord", [messageId, data, localMap], {
+        id: String(messageId || data?.id || "").trim(),
+        ...data
+      });
+    },
+    getChatMessageTimestamp(message) {
+      return callLoaded("getChatMessageTimestamp", [message], fallbackGetChatMessageTimestamp(message));
+    },
+    pruneChatMessages(messages) {
+      return callLoaded("pruneChatMessages", [messages], Array.isArray(messages) ? messages : []);
+    },
+    buildChatPreviewText(message) {
+      return callLoaded("buildChatPreviewText", [message], fallbackBuildChatPreviewText(message));
+    },
+    loadLegacyChatThreadMessages(threadId) {
+      return callLoaded("loadLegacyChatThreadMessages", [threadId], readChatJsonArray(`${STORAGE_KEYS.chatThreads}::${String(state.user?.uid || "guest").trim()}::${threadId}`));
+    },
+    async readFileAsDataUrl(...args) {
+      return await callAsync("readFileAsDataUrl", args, "");
+    },
+    async buildInlineChatAttachment(...args) {
+      return await callAsync("buildInlineChatAttachment", args, null);
+    },
+    loadChatThreadMessages(profile) {
+      return callLoaded("loadChatThreadMessages", [profile], fallbackLoadChatThreadMessages(profile));
+    },
+    saveChatThreadMessages(profile, messages) {
+      return callLoaded("saveChatThreadMessages", [profile, messages], fallbackSaveChatThreadMessages(profile, messages));
+    },
+    stopChatThreadsListener() {
+      return callLoaded("stopChatThreadsListener", [], undefined);
+    },
+    stopActiveChatMessagesListener() {
+      return callLoaded("stopActiveChatMessagesListener", [], undefined);
+    },
+    syncLocalChatThreadsFromRemote(remoteThreads, ownerUid = state.user?.uid || "") {
+      return callLoaded("syncLocalChatThreadsFromRemote", [remoteThreads, ownerUid], Array.isArray(remoteThreads) ? remoteThreads : []);
+    },
+    startChatThreadsListener(user = state.user) {
+      queueCall("startChatThreadsListener", [user]);
+    },
+    async syncRemoteChatReadState(...args) {
+      return await callAsync("syncRemoteChatReadState", args, false);
+    },
+    startActiveChatMessagesListener(profile = state.chatModal.profile) {
+      queueCall("startActiveChatMessagesListener", [profile]);
+    },
+    async persistCurrentChatMessagePatch(...args) {
+      return await callAsync("persistCurrentChatMessagePatch", args, false);
+    },
+    async syncChatMessageToRemote(...args) {
+      return await callAsync("syncChatMessageToRemote", args, false);
+    },
+    syncChatThreadSummary(profile, messages) {
+      queueCall("syncChatThreadSummary", [profile, messages]);
+    },
+    markChatThreadAsRead(profile, messages = null) {
+      return callLoaded("markChatThreadAsRead", [profile, messages], fallbackMarkChatThreadAsRead(profile, messages));
+    },
+    updateCurrentChatMessages(updater) {
+      if (typeof updater === "function") {
+        state.chatModal.messages = updater(state.chatModal.messages || []);
+      }
+      return callLoaded("updateCurrentChatMessages", [updater], state.chatModal.messages || []);
+    },
+    async addChatAttachments(...args) {
+      return await callAsync("addChatAttachments", args, false);
+    },
+    removePendingChatAttachment(attachmentId) {
+      return callLoaded("removePendingChatAttachment", [attachmentId], undefined);
+    },
+    toggleChatMessageSaved(messageId) {
+      return callLoaded("toggleChatMessageSaved", [messageId], undefined);
+    },
+    toggleChatMessageLiked(messageId) {
+      return callLoaded("toggleChatMessageLiked", [messageId], undefined);
+    },
+    async sendChatMessage(...args) {
+      return await callAsync("sendChatMessage", args, false);
+    },
+    async hasPendingFollowRequest(...args) {
+      return await callAsync("hasPendingFollowRequest", args, false);
+    },
+    async sendFollowRequest(...args) {
+      return await callAsync("sendFollowRequest", args, false);
+    },
+    async acceptFollowRequest(...args) {
+      return await callAsync("acceptFollowRequest", args, false);
+    },
+    async markNotificationRead(...args) {
+      return await callAsync("markNotificationRead", args, false);
+    },
+    async markAllNotificationsRead(...args) {
+      return await callAsync("markAllNotificationsRead", args, false);
+    },
+    normalizeUserPostDoc(postId, data, ownerId) {
+      return callLoaded("normalizeUserPostDoc", [postId, data, ownerId], { id: postId, ownerId, ...(data || {}) });
+    },
+    normalizeRestaurantPostDoc(postId, data, restaurantId) {
+      return callLoaded("normalizeRestaurantPostDoc", [postId, data, restaurantId], { id: postId, restaurantId, ...(data || {}) });
+    },
+    async fetchPostForNotification(...args) {
+      return await callAsync("fetchPostForNotification", args, null);
+    },
+    highlightCommentInModal(commentId) {
+      return callLoaded("highlightCommentInModal", [commentId], undefined);
+    },
+    async openPostFromNotification(...args) {
+      return await callAsync("openPostFromNotification", args, false);
+    },
+    async openNotificationTarget(...args) {
+      return await callAsync("openNotificationTarget", args, false);
+    },
+    async resolveUserByHandle(...args) {
+      return await callAsync("resolveUserByHandle", args, null);
+    },
+    async toggleFollow(...args) {
+      return await callAsync("toggleFollow", args, false);
+    },
+    renderChatMessagesPanel(options = {}) {
+      return callLoaded("renderChatMessagesPanel", [options], "");
+    },
+    renderChatPendingAttachments(pendingAttachments) {
+      return callLoaded("renderChatPendingAttachments", [pendingAttachments], "");
+    },
+    renderChatListPanel(options = {}) {
+      if (!getRuntime()) queueCall("renderChatListPanel", [options]);
+      return callLoaded("renderChatListPanel", [options], "");
+    },
+    renderChatView() {
+      if (!getRuntime()) queueCall("renderChatView", []);
+      return callLoaded("renderChatView", [], "");
+    },
+    normalizeChatOpenProfileCore({ profile } = {}) {
+      return callLoaded("normalizeChatOpenProfileCore", [{ profile, normalizeHandle }], fallbackNormalizeChatOpenProfile(profile));
+    },
+    buildChatModalStateOnOpenCore(options = {}) {
+      return callLoaded("buildChatModalStateOnOpenCore", [options], fallbackBuildChatModalStateOnOpen(options));
+    },
+    buildClosedChatModalStateCore(currentChatModal = {}) {
+      return callLoaded("buildClosedChatModalStateCore", [currentChatModal], fallbackBuildClosedChatModalState(currentChatModal));
+    }
+  };
+}
+
+chatRuntimeController = createDeferredChatRuntimeController();
 
 const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
   config: {
@@ -5340,7 +6333,7 @@ async function ensureWriteUserNotificationFn() {
   if (writeUserNotificationPromise) return writeUserNotificationPromise;
   writeUserNotificationPromise = (async () => {
     if (!firebaseFunctionsModulePromise) {
-      firebaseFunctionsModulePromise = import(FIREBASE_FUNCTIONS_MODULE_URL);
+      firebaseFunctionsModulePromise = import("/shared/vendor/firebase/11.0.0/firebase-functions.js");
     }
     const firebaseFunctions = await firebaseFunctionsModulePromise;
     const functionsObj = firebaseFunctions.getFunctions(app, "us-central1");

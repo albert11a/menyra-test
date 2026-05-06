@@ -192,7 +192,22 @@ export function ensureTabDataCore({
     return loadUserPostsSafe();
   };
 
-  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isLandingProfileSession;
+  const webDirectEntry = state.__webDirectEntry && typeof state.__webDirectEntry === "object"
+    ? state.__webDirectEntry
+    : {};
+  const activeProfileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+  const webDirectSurface = String(webDirectEntry.surface || "").trim().toLowerCase();
+  const webDirectTopTab = String(webDirectEntry.topTab || "").trim().toLowerCase();
+  const isPublicWebDirectMenuSession = (
+    tab === "profile"
+    && webDirectEntry.active === true
+    && webDirectEntry.webPriority === true
+    && activeProfileTopTab === "menu"
+    && (webDirectSurface === "menu" || webDirectTopTab === "menu")
+  );
+  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants
+    && !isLandingProfileSession
+    && !isPublicWebDirectMenuSession;
   if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
     if (hasUser) {

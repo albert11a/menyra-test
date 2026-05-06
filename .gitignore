@@ -14,3 +14,6 @@ firebase-debug.*.log
 tests/mnyra-heart-runner/artifacts/
 tests/mnyra-heart-runner/tmp-*.png
 tmp/
+
+# Generated only when manually verifying the passive menyra-social Vite bundle.
+apps/menyra-social/bundled/

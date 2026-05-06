@@ -10,6 +10,7 @@ export function createMenuPublicRuntimeController({
   limitFn = null,
   docFn = null,
   getDocFn = async () => null,
+  loadPublicMetaDocFn = null,
   getDocsFn = async () => null,
   setDocFn = async () => {},
   serverTimestampFn = () => null,
@@ -30,6 +31,7 @@ export function createMenuPublicRuntimeController({
   const limit = typeof limitFn === "function" ? limitFn : null;
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const getDoc = typeof getDocFn === "function" ? getDocFn : (async () => null);
+  const loadPublicMetaDoc = typeof loadPublicMetaDocFn === "function" ? loadPublicMetaDocFn : null;
   const getDocs = typeof getDocsFn === "function" ? getDocsFn : (async () => null);
   const setDoc = typeof setDocFn === "function" ? setDocFn : (async () => {});
   const serverTimestamp = typeof serverTimestampFn === "function" ? serverTimestampFn : (() => null);
@@ -58,6 +60,8 @@ export function createMenuPublicRuntimeController({
     ? clampCropPercentFn
     : ((value, fallback = 50) => fallback);
   const menuCacheMap = menuCache || new Map();
+  const publicMenuItemsInFlight = new Map();
+  const menuMetaInFlight = new Map();
   const getLastRenderMode = typeof getLastRenderModeFn === "function"
     ? getLastRenderModeFn
     : (() => "");
@@ -397,13 +401,25 @@ export function createMenuPublicRuntimeController({
   async function loadPublicMenuItems(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !getDoc || !db) return [];
+    const existing = publicMenuItemsInFlight.get(safeRestaurantId);
+    if (existing) return existing;
+    const request = (async () => {
+      try {
+        const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "menu"));
+        if (!snap.exists()) return [];
+        return normalizeMenuItemsForRestaurant(coerceMenuItemsFromData(snap.data() || {}), safeRestaurantId);
+      } catch (err) {
+        console.error(err);
+        return [];
+      }
+    })();
+    publicMenuItemsInFlight.set(safeRestaurantId, request);
     try {
-      const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "menu"));
-      if (!snap.exists()) return [];
-      return normalizeMenuItemsForRestaurant(coerceMenuItemsFromData(snap.data() || {}), safeRestaurantId);
-    } catch (err) {
-      console.error(err);
-      return [];
+      return await request;
+    } finally {
+      if (publicMenuItemsInFlight.get(safeRestaurantId) === request) {
+        publicMenuItemsInFlight.delete(safeRestaurantId);
+      }
     }
   }
 
@@ -615,22 +631,36 @@ export function createMenuPublicRuntimeController({
 
   async function loadMenuMeta(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
-    if (!safeRestaurantId || !makeDocRef || !getDoc || !db) {
+    if (!safeRestaurantId || (!loadPublicMetaDoc && (!makeDocRef || !getDoc || !db))) {
       return { statusBadgeVisible: true };
     }
+    const existing = menuMetaInFlight.get(safeRestaurantId);
+    if (existing) return existing;
+    const request = (async () => {
+      try {
+        const snap = loadPublicMetaDoc
+          ? await loadPublicMetaDoc(safeRestaurantId)
+          : await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "meta"));
+        if (!snap?.exists?.()) return { statusBadgeVisible: true };
+        const data = snap.data() || {};
+        return {
+          statusBadgeVisible: resolveMenuStatusBadgeVisible(
+            data.menuStatusBadgeVisible,
+            data.menuAvailabilityBadgeVisible
+          )
+        };
+      } catch (err) {
+        console.error(err);
+        return { statusBadgeVisible: true };
+      }
+    })();
+    menuMetaInFlight.set(safeRestaurantId, request);
     try {
-      const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "meta"));
-      if (!snap.exists()) return { statusBadgeVisible: true };
-      const data = snap.data() || {};
-      return {
-        statusBadgeVisible: resolveMenuStatusBadgeVisible(
-          data.menuStatusBadgeVisible,
-          data.menuAvailabilityBadgeVisible
-        )
-      };
-    } catch (err) {
-      console.error(err);
-      return { statusBadgeVisible: true };
+      return await request;
+    } finally {
+      if (menuMetaInFlight.get(safeRestaurantId) === request) {
+        menuMetaInFlight.delete(safeRestaurantId);
+      }
     }
   }
 

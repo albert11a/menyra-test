@@ -1,7 +1,8 @@
-import { createBusinessAccountsRuntimeController } from "../business-accounts/business-accounts-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "../profile/profile-menu-focus-render-controller.js";
 import { getMenuRestaurantForProfileCore } from "../profile/profile-menu-focus-utils.js";
 import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
+
+const BUSINESS_ACCOUNTS_RUNTIME_MODULE_URL = "../business-accounts/business-accounts-runtime-controller.js";
 
 export function createProfileBusinessMenuRuntimeCluster({
   state = null,
@@ -54,6 +55,32 @@ export function createProfileBusinessMenuRuntimeCluster({
   const visiblePublicPostsRetryTimers = new Map();
   const visiblePublicPostsFreshReconcileKeys = new Set();
   const visiblePublicIdentityHydrationPromises = new Map();
+  let businessAccountsRuntimeController = null;
+  let businessAccountsRuntimeControllerPromise = null;
+
+  const ensureBusinessAccountsRuntimeController = async () => {
+    if (businessAccountsRuntimeController) return businessAccountsRuntimeController;
+    if (!businessAccountsRuntimeControllerPromise) {
+      businessAccountsRuntimeControllerPromise = import("../business-accounts/business-accounts-runtime-controller.js")
+        .then((module) => {
+          const createBusinessAccountsRuntimeController = module?.createBusinessAccountsRuntimeController;
+          if (typeof createBusinessAccountsRuntimeController !== "function") {
+            throw new Error("createBusinessAccountsRuntimeController unavailable");
+          }
+          businessAccountsRuntimeController = createBusinessAccountsRuntimeController({
+            ...businessAccountsDeps,
+            state: businessAccountsDeps.state || state
+          });
+          return businessAccountsRuntimeController;
+        })
+        .catch((err) => {
+          businessAccountsRuntimeControllerPromise = null;
+          console.warn("[mnyra][business-accounts-runtime] lazy load failed", err);
+          throw err;
+        });
+    }
+    return businessAccountsRuntimeControllerPromise;
+  };
 
   const getVisiblePublicProfileView = () => {
     const view = state?.profileView && typeof state.profileView === "object"
@@ -568,6 +595,32 @@ export function createProfileBusinessMenuRuntimeCluster({
     };
   };
 
+  const startPublicFocusEnsureForRestaurant = (restaurantId = "", {
+    targetId = "",
+    profile = state?.profileView?.profile || state?.userProfile
+  } = {}) => {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return null;
+    const safeTargetId = String(targetId || safeRestaurantId).trim() || safeRestaurantId;
+    if (hasMatchingVisibleFocusEnsureInFlight(safeTargetId, safeRestaurantId, profile)) {
+      return publicProfileFocusEnsurePromise;
+    }
+    const request = Promise.resolve(loadFocusForRestaurant(safeRestaurantId))
+      .catch((err) => {
+        console.warn("[mnyra][public-focus] ensure failed", err);
+        return null;
+      })
+      .finally(() => {
+        if (publicProfileFocusEnsurePromise === request) {
+          publicProfileFocusEnsurePromise = null;
+          publicProfileFocusEnsureTargetId = "";
+        }
+      });
+    publicProfileFocusEnsurePromise = request;
+    publicProfileFocusEnsureTargetId = safeTargetId;
+    return request;
+  };
+
   const loadVisiblePublicMenuIds = async (profile = {}, fallbackId = "") => {
     const ownBusinessProfileMenuSurface = isOwnBusinessProfileMenuSurface(profile);
     if (!isPublicMenuLoadSurface(profile)) return;
@@ -590,13 +643,6 @@ export function createProfileBusinessMenuRuntimeCluster({
     for (const restaurantId of ids) {
       if (!isPublicMenuLoadSurface(profile)) return;
       if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
-      const existingFocusRequest = hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)
-        ? publicProfileFocusEnsurePromise
-        : null;
-      if (existingFocusRequest) {
-        await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
-        continue;
-      }
       const menuPayload = await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
       const hasMenuItems = Array.isArray(menuPayload?.items)
         ? menuPayload.items.length > 0
@@ -607,18 +653,12 @@ export function createProfileBusinessMenuRuntimeCluster({
           && Array.isArray(state?.menu?.items)
           && state.menu.items.length > 0
         );
-      if (!hasMenuItems || hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)) {
-        continue;
-      }
-      const focusExperienceRequest = Promise.resolve(loadFocusForRestaurant(restaurantId))
-        .finally(() => {
-          if (publicProfileFocusEnsurePromise === focusExperienceRequest) {
-            publicProfileFocusEnsurePromise = null;
-            publicProfileFocusEnsureTargetId = "";
-          }
+      if (hasMenuItems) {
+        void startPublicFocusEnsureForRestaurant(restaurantId, {
+          targetId: restaurantId,
+          profile
         });
-      publicProfileFocusEnsurePromise = focusExperienceRequest;
-      publicProfileFocusEnsureTargetId = restaurantId;
+      }
     }
   };
 
@@ -780,6 +820,12 @@ export function createProfileBusinessMenuRuntimeCluster({
         : Promise.resolve(null);
       const restaurantId = await resolveProfileRestaurantId(profile);
       void ensureVisibleBusinessIdentityHydration(profile, restaurantId || requestedRestaurantId);
+      if (restaurantId) {
+        void startPublicFocusEnsureForRestaurant(restaurantId, {
+          targetId: restaurantId,
+          profile
+        });
+      }
       if (restaurantId && restaurantId !== firstLoadId) {
         await loadVisiblePublicMenuIds(profile, restaurantId);
       }
@@ -799,15 +845,14 @@ export function createProfileBusinessMenuRuntimeCluster({
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId) return;
     const targetRestaurantId = resolveMenuSurfaceTargetId(profile) || requestedRestaurantId;
-    if (isPublicMenuLoadSurface(profile)) {
-      const ids = collectVisibleMenuLoadIds(profile, requestedRestaurantId);
-      if (!hasConfirmedPublicMenuItemsForFocus(ids.length ? ids : [targetRestaurantId, requestedRestaurantId])) return;
-    }
     if (hasMatchingVisibleFocusEnsureInFlight(targetRestaurantId, requestedRestaurantId, profile)) return;
     const request = Promise.resolve().then(async () => {
       const restaurantId = await resolveProfileRestaurantId(profile);
       if (!restaurantId) return;
-      await Promise.resolve(loadFocusForRestaurant(restaurantId));
+      await Promise.resolve(loadFocusForRestaurant(restaurantId)).catch((err) => {
+        console.warn("[mnyra][public-focus] ensure failed", err);
+        return null;
+      });
     }).finally(() => {
       if (publicProfileFocusEnsurePromise === request) {
         publicProfileFocusEnsurePromise = null;
@@ -879,11 +924,6 @@ export function createProfileBusinessMenuRuntimeCluster({
     publicProfilePostsEnsureTargetId = surfaceTargetRestaurantId;
   };
 
-  const businessAccountsRuntimeController = createBusinessAccountsRuntimeController({
-    ...businessAccountsDeps,
-    state: businessAccountsDeps.state || state
-  });
-
   const profileMenuFocusRenderController = createProfileMenuFocusRenderController({
     ...profileMenuDeps,
     state: profileMenuDeps.state || state,
@@ -902,9 +942,29 @@ export function createProfileBusinessMenuRuntimeCluster({
     ensureMenuDataForProfile,
     ensureEditorMenuDataForProfile,
     ensureFocusDataForProfile,
-    loadBusinessAccounts: (options = {}) => businessAccountsRuntimeController.loadBusinessAccounts(options),
-    renderBusinessAccountsView: () => businessAccountsRuntimeController.renderBusinessAccountsView(),
-    bindBusinessAccountsEvents: (documentObj) => businessAccountsRuntimeController.bindBusinessAccountsEvents(documentObj),
+    loadBusinessAccounts: async (options = {}) => {
+      const controller = await ensureBusinessAccountsRuntimeController();
+      return await controller.loadBusinessAccounts(options);
+    },
+    renderBusinessAccountsView: () => {
+      if (businessAccountsRuntimeController) {
+        return businessAccountsRuntimeController.renderBusinessAccountsView();
+      }
+      void ensureBusinessAccountsRuntimeController().then(() => {
+        if (typeof businessAccountsDeps.render === "function") {
+          businessAccountsDeps.render();
+        }
+      }).catch(() => null);
+      return "";
+    },
+    bindBusinessAccountsEvents: (documentObj) => {
+      if (businessAccountsRuntimeController) {
+        return businessAccountsRuntimeController.bindBusinessAccountsEvents(documentObj);
+      }
+      void ensureBusinessAccountsRuntimeController()
+        .then((controller) => controller.bindBusinessAccountsEvents(documentObj))
+        .catch(() => null);
+    },
     renderPublicProfileView: () => profileMenuFocusRenderController.renderPublicProfileView(),
     renderMenuAdminView: () => profileMenuFocusRenderController.renderMenuAdminView(),
     renderProfileView: () => profileMenuFocusRenderController.renderProfileView()

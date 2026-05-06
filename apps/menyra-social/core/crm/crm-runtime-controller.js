@@ -781,10 +781,26 @@ function getCrmLazyRendererContext() {
   };
 }
 
+function isBundledCrmRuntimeActive() {
+  try {
+    return globalThis?.__MENYRA_SOCIAL_BUNDLED_ENTRY_ACTIVE__ === true
+      || globalThis?.__MENYRA_SOCIAL_BUNDLED_ENTRY_PREPARED__ === true;
+  } catch {
+    return false;
+  }
+}
+
+function importCrmLazyRenderersModule(moduleUrl) {
+  if (isBundledCrmRuntimeActive()) {
+    return import("../../_shared/crm-lazy-renderers.js");
+  }
+  return import(moduleUrl);
+}
+
 async function ensureCrmLazyRenderersLoaded() {
   if (crmLazyRenderers) return crmLazyRenderers;
   if (!crmLazyRenderersPromise) {
-    crmLazyRenderersPromise = import(CRM_LAZY_RENDERERS_MODULE_URL)
+    crmLazyRenderersPromise = importCrmLazyRenderersModule(CRM_LAZY_RENDERERS_MODULE_URL)
       .then((mod) => {
         crmLazyRenderers = {
           renderLeadSettingsView: mod.renderLeadSettingsView,

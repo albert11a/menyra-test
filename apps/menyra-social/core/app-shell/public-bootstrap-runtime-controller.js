@@ -231,6 +231,9 @@ function normalizeWebRouteFocusItem(item = {}, index = 0) {
   if (!id) return null;
   return {
     id,
+    menuItemId: String(row?.menuItemId || row?.targetMenuItemId || row?.itemId || row?.targetItemId || "").trim(),
+    productId: String(row?.productId || row?.targetProductId || "").trim(),
+    targetCategory: String(row?.targetCategory || row?.categoryTarget || row?.menuCategory || "").trim(),
     title: String(row?.title || row?.name || "Sot ne Fokus").trim() || "Sot ne Fokus",
     text: String(row?.text || row?.desc || row?.description || "").trim(),
     imageUrl: String(row?.imageUrl || row?.image || row?.photoUrl || "").trim(),
@@ -273,26 +276,59 @@ function normalizeIncomingWebRoutePayload(payload = null) {
   const snapshotFocus = snapshotPayload?.focus && typeof snapshotPayload.focus === "object"
     ? snapshotPayload.focus
     : {};
+  const payloadPosts = payload?.posts && typeof payload.posts === "object" ? payload.posts : {};
+  const payloadMenu = payload?.menu && typeof payload.menu === "object" ? payload.menu : {};
+  const payloadFocus = payload?.focus && typeof payload.focus === "object" ? payload.focus : {};
+  const publicPostsPreviewSeed = payload?.publicPostsPreviewSeed && typeof payload.publicPostsPreviewSeed === "object"
+    ? payload.publicPostsPreviewSeed
+    : {};
+  const publicMenuSeed = payload?.publicMenuSeed && typeof payload.publicMenuSeed === "object"
+    ? payload.publicMenuSeed
+    : {};
+  const publicFocusSeed = payload?.publicFocusSeed && typeof payload.publicFocusSeed === "object"
+    ? payload.publicFocusSeed
+    : {};
+  const selectSeedSection = (...sections) => {
+    for (const section of sections) {
+      if (!section || typeof section !== "object") continue;
+      if (
+        Array.isArray(section.items)
+        || section.state
+        || section.truthState
+        || section.seeded === true
+        || section.knownEmpty === true
+        || Number.isFinite(Number(section.count))
+      ) {
+        return section;
+      }
+    }
+    return {};
+  };
+  const postsSection = selectSeedSection(snapshotPosts, payloadPosts, publicPostsPreviewSeed);
+  const menuSection = selectSeedSection(snapshotMenu, payloadMenu, publicMenuSeed);
+  const focusSection = selectSeedSection(snapshotFocus, payloadFocus, publicFocusSeed);
   const postsItemsRaw = Array.isArray(snapshotPosts?.items)
     ? snapshotPosts.items
-    : (Array.isArray(payload?.posts?.items)
-      ? payload.posts.items
-      : (Array.isArray(payload?.postItems) ? payload.postItems : []));
+    : (Array.isArray(payloadPosts?.items)
+      ? payloadPosts.items
+      : (Array.isArray(publicPostsPreviewSeed?.items)
+        ? publicPostsPreviewSeed.items
+        : (Array.isArray(payload?.postItems) ? payload.postItems : [])));
   const postsItems = postsItemsRaw
     .map((row) => normalizeWebRouteSeedPost(row, restaurantId))
     .filter(Boolean);
-  const menuItemsRaw = [];
+  const menuItemsRaw = Array.isArray(menuSection?.items) ? menuSection.items : [];
   const menuItems = menuItemsRaw
     .map((row, index) => normalizeWebRouteMenuItem(row, restaurantId, index))
     .filter(Boolean)
     .sort((a, b) => normalizeBootstrapMenuOrderIndex(a?.orderIndex) - normalizeBootstrapMenuOrderIndex(b?.orderIndex));
-  const focusItemsRaw = [];
+  const focusItemsRaw = Array.isArray(focusSection?.items) ? focusSection.items : [];
   const focusItems = focusItemsRaw
     .map((row, index) => normalizeWebRouteFocusItem(row, index))
     .filter(Boolean)
     .filter((row) => row.active !== false);
   const resolveSectionTruthState = (section = {}, fallbackCount = 0) => {
-    const explicitState = normalizeTruthState(String(section?.state || "").trim().toLowerCase(), "unknown");
+    const explicitState = normalizeTruthState(String(section?.truthState || section?.state || "").trim().toLowerCase(), "unknown");
     if (explicitState === "knownEmpty") return "knownEmpty";
     if (explicitState === "seeded") return fallbackCount > 0 ? "seeded" : "unknown";
     if (explicitState === "unknown") return "unknown";
@@ -301,15 +337,21 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     if (section?.knownEmpty === true || (Number(section?.count) === 0 && section?.unknown !== true)) return "knownEmpty";
     return "unknown";
   };
-  const postsState = resolveSectionTruthState(snapshotPosts?.state ? snapshotPosts : payload?.posts, postsItems.length);
-  const menuState = "unknown";
-  const focusState = "unknown";
-  const requestedPostsCount = Number(snapshotPosts?.count ?? payload?.posts?.count);
+  const postsState = resolveSectionTruthState(postsSection, postsItems.length);
+  const menuState = resolveSectionTruthState(menuSection, menuItems.length);
+  const focusState = resolveSectionTruthState(focusSection, focusItems.length);
+  const requestedPostsCount = Number(postsSection?.count);
   const postsCount = Number.isFinite(requestedPostsCount)
     ? Math.max(postsItems.length, Math.max(0, Math.round(requestedPostsCount)))
     : postsItems.length;
-  const menuCount = 0;
-  const focusCount = 0;
+  const requestedMenuCount = Number(menuSection?.count);
+  const menuCount = Number.isFinite(requestedMenuCount)
+    ? Math.max(menuItems.length, Math.max(0, Math.round(requestedMenuCount)))
+    : menuItems.length;
+  const requestedFocusCount = Number(focusSection?.count);
+  const focusCount = Number.isFinite(requestedFocusCount)
+    ? Math.max(focusItems.length, Math.max(0, Math.round(requestedFocusCount)))
+    : focusItems.length;
   const snapshotVersion = String(
     snapshotPayload?.snapshotVersion
     || payload?.snapshotVersion
@@ -324,10 +366,8 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     || payload?.snapshotVersionKey
     || `${restaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`
   ).trim() || `${restaurantId}:${snapshotUpdatedAt}:${snapshotVersion}`;
-  const menuStatusBadgeVisible = snapshotMenu?.statusBadgeVisible !== false
-    && payload?.menu?.statusBadgeVisible !== false;
-  const focusEnabled = snapshotFocus?.enabled !== false
-    && payload?.focus?.enabled !== false;
+  const menuStatusBadgeVisible = menuSection?.statusBadgeVisible !== false;
+  const focusEnabled = focusSection?.enabled !== false;
   const truthPayload = snapshotPayload?.truth && typeof snapshotPayload.truth === "object"
     ? snapshotPayload.truth
     : (payload?.truth && typeof payload.truth === "object" ? payload.truth : {});
@@ -353,6 +393,8 @@ function normalizeIncomingWebRoutePayload(payload = null) {
       name: String(identity?.name || "").trim(),
       handle: String(identity?.handle || "").trim(),
       publicSlug: String(identity?.publicSlug || identity?.landingSlug || "").trim(),
+      landingSlug: String(identity?.landingSlug || identity?.publicSlug || "").trim(),
+      canonicalPublicPath: String(identity?.canonicalPublicPath || "").trim(),
       avatar: String(identity?.avatar || "").trim(),
       location: String(identity?.location || "").trim(),
       bio: String(identity?.bio || "").trim(),
@@ -406,16 +448,32 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     routeFirst: true,
     restaurantId,
     canonicalRestaurantId: restaurantId,
+    slug: String(payload?.slug || payload?.route?.slug || "").trim(),
+    publicSlug: String(payload?.publicSlug || payload?.route?.publicSlug || businessSnapshot.identity.publicSlug || "").trim(),
+    landingSlug: String(payload?.landingSlug || payload?.route?.landingSlug || businessSnapshot.identity.landingSlug || "").trim(),
+    canonicalPublicPath: String(payload?.canonicalPublicPath || payload?.route?.canonicalPublicPath || businessSnapshot.identity.canonicalPublicPath || "").trim(),
     surface,
     topTab,
     contentTab,
     phase: String(payload?.phase || "loading").trim().toLowerCase() || "loading",
-    menuAccessSource: String(payload?.menuAccessSource || "").trim().toLowerCase(),
-    tableNumber: Math.max(0, Number(payload?.tableNumber || 0) || 0),
+    accessSource: String(payload?.accessSource || payload?.route?.accessSource || payload?.menuAccessSource || "").trim().toLowerCase(),
+    menuAccessSource: String(payload?.menuAccessSource || payload?.route?.accessSource || "").trim().toLowerCase(),
+    tableNumber: Math.max(0, Number(payload?.tableNumber || payload?.route?.tableNumber || 0) || 0),
+    tableLabel: String(payload?.tableLabel || payload?.route?.tableLabel || "").trim(),
+    route: payload?.route && typeof payload.route === "object" ? payload.route : null,
+    businessPreview: payload?.businessPreview && typeof payload.businessPreview === "object" ? payload.businessPreview : null,
+    publicMenuSeed: payload?.publicMenuSeed && typeof payload.publicMenuSeed === "object" ? payload.publicMenuSeed : null,
+    publicFocusSeed: payload?.publicFocusSeed && typeof payload.publicFocusSeed === "object" ? payload.publicFocusSeed : null,
+    publicPostsPreviewSeed: payload?.publicPostsPreviewSeed && typeof payload.publicPostsPreviewSeed === "object" ? payload.publicPostsPreviewSeed : null,
+    generatedAt: Number(payload?.generatedAt || 0) || 0,
+    cacheTtlMs: Number(payload?.cacheTtlMs || 0) || 0,
+    source: String(payload?.source || "").trim(),
     identity: {
       name: businessSnapshot.identity.name,
       handle: businessSnapshot.identity.handle,
       publicSlug: businessSnapshot.identity.publicSlug,
+      landingSlug: businessSnapshot.identity.landingSlug,
+      canonicalPublicPath: businessSnapshot.identity.canonicalPublicPath,
       avatar: businessSnapshot.identity.avatar,
       location: businessSnapshot.identity.location,
       bio: businessSnapshot.identity.bio,
@@ -634,16 +692,24 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routePostsSeed = Array.isArray(routeSnapshot?.posts?.items)
     ? routeSnapshot.posts.items
     : (Array.isArray(safeRoutePayload?.posts?.items) ? safeRoutePayload.posts.items : []);
-  const routeMenuSeed = [];
-  const routeFocusSeed = [];
+  const routeMenuSeed = Array.isArray(routeSnapshot?.menu?.items)
+    ? routeSnapshot.menu.items
+    : (Array.isArray(safeRoutePayload?.menu?.items) ? safeRoutePayload.menu.items : []);
+  const routeFocusSeed = Array.isArray(routeSnapshot?.focus?.items)
+    ? routeSnapshot.focus.items
+    : (Array.isArray(safeRoutePayload?.focus?.items) ? safeRoutePayload.focus.items : []);
   const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
     ? routeSnapshot.truth
     : (safeRoutePayload?.truth && typeof safeRoutePayload.truth === "object" ? safeRoutePayload.truth : {});
   const routePostsState = normalizeTruthState(routeSnapshot?.posts?.state || safeRoutePayload?.posts?.state || routeTruth?.posts || "", (
     routePostsSeed.length ? "seeded" : "unknown"
   ));
-  const routeMenuState = "unknown";
-  const routeFocusState = "unknown";
+  const routeMenuState = normalizeTruthState(routeSnapshot?.menu?.state || safeRoutePayload?.menu?.state || routeTruth?.menu || "", (
+    routeMenuSeed.length ? "seeded" : "unknown"
+  ));
+  const routeFocusState = normalizeTruthState(routeSnapshot?.focus?.state || safeRoutePayload?.focus?.state || routeTruth?.focus || "", (
+    routeFocusSeed.length ? "seeded" : "unknown"
+  ));
   let resolvedRoutePostsState = routePostsState;
   let resolvedRouteMenuState = routeMenuState;
   let resolvedRouteFocusState = routeFocusState;
@@ -651,7 +717,8 @@ function applyWebDirectRouteSeedFromBootstrap({
     routeIdentity?.name || routeIdentity?.avatar || routeIdentity?.handle
   ) ? "seeded" : "unknown");
   const routeBioState = normalizeTruthState(routeTruth?.bio || "", String(routeIdentity?.bio || "").trim() ? "seeded" : "knownEmpty");
-  const routeFocusEnabled = true;
+  const routeFocusEnabled = routeSnapshot?.focus?.enabled !== false
+    && safeRoutePayload?.focus?.enabled !== false;
   const routeMenuStatusBadgeVisible = routeSnapshot?.menu?.statusBadgeVisible !== false
     && safeRoutePayload?.menu?.statusBadgeVisible !== false;
   const routeLayoutColor = String(safeRoutePayload?.layout?.menuCardColor || "").trim().toLowerCase();
@@ -1332,7 +1399,22 @@ export function createPublicBootstrapRuntimeController({
   function resolveIncomingRouteBootstrapPayload(payload = null) {
     if (!payload || typeof payload !== "object") return null;
     const rawRoutePayload = payload.publicRoute || payload.routePayload || payload.route || null;
-    return normalizeIncomingWebRoutePayload(rawRoutePayload);
+    if (!rawRoutePayload || typeof rawRoutePayload !== "object") return null;
+    const mergedRoutePayload = { ...rawRoutePayload };
+    [
+      "route",
+      "businessPreview",
+      "publicMenuSeed",
+      "publicFocusSeed",
+      "publicPostsPreviewSeed",
+      "generatedAt",
+      "cacheTtlMs",
+      "source"
+    ].forEach((key) => {
+      if (mergedRoutePayload[key] !== undefined) return;
+      if (payload[key] !== undefined) mergedRoutePayload[key] = payload[key];
+    });
+    return normalizeIncomingWebRoutePayload(mergedRoutePayload);
   }
 
   function readWindowRouteParam(param = "") {

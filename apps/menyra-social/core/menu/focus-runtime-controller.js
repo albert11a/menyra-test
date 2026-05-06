@@ -6,6 +6,7 @@ export function createFocusRuntimeController({
   focusCache = null,
   docFn = null,
   getDocFn = async () => null,
+  loadPublicMetaDocFn = null,
   setDocFn = async () => {},
   serverTimestampFn = () => null,
   uploadCompressedImageFn = async () => ({}),
@@ -27,6 +28,7 @@ export function createFocusRuntimeController({
   const focusCacheMap = focusCache || new Map();
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const getDoc = typeof getDocFn === "function" ? getDocFn : (async () => null);
+  const loadPublicMetaDoc = typeof loadPublicMetaDocFn === "function" ? loadPublicMetaDocFn : null;
   const setDoc = typeof setDocFn === "function" ? setDocFn : (async () => {});
   const serverTimestamp = typeof serverTimestampFn === "function" ? serverTimestampFn : (() => null);
   const uploadCompressedImage = typeof uploadCompressedImageFn === "function"
@@ -52,6 +54,8 @@ export function createFocusRuntimeController({
     : (() => false);
   let focusRotateTimer = null;
   let focusRotateKey = "";
+  const focusItemsInFlight = new Map();
+  const focusMetaInFlight = new Map();
 
   function createFocusId() {
     return globalThis.crypto?.randomUUID?.() || String(Math.random()).slice(2);
@@ -78,30 +82,56 @@ export function createFocusRuntimeController({
   async function loadFocusItems(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !getDoc || !db) return [];
+    const existing = focusItemsInFlight.get(safeRestaurantId);
+    if (existing) return existing;
+    const request = (async () => {
+      try {
+        const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "offers"));
+        if (!snap.exists()) return [];
+        const data = snap.data() || {};
+        const items = Array.isArray(data.items) ? data.items : [];
+        return items.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
+      } catch (err) {
+        console.error(err);
+        return [];
+      }
+    })();
+    focusItemsInFlight.set(safeRestaurantId, request);
     try {
-      const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "offers"));
-      if (!snap.exists()) return [];
-      const data = snap.data() || {};
-      const items = Array.isArray(data.items) ? data.items : [];
-      return items.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
-    } catch (err) {
-      console.error(err);
-      return [];
+      return await request;
+    } finally {
+      if (focusItemsInFlight.get(safeRestaurantId) === request) {
+        focusItemsInFlight.delete(safeRestaurantId);
+      }
     }
   }
 
   async function loadFocusMeta(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
-    if (!safeRestaurantId || !makeDocRef || !getDoc || !db) return true;
+    if (!safeRestaurantId || (!loadPublicMetaDoc && (!makeDocRef || !getDoc || !db))) return true;
+    const existing = focusMetaInFlight.get(safeRestaurantId);
+    if (existing) return existing;
+    const request = (async () => {
+      try {
+        const snap = loadPublicMetaDoc
+          ? await loadPublicMetaDoc(safeRestaurantId)
+          : await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "meta"));
+        if (!snap?.exists?.()) return true;
+        const data = snap.data() || {};
+        if (typeof data.offersEnabled === "boolean") return data.offersEnabled;
+      } catch (err) {
+        console.error(err);
+      }
+      return true;
+    })();
+    focusMetaInFlight.set(safeRestaurantId, request);
     try {
-      const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "meta"));
-      if (!snap.exists()) return true;
-      const data = snap.data() || {};
-      if (typeof data.offersEnabled === "boolean") return data.offersEnabled;
-    } catch (err) {
-      console.error(err);
+      return await request;
+    } finally {
+      if (focusMetaInFlight.get(safeRestaurantId) === request) {
+        focusMetaInFlight.delete(safeRestaurantId);
+      }
     }
-    return true;
   }
 
   async function saveFocusEnabled(restaurantId, enabled) {
