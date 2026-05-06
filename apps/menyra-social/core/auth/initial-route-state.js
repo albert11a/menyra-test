@@ -7,6 +7,7 @@ import {
 } from "../router/public-business-route-resolver.js";
 import {
   isQrLikePublicBusinessAccessSourceCore,
+  normalizePublicBusinessSlugCore,
   normalizePublicUserContentTabCore,
   normalizePublicUserRouteIdCore,
   parseSiteRoutePathCore
@@ -51,8 +52,9 @@ function resolveInitialPublicBusinessRestaurantId(value = "", readPublicRouteRes
   if (!raw) return "";
   const cached = readCachedPublicRouteResolution(raw, readPublicRouteResolution);
   if (cached?.restaurantId) return String(cached.restaurantId || "").trim();
-  const resolved = resolveLaunchPublicBusinessRouteCore(raw);
-  return String(resolved?.restaurantId || raw).trim();
+  const launchResolution = resolveLaunchPublicBusinessRouteCore(raw);
+  if (launchResolution?.restaurantId) return String(launchResolution.restaurantId || "").trim();
+  return normalizePublicBusinessSlugCore(raw, { allowReserved: false });
 }
 
 export function resolveInitialRouteState({

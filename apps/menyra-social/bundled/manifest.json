@@ -1,17 +1,10 @@
 {
-  "_firebase-config-IHwgsN1A.js": {
-    "file": "chunks/firebase-config-IHwgsN1A.js",
-    "name": "firebase-config",
-    "imports": [
-      "_vendor-firebase-vmK1XK2J.js"
-    ]
-  },
   "_preload-helper-C4N3jzC6.js": {
     "file": "chunks/preload-helper-C4N3jzC6.js",
     "name": "preload-helper"
   },
-  "_vendor-firebase-vmK1XK2J.js": {
-    "file": "chunks/vendor-firebase-vmK1XK2J.js",
+  "_vendor-firebase-CpR1inHy.js": {
+    "file": "chunks/vendor-firebase-CpR1inHy.js",
     "name": "vendor-firebase"
   },
   "apps/menyra-social/_shared/image-compressor.js": {
@@ -27,37 +20,36 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/media/media-upload-runtime-cluster.js": {
-    "file": "chunks/media-upload-runtime-cluster-DqKMP2oO.js",
+    "file": "chunks/media-upload-runtime-cluster-CVJStUGZ.js",
     "name": "media-upload-runtime-cluster",
     "src": "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_firebase-config-IHwgsN1A.js",
-      "_vendor-firebase-vmK1XK2J.js"
+      "_vendor-firebase-CpR1inHy.js"
     ]
   },
   "apps/menyra-social/core/orders/orders-runtime-controller.js": {
-    "file": "chunks/orders-runtime-controller-CD4A0fRK.js",
+    "file": "chunks/orders-runtime-controller-BaMMP0td.js",
     "name": "orders-runtime-controller",
     "src": "apps/menyra-social/core/orders/orders-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_firebase-config-IHwgsN1A.js",
-      "_vendor-firebase-vmK1XK2J.js"
+      "_vendor-firebase-CpR1inHy.js"
     ]
   },
   "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01": {
-    "file": "chunks/public-route-cache-early-preload-DP47Orzd.js",
+    "file": "chunks/public-route-cache-early-preload-DEC2UiOf.js",
     "name": "public-route-cache-early-preload",
     "src": "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
     "isDynamicEntry": true,
     "imports": [
-      "_firebase-config-IHwgsN1A.js",
-      "_vendor-firebase-vmK1XK2J.js"
+      "apps/menyra-social/social-app.js",
+      "_vendor-firebase-CpR1inHy.js",
+      "_preload-helper-C4N3jzC6.js"
     ]
   },
   "apps/menyra-social/social-app.js": {
@@ -68,8 +60,7 @@
     "isDynamicEntry": true,
     "imports": [
       "_preload-helper-C4N3jzC6.js",
-      "_firebase-config-IHwgsN1A.js",
-      "_vendor-firebase-vmK1XK2J.js"
+      "_vendor-firebase-CpR1inHy.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",

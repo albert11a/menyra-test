@@ -4,6 +4,9 @@ function isBrowserRuntime() {
     && typeof location !== "undefined";
 }
 
+const PUBLIC_ROUTE_CACHE_PRELOAD_IDLE_TIMEOUT_MS = 4500;
+const PUBLIC_ROUTE_CACHE_PRELOAD_FALLBACK_DELAY_MS = 1200;
+
 function shouldPreloadPublicRouteCache() {
   if (!isBrowserRuntime()) return false;
   try {
@@ -32,8 +35,31 @@ function shouldPreloadPublicRouteCache() {
   }
 }
 
+function importPublicRouteCacheEarlyPreload() {
+  return import("/apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01").catch(() => null);
+}
+
+function schedulePublicRouteCacheEarlyPreload() {
+  if (!isBrowserRuntime()) {
+    void importPublicRouteCacheEarlyPreload();
+    return;
+  }
+  const run = () => {
+    void importPublicRouteCacheEarlyPreload();
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, { timeout: PUBLIC_ROUTE_CACHE_PRELOAD_IDLE_TIMEOUT_MS });
+    return;
+  }
+  if (typeof window.setTimeout === "function") {
+    window.setTimeout(run, PUBLIC_ROUTE_CACHE_PRELOAD_FALLBACK_DELAY_MS);
+    return;
+  }
+  run();
+}
+
 if (shouldPreloadPublicRouteCache()) {
   try {
-    await import("/apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01");
+    schedulePublicRouteCacheEarlyPreload();
   } catch {}
 }
