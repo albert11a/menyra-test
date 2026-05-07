@@ -1,4 +1,4 @@
-const PUBLIC_ENTRY_BUILD_TOKEN = "2026-05-06-vite-prod-bundle-01";
+const PUBLIC_ENTRY_BUILD_TOKEN = "2026-05-07-public-menu-focus-cache-01";
 
 function setDegraded(kind, payload = {}) {
   const setter = typeof globalThis?.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"

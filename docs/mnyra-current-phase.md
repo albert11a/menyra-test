@@ -259,6 +259,15 @@ Last updated: 2026-05-07
   fallen aber bei Fehlern in einen Error-/Empty-State statt dauerhaft zu laden.
   Sichtbare UI, QR, Warenkorb, Routing, Firebase Rules, Functions und
   Produktlogik bleiben unveraendert.
+- Schritt 34 ist abgeschlossen: Der Social-App- und Public-Entry-Build-Token
+  wurde nach dem Menu-/Fokus-Bundle-Fix hochgezogen.
+- Bewertung von Schritt 34: `bestanden`.
+- Wichtigster Effekt aus Schritt 34:
+  Normale Desktop-Browser mit altem Service-Worker-Cache oder altem Startup-
+  Snapshot behandeln den Stand nach Schritt 33 nicht mehr als dieselbe App-
+  Version. Handy-Inkognito war bereits sauber, weil dort keine Alt-Caches
+  vorhanden waren. Sichtbare UI, Menu-/Fokus-Logik, Routing, Firebase Rules,
+  Functions und Produktlogik bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -291,6 +300,7 @@ Last updated: 2026-05-07
 - Referenz: [docs/mnyra-step31-profile-upload-deferred-render-fix.md](./mnyra-step31-profile-upload-deferred-render-fix.md)
 - Referenz: [docs/mnyra-step32-public-focus-prefetch-alignment.md](./mnyra-step32-public-focus-prefetch-alignment.md)
 - Referenz: [docs/mnyra-step33-public-bootstrap-menu-focus-seed.md](./mnyra-step33-public-bootstrap-menu-focus-seed.md)
+- Referenz: [docs/mnyra-step34-social-app-cache-version-bump.md](./mnyra-step34-social-app-cache-version-bump.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -316,9 +326,9 @@ Last updated: 2026-05-07
 
 ## Naechster Schritt
 
-Nach Schritt 33 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 34 ist der naechste sinnvolle separate Folgeschritt:
 Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
-und geleertem Service-Worker-/Browser-Cache pruefen.
+und normalem Desktop-Browser gegenpruefen.
 Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
 Entdecker-Karten-Profilwechsel und Upload-Einstiege stabil bleiben, kann der
 neue Public-Entry schrittweise mit einem echten leichten Public-Renderer fuer
