@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-02
+Last updated: 2026-05-07
 
 # Mnyra Current Phase
 
@@ -238,7 +238,7 @@ Last updated: 2026-05-02
   Upload-Regeln, Routing, QR und Produktlogik bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
-  der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
+  der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
 - Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
 - Referenz: [docs/mnyra-step5-isolation-public-bootstrap-rollback.md](./mnyra-step5-isolation-public-bootstrap-rollback.md)
@@ -282,7 +282,7 @@ Last updated: 2026-05-02
 
 ## Workflow ab jetzt (verbindlich)
 
-- Es wird nur auf Branch `finale-mnyra-mainline` gearbeitet.
+- Es wird nur auf Branch `junivitefinal` gearbeitet.
 - `finale-mnyra` und `finale-mnyra-clean` bleiben Referenz-Branches.
 - Keine direkte Arbeit auf `main`.
 - Nach jedem Schritt:
