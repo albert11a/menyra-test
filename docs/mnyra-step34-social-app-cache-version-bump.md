@@ -3,6 +3,10 @@ Last updated: 2026-05-07
 
 # Schritt 34: Social-App Cache-Version nach Menu/Fokus-Fix
 
+Hinweis nach Schritt 35: Der aktuell gueltige Build-Token ist jetzt
+`2026-05-07-public-menu-focus-lockstep-01`. Schritt 34 dokumentiert den
+damaligen Cache-Version-Bump.
+
 ## Ziel
 
 Der Fix aus Schritt 33 soll auch in normalen Desktop-Browsern sichtbar werden,
@@ -80,8 +84,8 @@ normale Browser den neuen Stand als neue App-Version behandeln:
 - Desktop normal `/:slug/menu` laden.
 - Falls noch ein alter SW aktiv ist: einmal `/:slug/menu?sw-reset=1` laden,
   danach normale URL erneut laden.
-- Optional `?debug-build=1` anhaengen und pruefen, ob
-  `2026-05-07-public-menu-focus-cache-01` angezeigt wird.
+- Optional `?debug-build=1` anhaengen und pruefen, ob der aktuelle Build-Token
+  angezeigt wird.
 - Handy-Inkognito gegenpruefen: Verhalten soll gleich bleiben.
 
 ## Bewertung

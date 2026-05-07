@@ -1,4 +1,4 @@
-const PUBLIC_ENTRY_BUILD_TOKEN = "2026-05-07-public-menu-focus-cache-01";
+const PUBLIC_ENTRY_BUILD_TOKEN = "2026-05-07-public-menu-focus-lockstep-01";
 
 function readAppBuildToken() {
   return String(

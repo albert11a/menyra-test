@@ -268,6 +268,16 @@ Last updated: 2026-05-07
   Version. Handy-Inkognito war bereits sauber, weil dort keine Alt-Caches
   vorhanden waren. Sichtbare UI, Menu-/Fokus-Logik, Routing, Firebase Rules,
   Functions und Produktlogik bleiben unveraendert.
+- Schritt 35 ist abgeschlossen: Public-Fokus wird fuer die sichtbare Public-
+  Menu-Praesentation als Teil der Menu-Render-Wahrheit koordiniert.
+- Bewertung von Schritt 35: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 35:
+  Wenn Public-Menu-Items bereits geladen sind, Fokus fuer dieselbe sichtbare
+  Public-Surface aber noch `unknown`/`loading` ist, werden die Menu-Items noch
+  nicht sichtbar gerendert. Erst wenn Fokus bereit, leer oder Fehler ist,
+  erscheint der Menu-Inhalt. Dadurch kann Fokus nicht mehr nachtraeglich oberhalb
+  bereits sichtbarer Produkte einspringen. Sichtbare UI, QR, Warenkorb, Routing,
+  Firebase Rules, Functions und Datenpfade bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -301,6 +311,7 @@ Last updated: 2026-05-07
 - Referenz: [docs/mnyra-step32-public-focus-prefetch-alignment.md](./mnyra-step32-public-focus-prefetch-alignment.md)
 - Referenz: [docs/mnyra-step33-public-bootstrap-menu-focus-seed.md](./mnyra-step33-public-bootstrap-menu-focus-seed.md)
 - Referenz: [docs/mnyra-step34-social-app-cache-version-bump.md](./mnyra-step34-social-app-cache-version-bump.md)
+- Referenz: [docs/mnyra-step35-public-menu-focus-lockstep-render.md](./mnyra-step35-public-menu-focus-lockstep-render.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -326,7 +337,7 @@ Last updated: 2026-05-07
 
 ## Naechster Schritt
 
-Nach Schritt 34 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 35 ist der naechste sinnvolle separate Folgeschritt:
 Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
 und normalem Desktop-Browser gegenpruefen.
 Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
