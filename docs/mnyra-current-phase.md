@@ -247,6 +247,18 @@ Last updated: 2026-05-07
   Load. Der sichtbare Focus-State wird weiterhin erst committet, wenn die
   passende Public-Menu-Surface bestaetigt ist. Sichtbare UI, QR, Warenkorb,
   Routing, Rules, Functions und Produktlogik bleiben unveraendert.
+- Schritt 33 ist abgeschlossen: Public-Route-Bootstrap-Menu-/Fokus-Snapshot
+  wird im Client nicht mehr verworfen und ein fehlgeschlagener Menu-Prefetch
+  kann nicht mehr als endloses `Menu wird geladen` im sichtbaren State bleiben.
+- Bewertung von Schritt 33: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 33:
+  Wenn der Direct-Public-Bootstrap Menu-/Fokus-Items bereits mitliefert, werden
+  diese jetzt als erste sichtbare Public-Wahrheit genutzt. Dadurch koennen
+  Header, Menu und Fokus im besten Fall aus demselben Bootstrap-Snapshot
+  erscheinen. Ohne Bootstrap/Cache bleiben Menu und Fokus echte Public-Reads,
+  fallen aber bei Fehlern in einen Error-/Empty-State statt dauerhaft zu laden.
+  Sichtbare UI, QR, Warenkorb, Routing, Firebase Rules, Functions und
+  Produktlogik bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -278,6 +290,7 @@ Last updated: 2026-05-07
 - Referenz: [docs/mnyra-step29-public-web-entry-boundary.md](./mnyra-step29-public-web-entry-boundary.md)
 - Referenz: [docs/mnyra-step31-profile-upload-deferred-render-fix.md](./mnyra-step31-profile-upload-deferred-render-fix.md)
 - Referenz: [docs/mnyra-step32-public-focus-prefetch-alignment.md](./mnyra-step32-public-focus-prefetch-alignment.md)
+- Referenz: [docs/mnyra-step33-public-bootstrap-menu-focus-seed.md](./mnyra-step33-public-bootstrap-menu-focus-seed.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -303,8 +316,9 @@ Last updated: 2026-05-07
 
 ## Naechster Schritt
 
-Nach Schritt 32 ist der naechste sinnvolle separate Folgeschritt:
-Public-Menu inklusive Fokus auf echtem Smartphone manuell pruefen.
+Nach Schritt 33 ist der naechste sinnvolle separate Folgeschritt:
+Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
+und geleertem Service-Worker-/Browser-Cache pruefen.
 Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
 Entdecker-Karten-Profilwechsel und Upload-Einstiege stabil bleiben, kann der
 neue Public-Entry schrittweise mit einem echten leichten Public-Renderer fuer

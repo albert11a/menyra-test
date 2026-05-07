@@ -1767,6 +1767,11 @@ export function createSessionDataRuntimeController({
     const inFlight = menuNetworkLoadPromises.get(cacheKey);
     if (inFlight) {
       const inFlightResult = await inFlight;
+      const inFlightItems = Array.isArray(inFlightResult?.items) ? inFlightResult.items : [];
+      const inFlightTruthState = String(inFlightResult?.truthState || "").trim();
+      const inFlightTruthKey = inFlightTruthState.toLowerCase();
+      const inFlightKnownEmpty = inFlightTruthKey === "knownempty" || inFlightTruthKey === "known-empty";
+      const inFlightUnknown = !inFlightItems.length && !inFlightKnownEmpty && inFlightTruthKey !== "seeded";
       if (
         !prefetchOnly
         && inFlightResult
@@ -1776,15 +1781,17 @@ export function createSessionDataRuntimeController({
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
-          items: inFlightResult.items,
+          items: inFlightItems,
           loading: false,
-          error: "",
+          error: inFlightUnknown ? "Menu laden fehlgeschlagen." : "",
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
           routeSeed: false,
-          truthState: inFlightResult.truthState || (inFlightResult.items.length ? "seeded" : "knownEmpty")
+          truthState: inFlightUnknown
+            ? "error"
+            : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty")))
         };
         requestRender();
       }
