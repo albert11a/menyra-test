@@ -32,6 +32,7 @@ abgeschlossenem Menu-Read als sichtbarer Experience-Load gestartet.
 ## Geaenderte Dateien
 
 - `apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`
+- `apps/menyra-social/bundled/entry/social-app.js`
 - `docs/mnyra-current-phase.md`
 - `docs/mnyra-step32-public-focus-prefetch-alignment.md`
 
@@ -46,6 +47,8 @@ abgeschlossenem Menu-Read als sichtbarer Experience-Load gestartet.
 ## Validierung
 
 - `node --check apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`
+- `npm run build:menyra-social:bundle`
+- `node --check apps/menyra-social/bundled/entry/social-app.js`
 - `git diff --check`
 
 ## Manuell testen
