@@ -236,6 +236,17 @@ Last updated: 2026-05-07
   wieder direkt rendern, obwohl der schwere Media-/Upload-Controller weiterhin
   erst bei echter Upload-Aktion dynamisch geladen wird. Sichtbare UI, Labels,
   Upload-Regeln, Routing, QR und Produktlogik bleiben unveraendert.
+- Schritt 32 ist abgeschlossen: Public-Menu-Fokus wird beim sichtbaren Public-
+  Menu-Load frueher als deduplizierter Prefetch parallel zum Menu-Read
+  angewaermt.
+- Bewertung von Schritt 32: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 32:
+  Focus liest weiterhin dieselbe Firebase-Wahrheit
+  `restaurants/{restaurantId}/public/offers` plus `public/meta`, startet im
+  sichtbaren Public-Menu-Pfad aber nicht mehr erst nach abgeschlossenem Menu-
+  Load. Der sichtbare Focus-State wird weiterhin erst committet, wenn die
+  passende Public-Menu-Surface bestaetigt ist. Sichtbare UI, QR, Warenkorb,
+  Routing, Rules, Functions und Produktlogik bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -266,6 +277,7 @@ Last updated: 2026-05-07
 - Referenz: [docs/mnyra-step28-public-startup-defer-upload-orders.md](./mnyra-step28-public-startup-defer-upload-orders.md)
 - Referenz: [docs/mnyra-step29-public-web-entry-boundary.md](./mnyra-step29-public-web-entry-boundary.md)
 - Referenz: [docs/mnyra-step31-profile-upload-deferred-render-fix.md](./mnyra-step31-profile-upload-deferred-render-fix.md)
+- Referenz: [docs/mnyra-step32-public-focus-prefetch-alignment.md](./mnyra-step32-public-focus-prefetch-alignment.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -291,12 +303,12 @@ Last updated: 2026-05-07
 
 ## Naechster Schritt
 
-Nach Schritt 31 ist der naechste sinnvolle separate Folgeschritt:
-Profil-Upload-Actions und Public-Menu auf echtem Smartphone manuell pruefen.
-Erst wenn Upload-Einstiege, Menu, Produktmodal, Warenkorb, QR-/Tisch-Kontext
-und Entdecker-Karten-Profilwechsel stabil bleiben, kann der neue Public-Entry
-schrittweise mit einem echten leichten Public-Renderer fuer `/:slug/menu`
-gefuellt werden.
+Nach Schritt 32 ist der naechste sinnvolle separate Folgeschritt:
+Public-Menu inklusive Fokus auf echtem Smartphone manuell pruefen.
+Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
+Entdecker-Karten-Profilwechsel und Upload-Einstiege stabil bleiben, kann der
+neue Public-Entry schrittweise mit einem echten leichten Public-Renderer fuer
+`/:slug/menu` gefuellt werden.
 
 ## Guardrails fuer die naechsten Schritte
 
