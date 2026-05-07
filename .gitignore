@@ -10,6 +10,9 @@ Thumbs.db
 firebase-debug.log
 firebase-debug.*.log
 
+# Build artifacts
+dist/
+
 # Runner artifacts
 tests/mnyra-heart-runner/artifacts/
 tests/mnyra-heart-runner/tmp-*.png

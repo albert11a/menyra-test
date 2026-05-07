@@ -26,9 +26,58 @@ test("public menu surface keeps focus pending when menu is ready but focus is st
   }, { profile });
 
   assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.canRenderItems, true);
   assert.equal(surface.focus.status, "loading");
   assert.equal(surface.focus.canRenderFocus, false);
   assert.equal(surface.focus.settled, false);
+});
+
+test("public menu surface can coordinate item rendering until focus settles", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "restaurant-a",
+      source: "public",
+      truthState: "seeded",
+      items: [{ id: "item-1", category: "Pizza" }],
+      loading: false
+    },
+    focus: {
+      restaurantId: "restaurant-a",
+      truthSource: "public-menu",
+      truthState: "unknown",
+      items: [],
+      loading: true
+    }
+  }, { profile, coordinateFocusWithMenu: true });
+
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.canRenderItems, false);
+  assert.equal(surface.menu.waitingForFocus, true);
+  assert.equal(surface.focus.status, "loading");
+});
+
+test("public menu surface releases coordinated item rendering when focus is empty", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "restaurant-a",
+      source: "public",
+      truthState: "seeded",
+      items: [{ id: "item-1", category: "Pizza" }],
+      loading: false
+    },
+    focus: {
+      restaurantId: "restaurant-a",
+      truthSource: "public-menu",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, { profile, coordinateFocusWithMenu: true });
+
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.menu.waitingForFocus, false);
+  assert.equal(surface.focus.status, "empty");
 });
 
 test("public menu surface renders seeded focus only for the same restaurant target", () => {

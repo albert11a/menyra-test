@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-02
+Last updated: 2026-05-07
 
 # Mnyra Current Phase
 
@@ -236,9 +236,51 @@ Last updated: 2026-05-02
   wieder direkt rendern, obwohl der schwere Media-/Upload-Controller weiterhin
   erst bei echter Upload-Aktion dynamisch geladen wird. Sichtbare UI, Labels,
   Upload-Regeln, Routing, QR und Produktlogik bleiben unveraendert.
+- Schritt 32 ist abgeschlossen: Public-Menu-Fokus wird beim sichtbaren Public-
+  Menu-Load frueher als deduplizierter Prefetch parallel zum Menu-Read
+  angewaermt.
+- Bewertung von Schritt 32: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 32:
+  Focus liest weiterhin dieselbe Firebase-Wahrheit
+  `restaurants/{restaurantId}/public/offers` plus `public/meta`, startet im
+  sichtbaren Public-Menu-Pfad aber nicht mehr erst nach abgeschlossenem Menu-
+  Load. Der sichtbare Focus-State wird weiterhin erst committet, wenn die
+  passende Public-Menu-Surface bestaetigt ist. Sichtbare UI, QR, Warenkorb,
+  Routing, Rules, Functions und Produktlogik bleiben unveraendert.
+- Schritt 33 ist abgeschlossen: Public-Route-Bootstrap-Menu-/Fokus-Snapshot
+  wird im Client nicht mehr verworfen und ein fehlgeschlagener Menu-Prefetch
+  kann nicht mehr als endloses `Menu wird geladen` im sichtbaren State bleiben.
+- Bewertung von Schritt 33: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 33:
+  Wenn der Direct-Public-Bootstrap Menu-/Fokus-Items bereits mitliefert, werden
+  diese jetzt als erste sichtbare Public-Wahrheit genutzt. Dadurch koennen
+  Header, Menu und Fokus im besten Fall aus demselben Bootstrap-Snapshot
+  erscheinen. Ohne Bootstrap/Cache bleiben Menu und Fokus echte Public-Reads,
+  fallen aber bei Fehlern in einen Error-/Empty-State statt dauerhaft zu laden.
+  Sichtbare UI, QR, Warenkorb, Routing, Firebase Rules, Functions und
+  Produktlogik bleiben unveraendert.
+- Schritt 34 ist abgeschlossen: Der Social-App- und Public-Entry-Build-Token
+  wurde nach dem Menu-/Fokus-Bundle-Fix hochgezogen.
+- Bewertung von Schritt 34: `bestanden`.
+- Wichtigster Effekt aus Schritt 34:
+  Normale Desktop-Browser mit altem Service-Worker-Cache oder altem Startup-
+  Snapshot behandeln den Stand nach Schritt 33 nicht mehr als dieselbe App-
+  Version. Handy-Inkognito war bereits sauber, weil dort keine Alt-Caches
+  vorhanden waren. Sichtbare UI, Menu-/Fokus-Logik, Routing, Firebase Rules,
+  Functions und Produktlogik bleiben unveraendert.
+- Schritt 35 ist abgeschlossen: Public-Fokus wird fuer die sichtbare Public-
+  Menu-Praesentation als Teil der Menu-Render-Wahrheit koordiniert.
+- Bewertung von Schritt 35: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 35:
+  Wenn Public-Menu-Items bereits geladen sind, Fokus fuer dieselbe sichtbare
+  Public-Surface aber noch `unknown`/`loading` ist, werden die Menu-Items noch
+  nicht sichtbar gerendert. Erst wenn Fokus bereit, leer oder Fehler ist,
+  erscheint der Menu-Inhalt. Dadurch kann Fokus nicht mehr nachtraeglich oberhalb
+  bereits sichtbarer Produkte einspringen. Sichtbare UI, QR, Warenkorb, Routing,
+  Firebase Rules, Functions und Datenpfade bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
-  der jetzige Schritt 12 auf `finale-mnyra-mainline` ersetzt diesen Stand.
+  der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
 - Referenz: [docs/mnyra-step2-route-data-matrix.md](./mnyra-step2-route-data-matrix.md)
 - Referenz: [docs/mnyra-step4-public-core-routes-first-render-stability.md](./mnyra-step4-public-core-routes-first-render-stability.md)
 - Referenz: [docs/mnyra-step5-isolation-public-bootstrap-rollback.md](./mnyra-step5-isolation-public-bootstrap-rollback.md)
@@ -266,6 +308,10 @@ Last updated: 2026-05-02
 - Referenz: [docs/mnyra-step28-public-startup-defer-upload-orders.md](./mnyra-step28-public-startup-defer-upload-orders.md)
 - Referenz: [docs/mnyra-step29-public-web-entry-boundary.md](./mnyra-step29-public-web-entry-boundary.md)
 - Referenz: [docs/mnyra-step31-profile-upload-deferred-render-fix.md](./mnyra-step31-profile-upload-deferred-render-fix.md)
+- Referenz: [docs/mnyra-step32-public-focus-prefetch-alignment.md](./mnyra-step32-public-focus-prefetch-alignment.md)
+- Referenz: [docs/mnyra-step33-public-bootstrap-menu-focus-seed.md](./mnyra-step33-public-bootstrap-menu-focus-seed.md)
+- Referenz: [docs/mnyra-step34-social-app-cache-version-bump.md](./mnyra-step34-social-app-cache-version-bump.md)
+- Referenz: [docs/mnyra-step35-public-menu-focus-lockstep-render.md](./mnyra-step35-public-menu-focus-lockstep-render.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -282,7 +328,7 @@ Last updated: 2026-05-02
 
 ## Workflow ab jetzt (verbindlich)
 
-- Es wird nur auf Branch `finale-mnyra-mainline` gearbeitet.
+- Es wird nur auf Branch `junivitefinal` gearbeitet.
 - `finale-mnyra` und `finale-mnyra-clean` bleiben Referenz-Branches.
 - Keine direkte Arbeit auf `main`.
 - Nach jedem Schritt:
@@ -291,12 +337,13 @@ Last updated: 2026-05-02
 
 ## Naechster Schritt
 
-Nach Schritt 31 ist der naechste sinnvolle separate Folgeschritt:
-Profil-Upload-Actions und Public-Menu auf echtem Smartphone manuell pruefen.
-Erst wenn Upload-Einstiege, Menu, Produktmodal, Warenkorb, QR-/Tisch-Kontext
-und Entdecker-Karten-Profilwechsel stabil bleiben, kann der neue Public-Entry
-schrittweise mit einem echten leichten Public-Renderer fuer `/:slug/menu`
-gefuellt werden.
+Nach Schritt 35 ist der naechste sinnvolle separate Folgeschritt:
+Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
+und normalem Desktop-Browser gegenpruefen.
+Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
+Entdecker-Karten-Profilwechsel und Upload-Einstiege stabil bleiben, kann der
+neue Public-Entry schrittweise mit einem echten leichten Public-Renderer fuer
+`/:slug/menu` gefuellt werden.
 
 ## Guardrails fuer die naechsten Schritte
 

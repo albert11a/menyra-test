@@ -281,12 +281,20 @@ function normalizeIncomingWebRoutePayload(payload = null) {
   const postsItems = postsItemsRaw
     .map((row) => normalizeWebRouteSeedPost(row, restaurantId))
     .filter(Boolean);
-  const menuItemsRaw = [];
+  const menuItemsRaw = Array.isArray(snapshotMenu?.items)
+    ? snapshotMenu.items
+    : (Array.isArray(payload?.menu?.items)
+      ? payload.menu.items
+      : (Array.isArray(payload?.menuItems) ? payload.menuItems : []));
   const menuItems = menuItemsRaw
     .map((row, index) => normalizeWebRouteMenuItem(row, restaurantId, index))
     .filter(Boolean)
     .sort((a, b) => normalizeBootstrapMenuOrderIndex(a?.orderIndex) - normalizeBootstrapMenuOrderIndex(b?.orderIndex));
-  const focusItemsRaw = [];
+  const focusItemsRaw = Array.isArray(snapshotFocus?.items)
+    ? snapshotFocus.items
+    : (Array.isArray(payload?.focus?.items)
+      ? payload.focus.items
+      : (Array.isArray(payload?.focusItems) ? payload.focusItems : []));
   const focusItems = focusItemsRaw
     .map((row, index) => normalizeWebRouteFocusItem(row, index))
     .filter(Boolean)
@@ -302,14 +310,20 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     return "unknown";
   };
   const postsState = resolveSectionTruthState(snapshotPosts?.state ? snapshotPosts : payload?.posts, postsItems.length);
-  const menuState = "unknown";
-  const focusState = "unknown";
+  const menuState = resolveSectionTruthState(snapshotMenu?.state ? snapshotMenu : payload?.menu, menuItems.length);
+  const focusState = resolveSectionTruthState(snapshotFocus?.state ? snapshotFocus : payload?.focus, focusItems.length);
   const requestedPostsCount = Number(snapshotPosts?.count ?? payload?.posts?.count);
   const postsCount = Number.isFinite(requestedPostsCount)
     ? Math.max(postsItems.length, Math.max(0, Math.round(requestedPostsCount)))
     : postsItems.length;
-  const menuCount = 0;
-  const focusCount = 0;
+  const requestedMenuCount = Number(snapshotMenu?.count ?? payload?.menu?.count);
+  const menuCount = Number.isFinite(requestedMenuCount)
+    ? Math.max(menuItems.length, Math.max(0, Math.round(requestedMenuCount)))
+    : menuItems.length;
+  const requestedFocusCount = Number(snapshotFocus?.count ?? payload?.focus?.count);
+  const focusCount = Number.isFinite(requestedFocusCount)
+    ? Math.max(focusItems.length, Math.max(0, Math.round(requestedFocusCount)))
+    : focusItems.length;
   const snapshotVersion = String(
     snapshotPayload?.snapshotVersion
     || payload?.snapshotVersion

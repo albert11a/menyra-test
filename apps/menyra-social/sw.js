@@ -2,6 +2,8 @@ const CACHE_PREFIX = "mnyra-social-cache-";
 const CACHE_SCHEMA_TOKEN = "web-fresh-v1";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
+const BUNDLED_SCOPE = `${APP_SCOPE}bundled/`;
+const BUNDLED_MANIFEST_URL = `${BUNDLED_SCOPE}manifest.json`;
 const BETA_UPDATE_CHANNEL_BASE = "beta-auto-update-v2";
 const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
@@ -233,6 +235,27 @@ function isInSocialScope(url) {
   );
 }
 
+function hasViteContentHash(pathname = "") {
+  const fileName = String(pathname || "").split("/").pop() || "";
+  return /-[a-zA-Z0-9_-]{8,}\.(?:mjs|js|css|png|jpg|jpeg|webp|svg|gif|woff2?|ttf|otf)$/i.test(fileName);
+}
+
+function isViteBuildManifestRequest(url) {
+  return url.origin === self.location.origin && url.pathname === BUNDLED_MANIFEST_URL;
+}
+
+function isViteBuildEntryRequest(url) {
+  return url.origin === self.location.origin
+    && url.pathname.startsWith(`${BUNDLED_SCOPE}entry/`)
+    && /\.(mjs|js|css)$/i.test(url.pathname);
+}
+
+function isViteBuildHashedAssetRequest(url) {
+  return url.origin === self.location.origin
+    && url.pathname.startsWith(BUNDLED_SCOPE)
+    && hasViteContentHash(url.pathname);
+}
+
 function normalizePublicRouteTopTab(value = "") {
   const key = String(value || "").trim().toLowerCase();
   if (!key) return "";
@@ -445,6 +468,21 @@ async function cacheVersionedCodeAssetFirst(request) {
   return network || cached || new Response("", { status: 504, statusText: "Versioned asset fetch failed" });
 }
 
+async function networkFirstBuildMetadata(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const refreshRequest = new Request(request, { cache: "reload" });
+    const response = await fetchWithTimeout(refreshRequest, RUNTIME_FETCH_TIMEOUT_MS);
+    if (response && (response.ok || response.type === "opaque")) {
+      cache.put(request, response.clone()).catch(() => null);
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    return cached || new Response("", { status: 504, statusText: "Build metadata fetch failed" });
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -465,6 +503,21 @@ self.addEventListener("fetch", (event) => {
   const isExternalStatic = isExternalStaticRequest(url, req);
 
   if (!inScope && !isImage && !isExternalStatic) return;
+
+  if (inScope && isViteBuildManifestRequest(url)) {
+    event.respondWith(networkFirstBuildMetadata(req));
+    return;
+  }
+
+  if (inScope && isViteBuildEntryRequest(url)) {
+    event.respondWith(networkFirstBuildMetadata(req));
+    return;
+  }
+
+  if (inScope && isViteBuildHashedAssetRequest(url)) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
 
   if (isNavigation && inScope) {
     const strictPublicNavigation = isDirectPublicProfileNavigation(url);
