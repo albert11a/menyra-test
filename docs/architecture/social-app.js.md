@@ -58,7 +58,20 @@ and startup sequencing were not moved. This is a real responsibility extraction,
 but not yet a true lazy-load or eager-startup reduction because the chat facade
 is still statically imported and instantiated before the session runtime cluster.
 
-The file is about 5,051 lines after Phase 2A. It contains these major regions:
+Phase 2B update on branch `refactorapp`: `social-app.js` now imports
+`apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js` instead of
+`chat-app-runtime-facade.js`. The lazy proxy preserves the same public facade
+shape, keeps synchronous local storage/getter/render fallbacks synchronous, and
+loads the real `./chat-app-runtime-facade.js` only through `ensureChatRuntime()`.
+The heavy Chat facade, `chat-runtime-cluster.js`, `chat-dom-utils.js`, and the
+Chat listener/message/storage/render module graph should no longer be part of
+non-chat cold-load work. Chat loads on `/chat`, chat modal/thread open, send,
+attachment, explicit chat notification targets, and current follow/chat actions
+whose implementation still lives behind the Chat controller. Guest/public/feed,
+search, map/discovery, public business/menu, QR/table menu, profile browsing,
+and cart/order browsing should not load the heavy Chat runtime.
+
+The file is about 5,332 lines after Phase 2B. It contains these major regions:
 
 - imports and browser constants: lines 1-424
 - app root, perf/runtime diagnostics, cache keys, icon fallback: lines 425-1008
@@ -144,7 +157,7 @@ Confirmed top-level work:
 - binds `window.addEventListener("popstate", ...)` through
   `bindRoutePopstateReplay()`
 - creates deferred orders and media upload proxies
-- creates the chat app runtime facade and session runtime clusters
+- creates the lazy chat app runtime facade proxy and session runtime clusters
 - calls `startAppStartupRuntimeCluster(...)`
 - calls `scheduleRuntimeDiagnosticsStartup()`
 
@@ -177,7 +190,7 @@ Important app-local direct imports:
 - `core/menu/*`
 - `core/profile/*`
 - `core/crm/*`
-- `core/chat/chat-app-runtime-facade.js`
+- `core/chat/chat-app-runtime-lazy-facade.js`
 - `core/chat/chat-route-open-utils.js`
 - `core/chat/chat-thread-action-state-utils.js`
 - `core/notifications/*`
@@ -212,6 +225,11 @@ Confirmed dynamic or deferred loading:
 - Media upload runtime:
   - `./core/media/media-upload-runtime-cluster.js`
   - loaded by `createDeferredMediaUploadRuntimeController()`
+- Chat runtime:
+  - `./core/chat/chat-app-runtime-facade.js`
+  - loaded by `chat-app-runtime-lazy-facade.js` inside `ensureChatRuntime()`
+  - expected only for `/chat`, chat modal/thread open, send/attachment, explicit
+    chat notification targets, and current Chat-owned follow actions
 - Image compression:
   - `./_shared/image-compressor.js`
   - used by media upload runtime
@@ -951,6 +969,7 @@ profile hints, owner/staff detection, and CEO scope loading.
 
 Chat and notifications are rooted by:
 
+- `core/chat/chat-app-runtime-lazy-facade.js`
 - `core/chat/chat-app-runtime-facade.js`
 - `createChatRuntimeCluster`
 - `core/chat/chat-runtime-controller.js`
@@ -972,9 +991,18 @@ Connected behavior:
 - push seen/token/device metadata storage
 
 Phase 2A moved the chat-specific creation/configuration wrapper out of
-`social-app.js`. The root still exposes same-name adapter functions because
-bridge shell, session lifecycle, shell UI rendering, and existing event binders
-call those function names directly.
+`social-app.js`. Phase 2B changed the startup-facing boundary from a static
+facade to a lazy proxy. The root still exposes same-name adapter functions
+because bridge shell, session lifecycle, shell UI rendering, and existing event
+binders call those function names directly.
+
+Phase 2B sync fallbacks stay synchronous for unread count, active thread lookup,
+thread id/storage keys, local thread index/message storage, message preview and
+timestamp helpers, DOM focus/scroll/autosize helpers, and empty render shells
+while the real Chat runtime loads. Async/action methods ensure-load Chat before
+delegating. Listener stop calls are safe if the real Chat facade was never
+loaded; eager auth startup listener calls are gated so non-chat surfaces do not
+import or start the heavy Chat listener.
 
 ### Upload/media
 
@@ -1075,10 +1103,10 @@ Good first candidates for later extraction:
 - CRM dependency object builder
 - pure route key helpers, if all browser history calls stay in the root
 
-Phase 2A completed the first chat dependency/runtime facade extraction. A later
-chat step can decide whether to make the facade dynamic; that requires preserving
-the synchronous chat index restore used by session data loading and the
-authenticated live-listener startup path.
+Phase 2A completed the first chat dependency/runtime facade extraction. Phase 2B
+made that facade boundary dynamic while preserving the synchronous chat index
+restore used by session data loading and safe listener cleanup for logout/reset
+paths.
 
 Poor first candidates:
 
