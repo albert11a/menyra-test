@@ -69,6 +69,11 @@ import {
   createEmptyTableQrState
 } from "./core/common/state-factories.js";
 import {
+  DEFAULT_PROFILE,
+  DEFAULT_SETTINGS,
+  DEFAULT_MENU_LAYOUT
+} from "./core/app-shell/social-app-default-state-config.js";
+import {
   normalizeInitialTab,
   normalizeAuthMode
 } from "./core/auth/route-auth-utils.js";
@@ -429,53 +434,6 @@ const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "";
 const LEAFLET_CSS_FALLBACK_URL = "";
-
-const DEFAULT_PROFILE = {
-  name: "",
-  handle: "",
-  bio: "",
-  avatar: "",
-  location: "",
-  address: "",
-  followers: 0,
-  following: 0,
-  privateAccount: false,
-  karma: "0",
-  roles: [],
-  role: "user",
-  sourceUserRole: "user",
-  isPremium: false,
-  restaurantId: "",
-  staffRestaurantId: "",
-  waiterRestaurantId: "",
-  businessAccess: false,
-  waiterAccess: false,
-  permissions: {
-    businessAccess: false,
-    waiterAccess: false
-  },
-  staffRole: "",
-  businessOwnerUid: "",
-  staffActive: true,
-  staffStatus: "",
-  socialAccessMode: "",
-  socialAccessMessage: "",
-  leadSettings: null,
-  posts: []
-};
-
-const DEFAULT_SETTINGS = {
-  darkMode: false,
-  privateAccount: false,
-  showOnline: false,
-  pushNotifs: true,
-  emailNotifs: false,
-  language: "Deutsch"
-};
-
-const DEFAULT_MENU_LAYOUT = {
-  cardColor: "white"
-};
 
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 250000;
