@@ -738,7 +738,10 @@ Use these guardrails in the first implementation prompt:
 - Read `AGENTS.md`, `docs/mnyra-launch-masterplan.md`,
   `docs/mnyra-current-phase.md`, this plan, and
   `docs/architecture/social-app.js.md` first.
-- Confirm branch `junivitefinal` and current `git status`.
+- Confirm branch `refactorapp` and current `git status`.
+- Confirm `refactorapp` is based on `main`.
+- Do not use `junivitefinal` for refactor implementation work.
+- Do not work directly on `main`.
 - Implement exactly one extraction candidate per task.
 - Do not touch `index.html`, entry files, generated bundles, routes, Firebase
   paths, CSS, UI, render, state, startup, public bootstrap, menu/focus, QR,
@@ -752,6 +755,11 @@ Use these guardrails in the first implementation prompt:
 - Run `git diff --check` before commit.
 - Update docs in the same commit.
 - Provide a short manual test list for Albert.
+
+Phase 1 implementation commits already completed on `refactorapp`:
+
+- Phase 1A: `88c67589`
+- Phase 1B: `0588d7e9`
 
 ## 12. First Implementation Task Draft
 
