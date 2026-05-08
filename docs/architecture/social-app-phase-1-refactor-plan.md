@@ -551,6 +551,37 @@ Documentation updates required:
 - Note that `FAST_LIMITS`, `SEARCH_LIMITS`, and cache read/write functions
   intentionally stayed in `social-app.js`.
 
+Phase 1C completed note:
+
+- Changed files:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/app-shell/social-app-cache-config.js`
+  - `docs/architecture/social-app.js.md`
+  - `docs/architecture/social-app-phase-1-refactor-plan.md`
+- Moved only `CACHE_KEYS`, `userPostsKey`, `businessPostsKey`,
+  `staffCacheKey`, `leadPageCacheKey`, `customerPageCacheKey`,
+  `CACHE_TTL_MS`, `FEED_DELTA_MIN_MS`, `FEED_PRELOAD_LIMIT`,
+  `FEED_PRELOAD_ATTR`, and `FEED_META_LISTEN_LIMIT`.
+- Did not move `PERF_WARM_KEY`, any `PERF_*` detection values,
+  `FEED_TRUTH_LIMIT`, `FEED_FALLBACK_TRUTH_LIMIT`,
+  `FEED_DELTA_TRUTH_LIMIT`, `FAST_LIMITS`, `SEARCH_LIMITS`, `FAST_MODE`,
+  `readCache`, `writeCache`, `computeLatestTimestamp`, `saveFeedPosts`,
+  persisted-load/reset helpers, `preloadFeedHeroImages`, startup snapshot
+  constants/logic, public bootstrap logic, runtime diagnostics, route logic,
+  state/dataLoaded, controller creation, Firebase/Auth/Firestore wiring,
+  UI/CSS, entry files, or generated bundles.
+- Manual checks Albert should perform after this exact step: refresh feed twice
+  and confirm cached feed/restaurants/stories still render; open a public
+  business profile, refresh, and confirm posts/menu still load; open owner
+  profile/business posts; open leads/customers and confirm page caches still
+  behave; open public menu including QR/table route and confirm cache does not
+  show another restaurant; test default bundled startup and
+  `?mnyra-raw-entry=1`.
+- Rollback for this step is a normal `git revert` of the Phase 1C commit; no
+  data migration, storage migration, Firebase rollback, generated bundle edit,
+  or cache clearing should be needed unless manual testing proves an accidental
+  key change.
+
 ## 7. Rejected/Deferred Candidates
 
 These may sound useful but are not safe for Phase 1.

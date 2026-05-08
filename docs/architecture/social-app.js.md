@@ -36,6 +36,16 @@ account logic, visibility functions, Firebase reads/writes, state identity,
 startup, render/setState, routes, and all controller wiring. Phase 1B moved only
 static declarations; it did not move runtime behavior.
 
+Phase 1C update on branch `refactorapp`: static cache key, TTL, and feed-preload
+config now lives in
+`apps/menyra-social/core/app-shell/social-app-cache-config.js` and is imported
+back into `social-app.js` as named exports. `social-app.js` still owns perf
+detection, `FAST_LIMITS`, `SEARCH_LIMITS`, cache read/write helpers, persisted
+state loading, startup snapshot/public bootstrap logic, runtime diagnostics,
+state identity, routes, render/setState, and controller wiring. Phase 1C moved
+only static declarations and pure key-builder functions; it did not move runtime
+behavior.
+
 The file was 5,578 lines at inspection time. It contains these major regions:
 
 - imports and browser constants: lines 1-424
@@ -638,6 +648,8 @@ Additional `social-app.js` storage keys:
 - `menyra_social_staff_cache_v1::{uid}`
 - `menyra_social_leads_cache_v1::{uid}::{scope}`
 - `menyra_social_customers_cache_v1::{uid}::{scope}`
+  - these Phase 1C static cache key strings and key builders now live in
+    `apps/menyra-social/core/app-shell/social-app-cache-config.js`
 - optional startup snapshot:
   - `mnyra.social.startup-snapshot.v2`
   - only enabled when `window.__MENYRA_SOCIAL_ENABLE_STARTUP_SNAPSHOT__ === true`;
