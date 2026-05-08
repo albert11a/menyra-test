@@ -46,7 +46,19 @@ state identity, routes, render/setState, and controller wiring. Phase 1C moved
 only static declarations and pure key-builder functions; it did not move runtime
 behavior.
 
-The file was 5,578 lines at inspection time. It contains these major regions:
+Phase 2A update on branch `refactorapp`: the chat feature runtime boundary now
+lives in `apps/menyra-social/core/chat/chat-app-runtime-facade.js`. That facade
+owns chat runtime creation, chat constants, chat DOM helper wrappers, chat
+thread/message storage wrapper methods, chat listener wrapper methods, and the
+legacy chat/follow/notification methods currently implemented by
+`core/chat/chat-runtime-controller.js`. `social-app.js` keeps same-name adapter
+functions for existing shell, bridge, session, and event binder callers. Public
+routes, menu/focus, QR/table, cart/order, render/setState, auth/session restore,
+and startup sequencing were not moved. This is a real responsibility extraction,
+but not yet a true lazy-load or eager-startup reduction because the chat facade
+is still statically imported and instantiated before the session runtime cluster.
+
+The file is about 5,051 lines after Phase 2A. It contains these major regions:
 
 - imports and browser constants: lines 1-424
 - app root, perf/runtime diagnostics, cache keys, icon fallback: lines 425-1008
@@ -132,7 +144,7 @@ Confirmed top-level work:
 - binds `window.addEventListener("popstate", ...)` through
   `bindRoutePopstateReplay()`
 - creates deferred orders and media upload proxies
-- creates chat and session runtime clusters
+- creates the chat app runtime facade and session runtime clusters
 - calls `startAppStartupRuntimeCluster(...)`
 - calls `scheduleRuntimeDiagnosticsStartup()`
 
@@ -165,7 +177,9 @@ Important app-local direct imports:
 - `core/menu/*`
 - `core/profile/*`
 - `core/crm/*`
-- `core/chat/*`
+- `core/chat/chat-app-runtime-facade.js`
+- `core/chat/chat-route-open-utils.js`
+- `core/chat/chat-thread-action-state-utils.js`
 - `core/notifications/*`
 - `core/follow/*`
 - `core/push/*`
@@ -937,6 +951,7 @@ profile hints, owner/staff detection, and CEO scope loading.
 
 Chat and notifications are rooted by:
 
+- `core/chat/chat-app-runtime-facade.js`
 - `createChatRuntimeCluster`
 - `core/chat/chat-runtime-controller.js`
 - `createSessionRuntimeCluster`
@@ -955,6 +970,11 @@ Connected behavior:
 - follow request and accepted follow writes
 - notification read/all-read writes
 - push seen/token/device metadata storage
+
+Phase 2A moved the chat-specific creation/configuration wrapper out of
+`social-app.js`. The root still exposes same-name adapter functions because
+bridge shell, session lifecycle, shell UI rendering, and existing event binders
+call those function names directly.
 
 ### Upload/media
 
@@ -1053,8 +1073,12 @@ Good first candidates for later extraction:
 - orders runtime config builder
 - media upload config builder
 - CRM dependency object builder
-- chat dependency object builder
 - pure route key helpers, if all browser history calls stay in the root
+
+Phase 2A completed the first chat dependency/runtime facade extraction. A later
+chat step can decide whether to make the facade dynamic; that requires preserving
+the synchronous chat index restore used by session data loading and the
+authenticated live-listener startup path.
 
 Poor first candidates:
 

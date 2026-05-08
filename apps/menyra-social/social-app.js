@@ -156,24 +156,7 @@ import { createSocialEngagementSupportRuntimeController } from "./core/profile/s
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
-import { createChatRuntimeCluster } from "./core/chat/chat-runtime-cluster.js";
-import {
-  markNotificationReadInListCore,
-  markAllNotificationsReadInListCore
-} from "./core/notifications/notification-read-state-utils.js";
-import {
-  isChatNotificationTypeCore,
-  isFollowNotificationTypeCore,
-  isPostNotificationTypeCore,
-  buildNotificationChatTargetCore,
-  buildNotificationProfileTargetCore
-} from "./core/notifications/notification-target-utils.js";
-import {
-  buildFollowRequestDocPayloadCore,
-  buildFollowRequestNotificationPayloadCore,
-  buildAcceptedFollowRecordPayloadCore,
-  buildFollowAcceptedNotificationPayloadCore
-} from "./core/follow/follow-request-payload-utils.js";
+import { createChatAppRuntimeFacade } from "./core/chat/chat-app-runtime-facade.js";
 import {
   normalizePendingChatUidCore,
   isSelfPendingChatTargetCore,
@@ -201,25 +184,9 @@ import {
   shouldHandlePushOpenTargetCore
 } from "./core/push/push-open-target-message-utils.js";
 import {
-  normalizeUserPostDocCore,
-  normalizeRestaurantPostDocCore
-} from "./core/feed/post-doc-normalize-utils.js";
-import {
   normalizePendingPostIdCore,
   findPostInLocalSourcesCore
 } from "./core/notifications/post-notification-open-utils.js";
-import {
-  readNotificationPostLookupCore,
-  shouldFetchUserNotificationPostCore,
-  shouldFetchRestaurantNotificationPostCore
-} from "./core/notifications/post-notification-fetch-utils.js";
-import { highlightCommentInModalCore } from "./core/notifications/notification-comment-highlight-utils.js";
-import { buildFollowAcceptedFollowingStateCore } from "./core/follow/follow-accepted-state-utils.js";
-import {
-  buildResolveUserByHandleCandidatesCore,
-  deriveFollowTargetIdentityCore,
-  isSelfFollowTargetCore
-} from "./core/follow/follow-target-utils.js";
 import {
   isGuestSessionCore,
   sanitizeTabForSessionCore
@@ -337,110 +304,10 @@ import {
   saveFeedPostsCore
 } from "./core/feed/feed-cache-utils.js";
 import {
-  getChatThreadIdCore,
-  chatThreadStorageKeyCore,
-  chatThreadDocRefCore,
-  chatMessageDocRefCore,
-  chatMessagesCollectionRefCore,
-  getChatMessageTimestampCore,
-  pruneChatMessagesCore,
-  buildChatPreviewTextCore
-} from "./core/chat/chat-utils.js";
-import {
-  saveChatThreadIndexCore,
-  readChatThreadIndexListCore,
-  buildChatThreadSummaryFromMessagesCore,
-  rebuildLegacyChatThreadIndexFromStorageCore,
-  mergeChatThreadListsCore,
-  loadChatThreadIndexCore,
-  sortChatThreadsCore,
-  rebuildChatThreadIndexFromStorageCore
-} from "./core/chat/chat-thread-index-utils.js";
-import {
-  normalizeChatThreadSummaryCore,
-  getChatUnreadCountCore,
-  upsertChatThreadListCore,
-  isChatThreadArchivedCore,
-  getChatThreadByIdCore,
-  getActiveChatThreadSummaryCore
-} from "./core/chat/chat-thread-state-utils.js";
-import {
-  getStringByteSizeCore,
-  isChatInlineDataUrlCore,
-  sanitizeChatAttachmentsForSyncCore,
-  normalizeChatMessageRecordCore,
-  loadLegacyChatThreadMessagesCore,
-  readFileAsDataUrlCore,
-  buildInlineChatAttachmentCore,
-  loadChatThreadMessagesCore,
-  saveChatThreadMessagesCore
-} from "./core/chat/chat-message-utils.js";
-import {
-  buildChatThreadPatchFromMessagesCore,
-  markIncomingChatMessagesAsReadCore,
-  updateChatMessageListCore
-} from "./core/chat/chat-message-state-utils.js";
-import {
-  buildChatMessageSyncContextCore,
-  buildChatRemotePayloadBundleCore,
-  buildChatMessageNotificationCore
-} from "./core/chat/chat-remote-sync-utils.js";
-import {
-  collectUnreadIncomingChatMessagesCore,
-  buildChatListenerLocalSeedCore,
-  shouldUseChatLocalSeedCore,
-  buildChatLocalMessageMapCore,
-  buildSortedRemoteChatMessagesCore,
-  hasUnreadIncomingRemoteMessagesCore
-} from "./core/chat/chat-read-sync-utils.js";
-import {
-  shouldIgnoreChatMessagesSnapshotCore,
-  resolveChatMessagesAfterSnapshotCore
-} from "./core/chat/chat-message-listener-utils.js";
-import {
-  collectUnreadIncomingChatMessageIdsCore,
-  buildChatUnreadResetPatchCore,
-  buildChatMessageReadPatchCore
-} from "./core/chat/chat-remote-read-write-utils.js";
-import {
-  normalizeRemoteChatReadSyncInputsCore,
-  buildRemoteChatReadSyncWriteTasksCore
-} from "./core/chat/chat-remote-read-sync-plan-utils.js";
-import {
-  renderChatMessagesPanelCore,
-  renderChatPendingAttachmentsCore
-} from "./core/chat/chat-render-utils.js";
-import { renderChatListPanelCore } from "./core/chat/chat-list-render-utils.js";
-import {
-  mapChatThreadDocsToSummariesCore,
-  buildMergedChatThreadsFromRemoteCore,
-  shouldRenderChatThreadListAfterRemoteSyncCore
-} from "./core/chat/chat-thread-listener-utils.js";
-import {
   normalizeChatOpenProfileCore,
   buildChatModalStateOnOpenCore,
-  buildClosedChatModalStateCore,
-  buildFallbackChatThreadProfileCore,
-  getSafeChatThreadIdFromThreadCore,
-  shouldCloseChatModalForThreadCore,
-  filterChatThreadsAfterDeleteCore
+  buildClosedChatModalStateCore
 } from "./core/chat/chat-thread-action-state-utils.js";
-import {
-  buildNextChatAttachmentsCore,
-  removePendingChatAttachmentCore,
-  toggleChatMessageFlagCore,
-  createOutgoingChatMessageCore
-} from "./core/chat/chat-compose-utils.js";
-import {
-  resolveChatSendPayloadCore,
-  buildChatSendLocalUpdateCore
-} from "./core/chat/chat-send-flow-utils.js";
-import {
-  captureChatInputFocusStateCore,
-  restoreChatInputFocusStateCore,
-  scrollChatMessagesToBottomCore,
-  autosizeTextareaCore
-} from "./core/chat/chat-dom-utils.js";
 import {
   bindProfileOverlayEventsCore,
   bindLikesOverlayEventsCore,
@@ -473,17 +340,6 @@ const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet
 const LEAFLET_JS_FALLBACK_URL = "";
 const LEAFLET_CSS_FALLBACK_URL = "";
 
-const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
-const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 250000;
-const CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS = Object.freeze([
-  Object.freeze({ maxSize: 1600, quality: 0.82 }),
-  Object.freeze({ maxSize: 1280, quality: 0.76 }),
-  Object.freeze({ maxSize: 1080, quality: 0.7 }),
-  Object.freeze({ maxSize: 900, quality: 0.62 }),
-  Object.freeze({ maxSize: 760, quality: 0.56 }),
-  Object.freeze({ maxSize: 640, quality: 0.5 })
-]);
-const CHAT_MESSAGE_READ_LIMIT = 30;
 const NOTIFICATIONS_LIVE_LIMIT = 12;
 const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
@@ -1224,7 +1080,7 @@ let sessionDataRuntimeController = null;
 let socialEngagementRuntimeController = null;
 let socialEngagementSupportRuntimeController = null;
 let crmRuntimeController = null;
-let chatRuntimeController = null;
+let chatRuntimeFacade = null;
 let menuPublicRuntimeController = null;
 let focusRuntimeController = null;
 let tableQrRuntimeController = null;
@@ -1256,6 +1112,17 @@ let authInitialized = false;
 let authBootstrapSnapshot = null;
 let selfProfileRuntimeController = null;
 
+function getChatRuntimeFacade() {
+  if (!chatRuntimeFacade) {
+    throw new Error("chatRuntimeFacade not initialized");
+  }
+  return chatRuntimeFacade;
+}
+
+function getChatRuntimeController() {
+  return getChatRuntimeFacade().getController();
+}
+
 const shellUiRuntimeCluster = createShellUiRuntimeCluster({
   state,
   constants: {
@@ -1271,7 +1138,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
   runtimeGetters: {
     getShellDomRuntimeControllerFn: () => shellDomRuntimeController,
     getMediaUploadRuntimeControllerFn: () => mediaUploadRuntimeController,
-    getChatRuntimeControllerFn: () => chatRuntimeController,
+    getChatRuntimeControllerFn: getChatRuntimeController,
     getShellRuntimeControllerFn: () => shellRuntimeController,
     getSessionDataRuntimeControllerFn: () => sessionDataRuntimeController,
     getBridgeBindingsFn: () => bridgeShellRuntimeCluster?.bridgeBindings || null,
@@ -3397,34 +3264,19 @@ function focusInputById(id) {
 }
 
 function captureChatInputFocusState() {
-  return captureChatInputFocusStateCore({
-    documentObj: typeof document === "undefined" ? null : document,
-    inputId: "chatMessageInput"
-  });
+  return getChatRuntimeFacade().captureChatInputFocusState();
 }
 
 function restoreChatInputFocusState(focusState) {
-  restoreChatInputFocusStateCore({
-    focusState,
-    canRestore: state.activeTab === "chat" && !!state.chatModal.open && !!state.chatModal.profile,
-    documentObj: typeof document === "undefined" ? null : document,
-    queueMicrotaskFn: (fn) => queueMicrotask(fn),
-    inputId: "chatMessageInput",
-    maxHeight: 112
-  });
+  return getChatRuntimeFacade().restoreChatInputFocusState(focusState);
 }
 
 function scrollChatMessagesToBottom() {
-  return scrollChatMessagesToBottomCore({
-    documentObj: typeof document === "undefined" ? null : document,
-    windowObj: typeof window === "undefined" ? null : window,
-    queueMicrotaskFn: (fn) => queueMicrotask(fn),
-    containerId: "chatMessages"
-  });
+  return getChatRuntimeFacade().scrollChatMessagesToBottom();
 }
 
 function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
-  autosizeTextareaCore(el, { minHeight, maxHeight });
+  return getChatRuntimeFacade().autosizeTextarea(el, { minHeight, maxHeight });
 }
 
 function clampCropPercent(value, fallback = 50) {
@@ -3558,212 +3410,207 @@ function applyFollowingHandles(handles, { shouldRender = true, targetIds = state
 }
 
 function saveChatThreadIndex(threads) {
-  return chatRuntimeController.saveChatThreadIndex(threads);
+  return getChatRuntimeFacade().saveChatThreadIndex(threads);
 }
 
 function readChatThreadIndexList(key) {
-  return chatRuntimeController.readChatThreadIndexList(key);
+  return getChatRuntimeFacade().readChatThreadIndexList(key);
 }
 
 function buildChatThreadSummaryFromMessages(threadId, value, fallback = {}) {
-  return chatRuntimeController.buildChatThreadSummaryFromMessages(threadId, value, fallback);
+  return getChatRuntimeFacade().buildChatThreadSummaryFromMessages(threadId, value, fallback);
 }
 
 function rebuildLegacyChatThreadIndexFromStorage() {
-  return chatRuntimeController.rebuildLegacyChatThreadIndexFromStorage();
+  return getChatRuntimeFacade().rebuildLegacyChatThreadIndexFromStorage();
 }
 
 function mergeChatThreadLists(...lists) {
-  return chatRuntimeController.mergeChatThreadLists(...lists);
+  return getChatRuntimeFacade().mergeChatThreadLists(...lists);
 }
 
 function loadChatThreadIndex(uid = state.user?.uid || "") {
-  return chatRuntimeController.loadChatThreadIndex(uid);
+  return getChatRuntimeFacade().loadChatThreadIndex(uid);
 }
 
 function sortChatThreads(threads) {
-  return chatRuntimeController.sortChatThreads(threads);
+  return getChatRuntimeFacade().sortChatThreads(threads);
 }
 
 function rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
-  return chatRuntimeController.rebuildChatThreadIndexFromStorage(uid);
+  return getChatRuntimeFacade().rebuildChatThreadIndexFromStorage(uid);
 }
 
 function getChatUnreadCount() {
-  return chatRuntimeController.getChatUnreadCount();
+  return getChatRuntimeFacade().getChatUnreadCount();
 }
 
 function upsertChatThread(profile, patch = {}) {
-  return chatRuntimeController.upsertChatThread(profile, patch);
+  return getChatRuntimeFacade().upsertChatThread(profile, patch);
 }
 
 function isChatThreadArchived(thread) {
-  return chatRuntimeController.isChatThreadArchived(thread);
+  return getChatRuntimeFacade().isChatThreadArchived(thread);
 }
 
 function getChatThreadById(threadId) {
-  return chatRuntimeController.getChatThreadById(threadId);
+  return getChatRuntimeFacade().getChatThreadById(threadId);
 }
 
 async function setChatThreadArchivedById(threadId, archived = true) {
-  return chatRuntimeController.setChatThreadArchivedById(threadId, archived);
+  return getChatRuntimeFacade().setChatThreadArchivedById(threadId, archived);
 }
 
 async function deleteChatThreadById(threadId) {
-  return chatRuntimeController.deleteChatThreadById(threadId);
+  return getChatRuntimeFacade().deleteChatThreadById(threadId);
 }
 
 function getActiveChatThreadSummary(profile = state.chatModal.profile) {
-  return chatRuntimeController.getActiveChatThreadSummary(profile);
+  return getChatRuntimeFacade().getActiveChatThreadSummary(profile);
 }
 
 function isActiveChatThreadBlocked(profile = state.chatModal.profile) {
-  return chatRuntimeController.isActiveChatThreadBlocked(profile);
+  return getChatRuntimeFacade().isActiveChatThreadBlocked(profile);
 }
 
 function getChatThreadId(profile = state.chatModal.profile) {
-  return chatRuntimeController.getChatThreadId(profile);
+  return getChatRuntimeFacade().getChatThreadId(profile);
 }
 
 function chatThreadStorageKey(profile = state.chatModal.profile) {
-  return chatRuntimeController.chatThreadStorageKey(profile);
+  return getChatRuntimeFacade().chatThreadStorageKey(profile);
 }
 
 function chatThreadDocRef(ownerUid, threadId) {
-  return chatRuntimeController.chatThreadDocRef(ownerUid, threadId);
+  return getChatRuntimeFacade().chatThreadDocRef(ownerUid, threadId);
 }
 
 function chatMessageDocRef(ownerUid, threadId, messageId) {
-  return chatRuntimeController.chatMessageDocRef(ownerUid, threadId, messageId);
+  return getChatRuntimeFacade().chatMessageDocRef(ownerUid, threadId, messageId);
 }
 
 function chatMessagesCollectionRef(ownerUid, threadId) {
-  return chatRuntimeController.chatMessagesCollectionRef(ownerUid, threadId);
+  return getChatRuntimeFacade().chatMessagesCollectionRef(ownerUid, threadId);
 }
 
 function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
-  return chatRuntimeController.normalizeChatThreadSummary(threadId, data, fallback);
+  return getChatRuntimeFacade().normalizeChatThreadSummary(threadId, data, fallback);
 }
 
 function getCurrentChatSenderProfile() {
-  return chatRuntimeController.getCurrentChatSenderProfile();
+  return getChatRuntimeFacade().getCurrentChatSenderProfile();
 }
 
 function getStringByteSize(value) {
-  return chatRuntimeController.getStringByteSize(value);
+  return getChatRuntimeFacade().getStringByteSize(value);
 }
 
 function isChatInlineDataUrl(dataUrl) {
-  return chatRuntimeController.isChatInlineDataUrl(dataUrl);
+  return getChatRuntimeFacade().isChatInlineDataUrl(dataUrl);
 }
 
 function sanitizeChatAttachmentsForSync(attachments) {
-  return chatRuntimeController.sanitizeChatAttachmentsForSync(attachments);
+  return getChatRuntimeFacade().sanitizeChatAttachmentsForSync(attachments);
 }
 
 function normalizeChatMessageRecord(messageId, data = {}, localMap = new Map()) {
-  return chatRuntimeController.normalizeChatMessageRecord(messageId, data, localMap);
+  return getChatRuntimeFacade().normalizeChatMessageRecord(messageId, data, localMap);
 }
 
 function getChatMessageTimestamp(message) {
-  return chatRuntimeController.getChatMessageTimestamp(message);
+  return getChatRuntimeFacade().getChatMessageTimestamp(message);
 }
 
 function pruneChatMessages(messages) {
-  return chatRuntimeController.pruneChatMessages(messages);
+  return getChatRuntimeFacade().pruneChatMessages(messages);
 }
 
 function buildChatPreviewText(message) {
-  return chatRuntimeController.buildChatPreviewText(message);
+  return getChatRuntimeFacade().buildChatPreviewText(message);
 }
 
 function loadLegacyChatThreadMessages(threadId) {
-  return chatRuntimeController.loadLegacyChatThreadMessages(threadId);
+  return getChatRuntimeFacade().loadLegacyChatThreadMessages(threadId);
 }
 
 async function readFileAsDataUrl(file) {
-  return chatRuntimeController.readFileAsDataUrl(file);
+  return getChatRuntimeFacade().readFileAsDataUrl(file);
 }
 
 async function buildInlineChatAttachment(file, isImage = false) {
-  return chatRuntimeController.buildInlineChatAttachment(file, isImage);
+  return getChatRuntimeFacade().buildInlineChatAttachment(file, isImage);
 }
 
 function loadChatThreadMessages(profile) {
-  return chatRuntimeController.loadChatThreadMessages(profile);
+  return getChatRuntimeFacade().loadChatThreadMessages(profile);
 }
 
 function saveChatThreadMessages(profile, messages) {
-  return chatRuntimeController.saveChatThreadMessages(profile, messages);
+  return getChatRuntimeFacade().saveChatThreadMessages(profile, messages);
 }
 
 function stopChatThreadsListener() {
-  return chatRuntimeController.stopChatThreadsListener();
+  return getChatRuntimeFacade().stopChatThreadsListener();
 }
 
 function stopActiveChatMessagesListener() {
-  return chatRuntimeController.stopActiveChatMessagesListener();
+  return getChatRuntimeFacade().stopActiveChatMessagesListener();
 }
 
 function syncLocalChatThreadsFromRemote(remoteThreads, ownerUid = state.user?.uid || "") {
-  return chatRuntimeController.syncLocalChatThreadsFromRemote(remoteThreads, ownerUid);
+  return getChatRuntimeFacade().syncLocalChatThreadsFromRemote(remoteThreads, ownerUid);
 }
 
 function startChatThreadsListener(user = state.user) {
-  return chatRuntimeController.startChatThreadsListener(user);
+  return getChatRuntimeFacade().startChatThreadsListener(user);
 }
 
 async function syncRemoteChatReadState(profile, messages = state.chatModal.messages || []) {
-  return chatRuntimeController.syncRemoteChatReadState(profile, messages);
+  return getChatRuntimeFacade().syncRemoteChatReadState(profile, messages);
 }
 
 function startActiveChatMessagesListener(profile = state.chatModal.profile) {
-  return chatRuntimeController.startActiveChatMessagesListener(profile);
+  return getChatRuntimeFacade().startActiveChatMessagesListener(profile);
 }
 
 async function persistCurrentChatMessagePatch(messageId, patch = {}) {
-  return chatRuntimeController.persistCurrentChatMessagePatch(messageId, patch);
+  return getChatRuntimeFacade().persistCurrentChatMessagePatch(messageId, patch);
 }
 
 async function syncChatMessageToRemote(message, partnerProfile = state.chatModal.profile) {
-  return chatRuntimeController.syncChatMessageToRemote(message, partnerProfile);
+  return getChatRuntimeFacade().syncChatMessageToRemote(message, partnerProfile);
 }
 
 function syncChatThreadSummary(profile, messages) {
-  return chatRuntimeController.syncChatThreadSummary(profile, messages);
+  return getChatRuntimeFacade().syncChatThreadSummary(profile, messages);
 }
 
 function markChatThreadAsRead(profile, messages = null) {
-  return chatRuntimeController.markChatThreadAsRead(profile, messages);
+  return getChatRuntimeFacade().markChatThreadAsRead(profile, messages);
 }
 
 function updateCurrentChatMessages(updater) {
-  return chatRuntimeController.updateCurrentChatMessages(updater);
+  return getChatRuntimeFacade().updateCurrentChatMessages(updater);
 }
 
 async function addChatAttachments(fileList) {
-  return chatRuntimeController.addChatAttachments(fileList);
+  return getChatRuntimeFacade().addChatAttachments(fileList);
 }
 
 function removePendingChatAttachment(attachmentId) {
-  return chatRuntimeController.removePendingChatAttachment(attachmentId);
+  return getChatRuntimeFacade().removePendingChatAttachment(attachmentId);
 }
 
 function toggleChatMessageSaved(messageId) {
-  return chatRuntimeController.toggleChatMessageSaved(messageId);
+  return getChatRuntimeFacade().toggleChatMessageSaved(messageId);
 }
 
 function toggleChatMessageLiked(messageId) {
-  return chatRuntimeController.toggleChatMessageLiked(messageId);
+  return getChatRuntimeFacade().toggleChatMessageLiked(messageId);
 }
 
 async function sendChatMessage() {
-  startSocialBudgetTrace("chat_send");
-  try {
-    return await chatRuntimeController.sendChatMessage();
-  } finally {
-    finishSocialBudgetTrace("chat_send");
-  }
+  return getChatRuntimeFacade().sendChatMessage();
 }
 
 function readCache(key, ttlMs) {
@@ -4970,18 +4817,14 @@ bindBrowserPopstateRouteSync();
 
 mediaUploadRuntimeController = createDeferredMediaUploadRuntimeController();
 
-chatRuntimeController = createChatRuntimeCluster({
+chatRuntimeFacade = createChatAppRuntimeFacade({
   stateDeps: { state, safeStorage, chatIndexKey },
   constants: {
     STORAGE_KEYS,
     toDateSafe,
     normalizeHandle,
     normalizeFollowHandle,
-    compressImage,
-    CHAT_ATTACHMENT_INLINE_MAX_BYTES,
-    CHAT_MESSAGE_TTL_MS,
-    CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS,
-    CHAT_MESSAGE_READ_LIMIT
+    compressImage
   },
   firebaseApi: {
     db,
@@ -5036,9 +4879,17 @@ chatRuntimeController = createChatRuntimeCluster({
     icon,
     formatRelative,
     getOptimizedImageUrl,
-    alertFn: (message) => alert(message),
+    alertFn: (message) => alert(message)
+  },
+  browserApi: {
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
     queueMicrotaskFn: (fn) => queueMicrotask(fn),
     setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
+  },
+  traceApi: {
+    startSocialBudgetTraceFn: startSocialBudgetTrace,
+    finishSocialBudgetTraceFn: finishSocialBudgetTrace
   }
 });
 
@@ -5178,55 +5029,55 @@ async function pushUserNotificationWithId(targetUid, notificationId, payload) {
 }
 
 async function hasPendingFollowRequest(targetUid) {
-  return chatRuntimeController.hasPendingFollowRequest(targetUid);
+  return getChatRuntimeFacade().hasPendingFollowRequest(targetUid);
 }
 
 async function sendFollowRequest(handle, target = {}) {
-  return chatRuntimeController.sendFollowRequest(handle, target);
+  return getChatRuntimeFacade().sendFollowRequest(handle, target);
 }
 
 async function acceptFollowRequest(notificationId) {
-  return chatRuntimeController.acceptFollowRequest(notificationId);
+  return getChatRuntimeFacade().acceptFollowRequest(notificationId);
 }
 
 async function markNotificationRead(id) {
-  return chatRuntimeController.markNotificationRead(id);
+  return getChatRuntimeFacade().markNotificationRead(id);
 }
 
 async function markAllNotificationsRead() {
-  return chatRuntimeController.markAllNotificationsRead();
+  return getChatRuntimeFacade().markAllNotificationsRead();
 }
 
 function normalizeUserPostDoc(postId, data, ownerId) {
-  return chatRuntimeController.normalizeUserPostDoc(postId, data, ownerId);
+  return getChatRuntimeFacade().normalizeUserPostDoc(postId, data, ownerId);
 }
 
 function normalizeRestaurantPostDoc(postId, data, restaurantId) {
-  return chatRuntimeController.normalizeRestaurantPostDoc(postId, data, restaurantId);
+  return getChatRuntimeFacade().normalizeRestaurantPostDoc(postId, data, restaurantId);
 }
 
 async function fetchPostForNotification(notif) {
-  return chatRuntimeController.fetchPostForNotification(notif);
+  return getChatRuntimeFacade().fetchPostForNotification(notif);
 }
 
 function highlightCommentInModal(commentId) {
-  return chatRuntimeController.highlightCommentInModal(commentId);
+  return getChatRuntimeFacade().highlightCommentInModal(commentId);
 }
 
 async function openPostFromNotification(notif) {
-  return chatRuntimeController.openPostFromNotification(notif);
+  return getChatRuntimeFacade().openPostFromNotification(notif);
 }
 
 async function openNotificationTarget(id) {
-  return chatRuntimeController.openNotificationTarget(id);
+  return getChatRuntimeFacade().openNotificationTarget(id);
 }
 
 async function resolveUserByHandle(handle) {
-  return chatRuntimeController.resolveUserByHandle(handle);
+  return getChatRuntimeFacade().resolveUserByHandle(handle);
 }
 
 async function toggleFollow(handle, target = {}) {
-  return chatRuntimeController.toggleFollow(handle, target);
+  return getChatRuntimeFacade().toggleFollow(handle, target);
 }
 
 function isFollowingProfile(profile = {}) {
