@@ -433,6 +433,38 @@ Documentation updates required:
 - Update `docs/architecture/social-app.js.md` direct dependency list.
 - Record exact moved symbol names and confirm no runtime behavior moved.
 
+Phase 1B completed note:
+
+- Changed files:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/app-shell/social-app-domain-config.js`
+  - `docs/architecture/social-app.js.md`
+  - `docs/architecture/social-app-phase-1-refactor-plan.md`
+- Moved only `LEAD_STATUS_ORDER`, `LEAD_STATUS_LABELS`, `LEAD_TYPE_ORDER`,
+  `LEAD_TYPE_LABELS`, `ALBERT_CEO_UID`, `ALBERT_CEO_ALIASES`,
+  `ALBERT_CEO_EMAILS`, `HIDDEN_LEGACY_CEO_EMAILS`,
+  `FORCE_HIDDEN_SOCIAL_HANDLES`, `FORCE_HIDDEN_SOCIAL_UIDS`,
+  `FORCE_HIDDEN_SOCIAL_HANDLE_SET`, `FORCE_HIDDEN_SOCIAL_UID_SET`,
+  `MILAN_OWNED_LEAD_EMAILS`, `MILAN_OWNED_LEAD_BUSINESSES`,
+  `ALBERT_OWNED_LEAD_EMAILS`, `ALBERT_OWNED_LEAD_BUSINESSES`,
+  `CEO_COUNTRIES`, `LEAD_SETTINGS_DEFAULT_COUNTRY`, `LEAD_COUNTRY_CENTERS`,
+  `PRISHTINA_COORDS`, `ROLE_SWITCH_ORDER`, `ROLE_SWITCH_LABELS`, and
+  `CRM_PAGE_SIZE`.
+- Did not move `createEmptyLeadsState()`, `createEmptyCustomersState()`, CRM
+  runtime controller creation, role-switch/profile resolution functions,
+  visibility functions using hidden handle/UID/email sets, Firebase reads/writes,
+  lead/customer/staff/business account logic, default state config, menu layout
+  colors, CRM lazy renderer URL config, route/startup/auth/render/setState logic,
+  public menu/QR/cart/order behavior, listener lifecycle, entry files, or
+  generated bundles.
+- Manual checks Albert should perform after this exact step: CEO/admin leads,
+  customers, staff, and business account views; lead status/type order and
+  labels; Kosovo/Prishtina country defaults and map fallback; `CEO`/`Owner`/
+  `Staff` role switch labels; hidden legacy/social identity visibility in search;
+  and guest feed/public profile behavior.
+- Rollback for this step is a normal `git revert` of the Phase 1B commit; no
+  data migration, storage migration, or Firebase rollback should be needed.
+
 ### Candidate 3: Static cache key and TTL config
 
 Current location:

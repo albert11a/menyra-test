@@ -74,6 +74,31 @@ import {
   DEFAULT_MENU_LAYOUT
 } from "./core/app-shell/social-app-default-state-config.js";
 import {
+  LEAD_STATUS_ORDER,
+  LEAD_STATUS_LABELS,
+  LEAD_TYPE_ORDER,
+  LEAD_TYPE_LABELS,
+  ALBERT_CEO_UID,
+  ALBERT_CEO_ALIASES,
+  ALBERT_CEO_EMAILS,
+  HIDDEN_LEGACY_CEO_EMAILS,
+  FORCE_HIDDEN_SOCIAL_HANDLES,
+  FORCE_HIDDEN_SOCIAL_UIDS,
+  FORCE_HIDDEN_SOCIAL_HANDLE_SET,
+  FORCE_HIDDEN_SOCIAL_UID_SET,
+  MILAN_OWNED_LEAD_EMAILS,
+  MILAN_OWNED_LEAD_BUSINESSES,
+  ALBERT_OWNED_LEAD_EMAILS,
+  ALBERT_OWNED_LEAD_BUSINESSES,
+  CEO_COUNTRIES,
+  LEAD_SETTINGS_DEFAULT_COUNTRY,
+  LEAD_COUNTRY_CENTERS,
+  PRISHTINA_COORDS,
+  ROLE_SWITCH_ORDER,
+  ROLE_SWITCH_LABELS,
+  CRM_PAGE_SIZE
+} from "./core/app-shell/social-app-domain-config.js";
+import {
   normalizeInitialTab,
   normalizeAuthMode
 } from "./core/auth/route-auth-utils.js";
@@ -464,70 +489,6 @@ const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
 
-const LEAD_STATUS_ORDER = ["registered", "contacted", "testphase", "kunde", "no_interest"];
-const LEAD_STATUS_LABELS = {
-  registered: "Registriert",
-  contacted: "Kontaktiert",
-  testphase: "Testphase",
-  kunde: "Kunde",
-  no_interest: "Keine Interesse"
-};
-const LEAD_TYPE_ORDER = ["restaurant", "cafe", "fastfood", "ecommerce", "tankstelle", "lebensmittel", "apotheken", "services"];
-const LEAD_TYPE_LABELS = {
-  restaurant: "Restaurant",
-  cafe: "Cafe",
-  fastfood: "Fastfood",
-  ecommerce: "E-Commerce",
-  tankstelle: "Tankstelle",
-  lebensmittel: "Lebensmittel",
-  apotheken: "Apotheke",
-  services: "Services"
-};
-const ALBERT_CEO_UID = "aklBkkIuZ7Nrpx266TJn63rrxX62";
-const ALBERT_CEO_ALIASES = Object.freeze(["alberthoti", "albert_hoti"]);
-const ALBERT_CEO_EMAILS = Object.freeze(["alberthoti.vsa@gmail.com"]);
-const HIDDEN_LEGACY_CEO_EMAILS = Object.freeze(["albert.hoti@menyra.com"]);
-const FORCE_HIDDEN_SOCIAL_HANDLES = Object.freeze(["allo88", "alo2", "alo", "hhh", "llll"]);
-const FORCE_HIDDEN_SOCIAL_UIDS = Object.freeze([
-  "oqyh9TmALTdH3GqUvtz1qO9DFcC2",
-  "5rdVYRGrfFfMna0W9irKsidxIpr1",
-  "5h3DKB7fu9Q0xiIkhUsYC1PqJPh2",
-  "4l9h3hDWaPPQq5ePoDhy2aVJeaf1",
-  "hYlBZN6WNQMIlrgEZDPLbyRGsro1"
-]);
-const FORCE_HIDDEN_SOCIAL_HANDLE_SET = new Set(FORCE_HIDDEN_SOCIAL_HANDLES);
-const FORCE_HIDDEN_SOCIAL_UID_SET = new Set(FORCE_HIDDEN_SOCIAL_UIDS);
-const MILAN_OWNED_LEAD_EMAILS = Object.freeze([
-  "restorandis@menyra.com",
-  "restoranbelvedere@menyra.com",
-  "restoranoresac@menyra.com",
-  "zeigelrestaurant@menyra.com"
-]);
-const MILAN_OWNED_LEAD_BUSINESSES = Object.freeze([
-  "restoran dis",
-  "restoran belvedere",
-  "restoran oresac",
-  "zeigelrestaurant"
-]);
-const ALBERT_OWNED_LEAD_EMAILS = Object.freeze([
-  "mobishopniti@menyra.com",
-  "pizzeriadon@menyra.com",
-  "antica@menyra.com"
-]);
-const ALBERT_OWNED_LEAD_BUSINESSES = Object.freeze([
-  "mobi shop niti",
-  "pizzeria don napoletano",
-  "antica"
-]);
-const CEO_COUNTRIES = Object.freeze(["Albanien", "Kosovo", "Serbien"]);
-const LEAD_SETTINGS_DEFAULT_COUNTRY = "Kosovo";
-const LEAD_COUNTRY_CENTERS = Object.freeze({
-  Kosovo: Object.freeze({ lat: 42.6629, lng: 21.1655 }),
-  Serbien: Object.freeze({ lat: 44.7866, lng: 20.4489 }),
-  Albanien: Object.freeze({ lat: 41.3275, lng: 19.8187 })
-});
-const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
-
 const DEFAULT_NOTIFICATIONS = [
   {
     id: "n1",
@@ -567,12 +528,6 @@ const MENU_LAYOUT_COLORS = [
   { id: "rose", label: "Rose", swatch: "bg-rose-300", cardClass: "bg-rose-50 border-rose-100" }
 ];
 
-const ROLE_SWITCH_ORDER = ["ceo", "owner", "staff"];
-const ROLE_SWITCH_LABELS = {
-  ceo: "CEO",
-  owner: "Owner",
-  staff: "Staff"
-};
 const businessProfileCache = new Map();
 const userProfileCache = new Map();
 const restaurantOwnerCache = new Map();
@@ -914,7 +869,6 @@ const FEED_DELTA_MIN_MS = 15 * 60 * 1000;
 const FEED_PRELOAD_LIMIT = 3;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 const FEED_META_LISTEN_LIMIT = 20;
-const CRM_PAGE_SIZE = 20;
 const socialRuntimeErrorReporter = createRuntimeErrorReporter({
   appName: "social",
   windowObj: typeof window === "undefined" ? null : window,

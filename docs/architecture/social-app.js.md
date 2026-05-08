@@ -26,6 +26,16 @@ sync, auth/session bootstrap, public menu/QR/cart/order behavior, and all
 runtime controller wiring. Phase 1A moved only inert default config object
 declarations; it did not move runtime behavior.
 
+Phase 1B update on branch `refactorapp`: static CRM/role/domain config now
+lives in `apps/menyra-social/core/app-shell/social-app-domain-config.js` and is
+imported back into `social-app.js` as named exports. This includes the lead
+status/type label and order config, CEO/hidden-identity ownership config,
+country/Prishtina defaults, role switch labels/order, and `CRM_PAGE_SIZE`.
+`social-app.js` still owns CRM runtime creation, lead/customer/staff/business
+account logic, visibility functions, Firebase reads/writes, state identity,
+startup, render/setState, routes, and all controller wiring. Phase 1B moved only
+static declarations; it did not move runtime behavior.
+
 The file was 5,578 lines at inspection time. It contains these major regions:
 
 - imports and browser constants: lines 1-424
