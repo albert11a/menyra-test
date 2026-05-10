@@ -13,6 +13,17 @@
     "src": "apps/menyra-social/_shared/image-compressor.js",
     "isDynamicEntry": true
   },
+  "apps/menyra-social/core/chat/chat-app-runtime-facade.js": {
+    "file": "chunks/chat-app-runtime-facade-B2o2yfYr.js",
+    "name": "chat-app-runtime-facade",
+    "src": "apps/menyra-social/core/chat/chat-app-runtime-facade.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "apps/menyra-social/social-app.js",
+      "_preload-helper-C4N3jzC6.js",
+      "_vendor-firebase-CpR1inHy.js"
+    ]
+  },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
     "file": "chunks/discovery-runtime-controller-GZ0quJe_.js",
     "name": "discovery-runtime-controller",
@@ -42,7 +53,7 @@
     ]
   },
   "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01": {
-    "file": "chunks/public-route-cache-early-preload-DEC2UiOf.js",
+    "file": "chunks/public-route-cache-early-preload-DX4XHZg5.js",
     "name": "public-route-cache-early-preload",
     "src": "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
     "isDynamicEntry": true,
@@ -65,6 +76,7 @@
     "dynamicImports": [
       "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
       "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "apps/menyra-social/core/chat/chat-app-runtime-facade.js",
       "apps/menyra-social/core/orders/orders-runtime-controller.js",
       "apps/menyra-social/_shared/image-compressor.js",
       "apps/menyra-social/core/media/media-upload-runtime-cluster.js"

@@ -600,10 +600,9 @@ function renderPublicProfileSurface(
   const isBusinessProfile = isBusinessProfileEntity(profile);
   const topTab = String(topTabOverride || resolveProfilePrimaryTopTab(profile)).trim().toLowerCase() || "profile";
   const activeContentTab = String(contentTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
-  const isMediaTab = activeContentTab === "media";
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
-  const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
+  const filteredPosts = posts;
   const baseProfileView = state?.profileView && typeof state.profileView === "object"
     ? state.profileView
     : {};
@@ -2402,10 +2401,9 @@ function renderProfileView() {
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
   const activeContentTab = resolveProfileContentTabForRendering(profile);
-  const isMediaTab = activeContentTab === "media";
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
-  const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
+  const filteredPosts = posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(isBusiness);
   const topTab = resolveProfilePrimaryTopTab(profile);

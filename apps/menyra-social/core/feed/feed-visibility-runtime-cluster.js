@@ -238,8 +238,8 @@ export function createFeedVisibilityRuntimeCluster({
       const ref = collection(firebaseApi.db, "users", safeUid, "posts");
       let snap = null;
       try {
-        const orderedQuery = query && orderBy && limit
-          ? query(ref, orderBy("createdAt", "desc"), limit(fastLimits.profilePosts || fastLimits.userPosts))
+        const orderedQuery = query && orderBy
+          ? query(ref, orderBy("createdAt", "desc"))
           : ref;
         snap = await getDocs(orderedQuery);
       } catch (_err) {

@@ -1,5 +1,6 @@
 import { clearPostEntityMap, projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
 import { resolveVisibleProfileSurface } from "../profile/public-profile-surface-controller.js";
+import { normalizeRestaurantPostDocCore, normalizeUserPostDocCore } from "../feed/post-doc-normalize-utils.js";
 import {
   buildRestaurantTruthSignatureCore,
   isBootstrapRestaurantPreviewRecordCore
@@ -1300,25 +1301,13 @@ export function createSessionDataRuntimeController({
         const ref = collectionFn(db, "users", uid, "posts");
         let snap = null;
         try {
-          snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.userPosts)));
+          snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc")));
         } catch (err) {
           snap = await getDocsFn(ref);
         }
         const rows = [];
         snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-        const next = rows.map((row) => ({
-          id: row.id,
-          url: row.url,
-          type: row.type || "square",
-          title: row.title || "",
-          caption: row.caption || "",
-          createdAt: row.createdAt,
-          likes: row.likesCount ?? row.likes ?? 0,
-          comments: row.commentsCount ?? row.comments ?? 0,
-          isVideo: !!row.isVideo,
-          ownerType: "user",
-          ownerId: uid
-        }));
+        const next = rows.map((row) => normalizeUserPostDocCore(row.id, row, uid));
         writeCacheFn(cacheKey, next);
         if (!havePostCollectionsChanged(state.userPosts, next)) return;
         state.userPosts = projectPostCollectionThroughEntityMap(state, next);
@@ -1397,7 +1386,7 @@ export function createSessionDataRuntimeController({
         let snap = null;
         try {
           snap = await timeLoadingAsync("socialPosts load", () => (
-            getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.businessPosts)))
+            getDocsFn(queryFn(ref, orderByFn("createdAt", "desc")))
           ), {
             restaurantId,
             source: "restaurants.socialPosts"
@@ -1412,20 +1401,7 @@ export function createSessionDataRuntimeController({
         snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
         const next = rows
           .filter((row) => (row.status || "active") === "active")
-          .map((row) => ({
-            id: row.id,
-            url: row.media?.[0]?.url || row.mediaUrl || "",
-            type: row.type || "square",
-            title: "",
-            caption: row.caption || "",
-            createdAt: row.createdAt,
-            likes: row.likesCount ?? row.likes ?? 0,
-            comments: row.commentsCount ?? row.comments ?? 0,
-            isVideo: row.media?.[0]?.type === "video",
-            ownerType: "restaurant",
-            ownerId: restaurantId,
-            restaurantId
-          }))
+          .map((row) => normalizeRestaurantPostDocCore(row.id, row, restaurantId))
           .filter((row) => row.url);
         writeCacheFn(cacheKey, next);
         if (!havePostCollectionsChanged(state.businessPosts, next)) return;

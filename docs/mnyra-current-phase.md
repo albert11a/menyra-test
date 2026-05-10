@@ -278,6 +278,18 @@ Last updated: 2026-05-07
   erscheint der Menu-Inhalt. Dadurch kann Fokus nicht mehr nachtraeglich oberhalb
   bereits sichtbarer Produkte einspringen. Sichtbare UI, QR, Warenkorb, Routing,
   Firebase Rules, Functions und Datenpfade bleiben unveraendert.
+- Schritt 36 ist abgeschlossen: Profil-Beitraege werden in Profilansichten
+  vollstaendig geladen und robuster als Foto-/Media-Beitraege normalisiert.
+- Bewertung von Schritt 36: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 36:
+  Eigene User-/Business-Profile, externe User-Profile und Public-Business-
+  Profile schneiden Beitraege nicht mehr bei `FAST_LIMITS.profilePosts` ab.
+  Zusaetzlich werden aeltere Media-Felder wie `mediaUrl`, `media[0].url`,
+  `imageUrl`, `image`, `photoUrl` und `pictureUrl` fuer Profil-Posts als
+  sichtbare Bildquelle akzeptiert; der User-Tab `Medien` blendet Fotos nicht
+  mehr durch einen reinen Video-Filter aus. Sichtbare UI, QR, Warenkorb,
+  Routing, Firebase Rules, Functions und Produktlogik bleiben unveraendert.
+  Auf Nutzerwunsch wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -312,6 +324,7 @@ Last updated: 2026-05-07
 - Referenz: [docs/mnyra-step33-public-bootstrap-menu-focus-seed.md](./mnyra-step33-public-bootstrap-menu-focus-seed.md)
 - Referenz: [docs/mnyra-step34-social-app-cache-version-bump.md](./mnyra-step34-social-app-cache-version-bump.md)
 - Referenz: [docs/mnyra-step35-public-menu-focus-lockstep-render.md](./mnyra-step35-public-menu-focus-lockstep-render.md)
+- Referenz: [docs/mnyra-step36-profile-posts-full-visibility.md](./mnyra-step36-profile-posts-full-visibility.md)
 
 ## Harte Invariante (verbindlich)
 

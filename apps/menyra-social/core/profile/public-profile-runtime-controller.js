@@ -1,4 +1,5 @@
 import { projectPostCollectionThroughEntityMap } from "./post-entity-registry-utils.js";
+import { normalizeRestaurantPostDocCore } from "../feed/post-doc-normalize-utils.js";
 import {
   isProfileSettling,
   isSettlingProfileSurfaceStatus,
@@ -40,7 +41,6 @@ export function createPublicProfileRuntimeController({
   const buildOrderBy = typeof orderByFn === "function" ? orderByFn : null;
   const buildLimit = typeof limitFn === "function" ? limitFn : null;
   const brandSocialName = String(brandUi?.social || "Menyra").trim() || "Menyra";
-  const profilePostLimit = fastLimits?.profilePosts || fastLimits?.businessPosts || 12;
   let profileViewUnsub = null;
   let profileViewListenerKey = "";
   let profileViewReadOnceKey = "";
@@ -1712,8 +1712,8 @@ export function createPublicProfileRuntimeController({
         const ref = makeCollectionRef(db, "restaurants", effectiveRestaurantId, "socialPosts");
         let snap = null;
         try {
-          if (buildQuery && buildOrderBy && buildLimit) {
-            snap = await getDocsSafe(buildQuery(ref, buildOrderBy("createdAt", "desc"), buildLimit(profilePostLimit)));
+          if (buildQuery && buildOrderBy) {
+            snap = await getDocsSafe(buildQuery(ref, buildOrderBy("createdAt", "desc")));
           } else {
             snap = await getDocsSafe(ref);
           }
@@ -1724,20 +1724,7 @@ export function createPublicProfileRuntimeController({
         snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
         const normalizedPosts = projectPostCollectionThroughEntityMap(state, rows
           .filter((row) => (row.status || "active") === "active")
-          .map((row) => ({
-            id: row.id,
-            url: row.media?.[0]?.url || row.mediaUrl || "",
-            type: row.type || "square",
-            title: "",
-            caption: row.caption || "",
-            createdAt: row.createdAt,
-            likes: row.likesCount ?? row.likes ?? 0,
-            comments: row.commentsCount ?? row.comments ?? 0,
-            isVideo: row.media?.[0]?.type === "video",
-            ownerType: "restaurant",
-            ownerId: effectiveRestaurantId,
-            restaurantId: effectiveRestaurantId
-          }))
+          .map((row) => normalizeRestaurantPostDocCore(row.id, row, effectiveRestaurantId))
           .filter((row) => row.url));
         if (normalizedPosts.length > 0) {
           clearBusinessPostsKnownEmpty(effectiveRestaurantId, routeRestaurantId);
