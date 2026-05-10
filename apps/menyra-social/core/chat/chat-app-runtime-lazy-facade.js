@@ -246,26 +246,30 @@ export function createChatAppRuntimeLazyFacade({
 
   function replayPendingListenerStarts() {
     if (!realFacade) return;
-    if (chatThreadsStartRequest) {
-      const request = chatThreadsStartRequest;
-      const currentUid = String(state.user?.uid || "").trim();
-      if (request.uid && request.uid === currentUid && isChatRuntimeSurfaceActive()) {
-        try {
-          realFacade.startChatThreadsListener(request.user || state.user);
-        } catch (err) {
-          reportChatRuntimeFailure("chat.listener.threads", err);
-        }
+    const currentUid = String(state.user?.uid || "").trim();
+    const shouldStartThreads = !!currentUid && isChatRuntimeSurfaceActive();
+    const threadRequest = chatThreadsStartRequest;
+    if (shouldStartThreads) {
+      const threadUser = threadRequest?.uid === currentUid ? threadRequest.user : state.user;
+      try {
+        realFacade.startChatThreadsListener(threadUser || state.user);
+        chatThreadsStartRequest = { uid: currentUid, user: threadUser || state.user };
+      } catch (err) {
+        reportChatRuntimeFailure("chat.listener.threads", err);
       }
     }
-    if (activeMessagesStartRequest) {
-      const request = activeMessagesStartRequest;
-      const currentThreadId = getChatThreadId(state.chatModal?.profile);
-      if (request.threadId && request.threadId === currentThreadId) {
-        try {
-          realFacade.startActiveChatMessagesListener(request.profile || state.chatModal?.profile);
-        } catch (err) {
-          reportChatRuntimeFailure("chat.listener.messages", err);
-        }
+
+    const currentProfile = state.chatModal?.profile || null;
+    const currentThreadId = getChatThreadId(currentProfile);
+    const shouldStartMessages = !!state.chatModal?.open && !!currentProfile && !!currentThreadId;
+    const messageRequest = activeMessagesStartRequest;
+    if (shouldStartMessages) {
+      const messageProfile = messageRequest?.threadId === currentThreadId ? messageRequest.profile : currentProfile;
+      try {
+        realFacade.startActiveChatMessagesListener(messageProfile || currentProfile);
+        activeMessagesStartRequest = { threadId: currentThreadId, profile: messageProfile || currentProfile };
+      } catch (err) {
+        reportChatRuntimeFailure("chat.listener.messages", err);
       }
     }
   }
@@ -348,6 +352,9 @@ export function createChatAppRuntimeLazyFacade({
     renderChatView() {
       if (isChatRuntimeSurfaceActive()) {
         startChatThreadsListener(state.user);
+        if (state.chatModal?.open && state.chatModal?.profile) {
+          startActiveChatMessagesListener(state.chatModal.profile);
+        }
         queueChatRuntimeLoad("chat.render.view", { renderAfterLoad: true });
       }
       return "";

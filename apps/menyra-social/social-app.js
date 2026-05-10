@@ -3686,8 +3686,8 @@ function toggleChatMessageLiked(messageId) {
   return getChatRuntimeFacade().toggleChatMessageLiked(messageId);
 }
 
-async function sendChatMessage() {
-  return getChatRuntimeFacade().sendChatMessage();
+async function sendChatMessage(...args) {
+  return getChatRuntimeFacade().sendChatMessage(...args);
 }
 
 function readCache(key, ttlMs) {

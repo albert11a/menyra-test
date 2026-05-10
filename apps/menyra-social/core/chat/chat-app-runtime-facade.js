@@ -131,10 +131,10 @@ export function createChatAppRuntimeFacade({
     autosizeTextareaCore(el, { minHeight, maxHeight });
   }
 
-  async function sendChatMessage() {
+  async function sendChatMessage(...args) {
     startSocialBudgetTrace("chat_send");
     try {
-      return await controller.sendChatMessage();
+      return await controller.sendChatMessage(...args);
     } finally {
       finishSocialBudgetTrace("chat_send");
     }

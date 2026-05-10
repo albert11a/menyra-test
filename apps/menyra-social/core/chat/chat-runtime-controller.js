@@ -857,13 +857,13 @@ export function createChatRuntimeController(deps = {}) {
         nowMs: Date.now(),
         encodeURIComponentFn: (value) => encodeURIComponent(value)
       });
-      try {
-        await pushUserNotificationWithId(partnerUid, notification.notificationId, {
+      void Promise.resolve()
+        .then(() => pushUserNotificationWithId(partnerUid, notification.notificationId, {
           ...notification.payload
+        }))
+        .catch((err) => {
+          console.warn("[mnyra][chat.notification.push_failed]", err);
         });
-      } catch (err) {
-        console.warn("[mnyra][chat.notification.push_failed]", err);
-      }
     }
   }
 
