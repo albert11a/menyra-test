@@ -422,6 +422,12 @@ Route synchronization:
 - It uses `history.pushState` when `state.__nextRouteHistoryMode === "push"`.
 - It preserves/sets canonical public business route paths and selected query
   params such as `src` and `table`.
+- Direct protected routes now preserve intent instead of silently rewriting to
+  feed. While auth/session truth is pending or the signed-out auth screen is
+  shown, the pending protected `pendingInitialTab` remains the URL source for
+  routes such as `/chat`, `/notifications`, `/settings`, `/upload`, `/profile`,
+  `/leads`, `/staff`, `/customers`, and `/business-accounts`; `/orders` keeps
+  its existing guest-order route behavior.
 - `bindRoutePopstateReplay()` binds `window.addEventListener("popstate", ...)`.
 - `replayRouteFromWindowLocation()` reparses the URL, reapplies pending route
   state, reopens profile/notification/post/chat targets, renders, and calls

@@ -1312,6 +1312,59 @@ const AUTH_RESTORE_PRESERVED_TABS = new Set([
   "customers",
   "businessaccounts"
 ]);
+
+function normalizeProtectedRouteTab(tab = "") {
+  const key = String(tab || "").trim().toLowerCase();
+  if (!AUTH_RESTORE_PRESERVED_TABS.has(key)) return "";
+  return key === "businessaccounts" ? "businessAccounts" : key;
+}
+
+function hasPendingPublicProfileRoute(pendingRoute = {}) {
+  return !!String(pendingRoute?.pendingProfileRestaurantId || "").trim()
+    || !!String(pendingRoute?.pendingUserRouteId || "").trim();
+}
+
+function resolvePendingProtectedRouteTab(pendingRoute = pendingRouteState.getPendingState?.() || {}) {
+  const tab = normalizeProtectedRouteTab(pendingRoute?.pendingInitialTab || "");
+  if (!tab) return "";
+  const tabKey = String(tab || "").trim().toLowerCase();
+  if ((tabKey === "profile" || tabKey === "menu") && hasPendingPublicProfileRoute(pendingRoute)) {
+    return "";
+  }
+  return tab;
+}
+
+function normalizeAuthStartupState(value = "") {
+  return String(value || "").trim().replace(/[\s_-]+/g, "").toLowerCase();
+}
+
+function hasPendingProtectedRouteAuthIntent() {
+  return !state.user && !!resolvePendingProtectedRouteTab();
+}
+
+function shouldPreservePendingProtectedRouteUrl() {
+  const pendingProtectedTab = resolvePendingProtectedRouteTab();
+  if (!pendingProtectedTab || state.user) return false;
+  if (!authInitialized) return true;
+  if (state.auth?.open === true) return true;
+  if (state.startupRestoring === true || state.actionsLockedUntilAuthReady === true) return true;
+  const authRestoreState = normalizeAuthStartupState(state.authRestoreState || state.__authRestoreState || "");
+  return authRestoreState === "pending" || authRestoreState === "cachedreturninguser";
+}
+
+function openPendingProtectedRouteAuthPrompt() {
+  const pendingProtectedTab = resolvePendingProtectedRouteTab();
+  if (!pendingProtectedTab || state.user) return false;
+  // Keep the direct protected route as the URL truth while the existing auth UI is shown.
+  state.activeTab = pendingProtectedTab;
+  state.drawerOpen = false;
+  if (state.auth) {
+    state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
+    state.auth.open = true;
+    state.auth.loading = false;
+  }
+  return true;
+}
 const STARTUP_SNAPSHOT_ALLOWED_TABS = new Set([
   "feed",
   "chat",
@@ -1328,6 +1381,10 @@ const STARTUP_SNAPSHOT_ALLOWED_TABS = new Set([
 ]);
 
 function resolveRouteTabForState() {
+  const pendingProtectedTab = shouldPreservePendingProtectedRouteUrl()
+    ? resolvePendingProtectedRouteTab()
+    : "";
+  if (pendingProtectedTab) return pendingProtectedTab;
   const normalized = normalizeLegacyHomeTab(state.activeTab);
   const pendingProfileRoute = pendingRouteState.getPendingState?.() || {};
   const hasPendingProfileRoute = !!String(pendingProfileRoute.pendingProfileRestaurantId || "").trim()
@@ -1365,6 +1422,7 @@ function setCanonicalRouteQueryParam(searchParams, primaryKey, aliasKeys = [], v
 }
 
 function resolveRouteQueryStateForCurrentView() {
+  const preservePendingProtectedRouteUrl = shouldPreservePendingProtectedRouteUrl();
   const pendingRoute = pendingRouteState.getPendingState?.() || {};
   const pendingProfileRestaurantId = normalizePendingProfileRestaurantIdCore(pendingRoute.pendingProfileRestaurantId || "");
   const pendingProfileTopTab = String(
@@ -1426,7 +1484,7 @@ function resolveRouteQueryStateForCurrentView() {
   const routeState = {
     tab: resolveRouteTabForState(),
     routeKind: "app",
-    authMode: state.auth?.open === true
+    authMode: !preservePendingProtectedRouteUrl && state.auth?.open === true
       ? (normalizeAuthMode(String(state.auth?.mode || "").trim()) || "")
       : "",
     profileRestaurantId: "",
@@ -1904,7 +1962,8 @@ try {
     pendingProfileRestaurantId: String(pendingRouteState.getPendingState?.()?.pendingProfileRestaurantId || "").trim()
   });
   const hasPendingProfileRoute = !!normalizePendingProfileRestaurantIdCore(initialRouteState?.pendingProfileRestaurantId || "");
-  const eagerInitialTab = sanitizeTabForSessionCore(initialRouteState?.pendingInitialTab, {
+  const eagerProtectedTab = resolvePendingProtectedRouteTab(initialRouteState);
+  const eagerInitialTab = eagerProtectedTab || sanitizeTabForSessionCore(initialRouteState?.pendingInitialTab, {
     user: state.user,
     hasProfileView: hasPendingProfileRoute || !!state.profileView,
     guestScopeUid: getGuestScopeUid()
@@ -1996,6 +2055,24 @@ function applyPendingInitialRouteState() {
   const pendingInitialTab = String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase();
   if (isAuthRestorePendingProtectedRoute(pendingInitialTab)) {
     state.activeTab = pendingInitialTab;
+  }
+  const pendingProtectedTab = resolvePendingProtectedRouteTab();
+  if (pendingProtectedTab && !state.user && (
+    !authInitialized
+    || state.startupRestoring === true
+    || state.actionsLockedUntilAuthReady === true
+    || state.auth?.open === true
+  )) {
+    state.activeTab = pendingProtectedTab;
+  }
+  const authRestoreState = normalizeAuthStartupState(state.authRestoreState || state.__authRestoreState || "");
+  if (
+    pendingProtectedTab
+    && !state.user
+    && authInitialized
+    && (authRestoreState === "guest" || authRestoreState === "error")
+  ) {
+    openPendingProtectedRouteAuthPrompt();
   }
   const pendingRoute = pendingRouteState.getPendingState?.() || {};
   const pendingDirectEntry = publicProfileDirectEntryController.resolvePendingDirectEntry(pendingRoute);
@@ -5317,6 +5394,8 @@ startAppStartupRuntimeCluster({
       schedulePerfWarmMark,
       ensureTabData: (...args) => getSessionTabLifecycleRuntimeController().ensureTabData(...args),
       sanitizeTabForSession,
+      hasPendingProtectedRouteAuthIntent,
+      openPendingProtectedRouteAuthPrompt,
       stopLiveListeners: (...args) => getSessionTabLifecycleRuntimeController().stopLiveListeners(...args),
       suspendRender,
       resumeRender,

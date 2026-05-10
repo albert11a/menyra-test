@@ -25,6 +25,8 @@ export function createAuthSessionStartupCoordinator({
   fetchPublicBootstrapPayload = async () => {},
   ensureTabData = () => Promise.resolve(),
   sanitizeTabForSession = (tab) => tab,
+  hasPendingProtectedRouteAuthIntent = () => false,
+  openPendingProtectedRouteAuthPrompt = () => false,
   stopLiveListeners = () => {},
   suspendRender = () => {},
   resumeRender = () => {},
@@ -508,6 +510,9 @@ export function createAuthSessionStartupCoordinator({
       if (!routeStateApplied) {
         applyPendingInitialRouteState();
       }
+      const pendingProtectedRouteAuthIntent = typeof hasPendingProtectedRouteAuthIntent === "function"
+        ? hasPendingProtectedRouteAuthIntent()
+        : false;
       const prioritizeGuestSurface = isGuestDeepRouteLaunchActive();
       const webDirectGuestProfileSurface = isWebDirectGuestProfileLaunchActive();
       const safePublicRouteSurface = isSafePublicRouteLaunchActive();
@@ -526,7 +531,7 @@ export function createAuthSessionStartupCoordinator({
       }
       requestRender("initialize");
       schedulePerfWarmMark();
-      if ((!state?.user && !pendingRestoreUid) || safePublicRouteSurface) {
+      if (((!state?.user && !pendingRestoreUid) || safePublicRouteSurface) && !pendingProtectedRouteAuthIntent) {
         scheduleGuestTabEnsure({
           prioritize: false,
           visiblePath: prioritizeGuestSurface || webDirectGuestProfileSurface,
@@ -534,7 +539,7 @@ export function createAuthSessionStartupCoordinator({
           skip: false
         });
       }
-      if (((!state?.user && !pendingRestoreUid) || safePublicRouteSurface) && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+      if (((!state?.user && !pendingRestoreUid) || safePublicRouteSurface) && !pendingProtectedRouteAuthIntent && !hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
         const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         const runPublicBootstrapFetch = () => {
           void fetchPublicBootstrapPayload({
@@ -637,12 +642,17 @@ export function createAuthSessionStartupCoordinator({
         state.roleSwitchRestaurantId = "";
       }
       stopLiveListeners();
-      if (state?.auth) {
+      const openedProtectedRouteAuth = typeof openPendingProtectedRouteAuthPrompt === "function"
+        ? openPendingProtectedRouteAuthPrompt()
+        : false;
+      if (state?.auth && !openedProtectedRouteAuth) {
         state.auth.open = false;
+        state.auth.loading = false;
+      } else if (state?.auth) {
         state.auth.loading = false;
       }
       loadGuestScopedPersisted();
-      if (state) {
+      if (state && !openedProtectedRouteAuth) {
         state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
       }
       requestRender("auth.signedOut");
@@ -651,7 +661,7 @@ export function createAuthSessionStartupCoordinator({
           reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
         });
       };
-      if (!isWebDirectGuestProfileLaunchActive()) {
+      if (!isWebDirectGuestProfileLaunchActive() && !openedProtectedRouteAuth) {
         queueMicrotaskSafe(runSignedOutEnsure);
       }
     }

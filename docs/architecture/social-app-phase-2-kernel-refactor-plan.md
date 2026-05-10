@@ -204,6 +204,17 @@ paths, query shapes, storage keys, render/setState ownership, public bootstrap,
 public menu, QR/table, cart/order, auth/session restore, PWA/service-worker,
 CRM, map/discovery, media upload, or orders behavior were intentionally changed.
 
+## Direct Protected Route Preservation
+
+Direct protected routes now preserve intent instead of silently rewriting to
+feed. The shared auth/startup route lifecycle keeps pending protected app tabs
+as URL truth while auth/session truth is pending or while the signed-out auth
+screen is shown. This covers `/chat`, `/notifications`, `/settings`, `/upload`,
+`/profile`, `/leads`, `/staff`, `/customers`, and `/business-accounts` without
+changing public `/:slug`, `/:slug/menu`, QR/table, cart/order, or the Chat lazy
+loading boundary. `/orders` keeps its existing guest-order route behavior and
+continues to avoid silent fallback to `/feed`.
+
 ## Manual Test Checklist
 
 Albert should manually check:
