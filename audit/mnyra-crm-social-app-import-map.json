@@ -1,0 +1,732 @@
+{
+  "auditName": "mnyra-crm-social-app-import-map",
+  "status": "inventory_only",
+  "codeTruthOnly": true,
+  "productCodeTouched": false,
+  "sourceFile": "apps/menyra-social/social-app.js",
+  "scope": "Imports and social-app dependencies related to leads, CRM, staff, customers, business accounts and admin/ceo tabs.",
+  "items": [
+    {
+      "importName": "createCrmLeadGeoSupportRuntime",
+      "importedFile": "./core/crm/crm-lead-geo-support-runtime.js",
+      "usedByWhichFunction": [
+        "createCrmLeadGeoSupportRuntime",
+        "hydrateLeadGeoFieldsFromCoords",
+        "syncLeadDerivedFields",
+        "getLeadPlusCodeReference",
+        "normalizeLeadLocations"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Geo helpers are needed for lead and staff location UI, but social-app currently creates them before the CRM domain runtime.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "createCrmCeoScopeSupportRuntime",
+      "importedFile": "./core/crm/crm-ceo-scope-support-runtime.js",
+      "usedByWhichFunction": [
+        "resolveCeoScopeForCurrentUser",
+        "normalizeLeadScopeKey",
+        "normalizeCustomerScopeKey",
+        "writeLeadScopeCache",
+        "writeCustomerScopeCache",
+        "applyKnownLeadOwnershipOverride"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff",
+        "admin",
+        "ceo"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Scope helpers are CRM/Admin-only but are required by load paths that session startup calls for active CRM tabs.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "createCrmDomainRuntimeCluster",
+      "importedFile": "./core/crm/crm-domain-runtime-cluster.js",
+      "usedByWhichFunction": [
+        "loadLeads",
+        "loadCustomers",
+        "loadCeoStaff",
+        "saveLeadFromModal",
+        "deleteLeadFromModal",
+        "saveCustomerFromModal",
+        "convertLeadToCustomer",
+        "saveCeoStaffFromView",
+        "deleteCeoStaffFromView"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "This is the main CRM cluster; it can only become lazy after tab routing and event binding stop requiring eager social-app scoped functions.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "createEmptyLeadsStateCore",
+      "importedFile": "./core/crm/crm-scope-state-utils.js",
+      "usedByWhichFunction": [
+        "state initialization",
+        "createEmptyLeadsState"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "Current social-app state shape includes leads eagerly. Lazy loading requires a state facade or moving state initialization with the route.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "createEmptyCustomersStateCore",
+      "importedFile": "./core/crm/crm-scope-state-utils.js",
+      "usedByWhichFunction": [
+        "state initialization",
+        "createEmptyCustomersState"
+      ],
+      "usedByWhichRouteTab": [
+        "customers"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "Current social-app state shape includes customers eagerly. Lazy loading requires a state facade or moving state initialization with the route.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "renderCeoGuardCore",
+      "importedFile": "./core/crm/crm-shared-render-utils.js",
+      "usedByWhichFunction": [
+        "CRM guarded render paths"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Only needed for CEO/Admin surfaces, but those surfaces still render from social-app.",
+      "safestExtractionStrategy": "separate Heart route"
+    },
+    {
+      "importName": "saveLeadFromModalCore",
+      "importedFile": "./core/leads/lead-save-utils.js",
+      "usedByWhichFunction": [
+        "saveLeadFromModal",
+        "bindLeadInlineCreateEventsCore",
+        "bindLeadOverlayEventsCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Lead save has heavy Firebase/auth/media dependencies and must remain reachable from both modal and inline create events.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "deleteLeadFromModalCore",
+      "importedFile": "./core/leads/lead-delete-utils.js",
+      "usedByWhichFunction": [
+        "deleteLeadFromModal",
+        "bindLeadInlineCreateEventsCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Lead delete touches leads, restaurants, public meta and social presence purge; keep behind a preserved facade until route move is complete.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "saveCustomerFromModalCore",
+      "importedFile": "./core/crm/customer-save-utils.js",
+      "usedByWhichFunction": [
+        "saveCustomerFromModal",
+        "bindCustomerOverlayEventsCore"
+      ],
+      "usedByWhichRouteTab": [
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Customer save is customer-only, but overlay event wiring still lives in the social shell.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "convertLeadToCustomerCore",
+      "importedFile": "./core/leads/lead-convert-utils.js",
+      "usedByWhichFunction": [
+        "convertLeadToCustomer",
+        "bindLeadOverlayEventsCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Conversion is triggered from lead UI but writes customer/restaurant/user state.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "saveCeoStaffFromViewCore",
+      "importedFile": "./core/crm/staff-save-utils.js",
+      "usedByWhichFunction": [
+        "saveCeoStaffFromView",
+        "bindCrmStaffEventsCore"
+      ],
+      "usedByWhichRouteTab": [
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Staff save can move with staff route once auth creation, storage update and location picker dependencies are available in Heart/Admin.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "normalizeLeadTypeKeyCore",
+      "importedFile": "./core/leads/lead-type-utils.js",
+      "usedByWhichFunction": [
+        "saveLeadFromModalCore",
+        "renderLeadCreationView",
+        "renderLeadModalCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "yes",
+      "reason": "Lead type normalization is lead-domain-only if lead rendering and save move together.",
+      "safestExtractionStrategy": "dynamic import"
+    },
+    {
+      "importName": "bindLeadOverlayEventsCore",
+      "importedFile": "./core/overlays/overlay-lead-bind-utils.js",
+      "usedByWhichFunction": [
+        "bindOverlayEvents",
+        "bindLeadOverlayEvents"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "The binder is lead-only, but current overlay orchestration is shared by social-app.",
+      "safestExtractionStrategy": "separate Heart route"
+    },
+    {
+      "importName": "bindCrmStaffEventsCore",
+      "importedFile": "./core/app-events/app-events-crm-staff-bind-utils.js",
+      "usedByWhichFunction": [
+        "bindAppEvents",
+        "bindCrmStaffEvents"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "One binder currently owns events for three CRM tabs, so it should move after per-route event ownership is defined.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "bindLeadInlineCreateEventsCore",
+      "importedFile": "./core/app-events/app-events-crm-staff-bind-utils.js",
+      "usedByWhichFunction": [
+        "bindAppEvents",
+        "bindLeadInlineCreateEvents"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Inline create has lead file inputs, location rows and save/delete actions tied to current DOM ids.",
+      "safestExtractionStrategy": "separate Heart route"
+    },
+    {
+      "importName": "CRM_LAZY_RENDERERS_MODULE_URL",
+      "importedFile": "social-app local constant: /apps/menyra-social/_shared/crm-lazy-renderers.js",
+      "usedByWhichFunction": [
+        "loadCrmLazyRenderers",
+        "renderLeadsView",
+        "renderLeadCreationView",
+        "renderLeadSettingsView",
+        "renderCustomersView",
+        "renderStaffView",
+        "renderStaffEditorView"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff"
+      ],
+      "canBeLazyLoaded": "yes",
+      "reason": "It is already dynamically loaded, but the caller and runtime state still live in social-app.",
+      "safestExtractionStrategy": "separate Heart route"
+    },
+    {
+      "importName": "LEAD_STATUS_ORDER",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "loadLeads",
+        "renderLeadsView",
+        "saveLeadFromModalCore",
+        "convertLeadToCustomerCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Status constants are CRM-only but currently imported by social-app domain config alongside non-CRM constants.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "LEAD_STATUS_LABELS",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "renderLeadsView",
+        "renderLeadModalCore",
+        "renderLeadCreationView"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "UI labels can move with lead renderers after the route contract is set.",
+      "safestExtractionStrategy": "dynamic import"
+    },
+    {
+      "importName": "LEAD_TYPE_ORDER",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "renderLeadModalCore",
+        "renderLeadCreationView",
+        "saveLeadFromModalCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Lead type constants are lead-domain-only but social-app currently passes them into multiple helpers.",
+      "safestExtractionStrategy": "dynamic import"
+    },
+    {
+      "importName": "LEAD_TYPE_LABELS",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "renderLeadModalCore",
+        "renderLeadCreationView"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Lead label constants can move with lead renderers after extraction.",
+      "safestExtractionStrategy": "dynamic import"
+    },
+    {
+      "importName": "ALBERT_CEO_UID",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "isAlbertCeo",
+        "resolveCeoScopeForCurrentUser",
+        "applyKnownLeadOwnershipOverride"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff",
+        "admin",
+        "ceo"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "CEO identification affects guards and CRM scope. It should remain in a shared contract until Heart/Admin owns admin routing.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "ALBERT_CEO_ALIASES",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "isAlbertCeo",
+        "resolveCeoScopeForCurrentUser"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff",
+        "admin",
+        "ceo"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "Admin identity aliases are route guard inputs.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "ALBERT_CEO_EMAILS",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "isAlbertCeo",
+        "resolveCeoScopeForCurrentUser"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff",
+        "admin",
+        "ceo"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "Admin identity emails are route guard inputs.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "HIDDEN_LEGACY_CEO_EMAILS",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "isAlbertCeo",
+        "render staff/admin surfaces"
+      ],
+      "usedByWhichRouteTab": [
+        "staff",
+        "admin",
+        "ceo"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Legacy admin filtering appears admin-only but is intertwined with CEO guard and staff surfaces.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "MILAN_OWNED_LEAD_EMAILS",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "applyKnownLeadOwnershipOverride",
+        "loadLeads",
+        "loadCustomers"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Ownership overrides affect CRM scope and assignment, so they must move with scope contract.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "MILAN_OWNED_LEAD_BUSINESSES",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "applyKnownLeadOwnershipOverride",
+        "loadLeads",
+        "loadCustomers"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Ownership overrides affect CRM scope and assignment, so they must move with scope contract.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "ALBERT_OWNED_LEAD_EMAILS",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "applyKnownLeadOwnershipOverride",
+        "loadLeads",
+        "loadCustomers"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Ownership overrides affect CRM scope and assignment, so they must move with scope contract.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "ALBERT_OWNED_LEAD_BUSINESSES",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "applyKnownLeadOwnershipOverride",
+        "loadLeads",
+        "loadCustomers"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Ownership overrides affect CRM scope and assignment, so they must move with scope contract.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "CEO_COUNTRIES",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "renderStaffEditorView",
+        "renderLeadCreationView",
+        "renderLeadModalCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Country choices are CRM/Admin UI-only but currently come from social-app config.",
+      "safestExtractionStrategy": "dynamic import"
+    },
+    {
+      "importName": "LEAD_SETTINGS_DEFAULT_COUNTRY",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "createLeadDraftState",
+        "resetLeadDraft",
+        "renderLeadSettingsView"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Lead settings are lead-domain-only after route ownership is moved.",
+      "safestExtractionStrategy": "dynamic import"
+    },
+    {
+      "importName": "LEAD_COUNTRY_CENTERS",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "openLocationPicker",
+        "hydrateLeadGeoFieldsFromCoords"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Needed by geo picker; move with geo facade.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "CRM_PAGE_SIZE",
+      "importedFile": "./core/config/social-app-domain-config.js",
+      "usedByWhichFunction": [
+        "loadLeads",
+        "loadCustomers",
+        "loadCeoStaff"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Pagination constant is CRM-only but used in eager runtime creation.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "staffCacheKey",
+      "importedFile": "./core/config/social-app-cache-config.js",
+      "usedByWhichFunction": [
+        "loadCeoStaff"
+      ],
+      "usedByWhichRouteTab": [
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Staff cache can move with staff route after cache ownership is defined.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "leadPageCacheKey",
+      "importedFile": "./core/config/social-app-cache-config.js",
+      "usedByWhichFunction": [
+        "loadLeads",
+        "writeLeadScopeCache"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Lead cache can move with lead route after cache ownership is defined.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "customerPageCacheKey",
+      "importedFile": "./core/config/social-app-cache-config.js",
+      "usedByWhichFunction": [
+        "loadCustomers",
+        "writeCustomerScopeCache"
+      ],
+      "usedByWhichRouteTab": [
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Customer cache can move with customer route after cache ownership is defined.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "Firebase auth creation dependencies",
+      "importedFile": "Firebase imports in social-app.js",
+      "usedByWhichFunction": [
+        "createAuthUser",
+        "saveLeadFromModalCore",
+        "saveCeoStaffFromViewCore",
+        "saveBusinessAccountFromView"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "staff",
+        "businessAccounts"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "Account provisioning must use the same secondary-auth behavior and cannot be guessed during route split.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "Firestore read/write dependencies",
+      "importedFile": "Firebase Firestore imports in social-app.js",
+      "usedByWhichFunction": [
+        "loadLeads",
+        "saveLeadFromModalCore",
+        "deleteLeadFromModalCore",
+        "convertLeadToCustomerCore",
+        "loadCustomers",
+        "saveCustomerFromModalCore",
+        "loadCeoStaff",
+        "saveCeoStaffFromViewCore",
+        "deleteCeoStaffFromView",
+        "loadBusinessAccounts",
+        "saveBusinessAccountFromView",
+        "toggleBusinessAccountActive"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "customers",
+        "staff",
+        "businessAccounts"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "Firestore helpers are part of the data contract. Move them through a CRM/Admin data facade rather than by ad hoc imports.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "createShellUiRuntimeCluster",
+      "importedFile": "./core/app-shell/shell-ui-runtime-cluster.js",
+      "usedByWhichFunction": [
+        "loadBusinessAccounts",
+        "renderBusinessAccountsView",
+        "bindBusinessAccountsEvents",
+        "renderMainContent"
+      ],
+      "usedByWhichRouteTab": [
+        "businessAccounts"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Business accounts are produced by shell runtime, not the CRM cluster. They need a separate extraction path.",
+      "safestExtractionStrategy": "keep for now"
+    },
+    {
+      "importName": "ensureTabDataCore dependency loadLeads",
+      "importedFile": "./core/auth/tab-auth-load-utils.js",
+      "usedByWhichFunction": [
+        "ensureTabDataCore"
+      ],
+      "usedByWhichRouteTab": [
+        "leads"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Session startup currently calls the social-app loadLeads function for the leads tab.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "ensureTabDataCore dependency loadCustomers",
+      "importedFile": "./core/auth/tab-auth-load-utils.js",
+      "usedByWhichFunction": [
+        "ensureTabDataCore"
+      ],
+      "usedByWhichRouteTab": [
+        "customers"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Session startup currently calls the social-app loadCustomers function for the customers tab.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "ensureTabDataCore dependency loadCeoStaff",
+      "importedFile": "./core/auth/tab-auth-load-utils.js",
+      "usedByWhichFunction": [
+        "ensureTabDataCore"
+      ],
+      "usedByWhichRouteTab": [
+        "staff"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Session startup currently calls the social-app loadCeoStaff function for the staff tab.",
+      "safestExtractionStrategy": "facade"
+    },
+    {
+      "importName": "ensureTabDataCore dependency loadBusinessAccounts",
+      "importedFile": "./core/auth/tab-auth-load-utils.js",
+      "usedByWhichFunction": [
+        "ensureTabDataCore"
+      ],
+      "usedByWhichRouteTab": [
+        "businessAccounts"
+      ],
+      "canBeLazyLoaded": "maybe",
+      "reason": "Business accounts loading is gated by auth profile readiness and managed restaurant id.",
+      "safestExtractionStrategy": "keep for now"
+    },
+    {
+      "importName": "Route rewrite dependency",
+      "importedFile": "vercel.json",
+      "usedByWhichFunction": [
+        "Vercel routing"
+      ],
+      "usedByWhichRouteTab": [
+        "/leads",
+        "/staff",
+        "/customers",
+        "/business-accounts",
+        "/businessaccounts",
+        "/heart"
+      ],
+      "canBeLazyLoaded": "unspecified",
+      "reason": "/leads, /staff, /customers and /business-accounts currently rewrite to the social app while /heart rewrites to MNYRA Heart.",
+      "safestExtractionStrategy": "separate Heart route"
+    },
+    {
+      "importName": "System route segment dependency",
+      "importedFile": "./core/router/public-business-route-utils.js",
+      "usedByWhichFunction": [
+        "resolveSystemRouteTabFromSegment",
+        "isReservedPublicRouteSegment"
+      ],
+      "usedByWhichRouteTab": [
+        "leads",
+        "staff",
+        "customers",
+        "businessAccounts"
+      ],
+      "canBeLazyLoaded": "unspecified",
+      "reason": "Route segments map directly to CRM/social tabs and are also reserved from public business routing.",
+      "safestExtractionStrategy": "separate Heart route"
+    },
+    {
+      "importName": "Profile identity CRM dependencies",
+      "importedFile": "./core/profile/profile-identity-runtime-cluster.js",
+      "usedByWhichFunction": [
+        "resolveLeadByUid",
+        "resolveLeadByEmail",
+        "findRestaurantByLeadId",
+        "ensureRestaurantForLead"
+      ],
+      "usedByWhichRouteTab": [
+        "auth profile load",
+        "business access"
+      ],
+      "canBeLazyLoaded": "no",
+      "reason": "Auth/profile loading can depend on lead and restaurant linkage even outside the visible CRM tab.",
+      "safestExtractionStrategy": "keep for now"
+    }
+  ]
+}

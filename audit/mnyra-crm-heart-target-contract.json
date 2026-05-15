@@ -1,0 +1,389 @@
+{
+  "auditName": "mnyra-crm-heart-target-contract",
+  "status": "inventory_only",
+  "codeTruthOnly": true,
+  "productCodeTouched": false,
+  "target": "MNYRA Heart/Admin",
+  "currentRoutingFacts": {
+    "heartRoute": {
+      "route": "/heart",
+      "currentRewrite": "/apps/mnyra-heart/index.html",
+      "status": "verified"
+    },
+    "crmSocialRoutes": [
+      {
+        "route": "/leads",
+        "currentRewrite": "/apps/menyra-social/index.html",
+        "currentTab": "leads",
+        "status": "verified"
+      },
+      {
+        "route": "/staff",
+        "currentRewrite": "/apps/menyra-social/index.html",
+        "currentTab": "staff",
+        "status": "verified"
+      },
+      {
+        "route": "/customers",
+        "currentRewrite": "/apps/menyra-social/index.html",
+        "currentTab": "customers",
+        "status": "verified"
+      },
+      {
+        "route": "/business-accounts",
+        "currentRewrite": "/apps/menyra-social/index.html",
+        "currentTab": "businessAccounts",
+        "status": "verified"
+      },
+      {
+        "route": "/businessaccounts",
+        "currentRewrite": "/apps/menyra-social/index.html",
+        "currentTab": "businessAccounts",
+        "status": "verified"
+      },
+      {
+        "route": "/ceo",
+        "currentRewrite": "/apps/menyra-social/index.html",
+        "currentTab": "leads",
+        "status": "verified"
+      },
+      {
+        "route": "/admin",
+        "currentRewrite": "/apps/menyra-social/index.html",
+        "currentTab": "leads",
+        "status": "verified"
+      }
+    ],
+    "heartCurrentCrmSupport": {
+      "finding": "No CRM/leads/staff/customer/business-account loader was found in apps/mnyra-heart files inspected.",
+      "status": "verified"
+    }
+  },
+  "whatHeartAdminMustLoad": [
+    "Admin/CEO identity and guard state equivalent to current CEO guard behavior.",
+    "Lead state shape currently created by createEmptyLeadsStateCore.",
+    "Customer state shape currently created by createEmptyCustomersStateCore.",
+    "Staff state shape currently stored under state.staff.",
+    "Business account state shape currently stored under state.businessAccounts if business accounts move with Admin.",
+    "CRM renderers currently loaded from /apps/menyra-social/_shared/crm-lazy-renderers.js or their migrated equivalent.",
+    "Lead modal renderer and binder currently in lead-modal-render-utils.js and overlay-lead-bind-utils.js.",
+    "Customer modal renderer and binder currently in customer-focus-modal-render-utils.js and overlay-basic-bind-utils.js.",
+    "CRM event binding currently in app-events-crm-staff-bind-utils.js.",
+    "CRM data operations for leads, customers, staff, business accounts, account provisioning, owner assignment, staff assignment, CRM counts and public meta writes.",
+    "Geo/location picker dependencies needed by lead and staff location workflows.",
+    "Auth profile bootstrap dependencies that currently repair or create business/restaurant linkage from lead data."
+  ],
+  "whatNormalSocialV1RoutesMustNotLoad": [
+    "createCrmDomainRuntimeCluster after extraction is complete.",
+    "Lead save/delete/convert modules after extraction is complete.",
+    "Customer save module after extraction is complete.",
+    "CEO staff save/delete/load modules after extraction is complete.",
+    "CRM lazy renderers after extraction is complete.",
+    "Lead and customer modal renderers after extraction is complete.",
+    "CRM staff/lead/customer event binders after extraction is complete.",
+    "Business account management module if business accounts are moved to Heart/Admin.",
+    "CRM-specific route tabs for /leads, /staff, /customers and /business-accounts after route ownership changes.",
+    "No normal Feed/Search/Map route should load CRM just because social-app starts."
+  ],
+  "requiredRoutes": [
+    {
+      "route": "/heart",
+      "requiredTarget": "MNYRA Heart/Admin entry",
+      "currentOwner": "apps/mnyra-heart/index.html",
+      "migrationRequirement": "Must be able to load Admin/CRM modules or link to Admin subroutes without normal social startup.",
+      "status": "verified"
+    },
+    {
+      "route": "/leads",
+      "requiredTarget": "Heart/Admin leads route or explicit Heart route alias",
+      "currentOwner": "apps/menyra-social/index.html",
+      "migrationRequirement": "Must preserve lead list, create, edit, delete, settings, location and conversion workflows.",
+      "status": "verified"
+    },
+    {
+      "route": "/staff",
+      "requiredTarget": "Heart/Admin staff route or explicit Heart route alias",
+      "currentOwner": "apps/menyra-social/index.html",
+      "migrationRequirement": "Must preserve CEO staff list, create, edit, delete and location workflows.",
+      "status": "verified"
+    },
+    {
+      "route": "/customers",
+      "requiredTarget": "Heart/Admin customers route or explicit Heart route alias",
+      "currentOwner": "apps/menyra-social/index.html",
+      "migrationRequirement": "Must preserve customer list, edit/update/status and linked lead behavior.",
+      "status": "verified"
+    },
+    {
+      "route": "/business-accounts",
+      "requiredTarget": "Heart/Admin business accounts route if business-account management is included in this migration",
+      "currentOwner": "apps/menyra-social/index.html",
+      "migrationRequirement": "Must preserve business-owner guard, managed restaurant id, staff subcollection writes and user permission writes.",
+      "status": "verified"
+    }
+  ],
+  "requiredFunctions": [
+    {
+      "name": "Lead create/edit/delete",
+      "currentFunctions": [
+        "saveLeadFromModalCore",
+        "deleteLeadFromModalCore",
+        "loadLeads",
+        "renderLeadsView",
+        "renderLeadCreationView",
+        "renderLeadModalCore"
+      ],
+      "mustPreserve": [
+        "leads/{leadId}",
+        "restaurants/{restaurantId}",
+        "restaurants/{restaurantId}/public/meta",
+        "users/{socialUid}",
+        "CRM count deltas",
+        "lead modal and inline form ids"
+      ],
+      "status": "verified"
+    },
+    {
+      "name": "Lead to Customer",
+      "currentFunctions": [
+        "convertLeadToCustomerCore"
+      ],
+      "mustPreserve": [
+        "Lead status becomes kunde",
+        "restaurantId is preserved or created",
+        "socialUid/socialEmail linkage",
+        "restaurant owner fields",
+        "public/landing metadata",
+        "lead and customer in-memory state update"
+      ],
+      "status": "verified"
+    },
+    {
+      "name": "Owner/User creation if current code supports it",
+      "currentFunctions": [
+        "createAuthUser",
+        "saveLeadFromModalCore",
+        "convertLeadToCustomerCore",
+        "loadAuthProfileCore"
+      ],
+      "mustPreserve": [
+        "Secondary Firebase auth user creation",
+        "users/{uid} role and restaurant fields",
+        "ownerUid/ownerEmail/ownerName patches",
+        "auth profile repair from lead uid/email"
+      ],
+      "status": "verified"
+    },
+    {
+      "name": "Business document creation/update",
+      "currentFunctions": [
+        "saveLeadFromModalCore",
+        "convertLeadToCustomerCore",
+        "saveCustomerFromModalCore",
+        "ensureRestaurantPublicMeta"
+      ],
+      "mustPreserve": [
+        "restaurants/{restaurantId}",
+        "restaurants/{restaurantId}/public/meta",
+        "landingEnabled",
+        "landingTemplate",
+        "publicSlug",
+        "canonicalPublicPath",
+        "landingPageUrl",
+        "status and hidden/deleted flags"
+      ],
+      "status": "verified"
+    },
+    {
+      "name": "Coordinates/map data",
+      "currentFunctions": [
+        "openLocationPicker",
+        "confirmLocation",
+        "hydrateLeadGeoFieldsFromCoords",
+        "saveLeadFromModalCore",
+        "convertLeadToCustomerCore",
+        "saveCeoStaffFromViewCore"
+      ],
+      "mustPreserve": [
+        "lat",
+        "lng",
+        "gpsLat",
+        "gpsLng",
+        "locations array",
+        "address",
+        "plusCode",
+        "Google Maps URL behavior",
+        "Leaflet picker behavior"
+      ],
+      "status": "verified"
+    },
+    {
+      "name": "Staff create/edit/delete/assign",
+      "currentFunctions": [
+        "loadCeoStaff",
+        "saveCeoStaffFromViewCore",
+        "deleteCeoStaffFromView",
+        "renderStaffView",
+        "renderStaffEditorView"
+      ],
+      "mustPreserve": [
+        "superadmins/{uid}",
+        "users/{uid}",
+        "role ceo",
+        "roles array",
+        "ceoParentUid",
+        "ceoRootUid",
+        "ceoPath",
+        "createdByUid",
+        "staff coords",
+        "profile storage update for self edit"
+      ],
+      "status": "verified"
+    },
+    {
+      "name": "Customer create/edit/update/status",
+      "currentFunctions": [
+        "loadCustomers",
+        "saveCustomerFromModalCore",
+        "renderCustomersView",
+        "renderCustomerModalCore"
+      ],
+      "mustPreserve": [
+        "restaurants/{customerId}",
+        "restaurants/{customerId}/public/meta",
+        "linked leads/{leadId} behavior when status is not kunde",
+        "customer modal field ids",
+        "logo upload behavior",
+        "CRM count deltas"
+      ],
+      "status": "verified"
+    },
+    {
+      "name": "Business account login/access if current code supports it",
+      "currentFunctions": [
+        "loadBusinessAccounts",
+        "saveBusinessAccountFromView",
+        "toggleBusinessAccountActive",
+        "renderBusinessAccountsView",
+        "bindBusinessAccountsEvents"
+      ],
+      "mustPreserve": [
+        "restaurants/{restaurantId}/staff/{uid}",
+        "users/{uid}",
+        "role staff",
+        "roles staff",
+        "permissions",
+        "staffRestaurantId",
+        "waiterRestaurantId",
+        "businessOwnerUid",
+        "active/status toggle"
+      ],
+      "status": "verified"
+    }
+  ],
+  "whatMustStayUntouched": [
+    "feed",
+    "search",
+    "map",
+    "public profile",
+    "public menu",
+    "QR menu",
+    "cart",
+    "orders",
+    "chat disabled state",
+    "normal social V1 visible UI",
+    "current public route behavior until an explicit route move step"
+  ],
+  "exactMigrationOrderRecommended": [
+    {
+      "order": 1,
+      "step": "Create a CRM/Admin facade contract without changing behavior.",
+      "why": "Current social-app imports, state and session hooks need a stable boundary before any move."
+    },
+    {
+      "order": 2,
+      "step": "Extract read-only CRM state/load facade for leads, customers and staff while keeping existing social routes active.",
+      "why": "This isolates data loading without moving UI or event binding first."
+    },
+    {
+      "order": 3,
+      "step": "Move lead/customer/staff render and event ownership behind the facade, still serving current routes.",
+      "why": "Modal and button ids must remain exactly compatible before route rewrites change."
+    },
+    {
+      "order": 4,
+      "step": "Move lead write operations after the facade proves it preserves restaurant/user/public-meta/count side effects.",
+      "why": "Lead create/delete is the highest-risk write path."
+    },
+    {
+      "order": 5,
+      "step": "Move lead-to-customer conversion as its own step.",
+      "why": "Conversion bridges lead, customer, restaurant and user linkage and must be verified separately."
+    },
+    {
+      "order": 6,
+      "step": "Move customer write operations.",
+      "why": "Customer saves can update restaurants and linked leads and should follow the lead contract."
+    },
+    {
+      "order": 7,
+      "step": "Move CEO staff write/delete operations and location picker dependencies.",
+      "why": "Staff operations require auth creation, superadmin/user sync, profile storage and coordinates."
+    },
+    {
+      "order": 8,
+      "step": "Move business accounts only after deciding whether they belong to Heart/Admin or remain business-owner shell UI.",
+      "why": "Business accounts are shell-runtime-owned and restaurant-owner scoped, not CEO CRM cluster-owned."
+    },
+    {
+      "order": 9,
+      "step": "Change route ownership for /leads, /staff, /customers and /business-accounts to Heart/Admin or explicit aliases.",
+      "why": "Route changes should happen after the moved code can load independently."
+    },
+    {
+      "order": 10,
+      "step": "Remove remaining normal social startup imports for CRM after route ownership is confirmed.",
+      "why": "Only then can normal Feed/Search/Map startup stop loading CRM safely."
+    }
+  ],
+  "rollbackStrategy": [
+    "Keep all CRM route rewrites pointing to apps/menyra-social/index.html until Heart/Admin route parity is ready.",
+    "Move via facade modules so imports can be restored by reverting the facade caller change instead of rewriting feature logic.",
+    "Do not delete original social CRM modules during the first route move.",
+    "Keep modal DOM ids and state field names stable during migration.",
+    "If a route move fails, revert the route rewrite and facade caller commit while leaving code inventory untouched.",
+    "Rollback command for this audit commit only is git revert <commit-hash>."
+  ],
+  "statusByArea": [
+    {
+      "area": "leads",
+      "safeToMoveNow": "no",
+      "reason": "Lead create/delete is coupled to restaurants, users, public meta, location fields and CRM counts.",
+      "status": "verified"
+    },
+    {
+      "area": "customers",
+      "safeToMoveNow": "maybe",
+      "reason": "Customer save has linked lead behavior and restaurant/public-meta writes.",
+      "status": "verified"
+    },
+    {
+      "area": "staff",
+      "safeToMoveNow": "maybe",
+      "reason": "Staff save/delete spans superadmins, users, profile storage and coordinates.",
+      "status": "verified"
+    },
+    {
+      "area": "businessAccounts",
+      "safeToMoveNow": "maybe",
+      "reason": "Business accounts are business-owner and shell-runtime scoped; ownership must be decided before migration.",
+      "status": "verified"
+    },
+    {
+      "area": "normalSocialV1",
+      "safeToChangeNow": "no",
+      "reason": "User requested inventory only and no visible UI/product changes.",
+      "status": "verified"
+    }
+  ]
+}

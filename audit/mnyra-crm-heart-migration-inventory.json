@@ -1,0 +1,1668 @@
+{
+  "auditName": "mnyra-crm-heart-migration-inventory",
+  "status": "inventory_only",
+  "codeTruthOnly": true,
+  "productCodeTouched": false,
+  "branchExpected": "refactorapp",
+  "sourceFileExtensionsUsed": [
+    ".js",
+    ".mjs",
+    ".html",
+    ".json",
+    ".css"
+  ],
+  "sourceFilesInspected": [
+    "apps/menyra-social/social-app.js",
+    "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+    "apps/menyra-social/core/router/public-business-route-utils.js",
+    "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
+    "apps/menyra-social/core/crm/crm-runtime-controller.js",
+    "apps/menyra-social/core/crm/crm-lead-geo-support-runtime.js",
+    "apps/menyra-social/core/crm/crm-ceo-scope-support-runtime.js",
+    "apps/menyra-social/core/crm/crm-scope-state-utils.js",
+    "apps/menyra-social/core/crm/customer-save-utils.js",
+    "apps/menyra-social/core/crm/staff-save-utils.js",
+    "apps/menyra-social/core/leads/lead-save-utils.js",
+    "apps/menyra-social/core/leads/lead-convert-utils.js",
+    "apps/menyra-social/core/leads/lead-delete-utils.js",
+    "apps/menyra-social/core/leads/lead-modal-render-utils.js",
+    "apps/menyra-social/core/leads/lead-type-utils.js",
+    "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+    "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+    "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js",
+    "apps/menyra-social/core/overlays/overlay-lead-bind-utils.js",
+    "apps/menyra-social/core/overlays/overlay-basic-bind-utils.js",
+    "apps/menyra-social/core/overlays/overlay-render-orchestrator-utils.js",
+    "apps/menyra-social/core/overlays/customer-focus-modal-render-utils.js",
+    "apps/menyra-social/core/profile/profile-identity-runtime-cluster.js",
+    "apps/menyra-social/_shared/crm-lazy-renderers.js",
+    "apps/mnyra-heart/index.html",
+    "apps/mnyra-heart/main.js",
+    "apps/mnyra-heart/styles.css",
+    "vercel.json"
+  ],
+  "auditStats": {
+    "crmLeadsStaffCustomersFunctionsFound": 40,
+    "firebaseReadFindings": 14,
+    "firebaseWriteFindings": 22,
+    "uiActionsModalsFormsFound": 59
+  },
+  "keyFunctionsFound": [
+    "saveLeadFromModalCore",
+    "convertLeadToCustomerCore",
+    "deleteLeadFromModalCore",
+    "saveCustomerFromModalCore",
+    "saveCeoStaffFromViewCore",
+    "createBusinessAccountsRuntimeController",
+    "loadBusinessAccounts",
+    "saveBusinessAccountFromView",
+    "toggleBusinessAccountActive",
+    "bindLeadInlineCreateEventsCore",
+    "bindCrmStaffEventsCore",
+    "bindLeadOverlayEventsCore",
+    "bindCustomerOverlayEventsCore",
+    "renderLeadModalCore",
+    "renderCustomerModalCore",
+    "renderLeadsView",
+    "renderLeadCreationView",
+    "renderLeadSettingsView",
+    "renderCustomersView",
+    "renderStaffView",
+    "renderStaffEditorView",
+    "loadLeads",
+    "loadCustomers",
+    "loadCeoStaff",
+    "deleteCeoStaffFromView",
+    "openLeadCreator",
+    "openLeadSettingsView",
+    "closeLeadSubview",
+    "saveLeadSettings",
+    "createLeadDraftState",
+    "resetLeadDraft",
+    "openStaffEditor",
+    "closeStaffEditor",
+    "syncStaffFormFromDom",
+    "syncLeadModalDraftFromForm",
+    "addLeadModalLocationRow",
+    "removeLeadModalLocationRow",
+    "openLocationPicker",
+    "confirmLocation",
+    "ensureRestaurantPublicMeta"
+  ],
+  "firebaseReadFindings": [
+    {
+      "id": "read-001",
+      "path": "leads",
+      "files": [
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "loadLeads"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-002",
+      "path": "restaurants",
+      "files": [
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "loadLeads",
+        "loadCustomers"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-003",
+      "path": "superadmins",
+      "files": [
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "loadCeoStaff"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-004",
+      "path": "users",
+      "files": [
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "loadCeoStaff",
+        "hydrateStaffCounts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-005",
+      "path": "restaurants/{restaurantId}/staff",
+      "files": [
+        "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js"
+      ],
+      "functions": [
+        "loadBusinessAccounts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-006",
+      "path": "users/{uid}",
+      "files": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js"
+      ],
+      "functions": [
+        "loadAuthProfileCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-007",
+      "path": "restaurants/{restaurantId}",
+      "files": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/leads/lead-delete-utils.js"
+      ],
+      "functions": [
+        "loadAuthProfileCore",
+        "resolveRestaurantLinkedToLead"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-008",
+      "path": "restaurants/{restaurantId}/staff/{uid}",
+      "files": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js"
+      ],
+      "functions": [
+        "loadAuthProfileCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-009",
+      "path": "restaurants where leadId == lead.id",
+      "files": [
+        "apps/menyra-social/core/leads/lead-delete-utils.js"
+      ],
+      "functions": [
+        "resolveRestaurantLinkedToLead"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-010",
+      "path": "publicRoutes",
+      "files": [
+        "apps/menyra-social/core/profile/profile-identity-runtime-cluster.js"
+      ],
+      "functions": [
+        "resolvePublicRoute"
+      ],
+      "status": "inferred"
+    },
+    {
+      "id": "read-011",
+      "path": "restaurants queried by public slug fields",
+      "files": [
+        "apps/menyra-social/core/profile/profile-identity-runtime-cluster.js"
+      ],
+      "functions": [
+        "resolveRestaurantBySlug"
+      ],
+      "status": "inferred"
+    },
+    {
+      "id": "read-012",
+      "path": "leads queried by owner uid or email",
+      "files": [
+        "apps/menyra-social/core/profile/profile-identity-runtime-cluster.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js"
+      ],
+      "functions": [
+        "resolveLeadByUid",
+        "resolveLeadByEmail",
+        "loadAuthProfileCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-013",
+      "path": "leads for staff crm count hydration",
+      "files": [
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "hydrateStaffCounts"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "read-014",
+      "path": "restaurants for staff crm count hydration",
+      "files": [
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "hydrateStaffCounts"
+      ],
+      "status": "verified"
+    }
+  ],
+  "firebaseWriteFindings": [
+    {
+      "id": "write-001",
+      "path": "leads/{leadId}",
+      "operation": "setDoc merge",
+      "files": [
+        "apps/menyra-social/core/leads/lead-save-utils.js"
+      ],
+      "functions": [
+        "saveLeadFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-002",
+      "path": "restaurants/{restaurantId}",
+      "operation": "setDoc merge",
+      "files": [
+        "apps/menyra-social/core/leads/lead-save-utils.js"
+      ],
+      "functions": [
+        "saveLeadFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-003",
+      "path": "restaurants/{restaurantId}/public/meta",
+      "operation": "setDoc merge via ensureRestaurantPublicMeta",
+      "files": [
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "saveLeadFromModalCore",
+        "ensureRestaurantPublicMeta"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-004",
+      "path": "users/{socialUid}",
+      "operation": "setDoc merge",
+      "files": [
+        "apps/menyra-social/core/leads/lead-save-utils.js"
+      ],
+      "functions": [
+        "saveLeadFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-005",
+      "path": "restaurants/{restaurantId}",
+      "operation": "owner and leadId patch",
+      "files": [
+        "apps/menyra-social/core/leads/lead-save-utils.js"
+      ],
+      "functions": [
+        "saveLeadFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-006",
+      "path": "restaurants/{restaurantId}",
+      "operation": "setDoc merge active customer payload",
+      "files": [
+        "apps/menyra-social/core/leads/lead-convert-utils.js"
+      ],
+      "functions": [
+        "convertLeadToCustomerCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-007",
+      "path": "restaurants/{restaurantId}/public/meta",
+      "operation": "setDoc merge via ensureRestaurantPublicMeta",
+      "files": [
+        "apps/menyra-social/core/leads/lead-convert-utils.js"
+      ],
+      "functions": [
+        "convertLeadToCustomerCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-008",
+      "path": "users/{socialUid}",
+      "operation": "setDoc merge user bootstrap",
+      "files": [
+        "apps/menyra-social/core/leads/lead-convert-utils.js"
+      ],
+      "functions": [
+        "convertLeadToCustomerCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-009",
+      "path": "leads/{leadId}",
+      "operation": "setDoc merge converted lead state",
+      "files": [
+        "apps/menyra-social/core/leads/lead-convert-utils.js"
+      ],
+      "functions": [
+        "convertLeadToCustomerCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-010",
+      "path": "leads/{leadId}",
+      "operation": "deleteDoc",
+      "files": [
+        "apps/menyra-social/core/leads/lead-delete-utils.js"
+      ],
+      "functions": [
+        "deleteLeadFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-011",
+      "path": "restaurants/{restaurantId}",
+      "operation": "setDoc merge deleted and hidden state",
+      "files": [
+        "apps/menyra-social/core/leads/lead-delete-utils.js"
+      ],
+      "functions": [
+        "deleteLeadFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-012",
+      "path": "restaurants/{restaurantId}/public/meta",
+      "operation": "setDoc merge deleted and hidden state",
+      "files": [
+        "apps/menyra-social/core/leads/lead-delete-utils.js"
+      ],
+      "functions": [
+        "deleteLeadFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-013",
+      "path": "restaurant social presence collections",
+      "operation": "purgeRestaurantSocialPresence",
+      "files": [
+        "apps/menyra-social/core/leads/lead-delete-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "deleteLeadFromModalCore",
+        "purgeRestaurantSocialPresence"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-014",
+      "path": "users/{uid}",
+      "operation": "setDoc merge CRM counts",
+      "files": [
+        "apps/menyra-social/core/crm/ceo-crm-count-runtime-controller.js",
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/leads/lead-convert-utils.js",
+        "apps/menyra-social/core/leads/lead-delete-utils.js",
+        "apps/menyra-social/core/crm/customer-save-utils.js"
+      ],
+      "functions": [
+        "applyCeoCrmCountDeltas"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-015",
+      "path": "superadmins/{uid}",
+      "operation": "setDoc merge CRM counts",
+      "files": [
+        "apps/menyra-social/core/crm/ceo-crm-count-runtime-controller.js"
+      ],
+      "functions": [
+        "applyCeoCrmCountDeltas"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-016",
+      "path": "restaurants/{customerId}",
+      "operation": "setDoc merge customer payload",
+      "files": [
+        "apps/menyra-social/core/crm/customer-save-utils.js"
+      ],
+      "functions": [
+        "saveCustomerFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-017",
+      "path": "leads/{leadId}",
+      "operation": "setDoc merge linked lead from customer status",
+      "files": [
+        "apps/menyra-social/core/crm/customer-save-utils.js"
+      ],
+      "functions": [
+        "saveCustomerFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-018",
+      "path": "restaurants/{customerId}",
+      "operation": "leadId patch from customer save",
+      "files": [
+        "apps/menyra-social/core/crm/customer-save-utils.js"
+      ],
+      "functions": [
+        "saveCustomerFromModalCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-019",
+      "path": "superadmins/{uid}",
+      "operation": "setDoc merge staff profile",
+      "files": [
+        "apps/menyra-social/core/crm/staff-save-utils.js"
+      ],
+      "functions": [
+        "saveCeoStaffFromViewCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-020",
+      "path": "users/{uid}",
+      "operation": "setDoc merge staff user profile",
+      "files": [
+        "apps/menyra-social/core/crm/staff-save-utils.js"
+      ],
+      "functions": [
+        "saveCeoStaffFromViewCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-021",
+      "path": "superadmins/{uid} and users/{uid}",
+      "operation": "deleteDoc",
+      "files": [
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functions": [
+        "deleteCeoStaffFromView"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "write-022",
+      "path": "restaurants/{restaurantId}/staff/{uid} and users/{uid}",
+      "operation": "setDoc merge business account staff and user access",
+      "files": [
+        "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js"
+      ],
+      "functions": [
+        "saveBusinessAccountFromView",
+        "toggleBusinessAccountActive"
+      ],
+      "status": "verified"
+    }
+  ],
+  "uiActionModalFormFindings": [
+    "leadInlineActionsToggle",
+    "leadInlineActionsBackdrop",
+    "leadInlineDeleteBtn",
+    "leadInlineSaveBtn",
+    "leadPassword",
+    "leadLogoTrigger",
+    "leadLogoInput",
+    "leadBestSpotLogoTrigger",
+    "leadBestSpotLogoInput",
+    "leadBusinessName",
+    "leadCustomerType",
+    "leadBillingCycle",
+    "leadCountry",
+    "data-lead-location-add",
+    "data-lead-location-remove",
+    "data-lead-location-pick",
+    "data-lead-location-address",
+    "newLeadBtn",
+    "leadSettingsBtn",
+    "data-leads-back",
+    "leadSettingsSaveBtn",
+    "leadsSearchInput",
+    "leadsStatusFilter",
+    "data-lead-scope",
+    "data-lead-edit",
+    "leadModalOverlay",
+    "leadModalClose",
+    "leadModalSave",
+    "leadConvertBtn",
+    "leadLogoUrl",
+    "leadBestSpotLogoUrl",
+    "customersSearchInput",
+    "data-customer-scope",
+    "data-customer-edit",
+    "customerModalOverlay",
+    "customerModalClose",
+    "customerModalSave",
+    "customerLogoTrigger",
+    "customerLogoInput",
+    "customerLogoUrl",
+    "customerName",
+    "customerOwnerName",
+    "customerOwnerEmail",
+    "customerPhone",
+    "customerInstagram",
+    "customerCity",
+    "customerAddress",
+    "customerStatus",
+    "data-staff-back",
+    "staffNewBtn",
+    "data-staff-edit",
+    "staffFirstName",
+    "staffLastName",
+    "staffPassword",
+    "staffLocationPickBtn",
+    "staffSaveBtn",
+    "staffDeleteBtn",
+    "businessAccountSaveBtn",
+    "businessAccountToggleStatusBtn"
+  ],
+  "domains": [
+    {
+      "domain": "leads",
+      "currentEntryRouteTab": [
+        "/leads",
+        "/ceo",
+        "/admin",
+        "state.activeTab === \"leads\""
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/router/public-business-route-utils.js",
+        "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/crm/crm-scope-state-utils.js",
+        "apps/menyra-social/core/crm/crm-ceo-scope-support-runtime.js",
+        "apps/menyra-social/core/crm/crm-lead-geo-support-runtime.js",
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/leads/lead-delete-utils.js",
+        "apps/menyra-social/core/leads/lead-modal-render-utils.js",
+        "apps/menyra-social/core/leads/lead-type-utils.js",
+        "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+        "apps/menyra-social/core/overlays/overlay-lead-bind-utils.js",
+        "apps/menyra-social/core/overlays/overlay-render-orchestrator-utils.js",
+        "apps/menyra-social/_shared/crm-lazy-renderers.js",
+        "vercel.json"
+      ],
+      "functionsInvolved": [
+        "loadLeads",
+        "renderLeadsView",
+        "renderLeadCreationView",
+        "renderLeadSettingsView",
+        "saveLeadFromModalCore",
+        "deleteLeadFromModalCore",
+        "renderLeadModalCore",
+        "bindLeadOverlayEventsCore",
+        "bindLeadInlineCreateEventsCore",
+        "bindCrmStaffEventsCore",
+        "openLeadCreator",
+        "openLeadSettingsView",
+        "closeLeadSubview",
+        "saveLeadSettings",
+        "syncLeadModalDraftFromForm",
+        "createLeadDraftState",
+        "resetLeadDraft",
+        "normalizeLeadTypeKeyCore",
+        "ensureRestaurantPublicMeta"
+      ],
+      "uiSurfacesInvolved": [
+        "Leads route tab",
+        "Lead list view",
+        "Lead inline create view",
+        "Lead settings view",
+        "Lead focus modal",
+        "Lead location rows",
+        "CEO guard view"
+      ],
+      "buttonsActionsInvolved": [
+        "newLeadBtn",
+        "leadSettingsBtn",
+        "data-leads-back",
+        "leadSettingsSaveBtn",
+        "leadsSearchInput",
+        "leadsStatusFilter",
+        "data-lead-scope",
+        "data-lead-edit",
+        "leadInlineSaveBtn",
+        "leadInlineDeleteBtn",
+        "leadInlineActionsToggle",
+        "leadModalSave",
+        "leadModalClose",
+        "leadConvertBtn",
+        "data-lead-location-add",
+        "data-lead-location-remove",
+        "data-lead-location-pick"
+      ],
+      "modalsFormsInvolved": [
+        "leadModalOverlay",
+        "renderLeadModalCore",
+        "Lead inline creation form",
+        "Lead settings form",
+        "locationPickerModal"
+      ],
+      "stateFieldsUsed": [
+        "state.activeTab",
+        "state.leads",
+        "state.leads.items",
+        "state.leads.scope",
+        "state.leads.loadedScopes",
+        "state.leads.loading",
+        "state.leads.saving",
+        "state.leads.deleting",
+        "state.leads.convertingIds",
+        "state.leads.settings",
+        "state.leadModal",
+        "state.leadModal.open",
+        "state.leadModal.mode",
+        "state.leadModal.lead",
+        "state.leadModal.logoFile",
+        "state.leadModal.bestSpotLogoFile",
+        "state.leadModal.coords",
+        "state.leadModal.locations",
+        "state.restaurants",
+        "state.businessLocations",
+        "state.customers",
+        "state.userProfile"
+      ],
+      "firebaseReads": [
+        "leads collection queries in loadLeads",
+        "restaurants collection queries in loadLeads",
+        "restaurants/{restaurantId} and restaurants where leadId == lead.id in delete flow",
+        "leads by owner uid or email during auth/profile lead resolution"
+      ],
+      "firebaseWrites": [
+        "leads/{leadId} setDoc merge",
+        "restaurants/{restaurantId} setDoc merge",
+        "restaurants/{restaurantId}/public/meta setDoc merge via ensureRestaurantPublicMeta",
+        "users/{socialUid} setDoc merge when account is created or linked",
+        "CRM count deltas to users/{uid} and superadmins/{uid}",
+        "leads/{leadId} deleteDoc in delete flow",
+        "restaurant hidden/deleted patches in delete flow"
+      ],
+      "localStorageSafeStorageUsage": [
+        "safeStorage via profile/session dependencies is present in social-app runtime",
+        "lead scope caches use cache helpers leadPageCacheKey and writeLeadScopeCache",
+        "direct lead localStorage usage is unspecified"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "createCrmDomainRuntimeCluster",
+        "createCrmLeadGeoSupportRuntime",
+        "createCrmCeoScopeSupportRuntime",
+        "createEmptyLeadsStateCore",
+        "LEAD_STATUS_ORDER",
+        "LEAD_STATUS_LABELS",
+        "LEAD_TYPE_ORDER",
+        "LEAD_TYPE_LABELS",
+        "LEAD_COUNTRY_CENTERS",
+        "LEAD_SETTINGS_DEFAULT_COUNTRY",
+        "CEO_COUNTRIES",
+        "CRM_PAGE_SIZE",
+        "saveLeadFromModalCore",
+        "deleteLeadFromModalCore",
+        "bindLeadOverlayEventsCore",
+        "bindCrmStaffEventsCore",
+        "bindLeadInlineCreateEventsCore",
+        "CRM_LAZY_RENDERERS_MODULE_URL"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "bindAppEvents receives saveLeadFromModal, deleteLeadFromModal, convertLeadToCustomer, loadLeads and lead location handlers",
+        "overlay render orchestrator renders and binds lead modal overlay",
+        "app-shell render path exposes businessAccounts and CRM surfaces through current social shell"
+      ],
+      "dependenciesFromAuthSession": [
+        "ensureTabDataCore calls loadLeads when tab is leads and current user is CEO",
+        "loadAuthProfileCore can resolve a lead by uid or email and ensure a restaurant for that lead"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "ensureRestaurantPublicMeta preserves public meta for restaurant landing/profile",
+        "lead save preserves landingEnabled, landingTemplate, publicSlug, canonicalPublicPath and landingPageUrl",
+        "menu/cart/order code was not audited as a move target and must remain untouched"
+      ],
+      "safeToMove": "no",
+      "whatMustBePreservedExactly": [
+        "Lead create, edit and delete behavior",
+        "Restaurant document creation and update",
+        "User account bootstrap and owner linkage",
+        "Public route and landing metadata fields",
+        "Lead scope, status filters, search and pagination behavior",
+        "Lead modal and inline-create field ids because event binding depends on them",
+        "CRM count delta updates",
+        "Location row and coordinate behavior"
+      ],
+      "riskLevel": "critical",
+      "riskReason": "Lead save/delete is coupled to restaurants, users, public meta, CRM counts, location state, modal DOM ids, auth profile resolution and social-app startup imports.",
+      "status": "verified"
+    },
+    {
+      "domain": "crm",
+      "currentEntryRouteTab": [
+        "/leads",
+        "/staff",
+        "/customers",
+        "/business-accounts",
+        "state.activeTab in leads/staff/customers/businessAccounts"
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/crm/crm-ceo-scope-support-runtime.js",
+        "apps/menyra-social/core/crm/crm-lead-geo-support-runtime.js",
+        "apps/menyra-social/core/crm/crm-scope-state-utils.js",
+        "apps/menyra-social/core/crm/ceo-crm-count-runtime-controller.js",
+        "apps/menyra-social/_shared/crm-lazy-renderers.js",
+        "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js"
+      ],
+      "functionsInvolved": [
+        "createCrmDomainRuntimeCluster",
+        "loadLeads",
+        "loadCustomers",
+        "loadCeoStaff",
+        "renderLeadsView",
+        "renderCustomersView",
+        "renderStaffView",
+        "renderStaffEditorView",
+        "applyCeoCrmCountDeltas",
+        "normalizeLeadScopeKey",
+        "normalizeCustomerScopeKey",
+        "isAlbertCeo",
+        "resolveCeoScopeForCurrentUser",
+        "writeLeadScopeCache",
+        "writeCustomerScopeCache"
+      ],
+      "uiSurfacesInvolved": [
+        "CRM tab group inside social shell",
+        "CEO guard view",
+        "Lazy-rendered lead/customer/staff lists",
+        "Overlay roots for lead and customer modals"
+      ],
+      "buttonsActionsInvolved": [
+        "data-lead-scope",
+        "data-customer-scope",
+        "leadsSearchInput",
+        "customersSearchInput",
+        "staffNewBtn",
+        "data-staff-edit",
+        "leadModalSave",
+        "customerModalSave"
+      ],
+      "modalsFormsInvolved": [
+        "leadModalOverlay",
+        "customerModalOverlay",
+        "staff editor form",
+        "locationPickerModal"
+      ],
+      "stateFieldsUsed": [
+        "state.activeTab",
+        "state.dataLoaded",
+        "state.leads",
+        "state.customers",
+        "state.staff",
+        "state.businessAccounts",
+        "state.leadModal",
+        "state.customerModal",
+        "state.userProfile",
+        "state.authProfileLoading"
+      ],
+      "firebaseReads": [
+        "leads",
+        "restaurants",
+        "superadmins",
+        "users",
+        "restaurants/{restaurantId}/staff"
+      ],
+      "firebaseWrites": [
+        "leads/{leadId}",
+        "restaurants/{restaurantId}",
+        "restaurants/{restaurantId}/public/meta",
+        "users/{uid}",
+        "superadmins/{uid}",
+        "restaurants/{restaurantId}/staff/{uid}"
+      ],
+      "localStorageSafeStorageUsage": [
+        "leadPageCacheKey",
+        "customerPageCacheKey",
+        "staffCacheKey",
+        "saveUserProfileToStorage when staff self edit changes profile",
+        "safeStorage is provided by social-app runtime"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "The CRM runtime cluster is constructed during normal social-app module evaluation",
+        "CRM render, load and save functions are assigned to social-app scoped variables",
+        "Session runtime receives loadLeads, loadCustomers, loadCeoStaff and loadBusinessAccounts"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "bindAppEvents wires CRM events after render",
+        "renderMainContent selects CRM views by activeTab",
+        "overlay render orchestrator binds modal events"
+      ],
+      "dependenciesFromAuthSession": [
+        "ensureTabDataCore is the current tab data loader for CRM tabs",
+        "loadAuthProfileCore can create or repair business/restaurant linkage from lead data"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "CRM writes restaurant and public meta fields consumed by public profile/landing code",
+        "direct menu/cart/order dependencies are intentionally not part of the move target"
+      ],
+      "safeToMove": "no",
+      "whatMustBePreservedExactly": [
+        "CEO-only guards and scope rules",
+        "Lazy renderer behavior",
+        "CRM count updates",
+        "Cached page/scope behavior",
+        "Modal root render and bind order",
+        "Auth profile bootstrap interactions"
+      ],
+      "riskLevel": "critical",
+      "riskReason": "CRM is currently a social-app runtime cluster, not an isolated route module. Moving one tab without the shared cluster breaks shared state, events and counts.",
+      "status": "verified"
+    },
+    {
+      "domain": "staff",
+      "currentEntryRouteTab": [
+        "/staff",
+        "state.activeTab === \"staff\""
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/crm/staff-save-utils.js",
+        "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+        "apps/menyra-social/_shared/crm-lazy-renderers.js",
+        "vercel.json"
+      ],
+      "functionsInvolved": [
+        "loadCeoStaff",
+        "saveCeoStaffFromViewCore",
+        "deleteCeoStaffFromView",
+        "renderStaffView",
+        "renderStaffEditorView",
+        "openStaffEditor",
+        "closeStaffEditor",
+        "syncStaffFormFromDom",
+        "getStaffFormEmail",
+        "syncStaffDerivedEmailField",
+        "bindCrmStaffEventsCore",
+        "openLocationPicker"
+      ],
+      "uiSurfacesInvolved": [
+        "Staff list view",
+        "Staff editor view",
+        "CEO guard view",
+        "Staff location picker"
+      ],
+      "buttonsActionsInvolved": [
+        "staffNewBtn",
+        "data-staff-edit",
+        "data-staff-back",
+        "staffAvatarTrigger",
+        "staffAvatarInput",
+        "staffLocationPickBtn",
+        "staffSaveBtn",
+        "staffDeleteBtn"
+      ],
+      "modalsFormsInvolved": [
+        "Staff editor form",
+        "locationPickerModal"
+      ],
+      "stateFieldsUsed": [
+        "state.staff",
+        "state.staff.items",
+        "state.staff.view",
+        "state.staff.editorUid",
+        "state.staff.loading",
+        "state.staff.saving",
+        "state.staff.deleting",
+        "state.staff.form",
+        "state.staff.form.coords",
+        "state.staff.buildStatus",
+        "state.userProfile",
+        "state.currentUser"
+      ],
+      "firebaseReads": [
+        "superadmins collection queries in loadCeoStaff",
+        "users collection/doc reads for staff profile/count hydration",
+        "leads and restaurants reads for CRM count hydration"
+      ],
+      "firebaseWrites": [
+        "superadmins/{uid} setDoc merge",
+        "users/{uid} setDoc merge",
+        "superadmins/{uid} deleteDoc",
+        "users/{uid} deleteDoc"
+      ],
+      "localStorageSafeStorageUsage": [
+        "saveUserProfileToStorage when the current CEO edits their own staff profile",
+        "staffCacheKey for cached staff data"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "state.staff initialized in social-app",
+        "createCrmDomainRuntimeCluster returns loadCeoStaff, saveCeoStaffFromView and deleteCeoStaffFromView",
+        "bindAppEvents passes staff save/delete/open/close handlers"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "bindCrmStaffEventsCore binds staff list and editor controls only while activeTab is staff",
+        "location picker events are shared with lead location editing"
+      ],
+      "dependenciesFromAuthSession": [
+        "ensureTabDataCore calls loadCeoStaff when tab is staff and user is CEO"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "staff save can update the current user profile stored for shell/profile display",
+        "public menu dependencies are unspecified and must remain untouched"
+      ],
+      "safeToMove": "maybe",
+      "whatMustBePreservedExactly": [
+        "CEO staff scope fields ceoParentUid, ceoRootUid and ceoPath",
+        "User and superadmin documents stay in sync",
+        "Staff coordinates lat/lng/gpsLat/gpsLng",
+        "Current-user profile storage update on self edit",
+        "Staff delete confirmation and both-document delete"
+      ],
+      "riskLevel": "high",
+      "riskReason": "Staff save/delete spans superadmins, users, auth user creation, profile storage, CRM counts and location picker state.",
+      "status": "verified"
+    },
+    {
+      "domain": "customers",
+      "currentEntryRouteTab": [
+        "/customers",
+        "state.activeTab === \"customers\""
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/crm/customer-save-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/overlays/customer-focus-modal-render-utils.js",
+        "apps/menyra-social/core/overlays/overlay-basic-bind-utils.js",
+        "apps/menyra-social/core/overlays/overlay-render-orchestrator-utils.js",
+        "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+        "apps/menyra-social/_shared/crm-lazy-renderers.js",
+        "vercel.json"
+      ],
+      "functionsInvolved": [
+        "loadCustomers",
+        "renderCustomersView",
+        "renderCustomerModalCore",
+        "bindCustomerOverlayEventsCore",
+        "saveCustomerFromModalCore",
+        "normalizeCustomerScopeKey",
+        "writeCustomerScopeCache",
+        "ensureRestaurantPublicMeta"
+      ],
+      "uiSurfacesInvolved": [
+        "Customers route tab",
+        "Customer list view",
+        "Customer focus modal",
+        "Customer search/scope controls"
+      ],
+      "buttonsActionsInvolved": [
+        "customersSearchInput",
+        "data-customer-scope",
+        "data-customer-edit",
+        "customerModalClose",
+        "customerModalSave",
+        "customerLogoTrigger",
+        "customerLogoInput"
+      ],
+      "modalsFormsInvolved": [
+        "customerModalOverlay",
+        "renderCustomerModalCore",
+        "Customer form fields: customerName, customerOwnerName, customerOwnerEmail, customerPhone, customerInstagram, customerCity, customerAddress, customerLogoUrl, customerStatus"
+      ],
+      "stateFieldsUsed": [
+        "state.customers",
+        "state.customers.items",
+        "state.customers.scope",
+        "state.customers.loadedScopes",
+        "state.customers.loading",
+        "state.customerModal",
+        "state.customerModal.customer",
+        "state.customerModal.logoFile",
+        "state.restaurants",
+        "state.leads",
+        "state.businessLocations",
+        "state.userProfile"
+      ],
+      "firebaseReads": [
+        "restaurants collection queries in loadCustomers"
+      ],
+      "firebaseWrites": [
+        "restaurants/{customerId} setDoc merge",
+        "restaurants/{customerId}/public/meta setDoc merge",
+        "leads/{leadId} setDoc merge when customer status becomes non-customer",
+        "restaurants/{customerId} leadId patch"
+      ],
+      "localStorageSafeStorageUsage": [
+        "customerPageCacheKey and writeCustomerScopeCache",
+        "direct customer localStorage usage is unspecified"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "createEmptyCustomersStateCore",
+        "saveCustomerFromModalCore",
+        "createCrmDomainRuntimeCluster returns loadCustomers and saveCustomerFromModal",
+        "Session runtime receives loadCustomers"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "bindCrmStaffEventsCore binds customer search/scope/edit actions",
+        "overlay render orchestrator renders and binds customer modal"
+      ],
+      "dependenciesFromAuthSession": [
+        "ensureTabDataCore calls loadCustomers when tab is customers and user is CEO"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "Customer save writes restaurants and public meta consumed by public profile/landing",
+        "menu/cart/order dependencies are not part of this move target"
+      ],
+      "safeToMove": "maybe",
+      "whatMustBePreservedExactly": [
+        "Customer status behavior",
+        "Restaurant document path based on customer.id",
+        "Linked lead creation/update when status is not kunde",
+        "Customer modal field ids",
+        "Logo upload behavior",
+        "CRM count deltas"
+      ],
+      "riskLevel": "high",
+      "riskReason": "Customer save writes restaurant documents and can create/update a linked lead, so route migration can corrupt the lead/customer relationship if ids or status rules drift.",
+      "status": "verified"
+    },
+    {
+      "domain": "businessAccounts",
+      "currentEntryRouteTab": [
+        "/business-accounts",
+        "/businessaccounts",
+        "state.activeTab === \"businessAccounts\""
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/router/public-business-route-utils.js",
+        "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js",
+        "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+        "vercel.json"
+      ],
+      "functionsInvolved": [
+        "createBusinessAccountsRuntimeController",
+        "loadBusinessAccounts",
+        "saveBusinessAccountFromView",
+        "toggleBusinessAccountActive",
+        "renderBusinessAccountsView",
+        "bindBusinessAccountsEvents",
+        "isBusinessOwnerProfile"
+      ],
+      "uiSurfacesInvolved": [
+        "Business accounts route tab",
+        "Business accounts list",
+        "Business account editor",
+        "Business owner guard"
+      ],
+      "buttonsActionsInvolved": [
+        "businessAccountNewBtn",
+        "data-business-account-edit",
+        "data-business-account-back",
+        "businessAccountSaveBtn",
+        "businessAccountToggleStatusBtn"
+      ],
+      "modalsFormsInvolved": [
+        "Business account editor form fields: businessAccountFirstName, businessAccountLastName, businessAccountEmail, businessAccountPassword, businessAccountRole, businessAccountBusinessAccess, businessAccountWaiterAccess, businessAccountActive"
+      ],
+      "stateFieldsUsed": [
+        "state.businessAccounts",
+        "state.businessAccounts.items",
+        "state.businessAccounts.view",
+        "state.businessAccounts.editorUid",
+        "state.businessAccounts.loading",
+        "state.businessAccounts.saving",
+        "state.businessAccounts.form",
+        "state.userProfile",
+        "state.currentUser"
+      ],
+      "firebaseReads": [
+        "restaurants/{restaurantId}/staff collection in loadBusinessAccounts"
+      ],
+      "firebaseWrites": [
+        "restaurants/{restaurantId}/staff/{uid} setDoc merge",
+        "users/{uid} setDoc merge"
+      ],
+      "localStorageSafeStorageUsage": [
+        "state.userProfile is loaded from the auth/session profile path; direct business account localStorage use is unspecified"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "createShellUiRuntimeCluster returns loadBusinessAccounts, renderBusinessAccountsView and bindBusinessAccountsEvents",
+        "Session runtime receives loadBusinessAccounts",
+        "renderMainContent includes business account view path through app shell"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "bindBusinessAccountsEvents binds only while activeTab is businessAccounts",
+        "Business account view depends on app shell current profile and managed restaurant id"
+      ],
+      "dependenciesFromAuthSession": [
+        "ensureTabDataCore loads auth profile before loadBusinessAccounts",
+        "loadBusinessAccounts requires business-owner profile restaurantId"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "Business account users receive restaurantId, staffRestaurantId, waiterRestaurantId and permissions used by business access",
+        "menu/cart/order behavior was intentionally not inspected as a move target"
+      ],
+      "safeToMove": "maybe",
+      "whatMustBePreservedExactly": [
+        "Business-owner guard",
+        "Managed restaurant id resolution",
+        "Staff subcollection path",
+        "User doc permissions, restaurant ids and role fields",
+        "Active/status toggle behavior",
+        "Auth user creation for new business staff accounts"
+      ],
+      "riskLevel": "high",
+      "riskReason": "Business accounts are shell-owned but profile/permission-driven; moving without the profile guard can expose or write the wrong restaurant staff collection.",
+      "status": "verified"
+    },
+    {
+      "domain": "leadToCustomerConversion",
+      "currentEntryRouteTab": [
+        "Lead modal in /leads",
+        "leadConvertBtn",
+        "convertLeadToCustomer"
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/leads/lead-convert-utils.js",
+        "apps/menyra-social/core/leads/lead-modal-render-utils.js",
+        "apps/menyra-social/core/overlays/overlay-lead-bind-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js"
+      ],
+      "functionsInvolved": [
+        "convertLeadToCustomerCore",
+        "renderLeadModalCore",
+        "bindLeadOverlayEventsCore",
+        "ensureRestaurantPublicMeta",
+        "resolveRestaurantStatusFromLead",
+        "applyCeoCrmCountDeltas"
+      ],
+      "uiSurfacesInvolved": [
+        "Lead modal conversion action",
+        "Leads list state refresh",
+        "Customers list state refresh"
+      ],
+      "buttonsActionsInvolved": [
+        "leadConvertBtn"
+      ],
+      "modalsFormsInvolved": [
+        "leadModalOverlay"
+      ],
+      "stateFieldsUsed": [
+        "state.leadModal.lead",
+        "state.leads.items",
+        "state.leads.convertingIds",
+        "state.customers.items",
+        "state.restaurants",
+        "state.businessLocations"
+      ],
+      "firebaseReads": [
+        "Existing lead data from loaded state",
+        "Restaurant id linkage from lead.restaurantId or created restaurant id"
+      ],
+      "firebaseWrites": [
+        "restaurants/{restaurantId} setDoc merge",
+        "restaurants/{restaurantId}/public/meta setDoc merge",
+        "users/{socialUid} setDoc merge",
+        "leads/{leadId} setDoc merge status kunde and conversion fields",
+        "CRM count deltas"
+      ],
+      "localStorageSafeStorageUsage": [
+        "direct conversion localStorage usage is unspecified",
+        "conversion updates cached lead/customer scope state through surrounding CRM runtime"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "convertLeadToCustomerCore import",
+        "convertLeadToCustomer function returned by CRM runtime cluster",
+        "Lead overlay binding receives convertLeadToCustomer"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "Lead modal overlay binds leadConvertBtn to convertLeadToCustomer"
+      ],
+      "dependenciesFromAuthSession": [
+        "Converted user/bootstrap fields must remain compatible with auth profile loading"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "Restaurant public meta and landing fields must remain compatible with public profile/landing"
+      ],
+      "safeToMove": "no",
+      "whatMustBePreservedExactly": [
+        "lead.status becomes kunde",
+        "restaurantId linkage is preserved or created",
+        "socialUid/socialEmail link remains intact",
+        "restaurant owner fields remain intact",
+        "public/landing fields remain intact",
+        "customers and leads in-memory states are both updated"
+      ],
+      "riskLevel": "critical",
+      "riskReason": "Conversion is the bridge between lead, customer, restaurant and user documents.",
+      "status": "verified"
+    },
+    {
+      "domain": "accountProvisioning",
+      "currentEntryRouteTab": [
+        "Lead create/edit",
+        "Lead to customer conversion",
+        "Staff create/edit",
+        "Business accounts create/edit",
+        "Auth profile load"
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/leads/lead-convert-utils.js",
+        "apps/menyra-social/core/crm/staff-save-utils.js",
+        "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/profile/profile-identity-runtime-cluster.js"
+      ],
+      "functionsInvolved": [
+        "createAuthUser",
+        "saveLeadFromModalCore",
+        "convertLeadToCustomerCore",
+        "saveCeoStaffFromViewCore",
+        "saveBusinessAccountFromView",
+        "toggleBusinessAccountActive",
+        "loadAuthProfileCore",
+        "ensureRestaurantForLead",
+        "resolveLeadByUid",
+        "resolveLeadByEmail"
+      ],
+      "uiSurfacesInvolved": [
+        "Lead password/email fields",
+        "Staff password/email fields",
+        "Business account password/email fields",
+        "Auth profile bootstrap path"
+      ],
+      "buttonsActionsInvolved": [
+        "leadModalSave",
+        "leadInlineSaveBtn",
+        "leadConvertBtn",
+        "staffSaveBtn",
+        "businessAccountSaveBtn"
+      ],
+      "modalsFormsInvolved": [
+        "Lead modal/form",
+        "Staff editor form",
+        "Business account editor form"
+      ],
+      "stateFieldsUsed": [
+        "state.currentUser",
+        "state.userProfile",
+        "state.leadModal",
+        "state.staff.form",
+        "state.businessAccounts.form"
+      ],
+      "firebaseReads": [
+        "users/{uid}",
+        "restaurants/{restaurantId}",
+        "restaurants/{restaurantId}/staff/{uid}",
+        "leads by uid/email"
+      ],
+      "firebaseWrites": [
+        "users/{uid}",
+        "restaurants/{restaurantId}",
+        "restaurants/{restaurantId}/staff/{uid}",
+        "superadmins/{uid}"
+      ],
+      "localStorageSafeStorageUsage": [
+        "saveUserProfileToStorage",
+        "safeStorage-provided profile/session data",
+        "direct provisioning localStorage use is unspecified"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "Secondary Firebase auth creation is provided to CRM/business/staff save functions through social-app dependencies",
+        "Firebase auth/firestore helpers are social-app-level dependencies"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "Save buttons in existing shell trigger account provisioning flows"
+      ],
+      "dependenciesFromAuthSession": [
+        "loadAuthProfileCore can repair or create business profile linkage from lead data",
+        "Business account loading is gated by auth profile readiness"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "Business user profile fields affect access to business areas and restaurant staff subcollection",
+        "restaurantId/staffRestaurantId/waiterRestaurantId must stay compatible with business UI"
+      ],
+      "safeToMove": "no",
+      "whatMustBePreservedExactly": [
+        "Secondary auth user creation",
+        "users role/roles/status/permissions fields",
+        "restaurantId and staffRestaurantId linkage",
+        "ownerUid/ownerEmail owner bootstrap",
+        "businessOwnerUid and permissions",
+        "auth profile repair behavior"
+      ],
+      "riskLevel": "critical",
+      "riskReason": "Account creation is distributed across lead save, conversion, CEO staff save, business account save and auth profile bootstrap.",
+      "status": "verified"
+    },
+    {
+      "domain": "geoCoordinates",
+      "currentEntryRouteTab": [
+        "Lead modal/form",
+        "Staff editor",
+        "Location picker modal"
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/crm/crm-lead-geo-support-runtime.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/leads/lead-convert-utils.js",
+        "apps/menyra-social/core/crm/staff-save-utils.js",
+        "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+        "apps/menyra-social/core/overlays/overlay-lead-bind-utils.js"
+      ],
+      "functionsInvolved": [
+        "createCrmLeadGeoSupportRuntime",
+        "openLocationPicker",
+        "confirmLocation",
+        "hydrateLeadGeoFieldsFromCoords",
+        "syncLeadDerivedFields",
+        "readLeadModalLocationsFromForm",
+        "normalizeLeadLocations",
+        "refineLeadLocationAddressIndex",
+        "getLeadPlusCodeReference",
+        "reverseGeocodeCoords",
+        "saveLeadFromModalCore",
+        "convertLeadToCustomerCore",
+        "saveCeoStaffFromViewCore"
+      ],
+      "uiSurfacesInvolved": [
+        "Lead location rows",
+        "Lead map picker",
+        "Staff map picker",
+        "Address-derived Google Maps URL fields"
+      ],
+      "buttonsActionsInvolved": [
+        "data-lead-location-add",
+        "data-lead-location-remove",
+        "data-lead-location-pick",
+        "data-lead-location-address",
+        "staffLocationPickBtn",
+        "confirmLocationBtn",
+        "closeLocationPickerBtn"
+      ],
+      "modalsFormsInvolved": [
+        "locationPickerModal",
+        "pickerMap",
+        "Lead address/location form fields",
+        "Staff location form fields"
+      ],
+      "stateFieldsUsed": [
+        "state.leadModal.coords",
+        "state.leadModal.locations",
+        "state.staff.form.coords",
+        "state.verifiedMapLocation",
+        "state.leads.items",
+        "state.customers.items"
+      ],
+      "firebaseReads": [
+        "Leads/customers can be loaded before opening picker so map context can use current CRM data"
+      ],
+      "firebaseWrites": [
+        "Lead save writes lat, lng, gpsLat, gpsLng and locations",
+        "Lead conversion writes lat/lng and locations to restaurant",
+        "Staff save writes lat, lng, gpsLat, gpsLng"
+      ],
+      "localStorageSafeStorageUsage": [
+        "clearVerifiedMapLocation removes FEED_VIEWER_LOCATION_STORAGE_KEY from window.localStorage",
+        "other geo storage usage is unspecified"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "Leaflet resources and geocoder helpers are provided from social-app dependencies",
+        "geo helper runtime is created before CRM runtime cluster"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "Lead and staff event binders share openLocationPicker",
+        "Location picker events are bound through CRM runtime controller"
+      ],
+      "dependenciesFromAuthSession": [
+        "unspecified"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "Restaurant coordinates can affect public map/profile behavior; Feed/Search/Map must remain untouched in this audit"
+      ],
+      "safeToMove": "maybe",
+      "whatMustBePreservedExactly": [
+        "lat/lng/gpsLat/gpsLng field names",
+        "locations array shape",
+        "primary location selection",
+        "Google Maps and plusCode derived fields",
+        "Leaflet picker behavior",
+        "Nominatim reverse geocode behavior if retained"
+      ],
+      "riskLevel": "high",
+      "riskReason": "Coordinate writes are split between lead save, lead conversion and staff save, while picker state is shared.",
+      "status": "verified"
+    },
+    {
+      "domain": "ownerAssignment",
+      "currentEntryRouteTab": [
+        "Lead create/edit",
+        "Lead conversion",
+        "Auth profile bootstrap"
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/leads/lead-convert-utils.js",
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/profile/profile-identity-runtime-cluster.js",
+        "apps/menyra-social/social-app.js"
+      ],
+      "functionsInvolved": [
+        "saveLeadFromModalCore",
+        "convertLeadToCustomerCore",
+        "loadAuthProfileCore",
+        "ensureRestaurantForLead",
+        "resolveLeadByUid",
+        "resolveLeadByEmail",
+        "applyKnownLeadOwnershipOverride"
+      ],
+      "uiSurfacesInvolved": [
+        "Lead owner/contact fields",
+        "Lead email/password fields",
+        "Customer owner fields"
+      ],
+      "buttonsActionsInvolved": [
+        "leadModalSave",
+        "leadInlineSaveBtn",
+        "leadConvertBtn",
+        "customerModalSave"
+      ],
+      "modalsFormsInvolved": [
+        "Lead modal/form",
+        "Customer modal"
+      ],
+      "stateFieldsUsed": [
+        "state.leadModal.lead",
+        "state.userProfile",
+        "state.currentUser",
+        "state.restaurants"
+      ],
+      "firebaseReads": [
+        "leads by uid/email",
+        "restaurants linked by leadId",
+        "users/{uid}"
+      ],
+      "firebaseWrites": [
+        "restaurants/{restaurantId}.ownerUid",
+        "restaurants/{restaurantId}.ownerEmail",
+        "restaurants/{restaurantId}.ownerName",
+        "users/{socialUid}.restaurantId",
+        "leads/{leadId}.socialUid/socialEmail/restaurantId"
+      ],
+      "localStorageSafeStorageUsage": [
+        "profile storage can reflect owner/business profile after auth bootstrap",
+        "direct owner localStorage usage is unspecified"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "Known ownership override constants for Albert/Milan owned leads",
+        "profile identity runtime is built from social-app dependencies"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "Save and conversion actions trigger owner assignment"
+      ],
+      "dependenciesFromAuthSession": [
+        "loadAuthProfileCore uses lead ownership to identify or repair business profile linkage"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "Business profile and owner assignment enable access to business/admin surfaces",
+        "public/menu/order code must not be moved in this step"
+      ],
+      "safeToMove": "no",
+      "whatMustBePreservedExactly": [
+        "ownerUid ownerEmail ownerName fields",
+        "socialUid/socialEmail fields",
+        "restaurantId linkage on users and leads",
+        "known lead ownership override behavior",
+        "auth profile bootstrap repair behavior"
+      ],
+      "riskLevel": "critical",
+      "riskReason": "Owner assignment controls business login/profile access and is updated in multiple paths.",
+      "status": "verified"
+    },
+    {
+      "domain": "staffAssignment",
+      "currentEntryRouteTab": [
+        "Lead scope and ownership filters",
+        "CEO staff editor",
+        "Business accounts"
+      ],
+      "filesInvolved": [
+        "apps/menyra-social/core/crm/crm-ceo-scope-support-runtime.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/crm/staff-save-utils.js",
+        "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/crm/customer-save-utils.js",
+        "apps/menyra-social/social-app.js"
+      ],
+      "functionsInvolved": [
+        "resolveCeoScopeForCurrentUser",
+        "applyKnownLeadOwnershipOverride",
+        "loadLeads",
+        "loadCustomers",
+        "loadCeoStaff",
+        "saveCeoStaffFromViewCore",
+        "saveBusinessAccountFromView",
+        "toggleBusinessAccountActive",
+        "saveLeadFromModalCore",
+        "saveCustomerFromModalCore"
+      ],
+      "uiSurfacesInvolved": [
+        "Lead scope tabs",
+        "Customer scope tabs",
+        "Staff editor",
+        "Business account editor"
+      ],
+      "buttonsActionsInvolved": [
+        "data-lead-scope",
+        "data-customer-scope",
+        "staffSaveBtn",
+        "businessAccountSaveBtn",
+        "businessAccountToggleStatusBtn"
+      ],
+      "modalsFormsInvolved": [
+        "Staff editor form",
+        "Business account editor form",
+        "Lead modal/form",
+        "Customer modal"
+      ],
+      "stateFieldsUsed": [
+        "state.leads.scope",
+        "state.customers.scope",
+        "state.staff.items",
+        "state.staff.form",
+        "state.businessAccounts.form",
+        "state.userProfile"
+      ],
+      "firebaseReads": [
+        "superadmins staff hierarchy",
+        "users staff profile documents",
+        "leads/restaurants for scoped lead/customer data",
+        "restaurants/{restaurantId}/staff for business accounts"
+      ],
+      "firebaseWrites": [
+        "superadmins/{uid}",
+        "users/{uid}",
+        "restaurants/{restaurantId}/staff/{uid}",
+        "assignedStaffId and createdByStaffId fields when present in lead/customer data are part of move scope"
+      ],
+      "localStorageSafeStorageUsage": [
+        "staffCacheKey",
+        "lead/customer page caches for scoped lists",
+        "direct assignment localStorage usage is unspecified"
+      ],
+      "dependenciesFromSocialAppJs": [
+        "ALBERT_CEO_UID and related CEO constants",
+        "MILAN_OWNED_LEAD_EMAILS",
+        "MILAN_OWNED_LEAD_BUSINESSES",
+        "ALBERT_OWNED_LEAD_EMAILS",
+        "ALBERT_OWNED_LEAD_BUSINESSES",
+        "staffCacheKey",
+        "leadPageCacheKey",
+        "customerPageCacheKey"
+      ],
+      "dependenciesFromAppShellEvents": [
+        "Scope buttons and staff/business account editor events are bound in current app shell path"
+      ],
+      "dependenciesFromAuthSession": [
+        "CEO/user profile determines access and scope"
+      ],
+      "dependenciesFromProfileBusinessMenuIfAny": [
+        "Business account staff assignment uses businessOwnerUid and restaurantId fields for access"
+      ],
+      "safeToMove": "maybe",
+      "whatMustBePreservedExactly": [
+        "CEO hierarchy fields",
+        "Lead/customer scope behavior",
+        "Known ownership override constants",
+        "assignedStaffId and createdByStaffId data if present",
+        "Business account staff permissions and restaurant scoping"
+      ],
+      "riskLevel": "high",
+      "riskReason": "Staff assignment is partly CEO-scope logic and partly business-account restaurant staff logic; mixing them can write or expose wrong scope.",
+      "status": "verified"
+    }
+  ]
+}
