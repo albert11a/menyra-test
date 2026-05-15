@@ -5,6 +5,7 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "runs", label: "Laeufe" },
   { key: "incidents", label: "Meldungen" },
   { key: "modules", label: "Bereiche" },
+  { key: "crmAdmin", label: "CRM/Admin" },
   { key: "connections", label: "Einrichtung" }
 ]);
 

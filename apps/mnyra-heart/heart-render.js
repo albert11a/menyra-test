@@ -24,6 +24,9 @@ import {
   renderModulesView
 } from "./heart-modules-render.js";
 import {
+  renderHeartCrmAdminReadView
+} from "./heart-crm-admin-read-view.js";
+import {
   renderSettingsView
 } from "./heart-settings-render.js";
 
@@ -32,6 +35,7 @@ const NAV_HINTS = Object.freeze({
   runs: "Verlauf, Beweise und Berichte",
   incidents: "Warnungen und Stoerungen",
   modules: "Bereiche und Gesundheitsstatus",
+  crmAdmin: "Leads, Kunden, Staff und Accounts",
   connections: "Einrichtung, Konten und Links"
 });
 
@@ -47,6 +51,7 @@ function getNavIcon(key = "") {
     runs: "list",
     incidents: "bell",
     modules: "grid",
+    crmAdmin: "users",
     connections: "settings"
   };
   return icons[String(key || "").trim()] || "home";
@@ -183,6 +188,9 @@ function renderViewBody(state) {
     if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Bereiche werden geladen...</div></section>`;
     if (state.dashboard.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.dashboard.error || "Bereiche konnten nicht geladen werden.")}</div></section>`;
     return renderModulesView(state.dashboard.data?.moduleHealth || []);
+  }
+  if (state.shell.activeView === "crmAdmin") {
+    return renderHeartCrmAdminReadView();
   }
   if (state.shell.activeView === "connections") {
     if (state.connections.status === "loading" && state.setup.status === "loading" && !state.setup.data) {
