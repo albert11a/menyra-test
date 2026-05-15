@@ -238,7 +238,6 @@ export function createSessionTabLifecycleRuntimeController({
 
     attachCurrentUserProfileListenerFn();
     startFollowingListenerFn(user);
-    startChatThreadsListenerFn(user);
     updateNotificationsDomFn();
 
     if (!sameUserAlreadyLive || typeof getNotificationsUnsubFn() !== "function") {
