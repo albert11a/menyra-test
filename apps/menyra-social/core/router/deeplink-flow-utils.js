@@ -2,6 +2,8 @@ import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
 import { resolveLaunchPublicBusinessRouteCore } from "./public-business-route-resolver.js";
 import { isQrLikePublicBusinessAccessSourceCore } from "./public-business-route-utils.js";
 
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+
 const NOTIFICATION_QUERY_KEYS = ["notif", "notification", "nid"];
 const POST_QUERY_KEYS = ["post", "postId"];
 const CHAT_QUERY_KEYS = ["chat", "thread"];
@@ -253,6 +255,14 @@ export function createDeeplinkFlowControllerCore({
     const pending = readPendingState();
     if (pending.pendingChatHandled) return false;
     if (!pending.pendingChatUid) return false;
+    if (!isChatEnabledForV1()) {
+      patchPendingState({
+        pendingChatHandled: true,
+        pendingChatUid: ""
+      });
+      clearChatQueryParams();
+      return false;
+    }
     if (!state?.user?.uid) return false;
 
     const safeChatUid = normalizeChatUid(pending.pendingChatUid);

@@ -1,3 +1,5 @@
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+
 export function createOverlayOrchestrationController({
   state = null,
   getDocumentObjFn = () => (typeof document === "undefined" ? null : document),
@@ -137,6 +139,7 @@ export function createOverlayOrchestrationController({
   }
 
   function openChatWithProfile(profile) {
+    if (!isChatEnabledForV1()) return false;
     if (!profile) return;
     if (!state.user) {
       openGuestAuthPromptFn("Bitte einloggen, um Chats zu nutzen.");

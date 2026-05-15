@@ -1,3 +1,5 @@
+import { isChatEnabledForV1 } from "./chat-v1-guard.js";
+
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 250000;
 
@@ -235,6 +237,7 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   function isChatRuntimeSurfaceActive() {
+    if (!isChatEnabledForV1()) return false;
     return state.activeTab === "chat" || !!state.chatModal?.open || !!state.chatModal?.profile;
   }
 
@@ -1002,6 +1005,7 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   function startActiveChatMessagesListener(profile = state.chatModal?.profile) {
+    if (!isChatEnabledForV1()) return;
     const threadId = getChatThreadId(profile);
     if (!threadId) return;
     activeMessagesStartRequest = { threadId, profile };
@@ -1270,6 +1274,7 @@ export function createChatAppRuntimeLazyFacade({
       }
     }
     if (String(notif.type || "").trim() === "chat_message") {
+      if (!isChatEnabledForV1()) return;
       if (typeof renderApi.openChatWithProfile === "function") {
         renderApi.openChatWithProfile(buildNotificationChatTarget(notif));
       }

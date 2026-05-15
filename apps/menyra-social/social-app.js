@@ -157,6 +157,7 @@ import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
+import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
   normalizePendingChatUidCore,
   isSelfPendingChatTargetCore,
@@ -1315,6 +1316,7 @@ const AUTH_RESTORE_PRESERVED_TABS = new Set([
 
 function normalizeProtectedRouteTab(tab = "") {
   const key = String(tab || "").trim().toLowerCase();
+  if (key === "chat" && !isChatEnabledForV1()) return "";
   if (!AUTH_RESTORE_PRESERVED_TABS.has(key)) return "";
   return key === "businessaccounts" ? "businessAccounts" : key;
 }
@@ -1979,6 +1981,7 @@ function isGuestSession() {
 
 function isAuthRestorePendingProtectedRoute(tab = state.activeTab, { hasProfileView = !!state.profileView } = {}) {
   const requestedTab = String(tab || "").trim().toLowerCase();
+  if (requestedTab === "chat" && !isChatEnabledForV1()) return false;
   if (!AUTH_RESTORE_PRESERVED_TABS.has(requestedTab)) return false;
   if (state.user) return false;
   if (authInitialized) return false;
@@ -3341,10 +3344,12 @@ function focusInputById(id) {
 }
 
 function captureChatInputFocusState() {
+  if (!isChatEnabledForV1()) return null;
   return getChatRuntimeFacade().captureChatInputFocusState();
 }
 
 function restoreChatInputFocusState(focusState) {
+  if (!isChatEnabledForV1()) return false;
   return getChatRuntimeFacade().restoreChatInputFocusState(focusState);
 }
 
@@ -3519,6 +3524,7 @@ function rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
 }
 
 function getChatUnreadCount() {
+  if (!isChatEnabledForV1()) return 0;
   return getChatRuntimeFacade().getChatUnreadCount();
 }
 
@@ -3639,6 +3645,7 @@ function syncLocalChatThreadsFromRemote(remoteThreads, ownerUid = state.user?.ui
 }
 
 function startChatThreadsListener(user = state.user) {
+  if (!isChatEnabledForV1()) return;
   return getChatRuntimeFacade().startChatThreadsListener(user);
 }
 
@@ -3647,6 +3654,7 @@ async function syncRemoteChatReadState(profile, messages = state.chatModal.messa
 }
 
 function startActiveChatMessagesListener(profile = state.chatModal.profile) {
+  if (!isChatEnabledForV1()) return;
   return getChatRuntimeFacade().startActiveChatMessagesListener(profile);
 }
 
@@ -5149,6 +5157,14 @@ async function openPostFromNotification(notif) {
 }
 
 async function openNotificationTarget(id) {
+  if (!isChatEnabledForV1()) {
+    const notif = (Array.isArray(state.notifications) ? state.notifications : [])
+      .find((item) => String(item?.id || "") === String(id || ""));
+    if (String(notif?.type || "").trim() === "chat_message") {
+      await markNotificationRead(id);
+      return false;
+    }
+  }
   return getChatRuntimeFacade().openNotificationTarget(id);
 }
 

@@ -1,4 +1,5 @@
 import { resolveStartupRenderGate } from "../auth/startup-render-gate-utils.js";
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 
 export function createAppShellRuntimeController(deps = {}) {
   const {
@@ -386,11 +387,12 @@ export function createAppShellRuntimeController(deps = {}) {
   function buildNotificationBadgeSignature() {
     const notifications = Array.isArray(state.notifications) ? state.notifications : [];
     const unreadNotifications = notifications.reduce((sum, item) => sum + (item?.read ? 0 : 1), 0);
-    const unreadChat = Number(getChatUnreadCount?.() || 0) || 0;
+    const chatEnabled = isChatEnabledForV1();
+    const unreadChat = chatEnabled ? Number(getChatUnreadCount?.() || 0) || 0 : 0;
     return [
       notifications.length,
       unreadNotifications,
-      Array.isArray(state.chatThreads) ? state.chatThreads.length : 0,
+      chatEnabled && Array.isArray(state.chatThreads) ? state.chatThreads.length : 0,
       unreadChat,
       String(state.activeTab || "")
     ].join("|");
@@ -627,7 +629,7 @@ export function createAppShellRuntimeController(deps = {}) {
   function shouldUseSmartHeader() {
     const isStaffFormView = state.activeTab === "staff" && state.staff?.view === "form";
     const isLeadsSubView = state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings");
-    const isChatThreadOpen = state.activeTab === "chat" && !!state.chatModal?.open && !!state.chatModal?.profile;
+    const isChatThreadOpen = isChatEnabledForV1() && state.activeTab === "chat" && !!state.chatModal?.open && !!state.chatModal?.profile;
     return !!String(state.activeTab || "").trim() && !isStaffFormView && !isLeadsSubView && !isChatThreadOpen;
   }
 
@@ -984,7 +986,7 @@ export function createAppShellRuntimeController(deps = {}) {
       return renderSmartHeader();
     }
     const unread = isGuestSession() ? 0 : state.notifications.filter((n) => !n.read).length;
-    const chatUnread = isGuestSession() ? 0 : getChatUnreadCount();
+    const chatUnread = isGuestSession() || !isChatEnabledForV1() ? 0 : getChatUnreadCount();
     const headerUnread = unread + chatUnread;
     const badge = headerUnread > 9 ? "9+" : String(headerUnread || "");
     const branding = resolveHeaderBranding();
@@ -1021,7 +1023,7 @@ export function createAppShellRuntimeController(deps = {}) {
       </header>
     `;
     }
-    if (state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile) {
+    if (isChatEnabledForV1() && state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile) {
       const partner = state.chatModal.profile;
       const partnerAvatar = getOptimizedImageUrl(partner.avatar, "avatar");
       return `
@@ -1041,7 +1043,7 @@ export function createAppShellRuntimeController(deps = {}) {
       </header>
     `;
     }
-    if (state.activeTab === "chat") {
+    if (isChatEnabledForV1() && state.activeTab === "chat") {
       return `
       <header class="app-header-safe shrink-0 p-6 pb-3 flex justify-between items-center relative z-40 bg-slate-50">
         <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
@@ -1471,6 +1473,7 @@ export function createAppShellRuntimeController(deps = {}) {
     if (changed) {
       const prevLastRenderedMainTab = getLastRenderedMainTab();
       const isChatThreadOpen = mode === "main"
+        && isChatEnabledForV1()
         && state.activeTab === "chat"
         && !!state.chatModal.open
         && !!state.chatModal.profile;

@@ -1,3 +1,5 @@
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+
 const GUEST_ALLOWED_TABS = new Set(["feed", "search", "map", "orders", "profile"]);
 
 export function isGuestSessionCore(user = null) {
@@ -18,6 +20,7 @@ export function sanitizeTabForSessionCore(tab, {
   const next = requestedTab === "location"
     ? "feed"
     : (requestedTab || "feed");
+  if (!isChatEnabledForV1() && next === "chat") return "chat";
   if (!isGuestSessionCore(user)) return next;
   if (!hasGuestScopeForSessionCore(guestScopeUid)) return "feed";
   if (!GUEST_ALLOWED_TABS.has(next)) return "feed";

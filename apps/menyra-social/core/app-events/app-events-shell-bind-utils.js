@@ -1,3 +1,5 @@
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+
 const LANDING_GREETINGS_COUNT = 13;
 const LANDING_TOUR_STEPS_COUNT = 5;
 const LANDING_MAX_STEP = 3;
@@ -682,6 +684,10 @@ export function bindAppShellEventsCore({
       const tab = btn.dataset.nav;
       if (!tab) return;
       const requestedTab = tab === "location" ? "feed" : tab;
+      if (requestedTab === "chat" && !isChatEnabledForV1()) {
+        setState({ drawerOpen: false });
+        return;
+      }
       if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
         openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
         return;

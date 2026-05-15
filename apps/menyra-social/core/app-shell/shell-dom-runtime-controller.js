@@ -1,3 +1,5 @@
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+
 function getUnreadNotificationsCount(state = null) {
   if (!state) return 0;
   if (Array.isArray(state.notifications) && state.notifications.length > 0) {
@@ -244,9 +246,10 @@ export function createShellDomRuntimeController({
 
   function renderDrawer() {
     const isGuest = isGuestSession();
+    const chatEnabled = isChatEnabledForV1();
     const unread = isGuest ? 0 : getUnreadNotificationsCount(state);
-    const chatUnreadLive = isGuest ? 0 : getChatUnreadCount();
-    const chatUnreadCached = Number(state?.__shellSnapshotChatUnreadCount || 0);
+    const chatUnreadLive = isGuest || !chatEnabled ? 0 : getChatUnreadCount();
+    const chatUnreadCached = chatEnabled ? Number(state?.__shellSnapshotChatUnreadCount || 0) : 0;
     const chatUnread = chatUnreadLive > 0 ? chatUnreadLive : Math.max(0, Math.round(Number(chatUnreadCached) || 0));
     const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
     const isCeo = isCeoUser();
@@ -269,7 +272,7 @@ export function createShellDomRuntimeController({
       ]
       : [
         { id: "feed", label: "Feed", icon: "home" },
-        { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
+        { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
         { id: "search", label: "Suche", icon: "search" },
         { id: "map", label: "Karte", icon: "map" },
         { id: "profile", label: "Profil", icon: "user" },
@@ -403,6 +406,10 @@ export function createShellDomRuntimeController({
     if (favoritesNavBtn) {
       favoritesNavBtn.classList.toggle("hidden", !isRegisteredUser);
     }
+    const chatNavBtn = doc?.querySelector('[data-nav="chat"]');
+    if (chatNavBtn) {
+      chatNavBtn.classList.toggle("hidden", !isChatEnabledForV1());
+    }
     const businessAccountsNavBtn = doc?.querySelector('[data-nav="businessAccounts"]');
     if (businessAccountsNavBtn) {
       businessAccountsNavBtn.classList.toggle("hidden", !isBusinessOwner);
@@ -432,9 +439,10 @@ export function createShellDomRuntimeController({
   }
 
   function updateNotificationBadges() {
+    const chatEnabled = isChatEnabledForV1();
     const unread = isGuestSession() ? 0 : getUnreadNotificationsCount(state);
-    const chatUnreadLive = isGuestSession() ? 0 : getChatUnreadCount();
-    const chatUnreadCached = Number(state?.__shellSnapshotChatUnreadCount || 0);
+    const chatUnreadLive = isGuestSession() || !chatEnabled ? 0 : getChatUnreadCount();
+    const chatUnreadCached = chatEnabled ? Number(state?.__shellSnapshotChatUnreadCount || 0) : 0;
     const chatUnread = chatUnreadLive > 0 ? chatUnreadLive : Math.max(0, Math.round(Number(chatUnreadCached) || 0));
     const headerUnread = unread + chatUnread;
     const headerBadgeText = getBadgeText(headerUnread);
@@ -477,8 +485,9 @@ export function createShellDomRuntimeController({
 
     const drawerChatBtn = doc?.querySelector('[data-nav="chat"]');
     if (drawerChatBtn) {
+      drawerChatBtn.classList.toggle("hidden", !chatEnabled);
       let badge = drawerChatBtn.querySelector('[data-chat-badge="drawer"]');
-      if (chatUnread > 0) {
+      if (chatEnabled && chatUnread > 0) {
         if (!badge) {
           badge = doc.createElement("span");
           badge.dataset.chatBadge = "drawer";

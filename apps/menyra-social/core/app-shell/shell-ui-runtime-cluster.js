@@ -19,6 +19,7 @@ import {
   renderNotificationsViewCore,
   renderNotificationsListCore
 } from "../notifications/notifications-render-utils.js";
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import {
   renderCrmLazyLoadingViewCore
 } from "../crm/crm-shared-render-utils.js";
@@ -165,6 +166,7 @@ export function createShellUiRuntimeCluster({
   }
 
   function renderChatModal() {
+    if (!isChatEnabledForV1()) return "";
     return renderChatModalCore({
       state,
       getOptimizedImageUrl,
@@ -365,18 +367,36 @@ export function createShellUiRuntimeCluster({
   }
 
   function renderChatMessagesPanel(options = {}) {
+    if (!isChatEnabledForV1()) return "";
     return getChatRuntimeController().renderChatMessagesPanel(options);
   }
 
   function renderChatPendingAttachments(pendingAttachments) {
+    if (!isChatEnabledForV1()) return "";
     return getChatRuntimeController().renderChatPendingAttachments(pendingAttachments);
   }
 
   function renderChatListPanel(options = {}) {
+    if (!isChatEnabledForV1()) return "";
     return getChatRuntimeController().renderChatListPanel(options);
   }
 
+  function renderChatV1DisabledView() {
+    return `
+      <section class="p-6 pb-24">
+        <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 text-center">
+          <div class="w-16 h-16 mx-auto mb-5 rounded-[1.8rem] bg-slate-100 text-slate-400 flex items-center justify-center">
+            ${icon("message-circle", "w-6 h-6")}
+          </div>
+          <h2 class="text-xl font-black tracking-tight text-slate-900">${escapeHtml("Chat kommt in V2")}</h2>
+          <p class="mt-3 text-sm text-slate-500 leading-6">${escapeHtml("Chat ist fuer MNYRA V1 deaktiviert.")}</p>
+        </div>
+      </section>
+    `;
+  }
+
   function renderChatView() {
+    if (!isChatEnabledForV1()) return renderChatV1DisabledView();
     return getChatRuntimeController().renderChatView();
   }
 

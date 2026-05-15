@@ -1,4 +1,5 @@
 import { ensureTabDataCore } from "../auth/tab-auth-load-utils.js";
+import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 
 export function createSessionTabLifecycleRuntimeController({
   state = null,
@@ -155,7 +156,7 @@ export function createSessionTabLifecycleRuntimeController({
       sanitizeTabForSession,
       render: renderFn,
       stopRestaurantsListener: stopRestaurantsListenerFn,
-      startChatThreadsListener: startChatThreadsListenerFn,
+      startChatThreadsListener: isChatEnabledForV1() ? startChatThreadsListenerFn : () => {},
       stopChatThreadsListener: stopChatThreadsListenerFn,
       startOrdersListener: startOrdersListenerFn,
       stopOrdersListener: stopOrdersListenerFn,
