@@ -157,6 +157,7 @@ import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
 import { createCrmAdminReadFacade } from "./core/crm/crm-admin-read-facade.js";
+import { createCrmAdminUiFacade } from "./core/crm/crm-admin-ui-facade.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
@@ -1211,11 +1212,11 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderPublicProfileViewFn: (...args) => renderPublicProfileView(...args),
     renderProfileViewFn: (...args) => renderProfileView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
-    renderBusinessAccountsViewFn: (...args) => renderBusinessAccountsView(...args),
-    renderLeadsViewFn: (...args) => renderLeadsView(...args),
-    renderStaffViewFn: (...args) => renderStaffView(...args),
-    renderCustomersViewFn: (...args) => renderCustomersView(...args),
-    bindBusinessAccountsEventsFn: (...args) => bindBusinessAccountsEvents(...args)
+    renderBusinessAccountsViewFn: (...args) => renderCrmBusinessAccounts(...args),
+    renderLeadsViewFn: (...args) => renderCrmLeads(...args),
+    renderStaffViewFn: (...args) => renderCrmStaff(...args),
+    renderCustomersViewFn: (...args) => renderCrmCustomers(...args),
+    bindBusinessAccountsEventsFn: (...args) => bindCrmBusinessAccountsEvents(...args)
   },
   notificationApi: {
     resolveNotificationAvatarFn: (...args) => resolveNotificationAvatar(...args)
@@ -4246,6 +4247,53 @@ const {
   loadCrmStaff,
   loadCrmBusinessAccounts
 } = crmAdminReadFacade;
+const crmAdminUiFacade = createCrmAdminUiFacade({
+  renderLeadsView,
+  renderLeadCreationView,
+  renderLeadSettingsView,
+  renderLeadModal,
+  renderCustomersView,
+  renderCustomerModal,
+  renderStaffView,
+  renderStaffEditorView,
+  renderBusinessAccountsView,
+  bindCrmStaffEvents: bindCrmStaffEventsCore,
+  bindLeadInlineCreateEvents: bindLeadInlineCreateEventsCore,
+  bindLeadOverlayEvents: bindLeadOverlayEventsCore,
+  bindCustomerOverlayEvents: bindCustomerOverlayEventsCore,
+  bindBusinessAccountsEvents,
+  openLeadCreator,
+  openLeadSettingsView,
+  closeLeadSubview,
+  isLeadInlineCreateView,
+  syncLeadDerivedFields,
+  openStaffEditor,
+  closeStaffEditor,
+  syncStaffDerivedEmailField,
+  syncStaffFormFromDom
+});
+const {
+  renderCrmLeads,
+  renderCrmLeadModal,
+  renderCrmCustomers,
+  renderCrmCustomerModal,
+  renderCrmStaff,
+  renderCrmBusinessAccounts,
+  bindCrmAdminEvents,
+  bindCrmLeadInlineCreateEvents,
+  bindCrmLeadOverlayEvents,
+  bindCrmCustomerOverlayEvents,
+  bindCrmBusinessAccountsEvents,
+  openCrmLeadCreator,
+  openCrmLeadSettingsView,
+  closeCrmLeadSubview,
+  isCrmLeadInlineCreateView,
+  syncCrmLeadDerivedFields,
+  openCrmStaffEditor,
+  closeCrmStaffEditor,
+  syncCrmStaffDerivedEmailField,
+  syncCrmStaffFormFromDom
+} = crmAdminUiFacade;
 
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },
@@ -4715,8 +4763,8 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     renderMenuItemModal,
     renderMenuDetailModal,
     renderFocusModal,
-    renderLeadModal,
-    renderCustomerModal,
+    renderLeadModal: renderCrmLeadModal,
+    renderCustomerModal: renderCrmCustomerModal,
     bindOverlayEventsCore,
     bindProfileOverlayEventsCore,
     bindChatOverlayEventsCore,
@@ -4725,8 +4773,8 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     bindMenuOverlayEventsCore,
     bindMenuDetailOverlayEventsCore,
     bindFocusOverlayEventsCore,
-    bindLeadOverlayEventsCore,
-    bindCustomerOverlayEventsCore,
+    bindLeadOverlayEventsCore: bindCrmLeadOverlayEvents,
+    bindCustomerOverlayEventsCore: bindCrmCustomerOverlayEvents,
     bindImageFallbacks
   },
   leadApi: {
@@ -4805,20 +4853,20 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     removePendingChatAttachment,
     addChatAttachments,
     handleUploadPost,
-    bindCrmStaffEventsCore,
-    openLeadCreator,
-    openLeadSettingsView,
-    closeLeadSubview,
+    bindCrmStaffEventsCore: bindCrmAdminEvents,
+    openLeadCreator: openCrmLeadCreator,
+    openLeadSettingsView: openCrmLeadSettingsView,
+    closeLeadSubview: closeCrmLeadSubview,
     saveLeadSettings,
-    isLeadInlineCreateView,
-    bindLeadInlineCreateEventsCore,
+    isLeadInlineCreateView: isCrmLeadInlineCreateView,
+    bindLeadInlineCreateEventsCore: bindCrmLeadInlineCreateEvents,
     deleteLeadFromModal,
-    syncLeadDerivedFields,
-    closeStaffEditor,
-    openStaffEditor,
-    syncStaffDerivedEmailField,
+    syncLeadDerivedFields: syncCrmLeadDerivedFields,
+    closeStaffEditor: closeCrmStaffEditor,
+    openStaffEditor: openCrmStaffEditor,
+    syncStaffDerivedEmailField: syncCrmStaffDerivedEmailField,
     normalizeCeoCountry,
-    syncStaffFormFromDom,
+    syncStaffFormFromDom: syncCrmStaffFormFromDom,
     saveCeoStaffFromView,
     deleteCeoStaffFromView
   }
