@@ -161,6 +161,7 @@ import { createCrmAdminUiFacade } from "./core/crm/crm-admin-ui-facade.js";
 import { createCrmAdminLeadWriteFacade } from "./core/crm/crm-admin-lead-write-facade.js";
 import { createCrmAdminLeadConversionFacade } from "./core/crm/crm-admin-lead-conversion-facade.js";
 import { createCrmAdminCustomerWriteFacade } from "./core/crm/crm-admin-customer-write-facade.js";
+import { createCrmAdminStaffWriteFacade } from "./core/crm/crm-admin-staff-write-facade.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
@@ -4317,6 +4318,14 @@ const crmAdminCustomerWriteFacade = createCrmAdminCustomerWriteFacade({
 const {
   saveCrmCustomer
 } = crmAdminCustomerWriteFacade;
+const crmAdminStaffWriteFacade = createCrmAdminStaffWriteFacade({
+  saveCeoStaffFromView,
+  deleteCeoStaffFromView
+});
+const {
+  saveCrmCeoStaff,
+  removeCrmCeoStaff
+} = crmAdminStaffWriteFacade;
 
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },
@@ -4890,8 +4899,8 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     syncStaffDerivedEmailField: syncCrmStaffDerivedEmailField,
     normalizeCeoCountry,
     syncStaffFormFromDom: syncCrmStaffFormFromDom,
-    saveCeoStaffFromView,
-    deleteCeoStaffFromView
+    saveCeoStaffFromView: saveCrmCeoStaff,
+    deleteCeoStaffFromView: removeCrmCeoStaff
   }
 });
 
