@@ -156,6 +156,7 @@ import { createSocialEngagementSupportRuntimeController } from "./core/profile/s
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
+import { createCrmAdminReadFacade } from "./core/crm/crm-admin-read-facade.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
@@ -4233,6 +4234,19 @@ const {
   renderProfileView
 } = profileBusinessMenuRuntimeCluster;
 
+const crmAdminReadFacade = createCrmAdminReadFacade({
+  loadLeads,
+  loadCustomers,
+  loadCeoStaff,
+  loadBusinessAccounts
+});
+const {
+  loadCrmLeads,
+  loadCrmCustomers,
+  loadCrmStaff,
+  loadCrmBusinessAccounts
+} = crmAdminReadFacade;
+
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },
   constants: {
@@ -4740,10 +4754,10 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     createUserWithEmailAndPassword,
     updateProfile,
     normalizeLeadScopeKey,
-    loadLeads,
+    loadLeads: loadCrmLeads,
     normalizeCustomerScopeKey,
-    loadCustomers,
-    loadCeoStaff,
+    loadCustomers: loadCrmCustomers,
+    loadCeoStaff: loadCrmStaff,
     bindAppEventsMainCore,
     bindAppShellEventsCore,
     signOut,
@@ -5072,11 +5086,11 @@ const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
     stopCurrentUserProfileListenerFn: stopCurrentUserProfileListener,
     stopProfileViewListenerFn: stopProfileViewListener,
     normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
-    loadLeadsFn: (...args) => loadLeads(...args),
+    loadLeadsFn: (...args) => loadCrmLeads(...args),
     normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
-    loadCustomersFn: (...args) => loadCustomers(...args),
-    loadCeoStaffFn: (...args) => loadCeoStaff(...args),
-    loadBusinessAccountsFn: (...args) => loadBusinessAccounts(...args),
+    loadCustomersFn: (...args) => loadCrmCustomers(...args),
+    loadCeoStaffFn: (...args) => loadCrmStaff(...args),
+    loadBusinessAccountsFn: (...args) => loadCrmBusinessAccounts(...args),
     stopExtraLiveListenersFn: () => {
       if (modalPostDocUnsub) {
         modalPostDocUnsub();
