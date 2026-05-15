@@ -3695,6 +3695,14 @@ function toggleChatMessageLiked(messageId) {
 }
 
 async function sendChatMessage(...args) {
+  if (!isChatEnabledForV1()) {
+    return {
+      ok: false,
+      disabled: true,
+      reason: "chat_v1_disabled",
+      action: "chat.send"
+    };
+  }
   return getChatRuntimeFacade().sendChatMessage(...args);
 }
 

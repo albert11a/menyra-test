@@ -207,11 +207,22 @@ export function createChatAppRuntimeLazyFacade({
     errorApi.reportCriticalRuntimeFailureFn,
     () => {}
   );
+  const escapeHtml = resolveFunction(
+    uiApi.escapeHtml,
+    (value = "") => String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+  );
+  const icon = resolveFunction(uiApi.icon, () => "");
 
   let realFacade = null;
   let realFacadePromise = null;
   let chatThreadsStartRequest = null;
   let activeMessagesStartRequest = null;
+  let disabledFacade = null;
 
   function reportChatRuntimeFailure(scope = "chat-runtime", err = null) {
     const safeScope = String(scope || "chat-runtime").trim() || "chat-runtime";
@@ -231,7 +242,73 @@ export function createChatAppRuntimeLazyFacade({
     } catch {}
   }
 
+  function clearPendingChatRuntimeRequests() {
+    chatThreadsStartRequest = null;
+    activeMessagesStartRequest = null;
+  }
+
+  function disableLoadedChatRuntime() {
+    clearPendingChatRuntimeRequests();
+    const loadedFacade = realFacade;
+    realFacade = null;
+    realFacadePromise = null;
+    try {
+      loadedFacade?.stopChatThreadsListener?.();
+    } catch {}
+    try {
+      loadedFacade?.stopActiveChatMessagesListener?.();
+    } catch {}
+  }
+
+  function buildChatDisabledResult(action = "chat") {
+    return {
+      ok: false,
+      disabled: true,
+      reason: "chat_v1_disabled",
+      action
+    };
+  }
+
+  function renderChatV1DisabledView() {
+    return `
+      <section class="p-6 pb-24">
+        <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 text-center">
+          <div class="w-16 h-16 mx-auto mb-5 rounded-[1.8rem] bg-slate-100 text-slate-400 flex items-center justify-center">
+            ${icon("message-circle", "w-6 h-6")}
+          </div>
+          <h2 class="text-xl font-black tracking-tight text-slate-900">${escapeHtml("Chat kommt in V2")}</h2>
+          <p class="mt-3 text-sm text-slate-500 leading-6">${escapeHtml("Chat is coming in V2.")}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  const disabledController = {
+    renderChatMessagesPanel: () => "",
+    renderChatPendingAttachments: () => "",
+    renderChatListPanel: () => renderChatV1DisabledView(),
+    renderChatView: () => renderChatV1DisabledView()
+  };
+
+  function getDisabledChatRuntimeFacade() {
+    if (disabledFacade) return disabledFacade;
+    disabledFacade = {
+      getController: () => disabledController,
+      isChatRuntimeLoaded: () => false,
+      startChatThreadsListener: () => {},
+      stopChatThreadsListener: () => {},
+      startActiveChatMessagesListener: () => {},
+      stopActiveChatMessagesListener: () => {},
+      sendChatMessage: async () => buildChatDisabledResult("chat.send")
+    };
+    return disabledFacade;
+  }
+
   function getRealMethod(methodName) {
+    if (!isChatEnabledForV1()) {
+      disableLoadedChatRuntime();
+      return null;
+    }
     const method = realFacade?.[methodName];
     return typeof method === "function" ? method : null;
   }
@@ -248,6 +325,10 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   function replayPendingListenerStarts() {
+    if (!isChatEnabledForV1()) {
+      clearPendingChatRuntimeRequests();
+      return;
+    }
     if (!realFacade) return;
     const currentUid = String(state.user?.uid || "").trim();
     const shouldStartThreads = !!currentUid && isChatRuntimeSurfaceActive();
@@ -278,10 +359,18 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   async function ensureChatRuntime(scope = "chat-runtime") {
+    if (!isChatEnabledForV1()) {
+      disableLoadedChatRuntime();
+      return getDisabledChatRuntimeFacade();
+    }
     if (realFacade) return realFacade;
     if (!realFacadePromise) {
       realFacadePromise = import("./chat-app-runtime-facade.js")
         .then((module) => {
+          if (!isChatEnabledForV1()) {
+            disableLoadedChatRuntime();
+            return getDisabledChatRuntimeFacade();
+          }
           const createChatAppRuntimeFacade = module?.createChatAppRuntimeFacade;
           if (typeof createChatAppRuntimeFacade !== "function") {
             throw new Error("createChatAppRuntimeFacade unavailable");
@@ -310,6 +399,11 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   function queueChatRuntimeLoad(scope = "chat-runtime", { renderAfterLoad = false } = {}) {
+    if (!isChatEnabledForV1()) {
+      clearPendingChatRuntimeRequests();
+      if (renderAfterLoad) requestRenderAfterLoad();
+      return;
+    }
     void ensureChatRuntime(scope)
       .then(() => {
         replayPendingListenerStarts();
@@ -319,6 +413,10 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   async function callRealAsync(methodName, args = [], fallbackValue = undefined, scope = `chat.${methodName}`) {
+    if (!isChatEnabledForV1()) {
+      clearPendingChatRuntimeRequests();
+      return fallbackValue;
+    }
     try {
       const facade = await ensureChatRuntime(scope);
       const method = typeof facade?.[methodName] === "function" ? facade[methodName] : null;
@@ -338,14 +436,17 @@ export function createChatAppRuntimeLazyFacade({
 
   const fallbackController = {
     renderChatMessagesPanel() {
+      if (!isChatEnabledForV1()) return "";
       if (isChatRuntimeSurfaceActive()) queueChatRuntimeLoad("chat.render.messages", { renderAfterLoad: true });
       return "";
     },
     renderChatPendingAttachments() {
+      if (!isChatEnabledForV1()) return "";
       if (isChatRuntimeSurfaceActive()) queueChatRuntimeLoad("chat.render.attachments", { renderAfterLoad: true });
       return "";
     },
     renderChatListPanel() {
+      if (!isChatEnabledForV1()) return renderChatV1DisabledView();
       if (isChatRuntimeSurfaceActive()) {
         startChatThreadsListener(state.user);
         queueChatRuntimeLoad("chat.render.list", { renderAfterLoad: true });
@@ -353,6 +454,7 @@ export function createChatAppRuntimeLazyFacade({
       return "";
     },
     renderChatView() {
+      if (!isChatEnabledForV1()) return renderChatV1DisabledView();
       if (isChatRuntimeSurfaceActive()) {
         startChatThreadsListener(state.user);
         if (state.chatModal?.open && state.chatModal?.profile) {
@@ -365,6 +467,7 @@ export function createChatAppRuntimeLazyFacade({
   };
 
   function getController() {
+    if (!isChatEnabledForV1()) return disabledController;
     return realFacade?.getController() || fallbackController;
   }
 
@@ -989,6 +1092,10 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   function startChatThreadsListener(user = state.user) {
+    if (!isChatEnabledForV1()) {
+      clearPendingChatRuntimeRequests();
+      return;
+    }
     const ownerUid = String(user?.uid || "").trim();
     if (!ownerUid) return;
     if (!isChatRuntimeSurfaceActive()) return;
@@ -1005,7 +1112,10 @@ export function createChatAppRuntimeLazyFacade({
   }
 
   function startActiveChatMessagesListener(profile = state.chatModal?.profile) {
-    if (!isChatEnabledForV1()) return;
+    if (!isChatEnabledForV1()) {
+      clearPendingChatRuntimeRequests();
+      return;
+    }
     const threadId = getChatThreadId(profile);
     if (!threadId) return;
     activeMessagesStartRequest = { threadId, profile };
@@ -1115,6 +1225,14 @@ export function createChatAppRuntimeLazyFacade({
 
   function toggleChatMessageLiked(messageId) {
     return delegateIfLoaded("toggleChatMessageLiked", [messageId], () => toggleChatMessageFlag(messageId, "liked"));
+  }
+
+  async function sendChatMessage() {
+    if (!isChatEnabledForV1()) {
+      clearPendingChatRuntimeRequests();
+      return buildChatDisabledResult("chat.send");
+    }
+    return callRealAsync("sendChatMessage", Array.from(arguments), buildChatDisabledResult("chat.send"), "chat.send");
   }
 
   async function markNotificationRead(id) {
@@ -1357,7 +1475,7 @@ export function createChatAppRuntimeLazyFacade({
     removePendingChatAttachment,
     toggleChatMessageSaved,
     toggleChatMessageLiked,
-    sendChatMessage: async (...args) => callRealAsync("sendChatMessage", args, undefined, "chat.send"),
+    sendChatMessage,
     hasPendingFollowRequest: async (targetUid) => callRealAsync("hasPendingFollowRequest", [targetUid], false, "chat.follow.pending"),
     sendFollowRequest: async (handle, target = {}) => callRealAsync("sendFollowRequest", [handle, target], undefined, "chat.follow.request"),
     acceptFollowRequest: async (notificationId) => callRealAsync("acceptFollowRequest", [notificationId], undefined, "chat.follow.accept"),

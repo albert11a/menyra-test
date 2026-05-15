@@ -389,7 +389,7 @@ export function createShellUiRuntimeCluster({
             ${icon("message-circle", "w-6 h-6")}
           </div>
           <h2 class="text-xl font-black tracking-tight text-slate-900">${escapeHtml("Chat kommt in V2")}</h2>
-          <p class="mt-3 text-sm text-slate-500 leading-6">${escapeHtml("Chat ist fuer MNYRA V1 deaktiviert.")}</p>
+          <p class="mt-3 text-sm text-slate-500 leading-6">${escapeHtml("Chat is coming in V2.")}</p>
         </div>
       </section>
     `;
