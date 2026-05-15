@@ -177,7 +177,7 @@ function renderDeniedScreen(auth = {}) {
   `;
 }
 
-function renderViewBody(state) {
+function renderViewBody(state, runtime = {}) {
   if (state.shell.activeView === "runs") return renderRunsView(state.runs, state.connections.items || [], state.dashboard.data?.quickActions || []);
   if (state.shell.activeView === "incidents") {
     if (state.incidents.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Meldungen werden geladen...</div></section>`;
@@ -190,7 +190,10 @@ function renderViewBody(state) {
     return renderModulesView(state.dashboard.data?.moduleHealth || []);
   }
   if (state.shell.activeView === "crmAdmin") {
-    return renderHeartCrmAdminReadView();
+    return renderHeartCrmAdminReadView({
+      consumerDeps: runtime.crmAdminConsumerDeps || {},
+      crmAdmin: state.crmAdmin || null
+    });
   }
   if (state.shell.activeView === "connections") {
     if (state.connections.status === "loading" && state.setup.status === "loading" && !state.setup.data) {
@@ -295,7 +298,7 @@ function renderDrawer(state, userName) {
     `;
 }
 
-function renderShell(state) {
+function renderShell(state, runtime = {}) {
   const userName = state.auth.profile?.name || state.auth.user?.email || "CEO";
   const pageHeader = getPageHeaderState(state);
   const timestamp = pageHeader.timestamp
@@ -338,7 +341,7 @@ function renderShell(state) {
               <span class="heart-topbar__timestamp">${escapeHtml(timestamp)}</span>
             </div>
           </section>
-          ${renderViewBody(state)}
+          ${renderViewBody(state, runtime)}
         </main>
       </div>
       ${state.shell.activeView === "runs" ? renderRunsModal(state.runs, state.shell.modal) : ""}
@@ -352,7 +355,7 @@ function renderShell(state) {
   `;
 }
 
-export function renderHeartApp(rootNode, state) {
+export function renderHeartApp(rootNode, state, runtime = {}) {
   if (!rootNode) return;
   let markup = "";
   if (state.auth.status === "checking" || (state.auth.status === "signing-in" && !state.auth.user)) {
@@ -362,7 +365,7 @@ export function renderHeartApp(rootNode, state) {
   } else if (state.auth.status === "denied") {
     markup = renderDeniedScreen(state.auth);
   } else if (state.auth.status === "authenticated" && state.auth.access?.allowed) {
-    markup = renderShell(state);
+    markup = renderShell(state, runtime);
   } else {
     markup = renderLoadingGate();
   }

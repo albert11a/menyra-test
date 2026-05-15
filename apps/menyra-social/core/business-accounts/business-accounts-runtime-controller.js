@@ -1,4 +1,8 @@
 import { createCrmAdminBusinessAccountWriteFacade } from "../crm/crm-admin-business-account-write-facade.js";
+import {
+  loadCrmBusinessAccountsCore,
+  normalizeCrmBusinessAccountEntryCore
+} from "../crm/crm-admin-read-loader-core.js";
 
 function asText(value = "") {
   return String(value || "").trim();
@@ -30,29 +34,7 @@ function createEmptyBusinessAccountForm() {
 }
 
 function normalizeBusinessAccountEntry(source = {}, id = "") {
-  const data = source && typeof source === "object" ? source : {};
-  const permissions = data.permissions && typeof data.permissions === "object" ? data.permissions : {};
-  const firstName = asText(data.firstName);
-  const lastName = asText(data.lastName);
-  const name = asText(data.name || `${firstName} ${lastName}`.trim() || data.displayName);
-  const statusKey = asText(data.status || (data.active === false ? "disabled" : "active")).toLowerCase();
-  const active = data.active === false ? false : statusKey !== "disabled";
-  return {
-    uid: asText(id || data.uid || data.userId),
-    userId: asText(data.userId || data.uid || id),
-    restaurantId: asText(data.restaurantId),
-    firstName,
-    lastName,
-    name,
-    email: asText(data.email),
-    role: normalizeStaffRole(data.role || data.staffRole),
-    businessAccess: data.businessAccess === true || permissions.businessAccess === true,
-    waiterAccess: data.waiterAccess === true || permissions.waiterAccess === true,
-    active,
-    status: active ? "active" : "disabled",
-    createdAt: data.createdAt || null,
-    updatedAt: data.updatedAt || null
-  };
+  return normalizeCrmBusinessAccountEntryCore(source, id);
 }
 
 function buildStatusBadge(entry = {}) {
@@ -204,18 +186,14 @@ export function createBusinessAccountsRuntimeController({
     state.businessAccounts.error = "";
     rerender();
     try {
-      const snap = await getDocs(collection(db, "restaurants", restaurantId, "staff"));
-      const items = [];
-      snap.forEach((docSnap) => {
-        const entry = normalizeBusinessAccountEntry(docSnap.data() || {}, docSnap.id);
-        if (!entry.uid) return;
-        items.push(entry);
+      const result = await loadCrmBusinessAccountsCore({
+        db,
+        collectionFn: collection,
+        getDocsFn: getDocs,
+        restaurantId,
+        normalizeBusinessAccountEntryFn: normalizeBusinessAccountEntry
       });
-      items.sort((a, b) => {
-        const aName = `${a.firstName} ${a.lastName}`.trim().toLowerCase();
-        const bName = `${b.firstName} ${b.lastName}`.trim().toLowerCase();
-        return aName.localeCompare(bName);
-      });
+      const items = Array.isArray(result.items) ? result.items : [];
       state.businessAccounts.items = items;
       state.businessAccounts.loaded = true;
       state.businessAccounts.loading = false;

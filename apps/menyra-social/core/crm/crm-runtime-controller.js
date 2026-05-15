@@ -4,6 +4,11 @@ import {
   routeBelongsToSameRestaurant
 } from "../leads/lead-identity-contract-utils.js";
 import { timeMnyraLoadingAsyncCore as timeLoadingAsync } from "../common/loading-diagnostics-utils.js";
+import {
+  loadCrmLeadsCore,
+  loadCrmCustomersCore,
+  loadCrmCeoStaffCore
+} from "./crm-admin-read-loader-core.js";
 
 export function createCrmRuntimeController(deps = {}) {
   const {
@@ -1815,111 +1820,57 @@ function customerBelongsToScope(customer, scope = state.customers.scope) {
 }
 
 async function fetchLeadScopeRows(scope, desiredCount) {
-  const current = getCurrentCeoMeta();
   const safeScope = normalizeLeadScopeKey(scope);
-  if (!current.uid) return [];
-  const leadRef = collection(db, "leads");
-  const restaurantRef = collection(db, "restaurants");
-  const fetchLimit = Math.min(Math.max((Number(desiredCount) || CRM_PAGE_SIZE) * (safeScope === "own" ? 3 : 4), CRM_PAGE_SIZE + 1), 160);
-  const leadQueries = [];
-  const restaurantQueries = [];
-
-  if (safeScope === "own") {
-    leadQueries.push(query(leadRef, where("createdByUid", "==", current.uid), limit(fetchLimit)));
-    restaurantQueries.push(query(restaurantRef, where("createdByUid", "==", current.uid), limit(fetchLimit)));
-  } else {
-    leadQueries.push(query(leadRef, where("ceoPath", "array-contains", current.uid), limit(fetchLimit)));
-    restaurantQueries.push(query(restaurantRef, where("ceoPath", "array-contains", current.uid), limit(fetchLimit)));
-    if (hasGlobalCeoAccess()) {
-      leadQueries.push(query(leadRef, limit(fetchLimit)));
-      restaurantQueries.push(query(restaurantRef, limit(fetchLimit)));
-    }
-  }
-
-  const [leadSnaps, restaurantSnaps] = await Promise.all([
-    Promise.all(leadQueries.map((ref) => getDocs(ref).catch(() => null))),
-    Promise.all(restaurantQueries.map((ref) => getDocs(ref).catch(() => null)))
-  ]);
-  const leadMap = new Map();
-  leadSnaps.forEach((snap) => {
-    if (!snap?.docs?.length) return;
-    snap.docs.forEach((docSnap) => {
-      leadMap.set(docSnap.id, normalizeLeadDoc({ id: docSnap.id, ...(docSnap.data() || {}) }));
-    });
+  const result = await loadCrmLeadsCore({
+    db,
+    collectionFn: collection,
+    queryFn: query,
+    whereFn: where,
+    limitFn: limit,
+    getDocsFn: getDocs,
+    scope: safeScope,
+    desiredCount,
+    pageSize: CRM_PAGE_SIZE,
+    getCurrentCeoMetaFn: getCurrentCeoMeta,
+    normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
+    normalizeLeadDocFn: normalizeLeadDoc,
+    normalizeLeadFromRestaurantFn: normalizeLeadFromRestaurant,
+    isRestaurantLeadCandidateFn: isRestaurantLeadCandidate,
+    canCurrentCeoSeeRowFn: canCurrentCeoSeeRow,
+    isCurrentCeoOwnRowFn: isCurrentCeoOwnRow,
+    normalizeLeadStatusKeyFn: normalizeLeadStatusKey,
+    hasGlobalCeoAccessFn: hasGlobalCeoAccess,
+    toDateSafeFn: toDateSafe
   });
-  const restaurantMap = new Map();
-  restaurantSnaps.forEach((snap) => {
-    if (!snap?.docs?.length) return;
-    snap.docs.forEach((docSnap) => {
-      restaurantMap.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
-    });
-  });
-
-  const storedLeads = Array.from(leadMap.values());
-  const byRestaurant = new Map();
-  const byId = new Map();
-  storedLeads.forEach((lead) => {
-    if (lead?.restaurantId) byRestaurant.set(String(lead.restaurantId), true);
-    if (lead?.id) byId.set(String(lead.id), true);
-  });
-
-  const restaurantRows = Array.from(restaurantMap.values());
+  const restaurantRows = Array.isArray(result.restaurantRows) ? result.restaurantRows : [];
   if (restaurantRows.length) {
     state.restaurants = mergeRestaurants(state.restaurants, restaurantRows);
     rebuildBusinessLocations();
   }
-  const derivedLeads = restaurantRows
-    .filter((rest) => isRestaurantLeadCandidate(rest))
-    .map((rest) => normalizeLeadFromRestaurant(rest))
-    .filter((lead) => lead && (!lead.restaurantId || !byRestaurant.has(String(lead.restaurantId))) && (!lead.id || !byId.has(String(lead.id))));
-
-  const rows = [...storedLeads, ...derivedLeads]
-    .filter((lead) => canCurrentCeoSeeRow(lead))
-    .filter((lead) => normalizeLeadStatusKey(lead.status) !== "kunde")
-    .filter((lead) => {
-      const statusKey = normalizeLeadStatusKey(lead.status);
-      if (safeScope === "archived") return statusKey === "no_interest";
-      if (statusKey === "no_interest") return false;
-      return safeScope === "own" ? isCurrentCeoOwnRow(lead) : !isCurrentCeoOwnRow(lead);
-    })
-    .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-
-  return rows;
+  return Array.isArray(result.rows) ? result.rows : [];
 }
 
 async function fetchCustomerScopeRows(scope, desiredCount) {
-  const current = getCurrentCeoMeta();
   const safeScope = normalizeCustomerScopeKey(scope);
-  if (!current.uid) return [];
-  const baseRef = collection(db, "restaurants");
-  const fetchLimit = Math.min(Math.max((Number(desiredCount) || CRM_PAGE_SIZE) * (safeScope === "own" ? 3 : 4), CRM_PAGE_SIZE + 1), 160);
-  const queryRefs = [];
-
-  if (safeScope === "own") {
-    queryRefs.push(query(baseRef, where("createdByUid", "==", current.uid), limit(fetchLimit)));
-  } else {
-    queryRefs.push(query(baseRef, where("ceoPath", "array-contains", current.uid), limit(fetchLimit)));
-    if (hasGlobalCeoAccess()) {
-      queryRefs.push(query(baseRef, limit(fetchLimit)));
-    }
-  }
-
-  const snaps = await Promise.all(queryRefs.map((ref) => getDocs(ref).catch(() => null)));
-  const rowMap = new Map();
-  snaps.forEach((snap) => {
-    if (!snap?.docs?.length) return;
-    snap.docs.forEach((docSnap) => {
-      rowMap.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
-    });
+  const result = await loadCrmCustomersCore({
+    db,
+    collectionFn: collection,
+    queryFn: query,
+    whereFn: where,
+    limitFn: limit,
+    getDocsFn: getDocs,
+    scope: safeScope,
+    desiredCount,
+    pageSize: CRM_PAGE_SIZE,
+    getCurrentCeoMetaFn: getCurrentCeoMeta,
+    normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
+    isCustomerRestaurantFn: isCustomerRestaurant,
+    canCurrentCeoSeeRowFn: canCurrentCeoSeeRow,
+    isCurrentCeoOwnRowFn: isCurrentCeoOwnRow,
+    hasGlobalCeoAccessFn: hasGlobalCeoAccess,
+    toDateSafeFn: toDateSafe
   });
-
-  const rows = Array.from(rowMap.values())
-    .filter((row) => isCustomerRestaurant(row))
-    .filter((row) => canCurrentCeoSeeRow(row))
-    .filter((row) => customerBelongsToScope(row, safeScope))
-    .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-
-  return rows;
+  return Array.isArray(result.rows) ? result.rows : [];
 }
 
 function refreshCustomersFromRestaurants() {
@@ -2538,36 +2489,28 @@ async function loadCeoStaff({ grow = false } = {}) {
     if (!grow) state.staff.error = "";
     render();
     try {
-      const current = getCurrentCeoMeta();
-      const staffRef = collection(db, "superadmins");
-      const staffQueries = [
-        query(staffRef, where("ceoPath", "array-contains", current.uid), limit(nextSize + 1)),
-        query(staffRef, where("ceoParentUid", "==", current.uid), limit(nextSize + 1))
-      ];
-      if (hasGlobalCeoAccess()) {
-        staffQueries.push(query(staffRef, limit(nextSize + 1)));
-      }
-      const staffSnaps = await Promise.all(staffQueries.map((ref) => getDocs(ref).catch(() => null)));
-      const rowMap = new Map();
-      staffSnaps.forEach((snap) => {
-        if (!snap?.docs?.length) return;
-        snap.docs.forEach((docSnap) => {
-          rowMap.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
-        });
+      const result = await loadCrmCeoStaffCore({
+        db,
+        collectionFn: collection,
+        queryFn: query,
+        whereFn: where,
+        limitFn: limit,
+        getDocsFn: getDocs,
+        grow,
+        currentPageSize: currentSize,
+        pageSize: CRM_PAGE_SIZE,
+        getCurrentCeoMetaFn: getCurrentCeoMeta,
+        hasGlobalCeoAccessFn: hasGlobalCeoAccess,
+        normalizeCeoStaffRecordFn: normalizeCeoStaffRecord,
+        canViewCeoRecordFn: canViewCeoRecord,
+        hydrateStaffRecordsFromUserProfilesFn: hydrateStaffRecordsFromUserProfiles,
+        isHiddenLegacyCeoEmailFn: isHiddenLegacyCeoEmail,
+        uniqueStringListFn: uniqueStringList,
+        toDateSafeFn: toDateSafe,
+        syncDirectory: true
       });
-      hiddenLegacyCeoUids = uniqueStringList(Array.from(rowMap.values())
-        .filter((row) => isHiddenLegacyCeoEmail(row.email || row.loginEmail || row.ownerEmail || ""))
-        .map((row) => String(row.uid || row.userId || row.id || "").trim()));
-      let items = Array.from(rowMap.values()).map((row) => normalizeCeoStaffRecord(row));
-      items = items.filter((item) => canViewCeoRecord(item) && String(item.uid || "") !== String(current.uid || ""));
-      items = items.filter((item) => !isHiddenLegacyCeoEmail(item.email || ""));
-      items = await hydrateStaffRecordsFromUserProfiles(items, { syncDirectory: true });
-      items = items.sort((a, b) => {
-        const ta = toDateSafe(a.createdAt)?.getTime() || 0;
-        const tb = toDateSafe(b.createdAt)?.getTime() || 0;
-        if (tb !== ta) return tb - ta;
-        return String(a.name || "").localeCompare(String(b.name || ""));
-      });
+      hiddenLegacyCeoUids = Array.isArray(result.hiddenLegacyCeoUids) ? result.hiddenLegacyCeoUids : [];
+      const items = Array.isArray(result.rows) ? result.rows : [];
       dataLoaded.staff = true;
       state.staff.hasMore = items.length > nextSize;
       state.staff.items = items.slice(0, nextSize);

@@ -1,4 +1,5 @@
 const DEFAULT_STATUS = "idle";
+const CRM_ADMIN_DOMAIN_KEYS = Object.freeze(["leads", "customers", "staff", "businessAccounts"]);
 
 export const HEART_NAV_ITEMS = Object.freeze([
   { key: "dashboard", label: "Start" },
@@ -84,6 +85,27 @@ export function createHeartInitialState() {
       searchStatus: DEFAULT_STATUS,
       searchError: "",
       searchResults: []
+    },
+    crmAdmin: {
+      status: DEFAULT_STATUS,
+      error: "",
+      lastRefreshAt: "",
+      readLoadersReady: false,
+      missingReadDeps: [],
+      sections: CRM_ADMIN_DOMAIN_KEYS.reduce((acc, key) => {
+        acc[key] = {
+          status: DEFAULT_STATUS,
+          error: "",
+          missingDeps: [],
+          missingContext: "",
+          items: [],
+          hasMore: false,
+          knownCount: 0,
+          countExact: true,
+          loadedAt: ""
+        };
+        return acc;
+      }, {})
     }
   };
 }
@@ -547,6 +569,98 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  function setCrmAdminContract(contract = {}) {
+    patch((draft) => {
+      draft.crmAdmin.readLoadersReady = contract.readLoadersReady === true;
+      draft.crmAdmin.missingReadDeps = Array.isArray(contract.missingReadDeps)
+        ? contract.missingReadDeps.slice()
+        : [];
+    });
+  }
+
+  function setCrmAdminLoading(domainKey = "") {
+    const key = String(domainKey || "").trim();
+    if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
+    patch((draft) => {
+      draft.crmAdmin.status = "loading";
+      draft.crmAdmin.error = "";
+      draft.crmAdmin.sections[key] = {
+        ...draft.crmAdmin.sections[key],
+        status: "loading",
+        error: "",
+        missingDeps: [],
+        missingContext: ""
+      };
+    });
+  }
+
+  function setCrmAdminMissing(domainKey = "", missingDeps = []) {
+    const key = String(domainKey || "").trim();
+    if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
+    patch((draft) => {
+      draft.crmAdmin.sections[key] = {
+        ...draft.crmAdmin.sections[key],
+        status: "missing",
+        error: "",
+        missingDeps: Array.isArray(missingDeps) ? missingDeps.slice() : [],
+        missingContext: "",
+        items: [],
+        hasMore: false,
+        knownCount: 0,
+        countExact: true
+      };
+    });
+  }
+
+  function setCrmAdminData(domainKey = "", payload = {}) {
+    const key = String(domainKey || "").trim();
+    if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
+    const items = Array.isArray(payload.items)
+      ? payload.items.slice()
+      : (Array.isArray(payload.rows) ? payload.rows.slice() : []);
+    patch((draft) => {
+      const loadedAt = new Date().toISOString();
+      draft.crmAdmin.status = "ready";
+      draft.crmAdmin.error = "";
+      draft.crmAdmin.lastRefreshAt = loadedAt;
+      draft.crmAdmin.sections[key] = {
+        ...draft.crmAdmin.sections[key],
+        status: "ready",
+        error: "",
+        missingDeps: [],
+        missingContext: String(payload.missingContext || "").trim(),
+        items,
+        hasMore: payload.hasMore === true,
+        knownCount: Number.isFinite(Number(payload.knownCount)) ? Math.max(0, Number(payload.knownCount)) : items.length,
+        countExact: payload.countExact !== false,
+        loadedAt
+      };
+    });
+  }
+
+  function setCrmAdminError(domainKey = "", message = "") {
+    const key = String(domainKey || "").trim();
+    const safeMessage = String(message || "").trim() || "CRM/Admin Daten konnten nicht geladen werden.";
+    if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) {
+      patch((draft) => {
+        draft.crmAdmin.status = "error";
+        draft.crmAdmin.error = safeMessage;
+      });
+      return;
+    }
+    patch((draft) => {
+      draft.crmAdmin.status = "error";
+      draft.crmAdmin.error = safeMessage;
+      draft.crmAdmin.sections[key] = {
+        ...draft.crmAdmin.sections[key],
+        status: "error",
+        error: safeMessage,
+        missingDeps: [],
+        missingContext: ""
+      };
+    });
+  }
+
   return {
     getState,
     setState,
@@ -599,7 +713,12 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setSetupPendingAction,
       setSetupSearchLoading,
       setSetupSearchResults,
-      setSetupSearchError
+      setSetupSearchError,
+      setCrmAdminContract,
+      setCrmAdminLoading,
+      setCrmAdminMissing,
+      setCrmAdminData,
+      setCrmAdminError
     }
   };
 }

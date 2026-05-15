@@ -8,6 +8,12 @@ import {
   bindHeartEvents
 } from "./heart-events.js";
 import {
+  createHeartCrmAdminShellConsumer
+} from "./heart-crm-admin-shell-consumer.js";
+import {
+  createHeartCrmAdminReadLoaderDeps
+} from "./heart-crm-admin-read-loaders.js";
+import {
   createHeartMonitoringAdapter
 } from "./heart-monitoring-adapter.js";
 import {
@@ -40,6 +46,16 @@ const apiClient = createHeartApiClient({
 const monitoringAdapter = createHeartMonitoringAdapter({ apiClient });
 const testRunnerAdapter = createHeartTestRunnerAdapter({ apiClient });
 const setupAdapter = createHeartSetupAdapter({ apiClient });
+const crmAdminReadLoaders = createHeartCrmAdminReadLoaderDeps({
+  getAuthState: () => store.getState().auth,
+  getSetupState: () => store.getState().setup
+});
+const crmAdminConsumerDeps = Object.freeze({
+  read: crmAdminReadLoaders
+});
+const renderRuntime = Object.freeze({
+  crmAdminConsumerDeps
+});
 
 let toastTimer = null;
 let previousState = store.getState();
@@ -49,6 +65,12 @@ let displayModeQuery = null;
 let displayModeCleanup = null;
 let runPollingTimer = null;
 const notifiedCompletedRunIds = new Set();
+const CRM_ADMIN_READ_DOMAINS = Object.freeze([
+  { key: "leads", consumerKey: "leads" },
+  { key: "customers", consumerKey: "customers" },
+  { key: "staff", consumerKey: "staff" },
+  { key: "businessAccounts", consumerKey: "businessAccounts" }
+]);
 
 function isStandaloneDisplayMode() {
   try {
@@ -214,6 +236,32 @@ async function refreshSetup() {
   } catch (error) {
     actions.setSetupError(error?.message || "Heart-Einrichtung konnte nicht geladen werden.");
   }
+}
+
+async function refreshCrmAdmin() {
+  let consumer = null;
+  try {
+    consumer = createHeartCrmAdminShellConsumer(crmAdminConsumerDeps);
+    actions.setCrmAdminContract(consumer.contract || {});
+  } catch (error) {
+    actions.setCrmAdminError("", error?.message || "CRM/Admin Consumer konnte nicht vorbereitet werden.");
+    return;
+  }
+
+  await Promise.all(CRM_ADMIN_READ_DOMAINS.map(async ({ key, consumerKey }) => {
+    const domain = consumer?.[consumerKey] || null;
+    if (!domain?.ready || typeof domain?.load !== "function") {
+      actions.setCrmAdminMissing(key, domain?.missingDeps || []);
+      return;
+    }
+    actions.setCrmAdminLoading(key);
+    try {
+      const payload = await domain.load({ limit: 20 });
+      actions.setCrmAdminData(key, payload || {});
+    } catch (error) {
+      actions.setCrmAdminError(key, error?.message || "CRM/Admin Daten konnten nicht geladen werden.");
+    }
+  }));
 }
 
 async function ensureRunDetail(runId = "") {
@@ -494,6 +542,10 @@ const operations = {
   },
   async refresh() {
     if (store.getState().auth.status === "authenticated") {
+      if (store.getState().shell.activeView === "crmAdmin") {
+        await refreshCrmAdmin();
+        return;
+      }
       await refreshAll({ focusRunId: store.getState().runs.selectedRunId });
     }
   },
@@ -528,6 +580,11 @@ const operations = {
   },
   openView(viewKey) {
     actions.setActiveView(viewKey);
+    if (String(viewKey || "").trim() === "crmAdmin") {
+      queueMicrotask(() => refreshCrmAdmin().catch((error) => {
+        setToast("CRM/Admin", error?.message || "CRM/Admin Daten konnten nicht geladen werden.", "danger");
+      }));
+    }
   },
   toggleNav() {
     actions.setNavOpen(!store.getState().shell.navOpen);
@@ -601,7 +658,7 @@ store.subscribe((state) => {
   const priorState = previousState;
   previousState = state;
 
-  renderHeartApp(root, state);
+  renderHeartApp(root, state, renderRuntime);
   syncViewportSurface(state);
   syncRunPolling(state);
 
@@ -627,7 +684,7 @@ store.subscribe((state) => {
   }
 });
 
-renderHeartApp(root, store.getState());
+renderHeartApp(root, store.getState(), renderRuntime);
 syncViewportSurface(store.getState());
 authController.initialize().catch((error) => {
   actions.setAuthError(error?.message || "Anmeldung konnte nicht vorbereitet werden.");
