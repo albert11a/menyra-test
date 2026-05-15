@@ -158,6 +158,7 @@ import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-suppor
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
 import { createCrmAdminReadFacade } from "./core/crm/crm-admin-read-facade.js";
 import { createCrmAdminUiFacade } from "./core/crm/crm-admin-ui-facade.js";
+import { createCrmAdminLeadWriteFacade } from "./core/crm/crm-admin-lead-write-facade.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
@@ -4294,6 +4295,14 @@ const {
   syncCrmStaffDerivedEmailField,
   syncCrmStaffFormFromDom
 } = crmAdminUiFacade;
+const crmAdminLeadWriteFacade = createCrmAdminLeadWriteFacade({
+  saveLeadFromModal,
+  deleteLeadFromModal
+});
+const {
+  saveCrmLead,
+  deleteCrmLead
+} = crmAdminLeadWriteFacade;
 
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },
@@ -4778,7 +4787,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     bindImageFallbacks
   },
   leadApi: {
-    saveLeadFromModal,
+    saveLeadFromModal: saveCrmLead,
     convertLeadToCustomer,
     addLeadModalLocationRow,
     removeLeadModalLocationRow,
@@ -4860,7 +4869,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     saveLeadSettings,
     isLeadInlineCreateView: isCrmLeadInlineCreateView,
     bindLeadInlineCreateEventsCore: bindCrmLeadInlineCreateEvents,
-    deleteLeadFromModal,
+    deleteLeadFromModal: deleteCrmLead,
     syncLeadDerivedFields: syncCrmLeadDerivedFields,
     closeStaffEditor: closeCrmStaffEditor,
     openStaffEditor: openCrmStaffEditor,
