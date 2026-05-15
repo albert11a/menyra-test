@@ -1,3 +1,5 @@
+import { createCrmAdminBusinessAccountWriteFacade } from "../crm/crm-admin-business-account-write-facade.js";
+
 function asText(value = "") {
   return String(value || "").trim();
 }
@@ -403,6 +405,15 @@ export function createBusinessAccountsRuntimeController({
     }
   }
 
+  const businessAccountWriteFacade = createCrmAdminBusinessAccountWriteFacade({
+    saveBusinessAccountFromView,
+    toggleBusinessAccountActive
+  });
+  const {
+    saveCrmBusinessAccount,
+    updateCrmBusinessAccount
+  } = businessAccountWriteFacade;
+
   function renderGuardView() {
     return `
       <div id="businessAccountsView" class="p-6 animate-in slide-in-from-right-10 duration-500">
@@ -597,7 +608,7 @@ export function createBusinessAccountsRuntimeController({
       saveBtn.dataset.bound = "true";
       saveBtn.addEventListener("click", () => {
         if (state.businessAccounts.saving) return;
-        void saveBusinessAccountFromView();
+        void saveCrmBusinessAccount();
       });
     }
 
@@ -606,7 +617,7 @@ export function createBusinessAccountsRuntimeController({
       toggleBtn.dataset.bound = "true";
       toggleBtn.addEventListener("click", () => {
         if (state.businessAccounts.deleting) return;
-        void toggleBusinessAccountActive();
+        void updateCrmBusinessAccount();
       });
     }
   }
@@ -620,8 +631,8 @@ export function createBusinessAccountsRuntimeController({
     closeEditor,
     syncFormFromDom,
     loadBusinessAccounts,
-    saveBusinessAccountFromView,
-    toggleBusinessAccountActive,
+    saveBusinessAccountFromView: saveCrmBusinessAccount,
+    toggleBusinessAccountActive: updateCrmBusinessAccount,
     renderBusinessAccountsView,
     bindBusinessAccountsEvents
   };
