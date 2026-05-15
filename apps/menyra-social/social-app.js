@@ -160,6 +160,7 @@ import { createCrmAdminReadFacade } from "./core/crm/crm-admin-read-facade.js";
 import { createCrmAdminUiFacade } from "./core/crm/crm-admin-ui-facade.js";
 import { createCrmAdminLeadWriteFacade } from "./core/crm/crm-admin-lead-write-facade.js";
 import { createCrmAdminLeadConversionFacade } from "./core/crm/crm-admin-lead-conversion-facade.js";
+import { createCrmAdminCustomerWriteFacade } from "./core/crm/crm-admin-customer-write-facade.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
@@ -4310,6 +4311,12 @@ const crmAdminLeadConversionFacade = createCrmAdminLeadConversionFacade({
 const {
   convertCrmLeadToCustomer
 } = crmAdminLeadConversionFacade;
+const crmAdminCustomerWriteFacade = createCrmAdminCustomerWriteFacade({
+  saveCustomerFromModal
+});
+const {
+  saveCrmCustomer
+} = crmAdminCustomerWriteFacade;
 
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },
@@ -4806,7 +4813,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     hasLeadLocationCoords,
     getPrimaryLeadLocation,
     refineLeadLocationAddressIndex,
-    saveCustomerFromModal,
+    saveCustomerFromModal: saveCrmCustomer,
     hydrateLeadGeoFieldsFromCoords
   },
   shellApi: {
