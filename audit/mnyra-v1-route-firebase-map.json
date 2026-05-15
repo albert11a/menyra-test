@@ -1,0 +1,1418 @@
+{
+  "audit": "mnyra-v1-route-firebase-map",
+  "status": "code-only audit",
+  "findingCountMethod": "Counts are route/surface findings in this file. Shared Firebase paths can appear more than once when reused by multiple V1 surfaces.",
+  "summary": {
+    "routesOrSurfacesMapped": 21,
+    "firebaseReadFindings": 49,
+    "firebaseWriteFindings": 27,
+    "onSnapshotListenerFindings": 11
+  },
+  "routes": [
+    {
+      "route": "/",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites / to apps/menyra-social/index.html",
+        "apps/menyra-social/index.html default app path loads apps/menyra-social/social-app.js"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js initializeApp/initializeFirestore/initializeAuth",
+        "apps/menyra-social/social-app.js Firestore imports"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants",
+          "operation": "getDocs(collection(db, \"restaurants\"))",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadRestaurants"
+        },
+        {
+          "path": "socialFeed",
+          "operation": "getDocs(query(collection(db, \"socialFeed\"), where(\"status\", \"==\", \"active\"), orderBy(\"createdAt\", \"desc\"), limit(...)))",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadFeedPosts"
+        }
+      ],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No route-specific listener verified for / before user/auth lifecycle. Authenticated startup can start global current-user/following/chat/notification listeners.",
+      "listenerCleanupOrUnsubscribe": "Global cleanup is in stopLiveListeners.",
+      "stateFieldsWritten": [
+        "state.activeTab",
+        "state.restaurants",
+        "state.businessLocations",
+        "state.feedPosts",
+        "state.stories"
+      ],
+      "idsUsed": {
+        "restaurantId": "restaurant document ids from restaurants feed data",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "restaurant canonicalRestaurantId fields when present",
+        "slug": "unspecified",
+        "userId": "state.user.uid after auth",
+        "guestId": "getGuestScopeUid() for guest persisted cart",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "medium",
+      "riskReason": "Default route relies on cached restaurants/feed data and authenticated startup can start non-feed listeners.",
+      "exactFiles": [
+        "vercel.json",
+        "apps/menyra-social/index.html",
+        "apps/menyra-social/social-app.js",
+        "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+        "apps/menyra-social/core/app-shell/session-tab-lifecycle-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "loadRestaurants",
+        "loadFeedPosts",
+        "startLiveListeners"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/feed",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /feed to apps/menyra-social/index.html",
+        "apps/menyra-social/index.html default app path loads apps/menyra-social/social-app.js",
+        "ensureTabDataCore loads feed tab data"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js",
+        "apps/menyra-social/social-app.js Firestore getDocs/query/collection/where/orderBy/limit"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants",
+          "operation": "getDocs(collection(db, \"restaurants\"))",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadRestaurants"
+        },
+        {
+          "path": "socialFeed",
+          "operation": "getDocs(query(collection(db, \"socialFeed\"), where(\"status\", \"==\", \"active\"), orderBy(\"createdAt\", \"desc\"), limit(...)))",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadFeedPosts"
+        },
+        {
+          "path": "users/{uid}/posts",
+          "operation": "getDocs(query(collection(db, \"users\", uid, \"posts\"), orderBy(\"createdAt\", \"desc\")))",
+          "file": "apps/menyra-social/core/feed/feed-visibility-runtime-cluster.js",
+          "function": "loadUserVisibilityPosts"
+        }
+      ],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "Feed data is loaded by getDocs. Authenticated session startup separately starts current-user/following/chat/notification listeners.",
+      "listenerCleanupOrUnsubscribe": "Feed route leaves global auth listeners to stopLiveListeners; feed itself does not show a verified onSnapshot.",
+      "stateFieldsWritten": [
+        "state.activeTab",
+        "state.feedPosts",
+        "state.stories",
+        "state.restaurants",
+        "state.businessLocations",
+        "feed location/city localStorage gate state"
+      ],
+      "idsUsed": {
+        "restaurantId": "post.restaurantId/rid and restaurant document ids",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "restaurant canonicalRestaurantId fields when present",
+        "slug": "post/profile slug fields when present",
+        "userId": "uid for user visibility posts when authenticated",
+        "guestId": "guest scope only for persisted cart, not feed reads",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "Feed, search, and map share cached restaurant/feed state; stale cache can show old business/feed data before network reconciliation.",
+      "exactFiles": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+        "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+        "apps/menyra-social/core/feed/feed-visibility-runtime-cluster.js"
+      ],
+      "exactFunctions": [
+        "ensureTabDataCore",
+        "loadFeedPosts",
+        "loadRestaurants"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/search",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /search to apps/menyra-social/index.html",
+        "resolveInitialRouteState maps search/discover to activeTab search",
+        "social-app.js renders search from shared restaurants/feed state"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js",
+        "apps/menyra-social/social-app.js Firestore getDocs/query"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants",
+          "operation": "getDocs(collection(db, \"restaurants\"))",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadRestaurants"
+        },
+        {
+          "path": "socialFeed",
+          "operation": "getDocs(query(collection(db, \"socialFeed\"), ...)) when feed cache/state is used",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadFeedPosts"
+        }
+      ],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No search-specific onSnapshot verified.",
+      "listenerCleanupOrUnsubscribe": "No search-specific unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.activeTab",
+        "state.restaurants",
+        "state.businessLocations",
+        "state.feedPosts",
+        "search result DOM/state derived from shared state"
+      ],
+      "idsUsed": {
+        "restaurantId": "restaurant document ids in search results",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "restaurant canonicalRestaurantId fields when present",
+        "slug": "restaurant slug/landingSlug/publicSlug fields",
+        "userId": "state.user.uid after auth",
+        "guestId": "unspecified",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "Search results use shared restaurant/feed state that can be served from local cache or bootstrap preview before current Firestore truth is loaded.",
+      "exactFiles": [
+        "apps/menyra-social/core/router/public-business-route-utils.js",
+        "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+        "apps/menyra-social/social-app.js"
+      ],
+      "exactFunctions": [
+        "resolveSystemRouteState",
+        "loadRestaurants",
+        "loadFeedPosts"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/map",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /map to apps/menyra-social/index.html",
+        "resolveInitialRouteState maps map to activeTab map",
+        "map modules render from state.businessLocations and state.selectedBusiness"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js",
+        "apps/menyra-social/social-app.js Firestore getDocs"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants",
+          "operation": "getDocs(collection(db, \"restaurants\"))",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadRestaurants"
+        }
+      ],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No map-specific onSnapshot verified.",
+      "listenerCleanupOrUnsubscribe": "No map-specific unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.activeTab",
+        "state.businessLocations",
+        "state.selectedBusiness"
+      ],
+      "idsUsed": {
+        "restaurantId": "selected business restaurant id",
+        "businessId": "selected business id when present",
+        "canonicalRestaurantId": "selected business canonicalRestaurantId when present",
+        "slug": "selected business slug fields when present",
+        "userId": "unspecified",
+        "guestId": "unspecified",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "Map selected business is derived from shared businessLocations; stale restaurant cache can show old location/business data.",
+      "exactFiles": [
+        "apps/menyra-social/core/map/leaflet-map-utils.js",
+        "apps/menyra-social/core/map/plus-code-utils.js",
+        "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+        "apps/menyra-social/social-app.js"
+      ],
+      "exactFunctions": [
+        "loadRestaurants"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/:slug",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "apps/menyra-social/index.html detects public website startup",
+        "apps/menyra-social/social-public-entry.js or social-public-bundled-entry.js dynamically imports social-app.js",
+        "resolveInitialRouteState creates pending public business route",
+        "public-profile-direct-entry-controller seeds direct entry",
+        "profile-open-flow-utils resolves and opens profile"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js",
+        "public-route-cache-early-preload.js getDoc/getDocs/query",
+        "profile runtime getDoc/onSnapshot"
+      ],
+      "firestoreReads": [
+        {
+          "path": "publicRoutes/{slug}",
+          "operation": "getDoc(doc(db, \"publicRoutes\", slug))",
+          "file": "apps/menyra-social/core/router/public-route-cache-early-preload.js",
+          "function": "resolvePublicRoute"
+        },
+        {
+          "path": "restaurants/{idOrSlug}",
+          "operation": "getDoc(doc(db, \"restaurants\", value))",
+          "file": "apps/menyra-social/core/router/public-route-cache-early-preload.js",
+          "function": "resolvePublicRoute"
+        },
+        {
+          "path": "restaurants",
+          "operation": "getDocs(query(collection(db, \"restaurants\"), where(slugField, \"==\", value), limit(1)))",
+          "file": "apps/menyra-social/core/router/public-route-cache-early-preload.js",
+          "function": "resolveRestaurantBySlug"
+        },
+        {
+          "path": "restaurants/{restaurantId}",
+          "operation": "getDoc/onSnapshot depending on guest public route context",
+          "file": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+          "function": "attachProfileViewListener"
+        },
+        {
+          "path": "restaurants/{restaurantId}/socialPosts",
+          "operation": "getDocs(query(collection(db, \"restaurants\", restaurantId, \"socialPosts\"), orderBy(\"createdAt\", \"desc\")))",
+          "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+          "function": "loadBusinessPosts"
+        }
+      ],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [
+        "profileView listener for restaurants/{restaurantId} only outside guest public business route context",
+        "authenticated global current-user/following/chat/notification listeners can start via startLiveListeners"
+      ],
+      "listenerStartCondition": "Guest public business route uses one-time profile refresh; authenticated/non-guest contexts can attach profileView listener.",
+      "listenerCleanupOrUnsubscribe": "stopProfileViewListener and stopLiveListeners",
+      "stateFieldsWritten": [
+        "state.__webDirectEntry",
+        "state.__publicRouteBootstrap",
+        "state.profileView",
+        "state.profileTopTab",
+        "state.profileContentTab",
+        "state.businessPosts",
+        "state.activeTab"
+      ],
+      "idsUsed": {
+        "restaurantId": "pendingProfileRestaurantId, route payload restaurantId, profile.restaurantId",
+        "businessId": "route payload businessId when present",
+        "canonicalRestaurantId": "route payload/profile canonicalRestaurantId",
+        "slug": "pathname segment, landingSlug/publicSlug/businessSlug/routeSlug/slug/handle",
+        "userId": "uid for authenticated listeners",
+        "guestId": "guest scope for cart only",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "Public route resolution is async and can seed a profile using slug/alias before canonical restaurant id is fully resolved.",
+      "exactFiles": [
+        "apps/menyra-social/index.html",
+        "apps/menyra-social/social-public-entry.js",
+        "apps/menyra-social/social-public-bundled-entry.js",
+        "apps/menyra-social/core/auth/initial-route-state.js",
+        "apps/menyra-social/core/router/public-business-route-utils.js",
+        "apps/menyra-social/core/router/public-route-cache-early-preload.js",
+        "apps/menyra-social/core/profile/public-profile-direct-entry-controller.js",
+        "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+        "apps/menyra-social/core/profile/public-profile-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "resolveInitialRouteState",
+        "resolvePublicRoute",
+        "seedPendingDirectEntry",
+        "openProfileViewFromBusiness",
+        "attachProfileViewListener"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/:slug/menu",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "public website startup",
+        "resolveInitialRouteState sets profile top tab menu",
+        "seedPendingDirectEntry seeds public menu shell",
+        "loadMenuForRestaurant loads public menu and meta",
+        "profile-menu render uses public-menu-surface-state guards"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js",
+        "menu-public-runtime-controller.js getDoc/getDocs/setDoc",
+        "session-data-runtime-controller.js menu meta listener"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants/{restaurantId}/public/menu",
+          "operation": "getDoc(doc(db, \"restaurants\", restaurantId, \"public\", \"menu\"))",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "loadPublicMenuItems"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/meta",
+          "operation": "getDoc(doc(db, \"restaurants\", restaurantId, \"public\", \"meta\"))",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "loadMenuMeta"
+        },
+        {
+          "path": "restaurants/{restaurantId}/menuItems",
+          "operation": "getDocs(collection(db, \"restaurants\", restaurantId, \"menuItems\")) fallback/migration source",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "loadMenuItemsFromCollection"
+        },
+        {
+          "path": "restaurants/{restaurantId}",
+          "operation": "getDoc(doc(db, \"restaurants\", restaurantId)) legacy fallback",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "loadLegacyMenuItems"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/offers",
+          "operation": "getDoc(doc(db, \"restaurants\", restaurantId, \"public\", \"offers\"))",
+          "file": "apps/menyra-social/core/menu/focus-runtime-controller.js",
+          "function": "loadFocusItems"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "restaurants/{restaurantId}/public/menu",
+          "operation": "setDoc(..., { merge: true }) when publishing owner/admin menu",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "publishMenuToPublic"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/meta",
+          "operation": "setDoc(..., { statusBadgeVisible }, { merge: true })",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "saveMenuStatusBadgeVisible"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/offers",
+          "operation": "setDoc(..., { merge: true })",
+          "file": "apps/menyra-social/core/menu/focus-runtime-controller.js",
+          "function": "publishFocusItems"
+        }
+      ],
+      "onSnapshotListeners": [
+        "restaurants/{restaurantId}/public/meta in startMenuMetaListener for authenticated non-QR public menu contexts"
+      ],
+      "listenerStartCondition": "shouldUseRealtimeMenuMetaListener returns true only when restaurantId exists and source is not unauthenticated public/QR guest.",
+      "listenerCleanupOrUnsubscribe": "stopMenuMetaListener",
+      "stateFieldsWritten": [
+        "state.menu",
+        "state.focus",
+        "state.profileTopTab",
+        "state.profileView.menuAccessSource",
+        "state.profileView.tableNumber"
+      ],
+      "idsUsed": {
+        "restaurantId": "menu restaurantId and visible public menu target ids",
+        "businessId": "profile route payload businessId when present",
+        "canonicalRestaurantId": "profile/route payload canonicalRestaurantId",
+        "slug": "public route slug",
+        "userId": "uid for owner/favorites/admin actions",
+        "guestId": "guest scope for cart",
+        "tableId": "table number only on QR/table variants",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "Menu state is business-critical and can be sourced from public doc, collection fallback, legacy doc, cache, and route seed; stale or mismatched restaurant ids would show wrong menu.",
+      "exactFiles": [
+        "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+        "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+        "apps/menyra-social/core/menu/focus-runtime-controller.js",
+        "apps/menyra-social/core/profile/public-menu-surface-state-utils.js"
+      ],
+      "exactFunctions": [
+        "loadMenuForRestaurant",
+        "loadPublicMenuItems",
+        "loadMenuMeta",
+        "startMenuMetaListener",
+        "resolveVisiblePublicMenuSurfaceState"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/:slug/menu?src=qr",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "resolveInitialRouteState marks QR/menu access source",
+        "public direct entry seeds menu top tab and table number",
+        "loadMenuForRestaurant loads public menu while skipping realtime meta listener for QR guest"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js",
+        "menu-public-runtime-controller.js getDoc",
+        "table-qr-runtime-controller.js getDoc/getDocFromServer"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants/{restaurantId}/public/menu",
+          "operation": "getDoc(doc(db, \"restaurants\", restaurantId, \"public\", \"menu\"))",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "loadPublicMenuItems"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/meta",
+          "operation": "getDoc/getDocFromServer(doc(db, \"restaurants\", restaurantId, \"public\", \"meta\"))",
+          "file": "apps/menyra-social/core/menu/table-qr-runtime-controller.js",
+          "function": "loadTableQrMeta"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "restaurants/{restaurantId}/orders",
+          "operation": "writeBatch().set(orderRef, payload, { merge: true }) if guest submits cart checkout",
+          "file": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+          "function": "submitShopCheckout"
+        }
+      ],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "QR guest menu path intentionally avoids menu meta realtime listener.",
+      "listenerCleanupOrUnsubscribe": "No QR-specific listener verified.",
+      "stateFieldsWritten": [
+        "state.profileTopTab",
+        "state.profileView.menuAccessSource",
+        "state.profileView.tableNumber",
+        "state.menu",
+        "state.tableQr",
+        "state.shopCart.tableNumber"
+      ],
+      "idsUsed": {
+        "restaurantId": "route/profile/menu/cart restaurantId",
+        "businessId": "route payload businessId when present",
+        "canonicalRestaurantId": "profile/route payload canonicalRestaurantId",
+        "slug": "public route slug",
+        "userId": "buyer uid only if authenticated",
+        "guestId": "guestScopeUid and guestSessionId for guest cart/order",
+        "tableId": "tableNumber/tableLabel from route query",
+        "orderId": "generated restaurants/{restaurantId}/orders doc id on checkout"
+      },
+      "riskLevel": "critical",
+      "riskReason": "QR/table menu connects public menu, cart scope, table number, and order write; any stale restaurant/table id can write an order to the wrong context.",
+      "exactFiles": [
+        "apps/menyra-social/core/auth/initial-route-state.js",
+        "apps/menyra-social/core/profile/public-profile-direct-entry-controller.js",
+        "apps/menyra-social/core/menu/table-qr-runtime-controller.js",
+        "apps/menyra-social/core/shop/shop-view-cart-orchestration-controller.js",
+        "apps/menyra-social/core/orders/orders-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "resolveInitialRouteState",
+        "seedPendingDirectEntry",
+        "loadTableQrMeta",
+        "addMenuItemToShopCart",
+        "submitShopCheckout"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "QR/table menu variants",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "public-business-route-utils detects qr/src/menuqr/table query variants",
+        "initial-route-state extracts table/tableNumber/t",
+        "table QR runtime loads public meta and saves table QR config for owners"
+      ],
+      "firebaseModulesUsed": [
+        "table-qr-runtime-controller.js getDoc/getDocFromServer/setDoc/waitForPendingWrites"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants/{restaurantId}/public/meta",
+          "operation": "getDoc or getDocFromServer",
+          "file": "apps/menyra-social/core/menu/table-qr-runtime-controller.js",
+          "function": "loadTableQrMeta"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "restaurants/{restaurantId}/public/meta",
+          "operation": "setDoc(... tableQrEnabled/tableQrCount ..., { merge: true }) followed by waitForPendingWrites",
+          "file": "apps/menyra-social/core/menu/table-qr-runtime-controller.js",
+          "function": "saveTableQrConfig"
+        }
+      ],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No table QR onSnapshot verified.",
+      "listenerCleanupOrUnsubscribe": "No table QR unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.tableQr",
+        "state.profileView.tableNumber",
+        "state.profileView.menuAccessSource"
+      ],
+      "idsUsed": {
+        "restaurantId": "profile.restaurantId",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "not used by ensureTableQrStateForProfile in verified code",
+        "slug": "route slug",
+        "userId": "owner/admin uid for save",
+        "guestId": "guest scope for QR visitor cart/order",
+        "tableId": "tableNumber/tableLabel",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "The QR runtime reads by profile.restaurantId; if the visible profile only has canonicalRestaurantId or an alias, table meta can be missed or mismatched.",
+      "exactFiles": [
+        "apps/menyra-social/core/menu/table-qr-runtime-controller.js",
+        "apps/menyra-social/core/auth/initial-route-state.js",
+        "apps/menyra-social/core/router/public-business-route-utils.js"
+      ],
+      "exactFunctions": [
+        "ensureTableQrStateForProfile",
+        "loadTableQrMeta",
+        "saveTableQrConfig"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "header cart",
+      "entryFile": "apps/menyra-social/social-app.js",
+      "loadedModuleChain": [
+        "app shell renders header",
+        "app-events-shell-bind-utils handles header cart click",
+        "shop cart state is read from state.shopCart/localStorage"
+      ],
+      "firebaseModulesUsed": [
+        "none directly for header cart state"
+      ],
+      "firestoreReads": [],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No header-cart listener verified.",
+      "listenerCleanupOrUnsubscribe": "No header-cart unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.activeTab",
+        "state.profileTopTab",
+        "state.profileView when navigating to cart restaurant"
+      ],
+      "idsUsed": {
+        "restaurantId": "state.shopCart.restaurantId",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "profile comparison may use current profile canonicalRestaurantId",
+        "slug": "unspecified",
+        "userId": "cart storage uid key if authenticated",
+        "guestId": "cart storage guest scope uid if guest",
+        "tableId": "state.shopCart.tableNumber",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "Header count sums the whole stored cart, not the current visible business; click navigates to the cart restaurant, which can surprise users on another profile.",
+      "exactFiles": [
+        "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+        "apps/menyra-social/core/app-events/app-events-shell-bind-utils.js",
+        "apps/menyra-social/core/shop/shop-cart-access-utils.js"
+      ],
+      "exactFunctions": [
+        "renderHeader",
+        "bindShellEvents",
+        "getCartCountForRestaurantCore"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "cart drawer",
+      "entryFile": "apps/menyra-social/social-app.js",
+      "loadedModuleChain": [
+        "profile menu renders cart controls",
+        "shop-view-cart-orchestration-controller resolves profile/cart context",
+        "cart persists through safeStorage/localStorage"
+      ],
+      "firebaseModulesUsed": [
+        "none directly until checkout submits order"
+      ],
+      "firestoreReads": [],
+      "firestoreWrites": [
+        {
+          "path": "restaurants/{cart.restaurantId}/orders",
+          "operation": "writeBatch().set(orderRef, payload, { merge: true })",
+          "file": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+          "function": "submitShopCheckout"
+        }
+      ],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No cart drawer listener verified.",
+      "listenerCleanupOrUnsubscribe": "No cart drawer unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.shopCart",
+        "state.shopCart.restaurantId",
+        "state.shopCart.tableNumber",
+        "state.shopCart.serviceMode",
+        "state.shopCart.items",
+        "state.orders after successful checkout"
+      ],
+      "idsUsed": {
+        "restaurantId": "state.shopCart.restaurantId and profile.restaurantId",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "profile canonicalRestaurantId can be present but cart context uses profile.restaurantId",
+        "slug": "unspecified",
+        "userId": "state.user.uid when authenticated",
+        "guestId": "guestScopeUid/guestSessionId for guest cart/order",
+        "tableId": "state.shopCart.tableNumber",
+        "orderId": "generated orderRef.id"
+      },
+      "riskLevel": "critical",
+      "riskReason": "Checkout writes are driven by persisted cart fields; the code path needs strong guarantees that restaurant/table still match the intended visible profile.",
+      "exactFiles": [
+        "apps/menyra-social/core/shop/shop-cart-state-utils.js",
+        "apps/menyra-social/core/shop/shop-view-cart-orchestration-controller.js",
+        "apps/menyra-social/core/orders/orders-runtime-controller.js",
+        "apps/menyra-social/social-app.js"
+      ],
+      "exactFunctions": [
+        "resolveCartContext",
+        "addMenuItemToShopCart",
+        "renderProfileShopCartView",
+        "submitShopCheckout",
+        "saveShopCartToStorage"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/orders",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /orders to social index",
+        "resolveInitialRouteState maps orders tab",
+        "ensureTabDataCore starts orders listener"
+      ],
+      "firebaseModulesUsed": [
+        "orders-runtime-controller.js onSnapshot/getDoc/writeBatch/serverTimestamp"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants/{restaurantId}/orders",
+          "operation": "onSnapshot(query(collection(db, \"restaurants\", restaurantId, \"orders\"), orderBy(\"createdAt\", \"desc\"), limit(60))) for restaurant admins",
+          "file": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+          "function": "startOrdersListener"
+        },
+        {
+          "path": "users/{uid}/orders",
+          "operation": "onSnapshot(query(collection(db, \"users\", uid, \"orders\"), orderBy(\"createdAt\", \"desc\"), limit(60))) for non-restaurant users",
+          "file": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+          "function": "startOrdersListener"
+        },
+        {
+          "path": "restaurants/{restaurantId}/orderLookup/{lookupToken}",
+          "operation": "getDoc for guest recovered orders",
+          "file": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+          "function": "syncGuestRecoveredOrders"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "restaurants/{cart.restaurantId}/orders/{orderId}",
+          "operation": "writeBatch().set(orderRef, payload, { merge: true })",
+          "file": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+          "function": "submitShopCheckout"
+        }
+      ],
+      "onSnapshotListeners": [
+        "orders listener on restaurants/{restaurantId}/orders or users/{uid}/orders"
+      ],
+      "listenerStartCondition": "ensureTabDataCore starts only when active tab is orders; authenticated restaurant role decides restaurant vs user path; guest uses lookup recovery instead of listener.",
+      "listenerCleanupOrUnsubscribe": "stopOrdersListener when leaving orders tab or stopping live listeners",
+      "stateFieldsWritten": [
+        "state.orders",
+        "state.orders.items",
+        "state.orders.listenerKey",
+        "state.orders.loading"
+      ],
+      "idsUsed": {
+        "restaurantId": "userProfile.restaurantId for restaurant orders, cart.restaurantId for writes and guest lookup",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "unspecified",
+        "userId": "state.user.uid for users/{uid}/orders and buyerUid",
+        "guestId": "guestScopeUid/guestSessionId/guestLookupToken",
+        "tableId": "order tableNumber",
+        "orderId": "orders document id"
+      },
+      "riskLevel": "critical",
+      "riskReason": "Checkout writes only to restaurant orders, while non-restaurant authenticated orders listener reads users/{uid}/orders and guest recovery reads orderLookup docs.",
+      "exactFiles": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/orders/orders-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "ensureTabDataCore",
+        "startOrdersListener",
+        "syncGuestRecoveredOrders",
+        "submitShopCheckout",
+        "stopOrdersListener"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/owner",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "public-business-route-utils maps /owner to profile tab",
+        "auth startup loads current user profile",
+        "owner profile/menu/admin actions use profile/menu/focus runtimes"
+      ],
+      "firebaseModulesUsed": [
+        "self-profile-runtime-controller.js getDoc/getDocs/onSnapshot/setDoc",
+        "menu-public-runtime-controller.js getDoc/getDocs/setDoc"
+      ],
+      "firestoreReads": [
+        {
+          "path": "users/{uid} or restaurants/{restaurantId}",
+          "operation": "onSnapshot/getDoc for current user/business profile",
+          "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+          "function": "attachCurrentUserProfileListener"
+        },
+        {
+          "path": "restaurants where ownerUid == uid",
+          "operation": "getDocs(query(collection(db, \"restaurants\"), where(\"ownerUid\", \"==\", uid), limit(1)))",
+          "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+          "function": "loadCurrentUserProfile"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/menu",
+          "operation": "getDoc",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "loadPublicMenuItems"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "restaurants/{restaurantId}",
+          "operation": "setDoc(..., { merge: true }) profile/business updates",
+          "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+          "function": "saveBusinessProfile"
+        },
+        {
+          "path": "users/{uid}",
+          "operation": "setDoc(..., { merge: true }) user/profile updates",
+          "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+          "function": "saveUserProfile"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/menu",
+          "operation": "setDoc(..., { merge: true })",
+          "file": "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+          "function": "publishMenuToPublic"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/meta",
+          "operation": "setDoc(..., { merge: true })",
+          "file": "apps/menyra-social/core/menu/focus-runtime-controller.js",
+          "function": "saveFocusEnabled"
+        }
+      ],
+      "onSnapshotListeners": [
+        "current user/business profile listener",
+        "menu meta listener when authenticated owner menu is open"
+      ],
+      "listenerStartCondition": "Authenticated live startup attaches current profile; owner menu can attach menu meta listener.",
+      "listenerCleanupOrUnsubscribe": "stopCurrentUserProfileListener, stopMenuMetaListener, stopLiveListeners",
+      "stateFieldsWritten": [
+        "state.userProfile",
+        "state.profileView",
+        "state.menu",
+        "state.focus",
+        "state.tableQr"
+      ],
+      "idsUsed": {
+        "restaurantId": "state.userProfile.restaurantId",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "business profile canonicalRestaurantId when present",
+        "slug": "business slug fields",
+        "userId": "state.user.uid",
+        "guestId": "unspecified",
+        "tableId": "table QR table numbers",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "high",
+      "riskReason": "Owner/Admin actions write public business/menu/meta docs, so wrong restaurantId here would directly publish wrong public data.",
+      "exactFiles": [
+        "apps/menyra-social/core/router/public-business-route-utils.js",
+        "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+        "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+        "apps/menyra-social/core/menu/focus-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "resolveSystemRouteState",
+        "attachCurrentUserProfileListener",
+        "loadCurrentUserProfile",
+        "publishMenuToPublic",
+        "saveFocusEnabled"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/leads",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /leads to social index",
+        "resolveInitialRouteState maps leads/ceo/admin to leads tab",
+        "ensureTabDataCore calls loadLeads"
+      ],
+      "firebaseModulesUsed": [
+        "crm-runtime-controller.js getDocs/setDoc/deleteDoc",
+        "lead-save-utils.js setDoc",
+        "lead-convert-utils.js setDoc"
+      ],
+      "firestoreReads": [
+        {
+          "path": "leads",
+          "operation": "getDocs against leadQueries",
+          "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+          "function": "loadLeads"
+        },
+        {
+          "path": "restaurants",
+          "operation": "getDocs against restaurantQueries for lead/customer joins",
+          "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+          "function": "loadLeads"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "leads/{leadId}",
+          "operation": "setDoc(..., { merge: true })",
+          "file": "apps/menyra-social/core/leads/lead-save-utils.js",
+          "function": "saveLead"
+        },
+        {
+          "path": "restaurants/{restaurantId}",
+          "operation": "setDoc(..., { merge: true }) during lead save/convert",
+          "file": "apps/menyra-social/core/leads/lead-save-utils.js",
+          "function": "saveLead"
+        },
+        {
+          "path": "users/{uid}",
+          "operation": "setDoc(..., { merge: true }) user bootstrap during lead conversion",
+          "file": "apps/menyra-social/core/leads/lead-convert-utils.js",
+          "function": "convertLeadToCustomer"
+        },
+        {
+          "path": "leads/{leadId}",
+          "operation": "deleteDoc",
+          "file": "apps/menyra-social/core/leads/lead-delete-utils.js",
+          "function": "deleteLead"
+        }
+      ],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No leads onSnapshot verified; tab load uses getDocs.",
+      "listenerCleanupOrUnsubscribe": "No leads-specific unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.leads"
+      ],
+      "idsUsed": {
+        "restaurantId": "restaurantId generated or attached during lead/customer conversion",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "lead/customer slug fields",
+        "userId": "createdByUid/socialUid/owner uid",
+        "guestId": "unspecified",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "medium",
+      "riskReason": "Lead/customer conversion writes leads, restaurants, and users; the audited path is admin-only but can alter public business truth.",
+      "exactFiles": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/leads/lead-save-utils.js",
+        "apps/menyra-social/core/leads/lead-convert-utils.js",
+        "apps/menyra-social/core/leads/lead-delete-utils.js"
+      ],
+      "exactFunctions": [
+        "ensureTabDataCore",
+        "loadLeads",
+        "saveLead",
+        "convertLeadToCustomer",
+        "deleteLead"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/staff",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /staff to social index",
+        "resolveInitialRouteState maps staff tab",
+        "ensureTabDataCore calls loadCeoStaff"
+      ],
+      "firebaseModulesUsed": [
+        "crm-runtime-controller.js getDocs/setDoc/deleteDoc",
+        "business-accounts-runtime-controller.js getDocs/setDoc"
+      ],
+      "firestoreReads": [
+        {
+          "path": "superadmins",
+          "operation": "getDocs against superadmins staff queries",
+          "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+          "function": "loadCeoStaff"
+        },
+        {
+          "path": "restaurants/{restaurantId}/staff",
+          "operation": "getDocs(collection(db, \"restaurants\", restaurantId, \"staff\"))",
+          "file": "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+          "function": "loadRestaurantStaff"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "superadmins/{uid}",
+          "operation": "setDoc/deleteDoc for CEO staff records",
+          "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+          "function": "saveCeoStaffMember/removeCeoStaffMember"
+        },
+        {
+          "path": "users/{uid}",
+          "operation": "setDoc/deleteDoc for user staff mirror",
+          "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+          "function": "saveCeoStaffMember/removeCeoStaffMember"
+        },
+        {
+          "path": "restaurants/{restaurantId}/staff/{uid}",
+          "operation": "setDoc",
+          "file": "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+          "function": "saveRestaurantStaffMember"
+        }
+      ],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No staff onSnapshot verified; tab load uses getDocs.",
+      "listenerCleanupOrUnsubscribe": "No staff-specific unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.staff"
+      ],
+      "idsUsed": {
+        "restaurantId": "restaurantId for restaurant staff subcollection",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "unspecified",
+        "userId": "staff uid",
+        "guestId": "unspecified",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "medium",
+      "riskReason": "Staff writes affect who can see/administer business/order data.",
+      "exactFiles": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/crm/staff-save-utils.js",
+        "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "ensureTabDataCore",
+        "loadCeoStaff",
+        "saveStaff",
+        "loadRestaurantStaff"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/customers",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /customers to social index",
+        "resolveInitialRouteState maps customers tab",
+        "ensureTabDataCore calls loadCustomers"
+      ],
+      "firebaseModulesUsed": [
+        "crm-runtime-controller.js getDocs/setDoc/deleteDoc",
+        "customer-save-utils.js setDoc"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants",
+          "operation": "getDocs against customer restaurant queries",
+          "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+          "function": "loadCustomers"
+        },
+        {
+          "path": "leads",
+          "operation": "getDocs against leadQueries for customer/lead joins",
+          "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+          "function": "loadCustomers"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "restaurants/{customer.id}",
+          "operation": "setDoc(..., { merge: true })",
+          "file": "apps/menyra-social/core/crm/customer-save-utils.js",
+          "function": "saveCustomer"
+        },
+        {
+          "path": "leads/{leadId}",
+          "operation": "setDoc(..., { merge: true }) when customer creates/updates lead mirror",
+          "file": "apps/menyra-social/core/crm/customer-save-utils.js",
+          "function": "saveCustomer"
+        }
+      ],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No customers onSnapshot verified; tab load uses getDocs.",
+      "listenerCleanupOrUnsubscribe": "No customers-specific unsubscribe verified.",
+      "stateFieldsWritten": [
+        "state.customers"
+      ],
+      "idsUsed": {
+        "restaurantId": "customer.id/restaurant id",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "customer slug fields",
+        "userId": "createdByUid/owner uid fields when present",
+        "guestId": "unspecified",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "medium",
+      "riskReason": "Customer writes update restaurants and optional lead mirrors, which feed public/search/map business truth.",
+      "exactFiles": [
+        "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+        "apps/menyra-social/core/crm/crm-runtime-controller.js",
+        "apps/menyra-social/core/crm/customer-save-utils.js"
+      ],
+      "exactFunctions": [
+        "ensureTabDataCore",
+        "loadCustomers",
+        "saveCustomer"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/login",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /login to social index",
+        "resolveInitialRouteState returns authMode login",
+        "social-app auth runtime handles sign-in and then auth startup"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js initializeAuth",
+        "social-app.js auth imports",
+        "auth-session-startup-coordinator.js onAuthStateChanged"
+      ],
+      "firestoreReads": [
+        {
+          "path": "users/{uid} or restaurants/{restaurantId}",
+          "operation": "current profile load/listener after sign-in",
+          "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+          "function": "attachCurrentUserProfileListener"
+        }
+      ],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [
+        "current user profile, following, chat threads, notifications after authenticated startup"
+      ],
+      "listenerStartCondition": "onAuthStateChanged with signed-in user calls startLiveListeners.",
+      "listenerCleanupOrUnsubscribe": "stopLiveListeners on sign-out/user change",
+      "stateFieldsWritten": [
+        "state.auth",
+        "state.user",
+        "state.userProfile",
+        "state.activeTab"
+      ],
+      "idsUsed": {
+        "restaurantId": "userProfile.restaurantId after auth",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "business profile canonicalRestaurantId when present",
+        "slug": "unspecified",
+        "userId": "auth uid",
+        "guestId": "guest persisted state is stopped/replaced after sign-in",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "medium",
+      "riskReason": "Sign-in transitions from guest state to authenticated listeners; stale guest cart/order state must not leak into user context.",
+      "exactFiles": [
+        "apps/menyra-social/core/router/public-business-route-utils.js",
+        "apps/menyra-social/core/auth/auth-session-startup-coordinator.js",
+        "apps/menyra-social/core/app-shell/session-tab-lifecycle-runtime-controller.js",
+        "apps/menyra-social/core/profile/self-profile-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "resolveSystemRouteState",
+        "start",
+        "startLiveListeners",
+        "attachCurrentUserProfileListener"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/register",
+      "entryFile": "apps/menyra-social/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /register to social index",
+        "resolveInitialRouteState returns authMode register",
+        "social-app auth runtime creates account then auth startup"
+      ],
+      "firebaseModulesUsed": [
+        "shared/firebase-config.js initializeAuth",
+        "social-app.js auth imports"
+      ],
+      "firestoreReads": [
+        {
+          "path": "users/{uid}",
+          "operation": "profile load/listener after registration sign-in",
+          "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+          "function": "attachCurrentUserProfileListener"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "users/{uid}",
+          "operation": "setDoc(..., { merge: true }) profile bootstrap/update paths",
+          "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+          "function": "saveUserProfile"
+        }
+      ],
+      "onSnapshotListeners": [
+        "current user profile, following, chat threads, notifications after authenticated startup"
+      ],
+      "listenerStartCondition": "onAuthStateChanged with newly created user calls startLiveListeners.",
+      "listenerCleanupOrUnsubscribe": "stopLiveListeners on sign-out/user change",
+      "stateFieldsWritten": [
+        "state.auth",
+        "state.user",
+        "state.userProfile"
+      ],
+      "idsUsed": {
+        "restaurantId": "unspecified until profile/business created",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "unspecified",
+        "userId": "auth uid",
+        "guestId": "previous guest state scope",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "medium",
+      "riskReason": "Registration immediately enters global authenticated listener startup, including chat/notifications even though they are not V1.",
+      "exactFiles": [
+        "apps/menyra-social/core/router/public-business-route-utils.js",
+        "apps/menyra-social/core/auth/auth-session-startup-coordinator.js",
+        "apps/menyra-social/core/app-shell/session-tab-lifecycle-runtime-controller.js",
+        "apps/menyra-social/core/profile/self-profile-runtime-controller.js"
+      ],
+      "exactFunctions": [
+        "resolveSystemRouteState",
+        "start",
+        "startLiveListeners",
+        "saveUserProfile"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/heart",
+      "entryFile": "apps/mnyra-heart/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /heart to apps/mnyra-heart/index.html",
+        "heart app loads heart-auth.js and heart-api-client.js"
+      ],
+      "firebaseModulesUsed": [
+        "apps/mnyra-heart/heart-auth.js getAuth/getDoc",
+        "shared/firebase-config.js"
+      ],
+      "firestoreReads": [
+        {
+          "path": "users/{uid}",
+          "operation": "getDoc(doc(db, \"users\", user.uid))",
+          "file": "apps/mnyra-heart/heart-auth.js",
+          "function": "loadHeartUserProfile"
+        }
+      ],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "No heart onSnapshot verified.",
+      "listenerCleanupOrUnsubscribe": "No heart unsubscribe verified.",
+      "stateFieldsWritten": [
+        "heart auth/profile state"
+      ],
+      "idsUsed": {
+        "restaurantId": "unspecified",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "unspecified",
+        "userId": "auth uid",
+        "guestId": "unspecified",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "low",
+      "riskReason": "Heart is a separate app route; only verified client Firestore read is user profile access.",
+      "exactFiles": [
+        "vercel.json",
+        "apps/mnyra-heart/index.html",
+        "apps/mnyra-heart/heart-auth.js"
+      ],
+      "exactFunctions": [
+        "loadHeartUserProfile"
+      ],
+      "status": "verified"
+    },
+    {
+      "route": "/hub",
+      "entryFile": "apps/hub/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /hub and /hub/index.html to apps/hub/index.html"
+      ],
+      "firebaseModulesUsed": [
+        "unspecified"
+      ],
+      "firestoreReads": [],
+      "firestoreWrites": [],
+      "onSnapshotListeners": [],
+      "listenerStartCondition": "unspecified",
+      "listenerCleanupOrUnsubscribe": "unspecified",
+      "stateFieldsWritten": [
+        "unspecified"
+      ],
+      "idsUsed": {
+        "restaurantId": "unspecified",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "unspecified",
+        "userId": "unspecified",
+        "guestId": "unspecified",
+        "tableId": "unspecified",
+        "orderId": "unspecified"
+      },
+      "riskLevel": "unspecified",
+      "riskReason": "Only rewrite entry was verified in vercel.json during this audit scope.",
+      "exactFiles": [
+        "vercel.json"
+      ],
+      "exactFunctions": [],
+      "status": "unspecified"
+    },
+    {
+      "route": "/waiter",
+      "entryFile": "apps/waiter/index.html",
+      "loadedModuleChain": [
+        "vercel.json rewrites /waiter to apps/waiter/index.html",
+        "waiter index loads apps/waiter/waiter-app.js"
+      ],
+      "firebaseModulesUsed": [
+        "apps/waiter/waiter-app.js Firebase Auth/Firestore getDoc/getDocs/onSnapshot/setDoc/updateDoc"
+      ],
+      "firestoreReads": [
+        {
+          "path": "restaurants",
+          "operation": "getDocs(query(collection(db, \"restaurants\"), where(field, \"==\", value), limit(1))) for restaurant resolution",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "resolveRestaurantBySlug"
+        },
+        {
+          "path": "restaurants/{restaurantId}",
+          "operation": "getDoc(doc(db, \"restaurants\", restaurantId))",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "resolveRestaurantContext"
+        },
+        {
+          "path": "users/{uid}",
+          "operation": "getDoc(doc(db, \"users\", user.uid))",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "loadAccessContext"
+        },
+        {
+          "path": "restaurants/{restaurantId}/staff/{uid}",
+          "operation": "getDoc",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "loadAccessContext"
+        },
+        {
+          "path": "restaurants/{restaurantId}/public/meta",
+          "operation": "getDoc",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "loadAccessContext"
+        },
+        {
+          "path": "restaurants/{restaurantId}/orders",
+          "operation": "onSnapshot(query(collection(db, \"restaurants\", restaurantId, \"orders\"), orderBy(\"createdAt\", \"desc\"), limit(120)))",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "startOrdersListener"
+        },
+        {
+          "path": "users/{uid}/devices",
+          "operation": "getDocs(query(collection(db, \"users\", uid, \"devices\"), where(\"app\", \"==\", \"menyra-waiter\"), limit(50)))",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "disablePushDevices"
+        }
+      ],
+      "firestoreWrites": [
+        {
+          "path": "users/{uid}/devices/{deviceId}",
+          "operation": "setDoc waiter device registration/disable",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "registerPushDevice/disablePushDevices"
+        },
+        {
+          "path": "users/{uid}",
+          "operation": "setDoc lastWaiter context",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "loadAccessContext"
+        },
+        {
+          "path": "restaurants/{restaurantId}/orders/{orderId}",
+          "operation": "updateDoc status/updatedAt",
+          "file": "apps/waiter/waiter-app.js",
+          "function": "updateOrderStatus"
+        }
+      ],
+      "onSnapshotListeners": [
+        "restaurants/{restaurantId}/orders waiter listener"
+      ],
+      "listenerStartCondition": "Waiter app starts after restaurant/access context is resolved.",
+      "listenerCleanupOrUnsubscribe": "ordersUnsub is called before replacing listener and on app cleanup paths.",
+      "stateFieldsWritten": [
+        "waiter state.restaurant",
+        "waiter state.user",
+        "waiter state.orders",
+        "waiter state.orderFilters"
+      ],
+      "idsUsed": {
+        "restaurantId": "restaurantId from route/query/resolution",
+        "businessId": "unspecified",
+        "canonicalRestaurantId": "unspecified",
+        "slug": "slug used for restaurant resolution",
+        "userId": "auth uid/staff uid",
+        "guestId": "unspecified",
+        "tableId": "order tableNumber",
+        "orderId": "orders document id"
+      },
+      "riskLevel": "critical",
+      "riskReason": "Waiter route can update order status in restaurants/{restaurantId}/orders and must always resolve the correct restaurant context.",
+      "exactFiles": [
+        "vercel.json",
+        "apps/waiter/index.html",
+        "apps/waiter/waiter-app.js"
+      ],
+      "exactFunctions": [
+        "resolveRestaurantBySlug",
+        "loadAccessContext",
+        "startOrdersListener",
+        "updateOrderStatus"
+      ],
+      "status": "verified"
+    }
+  ]
+}

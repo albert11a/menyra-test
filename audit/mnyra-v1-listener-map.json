@@ -1,0 +1,204 @@
+{
+  "audit": "mnyra-v1-listener-map",
+  "status": "code-only audit",
+  "summary": {
+    "onSnapshotListenerFindings": 11
+  },
+  "listeners": [
+    {
+      "file": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+      "function": "startMenuMetaListener",
+      "collectionOrPath": "restaurants/{restaurantId}/public/meta",
+      "queryConstraints": "document snapshot, no query constraints",
+      "routeOrSurface": "Public menu, owner menu, authenticated non-QR menu contexts",
+      "startCondition": "restaurantId exists and shouldUseRealtimeMenuMetaListener returns true; unauthenticated public and QR guest contexts skip realtime menu meta listener",
+      "stopOrUnsubscribeLocation": "stopMenuMetaListener and stopLiveListeners",
+      "globalOrScoped": "scoped",
+      "idsUsedForScoping": [
+        "restaurantId"
+      ],
+      "riskIfRouteChanges": "A menu meta snapshot could update state.menu.statusBadgeVisible after a route change if not stopped before new menu state is active.",
+      "riskIfProfileBusinessChanges": "Wrong restaurantId would show/publish the wrong public menu status badge.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+      "function": "attachProfileViewListener",
+      "collectionOrPath": "restaurants/{restaurantId} or users/{uid}",
+      "queryConstraints": "document snapshot, no query constraints",
+      "routeOrSurface": "Public profile and profile view",
+      "startCondition": "profile target exists and route is not a guest public business route context; guest public route uses one-time getDoc refresh instead",
+      "stopOrUnsubscribeLocation": "stopProfileViewListener and stopLiveListeners",
+      "globalOrScoped": "scoped",
+      "idsUsedForScoping": [
+        "restaurantId",
+        "canonicalRestaurantId",
+        "userId"
+      ],
+      "riskIfRouteChanges": "Late snapshots are guarded by visible profile checks, but listener cleanup still matters on fast profile changes.",
+      "riskIfProfileBusinessChanges": "A stale profile snapshot would show wrong business profile fields if isSameVisibleProfile guard failed.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+      "function": "attachCurrentUserProfileListener",
+      "collectionOrPath": "users/{uid} or restaurants/{restaurantId}",
+      "queryConstraints": "document snapshot, no query constraints",
+      "routeOrSurface": "Authenticated app shell, owner/admin, header profile icon",
+      "startCondition": "startLiveListeners runs for authenticated user sessions",
+      "stopOrUnsubscribeLocation": "stopCurrentUserProfileListener and stopLiveListeners",
+      "globalOrScoped": "global",
+      "idsUsedForScoping": [
+        "userId",
+        "restaurantId"
+      ],
+      "riskIfRouteChanges": "Listener continues across V1 routes by design and can update userProfile/header state while the user is on public/feed/menu surfaces.",
+      "riskIfProfileBusinessChanges": "If userProfile.restaurantId changes, dependent owner/menu/order context can change underneath the active UI.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/follow/follow-runtime-controller.js",
+      "function": "startFollowingListener",
+      "collectionOrPath": "users/{ownerUid}/following",
+      "queryConstraints": "collection snapshot, no order/limit verified",
+      "routeOrSurface": "Authenticated app shell, feed/profile social state",
+      "startCondition": "startLiveListeners runs for authenticated user sessions",
+      "stopOrUnsubscribeLocation": "stopFollowingListener and stopLiveListeners",
+      "globalOrScoped": "global",
+      "idsUsedForScoping": [
+        "userId"
+      ],
+      "riskIfRouteChanges": "Following state can update globally while user is on unrelated V1 route.",
+      "riskIfProfileBusinessChanges": "Low direct business/menu/cart risk; can affect profile/social state.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/chat/chat-runtime-controller.js",
+      "function": "startChatThreadsListener",
+      "collectionOrPath": "users/{ownerUid}/chatThreads",
+      "queryConstraints": "query(orderBy(\"updatedAt\", \"desc\"), limit(25))",
+      "routeOrSurface": "Chat state and header/chat badges; starts from authenticated live startup even though Chat is not V1",
+      "startCondition": "startLiveListeners calls startChatThreadsListener for authenticated users",
+      "stopOrUnsubscribeLocation": "stopChatThreadsListener and stopLiveListeners",
+      "globalOrScoped": "global",
+      "idsUsedForScoping": [
+        "userId"
+      ],
+      "riskIfRouteChanges": "Chat thread snapshots can update badges/state on feed/profile/menu/orders routes.",
+      "riskIfProfileBusinessChanges": "No direct restaurant scope; risk is non-V1 Firebase activity and badge/state pollution.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/chat/chat-runtime-controller.js",
+      "function": "startActiveChatMessagesListener",
+      "collectionOrPath": "users/{ownerUid}/chatThreads/{threadId}/messages",
+      "queryConstraints": "query(orderBy(\"createdAtClient\", \"desc\"), limit(CHAT_MESSAGE_READ_LIMIT))",
+      "routeOrSurface": "Chat modal",
+      "startCondition": "Chat modal/thread activation",
+      "stopOrUnsubscribeLocation": "stopActiveChatMessagesListener and stopLiveListeners",
+      "globalOrScoped": "scoped",
+      "idsUsedForScoping": [
+        "userId",
+        "threadId"
+      ],
+      "riskIfRouteChanges": "Code has stale thread/modal guard; listener must still stop when modal or route closes.",
+      "riskIfProfileBusinessChanges": "No direct restaurant scope; affects non-V1 chat modal state.",
+      "canOverwriteStaleState": "false",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+      "function": "startOrdersListener",
+      "collectionOrPath": "restaurants/{restaurantId}/orders or users/{uid}/orders",
+      "queryConstraints": "query(orderBy(\"createdAt\", \"desc\"), limit(60))",
+      "routeOrSurface": "/orders",
+      "startCondition": "ensureTabDataCore starts listener when active tab is orders; restaurant-admin role uses restaurant path, otherwise user path; guest uses lookup recovery",
+      "stopOrUnsubscribeLocation": "stopOrdersListener when leaving orders tab and stopLiveListeners",
+      "globalOrScoped": "scoped",
+      "idsUsedForScoping": [
+        "restaurantId",
+        "userId"
+      ],
+      "riskIfRouteChanges": "If not stopped on tab change, old order snapshots could overwrite state.orders on unrelated routes.",
+      "riskIfProfileBusinessChanges": "Wrong userProfile.restaurantId would subscribe to another restaurant's orders.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/notifications/notifications-runtime-controller.js",
+      "function": "startNotificationsListener",
+      "collectionOrPath": "users/{ownerUid}/notifications",
+      "queryConstraints": "query(orderBy(\"createdAt\", \"desc\"), limit(liveLimit))",
+      "routeOrSurface": "Authenticated app shell notifications and badges",
+      "startCondition": "syncNotificationsPushRuntime or notifications load starts listener for authenticated user",
+      "stopOrUnsubscribeLocation": "stopNotificationsListener and stopLiveListeners",
+      "globalOrScoped": "global",
+      "idsUsedForScoping": [
+        "userId"
+      ],
+      "riskIfRouteChanges": "Notification snapshots update badges/state on V1 routes even when notifications are not active.",
+      "riskIfProfileBusinessChanges": "No restaurant scope; can still affect V1 header/profile icon/badge correctness.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+      "function": "attachPostMetaListeners",
+      "collectionOrPath": "postRef for active post detail, including restaurant/user/socialFeed-backed post documents",
+      "queryConstraints": "document snapshot, no query constraints",
+      "routeOrSurface": "Feed/profile post detail modal",
+      "startCondition": "Post detail/modal activation",
+      "stopOrUnsubscribeLocation": "setModalPostDocUnsubFn replacement and modal cleanup paths",
+      "globalOrScoped": "scoped",
+      "idsUsedForScoping": [
+        "restaurantId",
+        "userId",
+        "postId"
+      ],
+      "riskIfRouteChanges": "Late post meta snapshots can update modal/post state after route changes if modal cleanup is missed.",
+      "riskIfProfileBusinessChanges": "Wrong postRef can show wrong social counts/type for a business post.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+      "function": "attachMenuItemMetaListeners",
+      "collectionOrPath": "menu item social document ref for active menu item detail",
+      "queryConstraints": "document snapshot, no query constraints",
+      "routeOrSurface": "Public menu item detail",
+      "startCondition": "Menu item detail activation; QR guest path is skipped in audited code",
+      "stopOrUnsubscribeLocation": "setMenuDetailDocUnsubFn replacement and detail cleanup paths",
+      "globalOrScoped": "scoped",
+      "idsUsedForScoping": [
+        "restaurantId",
+        "itemId"
+      ],
+      "riskIfRouteChanges": "Late menu item meta snapshots can update menu detail for an old restaurant/menu item.",
+      "riskIfProfileBusinessChanges": "Wrong item ref would show wrong menu item social metadata.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    },
+    {
+      "file": "apps/waiter/waiter-app.js",
+      "function": "startOrdersListener",
+      "collectionOrPath": "restaurants/{restaurantId}/orders",
+      "queryConstraints": "query(orderBy(\"createdAt\", \"desc\"), limit(120)); fallback query(limit(120))",
+      "routeOrSurface": "/waiter",
+      "startCondition": "Waiter restaurant/access context resolved",
+      "stopOrUnsubscribeLocation": "ordersUnsub is called before replacing listener and during cleanup paths",
+      "globalOrScoped": "scoped",
+      "idsUsedForScoping": [
+        "restaurantId"
+      ],
+      "riskIfRouteChanges": "Waiter is a separate app route; wrong retained restaurantId would continue showing another restaurant's orders.",
+      "riskIfProfileBusinessChanges": "Wrong waiter restaurant context can update status on another restaurant's order.",
+      "canOverwriteStaleState": "true",
+      "status": "verified"
+    }
+  ]
+}
