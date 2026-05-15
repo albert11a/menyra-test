@@ -1,5 +1,6 @@
 import {
   HEART_CRM_ADMIN_CONSUMER_MODE,
+  HEART_CRM_ADMIN_READ_LOADER_DEPS,
   createHeartCrmAdminShellConsumer
 } from "./heart-crm-admin-shell-consumer.js";
 import {
@@ -11,10 +12,10 @@ import {
 } from "./heart-ui-utils.js";
 
 export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
-  leads: Object.freeze(["loadLeads"]),
-  customers: Object.freeze(["loadCustomers"]),
-  staff: Object.freeze(["loadCeoStaff"]),
-  businessAccounts: Object.freeze(["loadBusinessAccounts"])
+  leads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.leads]),
+  customers: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.customers]),
+  staff: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.staff]),
+  businessAccounts: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.businessAccounts])
 });
 
 const CRM_READ_SECTIONS = Object.freeze([
@@ -44,17 +45,19 @@ function createReadConsumer(consumerDeps) {
 
 function renderCrmReadSection(section, consumer) {
   const domain = consumer?.[section.key] || null;
-  const canLoad = typeof domain?.load === "function";
-  const missingDeps = formatMissingDeps(section.key);
-  const note = canLoad
-    ? `Consumer verbunden. Runtime-Abhaengigkeit fehlt noch: ${missingDeps}.`
-    : "Consumer-Domain ist noch nicht verfuegbar.";
+  const ready = typeof domain?.load === "function" && domain.ready === true;
+  const missingDeps = Array.isArray(domain?.missingDeps) && domain.missingDeps.length
+    ? domain.missingDeps.join(", ")
+    : formatMissingDeps(section.key);
+  const note = ready
+    ? "Read loader ist verbunden. Datenabruf bleibt read-only."
+    : `Read loader fehlt: ${missingDeps}.`;
 
   return `
     <article class="heart-dashboard-metric">
       <div class="heart-dashboard-metric__top">
         <span class="heart-dashboard-metric__icon">${renderHeartIcon(section.icon)}</span>
-        ${renderBadge(canLoad ? "Read-only" : "Fehlt", canLoad ? "info" : "warning")}
+        ${renderBadge(ready ? "Read-only" : "Deps pending", ready ? "info" : "warning")}
       </div>
       <div class="heart-dashboard-metric__body">
         <strong>${escapeHtml(section.title)}</strong>
@@ -62,9 +65,11 @@ function renderCrmReadSection(section, consumer) {
       </div>
       <div class="heart-meta-row">
         <span>Count</span>
-        <strong>Nicht geladen</strong>
+        <strong>${escapeHtml(ready ? "Bereit" : "Nicht geladen")}</strong>
       </div>
-      <p class="heart-section__note">Liste: Runtime-Abhaengigkeiten aus Social CRM stehen Heart noch nicht bereit.</p>
+      ${ready
+        ? '<p class="heart-section__note">Liste: wartet auf den expliziten read-only Abrufschritt.</p>'
+        : `<p class="heart-section__note">Fehlende Runtime-Abhaengigkeit: ${escapeHtml(missingDeps)}.</p>`}
     </article>
   `;
 }
@@ -75,8 +80,12 @@ export function renderHeartCrmAdminReadView({ consumerDeps = {} } = {}) {
     error
   } = createReadConsumer(consumerDeps);
   const mode = consumer?.mode || HEART_CRM_ADMIN_CONSUMER_MODE;
+  const missingReadDeps = Array.isArray(consumer?.contract?.missingReadDeps)
+    ? consumer.contract.missingReadDeps
+    : Object.values(HEART_CRM_ADMIN_READ_LOADER_DEPS);
+  const readLoadersReady = consumer?.contract?.readLoadersReady === true;
 
-  // READ-ONLY future Heart/Admin migration seam. Real loads stay dependency-pending here.
+  // READ-ONLY future Heart/Admin migration seam. Real loads require explicit loader deps.
   return `
     <div class="heart-view-stack">
       <section class="heart-section">
@@ -88,7 +97,9 @@ export function renderHeartCrmAdminReadView({ consumerDeps = {} } = {}) {
           ${renderBadge(mode, "info")}
         </div>
         <p class="heart-section__note">
-          Heart kann den CRM/Admin Consumer importieren. Live-Daten bleiben aus, bis die bestehenden Social-CRM Load-Abhaengigkeiten explizit an Heart uebergeben werden.
+          Heart nutzt den CRM/Admin Consumer. ${readLoadersReady
+            ? "Die read-only Loader sind verbunden."
+            : `Live-Daten bleiben aus, bis diese Loader bereitstehen: ${escapeHtml(missingReadDeps.join(", "))}.`}
         </p>
         ${error ? `<div class="heart-error-block">${escapeHtml(error)}</div>` : ""}
       </section>
