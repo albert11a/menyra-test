@@ -71,6 +71,7 @@ const CRM_ADMIN_READ_DOMAINS = Object.freeze([
   { key: "staff", consumerKey: "staff" },
   { key: "businessAccounts", consumerKey: "businessAccounts" }
 ]);
+const CRM_ADMIN_VISIBLE_VIEW_KEYS = new Set(["crmLeads", "crmCustomers", "crmStaff"]);
 
 function isStandaloneDisplayMode() {
   try {
@@ -542,7 +543,7 @@ const operations = {
   },
   async refresh() {
     if (store.getState().auth.status === "authenticated") {
-      if (store.getState().shell.activeView === "crmAdmin") {
+      if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView)) {
         await refreshCrmAdmin();
         return;
       }
@@ -580,7 +581,7 @@ const operations = {
   },
   openView(viewKey) {
     actions.setActiveView(viewKey);
-    if (String(viewKey || "").trim() === "crmAdmin") {
+    if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(String(viewKey || "").trim())) {
       queueMicrotask(() => refreshCrmAdmin().catch((error) => {
         setToast("CRM/Admin", error?.message || "CRM/Admin Daten konnten nicht geladen werden.", "danger");
       }));

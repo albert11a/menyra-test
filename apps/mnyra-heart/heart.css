@@ -2291,6 +2291,8 @@ body {
 }
 
 .heart-crm-admin-read-shell {
+  width: min(100%, 520px);
+  justify-self: center;
   display: grid;
   gap: 18px;
 }
@@ -2403,7 +2405,11 @@ body {
 }
 
 .heart-crm-scope-grid--customers {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
+}
+
+.heart-crm-scope-grid--leads {
+  grid-template-columns: 1fr;
 }
 
 .heart-crm-scope-tab {
@@ -2501,10 +2507,10 @@ body {
 
 .heart-crm-card {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--heart-border);
-  border-radius: 32px;
+  border-radius: 26px;
   background: rgba(245, 244, 239, 0.055);
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.22);
 }
@@ -2801,7 +2807,7 @@ body {
   }
 
   .heart-crm-card {
-    border-radius: 28px;
+    border-radius: 24px;
   }
 
   .heart-crm-action-row {

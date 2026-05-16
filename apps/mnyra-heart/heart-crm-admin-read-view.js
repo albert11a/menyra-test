@@ -1,5 +1,4 @@
 import {
-  HEART_CRM_ADMIN_CONSUMER_MODE,
   HEART_CRM_ADMIN_READ_LOADER_DEPS,
   createHeartCrmAdminShellConsumer
 } from "./heart-crm-admin-shell-consumer.js";
@@ -21,9 +20,14 @@ export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
 const CRM_READ_SECTIONS = Object.freeze([
   { key: "leads", title: "Leads", eyebrow: "CRM", icon: "list" },
   { key: "customers", title: "Kunden", eyebrow: "CRM", icon: "user" },
-  { key: "staff", title: "Staff", eyebrow: "CEO", icon: "users" },
-  { key: "businessAccounts", title: "Staff", eyebrow: "Business", icon: "chart" }
+  { key: "staff", title: "Staff", eyebrow: "CEO", icon: "users" }
 ]);
+const CRM_READ_SECTION_BY_KEY = Object.freeze(
+  CRM_READ_SECTIONS.reduce((map, section) => ({
+    ...map,
+    [section.key]: section
+  }), {})
+);
 
 const LEAD_STATUS_LABELS = Object.freeze({
   registered: "Registriert",
@@ -90,10 +94,6 @@ function firstText(...values) {
   return "";
 }
 
-function hasOwnValue(record = {}, key = "") {
-  return Object.prototype.hasOwnProperty.call(record || {}, key);
-}
-
 function normalizeHandle(value = "") {
   return asText(value)
     .replace(/^@/, "")
@@ -110,12 +110,6 @@ function getInitials(name = "", fallback = "M") {
     .filter(Boolean)
     .slice(0, 2);
   return parts.map((part) => part[0]?.toUpperCase() || "").join("") || fallback;
-}
-
-function formatBooleanState(value) {
-  if (value === true) return "Aktiv";
-  if (value === false) return "Inaktiv";
-  return "";
 }
 
 function formatDateLabel(value = "") {
@@ -181,14 +175,6 @@ function renderChip(label = "", tone = "neutral", extraClass = "") {
   return `<span class="heart-crm-chip heart-crm-chip--${safeTone} ${escapeHtml(extraClass)}">${escapeHtml(safeLabel)}</span>`;
 }
 
-function renderDisabledIconButton(iconName = "info", label = "Read-only") {
-  return `
-    <button type="button" class="heart-crm-icon-button" disabled aria-disabled="true" title="${escapeHtml(label)}">
-      ${renderHeartIcon(iconName)}
-    </button>
-  `;
-}
-
 function renderAvatar({ imageUrl = "", label = "", size = "default" } = {}) {
   const safeImageUrl = asText(imageUrl);
   const safeLabel = firstText(label, "M");
@@ -205,13 +191,10 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = []) {
   const count = formatKnownCount(sectionState, items);
   const tabSets = {
     leads: [
-      { key: "own", label: "Meine Leads", count, active: true },
-      { key: "staff", label: "Staff Leads", count: "-", active: false },
-      { key: "archived", label: "Archiviert", count: "-", active: false }
+      { key: "own", label: "Leads", count, active: true }
     ],
     customers: [
-      { key: "own", label: "Meine Kunden", count, active: true },
-      { key: "staff", label: "Staff Kunden", count: "-", active: false }
+      { key: "own", label: "Kunden", count, active: true }
     ]
   };
   const tabs = tabSets[sectionKey] || [];
@@ -256,39 +239,6 @@ function renderLeadStatusFilter() {
   `;
 }
 
-function formatAccessLabel(item = {}) {
-  const access = [];
-  if (item.businessAccess === true) access.push("Business");
-  if (item.waiterAccess === true) access.push("Kellner");
-  return access.join(" + ");
-}
-
-function renderOwnershipPills(item = {}) {
-  const creatorName = firstText(item.createdByName, item.creatorName, item.ceoRootName, item.ownerName);
-  const creatorHandle = firstText(item.createdByHandle, item.ownerHandle);
-  if (!creatorName && !creatorHandle && !firstText(item.createdByUid, item.ceoRootUid)) return "";
-  return `
-    <div class="heart-crm-chip-row">
-      ${renderChip("Staff", "neutral")}
-      ${renderChip(firstText(creatorName, creatorHandle), "info")}
-    </div>
-  `;
-}
-
-function renderActionRow(actions = []) {
-  const visibleActions = actions.filter((action) => asText(action?.label));
-  if (!visibleActions.length) return "";
-  return `
-    <div class="heart-crm-action-row">
-      ${visibleActions.map((action) => `
-        <button type="button" class="heart-crm-action-placeholder ${action.primary ? "heart-crm-action-placeholder--primary" : ""}" disabled aria-disabled="true">
-          ${escapeHtml(action.label)}
-        </button>
-      `).join("")}
-    </div>
-  `;
-}
-
 function renderExtraMetaChips(items = []) {
   const chips = items
     .map((item) => renderChip(item.label, item.tone || "neutral"))
@@ -304,13 +254,6 @@ function renderLeadCard(lead = {}) {
   const statusValue = firstText(lead.status, "registered");
   const statusLabel = labelFromMap(statusValue, LEAD_STATUS_LABELS);
   const leadType = typeLabel(firstText(lead.customerType, lead.type, lead.category));
-  const location = firstText(lead.city, lead.address, lead.country);
-  const plusCode = firstText(lead.plusCode, lead.googlePlusCode, lead.olc);
-  const geo = [lead.lat ?? lead.gpsLat, lead.lng ?? lead.gpsLng]
-    .map((value) => asText(value))
-    .filter(Boolean)
-    .join(", ");
-  const hasProfilePlaceholder = !!firstText(lead.landingRestaurantId, lead.restaurantId, lead.publicSlug, lead.landingSlug, lead.canonicalPublicPath);
   return `
     <article class="heart-crm-card">
       <div class="heart-crm-card-head">
@@ -321,20 +264,8 @@ function renderLeadCard(lead = {}) {
         </div>
         ${renderChip(statusLabel, statusTone(statusValue), "heart-crm-status-pill")}
       </div>
-      ${renderOwnershipPills(lead)}
       ${renderExtraMetaChips([
-        { label: leadType },
-        { label: location },
-        { label: plusCode ? `PlusCode ${plusCode}` : "" },
-        { label: geo ? `GPS ${geo}` : "" },
-        { label: firstText(lead.contactName, lead.contact), tone: "info" },
-        { label: firstText(lead.phone), tone: "info" },
-        { label: firstText(lead.restaurantId), tone: "neutral" },
-        { label: formatDateLabel(firstText(lead.createdAt, lead.created)), tone: "neutral" }
-      ])}
-      ${renderActionRow([
-        { label: hasProfilePlaceholder ? "Profil" : "" },
-        { label: "Bearbeiten", primary: true }
+        { label: leadType }
       ])}
     </article>
   `;
@@ -357,15 +288,10 @@ function renderCustomerCard(rest = {}) {
         </div>
         ${renderChip(statusLabel, statusTone(statusValue), "heart-crm-status-pill")}
       </div>
-      ${renderOwnershipPills(rest)}
       ${renderExtraMetaChips([
         { label: firstText(rest.ownerEmail, rest.email, rest.socialEmail), tone: "info" },
-        { label: firstText(rest.phone), tone: "info" },
-        { label: firstText(rest.billingStatus, rest.subscriptionStatus), tone: "neutral" },
-        { label: firstText(rest.restaurantId, rest.id), tone: "neutral" },
-        { label: formatDateLabel(firstText(rest.createdAt, rest.created)), tone: "neutral" }
+        { label: firstText(rest.phone), tone: "info" }
       ])}
-      ${renderActionRow([{ label: "Bearbeiten", primary: true }])}
     </article>
   `;
 }
@@ -396,8 +322,7 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
       ${renderExtraMetaChips([
         { label: firstText(entry.country, "-") },
         { label: locationText },
-        { label: firstText(entry.role, entry.staffRole), tone: "info" },
-        { label: firstText(entry.restaurantId, entry.staffRestaurantId, entry.assignedRestaurantId), tone: "neutral" }
+        { label: firstText(entry.role, entry.staffRole), tone: "info" }
       ])}
       <div class="heart-crm-stats-grid">
         <div class="heart-crm-stat-box">
@@ -410,35 +335,7 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
         </div>
       </div>
       <div class="heart-crm-card-footer">
-        <span>Bearbeiten deaktiviert (read-only)</span>
-        <span class="heart-crm-footer-icon">${renderHeartIcon("info")}</span>
-      </div>
-    </article>
-  `;
-}
-
-function renderBusinessAccountCard(entry = {}) {
-  const accessLabel = formatAccessLabel(entry) || "Kellner";
-  const activeLabel = hasOwnValue(entry, "active") ? formatBooleanState(entry.active) : firstText(entry.status);
-  const accountName = firstText(entry.name, [entry.firstName, entry.lastName].filter(Boolean).join(" "), entry.email, "Staff");
-  const roleLabel = asText(entry.role).toLowerCase() === "manager" ? "Manager" : "Kellner";
-  return `
-    <article class="heart-crm-card heart-crm-card--business-account">
-      <div class="heart-crm-card-head">
-        <div class="heart-crm-card-main">
-          <p class="heart-crm-card-title">${escapeHtml(accountName)}</p>
-          <p class="heart-crm-card-meta">${escapeHtml(firstText(entry.email, entry.userEmail))}</p>
-        </div>
-        ${renderChip(firstText(activeLabel, "Aktiv"), statusTone(activeLabel), "heart-crm-status-pill")}
-      </div>
-      <div class="heart-crm-chip-row">
-        ${renderChip(roleLabel, "neutral")}
-        ${renderChip(accessLabel, "info")}
-        ${renderChip(firstText(entry.restaurantName, entry.businessName, entry.restaurantId), "neutral")}
-        ${renderChip(firstText(entry.uid, entry.userId), "neutral")}
-      </div>
-      <div class="heart-crm-card-footer">
-        <span>Bearbeiten deaktiviert (read-only)</span>
+        <span>Read-only Ansicht</span>
         <span class="heart-crm-footer-icon">${renderHeartIcon("info")}</span>
       </div>
     </article>
@@ -499,16 +396,14 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
     const emptyLabels = {
       leads: "Keine Leads",
       customers: "Keine Kunden",
-      staff: "Noch kein CEO Staff",
-      businessAccounts: "Noch kein Staff vorhanden"
+      staff: "Noch kein CEO Staff"
     };
     return renderStateBlock(emptyLabels[sectionKey] || "Keine Eintraege", "neutral");
   }
   const renderers = {
     leads: (item) => renderLeadCard(item),
     customers: (item) => renderCustomerCard(item),
-    staff: (item) => renderStaffCard(item, crmAdmin),
-    businessAccounts: (item) => renderBusinessAccountCard(item)
+    staff: (item) => renderStaffCard(item, crmAdmin)
   };
   const rows = items.slice(0, 20).map((item) => renderers[sectionKey]?.(item) || "").join("");
   const hiddenCount = Math.max(0, items.length - 20);
@@ -526,25 +421,6 @@ function renderSectionTools(sectionKey = "", sectionState = {}, items = []) {
     ${renderSearchControl(sectionKey)}
     ${sectionKey === "leads" ? renderLeadStatusFilter() : ""}
   `;
-}
-
-function renderSectionHeaderActions(sectionKey = "") {
-  if (sectionKey === "leads") {
-    return `
-      <div class="heart-crm-header-actions">
-        ${renderDisabledIconButton("settings", "Read-only settings")}
-        ${renderDisabledIconButton("plus", "Read-only new lead")}
-      </div>
-    `;
-  }
-  if (sectionKey === "staff" || sectionKey === "businessAccounts") {
-    return `
-      <div class="heart-crm-header-actions">
-        ${renderDisabledIconButton("plus", "Read-only new entry")}
-      </div>
-    `;
-  }
-  return "";
 }
 
 function renderCrmReadSection(section, consumer, crmAdmin = {}) {
@@ -565,7 +441,6 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
           <span class="heart-crm-social-eyebrow">${escapeHtml(section.eyebrow)}</span>
           <h2>${escapeHtml(section.title)}</h2>
         </div>
-        ${renderSectionHeaderActions(section.key)}
       </div>
       ${renderSectionTools(section.key, sectionState, items)}
       ${section.key === "staff" ? renderStaffBuildStatusPanel(crmAdmin) : ""}
@@ -581,31 +456,17 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
   `;
 }
 
-export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null } = {}) {
+export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null, activeDomain = "leads" } = {}) {
   const {
     consumer,
     error
   } = createReadConsumer(consumerDeps);
-  const mode = consumer?.mode || HEART_CRM_ADMIN_CONSUMER_MODE;
-  const missingReadDeps = Array.isArray(consumer?.contract?.missingReadDeps)
-    ? consumer.contract.missingReadDeps
-    : Object.values(HEART_CRM_ADMIN_READ_LOADER_DEPS);
-  const readLoadersReady = consumer?.contract?.readLoadersReady === true;
+  const section = CRM_READ_SECTION_BY_KEY[asText(activeDomain)] || CRM_READ_SECTION_BY_KEY.leads;
 
   return `
     <div class="heart-crm-admin-read-shell">
-      <section class="heart-crm-contract-strip">
-        <div>
-          <p class="heart-crm-social-eyebrow">CRM/Admin</p>
-          <strong>Read-only Verbindung</strong>
-          <span>${readLoadersReady
-            ? "Die read-only Loader sind verbunden."
-            : `Live-Daten bleiben aus, bis diese Loader bereitstehen: ${escapeHtml(missingReadDeps.join(", "))}.`}</span>
-        </div>
-        ${renderBadge(mode, "info")}
-      </section>
       ${error ? `<div class="heart-error-block">${escapeHtml(error)}</div>` : ""}
-      ${CRM_READ_SECTIONS.map((section) => renderCrmReadSection(section, consumer, crmAdmin || {})).join("")}
+      ${renderCrmReadSection(section, consumer, crmAdmin || {})}
     </div>
   `;
 }

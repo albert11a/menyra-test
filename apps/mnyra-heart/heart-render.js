@@ -35,8 +35,16 @@ const NAV_HINTS = Object.freeze({
   runs: "Verlauf, Beweise und Berichte",
   incidents: "Warnungen und Stoerungen",
   modules: "Bereiche und Gesundheitsstatus",
-  crmAdmin: "Leads, Kunden, Staff und Accounts",
+  crmLeads: "CRM Leads",
+  crmCustomers: "CRM Kunden",
+  crmStaff: "CRM Staff",
   connections: "Einrichtung, Konten und Links"
+});
+
+const CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW = Object.freeze({
+  crmLeads: "leads",
+  crmCustomers: "customers",
+  crmStaff: "staff"
 });
 
 const HEADER_QUICK_ACTIONS = Object.freeze([
@@ -51,7 +59,9 @@ function getNavIcon(key = "") {
     runs: "list",
     incidents: "bell",
     modules: "grid",
-    crmAdmin: "users",
+    crmLeads: "list",
+    crmCustomers: "user",
+    crmStaff: "users",
     connections: "settings"
   };
   return icons[String(key || "").trim()] || "home";
@@ -189,10 +199,12 @@ function renderViewBody(state, runtime = {}) {
     if (state.dashboard.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.dashboard.error || "Bereiche konnten nicht geladen werden.")}</div></section>`;
     return renderModulesView(state.dashboard.data?.moduleHealth || []);
   }
-  if (state.shell.activeView === "crmAdmin") {
+  const crmReadDomain = CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW[state.shell.activeView];
+  if (crmReadDomain) {
     return renderHeartCrmAdminReadView({
       consumerDeps: runtime.crmAdminConsumerDeps || {},
-      crmAdmin: state.crmAdmin || null
+      crmAdmin: state.crmAdmin || null,
+      activeDomain: crmReadDomain
     });
   }
   if (state.shell.activeView === "connections") {
