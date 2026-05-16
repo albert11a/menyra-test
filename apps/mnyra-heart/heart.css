@@ -2405,11 +2405,11 @@ body {
 }
 
 .heart-crm-scope-grid--customers {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .heart-crm-scope-grid--leads {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .heart-crm-scope-tab {
@@ -2652,6 +2652,9 @@ body {
 .heart-crm-action-placeholder {
   flex: 1 1 0;
   min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--heart-border);
   border-radius: 22px;
   background: rgba(245, 244, 239, 0.07);
@@ -2660,13 +2663,19 @@ body {
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  cursor: not-allowed;
+  text-decoration: none;
 }
 
 .heart-crm-action-placeholder--primary {
   background: rgba(35, 196, 131, 0.12);
   color: #94f0c8;
   border-color: rgba(35, 196, 131, 0.22);
+}
+
+.heart-crm-card--button {
+  width: 100%;
+  color: inherit;
+  text-align: left;
 }
 
 .heart-crm-stats-grid {
@@ -2781,6 +2790,90 @@ body {
   padding-top: 2px;
 }
 
+.heart-crm-modal-sheet {
+  display: flex;
+  flex-direction: column;
+}
+
+.heart-crm-modal-body {
+  display: grid;
+  gap: 16px;
+  padding: 0 22px 22px;
+}
+
+.heart-crm-modal-body > .heart-crm-avatar {
+  margin: 0 auto;
+}
+
+.heart-crm-modal-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.heart-crm-modal-field {
+  display: grid;
+  gap: 8px;
+}
+
+.heart-crm-modal-field--wide {
+  grid-column: 1 / -1;
+}
+
+.heart-crm-modal-field span {
+  color: var(--heart-text-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heart-crm-modal-field input,
+.heart-crm-modal-field textarea {
+  width: 100%;
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  background: rgba(245, 244, 239, 0.055);
+  color: var(--heart-text-soft);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 13px 14px;
+  outline: 0;
+}
+
+.heart-crm-modal-field textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.heart-crm-modal-notice {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid rgba(244, 185, 66, 0.24);
+  border-radius: 22px;
+  background: rgba(244, 185, 66, 0.12);
+}
+
+.heart-crm-modal-notice strong {
+  color: #ffd67e;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heart-crm-modal-notice span {
+  color: var(--heart-text-soft);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.heart-crm-modal-footer {
+  gap: 10px;
+}
+
 @media (max-width: 560px) {
   .heart-crm-social-view {
     padding: 16px;
@@ -2812,6 +2905,14 @@ body {
 
   .heart-crm-action-row {
     flex-wrap: wrap;
+  }
+
+  .heart-crm-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heart-crm-modal-body {
+    padding-inline: 18px;
   }
 }
 

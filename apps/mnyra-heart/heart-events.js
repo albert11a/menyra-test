@@ -104,6 +104,21 @@ export function bindHeartEvents({
       operations.closeModal?.();
       return;
     }
+    if (action === "open-crm-editor") {
+      operations.openCrmEditor?.({
+        domainKey: target.getAttribute("data-crm-domain"),
+        itemId: target.getAttribute("data-crm-item-id"),
+        mode: target.getAttribute("data-crm-mode") || "edit"
+      });
+      return;
+    }
+    if (action === "set-crm-scope") {
+      await operations.setCrmScope?.(
+        target.getAttribute("data-crm-domain"),
+        target.getAttribute("data-crm-scope")
+      );
+      return;
+    }
     if (action === "refresh-heart") {
       await operations.refresh?.();
       return;
@@ -171,18 +186,32 @@ export function bindHeartEvents({
   }
 
   function handleChange(event) {
+    const crmStatus = event.target?.closest?.("[data-crm-status]");
+    if (crmStatus) {
+      operations.setCrmStatusFilter?.(crmStatus.getAttribute("data-crm-domain"), crmStatus.value);
+      return;
+    }
+
     const select = event.target?.closest?.("[data-incident-filter]");
     if (!select) return;
     operations.setIncidentFilter?.(select.getAttribute("data-incident-filter"), select.value);
   }
 
+  function handleInput(event) {
+    const crmSearch = event.target?.closest?.("[data-crm-search]");
+    if (!crmSearch) return;
+    operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
+  }
+
   root.addEventListener("click", handleClick);
   root.addEventListener("submit", handleSubmit);
   root.addEventListener("change", handleChange);
+  root.addEventListener("input", handleInput);
 
   return () => {
     root.removeEventListener("click", handleClick);
     root.removeEventListener("submit", handleSubmit);
     root.removeEventListener("change", handleChange);
+    root.removeEventListener("input", handleInput);
   };
 }

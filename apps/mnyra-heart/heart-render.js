@@ -24,6 +24,7 @@ import {
   renderModulesView
 } from "./heart-modules-render.js";
 import {
+  renderHeartCrmAdminModal,
   renderHeartCrmAdminReadView
 } from "./heart-crm-admin-read-view.js";
 import {
@@ -357,6 +358,7 @@ function renderShell(state, runtime = {}) {
         </main>
       </div>
       ${state.shell.activeView === "runs" ? renderRunsModal(state.runs, state.shell.modal) : ""}
+      ${renderHeartCrmAdminModal({ crmAdmin: state.crmAdmin || null, modal: state.shell.modal || {} })}
       ${state.shell.toast ? `
         <div class="heart-toast heart-toast--${escapeHtml(state.shell.toast.tone || "neutral")}">
           <strong>${escapeHtml(state.shell.toast.title || "Hinweis")}</strong>

@@ -39,7 +39,10 @@ export function createHeartInitialState() {
       modal: {
         kind: "",
         packKey: "",
-        runId: ""
+        runId: "",
+        crmDomain: "",
+        itemId: "",
+        mode: ""
       }
     },
     dashboard: {
@@ -104,7 +107,10 @@ export function createHeartInitialState() {
           hasMore: false,
           knownCount: 0,
           countExact: true,
-          loadedAt: ""
+          loadedAt: "",
+          scope: key === "staff" || key === "businessAccounts" ? "" : "own",
+          query: "",
+          statusFilter: ""
         };
         return acc;
       }, {})
@@ -201,7 +207,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.shell.activeView = String(viewKey || "dashboard");
       draft.shell.navOpen = false;
       draft.shell.quickActionsOpen = false;
-      draft.shell.modal = { kind: "", packKey: "", runId: "" };
+      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "" };
       if (draft.shell.activeView !== "runs") {
         draft.runs.launcherExpanded = false;
         draft.runs.detailExpanded = false;
@@ -230,7 +236,10 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.shell.modal = {
         kind: String(modal.kind || "").trim(),
         packKey: String(modal.packKey || "").trim(),
-        runId: String(modal.runId || "").trim()
+        runId: String(modal.runId || "").trim(),
+        crmDomain: String(modal.crmDomain || "").trim(),
+        itemId: String(modal.itemId || "").trim(),
+        mode: String(modal.mode || "").trim()
       };
       draft.shell.navOpen = false;
       draft.shell.quickActionsOpen = false;
@@ -242,7 +251,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
 
   function closeModal() {
     patch((draft) => {
-      draft.shell.modal = { kind: "", packKey: "", runId: "" };
+      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "" };
       draft.runs.detailExpanded = false;
     });
   }
@@ -580,9 +589,10 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
-  function setCrmAdminLoading(domainKey = "") {
+  function setCrmAdminLoading(domainKey = "", options = {}) {
     const key = String(domainKey || "").trim();
     if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
+    const nextScope = String(options.scope || "").trim();
     patch((draft) => {
       draft.crmAdmin.status = "loading";
       draft.crmAdmin.error = "";
@@ -591,7 +601,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         status: "loading",
         error: "",
         missingDeps: [],
-        missingContext: ""
+        missingContext: "",
+        ...(nextScope ? { scope: nextScope } : {})
       };
     });
   }
@@ -609,7 +620,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         items: [],
         hasMore: false,
         knownCount: 0,
-        countExact: true
+        countExact: true,
+        scope: key === "staff" || key === "businessAccounts" ? "" : "own"
       };
     });
   }
@@ -635,7 +647,27 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         hasMore: payload.hasMore === true,
         knownCount: Number.isFinite(Number(payload.knownCount)) ? Math.max(0, Number(payload.knownCount)) : items.length,
         countExact: payload.countExact !== false,
-        loadedAt
+        loadedAt,
+        scope: String(payload.scope || draft.crmAdmin.sections[key].scope || "").trim()
+      };
+    });
+  }
+
+  function setCrmAdminSectionUi(domainKey = "", patchValue = {}) {
+    const key = String(domainKey || "").trim();
+    if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
+    patch((draft) => {
+      draft.crmAdmin.sections[key] = {
+        ...draft.crmAdmin.sections[key],
+        ...(Object.prototype.hasOwnProperty.call(patchValue, "scope")
+          ? { scope: String(patchValue.scope || "").trim() }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(patchValue, "query")
+          ? { query: String(patchValue.query || "") }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(patchValue, "statusFilter")
+          ? { statusFilter: String(patchValue.statusFilter || "").trim() }
+          : {})
       };
     });
   }
@@ -720,6 +752,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setCrmAdminLoading,
       setCrmAdminMissing,
       setCrmAdminData,
+      setCrmAdminSectionUi,
       setCrmAdminError
     }
   };

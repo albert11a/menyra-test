@@ -72,6 +72,12 @@ const CRM_ADMIN_READ_DOMAINS = Object.freeze([
   { key: "businessAccounts", consumerKey: "businessAccounts" }
 ]);
 const CRM_ADMIN_VISIBLE_VIEW_KEYS = new Set(["crmLeads", "crmCustomers", "crmStaff"]);
+const CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN = Object.freeze(
+  CRM_ADMIN_READ_DOMAINS.reduce((map, item) => ({
+    ...map,
+    [item.key]: item.consumerKey
+  }), {})
+);
 
 function isStandaloneDisplayMode() {
   try {
@@ -250,19 +256,46 @@ async function refreshCrmAdmin() {
   }
 
   await Promise.all(CRM_ADMIN_READ_DOMAINS.map(async ({ key, consumerKey }) => {
-    const domain = consumer?.[consumerKey] || null;
-    if (!domain?.ready || typeof domain?.load !== "function") {
-      actions.setCrmAdminMissing(key, domain?.missingDeps || []);
-      return;
-    }
-    actions.setCrmAdminLoading(key);
-    try {
-      const payload = await domain.load({ limit: 20 });
-      actions.setCrmAdminData(key, payload || {});
-    } catch (error) {
-      actions.setCrmAdminError(key, error?.message || "CRM/Admin Daten konnten nicht geladen werden.");
-    }
+    const section = store.getState().crmAdmin?.sections?.[key] || {};
+    await loadCrmAdminDomainFromConsumer(consumer, key, {
+      consumerKey,
+      scope: section.scope || ""
+    });
   }));
+}
+
+async function loadCrmAdminDomainFromConsumer(consumer, domainKey = "", options = {}) {
+  const safeDomainKey = String(domainKey || "").trim();
+  const consumerKey = String(options.consumerKey || CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN[safeDomainKey] || "").trim();
+  if (!safeDomainKey || !consumerKey) return;
+  const domain = consumer?.[consumerKey] || null;
+  if (!domain?.ready || typeof domain?.load !== "function") {
+    actions.setCrmAdminMissing(safeDomainKey, domain?.missingDeps || []);
+    return;
+  }
+  const scope = String(options.scope || "").trim();
+  actions.setCrmAdminLoading(safeDomainKey, { scope });
+  try {
+    const payload = await domain.load({
+      limit: 20,
+      ...(scope ? { scope } : {})
+    });
+    actions.setCrmAdminData(safeDomainKey, payload || {});
+  } catch (error) {
+    actions.setCrmAdminError(safeDomainKey, error?.message || "CRM/Admin Daten konnten nicht geladen werden.");
+  }
+}
+
+async function loadCrmAdminDomain(domainKey = "", options = {}) {
+  let consumer = null;
+  try {
+    consumer = createHeartCrmAdminShellConsumer(crmAdminConsumerDeps);
+    actions.setCrmAdminContract(consumer.contract || {});
+  } catch (error) {
+    actions.setCrmAdminError("", error?.message || "CRM/Admin Consumer konnte nicht vorbereitet werden.");
+    return;
+  }
+  await loadCrmAdminDomainFromConsumer(consumer, domainKey, options);
 }
 
 async function ensureRunDetail(runId = "") {
@@ -586,6 +619,27 @@ const operations = {
         setToast("CRM/Admin", error?.message || "CRM/Admin Daten konnten nicht geladen werden.", "danger");
       }));
     }
+  },
+  async setCrmScope(domainKey, scope) {
+    const safeDomainKey = String(domainKey || "").trim();
+    const safeScope = String(scope || "").trim();
+    if (!safeDomainKey || !safeScope) return;
+    actions.setCrmAdminSectionUi(safeDomainKey, { scope: safeScope });
+    await loadCrmAdminDomain(safeDomainKey, { scope: safeScope });
+  },
+  setCrmQuery(domainKey, query) {
+    actions.setCrmAdminSectionUi(domainKey, { query });
+  },
+  setCrmStatusFilter(domainKey, statusFilter) {
+    actions.setCrmAdminSectionUi(domainKey, { statusFilter });
+  },
+  openCrmEditor({ domainKey = "", itemId = "", mode = "edit" } = {}) {
+    actions.setModal({
+      kind: "crm-editor",
+      crmDomain: domainKey,
+      itemId,
+      mode
+    });
   },
   toggleNav() {
     actions.setNavOpen(!store.getState().shell.navOpen);

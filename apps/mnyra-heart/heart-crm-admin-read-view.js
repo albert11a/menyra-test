@@ -17,6 +17,12 @@ export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
   businessAccounts: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.businessAccounts])
 });
 
+export const HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS = Object.freeze({
+  leads: Object.freeze(["saveLeadFromModal", "deleteLeadFromModal", "convertLeadToCustomer"]),
+  customers: Object.freeze(["saveCustomerFromModal"]),
+  staff: Object.freeze(["saveCeoStaffFromView", "deleteCeoStaffFromView"])
+});
+
 const CRM_READ_SECTIONS = Object.freeze([
   { key: "leads", title: "Leads", eyebrow: "CRM", icon: "list" },
   { key: "customers", title: "Kunden", eyebrow: "CRM", icon: "user" },
@@ -160,6 +166,38 @@ function typeLabel(value = "") {
   return labelFromMap(value, TYPE_LABELS);
 }
 
+function normalizeSearchKey(value = "") {
+  return asText(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function itemMatchesQuery(item = {}, query = "") {
+  const queryKey = normalizeSearchKey(query);
+  if (!queryKey) return true;
+  const haystack = normalizeSearchKey([
+    item.businessName,
+    item.restaurantName,
+    item.name,
+    item.displayName,
+    item.email,
+    item.socialEmail,
+    item.ownerEmail,
+    item.phone,
+    item.instagram,
+    item.city,
+    item.country,
+    item.status,
+    item.customerType,
+    item.type,
+    item.handle
+  ].filter(Boolean).join(" "));
+  return haystack.includes(queryKey);
+}
+
 function statusTone(status = "") {
   const key = asText(status).toLowerCase();
   if (["active", "kunde", "customer", "success", "paid", "aktiv"].includes(key)) return "success";
@@ -187,14 +225,61 @@ function renderAvatar({ imageUrl = "", label = "", size = "default" } = {}) {
   `;
 }
 
+function renderOwnershipPills(item = {}, { hideOwn = false } = {}) {
+  if (hideOwn) return "";
+  const creatorName = firstText(item.createdByName, item.creatorName, item.ceoRootName, item.ownerName);
+  const creatorHandle = firstText(item.createdByHandle, item.ownerHandle);
+  const creatorUid = firstText(item.createdByUid, item.ceoRootUid, item.ownerUid);
+  const label = firstText(creatorName, creatorHandle, creatorUid);
+  if (!label) return "";
+  return `
+    <div class="heart-crm-chip-row">
+      ${renderChip("Staff", "neutral")}
+      ${renderChip(label, "info")}
+    </div>
+  `;
+}
+
+function renderCrmEditButton(domainKey = "", itemId = "", label = "Bearbeiten", extraClass = "") {
+  const safeDomain = asText(domainKey);
+  const safeId = asText(itemId);
+  return `
+    <button type="button" class="heart-crm-action-placeholder ${escapeHtml(extraClass)}" data-action="open-crm-editor" data-crm-domain="${escapeHtml(safeDomain)}" data-crm-item-id="${escapeHtml(safeId)}" data-crm-mode="edit">
+      ${escapeHtml(label)}
+    </button>
+  `;
+}
+
+function renderDisabledCrmAction(label = "", missingDeps = [], iconName = "info") {
+  const deps = Array.isArray(missingDeps) ? missingDeps.filter(Boolean).join(", ") : asText(missingDeps);
+  return `
+    <button type="button" class="heart-crm-icon-button" disabled aria-disabled="true" title="${escapeHtml(deps ? `Fehlt: ${deps}` : "Nicht verfuegbar")}">
+      ${escapeHtml(label) ? `<span>${escapeHtml(label)}</span>` : renderHeartIcon(iconName)}
+    </button>
+  `;
+}
+
+function resolveLeadProfileUrl(lead = {}) {
+  const directUrl = firstText(lead.landingPageUrl, lead.canonicalPublicPath);
+  if (directUrl) return directUrl;
+  const slug = firstText(lead.publicSlug, lead.landingSlug);
+  if (!slug) return "";
+  return `/${slug.replace(/^\/+/, "")}`;
+}
+
 function renderScopeTabs(sectionKey = "", sectionState = {}, items = []) {
   const count = formatKnownCount(sectionState, items);
+  const activeScope = firstText(sectionState.scope, "own");
+  const scopeCounts = sectionState.scopeCounts && typeof sectionState.scopeCounts === "object" ? sectionState.scopeCounts : {};
   const tabSets = {
     leads: [
-      { key: "own", label: "Leads", count, active: true }
+      { key: "own", label: "Meine Leads", count: activeScope === "own" ? count : firstText(scopeCounts.own, "-") },
+      { key: "staff", label: "Staff Leads", count: activeScope === "staff" ? count : firstText(scopeCounts.staff, "-") },
+      { key: "archived", label: "Archiviert", count: activeScope === "archived" ? count : firstText(scopeCounts.archived, "-") }
     ],
     customers: [
-      { key: "own", label: "Kunden", count, active: true }
+      { key: "own", label: "Meine Kunden", count: activeScope === "own" ? count : firstText(scopeCounts.own, "-") },
+      { key: "staff", label: "Staff Kunden", count: activeScope === "staff" ? count : firstText(scopeCounts.staff, "-") }
     ]
   };
   const tabs = tabSets[sectionKey] || [];
@@ -202,7 +287,7 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = []) {
   return `
     <div class="heart-crm-scope-grid heart-crm-scope-grid--${escapeHtml(sectionKey)}">
       ${tabs.map((tab) => `
-        <button type="button" class="heart-crm-scope-tab ${tab.active ? "heart-crm-scope-tab--active" : ""}" disabled aria-disabled="true">
+        <button type="button" class="heart-crm-scope-tab ${activeScope === tab.key ? "heart-crm-scope-tab--active" : ""}" data-action="set-crm-scope" data-crm-domain="${escapeHtml(sectionKey)}" data-crm-scope="${escapeHtml(tab.key)}">
           <span>${escapeHtml(tab.label)}</span>
           <strong>${escapeHtml(tab.count)}</strong>
         </button>
@@ -211,28 +296,28 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = []) {
   `;
 }
 
-function renderSearchControl(sectionKey = "") {
+function renderSearchControl(sectionKey = "", sectionState = {}) {
   if (sectionKey !== "leads" && sectionKey !== "customers") return "";
   const placeholder = sectionKey === "leads" ? "Lead suchen..." : "Kunde suchen...";
   return `
     <div class="heart-crm-control-row">
       <span class="heart-crm-control-row__icon">${renderHeartIcon("list")}</span>
-      <input type="text" value="" placeholder="${escapeHtml(placeholder)}" disabled aria-disabled="true" />
-      <span class="heart-crm-readonly-label">Read-only</span>
+      <input type="text" value="${escapeHtml(sectionState.query || "")}" placeholder="${escapeHtml(placeholder)}" data-crm-search data-crm-domain="${escapeHtml(sectionKey)}" />
     </div>
   `;
 }
 
-function renderLeadStatusFilter() {
+function renderLeadStatusFilter(sectionState = {}) {
+  const statusFilter = asText(sectionState.statusFilter);
   return `
     <div class="heart-crm-control-row heart-crm-control-row--select">
       <span class="heart-crm-control-row__icon">${renderHeartIcon("list")}</span>
-      <select disabled aria-disabled="true">
-        <option>Alle Status</option>
-        <option>Registriert</option>
-        <option>Kontaktiert</option>
-        <option>Interessiert</option>
-        <option>Angebot</option>
+      <select data-crm-status data-crm-domain="leads">
+        <option value="">Alle Status</option>
+        ${Object.entries(LEAD_STATUS_LABELS)
+          .filter(([key]) => key !== "customer" && key !== "kunde" && key !== "no_interest")
+          .map(([key, label]) => `<option value="${escapeHtml(key)}" ${statusFilter === key ? "selected" : ""}>${escapeHtml(label)}</option>`)
+          .join("")}
       </select>
       <span class="heart-crm-control-row__icon">${renderHeartIcon("chevronDown")}</span>
     </div>
@@ -247,13 +332,14 @@ function renderExtraMetaChips(items = []) {
   return chips ? `<div class="heart-crm-chip-row">${chips}</div>` : "";
 }
 
-function renderLeadCard(lead = {}) {
+function renderLeadCard(lead = {}, sectionState = {}) {
   const logoUrl = firstText(lead.logoUrl, lead.logo, lead.imageUrl, lead.bestSpotLogoUrl);
   const businessName = firstText(lead.businessName, lead.restaurantName, lead.name, "Business");
   const emailLine = firstText(lead.email, lead.socialEmail);
   const statusValue = firstText(lead.status, "registered");
   const statusLabel = labelFromMap(statusValue, LEAD_STATUS_LABELS);
-  const leadType = typeLabel(firstText(lead.customerType, lead.type, lead.category));
+  const profileUrl = resolveLeadProfileUrl(lead);
+  const leadId = firstText(lead.id, lead.leadId);
   return `
     <article class="heart-crm-card">
       <div class="heart-crm-card-head">
@@ -264,14 +350,16 @@ function renderLeadCard(lead = {}) {
         </div>
         ${renderChip(statusLabel, statusTone(statusValue), "heart-crm-status-pill")}
       </div>
-      ${renderExtraMetaChips([
-        { label: leadType }
-      ])}
+      ${renderOwnershipPills(lead, { hideOwn: sectionState.scope === "own" })}
+      <div class="heart-crm-action-row">
+        ${profileUrl ? `<a href="${escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary">Profil</a>` : ""}
+        ${renderCrmEditButton("leads", leadId)}
+      </div>
     </article>
   `;
 }
 
-function renderCustomerCard(rest = {}) {
+function renderCustomerCard(rest = {}, sectionState = {}) {
   const logoUrl = firstText(rest.logoUrl, rest.logo, rest.imageUrl);
   const name = firstText(rest.name, rest.restaurantName, rest.businessName, "Business");
   const type = typeLabel(firstText(rest.type, rest.customerType));
@@ -288,10 +376,14 @@ function renderCustomerCard(rest = {}) {
         </div>
         ${renderChip(statusLabel, statusTone(statusValue), "heart-crm-status-pill")}
       </div>
+      ${renderOwnershipPills(rest, { hideOwn: sectionState.scope === "own" })}
       ${renderExtraMetaChips([
         { label: firstText(rest.ownerEmail, rest.email, rest.socialEmail), tone: "info" },
         { label: firstText(rest.phone), tone: "info" }
       ])}
+      <div class="heart-crm-action-row">
+        ${renderCrmEditButton("customers", firstText(rest.id, rest.restaurantId, rest.customerId))}
+      </div>
     </article>
   `;
 }
@@ -308,8 +400,9 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
   const customerCount = Number.isFinite(Number(storedCounts.ownCustomers)) ? Number(storedCounts.ownCustomers) : 0;
   const locationText = firstText(entry.locationLabel, entry.location, entry.city, entry.country, "-");
   const avatarUrl = firstText(entry.avatarPreview, entry.avatarUrl, entry.avatar, entry.photoURL);
+  const staffId = firstText(entry.uid, entry.userId, entry.id);
   return `
-    <article class="heart-crm-card heart-crm-card--staff">
+    <button type="button" class="heart-crm-card heart-crm-card--staff heart-crm-card--button" data-action="open-crm-editor" data-crm-domain="staff" data-crm-item-id="${escapeHtml(staffId)}" data-crm-mode="edit">
       <div class="heart-crm-card-head">
         ${renderAvatar({ imageUrl: avatarUrl, label: name, size: "large" })}
         <div class="heart-crm-card-main">
@@ -335,10 +428,10 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
         </div>
       </div>
       <div class="heart-crm-card-footer">
-        <span>Read-only Ansicht</span>
-        <span class="heart-crm-footer-icon">${renderHeartIcon("info")}</span>
+        <span>Tippen zum Bearbeiten</span>
+        <span class="heart-crm-footer-icon">${renderHeartIcon("edit")}</span>
       </div>
-    </article>
+    </button>
   `;
 }
 
@@ -386,7 +479,14 @@ function renderStateBlock(label = "", tone = "neutral") {
 }
 
 function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crmAdmin = {}) {
-  const items = Array.isArray(sectionState.items) ? sectionState.items : [];
+  const rawItems = Array.isArray(sectionState.items) ? sectionState.items : [];
+  const statusFilter = asText(sectionState.statusFilter);
+  const items = rawItems
+    .filter((item) => itemMatchesQuery(item, sectionState.query || ""))
+    .filter((item) => {
+      if (sectionKey !== "leads" || !statusFilter) return true;
+      return asText(item.status).toLowerCase() === statusFilter;
+    });
   const status = asText(sectionState.status);
   const missingContextLabel = getMissingContextLabel(sectionState.missingContext || "");
   if (missingContextLabel) return renderStateBlock(missingContextLabel, "warning");
@@ -401,8 +501,8 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
     return renderStateBlock(emptyLabels[sectionKey] || "Keine Eintraege", "neutral");
   }
   const renderers = {
-    leads: (item) => renderLeadCard(item),
-    customers: (item) => renderCustomerCard(item),
+    leads: (item) => renderLeadCard(item, sectionState),
+    customers: (item) => renderCustomerCard(item, sectionState),
     staff: (item) => renderStaffCard(item, crmAdmin)
   };
   const rows = items.slice(0, 20).map((item) => renderers[sectionKey]?.(item) || "").join("");
@@ -418,9 +518,28 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
 function renderSectionTools(sectionKey = "", sectionState = {}, items = []) {
   return `
     ${renderScopeTabs(sectionKey, sectionState, items)}
-    ${renderSearchControl(sectionKey)}
-    ${sectionKey === "leads" ? renderLeadStatusFilter() : ""}
+    ${renderSearchControl(sectionKey, sectionState)}
+    ${sectionKey === "leads" ? renderLeadStatusFilter(sectionState) : ""}
   `;
+}
+
+function renderSectionHeaderActions(sectionKey = "") {
+  if (sectionKey === "leads") {
+    return `
+      <div class="heart-crm-header-actions">
+        ${renderDisabledCrmAction("", ["saveLeadSettings"], "settings")}
+        ${renderDisabledCrmAction("", HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS.leads, "plus")}
+      </div>
+    `;
+  }
+  if (sectionKey === "staff") {
+    return `
+      <div class="heart-crm-header-actions">
+        ${renderDisabledCrmAction("", HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS.staff, "plus")}
+      </div>
+    `;
+  }
+  return "";
 }
 
 function renderCrmReadSection(section, consumer, crmAdmin = {}) {
@@ -441,6 +560,7 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
           <span class="heart-crm-social-eyebrow">${escapeHtml(section.eyebrow)}</span>
           <h2>${escapeHtml(section.title)}</h2>
         </div>
+        ${renderSectionHeaderActions(section.key)}
       </div>
       ${renderSectionTools(section.key, sectionState, items)}
       ${section.key === "staff" ? renderStaffBuildStatusPanel(crmAdmin) : ""}
@@ -453,6 +573,206 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
         <span>Count ${escapeHtml(ready && sectionStatus === "ready" ? formatKnownCount(sectionState, items) : "Nicht geladen")}</span>
       </div>
     </section>
+  `;
+}
+
+function findCrmItem(crmAdmin = {}, domainKey = "", itemId = "") {
+  const safeDomain = asText(domainKey);
+  const safeId = asText(itemId);
+  if (!safeDomain || !safeId) return null;
+  const items = Array.isArray(crmAdmin?.sections?.[safeDomain]?.items)
+    ? crmAdmin.sections[safeDomain].items
+    : [];
+  return items.find((item) => [
+    item?.id,
+    item?.leadId,
+    item?.restaurantId,
+    item?.customerId,
+    item?.uid,
+    item?.userId
+  ].some((value) => asText(value) === safeId)) || null;
+}
+
+function renderModalField(label = "", value = "", { multiline = false } = {}) {
+  const safeLabel = asText(label);
+  const safeValue = asText(value);
+  if (multiline) {
+    return `
+      <label class="heart-crm-modal-field heart-crm-modal-field--wide">
+        <span>${escapeHtml(safeLabel)}</span>
+        <textarea readonly>${escapeHtml(safeValue)}</textarea>
+      </label>
+    `;
+  }
+  return `
+    <label class="heart-crm-modal-field">
+      <span>${escapeHtml(safeLabel)}</span>
+      <input type="text" value="${escapeHtml(safeValue)}" readonly />
+    </label>
+  `;
+}
+
+function renderModalMissingWriteNotice(domainKey = "") {
+  const deps = HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS[domainKey] || [];
+  if (!deps.length) return "";
+  return `
+    <div class="heart-crm-modal-notice">
+      <strong>Schreibaktionen deaktiviert</strong>
+      <span>Fehlende Facade-Dependencies: ${escapeHtml(deps.join(", "))}</span>
+    </div>
+  `;
+}
+
+function renderLeadEditorModalBody(lead = {}, mode = "edit") {
+  const isCreate = mode === "create";
+  const title = isCreate ? "Neuer Lead" : "Lead bearbeiten";
+  const logoUrl = firstText(lead.logoUrl, lead.logo, lead.imageUrl, lead.bestSpotLogoUrl);
+  const businessName = firstText(lead.businessName, lead.restaurantName, lead.name);
+  const statusValue = firstText(lead.status, "registered");
+  const locations = Array.isArray(lead.locations) ? lead.locations : [];
+  const address = firstText(locations[0]?.address, lead.address, lead.city);
+  return `
+    <div class="heart-modal__header">
+      <div>
+        <p class="heart-page-header__eyebrow">CRM</p>
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+      <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+    </div>
+    <div class="heart-crm-modal-body">
+      ${renderAvatar({ imageUrl: logoUrl, label: businessName || "Lead", size: "large" })}
+      ${renderModalMissingWriteNotice("leads")}
+      <div class="heart-crm-modal-grid">
+        ${renderModalField("Typ", typeLabel(firstText(lead.customerType, lead.type, lead.category)))}
+        ${renderModalField("Business Name", businessName)}
+        ${renderModalField("Email", firstText(lead.email, lead.socialEmail))}
+        ${renderModalField("Status", labelFromMap(statusValue, LEAD_STATUS_LABELS))}
+        ${renderModalField("Vorname", firstText(lead.contactFirstName))}
+        ${renderModalField("Nachname", firstText(lead.contactLastName))}
+        ${renderModalField("Telefon", firstText(lead.phone))}
+        ${renderModalField("Instagram", firstText(lead.instagram, lead.insta))}
+        ${renderModalField("Facebook", firstText(lead.facebook))}
+        ${renderModalField("TikTok", firstText(lead.tiktok))}
+        ${renderModalField("Google Maps", firstText(lead.googleMaps), { multiline: true })}
+        ${renderModalField("Adresse", address, { multiline: true })}
+        ${renderModalField("Land", firstText(lead.country))}
+        ${renderModalField("Abo", firstText(lead.billingCycle))}
+      </div>
+    </div>
+    <div class="heart-modal__footer heart-crm-modal-footer">
+      <button class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Lead loeschen</button>
+      <button class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Zu Kunde</button>
+      <button class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">Speichern</button>
+    </div>
+  `;
+}
+
+function renderCustomerEditorModalBody(customer = {}) {
+  const logoUrl = firstText(customer.logoUrl, customer.logo, customer.imageUrl);
+  const name = firstText(customer.name, customer.restaurantName, customer.businessName);
+  const statusValue = firstText(customer.status, "kunde");
+  return `
+    <div class="heart-modal__header">
+      <div>
+        <p class="heart-page-header__eyebrow">CRM</p>
+        <h2>Kunde bearbeiten</h2>
+      </div>
+      <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+    </div>
+    <div class="heart-crm-modal-body">
+      ${renderAvatar({ imageUrl: logoUrl, label: name || "Kunde", size: "large" })}
+      ${renderModalMissingWriteNotice("customers")}
+      <div class="heart-crm-modal-grid">
+        ${renderModalField("Business Name", name)}
+        ${renderModalField("Typ", typeLabel(firstText(customer.type, customer.customerType)))}
+        ${renderModalField("Status", labelFromMap(statusValue, CUSTOMER_STATUS_LABELS))}
+        ${renderModalField("Email", firstText(customer.ownerEmail, customer.email, customer.socialEmail))}
+        ${renderModalField("Telefon", firstText(customer.phone))}
+        ${renderModalField("Stadt", firstText(customer.city))}
+        ${renderModalField("Adresse", firstText(customer.address), { multiline: true })}
+        ${renderModalField("Billing", firstText(customer.billingStatus, customer.subscriptionStatus))}
+      </div>
+    </div>
+    <div class="heart-modal__footer heart-crm-modal-footer">
+      <button class="heart-button heart-button--primary heart-button--wide" type="button" disabled aria-disabled="true">Kunde speichern</button>
+    </div>
+  `;
+}
+
+function renderStaffEditorModalBody(entry = {}, crmAdmin = {}) {
+  const name = firstText(entry.name, entry.displayName, entry.email, "CEO");
+  const fallbackParts = name.split(/\s+/).filter(Boolean);
+  const firstName = firstText(entry.firstName, fallbackParts[0]);
+  const lastName = firstText(entry.lastName, fallbackParts.slice(1).join(" "));
+  const currentUid = asText(crmAdmin?.currentUid || "");
+  const isSelf = currentUid && asText(entry.uid) === currentUid;
+  const avatarUrl = firstText(entry.avatarPreview, entry.avatarUrl, entry.avatar, entry.photoURL);
+  return `
+    <div class="heart-modal__header">
+      <div>
+        <p class="heart-page-header__eyebrow">CEO</p>
+        <h2>Staff bearbeiten</h2>
+      </div>
+      <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+    </div>
+    <div class="heart-crm-modal-body">
+      ${renderAvatar({ imageUrl: avatarUrl, label: name, size: "large" })}
+      ${renderModalMissingWriteNotice("staff")}
+      <div class="heart-crm-modal-grid">
+        ${renderModalField("Vorname", firstName)}
+        ${renderModalField("Nachname", lastName)}
+        ${renderModalField("Email", firstText(entry.email))}
+        ${renderModalField("Land", firstText(entry.country))}
+        ${renderModalField("Standort", firstText(entry.locationLabel, entry.location, entry.city), { multiline: true })}
+        ${renderModalField("Rolle", isSelf ? "Du" : (entry.ceoParentUid ? "Unterstaff" : "Direkt"))}
+      </div>
+    </div>
+    <div class="heart-modal__footer heart-crm-modal-footer">
+      <button class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">CEO loeschen</button>
+      <button class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">CEO speichern</button>
+    </div>
+  `;
+}
+
+export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
+  if (asText(modal?.kind) !== "crm-editor") return "";
+  const domainKey = asText(modal.crmDomain);
+  const mode = asText(modal.mode) || "edit";
+  const item = mode === "create" ? {} : findCrmItem(crmAdmin || {}, domainKey, modal.itemId);
+  const body = (() => {
+    if (!item && mode !== "create") {
+      return `
+        <div class="heart-modal__header">
+          <div>
+            <p class="heart-page-header__eyebrow">CRM</p>
+            <h2>Eintrag nicht gefunden</h2>
+          </div>
+          <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+        </div>
+        <div class="heart-crm-modal-body">${renderStateBlock("Der ausgewaehlte CRM Eintrag ist nicht in der aktuellen Liste geladen.", "warning")}</div>
+      `;
+    }
+    if (domainKey === "leads") return renderLeadEditorModalBody(item || {}, mode);
+    if (domainKey === "customers") return renderCustomerEditorModalBody(item || {});
+    if (domainKey === "staff") return renderStaffEditorModalBody(item || {}, crmAdmin || {});
+    return `
+      <div class="heart-modal__header">
+        <div>
+          <p class="heart-page-header__eyebrow">CRM</p>
+          <h2>Nicht verfuegbar</h2>
+        </div>
+        <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+      </div>
+      <div class="heart-crm-modal-body">${renderStateBlock("Diese CRM Ansicht ist in Heart nicht sichtbar.", "warning")}</div>
+    `;
+  })();
+  return `
+    <div class="heart-modal">
+      <button class="heart-modal__backdrop" data-action="close-modal" aria-label="Modal schliessen"></button>
+      <div class="heart-modal__sheet heart-modal__sheet--detail heart-crm-modal-sheet" role="dialog" aria-modal="true">
+        ${body}
+      </div>
+    </div>
   `;
 }
 
