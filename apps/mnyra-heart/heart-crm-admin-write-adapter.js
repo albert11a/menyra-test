@@ -133,7 +133,7 @@ export const HEART_CRM_ADMIN_WRITE_ADAPTER_VERSION = "heart-crm-admin-write-adap
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3C/svg%3E";
 const CRM_LAZY_RENDERERS_MODULE_URL = "";
-const BUILD_INFO_ENDPOINT_URL = "";
+const BUILD_INFO_ENDPOINT_URL = "/api/build-info";
 const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
@@ -705,6 +705,8 @@ export function createHeartCrmAdminWriteAdapter({
         ? { lat: Number(form.coords.lat), lng: Number(form.coords.lng) }
         : null;
       onDraftChange({
+        uid: asText(runtimeState.staff?.editorUid),
+        userId: asText(runtimeState.staff?.editorUid),
         firstName: asText(form.firstName),
         lastName: asText(form.lastName),
         email: asText(form.email),
@@ -716,6 +718,10 @@ export function createHeartCrmAdminWriteAdapter({
         avatarPreview: asText(form.avatarPreview || form.avatarUrl),
         avatarUrl: asText(form.avatarUrl || form.avatarPreview),
         avatar: asText(form.avatarUrl || form.avatarPreview),
+        saving: runtimeState.staff?.saving === true,
+        deleting: runtimeState.staff?.deleting === true,
+        status: asText(runtimeState.staff?.status),
+        error: asText(runtimeState.staff?.error),
         ...(coords ? {
           coords,
           lat: coords.lat,
@@ -1388,7 +1394,8 @@ export function createHeartCrmAdminWriteAdapter({
   }
 
   function setStaffAvatarFile(file) {
-    ensureRuntimeController();
+    const controller = ensureRuntimeController();
+    controller.syncStaffFormFromDom();
     draftFiles.staffAvatarFile = file || null;
     const preview = createPreviewUrl(file);
     runtimeState.staff.form.avatarFile = draftFiles.staffAvatarFile;

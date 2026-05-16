@@ -429,7 +429,10 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
   const handle = firstText(entry.handle, normalizeHandle(name));
   const currentUid = asText(crmAdmin?.currentUid || "");
   const isSelf = currentUid && asText(entry.uid) === currentUid;
-  const relation = firstText(entry.relation, isSelf ? "Du" : (entry.ceoParentUid ? "Unterstaff" : "Direkt"));
+  const relation = firstText(
+    entry.relation,
+    isSelf ? "Du" : (asText(entry.ceoParentUid) === currentUid ? "Direkt" : "Unterstaff")
+  );
   const storedCounts = entry.crmCounts && typeof entry.crmCounts === "object" ? entry.crmCounts : {};
   const loadedLeadRows = Array.isArray(crmAdmin?.sections?.leads?.items) ? crmAdmin.sections.leads.items : [];
   const loadedCustomerRows = Array.isArray(crmAdmin?.sections?.customers?.items) ? crmAdmin.sections.customers.items : [];
@@ -455,8 +458,7 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
       </div>
       ${renderExtraMetaChips([
         { label: firstText(entry.country, "-") },
-        { label: locationText },
-        { label: firstText(entry.role, entry.staffRole), tone: "info" }
+        { label: locationText }
       ])}
       <div class="heart-crm-stats-grid">
         <div class="heart-crm-stat-box">
@@ -477,9 +479,16 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
 }
 
 function renderStaffBuildStatusPanel(crmAdmin = {}) {
-  const buildStatus = crmAdmin?.buildStatus && typeof crmAdmin.buildStatus === "object"
-    ? crmAdmin.buildStatus
+  const staffSection = crmAdmin?.sections?.staff && typeof crmAdmin.sections.staff === "object"
+    ? crmAdmin.sections.staff
     : {};
+  const buildStatus = staffSection.buildStatus && typeof staffSection.buildStatus === "object"
+    ? staffSection.buildStatus
+    : crmAdmin?.buildStatus && typeof crmAdmin.buildStatus === "object"
+      ? crmAdmin.buildStatus
+    : {};
+  const loading = staffSection.buildStatusLoading === true || crmAdmin?.buildStatusLoading === true;
+  const error = firstText(staffSection.buildStatusError, crmAdmin?.buildStatusError);
   return `
     <div class="heart-crm-build-panel">
       <p>Build Status</p>
@@ -493,6 +502,8 @@ function renderStaffBuildStatusPanel(crmAdmin = {}) {
         <span>Env</span>
         <strong>${escapeHtml(firstText(buildStatus.environment, "unbekannt"))}</strong>
       </div>
+      ${loading ? `<p class="heart-crm-build-note">Build Info wird geladen...</p>` : ""}
+      ${error ? `<p class="heart-crm-build-note heart-crm-build-note--warning">${escapeHtml(error)}</p>` : ""}
     </div>
   `;
 }
@@ -611,7 +622,10 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
     : formatMissingDeps(section.key);
   const canShowList = ready && (sectionStatus === "ready" || sectionStatus === "loading" || sectionStatus === "error");
   const showSectionHeader = section.key !== "leads";
-  const showSectionFoot = section.key !== "leads";
+  const showSectionFoot = section.key !== "leads" && section.key !== "staff";
+  const emptySessionLabel = section.key === "staff"
+    ? "Noch kein Abruf in dieser Session."
+    : "Noch kein read-only Abruf in dieser Session.";
 
   return `
     <section id="${escapeHtml(section.key)}View" class="heart-crm-social-view heart-crm-social-view--${escapeHtml(section.key)}">
@@ -625,7 +639,7 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
       ${renderSectionTools(section.key, sectionState, items, crmAdmin)}
       ${section.key === "staff" ? renderStaffBuildStatusPanel(crmAdmin) : ""}
       ${ready ? "" : renderStateBlock(`Read loader fehlt: ${missingDeps}.`, "warning")}
-      ${ready && !canShowList ? renderStateBlock("Noch kein read-only Abruf in dieser Session.", "neutral") : ""}
+      ${ready && !canShowList ? renderStateBlock(emptySessionLabel, "neutral") : ""}
       ${canShowList ? renderSectionList(section.key, section, sectionState, crmAdmin) : ""}
       ${sectionState.hasMore ? renderStateBlock(sectionState.loadingMore ? "Laedt..." : "Scrollt weiter...", "neutral") : ""}
       ${showSectionFoot ? `<div class="heart-crm-section-foot">
@@ -912,16 +926,23 @@ function renderCustomerEditorModalBody(customer = {}) {
 }
 
 function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
-  const name = firstText(entry.name, entry.displayName, entry.email, "CEO");
+  const isCreate = mode === "create";
+  const name = firstText(entry.name, entry.displayName, entry.email, isCreate ? "" : "CEO");
   const fallbackParts = name.split(/\s+/).filter(Boolean);
-  const firstName = firstText(entry.firstName, fallbackParts[0]);
-  const lastName = firstText(entry.lastName, fallbackParts.slice(1).join(" "));
+  const firstName = isCreate ? firstText(entry.firstName) : firstText(entry.firstName, fallbackParts[0]);
+  const lastName = isCreate ? firstText(entry.lastName) : firstText(entry.lastName, fallbackParts.slice(1).join(" "));
   const currentUid = asText(crmAdmin?.currentUid || "");
   const isSelf = currentUid && asText(entry.uid) === currentUid;
   const avatarUrl = firstText(entry.avatarPreview, entry.avatarUrl, entry.avatar, entry.photoURL);
-  const isCreate = mode === "create";
   const coordsLabel = formatCoordLabel(entry);
   const countryOptions = CEO_COUNTRIES.map((key) => ({ value: key, label: key }));
+  const saving = entry.saving === true;
+  const deleting = entry.deleting === true;
+  const status = firstText(entry.statusMessage, entry.status);
+  const error = firstText(entry.errorMessage, entry.error);
+  const saveLabel = saving
+    ? (isCreate ? "Erstelle CEO..." : "Speichern...")
+    : (isCreate ? "CEO erstellen" : "CEO speichern");
   return `
     <div class="heart-modal__header">
       <div>
@@ -937,7 +958,7 @@ function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
         ${renderModalField("Vorname", firstName, { id: "staffFirstName", placeholder: "Vorname" })}
         ${renderModalField("Nachname", lastName, { id: "staffLastName", placeholder: "Nachname" })}
         ${renderModalField("Email", firstText(entry.email), { id: "staffEmail", type: "email", placeholder: "vornamenachname@mnyra.com", readonly: true })}
-        ${renderModalField("Passwort", firstText(entry.password), { id: "staffPassword", type: "password", placeholder: isCreate ? "Passwort eingeben" : "Passwort bleibt unveraendert", disabled: !isCreate })}
+        ${renderModalField("Passwort", isCreate ? firstText(entry.password) : "", { id: "staffPassword", type: "password", placeholder: isCreate ? "Passwort eingeben" : "Passwort bleibt unveraendert", disabled: !isCreate })}
         ${renderModalField("Land", firstText(entry.country, LEAD_SETTINGS_DEFAULT_COUNTRY), { id: "staffCountry", options: countryOptions })}
         ${renderModalField("Standort", firstText(entry.locationLabel, entry.location, entry.city), { id: "staffLocationLabel", placeholder: "Standort / Adresse", wide: true })}
       `)}
@@ -953,12 +974,14 @@ function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
         </div>
       </section>
       ${renderModalFieldset("Rolle", `
-        ${renderModalField("Rolle", isSelf ? "Du" : (entry.ceoParentUid ? "Unterstaff" : "Direkt"), { readonly: true })}
+        ${renderModalField("Rolle", isSelf ? "Du" : (asText(entry.ceoParentUid) === currentUid ? "Direkt" : "Unterstaff"), { readonly: true })}
       `)}
+      ${error ? renderStateBlock(error, "danger") : ""}
+      ${status ? renderStateBlock(status, "neutral") : ""}
     </div>
     <div class="heart-modal__footer heart-crm-modal-footer">
-      ${isCreate ? "" : `<button id="staffDeleteBtn" class="heart-button heart-button--secondary" data-action="delete-crm-staff" type="button" ${isSelf ? "disabled aria-disabled=\"true\"" : ""}>CEO loeschen</button>`}
-      <button id="staffSaveBtn" class="heart-button heart-button--primary" data-action="save-crm-staff" type="button">CEO speichern</button>
+      ${isCreate ? "" : `<button id="staffDeleteBtn" class="heart-button heart-button--secondary" data-action="delete-crm-staff" type="button" ${(deleting || isSelf) ? "disabled aria-disabled=\"true\"" : ""}>${escapeHtml(deleting ? "Loeschen..." : "CEO loeschen")}</button>`}
+      <button id="staffSaveBtn" class="heart-button heart-button--primary" data-action="save-crm-staff" type="button" ${saving ? "disabled aria-disabled=\"true\"" : ""}>${escapeHtml(saveLabel)}</button>
     </div>
   `;
 }
@@ -966,7 +989,7 @@ function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
 export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
   if (asText(modal?.kind) !== "crm-editor") return "";
   const domainKey = asText(modal.crmDomain);
-  if (domainKey === "leads") return "";
+  if (domainKey === "leads" || domainKey === "staff") return "";
   const mode = asText(modal.mode) || "edit";
   const modalDraft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
   const baseItem = mode === "create" ? {} : findCrmItem(crmAdmin || {}, domainKey, modal.itemId);
@@ -1039,6 +1062,34 @@ function renderInlineLeadEditor(crmAdmin = {}, modal = {}) {
   `;
 }
 
+function renderInlineStaffEditor(crmAdmin = {}, modal = {}) {
+  const mode = asText(modal.mode) || "edit";
+  const modalDraft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
+  const baseItem = mode === "create" ? {} : findCrmItem(crmAdmin || {}, "staff", modal.itemId);
+  const item = mode === "create"
+    ? modalDraft
+    : (baseItem ? { ...baseItem, ...modalDraft } : baseItem);
+  if (!item && mode !== "create") {
+    return `
+      <section class="heart-crm-inline-editor heart-crm-inline-editor--staff">
+        <div class="heart-modal__header">
+          <div>
+            <p class="heart-page-header__eyebrow">CEO</p>
+            <h2>Staff nicht gefunden</h2>
+          </div>
+          <button class="heart-icon-button" data-action="close-modal" aria-label="Zurueck">${renderHeartIcon("x")}</button>
+        </div>
+        <div class="heart-crm-modal-body">${renderStateBlock("Der ausgewaehlte Staff-Eintrag ist nicht in der aktuellen Liste geladen.", "warning")}</div>
+      </section>
+    `;
+  }
+  return `
+    <section class="heart-crm-inline-editor heart-crm-inline-editor--staff">
+      ${renderStaffEditorModalBody(item || {}, crmAdmin || {}, mode)}
+    </section>
+  `;
+}
+
 export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null, activeDomain = "leads", modal = {} } = {}) {
   const {
     consumer,
@@ -1048,11 +1099,18 @@ export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null
   const isLeadEditorOpen = section.key === "leads"
     && asText(modal?.kind) === "crm-editor"
     && asText(modal?.crmDomain) === "leads";
+  const isStaffEditorOpen = section.key === "staff"
+    && asText(modal?.kind) === "crm-editor"
+    && asText(modal?.crmDomain) === "staff";
 
   return `
     <div class="heart-crm-admin-read-shell">
       ${error ? `<div class="heart-error-block">${escapeHtml(error)}</div>` : ""}
-      ${isLeadEditorOpen ? renderInlineLeadEditor(crmAdmin || {}, modal || {}) : renderCrmReadSection(section, consumer, crmAdmin || {})}
+      ${isLeadEditorOpen
+        ? renderInlineLeadEditor(crmAdmin || {}, modal || {})
+        : isStaffEditorOpen
+          ? renderInlineStaffEditor(crmAdmin || {}, modal || {})
+          : renderCrmReadSection(section, consumer, crmAdmin || {})}
     </div>
   `;
 }

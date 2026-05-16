@@ -2337,7 +2337,8 @@ body {
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
 }
 
-.heart-crm-social-view--leads {
+.heart-crm-social-view--leads,
+.heart-crm-social-view--staff {
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -2767,6 +2768,14 @@ body {
   white-space: nowrap;
 }
 
+.heart-crm-build-note {
+  margin-top: 10px;
+}
+
+.heart-crm-build-note--warning {
+  color: #ffd67e;
+}
+
 .heart-crm-stat-box {
   border-radius: 22px;
   padding: 12px 14px;
@@ -3066,6 +3075,10 @@ body {
   background: rgba(10, 10, 12, 0.9);
 }
 
+.heart-crm-inline-editor--staff .heart-crm-state {
+  padding: 14px;
+}
+
 .heart-crm-inline-editor .hidden {
   display: none !important;
 }
@@ -3352,7 +3365,8 @@ body {
     border-radius: 26px;
   }
 
-  .heart-crm-social-view--leads {
+  .heart-crm-social-view--leads,
+  .heart-crm-social-view--staff {
     padding: 0;
     border-radius: 0;
   }

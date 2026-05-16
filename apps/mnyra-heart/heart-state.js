@@ -114,7 +114,14 @@ export function createHeartInitialState() {
           loadedAt: "",
           scope: key === "staff" || key === "businessAccounts" ? "" : "own",
           query: "",
-          statusFilter: ""
+          statusFilter: "",
+          ...(key === "staff"
+            ? {
+              buildStatus: {},
+              buildStatusLoading: false,
+              buildStatusError: ""
+            }
+            : {})
         };
         return acc;
       }, {})
@@ -699,7 +706,14 @@ export function createHeartStore(initialState = createHeartInitialState()) {
           }
           : { ...(draft.crmAdmin.sections[key].scopeLoaded || {}) },
         loadedAt,
-        scope: nextScope
+        scope: nextScope,
+        ...(key === "staff"
+          ? {
+            buildStatus: payload.buildStatus && typeof payload.buildStatus === "object" ? sanitizeStateValue(payload.buildStatus) : {},
+            buildStatusLoading: payload.buildStatusLoading === true,
+            buildStatusError: String(payload.buildStatusError || "").trim()
+          }
+          : {})
       };
     });
   }

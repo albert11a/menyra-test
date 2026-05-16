@@ -99,6 +99,69 @@ const CRM_ADMIN_SCOPE_COUNT_KEYS = Object.freeze({
 });
 const CRM_ADMIN_DEFAULT_READ_LIMIT = 20;
 const CRM_ADMIN_MAX_READ_LIMIT = 160;
+const CRM_BUILD_INFO_ENDPOINT_URL = "/api/build-info";
+
+let crmBuildStatusPromise = null;
+let crmBuildStatusLoaded = false;
+let crmBuildStatusCache = {
+  commitShort: "",
+  branch: "",
+  environment: "",
+  buildTimestamp: ""
+};
+
+function normalizeCrmBuildStatus(raw = {}) {
+  const commitRaw = String(raw.commitShort || raw.commitSha || raw.commit || "").trim();
+  const branchRaw = String(raw.branch || raw.ref || "").trim();
+  const envRaw = String(raw.environment || raw.env || "").trim();
+  const timestampRaw = String(raw.buildTimestamp || raw.builtAt || raw.timestamp || "").trim();
+  let buildTimestamp = "";
+  if (timestampRaw) {
+    const parsed = new Date(timestampRaw);
+    buildTimestamp = Number.isFinite(parsed.getTime()) ? parsed.toISOString() : timestampRaw;
+  }
+  return {
+    commitShort: commitRaw ? commitRaw.slice(0, 12) : "",
+    branch: branchRaw,
+    environment: envRaw,
+    buildTimestamp
+  };
+}
+
+async function loadCrmBuildStatus({ force = false } = {}) {
+  if (crmBuildStatusLoaded && !force) {
+    return { buildStatus: crmBuildStatusCache, buildStatusLoading: false, buildStatusError: "" };
+  }
+  if (crmBuildStatusPromise && !force) return crmBuildStatusPromise;
+  if (!CRM_BUILD_INFO_ENDPOINT_URL || typeof fetch !== "function") {
+    crmBuildStatusLoaded = true;
+    return { buildStatus: crmBuildStatusCache, buildStatusLoading: false, buildStatusError: "" };
+  }
+  const endpoint = `${CRM_BUILD_INFO_ENDPOINT_URL}${CRM_BUILD_INFO_ENDPOINT_URL.includes("?") ? "&" : "?"}refresh=${Date.now()}`;
+  crmBuildStatusPromise = fetch(endpoint, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store"
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Build status request failed (${response.status})`);
+      crmBuildStatusCache = normalizeCrmBuildStatus(await response.json());
+      crmBuildStatusLoaded = true;
+      return { buildStatus: crmBuildStatusCache, buildStatusLoading: false, buildStatusError: "" };
+    })
+    .catch((error) => {
+      crmBuildStatusLoaded = true;
+      return {
+        buildStatus: crmBuildStatusCache,
+        buildStatusLoading: false,
+        buildStatusError: error?.message || "Build Status konnte nicht geladen werden."
+      };
+    })
+    .finally(() => {
+      crmBuildStatusPromise = null;
+    });
+  return crmBuildStatusPromise;
+}
 
 function isStandaloneDisplayMode() {
   try {
@@ -110,7 +173,8 @@ function isStandaloneDisplayMode() {
 function syncViewportSurface(state = store.getState()) {
   const modal = state.shell?.modal || {};
   const leadInlineEditorOpen = modal.kind === "crm-editor" && modal.crmDomain === "leads";
-  const lockDocument = !!state.shell?.navOpen || (!!modal.kind && !leadInlineEditorOpen);
+  const staffInlineEditorOpen = modal.kind === "crm-editor" && modal.crmDomain === "staff";
+  const lockDocument = !!state.shell?.navOpen || (!!modal.kind && !leadInlineEditorOpen && !staffInlineEditorOpen);
   document.documentElement.style.background = "#000000";
   document.body.style.background = "#000000";
   document.documentElement.style.overscrollBehaviorY = lockDocument ? "none" : "auto";
@@ -299,11 +363,17 @@ async function loadCrmAdminDomainFromConsumer(consumer, domainKey = "", options 
   const readLimit = resolveCrmReadLimit(safeDomainKey, scope, options);
   actions.setCrmAdminLoading(safeDomainKey, { scope });
   try {
-    const payload = await domain.load({
-      limit: readLimit,
-      ...(scope ? { scope } : {})
+    const [payload, buildStatusPayload] = await Promise.all([
+      domain.load({
+        limit: readLimit,
+        ...(scope ? { scope } : {})
+      }),
+      safeDomainKey === "staff" ? loadCrmBuildStatus() : Promise.resolve({})
+    ]);
+    actions.setCrmAdminData(safeDomainKey, {
+      ...(payload || {}),
+      ...(buildStatusPayload || {})
     });
-    actions.setCrmAdminData(safeDomainKey, payload || {});
   } catch (error) {
     actions.setCrmAdminError(safeDomainKey, error?.message || "CRM/Admin Daten konnten nicht geladen werden.");
   }
@@ -418,6 +488,12 @@ async function refineCrmLeadLocationAddress(index, value = "") {
 function syncCrmStaffDerivedEmailField() {
   try {
     getCrmConsumerDomain("staff")?.syncDerivedEmailField?.();
+  } catch {}
+}
+
+function syncCrmStaffFormFromDom() {
+  try {
+    getCrmConsumerDomain("staff")?.syncFormFromDom?.();
   } catch {}
 }
 
@@ -880,6 +956,7 @@ const operations = {
   syncCrmLeadDraftFromForm,
   refineCrmLeadLocationAddress,
   syncCrmStaffDerivedEmailField,
+  syncCrmStaffFormFromDom,
   toggleNav() {
     actions.setNavOpen(!store.getState().shell.navOpen);
   },
