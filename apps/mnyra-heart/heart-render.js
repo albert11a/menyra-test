@@ -204,7 +204,11 @@ function renderViewBody(state, runtime = {}) {
   if (crmReadDomain) {
     return renderHeartCrmAdminReadView({
       consumerDeps: runtime.crmAdminConsumerDeps || {},
-      crmAdmin: state.crmAdmin || null,
+      crmAdmin: {
+        ...(state.crmAdmin || {}),
+        currentUid: state.auth.user?.uid || "",
+        userProfile: state.auth.profile || null
+      },
       activeDomain: crmReadDomain
     });
   }
@@ -358,7 +362,14 @@ function renderShell(state, runtime = {}) {
         </main>
       </div>
       ${state.shell.activeView === "runs" ? renderRunsModal(state.runs, state.shell.modal) : ""}
-      ${renderHeartCrmAdminModal({ crmAdmin: state.crmAdmin || null, modal: state.shell.modal || {} })}
+      ${renderHeartCrmAdminModal({
+        crmAdmin: {
+          ...(state.crmAdmin || {}),
+          currentUid: state.auth.user?.uid || "",
+          userProfile: state.auth.profile || null
+        },
+        modal: state.shell.modal || {}
+      })}
       ${state.shell.toast ? `
         <div class="heart-toast heart-toast--${escapeHtml(state.shell.toast.tone || "neutral")}">
           <strong>${escapeHtml(state.shell.toast.title || "Hinweis")}</strong>

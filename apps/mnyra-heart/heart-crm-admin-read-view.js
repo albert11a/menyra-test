@@ -9,6 +9,14 @@ import {
   escapeHtml,
   renderBadge
 } from "./heart-ui-utils.js";
+import {
+  CEO_COUNTRIES,
+  LEAD_SETTINGS_DEFAULT_COUNTRY,
+  LEAD_STATUS_LABELS,
+  LEAD_STATUS_ORDER,
+  LEAD_TYPE_LABELS,
+  LEAD_TYPE_ORDER
+} from "../menyra-social/core/app-shell/social-app-domain-config.js";
 
 export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
   leads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.leads]),
@@ -35,38 +43,16 @@ const CRM_READ_SECTION_BY_KEY = Object.freeze(
   }), {})
 );
 
-const LEAD_STATUS_LABELS = Object.freeze({
-  registered: "Registriert",
-  contacted: "Kontaktiert",
-  interested: "Interessiert",
-  follow_up: "Follow-up",
-  visit: "Besuch",
-  offer: "Angebot",
-  kunde: "Kunde",
-  customer: "Kunde",
-  no_interest: "Kein Interesse",
-  archived: "Archiviert",
-  active: "Aktiv",
-  disabled: "Inaktiv"
-});
-
 const CUSTOMER_STATUS_LABELS = Object.freeze({
   kunde: "Kunde",
   customer: "Kunde",
   active: "Aktiv",
   registered: "Registriert",
+  contacted: "Kontaktiert",
+  testphase: "Testphase",
+  no_interest: "Kein Interesse",
   disabled: "Inaktiv",
   archived: "Archiviert"
-});
-
-const TYPE_LABELS = Object.freeze({
-  cafe: "Cafe",
-  restaurant: "Restaurant",
-  bar: "Bar",
-  bakery: "Bakery",
-  shop: "Shop",
-  hotel: "Hotel",
-  other: "Other"
 });
 
 function formatMissingDeps(domainKey = "") {
@@ -163,7 +149,7 @@ function labelFromMap(value = "", labels = {}) {
 }
 
 function typeLabel(value = "") {
-  return labelFromMap(value, TYPE_LABELS);
+  return labelFromMap(value, LEAD_TYPE_LABELS);
 }
 
 function normalizeSearchKey(value = "") {
@@ -201,8 +187,9 @@ function itemMatchesQuery(item = {}, query = "") {
 function statusTone(status = "") {
   const key = asText(status).toLowerCase();
   if (["active", "kunde", "customer", "success", "paid", "aktiv"].includes(key)) return "success";
+  if (["contacted", "testphase"].includes(key)) return "info";
   if (["archived", "disabled", "inactive", "no_interest", "inaktiv"].includes(key)) return "warning";
-  if (["error", "failed", "rejected"].includes(key)) return "danger";
+  if (["error", "failed", "rejected", "deleted"].includes(key)) return "danger";
   return "info";
 }
 
@@ -243,18 +230,33 @@ function renderOwnershipPills(item = {}, { hideOwn = false } = {}) {
 function renderCrmEditButton(domainKey = "", itemId = "", label = "Bearbeiten", extraClass = "") {
   const safeDomain = asText(domainKey);
   const safeId = asText(itemId);
+  const socialAttr = safeDomain === "leads"
+    ? `data-lead-edit="${escapeHtml(safeId)}"`
+    : safeDomain === "customers"
+      ? `data-customer-edit="${escapeHtml(safeId)}"`
+      : "";
   return `
-    <button type="button" class="heart-crm-action-placeholder ${escapeHtml(extraClass)}" data-action="open-crm-editor" data-crm-domain="${escapeHtml(safeDomain)}" data-crm-item-id="${escapeHtml(safeId)}" data-crm-mode="edit">
+    <button type="button" class="heart-crm-action-placeholder ${escapeHtml(extraClass)}" data-action="open-crm-editor" data-crm-domain="${escapeHtml(safeDomain)}" data-crm-item-id="${escapeHtml(safeId)}" data-crm-mode="edit" ${socialAttr}>
       ${escapeHtml(label)}
     </button>
   `;
 }
 
-function renderDisabledCrmAction(label = "", missingDeps = [], iconName = "info") {
+function renderDisabledCrmAction(label = "", missingDeps = [], iconName = "info", extraAttrs = "") {
   const deps = Array.isArray(missingDeps) ? missingDeps.filter(Boolean).join(", ") : asText(missingDeps);
   return `
-    <button type="button" class="heart-crm-icon-button" disabled aria-disabled="true" title="${escapeHtml(deps ? `Fehlt: ${deps}` : "Nicht verfuegbar")}">
+    <button type="button" class="heart-crm-icon-button heart-crm-icon-button--disabled" ${extraAttrs} disabled aria-disabled="true" title="${escapeHtml(deps ? `Fehlt: ${deps}` : "Nicht verfuegbar")}">
       ${escapeHtml(label) ? `<span>${escapeHtml(label)}</span>` : renderHeartIcon(iconName)}
+    </button>
+  `;
+}
+
+function renderCrmHeaderAction({ label = "", iconName = "plus", domainKey = "", mode = "create", disabledReason = "", id = "" } = {}) {
+  const reason = asText(disabledReason);
+  if (reason) return renderDisabledCrmAction(label, reason, iconName);
+  return `
+    <button type="button" class="heart-crm-icon-button" ${id ? `id="${escapeHtml(id)}"` : ""} data-action="open-crm-editor" data-crm-domain="${escapeHtml(domainKey)}" data-crm-mode="${escapeHtml(mode)}" title="${escapeHtml(label || "Oeffnen")}">
+      ${label ? `<span>${escapeHtml(label)}</span>` : renderHeartIcon(iconName)}
     </button>
   `;
 }
@@ -267,19 +269,26 @@ function resolveLeadProfileUrl(lead = {}) {
   return `/${slug.replace(/^\/+/, "")}`;
 }
 
-function renderScopeTabs(sectionKey = "", sectionState = {}, items = []) {
+function getStoredScopeCount(crmAdmin = {}, key = "") {
+  const counts = crmAdmin?.userProfile?.crmCounts;
+  if (!counts || typeof counts !== "object") return "";
+  const value = counts[key];
+  return Number.isFinite(Number(value)) ? String(Math.max(0, Number(value))) : "";
+}
+
+function renderScopeTabs(sectionKey = "", sectionState = {}, items = [], crmAdmin = {}) {
   const count = formatKnownCount(sectionState, items);
   const activeScope = firstText(sectionState.scope, "own");
   const scopeCounts = sectionState.scopeCounts && typeof sectionState.scopeCounts === "object" ? sectionState.scopeCounts : {};
   const tabSets = {
     leads: [
-      { key: "own", label: "Meine Leads", count: activeScope === "own" ? count : firstText(scopeCounts.own, "-") },
-      { key: "staff", label: "Staff Leads", count: activeScope === "staff" ? count : firstText(scopeCounts.staff, "-") },
-      { key: "archived", label: "Archiviert", count: activeScope === "archived" ? count : firstText(scopeCounts.archived, "-") }
+      { key: "own", label: "Meine Leads", count: activeScope === "own" ? count : firstText(getStoredScopeCount(crmAdmin, "ownLeads"), scopeCounts.own, "-") },
+      { key: "staff", label: "Staff Leads", count: activeScope === "staff" ? count : firstText(getStoredScopeCount(crmAdmin, "staffLeads"), scopeCounts.staff, "-") },
+      { key: "archived", label: "Archiviert", count: activeScope === "archived" ? count : firstText(getStoredScopeCount(crmAdmin, "archivedLeads"), scopeCounts.archived, "-") }
     ],
     customers: [
-      { key: "own", label: "Meine Kunden", count: activeScope === "own" ? count : firstText(scopeCounts.own, "-") },
-      { key: "staff", label: "Staff Kunden", count: activeScope === "staff" ? count : firstText(scopeCounts.staff, "-") }
+      { key: "own", label: "Meine Kunden", count: activeScope === "own" ? count : firstText(getStoredScopeCount(crmAdmin, "ownCustomers"), scopeCounts.own, "-") },
+      { key: "staff", label: "Staff Kunden", count: activeScope === "staff" ? count : firstText(getStoredScopeCount(crmAdmin, "staffCustomers"), scopeCounts.staff, "-") }
     ]
   };
   const tabs = tabSets[sectionKey] || [];
@@ -287,7 +296,7 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = []) {
   return `
     <div class="heart-crm-scope-grid heart-crm-scope-grid--${escapeHtml(sectionKey)}">
       ${tabs.map((tab) => `
-        <button type="button" class="heart-crm-scope-tab ${activeScope === tab.key ? "heart-crm-scope-tab--active" : ""}" data-action="set-crm-scope" data-crm-domain="${escapeHtml(sectionKey)}" data-crm-scope="${escapeHtml(tab.key)}">
+        <button type="button" class="heart-crm-scope-tab ${activeScope === tab.key ? "heart-crm-scope-tab--active" : ""}" data-action="set-crm-scope" data-crm-domain="${escapeHtml(sectionKey)}" data-crm-scope="${escapeHtml(tab.key)}" ${sectionKey === "leads" ? `data-lead-scope="${escapeHtml(tab.key)}"` : `data-customer-scope="${escapeHtml(tab.key)}"`}>
           <span>${escapeHtml(tab.label)}</span>
           <strong>${escapeHtml(tab.count)}</strong>
         </button>
@@ -299,10 +308,11 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = []) {
 function renderSearchControl(sectionKey = "", sectionState = {}) {
   if (sectionKey !== "leads" && sectionKey !== "customers") return "";
   const placeholder = sectionKey === "leads" ? "Lead suchen..." : "Kunde suchen...";
+  const inputId = sectionKey === "leads" ? "leadsSearchInput" : "customersSearchInput";
   return `
     <div class="heart-crm-control-row">
-      <span class="heart-crm-control-row__icon">${renderHeartIcon("list")}</span>
-      <input type="text" value="${escapeHtml(sectionState.query || "")}" placeholder="${escapeHtml(placeholder)}" data-crm-search data-crm-domain="${escapeHtml(sectionKey)}" />
+      <span class="heart-crm-control-row__icon">${renderHeartIcon("search")}</span>
+      <input id="${escapeHtml(inputId)}" type="text" value="${escapeHtml(sectionState.query || "")}" placeholder="${escapeHtml(placeholder)}" data-crm-search data-crm-domain="${escapeHtml(sectionKey)}" />
     </div>
   `;
 }
@@ -311,12 +321,12 @@ function renderLeadStatusFilter(sectionState = {}) {
   const statusFilter = asText(sectionState.statusFilter);
   return `
     <div class="heart-crm-control-row heart-crm-control-row--select">
-      <span class="heart-crm-control-row__icon">${renderHeartIcon("list")}</span>
-      <select data-crm-status data-crm-domain="leads">
+      <span class="heart-crm-control-row__icon">${renderHeartIcon("listFilter")}</span>
+      <select id="leadsStatusFilter" data-crm-status data-crm-domain="leads">
         <option value="">Alle Status</option>
-        ${Object.entries(LEAD_STATUS_LABELS)
-          .filter(([key]) => key !== "customer" && key !== "kunde" && key !== "no_interest")
-          .map(([key, label]) => `<option value="${escapeHtml(key)}" ${statusFilter === key ? "selected" : ""}>${escapeHtml(label)}</option>`)
+        ${LEAD_STATUS_ORDER
+          .filter((key) => key !== "kunde" && key !== "no_interest")
+          .map((key) => `<option value="${escapeHtml(key)}" ${statusFilter === key ? "selected" : ""}>${escapeHtml(LEAD_STATUS_LABELS[key] || key)}</option>`)
           .join("")}
       </select>
       <span class="heart-crm-control-row__icon">${renderHeartIcon("chevronDown")}</span>
@@ -396,13 +406,19 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
   const isSelf = currentUid && asText(entry.uid) === currentUid;
   const relation = firstText(entry.relation, isSelf ? "Du" : (entry.ceoParentUid ? "Unterstaff" : "Direkt"));
   const storedCounts = entry.crmCounts && typeof entry.crmCounts === "object" ? entry.crmCounts : {};
-  const leadCount = Number.isFinite(Number(storedCounts.ownLeads)) ? Number(storedCounts.ownLeads) : 0;
-  const customerCount = Number.isFinite(Number(storedCounts.ownCustomers)) ? Number(storedCounts.ownCustomers) : 0;
+  const loadedLeadRows = Array.isArray(crmAdmin?.sections?.leads?.items) ? crmAdmin.sections.leads.items : [];
+  const loadedCustomerRows = Array.isArray(crmAdmin?.sections?.customers?.items) ? crmAdmin.sections.customers.items : [];
+  const leadCount = Number.isFinite(Number(storedCounts.ownLeads))
+    ? Number(storedCounts.ownLeads)
+    : loadedLeadRows.filter((lead) => asText(lead.createdByUid) === asText(entry.uid)).length;
+  const customerCount = Number.isFinite(Number(storedCounts.ownCustomers))
+    ? Number(storedCounts.ownCustomers)
+    : loadedCustomerRows.filter((customer) => asText(customer.createdByUid) === asText(entry.uid)).length;
   const locationText = firstText(entry.locationLabel, entry.location, entry.city, entry.country, "-");
   const avatarUrl = firstText(entry.avatarPreview, entry.avatarUrl, entry.avatar, entry.photoURL);
   const staffId = firstText(entry.uid, entry.userId, entry.id);
   return `
-    <button type="button" class="heart-crm-card heart-crm-card--staff heart-crm-card--button" data-action="open-crm-editor" data-crm-domain="staff" data-crm-item-id="${escapeHtml(staffId)}" data-crm-mode="edit">
+    <button type="button" class="heart-crm-card heart-crm-card--staff heart-crm-card--button" data-action="open-crm-editor" data-crm-domain="staff" data-crm-item-id="${escapeHtml(staffId)}" data-crm-mode="edit" data-staff-edit="${escapeHtml(staffId)}">
       <div class="heart-crm-card-head">
         ${renderAvatar({ imageUrl: avatarUrl, label: name, size: "large" })}
         <div class="heart-crm-card-main">
@@ -429,7 +445,7 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
       </div>
       <div class="heart-crm-card-footer">
         <span>Tippen zum Bearbeiten</span>
-        <span class="heart-crm-footer-icon">${renderHeartIcon("edit")}</span>
+        <span class="heart-crm-footer-icon">${renderHeartIcon("chevronRight")}</span>
       </div>
     </button>
   `;
@@ -515,9 +531,9 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
   `;
 }
 
-function renderSectionTools(sectionKey = "", sectionState = {}, items = []) {
+function renderSectionTools(sectionKey = "", sectionState = {}, items = [], crmAdmin = {}) {
   return `
-    ${renderScopeTabs(sectionKey, sectionState, items)}
+    ${renderScopeTabs(sectionKey, sectionState, items, crmAdmin)}
     ${renderSearchControl(sectionKey, sectionState)}
     ${sectionKey === "leads" ? renderLeadStatusFilter(sectionState) : ""}
   `;
@@ -527,15 +543,15 @@ function renderSectionHeaderActions(sectionKey = "") {
   if (sectionKey === "leads") {
     return `
       <div class="heart-crm-header-actions">
-        ${renderDisabledCrmAction("", ["saveLeadSettings"], "settings")}
-        ${renderDisabledCrmAction("", HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS.leads, "plus")}
+        ${renderDisabledCrmAction("", ["saveLeadSettings"], "settings", "id=\"leadSettingsBtn\"")}
+        ${renderCrmHeaderAction({ iconName: "plus", domainKey: "leads", mode: "create", label: "", id: "newLeadBtn" })}
       </div>
     `;
   }
   if (sectionKey === "staff") {
     return `
       <div class="heart-crm-header-actions">
-        ${renderDisabledCrmAction("", HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS.staff, "plus")}
+        ${renderCrmHeaderAction({ iconName: "plus", domainKey: "staff", mode: "create", label: "", id: "staffNewBtn" })}
       </div>
     `;
   }
@@ -562,7 +578,7 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
         </div>
         ${renderSectionHeaderActions(section.key)}
       </div>
-      ${renderSectionTools(section.key, sectionState, items)}
+      ${renderSectionTools(section.key, sectionState, items, crmAdmin)}
       ${section.key === "staff" ? renderStaffBuildStatusPanel(crmAdmin) : ""}
       ${ready ? "" : renderStateBlock(`Read loader fehlt: ${missingDeps}.`, "warning")}
       ${ready && !canShowList ? renderStateBlock("Noch kein read-only Abruf in dieser Session.", "neutral") : ""}
@@ -593,23 +609,132 @@ function findCrmItem(crmAdmin = {}, domainKey = "", itemId = "") {
   ].some((value) => asText(value) === safeId)) || null;
 }
 
-function renderModalField(label = "", value = "", { multiline = false } = {}) {
+function renderModalField(label = "", value = "", {
+  multiline = false,
+  wide = false,
+  id = "",
+  type = "text",
+  placeholder = "",
+  readonly = false,
+  disabled = false,
+  options = null,
+  checked = false
+} = {}) {
   const safeLabel = asText(label);
   const safeValue = asText(value);
+  const fieldClass = `heart-crm-modal-field ${wide || multiline ? "heart-crm-modal-field--wide" : ""}`;
+  const attrs = [
+    id ? `id="${escapeHtml(id)}"` : "",
+    `name="${escapeHtml(id || safeLabel)}"`,
+    placeholder ? `placeholder="${escapeHtml(placeholder)}"` : "",
+    readonly ? "readonly" : "",
+    disabled ? "disabled" : ""
+  ].filter(Boolean).join(" ");
+  if (Array.isArray(options)) {
+    return `
+      <label class="${fieldClass}">
+        <span>${escapeHtml(safeLabel)}</span>
+        <select ${attrs}>
+          ${options.map((option) => {
+            const optionValue = typeof option === "object" ? option.value : option;
+            const optionLabel = typeof option === "object" ? option.label : option;
+            return `<option value="${escapeHtml(optionValue)}" ${asText(optionValue) === safeValue ? "selected" : ""}>${escapeHtml(optionLabel)}</option>`;
+          }).join("")}
+        </select>
+      </label>
+    `;
+  }
+  if (type === "checkbox") {
+    return `
+      <label class="${fieldClass} heart-crm-modal-field--checkbox">
+        <span>${escapeHtml(safeLabel)}</span>
+        <input ${attrs} type="checkbox" ${checked ? "checked" : ""} />
+      </label>
+    `;
+  }
   if (multiline) {
     return `
-      <label class="heart-crm-modal-field heart-crm-modal-field--wide">
+      <label class="${fieldClass}">
         <span>${escapeHtml(safeLabel)}</span>
-        <textarea readonly>${escapeHtml(safeValue)}</textarea>
+        <textarea ${attrs}>${escapeHtml(safeValue)}</textarea>
       </label>
     `;
   }
   return `
-    <label class="heart-crm-modal-field">
+    <label class="${fieldClass}">
       <span>${escapeHtml(safeLabel)}</span>
-      <input type="text" value="${escapeHtml(safeValue)}" readonly />
+      <input ${attrs} type="${escapeHtml(type)}" value="${escapeHtml(safeValue)}" />
     </label>
   `;
+}
+
+function renderModalFieldset(title = "", innerHtml = "") {
+  if (!String(innerHtml || "").trim()) return "";
+  return `
+    <section class="heart-crm-modal-fieldset">
+      <p>${escapeHtml(title)}</p>
+      <div class="heart-crm-modal-grid">
+        ${innerHtml}
+      </div>
+    </section>
+  `;
+}
+
+function renderImageEditor({ imageUrl = "", label = "", inputId = "", triggerId = "", previewId = "", valueId = "" } = {}) {
+  const safeImageUrl = asText(imageUrl);
+  const safeLabel = firstText(label, "M");
+  return `
+    <div class="heart-crm-image-editor">
+      <div class="heart-crm-avatar heart-crm-avatar--large">
+        ${safeImageUrl
+          ? `<img id="${escapeHtml(previewId)}" src="${escapeHtml(safeImageUrl)}" alt="" loading="lazy" />`
+          : `<span id="${escapeHtml(previewId)}">${escapeHtml(getInitials(safeLabel))}</span>`}
+      </div>
+      <input type="file" id="${escapeHtml(inputId)}" accept="image/*" hidden />
+      <button type="button" id="${escapeHtml(triggerId)}" class="heart-crm-action-placeholder" disabled aria-disabled="true">
+        ${renderHeartIcon("camera")} <span>${escapeHtml(label)}</span>
+      </button>
+      ${valueId ? `<input type="hidden" id="${escapeHtml(valueId)}" value="${escapeHtml(safeImageUrl)}" />` : ""}
+    </div>
+  `;
+}
+
+function formatCoordLabel(item = {}) {
+  const lat = Number(item?.lat ?? item?.gpsLat);
+  const lng = Number(item?.lng ?? item?.gpsLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
+
+function renderLeadLocationRows(lead = {}) {
+  const fallbackCoords = Number.isFinite(Number(lead.lat)) && Number.isFinite(Number(lead.lng))
+    ? { lat: Number(lead.lat), lng: Number(lead.lng) }
+    : null;
+  const source = Array.isArray(lead.locations) && lead.locations.length
+    ? lead.locations
+    : [{ address: firstText(lead.address, lead.city), ...(fallbackCoords || {}) }];
+  const rows = source.length ? source : [{ address: "" }];
+  return rows.slice(0, 12).map((location, index) => {
+    const coordsLabel = formatCoordLabel(location);
+    return `
+      <div class="heart-crm-location-row">
+        <div class="heart-crm-location-row__head">
+          <span>Standort ${index + 1}</span>
+          ${index > 0 ? `<button type="button" class="heart-crm-footer-icon" data-lead-location-remove="${index}" disabled aria-disabled="true">${renderHeartIcon("x")}</button>` : ""}
+        </div>
+        <label class="heart-crm-modal-field heart-crm-modal-field--wide">
+          <span>Adresse</span>
+          <input id="leadLocationAddress_${index}" name="leadLocationAddress_${index}" data-lead-location-address="${index}" type="text" value="${escapeHtml(firstText(location.address, index === 0 ? lead.address : ""))}" placeholder="Plus Code oder Adresse" />
+        </label>
+        <div id="leadLocationCoords_${index}" class="heart-crm-coords-label ${coordsLabel ? "" : "heart-crm-coords-label--hidden"}">
+          ${renderHeartIcon("checkCircle")} ${escapeHtml(coordsLabel || "Standort auf Karte fixiert")}
+        </div>
+        <button type="button" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" data-lead-location-pick="${index}" disabled aria-disabled="true">
+          ${renderHeartIcon("mapPin")} <span>Auf Karte festlegen</span>
+        </button>
+      </div>
+    `;
+  }).join("");
 }
 
 function renderModalMissingWriteNotice(domainKey = "") {
@@ -627,42 +752,81 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
   const isCreate = mode === "create";
   const title = isCreate ? "Neuer Lead" : "Lead bearbeiten";
   const logoUrl = firstText(lead.logoUrl, lead.logo, lead.imageUrl, lead.bestSpotLogoUrl);
+  const bestSpotLogoUrl = firstText(lead.bestSpotLogoUrl, lead.spotLogoUrl, logoUrl);
   const businessName = firstText(lead.businessName, lead.restaurantName, lead.name);
   const statusValue = firstText(lead.status, "registered");
-  const locations = Array.isArray(lead.locations) ? lead.locations : [];
-  const address = firstText(locations[0]?.address, lead.address, lead.city);
+  const customerType = firstText(lead.customerType, lead.type, "cafe");
+  const country = firstText(lead.country, LEAD_SETTINGS_DEFAULT_COUNTRY);
+  const currencyCode = firstText(lead.currencyCode, lead.currency, country === "Serbien" ? "RSD" : country === "Albanien" ? "LEK" : "EUR");
+  const billingCycle = firstText(lead.billingCycle, "monthly");
+  const monthlyPrice = Number(lead.monthlyPrice);
+  const yearlyPrice = Number(lead.yearlyPrice);
+  const activePrice = Number(lead.price);
+  const typeOptions = LEAD_TYPE_ORDER.map((key) => ({ value: key, label: LEAD_TYPE_LABELS[key] || key }));
+  const statusOptions = LEAD_STATUS_ORDER.map((key) => ({ value: key, label: LEAD_STATUS_LABELS[key] || key }));
+  const countryOptions = CEO_COUNTRIES.map((key) => ({ value: key, label: key }));
+  const locationRows = renderLeadLocationRows(lead);
   return `
     <div class="heart-modal__header">
       <div>
         <p class="heart-page-header__eyebrow">CRM</p>
         <h2>${escapeHtml(title)}</h2>
       </div>
-      <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+      <button id="leadModalClose" class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
     </div>
     <div class="heart-crm-modal-body">
-      ${renderAvatar({ imageUrl: logoUrl, label: businessName || "Lead", size: "large" })}
-      ${renderModalMissingWriteNotice("leads")}
-      <div class="heart-crm-modal-grid">
-        ${renderModalField("Typ", typeLabel(firstText(lead.customerType, lead.type, lead.category)))}
-        ${renderModalField("Business Name", businessName)}
-        ${renderModalField("Email", firstText(lead.email, lead.socialEmail))}
-        ${renderModalField("Status", labelFromMap(statusValue, LEAD_STATUS_LABELS))}
-        ${renderModalField("Vorname", firstText(lead.contactFirstName))}
-        ${renderModalField("Nachname", firstText(lead.contactLastName))}
-        ${renderModalField("Telefon", firstText(lead.phone))}
-        ${renderModalField("Instagram", firstText(lead.instagram, lead.insta))}
-        ${renderModalField("Facebook", firstText(lead.facebook))}
-        ${renderModalField("TikTok", firstText(lead.tiktok))}
-        ${renderModalField("Google Maps", firstText(lead.googleMaps), { multiline: true })}
-        ${renderModalField("Adresse", address, { multiline: true })}
-        ${renderModalField("Land", firstText(lead.country))}
-        ${renderModalField("Abo", firstText(lead.billingCycle))}
+      <div class="heart-crm-image-grid">
+        ${renderImageEditor({ imageUrl: logoUrl, label: "Logo hochladen", inputId: "leadLogoInput", triggerId: "leadLogoTrigger", previewId: "leadLogoPreview", valueId: "leadLogoUrl" })}
+        ${renderImageEditor({ imageUrl: bestSpotLogoUrl, label: "Best-Spot-Logo hochladen", inputId: "leadBestSpotLogoInput", triggerId: "leadBestSpotLogoTrigger", previewId: "leadBestSpotLogoPreview", valueId: "leadBestSpotLogoUrl" })}
       </div>
+      ${renderModalMissingWriteNotice("leads")}
+      ${renderModalFieldset("Lead", `
+        ${renderModalField("Typ", customerType, { id: "leadCustomerType", options: typeOptions })}
+        ${renderModalField("Business Name", businessName, { id: "leadBusinessName", placeholder: "Business Name" })}
+        ${renderModalField("Email", firstText(lead.email, lead.socialEmail), { id: "leadEmail", type: "email", placeholder: "owner@mnyra.com", readonly: isCreate })}
+        ${renderModalField("Passwort", "", { id: "leadPassword", type: "password", placeholder: "leer = kein Login wird erstellt" })}
+        ${renderModalField("Status", statusValue, { id: "leadStatus", options: statusOptions })}
+      `)}
+      ${renderModalFieldset("Kunden Daten", `
+        ${renderModalField("Vorname", firstText(lead.contactFirstName), { id: "leadCustomerFirstName", placeholder: "Vorname" })}
+        ${renderModalField("Nachname", firstText(lead.contactLastName), { id: "leadCustomerLastName", placeholder: "Nachname" })}
+        ${renderModalField("Kontakt", firstText(lead.contactName), { id: "leadContactName", placeholder: "Kontaktname" })}
+        ${renderModalField("Telefon", firstText(lead.phone), { id: "leadPhone", placeholder: "+383" })}
+        ${renderModalField("Instagram", firstText(lead.instagram, lead.insta), { id: "leadInstagram", placeholder: "@mnyra" })}
+        ${renderModalField("Facebook", firstText(lead.facebook), { id: "leadFacebook", placeholder: "Facebook" })}
+        ${renderModalField("TikTok", firstText(lead.tiktok), { id: "leadTiktok", placeholder: "TikTok" })}
+        ${renderModalField("Google Maps", firstText(lead.googleMaps), { id: "leadGoogleMaps", placeholder: "https://maps.google.com/...", wide: true })}
+      `)}
+      ${renderModalFieldset("Abo", `
+        ${renderModalField("Laufzeit", billingCycle, { id: "leadBillingCycle", options: [
+          { value: "monthly", label: "Monatlich" },
+          { value: "yearly", label: "Jaehrlich" }
+        ] })}
+        ${renderModalField("Preis monatlich", Number.isFinite(monthlyPrice) ? `${monthlyPrice.toFixed(2)} ${currencyCode} / Monat` : `0.00 ${currencyCode} / Monat`, { id: "leadMonthlyPrice", readonly: true })}
+        ${renderModalField("Preis jaehrlich", Number.isFinite(yearlyPrice) ? `${yearlyPrice.toFixed(2)} ${currencyCode} / Jahr` : `0.00 ${currencyCode} / Jahr`, { id: "leadAnnualPrice", readonly: true })}
+        ${renderModalField("Aktueller Preis", Number.isFinite(activePrice) ? `${activePrice.toFixed(2)} ${currencyCode}` : `0.00 ${currencyCode}`, { id: "leadPriceValue", readonly: true })}
+      `)}
+      <section class="heart-crm-modal-fieldset">
+        <div class="heart-crm-location-head">
+          <p>Standorte</p>
+          <button type="button" class="heart-crm-action-placeholder" data-lead-location-add disabled aria-disabled="true">${renderHeartIcon("plus")} <span>Standort</span></button>
+        </div>
+        <div class="heart-crm-location-list">${locationRows}</div>
+      </section>
+      ${renderModalFieldset("Adresse", `
+        ${renderModalField("Land", country, { id: "leadCountry", options: countryOptions })}
+        ${renderModalField("Waehrung", currencyCode, { id: "leadCurrency", readonly: true })}
+        ${renderModalField("Stadt", firstText(lead.city), { id: "leadCity", placeholder: "Stadt" })}
+        ${renderModalField("Adresse", firstText(lead.address), { id: "leadAddress", placeholder: "Adresse" })}
+        ${renderModalField("ZIP Code", firstText(lead.zipCode), { id: "leadZipCode", placeholder: "10000" })}
+        ${renderModalField("Notiz", firstText(lead.note), { id: "leadNote", multiline: true, placeholder: "Kurz notieren..." })}
+        ${renderModalField("Special aktivieren", "", { id: "leadSpecialEnabled", type: "checkbox", checked: lead.specialEnabled === true, wide: true })}
+      `)}
     </div>
     <div class="heart-modal__footer heart-crm-modal-footer">
-      <button class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Lead loeschen</button>
-      <button class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Zu Kunde</button>
-      <button class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">Speichern</button>
+      <button id="leadInlineDeleteBtn" class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Lead loeschen</button>
+      <button id="leadConvertBtn" class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Zu Kunde</button>
+      <button id="leadInlineSaveBtn" class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">Speichern</button>
     </div>
   `;
 }
@@ -671,35 +835,39 @@ function renderCustomerEditorModalBody(customer = {}) {
   const logoUrl = firstText(customer.logoUrl, customer.logo, customer.imageUrl);
   const name = firstText(customer.name, customer.restaurantName, customer.businessName);
   const statusValue = firstText(customer.status, "kunde");
+  const typeOptions = LEAD_TYPE_ORDER.map((key) => ({ value: key, label: LEAD_TYPE_LABELS[key] || key }));
+  const statusOptions = LEAD_STATUS_ORDER.map((key) => ({ value: key, label: LEAD_STATUS_LABELS[key] || key }));
   return `
     <div class="heart-modal__header">
       <div>
         <p class="heart-page-header__eyebrow">CRM</p>
         <h2>Kunde bearbeiten</h2>
       </div>
-      <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+      <button id="customerModalClose" class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
     </div>
     <div class="heart-crm-modal-body">
-      ${renderAvatar({ imageUrl: logoUrl, label: name || "Kunde", size: "large" })}
+      ${renderImageEditor({ imageUrl: logoUrl, label: "Logo hochladen", inputId: "customerLogoInput", triggerId: "customerLogoTrigger", previewId: "customerLogoPreview" })}
       ${renderModalMissingWriteNotice("customers")}
-      <div class="heart-crm-modal-grid">
-        ${renderModalField("Business Name", name)}
-        ${renderModalField("Typ", typeLabel(firstText(customer.type, customer.customerType)))}
-        ${renderModalField("Status", labelFromMap(statusValue, CUSTOMER_STATUS_LABELS))}
-        ${renderModalField("Email", firstText(customer.ownerEmail, customer.email, customer.socialEmail))}
-        ${renderModalField("Telefon", firstText(customer.phone))}
-        ${renderModalField("Stadt", firstText(customer.city))}
-        ${renderModalField("Adresse", firstText(customer.address), { multiline: true })}
-        ${renderModalField("Billing", firstText(customer.billingStatus, customer.subscriptionStatus))}
-      </div>
+      ${renderModalFieldset("Kundenprofil", `
+        ${renderModalField("Business Name", name, { id: "customerName", placeholder: "Business Name" })}
+        ${renderModalField("Typ", firstText(customer.type, customer.customerType, "cafe"), { id: "customerType", options: typeOptions })}
+        ${renderModalField("Owner", firstText(customer.ownerName, customer.contactName), { id: "customerOwnerName", placeholder: "Owner Name" })}
+        ${renderModalField("Email", firstText(customer.ownerEmail, customer.email, customer.socialEmail), { id: "customerOwnerEmail", type: "email", placeholder: "owner@mnyra.com" })}
+        ${renderModalField("Telefon", firstText(customer.phone), { id: "customerPhone", placeholder: "+383" })}
+        ${renderModalField("City", firstText(customer.city), { id: "customerCity", placeholder: "Prishtina" })}
+        ${renderModalField("Adresse", firstText(customer.address), { id: "customerAddress", placeholder: "Strasse, Nr", wide: true })}
+        ${renderModalField("Instagram", firstText(customer.instagram, customer.insta), { id: "customerInstagram", placeholder: "@mnyra" })}
+        ${renderModalField("Logo URL", logoUrl, { id: "customerLogoUrl", placeholder: "https://..." })}
+        ${renderModalField("Status", statusValue, { id: "customerStatus", options: statusOptions })}
+      `)}
     </div>
     <div class="heart-modal__footer heart-crm-modal-footer">
-      <button class="heart-button heart-button--primary heart-button--wide" type="button" disabled aria-disabled="true">Kunde speichern</button>
+      <button id="customerModalSave" class="heart-button heart-button--primary heart-button--wide" type="button" disabled aria-disabled="true">Kunde speichern</button>
     </div>
   `;
 }
 
-function renderStaffEditorModalBody(entry = {}, crmAdmin = {}) {
+function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
   const name = firstText(entry.name, entry.displayName, entry.email, "CEO");
   const fallbackParts = name.split(/\s+/).filter(Boolean);
   const firstName = firstText(entry.firstName, fallbackParts[0]);
@@ -707,29 +875,46 @@ function renderStaffEditorModalBody(entry = {}, crmAdmin = {}) {
   const currentUid = asText(crmAdmin?.currentUid || "");
   const isSelf = currentUid && asText(entry.uid) === currentUid;
   const avatarUrl = firstText(entry.avatarPreview, entry.avatarUrl, entry.avatar, entry.photoURL);
+  const isCreate = mode === "create";
+  const coordsLabel = formatCoordLabel(entry);
+  const countryOptions = CEO_COUNTRIES.map((key) => ({ value: key, label: key }));
   return `
     <div class="heart-modal__header">
       <div>
         <p class="heart-page-header__eyebrow">CEO</p>
-        <h2>Staff bearbeiten</h2>
+        <h2>${escapeHtml(isCreate ? "Create CEO" : "Edit CEO")}</h2>
       </div>
       <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
     </div>
     <div class="heart-crm-modal-body">
-      ${renderAvatar({ imageUrl: avatarUrl, label: name, size: "large" })}
+      ${renderImageEditor({ imageUrl: avatarUrl, label: "Profilbild hochladen", inputId: "staffAvatarInput", triggerId: "staffAvatarTrigger", previewId: "staffAvatarPreview" })}
       ${renderModalMissingWriteNotice("staff")}
-      <div class="heart-crm-modal-grid">
-        ${renderModalField("Vorname", firstName)}
-        ${renderModalField("Nachname", lastName)}
-        ${renderModalField("Email", firstText(entry.email))}
-        ${renderModalField("Land", firstText(entry.country))}
-        ${renderModalField("Standort", firstText(entry.locationLabel, entry.location, entry.city), { multiline: true })}
-        ${renderModalField("Rolle", isSelf ? "Du" : (entry.ceoParentUid ? "Unterstaff" : "Direkt"))}
-      </div>
+      ${renderModalFieldset("CEO", `
+        ${renderModalField("Vorname", firstName, { id: "staffFirstName", placeholder: "Vorname" })}
+        ${renderModalField("Nachname", lastName, { id: "staffLastName", placeholder: "Nachname" })}
+        ${renderModalField("Email", firstText(entry.email), { id: "staffEmail", type: "email", placeholder: "vornamenachname@mnyra.com", readonly: true })}
+        ${renderModalField("Passwort", "", { id: "staffPassword", type: "password", placeholder: isCreate ? "Passwort eingeben" : "Passwort bleibt unveraendert", disabled: !isCreate })}
+        ${renderModalField("Land", firstText(entry.country, LEAD_SETTINGS_DEFAULT_COUNTRY), { id: "staffCountry", options: countryOptions })}
+        ${renderModalField("Standort", firstText(entry.locationLabel, entry.location, entry.city), { id: "staffLocationLabel", placeholder: "Standort / Adresse", wide: true })}
+      `)}
+      <section class="heart-crm-modal-fieldset">
+        <div class="heart-crm-location-head">
+          <p>Standort mit Pin</p>
+          <button type="button" id="staffLocationPickBtn" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" disabled aria-disabled="true">
+            ${renderHeartIcon("mapPin")} <span>Standort mit Pin waehlen</span>
+          </button>
+        </div>
+        <div id="staffCoordsDisplay" class="heart-crm-coords-label ${coordsLabel ? "" : "heart-crm-coords-label--hidden"}">
+          ${renderHeartIcon("checkCircle")} ${escapeHtml(coordsLabel || "Kein Pin gesetzt")}
+        </div>
+      </section>
+      ${renderModalFieldset("Rolle", `
+        ${renderModalField("Rolle", isSelf ? "Du" : (entry.ceoParentUid ? "Unterstaff" : "Direkt"), { readonly: true })}
+      `)}
     </div>
     <div class="heart-modal__footer heart-crm-modal-footer">
-      <button class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">CEO loeschen</button>
-      <button class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">CEO speichern</button>
+      ${isCreate ? "" : `<button id="staffDeleteBtn" class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">CEO loeschen</button>`}
+      <button id="staffSaveBtn" class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">CEO speichern</button>
     </div>
   `;
 }
@@ -739,6 +924,7 @@ export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
   const domainKey = asText(modal.crmDomain);
   const mode = asText(modal.mode) || "edit";
   const item = mode === "create" ? {} : findCrmItem(crmAdmin || {}, domainKey, modal.itemId);
+  const overlayId = domainKey === "leads" ? "leadModalOverlay" : domainKey === "customers" ? "customerModalOverlay" : "";
   const body = (() => {
     if (!item && mode !== "create") {
       return `
@@ -754,7 +940,7 @@ export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
     }
     if (domainKey === "leads") return renderLeadEditorModalBody(item || {}, mode);
     if (domainKey === "customers") return renderCustomerEditorModalBody(item || {});
-    if (domainKey === "staff") return renderStaffEditorModalBody(item || {}, crmAdmin || {});
+    if (domainKey === "staff") return renderStaffEditorModalBody(item || {}, crmAdmin || {}, mode);
     return `
       <div class="heart-modal__header">
         <div>
@@ -768,7 +954,7 @@ export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
   })();
   return `
     <div class="heart-modal">
-      <button class="heart-modal__backdrop" data-action="close-modal" aria-label="Modal schliessen"></button>
+      <button class="heart-modal__backdrop" ${overlayId ? `id="${escapeHtml(overlayId)}"` : ""} data-action="close-modal" aria-label="Modal schliessen"></button>
       <div class="heart-modal__sheet heart-modal__sheet--detail heart-crm-modal-sheet" role="dialog" aria-modal="true">
         ${body}
       </div>

@@ -2291,7 +2291,7 @@ body {
 }
 
 .heart-crm-admin-read-shell {
-  width: min(100%, 520px);
+  width: min(100%, 448px);
   justify-self: center;
   display: grid;
   gap: 18px;
@@ -2389,8 +2389,13 @@ body {
   color: var(--heart-text-soft);
   background: rgba(28, 28, 33, 0.9);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  cursor: pointer;
+}
+
+.heart-crm-icon-button--disabled,
+.heart-crm-icon-button:disabled {
   cursor: not-allowed;
-  opacity: 0.74;
+  opacity: 0.68;
 }
 
 .heart-crm-icon-button .heart-icon {
@@ -2421,7 +2426,7 @@ body {
   background: rgba(28, 28, 33, 0.82);
   color: var(--heart-text-soft);
   text-align: left;
-  cursor: not-allowed;
+  cursor: pointer;
 }
 
 .heart-crm-scope-tab--active {
@@ -2666,6 +2671,16 @@ body {
   text-decoration: none;
 }
 
+.heart-crm-action-placeholder:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.heart-crm-action-placeholder .heart-icon {
+  width: 15px;
+  height: 15px;
+}
+
 .heart-crm-action-placeholder--primary {
   background: rgba(35, 196, 131, 0.12);
   color: #94f0c8;
@@ -2793,6 +2808,7 @@ body {
 .heart-crm-modal-sheet {
   display: flex;
   flex-direction: column;
+  width: min(100%, 448px);
 }
 
 .heart-crm-modal-body {
@@ -2809,6 +2825,7 @@ body {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .heart-crm-modal-field {
@@ -2829,7 +2846,8 @@ body {
 }
 
 .heart-crm-modal-field input,
-.heart-crm-modal-field textarea {
+.heart-crm-modal-field textarea,
+.heart-crm-modal-field select {
   width: 100%;
   border: 1px solid var(--heart-border);
   border-radius: 18px;
@@ -2842,9 +2860,130 @@ body {
   outline: 0;
 }
 
+.heart-crm-modal-field select {
+  appearance: none;
+}
+
+.heart-crm-modal-field input[readonly],
+.heart-crm-modal-field input:disabled,
+.heart-crm-modal-field textarea:disabled,
+.heart-crm-modal-field select:disabled {
+  color: var(--heart-text-muted);
+}
+
+.heart-crm-modal-field--checkbox {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  background: rgba(245, 244, 239, 0.055);
+}
+
+.heart-crm-modal-field--checkbox input {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  accent-color: #23c483;
+}
+
 .heart-crm-modal-field textarea {
   min-height: 86px;
   resize: vertical;
+}
+
+.heart-crm-modal-fieldset {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+  background: rgba(245, 244, 239, 0.035);
+}
+
+.heart-crm-modal-fieldset > p,
+.heart-crm-location-head p {
+  margin: 0;
+  color: var(--heart-text-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.heart-crm-image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.heart-crm-image-editor {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+  background: rgba(245, 244, 239, 0.035);
+}
+
+.heart-crm-image-editor .heart-crm-action-placeholder {
+  width: 100%;
+  gap: 8px;
+}
+
+.heart-crm-location-head,
+.heart-crm-location-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.heart-crm-location-head .heart-crm-action-placeholder {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding-inline: 12px;
+  gap: 6px;
+}
+
+.heart-crm-location-list {
+  display: grid;
+  gap: 12px;
+}
+
+.heart-crm-location-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(35, 196, 131, 0.14);
+  border-radius: 20px;
+  background: rgba(35, 196, 131, 0.055);
+}
+
+.heart-crm-location-row__head span,
+.heart-crm-coords-label {
+  color: #94f0c8;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.heart-crm-coords-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heart-crm-coords-label .heart-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.heart-crm-coords-label--hidden {
+  display: none;
 }
 
 .heart-crm-modal-notice {
@@ -2908,6 +3047,10 @@ body {
   }
 
   .heart-crm-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heart-crm-image-grid {
     grid-template-columns: 1fr;
   }
 

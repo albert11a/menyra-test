@@ -29,6 +29,15 @@ const ICONS = Object.freeze({
     <path d="M3 12h.01"></path>
     <path d="M3 18h.01"></path>
   `,
+  search: `
+    <circle cx="11" cy="11" r="7"></circle>
+    <path d="m20 20-3.5-3.5"></path>
+  `,
+  listFilter: `
+    <path d="M3 6h18"></path>
+    <path d="M7 12h10"></path>
+    <path d="M10 18h4"></path>
+  `,
   bell: `
     <path d="M10.27 21a2 2 0 0 0 3.46 0"></path>
     <path d="M3.26 15.33A2 2 0 0 0 5 18h14a2 2 0 0 0 1.74-2.67L18 8a6 6 0 1 0-12 0z"></path>
@@ -131,8 +140,19 @@ const ICONS = Object.freeze({
     <path d="M12 20h9"></path>
     <path d="m16.5 3.5 4 4L8 20l-4 1 1-4 11.5-13.5z"></path>
   `,
+  camera: `
+    <path d="M14.5 4h-5L7 7H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2l-2.5-3z"></path>
+    <circle cx="12" cy="13" r="3"></circle>
+  `,
+  mapPin: `
+    <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0z"></path>
+    <circle cx="12" cy="10" r="3"></circle>
+  `,
   chevronDown: `
     <path d="m6 9 6 6 6-6"></path>
+  `,
+  chevronRight: `
+    <path d="m9 18 6-6-6-6"></path>
   `,
   chevronUp: `
     <path d="m18 15-6-6-6 6"></path>
