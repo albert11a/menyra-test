@@ -1288,7 +1288,7 @@ function bindLocationPickerEvents() {
   modal.dataset.bound = "true";
 }
 
-async function openLocationPicker({ addressInputId = "settingsAddress", coordsDisplayId = "coordsDisplay", context = "settings" } = {}) {
+async function openLocationPicker({ addressInputId = "settingsAddress", coordsDisplayId = "coordsDisplay", context = "settings", initialCoords = null } = {}) {
   ensureLocationPickerModal();
   bindLocationPickerEvents();
   locationPickerTarget = { addressInputId, coordsDisplayId, context };
@@ -1325,7 +1325,7 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
       const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
       const primary = getPrimaryLeadLocation(list);
       const direct = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
-      targetCoords = preferStableCoords(direct, restFallback);
+      targetCoords = normalizeCoordPair(initialCoords?.lat, initialCoords?.lng) || preferStableCoords(direct, restFallback);
     } else if (pickerContext.startsWith("lead_location:")) {
       const index = Number(pickerContext.split(":")[1]);
       const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
@@ -1334,7 +1334,8 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
       const rowAddress = String(row?.address || "").trim();
       const addressValue = String(inputValue || rowAddress).trim();
       const rowCoords = resolveCoordsFromEntity(row) || null;
-      if (rowCoords && (!inputValue || !rowAddress || inputValue === rowAddress)) {
+      targetCoords = normalizeCoordPair(initialCoords?.lat, initialCoords?.lng) || null;
+      if (!targetCoords && rowCoords && (!inputValue || !rowAddress || inputValue === rowAddress)) {
         targetCoords = rowCoords;
       }
       if (!targetCoords) {

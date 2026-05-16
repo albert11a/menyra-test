@@ -1137,9 +1137,12 @@ export function createHeartCrmAdminWriteAdapter({
     const coordsDisplayId = rowIndex === 0 && document.getElementById("leadCoordsDisplay")
       ? "leadCoordsDisplay"
       : `leadLocationCoords_${rowIndex}`;
+    const initialCoords = resolveCoords(runtimeState.leadModal?.locations?.[rowIndex])
+      || (rowIndex === 0 ? resolveCoords(runtimeState.leadModal?.coords) : null);
     await controller.openLocationPicker({
       addressInputId,
       coordsDisplayId,
+      initialCoords,
       context: `lead_location:${rowIndex}`
     });
     bindLocationPickerDraftSync();
