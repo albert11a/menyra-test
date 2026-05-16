@@ -66,6 +66,7 @@ export function createCrmRuntimeCluster({
     extractPlusCodeFromText: geoApi.extractPlusCodeFromText,
     isLikelyShortPlusCode: geoApi.isLikelyShortPlusCode,
     parseCoordsFromAddressInputAsync: geoApi.parseCoordsFromAddressInputAsync,
+    geocodeReferenceSearch: geoApi.geocodeReferenceSearch,
     createLeadLocation: geoApi.createLeadLocation,
     getPrimaryLeadLocation: geoApi.getPrimaryLeadLocation,
     resolveCoordsFromEntity: geoApi.resolveCoordsFromEntity,

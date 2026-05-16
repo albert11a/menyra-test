@@ -64,6 +64,7 @@ export function createCrmRuntimeController(deps = {}) {
     extractPlusCodeFromText,
     isLikelyShortPlusCode,
     parseCoordsFromAddressInputAsync,
+    geocodeReferenceSearch,
     createLeadLocation,
     getPrimaryLeadLocation,
     resolveCoordsFromEntity,
@@ -1341,12 +1342,19 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
       if (!targetCoords) {
         targetCoords = await parseCoordsFromAddressInputAsync(addressValue, getLeadPlusCodeReference(addressValue));
       }
+      if (!targetCoords && addressValue && typeof geocodeReferenceSearch === "function") {
+        targetCoords = await geocodeReferenceSearch(addressValue);
+      }
       if (!targetCoords) {
         targetCoords = rowCoords;
       }
       if (!targetCoords) {
         const primary = getPrimaryLeadLocation(list);
         targetCoords = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
+      }
+      if (!targetCoords && addressValue) {
+        alert("Standort konnte nicht aufgeloest werden. Bitte Plus-Code oder Adresse pruefen.");
+        return;
       }
       targetCoords = targetCoords || restFallback;
     }

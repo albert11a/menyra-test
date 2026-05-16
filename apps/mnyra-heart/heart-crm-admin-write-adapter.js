@@ -1126,9 +1126,16 @@ export function createHeartCrmAdminWriteAdapter({
     if (typeof controller.openLocationPicker !== "function") {
       throw new Error("Social Standort-Picker ist nicht verfuegbar.");
     }
-    controller.syncLeadModalDraftFromForm();
     const addressInputId = `leadLocationAddress_${rowIndex}`;
-    const addressValue = asText(document.getElementById(addressInputId)?.value);
+    const addressInput = document.getElementById(addressInputId);
+    let addressValue = asText(addressInput?.value);
+    if (!addressValue && rowIndex === 0) {
+      addressValue = asText(document.getElementById("leadAddress")?.value)
+        || asText(document.getElementById("leadGoogleMaps")?.value)
+        || asText(document.getElementById("leadCity")?.value);
+      if (addressValue && addressInput) addressInput.value = addressValue;
+    }
+    controller.syncLeadModalDraftFromForm();
     if (addressValue && typeof controller.refineLeadLocationAddressIndex === "function") {
       await controller.refineLeadLocationAddressIndex(rowIndex, addressValue, { hydratePrimary: rowIndex === 0 });
       controller.syncLeadModalDraftFromForm();
