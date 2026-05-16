@@ -1347,7 +1347,7 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
         const primary = getPrimaryLeadLocation(list);
         targetCoords = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
       }
-      targetCoords = preferStableCoords(targetCoords, restFallback);
+      targetCoords = targetCoords || restFallback;
     }
   } else if (isStaffPickerContext) {
     const staffCoords = state.staff.form?.coords;
