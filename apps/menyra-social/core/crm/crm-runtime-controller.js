@@ -1330,10 +1330,18 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
       const index = Number(pickerContext.split(":")[1]);
       const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
       const row = Number.isInteger(index) && index >= 0 ? list[index] : null;
-      const addressValue = String(row?.address || document.getElementById(addressInputId)?.value || "").trim();
-      targetCoords = await parseCoordsFromAddressInputAsync(addressValue, getLeadPlusCodeReference(addressValue));
+      const inputValue = String(document.getElementById(addressInputId)?.value || "").trim();
+      const rowAddress = String(row?.address || "").trim();
+      const addressValue = String(inputValue || rowAddress).trim();
+      const rowCoords = resolveCoordsFromEntity(row) || null;
+      if (rowCoords && (!inputValue || !rowAddress || inputValue === rowAddress)) {
+        targetCoords = rowCoords;
+      }
       if (!targetCoords) {
-        targetCoords = resolveCoordsFromEntity(row) || null;
+        targetCoords = await parseCoordsFromAddressInputAsync(addressValue, getLeadPlusCodeReference(addressValue));
+      }
+      if (!targetCoords) {
+        targetCoords = rowCoords;
       }
       if (!targetCoords) {
         const primary = getPrimaryLeadLocation(list);
