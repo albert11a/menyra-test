@@ -90,6 +90,8 @@ import {
   createCrmLeadGeoSupportRuntime
 } from "../menyra-social/core/crm/crm-lead-geo-support-runtime.js";
 import {
+  createCustomerScopeMapCore,
+  createLeadScopeMapCore,
   normalizeCustomerScopeKeyCore,
   normalizeLeadScopeKeyCore
 } from "../menyra-social/core/crm/crm-scope-state-utils.js";
@@ -133,6 +135,7 @@ const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_FALLBACK_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+const LEAFLET_LOAD_TIMEOUT_MS = 7000;
 
 function asText(value = "") {
   return String(value || "").trim();
@@ -225,7 +228,16 @@ let leafletLoadPromise = null;
 
 function ensureLeafletCss(cssUrl = LEAFLET_CSS_URL) {
   if (typeof document === "undefined") return;
-  if (document.querySelector('link[data-heart-leaflet-css="1"]')) return;
+  const absoluteHref = (() => {
+    try {
+      return new URL(cssUrl, document.baseURI).href;
+    } catch {
+      return cssUrl;
+    }
+  })();
+  const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .some((link) => link.dataset.heartLeafletCss === "1" || link.dataset.leafletCss === "1" || link.href === absoluteHref);
+  if (existing) return;
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = cssUrl;
@@ -233,20 +245,49 @@ function ensureLeafletCss(cssUrl = LEAFLET_CSS_URL) {
   document.head.appendChild(link);
 }
 
-function loadLeafletScript(jsUrl, cssUrl) {
+function getExistingLeafletScript(jsUrl = "") {
+  if (typeof document === "undefined") return null;
+  const absoluteSrc = (() => {
+    try {
+      return new URL(jsUrl, document.baseURI).href;
+    } catch {
+      return jsUrl;
+    }
+  })();
+  return Array.from(document.querySelectorAll("script"))
+    .find((script) => script.src === absoluteSrc)
+    || null;
+}
+
+function loadLeafletScript(jsUrl, cssUrl, timeoutMs = LEAFLET_LOAD_TIMEOUT_MS) {
   ensureLeafletCss(cssUrl);
   return new Promise((resolve) => {
     if (typeof window === "undefined" || typeof document === "undefined") {
       resolve(false);
       return;
     }
-    const script = document.createElement("script");
-    script.src = jsUrl;
-    script.async = true;
-    script.dataset.heartLeafletJs = "1";
-    script.onload = () => resolve(!!window.L);
-    script.onerror = () => resolve(false);
-    document.head.appendChild(script);
+    if (window.L) {
+      resolve(true);
+      return;
+    }
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      if (timer) window.clearTimeout(timer);
+      resolve(ok === true || !!window.L);
+    };
+    const timer = window.setTimeout(() => finish(false), Math.max(1000, Number(timeoutMs) || LEAFLET_LOAD_TIMEOUT_MS));
+    const existing = getExistingLeafletScript(jsUrl);
+    const script = existing || document.createElement("script");
+    script.addEventListener("load", () => finish(true), { once: true });
+    script.addEventListener("error", () => finish(false), { once: true });
+    if (!existing) {
+      script.src = jsUrl;
+      script.async = true;
+      script.dataset.heartLeafletJs = "1";
+      document.head.appendChild(script);
+    }
   });
 }
 
@@ -277,6 +318,20 @@ function revealLocationPickerModalIfReady() {
   schedule(() => {
     window.dispatchEvent(new Event("resize"));
   });
+}
+
+function isLocationPickerModalOpen() {
+  if (typeof document === "undefined") return false;
+  const modal = document.getElementById("locationPickerModal");
+  return !!modal && !modal.classList.contains("hidden");
+}
+
+function assertLocationPickerOpened() {
+  if (isLocationPickerModalOpen()) return;
+  const leafletReady = typeof window !== "undefined" && !!window.L;
+  throw new Error(leafletReady
+    ? "Social Standort-Picker wurde nicht sichtbar."
+    : "Kartenbibliothek konnte nicht geladen werden.");
 }
 
 export function createHeartCrmAdminWriteAdapter({
@@ -856,10 +911,15 @@ export function createHeartCrmAdminWriteAdapter({
       },
       leadApi: {
         ...leadGeo,
+        normalizeLeadScopeKey: normalizeLeadScopeKeyCore,
+        normalizeCustomerScopeKey: normalizeCustomerScopeKeyCore,
+        createLeadScopeMap: createLeadScopeMapCore,
+        createCustomerScopeMap: createCustomerScopeMapCore,
         normalizeSearchKey,
         resolveCurrencyCodeFromLeadCountry,
         normalizeHandle,
         normalizeRestaurantType,
+        toDateSafe,
         uniqueStringList: ceoSupport.uniqueStringList,
         findRestaurantByUid,
         findRestaurantByEmail,
@@ -1063,6 +1123,9 @@ export function createHeartCrmAdminWriteAdapter({
     const controller = ensureRuntimeController();
     const safeIndex = Number(index);
     const rowIndex = Number.isInteger(safeIndex) && safeIndex >= 0 ? safeIndex : 0;
+    if (typeof controller.openLocationPicker !== "function") {
+      throw new Error("Social Standort-Picker ist nicht verfuegbar.");
+    }
     controller.syncLeadModalDraftFromForm();
     const coordsDisplayId = rowIndex === 0 && document.getElementById("leadCoordsDisplay")
       ? "leadCoordsDisplay"
@@ -1074,10 +1137,15 @@ export function createHeartCrmAdminWriteAdapter({
     });
     bindLocationPickerDraftSync();
     revealLocationPickerModalIfReady();
+    assertLocationPickerOpened();
+    return { ok: true };
   }
 
   async function pickStaffLocation() {
     const controller = ensureRuntimeController();
+    if (typeof controller.openLocationPicker !== "function") {
+      throw new Error("Social Standort-Picker ist nicht verfuegbar.");
+    }
     controller.syncStaffFormFromDom();
     await controller.openLocationPicker({
       addressInputId: "staffLocationLabel",
@@ -1086,6 +1154,8 @@ export function createHeartCrmAdminWriteAdapter({
     });
     bindLocationPickerDraftSync();
     revealLocationPickerModalIfReady();
+    assertLocationPickerOpened();
+    return { ok: true };
   }
 
   function setLeadLogoFile(file) {
