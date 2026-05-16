@@ -86,6 +86,19 @@ const CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN = Object.freeze(
     [item.key]: item.consumerKey
   }), {})
 );
+const CRM_ADMIN_SCOPE_COUNT_KEYS = Object.freeze({
+  leads: Object.freeze({
+    own: "ownLeads",
+    staff: "staffLeads",
+    archived: "archivedLeads"
+  }),
+  customers: Object.freeze({
+    own: "ownCustomers",
+    staff: "staffCustomers"
+  })
+});
+const CRM_ADMIN_DEFAULT_READ_LIMIT = 20;
+const CRM_ADMIN_MAX_READ_LIMIT = 160;
 
 function isStandaloneDisplayMode() {
   try {
@@ -283,16 +296,38 @@ async function loadCrmAdminDomainFromConsumer(consumer, domainKey = "", options 
     return;
   }
   const scope = String(options.scope || "").trim();
+  const readLimit = resolveCrmReadLimit(safeDomainKey, scope, options);
   actions.setCrmAdminLoading(safeDomainKey, { scope });
   try {
     const payload = await domain.load({
-      limit: 20,
+      limit: readLimit,
       ...(scope ? { scope } : {})
     });
     actions.setCrmAdminData(safeDomainKey, payload || {});
   } catch (error) {
     actions.setCrmAdminError(safeDomainKey, error?.message || "CRM/Admin Daten konnten nicht geladen werden.");
   }
+}
+
+function getStoredCrmScopeCount(domainKey = "", scope = "") {
+  const countKey = CRM_ADMIN_SCOPE_COUNT_KEYS[domainKey]?.[scope] || "";
+  if (!countKey) return null;
+  const count = Number(store.getState().auth?.profile?.crmCounts?.[countKey]);
+  return Number.isFinite(count) ? Math.max(0, count) : null;
+}
+
+function resolveCrmReadLimit(domainKey = "", scope = "", options = {}) {
+  const explicitLimit = Number(options.limit);
+  if (Number.isFinite(explicitLimit) && explicitLimit > 0) {
+    return Math.min(Math.max(CRM_ADMIN_DEFAULT_READ_LIMIT, Math.ceil(explicitLimit)), CRM_ADMIN_MAX_READ_LIMIT);
+  }
+  if (domainKey === "leads") {
+    const storedCount = getStoredCrmScopeCount(domainKey, scope || "own");
+    if (Number.isFinite(storedCount)) {
+      return Math.min(Math.max(CRM_ADMIN_DEFAULT_READ_LIMIT, Math.ceil(storedCount)), CRM_ADMIN_MAX_READ_LIMIT);
+    }
+  }
+  return CRM_ADMIN_DEFAULT_READ_LIMIT;
 }
 
 async function loadCrmAdminDomain(domainKey = "", options = {}) {

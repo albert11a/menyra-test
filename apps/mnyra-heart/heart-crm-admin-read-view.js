@@ -292,6 +292,8 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = [], crmAdmi
   const scopeCountExact = sectionState.scopeCountExact && typeof sectionState.scopeCountExact === "object" ? sectionState.scopeCountExact : {};
   const scopeLoaded = sectionState.scopeLoaded && typeof sectionState.scopeLoaded === "object" ? sectionState.scopeLoaded : {};
   const resolveTabCount = (storedKey = "", scopeKey = "") => {
+    const storedCount = getStoredScopeCount(crmAdmin, storedKey);
+    if (storedCount !== "") return storedCount;
     if (activeScope === scopeKey) return count;
     const scopeCount = scopeCounts[scopeKey];
     if (Number.isFinite(Number(scopeCount))) {
@@ -301,8 +303,6 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = [], crmAdmi
         scopeLoaded[scopeKey] === true
       );
     }
-    const storedCount = getStoredScopeCount(crmAdmin, storedKey);
-    if (storedCount !== "") return storedCount;
     return "-";
   };
   const tabSets = {
