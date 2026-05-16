@@ -95,7 +95,9 @@ function isStandaloneDisplayMode() {
 }
 
 function syncViewportSurface(state = store.getState()) {
-  const lockDocument = !!state.shell?.navOpen || !!state.shell?.modal?.kind;
+  const modal = state.shell?.modal || {};
+  const leadInlineEditorOpen = modal.kind === "crm-editor" && modal.crmDomain === "leads";
+  const lockDocument = !!state.shell?.navOpen || (!!modal.kind && !leadInlineEditorOpen);
   document.documentElement.style.background = "#000000";
   document.body.style.background = "#000000";
   document.documentElement.style.overscrollBehaviorY = lockDocument ? "none" : "auto";
@@ -727,6 +729,12 @@ const operations = {
       mode,
       draft: {}
     });
+  },
+  toggleCrmLeadActions(open) {
+    const modal = getOpenCrmModal();
+    if (modal?.crmDomain !== "leads") return;
+    const nextOpen = typeof open === "boolean" ? open : !modal?.draft?.actionsOpen;
+    actions.setCrmEditorDraft({ actionsOpen: nextOpen });
   },
   async saveCrmLead() {
     await runCrmModalAction({

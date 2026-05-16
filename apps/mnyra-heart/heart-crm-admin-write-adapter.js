@@ -263,6 +263,22 @@ async function ensureLeafletLoaded() {
   return leafletLoadPromise;
 }
 
+function revealLocationPickerModalIfReady() {
+  if (typeof window === "undefined" || typeof document === "undefined" || !window.L) return;
+  const modal = document.getElementById("locationPickerModal");
+  const overlay = document.getElementById("pickerOverlay");
+  const panel = document.getElementById("pickerPanel");
+  const map = document.getElementById("pickerMap");
+  if (!modal || !map) return;
+  modal.classList.remove("hidden");
+  overlay?.classList.remove("opacity-0");
+  panel?.classList.remove("translate-y-full");
+  const schedule = window.requestAnimationFrame?.bind(window) || ((callback) => setTimeout(callback, 0));
+  schedule(() => {
+    window.dispatchEvent(new Event("resize"));
+  });
+}
+
 export function createHeartCrmAdminWriteAdapter({
   getState,
   onDraftChange
@@ -640,7 +656,9 @@ export function createHeartCrmAdminWriteAdapter({
     if (!Number.isInteger(safeIndex) || safeIndex < 0 || typeof document === "undefined") return;
     const location = runtimeState.leadModal?.locations?.[safeIndex] || {};
     const label = formatCoordLabel(location);
-    const badge = document.getElementById(`leadLocationCoords_${safeIndex}`);
+    const badge = safeIndex === 0
+      ? (document.getElementById("leadCoordsDisplay") || document.getElementById("leadLocationCoords_0"))
+      : document.getElementById(`leadLocationCoords_${safeIndex}`);
     if (!badge) return;
     badge.classList.toggle("hidden", !label);
     badge.classList.toggle("heart-crm-coords-label--hidden", !label);
@@ -1046,12 +1064,16 @@ export function createHeartCrmAdminWriteAdapter({
     const safeIndex = Number(index);
     const rowIndex = Number.isInteger(safeIndex) && safeIndex >= 0 ? safeIndex : 0;
     controller.syncLeadModalDraftFromForm();
+    const coordsDisplayId = rowIndex === 0 && document.getElementById("leadCoordsDisplay")
+      ? "leadCoordsDisplay"
+      : `leadLocationCoords_${rowIndex}`;
     await controller.openLocationPicker({
       addressInputId: `leadLocationAddress_${rowIndex}`,
-      coordsDisplayId: `leadLocationCoords_${rowIndex}`,
+      coordsDisplayId,
       context: `lead_location:${rowIndex}`
     });
     bindLocationPickerDraftSync();
+    revealLocationPickerModalIfReady();
   }
 
   async function pickStaffLocation() {
@@ -1063,6 +1085,7 @@ export function createHeartCrmAdminWriteAdapter({
       context: "staff"
     });
     bindLocationPickerDraftSync();
+    revealLocationPickerModalIfReady();
   }
 
   function setLeadLogoFile(file) {

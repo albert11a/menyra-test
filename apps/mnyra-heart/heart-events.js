@@ -1,5 +1,21 @@
 function findActionTarget(target) {
-  return target?.closest?.("[data-action], [data-nav-key], [data-run-id]") || null;
+  return target?.closest?.([
+    "[data-action]",
+    "[data-nav-key]",
+    "[data-run-id]",
+    "[data-lead-location-add]",
+    "[data-lead-location-remove]",
+    "[data-lead-location-pick]",
+    "#leadInlineSaveBtn",
+    "#leadModalSave",
+    "#leadInlineDeleteBtn",
+    "#leadConvertBtn",
+    "#leadLogoTrigger",
+    "#leadBestSpotLogoTrigger",
+    "#leadInlineActionsToggle",
+    "#leadInlineActionsBackdrop",
+    "#leadModalClose"
+  ].join(", ")) || null;
 }
 
 export function bindHeartEvents({
@@ -21,8 +37,53 @@ export function bindHeartEvents({
     }
 
     const action = String(target.getAttribute("data-action") || "").trim();
-    if (!action) return;
     event.preventDefault();
+
+    if (!action && target.hasAttribute("data-lead-location-add")) {
+      operations.addCrmLeadLocation?.();
+      return;
+    }
+    if (!action && target.hasAttribute("data-lead-location-remove")) {
+      operations.removeCrmLeadLocation?.(target.getAttribute("data-lead-location-remove"));
+      return;
+    }
+    if (!action && target.hasAttribute("data-lead-location-pick")) {
+      await operations.pickCrmLeadLocation?.(target.getAttribute("data-lead-location-pick"));
+      return;
+    }
+    if (!action && (target.id === "leadInlineSaveBtn" || target.id === "leadModalSave")) {
+      await operations.saveCrmLead?.();
+      return;
+    }
+    if (!action && target.id === "leadInlineDeleteBtn") {
+      await operations.deleteCrmLead?.();
+      return;
+    }
+    if (!action && target.id === "leadConvertBtn") {
+      await operations.convertCrmLead?.();
+      return;
+    }
+    if (!action && target.id === "leadLogoTrigger") {
+      operations.triggerCrmFile?.("leadLogoInput");
+      return;
+    }
+    if (!action && target.id === "leadBestSpotLogoTrigger") {
+      operations.triggerCrmFile?.("leadBestSpotLogoInput");
+      return;
+    }
+    if (!action && target.id === "leadInlineActionsToggle") {
+      operations.toggleCrmLeadActions?.();
+      return;
+    }
+    if (!action && target.id === "leadInlineActionsBackdrop") {
+      operations.toggleCrmLeadActions?.(false);
+      return;
+    }
+    if (!action && target.id === "leadModalClose") {
+      operations.closeModal?.();
+      return;
+    }
+    if (!action) return;
 
     if (action === "toggle-nav") {
       operations.toggleNav?.();
@@ -230,7 +291,13 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
-    const crmFileInput = event.target?.closest?.("[data-crm-file-input]");
+    const crmFileInput = event.target?.closest?.([
+      "[data-crm-file-input]",
+      "#leadLogoInput",
+      "#leadBestSpotLogoInput",
+      "#customerLogoInput",
+      "#staffAvatarInput"
+    ].join(", "));
     if (crmFileInput) {
       await operations.handleCrmFileChange?.(crmFileInput.id || crmFileInput.getAttribute("data-crm-file-input"), crmFileInput.files?.[0] || null);
       return;

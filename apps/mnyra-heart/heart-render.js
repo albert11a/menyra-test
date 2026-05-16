@@ -209,7 +209,8 @@ function renderViewBody(state, runtime = {}) {
         currentUid: state.auth.user?.uid || "",
         userProfile: state.auth.profile || null
       },
-      activeDomain: crmReadDomain
+      activeDomain: crmReadDomain,
+      modal: state.shell.modal || {}
     });
   }
   if (state.shell.activeView === "connections") {

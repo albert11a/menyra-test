@@ -955,6 +955,7 @@ function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
 export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
   if (asText(modal?.kind) !== "crm-editor") return "";
   const domainKey = asText(modal.crmDomain);
+  if (domainKey === "leads") return "";
   const mode = asText(modal.mode) || "edit";
   const modalDraft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
   const baseItem = mode === "create" ? {} : findCrmItem(crmAdmin || {}, domainKey, modal.itemId);
@@ -999,17 +1000,48 @@ export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
   `;
 }
 
-export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null, activeDomain = "leads" } = {}) {
+function renderInlineLeadEditor(crmAdmin = {}, modal = {}) {
+  const mode = asText(modal.mode) || "edit";
+  const modalDraft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
+  const baseItem = mode === "create" ? {} : findCrmItem(crmAdmin || {}, "leads", modal.itemId);
+  const item = mode === "create"
+    ? modalDraft
+    : (baseItem ? { ...baseItem, ...modalDraft } : baseItem);
+  if (!item && mode !== "create") {
+    return `
+      <section class="heart-crm-inline-editor heart-crm-inline-editor--lead">
+        <div class="heart-modal__header">
+          <div>
+            <p class="heart-page-header__eyebrow">CRM</p>
+            <h2>Lead nicht gefunden</h2>
+          </div>
+          <button class="heart-icon-button" data-action="close-modal" aria-label="Zurueck">${renderHeartIcon("x")}</button>
+        </div>
+        <div class="heart-crm-modal-body">${renderStateBlock("Der ausgewaehlte Lead ist nicht in der aktuellen Liste geladen.", "warning")}</div>
+      </section>
+    `;
+  }
+  return `
+    <section class="heart-crm-inline-editor heart-crm-inline-editor--lead">
+      ${renderLeadEditorModalBody(item || {}, mode)}
+    </section>
+  `;
+}
+
+export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null, activeDomain = "leads", modal = {} } = {}) {
   const {
     consumer,
     error
   } = createReadConsumer(consumerDeps);
   const section = CRM_READ_SECTION_BY_KEY[asText(activeDomain)] || CRM_READ_SECTION_BY_KEY.leads;
+  const isLeadEditorOpen = section.key === "leads"
+    && asText(modal?.kind) === "crm-editor"
+    && asText(modal?.crmDomain) === "leads";
 
   return `
     <div class="heart-crm-admin-read-shell">
       ${error ? `<div class="heart-error-block">${escapeHtml(error)}</div>` : ""}
-      ${renderCrmReadSection(section, consumer, crmAdmin || {})}
+      ${isLeadEditorOpen ? renderInlineLeadEditor(crmAdmin || {}, modal || {}) : renderCrmReadSection(section, consumer, crmAdmin || {})}
     </div>
   `;
 }
