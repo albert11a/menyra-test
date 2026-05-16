@@ -3049,6 +3049,11 @@ body {
   gap: 10px;
 }
 
+.heart-crm-modal-footer--customer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .heart-crm-inline-editor {
   display: flex;
   min-width: 0;
@@ -3437,6 +3442,10 @@ body {
 
   .heart-crm-inline-editor .heart-crm-modal-body {
     padding-inline: 14px;
+  }
+
+  .heart-crm-modal-footer--customer {
+    grid-template-columns: 1fr;
   }
 }
 

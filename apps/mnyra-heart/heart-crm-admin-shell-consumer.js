@@ -12,7 +12,7 @@ export const HEART_CRM_ADMIN_READ_LOADER_DEPS = Object.freeze({
   businessAccounts: "loadBusinessAccounts"
 });
 export const HEART_CRM_ADMIN_WRITE_DEPS = Object.freeze({
-  leads: Object.freeze(["saveLeadFromModal", "deleteLeadFromModal", "convertLeadToCustomer"]),
+  leads: Object.freeze(["saveLeadFromModal", "deleteLeadFromModal", "convertLeadToCustomer", "saveLeadSettings"]),
   customers: Object.freeze(["saveCustomerFromModal"]),
   staff: Object.freeze(["saveCeoStaffFromView", "deleteCeoStaffFromView"])
 });
@@ -108,7 +108,8 @@ export function createHeartCrmAdminShellConsumer(deps = {}) {
     },
     leadWrite: {
       saveLeadFromModal: writeDeps.available.saveLeadFromModal,
-      deleteLeadFromModal: writeDeps.available.deleteLeadFromModal
+      deleteLeadFromModal: writeDeps.available.deleteLeadFromModal,
+      saveLeadSettings: writeDeps.available.saveLeadSettings
     },
     leadConversion: {
       convertLeadToCustomer: writeDeps.available.convertLeadToCustomer
@@ -133,6 +134,7 @@ export function createHeartCrmAdminShellConsumer(deps = {}) {
     leads: createDomain(adapter.leads.load, {
       save: adapter.leads.save,
       delete: adapter.leads.delete,
+      saveSettings: adapter.leads.saveSettings,
       convertToCustomer: adapter.leads.convertToCustomer,
       syncDerivedFields: adapter.leads.syncDerivedFields,
       syncDraftFromForm: writeSource.syncLeadModalDraftFromForm,

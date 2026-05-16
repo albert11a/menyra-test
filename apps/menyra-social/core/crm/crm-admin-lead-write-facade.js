@@ -2,7 +2,8 @@ export const CRM_ADMIN_LEAD_WRITE_FACADE_VERSION = "crm-admin-lead-write-facade.
 
 export const CRM_ADMIN_LEAD_WRITE_OPERATIONS = Object.freeze([
   "saveLeadFromModal",
-  "deleteLeadFromModal"
+  "deleteLeadFromModal",
+  "saveLeadSettings"
 ]);
 
 function createLeadWriteHandler(name, handler) {
@@ -17,6 +18,7 @@ function createLeadWriteHandler(name, handler) {
 export function createCrmAdminLeadWriteFacade({
   saveLead,
   deleteLead,
+  saveLeadSettings,
   saveLeadFromModal,
   deleteLeadFromModal
 } = {}) {
@@ -28,14 +30,20 @@ export function createCrmAdminLeadWriteFacade({
     "deleteLeadFromModal",
     typeof deleteLead === "function" ? deleteLead : deleteLeadFromModal
   );
+  const saveCrmLeadSettings = createLeadWriteHandler(
+    "saveLeadSettings",
+    saveLeadSettings
+  );
 
   return Object.freeze({
     version: CRM_ADMIN_LEAD_WRITE_FACADE_VERSION,
     operations: CRM_ADMIN_LEAD_WRITE_OPERATIONS,
     saveCrmLead,
     deleteCrmLead,
+    saveCrmLeadSettings,
     saveLead: saveCrmLead,
     deleteLead: deleteCrmLead,
+    saveLeadSettings: saveCrmLeadSettings,
     saveLeadFromModal: saveCrmLead,
     deleteLeadFromModal: deleteCrmLead
   });

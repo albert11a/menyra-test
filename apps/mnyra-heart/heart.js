@@ -872,11 +872,49 @@ const operations = {
       action: (domain) => domain.convertToCustomer(modal?.itemId || "")
     });
   },
+  async saveCrmLeadSettings() {
+    try {
+      const domain = getCrmConsumerDomain("leads");
+      if (!domain?.writeReady || typeof domain.saveSettings !== "function") {
+        const missing = Array.isArray(domain?.missingWriteDeps) ? domain.missingWriteDeps.join(", ") : "";
+        throw new Error(missing ? `Fehlende CRM Facade-Dependencies: ${missing}` : "Lead Settings sind nicht bereit.");
+      }
+      const result = await domain.saveSettings();
+      if (!actionSucceeded(result)) {
+        if (result?.message) setToast("Lead Settings", result.message, "warning");
+        return;
+      }
+      if (result?.leadSettings && typeof result.leadSettings === "object") {
+        actions.patchAuthProfile({ leadSettings: result.leadSettings });
+      }
+      setToast("Lead Settings", result?.message || "Leads Settings gespeichert.", "success");
+    } catch (error) {
+      setToast("Lead Settings", error?.message || "Lead Settings konnten nicht gespeichert werden.", "danger");
+    }
+  },
   async saveCrmCustomer() {
     await runCrmModalAction({
       domainKey: "customers",
       title: "Kunde",
       successMessage: "Kunde gespeichert.",
+      action: (domain) => domain.save()
+    });
+  },
+  async moveCrmCustomerToLead() {
+    const confirmed = typeof confirm === "function"
+      ? confirm("Kunde zurueck zu Leads verschieben?")
+      : true;
+    if (!confirmed) return;
+    const statusInput = document.getElementById("customerStatus");
+    if (!statusInput) {
+      setToast("Kunde", "Customer Status Feld fehlt.", "danger");
+      return;
+    }
+    statusInput.value = "registered";
+    await runCrmModalAction({
+      domainKey: "customers",
+      title: "Kunde",
+      successMessage: "Kunde wurde zu Leads verschoben.",
       action: (domain) => domain.save()
     });
   },

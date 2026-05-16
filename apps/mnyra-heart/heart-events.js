@@ -177,6 +177,10 @@ export function bindHeartEvents({
       await operations.saveCrmLead?.();
       return;
     }
+    if (action === "save-crm-lead-settings") {
+      await operations.saveCrmLeadSettings?.();
+      return;
+    }
     if (action === "delete-crm-lead") {
       await operations.deleteCrmLead?.();
       return;
@@ -187,6 +191,10 @@ export function bindHeartEvents({
     }
     if (action === "save-crm-customer") {
       await operations.saveCrmCustomer?.();
+      return;
+    }
+    if (action === "move-crm-customer-to-lead") {
+      await operations.moveCrmCustomerToLead?.();
       return;
     }
     if (action === "save-crm-staff") {

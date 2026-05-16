@@ -22,6 +22,18 @@ import {
   resolveKnownScopeCountLabelCore,
   sanitizeCeoCrmCountsCore
 } from "../menyra-social/core/crm/ceo-staff-sync-utils.js";
+import {
+  normalizeLeadCountryCore
+} from "../menyra-social/core/leads/lead-country-utils.js";
+import {
+  normalizeLeadPricingCore
+} from "../menyra-social/core/leads/lead-pricing-utils.js";
+import {
+  normalizeLeadSettingsCore
+} from "../menyra-social/core/leads/lead-settings-utils.js";
+import {
+  normalizeLeadStatusKeyCore
+} from "../menyra-social/core/leads/lead-taxonomy-utils.js";
 
 export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
   leads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.leads]),
@@ -47,6 +59,7 @@ const CRM_READ_SECTION_BY_KEY = Object.freeze(
     [section.key]: section
   }), {})
 );
+const CUSTOMER_DELETE_DISABLED_REASON = "Kein sicherer Customer-delete Facade vorhanden; Social CRM Migration Adapter exponiert Customer delete/remove ausdruecklich nicht.";
 
 const CUSTOMER_STATUS_LABELS = Object.freeze({
   kunde: "Kunde",
@@ -62,6 +75,37 @@ const CUSTOMER_STATUS_LABELS = Object.freeze({
 
 function formatMissingDeps(domainKey = "") {
   return (HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS[domainKey] || []).join(", ");
+}
+
+function normalizeHeartLeadCountry(value = "") {
+  return normalizeLeadCountryCore(value, {
+    allowedCountries: CEO_COUNTRIES,
+    fallbackCountry: LEAD_SETTINGS_DEFAULT_COUNTRY
+  });
+}
+
+function normalizeHeartLeadStatus(value = "", fallback = "registered") {
+  const normalized = normalizeLeadStatusKeyCore(value || fallback);
+  return LEAD_STATUS_ORDER.includes(normalized) ? normalized : fallback;
+}
+
+function normalizeHeartLeadSettings(raw = {}) {
+  return normalizeLeadSettingsCore(raw, {
+    defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
+    normalizeLeadCountryFn: normalizeHeartLeadCountry,
+    normalizeLeadPricingFn: (pricing) => normalizeLeadPricingCore(pricing, {
+      leadTypeOrder: LEAD_TYPE_ORDER
+    })
+  });
+}
+
+function resolveLeadSettingsConfig(crmAdmin = {}, modal = {}) {
+  const draft = modal?.draft && typeof modal.draft === "object" ? modal.draft : {};
+  const draftSettings = draft.leadSettings && typeof draft.leadSettings === "object" ? draft.leadSettings : null;
+  const profileSettings = crmAdmin?.userProfile?.leadSettings && typeof crmAdmin.userProfile.leadSettings === "object"
+    ? crmAdmin.userProfile.leadSettings
+    : {};
+  return normalizeHeartLeadSettings(draftSettings || profileSettings);
 }
 
 function createReadConsumer(consumerDeps) {
@@ -577,7 +621,7 @@ function renderSectionHeaderActions(sectionKey = "") {
   if (sectionKey === "leads") {
     return `
       <div class="heart-crm-header-actions">
-        ${renderDisabledCrmAction("", ["saveLeadSettings"], "settings", "id=\"leadSettingsBtn\"")}
+        ${renderCrmHeaderAction({ iconName: "settings", domainKey: "leads", mode: "settings", label: "", id: "leadSettingsBtn" })}
         ${renderCrmHeaderAction({ iconName: "plus", domainKey: "leads", mode: "create", label: "", id: "newLeadBtn" })}
       </div>
     `;
@@ -621,7 +665,7 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
     ? domain.missingDeps.join(", ")
     : formatMissingDeps(section.key);
   const canShowList = ready && (sectionStatus === "ready" || sectionStatus === "loading" || sectionStatus === "error");
-  const showSectionHeader = section.key !== "leads";
+  const showSectionHeader = true;
   const showSectionFoot = section.key !== "leads" && section.key !== "staff";
   const emptySessionLabel = section.key === "staff"
     ? "Noch kein Abruf in dieser Session."
@@ -675,6 +719,8 @@ function renderModalField(label = "", value = "", {
   placeholder = "",
   readonly = false,
   disabled = false,
+  min = "",
+  step = "",
   options = null,
   checked = false
 } = {}) {
@@ -685,6 +731,8 @@ function renderModalField(label = "", value = "", {
     id ? `id="${escapeHtml(id)}"` : "",
     `name="${escapeHtml(id || safeLabel)}"`,
     placeholder ? `placeholder="${escapeHtml(placeholder)}"` : "",
+    min !== "" ? `min="${escapeHtml(min)}"` : "",
+    step !== "" ? `step="${escapeHtml(step)}"` : "",
     readonly ? "readonly" : "",
     disabled ? "disabled" : ""
   ].filter(Boolean).join(" ");
@@ -892,7 +940,7 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
 function renderCustomerEditorModalBody(customer = {}) {
   const logoUrl = firstText(customer.logoUrl, customer.logo, customer.imageUrl);
   const name = firstText(customer.name, customer.restaurantName, customer.businessName);
-  const statusValue = firstText(customer.status, "kunde");
+  const statusValue = normalizeHeartLeadStatus(firstText(customer.status, "kunde"), "kunde");
   const typeOptions = LEAD_TYPE_ORDER.map((key) => ({ value: key, label: LEAD_TYPE_LABELS[key] || key }));
   const statusOptions = LEAD_STATUS_ORDER.map((key) => ({ value: key, label: LEAD_STATUS_LABELS[key] || key }));
   return `
@@ -918,9 +966,12 @@ function renderCustomerEditorModalBody(customer = {}) {
         ${renderModalField("Logo URL", logoUrl, { id: "customerLogoUrl", placeholder: "https://..." })}
         ${renderModalField("Status", statusValue, { id: "customerStatus", options: statusOptions })}
       `)}
+      ${renderStateBlock(CUSTOMER_DELETE_DISABLED_REASON, "warning")}
     </div>
-    <div class="heart-modal__footer heart-crm-modal-footer">
-      <button id="customerModalSave" class="heart-button heart-button--primary heart-button--wide" data-action="save-crm-customer" type="button">Kunde speichern</button>
+    <div class="heart-modal__footer heart-crm-modal-footer heart-crm-modal-footer--customer">
+      <button id="customerDeleteBtn" class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true" title="${escapeHtml(CUSTOMER_DELETE_DISABLED_REASON)}">Kunde loeschen</button>
+      <button id="customerBackToLeadBtn" class="heart-button heart-button--secondary" data-action="move-crm-customer-to-lead" type="button">Zurueck zu Leads</button>
+      <button id="customerModalSave" class="heart-button heart-button--primary" data-action="save-crm-customer" type="button">Kunde speichern</button>
     </div>
   `;
 }
@@ -1034,6 +1085,54 @@ export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
   `;
 }
 
+function renderInlineLeadSettings(crmAdmin = {}, modal = {}) {
+  const draft = modal?.draft && typeof modal.draft === "object" ? modal.draft : {};
+  const config = resolveLeadSettingsConfig(crmAdmin, modal);
+  const saving = draft.settingsSaving === true;
+  const status = firstText(draft.settingsStatus);
+  const countryOptions = CEO_COUNTRIES.map((country) => ({
+    value: country,
+    label: country
+  }));
+  return `
+    <section class="heart-crm-inline-editor heart-crm-inline-editor--lead-settings">
+      <div class="heart-modal__header">
+        <div>
+          <p class="heart-page-header__eyebrow">CRM</p>
+          <h2>Lead Settings</h2>
+        </div>
+        <button class="heart-icon-button" data-action="close-modal" aria-label="Zurueck">${renderHeartIcon("x")}</button>
+      </div>
+      <div class="heart-crm-modal-body">
+        ${renderModalFieldset("Standard", `
+          ${renderModalField("Standard Standort Land", config.defaultCountry, { id: "leadSettingsDefaultCountry", options: countryOptions, wide: true })}
+        `)}
+        <section class="heart-crm-modal-fieldset">
+          <p>Lead Typen / Monatlicher Abo Preis</p>
+          <div class="heart-crm-modal-grid">
+            ${LEAD_TYPE_ORDER.map((key) => {
+              const price = Number(config.pricing?.[key]) || 0;
+              return renderModalField(LEAD_TYPE_LABELS[key] || key, price ? price.toFixed(2) : "0.00", {
+                id: `leadPrice_${key}`,
+                type: "number",
+                min: "0",
+                step: "0.01",
+                placeholder: "0.00"
+              });
+            }).join("")}
+          </div>
+        </section>
+        ${status ? renderStateBlock(status, "neutral") : ""}
+      </div>
+      <div class="heart-modal__footer heart-crm-modal-footer">
+        <button id="leadSettingsSaveBtn" class="heart-button heart-button--primary heart-button--wide" data-action="save-crm-lead-settings" type="button" ${saving ? "disabled aria-disabled=\"true\"" : ""}>
+          ${escapeHtml(saving ? "Speichern..." : "Leads Settings speichern")}
+        </button>
+      </div>
+    </section>
+  `;
+}
+
 function renderInlineLeadEditor(crmAdmin = {}, modal = {}) {
   const mode = asText(modal.mode) || "edit";
   const modalDraft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
@@ -1096,9 +1195,14 @@ export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null
     error
   } = createReadConsumer(consumerDeps);
   const section = CRM_READ_SECTION_BY_KEY[asText(activeDomain)] || CRM_READ_SECTION_BY_KEY.leads;
+  const isLeadSettingsOpen = section.key === "leads"
+    && asText(modal?.kind) === "crm-editor"
+    && asText(modal?.crmDomain) === "leads"
+    && asText(modal?.mode) === "settings";
   const isLeadEditorOpen = section.key === "leads"
     && asText(modal?.kind) === "crm-editor"
-    && asText(modal?.crmDomain) === "leads";
+    && asText(modal?.crmDomain) === "leads"
+    && !isLeadSettingsOpen;
   const isStaffEditorOpen = section.key === "staff"
     && asText(modal?.kind) === "crm-editor"
     && asText(modal?.crmDomain) === "staff";
@@ -1106,7 +1210,9 @@ export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null
   return `
     <div class="heart-crm-admin-read-shell">
       ${error ? `<div class="heart-error-block">${escapeHtml(error)}</div>` : ""}
-      ${isLeadEditorOpen
+      ${isLeadSettingsOpen
+        ? renderInlineLeadSettings(crmAdmin || {}, modal || {})
+        : isLeadEditorOpen
         ? renderInlineLeadEditor(crmAdmin || {}, modal || {})
         : isStaffEditorOpen
           ? renderInlineStaffEditor(crmAdmin || {}, modal || {})

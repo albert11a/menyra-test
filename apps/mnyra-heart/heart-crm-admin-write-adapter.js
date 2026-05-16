@@ -474,7 +474,9 @@ export function createHeartCrmAdminWriteAdapter({
       countExact,
       pageSize,
       scope,
-      view: domainKey === "leads" && mode === "create" ? "create" : "list",
+      view: domainKey === "leads" && mode === "settings"
+        ? "settings"
+        : (domainKey === "leads" && mode === "create" ? "create" : "list"),
       loading: false,
       loadingMore: false,
       error: "",
@@ -671,6 +673,10 @@ export function createHeartCrmAdminWriteAdapter({
   function syncDraftFromRuntime(domainKey = getModalDomain()) {
     if (typeof onDraftChange !== "function") return;
     if (domainKey === "leads") {
+      if (runtimeState.leads?.view === "settings") {
+        syncLeadSettingsDraftFromRuntime();
+        return;
+      }
       const modal = runtimeState.leadModal || {};
       const lead = { ...(modal.lead || {}) };
       if (Array.isArray(modal.locations)) lead.locations = modal.locations.slice();
@@ -1176,10 +1182,22 @@ export function createHeartCrmAdminWriteAdapter({
   }
 
   function getStatus(domainKey = "") {
+    if (domainKey === "leadSettings") return asText(runtimeState.leads?.settingsStatus);
     if (domainKey === "leads") return asText(runtimeState.leadModal?.status);
     if (domainKey === "customers") return asText(runtimeState.customerModal?.status);
     if (domainKey === "staff") return asText(runtimeState.staff?.status);
     return "";
+  }
+
+  function syncLeadSettingsDraftFromRuntime() {
+    if (typeof onDraftChange !== "function") return;
+    onDraftChange({
+      settingsSaving: runtimeState.leads?.settingsSaving === true,
+      settingsStatus: asText(runtimeState.leads?.settingsStatus),
+      leadSettings: runtimeState.userProfile?.leadSettings && typeof runtimeState.userProfile.leadSettings === "object"
+        ? { ...runtimeState.userProfile.leadSettings }
+        : {}
+    });
   }
 
   function actionOutcome(domainKey = "", result = undefined) {
@@ -1234,6 +1252,23 @@ export function createHeartCrmAdminWriteAdapter({
     const result = await controller.convertLeadToCustomer(id);
     syncDraftFromRuntime("leads");
     return actionOutcome("leads", result);
+  }
+
+  async function saveLeadSettings() {
+    const controller = ensureRuntimeController();
+    const result = await controller.saveLeadSettings();
+    syncLeadSettingsDraftFromRuntime();
+    const crmCounts = runtimeState.userProfile?.crmCounts && typeof runtimeState.userProfile.crmCounts === "object"
+      ? { ...runtimeState.userProfile.crmCounts }
+      : null;
+    return {
+      ok: result !== false,
+      message: getStatus("leadSettings"),
+      leadSettings: runtimeState.userProfile?.leadSettings && typeof runtimeState.userProfile.leadSettings === "object"
+        ? { ...runtimeState.userProfile.leadSettings }
+        : null,
+      crmCounts
+    };
   }
 
   async function saveCustomerFromModal() {
@@ -1410,6 +1445,7 @@ export function createHeartCrmAdminWriteAdapter({
     saveLeadFromModal,
     deleteLeadFromModal,
     convertLeadToCustomer,
+    saveLeadSettings,
     saveCustomerFromModal,
     saveCeoStaffFromView,
     deleteCeoStaffFromView,

@@ -54,6 +54,7 @@ export function createCrmAdminMigrationAdapter(deps = {}) {
     load: readFacade.loadCrmLeads,
     save: leadWriteFacade.saveCrmLead,
     delete: leadWriteFacade.deleteCrmLead,
+    saveSettings: leadWriteFacade.saveCrmLeadSettings,
     convertToCustomer: leadConversionFacade.convertCrmLeadToCustomer,
     render: uiFacade.renderCrmLeads,
     renderCreate: uiFacade.renderCrmLeadCreation,
