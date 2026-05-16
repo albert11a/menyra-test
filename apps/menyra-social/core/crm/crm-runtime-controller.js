@@ -101,6 +101,7 @@ export function createCrmRuntimeController(deps = {}) {
     mergeRestaurants,
     rebuildBusinessLocations,
     canCurrentCeoSeeRow,
+    isOwnedByVisibleCeoTeam: isOwnedByVisibleCeoTeamDep,
     isCurrentCeoOwnRow,
     ensureCeoCrmCountsLoaded,
     getCeoCrmCountsPromise,
@@ -154,6 +155,9 @@ export function createCrmRuntimeController(deps = {}) {
     confirm,
     deleteDoc
   } = deps;
+  const isOwnedByVisibleCeoTeam = typeof isOwnedByVisibleCeoTeamDep === "function"
+    ? isOwnedByVisibleCeoTeamDep
+    : ((row = {}) => (typeof canCurrentCeoSeeRow === "function" ? canCurrentCeoSeeRow(row) : true));
 
   let ceoStaffLoadPromise = null;
   let hiddenLegacyCeoUids = [];

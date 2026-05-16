@@ -746,6 +746,7 @@ export function createCeoCrmCountRuntimeController(deps = {}) {
     canViewCeoRecord,
     hydrateStaffRecordsFromUserProfiles,
     canCurrentCeoSeeRow,
+    isOwnedByVisibleCeoTeam,
     isCurrentCeoOwnRow,
     createEmptyCeoCrmCounts,
     sanitizeCeoCrmCounts,

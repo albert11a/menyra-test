@@ -103,6 +103,7 @@ export function createCrmRuntimeCluster({
     mergeRestaurants: cacheApi.mergeRestaurants,
     rebuildBusinessLocations: cacheApi.rebuildBusinessLocations,
     canCurrentCeoSeeRow: ceoApi.canCurrentCeoSeeRow,
+    isOwnedByVisibleCeoTeam: ceoApi.isOwnedByVisibleCeoTeam,
     isCurrentCeoOwnRow: ceoApi.isCurrentCeoOwnRow,
     ensureCeoCrmCountsLoaded: ceoApi.ensureCeoCrmCountsLoaded,
     getCeoCrmCountsPromise: ceoApi.getCeoCrmCountsPromise,
