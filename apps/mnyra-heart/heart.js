@@ -14,6 +14,9 @@ import {
   createHeartCrmAdminReadLoaderDeps
 } from "./heart-crm-admin-read-loaders.js";
 import {
+  createHeartCrmAdminWriteAdapter
+} from "./heart-crm-admin-write-adapter.js";
+import {
   createHeartMonitoringAdapter
 } from "./heart-monitoring-adapter.js";
 import {
@@ -50,8 +53,13 @@ const crmAdminReadLoaders = createHeartCrmAdminReadLoaderDeps({
   getAuthState: () => store.getState().auth,
   getSetupState: () => store.getState().setup
 });
+const crmAdminWriteAdapter = createHeartCrmAdminWriteAdapter({
+  getState: () => store.getState(),
+  onDraftChange: (draftPatch) => actions.setCrmEditorDraft(draftPatch)
+});
 const crmAdminConsumerDeps = Object.freeze({
-  read: crmAdminReadLoaders
+  read: crmAdminReadLoaders,
+  write: crmAdminWriteAdapter
 });
 const renderRuntime = Object.freeze({
   crmAdminConsumerDeps
@@ -248,8 +256,7 @@ async function refreshSetup() {
 async function refreshCrmAdmin() {
   let consumer = null;
   try {
-    consumer = createHeartCrmAdminShellConsumer(crmAdminConsumerDeps);
-    actions.setCrmAdminContract(consumer.contract || {});
+    consumer = createCrmAdminConsumer();
   } catch (error) {
     actions.setCrmAdminError("", error?.message || "CRM/Admin Consumer konnte nicht vorbereitet werden.");
     return;
@@ -289,13 +296,92 @@ async function loadCrmAdminDomainFromConsumer(consumer, domainKey = "", options 
 async function loadCrmAdminDomain(domainKey = "", options = {}) {
   let consumer = null;
   try {
-    consumer = createHeartCrmAdminShellConsumer(crmAdminConsumerDeps);
-    actions.setCrmAdminContract(consumer.contract || {});
+    consumer = createCrmAdminConsumer();
   } catch (error) {
     actions.setCrmAdminError("", error?.message || "CRM/Admin Consumer konnte nicht vorbereitet werden.");
     return;
   }
   await loadCrmAdminDomainFromConsumer(consumer, domainKey, options);
+}
+
+function createCrmAdminConsumer({ syncContract = true } = {}) {
+  const consumer = createHeartCrmAdminShellConsumer(crmAdminConsumerDeps);
+  if (syncContract) {
+    actions.setCrmAdminContract(consumer.contract || {});
+  }
+  return consumer;
+}
+
+function getOpenCrmModal() {
+  const modal = store.getState().shell?.modal || {};
+  return modal.kind === "crm-editor" ? modal : null;
+}
+
+function getCrmConsumerDomain(domainKey = "") {
+  const safeDomainKey = String(domainKey || "").trim();
+  const consumerKey = CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN[safeDomainKey] || safeDomainKey;
+  const consumer = createCrmAdminConsumer({ syncContract: false });
+  return consumer?.[consumerKey] || null;
+}
+
+function actionSucceeded(result) {
+  if (result === false) return false;
+  if (result && typeof result === "object" && result.ok === false) return false;
+  return true;
+}
+
+async function runCrmModalAction({
+  domainKey = "",
+  title = "CRM",
+  successMessage = "Aktion abgeschlossen.",
+  action
+} = {}) {
+  try {
+    const domain = getCrmConsumerDomain(domainKey);
+    if (!domain?.writeReady) {
+      const missing = Array.isArray(domain?.missingWriteDeps) ? domain.missingWriteDeps.join(", ") : "";
+      throw new Error(missing ? `Fehlende CRM Facade-Dependencies: ${missing}` : "CRM Schreibaktionen sind nicht bereit.");
+    }
+    const result = await action?.(domain);
+    if (!actionSucceeded(result)) {
+      if (result?.message) setToast(title, result.message, "warning");
+      return;
+    }
+    if (result?.crmCounts && typeof result.crmCounts === "object") {
+      actions.patchAuthProfile({ crmCounts: result.crmCounts });
+    }
+    actions.closeModal();
+    await refreshCrmAdmin();
+    setToast(title, successMessage, "success");
+  } catch (error) {
+    setToast(title, error?.message || "CRM Aktion fehlgeschlagen.", "danger");
+  }
+}
+
+function syncCrmLeadDerivedFields() {
+  try {
+    getCrmConsumerDomain("leads")?.syncDerivedFields?.();
+  } catch {}
+}
+
+function syncCrmLeadDraftFromForm() {
+  try {
+    getCrmConsumerDomain("leads")?.syncDraftFromForm?.();
+  } catch {}
+}
+
+async function refineCrmLeadLocationAddress(index, value = "") {
+  try {
+    await getCrmConsumerDomain("leads")?.refineLocationAddress?.(index, value);
+  } catch (error) {
+    setToast("Standort", error?.message || "Standort konnte nicht verarbeitet werden.", "danger");
+  }
+}
+
+function syncCrmStaffDerivedEmailField() {
+  try {
+    getCrmConsumerDomain("staff")?.syncDerivedEmailField?.();
+  } catch {}
 }
 
 async function ensureRunDetail(runId = "") {
@@ -638,9 +724,119 @@ const operations = {
       kind: "crm-editor",
       crmDomain: domainKey,
       itemId,
-      mode
+      mode,
+      draft: {}
     });
   },
+  async saveCrmLead() {
+    await runCrmModalAction({
+      domainKey: "leads",
+      title: "Lead",
+      successMessage: "Lead gespeichert.",
+      action: (domain) => domain.save()
+    });
+  },
+  async deleteCrmLead() {
+    await runCrmModalAction({
+      domainKey: "leads",
+      title: "Lead",
+      successMessage: "Lead geloescht.",
+      action: (domain) => domain.delete()
+    });
+  },
+  async convertCrmLead() {
+    const modal = getOpenCrmModal();
+    await runCrmModalAction({
+      domainKey: "leads",
+      title: "Lead",
+      successMessage: "Lead wurde Kunde.",
+      action: (domain) => domain.convertToCustomer(modal?.itemId || "")
+    });
+  },
+  async saveCrmCustomer() {
+    await runCrmModalAction({
+      domainKey: "customers",
+      title: "Kunde",
+      successMessage: "Kunde gespeichert.",
+      action: (domain) => domain.save()
+    });
+  },
+  async saveCrmStaff() {
+    await runCrmModalAction({
+      domainKey: "staff",
+      title: "Staff",
+      successMessage: "CEO Staff gespeichert.",
+      action: (domain) => domain.save()
+    });
+  },
+  async deleteCrmStaff() {
+    await runCrmModalAction({
+      domainKey: "staff",
+      title: "Staff",
+      successMessage: "CEO Staff geloescht.",
+      action: (domain) => domain.remove()
+    });
+  },
+  triggerCrmFile(inputId = "") {
+    const safeInputId = String(inputId || "").trim();
+    if (!safeInputId) return;
+    document.getElementById(safeInputId)?.click?.();
+  },
+  async handleCrmFileChange(inputId = "", file = null) {
+    if (!file) return;
+    const safeInputId = String(inputId || "").trim();
+    try {
+      if (safeInputId === "leadLogoInput") {
+        getCrmConsumerDomain("leads")?.setLogoFile?.(file);
+        return;
+      }
+      if (safeInputId === "leadBestSpotLogoInput") {
+        getCrmConsumerDomain("leads")?.setBestSpotLogoFile?.(file);
+        return;
+      }
+      if (safeInputId === "customerLogoInput") {
+        getCrmConsumerDomain("customers")?.setLogoFile?.(file);
+        return;
+      }
+      if (safeInputId === "staffAvatarInput") {
+        getCrmConsumerDomain("staff")?.setAvatarFile?.(file);
+      }
+    } catch (error) {
+      setToast("Upload", error?.message || "Bild konnte nicht vorbereitet werden.", "danger");
+    }
+  },
+  addCrmLeadLocation() {
+    try {
+      getCrmConsumerDomain("leads")?.addLocationRow?.();
+    } catch (error) {
+      setToast("Standort", error?.message || "Standort konnte nicht hinzugefuegt werden.", "danger");
+    }
+  },
+  removeCrmLeadLocation(index) {
+    try {
+      getCrmConsumerDomain("leads")?.removeLocationRow?.(index);
+    } catch (error) {
+      setToast("Standort", error?.message || "Standort konnte nicht entfernt werden.", "danger");
+    }
+  },
+  async pickCrmLeadLocation(index) {
+    try {
+      await getCrmConsumerDomain("leads")?.pickLocation?.(index);
+    } catch (error) {
+      setToast("Karte", error?.message || "Standort-Picker konnte nicht geoeffnet werden.", "danger");
+    }
+  },
+  async pickCrmStaffLocation() {
+    try {
+      await getCrmConsumerDomain("staff")?.pickLocation?.();
+    } catch (error) {
+      setToast("Karte", error?.message || "Standort-Picker konnte nicht geoeffnet werden.", "danger");
+    }
+  },
+  syncCrmLeadDerivedFields,
+  syncCrmLeadDraftFromForm,
+  refineCrmLeadLocationAddress,
+  syncCrmStaffDerivedEmailField,
   toggleNav() {
     actions.setNavOpen(!store.getState().shell.navOpen);
   },

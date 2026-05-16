@@ -2291,10 +2291,11 @@ body {
 }
 
 .heart-crm-admin-read-shell {
-  width: min(100%, 448px);
+  width: min(100%, 640px);
   justify-self: center;
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .heart-crm-contract-strip {
@@ -2334,6 +2335,14 @@ body {
   border-radius: 30px;
   background: rgba(10, 10, 12, 0.76);
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
+}
+
+.heart-crm-social-view--leads {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .heart-crm-social-head,
@@ -2508,11 +2517,13 @@ body {
 .heart-crm-list-stack {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .heart-crm-card {
   display: grid;
   gap: 12px;
+  min-width: 0;
   padding: 14px;
   border: 1px solid var(--heart-border);
   border-radius: 26px;
@@ -3014,13 +3025,38 @@ body {
 }
 
 @media (max-width: 560px) {
+  .heart-crm-admin-read-shell {
+    width: 100%;
+  }
+
   .heart-crm-social-view {
     padding: 16px;
     border-radius: 26px;
   }
 
+  .heart-crm-social-view--leads {
+    padding: 0;
+    border-radius: 0;
+  }
+
   .heart-crm-social-head {
     align-items: flex-start;
+  }
+
+  .heart-crm-scope-grid,
+  .heart-crm-scope-grid--leads,
+  .heart-crm-scope-grid--customers {
+    grid-template-columns: 1fr;
+  }
+
+  .heart-crm-card-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .heart-crm-status-pill {
+    margin-left: auto;
+    max-width: 100%;
   }
 
   .heart-crm-header-actions {

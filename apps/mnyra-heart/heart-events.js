@@ -112,6 +112,50 @@ export function bindHeartEvents({
       });
       return;
     }
+    if (action === "save-crm-lead") {
+      await operations.saveCrmLead?.();
+      return;
+    }
+    if (action === "delete-crm-lead") {
+      await operations.deleteCrmLead?.();
+      return;
+    }
+    if (action === "convert-crm-lead") {
+      await operations.convertCrmLead?.();
+      return;
+    }
+    if (action === "save-crm-customer") {
+      await operations.saveCrmCustomer?.();
+      return;
+    }
+    if (action === "save-crm-staff") {
+      await operations.saveCrmStaff?.();
+      return;
+    }
+    if (action === "delete-crm-staff") {
+      await operations.deleteCrmStaff?.();
+      return;
+    }
+    if (action === "trigger-crm-file") {
+      operations.triggerCrmFile?.(target.getAttribute("data-crm-file-input"));
+      return;
+    }
+    if (action === "add-crm-lead-location") {
+      operations.addCrmLeadLocation?.();
+      return;
+    }
+    if (action === "remove-crm-lead-location") {
+      operations.removeCrmLeadLocation?.(target.getAttribute("data-lead-location-remove"));
+      return;
+    }
+    if (action === "pick-crm-lead-location") {
+      await operations.pickCrmLeadLocation?.(target.getAttribute("data-lead-location-pick"));
+      return;
+    }
+    if (action === "pick-crm-staff-location") {
+      await operations.pickCrmStaffLocation?.();
+      return;
+    }
     if (action === "set-crm-scope") {
       await operations.setCrmScope?.(
         target.getAttribute("data-crm-domain"),
@@ -185,7 +229,23 @@ export function bindHeartEvents({
     }
   }
 
-  function handleChange(event) {
+  async function handleChange(event) {
+    const crmFileInput = event.target?.closest?.("[data-crm-file-input]");
+    if (crmFileInput) {
+      await operations.handleCrmFileChange?.(crmFileInput.id || crmFileInput.getAttribute("data-crm-file-input"), crmFileInput.files?.[0] || null);
+      return;
+    }
+
+    const changedId = String(event.target?.id || "").trim();
+    if (["leadCustomerType", "leadBillingCycle", "leadCountry", "leadStatus"].includes(changedId)) {
+      operations.syncCrmLeadDerivedFields?.();
+      return;
+    }
+    if (changedId === "staffCountry") {
+      operations.syncCrmStaffDerivedEmailField?.();
+      return;
+    }
+
     const crmStatus = event.target?.closest?.("[data-crm-status]");
     if (crmStatus) {
       operations.setCrmStatusFilter?.(crmStatus.getAttribute("data-crm-domain"), crmStatus.value);
@@ -199,19 +259,45 @@ export function bindHeartEvents({
 
   function handleInput(event) {
     const crmSearch = event.target?.closest?.("[data-crm-search]");
-    if (!crmSearch) return;
-    operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
+    if (crmSearch) {
+      operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
+      return;
+    }
+
+    const inputId = String(event.target?.id || "").trim();
+    if (["leadBusinessName", "leadCustomerType", "leadBillingCycle", "leadCountry"].includes(inputId)) {
+      operations.syncCrmLeadDerivedFields?.();
+      return;
+    }
+    if (inputId.startsWith("leadLocationAddress_") || inputId === "leadAddress" || inputId === "leadCity") {
+      operations.syncCrmLeadDraftFromForm?.();
+      return;
+    }
+    if (["staffFirstName", "staffLastName", "staffCountry"].includes(inputId)) {
+      operations.syncCrmStaffDerivedEmailField?.();
+    }
+  }
+
+  async function handleFocusOut(event) {
+    const leadLocationInput = event.target?.closest?.("[data-lead-location-address]");
+    if (!leadLocationInput) return;
+    await operations.refineCrmLeadLocationAddress?.(
+      leadLocationInput.getAttribute("data-lead-location-address"),
+      leadLocationInput.value
+    );
   }
 
   root.addEventListener("click", handleClick);
   root.addEventListener("submit", handleSubmit);
   root.addEventListener("change", handleChange);
   root.addEventListener("input", handleInput);
+  root.addEventListener("focusout", handleFocusOut);
 
   return () => {
     root.removeEventListener("click", handleClick);
     root.removeEventListener("submit", handleSubmit);
     root.removeEventListener("change", handleChange);
     root.removeEventListener("input", handleInput);
+    root.removeEventListener("focusout", handleFocusOut);
   };
 }

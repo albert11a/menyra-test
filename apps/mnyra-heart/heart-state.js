@@ -42,7 +42,8 @@ export function createHeartInitialState() {
         runId: "",
         crmDomain: "",
         itemId: "",
-        mode: ""
+        mode: "",
+        draft: {}
       }
     },
     dashboard: {
@@ -207,7 +208,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.shell.activeView = String(viewKey || "dashboard");
       draft.shell.navOpen = false;
       draft.shell.quickActionsOpen = false;
-      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "" };
+      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "", draft: {} };
       if (draft.shell.activeView !== "runs") {
         draft.runs.launcherExpanded = false;
         draft.runs.detailExpanded = false;
@@ -239,7 +240,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         runId: String(modal.runId || "").trim(),
         crmDomain: String(modal.crmDomain || "").trim(),
         itemId: String(modal.itemId || "").trim(),
-        mode: String(modal.mode || "").trim()
+        mode: String(modal.mode || "").trim(),
+        draft: sanitizeStateValue(modal.draft && typeof modal.draft === "object" ? modal.draft : {})
       };
       draft.shell.navOpen = false;
       draft.shell.quickActionsOpen = false;
@@ -251,8 +253,29 @@ export function createHeartStore(initialState = createHeartInitialState()) {
 
   function closeModal() {
     patch((draft) => {
-      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "" };
+      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "", draft: {} };
       draft.runs.detailExpanded = false;
+    });
+  }
+
+  function patchAuthProfile(profilePatch = {}) {
+    if (!profilePatch || typeof profilePatch !== "object") return;
+    patch((draft) => {
+      draft.auth.profile = sanitizeStateValue({
+        ...(draft.auth.profile && typeof draft.auth.profile === "object" ? draft.auth.profile : {}),
+        ...profilePatch
+      });
+    });
+  }
+
+  function setCrmEditorDraft(draftPatch = {}) {
+    if (!draftPatch || typeof draftPatch !== "object") return;
+    patch((draft) => {
+      if (draft.shell.modal?.kind !== "crm-editor") return;
+      draft.shell.modal.draft = sanitizeStateValue({
+        ...(draft.shell.modal.draft && typeof draft.shell.modal.draft === "object" ? draft.shell.modal.draft : {}),
+        ...draftPatch
+      });
     });
   }
 
@@ -629,9 +652,11 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setCrmAdminData(domainKey = "", payload = {}) {
     const key = String(domainKey || "").trim();
     if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
-    const items = Array.isArray(payload.items)
-      ? payload.items.slice()
-      : (Array.isArray(payload.rows) ? payload.rows.slice() : []);
+    const payloadItems = Array.isArray(payload.items) ? payload.items.slice() : [];
+    const payloadRows = Array.isArray(payload.rows) ? payload.rows.slice() : [];
+    const items = (key === "leads" || key === "customers")
+      ? (payloadRows.length ? payloadRows : payloadItems)
+      : (payloadItems.length ? payloadItems : payloadRows);
     patch((draft) => {
       const loadedAt = new Date().toISOString();
       draft.crmAdmin.status = "ready";
@@ -707,6 +732,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setQuickActionsOpen,
       setModal,
       closeModal,
+      patchAuthProfile,
+      setCrmEditorDraft,
       setStandaloneMode,
       setMobileNavHidden,
       setBootReady,

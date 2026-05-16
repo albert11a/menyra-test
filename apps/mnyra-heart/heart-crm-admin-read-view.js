@@ -17,6 +17,11 @@ import {
   LEAD_TYPE_LABELS,
   LEAD_TYPE_ORDER
 } from "../menyra-social/core/app-shell/social-app-domain-config.js";
+import {
+  hasStoredCeoCrmCountsCore,
+  resolveKnownScopeCountLabelCore,
+  sanitizeCeoCrmCountsCore
+} from "../menyra-social/core/crm/ceo-staff-sync-utils.js";
 
 export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
   leads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.leads]),
@@ -26,9 +31,9 @@ export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
 });
 
 export const HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS = Object.freeze({
-  leads: Object.freeze(["saveLeadFromModal", "deleteLeadFromModal", "convertLeadToCustomer"]),
-  customers: Object.freeze(["saveCustomerFromModal"]),
-  staff: Object.freeze(["saveCeoStaffFromView", "deleteCeoStaffFromView"])
+  leads: Object.freeze([]),
+  customers: Object.freeze([]),
+  staff: Object.freeze([])
 });
 
 const CRM_READ_SECTIONS = Object.freeze([
@@ -133,8 +138,11 @@ function formatDateLabel(value = "") {
 function formatKnownCount(sectionState = {}, items = []) {
   const fallbackCount = Array.isArray(items) ? items.length : 0;
   const knownCount = Number(sectionState?.knownCount);
-  const resolvedCount = Number.isFinite(knownCount) ? knownCount : fallbackCount;
-  return `${resolvedCount}${sectionState?.countExact === false ? "+" : ""}`;
+  return resolveKnownScopeCountLabelCore(
+    Number.isFinite(knownCount) ? knownCount : fallbackCount,
+    sectionState?.countExact !== false,
+    true
+  );
 }
 
 function getMissingContextLabel(value = "") {
@@ -271,8 +279,9 @@ function resolveLeadProfileUrl(lead = {}) {
 
 function getStoredScopeCount(crmAdmin = {}, key = "") {
   const counts = crmAdmin?.userProfile?.crmCounts;
-  if (!counts || typeof counts !== "object") return "";
-  const value = counts[key];
+  if (!hasStoredCeoCrmCountsCore(counts)) return "";
+  const sanitized = sanitizeCeoCrmCountsCore(counts);
+  const value = sanitized[key];
   return Number.isFinite(Number(value)) ? String(Math.max(0, Number(value))) : "";
 }
 
@@ -280,15 +289,22 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = [], crmAdmi
   const count = formatKnownCount(sectionState, items);
   const activeScope = firstText(sectionState.scope, "own");
   const scopeCounts = sectionState.scopeCounts && typeof sectionState.scopeCounts === "object" ? sectionState.scopeCounts : {};
+  const resolveTabCount = (storedKey = "", scopeKey = "") => {
+    const storedCount = getStoredScopeCount(crmAdmin, storedKey);
+    if (storedCount) return storedCount;
+    if (activeScope === scopeKey) return count;
+    const scopeCount = scopeCounts[scopeKey];
+    return Number.isFinite(Number(scopeCount)) ? String(Math.max(0, Number(scopeCount))) : "-";
+  };
   const tabSets = {
     leads: [
-      { key: "own", label: "Meine Leads", count: activeScope === "own" ? count : firstText(getStoredScopeCount(crmAdmin, "ownLeads"), scopeCounts.own, "-") },
-      { key: "staff", label: "Staff Leads", count: activeScope === "staff" ? count : firstText(getStoredScopeCount(crmAdmin, "staffLeads"), scopeCounts.staff, "-") },
-      { key: "archived", label: "Archiviert", count: activeScope === "archived" ? count : firstText(getStoredScopeCount(crmAdmin, "archivedLeads"), scopeCounts.archived, "-") }
+      { key: "own", label: "Meine Leads", count: resolveTabCount("ownLeads", "own") },
+      { key: "staff", label: "Staff Leads", count: resolveTabCount("staffLeads", "staff") },
+      { key: "archived", label: "Archiviert", count: resolveTabCount("archivedLeads", "archived") }
     ],
     customers: [
-      { key: "own", label: "Meine Kunden", count: activeScope === "own" ? count : firstText(getStoredScopeCount(crmAdmin, "ownCustomers"), scopeCounts.own, "-") },
-      { key: "staff", label: "Staff Kunden", count: activeScope === "staff" ? count : firstText(getStoredScopeCount(crmAdmin, "staffCustomers"), scopeCounts.staff, "-") }
+      { key: "own", label: "Meine Kunden", count: resolveTabCount("ownCustomers", "own") },
+      { key: "staff", label: "Staff Kunden", count: resolveTabCount("staffCustomers", "staff") }
     ]
   };
   const tabs = tabSets[sectionKey] || [];
@@ -521,12 +537,10 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
     customers: (item) => renderCustomerCard(item, sectionState),
     staff: (item) => renderStaffCard(item, crmAdmin)
   };
-  const rows = items.slice(0, 20).map((item) => renderers[sectionKey]?.(item) || "").join("");
-  const hiddenCount = Math.max(0, items.length - 20);
+  const rows = items.map((item) => renderers[sectionKey]?.(item) || "").join("");
   return `
     <div class="heart-crm-list-stack">
       ${rows}
-      ${hiddenCount ? renderStateBlock(`${hiddenCount} weitere Eintraege sind im Count enthalten.`, "neutral") : ""}
     </div>
   `;
 }
@@ -558,6 +572,25 @@ function renderSectionHeaderActions(sectionKey = "") {
   return "";
 }
 
+function getSectionCountLabel(sectionKey = "", sectionState = {}, items = [], crmAdmin = {}, ready = false, sectionStatus = "") {
+  const activeScope = firstText(sectionState.scope, "own");
+  const storedKeyMap = {
+    leads: {
+      own: "ownLeads",
+      staff: "staffLeads",
+      archived: "archivedLeads"
+    },
+    customers: {
+      own: "ownCustomers",
+      staff: "staffCustomers"
+    }
+  };
+  const storedKey = storedKeyMap[sectionKey]?.[activeScope] || "";
+  const storedCount = storedKey ? getStoredScopeCount(crmAdmin, storedKey) : "";
+  if (storedCount) return storedCount;
+  return ready && sectionStatus === "ready" ? formatKnownCount(sectionState, items) : "Nicht geladen";
+}
+
 function renderCrmReadSection(section, consumer, crmAdmin = {}) {
   const domain = consumer?.[section.key] || null;
   const ready = typeof domain?.load === "function" && domain.ready === true;
@@ -586,7 +619,7 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
       ${sectionState.hasMore ? renderStateBlock(sectionState.loadingMore ? "Laedt..." : "Scrollt weiter...", "neutral") : ""}
       <div class="heart-crm-section-foot">
         ${renderBadge(getSectionStatusLabel(sectionState, ready), getSectionBadgeTone(sectionState, ready))}
-        <span>Count ${escapeHtml(ready && sectionStatus === "ready" ? formatKnownCount(sectionState, items) : "Nicht geladen")}</span>
+        <span>Count ${escapeHtml(getSectionCountLabel(section.key, sectionState, items, crmAdmin, ready, sectionStatus))}</span>
       </div>
     </section>
   `;
@@ -690,8 +723,8 @@ function renderImageEditor({ imageUrl = "", label = "", inputId = "", triggerId 
           ? `<img id="${escapeHtml(previewId)}" src="${escapeHtml(safeImageUrl)}" alt="" loading="lazy" />`
           : `<span id="${escapeHtml(previewId)}">${escapeHtml(getInitials(safeLabel))}</span>`}
       </div>
-      <input type="file" id="${escapeHtml(inputId)}" accept="image/*" hidden />
-      <button type="button" id="${escapeHtml(triggerId)}" class="heart-crm-action-placeholder" disabled aria-disabled="true">
+      <input type="file" id="${escapeHtml(inputId)}" data-crm-file-input="${escapeHtml(inputId)}" accept="image/*" hidden />
+      <button type="button" id="${escapeHtml(triggerId)}" class="heart-crm-action-placeholder" data-action="trigger-crm-file" data-crm-file-input="${escapeHtml(inputId)}">
         ${renderHeartIcon("camera")} <span>${escapeHtml(label)}</span>
       </button>
       ${valueId ? `<input type="hidden" id="${escapeHtml(valueId)}" value="${escapeHtml(safeImageUrl)}" />` : ""}
@@ -700,8 +733,8 @@ function renderImageEditor({ imageUrl = "", label = "", inputId = "", triggerId 
 }
 
 function formatCoordLabel(item = {}) {
-  const lat = Number(item?.lat ?? item?.gpsLat);
-  const lng = Number(item?.lng ?? item?.gpsLng);
+  const lat = Number(item?.lat ?? item?.gpsLat ?? item?.coords?.lat ?? item?.coords?.latitude);
+  const lng = Number(item?.lng ?? item?.gpsLng ?? item?.coords?.lng ?? item?.coords?.lon ?? item?.coords?.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
   return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
@@ -720,7 +753,7 @@ function renderLeadLocationRows(lead = {}) {
       <div class="heart-crm-location-row">
         <div class="heart-crm-location-row__head">
           <span>Standort ${index + 1}</span>
-          ${index > 0 ? `<button type="button" class="heart-crm-footer-icon" data-lead-location-remove="${index}" disabled aria-disabled="true">${renderHeartIcon("x")}</button>` : ""}
+          ${index > 0 ? `<button type="button" class="heart-crm-footer-icon" data-action="remove-crm-lead-location" data-lead-location-remove="${index}">${renderHeartIcon("x")}</button>` : ""}
         </div>
         <label class="heart-crm-modal-field heart-crm-modal-field--wide">
           <span>Adresse</span>
@@ -729,7 +762,7 @@ function renderLeadLocationRows(lead = {}) {
         <div id="leadLocationCoords_${index}" class="heart-crm-coords-label ${coordsLabel ? "" : "heart-crm-coords-label--hidden"}">
           ${renderHeartIcon("checkCircle")} ${escapeHtml(coordsLabel || "Standort auf Karte fixiert")}
         </div>
-        <button type="button" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" data-lead-location-pick="${index}" disabled aria-disabled="true">
+        <button type="button" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" data-action="pick-crm-lead-location" data-lead-location-pick="${index}">
           ${renderHeartIcon("mapPin")} <span>Auf Karte festlegen</span>
         </button>
       </div>
@@ -784,7 +817,7 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
         ${renderModalField("Typ", customerType, { id: "leadCustomerType", options: typeOptions })}
         ${renderModalField("Business Name", businessName, { id: "leadBusinessName", placeholder: "Business Name" })}
         ${renderModalField("Email", firstText(lead.email, lead.socialEmail), { id: "leadEmail", type: "email", placeholder: "owner@mnyra.com", readonly: isCreate })}
-        ${renderModalField("Passwort", "", { id: "leadPassword", type: "password", placeholder: "leer = kein Login wird erstellt" })}
+        ${renderModalField("Passwort", firstText(lead.password), { id: "leadPassword", type: "password", placeholder: "leer = kein Login wird erstellt" })}
         ${renderModalField("Status", statusValue, { id: "leadStatus", options: statusOptions })}
       `)}
       ${renderModalFieldset("Kunden Daten", `
@@ -809,7 +842,7 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
       <section class="heart-crm-modal-fieldset">
         <div class="heart-crm-location-head">
           <p>Standorte</p>
-          <button type="button" class="heart-crm-action-placeholder" data-lead-location-add disabled aria-disabled="true">${renderHeartIcon("plus")} <span>Standort</span></button>
+          <button type="button" class="heart-crm-action-placeholder" data-action="add-crm-lead-location" data-lead-location-add>${renderHeartIcon("plus")} <span>Standort</span></button>
         </div>
         <div class="heart-crm-location-list">${locationRows}</div>
       </section>
@@ -824,9 +857,9 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
       `)}
     </div>
     <div class="heart-modal__footer heart-crm-modal-footer">
-      <button id="leadInlineDeleteBtn" class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Lead loeschen</button>
-      <button id="leadConvertBtn" class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">Zu Kunde</button>
-      <button id="leadInlineSaveBtn" class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">Speichern</button>
+      <button id="leadInlineDeleteBtn" class="heart-button heart-button--secondary" data-action="delete-crm-lead" type="button" ${isCreate ? "disabled aria-disabled=\"true\"" : ""}>Lead loeschen</button>
+      <button id="leadConvertBtn" class="heart-button heart-button--secondary" data-action="convert-crm-lead" type="button" ${isCreate ? "disabled aria-disabled=\"true\"" : ""}>Zu Kunde</button>
+      <button id="leadInlineSaveBtn" class="heart-button heart-button--primary" data-action="save-crm-lead" type="button">Speichern</button>
     </div>
   `;
 }
@@ -862,7 +895,7 @@ function renderCustomerEditorModalBody(customer = {}) {
       `)}
     </div>
     <div class="heart-modal__footer heart-crm-modal-footer">
-      <button id="customerModalSave" class="heart-button heart-button--primary heart-button--wide" type="button" disabled aria-disabled="true">Kunde speichern</button>
+      <button id="customerModalSave" class="heart-button heart-button--primary heart-button--wide" data-action="save-crm-customer" type="button">Kunde speichern</button>
     </div>
   `;
 }
@@ -893,14 +926,14 @@ function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
         ${renderModalField("Vorname", firstName, { id: "staffFirstName", placeholder: "Vorname" })}
         ${renderModalField("Nachname", lastName, { id: "staffLastName", placeholder: "Nachname" })}
         ${renderModalField("Email", firstText(entry.email), { id: "staffEmail", type: "email", placeholder: "vornamenachname@mnyra.com", readonly: true })}
-        ${renderModalField("Passwort", "", { id: "staffPassword", type: "password", placeholder: isCreate ? "Passwort eingeben" : "Passwort bleibt unveraendert", disabled: !isCreate })}
+        ${renderModalField("Passwort", firstText(entry.password), { id: "staffPassword", type: "password", placeholder: isCreate ? "Passwort eingeben" : "Passwort bleibt unveraendert", disabled: !isCreate })}
         ${renderModalField("Land", firstText(entry.country, LEAD_SETTINGS_DEFAULT_COUNTRY), { id: "staffCountry", options: countryOptions })}
         ${renderModalField("Standort", firstText(entry.locationLabel, entry.location, entry.city), { id: "staffLocationLabel", placeholder: "Standort / Adresse", wide: true })}
       `)}
       <section class="heart-crm-modal-fieldset">
         <div class="heart-crm-location-head">
           <p>Standort mit Pin</p>
-          <button type="button" id="staffLocationPickBtn" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" disabled aria-disabled="true">
+          <button type="button" id="staffLocationPickBtn" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" data-action="pick-crm-staff-location">
             ${renderHeartIcon("mapPin")} <span>Standort mit Pin waehlen</span>
           </button>
         </div>
@@ -913,8 +946,8 @@ function renderStaffEditorModalBody(entry = {}, crmAdmin = {}, mode = "edit") {
       `)}
     </div>
     <div class="heart-modal__footer heart-crm-modal-footer">
-      ${isCreate ? "" : `<button id="staffDeleteBtn" class="heart-button heart-button--secondary" type="button" disabled aria-disabled="true">CEO loeschen</button>`}
-      <button id="staffSaveBtn" class="heart-button heart-button--primary" type="button" disabled aria-disabled="true">CEO speichern</button>
+      ${isCreate ? "" : `<button id="staffDeleteBtn" class="heart-button heart-button--secondary" data-action="delete-crm-staff" type="button" ${isSelf ? "disabled aria-disabled=\"true\"" : ""}>CEO loeschen</button>`}
+      <button id="staffSaveBtn" class="heart-button heart-button--primary" data-action="save-crm-staff" type="button">CEO speichern</button>
     </div>
   `;
 }
@@ -923,7 +956,11 @@ export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
   if (asText(modal?.kind) !== "crm-editor") return "";
   const domainKey = asText(modal.crmDomain);
   const mode = asText(modal.mode) || "edit";
-  const item = mode === "create" ? {} : findCrmItem(crmAdmin || {}, domainKey, modal.itemId);
+  const modalDraft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
+  const baseItem = mode === "create" ? {} : findCrmItem(crmAdmin || {}, domainKey, modal.itemId);
+  const item = mode === "create"
+    ? modalDraft
+    : (baseItem ? { ...baseItem, ...modalDraft } : baseItem);
   const overlayId = domainKey === "leads" ? "leadModalOverlay" : domainKey === "customers" ? "customerModalOverlay" : "";
   const body = (() => {
     if (!item && mode !== "create") {
