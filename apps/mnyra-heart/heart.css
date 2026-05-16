@@ -2467,6 +2467,17 @@ body {
   letter-spacing: 0;
 }
 
+.heart-crm-social-view--leads .heart-crm-scope-grid {
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.heart-crm-social-view--leads .heart-crm-scope-tab strong {
+  margin-top: 4px;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
 .heart-crm-control-row {
   display: flex;
   align-items: center;
@@ -2529,6 +2540,11 @@ body {
   border-radius: 26px;
   background: rgba(245, 244, 239, 0.055);
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.22);
+}
+
+.heart-crm-social-view--leads .heart-crm-control-row {
+  min-height: 58px;
+  margin-bottom: 2px;
 }
 
 .heart-crm-card-head {
@@ -3349,6 +3365,15 @@ body {
   .heart-crm-scope-grid--leads,
   .heart-crm-scope-grid--customers {
     grid-template-columns: 1fr;
+  }
+
+  .heart-crm-scope-grid--leads {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .heart-crm-social-view--leads .heart-crm-scope-tab {
+    min-height: 62px;
+    padding: 9px 8px;
   }
 
   .heart-crm-card-head {

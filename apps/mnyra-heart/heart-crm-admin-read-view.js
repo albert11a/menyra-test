@@ -289,12 +289,21 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = [], crmAdmi
   const count = formatKnownCount(sectionState, items);
   const activeScope = firstText(sectionState.scope, "own");
   const scopeCounts = sectionState.scopeCounts && typeof sectionState.scopeCounts === "object" ? sectionState.scopeCounts : {};
+  const scopeCountExact = sectionState.scopeCountExact && typeof sectionState.scopeCountExact === "object" ? sectionState.scopeCountExact : {};
+  const scopeLoaded = sectionState.scopeLoaded && typeof sectionState.scopeLoaded === "object" ? sectionState.scopeLoaded : {};
   const resolveTabCount = (storedKey = "", scopeKey = "") => {
-    const storedCount = getStoredScopeCount(crmAdmin, storedKey);
-    if (storedCount) return storedCount;
     if (activeScope === scopeKey) return count;
     const scopeCount = scopeCounts[scopeKey];
-    return Number.isFinite(Number(scopeCount)) ? String(Math.max(0, Number(scopeCount))) : "-";
+    if (Number.isFinite(Number(scopeCount))) {
+      return resolveKnownScopeCountLabelCore(
+        Math.max(0, Number(scopeCount)),
+        scopeCountExact[scopeKey] !== false,
+        scopeLoaded[scopeKey] === true
+      );
+    }
+    const storedCount = getStoredScopeCount(crmAdmin, storedKey);
+    if (storedCount !== "") return storedCount;
+    return "-";
   };
   const tabSets = {
     leads: [
@@ -367,7 +376,7 @@ function renderLeadCard(lead = {}, sectionState = {}) {
   const profileUrl = resolveLeadProfileUrl(lead);
   const leadId = firstText(lead.id, lead.leadId);
   return `
-    <article class="heart-crm-card">
+    <article class="heart-crm-card heart-crm-card--lead">
       <div class="heart-crm-card-head">
         ${renderAvatar({ imageUrl: logoUrl, label: businessName })}
         <div class="heart-crm-card-main">
@@ -601,26 +610,28 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
     ? domain.missingDeps.join(", ")
     : formatMissingDeps(section.key);
   const canShowList = ready && (sectionStatus === "ready" || sectionStatus === "loading" || sectionStatus === "error");
+  const showSectionHeader = section.key !== "leads";
+  const showSectionFoot = section.key !== "leads";
 
   return `
     <section id="${escapeHtml(section.key)}View" class="heart-crm-social-view heart-crm-social-view--${escapeHtml(section.key)}">
-      <div class="heart-crm-social-head">
+      ${showSectionHeader ? `<div class="heart-crm-social-head">
         <div>
           <span class="heart-crm-social-eyebrow">${escapeHtml(section.eyebrow)}</span>
           <h2>${escapeHtml(section.title)}</h2>
         </div>
         ${renderSectionHeaderActions(section.key)}
-      </div>
+      </div>` : ""}
       ${renderSectionTools(section.key, sectionState, items, crmAdmin)}
       ${section.key === "staff" ? renderStaffBuildStatusPanel(crmAdmin) : ""}
       ${ready ? "" : renderStateBlock(`Read loader fehlt: ${missingDeps}.`, "warning")}
       ${ready && !canShowList ? renderStateBlock("Noch kein read-only Abruf in dieser Session.", "neutral") : ""}
       ${canShowList ? renderSectionList(section.key, section, sectionState, crmAdmin) : ""}
       ${sectionState.hasMore ? renderStateBlock(sectionState.loadingMore ? "Laedt..." : "Scrollt weiter...", "neutral") : ""}
-      <div class="heart-crm-section-foot">
+      ${showSectionFoot ? `<div class="heart-crm-section-foot">
         ${renderBadge(getSectionStatusLabel(sectionState, ready), getSectionBadgeTone(sectionState, ready))}
         <span>Count ${escapeHtml(getSectionCountLabel(section.key, sectionState, items, crmAdmin, ready, sectionStatus))}</span>
-      </div>
+      </div>` : ""}
     </section>
   `;
 }

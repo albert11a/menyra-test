@@ -77,10 +77,10 @@ function renderLoginMark() {
   `;
 }
 
-function renderHeaderBrand(extraClass = "") {
+function renderHeaderBrand(extraClass = "", eyebrow = "heart") {
   return `
     <div class="heart-brand-lockup ${escapeHtml(extraClass)}">
-      <span class="heart-brand-lockup__eyebrow">heart</span>
+      <span class="heart-brand-lockup__eyebrow">${escapeHtml(eyebrow || "heart")}</span>
       <span class="heart-brand-lockup__wordmark">mnyra</span>
     </div>
   `;
@@ -231,6 +231,14 @@ function renderViewBody(state, runtime = {}) {
 }
 
 function getPageHeaderState(state) {
+  if (state.shell.activeView === "crmLeads") {
+    return {
+      eyebrow: "",
+      title: "Leads",
+      status: "",
+      timestamp: ""
+    };
+  }
   if (state.shell.activeView === "runs") {
     const runsHeader = getRunsHeaderState(state.runs);
     return {
@@ -319,6 +327,7 @@ function renderDrawer(state, userName) {
 function renderShell(state, runtime = {}) {
   const userName = state.auth.profile?.name || state.auth.user?.email || "CEO";
   const pageHeader = getPageHeaderState(state);
+  const isLeadsView = state.shell.activeView === "crmLeads";
   const timestamp = pageHeader.timestamp
     ? `Aktualisiert ${formatRelative(pageHeader.timestamp)}`
     : "Warte auf erste Synchronisation";
@@ -340,16 +349,20 @@ function renderShell(state, runtime = {}) {
             <div class="heart-topbar__menu-slot">
               <button class="heart-icon-button heart-icon-button--menu" data-action="toggle-nav" aria-label="Menue oeffnen">${renderHeartIcon("menu")}</button>
             </div>
-            ${renderHeaderBrand()}
+            ${renderHeaderBrand("", isLeadsView ? "leads" : "heart")}
           </div>
           <div class="heart-topbar__right">
-            ${renderHeaderQuickActions(state)}
-            <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>
-            <button class="heart-icon-button heart-icon-button--quick-toggle ${quickActionsOpen ? "heart-icon-button--quick-toggle-open" : ""}" data-action="toggle-quick-actions" aria-label="${quickActionsOpen ? "Schnellaktionen schliessen" : "Schnellaktionen oeffnen"}" aria-expanded="${quickActionsOpen ? "true" : "false"}">${renderHeartIcon("plus")}</button>
+            ${isLeadsView ? `
+              <button class="heart-icon-button heart-icon-button--lead-create" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="create" aria-label="Lead erstellen">${renderHeartIcon("plus")}</button>
+            ` : `
+              ${renderHeaderQuickActions(state)}
+              <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>
+              <button class="heart-icon-button heart-icon-button--quick-toggle ${quickActionsOpen ? "heart-icon-button--quick-toggle-open" : ""}" data-action="toggle-quick-actions" aria-label="${quickActionsOpen ? "Schnellaktionen schliessen" : "Schnellaktionen oeffnen"}" aria-expanded="${quickActionsOpen ? "true" : "false"}">${renderHeartIcon("plus")}</button>
+            `}
           </div>
         </header>
         <main class="heart-main-content">
-          <section class="heart-page-header">
+          ${isLeadsView ? "" : `<section class="heart-page-header">
             <div>
               ${pageHeader.eyebrow ? `<p class="heart-page-header__eyebrow">${escapeHtml(pageHeader.eyebrow)}</p>` : ""}
               <h1 class="heart-page-header__title">${escapeHtml(pageHeader.title)}</h1>
@@ -358,7 +371,7 @@ function renderShell(state, runtime = {}) {
               ${renderStatusBadge(pageHeader.status)}
               <span class="heart-topbar__timestamp">${escapeHtml(timestamp)}</span>
             </div>
-          </section>
+          </section>`}
           ${renderViewBody(state, runtime)}
         </main>
       </div>

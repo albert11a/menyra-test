@@ -108,6 +108,9 @@ export function createHeartInitialState() {
           hasMore: false,
           knownCount: 0,
           countExact: true,
+          scopeCounts: {},
+          scopeCountExact: {},
+          scopeLoaded: {},
           loadedAt: "",
           scope: key === "staff" || key === "businessAccounts" ? "" : "own",
           query: "",
@@ -644,6 +647,9 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         hasMore: false,
         knownCount: 0,
         countExact: true,
+        scopeCounts: {},
+        scopeCountExact: {},
+        scopeLoaded: {},
         scope: key === "staff" || key === "businessAccounts" ? "" : "own"
       };
     });
@@ -659,6 +665,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       : (payloadItems.length ? payloadItems : payloadRows);
     patch((draft) => {
       const loadedAt = new Date().toISOString();
+      const nextScope = String(payload.scope || draft.crmAdmin.sections[key].scope || "").trim();
+      const nextKnownCount = Number.isFinite(Number(payload.knownCount)) ? Math.max(0, Number(payload.knownCount)) : items.length;
       draft.crmAdmin.status = "ready";
       draft.crmAdmin.error = "";
       draft.crmAdmin.lastRefreshAt = loadedAt;
@@ -670,10 +678,28 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         missingContext: String(payload.missingContext || "").trim(),
         items,
         hasMore: payload.hasMore === true,
-        knownCount: Number.isFinite(Number(payload.knownCount)) ? Math.max(0, Number(payload.knownCount)) : items.length,
+        knownCount: nextKnownCount,
         countExact: payload.countExact !== false,
+        scopeCounts: nextScope
+          ? {
+            ...(draft.crmAdmin.sections[key].scopeCounts || {}),
+            [nextScope]: nextKnownCount
+          }
+          : { ...(draft.crmAdmin.sections[key].scopeCounts || {}) },
+        scopeCountExact: nextScope
+          ? {
+            ...(draft.crmAdmin.sections[key].scopeCountExact || {}),
+            [nextScope]: payload.countExact !== false
+          }
+          : { ...(draft.crmAdmin.sections[key].scopeCountExact || {}) },
+        scopeLoaded: nextScope
+          ? {
+            ...(draft.crmAdmin.sections[key].scopeLoaded || {}),
+            [nextScope]: true
+          }
+          : { ...(draft.crmAdmin.sections[key].scopeLoaded || {}) },
         loadedAt,
-        scope: String(payload.scope || draft.crmAdmin.sections[key].scope || "").trim()
+        scope: nextScope
       };
     });
   }
