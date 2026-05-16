@@ -90,6 +90,9 @@ import {
   createCrmLeadGeoSupportRuntime
 } from "../menyra-social/core/crm/crm-lead-geo-support-runtime.js";
 import {
+  createDiscoveryRuntimeController
+} from "../menyra-social/core/discovery/discovery-runtime-controller.js";
+import {
   createCustomerScopeMapCore,
   createLeadScopeMapCore,
   normalizeCustomerScopeKeyCore,
@@ -225,6 +228,7 @@ function formatCoordLabel(item = {}) {
 }
 
 let leafletLoadPromise = null;
+let socialLeafletLoaderController = null;
 
 function ensureLeafletCss(cssUrl = LEAFLET_CSS_URL) {
   if (typeof document === "undefined") return;
@@ -293,6 +297,27 @@ function loadLeafletScript(jsUrl, cssUrl, timeoutMs = LEAFLET_LOAD_TIMEOUT_MS) {
 
 async function ensureLeafletLoaded() {
   if (typeof window !== "undefined" && window.L) return true;
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    if (!socialLeafletLoaderController) {
+      socialLeafletLoaderController = createDiscoveryRuntimeController({
+        documentObj: document,
+        windowObj: window,
+        state: { activeTab: "heart", businessLocations: [], search: {}, userProfile: {} },
+        brandUi: { upper: "MNYRA" },
+        LEAFLET_JS_URL,
+        LEAFLET_CSS_URL,
+        LEAFLET_JS_FALLBACK_URL,
+        LEAFLET_CSS_FALLBACK_URL,
+        placeholderImage: PLACEHOLDER_IMAGE,
+        getLastRenderModeFn: () => "heart"
+      });
+    }
+    const socialEnsureLeafletLoaded = socialLeafletLoaderController?.ensureLeafletLoaded;
+    if (typeof socialEnsureLeafletLoaded === "function") {
+      const loaded = await socialEnsureLeafletLoaded();
+      if (loaded || window.L) return true;
+    }
+  }
   if (leafletLoadPromise) return leafletLoadPromise;
   leafletLoadPromise = (async () => {
     const primary = await loadLeafletScript(LEAFLET_JS_URL, LEAFLET_CSS_URL);
