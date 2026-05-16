@@ -752,6 +752,155 @@ export function createHeartCrmAdminWriteAdapter({
     rows.forEach((_, index) => updateLeadLocationBadge(index));
   }
 
+  function getLeadLocationInputRows() {
+    if (typeof document === "undefined") return [];
+    return Array.from(document.querySelectorAll("[data-lead-location-address]"))
+      .map((input, fallbackIndex) => {
+        const rawIndex = Number(input.getAttribute("data-lead-location-address"));
+        const index = Number.isInteger(rawIndex) && rawIndex >= 0 ? rawIndex : fallbackIndex;
+        return {
+          index,
+          address: asText(input.value)
+        };
+      })
+      .filter((row) => row.index >= 0)
+      .slice(0, 12);
+  }
+
+  function mergeLeadLocationRows(...sources) {
+    const rowsByIndex = new Map();
+    const addRow = (entry = {}, fallbackIndex = 0) => {
+      const rawIndex = Number(entry?.index);
+      const index = Number.isInteger(rawIndex) && rawIndex >= 0 ? rawIndex : fallbackIndex;
+      if (index < 0 || index >= 12) return;
+      const current = rowsByIndex.get(index) || { index, address: "" };
+      const coords = resolveCoords(entry);
+      const address = asText(entry?.address || entry?.label);
+      rowsByIndex.set(index, {
+        ...current,
+        ...(address ? { address } : {}),
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {})
+      });
+    };
+
+    sources.forEach((source) => {
+      if (!Array.isArray(source)) return;
+      source.slice(0, 12).forEach((entry, index) => addRow(entry, index));
+    });
+
+    return Array.from(rowsByIndex.values())
+      .sort((a, b) => a.index - b.index)
+      .map((row) => {
+        const coords = resolveCoords(row);
+        return {
+          address: asText(row.address),
+          ...(coords ? { lat: coords.lat, lng: coords.lng } : {})
+        };
+      })
+      .filter((row) => row.address || resolveCoords(row));
+  }
+
+  function collectLeadLocationSaveSnapshot() {
+    const readInput = (id = "") => {
+      if (typeof document === "undefined") return "";
+      return asText(document.getElementById(id)?.value);
+    };
+    const modal = runtimeState.leadModal || {};
+    const lead = modal.lead || {};
+    const heartModal = getHeartState().shell?.modal || {};
+    const draft = heartModal?.kind === "crm-editor" && heartModal?.crmDomain === "leads" && hasObject(heartModal.draft)
+      ? heartModal.draft
+      : {};
+    const rows = mergeLeadLocationRows(
+      Array.isArray(draft.locations) ? draft.locations : [],
+      Array.isArray(lead.locations) ? lead.locations : [],
+      Array.isArray(modal.locations) ? modal.locations : [],
+      getLeadLocationInputRows()
+    );
+    const primaryRow = rows.find((row) => resolveCoords(row)) || null;
+    const primaryCoords = resolveCoords(primaryRow)
+      || resolveCoords(modal.coords)
+      || resolveCoords(lead.coords)
+      || resolveCoords(lead)
+      || resolveCoords(draft.coords)
+      || resolveCoords(draft)
+      || null;
+    return {
+      rows,
+      primaryCoords,
+      address: readInput("leadAddress") || asText(lead.address || draft.address || rows[0]?.address),
+      city: readInput("leadCity") || asText(lead.city || draft.city),
+      country: readInput("leadCountry") || asText(lead.country || draft.country),
+      zipCode: readInput("leadZipCode") || asText(lead.zipCode || draft.zipCode),
+      googleMaps: readInput("leadGoogleMaps") || asText(lead.googleMaps || draft.googleMaps)
+    };
+  }
+
+  function setInputValueIfBlank(id = "", value = "") {
+    if (typeof document === "undefined") return;
+    const node = document.getElementById(id);
+    const safeValue = asText(value);
+    if (!node || !safeValue || asText(node.value)) return;
+    node.value = safeValue;
+  }
+
+  function applyLeadLocationSaveSnapshot(snapshot = {}) {
+    const modal = runtimeState.leadModal || null;
+    if (!modal) return;
+    const snapshotRows = Array.isArray(snapshot.rows) ? snapshot.rows : [];
+    const rows = mergeLeadLocationRows(
+      Array.isArray(modal.locations) ? modal.locations : [],
+      snapshotRows
+    );
+    const primaryCoords = resolveCoords(snapshot.primaryCoords)
+      || resolveCoords(rows.find((row) => resolveCoords(row)))
+      || resolveCoords(modal.coords)
+      || null;
+    if (primaryCoords && rows.length && !resolveCoords(rows[0])) {
+      rows[0] = {
+        ...rows[0],
+        lat: primaryCoords.lat,
+        lng: primaryCoords.lng
+      };
+    }
+    if (rows.length) modal.locations = rows.slice(0, 12);
+    if (primaryCoords) modal.coords = { lat: primaryCoords.lat, lng: primaryCoords.lng };
+
+    const lead = { ...(modal.lead || {}) };
+    if (Array.isArray(modal.locations)) lead.locations = modal.locations.slice(0, 12);
+    const primaryLocation = Array.isArray(modal.locations)
+      ? modal.locations.find((row) => resolveCoords(row)) || modal.locations[0] || null
+      : null;
+    const address = asText(snapshot.address || primaryLocation?.address || lead.address);
+    const googleMaps = asText(snapshot.googleMaps)
+      || (primaryCoords ? `https://maps.google.com/?q=${primaryCoords.lat},${primaryCoords.lng}` : asText(lead.googleMaps));
+    if (address) lead.address = address;
+    if (asText(snapshot.city)) lead.city = asText(snapshot.city);
+    if (asText(snapshot.country)) lead.country = asText(snapshot.country);
+    if (asText(snapshot.zipCode)) lead.zipCode = asText(snapshot.zipCode);
+    if (googleMaps) lead.googleMaps = googleMaps;
+    if (primaryCoords) {
+      lead.coords = { lat: primaryCoords.lat, lng: primaryCoords.lng };
+      lead.lat = primaryCoords.lat;
+      lead.lng = primaryCoords.lng;
+      lead.gpsLat = primaryCoords.lat;
+      lead.gpsLng = primaryCoords.lng;
+    }
+    modal.lead = lead;
+
+    if (Array.isArray(modal.locations) && typeof document !== "undefined") {
+      modal.locations.slice(0, 12).forEach((row, index) => {
+        setInputValueIfBlank(`leadLocationAddress_${index}`, row.address);
+      });
+    }
+    setInputValueIfBlank("leadAddress", address || primaryLocation?.address);
+    setInputValueIfBlank("leadCity", snapshot.city);
+    setInputValueIfBlank("leadCountry", snapshot.country);
+    setInputValueIfBlank("leadZipCode", snapshot.zipCode);
+    setInputValueIfBlank("leadGoogleMaps", googleMaps);
+    updateLeadLocationBadges();
+  }
+
   function bindLocationPickerDraftSync() {
     if (typeof document === "undefined" || typeof window === "undefined") return;
     const confirmBtn = document.getElementById("confirmLocationBtn");
@@ -1058,7 +1207,9 @@ export function createHeartCrmAdminWriteAdapter({
   }
 
   async function saveLeadFromModal() {
+    const locationSnapshot = collectLeadLocationSaveSnapshot();
     const controller = ensureRuntimeController();
+    applyLeadLocationSaveSnapshot(locationSnapshot);
     const result = await controller.saveLeadFromModal();
     syncDraftFromRuntime("leads");
     return actionOutcome("leads", result);
