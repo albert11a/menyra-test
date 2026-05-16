@@ -1127,11 +1127,18 @@ export function createHeartCrmAdminWriteAdapter({
       throw new Error("Social Standort-Picker ist nicht verfuegbar.");
     }
     controller.syncLeadModalDraftFromForm();
+    const addressInputId = `leadLocationAddress_${rowIndex}`;
+    const addressValue = asText(document.getElementById(addressInputId)?.value);
+    if (addressValue && typeof controller.refineLeadLocationAddressIndex === "function") {
+      await controller.refineLeadLocationAddressIndex(rowIndex, addressValue, { hydratePrimary: rowIndex === 0 });
+      controller.syncLeadModalDraftFromForm();
+      updateLeadLocationBadges();
+    }
     const coordsDisplayId = rowIndex === 0 && document.getElementById("leadCoordsDisplay")
       ? "leadCoordsDisplay"
       : `leadLocationCoords_${rowIndex}`;
     await controller.openLocationPicker({
-      addressInputId: `leadLocationAddress_${rowIndex}`,
+      addressInputId,
       coordsDisplayId,
       context: `lead_location:${rowIndex}`
     });
