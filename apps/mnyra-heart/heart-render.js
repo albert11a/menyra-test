@@ -353,7 +353,8 @@ function renderShell(state, runtime = {}) {
           </div>
           <div class="heart-topbar__right">
             ${isLeadsView ? `
-              <button class="heart-icon-button heart-icon-button--lead-create" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="create" aria-label="Lead erstellen">${renderHeartIcon("plus")}</button>
+              <button id="leadSettingsBtn" class="heart-icon-button" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="settings" aria-label="Lead Settings">${renderHeartIcon("settings")}</button>
+              <button id="newLeadBtn" class="heart-icon-button heart-icon-button--lead-create" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="create" aria-label="Lead erstellen">${renderHeartIcon("plus")}</button>
             ` : `
               ${renderHeaderQuickActions(state)}
               <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>

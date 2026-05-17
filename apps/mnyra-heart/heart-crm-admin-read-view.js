@@ -665,7 +665,7 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
     ? domain.missingDeps.join(", ")
     : formatMissingDeps(section.key);
   const canShowList = ready && (sectionStatus === "ready" || sectionStatus === "loading" || sectionStatus === "error");
-  const showSectionHeader = true;
+  const showSectionHeader = section.key !== "leads";
   const showSectionFoot = section.key !== "leads" && section.key !== "staff";
   const emptySessionLabel = section.key === "staff"
     ? "Noch kein Abruf in dieser Session."
