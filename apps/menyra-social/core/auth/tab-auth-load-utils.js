@@ -54,10 +54,6 @@ export function ensureTabDataCore({
   getNotificationsUnsubFn,
   updateNotificationsDom,
   loadNotificationsFromFirebase,
-  normalizeLeadScopeKey,
-  loadLeads,
-  normalizeCustomerScopeKey,
-  loadCustomers,
   loadCeoStaff,
   loadBusinessAccounts
 } = {}) {
@@ -93,10 +89,6 @@ export function ensureTabDataCore({
   const loadNotificationsFromFirebaseSafe = typeof loadNotificationsFromFirebase === "function"
     ? loadNotificationsFromFirebase
     : (() => Promise.resolve());
-  const normalizeLeadScope = typeof normalizeLeadScopeKey === "function" ? normalizeLeadScopeKey : ((value) => value);
-  const loadLeadsSafe = typeof loadLeads === "function" ? loadLeads : (() => Promise.resolve());
-  const normalizeCustomerScope = typeof normalizeCustomerScopeKey === "function" ? normalizeCustomerScopeKey : ((value) => value);
-  const loadCustomersSafe = typeof loadCustomers === "function" ? loadCustomers : (() => Promise.resolve());
   const loadCeoStaffSafe = typeof loadCeoStaff === "function" ? loadCeoStaff : (() => Promise.resolve());
   const loadBusinessAccountsSafe = typeof loadBusinessAccounts === "function" ? loadBusinessAccounts : (() => Promise.resolve());
   const stopRestaurants = typeof stopRestaurantsListener === "function" ? stopRestaurantsListener : (() => {});
@@ -142,7 +134,7 @@ export function ensureTabDataCore({
     setFeedDeltaTimer(null);
   }
 
-  if (hasUser && (tab === "leads" || tab === "staff" || tab === "customers") && isCeo()) {
+  if (hasUser && tab === "staff" && isCeo()) {
     queueCeoPrefetch();
   }
 
@@ -242,24 +234,6 @@ export function ensureTabDataCore({
     } else {
       void loadNotificationsFromFirebaseSafe({ force: true });
     }
-  }
-
-  if (hasUser && tab === "leads" && !dataLoaded.leads) {
-    dataLoaded.leads = true;
-    if (isCeo()) {
-      void loadLeadsSafe({ scope: state.leads.scope });
-    }
-  } else if (hasUser && tab === "leads" && isCeo() && !state.leads.loaded?.[normalizeLeadScope(state.leads.scope)]) {
-    void loadLeadsSafe({ scope: state.leads.scope });
-  }
-
-  if (hasUser && tab === "customers" && !dataLoaded.customers) {
-    dataLoaded.customers = true;
-    if (isCeo()) {
-      void loadCustomersSafe({ scope: state.customers.scope });
-    }
-  } else if (hasUser && tab === "customers" && isCeo() && !state.customers.loaded?.[normalizeCustomerScope(state.customers.scope)]) {
-    void loadCustomersSafe({ scope: state.customers.scope });
   }
 
   if (hasUser && tab === "staff" && !dataLoaded.staff) {

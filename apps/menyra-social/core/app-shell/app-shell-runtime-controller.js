@@ -628,9 +628,8 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function shouldUseSmartHeader() {
     const isStaffFormView = state.activeTab === "staff" && state.staff?.view === "form";
-    const isLeadsSubView = state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings");
     const isChatThreadOpen = isChatEnabledForV1() && state.activeTab === "chat" && !!state.chatModal?.open && !!state.chatModal?.profile;
-    return !!String(state.activeTab || "").trim() && !isStaffFormView && !isLeadsSubView && !isChatThreadOpen;
+    return !!String(state.activeTab || "").trim() && !isStaffFormView && !isChatThreadOpen;
   }
 
   function getActiveHeaderProfile() {
@@ -1003,21 +1002,6 @@ export function createAppShellRuntimeController(deps = {}) {
         <div class="text-center">
           <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">CEO Creation</span>
-        </div>
-        ${renderHeaderActionButton(avatarUrl, avatarFit)}
-      </header>
-    `;
-    }
-    if (state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings")) {
-      const isSettingsView = state.leads?.view === "settings";
-      return `
-      <header class="app-header-safe p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
-        <button data-leads-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
-          ${icon("arrow-left", "w-5 h-5")}
-        </button>
-        <div class="text-center">
-          <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">${isSettingsView ? "Leads Settings" : "Leads Creation"}</span>
         </div>
         ${renderHeaderActionButton(avatarUrl, avatarFit)}
       </header>
@@ -1573,14 +1557,6 @@ export function createAppShellRuntimeController(deps = {}) {
         state.search.keepFocus = false;
         focusSearchInputFn();
       }
-      if (state.activeTab === "leads" && state.leads.keepFocus) {
-        state.leads.keepFocus = false;
-        focusInputByIdFn("leadsSearchInput");
-      }
-      if (state.activeTab === "customers" && state.customers.keepFocus) {
-        state.customers.keepFocus = false;
-        focusInputByIdFn("customersSearchInput");
-      }
       restoreChatInputFocusStateFn(chatInputFocusState);
       if (nextViewportScrollTop !== null && (didMainTabChange || preserveMainScroll)) {
         if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
@@ -1730,8 +1706,6 @@ export function createAppShellRuntimeController(deps = {}) {
     stopCrmAutoLoadObserver();
     if (typeof IntersectionObserver !== "function") return;
     const sentinels = [
-      doc?.getElementById("leadsLoadMoreSentinel"),
-      doc?.getElementById("customersLoadMoreSentinel"),
       doc?.getElementById("staffLoadMoreSentinel")
     ].filter(Boolean);
     if (!sentinels.length) return;
@@ -1740,18 +1714,6 @@ export function createAppShellRuntimeController(deps = {}) {
         if (!entry?.isIntersecting) return;
         const node = entry.target;
         if (!(node instanceof HTMLElement)) return;
-        if (node.id === "leadsLoadMoreSentinel") {
-          if (!state.leads.loadingMore && !state.leads.loading && state.leads.hasMore?.[normalizeLeadScopeKeyFn(state.leads.scope)]) {
-            void loadLeadsFn({ scope: state.leads.scope, grow: true });
-          }
-          return;
-        }
-        if (node.id === "customersLoadMoreSentinel") {
-          if (!state.customers.loadingMore && !state.customers.loading && state.customers.hasMore?.[normalizeCustomerScopeKeyFn(state.customers.scope)]) {
-            void loadCustomersFn({ scope: state.customers.scope, grow: true });
-          }
-          return;
-        }
         if (node.id === "staffLoadMoreSentinel") {
           if (!state.staff.loadingMore && !state.staff.loading && state.staff.hasMore) {
             void loadCeoStaffFn({ grow: true });

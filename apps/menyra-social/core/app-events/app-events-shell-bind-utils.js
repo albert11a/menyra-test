@@ -684,6 +684,14 @@ export function bindAppShellEventsCore({
       const tab = btn.dataset.nav;
       if (!tab) return;
       const requestedTab = tab === "location" ? "feed" : tab;
+      if (requestedTab === "leads" || requestedTab === "customers") {
+        const targetPath = requestedTab === "customers" ? "/customers" : "/leads";
+        const targetWindow = doc.defaultView || (typeof window !== "undefined" ? window : null);
+        if (targetWindow?.location) {
+          targetWindow.location.href = targetPath;
+        }
+        return;
+      }
       if (requestedTab === "chat" && !isChatEnabledForV1()) {
         setState({ drawerOpen: false });
         return;

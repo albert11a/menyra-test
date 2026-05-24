@@ -12,11 +12,7 @@ const SYSTEM_ROUTE_SEGMENT_TO_TAB = Object.freeze({
   notifications: "notifications",
   settings: "settings",
   upload: "upload",
-  leads: "leads",
-  ceo: "leads",
-  admin: "leads",
   staff: "staff",
-  customers: "customers",
   "business-accounts": "businessAccounts",
   businessaccounts: "businessAccounts",
   chat: "chat"
@@ -33,9 +29,7 @@ const CANONICAL_TAB_TO_PATH = Object.freeze({
   notifications: "/notifications",
   settings: "/settings",
   upload: "/upload",
-  leads: "/leads",
   staff: "/staff",
-  customers: "/customers",
   businessAccounts: "/business-accounts",
   chat: "/chat"
 });
@@ -197,8 +191,6 @@ export function normalizeAppTabRouteCore(value = "", fallback = "") {
     discover: "search",
     owner: "profile",
     kitchen: "menu",
-    ceo: "leads",
-    admin: "leads",
     "business-accounts": "businessAccounts",
     businessaccounts: "businessAccounts"
   };

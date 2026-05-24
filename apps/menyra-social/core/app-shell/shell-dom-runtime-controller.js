@@ -281,9 +281,9 @@ export function createShellDomRuntimeController({
         { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
         { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
         { id: "businessAccounts", label: "Staff", icon: "users-round", hidden: !isBusinessOwner },
-        { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
+        { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo, href: "/leads" },
         { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo },
-        { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
+        { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo, href: "/customers" },
         { id: "settings", label: "Optionen", icon: "settings" }
       ];
     return `
@@ -310,13 +310,19 @@ export function createShellDomRuntimeController({
         <nav class="space-y-2 flex-1">
           ${navItems.map((item) => {
             const isFavoritesView = state?.activeTab === "profile" && state?.profileTopTab === "favorites";
-            const isActive = item.id === "favorites"
+            const isActive = item.href
+              ? false
+              : item.id === "favorites"
               ? isFavoritesView
               : (item.id === "profile"
                 ? (state?.activeTab === "profile" && !isFavoritesView)
                 : state?.activeTab === item.id);
+            const tagName = item.href ? "a" : "button";
+            const navAttrs = item.href
+              ? `href="${escapeHtml(item.href)}" data-heart-route="${escapeHtml(item.id)}"`
+              : `type="button" data-nav="${escapeHtml(item.id)}"`;
             return `
-            <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
+            <${tagName} ${navAttrs} class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">
                 ${item.id === "menu"
                   ? `${icon(item.icon, "w-4 h-4", { "data-menu-nav-icon": "" })}<span data-menu-nav-label>${item.label}</span>`
@@ -324,7 +330,7 @@ export function createShellDomRuntimeController({
                 }
               </div>
               ${item.badge ? `<span ${item.badgeType === "chat" ? 'data-chat-badge="drawer"' : 'data-unread-badge="drawer"'} class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge > 9 ? "9+" : item.badge}</span>` : ""}
-            </button>
+            </${tagName}>
           `;
           }).join("")}
         </nav>
@@ -414,7 +420,7 @@ export function createShellDomRuntimeController({
     if (businessAccountsNavBtn) {
       businessAccountsNavBtn.classList.toggle("hidden", !isBusinessOwner);
     }
-    doc?.querySelectorAll?.('[data-nav="leads"], [data-nav="customers"]')?.forEach((btn) => {
+    doc?.querySelectorAll?.('[data-heart-route="leads"], [data-heart-route="customers"]')?.forEach((btn) => {
       btn.classList.toggle("hidden", !showCeoTabs);
     });
     refreshSelfCommentAvatars({ attempt: 0, maxAttempts: 2 });

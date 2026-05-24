@@ -5,9 +5,7 @@ const PROTECTED_STARTUP_TABS = new Set([
   "chat",
   "notifications",
   "upload",
-  "leads",
   "staff",
-  "customers",
   "businessaccounts",
   "settings"
 ]);

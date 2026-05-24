@@ -1314,9 +1314,7 @@ const AUTH_RESTORE_PRESERVED_TABS = new Set([
   "notifications",
   "settings",
   "upload",
-  "leads",
   "staff",
-  "customers",
   "businessaccounts"
 ]);
 
@@ -1382,9 +1380,7 @@ const STARTUP_SNAPSHOT_ALLOWED_TABS = new Set([
   "orders",
   "notifications",
   "settings",
-  "leads",
   "staff",
-  "customers",
   "businessAccounts"
 ]);
 
@@ -3820,12 +3816,14 @@ function roleLabel(role) {
 }
 
 function buildRoleSwitchUrl(role, profile, restaurantIdOverride = "") {
+  if (String(role || "").trim().toLowerCase() === "ceo") {
+    return buildUrl("/leads");
+  }
   return buildRoleSwitchUrlCore({
     role,
     profile,
     restaurantIdOverride,
     roleTabMap: {
-      ceo: "leads",
       owner: "profile",
       staff: "staff"
     },

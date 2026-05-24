@@ -7,8 +7,6 @@ export function normalizeInitialTab(value) {
     startseite: "feed",
     landing: "feed",
     discover: "search",
-    ceo: "leads",
-    admin: "leads",
     owner: "profile",
     kitchen: "menu",
     login: "feed",
@@ -28,9 +26,7 @@ export function normalizeInitialTab(value) {
     "orders",
     "notifications",
     "upload",
-    "leads",
     "staff",
-    "customers",
     "businessAccounts",
     "settings"
   ]);

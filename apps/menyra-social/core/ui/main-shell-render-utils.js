@@ -79,9 +79,7 @@ export function renderMainCore({
     if (state?.activeTab === "profile") view = state?.profileView ? renderPublicProfileView() : renderProfileView();
     if (state?.activeTab === "menu") view = renderMenuAdminView();
     if (state?.activeTab === "orders") view = renderOrdersView();
-    if (state?.activeTab === "leads") view = renderLeadsView();
     if (state?.activeTab === "staff") view = renderStaffView();
-    if (state?.activeTab === "customers") view = renderCustomersView();
     if (state?.activeTab === "businessAccounts") view = renderBusinessAccountsView();
     if (state?.activeTab === "settings") view = renderSettingsView();
     if (state?.activeTab === "notifications") view = renderNotificationsView();
@@ -100,7 +98,6 @@ export function renderMainCore({
     || !!state?.customerModal?.open
     || !!state?.chatModal?.open;
   const smartHeaderBlockedState = (state?.activeTab === "staff" && state?.staff?.view === "form")
-    || (state?.activeTab === "leads" && (state?.leads?.view === "create" || state?.leads?.view === "settings"))
     || (state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile);
   const isBusinessProfile = !!String(profile?.restaurantId || "").trim()
     || String(profile?.role || "").trim().toLowerCase() === "business";
