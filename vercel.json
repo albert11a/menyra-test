@@ -45,6 +45,9 @@
     { "source": "/upload", "destination": "/apps/menyra-social/index.html" },
     { "source": "/leads", "destination": "/apps/mnyra-heart/index.html" },
     { "source": "/leads/", "destination": "/apps/mnyra-heart/index.html" },
+    { "source": "/admin/staff", "destination": "/apps/mnyra-heart/index.html" },
+    { "source": "/admin/staff/", "destination": "/apps/mnyra-heart/index.html" },
+    { "source": "/admin/staff/:path*", "destination": "/apps/mnyra-heart/index.html" },
     { "source": "/ceo", "destination": "/apps/menyra-social/index.html" },
     { "source": "/admin", "destination": "/apps/menyra-social/index.html" },
     { "source": "/owner", "destination": "/apps/menyra-social/index.html" },
@@ -148,6 +151,24 @@
     },
     {
       "source": "/leads/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/admin/staff",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/admin/staff/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/admin/staff/:path*",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]

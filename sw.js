@@ -1,7 +1,7 @@
 // MENYRA service worker: network-first with safe caching
 const CACHE_NAME = 'menyra-cache-v8';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24h (not strictly enforced here)
-const HEART_ROUTE_PATHS = new Set(['/leads', '/customers']);
+const HEART_ROUTE_PATHS = new Set(['/leads', '/customers', '/admin/staff']);
 const HEART_APP_SHELL_URL = '/apps/mnyra-heart/index.html';
 
 self.addEventListener('install', (event) => {

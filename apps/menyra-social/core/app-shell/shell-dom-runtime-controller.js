@@ -282,7 +282,7 @@ export function createShellDomRuntimeController({
         { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
         { id: "businessAccounts", label: "Staff", icon: "users-round", hidden: !isBusinessOwner },
         { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo, href: "/leads" },
-        { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo },
+        { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo, href: "/admin/staff" },
         { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo, href: "/customers" },
         { id: "settings", label: "Optionen", icon: "settings" }
       ];
@@ -420,7 +420,7 @@ export function createShellDomRuntimeController({
     if (businessAccountsNavBtn) {
       businessAccountsNavBtn.classList.toggle("hidden", !isBusinessOwner);
     }
-    doc?.querySelectorAll?.('[data-heart-route="leads"], [data-heart-route="customers"]')?.forEach((btn) => {
+    doc?.querySelectorAll?.('[data-heart-route="leads"], [data-heart-route="staff"], [data-heart-route="customers"]')?.forEach((btn) => {
       btn.classList.toggle("hidden", !showCeoTabs);
     });
     refreshSelfCommentAvatars({ attempt: 0, maxAttempts: 2 });

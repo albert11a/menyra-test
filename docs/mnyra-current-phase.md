@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-07
+Last updated: 2026-05-25
 
 # Mnyra Current Phase
 
@@ -290,6 +290,14 @@ Last updated: 2026-05-07
   mehr durch einen reinen Video-Filter aus. Sichtbare UI, QR, Warenkorb,
   Routing, Firebase Rules, Functions und Produktlogik bleiben unveraendert.
   Auf Nutzerwunsch wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
+- Schritt 37 ist abgeschlossen: CEO-/interne MNYRA-Staff-Verwaltung wurde mit
+  niedrigem Blast Radius auf die sichere Heart-Route `/admin/staff` gelegt.
+- Bewertung von Schritt 37: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 37:
+  `/admin/staff` oeffnet Heart `crmStaff`, waehrend bare `/staff`,
+  `staff.mnyra.com`, Restaurant-Staff, Waiter, Kitchen, Business-Staff,
+  Public Menu, QR, Cart, Orders, Feed, Search, Map, Chat und Firebase-
+  Datenpfade unveraendert bleiben.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -325,6 +333,7 @@ Last updated: 2026-05-07
 - Referenz: [docs/mnyra-step34-social-app-cache-version-bump.md](./mnyra-step34-social-app-cache-version-bump.md)
 - Referenz: [docs/mnyra-step35-public-menu-focus-lockstep-render.md](./mnyra-step35-public-menu-focus-lockstep-render.md)
 - Referenz: [docs/mnyra-step36-profile-posts-full-visibility.md](./mnyra-step36-profile-posts-full-visibility.md)
+- Referenz: [docs/mnyra-step37-ceo-staff-heart-route.md](./mnyra-step37-ceo-staff-heart-route.md)
 
 ## Harte Invariante (verbindlich)
 
