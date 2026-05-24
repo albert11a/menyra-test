@@ -156,9 +156,6 @@ import { createSocialEngagementSupportRuntimeController } from "./core/profile/s
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
-import { createCrmAdminReadFacade } from "./core/crm/crm-admin-read-facade.js";
-import { createCrmAdminUiFacade } from "./core/crm/crm-admin-ui-facade.js";
-import { createCrmAdminStaffWriteFacade } from "./core/crm/crm-admin-staff-write-facade.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
@@ -1162,9 +1159,9 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderPublicProfileViewFn: (...args) => renderPublicProfileView(...args),
     renderProfileViewFn: (...args) => renderProfileView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
-    renderBusinessAccountsViewFn: (...args) => renderCrmBusinessAccounts(...args),
-    renderStaffViewFn: (...args) => renderCrmStaff(...args),
-    bindBusinessAccountsEventsFn: (...args) => bindCrmBusinessAccountsEvents(...args)
+    renderBusinessAccountsViewFn: (...args) => renderBusinessAccountsView(...args),
+    renderStaffViewFn: (...args) => renderStaffView(...args),
+    bindBusinessAccountsEventsFn: (...args) => bindBusinessAccountsEvents(...args)
   },
   notificationApi: {
     resolveNotificationAvatarFn: (...args) => resolveNotificationAvatar(...args)
@@ -2856,7 +2853,6 @@ const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
 crmRuntimeController = crmDomainRuntimeCluster.crmRuntimeController;
 const {
   queueCrmLazyRenderersPrefetch,
-  renderStaffEditorView,
   renderStaffView,
   ensureLocationPickerModal,
   bindLocationPickerEvents,
@@ -2873,7 +2869,6 @@ const {
   resolveRestaurantStatusFromLead,
   isHiddenLegacyCeoEmail,
   applyKnownLeadOwnershipOverride,
-  getStaffFormEmail,
   syncStaffDerivedEmailField,
   openStaffEditor,
   closeStaffEditor,
@@ -4148,44 +4143,6 @@ const {
   renderProfileView
 } = profileBusinessMenuRuntimeCluster;
 
-const crmAdminReadFacade = createCrmAdminReadFacade({
-  loadCeoStaff,
-  loadBusinessAccounts
-});
-const {
-  loadCrmStaff,
-  loadCrmBusinessAccounts
-} = crmAdminReadFacade;
-const crmAdminUiFacade = createCrmAdminUiFacade({
-  renderStaffView,
-  renderStaffEditorView,
-  renderBusinessAccountsView,
-  bindCrmStaffEvents: bindCrmStaffEventsCore,
-  bindBusinessAccountsEvents,
-  openStaffEditor,
-  closeStaffEditor,
-  syncStaffDerivedEmailField,
-  syncStaffFormFromDom
-});
-const {
-  renderCrmStaff,
-  renderCrmBusinessAccounts,
-  bindCrmAdminEvents,
-  bindCrmBusinessAccountsEvents,
-  openCrmStaffEditor,
-  closeCrmStaffEditor,
-  syncCrmStaffDerivedEmailField,
-  syncCrmStaffFormFromDom
-} = crmAdminUiFacade;
-const crmAdminStaffWriteFacade = createCrmAdminStaffWriteFacade({
-  saveCeoStaffFromView,
-  deleteCeoStaffFromView
-});
-const {
-  saveCrmCeoStaff,
-  removeCrmCeoStaff
-} = crmAdminStaffWriteFacade;
-
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },
   constants: {
@@ -4671,7 +4628,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     ensureUserProfile,
     createUserWithEmailAndPassword,
     updateProfile,
-    loadCeoStaff: loadCrmStaff,
+    loadCeoStaff,
     bindAppEventsMainCore,
     bindAppShellEventsCore,
     signOut,
@@ -4719,14 +4676,14 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     removePendingChatAttachment,
     addChatAttachments,
     handleUploadPost,
-    bindCrmStaffEventsCore: bindCrmAdminEvents,
-    closeStaffEditor: closeCrmStaffEditor,
-    openStaffEditor: openCrmStaffEditor,
-    syncStaffDerivedEmailField: syncCrmStaffDerivedEmailField,
+    bindCrmStaffEventsCore,
+    closeStaffEditor,
+    openStaffEditor,
+    syncStaffDerivedEmailField,
     normalizeCeoCountry,
-    syncStaffFormFromDom: syncCrmStaffFormFromDom,
-    saveCeoStaffFromView: saveCrmCeoStaff,
-    deleteCeoStaffFromView: removeCrmCeoStaff
+    syncStaffFormFromDom,
+    saveCeoStaffFromView,
+    deleteCeoStaffFromView
   }
 });
 
@@ -4989,8 +4946,8 @@ const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
     attachCurrentUserProfileListenerFn: attachCurrentUserProfileListener,
     stopCurrentUserProfileListenerFn: stopCurrentUserProfileListener,
     stopProfileViewListenerFn: stopProfileViewListener,
-    loadCeoStaffFn: (...args) => loadCrmStaff(...args),
-    loadBusinessAccountsFn: (...args) => loadCrmBusinessAccounts(...args),
+    loadCeoStaffFn: (...args) => loadCeoStaff(...args),
+    loadBusinessAccountsFn: (...args) => loadBusinessAccounts(...args),
     stopExtraLiveListenersFn: () => {
       if (modalPostDocUnsub) {
         modalPostDocUnsub();

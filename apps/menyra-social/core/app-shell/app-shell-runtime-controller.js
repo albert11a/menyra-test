@@ -1670,6 +1670,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function bindCrmAutoLoadObserver() {
     stopCrmAutoLoadObserver();
+    if (String(state?.activeTab || "").trim().toLowerCase() !== "staff") return;
     if (typeof IntersectionObserver !== "function") return;
     const sentinels = [
       doc?.getElementById("staffLoadMoreSentinel")

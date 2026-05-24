@@ -208,19 +208,21 @@ export function bindAppEventsCore({
       handleUploadPostFn
     });
 
-    bindCrmStaffEvents({
-      documentObj: doc,
-      state,
-      renderFn,
-      closeStaffEditorFn,
-      openStaffEditorFn,
-      syncStaffDerivedEmailFieldFn,
-      normalizeCeoCountryFn,
-      syncStaffFormFromDomFn,
-      openLocationPickerFn,
-      saveCeoStaffFromViewFn,
-      deleteCeoStaffFromViewFn
-    });
+    if (activeTab === "staff") {
+      bindCrmStaffEvents({
+        documentObj: doc,
+        state,
+        renderFn,
+        closeStaffEditorFn,
+        openStaffEditorFn,
+        syncStaffDerivedEmailFieldFn,
+        normalizeCeoCountryFn,
+        syncStaffFormFromDomFn,
+        openLocationPickerFn,
+        saveCeoStaffFromViewFn,
+        deleteCeoStaffFromViewFn
+      });
+    }
     bindCrmAutoLoadObserver();
     bindSearchEvents();
   }
