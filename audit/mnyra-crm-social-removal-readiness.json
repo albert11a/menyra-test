@@ -1,0 +1,1065 @@
+{
+  "summary": {
+    "auditName": "mnyra-crm-social-removal-readiness",
+    "status": "analysis_only",
+    "branchExpectedByTask": "refactorapp",
+    "branchObservedBeforeChanges": "refactorapp",
+    "worktreeCleanBeforeChanges": true,
+    "originRefChecked": "origin/refactorapp",
+    "originAheadBehindBeforeChanges": {
+      "ahead": 0,
+      "behind": 0
+    },
+    "productCodeTouched": false,
+    "createdFileOnly": "audit/mnyra-crm-social-removal-readiness.json",
+    "coreFinding": "Heart owns CRM read/write/view/event parity for Leads, Kunden and Staff without importing apps/menyra-social/social-app.js directly. Heart still depends on shared CRM/leads helpers that currently live under apps/menyra-social/core/* and must stay.",
+    "readinessFinding": "Old Social CRM startup ownership can be removed only after route ownership for /leads, /customers and /staff moves to Heart and Heart can select crmLeads, crmCustomers or crmStaff from the incoming route. Do not delete CRM core logic."
+  },
+  "heartDirectSocialAppDependencyCheck": {
+    "question": "Does Heart import or depend on apps/menyra-social/social-app.js directly?",
+    "result": "no",
+    "evidence": [
+      {
+        "command": "rg -n \"social-app|menyra-social|../menyra-social|core/crm|core/leads|core/business-accounts|app-events|app-shell\" apps/mnyra-heart",
+        "finding": "Heart imports shared modules under ../menyra-social/core/* and ../menyra-social/_shared/*, but no import of apps/menyra-social/social-app.js or social-app module URL was found."
+      }
+    ],
+    "directSocialAppImportsFound": [],
+    "allowedSharedDependencyPattern": "../menyra-social/core/* and ../menyra-social/_shared/* are current shared helper/facade dependencies and are not direct social-app.js dependencies.",
+    "albertRequirementStatus": "passes: Heart does not require social-app.js directly"
+  },
+  "heartSharedCrmDependencies": [
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-read-loaders.js",
+      "imports": [
+        "../menyra-social/core/common/text-normalize-utils.js",
+        "../menyra-social/core/crm/ceo-normalize-utils.js",
+        "../menyra-social/core/crm/ceo-meta-utils.js",
+        "../menyra-social/core/crm/ceo-staff-sync-utils.js",
+        "../menyra-social/core/crm/crm-admin-read-loader-core.js",
+        "../menyra-social/core/crm/crm-scope-state-utils.js",
+        "../menyra-social/core/leads/lead-location-utils.js",
+        "../menyra-social/core/leads/lead-taxonomy-utils.js",
+        "../menyra-social/core/leads/lead-type-utils.js",
+        "../menyra-social/core/profile/restaurant-type-utils.js"
+      ],
+      "currentPurpose": "Heart-owned read loaders for leads, customers, staff and businessAccounts using shared CRM normalizers and read-loader core.",
+      "canRemove": "no",
+      "reason": "This is Heart parity code and is independent of social-app.js.",
+      "requiredBeforeRemoval": "Do not remove unless Heart CRM read parity is replaced by another read adapter.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-write-adapter.js",
+      "imports": [
+        "../menyra-social/core/app-shell/social-app-domain-config.js",
+        "../menyra-social/core/app-shell/social-app-cache-config.js",
+        "../menyra-social/core/common/task-schedule-utils.js",
+        "../menyra-social/core/common/text-normalize-utils.js",
+        "../menyra-social/core/common/currency-utils.js",
+        "../menyra-social/_shared/social-core.js",
+        "../menyra-social/core/crm/crm-ceo-scope-support-runtime.js",
+        "../menyra-social/core/crm/crm-domain-runtime-cluster.js",
+        "../menyra-social/core/crm/crm-lead-geo-support-runtime.js",
+        "../menyra-social/core/discovery/discovery-runtime-controller.js",
+        "../menyra-social/core/crm/crm-scope-state-utils.js",
+        "../menyra-social/core/crm/customer-save-utils.js",
+        "../menyra-social/core/crm/staff-save-utils.js",
+        "../menyra-social/core/leads/lead-convert-utils.js",
+        "../menyra-social/core/leads/lead-delete-utils.js",
+        "../menyra-social/core/leads/lead-save-utils.js",
+        "../menyra-social/core/leads/lead-type-utils.js",
+        "../menyra-social/core/media/media-upload-runtime-cluster.js",
+        "../menyra-social/core/profile/handle-utils.js",
+        "../menyra-social/core/profile/restaurant-type-utils.js",
+        "../menyra-social/_shared/image-compressor.js"
+      ],
+      "currentPurpose": "Heart-owned write adapter that adapts Heart state and DOM to the existing shared CRM runtime/write helpers for save/delete/convert/settings/customer/staff/location/upload.",
+      "canRemove": "no",
+      "reason": "This is the active Heart write bridge and does not import social-app.js. The shared helpers behind it must stay.",
+      "requiredBeforeRemoval": "Replace with a Heart-native CRM core or move the shared helpers to a neutral shared folder first.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-shell-consumer.js",
+      "imports": [
+        "../menyra-social/core/crm/crm-admin-migration-adapter.js"
+      ],
+      "currentPurpose": "Builds Heart consumer domains for leads, customers, staff and businessAccounts from read and write deps.",
+      "canRemove": "no",
+      "reason": "Heart render/events call this consumer; it is the facade boundary that avoids importing social-app.js.",
+      "requiredBeforeRemoval": "Replace the migration adapter with an equivalent Heart-native consumer contract.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-read-view.js",
+      "imports": [
+        "../menyra-social/core/app-shell/social-app-domain-config.js",
+        "../menyra-social/core/crm/ceo-staff-sync-utils.js",
+        "../menyra-social/core/leads/lead-country-utils.js",
+        "../menyra-social/core/leads/lead-pricing-utils.js",
+        "../menyra-social/core/leads/lead-settings-utils.js",
+        "../menyra-social/core/leads/lead-taxonomy-utils.js"
+      ],
+      "currentPurpose": "Heart-owned CRM read/list/editor rendering for Leads, Kunden and Staff.",
+      "canRemove": "no",
+      "reason": "This is the replacement owner for the visible CRM UI in Heart.",
+      "requiredBeforeRemoval": "Do not remove unless the CRM Heart UI is replaced.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart.js",
+      "imports": [
+        "./heart-crm-admin-shell-consumer.js",
+        "./heart-crm-admin-read-loaders.js",
+        "./heart-crm-admin-write-adapter.js"
+      ],
+      "currentPurpose": "Creates Heart read loaders, write adapter, CRM shell consumer deps, refresh/load operations and CRM action handlers.",
+      "canRemove": "no",
+      "reason": "This is the Heart startup owner for CRM parity.",
+      "requiredBeforeRemoval": "No removal; future route migration should extend it with path-to-view selection.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-state.js",
+      "imports": [],
+      "currentPurpose": "Defines Heart nav items crmLeads, crmCustomers and crmStaff plus crmAdmin state sections.",
+      "canRemove": "no",
+      "reason": "Heart CRM views depend on this state shape.",
+      "requiredBeforeRemoval": "No removal while CRM lives in Heart.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-render.js",
+      "imports": [
+        "./heart-crm-admin-read-view.js"
+      ],
+      "currentPurpose": "Maps active Heart views crmLeads/crmCustomers/crmStaff to CRM read domains and renders CRM modals/inline editors.",
+      "canRemove": "no",
+      "reason": "This is the visible Heart CRM ownership.",
+      "requiredBeforeRemoval": "No removal while CRM lives in Heart.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-events.js",
+      "imports": [],
+      "currentPurpose": "Delegates CRM clicks, file changes, search, filters, lead location and staff location events inside Heart.",
+      "canRemove": "no",
+      "reason": "This replaces the old Social CRM event ownership for Heart routes.",
+      "requiredBeforeRemoval": "No removal while CRM lives in Heart.",
+      "riskLevel": "critical"
+    }
+  ],
+  "socialAppCrmImports": [
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmLeadGeoSupportRuntime",
+      "import": "./core/crm/crm-lead-geo-support-runtime.js",
+      "currentPurpose": "Creates eager Social CRM geo/location helpers used by lead and staff editors.",
+      "canRemove": "maybe",
+      "reason": "Heart has its own write adapter using the same shared geo runtime. Social can drop this import after Social no longer owns lead/staff UI or location picker entrypoints.",
+      "requiredBeforeRemoval": "Move /leads and /staff to Heart and verify no non-CRM Social path calls lead/staff geo helpers.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmCeoScopeSupportRuntime",
+      "import": "./core/crm/crm-ceo-scope-support-runtime.js",
+      "currentPurpose": "Creates eager Social CEO scope, ownership and CRM count support for leads/customers/staff.",
+      "canRemove": "maybe",
+      "reason": "Heart already imports the shared scope runtime through its write adapter, but Social still uses it for old route tabs and currency/meta coupling.",
+      "requiredBeforeRemoval": "Route CRM tabs to Heart; remove Social ensureTabData CRM loads; replace remaining menu currency coupling that reads state.leads/state.customers.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmDomainRuntimeCluster",
+      "import": "./core/crm/crm-domain-runtime-cluster.js",
+      "currentPurpose": "Creates the old Social CRM runtime controller and exposes render/load/write functions.",
+      "canRemove": "maybe",
+      "reason": "This is the main old Social CRM startup ownership. The file itself must stay because Heart imports it.",
+      "requiredBeforeRemoval": "Route /leads, /customers and /staff to Heart; remove Social views/events/facade wiring that consume this cluster.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmAdminReadFacade",
+      "import": "./core/crm/crm-admin-read-facade.js",
+      "currentPurpose": "Wraps old Social CRM loaders as facade methods loadCrmLeads/loadCrmCustomers/loadCrmStaff/loadCrmBusinessAccounts.",
+      "canRemove": "maybe",
+      "reason": "Social CRM tabs can drop it after Heart route move, but current Social businessAccounts uses the same facade wrapper.",
+      "requiredBeforeRemoval": "Either keep businessAccounts in Social with direct runtime calls or move/unwrap its facade usage separately.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmAdminUiFacade",
+      "import": "./core/crm/crm-admin-ui-facade.js",
+      "currentPurpose": "Wraps old Social CRM and businessAccounts render/event handlers.",
+      "canRemove": "maybe",
+      "reason": "Leads/customers/staff wrappers become removable after Heart route move; businessAccounts is not part of this removal target.",
+      "requiredBeforeRemoval": "Preserve businessAccounts route/UI or move it intentionally in a separate step.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmAdminLeadWriteFacade",
+      "import": "./core/crm/crm-admin-lead-write-facade.js",
+      "currentPurpose": "Wraps Social lead save/delete handlers for old Social UI.",
+      "canRemove": "yes",
+      "reason": "Heart has lead write operations through heart-crm-admin-write-adapter and shell consumer.",
+      "requiredBeforeRemoval": "Move /leads to Heart and remove old Social lead modal/inline events.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmAdminLeadConversionFacade",
+      "import": "./core/crm/crm-admin-lead-conversion-facade.js",
+      "currentPurpose": "Wraps Social lead-to-customer conversion for old Social UI.",
+      "canRemove": "yes",
+      "reason": "Heart exposes convertCrmLead through the Heart consumer.",
+      "requiredBeforeRemoval": "Move /leads to Heart and verify conversion writes through Heart.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmAdminCustomerWriteFacade",
+      "import": "./core/crm/crm-admin-customer-write-facade.js",
+      "currentPurpose": "Wraps Social customer save for old Social customer modal.",
+      "canRemove": "yes",
+      "reason": "Heart exposes customer save through the Heart consumer.",
+      "requiredBeforeRemoval": "Move /customers to Heart and verify customer save/status behavior through Heart.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createCrmAdminStaffWriteFacade",
+      "import": "./core/crm/crm-admin-staff-write-facade.js",
+      "currentPurpose": "Wraps Social CEO staff save/delete for old Social staff editor.",
+      "canRemove": "yes",
+      "reason": "Heart exposes staff save/delete through the Heart consumer.",
+      "requiredBeforeRemoval": "Move /staff to Heart and verify staff create/edit/delete through Heart.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "saveLeadFromModalCore, deleteLeadFromModalCore, convertLeadToCustomerCore, saveCustomerFromModalCore, saveCeoStaffFromViewCore",
+      "import": "./core/leads/* and ./core/crm/* write helpers",
+      "currentPurpose": "Core write helpers injected into the old Social CRM runtime cluster.",
+      "canRemove": "yes",
+      "reason": "These imports can leave social-app.js after Social stops creating the CRM runtime. The helper files must stay for Heart.",
+      "requiredBeforeRemoval": "Complete route move and remove Social CRM runtime creation.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "bindCrmStaffEventsCore, bindLeadInlineCreateEventsCore, bindLeadOverlayEventsCore, bindCustomerOverlayEventsCore",
+      "import": "./core/app-events/app-events-crm-staff-bind-utils.js and overlay binders",
+      "currentPurpose": "Old Social CRM DOM event ownership for lead/customer/staff screens and modals.",
+      "canRemove": "yes",
+      "reason": "Heart has its own delegated CRM event layer in heart-events.js.",
+      "requiredBeforeRemoval": "Move /leads, /customers and /staff to Heart and remove Social CRM views/modals.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "createEmptyLeadsStateCore, createEmptyCustomersStateCore",
+      "import": "./core/crm/crm-scope-state-utils.js",
+      "currentPurpose": "Eagerly initializes Social lead/customer state even for normal Social startup.",
+      "canRemove": "maybe",
+      "reason": "Social still has helper code that reads state.leads/state.customers for menu currency fallback.",
+      "requiredBeforeRemoval": "Replace remaining non-CRM reads of state.leads/state.customers with restaurant/profile/menu metadata fallbacks.",
+      "riskLevel": "medium"
+    }
+  ],
+  "socialAppCrmViews": [
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "renderCrmLeads passed as renderLeadsViewFn",
+      "currentPurpose": "Renders old Social /leads activeTab inside the normal Social shell.",
+      "canRemove": "yes",
+      "reason": "Heart renders crmLeads through renderHeartCrmAdminReadView.",
+      "requiredBeforeRemoval": "Route /leads to Heart and add Heart path-to-crmLeads initialization.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "renderCrmCustomers passed as renderCustomersViewFn",
+      "currentPurpose": "Renders old Social /customers activeTab inside the normal Social shell.",
+      "canRemove": "yes",
+      "reason": "Heart renders crmCustomers through renderHeartCrmAdminReadView.",
+      "requiredBeforeRemoval": "Route /customers to Heart and add Heart path-to-crmCustomers initialization.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "renderCrmStaff passed as renderStaffViewFn",
+      "currentPurpose": "Renders old Social /staff activeTab inside the normal Social shell.",
+      "canRemove": "yes",
+      "reason": "Heart renders crmStaff through renderHeartCrmAdminReadView.",
+      "requiredBeforeRemoval": "Route /staff to Heart and add Heart path-to-crmStaff initialization.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/ui/main-shell-render-utils.js",
+      "symbol": "activeTab === \"leads\" / \"staff\" / \"customers\" view branches",
+      "currentPurpose": "Selects old CRM renderers inside Social main shell.",
+      "canRemove": "yes",
+      "reason": "Normal Social should no longer contain those CRM views once Heart owns routes.",
+      "requiredBeforeRemoval": "Vercel route ownership moved to Heart; Social activeTab route aliases removed or guarded.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+      "symbol": "CRM subview smart header branches for staff form and lead create/settings",
+      "currentPurpose": "Special Social headers for old lead create/settings and staff form subviews.",
+      "canRemove": "yes",
+      "reason": "Heart now owns lead and staff editors.",
+      "requiredBeforeRemoval": "No Social path can open state.leads.view create/settings or state.staff.view form.",
+      "riskLevel": "medium"
+    }
+  ],
+  "socialAppCrmEvents": [
+    {
+      "file": "apps/menyra-social/core/app-events/app-events-main-bind-utils.js",
+      "symbol": "bindCrmStaffEvents call path",
+      "currentPurpose": "Binds old Social CRM lead/customer/staff events on every non-landing render.",
+      "canRemove": "yes",
+      "reason": "Heart has CRM event delegation in heart-events.js.",
+      "requiredBeforeRemoval": "Social no longer renders lead/customer/staff views.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+      "symbol": "bindCrmStaffEventsCore",
+      "currentPurpose": "Old Social event binder for new lead, lead settings, lead/customer scope and search, edit buttons, staff editor, staff save/delete and location picker.",
+      "canRemove": "maybe",
+      "reason": "The file is old Social UI ownership for these routes, but keep the file until no Social code imports it. It is not imported by Heart.",
+      "requiredBeforeRemoval": "Remove social-app.js and app-events-main-bind-utils references to it; verify no bundled entry/source import remains.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-events/app-events-crm-staff-bind-utils.js",
+      "symbol": "bindLeadInlineCreateEventsCore",
+      "currentPurpose": "Old Social inline lead create/edit event binder including logo uploads, locations and save/delete.",
+      "canRemove": "maybe",
+      "reason": "Heart has equivalent event paths, but the file should only be deleted after imports are removed.",
+      "requiredBeforeRemoval": "Move lead inline editor ownership to Heart routes and remove old Social inline lead rendering.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+      "symbol": "bindCrmAutoLoadObserver",
+      "currentPurpose": "IntersectionObserver for old Social CRM pagination sentinels leadsLoadMoreSentinel, customersLoadMoreSentinel and staffLoadMoreSentinel.",
+      "canRemove": "yes",
+      "reason": "Heart loads/paginates CRM through Heart state/actions, not Social sentinels.",
+      "requiredBeforeRemoval": "Social no longer renders old CRM list sentinels.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+      "symbol": "ensureTabDataCore CRM branches",
+      "currentPurpose": "Loads old Social CRM data when activeTab is leads, customers or staff.",
+      "canRemove": "yes",
+      "reason": "Direct CRM route loads should go through Heart refreshCrmAdmin/loadCrmAdminDomain instead.",
+      "requiredBeforeRemoval": "Vercel route ownership moved to Heart; Social no longer accepts CRM active tabs.",
+      "riskLevel": "high"
+    }
+  ],
+  "socialAppCrmModalsForms": [
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "state.leadModal",
+      "currentPurpose": "Old Social lead modal/form state for create/edit/delete/convert/logo/location.",
+      "canRemove": "maybe",
+      "reason": "Heart has its own modal/draft state, but Social overlay orchestration and bridge deps still reference lead modal until CRM UI is removed.",
+      "requiredBeforeRemoval": "Remove Social lead modal rendering, overlay binding and bridge deps; ensure no menu/social path checks leadModal for overlay isolation.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "state.customerModal",
+      "currentPurpose": "Old Social customer modal/form state for customer edit/save/logo.",
+      "canRemove": "maybe",
+      "reason": "Heart has customer modal rendering and save, but Social overlay isolation currently checks customerModal.",
+      "requiredBeforeRemoval": "Remove Social customer modal rendering/binding and update overlay isolation checks.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "state.staff.form and state.staff.view",
+      "currentPurpose": "Old Social staff list/editor state.",
+      "canRemove": "maybe",
+      "reason": "Heart owns staff editor state, but Social activeTab/state reset/header code still references staff.",
+      "requiredBeforeRemoval": "Remove Social staff route/view/header/event/load paths.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/core/leads/lead-modal-render-utils.js",
+      "symbol": "renderLeadModalCore",
+      "currentPurpose": "Old Social lead overlay modal renderer.",
+      "canRemove": "maybe",
+      "reason": "Not imported by Heart; safe to delete only after Social no longer imports it through shell-ui runtime.",
+      "requiredBeforeRemoval": "Remove Social lead overlay orchestration.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/core/overlays/customer-focus-modal-render-utils.js",
+      "symbol": "renderCustomerModalCore",
+      "currentPurpose": "Old Social customer overlay modal renderer, colocated with focus modal renderer.",
+      "canRemove": "maybe",
+      "reason": "The file also exports renderFocusModalCore for non-CRM focus UI, so the whole file is not safe to delete.",
+      "requiredBeforeRemoval": "Split or preserve focus modal export before removing only customer modal code.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/overlays/overlay-render-orchestrator-utils.js",
+      "symbol": "lead/customer overlay roots and updateLead/updateCustomer branches",
+      "currentPurpose": "Old Social overlay rendering for lead and customer CRM modals.",
+      "canRemove": "maybe",
+      "reason": "The orchestrator is shared by many non-CRM modals; only lead/customer branches are removal candidates.",
+      "requiredBeforeRemoval": "Remove Social lead/customer modals without touching profile/chat/post/menu/focus overlays.",
+      "riskLevel": "high"
+    }
+  ],
+  "socialRoutesToMove": [
+    {
+      "route": "/leads",
+      "currentOwner": "apps/menyra-social/index.html via vercel.json rewrite",
+      "currentSocialTab": "leads",
+      "heartTargetView": "crmLeads",
+      "requiredChange": "Rewrite or redirect to Heart/Admin and make Heart initialize activeView=crmLeads from this route.",
+      "canRemove": "yes",
+      "reason": "Heart owns Leads read/write/UI parity, but route ownership has not moved yet.",
+      "requiredBeforeRemoval": "Add Heart route parsing or query-to-view selection, then move vercel.json route ownership.",
+      "riskLevel": "critical"
+    },
+    {
+      "route": "/customers",
+      "currentOwner": "apps/menyra-social/index.html via vercel.json rewrite",
+      "currentSocialTab": "customers",
+      "heartTargetView": "crmCustomers",
+      "requiredChange": "Rewrite or redirect to Heart/Admin and make Heart initialize activeView=crmCustomers from this route.",
+      "canRemove": "yes",
+      "reason": "Heart owns customer list/edit/save parity for the current exposed flow.",
+      "requiredBeforeRemoval": "Add Heart route parsing or query-to-view selection, then move vercel.json route ownership.",
+      "riskLevel": "critical"
+    },
+    {
+      "route": "/staff",
+      "currentOwner": "apps/menyra-social/index.html via vercel.json rewrite and also host redirect target for staff.menyra.com",
+      "currentSocialTab": "staff",
+      "heartTargetView": "crmStaff",
+      "requiredChange": "Decide whether public /staff and staff subdomain should mean CEO CRM staff in Heart or existing staff app/login flow; then route only the CEO CRM staff path to Heart.",
+      "canRemove": "maybe",
+      "reason": "/staff has broader product meaning than CRM staff because staff subdomains and app routes also use the segment.",
+      "requiredBeforeRemoval": "Clarify staff route contract and avoid breaking staff.menyra.com or app staff/waiter/kitchen flows.",
+      "riskLevel": "critical"
+    },
+    {
+      "route": "/ceo",
+      "currentOwner": "apps/menyra-social/index.html via vercel.json rewrite",
+      "currentSocialTab": "leads",
+      "heartTargetView": "crmLeads or Heart dashboard",
+      "requiredChange": "Decide whether /ceo should go to Heart dashboard or directly to Heart leads.",
+      "canRemove": "maybe",
+      "reason": "Current alias points to leads in Social; Heart route target should be explicit.",
+      "requiredBeforeRemoval": "Document route contract before changing.",
+      "riskLevel": "high"
+    },
+    {
+      "route": "/admin",
+      "currentOwner": "apps/menyra-social/index.html via vercel.json rewrite",
+      "currentSocialTab": "leads",
+      "heartTargetView": "crmLeads or Heart dashboard",
+      "requiredChange": "Decide whether /admin should go to Heart dashboard or directly to Heart leads.",
+      "canRemove": "maybe",
+      "reason": "Current alias points to leads in Social; Heart route target should be explicit.",
+      "requiredBeforeRemoval": "Document route contract before changing.",
+      "riskLevel": "high"
+    },
+    {
+      "route": "/business-accounts and /businessaccounts",
+      "currentOwner": "apps/menyra-social/index.html via vercel.json rewrite",
+      "currentSocialTab": "businessAccounts",
+      "heartTargetView": "none for this removal scope",
+      "requiredChange": "Do not move as part of Leads/Kunden/Staff CRM removal unless business-owner staff management is explicitly included.",
+      "canRemove": "no",
+      "reason": "Business accounts are business-owner scoped staff management, not the CEO CRM Staff target in this task.",
+      "requiredBeforeRemoval": "Separate businessAccounts ownership decision.",
+      "riskLevel": "high"
+    }
+  ],
+  "heartDependenciesToKeep": [
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-read-loaders.js",
+      "symbol": "createHeartCrmAdminReadLoaderDeps",
+      "currentPurpose": "Heart read parity for CRM domains.",
+      "canRemove": "no",
+      "reason": "Required by Heart CRM.",
+      "requiredBeforeRemoval": "Replacement Heart read layer.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-write-adapter.js",
+      "symbol": "createHeartCrmAdminWriteAdapter",
+      "currentPurpose": "Heart write parity using shared CRM core helpers without social-app.js.",
+      "canRemove": "no",
+      "reason": "Required by Heart CRM writes.",
+      "requiredBeforeRemoval": "Replacement Heart write layer.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-read-view.js",
+      "symbol": "renderHeartCrmAdminReadView and renderHeartCrmAdminModal",
+      "currentPurpose": "Heart CRM UI for Leads, Kunden and Staff.",
+      "canRemove": "no",
+      "reason": "Replacement UI owner.",
+      "requiredBeforeRemoval": "Replacement Heart CRM UI.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-crm-admin-shell-consumer.js",
+      "symbol": "createHeartCrmAdminShellConsumer",
+      "currentPurpose": "Facade consumer between Heart and shared CRM read/write deps.",
+      "canRemove": "no",
+      "reason": "Keeps Heart independent from social-app.js.",
+      "requiredBeforeRemoval": "Replacement consumer contract.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-events.js",
+      "symbol": "CRM event branches",
+      "currentPurpose": "Heart event ownership for CRM interactions.",
+      "canRemove": "no",
+      "reason": "Needed after route move.",
+      "requiredBeforeRemoval": "Replacement event owner.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/mnyra-heart/heart-state.js",
+      "symbol": "crmAdmin state and HEART_NAV_ITEMS crmLeads/crmCustomers/crmStaff",
+      "currentPurpose": "Heart CRM navigation and section state.",
+      "canRemove": "no",
+      "reason": "Needed after route move.",
+      "requiredBeforeRemoval": "Replacement state owner.",
+      "riskLevel": "critical"
+    }
+  ],
+  "crmCoreFilesToKeep": [
+    {
+      "file": "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
+      "symbol": "createCrmDomainRuntimeCluster",
+      "currentPurpose": "Shared CRM domain runtime used by Heart write adapter and old Social startup.",
+      "canRemove": "no",
+      "reason": "Heart imports this directly. Remove only the social-app.js import/instantiation later.",
+      "requiredBeforeRemoval": "Move this shared core to a neutral folder or replace Heart adapter.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/crm-runtime-controller.js",
+      "symbol": "createCrmRuntimeController",
+      "currentPurpose": "Core CRM read/write/render/action implementation behind the domain runtime.",
+      "canRemove": "no",
+      "reason": "Transitive Heart dependency through createCrmDomainRuntimeCluster.",
+      "requiredBeforeRemoval": "Neutral shared-core relocation or replacement.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/crm-admin-read-loader-core.js",
+      "symbol": "loadCrmLeadsCore, loadCrmCustomersCore, loadCrmCeoStaffCore, loadCrmBusinessAccountsCore",
+      "currentPurpose": "Shared Heart read loader core.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement read-loader core.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/crm-admin-migration-adapter.js",
+      "symbol": "createCrmAdminMigrationAdapter",
+      "currentPurpose": "Shared facade adapter consumed by Heart shell consumer.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement Heart facade adapter.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/crm-admin-*-facade.js",
+      "symbol": "CRM admin read/ui/write facade modules",
+      "currentPurpose": "Shared facade contract used by migration adapter and Social wrappers.",
+      "canRemove": "no",
+      "reason": "Heart transitively depends on these via crm-admin-migration-adapter.",
+      "requiredBeforeRemoval": "Replacement migration adapter or neutral relocation.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/crm-ceo-scope-support-runtime.js",
+      "symbol": "createCrmCeoScopeSupportRuntime",
+      "currentPurpose": "Shared CEO scope, ownership and CRM count support.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement scope/count support.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/crm-lead-geo-support-runtime.js",
+      "symbol": "createCrmLeadGeoSupportRuntime",
+      "currentPurpose": "Shared lead/staff location and geo support.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement Heart geo/location support.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/customer-save-utils.js",
+      "symbol": "saveCustomerFromModalCore",
+      "currentPurpose": "Shared customer write helper used by Heart write adapter.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement customer write helper.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/staff-save-utils.js",
+      "symbol": "saveCeoStaffFromViewCore",
+      "currentPurpose": "Shared CEO staff write helper used by Heart write adapter.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement staff write helper.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/leads/lead-save-utils.js",
+      "symbol": "saveLeadFromModalCore",
+      "currentPurpose": "Shared lead save/provisioning helper used by Heart write adapter.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement lead save/provisioning helper.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/leads/lead-delete-utils.js",
+      "symbol": "deleteLeadFromModalCore",
+      "currentPurpose": "Shared lead delete/public cleanup helper used by Heart write adapter.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement lead delete helper.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/leads/lead-convert-utils.js",
+      "symbol": "convertLeadToCustomerCore",
+      "currentPurpose": "Shared lead-to-customer conversion helper used by Heart write adapter.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement conversion helper.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/leads/lead-location-utils.js",
+      "symbol": "createLeadLocationCore, normalizeLeadLocationsCore, getPrimaryLeadLocationCore",
+      "currentPurpose": "Shared lead location normalization used by Heart read loaders.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement location normalizer.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/leads/lead-country-utils.js, lead-pricing-utils.js, lead-settings-utils.js, lead-taxonomy-utils.js, lead-type-utils.js",
+      "symbol": "lead country/pricing/settings/taxonomy/type helpers",
+      "currentPurpose": "Shared Heart read view/read loader/write adapter helpers.",
+      "canRemove": "no",
+      "reason": "Heart imports these directly.",
+      "requiredBeforeRemoval": "Replacement Heart helper modules or neutral relocation.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/social-app-domain-config.js",
+      "symbol": "LEAD_* constants, CEO constants, CRM_PAGE_SIZE",
+      "currentPurpose": "Shared constants imported by Heart read view and write adapter.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly despite the social-app name.",
+      "requiredBeforeRemoval": "Move constants to a neutral shared CRM config.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/social-app-cache-config.js",
+      "symbol": "CACHE_KEYS, CACHE_TTL_MS, businessPostsKey, leadPageCacheKey, customerPageCacheKey",
+      "currentPurpose": "Shared cache keys used by Heart write adapter.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Move cache constants to a neutral shared config.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+      "symbol": "createBusinessAccountsRuntimeController",
+      "currentPurpose": "Current Social business-owner staff/account management surface.",
+      "canRemove": "no",
+      "reason": "Business accounts are not in the Leads/Kunden/CEO Staff removal scope and still have Social ownership.",
+      "requiredBeforeRemoval": "Separate businessAccounts ownership decision.",
+      "riskLevel": "high"
+    }
+  ],
+  "crmSocialOnlyCodeSafeToRemove": [
+    {
+      "file": "apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js",
+      "symbol": "drawer nav entries data-nav=\"leads\", data-nav=\"staff\", data-nav=\"customers\"",
+      "currentPurpose": "Old Social drawer entry points to CRM tabs.",
+      "canRemove": "yes",
+      "reason": "Heart has its own drawer/nav entries for Leads, Kunden and Staff.",
+      "requiredBeforeRemoval": "Move direct routes to Heart; decide whether Social drawer links should disappear or link out to Heart.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/core/router/public-business-route-utils.js",
+      "symbol": "SYSTEM_ROUTE_SEGMENT_TO_TAB and CANONICAL_TAB_TO_PATH entries for leads/staff/customers",
+      "currentPurpose": "Maps /leads, /staff and /customers into Social activeTab routes.",
+      "canRemove": "yes",
+      "reason": "After route move, these should no longer open Social CRM tabs.",
+      "requiredBeforeRemoval": "Vercel rewrites moved to Heart and Heart path-to-view mapping implemented. Keep reserved segment protection unless the route contract says otherwise.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/auth/route-auth-utils.js",
+      "symbol": "normalizeInitialTab allowed tabs leads/staff/customers and aliases ceo/admin",
+      "currentPurpose": "Lets Social accept CRM routes during initial route state.",
+      "canRemove": "yes",
+      "reason": "Social should not initialize CRM tabs after Heart route move.",
+      "requiredBeforeRemoval": "Heart owns /leads, /customers, /staff, /ceo, /admin contract.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "AUTH_RESTORE_PRESERVED_TABS and STARTUP_SNAPSHOT_ALLOWED_TABS CRM entries",
+      "currentPurpose": "Preserves/restores old Social CRM tabs across auth/startup.",
+      "canRemove": "yes",
+      "reason": "CRM route auth restore should be Heart-owned.",
+      "requiredBeforeRemoval": "Direct CRM routes no longer enter Social auth restore.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/auth/tab-auth-load-utils.js",
+      "symbol": "ensureTabDataCore loadLeads/loadCustomers/loadCeoStaff CRM branches",
+      "currentPurpose": "Loads old Social CRM data for Social active tabs.",
+      "canRemove": "yes",
+      "reason": "Heart refreshCrmAdmin/loadCrmAdminDomain owns CRM data loading.",
+      "requiredBeforeRemoval": "Remove CRM tabs from Social routeable tabs.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+      "symbol": "bindCrmAutoLoadObserver",
+      "currentPurpose": "Old Social infinite-load observer for CRM list sentinels.",
+      "canRemove": "yes",
+      "reason": "No Social CRM lists should remain.",
+      "requiredBeforeRemoval": "Social no longer renders CRM list sentinels.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "crmAdminLeadWriteFacade, crmAdminLeadConversionFacade, crmAdminCustomerWriteFacade, crmAdminStaffWriteFacade instances",
+      "currentPurpose": "Old Social facade wrappers for CRM writes.",
+      "canRemove": "yes",
+      "reason": "Heart has equivalent write operations.",
+      "requiredBeforeRemoval": "Social views/events no longer call saveCrmLead/deleteCrmLead/convertCrmLeadToCustomer/saveCrmCustomer/saveCrmCeoStaff/removeCrmCeoStaff.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "CRM_LAZY_RENDERERS_MODULE_URL and queueCrmLazyRenderersPrefetch from Social CRM runtime",
+      "currentPurpose": "Old Social lazy renderer module URL/prefetch for CRM views.",
+      "canRemove": "yes",
+      "reason": "Normal Social startup should not prefetch CRM renderers once Heart owns CRM UI.",
+      "requiredBeforeRemoval": "No Social ensureTabData or render path calls queueCrmLazyRenderersPrefetch.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "state.leads and state.customers",
+      "currentPurpose": "Old Social CRM list state and some non-CRM currency fallback reads.",
+      "canRemove": "maybe",
+      "reason": "CRM state can leave Social, but resolveCurrencyCodeForMenuItem still reads lead/customer metadata.",
+      "requiredBeforeRemoval": "Refactor resolveCurrencyCodeForMenuItem to avoid CRM state or provide a non-CRM restaurant/profile currency source.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "state.staff",
+      "currentPurpose": "Old Social CEO staff list/editor state.",
+      "canRemove": "yes",
+      "reason": "Heart owns CEO Staff state and editor.",
+      "requiredBeforeRemoval": "Remove Social staff route/view/header/event/load references.",
+      "riskLevel": "medium"
+    }
+  ],
+  "filesNotSafeToRemove": [
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "symbol": "entire file",
+      "currentPurpose": "Normal Social app startup and all non-CRM Social product flows.",
+      "canRemove": "no",
+      "reason": "Only old CRM ownership inside social-app.js is the target. The Social app remains required.",
+      "requiredBeforeRemoval": "No full-file removal is in scope.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/crm/*",
+      "symbol": "shared CRM core and facade modules",
+      "currentPurpose": "Shared CRM helpers used by Heart and old Social.",
+      "canRemove": "no",
+      "reason": "Heart imports many of these directly or transitively.",
+      "requiredBeforeRemoval": "Move to neutral shared folder or replace Heart dependencies.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/leads/*",
+      "symbol": "lead save/delete/convert/location/taxonomy/settings/pricing/render helpers",
+      "currentPurpose": "Shared lead helpers, many used by Heart.",
+      "canRemove": "no",
+      "reason": "Heart imports the non-render lead helpers directly. The render helper can be considered later only after Social imports are removed.",
+      "requiredBeforeRemoval": "Separate per-file import audit after route move.",
+      "riskLevel": "critical"
+    },
+    {
+      "file": "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js",
+      "symbol": "createBusinessAccountsRuntimeController",
+      "currentPurpose": "Business-owner staff/account management surface.",
+      "canRemove": "no",
+      "reason": "Not part of this Leads/Kunden/CEO Staff removal target.",
+      "requiredBeforeRemoval": "Separate business accounts migration plan.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/social-app-domain-config.js",
+      "symbol": "LEAD/CEO constants",
+      "currentPurpose": "Shared constants used by Heart.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Neutral shared config migration.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/social-app-cache-config.js",
+      "symbol": "cache keys and TTLs",
+      "currentPurpose": "Shared cache keys used by Heart.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Neutral shared config migration.",
+      "riskLevel": "medium"
+    },
+    {
+      "file": "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
+      "symbol": "createMediaUploadRuntimeCluster",
+      "currentPurpose": "Heart write adapter uses it for CRM image upload behavior.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement Heart upload adapter.",
+      "riskLevel": "high"
+    },
+    {
+      "file": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "symbol": "createDiscoveryRuntimeController",
+      "currentPurpose": "Heart write adapter uses it for location picker support.",
+      "canRemove": "no",
+      "reason": "Heart imports it directly.",
+      "requiredBeforeRemoval": "Replacement location picker implementation.",
+      "riskLevel": "high"
+    }
+  ],
+  "routeMigrationPlan": [
+    {
+      "step": 1,
+      "action": "Add Heart route/view initialization without changing Social routes yet.",
+      "details": "Heart should map incoming /leads to crmLeads, /customers to crmCustomers, and the agreed Staff CRM path to crmStaff. Today Heart defaults activeView to dashboard and only changes view from in-app nav events.",
+      "riskLevel": "critical"
+    },
+    {
+      "step": 2,
+      "action": "Move Vercel rewrites for /leads and /customers to Heart.",
+      "details": "Change only after Heart route initialization exists. Keep no-cache headers consistent.",
+      "riskLevel": "critical"
+    },
+    {
+      "step": 3,
+      "action": "Clarify and then move Staff CRM route.",
+      "details": "/staff is also used by staff subdomain/app concepts. Decide whether /staff means Heart crmStaff or whether a safer route such as /heart/staff or /admin/staff is needed.",
+      "riskLevel": "critical"
+    },
+    {
+      "step": 4,
+      "action": "Decide /ceo and /admin target.",
+      "details": "Current Social aliases resolve to leads. They should either land on Heart dashboard or Heart crmLeads, but this should be explicit before route edits.",
+      "riskLevel": "high"
+    },
+    {
+      "step": 5,
+      "action": "Stop Social from accepting old CRM activeTab routes.",
+      "details": "Remove or guard leads/customers/staff entries in Social normalizeInitialTab, route tab mapping, auth restore allowed tabs, startup snapshot allowed tabs, and ensureTabData CRM branches. Keep reserved public-route protection unless a global route contract replaces it.",
+      "riskLevel": "high"
+    },
+    {
+      "step": 6,
+      "action": "Remove Social drawer/menu CRM entries or convert them to Heart links.",
+      "details": "Do this only after route ownership is Heart-owned so users do not lose CRM access.",
+      "riskLevel": "medium"
+    }
+  ],
+  "removalOrder": [
+    {
+      "order": 1,
+      "title": "Heart route readiness",
+      "action": "Add Heart route-to-activeView mapping for CRM views.",
+      "whyFirst": "Without this, rewriting /leads, /customers or /staff to Heart would show the Heart dashboard instead of the CRM target.",
+      "riskLevel": "critical"
+    },
+    {
+      "order": 2,
+      "title": "Route ownership",
+      "action": "Move /leads and /customers rewrites to Heart; handle /staff only after route contract is clarified.",
+      "whyFirst": "Social code should not be removed while direct routes still enter Social.",
+      "riskLevel": "critical"
+    },
+    {
+      "order": 3,
+      "title": "Social route acceptance",
+      "action": "Remove/guard Social CRM activeTab route handling and auth restore for leads/customers/staff.",
+      "whyFirst": "Prevents old Social CRM paths from being reopened through query/path/session state.",
+      "riskLevel": "high"
+    },
+    {
+      "order": 4,
+      "title": "Social navigation",
+      "action": "Remove Social drawer CRM entries or convert them to Heart links.",
+      "whyFirst": "Keeps visible navigation consistent after route move.",
+      "riskLevel": "medium"
+    },
+    {
+      "order": 5,
+      "title": "Social UI/events",
+      "action": "Remove Social CRM view renderers, event binders, modal overlay branches and auto-load observer wiring.",
+      "whyFirst": "These are safe only after routes no longer render old Social CRM UI.",
+      "riskLevel": "high"
+    },
+    {
+      "order": 6,
+      "title": "Social startup imports",
+      "action": "Remove social-app.js CRM runtime creation, facade wrappers, write helper imports and lazy renderer URL/prefetch.",
+      "whyFirst": "This is the startup diet target after all old Social consumers are gone.",
+      "riskLevel": "high"
+    },
+    {
+      "order": 7,
+      "title": "State cleanup",
+      "action": "Remove state.leads/state.customers/state.staff and dataLoaded CRM flags only after non-CRM coupling is gone.",
+      "whyFirst": "resolveCurrencyCodeForMenuItem currently reads lead/customer state as a fallback.",
+      "riskLevel": "medium"
+    },
+    {
+      "order": 8,
+      "title": "Shared-core relocation",
+      "action": "Optional later move of shared CRM core from apps/menyra-social/core/crm and core/leads into a neutral shared folder.",
+      "whyFirst": "Not needed for readiness; useful later to make the ownership boundary clearer.",
+      "riskLevel": "medium"
+    }
+  ],
+  "riskList": [
+    {
+      "risk": "Route rewrite before Heart path mapping",
+      "impact": "Direct /leads, /customers or /staff could open Heart dashboard or wrong view.",
+      "riskLevel": "critical",
+      "mitigation": "Add and manually verify Heart route-to-activeView mapping first."
+    },
+    {
+      "risk": "Staff route ambiguity",
+      "impact": "Moving /staff blindly could break staff subdomain/app flows or confuse CEO Staff with staff workspace.",
+      "riskLevel": "critical",
+      "mitigation": "Clarify Staff route contract before changing /staff rewrites."
+    },
+    {
+      "risk": "Deleting shared CRM core",
+      "impact": "Heart lead/customer/staff read and write operations break immediately.",
+      "riskLevel": "critical",
+      "mitigation": "Only remove social-app.js imports/wiring; keep shared core files."
+    },
+    {
+      "risk": "Lead/customer currency fallback coupling",
+      "impact": "Menu/product currency can fall back differently if state.leads/state.customers disappear too early.",
+      "riskLevel": "medium",
+      "mitigation": "Refactor resolveCurrencyCodeForMenuItem before removing Social lead/customer state."
+    },
+    {
+      "risk": "Business accounts accidental removal",
+      "impact": "Business-owner staff/account management can break although it is outside this task.",
+      "riskLevel": "high",
+      "mitigation": "Keep businessAccounts routes/runtime unless explicitly migrated."
+    },
+    {
+      "risk": "Overlay orchestrator over-removal",
+      "impact": "Profile/chat/post/menu/focus modals can regress if shared overlay code is removed wholesale.",
+      "riskLevel": "high",
+      "mitigation": "Remove only lead/customer branches after old Social CRM views are gone."
+    },
+    {
+      "risk": "Public route reserved segment regression",
+      "impact": "CRM segments could accidentally become public business slugs if reserved protection is removed.",
+      "riskLevel": "high",
+      "mitigation": "Keep reserved route protection unless a central route contract says otherwise."
+    },
+    {
+      "risk": "Heart depends on shared helpers with social-app naming",
+      "impact": "Future cleanup may mistakenly delete social-app-domain-config or social-app-cache-config.",
+      "riskLevel": "high",
+      "mitigation": "Treat these as shared config until a neutral relocation step."
+    }
+  ],
+  "manualTestChecklist": [
+    {
+      "area": "Heart direct routes after future migration",
+      "checks": [
+        "Open /leads and confirm Heart loads directly into Leads, not dashboard and not Social.",
+        "Open /customers and confirm Heart loads directly into Kunden.",
+        "Open the agreed Staff CRM route and confirm Heart loads directly into Staff."
+      ]
+    },
+    {
+      "area": "Heart Leads",
+      "checks": [
+        "Load own/staff/archived scopes.",
+        "Create a lead with logo, Best-Spot logo, country, pricing and location.",
+        "Edit and save a lead.",
+        "Convert a lead to customer.",
+        "Delete a lead and verify linked public/social cleanup expectations manually."
+      ]
+    },
+    {
+      "area": "Heart Customers",
+      "checks": [
+        "Load own/staff scopes.",
+        "Open a customer editor.",
+        "Save customer fields and logo.",
+        "Move customer back to lead via status flow if this remains part of parity."
+      ]
+    },
+    {
+      "area": "Heart Staff",
+      "checks": [
+        "Load staff list.",
+        "Create staff with generated email, country, location and avatar.",
+        "Edit staff.",
+        "Delete non-self staff.",
+        "Confirm self-delete remains blocked."
+      ]
+    },
+    {
+      "area": "Normal Social after future removal",
+      "checks": [
+        "Open /feed, /search, /map, /profile, /menu, /orders and confirm no CRM UI appears.",
+        "Confirm Social drawer no longer opens old CRM tabs or links correctly to Heart if links are retained.",
+        "Confirm public business profile /:slug and /:slug/menu still work.",
+        "Confirm QR menu link behavior remains unchanged.",
+        "Confirm businessAccounts remains available if not migrated."
+      ]
+    }
+  ]
+}
