@@ -47,8 +47,6 @@ export function createSessionDataRuntimeController({
   createEmptyOrdersStateFn = () => ({}),
   createEmptyFavoriteMenuItemsStateFn = () => ({}),
   createEmptyMenuDetailStateFn = () => ({}),
-  createEmptyLeadsStateFn = () => ({}),
-  createEmptyCustomersStateFn = () => ({}),
   sortChatThreadsFn = (items = []) => items,
   loadChatThreadIndexFn = () => [],
   loadChatThreadMessagesFn = () => [],
@@ -976,8 +974,8 @@ export function createSessionDataRuntimeController({
     state.menuDetail = createEmptyMenuDetailStateFn();
     state.menuItemMeta = {};
     requestedMenuItemCounts.clear();
-    state.leads = createEmptyLeadsStateFn();
-    state.customers = createEmptyCustomersStateFn();
+    state.leads = {};
+    state.customers = {};
     state.staff = {
       items: [],
       view: "list",
@@ -1024,8 +1022,6 @@ export function createSessionDataRuntimeController({
         active: true
       }
     };
-    state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", bestSpotLogoFile: null, bestSpotLogoPreview: "", coords: null, locations: [] };
-    state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
     state.selectedBusiness = null;
     state.tableQr = {
       restaurantId: "",
@@ -1974,9 +1970,7 @@ export function createSessionDataRuntimeController({
 
   async function bootstrapUser(user) {
     const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-    const isRoleCriticalTab = activeTabKey === "leads"
-      || activeTabKey === "staff"
-      || activeTabKey === "customers"
+    const isRoleCriticalTab = activeTabKey === "staff"
       || activeTabKey === "businessaccounts";
     const deferGlobalBootstrapWork = !isRoleCriticalTab;
     const runDeferredBootstrapTask = (scope = "", task = null) => {

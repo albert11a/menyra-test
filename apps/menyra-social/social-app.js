@@ -229,10 +229,6 @@ import {
   matchesRestaurantIdentityCore as matchesRestaurantIdentity
 } from "./core/profile/restaurant-identity-utils.js";
 import {
-  createEmptyLeadsStateCore,
-  createEmptyCustomersStateCore
-} from "./core/crm/crm-scope-state-utils.js";
-import {
   normalizeRoleListCore,
   roleLabelCore,
   buildRoleSwitchUrlCore
@@ -760,18 +756,6 @@ function schedulePerfWarmMark() {
 
 applyRuntimePerfMode();
 
-function createEmptyLeadsState() {
-  return createEmptyLeadsStateCore({
-    pageSize: CRM_PAGE_SIZE
-  });
-}
-
-function createEmptyCustomersState() {
-  return createEmptyCustomersStateCore({
-    pageSize: CRM_PAGE_SIZE
-  });
-}
-
 const state = {
   user: null,
   activeTab: "feed",
@@ -888,8 +872,8 @@ const state = {
     imageFile: null,
     imagePreview: ""
   },
-  leads: createEmptyLeadsState(),
-  customers: createEmptyCustomersState(),
+  leads: {},
+  customers: {},
   staff: {
     items: [],
     view: "list",
@@ -935,30 +919,6 @@ const state = {
       waiterAccess: true,
       active: true
     }
-  },
-  leadModal: {
-    open: false,
-    mode: "create",
-    lead: null,
-    status: "",
-    loading: false,
-    deleting: false,
-    actionsOpen: false,
-    logoFile: null,
-    logoPreview: "",
-    bestSpotLogoFile: null,
-    bestSpotLogoPreview: "",
-    coords: null,
-    locations: []
-  },
-  customerModal: {
-    open: false,
-    mode: "edit",
-    customer: null,
-    status: "",
-    loading: false,
-    logoFile: null,
-    logoPreview: ""
   },
   settings: { ...DEFAULT_SETTINGS },
   menuLayout: { ...DEFAULT_MENU_LAYOUT },
@@ -4254,9 +4214,7 @@ sessionDataRuntimeController = createSessionDataRuntimeCluster({
     createEmptyShopCart,
     createEmptyOrdersState,
     createEmptyFavoriteMenuItemsState,
-    createEmptyMenuDetailState,
-    createEmptyLeadsState,
-    createEmptyCustomersState
+    createEmptyMenuDetailState
   },
   renderApi: {
     scheduleIdle,
