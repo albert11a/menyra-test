@@ -1,6 +1,8 @@
 // MENYRA service worker: network-first with safe caching
-const CACHE_NAME = 'menyra-cache-v7';
+const CACHE_NAME = 'menyra-cache-v8';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24h (not strictly enforced here)
+const HEART_ROUTE_PATHS = new Set(['/leads', '/customers']);
+const HEART_APP_SHELL_URL = '/apps/mnyra-heart/index.html';
 
 self.addEventListener('install', (event) => {
   // Activate new SW immediately
@@ -40,6 +42,30 @@ function buildNotificationTargetUrl(rawUrl, notificationId) {
     if (!safeId) return fallback;
     return `${fallback}?notif=${encodeURIComponent(safeId)}`;
   }
+}
+
+function normalizeOwnedRoutePath(pathname) {
+  const rawPath = String(pathname || '').trim();
+  if (!rawPath || rawPath === '/') return '/';
+  return rawPath.replace(/\/+$/g, '') || '/';
+}
+
+function isHeartOwnedNavigationPath(url) {
+  if (!url || url.origin !== self.location.origin) return false;
+  return HEART_ROUTE_PATHS.has(normalizeOwnedRoutePath(url.pathname));
+}
+
+async function fetchHeartAppShellForNavigation() {
+  const heartShellRequest = new Request(HEART_APP_SHELL_URL, {
+    cache: 'reload',
+    credentials: 'same-origin',
+    headers: { Accept: 'text/html' }
+  });
+  const response = await fetch(heartShellRequest);
+  if (!response || (!response.ok && response.type !== 'opaque')) {
+    throw new Error(`heart-shell-response-not-ok:${response?.status || 0}`);
+  }
+  return response;
 }
 
 self.addEventListener('push', (event) => {
@@ -156,6 +182,9 @@ self.addEventListener('fetch', (event) => {
   if (isNavigation) {
     event.respondWith((async () => {
       try {
+        if (isHeartOwnedNavigationPath(url)) {
+          return await fetchHeartAppShellForNavigation();
+        }
         return await fetch(req);
       } catch (err) {
         return new Response('Offline', { status: 503, statusText: 'Offline' });
