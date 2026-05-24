@@ -1,0 +1,430 @@
+{
+  "summary": {
+    "auditName": "mnyra-social-next-slimming-step",
+    "status": "analysis-only",
+    "branch": "refactorapp",
+    "createdAfterCleanupCommit": "1ab5a9190eb345fbeb42462a9b6b8ae3c5f2fc2f",
+    "productCodeChanged": false,
+    "coreFinding": "After Leads, Customers, and CEO/Admin Staff moved away from normal Social startup ownership, social-app.js is still dominated by route/session startup, public menu/QR/cart/order wiring, Feed/Search/Map bridge wiring, overlay/modal orchestration, and remaining Social-owned staff/businessAccounts paths.",
+    "recommendedNextStepId": "public-menu-qr-business-profile-lightweight-entry",
+    "recommendedNextStepTitle": "Public menu / QR / business profile lightweight entry"
+  },
+  "currentLineCounts": {
+    "apps/menyra-social/social-app.js": 5023,
+    "apps/menyra-social/core/app-shell/app-controller-bridge.js": 630,
+    "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js": 1797,
+    "apps/menyra-social/core/app-shell/session-data-runtime-controller.js": 2044,
+    "apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js": 1638,
+    "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js": 885,
+    "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js": 493,
+    "apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js": 558,
+    "apps/menyra-social/core/app-shell/controller-deps-factory.js": 1922,
+    "apps/menyra-social/core/app-events/app-events-main-bind-utils.js": 224,
+    "apps/menyra-social/core/discovery/discovery-runtime-controller.js": 1862,
+    "apps/menyra-social/core/menu/menu-public-runtime-controller.js": 751,
+    "apps/menyra-social/core/menu/table-qr-runtime-controller.js": 250,
+    "apps/menyra-social/core/orders/orders-runtime-controller.js": 615,
+    "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js": 573,
+    "apps/menyra-social/core/overlays/overlay-orchestration-controller.js": 697,
+    "apps/menyra-social/core/auth/tab-auth-load-utils.js": 688,
+    "apps/mnyra-heart/heart-route-view-resolver.js": 100,
+    "apps/mnyra-heart/heart-crm-admin-shell-consumer.js": 171,
+    "apps/mnyra-heart/heart-crm-admin-read-loaders.js": 532,
+    "apps/mnyra-heart/heart-crm-admin-write-adapter.js": 1383,
+    "apps/mnyra-heart/heart-state.js": 758,
+    "missingOrNotApplicable": {
+      "apps/menyra-social/core/search": "No dedicated core/search directory exists; search is currently coupled through app-shell, discovery, feed, and map helpers."
+    }
+  },
+  "biggestRemainingCouplings": [
+    {
+      "rank": 1,
+      "area": "Auth, session, startup, route synchronization",
+      "socialAppPatternHits": 487,
+      "biggestImportGroups": [
+        "app-shell",
+        "auth",
+        "router",
+        "shared/common state"
+      ],
+      "evidence": [
+        "social-app.js still owns route canonicalization, startup snapshot glue, pending protected route handling, and active tab synchronization.",
+        "session-data-runtime-controller.js and public-bootstrap-runtime-controller.js still depend on menu/cart/search/map/profile state during session changes."
+      ],
+      "auditConclusion": "Largest raw coupling, but not the safest next extraction because it crosses every product surface."
+    },
+    {
+      "rank": 2,
+      "area": "Public menu, QR, cart, orders, business profile entry",
+      "socialAppPatternHits": 446,
+      "biggestImportGroups": [
+        "menu",
+        "profile",
+        "shop",
+        "orders",
+        "router"
+      ],
+      "evidence": [
+        "social-app.js imports createMenuPublicRuntimeController and createTableQrRuntimeController directly.",
+        "social-app.js keeps shopCart, orders, menuDetail, tableQr state and unsub holders.",
+        "orders-runtime-controller.js is lazy, but menu/QR/cart state and public profile entry are still loaded through normal Social startup wiring."
+      ],
+      "auditConclusion": "Best next real slimming target because the surface is large, route-scoped, and mostly separable from Feed/Search/Map and Chat."
+    },
+    {
+      "rank": 3,
+      "area": "Feed, Search, Map, Discovery",
+      "socialAppPatternHits": 250,
+      "biggestImportGroups": [
+        "feed",
+        "discovery",
+        "map",
+        "app-shell"
+      ],
+      "evidence": [
+        "app-controller-bridge.js dynamically imports discovery-runtime-controller.js, but social-app.js still passes scoreSearchMatch, search state, renderSearchView, renderMapView, refreshSearchView, ensureLeafletLoaded, cleanupLeaflet, and buildRestaurantLocations through bridge bindings.",
+        "Heart write adapter still imports discovery-runtime-controller.js for Leaflet support."
+      ],
+      "auditConclusion": "High benefit but higher risk because Feed/Search/Map are core Social behavior."
+    },
+    {
+      "rank": 4,
+      "area": "Overlay and modal orchestration",
+      "socialAppPatternHits": 133,
+      "biggestImportGroups": [
+        "overlays",
+        "profile",
+        "menu",
+        "chat"
+      ],
+      "evidence": [
+        "social-app.js imports overlay root, overlay render, overlay bind, basic overlay, chat/post overlay, menu/focus overlay, and menu detail overlay helpers.",
+        "social-app.js still owns modal escape state, overlay cache, post modal unsub holders, and menu detail unsub holders."
+      ],
+      "auditConclusion": "Good cleanup candidate after public route ownership is clearer, but runtime startup benefit is lower than public menu/QR separation."
+    },
+    {
+      "rank": 5,
+      "area": "CRM Staff and businessAccounts",
+      "socialAppPatternHits": 97,
+      "biggestImportGroups": [
+        "crm",
+        "business-accounts",
+        "app-events",
+        "app-shell"
+      ],
+      "evidence": [
+        "Bare /staff remains Social and still requires loadCeoStaff, renderStaffView, bindCrmStaffEventsCore, and saveCeoStaffFromViewCore wiring.",
+        "businessAccounts remains Social and still requires loadBusinessAccounts, renderBusinessAccountsView, and bindBusinessAccountsEvents wiring.",
+        "Heart has CRM admin shell consumer/read/write support for staff and businessAccounts, but route ownership is not equivalent to Social businessAccounts ownership."
+      ],
+      "auditConclusion": "Not the best next slimming block until the bare /staff and businessAccounts ownership decisions are explicit."
+    }
+  ],
+  "remainingCrmAndStaffCoupling": {
+    "status": "Reduced but not removable.",
+    "socialOwnedRoutesStillInScope": [
+      "/staff",
+      "staff.mnyra.com behavior",
+      "businessAccounts"
+    ],
+    "heartOwnedRoutesConfirmed": [
+      "/leads",
+      "/customers",
+      "/admin/staff"
+    ],
+    "remainingSocialStaffRemnantsNotSafeToRemove": [
+      "apps/menyra-social/social-app.js imports staffCacheKey from social-app-cache-config.js.",
+      "apps/menyra-social/social-app.js imports saveCeoStaffFromViewCore from core/crm/staff-save-utils.js.",
+      "apps/menyra-social/social-app.js imports bindCrmStaffEventsCore from core/app-events/app-events-crm-staff-bind-utils.js.",
+      "apps/menyra-social/social-app.js passes renderStaffView and loadCeoStaff through shell/runtime clusters for bare /staff.",
+      "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js still calls loadCeoStaffFn for active /staff.",
+      "apps/menyra-social/core/app-shell/session-tab-lifecycle-runtime-controller.js still accepts loadCeoStaffFn and loadBusinessAccountsFn.",
+      "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js still renders staff and businessAccounts views.",
+      "apps/menyra-social/core/app-events/app-events-main-bind-utils.js still gates bindCrmStaffEventsCore to the current staff tab."
+    ],
+    "sharedCrmCoreNotSafeToRemove": [
+      "apps/menyra-social/core/crm/* remains shared by Social staff runtime and Heart CRM admin adapters.",
+      "apps/menyra-social/core/leads/* remains shared by Heart CRM import/read/write paths.",
+      "Heart imports Social CRM staff save helpers through heart-crm-admin-write-adapter.js."
+    ],
+    "whyNotNext": "The next Staff/CRM deletion point depends on a product decision for bare /staff and staff.mnyra.com. Removing more now risks restaurant staff or business staff behavior."
+  },
+  "businessAccountsStatus": {
+    "status": "Still Social-owned for normal app behavior.",
+    "evidence": [
+      "apps/menyra-social/core/business-accounts/business-accounts-runtime-controller.js remains active.",
+      "social-app.js still wires loadBusinessAccounts, renderBusinessAccountsView, and bindBusinessAccountsEvents.",
+      "shell-dom-runtime-controller.js still exposes the businessAccounts drawer entry labeled Staff for business owners.",
+      "Heart state and CRM admin shell consumer know about businessAccounts, but that does not make normal Social businessAccounts safe to move."
+    ],
+    "safeNow": false,
+    "dependencyDecisionNeeded": "Decide whether businessAccounts should become Heart-owned and how business owner staff management maps to restaurant staff, waiter, kitchen, and staff.mnyra.com behavior.",
+    "doNotTouchYet": [
+      "businessAccounts Firestore paths and payloads",
+      "business owner Staff drawer entry",
+      "restaurant staff/waiter/kitchen access paths"
+    ]
+  },
+  "publicMenuQrStatus": {
+    "status": "Large and route-scoped; best next slimming block.",
+    "evidence": [
+      "social-app.js imports public menu and table QR controllers directly.",
+      "social-app.js owns shopCart, orders, menuDetail, and tableQr state even when the user is entering normal Social Feed/Search/Map.",
+      "profile-business-menu-runtime-cluster.js, public-bootstrap-runtime-controller.js, menu-public-runtime-controller.js, table-qr-runtime-controller.js, orders-runtime-controller.js, public profile runtime/controllers, and profile menu focus rendering form a separable route surface.",
+      "Orders controller is already lazy, which gives a pattern for deeper public route isolation."
+    ],
+    "safeNow": true,
+    "recommendedShape": "Define a lightweight public business/menu entry that owns QR/menu/business profile public bootstrapping and only attaches cart/orders/menu detail when the active route needs it.",
+    "keepUnchanged": [
+      "Firebase paths and order payload shapes",
+      "Public menu UI output",
+      "QR route shapes",
+      "Cart persistence keys",
+      "Restaurant owner menu admin surface"
+    ]
+  },
+  "feedSearchMapStatus": {
+    "status": "Already partially lazy; still tightly wired into app-shell and Social identity.",
+    "evidence": [
+      "discovery-runtime-controller.js is dynamically imported by app-controller-bridge.js.",
+      "social-app.js still passes discovery bindings for renderSearchView, renderMapView, refreshSearchView, buildRestaurantLocations, ensureLeafletLoaded, cleanupLeaflet, and scoreSearchMatch.",
+      "Feed view orchestration is large and search/location behavior crosses feed startup, map cleanup, business location state, and profile opening.",
+      "Heart imports discovery-runtime-controller.js for Leaflet support in heart-crm-admin-write-adapter.js."
+    ],
+    "safeNow": false,
+    "whyLater": "The benefit is real, but Feed/Search/Map are core Social surfaces and should not be the next move without focused route/interaction tests."
+  },
+  "overlayModalStatus": {
+    "status": "Cleanup candidate with moderate social-app.js impact.",
+    "evidence": [
+      "social-app.js still owns overlayCache, modalEscapeBound, modalPostDocUnsub, modalLikesUnsub, modalCommentsUnsub, menuDetailDocUnsub, menuDetailLikesUnsub, and menuDetailCommentsUnsub.",
+      "social-app.js still imports and passes seven overlay bind/render helpers into bridge-shell-runtime-cluster.js.",
+      "overlay-orchestration-controller.js already exists, but ownership is not fully moved there."
+    ],
+    "safeNow": true,
+    "whyNotRecommendedFirst": "It would reduce social-app.js wiring, but it would not unload as much startup behavior as separating public menu/QR."
+  },
+  "authStartupStatus": {
+    "status": "Largest raw coupling and highest blast radius.",
+    "evidence": [
+      "social-app.js still contains route canonicalization helpers, post-login routing, protected route pending state, auth bootstrap glue, and session cluster wiring.",
+      "session-data-runtime-controller.js remains a large cross-surface reset/load controller for feed, search, map, menu, staff, businessAccounts, and orders state.",
+      "public-bootstrap-runtime-controller.js still translates public route entry into Social startup state."
+    ],
+    "safeNow": false,
+    "whyLater": "Startup simplification should follow public route isolation and unresolved Staff/businessAccounts route decisions."
+  },
+  "candidateNextSteps": [
+    {
+      "id": "businessaccounts-to-heart",
+      "title": "businessAccounts to Heart",
+      "whatItRemovesOrSeparates": "Moves businessAccounts read/render/event ownership away from Social and removes the businessAccounts Social drawer/tab plumbing after route ownership is decided.",
+      "expectedSocialAppJsImpact": "Medium direct impact, roughly 40-90 direct lines plus follow-up app-shell dependency cleanup.",
+      "expectedRuntimeImpact": "Modest normal Social startup reduction; bigger conceptual benefit if Staff ownership becomes fully Heart-owned.",
+      "riskLevel": "high",
+      "dependencies": [
+        "Explicit product decision that businessAccounts is Heart-owned.",
+        "Verified mapping for business owner Staff, restaurant staff, waiter, kitchen, and staff.mnyra.com.",
+        "Heart route and permission contract for businessAccounts."
+      ],
+      "whyNowOrWhyLater": "Later. businessAccounts remains Social by current instruction and is entangled with business owner staff behavior."
+    },
+    {
+      "id": "public-menu-qr-business-profile-lightweight-entry",
+      "title": "Public menu / QR / business profile lightweight entry",
+      "whatItRemovesOrSeparates": "Separates public business profile, menu, QR, cart, order, and menu-detail bootstrapping from normal Social startup so public routes load a route-specific runtime instead of the full Social shell wiring.",
+      "expectedSocialAppJsImpact": "High staged impact, roughly 150-300 lines from social-app.js over implementation plus smaller follow-up removals from bridge/controller deps.",
+      "expectedRuntimeImpact": "High for public menu/QR entry and useful for normal Social startup by avoiding public menu/cart/order setup until needed.",
+      "riskLevel": "medium-high",
+      "dependencies": [
+        "Preserve current public route shapes including /casarita/menu and QR/table query variants.",
+        "Keep menu, cart, order, QR, and public profile Firestore paths and payloads unchanged.",
+        "Preserve restaurant owner menu admin behavior and public business profile entry behavior."
+      ],
+      "whyNowOrWhyLater": "Now. It is the largest route-scoped block left after CRM cleanup and does not require moving businessAccounts, bare /staff, Feed/Search/Map, or Chat."
+    },
+    {
+      "id": "feed-search-map-lazy-split",
+      "title": "Feed/Search/Map lazy split",
+      "whatItRemovesOrSeparates": "Moves remaining discovery/search/map bridge dependencies and Feed view wiring behind a dedicated lazy Social discovery/feed runtime boundary.",
+      "expectedSocialAppJsImpact": "Medium to high, roughly 80-160 lines from social-app.js plus app-shell bridge simplification.",
+      "expectedRuntimeImpact": "Medium. Discovery is already dynamically imported, so the main gain is cleaner wiring and less normal startup coupling.",
+      "riskLevel": "high",
+      "dependencies": [
+        "Search input behavior",
+        "Map cleanup and Leaflet loading",
+        "Feed location gate",
+        "Business location results",
+        "Heart Leaflet dependency in heart-crm-admin-write-adapter.js"
+      ],
+      "whyNowOrWhyLater": "Later. It touches core Social behavior and should follow a smaller public-route extraction."
+    },
+    {
+      "id": "overlay-modal-cleanup",
+      "title": "Overlay/modal cleanup",
+      "whatItRemovesOrSeparates": "Moves modal state accessors, overlay cache, modal escape state, and modal/menu-detail unsubscribe ownership out of social-app.js into an overlay runtime owner.",
+      "expectedSocialAppJsImpact": "Medium, roughly 80-150 lines from social-app.js.",
+      "expectedRuntimeImpact": "Low to medium. Cleaner ownership and fewer root-level globals, but limited route startup savings.",
+      "riskLevel": "medium",
+      "dependencies": [
+        "Profile modal",
+        "Chat modal",
+        "Post and likes modals",
+        "Menu item/detail modals",
+        "Focus modal",
+        "Overlay keyboard escape and body modal-open sync"
+      ],
+      "whyNowOrWhyLater": "Good fallback if implementation must stay purely internal. Later than public menu/QR because it has less product-loading payoff."
+    },
+    {
+      "id": "auth-startup-simplification",
+      "title": "Auth/startup simplification",
+      "whatItRemovesOrSeparates": "Consolidates route canonicalization, auth restore, pending protected routes, startup snapshots, and session data reset/load orchestration into a thinner startup owner.",
+      "expectedSocialAppJsImpact": "High, roughly 150-300 lines from social-app.js if done in stages.",
+      "expectedRuntimeImpact": "Potentially high, but uncertain until route-specific public startup and Staff/businessAccounts ownership are resolved.",
+      "riskLevel": "very high",
+      "dependencies": [
+        "Every route entry mode",
+        "Auth restore behavior",
+        "Guest public menu routes",
+        "Protected routes",
+        "Staff and businessAccounts route decisions",
+        "Post-login return routing"
+      ],
+      "whyNowOrWhyLater": "Later. It is the largest raw coupling but the least forgiving next step."
+    },
+    {
+      "id": "staff-route-final-decision",
+      "title": "Staff route final decision",
+      "whatItRemovesOrSeparates": "Decides whether bare /staff and staff.mnyra.com remain Social forever, move to Heart, or split by role, then removes the losing ownership path.",
+      "expectedSocialAppJsImpact": "Medium after decision, roughly 50-120 lines plus CRM event/render cleanup.",
+      "expectedRuntimeImpact": "Low to medium for normal Social startup; high clarity benefit for CRM ownership.",
+      "riskLevel": "high",
+      "dependencies": [
+        "Bare /staff contract",
+        "staff.mnyra.com contract",
+        "restaurant staff, waiter, and kitchen flows",
+        "businessAccounts decision"
+      ],
+      "whyNowOrWhyLater": "Later. Current instruction explicitly keeps /staff Social and forbids breaking staff.mnyra.com, waiter, kitchen, or restaurant staff flows."
+    },
+    {
+      "id": "shared-crm-core-relocation",
+      "title": "Shared CRM core relocation",
+      "whatItRemovesOrSeparates": "Moves shared CRM/leads helpers to a neutral shared package or Heart-owned module while preserving import contracts.",
+      "expectedSocialAppJsImpact": "Low. Mostly import-path organization, not direct normal startup slimming.",
+      "expectedRuntimeImpact": "Low.",
+      "riskLevel": "medium-high",
+      "dependencies": [
+        "Heart imports of Social CRM helpers",
+        "Heart imports of discovery Leaflet helpers",
+        "Social staff runtime dependencies",
+        "No Firebase path or payload changes"
+      ],
+      "whyNowOrWhyLater": "Later. It is architectural cleanup, not the next best social-app.js slimming block."
+    }
+  ],
+  "recommendedNextStep": {
+    "id": "public-menu-qr-business-profile-lightweight-entry",
+    "title": "Public menu / QR / business profile lightweight entry",
+    "recommendation": "Choose the public menu/QR/business profile route surface as the next real slimming/refactor block.",
+    "whyBest": [
+      "It is the largest actionable route-scoped coupling remaining after CRM cleanup.",
+      "It avoids changing current /staff, businessAccounts, Feed/Search/Map, Chat, waiter, kitchen, and restaurant staff behavior.",
+      "It can be staged by first introducing a public-route entry/runtime boundary, then moving cart/orders/menu-detail attachment behind that boundary.",
+      "It should reduce both social-app.js size and normal Social startup coupling more than overlay-only cleanup."
+    ],
+    "implementationGuardrails": [
+      "Do not change public route shapes.",
+      "Do not change Firebase paths, query shapes, payloads, cart keys, or order writes.",
+      "Do not change visible UI.",
+      "Do not touch businessAccounts, bare /staff, waiter, kitchen, Chat, Feed/Search/Map, vercel.json, sw.js, or service worker behavior.",
+      "Keep restaurant owner menu admin behavior intact."
+    ]
+  },
+  "expectedBenefit": {
+    "socialAppJsSlimming": "Expected 150-300 lines removed from social-app.js over a staged implementation, with further follow-up simplification in app-shell/controller deps.",
+    "runtimeBenefit": "Public menu and QR routes can avoid normal Social shell startup work, while normal Feed/Search/Map startup can avoid public menu/cart/order setup until required.",
+    "ownershipBenefit": "Creates a clearer boundary between public business/menu entry and authenticated Social shell behavior.",
+    "maintenanceBenefit": "Reduces high-volume dependency passing for menu, QR, cart, orders, menu detail, and public business profile bootstrapping."
+  },
+  "riskList": [
+    {
+      "risk": "Public menu, QR, cart, or order routes regress because route parsing and startup state are currently shared with Social bootstrap.",
+      "level": "high",
+      "mitigation": "Keep route shapes and Firebase contracts unchanged; extract behind compatibility adapters first."
+    },
+    {
+      "risk": "Restaurant owner menu admin behavior regresses because admin menu and public menu share profile/menu focus rendering helpers.",
+      "level": "high",
+      "mitigation": "Do not move admin menu writes in the first step; only isolate public entry/runtime attachment."
+    },
+    {
+      "risk": "Cart persistence or guest order lookup changes accidentally.",
+      "level": "high",
+      "mitigation": "Preserve shopCartKey, guest order session keys, and order payload shapes exactly."
+    },
+    {
+      "risk": "Overlay/menu-detail comments and likes lose live unsubscribe cleanup.",
+      "level": "medium",
+      "mitigation": "Keep menuDetail unsub ownership explicit until the public route runtime owns it fully."
+    },
+    {
+      "risk": "Business profile public entry affects Feed/Search/Map profile opening.",
+      "level": "medium",
+      "mitigation": "Keep normal profile modal/profile opening paths untouched; scope extraction to public route entry."
+    }
+  ],
+  "filesToTouchForRecommendedStep": [
+    "apps/menyra-social/social-app.js",
+    "apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
+    "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/controller-deps-factory.js",
+    "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+    "apps/menyra-social/core/menu/table-qr-runtime-controller.js",
+    "apps/menyra-social/core/orders/orders-runtime-controller.js",
+    "apps/menyra-social/core/profile/public-profile-direct-entry-controller.js",
+    "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+    "apps/menyra-social/core/profile/public-profile-surface-controller.js",
+    "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "apps/menyra-social/core/router/public-business-route-resolver.js",
+    "apps/menyra-social/core/router/public-business-route-utils.js"
+  ],
+  "filesNotToTouch": [
+    "vercel.json",
+    "sw.js",
+    "apps/menyra-social/core/crm/*",
+    "apps/menyra-social/core/leads/*",
+    "apps/menyra-social/core/business-accounts/*",
+    "apps/menyra-social/core/feed/*",
+    "apps/menyra-social/core/discovery/*",
+    "apps/menyra-social/core/map/*",
+    "apps/menyra-social/core/chat/*",
+    "apps/menyra-social/core/waiter/*",
+    "apps/menyra-social/core/kitchen/*",
+    "apps/mnyra-heart/* except read-only dependency verification",
+    "Firebase rules, indexes, path constants, query shapes, and payload builders"
+  ],
+  "manualTestChecklist": [
+    "/admin/staff opens Heart Staff.",
+    "/staff behaves as before.",
+    "staff.mnyra.com behaves as before.",
+    "/leads opens Heart Leads.",
+    "/customers opens Heart Kunden.",
+    "businessAccounts works as before.",
+    "/feed works.",
+    "/search works.",
+    "/map works.",
+    "/casarita/menu works.",
+    "QR/menu routes work.",
+    "Cart add/remove/update/checkout flow works.",
+    "Orders view and guest order result behavior work.",
+    "Restaurant owner menu admin still works.",
+    "Public business profile entry still works.",
+    "Chat works.",
+    "Waiter and kitchen flows work.",
+    "No red console errors."
+  ]
+}
