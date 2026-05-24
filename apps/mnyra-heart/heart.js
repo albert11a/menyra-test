@@ -26,6 +26,9 @@ import {
   renderHeartApp
 } from "./heart-render.js";
 import {
+  resolveHeartRouteView
+} from "./heart-route-view-resolver.js";
+import {
   createHeartInitialState,
   createHeartStore
 } from "./heart-state.js";
@@ -39,6 +42,8 @@ import {
 const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
 const actions = store.actions;
+const initialRouteView = resolveHeartRouteView();
+if (initialRouteView) actions.setActiveView(initialRouteView);
 const authController = createHeartAuthController({ store });
 const runtimeConfig = globalThis.__MNYRA_HEART_CONFIG__ || {};
 const apiClient = createHeartApiClient({
@@ -1087,9 +1092,15 @@ store.subscribe((state) => {
 
   if (authChanged && authSessionKey !== authBootstrapSessionKey) {
     authBootstrapSessionKey = authSessionKey;
-    queueMicrotask(() => refreshAll().catch((error) => {
-      setToast("Erster Abruf", error?.message || "Heart konnte den ersten Status nicht laden.", "danger");
-    }));
+    queueMicrotask(() => {
+      const shouldRefreshCrmAdmin = CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView);
+      const refreshPromise = shouldRefreshCrmAdmin
+        ? Promise.all([refreshAll(), refreshCrmAdmin()])
+        : refreshAll();
+      refreshPromise.catch((error) => {
+        setToast("Erster Abruf", error?.message || "Heart konnte den ersten Status nicht laden.", "danger");
+      });
+    });
   }
 });
 
