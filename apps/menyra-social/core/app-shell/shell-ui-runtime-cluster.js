@@ -4,10 +4,7 @@ import {
 } from "../menu/menu-modal-render-utils.js";
 import { saveMenuItemFromModalCore } from "../menu/menu-save-utils.js";
 import { deleteMenuItemByIdCore } from "../menu/menu-delete-utils.js";
-import {
-  renderCustomerModalCore,
-  renderFocusModalCore
-} from "../menu/customer-focus-modal-render-utils.js";
+import { renderFocusModalCore } from "../menu/customer-focus-modal-render-utils.js";
 import {
   renderChatModalCore,
   renderProfileModalCore,
@@ -23,7 +20,6 @@ import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import {
   renderCrmLazyLoadingViewCore
 } from "../crm/crm-shared-render-utils.js";
-import { renderLeadModalCore } from "../leads/lead-modal-render-utils.js";
 import { renderSettingsViewCore } from "../ui/settings-render-utils.js";
 import { renderOrdersViewCore } from "../orders/orders-render-utils.js";
 
@@ -214,40 +210,6 @@ export function createShellUiRuntimeCluster({
     });
   }
 
-  function renderLeadModal() {
-    return renderLeadModalCore({
-      state,
-      getOptimizedImageUrl,
-      PLACEHOLDER_IMAGE: constants.placeholderImage,
-      resolveCustomerType: profileApi.resolveCustomerTypeFn,
-      normalizeLeadStatusKey: profileApi.normalizeLeadStatusKeyFn,
-      normalizeLeadLocations: profileApi.normalizeLeadLocationsFn,
-      hasLeadLocationCoords: profileApi.hasLeadLocationCoordsFn,
-      LEAD_TYPE_ORDER: constants.leadTypeOrder || [],
-      LEAD_TYPE_LABELS: constants.leadTypeLabels || {},
-      LEAD_STATUS_ORDER: constants.leadStatusOrder || [],
-      LEAD_STATUS_LABELS: constants.leadStatusLabels || {},
-      escapeHtml,
-      icon
-    });
-  }
-
-  function renderCustomerModal() {
-    return renderCustomerModalCore({
-      state,
-      getOptimizedImageUrl,
-      PLACEHOLDER_IMAGE: constants.placeholderImage,
-      resolveCustomerType: profileApi.resolveCustomerTypeFn,
-      normalizeLeadStatusKey: profileApi.normalizeLeadStatusKeyFn,
-      LEAD_TYPE_ORDER: constants.leadTypeOrder || [],
-      LEAD_TYPE_LABELS: constants.leadTypeLabels || {},
-      LEAD_STATUS_ORDER: constants.leadStatusOrder || [],
-      LEAD_STATUS_LABELS: constants.leadStatusLabels || {},
-      escapeHtml,
-      icon
-    });
-  }
-
   function renderMenuItemModal() {
     return renderMenuItemModalCore({
       state,
@@ -425,9 +387,7 @@ export function createShellUiRuntimeCluster({
       renderProfileViewFn: mainApi.renderProfileViewFn || (() => ""),
       renderMenuAdminViewFn: mainApi.renderMenuAdminViewFn || (() => ""),
       renderOrdersViewFn: renderOrdersView,
-      renderLeadsViewFn: mainApi.renderLeadsViewFn || (() => ""),
       renderStaffViewFn: mainApi.renderStaffViewFn || (() => ""),
-      renderCustomersViewFn: mainApi.renderCustomersViewFn || (() => ""),
       renderBusinessAccountsViewFn: mainApi.renderBusinessAccountsViewFn || (() => ""),
       renderSettingsViewFn: renderSettingsView,
       renderNotificationsViewFn: renderNotificationsView,
@@ -558,8 +518,6 @@ export function createShellUiRuntimeCluster({
     renderProfileModal,
     renderPostModal,
     renderLikesModal,
-    renderLeadModal,
-    renderCustomerModal,
     renderMenuItemModal,
     renderMenuDetailModal,
     renderFocusModal,

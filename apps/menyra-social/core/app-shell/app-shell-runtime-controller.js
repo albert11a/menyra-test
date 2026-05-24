@@ -65,10 +65,6 @@ export function createAppShellRuntimeController(deps = {}) {
     db,
     normalizeHandleFn,
     serverTimestampFn,
-    normalizeLeadScopeKeyFn,
-    loadLeadsFn,
-    normalizeCustomerScopeKeyFn,
-    loadCustomersFn,
     loadCeoStaffFn,
     bindAppEventsMainCoreFn,
     bindAppShellEventsCoreFn,
@@ -146,28 +142,6 @@ export function createAppShellRuntimeController(deps = {}) {
     queueMicrotaskFn,
     handleUploadPostFn,
     bindCrmStaffEventsCoreFn,
-    openLeadCreatorFn,
-    openLeadSettingsViewFn,
-    closeLeadSubviewFn,
-    saveLeadSettingsFn,
-    isLeadInlineCreateViewFn,
-    bindLeadInlineCreateEventsCoreFn,
-    deleteLeadFromModalFn,
-    saveLeadFromModalFn,
-    syncLeadDerivedFieldsFn,
-    addLeadModalLocationRowFn,
-    removeLeadModalLocationRowFn,
-    syncLeadModalDraftFromFormFn,
-    normalizeLeadLocationsFn,
-    createLeadLocationFn,
-    parseCoordsFromAddressInputFn,
-    getLeadPlusCodeReferenceFn,
-    hasLeadLocationCoordsFn,
-    getPrimaryLeadLocationFn,
-    hydrateLeadGeoFieldsFromCoordsFn,
-    refineLeadLocationAddressIndexFn,
-    openLeadModalFn,
-    openCustomerModalFn,
     closeStaffEditorFn,
     openStaffEditorFn,
     syncStaffDerivedEmailFieldFn,
@@ -375,8 +349,6 @@ export function createAppShellRuntimeController(deps = {}) {
       state.menuModal?.open ? "1" : "0",
       state.menuDetail?.open ? "1" : "0",
       state.focusModal?.open ? "1" : "0",
-      state.leadModal?.open ? "1" : "0",
-      state.customerModal?.open ? "1" : "0",
       state.chatModal?.open ? "1" : "0",
       String(state.postModal?.post?.id || ""),
       String(state.menuDetail?.item?.id || state.menuDetail?.id || ""),
@@ -514,8 +486,6 @@ export function createAppShellRuntimeController(deps = {}) {
       || !!state.menuModal?.open
       || !!state.menuDetail?.open
       || !!state.focusModal?.open
-      || !!state.leadModal?.open
-      || !!state.customerModal?.open
       || !!state.chatModal?.open;
   }
 
@@ -889,8 +859,6 @@ export function createAppShellRuntimeController(deps = {}) {
       || !!state.menuModal?.open
       || !!state.menuDetail?.open
       || !!state.focusModal?.open
-      || !!state.leadModal?.open
-      || !!state.customerModal?.open
       || !!state.chatModal?.open;
     if (overlayIsolationActive) return false;
     if (state.activeTab !== "profile") return false;
@@ -1069,8 +1037,6 @@ export function createAppShellRuntimeController(deps = {}) {
       || !!state.menuModal?.open
       || !!state.menuDetail?.open
       || !!state.focusModal?.open
-      || !!state.leadModal?.open
-      || !!state.customerModal?.open
       || !!state.chatModal?.open;
     if (overlayIsolationActive) return false;
     if (state.activeTab !== "profile") return false;
@@ -1821,32 +1787,6 @@ export function createAppShellRuntimeController(deps = {}) {
       queueMicrotaskFn,
       handleUploadPostFn: confirmed("post.upload.create", handleUploadPostFn),
       bindCrmStaffEventsCoreFn,
-      openLeadCreatorFn: confirmed("lead.create.open", openLeadCreatorFn),
-      openLeadSettingsViewFn: confirmed("lead.settings.open", openLeadSettingsViewFn),
-      closeLeadSubviewFn,
-      saveLeadSettingsFn: confirmed("lead.settings.save", saveLeadSettingsFn),
-      isLeadInlineCreateViewFn,
-      bindLeadInlineCreateEventsCoreFn,
-      deleteLeadFromModalFn: confirmed("lead.delete", deleteLeadFromModalFn),
-      saveLeadFromModalFn: confirmed("lead.save", saveLeadFromModalFn),
-      syncLeadDerivedFieldsFn,
-      addLeadModalLocationRowFn: confirmed("lead.location.add", addLeadModalLocationRowFn),
-      removeLeadModalLocationRowFn: confirmed("lead.location.remove", removeLeadModalLocationRowFn),
-      syncLeadModalDraftFromFormFn: confirmed("lead.modal.sync", syncLeadModalDraftFromFormFn),
-      normalizeLeadLocationsFn,
-      createLeadLocationFn,
-      parseCoordsFromAddressInputFn,
-      getLeadPlusCodeReferenceFn,
-      hasLeadLocationCoordsFn,
-      getPrimaryLeadLocationFn,
-      hydrateLeadGeoFieldsFromCoordsFn,
-      refineLeadLocationAddressIndexFn,
-      normalizeLeadScopeKeyFn,
-      loadLeadsFn,
-      openLeadModalFn: confirmed("lead.modal.open", openLeadModalFn),
-      normalizeCustomerScopeKeyFn,
-      loadCustomersFn,
-      openCustomerModalFn: confirmed("customer.modal.open", openCustomerModalFn),
       closeStaffEditorFn,
       openStaffEditorFn: confirmed("staff.editor.open", openStaffEditorFn),
       syncStaffDerivedEmailFieldFn,

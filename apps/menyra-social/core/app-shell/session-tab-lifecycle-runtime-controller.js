@@ -36,10 +36,6 @@ export function createSessionTabLifecycleRuntimeController({
   attachCurrentUserProfileListenerFn = () => {},
   stopCurrentUserProfileListenerFn = () => {},
   stopProfileViewListenerFn = () => {},
-  normalizeLeadScopeKeyFn = (value) => value,
-  loadLeadsFn = async () => {},
-  normalizeCustomerScopeKeyFn = (value) => value,
-  loadCustomersFn = async () => {},
   loadCeoStaffFn = async () => {},
   loadBusinessAccountsFn = async () => {},
   stopExtraLiveListenersFn = () => {}
@@ -188,10 +184,6 @@ export function createSessionTabLifecycleRuntimeController({
       getNotificationsUnsubFn,
       updateNotificationsDom: updateNotificationsDomFn,
       loadNotificationsFromFirebase: loadNotificationsFromFirebaseFn,
-      normalizeLeadScopeKey: normalizeLeadScopeKeyFn,
-      loadLeads: loadLeadsFn,
-      normalizeCustomerScopeKey: normalizeCustomerScopeKeyFn,
-      loadCustomers: loadCustomersFn,
       loadCeoStaff: loadCeoStaffFn,
       loadBusinessAccounts: loadBusinessAccountsFn
     });

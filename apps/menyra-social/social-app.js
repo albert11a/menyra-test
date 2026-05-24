@@ -158,9 +158,6 @@ import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-suppor
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
 import { createCrmAdminReadFacade } from "./core/crm/crm-admin-read-facade.js";
 import { createCrmAdminUiFacade } from "./core/crm/crm-admin-ui-facade.js";
-import { createCrmAdminLeadWriteFacade } from "./core/crm/crm-admin-lead-write-facade.js";
-import { createCrmAdminLeadConversionFacade } from "./core/crm/crm-admin-lead-conversion-facade.js";
-import { createCrmAdminCustomerWriteFacade } from "./core/crm/crm-admin-customer-write-facade.js";
 import { createCrmAdminStaffWriteFacade } from "./core/crm/crm-admin-staff-write-facade.js";
 import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
@@ -256,10 +253,6 @@ import {
 import { renderCeoGuardCore } from "./core/crm/crm-shared-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlays/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlays/overlay-render-orchestrator-utils.js";
-import { saveLeadFromModalCore } from "./core/leads/lead-save-utils.js";
-import { deleteLeadFromModalCore } from "./core/leads/lead-delete-utils.js";
-import { saveCustomerFromModalCore } from "./core/crm/customer-save-utils.js";
-import { convertLeadToCustomerCore } from "./core/leads/lead-convert-utils.js";
 import { saveCeoStaffFromViewCore } from "./core/crm/staff-save-utils.js";
 import { escapeHtmlCore as escapeHtml } from "./core/common/html-utils.js";
 import {
@@ -317,8 +310,7 @@ import {
 } from "./core/chat/chat-thread-action-state-utils.js";
 import {
   bindProfileOverlayEventsCore,
-  bindLikesOverlayEventsCore,
-  bindCustomerOverlayEventsCore
+  bindLikesOverlayEventsCore
 } from "./core/overlays/overlay-basic-bind-utils.js";
 import {
   bindChatOverlayEventsCore,
@@ -328,16 +320,12 @@ import {
   bindMenuOverlayEventsCore,
   bindFocusOverlayEventsCore
 } from "./core/overlays/overlay-menu-focus-bind-utils.js";
-import { bindLeadOverlayEventsCore } from "./core/overlays/overlay-lead-bind-utils.js";
 import { bindMenuDetailOverlayEventsCore } from "./core/overlays/overlay-menu-detail-bind-utils.js";
 import { bindAppShellEventsCore } from "./core/app-events/app-events-shell-bind-utils.js";
 import { bindAppMenuFocusEventsCore } from "./core/app-events/app-events-menu-focus-bind-utils.js";
 import { bindAppSettingsProfileEventsCore } from "./core/app-events/app-events-settings-profile-bind-utils.js";
 import { bindAppChatUploadEventsCore } from "./core/app-events/app-events-chat-upload-bind-utils.js";
-import {
-  bindCrmStaffEventsCore,
-  bindLeadInlineCreateEventsCore
-} from "./core/app-events/app-events-crm-staff-bind-utils.js";
+import { bindCrmStaffEventsCore } from "./core/app-events/app-events-crm-staff-bind-utils.js";
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-messaging.js";
@@ -1065,7 +1053,7 @@ let lastMenuCommentAt = 0;
 let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
 let menuDetailCloseBound = false;
-let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
+let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "" };
 const pendingRouteState = createPendingRouteStartupState();
 const STARTUP_SURFACE_FINAL_STATUSES = new Set(["ready", "empty", "error"]);
 let startupFirstFinalSurfaceRenderMarked = false;
@@ -1076,8 +1064,6 @@ let dataLoaded = {
   stories: false,
   following: false,
   notifications: false,
-  leads: false,
-  customers: false,
   staff: false,
   businessAccounts: false
 };
@@ -1217,9 +1203,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderProfileViewFn: (...args) => renderProfileView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
     renderBusinessAccountsViewFn: (...args) => renderCrmBusinessAccounts(...args),
-    renderLeadsViewFn: (...args) => renderCrmLeads(...args),
     renderStaffViewFn: (...args) => renderCrmStaff(...args),
-    renderCustomersViewFn: (...args) => renderCrmCustomers(...args),
     bindBusinessAccountsEventsFn: (...args) => bindCrmBusinessAccountsEvents(...args)
   },
   notificationApi: {
@@ -1264,8 +1248,6 @@ const {
   renderProfileModal,
   renderPostModal,
   renderLikesModal,
-  renderLeadModal,
-  renderCustomerModal,
   renderMenuItemModal,
   renderMenuDetailModal,
   renderFocusModal,
@@ -2908,34 +2890,12 @@ const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
   },
   modalApi: {
     saveCeoStaffFromViewCore,
-    uploadCompressedImage,
-    saveLeadFromModalCore,
-    deleteLeadFromModalCore,
-    saveCustomerFromModalCore,
-    convertLeadToCustomerCore,
-    closeLeadModal: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.closeLeadModal?.(...args),
-    closeCustomerModal: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.closeCustomerModal?.(...args)
+    uploadCompressedImage
   }
 });
 crmRuntimeController = crmDomainRuntimeCluster.crmRuntimeController;
 const {
   queueCrmLazyRenderersPrefetch,
-  renderLeadsView,
-  isLeadInlineCreateView,
-  renderLeadEditorUi,
-  refineLeadLocationAddressIndex,
-  renderLeadSettingsView,
-  renderLeadCreationView,
-  resetLeadDraft,
-  createLeadDraftState,
-  openLeadCreator,
-  openLeadSettingsView,
-  closeLeadSubview,
-  saveLeadSettings,
-  getLeadPlusCodeReference,
-  hydrateLeadGeoFieldsFromCoords,
-  syncLeadDerivedFields,
-  renderCustomersView,
   renderStaffEditorView,
   renderStaffView,
   ensureLocationPickerModal,
@@ -2951,8 +2911,6 @@ const {
   normalizeLeadDoc,
   normalizeLeadFromRestaurant,
   resolveRestaurantStatusFromLead,
-  loadLeads,
-  loadCustomers,
   isHiddenLegacyCeoEmail,
   applyKnownLeadOwnershipOverride,
   getStaffFormEmail,
@@ -2963,13 +2921,6 @@ const {
   loadCeoStaff,
   saveCeoStaffFromView,
   deleteCeoStaffFromView,
-  syncLeadModalDraftFromForm,
-  addLeadModalLocationRow,
-  removeLeadModalLocationRow,
-  saveLeadFromModal,
-  deleteLeadFromModal,
-  saveCustomerFromModal,
-  convertLeadToCustomer
 } = crmDomainRuntimeCluster;
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
@@ -4238,84 +4189,34 @@ const {
 } = profileBusinessMenuRuntimeCluster;
 
 const crmAdminReadFacade = createCrmAdminReadFacade({
-  loadLeads,
-  loadCustomers,
   loadCeoStaff,
   loadBusinessAccounts
 });
 const {
-  loadCrmLeads,
-  loadCrmCustomers,
   loadCrmStaff,
   loadCrmBusinessAccounts
 } = crmAdminReadFacade;
 const crmAdminUiFacade = createCrmAdminUiFacade({
-  renderLeadsView,
-  renderLeadCreationView,
-  renderLeadSettingsView,
-  renderLeadModal,
-  renderCustomersView,
-  renderCustomerModal,
   renderStaffView,
   renderStaffEditorView,
   renderBusinessAccountsView,
   bindCrmStaffEvents: bindCrmStaffEventsCore,
-  bindLeadInlineCreateEvents: bindLeadInlineCreateEventsCore,
-  bindLeadOverlayEvents: bindLeadOverlayEventsCore,
-  bindCustomerOverlayEvents: bindCustomerOverlayEventsCore,
   bindBusinessAccountsEvents,
-  openLeadCreator,
-  openLeadSettingsView,
-  closeLeadSubview,
-  isLeadInlineCreateView,
-  syncLeadDerivedFields,
   openStaffEditor,
   closeStaffEditor,
   syncStaffDerivedEmailField,
   syncStaffFormFromDom
 });
 const {
-  renderCrmLeads,
-  renderCrmLeadModal,
-  renderCrmCustomers,
-  renderCrmCustomerModal,
   renderCrmStaff,
   renderCrmBusinessAccounts,
   bindCrmAdminEvents,
-  bindCrmLeadInlineCreateEvents,
-  bindCrmLeadOverlayEvents,
-  bindCrmCustomerOverlayEvents,
   bindCrmBusinessAccountsEvents,
-  openCrmLeadCreator,
-  openCrmLeadSettingsView,
-  closeCrmLeadSubview,
-  isCrmLeadInlineCreateView,
-  syncCrmLeadDerivedFields,
   openCrmStaffEditor,
   closeCrmStaffEditor,
   syncCrmStaffDerivedEmailField,
   syncCrmStaffFormFromDom
 } = crmAdminUiFacade;
-const crmAdminLeadWriteFacade = createCrmAdminLeadWriteFacade({
-  saveLeadFromModal,
-  deleteLeadFromModal
-});
-const {
-  saveCrmLead,
-  deleteCrmLead
-} = crmAdminLeadWriteFacade;
-const crmAdminLeadConversionFacade = createCrmAdminLeadConversionFacade({
-  convertLeadToCustomer
-});
-const {
-  convertCrmLeadToCustomer
-} = crmAdminLeadConversionFacade;
-const crmAdminCustomerWriteFacade = createCrmAdminCustomerWriteFacade({
-  saveCustomerFromModal
-});
-const {
-  saveCrmCustomer
-} = crmAdminCustomerWriteFacade;
 const crmAdminStaffWriteFacade = createCrmAdminStaffWriteFacade({
   saveCeoStaffFromView,
   deleteCeoStaffFromView
@@ -4766,8 +4667,6 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
   },
   menuApi: {
     getFocusItemCrop,
-    createLeadDraftState,
-    resetLeadDraft,
     getMenuItemCrop,
     createEmptyMenuDetailState,
     attachMenuItemMetaListeners,
@@ -4793,8 +4692,6 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     renderMenuItemModal,
     renderMenuDetailModal,
     renderFocusModal,
-    renderLeadModal: renderCrmLeadModal,
-    renderCustomerModal: renderCrmCustomerModal,
     bindOverlayEventsCore,
     bindProfileOverlayEventsCore,
     bindChatOverlayEventsCore,
@@ -4803,25 +4700,10 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     bindMenuOverlayEventsCore,
     bindMenuDetailOverlayEventsCore,
     bindFocusOverlayEventsCore,
-    bindLeadOverlayEventsCore: bindCrmLeadOverlayEvents,
-    bindCustomerOverlayEventsCore: bindCrmCustomerOverlayEvents,
     bindImageFallbacks
   },
   leadApi: {
-    saveLeadFromModal: saveCrmLead,
-    convertLeadToCustomer: convertCrmLeadToCustomer,
-    addLeadModalLocationRow,
-    removeLeadModalLocationRow,
-    syncLeadModalDraftFromForm,
-    openLocationPicker,
-    createLeadLocation,
-    parseCoordsFromAddressInput,
-    getLeadPlusCodeReference,
-    hasLeadLocationCoords,
-    getPrimaryLeadLocation,
-    refineLeadLocationAddressIndex,
-    saveCustomerFromModal: saveCrmCustomer,
-    hydrateLeadGeoFieldsFromCoords
+    openLocationPicker
   },
   shellApi: {
     setState,
@@ -4831,10 +4713,6 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     ensureUserProfile,
     createUserWithEmailAndPassword,
     updateProfile,
-    normalizeLeadScopeKey,
-    loadLeads: loadCrmLeads,
-    normalizeCustomerScopeKey,
-    loadCustomers: loadCrmCustomers,
     loadCeoStaff: loadCrmStaff,
     bindAppEventsMainCore,
     bindAppShellEventsCore,
@@ -4884,14 +4762,6 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     addChatAttachments,
     handleUploadPost,
     bindCrmStaffEventsCore: bindCrmAdminEvents,
-    openLeadCreator: openCrmLeadCreator,
-    openLeadSettingsView: openCrmLeadSettingsView,
-    closeLeadSubview: closeCrmLeadSubview,
-    saveLeadSettings,
-    isLeadInlineCreateView: isCrmLeadInlineCreateView,
-    bindLeadInlineCreateEventsCore: bindCrmLeadInlineCreateEvents,
-    deleteLeadFromModal: deleteCrmLead,
-    syncLeadDerivedFields: syncCrmLeadDerivedFields,
     closeStaffEditor: closeCrmStaffEditor,
     openStaffEditor: openCrmStaffEditor,
     syncStaffDerivedEmailField: syncCrmStaffDerivedEmailField,
@@ -4923,8 +4793,6 @@ const {
   renderOverlays,
   clearShopCart,
   closeFocusModal,
-  closeLeadModal,
-  closeCustomerModal,
   closeMenuModal
 } = bridgeShellRuntimeCluster.bridgeBindings;
 let browserPopstateRouteSyncBound = false;
@@ -5163,10 +5031,6 @@ const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
     attachCurrentUserProfileListenerFn: attachCurrentUserProfileListener,
     stopCurrentUserProfileListenerFn: stopCurrentUserProfileListener,
     stopProfileViewListenerFn: stopProfileViewListener,
-    normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
-    loadLeadsFn: (...args) => loadCrmLeads(...args),
-    normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
-    loadCustomersFn: (...args) => loadCrmCustomers(...args),
     loadCeoStaffFn: (...args) => loadCrmStaff(...args),
     loadBusinessAccountsFn: (...args) => loadCrmBusinessAccounts(...args),
     stopExtraLiveListenersFn: () => {

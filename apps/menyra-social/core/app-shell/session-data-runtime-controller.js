@@ -1060,8 +1060,6 @@ export function createSessionDataRuntimeController({
     dataLoaded.profile = false;
     dataLoaded.following = false;
     dataLoaded.notifications = false;
-    dataLoaded.leads = false;
-    dataLoaded.customers = false;
     dataLoaded.staff = false;
     dataLoaded.businessAccounts = false;
   }

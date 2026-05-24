@@ -33,9 +33,6 @@ export function createOverlayOrchestrationController({
   updatePostModalMetaFn = () => {},
   stopPostMetaListenersFn = () => {},
   getFocusItemCropFn = () => ({ x: 50, y: 50 }),
-  isCeoUserFn = () => false,
-  createLeadDraftStateFn = () => ({}),
-  resetLeadDraftFn = () => {},
   getMenuItemImagesFn = () => [],
   getMenuItemCropFn = () => ({ x: 50, y: 50 }),
   createEmptyMenuDetailStateFn = () => ({}),
@@ -54,8 +51,6 @@ export function createOverlayOrchestrationController({
   renderMenuItemModalFn = () => "",
   renderMenuDetailModalFn = () => "",
   renderFocusModalFn = () => "",
-  renderLeadModalFn = () => "",
-  renderCustomerModalFn = () => "",
   bindOverlayEventsCoreFn = () => null,
   bindProfileOverlayEventsCoreFn = () => {},
   bindChatOverlayEventsCoreFn = () => {},
@@ -64,8 +59,6 @@ export function createOverlayOrchestrationController({
   bindMenuOverlayEventsCoreFn = () => {},
   bindMenuDetailOverlayEventsCoreFn = () => {},
   bindFocusOverlayEventsCoreFn = () => {},
-  bindLeadOverlayEventsCoreFn = () => {},
-  bindCustomerOverlayEventsCoreFn = () => {},
   toggleFollowFn = () => {},
   sendChatMessageFn = () => {},
   scrollChatMessagesToBottomFn = () => {},
@@ -88,20 +81,6 @@ export function createOverlayOrchestrationController({
   applyCommentAvatarCacheFn = () => {},
   saveFocusItemFromModalFn = () => {},
   syncFocusModalCropPreviewFn = () => {},
-  saveLeadFromModalFn = () => {},
-  convertLeadToCustomerFn = () => {},
-  addLeadModalLocationRowFn = () => {},
-  removeLeadModalLocationRowFn = () => {},
-  syncLeadModalDraftFromFormFn = () => {},
-  openLocationPickerFn = () => {},
-  normalizeLeadLocationsFn = () => [],
-  createLeadLocationFn = () => ({ address: "", lat: null, lng: null }),
-  parseCoordsFromAddressInputFn = () => null,
-  getLeadPlusCodeReferenceFn = () => null,
-  hasLeadLocationCoordsFn = () => false,
-  getPrimaryLeadLocationFn = () => null,
-  refineLeadLocationAddressIndexFn = async () => {},
-  saveCustomerFromModalFn = () => {},
   bindImageFallbacksFn = () => {},
   placeholderImage = ""
 } = {}) {
@@ -117,10 +96,6 @@ export function createOverlayOrchestrationController({
       closePostModal: () => {},
       openFocusModal: () => {},
       closeFocusModal: () => {},
-      openLeadModal: () => {},
-      closeLeadModal: () => {},
-      openCustomerModal: () => {},
-      closeCustomerModal: () => {},
       openMenuModal: () => {},
       closeMenuModal: () => {},
       openMenuDetail: async () => {},
@@ -210,14 +185,6 @@ export function createOverlayOrchestrationController({
       closeFocusModal();
       return true;
     }
-    if (state.customerModal.open) {
-      closeCustomerModal();
-      return true;
-    }
-    if (state.leadModal.open) {
-      closeLeadModal();
-      return true;
-    }
     if (state.postModal.open) {
       closePostModal();
       return true;
@@ -237,8 +204,6 @@ export function createOverlayOrchestrationController({
       || state.menuModal.open
       || state.menuDetail.open
       || state.focusModal.open
-      || state.leadModal.open
-      || state.customerModal.open
     );
   }
 
@@ -314,64 +279,6 @@ export function createOverlayOrchestrationController({
       imagePreview: ""
     };
     renderOverlays({ updateFocus: true });
-  }
-
-  function openLeadModal(mode = "create", lead = null) {
-    if (!isCeoUserFn()) return;
-    if (mode === "edit") {
-      state.leads.view = "create";
-      state.leads.settingsStatus = "";
-      state.leadModal = createLeadDraftStateFn("edit", lead);
-      renderFn();
-      return;
-    }
-    state.leadModal = {
-      ...createLeadDraftStateFn(mode, lead),
-      open: true
-    };
-    renderOverlays({ updateLead: true });
-  }
-
-  function closeLeadModal() {
-    const doc = getDocumentObjFn();
-    if (doc && doc.activeElement instanceof HTMLElement) {
-      doc.activeElement.blur();
-    }
-    resetLeadDraftFn();
-    syncModalOpenUiState();
-    renderOverlays({ updateLead: true });
-  }
-
-  function openCustomerModal(customer) {
-    if (!isCeoUserFn() || !customer) return;
-    state.customerModal = {
-      open: true,
-      mode: "edit",
-      customer,
-      status: "",
-      loading: false,
-      logoFile: null,
-      logoPreview: customer.logoUrl || customer.logo || ""
-    };
-    renderOverlays({ updateCustomer: true });
-  }
-
-  function closeCustomerModal() {
-    const doc = getDocumentObjFn();
-    if (doc && doc.activeElement instanceof HTMLElement) {
-      doc.activeElement.blur();
-    }
-    state.customerModal = {
-      open: false,
-      mode: "edit",
-      customer: null,
-      status: "",
-      loading: false,
-      logoFile: null,
-      logoPreview: ""
-    };
-    syncModalOpenUiState();
-    renderOverlays({ updateCustomer: true });
   }
 
   function openMenuModal(mode = "create", item = null) {
@@ -701,8 +608,6 @@ export function createOverlayOrchestrationController({
       renderMenuItemModalFn,
       renderMenuDetailModalFn,
       renderFocusModalFn,
-      renderLeadModalFn,
-      renderCustomerModalFn,
       overlayCache: getOverlayCacheFn(),
       syncModalOpenUiStateFn: syncModalOpenUiState,
       bindOverlayEventsFn: bindOverlayEvents
@@ -728,9 +633,7 @@ export function createOverlayOrchestrationController({
     likesChanged = true,
     menuChanged = true,
     menuDetailChanged = true,
-    focusChanged = true,
-    leadChanged = true,
-    customerChanged = true
+    focusChanged = true
   } = {}) {
     return bindOverlayEventsCoreFn({
       profileChanged,
@@ -740,8 +643,6 @@ export function createOverlayOrchestrationController({
       menuChanged,
       menuDetailChanged,
       focusChanged,
-      leadChanged,
-      customerChanged,
       documentObj: getDocumentObjFn(),
       windowObj: getWindowObjFn(),
       isMenuDetailCloseBoundFn: () => isMenuDetailCloseBoundFn(),
@@ -756,8 +657,6 @@ export function createOverlayOrchestrationController({
       bindMenuOverlayEventsFn: bindMenuOverlayEventsCoreFn,
       bindMenuDetailOverlayEventsFn: bindMenuDetailOverlayEventsCoreFn,
       bindFocusOverlayEventsFn: bindFocusOverlayEventsCoreFn,
-      bindLeadOverlayEventsFn: bindLeadOverlayEventsCoreFn,
-      bindCustomerOverlayEventsFn: bindCustomerOverlayEventsCoreFn,
       bindModalDismissFn: bindModalDismiss,
       closeMenuDetailFn: closeMenuDetail,
       closeProfileModalFn: closeProfileModal,
@@ -794,22 +693,6 @@ export function createOverlayOrchestrationController({
       closeFocusModalFn: closeFocusModal,
       saveFocusItemFromModalFn,
       syncFocusModalCropPreviewFn,
-      closeLeadModalFn: closeLeadModal,
-      saveLeadFromModalFn,
-      convertLeadToCustomerFn,
-      addLeadModalLocationRowFn,
-      removeLeadModalLocationRowFn,
-      syncLeadModalDraftFromFormFn,
-      openLocationPickerFn,
-      normalizeLeadLocationsFn,
-      createLeadLocationFn,
-      parseCoordsFromAddressInputFn,
-      getLeadPlusCodeReferenceFn,
-      hasLeadLocationCoordsFn,
-      getPrimaryLeadLocationFn,
-      refineLeadLocationAddressIndexFn,
-      closeCustomerModalFn: closeCustomerModal,
-      saveCustomerFromModalFn,
       bindImageFallbacksFn,
       placeholderImage
     });
@@ -826,10 +709,6 @@ export function createOverlayOrchestrationController({
     closePostModal,
     openFocusModal,
     closeFocusModal,
-    openLeadModal,
-    closeLeadModal,
-    openCustomerModal,
-    closeCustomerModal,
     openMenuModal,
     closeMenuModal,
     openMenuDetail,

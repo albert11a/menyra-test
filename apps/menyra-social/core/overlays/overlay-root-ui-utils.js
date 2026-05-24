@@ -174,8 +174,6 @@ export function ensureOverlayRootCore({ documentObj } = {}) {
   ensureChildNode(root, doc, "menuOverlayRoot");
   ensureChildNode(root, doc, "menuDetailOverlayRoot");
   ensureChildNode(root, doc, "focusOverlayRoot");
-  ensureChildNode(root, doc, "leadOverlayRoot");
-  ensureChildNode(root, doc, "customerOverlayRoot");
   return root;
 }
 

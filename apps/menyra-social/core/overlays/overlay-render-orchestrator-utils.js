@@ -11,8 +11,6 @@ export function renderOverlaysCore({
   renderMenuItemModalFn,
   renderMenuDetailModalFn,
   renderFocusModalFn,
-  renderLeadModalFn,
-  renderCustomerModalFn,
   overlayCache,
   syncModalOpenUiStateFn,
   bindOverlayEventsFn
@@ -27,8 +25,6 @@ export function renderOverlaysCore({
   const renderMenuItemModal = typeof renderMenuItemModalFn === "function" ? renderMenuItemModalFn : (() => "");
   const renderMenuDetailModal = typeof renderMenuDetailModalFn === "function" ? renderMenuDetailModalFn : (() => "");
   const renderFocusModal = typeof renderFocusModalFn === "function" ? renderFocusModalFn : (() => "");
-  const renderLeadModal = typeof renderLeadModalFn === "function" ? renderLeadModalFn : (() => "");
-  const renderCustomerModal = typeof renderCustomerModalFn === "function" ? renderCustomerModalFn : (() => "");
   const syncModalOpenUiState = typeof syncModalOpenUiStateFn === "function" ? syncModalOpenUiStateFn : (() => {});
   const bindOverlayEvents = typeof bindOverlayEventsFn === "function" ? bindOverlayEventsFn : (() => {});
   if (!doc || !ensureOverlayRoot || !overlayCache || !state) return;
@@ -54,12 +50,6 @@ export function renderOverlaysCore({
   const updateFocus = Object.prototype.hasOwnProperty.call(options, "updateFocus")
     ? options.updateFocus
     : !state.likesModal.open;
-  const updateLead = Object.prototype.hasOwnProperty.call(options, "updateLead")
-    ? options.updateLead
-    : !state.likesModal.open;
-  const updateCustomer = Object.prototype.hasOwnProperty.call(options, "updateCustomer")
-    ? options.updateCustomer
-    : !state.likesModal.open;
   const root = ensureOverlayRoot();
   const profileRoot = doc.getElementById("profileOverlayRoot");
   const chatRoot = doc.getElementById("chatOverlayRoot");
@@ -68,8 +58,6 @@ export function renderOverlaysCore({
   const menuRoot = doc.getElementById("menuOverlayRoot");
   const menuDetailRoot = doc.getElementById("menuDetailOverlayRoot");
   const focusRoot = doc.getElementById("focusOverlayRoot");
-  const leadRoot = doc.getElementById("leadOverlayRoot");
-  const customerRoot = doc.getElementById("customerOverlayRoot");
   let profileChanged = false;
   let chatChanged = false;
   let postChanged = false;
@@ -77,8 +65,6 @@ export function renderOverlaysCore({
   let menuChanged = false;
   let menuDetailChanged = false;
   let focusChanged = false;
-  let leadChanged = false;
-  let customerChanged = false;
 
   if (updateProfile) {
     const profileHtml = renderProfileModal();
@@ -136,26 +122,10 @@ export function renderOverlaysCore({
       overlayCache.focus = focusHtml;
     }
   }
-  if (updateLead) {
-    const leadHtml = renderLeadModal();
-    leadChanged = leadHtml !== overlayCache.lead;
-    if (leadRoot && leadChanged) {
-      leadRoot.innerHTML = leadHtml;
-      overlayCache.lead = leadHtml;
-    }
-  }
-  if (updateCustomer) {
-    const customerHtml = renderCustomerModal();
-    customerChanged = customerHtml !== overlayCache.customer;
-    if (customerRoot && customerChanged) {
-      customerRoot.innerHTML = customerHtml;
-      overlayCache.customer = customerHtml;
-    }
-  }
   syncModalOpenUiState();
-  if (win?.lucide?.createIcons && (profileChanged || chatChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
+  if (win?.lucide?.createIcons && (profileChanged || chatChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
     win.lucide.createIcons();
   }
-  bindOverlayEvents({ profileChanged, chatChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged, leadChanged, customerChanged });
+  bindOverlayEvents({ profileChanged, chatChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged });
   return root;
 }

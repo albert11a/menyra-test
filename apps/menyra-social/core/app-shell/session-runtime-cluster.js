@@ -143,10 +143,6 @@ export function createSessionRuntimeCluster({
     attachCurrentUserProfileListenerFn: lifecycleApi.attachCurrentUserProfileListenerFn,
     stopCurrentUserProfileListenerFn: lifecycleApi.stopCurrentUserProfileListenerFn,
     stopProfileViewListenerFn: lifecycleApi.stopProfileViewListenerFn,
-    normalizeLeadScopeKeyFn: lifecycleApi.normalizeLeadScopeKeyFn,
-    loadLeadsFn: lifecycleApi.loadLeadsFn,
-    normalizeCustomerScopeKeyFn: lifecycleApi.normalizeCustomerScopeKeyFn,
-    loadCustomersFn: lifecycleApi.loadCustomersFn,
     loadCeoStaffFn: lifecycleApi.loadCeoStaffFn,
     loadBusinessAccountsFn: lifecycleApi.loadBusinessAccountsFn,
     stopExtraLiveListenersFn: lifecycleApi.stopExtraLiveListenersFn

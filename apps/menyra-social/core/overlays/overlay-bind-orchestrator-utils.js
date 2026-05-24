@@ -6,8 +6,6 @@ export function bindOverlayEventsCore({
   menuChanged = true,
   menuDetailChanged = true,
   focusChanged = true,
-  leadChanged = true,
-  customerChanged = true,
   documentObj,
   windowObj,
   isMenuDetailCloseBoundFn,
@@ -20,8 +18,6 @@ export function bindOverlayEventsCore({
   bindMenuOverlayEventsFn,
   bindMenuDetailOverlayEventsFn,
   bindFocusOverlayEventsFn,
-  bindLeadOverlayEventsFn,
-  bindCustomerOverlayEventsFn,
   bindModalDismissFn,
   closeMenuDetailFn,
   closeProfileModalFn,
@@ -58,22 +54,6 @@ export function bindOverlayEventsCore({
   closeFocusModalFn,
   saveFocusItemFromModalFn,
   syncFocusModalCropPreviewFn,
-  closeLeadModalFn,
-  saveLeadFromModalFn,
-  convertLeadToCustomerFn,
-  addLeadModalLocationRowFn,
-  removeLeadModalLocationRowFn,
-  syncLeadModalDraftFromFormFn,
-  openLocationPickerFn,
-  normalizeLeadLocationsFn,
-  createLeadLocationFn,
-  parseCoordsFromAddressInputFn,
-  getLeadPlusCodeReferenceFn,
-  hasLeadLocationCoordsFn,
-  getPrimaryLeadLocationFn,
-  refineLeadLocationAddressIndexFn,
-  closeCustomerModalFn,
-  saveCustomerFromModalFn,
   bindImageFallbacksFn,
   placeholderImage = ""
 } = {}) {
@@ -92,8 +72,6 @@ export function bindOverlayEventsCore({
   const bindMenuOverlayEvents = typeof bindMenuOverlayEventsFn === "function" ? bindMenuOverlayEventsFn : (() => {});
   const bindMenuDetailOverlayEvents = typeof bindMenuDetailOverlayEventsFn === "function" ? bindMenuDetailOverlayEventsFn : (() => {});
   const bindFocusOverlayEvents = typeof bindFocusOverlayEventsFn === "function" ? bindFocusOverlayEventsFn : (() => {});
-  const bindLeadOverlayEvents = typeof bindLeadOverlayEventsFn === "function" ? bindLeadOverlayEventsFn : (() => {});
-  const bindCustomerOverlayEvents = typeof bindCustomerOverlayEventsFn === "function" ? bindCustomerOverlayEventsFn : (() => {});
   const bindImageFallbacks = typeof bindImageFallbacksFn === "function" ? bindImageFallbacksFn : (() => {});
   const bindModalDismiss = typeof bindModalDismissFn === "function" ? bindModalDismissFn : null;
   const closeMenuDetail = typeof closeMenuDetailFn === "function" ? closeMenuDetailFn : (() => {});
@@ -133,22 +111,6 @@ export function bindOverlayEventsCore({
   const closeFocusModal = typeof closeFocusModalFn === "function" ? closeFocusModalFn : (() => {});
   const saveFocusItemFromModal = typeof saveFocusItemFromModalFn === "function" ? saveFocusItemFromModalFn : (() => {});
   const syncFocusModalCropPreview = typeof syncFocusModalCropPreviewFn === "function" ? syncFocusModalCropPreviewFn : (() => {});
-  const closeLeadModal = typeof closeLeadModalFn === "function" ? closeLeadModalFn : (() => {});
-  const saveLeadFromModal = typeof saveLeadFromModalFn === "function" ? saveLeadFromModalFn : (() => {});
-  const convertLeadToCustomer = typeof convertLeadToCustomerFn === "function" ? convertLeadToCustomerFn : (() => {});
-  const addLeadModalLocationRow = typeof addLeadModalLocationRowFn === "function" ? addLeadModalLocationRowFn : (() => {});
-  const removeLeadModalLocationRow = typeof removeLeadModalLocationRowFn === "function" ? removeLeadModalLocationRowFn : (() => {});
-  const syncLeadModalDraftFromForm = typeof syncLeadModalDraftFromFormFn === "function" ? syncLeadModalDraftFromFormFn : (() => {});
-  const openLocationPicker = typeof openLocationPickerFn === "function" ? openLocationPickerFn : (() => {});
-  const normalizeLeadLocations = typeof normalizeLeadLocationsFn === "function" ? normalizeLeadLocationsFn : (() => []);
-  const createLeadLocation = typeof createLeadLocationFn === "function" ? createLeadLocationFn : (() => ({ address: "", lat: null, lng: null }));
-  const parseCoordsFromAddressInput = typeof parseCoordsFromAddressInputFn === "function" ? parseCoordsFromAddressInputFn : (() => null);
-  const getLeadPlusCodeReference = typeof getLeadPlusCodeReferenceFn === "function" ? getLeadPlusCodeReferenceFn : (() => null);
-  const hasLeadLocationCoords = typeof hasLeadLocationCoordsFn === "function" ? hasLeadLocationCoordsFn : (() => false);
-  const getPrimaryLeadLocation = typeof getPrimaryLeadLocationFn === "function" ? getPrimaryLeadLocationFn : (() => null);
-  const refineLeadLocationAddressIndex = typeof refineLeadLocationAddressIndexFn === "function" ? refineLeadLocationAddressIndexFn : (() => Promise.resolve());
-  const closeCustomerModal = typeof closeCustomerModalFn === "function" ? closeCustomerModalFn : (() => {});
-  const saveCustomerFromModal = typeof saveCustomerFromModalFn === "function" ? saveCustomerFromModalFn : (() => {});
   if (!doc || !bindModalDismiss) return;
   void isMenuDetailCloseBound;
   void setMenuDetailCloseBound;
@@ -258,42 +220,7 @@ export function bindOverlayEventsCore({
     });
   }
 
-  if (leadChanged) {
-    bindLeadOverlayEvents({
-      documentObj: doc,
-      bindModalDismissFn: bindModalDismiss,
-      closeLeadModalFn: closeLeadModal,
-      saveLeadFromModalFn: saveLeadFromModal,
-      convertLeadToCustomerFn: convertLeadToCustomer,
-      addLeadModalLocationRowFn: addLeadModalLocationRow,
-      removeLeadModalLocationRowFn: removeLeadModalLocationRow,
-      syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
-      openLocationPickerFn: openLocationPicker,
-      normalizeLeadLocationsFn: normalizeLeadLocations,
-      createLeadLocationFn: createLeadLocation,
-      parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
-      getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
-      hasLeadLocationCoordsFn: hasLeadLocationCoords,
-      getPrimaryLeadLocationFn: getPrimaryLeadLocation,
-      refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
-      renderOverlaysFn: renderOverlays,
-      state,
-      placeholderImage
-    });
-  }
-
-  if (customerChanged) {
-    bindCustomerOverlayEvents({
-      documentObj: doc,
-      bindModalDismissFn: bindModalDismiss,
-      closeCustomerModalFn: closeCustomerModal,
-      saveCustomerFromModalFn: saveCustomerFromModal,
-      state,
-      placeholderImage
-    });
-  }
-
-  if (menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged) {
+  if (menuChanged || menuDetailChanged || focusChanged) {
     bindImageFallbacks();
   }
 }

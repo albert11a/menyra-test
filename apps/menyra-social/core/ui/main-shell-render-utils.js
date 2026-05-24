@@ -9,9 +9,7 @@ export function renderMainCore({
   renderProfileViewFn,
   renderMenuAdminViewFn,
   renderOrdersViewFn,
-  renderLeadsViewFn,
   renderStaffViewFn,
-  renderCustomersViewFn,
   renderBusinessAccountsViewFn,
   renderSettingsViewFn,
   renderNotificationsViewFn,
@@ -35,9 +33,7 @@ export function renderMainCore({
   const renderProfileView = typeof renderProfileViewFn === "function" ? renderProfileViewFn : (() => "");
   const renderMenuAdminView = typeof renderMenuAdminViewFn === "function" ? renderMenuAdminViewFn : (() => "");
   const renderOrdersView = typeof renderOrdersViewFn === "function" ? renderOrdersViewFn : (() => "");
-  const renderLeadsView = typeof renderLeadsViewFn === "function" ? renderLeadsViewFn : (() => "");
   const renderStaffView = typeof renderStaffViewFn === "function" ? renderStaffViewFn : (() => "");
-  const renderCustomersView = typeof renderCustomersViewFn === "function" ? renderCustomersViewFn : (() => "");
   const renderBusinessAccountsView = typeof renderBusinessAccountsViewFn === "function" ? renderBusinessAccountsViewFn : (() => "");
   const renderSettingsView = typeof renderSettingsViewFn === "function" ? renderSettingsViewFn : (() => "");
   const renderNotificationsView = typeof renderNotificationsViewFn === "function" ? renderNotificationsViewFn : (() => "");
@@ -94,8 +90,6 @@ export function renderMainCore({
     || !!state?.menuModal?.open
     || !!state?.menuDetail?.open
     || !!state?.focusModal?.open
-    || !!state?.leadModal?.open
-    || !!state?.customerModal?.open
     || !!state?.chatModal?.open;
   const smartHeaderBlockedState = (state?.activeTab === "staff" && state?.staff?.view === "form")
     || (state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile);
