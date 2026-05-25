@@ -1,0 +1,243 @@
+{
+  "summary": "The current main entry still includes several large route and modal render modules after the first overlay split. The next safe meaningful cut is the menu modal render utility module, which is not required for /feed first paint and can be loaded on first menu editor/detail modal render while preserving the existing renderer functions.",
+  "baselineEntrySize": {
+    "file": "apps/menyra-social/bundled/entry/social-app.js",
+    "rawBytes": 1315928,
+    "gzipBytes": 350823,
+    "sourceLineCount": 4913,
+    "buildCommand": "npm run build"
+  },
+  "generatedChunks": [
+    {
+      "name": "vendor-firebase-DJXW8jPP.js",
+      "rawBytes": 441937,
+      "gzipBytes": 133824,
+      "lazy": false,
+      "notes": "Manual vendor chunk."
+    },
+    {
+      "name": "discovery-runtime-controller-GZ0quJe_.js",
+      "rawBytes": 40649,
+      "gzipBytes": 12942,
+      "lazy": true,
+      "notes": "Feed/Search/Map discovery runtime already split."
+    },
+    {
+      "name": "overlay-basic-render-utils-C0sDpLJv.js",
+      "rawBytes": 13566,
+      "gzipBytes": 3190,
+      "lazy": true,
+      "notes": "First successful lazy overlay split."
+    },
+    {
+      "name": "orders-runtime-controller-kXOnY8GJ.js",
+      "rawBytes": 12923,
+      "gzipBytes": 4588,
+      "lazy": true,
+      "notes": "Orders runtime already split."
+    },
+    {
+      "name": "media-upload-runtime-cluster-BkQjWGNo.js",
+      "rawBytes": 8952,
+      "gzipBytes": 3295,
+      "lazy": true,
+      "notes": "Upload runtime already split."
+    },
+    {
+      "name": "public-route-cache-early-preload-bcTHjXYY.js",
+      "rawBytes": 4738,
+      "gzipBytes": 1924,
+      "lazy": true,
+      "notes": "Public route early preload helper."
+    },
+    {
+      "name": "image-compressor-D8ssfxKV.js",
+      "rawBytes": 639,
+      "gzipBytes": 436,
+      "lazy": true,
+      "notes": "Image compressor already split."
+    }
+  ],
+  "topRemainingStaticImportCandidates": [
+    {
+      "module": "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+      "sourceBytes": 170718,
+      "whyInMainEntry": "Statically imported by app-controller-bridge.js and used by /feed renderers.",
+      "firstPaintCritical": true,
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/app-shell/app-controller-bridge.js createFeedViewOrchestrationController",
+        "apps/menyra-social/core/feed/feed-view-orchestration-controller.js renderHomeView/renderFeedView/renderFeedList"
+      ],
+      "riskLevel": "high",
+      "expectedSizeReduction": "Large, but unsafe because /feed first paint depends on it."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+      "sourceBytes": 135274,
+      "whyInMainEntry": "Statically imported by profile-business-menu-runtime-cluster.js for profile/menu/focus rendering.",
+      "firstPaintCritical": true,
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js createProfileMenuFocusRenderController",
+        "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js renderPublicProfileView/renderProfileView/renderMenuAdminView"
+      ],
+      "riskLevel": "high",
+      "expectedSizeReduction": "Large, but unsafe because public profile/menu surfaces depend on it."
+    },
+    {
+      "module": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+      "sourceBytes": 85370,
+      "whyInMainEntry": "Statically imported by session-data-runtime-cluster.js for startup/session data loading.",
+      "firstPaintCritical": true,
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/app-shell/session-data-runtime-cluster.js createSessionDataRuntimeController",
+        "apps/menyra-social/core/app-shell/session-data-runtime-controller.js loadPersisted/loadFeedPosts/loadRestaurants"
+      ],
+      "riskLevel": "high",
+      "expectedSizeReduction": "Meaningful, but unsafe because auth/session startup and tab data lifecycle depend on it."
+    },
+    {
+      "module": "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+      "sourceBytes": 80369,
+      "whyInMainEntry": "Statically imported by controller-deps-factory.js for shell render/event/runtime orchestration.",
+      "firstPaintCritical": true,
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/app-shell/controller-deps-factory.js createShellRuntimeController",
+        "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js render/bindAppEvents/ensureTabData wiring"
+      ],
+      "riskLevel": "high",
+      "expectedSizeReduction": "Meaningful, but unsafe because shell/header/render/event behavior is startup critical."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+      "sourceBytes": 77819,
+      "whyInMainEntry": "Used by public profile/menu runtime path.",
+      "firstPaintCritical": true,
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+        "apps/menyra-social/core/app-shell/public-route-runtime-cluster.js"
+      ],
+      "riskLevel": "high",
+      "expectedSizeReduction": "Meaningful, but unsafe for /casarita and /casarita/menu."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+      "sourceBytes": 73021,
+      "whyInMainEntry": "Statically imported by app-controller-bridge.js and used by feed/search/map/profile/deeplink open flows.",
+      "firstPaintCritical": "route dependent",
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/app-shell/app-controller-bridge.js createProfileOpenFlowControllerCore",
+        "apps/menyra-social/core/profile/profile-open-flow-utils.js openProfileViewFromBusiness/openProfileFromUser"
+      ],
+      "riskLevel": "high",
+      "expectedSizeReduction": "Meaningful, but unsafe in this pass because direct public profile/menu routes call this path."
+    },
+    {
+      "module": "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
+      "sourceBytes": 62837,
+      "whyInMainEntry": "Statically imported by social-app.js to provide a synchronous chat facade while the full chat runtime remains lazy.",
+      "firstPaintCritical": "partly startup critical",
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/social-app.js createChatAppRuntimeLazyFacade",
+        "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js getChatThreadId/loadChatThreadIndex/getChatUnreadCount"
+      ],
+      "riskLevel": "medium-high",
+      "expectedSizeReduction": "Meaningful, but unsafe without a dedicated smaller synchronous proxy because startup/session code calls facade helpers."
+    },
+    {
+      "module": "apps/menyra-social/core/menu/menu-modal-render-utils.js",
+      "sourceBytes": 61691,
+      "whyInMainEntry": "Statically imported by shell-ui-runtime-cluster.js for menu editor and menu detail modal renderers.",
+      "firstPaintCritical": false,
+      "canLazyLoadSafely": true,
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js renderMenuItemModal",
+        "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js renderMenuDetailModal",
+        "apps/menyra-social/core/menu/menu-modal-render-utils.js renderMenuItemModalCore",
+        "apps/menyra-social/core/menu/menu-modal-render-utils.js renderMenuDetailModalCore"
+      ],
+      "riskLevel": "low-medium",
+      "expectedSizeReduction": "Expected 45-60 KiB raw and 8-12 KiB gzip from entry, with a new lazy menu-modal-render-utils chunk.",
+      "routeSafeProof": "The module only returns modal HTML after menuModal.open or menuDetail.open. It does not parse routes, mutate cart/order keys, write Firebase, or load public route data. The existing render functions remain source of truth and are called after the lazy import resolves."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+      "sourceBytes": 53985,
+      "whyInMainEntry": "Stays static because feed counts, post modal, menu detail likes/comments, and Firebase social actions share this controller.",
+      "firstPaintCritical": "partly",
+      "canLazyLoadSafely": false,
+      "exactFilesFunctions": [
+        "apps/menyra-social/social-app.js createSocialEngagementRuntimeController",
+        "apps/menyra-social/core/profile/social-engagement-runtime-controller.js togglePostLike/addComment/toggleMenuItemLike"
+      ],
+      "riskLevel": "high",
+      "expectedSizeReduction": "Meaningful, but unsafe because it includes Firebase read/write behavior for social actions."
+    },
+    {
+      "module": "apps/menyra-social/core/overlays/overlay-orchestration-controller.js",
+      "sourceBytes": 24059,
+      "whyInMainEntry": "Statically imported by app-controller-bridge.js to expose overlay action methods.",
+      "firstPaintCritical": false,
+      "canLazyLoadSafely": "possible later",
+      "exactFilesFunctions": [
+        "apps/menyra-social/core/app-shell/app-controller-bridge.js createOverlayOrchestrationController",
+        "apps/menyra-social/core/overlays/overlay-orchestration-controller.js openPostModal/openMenuDetail/renderOverlays"
+      ],
+      "riskLevel": "medium",
+      "expectedSizeReduction": "Smaller than menu modal renderer and more behavior-coupled."
+    }
+  ],
+  "modulesAlreadyLazy": [
+    "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+    "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
+    "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
+    "apps/menyra-social/core/orders/orders-runtime-controller.js",
+    "apps/menyra-social/_shared/image-compressor.js"
+  ],
+  "recommendedCandidate": {
+    "module": "apps/menyra-social/core/menu/menu-modal-render-utils.js",
+    "staticImportOwner": "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js",
+    "staticImportRemoved": "import { renderMenuItemModalCore, renderMenuDetailModalCore } from \"../menu/menu-modal-render-utils.js\";",
+    "dynamicImportAdded": "import(\"../menu/menu-modal-render-utils.js\") cached inside shell-ui-runtime-cluster.js",
+    "expectedNewChunk": "menu-modal-render-utils-[hash].js",
+    "expectedSizeReduction": {
+      "rawBytes": "45000-60000",
+      "gzipBytes": "8000-12000"
+    }
+  },
+  "exactFilesToTouch": [
+    "audit/mnyra-next-bundle-cut-analysis.json",
+    "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js",
+    "apps/menyra-social/bundled/entry/social-app.js",
+    "apps/menyra-social/bundled/manifest.json",
+    "apps/menyra-social/bundled/chunks/menu-modal-render-utils-[hash].js"
+  ],
+  "manualTestChecklist": [
+    "/feed opens exactly like before.",
+    "Feed cards/interactions work.",
+    "Any affected modal/action works, especially menu item modal and menu detail modal.",
+    "/search works.",
+    "/map works.",
+    "/casarita/menu works.",
+    "/leads opens Heart.",
+    "/customers opens Heart.",
+    "/admin/staff opens Heart.",
+    "/staff unchanged.",
+    "businessAccounts unchanged.",
+    "No red console errors."
+  ],
+  "validationChecklist": [
+    "node --check on changed JS files.",
+    "Validate this audit JSON.",
+    "git diff --check.",
+    "npm run build.",
+    "Confirm entry/social-app.js raw and gzip sizes reduce meaningfully.",
+    "Confirm no route, Firebase, Heart, staff, businessAccounts, Waiter/Kitchen, or public order/cart files were changed."
+  ]
+}
