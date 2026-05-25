@@ -1,0 +1,221 @@
+{
+  "summary": "Baseline build shows the Vite main social entry is still the dominant bundle. Search/Map discovery, media upload runtime, orders runtime, image compressor, public route preload, and Firebase vendor are already split. The recommended first true static-import cut is the basic overlay modal renderer group from shell-ui-runtime-cluster because it is not needed for /feed first paint and can be loaded only when profile/chat/post/likes modals render.",
+  "baselineBundleSize": {
+    "sourceFile": "apps/menyra-social/social-app.js",
+    "sourceLineCount": 5187,
+    "builtEntry": "apps/menyra-social/bundled/entry/social-app.js",
+    "rawBytes": 1325263,
+    "rawKB": 1294.2,
+    "gzipBytes": 352245,
+    "gzipKB": 343.99,
+    "viteReportedRawKB": 1325.26,
+    "viteReportedGzipKB": 352.25
+  },
+  "generatedChunks": [
+    {
+      "file": "chunks/vendor-firebase-DJXW8jPP.js",
+      "rawBytes": 441937,
+      "lazy": false,
+      "purpose": "Shared Firebase vendor chunk imported by the main entry."
+    },
+    {
+      "file": "chunks/discovery-runtime-controller-GZ0quJe_.js",
+      "rawBytes": 40649,
+      "lazy": true,
+      "purpose": "Search/Map discovery runtime, already dynamic."
+    },
+    {
+      "file": "chunks/orders-runtime-controller-kXOnY8GJ.js",
+      "rawBytes": 12923,
+      "lazy": true,
+      "purpose": "Orders runtime controller, already dynamic."
+    },
+    {
+      "file": "chunks/media-upload-runtime-cluster-BkQjWGNo.js",
+      "rawBytes": 8952,
+      "lazy": true,
+      "purpose": "Media upload runtime, already dynamic."
+    },
+    {
+      "file": "chunks/public-route-cache-early-preload-bcTHjXYY.js",
+      "rawBytes": 4738,
+      "lazy": true,
+      "purpose": "Public route cache early preload, already dynamic."
+    },
+    {
+      "file": "chunks/preload-helper-C4N3jzC6.js",
+      "rawBytes": 1281,
+      "lazy": false,
+      "purpose": "Vite preload helper."
+    },
+    {
+      "file": "chunks/image-compressor-D8ssfxKV.js",
+      "rawBytes": 639,
+      "lazy": true,
+      "purpose": "Image compressor, already dynamic."
+    }
+  ],
+  "topStaticImportGroupsStillInSocialAppJs": [
+    {
+      "group": "Firebase/auth/firestore shared startup",
+      "imports": [
+        "/shared/firebase-config.js",
+        "/shared/vendor/firebase/11.0.0/firebase-app.js",
+        "/shared/vendor/firebase/11.0.0/firebase-auth.js",
+        "/shared/vendor/firebase/11.0.0/firebase-firestore.js"
+      ],
+      "reasonStillStatic": "Required for current authenticated startup/session/bootstrap path."
+    },
+    {
+      "group": "App shell/controller bootstrap",
+      "imports": [
+        "createShellDomRuntimeController",
+        "createSessionRuntimeCluster",
+        "startAppStartupRuntimeCluster",
+        "createSessionDataRuntimeCluster",
+        "createBridgeShellRuntimeCluster",
+        "createShellUiRuntimeCluster"
+      ],
+      "reasonStillStatic": "Current shell and /feed first paint are synchronous."
+    },
+    {
+      "group": "Feed first-paint runtime",
+      "imports": [
+        "createFeedVisibilityRuntimeCluster",
+        "feed-view-orchestration-controller via app-controller-bridge"
+      ],
+      "reasonStillStatic": "Feed is the default visible route and cannot be lazily replaced without a first-paint behavior decision."
+    },
+    {
+      "group": "Profile/menu/public surface runtime",
+      "imports": [
+        "createProfileBusinessMenuRuntimeCluster",
+        "createProfileIdentityRuntimeCluster",
+        "public route/profile helpers"
+      ],
+      "reasonStillStatic": "Public/Menu/QR and profile route behavior are explicitly out of scope for this pass."
+    },
+    {
+      "group": "CRM/Heart support",
+      "imports": [
+        "createCrmDomainRuntimeCluster",
+        "createCrmLeadGeoSupportRuntime",
+        "createCrmCeoScopeSupportRuntime"
+      ],
+      "reasonStillStatic": "Heart CRM, /leads, /customers, and /admin/staff are explicitly out of scope."
+    },
+    {
+      "group": "Overlay modal render/event support",
+      "imports": [
+        "overlay-basic-render-utils",
+        "overlay-bind-orchestrator-utils",
+        "overlay-render-orchestrator-utils",
+        "overlay-basic-bind-utils",
+        "overlay-chat-post-bind-utils",
+        "overlay-menu-focus-bind-utils",
+        "overlay-menu-detail-bind-utils"
+      ],
+      "reasonStillStatic": "Currently in the main entry even though basic profile/chat/post/likes modal rendering is not needed for /feed first paint."
+    }
+  ],
+  "modulesAlreadyLazy": [
+    "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+    "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
+    "apps/menyra-social/core/orders/orders-runtime-controller.js",
+    "apps/menyra-social/_shared/image-compressor.js",
+    "apps/menyra-social/core/router/public-route-cache-early-preload.js"
+  ],
+  "modulesStillBundledIntoEntrySocialAppJs": [
+    "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+    "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+    "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+    "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+    "apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js",
+    "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
+    "apps/menyra-social/core/menu/menu-modal-render-utils.js",
+    "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+    "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
+    "apps/menyra-social/core/app-events/app-events-shell-bind-utils.js",
+    "apps/menyra-social/core/profile/social-engagement-support-runtime-controller.js",
+    "apps/menyra-social/core/shop/shop-view-cart-orchestration-controller.js",
+    "apps/menyra-social/core/overlays/overlay-basic-render-utils.js"
+  ],
+  "safeCandidateCuts": [
+    {
+      "candidate": "Lazy load apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
+      "expectedMainEntryEffect": "Remove basic profile/chat/post/likes modal render markup from the main entry and create a new dynamic chunk.",
+      "whySafe": "The functions renderChatModalCore, renderProfileModalCore, renderPostModalCore, and renderLikesModalCore are not needed until a modal is opened. Existing overlay state, event binders, Firebase listeners, and modal source functions remain unchanged."
+    },
+    {
+      "candidate": "Lazy load settings-render-utils.js",
+      "expectedMainEntryEffect": "Small main-entry reduction for settings route.",
+      "whyNotFirst": "Smaller effect than overlay-basic-render-utils and would add a loading edge to direct /settings."
+    },
+    {
+      "candidate": "Lazy load notifications-render-utils.js",
+      "expectedMainEntryEffect": "Very small main-entry reduction for notifications route.",
+      "whyNotFirst": "Reduction is likely not meaningful enough for this task."
+    }
+  ],
+  "unsafeCandidateCuts": [
+    {
+      "candidate": "Feed view orchestration controller",
+      "reason": "Needed for current /feed first paint. Lazy-loading it would require a first-paint placeholder or async render contract."
+    },
+    {
+      "candidate": "Public/profile/menu/cart/order render paths",
+      "reason": "Public Menu/QR/cart/order behavior and payloads are explicitly out of scope."
+    },
+    {
+      "candidate": "Heart CRM and lead/customer/admin/staff modules",
+      "reason": "Heart CRM, /leads, /customers, /admin/staff, and /staff behavior are explicitly out of scope."
+    },
+    {
+      "candidate": "businessAccounts runtime",
+      "reason": "businessAccounts behavior is explicitly out of scope."
+    },
+    {
+      "candidate": "Waiter/Kitchen runtime",
+      "reason": "Waiter/Kitchen is explicitly out of scope."
+    },
+    {
+      "candidate": "Firebase imports/query modules",
+      "reason": "Firebase paths, query shapes, and payloads must not change."
+    }
+  ],
+  "recommendedFirstTrueStaticImportRemoval": {
+    "candidate": "overlay-basic-render-utils.js",
+    "removeStaticImportFrom": "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js",
+    "addDynamicImportAt": "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js",
+    "loadBoundary": "Only when state.profileModal, state.chatModal, state.postModal, or state.likesModal is open and its renderer is requested.",
+    "sourceOfTruth": "Existing renderChatModalCore, renderProfileModalCore, renderPostModalCore, and renderLikesModalCore functions remain in overlay-basic-render-utils.js."
+  },
+  "expectedSizeReduction": {
+    "mainEntryRawKB": "Expected several KB raw reduction, with a new dynamic overlay-basic-render-utils chunk. Exact accepted value must be verified by post-change build.",
+    "mainEntryGzipKB": "Expected small but real gzip reduction."
+  },
+  "exactFilesToTouch": [
+    "audit/mnyra-social-bundle-static-import-cut-plan.json",
+    "apps/menyra-social/core/app-shell/shell-ui-runtime-cluster.js",
+    "apps/menyra-social/bundled/entry/social-app.js",
+    "apps/menyra-social/bundled/manifest.json",
+    "apps/menyra-social/bundled/chunks/overlay-basic-render-utils-*.js"
+  ],
+  "manualTestChecklist": [
+    "/feed opens exactly like before.",
+    "Feed cards/interactions work.",
+    "Feed post modal/comments/likes work.",
+    "/search works.",
+    "/map works.",
+    "/casarita/menu works.",
+    "/leads opens Heart.",
+    "/customers opens Heart.",
+    "/admin/staff opens Heart.",
+    "/staff unchanged.",
+    "businessAccounts unchanged.",
+    "No red console errors."
+  ]
+}
