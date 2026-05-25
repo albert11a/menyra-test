@@ -37,9 +37,33 @@ test("preloads for an active web direct profile entry", () => {
   }), true);
 });
 
+test("preloads for existing profile view state", () => {
+  assert.equal(shouldPreloadProfileMenuFocusRenderer({
+    state: {
+      activeTab: "feed",
+      profileView: {
+        profile: { restaurantId: "casarita" }
+      }
+    }
+  }), true);
+});
+
 test("does not preload on plain feed startup", () => {
   assert.equal(shouldPreloadProfileMenuFocusRenderer({
     state: { activeTab: "feed" },
+    pendingRoute: {}
+  }), false);
+});
+
+test("does not preload for inactive web direct entry without pending route", () => {
+  assert.equal(shouldPreloadProfileMenuFocusRenderer({
+    state: {
+      activeTab: "feed",
+      __webDirectEntry: {
+        active: false,
+        restaurantId: "casarita"
+      }
+    },
     pendingRoute: {}
   }), false);
 });

@@ -1,0 +1,59 @@
+{
+  "status": "CURRENT",
+  "step": 43,
+  "branch": "refactorapp",
+  "title": "Public Profile/Menu runtime guard hardening",
+  "date": "2026-05-26",
+  "goal": "Harden the existing public runtime boundary before any further Public/Profile split by making the bundle guard verify the Step 41/42 wiring and by covering QR/cart/favorites runtime routing with focused tests.",
+  "implementation": {
+    "bundleGuard": "scripts/check-mnyra-social-bundle-budget.mjs",
+    "routeRuntimeTests": "tests/route-runtime-registry.test.mjs",
+    "preloadDecisionTests": "tests/profile-menu-focus-render-preload-utils.test.mjs",
+    "guardedContracts": [
+      "profile-menu-focus-render-controller stays behind a dynamic import boundary",
+      "social-app keeps the Profile/Menu/Focus preload decision utility wired",
+      "social-app keeps the guarded early preload call",
+      "publicBusiness and publicMenu runtime slots continue to render the existing public profile renderer",
+      "publicBusiness and publicMenu runtime slots continue to preload the existing Profile/Menu/Focus renderer",
+      "QR menu access stays in the publicMenu runtime slot"
+    ]
+  },
+  "bundleResult": {
+    "socialAppRawBytes": 1138788,
+    "socialAppGzipBytes": 309638,
+    "socialPublicEntryRawBytes": 1182,
+    "socialPublicEntryGzipBytes": 630,
+    "profileMenuFocusChunkRawBytes": 87678,
+    "profileMenuFocusChunkGzipBytes": 21077,
+    "deltaFromStep42": {
+      "rawBytes": 0,
+      "gzipBytes": 0
+    }
+  },
+  "checks": [
+    "npm run build",
+    "node --check scripts/check-mnyra-social-bundle-budget.mjs",
+    "node --check tests/route-runtime-registry.test.mjs",
+    "node --check tests/profile-menu-focus-render-preload-utils.test.mjs",
+    "node --test tests/route-runtime-registry.test.mjs tests/profile-menu-focus-render-preload-utils.test.mjs tests/profile-menu-focus-render-boundary.test.mjs",
+    "npm run check:social-bundle",
+    "audit JSON validated",
+    "git diff --check"
+  ],
+  "unchanged": [
+    "visible UI/design",
+    "routes",
+    "Firebase paths, queries and payloads",
+    "DOM ids/classes/CSS",
+    "public renderer source of truth",
+    "Public Menu product detail",
+    "cart",
+    "order send",
+    "QR/table context",
+    "Heart routes",
+    "/staff",
+    "businessAccounts",
+    "Waiter/Kitchen"
+  ],
+  "risk": "This step intentionally does not make the next runtime split. It reduces regression risk by failing the existing bundle guard if the current public runtime boundary or preload contract is silently broken."
+}

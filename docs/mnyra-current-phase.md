@@ -363,6 +363,18 @@ Last updated: 2026-05-26
   Produktdetail, Warenkorb, Orders, QR-/Tisch-Kontext, Heart, `/staff`,
   businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
   wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
+- Schritt 43 ist abgeschlossen: Der Public Profile/Menu Runtime-Guard wurde
+  gehaertet, bevor ein weiterer Public/Profile-Split geplant wird.
+- Bewertung von Schritt 43: `bestanden`.
+- Wichtigster Effekt aus Schritt 43:
+  `npm run check:social-bundle` prueft jetzt neben Bundle-Groessen und Dynamic
+  Imports auch die konkrete Step-41/42-Verkabelung: der Profile/Menu/Fokus-
+  Renderer bleibt hinter der Boundary, der Early-Preload bleibt verdrahtet,
+  `publicBusiness` und `publicMenu` nutzen weiter den bestehenden Renderer plus
+  Preload, und QR-Menu-Zugriffe bleiben im `publicMenu`-Slot. Zusaetzliche
+  Unit-Cases halten Cart, Favorites, QR und Preload-Negativfaelle fest. Es gab
+  keine sichtbare UI-, Routing-, Firebase- oder Runtime-Split-Aenderung. Auf
+  Nutzerwunsch wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -404,6 +416,7 @@ Last updated: 2026-05-26
 - Referenz: [docs/mnyra-step40-public-route-entry-contract.md](./mnyra-step40-public-route-entry-contract.md)
 - Referenz: [docs/mnyra-step41-profile-menu-focus-render-boundary.md](./mnyra-step41-profile-menu-focus-render-boundary.md)
 - Referenz: [docs/mnyra-step42-profile-menu-focus-preload-timing.md](./mnyra-step42-profile-menu-focus-preload-timing.md)
+- Referenz: [docs/mnyra-step43-public-profile-menu-runtime-guard.md](./mnyra-step43-public-profile-menu-runtime-guard.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -429,7 +442,7 @@ Last updated: 2026-05-26
 
 ## Naechster Schritt
 
-Nach Schritt 42 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 43 ist der naechste sinnvolle separate Folgeschritt:
 Public Profile/Menu inklusive Fokus auf echtem Smartphone manuell mit frischem
 Bundle und normalem Desktop-Browser gegenpruefen.
 Erst wenn Profil, Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,

@@ -30,6 +30,37 @@ test("public menu route resolves to publicMenu runtime", () => {
   assert.equal(resolveSocialRouteRuntimeKey(state), "publicMenu");
 });
 
+test("public cart and favorites surfaces stay on publicMenu runtime", () => {
+  const baseState = {
+    activeTab: "profile",
+    profileView: {
+      profile: { restaurantId: "restaurant-1" }
+    }
+  };
+
+  assert.equal(resolveSocialRouteRuntimeKey({
+    ...baseState,
+    profileTopTab: "cart"
+  }), "publicMenu");
+  assert.equal(resolveSocialRouteRuntimeKey({
+    ...baseState,
+    profileTopTab: "favorites"
+  }), "publicMenu");
+});
+
+test("qr menu access stays on publicMenu runtime", () => {
+  const state = {
+    activeTab: "profile",
+    profileTopTab: "profile",
+    profileView: {
+      profile: { restaurantId: "restaurant-1" },
+      routePayload: { menuAccessSource: "qr" }
+    }
+  };
+
+  assert.equal(resolveSocialRouteRuntimeKey(state), "publicMenu");
+});
+
 test("publicBusiness runtime can override the fallback public profile renderer", () => {
   const state = {
     activeTab: "profile",
