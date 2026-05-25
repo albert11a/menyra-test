@@ -41,6 +41,12 @@
       "_vendor-firebase-DJXW8jPP.js"
     ]
   },
+  "apps/menyra-social/core/overlays/overlay-basic-render-utils.js": {
+    "file": "chunks/overlay-basic-render-utils-C0sDpLJv.js",
+    "name": "overlay-basic-render-utils",
+    "src": "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
+    "isDynamicEntry": true
+  },
   "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01": {
     "file": "chunks/public-route-cache-early-preload-bcTHjXYY.js",
     "name": "public-route-cache-early-preload",
@@ -66,6 +72,7 @@
       "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
       "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
       "apps/menyra-social/core/orders/orders-runtime-controller.js",
+      "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
       "apps/menyra-social/_shared/image-compressor.js",
       "apps/menyra-social/core/media/media-upload-runtime-cluster.js"
     ]

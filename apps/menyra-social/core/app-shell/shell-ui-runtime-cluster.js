@@ -5,12 +5,6 @@ import {
 import { saveMenuItemFromModalCore } from "../menu/menu-save-utils.js";
 import { deleteMenuItemByIdCore } from "../menu/menu-delete-utils.js";
 import { renderFocusModalCore } from "../menu/customer-focus-modal-render-utils.js";
-import {
-  renderChatModalCore,
-  renderProfileModalCore,
-  renderLikesModalCore,
-  renderPostModalCore
-} from "../overlays/overlay-basic-render-utils.js";
 import { renderMainCore } from "../ui/main-shell-render-utils.js";
 import {
   renderNotificationsViewCore,
@@ -77,6 +71,39 @@ export function createShellUiRuntimeCluster({
   const normalizeMenuType = typeof menuApi.normalizeMenuTypeFn === "function" ? menuApi.normalizeMenuTypeFn : ((value) => value);
   const confirmFn = typeof actionApi.confirmFn === "function" ? actionApi.confirmFn : (() => false);
   const alertFn = typeof actionApi.alertFn === "function" ? actionApi.alertFn : (() => {});
+  let overlayBasicRenderUtils = null;
+  let overlayBasicRenderUtilsPromise = null;
+
+  function renderOverlaysAfterBasicRenderLoad() {
+    const renderOverlays = getBridgeBindings()?.renderOverlays;
+    if (typeof renderOverlays === "function") {
+      renderOverlays();
+    }
+  }
+
+  function ensureOverlayBasicRenderUtils() {
+    if (overlayBasicRenderUtils) return Promise.resolve(overlayBasicRenderUtils);
+    if (overlayBasicRenderUtilsPromise) return overlayBasicRenderUtilsPromise;
+    overlayBasicRenderUtilsPromise = import("../overlays/overlay-basic-render-utils.js")
+      .then((module) => {
+        overlayBasicRenderUtils = module;
+        renderOverlaysAfterBasicRenderLoad();
+        return module;
+      })
+      .catch((err) => {
+        overlayBasicRenderUtilsPromise = null;
+        throw err;
+      });
+    return overlayBasicRenderUtilsPromise;
+  }
+
+  function getOverlayBasicRenderUtilsIfLoaded() {
+    return overlayBasicRenderUtils;
+  }
+
+  function queueOverlayBasicRenderUtilsLoad() {
+    void ensureOverlayBasicRenderUtils().catch(() => null);
+  }
 
   function getBridgeBinding(name, fallback = null) {
     const bindings = getBridgeBindings();
@@ -166,7 +193,13 @@ export function createShellUiRuntimeCluster({
 
   function renderChatModal() {
     if (!isChatEnabledForV1()) return "";
-    return renderChatModalCore({
+    if (!state?.chatModal?.open || !state?.chatModal?.profile) return "";
+    const renderUtils = getOverlayBasicRenderUtilsIfLoaded();
+    if (!renderUtils?.renderChatModalCore) {
+      queueOverlayBasicRenderUtilsLoad();
+      return "";
+    }
+    return renderUtils.renderChatModalCore({
       state,
       getOptimizedImageUrl,
       escapeHtml,
@@ -177,7 +210,13 @@ export function createShellUiRuntimeCluster({
   }
 
   function renderProfileModal() {
-    return renderProfileModalCore({
+    if (!state?.profileModal?.open || !state?.profileModal?.profile) return "";
+    const renderUtils = getOverlayBasicRenderUtilsIfLoaded();
+    if (!renderUtils?.renderProfileModalCore) {
+      queueOverlayBasicRenderUtilsLoad();
+      return "";
+    }
+    return renderUtils.renderProfileModalCore({
       state,
       isFollowingProfile: typeof profileApi.isFollowingProfileFn === "function" ? profileApi.isFollowingProfileFn : (() => false),
       getOptimizedImageUrl,
@@ -188,7 +227,13 @@ export function createShellUiRuntimeCluster({
   }
 
   function renderPostModal() {
-    return renderPostModalCore({
+    if (!state?.postModal?.open || !state?.postModal?.post) return "";
+    const renderUtils = getOverlayBasicRenderUtilsIfLoaded();
+    if (!renderUtils?.renderPostModalCore) {
+      queueOverlayBasicRenderUtilsLoad();
+      return "";
+    }
+    return renderUtils.renderPostModalCore({
       state,
       ensurePostMeta: socialApi.ensurePostMetaFn,
       resolvePostCounts: socialApi.resolvePostCountsFn,
@@ -203,7 +248,13 @@ export function createShellUiRuntimeCluster({
   }
 
   function renderLikesModal() {
-    return renderLikesModalCore({
+    if (!state?.likesModal?.open || !state?.likesModal?.postId) return "";
+    const renderUtils = getOverlayBasicRenderUtilsIfLoaded();
+    if (!renderUtils?.renderLikesModalCore) {
+      queueOverlayBasicRenderUtilsLoad();
+      return "";
+    }
+    return renderUtils.renderLikesModalCore({
       state,
       ensurePostMeta: socialApi.ensurePostMetaFn,
       findPostById: socialApi.findPostByIdFn,
