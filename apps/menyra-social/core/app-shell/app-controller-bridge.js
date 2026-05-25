@@ -1,4 +1,3 @@
-import { createProfileOpenFlowControllerCore } from "../profile/profile-open-flow-utils.js";
 import { createDeeplinkFlowControllerCore } from "../router/deeplink-flow-utils.js";
 import { createShopViewCartOrchestrationController } from "../shop/shop-view-cart-orchestration-controller.js";
 import { createFeedViewOrchestrationController } from "../feed/feed-view-orchestration-controller.js";
@@ -14,34 +13,114 @@ export function createAppControllerBridge({
   discovery = {},
   overlay = {}
 } = {}) {
-  const profileOpenFlowController = createProfileOpenFlowControllerCore({
-    state: profile.state,
-    isLocalBusinessProfile: (profileValue) => profile.isLocalBusinessProfile(profileValue),
-    getRestaurantMetaById: (restaurantId) => profile.getRestaurantMetaById(restaurantId),
-    normalizeSearchKey: (value) => profile.normalizeSearchKey(value),
-    render: () => profile.render(),
-    ensureMenuDataForProfile: (...args) => profile.ensureMenuDataForProfile(...args),
-    ensureFocusDataForProfile: (...args) => profile.ensureFocusDataForProfile(...args),
-    hydrateRestaurantsByIds: (restaurantIds, options = {}) => profile.hydrateRestaurantsByIds(restaurantIds, options),
-    normalizeExternalProfile: (payload = {}) => profile.normalizeExternalProfile(payload),
-    showPublicProfile: (profileValue, posts, options = {}) => profile.showPublicProfile(profileValue, posts, options),
-    fetchBusinessProfileDoc: (payload = {}) => profile.fetchBusinessProfileDoc(payload),
-    loadBusinessPostsForRestaurant: (...args) => profile.loadBusinessPostsForRestaurant(...args),
-    normalizeExternalUserProfile: (payload = {}) => profile.normalizeExternalUserProfile(payload),
-    openGuestAuthPrompt: (message = "") => profile.openGuestAuthPrompt(message),
-    userProfileCache: profile.userProfileCache,
-    hasPendingFollowRequest: async (targetUid) => profile.hasPendingFollowRequest(targetUid),
-    fetchUserDocByUid: async (uid) => profile.getDoc(profile.doc(profile.db, "users", uid)),
-    resolveUserByHandle: async (handle) => profile.resolveUserByHandle(handle),
-    loadUserPostsForUser: async (uid) => profile.loadUserPostsForUser(uid)
-  });
+  let profileOpenFlowController = null;
+  let profileOpenFlowControllerPromise = null;
 
-  const {
+  function createProfileOpenFlowControllerConfig() {
+    return {
+      state: profile.state,
+      isLocalBusinessProfile: (profileValue) => profile.isLocalBusinessProfile(profileValue),
+      getRestaurantMetaById: (restaurantId) => profile.getRestaurantMetaById(restaurantId),
+      normalizeSearchKey: (value) => profile.normalizeSearchKey(value),
+      render: () => profile.render(),
+      ensureMenuDataForProfile: (...args) => profile.ensureMenuDataForProfile(...args),
+      ensureFocusDataForProfile: (...args) => profile.ensureFocusDataForProfile(...args),
+      hydrateRestaurantsByIds: (restaurantIds, options = {}) => profile.hydrateRestaurantsByIds(restaurantIds, options),
+      normalizeExternalProfile: (payload = {}) => profile.normalizeExternalProfile(payload),
+      showPublicProfile: (profileValue, posts, options = {}) => profile.showPublicProfile(profileValue, posts, options),
+      fetchBusinessProfileDoc: (payload = {}) => profile.fetchBusinessProfileDoc(payload),
+      loadBusinessPostsForRestaurant: (...args) => profile.loadBusinessPostsForRestaurant(...args),
+      normalizeExternalUserProfile: (payload = {}) => profile.normalizeExternalUserProfile(payload),
+      openGuestAuthPrompt: (message = "") => profile.openGuestAuthPrompt(message),
+      userProfileCache: profile.userProfileCache,
+      hasPendingFollowRequest: async (targetUid) => profile.hasPendingFollowRequest(targetUid),
+      fetchUserDocByUid: async (uid) => profile.getDoc(profile.doc(profile.db, "users", uid)),
+      resolveUserByHandle: async (handle) => profile.resolveUserByHandle(handle),
+      loadUserPostsForUser: async (uid) => profile.loadUserPostsForUser(uid)
+    };
+  }
+
+  function ensureProfileOpenFlowController() {
+    if (profileOpenFlowController) return Promise.resolve(profileOpenFlowController);
+    if (!profileOpenFlowControllerPromise) {
+      profileOpenFlowControllerPromise = import("../profile/profile-open-flow-utils.js")
+        .then((module) => {
+          const createController = module?.createProfileOpenFlowControllerCore;
+          if (typeof createController !== "function") {
+            throw new Error("createProfileOpenFlowControllerCore unavailable");
+          }
+          profileOpenFlowController = createController(createProfileOpenFlowControllerConfig());
+          return profileOpenFlowController;
+        })
+        .catch((err) => {
+          profileOpenFlowControllerPromise = null;
+          console.error(err);
+          throw err;
+        });
+    }
+    return profileOpenFlowControllerPromise;
+  }
+
+  function callProfileOpenFlow(methodName = "", args = [], fallbackValue = undefined) {
+    const loadedMethod = typeof profileOpenFlowController?.[methodName] === "function"
+      ? profileOpenFlowController[methodName]
+      : null;
+    if (loadedMethod) return loadedMethod(...args);
+    return ensureProfileOpenFlowController()
+      .then((controller) => {
+        const method = typeof controller?.[methodName] === "function" ? controller[methodName] : null;
+        return method ? method(...args) : fallbackValue;
+      });
+  }
+
+  function isOwnBusinessTargetFallback({ restaurantId = "", name = "" } = {}) {
+    if (typeof profile.isLocalBusinessProfile === "function" && !profile.isLocalBusinessProfile(profile.state?.userProfile)) {
+      return false;
+    }
+    const ownRestaurantId = String(profile.state?.userProfile?.restaurantId || "").trim();
+    const targetRestaurantId = String(restaurantId || "").trim();
+    if (ownRestaurantId && targetRestaurantId && ownRestaurantId === targetRestaurantId) return true;
+    const normalizeSearch = typeof profile.normalizeSearchKey === "function"
+      ? profile.normalizeSearchKey
+      : ((value = "") => String(value || "").trim().toLowerCase());
+    const ownRest = ownRestaurantId && typeof profile.getRestaurantMetaById === "function"
+      ? profile.getRestaurantMetaById(ownRestaurantId)
+      : null;
+    const ownNames = [
+      profile.state?.userProfile?.name,
+      ownRest?.name,
+      ownRest?.restaurantName
+    ].map((item) => normalizeSearch(item)).filter(Boolean);
+    const targetName = normalizeSearch(name);
+    return !!targetName && ownNames.includes(targetName);
+  }
+
+  function isOwnBusinessTarget(input = {}) {
+    if (typeof profileOpenFlowController?.isOwnBusinessTarget === "function") {
+      return profileOpenFlowController.isOwnBusinessTarget(input);
+    }
+    return isOwnBusinessTargetFallback(input);
+  }
+
+  function openOwnBusinessProfile(options = {}) {
+    return callProfileOpenFlow("openOwnBusinessProfile", [options]);
+  }
+
+  function openProfileViewFromBusiness(input, options = {}) {
+    return callProfileOpenFlow("openProfileViewFromBusiness", [input, options]);
+  }
+
+  function openProfileFromUser(input, options = {}) {
+    return callProfileOpenFlow("openProfileFromUser", [input, options]);
+  }
+
+  const profileOpenFlowControllerProxy = Object.freeze({
+    ensureLoaded: ensureProfileOpenFlowController,
     isOwnBusinessTarget,
     openOwnBusinessProfile,
     openProfileViewFromBusiness,
     openProfileFromUser
-  } = profileOpenFlowController;
+  });
 
   let normalizeNotificationItemBridge = (docSnap) => docSnap;
   let openPostModalBridge = async () => {};
@@ -425,7 +504,7 @@ export function createAppControllerBridge({
 
   return {
     controllers: {
-      profileOpenFlowController,
+      profileOpenFlowController: profileOpenFlowControllerProxy,
       deeplinkFlowController,
       notificationsRuntimeController: notifications.runtimeController || notifications,
       shopViewCartOrchestrationController,

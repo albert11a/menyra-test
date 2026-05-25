@@ -309,6 +309,18 @@ Last updated: 2026-05-25
   businessAccounts, Waiter/Kitchen und Feed-First-Paint bleiben unveraendert.
   Auf Nutzerwunsch wurde dieser Schritt im laufenden Bundle-/Refactor-Kontext
   auf Branch `refactorapp` umgesetzt.
+- Schritt 39 ist abgeschlossen: Profile-Open-Flow und Chat-V1-Fassade wurden
+  aus dem Social-Main-Entry in Lazy Boundaries verschoben.
+- Bewertung von Schritt 39: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 39:
+  Der gebaute `entry/social-app.js` sinkt von 1,270,944 Bytes raw /
+  341,603 Bytes gzip auf 1,226,239 Bytes raw / 330,087 Bytes gzip. Das sind
+  44,705 Bytes raw und 11,516 Bytes gzip weniger. Die bestehende
+  Profile-Open-Flow-Logik und die bestehende Chat-Fassade bleiben Source of
+  Truth und werden erst bei Bedarf geladen. Sichtbare UI, Routing, Firebase,
+  Feed-First-Paint, Public Menu, Warenkorb, Orders, Heart, `/staff`,
+  businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
+  wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -346,6 +358,7 @@ Last updated: 2026-05-25
 - Referenz: [docs/mnyra-step36-profile-posts-full-visibility.md](./mnyra-step36-profile-posts-full-visibility.md)
 - Referenz: [docs/mnyra-step37-ceo-staff-heart-route.md](./mnyra-step37-ceo-staff-heart-route.md)
 - Referenz: [docs/mnyra-step38-profile-runtime-boundary.md](./mnyra-step38-profile-runtime-boundary.md)
+- Referenz: [docs/mnyra-step39-profile-chat-runtime-bundle-cut.md](./mnyra-step39-profile-chat-runtime-bundle-cut.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -371,7 +384,7 @@ Last updated: 2026-05-25
 
 ## Naechster Schritt
 
-Nach Schritt 38 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 39 ist der naechste sinnvolle separate Folgeschritt:
 Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
 und normalem Desktop-Browser gegenpruefen.
 Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,

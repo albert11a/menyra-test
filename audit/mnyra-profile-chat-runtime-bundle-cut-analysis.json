@@ -1,0 +1,138 @@
+{
+  "summary": "Combined safe bundle cut after the profile runtime boundary: keep the synchronous public profile/menu renderer static, lazy-load the audited Profile Open Flow controller, and replace the static Chat V1 lazy facade import with a small boundary because Chat V1 is currently disabled. This avoids the rejected tiny cuts and produces a measured entry gzip reduction above 10 KB.",
+  "branch": "refactorapp",
+  "baselineBundleSize": {
+    "entryFile": "apps/menyra-social/bundled/entry/social-app.js",
+    "rawBytes": 1270944,
+    "gzipBytes": 341603,
+    "source": "git show HEAD:apps/menyra-social/bundled/entry/social-app.js before this change"
+  },
+  "newBundleSize": {
+    "entryFile": "apps/menyra-social/bundled/entry/social-app.js",
+    "rawBytes": 1226239,
+    "gzipBytes": 330087
+  },
+  "actualReduction": {
+    "rawBytes": 44705,
+    "gzipBytes": 11516,
+    "rawPercent": 3.52,
+    "gzipPercent": 3.37
+  },
+  "staticImportsRemoved": [
+    {
+      "file": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "removedImport": "../profile/profile-open-flow-utils.js",
+      "replacement": "cached dynamic import when a profile open method is called"
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "removedImport": "./core/chat/chat-app-runtime-lazy-facade.js",
+      "replacement": "./core/chat/chat-app-runtime-boundary.js, which lazy-loads the existing facade on demand"
+    }
+  ],
+  "newLazyChunks": [
+    {
+      "file": "apps/menyra-social/bundled/chunks/profile-open-flow-utils-DcmS7U2T.js",
+      "rawBytes": 26142,
+      "gzipBytes": 7535
+    },
+    {
+      "file": "apps/menyra-social/bundled/chunks/chat-app-runtime-lazy-facade-CNA8_AY7.js",
+      "rawBytes": 26741,
+      "gzipBytes": 7848
+    }
+  ],
+  "candidateChosen": [
+    {
+      "name": "Profile Open Flow",
+      "reason": "Already audited as non-feed-first-paint and safe, but too small alone. Existing profile-open-flow-utils.js remains the source of truth."
+    },
+    {
+      "name": "Chat V1 runtime facade boundary",
+      "reason": "Chat V1 is guarded off by chat-v1-guard.js, so the large facade does not need to live in the main entry. The existing facade remains the source of truth when a chat, notification, or follow method needs it."
+    }
+  ],
+  "rejectedCandidates": [
+    {
+      "name": "Business Accounts runtime",
+      "measuredTrialReduction": {
+        "rawBytes": 16404,
+        "gzipBytes": 3713
+      },
+      "reason": "Build passed, but the reduction was too small for the requested non-mini step. Trial was reverted."
+    },
+    {
+      "name": "Profile menu/focus renderer",
+      "reason": "Largest profile renderer, but it is the synchronous source of public profile/menu/cart/favorites/profile HTML. Lazy-loading it now would require a visible fallback or async render contract change."
+    },
+    {
+      "name": "Public profile runtime controller",
+      "reason": "Owns showPublicProfile, direct public route listeners, business profile fetch, and business posts fetch. It is route-critical for /casarita and /casarita/menu."
+    }
+  ],
+  "safety": {
+    "feedFirstPaintChanged": false,
+    "routesChanged": false,
+    "firebasePathsQueriesPayloadsChanged": false,
+    "domIdsClassesChanged": false,
+    "cssChanged": false,
+    "publicMenuCartOrderChanged": false,
+    "heartTouched": false,
+    "staffTouched": false,
+    "businessAccountsBehaviorChanged": false,
+    "waiterKitchenTouched": false
+  },
+  "exactFilesToTouch": [
+    "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+    "apps/menyra-social/core/chat/chat-app-runtime-boundary.js",
+    "apps/menyra-social/social-app.js",
+    "apps/menyra-social/bundled/entry/social-app.js",
+    "apps/menyra-social/bundled/manifest.json",
+    "apps/menyra-social/bundled/chunks/profile-open-flow-utils-DcmS7U2T.js",
+    "apps/menyra-social/bundled/chunks/chat-app-runtime-lazy-facade-CNA8_AY7.js",
+    "audit/mnyra-profile-chat-runtime-bundle-cut-analysis.json",
+    "docs/mnyra-step39-profile-chat-runtime-bundle-cut.md",
+    "docs/mnyra-current-phase.md"
+  ],
+  "validationChecklist": [
+    "node --check apps/menyra-social/core/app-shell/app-controller-bridge.js",
+    "node --check apps/menyra-social/core/chat/chat-app-runtime-boundary.js",
+    "node --check apps/menyra-social/social-app.js",
+    "node --check apps/menyra-social/bundled/entry/social-app.js",
+    "node --check apps/menyra-social/bundled/entry/social-public-entry.js",
+    "git diff --check",
+    "git diff --cached --check",
+    "npm run build"
+  ],
+  "manualTestChecklist": [
+    "/feed opens exactly like before",
+    "Open a business/profile from Feed",
+    "Open a business/profile from Search",
+    "Open a business/profile from Map",
+    "Public profile opens as before",
+    "/casarita works",
+    "/casarita/menu works",
+    "Product detail opens/closes",
+    "Cart works",
+    "Order send works",
+    "/leads opens Heart",
+    "/customers opens Heart",
+    "/admin/staff opens Heart",
+    "/staff unchanged",
+    "businessAccounts unchanged",
+    "Waiter/Kitchen unchanged",
+    "No red console errors"
+  ],
+  "topRemainingLargeStaticImports": [
+    "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+    "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "apps/menyra-social/core/crm/crm-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+    "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js",
+    "apps/menyra-social/core/app-shell/controller-deps-factory.js",
+    "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+    "apps/menyra-social/core/profile/self-profile-runtime-controller.js"
+  ]
+}

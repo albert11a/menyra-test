@@ -13,6 +13,12 @@
     "src": "apps/menyra-social/_shared/image-compressor.js",
     "isDynamicEntry": true
   },
+  "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js": {
+    "file": "chunks/chat-app-runtime-lazy-facade-CNA8_AY7.js",
+    "name": "chat-app-runtime-lazy-facade",
+    "src": "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
+    "isDynamicEntry": true
+  },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
     "file": "chunks/discovery-runtime-controller-GZ0quJe_.js",
     "name": "discovery-runtime-controller",
@@ -58,6 +64,17 @@
     "src": "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
     "isDynamicEntry": true
   },
+  "apps/menyra-social/core/profile/profile-open-flow-utils.js": {
+    "file": "chunks/profile-open-flow-utils-DcmS7U2T.js",
+    "name": "profile-open-flow-utils",
+    "src": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "apps/menyra-social/social-app.js",
+      "_preload-helper-C4N3jzC6.js",
+      "_vendor-firebase-DJXW8jPP.js"
+    ]
+  },
   "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01": {
     "file": "chunks/public-route-cache-early-preload-HOyrUTED.js",
     "name": "public-route-cache-early-preload",
@@ -82,9 +99,11 @@
     "dynamicImports": [
       "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
       "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "apps/menyra-social/core/profile/profile-open-flow-utils.js",
       "apps/menyra-social/core/orders/orders-runtime-controller.js",
       "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
       "apps/menyra-social/core/menu/menu-modal-render-utils.js",
+      "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
       "apps/menyra-social/_shared/image-compressor.js",
       "apps/menyra-social/core/media/media-upload-runtime-cluster.js"
     ]

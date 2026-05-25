@@ -154,7 +154,7 @@ import { createSocialEngagementSupportRuntimeController } from "./core/profile/s
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
 import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
-import { createChatAppRuntimeLazyFacade } from "./core/chat/chat-app-runtime-lazy-facade.js";
+import { createChatAppRuntimeBoundary } from "./core/chat/chat-app-runtime-boundary.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
   normalizePendingChatUidCore,
@@ -4703,7 +4703,7 @@ bindBrowserPopstateRouteSync();
 
 mediaUploadRuntimeController = createDeferredMediaUploadRuntimeController();
 
-chatRuntimeFacade = createChatAppRuntimeLazyFacade({
+chatRuntimeFacade = createChatAppRuntimeBoundary({
   stateDeps: { state, safeStorage, chatIndexKey },
   constants: {
     STORAGE_KEYS,
