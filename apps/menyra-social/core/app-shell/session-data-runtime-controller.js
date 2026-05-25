@@ -10,6 +10,20 @@ import {
   timeMnyraLoadingAsyncCore as timeLoadingAsync
 } from "../common/loading-diagnostics-utils.js";
 
+function createDefaultTableQrState() {
+  return {
+    restaurantId: "",
+    enabled: true,
+    count: 0,
+    loaded: false,
+    loading: false,
+    saving: false,
+    error: "",
+    status: "",
+    verifiedAt: 0
+  };
+}
+
 export function createSessionDataRuntimeController({
   state = null,
   dataLoaded = null,
@@ -47,6 +61,7 @@ export function createSessionDataRuntimeController({
   createEmptyOrdersStateFn = () => ({}),
   createEmptyFavoriteMenuItemsStateFn = () => ({}),
   createEmptyMenuDetailStateFn = () => ({}),
+  createEmptyTableQrStateFn = createDefaultTableQrState,
   sortChatThreadsFn = (items = []) => items,
   loadChatThreadIndexFn = () => [],
   loadChatThreadMessagesFn = () => [],
@@ -1023,17 +1038,7 @@ export function createSessionDataRuntimeController({
       }
     };
     state.selectedBusiness = null;
-    state.tableQr = {
-      restaurantId: "",
-      enabled: true,
-      count: 0,
-      loaded: false,
-      loading: false,
-      saving: false,
-      error: "",
-      status: "",
-      verifiedAt: 0
-    };
+    state.tableQr = createEmptyTableQrStateFn();
     state.followingHandles = [];
     state.followingTargetIds = [];
     state.pendingFollowRequests = [];

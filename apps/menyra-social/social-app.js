@@ -61,13 +61,7 @@ import {
   pushDeviceIdKey,
   getGuestScopeUid
 } from "./_shared/social-storage.js";
-import {
-  createEmptyShopCart,
-  createEmptyOrdersState,
-  createEmptyFavoriteMenuItemsState,
-  createEmptyMenuDetailState,
-  createEmptyTableQrState
-} from "./core/common/state-factories.js";
+import { createEmptyFavoriteMenuItemsState } from "./core/common/state-factories.js";
 import {
   DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
@@ -141,6 +135,10 @@ import { startAppStartupRuntimeCluster } from "./core/app-shell/app-startup-runt
 import { createSessionDataRuntimeCluster } from "./core/app-shell/session-data-runtime-cluster.js";
 import { createBridgeShellRuntimeCluster } from "./core/app-shell/bridge-shell-runtime-cluster.js";
 import { createPublicRouteRuntimeCluster } from "./core/app-shell/public-route-runtime-cluster.js";
+import {
+  createPublicRouteInitialState,
+  createPublicRouteStateController
+} from "./core/app-shell/public-route-state-controller.js";
 import { createProfileBusinessMenuRuntimeCluster } from "./core/app-shell/profile-business-menu-runtime-cluster.js";
 import { createProfileIdentityRuntimeCluster } from "./core/app-shell/profile-identity-runtime-cluster.js";
 import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-cluster.js";
@@ -261,17 +259,13 @@ import {
 } from "./core/common/currency-utils.js";
 import { normalizeRestaurantTypeCore } from "./core/profile/restaurant-type-utils.js";
 import { normalizeLeadTypeKeyCore as normalizeLeadTypeKey } from "./core/leads/lead-type-utils.js";
-import { buildShopVariantKeyCore } from "./core/shop/shop-variant-utils.js";
 import {
   normalizeOptionListCore as normalizeOptionList,
   normalizeMenuTypeCore as normalizeMenuType
 } from "./core/menu/menu-input-utils.js";
 import { normalizeMenuItemDocCore as normalizeMenuItemDoc } from "./core/menu/menu-doc-normalize-utils.js";
-import { normalizeShopCartStateCore } from "./core/shop/shop-cart-state-utils.js";
 import {
   getShopCartProfileContextCore,
-  getCartCountForRestaurantCore,
-  canAddToShopCartCore,
   getShopCartTotalCore
 } from "./core/shop/shop-cart-access-utils.js";
 import {
@@ -775,8 +769,7 @@ const state = {
   followingTargetIds: [],
   pendingFollowRequests: [],
   chatThreads: [],
-  shopCart: createEmptyShopCart(),
-  orders: createEmptyOrdersState(),
+  ...createPublicRouteInitialState(),
   favoriteMenuItems: createEmptyFavoriteMenuItemsState(),
   profileView: null,
   profileBackTab: "feed",
@@ -843,10 +836,6 @@ const state = {
     imagePreviews: [],
     existingImages: []
   },
-  menuDetail: {
-    ...createEmptyMenuDetailState()
-  },
-  tableQr: createEmptyTableQrState(),
   focus: {
     restaurantId: "",
     items: [],
@@ -1007,7 +996,6 @@ let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
 let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
-let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "" };
 const pendingRouteState = createPendingRouteStartupState();
 const STARTUP_SURFACE_FINAL_STATUSES = new Set(["ready", "empty", "error"]);
@@ -1049,9 +1037,6 @@ let crmAutoLoadObserver = null;
 let modalPostDocUnsub = null;
 let modalLikesUnsub = null;
 let modalCommentsUnsub = null;
-let menuDetailDocUnsub = null;
-let menuDetailLikesUnsub = null;
-let menuDetailCommentsUnsub = null;
 let storiesRowSignature = "";
 let authInitialized = false;
 let authBootstrapSnapshot = null;
@@ -1067,6 +1052,39 @@ function getChatRuntimeFacade() {
 function getChatRuntimeController() {
   return getChatRuntimeFacade().getController();
 }
+
+const publicRouteStateController = createPublicRouteStateController({
+  state,
+  storageApi: {
+    safeStorage,
+    shopCartKey,
+    getGuestScopeUid
+  },
+  profileApi: {
+    isShopCatalogProfile,
+    isCeoUser: () => isCeoUser(),
+    hasGlobalCeoAccess: () => hasGlobalCeoAccess()
+  }
+});
+const publicRouteSessionStorageApi = publicRouteStateController.getSessionStorageApi();
+const {
+  createEmptyShopCart,
+  createEmptyMenuDetailState,
+  buildShopVariantKey,
+  normalizeShopCartState,
+  saveShopCartToStorage,
+  getCartCountForRestaurant,
+  canAddToShopCart,
+  getMenuDetailDocUnsub,
+  setMenuDetailDocUnsub,
+  getMenuDetailLikesUnsub,
+  setMenuDetailLikesUnsub,
+  getMenuDetailCommentsUnsub,
+  setMenuDetailCommentsUnsub,
+  stopMenuDetailMetaListeners,
+  isMenuDetailCloseBound,
+  setMenuDetailCloseBound
+} = publicRouteStateController;
 
 const shellUiRuntimeCluster = createShellUiRuntimeCluster({
   state,
@@ -2530,6 +2548,7 @@ const {
   state,
   db,
   menuCache,
+  publicRouteStateController,
   constants: {
     defaultPublicBootstrapEndpoint: DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT,
     publicBootstrapEvent: PUBLIC_BOOTSTRAP_EVENT,
@@ -2558,6 +2577,7 @@ const {
   },
   storageApi: {
     safeStorage,
+    shopCartKey,
     getGuestScopeUid
   },
   menuApi: {
@@ -2568,10 +2588,7 @@ const {
     clampCropPercent
   },
   shopApi: {
-    normalizeShopCartState,
-    buildShopVariantKey,
     parsePriceValue,
-    saveShopCartToStorage,
     clearShopCartFn: (...args) => clearShopCart(...args)
   },
   socialApi: {
@@ -3045,41 +3062,6 @@ function isRestaurantCafeProfile(profile = state.userProfile) {
   return isRestaurantCafeProfileCore(profile, {
     getBusinessProfileTypeFn: getBusinessProfileType,
     leadTypeOrder: LEAD_TYPE_ORDER
-  });
-}
-
-function buildShopVariantKey(itemId, { size = "", color = "" } = {}) {
-  return buildShopVariantKeyCore(itemId, { size, color });
-}
-
-function normalizeShopCartState(raw) {
-  return normalizeShopCartStateCore(raw, {
-    createEmptyShopCartFn: createEmptyShopCart,
-    buildShopVariantKeyFn: buildShopVariantKey,
-    clampCropPercentFn: clampCropPercent
-  });
-}
-
-function saveShopCartToStorage(uid = state.user?.uid || getGuestScopeUid()) {
-  const key = shopCartKey(uid);
-  if (!key) return;
-  try {
-    const payload = normalizeShopCartState(state.shopCart);
-    payload.status = "";
-    payload.loading = false;
-    safeStorage.setItem(key, JSON.stringify(payload));
-  } catch {}
-}
-
-function getCartCountForRestaurant(restaurantId = "") {
-  return getCartCountForRestaurantCore(restaurantId, state.shopCart);
-}
-
-function canAddToShopCart(profile = state.profileView?.profile || state.userProfile) {
-  return canAddToShopCartCore(profile, {
-    isShopCatalogProfileFn: isShopCatalogProfile,
-    currentUserRestaurantId: state.userProfile?.restaurantId || "",
-    allowOwnRestaurantOrdering: isCeoUser() || hasGlobalCeoAccess()
   });
 }
 
@@ -4120,14 +4102,10 @@ sessionDataRuntimeController = createSessionDataRuntimeCluster({
     profileKey,
     notificationsKey,
     followingKey,
-    shopCartKey,
+    ...publicRouteSessionStorageApi,
     userPostsKey,
     businessPostsKey,
-    normalizeShopCartState,
-    createEmptyShopCart,
-    createEmptyOrdersState,
-    createEmptyFavoriteMenuItemsState,
-    createEmptyMenuDetailState
+    createEmptyFavoriteMenuItemsState
   },
   renderApi: {
     scheduleIdle,
@@ -4137,7 +4115,7 @@ sessionDataRuntimeController = createSessionDataRuntimeCluster({
     updateShellDom,
     refreshSearchView: (...args) => refreshSearchView(...args),
     cleanupLeaflet: (...args) => cleanupLeaflet(...args),
-    setMenuDetailCloseBound: (next) => { menuDetailCloseBound = !!next; }
+    setMenuDetailCloseBound
   },
   profileApi: {
     loadLogoCache,
@@ -4290,18 +4268,12 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   setModalCommentsUnsubFn: (next) => {
     modalCommentsUnsub = typeof next === "function" ? next : null;
   },
-  getMenuDetailDocUnsubFn: () => menuDetailDocUnsub,
-  setMenuDetailDocUnsubFn: (next) => {
-    menuDetailDocUnsub = typeof next === "function" ? next : null;
-  },
-  getMenuDetailLikesUnsubFn: () => menuDetailLikesUnsub,
-  setMenuDetailLikesUnsubFn: (next) => {
-    menuDetailLikesUnsub = typeof next === "function" ? next : null;
-  },
-  getMenuDetailCommentsUnsubFn: () => menuDetailCommentsUnsub,
-  setMenuDetailCommentsUnsubFn: (next) => {
-    menuDetailCommentsUnsub = typeof next === "function" ? next : null;
-  }
+  getMenuDetailDocUnsubFn: getMenuDetailDocUnsub,
+  setMenuDetailDocUnsubFn: setMenuDetailDocUnsub,
+  getMenuDetailLikesUnsubFn: getMenuDetailLikesUnsub,
+  setMenuDetailLikesUnsubFn: setMenuDetailLikesUnsub,
+  getMenuDetailCommentsUnsubFn: getMenuDetailCommentsUnsub,
+  setMenuDetailCommentsUnsubFn: setMenuDetailCommentsUnsub
 });
 
 bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
@@ -4337,8 +4309,8 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     getOverlayCache: () => overlayCache,
     isModalEscapeBound: () => modalEscapeBound,
     setModalEscapeBound: (value) => { modalEscapeBound = !!value; },
-    isMenuDetailCloseBound: () => menuDetailCloseBound,
-    setMenuDetailCloseBound: (next) => { menuDetailCloseBound = !!next; },
+    isMenuDetailCloseBound,
+    setMenuDetailCloseBound,
     getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey,
     setLastMenuOpenGestureKey: (next) => { lastMenuOpenGestureKey = next; },
     getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt,
@@ -4917,18 +4889,7 @@ const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
         modalCommentsUnsub();
         modalCommentsUnsub = null;
       }
-      if (menuDetailDocUnsub) {
-        menuDetailDocUnsub();
-        menuDetailDocUnsub = null;
-      }
-      if (menuDetailLikesUnsub) {
-        menuDetailLikesUnsub();
-        menuDetailLikesUnsub = null;
-      }
-      if (menuDetailCommentsUnsub) {
-        menuDetailCommentsUnsub();
-        menuDetailCommentsUnsub = null;
-      }
+      stopMenuDetailMetaListeners();
     }
   }
 });

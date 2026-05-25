@@ -54,6 +54,7 @@ export function createSessionDataRuntimeCluster({
     createEmptyOrdersState: storageApi.createEmptyOrdersState,
     createEmptyFavoriteMenuItemsState: storageApi.createEmptyFavoriteMenuItemsState,
     createEmptyMenuDetailState: storageApi.createEmptyMenuDetailState,
+    createEmptyTableQrState: storageApi.createEmptyTableQrState,
     sortChatThreads: profileApi.sortChatThreads,
     loadChatThreadIndex: profileApi.loadChatThreadIndex,
     loadChatThreadMessages: profileApi.loadChatThreadMessages,

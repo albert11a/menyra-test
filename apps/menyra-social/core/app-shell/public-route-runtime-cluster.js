@@ -1,6 +1,7 @@
 import { createMenuPublicRuntimeController } from "../menu/menu-public-runtime-controller.js";
 import { createTableQrRuntimeController } from "../menu/table-qr-runtime-controller.js";
 import { createPublicProfileDirectEntryController } from "../profile/public-profile-direct-entry-controller.js";
+import { createPublicRouteStateController } from "./public-route-state-controller.js";
 
 const noop = () => {};
 const noopAsync = async () => {};
@@ -13,6 +14,7 @@ export function createPublicRouteRuntimeCluster({
   state = null,
   db = null,
   menuCache = null,
+  publicRouteStateController = null,
   constants = {},
   browserApi = {},
   firebaseApi = {},
@@ -43,7 +45,15 @@ export function createPublicRouteRuntimeCluster({
   const reportCriticalRuntimeFailure = toFunction(
     errorApi.reportCriticalRuntimeFailureFn || errorApi.reportCriticalRuntimeFailure
   );
-  const resolveGuestScopeUid = toFunction(storageApi.resolveGuestScopeUidFn || storageApi.getGuestScopeUid, () => "");
+  const publicRouteState = publicRouteStateController || createPublicRouteStateController({
+    state,
+    storageApi,
+    profileApi
+  });
+  const resolveGuestScopeUid = toFunction(
+    publicRouteState.resolveGuestScopeUid || storageApi.resolveGuestScopeUidFn || storageApi.getGuestScopeUid,
+    () => ""
+  );
 
   const publicProfileDirectEntryController = createPublicProfileDirectEntryController({
     state,
@@ -106,16 +116,16 @@ export function createPublicRouteRuntimeCluster({
       onSnapshotFn,
       writeBatchFn,
       serverTimestampFn,
-      normalizeShopCartStateFn: toFunction(shopApi.normalizeShopCartStateFn || shopApi.normalizeShopCartState, (raw) => raw || {}),
+      normalizeShopCartStateFn: toFunction(publicRouteState.normalizeShopCartState, (raw) => raw || {}),
       isLocalBusinessProfileFn: toFunction(profileApi.isLocalBusinessProfileFn || profileApi.isLocalBusinessProfile, () => false),
       canAccessRestaurantOrdersFn: toFunction(profileApi.canAccessRestaurantOrdersFn || profileApi.canAccessRestaurantOrders, () => false),
       resolveProfileRestaurantIdFn: toFunction(profileApi.resolveProfileRestaurantIdFn || profileApi.resolveProfileRestaurantId, () => ""),
       getRestaurantMetaByIdFn: toFunction(profileApi.getRestaurantMetaByIdFn || profileApi.getRestaurantMetaById, () => null),
       normalizeHandleFn: toFunction(profileApi.normalizeHandleFn || profileApi.normalizeHandle, (value = "") => String(value || "")),
-      buildShopVariantKeyFn: toFunction(shopApi.buildShopVariantKeyFn || shopApi.buildShopVariantKey, () => ""),
+      buildShopVariantKeyFn: toFunction(publicRouteState.buildShopVariantKey || shopApi.buildShopVariantKeyFn || shopApi.buildShopVariantKey, () => ""),
       clampCropPercentFn: toFunction(menuApi.clampCropPercentFn || menuApi.clampCropPercent, (value, fallback = 50) => fallback),
       parsePriceValueFn: toFunction(shopApi.parsePriceValueFn || shopApi.parsePriceValue, () => 0),
-      saveShopCartToStorageFn: toFunction(shopApi.saveShopCartToStorageFn || shopApi.saveShopCartToStorage),
+      saveShopCartToStorageFn: toFunction(publicRouteState.saveShopCartToStorage),
       clearShopCartFn: toFunction(shopApi.clearShopCartFn || shopApi.clearShopCart),
       renderFn: render,
       getLastRenderModeFn: getLastRenderMode,
@@ -200,6 +210,7 @@ export function createPublicRouteRuntimeCluster({
   };
 
   return {
+    publicRouteStateController: publicRouteState,
     publicProfileDirectEntryController,
     menuPublicRuntimeController,
     tableQrRuntimeController,
