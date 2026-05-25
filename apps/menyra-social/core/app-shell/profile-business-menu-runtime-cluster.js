@@ -1,5 +1,5 @@
 import { createBusinessAccountsRuntimeController } from "../business-accounts/business-accounts-runtime-controller.js";
-import { createProfileMenuFocusRenderController } from "../profile/profile-menu-focus-render-controller.js";
+import { createProfileMenuFocusRenderBoundary } from "../profile/profile-menu-focus-render-boundary.js";
 import { getMenuRestaurantForProfileCore } from "../profile/profile-menu-focus-utils.js";
 import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
 
@@ -905,7 +905,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     state: businessAccountsDeps.state || state
   });
 
-  const profileMenuFocusRenderController = createProfileMenuFocusRenderController({
+  const profileMenuFocusRenderController = createProfileMenuFocusRenderBoundary({
     ...profileMenuDeps,
     state: profileMenuDeps.state || state,
     renderProfileShopCartViewFn: (...args) => renderProfileShopCartView(...args),
@@ -926,6 +926,8 @@ export function createProfileBusinessMenuRuntimeCluster({
     loadBusinessAccounts: (options = {}) => businessAccountsRuntimeController.loadBusinessAccounts(options),
     renderBusinessAccountsView: () => businessAccountsRuntimeController.renderBusinessAccountsView(),
     bindBusinessAccountsEvents: (documentObj) => businessAccountsRuntimeController.bindBusinessAccountsEvents(documentObj),
+    preloadProfileMenuFocusRender: () => profileMenuFocusRenderController.preload(),
+    ensureProfileMenuFocusRenderLoaded: () => profileMenuFocusRenderController.ensureLoaded(),
     renderPublicProfileView: () => profileMenuFocusRenderController.renderPublicProfileView(),
     renderMenuAdminView: () => profileMenuFocusRenderController.renderMenuAdminView(),
     renderProfileView: () => profileMenuFocusRenderController.renderProfileView()

@@ -59,13 +59,24 @@
     ]
   },
   "apps/menyra-social/core/overlays/overlay-basic-render-utils.js": {
-    "file": "chunks/overlay-basic-render-utils-C0sDpLJv.js",
+    "file": "chunks/overlay-basic-render-utils-DMe72XjF.js",
     "name": "overlay-basic-render-utils",
     "src": "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
     "isDynamicEntry": true
   },
+  "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js": {
+    "file": "chunks/profile-menu-focus-render-controller-CjmOZbIa.js",
+    "name": "profile-menu-focus-render-controller",
+    "src": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "apps/menyra-social/social-app.js",
+      "_preload-helper-C4N3jzC6.js",
+      "_vendor-firebase-DJXW8jPP.js"
+    ]
+  },
   "apps/menyra-social/core/profile/profile-open-flow-utils.js": {
-    "file": "chunks/profile-open-flow-utils-DcmS7U2T.js",
+    "file": "chunks/profile-open-flow-utils-BVCYwC0C.js",
     "name": "profile-open-flow-utils",
     "src": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
     "isDynamicEntry": true,
@@ -101,6 +112,7 @@
       "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
       "apps/menyra-social/core/profile/profile-open-flow-utils.js",
       "apps/menyra-social/core/orders/orders-runtime-controller.js",
+      "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
       "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
       "apps/menyra-social/core/menu/menu-modal-render-utils.js",
       "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",

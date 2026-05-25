@@ -336,6 +336,20 @@ Last updated: 2026-05-26
   QR-/Tisch-Kontext, Heart, `/staff`, businessAccounts und Waiter/Kitchen
   bleiben unveraendert. Auf Nutzerwunsch wurde dieser Schritt auf Branch
   `refactorapp` umgesetzt.
+- Schritt 41 ist abgeschlossen: Der bestehende Profile/Menu/Fokus-Renderer
+  wurde hinter eine Lazy-Runtime-Boundary gelegt.
+- Bewertung von Schritt 41: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 41:
+  `profile-menu-focus-render-controller.js` ist nicht mehr statisch im
+  Social-Main-Entry, sondern eigener Dynamic Import. Der gebaute
+  `entry/social-app.js` sinkt von 1,226,239 Bytes raw / 330,087 Bytes gzip auf
+  1,138,184 Bytes raw / 309,464 Bytes gzip. Das sind 88,055 Bytes raw und
+  20,623 Bytes gzip weniger. Public Business und Public Menu preladen den
+  bestehenden Renderer ueber ihre Runtime-Slots; die Renderer-Source-of-Truth
+  bleibt unveraendert. Sichtbare UI, Routing, Firebase, Public Menu,
+  Produktdetail, Warenkorb, Orders, QR-/Tisch-Kontext, Heart, `/staff`,
+  businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
+  wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -375,6 +389,7 @@ Last updated: 2026-05-26
 - Referenz: [docs/mnyra-step38-profile-runtime-boundary.md](./mnyra-step38-profile-runtime-boundary.md)
 - Referenz: [docs/mnyra-step39-profile-chat-runtime-bundle-cut.md](./mnyra-step39-profile-chat-runtime-bundle-cut.md)
 - Referenz: [docs/mnyra-step40-public-route-entry-contract.md](./mnyra-step40-public-route-entry-contract.md)
+- Referenz: [docs/mnyra-step41-profile-menu-focus-render-boundary.md](./mnyra-step41-profile-menu-focus-render-boundary.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -400,13 +415,13 @@ Last updated: 2026-05-26
 
 ## Naechster Schritt
 
-Nach Schritt 40 ist der naechste sinnvolle separate Folgeschritt:
-Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
-und normalem Desktop-Browser gegenpruefen.
-Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
-Entdecker-Karten-Profilwechsel und Upload-Einstiege stabil bleiben, kann ein
-leichter Public/Profile-Renderer schrittweise ueber die vorbereiteten
-`publicBusiness`-/`publicMenu`-Runtime-Slots angebunden werden.
+Nach Schritt 41 ist der naechste sinnvolle separate Folgeschritt:
+Public Profile/Menu inklusive Fokus auf echtem Smartphone manuell mit frischem
+Bundle und normalem Desktop-Browser gegenpruefen.
+Erst wenn Profil, Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
+Entdecker-Karten-Profilwechsel, eigenes Business-Profil/Menu-Admin und
+Upload-Einstiege stabil bleiben, darf ein weiterer Public/Profile-Split geplant
+werden.
 
 ## Guardrails fuer die naechsten Schritte
 

@@ -4040,7 +4040,8 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
     getRestaurantMetaByIdFn: getRestaurantMetaById,
     buildUrlFn: buildUrl,
     normalizeSearchKeyFn: normalizeSearchKey,
-    normalizeFollowHandleFn: normalizeFollowHandle
+    normalizeFollowHandleFn: normalizeFollowHandle,
+    requestRenderFn: () => requestRuntimeUiRefresh()
   },
   dataLoaders: {
     showPublicProfileFn: (...args) => showPublicProfile(...args),
@@ -4062,6 +4063,7 @@ const {
   loadBusinessAccounts,
   renderBusinessAccountsView,
   bindBusinessAccountsEvents,
+  preloadProfileMenuFocusRender,
   renderPublicProfileView,
   renderMenuAdminView,
   renderProfileView
@@ -4621,7 +4623,17 @@ const {
 } = bridgeShellRuntimeCluster.bridgeBindings;
 routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   state,
-  routeRuntimes: bridgeShellRuntimeCluster.routeRuntimes,
+  routeRuntimes: {
+    ...bridgeShellRuntimeCluster.routeRuntimes,
+    publicBusiness: {
+      render: renderPublicProfileView,
+      preload: preloadProfileMenuFocusRender
+    },
+    publicMenu: {
+      render: renderPublicProfileView,
+      preload: preloadProfileMenuFocusRender
+    }
+  },
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,

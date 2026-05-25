@@ -1,0 +1,65 @@
+{
+  "status": "CURRENT",
+  "step": 41,
+  "branch": "refactorapp",
+  "title": "Profile/Menu/Focus render runtime boundary",
+  "date": "2026-05-26",
+  "goal": "Move the existing Profile/Menu/Focus renderer out of the social main entry without changing UI, routes, Firebase paths, QR, cart, order or product behavior.",
+  "sourceOfTruthPreserved": {
+    "renderer": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "publicProfileRuntimeFallback": "existing renderPublicProfileView behavior",
+    "publicRuntimeSlots": [
+      "publicBusiness",
+      "publicMenu"
+    ]
+  },
+  "implementation": {
+    "newBoundary": "apps/menyra-social/core/profile/profile-menu-focus-render-boundary.js",
+    "removedStaticEdge": "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js -> apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "dynamicImport": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "publicRoutePreload": "publicBusiness and publicMenu route runtimes call preloadProfileMenuFocusRender before rendering"
+  },
+  "bundleResult": {
+    "beforeStep40Baseline": {
+      "socialAppRawBytes": 1226239,
+      "socialAppGzipBytes": 330087
+    },
+    "afterStep41": {
+      "socialAppRawBytes": 1138184,
+      "socialAppGzipBytes": 309464,
+      "profileMenuFocusChunkRawBytes": 87678,
+      "profileMenuFocusChunkGzipBytes": 21079,
+      "socialPublicEntryRawBytes": 1182,
+      "socialPublicEntryGzipBytes": 632,
+      "vendorFirebaseRawBytes": 441937,
+      "vendorFirebaseGzipBytes": 132592
+    },
+    "entryReductionFromStep40": {
+      "rawBytes": 88055,
+      "gzipBytes": 20623
+    }
+  },
+  "guard": {
+    "command": "npm run check:social-bundle",
+    "socialEntryRawBudget": 1140500,
+    "socialEntryGzipBudget": 310500,
+    "requiresDynamicImport": [
+      "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js"
+    ]
+  },
+  "unchanged": [
+    "visible UI/design",
+    "routes",
+    "Firebase paths, queries and payloads",
+    "DOM ids/classes/CSS",
+    "Public Menu product detail",
+    "cart",
+    "order send",
+    "QR/table context",
+    "Heart routes",
+    "/staff",
+    "businessAccounts",
+    "Waiter/Kitchen"
+  ],
+  "risk": "The first Profile/Menu/Profile-admin render now has one lazy chunk boundary. The same renderer remains source of truth and publicBusiness/publicMenu preload it before rendering."
+}
