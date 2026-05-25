@@ -1684,7 +1684,8 @@ export function createBridgeShellBootstrapBundle({
       syncNotificationsPushRuntime,
       loadNotificationsFromFirebase
     },
-    bridgeApi
+    bridgeApi,
+    routeRuntimes
   } = appControllerBridge;
 
   const bridgeBindings = {
@@ -1929,6 +1930,7 @@ export function createBridgeShellBootstrapBundle({
       loadNotificationsFromFirebase
     },
     bridgeApi,
+    routeRuntimes,
     bridgeBindings,
     createShellRuntimeController
   };

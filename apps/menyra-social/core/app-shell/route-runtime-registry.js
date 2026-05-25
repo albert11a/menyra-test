@@ -4,6 +4,20 @@ function asRenderFn(candidate) {
   return typeof candidate === "function" ? candidate : EMPTY_RENDER;
 }
 
+function asPreloadFn(candidate) {
+  return typeof candidate === "function" ? candidate : (() => {});
+}
+
+function createRuntimeEntry(key = "", candidate = null, fallbackRender = EMPTY_RENDER) {
+  const runtime = candidate && typeof candidate === "object" ? candidate : {};
+  return Object.freeze({
+    key: String(runtime.key || key || ""),
+    render: asRenderFn(runtime.render || fallbackRender),
+    preload: asPreloadFn(runtime.preload),
+    ensureLoaded: typeof runtime.ensureLoaded === "function" ? runtime.ensureLoaded : null
+  });
+}
+
 function normalizeRouteKey(value = "") {
   return String(value || "").trim().toLowerCase();
 }
@@ -51,14 +65,17 @@ export function resolveSocialRouteRuntimeKey(state = {}) {
   return "defaultSocial";
 }
 
-export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {} } = {}) {
+export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, routeRuntimes = {} } = {}) {
+  const feedRuntime = createRuntimeEntry("feed", routeRuntimes.feed, renderers.feed);
+  const searchRuntime = createRuntimeEntry("search", routeRuntimes.search, renderers.search);
+  const mapRuntime = createRuntimeEntry("map", routeRuntimes.map, renderers.map);
   const renderPublicProfile = asRenderFn(renderers.publicProfile);
   const renderOwnProfile = asRenderFn(renderers.ownProfile);
   const renderMenuAdmin = asRenderFn(renderers.menuAdmin);
-  const renderFeed = asRenderFn(renderers.feed);
+  const renderFeed = feedRuntime.render;
   const renderChat = asRenderFn(renderers.chat);
-  const renderSearch = asRenderFn(renderers.search);
-  const renderMap = asRenderFn(renderers.map);
+  const renderSearch = searchRuntime.render;
+  const renderMap = mapRuntime.render;
   const renderOrders = asRenderFn(renderers.orders);
   const renderStaff = asRenderFn(renderers.staff);
   const renderBusinessAccounts = asRenderFn(renderers.businessAccounts);
@@ -86,9 +103,9 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {} } 
   const runtimeMap = Object.freeze({
     publicBusiness: Object.freeze({ key: "publicBusiness", render: renderPublicProfile }),
     publicMenu: Object.freeze({ key: "publicMenu", render: renderPublicProfile }),
-    feed: Object.freeze({ key: "feed", render: renderFeed }),
-    search: Object.freeze({ key: "search", render: renderSearch }),
-    map: Object.freeze({ key: "map", render: renderMap }),
+    feed: feedRuntime,
+    search: searchRuntime,
+    map: mapRuntime,
     staff: Object.freeze({ key: "staff", render: renderStaff }),
     businessAccounts: Object.freeze({ key: "businessAccounts", render: renderBusinessAccounts }),
     defaultSocial: Object.freeze({ key: "defaultSocial", render: renderDefaultSocialRoute })
@@ -103,7 +120,9 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {} } 
   }
 
   function renderActiveRoute() {
-    return resolveActiveRouteRuntime().render();
+    const runtime = resolveActiveRouteRuntime();
+    runtime.preload?.();
+    return runtime.render();
   }
 
   return Object.freeze({

@@ -4608,13 +4608,8 @@ const createShellRuntimeController = bridgeShellRuntimeCluster.createShellRuntim
 const {
   openChatWithProfile,
   openPostModal,
-  renderFeedView,
   updateFeedDom,
-  buildRestaurantLocations,
-  ensureLeafletLoaded,
   cleanupLeaflet,
-  renderMapView,
-  renderSearchView,
   refreshSearchView,
   renderShopProductList,
   renderProfileShopFavoritesView,
@@ -4626,10 +4621,10 @@ const {
 } = bridgeShellRuntimeCluster.bridgeBindings;
 routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   state,
+  routeRuntimes: bridgeShellRuntimeCluster.routeRuntimes,
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
-    feed: renderFeedView, chat: renderChatView, search: renderSearchView, map: renderMapView,
-    orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
+    chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView
   }
 });

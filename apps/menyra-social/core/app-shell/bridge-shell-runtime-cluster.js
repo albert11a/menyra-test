@@ -342,6 +342,7 @@ export function createBridgeShellRuntimeCluster({
       bindPushOpenTargetMessageHandler: bundle.deeplinkApi.bindPushOpenTargetMessageHandler
     },
     bridgeBindings: bundle.bridgeBindings,
+    routeRuntimes: bundle.routeRuntimes,
     createShellRuntimeController: bundle.createShellRuntimeController
   };
 }
