@@ -1,0 +1,339 @@
+{
+  "summary": "Phase A code-first inventory for the first Feed/Search/Map route-runtime split. The safe first slice is to keep the existing Feed renderer static for exact startup parity, move the already-lazy Search/Map discovery controller boundary out of app-controller-bridge into a Feed/Search/Map route runtime module, and register the Feed/Search/Map route runtime entries through the Social Route Runtime Registry. No UI, CSS, DOM IDs/classes, Firebase paths, route parsing, header, shell, Public/Menu/QR, Heart, Staff, Chat, Waiter/Kitchen, or businessAccounts behavior should change.",
+  "currentSocialAppLineCount": 5192,
+  "currentFeedSearchMapImports": [
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "import": "createSocialRouteRuntimeRegistry from ./core/app-shell/route-runtime-registry.js",
+      "currentUse": "Creates the route runtime registry with inline renderer references for feed, search, and map."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "import": "createBridgeShellRuntimeCluster from ./core/app-shell/bridge-shell-runtime-cluster.js",
+      "currentUse": "Creates bridgeBindings that expose renderFeedView, renderSearchView, renderMapView, buildRestaurantLocations, ensureLeafletLoaded, cleanupLeaflet, refreshSearchView, updateFeedDom, and bindFeedDelegation."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "import": "createFeedVisibilityRuntimeCluster from ./core/feed/feed-visibility-runtime-cluster.js",
+      "currentUse": "Static Feed data visibility/normalization support used by session/profile/feed loading paths."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "import": "scoreSearchMatchCore as scoreSearchMatch from ./core/map/search-score-utils.js",
+      "currentUse": "Search/Map scoring helper passed through the bridge into discovery-runtime-controller.js."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "import": "computeLatestTimestampCore and saveFeedPostsCore from ./core/feed/feed-cache-utils.js",
+      "currentUse": "Feed cache support used by session data/feed loading paths."
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "import": "createFeedViewOrchestrationController from ../feed/feed-view-orchestration-controller.js",
+      "currentUse": "Static Feed UI renderer/event orchestration controller."
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "import": "import(\"../discovery/discovery-runtime-controller.js\")",
+      "currentUse": "Existing lazy Search/Map discovery runtime controller import owned by app-controller-bridge."
+    }
+  ],
+  "currentFeedRendererFunctions": [
+    {
+      "function": "createFeedViewOrchestrationController(...).renderFeedView",
+      "definedIn": "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+      "line": 3481,
+      "callPath": "app-controller-bridge bridgeApi.renderFeedView -> controller-deps-factory bridgeBindings.renderFeedView -> social-app.js renderFeedView -> route-runtime-registry feed renderer -> renderMainCore routeRuntimeRegistry.renderActiveRoute()"
+    },
+    {
+      "function": "createFeedViewOrchestrationController(...).renderHomeView",
+      "definedIn": "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+      "line": 2811,
+      "callPath": "renderHomeView returns renderFeedView and remains the home/feed fallback renderer."
+    }
+  ],
+  "currentSearchRendererFunctions": [
+    {
+      "function": "createDiscoveryRuntimeController(...).renderSearchView",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "line": 1726,
+      "callPath": "discoveryBridge.renderSearchView -> controller-deps-factory bridgeBindings.renderSearchView -> social-app.js renderSearchView -> route-runtime-registry search renderer -> renderMainCore routeRuntimeRegistry.renderActiveRoute()"
+    },
+    {
+      "function": "renderDeferredDiscoveryView(\"search\")",
+      "definedIn": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "line": 366,
+      "callPath": "Temporary existing bridge fallback while discovery-runtime-controller.js is still loading."
+    }
+  ],
+  "currentMapRendererFunctions": [
+    {
+      "function": "createDiscoveryRuntimeController(...).renderMapView",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "line": 1646,
+      "callPath": "discoveryBridge.renderMapView -> controller-deps-factory bridgeBindings.renderMapView -> social-app.js renderMapView -> route-runtime-registry map renderer -> renderMainCore routeRuntimeRegistry.renderActiveRoute()"
+    },
+    {
+      "function": "renderDeferredDiscoveryView(\"map\")",
+      "definedIn": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "line": 366,
+      "callPath": "Temporary existing bridge fallback while discovery-runtime-controller.js is still loading."
+    }
+  ],
+  "currentFeedSearchMapEventBinders": [
+    {
+      "function": "createFeedViewOrchestrationController(...).bindFeedDelegation",
+      "definedIn": "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+      "line": 3697,
+      "currentUse": "Feed click/pointer/touch delegation, location controls, story preview handling, post like/comment/share, and Feed DOM sync."
+    },
+    {
+      "function": "createAppShellRuntimeController(...).bindSearchEvents",
+      "definedIn": "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+      "line": 1804,
+      "currentUse": "Search input, Enter suppression, clear button, filter buttons, user result open, and business result open."
+    },
+    {
+      "function": "bindAppEventsCore(...).bindSearchEventsFn",
+      "definedIn": "apps/menyra-social/core/app-events/app-events-main-bind-utils.js",
+      "line": 227,
+      "currentUse": "Invokes the shell runtime search binder after main render when not on the profile landing top tab."
+    },
+    {
+      "function": "createDiscoveryRuntimeController(...).bindMapSearchInput",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "currentUse": "Map search input binding remains owned by discovery runtime."
+    }
+  ],
+  "currentLeafletMapDependencies": [
+    {
+      "function": "ensureLeafletStylesheet",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "line": 178,
+      "currentUse": "Injects Leaflet CSS using configured primary/fallback CSS URLs."
+    },
+    {
+      "function": "ensureLeafletLoaded",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "line": 211,
+      "currentUse": "Injects Leaflet JS, tracks load failures/retry cooldown, and emits vendor-degraded map state."
+    },
+    {
+      "function": "buildRestaurantLocations",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "line": 377,
+      "currentUse": "Builds verified map marker location rows from restaurant/location records."
+    },
+    {
+      "function": "cleanupLeaflet",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "line": 385,
+      "currentUse": "Removes the Leaflet map, clears marker state, timers, search UI expansion, notices, and recovery state."
+    },
+    {
+      "function": "initLeafletIfNeeded",
+      "definedIn": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
+      "currentUse": "Loads Leaflet on map route, initializes map, creates tile layer, renders markers, and recovers missing map surface."
+    },
+    {
+      "function": "buildRestaurantLocationsFallback",
+      "definedIn": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "line": 23,
+      "currentUse": "Existing fallback marker-location builder used before discovery-runtime-controller.js is loaded."
+    }
+  ],
+  "currentDiscoveryControllerDependencies": [
+    "state",
+    "BRAND_UI",
+    "documentObj",
+    "windowObj",
+    "navigatorObj",
+    "LEAFLET_JS_URL",
+    "LEAFLET_CSS_URL",
+    "SEARCH_LIMITS",
+    "PLACEHOLDER_IMAGE",
+    "getGeo",
+    "normalizeLeadLocations",
+    "resolveCoordsFromEntity",
+    "normalizeCoordPair",
+    "preferStableCoords",
+    "isPlaceholderUrl",
+    "escapeHtml",
+    "isPublicBusinessRecord",
+    "normalizeRestaurantType",
+    "openProfileViewFromBusiness",
+    "render",
+    "getSelfAvatarUrl",
+    "isCeoUser",
+    "getCeoGpsOverride",
+    "getVerifiedMapLocation",
+    "alert",
+    "icon",
+    "getOptimizedImageUrl",
+    "resolveRestaurantLogo",
+    "normalizeSearchKey",
+    "normalizeSearchQuery",
+    "scoreSearchMatch",
+    "sanitizeDisplayName",
+    "normalizeHandle",
+    "resolveSearchUserAvatarDisplay",
+    "isForceHiddenBusinessEntity",
+    "isForceHiddenHandle",
+    "isForceHiddenEmail",
+    "isGuestSession",
+    "escapeSelector",
+    "collection",
+    "query",
+    "orderBy",
+    "startAt",
+    "endAt",
+    "limit",
+    "getDocs",
+    "db",
+    "getLastRenderMode"
+  ],
+  "existingDynamicImports": [
+    {
+      "file": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "line": 289,
+      "import": "import(\"../discovery/discovery-runtime-controller.js\")",
+      "purpose": "Lazy Search/Map discovery runtime controller."
+    },
+    {
+      "file": "apps/menyra-social/core/app-shell/public-route-runtime-cluster.js",
+      "line": 141,
+      "import": "import(\"../orders/orders-runtime-controller.js\")",
+      "purpose": "Lazy public route orders runtime."
+    },
+    {
+      "file": "apps/menyra-social/core/router/public-route-cache-boot-hook.js",
+      "line": 39,
+      "import": "import(\"/apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01\")",
+      "purpose": "Lazy public route cache preload."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "line": 4810,
+      "import": "import(url)",
+      "purpose": "Dynamic import callback passed to startup bootstrap."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "line": 4981,
+      "import": "import(FIREBASE_FUNCTIONS_MODULE_URL)",
+      "purpose": "Lazy Firebase Functions module."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "line": 5019,
+      "import": "import(\"./_shared/image-compressor.js\")",
+      "purpose": "Lazy image compressor."
+    },
+    {
+      "file": "apps/menyra-social/social-app.js",
+      "line": 5082,
+      "import": "import(\"./core/media/media-upload-runtime-cluster.js\")",
+      "purpose": "Lazy media upload runtime cluster."
+    }
+  ],
+  "routeRuntimeRegistryCurrentUse": {
+    "file": "apps/menyra-social/core/app-shell/route-runtime-registry.js",
+    "currentBehavior": "Synchronous route key resolver and renderer map. Feed, search, and map entries are plain render functions supplied from social-app.js. renderMainCore delegates to routeRuntimeRegistry.renderActiveRoute() when a registry exists.",
+    "currentLimit": "The registry does not own route runtime preload/loader metadata, so Search/Map lazy discovery loading is hidden in app-controller-bridge and Feed/Search/Map renderer grouping is still wired inline in social-app.js."
+  },
+  "safeDynamicImportCandidates": [
+    {
+      "candidate": "Move discovery-runtime-controller.js dynamic import ownership from app-controller-bridge into a Feed/Search/Map route runtime module.",
+      "reason": "Search/Map discovery runtime is already lazy, and moving the loader boundary preserves existing renderSearchView/renderMapView, existing deferred fallback markup, existing Firebase reads, and existing Leaflet behavior."
+    },
+    {
+      "candidate": "Add Feed/Search/Map route runtime entries to the registry.",
+      "reason": "Registry can own route preload/render metadata while still calling the exact bridge-provided renderers."
+    },
+    {
+      "candidate": "Pass Feed/Search/Map route runtimes from the bridge bundle into createSocialRouteRuntimeRegistry instead of wiring feed/search/map renderers inline in social-app.js.",
+      "reason": "Reduces social-app.js renderer grouping and makes route runtime ownership explicit without changing renderMainCore or shell/header behavior."
+    }
+  ],
+  "unsafeToMoveNow": [
+    {
+      "item": "createFeedViewOrchestrationController static import",
+      "reason": "Feed/home is the default first screen. Lazily replacing it would require a new visible loading state or a startup await. That is not safe under exact Feed UI parity."
+    },
+    {
+      "item": "renderMainCore, renderHeader, renderBusinessTopTabs, drawer/header shell code",
+      "reason": "The previous public light-entry attempt broke UI by not reusing the exact shell/header/render/event path. This step must not change it."
+    },
+    {
+      "item": "Search event binder",
+      "reason": "createAppShellRuntimeController(...).bindSearchEvents is the event handler of record and must remain unchanged."
+    },
+    {
+      "item": "Leaflet implementation details inside discovery-runtime-controller.js",
+      "reason": "Changing Leaflet load/cleanup/marker behavior would risk map regressions. The safe slice only relocates the loader boundary."
+    },
+    {
+      "item": "Firebase query/path/payload logic",
+      "reason": "Search remote queries and Feed/Map data loading must remain behaviorally identical."
+    },
+    {
+      "item": "Public/Menu/QR, Heart CRM, /staff, businessAccounts, Chat, Waiter/Kitchen",
+      "reason": "Explicitly out of scope."
+    }
+  ],
+  "exactImplementationPlan": [
+    "Add apps/menyra-social/core/app-shell/feed-search-map-runtime.js as a small route runtime module.",
+    "Move normalizeDeferredDiscoveryCoords, buildRestaurantLocationsFallback, createDiscoveryRuntimeControllerAsync, ensureDiscoveryRuntimeController, queueDiscoveryRuntimeControllerLoad, renderDeferredDiscoveryView, and discoveryBridge from app-controller-bridge.js into feed-search-map-runtime.js.",
+    "Have feed-search-map-runtime.js delegate Feed render/update/bind functions to the existing createFeedViewOrchestrationController instance passed in from app-controller-bridge.js.",
+    "Have feed-search-map-runtime.js delegate Search/Map render/refresh/Leaflet/build-location functions to the existing createDiscoveryRuntimeController(...) methods after lazy import, preserving the existing deferred Search/Map fallback while loading.",
+    "Expose routeRuntimes.feed, routeRuntimes.search, and routeRuntimes.map from the new module. The feed runtime uses the existing Feed renderer. The search/map runtimes preload the existing discovery controller and render through the existing discovery renderers.",
+    "Enhance route-runtime-registry.js to accept routeRuntimes and prefer their render/preload hooks for feed/search/map while preserving current fallback renderers and public/staff/businessAccounts/default route behavior.",
+    "Pass bridgeShellRuntimeCluster.routeRuntimes into createSocialRouteRuntimeRegistry from social-app.js and remove inline feed/search/map renderer ownership from the registry call.",
+    "Keep renderMainCore, shell-ui-runtime-cluster renderMain, header rendering, Search binder, Feed binder, Firebase APIs, and Leaflet code unchanged."
+  ],
+  "expectedBundleImpact": [
+    "discovery-runtime-controller.js remains a lazy Vite chunk, now loaded through the Feed/Search/Map route runtime boundary instead of directly inside app-controller-bridge.js.",
+    "social-app.js loses inline Feed/Search/Map registry renderer grouping and no longer directly owns those route entries.",
+    "Feed renderer code likely remains in the initial bundle in this first slice because moving it would risk changing the default /feed first render.",
+    "Search/Map startup coupling improves structurally because registry route entries can preload/load the discovery runtime explicitly."
+  ],
+  "validationChecklist": [
+    "Run node --check on every changed JS file.",
+    "Validate audit/mnyra-feed-search-map-runtime-split-plan.json as JSON.",
+    "Run git diff --check and git diff --cached --check.",
+    "Confirm vercel.json unchanged.",
+    "Confirm sw.js unchanged.",
+    "Confirm Public/Menu/QR files untouched.",
+    "Confirm Heart files untouched.",
+    "Confirm businessAccounts untouched.",
+    "Confirm Chat untouched.",
+    "Confirm Waiter/Kitchen untouched.",
+    "Confirm /leads, /customers, /admin/staff unchanged.",
+    "Confirm /staff unchanged.",
+    "Confirm Feed/Search/Map renderer functions still exist.",
+    "Confirm Search event binder still exists.",
+    "Confirm Leaflet load/cleanup functions still exist.",
+    "Run the clear production build command from package.json if available."
+  ],
+  "manualTestChecklist": [
+    "/feed opens exactly like before.",
+    "Feed posts/cards still render.",
+    "Feed interactions still work.",
+    "/search opens exactly like before.",
+    "Search input/filter still works.",
+    "Search results still open business/profile/menu as before.",
+    "/map opens exactly like before.",
+    "Map loads.",
+    "Leaflet loads.",
+    "Markers show.",
+    "Map cleanup/back navigation works.",
+    "/casarita works.",
+    "/casarita/menu works.",
+    "/leads opens Heart.",
+    "/customers opens Heart.",
+    "/admin/staff opens Heart.",
+    "/staff unchanged.",
+    "businessAccounts unchanged.",
+    "No red console errors."
+  ]
+}
