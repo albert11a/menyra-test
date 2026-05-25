@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 
 # Mnyra Current Phase
 
@@ -391,7 +391,7 @@ Last updated: 2026-05-25
 
 ## Workflow ab jetzt (verbindlich)
 
-- Es wird nur auf Branch `junivitefinal` gearbeitet.
+- Es wird nur auf Branch `refactorapp` gearbeitet.
 - `finale-mnyra` und `finale-mnyra-clean` bleiben Referenz-Branches.
 - Keine direkte Arbeit auf `main`.
 - Nach jedem Schritt:

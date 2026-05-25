@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-07
+Last updated: 2026-05-26
 
 # Mnyra Repo-Regeln
 
@@ -57,7 +57,7 @@ Diese Dateien definieren den aktuellen Masterstand und die aktuelle Phase. Aelte
 
 ## Dauerhafte Mnyra-Arbeitsregeln (ab diesem Mainline-Neustart)
 
-- Fuer Mnyra wird ab jetzt ausschliesslich auf Branch `junivitefinal` gearbeitet.
+- Fuer Mnyra wird ab jetzt ausschliesslich auf Branch `refactorapp` gearbeitet.
 - `finale-mnyra` und `finale-mnyra-clean` bleiben Referenz-Branches.
 - Es gibt keine direkte Arbeit auf `main`.
 - Nach jedem Schritt wird sauber dokumentiert:
