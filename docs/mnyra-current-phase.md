@@ -350,6 +350,19 @@ Last updated: 2026-05-26
   Produktdetail, Warenkorb, Orders, QR-/Tisch-Kontext, Heart, `/staff`,
   businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
   wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
+- Schritt 42 ist abgeschlossen: Das Preload-Timing fuer den ausgelagerten
+  Profile/Menu/Fokus-Renderer wurde auf Profil-/Menu-Starts gehaertet.
+- Bewertung von Schritt 42: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 42:
+  Der Step-41-Lazy-Chunk wird bei aktivem oder pending Profile/Menu-Kontext
+  direkt nach Aufbau der Profile/Menu-Runtime angefordert. Normale Feed-Starts
+  preladen ihn weiterhin nicht. Der gebaute `entry/social-app.js` steigt
+  dadurch geringfuegig von 1,138,184 Bytes raw / 309,464 Bytes gzip auf
+  1,138,788 Bytes raw / 309,638 Bytes gzip, bleibt aber unter dem
+  verschaerften Bundle-Guard. Sichtbare UI, Routing, Firebase, Public Menu,
+  Produktdetail, Warenkorb, Orders, QR-/Tisch-Kontext, Heart, `/staff`,
+  businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
+  wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -390,6 +403,7 @@ Last updated: 2026-05-26
 - Referenz: [docs/mnyra-step39-profile-chat-runtime-bundle-cut.md](./mnyra-step39-profile-chat-runtime-bundle-cut.md)
 - Referenz: [docs/mnyra-step40-public-route-entry-contract.md](./mnyra-step40-public-route-entry-contract.md)
 - Referenz: [docs/mnyra-step41-profile-menu-focus-render-boundary.md](./mnyra-step41-profile-menu-focus-render-boundary.md)
+- Referenz: [docs/mnyra-step42-profile-menu-focus-preload-timing.md](./mnyra-step42-profile-menu-focus-preload-timing.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -415,7 +429,7 @@ Last updated: 2026-05-26
 
 ## Naechster Schritt
 
-Nach Schritt 41 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 42 ist der naechste sinnvolle separate Folgeschritt:
 Public Profile/Menu inklusive Fokus auf echtem Smartphone manuell mit frischem
 Bundle und normalem Desktop-Browser gegenpruefen.
 Erst wenn Profil, Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,

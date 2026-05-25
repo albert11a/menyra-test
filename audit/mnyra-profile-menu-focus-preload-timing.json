@@ -1,0 +1,67 @@
+{
+  "status": "CURRENT",
+  "step": 42,
+  "branch": "refactorapp",
+  "title": "Profile/Menu/Focus render chunk preload timing",
+  "date": "2026-05-26",
+  "goal": "Start the Step 41 Profile/Menu/Focus renderer chunk earlier on Profile/Menu routes so the lazy boundary is less likely to render an empty first pass.",
+  "implementation": {
+    "decisionUtility": "apps/menyra-social/core/profile/profile-menu-focus-render-preload-utils.js",
+    "earlyPreloadCaller": "apps/menyra-social/social-app.js",
+    "preloadTargets": [
+      "active profile tab",
+      "active menu tab",
+      "pending public business profile route",
+      "pending public user profile route",
+      "active web-direct public profile entry"
+    ],
+    "plainFeedStartup": "does not preload the Profile/Menu/Focus render chunk"
+  },
+  "bundleResult": {
+    "afterStep41": {
+      "socialAppRawBytes": 1138184,
+      "socialAppGzipBytes": 309464,
+      "profileMenuFocusChunkRawBytes": 87678,
+      "profileMenuFocusChunkGzipBytes": 21079,
+      "socialPublicEntryRawBytes": 1182,
+      "socialPublicEntryGzipBytes": 632
+    },
+    "afterStep42": {
+      "socialAppRawBytes": 1138788,
+      "socialAppGzipBytes": 309638,
+      "profileMenuFocusChunkRawBytes": 87678,
+      "profileMenuFocusChunkGzipBytes": 21077,
+      "socialPublicEntryRawBytes": 1182,
+      "socialPublicEntryGzipBytes": 630,
+      "vendorFirebaseRawBytes": 441937,
+      "vendorFirebaseGzipBytes": 132592
+    },
+    "entryDeltaFromStep41": {
+      "rawBytes": 604,
+      "gzipBytes": 174
+    }
+  },
+  "guard": {
+    "command": "npm run check:social-bundle",
+    "socialEntryRawBudget": 1140500,
+    "socialEntryGzipBudget": 310500,
+    "requiresDynamicImport": [
+      "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js"
+    ]
+  },
+  "unchanged": [
+    "visible UI/design",
+    "routes",
+    "Firebase paths, queries and payloads",
+    "DOM ids/classes/CSS",
+    "Public Menu product detail",
+    "cart",
+    "order send",
+    "QR/table context",
+    "Heart routes",
+    "/staff",
+    "businessAccounts",
+    "Waiter/Kitchen"
+  ],
+  "risk": "Plain feed startup remains protected from this preload, but Profile/Menu starts now request the renderer chunk earlier. The renderer and public route truth remain unchanged."
+}

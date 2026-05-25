@@ -172,6 +172,7 @@ import {
   isPendingProfileAlreadyOpenCore,
   normalizeProfileTopTabFromRouteCore
 } from "./core/profile/profile-route-open-utils.js";
+import { shouldPreloadProfileMenuFocusRenderer } from "./core/profile/profile-menu-focus-render-preload-utils.js";
 import {
   normalizeProfileSurfaceStatus,
   resolveVisibleProfileSurface
@@ -4068,6 +4069,12 @@ const {
   renderMenuAdminView,
   renderProfileView
 } = profileBusinessMenuRuntimeCluster;
+if (shouldPreloadProfileMenuFocusRenderer({
+  state,
+  pendingRoute: pendingRouteState.getPendingState?.() || {}
+})) {
+  preloadProfileMenuFocusRender();
+}
 
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },

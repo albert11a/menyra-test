@@ -3,8 +3,8 @@
     "file": "chunks/preload-helper-C4N3jzC6.js",
     "name": "preload-helper"
   },
-  "_vendor-firebase-DJXW8jPP.js": {
-    "file": "chunks/vendor-firebase-DJXW8jPP.js",
+  "_vendor-firebase-rekF-BVt.js": {
+    "file": "chunks/vendor-firebase-rekF-BVt.js",
     "name": "vendor-firebase"
   },
   "apps/menyra-social/_shared/image-compressor.js": {
@@ -26,36 +26,36 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/media/media-upload-runtime-cluster.js": {
-    "file": "chunks/media-upload-runtime-cluster-BkQjWGNo.js",
+    "file": "chunks/media-upload-runtime-cluster-Csgu8snE.js",
     "name": "media-upload-runtime-cluster",
     "src": "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-DJXW8jPP.js"
+      "_vendor-firebase-rekF-BVt.js"
     ]
   },
   "apps/menyra-social/core/menu/menu-modal-render-utils.js": {
-    "file": "chunks/menu-modal-render-utils-D6AGgpp0.js",
+    "file": "chunks/menu-modal-render-utils-CXNN4fVX.js",
     "name": "menu-modal-render-utils",
     "src": "apps/menyra-social/core/menu/menu-modal-render-utils.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-DJXW8jPP.js"
+      "_vendor-firebase-rekF-BVt.js"
     ]
   },
   "apps/menyra-social/core/orders/orders-runtime-controller.js": {
-    "file": "chunks/orders-runtime-controller-kXOnY8GJ.js",
+    "file": "chunks/orders-runtime-controller-KPBQcQYV.js",
     "name": "orders-runtime-controller",
     "src": "apps/menyra-social/core/orders/orders-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-DJXW8jPP.js"
+      "_vendor-firebase-rekF-BVt.js"
     ]
   },
   "apps/menyra-social/core/overlays/overlay-basic-render-utils.js": {
@@ -65,35 +65,35 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js": {
-    "file": "chunks/profile-menu-focus-render-controller-CjmOZbIa.js",
+    "file": "chunks/profile-menu-focus-render-controller-Cb85Gqbo.js",
     "name": "profile-menu-focus-render-controller",
     "src": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-DJXW8jPP.js"
+      "_vendor-firebase-rekF-BVt.js"
     ]
   },
   "apps/menyra-social/core/profile/profile-open-flow-utils.js": {
-    "file": "chunks/profile-open-flow-utils-BVCYwC0C.js",
+    "file": "chunks/profile-open-flow-utils-BNWjpMKv.js",
     "name": "profile-open-flow-utils",
     "src": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-DJXW8jPP.js"
+      "_vendor-firebase-rekF-BVt.js"
     ]
   },
   "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01": {
-    "file": "chunks/public-route-cache-early-preload-HOyrUTED.js",
+    "file": "chunks/public-route-cache-early-preload-BPoXv1WE.js",
     "name": "public-route-cache-early-preload",
     "src": "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
-      "_vendor-firebase-DJXW8jPP.js",
+      "_vendor-firebase-rekF-BVt.js",
       "_preload-helper-C4N3jzC6.js"
     ]
   },
@@ -105,7 +105,7 @@
     "isDynamicEntry": true,
     "imports": [
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-DJXW8jPP.js"
+      "_vendor-firebase-rekF-BVt.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
