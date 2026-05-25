@@ -321,6 +321,21 @@ Last updated: 2026-05-25
   Feed-First-Paint, Public Menu, Warenkorb, Orders, Heart, `/staff`,
   businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
   wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
+- Schritt 40 ist abgeschlossen: Der Public-Route-Entry-Vertrag wurde
+  festgezogen und ein Social-Bundle-Guard wurde eingefuehrt.
+- Bewertung von Schritt 40: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 40:
+  Der gebuendelte Public Entry laedt die bestehende Social App weiter, wartet
+  aber nicht mehr per Top-Level-`await` auf den kompletten `social-app.js`-
+  Import. Damit fehlt keine bestehende Funktion, waehrend der Public Entry
+  nicht kuenstlich an die Auswertung des grossen App-Imports gebunden ist.
+  Zusaetzlich schuetzt `npm run check:social-bundle` den Schritt-39-Stand
+  gegen Rueckfall: bereits ausgelagerte Runtime-Module duerfen nicht wieder
+  statisch in `social-app.js` landen und die Entry-Gzip-Groesse bleibt
+  budgetiert. Sichtbare UI, Routing, Firebase, Public Menu, Warenkorb, Orders,
+  QR-/Tisch-Kontext, Heart, `/staff`, businessAccounts und Waiter/Kitchen
+  bleiben unveraendert. Auf Nutzerwunsch wurde dieser Schritt auf Branch
+  `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -359,6 +374,7 @@ Last updated: 2026-05-25
 - Referenz: [docs/mnyra-step37-ceo-staff-heart-route.md](./mnyra-step37-ceo-staff-heart-route.md)
 - Referenz: [docs/mnyra-step38-profile-runtime-boundary.md](./mnyra-step38-profile-runtime-boundary.md)
 - Referenz: [docs/mnyra-step39-profile-chat-runtime-bundle-cut.md](./mnyra-step39-profile-chat-runtime-bundle-cut.md)
+- Referenz: [docs/mnyra-step40-public-route-entry-contract.md](./mnyra-step40-public-route-entry-contract.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -384,7 +400,7 @@ Last updated: 2026-05-25
 
 ## Naechster Schritt
 
-Nach Schritt 39 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 40 ist der naechste sinnvolle separate Folgeschritt:
 Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
 und normalem Desktop-Browser gegenpruefen.
 Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,

@@ -1,0 +1,143 @@
+{
+  "summary": "Public route entry contract for the website-first path after step 39. The current public entry is stable because it still loads the full existing social-app runtime, but that also means social-app remains the real public startup blocker. A separate lightweight Public/Profile/Menu entry is not safe to attach yet because the synchronous public renderer still owns menu, focus, product detail, cart, QR context, and profile surfaces together. This step records the contract and applies only a safe public-entry load alignment plus a bundle budget guard.",
+  "branch": "refactorapp",
+  "currentPublicStartupPath": [
+    "apps/menyra-social/index.html detects public website route",
+    "apps/menyra-social/social-public-bundled-entry.js sets public-entry globals",
+    "bundled entry/social-public-entry.js dynamically imports entry/social-app.js",
+    "entry/social-app.js imports preload-helper and vendor-firebase and initializes the existing app runtime"
+  ],
+  "currentBundleSizes": {
+    "publicEntry": {
+      "file": "apps/menyra-social/bundled/entry/social-public-entry.js",
+      "rawBytes": 1182,
+      "gzipBytes": 632
+    },
+    "socialAppEntry": {
+      "file": "apps/menyra-social/bundled/entry/social-app.js",
+      "rawBytes": 1226239,
+      "gzipBytes": 330087
+    },
+    "vendorFirebase": {
+      "file": "apps/menyra-social/bundled/chunks/vendor-firebase-DJXW8jPP.js",
+      "rawBytes": 441937,
+      "gzipBytes": 132592
+    }
+  },
+  "publicRouteContracts": {
+    "/casarita": {
+      "routeKind": "business",
+      "activeTab": "profile",
+      "profileTopTab": "profile",
+      "mustKeep": [
+        "direct public route seed state",
+        "profile identity",
+        "posts/media rendering",
+        "public profile listener/read-once behavior",
+        "profile open state and back behavior",
+        "existing DOM IDs/classes and CSS"
+      ]
+    },
+    "/casarita/menu": {
+      "routeKind": "business",
+      "activeTab": "profile",
+      "profileTopTab": "menu",
+      "profileContentTab": "menu",
+      "mustKeep": [
+        "menu-first route payload",
+        "menu public item load and cache",
+        "focus truth coordination before menu content appears",
+        "product detail modal open/close",
+        "favorites/cart top tabs",
+        "shop cart state, variants, comments, totals",
+        "checkout and order submission path",
+        "QR/table access source and table number context",
+        "existing DOM IDs/classes and CSS"
+      ]
+    },
+    "qrMenuRoute": {
+      "mustKeep": [
+        "source=qr or equivalent access aliases",
+        "tableNumber/t query support",
+        "menu opens first",
+        "cart/order receive the same restaurant and table context"
+      ]
+    }
+  },
+  "modulesThatRemainSourceOfTruth": [
+    "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+    "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+    "apps/menyra-social/core/profile/public-profile-direct-entry-controller.js",
+    "apps/menyra-social/core/app-shell/public-route-runtime-cluster.js",
+    "apps/menyra-social/core/menu/menu-public-runtime-controller.js",
+    "apps/menyra-social/core/menu/table-qr-runtime-controller.js",
+    "apps/menyra-social/core/shop/shop-view-cart-orchestration-controller.js",
+    "apps/menyra-social/core/orders/orders-runtime-controller.js"
+  ],
+  "safeImplementationThisStep": {
+    "publicEntryTopLevelAwaitRemoved": true,
+    "sourceFile": "apps/menyra-social/social-public-bundled-entry.js",
+    "before": "await loadBundledSocialApp();",
+    "after": "void loadBundledSocialApp();",
+    "whySafe": [
+      "The full existing social-app runtime is still loaded.",
+      "No renderer, route, Firebase path, query, payload, CSS, DOM ID, or class changed.",
+      "The raw public entry already uses the non-awaited load pattern.",
+      "The public entry still sets the same public globals and degraded-state handling."
+    ]
+  },
+  "bundleGuardAdded": {
+    "script": "scripts/check-mnyra-social-bundle-budget.mjs",
+    "npmScript": "check:social-bundle",
+    "budgets": {
+      "socialAppRawBytes": 1227500,
+      "socialAppGzipBytes": 331000
+    },
+    "guards": [
+      "entry/social-app.js size must stay under the post-step-39 budget",
+      "profile-open-flow-utils.js must remain a social-app dynamic import",
+      "chat-app-runtime-lazy-facade.js must remain a social-app dynamic import",
+      "discovery, orders, menu modal, profile open flow, and chat facade must not become static social-app imports again",
+      "public entry must keep social-app as a dynamic import",
+      "public entry must not reintroduce top-level await for the social-app import"
+    ]
+  },
+  "rejectedForNow": [
+    {
+      "candidate": "Attach a lightweight publicBusiness/publicMenu renderer immediately",
+      "reason": "profile-menu-focus-render-controller.js is still the synchronous source of truth for public profile, menu, focus, cart/favorites, own profile, and menu admin rendering. Splitting it now risks missing visible behavior."
+    },
+    {
+      "candidate": "Stop loading social-app.js from public entry",
+      "reason": "Not safe until the public route renderer contract is implemented and manually verified for menu, focus, product detail, cart, checkout, QR/table context, and profile interactions."
+    }
+  ],
+  "nextSafeImplementationCandidate": {
+    "name": "Public route render contract extraction",
+    "description": "Create a public route runtime that still calls existing source-of-truth renderers, then manually verify /casarita and /casarita/menu before allowing social-app.js to stop being an immediate public startup dependency.",
+    "prerequisites": [
+      "Manual smartphone test of current /casarita/menu with fresh bundle",
+      "Explicit confirmation that menu, focus, product detail, cart, checkout, order, and QR/table context are unchanged",
+      "No direct public route renderer replacement until fallback is proven"
+    ]
+  },
+  "validationChecklist": [
+    "node --check apps/menyra-social/social-public-bundled-entry.js",
+    "node --check scripts/check-mnyra-social-bundle-budget.mjs",
+    "npm run build",
+    "npm run check:social-bundle",
+    "git diff --check",
+    "git diff --cached --check"
+  ],
+  "manualTestChecklist": [
+    "/feed opens exactly like before",
+    "/casarita works",
+    "/casarita/menu works",
+    "Product detail opens/closes",
+    "Cart works",
+    "Order send works",
+    "QR/table context is preserved",
+    "Public profile interactions still work",
+    "No red console errors"
+  ]
+}

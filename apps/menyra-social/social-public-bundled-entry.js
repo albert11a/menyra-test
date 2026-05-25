@@ -41,4 +41,4 @@ try {
 } catch {}
 
 markEntryTimeline("mnyra.social.public_entry.start");
-await loadBundledSocialApp();
+void loadBundledSocialApp();
