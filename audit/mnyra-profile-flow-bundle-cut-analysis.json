@@ -1,0 +1,365 @@
+{
+  "summary": "Profile/Open/Public Profile audit after eee702a8 and local audit e1d57653. The main entry still statically reaches the large profile open-flow module through app-controller-bridge.js. That module is not used to render the initial /feed surface; it is used when a profile/business/user route or user action opens a profile. A cached dynamic import trial of profile-open-flow-utils.js was safe at source level, but the measured built entry reduction was only 6,965 bytes gzip, below the requested around-10-KB target. The trial implementation was reverted and this pass stops after the audit.",
+  "baselineBundleSize": {
+    "buildCommand": "npm run build",
+    "entryFile": "apps/menyra-social/bundled/entry/social-app.js",
+    "rawBytes": 1270925,
+    "gzipBytes": 341585,
+    "generatedChunks": [
+      {
+        "file": "apps/menyra-social/bundled/entry/social-public-entry.js",
+        "rawBytes": 1188,
+        "gzipBytes": 634
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/discovery-runtime-controller-GZ0quJe_.js",
+        "rawBytes": 40649,
+        "gzipBytes": 12877
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/image-compressor-D8ssfxKV.js",
+        "rawBytes": 639,
+        "gzipBytes": 434
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/media-upload-runtime-cluster-BkQjWGNo.js",
+        "rawBytes": 8952,
+        "gzipBytes": 3267
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/menu-modal-render-utils-D6AGgpp0.js",
+        "rawBytes": 45570,
+        "gzipBytes": 10329
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/orders-runtime-controller-kXOnY8GJ.js",
+        "rawBytes": 12923,
+        "gzipBytes": 4551
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/overlay-basic-render-utils-C0sDpLJv.js",
+        "rawBytes": 13566,
+        "gzipBytes": 3176
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/preload-helper-C4N3jzC6.js",
+        "rawBytes": 1281,
+        "gzipBytes": 724
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/public-route-cache-early-preload-HOyrUTED.js",
+        "rawBytes": 4738,
+        "gzipBytes": 1911
+      },
+      {
+        "file": "apps/menyra-social/bundled/chunks/vendor-firebase-DJXW8jPP.js",
+        "rawBytes": 441937,
+        "gzipBytes": 132592
+      }
+    ],
+    "existingLazyChunks": [
+      "chunks/discovery-runtime-controller-GZ0quJe_.js",
+      "chunks/image-compressor-D8ssfxKV.js",
+      "chunks/media-upload-runtime-cluster-BkQjWGNo.js",
+      "chunks/menu-modal-render-utils-D6AGgpp0.js",
+      "chunks/orders-runtime-controller-kXOnY8GJ.js",
+      "chunks/overlay-basic-render-utils-C0sDpLJv.js",
+      "chunks/public-route-cache-early-preload-HOyrUTED.js"
+    ]
+  },
+  "profileFlowStaticImports": [
+    {
+      "module": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+      "importOwner": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "entryPath": "social-app.js -> bridge-shell-runtime-cluster.js -> controller-deps-factory.js -> app-controller-bridge.js -> profile-open-flow-utils.js",
+      "sourceRawBytes": 73021,
+      "firstPaintCritical": false,
+      "notes": "The bridge creates profile-open handlers during startup, but the functions are called by profile route replay, feed/search/map profile opens, notifications, chat, and settings actions after startup."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+      "importOwner": "apps/menyra-social/core/app-shell/profile-identity-runtime-cluster.js",
+      "entryPath": "social-app.js -> profile-identity-runtime-cluster.js -> public-profile-runtime-controller.js",
+      "sourceRawBytes": 77819,
+      "firstPaintCritical": "route-critical for direct public profile/menu entry",
+      "notes": "This owns showPublicProfile, profile listeners, business profile fetch, and business posts fetch. It should remain the source of truth and stay static in this pass."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+      "importOwner": "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
+      "entryPath": "social-app.js -> profile-business-menu-runtime-cluster.js -> profile-menu-focus-render-controller.js",
+      "sourceRawBytes": 135288,
+      "firstPaintCritical": "not for /feed, but synchronous profile/public menu renderer",
+      "notes": "It returns HTML synchronously for public profile, own profile, menu admin, menu, focus, cart/favorites surfaces. Lazy loading it would require a visible fallback or async render contract change."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/public-profile-direct-entry-controller.js",
+      "importOwner": "apps/menyra-social/core/app-shell/public-route-runtime-cluster.js",
+      "entryPath": "social-app.js -> public-route-runtime-cluster.js -> public-profile-direct-entry-controller.js",
+      "sourceRawBytes": 36437,
+      "firstPaintCritical": "route-critical for direct public profile/menu entry",
+      "notes": "Used by applyPendingInitialRouteState for direct web profile/menu route seed state. Not selected."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/public-profile-surface-controller.js",
+      "importOwner": "apps/menyra-social/social-app.js and profile modules",
+      "sourceRawBytes": 21201,
+      "firstPaintCritical": "startup route surface state",
+      "notes": "Small enough and shared by direct entry/profile surface truth; not selected."
+    }
+  ],
+  "profileOpenFunctions": [
+    "normalizeBusinessProfileTarget(input, options)",
+    "createProfileOpenFlowControllerCore(deps)",
+    "isOwnBusinessTarget(target)",
+    "openOwnBusinessProfile(options)",
+    "openProfileViewFromBusiness(input, options)",
+    "openProfileFromUser(input, options)"
+  ],
+  "publicProfileFunctions": [
+    "createPublicProfileRuntimeController(deps)",
+    "getProfileViewUnsub()",
+    "setProfileViewUnsub(next)",
+    "stopProfileViewListener()",
+    "attachProfileViewListener(profile)",
+    "showPublicProfile(profile, posts, options)",
+    "normalizeExternalProfile(payload)",
+    "normalizeExternalUserProfile(payload)",
+    "fetchBusinessProfileDoc(payload)",
+    "loadBusinessPostsForRestaurant(restaurantId, options)"
+  ],
+  "profileMenuFocusFunctions": [
+    "createProfileMenuFocusRenderController(deps)",
+    "renderProfilePostCardFancy(post)",
+    "renderProfilePostsFancy(posts, viewMode)",
+    "renderProfileCheckins(posts)",
+    "renderProfileTabs(profile)",
+    "renderProfileViewControls()",
+    "renderPublicProfileView()",
+    "renderMenuFilterRow()",
+    "renderMenuLayoutSection()",
+    "renderMenuItemCard(item)",
+    "renderMenuItemCardStacked(item)",
+    "renderMenuDrinkGrid(items)",
+    "renderMenuFoodList(items)",
+    "renderMenuList(items)",
+    "renderFocusAdminSection(profile)",
+    "renderFocusCarousel(profile)",
+    "renderMenuQrCard(profile)",
+    "renderMenuAdminView()",
+    "renderProfileMenuView(profile)",
+    "renderProfileView()"
+  ],
+  "firstPaintCriticalProfileDependencies": [
+    {
+      "dependency": "public-profile-surface-controller.js",
+      "reason": "Used by startup surface status and direct public profile/menu visibility snapshots."
+    },
+    {
+      "dependency": "public-profile-direct-entry-controller.js",
+      "reason": "Seeds direct public route state before route replay. Moving it risks /casarita and /casarita/menu first surface."
+    },
+    {
+      "dependency": "public-profile-runtime-controller.js",
+      "reason": "Owns showPublicProfile and public business profile/post fetches used by direct public profile routes."
+    },
+    {
+      "dependency": "profile-menu-focus-render-controller.js",
+      "reason": "Not needed for /feed first paint, but it is the synchronous renderer for public profile/menu/cart/favorites/profile pages."
+    },
+    {
+      "dependency": "feed-view-orchestration-controller.js",
+      "reason": "Feed first-paint renderer; excluded by task gate."
+    },
+    {
+      "dependency": "session-data-runtime-controller.js and auth/session startup helpers",
+      "reason": "Session and cached feed hydration startup; excluded by task gate."
+    }
+  ],
+  "nonFirstPaintProfileDependencies": [
+    {
+      "dependency": "profile-open-flow-utils.js",
+      "reason": "Only invoked when a profile/business/user profile open flow is requested from route replay or user action. It is not called to render the initial /feed HTML."
+    },
+    {
+      "dependency": "openProfileViewFromBusiness wrappers in feed/search/map/deeplink/chat/settings",
+      "reason": "They can receive a Promise-returning handler because current callers already ignore or wrap the async result."
+    },
+    {
+      "dependency": "profile-open public business normalization helpers",
+      "reason": "Only needed after a business profile target has been selected."
+    }
+  ],
+  "candidateCuts": [
+    {
+      "name": "profile-open-flow-utils.js via app-controller-bridge.js",
+      "staticImportToRemove": "import { createProfileOpenFlowControllerCore } from \"../profile/profile-open-flow-utils.js\";",
+      "dynamicImportToAdd": "cached import(\"../profile/profile-open-flow-utils.js\") inside app-controller-bridge.js",
+      "sourceRawBytes": 73021,
+      "expectedRawReductionBytes": "50000-75000",
+      "expectedGzipReductionBytes": "10000-18000",
+      "safeBecause": [
+        "It does not render /feed first paint.",
+        "Existing createProfileOpenFlowControllerCore remains the source of truth.",
+        "The bridge can expose the same handler names while loading the real controller on first profile open.",
+        "No routes, Firebase collection paths, query shapes, payloads, DOM IDs/classes, CSS, Heart CRM, businessAccounts, Staff, Waiter/Kitchen, public menu/order/cart source files, or feed renderer files need changes."
+      ],
+      "riskLevel": "medium",
+      "riskNotes": "Initial profile open from route or click waits for one lazy chunk before the existing open-flow code runs. Direct public routes still use the same public route state, public profile runtime, and renderer modules.",
+      "measuredTrialBuildReduction": {
+        "baselineEntryRawBytes": 1270925,
+        "baselineEntryGzipBytes": 341585,
+        "trialEntryRawBytes": 1244955,
+        "trialEntryGzipBytes": 334620,
+        "rawReductionBytes": 25970,
+        "gzipReductionBytes": 6965,
+        "newTrialChunk": "apps/menyra-social/bundled/chunks/profile-open-flow-utils-DcmS7U2T.js",
+        "newTrialChunkSizeFromVite": "26.14 kB raw / 7.54 kB gzip",
+        "accepted": false,
+        "reverted": true,
+        "reasonRejected": "Below the requested around-10-KB gzip target."
+      }
+    },
+    {
+      "name": "public-profile-runtime-controller.js",
+      "expectedRawReductionBytes": "large",
+      "expectedGzipReductionBytes": "possibly over 10000",
+      "riskLevel": "high",
+      "reason": "Rejected for implementation because it owns showPublicProfile, listener lifecycle, business profile fetch, and business post fetch used by direct public profile/menu routes."
+    },
+    {
+      "name": "profile-menu-focus-render-controller.js",
+      "expectedRawReductionBytes": "large",
+      "expectedGzipReductionBytes": "possibly over 20000",
+      "riskLevel": "high",
+      "reason": "Rejected for implementation because renderPublicProfileView/renderProfileView/renderMenuAdminView are synchronous route renderers. Lazy loading would require a visible fallback or render contract change."
+    },
+    {
+      "name": "public-profile-direct-entry-controller.js",
+      "expectedRawReductionBytes": "modest",
+      "expectedGzipReductionBytes": "likely below target",
+      "riskLevel": "high",
+      "reason": "Rejected because it is direct public route seed state for /casarita and /casarita/menu."
+    }
+  ],
+  "rejectedCandidates": [
+    {
+      "candidate": "profile-menu-focus-render-controller.js",
+      "reason": "Large but owns synchronous public profile, own profile, menu admin, menu/focus/cart/favorites rendering. A lazy fallback would be a visible UI change."
+    },
+    {
+      "candidate": "public-profile-runtime-controller.js",
+      "reason": "Large but route/profile runtime critical. Moving showPublicProfile and profile/post fetch behind a facade could change direct public route timing."
+    },
+    {
+      "candidate": "public-profile-direct-entry-controller.js",
+      "reason": "Direct public route seed controller; moving it would risk public /business and /business/menu first surface."
+    },
+    {
+      "candidate": "public-profile-surface-controller.js",
+      "reason": "Shared route truth/status helper and below the meaningful target by itself."
+    },
+    {
+      "candidate": "feed-view-orchestration-controller.js",
+      "reason": "Explicitly excluded because it is /feed first-paint renderer code."
+    },
+    {
+      "candidate": "discovery-runtime-controller.js",
+      "reason": "Already lazy-loaded in the current bundle."
+    }
+  ],
+  "recommendedCandidate": {
+    "name": "none",
+    "reason": "No safe Profile/Open/Public Profile candidate measured around 10 KB gzip or more. The only safe source-level candidate tried, profile-open-flow-utils.js, reduced the built entry by 6,965 bytes gzip and was reverted. Larger remaining profile candidates are public route/profile runtime or synchronous public profile/menu renderers."
+  },
+  "expectedRawReduction": "0 accepted in this pass",
+  "expectedGzipReduction": "0 accepted in this pass",
+  "riskList": [
+    "profile-open-flow-utils.js is source-level safe to lazy-load, but measured too small at 6,965 bytes gzip and was reverted.",
+    "profile-menu-focus-render-controller.js is large enough but owns synchronous public profile/menu/cart/favorites/profile rendering; moving it would require a visible fallback or render contract change.",
+    "public-profile-runtime-controller.js is large enough but owns showPublicProfile, profile listeners, business profile fetch, and business post fetch used by direct public profile/menu routes.",
+    "public-profile-direct-entry-controller.js is direct public route seed state for /casarita and /casarita/menu."
+  ],
+  "exactFilesToTouch": [
+    "audit/mnyra-profile-flow-bundle-cut-analysis.json"
+  ],
+  "validationChecklist": [
+    "node --check apps/menyra-social/core/app-shell/app-controller-bridge.js",
+    "Validate audit/mnyra-profile-flow-bundle-cut-analysis.json as JSON.",
+    "git diff --check.",
+    "git diff --cached --check.",
+    "npm run build.",
+    "Compare old and new apps/menyra-social/bundled/entry/social-app.js raw/gzip bytes.",
+    "Confirm a new profile-open-flow-utils lazy chunk is generated.",
+    "Confirm no source changes touch CSS, DOM IDs/classes, routes, Firebase paths/query shapes/payloads, Heart CRM, /leads, /customers, /admin/staff, /staff, businessAccounts, Waiter/Kitchen, public menu/order/cart, or feed first-paint renderer."
+  ],
+  "manualTestChecklist": [
+    "/feed opens exactly like before.",
+    "Feed cards/interactions work.",
+    "Open a profile/business from Feed.",
+    "Open a business/profile from Search.",
+    "Open a business/profile from Map.",
+    "Public profile still opens as before.",
+    "/casarita works.",
+    "/casarita/menu works.",
+    "Product detail still opens/closes.",
+    "Cart still works.",
+    "Order send still works.",
+    "/search works.",
+    "/map works.",
+    "/leads opens Heart.",
+    "/customers opens Heart.",
+    "/admin/staff opens Heart.",
+    "/staff unchanged.",
+    "businessAccounts unchanged.",
+    "Waiter/Kitchen unchanged.",
+    "No red console errors."
+  ],
+  "topRemainingLargeStaticImports": [
+    {
+      "module": "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+      "sourceRawBytes": 170725,
+      "reasonStillStatic": "/feed first-paint renderer through app-controller-bridge.js."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+      "sourceRawBytes": 135288,
+      "reasonStillStatic": "Synchronous profile/public profile/menu renderer through profile-business-menu-runtime-cluster.js."
+    },
+    {
+      "module": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+      "sourceRawBytes": 85370,
+      "reasonStillStatic": "Session data and cached feed hydration startup."
+    },
+    {
+      "module": "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+      "sourceRawBytes": 80370,
+      "reasonStillStatic": "Shell render, route, and app event runtime."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+      "sourceRawBytes": 77819,
+      "reasonStillStatic": "Public profile runtime and direct public profile data loading."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+      "sourceRawBytes": 73021,
+      "reasonStillStatic": "Source-level safe trial measured only 6,965 bytes gzip entry reduction, below target."
+    },
+    {
+      "module": "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
+      "sourceRawBytes": 62837,
+      "reasonStillStatic": "Synchronous chat facade used by startup/session and notification/chat entry points."
+    },
+    {
+      "module": "apps/menyra-social/core/app-shell/controller-deps-factory.js",
+      "sourceRawBytes": 57294,
+      "reasonStillStatic": "Bridge wiring for shell/feed/profile/overlay/runtime dependencies."
+    },
+    {
+      "module": "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+      "sourceRawBytes": 53985,
+      "reasonStillStatic": "Firebase social reads/writes for likes/comments/follows."
+    }
+  ]
+}
