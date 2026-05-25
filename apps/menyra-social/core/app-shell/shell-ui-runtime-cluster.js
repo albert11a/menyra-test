@@ -1,7 +1,3 @@
-import {
-  renderMenuItemModalCore,
-  renderMenuDetailModalCore
-} from "../menu/menu-modal-render-utils.js";
 import { saveMenuItemFromModalCore } from "../menu/menu-save-utils.js";
 import { deleteMenuItemByIdCore } from "../menu/menu-delete-utils.js";
 import { renderFocusModalCore } from "../menu/customer-focus-modal-render-utils.js";
@@ -73,11 +69,20 @@ export function createShellUiRuntimeCluster({
   const alertFn = typeof actionApi.alertFn === "function" ? actionApi.alertFn : (() => {});
   let overlayBasicRenderUtils = null;
   let overlayBasicRenderUtilsPromise = null;
+  let menuModalRenderUtils = null;
+  let menuModalRenderUtilsPromise = null;
 
   function renderOverlaysAfterBasicRenderLoad() {
     const renderOverlays = getBridgeBindings()?.renderOverlays;
     if (typeof renderOverlays === "function") {
       renderOverlays();
+    }
+  }
+
+  function renderOverlaysAfterMenuModalRenderLoad() {
+    const renderOverlays = getBridgeBindings()?.renderOverlays;
+    if (typeof renderOverlays === "function") {
+      renderOverlays({ updateMenu: true, updateMenuDetail: true });
     }
   }
 
@@ -103,6 +108,30 @@ export function createShellUiRuntimeCluster({
 
   function queueOverlayBasicRenderUtilsLoad() {
     void ensureOverlayBasicRenderUtils().catch(() => null);
+  }
+
+  function ensureMenuModalRenderUtils() {
+    if (menuModalRenderUtils) return Promise.resolve(menuModalRenderUtils);
+    if (menuModalRenderUtilsPromise) return menuModalRenderUtilsPromise;
+    menuModalRenderUtilsPromise = import("../menu/menu-modal-render-utils.js")
+      .then((module) => {
+        menuModalRenderUtils = module;
+        renderOverlaysAfterMenuModalRenderLoad();
+        return module;
+      })
+      .catch((err) => {
+        menuModalRenderUtilsPromise = null;
+        throw err;
+      });
+    return menuModalRenderUtilsPromise;
+  }
+
+  function getMenuModalRenderUtilsIfLoaded() {
+    return menuModalRenderUtils;
+  }
+
+  function queueMenuModalRenderUtilsLoad() {
+    void ensureMenuModalRenderUtils().catch(() => null);
   }
 
   function getBridgeBinding(name, fallback = null) {
@@ -265,7 +294,13 @@ export function createShellUiRuntimeCluster({
   }
 
   function renderMenuItemModal() {
-    return renderMenuItemModalCore({
+    if (!state?.menuModal?.open) return "";
+    const renderUtils = getMenuModalRenderUtilsIfLoaded();
+    if (!renderUtils?.renderMenuItemModalCore) {
+      queueMenuModalRenderUtilsLoad();
+      return "";
+    }
+    return renderUtils.renderMenuItemModalCore({
       state,
       isShopCatalogProfile: profileApi.isShopCatalogProfileFn,
       getBusinessProfileType: profileApi.getBusinessProfileTypeFn,
@@ -280,7 +315,13 @@ export function createShellUiRuntimeCluster({
   }
 
   function renderMenuDetailModal() {
-    return renderMenuDetailModalCore({
+    if (!state?.menuDetail?.open) return "";
+    const renderUtils = getMenuModalRenderUtilsIfLoaded();
+    if (!renderUtils?.renderMenuDetailModalCore) {
+      queueMenuModalRenderUtilsLoad();
+      return "";
+    }
+    return renderUtils.renderMenuDetailModalCore({
       state,
       getMenuItemImages: menuApi.getMenuItemImagesFn,
       getOptimizedImageUrl,
