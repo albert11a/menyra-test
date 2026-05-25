@@ -16,7 +16,8 @@ export function renderMainCore({
   renderUploadViewFn,
   renderDrawerFn,
   renderHeaderFn,
-  renderBusinessTopTabsFn
+  renderBusinessTopTabsFn,
+  routeRuntimeRegistry
 } = {}) {
   const escapeHtml = (value = "") => String(value || "")
     .replace(/&/g, "&amp;")
@@ -41,6 +42,8 @@ export function renderMainCore({
   const renderDrawer = typeof renderDrawerFn === "function" ? renderDrawerFn : (() => "");
   const renderHeader = typeof renderHeaderFn === "function" ? renderHeaderFn : (() => "");
   const renderBusinessTopTabs = typeof renderBusinessTopTabsFn === "function" ? renderBusinessTopTabsFn : (() => "");
+  const canUseRouteRuntimeRegistry = routeRuntimeRegistry
+    && typeof routeRuntimeRegistry.renderActiveRoute === "function";
   const socialAccessMode = String(state?.userProfile?.socialAccessMode || "").trim().toLowerCase();
   const hasRestrictedSocialAccess = socialAccessMode === "waiteronly" || socialAccessMode === "blocked";
 
@@ -66,6 +69,8 @@ export function renderMainCore({
         </div>
       </section>
     `;
+  } else if (canUseRouteRuntimeRegistry) {
+    view = routeRuntimeRegistry.renderActiveRoute();
   } else {
     if (state?.activeTab === "home") view = renderFeedView();
     if (state?.activeTab === "feed") view = renderFeedView();

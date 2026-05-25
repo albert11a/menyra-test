@@ -142,6 +142,7 @@ import {
 import { createProfileBusinessMenuRuntimeCluster } from "./core/app-shell/profile-business-menu-runtime-cluster.js";
 import { createProfileIdentityRuntimeCluster } from "./core/app-shell/profile-identity-runtime-cluster.js";
 import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-cluster.js";
+import { createSocialRouteRuntimeRegistry } from "./core/app-shell/route-runtime-registry.js";
 import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-runtime-cluster.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import {
@@ -1025,6 +1026,7 @@ let mediaUploadRuntimeControllerInstance = null;
 let mediaUploadRuntimeControllerPromise = null;
 let imageCompressorModulePromise = null;
 let bridgeShellRuntimeCluster = null;
+let routeRuntimeRegistry = null;
 let getFollowRuntimeController = null;
 let getPushRuntimeController = null;
 let getNotificationsRuntimeController = null;
@@ -1105,6 +1107,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     getShellRuntimeControllerFn: () => shellRuntimeController,
     getSessionDataRuntimeControllerFn: () => sessionDataRuntimeController,
     getBridgeBindingsFn: () => bridgeShellRuntimeCluster?.bridgeBindings || null,
+    getRouteRuntimeRegistryFn: () => routeRuntimeRegistry,
     getSocialEngagementSupportRuntimeControllerFn: () => getSocialEngagementSupportRuntimeController()
   },
   helperApi: {
@@ -1195,21 +1198,14 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
 });
 const {
   renderAuthScreen,
-  renderDrawer,
-  renderRoleSwitchLinks,
   updateShellDom,
   updateDrawerDom,
   updateNotificationBadges,
   updateNotificationsDom,
   bindNotificationsDelegation,
   handleNotificationsUpdate,
-  renderCommentItem,
-  renderPostComments,
-  renderMenuCommentItem,
-  renderMenuDetailComments,
   updatePostModalMeta,
   updatePostModalCountsOnly,
-  updatePostModalCommentsOnly,
   updateMenuDetailMeta,
   updateMenuDetailCountsOnly,
   updateMenuDetailCommentsOnly,
@@ -1227,20 +1223,10 @@ const {
   renderCrmLazyLoadingView,
   renderOrdersView,
   renderUploadView,
-  renderChatMessagesPanel,
-  renderChatPendingAttachments,
-  renderChatListPanel,
   renderChatView,
-  renderHeaderActionButton,
-  renderHeader,
-  renderBusinessTopTabs,
   renderMain,
   bindImageFallbacks,
   render: renderShell,
-  bindAuthEvents,
-  bindCrmAutoLoadObserver,
-  bindAppEvents,
-  bindSearchEvents,
   handleUploadPost,
   loadRestaurants,
   loadFeedPosts,
@@ -4638,6 +4624,15 @@ const {
   closeFocusModal,
   closeMenuModal
 } = bridgeShellRuntimeCluster.bridgeBindings;
+routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
+  state,
+  renderers: {
+    publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
+    feed: renderFeedView, chat: renderChatView, search: renderSearchView, map: renderMapView,
+    orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
+    settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView
+  }
+});
 let browserPopstateRouteSyncBound = false;
 let lastPopstateReplayLocationKey = "";
 let lastPopstateReplayAtMs = 0;

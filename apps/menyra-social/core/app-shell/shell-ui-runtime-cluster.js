@@ -49,6 +49,9 @@ export function createShellUiRuntimeCluster({
   const getBridgeBindings = typeof runtimeGetters.getBridgeBindingsFn === "function"
     ? runtimeGetters.getBridgeBindingsFn
     : (() => null);
+  const getRouteRuntimeRegistry = typeof runtimeGetters.getRouteRuntimeRegistryFn === "function"
+    ? runtimeGetters.getRouteRuntimeRegistryFn
+    : (() => null);
   const getShellDomRuntimeController = () => expectRuntime(runtimeGetters.getShellDomRuntimeControllerFn, "shellDomRuntimeController");
   const getMediaUploadRuntimeController = () => expectRuntime(runtimeGetters.getMediaUploadRuntimeControllerFn, "mediaUploadRuntimeController");
   const getChatRuntimeController = () => expectRuntime(runtimeGetters.getChatRuntimeControllerFn, "chatRuntimeController");
@@ -378,6 +381,7 @@ export function createShellUiRuntimeCluster({
     const bridgeBindings = getBridgeBindings() || {};
     return renderMainCore({
       state,
+      routeRuntimeRegistry: getRouteRuntimeRegistry(),
       renderHomeViewFn: bridgeBindings.renderHomeView || (() => ""),
       renderFeedViewFn: bridgeBindings.renderFeedView || (() => ""),
       renderChatViewFn: renderChatView,
