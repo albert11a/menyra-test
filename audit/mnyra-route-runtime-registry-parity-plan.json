@@ -1,0 +1,471 @@
+{
+  "summary": {
+    "auditName": "mnyra-route-runtime-registry-parity-plan",
+    "status": "current",
+    "branch": "refactorapp",
+    "baselineSafePublicStateCommit": "9cf32cd638e2ce0e71f5adc68f5df98cafc36875",
+    "baselineSafePublicStateCommitInHistory": true,
+    "analysisSource": "actual code only",
+    "productCodeChangedBeforeAudit": false,
+    "conclusion": "All required visible public/header/menu/cart/order functions were identified. A safe first implementation may add a compatibility route runtime registry that selects existing runtime owners without rebuilding UI, changing route parsing, changing DOM IDs/classes, changing Firebase paths, or changing cart/order payloads."
+  },
+  "currentSocialAppLineCount": 5197,
+  "currentStaticImportGroups": [
+    {
+      "group": "shared platform",
+      "imports": [
+        "/shared/firebase-config.js",
+        "/shared/bunny-edge.js",
+        "/shared/brand-ui.js",
+        "/shared/runtime-error-reporter.js",
+        "/shared/vendor/firebase/11.0.0/firebase-app.js",
+        "/shared/vendor/firebase/11.0.0/firebase-auth.js",
+        "/shared/vendor/firebase/11.0.0/firebase-firestore.js"
+      ]
+    },
+    {
+      "group": "shared social primitives",
+      "imports": [
+        "apps/menyra-social/_shared/social-core.js",
+        "apps/menyra-social/_shared/image-resolver.js",
+        "apps/menyra-social/_shared/social-storage.js",
+        "apps/menyra-social/core/common/*"
+      ]
+    },
+    {
+      "group": "startup/auth/route truth",
+      "imports": [
+        "core/auth/route-auth-utils.js",
+        "core/auth/initial-route-state.js",
+        "core/auth/auth-startup-state-utils.js",
+        "core/auth/pending-route-startup-state.js",
+        "core/auth/auth-user-bootstrap-utils.js",
+        "core/auth/startup-render-gate-utils.js",
+        "core/push/push-route-query-utils.js",
+        "core/router/public-business-route-utils.js"
+      ]
+    },
+    {
+      "group": "app shell clusters",
+      "imports": [
+        "core/app-shell/shell-dom-runtime-controller.js",
+        "core/app-shell/session-runtime-cluster.js",
+        "core/app-shell/app-startup-runtime-cluster.js",
+        "core/app-shell/session-data-runtime-cluster.js",
+        "core/app-shell/bridge-shell-runtime-cluster.js",
+        "core/app-shell/public-route-runtime-cluster.js",
+        "core/app-shell/public-route-state-controller.js",
+        "core/app-shell/profile-business-menu-runtime-cluster.js",
+        "core/app-shell/profile-identity-runtime-cluster.js",
+        "core/app-shell/shell-ui-runtime-cluster.js"
+      ]
+    },
+    {
+      "group": "route runtime surfaces",
+      "imports": [
+        "core/feed/feed-visibility-runtime-cluster.js",
+        "core/discovery/discovery-runtime-controller.js through bridge-shell-runtime-cluster",
+        "core/menu/focus-runtime-controller.js",
+        "core/profile/social-engagement-runtime-controller.js",
+        "core/profile/social-engagement-support-runtime-controller.js",
+        "core/menu/menu-public-runtime-controller.js through public-route-runtime-cluster",
+        "core/menu/table-qr-runtime-controller.js through public-route-runtime-cluster",
+        "core/orders/orders-runtime-controller.js dynamically through public-route-runtime-cluster"
+      ]
+    },
+    {
+      "group": "social-owned protected/runtime surfaces",
+      "imports": [
+        "core/crm/*",
+        "core/chat/*",
+        "core/business-accounts/business-accounts-runtime-controller.js through profile-business-menu-runtime-cluster",
+        "core/overlays/*",
+        "core/app-events/*"
+      ]
+    }
+  ],
+  "currentRouteOwnership": [
+    {
+      "route": "/leads",
+      "owner": "Heart",
+      "evidence": "vercel.json rewrites /leads and /leads/ to /apps/mnyra-heart/index.html"
+    },
+    {
+      "route": "/customers",
+      "owner": "Heart",
+      "evidence": "vercel.json rewrites /customers and /customers/ to /apps/mnyra-heart/index.html"
+    },
+    {
+      "route": "/admin/staff",
+      "owner": "Heart",
+      "evidence": "vercel.json rewrites /admin/staff and /admin/staff/:path* to /apps/mnyra-heart/index.html"
+    },
+    {
+      "route": "/staff",
+      "owner": "Social",
+      "evidence": "vercel.json rewrites /staff and /staff/:path* to /apps/menyra-social/index.html; renderMainCore renders renderStaffView when state.activeTab is staff"
+    },
+    {
+      "route": "/business-accounts and /businessaccounts",
+      "owner": "Social",
+      "evidence": "vercel.json rewrites both routes to /apps/menyra-social/index.html; normalizeAppTabRouteCore maps aliases to businessAccounts"
+    },
+    {
+      "route": "/feed",
+      "owner": "Social",
+      "evidence": "renderMainCore renders bridgeBindings.renderFeedView through createFeedViewOrchestrationController"
+    },
+    {
+      "route": "/search and /discover",
+      "owner": "Social",
+      "evidence": "vercel redirects /discover to /search; renderMainCore renders discoveryRuntimeController.renderSearchView"
+    },
+    {
+      "route": "/map",
+      "owner": "Social",
+      "evidence": "renderMainCore renders discoveryRuntimeController.renderMapView"
+    },
+    {
+      "route": "/casarita, /casarita/menu, /b/:slug, /b/:slug/menu, QR menu routes",
+      "owner": "Social public business runtime",
+      "evidence": "vercel rewrites catch-all public business routes to the existing Social index; resolveInitialRouteState and publicProfileDirectEntryController seed the existing profile/menu shell"
+    }
+  ],
+  "routeToRuntimeMap": {
+    "publicBusiness": {
+      "routes": [
+        "/:landingSlug",
+        "/b/:slug",
+        "/lp/:restaurantId",
+        "profile route with state.profileView and profileTopTab profile or landing"
+      ],
+      "existingRenderOwner": "createProfileMenuFocusRenderController.renderPublicProfileView",
+      "existingDataOwners": [
+        "publicProfileDirectEntryController",
+        "profileIdentityRuntimeCluster.showPublicProfile",
+        "profileBusinessMenuRuntimeCluster.ensurePostsDataForProfile"
+      ]
+    },
+    "publicMenu": {
+      "routes": [
+        "/:landingSlug/menu",
+        "/b/:slug/menu",
+        "/b/:slug/qr",
+        "query route with r/restaurantId and tab/top menu",
+        "QR route with src/source/menuSource/menuAccessSource qr and table/tableNumber/t"
+      ],
+      "existingRenderOwner": "createProfileMenuFocusRenderController.renderPublicProfileView -> renderPublicProfileSurface -> renderProfileMenuView",
+      "existingDataOwners": [
+        "createPublicRouteRuntimeCluster",
+        "createMenuPublicRuntimeController",
+        "createTableQrRuntimeController",
+        "profileBusinessMenuRuntimeCluster.ensureMenuDataForProfile",
+        "profileBusinessMenuRuntimeCluster.ensureFocusDataForProfile"
+      ]
+    },
+    "feed": {
+      "routes": [
+        "/feed",
+        "/social",
+        "home alias"
+      ],
+      "existingRenderOwner": "createFeedViewOrchestrationController.renderFeedView"
+    },
+    "search": {
+      "routes": [
+        "/search",
+        "/discover"
+      ],
+      "existingRenderOwner": "createDiscoveryRuntimeController.renderSearchView"
+    },
+    "map": {
+      "routes": [
+        "/map"
+      ],
+      "existingRenderOwner": "createDiscoveryRuntimeController.renderMapView"
+    },
+    "staff": {
+      "routes": [
+        "/staff"
+      ],
+      "existingRenderOwner": "crmDomainRuntimeCluster.renderStaffView through Social shell"
+    },
+    "businessAccounts": {
+      "routes": [
+        "/business-accounts",
+        "/businessaccounts"
+      ],
+      "existingRenderOwner": "createBusinessAccountsRuntimeController.renderBusinessAccountsView through profileBusinessMenuRuntimeCluster"
+    },
+    "defaultSocial": {
+      "routes": [
+        "/chat",
+        "/profile without public profileView",
+        "/menu admin",
+        "/orders",
+        "/notifications",
+        "/settings",
+        "/upload",
+        "/ceo",
+        "/admin",
+        "/owner",
+        "/kitchen"
+      ],
+      "existingRenderOwner": "existing Social shell renderers and bridge bindings"
+    }
+  },
+  "publicMenuQrRequiredFunctions": [
+    "resolveInitialRouteState",
+    "parseSiteRoutePathCore",
+    "normalizeProfileTopTabFromRouteCore",
+    "normalizeTableNumberCore",
+    "createPublicRouteStateController",
+    "createPublicRouteRuntimeCluster",
+    "createPublicProfileDirectEntryController",
+    "applyPendingInitialRouteState",
+    "routeOpenApi.openProfileFromQuery",
+    "showPublicProfile",
+    "fetchBusinessProfileDoc",
+    "renderPublicProfileView",
+    "renderPublicProfileSurface",
+    "renderProfileMenuView",
+    "loadMenuForRestaurant",
+    "loadMenuHybrid",
+    "loadPublicMenuItems",
+    "ensureMenuDataForProfile",
+    "ensureFocusDataForProfile",
+    "ensureTableQrStateForProfile",
+    "getTableQrStateForRestaurant",
+    "saveTableQrConfig",
+    "bindAppMenuFocusEventsCore",
+    "bindMenuDetailOverlayEventsCore",
+    "submitShopCheckout"
+  ],
+  "feedRequiredFunctions": [
+    "createFeedVisibilityRuntimeCluster",
+    "createFeedViewOrchestrationController",
+    "renderHomeView",
+    "renderFeedView",
+    "renderFeedList",
+    "updateFeedDom",
+    "bindFeedDelegation",
+    "loadFeedPosts",
+    "loadRestaurants",
+    "hydrateRestaurantsByIds",
+    "ensureFeedRestaurantMetaListeners"
+  ],
+  "searchRequiredFunctions": [
+    "createDiscoveryRuntimeController",
+    "renderSearchView",
+    "handleSearchInput",
+    "buildLocalBusinessResults",
+    "searchUsersRemote",
+    "searchBusinessesRemote",
+    "refreshSearchView",
+    "updateSearchDom",
+    "bindSearchEvents"
+  ],
+  "mapRequiredFunctions": [
+    "createDiscoveryRuntimeController",
+    "renderMapView",
+    "ensureLeafletLoaded",
+    "initLeafletIfNeeded",
+    "updateMapSheet",
+    "cleanupLeaflet",
+    "mapLocate",
+    "buildRestaurantLocations",
+    "renderLeafletMarkers",
+    "bindMapSearchInput"
+  ],
+  "profileRequiredFunctions": [
+    "createProfileIdentityRuntimeCluster",
+    "showPublicProfile",
+    "normalizeExternalProfile",
+    "fetchBusinessProfileDoc",
+    "loadBusinessPostsForRestaurant",
+    "createProfileBusinessMenuRuntimeCluster",
+    "ensurePostsDataForProfile",
+    "ensureMenuDataForProfile",
+    "ensureFocusDataForProfile",
+    "createProfileMenuFocusRenderController",
+    "renderPublicProfileView",
+    "renderProfileView",
+    "renderProfileTabs",
+    "renderProfileViewControls",
+    "renderProfilePostsFancy"
+  ],
+  "overlayRequiredFunctions": [
+    "createOverlayOrchestrationController",
+    "renderOverlaysCore",
+    "bindOverlayEventsCore",
+    "renderProfileModal",
+    "renderPostModal",
+    "renderLikesModal",
+    "renderMenuItemModal",
+    "renderMenuDetailModal",
+    "renderFocusModal",
+    "openMenuDetail",
+    "closeMenuDetail",
+    "openMenuDetailFromTrigger",
+    "triggerMenuDetailOpenFromGesture",
+    "bindMenuDetailOverlayEventsCore"
+  ],
+  "authStartupRequiredFunctions": [
+    "resolveInitialRouteState",
+    "createPendingRouteStartupState",
+    "createAuthStartupStateHelpers",
+    "bootstrapAuthenticatedSessionCore",
+    "resolveStartupRenderGate",
+    "startAppStartupRuntimeCluster",
+    "applyPendingInitialRouteState",
+    "openPendingProtectedRouteAuthPrompt",
+    "createSessionRuntimeCluster",
+    "createSessionDataRuntimeCluster"
+  ],
+  "staffBusinessAccountsRequiredFunctions": [
+    "crmDomainRuntimeCluster.renderStaffView",
+    "crmDomainRuntimeCluster.loadCeoStaff",
+    "bindCrmStaffEventsCore",
+    "createBusinessAccountsRuntimeController",
+    "loadBusinessAccounts",
+    "renderBusinessAccountsView",
+    "bindBusinessAccountsEvents"
+  ],
+  "functionsThatRenderVisibleHeaderShell": [
+    "renderMainCore",
+    "createAppShellRuntimeController.render",
+    "createAppShellRuntimeController.renderHeader",
+    "createAppShellRuntimeController.renderSmartHeader",
+    "createAppShellRuntimeController.renderBusinessHeaderCenter",
+    "createAppShellRuntimeController.renderBusinessHeaderActions",
+    "createAppShellRuntimeController.renderBusinessTopTabs",
+    "createShellDomRuntimeController.renderDrawer"
+  ],
+  "functionsThatRenderPublicBusinessCard": [
+    "createProfileMenuFocusRenderController.renderPublicProfileView",
+    "createProfileMenuFocusRenderController.renderPublicProfileSurface",
+    "createProfileMenuFocusRenderController.renderBusinessLandingScreenOne",
+    "createProfileMenuFocusRenderController.renderProfileTabs",
+    "createProfileMenuFocusRenderController.renderProfileViewControls"
+  ],
+  "functionsThatRenderMenuList": [
+    "createProfileMenuFocusRenderController.renderProfileMenuView",
+    "createProfileMenuFocusRenderController.renderTestfirstMenuContent",
+    "createProfileMenuFocusRenderController.renderMenuList",
+    "createProfileMenuFocusRenderController.renderMenuDrinkGrid",
+    "createProfileMenuFocusRenderController.renderMenuFoodList",
+    "createProfileMenuFocusRenderController.renderMenuItemCard",
+    "createProfileMenuFocusRenderController.renderMenuItemCardStacked",
+    "createProfileMenuFocusRenderController.renderMenuItemsWithCategoryAnchors",
+    "createShopViewCartOrchestrationController.renderShopProductList"
+  ],
+  "functionsThatRenderCartAndFab": [
+    "createAppShellRuntimeController.renderSmartHeader",
+    "createAppShellRuntimeController.renderBusinessHeaderActions",
+    "createProfileMenuFocusRenderController.renderPublicProfileSurface",
+    "createShopViewCartOrchestrationController.renderProfileShopCartView",
+    "renderMenuDetailModalCore"
+  ],
+  "functionsThatRenderMenuDetail": [
+    "renderMenuDetailModalCore",
+    "createShellUiRuntimeCluster.renderMenuDetailModal",
+    "createOverlayOrchestrationController.renderOverlays",
+    "renderOverlaysCore"
+  ],
+  "functionsThatBindPublicMenuEvents": [
+    "bindAppEventsCore",
+    "bindAppMenuFocusEventsCore",
+    "triggerMenuDetailOpenFromGesture",
+    "openMenuDetailFromTrigger",
+    "bindMenuDetailOverlayEventsCore",
+    "addMenuItemToShopCart",
+    "updateShopCartQuantity",
+    "updateShopCartItemComment",
+    "openShopCheckout",
+    "submitShopCheckout",
+    "saveTableQrConfig"
+  ],
+  "functionsThatBindFeedSearchMapEvents": [
+    "createFeedViewOrchestrationController.bindFeedDelegation",
+    "createAppShellRuntimeController.bindSearchEvents",
+    "createDiscoveryRuntimeController.bindMapSearchInput",
+    "bindAppEventsCore",
+    "bindAppShellEventsCore"
+  ],
+  "dynamicImportCandidates": [
+    {
+      "candidate": "orders runtime",
+      "currentState": "Already dynamically imported by createPublicRouteRuntimeCluster.ensureOrdersRuntimeController",
+      "safeNow": false,
+      "reason": "Do not change order/cart behavior or payloads in this slice."
+    },
+    {
+      "candidate": "media upload runtime",
+      "currentState": "Already dynamically imported by ensureMediaUploadRuntimeController",
+      "safeNow": false,
+      "reason": "Outside requested public route registry boundary."
+    },
+    {
+      "candidate": "Feed/Search/Map runtime modules",
+      "currentState": "Static through bridge-shell-runtime-cluster/controller-deps-factory",
+      "safeNow": false,
+      "reason": "Their render/bind functions are identified, but first slice should only select existing owners and avoid async rendering path changes."
+    },
+    {
+      "candidate": "public menu/profile render controllers",
+      "currentState": "Static through profile-business-menu-runtime-cluster",
+      "safeNow": false,
+      "reason": "Unsafe to dynamically import before proving header/business card/cart/menu detail remain mounted through the full shell."
+    }
+  ],
+  "unsafeToMoveNow": [
+    "createAppShellRuntimeController.renderHeader/renderSmartHeader/renderBusinessHeaderActions because the prior failed public entry missed header/shell parity.",
+    "renderPublicProfileView/renderPublicProfileSurface/renderProfileMenuView because they render the business card, tabs, public menu, and menu list.",
+    "bindAppMenuFocusEventsCore and bindMenuDetailOverlayEventsCore because they bind product detail, add-to-cart, checkout, table QR, and menu admin interactions.",
+    "createPublicRouteStateController because it owns shop cart localStorage keys and menu detail state.",
+    "orders-runtime-controller submitShopCheckout because it owns the current order payload and Firestore write path.",
+    "resolveInitialRouteState and public-business-route-utils because they own public path, QR, and table route shapes.",
+    "Heart routes, businessAccounts, Waiter/Kitchen, Chat, and /staff because they are explicitly out of scope."
+  ],
+  "safeFirstImplementationSlice": [
+    "Add apps/menyra-social/core/app-shell/route-runtime-registry.js.",
+    "Create a compatibility registry with publicBusiness, publicMenu, feed, search, map, staff, businessAccounts, and defaultSocial runtime keys.",
+    "Pass existing render functions/controllers into the registry; do not create new UI.",
+    "Let renderMainCore ask the registry for the active route view while preserving the current shell/header wrapper.",
+    "Use no dynamic import in this first slice.",
+    "Leave route parsing, Firebase calls, cart storage keys, order payloads, service worker, Vercel routing, Vite inputs, and index.html unchanged."
+  ],
+  "validationChecklist": [
+    "node --check every changed JS file",
+    "Validate audit JSON",
+    "git diff --check",
+    "git diff --cached --check",
+    "Verify no apps/menyra-social/public-entry.js",
+    "Verify no new public HTML entry",
+    "Verify index.html, vercel.json, and sw.js unchanged",
+    "Verify no intentional cart key, order payload, Firebase path/query, QR/table route, DOM ID/class, public/menu CSS/assets, Heart, businessAccounts, Waiter/Kitchen, Chat, /staff, /leads, /customers, or /admin/staff changes",
+    "Run the clear production build command from package.json if product code changes"
+  ],
+  "manualTestChecklist": [
+    "/casarita opens exactly like before, including header/business card.",
+    "/casarita/menu opens exactly like before, including header, categories, products, FAB/cart.",
+    "QR/table route opens exactly like before.",
+    "Product detail opens/closes.",
+    "Add to cart works.",
+    "Cart badge/count works.",
+    "Cart persists after reload.",
+    "Cart item remove/update works.",
+    "Order send works.",
+    "Order status/result/retry works if present.",
+    "/feed works.",
+    "/search works.",
+    "/map works.",
+    "/leads opens Heart.",
+    "/customers opens Heart.",
+    "/admin/staff opens Heart.",
+    "/staff unchanged.",
+    "businessAccounts unchanged.",
+    "Waiter/Kitchen unchanged.",
+    "No red console errors."
+  ]
+}
