@@ -69,7 +69,9 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
   const feedRuntime = createRuntimeEntry("feed", routeRuntimes.feed, renderers.feed);
   const searchRuntime = createRuntimeEntry("search", routeRuntimes.search, renderers.search);
   const mapRuntime = createRuntimeEntry("map", routeRuntimes.map, renderers.map);
-  const renderPublicProfile = asRenderFn(renderers.publicProfile);
+  const publicBusinessRuntime = createRuntimeEntry("publicBusiness", routeRuntimes.publicBusiness, renderers.publicProfile);
+  const publicMenuRuntime = createRuntimeEntry("publicMenu", routeRuntimes.publicMenu, renderers.publicProfile);
+  const renderPublicProfile = publicBusinessRuntime.render;
   const renderOwnProfile = asRenderFn(renderers.ownProfile);
   const renderMenuAdmin = asRenderFn(renderers.menuAdmin);
   const renderFeed = feedRuntime.render;
@@ -101,8 +103,8 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
   }
 
   const runtimeMap = Object.freeze({
-    publicBusiness: Object.freeze({ key: "publicBusiness", render: renderPublicProfile }),
-    publicMenu: Object.freeze({ key: "publicMenu", render: renderPublicProfile }),
+    publicBusiness: publicBusinessRuntime,
+    publicMenu: publicMenuRuntime,
     feed: feedRuntime,
     search: searchRuntime,
     map: mapRuntime,

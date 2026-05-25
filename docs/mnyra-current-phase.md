@@ -298,6 +298,17 @@ Last updated: 2026-05-25
   `staff.mnyra.com`, Restaurant-Staff, Waiter, Kitchen, Business-Staff,
   Public Menu, QR, Cart, Orders, Feed, Search, Map, Chat und Firebase-
   Datenpfade unveraendert bleiben.
+- Schritt 38 ist abgeschlossen: Public Business Profile und Public Menu sind
+  in der Social-Route-Runtime-Registry als eigene Runtime-Slots vorbereitet.
+- Bewertung von Schritt 38: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 38:
+  `publicBusiness` und `publicMenu` koennen kuenftig einen eigenen leichten
+  Public/Profile-Renderer liefern, waehrend der bestehende
+  `renderPublicProfileView` als Fallback unveraendert bleibt. Sichtbare UI,
+  Routing, Firebase, QR, Public Menu, Warenkorb, Orders, Heart, `/staff`,
+  businessAccounts, Waiter/Kitchen und Feed-First-Paint bleiben unveraendert.
+  Auf Nutzerwunsch wurde dieser Schritt im laufenden Bundle-/Refactor-Kontext
+  auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -334,6 +345,7 @@ Last updated: 2026-05-25
 - Referenz: [docs/mnyra-step35-public-menu-focus-lockstep-render.md](./mnyra-step35-public-menu-focus-lockstep-render.md)
 - Referenz: [docs/mnyra-step36-profile-posts-full-visibility.md](./mnyra-step36-profile-posts-full-visibility.md)
 - Referenz: [docs/mnyra-step37-ceo-staff-heart-route.md](./mnyra-step37-ceo-staff-heart-route.md)
+- Referenz: [docs/mnyra-step38-profile-runtime-boundary.md](./mnyra-step38-profile-runtime-boundary.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -359,13 +371,13 @@ Last updated: 2026-05-25
 
 ## Naechster Schritt
 
-Nach Schritt 35 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 38 ist der naechste sinnvolle separate Folgeschritt:
 Public-Menu inklusive Fokus auf echtem Smartphone manuell mit frischem Bundle
 und normalem Desktop-Browser gegenpruefen.
 Erst wenn Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
-Entdecker-Karten-Profilwechsel und Upload-Einstiege stabil bleiben, kann der
-neue Public-Entry schrittweise mit einem echten leichten Public-Renderer fuer
-`/:slug/menu` gefuellt werden.
+Entdecker-Karten-Profilwechsel und Upload-Einstiege stabil bleiben, kann ein
+leichter Public/Profile-Renderer schrittweise ueber die vorbereiteten
+`publicBusiness`-/`publicMenu`-Runtime-Slots angebunden werden.
 
 ## Guardrails fuer die naechsten Schritte
 
