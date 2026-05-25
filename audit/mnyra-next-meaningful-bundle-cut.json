@@ -1,0 +1,237 @@
+{
+  "summary": "After the menu modal renderer split, the remaining modules large enough to clear roughly 10 KB gzip are mostly first-paint, route, auth/session, public menu, cart/order, or Firebase-sensitive. The safest inspected candidate was the overlay event binder group, but a trial build showed only a 5,588 byte gzip reduction, below the requested threshold. Implementation was reverted and this pass stops after the audit.",
+  "baselineBundleSize": {
+    "file": "apps/menyra-social/bundled/entry/social-app.js",
+    "rawBytes": 1270925,
+    "gzipBytes": 341585,
+    "buildCommand": "npm run build"
+  },
+  "currentLazyChunks": [
+    {
+      "name": "vendor-firebase-DJXW8jPP.js",
+      "rawBytes": 441937,
+      "gzipBytes": 133824,
+      "lazy": false,
+      "notes": "Manual vendor chunk."
+    },
+    {
+      "name": "menu-modal-render-utils-D6AGgpp0.js",
+      "rawBytes": 45570,
+      "gzipBytes": 10355,
+      "lazy": true,
+      "notes": "Menu modal/detail renderers already split."
+    },
+    {
+      "name": "discovery-runtime-controller-GZ0quJe_.js",
+      "rawBytes": 40649,
+      "gzipBytes": 12942,
+      "lazy": true,
+      "notes": "Feed/Search/Map discovery runtime already split."
+    },
+    {
+      "name": "overlay-basic-render-utils-C0sDpLJv.js",
+      "rawBytes": 13566,
+      "gzipBytes": 3190,
+      "lazy": true,
+      "notes": "Basic overlay renderers already split."
+    },
+    {
+      "name": "orders-runtime-controller-kXOnY8GJ.js",
+      "rawBytes": 12923,
+      "gzipBytes": 4588,
+      "lazy": true,
+      "notes": "Orders runtime already split."
+    },
+    {
+      "name": "media-upload-runtime-cluster-BkQjWGNo.js",
+      "rawBytes": 8952,
+      "gzipBytes": 3295,
+      "lazy": true,
+      "notes": "Media upload runtime already split."
+    }
+  ],
+  "topRemainingStaticImports": [
+    {
+      "module": "apps/menyra-social/core/feed/feed-view-orchestration-controller.js",
+      "sourceBytes": 170718,
+      "importOwner": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "whyStillInEntry": "Feed first-paint renderers are wired through app-controller-bridge.",
+      "safeToMoveNow": false
+    },
+    {
+      "module": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+      "sourceBytes": 135274,
+      "importOwner": "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
+      "whyStillInEntry": "Profile/public menu/admin renderers are used by current route surfaces.",
+      "safeToMoveNow": false
+    },
+    {
+      "module": "apps/menyra-social/core/app-shell/session-data-runtime-controller.js",
+      "sourceBytes": 85370,
+      "importOwner": "apps/menyra-social/core/app-shell/session-data-runtime-cluster.js and controller-deps-factory.js",
+      "whyStillInEntry": "Session startup and tab data lifecycle use it.",
+      "safeToMoveNow": false
+    },
+    {
+      "module": "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+      "sourceBytes": 80369,
+      "importOwner": "apps/menyra-social/core/app-shell/controller-deps-factory.js",
+      "whyStillInEntry": "Shell/header/render/event runtime is startup critical.",
+      "safeToMoveNow": false
+    },
+    {
+      "module": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+      "sourceBytes": 77819,
+      "importOwner": "apps/menyra-social/core/app-shell/profile-identity-runtime-cluster.js",
+      "whyStillInEntry": "Public profile surfaces depend on it.",
+      "safeToMoveNow": false
+    },
+    {
+      "module": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+      "sourceBytes": 73021,
+      "importOwner": "apps/menyra-social/core/app-shell/app-controller-bridge.js",
+      "whyStillInEntry": "Direct public profile/menu route open flow and feed/search/map profile opens use it.",
+      "safeToMoveNow": false
+    },
+    {
+      "module": "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
+      "sourceBytes": 62837,
+      "importOwner": "apps/menyra-social/social-app.js",
+      "whyStillInEntry": "Startup/session helpers call the synchronous facade for chat index, notification, follow, and post-open helpers.",
+      "safeToMoveNow": false
+    },
+    {
+      "moduleGroup": "overlay event binders",
+      "sourceBytes": 42825,
+      "importOwner": "apps/menyra-social/social-app.js",
+      "modules": [
+        "apps/menyra-social/core/overlays/overlay-bind-orchestrator-utils.js",
+        "apps/menyra-social/core/overlays/overlay-basic-bind-utils.js",
+        "apps/menyra-social/core/overlays/overlay-chat-post-bind-utils.js",
+        "apps/menyra-social/core/overlays/overlay-menu-focus-bind-utils.js",
+        "apps/menyra-social/core/overlays/overlay-menu-detail-bind-utils.js"
+      ],
+      "whyStillInEntry": "social-app.js statically imports the overlay binder functions and passes them into bridge-shell-runtime-cluster.",
+      "safeToMoveNow": true
+    }
+  ],
+  "candidateCuts": [
+    {
+      "candidate": "overlay event binder runtime",
+      "staticImportsToRemove": [
+        "bindOverlayEventsCore from ./core/overlays/overlay-bind-orchestrator-utils.js",
+        "bindProfileOverlayEventsCore and bindLikesOverlayEventsCore from ./core/overlays/overlay-basic-bind-utils.js",
+        "bindChatOverlayEventsCore and bindPostOverlayEventsCore from ./core/overlays/overlay-chat-post-bind-utils.js",
+        "bindMenuOverlayEventsCore and bindFocusOverlayEventsCore from ./core/overlays/overlay-menu-focus-bind-utils.js",
+        "bindMenuDetailOverlayEventsCore from ./core/overlays/overlay-menu-detail-bind-utils.js"
+      ],
+      "dynamicImport": "cached import of a new overlay bind runtime module that re-exports the existing binder functions",
+      "firstPaintCritical": false,
+      "routeCritical": false,
+      "firebaseSensitive": false,
+      "publicMenuOrderCartSensitive": "low risk; it binds product detail/cart buttons after the existing modal HTML has rendered, without changing renderers, cart keys, order payloads, or callbacks",
+      "expectedRawReduction": "30000-45000 bytes",
+      "expectedGzipReduction": "around 10000 bytes",
+      "measuredTrialBuildReduction": {
+        "baselineRawBytes": 1270925,
+        "trialRawBytes": 1248642,
+        "rawReductionBytes": 22283,
+        "baselineGzipBytes": 341585,
+        "trialGzipBytes": 335997,
+        "gzipReductionBytes": 5588,
+        "newTrialChunk": "overlay-bind-runtime-fJaiuknw.js",
+        "newTrialChunkRawBytes": 24438,
+        "newTrialChunkGzipBytes": 6879,
+        "accepted": false,
+        "reverted": true
+      },
+      "riskLevel": "medium-low",
+      "safeBecause": "The binder modules only attach event listeners to already-rendered overlays. Existing binder functions remain source of truth. The lazy facade queues the latest bind request while the chunk loads and then invokes the real binders with the same arguments."
+    },
+    {
+      "candidate": "profile-open-flow-utils.js",
+      "expectedRawReduction": "large",
+      "expectedGzipReduction": "possibly over 10000 bytes",
+      "riskLevel": "high",
+      "safeBecause": "Not selected. It powers direct public profile/menu routes and profile opens from Feed/Search/Map."
+    },
+    {
+      "candidate": "chat-app-runtime-lazy-facade.js",
+      "expectedRawReduction": "large",
+      "expectedGzipReduction": "possibly over 10000 bytes",
+      "riskLevel": "high",
+      "safeBecause": "Not selected. Its synchronous facade methods are used by startup/session, notification, follow, and post-open paths."
+    }
+  ],
+  "rejectedCandidates": [
+    {
+      "candidate": "feed-view-orchestration-controller.js",
+      "reason": "Rejected because it is /feed first-paint renderer code."
+    },
+    {
+      "candidate": "profile-menu-focus-render-controller.js",
+      "reason": "Rejected because it owns profile/public menu/admin rendering."
+    },
+    {
+      "candidate": "session-data-runtime-controller.js",
+      "reason": "Rejected because it is auth/session startup and tab data core."
+    },
+    {
+      "candidate": "app-shell-runtime-controller.js",
+      "reason": "Rejected because it owns shell/header/render/event behavior."
+    },
+    {
+      "candidate": "public-profile-runtime-controller.js and public-profile-direct-entry-controller.js",
+      "reason": "Rejected because they are public route/profile surface critical."
+    },
+    {
+      "candidate": "social-engagement-runtime-controller.js",
+      "reason": "Rejected because it owns Firebase social reads/writes for likes/comments/follows."
+    },
+    {
+      "candidate": "shop-view-cart-orchestration-controller.js",
+      "reason": "Rejected because cart/order behavior must not be touched."
+    }
+  ],
+  "recommendedCandidate": {
+    "name": "none",
+    "reason": "No inspected candidate safely reached around 10 KB gzip reduction. The only safe trial candidate, overlay event binders, reduced gzip by 5,588 bytes and was reverted. Larger candidates are route, public menu, cart/order, Firebase, auth/session, or /feed first-paint critical."
+  },
+  "expectedRawReduction": "0 bytes accepted in this pass",
+  "expectedGzipReduction": "0 bytes accepted in this pass",
+  "exactFilesToTouch": [
+    "audit/mnyra-next-meaningful-bundle-cut.json"
+  ],
+  "riskList": [
+    "First overlay click before the lazy binder chunk finishes loading could be delayed; mitigation is caching one pending bind request and invoking the existing binders as soon as the chunk resolves.",
+    "Public product detail buttons are bound by the same existing menu-detail binder after lazy load; renderers, cart keys, and order payloads are unchanged.",
+    "The chunk size may land slightly below 10 KB gzip; if the built entry does not reduce meaningfully, implementation must be reverted."
+  ],
+  "validationChecklist": [
+    "node --check every changed JS file.",
+    "Validate audit JSON.",
+    "git diff --check.",
+    "git diff --cached --check.",
+    "npm run build.",
+    "Confirm entry/social-app.js raw and gzip reduction.",
+    "Confirm no route, Firebase, Heart, public menu/order/cart source, businessAccounts, Waiter/Kitchen, or Staff source files changed."
+  ],
+  "manualTestChecklist": [
+    "/feed opens exactly like before.",
+    "Feed cards/interactions work.",
+    "Any affected modal/action works.",
+    "/search works.",
+    "/map works.",
+    "/casarita/menu works.",
+    "Product detail still opens/closes.",
+    "Cart still works.",
+    "Order send still works.",
+    "/leads opens Heart.",
+    "/customers opens Heart.",
+    "/admin/staff opens Heart.",
+    "/staff unchanged.",
+    "businessAccounts unchanged.",
+    "Waiter/Kitchen unchanged.",
+    "No red console errors."
+  ]
+}
