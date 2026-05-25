@@ -140,13 +140,12 @@ import { createSessionRuntimeCluster } from "./core/app-shell/session-runtime-cl
 import { startAppStartupRuntimeCluster } from "./core/app-shell/app-startup-runtime-cluster.js";
 import { createSessionDataRuntimeCluster } from "./core/app-shell/session-data-runtime-cluster.js";
 import { createBridgeShellRuntimeCluster } from "./core/app-shell/bridge-shell-runtime-cluster.js";
+import { createPublicRouteRuntimeCluster } from "./core/app-shell/public-route-runtime-cluster.js";
 import { createProfileBusinessMenuRuntimeCluster } from "./core/app-shell/profile-business-menu-runtime-cluster.js";
 import { createProfileIdentityRuntimeCluster } from "./core/app-shell/profile-identity-runtime-cluster.js";
 import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-cluster.js";
 import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-runtime-cluster.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
-import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
-import { createTableQrRuntimeController } from "./core/menu/table-qr-runtime-controller.js";
 import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
@@ -174,7 +173,6 @@ import {
   isPendingProfileAlreadyOpenCore,
   normalizeProfileTopTabFromRouteCore
 } from "./core/profile/profile-route-open-utils.js";
-import { createPublicProfileDirectEntryController } from "./core/profile/public-profile-direct-entry-controller.js";
 import {
   normalizeProfileSurfaceStatus,
   resolveVisibleProfileSurface
@@ -1031,16 +1029,13 @@ let socialEngagementRuntimeController = null;
 let socialEngagementSupportRuntimeController = null;
 let crmRuntimeController = null;
 let chatRuntimeFacade = null;
-let menuPublicRuntimeController = null;
+let publicRouteRuntimeCluster = null;
+let publicProfileDirectEntryController = null;
 let focusRuntimeController = null;
-let tableQrRuntimeController = null;
 let mediaUploadRuntimeController = null;
 let mediaUploadRuntimeControllerInstance = null;
 let mediaUploadRuntimeControllerPromise = null;
 let imageCompressorModulePromise = null;
-let ordersRuntimeController = null;
-let ordersRuntimeControllerPromise = null;
-let ordersRuntimeStopRequested = false;
 let bridgeShellRuntimeCluster = null;
 let getFollowRuntimeController = null;
 let getPushRuntimeController = null;
@@ -1989,11 +1984,6 @@ function normalizeLegacyHomeTab(tab) {
   return "feed";
 }
 
-const publicProfileDirectEntryController = createPublicProfileDirectEntryController({
-  state,
-  resolveVisibleProfileSurface
-});
-
 function applyPendingInitialRouteState() {
   applyPendingInitialRouteStateBase();
   const pendingInitialTab = String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase();
@@ -2529,31 +2519,100 @@ const {
   publishMenuToPublic,
   loadMenuHybrid,
   menuCacheKey,
-  syncMenuCaches
-} = (menuPublicRuntimeController = createMenuPublicRuntimeController({
+  syncMenuCaches,
+  getTableQrStateForRestaurant,
+  ensureTableQrStateForProfile,
+  saveTableQrConfig,
+  stopOrdersListener,
+  startOrdersListener,
+  submitShopCheckout
+} = (publicRouteRuntimeCluster = createPublicRouteRuntimeCluster({
   state,
   db,
   menuCache,
-  collectionFn: collection,
-  queryFn: query,
-  orderByFn: orderBy,
-  limitFn: limit,
-  docFn: doc,
-  getDocFn: getDoc,
-  getDocsFn: getDocs,
-  setDocFn: setDoc,
-  serverTimestampFn: serverTimestamp,
-  createEmptyFavoriteMenuItemsStateFn: createEmptyFavoriteMenuItemsState,
-  favoriteMenuItemDocIdFn: socialEngagementSupportRuntimeController.favoriteMenuItemDocId,
-  buildFavoriteMenuItemPayloadFn: socialEngagementSupportRuntimeController.buildFavoriteMenuItemPayload,
-  getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,
-  normalizeMenuItemDocFn: normalizeMenuItemDoc,
-  coerceMenuItemsFromDataFn: coerceMenuItemsFromData,
-  foldMenuTextFn: foldMenuText,
-  clampCropPercentFn: clampCropPercent,
-  renderFn: render,
-  getLastRenderModeFn: () => lastRenderMode
+  constants: {
+    defaultPublicBootstrapEndpoint: DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT,
+    publicBootstrapEvent: PUBLIC_BOOTSTRAP_EVENT,
+    cacheKeys: CACHE_KEYS,
+    fastLimits: FAST_LIMITS
+  },
+  browserApi: {
+    windowObj: typeof window === "undefined" ? null : window,
+    fetchFn: typeof fetch === "function" ? fetch : null,
+    abortControllerCtor: typeof AbortController === "function" ? AbortController : null
+  },
+  firebaseApi: {
+    collection,
+    query,
+    orderBy,
+    limit,
+    doc,
+    getDoc,
+    getDocFromServer,
+    getDocs,
+    setDoc,
+    serverTimestamp,
+    waitForPendingWrites,
+    onSnapshot,
+    writeBatch
+  },
+  storageApi: {
+    safeStorage,
+    getGuestScopeUid
+  },
+  menuApi: {
+    createEmptyFavoriteMenuItemsState,
+    normalizeMenuItemDoc,
+    coerceMenuItemsFromData,
+    foldMenuText,
+    clampCropPercent
+  },
+  shopApi: {
+    normalizeShopCartState,
+    buildShopVariantKey,
+    parsePriceValue,
+    saveShopCartToStorage,
+    clearShopCartFn: (...args) => clearShopCart(...args)
+  },
+  socialApi: {
+    favoriteMenuItemDocId: socialEngagementSupportRuntimeController.favoriteMenuItemDocId,
+    buildFavoriteMenuItemPayload: socialEngagementSupportRuntimeController.buildFavoriteMenuItemPayload,
+    getMenuItemSocialId: socialEngagementSupportRuntimeController.getMenuItemSocialId
+  },
+  profileApi: {
+    resolveVisibleProfileSurface,
+    isRestaurantCafeProfile,
+    isLocalBusinessProfile,
+    canAccessRestaurantOrders,
+    resolveProfileRestaurantId,
+    getRestaurantMetaById,
+    normalizeHandle
+  },
+  renderApi: {
+    render,
+    getLastRenderMode: () => lastRenderMode
+  },
+  publicBootstrapApi: {
+    normalizeRestaurantType,
+    toDateSafe,
+    formatRelative,
+    mergeRestaurants,
+    writeCache,
+    readCache,
+    rebuildBusinessLocations,
+    saveFeedPosts,
+    normalizeStoryItemsForDisplay,
+    buildStoriesSignature,
+    setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
+    queueStoryIdentityHydration,
+    syncFeedPostLogos,
+    updateFeedDom: (...args) => updateFeedDom(...args)
+  },
+  errorApi: {
+    reportCriticalRuntimeFailure
+  }
 }));
+publicProfileDirectEntryController = publicRouteRuntimeCluster.publicProfileDirectEntryController;
 const {
   getActiveFocusItems,
   getFocusStateForRestaurant,
@@ -2592,109 +2651,6 @@ const {
   confirmFn: typeof confirm === "function" ? confirm : () => false,
   alertFn: typeof alert === "function" ? alert : () => {}
 }));
-const {
-  getTableQrStateForRestaurant,
-  ensureTableQrStateForProfile,
-  saveTableQrConfig
-} = (tableQrRuntimeController = createTableQrRuntimeController({
-  state,
-  db,
-  docFn: doc,
-  getDocFn: getDoc,
-  getDocFromServerFn: getDocFromServer,
-  setDocFn: setDoc,
-  serverTimestampFn: serverTimestamp,
-  waitForPendingWritesFn: waitForPendingWrites,
-  isRestaurantCafeProfileFn: isRestaurantCafeProfile,
-  renderFn: render,
-  storageObj: safeStorage
-}));
-
-function createOrdersRuntimeControllerConfig() {
-  return {
-    state,
-    db,
-    collectionFn: collection,
-    docFn: doc,
-    getDocFn: getDoc,
-    queryFn: query,
-    orderByFn: orderBy,
-    limitFn: limit,
-    onSnapshotFn: onSnapshot,
-    writeBatchFn: writeBatch,
-    serverTimestampFn: serverTimestamp,
-    normalizeShopCartStateFn: normalizeShopCartState,
-    isLocalBusinessProfileFn: isLocalBusinessProfile,
-    canAccessRestaurantOrdersFn: canAccessRestaurantOrders,
-    resolveProfileRestaurantIdFn: resolveProfileRestaurantId,
-    getRestaurantMetaByIdFn: getRestaurantMetaById,
-    normalizeHandleFn: normalizeHandle,
-    buildShopVariantKeyFn: buildShopVariantKey,
-    clampCropPercentFn: clampCropPercent,
-    parsePriceValueFn: parsePriceValue,
-    saveShopCartToStorageFn: saveShopCartToStorage,
-    clearShopCartFn: (...args) => clearShopCart(...args),
-    renderFn: render,
-    getLastRenderModeFn: () => lastRenderMode,
-    safeStorageObj: safeStorage,
-    guestScopeUid: getGuestScopeUid(),
-    resolveGuestScopeUidFn: () => getGuestScopeUid()
-  };
-}
-
-async function ensureOrdersRuntimeController() {
-  if (ordersRuntimeController) return ordersRuntimeController;
-  if (!ordersRuntimeControllerPromise) {
-    ordersRuntimeControllerPromise = import("./core/orders/orders-runtime-controller.js")
-      .then((module) => {
-        const createOrders = module?.createOrdersRuntimeController;
-        if (typeof createOrders !== "function") {
-          throw new Error("createOrdersRuntimeController unavailable");
-        }
-        ordersRuntimeController = createOrders(createOrdersRuntimeControllerConfig());
-        return ordersRuntimeController;
-      })
-      .catch((err) => {
-        ordersRuntimeControllerPromise = null;
-        reportCriticalRuntimeFailure("orders-runtime", err, { suppressAbort: true });
-        throw err;
-      });
-  }
-  return ordersRuntimeControllerPromise;
-}
-
-function createDeferredOrdersRuntimeController() {
-  return {
-    stopOrdersListener() {
-      ordersRuntimeStopRequested = true;
-      if (ordersRuntimeController && typeof ordersRuntimeController.stopOrdersListener === "function") {
-        ordersRuntimeController.stopOrdersListener();
-      }
-    },
-    startOrdersListener(user = state?.user) {
-      ordersRuntimeStopRequested = false;
-      void ensureOrdersRuntimeController()
-        .then((controller) => {
-          if (ordersRuntimeStopRequested) return;
-          if (typeof controller?.startOrdersListener === "function") {
-            controller.startOrdersListener(user);
-          }
-        })
-        .catch(() => null);
-    },
-    async submitShopCheckout(...args) {
-      ordersRuntimeStopRequested = false;
-      const controller = await ensureOrdersRuntimeController();
-      return controller.submitShopCheckout(...args);
-    }
-  };
-}
-
-const {
-  stopOrdersListener,
-  startOrdersListener,
-  submitShopCheckout
-} = createDeferredOrdersRuntimeController();
 
 const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
   stateDeps: { state, dataLoaded },
@@ -5229,33 +5185,7 @@ startAppStartupRuntimeCluster({
   suspendRenderFn: suspendRender,
   resumeRenderFn: resumeRender,
   startupDeps: {
-    publicBootstrapDeps: {
-      state,
-      windowObj: typeof window === "undefined" ? null : window,
-      fetchFn: typeof fetch === "function" ? fetch : null,
-      abortControllerCtor: typeof AbortController === "function" ? AbortController : null,
-      defaultPublicBootstrapEndpoint: DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT,
-      publicBootstrapEvent: PUBLIC_BOOTSTRAP_EVENT,
-      normalizeRestaurantType,
-      toDateSafe,
-      formatRelative,
-      mergeRestaurants,
-      writeCache,
-      readCache,
-      cacheKeys: CACHE_KEYS,
-      rebuildBusinessLocations,
-      saveFeedPosts,
-      normalizeStoryItemsForDisplay,
-      buildStoriesSignature,
-      setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
-      queueStoryIdentityHydration,
-      syncFeedPostLogos,
-      updateFeedDom,
-      render,
-      reportCriticalRuntimeFailure,
-      getLastRenderMode: () => lastRenderMode,
-      fastLimits: FAST_LIMITS
-    },
+    publicBootstrapDeps: publicRouteRuntimeCluster.publicBootstrapDeps,
     startupPrepDeps: {
       windowObj: typeof window === "undefined" ? null : window,
       state,
