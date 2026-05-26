@@ -149,7 +149,7 @@ import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
 } from "./core/media/media-upload-view-render-utils.js";
-import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
+import { createSocialEngagementRuntimeBoundary } from "./core/profile/social-engagement-runtime-boundary.js";
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
@@ -4178,7 +4178,7 @@ sessionDataRuntimeController = createSessionDataRuntimeCluster({
   }
 });
 
-socialEngagementRuntimeController = createSocialEngagementRuntimeController({
+socialEngagementRuntimeController = createSocialEngagementRuntimeBoundary({
   state,
   db,
   detailLikesLimit: DETAIL_LIKES_LIMIT,

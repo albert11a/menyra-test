@@ -387,6 +387,20 @@ Last updated: 2026-05-26
   Public Menu, Cart, Order und QR-/Tisch-Kontext gekoppelt. Deshalb wurde kein
   weiterer Split umgesetzt. Auf Nutzerwunsch wurde dieser Schritt auf Branch
   `refactorapp` dokumentiert.
+- Schritt 45 ist abgeschlossen: Die Social-Engagement-Runtime wurde hinter eine
+  Lazy Boundary gelegt.
+- Bewertung von Schritt 45: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 45:
+  `social-engagement-runtime-controller.js` ist nicht mehr statisch im
+  Social-Main-Entry, sondern eigener Dynamic Import. Der gebaute
+  `entry/social-app.js` sinkt von 1,138,788 Bytes raw / 309,638 Bytes gzip auf
+  1,116,617 Bytes raw / 302,809 Bytes gzip. Das sind 22,171 Bytes raw und
+  6,829 Bytes gzip weniger. Likes, Kommentare, Post-Meta und Menu-Item-Meta
+  nutzen weiter denselben Controller und werden bei echter Nutzung geladen.
+  Sichtbare UI, Routing, Firebase, Public Menu, Produktdetail, Warenkorb,
+  Orders, QR-/Tisch-Kontext, Heart, `/staff`, businessAccounts und
+  Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch wurde dieser Schritt
+  auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -430,6 +444,7 @@ Last updated: 2026-05-26
 - Referenz: [docs/mnyra-step42-profile-menu-focus-preload-timing.md](./mnyra-step42-profile-menu-focus-preload-timing.md)
 - Referenz: [docs/mnyra-step43-public-profile-menu-runtime-guard.md](./mnyra-step43-public-profile-menu-runtime-guard.md)
 - Referenz: [docs/mnyra-step44-public-profile-split-candidate-map.md](./mnyra-step44-public-profile-split-candidate-map.md)
+- Referenz: [docs/mnyra-step45-social-engagement-runtime-boundary.md](./mnyra-step45-social-engagement-runtime-boundary.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -455,7 +470,7 @@ Last updated: 2026-05-26
 
 ## Naechster Schritt
 
-Nach Schritt 44 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 45 ist der naechste sinnvolle separate Folgeschritt:
 Public Profile/Menu inklusive Fokus auf echtem Smartphone manuell mit frischem
 Bundle und normalem Desktop-Browser gegenpruefen.
 Erst wenn Profil, Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,

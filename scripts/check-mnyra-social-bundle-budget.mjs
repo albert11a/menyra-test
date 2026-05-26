@@ -8,8 +8,8 @@ const SOCIAL_SOURCE = "apps/menyra-social/social-app.js";
 const ROUTE_RUNTIME_REGISTRY_SOURCE = "apps/menyra-social/core/app-shell/route-runtime-registry.js";
 const PROFILE_MENU_FOCUS_BOUNDARY_SOURCE = "apps/menyra-social/core/profile/profile-menu-focus-render-boundary.js";
 
-const SOCIAL_ENTRY_RAW_BUDGET = 1_140_500;
-const SOCIAL_ENTRY_GZIP_BUDGET = 310_500;
+const SOCIAL_ENTRY_RAW_BUDGET = 1_118_500;
+const SOCIAL_ENTRY_GZIP_BUDGET = 304_000;
 
 function readText(path) {
   return readFileSync(path, "utf8");
@@ -77,6 +77,7 @@ const socialDynamicImports = new Set(Array.isArray(socialManifest?.dynamicImport
   "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
   "apps/menyra-social/core/orders/orders-runtime-controller.js",
+  "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
   "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
   "apps/menyra-social/core/menu/menu-modal-render-utils.js"
 ].forEach((entry) => {

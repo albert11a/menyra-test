@@ -1,0 +1,79 @@
+{
+  "status": "CURRENT",
+  "step": 45,
+  "branch": "refactorapp",
+  "title": "Social engagement runtime boundary",
+  "date": "2026-05-26",
+  "goal": "Move the profile social engagement runtime out of the Social main entry while keeping the same public profile, menu, cart, order and QR behavior.",
+  "implementation": {
+    "boundary": "apps/menyra-social/core/profile/social-engagement-runtime-boundary.js",
+    "dynamicController": "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+    "caller": "apps/menyra-social/social-app.js",
+    "tests": "tests/social-engagement-runtime-boundary.test.mjs",
+    "guard": "scripts/check-mnyra-social-bundle-budget.mjs",
+    "analysis": "scripts/analyze-mnyra-public-profile-split.mjs"
+  },
+  "bundleResult": {
+    "beforeStep45": {
+      "socialAppRawBytes": 1138788,
+      "socialAppGzipBytes": 309638
+    },
+    "afterStep45": {
+      "socialAppRawBytes": 1116617,
+      "socialAppGzipBytes": 302809,
+      "socialPublicEntryRawBytes": 1182,
+      "socialPublicEntryGzipBytes": 630,
+      "socialEngagementChunkRawBytes": 22822,
+      "socialEngagementChunkGzipBytes": 7419,
+      "profileMenuFocusChunkRawBytes": 87678,
+      "profileMenuFocusChunkGzipBytes": 21077,
+      "vendorFirebaseRawBytes": 441937,
+      "vendorFirebaseGzipBytes": 132592
+    },
+    "entryDeltaFromStep44": {
+      "rawBytes": -22171,
+      "gzipBytes": -6829
+    },
+    "remainingTrackedStaticCandidateRawBytes": 323226
+  },
+  "guard": {
+    "command": "npm run check:social-bundle",
+    "socialEntryRawBudget": 1118500,
+    "socialEntryGzipBudget": 304000,
+    "requiresDynamicImport": [
+      "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+      "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+      "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+      "apps/menyra-social/core/menu/menu-modal-render-utils.js",
+      "apps/menyra-social/core/orders/orders-runtime-controller.js"
+    ]
+  },
+  "checks": [
+    "npm run build",
+    "npm run check:social-bundle",
+    "node --test tests/social-engagement-runtime-boundary.test.mjs tests/profile-menu-focus-render-boundary.test.mjs tests/route-runtime-registry.test.mjs tests/profile-menu-focus-render-preload-utils.test.mjs",
+    "node --check apps/menyra-social/core/profile/social-engagement-runtime-boundary.js",
+    "node --check apps/menyra-social/social-app.js",
+    "node --check scripts/check-mnyra-social-bundle-budget.mjs",
+    "npm run analyze:public-profile-split",
+    "audit JSON validated",
+    "git diff --check"
+  ],
+  "unchanged": [
+    "visible UI/design",
+    "routes",
+    "Firebase paths, queries and payloads",
+    "DOM ids/classes/CSS",
+    "Public Profile renderer",
+    "Public Menu renderer",
+    "Product detail UI",
+    "cart",
+    "order send",
+    "QR/table context",
+    "Heart routes",
+    "/staff",
+    "businessAccounts",
+    "Waiter/Kitchen"
+  ],
+  "risk": "The first social engagement action now loads its controller chunk on demand. The same controller remains the source of truth; sync listener calls are deferred until the controller is loaded and async actions await it."
+}

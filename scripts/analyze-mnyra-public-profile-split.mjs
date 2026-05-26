@@ -41,8 +41,8 @@ const TARGET_MODULES = [
   {
     path: "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
     role: "profile social engagement and post detail runtime",
-    splitRisk: "medium",
-    nextAction: "candidate only after public profile/menu baseline is verified"
+    splitRisk: "already-split",
+    nextAction: "must stay dynamic"
   },
   {
     path: "apps/menyra-social/core/profile/self-profile-runtime-controller.js",
