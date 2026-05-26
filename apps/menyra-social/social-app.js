@@ -153,7 +153,7 @@ import { createSocialEngagementRuntimeBoundary } from "./core/profile/social-eng
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
 import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
-import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
+import { createCrmDomainRuntimeBoundary } from "./core/crm/crm-domain-runtime-boundary.js";
 import { createChatAppRuntimeBoundary } from "./core/chat/chat-app-runtime-boundary.js";
 import { isChatEnabledForV1 } from "./core/chat/chat-v1-guard.js";
 import {
@@ -2656,7 +2656,7 @@ const {
   alertFn: typeof alert === "function" ? alert : () => {}
 }));
 
-const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
+const crmDomainRuntimeCluster = createCrmDomainRuntimeBoundary({
   stateDeps: { state, dataLoaded },
   constants: {
     LEAD_SETTINGS_DEFAULT_COUNTRY,

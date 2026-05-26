@@ -401,6 +401,21 @@ Last updated: 2026-05-26
   Orders, QR-/Tisch-Kontext, Heart, `/staff`, businessAccounts und
   Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch wurde dieser Schritt
   auf Branch `refactorapp` umgesetzt.
+- Schritt 46 ist abgeschlossen: Die CRM-/Heart-Domain-Runtime wurde hinter
+  eine Lazy Boundary gelegt.
+- Bewertung von Schritt 46: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 46:
+  `crm-domain-runtime-cluster.js` ist nicht mehr statisch im Social-Main-Entry,
+  sondern eigener Dynamic Import. Der gebaute `entry/social-app.js` sinkt von
+  1,116,617 Bytes raw / 302,809 Bytes gzip auf 1,046,899 Bytes raw /
+  283,365 Bytes gzip. Das sind 69,718 Bytes raw und 19,444 Bytes gzip weniger;
+  die Unter-300-kB-Gzip-Marke ist damit erreicht. Heart-/CRM-Views nutzen
+  weiter denselben CRM-Controller, laden ihn aber erst bei CRM-Render,
+  CRM-Aktion oder explizitem CRM-Prefetch. Reine Sync-Fallbacks laden den
+  Chunk nicht auf Verdacht. Sichtbare UI, Routing, Firebase, Public Menu,
+  Produktdetail, Warenkorb, Orders, QR-/Tisch-Kontext, `/staff`,
+  businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
+  wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -445,6 +460,7 @@ Last updated: 2026-05-26
 - Referenz: [docs/mnyra-step43-public-profile-menu-runtime-guard.md](./mnyra-step43-public-profile-menu-runtime-guard.md)
 - Referenz: [docs/mnyra-step44-public-profile-split-candidate-map.md](./mnyra-step44-public-profile-split-candidate-map.md)
 - Referenz: [docs/mnyra-step45-social-engagement-runtime-boundary.md](./mnyra-step45-social-engagement-runtime-boundary.md)
+- Referenz: [docs/mnyra-step46-crm-domain-runtime-boundary.md](./mnyra-step46-crm-domain-runtime-boundary.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -470,13 +486,16 @@ Last updated: 2026-05-26
 
 ## Naechster Schritt
 
-Nach Schritt 45 ist der naechste sinnvolle separate Folgeschritt:
-Public Profile/Menu inklusive Fokus auf echtem Smartphone manuell mit frischem
-Bundle und normalem Desktop-Browser gegenpruefen.
-Erst wenn Profil, Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
-Entdecker-Karten-Profilwechsel, eigenes Business-Profil/Menu-Admin und
-Upload-Einstiege stabil bleiben, darf ein weiterer Public/Profile-Split geplant
-werden.
+Nach Schritt 46 ist der naechste sinnvolle separate Folgeschritt:
+das frische Bundle manuell gegenpruefen, besonders den ersten Lazy-Load von
+Heart/CRM (`/leads`, `/customers`, `/admin/staff`) plus die bisherigen
+Public-Profile/Menu/QR/Cart/Order-Flows.
+
+Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
+realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
+und eine sauber verifizierte Trennung von Public Profile/Menu/Cart/Order/QR.
+Dieser groessere Schritt darf erst nach manueller Stabilitaetspruefung und
+einem eigenen Vertrag geplant werden.
 
 ## Guardrails fuer die naechsten Schritte
 

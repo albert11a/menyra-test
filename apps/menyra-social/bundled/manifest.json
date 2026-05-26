@@ -3,8 +3,8 @@
     "file": "chunks/preload-helper-C4N3jzC6.js",
     "name": "preload-helper"
   },
-  "_vendor-firebase-Dr-tSEdk.js": {
-    "file": "chunks/vendor-firebase-Dr-tSEdk.js",
+  "_vendor-firebase-DSkMOHm4.js": {
+    "file": "chunks/vendor-firebase-DSkMOHm4.js",
     "name": "vendor-firebase"
   },
   "apps/menyra-social/_shared/image-compressor.js": {
@@ -19,6 +19,17 @@
     "src": "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
     "isDynamicEntry": true
   },
+  "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js": {
+    "file": "chunks/crm-domain-runtime-cluster-BF_D1DFk.js",
+    "name": "crm-domain-runtime-cluster",
+    "src": "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "apps/menyra-social/social-app.js",
+      "_preload-helper-C4N3jzC6.js",
+      "_vendor-firebase-DSkMOHm4.js"
+    ]
+  },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
     "file": "chunks/discovery-runtime-controller-GZ0quJe_.js",
     "name": "discovery-runtime-controller",
@@ -26,36 +37,36 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/media/media-upload-runtime-cluster.js": {
-    "file": "chunks/media-upload-runtime-cluster-D7D9fD-r.js",
+    "file": "chunks/media-upload-runtime-cluster-BOksWGd6.js",
     "name": "media-upload-runtime-cluster",
     "src": "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-Dr-tSEdk.js"
+      "_vendor-firebase-DSkMOHm4.js"
     ]
   },
   "apps/menyra-social/core/menu/menu-modal-render-utils.js": {
-    "file": "chunks/menu-modal-render-utils-CSTTFOIA.js",
+    "file": "chunks/menu-modal-render-utils-DM8lbh-b.js",
     "name": "menu-modal-render-utils",
     "src": "apps/menyra-social/core/menu/menu-modal-render-utils.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-Dr-tSEdk.js"
+      "_vendor-firebase-DSkMOHm4.js"
     ]
   },
   "apps/menyra-social/core/orders/orders-runtime-controller.js": {
-    "file": "chunks/orders-runtime-controller-BNy0TS-B.js",
+    "file": "chunks/orders-runtime-controller-_z-m-24b.js",
     "name": "orders-runtime-controller",
     "src": "apps/menyra-social/core/orders/orders-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-Dr-tSEdk.js"
+      "_vendor-firebase-DSkMOHm4.js"
     ]
   },
   "apps/menyra-social/core/overlays/overlay-basic-render-utils.js": {
@@ -65,25 +76,25 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js": {
-    "file": "chunks/profile-menu-focus-render-controller-Doj0aPMk.js",
+    "file": "chunks/profile-menu-focus-render-controller-C1vJ82oS.js",
     "name": "profile-menu-focus-render-controller",
     "src": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-Dr-tSEdk.js"
+      "_vendor-firebase-DSkMOHm4.js"
     ]
   },
   "apps/menyra-social/core/profile/profile-open-flow-utils.js": {
-    "file": "chunks/profile-open-flow-utils-DhgWmyOf.js",
+    "file": "chunks/profile-open-flow-utils-YSrh2ezy.js",
     "name": "profile-open-flow-utils",
     "src": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-Dr-tSEdk.js"
+      "_vendor-firebase-DSkMOHm4.js"
     ]
   },
   "apps/menyra-social/core/profile/social-engagement-runtime-controller.js": {
@@ -93,13 +104,13 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01": {
-    "file": "chunks/public-route-cache-early-preload-CrWX8YGE.js",
+    "file": "chunks/public-route-cache-early-preload-BYzmdQ5h.js",
     "name": "public-route-cache-early-preload",
     "src": "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
-      "_vendor-firebase-Dr-tSEdk.js",
+      "_vendor-firebase-DSkMOHm4.js",
       "_preload-helper-C4N3jzC6.js"
     ]
   },
@@ -111,7 +122,7 @@
     "isDynamicEntry": true,
     "imports": [
       "_preload-helper-C4N3jzC6.js",
-      "_vendor-firebase-Dr-tSEdk.js"
+      "_vendor-firebase-DSkMOHm4.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01",
@@ -122,6 +133,7 @@
       "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
       "apps/menyra-social/core/menu/menu-modal-render-utils.js",
       "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
+      "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
       "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
       "apps/menyra-social/_shared/image-compressor.js",
       "apps/menyra-social/core/media/media-upload-runtime-cluster.js"

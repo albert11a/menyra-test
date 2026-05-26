@@ -9,6 +9,12 @@ const MANIFEST = "apps/menyra-social/bundled/manifest.json";
 
 const TARGET_MODULES = [
   {
+    path: "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
+    role: "CRM/Heart domain runtime cluster",
+    splitRisk: "already-split",
+    nextAction: "must stay dynamic"
+  },
+  {
     path: "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
     role: "public profile/menu orchestration cluster",
     splitRisk: "high",
