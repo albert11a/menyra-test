@@ -1,0 +1,101 @@
+{
+  "status": "CURRENT",
+  "step": 44,
+  "branch": "refactorapp",
+  "title": "Public Profile/Menu split candidate map",
+  "date": "2026-05-26",
+  "goal": "Prepare the next Public/Profile runtime split without changing runtime behavior by adding a reproducible module placement and size analysis.",
+  "implementation": {
+    "analysisScript": "scripts/analyze-mnyra-public-profile-split.mjs",
+    "packageScript": "npm run analyze:public-profile-split",
+    "staticGraphEntry": "apps/menyra-social/social-app.js",
+    "manifest": "apps/menyra-social/bundled/manifest.json"
+  },
+  "analysisResult": {
+    "socialAppRawBytes": 1138788,
+    "socialAppGzipBytes": 309638,
+    "socialPublicEntryRawBytes": 1182,
+    "socialPublicEntryGzipBytes": 630,
+    "staticGraphModuleCount": 175,
+    "trackedStaticCandidateRawBytes": 377211,
+    "highRiskStaticCandidates": [
+      {
+        "path": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
+        "sourceRawBytes": 77819,
+        "sourceGzipBytes": 13333,
+        "reason": "public profile runtime data/show-state controller; still coupled to Public Profile, Public Menu, Cart, Order and QR/table context"
+      },
+      {
+        "path": "apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js",
+        "sourceRawBytes": 69405,
+        "sourceGzipBytes": 12121,
+        "reason": "public bootstrap/menu/focus seed controller; still coupled to cold-start route truth"
+      },
+      {
+        "path": "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
+        "sourceRawBytes": 44463,
+        "sourceGzipBytes": 6547,
+        "reason": "profile/menu orchestration cluster and current renderer boundary owner"
+      },
+      {
+        "path": "apps/menyra-social/core/profile/public-profile-direct-entry-controller.js",
+        "sourceRawBytes": 36437,
+        "sourceGzipBytes": 6572,
+        "reason": "direct public route bootstrap/profile entry controller with QR/table handoff"
+      }
+    ],
+    "alreadyDynamic": [
+      {
+        "path": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
+        "bundleRawBytes": 87678,
+        "bundleGzipBytes": 21077
+      },
+      {
+        "path": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
+        "bundleRawBytes": 26142,
+        "bundleGzipBytes": 7534
+      },
+      {
+        "path": "apps/menyra-social/core/menu/menu-modal-render-utils.js",
+        "bundleRawBytes": 45570,
+        "bundleGzipBytes": 10328
+      },
+      {
+        "path": "apps/menyra-social/core/orders/orders-runtime-controller.js",
+        "bundleRawBytes": 12923,
+        "bundleGzipBytes": 4548
+      }
+    ]
+  },
+  "nextSafeMove": {
+    "recommendation": "Do not split runtime further before manual verification. After manual verification, plan around public-profile-runtime-controller dependencies first.",
+    "blockedUntilManualCheck": true,
+    "reason": "Public Profile, Public Menu, Cart, Order and QR/table context still share runtime state and must not be split blind."
+  },
+  "checks": [
+    "npm run build",
+    "npm run check:social-bundle",
+    "node --test tests/route-runtime-registry.test.mjs tests/profile-menu-focus-render-preload-utils.test.mjs tests/profile-menu-focus-render-boundary.test.mjs",
+    "node --check scripts/analyze-mnyra-public-profile-split.mjs",
+    "npm run analyze:public-profile-split",
+    "audit JSON validated",
+    "git diff --check"
+  ],
+  "unchanged": [
+    "visible UI/design",
+    "routes",
+    "Firebase paths, queries and payloads",
+    "DOM ids/classes/CSS",
+    "runtime behavior",
+    "bundled output",
+    "Public Menu product detail",
+    "cart",
+    "order send",
+    "QR/table context",
+    "Heart routes",
+    "/staff",
+    "businessAccounts",
+    "Waiter/Kitchen"
+  ],
+  "risk": "This is an analysis-only step. It creates no product behavior change, but it records that the next real split remains blocked until manual verification is done."
+}

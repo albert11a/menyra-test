@@ -375,6 +375,18 @@ Last updated: 2026-05-26
   Unit-Cases halten Cart, Favorites, QR und Preload-Negativfaelle fest. Es gab
   keine sichtbare UI-, Routing-, Firebase- oder Runtime-Split-Aenderung. Auf
   Nutzerwunsch wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
+- Schritt 44 ist dokumentiert: Public Profile/Menu Split-Kandidaten wurden
+  reproduzierbar kartiert, ohne Runtime-Verhalten zu aendern.
+- Bewertung von Schritt 44: `analysiert, noch nicht umgesetzt`.
+- Wichtigster Befund aus Schritt 44:
+  Der statische Import-Graph ab `social-app.js` umfasst 175 Module. Die
+  getrackten Public/Profile/Menu-Split-Kandidaten im statischen Graph umfassen
+  377,211 Bytes Source raw. Der groesste naechste Kandidat ist
+  `public-profile-runtime-controller.js` mit 77,819 Bytes Source raw /
+  13,333 Bytes Source gzip, aber dieser Bereich ist weiter mit Public Profile,
+  Public Menu, Cart, Order und QR-/Tisch-Kontext gekoppelt. Deshalb wurde kein
+  weiterer Split umgesetzt. Auf Nutzerwunsch wurde dieser Schritt auf Branch
+  `refactorapp` dokumentiert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -417,6 +429,7 @@ Last updated: 2026-05-26
 - Referenz: [docs/mnyra-step41-profile-menu-focus-render-boundary.md](./mnyra-step41-profile-menu-focus-render-boundary.md)
 - Referenz: [docs/mnyra-step42-profile-menu-focus-preload-timing.md](./mnyra-step42-profile-menu-focus-preload-timing.md)
 - Referenz: [docs/mnyra-step43-public-profile-menu-runtime-guard.md](./mnyra-step43-public-profile-menu-runtime-guard.md)
+- Referenz: [docs/mnyra-step44-public-profile-split-candidate-map.md](./mnyra-step44-public-profile-split-candidate-map.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -442,7 +455,7 @@ Last updated: 2026-05-26
 
 ## Naechster Schritt
 
-Nach Schritt 43 ist der naechste sinnvolle separate Folgeschritt:
+Nach Schritt 44 ist der naechste sinnvolle separate Folgeschritt:
 Public Profile/Menu inklusive Fokus auf echtem Smartphone manuell mit frischem
 Bundle und normalem Desktop-Browser gegenpruefen.
 Erst wenn Profil, Menu, Fokus, Produktmodal, Warenkorb, QR-/Tisch-Kontext,
