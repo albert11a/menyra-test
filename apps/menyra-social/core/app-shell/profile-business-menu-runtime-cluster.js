@@ -651,7 +651,10 @@ export function createProfileBusinessMenuRuntimeCluster({
     for (const restaurantId of ids) {
       if (!isNormalWebDirectProfileVisible()) return;
       if (getVisiblePostsForCurrentProfile().length) return;
-      const posts = await loadBusinessPostsForRestaurant(restaurantId, { skipProfileResolve: true });
+      const posts = await loadBusinessPostsForRestaurant(restaurantId, {
+        skipProfileResolve: true,
+        initialPage: true
+      });
       const safePosts = Array.isArray(posts) ? posts : [];
       if (!safePosts.length) continue;
       const liveProfileView = getVisiblePublicProfileView();
@@ -856,11 +859,15 @@ export function createProfileBusinessMenuRuntimeCluster({
       const targetRestaurantId = String(canonicalRestaurantId || requestedRestaurantId || "").trim();
       if (!targetRestaurantId) return;
       let posts = await loadBusinessPostsForRestaurant(targetRestaurantId, {
-        skipProfileResolve: !!canonicalRestaurantId
+        skipProfileResolve: !!canonicalRestaurantId,
+        initialPage: true
       });
       posts = Array.isArray(posts) ? posts : [];
       if (!posts.length && requestedRestaurantId && requestedRestaurantId !== targetRestaurantId) {
-        const fallback = await loadBusinessPostsForRestaurant(requestedRestaurantId, { skipProfileResolve: true });
+        const fallback = await loadBusinessPostsForRestaurant(requestedRestaurantId, {
+          skipProfileResolve: true,
+          initialPage: true
+        });
         posts = Array.isArray(fallback) ? fallback : [];
       }
       const liveProfileView = getVisiblePublicProfileView();

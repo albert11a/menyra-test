@@ -113,3 +113,119 @@ test("public profile switch does not inherit stale route/menu state from previou
   assert.equal(state.focus.truthState, "unknown");
   assert.equal(renderCount, 1);
 });
+
+function createDocsSnapshot(rows = []) {
+  return {
+    forEach(callback) {
+      rows.forEach((row) => {
+        callback({
+          id: row.id,
+          data: () => ({ ...row })
+        });
+      });
+    }
+  };
+}
+
+function createBusinessPostsController({
+  rows = [],
+  fastLimits = {},
+  getDocsFn = null,
+  queryCalls = []
+} = {}) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const readDocs = typeof getDocsFn === "function"
+    ? getDocsFn
+    : async (refOrQuery) => {
+      const constraints = Array.isArray(refOrQuery?.constraints) ? refOrQuery.constraints : [];
+      queryCalls.push(constraints);
+      const limitValue = constraints.find((constraint) => constraint?.type === "limit")?.value;
+      const selectedRows = Number.isFinite(Number(limitValue))
+        ? safeRows.slice(0, Number(limitValue))
+        : safeRows;
+      return createDocsSnapshot(selectedRows);
+    };
+  return createPublicProfileRuntimeController({
+    state: {},
+    db: {},
+    fastLimits,
+    collectionFn: (_db, ...path) => ({ path }),
+    queryFn: (ref, ...constraints) => ({ ref, constraints }),
+    orderByFn: (field, direction) => ({ type: "orderBy", field, direction }),
+    limitFn: (value) => ({ type: "limit", value }),
+    getDocsFn: readDocs
+  });
+}
+
+test("public business posts initial page uses a bounded read without becoming the full cache", async () => {
+  const queryCalls = [];
+  const rows = Array.from({ length: 5 }, (_value, index) => ({
+    id: `post-${index + 1}`,
+    url: `https://cdn.example/post-${index + 1}.jpg`,
+    status: "active",
+    createdAt: index
+  }));
+  const controller = createBusinessPostsController({
+    rows,
+    fastLimits: { publicBusinessPostsInitialPage: 2 },
+    queryCalls
+  });
+
+  const initialPosts = await controller.loadBusinessPostsForRestaurant("restaurant-1", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+  assert.equal(initialPosts.length, 2);
+  assert.equal(queryCalls.length, 1);
+  assert.equal(queryCalls[0].find((constraint) => constraint?.type === "limit")?.value, 2);
+
+  const fullPosts = await controller.loadBusinessPostsForRestaurant("restaurant-1", {
+    skipProfileResolve: true
+  });
+  assert.equal(fullPosts.length, 5);
+  assert.equal(queryCalls.length, 2);
+  assert.equal(queryCalls[1].some((constraint) => constraint?.type === "limit"), false);
+});
+
+test("public business posts initial page dedupes concurrent visible reads", async () => {
+  let resolveSnapshot = null;
+  let getDocsCalls = 0;
+  const queryCalls = [];
+  const rows = [
+    { id: "post-1", url: "https://cdn.example/post-1.jpg", status: "active" },
+    { id: "post-2", url: "https://cdn.example/post-2.jpg", status: "active" }
+  ];
+  const controller = createBusinessPostsController({
+    rows,
+    fastLimits: { publicBusinessPostsInitialPage: 1 },
+    queryCalls,
+    getDocsFn: async (refOrQuery) => {
+      getDocsCalls += 1;
+      queryCalls.push(Array.isArray(refOrQuery?.constraints) ? refOrQuery.constraints : []);
+      return new Promise((resolve) => {
+        resolveSnapshot = () => {
+          const constraints = Array.isArray(refOrQuery?.constraints) ? refOrQuery.constraints : [];
+          const limitValue = constraints.find((constraint) => constraint?.type === "limit")?.value;
+          resolve(createDocsSnapshot(rows.slice(0, Number(limitValue) || rows.length)));
+        };
+      });
+    }
+  });
+
+  const firstRead = controller.loadBusinessPostsForRestaurant("restaurant-2", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+  const secondRead = controller.loadBusinessPostsForRestaurant("restaurant-2", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+
+  assert.equal(getDocsCalls, 1);
+  assert.equal(queryCalls[0].find((constraint) => constraint?.type === "limit")?.value, 1);
+
+  resolveSnapshot();
+  const [firstPosts, secondPosts] = await Promise.all([firstRead, secondRead]);
+  assert.equal(firstPosts.length, 1);
+  assert.deepEqual(secondPosts, firstPosts);
+});

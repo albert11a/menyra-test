@@ -425,6 +425,18 @@ Last updated: 2026-05-29
   Beitraege, Feed und Profil-Daten. Der erste technische Kandidat ist Schritt
   48: Public Posts Ladehaertung mit begrenztem erstem Read, In-Flight-Dedupe,
   kontrollierter Nachladung und weiterhin vollstaendiger Sichtbarkeit.
+- Schritt 48 ist abgeschlossen: Public Business Posts nutzen im sichtbaren
+  Public-Profilpfad einen begrenzten Initial-Page-Read mit getrenntem Cache
+  und behalten den Full-Read als vollstaendige Posts-Wahrheit.
+- Bewertung von Schritt 48: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 48:
+  Der erste sichtbare Public-Posts-Read kann mit Firestore-`limit` laufen und
+  parallele sichtbare Initial-Reads werden dedupliziert. Diese Initial-Page
+  befuellt nicht den Full-Cache, sodass ein spaeterer normaler Read weiterhin
+  alle Posts laden kann. Der Open-Flow nutzt die Initial-Page nur fuer fruehes
+  Anwarmen und akzeptiert sie nicht als finale Posts-Wahrheit. Sichtbare UI,
+  Routing, QR, Cart, Order, Firebase Rules, Functions und Datenpfade bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -471,6 +483,7 @@ Last updated: 2026-05-29
 - Referenz: [docs/mnyra-step45-social-engagement-runtime-boundary.md](./mnyra-step45-social-engagement-runtime-boundary.md)
 - Referenz: [docs/mnyra-step46-crm-domain-runtime-boundary.md](./mnyra-step46-crm-domain-runtime-boundary.md)
 - Referenz: [docs/mnyra-step47-firebase-loading-hardening-plan.md](./mnyra-step47-firebase-loading-hardening-plan.md)
+- Referenz: [docs/mnyra-step48-public-posts-loading-hardening.md](./mnyra-step48-public-posts-loading-hardening.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -496,17 +509,17 @@ Last updated: 2026-05-29
 
 ## Naechster Schritt
 
-Nach Schritt 47 ist der naechste sinnvolle separate Folgeschritt:
-Schritt 48 - Public Posts Ladehaertung fuer bestehende UI.
+Nach Schritt 48 ist der naechste sinnvolle separate Folgeschritt:
+Schritt 49 - Menu/Fokus No-Hang-Haertung fuer bestehende UI.
 
 Dabei gilt:
 
 - Keine UI-/Design-Aenderung.
 - Keine Route-, QR-, Cart-, Order-, Firebase-Rules- oder Functions-Aenderung.
 - Kein Storefront-/Renderer-Umbau.
-- Public Business Posts duerfen nicht wieder hart abgeschnitten werden.
-- Der erste technische Fix soll nur den bestehenden Posts-Ladepfad schneller,
-  deduplizierter und ausfallsicherer machen.
+- Public Menu darf nicht endlos auf Fokus/Angebote warten.
+- Fokus bleibt fachlich Teil der Menu-Praesentation, muss aber eine klare
+  Empty-/Error-/Timeout-Entscheidung bekommen.
 
 Die manuelle Gegenpruefung des frischen Schritt-46-Bundles bleibt weiterhin
 sinnvoll, besonders der erste Lazy-Load von Heart/CRM (`/leads`, `/customers`,

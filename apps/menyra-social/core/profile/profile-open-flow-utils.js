@@ -857,13 +857,16 @@ export function createProfileOpenFlowControllerCore({
           || safeTargetSource === "feed"
           || safeTargetSource === "profile-open"
         );
+      const shouldUseInitialPostsPage = prioritizePostsSurface || isWebRoutePriorityPath;
       const earlyPostsPromise = shouldWarmPostsForSurface && earlyPostsRestaurantId
         ? Promise.resolve(loadBusinessPosts(earlyPostsRestaurantId, {
-          skipProfileResolve: earlyPostsSkipProfileResolve
+          skipProfileResolve: earlyPostsSkipProfileResolve,
+          initialPage: shouldUseInitialPostsPage
         }))
           .then((rows) => ({
             ok: true,
-            posts: Array.isArray(rows) ? rows : []
+            posts: Array.isArray(rows) ? rows : [],
+            initialPage: shouldUseInitialPostsPage
           }))
           .catch((err) => {
             console.error(err);
@@ -1361,11 +1364,11 @@ export function createProfileOpenFlowControllerCore({
         && safeMenuAccessSource !== "qr";
       if (deferPostsResolutionToVisiblePostsSurface) {
         posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
-      } else if (earlyPostsResult?.ok && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
+      } else if (earlyPostsResult?.ok && earlyPostsResult.initialPage !== true && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
         posts = earlyPostsResult.posts;
       } else if (earlyPostsPromise) {
         const earlyResult = earlyPostsResult || await earlyPostsPromise;
-        if (earlyResult?.ok && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
+        if (earlyResult?.ok && earlyResult.initialPage !== true && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
           posts = earlyResult.posts;
         }
       }
