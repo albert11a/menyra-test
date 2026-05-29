@@ -188,6 +188,31 @@ export function createAppShellRuntimeController(deps = {}) {
   let lastRuntimeDegradedBannerSignature = "";
   let lastFeedLocationRenderKey = "";
   let menuLazyImageObserver = null;
+  const revealedMenuImageSrcs = new Set();
+  const REVEALED_MENU_IMAGE_SRC_MAX = 500;
+
+  function normalizeMenuImageRevealSrc(src = "") {
+    return String(src || "").trim();
+  }
+
+  function rememberRevealedMenuImageSrc(src = "") {
+    const safeSrc = normalizeMenuImageRevealSrc(src);
+    if (!safeSrc) return;
+    if (revealedMenuImageSrcs.has(safeSrc)) {
+      revealedMenuImageSrcs.delete(safeSrc);
+    }
+    revealedMenuImageSrcs.add(safeSrc);
+    while (revealedMenuImageSrcs.size > REVEALED_MENU_IMAGE_SRC_MAX) {
+      const oldestSrc = revealedMenuImageSrcs.values().next().value;
+      if (!oldestSrc) break;
+      revealedMenuImageSrcs.delete(oldestSrc);
+    }
+  }
+
+  function hasRevealedMenuImageSrc(src = "") {
+    const safeSrc = normalizeMenuImageRevealSrc(src);
+    return !!safeSrc && revealedMenuImageSrcs.has(safeSrc);
+  }
 
   function getViewportScrollTop() {
     const scrollingEl = doc?.scrollingElement || doc?.documentElement || doc?.body || null;
@@ -1055,18 +1080,24 @@ export function createAppShellRuntimeController(deps = {}) {
     const revealImage = (img) => {
       if (!(img instanceof HTMLImageElement)) return;
       if (img.dataset.imageReveal !== "menu") return;
-      if (img.dataset.imageRevealReady === "1") return;
+      const src = normalizeMenuImageRevealSrc(img.currentSrc || img.getAttribute("src") || "");
+      rememberRevealedMenuImageSrc(src);
+      if (img.dataset.imageRevealReady === "1") {
+        img.style.opacity = "1";
+        return;
+      }
       img.dataset.imageRevealReady = "1";
       img.style.opacity = "1";
     };
     const armImageReveal = (img) => {
       if (!(img instanceof HTMLImageElement)) return;
       if (img.dataset.imageReveal !== "menu") return;
-      const src = String(img.currentSrc || img.getAttribute("src") || "").trim();
+      const src = normalizeMenuImageRevealSrc(img.currentSrc || img.getAttribute("src") || "");
       if (!src) return;
+      const imageAlreadyReady = hasRevealedMenuImageSrc(src) || (img.complete && Number(img.naturalWidth || 0) > 0);
       if (img.dataset.imageRevealSrc !== src) {
         img.dataset.imageRevealSrc = src;
-        img.dataset.imageRevealReady = "0";
+        img.dataset.imageRevealReady = imageAlreadyReady ? "1" : "0";
         if (img.dataset.imageRevealStyled !== "1") {
           const existingTransition = String(img.style.transition || "").trim();
           if (!existingTransition) {
@@ -1076,7 +1107,13 @@ export function createAppShellRuntimeController(deps = {}) {
           }
           img.dataset.imageRevealStyled = "1";
         }
-        img.style.opacity = "0";
+        img.style.opacity = imageAlreadyReady ? "1" : "0";
+      }
+      if (imageAlreadyReady) {
+        rememberRevealedMenuImageSrc(src);
+        img.dataset.imageRevealReady = "1";
+        img.style.opacity = "1";
+        return;
       }
       const revealWhenDecoded = () => {
         if (img.dataset.imageRevealReady === "1") return;
