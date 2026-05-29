@@ -120,7 +120,8 @@ export function createSessionDataRuntimeController({
   loadMenuMetaFn = async () => ({ statusBadgeVisible: true }),
   loadMenuItemsFromCollectionFn = async () => [],
   loadPublicMenuItemsFn = async () => [],
-  loadMenuHybridFn = async () => []
+  loadMenuHybridFn = async () => [],
+  loadDeadlines = {}
 } = {}) {
   const safeStorage = safeStorageObj || {
     getItem: () => null,
@@ -156,6 +157,51 @@ export function createSessionDataRuntimeController({
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
   let renderRequested = false;
+
+  function resolveLoadDeadlineMs(key = "", fallbackMs = 0) {
+    const deadlines = loadDeadlines && typeof loadDeadlines === "object" ? loadDeadlines : {};
+    const direct = Number(deadlines[key]);
+    if (Number.isFinite(direct) && direct > 0) return Math.max(1, Math.round(direct));
+    const fallback = Number(fallbackMs);
+    return Number.isFinite(fallback) && fallback > 0 ? Math.max(1, Math.round(fallback)) : 0;
+  }
+
+  function createLoadDeadlineError(scope = "firebase.load", timeoutMs = 0) {
+    const safeScope = String(scope || "firebase.load").trim() || "firebase.load";
+    const err = new Error(`${safeScope} timed out after ${Math.max(1, Math.round(Number(timeoutMs) || 0))}ms`);
+    err.name = "MnyraLoadTimeoutError";
+    err.code = "deadline-exceeded";
+    err.scope = safeScope;
+    return err;
+  }
+
+  function runWithLoadDeadline(task, { timeoutMs = 0, scope = "firebase.load" } = {}) {
+    const runTask = typeof task === "function" ? task : (() => task);
+    const safeTimeoutMs = Math.max(0, Math.round(Number(timeoutMs) || 0));
+    if (!safeTimeoutMs) return Promise.resolve().then(() => runTask());
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timerId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(createLoadDeadlineError(scope, safeTimeoutMs));
+      }, safeTimeoutMs);
+      Promise.resolve()
+        .then(() => runTask())
+        .then((value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timerId);
+          resolve(value);
+        })
+        .catch((err) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timerId);
+          reject(err);
+        });
+    });
+  }
 
   function addVisibleMenuTargetId(targetSet, value = "") {
     const safeValue = String(value || "").trim();
@@ -1481,12 +1527,27 @@ export function createSessionDataRuntimeController({
     if (prefetchOnly) {
       try {
         const [items, enabled] = await Promise.all([
-          timeLoadingAsync("public/offers load", () => loadFocusItemsFn(restaurantId), {
+          timeLoadingAsync("public/offers load", () => runWithLoadDeadline(
+            () => loadFocusItemsFn(restaurantId),
+            {
+              timeoutMs: resolveLoadDeadlineMs("focusItemsMs", 2600),
+              scope: "public/offers"
+            }
+          ), {
             restaurantId,
             prefetchOnly: true,
             source: "public/offers"
           }),
-          loadFocusMetaFn(restaurantId)
+          runWithLoadDeadline(
+            () => loadFocusMetaFn(restaurantId),
+            {
+              timeoutMs: resolveLoadDeadlineMs("focusMetaMs", 1800),
+              scope: "public/offers-meta"
+            }
+          ).catch((err) => {
+            console.error(err);
+            return true;
+          })
         ]);
         const safeItems = Array.isArray(items) ? items : [];
         const truthState = safeItems.length > 0 ? "seeded" : "knownEmpty";
@@ -1520,11 +1581,26 @@ export function createSessionDataRuntimeController({
     }
     try {
       const [items, enabled] = await Promise.all([
-        timeLoadingAsync("public/offers load", () => loadFocusItemsFn(restaurantId), {
+        timeLoadingAsync("public/offers load", () => runWithLoadDeadline(
+          () => loadFocusItemsFn(restaurantId),
+          {
+            timeoutMs: resolveLoadDeadlineMs("focusItemsMs", 2600),
+            scope: "public/offers"
+          }
+        ), {
           restaurantId,
           source: "public/offers"
         }),
-        loadFocusMetaFn(restaurantId)
+        runWithLoadDeadline(
+          () => loadFocusMetaFn(restaurantId),
+          {
+            timeoutMs: resolveLoadDeadlineMs("focusMetaMs", 1800),
+            scope: "public/offers-meta"
+          }
+        ).catch((err) => {
+          console.error(err);
+          return true;
+        })
       ]);
       const safeItems = Array.isArray(items) ? items : [];
       const truthState = safeItems.length > 0 ? "seeded" : "knownEmpty";
@@ -1778,17 +1854,29 @@ export function createSessionDataRuntimeController({
           const [itemsResult, meta] = await Promise.all([
             timeMenuItemsLoad(
               "public/menu load",
-              () => runMenuLoadWithBackoff(
-                () => loadPublicMenuItemsFn(safeRestaurantId),
+              () => runWithLoadDeadline(
+                () => runMenuLoadWithBackoff(
+                  () => loadPublicMenuItemsFn(safeRestaurantId),
+                  {
+                    attempts: lightweightQrGuestFlow ? 4 : 3,
+                    baseDelayMs: lightweightQrGuestFlow ? 140 : 220
+                  }
+                ),
                 {
-                  attempts: lightweightQrGuestFlow ? 4 : 3,
-                  baseDelayMs: lightweightQrGuestFlow ? 140 : 220
+                  timeoutMs: resolveLoadDeadlineMs("menuItemsMs", lightweightQrGuestFlow ? 4200 : 5200),
+                  scope: "public/menu"
                 }
               ),
               { prefetchOnly: true }
             ),
             Promise.resolve(runMenuLoadWithBackoff(
-              () => loadMenuMetaFn(safeRestaurantId),
+              () => runWithLoadDeadline(
+                () => loadMenuMetaFn(safeRestaurantId),
+                {
+                  timeoutMs: resolveLoadDeadlineMs("menuMetaMs", 1800),
+                  scope: "public/menu-meta"
+                }
+              ),
               { attempts: 3, baseDelayMs: 180 }
             ))
               .catch((err) => {
@@ -1845,7 +1933,13 @@ export function createSessionDataRuntimeController({
         const metaPromise = lightweightQrGuestFlow
           ? Promise.resolve({ statusBadgeVisible: true })
           : Promise.resolve(runMenuLoadWithBackoff(
-            () => loadMenuMetaFn(safeRestaurantId),
+            () => runWithLoadDeadline(
+              () => loadMenuMetaFn(safeRestaurantId),
+              {
+                timeoutMs: resolveLoadDeadlineMs("menuMetaMs", 1800),
+                scope: "public/menu-meta"
+              }
+            ),
             { attempts: 3, baseDelayMs: 180 }
           ))
           .catch((err) => {
@@ -1855,27 +1949,45 @@ export function createSessionDataRuntimeController({
         if (safeSource === "collection") {
           items = await timeMenuItemsLoad(
             "menuItems load",
-            () => runMenuLoadWithBackoff(
-              () => loadMenuItemsFromCollectionFn(safeRestaurantId),
-              { attempts: 3, baseDelayMs: 220 }
+            () => runWithLoadDeadline(
+              () => runMenuLoadWithBackoff(
+                () => loadMenuItemsFromCollectionFn(safeRestaurantId),
+                { attempts: 3, baseDelayMs: 220 }
+              ),
+              {
+                timeoutMs: resolveLoadDeadlineMs("menuCollectionItemsMs", 6500),
+                scope: "menuItems"
+              }
             )
           );
         } else if (safeSource === "migration") {
           items = await timeMenuItemsLoad(
             "menu hybrid load",
-            () => runMenuLoadWithBackoff(
-              () => loadMenuHybridFn(safeRestaurantId),
-              { attempts: 3, baseDelayMs: 240 }
+            () => runWithLoadDeadline(
+              () => runMenuLoadWithBackoff(
+                () => loadMenuHybridFn(safeRestaurantId),
+                { attempts: 3, baseDelayMs: 240 }
+              ),
+              {
+                timeoutMs: resolveLoadDeadlineMs("menuMigrationItemsMs", 7000),
+                scope: "menu-hybrid"
+              }
             )
           );
         } else {
           items = await timeMenuItemsLoad(
             "public/menu load",
-            () => runMenuLoadWithBackoff(
-              () => loadPublicMenuItemsFn(safeRestaurantId),
+            () => runWithLoadDeadline(
+              () => runMenuLoadWithBackoff(
+                () => loadPublicMenuItemsFn(safeRestaurantId),
+                {
+                  attempts: lightweightQrGuestFlow ? 4 : 3,
+                  baseDelayMs: lightweightQrGuestFlow ? 140 : 220
+                }
+              ),
               {
-                attempts: lightweightQrGuestFlow ? 4 : 3,
-                baseDelayMs: lightweightQrGuestFlow ? 140 : 220
+                timeoutMs: resolveLoadDeadlineMs("menuItemsMs", lightweightQrGuestFlow ? 4200 : 5200),
+                scope: "public/menu"
               }
             )
           );

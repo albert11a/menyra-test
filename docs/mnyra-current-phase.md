@@ -437,6 +437,19 @@ Last updated: 2026-05-29
   Anwarmen und akzeptiert sie nicht als finale Posts-Wahrheit. Sichtbare UI,
   Routing, QR, Cart, Order, Firebase Rules, Functions und Datenpfade bleiben
   unveraendert.
+- Schritt 49 ist abgeschlossen: Menu/Fokus/Produkte bekommen No-Hang-Deadlines
+  fuer bestehende Firebase-Ladewege.
+- Bewertung von Schritt 49: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 49:
+  Public Menu, Fokus/Angebote und Menu-Editor-Produkte duerfen nicht dauerhaft
+  in `loading` bleiben, wenn ein Firebase-Read nicht zurueckkommt. Public
+  Menu Items, Menu-Editor-Collection-Items, Hybrid-Menu, Public Menu Meta,
+  Public Fokus/Angebote und Fokus-Meta haben jetzt kontrollierte Deadlines.
+  Bei Timeout wird ein Fehler-/Leerzustand oder vorhandener Fallback-State
+  gesetzt, statt endlos `wird geladen...` zu zeigen. Sichtbare UI, Routing,
+  QR, Cart, Order, Firebase Rules, Functions und Datenpfade bleiben
+  unveraendert. Fehlende Lucide-Icons wurden nur als separates Folgethema
+  festgehalten und nicht in diesen Firebase-Ladefix gemischt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -484,6 +497,7 @@ Last updated: 2026-05-29
 - Referenz: [docs/mnyra-step46-crm-domain-runtime-boundary.md](./mnyra-step46-crm-domain-runtime-boundary.md)
 - Referenz: [docs/mnyra-step47-firebase-loading-hardening-plan.md](./mnyra-step47-firebase-loading-hardening-plan.md)
 - Referenz: [docs/mnyra-step48-public-posts-loading-hardening.md](./mnyra-step48-public-posts-loading-hardening.md)
+- Referenz: [docs/mnyra-step49-menu-focus-no-hang-hardening.md](./mnyra-step49-menu-focus-no-hang-hardening.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -509,17 +523,19 @@ Last updated: 2026-05-29
 
 ## Naechster Schritt
 
-Nach Schritt 48 ist der naechste sinnvolle separate Folgeschritt:
-Schritt 49 - Menu/Fokus No-Hang-Haertung fuer bestehende UI.
+Nach Schritt 49 sind die naechsten sinnvollen separaten Folgeschritte:
 
-Dabei gilt:
+- Schritt 50 - Route/Profile Read-Dedupe fuer Public Starts.
+- Separater kleiner Icon-Runtime-Schritt fuer fehlende Lucide-Icons in Modals,
+  Drawer und Menu-Bereichen.
+
+Dabei gilt weiter:
 
 - Keine UI-/Design-Aenderung.
 - Keine Route-, QR-, Cart-, Order-, Firebase-Rules- oder Functions-Aenderung.
 - Kein Storefront-/Renderer-Umbau.
-- Public Menu darf nicht endlos auf Fokus/Angebote warten.
-- Fokus bleibt fachlich Teil der Menu-Praesentation, muss aber eine klare
-  Empty-/Error-/Timeout-Entscheidung bekommen.
+- Keine Icon-/UI-Aenderung ohne eigenen Schritt.
+- Route/Profile-Dedupe darf QR nicht veraendern.
 
 Die manuelle Gegenpruefung des frischen Schritt-46-Bundles bleibt weiterhin
 sinnvoll, besonders der erste Lazy-Load von Heart/CRM (`/leads`, `/customers`,
