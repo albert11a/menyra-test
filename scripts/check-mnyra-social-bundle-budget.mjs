@@ -8,7 +8,7 @@ const SOCIAL_SOURCE = "apps/menyra-social/social-app.js";
 const ROUTE_RUNTIME_REGISTRY_SOURCE = "apps/menyra-social/core/app-shell/route-runtime-registry.js";
 const PROFILE_MENU_FOCUS_BOUNDARY_SOURCE = "apps/menyra-social/core/profile/profile-menu-focus-render-boundary.js";
 
-const SOCIAL_ENTRY_RAW_BUDGET = 1_049_000;
+const SOCIAL_ENTRY_RAW_BUDGET = 1_052_000;
 const SOCIAL_ENTRY_GZIP_BUDGET = 285_000;
 
 function readText(path) {

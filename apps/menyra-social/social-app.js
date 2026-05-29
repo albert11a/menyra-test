@@ -3117,11 +3117,16 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "log-out": Object.freeze([["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }], ["polyline", { points: "16 17 21 12 16 7" }], ["line", { x1: "21", x2: "9", y1: "12", y2: "12" }]]),
   "square": Object.freeze([["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }]]),
   "messages-square": Object.freeze([["path", { d: "M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" }], ["path", { d: "M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1" }]]),
+  "message-square": Object.freeze([["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }]]),
   "clipboard-list": Object.freeze([["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1" }], ["path", { d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" }], ["path", { d: "M12 11h4" }], ["path", { d: "M12 16h4" }], ["path", { d: "M8 11h.01" }], ["path", { d: "M8 16h.01" }]]),
   "users": Object.freeze([["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }], ["circle", { cx: "9", cy: "7", r: "4" }], ["path", { d: "M22 21v-2a4 4 0 0 0-3-3.87" }], ["path", { d: "M16 3.13a4 4 0 0 1 0 7.75" }]]),
   "upload": Object.freeze([["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }], ["polyline", { points: "17 8 12 3 7 8" }], ["line", { x1: "12", x2: "12", y1: "3", y2: "15" }]]),
+  "camera": Object.freeze([["path", { d: "M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" }], ["circle", { cx: "12", cy: "13", r: "3" }]]),
+  "external-link": Object.freeze([["path", { d: "M15 3h6v6" }], ["path", { d: "M10 14 21 3" }], ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }]]),
   "grip-vertical": Object.freeze([["circle", { cx: "9", cy: "12", r: "1" }], ["circle", { cx: "9", cy: "5", r: "1" }], ["circle", { cx: "9", cy: "19", r: "1" }], ["circle", { cx: "15", cy: "12", r: "1" }], ["circle", { cx: "15", cy: "5", r: "1" }], ["circle", { cx: "15", cy: "19", r: "1" }]]),
-  "map-pin-off": Object.freeze([["path", { d: "M5.43 5.43A8 8 0 0 0 4 10c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 1.202 0 32 32 0 0 0 2.824-2.707" }], ["path", { d: "M17.167 17.167C18.815 15.234 20 12.787 20 10a8 8 0 0 0-8-8c-1.482 0-2.87.403-4.061 1.104" }], ["path", { d: "m2 2 20 20" }], ["path", { d: "M9.5 9.5a3 3 0 0 0 4 4" }], ["path", { d: "M14.5 9.5a3 3 0 0 0-4-4" }]])
+  "map-pin-off": Object.freeze([["path", { d: "M5.43 5.43A8 8 0 0 0 4 10c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 1.202 0 32 32 0 0 0 2.824-2.707" }], ["path", { d: "M17.167 17.167C18.815 15.234 20 12.787 20 10a8 8 0 0 0-8-8c-1.482 0-2.87.403-4.061 1.104" }], ["path", { d: "m2 2 20 20" }], ["path", { d: "M9.5 9.5a3 3 0 0 0 4 4" }], ["path", { d: "M14.5 9.5a3 3 0 0 0-4-4" }]]),
+  "send": Object.freeze([["path", { d: "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" }], ["path", { d: "m21.854 2.147-10.94 10.939" }]]),
+  "utensils": Object.freeze([["path", { d: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" }], ["path", { d: "M7 2v20" }], ["path", { d: "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" }]])
 });
 
 function buildIconAttributeString(attributes = {}) {
