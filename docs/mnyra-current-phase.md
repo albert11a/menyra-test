@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-26
+Last updated: 2026-05-29
 
 # Mnyra Current Phase
 
@@ -416,6 +416,15 @@ Last updated: 2026-05-26
   Produktdetail, Warenkorb, Orders, QR-/Tisch-Kontext, `/staff`,
   businessAccounts und Waiter/Kitchen bleiben unveraendert. Auf Nutzerwunsch
   wurde dieser Schritt auf Branch `refactorapp` umgesetzt.
+- Schritt 47 ist dokumentiert: Firebase-Ladehaertung fuer bestehende UI.
+- Bewertung von Schritt 47: `analysiert, noch nicht umgesetzt`.
+- Wichtigster Befund aus Schritt 47:
+  Der richtige Weg ist fuer diesen Abschnitt kein grosser Storefront-/
+  Renderer-Umbau, sondern eine kleine, schrittweise Haertung der bestehenden
+  Firebase-Ladewege fuer Public Business Profile, Public Menu, Fokus,
+  Beitraege, Feed und Profil-Daten. Der erste technische Kandidat ist Schritt
+  48: Public Posts Ladehaertung mit begrenztem erstem Read, In-Flight-Dedupe,
+  kontrollierter Nachladung und weiterhin vollstaendiger Sichtbarkeit.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -461,6 +470,7 @@ Last updated: 2026-05-26
 - Referenz: [docs/mnyra-step44-public-profile-split-candidate-map.md](./mnyra-step44-public-profile-split-candidate-map.md)
 - Referenz: [docs/mnyra-step45-social-engagement-runtime-boundary.md](./mnyra-step45-social-engagement-runtime-boundary.md)
 - Referenz: [docs/mnyra-step46-crm-domain-runtime-boundary.md](./mnyra-step46-crm-domain-runtime-boundary.md)
+- Referenz: [docs/mnyra-step47-firebase-loading-hardening-plan.md](./mnyra-step47-firebase-loading-hardening-plan.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -486,10 +496,21 @@ Last updated: 2026-05-26
 
 ## Naechster Schritt
 
-Nach Schritt 46 ist der naechste sinnvolle separate Folgeschritt:
-das frische Bundle manuell gegenpruefen, besonders den ersten Lazy-Load von
-Heart/CRM (`/leads`, `/customers`, `/admin/staff`) plus die bisherigen
-Public-Profile/Menu/QR/Cart/Order-Flows.
+Nach Schritt 47 ist der naechste sinnvolle separate Folgeschritt:
+Schritt 48 - Public Posts Ladehaertung fuer bestehende UI.
+
+Dabei gilt:
+
+- Keine UI-/Design-Aenderung.
+- Keine Route-, QR-, Cart-, Order-, Firebase-Rules- oder Functions-Aenderung.
+- Kein Storefront-/Renderer-Umbau.
+- Public Business Posts duerfen nicht wieder hart abgeschnitten werden.
+- Der erste technische Fix soll nur den bestehenden Posts-Ladepfad schneller,
+  deduplizierter und ausfallsicherer machen.
+
+Die manuelle Gegenpruefung des frischen Schritt-46-Bundles bleibt weiterhin
+sinnvoll, besonders der erste Lazy-Load von Heart/CRM (`/leads`, `/customers`,
+`/admin/staff`) plus die bisherigen Public-Profile/Menu/QR/Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
