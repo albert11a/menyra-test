@@ -1,3 +1,5 @@
+import { publishStartupRouteRuntimeContext } from "./core/router/startup-route-runtime-context.js";
+
 const PUBLIC_ENTRY_BUILD_TOKEN = "2026-05-07-public-menu-focus-lockstep-01";
 
 function readAppBuildToken() {
@@ -46,6 +48,7 @@ try {
   globalThis.__MENYRA_SOCIAL_PUBLIC_ENTRY_ACTIVE__ = true;
   globalThis.__MENYRA_SOCIAL_ENTRY_MODE__ = "public";
   globalThis.__MENYRA_SOCIAL_PUBLIC_ENTRY_VERSION__ = PUBLIC_ENTRY_BUILD_TOKEN;
+  publishStartupRouteRuntimeContext({ entryMode: "public" });
 } catch {}
 
 markEntryTimeline("mnyra.social.public_entry.start");

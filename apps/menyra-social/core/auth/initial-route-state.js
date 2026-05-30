@@ -19,6 +19,25 @@ function safeLowerText(value = "") {
   return String(value || "").trim().toLowerCase();
 }
 
+function safeText(value = "") {
+  return String(value || "").trim();
+}
+
+function normalizeStartupRouteContext(context = null) {
+  if (!context || typeof context !== "object") return null;
+  if (Number(context.version || 0) !== 1) return null;
+  return {
+    pendingProfileRestaurantId: safeText(context.pendingProfileRestaurantId || ""),
+    pendingProfileTopTab: safeLowerText(context.pendingProfileTopTab || ""),
+    pendingProfileContentTab: safeLowerText(context.pendingProfileContentTab || ""),
+    pendingProfileAccessSource: safeLowerText(context.pendingProfileAccessSource || ""),
+    pendingProfileTableNumber: Math.max(0, Number(context.pendingProfileTableNumber || 0) || 0),
+    pendingUserRouteId: safeText(context.pendingUserRouteId || ""),
+    pendingUserContentTab: safeLowerText(context.pendingUserContentTab || ""),
+    pendingInitialTab: safeLowerText(context.pendingInitialTab || context.tab || "")
+  };
+}
+
 function readGlobalPublicRouteResolution(value = "") {
   const raw = String(value || "").trim();
   if (!raw) return null;
@@ -62,7 +81,8 @@ export function resolveInitialRouteState({
   pathname = "",
   normalizeInitialTab,
   normalizeAuthMode,
-  readPublicRouteResolution = null
+  readPublicRouteResolution = null,
+  startupRouteContext = null
 } = {}) {
   const readQuery = typeof qs === "function" ? qs : (() => "");
   const toInitialTab = typeof normalizeInitialTab === "function"
@@ -73,6 +93,7 @@ export function resolveInitialRouteState({
     : ((value) => String(value || "").trim());
   const readPathname = String(pathname || "").trim();
   const pathRoute = parseSiteRoutePathCore(readPathname);
+  const routeContext = normalizeStartupRouteContext(startupRouteContext);
 
   const routeRestaurantIdFromQuery = resolveInitialPublicBusinessRestaurantId(
     readQuery("r")
@@ -94,11 +115,22 @@ export function resolveInitialRouteState({
   const pathBusinessRoute = (
     pathRoute.kind === "business" || pathRoute.kind === "landingBusiness"
       ? pathRoute
-      : null
+      : (
+        routeContext?.pendingProfileRestaurantId
+          ? {
+            kind: "business",
+            restaurantId: routeContext.pendingProfileRestaurantId,
+            profileTopTab: routeContext.pendingProfileTopTab,
+            profileContentTab: routeContext.pendingProfileContentTab,
+            accessSource: routeContext.pendingProfileAccessSource
+          }
+          : null
+      )
   );
   const pendingProfileRestaurantId = String(
     resolveInitialPublicBusinessRestaurantId(pathBusinessRoute?.restaurantId || "", readPublicRouteResolution)
     || routeRestaurantIdFromQuery
+    || routeContext?.pendingProfileRestaurantId
     || ""
   ).trim();
 
@@ -108,6 +140,7 @@ export function resolveInitialRouteState({
     || readQuery("surface")
     || readQuery("screen")
     || (pendingProfileRestaurantId ? queryTab : "")
+    || routeContext?.pendingProfileTopTab
   );
   const profileAccessSourceRaw = (
     readQuery("src")
@@ -115,6 +148,8 @@ export function resolveInitialRouteState({
     || readQuery("menuSource")
     || readQuery("menuAccessSource")
     || readQuery("access")
+    || pathBusinessRoute?.accessSource
+    || routeContext?.pendingProfileAccessSource
     || ""
   );
   const qrFlagRaw = safeLowerText(
@@ -161,13 +196,26 @@ export function resolveInitialRouteState({
       readQuery("table")
       || readQuery("tableNumber")
       || readQuery("t")
+      || routeContext?.pendingProfileTableNumber
       || ""
     )
     : 0;
 
   const pathUserRoute = pendingProfileRestaurantId
     ? null
-    : (pathRoute.kind === "user" ? pathRoute : null);
+    : (
+      pathRoute.kind === "user"
+        ? pathRoute
+        : (
+          routeContext?.pendingUserRouteId
+            ? {
+              kind: "user",
+              userId: routeContext.pendingUserRouteId,
+              userContentTab: routeContext.pendingUserContentTab
+            }
+            : null
+        )
+    );
   const pendingUserRouteId = pendingProfileRestaurantId
     ? ""
     : normalizePublicUserRouteIdCore(routeUserIdFromQuery || pathUserRoute?.userId || "");
@@ -202,6 +250,9 @@ export function resolveInitialRouteState({
   const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
 
   let pendingInitialTab = toInitialTab(queryTab || pathRoute.tab || profileTopQuery || "");
+  if (!pendingInitialTab && routeContext?.pendingInitialTab) {
+    pendingInitialTab = toInitialTab(routeContext.pendingInitialTab);
+  }
   if (pendingProfileRestaurantId || pendingUserRouteId) {
     pendingInitialTab = "profile";
   }

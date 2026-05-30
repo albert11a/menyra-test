@@ -129,6 +129,10 @@ import {
   extractPublicUserRouteIdCore,
   parseSiteRoutePathCore
 } from "./core/router/public-business-route-utils.js";
+import {
+  publishStartupRouteRuntimeContext,
+  readStartupRouteRuntimeContext
+} from "./core/router/startup-route-runtime-context.js";
 import { createShellDomRuntimeController } from "./core/app-shell/shell-dom-runtime-controller.js";
 import { createSessionRuntimeCluster } from "./core/app-shell/session-runtime-cluster.js";
 import { startAppStartupRuntimeCluster } from "./core/app-shell/app-startup-runtime-cluster.js";
@@ -746,6 +750,10 @@ function schedulePerfWarmMark() {
 }
 
 applyRuntimePerfMode();
+
+const startupRouteRuntimeContext = publishStartupRouteRuntimeContext({
+  entryMode: String(globalThis?.__MENYRA_SOCIAL_ENTRY_MODE__ || "app").trim() || "app"
+}) || readStartupRouteRuntimeContext();
 
 const state = {
   user: null,
@@ -1892,7 +1900,8 @@ try {
     qs,
     pathname: typeof window !== "undefined" ? window.location?.pathname || "" : "",
     normalizeInitialTab,
-    normalizeAuthMode
+    normalizeAuthMode,
+    startupRouteContext: startupRouteRuntimeContext
   });
   markStartupTimeline("route parsed", {
     pendingInitialTab: String(initialRouteState?.pendingInitialTab || "").trim().toLowerCase(),

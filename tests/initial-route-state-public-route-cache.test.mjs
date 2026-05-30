@@ -100,3 +100,27 @@ test("initial route state still falls back to launch alias when cache misses", (
   assert.equal(state.pendingProfileRestaurantId, "Lzm6RpNu3ErSDtGCHxpi");
   assert.equal(state.pendingProfileTopTab, "menu");
 });
+
+test("initial route state can use explicit startup route runtime context", () => {
+  const state = resolveInitialRouteState({
+    qs: makeQs({}),
+    pathname: "/feed",
+    normalizeInitialTab: (value) => value,
+    normalizeAuthMode: (value) => value,
+    startupRouteContext: {
+      version: 1,
+      pendingInitialTab: "profile",
+      pendingProfileRestaurantId: "moka-coffee",
+      pendingProfileTopTab: "menu",
+      pendingProfileContentTab: "menu",
+      pendingProfileAccessSource: "qr",
+      pendingProfileTableNumber: 9
+    }
+  });
+
+  assert.equal(state.pendingProfileRestaurantId, "moka-coffee");
+  assert.equal(state.pendingProfileTopTab, "menu");
+  assert.equal(state.pendingProfileAccessSource, "qr");
+  assert.equal(state.pendingProfileTableNumber, 9);
+  assert.equal(state.pendingInitialTab, "profile");
+});
