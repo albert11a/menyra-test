@@ -2,7 +2,7 @@ import { createCrmAdminBusinessAccountWriteFacade } from "../crm/crm-admin-busin
 import {
   loadCrmBusinessAccountsCore,
   normalizeCrmBusinessAccountEntryCore
-} from "../crm/crm-admin-read-loader-core.js";
+} from "../crm/crm-business-account-read-loader-core.js";
 
 function asText(value = "") {
   return String(value || "").trim();
