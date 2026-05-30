@@ -170,7 +170,7 @@ export function bindAppSettingsProfileEventsCore({
       openProfileViewFromBusiness({
         id: btn.dataset.profileId || "",
         name: btn.dataset.profileBusiness || ""
-      }, { showBack: false });
+      }, { showBack: true });
     });
   });
 

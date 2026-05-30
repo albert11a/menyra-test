@@ -114,6 +114,46 @@ test("public profile switch does not inherit stale route/menu state from previou
   assert.equal(renderCount, 1);
 });
 
+test("direct public profile route does not queue browser history push", () => {
+  const state = {
+    activeTab: "feed",
+    profileTopTab: "profile",
+    profileContentTab: "posts",
+    profileBackTab: "",
+    profileLandingStep: 0,
+    profileLandingGreetingIndex: 0,
+    profileLandingTourIndex: 0,
+    drawerOpen: false,
+    profileViewMode: "grid",
+    profilePostMenuId: null,
+    profileModal: { open: false, profile: null },
+    profileView: null,
+    __nextRouteHistoryMode: ""
+  };
+  const controller = createPublicProfileRuntimeController({
+    state,
+    render: () => {},
+    normalizeHandle: (value = "") => String(value || "").trim().toLowerCase()
+  });
+
+  controller.showPublicProfile({
+    restaurantId: "casarita",
+    canonicalRestaurantId: "casarita",
+    name: "Casarita",
+    handle: "casarita",
+    postsLoaded: true,
+    truthState: "stable"
+  }, [], {
+    showBack: false,
+    topTab: "profile",
+    contentTab: "posts"
+  });
+
+  assert.equal(state.activeTab, "profile");
+  assert.equal(state.profileBackTab, "");
+  assert.equal(state.__nextRouteHistoryMode, "");
+});
+
 function createDocsSnapshot(rows = []) {
   return {
     forEach(callback) {

@@ -3836,7 +3836,7 @@ export function createFeedViewOrchestrationController({
         openProfileViewFromBusinessFn({
           id: profileBtn.dataset.profileId || "",
           name: profileBtn.dataset.profileBusiness || ""
-        }, { showBack: false });
+        }, { showBack: true });
       }
     });
     syncStoryPreviewMotion();

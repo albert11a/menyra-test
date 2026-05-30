@@ -1905,7 +1905,7 @@ export function createAppShellRuntimeController(deps = {}) {
         openProfileViewFromBusinessFn({
           id: bizBtn.dataset.searchBusiness || "",
           name: bizBtn.dataset.searchName || ""
-        }, { showBack: false });
+        }, { showBack: true });
       }
     });
 

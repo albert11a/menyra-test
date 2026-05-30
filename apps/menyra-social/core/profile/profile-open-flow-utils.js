@@ -299,6 +299,14 @@ export function createProfileOpenFlowControllerCore({
     const profileHandle = normalizeHandleValue(profile.handle || profile.name || "");
     return !!targetHandle && !!profileHandle && targetHandle === profileHandle;
   };
+  const queueProfileHistoryPush = ({ showBack = true, previousTab = "", sameTarget = false } = {}) => {
+    if (!showBack || !state || typeof state !== "object") return;
+    if (String(state.__nextRouteHistoryMode || "").trim().toLowerCase() === "push") return;
+    const previousTabKey = String(previousTab || state.activeTab || "").trim().toLowerCase();
+    if (previousTabKey !== "profile" || !sameTarget) {
+      state.__nextRouteHistoryMode = "push";
+    }
+  };
 
   const isOwnBusinessTarget = ({ restaurantId = "", name = "" } = {}) => {
     if (!isLocalBusiness(state?.userProfile)) return false;
@@ -320,6 +328,11 @@ export function createProfileOpenFlowControllerCore({
   const openOwnBusinessProfile = ({ showBack = true, topTab } = {}) => {
     const prevTab = state?.activeTab || "feed";
     const nextTopTab = topTab === "menu" ? "menu" : "profile";
+    queueProfileHistoryPush({
+      showBack,
+      previousTab: prevTab,
+      sameTarget: !state.profileView
+    });
     state.profileView = null;
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = "posts";
@@ -507,6 +520,14 @@ export function createProfileOpenFlowControllerCore({
         requestedId: targetRestaurantLookupId,
         restaurantId: targetMenuRestaurantId,
         targetId: targetCanonicalRestaurantId || targetMenuRestaurantId
+      });
+      queueProfileHistoryPush({
+        showBack,
+        previousTab: state?.activeTab || "feed",
+        sameTarget: isSameBusinessProfileTarget(state?.profileView?.profile, {
+          restaurantId: targetMenuRestaurantId,
+          lookupId: targetRestaurantLookupId
+        })
       });
       const resolveDirectRouteBootstrapSeed = () => {
         const candidate = state?.__publicRouteBootstrap && typeof state.__publicRouteBootstrap === "object"
@@ -1505,6 +1526,11 @@ export function createProfileOpenFlowControllerCore({
 
   const openOwnUserProfile = ({ showBack = true } = {}) => {
     const prevTab = state?.activeTab || "feed";
+    queueProfileHistoryPush({
+      showBack,
+      previousTab: prevTab,
+      sameTarget: !state.profileView
+    });
     state.profileView = null;
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = "posts";
@@ -1586,6 +1612,14 @@ export function createProfileOpenFlowControllerCore({
         openOwnUserProfile({ showBack });
         return;
       }
+      queueProfileHistoryPush({
+        showBack,
+        previousTab: state?.activeTab || "feed",
+        sameTarget: isSameUserProfileTarget(state?.profileView?.profile, {
+          uid: explicitUid || routeId,
+          handle: explicitHandle || routeId
+        })
+      });
 
       const cacheKey = explicitUid || explicitHandle || routeId;
       const cached = userProfileCacheMap.get(cacheKey);
