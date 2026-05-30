@@ -229,3 +229,55 @@ test("public business posts initial page dedupes concurrent visible reads", asyn
   assert.equal(firstPosts.length, 1);
   assert.deepEqual(secondPosts, firstPosts);
 });
+
+test("business profile doc reuses cached public route restaurant id", async () => {
+  const previousCache = globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__;
+  globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__ = new Map([
+    ["casarita", {
+      found: true,
+      status: "active",
+      inputSlug: "casarita",
+      canonicalSlug: "casarita",
+      restaurantId: "restaurant-canonical-1"
+    }]
+  ]);
+
+  try {
+    const readPaths = [];
+    const controller = createPublicProfileRuntimeController({
+      state: {},
+      db: {},
+      docFn: (_db, ...path) => ({ path }),
+      getDocFn: async (ref) => {
+        readPaths.push(ref.path.join("/"));
+        if (ref.path.join("/") === "restaurants/restaurant-canonical-1") {
+          return {
+            id: "restaurant-canonical-1",
+            exists: () => true,
+            data: () => ({
+              name: "Casarita",
+              publicSlug: "casarita",
+              status: "active"
+            })
+          };
+        }
+        return {
+          exists: () => false,
+          data: () => ({})
+        };
+      },
+      isPublicBusinessRecord: () => true
+    });
+
+    const resolved = await controller.fetchBusinessProfileDoc({ restaurantId: "casarita" });
+
+    assert.equal(resolved.id, "restaurant-canonical-1");
+    assert.deepEqual(readPaths, ["restaurants/restaurant-canonical-1"]);
+  } finally {
+    if (previousCache === undefined) {
+      delete globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__;
+    } else {
+      globalThis.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__ = previousCache;
+    }
+  }
+});

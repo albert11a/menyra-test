@@ -263,7 +263,19 @@ export function createPublicProfileRuntimeController({
     }
     const request = (async () => {
       const cachedRestaurant = restaurant || findRestaurantInStateByRouteId(routeId) || null;
-      const directRestaurantId = String(cachedRestaurant?.id || routeId || "").trim();
+      const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.publicSlug || cachedRestaurant?.landingSlug || "");
+      let cachedRouteRestaurantId = "";
+      try {
+        const routeCache = globalThis?.__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__;
+        const routeResolution = routeCache?.get?.(routeId)
+          || routeCache?.get?.(routeId.toLowerCase())
+          || routeCache?.get?.(routeSlug)
+          || null;
+        cachedRouteRestaurantId = routeResolution?.found === false
+          ? ""
+          : String(routeResolution?.restaurantId || routeResolution?.canonicalRestaurantId || "").trim();
+      } catch {}
+      const directRestaurantId = String(cachedRestaurant?.id || cachedRouteRestaurantId || routeId || "").trim();
 
       if (directRestaurantId && makeDocRef && db) {
         try {
@@ -278,7 +290,6 @@ export function createPublicProfileRuntimeController({
         } catch {}
       }
 
-      const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.publicSlug || cachedRestaurant?.landingSlug || "");
       if (routeSlug && makeDocRef && db) {
         try {
           const routeSnap = await getDocSafe(makeDocRef(db, "publicRoutes", routeSlug));

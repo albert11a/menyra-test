@@ -450,6 +450,17 @@ Last updated: 2026-05-29
   QR, Cart, Order, Firebase Rules, Functions und Datenpfade bleiben
   unveraendert. Fehlende Lucide-Icons wurden nur als separates Folgethema
   festgehalten und nicht in diesen Firebase-Ladefix gemischt.
+- Schritt 50 ist abgeschlossen: Public Route/Profile Read-Dedupe fuer
+  bestehende Public Starts.
+- Bewertung von Schritt 50: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 50:
+  Der Public-Business-Profilpfad nutzt eine bereits vorhandene
+  `__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__`-Aufloesung, um bei gecachten Slugs
+  direkt `restaurants/{canonicalRestaurantId}` zu lesen. Dadurch wird ein
+  zusaetzlicher `publicRoutes/{slug}`-Read im Profil-Loader vermieden, ohne
+  die Profil-Wahrheit selbst aus dem Cache zu uebernehmen. Sichtbare UI,
+  Routing, QR, Cart, Order, Firebase Rules, Functions und Datenpfade bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -498,6 +509,7 @@ Last updated: 2026-05-29
 - Referenz: [docs/mnyra-step47-firebase-loading-hardening-plan.md](./mnyra-step47-firebase-loading-hardening-plan.md)
 - Referenz: [docs/mnyra-step48-public-posts-loading-hardening.md](./mnyra-step48-public-posts-loading-hardening.md)
 - Referenz: [docs/mnyra-step49-menu-focus-no-hang-hardening.md](./mnyra-step49-menu-focus-no-hang-hardening.md)
+- Referenz: [docs/mnyra-step50-route-profile-read-dedupe.md](./mnyra-step50-route-profile-read-dedupe.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -523,9 +535,9 @@ Last updated: 2026-05-29
 
 ## Naechster Schritt
 
-Nach Schritt 49 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 50 sind die naechsten sinnvollen separaten Folgeschritte:
 
-- Schritt 50 - Route/Profile Read-Dedupe fuer Public Starts.
+- Schritt 51 - Feed/Profile Firebase Fallbacks.
 - Separater kleiner Icon-Runtime-Schritt fuer fehlende Lucide-Icons in Modals,
   Drawer und Menu-Bereichen.
 
