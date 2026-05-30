@@ -72,7 +72,6 @@ export function createFeedVisibilityRuntimeCluster({
   const orderBy = typeof firebaseApi.orderByFn === "function" ? firebaseApi.orderByFn : null;
   const limit = typeof firebaseApi.limitFn === "function" ? firebaseApi.limitFn : null;
   const getDocs = typeof firebaseApi.getDocsFn === "function" ? firebaseApi.getDocsFn : null;
-  const fastLimits = constants.fastLimits || {};
   const isForceHiddenUid = typeof visibilityApi.isForceHiddenUidFn === "function"
     ? visibilityApi.isForceHiddenUidFn
     : (() => false);
@@ -238,8 +237,10 @@ export function createFeedVisibilityRuntimeCluster({
       const ref = collection(firebaseApi.db, "users", safeUid, "posts");
       let snap = null;
       try {
-        const orderedQuery = query && orderBy
-          ? query(ref, orderBy("createdAt", "desc"))
+        const constraints = [orderBy("createdAt", "desc")];
+        if (limit && constants.fastLimits?.userPosts) constraints.push(limit(constants.fastLimits.userPosts));
+        const orderedQuery = query
+          ? query(ref, ...constraints)
           : ref;
         snap = await getDocs(orderedQuery);
       } catch (_err) {
@@ -255,8 +256,7 @@ export function createFeedVisibilityRuntimeCluster({
         }, safeUid))
         .filter((row) => row.url);
       return projectPostCollectionThroughEntityMap(state, projectedRows);
-    } catch (err) {
-      console.error(err);
+    } catch {
       return [];
     }
   }

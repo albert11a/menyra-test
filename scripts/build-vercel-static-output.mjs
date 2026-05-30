@@ -33,6 +33,15 @@ const ignoredFileNames = new Set([
   "tailwind.input.css"
 ]);
 
+const ignoredDeployPathPrefixes = [
+  "apps/testfirst"
+];
+
+const ignoredDeployPaths = new Set([
+  "apps/menyra-social/menu-detail-food-drink-standalone.html",
+  "apps/menyra-social/profile/external/current-profile.html"
+]);
+
 function assertSafeDistPath() {
   const normalizedRepoRoot = repoRoot.endsWith(sep) ? repoRoot : `${repoRoot}${sep}`;
   if (distRoot === repoRoot || !distRoot.startsWith(normalizedRepoRoot)) {
@@ -52,6 +61,8 @@ async function exists(path) {
 function shouldCopySource(src) {
   const relativePath = relative(repoRoot, src).replace(/\\/g, "/");
   if (!relativePath || relativePath.startsWith("../")) return false;
+  if (ignoredDeployPaths.has(relativePath)) return false;
+  if (ignoredDeployPathPrefixes.some((prefix) => relativePath === prefix || relativePath.startsWith(`${prefix}/`))) return false;
   const fileName = relativePath.split("/").pop() || "";
   if (ignoredFileNames.has(fileName)) return false;
   if (ignoredExtensions.has(extname(fileName).toLowerCase())) return false;

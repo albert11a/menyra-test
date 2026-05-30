@@ -471,6 +471,15 @@ Last updated: 2026-05-30
   Startup wurden entfernt, und die Tests bilden den aktuell deaktivierten
   Chat-V1-Zustand ab. Sichtbare UI, Routing, QR, Cart, Order, Firebase Rules
   und Functions bleiben unveraendert.
+- Schritt 52 ist abgeschlossen: Launch-Surface Read- und Deploy-Cleanup.
+- Bewertung von Schritt 52: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 52:
+  Die Pruefung wurde ueber Auth, Firebase, Public Profile, Feed/Posts/Stories,
+  Upload/Media, Push/Notifications, CRM/Heart, Waiter, Functions, Rules,
+  Service Worker und Static-Deploy gezogen. Der externe User-Profil-Post-Read
+  nutzt jetzt im normalen Firestore-Pfad `FAST_LIMITS.userPosts`, und lokale
+  Demo-/Standalone-HTMLs werden nicht mehr in `dist` kopiert. Sichtbare UI,
+  Routing, QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -521,6 +530,7 @@ Last updated: 2026-05-30
 - Referenz: [docs/mnyra-step49-menu-focus-no-hang-hardening.md](./mnyra-step49-menu-focus-no-hang-hardening.md)
 - Referenz: [docs/mnyra-step50-route-profile-read-dedupe.md](./mnyra-step50-route-profile-read-dedupe.md)
 - Referenz: [docs/mnyra-step51-launch-audit-firebase-auth-hardening.md](./mnyra-step51-launch-audit-firebase-auth-hardening.md)
+- Referenz: [docs/mnyra-step52-launch-surface-read-and-deploy-cleanup.md](./mnyra-step52-launch-surface-read-and-deploy-cleanup.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -546,9 +556,10 @@ Last updated: 2026-05-30
 
 ## Naechster Schritt
 
-Nach Schritt 51 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 52 sind die naechsten sinnvollen separaten Folgeschritte:
 
-- Schritt 52 - Feed/Profile Firebase Fallbacks.
+- Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
+  falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
 - Separater kleiner Icon-Runtime-Schritt fuer fehlende Lucide-Icons in Modals,
   Drawer und Menu-Bereichen.
 
