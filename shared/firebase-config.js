@@ -5,7 +5,7 @@
 // =========================================================
 export const FIREBASE_WEB_SDK_VERSION = "11.0.0";
 
-import { initializeApp } from "/shared/vendor/firebase/11.0.0/firebase-app.js";
+import { getApp, initializeApp } from "/shared/vendor/firebase/11.0.0/firebase-app.js";
 import {
   getFirestore,
   initializeFirestore,
@@ -31,7 +31,20 @@ const firebaseConfig = Object.freeze({
   measurementId: "G-YLFKC8726B"
 });
 
-const app = initializeApp(firebaseConfig);
+function getOrInitializeDefaultApp() {
+  try {
+    const existingApp = getApp();
+    if (
+      existingApp?.options?.projectId === firebaseConfig.projectId
+      && existingApp?.options?.appId === firebaseConfig.appId
+    ) {
+      return existingApp;
+    }
+  } catch {}
+  return initializeApp(firebaseConfig);
+}
+
+const app = getOrInitializeDefaultApp();
 
 function isPublicWebsiteStartup() {
   try {

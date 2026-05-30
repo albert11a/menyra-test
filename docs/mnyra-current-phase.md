@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-29
+Last updated: 2026-05-30
 
 # Mnyra Current Phase
 
@@ -461,6 +461,16 @@ Last updated: 2026-05-29
   die Profil-Wahrheit selbst aus dem Cache zu uebernehmen. Sichtbare UI,
   Routing, QR, Cart, Order, Firebase Rules, Functions und Datenpfade bleiben
   unveraendert.
+- Schritt 51 ist abgeschlossen: Launch-Audit mit Firebase- und Auth-Startup-
+  Haertung.
+- Bewertung von Schritt 51: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 51:
+  Die breite Codepruefung hat keine sicher loeschbaren Social-Runtime-Module
+  und keine Order-Schreib-Limits gefunden. Firebase-Default-App-Initialisierung
+  wurde defensiver gemacht, doppelte Auth-Avatar-Cache-Schreibvorgaenge im
+  Startup wurden entfernt, und die Tests bilden den aktuell deaktivierten
+  Chat-V1-Zustand ab. Sichtbare UI, Routing, QR, Cart, Order, Firebase Rules
+  und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -510,6 +520,7 @@ Last updated: 2026-05-29
 - Referenz: [docs/mnyra-step48-public-posts-loading-hardening.md](./mnyra-step48-public-posts-loading-hardening.md)
 - Referenz: [docs/mnyra-step49-menu-focus-no-hang-hardening.md](./mnyra-step49-menu-focus-no-hang-hardening.md)
 - Referenz: [docs/mnyra-step50-route-profile-read-dedupe.md](./mnyra-step50-route-profile-read-dedupe.md)
+- Referenz: [docs/mnyra-step51-launch-audit-firebase-auth-hardening.md](./mnyra-step51-launch-audit-firebase-auth-hardening.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -535,9 +546,9 @@ Last updated: 2026-05-29
 
 ## Naechster Schritt
 
-Nach Schritt 50 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 51 sind die naechsten sinnvollen separaten Folgeschritte:
 
-- Schritt 51 - Feed/Profile Firebase Fallbacks.
+- Schritt 52 - Feed/Profile Firebase Fallbacks.
 - Separater kleiner Icon-Runtime-Schritt fuer fehlende Lucide-Icons in Modals,
   Drawer und Menu-Bereichen.
 

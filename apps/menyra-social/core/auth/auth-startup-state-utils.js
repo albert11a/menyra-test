@@ -178,8 +178,6 @@ export function createAuthStartupStateHelpers({
       sanitizeDisplayName,
       getOptimizedImageUrl,
       isPlaceholderUrl,
-      setUserAvatarCache: writeUserAvatarCache,
-      setLastShellAvatarUrl: writeLastShellAvatarUrl,
       now
     });
     const raw = safeStorage?.getItem?.(resolveProfileKey(safeUid));

@@ -77,7 +77,7 @@ function createFakeDocument() {
   };
 }
 
-test("shell chrome update refreshes header and drawer badges immediately", () => {
+test("shell chrome update refreshes notification badges while chat v1 is disabled", () => {
   const documentObj = createFakeDocument();
   const state = {
     user: { uid: "user-123" },
@@ -98,12 +98,12 @@ test("shell chrome update refreshes header and drawer badges immediately", () =>
 
   controller.updateShellDom();
 
-  assert.equal(documentObj.headerAnchor.querySelector('[data-unread-badge="header"]').textContent, "3");
+  assert.equal(documentObj.headerAnchor.querySelector('[data-unread-badge="header"]').textContent, "1");
   assert.equal(documentObj.drawerNotifications.querySelector('[data-unread-badge="drawer"]').textContent, "1");
-  assert.equal(documentObj.drawerChat.querySelector('[data-chat-badge="drawer"]').textContent, "2");
+  assert.equal(documentObj.drawerChat.querySelector('[data-chat-badge="drawer"]'), null);
 });
 
-test("login live listeners warm chat and notification chrome without opening chat first", () => {
+test("login live listeners warm notification chrome while chat v1 is disabled", () => {
   const calls = [];
   const user = { uid: "user-123" };
   const controller = createSessionTabLifecycleRuntimeController({
@@ -129,7 +129,6 @@ test("login live listeners warm chat and notification chrome without opening cha
     "stopChat",
     "attachProfile",
     "startFollowing",
-    "startChat",
     "updateNotifications",
     "syncNotifications"
   ]);
