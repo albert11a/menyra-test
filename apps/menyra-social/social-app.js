@@ -130,6 +130,7 @@ import {
   parseSiteRoutePathCore
 } from "./core/router/public-business-route-utils.js";
 import {
+  createStartupRouteRuntimeContext,
   publishStartupRouteRuntimeContext,
   readStartupRouteRuntimeContext
 } from "./core/router/startup-route-runtime-context.js";
@@ -754,6 +755,16 @@ applyRuntimePerfMode();
 const startupRouteRuntimeContext = publishStartupRouteRuntimeContext({
   entryMode: String(globalThis?.__MENYRA_SOCIAL_ENTRY_MODE__ || "app").trim() || "app"
 }) || readStartupRouteRuntimeContext();
+
+function createRouteRuntimeContextForLocation(locationObj = null) {
+  return publishStartupRouteRuntimeContext({
+    entryMode: String(globalThis?.__MENYRA_SOCIAL_ENTRY_MODE__ || "app").trim() || "app",
+    locationObj
+  }) || createStartupRouteRuntimeContext({
+    entryMode: String(globalThis?.__MENYRA_SOCIAL_ENTRY_MODE__ || "app").trim() || "app",
+    locationObj
+  });
+}
 
 const state = {
   user: null,
@@ -4670,11 +4681,13 @@ function resolveInitialRouteStateFromWindowLocation() {
   if (typeof window === "undefined") return null;
   try {
     const url = new URL(window.location.href);
+    const routeRuntimeContext = createRouteRuntimeContextForLocation(url);
     return resolveInitialRouteState({
       qs: (key) => String(url.searchParams.get(String(key || "")) || ""),
       pathname: String(url.pathname || ""),
       normalizeInitialTab,
-      normalizeAuthMode
+      normalizeAuthMode,
+      startupRouteContext: routeRuntimeContext
     });
   } catch {
     return null;
