@@ -1,4 +1,5 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+import { t } from "/shared/i18n/i18n.js";
 
 export function renderChatModalCore({
   state,
@@ -16,6 +17,7 @@ export function renderChatModalCore({
     ? escapeHtml
     : ((value) => String(value ?? ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   const formatRelativeLabel = typeof formatRelative === "function"
     ? formatRelative
     : ((value) => String(value ?? ""));
@@ -52,15 +54,15 @@ export function renderChatModalCore({
                   <div class="w-14 h-14 rounded-[1.4rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
                     ${iconFn("message-circle", "w-6 h-6")}
                   </div>
-                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Noch keine Nachrichten</p>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">${esc(tr("chat.empty", "Noch keine Nachrichten"))}</p>
                 </div>
               </div>
             `}
           </div>
           <div class="p-4 border-t border-slate-100 bg-white modal-footer-safe">
             <div class="flex items-end gap-3">
-              <textarea id="chatMessageInput" rows="1" placeholder="Nachricht..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none">${esc(state.chatModal.draft || "")}</textarea>
-              <button id="chatSendBtn" class="px-5 h-[52px] rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest active:scale-95">Send</button>
+              <textarea id="chatMessageInput" rows="1" placeholder="${esc(tr("chat.placeholder", "Nachricht..."))}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none">${esc(state.chatModal.draft || "")}</textarea>
+              <button id="chatSendBtn" class="px-5 h-[52px] rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest active:scale-95">${esc(tr("chat.send", "Senden"))}</button>
             </div>
           </div>
         </div>
@@ -91,13 +93,14 @@ export function renderProfileModalCore({
     ? escapeHtml
     : ((value) => String(value ?? ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
 
   const p = state.profileModal.profile;
   const showChatAction = isChatEnabledForV1();
   const following = isFollowing(p);
   const hasPendingFollowRequest = !!p.pendingFollowRequest && !following;
   const isLocked = !!p.privateAccount && p.uid && String(p.uid) !== String(state.user?.uid || "") && !following;
-  const typeLabel = p.restaurantId ? "Business" : "User";
+  const typeLabel = p.restaurantId ? tr("profile.business", "Business") : tr("profile.user", "User");
   const avatarUrl = getImage(p.avatar, "avatar");
   return `
     <div class="fixed inset-0 z-[60] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
@@ -120,7 +123,7 @@ ${showChatAction ? `<button id="profileChatBtn" data-chat-uid="${esc(p.uid || ""
                   ${iconFn("message-circle", "w-4 h-4")}
                 </button>` : ""}
                 <button id="profileFollowBtn" data-handle="${esc(p.handle)}" data-target-type="${esc(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${esc(p.restaurantId || p.uid || "")}" data-target-name="${esc(p.name || "")}" data-target-avatar="${esc(p.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${following ? "bg-slate-100 text-slate-700" : (hasPendingFollowRequest ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20")} ${hasPendingFollowRequest ? "cursor-default" : ""}">
-                  ${following ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"))}
+                  ${esc(following ? tr("profile.following", "Folge ich") : (hasPendingFollowRequest ? tr("profile.requested", "Angefragt") : (isLocked ? tr("profile.request", "Anfragen") : tr("profile.follow", "Folgen"))))}
                 </button>
               </div>
             </div>
@@ -130,15 +133,15 @@ ${showChatAction ? `<button id="profileChatBtn" data-chat-uid="${esc(p.uid || ""
             <div class="flex gap-3 mt-6">
               <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
                 <div class="text-lg font-black text-slate-900">${esc(countLabel(p.posts?.length || 0))}</div>
-                <div class="text-[9px] font-bold text-slate-400 uppercase">Posts</div>
+                <div class="text-[9px] font-bold text-slate-400 uppercase">${esc(tr("profile.posts", "Beitraege"))}</div>
               </div>
               <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
                 <div class="text-lg font-black text-slate-900">${esc(countLabel(p.followers))}</div>
-                <div class="text-[9px] font-bold text-slate-400 uppercase">Follower</div>
+                <div class="text-[9px] font-bold text-slate-400 uppercase">${esc(tr("profile.followers", "Follower"))}</div>
               </div>
               <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
                 <div class="text-lg font-black text-slate-900">${esc(countLabel(p.following))}</div>
-                <div class="text-[9px] font-bold text-slate-400 uppercase">Following</div>
+                <div class="text-[9px] font-bold text-slate-400 uppercase">${esc(tr("profile.followingCount", "Folgt"))}</div>
               </div>
             </div>
 
@@ -172,6 +175,7 @@ export function renderLikesModalCore({
     ? escapeHtml
     : ((value) => String(value ?? ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
 
   const meta = ensureMeta(state.likesModal.postId);
   const likes = meta.likes || [];
@@ -186,8 +190,8 @@ export function renderLikesModalCore({
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
-              <h3 class="text-xl font-black italic tracking-tighter">${likeTotal} Likes</h3>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(tr("likes.count", "Likes"))}</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${likeTotal} ${esc(tr("likes.count", "Likes"))}</h3>
             </div>
             <button id="likesModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
           </div>
@@ -205,7 +209,7 @@ export function renderLikesModalCore({
               </div>
             `;
             }).join("") : `
-              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Likes</div>
+              <div class="text-center text-[10px] font-bold uppercase text-slate-400">${esc(tr("likes.empty", "Noch keine Likes"))}</div>
             `}
           </div>
         </div>
@@ -252,6 +256,7 @@ export function renderPostModalCore({
     ? escapeHtml
     : ((value) => String(value ?? ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
 
   const post = state.postModal.post;
   const meta = ensureMeta(post.id);
@@ -275,9 +280,9 @@ export function renderPostModalCore({
             <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
               <div class="flex items-center justify-between mb-4">
                 <div>
-                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
+                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(tr("post.title", "Post"))}</span>
                   <h3 class="text-xl font-black italic tracking-tighter">${esc(formatDate(post.createdAt || new Date()))}</h3>
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${esc(tr("post.photo", "Foto"))}</p>
                 </div>
                 <button id="postModalClose" type="button" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
               </div>
@@ -292,11 +297,11 @@ export function renderPostModalCore({
 
               <div class="mt-4 flex items-center justify-between">
                 <button id="postLikeBtn" data-post-id="${esc(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
-                  ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+                  ${iconFn("heart", "w-5 h-5")} ${esc(isLiked ? tr("likes.liked", "Gefaellt") : tr("likes.like", "Like"))}
                 </button>
                 <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <button id="postLikesBtn" data-post-id="${esc(post.id)}" class="hover:text-slate-700">${esc(counts.likeLabel)} Likes</button>
-                  <span id="postCommentsCount">${esc(counts.commentLabel)} Kommentare</span>
+                  <button id="postLikesBtn" data-post-id="${esc(post.id)}" class="hover:text-slate-700">${esc(counts.likeLabel)} ${esc(tr("likes.count", "Likes"))}</button>
+                  <span id="postCommentsCount">${esc(counts.commentLabel)} ${esc(tr("comments.count", "Kommentare"))}</span>
                 </div>
               </div>
 
@@ -306,15 +311,15 @@ export function renderPostModalCore({
 
               ${replyTarget ? `
                 <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${esc(replyTarget.handle)}</div>
-                  <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
+                  <div class="text-[10px] font-bold uppercase text-slate-400">${esc(tr("post.replyTo", "Antwort an @{handle}", { handle: replyTarget.handle }))}</div>
+                  <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${esc(tr("common.cancel", "Abbrechen"))}</button>
                 </div>
               ` : ""}
             </div>
 
             <div class="p-7 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
               <div class="flex gap-3">
-                <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${esc(state.postModal.commentText || "")}</textarea>
+                <textarea id="postCommentInput" placeholder="${esc(tr("menu.commentPlaceholder", "Schreib einen Kommentar..."))}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${esc(state.postModal.commentText || "")}</textarea>
                 <button id="postCommentSend" type="button" data-post-id="${esc(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
                   ${iconFn("send", "w-4 h-4")}
                 </button>

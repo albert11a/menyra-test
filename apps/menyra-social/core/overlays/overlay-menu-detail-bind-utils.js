@@ -1,3 +1,5 @@
+import { t } from "/shared/i18n/i18n.js";
+
 export function bindMenuDetailOverlayEventsCore({
   documentObj,
   windowObj,
@@ -26,6 +28,7 @@ export function bindMenuDetailOverlayEventsCore({
   const closeMenuDetail = typeof closeMenuDetailFn === "function"
     ? closeMenuDetailFn
     : (() => {});
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   const getMenuDetailCatalogProfile = typeof getMenuDetailCatalogProfileFn === "function"
     ? getMenuDetailCatalogProfileFn
     : (() => null);
@@ -154,7 +157,7 @@ export function bindMenuDetailOverlayEventsCore({
   if (menuDetailFavoriteCtaBtn) {
     menuDetailFavoriteCtaBtn.addEventListener("click", () => {
       if (!String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
         return;
       }
       if (!toggleMenuItemLike) return;
@@ -166,7 +169,7 @@ export function bindMenuDetailOverlayEventsCore({
   if (menuDetailHeaderFavoritesBtn) {
     menuDetailHeaderFavoritesBtn.addEventListener("click", () => {
       if (!String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
         return;
       }
       if (!toggleMenuItemLike) return;

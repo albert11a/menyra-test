@@ -1,4 +1,5 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+import { t } from "/shared/i18n/i18n.js";
 
 function getUnreadNotificationsCount(state = null) {
   if (!state) return 0;
@@ -58,6 +59,17 @@ export function createShellDomRuntimeController({
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
+  const translateCatalogLabel = (label = "") => {
+    const safeLabel = String(label || "").trim();
+    if (!safeLabel) return tr("nav.menu", "Menue");
+    const normalized = safeLabel.toLowerCase();
+    if (normalized === "menue" || normalized === "menu" || normalized === "menü") {
+      return tr("nav.menu", safeLabel);
+    }
+    if (normalized === "shop") return "Shop";
+    return safeLabel;
+  };
   const deleteDoc = typeof deleteDocFn === "function" ? deleteDocFn : (async () => {});
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const getVerifiedMapLocation = typeof getVerifiedMapLocationFn === "function"
@@ -182,41 +194,41 @@ export function createShellDomRuntimeController({
             ${icon("zap", "w-8 h-8")}
           </div>
           <h1 class="text-4xl font-black italic tracking-tighter text-slate-900">${brandUi.upper || ""}</h1>
-          <p class="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2">Social Login</p>
+          <p class="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2">${escapeHtml(tr("auth.socialLogin", "Social Login"))}</p>
         </div>
 
         <form id="authForm" class="space-y-4">
           ${isRegister ? `
             <div class="bg-white p-4 rounded-3xl flex items-center gap-3 border border-slate-100 shadow-sm">
               ${icon("user", "w-5 h-5 text-slate-400 ml-2")}
-              <input id="authName" type="text" placeholder="Dein Name" class="bg-transparent w-full text-sm font-bold outline-none" />
+              <input id="authName" type="text" placeholder="${escapeHtml(tr("auth.namePlaceholder", "Dein Name"))}" class="bg-transparent w-full text-sm font-bold outline-none" />
             </div>
           ` : ""}
           <div class="bg-white p-4 rounded-3xl flex items-center gap-3 border border-slate-100 shadow-sm">
             ${icon("mail", "w-5 h-5 text-slate-400 ml-2")}
-            <input id="authEmail" type="text" placeholder="Email / User" class="bg-transparent w-full text-sm font-bold outline-none" />
+            <input id="authEmail" type="text" placeholder="${escapeHtml(tr("auth.emailUserPlaceholder", "Email / User"))}" class="bg-transparent w-full text-sm font-bold outline-none" />
           </div>
           <div class="bg-white p-4 rounded-3xl flex items-center gap-3 border border-slate-100 shadow-sm">
             ${icon("lock", "w-5 h-5 text-slate-400 ml-2")}
-            <input id="authPassword" type="password" placeholder="Passwort" class="bg-transparent w-full text-sm font-bold outline-none" />
+            <input id="authPassword" type="password" placeholder="${escapeHtml(tr("auth.passwordPlaceholder", "Passwort"))}" class="bg-transparent w-full text-sm font-bold outline-none" />
           </div>
 
           ${isRegister ? `
             <div class="pt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Registrierung nur fuer User
+              ${escapeHtml(tr("auth.userRegistrationOnly", "Registrierung nur fuer User"))}
             </div>
           ` : ""}
 
           ${state?.auth?.error ? `<div class="mt-4 text-center text-rose-500 text-xs font-black bg-rose-50 p-3 rounded-xl">${escapeHtml(state.auth.error)}</div>` : ""}
 
           <button type="submit" class="w-full mt-8 bg-slate-900 text-white py-5 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-300 active:scale-95 transition-all flex items-center justify-center gap-2" ${state?.auth?.loading ? "disabled" : ""}>
-            ${state?.auth?.loading ? `${icon("loader-2", "w-4 h-4 animate-spin")}` : (isRegister ? "Konto erstellen" : "Weiter")}
+            ${state?.auth?.loading ? `${icon("loader-2", "w-4 h-4 animate-spin")}` : escapeHtml(isRegister ? tr("auth.createAccount", "Konto erstellen") : tr("auth.continue", "Weiter"))}
           </button>
         </form>
 
         <div class="mt-8 text-center">
           <button id="authToggle" class="text-xs font-bold text-slate-400 hover:text-slate-900 transition-colors">
-            ${isRegister ? "Bereits registriert? Login" : "Noch kein Account? Erstellen"}
+            ${escapeHtml(isRegister ? tr("auth.alreadyRegistered", "Bereits registriert? Anmelden") : tr("auth.noAccount", "Noch kein Account? Erstellen"))}
           </button>
         </div>
       </div>
@@ -230,13 +242,13 @@ export function createShellDomRuntimeController({
     if (!visibleRoles.length) return "";
     return `
     <div class="mt-6 space-y-2">
-      <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
+      <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${escapeHtml(tr("nav.switch", "Switch"))}</p>
       ${visibleRoles.map((role) => {
         const label = roleLabel(role);
         const url = buildRoleSwitchUrl(role, state.userProfile, state.roleSwitchRestaurantId);
         return `
         <a href="${escapeHtml(url)}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all bg-slate-900 text-white hover:bg-slate-800">
-          <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} Switch to ${escapeHtml(label)}</div>
+          <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} ${escapeHtml(tr("nav.switch", "Switch"))} ${escapeHtml(label)}</div>
         </a>
       `;
       }).join("")}
@@ -254,7 +266,7 @@ export function createShellDomRuntimeController({
     const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
     const isCeo = isCeoUser();
     const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
-    const catalogLabel = getBusinessCatalogLabel(state?.userProfile);
+    const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(state?.userProfile));
     const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
     const showMenuTab = isLocalBusinessProfile(state?.userProfile)
       || !!state?.userProfile?.restaurantId
@@ -265,26 +277,26 @@ export function createShellDomRuntimeController({
     const avatarFit = logoFitClass(isLocalBusinessProfile(state?.userProfile));
     const navItems = isGuest
       ? [
-        { id: "feed", label: "Feed", icon: "home" },
-        { id: "search", label: "Suche", icon: "search" },
-        { id: "map", label: "Karte", icon: "map" },
-        { id: "orders", label: "Bestellungen", icon: "shopping-cart" }
+        { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
+        { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
+        { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
+        { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" }
       ]
       : [
-        { id: "feed", label: "Feed", icon: "home" },
-        { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
-        { id: "search", label: "Suche", icon: "search" },
-        { id: "map", label: "Karte", icon: "map" },
-        { id: "profile", label: "Profil", icon: "user" },
+        { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
+        { id: "chat", label: tr("nav.chat", "Chats"), icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
+        { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
+        { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
+        { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
-        { id: "favorites", label: "Favoriten", icon: "bookmark", hidden: !isRegisteredUser },
-        { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
-        { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
-        { id: "businessAccounts", label: "Staff", icon: "users-round", hidden: !isBusinessOwner },
-        { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo, href: "/leads" },
-        { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo, href: "/admin/staff" },
-        { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo, href: "/customers" },
-        { id: "settings", label: "Optionen", icon: "settings" }
+        { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
+        { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
+        { id: "notifications", label: tr("nav.updates", "Updates"), icon: "bell", badge: unread, badgeType: "notifications" },
+        { id: "businessAccounts", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isBusinessOwner },
+        { id: "leads", label: tr("nav.leads", "Leads"), icon: "clipboard-list", hidden: !isCeo, href: "/leads" },
+        { id: "staff", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isCeo, href: "/admin/staff" },
+        { id: "customers", label: tr("nav.customers", "Kunden"), icon: "users", hidden: !isCeo, href: "/customers" },
+        { id: "settings", label: tr("nav.options", "Optionen"), icon: "settings" }
       ];
     return `
     <div id="drawerRoot" aria-hidden="${state?.drawerOpen ? "false" : "true"}" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-300 ${state?.drawerOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"}" style="overscroll-behavior:none; touch-action:none;">
@@ -293,7 +305,7 @@ export function createShellDomRuntimeController({
         <div class="flex justify-between items-center mb-10">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${brandUi.title || ""}</span>
-            <h3 class="text-2xl font-black italic">NAVIGATE</h3>
+            <h3 class="text-2xl font-black italic">${escapeHtml(tr("nav.navigate", "Navigate"))}</h3>
           </div>
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
@@ -303,8 +315,8 @@ export function createShellDomRuntimeController({
             : `<img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />`
           }
           <div>
-            <p id="drawerName" class="text-xs font-black">${escapeHtml(isGuest ? "Gast" : (state?.userProfile?.name || "User"))}</p>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${isGuest ? "Gastmodus" : "Account"}</p>
+            <p id="drawerName" class="text-xs font-black">${escapeHtml(isGuest ? tr("nav.guest", "Gast") : (state?.userProfile?.name || tr("nav.user", "User")))}</p>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${isGuest ? escapeHtml(tr("nav.guestMode", "Gastmodus")) : escapeHtml(tr("nav.account", "Account"))}</p>
           </div>
         </div>
         <nav class="space-y-2 flex-1">
@@ -336,8 +348,8 @@ export function createShellDomRuntimeController({
         </nav>
         <div id="drawerSwitchLinks">${switchLinks}</div>
         ${isGuest
-          ? `<button data-auth-open="true" class="mt-auto flex items-center justify-center gap-3 p-4 text-indigo-600 font-black uppercase text-[10px] tracking-widest bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors">${icon("log-in", "w-4 h-4")} Login / Registrieren</button>`
-          : `<button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>`
+          ? `<button data-auth-open="true" class="mt-auto flex items-center justify-center gap-3 p-4 text-indigo-600 font-black uppercase text-[10px] tracking-widest bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors">${icon("log-in", "w-4 h-4")} ${escapeHtml(tr("auth.loginRegister", "Login / Registrieren"))}</button>`
+          : `<button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} ${escapeHtml(tr("auth.logout", "Abmelden"))}</button>`
         }
       </div>
     </div>
@@ -350,7 +362,7 @@ export function createShellDomRuntimeController({
     const isBusiness = isLocalBusinessProfile(state?.userProfile);
     const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
     const branding = resolveHeaderBranding();
-    const catalogLabel = getBusinessCatalogLabel(state?.userProfile);
+    const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(state?.userProfile));
     const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
     const showMenuTab = isLocalBusinessProfile(state?.userProfile)
       || !!state?.userProfile?.restaurantId
@@ -390,7 +402,7 @@ export function createShellDomRuntimeController({
       toggleAvatarFitClasses(drawerAvatar, isBusiness);
     }
     const drawerName = doc?.getElementById("drawerName");
-    if (drawerName) drawerName.textContent = state?.userProfile?.name || "User";
+    if (drawerName) drawerName.textContent = isGuestSession() ? tr("nav.guest", "Gast") : (state?.userProfile?.name || tr("nav.user", "User"));
     const switchLinks = doc?.getElementById("drawerSwitchLinks");
     if (switchLinks) switchLinks.innerHTML = renderRoleSwitchLinks();
     const menuNavBtn = doc?.querySelector('[data-nav="menu"]');

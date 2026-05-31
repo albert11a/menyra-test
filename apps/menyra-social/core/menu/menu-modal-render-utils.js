@@ -1,4 +1,5 @@
 import { isTestfirstMenuProfileTypeCore, normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
+import { t } from "/shared/i18n/i18n.js";
 
 const MENU_CATEGORY_MASTER_LIST = Object.freeze([
   "Fruehstueck",
@@ -569,6 +570,7 @@ export function renderMenuDetailModalCore({
   const getObjectPosition = typeof getMenuItemObjectPosition === "function"
     ? getMenuItemObjectPosition
     : (() => "50% 50%");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   const normalizeExternalUrl = (value = "") => {
     const raw = String(value || "").trim();
     if (!raw) return "";
@@ -683,8 +685,8 @@ export function renderMenuDetailModalCore({
   const priceLabel = formatPriceLabel(item.price, item);
   const catalogProfile = getCatalogProfile(item);
   const typeLabel = isShopCatalog(catalogProfile)
-    ? (normalizeType(item.type) === "drink" ? "Variante" : "Produkt")
-    : (normalizeType(item.type) === "drink" ? "Getraenk" : "Speise");
+    ? (normalizeType(item.type) === "drink" ? tr("menu.variant", "Variante") : tr("menu.product", "Produkt"))
+    : (normalizeType(item.type) === "drink" ? tr("menu.drinkItem", "Getraenk") : tr("menu.foodItem", "Speise"));
   const category = item.category || "";
   const desc = item.longDescription || item.description || "";
   const ingredients = String(item.ingredients || item.ingredient || item.inhaltsstoffe || "").trim();
@@ -756,7 +758,7 @@ export function renderMenuDetailModalCore({
     ? "comment"
     : "cart";
   const isCommentFooter = footerView === "comment";
-  const noInfoFallbackLabel = "Keine Informationen wenden sie sich an das Lokal / Kellner";
+  const noInfoFallbackLabel = tr("menu.noInfo", "Keine Informationen, bitte an das Lokal oder den Kellner wenden.");
   const infoTabInfoText = String(desc || "").trim() || noInfoFallbackLabel;
   const infoTabIngredientsText = ingredients || noInfoFallbackLabel;
   const infoTabAllergensText = String(allergens || "").trim() || noInfoFallbackLabel;
@@ -776,11 +778,11 @@ export function renderMenuDetailModalCore({
         <div class="flex items-center gap-2 min-w-0">
           <button type="button" id="menuDetailHeaderCartBtn" class="inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black shadow-sm active:scale-95 ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
             ${iconFn("shopping-cart", "w-4 h-4")}
-            <span>In den Warenkorb</span>
+            <span>${esc(tr("menu.addToCart", "In den Warenkorb"))}</span>
             ${shopCartCount ? `<span class="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-white/14 border border-white/20 text-white text-[9px] font-black items-center justify-center leading-none">${shopCartCount > 99 ? "99+" : shopCartCount}</span>` : ""}
           </button>
           ${canUseFavorites ? `
-            <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isFavorited ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
+            <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="${esc(tr("menu.favorite", "Favoriten"))}" title="${esc(tr("menu.favorite", "Favoriten"))}" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isFavorited ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
               ${iconFn("bookmark", "w-4 h-4")}
             </button>
           ` : ""}
@@ -794,7 +796,7 @@ export function renderMenuDetailModalCore({
       <div class="menu-detail-modal-header modal-handoff-chrome flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white">
         <div class="min-w-0 flex items-center flex-1">
           <div class="min-w-0">
-            <h3 id="${titleId}" class="text-[1.05rem] leading-tight font-black tracking-tight text-slate-900 truncate">${esc(item.name || "Produkt")}</h3>
+            <h3 id="${titleId}" class="text-[1.05rem] leading-tight font-black tracking-tight text-slate-900 truncate">${esc(item.name || tr("menu.product", "Produkt"))}</h3>
             ${category ? `<div class="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(category)}</div>` : ""}
           </div>
         </div>
@@ -834,13 +836,13 @@ export function renderMenuDetailModalCore({
         </div>
         ${brand || sku ? `
           <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
-            ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
+            ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">${esc(tr("menu.brand", "Marke"))}</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
             ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(sku)}</p></div>` : ""}
           </div>
         ` : ""}
         ${sizes.length ? `
           <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.sizes", "Groessen"))}</p>
             <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
               ${sizes.map((size) => `<option value="${esc(size)}" ${selectedSize === String(size) ? "selected" : ""}>${esc(size)}</option>`).join("")}
             </select>
@@ -848,7 +850,7 @@ export function renderMenuDetailModalCore({
         ` : ""}
         ${colors.length ? `
           <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.colors", "Farben"))}</p>
             <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
               ${colors.map((color) => `<option value="${esc(color)}" ${selectedColor === String(color) ? "selected" : ""}>${esc(color)}</option>`).join("")}
             </select>
@@ -857,17 +859,17 @@ export function renderMenuDetailModalCore({
         ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${esc(desc)}</p>` : ""}
         ${allergens ? `
           <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Hinweise</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${esc(tr("menu.notes", "Hinweise"))}</p>
             <p class="text-sm text-slate-600">${esc(allergens)}</p>
           </div>
         ` : ""}
         <div class="flex items-center justify-between" style="padding-top:1.25rem;">
           <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
-            ${iconFn("heart", "w-3.5 h-3.5")} ${isLiked ? "Gefaellt" : "Like"}
+            ${iconFn("heart", "w-3.5 h-3.5")} ${isLiked ? esc(tr("likes.liked", "Gefaellt")) : esc(tr("likes.like", "Like"))}
           </button>
           <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
-            <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
+            <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} ${esc(tr("likes.count", "Likes"))}</span>
+            <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} ${esc(tr("comments.count", "Kommentare"))}</span>
           </div>
         </div>
         <div id="menuDetailComments" class="space-y-4" style="margin-top:3rem;">
@@ -900,7 +902,7 @@ export function renderMenuDetailModalCore({
         <div class="mt-6 space-y-5">
           <div class="p-4 rounded-[1.3rem] border border-slate-100 bg-slate-50">
             <div class="flex items-center justify-between">
-              <span class="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400">Preis</span>
+              <span class="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400">${esc(tr("menu.price", "Preis"))}</span>
               <span class="font-black text-slate-900" style="font-size:13px;">${esc(priceLabel)}</span>
             </div>
           </div>
@@ -909,9 +911,9 @@ export function renderMenuDetailModalCore({
           <div class="space-y-3">
             <div class="menu-detail-info-tabs space-y-4">
               <div class="grid grid-cols-3 gap-2 menu-detail-info-controls">
-                <button type="button" data-menu-detail-info-tab="info" class="${infoTabButtonClass("info")}">Info</button>
-                <button type="button" data-menu-detail-info-tab="ingredients" class="${infoTabButtonClass("ingredients")}">Inhaltsstoffe</button>
-                <button type="button" data-menu-detail-info-tab="allergens" class="${infoTabButtonClass("allergens")}">Allergene</button>
+                <button type="button" data-menu-detail-info-tab="info" class="${infoTabButtonClass("info")}">${esc(tr("menu.info", "Info"))}</button>
+                <button type="button" data-menu-detail-info-tab="ingredients" class="${infoTabButtonClass("ingredients")}">${esc(tr("menu.ingredients", "Inhaltsstoffe"))}</button>
+                <button type="button" data-menu-detail-info-tab="allergens" class="${infoTabButtonClass("allergens")}">${esc(tr("menu.allergens", "Allergene"))}</button>
               </div>
               <div class="menu-detail-info-panels rounded-[1.3rem] border border-slate-100 bg-slate-50 px-4 py-3.5">
                 <p data-menu-detail-info-panel="info" class="menu-detail-info-panel text-sm text-slate-600 leading-relaxed whitespace-pre-line h-full overflow-y-auto no-scrollbar ${activeInfoTab === "info" ? "" : "hidden"}">${esc(infoTabInfoText)}</p>
@@ -926,11 +928,11 @@ export function renderMenuDetailModalCore({
 
           <div class="flex items-center justify-between" style="padding-top:1.25rem;">
             <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
-              ${iconFn("heart", "w-3.5 h-3.5")} ${isLiked ? "Gefaellt" : "Like"}
+              ${iconFn("heart", "w-3.5 h-3.5")} ${isLiked ? esc(tr("likes.liked", "Gefaellt")) : esc(tr("likes.like", "Like"))}
             </button>
             <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
-              <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
+              <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} ${esc(tr("likes.count", "Likes"))}</span>
+              <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} ${esc(tr("comments.count", "Kommentare"))}</span>
             </div>
           </div>
         </div>
@@ -943,7 +945,7 @@ export function renderMenuDetailModalCore({
     `;
   const footerPrimaryActionHtml = showWoltAction
     ? `
-      <button type="button" id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;" title="Bei Wolt oeffnen">
+      <button type="button" id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;" title="${esc(tr("menu.openWolt", "Bei Wolt oeffnen"))}">
         <span class="font-bold text-sm">Wolt</span>
         ${iconFn("external-link", "w-4 h-4")}
       </button>
@@ -951,19 +953,19 @@ export function renderMenuDetailModalCore({
     : (showFavoriteOnlyAction
       ? `
         <button id="menuDetailFavoriteCtaBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all">
-          <span class="font-bold text-sm">Zu Favoriten</span>
+          <span class="font-bold text-sm">${esc(tr("menu.toFavorites", "Zu Favoriten"))}</span>
           ${iconFn("bookmark", "w-4 h-4")}
         </button>
       `
       : `
         <button id="menuDetailAddToCartBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
-          <span class="font-bold text-sm">${soldOut ? "Ausverkauft" : "In den Warenkorb"}</span>
+          <span class="font-bold text-sm">${soldOut ? esc(tr("menu.soldOut", "Ausverkauft")) : esc(tr("menu.addToCart", "In den Warenkorb"))}</span>
           ${iconFn("shopping-bag", "w-4 h-4")}
         </button>
       `);
   const footerBackToggleTitle = showWoltAction
-    ? "Zurueck zu Wolt"
-    : (showFavoriteOnlyAction ? "Zurueck zu Favoriten" : "Zurueck zum Warenkorb");
+    ? tr("menu.backToWolt", "Zurueck zu Wolt")
+    : (showFavoriteOnlyAction ? tr("menu.backToFavorites", "Zurueck zu Favoriten") : tr("menu.backToCart", "Zurueck zum Warenkorb"));
   const footerBackToggleClass = showWoltAction
     ? "text-white"
     : "bg-slate-100 text-slate-600 hover:bg-slate-200";
@@ -982,7 +984,7 @@ export function renderMenuDetailModalCore({
   const footerHtml = `
     <div class="modal-handoff-chrome px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
       <div id="footer-cart-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "hidden opacity-0" : ""}">
-        <button type="button" id="menuDetailFooterCommentToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95 relative" title="Kommentare verfassen">
+        <button type="button" id="menuDetailFooterCommentToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95 relative" title="${esc(tr("menu.commentAction", "Kommentare verfassen"))}">
           ${iconFn("message-square", "w-5 h-5")}
           ${counts.comments > 0 ? `<span id="menuDetailFooterCommentsBadge" class="absolute top-0 right-0 -mt-1 -mr-1 w-5 h-5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-white">${counts.comments}</span>` : ""}
         </button>
@@ -995,7 +997,7 @@ export function renderMenuDetailModalCore({
         </button>
 
         <div class="flex-1 flex gap-2">
-          <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen"}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
+          <textarea id="menuDetailCommentInput" placeholder="${canInteract ? esc(tr("menu.commentPlaceholder", "Schreib einen Kommentar...")) : esc(tr("menu.loginRequired", "Bitte einloggen"))}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
           <button id="menuDetailCommentSend" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
             ${iconFn("send", "w-4 h-4")}
           </button>

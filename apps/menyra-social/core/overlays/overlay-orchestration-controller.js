@@ -1,4 +1,5 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+import { t } from "/shared/i18n/i18n.js";
 
 export function createOverlayOrchestrationController({
   state = null,
@@ -112,12 +113,13 @@ export function createOverlayOrchestrationController({
       bindOverlayEvents: () => null
     };
   }
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
 
   function openChatWithProfile(profile) {
     if (!isChatEnabledForV1()) return false;
     if (!profile) return;
     if (!state.user) {
-      openGuestAuthPromptFn("Bitte einloggen, um Chats zu nutzen.");
+      openGuestAuthPromptFn(tr("auth.chatsRequired", "Bitte einloggen, um Chats zu nutzen."));
       return;
     }
     const nextProfile = normalizeChatOpenProfileCoreFn({

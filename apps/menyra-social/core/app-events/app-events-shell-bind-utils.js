@@ -1,4 +1,5 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+import { loadLang, setLang, t } from "/shared/i18n/i18n.js";
 
 const LANDING_GREETINGS_COUNT = 13;
 const LANDING_TOUR_STEPS_COUNT = 5;
@@ -63,6 +64,12 @@ export function bindAppShellEventsCore({
     ? normalizeAuthModeFn
     : ((mode) => String(mode || "").trim());
   const render = typeof renderFn === "function" ? renderFn : (() => {});
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
+  const win = doc?.defaultView || globalThis;
+  if (win && typeof win.addEventListener === "function" && !win.__MENYRA_SOCIAL_LANGUAGE_EVENT_BOUND__) {
+    win.__MENYRA_SOCIAL_LANGUAGE_EVENT_BOUND__ = true;
+    win.addEventListener("menyra-language-change", () => render());
+  }
   const ensurePostsDataForProfile = typeof ensurePostsDataForProfileFn === "function"
     ? ensurePostsDataForProfileFn
     : (() => {});
@@ -656,6 +663,25 @@ export function bindAppShellEventsCore({
   bindFastTap(drawerOverlay, () => setState({ drawerOpen: false }));
   bindFastTap(drawerClose, () => setState({ drawerOpen: false }));
 
+  doc.querySelectorAll("[data-language-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const win = doc.defaultView || globalThis;
+      win.__MENYRA_SOCIAL_LANGUAGE_PICKER_OPEN__ = !win.__MENYRA_SOCIAL_LANGUAGE_PICKER_OPEN__;
+      render();
+    });
+  });
+
+  doc.querySelectorAll("[data-language-option]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const nextLang = setLang(btn.dataset.languageOption || "");
+      if (!nextLang) return;
+      const win = doc.defaultView || globalThis;
+      win.__MENYRA_SOCIAL_LANGUAGE_PICKER_OPEN__ = false;
+      await loadLang(nextLang).catch(() => nextLang);
+      render();
+    });
+  });
+
   [logoutBtn, settingsLogout].forEach((btn) => {
     if (btn) {
       btn.addEventListener("click", async () => {
@@ -689,7 +715,7 @@ export function bindAppShellEventsCore({
         return;
       }
       if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
         return;
       }
       const uploadIntent = requestedTab === "upload"
@@ -783,7 +809,7 @@ export function bindAppShellEventsCore({
     const nextTab = String(tab || "").trim();
     if (!nextTab) return;
     if (nextTab === "favorites" && !String(state.user?.uid || "").trim()) {
-      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+      openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
       return;
     }
     if (forceProfile) state.activeTab = "profile";

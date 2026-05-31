@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-30
+Last updated: 2026-05-31
 
 # Mnyra Current Phase
 
@@ -480,6 +480,16 @@ Last updated: 2026-05-30
   nutzt jetzt im normalen Firestore-Pfad `FAST_LIMITS.userPosts`, und lokale
   Demo-/Standalone-HTMLs werden nicht mehr in `dist` kopiert. Sichtbare UI,
   Routing, QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 53 ist abgeschlossen: Website-Sprachauswahl ueber das bestehende Globe-Icon
+  und sichtbare i18n-Grundlage fuer Albanisch, Deutsch und Serbisch in lateinischer
+  Schrift.
+- Bewertung von Schritt 53: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 53:
+  Das Globe-Icon bleibt im Smart-Header erhalten und klappt beim Klick unterhalb der
+  Header-Zeile eine Sprachleiste aus. Die Sprachwahl wird gespeichert, die Oberflaeche
+  rendert nach Sprachwechsel neu, und `sq`/`sr` werden als Lazy-Chunks geladen, damit
+  das Social-Hauptbundle im Budget bleibt. Routing, QR, Cart, Order, Firebase Rules
+  und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -531,6 +541,7 @@ Last updated: 2026-05-30
 - Referenz: [docs/mnyra-step50-route-profile-read-dedupe.md](./mnyra-step50-route-profile-read-dedupe.md)
 - Referenz: [docs/mnyra-step51-launch-audit-firebase-auth-hardening.md](./mnyra-step51-launch-audit-firebase-auth-hardening.md)
 - Referenz: [docs/mnyra-step52-launch-surface-read-and-deploy-cleanup.md](./mnyra-step52-launch-surface-read-and-deploy-cleanup.md)
+- Referenz: [docs/mnyra-step53-website-language-selector-i18n.md](./mnyra-step53-website-language-selector-i18n.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -556,12 +567,14 @@ Last updated: 2026-05-30
 
 ## Naechster Schritt
 
-Nach Schritt 52 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 53 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
 - Separater kleiner Icon-Runtime-Schritt fuer fehlende Lucide-Icons in Modals,
   Drawer und Menu-Bereichen.
+- Separater i18n-Nachzug fuer Admin-/CRM-/interne Spezialtexte, falls diese
+  sichtbar Teil des Launch-Scopes werden.
 
 Dabei gilt weiter:
 

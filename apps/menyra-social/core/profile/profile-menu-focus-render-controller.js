@@ -7,6 +7,7 @@ import {
   normalizePublicMenuTruthState,
   resolveVisiblePublicMenuSurfaceState
 } from "./public-menu-surface-state-utils.js";
+import { t } from "/shared/i18n/i18n.js";
 
 export function createProfileMenuFocusRenderController(deps = {}) {
   const state = deps.state;
@@ -73,6 +74,27 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const menuCardViewerLikeHydrationState = {
     key: "",
     inFlightKey: ""
+  };
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
+  const translateCatalogLabel = (label = "") => {
+    const safeLabel = String(label || "").trim();
+    if (!safeLabel) return tr("nav.menu", "Menue");
+    const normalized = safeLabel.toLowerCase();
+    if (normalized === "menue" || normalized === "menu" || normalized === "menü") {
+      return tr("nav.menu", safeLabel);
+    }
+    if (normalized === "shop") return "Shop";
+    return safeLabel;
+  };
+  const menuSectionLabel = (section = "food") => (
+    String(section || "").trim().toLowerCase() === "drink"
+      ? tr("menu.drinks", "Getraenke")
+      : tr("menu.food", "Speisen")
+  );
+  const menuItemTypeLabel = (item = {}, isShopMode = false) => {
+    const type = normalizeMenuType(item?.type || "food");
+    if (isShopMode) return type === "drink" ? tr("menu.variant", "Variante") : tr("menu.product", "Produkt");
+    return type === "drink" ? tr("menu.drinkItem", "Getraenk") : tr("menu.foodItem", "Speise");
   };
 
 function resolveMenuSurfaceRestaurantId(profile = null, routePayload = null) {
@@ -262,7 +284,7 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { includeIma
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
           ${icon("image", "w-9 h-9")}
         </div>
-        <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Inhalte gefunden</p>
+        <p class="text-slate-400 text-sm font-bold tracking-wide">${escapeHtml(tr("profile.noContent", "Keine Inhalte gefunden"))}</p>
       </div>
     `;
   }
@@ -287,7 +309,7 @@ function renderProfileCheckins() {
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
           ${icon("map-pin", "w-9 h-9")}
         </div>
-        <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Check-ins gefunden</p>
+        <p class="text-slate-400 text-sm font-bold tracking-wide">${escapeHtml(tr("profile.noCheckins", "Keine Check-ins gefunden"))}</p>
       </div>
     `;
   }
@@ -534,13 +556,13 @@ function renderProfileTabs(
   const activeTab = String(selectedTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
   const tabs = isBusinessProfile
     ? [
-      { id: "posts", label: "Beitraege" },
-      { id: "menu", label: "Menue" }
+      { id: "posts", label: tr("profile.posts", "Beitraege") },
+      { id: "menu", label: tr("nav.menu", "Menue") }
     ]
     : [
-      { id: "posts", label: "Beitraege" },
-      { id: "media", label: "Medien" },
-      { id: "checkins", label: "Check-ins" }
+      { id: "posts", label: tr("profile.posts", "Beitraege") },
+      { id: "media", label: tr("profile.media", "Medien") },
+      { id: "checkins", label: tr("profile.checkins", "Check-ins") }
     ];
   return `
     <div data-landing-tutorial-target="tabs" class="app-content-inline mb-6 ${compact ? "mt-2" : "mt-4"} ${landingPreview ? "pointer-events-auto" : ""}">
@@ -564,7 +586,7 @@ function renderProfileViewControls(
   const wrapperClass = disabled ? "pointer-events-none opacity-70" : "";
   return `
     <div class="flex items-center justify-between app-content-inline mb-6 ${wrapperClass}">
-      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Ansicht</span>
+      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">${escapeHtml(tr("profile.view", "Ansicht"))}</span>
       <div class="flex gap-1 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
         <button data-profile-view="grid" class="p-2.5 rounded-xl transition-all active:scale-95 ${state.profileViewMode === "grid" ? "bg-slate-900 text-white shadow-md" : "text-slate-300 active:text-slate-500"}">
           ${icon("layout-grid", "w-4 h-4")}
@@ -593,10 +615,10 @@ function renderPublicProfileSurface(
   const isFollowing = isFollowingProfile(profile);
   const isLocked = !!profile.privateAccount && profile.uid && String(profile.uid) !== String(state.user?.uid || "") && !isFollowing;
   const hasPendingFollowRequest = !!profile.pendingFollowRequest && !isFollowing;
-  const typeLabel = profile.restaurantId ? "Business" : "User";
+  const typeLabel = profile.restaurantId ? "Business" : tr("nav.user", "User");
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
-  const bioHtml = safeBio || "Noch keine Bio.";
+  const bioHtml = safeBio || escapeHtml(tr("profile.noBio", "Noch keine Bio."));
   const isBusinessProfile = isBusinessProfileEntity(profile);
   const topTab = String(topTabOverride || resolveProfilePrimaryTopTab(profile)).trim().toLowerCase() || "profile";
   const activeContentTab = String(contentTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
@@ -637,7 +659,11 @@ function renderPublicProfileSurface(
   const followersLabel = showIdentityPendingState ? "..." : formatCount(profile.followers);
   const followingLabel = showIdentityPendingState ? "..." : formatCount(profile.following);
   const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
-  const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
+  const followLabel = isFollowing
+    ? tr("profile.following", "Following")
+    : (hasPendingFollowRequest
+      ? tr("profile.requested", "Requested")
+      : (isLocked ? tr("profile.request", "Request") : tr("profile.follow", "Follow")));
   const followTone = isFollowing
     ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200"
     : (hasPendingFollowRequest
@@ -691,12 +717,12 @@ function renderPublicProfileSurface(
                 <div class="flex items-center gap-6 pt-3 pr-2">
                    <div data-landing-tutorial-target="fans" class="flex flex-col items-center">
                       <span class="font-black text-2xl ${showIdentityPendingState ? "text-slate-300" : "text-slate-900"} leading-none mb-1">${escapeHtml(followersLabel)}</span>
-                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
+                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.fans", "Fans"))}</span>
                    </div>
                    <div class="w-px h-8 bg-slate-100"></div>
                    <div class="flex flex-col items-center">
                       <span class="font-black text-2xl ${showIdentityPendingState ? "text-slate-300" : "text-slate-900"} leading-none mb-1">${escapeHtml(followingLabel)}</span>
-                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
+                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.followingCount", "Folgt"))}</span>
                    </div>
                 </div>
               </div>
@@ -706,7 +732,7 @@ function renderPublicProfileSurface(
                 ${isBusinessProfile ? "" : `<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>`}
                 <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
-                ${showIdentityPendingState ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">Profilkopf wird geladen...</p>` : ""}
+                ${showIdentityPendingState ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Profilkopf wird geladen..."))}</p>` : ""}
               </div>
 
               <div class="flex gap-4">
@@ -749,7 +775,7 @@ function renderPublicProfileSurface(
             ${showPostsError ? `
               <div class="app-content-inline ${disabledBlockClass}">
                 <div class="py-16 text-center">
-                  <p class="text-[10px] font-black uppercase tracking-widest text-rose-500">Inhalte konnten nicht geladen werden</p>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-rose-500">${escapeHtml(tr("profile.contentLoadError", "Inhalte konnten nicht geladen werden"))}</p>
                 </div>
               </div>
             ` : `
@@ -760,7 +786,7 @@ function renderPublicProfileSurface(
           ` : `
             <div class="app-content-inline ${disabledBlockClass}">
               <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm ${contentAnimationClass}">
-                <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Beitraege werden geladen...</div>
+                <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.postsLoading", "Beitraege werden geladen..."))}</div>
               </div>
             </div>
           `}
@@ -771,8 +797,8 @@ function renderPublicProfileSurface(
             <div class="w-16 h-16 rounded-[1.6rem] bg-slate-100 text-slate-500 mx-auto flex items-center justify-center mb-4">
               ${icon("lock", "w-7 h-7")}
             </div>
-            <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Privates Profil</h3>
-            <p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">Folgen muss zuerst akzeptiert werden</p>
+            <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">${escapeHtml(tr("profile.private", "Privates Profil"))}</h3>
+            <p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">${escapeHtml(tr("profile.followAcceptedFirst", "Folgen muss zuerst akzeptiert werden"))}</p>
           </div>
         </div>
       `}
@@ -843,7 +869,7 @@ function resolveMenuDisplaySection(item = {}) {
 }
 
 function resolveMenuCategoryLabel(item = {}) {
-  return String(item?.category || "Sonstiges").trim() || "Sonstiges";
+  return String(item?.category || tr("menu.other", "Sonstiges")).trim() || tr("menu.other", "Sonstiges");
 }
 
 function normalizeMenuCategoryToken(value = "") {
@@ -989,14 +1015,14 @@ function renderMenuFilterRow() {
   const isShop = isShopCatalogProfile(state.userProfile);
   const labels = isShop
     ? [
-      { id: "all", label: "Alle" },
-      { id: "food", label: "Produkte" },
-      { id: "drink", label: "Varianten" }
+      { id: "all", label: tr("menu.all", "Alle") },
+      { id: "food", label: tr("menu.products", "Produkte") },
+      { id: "drink", label: tr("menu.variants", "Varianten") }
     ]
     : [
-      { id: "all", label: "Alle" },
-      { id: "food", label: "Speisen" },
-      { id: "drink", label: "Getraenke" }
+      { id: "all", label: tr("menu.all", "Alle") },
+      { id: "food", label: tr("menu.food", "Speisen") },
+      { id: "drink", label: tr("menu.drinks", "Getraenke") }
     ];
   return `
     <div class="flex gap-2 mb-5">
@@ -1051,9 +1077,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
   const priceLabel = formatMenuItemPrice(item);
   const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
   const isShopMode = isShopCatalogProfile(catalogProfile);
-  const typeLabel = isShopMode
-    ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
-    : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
+  const typeLabel = menuItemTypeLabel(item, isShopMode);
   const category = item.category || "";
   const desc = item.description || "";
   if (mode === "admin") {
@@ -1064,7 +1088,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between gap-3">
-            <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || "Produkt")}</p>
+            <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || tr("menu.product", "Produkt"))}</p>
             <span class="text-[12px] font-black text-slate-900 whitespace-nowrap">${escapeHtml(priceLabel)}</span>
           </div>
           <div class="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">
@@ -1094,7 +1118,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between gap-4">
-          <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || "Produkt")}</p>
+          <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || tr("menu.product", "Produkt"))}</p>
           <span class="text-xs font-black text-slate-900">${escapeHtml(priceLabel)}</span>
         </div>
         <div class="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">
@@ -1124,9 +1148,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food", p
   const priceLabel = formatMenuItemPrice(item);
   const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
   const isShopMode = isShopCatalogProfile(catalogProfile);
-  const typeLabel = isShopMode
-    ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
-    : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
+  const typeLabel = menuItemTypeLabel(item, isShopMode);
   const category = item.category || "";
   const desc = item.description || "";
   const wrapperAttrs = mode === "profile"
@@ -1157,14 +1179,14 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food", p
       </div>
       ${isDrink ? `
         <div class="mt-3 flex flex-1 flex-col">
-          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(item.name || "Produkt")}</p>
+          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(item.name || tr("menu.product", "Produkt"))}</p>
           <p class="text-xs font-black text-slate-700 mt-1">${escapeHtml(priceLabel)}</p>
           ${countsRow}
         </div>
       ` : `
         <div class="mt-4">
           <div class="flex items-start justify-between gap-4">
-            <p class="text-sm font-black text-slate-900">${escapeHtml(item.name || "Produkt")}</p>
+            <p class="text-sm font-black text-slate-900">${escapeHtml(item.name || tr("menu.product", "Produkt"))}</p>
             <span class="text-xs font-black text-slate-900">${escapeHtml(priceLabel)}</span>
           </div>
           <div class="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">
@@ -1521,7 +1543,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
             </div>
           </div>
           <button type="button" class="bg-slate-900 text-white pl-4 pr-2 py-2 rounded-2xl text-[13px] font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center gap-2 active:scale-95" style="padding-left:16px;padding-right:8px;padding-top:8px;padding-bottom:8px;">
-            <span>Hinzufuegen</span>
+            <span>${escapeHtml(tr("menu.add", "Hinzufuegen"))}</span>
             <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center pointer-events-none">
               ${icon("plus", "w-4 h-4 text-white")}
             </div>
@@ -1699,13 +1721,13 @@ function renderMenuList(items, { mode = "profile" } = {}) {
         </div>
         ${list.length
           ? `<div class="space-y-3">${list.map((entry) => renderMenuItemCard(entry, { mode: "admin" })).join("")}</div>`
-          : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Keine Eintraege</div>`
+          : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`
         }
       </div>
     `;
     const allSections = [
-      { title: "Getraenke", list: drinkItems, addType: "drink" },
-      { title: "Speisen", list: foodItems, addType: "food" }
+      { title: tr("menu.drinks", "Getraenke"), list: drinkItems, addType: "drink" },
+      { title: tr("menu.food", "Speisen"), list: foodItems, addType: "food" }
     ];
     if (activeFilter === "all") {
       return `
@@ -1717,10 +1739,10 @@ function renderMenuList(items, { mode = "profile" } = {}) {
     const sections = allSections.filter((section) => section.list.length > 0);
     if (!sections.length) {
       if (activeFilter === "drink") {
-        return renderSection("Getraenke", [], { addType: "drink" });
+        return renderSection(tr("menu.drinks", "Getraenke"), [], { addType: "drink" });
       }
       if (activeFilter === "food") {
-        return renderSection("Speisen", [], { addType: "food" });
+        return renderSection(tr("menu.food", "Speisen"), [], { addType: "food" });
       }
       return "";
     }
@@ -1733,7 +1755,7 @@ function renderMenuList(items, { mode = "profile" } = {}) {
   if (!items.length) {
     return `
       <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
-        Keine Produkte
+        ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
       </div>
     `;
   }
@@ -1770,7 +1792,7 @@ function renderFocusAdminSection(restaurantId) {
       </label>
 
       ${loading ? `
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div>
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("focus.loading", "Fokus wird geladen..."))}</div>
       ` : items.length ? `
         <div class="space-y-3">
           ${items.map((item) => {
@@ -1831,7 +1853,7 @@ function renderSpecialAdminSection(profile) {
               ? "Link"
               : (action.type === "product" ? "Produkt-Modal" : "Diese Karte");
             const sizeLabel = resolveSpecialCardSize(item) === "food" ? "Food-Size" : "Normal";
-            const sectionLabel = resolveMenuDisplaySection(item) === "drink" ? "Getraenke" : "Speisen";
+            const sectionLabel = menuSectionLabel(resolveMenuDisplaySection(item));
             return `
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
                 <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
@@ -1874,7 +1896,7 @@ function renderMenuOrderSection(items = []) {
       <div class="space-y-2" data-menu-order-board="true">
         ${list.map((item) => {
           const id = String(item?.id || "").trim();
-          const sectionLabel = resolveMenuDisplaySection(item) === "drink" ? "Getraenke" : "Speisen";
+          const sectionLabel = menuSectionLabel(resolveMenuDisplaySection(item));
           const style = resolveMenuCardStyle(item);
           const isSpecial = style === "testfirst_special";
           const styleLabel = style === "testfirst_focus"
@@ -1932,7 +1954,7 @@ function renderFocusCarousel(profile, {
     const focusCardClass = getFocusCardClass();
     return `
       <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm">
-        <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div>
+        <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("focus.loading", "Fokus wird geladen..."))}</div>
       </div>
     `;
   }
@@ -2088,7 +2110,7 @@ function renderMenuAdminView() {
   const canInspectPublicMenu = isCeoUser()
     && !!publicMenuProfile?.restaurantId
     && isRestaurantCafeProfile(publicMenuProfile);
-  const catalogLabel = getBusinessCatalogLabel(profile);
+  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const restaurant = restaurantId ? getRestaurantMetaById(restaurantId) : null;
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
   const sameRestaurant = restaurantId && state.menu.restaurantId === restaurantId;
@@ -2171,7 +2193,7 @@ function renderMenuAdminView() {
         ${renderMenuFilterRow()}
 
         ${isLoading
-          ? `<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${catalogLabel} wird geladen...</div>`
+          ? `<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>`
           : renderMenuList(items, { mode: "admin" })
         }
         ${state.menu.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mt-4">${escapeHtml(state.menu.error)}</div>` : ""}
@@ -2198,7 +2220,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   if (!restaurantId) {
     return `
       <div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
-        Keine Restaurant-ID gefunden
+        ${escapeHtml(tr("menu.noRestaurantId", "Keine Restaurant-ID gefunden"))}
       </div>
     `;
   }
@@ -2274,7 +2296,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     : [];
   const hasItems = items.length > 0;
   const isShop = isShopCatalogProfile(profile);
-  const catalogLabel = getBusinessCatalogLabel(profile);
+  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
   const isLoading = menuSurfaceState.menu.status === "loading"
@@ -2310,13 +2332,13 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       <div class="app-main-content-safe">
         ${isLoading ? `
           ${testfirstStableFocusSection}
-          <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
+          <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
         ` : `
           ${hasItems
             ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })
             : (hasError
-              ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">Menu konnte nicht geladen werden</div>`
-              : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`))
+              ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
+              : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))
           }
           ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         `}
@@ -2333,20 +2355,20 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       })}
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
         </div>
       ` : `
         ${!hasItems ? `
           ${hasError ? `
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
               <div class="text-center py-16 text-rose-500 font-black uppercase text-[10px] tracking-[0.3em]">
-                Menu konnte nicht geladen werden
+                ${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}
               </div>
             </div>
           ` : `
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
               <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
-                Keine Produkte
+                ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
               </div>
             </div>
           `}
@@ -2357,7 +2379,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
             ${drinkItems.length ? `
               <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="drink">
                 <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3>
+                  <h3 class="text-lg font-black italic tracking-tighter">${escapeHtml(tr("menu.drinks", "Getraenke"))}</h3>
                 </div>
                 <div data-menu-type="drink">
                   ${renderMenuDrinkGrid(drinkItems, { mode, useTestfirstCardUi, seenCategories: anchoredCategories, priorityOffset: drinkPriorityOffset })}
@@ -2367,7 +2389,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
             ${foodItems.length ? `
               <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="food">
                 <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-lg font-black italic tracking-tighter">Speisen</h3>
+                  <h3 class="text-lg font-black italic tracking-tighter">${escapeHtml(tr("menu.food", "Speisen"))}</h3>
                 </div>
                 <div data-menu-type="food">
                   ${renderMenuFoodList(foodItems, { mode, useTestfirstCardUi, seenCategories: anchoredCategories, priorityOffset: foodPriorityOffset })}
@@ -2399,7 +2421,7 @@ function renderProfileView() {
     : (isUserPostsLoading || (isBootstrapPendingForProfile && !posts.length));
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
-  const bioHtml = safeBio || "Noch keine Bio.";
+  const bioHtml = safeBio || escapeHtml(tr("profile.noBio", "Noch keine Bio."));
   const activeContentTab = resolveProfileContentTabForRendering(profile);
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
@@ -2430,12 +2452,12 @@ function renderProfileView() {
               <div class="flex items-center gap-6 pt-3 pr-2">
                  <div class="flex flex-col items-center">
                     <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.fans", "Fans"))}</span>
                  </div>
                  <div class="w-px h-8 bg-slate-100"></div>
                  <div class="flex flex-col items-center">
                     <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.followingCount", "Folgt"))}</span>
                  </div>
               </div>
             </div>
@@ -2471,7 +2493,7 @@ function renderProfileView() {
         ${isPostsLoading && !filteredPosts.length ? `
           <div class="app-content-inline">
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-              <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Beitraege werden geladen...</div>
+              <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.postsLoading", "Beitraege werden geladen..."))}</div>
             </div>
           </div>
         ` : `

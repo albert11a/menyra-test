@@ -1,6 +1,7 @@
 import { auth, db, app } from "/shared/firebase-config.js?v=2026-05-02-public-startup-diet-01";
 import { BUNNY_EDGE_BASE, MEDIA_TICKET_ENDPOINT } from "/shared/bunny-edge.js";
 import { BRAND_UI } from "/shared/brand-ui.js";
+import { t } from "/shared/i18n/i18n.js";
 import { createRuntimeErrorReporter } from "/shared/runtime-error-reporter.js?v=2026-03-23-runtime-errors-1";
 import { initializeApp, getApps } from "/shared/vendor/firebase/11.0.0/firebase-app.js";
 import {
@@ -1964,10 +1965,14 @@ function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {
   });
 }
 
-function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um diese Funktion zu nutzen.") {
+function tr(key, fallback = key, params = {}) {
+  return t(key, { fallback, params });
+}
+
+function openGuestAuthPrompt(message = "") {
   if (!isGuestSession()) return false;
   state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
-  state.auth.error = String(message || "").trim() || "Bitte registrieren oder einloggen.";
+  state.auth.error = String(message || "").trim() || tr("auth.guestRequired", "Bitte registrieren oder einloggen, um diese Funktion zu nutzen.");
   state.auth.open = true;
   state.drawerOpen = false;
   render();

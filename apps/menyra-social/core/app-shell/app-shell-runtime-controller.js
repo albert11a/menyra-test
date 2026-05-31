@@ -1,5 +1,6 @@
 import { resolveStartupRenderGate } from "../auth/startup-render-gate-utils.js";
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+import { getLang, getSupportedLanguages, t } from "/shared/i18n/i18n.js";
 
 export function createAppShellRuntimeController(deps = {}) {
   const {
@@ -171,6 +172,17 @@ export function createAppShellRuntimeController(deps = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
   const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
+  const translateCatalogLabel = (label = "") => {
+    const safeLabel = String(label || "").trim();
+    if (!safeLabel) return tr("nav.menu", "Menue");
+    const normalized = safeLabel.toLowerCase();
+    if (normalized === "menue" || normalized === "menu" || normalized === "menü") {
+      return tr("nav.menu", safeLabel);
+    }
+    if (normalized === "shop") return "Shop";
+    return safeLabel;
+  };
   const RUNTIME_BUDGETS_MS = Object.freeze({
     cold_guest_landing: 2200,
     profile_open: 850,
@@ -552,7 +564,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const safeReason = escapeHtml(String(gate?.reason || "startup-render-gate").trim() || "startup-render-gate");
     return `
       <div class="app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans" data-startup-render-gate="${safeReason}">
-        <main class="app-main-scroll" aria-busy="true" aria-label="Mnyra wird geladen">
+        <main class="app-main-scroll" aria-busy="true" aria-label="${escapeHtml(tr("menu.loading", "Mnyra wird geladen", { label: "Mnyra" }))}">
           <section class="p-6 pb-24">
             <div class="flex items-center justify-between mb-8">
               <div class="w-14 h-14 rounded-3xl bg-white border border-slate-100 shadow-sm overflow-hidden p-4">
@@ -610,7 +622,7 @@ export function createAppShellRuntimeController(deps = {}) {
       return `
       <button data-auth-open="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 flex flex-col items-center justify-center leading-none">
         ${icon("log-in", "w-4 h-4")}
-        <span class="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Login</span>
+        <span class="text-[8px] font-black uppercase tracking-[0.2em] mt-1">${escapeHtml(tr("auth.login", "Login"))}</span>
       </button>
     `;
     }
@@ -785,9 +797,9 @@ export function createAppShellRuntimeController(deps = {}) {
         <div class="loc-search-wrap">
           <div class="loc-input-row">
             <span class="loc-pin">${icon("map-pin", "w-3.5 h-3.5")}</span>
-            <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtml(locationLabel)}" placeholder="Vendos qytetin tënd..." class="loc-input" />
+            <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtml(locationLabel)}" placeholder="${escapeHtml(tr("feed.locationPlaceholder", "Gib deine Stadt ein..."))}" class="loc-input" />
             <div class="loc-request-wrap">
-              <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="Standort nutzen">
+              <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="${escapeHtml(tr("header.useLocation", "Standort nutzen"))}">
                 <i id="locateIcon" data-lucide="crosshair" class="w-3.5 h-3.5 relative z-10"></i>
                 <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
               </button>
@@ -795,6 +807,50 @@ export function createAppShellRuntimeController(deps = {}) {
           </div>
           <div id="feedLocationCitySuggestions" data-feed-location-city-suggestions role="listbox" aria-hidden="true" class="feed-location-suggestions"></div>
           <p id="feedLocationStatus" class="loc-status hidden"></p>
+        </div>
+      </div>
+    `;
+  }
+
+  function isLanguagePickerOpen() {
+    const scope = win || globalThis;
+    return !!scope.__MENYRA_SOCIAL_LANGUAGE_PICKER_OPEN__;
+  }
+
+  function renderLanguageToggleButton(buttonClass = "", iconClass = "w-5 h-5") {
+    return `
+      <button
+        type="button"
+        data-language-toggle="true"
+        class="${buttonClass}"
+        aria-label="${escapeHtml(tr("language.toggle", "Sprache waehlen"))}"
+        aria-expanded="${isLanguagePickerOpen() ? "true" : "false"}"
+      >
+        ${icon("globe", iconClass)}
+        <span class="sr-only">${escapeHtml(tr("language.current", "Aktuelle Sprache"))}</span>
+      </button>
+    `;
+  }
+
+  function renderLanguagePickerPanel() {
+    if (!isLanguagePickerOpen()) return "";
+    const activeLang = getLang();
+    return `
+      <div class="px-5 pb-3">
+        <div class="grid grid-cols-3 gap-2 rounded-[1.6rem] border border-slate-100 bg-white/90 p-1.5 shadow-sm">
+          ${getSupportedLanguages().map((item) => {
+            const active = item.code === activeLang;
+            return `
+              <button
+                type="button"
+                data-language-option="${escapeHtml(item.code)}"
+                class="h-10 rounded-[1.15rem] text-[10px] font-black uppercase tracking-widest transition-colors ${active ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}"
+                aria-pressed="${active ? "true" : "false"}"
+              >
+                ${escapeHtml(item.label)}
+              </button>
+            `;
+          }).join("")}
         </div>
       </div>
     `;
@@ -857,15 +913,13 @@ export function createAppShellRuntimeController(deps = {}) {
     const primaryActionClass = `${secondaryActionClass} text-slate-900`;
     return `
       <div class="flex shrink-0 items-center gap-1 text-slate-600">
-        <button type="button" class="${secondaryActionClass}">
-          ${icon("globe", viewportUi.actionIconClass)}
-        </button>
+        ${renderLanguageToggleButton(`${secondaryActionClass} flex-col gap-0.5`, viewportUi.actionIconClass)}
         <button type="button" data-action="cart" class="smart-header-cart-btn ${primaryActionClass}">
           ${icon("shopping-bag", viewportUi.actionIconClass)}
           ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
         </button>
         ${menuActive ? `
-          <button type="button" data-action="kellner" title="Call Waiter" class="${primaryActionClass}">
+          <button type="button" data-action="kellner" title="${escapeHtml(tr("header.callWaiter", "Kellner rufen"))}" class="${primaryActionClass}">
             ${icon("bell", viewportUi.actionIconClass)}
           </button>
         ` : `
@@ -913,6 +967,7 @@ export function createAppShellRuntimeController(deps = {}) {
               ${menuHeaderActive ? renderBusinessHeaderCenter(activeProfile) : ""}
               ${renderBusinessHeaderActions(activeProfile)}
             </div>
+            ${renderLanguagePickerPanel()}
           </div>
         </div>
       `;
@@ -956,9 +1011,7 @@ export function createAppShellRuntimeController(deps = {}) {
                 `}
             </div>
             <div class="flex shrink-0 items-center ${compactHeaderIcons ? "gap-1.5" : "gap-1.5"} text-slate-600">
-              <button type="button" class="${actionButtonClass}">
-                ${icon("globe", actionIconClass)}
-              </button>
+              ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
               <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${actionButtonClass}">
                 ${icon("user", actionIconClass)}
               </button>
@@ -967,9 +1020,10 @@ export function createAppShellRuntimeController(deps = {}) {
                 ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
               </button>
             </div>
+            </div>
+            ${renderLanguagePickerPanel()}
           </div>
         </div>
-      </div>
     `;
   }
 
@@ -1665,7 +1719,7 @@ export function createAppShellRuntimeController(deps = {}) {
             await signInWithEmailAndPasswordFn(auth, email, password);
           } else {
             if (!name || !email || !password) {
-              throw new Error("Bitte alles ausfuellen.");
+              throw new Error(tr("auth.fillAll", "Bitte alles ausfuellen."));
             }
             const cred = await createUserWithEmailAndPasswordFn(auth, email, password);
             await updateProfileFn(cred.user, { displayName: name });
@@ -1686,7 +1740,7 @@ export function createAppShellRuntimeController(deps = {}) {
             }, { merge: true });
           }
         } catch (err) {
-          state.auth.error = err?.message || "Login fehlgeschlagen.";
+          state.auth.error = err?.message || tr("auth.loginFailed", "Login fehlgeschlagen.");
         } finally {
           if (!auth?.currentUser) {
             state.auth.loading = false;
@@ -1887,7 +1941,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const userBtn = target.closest("[data-search-user]");
       if (userBtn) {
         if (isGuestSession()) {
-          openGuestAuthPromptFn("Bitte einloggen, um User-Profile zu sehen.");
+          openGuestAuthPromptFn(tr("auth.userProfilesRequired", "Bitte einloggen, um User-Profile zu sehen."));
           return;
         }
         runBudgetWrapped("profile_open", () => openProfileFromUserFn({

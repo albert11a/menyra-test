@@ -1,3 +1,5 @@
+import { t } from "/shared/i18n/i18n.js";
+
 export function updatePostModalCountsOnlyCore({
   state,
   documentObj,
@@ -22,6 +24,7 @@ export function updatePostModalCountsOnlyCore({
     ? formatCountFn
     : ((value) => String(value ?? "0"));
   const icon = typeof iconFn === "function" ? iconFn : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
 
   const post = state.postModal.post;
   const meta = ensurePostMeta(post.id);
@@ -34,12 +37,12 @@ export function updatePostModalCountsOnlyCore({
   if (postLikeBtn) {
     postLikeBtn.classList.toggle("text-rose-500", !!isLiked);
     postLikeBtn.classList.toggle("text-slate-700", !isLiked);
-    postLikeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
+    postLikeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? tr("likes.liked", "Gefaellt") : tr("likes.like", "Like")}`;
   }
   const postLikesBtn = doc.getElementById("postLikesBtn");
-  if (postLikesBtn) postLikesBtn.textContent = `${formatCount(likeCount)} Likes`;
+  if (postLikesBtn) postLikesBtn.textContent = `${formatCount(likeCount)} ${tr("likes.count", "Likes")}`;
   const postCommentsCount = doc.getElementById("postCommentsCount");
-  if (postCommentsCount) postCommentsCount.textContent = `${formatCount(commentCount)} Kommentare`;
+  if (postCommentsCount) postCommentsCount.textContent = `${formatCount(commentCount)} ${tr("comments.count", "Kommentare")}`;
   if (win?.lucide?.createIcons) win.lucide.createIcons();
 }
 

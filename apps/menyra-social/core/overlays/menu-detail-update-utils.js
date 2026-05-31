@@ -1,3 +1,5 @@
+import { t } from "/shared/i18n/i18n.js";
+
 export function updateMenuDetailCountsOnlyCore({
   state,
   documentObj,
@@ -30,6 +32,7 @@ export function updateMenuDetailCountsOnlyCore({
     ? formatCountFn
     : ((value) => String(value ?? "0"));
   const icon = typeof iconFn === "function" ? iconFn : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
 
   const ctx = getMenuDetailContext();
   if (!ctx) return;
@@ -57,7 +60,7 @@ export function updateMenuDetailCountsOnlyCore({
   if (likeBtn) {
     likeBtn.classList.toggle("text-rose-500", !!isLiked);
     likeBtn.classList.toggle("text-slate-700", !isLiked);
-    likeBtn.innerHTML = `${icon("heart", "w-3.5 h-3.5")} ${isLiked ? "Gefaellt" : "Like"}`;
+    likeBtn.innerHTML = `${icon("heart", "w-3.5 h-3.5")} ${isLiked ? tr("likes.liked", "Gefaellt") : tr("likes.like", "Like")}`;
   }
   const headerFavBtn = doc.getElementById("menuDetailHeaderFavoritesBtn");
   if (headerFavBtn) {
@@ -69,9 +72,9 @@ export function updateMenuDetailCountsOnlyCore({
     headerFavBtn.classList.toggle("border-slate-200", !isFavorited);
   }
   const likesCount = doc.getElementById("menuDetailLikesCount");
-  if (likesCount) likesCount.textContent = `${formatCount(counts.likes)} Likes`;
+  if (likesCount) likesCount.textContent = `${formatCount(counts.likes)} ${tr("likes.count", "Likes")}`;
   const commentsCount = doc.getElementById("menuDetailCommentsCount");
-  if (commentsCount) commentsCount.textContent = `${formatCount(counts.comments)} Kommentare`;
+  if (commentsCount) commentsCount.textContent = `${formatCount(counts.comments)} ${tr("comments.count", "Kommentare")}`;
   const footerCommentsToggle = doc.getElementById("menuDetailFooterCommentToggle");
   const footerCommentsBadge = doc.getElementById("menuDetailFooterCommentsBadge");
   if (footerCommentsToggle) {

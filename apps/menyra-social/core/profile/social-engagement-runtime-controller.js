@@ -1,3 +1,5 @@
+import { t } from "/shared/i18n/i18n.js";
+
 export function createSocialEngagementRuntimeController({
   state = null,
   db = null,
@@ -85,6 +87,7 @@ export function createSocialEngagementRuntimeController({
   getMenuDetailCommentsUnsubFn = () => null,
   setMenuDetailCommentsUnsubFn = () => {}
 } = {}) {
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   const noop = () => {};
   const asyncNoop = async () => {};
   const empty = {
@@ -561,7 +564,7 @@ export function createSocialEngagementRuntimeController({
     const trimmed = String(text || "").trim();
     if (!trimmed) return;
     if (!state.user) {
-      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu schreiben.");
+      openGuestAuthPrompt(tr("auth.commentsRequired", "Bitte registrieren oder einloggen, um Kommentare zu schreiben."));
       return;
     }
     const submitPostId = String(postId || "");
@@ -713,7 +716,7 @@ export function createSocialEngagementRuntimeController({
 
   async function togglePostLike(postId) {
     if (!state.user) {
-      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Beitrage zu liken.");
+      openGuestAuthPrompt(tr("auth.postLikesRequired", "Bitte registrieren oder einloggen, um Beitraege zu liken."));
       return;
     }
     const safePostId = String(postId || "").trim();
@@ -884,7 +887,7 @@ export function createSocialEngagementRuntimeController({
 
   async function toggleMenuItemFavorite(ctx) {
     if (!state.user) {
-      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+      openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
       return;
     }
     if (!ctx) return;
@@ -933,8 +936,8 @@ export function createSocialEngagementRuntimeController({
     if (!state.user) {
       openGuestAuthPrompt(
         favoriteOnly
-          ? "Bitte registrieren oder einloggen, um Favoriten zu nutzen."
-          : "Bitte registrieren oder einloggen, um Produkte zu liken."
+          ? tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen.")
+          : tr("auth.productLikesRequired", "Bitte registrieren oder einloggen, um Produkte zu liken.")
       );
       return;
     }
@@ -1005,7 +1008,7 @@ export function createSocialEngagementRuntimeController({
     const trimmed = String(text || "").trim();
     if (!trimmed) return;
     if (!state.user) {
-      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu schreiben.");
+      openGuestAuthPrompt(tr("auth.commentsRequired", "Bitte registrieren oder einloggen, um Kommentare zu schreiben."));
       return;
     }
     const ctx = getMenuDetailContext();
@@ -1107,7 +1110,7 @@ export function createSocialEngagementRuntimeController({
 
   async function toggleCommentLike(postId, commentId, replyId) {
     if (!state.user) {
-      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu liken.");
+      openGuestAuthPrompt(tr("auth.commentLikesRequired", "Bitte registrieren oder einloggen, um Kommentare zu liken."));
       return;
     }
     const pendingKey = `${String(postId || "").trim()}::${String(commentId || "").trim()}::${String(replyId || "").trim()}`;

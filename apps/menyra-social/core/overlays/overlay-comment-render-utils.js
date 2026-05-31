@@ -1,3 +1,5 @@
+import { t } from "/shared/i18n/i18n.js";
+
 export function renderCommentItemCore({
   postId,
   comment,
@@ -36,6 +38,7 @@ export function renderCommentItemCore({
     ? formatDateTimeLabel
     : ((value) => String(value ?? ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
 
   const likeCount = Number.isFinite(Number(item.likesCount))
     ? Number(item.likesCount)
@@ -67,7 +70,7 @@ export function renderCommentItemCore({
           <button data-comment-like="true" data-post-id="${esc(postId)}" data-comment-id="${esc(parentId || item.id)}" data-reply-id="${isReply ? esc(item.id) : ""}" class="flex items-center gap-1 text-slate-400 hover:text-rose-500">
             ${iconFn("heart", "w-3 h-3")} ${esc(likeCount)}
           </button>
-          ${!isReply ? `<button data-comment-reply="true" data-post-id="${esc(postId)}" data-comment-id="${esc(item.id)}" class="text-slate-400 hover:text-slate-900">Antworten</button>` : ""}
+          ${!isReply ? `<button data-comment-reply="true" data-post-id="${esc(postId)}" data-comment-id="${esc(item.id)}" class="text-slate-400 hover:text-slate-900">${esc(tr("comments.reply", "Antworten"))}</button>` : ""}
         </div>
       </div>
     </div>
@@ -83,14 +86,15 @@ export function renderPostCommentsCore({
   const renderCommentItem = typeof renderCommentItemFn === "function"
     ? renderCommentItemFn
     : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   if (state?.postModal?.loading) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
+    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.loading", "Kommentare laden...")}</div>`;
   }
   const sendingRow = state?.postModal?.sending && hasLiveComments
-    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>`
+    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.sending", "Senden...")}</div>`
     : "";
   if (!comments.length) {
-    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
+    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.empty", "Noch keine Kommentare")}</div>`;
   }
   const postId = state?.postModal?.post?.id || "";
   return `${sendingRow}${comments.map((comment) => `
@@ -158,14 +162,15 @@ export function renderMenuDetailCommentsCore({
   const renderMenuCommentItem = typeof renderMenuCommentItemFn === "function"
     ? renderMenuCommentItemFn
     : (() => "");
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   if (state?.menuDetail?.loading) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
+    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.loading", "Kommentare laden...")}</div>`;
   }
   const sendingRow = state?.menuDetail?.sending
-    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>`
+    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.sending", "Senden...")}</div>`
     : "";
   if (!comments.length) {
-    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
+    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.empty", "Noch keine Kommentare")}</div>`;
   }
   return `${sendingRow}${comments.map((comment) => renderMenuCommentItem(comment)).join("")}`;
 }

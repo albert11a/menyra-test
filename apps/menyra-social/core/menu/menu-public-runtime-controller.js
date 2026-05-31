@@ -1,4 +1,5 @@
 import { normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
+import { t } from "/shared/i18n/i18n.js";
 
 export function createMenuPublicRuntimeController({
   state = null,
@@ -24,6 +25,7 @@ export function createMenuPublicRuntimeController({
   renderFn = () => {},
   getLastRenderModeFn = () => ""
 } = {}) {
+  const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   const collection = typeof collectionFn === "function" ? collectionFn : null;
   const query = typeof queryFn === "function" ? queryFn : null;
   const orderBy = typeof orderByFn === "function" ? orderByFn : null;
@@ -385,7 +387,7 @@ export function createMenuPublicRuntimeController({
       state.favoriteMenuItems = {
         ...state.favoriteMenuItems,
         loading: false,
-        error: "Favoriten konnten nicht geladen werden.",
+        error: tr("favorites.loadError", "Favoriten konnten nicht geladen werden."),
         loaded: true
       };
     }
