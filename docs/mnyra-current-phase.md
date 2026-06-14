@@ -549,6 +549,16 @@ Last updated: 2026-06-14
   wurde von `mb-28` auf `mb-40` erhoeht. Datenquellen, Card-Inhalte,
   Sortierung, Profil-Open-Flow, Browser-Back-Fix, QR, Cart, Order, Firebase
   Rules und Functions bleiben unveraendert.
+- Schritt 60 ist abgeschlossen: Der Marketplace-Abstand zwischen Swipe-Karten
+  und darunterliegenden Karten wurde robust gemacht.
+- Bewertung von Schritt 60: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 60:
+  Der Abstand nutzt jetzt `style="margin-bottom:10rem;"` statt der nicht in der
+  statischen Social-CSS vorhandenen Tailwind-Klasse `mb-40`. Dadurch soll die
+  sichtbare Luecke zwischen oberer horizontaler Card-Reihe und darunterliegenden
+  Karten in `Restaurants`, `Travel` und `Shopping` tatsaechlich greifen.
+  Datenquellen, Card-Inhalte, Sortierung, Profil-Open-Flow, Browser-Back-Fix,
+  QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -607,6 +617,7 @@ Last updated: 2026-06-14
 - Referenz: [docs/mnyra-step57-marketplace-ui-spacing-cleanup.md](./mnyra-step57-marketplace-ui-spacing-cleanup.md)
 - Referenz: [docs/mnyra-step58-marketplace-header-text-removal.md](./mnyra-step58-marketplace-header-text-removal.md)
 - Referenz: [docs/mnyra-step59-marketplace-card-gap-increase.md](./mnyra-step59-marketplace-card-gap-increase.md)
+- Referenz: [docs/mnyra-step60-marketplace-card-gap-inline-fix.md](./mnyra-step60-marketplace-card-gap-inline-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -632,7 +643,7 @@ Last updated: 2026-06-14
 
 ## Naechster Schritt
 
-Nach Schritt 59 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 60 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.

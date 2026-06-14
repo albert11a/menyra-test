@@ -64,7 +64,7 @@ const b=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
   `}function q({state:e={},dataLoaded:t=null,sectionKey:n="restaurants",escapeHtmlFn:a,iconFn:s,getOptimizedImageUrlFn:i,isPlaceholderUrlFn:l,placeholderImage:o="",normalizeRestaurantTypeFn:c,normalizeLeadTypeKeyFn:y,resolveRestaurantLogoFn:m}={}){const p=b[w(n)]||b.restaurants,B=v(a,(u="")=>String(u||"")),C=v(s,()=>""),f={escapeHtml:B,icon:C,getOptimizedImageUrl:i,isPlaceholderUrl:l,placeholderImage:o,resolveRestaurantLogo:m,normalizeRestaurantType:c,normalizeLeadTypeKey:y},h=F(e,p.key,f).slice(0,R).map(u=>D({...u,__marketplaceType:$(u,f)},p)),L=h.slice(0,M),j=t?.restaurants===!0;return`
     <section class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
       ${h.length?`
-        <div class="mb-40">
+        <div style="margin-bottom:10rem;">
           <div class="flex gap-3 overflow-x-auto hide-scrollbar snap-x" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
             ${L.map(u=>P(u,f)).join("")}
           </div>
