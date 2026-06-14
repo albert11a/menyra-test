@@ -43,21 +43,10 @@ export function createMarketplaceRuntimeBoundary({
     void ensureRenderUtils().catch(() => null);
   }
 
-  function renderLoadingView(sectionKey = "") {
+  function renderLoadingView() {
     const icon = asFn(helperApi.iconFn, () => "");
-    const escapeHtml = asFn(helperApi.escapeHtmlFn, (value = "") => String(value || ""));
-    const section = normalizeSectionKey(sectionKey);
-    const titles = {
-      restaurants: "Restaurants",
-      travel: "Travel",
-      shopping: "Shopping"
-    };
-    const title = titles[section] || "Marketplace";
     return `
       <section class="p-6 pb-24 animate-in fade-in duration-300">
-        <div class="mb-6 px-1">
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(title)}</h2>
-        </div>
         <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
           ${icon("loader-2", "w-4 h-4 animate-spin")}
           Daten werden vorbereitet ...
@@ -70,7 +59,7 @@ export function createMarketplaceRuntimeBoundary({
     const section = normalizeSectionKey(sectionKey);
     if (!renderUtils?.renderMarketplaceViewCore) {
       queueRenderUtilsLoad();
-      return renderLoadingView(section);
+      return renderLoadingView();
     }
     return renderUtils.renderMarketplaceViewCore({
       state,

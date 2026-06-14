@@ -531,6 +531,16 @@ Last updated: 2026-06-14
   darunterliegenden Karten. Datenquellen, Sortierung, Profil-Open-Flow,
   Browser-Back-Fix, QR, Cart, Order, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 58 ist abgeschlossen: Die verbliebenen oberen Marketplace-
+  Bereichstitel und Subtitles wurden entfernt.
+- Bewertung von Schritt 58: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 58:
+  `Restaurants`, `Travel` und `Shopping` starten in der View jetzt direkt mit
+  den Swipe-Karten bzw. dem Ladezustand; die oberen Textzeilen `Restaurants` /
+  `Top Restaurants in deiner Umgebung`, `Travel` / `Hotels und Motels` und
+  `Shopping` / `E-Commerce und Online-Shops` werden nicht mehr gerendert.
+  Drawer-Labels, Card-Inhalte, Sortierung, Profil-Open-Flow, Browser-Back-Fix,
+  QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -587,6 +597,7 @@ Last updated: 2026-06-14
 - Referenz: [docs/mnyra-step55-marketplace-drawer-categories.md](./mnyra-step55-marketplace-drawer-categories.md)
 - Referenz: [docs/mnyra-step56-marketplace-browser-back-route-fix.md](./mnyra-step56-marketplace-browser-back-route-fix.md)
 - Referenz: [docs/mnyra-step57-marketplace-ui-spacing-cleanup.md](./mnyra-step57-marketplace-ui-spacing-cleanup.md)
+- Referenz: [docs/mnyra-step58-marketplace-header-text-removal.md](./mnyra-step58-marketplace-header-text-removal.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -612,7 +623,7 @@ Last updated: 2026-06-14
 
 ## Naechster Schritt
 
-Nach Schritt 57 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 58 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
