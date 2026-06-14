@@ -43,19 +43,25 @@ const SOCIAL_ROUTES = new Set([
   "/notifications",
   "/settings",
   "/upload",
-  "/leads",
   "/ceo",
   "/admin",
   "/owner",
   "/staff",
   "/kitchen",
-  "/customers",
   "/business-accounts",
   "/businessaccounts",
   "/chat",
   "/login",
   "/register"
 ]);
+
+function isHeartPrettyRoutePath(pathname = "") {
+  const path = String(pathname || "").replace(/\/+$/, "") || "/";
+  return path === "/leads"
+    || path === "/customers"
+    || path === "/admin/staff"
+    || path.startsWith("/admin/staff/");
+}
 
 function send(res, status, body, contentType = "text/plain; charset=utf-8") {
   res.writeHead(status, {
@@ -124,6 +130,7 @@ function rewritePath(pathname = "/") {
   if (path.startsWith("/menyra-restaurants/")) return SOCIAL_INDEX;
   if (path.startsWith("/social/")) return `/apps/menyra-social/${path.slice("/social/".length)}`;
 
+  if (isHeartPrettyRoutePath(path)) return HEART_INDEX;
   if (SOCIAL_ROUTES.has(path)) return SOCIAL_INDEX;
   if (/^\/(ceo|admin|owner|staff|kitchen)\//.test(path)) return SOCIAL_INDEX;
   if (/^\/lp\/[^/]+$/.test(path)) return SOCIAL_INDEX;
@@ -192,5 +199,5 @@ const server = createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`Mnyra local web server running on http://localhost:${PORT}`);
-  console.log("Routes like /feed, /profile, /moka/menu, /waiter and /heart work locally.");
+  console.log("Routes like /feed, /profile, /moka/menu, /waiter, /heart, /leads, /customers and /admin/staff work locally.");
 });

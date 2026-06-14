@@ -599,6 +599,15 @@ Last updated: 2026-06-15
   `location.pathname` `crmLeads`, `crmCustomers` und `crmStaff` oeffnen. Bare
   `/staff`, Vercel-Rewrites, Root-Service-Worker, QR, Cart, Order, Firebase
   Rules und Functions bleiben unveraendert.
+- Schritt 65 ist abgeschlossen: Der gleiche Heart-Pretty-Route-Vertrag wurde
+  im tatsaechlich genutzten lokalen Dev-Server umgesetzt.
+- Bewertung von Schritt 65: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 65:
+  `npm run dev` nutzt `scripts/local-dev-server.mjs`, nicht den Vite-Dev-Server
+  direkt. Dort wurden `/leads` und `/customers` aus `SOCIAL_ROUTES` entfernt
+  und `/leads`, `/customers`, `/admin/staff` sowie `/admin/staff/:path*` werden
+  vor dem Social-Fallback auf Heart geroutet. `/staff`, `/admin` und andere
+  Social-/Waiter-/Kitchen-Pfade bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -662,6 +671,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step62-travel-hotels-heart-routes.md](./mnyra-step62-travel-hotels-heart-routes.md)
 - Referenz: [docs/mnyra-step63-heart-local-lan-api-base.md](./mnyra-step63-heart-local-lan-api-base.md)
 - Referenz: [docs/mnyra-step64-local-heart-pretty-routes.md](./mnyra-step64-local-heart-pretty-routes.md)
+- Referenz: [docs/mnyra-step65-local-dev-server-heart-routes.md](./mnyra-step65-local-dev-server-heart-routes.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -687,7 +697,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 64 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 65 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -709,9 +719,10 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-64-Stands bleibt weiterhin
-sinnvoll, besonders Heart lokal unter privater LAN-IP mit `/leads`,
-`/customers` und `/admin/staff`, Travel-Hotels, Travel-Karte,
+Die manuelle Gegenpruefung des frischen Schritt-65-Stands bleibt weiterhin
+sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Heart lokal
+unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`,
+Travel-Hotels, Travel-Karte,
 Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die bisherigen
 Public-Profile/Menu/QR/Cart/Order-Flows.
 

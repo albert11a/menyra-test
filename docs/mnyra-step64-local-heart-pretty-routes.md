@@ -66,6 +66,13 @@ Schritt 62 und bare `/staff` unveraendert bleiben.
 Der Fix ist auf lokale Vite-Dev-/Preview-Auslieferung begrenzt. Rest-Risiko
 bleibt die manuelle Browser-Gegenpruefung auf der echten lokalen LAN-IP.
 
+## Nachbefund
+
+Schritt 65 hat ergaenzt, dass `npm run dev` in diesem Repo nicht den Vite-
+Dev-Server direkt nutzt, sondern `scripts/local-dev-server.mjs`. Fuer diesen
+aktiven Standard-Dev-Server wurde der Heart-Pretty-Route-Fix deshalb in
+Schritt 65 zusaetzlich dort umgesetzt.
+
 ## Manuelle Testliste
 
 - Dev-Server neu starten.
