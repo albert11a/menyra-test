@@ -35,6 +35,24 @@ Object.values(MARKETPLACE_SECTIONS).forEach((section) => {
 const BEST_LIMIT = 8;
 const LIST_LIMIT = 24;
 const TRAVEL_BLUE = "#00cce5";
+const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
+  Object.freeze(["tirana", "tirane"]),
+  Object.freeze(["durres", "durresi"]),
+  Object.freeze(["vlora", "vlore"]),
+  Object.freeze(["shkoder", "shkodra"]),
+  Object.freeze(["elbasan", "elbasani"]),
+  Object.freeze(["fier", "fieri"]),
+  Object.freeze(["korce", "korca"]),
+  Object.freeze(["sarande", "saranda"]),
+  Object.freeze(["berat", "berati"]),
+  Object.freeze(["gjirokaster", "gjirokastra"]),
+  Object.freeze(["kukes", "kukesi"]),
+  Object.freeze(["lezhe", "lezha"]),
+  Object.freeze(["pogradec", "pogradeci"]),
+  Object.freeze(["kruje", "kruja"]),
+  Object.freeze(["lushnje", "lushnja"]),
+  Object.freeze(["himare", "himara"])
+]);
 
 function asFn(candidate, fallback = () => "") {
   return typeof candidate === "function" ? candidate : fallback;
@@ -53,6 +71,17 @@ function normalizeLooseKey(value = "") {
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function expandTravelDestinationKeys(value = "") {
+  const key = normalizeLooseKey(value);
+  if (!key) return [];
+  const keys = new Set([key]);
+  TRAVEL_DESTINATION_ALIAS_GROUPS.forEach((group) => {
+    const normalizedGroup = group.map(normalizeLooseKey).filter(Boolean);
+    if (normalizedGroup.includes(key)) normalizedGroup.forEach((alias) => keys.add(alias));
+  });
+  return Array.from(keys);
 }
 
 function normalizeSectionKey(value = "") {
@@ -146,6 +175,22 @@ function getBusinessLocationLabel(record = {}) {
 
 function collectLocationTextCandidates(record = {}) {
   const values = [
+    record.id,
+    record.restaurantId,
+    record.canonicalRestaurantId,
+    record.publicSlug,
+    record.landingSlug,
+    record.handle,
+    record.type,
+    record.customerType,
+    record.restaurantType,
+    record.businessProfileType,
+    record.profileType,
+    record.catalogMode,
+    record.category,
+    record.kind,
+    record.vertical,
+    record.leadType,
     record.city,
     record.locationCity,
     record.primaryCity,
@@ -173,13 +218,17 @@ function collectLocationTextCandidates(record = {}) {
 }
 
 function matchesTravelDestination(record = {}, query = "") {
-  const destinationKey = normalizeLooseKey(query);
-  if (!destinationKey) return true;
+  const destinationKeys = expandTravelDestinationKeys(query);
+  if (!destinationKeys.length) return true;
   const haystack = collectLocationTextCandidates(record)
     .map(normalizeLooseKey)
     .filter(Boolean)
     .join("_");
-  return haystack.includes(destinationKey);
+  return destinationKeys.some((destinationKey) => {
+    const queryTokens = destinationKey.split("_").filter(Boolean);
+    if (haystack.includes(destinationKey)) return true;
+    return queryTokens.length > 0 && queryTokens.every((token) => haystack.includes(token));
+  });
 }
 
 function readCoords(record = {}) {
@@ -443,8 +492,8 @@ function renderTravelSearchHero({ travel, deps } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   return `
-    <div id="travelSearchTop" data-travel-search-top style="background:${TRAVEL_BLUE}; padding:1.5rem 1.5rem 5rem;">
-      <div class="bg-white border border-white/60 shadow-sm" style="border-radius:2rem; padding:1.25rem;">
+    <div id="travelSearchTop" data-travel-search-top style="background:${TRAVEL_BLUE}; padding:2.65rem 1.5rem 6.35rem;">
+      <div class="bg-white border border-white/60 shadow-sm" style="border-radius:2rem; padding:1.4rem;">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style="background:${TRAVEL_BLUE};">
             ${icon("plane", "w-5 h-5")}
@@ -462,12 +511,19 @@ function renderTravelSearchHero({ travel, deps } = {}) {
             value="${escapeHtml(travel.query)}"
             placeholder="Prishtina, Vlora, Tirana"
             class="w-full h-14 rounded-[2rem] border border-slate-100 bg-slate-50 px-5 pr-14 text-sm font-bold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100"
+            inputmode="search"
             autocomplete="off"
+            autocapitalize="words"
+            spellcheck="false"
+            aria-autocomplete="list"
+            aria-controls="travelDestinationSuggestions"
+            aria-expanded="false"
           />
           <button type="button" data-travel-submit="true" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white active:scale-95 transition-all" style="background:${TRAVEL_BLUE};">
             ${icon("search", "w-4 h-4")}
           </button>
         </div>
+        <div id="travelDestinationSuggestions" data-travel-destination-suggestions role="listbox" aria-hidden="true" class="travel-destination-suggestions"></div>
         ${travel.notice ? `
           <p data-travel-notice class="mt-3 text-[11px] font-black uppercase tracking-wider text-rose-500">${escapeHtml(travel.notice)}</p>
         ` : ""}
@@ -617,7 +673,6 @@ function renderTravelMap(items = [], deps = {}) {
 
 function renderTravelView({ state, dataLoaded, section, deps } = {}) {
   const allItems = filterMarketplaceBusinessesCore(state, section.key, deps)
-    .slice(0, LIST_LIMIT)
     .map((record) => withTypeLabel({
       ...record,
       __marketplaceType: resolveBusinessType(record, deps)
@@ -626,17 +681,18 @@ function renderTravelView({ state, dataLoaded, section, deps } = {}) {
   const hasDestination = !!travel.query;
   const filteredItems = hasDestination
     ? allItems.filter((record) => matchesTravelDestination(record, travel.query))
-    : allItems;
+    : allItems.slice(0, LIST_LIMIT);
+  const visibleItems = filteredItems.slice(0, LIST_LIMIT);
   const activeTab = hasDestination ? travel.activeTab : "offers";
   const restaurantsLoaded = dataLoaded?.restaurants === true;
   const content = activeTab === "map"
-    ? renderTravelMap(filteredItems, deps)
-    : (activeTab === "hotels" ? renderTravelHotels(filteredItems, deps) : renderTravelOffers(filteredItems, deps));
+    ? renderTravelMap(visibleItems, deps)
+    : (activeTab === "hotels" ? renderTravelHotels(visibleItems, deps) : renderTravelOffers(visibleItems, deps));
 
   return `
     <section id="travelView" class="animate-in slide-in-from-right-10 duration-500" style="background:#f8fafc; min-height:100%;">
       ${renderTravelSearchHero({ travel, deps })}
-      <div id="travelBenko" data-travel-benko style="margin-top:-2.5rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:1.5rem 1.5rem 6rem;">
+      <div id="travelBenko" data-travel-benko style="margin-top:-1.75rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem;">
         ${renderTravelTabs({ activeTab, hasDestination, hotelCount: filteredItems.length, deps })}
         <div class="mt-5">
           ${restaurantsLoaded || allItems.length ? content : renderDataLoadingState(section, deps)}

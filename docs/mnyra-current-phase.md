@@ -608,6 +608,17 @@ Last updated: 2026-06-15
   und `/leads`, `/customers`, `/admin/staff` sowie `/admin/staff/:path*` werden
   vor dem Social-Fallback auf Heart geroutet. `/staff`, `/admin` und andere
   Social-/Waiter-/Kitchen-Pfade bleiben unveraendert.
+- Schritt 66 ist abgeschlossen: Travel-Suche und sichtbarer Travel-Abstand
+  wurden nach manueller Freigabe klein nachgezogen.
+- Bewertung von Schritt 66: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 66:
+  Die blaue Travel-Flaeche startet direkt unter dem Smart-Header, die
+  Eingabecard hat im blauen Bereich mehr vertikalen Abstand, und die
+  Travel-Eingabe bleibt beim Tippen stabil. Ab zwei Zeichen zeigt Travel
+  albanische Stadtvorschlaege und passende Hotelvorschlaege aus den vorhandenen
+  Travel-Profilen; Hotel-/Reisezielsuche matched jetzt alle vorhandenen
+  Travel-Profile vor dem 24er-Anzeigelimit.
+  Routing, QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -672,6 +683,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step63-heart-local-lan-api-base.md](./mnyra-step63-heart-local-lan-api-base.md)
 - Referenz: [docs/mnyra-step64-local-heart-pretty-routes.md](./mnyra-step64-local-heart-pretty-routes.md)
 - Referenz: [docs/mnyra-step65-local-dev-server-heart-routes.md](./mnyra-step65-local-dev-server-heart-routes.md)
+- Referenz: [docs/mnyra-step66-travel-search-spacing-fix.md](./mnyra-step66-travel-search-spacing-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -697,7 +709,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 65 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 66 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -719,7 +731,7 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-65-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-66-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Heart lokal
 unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`,
 Travel-Hotels, Travel-Karte,

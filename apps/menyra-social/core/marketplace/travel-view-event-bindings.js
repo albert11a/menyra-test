@@ -1,4 +1,24 @@
 const TRAVEL_DESTINATION_REQUIRED_MESSAGE = "Ju lutem shkruani destinacionin e udhëtimit.";
+const TRAVEL_SUGGESTION_MIN_QUERY_LENGTH = 2;
+const TRAVEL_SUGGESTION_LIMIT = 6;
+const TRAVEL_ALBANIA_CITY_OPTIONS = Object.freeze([
+  Object.freeze({ id: "tirana", label: "Tirana", aliases: Object.freeze(["tirane"]) }),
+  Object.freeze({ id: "durres", label: "Durres", aliases: Object.freeze(["durresi"]) }),
+  Object.freeze({ id: "vlora", label: "Vlora", aliases: Object.freeze(["vlore"]) }),
+  Object.freeze({ id: "shkoder", label: "Shkoder", aliases: Object.freeze(["shkodra"]) }),
+  Object.freeze({ id: "elbasan", label: "Elbasan", aliases: Object.freeze(["elbasani"]) }),
+  Object.freeze({ id: "fier", label: "Fier", aliases: Object.freeze(["fieri"]) }),
+  Object.freeze({ id: "korce", label: "Korce", aliases: Object.freeze(["korca"]) }),
+  Object.freeze({ id: "sarande", label: "Sarande", aliases: Object.freeze(["saranda"]) }),
+  Object.freeze({ id: "berat", label: "Berat", aliases: Object.freeze(["berati"]) }),
+  Object.freeze({ id: "gjirokaster", label: "Gjirokaster", aliases: Object.freeze(["gjirokastra"]) }),
+  Object.freeze({ id: "kukes", label: "Kukes", aliases: Object.freeze(["kukesi"]) }),
+  Object.freeze({ id: "lezhe", label: "Lezhe", aliases: Object.freeze(["lezha"]) }),
+  Object.freeze({ id: "pogradec", label: "Pogradec", aliases: Object.freeze(["pogradeci"]) }),
+  Object.freeze({ id: "kruje", label: "Kruje", aliases: Object.freeze(["kruja"]) }),
+  Object.freeze({ id: "lushnje", label: "Lushnje", aliases: Object.freeze(["lushnja"]) }),
+  Object.freeze({ id: "himare", label: "Himare", aliases: Object.freeze(["himara"]) })
+]);
 
 function markBound(node, key = "default") {
   if (!node?.dataset) return true;
@@ -6,6 +26,253 @@ function markBound(node, key = "default") {
   if (node.dataset[attr] === "1") return false;
   node.dataset[attr] = "1";
   return true;
+}
+
+function cleanText(value = "") {
+  return String(value || "").trim();
+}
+
+function escapeHtml(value = "") {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeLooseKey(value = "") {
+  const raw = cleanText(value).toLowerCase();
+  if (!raw) return "";
+  return raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function expandTravelQueryKeys(value = "") {
+  const key = normalizeLooseKey(value);
+  if (!key) return [];
+  const keys = new Set([key]);
+  TRAVEL_ALBANIA_CITY_OPTIONS.forEach((option) => {
+    const aliases = [option.id, option.label, ...(Array.isArray(option.aliases) ? option.aliases : [])]
+      .map(normalizeLooseKey)
+      .filter(Boolean);
+    if (aliases.includes(key)) aliases.forEach((alias) => keys.add(alias));
+  });
+  return Array.from(keys);
+}
+
+function normalizeTypeAlias(value = "") {
+  const key = normalizeLooseKey(value);
+  if (!key) return "";
+  if (key === "hotels") return "hotel";
+  if (key === "motels") return "motel";
+  if (key === "unterkunft") return "accommodation";
+  return key;
+}
+
+function getBusinessId(record = {}) {
+  return cleanText(record.canonicalRestaurantId || record.restaurantId || record.id || record.landingRestaurantId || "");
+}
+
+function getBusinessName(record = {}) {
+  return cleanText(record.name || record.restaurantName || record.businessName || record.displayName || "Hotel");
+}
+
+function getBusinessLocationLabel(record = {}) {
+  const city = cleanText(record.city || record.locationCity || record.primaryCity);
+  const address = cleanText(record.address || record.location || record.primaryAddress);
+  if (city && address && city !== address) return `${city} - ${address}`;
+  return city || address || cleanText(record.country || record.region || "") || "Standort folgt";
+}
+
+function collectTypeCandidates(record = {}) {
+  return [
+    record.type,
+    record.customerType,
+    record.restaurantType,
+    record.businessProfileType,
+    record.profileType,
+    record.catalogMode,
+    record.category,
+    record.kind,
+    record.vertical,
+    record.leadType
+  ];
+}
+
+function isTravelRecord(record = {}) {
+  const travelTypes = new Set(["hotel", "motel", "travel", "hostel", "resort", "accommodation"]);
+  if (collectTypeCandidates(record).some((value) => travelTypes.has(normalizeTypeAlias(value)))) return true;
+  const searchable = [
+    record.name,
+    record.restaurantName,
+    record.businessName,
+    record.description,
+    record.bio,
+    record.about
+  ].map((value) => cleanText(value).toLowerCase()).join(" ");
+  return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b|\bunterkunft\b/.test(searchable);
+}
+
+function collectTravelTextCandidates(record = {}) {
+  const values = [
+    getBusinessId(record),
+    record.publicSlug,
+    record.landingSlug,
+    record.handle,
+    ...collectTypeCandidates(record),
+    record.city,
+    record.locationCity,
+    record.primaryCity,
+    record.address,
+    record.location,
+    record.primaryAddress,
+    record.country,
+    record.region,
+    record.district,
+    record.name,
+    record.restaurantName,
+    record.businessName,
+    record.displayName,
+    record.description,
+    record.bio,
+    record.about
+  ];
+  if (Array.isArray(record.locations)) {
+    record.locations.forEach((location) => {
+      if (!location || typeof location !== "object") return;
+      values.push(location.city, location.address, location.country, location.region, location.name);
+    });
+  }
+  return values;
+}
+
+function matchesTravelQuery(record = {}, query = "") {
+  const queryKeys = expandTravelQueryKeys(query);
+  if (!queryKeys.length) return true;
+  const haystack = collectTravelTextCandidates(record)
+    .map(normalizeLooseKey)
+    .filter(Boolean)
+    .join("_");
+  return queryKeys.some((queryKey) => {
+    const queryTokens = queryKey.split("_").filter(Boolean);
+    if (haystack.includes(queryKey)) return true;
+    return queryTokens.length > 0 && queryTokens.every((token) => haystack.includes(token));
+  });
+}
+
+function collectTravelSuggestionRecords(state = {}) {
+  const byKey = new Map();
+  const addRecord = (record = {}) => {
+    if (!record || typeof record !== "object" || !isTravelRecord(record)) return;
+    const id = getBusinessId(record);
+    const name = getBusinessName(record);
+    const location = getBusinessLocationLabel(record);
+    const key = id || `${normalizeLooseKey(name)}:${normalizeLooseKey(location)}`;
+    if (!key) return;
+    const previous = byKey.get(key) || {};
+    byKey.set(key, { ...previous, ...record, id: id || previous.id || "" });
+  };
+  (Array.isArray(state.bootstrapRestaurantPreview) ? state.bootstrapRestaurantPreview : []).forEach(addRecord);
+  (Array.isArray(state.restaurants) ? state.restaurants : []).forEach(addRecord);
+  return Array.from(byKey.values());
+}
+
+function scoreTravelSuggestion(record = {}, query = "") {
+  const queryKey = normalizeLooseKey(query);
+  const nameKey = normalizeLooseKey(getBusinessName(record));
+  const locationKey = normalizeLooseKey(getBusinessLocationLabel(record));
+  if (!queryKey) return 100;
+  if (nameKey === queryKey) return 0;
+  if (nameKey.startsWith(queryKey)) return 1;
+  if (locationKey.startsWith(queryKey)) return 2;
+  if (nameKey.includes(queryKey)) return 3;
+  if (locationKey.includes(queryKey)) return 4;
+  return 5;
+}
+
+function matchesTravelCityOption(option = {}, query = "") {
+  const queryKey = normalizeLooseKey(query);
+  if (!queryKey) return false;
+  const keys = [option.id, option.label, ...(Array.isArray(option.aliases) ? option.aliases : [])]
+    .map(normalizeLooseKey)
+    .filter(Boolean);
+  return keys.some((key) => key.startsWith(queryKey) || key.includes(queryKey));
+}
+
+function scoreTravelCitySuggestion(option = {}, query = "") {
+  const queryKey = normalizeLooseKey(query);
+  const keys = [option.id, option.label, ...(Array.isArray(option.aliases) ? option.aliases : [])]
+    .map(normalizeLooseKey)
+    .filter(Boolean);
+  if (keys.includes(queryKey)) return 0;
+  if (keys.some((key) => key.startsWith(queryKey))) return 1;
+  return 2;
+}
+
+function getTravelCitySuggestions(query = "", limit = TRAVEL_SUGGESTION_LIMIT) {
+  const queryKey = normalizeLooseKey(query);
+  if (queryKey.length < TRAVEL_SUGGESTION_MIN_QUERY_LENGTH) return [];
+  return TRAVEL_ALBANIA_CITY_OPTIONS
+    .filter((option) => matchesTravelCityOption(option, query))
+    .sort((a, b) => scoreTravelCitySuggestion(a, query) - scoreTravelCitySuggestion(b, query)
+      || String(a.label || "").localeCompare(String(b.label || "")))
+    .slice(0, Math.max(1, Number(limit) || TRAVEL_SUGGESTION_LIMIT))
+    .map((option) => ({
+      type: "city",
+      value: cleanText(option.label),
+      label: cleanText(option.label),
+      meta: "Albanien"
+    }));
+}
+
+function getTravelHotelSuggestions(state = {}, query = "", limit = TRAVEL_SUGGESTION_LIMIT) {
+  const queryKey = normalizeLooseKey(query);
+  if (queryKey.length < TRAVEL_SUGGESTION_MIN_QUERY_LENGTH) return [];
+  return collectTravelSuggestionRecords(state)
+    .filter((record) => matchesTravelQuery(record, query))
+    .sort((a, b) => scoreTravelSuggestion(a, query) - scoreTravelSuggestion(b, query)
+      || getBusinessName(a).localeCompare(getBusinessName(b)))
+    .slice(0, Math.max(1, Number(limit) || TRAVEL_SUGGESTION_LIMIT))
+    .map((record) => {
+      const name = getBusinessName(record);
+      return {
+        type: "hotel",
+        value: name || getBusinessLocationLabel(record),
+        label: name,
+        meta: getBusinessLocationLabel(record)
+      };
+    });
+}
+
+function getTravelSuggestions(state = {}, query = "", limit = TRAVEL_SUGGESTION_LIMIT) {
+  const citySuggestions = getTravelCitySuggestions(query, limit);
+  const hotelSuggestions = getTravelHotelSuggestions(state, query, limit);
+  return [...citySuggestions, ...hotelSuggestions]
+    .slice(0, Math.max(1, Number(limit) || TRAVEL_SUGGESTION_LIMIT));
+}
+
+function renderTravelSuggestionMarkup(entry = {}) {
+  const value = cleanText(entry.value || entry.label || "");
+  const label = cleanText(entry.label || value);
+  const meta = cleanText(entry.meta || (entry.type === "city" ? "Albanien" : "Hotel"));
+  return `
+    <button
+      type="button"
+      role="option"
+      aria-selected="false"
+      data-travel-destination-suggestion="true"
+      data-travel-suggestion-value="${escapeHtml(value)}"
+      class="travel-destination-suggestion"
+    >
+      <span class="travel-destination-suggestion__label">${escapeHtml(label)}</span>
+      <span class="travel-destination-suggestion__meta">${escapeHtml(meta)}</span>
+    </button>
+  `;
 }
 
 export function bindTravelViewEvents({
@@ -19,11 +286,74 @@ export function bindTravelViewEvents({
   const win = windowObj || doc.defaultView || globalThis;
   const render = typeof renderFn === "function" ? renderFn : (() => {});
 
+  const hideTravelSuggestions = ({ clearContent = true } = {}) => {
+    const suggestionsRoot = doc.getElementById("travelDestinationSuggestions");
+    const input = doc.getElementById("travelDestinationInput");
+    if (suggestionsRoot) {
+      suggestionsRoot.classList.remove("travel-destination-suggestions--open");
+      suggestionsRoot.setAttribute("aria-hidden", "true");
+      if (clearContent) suggestionsRoot.innerHTML = "";
+    }
+    if (input) input.setAttribute("aria-expanded", "false");
+  };
+  const syncTravelSuggestionsDom = (query = "") => {
+    const suggestionsRoot = doc.getElementById("travelDestinationSuggestions");
+    const input = doc.getElementById("travelDestinationInput");
+    if (!suggestionsRoot || !input) return;
+    const suggestions = getTravelSuggestions(state, query);
+    if (!suggestions.length) {
+      hideTravelSuggestions({ clearContent: normalizeLooseKey(query).length < TRAVEL_SUGGESTION_MIN_QUERY_LENGTH });
+      return;
+    }
+    suggestionsRoot.innerHTML = suggestions.map(renderTravelSuggestionMarkup).join("");
+    suggestionsRoot.classList.add("travel-destination-suggestions--open");
+    suggestionsRoot.setAttribute("aria-hidden", "false");
+    input.setAttribute("aria-expanded", "true");
+  };
   const getTravelViewState = () => {
     if (!state.travelView || typeof state.travelView !== "object") {
       state.travelView = {};
     }
     return state.travelView;
+  };
+  const renderWithInputRestore = ({
+    value = "",
+    selectionStart = null,
+    selectionEnd = null,
+    keepFocus = false,
+    afterRender = null
+  } = {}) => {
+    render();
+    const restore = () => {
+      const input = doc.getElementById("travelDestinationInput");
+      if (input) {
+        const nextValue = String(value || "");
+        if (input.value !== nextValue) input.value = nextValue;
+        if (keepFocus && typeof input.focus === "function") {
+          try {
+            input.focus({ preventScroll: true });
+          } catch {
+            input.focus();
+          }
+          if (
+            typeof input.setSelectionRange === "function"
+            && Number.isFinite(Number(selectionStart))
+            && Number.isFinite(Number(selectionEnd))
+          ) {
+            try {
+              input.setSelectionRange(Number(selectionStart), Number(selectionEnd));
+            } catch {}
+          }
+        }
+      }
+      syncTravelSuggestionsDom(value);
+      if (typeof afterRender === "function") afterRender();
+    };
+    if (typeof win?.setTimeout === "function") {
+      win.setTimeout(restore, 0);
+    } else {
+      restore();
+    }
   };
   const scrollTravelInputIntoView = () => {
     const input = doc.getElementById("travelDestinationInput");
@@ -56,6 +386,7 @@ export function bindTravelViewEvents({
       activeTab: "offers",
       notice: TRAVEL_DESTINATION_REQUIRED_MESSAGE
     };
+    hideTravelSuggestions();
     render();
     if (typeof win?.setTimeout === "function") {
       win.setTimeout(scrollTravelInputIntoView, 0);
@@ -73,6 +404,7 @@ export function bindTravelViewEvents({
         activeTab: "offers",
         notice: ""
       };
+      hideTravelSuggestions();
       render();
       return;
     }
@@ -82,6 +414,7 @@ export function bindTravelViewEvents({
       activeTab: "hotels",
       notice: ""
     };
+    hideTravelSuggestions();
     render();
     if (immediateScroll || !previousQuery) {
       if (typeof win?.setTimeout === "function") {
@@ -96,7 +429,8 @@ export function bindTravelViewEvents({
   if (travelInput && markBound(travelInput, "Input")) {
     let travelInputTimer = 0;
     travelInput.addEventListener("input", () => {
-      const query = String(travelInput.value || "").trim();
+      const rawValue = String(travelInput.value || "");
+      const query = rawValue.trim();
       const previousQuery = String(getTravelViewState().query || "").trim();
       state.travelView = {
         ...getTravelViewState(),
@@ -104,26 +438,75 @@ export function bindTravelViewEvents({
         activeTab: query ? "hotels" : "offers",
         notice: ""
       };
+      syncTravelSuggestionsDom(rawValue);
       if (travelInputTimer && typeof win?.clearTimeout === "function") {
         win.clearTimeout(travelInputTimer);
       }
-      const delay = query ? 520 : 120;
+      const delay = query ? 680 : 140;
       travelInputTimer = typeof win?.setTimeout === "function"
         ? win.setTimeout(() => {
             travelInputTimer = 0;
-            render();
-            if (!previousQuery && query) scrollTravelBenkoIntoView();
+            renderWithInputRestore({
+              value: rawValue,
+              selectionStart: travelInput.selectionStart,
+              selectionEnd: travelInput.selectionEnd,
+              keepFocus: doc.activeElement === travelInput,
+              afterRender: () => {
+                if (!previousQuery && query) scrollTravelBenkoIntoView();
+              }
+            });
           }, delay)
         : 0;
       if (!travelInputTimer) {
-        render();
-        if (!previousQuery && query) scrollTravelBenkoIntoView();
+        renderWithInputRestore({
+          value: rawValue,
+          selectionStart: travelInput.selectionStart,
+          selectionEnd: travelInput.selectionEnd,
+          keepFocus: doc.activeElement === travelInput,
+          afterRender: () => {
+            if (!previousQuery && query) scrollTravelBenkoIntoView();
+          }
+        });
+      }
+    });
+    travelInput.addEventListener("focus", () => {
+      syncTravelSuggestionsDom(travelInput.value || getTravelViewState().query || "");
+    });
+    travelInput.addEventListener("blur", () => {
+      if (typeof win?.setTimeout === "function") {
+        win.setTimeout(() => {
+          const active = doc.activeElement;
+          if (active && typeof active.closest === "function" && active.closest("[data-travel-destination-suggestion]")) return;
+          hideTravelSuggestions();
+        }, 120);
+      } else {
+        hideTravelSuggestions();
       }
     });
     travelInput.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        hideTravelSuggestions();
+        return;
+      }
       if (event.key !== "Enter") return;
       event.preventDefault();
       commitTravelDestination({ value: travelInput.value || "", immediateScroll: true });
+    });
+  }
+
+  const suggestionsRoot = doc.getElementById("travelDestinationSuggestions");
+  if (suggestionsRoot && markBound(suggestionsRoot, "Suggestion")) {
+    suggestionsRoot.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      const suggestion = target.closest("[data-travel-destination-suggestion]");
+      if (!suggestion) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const value = String(suggestion.getAttribute("data-travel-suggestion-value") || "").trim();
+      const input = doc.getElementById("travelDestinationInput");
+      if (input) input.value = value;
+      commitTravelDestination({ value, immediateScroll: true });
     });
   }
 
@@ -155,6 +538,7 @@ export function bindTravelViewEvents({
         activeTab: tab === "map" ? "map" : (tab === "hotels" ? "hotels" : "offers"),
         notice: ""
       };
+      hideTravelSuggestions();
       render();
       if (tab === "hotels" || tab === "map") {
         if (typeof win?.setTimeout === "function") {
