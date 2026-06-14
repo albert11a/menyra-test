@@ -52,11 +52,10 @@ export function createMarketplaceRuntimeBoundary({
       travel: "Travel",
       shopping: "Shopping"
     };
-    const title = titles[section] || "Entdecken";
+    const title = titles[section] || "Marketplace";
     return `
       <section class="p-6 pb-24 animate-in fade-in duration-300">
         <div class="mb-6 px-1">
-          <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Entdecken</p>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(title)}</h2>
         </div>
         <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">

@@ -2,7 +2,6 @@ const MARKETPLACE_SECTIONS = Object.freeze({
   restaurants: Object.freeze({
     key: "restaurants",
     title: "Restaurants",
-    eyebrow: "Entdecken",
     subtitle: "Top Restaurants in deiner Umgebung",
     emptyTitle: "Noch keine Restaurants",
     emptyBody: "Keine passenden Profile gefunden.",
@@ -12,7 +11,6 @@ const MARKETPLACE_SECTIONS = Object.freeze({
   travel: Object.freeze({
     key: "travel",
     title: "Travel",
-    eyebrow: "Entdecken",
     subtitle: "Hotels und Motels",
     emptyTitle: "Noch keine Travel-Profile",
     emptyBody: "Keine passenden Profile gefunden.",
@@ -22,7 +20,6 @@ const MARKETPLACE_SECTIONS = Object.freeze({
   shopping: Object.freeze({
     key: "shopping",
     title: "Shopping",
-    eyebrow: "Entdecken",
     subtitle: "E-Commerce und Online-Shops",
     emptyTitle: "Noch keine Shopping-Profile",
     emptyBody: "Keine passenden Profile gefunden.",
@@ -373,7 +370,6 @@ export function renderMarketplaceViewCore({
   getOptimizedImageUrlFn,
   isPlaceholderUrlFn,
   placeholderImage = "",
-  formatCountFn,
   normalizeRestaurantTypeFn,
   normalizeLeadTypeKeyFn,
   resolveRestaurantLogoFn
@@ -381,7 +377,6 @@ export function renderMarketplaceViewCore({
   const section = MARKETPLACE_SECTIONS[normalizeSectionKey(sectionKey)] || MARKETPLACE_SECTIONS.restaurants;
   const escapeHtml = asFn(escapeHtmlFn, (value = "") => String(value || ""));
   const icon = asFn(iconFn, () => "");
-  const formatCount = asFn(formatCountFn, (value) => String(value || "0"));
   const deps = {
     escapeHtml,
     icon,
@@ -399,14 +394,12 @@ export function renderMarketplaceViewCore({
       __marketplaceType: resolveBusinessType(record, deps)
     }, section));
   const bestItems = items.slice(0, BEST_LIMIT);
-  const countLabel = formatCount(items.length);
   const restaurantsLoaded = dataLoaded?.restaurants === true;
 
   return `
     <section class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
       <div class="mb-6 px-1 flex items-end justify-between gap-4">
         <div class="min-w-0">
-          <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(section.eyebrow)}</p>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">${escapeHtml(section.title)}</h2>
           <p class="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">${escapeHtml(section.subtitle)}</p>
         </div>
@@ -416,12 +409,8 @@ export function renderMarketplaceViewCore({
       </div>
 
       ${items.length ? `
-        <div class="mb-7">
-          <div class="mb-3 px-1 flex items-center justify-between">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Beste Auswahl</p>
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">${escapeHtml(countLabel)}</span>
-          </div>
-          <div class="-mx-6 px-6 flex gap-3 overflow-x-auto pb-2 snap-x" style="-webkit-overflow-scrolling:touch;">
+        <div class="mb-28">
+          <div class="flex gap-3 overflow-x-auto hide-scrollbar snap-x" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
             ${bestItems.map((record) => renderBestCard(record, deps)).join("")}
           </div>
         </div>

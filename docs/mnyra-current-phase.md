@@ -520,6 +520,17 @@ Last updated: 2026-06-14
   mehr `/feed` als Ruecksprung, sondern `/restaurants`, `/travel` oder
   `/shopping`. UI, Profil-Open-Flow, QR, Cart, Order, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 57 ist abgeschlossen: Marketplace-UI fuer `Restaurants`, `Travel` und
+  `Shopping` wurde nach manueller Freigabe bereinigt.
+- Bewertung von Schritt 57: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 57:
+  Die sichtbaren Labels `Entdecken` und `Beste Auswahl` wurden aus den drei
+  Marketplace-Bereichen entfernt. Der Swipe-Track nutzt keine negativen
+  Aussenraender mehr, blendet die horizontale Scrollbar mit der vorhandenen
+  `hide-scrollbar`-Klasse aus und hat jetzt vierfachen Abstand zu den
+  darunterliegenden Karten. Datenquellen, Sortierung, Profil-Open-Flow,
+  Browser-Back-Fix, QR, Cart, Order, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -575,6 +586,7 @@ Last updated: 2026-06-14
 - Referenz: [docs/mnyra-step54-language-toggle-icon-restoration.md](./mnyra-step54-language-toggle-icon-restoration.md)
 - Referenz: [docs/mnyra-step55-marketplace-drawer-categories.md](./mnyra-step55-marketplace-drawer-categories.md)
 - Referenz: [docs/mnyra-step56-marketplace-browser-back-route-fix.md](./mnyra-step56-marketplace-browser-back-route-fix.md)
+- Referenz: [docs/mnyra-step57-marketplace-ui-spacing-cleanup.md](./mnyra-step57-marketplace-ui-spacing-cleanup.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -600,7 +612,7 @@ Last updated: 2026-06-14
 
 ## Naechster Schritt
 
-Nach Schritt 56 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 57 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
