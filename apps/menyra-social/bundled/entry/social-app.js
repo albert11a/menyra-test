@@ -1026,7 +1026,6 @@ import{_ as Kr,n as Fu,a as ld,i as Ru,b as ou,c as Vg,d as jg,e as ri,f as qg,g
         aria-expanded="${Mn()?"true":"false"}"
       >
         ${x("globe",$e)}
-        <span class="sr-only">${J(Tn("language.current","Aktuelle Sprache"))}</span>
       </button>
     `}function ir(){if(!Mn())return"";const Re=su();return`
       <div class="px-5 pb-3">

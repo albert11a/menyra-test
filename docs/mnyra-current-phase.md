@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-31
+Last updated: 2026-06-14
 
 # Mnyra Current Phase
 
@@ -490,6 +490,15 @@ Last updated: 2026-05-31
   rendert nach Sprachwechsel neu, und `sq`/`sr` werden als Lazy-Chunks geladen, damit
   das Social-Hauptbundle im Budget bleibt. Routing, QR, Cart, Order, Firebase Rules
   und Functions bleiben unveraendert.
+- Schritt 54 ist abgeschlossen: Der Sprachbutton im Smart-Header wurde wieder auf
+  den reinen Globe-Icon-Ausloeser zurueckgefuehrt.
+- Bewertung von Schritt 54: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 54:
+  Der sichtbar gewordene `language.current`-Text wie `Gjuha aktuale` wird im
+  Sprachbutton nicht mehr gerendert. Das Globe-Icon bleibt der sichtbare
+  Klick-Ausloeser, und derselbe Klick klappt weiter die bestehende Sprachleiste aus.
+  Sprachwahl, i18n-Lazy-Chunks, Routing, QR, Cart, Order, Firebase Rules und
+  Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -542,6 +551,7 @@ Last updated: 2026-05-31
 - Referenz: [docs/mnyra-step51-launch-audit-firebase-auth-hardening.md](./mnyra-step51-launch-audit-firebase-auth-hardening.md)
 - Referenz: [docs/mnyra-step52-launch-surface-read-and-deploy-cleanup.md](./mnyra-step52-launch-surface-read-and-deploy-cleanup.md)
 - Referenz: [docs/mnyra-step53-website-language-selector-i18n.md](./mnyra-step53-website-language-selector-i18n.md)
+- Referenz: [docs/mnyra-step54-language-toggle-icon-restoration.md](./mnyra-step54-language-toggle-icon-restoration.md)
 
 ## Harte Invariante (verbindlich)
 

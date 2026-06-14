@@ -827,7 +827,6 @@ export function createAppShellRuntimeController(deps = {}) {
         aria-expanded="${isLanguagePickerOpen() ? "true" : "false"}"
       >
         ${icon("globe", iconClass)}
-        <span class="sr-only">${escapeHtml(tr("language.current", "Aktuelle Sprache"))}</span>
       </button>
     `;
   }
