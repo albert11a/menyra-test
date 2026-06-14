@@ -316,44 +316,8 @@ export function bindTravelViewEvents({
     }
     return state.travelView;
   };
-  const renderWithInputRestore = ({
-    value = "",
-    selectionStart = null,
-    selectionEnd = null,
-    keepFocus = false,
-    afterRender = null
-  } = {}) => {
-    render();
-    const restore = () => {
-      const input = doc.getElementById("travelDestinationInput");
-      if (input) {
-        const nextValue = String(value || "");
-        if (input.value !== nextValue) input.value = nextValue;
-        if (keepFocus && typeof input.focus === "function") {
-          try {
-            input.focus({ preventScroll: true });
-          } catch {
-            input.focus();
-          }
-          if (
-            typeof input.setSelectionRange === "function"
-            && Number.isFinite(Number(selectionStart))
-            && Number.isFinite(Number(selectionEnd))
-          ) {
-            try {
-              input.setSelectionRange(Number(selectionStart), Number(selectionEnd));
-            } catch {}
-          }
-        }
-      }
-      syncTravelSuggestionsDom(value);
-      if (typeof afterRender === "function") afterRender();
-    };
-    if (typeof win?.setTimeout === "function") {
-      win.setTimeout(restore, 0);
-    } else {
-      restore();
-    }
+  const clearTravelNoticeDom = () => {
+    doc.querySelectorAll("[data-travel-notice]").forEach((node) => node.remove());
   };
   const scrollTravelInputIntoView = () => {
     const input = doc.getElementById("travelDestinationInput");
@@ -427,47 +391,17 @@ export function bindTravelViewEvents({
 
   const travelInput = doc.getElementById("travelDestinationInput");
   if (travelInput && markBound(travelInput, "Input")) {
-    let travelInputTimer = 0;
     travelInput.addEventListener("input", () => {
       const rawValue = String(travelInput.value || "");
       const query = rawValue.trim();
-      const previousQuery = String(getTravelViewState().query || "").trim();
       state.travelView = {
         ...getTravelViewState(),
         query,
         activeTab: query ? "hotels" : "offers",
         notice: ""
       };
+      clearTravelNoticeDom();
       syncTravelSuggestionsDom(rawValue);
-      if (travelInputTimer && typeof win?.clearTimeout === "function") {
-        win.clearTimeout(travelInputTimer);
-      }
-      const delay = query ? 680 : 140;
-      travelInputTimer = typeof win?.setTimeout === "function"
-        ? win.setTimeout(() => {
-            travelInputTimer = 0;
-            renderWithInputRestore({
-              value: rawValue,
-              selectionStart: travelInput.selectionStart,
-              selectionEnd: travelInput.selectionEnd,
-              keepFocus: doc.activeElement === travelInput,
-              afterRender: () => {
-                if (!previousQuery && query) scrollTravelBenkoIntoView();
-              }
-            });
-          }, delay)
-        : 0;
-      if (!travelInputTimer) {
-        renderWithInputRestore({
-          value: rawValue,
-          selectionStart: travelInput.selectionStart,
-          selectionEnd: travelInput.selectionEnd,
-          keepFocus: doc.activeElement === travelInput,
-          afterRender: () => {
-            if (!previousQuery && query) scrollTravelBenkoIntoView();
-          }
-        });
-      }
     });
     travelInput.addEventListener("focus", () => {
       syncTravelSuggestionsDom(travelInput.value || getTravelViewState().query || "");
@@ -496,6 +430,12 @@ export function bindTravelViewEvents({
 
   const suggestionsRoot = doc.getElementById("travelDestinationSuggestions");
   if (suggestionsRoot && markBound(suggestionsRoot, "Suggestion")) {
+    suggestionsRoot.addEventListener("pointerdown", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (!target.closest("[data-travel-destination-suggestion]")) return;
+      event.preventDefault();
+    });
     suggestionsRoot.addEventListener("click", (event) => {
       const target = event.target;
       if (!target || typeof target.closest !== "function") return;

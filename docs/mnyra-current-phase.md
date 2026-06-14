@@ -619,6 +619,16 @@ Last updated: 2026-06-15
   Travel-Profilen; Hotel-/Reisezielsuche matched jetzt alle vorhandenen
   Travel-Profile vor dem 24er-Anzeigelimit.
   Routing, QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 67 ist abgeschlossen: Travel-Vorschlaege bleiben beim Tippen wie im
+  Feed stabil offen.
+- Bewertung von Schritt 67: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 67:
+  Der Travel-Input rendert beim Tippen nicht mehr die gesamte Travel-View neu,
+  sondern aktualisiert nur das Vorschlags-Dropdown direkt im DOM. Die Suche
+  wird erst bei Enter, Suchbutton oder Vorschlagsauswahl committed. Dadurch
+  verschwinden Stadt-/Hotelvorschlaege nicht mehr sofort durch den alten
+  Re-Render-/Blur-Pfad. Routing, QR, Cart, Order, Firebase Rules und Functions
+  bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -684,6 +694,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step64-local-heart-pretty-routes.md](./mnyra-step64-local-heart-pretty-routes.md)
 - Referenz: [docs/mnyra-step65-local-dev-server-heart-routes.md](./mnyra-step65-local-dev-server-heart-routes.md)
 - Referenz: [docs/mnyra-step66-travel-search-spacing-fix.md](./mnyra-step66-travel-search-spacing-fix.md)
+- Referenz: [docs/mnyra-step67-travel-suggestions-feed-behavior.md](./mnyra-step67-travel-suggestions-feed-behavior.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -709,7 +720,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 66 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 67 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -731,7 +742,7 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-66-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-67-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Heart lokal
 unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`,
 Travel-Hotels, Travel-Karte,
