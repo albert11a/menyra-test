@@ -6,6 +6,12 @@ const TRAVEL_ALBANIA_CITY_OPTIONS = Object.freeze([
   Object.freeze({ id: "durres", label: "Durres", aliases: Object.freeze(["durresi"]) }),
   Object.freeze({ id: "vlora", label: "Vlora", aliases: Object.freeze(["vlore"]) }),
   Object.freeze({ id: "shkoder", label: "Shkoder", aliases: Object.freeze(["shkodra"]) }),
+  Object.freeze({ id: "shengjin", label: "Shengjin", aliases: Object.freeze(["shëngjin", "shen gjin", "shengjini"]) }),
+  Object.freeze({ id: "ksamil", label: "Ksamil", aliases: Object.freeze(["ksamili"]) }),
+  Object.freeze({ id: "dhermi", label: "Dhermi", aliases: Object.freeze(["dhërmi", "dhermiu"]) }),
+  Object.freeze({ id: "velipoje", label: "Velipoje", aliases: Object.freeze(["velipojë", "velipoja"]) }),
+  Object.freeze({ id: "theth", label: "Theth", aliases: Object.freeze(["thethi"]) }),
+  Object.freeze({ id: "valbone", label: "Valbone", aliases: Object.freeze(["valbonë", "valbona"]) }),
   Object.freeze({ id: "elbasan", label: "Elbasan", aliases: Object.freeze(["elbasani"]) }),
   Object.freeze({ id: "fier", label: "Fier", aliases: Object.freeze(["fieri"]) }),
   Object.freeze({ id: "korce", label: "Korce", aliases: Object.freeze(["korca"]) }),
@@ -16,8 +22,32 @@ const TRAVEL_ALBANIA_CITY_OPTIONS = Object.freeze([
   Object.freeze({ id: "lezhe", label: "Lezhe", aliases: Object.freeze(["lezha"]) }),
   Object.freeze({ id: "pogradec", label: "Pogradec", aliases: Object.freeze(["pogradeci"]) }),
   Object.freeze({ id: "kruje", label: "Kruje", aliases: Object.freeze(["kruja"]) }),
+  Object.freeze({ id: "fushe kruje", label: "Fushe Kruje", aliases: Object.freeze(["fushë krujë", "fushe-kruje", "fush kruje"]) }),
   Object.freeze({ id: "lushnje", label: "Lushnje", aliases: Object.freeze(["lushnja"]) }),
-  Object.freeze({ id: "himare", label: "Himare", aliases: Object.freeze(["himara"]) })
+  Object.freeze({ id: "himare", label: "Himare", aliases: Object.freeze(["himarë", "himara"]) }),
+  Object.freeze({ id: "kavaje", label: "Kavaje", aliases: Object.freeze(["kavajë", "kavaja"]) }),
+  Object.freeze({ id: "kamze", label: "Kamze", aliases: Object.freeze(["kamëz", "kamza"]) }),
+  Object.freeze({ id: "vore", label: "Vore", aliases: Object.freeze(["vorë", "vora"]) }),
+  Object.freeze({ id: "divjake", label: "Divjake", aliases: Object.freeze(["divjakë", "divjaka"]) }),
+  Object.freeze({ id: "permet", label: "Permet", aliases: Object.freeze(["përmet", "permeti"]) }),
+  Object.freeze({ id: "tepelene", label: "Tepelene", aliases: Object.freeze(["tepelenë", "tepelena"]) }),
+  Object.freeze({ id: "delvine", label: "Delvine", aliases: Object.freeze(["delvinë", "delvina"]) }),
+  Object.freeze({ id: "peshkopi", label: "Peshkopi", aliases: Object.freeze(["peshkopia", "diber", "dibër"]) }),
+  Object.freeze({ id: "burrel", label: "Burrel", aliases: Object.freeze(["burreli", "mat"]) }),
+  Object.freeze({ id: "puke", label: "Puke", aliases: Object.freeze(["pukë", "puka"]) }),
+  Object.freeze({ id: "bajram curri", label: "Bajram Curri", aliases: Object.freeze(["bajramcurri", "tropoje", "tropojë"]) }),
+  Object.freeze({ id: "krume", label: "Krume", aliases: Object.freeze(["krumë", "has"]) }),
+  Object.freeze({ id: "lac", label: "Lac", aliases: Object.freeze(["laç", "kurbin"]) }),
+  Object.freeze({ id: "orikum", label: "Orikum", aliases: Object.freeze(["orikumi"]) }),
+  Object.freeze({ id: "golem", label: "Golem", aliases: Object.freeze(["golemi"]) }),
+  Object.freeze({ id: "jale", label: "Jale", aliases: Object.freeze(["jalë", "jali"]) }),
+  Object.freeze({ id: "qepare", label: "Qeparo", aliases: Object.freeze(["qeparo", "qeparoi"]) }),
+  Object.freeze({ id: "borsh", label: "Borsh", aliases: Object.freeze(["borshi"]) }),
+  Object.freeze({ id: "lukove", label: "Lukove", aliases: Object.freeze(["lukovë", "lukova"]) }),
+  Object.freeze({ id: "palase", label: "Palase", aliases: Object.freeze(["palasë", "palasa"]) }),
+  Object.freeze({ id: "drimadhe", label: "Drimadhe", aliases: Object.freeze(["drymades", "drimadhes"]) }),
+  Object.freeze({ id: "spille", label: "Spille", aliases: Object.freeze(["spilleja"]) }),
+  Object.freeze({ id: "gjiri i lalzit", label: "Gjiri i Lalzit", aliases: Object.freeze(["lalzi", "lalez", "lalëz"]) })
 ]);
 
 function markBound(node, key = "default") {
@@ -45,6 +75,8 @@ function normalizeLooseKey(value = "") {
   const raw = cleanText(value).toLowerCase();
   if (!raw) return "";
   return raw
+    .replace(/[ëèéê]/g, "e")
+    .replace(/[çćč]/g, "c")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/&/g, "and")
@@ -251,9 +283,9 @@ function getTravelHotelSuggestions(state = {}, query = "", limit = TRAVEL_SUGGES
 
 function getTravelSuggestions(state = {}, query = "", limit = TRAVEL_SUGGESTION_LIMIT) {
   const citySuggestions = getTravelCitySuggestions(query, limit);
+  if (citySuggestions.length) return citySuggestions;
   const hotelSuggestions = getTravelHotelSuggestions(state, query, limit);
-  return [...citySuggestions, ...hotelSuggestions]
-    .slice(0, Math.max(1, Number(limit) || TRAVEL_SUGGESTION_LIMIT));
+  return hotelSuggestions.slice(0, Math.max(1, Number(limit) || TRAVEL_SUGGESTION_LIMIT));
 }
 
 function renderTravelSuggestionMarkup(entry = {}) {
@@ -393,11 +425,8 @@ export function bindTravelViewEvents({
   if (travelInput && markBound(travelInput, "Input")) {
     travelInput.addEventListener("input", () => {
       const rawValue = String(travelInput.value || "");
-      const query = rawValue.trim();
       state.travelView = {
         ...getTravelViewState(),
-        query,
-        activeTab: query ? "hotels" : "offers",
         notice: ""
       };
       clearTravelNoticeDom();

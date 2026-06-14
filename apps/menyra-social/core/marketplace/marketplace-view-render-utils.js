@@ -40,6 +40,12 @@ const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
   Object.freeze(["durres", "durresi"]),
   Object.freeze(["vlora", "vlore"]),
   Object.freeze(["shkoder", "shkodra"]),
+  Object.freeze(["shengjin", "shëngjin", "shen gjin", "shengjini"]),
+  Object.freeze(["ksamil", "ksamili"]),
+  Object.freeze(["dhermi", "dhërmi", "dhermiu"]),
+  Object.freeze(["velipoje", "velipojë", "velipoja"]),
+  Object.freeze(["theth", "thethi"]),
+  Object.freeze(["valbone", "valbonë", "valbona"]),
   Object.freeze(["elbasan", "elbasani"]),
   Object.freeze(["fier", "fieri"]),
   Object.freeze(["korce", "korca"]),
@@ -50,8 +56,32 @@ const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
   Object.freeze(["lezhe", "lezha"]),
   Object.freeze(["pogradec", "pogradeci"]),
   Object.freeze(["kruje", "kruja"]),
+  Object.freeze(["fushe kruje", "fushë krujë", "fushe-kruje", "fush kruje"]),
   Object.freeze(["lushnje", "lushnja"]),
-  Object.freeze(["himare", "himara"])
+  Object.freeze(["himare", "himarë", "himara"]),
+  Object.freeze(["kavaje", "kavajë", "kavaja"]),
+  Object.freeze(["kamze", "kamëz", "kamza"]),
+  Object.freeze(["vore", "vorë", "vora"]),
+  Object.freeze(["divjake", "divjakë", "divjaka"]),
+  Object.freeze(["permet", "përmet", "permeti"]),
+  Object.freeze(["tepelene", "tepelenë", "tepelena"]),
+  Object.freeze(["delvine", "delvinë", "delvina"]),
+  Object.freeze(["peshkopi", "peshkopia", "diber", "dibër"]),
+  Object.freeze(["burrel", "burreli", "mat"]),
+  Object.freeze(["puke", "pukë", "puka"]),
+  Object.freeze(["bajram curri", "bajramcurri", "tropoje", "tropojë"]),
+  Object.freeze(["krume", "krumë", "has"]),
+  Object.freeze(["lac", "laç", "kurbin"]),
+  Object.freeze(["orikum", "orikumi"]),
+  Object.freeze(["golem", "golemi"]),
+  Object.freeze(["jale", "jalë", "jali"]),
+  Object.freeze(["qepare", "qeparo", "qeparoi"]),
+  Object.freeze(["borsh", "borshi"]),
+  Object.freeze(["lukove", "lukovë", "lukova"]),
+  Object.freeze(["palase", "palasë", "palasa"]),
+  Object.freeze(["drimadhe", "drymades", "drimadhes"]),
+  Object.freeze(["spille", "spilleja"]),
+  Object.freeze(["gjiri i lalzit", "lalzi", "lalez", "lalëz"])
 ]);
 
 function asFn(candidate, fallback = () => "") {
@@ -66,6 +96,8 @@ function normalizeLooseKey(value = "") {
   const raw = cleanText(value).toLowerCase();
   if (!raw) return "";
   return raw
+    .replace(/[ëèéê]/g, "e")
+    .replace(/[çćč]/g, "c")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/&/g, "and")

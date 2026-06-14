@@ -629,6 +629,20 @@ Last updated: 2026-06-15
   verschwinden Stadt-/Hotelvorschlaege nicht mehr sofort durch den alten
   Re-Render-/Blur-Pfad. Routing, QR, Cart, Order, Firebase Rules und Functions
   bleiben unveraendert.
+- Schritt 68 ist abgeschlossen: Travel-Stadt- und Reiseort-Aliasse fuer
+  Albanien wurden sauberer nachgezogen.
+- Bewertung von Schritt 68: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 68:
+  `Shengjin`/`Shëngjin` sowie weitere albanische Staedte und Reiseorte wie
+  `Ksamil`, `Dhermi`, `Velipoje`, `Theth`, `Valbone`, `Golem`, `Orikum`,
+  `Borsh` und weitere Varianten werden in Travel-Vorschlaegen und im
+  tatsaechlichen Travel-Matching gleich behandelt. Die lockere Normalisierung
+  behandelt albanische Sonderzeichen explizit, sodass `ë` wie `e` und `ç` wie
+  `c` funktioniert. Sobald eine Eingabe zu Stadt-/Reiseortvorschlaegen passt,
+  zeigt das Dropdown keine Hotelvorschlaege darunter; Tippen allein committed
+  keinen Travel-Zustand, uebernommen wird erst per Vorschlagsklick, Enter oder
+  Suchbutton. Routing, QR, Cart, Order, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -695,6 +709,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step65-local-dev-server-heart-routes.md](./mnyra-step65-local-dev-server-heart-routes.md)
 - Referenz: [docs/mnyra-step66-travel-search-spacing-fix.md](./mnyra-step66-travel-search-spacing-fix.md)
 - Referenz: [docs/mnyra-step67-travel-suggestions-feed-behavior.md](./mnyra-step67-travel-suggestions-feed-behavior.md)
+- Referenz: [docs/mnyra-step68-travel-albania-city-aliases.md](./mnyra-step68-travel-albania-city-aliases.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -720,7 +735,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 67 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 68 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -742,7 +757,7 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-67-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-68-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Heart lokal
 unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`,
 Travel-Hotels, Travel-Karte,
