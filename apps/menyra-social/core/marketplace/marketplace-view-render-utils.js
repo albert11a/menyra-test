@@ -396,7 +396,7 @@ export function renderMarketplaceViewCore({
   return `
     <section class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
       ${items.length ? `
-        <div class="mb-28">
+        <div class="mb-40">
           <div class="flex gap-3 overflow-x-auto hide-scrollbar snap-x" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
             ${bestItems.map((record) => renderBestCard(record, deps)).join("")}
           </div>
