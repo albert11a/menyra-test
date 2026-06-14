@@ -524,7 +524,7 @@ function renderTravelSearchHero({ travel, deps } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   return `
-    <div id="travelSearchTop" data-travel-search-top style="background:${TRAVEL_BLUE}; padding:2.65rem 1.5rem 6.35rem;">
+    <div id="travelSearchTop" data-travel-search-top style="background:${TRAVEL_BLUE}; padding:4.6rem 1.5rem 6.35rem;">
       <div class="bg-white border border-white/60 shadow-sm" style="border-radius:2rem; padding:1.4rem;">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style="background:${TRAVEL_BLUE};">
@@ -532,7 +532,7 @@ function renderTravelSearchHero({ travel, deps } = {}) {
           </div>
           <div class="min-w-0">
             <p class="text-[10px] font-black uppercase tracking-widest" style="color:${TRAVEL_BLUE};">Travel</p>
-            <h2 class="text-xl font-black tracking-tight text-slate-900 leading-tight">Schreibe dein Reiseziel</h2>
+            <h2 class="text-lg font-black tracking-tight text-slate-900 leading-tight">Schreibe dein Reiseziel</h2>
           </div>
         </div>
         <div class="relative">

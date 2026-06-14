@@ -643,6 +643,15 @@ Last updated: 2026-06-15
   keinen Travel-Zustand, uebernommen wird erst per Vorschlagsklick, Enter oder
   Suchbutton. Routing, QR, Cart, Order, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 69 ist abgeschlossen: Die Travel-Reiseziel-Card wurde vertikal
+  symmetrischer positioniert und die Headline verkleinert.
+- Bewertung von Schritt 69: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 69:
+  Die blaue Travel-Suchflaeche nutzt oben jetzt `4.6rem` Abstand, damit die
+  Reiseziel-Card zum Smart-Header aehnlicher steht wie unten zum `travelBenko`-
+  Bereich. Die Headline `Schreibe dein Reiseziel` wurde von `text-xl` auf
+  `text-lg` reduziert. Travel-Suche, Vorschlaege, Filterlogik, Karte, Routing,
+  QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -710,6 +719,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step66-travel-search-spacing-fix.md](./mnyra-step66-travel-search-spacing-fix.md)
 - Referenz: [docs/mnyra-step67-travel-suggestions-feed-behavior.md](./mnyra-step67-travel-suggestions-feed-behavior.md)
 - Referenz: [docs/mnyra-step68-travel-albania-city-aliases.md](./mnyra-step68-travel-albania-city-aliases.md)
+- Referenz: [docs/mnyra-step69-travel-search-card-spacing.md](./mnyra-step69-travel-search-card-spacing.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -735,7 +745,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 68 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 69 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -757,7 +767,7 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-68-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-69-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Heart lokal
 unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`,
 Travel-Hotels, Travel-Karte,

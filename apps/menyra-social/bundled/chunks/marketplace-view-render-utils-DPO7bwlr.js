@@ -62,7 +62,7 @@ const k=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
       Daten werden geladen ...
     </div>
   `}function te(e={}){const t=e?.travelView&&typeof e.travelView=="object"?e.travelView:{},a=c(t.query||""),n=c(t.activeTab||"").toLowerCase(),s=["offers","hotels","map"].includes(n)?n:a?"hotels":"offers";return{query:a,activeTab:a?s:"offers",notice:c(t.notice||"")}}function ae({travel:e,deps:t}={}){const a=t.escapeHtml,n=t.icon;return`
-    <div id="travelSearchTop" data-travel-search-top style="background:${g}; padding:2.65rem 1.5rem 6.35rem;">
+    <div id="travelSearchTop" data-travel-search-top style="background:${g}; padding:4.6rem 1.5rem 6.35rem;">
       <div class="bg-white border border-white/60 shadow-sm" style="border-radius:2rem; padding:1.4rem;">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style="background:${g};">
@@ -70,7 +70,7 @@ const k=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
           </div>
           <div class="min-w-0">
             <p class="text-[10px] font-black uppercase tracking-widest" style="color:${g};">Travel</p>
-            <h2 class="text-xl font-black tracking-tight text-slate-900 leading-tight">Schreibe dein Reiseziel</h2>
+            <h2 class="text-lg font-black tracking-tight text-slate-900 leading-tight">Schreibe dein Reiseziel</h2>
           </div>
         </div>
         <div class="relative">
