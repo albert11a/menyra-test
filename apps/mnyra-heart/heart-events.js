@@ -321,6 +321,18 @@ export function bindHeartEvents({
       return;
     }
 
+    const crmSearch = event.target?.closest?.("[data-crm-search]");
+    if (crmSearch) {
+      operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
+      return;
+    }
+
+    const crmCategory = event.target?.closest?.("[data-crm-category]");
+    if (crmCategory) {
+      operations.setCrmCategoryFilter?.(crmCategory.getAttribute("data-crm-domain"), crmCategory.value);
+      return;
+    }
+
     const crmStatus = event.target?.closest?.("[data-crm-status]");
     if (crmStatus) {
       operations.setCrmStatusFilter?.(crmStatus.getAttribute("data-crm-domain"), crmStatus.value);

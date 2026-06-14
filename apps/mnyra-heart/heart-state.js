@@ -114,6 +114,7 @@ export function createHeartInitialState() {
           loadedAt: "",
           scope: key === "staff" || key === "businessAccounts" ? "" : "own",
           query: "",
+          categoryFilter: "",
           statusFilter: "",
           ...(key === "staff"
             ? {
@@ -729,6 +730,9 @@ export function createHeartStore(initialState = createHeartInitialState()) {
           : {}),
         ...(Object.prototype.hasOwnProperty.call(patchValue, "query")
           ? { query: String(patchValue.query || "") }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(patchValue, "categoryFilter")
+          ? { categoryFilter: String(patchValue.categoryFilter || "").trim() }
           : {}),
         ...(Object.prototype.hasOwnProperty.call(patchValue, "statusFilter")
           ? { statusFilter: String(patchValue.statusFilter || "").trim() }

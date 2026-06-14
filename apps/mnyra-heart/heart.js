@@ -834,6 +834,9 @@ const operations = {
   setCrmQuery(domainKey, query) {
     actions.setCrmAdminSectionUi(domainKey, { query });
   },
+  setCrmCategoryFilter(domainKey, categoryFilter) {
+    actions.setCrmAdminSectionUi(domainKey, { categoryFilter });
+  },
   setCrmStatusFilter(domainKey, statusFilter) {
     actions.setCrmAdminSectionUi(domainKey, { statusFilter });
   },

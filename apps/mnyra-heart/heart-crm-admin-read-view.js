@@ -34,6 +34,9 @@ import {
 import {
   normalizeLeadStatusKeyCore
 } from "../menyra-social/core/leads/lead-taxonomy-utils.js";
+import {
+  normalizeLeadTypeKeyCore
+} from "../menyra-social/core/leads/lead-type-utils.js";
 
 export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
   leads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.leads]),
@@ -200,8 +203,14 @@ function labelFromMap(value = "", labels = {}) {
   return labels[key] || asText(value);
 }
 
+function normalizeHeartLeadType(value = "") {
+  const normalized = normalizeLeadTypeKeyCore(value);
+  return LEAD_TYPE_ORDER.includes(normalized) ? normalized : "";
+}
+
 function typeLabel(value = "") {
-  return labelFromMap(value, LEAD_TYPE_LABELS);
+  const normalized = normalizeHeartLeadType(value);
+  return normalized ? LEAD_TYPE_LABELS[normalized] : labelFromMap(value, LEAD_TYPE_LABELS);
 }
 
 function normalizeSearchKey(value = "") {
@@ -213,9 +222,15 @@ function normalizeSearchKey(value = "") {
     .trim();
 }
 
+function getSearchTokens(query = "") {
+  return normalizeSearchKey(query).split(" ").filter(Boolean);
+}
+
 function itemMatchesQuery(item = {}, query = "") {
-  const queryKey = normalizeSearchKey(query);
-  if (!queryKey) return true;
+  const queryTokens = getSearchTokens(query);
+  if (!queryTokens.length) return true;
+  const typeValue = firstText(item.customerType, item.type, item.category, item.leadType);
+  const statusValue = firstText(item.status);
   const haystack = normalizeSearchKey([
     item.businessName,
     item.restaurantName,
@@ -228,12 +243,21 @@ function itemMatchesQuery(item = {}, query = "") {
     item.instagram,
     item.city,
     item.country,
-    item.status,
-    item.customerType,
-    item.type,
+    statusValue,
+    labelFromMap(statusValue, LEAD_STATUS_LABELS),
+    typeValue,
+    typeLabel(typeValue),
     item.handle
   ].filter(Boolean).join(" "));
-  return haystack.includes(queryKey);
+  const compactHaystack = haystack.replace(/\s+/g, "");
+  return queryTokens.every((token) => haystack.includes(token) || compactHaystack.includes(token));
+}
+
+function itemMatchesLeadCategory(item = {}, categoryFilter = "") {
+  const filterKey = normalizeHeartLeadType(categoryFilter);
+  if (!filterKey) return true;
+  const itemTypeKey = normalizeHeartLeadType(firstText(item.customerType, item.type, item.category, item.leadType));
+  return itemTypeKey === filterKey;
 }
 
 function statusTone(status = "") {
@@ -396,6 +420,22 @@ function renderLeadStatusFilter(sectionState = {}) {
         ${LEAD_STATUS_ORDER
           .filter((key) => key !== "kunde" && key !== "no_interest")
           .map((key) => `<option value="${escapeHtml(key)}" ${statusFilter === key ? "selected" : ""}>${escapeHtml(LEAD_STATUS_LABELS[key] || key)}</option>`)
+          .join("")}
+      </select>
+      <span class="heart-crm-control-row__icon">${renderHeartIcon("chevronDown")}</span>
+    </div>
+  `;
+}
+
+function renderLeadCategoryFilter(sectionState = {}) {
+  const categoryFilter = normalizeHeartLeadType(sectionState.categoryFilter);
+  return `
+    <div class="heart-crm-control-row heart-crm-control-row--select">
+      <span class="heart-crm-control-row__icon">${renderHeartIcon("listFilter")}</span>
+      <select id="leadsCategoryFilter" data-crm-category data-crm-domain="leads" aria-label="Kategorie">
+        <option value="">Kategorie</option>
+        ${LEAD_TYPE_ORDER
+          .map((key) => `<option value="${escapeHtml(key)}" ${categoryFilter === key ? "selected" : ""}>${escapeHtml(LEAD_TYPE_LABELS[key] || key)}</option>`)
           .join("")}
       </select>
       <span class="heart-crm-control-row__icon">${renderHeartIcon("chevronDown")}</span>
@@ -577,8 +617,10 @@ function renderStateBlock(label = "", tone = "neutral") {
 function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crmAdmin = {}) {
   const rawItems = Array.isArray(sectionState.items) ? sectionState.items : [];
   const statusFilter = asText(sectionState.statusFilter);
+  const categoryFilter = asText(sectionState.categoryFilter);
   const items = rawItems
     .filter((item) => itemMatchesQuery(item, sectionState.query || ""))
+    .filter((item) => sectionKey !== "leads" || itemMatchesLeadCategory(item, categoryFilter))
     .filter((item) => {
       if (sectionKey !== "leads" || !statusFilter) return true;
       return asText(item.status).toLowerCase() === statusFilter;
@@ -612,6 +654,7 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
 function renderSectionTools(sectionKey = "", sectionState = {}, items = [], crmAdmin = {}) {
   return `
     ${renderScopeTabs(sectionKey, sectionState, items, crmAdmin)}
+    ${sectionKey === "leads" ? renderLeadCategoryFilter(sectionState) : ""}
     ${renderSearchControl(sectionKey, sectionState)}
     ${sectionKey === "leads" ? renderLeadStatusFilter(sectionState) : ""}
   `;

@@ -652,6 +652,17 @@ Last updated: 2026-06-15
   Bereich. Die Headline `Schreibe dein Reiseziel` wurde von `text-xl` auf
   `text-lg` reduziert. Travel-Suche, Vorschlaege, Filterlogik, Karte, Routing,
   QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 70 ist abgeschlossen: Heart-Leads hat jetzt einen Kategorie-Filter
+  oberhalb der Suche und eine robustere Suchwert-Synchronisierung.
+- Bewertung von Schritt 70: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 70:
+  In Heart `Leads` wird oberhalb von `Lead suchen` ein `Kategorie`-Select
+  gerendert, der dieselben Lead-Typen wie das Erstellen-Formular nutzt.
+  Lead-Listen koennen nach Kategorie gefiltert werden. Die Suche prueft
+  normalisierte Such-Tokens und synchronisiert Suchfelder auch auf `change`,
+  damit eingefuegte komplette Begriffe/Wortgruppen nicht nur ueber
+  Buchstabe-fuer-Buchstabe-Input funktionieren. `social-app.js`, Routing, QR,
+  Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -720,6 +731,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step67-travel-suggestions-feed-behavior.md](./mnyra-step67-travel-suggestions-feed-behavior.md)
 - Referenz: [docs/mnyra-step68-travel-albania-city-aliases.md](./mnyra-step68-travel-albania-city-aliases.md)
 - Referenz: [docs/mnyra-step69-travel-search-card-spacing.md](./mnyra-step69-travel-search-card-spacing.md)
+- Referenz: [docs/mnyra-step70-heart-leads-category-filter-search.md](./mnyra-step70-heart-leads-category-filter-search.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -745,7 +757,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 69 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 70 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -767,10 +779,11 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-69-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-70-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Heart lokal
-unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`,
-Travel-Hotels, Travel-Karte,
+unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`, inklusive
+Heart-Leads-Kategorie-Filter und eingefuegter Suchbegriffe, Travel-Hotels,
+Travel-Karte,
 Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die bisherigen
 Public-Profile/Menu/QR/Cart/Order-Flows.
 
