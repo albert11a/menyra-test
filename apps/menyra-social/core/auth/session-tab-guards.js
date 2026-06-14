@@ -1,6 +1,6 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 
-const GUEST_ALLOWED_TABS = new Set(["feed", "search", "map", "orders", "profile"]);
+const GUEST_ALLOWED_TABS = new Set(["feed", "restaurants", "travel", "shopping", "search", "map", "orders", "profile"]);
 const SOCIAL_REMOVED_TABS = new Set(["leads", "customers"]);
 
 export function isGuestSessionCore(user = null) {

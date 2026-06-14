@@ -757,6 +757,14 @@ export function bindAppShellEventsCore({
     });
   });
 
+  doc.querySelectorAll("[data-marketplace-open-business]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const restaurantId = String(btn.dataset.marketplaceOpenBusiness || "").trim();
+      if (!restaurantId || !openProfileViewFromBusiness) return;
+      void openProfileViewFromBusiness({ id: restaurantId }, { showBack: true });
+    });
+  });
+
   doc.querySelectorAll("[data-auth-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.drawerOpen = false;

@@ -1130,12 +1130,14 @@ export function createSessionDataRuntimeController({
       const inMain = getLastRenderModeFn() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
       const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();
+      const activeTab = String(state.activeTab || "").trim().toLowerCase();
+      const isMarketplaceTab = activeTab === "restaurants" || activeTab === "travel" || activeTab === "shopping";
       if (!updatedFeed && !updatedSearch) {
         if (!inMain) {
           requestRender();
         } else if (state.activeTab === "map") {
           requestRender();
-        } else if (state.activeTab === "feed" || state.activeTab === "search") {
+        } else if (state.activeTab === "feed" || state.activeTab === "search" || isMarketplaceTab) {
           requestRender();
         }
       }

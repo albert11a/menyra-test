@@ -1573,6 +1573,9 @@ export function createPublicBootstrapRuntimeController({
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
       const activeTab = String(state.activeTab || "").trim().toLowerCase();
       const shouldRefreshVisibleBootstrapSurface = activeTab === "feed"
+        || activeTab === "restaurants"
+        || activeTab === "travel"
+        || activeTab === "shopping"
         || activeTab === "search"
         || activeTab === "map"
         || (activeTab === "profile" && webDirectRouteSeedChanged);

@@ -150,6 +150,7 @@ import { createProfileIdentityRuntimeCluster } from "./core/app-shell/profile-id
 import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-cluster.js";
 import { createSocialRouteRuntimeRegistry } from "./core/app-shell/route-runtime-registry.js";
 import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-runtime-cluster.js";
+import { createMarketplaceRuntimeBoundary } from "./core/marketplace/marketplace-runtime-boundary.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import {
   detectUploadMediaTypeCore,
@@ -1064,6 +1065,7 @@ let storiesRowSignature = "";
 let authInitialized = false;
 let authBootstrapSnapshot = null;
 let selfProfileRuntimeController = null;
+let marketplaceRuntimeBoundary = null;
 
 function getChatRuntimeFacade() {
   if (!chatRuntimeFacade) {
@@ -1195,6 +1197,9 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
   mainApi: {
     renderPublicProfileViewFn: (...args) => renderPublicProfileView(...args),
     renderProfileViewFn: (...args) => renderProfileView(...args),
+    renderRestaurantsViewFn: (...args) => renderRestaurantsView(...args),
+    renderTravelViewFn: (...args) => renderTravelView(...args),
+    renderShoppingViewFn: (...args) => renderShoppingView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
     renderBusinessAccountsViewFn: (...args) => renderBusinessAccountsView(...args),
     renderStaffViewFn: (...args) => renderStaffView(...args),
@@ -1332,6 +1337,9 @@ function openPendingProtectedRouteAuthPrompt() {
 }
 const STARTUP_SNAPSHOT_ALLOWED_TABS = new Set([
   "feed",
+  "restaurants",
+  "travel",
+  "shopping",
   "chat",
   "search",
   "profile",
@@ -1885,6 +1893,45 @@ function render(...args) {
   syncActiveTabRouteQuery();
   scheduleStartupSnapshotPersist();
   return result;
+}
+
+function getMarketplaceRuntimeBoundary() {
+  if (marketplaceRuntimeBoundary) return marketplaceRuntimeBoundary;
+  marketplaceRuntimeBoundary = createMarketplaceRuntimeBoundary({
+    state,
+    dataLoaded,
+    renderFn: () => render(),
+    helperApi: {
+      iconFn: icon,
+      escapeHtmlFn: escapeHtml,
+      getOptimizedImageUrlFn: getOptimizedImageUrl,
+      isPlaceholderUrlFn: isPlaceholderUrl,
+      placeholderImage: PLACEHOLDER_IMAGE,
+      formatCountFn: formatCount
+    },
+    profileApi: {
+      normalizeRestaurantTypeFn: (...args) => normalizeRestaurantType(...args),
+      normalizeLeadTypeKeyFn: (...args) => normalizeLeadTypeKey(...args),
+      resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args)
+    }
+  });
+  return marketplaceRuntimeBoundary;
+}
+
+function preloadMarketplaceRuntime() {
+  return getMarketplaceRuntimeBoundary().ensureRenderUtils();
+}
+
+function renderRestaurantsView() {
+  return getMarketplaceRuntimeBoundary().renderRestaurantsView();
+}
+
+function renderTravelView() {
+  return getMarketplaceRuntimeBoundary().renderTravelView();
+}
+
+function renderShoppingView() {
+  return getMarketplaceRuntimeBoundary().renderShoppingView();
 }
 requestRuntimeUiRefresh = () => {
   if (!shellRuntimeController) {
@@ -3122,6 +3169,7 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "log-in": Object.freeze([["path", { d: "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" }], ["polyline", { points: "10 17 15 12 10 7" }], ["line", { x1: "15", x2: "3", y1: "12", y2: "12" }]]),
   "globe": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" }], ["path", { d: "M2 12h20" }]]),
   "shopping-bag": Object.freeze([["path", { d: "M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" }], ["path", { d: "M3 6h18" }], ["path", { d: "M16 10a4 4 0 0 1-8 0" }]]),
+  "plane": Object.freeze([["path", { d: "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 20.5 3S17 3.5 15.5 5L12 8.5 3.8 6.7a1 1 0 0 0-.9.3l-.7.7a1 1 0 0 0 .1 1.5l5.5 3.3-2 2H3l-1 1 3 2 2 3 1-1v-2.8l2-2 3.3 5.5a1 1 0 0 0 1.5.1l.7-.7a1 1 0 0 0 .3-.9Z" }]]),
   "menu": Object.freeze([["line", { x1: "4", x2: "20", y1: "12", y2: "12" }], ["line", { x1: "4", x2: "20", y1: "6", y2: "6" }], ["line", { x1: "4", x2: "20", y1: "18", y2: "18" }]]),
   "layout-grid": Object.freeze([["rect", { width: "7", height: "7", x: "3", y: "3", rx: "1" }], ["rect", { width: "7", height: "7", x: "14", y: "3", rx: "1" }], ["rect", { width: "7", height: "7", x: "14", y: "14", rx: "1" }], ["rect", { width: "7", height: "7", x: "3", y: "14", rx: "1" }]]),
   "home": Object.freeze([["path", { d: "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" }], ["path", { d: "M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }]]),
@@ -3151,7 +3199,8 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "grip-vertical": Object.freeze([["circle", { cx: "9", cy: "12", r: "1" }], ["circle", { cx: "9", cy: "5", r: "1" }], ["circle", { cx: "9", cy: "19", r: "1" }], ["circle", { cx: "15", cy: "12", r: "1" }], ["circle", { cx: "15", cy: "5", r: "1" }], ["circle", { cx: "15", cy: "19", r: "1" }]]),
   "map-pin-off": Object.freeze([["path", { d: "M5.43 5.43A8 8 0 0 0 4 10c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 1.202 0 32 32 0 0 0 2.824-2.707" }], ["path", { d: "M17.167 17.167C18.815 15.234 20 12.787 20 10a8 8 0 0 0-8-8c-1.482 0-2.87.403-4.061 1.104" }], ["path", { d: "m2 2 20 20" }], ["path", { d: "M9.5 9.5a3 3 0 0 0 4 4" }], ["path", { d: "M14.5 9.5a3 3 0 0 0-4-4" }]]),
   "send": Object.freeze([["path", { d: "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" }], ["path", { d: "m21.854 2.147-10.94 10.939" }]]),
-  "utensils": Object.freeze([["path", { d: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" }], ["path", { d: "M7 2v20" }], ["path", { d: "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" }]])
+  "utensils": Object.freeze([["path", { d: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" }], ["path", { d: "M7 2v20" }], ["path", { d: "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" }]]),
+  "clock": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 6v6l4 2" }]])
 });
 
 function buildIconAttributeString(attributes = {}) {
@@ -4662,6 +4711,24 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   state,
   routeRuntimes: {
     ...bridgeShellRuntimeCluster.routeRuntimes,
+    restaurants: {
+      render: renderRestaurantsView,
+      preload: () => {
+        void preloadMarketplaceRuntime().catch(() => null);
+      }
+    },
+    travel: {
+      render: renderTravelView,
+      preload: () => {
+        void preloadMarketplaceRuntime().catch(() => null);
+      }
+    },
+    shopping: {
+      render: renderShoppingView,
+      preload: () => {
+        void preloadMarketplaceRuntime().catch(() => null);
+      }
+    },
     publicBusiness: {
       render: renderPublicProfileView,
       preload: preloadProfileMenuFocusRender
@@ -4673,6 +4740,7 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   },
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
+    restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView
   }

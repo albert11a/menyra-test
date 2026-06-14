@@ -499,6 +499,17 @@ Last updated: 2026-06-14
   Klick-Ausloeser, und derselbe Klick klappt weiter die bestehende Sprachleiste aus.
   Sprachwahl, i18n-Lazy-Chunks, Routing, QR, Cart, Order, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 55 ist abgeschlossen: Marketplace-Kategorien `Restaurants`, `Travel`
+  und `Shopping` wurden als interne Drawer-Bereiche mit Lazy-Renderer ergaenzt.
+- Bewertung von Schritt 55: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 55:
+  Die drei neuen Drawer-Ziele nutzen die vorhandene Business-/Lead-Wahrheit aus
+  `state.restaurants` und `state.bootstrapRestaurantPreview`. Restaurant/Cafe/
+  Fastfood-Typen erscheinen unter `Restaurants`, Hotel/Motel-Typen unter
+  `Travel` und E-Commerce-/Shop-Typen unter `Shopping`. Der Renderer liegt in
+  einem eigenen Lazy-Chunk; es wurden keine neuen Firebase-Listener, keine neuen
+  Public-/QR-Routen und keine Cart-/Order-/Rules-/Functions-Aenderungen
+  eingefuehrt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -552,6 +563,7 @@ Last updated: 2026-06-14
 - Referenz: [docs/mnyra-step52-launch-surface-read-and-deploy-cleanup.md](./mnyra-step52-launch-surface-read-and-deploy-cleanup.md)
 - Referenz: [docs/mnyra-step53-website-language-selector-i18n.md](./mnyra-step53-website-language-selector-i18n.md)
 - Referenz: [docs/mnyra-step54-language-toggle-icon-restoration.md](./mnyra-step54-language-toggle-icon-restoration.md)
+- Referenz: [docs/mnyra-step55-marketplace-drawer-categories.md](./mnyra-step55-marketplace-drawer-categories.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -577,7 +589,7 @@ Last updated: 2026-06-14
 
 ## Naechster Schritt
 
-Nach Schritt 53 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 55 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
@@ -585,10 +597,12 @@ Nach Schritt 53 sind die naechsten sinnvollen separaten Folgeschritte:
   Drawer und Menu-Bereichen.
 - Separater i18n-Nachzug fuer Admin-/CRM-/interne Spezialtexte, falls diese
   sichtbar Teil des Launch-Scopes werden.
+- Separater Marketplace-Feinschliff nur nach manueller Sichtpruefung und eigener
+  Freigabe fuer UI, Sortierung oder weitere Lead-Typ-Zuordnungen.
 
 Dabei gilt weiter:
 
-- Keine UI-/Design-Aenderung.
+- Keine weitere UI-/Design-Aenderung ohne ausdrueckliche Freigabe.
 - Keine Route-, QR-, Cart-, Order-, Firebase-Rules- oder Functions-Aenderung.
 - Kein Storefront-/Renderer-Umbau.
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.

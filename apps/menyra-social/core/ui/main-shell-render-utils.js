@@ -2,6 +2,9 @@ export function renderMainCore({
   state,
   renderHomeViewFn,
   renderFeedViewFn,
+  renderRestaurantsViewFn,
+  renderTravelViewFn,
+  renderShoppingViewFn,
   renderChatViewFn,
   renderSearchViewFn,
   renderMapViewFn,
@@ -27,6 +30,9 @@ export function renderMainCore({
     .replace(/'/g, "&#39;");
   const renderHomeView = typeof renderHomeViewFn === "function" ? renderHomeViewFn : (() => "");
   const renderFeedView = typeof renderFeedViewFn === "function" ? renderFeedViewFn : (() => "");
+  const renderRestaurantsView = typeof renderRestaurantsViewFn === "function" ? renderRestaurantsViewFn : (() => "");
+  const renderTravelView = typeof renderTravelViewFn === "function" ? renderTravelViewFn : (() => "");
+  const renderShoppingView = typeof renderShoppingViewFn === "function" ? renderShoppingViewFn : (() => "");
   const renderChatView = typeof renderChatViewFn === "function" ? renderChatViewFn : (() => "");
   const renderSearchView = typeof renderSearchViewFn === "function" ? renderSearchViewFn : (() => "");
   const renderMapView = typeof renderMapViewFn === "function" ? renderMapViewFn : (() => "");
@@ -74,6 +80,9 @@ export function renderMainCore({
   } else {
     if (state?.activeTab === "home") view = renderFeedView();
     if (state?.activeTab === "feed") view = renderFeedView();
+    if (state?.activeTab === "restaurants") view = renderRestaurantsView();
+    if (state?.activeTab === "travel") view = renderTravelView();
+    if (state?.activeTab === "shopping") view = renderShoppingView();
     if (state?.activeTab === "chat") view = renderChatView();
     if (state?.activeTab === "search") view = renderSearchView();
     if (state?.activeTab === "map") view = renderMapView();

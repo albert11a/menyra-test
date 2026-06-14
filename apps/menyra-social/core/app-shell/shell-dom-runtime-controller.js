@@ -278,12 +278,18 @@ export function createShellDomRuntimeController({
     const navItems = isGuest
       ? [
         { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
+        { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), icon: "utensils" },
+        { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane" },
+        { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag" },
         { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
         { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" }
       ]
       : [
         { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
+        { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), icon: "utensils" },
+        { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane" },
+        { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag" },
         { id: "chat", label: tr("nav.chat", "Chats"), icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
         { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
         { id: "map", label: tr("nav.map", "Karte"), icon: "map" },

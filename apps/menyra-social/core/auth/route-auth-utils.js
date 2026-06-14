@@ -17,6 +17,9 @@ export function normalizeInitialTab(value) {
   const resolved = aliases[key] || key;
   const allowed = new Set([
     "feed",
+    "restaurants",
+    "travel",
+    "shopping",
     "chat",
     "search",
     "map",

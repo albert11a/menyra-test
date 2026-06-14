@@ -36,6 +36,12 @@
     "src": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
     "isDynamicEntry": true
   },
+  "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js": {
+    "file": "chunks/marketplace-view-render-utils-BWsmoHf1.js",
+    "name": "marketplace-view-render-utils",
+    "src": "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
+    "isDynamicEntry": true
+  },
   "apps/menyra-social/core/media/media-upload-runtime-cluster.js": {
     "file": "chunks/media-upload-runtime-cluster-CcLw9ugx.js",
     "name": "media-upload-runtime-cluster",
@@ -144,6 +150,7 @@
       "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
       "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
       "apps/menyra-social/core/menu/menu-modal-render-utils.js",
+      "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
       "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
       "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
       "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
