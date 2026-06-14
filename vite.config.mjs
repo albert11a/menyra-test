@@ -19,7 +19,41 @@ function socialManualChunks(id) {
   return undefined;
 }
 
+function isHeartPrettyRoutePath(pathname = "") {
+  const clean = String(pathname || "").split("?")[0].replace(/\/+$/g, "") || "/";
+  return clean === "/leads"
+    || clean === "/customers"
+    || clean === "/admin/staff"
+    || clean.startsWith("/admin/staff/");
+}
+
+function rewriteHeartPrettyRoute(req) {
+  if (!req || (req.method !== "GET" && req.method !== "HEAD")) return;
+  const parsed = new URL(req.url || "/", "http://mnyra.local");
+  if (!isHeartPrettyRoutePath(parsed.pathname)) return;
+  req.url = `/apps/mnyra-heart/index.html${parsed.search || ""}`;
+}
+
+function localHeartPrettyRoutePlugin() {
+  return {
+    name: "mnyra-local-heart-pretty-routes",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        rewriteHeartPrettyRoute(req);
+        next();
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        rewriteHeartPrettyRoute(req);
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig({
+  plugins: [localHeartPrettyRoutePlugin()],
   appType: "custom",
   base: "/apps/menyra-social/bundled/",
   publicDir: false,
