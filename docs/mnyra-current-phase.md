@@ -559,6 +559,14 @@ Last updated: 2026-06-14
   Karten in `Restaurants`, `Travel` und `Shopping` tatsaechlich greifen.
   Datenquellen, Card-Inhalte, Sortierung, Profil-Open-Flow, Browser-Back-Fix,
   QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 61 ist abgeschlossen: Der sichtbare Marketplace-Abstand zwischen
+  Swipe-Karten und darunterliegenden Karten wurde wieder reduziert.
+- Bewertung von Schritt 61: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 61:
+  Der direkte Abstand wurde um 80% reduziert, von `margin-bottom:10rem` auf
+  `margin-bottom:2rem`. Datenquellen, Card-Inhalte, Sortierung,
+  Profil-Open-Flow, Browser-Back-Fix, QR, Cart, Order, Firebase Rules und
+  Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -618,6 +626,7 @@ Last updated: 2026-06-14
 - Referenz: [docs/mnyra-step58-marketplace-header-text-removal.md](./mnyra-step58-marketplace-header-text-removal.md)
 - Referenz: [docs/mnyra-step59-marketplace-card-gap-increase.md](./mnyra-step59-marketplace-card-gap-increase.md)
 - Referenz: [docs/mnyra-step60-marketplace-card-gap-inline-fix.md](./mnyra-step60-marketplace-card-gap-inline-fix.md)
+- Referenz: [docs/mnyra-step61-marketplace-card-gap-reduction.md](./mnyra-step61-marketplace-card-gap-reduction.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -643,7 +652,7 @@ Last updated: 2026-06-14
 
 ## Naechster Schritt
 
-Nach Schritt 60 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 61 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
