@@ -31,15 +31,21 @@
     ]
   },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
-    "file": "chunks/discovery-runtime-controller-GZ0quJe_.js",
+    "file": "chunks/discovery-runtime-controller-DTV8NS85.js",
     "name": "discovery-runtime-controller",
     "src": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js": {
-    "file": "chunks/marketplace-view-render-utils-B9AsPyfA.js",
+    "file": "chunks/marketplace-view-render-utils-CH284jwU.js",
     "name": "marketplace-view-render-utils",
     "src": "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
+    "isDynamicEntry": true
+  },
+  "apps/menyra-social/core/marketplace/travel-view-event-bindings.js": {
+    "file": "chunks/travel-view-event-bindings-3y5ES9SM.js",
+    "name": "travel-view-event-bindings",
+    "src": "apps/menyra-social/core/marketplace/travel-view-event-bindings.js",
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/media/media-upload-runtime-cluster.js": {
@@ -87,7 +93,7 @@
     ]
   },
   "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js": {
-    "file": "chunks/profile-menu-focus-render-controller-CBTiXL1q.js",
+    "file": "chunks/profile-menu-focus-render-controller-CowA6ald.js",
     "name": "profile-menu-focus-render-controller",
     "src": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
     "isDynamicEntry": true,
@@ -154,6 +160,7 @@
       "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
       "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
       "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
+      "apps/menyra-social/core/marketplace/travel-view-event-bindings.js",
       "apps/menyra-social/_shared/image-compressor.js",
       "apps/menyra-social/core/media/media-upload-runtime-cluster.js"
     ]

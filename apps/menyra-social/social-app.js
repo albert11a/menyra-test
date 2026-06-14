@@ -1907,7 +1907,8 @@ function getMarketplaceRuntimeBoundary() {
       getOptimizedImageUrlFn: getOptimizedImageUrl,
       isPlaceholderUrlFn: isPlaceholderUrl,
       placeholderImage: PLACEHOLDER_IMAGE,
-      formatCountFn: formatCount
+      formatCountFn: formatCount,
+      renderMapViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderMapView?.(...args) || ""
     },
     profileApi: {
       normalizeRestaurantTypeFn: (...args) => normalizeRestaurantType(...args),
@@ -3725,9 +3726,13 @@ function roleLabel(role) {
   });
 }
 
+function buildHeartAppViewUrl(view = "") {
+  return buildUrl("apps/mnyra-heart/index.html", { view });
+}
+
 function buildRoleSwitchUrl(role, profile, restaurantIdOverride = "") {
   if (String(role || "").trim().toLowerCase() === "ceo") {
-    return buildUrl("/leads");
+    return buildHeartAppViewUrl("crmLeads");
   }
   return buildRoleSwitchUrlCore({
     role,

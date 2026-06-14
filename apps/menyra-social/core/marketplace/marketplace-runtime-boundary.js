@@ -71,6 +71,7 @@ export function createMarketplaceRuntimeBoundary({
       isPlaceholderUrlFn: helperApi.isPlaceholderUrlFn,
       placeholderImage: helperApi.placeholderImage,
       formatCountFn: helperApi.formatCountFn,
+      renderMapViewFn: helperApi.renderMapViewFn,
       normalizeRestaurantTypeFn: profileApi.normalizeRestaurantTypeFn,
       normalizeLeadTypeKeyFn: profileApi.normalizeLeadTypeKeyFn,
       resolveRestaurantLogoFn: profileApi.resolveRestaurantLogoFn

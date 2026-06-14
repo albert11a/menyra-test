@@ -765,6 +765,16 @@ export function bindAppShellEventsCore({
     });
   });
 
+  if (doc.getElementById("travelDestinationInput") || doc.querySelector("[data-travel-submit], [data-travel-tab]")) {
+    void import("../marketplace/travel-view-event-bindings.js")
+      .then((module) => module?.bindTravelViewEvents?.({
+        documentObj: doc,
+        state,
+        windowObj: win,
+        renderFn: render
+      }));
+  }
+
   doc.querySelectorAll("[data-auth-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.drawerOpen = false;
@@ -779,13 +789,15 @@ export function bindAppShellEventsCore({
     btn.addEventListener("click", () => {
       const tab = String(btn.dataset.profileTab || "").trim().toLowerCase();
       if (!tab) return;
+      const tabSurface = String(btn.dataset.profileTabSurface || "").trim().toLowerCase();
+      const isHotelDetailsTab = tabSurface === "hotel-details";
       const landingPreviewActive = isLandingTopTabActive();
       if (landingPreviewActive) return;
       state.profileContentTab = tab;
       if (isBusinessProfileView()) {
         state.__nextRouteHistoryMode = "push";
         state.profileTopTab = tab === "menu" ? "menu" : "profile";
-        if (tab === "menu") {
+        if (tab === "menu" && !isHotelDetailsTab) {
           ensureMenuDataForProfile();
           ensureFocusDataForProfile();
         } else if (tab === "posts") {
@@ -794,7 +806,7 @@ export function bindAppShellEventsCore({
         scrollWindowToTop(true);
       }
       render();
-      if (tab === "menu") {
+      if (tab === "menu" && !isHotelDetailsTab) {
         syncBusinessMenuCategoryUi();
       }
     });

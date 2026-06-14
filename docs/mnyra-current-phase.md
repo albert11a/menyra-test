@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-14
+Last updated: 2026-06-15
 
 # Mnyra Current Phase
 
@@ -567,6 +567,19 @@ Last updated: 2026-06-14
   `margin-bottom:2rem`. Datenquellen, Card-Inhalte, Sortierung,
   Profil-Open-Flow, Browser-Back-Fix, QR, Cart, Order, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 62 ist abgeschlossen: Travel hat jetzt einen blauen Hotel-Sucheinstieg
+  mit `Ofertat`, `Hotels` und `Karte`, Hotel-Profile haben einen leichten
+  `Details`-Tab, und Social-Drawer-Einstiege fuer `Leads`, `Staff` und
+  `Kunden/Klients` routen direkt nach Heart.
+- Bewertung von Schritt 62: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 62:
+  Travel filtert Hotel-/Motel-/Hostel-/Resort-/Accommodation-Profile nach
+  Reiseziel, nutzt fuer die Travel-Karte die bestehende Map-Runtime mit
+  Hotel-Scope und lagert die Travel-Eventbindung in einen lazy Marketplace-
+  Helfer aus. Der Social-Entry bleibt unter Budget:
+  1,049,973 Bytes raw / 284,996 Bytes gzip. Hotel/Motel-Lead-Typen waren
+  bereits vorhanden und wurden nicht doppelt umgebaut. QR, Cart, Order,
+  Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -627,6 +640,7 @@ Last updated: 2026-06-14
 - Referenz: [docs/mnyra-step59-marketplace-card-gap-increase.md](./mnyra-step59-marketplace-card-gap-increase.md)
 - Referenz: [docs/mnyra-step60-marketplace-card-gap-inline-fix.md](./mnyra-step60-marketplace-card-gap-inline-fix.md)
 - Referenz: [docs/mnyra-step61-marketplace-card-gap-reduction.md](./mnyra-step61-marketplace-card-gap-reduction.md)
+- Referenz: [docs/mnyra-step62-travel-hotels-heart-routes.md](./mnyra-step62-travel-hotels-heart-routes.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -652,16 +666,19 @@ Last updated: 2026-06-14
 
 ## Naechster Schritt
 
-Nach Schritt 61 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 62 sind die naechsten sinnvollen separaten Folgeschritte:
 
+- Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
+  Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
+  Travel-Cards erscheinen.
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
 - Separater kleiner Icon-Runtime-Schritt fuer fehlende Lucide-Icons in Modals,
   Drawer und Menu-Bereichen.
 - Separater i18n-Nachzug fuer Admin-/CRM-/interne Spezialtexte, falls diese
   sichtbar Teil des Launch-Scopes werden.
-- Separater Marketplace-Feinschliff nur nach manueller Sichtpruefung und eigener
-  Freigabe fuer UI, Sortierung oder weitere Lead-Typ-Zuordnungen.
+- Separater Marketplace-/Travel-Feinschliff nur nach manueller Sichtpruefung und
+  eigener Freigabe fuer UI, Sortierung oder weitere Lead-Typ-Zuordnungen.
 
 Dabei gilt weiter:
 
@@ -671,9 +688,10 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-46-Bundles bleibt weiterhin
-sinnvoll, besonders der erste Lazy-Load von Heart/CRM (`/leads`, `/customers`,
-`/admin/staff`) plus die bisherigen Public-Profile/Menu/QR/Cart/Order-Flows.
+Die manuelle Gegenpruefung des frischen Schritt-62-Bundles bleibt weiterhin
+sinnvoll, besonders Travel-Hotels, Travel-Karte, Hotel-Details-Profil,
+Heart/CRM aus dem Social-Drawer sowie die bisherigen
+Public-Profile/Menu/QR/Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

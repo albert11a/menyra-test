@@ -34,6 +34,7 @@ Object.values(MARKETPLACE_SECTIONS).forEach((section) => {
 
 const BEST_LIMIT = 8;
 const LIST_LIMIT = 24;
+const TRAVEL_BLUE = "#00cce5";
 
 function asFn(candidate, fallback = () => "") {
   return typeof candidate === "function" ? candidate : fallback;
@@ -141,6 +142,72 @@ function getBusinessLocationLabel(record = {}) {
   const address = cleanText(record.address || record.location || record.primaryAddress);
   if (city && address && city !== address) return `${city} - ${address}`;
   return city || address || "Standort folgt";
+}
+
+function collectLocationTextCandidates(record = {}) {
+  const values = [
+    record.city,
+    record.locationCity,
+    record.primaryCity,
+    record.address,
+    record.location,
+    record.primaryAddress,
+    record.country,
+    record.region,
+    record.district,
+    record.name,
+    record.restaurantName,
+    record.businessName,
+    record.displayName,
+    record.description,
+    record.bio,
+    record.about
+  ];
+  if (Array.isArray(record.locations)) {
+    record.locations.forEach((location) => {
+      if (!location || typeof location !== "object") return;
+      values.push(location.city, location.address, location.country, location.region, location.name);
+    });
+  }
+  return values;
+}
+
+function matchesTravelDestination(record = {}, query = "") {
+  const destinationKey = normalizeLooseKey(query);
+  if (!destinationKey) return true;
+  const haystack = collectLocationTextCandidates(record)
+    .map(normalizeLooseKey)
+    .filter(Boolean)
+    .join("_");
+  return haystack.includes(destinationKey);
+}
+
+function readCoords(record = {}) {
+  const candidates = [
+    [record.lat, record.lng],
+    [record.latitude, record.longitude],
+    [record.gpsLat, record.gpsLng],
+    [record.geo?.lat, record.geo?.lng],
+    [record.geo?.latitude, record.geo?.longitude],
+    [record.coords?.lat, record.coords?.lng],
+    [record.coords?.latitude, record.coords?.longitude],
+    [record.location?.lat, record.location?.lng]
+  ];
+  for (const [latValue, lngValue] of candidates) {
+    const lat = Number(String(latValue ?? "").replace(",", "."));
+    const lng = Number(String(lngValue ?? "").replace(",", "."));
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) continue;
+      return { lat, lng };
+    }
+  }
+  if (Array.isArray(record.locations)) {
+    for (const location of record.locations) {
+      const coords = readCoords(location || {});
+      if (coords) return coords;
+    }
+  }
+  return null;
 }
 
 function getBusinessHours(record = {}) {
@@ -358,6 +425,227 @@ function renderDataLoadingState(section = {}, deps = {}) {
   `;
 }
 
+function getTravelViewState(state = {}) {
+  const view = state?.travelView && typeof state.travelView === "object" ? state.travelView : {};
+  const query = cleanText(view.query || "");
+  const activeTabRaw = cleanText(view.activeTab || "").toLowerCase();
+  const activeTab = ["offers", "hotels", "map"].includes(activeTabRaw)
+    ? activeTabRaw
+    : (query ? "hotels" : "offers");
+  return {
+    query,
+    activeTab: query ? activeTab : "offers",
+    notice: cleanText(view.notice || "")
+  };
+}
+
+function renderTravelSearchHero({ travel, deps } = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  return `
+    <div id="travelSearchTop" data-travel-search-top style="background:${TRAVEL_BLUE}; padding:1.5rem 1.5rem 5rem;">
+      <div class="bg-white border border-white/60 shadow-sm" style="border-radius:2rem; padding:1.25rem;">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style="background:${TRAVEL_BLUE};">
+            ${icon("plane", "w-5 h-5")}
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-black uppercase tracking-widest" style="color:${TRAVEL_BLUE};">Travel</p>
+            <h2 class="text-xl font-black tracking-tight text-slate-900 leading-tight">Schreibe dein Reiseziel</h2>
+          </div>
+        </div>
+        <div class="relative">
+          <input
+            id="travelDestinationInput"
+            data-travel-destination-input="true"
+            type="text"
+            value="${escapeHtml(travel.query)}"
+            placeholder="Prishtina, Vlora, Tirana"
+            class="w-full h-14 rounded-[2rem] border border-slate-100 bg-slate-50 px-5 pr-14 text-sm font-bold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100"
+            autocomplete="off"
+          />
+          <button type="button" data-travel-submit="true" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white active:scale-95 transition-all" style="background:${TRAVEL_BLUE};">
+            ${icon("search", "w-4 h-4")}
+          </button>
+        </div>
+        ${travel.notice ? `
+          <p data-travel-notice class="mt-3 text-[11px] font-black uppercase tracking-wider text-rose-500">${escapeHtml(travel.notice)}</p>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function renderTravelTabs({ activeTab, hasDestination, hotelCount, deps } = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const tabs = [
+    { id: "offers", label: "Ofertat" },
+    { id: "hotels", label: "Hotels" },
+    { id: "map", label: "Karte" }
+  ];
+  return `
+    <div class="bg-white/70 p-1.5 border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm" style="border-radius:2rem;">
+      ${tabs.map((tab) => {
+        const selected = activeTab === tab.id;
+        const disabledLook = !hasDestination && tab.id !== "offers";
+        const count = tab.id === "hotels" && hasDestination ? ` ${hotelCount}` : "";
+        return `
+          <button
+            type="button"
+            data-travel-tab="${escapeHtml(tab.id)}"
+            class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${selected ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : (disabledLook ? "text-slate-300" : "text-slate-400 hover:text-slate-600")}"
+          >
+            ${escapeHtml(`${tab.label}${count}`)}
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderTravelOfferCard(record = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  const name = getBusinessName(record);
+  const id = getBusinessId(record);
+  const image = getBusinessImage(record, deps);
+  const location = getBusinessLocationLabel(record);
+  const rating = getBusinessRating(record);
+  return `
+    <button type="button" data-marketplace-open-business="${escapeHtml(id)}" class="w-full text-left bg-white border border-slate-100 shadow-sm active:scale-[0.99] transition-transform overflow-hidden" style="border-radius:2rem;">
+      <div class="h-40 bg-slate-100 overflow-hidden">
+        ${renderImage(image, name, deps)}
+      </div>
+      <div class="p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-[9px] font-black uppercase tracking-widest mb-1" style="color:${TRAVEL_BLUE};">Ofertat</p>
+            <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-2">${escapeHtml(name)}</h3>
+          </div>
+          ${rating ? `<span class="shrink-0 px-2.5 py-1 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black flex items-center gap-1">${icon("star", "w-3 h-3 fill-current")} ${escapeHtml(rating)}</span>` : ""}
+        </div>
+        <div class="mt-4 flex items-center gap-2 min-w-0 text-[11px] font-bold text-slate-500">
+          ${icon("map-pin", "w-3.5 h-3.5 text-slate-400 shrink-0")}
+          <span class="truncate">${escapeHtml(location)}</span>
+        </div>
+      </div>
+    </button>
+  `;
+}
+
+function renderTravelOffers(items = [], deps = {}) {
+  const displayItems = items.slice(0, 4);
+  if (!displayItems.length) {
+    return renderEmptyState({
+      title: "Ofertat",
+      emptyTitle: "Noch keine Angebote",
+      emptyBody: "Keine passenden Hotel-Angebote gefunden.",
+      icon: "plane"
+    }, deps);
+  }
+  return `
+    <div class="space-y-4">
+      ${displayItems.map((record) => renderTravelOfferCard(record, deps)).join("")}
+    </div>
+  `;
+}
+
+function renderTravelHotels(items = [], deps = {}) {
+  if (!items.length) {
+    return renderEmptyState({
+      emptyTitle: "Keine Hotels gefunden",
+      emptyBody: "Keine passenden Hotels fuer dieses Reiseziel gefunden.",
+      icon: "plane"
+    }, deps);
+  }
+  return `
+    <div class="space-y-4">
+      ${items.map((record) => renderListCard(record, deps)).join("")}
+    </div>
+  `;
+}
+
+function renderTravelMapPin(record = {}, index = 0, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const coords = readCoords(record);
+  const name = getBusinessName(record);
+  const id = getBusinessId(record);
+  const location = getBusinessLocationLabel(record);
+  const left = 18 + ((index * 23) % 58);
+  const top = 22 + ((index * 17) % 46);
+  return `
+    <button
+      type="button"
+      data-marketplace-open-business="${escapeHtml(id)}"
+      class="absolute w-12 h-12 rounded-full bg-white shadow-lg border-4 border-white flex items-center justify-center active:scale-95 transition-all"
+      style="left:${left}%; top:${top}%; transform:translate(-50%,-50%); color:${TRAVEL_BLUE};"
+      title="${escapeHtml(`${name} - ${location}`)}"
+    >
+      ${deps.icon("plane", "w-5 h-5")}
+      ${coords ? `<span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">${escapeHtml(`${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`)}</span>` : ""}
+    </button>
+  `;
+}
+
+function renderTravelMap(items = [], deps = {}) {
+  if (typeof deps.renderMapView === "function") {
+    return deps.renderMapView();
+  }
+  const mapped = items.filter((record) => readCoords(record)).slice(0, 8);
+  if (!items.length) return renderTravelHotels(items, deps);
+  return `
+    <div class="space-y-4">
+      <div class="relative overflow-hidden border border-slate-200 bg-slate-200 shadow-sm" style="height:24rem; border-radius:2.5rem;">
+        <div class="absolute inset-0" style="background:linear-gradient(135deg,#e0f7fb 0%,#dbeafe 45%,#e2e8f0 100%);"></div>
+        <div class="absolute inset-0 opacity-60" style="background-image:linear-gradient(rgba(255,255,255,.65) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.65) 1px, transparent 1px); background-size:42px 42px;"></div>
+        ${mapped.map((record, index) => renderTravelMapPin(record, index, deps)).join("")}
+        <div class="absolute left-4 right-4 bottom-4">
+          <div class="bg-white/95 backdrop-blur-xl border border-white/50 shadow-lg p-4" style="border-radius:1.75rem;">
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Hotels</p>
+            <p class="mt-1 text-sm font-black text-slate-900">${deps.escapeHtml(String(items.length))} ${items.length === 1 ? "Hotel" : "Hotels"}</p>
+          </div>
+        </div>
+      </div>
+      ${!mapped.length ? `
+        <div class="bg-white border border-slate-100 shadow-sm p-5 text-[11px] font-bold text-slate-400" style="border-radius:2rem;">
+          Keine Hotel-Koordinaten fuer dieses Reiseziel gefunden.
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+function renderTravelView({ state, dataLoaded, section, deps } = {}) {
+  const allItems = filterMarketplaceBusinessesCore(state, section.key, deps)
+    .slice(0, LIST_LIMIT)
+    .map((record) => withTypeLabel({
+      ...record,
+      __marketplaceType: resolveBusinessType(record, deps)
+    }, section));
+  const travel = getTravelViewState(state);
+  const hasDestination = !!travel.query;
+  const filteredItems = hasDestination
+    ? allItems.filter((record) => matchesTravelDestination(record, travel.query))
+    : allItems;
+  const activeTab = hasDestination ? travel.activeTab : "offers";
+  const restaurantsLoaded = dataLoaded?.restaurants === true;
+  const content = activeTab === "map"
+    ? renderTravelMap(filteredItems, deps)
+    : (activeTab === "hotels" ? renderTravelHotels(filteredItems, deps) : renderTravelOffers(filteredItems, deps));
+
+  return `
+    <section id="travelView" class="animate-in slide-in-from-right-10 duration-500" style="background:#f8fafc; min-height:100%;">
+      ${renderTravelSearchHero({ travel, deps })}
+      <div id="travelBenko" data-travel-benko style="margin-top:-2.5rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:1.5rem 1.5rem 6rem;">
+        ${renderTravelTabs({ activeTab, hasDestination, hotelCount: filteredItems.length, deps })}
+        <div class="mt-5">
+          ${restaurantsLoaded || allItems.length ? content : renderDataLoadingState(section, deps)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 export function renderMarketplaceViewCore({
   state = {},
   dataLoaded = null,
@@ -369,7 +657,8 @@ export function renderMarketplaceViewCore({
   placeholderImage = "",
   normalizeRestaurantTypeFn,
   normalizeLeadTypeKeyFn,
-  resolveRestaurantLogoFn
+  resolveRestaurantLogoFn,
+  renderMapViewFn
 } = {}) {
   const section = MARKETPLACE_SECTIONS[normalizeSectionKey(sectionKey)] || MARKETPLACE_SECTIONS.restaurants;
   const escapeHtml = asFn(escapeHtmlFn, (value = "") => String(value || ""));
@@ -381,6 +670,7 @@ export function renderMarketplaceViewCore({
     isPlaceholderUrl: isPlaceholderUrlFn,
     placeholderImage,
     resolveRestaurantLogo: resolveRestaurantLogoFn,
+    renderMapView: renderMapViewFn,
     normalizeRestaurantType: normalizeRestaurantTypeFn,
     normalizeLeadTypeKey: normalizeLeadTypeKeyFn
   };
@@ -392,6 +682,10 @@ export function renderMarketplaceViewCore({
     }, section));
   const bestItems = items.slice(0, BEST_LIMIT);
   const restaurantsLoaded = dataLoaded?.restaurants === true;
+
+  if (section.key === "travel") {
+    return renderTravelView({ state, dataLoaded, section, deps });
+  }
 
   return `
     <section class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">

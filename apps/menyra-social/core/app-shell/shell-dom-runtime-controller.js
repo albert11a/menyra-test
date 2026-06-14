@@ -23,6 +23,14 @@ function toggleAvatarFitClasses(node, isBusiness) {
   node.classList.toggle("object-cover", !isBusiness);
 }
 
+function buildHeartAppViewUrl(view = "") {
+  const params = new URLSearchParams();
+  const safeView = String(view || "").trim();
+  if (safeView) params.set("view", safeView);
+  const query = params.toString();
+  return `/apps/mnyra-heart/index.html${query ? `?${query}` : ""}`;
+}
+
 export function createShellDomRuntimeController({
   state = null,
   brandUi = {},
@@ -299,9 +307,9 @@ export function createShellDomRuntimeController({
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
         { id: "notifications", label: tr("nav.updates", "Updates"), icon: "bell", badge: unread, badgeType: "notifications" },
         { id: "businessAccounts", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isBusinessOwner },
-        { id: "leads", label: tr("nav.leads", "Leads"), icon: "clipboard-list", hidden: !isCeo, href: "/leads" },
-        { id: "staff", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isCeo, href: "/admin/staff" },
-        { id: "customers", label: tr("nav.customers", "Kunden"), icon: "users", hidden: !isCeo, href: "/customers" },
+        { id: "leads", label: tr("nav.leads", "Leads"), icon: "clipboard-list", hidden: !isCeo, href: buildHeartAppViewUrl("crmLeads") },
+        { id: "staff", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isCeo, href: buildHeartAppViewUrl("crmStaff") },
+        { id: "customers", label: tr("nav.customers", "Kunden"), icon: "users", hidden: !isCeo, href: buildHeartAppViewUrl("crmCustomers") },
         { id: "settings", label: tr("nav.options", "Optionen"), icon: "settings" }
       ];
     return `

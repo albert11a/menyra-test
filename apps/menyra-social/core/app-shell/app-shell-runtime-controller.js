@@ -407,9 +407,16 @@ export function createAppShellRuntimeController(deps = {}) {
     ].join("|");
   }
 
+  function isMapRuntimeSurfaceActive(mode = "") {
+    if (mode !== "main") return false;
+    if (state.activeTab === "map") return true;
+    return state.activeTab === "travel"
+      && String(state.travelView?.activeTab || "").trim().toLowerCase() === "map";
+  }
+
   function buildMapRuntimeSignature(mode = "") {
     if (mode !== "main") return "off";
-    if (state.activeTab !== "map") return `inactive:${String(state.activeTab || "")}`;
+    if (!isMapRuntimeSurfaceActive(mode)) return `inactive:${String(state.activeTab || "")}`;
     const selectedBusiness = state.selectedBusiness || {};
     const selectedKey = String(
       selectedBusiness.markerKey
@@ -417,7 +424,10 @@ export function createAppShellRuntimeController(deps = {}) {
       || ""
     ).trim();
     const locationCount = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
-    return `map:${locationCount}:${selectedKey}`;
+    const travelQuery = state.activeTab === "travel"
+      ? String(state.travelView?.query || "").trim().toLowerCase()
+      : "";
+    return `map:${String(state.activeTab || "")}:${locationCount}:${selectedKey}:${travelQuery}`;
   }
 
   function scheduleMapRuntimeRefresh() {
@@ -436,7 +446,7 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function shouldRecoverLeafletMapSurface(mode) {
-    if (mode !== "main" || state.activeTab !== "map") return false;
+    if (!isMapRuntimeSurfaceActive(mode)) return false;
     const mapCanvas = doc?.getElementById("leafletMap");
     if (!mapCanvas) return false;
     return !mapCanvas.querySelector(".leaflet-pane");
@@ -1660,7 +1670,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
     const nextMapRuntimeSignature = buildMapRuntimeSignature(mode);
     const shouldRecoverMapSurface = shouldRecoverLeafletMapSurface(mode);
-    if (mode === "main" && state.activeTab === "map") {
+    if (isMapRuntimeSurfaceActive(mode)) {
       if (changed || nextMapRuntimeSignature !== lastMapRuntimeSignature || shouldRecoverMapSurface) {
         scheduleMapRuntimeRefresh();
       }

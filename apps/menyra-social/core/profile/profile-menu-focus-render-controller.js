@@ -343,6 +343,170 @@ function isBusinessProfileEntity(profile = {}) {
   return String(profile?.role || "").trim().toLowerCase() === "business";
 }
 
+function isHotelBusinessProfile(profile = {}) {
+  const type = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
+  return type === "hotel" || type === "motel";
+}
+
+function getHotelProfileRecord(profile = {}) {
+  const restaurantId = String(profile?.canonicalRestaurantId || profile?.restaurantId || "").trim();
+  const meta = restaurantId ? getRestaurantMetaById(restaurantId) : null;
+  return {
+    ...(meta && typeof meta === "object" ? meta : {}),
+    ...(profile && typeof profile === "object" ? profile : {})
+  };
+}
+
+function readHotelCoords(record = {}) {
+  const candidates = [
+    record?.verifiedMapLocation,
+    record?.mapLocation,
+    record?.geo,
+    record?.coordinates,
+    record?.coords,
+    record?.locationCoords,
+    record
+  ];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object") continue;
+    const lat = Number(candidate.lat ?? candidate.latitude);
+    const lng = Number(candidate.lng ?? candidate.lon ?? candidate.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  }
+  return null;
+}
+
+function readFirstHotelText(record = {}, keys = []) {
+  for (const key of keys) {
+    const value = String(record?.[key] || "").trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function collectHotelAmenities(record = {}) {
+  const values = [];
+  const push = (label = "") => {
+    const safeLabel = String(label || "").trim();
+    if (safeLabel && !values.includes(safeLabel)) values.push(safeLabel);
+  };
+  [
+    record.amenities,
+    record.features,
+    record.included,
+    record.facilities,
+    record.hotelAmenities
+  ].forEach((list) => {
+    if (!Array.isArray(list)) return;
+    list.forEach((item) => {
+      if (typeof item === "string") push(item);
+      else if (item && typeof item === "object") push(item.label || item.name || item.title);
+    });
+  });
+  if (record.beachfront || record.onBeach || record.amStrand) push("Am Strand");
+  if (record.restaurant || record.hasRestaurant) push("Restaurant");
+  if (record.breakfast || record.breakfastIncluded) push("Fruehstueck");
+  if (record.pool || record.hasPool) push("Pool");
+  if (record.wifi || record.freeWifi || record.hasWifi) push("WLAN");
+  if (record.parking || record.freeParking || record.hasParking) push("Parkplatz");
+  if (record.spa || record.wellness) push("Wellness");
+  return values.slice(0, 8);
+}
+
+function renderHotelDetailCard({ iconName = "info", label = "", value = "", helper = "" } = {}) {
+  return `
+    <div class="bg-white rounded-[2rem] border border-slate-100 p-5 shadow-sm">
+      <div class="flex items-start gap-4">
+        <div class="w-11 h-11 rounded-[1.25rem] bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
+          ${icon(iconName, "w-5 h-5")}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">${escapeHtml(label)}</p>
+          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(value || "Details folgen")}</p>
+          ${helper ? `<p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">${escapeHtml(helper)}</p>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderHotelDetailsView(profile = {}) {
+  const record = getHotelProfileRecord(profile);
+  const coords = readHotelCoords(record);
+  const address = readFirstHotelText(record, [
+    "address",
+    "primaryAddress",
+    "location",
+    "formattedAddress",
+    "street"
+  ]);
+  const city = readFirstHotelText(record, ["city", "locationCity", "primaryCity", "region", "country"]);
+  const beachDistance = readFirstHotelText(record, [
+    "beachDistance",
+    "distanceToBeach",
+    "beachDistanceLabel",
+    "strandEntfernung"
+  ]);
+  const rating = readFirstHotelText(record, ["rating", "reviewRating", "stars", "hotelStars"]);
+  const reviewCount = readFirstHotelText(record, ["reviewCount", "reviewsCount", "ratingsCount", "commentsCount"]);
+  const amenities = collectHotelAmenities(record);
+  const mapsUrl = coords
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${coords.lat},${coords.lng}`)}`
+    : (address || city ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address} ${city}`.trim())}` : "");
+  return `
+    <div class="app-content-inline flex flex-col gap-4 app-main-content-safe animate-in fade-in duration-300">
+      <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm overflow-hidden">
+        <div class="h-40 rounded-[1.6rem] bg-cyan-50 border border-cyan-100 relative overflow-hidden mb-4">
+          <div class="absolute inset-0 opacity-80" style="background-image: linear-gradient(135deg, rgba(0,204,229,0.18), rgba(15,23,42,0.04));"></div>
+          <div class="absolute inset-0 flex items-center justify-center text-cyan-600">
+            ${icon("map-pin", "w-10 h-10")}
+          </div>
+          <div class="absolute left-4 right-4 bottom-4 bg-white/90 backdrop-blur rounded-2xl p-3 border border-white/70">
+            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Standort</p>
+            <p class="text-xs font-black text-slate-900 leading-snug">${escapeHtml(address || city || "Standort folgt")}</p>
+          </div>
+        </div>
+        ${mapsUrl ? `
+          <a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="w-full h-12 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+            ${icon("navigation", "w-4 h-4")} Karte oeffnen
+          </a>
+        ` : ""}
+      </div>
+
+      <div class="grid grid-cols-1 gap-4">
+        ${renderHotelDetailCard({
+          iconName: "map-pin",
+          label: "Adresse",
+          value: [address, city].filter(Boolean).join(", ") || "Standort folgt",
+          helper: coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ""
+        })}
+        ${renderHotelDetailCard({
+          iconName: "waves",
+          label: "Strand",
+          value: beachDistance || (record.beachfront || record.onBeach ? "Direkt am Strand" : "Details folgen")
+        })}
+        ${renderHotelDetailCard({
+          iconName: "star",
+          label: "Bewertungen",
+          value: rating ? `${rating}${reviewCount ? ` / ${reviewCount} Bewertungen` : ""}` : "Bewertungen folgen",
+          helper: readFirstHotelText(record, ["reviewSummary", "ratingSummary", "commentsSummary"])
+        })}
+      </div>
+
+      <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm">
+        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">Inbegriffen</p>
+        ${amenities.length ? `
+          <div class="flex flex-wrap gap-2">
+            ${amenities.map((item) => `<span class="px-3 py-2 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-600">${escapeHtml(item)}</span>`).join("")}
+          </div>
+        ` : `
+          <p class="text-sm font-bold text-slate-400">Ausstattung und Zimmerdetails folgen.</p>
+        `}
+      </div>
+    </div>
+  `;
+}
+
 function resolveProfileContentTabForRendering(profile = {}) {
   const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
   const requestedContentTab = String(state.profileContentTab || "").trim().toLowerCase();
@@ -554,10 +718,11 @@ function renderProfileTabs(
 ) {
   const isBusinessProfile = isBusinessProfileEntity(profile);
   const activeTab = String(selectedTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
+  const isHotelProfile = isHotelBusinessProfile(profile);
   const tabs = isBusinessProfile
     ? [
       { id: "posts", label: tr("profile.posts", "Beitraege") },
-      { id: "menu", label: tr("nav.menu", "Menue") }
+      { id: "menu", label: isHotelProfile ? "Details" : tr("nav.menu", "Menue"), surface: isHotelProfile ? "hotel-details" : "menu" }
     ]
     : [
       { id: "posts", label: tr("profile.posts", "Beitraege") },
@@ -568,7 +733,7 @@ function renderProfileTabs(
     <div data-landing-tutorial-target="tabs" class="app-content-inline mb-6 ${compact ? "mt-2" : "mt-4"} ${landingPreview ? "pointer-events-auto" : ""}">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
         ${tabs.map((tab) => `
-          <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+          <button data-profile-tab="${tab.id}" ${tab.surface ? `data-profile-tab-surface="${escapeHtml(tab.surface)}"` : ""} class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
             ${tab.label}
           </button>
         `).join("")}
@@ -761,10 +926,13 @@ function renderPublicProfileSurface(
 
         ${shouldRenderContent ? (isMenuTab ? `
           <div class="${disabledBlockClass} ${contentAnimationClass}">
-            ${renderProfileMenuView(profile, {
-              mode: landingMode ? "landing" : "profile",
-              allowAutoEnsure: !landingMode
-            })}
+            ${isHotelBusinessProfile(profile)
+              ? renderHotelDetailsView(profile)
+              : renderProfileMenuView(profile, {
+                  mode: landingMode ? "landing" : "profile",
+                  allowAutoEnsure: !landingMode
+                })
+            }
           </div>
         ` : isCheckinTab ? `
           <div class="${disabledBlockClass} ${contentAnimationClass}">
@@ -2486,7 +2654,7 @@ function renderProfileView() {
       ${renderProfileViewControls(profile)}
 
       ${isMenuTab ? `
-        ${renderProfileMenuView(profile)}
+        ${isHotelBusinessProfile(profile) ? renderHotelDetailsView(profile) : renderProfileMenuView(profile)}
       ` : isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `

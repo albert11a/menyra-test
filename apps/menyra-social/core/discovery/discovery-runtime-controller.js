@@ -543,31 +543,113 @@ function updateLeafletMarkerVisual(marker, { selected = false, force = false } =
   marker.__visualSignature = nextSignature;
 }
 
+function normalizeMapKey(value = "") {
+  if (typeof normalizeSearchKey === "function") return normalizeSearchKey(value);
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function isTravelMapScopeActive() {
+  return state?.activeTab === "travel"
+    && String(state?.travelView?.activeTab || "").trim().toLowerCase() === "map";
+}
+
+function getTravelMapDestinationQuery() {
+  return String(state?.travelView?.query || "").trim();
+}
+
+function isTravelHotelTypeKey(typeKey = "") {
+  const key = normalizeMapKey(typeKey);
+  return [
+    "hotel",
+    "hotels",
+    "motel",
+    "motels",
+    "hostel",
+    "resort",
+    "accommodation",
+    "unterkunft",
+    "travel"
+  ].includes(key);
+}
+
+function resolveMapBusinessTypeKey(value = {}) {
+  const row = value?.raw || value || {};
+  return normalizeRestaurantType(
+    value?.type
+    || row?.type
+    || row?.customerType
+    || row?.category
+    || row?.kind
+    || row?.restaurantType
+    || ""
+  );
+}
+
+function collectTravelMapDestinationCandidates(value = {}) {
+  const row = value?.raw || value || {};
+  const values = [
+    value?.city,
+    value?.address,
+    value?.name,
+    value?.desc,
+    row?.city,
+    row?.locationCity,
+    row?.primaryCity,
+    row?.address,
+    row?.location,
+    row?.primaryAddress,
+    row?.country,
+    row?.region,
+    row?.district,
+    row?.name,
+    row?.restaurantName,
+    row?.businessName,
+    row?.displayName,
+    row?.description,
+    row?.bio,
+    row?.about
+  ];
+  if (Array.isArray(row?.locations)) {
+    row.locations.forEach((location) => {
+      if (!location || typeof location !== "object") return;
+      values.push(location.city, location.address, location.country, location.region, location.name);
+    });
+  }
+  return values;
+}
+
+function matchesTravelMapDestination(value = {}) {
+  const destinationKey = normalizeMapKey(getTravelMapDestinationQuery());
+  if (!destinationKey) return true;
+  const haystack = collectTravelMapDestinationCandidates(value)
+    .map(normalizeMapKey)
+    .filter(Boolean)
+    .join("_");
+  return haystack.includes(destinationKey);
+}
+
 function isDiscoverableMapBusiness(location = {}) {
   const row = location?.raw || {};
   if (!isPublicBusinessRecord(row)) return false;
-  const typeKey = normalizeRestaurantType(
-    location?.type
-    || location?.raw?.type
-    || location?.raw?.customerType
-    || location?.raw?.category
-    || location?.raw?.kind
-    || location?.raw?.restaurantType
-    || ""
-  );
+  const typeKey = resolveMapBusinessTypeKey(location);
+  if (isTravelMapScopeActive()) {
+    return isTravelHotelTypeKey(typeKey) && matchesTravelMapDestination(location);
+  }
   return typeKey !== "ecommerce";
 }
 
 function isDiscoverableRestaurant(rest = {}) {
   if (!isPublicBusinessRecord(rest)) return false;
-  const typeKey = normalizeRestaurantType(
-    rest?.type
-    || rest?.customerType
-    || rest?.category
-    || rest?.kind
-    || rest?.restaurantType
-    || ""
-  );
+  const typeKey = resolveMapBusinessTypeKey(rest);
+  if (isTravelMapScopeActive()) {
+    return isTravelHotelTypeKey(typeKey) && matchesTravelMapDestination(rest);
+  }
   return typeKey !== "ecommerce";
 }
 
@@ -583,6 +665,7 @@ function formatBusinessLocationLabel(value = "") {
 }
 
 function renderMapTruthState() {
+  const travelMap = isTravelMapScopeActive();
   const discoverableRestaurants = (Array.isArray(state.restaurants) ? state.restaurants : [])
     .filter((rest) => isDiscoverableRestaurant(rest));
   if (!discoverableRestaurants.length) return "";
@@ -601,7 +684,7 @@ function renderMapTruthState() {
     return `
       <div class="inline-flex max-w-full items-center gap-2 rounded-2xl bg-amber-50 border border-amber-200/80 shadow-sm px-4 py-3 text-[11px] font-bold text-amber-900">
         ${icon("map-pin-off", "w-4 h-4 text-amber-600 flex-shrink-0")}
-        <span class="min-w-0">Keine verifizierten Standorte verfuegbar. Orte ohne Koordinaten werden nicht auf der Karte gezeigt.</span>
+        <span class="min-w-0">Keine verifizierten ${travelMap ? "Hotel-" : ""}Standorte verfuegbar. Orte ohne Koordinaten werden nicht auf der Karte gezeigt.</span>
       </div>
     `;
   }
@@ -609,7 +692,7 @@ function renderMapTruthState() {
     return `
       <div class="inline-flex max-w-full items-center gap-2 rounded-2xl bg-slate-100/90 border border-slate-200/80 shadow-sm px-4 py-3 text-[11px] font-bold text-slate-700">
         ${icon("info", "w-4 h-4 text-slate-500 flex-shrink-0")}
-        <span class="min-w-0">${withoutCoordsCount} Restaurant(s) ohne verifizierte Koordinaten sind ausgeblendet.</span>
+        <span class="min-w-0">${withoutCoordsCount} ${travelMap ? "Hotel(s)" : "Restaurant(s)"} ohne verifizierte Koordinaten sind ausgeblendet.</span>
       </div>
     `;
   }
@@ -1604,6 +1687,7 @@ function handleSearchInput(value) {
 
 function renderMapSheet(selected) {
   const imageUrl = getOptimizedImageUrl(selected.img, "thumb");
+  const typeLabel = isTravelHotelTypeKey(resolveMapBusinessTypeKey(selected)) ? "Hotel" : "Restaurant";
   return `
     <div class="animate-in slide-in-from-bottom-6 duration-300">
       <div class="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.25)] border border-slate-100/50 relative">
@@ -1618,7 +1702,7 @@ function renderMapSheet(selected) {
             <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.3rem] group-hover:scale-105 transition-transform" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
           </div>
           <div class="flex-1 pt-1">
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">Restaurant</span>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">${escapeHtml(typeLabel)}</span>
             <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
             <div class="flex items-center gap-2 mt-1 text-[11px] font-black text-slate-700">
               <span class="flex items-center gap-1 text-indigo-600">${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)}</span>
@@ -1644,6 +1728,7 @@ function renderMapSheet(selected) {
 }
 
 function renderMapView() {
+  const travelMap = isTravelMapScopeActive();
   const hasLeaflet = !!window.L;
   const mapInfoLabel = leafletLoadFailed
     ? "Karte konnte nicht geladen werden."
@@ -1658,7 +1743,7 @@ function renderMapView() {
       <div class="map-view-intro">
         <div>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
-          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
+          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">${travelMap ? "Hotels" : "Entdecke Lokale"}</p>
         </div>
       </div>
       ${mapTruthState ? `<div class="map-view-truth">${mapTruthState}</div>` : ""}
