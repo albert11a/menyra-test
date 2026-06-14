@@ -22,7 +22,14 @@
     </section>
   </noscript>
   <script>
-    const heartLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+    function isHeartLocalDevelopmentHost(hostname) {
+      const host = String(hostname || "").trim().toLowerCase();
+      return /^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1)$/i.test(host)
+        || /^10\./.test(host)
+        || /^192\.168\./.test(host)
+        || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
+    }
+    const heartLocalHost = isHeartLocalDevelopmentHost(window.location.hostname);
     const heartCloudFunctionsBase = "https://us-central1-menyra-c0e68.cloudfunctions.net/";
     const heartPreviewHost = /\.vercel\.app$/i.test(window.location.hostname);
     if (!heartPreviewHost) {

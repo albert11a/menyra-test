@@ -580,6 +580,15 @@ Last updated: 2026-06-15
   1,049,973 Bytes raw / 284,996 Bytes gzip. Hotel/Motel-Lead-Typen waren
   bereits vorhanden und wurden nicht doppelt umgebaut. QR, Cart, Order,
   Firebase Rules und Functions bleiben unveraendert.
+- Schritt 63 ist abgeschlossen: Heart erkennt lokale private LAN-Hosts fuer die
+  API-Base korrekt.
+- Bewertung von Schritt 63: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 63:
+  `172.20.10.3` wird wie `localhost` als lokale Entwicklung erkannt und nutzt
+  fuer Heart direkt die Cloud-Functions-API statt `/api/heart/` am Vite-Server.
+  Dadurch sollen lokale 404 auf `heartGetDashboard` und `heartGetIncidents`
+  verschwinden. Social-Routing, Vercel-Rewrites, QR, Cart, Order, Firebase
+  Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -641,6 +650,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step60-marketplace-card-gap-inline-fix.md](./mnyra-step60-marketplace-card-gap-inline-fix.md)
 - Referenz: [docs/mnyra-step61-marketplace-card-gap-reduction.md](./mnyra-step61-marketplace-card-gap-reduction.md)
 - Referenz: [docs/mnyra-step62-travel-hotels-heart-routes.md](./mnyra-step62-travel-hotels-heart-routes.md)
+- Referenz: [docs/mnyra-step63-heart-local-lan-api-base.md](./mnyra-step63-heart-local-lan-api-base.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -666,7 +676,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 62 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 63 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -688,10 +698,10 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-62-Bundles bleibt weiterhin
-sinnvoll, besonders Travel-Hotels, Travel-Karte, Hotel-Details-Profil,
-Heart/CRM aus dem Social-Drawer sowie die bisherigen
-Public-Profile/Menu/QR/Cart/Order-Flows.
+Die manuelle Gegenpruefung des frischen Schritt-63-Stands bleibt weiterhin
+sinnvoll, besonders Heart lokal unter privater LAN-IP, Travel-Hotels,
+Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die
+bisherigen Public-Profile/Menu/QR/Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
