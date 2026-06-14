@@ -1,5 +1,8 @@
 const SYSTEM_ROUTE_SEGMENT_TO_TAB = Object.freeze({
   feed: "feed",
+  restaurants: "restaurants",
+  travel: "travel",
+  shopping: "shopping",
   search: "search",
   discover: "search",
   map: "map",
@@ -20,6 +23,9 @@ const SYSTEM_ROUTE_SEGMENT_TO_TAB = Object.freeze({
 
 const CANONICAL_TAB_TO_PATH = Object.freeze({
   feed: "/feed",
+  restaurants: "/restaurants",
+  travel: "/travel",
+  shopping: "/shopping",
   search: "/search",
   map: "/map",
   location: "/location",
@@ -37,6 +43,9 @@ const CANONICAL_TAB_TO_PATH = Object.freeze({
 const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
   "b",
   "feed",
+  "restaurants",
+  "travel",
+  "shopping",
   "search",
   "discover",
   "map",

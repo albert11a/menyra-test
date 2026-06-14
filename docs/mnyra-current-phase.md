@@ -510,6 +510,16 @@ Last updated: 2026-06-14
   einem eigenen Lazy-Chunk; es wurden keine neuen Firebase-Listener, keine neuen
   Public-/QR-Routen und keine Cart-/Order-/Rules-/Functions-Aenderungen
   eingefuehrt.
+- Schritt 56 ist abgeschlossen: Browser-Zurueck aus geoeffneten Marketplace-
+  Business-Profilen fuehrt wieder zur urspruenglichen Marketplace-Kategorie.
+- Bewertung von Schritt 56: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 56:
+  `restaurants`, `travel` und `shopping` sind jetzt im zentralen App-Route-
+  Vertrag als kanonische App-Pfade und reservierte Route-Segmente registriert.
+  Dadurch schreibt der bestehende Profil-Open-Flow vor dem Profilaufruf nicht
+  mehr `/feed` als Ruecksprung, sondern `/restaurants`, `/travel` oder
+  `/shopping`. UI, Profil-Open-Flow, QR, Cart, Order, Firebase Rules und
+  Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -564,6 +574,7 @@ Last updated: 2026-06-14
 - Referenz: [docs/mnyra-step53-website-language-selector-i18n.md](./mnyra-step53-website-language-selector-i18n.md)
 - Referenz: [docs/mnyra-step54-language-toggle-icon-restoration.md](./mnyra-step54-language-toggle-icon-restoration.md)
 - Referenz: [docs/mnyra-step55-marketplace-drawer-categories.md](./mnyra-step55-marketplace-drawer-categories.md)
+- Referenz: [docs/mnyra-step56-marketplace-browser-back-route-fix.md](./mnyra-step56-marketplace-browser-back-route-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -589,7 +600,7 @@ Last updated: 2026-06-14
 
 ## Naechster Schritt
 
-Nach Schritt 55 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 56 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
