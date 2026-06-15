@@ -119,7 +119,7 @@ const k=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
     `:`
     <section id="restaurantsView" class="animate-in slide-in-from-right-10 duration-500" style="background:#f8fafc; min-height:100%;">
       ${se({deps:n})}
-      <div id="restaurantsBenko" data-restaurants-benko style="margin-top:-1.75rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem;">
+      <div id="restaurantsBenko" data-restaurants-benko class="loc-bento loc-bento--feed-content">
       </div>
     </section>
   `}function oe(e={}){const t=e?.travelView&&typeof e.travelView=="object"?e.travelView:{},a=c(t.query||""),n=c(t.activeTab||"").toLowerCase(),s=["offers","hotels","map"].includes(n)?n:a?"hotels":"offers";return{query:a,activeTab:a?s:"offers",notice:c(t.notice||"")}}function le({travel:e,deps:t}={}){const a=t.escapeHtml,n=t.icon;return`

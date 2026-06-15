@@ -685,6 +685,16 @@ Last updated: 2026-06-15
   Feed-aehnlichen Location-Input und Standortbutton. Der darunterliegende
   `restaurantsBenko`-Bereich bleibt ohne Location bewusst leer. Routing, QR,
   Cart, Order, Travel, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 73 ist abgeschlossen: Der leere `restaurantsBenko`-Bereich nutzt
+  jetzt dieselbe obere Bento-Geometrie wie das Feed-Gate.
+- Bewertung von Schritt 73: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 73:
+  `restaurantsBenko` hat jetzt Feed-aehnliche `loc-bento`-Klassen, `2.5rem`
+  obere Abrundung, `-2.5rem` Ueberlappung, Layering und Shadow. Dadurch soll
+  die leere Benko-Oberkante im Restaurant-Gate sichtbar wie beim Feed-Gate in
+  die Coral-Flaeche hineinragen. Restaurant-Location-Logik, Gate-Text,
+  Routing, QR, Cart, Order, Travel, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -756,6 +766,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step70-heart-leads-category-filter-search.md](./mnyra-step70-heart-leads-category-filter-search.md)
 - Referenz: [docs/mnyra-step71-restaurants-gate-search.md](./mnyra-step71-restaurants-gate-search.md)
 - Referenz: [docs/mnyra-step72-restaurants-feed-location-gate.md](./mnyra-step72-restaurants-feed-location-gate.md)
+- Referenz: [docs/mnyra-step73-restaurants-benko-feed-radius.md](./mnyra-step73-restaurants-benko-feed-radius.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -781,7 +792,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 72 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 73 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -803,14 +814,14 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-72-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-73-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
-Gate ohne Feed-Location, Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-
-Standort, Heart lokal unter privater LAN-IP mit `/leads`, `/customers` und
-`/admin/staff`, inklusive Heart-Leads-Kategorie-Filter und eingefuegter
-Suchbegriffe, Travel-Hotels, Travel-Karte, Hotel-Details-Profil, Heart/CRM aus
-dem Social-Drawer sowie die bisherigen Public-Profile/Menu/QR/Cart/Order-
-Flows.
+Gate ohne Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante,
+Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort, Heart lokal unter
+privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`, inklusive
+Heart-Leads-Kategorie-Filter und eingefuegter Suchbegriffe, Travel-Hotels,
+Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die
+bisherigen Public-Profile/Menu/QR/Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

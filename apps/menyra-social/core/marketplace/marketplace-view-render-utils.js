@@ -627,7 +627,7 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
   return `
     <section id="restaurantsView" class="animate-in slide-in-from-right-10 duration-500" style="background:#f8fafc; min-height:100%;">
       ${renderRestaurantSearchGate({ deps })}
-      <div id="restaurantsBenko" data-restaurants-benko style="margin-top:-1.75rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem;">
+      <div id="restaurantsBenko" data-restaurants-benko class="loc-bento loc-bento--feed-content">
       </div>
     </section>
   `;
