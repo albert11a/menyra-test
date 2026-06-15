@@ -37,13 +37,13 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js": {
-    "file": "chunks/marketplace-view-render-utils-DPO7bwlr.js",
+    "file": "chunks/marketplace-view-render-utils-C5ZL6R_T.js",
     "name": "marketplace-view-render-utils",
     "src": "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/marketplace/travel-view-event-bindings.js": {
-    "file": "chunks/travel-view-event-bindings-BVhMQRF2.js",
+    "file": "chunks/travel-view-event-bindings-iMVWlOCP.js",
     "name": "travel-view-event-bindings",
     "src": "apps/menyra-social/core/marketplace/travel-view-event-bindings.js",
     "isDynamicEntry": true

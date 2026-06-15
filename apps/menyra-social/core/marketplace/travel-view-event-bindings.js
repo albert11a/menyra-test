@@ -1,3 +1,5 @@
+import { bindRestaurantViewEvents } from "./restaurant-view-event-bindings.js";
+
 const TRAVEL_DESTINATION_REQUIRED_MESSAGE = "Ju lutem shkruani destinacionin e udhëtimit.";
 const TRAVEL_SUGGESTION_MIN_QUERY_LENGTH = 2;
 const TRAVEL_SUGGESTION_LIMIT = 6;
@@ -317,6 +319,10 @@ export function bindTravelViewEvents({
   if (!doc || !state) return;
   const win = windowObj || doc.defaultView || globalThis;
   const render = typeof renderFn === "function" ? renderFn : (() => {});
+
+  if (doc.getElementById("rci")) {
+    bindRestaurantViewEvents({ documentObj: doc, state, windowObj: win, renderFn: render });
+  }
 
   const hideTravelSuggestions = ({ clearContent = true } = {}) => {
     const suggestionsRoot = doc.getElementById("travelDestinationSuggestions");

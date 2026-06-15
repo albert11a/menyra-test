@@ -663,6 +663,17 @@ Last updated: 2026-06-15
   damit eingefuegte komplette Begriffe/Wortgruppen nicht nur ueber
   Buchstabe-fuer-Buchstabe-Input funktionieren. `social-app.js`, Routing, QR,
   Cart, Order, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 71 ist abgeschlossen: Restaurants hat jetzt einen freigegebenen
+  Marketplace-Gate-Sucheinstieg nach Feed-/Travel-Muster.
+- Bewertung von Schritt 71: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 71:
+  Der Tab `Restaurants` startet mit einer Coral-/nicht-blauen Gate-Flaeche,
+  animierten Coffee-/Food-/Location-Icons, der Headline `Best coffee and food
+  spots in your city.` und einem Feed-aehnlichen City-/Spot-Eingabefeld.
+  Tippen zeigt stabile Vorschlaege aus vorhandenen Restaurant-/Cafe-/Food-
+  Profilen; gefiltert wird erst per Enter, Suchbutton oder Vorschlagsauswahl.
+  Routing, QR, Cart, Order, Travel, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -732,6 +743,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step68-travel-albania-city-aliases.md](./mnyra-step68-travel-albania-city-aliases.md)
 - Referenz: [docs/mnyra-step69-travel-search-card-spacing.md](./mnyra-step69-travel-search-card-spacing.md)
 - Referenz: [docs/mnyra-step70-heart-leads-category-filter-search.md](./mnyra-step70-heart-leads-category-filter-search.md)
+- Referenz: [docs/mnyra-step71-restaurants-gate-search.md](./mnyra-step71-restaurants-gate-search.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -757,7 +769,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 70 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 71 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -779,13 +791,13 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-70-Stands bleibt weiterhin
-sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Heart lokal
-unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`, inklusive
-Heart-Leads-Kategorie-Filter und eingefuegter Suchbegriffe, Travel-Hotels,
-Travel-Karte,
-Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die bisherigen
-Public-Profile/Menu/QR/Cart/Order-Flows.
+Die manuelle Gegenpruefung des frischen Schritt-71-Stands bleibt weiterhin
+sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
+Gate inklusive City-/Spot-Suche, Heart lokal unter privater LAN-IP mit `/leads`,
+`/customers` und `/admin/staff`, inklusive Heart-Leads-Kategorie-Filter und
+eingefuegter Suchbegriffe, Travel-Hotels, Travel-Karte, Hotel-Details-Profil,
+Heart/CRM aus dem Social-Drawer sowie die bisherigen Public-Profile/Menu/QR/
+Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
