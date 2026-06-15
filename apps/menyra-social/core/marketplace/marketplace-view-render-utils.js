@@ -35,6 +35,7 @@ Object.values(MARKETPLACE_SECTIONS).forEach((section) => {
 const BEST_LIMIT = 8;
 const LIST_LIMIT = 24;
 const RESTAURANTS_GATE_COLOR = "#ff4f3f";
+const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 const TRAVEL_BLUE = "#00cce5";
 const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
   Object.freeze(["tirana", "tirane"]),
@@ -262,18 +263,6 @@ function matchesTravelDestination(record = {}, query = "") {
     if (haystack.includes(destinationKey)) return true;
     return queryTokens.length > 0 && queryTokens.every((token) => haystack.includes(token));
   });
-}
-
-function matchesRestaurantSearchQuery(record = {}, query = "") {
-  const queryKey = normalizeLooseKey(query);
-  if (!queryKey) return true;
-  const haystack = collectLocationTextCandidates(record)
-    .map(normalizeLooseKey)
-    .filter(Boolean)
-    .join("_");
-  if (haystack.includes(queryKey)) return true;
-  const queryTokens = queryKey.split("_").filter(Boolean);
-  return queryTokens.length > 0 && queryTokens.every((token) => haystack.includes(token));
 }
 
 function readCoords(record = {}) {
@@ -519,41 +508,48 @@ function renderDataLoadingState(section = {}, deps = {}) {
   `;
 }
 
-function getRestaurantViewState(state = {}) {
-  const view = state?.restaurantView && typeof state.restaurantView === "object" ? state.restaurantView : {};
-  return {
-    query: cleanText(view.query || ""),
-    notice: cleanText(view.notice || "")
-  };
+function readStoredRestaurantLocation() {
+  const storage = globalThis?.localStorage || null;
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(FEED_LOCATION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const lat = Number(parsed?.lat ?? parsed?.latitude);
+    const lng = Number(parsed?.lng ?? parsed?.lon ?? parsed?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return {
+      lat,
+      lng,
+      label: cleanText(parsed?.label || parsed?.city || ""),
+      city: cleanText(parsed?.city || parsed?.label || ""),
+      source: cleanText(parsed?.source || "")
+    };
+  } catch {
+    return null;
+  }
 }
 
-function renderRestaurantSearchGate({ restaurant, deps } = {}) {
-  const escapeHtml = deps.escapeHtml;
+function renderRestaurantSearchGate({ deps } = {}) {
   const icon = deps.icon;
   return `
     <div id="restaurantsSearchTop" data-restaurant-search-top style="background:${RESTAURANTS_GATE_COLOR};">
-      <div class="restaurant-gate-content">
-        <div class="restaurant-gate-copy">
-          <div class="restaurant-gate-icon-row" aria-hidden="true">
-            <span class="restaurant-gate-icon-chip restaurant-gate-icon-chip--coffee">${icon("coffee", "w-5 h-5")}</span>
-            <span class="restaurant-gate-icon-chip restaurant-gate-icon-chip--food">${icon("utensils", "w-5 h-5")}</span>
-            <span class="restaurant-gate-icon-chip restaurant-gate-icon-chip--pin">${icon("map-pin", "w-5 h-5")}</span>
+      <div class="loc-top">
+        <div class="loc-title">
+          <div class="text-slider-wrapper">
+            <div class="text-slide-item">BEST RESTAURANTS.</div>
+            <div class="text-slide-item">BEST COFFEES.</div>
           </div>
-          <h2 class="restaurant-gate-title">
-            <span class="restaurant-gate-title-line">Best coffee</span>
-            <span class="restaurant-gate-title-line">and food spots</span>
-            <span class="restaurant-gate-title-line">in your city.</span>
-          </h2>
+          <div>IN YOUR CITY.</div>
         </div>
 
-        <div class="restaurant-gate-search loc-search-wrap">
+        <div class="loc-search-wrap">
           <div class="loc-input-row">
             <span class="loc-pin">${icon("map-pin", "w-5 h-5")}</span>
             <input
-              id="rci"
-              data-restaurant-city-input="true"
+              id="restaurantLocationCityInput"
+              data-restaurant-location-city-input="true"
               type="text"
-              value="${escapeHtml(restaurant.query)}"
               placeholder="Enter your city..."
               class="loc-input"
               inputmode="search"
@@ -561,19 +557,18 @@ function renderRestaurantSearchGate({ restaurant, deps } = {}) {
               autocapitalize="words"
               spellcheck="false"
               aria-autocomplete="list"
-              aria-controls="restaurantCitySuggestions"
+              aria-controls="restaurantLocationCitySuggestions"
               aria-expanded="false"
             />
             <div class="loc-request-wrap">
-              <button type="button" data-restaurant-submit="true" class="loc-request-btn" aria-label="Search restaurant spots">
-                ${icon("search", "w-5 h-5")}
+              <button id="btnRestaurantLocateMe" type="button" data-restaurant-location-request class="loc-request-btn" aria-label="Use location">
+                ${icon("crosshair", "w-5 h-5 relative z-10")}
+                <span id="restaurantLocatePulse" class="loc-request-pulse opacity-0"></span>
               </button>
             </div>
           </div>
-          <div id="restaurantCitySuggestions" data-restaurant-city-suggestions role="listbox" aria-hidden="true" class="restaurant-city-suggestions"></div>
-          ${restaurant.notice ? `
-            <p data-restaurant-notice class="restaurant-gate-notice">${escapeHtml(restaurant.notice)}</p>
-          ` : ""}
+          <div id="restaurantLocationCitySuggestions" data-restaurant-location-city-suggestions role="listbox" aria-hidden="true" class="feed-location-suggestions"></div>
+          <p id="restaurantLocationStatus" class="loc-status hidden"></p>
         </div>
       </div>
       <span data-travel-tab="" hidden aria-hidden="true"></span>
@@ -585,18 +580,10 @@ function renderRestaurantsContent({
   items = [],
   bestItems = [],
   section = {},
-  deps = {},
-  hasQuery = false,
-  query = ""
+  deps = {}
 } = {}) {
   if (!items.length) {
-    return renderEmptyState({
-      ...section,
-      emptyTitle: hasQuery ? "Keine passenden Spots" : section.emptyTitle,
-      emptyBody: hasQuery
-        ? `Keine passenden Restaurants oder Cafes fuer "${query}" gefunden.`
-        : section.emptyBody
-    }, deps);
+    return renderEmptyState(section, deps);
   }
   return `
     <div style="margin-bottom:2rem;">
@@ -617,28 +604,30 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
       ...record,
       __marketplaceType: resolveBusinessType(record, deps)
     }, section));
-  const restaurant = getRestaurantViewState(state);
-  const hasQuery = !!restaurant.query;
-  const filteredItems = hasQuery
-    ? allItems.filter((record) => matchesRestaurantSearchQuery(record, restaurant.query))
-    : allItems;
-  const visibleItems = filteredItems.slice(0, LIST_LIMIT);
+  const storedLocation = readStoredRestaurantLocation();
+  const hasLocation = !!storedLocation;
+  const visibleItems = allItems.slice(0, LIST_LIMIT);
   const bestItems = visibleItems.slice(0, BEST_LIMIT);
   const restaurantsLoaded = dataLoaded?.restaurants === true;
-  const content = renderRestaurantsContent({
+  const content = restaurantsLoaded || allItems.length ? renderRestaurantsContent({
     items: visibleItems,
     bestItems,
     section,
-    deps,
-    hasQuery,
-    query: restaurant.query
-  });
+    deps
+  }) : renderDataLoadingState(section, deps);
+
+  if (hasLocation) {
+    return `
+      <section class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
+        ${content}
+      </section>
+    `;
+  }
 
   return `
     <section id="restaurantsView" class="animate-in slide-in-from-right-10 duration-500" style="background:#f8fafc; min-height:100%;">
-      ${renderRestaurantSearchGate({ restaurant, deps })}
+      ${renderRestaurantSearchGate({ deps })}
       <div id="restaurantsBenko" data-restaurants-benko style="margin-top:-1.75rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem;">
-        ${restaurantsLoaded || allItems.length ? content : renderDataLoadingState(section, deps)}
       </div>
     </section>
   `;

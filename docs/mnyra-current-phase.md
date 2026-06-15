@@ -674,6 +674,17 @@ Last updated: 2026-06-15
   Profilen; gefiltert wird erst per Enter, Suchbutton oder Vorschlagsauswahl.
   Routing, QR, Cart, Order, Travel, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 72 ist abgeschlossen: Restaurants nutzt jetzt das Feed-Location-
+  Gate-Verhalten und dieselbe gespeicherte Location-Wahrheit wie Feed.
+- Bewertung von Schritt 72: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 72:
+  Wenn `mnyra_social_feed_viewer_location_v1` bereits durch Feed-Stadtwahl oder
+  GPS-Standort gesetzt ist, rendert der Tab `Restaurants` direkt ohne Gate.
+  Ohne Location erscheint die Coral-Flaeche mit Feed-aehnlichem Text-Slider
+  `BEST RESTAURANTS.` / `BEST COFFEES.`, darunter `IN YOUR CITY.`, sowie dem
+  Feed-aehnlichen Location-Input und Standortbutton. Der darunterliegende
+  `restaurantsBenko`-Bereich bleibt ohne Location bewusst leer. Routing, QR,
+  Cart, Order, Travel, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -744,6 +755,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step69-travel-search-card-spacing.md](./mnyra-step69-travel-search-card-spacing.md)
 - Referenz: [docs/mnyra-step70-heart-leads-category-filter-search.md](./mnyra-step70-heart-leads-category-filter-search.md)
 - Referenz: [docs/mnyra-step71-restaurants-gate-search.md](./mnyra-step71-restaurants-gate-search.md)
+- Referenz: [docs/mnyra-step72-restaurants-feed-location-gate.md](./mnyra-step72-restaurants-feed-location-gate.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -769,7 +781,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 71 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 72 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -791,13 +803,14 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-71-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-72-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
-Gate inklusive City-/Spot-Suche, Heart lokal unter privater LAN-IP mit `/leads`,
-`/customers` und `/admin/staff`, inklusive Heart-Leads-Kategorie-Filter und
-eingefuegter Suchbegriffe, Travel-Hotels, Travel-Karte, Hotel-Details-Profil,
-Heart/CRM aus dem Social-Drawer sowie die bisherigen Public-Profile/Menu/QR/
-Cart/Order-Flows.
+Gate ohne Feed-Location, Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-
+Standort, Heart lokal unter privater LAN-IP mit `/leads`, `/customers` und
+`/admin/staff`, inklusive Heart-Leads-Kategorie-Filter und eingefuegter
+Suchbegriffe, Travel-Hotels, Travel-Karte, Hotel-Details-Profil, Heart/CRM aus
+dem Social-Drawer sowie die bisherigen Public-Profile/Menu/QR/Cart/Order-
+Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

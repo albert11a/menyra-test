@@ -320,7 +320,7 @@ export function bindTravelViewEvents({
   const win = windowObj || doc.defaultView || globalThis;
   const render = typeof renderFn === "function" ? renderFn : (() => {});
 
-  if (doc.getElementById("rci")) {
+  if (doc.getElementById("restaurantLocationCityInput")) {
     bindRestaurantViewEvents({ documentObj: doc, state, windowObj: win, renderFn: render });
   }
 

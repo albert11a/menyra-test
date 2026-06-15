@@ -751,70 +751,59 @@
     #restaurantsSearchTop {
       position: relative;
       overflow: hidden;
-      padding: 4.85rem 1.5rem 6.35rem;
       color: #fff;
     }
-    #restaurantsSearchTop .restaurant-gate-content {
+    #restaurantsSearchTop .loc-top {
       position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 22rem;
-      margin: 0 auto;
-    }
-    #restaurantsSearchTop .restaurant-gate-copy {
+      z-index: 2;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      margin-bottom: 2.05rem;
+      align-items: center;
+      text-align: center;
+      padding: 8rem 1.5rem 10.75rem;
+      background: #ff4f3f;
     }
-    #restaurantsSearchTop .restaurant-gate-icon-row {
+    #restaurantsSearchTop .loc-title {
+      width: 100%;
+      max-width: 22rem;
+      margin: 0 auto 2.15rem;
+      color: #fff;
+      font-size: clamp(1.65rem, 6.6vw, 2.2rem);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+    }
+    #restaurantsSearchTop .text-slider-wrapper {
+      position: relative;
+      height: 1.25em;
+      width: 100%;
+      overflow: hidden;
+      margin-bottom: 0.2rem;
+    }
+    #restaurantsSearchTop .text-slide-item {
+      position: absolute;
+      inset: 0;
       display: flex;
       align-items: center;
-      gap: 0.65rem;
-      margin-bottom: 1.15rem;
-    }
-    #restaurantsSearchTop .restaurant-gate-icon-chip {
-      width: 3rem;
-      height: 3rem;
-      border-radius: 1rem;
-      display: inline-flex;
-      align-items: center;
       justify-content: center;
-      background: rgb(255 255 255 / 0.18);
-      border: 1px solid rgb(255 255 255 / 0.28);
-      color: #fff;
-      box-shadow: 0 14px 34px rgb(15 23 42 / 0.12);
-      animation: restaurantGateFloat 3.8s ease-in-out infinite;
-      will-change: transform;
-    }
-    #restaurantsSearchTop .restaurant-gate-icon-chip--food {
-      animation-delay: 0.45s;
-    }
-    #restaurantsSearchTop .restaurant-gate-icon-chip--pin {
-      animation-delay: 0.9s;
-    }
-    #restaurantsSearchTop .restaurant-gate-title {
-      margin: 0;
-      font-size: 2rem;
-      line-height: 1.08;
-      letter-spacing: 0;
-      font-weight: 900;
-      color: #fff;
-      text-align: left;
-    }
-    #restaurantsSearchTop .restaurant-gate-title-line {
-      display: block;
+      white-space: nowrap;
       opacity: 0;
-      transform: translateY(12px);
-      animation: restaurantGateTextIn 620ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: restaurantLocationTextFadeSlide 9s ease-in-out infinite;
+      will-change: transform, opacity;
     }
-    #restaurantsSearchTop .restaurant-gate-title-line:nth-child(2) {
-      animation-delay: 90ms;
+    #restaurantsSearchTop .text-slide-item:nth-child(1) {
+      animation-delay: 0s;
     }
-    #restaurantsSearchTop .restaurant-gate-title-line:nth-child(3) {
-      animation-delay: 180ms;
+    #restaurantsSearchTop .text-slide-item:nth-child(2) {
+      animation-delay: 3s;
     }
-    #restaurantsSearchTop .restaurant-gate-search {
+    @keyframes restaurantLocationTextFadeSlide {
+      0% { opacity: 0; transform: translateY(100%); }
+      5%, 28% { opacity: 1; transform: translateY(0); }
+      33%, 100% { opacity: 0; transform: translateY(-100%); }
+    }
+    #restaurantsSearchTop .loc-search-wrap {
       width: 100%;
       max-width: 22rem;
       margin: 0 auto;
@@ -829,7 +818,6 @@
       transform: translateY(-50%);
       color: rgb(148 163 184);
       pointer-events: none;
-      z-index: 1;
     }
     #restaurantsSearchTop .loc-input {
       width: 100%;
@@ -873,7 +861,24 @@
     #restaurantsSearchTop .loc-request-btn:active {
       transform: scale(0.95);
     }
-    #restaurantsSearchTop .restaurant-city-suggestions {
+    #restaurantsSearchTop .loc-request-btn.is-success {
+      background: rgb(236 253 245);
+      color: rgb(16 185 129);
+    }
+    #restaurantsSearchTop .loc-request-btn.is-loading {
+      background: rgb(255 255 255);
+      color: rgb(14 165 233);
+      box-shadow: 0 0 0 3px rgb(255 255 255 / 0.42);
+    }
+    #restaurantsSearchTop .loc-request-pulse {
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background: rgb(255 79 63 / 0.2);
+      opacity: 0;
+      animation: ping 1.05s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    #restaurantsSearchTop .feed-location-suggestions {
       position: relative;
       z-index: 30;
       margin-top: 0;
@@ -890,7 +895,7 @@
       backdrop-filter: blur(18px);
       transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease, padding 220ms ease, transform 220ms ease;
     }
-    #restaurantsSearchTop .restaurant-city-suggestions--open {
+    #restaurantsSearchTop .feed-location-suggestions--open {
       margin-top: 0.75rem;
       max-height: 18rem;
       opacity: 1;
@@ -898,7 +903,7 @@
       pointer-events: auto;
       transform: translateY(0);
     }
-    #restaurantsSearchTop .restaurant-city-suggestion {
+    #restaurantsSearchTop .feed-location-suggestion {
       width: 100%;
       display: flex;
       align-items: center;
@@ -912,12 +917,12 @@
       color: rgb(15 23 42);
       font-weight: 700;
     }
-    #restaurantsSearchTop .restaurant-city-suggestion:hover,
-    #restaurantsSearchTop .restaurant-city-suggestion:focus-visible {
+    #restaurantsSearchTop .feed-location-suggestion:hover,
+    #restaurantsSearchTop .feed-location-suggestion:focus-visible {
       background: rgb(241 245 249);
       outline: none;
     }
-    #restaurantsSearchTop .restaurant-city-suggestion__label {
+    #restaurantsSearchTop .feed-location-suggestion__label {
       min-width: 0;
       display: block;
       font-size: 0.92rem;
@@ -926,58 +931,49 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    #restaurantsSearchTop .restaurant-city-suggestion__meta {
+    #restaurantsSearchTop .feed-location-suggestion__meta {
       max-width: 48%;
-      min-width: 4rem;
+      min-width: 3.7rem;
       text-align: center;
       padding: 0.3rem 0.6rem;
       border-radius: 9999px;
-      background: rgb(255 241 242);
-      color: #e11d48;
+      background: rgb(236 254 255);
+      color: rgb(8 145 178);
       font-size: 0.62rem;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.12em;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    #restaurantsSearchTop .restaurant-gate-notice {
+    #restaurantsSearchTop .loc-status {
       margin-top: 0.7rem;
-      color: rgb(255 255 255 / 0.92);
       font-size: 0.74rem;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.11em;
+      color: rgb(255 255 255 / 0.9);
     }
-    @keyframes restaurantGateFloat {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-7px); }
-    }
-    @keyframes restaurantGateTextIn {
-      to { opacity: 1; transform: translateY(0); }
+    #restaurantsSearchTop .loc-status.hidden {
+      display: none;
     }
     @media (max-width: 380px) {
-      #restaurantsSearchTop {
+      #restaurantsSearchTop .loc-top {
         padding-left: 1.25rem;
         padding-right: 1.25rem;
       }
-      #restaurantsSearchTop .restaurant-gate-title {
+      #restaurantsSearchTop .loc-title {
         font-size: 1.72rem;
-      }
-      #restaurantsSearchTop .restaurant-gate-icon-chip {
-        width: 2.75rem;
-        height: 2.75rem;
       }
     }
     @media (prefers-reduced-motion: reduce) {
-      #restaurantsSearchTop .restaurant-gate-icon-chip,
-      #restaurantsSearchTop .restaurant-gate-title-line {
+      #restaurantsSearchTop .text-slide-item {
         animation: none;
         opacity: 1;
         transform: none;
       }
-      #restaurantsSearchTop .restaurant-city-suggestions,
+      #restaurantsSearchTop .feed-location-suggestions,
       #restaurantsSearchTop .loc-request-btn {
         transition: none;
       }
