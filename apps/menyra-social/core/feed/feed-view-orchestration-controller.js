@@ -3697,6 +3697,7 @@ export function createFeedViewOrchestrationController({
 
   function bindFeedDelegation() {
     bindFeedLocationControlsDelegation();
+    if (isFeedLocationScopeActive()) syncFeedLocationGateDom();
     const feedView = doc?.getElementById("feedView");
     if (!feedView) {
       stopFeedStagePinSync();

@@ -322,14 +322,50 @@ function matchesTravelDestination(record = {}, query = "") {
   });
 }
 
+function collectRestaurantLocationTextCandidates(record = {}) {
+  const values = [
+    record.city,
+    record.locationCity,
+    record.primaryCity,
+    record.address,
+    record.location,
+    record.primaryAddress,
+    inferLocationLabelFromCoords(record),
+    record.country,
+    record.region,
+    record.district
+  ];
+  if (Array.isArray(record.locations)) {
+    record.locations.forEach((location) => {
+      if (!location || typeof location !== "object") return;
+      values.push(location.city, location.address, location.country, location.region, location.name);
+    });
+  }
+  return values;
+}
+
+function matchesRestaurantLocationText(record = {}, query = "") {
+  const locationKeys = expandTravelDestinationKeys(query);
+  if (!locationKeys.length) return false;
+  const haystack = collectRestaurantLocationTextCandidates(record)
+    .map(normalizeLooseKey)
+    .filter(Boolean)
+    .join("_");
+  if (!haystack) return false;
+  return locationKeys.some((locationKey) => {
+    const tokens = locationKey.split("_").filter(Boolean);
+    return haystack.includes(locationKey) || (tokens.length > 0 && tokens.every((token) => haystack.includes(token)));
+  });
+}
+
 function matchesRestaurantViewerLocation(record = {}, viewerLocation = null) {
   if (!viewerLocation) return true;
   const query = cleanText(viewerLocation.city || viewerLocation.label || "");
   if (query) {
-    if (matchesTravelDestination(record, query)) return true;
+    if (matchesRestaurantLocationText(record, query)) return true;
     const key = normalizeLooseKey(query);
     const prishtinaAlias = key === "prishtina" ? "prishtine" : (key === "prishtine" ? "prishtina" : "");
-    if (prishtinaAlias && matchesTravelDestination(record, prishtinaAlias)) return true;
+    if (prishtinaAlias && matchesRestaurantLocationText(record, prishtinaAlias)) return true;
   }
   const viewerCoords = normalizeLocationCoords(viewerLocation);
   const recordCoords = readCoords(record);

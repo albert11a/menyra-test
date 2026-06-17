@@ -746,6 +746,20 @@ Last updated: 2026-06-17
   Order, Travel, Firebase Rules und Functions bleiben unveraendert. Auf
   ausdruecklichen Nutzerwunsch wurde dieser Schritt auf Branch `main`
   umgesetzt.
+- Schritt 78 ist abgeschlossen: Der Restaurant-Header zeigt den gesetzten
+  Location-Haken korrekt und die Restaurant-/Cafe-Filterung wurde auf echte
+  Standortdaten eingegrenzt.
+- Bewertung von Schritt 78: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 78:
+  Das identische Feed-Location-Feld im Restaurant-Header nutzt jetzt den
+  bestehenden Feed-DOM-Sync, sodass rechts der Haken erscheint, wenn eine
+  Location gesetzt ist. Der Restaurant-/Cafe-Filter matched nicht mehr ueber
+  Name, Businessname, Description, Bio oder About, sondern nur noch ueber
+  Standortfelder, `locations[]`, Region/District und Koordinaten. Dadurch fuehrt
+  `Prishtina` nicht mehr zu denselben allgemeinen Restaurant-/Cafe-Ergebnissen,
+  nur weil der Begriff irgendwo ausserhalb der Standortdaten vorkommt. Gate,
+  Cards, Feed-Storage-Key, QR, Cart, Order, Travel, Firebase Rules und Functions
+  bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -822,6 +836,7 @@ Last updated: 2026-06-17
 - Referenz: [docs/mnyra-step75-restaurants-card-ui-parity.md](./mnyra-step75-restaurants-card-ui-parity.md)
 - Referenz: [docs/mnyra-step76-restaurants-card-width-icons.md](./mnyra-step76-restaurants-card-width-icons.md)
 - Referenz: [docs/mnyra-step77-restaurants-header-location-filter.md](./mnyra-step77-restaurants-header-location-filter.md)
+- Referenz: [docs/mnyra-step78-restaurants-header-location-filter-fix.md](./mnyra-step78-restaurants-header-location-filter-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -847,7 +862,7 @@ Last updated: 2026-06-17
 
 ## Naechster Schritt
 
-Nach Schritt 77 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 78 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -869,12 +884,12 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-77-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-78-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
 Gate ohne Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante,
 Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive
-identischem Feed-Location-Feld im Smart-Header und Location-gefilterten
-Restaurant-/Cafe-Cards, normale
+identischem Feed-Location-Feld im Smart-Header, sichtbarem Haken und streng
+nach Standortdaten gefilterten Restaurant-/Cafe-Cards, normale
 Restaurant-/Cafe-List-Cards mit gleicher linker Content-Kante wie die obere
 Swipe-Zeile, sichtbaren Teilen-/Telefon-/Menu-Icons, Titelbild/
 Oeffnungszeiten/Feature-Chips und Profil/Menu-Buttons inklusive der Nutzer-
