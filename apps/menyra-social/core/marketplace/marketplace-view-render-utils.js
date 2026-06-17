@@ -396,7 +396,7 @@ function getRestaurantFeatureChips(record = {}) {
     ? record.restaurantFeatures
     : {};
   const primary = [
-    normalizeFeatureText(record.gardenTerraceText || record.gardenTerrace || record.gardenOrTerrace || featureState.gardenTerrace, "Garten / Terrasse"),
+    normalizeFeatureText(record.gardenTerraceText || record.gardenTerrace || record.gardenOrTerrace || featureState.gardenTerrace, "Gastgarten"),
     normalizeFeatureText(record.accessibilityText || record.barrierFreeText || record.accessibleText || record.barrierefrei || record.accessible || featureState.accessibility, "Barrierefrei"),
     normalizeFeatureText(record.veganOptionsText || record.veganOptions || record.veganText || record.vegan || featureState.veganOptions, "Vegane Optionen")
   ].filter(Boolean);
@@ -544,41 +544,62 @@ function renderRestaurantListCard(record = {}, deps = {}) {
   const logoImage = getBusinessImage(record, deps);
   const rating = getBusinessRating(record);
   const reviewsCount = Number(record.reviewsCount ?? record.reviewCount ?? record.ratingsCount ?? 0);
+  const displayRating = rating || "0.0";
+  const displayReviewsCount = Number.isFinite(reviewsCount) && reviewsCount > 0 ? reviewsCount : 0;
   const cuisine = getRestaurantCuisineLabel(record);
-  const priceRange = getRestaurantPriceRange(record);
+  const priceRange = getRestaurantPriceRange(record) || "€€ - €€€";
   const location = getBusinessLocationLabel(record);
   const phone = getBusinessPhone(record);
   const hours = getBusinessHours(record);
   const features = getRestaurantFeatureChips(record);
+  const isLiked = record.isLiked === true || record.liked === true || record.favorite === true || record.favorited === true;
   return `
-    <article class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col">
-      <div class="h-44 relative overflow-hidden group bg-slate-100">
+    <article class="w-full max-w-[340px] mx-auto bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="max-width:340px;border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
+      <div class="h-44 relative overflow-hidden group">
         ${renderImage(coverImage, name, { ...deps, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
-        <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-black/20"></div>
-        ${priceRange ? `
-          <div class="absolute bottom-3.5 right-4 bg-slate-900/90 text-white font-medium px-2.5 py-0.5 rounded-md text-[9px] tracking-wider shadow">
-            ${escapeHtml(priceRange)}
-          </div>
-        ` : ""}
+        <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-black/20" style="background:linear-gradient(to top,#fff 0%,rgba(255,255,255,0.2) 50%,rgba(0,0,0,0.2) 100%);"></div>
+
+        <div class="absolute top-3.5 right-3.5 flex gap-2 z-10" style="top:0.875rem;right:0.875rem;">
+          <button
+            type="button"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-rose-500 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
+            aria-label="Favorit"
+          >
+            ${icon("heart", `w-4 h-4 ${isLiked ? "fill-rose-500 text-rose-500" : "text-slate-600"}`)}
+          </button>
+          <button
+            type="button"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
+            title="Teilen"
+            aria-label="Teilen"
+          >
+            ${icon("share-2", "w-4 h-4")}
+          </button>
+        </div>
+
+        <div class="absolute bottom-3.5 right-4 bg-slate-900/90 text-white font-medium px-2.5 py-0.5 rounded-md text-[9px] tracking-wider shadow" style="bottom:0.875rem;background-color:rgba(15,23,42,0.9);">
+          ${escapeHtml(priceRange)}
+        </div>
       </div>
 
-      <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5">
-        <div class="absolute -top-10 left-5 z-10">
-          <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden">
+      <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5" style="padding-top:3rem;gap:0.875rem;">
+        <div class="absolute -top-10 left-5 z-10" style="top:-2.5rem;left:1.25rem;">
+          <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden" style="width:76px;height:76px;">
             ${renderImage(logoImage, `${name} Logo`, { ...deps, extraClass: "rounded-full" })}
           </div>
         </div>
 
         <div>
-          ${rating ? `
-            <div class="flex items-center gap-1.5 mb-1">
-              <span class="flex text-amber-500">${icon("star", "w-3.5 h-3.5 fill-current")}</span>
-              <span class="text-[11px] font-bold text-slate-800">${escapeHtml(rating)}</span>
-              ${reviewsCount > 0 ? `<span class="text-[11px] text-slate-400">(${escapeHtml(String(reviewsCount))} Bewertungen)</span>` : ""}
+          <div class="flex items-center gap-1.5 mb-1">
+            <div class="flex text-amber-500">
+              ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
-          ` : ""}
-          <h3 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h3>
-          ${cuisine ? `<p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5">${escapeHtml(cuisine)}</p>` : ""}
+            <span class="text-[11px] font-bold text-slate-800">${escapeHtml(displayRating)}</span>
+            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Bewertungen)</span>
+          </div>
+
+          <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
+          ${cuisine ? `<p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5" style="margin-top:0.125rem;">${escapeHtml(cuisine)}</p>` : ""}
         </div>
 
         <hr class="border-slate-100" />
@@ -615,7 +636,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
             type="button"
             data-marketplace-open-business="${escapeHtml(id)}"
             data-tab="profile"
-            class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all duration-150 active:scale-95"
+            class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all duration-150 active:scale-95 cursor-pointer"
           >
             ${icon("user", "w-3.5 h-3.5 text-slate-400")}
             Profil
@@ -625,7 +646,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
             type="button"
             data-marketplace-open-business="${escapeHtml(id)}"
             data-tab="menu"
-            class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95"
+            class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer"
           >
             ${icon("book-open", "w-3.5 h-3.5 text-slate-200")}
             Menu
