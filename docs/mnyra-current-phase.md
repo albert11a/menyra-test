@@ -732,6 +732,20 @@ Last updated: 2026-06-17
   verzoegerte Lucide-Runtime noch nicht nachgezogen hat. Die oberen
   Swipe-/Best-Cards, Lead-Speicherung, Profil/Menu-Open-Flow, Routing, QR,
   Cart, Order, Travel, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 77 ist abgeschlossen: Restaurants nutzt bei gesetzter Feed-Location
+  das identische Feed-Location-Eingabefeld im Smart-Header und filtert
+  Restaurant-/Cafe-Cards nach dieser Location.
+- Bewertung von Schritt 77: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 77:
+  Wenn `mnyra_social_feed_viewer_location_v1` gesetzt ist, zeigt `Restaurants`
+  oben im Smart-Header dasselbe Location-Feld wie Feed. Aenderungen in diesem
+  Feld speichern weiter dieselbe Location-Wahrheit und rendern den Restaurant-
+  Tab direkt neu. Die sichtbaren Restaurant-/Cafe-Cards werden nach Stadt-/
+  Adressfeldern, Schreibvarianten und vorhandenen Koordinaten gegen die
+  gesetzte Location gefiltert. Restaurant-Cards, Gate ohne Location, QR, Cart,
+  Order, Travel, Firebase Rules und Functions bleiben unveraendert. Auf
+  ausdruecklichen Nutzerwunsch wurde dieser Schritt auf Branch `main`
+  umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -807,6 +821,7 @@ Last updated: 2026-06-17
 - Referenz: [docs/mnyra-step74-restaurants-card-lead-details.md](./mnyra-step74-restaurants-card-lead-details.md)
 - Referenz: [docs/mnyra-step75-restaurants-card-ui-parity.md](./mnyra-step75-restaurants-card-ui-parity.md)
 - Referenz: [docs/mnyra-step76-restaurants-card-width-icons.md](./mnyra-step76-restaurants-card-width-icons.md)
+- Referenz: [docs/mnyra-step77-restaurants-header-location-filter.md](./mnyra-step77-restaurants-header-location-filter.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -832,7 +847,7 @@ Last updated: 2026-06-17
 
 ## Naechster Schritt
 
-Nach Schritt 76 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 77 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -854,10 +869,12 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-76-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-77-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
 Gate ohne Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante,
-Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort, normale
+Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive
+identischem Feed-Location-Feld im Smart-Header und Location-gefilterten
+Restaurant-/Cafe-Cards, normale
 Restaurant-/Cafe-List-Cards mit gleicher linker Content-Kante wie die obere
 Swipe-Zeile, sichtbaren Teilen-/Telefon-/Menu-Icons, Titelbild/
 Oeffnungszeiten/Feature-Chips und Profil/Menu-Buttons inklusive der Nutzer-

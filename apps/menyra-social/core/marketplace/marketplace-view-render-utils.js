@@ -222,6 +222,14 @@ function getBusinessLocationLabel(record = {}) {
   return city || address || inferLocationLabelFromCoords(record) || cleanText(record.country || record.region || "") || "Standort folgt";
 }
 
+function normalizeLocationCoords(value = {}) {
+  const lat = Number(String(value?.lat ?? value?.latitude ?? "").replace(",", "."));
+  const lng = Number(String(value?.lng ?? value?.lon ?? value?.longitude ?? "").replace(",", "."));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return null;
+  return { lat, lng };
+}
+
 function distanceKmBetweenCoords(a = {}, b = {}) {
   const lat1 = Number(a.lat);
   const lng1 = Number(a.lng);
@@ -314,24 +322,37 @@ function matchesTravelDestination(record = {}, query = "") {
   });
 }
 
+function matchesRestaurantViewerLocation(record = {}, viewerLocation = null) {
+  if (!viewerLocation) return true;
+  const query = cleanText(viewerLocation.city || viewerLocation.label || "");
+  if (query) {
+    if (matchesTravelDestination(record, query)) return true;
+    const key = normalizeLooseKey(query);
+    const prishtinaAlias = key === "prishtina" ? "prishtine" : (key === "prishtine" ? "prishtina" : "");
+    if (prishtinaAlias && matchesTravelDestination(record, prishtinaAlias)) return true;
+  }
+  const viewerCoords = normalizeLocationCoords(viewerLocation);
+  const recordCoords = readCoords(record);
+  if (viewerCoords && recordCoords) {
+    return distanceKmBetweenCoords(viewerCoords, recordCoords) <= RESTAURANT_COORD_CITY_MAX_DISTANCE_KM;
+  }
+  return !query && !viewerCoords;
+}
+
 function readCoords(record = {}) {
   const candidates = [
-    [record.lat, record.lng],
-    [record.latitude, record.longitude],
-    [record.gpsLat, record.gpsLng],
-    [record.geo?.lat, record.geo?.lng],
-    [record.geo?.latitude, record.geo?.longitude],
-    [record.coords?.lat, record.coords?.lng],
-    [record.coords?.latitude, record.coords?.longitude],
-    [record.location?.lat, record.location?.lng]
+    { lat: record.lat, lng: record.lng },
+    { lat: record.latitude, lng: record.longitude },
+    { lat: record.gpsLat, lng: record.gpsLng },
+    { lat: record.geo?.lat, lng: record.geo?.lng },
+    { lat: record.geo?.latitude, lng: record.geo?.longitude },
+    { lat: record.coords?.lat, lng: record.coords?.lng },
+    { lat: record.coords?.latitude, lng: record.coords?.longitude },
+    { lat: record.location?.lat, lng: record.location?.lng }
   ];
-  for (const [latValue, lngValue] of candidates) {
-    const lat = Number(String(latValue ?? "").replace(",", "."));
-    const lng = Number(String(lngValue ?? "").replace(",", "."));
-    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
-      if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) continue;
-      return { lat, lng };
-    }
+  for (const candidate of candidates) {
+    const coords = normalizeLocationCoords(candidate);
+    if (coords) return coords;
   }
   if (Array.isArray(record.locations)) {
     for (const location of record.locations) {
@@ -776,12 +797,11 @@ function readStoredRestaurantLocation() {
     const raw = storage.getItem(FEED_LOCATION_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    const lat = Number(parsed?.lat ?? parsed?.latitude);
-    const lng = Number(parsed?.lng ?? parsed?.lon ?? parsed?.longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const coords = normalizeLocationCoords(parsed);
+    if (!coords) return null;
     return {
-      lat,
-      lng,
+      lat: coords.lat,
+      lng: coords.lng,
       label: cleanText(parsed?.label || parsed?.city || ""),
       city: cleanText(parsed?.city || parsed?.label || ""),
       source: cleanText(parsed?.source || "")
@@ -867,7 +887,10 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
     }, section));
   const storedLocation = readStoredRestaurantLocation();
   const hasLocation = !!storedLocation;
-  const visibleItems = allItems.slice(0, LIST_LIMIT);
+  const locationItems = hasLocation
+    ? allItems.filter((record) => matchesRestaurantViewerLocation(record, storedLocation))
+    : allItems;
+  const visibleItems = locationItems.slice(0, LIST_LIMIT);
   const bestItems = visibleItems.slice(0, BEST_LIMIT);
   const restaurantsLoaded = dataLoaded?.restaurants === true;
   const content = restaurantsLoaded || allItems.length ? renderRestaurantsContent({

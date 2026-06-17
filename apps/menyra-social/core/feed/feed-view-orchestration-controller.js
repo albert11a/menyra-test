@@ -1950,10 +1950,7 @@ export function createFeedViewOrchestrationController({
     return "";
   };
   const resolveLocationScreenMode = () => "feed-gate";
-  const isFeedLocationScopeActive = () => {
-    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-    return activeTabKey === "feed" || activeTabKey === "home";
-  };
+  const isFeedLocationScopeActive = () => !!doc?.getElementById("feedLocationCityInput");
   const getRenderedLocationScreenMode = () => {
     const rootMode = String(doc?.getElementById("feedView")?.dataset?.locationScreenMode || "").trim().toLowerCase();
     if (rootMode) return rootMode;
@@ -2082,6 +2079,10 @@ export function createFeedViewOrchestrationController({
     clearFeedLocationRemoteLookup();
     hideFeedLocationSuggestions();
     persistViewerLocation(normalized);
+    if (state.activeTab === "restaurants") {
+      setStateFn({});
+      return true;
+    }
     const gateRoot = doc?.getElementById("feedLocationGate");
     const locationScreenMode = getRenderedLocationScreenMode();
     const shouldStayOnLocationScreen = locationScreenMode === "location";
@@ -3695,12 +3696,12 @@ export function createFeedViewOrchestrationController({
   }
 
   function bindFeedDelegation() {
+    bindFeedLocationControlsDelegation();
     const feedView = doc?.getElementById("feedView");
     if (!feedView) {
       stopFeedStagePinSync();
       return;
     }
-    bindFeedLocationControlsDelegation();
     bindFeedStagePinSync(feedView);
     const feedViewMode = String(feedView.dataset.feedViewMode || "").trim().toLowerCase();
     if (feedViewMode === "feed") {
