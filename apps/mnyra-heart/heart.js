@@ -959,6 +959,10 @@ const operations = {
         getCrmConsumerDomain("leads")?.setBestSpotLogoFile?.(file);
         return;
       }
+      if (safeInputId === "leadTitleImageInput") {
+        getCrmConsumerDomain("leads")?.setTitleImageFile?.(file);
+        return;
+      }
       if (safeInputId === "customerLogoInput") {
         getCrmConsumerDomain("customers")?.setLogoFile?.(file);
         return;

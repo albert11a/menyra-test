@@ -12,6 +12,7 @@ function findActionTarget(target) {
     "#leadConvertBtn",
     "#leadLogoTrigger",
     "#leadBestSpotLogoTrigger",
+    "#leadTitleImageTrigger",
     "#leadInlineActionsToggle",
     "#leadInlineActionsBackdrop",
     "#leadModalClose"
@@ -69,6 +70,10 @@ export function bindHeartEvents({
     }
     if (!action && target.id === "leadBestSpotLogoTrigger") {
       operations.triggerCrmFile?.("leadBestSpotLogoInput");
+      return;
+    }
+    if (!action && target.id === "leadTitleImageTrigger") {
+      operations.triggerCrmFile?.("leadTitleImageInput");
       return;
     }
     if (!action && target.id === "leadInlineActionsToggle") {
@@ -303,6 +308,7 @@ export function bindHeartEvents({
       "[data-crm-file-input]",
       "#leadLogoInput",
       "#leadBestSpotLogoInput",
+      "#leadTitleImageInput",
       "#customerLogoInput",
       "#staffAvatarInput"
     ].join(", "));

@@ -317,6 +317,17 @@ export async function saveLeadFromModalCore({
     : (lead.specialEnabled === true);
   const logoUrlInput = docObj.getElementById("leadLogoUrl")?.value?.trim() || "";
   const bestSpotLogoUrlInput = docObj.getElementById("leadBestSpotLogoUrl")?.value?.trim() || "";
+  const titleImageUrlInput = docObj.getElementById("leadTitleImageUrl")?.value?.trim() || "";
+  const openingHours = docObj.getElementById("leadOpeningHours")?.value?.trim() || "";
+  const gardenTerraceText = docObj.getElementById("leadGardenTerraceText")?.value?.trim() || "";
+  const accessibilityText = docObj.getElementById("leadAccessibilityText")?.value?.trim() || "";
+  const veganOptionsText = docObj.getElementById("leadVeganOptionsText")?.value?.trim() || "";
+  const restaurantFeatures = {
+    gardenTerrace: gardenTerraceText,
+    accessibility: accessibilityText,
+    veganOptions: veganOptionsText
+  };
+  const featureList = [gardenTerraceText, accessibilityText, veganOptionsText].filter(Boolean);
   const note = docObj.getElementById("leadNote")?.value?.trim() || "";
   const billingCycle = docObj.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
   const statusValue = docObj.getElementById("leadStatus")?.value || lead.status || "registered";
@@ -473,7 +484,19 @@ export async function saveLeadFromModalCore({
     const hasPendingLeadLogoUpload = (
       !!state.leadModal.logoFile
       || !!state.leadModal.bestSpotLogoFile
+      || !!state.leadModal.titleImageFile
     );
+    const existingTitleImageUrl = (!state.leadModal.titleImageFile ? titleImageUrlInput : "")
+      || (!state.leadModal.titleImageFile ? (state.leadModal.titleImagePreview || "") : "")
+      || lead.titleImageUrl
+      || lead.coverImageUrl
+      || lead.coverUrl
+      || lead.heroUrl
+      || existingRest?.titleImageUrl
+      || existingRest?.coverImageUrl
+      || existingRest?.coverUrl
+      || existingRest?.heroUrl
+      || "";
     const preUploadRestaurantRef = hasPendingLeadLogoUpload && restaurantId
       ? (restRef || doc(db, "restaurants", restaurantId))
       : null;
@@ -491,6 +514,17 @@ export async function saveLeadFromModalCore({
         ownerName: contactName || "",
         ownerEmail: emailInput || "",
         specialEnabled,
+        openingHours,
+        hours: openingHours,
+        restaurantFeatures,
+        features: featureList,
+        gardenTerraceText,
+        accessibilityText,
+        veganOptionsText,
+        titleImageUrl: existingTitleImageUrl,
+        coverImageUrl: existingTitleImageUrl,
+        coverUrl: existingTitleImageUrl,
+        heroUrl: existingTitleImageUrl,
         status: restaurantStatus,
         locations: locationPayload,
         publicSlug: landingSlug,
@@ -529,6 +563,15 @@ export async function saveLeadFromModalCore({
       );
       bestSpotLogoUrl = cdnUrl || bestSpotLogoUrl;
     }
+    let titleImageUrl = existingTitleImageUrl;
+    if (state.leadModal.titleImageFile) {
+      const { cdnUrl } = await uploadImage(
+        state.leadModal.titleImageFile,
+        restaurantId || state.user.uid,
+        { maxSize: 1280, quality: 0.82, mimeType: "image/jpeg" }
+      );
+      titleImageUrl = cdnUrl || titleImageUrl;
+    }
     const restPayload = {
       name: businessName,
       restaurantName: businessName,
@@ -558,6 +601,17 @@ export async function saveLeadFromModalCore({
       logo: logoUrl,
       bestSpotLogoUrl,
       spotLogoUrl: bestSpotLogoUrl,
+      titleImageUrl,
+      coverImageUrl: titleImageUrl,
+      coverUrl: titleImageUrl,
+      heroUrl: titleImageUrl,
+      openingHours,
+      hours: openingHours,
+      restaurantFeatures,
+      features: featureList,
+      gardenTerraceText,
+      accessibilityText,
+      veganOptionsText,
       status: restaurantStatus,
       leadId,
       locations: locationPayload,
@@ -667,6 +721,17 @@ export async function saveLeadFromModalCore({
       logoUrl,
       bestSpotLogoUrl,
       spotLogoUrl: bestSpotLogoUrl,
+      titleImageUrl,
+      coverImageUrl: titleImageUrl,
+      coverUrl: titleImageUrl,
+      heroUrl: titleImageUrl,
+      openingHours,
+      hours: openingHours,
+      restaurantFeatures,
+      features: featureList,
+      gardenTerraceText,
+      accessibilityText,
+      veganOptionsText,
       specialEnabled,
       note,
       contactFirstName,

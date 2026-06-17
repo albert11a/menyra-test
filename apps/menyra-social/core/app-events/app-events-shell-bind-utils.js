@@ -761,7 +761,10 @@ export function bindAppShellEventsCore({
     btn.addEventListener("click", () => {
       const restaurantId = String(btn.dataset.marketplaceOpenBusiness || "").trim();
       if (!restaurantId || !openProfileViewFromBusiness) return;
-      void openProfileViewFromBusiness({ id: restaurantId }, { showBack: true });
+      void openProfileViewFromBusiness({ id: restaurantId }, {
+        showBack: true,
+        topTab: btn.dataset.tab
+      });
     });
   });
 

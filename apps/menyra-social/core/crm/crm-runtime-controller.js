@@ -927,6 +927,10 @@ function renderLeadCreationView() {
   return crmLazyRenderers.renderLeadCreationView(getCrmLazyRendererContext());
 }
 
+function resolveTitleImageUrl(source = {}) {
+  return source?.titleImageUrl || source?.coverImageUrl || source?.coverUrl || source?.heroUrl || "";
+}
+
 function resetLeadDraft() {
   state.leadModal = {
     open: false,
@@ -940,6 +944,8 @@ function resetLeadDraft() {
     logoPreview: "",
     bestSpotLogoFile: null,
     bestSpotLogoPreview: "",
+    titleImageFile: null,
+    titleImagePreview: "",
     coords: null,
     locations: []
   };
@@ -963,6 +969,7 @@ function createLeadDraftState(mode = "create", lead = null) {
   const monthlyPrice = getLeadMonthlyPrice(lead?.customerType || rest?.type || "cafe", settings);
   const yearlyPrice = monthlyPrice * 12;
   const country = normalizeLeadCountry(lead?.country || rest?.country || settings.defaultCountry);
+  const titleImageUrl = resolveTitleImageUrl(lead) || resolveTitleImageUrl(rest);
   const merged = {
     ...(lead || {}),
     restaurantId: lead?.restaurantId || rest?.id || lead?.landingRestaurantId || "",
@@ -982,6 +989,17 @@ function createLeadDraftState(mode = "create", lead = null) {
     logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
     bestSpotLogoUrl: lead?.bestSpotLogoUrl || lead?.spotLogoUrl || rest?.bestSpotLogoUrl || rest?.spotLogoUrl || "",
     spotLogoUrl: lead?.bestSpotLogoUrl || lead?.spotLogoUrl || rest?.bestSpotLogoUrl || rest?.spotLogoUrl || "",
+    titleImageUrl,
+    coverImageUrl: titleImageUrl,
+    coverUrl: titleImageUrl,
+    heroUrl: titleImageUrl,
+    openingHours: lead?.openingHours || lead?.hours || rest?.openingHours || rest?.hours || "",
+    hours: lead?.hours || lead?.openingHours || rest?.hours || rest?.openingHours || "",
+    restaurantFeatures: lead?.restaurantFeatures || rest?.restaurantFeatures || {},
+    features: Array.isArray(lead?.features) ? lead.features : (Array.isArray(rest?.features) ? rest.features : []),
+    gardenTerraceText: lead?.gardenTerraceText || rest?.gardenTerraceText || "",
+    accessibilityText: lead?.accessibilityText || rest?.accessibilityText || "",
+    veganOptionsText: lead?.veganOptionsText || rest?.veganOptionsText || "",
     email: lead?.email || lead?.socialEmail || buildLeadAccountEmail(businessName),
     password: "",
     country,
@@ -1009,6 +1027,8 @@ function createLeadDraftState(mode = "create", lead = null) {
     logoPreview: merged.logoUrl || "",
     bestSpotLogoFile: null,
     bestSpotLogoPreview: merged.bestSpotLogoUrl || "",
+    titleImageFile: null,
+    titleImagePreview: merged.titleImageUrl || "",
     coords: hasLeadLocationCoords(primary)
       ? { lat: primary.lat, lng: primary.lng }
       : (coords || getLeadCountryCenter(country)),
@@ -1564,6 +1584,7 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     restaurantId: safeRestaurantId,
     base: { ...safeBase, landingSlug }
   });
+  const titleImageUrl = resolveTitleImageUrl(safeBase);
   const payload = {
     name: safeBase?.name || safeBase?.restaurantName || "",
     restaurantName: safeBase?.restaurantName || safeBase?.name || "",
@@ -1571,6 +1592,17 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     city: safeBase?.city || "",
     logoUrl: safeBase?.logoUrl || safeBase?.logo || "",
     logo: safeBase?.logo || "",
+    titleImageUrl,
+    coverImageUrl: titleImageUrl,
+    coverUrl: titleImageUrl,
+    heroUrl: titleImageUrl,
+    openingHours: safeBase?.openingHours || safeBase?.hours || "",
+    hours: safeBase?.hours || safeBase?.openingHours || "",
+    restaurantFeatures: safeBase?.restaurantFeatures || {},
+    features: Array.isArray(safeBase?.features) ? safeBase.features : [],
+    gardenTerraceText: safeBase?.gardenTerraceText || "",
+    accessibilityText: safeBase?.accessibilityText || "",
+    veganOptionsText: safeBase?.veganOptionsText || "",
     landingEnabled: true,
     landingTemplate: LEAD_LANDING_TEMPLATE_ID,
     landingRestaurantId: safeRestaurantId,
@@ -1654,6 +1686,7 @@ function normalizeLeadDoc(docSnap) {
     lng: fallbackLng
   });
   const primary = getPrimaryLeadLocation(locations);
+  const titleImageUrl = resolveTitleImageUrl(data);
   return withLeadSearchKey({
     id: safeLeadId,
     businessName: data.businessName || data.name || "",
@@ -1674,6 +1707,17 @@ function normalizeLeadDoc(docSnap) {
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
     bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
+    titleImageUrl,
+    coverImageUrl: titleImageUrl,
+    coverUrl: titleImageUrl,
+    heroUrl: titleImageUrl,
+    openingHours: data.openingHours || data.hours || "",
+    hours: data.hours || data.openingHours || "",
+    restaurantFeatures: data.restaurantFeatures || {},
+    features: Array.isArray(data.features) ? data.features : [],
+    gardenTerraceText: data.gardenTerraceText || "",
+    accessibilityText: data.accessibilityText || "",
+    veganOptionsText: data.veganOptionsText || "",
     specialEnabled: data.specialEnabled === true,
     note: data.note || "",
     status,
@@ -1726,6 +1770,7 @@ function normalizeLeadFromRestaurant(rest) {
     lng: fallbackLng
   });
   const primary = getPrimaryLeadLocation(locations);
+  const titleImageUrl = resolveTitleImageUrl(data);
   return withLeadSearchKey({
     id: safeLeadId,
     businessName: data.name || data.restaurantName || "",
@@ -1741,6 +1786,17 @@ function normalizeLeadFromRestaurant(rest) {
     logoUrl: data.logoUrl || data.logo || "",
     bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
+    titleImageUrl,
+    coverImageUrl: titleImageUrl,
+    coverUrl: titleImageUrl,
+    heroUrl: titleImageUrl,
+    openingHours: data.openingHours || data.hours || "",
+    hours: data.hours || data.openingHours || "",
+    restaurantFeatures: data.restaurantFeatures || {},
+    features: Array.isArray(data.features) ? data.features : [],
+    gardenTerraceText: data.gardenTerraceText || "",
+    accessibilityText: data.accessibilityText || "",
+    veganOptionsText: data.veganOptionsText || "",
     specialEnabled: data.specialEnabled === true,
     note: "",
     status,
@@ -2677,6 +2733,21 @@ function syncLeadModalDraftFromForm() {
   lead.logoUrl = readText("leadLogoUrl") || lead.logoUrl || "";
   lead.bestSpotLogoUrl = readText("leadBestSpotLogoUrl") || lead.bestSpotLogoUrl || "";
   lead.spotLogoUrl = lead.bestSpotLogoUrl || lead.spotLogoUrl || "";
+  lead.titleImageUrl = readText("leadTitleImageUrl") || lead.titleImageUrl || "";
+  lead.coverImageUrl = lead.titleImageUrl || lead.coverImageUrl || "";
+  lead.coverUrl = lead.titleImageUrl || lead.coverUrl || "";
+  lead.heroUrl = lead.titleImageUrl || lead.heroUrl || "";
+  lead.openingHours = readText("leadOpeningHours") || lead.openingHours || "";
+  lead.hours = lead.openingHours || lead.hours || "";
+  lead.gardenTerraceText = readText("leadGardenTerraceText") || lead.gardenTerraceText || "";
+  lead.accessibilityText = readText("leadAccessibilityText") || lead.accessibilityText || "";
+  lead.veganOptionsText = readText("leadVeganOptionsText") || lead.veganOptionsText || "";
+  lead.restaurantFeatures = {
+    gardenTerrace: lead.gardenTerraceText || "",
+    accessibility: lead.accessibilityText || "",
+    veganOptions: lead.veganOptionsText || ""
+  };
+  lead.features = [lead.gardenTerraceText, lead.accessibilityText, lead.veganOptionsText].filter(Boolean);
   const specialToggle = document.getElementById("leadSpecialEnabled");
   if (specialToggle && "checked" in specialToggle) {
     lead.specialEnabled = !!specialToggle.checked;

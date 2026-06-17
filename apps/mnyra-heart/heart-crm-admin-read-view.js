@@ -902,6 +902,7 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
   const title = isCreate ? "Neuer Lead" : "Lead bearbeiten";
   const logoUrl = firstText(lead.logoUrl, lead.logo, lead.imageUrl, lead.bestSpotLogoUrl);
   const bestSpotLogoUrl = firstText(lead.bestSpotLogoUrl, lead.spotLogoUrl, logoUrl);
+  const titleImageUrl = firstText(lead.titleImageUrl, lead.coverImageUrl, lead.coverUrl, lead.heroUrl);
   const businessName = firstText(lead.businessName, lead.restaurantName, lead.name);
   const statusValue = firstText(lead.status, "registered");
   const customerType = firstText(lead.customerType, lead.type, "cafe");
@@ -927,6 +928,7 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
       <div class="heart-crm-image-grid">
         ${renderImageEditor({ imageUrl: logoUrl, label: "Logo hochladen", inputId: "leadLogoInput", triggerId: "leadLogoTrigger", previewId: "leadLogoPreview", valueId: "leadLogoUrl" })}
         ${renderImageEditor({ imageUrl: bestSpotLogoUrl, label: "Best-Spot-Logo hochladen", inputId: "leadBestSpotLogoInput", triggerId: "leadBestSpotLogoTrigger", previewId: "leadBestSpotLogoPreview", valueId: "leadBestSpotLogoUrl" })}
+        ${renderImageEditor({ imageUrl: titleImageUrl, label: "Titelbild hochladen", inputId: "leadTitleImageInput", triggerId: "leadTitleImageTrigger", previewId: "leadTitleImagePreview", valueId: "leadTitleImageUrl" })}
       </div>
       ${renderModalMissingWriteNotice("leads")}
       ${renderModalFieldset("Lead", `
@@ -945,6 +947,12 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
         ${renderModalField("Facebook", firstText(lead.facebook), { id: "leadFacebook", placeholder: "Facebook" })}
         ${renderModalField("TikTok", firstText(lead.tiktok), { id: "leadTiktok", placeholder: "TikTok" })}
         ${renderModalField("Google Maps", firstText(lead.googleMaps), { id: "leadGoogleMaps", placeholder: "https://maps.google.com/...", wide: true })}
+      `)}
+      ${renderModalFieldset("Restaurant Card", `
+        ${renderModalField("Oeffnungszeiten", firstText(lead.openingHours, lead.hours), { id: "leadOpeningHours", placeholder: "Mo - So: 11:00 - 22:00 Uhr", wide: true })}
+        ${renderModalField("Garten / Terrasse", firstText(lead.gardenTerraceText, lead.restaurantFeatures?.gardenTerrace), { id: "leadGardenTerraceText", placeholder: "Gastgarten" })}
+        ${renderModalField("Barrierefrei", firstText(lead.accessibilityText, lead.restaurantFeatures?.accessibility), { id: "leadAccessibilityText", placeholder: "Barrierefrei" })}
+        ${renderModalField("Vegane Optionen", firstText(lead.veganOptionsText, lead.restaurantFeatures?.veganOptions), { id: "leadVeganOptionsText", placeholder: "Vegane Optionen", wide: true })}
       `)}
       ${renderModalFieldset("Abo", `
         ${renderModalField("Laufzeit", billingCycle, { id: "leadBillingCycle", options: [

@@ -92,6 +92,8 @@ export function renderLeadCreationView(ctx = {}) {
   const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
   const bestSpotLogoRaw = state.leadModal.bestSpotLogoPreview || lead.bestSpotLogoUrl || lead.spotLogoUrl || logoRaw;
   const bestSpotLogoUrl = bestSpotLogoRaw ? getOptimizedImageUrl(bestSpotLogoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const titleImageRaw = state.leadModal.titleImagePreview || lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || "";
+  const titleImageUrl = titleImageRaw ? getOptimizedImageUrl(titleImageRaw, "medium") : PLACEHOLDER_IMAGE;
   const isEdit = state.leadModal.mode === "edit" && !!lead.id;
   const actionsOpen = !!state.leadModal.actionsOpen;
   const deleting = !!state.leadModal.deleting;
@@ -144,6 +146,11 @@ export function renderLeadCreationView(ctx = {}) {
           <img id="leadBestSpotLogoPreview" src="${escapeHtml(bestSpotLogoUrl)}" class="w-full h-44 object-cover bg-white" />
         </div>
         <button id="leadBestSpotLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">Best-Spot-Logo hochladen</button>
+        <input type="file" id="leadTitleImageInput" class="hidden" accept="image/*" />
+        <div class="mt-4 rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+          <img id="leadTitleImagePreview" src="${escapeHtml(titleImageUrl)}" class="w-full h-44 object-cover bg-white" />
+        </div>
+        <button id="leadTitleImageTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">Titelbild hochladen</button>
         <div class="mt-5 space-y-4">
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
@@ -202,6 +209,27 @@ export function renderLeadCreationView(ctx = {}) {
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Google Maps</label>
             <input id="leadGoogleMaps" type="text" value="${escapeHtml(lead.googleMaps || "")}" placeholder="https://maps.google.com/..." class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        </div>
+        <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Restaurant Card</p>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Oeffnungszeiten</label>
+            <input id="leadOpeningHours" type="text" value="${escapeHtml(lead.openingHours || lead.hours || "")}" placeholder="Mo - So: 11:00 - 22:00 Uhr" class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Garten / Terrasse</label>
+              <input id="leadGardenTerraceText" type="text" value="${escapeHtml(lead.gardenTerraceText || lead.restaurantFeatures?.gardenTerrace || "")}" placeholder="Gastgarten" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Barrierefrei</label>
+              <input id="leadAccessibilityText" type="text" value="${escapeHtml(lead.accessibilityText || lead.restaurantFeatures?.accessibility || "")}" placeholder="Barrierefrei" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vegane Optionen</label>
+              <input id="leadVeganOptionsText" type="text" value="${escapeHtml(lead.veganOptionsText || lead.restaurantFeatures?.veganOptions || "")}" placeholder="Vegane Optionen" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
@@ -291,6 +319,7 @@ export function renderLeadCreationView(ctx = {}) {
         </div>
         <input id="leadLogoUrl" type="hidden" value="${escapeHtml(lead.logoUrl || "")}" />
         <input id="leadBestSpotLogoUrl" type="hidden" value="${escapeHtml(lead.bestSpotLogoUrl || lead.spotLogoUrl || "")}" />
+        <input id="leadTitleImageUrl" type="hidden" value="${escapeHtml(lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || "")}" />
         <input id="leadStatus" type="hidden" value="${escapeHtml(lead.status || "registered")}" />
         <input id="leadContactName" type="hidden" value="${escapeHtml(buildLeadContactName(lead.contactFirstName, lead.contactLastName, lead.contactName || ""))}" />
         <div class="mt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leadModal.status || "")}</div>

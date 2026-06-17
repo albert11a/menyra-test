@@ -42,6 +42,8 @@ export function renderLeadModalCore({
   const logoUrl = logoRaw ? getOptimizedImage(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
   const bestSpotLogoRaw = state.leadModal.bestSpotLogoPreview || lead.bestSpotLogoUrl || lead.spotLogoUrl || logoRaw;
   const bestSpotLogoUrl = bestSpotLogoRaw ? getOptimizedImage(bestSpotLogoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const titleImageRaw = state.leadModal.titleImagePreview || lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || "";
+  const titleImageUrl = titleImageRaw ? getOptimizedImage(titleImageRaw, "medium") : PLACEHOLDER_IMAGE;
   const status = state.leadModal.status || "";
   const customerType = resolveCustomer(lead.customerType || "cafe");
   const leadEmail = lead.socialEmail || lead.email || "";
@@ -78,6 +80,13 @@ export function renderLeadModalCore({
       </div>
       <button id="leadBestSpotLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
         Best-Spot-Logo hochladen
+      </button>
+      <input type="file" id="leadTitleImageInput" class="hidden" accept="image/*" />
+      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img id="leadTitleImagePreview" src="${esc(titleImageUrl)}" class="w-full h-44 object-cover bg-white" />
+      </div>
+      <button id="leadTitleImageTrigger" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
+        Titelbild hochladen
       </button>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
@@ -163,6 +172,26 @@ export function renderLeadModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Best Spot Logo URL (optional)</label>
           <input id="leadBestSpotLogoUrl" type="text" value="${esc(lead.bestSpotLogoUrl || lead.spotLogoUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titelbild URL (optional)</label>
+          <input id="leadTitleImageUrl" type="text" value="${esc(lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Oeffnungszeiten</label>
+          <input id="leadOpeningHours" type="text" value="${esc(lead.openingHours || lead.hours || "")}" placeholder="Mo - So: 11:00 - 22:00 Uhr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Garten / Terrasse</label>
+          <input id="leadGardenTerraceText" type="text" value="${esc(lead.gardenTerraceText || lead.restaurantFeatures?.gardenTerrace || "")}" placeholder="Gastgarten" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Barrierefrei</label>
+          <input id="leadAccessibilityText" type="text" value="${esc(lead.accessibilityText || lead.restaurantFeatures?.accessibility || "")}" placeholder="Barrierefrei" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vegane Optionen</label>
+          <input id="leadVeganOptionsText" type="text" value="${esc(lead.veganOptionsText || lead.restaurantFeatures?.veganOptions || "")}" placeholder="Vegane Optionen" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>

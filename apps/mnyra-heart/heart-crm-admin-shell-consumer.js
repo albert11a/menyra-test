@@ -143,7 +143,8 @@ export function createHeartCrmAdminShellConsumer(deps = {}) {
       removeLocationRow: writeSource.removeLeadModalLocationRow,
       pickLocation: writeSource.pickLeadLocation,
       setLogoFile: writeSource.setLeadLogoFile,
-      setBestSpotLogoFile: writeSource.setLeadBestSpotLogoFile
+      setBestSpotLogoFile: writeSource.setLeadBestSpotLogoFile,
+      setTitleImageFile: writeSource.setLeadTitleImageFile
     }, {
       missingReadDeps: readLoaderDeps.missingByDomain.leads,
       missingWriteDeps: writeDeps.missingByDomain.leads

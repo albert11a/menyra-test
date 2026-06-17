@@ -371,6 +371,7 @@ export function createHeartCrmAdminWriteAdapter({
   const draftFiles = {
     leadLogoFile: null,
     leadBestSpotLogoFile: null,
+    leadTitleImageFile: null,
     customerLogoFile: null,
     staffAvatarFile: null
   };
@@ -428,6 +429,7 @@ export function createHeartCrmAdminWriteAdapter({
     activeModalKey = nextKey;
     draftFiles.leadLogoFile = null;
     draftFiles.leadBestSpotLogoFile = null;
+    draftFiles.leadTitleImageFile = null;
     draftFiles.customerLogoFile = null;
     draftFiles.staffAvatarFile = null;
   }
@@ -570,6 +572,17 @@ export function createHeartCrmAdminWriteAdapter({
         lat: lead.lat,
         lng: lead.lng,
         logoUrl: asText(lead.logoUrl),
+        titleImageUrl: asText(lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl),
+        coverImageUrl: asText(lead.coverImageUrl || lead.titleImageUrl || lead.coverUrl || lead.heroUrl),
+        coverUrl: asText(lead.coverUrl || lead.titleImageUrl || lead.coverImageUrl || lead.heroUrl),
+        heroUrl: asText(lead.heroUrl || lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl),
+        openingHours: asText(lead.openingHours || lead.hours),
+        hours: asText(lead.hours || lead.openingHours),
+        restaurantFeatures: hasObject(lead.restaurantFeatures) ? { ...lead.restaurantFeatures } : {},
+        features: Array.isArray(lead.features) ? lead.features.slice() : [],
+        gardenTerraceText: asText(lead.gardenTerraceText),
+        accessibilityText: asText(lead.accessibilityText),
+        veganOptionsText: asText(lead.veganOptionsText),
         publicSlug: asText(lead.publicSlug || lead.landingSlug)
       })));
 
@@ -625,7 +638,9 @@ export function createHeartCrmAdminWriteAdapter({
         logoFile: draftFiles.leadLogoFile,
         logoPreview: asText(modalItem.logoUrl || modalItem.logo || modalItem.imageUrl || leadDraft.logoPreview),
         bestSpotLogoFile: draftFiles.leadBestSpotLogoFile,
-        bestSpotLogoPreview: asText(modalItem.bestSpotLogoUrl || modalItem.spotLogoUrl || leadDraft.bestSpotLogoPreview)
+        bestSpotLogoPreview: asText(modalItem.bestSpotLogoUrl || modalItem.spotLogoUrl || leadDraft.bestSpotLogoPreview),
+        titleImageFile: draftFiles.leadTitleImageFile,
+        titleImagePreview: asText(modalItem.titleImageUrl || modalItem.coverImageUrl || modalItem.coverUrl || modalItem.heroUrl || leadDraft.titleImagePreview)
       };
     } else if (!runtimeState.leadModal) {
       runtimeState.leadModal = {
@@ -640,6 +655,8 @@ export function createHeartCrmAdminWriteAdapter({
         logoPreview: "",
         bestSpotLogoFile: null,
         bestSpotLogoPreview: "",
+        titleImageFile: null,
+        titleImagePreview: "",
         coords: null,
         locations: []
       };
@@ -691,6 +708,12 @@ export function createHeartCrmAdminWriteAdapter({
       if (modal.bestSpotLogoPreview) {
         lead.bestSpotLogoUrl = modal.bestSpotLogoPreview;
         lead.spotLogoUrl = modal.bestSpotLogoPreview;
+      }
+      if (modal.titleImagePreview) {
+        lead.titleImageUrl = modal.titleImagePreview;
+        lead.coverImageUrl = modal.titleImagePreview;
+        lead.coverUrl = modal.titleImagePreview;
+        lead.heroUrl = modal.titleImagePreview;
       }
       onDraftChange(lead);
       return;
@@ -1417,6 +1440,22 @@ export function createHeartCrmAdminWriteAdapter({
     return { ok: true };
   }
 
+  function setLeadTitleImageFile(file) {
+    ensureRuntimeController();
+    draftFiles.leadTitleImageFile = file || null;
+    const preview = createPreviewUrl(file);
+    runtimeState.leadModal.titleImageFile = draftFiles.leadTitleImageFile;
+    runtimeState.leadModal.titleImagePreview = preview || runtimeState.leadModal.titleImagePreview || "";
+    if (runtimeState.leadModal.lead) {
+      runtimeState.leadModal.lead.titleImageUrl = runtimeState.leadModal.titleImagePreview;
+      runtimeState.leadModal.lead.coverImageUrl = runtimeState.leadModal.titleImagePreview;
+      runtimeState.leadModal.lead.coverUrl = runtimeState.leadModal.titleImagePreview;
+      runtimeState.leadModal.lead.heroUrl = runtimeState.leadModal.titleImagePreview;
+    }
+    syncDraftFromRuntime("leads");
+    return { ok: true };
+  }
+
   function setCustomerLogoFile(file) {
     ensureRuntimeController();
     draftFiles.customerLogoFile = file || null;
@@ -1460,6 +1499,7 @@ export function createHeartCrmAdminWriteAdapter({
     pickStaffLocation,
     setLeadLogoFile,
     setLeadBestSpotLogoFile,
+    setLeadTitleImageFile,
     setCustomerLogoFile,
     setStaffAvatarFile
   });

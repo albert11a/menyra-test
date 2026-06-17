@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-15
+Last updated: 2026-06-17
 
 # Mnyra Current Phase
 
@@ -695,6 +695,18 @@ Last updated: 2026-06-15
   die Coral-Flaeche hineinragen. Restaurant-Location-Logik, Gate-Text,
   Routing, QR, Cart, Order, Travel, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 74 ist abgeschlossen: Die normalen Restaurant-/Cafe-Karten im
+  Restaurants-Tab nutzen die freigegebene Premium-Card mit Titelbild,
+  Oeffnungszeiten, drei frei pflegbaren Feature-Chips und Profil/Menu-Buttons.
+- Bewertung von Schritt 74: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 74:
+  Nur die normalen List-Cards im Restaurants-Tab wurden ersetzt; die oberen
+  Swipe-/Best-Cards bleiben unveraendert. `Profil` oeffnet das Restaurant-
+  Profil, `Menu` oeffnet direkt den Menu-Tab. Beim Erstellen/Bearbeiten von
+  Restaurant-/Cafe-Leads koennen Titelbild, Oeffnungszeiten sowie die drei
+  Card-Feature-Texte gepflegt und in Lead/Restaurant-Daten gespeichert werden.
+  Routing, QR, Cart, Order, Travel, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -767,6 +779,7 @@ Last updated: 2026-06-15
 - Referenz: [docs/mnyra-step71-restaurants-gate-search.md](./mnyra-step71-restaurants-gate-search.md)
 - Referenz: [docs/mnyra-step72-restaurants-feed-location-gate.md](./mnyra-step72-restaurants-feed-location-gate.md)
 - Referenz: [docs/mnyra-step73-restaurants-benko-feed-radius.md](./mnyra-step73-restaurants-benko-feed-radius.md)
+- Referenz: [docs/mnyra-step74-restaurants-card-lead-details.md](./mnyra-step74-restaurants-card-lead-details.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -792,7 +805,7 @@ Last updated: 2026-06-15
 
 ## Naechster Schritt
 
-Nach Schritt 73 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 74 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -814,14 +827,17 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-73-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-74-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
 Gate ohne Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante,
-Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort, Heart lokal unter
-privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`, inklusive
-Heart-Leads-Kategorie-Filter und eingefuegter Suchbegriffe, Travel-Hotels,
-Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die
-bisherigen Public-Profile/Menu/QR/Cart/Order-Flows.
+Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort, normale
+Restaurant-/Cafe-List-Cards mit Titelbild/Oeffnungszeiten/Feature-Chips und
+Profil/Menu-Buttons, Lead-Erstellung/-Bearbeitung fuer Restaurant/Cafe mit
+Titelbild und Card-Details, Heart lokal unter privater LAN-IP mit `/leads`,
+`/customers` und `/admin/staff`, inklusive Heart-Leads-Kategorie-Filter und
+eingefuegter Suchbegriffe, Travel-Hotels, Travel-Karte, Hotel-Details-Profil,
+Heart/CRM aus dem Social-Drawer sowie die bisherigen
+Public-Profile/Menu/QR/Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -303,6 +303,10 @@ function getBusinessHours(record = {}) {
   return "Oeffnungszeiten folgen";
 }
 
+function getBusinessPhone(record = {}) {
+  return cleanText(record.phone || record.telephone || record.contactPhone || record.ownerPhone || "");
+}
+
 function getBusinessDescription(record = {}) {
   return cleanText(record.description || record.bio || record.about || record.shortDescription || "");
 }
@@ -337,6 +341,73 @@ function getBusinessImage(record = {}, {
     ? cleanText(getOptimizedImageUrl(source, "medium"))
     : source;
   return optimized || placeholderImage || "";
+}
+
+function getBusinessCoverImage(record = {}, {
+  getOptimizedImageUrl,
+  placeholderImage = ""
+} = {}) {
+  const raw = cleanText(
+    record.titleImageUrl
+    || record.coverImageUrl
+    || record.coverImage
+    || record.coverUrl
+    || record.heroImageUrl
+    || record.heroUrl
+    || record.imageUrl
+    || record.bestSpotLogoUrl
+    || record.spotLogoUrl
+    || record.logoUrl
+    || record.logo
+    || ""
+  );
+  const source = raw || placeholderImage;
+  const optimized = typeof getOptimizedImageUrl === "function"
+    ? cleanText(getOptimizedImageUrl(source, "large"))
+    : source;
+  return optimized || placeholderImage || "";
+}
+
+function getRestaurantCuisineLabel(record = {}) {
+  return cleanText(
+    record.cuisine
+    || record.kitchen
+    || record.foodType
+    || record.categoryLabel
+    || record.__marketplaceTypeLabel
+    || record.type
+    || record.customerType
+    || ""
+  );
+}
+
+function getRestaurantPriceRange(record = {}) {
+  return cleanText(record.priceRange || record.priceLevel || record.priceLabel || record.budget || "");
+}
+
+function normalizeFeatureText(value, fallback = "") {
+  if (typeof value === "string") return cleanText(value);
+  if (value === true) return cleanText(fallback);
+  return "";
+}
+
+function getRestaurantFeatureChips(record = {}) {
+  const featureState = record.restaurantFeatures && typeof record.restaurantFeatures === "object"
+    ? record.restaurantFeatures
+    : {};
+  const primary = [
+    normalizeFeatureText(record.gardenTerraceText || record.gardenTerrace || record.gardenOrTerrace || featureState.gardenTerrace, "Garten / Terrasse"),
+    normalizeFeatureText(record.accessibilityText || record.barrierFreeText || record.accessibleText || record.barrierefrei || record.accessible || featureState.accessibility, "Barrierefrei"),
+    normalizeFeatureText(record.veganOptionsText || record.veganOptions || record.veganText || record.vegan || featureState.veganOptions, "Vegane Optionen")
+  ].filter(Boolean);
+  if (primary.length) return primary.slice(0, 3);
+  const fromArray = Array.isArray(record.features)
+    ? record.features.map(cleanText).filter(Boolean)
+    : [];
+  if (fromArray.length) return fromArray.slice(0, 3);
+  const raw = cleanText(record.features || record.amenities || "");
+  if (!raw) return [];
+  return raw.split(/[,;|]/).map(cleanText).filter(Boolean).slice(0, 3);
 }
 
 function getBusinessSortScore(record = {}) {
@@ -460,6 +531,107 @@ function renderListCard(record = {}, deps = {}) {
           </div>
         </div>
       </button>
+    </article>
+  `;
+}
+
+function renderRestaurantListCard(record = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  const name = getBusinessName(record);
+  const id = getBusinessId(record);
+  const coverImage = getBusinessCoverImage(record, deps);
+  const logoImage = getBusinessImage(record, deps);
+  const rating = getBusinessRating(record);
+  const reviewsCount = Number(record.reviewsCount ?? record.reviewCount ?? record.ratingsCount ?? 0);
+  const cuisine = getRestaurantCuisineLabel(record);
+  const priceRange = getRestaurantPriceRange(record);
+  const location = getBusinessLocationLabel(record);
+  const phone = getBusinessPhone(record);
+  const hours = getBusinessHours(record);
+  const features = getRestaurantFeatureChips(record);
+  return `
+    <article class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col">
+      <div class="h-44 relative overflow-hidden group bg-slate-100">
+        ${renderImage(coverImage, name, { ...deps, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
+        <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-black/20"></div>
+        ${priceRange ? `
+          <div class="absolute bottom-3.5 right-4 bg-slate-900/90 text-white font-medium px-2.5 py-0.5 rounded-md text-[9px] tracking-wider shadow">
+            ${escapeHtml(priceRange)}
+          </div>
+        ` : ""}
+      </div>
+
+      <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5">
+        <div class="absolute -top-10 left-5 z-10">
+          <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden">
+            ${renderImage(logoImage, `${name} Logo`, { ...deps, extraClass: "rounded-full" })}
+          </div>
+        </div>
+
+        <div>
+          ${rating ? `
+            <div class="flex items-center gap-1.5 mb-1">
+              <span class="flex text-amber-500">${icon("star", "w-3.5 h-3.5 fill-current")}</span>
+              <span class="text-[11px] font-bold text-slate-800">${escapeHtml(rating)}</span>
+              ${reviewsCount > 0 ? `<span class="text-[11px] text-slate-400">(${escapeHtml(String(reviewsCount))} Bewertungen)</span>` : ""}
+            </div>
+          ` : ""}
+          <h3 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h3>
+          ${cuisine ? `<p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5">${escapeHtml(cuisine)}</p>` : ""}
+        </div>
+
+        <hr class="border-slate-100" />
+
+        <div class="flex flex-col gap-2.5 text-slate-600">
+          <div class="flex items-start gap-3">
+            ${icon("map-pin", "w-4 h-4 text-slate-400 shrink-0 mt-0.5")}
+            <span class="text-[11px] leading-relaxed text-slate-600">${escapeHtml(location)}</span>
+          </div>
+          ${phone ? `
+            <div class="flex items-center gap-3">
+              ${icon("phone", "w-4 h-4 text-slate-400 shrink-0")}
+              <span class="text-[11px] text-slate-600">${escapeHtml(phone)}</span>
+            </div>
+          ` : ""}
+          <div class="flex items-center gap-3">
+            ${icon("clock", "w-4 h-4 text-slate-400 shrink-0")}
+            <span class="text-[11px] text-slate-600">${escapeHtml(hours)}</span>
+          </div>
+        </div>
+
+        ${features.length ? `
+          <div class="flex flex-wrap gap-1.5">
+            ${features.map((feature) => `
+              <span class="text-[9px] font-semibold bg-slate-50 text-slate-500 px-2.5 py-0.5 rounded-md border border-slate-100">${escapeHtml(feature)}</span>
+            `).join("")}
+          </div>
+        ` : ""}
+
+        <hr class="border-slate-100" />
+
+        <div class="grid grid-cols-2 gap-2.5 mt-0.5">
+          <button
+            type="button"
+            data-marketplace-open-business="${escapeHtml(id)}"
+            data-tab="profile"
+            class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all duration-150 active:scale-95"
+          >
+            ${icon("user", "w-3.5 h-3.5 text-slate-400")}
+            Profil
+          </button>
+
+          <button
+            type="button"
+            data-marketplace-open-business="${escapeHtml(id)}"
+            data-tab="menu"
+            class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95"
+          >
+            ${icon("book-open", "w-3.5 h-3.5 text-slate-200")}
+            Menu
+          </button>
+        </div>
+      </div>
     </article>
   `;
 }
@@ -593,7 +765,7 @@ function renderRestaurantsContent({
     </div>
 
     <div class="space-y-4">
-      ${items.map((record) => renderListCard(record, deps)).join("")}
+      ${items.map((record) => renderRestaurantListCard(record, deps)).join("")}
     </div>
   `;
 }
