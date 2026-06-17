@@ -37,6 +37,21 @@ const LIST_LIMIT = 24;
 const RESTAURANTS_GATE_COLOR = "#ff4f3f";
 const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 const TRAVEL_BLUE = "#00cce5";
+const RESTAURANT_COORD_CITY_MAX_DISTANCE_KM = 35;
+const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
+  Object.freeze({ label: "Prishtina", lat: 42.6629, lng: 21.1655 }),
+  Object.freeze({ label: "Prizren", lat: 42.2139, lng: 20.7397 }),
+  Object.freeze({ label: "Peja", lat: 42.6591, lng: 20.2883 }),
+  Object.freeze({ label: "Gjakova", lat: 42.3803, lng: 20.4308 }),
+  Object.freeze({ label: "Ferizaj", lat: 42.3706, lng: 21.1553 }),
+  Object.freeze({ label: "Gjilan", lat: 42.4635, lng: 21.4699 }),
+  Object.freeze({ label: "Mitrovica", lat: 42.8914, lng: 20.8660 }),
+  Object.freeze({ label: "Vushtrria", lat: 42.8231, lng: 20.9675 }),
+  Object.freeze({ label: "Podujeva", lat: 42.9106, lng: 21.1930 }),
+  Object.freeze({ label: "Tirana", lat: 41.3275, lng: 19.8187 }),
+  Object.freeze({ label: "Kukes", lat: 42.0769, lng: 20.4219 }),
+  Object.freeze({ label: "Smederevo", lat: 44.6644, lng: 20.9276 })
+]);
 const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
   Object.freeze(["tirana", "tirane"]),
   Object.freeze(["durres", "durresi"]),
@@ -204,7 +219,40 @@ function getBusinessLocationLabel(record = {}) {
   const city = cleanText(record.city || record.locationCity || record.primaryCity);
   const address = cleanText(record.address || record.location || record.primaryAddress);
   if (city && address && city !== address) return `${city} - ${address}`;
-  return city || address || "Standort folgt";
+  return city || address || inferLocationLabelFromCoords(record) || cleanText(record.country || record.region || "") || "Standort folgt";
+}
+
+function distanceKmBetweenCoords(a = {}, b = {}) {
+  const lat1 = Number(a.lat);
+  const lng1 = Number(a.lng);
+  const lat2 = Number(b.lat);
+  const lng2 = Number(b.lng);
+  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) return Number.POSITIVE_INFINITY;
+  const toRad = (value) => value * Math.PI / 180;
+  const earthKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * sinLng * sinLng;
+  return 2 * earthKm * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+}
+
+function inferLocationLabelFromCoords(record = {}) {
+  const coords = readCoords(record);
+  if (!coords) return "";
+  const nearest = RESTAURANT_COORD_CITY_OPTIONS
+    .map((entry) => ({
+      label: entry.label,
+      distanceKm: distanceKmBetweenCoords(coords, entry)
+    }))
+    .filter((entry) => Number.isFinite(entry.distanceKm))
+    .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+  if (nearest && nearest.distanceKm <= RESTAURANT_COORD_CITY_MAX_DISTANCE_KM) {
+    return nearest.label;
+  }
+  return "Auf Karte markiert";
 }
 
 function collectLocationTextCandidates(record = {}) {
@@ -231,6 +279,7 @@ function collectLocationTextCandidates(record = {}) {
     record.address,
     record.location,
     record.primaryAddress,
+    inferLocationLabelFromCoords(record),
     record.country,
     record.region,
     record.district,
