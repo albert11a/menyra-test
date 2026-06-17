@@ -410,6 +410,24 @@ function getRestaurantFeatureChips(record = {}) {
   return raw.split(/[,;|]/).map(cleanText).filter(Boolean).slice(0, 3);
 }
 
+function renderRestaurantCardIcon(name = "", className = "", deps = {}) {
+  const icon = deps.icon;
+  const escapeHtml = deps.escapeHtml;
+  const safeClassName = cleanText(className);
+  const classAttr = safeClassName ? ` class="${escapeHtml(safeClassName)}"` : "";
+  const svgAttrs = `xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${classAttr} aria-hidden="true" focusable="false"`;
+  if (name === "share-2") {
+    return `<svg ${svgAttrs}><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.59 13.51 6.83 3.98"></path><path d="m15.41 6.51-6.82 3.98"></path></svg>`;
+  }
+  if (name === "phone") {
+    return `<svg ${svgAttrs}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>`;
+  }
+  if (name === "book-open") {
+    return `<svg ${svgAttrs}><path d="M12 7v14"></path><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path></svg>`;
+  }
+  return typeof icon === "function" ? icon(name, className) : "";
+}
+
 function getBusinessSortScore(record = {}) {
   const rating = Number(record.rating ?? record.avgRating ?? record.publicRating ?? 0);
   const score = Number(record.score ?? record.publicScore ?? 0);
@@ -538,6 +556,7 @@ function renderListCard(record = {}, deps = {}) {
 function renderRestaurantListCard(record = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
+  const cardIcon = (name, className) => renderRestaurantCardIcon(name, className, deps);
   const name = getBusinessName(record);
   const id = getBusinessId(record);
   const coverImage = getBusinessCoverImage(record, deps);
@@ -554,7 +573,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
   const features = getRestaurantFeatureChips(record);
   const isLiked = record.isLiked === true || record.liked === true || record.favorite === true || record.favorited === true;
   return `
-    <article class="w-full max-w-[340px] mx-auto bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="max-width:340px;border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
+    <article class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
       <div class="h-44 relative overflow-hidden group">
         ${renderImage(coverImage, name, { ...deps, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
         <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-black/20" style="background:linear-gradient(to top,#fff 0%,rgba(255,255,255,0.2) 50%,rgba(0,0,0,0.2) 100%);"></div>
@@ -573,7 +592,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
             title="Teilen"
             aria-label="Teilen"
           >
-            ${icon("share-2", "w-4 h-4")}
+            ${cardIcon("share-2", "w-4 h-4")}
           </button>
         </div>
 
@@ -611,7 +630,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
           </div>
           ${phone ? `
             <div class="flex items-center gap-3">
-              ${icon("phone", "w-4 h-4 text-slate-400 shrink-0")}
+              ${cardIcon("phone", "w-4 h-4 text-slate-400 shrink-0")}
               <span class="text-[11px] text-slate-600">${escapeHtml(phone)}</span>
             </div>
           ` : ""}
@@ -648,7 +667,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
             data-tab="menu"
             class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer"
           >
-            ${icon("book-open", "w-3.5 h-3.5 text-slate-200")}
+            ${cardIcon("book-open", "w-3.5 h-3.5 text-slate-200")}
             Menu
           </button>
         </div>

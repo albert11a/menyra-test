@@ -720,6 +720,18 @@ Last updated: 2026-06-17
   lokal an der Card abgesichert. Die oberen Swipe-/Best-Cards,
   Lead-Speicherung, Profil/Menu-Open-Flow, Routing, QR, Cart, Order, Travel,
   Firebase Rules und Functions bleiben unveraendert.
+- Schritt 76 ist abgeschlossen: Die normale untere Restaurant-/Cafe-List-Card
+  im Restaurants-Tab nutzt wieder die volle Content-Breite und hat lokale
+  Inline-Fallbacks fuer fehlende Card-Icons.
+- Bewertung von Schritt 76: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 76:
+  Die unteren normalen Restaurant-/Cafe-Cards sind nicht mehr auf `340px`
+  zentriert, sondern beginnen links wieder an derselben Containerkante wie die
+  obere Swipe-/Best-Card-Zeile. Zusaetzlich rendert der Marketplace-Renderer
+  die Card-Icons fuer Teilen, Telefon und Menu lokal inline, falls die
+  verzoegerte Lucide-Runtime noch nicht nachgezogen hat. Die oberen
+  Swipe-/Best-Cards, Lead-Speicherung, Profil/Menu-Open-Flow, Routing, QR,
+  Cart, Order, Travel, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -794,6 +806,7 @@ Last updated: 2026-06-17
 - Referenz: [docs/mnyra-step73-restaurants-benko-feed-radius.md](./mnyra-step73-restaurants-benko-feed-radius.md)
 - Referenz: [docs/mnyra-step74-restaurants-card-lead-details.md](./mnyra-step74-restaurants-card-lead-details.md)
 - Referenz: [docs/mnyra-step75-restaurants-card-ui-parity.md](./mnyra-step75-restaurants-card-ui-parity.md)
+- Referenz: [docs/mnyra-step76-restaurants-card-width-icons.md](./mnyra-step76-restaurants-card-width-icons.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -819,15 +832,15 @@ Last updated: 2026-06-17
 
 ## Naechster Schritt
 
-Nach Schritt 75 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 76 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
   Travel-Cards erscheinen.
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
-- Separater kleiner Icon-Runtime-Schritt fuer fehlende Lucide-Icons in Modals,
-  Drawer und Menu-Bereichen.
+- Separater kleiner Icon-Runtime-Schritt fuer weitere fehlende Lucide-Icons in
+  Modals, Drawer und Menu-Bereichen.
 - Separater i18n-Nachzug fuer Admin-/CRM-/interne Spezialtexte, falls diese
   sichtbar Teil des Launch-Scopes werden.
 - Separater Marketplace-/Travel-Feinschliff nur nach manueller Sichtpruefung und
@@ -841,13 +854,15 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-75-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-76-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
 Gate ohne Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante,
 Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort, normale
-Restaurant-/Cafe-List-Cards mit Titelbild/Oeffnungszeiten/Feature-Chips und
-Profil/Menu-Buttons inklusive der Nutzer-Card-Geometrie, Lead-Erstellung/-
-Bearbeitung fuer Restaurant/Cafe mit Titelbild und Card-Details, Heart lokal
+Restaurant-/Cafe-List-Cards mit gleicher linker Content-Kante wie die obere
+Swipe-Zeile, sichtbaren Teilen-/Telefon-/Menu-Icons, Titelbild/
+Oeffnungszeiten/Feature-Chips und Profil/Menu-Buttons inklusive der Nutzer-
+Card-Geometrie, Lead-Erstellung/-Bearbeitung fuer Restaurant/Cafe mit
+Titelbild und Card-Details, Heart lokal
 unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`, inklusive
 Heart-Leads-Kategorie-Filter und eingefuegter Suchbegriffe, Travel-Hotels,
 Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die
