@@ -837,6 +837,7 @@ Last updated: 2026-06-17
 - Referenz: [docs/mnyra-step76-restaurants-card-width-icons.md](./mnyra-step76-restaurants-card-width-icons.md)
 - Referenz: [docs/mnyra-step77-restaurants-header-location-filter.md](./mnyra-step77-restaurants-header-location-filter.md)
 - Referenz: [docs/mnyra-step78-restaurants-header-location-filter-fix.md](./mnyra-step78-restaurants-header-location-filter-fix.md)
+- Referenz: [docs/mnyra-step79-restaurants-location-complete-filter.md](./mnyra-step79-restaurants-location-complete-filter.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -862,7 +863,7 @@ Last updated: 2026-06-17
 
 ## Naechster Schritt
 
-Nach Schritt 78 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 79 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
   Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
@@ -884,12 +885,13 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-78-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-79-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
 Gate ohne Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante,
 Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive
 identischem Feed-Location-Feld im Smart-Header, sichtbarem Haken und streng
-nach Standortdaten gefilterten Restaurant-/Cafe-Cards, normale
+nach Standortdaten gefilterten Restaurant-/Cafe-Cards inklusive aller
+passenden Treffer der gesetzten Stadt, normale
 Restaurant-/Cafe-List-Cards mit gleicher linker Content-Kante wie die obere
 Swipe-Zeile, sichtbaren Teilen-/Telefon-/Menu-Icons, Titelbild/
 Oeffnungszeiten/Feature-Chips und Profil/Menu-Buttons inklusive der Nutzer-

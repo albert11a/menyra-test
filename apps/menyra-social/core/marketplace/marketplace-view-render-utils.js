@@ -100,6 +100,76 @@ const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
   Object.freeze(["spille", "spilleja"]),
   Object.freeze(["gjiri i lalzit", "lalzi", "lalez", "lalëz"])
 ]);
+const RESTAURANT_LOCATION_ALIAS_GROUPS = Object.freeze([
+  Object.freeze(["prishtina", "prishtine", "prishtin", "pristina"]),
+  Object.freeze(["ferizaj", "ferizaji", "uroshevac"]),
+  Object.freeze(["peja", "peje", "pec"]),
+  Object.freeze(["prizren", "prizreni"]),
+  Object.freeze(["gjakova", "gjakove", "djakova"]),
+  Object.freeze(["gjilan", "gjilani"]),
+  Object.freeze(["mitrovica", "mitrovice"]),
+  Object.freeze(["vushtrria", "vushtrri"]),
+  Object.freeze(["podujeva", "podujeve", "podujevo", "besiana"]),
+  Object.freeze(["fushe kosove", "fushe kosova", "fush kosove", "fush kosova"]),
+  Object.freeze(["lipjan"]),
+  Object.freeze(["suhareka", "suhareke", "theranda"]),
+  Object.freeze(["rahovec", "rahoveci"]),
+  Object.freeze(["drenas", "gllogoc"]),
+  Object.freeze(["skenderaj", "skenderaji"]),
+  Object.freeze(["malisheva", "malisheve"]),
+  Object.freeze(["kamenica", "kamenice", "kamenica kosove"]),
+  Object.freeze(["decan", "decani"]),
+  Object.freeze(["istog", "istogu"]),
+  Object.freeze(["klina", "kline"]),
+  Object.freeze(["vite", "vitia"]),
+  Object.freeze(["hani i elezit", "hani elezit"])
+]);
+const RESTAURANT_LOCATION_TEXT_FIELDS = Object.freeze([
+  "city",
+  "locationCity",
+  "primaryCity",
+  "postalCity",
+  "address",
+  "primaryAddress",
+  "formattedAddress",
+  "fullAddress",
+  "addressText",
+  "streetAddress",
+  "street",
+  "locationLabel",
+  "displayLocation",
+  "locality",
+  "town",
+  "municipality",
+  "village",
+  "neighborhood",
+  "area",
+  "district",
+  "county",
+  "region",
+  "state",
+  "province",
+  "country",
+  "countryCode"
+]);
+const RESTAURANT_NAMED_LOCATION_TEXT_FIELDS = Object.freeze([
+  ...RESTAURANT_LOCATION_TEXT_FIELDS,
+  "label",
+  "name",
+  "title"
+]);
+const RESTAURANT_NESTED_LOCATION_FIELDS = Object.freeze([
+  "location",
+  "primaryLocation",
+  "businessLocation",
+  "venueLocation",
+  "addressInfo",
+  "place",
+  "geo",
+  "coords",
+  "coordinates",
+  "geoPoint"
+]);
 
 function asFn(candidate, fallback = () => "") {
   return typeof candidate === "function" ? candidate : fallback;
@@ -133,6 +203,17 @@ function expandTravelDestinationKeys(value = "") {
   return Array.from(keys);
 }
 
+function expandRestaurantLocationKeys(value = "") {
+  const key = normalizeLooseKey(value);
+  if (!key) return [];
+  const keys = new Set(expandTravelDestinationKeys(value));
+  RESTAURANT_LOCATION_ALIAS_GROUPS.forEach((group) => {
+    const normalizedGroup = group.map(normalizeLooseKey).filter(Boolean);
+    if (normalizedGroup.includes(key)) normalizedGroup.forEach((alias) => keys.add(alias));
+  });
+  return Array.from(keys);
+}
+
 function normalizeSectionKey(value = "") {
   const key = normalizeLooseKey(value);
   if (key === "restaurant") return "restaurants";
@@ -145,7 +226,7 @@ function normalizeTypeAlias(key = "") {
   const safeKey = normalizeLooseKey(key);
   if (!safeKey) return "";
   if (safeKey === "e_commerce" || safeKey === "online_shop" || safeKey === "onlineshop" || safeKey === "shop" || safeKey === "store") return "ecommerce";
-  if (safeKey === "coffee" || safeKey === "coffe" || safeKey === "kaffee") return "cafe";
+  if (safeKey === "coffee" || safeKey === "coffe" || safeKey === "coffee_shop" || safeKey === "coffeeshop" || safeKey === "kaffee" || safeKey === "caffe") return "cafe";
   if (safeKey === "fast_food" || safeKey === "snack" || safeKey === "imbiss") return "fastfood";
   if (safeKey === "hotels") return "hotel";
   if (safeKey === "motels") return "motel";
@@ -322,30 +403,38 @@ function matchesTravelDestination(record = {}, query = "") {
   });
 }
 
+function pushRestaurantLocationText(values = [], value = "") {
+  if (typeof value === "string" || typeof value === "number") {
+    const text = cleanText(value);
+    if (text) values.push(text);
+  }
+}
+
+function appendRestaurantLocationFields(values = [], source = {}, fields = RESTAURANT_LOCATION_TEXT_FIELDS) {
+  if (!source || typeof source !== "object") return;
+  fields.forEach((field) => pushRestaurantLocationText(values, source[field]));
+}
+
 function collectRestaurantLocationTextCandidates(record = {}) {
-  const values = [
-    record.city,
-    record.locationCity,
-    record.primaryCity,
-    record.address,
-    record.location,
-    record.primaryAddress,
-    inferLocationLabelFromCoords(record),
-    record.country,
-    record.region,
-    record.district
-  ];
+  const values = [];
+  appendRestaurantLocationFields(values, record);
+  pushRestaurantLocationText(values, record.location);
+  pushRestaurantLocationText(values, inferLocationLabelFromCoords(record));
+  RESTAURANT_NESTED_LOCATION_FIELDS.forEach((field) => {
+    appendRestaurantLocationFields(values, record[field], RESTAURANT_NAMED_LOCATION_TEXT_FIELDS);
+  });
   if (Array.isArray(record.locations)) {
     record.locations.forEach((location) => {
       if (!location || typeof location !== "object") return;
-      values.push(location.city, location.address, location.country, location.region, location.name);
+      appendRestaurantLocationFields(values, location, RESTAURANT_NAMED_LOCATION_TEXT_FIELDS);
+      pushRestaurantLocationText(values, inferLocationLabelFromCoords(location));
     });
   }
   return values;
 }
 
 function matchesRestaurantLocationText(record = {}, query = "") {
-  const locationKeys = expandTravelDestinationKeys(query);
+  const locationKeys = expandRestaurantLocationKeys(query);
   if (!locationKeys.length) return false;
   const haystack = collectRestaurantLocationTextCandidates(record)
     .map(normalizeLooseKey)
@@ -363,9 +452,6 @@ function matchesRestaurantViewerLocation(record = {}, viewerLocation = null) {
   const query = cleanText(viewerLocation.city || viewerLocation.label || "");
   if (query) {
     if (matchesRestaurantLocationText(record, query)) return true;
-    const key = normalizeLooseKey(query);
-    const prishtinaAlias = key === "prishtina" ? "prishtine" : (key === "prishtine" ? "prishtina" : "");
-    if (prishtinaAlias && matchesRestaurantLocationText(record, prishtinaAlias)) return true;
   }
   const viewerCoords = normalizeLocationCoords(viewerLocation);
   const recordCoords = readCoords(record);
@@ -379,12 +465,34 @@ function readCoords(record = {}) {
   const candidates = [
     { lat: record.lat, lng: record.lng },
     { lat: record.latitude, lng: record.longitude },
+    { lat: record.latitude, lng: record.lon },
+    { lat: record._lat, lng: record._long },
+    { lat: record._latitude, lng: record._longitude },
     { lat: record.gpsLat, lng: record.gpsLng },
+    { lat: record.mapLat, lng: record.mapLng },
     { lat: record.geo?.lat, lng: record.geo?.lng },
     { lat: record.geo?.latitude, lng: record.geo?.longitude },
+    { lat: record.geo?.latitude, lng: record.geo?.lon },
     { lat: record.coords?.lat, lng: record.coords?.lng },
     { lat: record.coords?.latitude, lng: record.coords?.longitude },
-    { lat: record.location?.lat, lng: record.location?.lng }
+    { lat: record.coordinates?.lat, lng: record.coordinates?.lng },
+    { lat: record.coordinates?.latitude, lng: record.coordinates?.longitude },
+    { lat: record.coordinates?._lat, lng: record.coordinates?._long },
+    { lat: record.coordinates?._latitude, lng: record.coordinates?._longitude },
+    { lat: record.geoPoint?.lat, lng: record.geoPoint?.lng },
+    { lat: record.geoPoint?.latitude, lng: record.geoPoint?.longitude },
+    { lat: record.geoPoint?._lat, lng: record.geoPoint?._long },
+    { lat: record.geoPoint?._latitude, lng: record.geoPoint?._longitude },
+    { lat: record.geopoint?.lat, lng: record.geopoint?.lng },
+    { lat: record.geopoint?.latitude, lng: record.geopoint?.longitude },
+    { lat: record.geopoint?._lat, lng: record.geopoint?._long },
+    { lat: record.geopoint?._latitude, lng: record.geopoint?._longitude },
+    { lat: record.location?.lat, lng: record.location?.lng },
+    { lat: record.location?.latitude, lng: record.location?.longitude },
+    { lat: record.primaryLocation?.lat, lng: record.primaryLocation?.lng },
+    { lat: record.primaryLocation?.latitude, lng: record.primaryLocation?.longitude },
+    { lat: record.businessLocation?.lat, lng: record.businessLocation?.lng },
+    { lat: record.businessLocation?.latitude, lng: record.businessLocation?.longitude }
   ];
   for (const candidate of candidates) {
     const coords = normalizeLocationCoords(candidate);
@@ -926,7 +1034,7 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
   const locationItems = hasLocation
     ? allItems.filter((record) => matchesRestaurantViewerLocation(record, storedLocation))
     : allItems;
-  const visibleItems = locationItems.slice(0, LIST_LIMIT);
+  const visibleItems = hasLocation ? locationItems : locationItems.slice(0, LIST_LIMIT);
   const bestItems = visibleItems.slice(0, BEST_LIMIT);
   const restaurantsLoaded = dataLoaded?.restaurants === true;
   const content = restaurantsLoaded || allItems.length ? renderRestaurantsContent({
