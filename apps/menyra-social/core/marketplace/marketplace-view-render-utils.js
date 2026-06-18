@@ -1309,7 +1309,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
       class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col"
       style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);"
     >
-      <div data-travel-hotel-gallery class="h-44 relative overflow-hidden group select-none touch-pan-y">
+      <div data-travel-hotel-gallery class="h-44 relative overflow-hidden group select-none touch-pan-y" style="touch-action:pan-y;">
         <img
           data-travel-hotel-main-image
           src="${escapeHtml(firstCoverImage)}"
@@ -1324,6 +1324,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-image-nav="prev"
             class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            style="left:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
             aria-label="Vorheriges Bild"
           >
             ${icon("chevron-left", "w-4 h-4")}
@@ -1333,6 +1334,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-image-nav="next"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            style="right:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
             aria-label="Naechstes Bild"
           >
             ${icon("chevron-right", "w-4 h-4")}
