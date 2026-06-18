@@ -454,8 +454,8 @@ function collectHotelAmenities(record = {}) {
 
 function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], imageUrlDraft = "" } = {}) {
   const gallery = [
-    ...existingImages.map((src, idx) => ({ src, kind: "existing", idx })),
-    ...newPreviews.map((src, idx) => ({ src, kind: "new", idx }))
+    ...newPreviews.map((src, idx) => ({ src, kind: "new", idx })),
+    ...existingImages.map((src, idx) => ({ src, kind: "existing", idx }))
   ].filter((entry) => entry.src);
   const heroRaw = gallery[0]?.src || imageUrlDraft || "";
   const heroUrl = heroRaw ? getOptimizedImageUrl(heroRaw, "large") : PLACEHOLDER_IMAGE;

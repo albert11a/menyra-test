@@ -169,27 +169,82 @@ export function bindAppMenuFocusEventsCore({
     return current;
   }
 
+  function collectHotelCardIdentityIds(record = {}) {
+    const ids = [];
+    [
+      record?.canonicalRestaurantId,
+      record?.restaurantId,
+      record?.id,
+      record?.landingRestaurantId,
+      record?.linkedRestaurantId,
+      record?.businessId
+    ].forEach((value) => {
+      const safeValue = String(value || "").trim();
+      if (safeValue && !ids.includes(safeValue)) ids.push(safeValue);
+    });
+    return ids;
+  }
+
+  function collectHotelCardTargetIds(record = {}) {
+    const ids = [];
+    [
+      record?.canonicalRestaurantId,
+      record?.restaurantId,
+      record?.landingRestaurantId,
+      record?.linkedRestaurantId,
+      record?.businessId
+    ].forEach((value) => {
+      const safeValue = String(value || "").trim();
+      if (safeValue && !ids.includes(safeValue)) ids.push(safeValue);
+    });
+    return ids;
+  }
+
+  function updateHotelCardRows(rows = [], targetIds = new Set(), payload = {}) {
+    if (!Array.isArray(rows) || !rows.length) return { rows: [], seen: false };
+    let seen = false;
+    const nextRows = rows.map((row) => {
+      const ids = collectHotelCardIdentityIds(row);
+      const matches = ids.some((id) => targetIds.has(id));
+      if (!matches) return row;
+      seen = true;
+      const primaryId = ids.find((id) => targetIds.has(id)) || Array.from(targetIds)[0] || "";
+      return {
+        ...row,
+        ...payload,
+        ...(primaryId && !String(row?.id || "").trim() ? { id: primaryId } : {}),
+        ...(primaryId && !String(row?.restaurantId || "").trim() ? { restaurantId: primaryId } : {}),
+        ...(primaryId && !String(row?.canonicalRestaurantId || "").trim() ? { canonicalRestaurantId: primaryId } : {})
+      };
+    });
+    return { rows: nextRows, seen };
+  }
+
   function updateHotelCardLocalState(restaurantId = "", payload = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !payload || typeof payload !== "object") return;
+    const targetIds = new Set([
+      safeRestaurantId,
+      ...collectHotelCardTargetIds(state.userProfile),
+      ...collectHotelCardTargetIds(state.profileView?.profile)
+    ].map((value) => String(value || "").trim()).filter(Boolean));
     const existing = Array.isArray(state.restaurants) ? state.restaurants : [];
-    let seen = false;
-    state.restaurants = existing.map((row) => {
-      if (String(row?.id || row?.restaurantId || "") !== safeRestaurantId) return row;
-      seen = true;
-      return { ...row, ...payload, id: safeRestaurantId, restaurantId: safeRestaurantId };
-    });
-    if (!seen) {
+    const restaurantUpdate = updateHotelCardRows(existing, targetIds, payload);
+    state.restaurants = restaurantUpdate.rows;
+    if (!restaurantUpdate.seen) {
       state.restaurants = [...state.restaurants, { ...payload, id: safeRestaurantId, restaurantId: safeRestaurantId }];
     }
-    if (String(state.userProfile?.restaurantId || "") === safeRestaurantId) {
+    if (Array.isArray(state.bootstrapRestaurantPreview)) {
+      state.bootstrapRestaurantPreview = updateHotelCardRows(state.bootstrapRestaurantPreview, targetIds, payload).rows;
+    }
+    if (collectHotelCardIdentityIds(state.userProfile).some((id) => targetIds.has(id))) {
       state.userProfile = {
         ...state.userProfile,
         ...payload,
         restaurantId: safeRestaurantId
       };
     }
-    if (String(state.profileView?.profile?.restaurantId || "") === safeRestaurantId) {
+    if (collectHotelCardIdentityIds(state.profileView?.profile).some((id) => targetIds.has(id))) {
       state.profileView = {
         ...state.profileView,
         profile: {
@@ -245,9 +300,9 @@ export function bindAppMenuFocusEventsCore({
         }
       }
       const coverImages = uniqueTextList([
+        ...uploadedUrls,
         urlDraft,
-        ...existingImages,
-        ...uploadedUrls
+        ...existingImages
       ]);
 
       const titleImageUrl = coverImages[0] || "";
