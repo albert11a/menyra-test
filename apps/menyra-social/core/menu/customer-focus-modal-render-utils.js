@@ -134,7 +134,21 @@ export function renderFocusModalCore({
   if (!state?.focusModal?.open) return "";
   const item = state.focusModal.item || {};
   const isEdit = state.focusModal.mode === "edit";
-  const title = isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen";
+  const profileType = String(
+    state?.userProfile?.type
+    || state?.userProfile?.customerType
+    || state?.userProfile?.businessType
+    || state?.userProfile?.restaurantType
+    || state?.userProfile?.category
+    || ""
+  ).trim().toLowerCase();
+  const isTravelOfferContext = profileType.includes("hotel") || profileType.includes("motel");
+  const title = isTravelOfferContext
+    ? (isEdit ? "Oferta bearbeiten" : "Oferta hinzufuegen")
+    : (isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen");
+  const eyebrow = isTravelOfferContext ? (isEdit ? "Oferta" : "Neu") : (isEdit ? "Bearbeiten" : "Neu");
+  const titlePlaceholder = isTravelOfferContext ? "Sommer-Angebot" : "Sot ne Fokus";
+  const activeHelper = isTravelOfferContext ? "Sichtbar fuer Travel und Gaeste" : "Sichtbar fuer Gaeste";
   const preview = state.focusModal.imagePreview || item.imageUrl || "";
   const imageUrl = getOptimizedImageUrl(preview, "large");
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
@@ -146,7 +160,7 @@ export function renderFocusModalCore({
   const headerHtml = `
     <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
       <div>
-        <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+        <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${escapeHtml(eyebrow)}</span>
         <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${title}</h3>
       </div>
       <button id="focusModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
@@ -179,7 +193,7 @@ export function renderFocusModalCore({
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titel</label>
-          <input id="focusTitle" type="text" value="${escapeHtml(item.title || "")}" placeholder="Sot ne Fokus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+          <input id="focusTitle" type="text" value="${escapeHtml(item.title || "")}" placeholder="${escapeHtml(titlePlaceholder)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
@@ -192,7 +206,7 @@ export function renderFocusModalCore({
         <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <div>
             <p class="text-xs font-black text-slate-800">Aktiv</p>
-            <p class="text-[10px] font-bold text-slate-400">Sichtbar fuer Gaeste</p>
+            <p class="text-[10px] font-bold text-slate-400">${escapeHtml(activeHelper)}</p>
           </div>
           <input id="focusActive" type="checkbox" class="w-5 h-5 accent-amber-500" ${active ? "checked" : ""} />
         </label>

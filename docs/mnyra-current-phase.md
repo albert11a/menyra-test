@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-18
+Last updated: 2026-06-19
 
 # Mnyra Current Phase
 
@@ -850,6 +850,17 @@ Last updated: 2026-06-18
   Open-Flow, Restaurant-/Cafe-Cards, QR, Cart, Order, Routing, Firebase Rules
   und Functions bleiben unveraendert. Auf ausdruecklichen Nutzerwunsch wurde
   dieser Schritt trotz Dauerregel auf Branch `main` umgesetzt.
+- Schritt 88 ist abgeschlossen: Der Travel-Tab `Ofertat` nutzt dieselbe
+  Hotel-/Motel-Card wie der `Hotels`-Tab, und Hotel-/Motel-Owner koennen im
+  Hotel-/Motel-Editor Oferta-Eintraege verwalten.
+- Bewertung von Schritt 88: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 88:
+  `Ofertat` zeigt Hotel-/Motel-Profile jetzt visuell wie die Travel-Hotel-Card.
+  Im Hotel-/Motel-Editor steht darunter die bestehende Angebotsverwaltung auf
+  Basis von `restaurants/{restaurantId}/public/offers` mit Hinzufuegen,
+  Bearbeiten, Loeschen und Aktiv-Schalter bereit. Restaurant-/Cafe-Editor,
+  Hotel-Card-Layout, QR, Cart, Order, Routing, Firebase Rules und Functions
+  bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -936,6 +947,7 @@ Last updated: 2026-06-18
 - Referenz: [docs/mnyra-step85-hotel-card-upload-runtime-path.md](./mnyra-step85-hotel-card-upload-runtime-path.md)
 - Referenz: [docs/mnyra-step86-hotel-card-upload-bridge-wiring.md](./mnyra-step86-hotel-card-upload-bridge-wiring.md)
 - Referenz: [docs/mnyra-step87-travel-hotel-card-swipe-arrows.md](./mnyra-step87-travel-hotel-card-swipe-arrows.md)
+- Referenz: [docs/mnyra-step88-travel-oferta-hotel-cards.md](./mnyra-step88-travel-oferta-hotel-cards.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -961,7 +973,7 @@ Last updated: 2026-06-18
 
 ## Naechster Schritt
 
-Nach Schritt 87 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 88 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -984,7 +996,7 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-87-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-88-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
 Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
 Strand-/See-Icon, links/rechts stabil positionierten Slider-Pfeilen,
@@ -1010,6 +1022,12 @@ Card-Details, Heart lokal unter privater LAN-IP mit `/leads`, `/customers` und
 Suchbegriffe, Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem
 Social-Drawer sowie die bisherigen
 Public-Profile/Menu/QR/Cart/Order-Flows.
+
+Zusaetzlich fuer Schritt 88 manuell pruefen: Travel-Tab `Ofertat` zeigt
+Hotel-/Motel-Cards wie der `Hotels`-Tab; Bildslider, Like/Share und `Mehr`
+funktionieren auch dort; Hotel-/Motel-Editor zeigt unter dem Hotel-Card-Editor
+die `Ofertat`-/`Oferta`-Sektion; Oferta kann hinzugefuegt, bearbeitet,
+aktiviert/deaktiviert und geloescht werden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -706,6 +706,7 @@ function renderHotelCardAdminView(profile = {}) {
             ${saving ? "Speichern..." : "Hotel Card speichern"}
           </button>
         </div>
+        ${renderFocusAdminSection(restaurantId, { variant: "travel-offers" })}
       ` : `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
           <p class="text-sm font-bold text-slate-500">Bitte zuerst dein Hotel-Business im Account auswaehlen.</p>
@@ -2142,16 +2143,22 @@ function renderMenuList(items, { mode = "profile" } = {}) {
   `;
 }
 
-function renderFocusAdminSection(restaurantId) {
+function renderFocusAdminSection(restaurantId, { variant = "focus" } = {}) {
   if (!restaurantId) return "";
   const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId, { includeInactive: true });
   const countLabel = formatCount(items.length);
+  const isTravelOffers = String(variant || "").trim().toLowerCase() === "travel-offers";
+  const eyebrow = isTravelOffers ? "Ofertat" : "Sot ne Fokus";
+  const title = isTravelOffers ? "Oferta" : "Highlights";
+  const helper = isTravelOffers ? "Im Travel und Profil sichtbar" : "Im Profil sichtbar";
+  const loadingLabel = isTravelOffers ? "Ofertat werden geladen..." : tr("focus.loading", "Fokus wird geladen...");
+  const emptyLabel = isTravelOffers ? "Noch keine Oferta-Eintraege" : "Noch keine Fokus-Eintraege";
   return `
     <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sot ne Fokus</span>
-          <h3 class="text-xl font-black italic tracking-tighter">Highlights</h3>
+          <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${escapeHtml(eyebrow)}</span>
+          <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(title)}</h3>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(countLabel)} Eintraege</p>
         </div>
         <button type="button" data-focus-add class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow active:scale-95">
@@ -2161,14 +2168,14 @@ function renderFocusAdminSection(restaurantId) {
 
       <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-4">
         <div>
-          <p class="text-xs font-black text-slate-800">Im Fokus anzeigen</p>
-          <p class="text-[10px] font-bold text-slate-400">Im Profil sichtbar</p>
+          <p class="text-xs font-black text-slate-800">${isTravelOffers ? "Oferta anzeigen" : "Im Fokus anzeigen"}</p>
+          <p class="text-[10px] font-bold text-slate-400">${escapeHtml(helper)}</p>
         </div>
         <input id="focusEnabledToggle" type="checkbox" class="w-5 h-5 accent-amber-500" ${enabled ? "checked" : ""} />
       </label>
 
       ${loading ? `
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("focus.loading", "Fokus wird geladen..."))}</div>
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(loadingLabel)}</div>
       ` : items.length ? `
         <div class="space-y-3">
           ${items.map((item) => {
@@ -2195,7 +2202,7 @@ function renderFocusAdminSection(restaurantId) {
           }).join("")}
         </div>
       ` : `
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Fokus-Eintraege</div>
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(emptyLabel)}</div>
       `}
     </div>
   `;
@@ -2506,6 +2513,9 @@ function renderMenuAdminView() {
   const countLabel = formatCount(items.length);
 
   if (restaurantId && isHotelProfile) {
+    if (!state.focus.loading && state.focus.restaurantId !== restaurantId) {
+      ensureFocusDataForProfile(profile);
+    }
     return renderHotelCardAdminView(profile);
   }
 

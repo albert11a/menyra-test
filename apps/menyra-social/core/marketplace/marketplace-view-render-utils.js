@@ -1464,7 +1464,7 @@ function renderTravelOffers(items = [], deps = {}) {
   }
   return `
     <div class="space-y-4">
-      ${displayItems.map((record) => renderTravelOfferCard(record, deps)).join("")}
+      ${displayItems.map((record) => renderTravelHotelCard(record, deps)).join("")}
     </div>
   `;
 }
