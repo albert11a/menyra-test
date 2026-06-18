@@ -740,6 +740,12 @@ function renderRestaurantCardIcon(name = "", className = "", deps = {}) {
   if (name === "book-open") {
     return `<svg ${svgAttrs}><path d="M12 7v14"></path><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path></svg>`;
   }
+  if (name === "navigation") {
+    return `<svg ${svgAttrs}><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`;
+  }
+  if (name === "waves") {
+    return `<svg ${svgAttrs}><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path></svg>`;
+  }
   return typeof icon === "function" ? icon(name, className) : "";
 }
 
@@ -1280,6 +1286,7 @@ function renderTravelOfferCard(record = {}, deps = {}) {
 function renderTravelHotelCard(record = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
+  const cardIcon = (name, className) => renderRestaurantCardIcon(name, className, deps);
   const name = getBusinessName(record);
   const id = getBusinessId(record);
   const coverImages = getBusinessCoverImages(record, deps);
@@ -1395,11 +1402,11 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             <span class="text-[11px] leading-relaxed text-slate-600">${escapeHtml(address)}</span>
           </div>
           <div class="flex items-center gap-3">
-            ${icon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
+            ${cardIcon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
             <span class="text-[11px] text-slate-600">${escapeHtml(distanceCenter || "Zentrum folgt")}</span>
           </div>
           <div class="flex items-center gap-3">
-            ${icon("waves", "w-4 h-4 text-slate-400 shrink-0")}
+            ${cardIcon("waves", "w-4 h-4 text-slate-400 shrink-0")}
             <span class="text-[11px] text-slate-600">${escapeHtml(distanceBeach || "Strand / See folgt")}</span>
           </div>
         </div>
@@ -1432,6 +1439,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             data-marketplace-open-business="${escapeHtml(id)}"
             data-tab="profile"
             class="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[140px]"
+            style="max-width:140px;"
           >
             <span>Mehr</span>
             ${icon("chevron-right", "w-3.5 h-3.5")}

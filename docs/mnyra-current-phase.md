@@ -775,6 +775,16 @@ Last updated: 2026-06-18
   Firebase Rules und Functions bleiben unveraendert. Auf ausdruecklichen
   Nutzerwunsch wurde dieser Schritt zusaetzlich auf Branch `main`
   uebernommen.
+- Schritt 81 ist abgeschlossen: Die Travel-Hotel-Card hat lokale Fallback-Icons
+  fuer Zentrum und Strand/See und der `Mehr`-Button ist lokal auf die kompakte
+  Vorlagenbreite begrenzt.
+- Bewertung von Schritt 81: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 81:
+  Das Strand-/See-Icon ist nicht mehr von der verzoegerten Icon-Runtime
+  abhaengig. Der `Mehr`-Button bleibt durch ein lokales `max-width:140px`
+  kompakt wie in der gelieferten Vorlage. Hotel-Editor, Profil-Open-Flow,
+  Restaurant-/Cafe-Cards, QR, Cart, Order, Routing, Firebase Rules und
+  Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -854,6 +864,7 @@ Last updated: 2026-06-18
 - Referenz: [docs/mnyra-step78-restaurants-header-location-filter-fix.md](./mnyra-step78-restaurants-header-location-filter-fix.md)
 - Referenz: [docs/mnyra-step79-restaurants-location-complete-filter.md](./mnyra-step79-restaurants-location-complete-filter.md)
 - Referenz: [docs/mnyra-step80-travel-hotel-card-editor.md](./mnyra-step80-travel-hotel-card-editor.md)
+- Referenz: [docs/mnyra-step81-travel-hotel-card-icon-button-fix.md](./mnyra-step81-travel-hotel-card-icon-button-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -879,7 +890,7 @@ Last updated: 2026-06-18
 
 ## Naechster Schritt
 
-Nach Schritt 80 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 81 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -902,12 +913,13 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-80-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-81-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
-Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, Distanzen,
-Feature-Chips, Bestpreis und `Mehr` direkt zum Profil; Hotel-/Motel-Editor
-mit Titelbild-Upload/URL, Zentrum-/Stranddistanz, Feature-Texten und
-Bestpreis; Restaurant-/Cafe-Menueditor unveraendert; Restaurants-Gate ohne
+Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
+Strand-/See-Icon, Distanzen, Feature-Chips, Bestpreis und kompaktem `Mehr`
+direkt zum Profil; Hotel-/Motel-Editor mit Titelbild-Upload/URL,
+Zentrum-/Stranddistanz, Feature-Texten und Bestpreis; Restaurant-/Cafe-
+Menueditor unveraendert; Restaurants-Gate ohne
 Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante, Restaurants
 ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive identischem
 Feed-Location-Feld im Smart-Header, sichtbarem Haken und streng nach
