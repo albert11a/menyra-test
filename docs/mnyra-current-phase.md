@@ -818,6 +818,16 @@ Last updated: 2026-06-18
   als erfolgreicher Upload behandelt. Hotel-Card-Layout, Travel-Renderer,
   Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 85 ist abgeschlossen: Der Hotel-/Motel-Titelbild-Upload nutzt jetzt
+  direkt den deferred Media-Upload-Runtime-Pfad.
+- Bewertung von Schritt 85: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 85:
+  Der Hotel-Card-Editor bekommt kein `false` mehr aus dem Startup-Mutationsguard
+  als scheinbares Upload-Ergebnis. Damit kann die Meldung `Bild-Upload hat keine
+  Bild-URL geliefert.` nicht mehr durch den Guard-Fallback entstehen; echte
+  Upload-Fehler kommen weiter aus dem Media-Upload-Service. Hotel-Card-Layout,
+  Travel-Renderer, Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing,
+  Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -901,6 +911,7 @@ Last updated: 2026-06-18
 - Referenz: [docs/mnyra-step82-hotel-card-multi-image-upload.md](./mnyra-step82-hotel-card-multi-image-upload.md)
 - Referenz: [docs/mnyra-step83-hotel-card-upload-visibility-fix.md](./mnyra-step83-hotel-card-upload-visibility-fix.md)
 - Referenz: [docs/mnyra-step84-hotel-card-upload-save-guard.md](./mnyra-step84-hotel-card-upload-save-guard.md)
+- Referenz: [docs/mnyra-step85-hotel-card-upload-runtime-path.md](./mnyra-step85-hotel-card-upload-runtime-path.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -926,7 +937,7 @@ Last updated: 2026-06-18
 
 ## Naechster Schritt
 
-Nach Schritt 84 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 85 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -949,13 +960,14 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-84-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-85-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
 Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
 Strand-/See-Icon, Distanzen, Feature-Chips, Bestpreis und kompaktem `Mehr`
 direkt zum Profil; Hotel-/Motel-Editor mit Mehrfach-Titelbild-Upload,
 Galerie-Preview, neuen Bildern vorne in Vorschau und Travel-Card, Erhalt der
-ausgewaehlten Previews bei Upload-Fehlern, Entfernen einzelner Bilder, URL-Fallback,
+ausgewaehlten Previews bei Upload-Fehlern, keine Guard-Fallback-Meldung
+`Bild-Upload hat keine Bild-URL geliefert.`, Entfernen einzelner Bilder, URL-Fallback,
 Zentrum-/Stranddistanz, Feature-Texten und Bestpreis; Restaurant-/Cafe-
 Menueditor unveraendert; Service-Worker-/Build-Token nach hartem Reload;
 Restaurants-Gate ohne

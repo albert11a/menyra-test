@@ -1838,7 +1838,7 @@ export function createAppShellRuntimeController(deps = {}) {
       docFn,
       db,
       serverTimestampFn,
-      uploadCompressedImageFn: confirmed("hotel.card.image.upload", uploadCompressedImageFn, false),
+      uploadCompressedImageFn,
       menuCache,
       menuCacheKeyFn,
       saveMenuStatusBadgeVisibleFn: confirmed("menu.statusBadge.save", saveMenuStatusBadgeVisibleFn),
