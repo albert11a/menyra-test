@@ -368,6 +368,42 @@ function getBusinessCoverImage(record = {}, {
   return optimized || placeholderImage || "";
 }
 
+function collectStringList(value) {
+  if (Array.isArray(value)) {
+    return value.map(cleanText).filter(Boolean);
+  }
+  const raw = cleanText(value);
+  if (!raw) return [];
+  return raw.split(/[\n,;|]/).map(cleanText).filter(Boolean);
+}
+
+function getBusinessCoverImages(record = {}, deps = {}) {
+  const rawImages = [
+    ...collectStringList(record.coverImages),
+    ...collectStringList(record.hotelCoverImages),
+    ...collectStringList(record.titleImages),
+    record.titleImageUrl,
+    record.coverImageUrl,
+    record.coverImage,
+    record.coverUrl,
+    record.heroImageUrl,
+    record.heroUrl,
+    record.imageUrl
+  ].map(cleanText).filter(Boolean);
+  const unique = [];
+  rawImages.forEach((image) => {
+    if (!unique.includes(image)) unique.push(image);
+  });
+  const fallback = getBusinessCoverImage(record, deps);
+  if (fallback && !unique.includes(fallback)) unique.push(fallback);
+  const optimized = unique.map((image) => (
+    typeof deps.getOptimizedImageUrl === "function"
+      ? cleanText(deps.getOptimizedImageUrl(image, "large"))
+      : image
+  )).filter(Boolean);
+  return optimized.length ? optimized.slice(0, 5) : [deps.placeholderImage || ""].filter(Boolean);
+}
+
 function getRestaurantCuisineLabel(record = {}) {
   return cleanText(
     record.cuisine
@@ -408,6 +444,71 @@ function getRestaurantFeatureChips(record = {}) {
   const raw = cleanText(record.features || record.amenities || "");
   if (!raw) return [];
   return raw.split(/[,;|]/).map(cleanText).filter(Boolean).slice(0, 3);
+}
+
+function getHotelCategoryLabel(record = {}) {
+  return cleanText(
+    record.hotelCategory
+    || record.categoryLabel
+    || record.__marketplaceTypeLabel
+    || record.travelCategory
+    || record.typeLabel
+    || record.type
+    || record.customerType
+    || "Hotel"
+  );
+}
+
+function getHotelDistanceCenter(record = {}) {
+  return cleanText(
+    record.distanceCenter
+    || record.distanceToCenter
+    || record.centerDistance
+    || record.cityCenterDistance
+    || record.centerDistanceLabel
+    || record.zentrumEntfernung
+    || record.distanceCentre
+    || ""
+  );
+}
+
+function getHotelDistanceBeach(record = {}) {
+  return cleanText(
+    record.distanceBeach
+    || record.distanceToBeach
+    || record.beachDistance
+    || record.beachDistanceLabel
+    || record.strandEntfernung
+    || record.lakeDistance
+    || record.distanceToLake
+    || ""
+  );
+}
+
+function getHotelStartingPrice(record = {}) {
+  const raw = cleanText(
+    record.hotelStartingPrice
+    || record.startingPrice
+    || record.priceFrom
+    || record.fromPrice
+    || record.bestPrice
+    || record.roomStartingPrice
+    || ""
+  );
+  return raw.replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
+}
+
+function getHotelFeatureChips(record = {}) {
+  const explicit = [
+    record.hotelFeatureOneText,
+    record.hotelFeatureTwoText,
+    record.hotelFeatureThreeText
+  ].map(cleanText).filter(Boolean);
+  if (explicit.length) return explicit.slice(0, 3);
+  const fromRestaurantFields = getRestaurantFeatureChips(record);
+  if (fromRestaurantFields.length) return fromRestaurantFields.slice(0, 3);
+  const fromAmenities = collectStringList(record.hotelAmenities || record.amenities || record.facilities);
+  return fromAmenities.slice(0, 3);
 }
 
 function renderRestaurantCardIcon(name = "", className = "", deps = {}) {
@@ -960,6 +1061,171 @@ function renderTravelOfferCard(record = {}, deps = {}) {
   `;
 }
 
+function renderTravelHotelCard(record = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  const name = getBusinessName(record);
+  const id = getBusinessId(record);
+  const coverImages = getBusinessCoverImages(record, deps);
+  const firstCoverImage = coverImages[0] || deps.placeholderImage || "";
+  const logoImage = getBusinessImage(record, deps);
+  const rating = getBusinessRating(record) || "0.0";
+  const reviewsCount = Number(record.reviewsCount ?? record.reviewCount ?? record.ratingsCount ?? 0);
+  const displayReviewsCount = Number.isFinite(reviewsCount) && reviewsCount > 0 ? reviewsCount : 0;
+  const category = getHotelCategoryLabel(record);
+  const address = getBusinessLocationLabel(record);
+  const distanceCenter = getHotelDistanceCenter(record);
+  const distanceBeach = getHotelDistanceBeach(record);
+  const features = getHotelFeatureChips(record);
+  const startingPrice = getHotelStartingPrice(record);
+  const isLiked = record.isLiked === true || record.liked === true || record.favorite === true || record.favorited === true;
+  return `
+    <article
+      data-travel-hotel-card="${escapeHtml(id)}"
+      data-travel-hotel-image-index="0"
+      class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col"
+      style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);"
+    >
+      <div data-travel-hotel-gallery class="h-44 relative overflow-hidden group select-none touch-pan-y">
+        <img
+          data-travel-hotel-main-image
+          src="${escapeHtml(firstCoverImage)}"
+          alt="${escapeHtml(`${name} Ansicht 1`)}"
+          loading="lazy"
+          class="w-full h-full object-cover transition-all duration-500 bg-slate-100"
+        />
+        <div class="absolute top-0 inset-x-0 h-14 bg-gradient-to-b from-black/30 to-transparent pointer-events-none"></div>
+
+        ${coverImages.length > 1 ? `
+          <button
+            type="button"
+            data-travel-hotel-image-nav="prev"
+            class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            aria-label="Vorheriges Bild"
+          >
+            ${icon("chevron-left", "w-4 h-4")}
+          </button>
+
+          <button
+            type="button"
+            data-travel-hotel-image-nav="next"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            aria-label="Naechstes Bild"
+          >
+            ${icon("chevron-right", "w-4 h-4")}
+          </button>
+
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+            ${coverImages.map((imageUrl, index) => `
+              <button
+                type="button"
+                data-travel-hotel-dot="${index}"
+                data-travel-hotel-image-src="${escapeHtml(imageUrl)}"
+                class="${index === 0 ? "w-4 bg-white shadow-sm" : "w-1.5 bg-white/50"} h-1.5 rounded-full transition-all duration-300"
+                aria-label="Hotelbild ${index + 1}"
+              ></button>
+            `).join("")}
+          </div>
+        ` : `
+          <span data-travel-hotel-dot="0" data-travel-hotel-image-src="${escapeHtml(firstCoverImage)}" class="hidden"></span>
+        `}
+
+        <div class="absolute top-3.5 right-3.5 flex gap-2 z-10">
+          <button
+            type="button"
+            data-travel-hotel-like="${escapeHtml(id)}"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-rose-500 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
+            aria-label="Zu Favoriten hinzufuegen"
+          >
+            ${icon("heart", `w-4 h-4 ${isLiked ? "fill-rose-500 text-rose-500" : "text-slate-600"}`)}
+          </button>
+          <button
+            type="button"
+            data-travel-hotel-share="${escapeHtml(id)}"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
+            title="Teilen"
+            aria-label="Teilen"
+          >
+            ${icon("share-2", "w-4 h-4")}
+          </button>
+        </div>
+      </div>
+
+      <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5" style="padding-top:3rem;gap:0.875rem;">
+        <div class="absolute -top-10 left-5 z-10" style="top:-2.5rem;left:1.25rem;">
+          <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden" style="width:76px;height:76px;">
+            ${renderImage(logoImage, `${name} Logo`, { ...deps, extraClass: "rounded-full" })}
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-1.5 mb-1">
+            <div class="flex text-amber-500">
+              ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
+            </div>
+            <span class="text-[11px] font-bold text-slate-800">${escapeHtml(rating)}</span>
+            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Bewertungen)</span>
+          </div>
+
+          <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
+          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5" style="margin-top:0.125rem;">${escapeHtml(category)}</p>
+        </div>
+
+        <hr class="border-slate-100" />
+
+        <div class="flex flex-col gap-2.5 text-slate-600">
+          <div class="flex items-start gap-3">
+            ${icon("map-pin", "w-4 h-4 text-slate-400 shrink-0 mt-0.5")}
+            <span class="text-[11px] leading-relaxed text-slate-600">${escapeHtml(address)}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            ${icon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
+            <span class="text-[11px] text-slate-600">${escapeHtml(distanceCenter || "Zentrum folgt")}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            ${icon("waves", "w-4 h-4 text-slate-400 shrink-0")}
+            <span class="text-[11px] text-slate-600">${escapeHtml(distanceBeach || "Strand / See folgt")}</span>
+          </div>
+        </div>
+
+        ${features.length ? `
+          <div class="flex flex-wrap gap-1.5">
+            ${features.map((feature) => `
+              <span class="text-[9px] font-semibold bg-slate-50 text-slate-500 px-2.5 py-0.5 rounded-md border border-slate-100">${escapeHtml(feature)}</span>
+            `).join("")}
+          </div>
+        ` : ""}
+
+        <hr class="border-slate-100" />
+
+        <div class="flex items-center justify-between mt-0.5 gap-4">
+          <div class="flex flex-col">
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Bestpreis</span>
+            <div class="flex items-baseline gap-1">
+              ${startingPrice ? `
+                <span class="text-base font-black text-slate-900">ab ${escapeHtml(startingPrice)} €</span>
+                <span class="text-[9px] text-slate-500 font-bold">p.P.</span>
+              ` : `
+                <span class="text-base font-black text-slate-900">Preis folgt</span>
+              `}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            data-marketplace-open-business="${escapeHtml(id)}"
+            data-tab="profile"
+            class="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[140px]"
+          >
+            <span>Mehr</span>
+            ${icon("chevron-right", "w-3.5 h-3.5")}
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function renderTravelOffers(items = [], deps = {}) {
   const displayItems = items.slice(0, 4);
   if (!displayItems.length) {
@@ -987,7 +1253,7 @@ function renderTravelHotels(items = [], deps = {}) {
   }
   return `
     <div class="space-y-4">
-      ${items.map((record) => renderListCard(record, deps)).join("")}
+      ${items.map((record) => renderTravelHotelCard(record, deps)).join("")}
     </div>
   `;
 }

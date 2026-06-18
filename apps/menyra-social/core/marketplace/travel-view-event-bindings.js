@@ -357,6 +357,56 @@ export function bindTravelViewEvents({
   const clearTravelNoticeDom = () => {
     doc.querySelectorAll("[data-travel-notice]").forEach((node) => node.remove());
   };
+  const getHotelCardImages = (card) => {
+    if (!card || typeof card.querySelectorAll !== "function") return [];
+    const images = [];
+    card.querySelectorAll("[data-travel-hotel-image-src]").forEach((node) => {
+      const src = String(node.getAttribute("data-travel-hotel-image-src") || "").trim();
+      if (src && !images.includes(src)) images.push(src);
+    });
+    return images;
+  };
+  const setHotelCardImage = (card, nextIndex = 0) => {
+    if (!card) return;
+    const images = getHotelCardImages(card);
+    if (!images.length) return;
+    const size = images.length;
+    const normalizedIndex = ((Number(nextIndex) || 0) % size + size) % size;
+    card.setAttribute("data-travel-hotel-image-index", String(normalizedIndex));
+    const image = card.querySelector("[data-travel-hotel-main-image]");
+    if (image) {
+      image.setAttribute("src", images[normalizedIndex]);
+      image.setAttribute("alt", `${getBusinessName({ name: card.getAttribute("aria-label") || "" }) || "Hotel"} Ansicht ${normalizedIndex + 1}`);
+    }
+    card.querySelectorAll("[data-travel-hotel-dot]").forEach((dot, index) => {
+      if (String(dot.tagName || "").toLowerCase() !== "button") return;
+      dot.className = index === normalizedIndex
+        ? "w-4 bg-white shadow-sm h-1.5 rounded-full transition-all duration-300"
+        : "w-1.5 bg-white/50 h-1.5 rounded-full transition-all duration-300";
+    });
+  };
+  const getHotelCardCurrentImageIndex = (card) => {
+    const value = Number(card?.getAttribute?.("data-travel-hotel-image-index") || "0");
+    return Number.isFinite(value) ? value : 0;
+  };
+  const copyTravelHotelProfileUrl = async (restaurantId = "") => {
+    const safeId = cleanText(restaurantId);
+    if (!safeId) return false;
+    const record = collectTravelSuggestionRecords(state).find((item) => getBusinessId(item) === safeId) || {};
+    const slug = cleanText(record.publicSlug || record.landingSlug || record.handle || "");
+    const path = cleanText(record.canonicalPublicPath) || (slug ? `/${encodeURIComponent(slug)}` : "");
+    const value = path && win?.location?.origin
+      ? new URL(path, win.location.origin).href
+      : String(win?.location?.href || "");
+    if (!value) return false;
+    try {
+      if (win?.navigator?.clipboard?.writeText) {
+        await win.navigator.clipboard.writeText(value);
+        return true;
+      }
+    } catch {}
+    return false;
+  };
   const scrollTravelInputIntoView = () => {
     const input = doc.getElementById("travelDestinationInput");
     if (!input) return;
@@ -522,6 +572,75 @@ export function bindTravelViewEvents({
           scrollTravelBenkoIntoView();
         }
       }
+    });
+  });
+
+  doc.querySelectorAll("[data-travel-hotel-card]").forEach((card) => {
+    if (!markBound(card, "HotelCard")) return;
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const gallery = card.querySelector("[data-travel-hotel-gallery]");
+    const moveImage = (direction = "next") => {
+      const current = getHotelCardCurrentImageIndex(card);
+      setHotelCardImage(card, direction === "prev" ? current - 1 : current + 1);
+    };
+    card.querySelectorAll("[data-travel-hotel-image-nav]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        moveImage(String(btn.getAttribute("data-travel-hotel-image-nav") || "") === "prev" ? "prev" : "next");
+      });
+    });
+    card.querySelectorAll("[data-travel-hotel-dot]").forEach((dot) => {
+      dot.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setHotelCardImage(card, Number(dot.getAttribute("data-travel-hotel-dot") || "0"));
+      });
+    });
+    if (gallery) {
+      gallery.addEventListener("touchstart", (event) => {
+        const touch = event.touches?.[0];
+        if (!touch) return;
+        touchStartX = Number(touch.clientX || 0);
+        touchEndX = 0;
+      }, { passive: true });
+      gallery.addEventListener("touchmove", (event) => {
+        const touch = event.touches?.[0];
+        if (!touch) return;
+        touchEndX = Number(touch.clientX || 0);
+      }, { passive: true });
+      gallery.addEventListener("touchend", () => {
+        if (!touchStartX || !touchEndX) return;
+        const delta = touchStartX - touchEndX;
+        if (delta > 50) moveImage("next");
+        else if (delta < -50) moveImage("prev");
+        touchStartX = 0;
+        touchEndX = 0;
+      }, { passive: true });
+    }
+  });
+
+  doc.querySelectorAll("[data-travel-hotel-like]").forEach((btn) => {
+    if (!markBound(btn, "HotelLike")) return;
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const iconNode = btn.querySelector("svg");
+      if (iconNode) {
+        iconNode.classList.toggle("fill-rose-500");
+        iconNode.classList.toggle("text-rose-500");
+        iconNode.classList.toggle("text-slate-600");
+      }
+    });
+  });
+
+  doc.querySelectorAll("[data-travel-hotel-share]").forEach((btn) => {
+    if (!markBound(btn, "HotelShare")) return;
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void copyTravelHotelProfileUrl(btn.getAttribute("data-travel-hotel-share") || "");
     });
   });
 }
