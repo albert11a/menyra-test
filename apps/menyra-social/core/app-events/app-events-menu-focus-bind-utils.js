@@ -265,6 +265,7 @@ export function bindAppMenuFocusEventsCore({
     const filesFromState = Array.isArray(editorState.imageFiles) ? editorState.imageFiles : [];
     const filesFromInput = Array.from(doc.getElementById("hotelCardCoverImagesInput")?.files || []);
     const files = filesFromState.length ? filesFromState : filesFromInput;
+    const imagePreviews = Array.isArray(editorState.imagePreviews) ? editorState.imagePreviews.slice() : [];
     const distanceCenter = readHotelCardInput("hotelCardDistanceCenter");
     const distanceBeach = readHotelCardInput("hotelCardDistanceBeach");
     const startingPrice = readHotelCardInput("hotelCardStartingPrice").replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
@@ -276,6 +277,8 @@ export function bindAppMenuFocusEventsCore({
     state.hotelCardEditor = {
       ...editorState,
       existingImages,
+      imageFiles: files,
+      imagePreviews,
       imageUrlDraft: urlDraft,
       saving: true,
       status: "Speichern..."
@@ -295,6 +298,9 @@ export function bindAppMenuFocusEventsCore({
           mimeType: "image/jpeg"
         });
         const imageUrl = String(uploaded?.cdnUrl || uploaded?.url || "").trim();
+        if (!imageUrl) {
+          throw new Error("Bild-Upload hat keine Bild-URL geliefert.");
+        }
         if (imageUrl && !uploadedUrls.includes(imageUrl)) {
           uploadedUrls.push(imageUrl);
         }
@@ -356,6 +362,11 @@ export function bindAppMenuFocusEventsCore({
     } catch (err) {
       console.error(err);
       state.hotelCardEditor = {
+        ...editorState,
+        existingImages,
+        imageFiles: files,
+        imagePreviews,
+        imageUrlDraft: urlDraft,
         saving: false,
         status: err?.message || "Hotel Card konnte nicht gespeichert werden."
       };
