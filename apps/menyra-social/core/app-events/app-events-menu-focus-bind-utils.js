@@ -135,6 +135,40 @@ export function bindAppMenuFocusEventsCore({
     return node ? String(node.value || "").trim() : "";
   };
 
+  function uniqueTextList(values = []) {
+    const unique = [];
+    (Array.isArray(values) ? values : []).forEach((value) => {
+      const safeValue = String(value || "").trim();
+      if (safeValue && !unique.includes(safeValue)) unique.push(safeValue);
+    });
+    return unique;
+  }
+
+  function readHotelCardExistingImagesFromDom() {
+    const images = [];
+    doc.querySelectorAll("[data-hotel-card-existing-image]").forEach((node) => {
+      const value = String(node.getAttribute("data-hotel-card-existing-image") || "").trim();
+      if (value && !images.includes(value)) images.push(value);
+    });
+    return images;
+  }
+
+  function ensureHotelCardEditorState() {
+    const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
+      ? state.hotelCardEditor
+      : {};
+    if (!state.hotelCardEditor || typeof state.hotelCardEditor !== "object") {
+      state.hotelCardEditor = current;
+    }
+    if (!Array.isArray(current.existingImages)) {
+      current.existingImages = readHotelCardExistingImagesFromDom();
+    }
+    if (!Array.isArray(current.imageFiles)) current.imageFiles = [];
+    if (!Array.isArray(current.imagePreviews)) current.imagePreviews = [];
+    current.imageUrlDraft = String(current.imageUrlDraft || readHotelCardInput("hotelCardCoverImageUrl") || "").trim();
+    return current;
+  }
+
   function updateHotelCardLocalState(restaurantId = "", payload = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !payload || typeof payload !== "object") return;
@@ -170,11 +204,12 @@ export function bindAppMenuFocusEventsCore({
   async function saveHotelCardDetails() {
     const restaurantId = String(state.userProfile?.restaurantId || "").trim();
     if (!restaurantId || !setDoc || !makeDocRef || !db) return;
-    const imageRows = [0, 1, 2].map((index) => ({
-      index,
-      url: readHotelCardInput(`hotelCardCoverImageUrl_${index}`),
-      file: doc.getElementById(`hotelCardCoverImageInput_${index}`)?.files?.[0] || null
-    }));
+    const editorState = ensureHotelCardEditorState();
+    const urlDraft = readHotelCardInput("hotelCardCoverImageUrl");
+    const existingImages = uniqueTextList(editorState.existingImages || readHotelCardExistingImagesFromDom());
+    const filesFromState = Array.isArray(editorState.imageFiles) ? editorState.imageFiles : [];
+    const filesFromInput = Array.from(doc.getElementById("hotelCardCoverImagesInput")?.files || []);
+    const files = filesFromState.length ? filesFromState : filesFromInput;
     const distanceCenter = readHotelCardInput("hotelCardDistanceCenter");
     const distanceBeach = readHotelCardInput("hotelCardDistanceBeach");
     const startingPrice = readHotelCardInput("hotelCardStartingPrice").replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
@@ -184,29 +219,36 @@ export function bindAppMenuFocusEventsCore({
     const featureList = [featureOne, featureTwo, featureThree].filter(Boolean);
 
     state.hotelCardEditor = {
-      ...(state.hotelCardEditor || {}),
+      ...editorState,
+      existingImages,
+      imageUrlDraft: urlDraft,
       saving: true,
       status: "Speichern..."
     };
     render();
 
     try {
-      const coverImages = [];
-      for (const row of imageRows) {
-        let imageUrl = row.url;
-        if (row.file) {
-          if (!uploadCompressedImage) {
-            throw new Error("Bild-Upload ist nicht bereit.");
-          }
-          const uploaded = await uploadCompressedImage(row.file, restaurantId, {
-            maxSize: 1280,
-            quality: 0.82,
-            mimeType: "image/jpeg"
-          });
-          imageUrl = String(uploaded?.cdnUrl || uploaded?.url || imageUrl || "").trim();
-        }
-        if (imageUrl && !coverImages.includes(imageUrl)) coverImages.push(imageUrl);
+      if (files.length && !uploadCompressedImage) {
+        throw new Error("Bild-Upload ist nicht bereit.");
       }
+      const uploadedUrls = [];
+      for (const file of files) {
+        if (!file) continue;
+        const uploaded = await uploadCompressedImage(file, restaurantId, {
+          maxSize: 1080,
+          quality: 0.8,
+          mimeType: "image/jpeg"
+        });
+        const imageUrl = String(uploaded?.cdnUrl || uploaded?.url || "").trim();
+        if (imageUrl && !uploadedUrls.includes(imageUrl)) {
+          uploadedUrls.push(imageUrl);
+        }
+      }
+      const coverImages = uniqueTextList([
+        urlDraft,
+        ...existingImages,
+        ...uploadedUrls
+      ]);
 
       const titleImageUrl = coverImages[0] || "";
       const payload = {
@@ -248,6 +290,10 @@ export function bindAppMenuFocusEventsCore({
       await setDoc(makeDocRef(db, "restaurants", restaurantId), payload, { merge: true });
       updateHotelCardLocalState(restaurantId, payload);
       state.hotelCardEditor = {
+        existingImages: coverImages,
+        imageFiles: [],
+        imagePreviews: [],
+        imageUrlDraft: "",
         saving: false,
         status: "Hotel Card gespeichert."
       };
@@ -262,26 +308,84 @@ export function bindAppMenuFocusEventsCore({
     }
   }
 
-  doc.querySelectorAll("[data-hotel-card-cover-trigger]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const index = String(btn.getAttribute("data-hotel-card-cover-trigger") || "").trim();
-      const input = doc.getElementById(`hotelCardCoverImageInput_${index}`);
-      if (input && typeof input.click === "function") input.click();
+  const hotelCardCoverTrigger = doc.getElementById("hotelCardCoverImagesTrigger");
+  const hotelCardCoverInput = doc.getElementById("hotelCardCoverImagesInput");
+  if (hotelCardCoverTrigger && hotelCardCoverInput) {
+    hotelCardCoverTrigger.addEventListener("click", () => {
+      if (typeof hotelCardCoverInput.click === "function") hotelCardCoverInput.click();
     });
-  });
+  }
 
-  doc.querySelectorAll("[data-hotel-card-cover-input]").forEach((input) => {
-    input.addEventListener("change", () => {
-      const index = String(input.getAttribute("data-hotel-card-cover-input") || "").trim();
-      const file = input.files?.[0] || null;
-      if (!file) return;
-      const preview = doc.getElementById(`hotelCardCoverImagePreview_${index}`);
+  if (hotelCardCoverInput) {
+    hotelCardCoverInput.addEventListener("change", () => {
+      const files = Array.from(hotelCardCoverInput.files || []).filter((file) => file && String(file.type || "").startsWith("image/"));
+      if (!files.length) return;
+      const editorState = ensureHotelCardEditorState();
+      const previews = files.map((file) => {
+        try {
+          return doc.defaultView?.URL?.createObjectURL
+            ? doc.defaultView.URL.createObjectURL(file)
+            : "";
+        } catch {
+          return "";
+        }
+      }).filter(Boolean);
+      state.hotelCardEditor = {
+        ...editorState,
+        imageFiles: [
+          ...(Array.isArray(editorState.imageFiles) ? editorState.imageFiles : []),
+          ...files
+        ],
+        imagePreviews: [
+          ...(Array.isArray(editorState.imagePreviews) ? editorState.imagePreviews : []),
+          ...previews
+        ],
+        imageUrlDraft: readHotelCardInput("hotelCardCoverImageUrl"),
+        status: ""
+      };
       try {
-        const previewUrl = doc.defaultView?.URL?.createObjectURL
-          ? doc.defaultView.URL.createObjectURL(file)
-          : "";
-        if (preview && previewUrl) preview.setAttribute("src", previewUrl);
+        hotelCardCoverInput.value = "";
       } catch {}
+      render();
+    });
+  }
+
+  const hotelCardCoverUrlInput = doc.getElementById("hotelCardCoverImageUrl");
+  if (hotelCardCoverUrlInput) {
+    hotelCardCoverUrlInput.addEventListener("input", () => {
+      const editorState = ensureHotelCardEditorState();
+      state.hotelCardEditor = {
+        ...editorState,
+        imageUrlDraft: String(hotelCardCoverUrlInput.value || "").trim(),
+        status: ""
+      };
+    });
+  }
+
+  doc.querySelectorAll("[data-hotel-card-image-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const editorState = ensureHotelCardEditorState();
+      const index = Number(btn.getAttribute("data-hotel-card-image-remove"));
+      const source = String(btn.getAttribute("data-hotel-card-image-source") || "").trim();
+      if (!Number.isFinite(index)) return;
+      const existingImages = Array.isArray(editorState.existingImages) ? editorState.existingImages.slice() : [];
+      const imageFiles = Array.isArray(editorState.imageFiles) ? editorState.imageFiles.slice() : [];
+      const imagePreviews = Array.isArray(editorState.imagePreviews) ? editorState.imagePreviews.slice() : [];
+      if (source === "existing") {
+        existingImages.splice(index, 1);
+      } else if (source === "new") {
+        imageFiles.splice(index, 1);
+        imagePreviews.splice(index, 1);
+      }
+      state.hotelCardEditor = {
+        ...editorState,
+        existingImages: uniqueTextList(existingImages),
+        imageFiles,
+        imagePreviews,
+        imageUrlDraft: readHotelCardInput("hotelCardCoverImageUrl"),
+        status: ""
+      };
+      render();
     });
   });
 

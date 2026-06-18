@@ -785,6 +785,19 @@ Last updated: 2026-06-18
   kompakt wie in der gelieferten Vorlage. Hotel-Editor, Profil-Open-Flow,
   Restaurant-/Cafe-Cards, QR, Cart, Order, Routing, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 82 ist abgeschlossen: Hotel-/Motel-Owner koennen Titelbilder im
+  Hotel-Card-Editor jetzt wie beim restlichen Menu-/Produkt-Upload mehrfach in
+  einem Datei-Dialog auswaehlen, previewen, einzeln entfernen und gemeinsam
+  hochladen.
+- Bewertung von Schritt 82: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 82:
+  Der Hotel-Card-Editor nutzt einen `multiple` File-Input, eine Galerie fuer
+  bestehende und neu ausgewaehlte Titelbilder sowie denselben
+  `uploadCompressedImage`-Pfad mit denselben Kompressionswerten wie der normale
+  Menu-Upload. Der App-Build-Token wurde angehoben, damit Browser und Service
+  Worker den neuen Main-Bundle-Stand laden. Restaurant-/Cafe-Menueditor,
+  Hotel-Zimmer/Buchung, QR, Cart, Order, Routing, Firebase Rules und Functions
+  bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -865,6 +878,7 @@ Last updated: 2026-06-18
 - Referenz: [docs/mnyra-step79-restaurants-location-complete-filter.md](./mnyra-step79-restaurants-location-complete-filter.md)
 - Referenz: [docs/mnyra-step80-travel-hotel-card-editor.md](./mnyra-step80-travel-hotel-card-editor.md)
 - Referenz: [docs/mnyra-step81-travel-hotel-card-icon-button-fix.md](./mnyra-step81-travel-hotel-card-icon-button-fix.md)
+- Referenz: [docs/mnyra-step82-hotel-card-multi-image-upload.md](./mnyra-step82-hotel-card-multi-image-upload.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -890,7 +904,7 @@ Last updated: 2026-06-18
 
 ## Naechster Schritt
 
-Nach Schritt 81 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 82 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -913,13 +927,15 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-81-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-82-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
 Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
 Strand-/See-Icon, Distanzen, Feature-Chips, Bestpreis und kompaktem `Mehr`
-direkt zum Profil; Hotel-/Motel-Editor mit Titelbild-Upload/URL,
+direkt zum Profil; Hotel-/Motel-Editor mit Mehrfach-Titelbild-Upload,
+Galerie-Preview, Entfernen einzelner Bilder, URL-Fallback,
 Zentrum-/Stranddistanz, Feature-Texten und Bestpreis; Restaurant-/Cafe-
-Menueditor unveraendert; Restaurants-Gate ohne
+Menueditor unveraendert; Service-Worker-/Build-Token nach hartem Reload;
+Restaurants-Gate ohne
 Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante, Restaurants
 ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive identischem
 Feed-Location-Feld im Smart-Header, sichtbarem Haken und streng nach
