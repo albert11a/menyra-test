@@ -37,6 +37,21 @@ const LIST_LIMIT = 24;
 const RESTAURANTS_GATE_COLOR = "#ff4f3f";
 const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 const TRAVEL_BLUE = "#00cce5";
+const RESTAURANT_COORD_CITY_MAX_DISTANCE_KM = 35;
+const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
+  Object.freeze({ label: "Prishtina", lat: 42.6629, lng: 21.1655 }),
+  Object.freeze({ label: "Prizren", lat: 42.2139, lng: 20.7397 }),
+  Object.freeze({ label: "Peja", lat: 42.6591, lng: 20.2883 }),
+  Object.freeze({ label: "Gjakova", lat: 42.3803, lng: 20.4308 }),
+  Object.freeze({ label: "Ferizaj", lat: 42.3706, lng: 21.1553 }),
+  Object.freeze({ label: "Gjilan", lat: 42.4635, lng: 21.4699 }),
+  Object.freeze({ label: "Mitrovica", lat: 42.8914, lng: 20.8660 }),
+  Object.freeze({ label: "Vushtrria", lat: 42.8231, lng: 20.9675 }),
+  Object.freeze({ label: "Podujeva", lat: 42.9106, lng: 21.1930 }),
+  Object.freeze({ label: "Tirana", lat: 41.3275, lng: 19.8187 }),
+  Object.freeze({ label: "Kukes", lat: 42.0769, lng: 20.4219 }),
+  Object.freeze({ label: "Smederevo", lat: 44.6644, lng: 20.9276 })
+]);
 const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
   Object.freeze(["tirana", "tirane"]),
   Object.freeze(["durres", "durresi"]),
@@ -85,6 +100,76 @@ const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
   Object.freeze(["spille", "spilleja"]),
   Object.freeze(["gjiri i lalzit", "lalzi", "lalez", "lalëz"])
 ]);
+const RESTAURANT_LOCATION_ALIAS_GROUPS = Object.freeze([
+  Object.freeze(["prishtina", "prishtine", "prishtin", "pristina"]),
+  Object.freeze(["ferizaj", "ferizaji", "uroshevac"]),
+  Object.freeze(["peja", "peje", "pec"]),
+  Object.freeze(["prizren", "prizreni"]),
+  Object.freeze(["gjakova", "gjakove", "djakova"]),
+  Object.freeze(["gjilan", "gjilani"]),
+  Object.freeze(["mitrovica", "mitrovice"]),
+  Object.freeze(["vushtrria", "vushtrri"]),
+  Object.freeze(["podujeva", "podujeve", "podujevo", "besiana"]),
+  Object.freeze(["fushe kosove", "fushe kosova", "fush kosove", "fush kosova"]),
+  Object.freeze(["lipjan"]),
+  Object.freeze(["suhareka", "suhareke", "theranda"]),
+  Object.freeze(["rahovec", "rahoveci"]),
+  Object.freeze(["drenas", "gllogoc"]),
+  Object.freeze(["skenderaj", "skenderaji"]),
+  Object.freeze(["malisheva", "malisheve"]),
+  Object.freeze(["kamenica", "kamenice", "kamenica kosove"]),
+  Object.freeze(["decan", "decani"]),
+  Object.freeze(["istog", "istogu"]),
+  Object.freeze(["klina", "kline"]),
+  Object.freeze(["vite", "vitia"]),
+  Object.freeze(["hani i elezit", "hani elezit"])
+]);
+const RESTAURANT_LOCATION_TEXT_FIELDS = Object.freeze([
+  "city",
+  "locationCity",
+  "primaryCity",
+  "postalCity",
+  "address",
+  "primaryAddress",
+  "formattedAddress",
+  "fullAddress",
+  "addressText",
+  "streetAddress",
+  "street",
+  "locationLabel",
+  "displayLocation",
+  "locality",
+  "town",
+  "municipality",
+  "village",
+  "neighborhood",
+  "area",
+  "district",
+  "county",
+  "region",
+  "state",
+  "province",
+  "country",
+  "countryCode"
+]);
+const RESTAURANT_NAMED_LOCATION_TEXT_FIELDS = Object.freeze([
+  ...RESTAURANT_LOCATION_TEXT_FIELDS,
+  "label",
+  "name",
+  "title"
+]);
+const RESTAURANT_NESTED_LOCATION_FIELDS = Object.freeze([
+  "location",
+  "primaryLocation",
+  "businessLocation",
+  "venueLocation",
+  "addressInfo",
+  "place",
+  "geo",
+  "coords",
+  "coordinates",
+  "geoPoint"
+]);
 
 function asFn(candidate, fallback = () => "") {
   return typeof candidate === "function" ? candidate : fallback;
@@ -118,6 +203,17 @@ function expandTravelDestinationKeys(value = "") {
   return Array.from(keys);
 }
 
+function expandRestaurantLocationKeys(value = "") {
+  const key = normalizeLooseKey(value);
+  if (!key) return [];
+  const keys = new Set(expandTravelDestinationKeys(value));
+  RESTAURANT_LOCATION_ALIAS_GROUPS.forEach((group) => {
+    const normalizedGroup = group.map(normalizeLooseKey).filter(Boolean);
+    if (normalizedGroup.includes(key)) normalizedGroup.forEach((alias) => keys.add(alias));
+  });
+  return Array.from(keys);
+}
+
 function normalizeSectionKey(value = "") {
   const key = normalizeLooseKey(value);
   if (key === "restaurant") return "restaurants";
@@ -130,7 +226,7 @@ function normalizeTypeAlias(key = "") {
   const safeKey = normalizeLooseKey(key);
   if (!safeKey) return "";
   if (safeKey === "e_commerce" || safeKey === "online_shop" || safeKey === "onlineshop" || safeKey === "shop" || safeKey === "store") return "ecommerce";
-  if (safeKey === "coffee" || safeKey === "coffe" || safeKey === "kaffee") return "cafe";
+  if (safeKey === "coffee" || safeKey === "coffe" || safeKey === "coffee_shop" || safeKey === "coffeeshop" || safeKey === "kaffee" || safeKey === "caffe") return "cafe";
   if (safeKey === "fast_food" || safeKey === "snack" || safeKey === "imbiss") return "fastfood";
   if (safeKey === "hotels") return "hotel";
   if (safeKey === "motels") return "motel";
@@ -204,7 +300,48 @@ function getBusinessLocationLabel(record = {}) {
   const city = cleanText(record.city || record.locationCity || record.primaryCity);
   const address = cleanText(record.address || record.location || record.primaryAddress);
   if (city && address && city !== address) return `${city} - ${address}`;
-  return city || address || "Standort folgt";
+  return city || address || inferLocationLabelFromCoords(record) || cleanText(record.country || record.region || "") || "Standort folgt";
+}
+
+function normalizeLocationCoords(value = {}) {
+  const lat = Number(String(value?.lat ?? value?.latitude ?? "").replace(",", "."));
+  const lng = Number(String(value?.lng ?? value?.lon ?? value?.longitude ?? "").replace(",", "."));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return null;
+  return { lat, lng };
+}
+
+function distanceKmBetweenCoords(a = {}, b = {}) {
+  const lat1 = Number(a.lat);
+  const lng1 = Number(a.lng);
+  const lat2 = Number(b.lat);
+  const lng2 = Number(b.lng);
+  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) return Number.POSITIVE_INFINITY;
+  const toRad = (value) => value * Math.PI / 180;
+  const earthKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * sinLng * sinLng;
+  return 2 * earthKm * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+}
+
+function inferLocationLabelFromCoords(record = {}) {
+  const coords = readCoords(record);
+  if (!coords) return "";
+  const nearest = RESTAURANT_COORD_CITY_OPTIONS
+    .map((entry) => ({
+      label: entry.label,
+      distanceKm: distanceKmBetweenCoords(coords, entry)
+    }))
+    .filter((entry) => Number.isFinite(entry.distanceKm))
+    .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+  if (nearest && nearest.distanceKm <= RESTAURANT_COORD_CITY_MAX_DISTANCE_KM) {
+    return nearest.label;
+  }
+  return "Auf Karte markiert";
 }
 
 function collectLocationTextCandidates(record = {}) {
@@ -231,6 +368,7 @@ function collectLocationTextCandidates(record = {}) {
     record.address,
     record.location,
     record.primaryAddress,
+    inferLocationLabelFromCoords(record),
     record.country,
     record.region,
     record.district,
@@ -265,24 +403,100 @@ function matchesTravelDestination(record = {}, query = "") {
   });
 }
 
+function pushRestaurantLocationText(values = [], value = "") {
+  if (typeof value === "string" || typeof value === "number") {
+    const text = cleanText(value);
+    if (text) values.push(text);
+  }
+}
+
+function appendRestaurantLocationFields(values = [], source = {}, fields = RESTAURANT_LOCATION_TEXT_FIELDS) {
+  if (!source || typeof source !== "object") return;
+  fields.forEach((field) => pushRestaurantLocationText(values, source[field]));
+}
+
+function collectRestaurantLocationTextCandidates(record = {}) {
+  const values = [];
+  appendRestaurantLocationFields(values, record);
+  pushRestaurantLocationText(values, record.location);
+  pushRestaurantLocationText(values, inferLocationLabelFromCoords(record));
+  RESTAURANT_NESTED_LOCATION_FIELDS.forEach((field) => {
+    appendRestaurantLocationFields(values, record[field], RESTAURANT_NAMED_LOCATION_TEXT_FIELDS);
+  });
+  if (Array.isArray(record.locations)) {
+    record.locations.forEach((location) => {
+      if (!location || typeof location !== "object") return;
+      appendRestaurantLocationFields(values, location, RESTAURANT_NAMED_LOCATION_TEXT_FIELDS);
+      pushRestaurantLocationText(values, inferLocationLabelFromCoords(location));
+    });
+  }
+  return values;
+}
+
+function matchesRestaurantLocationText(record = {}, query = "") {
+  const locationKeys = expandRestaurantLocationKeys(query);
+  if (!locationKeys.length) return false;
+  const haystack = collectRestaurantLocationTextCandidates(record)
+    .map(normalizeLooseKey)
+    .filter(Boolean)
+    .join("_");
+  if (!haystack) return false;
+  return locationKeys.some((locationKey) => {
+    const tokens = locationKey.split("_").filter(Boolean);
+    return haystack.includes(locationKey) || (tokens.length > 0 && tokens.every((token) => haystack.includes(token)));
+  });
+}
+
+function matchesRestaurantViewerLocation(record = {}, viewerLocation = null) {
+  if (!viewerLocation) return true;
+  const query = cleanText(viewerLocation.city || viewerLocation.label || "");
+  if (query) {
+    if (matchesRestaurantLocationText(record, query)) return true;
+  }
+  const viewerCoords = normalizeLocationCoords(viewerLocation);
+  const recordCoords = readCoords(record);
+  if (viewerCoords && recordCoords) {
+    return distanceKmBetweenCoords(viewerCoords, recordCoords) <= RESTAURANT_COORD_CITY_MAX_DISTANCE_KM;
+  }
+  return !query && !viewerCoords;
+}
+
 function readCoords(record = {}) {
   const candidates = [
-    [record.lat, record.lng],
-    [record.latitude, record.longitude],
-    [record.gpsLat, record.gpsLng],
-    [record.geo?.lat, record.geo?.lng],
-    [record.geo?.latitude, record.geo?.longitude],
-    [record.coords?.lat, record.coords?.lng],
-    [record.coords?.latitude, record.coords?.longitude],
-    [record.location?.lat, record.location?.lng]
+    { lat: record.lat, lng: record.lng },
+    { lat: record.latitude, lng: record.longitude },
+    { lat: record.latitude, lng: record.lon },
+    { lat: record._lat, lng: record._long },
+    { lat: record._latitude, lng: record._longitude },
+    { lat: record.gpsLat, lng: record.gpsLng },
+    { lat: record.mapLat, lng: record.mapLng },
+    { lat: record.geo?.lat, lng: record.geo?.lng },
+    { lat: record.geo?.latitude, lng: record.geo?.longitude },
+    { lat: record.geo?.latitude, lng: record.geo?.lon },
+    { lat: record.coords?.lat, lng: record.coords?.lng },
+    { lat: record.coords?.latitude, lng: record.coords?.longitude },
+    { lat: record.coordinates?.lat, lng: record.coordinates?.lng },
+    { lat: record.coordinates?.latitude, lng: record.coordinates?.longitude },
+    { lat: record.coordinates?._lat, lng: record.coordinates?._long },
+    { lat: record.coordinates?._latitude, lng: record.coordinates?._longitude },
+    { lat: record.geoPoint?.lat, lng: record.geoPoint?.lng },
+    { lat: record.geoPoint?.latitude, lng: record.geoPoint?.longitude },
+    { lat: record.geoPoint?._lat, lng: record.geoPoint?._long },
+    { lat: record.geoPoint?._latitude, lng: record.geoPoint?._longitude },
+    { lat: record.geopoint?.lat, lng: record.geopoint?.lng },
+    { lat: record.geopoint?.latitude, lng: record.geopoint?.longitude },
+    { lat: record.geopoint?._lat, lng: record.geopoint?._long },
+    { lat: record.geopoint?._latitude, lng: record.geopoint?._longitude },
+    { lat: record.location?.lat, lng: record.location?.lng },
+    { lat: record.location?.latitude, lng: record.location?.longitude },
+    { lat: record.primaryLocation?.lat, lng: record.primaryLocation?.lng },
+    { lat: record.primaryLocation?.latitude, lng: record.primaryLocation?.longitude },
+    { lat: record.businessLocation?.lat, lng: record.businessLocation?.lng },
+    { lat: record.businessLocation?.latitude, lng: record.businessLocation?.longitude }
   ];
-  for (const [latValue, lngValue] of candidates) {
-    const lat = Number(String(latValue ?? "").replace(",", "."));
-    const lng = Number(String(lngValue ?? "").replace(",", "."));
-    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
-      if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) continue;
-      return { lat, lng };
-    }
+  for (const candidate of candidates) {
+    const coords = normalizeLocationCoords(candidate);
+    if (coords) return coords;
   }
   if (Array.isArray(record.locations)) {
     for (const location of record.locations) {
@@ -525,6 +739,12 @@ function renderRestaurantCardIcon(name = "", className = "", deps = {}) {
   }
   if (name === "book-open") {
     return `<svg ${svgAttrs}><path d="M12 7v14"></path><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path></svg>`;
+  }
+  if (name === "navigation") {
+    return `<svg ${svgAttrs}><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`;
+  }
+  if (name === "waves") {
+    return `<svg ${svgAttrs}><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path></svg>`;
   }
   return typeof icon === "function" ? icon(name, className) : "";
 }
@@ -828,12 +1048,11 @@ function readStoredRestaurantLocation() {
     const raw = storage.getItem(FEED_LOCATION_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    const lat = Number(parsed?.lat ?? parsed?.latitude);
-    const lng = Number(parsed?.lng ?? parsed?.lon ?? parsed?.longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const coords = normalizeLocationCoords(parsed);
+    if (!coords) return null;
     return {
-      lat,
-      lng,
+      lat: coords.lat,
+      lng: coords.lng,
       label: cleanText(parsed?.label || parsed?.city || ""),
       city: cleanText(parsed?.city || parsed?.label || ""),
       source: cleanText(parsed?.source || "")
@@ -919,7 +1138,10 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
     }, section));
   const storedLocation = readStoredRestaurantLocation();
   const hasLocation = !!storedLocation;
-  const visibleItems = allItems.slice(0, LIST_LIMIT);
+  const locationItems = hasLocation
+    ? allItems.filter((record) => matchesRestaurantViewerLocation(record, storedLocation))
+    : allItems;
+  const visibleItems = hasLocation ? locationItems : locationItems.slice(0, LIST_LIMIT);
   const bestItems = visibleItems.slice(0, BEST_LIMIT);
   const restaurantsLoaded = dataLoaded?.restaurants === true;
   const content = restaurantsLoaded || allItems.length ? renderRestaurantsContent({
@@ -1064,6 +1286,7 @@ function renderTravelOfferCard(record = {}, deps = {}) {
 function renderTravelHotelCard(record = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
+  const cardIcon = (name, className) => renderRestaurantCardIcon(name, className, deps);
   const name = getBusinessName(record);
   const id = getBusinessId(record);
   const coverImages = getBusinessCoverImages(record, deps);
@@ -1086,7 +1309,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
       class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col"
       style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);"
     >
-      <div data-travel-hotel-gallery class="h-44 relative overflow-hidden group select-none touch-pan-y">
+      <div data-travel-hotel-gallery class="h-44 relative overflow-hidden group select-none touch-pan-y" style="touch-action:pan-y;">
         <img
           data-travel-hotel-main-image
           src="${escapeHtml(firstCoverImage)}"
@@ -1101,6 +1324,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-image-nav="prev"
             class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            style="left:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
             aria-label="Vorheriges Bild"
           >
             ${icon("chevron-left", "w-4 h-4")}
@@ -1110,6 +1334,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-image-nav="next"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            style="right:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
             aria-label="Naechstes Bild"
           >
             ${icon("chevron-right", "w-4 h-4")}
@@ -1179,11 +1404,11 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             <span class="text-[11px] leading-relaxed text-slate-600">${escapeHtml(address)}</span>
           </div>
           <div class="flex items-center gap-3">
-            ${icon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
+            ${cardIcon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
             <span class="text-[11px] text-slate-600">${escapeHtml(distanceCenter || "Zentrum folgt")}</span>
           </div>
           <div class="flex items-center gap-3">
-            ${icon("waves", "w-4 h-4 text-slate-400 shrink-0")}
+            ${cardIcon("waves", "w-4 h-4 text-slate-400 shrink-0")}
             <span class="text-[11px] text-slate-600">${escapeHtml(distanceBeach || "Strand / See folgt")}</span>
           </div>
         </div>
@@ -1216,6 +1441,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             data-marketplace-open-business="${escapeHtml(id)}"
             data-tab="profile"
             class="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[140px]"
+            style="max-width:140px;"
           >
             <span>Mehr</span>
             ${icon("chevron-right", "w-3.5 h-3.5")}

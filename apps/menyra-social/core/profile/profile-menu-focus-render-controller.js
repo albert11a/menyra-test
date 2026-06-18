@@ -408,7 +408,7 @@ function collectHotelCoverImages(record = {}) {
   images.forEach((image) => {
     if (!unique.includes(image)) unique.push(image);
   });
-  return unique.slice(0, 3);
+  return unique.slice(0, 8);
 }
 
 function getHotelCardFeatureValues(record = {}) {
@@ -452,23 +452,53 @@ function collectHotelAmenities(record = {}) {
   return values.slice(0, 8);
 }
 
-function renderHotelCardImageEditorSlot({ imageUrl = "", index = 0 } = {}) {
-  const number = Number(index) + 1;
-  const optimized = imageUrl ? getOptimizedImageUrl(imageUrl, "medium") : PLACEHOLDER_IMAGE;
+function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], imageUrlDraft = "" } = {}) {
+  const gallery = [
+    ...newPreviews.map((src, idx) => ({ src, kind: "new", idx })),
+    ...existingImages.map((src, idx) => ({ src, kind: "existing", idx }))
+  ].filter((entry) => entry.src);
+  const heroRaw = gallery[0]?.src || imageUrlDraft || "";
+  const heroUrl = heroRaw ? getOptimizedImageUrl(heroRaw, "large") : PLACEHOLDER_IMAGE;
   return `
-    <div class="rounded-[2rem] border border-slate-100 bg-slate-50 overflow-hidden">
-      <input id="hotelCardCoverImageInput_${index}" data-hotel-card-cover-input="${index}" type="file" accept="image/*" class="hidden" />
-      <div class="h-36 bg-white overflow-hidden">
-        <img id="hotelCardCoverImagePreview_${index}" src="${escapeHtml(optimized || PLACEHOLDER_IMAGE)}" class="w-full h-full object-cover bg-white" />
-      </div>
-      <div class="p-4 space-y-3">
-        <button type="button" data-hotel-card-cover-trigger="${index}" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-          Titelbild ${number} hochladen
+    <div class="space-y-4">
+      <input id="hotelCardCoverImagesInput" type="file" accept="image/*" multiple class="hidden" />
+      <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img id="hotelCardCoverHeroPreview" src="${escapeHtml(heroUrl || PLACEHOLDER_IMAGE)}" class="w-full h-52 object-cover bg-white" />
+        <button type="button" id="hotelCardCoverImagesTrigger" aria-label="Titelbilder hochladen" class="absolute top-3 right-3 w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+          ${icon("camera", "w-5 h-5")}
+          <span class="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center border border-white">
+            ${icon("plus", "w-2.5 h-2.5")}
+          </span>
         </button>
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titelbild ${number} URL</label>
-          <input id="hotelCardCoverImageUrl_${index}" type="text" value="${escapeHtml(imageUrl)}" placeholder="https://..." class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+      </div>
+
+      <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Titelbilder</p>
+          <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${gallery.length}</span>
         </div>
+        ${gallery.length ? `
+          <div class="grid grid-cols-3 gap-2">
+            ${gallery.map((entry) => `
+              <div class="relative rounded-xl overflow-hidden border border-slate-100 bg-slate-50 aspect-square">
+                ${entry.kind === "existing" ? `<span data-hotel-card-existing-image="${escapeHtml(entry.src)}" hidden></span>` : ""}
+                <img src="${escapeHtml(getOptimizedImageUrl(entry.src, "thumb"))}" class="w-full h-full object-cover" />
+                <button type="button" data-hotel-card-image-remove="${entry.idx}" data-hotel-card-image-source="${entry.kind}" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 text-slate-600 text-[10px] flex items-center justify-center shadow">
+                  ${icon("x", "w-3 h-3")}
+                </button>
+              </div>
+            `).join("")}
+          </div>
+        ` : `
+          <div class="h-20 rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300">
+            Noch keine Titelbilder
+          </div>
+        `}
+      </div>
+
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titelbild URL</label>
+        <input id="hotelCardCoverImageUrl" type="text" value="${escapeHtml(imageUrlDraft)}" placeholder="https://..." class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
       </div>
     </div>
   `;
@@ -588,8 +618,14 @@ function renderHotelCardAdminView(profile = {}) {
   const restaurantName = record?.name || record?.restaurantName || profile?.name || "Hotel";
   const status = String(state.hotelCardEditor?.status || "").trim();
   const saving = state.hotelCardEditor?.saving === true;
-  const coverImages = collectHotelCoverImages(record);
-  while (coverImages.length < 3) coverImages.push("");
+  const editorState = state.hotelCardEditor && typeof state.hotelCardEditor === "object" ? state.hotelCardEditor : {};
+  const coverImages = Array.isArray(editorState.existingImages)
+    ? editorState.existingImages.map((item) => String(item || "").trim()).filter(Boolean)
+    : collectHotelCoverImages(record);
+  const imagePreviews = Array.isArray(editorState.imagePreviews)
+    ? editorState.imagePreviews.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const imageUrlDraft = String(editorState.imageUrlDraft || "").trim();
   const [featureOne, featureTwo, featureThree] = getHotelCardFeatureValues(record);
   const distanceCenter = readFirstHotelText(record, [
     "distanceCenter",
@@ -631,9 +667,7 @@ function renderHotelCardAdminView(profile = {}) {
         <div data-hotel-card-editor="${escapeHtml(restaurantId)}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5">
           <div>
             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Titelbilder</p>
-            <div class="grid grid-cols-1 gap-4">
-              ${coverImages.slice(0, 3).map((imageUrl, index) => renderHotelCardImageEditorSlot({ imageUrl, index })).join("")}
-            </div>
+            ${renderHotelCardImagesEditor({ existingImages: coverImages, newPreviews: imagePreviews, imageUrlDraft })}
           </div>
 
           <div class="grid grid-cols-1 gap-4">

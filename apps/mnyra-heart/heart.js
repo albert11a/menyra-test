@@ -482,6 +482,45 @@ function syncCrmLeadDraftFromForm() {
   } catch {}
 }
 
+function getCrmSearchInputId(domainKey = "") {
+  const key = String(domainKey || "").trim();
+  if (key === "leads") return "leadsSearchInput";
+  if (key === "customers") return "customersSearchInput";
+  return "";
+}
+
+function captureCrmSearchFocus(domainKey = "") {
+  if (typeof document === "undefined") return null;
+  const active = document.activeElement;
+  const inputId = getCrmSearchInputId(domainKey);
+  if (!inputId || !active || active.id !== inputId || !active.matches?.("[data-crm-search]")) return null;
+  return {
+    inputId,
+    selectionStart: Number.isFinite(Number(active.selectionStart)) ? Number(active.selectionStart) : null,
+    selectionEnd: Number.isFinite(Number(active.selectionEnd)) ? Number(active.selectionEnd) : null
+  };
+}
+
+function restoreCrmSearchFocus(snapshot = null) {
+  if (!snapshot?.inputId || typeof document === "undefined") return;
+  const input = document.getElementById(snapshot.inputId);
+  if (!input || !input.matches?.("[data-crm-search]")) return;
+  input.focus({ preventScroll: true });
+  if (
+    Number.isInteger(snapshot.selectionStart)
+    && Number.isInteger(snapshot.selectionEnd)
+    && typeof input.setSelectionRange === "function"
+  ) {
+    try {
+      const valueLength = String(input.value || "").length;
+      input.setSelectionRange(
+        Math.min(snapshot.selectionStart, valueLength),
+        Math.min(snapshot.selectionEnd, valueLength)
+      );
+    } catch {}
+  }
+}
+
 async function refineCrmLeadLocationAddress(index, value = "") {
   try {
     await getCrmConsumerDomain("leads")?.refineLocationAddress?.(index, value);
@@ -832,7 +871,9 @@ const operations = {
     await loadCrmAdminDomain(safeDomainKey, { scope: safeScope });
   },
   setCrmQuery(domainKey, query) {
+    const focusSnapshot = captureCrmSearchFocus(domainKey);
     actions.setCrmAdminSectionUi(domainKey, { query });
+    restoreCrmSearchFocus(focusSnapshot);
   },
   setCrmCategoryFilter(domainKey, categoryFilter) {
     actions.setCrmAdminSectionUi(domainKey, { categoryFilter });

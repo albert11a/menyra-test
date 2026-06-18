@@ -797,9 +797,8 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function shouldShowFeedLocationHeaderSearch(locationRecord = readStoredFeedViewerLocation()) {
-    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
-    if (activeTabKey !== "feed" && activeTabKey !== "home") return false;
-    return !!locationRecord;
+    const activeTabKey = state.activeTab;
+    return !!locationRecord && (activeTabKey === "feed" || activeTabKey === "home" || activeTabKey === "restaurants");
   }
 
   function renderFeedLocationHeaderSearch(locationLabel = "") {
@@ -1001,7 +1000,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const actionButtonClass = compactHeaderIcons
       ? "w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
       : "w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
-    const actionIconClass = compactHeaderIcons ? "w-5 h-5" : "w-5 h-5";
+    const actionIconClass = "w-5 h-5";
 
     return `
       <div class="smart-header-shell">
@@ -1020,7 +1019,7 @@ export function createAppShellRuntimeController(deps = {}) {
                   </div>
                 `}
             </div>
-            <div class="flex shrink-0 items-center ${compactHeaderIcons ? "gap-1.5" : "gap-1.5"} text-slate-600">
+            <div class="flex shrink-0 items-center gap-1.5 text-slate-600">
               ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
               <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${actionButtonClass}">
                 ${icon("user", actionIconClass)}
@@ -1839,7 +1838,7 @@ export function createAppShellRuntimeController(deps = {}) {
       docFn,
       db,
       serverTimestampFn,
-      uploadCompressedImageFn: confirmed("hotel.card.image.upload", uploadCompressedImageFn, false),
+      uploadCompressedImageFn,
       menuCache,
       menuCacheKeyFn,
       saveMenuStatusBadgeVisibleFn: confirmed("menu.statusBadge.save", saveMenuStatusBadgeVisibleFn),

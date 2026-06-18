@@ -1,7 +1,7 @@
 Status: CURRENT
 Last updated: 2026-06-18
 
-# Schritt 77 - Travel Hotel Card And Hotel Editor
+# Schritt 80 - Travel Hotel Card And Hotel Editor
 
 ## Ziel
 

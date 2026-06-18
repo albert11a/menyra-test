@@ -3,6 +3,8 @@ import { bindRestaurantViewEvents } from "./restaurant-view-event-bindings.js";
 const TRAVEL_DESTINATION_REQUIRED_MESSAGE = "Ju lutem shkruani destinacionin e udhëtimit.";
 const TRAVEL_SUGGESTION_MIN_QUERY_LENGTH = 2;
 const TRAVEL_SUGGESTION_LIMIT = 6;
+const HOTEL_CARD_SWIPE_THRESHOLD_PX = 28;
+const HOTEL_CARD_SWIPE_VERTICAL_DRIFT_PX = 44;
 const TRAVEL_ALBANIA_CITY_OPTIONS = Object.freeze([
   Object.freeze({ id: "tirana", label: "Tirana", aliases: Object.freeze(["tirane"]) }),
   Object.freeze({ id: "durres", label: "Durres", aliases: Object.freeze(["durresi"]) }),
@@ -577,12 +579,22 @@ export function bindTravelViewEvents({
 
   doc.querySelectorAll("[data-travel-hotel-card]").forEach((card) => {
     if (!markBound(card, "HotelCard")) return;
+    let touchActive = false;
     let touchStartX = 0;
+    let touchStartY = 0;
     let touchEndX = 0;
+    let touchEndY = 0;
     const gallery = card.querySelector("[data-travel-hotel-gallery]");
     const moveImage = (direction = "next") => {
       const current = getHotelCardCurrentImageIndex(card);
       setHotelCardImage(card, direction === "prev" ? current - 1 : current + 1);
+    };
+    const resetTouch = () => {
+      touchActive = false;
+      touchStartX = 0;
+      touchStartY = 0;
+      touchEndX = 0;
+      touchEndY = 0;
     };
     card.querySelectorAll("[data-travel-hotel-image-nav]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
@@ -602,22 +614,33 @@ export function bindTravelViewEvents({
       gallery.addEventListener("touchstart", (event) => {
         const touch = event.touches?.[0];
         if (!touch) return;
+        touchActive = true;
         touchStartX = Number(touch.clientX || 0);
-        touchEndX = 0;
+        touchStartY = Number(touch.clientY || 0);
+        touchEndX = touchStartX;
+        touchEndY = touchStartY;
       }, { passive: true });
       gallery.addEventListener("touchmove", (event) => {
         const touch = event.touches?.[0];
         if (!touch) return;
         touchEndX = Number(touch.clientX || 0);
+        touchEndY = Number(touch.clientY || 0);
       }, { passive: true });
-      gallery.addEventListener("touchend", () => {
-        if (!touchStartX || !touchEndX) return;
+      gallery.addEventListener("touchend", (event) => {
+        if (!touchActive) return;
+        const touch = event.changedTouches?.[0];
+        if (touch) {
+          touchEndX = Number(touch.clientX || 0);
+          touchEndY = Number(touch.clientY || 0);
+        }
         const delta = touchStartX - touchEndX;
-        if (delta > 50) moveImage("next");
-        else if (delta < -50) moveImage("prev");
-        touchStartX = 0;
-        touchEndX = 0;
+        const verticalDrift = Math.abs(touchStartY - touchEndY);
+        if (Math.abs(delta) >= HOTEL_CARD_SWIPE_THRESHOLD_PX && verticalDrift <= HOTEL_CARD_SWIPE_VERTICAL_DRIFT_PX) {
+          moveImage(delta > 0 ? "next" : "prev");
+        }
+        resetTouch();
       }, { passive: true });
+      gallery.addEventListener("touchcancel", resetTouch, { passive: true });
     }
   });
 

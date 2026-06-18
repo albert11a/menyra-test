@@ -732,19 +732,124 @@ Last updated: 2026-06-18
   verzoegerte Lucide-Runtime noch nicht nachgezogen hat. Die oberen
   Swipe-/Best-Cards, Lead-Speicherung, Profil/Menu-Open-Flow, Routing, QR,
   Cart, Order, Travel, Firebase Rules und Functions bleiben unveraendert.
-- Schritt 77 ist abgeschlossen: Die normalen Hotel-/Motel-Cards im
+- Schritt 77 ist abgeschlossen: Restaurants nutzt bei gesetzter Feed-Location
+  das identische Feed-Location-Eingabefeld im Smart-Header und filtert
+  Restaurant-/Cafe-Cards nach dieser Location.
+- Bewertung von Schritt 77: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 77:
+  Wenn `mnyra_social_feed_viewer_location_v1` gesetzt ist, zeigt `Restaurants`
+  oben im Smart-Header dasselbe Location-Feld wie Feed. Aenderungen in diesem
+  Feld speichern weiter dieselbe Location-Wahrheit und rendern den Restaurant-
+  Tab direkt neu. Die sichtbaren Restaurant-/Cafe-Cards werden nach Stadt-/
+  Adressfeldern, Schreibvarianten und vorhandenen Koordinaten gegen die
+  gesetzte Location gefiltert. Restaurant-Cards, Gate ohne Location, QR, Cart,
+  Order, Travel, Firebase Rules und Functions bleiben unveraendert. Auf
+  ausdruecklichen Nutzerwunsch wurde dieser Schritt auf Branch `main`
+  umgesetzt.
+- Schritt 78 ist abgeschlossen: Der Restaurant-Header zeigt den gesetzten
+  Location-Haken korrekt und die Restaurant-/Cafe-Filterung wurde auf echte
+  Standortdaten eingegrenzt.
+- Bewertung von Schritt 78: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 78:
+  Das identische Feed-Location-Feld im Restaurant-Header nutzt jetzt den
+  bestehenden Feed-DOM-Sync, sodass rechts der Haken erscheint, wenn eine
+  Location gesetzt ist. Der Restaurant-/Cafe-Filter matched nicht mehr ueber
+  Name, Businessname, Description, Bio oder About, sondern nur noch ueber
+  Standortfelder, `locations[]`, Region/District und Koordinaten. Dadurch fuehrt
+  `Prishtina` nicht mehr zu denselben allgemeinen Restaurant-/Cafe-Ergebnissen,
+  nur weil der Begriff irgendwo ausserhalb der Standortdaten vorkommt. Gate,
+  Cards, Feed-Storage-Key, QR, Cart, Order, Travel, Firebase Rules und Functions
+  bleiben unveraendert.
+- Schritt 80 ist abgeschlossen: Die normalen Hotel-/Motel-Cards im
   Travel-Hotels-Tab nutzen die freigegebene Premium-Hotel-Card und
   Hotel-/Motel-Business-Accounts bekommen einen eigenen Hotel-Card-Editor im
   Editor-Tab.
-- Bewertung von Schritt 77: `bestanden mit kleinem Rest-Risiko`.
-- Wichtigster Effekt aus Schritt 77:
+- Bewertung von Schritt 80: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 80:
   Im Travel-Hotels-Tab rendert die normale Hotel-Card mit Titelbild-Slider,
   schwebendem Logo, Hotel-Distanzen, Feature-Chips, Bestpreis und `Mehr`
   direkt zum Profil, in der gleichen vollen Listenbreite wie die anderen
   normalen Marketplace-Cards. Hotel-/Motel-Owner koennen im eigenen Editor bis
   zu drei Titelbilder, Zentrum-/Stranddistanz, drei Feature-Texte und
   Bestpreis speichern. Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing,
+  Firebase Rules und Functions bleiben unveraendert. Auf ausdruecklichen
+  Nutzerwunsch wurde dieser Schritt zusaetzlich auf Branch `main`
+  uebernommen.
+- Schritt 81 ist abgeschlossen: Die Travel-Hotel-Card hat lokale Fallback-Icons
+  fuer Zentrum und Strand/See und der `Mehr`-Button ist lokal auf die kompakte
+  Vorlagenbreite begrenzt.
+- Bewertung von Schritt 81: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 81:
+  Das Strand-/See-Icon ist nicht mehr von der verzoegerten Icon-Runtime
+  abhaengig. Der `Mehr`-Button bleibt durch ein lokales `max-width:140px`
+  kompakt wie in der gelieferten Vorlage. Hotel-Editor, Profil-Open-Flow,
+  Restaurant-/Cafe-Cards, QR, Cart, Order, Routing, Firebase Rules und
+  Functions bleiben unveraendert.
+- Schritt 82 ist abgeschlossen: Hotel-/Motel-Owner koennen Titelbilder im
+  Hotel-Card-Editor jetzt wie beim restlichen Menu-/Produkt-Upload mehrfach in
+  einem Datei-Dialog auswaehlen, previewen, einzeln entfernen und gemeinsam
+  hochladen.
+- Bewertung von Schritt 82: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 82:
+  Der Hotel-Card-Editor nutzt einen `multiple` File-Input, eine Galerie fuer
+  bestehende und neu ausgewaehlte Titelbilder sowie denselben
+  `uploadCompressedImage`-Pfad mit denselben Kompressionswerten wie der normale
+  Menu-Upload. Der App-Build-Token wurde angehoben, damit Browser und Service
+  Worker den neuen Main-Bundle-Stand laden. Restaurant-/Cafe-Menueditor,
+  Hotel-Zimmer/Buchung, QR, Cart, Order, Routing, Firebase Rules und Functions
+  bleiben unveraendert.
+- Schritt 83 ist abgeschlossen: Frisch hochgeladene Hotel-/Motel-Titelbilder
+  werden sofort als primaere Hotel-Card-Bilder behandelt und der lokale
+  Travel-State wird nach dem Speichern mit aktualisiert.
+- Bewertung von Schritt 83: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 83:
+  Neue Titelbilder stehen im Editor und im gespeicherten Bildarray vor
+  bestehenden Bildern, sodass die Travel-Hotel-Card direkt das neu hochgeladene
+  erste Bild zeigt. Zusaetzlich werden passende Bootstrap-Preview-Records lokal
+  mit aktualisiert. Hotel-Card-Layout, Restaurant-/Cafe-Menueditor, QR, Cart,
+  Order, Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 84 ist abgeschlossen: Hotel-/Motel-Titelbild-Saves schreiben keine
+  leeren Bildarrays mehr, wenn der Upload-Pfad keine echte Bild-URL liefert.
+- Bewertung von Schritt 84: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 84:
+  Neu ausgewaehlte Hotel-Titelbilder bleiben bei einem Save-/Upload-Fehler im
+  Editor-State erhalten, statt beim Speichern sofort zu verschwinden. Ein vom
+  Startup-Guard blockierter oder anderweitig URL-loser Upload wird nicht mehr
+  als erfolgreicher Upload behandelt. Hotel-Card-Layout, Travel-Renderer,
+  Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing, Firebase Rules und
+  Functions bleiben unveraendert.
+- Schritt 85 ist abgeschlossen: Der Hotel-/Motel-Titelbild-Upload nutzt jetzt
+  direkt den deferred Media-Upload-Runtime-Pfad.
+- Bewertung von Schritt 85: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 85:
+  Der Hotel-Card-Editor bekommt kein `false` mehr aus dem Startup-Mutationsguard
+  als scheinbares Upload-Ergebnis. Damit kann die Meldung `Bild-Upload hat keine
+  Bild-URL geliefert.` nicht mehr durch den Guard-Fallback entstehen; echte
+  Upload-Fehler kommen weiter aus dem Media-Upload-Service. Hotel-Card-Layout,
+  Travel-Renderer, Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing,
   Firebase Rules und Functions bleiben unveraendert.
+- Schritt 86 ist abgeschlossen: Das Shell-Bridge-Wiring reicht
+  `uploadCompressedImage` jetzt an den Shell-Bootstrap weiter.
+- Bewertung von Schritt 86: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 86:
+  Der Hotel-Card-Event-Binder bekommt die Media-Upload-Funktion wieder korrekt
+  aus der Shell-Bridge. Damit kann die Meldung `Bild-Upload ist nicht bereit.`
+  nicht mehr durch fehlendes Bridge-Wiring entstehen. Hotel-Card-Layout,
+  Travel-Renderer, Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing,
+  Firebase Rules und Functions bleiben unveraendert.
+- Schritt 87 ist abgeschlossen: Die Travel-Hotel-/Motel-Card richtet ihre
+  Titelbild-Slider-Pfeile lokal stabil links/rechts aus und reagiert
+  toleranter auf Finger-Swipe.
+- Bewertung von Schritt 87: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 87:
+  Die Slider-Pfeile verlassen sich fuer linke/rechte Position, vertikale
+  Zentrierung und Vordergrund-Ebene nicht mehr nur auf Utility-Klassen. Die
+  Galerie setzt `touch-action: pan-y` inline, und der Swipe-Pfad akzeptiert
+  kuerzere horizontale Wischwege, liest das Finger-Ende aus `changedTouches`
+  und schuetzt weiter gegen vertikale Scroll-Gesten. Hotel-Editor, Profil-
+  Open-Flow, Restaurant-/Cafe-Cards, QR, Cart, Order, Routing, Firebase Rules
+  und Functions bleiben unveraendert. Auf ausdruecklichen Nutzerwunsch wurde
+  dieser Schritt trotz Dauerregel auf Branch `main` umgesetzt.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -820,7 +925,17 @@ Last updated: 2026-06-18
 - Referenz: [docs/mnyra-step74-restaurants-card-lead-details.md](./mnyra-step74-restaurants-card-lead-details.md)
 - Referenz: [docs/mnyra-step75-restaurants-card-ui-parity.md](./mnyra-step75-restaurants-card-ui-parity.md)
 - Referenz: [docs/mnyra-step76-restaurants-card-width-icons.md](./mnyra-step76-restaurants-card-width-icons.md)
-- Referenz: [docs/mnyra-step77-travel-hotel-card-editor.md](./mnyra-step77-travel-hotel-card-editor.md)
+- Referenz: [docs/mnyra-step77-restaurants-header-location-filter.md](./mnyra-step77-restaurants-header-location-filter.md)
+- Referenz: [docs/mnyra-step78-restaurants-header-location-filter-fix.md](./mnyra-step78-restaurants-header-location-filter-fix.md)
+- Referenz: [docs/mnyra-step79-restaurants-location-complete-filter.md](./mnyra-step79-restaurants-location-complete-filter.md)
+- Referenz: [docs/mnyra-step80-travel-hotel-card-editor.md](./mnyra-step80-travel-hotel-card-editor.md)
+- Referenz: [docs/mnyra-step81-travel-hotel-card-icon-button-fix.md](./mnyra-step81-travel-hotel-card-icon-button-fix.md)
+- Referenz: [docs/mnyra-step82-hotel-card-multi-image-upload.md](./mnyra-step82-hotel-card-multi-image-upload.md)
+- Referenz: [docs/mnyra-step83-hotel-card-upload-visibility-fix.md](./mnyra-step83-hotel-card-upload-visibility-fix.md)
+- Referenz: [docs/mnyra-step84-hotel-card-upload-save-guard.md](./mnyra-step84-hotel-card-upload-save-guard.md)
+- Referenz: [docs/mnyra-step85-hotel-card-upload-runtime-path.md](./mnyra-step85-hotel-card-upload-runtime-path.md)
+- Referenz: [docs/mnyra-step86-hotel-card-upload-bridge-wiring.md](./mnyra-step86-hotel-card-upload-bridge-wiring.md)
+- Referenz: [docs/mnyra-step87-travel-hotel-card-swipe-arrows.md](./mnyra-step87-travel-hotel-card-swipe-arrows.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -846,7 +961,7 @@ Last updated: 2026-06-18
 
 ## Naechster Schritt
 
-Nach Schritt 77 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 87 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -869,15 +984,31 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-77-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-87-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
-Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, Distanzen,
-Feature-Chips, Bestpreis und `Mehr` direkt zum Profil; Hotel-/Motel-Editor
-mit Titelbild-Upload/URL, Zentrum-/Stranddistanz, Feature-Texten und
-Bestpreis; Restaurant-/Cafe-Menueditor unveraendert; Restaurants-Gate und
-normale Restaurant-/Cafe-List-Cards aus Schritt 76; Heart lokal unter privater
-LAN-IP mit `/leads`, `/customers` und `/admin/staff`; Travel-Karte,
-Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die bisherigen
+Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
+Strand-/See-Icon, links/rechts stabil positionierten Slider-Pfeilen,
+zuverlaessigerem Finger-Swipe, Distanzen, Feature-Chips, Bestpreis und kompaktem `Mehr`
+direkt zum Profil; Hotel-/Motel-Editor mit Mehrfach-Titelbild-Upload,
+Galerie-Preview, neuen Bildern vorne in Vorschau und Travel-Card, Erhalt der
+ausgewaehlten Previews bei Upload-Fehlern, keine Guard-Fallback-Meldung
+`Bild-Upload hat keine Bild-URL geliefert.`, keine Bridge-Wiring-Meldung
+`Bild-Upload ist nicht bereit.`, Entfernen einzelner Bilder, URL-Fallback,
+Zentrum-/Stranddistanz, Feature-Texten und Bestpreis; Restaurant-/Cafe-
+Menueditor unveraendert; Service-Worker-/Build-Token nach hartem Reload;
+Restaurants-Gate ohne
+Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante, Restaurants
+ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive identischem
+Feed-Location-Feld im Smart-Header, sichtbarem Haken und streng nach
+Standortdaten gefilterten Restaurant-/Cafe-Cards inklusive aller passenden
+Treffer der gesetzten Stadt, normale Restaurant-/Cafe-List-Cards mit gleicher
+linker Content-Kante wie die obere Swipe-Zeile, sichtbaren Teilen-/Telefon-/
+Menu-Icons, Titelbild/Oeffnungszeiten/Feature-Chips und Profil/Menu-Buttons,
+Lead-Erstellung/-Bearbeitung fuer Restaurant/Cafe mit Titelbild und
+Card-Details, Heart lokal unter privater LAN-IP mit `/leads`, `/customers` und
+`/admin/staff`, inklusive Heart-Leads-Kategorie-Filter und eingefuegter
+Suchbegriffe, Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem
+Social-Drawer sowie die bisherigen
 Public-Profile/Menu/QR/Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
