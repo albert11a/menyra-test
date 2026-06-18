@@ -828,6 +828,15 @@ Last updated: 2026-06-18
   Upload-Fehler kommen weiter aus dem Media-Upload-Service. Hotel-Card-Layout,
   Travel-Renderer, Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing,
   Firebase Rules und Functions bleiben unveraendert.
+- Schritt 86 ist abgeschlossen: Das Shell-Bridge-Wiring reicht
+  `uploadCompressedImage` jetzt an den Shell-Bootstrap weiter.
+- Bewertung von Schritt 86: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 86:
+  Der Hotel-Card-Event-Binder bekommt die Media-Upload-Funktion wieder korrekt
+  aus der Shell-Bridge. Damit kann die Meldung `Bild-Upload ist nicht bereit.`
+  nicht mehr durch fehlendes Bridge-Wiring entstehen. Hotel-Card-Layout,
+  Travel-Renderer, Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing,
+  Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -912,6 +921,7 @@ Last updated: 2026-06-18
 - Referenz: [docs/mnyra-step83-hotel-card-upload-visibility-fix.md](./mnyra-step83-hotel-card-upload-visibility-fix.md)
 - Referenz: [docs/mnyra-step84-hotel-card-upload-save-guard.md](./mnyra-step84-hotel-card-upload-save-guard.md)
 - Referenz: [docs/mnyra-step85-hotel-card-upload-runtime-path.md](./mnyra-step85-hotel-card-upload-runtime-path.md)
+- Referenz: [docs/mnyra-step86-hotel-card-upload-bridge-wiring.md](./mnyra-step86-hotel-card-upload-bridge-wiring.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -937,7 +947,7 @@ Last updated: 2026-06-18
 
 ## Naechster Schritt
 
-Nach Schritt 85 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 86 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -960,14 +970,15 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-85-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-86-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
 Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
 Strand-/See-Icon, Distanzen, Feature-Chips, Bestpreis und kompaktem `Mehr`
 direkt zum Profil; Hotel-/Motel-Editor mit Mehrfach-Titelbild-Upload,
 Galerie-Preview, neuen Bildern vorne in Vorschau und Travel-Card, Erhalt der
 ausgewaehlten Previews bei Upload-Fehlern, keine Guard-Fallback-Meldung
-`Bild-Upload hat keine Bild-URL geliefert.`, Entfernen einzelner Bilder, URL-Fallback,
+`Bild-Upload hat keine Bild-URL geliefert.`, keine Bridge-Wiring-Meldung
+`Bild-Upload ist nicht bereit.`, Entfernen einzelner Bilder, URL-Fallback,
 Zentrum-/Stranddistanz, Feature-Texten und Bestpreis; Restaurant-/Cafe-
 Menueditor unveraendert; Service-Worker-/Build-Token nach hartem Reload;
 Restaurants-Gate ohne

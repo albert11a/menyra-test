@@ -321,6 +321,7 @@ export function createBridgeShellRuntimeCluster({
     removePendingChatAttachment: shellApi.removePendingChatAttachment,
     addChatAttachments: shellApi.addChatAttachments,
     handleUploadPost: shellApi.handleUploadPost,
+    uploadCompressedImage: shellApi.uploadCompressedImage,
     bindCrmStaffEventsCore: shellApi.bindCrmStaffEventsCore,
     closeStaffEditor: shellApi.closeStaffEditor,
     openStaffEditor: shellApi.openStaffEditor,
