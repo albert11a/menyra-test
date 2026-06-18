@@ -12,6 +12,11 @@ export function bindAppMenuFocusEventsCore({
   submitShopCheckoutFn,
   updateShopCheckoutFieldFn,
   saveTableQrConfigFn,
+  setDocFn,
+  docFn,
+  db,
+  serverTimestampFn,
+  uploadCompressedImageFn,
   focusCache,
   focusCacheKeyFn,
   saveFocusEnabledFn,
@@ -51,6 +56,10 @@ export function bindAppMenuFocusEventsCore({
   const saveTableQrConfig = typeof saveTableQrConfigFn === "function"
     ? saveTableQrConfigFn
     : null;
+  const setDoc = typeof setDocFn === "function" ? setDocFn : null;
+  const makeDocRef = typeof docFn === "function" ? docFn : null;
+  const serverTimestamp = typeof serverTimestampFn === "function" ? serverTimestampFn : (() => null);
+  const uploadCompressedImage = typeof uploadCompressedImageFn === "function" ? uploadCompressedImageFn : null;
   const focusCacheKey = typeof focusCacheKeyFn === "function" ? focusCacheKeyFn : (() => "");
   const saveFocusEnabled = typeof saveFocusEnabledFn === "function" ? saveFocusEnabledFn : null;
   const openFocusModal = typeof openFocusModalFn === "function" ? openFocusModalFn : (() => {});
@@ -119,6 +128,169 @@ export function bindAppMenuFocusEventsCore({
     } catch {
       return false;
     }
+  }
+
+  const readHotelCardInput = (id = "") => {
+    const node = doc.getElementById(id);
+    return node ? String(node.value || "").trim() : "";
+  };
+
+  function updateHotelCardLocalState(restaurantId = "", payload = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId || !payload || typeof payload !== "object") return;
+    const existing = Array.isArray(state.restaurants) ? state.restaurants : [];
+    let seen = false;
+    state.restaurants = existing.map((row) => {
+      if (String(row?.id || row?.restaurantId || "") !== safeRestaurantId) return row;
+      seen = true;
+      return { ...row, ...payload, id: safeRestaurantId, restaurantId: safeRestaurantId };
+    });
+    if (!seen) {
+      state.restaurants = [...state.restaurants, { ...payload, id: safeRestaurantId, restaurantId: safeRestaurantId }];
+    }
+    if (String(state.userProfile?.restaurantId || "") === safeRestaurantId) {
+      state.userProfile = {
+        ...state.userProfile,
+        ...payload,
+        restaurantId: safeRestaurantId
+      };
+    }
+    if (String(state.profileView?.profile?.restaurantId || "") === safeRestaurantId) {
+      state.profileView = {
+        ...state.profileView,
+        profile: {
+          ...state.profileView.profile,
+          ...payload,
+          restaurantId: safeRestaurantId
+        }
+      };
+    }
+  }
+
+  async function saveHotelCardDetails() {
+    const restaurantId = String(state.userProfile?.restaurantId || "").trim();
+    if (!restaurantId || !setDoc || !makeDocRef || !db) return;
+    const imageRows = [0, 1, 2].map((index) => ({
+      index,
+      url: readHotelCardInput(`hotelCardCoverImageUrl_${index}`),
+      file: doc.getElementById(`hotelCardCoverImageInput_${index}`)?.files?.[0] || null
+    }));
+    const distanceCenter = readHotelCardInput("hotelCardDistanceCenter");
+    const distanceBeach = readHotelCardInput("hotelCardDistanceBeach");
+    const startingPrice = readHotelCardInput("hotelCardStartingPrice").replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
+    const featureOne = readHotelCardInput("hotelCardFeatureOneText");
+    const featureTwo = readHotelCardInput("hotelCardFeatureTwoText");
+    const featureThree = readHotelCardInput("hotelCardFeatureThreeText");
+    const featureList = [featureOne, featureTwo, featureThree].filter(Boolean);
+
+    state.hotelCardEditor = {
+      ...(state.hotelCardEditor || {}),
+      saving: true,
+      status: "Speichern..."
+    };
+    render();
+
+    try {
+      const coverImages = [];
+      for (const row of imageRows) {
+        let imageUrl = row.url;
+        if (row.file) {
+          if (!uploadCompressedImage) {
+            throw new Error("Bild-Upload ist nicht bereit.");
+          }
+          const uploaded = await uploadCompressedImage(row.file, restaurantId, {
+            maxSize: 1280,
+            quality: 0.82,
+            mimeType: "image/jpeg"
+          });
+          imageUrl = String(uploaded?.cdnUrl || uploaded?.url || imageUrl || "").trim();
+        }
+        if (imageUrl && !coverImages.includes(imageUrl)) coverImages.push(imageUrl);
+      }
+
+      const titleImageUrl = coverImages[0] || "";
+      const payload = {
+        hotelCoverImages: coverImages,
+        coverImages,
+        titleImages: coverImages,
+        titleImageUrl,
+        coverImageUrl: titleImageUrl,
+        coverUrl: titleImageUrl,
+        heroUrl: titleImageUrl,
+        distanceCenter,
+        distanceToCenter: distanceCenter,
+        centerDistance: distanceCenter,
+        centerDistanceLabel: distanceCenter,
+        zentrumEntfernung: distanceCenter,
+        distanceBeach,
+        distanceToBeach: distanceBeach,
+        beachDistance: distanceBeach,
+        beachDistanceLabel: distanceBeach,
+        strandEntfernung: distanceBeach,
+        hotelStartingPrice: startingPrice,
+        startingPrice,
+        priceFrom: startingPrice,
+        roomStartingPrice: startingPrice,
+        hotelFeatureOneText: featureOne,
+        hotelFeatureTwoText: featureTwo,
+        hotelFeatureThreeText: featureThree,
+        gardenTerraceText: featureOne,
+        accessibilityText: featureTwo,
+        veganOptionsText: featureThree,
+        restaurantFeatures: {
+          gardenTerrace: featureOne,
+          accessibility: featureTwo,
+          veganOptions: featureThree
+        },
+        features: featureList,
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(makeDocRef(db, "restaurants", restaurantId), payload, { merge: true });
+      updateHotelCardLocalState(restaurantId, payload);
+      state.hotelCardEditor = {
+        saving: false,
+        status: "Hotel Card gespeichert."
+      };
+      render();
+    } catch (err) {
+      console.error(err);
+      state.hotelCardEditor = {
+        saving: false,
+        status: err?.message || "Hotel Card konnte nicht gespeichert werden."
+      };
+      render();
+    }
+  }
+
+  doc.querySelectorAll("[data-hotel-card-cover-trigger]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const index = String(btn.getAttribute("data-hotel-card-cover-trigger") || "").trim();
+      const input = doc.getElementById(`hotelCardCoverImageInput_${index}`);
+      if (input && typeof input.click === "function") input.click();
+    });
+  });
+
+  doc.querySelectorAll("[data-hotel-card-cover-input]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const index = String(input.getAttribute("data-hotel-card-cover-input") || "").trim();
+      const file = input.files?.[0] || null;
+      if (!file) return;
+      const preview = doc.getElementById(`hotelCardCoverImagePreview_${index}`);
+      try {
+        const previewUrl = doc.defaultView?.URL?.createObjectURL
+          ? doc.defaultView.URL.createObjectURL(file)
+          : "";
+        if (preview && previewUrl) preview.setAttribute("src", previewUrl);
+      } catch {}
+    });
+  });
+
+  const hotelCardSaveBtn = doc.getElementById("hotelCardSaveBtn");
+  if (hotelCardSaveBtn) {
+    hotelCardSaveBtn.addEventListener("click", () => {
+      if (state.hotelCardEditor?.saving === true) return;
+      void saveHotelCardDetails();
+    });
   }
 
   const menuSearchInput = doc.getElementById("menuSearchInput");

@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-17
+Last updated: 2026-06-18
 
 # Mnyra Current Phase
 
@@ -760,6 +760,21 @@ Last updated: 2026-06-17
   nur weil der Begriff irgendwo ausserhalb der Standortdaten vorkommt. Gate,
   Cards, Feed-Storage-Key, QR, Cart, Order, Travel, Firebase Rules und Functions
   bleiben unveraendert.
+- Schritt 80 ist abgeschlossen: Die normalen Hotel-/Motel-Cards im
+  Travel-Hotels-Tab nutzen die freigegebene Premium-Hotel-Card und
+  Hotel-/Motel-Business-Accounts bekommen einen eigenen Hotel-Card-Editor im
+  Editor-Tab.
+- Bewertung von Schritt 80: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 80:
+  Im Travel-Hotels-Tab rendert die normale Hotel-Card mit Titelbild-Slider,
+  schwebendem Logo, Hotel-Distanzen, Feature-Chips, Bestpreis und `Mehr`
+  direkt zum Profil, in der gleichen vollen Listenbreite wie die anderen
+  normalen Marketplace-Cards. Hotel-/Motel-Owner koennen im eigenen Editor bis
+  zu drei Titelbilder, Zentrum-/Stranddistanz, drei Feature-Texte und
+  Bestpreis speichern. Restaurant-/Cafe-Menueditor, QR, Cart, Order, Routing,
+  Firebase Rules und Functions bleiben unveraendert. Auf ausdruecklichen
+  Nutzerwunsch wurde dieser Schritt zusaetzlich auf Branch `main`
+  uebernommen.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -838,6 +853,7 @@ Last updated: 2026-06-17
 - Referenz: [docs/mnyra-step77-restaurants-header-location-filter.md](./mnyra-step77-restaurants-header-location-filter.md)
 - Referenz: [docs/mnyra-step78-restaurants-header-location-filter-fix.md](./mnyra-step78-restaurants-header-location-filter-fix.md)
 - Referenz: [docs/mnyra-step79-restaurants-location-complete-filter.md](./mnyra-step79-restaurants-location-complete-filter.md)
+- Referenz: [docs/mnyra-step80-travel-hotel-card-editor.md](./mnyra-step80-travel-hotel-card-editor.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -863,11 +879,12 @@ Last updated: 2026-06-17
 
 ## Naechster Schritt
 
-Nach Schritt 79 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 80 sind die naechsten sinnvollen separaten Folgeschritte:
 
-- Separater Hotel-Owner-Tool-Schritt fuer Zimmer, Fotos, Ausstattung,
-  Strandentfernung und Hotel-spezifische Details, die spaeter im Profil und in
-  Travel-Cards erscheinen.
+- Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
+  Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
+- Separater Hotel-Profil-Details-Schritt fuer weitergehende Ausstattung,
+  Galerie und Profilpraesentation, falls die sichtbare UI freigegeben wird.
 - Separater Performance-/Pagination-Schritt fuer sehr grosse Business-Profile,
   falls Vollstaendigkeits- und Pagination-Vertrag fachlich freigegeben wird.
 - Separater kleiner Icon-Runtime-Schritt fuer weitere fehlende Lucide-Icons in
@@ -885,22 +902,24 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-79-Stands bleibt weiterhin
-sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Restaurants-
-Gate ohne Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante,
-Restaurants ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive
-identischem Feed-Location-Feld im Smart-Header, sichtbarem Haken und streng
-nach Standortdaten gefilterten Restaurant-/Cafe-Cards inklusive aller
-passenden Treffer der gesetzten Stadt, normale
-Restaurant-/Cafe-List-Cards mit gleicher linker Content-Kante wie die obere
-Swipe-Zeile, sichtbaren Teilen-/Telefon-/Menu-Icons, Titelbild/
-Oeffnungszeiten/Feature-Chips und Profil/Menu-Buttons inklusive der Nutzer-
-Card-Geometrie, Lead-Erstellung/-Bearbeitung fuer Restaurant/Cafe mit
-Titelbild und Card-Details, Heart lokal
-unter privater LAN-IP mit `/leads`, `/customers` und `/admin/staff`, inklusive
-Heart-Leads-Kategorie-Filter und eingefuegter Suchbegriffe, Travel-Hotels,
-Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem Social-Drawer sowie die
-bisherigen
+Die manuelle Gegenpruefung des frischen Schritt-80-Stands bleibt weiterhin
+sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
+Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, Distanzen,
+Feature-Chips, Bestpreis und `Mehr` direkt zum Profil; Hotel-/Motel-Editor
+mit Titelbild-Upload/URL, Zentrum-/Stranddistanz, Feature-Texten und
+Bestpreis; Restaurant-/Cafe-Menueditor unveraendert; Restaurants-Gate ohne
+Feed-Location inklusive Feed-aehnlich gerundeter Benko-Oberkante, Restaurants
+ohne Gate nach Feed-Stadtwahl oder GPS-Standort inklusive identischem
+Feed-Location-Feld im Smart-Header, sichtbarem Haken und streng nach
+Standortdaten gefilterten Restaurant-/Cafe-Cards inklusive aller passenden
+Treffer der gesetzten Stadt, normale Restaurant-/Cafe-List-Cards mit gleicher
+linker Content-Kante wie die obere Swipe-Zeile, sichtbaren Teilen-/Telefon-/
+Menu-Icons, Titelbild/Oeffnungszeiten/Feature-Chips und Profil/Menu-Buttons,
+Lead-Erstellung/-Bearbeitung fuer Restaurant/Cafe mit Titelbild und
+Card-Details, Heart lokal unter privater LAN-IP mit `/leads`, `/customers` und
+`/admin/staff`, inklusive Heart-Leads-Kategorie-Filter und eingefuegter
+Suchbegriffe, Travel-Karte, Hotel-Details-Profil, Heart/CRM aus dem
+Social-Drawer sowie die bisherigen
 Public-Profile/Menu/QR/Cart/Order-Flows.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht

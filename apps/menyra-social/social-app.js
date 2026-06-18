@@ -4683,6 +4683,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     removePendingChatAttachment,
     addChatAttachments,
     handleUploadPost,
+    uploadCompressedImage,
     bindCrmStaffEventsCore,
     closeStaffEditor,
     openStaffEditor,

@@ -384,6 +384,45 @@ function readFirstHotelText(record = {}, keys = []) {
   return "";
 }
 
+function collectHotelTextList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  return raw.split(/[\n,;|]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function collectHotelCoverImages(record = {}) {
+  const images = [
+    ...collectHotelTextList(record.coverImages),
+    ...collectHotelTextList(record.hotelCoverImages),
+    ...collectHotelTextList(record.titleImages),
+    record.titleImageUrl,
+    record.coverImageUrl,
+    record.coverUrl,
+    record.heroUrl,
+    record.imageUrl
+  ].map((item) => String(item || "").trim()).filter(Boolean);
+  const unique = [];
+  images.forEach((image) => {
+    if (!unique.includes(image)) unique.push(image);
+  });
+  return unique.slice(0, 3);
+}
+
+function getHotelCardFeatureValues(record = {}) {
+  const features = Array.isArray(record.features) ? record.features.map((item) => String(item || "").trim()).filter(Boolean) : [];
+  const restaurantFeatures = record.restaurantFeatures && typeof record.restaurantFeatures === "object"
+    ? record.restaurantFeatures
+    : {};
+  return [
+    readFirstHotelText(record, ["hotelFeatureOneText", "gardenTerraceText"]) || String(restaurantFeatures.gardenTerrace || "").trim() || features[0] || "",
+    readFirstHotelText(record, ["hotelFeatureTwoText", "accessibilityText"]) || String(restaurantFeatures.accessibility || "").trim() || features[1] || "",
+    readFirstHotelText(record, ["hotelFeatureThreeText", "veganOptionsText"]) || String(restaurantFeatures.veganOptions || "").trim() || features[2] || ""
+  ];
+}
+
 function collectHotelAmenities(record = {}) {
   const values = [];
   const push = (label = "") => {
@@ -411,6 +450,28 @@ function collectHotelAmenities(record = {}) {
   if (record.parking || record.freeParking || record.hasParking) push("Parkplatz");
   if (record.spa || record.wellness) push("Wellness");
   return values.slice(0, 8);
+}
+
+function renderHotelCardImageEditorSlot({ imageUrl = "", index = 0 } = {}) {
+  const number = Number(index) + 1;
+  const optimized = imageUrl ? getOptimizedImageUrl(imageUrl, "medium") : PLACEHOLDER_IMAGE;
+  return `
+    <div class="rounded-[2rem] border border-slate-100 bg-slate-50 overflow-hidden">
+      <input id="hotelCardCoverImageInput_${index}" data-hotel-card-cover-input="${index}" type="file" accept="image/*" class="hidden" />
+      <div class="h-36 bg-white overflow-hidden">
+        <img id="hotelCardCoverImagePreview_${index}" src="${escapeHtml(optimized || PLACEHOLDER_IMAGE)}" class="w-full h-full object-cover bg-white" />
+      </div>
+      <div class="p-4 space-y-3">
+        <button type="button" data-hotel-card-cover-trigger="${index}" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+          Titelbild ${number} hochladen
+        </button>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titelbild ${number} URL</label>
+          <input id="hotelCardCoverImageUrl_${index}" type="text" value="${escapeHtml(imageUrl)}" placeholder="https://..." class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderHotelDetailCard({ iconName = "info", label = "", value = "", helper = "" } = {}) {
@@ -447,6 +508,15 @@ function renderHotelDetailsView(profile = {}) {
     "beachDistanceLabel",
     "strandEntfernung"
   ]);
+  const centerDistance = readFirstHotelText(record, [
+    "distanceCenter",
+    "distanceToCenter",
+    "centerDistance",
+    "cityCenterDistance",
+    "centerDistanceLabel",
+    "zentrumEntfernung",
+    "distanceCentre"
+  ]);
   const rating = readFirstHotelText(record, ["rating", "reviewRating", "stars", "hotelStars"]);
   const reviewCount = readFirstHotelText(record, ["reviewCount", "reviewsCount", "ratingsCount", "commentsCount"]);
   const amenities = collectHotelAmenities(record);
@@ -481,6 +551,11 @@ function renderHotelDetailsView(profile = {}) {
           helper: coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ""
         })}
         ${renderHotelDetailCard({
+          iconName: "navigation",
+          label: "Zentrum",
+          value: centerDistance || "Details folgen"
+        })}
+        ${renderHotelDetailCard({
           iconName: "waves",
           label: "Strand",
           value: beachDistance || (record.beachfront || record.onBeach ? "Direkt am Strand" : "Details folgen")
@@ -503,6 +578,105 @@ function renderHotelDetailsView(profile = {}) {
           <p class="text-sm font-bold text-slate-400">Ausstattung und Zimmerdetails folgen.</p>
         `}
       </div>
+    </div>
+  `;
+}
+
+function renderHotelCardAdminView(profile = {}) {
+  const record = getHotelProfileRecord(profile);
+  const restaurantId = String(profile?.restaurantId || record.restaurantId || record.id || "").trim();
+  const restaurantName = record?.name || record?.restaurantName || profile?.name || "Hotel";
+  const status = String(state.hotelCardEditor?.status || "").trim();
+  const saving = state.hotelCardEditor?.saving === true;
+  const coverImages = collectHotelCoverImages(record);
+  while (coverImages.length < 3) coverImages.push("");
+  const [featureOne, featureTwo, featureThree] = getHotelCardFeatureValues(record);
+  const distanceCenter = readFirstHotelText(record, [
+    "distanceCenter",
+    "distanceToCenter",
+    "centerDistance",
+    "cityCenterDistance",
+    "centerDistanceLabel",
+    "zentrumEntfernung",
+    "distanceCentre"
+  ]);
+  const distanceBeach = readFirstHotelText(record, [
+    "distanceBeach",
+    "distanceToBeach",
+    "beachDistance",
+    "beachDistanceLabel",
+    "strandEntfernung",
+    "lakeDistance",
+    "distanceToLake"
+  ]);
+  const startingPrice = readFirstHotelText(record, [
+    "hotelStartingPrice",
+    "startingPrice",
+    "priceFrom",
+    "fromPrice",
+    "bestPrice",
+    "roomStartingPrice"
+  ]);
+  return `
+    <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-end justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Hotel Card</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Editor</h2>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(restaurantName)}</p>
+        </div>
+      </div>
+
+      ${restaurantId ? `
+        <div data-hotel-card-editor="${escapeHtml(restaurantId)}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5">
+          <div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Titelbilder</p>
+            <div class="grid grid-cols-1 gap-4">
+              ${coverImages.slice(0, 3).map((imageUrl, index) => renderHotelCardImageEditorSlot({ imageUrl, index })).join("")}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Entfernung Zentrum</label>
+              <input id="hotelCardDistanceCenter" type="text" value="${escapeHtml(distanceCenter)}" placeholder="450 m zum Zentrum" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Entfernung Strand / See</label>
+              <input id="hotelCardDistanceBeach" type="text" value="${escapeHtml(distanceBeach)}" placeholder="150 m zum See / Strand" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bestpreis p.P.</label>
+              <input id="hotelCardStartingPrice" type="text" value="${escapeHtml(startingPrice)}" placeholder="145" inputmode="decimal" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Feature 1</label>
+              <input id="hotelCardFeatureOneText" type="text" value="${escapeHtml(featureOne)}" placeholder="Infinity Pool" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Feature 2</label>
+              <input id="hotelCardFeatureTwoText" type="text" value="${escapeHtml(featureTwo)}" placeholder="Wellness & Spa" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Feature 3</label>
+              <input id="hotelCardFeatureThreeText" type="text" value="${escapeHtml(featureThree)}" placeholder="Gourmet Pension" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+
+          ${status ? `<div class="text-center text-[10px] font-black uppercase tracking-widest ${status.includes("fehl") || status.includes("Bitte") ? "text-rose-500" : "text-slate-500"}">${escapeHtml(status)}</div>` : ""}
+
+          <button id="hotelCardSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${saving ? "disabled" : ""}>
+            ${saving ? "Speichern..." : "Hotel Card speichern"}
+          </button>
+        </div>
+      ` : `
+        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
+          <p class="text-sm font-bold text-slate-500">Bitte zuerst dein Hotel-Business im Account auswaehlen.</p>
+        </div>
+      `}
     </div>
   `;
 }
@@ -2271,6 +2445,7 @@ function renderMenuAdminView() {
       !!state.__authProfileLoadPromise
       || bootstrapInFlightUid === activeUid
     );
+  const isHotelProfile = isHotelBusinessProfile(profile);
   const isEligible = isRestaurantCafeProfile(profile);
   const publicMenuProfile = state.profileView?.profile?.restaurantId
     ? state.profileView.profile
@@ -2295,6 +2470,10 @@ function renderMenuAdminView() {
     : rawItems.filter((item) => !isSpecialMenuItem(item));
   const items = sortMenuItemsByOrder(scopedItems);
   const countLabel = formatCount(items.length);
+
+  if (restaurantId && isHotelProfile) {
+    return renderHotelCardAdminView(profile);
+  }
 
   if (restaurantId && isEligible && !hasAuthoringMenuTruth && !isAuthoringMenuLoading) {
     ensureEditorMenuDataForProfile(profile);
