@@ -861,6 +861,17 @@ Last updated: 2026-06-19
   Bearbeiten, Loeschen und Aktiv-Schalter bereit. Restaurant-/Cafe-Editor,
   Hotel-Card-Layout, QR, Cart, Order, Routing, Firebase Rules und Functions
   bleiben unveraendert.
+- Schritt 89 ist abgeschlossen: Travel `Ofertat` zeigt nur noch Hotels/Motels
+  mit aktiver Oferta und der Hotel-/Motel-Oferta-Editor pflegt die benoetigten
+  Hotel-Card-Felder fuer Oferta.
+- Bewertung von Schritt 89: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 89:
+  Travel `Ofertat` wird aus aktiven Eintraegen in
+  `restaurants/{restaurantId}/public/offers` gebaut. Hotels/Motels ohne aktive
+  Oferta verschwinden aus diesem Tab. Oferta-Eintraege koennen jetzt Badge
+  links, `Nete / dite`-Badge, Zentrum-/Stranddistanz, Preis, Preis-Typ
+  `p.P`/`Totali` und mehrere Feature-Zeilen speichern. QR, Cart, Order,
+  Routing, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -948,6 +959,7 @@ Last updated: 2026-06-19
 - Referenz: [docs/mnyra-step86-hotel-card-upload-bridge-wiring.md](./mnyra-step86-hotel-card-upload-bridge-wiring.md)
 - Referenz: [docs/mnyra-step87-travel-hotel-card-swipe-arrows.md](./mnyra-step87-travel-hotel-card-swipe-arrows.md)
 - Referenz: [docs/mnyra-step88-travel-oferta-hotel-cards.md](./mnyra-step88-travel-oferta-hotel-cards.md)
+- Referenz: [docs/mnyra-step89-travel-oferta-filter-fields.md](./mnyra-step89-travel-oferta-filter-fields.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -973,7 +985,7 @@ Last updated: 2026-06-19
 
 ## Naechster Schritt
 
-Nach Schritt 88 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 89 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -996,7 +1008,7 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-88-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-89-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
 Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
 Strand-/See-Icon, links/rechts stabil positionierten Slider-Pfeilen,
@@ -1028,6 +1040,13 @@ Hotel-/Motel-Cards wie der `Hotels`-Tab; Bildslider, Like/Share und `Mehr`
 funktionieren auch dort; Hotel-/Motel-Editor zeigt unter dem Hotel-Card-Editor
 die `Ofertat`-/`Oferta`-Sektion; Oferta kann hinzugefuegt, bearbeitet,
 aktiviert/deaktiviert und geloescht werden.
+
+Zusaetzlich fuer Schritt 89 manuell pruefen: Travel-Tab `Ofertat` zeigt keine
+Hotels/Motels ohne aktive Oferta; neue Oferta erstellen und danach im Travel-
+Tab als Hotel-Card sehen; Badge links, `Nete / dite`, Zentrum, Strand/See,
+Preis, `p.P`/`Totali` und mehrere Features speichern und wieder bearbeiten;
+Oferta deaktivieren oder loeschen und pruefen, dass sie aus `Ofertat`
+verschwindet.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

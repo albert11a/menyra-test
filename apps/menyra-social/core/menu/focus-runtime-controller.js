@@ -57,11 +57,69 @@ export function createFocusRuntimeController({
     return globalThis.crypto?.randomUUID?.() || String(Math.random()).slice(2);
   }
 
+  function cleanFocusText(value = "") {
+    return String(value || "").trim();
+  }
+
+  function collectFocusTextList(value) {
+    if (Array.isArray(value)) {
+      return value.map(cleanFocusText).filter(Boolean);
+    }
+    const raw = cleanFocusText(value);
+    if (!raw) return [];
+    return raw.split(/[\n,;|]/).map(cleanFocusText).filter(Boolean);
+  }
+
+  function normalizeFocusPriceUnit(value = "") {
+    const key = cleanFocusText(value).toLowerCase()
+      .replace(/[ëèéê]/g, "e")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    if (key === "total" || key === "totali" || key === "gesamt") return "total";
+    return "per_person";
+  }
+
+  function isTravelOfferProfile(profile = state?.userProfile || {}) {
+    const type = cleanFocusText(
+      profile?.type
+      || profile?.customerType
+      || profile?.businessType
+      || profile?.restaurantType
+      || profile?.category
+      || ""
+    ).toLowerCase();
+    return type.includes("hotel") || type.includes("motel");
+  }
+
+  function hasTravelOfferFields(item = {}) {
+    return item?.isTravelOffer === true
+      || item?.travelOffer === true
+      || item?.offerBadgeLabel !== undefined
+      || item?.offerDurationLabel !== undefined
+      || item?.distanceCenter !== undefined
+      || item?.distanceBeach !== undefined
+      || item?.hotelStartingPrice !== undefined
+      || item?.priceUnit !== undefined
+      || item?.features !== undefined
+      || item?.offerFeatures !== undefined;
+  }
+
+  function collectTravelOfferFeatures(item = {}) {
+    return [
+      ...collectFocusTextList(item.features),
+      ...collectFocusTextList(item.offerFeatures),
+      ...collectFocusTextList(item.hotelFeatures),
+      cleanFocusText(item.hotelFeatureOneText),
+      cleanFocusText(item.hotelFeatureTwoText),
+      cleanFocusText(item.hotelFeatureThreeText)
+    ].filter(Boolean).filter((entry, index, list) => list.indexOf(entry) === index);
+  }
+
   function normalizeFocusItem(data, fallbackId) {
     const item = data || {};
     const id = item.id || item._id || fallbackId || createFocusId();
     const crop = getFocusItemCrop(item);
-    return {
+    const normalized = {
       id,
       menuItemId: String(item.menuItemId || item.targetMenuItemId || item.itemId || item.targetItemId || "").trim(),
       productId: String(item.productId || item.targetProductId || "").trim(),
@@ -73,6 +131,25 @@ export function createFocusRuntimeController({
       cropY: crop.y,
       active: item.active !== false
     };
+    if (hasTravelOfferFields(item)) {
+      const features = collectTravelOfferFeatures(item);
+      normalized.isTravelOffer = true;
+      normalized.offerBadgeLabel = cleanFocusText(item.offerBadgeLabel || item.travelOfferBadgeLabel || item.badgeLabel || "OFERTA");
+      normalized.offerDurationLabel = cleanFocusText(item.offerDurationLabel || item.nightsDaysLabel || item.durationLabel || "");
+      normalized.distanceCenter = cleanFocusText(item.distanceCenter || item.distanceToCenter || item.centerDistance || "");
+      normalized.distanceToCenter = cleanFocusText(item.distanceToCenter || item.distanceCenter || item.centerDistance || "");
+      normalized.centerDistance = cleanFocusText(item.centerDistance || item.distanceCenter || item.distanceToCenter || "");
+      normalized.distanceBeach = cleanFocusText(item.distanceBeach || item.distanceToBeach || item.beachDistance || "");
+      normalized.distanceToBeach = cleanFocusText(item.distanceToBeach || item.distanceBeach || item.beachDistance || "");
+      normalized.beachDistance = cleanFocusText(item.beachDistance || item.distanceBeach || item.distanceToBeach || "");
+      normalized.hotelStartingPrice = cleanFocusText(item.hotelStartingPrice || item.startingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
+      normalized.startingPrice = cleanFocusText(item.startingPrice || item.hotelStartingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
+      normalized.priceFrom = cleanFocusText(item.priceFrom || item.startingPrice || item.hotelStartingPrice || "");
+      normalized.priceUnit = normalizeFocusPriceUnit(item.priceUnit || item.hotelPriceUnit || item.offerPriceUnit || "");
+      normalized.features = features;
+      normalized.offerFeatures = features;
+    }
+    return normalized;
   }
 
   async function loadFocusItems(restaurantId) {
@@ -120,15 +197,36 @@ export function createFocusRuntimeController({
   async function publishFocusItems(restaurantId, items) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !setDoc || !db) return;
-    const normalizedItems = (items || []).map((item) => ({
-      id: item.id || "",
-      title: item.title || "",
-      text: item.text || "",
-      imageUrl: item.imageUrl || "",
-      cropX: clampCropPercent(item.cropX ?? 50, 50),
-      cropY: clampCropPercent(item.cropY ?? 50, 50),
-      active: item.active !== false
-    }));
+    const normalizedItems = (items || []).map((item) => {
+      const payload = {
+        id: item.id || "",
+        title: item.title || "",
+        text: item.text || "",
+        imageUrl: item.imageUrl || "",
+        cropX: clampCropPercent(item.cropX ?? 50, 50),
+        cropY: clampCropPercent(item.cropY ?? 50, 50),
+        active: item.active !== false
+      };
+      if (hasTravelOfferFields(item)) {
+        const features = collectTravelOfferFeatures(item);
+        payload.isTravelOffer = true;
+        payload.offerBadgeLabel = cleanFocusText(item.offerBadgeLabel || item.travelOfferBadgeLabel || item.badgeLabel || "OFERTA");
+        payload.offerDurationLabel = cleanFocusText(item.offerDurationLabel || item.nightsDaysLabel || item.durationLabel || "");
+        payload.distanceCenter = cleanFocusText(item.distanceCenter || item.distanceToCenter || item.centerDistance || "");
+        payload.distanceToCenter = cleanFocusText(item.distanceToCenter || item.distanceCenter || item.centerDistance || "");
+        payload.centerDistance = cleanFocusText(item.centerDistance || item.distanceCenter || item.distanceToCenter || "");
+        payload.distanceBeach = cleanFocusText(item.distanceBeach || item.distanceToBeach || item.beachDistance || "");
+        payload.distanceToBeach = cleanFocusText(item.distanceToBeach || item.distanceBeach || item.beachDistance || "");
+        payload.beachDistance = cleanFocusText(item.beachDistance || item.distanceBeach || item.distanceToBeach || "");
+        payload.hotelStartingPrice = cleanFocusText(item.hotelStartingPrice || item.startingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
+        payload.startingPrice = cleanFocusText(item.startingPrice || item.hotelStartingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
+        payload.priceFrom = cleanFocusText(item.priceFrom || item.startingPrice || item.hotelStartingPrice || "");
+        payload.priceUnit = normalizeFocusPriceUnit(item.priceUnit || item.hotelPriceUnit || item.offerPriceUnit || "");
+        payload.features = features;
+        payload.offerFeatures = features;
+      }
+      return payload;
+    });
     const payload = {
       items: normalizedItems,
       truthSource: "public-menu",
@@ -158,6 +256,26 @@ export function createFocusRuntimeController({
     const enabled = same ? state?.focus?.enabled !== false : true;
     const loading = !!safeRestaurantId && (!!state?.focus?.loading || !same);
     return { items, enabled, loading, same };
+  }
+
+  function syncTravelOffersToRestaurantState(restaurantId, items = []) {
+    const safeRestaurantId = cleanFocusText(restaurantId);
+    if (!safeRestaurantId || !Array.isArray(state?.restaurants)) return;
+    const safeItems = Array.isArray(items) ? items : [];
+    state.restaurants = state.restaurants.map((row) => {
+      const rowId = cleanFocusText(row?.id || row?.restaurantId || row?.canonicalRestaurantId || "");
+      if (rowId !== safeRestaurantId) return row;
+      const activeOffers = safeItems.filter((item) => item && item.active !== false);
+      return {
+        ...row,
+        publicOffers: safeItems,
+        travelOffers: safeItems,
+        publicOffersCount: safeItems.length,
+        travelOffersCount: safeItems.length,
+        hasTravelOffers: activeOffers.length > 0,
+        offersTruthState: safeItems.length ? "seeded" : "knownEmpty"
+      };
+    });
   }
 
   function getFocusIndex(items) {
@@ -285,6 +403,14 @@ export function createFocusRuntimeController({
     const text = docObj.getElementById("focusText")?.value?.trim() || "";
     const imageUrlInput = docObj.getElementById("focusImageUrl")?.value?.trim() || "";
     const active = docObj.getElementById("focusActive")?.checked !== false;
+    const isTravelOffer = isTravelOfferProfile(state.userProfile);
+    const offerBadgeLabel = docObj.getElementById("focusOfferBadgeLabel")?.value?.trim() || "OFERTA";
+    const offerDurationLabel = docObj.getElementById("focusOfferDurationLabel")?.value?.trim() || "";
+    const distanceCenter = docObj.getElementById("focusDistanceCenter")?.value?.trim() || "";
+    const distanceBeach = docObj.getElementById("focusDistanceBeach")?.value?.trim() || "";
+    const startingPrice = docObj.getElementById("focusStartingPrice")?.value?.trim() || "";
+    const priceUnit = normalizeFocusPriceUnit(docObj.getElementById("focusPriceUnit")?.value || "per_person");
+    const features = collectFocusTextList(docObj.getElementById("focusFeaturesText")?.value || "");
     const crop = getFocusModalCrop();
 
     if (!title) {
@@ -318,6 +444,23 @@ export function createFocusRuntimeController({
         cropY: crop.y,
         active
       };
+      if (isTravelOffer) {
+        payload.isTravelOffer = true;
+        payload.offerBadgeLabel = offerBadgeLabel;
+        payload.offerDurationLabel = offerDurationLabel;
+        payload.distanceCenter = distanceCenter;
+        payload.distanceToCenter = distanceCenter;
+        payload.centerDistance = distanceCenter;
+        payload.distanceBeach = distanceBeach;
+        payload.distanceToBeach = distanceBeach;
+        payload.beachDistance = distanceBeach;
+        payload.hotelStartingPrice = startingPrice;
+        payload.startingPrice = startingPrice;
+        payload.priceFrom = startingPrice;
+        payload.priceUnit = priceUnit;
+        payload.features = features;
+        payload.offerFeatures = features;
+      }
       const nextItems = Array.isArray(state.focus.items) ? state.focus.items.slice() : [];
       const idx = nextItems.findIndex((item) => String(item.id) === String(id));
       if (idx >= 0) {
@@ -329,6 +472,7 @@ export function createFocusRuntimeController({
       const truthState = nextItems.length ? "seeded" : "knownEmpty";
       focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, truthSource: "public-menu", truthState, ts: Date.now() });
       state.focus = { ...state.focus, restaurantId, items: nextItems, loading: false, error: "", truthSource: "public-menu", truthState };
+      if (isTravelOffer) syncTravelOffersToRestaurantState(restaurantId, nextItems);
 
       state.focusModal.loading = false;
       state.focusModal.status = "Gespeichert.";
@@ -353,6 +497,7 @@ export function createFocusRuntimeController({
       const truthState = nextItems.length ? "seeded" : "knownEmpty";
       focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, truthSource: "public-menu", truthState, ts: Date.now() });
       state.focus = { ...state.focus, restaurantId, items: nextItems, truthSource: "public-menu", truthState };
+      if (isTravelOfferProfile(state.userProfile)) syncTravelOffersToRestaurantState(restaurantId, nextItems);
       renderFn();
     } catch (err) {
       console.error(err);

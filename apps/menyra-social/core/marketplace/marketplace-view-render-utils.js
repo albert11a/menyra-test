@@ -593,9 +593,11 @@ function collectStringList(value) {
 
 function getBusinessCoverImages(record = {}, deps = {}) {
   const rawImages = [
+    ...collectStringList(record.offerCoverImages),
     ...collectStringList(record.coverImages),
     ...collectStringList(record.hotelCoverImages),
     ...collectStringList(record.titleImages),
+    record.offerImageUrl,
     record.titleImageUrl,
     record.coverImageUrl,
     record.coverImage,
@@ -712,7 +714,27 @@ function getHotelStartingPrice(record = {}) {
   return raw.replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
 }
 
+function normalizeHotelPriceUnit(value = "") {
+  const key = normalizeLooseKey(value);
+  if (key === "total" || key === "totali" || key === "gesamt") return "total";
+  return "per_person";
+}
+
+function getHotelPriceUnitLabel(record = {}) {
+  return normalizeHotelPriceUnit(record.priceUnit || record.hotelPriceUnit || record.offerPriceUnit || "") === "total"
+    ? "Totali"
+    : "p.P";
+}
+
 function getHotelFeatureChips(record = {}) {
+  if (record.__travelOffer === true) {
+    const travelFeatures = [
+      ...collectStringList(record.offerFeatures),
+      ...collectStringList(record.features),
+      ...collectStringList(record.hotelFeatures)
+    ];
+    if (travelFeatures.length) return travelFeatures.slice(0, 6);
+  }
   const explicit = [
     record.hotelFeatureOneText,
     record.hotelFeatureTwoText,
@@ -1301,6 +1323,9 @@ function renderTravelHotelCard(record = {}, deps = {}) {
   const distanceBeach = getHotelDistanceBeach(record);
   const features = getHotelFeatureChips(record);
   const startingPrice = getHotelStartingPrice(record);
+  const priceUnitLabel = getHotelPriceUnitLabel(record);
+  const offerBadgeLabel = cleanText(record.offerBadgeLabel || record.travelOfferBadgeLabel || record.badgeLabel || "");
+  const offerDurationLabel = cleanText(record.offerDurationLabel || record.nightsDaysLabel || record.durationLabel || "");
   const isLiked = record.isLiked === true || record.liked === true || record.favorite === true || record.favorited === true;
   return `
     <article
@@ -1318,6 +1343,13 @@ function renderTravelHotelCard(record = {}, deps = {}) {
           class="w-full h-full object-cover transition-all duration-500 bg-slate-100"
         />
         <div class="absolute top-0 inset-x-0 h-14 bg-gradient-to-b from-black/30 to-transparent pointer-events-none"></div>
+
+        ${offerBadgeLabel || offerDurationLabel ? `
+          <div class="absolute top-3.5 left-3.5 flex items-center gap-2 z-10">
+            ${offerBadgeLabel ? `<span class="px-3 py-1.5 rounded-full bg-white/95 text-[9px] font-black uppercase tracking-widest shadow-sm border border-white/70" style="color:${TRAVEL_BLUE};">${escapeHtml(offerBadgeLabel)}</span>` : ""}
+            ${offerDurationLabel ? `<span class="px-3 py-1.5 rounded-full bg-slate-900/85 text-white text-[9px] font-black uppercase tracking-widest shadow-sm border border-white/20">${escapeHtml(offerDurationLabel)}</span>` : ""}
+          </div>
+        ` : ""}
 
         ${coverImages.length > 1 ? `
           <button
@@ -1429,7 +1461,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             <div class="flex items-baseline gap-1">
               ${startingPrice ? `
                 <span class="text-base font-black text-slate-900">ab ${escapeHtml(startingPrice)} €</span>
-                <span class="text-[9px] text-slate-500 font-bold">p.P.</span>
+                <span class="text-[9px] text-slate-500 font-bold">${escapeHtml(priceUnitLabel)}</span>
               ` : `
                 <span class="text-base font-black text-slate-900">Preis folgt</span>
               `}
@@ -1452,8 +1484,73 @@ function renderTravelHotelCard(record = {}, deps = {}) {
   `;
 }
 
+function getTravelOfferItems(record = {}) {
+  const rawItems = [
+    ...(Array.isArray(record.publicOffers) ? record.publicOffers : []),
+    ...(Array.isArray(record.travelOffers) ? record.travelOffers : []),
+    ...(Array.isArray(record.offerItems) ? record.offerItems : [])
+  ];
+  const seen = new Set();
+  return rawItems
+    .filter((item) => item && typeof item === "object" && item.active !== false)
+    .filter((item, index) => {
+      const key = cleanText(item.id || item.offerId || item._id || `idx_${index}`);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function collectTravelOfferFeatures(offer = {}) {
+  return [
+    ...collectStringList(offer.features),
+    ...collectStringList(offer.offerFeatures),
+    ...collectStringList(offer.hotelFeatures),
+    cleanText(offer.hotelFeatureOneText),
+    cleanText(offer.hotelFeatureTwoText),
+    cleanText(offer.hotelFeatureThreeText)
+  ].filter(Boolean).filter((entry, index, list) => list.indexOf(entry) === index);
+}
+
+function buildTravelOfferRecord(hotel = {}, offer = {}, index = 0) {
+  const features = collectTravelOfferFeatures(offer);
+  const imageUrl = cleanText(offer.imageUrl || offer.offerImageUrl || offer.titleImageUrl || offer.coverImageUrl || "");
+  const offerId = cleanText(offer.id || offer.offerId || offer._id || `offer_${index}`);
+  return {
+    ...hotel,
+    __travelOffer: true,
+    __travelOfferId: offerId,
+    offerId,
+    offerTitle: cleanText(offer.title || offer.name || ""),
+    offerText: cleanText(offer.text || offer.description || ""),
+    offerBadgeLabel: cleanText(offer.offerBadgeLabel || offer.travelOfferBadgeLabel || offer.badgeLabel || "OFERTA"),
+    offerDurationLabel: cleanText(offer.offerDurationLabel || offer.nightsDaysLabel || offer.durationLabel || ""),
+    offerImageUrl: imageUrl,
+    titleImageUrl: imageUrl || hotel.titleImageUrl,
+    coverImageUrl: imageUrl || hotel.coverImageUrl,
+    offerCoverImages: imageUrl ? [imageUrl] : collectStringList(offer.coverImages || offer.hotelCoverImages),
+    distanceCenter: cleanText(offer.distanceCenter || offer.distanceToCenter || offer.centerDistance || "") || hotel.distanceCenter,
+    distanceToCenter: cleanText(offer.distanceToCenter || offer.distanceCenter || offer.centerDistance || "") || hotel.distanceToCenter,
+    centerDistance: cleanText(offer.centerDistance || offer.distanceCenter || offer.distanceToCenter || "") || hotel.centerDistance,
+    distanceBeach: cleanText(offer.distanceBeach || offer.distanceToBeach || offer.beachDistance || "") || hotel.distanceBeach,
+    distanceToBeach: cleanText(offer.distanceToBeach || offer.distanceBeach || offer.beachDistance || "") || hotel.distanceToBeach,
+    beachDistance: cleanText(offer.beachDistance || offer.distanceBeach || offer.distanceToBeach || "") || hotel.beachDistance,
+    hotelStartingPrice: cleanText(offer.hotelStartingPrice || offer.startingPrice || offer.priceFrom || offer.fromPrice || offer.bestPrice || "") || hotel.hotelStartingPrice,
+    startingPrice: cleanText(offer.startingPrice || offer.hotelStartingPrice || offer.priceFrom || offer.fromPrice || offer.bestPrice || "") || hotel.startingPrice,
+    priceFrom: cleanText(offer.priceFrom || offer.startingPrice || offer.hotelStartingPrice || "") || hotel.priceFrom,
+    priceUnit: normalizeHotelPriceUnit(offer.priceUnit || offer.hotelPriceUnit || offer.offerPriceUnit || hotel.priceUnit || ""),
+    features: features.length ? features : hotel.features
+  };
+}
+
+function buildTravelOfferRecords(items = []) {
+  return (Array.isArray(items) ? items : []).flatMap((record) => (
+    getTravelOfferItems(record).map((offer, index) => buildTravelOfferRecord(record, offer, index))
+  ));
+}
+
 function renderTravelOffers(items = [], deps = {}) {
-  const displayItems = items.slice(0, 4);
+  const displayItems = buildTravelOfferRecords(items).slice(0, 12);
   if (!displayItems.length) {
     return renderEmptyState({
       title: "Ofertat",

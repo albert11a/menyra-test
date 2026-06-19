@@ -149,6 +149,30 @@ export function renderFocusModalCore({
   const eyebrow = isTravelOfferContext ? (isEdit ? "Oferta" : "Neu") : (isEdit ? "Bearbeiten" : "Neu");
   const titlePlaceholder = isTravelOfferContext ? "Sommer-Angebot" : "Sot ne Fokus";
   const activeHelper = isTravelOfferContext ? "Sichtbar fuer Travel und Gaeste" : "Sichtbar fuer Gaeste";
+  const collectTextList = (value) => {
+    if (Array.isArray(value)) return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+    const raw = String(value || "").trim();
+    if (!raw) return [];
+    return raw.split(/[\n,;|]/).map((entry) => entry.trim()).filter(Boolean);
+  };
+  const normalizePriceUnit = (value = "") => {
+    const key = String(value || "").trim().toLowerCase();
+    return key === "total" || key === "totali" || key === "gesamt" ? "total" : "per_person";
+  };
+  const offerFeatures = [
+    ...collectTextList(item.features),
+    ...collectTextList(item.offerFeatures),
+    ...collectTextList(item.hotelFeatures),
+    String(item.hotelFeatureOneText || "").trim(),
+    String(item.hotelFeatureTwoText || "").trim(),
+    String(item.hotelFeatureThreeText || "").trim()
+  ].filter(Boolean).filter((entry, index, list) => list.indexOf(entry) === index);
+  const offerBadgeLabel = String(item.offerBadgeLabel || item.travelOfferBadgeLabel || item.badgeLabel || "OFERTA").trim();
+  const offerDurationLabel = String(item.offerDurationLabel || item.nightsDaysLabel || item.durationLabel || "").trim();
+  const offerDistanceCenter = String(item.distanceCenter || item.distanceToCenter || item.centerDistance || "").trim();
+  const offerDistanceBeach = String(item.distanceBeach || item.distanceToBeach || item.beachDistance || "").trim();
+  const offerStartingPrice = String(item.hotelStartingPrice || item.startingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "").trim();
+  const offerPriceUnit = normalizePriceUnit(item.priceUnit || item.hotelPriceUnit || item.offerPriceUnit || "");
   const preview = state.focusModal.imagePreview || item.imageUrl || "";
   const imageUrl = getOptimizedImageUrl(preview, "large");
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
@@ -199,6 +223,45 @@ export function renderFocusModalCore({
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
           <textarea id="focusText" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
         </div>
+        ${isTravelOfferContext ? `
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Badge links (OFERTA)</label>
+              <input id="focusOfferBadgeLabel" type="text" value="${escapeHtml(offerBadgeLabel)}" placeholder="OFERTA" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Badge rechts (Netë / ditë)</label>
+              <input id="focusOfferDurationLabel" type="text" value="${escapeHtml(offerDurationLabel)}" placeholder="3 netë / 4 ditë" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Entfernung Zentrum</label>
+              <input id="focusDistanceCenter" type="text" value="${escapeHtml(offerDistanceCenter)}" placeholder="450 m zum Zentrum" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Entfernung Strand / See</label>
+              <input id="focusDistanceBeach" type="text" value="${escapeHtml(offerDistanceBeach)}" placeholder="150 m zum See / Strand" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <div class="grid grid-cols-[1.2fr_0.8fr] gap-3">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis</label>
+                <input id="focusStartingPrice" type="text" value="${escapeHtml(offerStartingPrice)}" placeholder="145" inputmode="decimal" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+                <select id="focusPriceUnit" class="w-full px-4 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100">
+                  <option value="per_person" ${offerPriceUnit === "per_person" ? "selected" : ""}>p.P</option>
+                  <option value="total" ${offerPriceUnit === "total" ? "selected" : ""}>Totali</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Features</label>
+              <textarea id="focusFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Fruehstueck inklusive" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(offerFeatures.join("\n"))}</textarea>
+            </div>
+          </div>
+        ` : ""}
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
           <input id="focusImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />

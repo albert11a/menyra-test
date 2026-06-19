@@ -141,6 +141,130 @@ function hasMeaningfulValue(value) {
   return true;
 }
 
+function normalizeLooseTypeKey(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[ëèéê]/g, "e")
+    .replace(/[çćč]/g, "c")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function collectOfferTextList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  return raw.split(/[\n,;|]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeOfferPriceUnit(value = "") {
+  const key = normalizeLooseTypeKey(value);
+  if (key === "total" || key === "totali" || key === "gesamt") return "total";
+  return "per_person";
+}
+
+function collectTravelOfferFeatures(item = {}) {
+  return [
+    ...collectOfferTextList(item.features),
+    ...collectOfferTextList(item.offerFeatures),
+    ...collectOfferTextList(item.hotelFeatures),
+    String(item.hotelFeatureOneText || "").trim(),
+    String(item.hotelFeatureTwoText || "").trim(),
+    String(item.hotelFeatureThreeText || "").trim()
+  ].filter(Boolean).filter((entry, index, list) => list.indexOf(entry) === index);
+}
+
+function normalizePublicTravelOfferItem(item = {}, fallbackId = "") {
+  const row = item && typeof item === "object" ? item : {};
+  const id = String(row.id || row.offerId || row._id || fallbackId || "").trim();
+  const features = collectTravelOfferFeatures(row);
+  return {
+    id,
+    title: String(row.title || row.name || "").trim(),
+    text: String(row.text || row.desc || row.description || "").trim(),
+    imageUrl: String(row.imageUrl || row.image || row.photoUrl || row.offerImageUrl || "").trim(),
+    cropX: Math.max(0, Math.min(100, Number(row.cropX ?? 50) || 50)),
+    cropY: Math.max(0, Math.min(100, Number(row.cropY ?? 50) || 50)),
+    active: row.active !== false,
+    isTravelOffer: row.isTravelOffer === true || row.travelOffer === true,
+    offerBadgeLabel: String(row.offerBadgeLabel || row.travelOfferBadgeLabel || row.badgeLabel || "OFERTA").trim(),
+    offerDurationLabel: String(row.offerDurationLabel || row.nightsDaysLabel || row.durationLabel || "").trim(),
+    distanceCenter: String(row.distanceCenter || row.distanceToCenter || row.centerDistance || "").trim(),
+    distanceToCenter: String(row.distanceToCenter || row.distanceCenter || row.centerDistance || "").trim(),
+    centerDistance: String(row.centerDistance || row.distanceCenter || row.distanceToCenter || "").trim(),
+    distanceBeach: String(row.distanceBeach || row.distanceToBeach || row.beachDistance || "").trim(),
+    distanceToBeach: String(row.distanceToBeach || row.distanceBeach || row.beachDistance || "").trim(),
+    beachDistance: String(row.beachDistance || row.distanceBeach || row.distanceToBeach || "").trim(),
+    hotelStartingPrice: String(row.hotelStartingPrice || row.startingPrice || row.priceFrom || row.fromPrice || row.bestPrice || "").trim(),
+    startingPrice: String(row.startingPrice || row.hotelStartingPrice || row.priceFrom || row.fromPrice || row.bestPrice || "").trim(),
+    priceFrom: String(row.priceFrom || row.startingPrice || row.hotelStartingPrice || "").trim(),
+    priceUnit: normalizeOfferPriceUnit(row.priceUnit || row.hotelPriceUnit || row.offerPriceUnit || ""),
+    features,
+    offerFeatures: features
+  };
+}
+
+function collectPublicTravelOffers(data = {}) {
+  const row = data && typeof data === "object" ? data : {};
+  const items = Array.isArray(row.items) ? row.items : [];
+  return items
+    .map((item, idx) => normalizePublicTravelOfferItem(item, item?.id || `offer_${idx}`))
+    .filter((item) => item.id || item.title || item.imageUrl || item.text);
+}
+
+function hasTravelBusinessShape(record = {}, normalizeRestaurantTypeFn = (value) => value) {
+  const normalizedType = normalizeLooseTypeKey(normalizeRestaurantTypeFn(
+    record?.type
+    || record?.customerType
+    || record?.category
+    || record?.kind
+    || record?.restaurantType
+    || record?.businessProfileType
+    || record?.profileType
+    || record?.vertical
+    || record?.leadType
+    || ""
+  ));
+  if (["hotel", "hotels", "motel", "motels", "travel", "hostel", "resort", "accommodation"].includes(normalizedType)) {
+    return true;
+  }
+  const searchable = [
+    record?.name,
+    record?.restaurantName,
+    record?.businessName,
+    record?.description,
+    record?.bio,
+    record?.about
+  ].map((value) => String(value || "").trim().toLowerCase()).join(" ");
+  return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b/.test(searchable);
+}
+
+function buildTravelOffersSignature(record = {}) {
+  const items = Array.isArray(record.publicOffers)
+    ? record.publicOffers
+    : (Array.isArray(record.travelOffers) ? record.travelOffers : []);
+  return items
+    .map((item = {}) => [
+      String(item.id || item.offerId || "").trim(),
+      item.active === false ? "0" : "1",
+      String(item.title || item.name || "").trim(),
+      String(item.imageUrl || item.offerImageUrl || "").trim(),
+      String(item.offerBadgeLabel || item.badgeLabel || "").trim(),
+      String(item.offerDurationLabel || item.nightsDaysLabel || "").trim(),
+      String(item.distanceCenter || item.distanceToCenter || "").trim(),
+      String(item.distanceBeach || item.distanceToBeach || "").trim(),
+      String(item.hotelStartingPrice || item.startingPrice || item.priceFrom || "").trim(),
+      normalizeOfferPriceUnit(item.priceUnit || item.offerPriceUnit || ""),
+      collectTravelOfferFeatures(item).join("+")
+    ].join(":"))
+    .join("~");
+}
+
 function mergeDefinedRestaurantFields(base = {}, patch = {}) {
   const next = { ...(base || {}) };
   Object.entries(patch || {}).forEach(([key, value]) => {
@@ -219,6 +343,9 @@ export function buildRestaurantTruthSignatureCore(items = [], {
       const address = String(row.address || row.location || "").trim();
       const lat = coords ? Number(coords.lat).toFixed(6) : "";
       const lng = coords ? Number(coords.lng).toFixed(6) : "";
+      const travelOffersCount = Number(row.travelOffersCount ?? row.publicOffersCount ?? (Array.isArray(row.publicOffers) ? row.publicOffers.length : 0));
+      const hasTravelOffers = row.hasTravelOffers === true ? "1" : (row.hasTravelOffers === false ? "0" : "");
+      const travelOffersSignature = buildTravelOffersSignature(row);
       return [
         String(row.id || "").trim(),
         name,
@@ -228,6 +355,9 @@ export function buildRestaurantTruthSignatureCore(items = [], {
         address,
         lat,
         lng,
+        Number.isFinite(travelOffersCount) ? String(travelOffersCount) : "0",
+        hasTravelOffers,
+        travelOffersSignature,
         String(truthMeta.version || 0),
         String(truthMeta.updatedAtMs || 0),
         String(truthMeta.deletedAtMs || 0),
@@ -415,7 +545,7 @@ export function createRestaurantIdentityRuntimeController({
     });
   }
 
-  function mergeRestaurantMeta(rest, meta) {
+  function mergeRestaurantMeta(rest, meta, offerInfo = null) {
     if (!rest) return rest;
     const data = meta || {};
     const name = data.name || data.restaurantName || rest.name || rest.restaurantName || "";
@@ -452,9 +582,31 @@ export function createRestaurantIdentityRuntimeController({
     if (hasMeaningfulValue(data.revision)) merged.revision = data.revision;
     if (hasMeaningfulValue(data.geo)) merged.geo = data.geo;
     if (hasMeaningfulValue(data.coords)) merged.coords = data.coords;
-    return reconcileRestaurantTruthRecordCore(rest, merged, {
+    if (typeof data.offersEnabled === "boolean") merged.offersEnabled = data.offersEnabled;
+    if (offerInfo && typeof offerInfo === "object") {
+      const publicOffers = Array.isArray(offerInfo.items) ? offerInfo.items : [];
+      const activeOffers = publicOffers.filter((item) => item && item.active !== false);
+      merged.publicOffers = publicOffers;
+      merged.travelOffers = publicOffers;
+      merged.publicOffersCount = publicOffers.length;
+      merged.travelOffersCount = publicOffers.length;
+      merged.hasTravelOffers = activeOffers.length > 0;
+      merged.offersTruthState = publicOffers.length ? "seeded" : "knownEmpty";
+    }
+    const reconciled = reconcileRestaurantTruthRecordCore(rest, merged, {
       normalizeRestaurantTypeFn: normalizeRestaurantType
     });
+    if (offerInfo && typeof offerInfo === "object") {
+      const publicOffers = Array.isArray(offerInfo.items) ? offerInfo.items : [];
+      const activeOffers = publicOffers.filter((item) => item && item.active !== false);
+      reconciled.publicOffers = publicOffers;
+      reconciled.travelOffers = publicOffers;
+      reconciled.publicOffersCount = publicOffers.length;
+      reconciled.travelOffersCount = publicOffers.length;
+      reconciled.hasTravelOffers = activeOffers.length > 0;
+      reconciled.offersTruthState = publicOffers.length ? "seeded" : "knownEmpty";
+    }
+    return reconciled;
   }
 
   function stopRestaurantMetaListeners() {
@@ -472,7 +624,7 @@ export function createRestaurantIdentityRuntimeController({
 
   async function enrichRestaurantsWithPublicMeta(restaurants) {
     if (!Array.isArray(restaurants) || !restaurants.length) return restaurants || [];
-    const lookups = restaurants.map((rest) => {
+    const lookups = restaurants.map(async (rest) => {
       const rid = rest?.id || "";
       if (!rid || !makeDocRef || !db) return Promise.resolve(null);
       const hasCoreName = !!String(rest?.name || rest?.restaurantName || "").trim();
@@ -488,16 +640,35 @@ export function createRestaurantIdentityRuntimeController({
       );
       const hasCoords = !!readCoordsFromRecord(rest);
       const isPreview = isBootstrapRestaurantPreviewRecordCore(rest);
-      if (hasCoreName && hasCoreLogo && hasCoreCity && hasCoreType && hasCoords && !isPreview) {
-        return Promise.resolve(null);
+      const shouldReadMeta = !(hasCoreName && hasCoreLogo && hasCoreCity && hasCoreType && hasCoords && !isPreview);
+      let meta = {};
+      if (shouldReadMeta) {
+        try {
+          const metaSnap = await getDocSafe(makeDocRef(db, "restaurants", rid, "public", "meta"));
+          if (metaSnap && typeof metaSnap.exists === "function" && metaSnap.exists()) {
+            meta = metaSnap.data() || {};
+          }
+        } catch {}
       }
-      return getDocSafe(makeDocRef(db, "restaurants", rid, "public", "meta")).catch(() => null);
+      const metaMergedForType = mergeRestaurantMeta(rest, meta);
+      let offerInfo = null;
+      if (hasTravelBusinessShape(metaMergedForType, normalizeRestaurantType)) {
+        try {
+          const offersSnap = await getDocSafe(makeDocRef(db, "restaurants", rid, "public", "offers"));
+          const offerData = offersSnap && typeof offersSnap.exists === "function" && offersSnap.exists()
+            ? (offersSnap.data() || {})
+            : {};
+          offerInfo = { items: collectPublicTravelOffers(offerData) };
+        } catch {
+          offerInfo = { items: [] };
+        }
+      }
+      return { meta, offerInfo };
     });
-    const metaSnaps = await Promise.all(lookups);
+    const metaResults = await Promise.all(lookups);
     return restaurants.map((rest, idx) => {
-      const snap = metaSnaps[idx];
-      const meta = snap && typeof snap.exists === "function" && snap.exists() ? (snap.data() || {}) : {};
-      return mergeRestaurantMeta(rest, meta);
+      const result = metaResults[idx] || {};
+      return mergeRestaurantMeta(rest, result.meta || {}, result.offerInfo || null);
     });
   }
 
