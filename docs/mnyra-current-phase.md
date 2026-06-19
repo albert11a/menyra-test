@@ -872,6 +872,15 @@ Last updated: 2026-06-19
   links, `Nete / dite`-Badge, Zentrum-/Stranddistanz, Preis, Preis-Typ
   `p.P`/`Totali` und mehrere Feature-Zeilen speichern. QR, Cart, Order,
   Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 90 ist abgeschlossen: Der Hotel-/Motel-Oferta-Kontext wird im Modal
+  und Save-Pfad robuster aus Profil- und Restaurantdaten erkannt.
+- Bewertung von Schritt 90: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 90:
+  Oferta-Zusatzfelder wie Badge links, `Nete / dite`, Distanzen, Preis-Typ und
+  Features werden nicht mehr uebersprungen, nur weil das aktive `userProfile`
+  kein eindeutiges Hotel-/Motel-Typfeld liefert. Bereits bestehende Oferta-
+  Eintraege mit Travel-Feldern bleiben beim Bearbeiten im Oferta-Modus. QR,
+  Cart, Order, Routing, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -960,6 +969,7 @@ Last updated: 2026-06-19
 - Referenz: [docs/mnyra-step87-travel-hotel-card-swipe-arrows.md](./mnyra-step87-travel-hotel-card-swipe-arrows.md)
 - Referenz: [docs/mnyra-step88-travel-oferta-hotel-cards.md](./mnyra-step88-travel-oferta-hotel-cards.md)
 - Referenz: [docs/mnyra-step89-travel-oferta-filter-fields.md](./mnyra-step89-travel-oferta-filter-fields.md)
+- Referenz: [docs/mnyra-step90-travel-oferta-badge-context.md](./mnyra-step90-travel-oferta-badge-context.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -985,7 +995,7 @@ Last updated: 2026-06-19
 
 ## Naechster Schritt
 
-Nach Schritt 89 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 90 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1008,7 +1018,7 @@ Dabei gilt weiter:
 - Keine Icon-/UI-Aenderung ohne eigenen Schritt.
 - Route/Profile-Dedupe darf QR nicht veraendern.
 
-Die manuelle Gegenpruefung des frischen Schritt-89-Stands bleibt weiterhin
+Die manuelle Gegenpruefung des frischen Schritt-90-Stands bleibt weiterhin
 sinnvoll, besonders nach einem Neustart des lokalen Dev-Servers: Travel-
 Hotels mit neuer Hotel-Card inklusive Titelbild-Slider, Logo, sichtbarem
 Strand-/See-Icon, links/rechts stabil positionierten Slider-Pfeilen,
@@ -1047,6 +1057,12 @@ Tab als Hotel-Card sehen; Badge links, `Nete / dite`, Zentrum, Strand/See,
 Preis, `p.P`/`Totali` und mehrere Features speichern und wieder bearbeiten;
 Oferta deaktivieren oder loeschen und pruefen, dass sie aus `Ofertat`
 verschwindet.
+
+Zusaetzlich fuer Schritt 90 manuell pruefen: Hotel-/Motel-Oferta-Editor oeffnet
+weiterhin im Oferta-Modus, auch wenn die Typ-Wahrheit nur im Restaurantdatensatz
+liegt; Badge links, `Nete / dite`, Zentrum, Strand/See, Preis, `p.P`/`Totali`
+und Features speichern; danach im Travel-Tab `Ofertat` pruefen, dass diese
+Zusatzdaten auf der Hotel-Card erscheinen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

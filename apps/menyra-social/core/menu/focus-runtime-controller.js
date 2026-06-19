@@ -61,6 +61,102 @@ export function createFocusRuntimeController({
     return String(value || "").trim();
   }
 
+  function collectProfileRestaurantIds(...records) {
+    const ids = [];
+    records.forEach((record = {}) => {
+      [
+        record?.restaurantId,
+        record?.canonicalRestaurantId,
+        record?.staffRestaurantId,
+        record?.waiterRestaurantId,
+        record?.roleSwitchRestaurantId,
+        state?.roleSwitchRestaurantId
+      ].forEach((value) => {
+        const id = cleanFocusText(value);
+        if (id && !ids.includes(id)) ids.push(id);
+      });
+    });
+    return ids;
+  }
+
+  function collectRestaurantRecordIds(record = {}) {
+    return [
+      record?.id,
+      record?.restaurantId,
+      record?.canonicalRestaurantId,
+      record?.landingRestaurantId,
+      record?.rid,
+      record?.ownerId
+    ].map(cleanFocusText).filter(Boolean);
+  }
+
+  function getCurrentRestaurantId(profile = state?.userProfile || {}) {
+    return collectProfileRestaurantIds(profile, state?.userProfile)[0] || "";
+  }
+
+  function getRestaurantRecordForProfile(profile = state?.userProfile || {}) {
+    const ids = collectProfileRestaurantIds(profile, state?.userProfile);
+    if (!ids.length || !Array.isArray(state?.restaurants)) return null;
+    return state.restaurants.find((row) => (
+      collectRestaurantRecordIds(row).some((id) => ids.includes(id))
+    )) || null;
+  }
+
+  function getProfileViewRecordForProfile(profile = state?.userProfile || {}) {
+    const profileViewRecord = state?.profileView?.profile || null;
+    if (!profileViewRecord) return null;
+    const ids = collectProfileRestaurantIds(profile, state?.userProfile);
+    if (!ids.length) return null;
+    return collectProfileRestaurantIds(profileViewRecord).some((id) => ids.includes(id))
+      ? profileViewRecord
+      : null;
+  }
+
+  function collectTravelProfileTypeCandidates(...records) {
+    const values = [];
+    records.forEach((record = {}) => {
+      [
+        record?.type,
+        record?.customerType,
+        record?.businessType,
+        record?.restaurantType,
+        record?.category,
+        record?.kind,
+        record?.businessProfileType,
+        record?.profileType,
+        record?.vertical,
+        record?.leadType
+      ].forEach((value) => {
+        const text = cleanFocusText(value).toLowerCase();
+        if (text) values.push(text);
+      });
+    });
+    return values;
+  }
+
+  function hasTravelAccommodationShape(...records) {
+    if (collectTravelProfileTypeCandidates(...records).some((type) => (
+      type.includes("hotel")
+      || type.includes("motel")
+      || type.includes("hostel")
+      || type.includes("resort")
+      || type.includes("accommodation")
+    ))) {
+      return true;
+    }
+    return records.some((record = {}) => {
+      const searchable = [
+        record?.name,
+        record?.restaurantName,
+        record?.businessName,
+        record?.description,
+        record?.bio,
+        record?.about
+      ].map((value) => cleanFocusText(value).toLowerCase()).join(" ");
+      return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b/.test(searchable);
+    });
+  }
+
   function collectFocusTextList(value) {
     if (Array.isArray(value)) {
       return value.map(cleanFocusText).filter(Boolean);
@@ -80,15 +176,9 @@ export function createFocusRuntimeController({
   }
 
   function isTravelOfferProfile(profile = state?.userProfile || {}) {
-    const type = cleanFocusText(
-      profile?.type
-      || profile?.customerType
-      || profile?.businessType
-      || profile?.restaurantType
-      || profile?.category
-      || ""
-    ).toLowerCase();
-    return type.includes("hotel") || type.includes("motel");
+    const restaurantRecord = getRestaurantRecordForProfile(profile);
+    const profileViewRecord = getProfileViewRecordForProfile(profile);
+    return hasTravelAccommodationShape(profile, state?.userProfile, profileViewRecord, restaurantRecord);
   }
 
   function hasTravelOfferFields(item = {}) {
@@ -393,7 +483,7 @@ export function createFocusRuntimeController({
 
   async function saveFocusItemFromModal() {
     if (!state?.user || !docObj) return;
-    const restaurantId = state.userProfile?.restaurantId || "";
+    const restaurantId = getCurrentRestaurantId(state.userProfile);
     if (!restaurantId) {
       state.focusModal.status = "Kein Restaurant ausgewaehlt.";
       renderOverlaysFn({ updateFocus: true });
@@ -403,7 +493,8 @@ export function createFocusRuntimeController({
     const text = docObj.getElementById("focusText")?.value?.trim() || "";
     const imageUrlInput = docObj.getElementById("focusImageUrl")?.value?.trim() || "";
     const active = docObj.getElementById("focusActive")?.checked !== false;
-    const isTravelOffer = isTravelOfferProfile(state.userProfile);
+    const modalItem = state.focusModal?.item || {};
+    const isTravelOffer = isTravelOfferProfile(state.userProfile) || hasTravelOfferFields(modalItem);
     const offerBadgeLabel = docObj.getElementById("focusOfferBadgeLabel")?.value?.trim() || "OFERTA";
     const offerDurationLabel = docObj.getElementById("focusOfferDurationLabel")?.value?.trim() || "";
     const distanceCenter = docObj.getElementById("focusDistanceCenter")?.value?.trim() || "";
@@ -488,16 +579,17 @@ export function createFocusRuntimeController({
 
   async function deleteFocusItemById(itemId) {
     if (!state?.user || !itemId) return;
-    const restaurantId = state.userProfile?.restaurantId || "";
+    const restaurantId = getCurrentRestaurantId(state.userProfile);
     if (!restaurantId) return;
     if (!confirmFn("Fokus-Eintrag wirklich loeschen?")) return;
     try {
+      const removedItem = (state.focus.items || []).find((item) => String(item.id) === String(itemId));
       const nextItems = (state.focus.items || []).filter((item) => String(item.id) !== String(itemId));
       await publishFocusItems(restaurantId, nextItems);
       const truthState = nextItems.length ? "seeded" : "knownEmpty";
       focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, truthSource: "public-menu", truthState, ts: Date.now() });
       state.focus = { ...state.focus, restaurantId, items: nextItems, truthSource: "public-menu", truthState };
-      if (isTravelOfferProfile(state.userProfile)) syncTravelOffersToRestaurantState(restaurantId, nextItems);
+      if (isTravelOfferProfile(state.userProfile) || hasTravelOfferFields(removedItem)) syncTravelOffersToRestaurantState(restaurantId, nextItems);
       renderFn();
     } catch (err) {
       console.error(err);

@@ -134,15 +134,100 @@ export function renderFocusModalCore({
   if (!state?.focusModal?.open) return "";
   const item = state.focusModal.item || {};
   const isEdit = state.focusModal.mode === "edit";
-  const profileType = String(
-    state?.userProfile?.type
-    || state?.userProfile?.customerType
-    || state?.userProfile?.businessType
-    || state?.userProfile?.restaurantType
-    || state?.userProfile?.category
-    || ""
-  ).trim().toLowerCase();
-  const isTravelOfferContext = profileType.includes("hotel") || profileType.includes("motel");
+  const cleanProfileText = (value = "") => String(value || "").trim();
+  const collectProfileRestaurantIds = (...records) => {
+    const ids = [];
+    records.forEach((record = {}) => {
+      [
+        record?.restaurantId,
+        record?.canonicalRestaurantId,
+        record?.staffRestaurantId,
+        record?.waiterRestaurantId,
+        record?.roleSwitchRestaurantId,
+        state?.roleSwitchRestaurantId
+      ].forEach((value) => {
+        const id = cleanProfileText(value);
+        if (id && !ids.includes(id)) ids.push(id);
+      });
+    });
+    return ids;
+  };
+  const collectRestaurantRecordIds = (record = {}) => [
+    record?.id,
+    record?.restaurantId,
+    record?.canonicalRestaurantId,
+    record?.landingRestaurantId,
+    record?.rid,
+    record?.ownerId
+  ].map(cleanProfileText).filter(Boolean);
+  const currentRestaurantIds = collectProfileRestaurantIds(state?.userProfile);
+  const fallbackRestaurantIds = currentRestaurantIds.length
+    ? currentRestaurantIds
+    : collectProfileRestaurantIds(state?.profileView?.profile);
+  const restaurantRecord = Array.isArray(state?.restaurants)
+    ? state.restaurants.find((row) => (
+      collectRestaurantRecordIds(row).some((id) => fallbackRestaurantIds.includes(id))
+    ))
+    : null;
+  const profileViewRecord = collectProfileRestaurantIds(state?.profileView?.profile)
+    .some((id) => fallbackRestaurantIds.includes(id))
+    ? state?.profileView?.profile
+    : null;
+  const collectTypeCandidates = (...records) => {
+    const values = [];
+    records.forEach((record = {}) => {
+      [
+        record?.type,
+        record?.customerType,
+        record?.businessType,
+        record?.restaurantType,
+        record?.category,
+        record?.kind,
+        record?.businessProfileType,
+        record?.profileType,
+        record?.vertical,
+        record?.leadType
+      ].forEach((value) => {
+        const text = cleanProfileText(value).toLowerCase();
+        if (text) values.push(text);
+      });
+    });
+    return values;
+  };
+  const hasTravelAccommodationShape = (...records) => {
+    if (collectTypeCandidates(...records).some((type) => (
+      type.includes("hotel")
+      || type.includes("motel")
+      || type.includes("hostel")
+      || type.includes("resort")
+      || type.includes("accommodation")
+    ))) {
+      return true;
+    }
+    return records.some((record = {}) => {
+      const searchable = [
+        record?.name,
+        record?.restaurantName,
+        record?.businessName,
+        record?.description,
+        record?.bio,
+        record?.about
+      ].map((value) => cleanProfileText(value).toLowerCase()).join(" ");
+      return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b/.test(searchable);
+    });
+  };
+  const hasTravelOfferFields = item?.isTravelOffer === true
+    || item?.travelOffer === true
+    || item?.offerBadgeLabel !== undefined
+    || item?.offerDurationLabel !== undefined
+    || item?.distanceCenter !== undefined
+    || item?.distanceBeach !== undefined
+    || item?.hotelStartingPrice !== undefined
+    || item?.priceUnit !== undefined
+    || item?.features !== undefined
+    || item?.offerFeatures !== undefined;
+  const isTravelOfferContext = hasTravelAccommodationShape(state?.userProfile, profileViewRecord, restaurantRecord)
+    || hasTravelOfferFields;
   const title = isTravelOfferContext
     ? (isEdit ? "Oferta bearbeiten" : "Oferta hinzufuegen")
     : (isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen");
