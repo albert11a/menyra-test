@@ -118,11 +118,28 @@ function getBusinessName(record = {}) {
   return cleanText(record.name || record.restaurantName || record.businessName || record.displayName || "Hotel");
 }
 
+function getBusinessPlaceLabel(record = {}) {
+  return cleanText(
+    record.place
+    || record.locationPlace
+    || record.locality
+    || record.district
+    || record.neighborhood
+    || record.neighbourhood
+    || record.area
+    || record.quarter
+    || record.cityArea
+    || record.primaryPlace
+    || ""
+  );
+}
+
 function getBusinessLocationLabel(record = {}) {
   const city = cleanText(record.city || record.locationCity || record.primaryCity);
+  const place = getBusinessPlaceLabel(record);
+  if (city && place && normalizeLooseKey(city) !== normalizeLooseKey(place)) return `${city} - ${place}`;
   const address = cleanText(record.address || record.location || record.primaryAddress);
-  if (city && address && city !== address) return `${city} - ${address}`;
-  return city || address || cleanText(record.country || record.region || "") || "Standort folgt";
+  return city || place || cleanText(record.country || record.region || "") || address || "Standort folgt";
 }
 
 function collectTypeCandidates(record = {}) {
@@ -164,6 +181,11 @@ function collectTravelTextCandidates(record = {}) {
     record.city,
     record.locationCity,
     record.primaryCity,
+    record.place,
+    record.locationPlace,
+    record.locality,
+    record.neighborhood,
+    record.neighbourhood,
     record.address,
     record.location,
     record.primaryAddress,
@@ -181,7 +203,7 @@ function collectTravelTextCandidates(record = {}) {
   if (Array.isArray(record.locations)) {
     record.locations.forEach((location) => {
       if (!location || typeof location !== "object") return;
-      values.push(location.city, location.address, location.country, location.region, location.name);
+      values.push(location.city, location.place, location.locationPlace, location.locality, location.district, location.address, location.country, location.region, location.name);
     });
   }
   return values;

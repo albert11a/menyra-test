@@ -87,6 +87,10 @@ export function renderSettingsViewCore({
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
             <input id="settingsCity" type="text" value="${esc(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ort / Stadtteil</label>
+            <input id="settingsPlace" type="text" value="${esc(profile.place || profile.locationPlace || profile.locality || profile.district || "")}" placeholder="z.B. Golem, Qender, Altstadt" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
           
           ${allowGpsSettings ? `
             <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 mt-4">

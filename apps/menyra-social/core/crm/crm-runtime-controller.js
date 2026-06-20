@@ -1590,6 +1590,8 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     restaurantName: safeBase?.restaurantName || safeBase?.name || "",
     type: safeBase?.type || "cafe",
     city: safeBase?.city || "",
+    place: safeBase?.place || safeBase?.locationPlace || safeBase?.locality || safeBase?.district || "",
+    locationPlace: safeBase?.locationPlace || safeBase?.place || safeBase?.locality || safeBase?.district || "",
     logoUrl: safeBase?.logoUrl || safeBase?.logo || "",
     logo: safeBase?.logo || "",
     titleImageUrl,

@@ -4,6 +4,7 @@ export const DEFAULT_PROFILE = {
   bio: "",
   avatar: "",
   location: "",
+  place: "",
   address: "",
   followers: 0,
   following: 0,

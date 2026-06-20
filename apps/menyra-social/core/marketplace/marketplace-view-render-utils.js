@@ -129,6 +129,9 @@ const RESTAURANT_LOCATION_TEXT_FIELDS = Object.freeze([
   "city",
   "locationCity",
   "primaryCity",
+  "place",
+  "locationPlace",
+  "primaryPlace",
   "postalCity",
   "address",
   "primaryAddress",
@@ -297,11 +300,28 @@ function getBusinessName(record = {}) {
   return cleanText(record.name || record.restaurantName || record.businessName || record.displayName || "Business");
 }
 
+function getBusinessPlaceLabel(record = {}) {
+  return cleanText(
+    record.place
+    || record.locationPlace
+    || record.locality
+    || record.district
+    || record.neighborhood
+    || record.neighbourhood
+    || record.area
+    || record.quarter
+    || record.cityArea
+    || record.primaryPlace
+    || ""
+  );
+}
+
 function getBusinessLocationLabel(record = {}) {
   const city = cleanText(record.city || record.locationCity || record.primaryCity);
+  const place = getBusinessPlaceLabel(record);
+  if (city && place && normalizeLooseKey(city) !== normalizeLooseKey(place)) return `${city} - ${place}`;
   const address = cleanText(record.address || record.location || record.primaryAddress);
-  if (city && address && city !== address) return `${city} - ${address}`;
-  return city || address || inferLocationLabelFromCoords(record) || cleanText(record.country || record.region || "") || "Standort folgt";
+  return city || place || inferLocationLabelFromCoords(record) || cleanText(record.country || record.region || "") || address || "Standort folgt";
 }
 
 function normalizeLocationCoords(value = {}) {
@@ -366,6 +386,11 @@ function collectLocationTextCandidates(record = {}) {
     record.city,
     record.locationCity,
     record.primaryCity,
+    record.place,
+    record.locationPlace,
+    record.locality,
+    record.neighborhood,
+    record.neighbourhood,
     record.address,
     record.location,
     record.primaryAddress,
@@ -384,7 +409,7 @@ function collectLocationTextCandidates(record = {}) {
   if (Array.isArray(record.locations)) {
     record.locations.forEach((location) => {
       if (!location || typeof location !== "object") return;
-      values.push(location.city, location.address, location.country, location.region, location.name);
+      values.push(location.city, location.place, location.locationPlace, location.locality, location.district, location.address, location.country, location.region, location.name);
     });
   }
   return values;
@@ -1056,6 +1081,15 @@ function renderRestaurantListCard(record = {}, deps = {}) {
         <div class="absolute top-3.5 right-3.5 flex gap-2 z-10" style="top:0.875rem;right:0.875rem;">
           <button
             type="button"
+            data-marketplace-open-map="${escapeHtml(id)}"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
+            title="Auf Karte anzeigen"
+            aria-label="Auf Karte anzeigen"
+          >
+            ${icon("map", "w-4 h-4")}
+          </button>
+          <button
+            type="button"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-rose-500 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
             aria-label="Favorit"
           >
@@ -1527,6 +1561,15 @@ function renderTravelHotelCard(record = {}, deps = {}) {
         <div class="absolute top-3.5 right-3.5 flex gap-2 z-10">
           <button
             type="button"
+            data-marketplace-open-map="${escapeHtml(id)}"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
+            title="Auf Karte anzeigen"
+            aria-label="Auf Karte anzeigen"
+          >
+            ${icon("map", "w-4 h-4")}
+          </button>
+          <button
+            type="button"
             data-travel-hotel-like="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-rose-500 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
             aria-label="Zu Favoriten hinzufuegen"
@@ -1709,6 +1752,15 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
         </div>
 
         <div class="absolute top-3 right-3 flex gap-1.5 z-10">
+          <button
+            type="button"
+            data-marketplace-open-map="${escapeHtml(id)}"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 shadow-sm cursor-pointer"
+            title="Auf Karte anzeigen"
+            aria-label="Auf Karte anzeigen"
+          >
+            ${icon("map", "w-3.5 h-3.5")}
+          </button>
           <button
             type="button"
             data-travel-hotel-like="${escapeHtml(id)}"

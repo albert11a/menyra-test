@@ -574,6 +574,8 @@ export function createSelfProfileRuntimeController({
       bio: data?.bio || data?.description || "",
       avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
       location: data?.city || "Prishtina",
+      place: data?.place || data?.locationPlace || data?.locality || data?.district || "",
+      locationPlace: data?.locationPlace || data?.place || data?.locality || data?.district || "",
       address: data?.address || "",
       followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans),
       following: pickCountValue(data?.followingCount, data?.following),
@@ -664,6 +666,8 @@ export function createSelfProfileRuntimeController({
       bio: rest?.bio || rest?.description || rest?.about || "",
       avatar: rest?.logoUrl || rest?.logo || "",
       location: rest?.city || "Prishtina",
+      place: rest?.place || rest?.locationPlace || rest?.locality || rest?.district || "",
+      locationPlace: rest?.locationPlace || rest?.place || rest?.locality || rest?.district || "",
       address: rest?.address || "",
       followers: pickCountValue(rest?.followersCount, rest?.followers, rest?.fansCount, rest?.fans),
       following: pickCountValue(rest?.followingCount, rest?.following),
@@ -986,6 +990,7 @@ export function createSelfProfileRuntimeController({
     const handle = docObj.getElementById("settingsHandle")?.value?.trim() || state.userProfile.handle || normalizeHandle(name);
     const bio = docObj.getElementById("settingsBio")?.value?.trim() || "";
     const city = docObj.getElementById("settingsCity")?.value?.trim() || "Prishtina";
+    const place = docObj.getElementById("settingsPlace")?.value?.trim() || "";
     const address = docObj.getElementById("settingsAddress")?.value?.trim() || "";
     const restaurantId = state.userProfile.restaurantId || "";
     const allowCeoOverride = isCeoUser();
@@ -1012,6 +1017,8 @@ export function createSelfProfileRuntimeController({
           bio,
           description: bio,
           city,
+          place,
+          locationPlace: place,
           address,
           updatedAt: serverTimestampFn()
         };
@@ -1026,6 +1033,8 @@ export function createSelfProfileRuntimeController({
           restaurantName: name,
           type: rest.type || rest.customerType || "cafe",
           city,
+          place,
+          locationPlace: place,
           logoUrl: rest.logoUrl || rest.logo || "",
           logo: rest.logo || rest.logoUrl || ""
         });
@@ -1037,6 +1046,8 @@ export function createSelfProfileRuntimeController({
           handle,
           bio,
           city,
+          place,
+          locationPlace: place,
           restaurantId,
           updatedAt: serverTimestampFn()
         };
@@ -1046,6 +1057,8 @@ export function createSelfProfileRuntimeController({
           displayName: name,
           handle,
           city,
+          place,
+          locationPlace: place,
           locationLabel: city,
           ...(effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng)
             ? {
@@ -1062,6 +1075,8 @@ export function createSelfProfileRuntimeController({
         const userGpsPayload = {
           handle,
           city,
+          place,
+          locationPlace: place,
           address,
           updatedAt: serverTimestampFn()
         };
@@ -1081,6 +1096,8 @@ export function createSelfProfileRuntimeController({
         handle,
         bio,
         location: city,
+        place,
+        locationPlace: place,
         address,
         restaurantId
       };

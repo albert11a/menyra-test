@@ -98,6 +98,129 @@ export function bindAppShellEventsCore({
   const isBusinessProfileView = () => state.activeTab === "profile" && isBusinessProfile();
   const isLandingTopTabActive = () => state.activeTab === "profile"
     && String(state.profileTopTab || "").trim().toLowerCase() === "landing";
+  const normalizeMapNumber = (value) => {
+    const numeric = Number(String(value ?? "").replace(",", "."));
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+  const normalizeMapCoords = (latValue, lngValue) => {
+    const lat = normalizeMapNumber(latValue);
+    const lng = normalizeMapNumber(lngValue);
+    if (lat === null || lng === null) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return null;
+    return { lat, lng };
+  };
+  const readMarketplaceMapCoords = (record = {}) => {
+    const row = record && typeof record === "object" ? record : {};
+    const candidates = [
+      normalizeMapCoords(row.lat, row.lng),
+      normalizeMapCoords(row.latitude, row.longitude),
+      normalizeMapCoords(row.latitude, row.lon),
+      normalizeMapCoords(row.mapLat, row.mapLng),
+      normalizeMapCoords(row.gpsLat, row.gpsLng),
+      normalizeMapCoords(row.geo?.lat, row.geo?.lng),
+      normalizeMapCoords(row.geo?.latitude, row.geo?.longitude),
+      normalizeMapCoords(row.coords?.lat, row.coords?.lng),
+      normalizeMapCoords(row.coords?.latitude, row.coords?.longitude),
+      normalizeMapCoords(row.coordinates?.lat, row.coordinates?.lng),
+      normalizeMapCoords(row.coordinates?.latitude, row.coordinates?.longitude),
+      normalizeMapCoords(row.coordinates?._lat, row.coordinates?._long),
+      normalizeMapCoords(row.geoPoint?.lat, row.geoPoint?.lng),
+      normalizeMapCoords(row.geoPoint?.latitude, row.geoPoint?.longitude),
+      normalizeMapCoords(row.geoPoint?._lat, row.geoPoint?._long),
+      normalizeMapCoords(row.geopoint?.lat, row.geopoint?.lng),
+      normalizeMapCoords(row.geopoint?.latitude, row.geopoint?.longitude),
+      normalizeMapCoords(row.geopoint?._lat, row.geopoint?._long)
+    ].filter(Boolean);
+    if (candidates.length) return candidates[0];
+    if (Array.isArray(row.locations)) {
+      for (const location of row.locations) {
+        const coords = readMarketplaceMapCoords(location || {});
+        if (coords) return coords;
+      }
+    }
+    return null;
+  };
+  const collectMarketplaceBusinessIds = (record = {}) => {
+    const raw = record?.raw && typeof record.raw === "object" ? record.raw : {};
+    return [
+      record?.id,
+      record?.restaurantId,
+      record?.canonicalRestaurantId,
+      record?.documentId,
+      record?.landingRestaurantId,
+      raw.id,
+      raw.restaurantId,
+      raw.canonicalRestaurantId,
+      raw.documentId,
+      raw.landingRestaurantId
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+  };
+  const matchesMarketplaceBusinessId = (record = {}, idSet = new Set()) => (
+    collectMarketplaceBusinessIds(record).some((value) => idSet.has(value))
+  );
+  const findMarketplaceRestaurantRecord = (idSet = new Set()) => {
+    const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
+    return restaurants.find((record) => matchesMarketplaceBusinessId(record, idSet)) || null;
+  };
+  const buildMarketplaceMapSelectionFromRestaurant = (record = {}) => {
+    const coords = readMarketplaceMapCoords(record);
+    if (!coords) return null;
+    const id = String(record.restaurantId || record.canonicalRestaurantId || record.id || "").trim();
+    if (!id) return null;
+    const name = String(record.name || record.restaurantName || record.businessName || "Business").trim() || "Business";
+    return {
+      id,
+      restaurantId: String(record.restaurantId || record.id || id).trim(),
+      canonicalRestaurantId: String(record.canonicalRestaurantId || record.restaurantId || record.id || id).trim(),
+      documentId: String(record.id || "").trim(),
+      publicSlug: String(record.publicSlug || record.slug || "").trim(),
+      landingSlug: String(record.landingSlug || "").trim(),
+      handle: String(record.handle || "").trim(),
+      markerKey: `${id}:0`,
+      locationIndex: 0,
+      name,
+      type: record.type || record.customerType || record.restaurantType || "food",
+      lat: coords.lat,
+      lng: coords.lng,
+      city: String(record.city || record.locationCity || record.primaryCity || "").trim(),
+      address: String(record.address || record.location || record.primaryAddress || record.city || "Standort folgt").trim(),
+      hours: record.hours || record.openHours || record.openingHours || "08:00 - 23:00",
+      rating: record.rating || record.score || 4.8,
+      img: record.logoUrl || record.logo || record.heroUrl || record.coverUrl || "",
+      desc: record.description || record.bio || "Offizielles Lokal.",
+      hasVerifiedCoords: true,
+      locationStatus: "verified",
+      raw: record
+    };
+  };
+  const resolveMarketplaceMapSelection = (businessId = "") => {
+    const safeId = String(businessId || "").trim();
+    if (!safeId) return null;
+    const idSet = new Set([safeId]);
+    const directRestaurant = findMarketplaceRestaurantRecord(idSet);
+    collectMarketplaceBusinessIds(directRestaurant || {}).forEach((id) => idSet.add(id));
+    const locations = Array.isArray(state.businessLocations) ? state.businessLocations : [];
+    const existingLocation = locations.find((entry) => matchesMarketplaceBusinessId(entry, idSet)) || null;
+    if (existingLocation) return existingLocation;
+    return directRestaurant ? buildMarketplaceMapSelectionFromRestaurant(directRestaurant) : null;
+  };
+  const openMarketplaceBusinessOnMap = (businessId = "") => {
+    const selection = resolveMarketplaceMapSelection(businessId);
+    if (selection) state.selectedBusiness = selection;
+    if (state.search && typeof state.search === "object") state.search.query = "";
+    setState({
+      activeTab: "map",
+      drawerOpen: false,
+      chatSettingsOpen: false,
+      settingsView: "main",
+      selectedBusiness: selection || null,
+      profileView: null,
+      profileModal: { open: false, profile: null },
+      postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
+      likesModal: { open: false, postId: "", animate: false }
+    });
+  };
   const normalizeLandingStep = (value = 0) => {
     const parsed = Math.round(Number(value || 0));
     if (!Number.isFinite(parsed)) return 0;
@@ -765,6 +888,16 @@ export function bindAppShellEventsCore({
         showBack: true,
         topTab: btn.dataset.tab
       });
+    });
+  });
+
+  doc.querySelectorAll("[data-marketplace-open-map]").forEach((btn) => {
+    if (btn.dataset.marketplaceMapBound === "true") return;
+    btn.dataset.marketplaceMapBound = "true";
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openMarketplaceBusinessOnMap(btn.getAttribute("data-marketplace-open-map") || "");
     });
   });
 
