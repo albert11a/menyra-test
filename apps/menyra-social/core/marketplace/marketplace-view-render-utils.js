@@ -1679,16 +1679,15 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Rezensionen)</span>
           </div>
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
-          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5" style="margin-top:0.125rem;">${escapeHtml(destination)}</p>
+          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5" style="margin-top:0.125rem;color:#d97706;">
+            ${icon("map-pin", "w-3 h-3 text-amber-600 shrink-0")}
+            <span>${escapeHtml(destination)}</span>
+          </p>
         </div>
 
         <hr class="border-slate-100" />
 
         <div class="flex flex-col gap-2.5 text-slate-600">
-          <div class="flex items-start gap-3">
-            ${icon("map-pin", "w-4 h-4 text-slate-400 shrink-0 mt-0.5")}
-            <span class="text-[11px] leading-relaxed text-slate-600">${escapeHtml(address)}</span>
-          </div>
           <div class="flex items-center gap-3">
             ${cardIcon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
             <span class="text-[11px] text-slate-600 font-semibold">${escapeHtml(distanceCenter || "Zentrum folgt")}</span>

@@ -899,6 +899,15 @@ Last updated: 2026-06-20
   Textfarbe, Padding, Radius, Schrift und z-index sind direkt am Badge gesetzt.
   Card-Struktur, `Hotels`-Tab, QR, Cart, Order, Routing, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 93 ist abgeschlossen: Die Travel-Oferta-Card zeigt keine separate
+  Adresszeile mehr; das `MapPin`-Icon sitzt jetzt direkt neben der
+  orangefarbenen Stadt-/Destination-Zeile.
+- Bewertung von Schritt 93: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 93:
+  Die Oferta-Card ist kompakter und zeigt den Standort oben bei der
+  Stadt/Destination. Zentrum- und Strand/See-Distanz, Preis, Badge,
+  Detailoverlay, `Hotels`-Tab, QR, Cart, Order, Routing, Firebase Rules und
+  Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -990,6 +999,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step90-travel-oferta-badge-context.md](./mnyra-step90-travel-oferta-badge-context.md)
 - Referenz: [docs/mnyra-step91-travel-oferta-premium-card.md](./mnyra-step91-travel-oferta-premium-card.md)
 - Referenz: [docs/mnyra-step92-travel-oferta-badge-visibility.md](./mnyra-step92-travel-oferta-badge-visibility.md)
+- Referenz: [docs/mnyra-step93-travel-oferta-city-icon.md](./mnyra-step93-travel-oferta-city-icon.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1015,7 +1025,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 92 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 93 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1093,6 +1103,11 @@ die normale Hotel-Card unveraendert bleibt.
 Zusaetzlich fuer Schritt 92 manuell pruefen: Travel `Ofertat` zeigt oben links
 im Titelbild der Oferta-Card das rote `Ofertë`-/Custom-Badge sichtbar und nicht
 von Slider, Punkten oder Like/Share verdeckt; `Hotels`-Tab bleibt unveraendert.
+
+Zusaetzlich fuer Schritt 93 manuell pruefen: Travel `Ofertat` zeigt das
+`MapPin`-Icon direkt neben der orangefarbenen Stadt-/Destination-Zeile; die
+alte separate Adresszeile mit Icon ist nicht mehr sichtbar; Zentrum- und
+Strand/See-Distanz bleiben sichtbar; `Hotels`-Tab bleibt unveraendert.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
