@@ -1010,6 +1010,14 @@ Last updated: 2026-06-21
   `Enter your destination`. Benko, Travel-Tabs, Cards, Suche,
   Vorschlaege, Routing, QR, Cart, Order, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 104 ist abgeschlossen: Die oberen Travel-Benko-Ecken wurden nach dem
+  Suchkopf-UI-Schritt wieder sichtbar abgerundet.
+- Bewertung von Schritt 104: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 104:
+  `#travelBenko` ueberlappt den Teal-Suchkopf jetzt passend zum `2.5rem`
+  Radius mit `-2.5rem` und nutzt einen eigenen relativen Layer mit dezentem
+  oberen Schatten. Travel-Suche, Tabs, Cards, Map, Routing, QR, Cart, Order,
+  Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1112,6 +1120,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step101-hotel-details-oferta-editor-stability-fix.md](./mnyra-step101-hotel-details-oferta-editor-stability-fix.md)
 - Referenz: [docs/mnyra-step102-hotel-editor-oferta-loading-text-suppression.md](./mnyra-step102-hotel-editor-oferta-loading-text-suppression.md)
 - Referenz: [docs/mnyra-step103-travel-search-hero-ui.md](./mnyra-step103-travel-search-hero-ui.md)
+- Referenz: [docs/mnyra-step104-travel-benko-radius-fix.md](./mnyra-step104-travel-benko-radius-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1137,7 +1146,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 103 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 104 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1287,6 +1296,11 @@ dynamische Zeile `Find Hotels.` / `Find Motels.` / `Best Offers.`, zweite Zeile
 `Enter your destination`, Map-Pin links und Search-Button rechts. Reiseziel wie
 bisher eingeben; Benko, Tabs, Hotel-/Oferta-Cards und Map muessen unveraendert
 bleiben.
+
+Zusaetzlich fuer Schritt 104 manuell pruefen: Travel oeffnen und den Uebergang
+vom Teal-Suchkopf zum Benko pruefen. Die oberen linken und rechten Benko-Ecken
+muessen wieder sichtbar rund sein; Tabs, Cards und Map duerfen dadurch nicht
+verschoben oder abgeschnitten wirken.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

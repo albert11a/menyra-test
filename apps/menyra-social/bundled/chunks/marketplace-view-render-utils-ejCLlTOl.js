@@ -724,7 +724,7 @@ const F=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
   `:we(e,t)}function bt({state:e,dataLoaded:t,section:a,deps:s}={}){const n=Z(e,a.key,s).map(v=>J({...v,__marketplaceType:H(v,s)},a)),i=st(e),l=!!i.query,o=l?n.filter(v=>Ae(v,i.query)):n.slice(0,D),c=o.slice(0,D),p=l?i.activeTab:"offers",d=t?.restaurants===!0,f=e?.__restaurantsLoading===!0||e?.__restaurantsMetaHydrating===!0,u=p!=="map"&&p!=="hotels",h=u&&ye(c).length>0,k=u&&f&&!h,g=p==="map"?dt(c,s):p==="hotels"?we(c,s):pt(c,s);return`
     <section id="travelView" class="animate-in slide-in-from-right-10 duration-500" style="background:#f8fafc; min-height:100%;">
       ${nt({travel:i,deps:s})}
-      <div id="travelBenko" data-travel-benko style="margin-top:-1.75rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem;">
+      <div id="travelBenko" data-travel-benko style="position:relative; z-index:3; margin-top:-2.5rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem; box-shadow:0 -18px 34px -18px rgb(15 23 42 / 0.2);">
         ${it({activeTab:p,hasDestination:l,hotelCount:o.length,deps:s})}
         <div class="mt-5">
           ${k?U(a,s):d||n.length?g:U(a,s)}

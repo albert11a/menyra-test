@@ -2072,7 +2072,7 @@ function renderTravelView({ state, dataLoaded, section, deps } = {}) {
   return `
     <section id="travelView" class="animate-in slide-in-from-right-10 duration-500" style="background:#f8fafc; min-height:100%;">
       ${renderTravelSearchHero({ travel, deps })}
-      <div id="travelBenko" data-travel-benko style="margin-top:-1.75rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem;">
+      <div id="travelBenko" data-travel-benko style="position:relative; z-index:3; margin-top:-2.5rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem; box-shadow:0 -18px 34px -18px rgb(15 23 42 / 0.2);">
         ${renderTravelTabs({ activeTab, hasDestination, hotelCount: filteredItems.length, deps })}
         <div class="mt-5">
           ${shouldShowOffersLoading
