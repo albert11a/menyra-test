@@ -918,6 +918,17 @@ Last updated: 2026-06-20
   der echte Empty-State `Noch keine Angebote` gezeigt, falls wirklich keine
   Offers existieren. Hotel-Tab, Editor, Firebase, QR, Cart, Order, Routing,
   Rules und Functions bleiben unveraendert.
+- Schritt 95 ist abgeschlossen: `Ofertat` nutzt jetzt echte Restaurant-/Offer-
+  Ladeflags statt `dataLoaded.restaurants`, damit der Empty-State beim Refresh
+  nicht kurz vor fertig geladener Offer-Hydration erscheint.
+- Bewertung von Schritt 95: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 95:
+  `state.__restaurantsLoading` und `state.__restaurantsMetaHydrating` bleiben
+  waehrend Netzwerk-Load und `public/offers`-Meta-Reconcile aktiv. `Ofertat`
+  zeigt in diesem Fenster `Daten werden geladen ...` statt `Noch keine
+  Angebote`, solange noch keine echten Offer-Records sichtbar sind. Hotels,
+  Editor, Firebase, QR, Cart, Order, Routing, Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1011,6 +1022,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step92-travel-oferta-badge-visibility.md](./mnyra-step92-travel-oferta-badge-visibility.md)
 - Referenz: [docs/mnyra-step93-travel-oferta-city-icon.md](./mnyra-step93-travel-oferta-city-icon.md)
 - Referenz: [docs/mnyra-step94-travel-oferta-loading-guard.md](./mnyra-step94-travel-oferta-loading-guard.md)
+- Referenz: [docs/mnyra-step95-travel-oferta-load-truth.md](./mnyra-step95-travel-oferta-load-truth.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1036,7 +1048,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 94 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 95 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1125,6 +1137,12 @@ Zusaetzlich fuer Schritt 94 manuell pruefen: App frisch laden und Travel
 `Daten werden geladen ...` statt `Noch keine Angebote` erscheinen; nach dem
 Laden soll die Oferta-Card normal erscheinen; echte Empty-State-Anzeige nur bei
 wirklich fehlenden Offers nach abgeschlossenem Laden.
+
+Zusaetzlich fuer Schritt 95 manuell pruefen: App refreshen und Travel `Ofertat`
+beobachten; es darf nicht kurz `Noch keine Angebote` erscheinen, wenn Offers
+direkt danach geladen werden; waehrend laufender Restaurant-/Offer-Hydration
+soll `Daten werden geladen ...` sichtbar sein; danach erscheinen die
+Oferta-Cards normal.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -1996,9 +1996,10 @@ function renderTravelView({ state, dataLoaded, section, deps } = {}) {
   const visibleItems = filteredItems.slice(0, LIST_LIMIT);
   const activeTab = hasDestination ? travel.activeTab : "offers";
   const restaurantsLoaded = dataLoaded?.restaurants === true;
+  const restaurantsLoading = state?.__restaurantsLoading === true || state?.__restaurantsMetaHydrating === true;
   const isOffersTab = activeTab !== "map" && activeTab !== "hotels";
   const hasVisibleOfferRecords = isOffersTab && buildTravelOfferRecords(visibleItems).length > 0;
-  const shouldShowOffersLoading = isOffersTab && !restaurantsLoaded && !hasVisibleOfferRecords;
+  const shouldShowOffersLoading = isOffersTab && restaurantsLoading && !hasVisibleOfferRecords;
   const content = activeTab === "map"
     ? renderTravelMap(visibleItems, deps)
     : (activeTab === "hotels" ? renderTravelHotels(visibleItems, deps) : renderTravelOffers(visibleItems, deps));

@@ -187,6 +187,7 @@ export function ensureTabDataCore({
   const shouldPrimeRestaurantTruth = !dataLoaded.restaurants && !isLandingProfileSession;
   if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
+    state.__restaurantsLoading = true;
     if (hasUser) {
       runNonBlockingAuthTask("auth-tab.restaurants.prime", () => loadRestaurantsSafe());
     } else {

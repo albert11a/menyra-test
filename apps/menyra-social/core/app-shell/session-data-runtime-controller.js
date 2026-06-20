@@ -587,6 +587,8 @@ export function createSessionDataRuntimeController({
       }
 
       if (needsRestaurantMetaHydration) {
+        state.__restaurantsMetaHydrating = true;
+        if (String(state.activeTab || "").trim().toLowerCase() === "travel") requestRender();
         void Promise.resolve(enrichRestaurantsWithPublicMetaFn(state.restaurants))
           .then((list) => {
             const canonicalList = filterCanonicalRestaurants(list);
@@ -604,7 +606,11 @@ export function createSessionDataRuntimeController({
               if (!updatedFeed && shouldRefreshVisibleFeedSurface()) requestRender();
             }
           })
-          .catch(() => null);
+          .catch(() => null)
+          .finally(() => {
+            state.__restaurantsMetaHydrating = false;
+            if (String(state.activeTab || "").trim().toLowerCase() === "travel") requestRender();
+          });
       }
 
       if (cachedHydrationIds.length) {
@@ -1013,6 +1019,8 @@ export function createSessionDataRuntimeController({
     state.__criticalProfilePreloadUid = "";
     state.__userPostsLoadingUid = "";
     state.__businessPostsLoadingRestaurantId = "";
+    state.__restaurantsLoading = false;
+    state.__restaurantsMetaHydrating = false;
     commentAvatarCacheMap.clear();
     commentAvatarPendingMap.clear();
     userSearchAvatarCacheMap.clear();
@@ -1142,6 +1150,15 @@ export function createSessionDataRuntimeController({
         }
       }
     };
+    const setRestaurantsLoading = (value = false) => {
+      const nextValue = value === true;
+      if (state.__restaurantsLoading === nextValue) return;
+      state.__restaurantsLoading = nextValue;
+      const activeTab = String(state.activeTab || "").trim().toLowerCase();
+      if (activeTab === "restaurants" || activeTab === "travel" || activeTab === "shopping") {
+        requestRender();
+      }
+    };
     const applyRestaurants = (list = [], { shouldWriteCache = false } = {}) => {
       if (!Array.isArray(list)) return;
       const canonicalList = filterCanonicalRestaurants(list);
@@ -1156,11 +1173,11 @@ export function createSessionDataRuntimeController({
       refreshRestaurantDependentViews();
     };
     const reconcileRestaurantMeta = (seed = [], { shouldWriteCache = false } = {}) => {
-      if (!Array.isArray(seed) || !seed.length) return;
+      if (!Array.isArray(seed) || !seed.length) return Promise.resolve(null);
       const canonicalSeed = filterCanonicalRestaurants(seed);
-      if (!canonicalSeed.length) return;
+      if (!canonicalSeed.length) return Promise.resolve(null);
       const seedSignature = buildRestaurantIdentitySignature(canonicalSeed);
-      void Promise.resolve(enrichRestaurantsWithPublicMetaFn(canonicalSeed))
+      return Promise.resolve(enrichRestaurantsWithPublicMetaFn(canonicalSeed))
         .then((enriched) => {
           const canonicalEnriched = filterCanonicalRestaurants(enriched);
           if (!canonicalEnriched.length) return;
@@ -1172,11 +1189,12 @@ export function createSessionDataRuntimeController({
         .catch(() => null);
     };
 
+    setRestaurantsLoading(true);
     const cached = readCacheFn(cacheKeys.restaurants, cacheTtl.restaurants);
     if (cached?.data?.length) {
       if (!state.restaurants.length) {
         applyRestaurants(cached.data);
-        reconcileRestaurantMeta(cached.data, { shouldWriteCache: true });
+        void reconcileRestaurantMeta(cached.data, { shouldWriteCache: true });
       }
       if (cached.fresh && !force) {
         if (!restaurantsFreshReconcileQueued) {
@@ -1191,9 +1209,13 @@ export function createSessionDataRuntimeController({
         return;
       }
     }
-    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
+    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") {
+      setRestaurantsLoading(false);
+      return;
+    }
     if (restaurantsNetworkLoadPromise) {
       await restaurantsNetworkLoadPromise;
+      setRestaurantsLoading(false);
       return;
     }
     restaurantsNetworkLoadPromise = (async () => {
@@ -1202,12 +1224,13 @@ export function createSessionDataRuntimeController({
         const rawList = [];
         snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
         applyRestaurants(rawList, { shouldWriteCache: true });
-        reconcileRestaurantMeta(rawList, { shouldWriteCache: true });
+        await reconcileRestaurantMeta(rawList, { shouldWriteCache: true });
       } catch (err) {
         console.error(err);
       }
     })().finally(() => {
       restaurantsNetworkLoadPromise = null;
+      setRestaurantsLoading(false);
     });
     await restaurantsNetworkLoadPromise;
   }
