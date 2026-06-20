@@ -826,19 +826,19 @@ function renderHotelCardAdminView(profile = {}) {
               <h3 class="text-xl font-black italic tracking-tighter">Hotel Details</h3>
               <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hotel & Ofertat</p>
             </div>
-            <button type="button" data-hotel-card-details-open class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
+            <button type="button" data-hotel-card-details-open aria-expanded="${detailsOpen ? "true" : "false"}" class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
               ${icon("plus", "w-4 h-4")}
             </button>
           </div>
 
-          <button type="button" data-hotel-card-details-open class="w-full flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100 text-left active:scale-[0.99] transition-transform">
+          <button type="button" data-hotel-card-details-open aria-expanded="${detailsOpen ? "true" : "false"}" class="w-full flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100 text-left active:scale-[0.99] transition-transform">
             <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
               <img src="${escapeHtml(detailsThumb || PLACEHOLDER_IMAGE)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(restaurantName)}</p>
               <p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(detailsSummary)}</p>
-              <p class="text-[9px] font-black uppercase tracking-widest mt-2 text-indigo-600">${detailsOpen ? "Hapur" : "Hap detajet"}</p>
+              <p data-hotel-card-details-state class="text-[9px] font-black uppercase tracking-widest mt-2 text-indigo-600">${detailsOpen ? "Hapur" : "Hap detajet"}</p>
             </div>
             <div class="w-8 h-8 rounded-xl bg-white border border-slate-100 text-slate-400 flex items-center justify-center shrink-0">
               ${icon("chevron-right", "w-4 h-4")}
@@ -848,8 +848,7 @@ function renderHotelCardAdminView(profile = {}) {
           ${status && !detailsOpen ? `<div class="text-center text-[10px] font-black uppercase tracking-widest mt-4 ${statusIsError ? "text-rose-500" : "text-slate-500"}">${escapeHtml(status)}</div>` : ""}
         </div>
 
-        ${detailsOpen ? `
-          <div data-hotel-card-editor="${escapeHtml(restaurantId)}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 mb-6">
+        <div data-hotel-card-editor="${escapeHtml(restaurantId)}" data-hotel-card-details-panel class="${detailsOpen ? "" : "hidden "}bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 mb-6">
             <div class="flex items-center justify-between">
               <div>
                 <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Hotel</span>
@@ -921,8 +920,7 @@ function renderHotelCardAdminView(profile = {}) {
             <button id="hotelCardSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${saving ? "disabled" : ""}>
               ${saving ? "Po ruhet..." : "Ruaj Hotel Details"}
             </button>
-          </div>
-        ` : ""}
+        </div>
         ${renderFocusAdminSection(restaurantId, { variant: "travel-offers" })}
       ` : `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
@@ -2391,9 +2389,7 @@ function renderFocusAdminSection(restaurantId, { variant = "focus" } = {}) {
         <input id="focusEnabledToggle" type="checkbox" class="w-5 h-5 accent-amber-500" ${enabled ? "checked" : ""} />
       </label>
 
-      ${loading ? `
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(loadingLabel)}</div>
-      ` : items.length ? `
+      ${items.length ? `
         <div class="space-y-3">
           ${items.map((item) => {
             const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "thumb");
@@ -2418,6 +2414,8 @@ function renderFocusAdminSection(restaurantId, { variant = "focus" } = {}) {
             `;
           }).join("")}
         </div>
+      ` : loading ? `
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(loadingLabel)}</div>
       ` : `
         <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(emptyLabel)}</div>
       `}

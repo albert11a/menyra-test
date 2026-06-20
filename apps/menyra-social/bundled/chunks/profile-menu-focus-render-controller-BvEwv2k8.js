@@ -218,19 +218,19 @@ import{e as ae,f as Vn,t as Un,g as Hn,h as jt,a as Nn}from"../entry/social-app.
               <h3 class="text-xl font-black italic tracking-tighter">Hotel Details</h3>
               <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hotel & Ofertat</p>
             </div>
-            <button type="button" data-hotel-card-details-open class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
+            <button type="button" data-hotel-card-details-open aria-expanded="${y?"true":"false"}" class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
               ${x("plus","w-4 h-4")}
             </button>
           </div>
 
-          <button type="button" data-hotel-card-details-open class="w-full flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100 text-left active:scale-[0.99] transition-transform">
+          <button type="button" data-hotel-card-details-open aria-expanded="${y?"true":"false"}" class="w-full flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100 text-left active:scale-[0.99] transition-transform">
             <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
               <img src="${s(C||B)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-black text-slate-900 truncate">${s(a)}</p>
               <p class="text-xs text-slate-500 mt-1 line-clamp-2">${s(j)}</p>
-              <p class="text-[9px] font-black uppercase tracking-widest mt-2 text-indigo-600">${y?"Hapur":"Hap detajet"}</p>
+              <p data-hotel-card-details-state class="text-[9px] font-black uppercase tracking-widest mt-2 text-indigo-600">${y?"Hapur":"Hap detajet"}</p>
             </div>
             <div class="w-8 h-8 rounded-xl bg-white border border-slate-100 text-slate-400 flex items-center justify-center shrink-0">
               ${x("chevron-right","w-4 h-4")}
@@ -240,8 +240,7 @@ import{e as ae,f as Vn,t as Un,g as Hn,h as jt,a as Nn}from"../entry/social-app.
           ${r&&!y?`<div class="text-center text-[10px] font-black uppercase tracking-widest mt-4 ${A?"text-rose-500":"text-slate-500"}">${s(r)}</div>`:""}
         </div>
 
-        ${y?`
-          <div data-hotel-card-editor="${s(n)}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 mb-6">
+        <div data-hotel-card-editor="${s(n)}" data-hotel-card-details-panel class="${y?"":"hidden "}bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 mb-6">
             <div class="flex items-center justify-between">
               <div>
                 <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Hotel</span>
@@ -282,8 +281,7 @@ import{e as ae,f as Vn,t as Un,g as Hn,h as jt,a as Nn}from"../entry/social-app.
             <button id="hotelCardSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${i?"disabled":""}>
               ${i?"Po ruhet...":"Ruaj Hotel Details"}
             </button>
-          </div>
-        `:""}
+        </div>
         ${Ve(n,{variant:"travel-offers"})}
       `:`
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
@@ -823,9 +821,7 @@ import{e as ae,f as Vn,t as Un,g as Hn,h as jt,a as Nn}from"../entry/social-app.
         <input id="focusEnabledToggle" type="checkbox" class="w-5 h-5 accent-amber-500" ${a?"checked":""} />
       </label>
 
-      ${r?`
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(g)}</div>
-      `:n.length?`
+      ${n.length?`
         <div class="space-y-3">
           ${n.map(f=>{const w=R(f.imageUrl||"","thumb"),k=ie(w)?B:w,S=f.active!==!1?"Aktiv":"Inaktiv",$=f.active!==!1?"text-emerald-600":"text-slate-400";return`
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
@@ -844,6 +840,8 @@ import{e as ae,f as Vn,t as Un,g as Hn,h as jt,a as Nn}from"../entry/social-app.
               </div>
             `}).join("")}
         </div>
+      `:r?`
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(g)}</div>
       `:`
         <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(h)}</div>
       `}

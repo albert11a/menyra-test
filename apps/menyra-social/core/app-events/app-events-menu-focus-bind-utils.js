@@ -189,6 +189,26 @@ export function bindAppMenuFocusEventsCore({
     return current;
   }
 
+  function setHotelCardDetailsOpen(open = false) {
+    const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
+      ? state.hotelCardEditor
+      : {};
+    state.hotelCardEditor = {
+      ...current,
+      detailsOpen: !!open,
+      status: open ? "" : String(current.status || "")
+    };
+    doc.querySelectorAll("[data-hotel-card-details-panel]").forEach((panel) => {
+      panel.classList.toggle("hidden", !open);
+    });
+    doc.querySelectorAll("[data-hotel-card-details-state]").forEach((node) => {
+      node.textContent = open ? "Hapur" : "Hap detajet";
+    });
+    doc.querySelectorAll("[data-hotel-card-details-open]").forEach((btn) => {
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+
   function collectHotelCardIdentityIds(record = {}) {
     const ids = [];
     [
@@ -407,28 +427,13 @@ export function bindAppMenuFocusEventsCore({
 
   doc.querySelectorAll("[data-hotel-card-details-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
-        ? state.hotelCardEditor
-        : {};
-      state.hotelCardEditor = {
-        ...current,
-        detailsOpen: true,
-        status: ""
-      };
-      render();
+      setHotelCardDetailsOpen(true);
     });
   });
 
   doc.querySelectorAll("[data-hotel-card-details-close]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
-        ? state.hotelCardEditor
-        : {};
-      state.hotelCardEditor = {
-        ...current,
-        detailsOpen: false
-      };
-      render();
+      setHotelCardDetailsOpen(false);
     });
   });
 

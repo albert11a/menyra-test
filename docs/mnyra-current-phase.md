@@ -980,6 +980,15 @@ Last updated: 2026-06-20
   `150 m nga qendra` bzw. `150 m nga plazhi`. Die relevanten Hotel-/Oferta-
   Editorlabels und Presets sind kurz auf Albanisch nachgezogen. QR, Cart,
   Order, Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 101 ist abgeschlossen: Das `Ofertat`-Flackern im Hotel-/Motel-
+  Editor nach dem neuen `Hotel Details`-Aufklappen ist behoben.
+- Bewertung von Schritt 101: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 101:
+  `Hotel Details` wird jetzt ohne kompletten Editor-Render ein- und
+  ausgeblendet. Dadurch wird die darunterliegende `Ofertat`-Sektion beim
+  Aufklappen nicht mehr neu geladen. Zusaetzlich verdraengt ein laufender
+  Loading-State vorhandene Oferta-Eintraege nicht mehr. QR, Cart, Order,
+  Routing, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1079,6 +1088,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step98-travel-oferta-card-title-spacing.md](./mnyra-step98-travel-oferta-card-title-spacing.md)
 - Referenz: [docs/mnyra-step99-travel-hotel-details-editor.md](./mnyra-step99-travel-hotel-details-editor.md)
 - Referenz: [docs/mnyra-step100-travel-hotel-details-editor-corrections.md](./mnyra-step100-travel-hotel-details-editor-corrections.md)
+- Referenz: [docs/mnyra-step101-hotel-details-oferta-editor-stability-fix.md](./mnyra-step101-hotel-details-oferta-editor-stability-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1104,7 +1114,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 100 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 101 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1234,6 +1244,12 @@ speichern und auf der Card als `150 m nga qendra` pruefen; Strand mit `150 m`
 speichern und als `150 m nga plazhi` pruefen. Die Haken sollen `Në qendër` und
 `Në plazh` speichern. Food-, Shezlong- und Parking-Presets im Hotel-Editor und
 in einer Oferta pruefen; Travel `Hotels` und `Ofertat` gegenpruefen.
+
+Zusaetzlich fuer Schritt 101 manuell pruefen: Als Hotel-/Motel-Owner Profil ->
+Editor oeffnen und die `Ofertat`-Sektion beobachten. Sie soll nicht erst
+sichtbar werden, verschwinden und erneut auftauchen. `Hotel Details` per Plus
+oder Hotel-Zeile oeffnen und schliessen; dabei darf `Ofertat` nicht neu laden,
+nicht springen und nicht kurz durch `Ofertat werden geladen...` ersetzt werden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
