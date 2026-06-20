@@ -1670,7 +1670,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
         </div>
 
         <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
+          <div class="flex items-center gap-1.5 mb-2" style="margin-bottom:0.5rem;">
             <div class="flex text-amber-500">
               ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
@@ -1678,7 +1678,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Rezensionen)</span>
           </div>
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
-          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5" style="margin-top:0.125rem;color:#d97706;">
+          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-2 flex items-center gap-1.5" style="margin-top:0.5rem;color:#d97706;">
             ${icon("map-pin", "w-3 h-3 text-amber-600 shrink-0")}
             <span>${escapeHtml(destination)}</span>
           </p>

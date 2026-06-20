@@ -951,6 +951,14 @@ Last updated: 2026-06-20
   inklusive leerer Listen nach Loeschen/Deaktivieren, duerfen weiterhin
   gewinnen. Hotels, Editor, Firebase, QR, Cart, Order, Routing, Rules und
   Functions bleiben unveraendert.
+- Schritt 98 ist abgeschlossen: Die Premium-Oferta-Card im Travel-Tab
+  `Ofertat` hat mehr vertikalen Abstand zwischen Rezensionszeile, Hotelname
+  und Stadt-/Destination-Zeile.
+- Bewertung von Schritt 98: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 98:
+  Die Textgruppe der Premium-Oferta-Card wirkt luftiger, ohne Bildslider,
+  Badge, Preis, Features, Detailoverlay, normale Hotel-Card, Datenlogik,
+  Firebase, QR, Cart, Order, Routing, Rules oder Functions zu veraendern.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1047,6 +1055,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step95-travel-oferta-load-truth.md](./mnyra-step95-travel-oferta-load-truth.md)
 - Referenz: [docs/mnyra-step96-travel-oferta-cache-truth.md](./mnyra-step96-travel-oferta-cache-truth.md)
 - Referenz: [docs/mnyra-step97-travel-oferta-state-preserve.md](./mnyra-step97-travel-oferta-state-preserve.md)
+- Referenz: [docs/mnyra-step98-travel-oferta-card-title-spacing.md](./mnyra-step98-travel-oferta-card-title-spacing.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1072,7 +1081,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 97 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 98 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1179,6 +1188,12 @@ sichtbar sind; danach refreshen und Travel `Ofertat` beobachten; wenn gecachte
 Oferta-Cards schon sichtbar sind, sollen sie sichtbar bleiben und nicht kurz
 durch `Daten werden geladen ...` ersetzt werden; eine geloeschte/deaktivierte
 Oferta soll nach abgeschlossener Hydration weiterhin korrekt verschwinden.
+
+Zusaetzlich fuer Schritt 98 manuell pruefen: Travel `Ofertat` oeffnen und bei
+einer Premium-Oferta-Card pruefen, dass zwischen Rezensionszeile und Hotelname
+sowie zwischen Hotelname und Stadt-/Destination-Zeile sichtbar mehr Abstand ist;
+Travel `Hotels` kurz gegenpruefen, dass die normale Hotel-Card unveraendert
+wirkt.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

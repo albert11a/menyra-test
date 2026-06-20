@@ -520,7 +520,7 @@ const E=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
         </div>
 
         <div>
-          <div class="flex items-center gap-1.5 mb-0.5">
+          <div class="flex items-center gap-1.5 mb-2" style="margin-bottom:0.5rem;">
             <div class="flex text-amber-500">
               ${s("star","w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
@@ -528,7 +528,7 @@ const E=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
             <span class="text-[11px] text-slate-400">(${a(String(u))} Rezensionen)</span>
           </div>
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${a(i)}</h2>
-          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5" style="margin-top:0.125rem;color:#d97706;">
+          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-2 flex items-center gap-1.5" style="margin-top:0.5rem;color:#d97706;">
             ${s("map-pin","w-3 h-3 text-amber-600 shrink-0")}
             <span>${a(m)}</span>
           </p>
