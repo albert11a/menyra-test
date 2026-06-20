@@ -388,6 +388,53 @@ export function createSessionDataRuntimeController({
     return false;
   }
 
+  function normalizeTravelBusinessType(value = "") {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function isTravelBusinessRecord(record = {}) {
+    if (!record || typeof record !== "object") return false;
+    const typeKey = normalizeTravelBusinessType(
+      record.type
+      || record.customerType
+      || record.category
+      || record.kind
+      || record.restaurantType
+      || record.businessProfileType
+      || record.profileType
+      || record.vertical
+      || record.leadType
+      || ""
+    );
+    if (["hotel", "hotels", "motel", "motels", "travel", "hostel", "resort", "accommodation"].includes(typeKey)) {
+      return true;
+    }
+    const searchable = [
+      record.name,
+      record.restaurantName,
+      record.businessName,
+      record.description,
+      record.bio,
+      record.about
+    ].map((value) => String(value || "").trim().toLowerCase()).join(" ");
+    return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b/.test(searchable);
+  }
+
+  function hasKnownTravelOffersTruth(record = {}) {
+    const truthState = String(record?.offersTruthState || "").trim().toLowerCase();
+    if (truthState === "seeded" || truthState === "knownempty" || truthState === "known-empty") return true;
+    if (Array.isArray(record?.publicOffers) || Array.isArray(record?.travelOffers)) return true;
+    if (Number.isFinite(Number(record?.publicOffersCount)) || Number.isFinite(Number(record?.travelOffersCount))) return true;
+    if (typeof record?.hasTravelOffers === "boolean") return true;
+    return false;
+  }
+
   function isRestaurantTruthIncomplete(record = {}) {
     if (!record || typeof record !== "object") return true;
     if (isBootstrapRestaurantPreviewRecordCore(record)) return true;
@@ -412,6 +459,7 @@ export function createSessionDataRuntimeController({
     const hasLogo = !!logo;
     const hasLocation = !!cityOrAddress || hasRestaurantCoords(record);
     const hasType = !!type;
+    if (isTravelBusinessRecord(record) && !hasKnownTravelOffersTruth(record)) return true;
     return !(hasName && hasLogo && hasType && hasLocation);
   }
 
@@ -1173,20 +1221,23 @@ export function createSessionDataRuntimeController({
       refreshRestaurantDependentViews();
     };
     const reconcileRestaurantMeta = (seed = [], { shouldWriteCache = false } = {}) => {
-      if (!Array.isArray(seed) || !seed.length) return Promise.resolve(null);
+      if (!Array.isArray(seed) || !seed.length) return Promise.resolve(false);
       const canonicalSeed = filterCanonicalRestaurants(seed);
-      if (!canonicalSeed.length) return Promise.resolve(null);
+      if (!canonicalSeed.length) return Promise.resolve(false);
       const seedSignature = buildRestaurantIdentitySignature(canonicalSeed);
       return Promise.resolve(enrichRestaurantsWithPublicMetaFn(canonicalSeed))
         .then((enriched) => {
           const canonicalEnriched = filterCanonicalRestaurants(enriched);
-          if (!canonicalEnriched.length) return;
+          if (!canonicalEnriched.length) return false;
           const nextSignature = buildRestaurantIdentitySignature(canonicalEnriched);
-          if (nextSignature === seedSignature) return;
-          if (nextSignature === buildRestaurantIdentitySignature(state.restaurants)) return;
+          if (nextSignature === seedSignature || nextSignature === buildRestaurantIdentitySignature(state.restaurants)) {
+            if (shouldWriteCache) writeCacheFn(cacheKeys.restaurants, canonicalEnriched);
+            return false;
+          }
           applyRestaurants(canonicalEnriched, { shouldWriteCache });
+          return true;
         })
-        .catch(() => null);
+        .catch(() => false);
     };
 
     setRestaurantsLoading(true);
@@ -1223,7 +1274,7 @@ export function createSessionDataRuntimeController({
         const snap = await getDocsFn(queryFn(collectionFn(db, "restaurants")));
         const rawList = [];
         snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
-        applyRestaurants(rawList, { shouldWriteCache: true });
+        applyRestaurants(rawList, { shouldWriteCache: false });
         await reconcileRestaurantMeta(rawList, { shouldWriteCache: true });
       } catch (err) {
         console.error(err);

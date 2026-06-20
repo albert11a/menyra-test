@@ -929,6 +929,17 @@ Last updated: 2026-06-20
   Angebote`, solange noch keine echten Offer-Records sichtbar sind. Hotels,
   Editor, Firebase, QR, Cart, Order, Routing, Rules und Functions bleiben
   unveraendert.
+- Schritt 96 ist abgeschlossen: Travel-Businesses ohne bekannte Offer-Wahrheit
+  gelten jetzt als cache-unvollstaendig und rohe Restaurantdaten ueberschreiben
+  den Restaurant-Cache nicht mehr vor dem `public/offers`-Merge.
+- Bewertung von Schritt 96: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 96:
+  `Ofertat` kann beim Refresh die letzte bekannte angereicherte Restaurant- und
+  Offer-Wahrheit aus dem Cache behalten. Der Cache wird erst nach
+  `enrichRestaurantsWithPublicMeta()` mit Offer-Status geschrieben. Dadurch
+  verhaelt sich `Ofertat` naeher wie Restaurants: sofort aus Cache, danach
+  leise Aktualisierung. Hotels, Editor, Firebase, QR, Cart, Order, Routing,
+  Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1023,6 +1034,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step93-travel-oferta-city-icon.md](./mnyra-step93-travel-oferta-city-icon.md)
 - Referenz: [docs/mnyra-step94-travel-oferta-loading-guard.md](./mnyra-step94-travel-oferta-loading-guard.md)
 - Referenz: [docs/mnyra-step95-travel-oferta-load-truth.md](./mnyra-step95-travel-oferta-load-truth.md)
+- Referenz: [docs/mnyra-step96-travel-oferta-cache-truth.md](./mnyra-step96-travel-oferta-cache-truth.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1048,7 +1060,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 95 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 96 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1143,6 +1155,12 @@ beobachten; es darf nicht kurz `Noch keine Angebote` erscheinen, wenn Offers
 direkt danach geladen werden; waehrend laufender Restaurant-/Offer-Hydration
 soll `Daten werden geladen ...` sichtbar sein; danach erscheinen die
 Oferta-Cards normal.
+
+Zusaetzlich fuer Schritt 96 manuell pruefen: App einmal laden, bis Oferta-Cards
+sichtbar sind; danach refreshen und Travel `Ofertat` beobachten; die letzte
+bekannte Oferta soll direkt sichtbar bleiben oder kurz `Daten werden geladen ...`
+zeigen, aber nicht `Noch keine Angebote`; nach Offer-Hydration sollen die Cards
+weiter sichtbar bleiben.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
