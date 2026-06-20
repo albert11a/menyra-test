@@ -890,6 +890,15 @@ Last updated: 2026-06-20
   Paketpreis, `Mehr Details`-Overlay und lokalem Anfrageformular. Der `Hotels`-
   Tab, normale Hotel-Cards, QR, Cart, Order, Routing, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 92 ist abgeschlossen: Das rote `Ofertë`-/Custom-Badge oben links auf
+  der Travel-Oferta-Card ist jetzt mit festen Inline-Fallbacks sichtbar.
+- Bewertung von Schritt 92: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 92:
+  Die Badge haengt nicht mehr davon ab, ob `top-3.5`, `left-3.5` oder die rote
+  Tailwind-Klasse im bereits generierten CSS enthalten sind. Position, Farbe,
+  Textfarbe, Padding, Radius, Schrift und z-index sind direkt am Badge gesetzt.
+  Card-Struktur, `Hotels`-Tab, QR, Cart, Order, Routing, Firebase Rules und
+  Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -980,6 +989,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step89-travel-oferta-filter-fields.md](./mnyra-step89-travel-oferta-filter-fields.md)
 - Referenz: [docs/mnyra-step90-travel-oferta-badge-context.md](./mnyra-step90-travel-oferta-badge-context.md)
 - Referenz: [docs/mnyra-step91-travel-oferta-premium-card.md](./mnyra-step91-travel-oferta-premium-card.md)
+- Referenz: [docs/mnyra-step92-travel-oferta-badge-visibility.md](./mnyra-step92-travel-oferta-badge-visibility.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1005,7 +1015,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 91 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 92 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1079,6 +1089,10 @@ Premium-Oferta-Card mit rotem Badge, Bildslider, Like/Share, Logo, Distanzen,
 Feature-Chips, Paketpreis und `Mehr Details`; Detailoverlay oeffnen/schliessen;
 Anfrageformular leer und mit Name/Telefon absenden; `Hotels`-Tab pruefen, dass
 die normale Hotel-Card unveraendert bleibt.
+
+Zusaetzlich fuer Schritt 92 manuell pruefen: Travel `Ofertat` zeigt oben links
+im Titelbild der Oferta-Card das rote `Ofertë`-/Custom-Badge sichtbar und nicht
+von Slider, Punkten oder Like/Share verdeckt; `Hotels`-Tab bleibt unveraendert.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -1635,7 +1635,10 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
           <span data-travel-hotel-dot="0" data-travel-hotel-image-src="${escapeHtml(firstCoverImage)}" class="hidden"></span>
         `}
 
-        <div class="absolute top-3.5 left-3.5 bg-red-600 text-white shadow-md px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase z-10 border border-red-500">
+        <div
+          class="absolute top-3.5 left-3.5 bg-red-600 text-white shadow-md px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase z-10 border border-red-500"
+          style="position:absolute;top:0.875rem;left:0.875rem;z-index:25;display:inline-flex;align-items:center;justify-content:center;background:#dc2626;color:#fff;border:1px solid #ef4444;border-radius:9999px;padding:0.25rem 0.75rem;font-size:10px;line-height:1rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 4px 6px -1px rgba(15,23,42,0.18),0 2px 4px -2px rgba(15,23,42,0.18);"
+        >
           <span>${escapeHtml(badgeLabel)}</span>
         </div>
 
