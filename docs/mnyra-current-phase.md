@@ -959,6 +959,17 @@ Last updated: 2026-06-20
   Die Textgruppe der Premium-Oferta-Card wirkt luftiger, ohne Bildslider,
   Badge, Preis, Features, Detailoverlay, normale Hotel-Card, Datenlogik,
   Firebase, QR, Cart, Order, Routing, Rules oder Functions zu veraendern.
+- Schritt 99 ist abgeschlossen: Hotel-/Motel-Editor und Hotel-/Motel-Oferta-
+  Modal pflegen Hotel-Details jetzt strukturierter.
+- Bewertung von Schritt 99: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 99:
+  `Hotel Details` ersetzt den freien Distanz-/Feature-Block im Hotel-Card-
+  Editor. Zentrum und Strand nutzen Zahl plus `m`/`km` oder direkte Haken,
+  `Titelbild URL` ist nicht mehr sichtbar, und Essen/Shezlong/Parking nutzen
+  albanische Presets mit Icons. Freie Zusatzfeatures bleiben moeglich und
+  Travel-Hotel-/Oferta-Cards zeigen erkannte Feature-Icons. Restaurant-/Cafe-
+  Editor, QR, Cart, Order, Routing, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1056,6 +1067,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step96-travel-oferta-cache-truth.md](./mnyra-step96-travel-oferta-cache-truth.md)
 - Referenz: [docs/mnyra-step97-travel-oferta-state-preserve.md](./mnyra-step97-travel-oferta-state-preserve.md)
 - Referenz: [docs/mnyra-step98-travel-oferta-card-title-spacing.md](./mnyra-step98-travel-oferta-card-title-spacing.md)
+- Referenz: [docs/mnyra-step99-travel-hotel-details-editor.md](./mnyra-step99-travel-hotel-details-editor.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1081,7 +1093,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 98 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 99 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1194,6 +1206,15 @@ einer Premium-Oferta-Card pruefen, dass zwischen Rezensionszeile und Hotelname
 sowie zwischen Hotelname und Stadt-/Destination-Zeile sichtbar mehr Abstand ist;
 Travel `Hotels` kurz gegenpruefen, dass die normale Hotel-Card unveraendert
 wirkt.
+
+Zusaetzlich fuer Schritt 99 manuell pruefen: Als Hotel-/Motel-Owner Profil ->
+Editor oeffnen und `Hotel Details` pruefen; `Titelbild URL` darf nicht sichtbar
+sein; Zentrum/Strand mit Zahl plus `m`/`km` sowie `Direkt im Zentrum`/`Direkt
+am Strand` speichern und erneut bearbeiten; Essen-/Shezlong-/Parking-Presets
+und freie Zusatzfeatures speichern; eine Oferta mit denselben Controls
+bearbeiten; Travel `Hotels` und `Ofertat` pruefen, dass Feature-Chips fuer
+Essen, Shezlong und Parking mit Icons erscheinen; Restaurant-/Cafe-Editor und
+Restaurant-/Cafe-Cards kurz unveraendert gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

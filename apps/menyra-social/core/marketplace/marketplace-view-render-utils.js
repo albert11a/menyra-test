@@ -808,11 +808,41 @@ function getHotelFeatureChips(record = {}) {
     record.hotelFeatureTwoText,
     record.hotelFeatureThreeText
   ].map(cleanText).filter(Boolean);
-  if (explicit.length) return explicit.slice(0, 3);
+  const custom = [
+    ...collectStringList(record.features),
+    ...collectStringList(record.hotelFeatures)
+  ].filter(Boolean);
+  const combined = [];
+  [...explicit, ...custom].forEach((feature) => {
+    if (feature && !combined.includes(feature)) combined.push(feature);
+  });
+  if (combined.length) return combined.slice(0, 6);
   const fromRestaurantFields = getRestaurantFeatureChips(record);
   if (fromRestaurantFields.length) return fromRestaurantFields.slice(0, 3);
   const fromAmenities = collectStringList(record.hotelAmenities || record.amenities || record.facilities);
   return fromAmenities.slice(0, 3);
+}
+
+function resolveHotelFeatureIconName(feature = "") {
+  const key = normalizeLooseKey(feature);
+  if (/(mengjes|gjysme|pension|inclusive|restorant|ushqim|fruehstueck|breakfast|food)/.test(key)) return "utensils";
+  if (/(shezlong|plazh|strand|beach|lounger)/.test(key)) return "waves";
+  if (/(parking|parkplatz|garage|garazh)/.test(key)) return "parking";
+  return "check";
+}
+
+function renderHotelFeatureChip(feature = "", deps = {}, className = "") {
+  const escapeHtml = deps.escapeHtml;
+  const safeFeature = cleanText(feature);
+  if (!safeFeature) return "";
+  const chipClass = className || "text-[9px] font-semibold bg-slate-50 text-slate-500 px-2.5 py-0.5 rounded-md border border-slate-100";
+  const iconName = resolveHotelFeatureIconName(safeFeature);
+  return `
+    <span class="${chipClass} inline-flex items-center gap-1.5">
+      ${renderRestaurantCardIcon(iconName, "w-3 h-3 shrink-0", deps)}
+      <span>${escapeHtml(safeFeature)}</span>
+    </span>
+  `;
 }
 
 function renderRestaurantCardIcon(name = "", className = "", deps = {}) {
@@ -835,6 +865,15 @@ function renderRestaurantCardIcon(name = "", className = "", deps = {}) {
   }
   if (name === "waves") {
     return `<svg ${svgAttrs}><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path></svg>`;
+  }
+  if (name === "utensils") {
+    return `<svg ${svgAttrs}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg>`;
+  }
+  if (name === "parking" || name === "square-parking") {
+    return `<svg ${svgAttrs}><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 17V7h5a3 3 0 0 1 0 6H9"></path></svg>`;
+  }
+  if (name === "check") {
+    return `<svg ${svgAttrs}><path d="M20 6 9 17l-5-5"></path></svg>`;
   }
   return typeof icon === "function" ? icon(name, className) : "";
 }
@@ -1515,9 +1554,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
 
         ${features.length ? `
           <div class="flex flex-wrap gap-1.5">
-            ${features.map((feature) => `
-              <span class="text-[9px] font-semibold bg-slate-50 text-slate-500 px-2.5 py-0.5 rounded-md border border-slate-100">${escapeHtml(feature)}</span>
-            `).join("")}
+            ${features.map((feature) => renderHotelFeatureChip(feature, deps)).join("")}
           </div>
         ` : ""}
 
@@ -1699,9 +1736,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
 
         ${features.length ? `
           <div class="flex flex-wrap gap-1.5 pt-0.5">
-            ${features.map((feature) => `
-              <span class="text-[9px] font-bold bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md border border-slate-100/80">${escapeHtml(feature)}</span>
-            `).join("")}
+            ${features.map((feature) => renderHotelFeatureChip(feature, deps, "text-[9px] font-bold bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md border border-slate-100/80")).join("")}
           </div>
         ` : ""}
 

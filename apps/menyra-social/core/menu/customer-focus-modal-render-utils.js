@@ -244,6 +244,103 @@ export function renderFocusModalCore({
     const key = String(value || "").trim().toLowerCase();
     return key === "total" || key === "totali" || key === "gesamt" ? "total" : "per_person";
   };
+  const distanceUnitOptions = [
+    { value: "m", label: "m" },
+    { value: "km", label: "km" }
+  ];
+  const foodFeatureOptions = [
+    "Mëngjes i përfshirë",
+    "Gjysmë pension",
+    "Pension i plotë",
+    "All inclusive",
+    "Restorant në hotel",
+    "Pa ushqim"
+  ];
+  const loungerFeatureOptions = [
+    "Shezlongë të përfshirë",
+    "Shezlongë me pagesë",
+    "Plazh privat me shezlongë",
+    "Pa shezlongë"
+  ];
+  const parkingFeatureOptions = [
+    "Parking falas",
+    "Parking privat",
+    "Parking me pagesë",
+    "Pa parking"
+  ];
+  const normalizeFeatureKey = (value = "") => String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[ëèéê]/g, "e")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const findFeatureOption = (features = [], options = []) => {
+    const optionKeys = new Map(options.map((option) => [normalizeFeatureKey(option), option]));
+    for (const feature of features) {
+      const match = optionKeys.get(normalizeFeatureKey(feature));
+      if (match) return match;
+    }
+    return "";
+  };
+  const parseDistanceValue = (value = "", direct = false) => {
+    const raw = String(value || "").trim();
+    const normalized = normalizeFeatureKey(raw);
+    const isDirect = direct
+      || (normalized.includes("direkt") && (normalized.includes("strand") || normalized.includes("zentrum") || normalized.includes("center")))
+      || normalized.includes("am_strand")
+      || normalized.includes("im_zentrum");
+    const match = raw.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer|m|meter)?/i);
+    const amount = match ? match[1].replace(",", ".") : "";
+    const unitRaw = match ? String(match[2] || "").trim().toLowerCase() : "";
+    return {
+      amount,
+      unit: unitRaw.startsWith("k") ? "km" : "m",
+      isDirect
+    };
+  };
+  const renderDistanceField = ({ idPrefix = "", iconName = "navigation", label = "", value = "", directLabel = "", direct = false } = {}) => {
+    const parsed = parseDistanceValue(value, direct);
+    return `
+      <div class="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4 space-y-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-white text-slate-600 flex items-center justify-center border border-slate-100 shrink-0">
+            ${icon(iconName, "w-4 h-4")}
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${escapeHtml(label)}</p>
+            <p class="text-[10px] font-bold text-slate-400">${escapeHtml(directLabel)}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-[1fr_92px] gap-2">
+          <input id="${escapeHtml(idPrefix)}Value" type="number" min="0" step="0.1" value="${escapeHtml(parsed.amount)}" placeholder="150" inputmode="decimal" class="w-full px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-amber-100" />
+          <select id="${escapeHtml(idPrefix)}Unit" class="w-full px-3 py-3 bg-white rounded-2xl text-sm font-black border border-slate-100 outline-none focus:ring-2 focus:ring-amber-100">
+            ${distanceUnitOptions.map((unit) => `<option value="${escapeHtml(unit.value)}" ${parsed.unit === unit.value ? "selected" : ""}>${escapeHtml(unit.label)}</option>`).join("")}
+          </select>
+        </div>
+        <label class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white border border-slate-100">
+          <span class="text-xs font-black text-slate-700">${escapeHtml(directLabel)}</span>
+          <input id="${escapeHtml(idPrefix)}Direct" type="checkbox" class="w-5 h-5 accent-amber-500" ${parsed.isDirect ? "checked" : ""} />
+        </label>
+      </div>
+    `;
+  };
+  const renderFeatureOptions = (options = [], selected = "") => `
+    <option value="">Auswählen</option>
+    ${options.map((option) => `<option value="${escapeHtml(option)}" ${normalizeFeatureKey(option) === normalizeFeatureKey(selected) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+  `;
+  const renderFeatureSelect = ({ id = "", iconName = "badge-check", label = "", value = "", options = [] } = {}) => `
+    <div class="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-2xl bg-white text-slate-600 flex items-center justify-center border border-slate-100 shrink-0">
+          ${icon(iconName, "w-4 h-4")}
+        </div>
+        <label for="${escapeHtml(id)}" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${escapeHtml(label)}</label>
+      </div>
+      <select id="${escapeHtml(id)}" class="w-full px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-amber-100">
+        ${renderFeatureOptions(options, value)}
+      </select>
+    </div>
+  `;
   const offerFeatures = [
     ...collectTextList(item.features),
     ...collectTextList(item.offerFeatures),
@@ -258,6 +355,11 @@ export function renderFocusModalCore({
   const offerDistanceBeach = String(item.distanceBeach || item.distanceToBeach || item.beachDistance || "").trim();
   const offerStartingPrice = String(item.hotelStartingPrice || item.startingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "").trim();
   const offerPriceUnit = normalizePriceUnit(item.priceUnit || item.hotelPriceUnit || item.offerPriceUnit || "");
+  const offerFoodFeature = findFeatureOption(offerFeatures, foodFeatureOptions);
+  const offerLoungerFeature = findFeatureOption(offerFeatures, loungerFeatureOptions);
+  const offerParkingFeature = findFeatureOption(offerFeatures, parkingFeatureOptions);
+  const selectedFeatureKeys = new Set([offerFoodFeature, offerLoungerFeature, offerParkingFeature].map(normalizeFeatureKey).filter(Boolean));
+  const offerCustomFeatures = offerFeatures.filter((feature) => !selectedFeatureKeys.has(normalizeFeatureKey(feature)));
   const preview = state.focusModal.imagePreview || item.imageUrl || "";
   const imageUrl = getOptimizedImageUrl(preview, "large");
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
@@ -320,14 +422,21 @@ export function renderFocusModalCore({
             </div>
           </div>
           <div class="grid grid-cols-1 gap-3">
-            <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Entfernung Zentrum</label>
-              <input id="focusDistanceCenter" type="text" value="${escapeHtml(offerDistanceCenter)}" placeholder="450 m zum Zentrum" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
-            </div>
-            <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Entfernung Strand / See</label>
-              <input id="focusDistanceBeach" type="text" value="${escapeHtml(offerDistanceBeach)}" placeholder="150 m zum See / Strand" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
-            </div>
+            ${renderDistanceField({
+              idPrefix: "focusDistanceCenter",
+              iconName: "navigation",
+              label: "Entfernung Zentrum",
+              value: offerDistanceCenter,
+              directLabel: "Direkt im Zentrum"
+            })}
+            ${renderDistanceField({
+              idPrefix: "focusDistanceBeach",
+              iconName: "waves",
+              label: "Entfernung Strand",
+              value: offerDistanceBeach,
+              directLabel: "Direkt am Strand",
+              direct: item.beachfront === true || item.onBeach === true
+            })}
             <div class="grid grid-cols-[1.2fr_0.8fr] gap-3">
               <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis</label>
@@ -341,9 +450,30 @@ export function renderFocusModalCore({
                 </select>
               </div>
             </div>
+            ${renderFeatureSelect({
+              id: "focusFeatureFoodText",
+              iconName: "utensils",
+              label: "Ushqimi",
+              value: offerFoodFeature,
+              options: foodFeatureOptions
+            })}
+            ${renderFeatureSelect({
+              id: "focusFeatureLoungerText",
+              iconName: "waves",
+              label: "Shezlongët",
+              value: offerLoungerFeature,
+              options: loungerFeatureOptions
+            })}
+            ${renderFeatureSelect({
+              id: "focusFeatureParkingText",
+              iconName: "square-parking",
+              label: "Parking",
+              value: offerParkingFeature,
+              options: parkingFeatureOptions
+            })}
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Features</label>
-              <textarea id="focusFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Fruehstueck inklusive" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(offerFeatures.join("\n"))}</textarea>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Weitere Features</label>
+              <textarea id="focusFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Recepsion 24/7" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(offerCustomFeatures.join("\n"))}</textarea>
             </div>
           </div>
         ` : ""}

@@ -135,6 +135,11 @@ export function bindAppMenuFocusEventsCore({
     return node ? String(node.value || "").trim() : "";
   };
 
+  const isHotelCardChecked = (id = "") => {
+    const node = doc.getElementById(id);
+    return !!(node && node.checked === true);
+  };
+
   function uniqueTextList(values = []) {
     const unique = [];
     (Array.isArray(values) ? values : []).forEach((value) => {
@@ -151,6 +156,21 @@ export function bindAppMenuFocusEventsCore({
       if (value && !images.includes(value)) images.push(value);
     });
     return images;
+  }
+
+  function readHotelCardTextList(id = "") {
+    const raw = readHotelCardInput(id);
+    if (!raw) return [];
+    return raw.split(/[\n,;|]/).map((entry) => entry.trim()).filter(Boolean);
+  }
+
+  function readHotelCardDistanceField(idPrefix = "", directLabel = "") {
+    if (isHotelCardChecked(`${idPrefix}Direct`)) return directLabel;
+    const amount = readHotelCardInput(`${idPrefix}Value`).replace(",", ".");
+    const unitRaw = readHotelCardInput(`${idPrefix}Unit`).toLowerCase();
+    const unit = unitRaw === "km" ? "km" : "m";
+    if (!amount) return readHotelCardInput(idPrefix);
+    return `${amount} ${unit}`;
   }
 
   function ensureHotelCardEditorState() {
@@ -266,13 +286,16 @@ export function bindAppMenuFocusEventsCore({
     const filesFromInput = Array.from(doc.getElementById("hotelCardCoverImagesInput")?.files || []);
     const files = filesFromState.length ? filesFromState : filesFromInput;
     const imagePreviews = Array.isArray(editorState.imagePreviews) ? editorState.imagePreviews.slice() : [];
-    const distanceCenter = readHotelCardInput("hotelCardDistanceCenter");
-    const distanceBeach = readHotelCardInput("hotelCardDistanceBeach");
+    const distanceCenter = readHotelCardDistanceField("hotelCardDistanceCenter", "Direkt im Zentrum");
+    const distanceBeach = readHotelCardDistanceField("hotelCardDistanceBeach", "Direkt am Strand");
+    const distanceCenterDirect = isHotelCardChecked("hotelCardDistanceCenterDirect");
+    const distanceBeachDirect = isHotelCardChecked("hotelCardDistanceBeachDirect");
     const startingPrice = readHotelCardInput("hotelCardStartingPrice").replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
     const featureOne = readHotelCardInput("hotelCardFeatureOneText");
     const featureTwo = readHotelCardInput("hotelCardFeatureTwoText");
     const featureThree = readHotelCardInput("hotelCardFeatureThreeText");
-    const featureList = [featureOne, featureTwo, featureThree].filter(Boolean);
+    const customFeatures = readHotelCardTextList("hotelCardCustomFeaturesText");
+    const featureList = uniqueTextList([featureOne, featureTwo, featureThree, ...customFeatures]);
 
     state.hotelCardEditor = {
       ...editorState,
@@ -325,11 +348,16 @@ export function bindAppMenuFocusEventsCore({
         centerDistance: distanceCenter,
         centerDistanceLabel: distanceCenter,
         zentrumEntfernung: distanceCenter,
+        directCenter: distanceCenterDirect,
+        inCenter: distanceCenterDirect,
+        cityCenterDirect: distanceCenterDirect,
         distanceBeach,
         distanceToBeach: distanceBeach,
         beachDistance: distanceBeach,
         beachDistanceLabel: distanceBeach,
         strandEntfernung: distanceBeach,
+        beachfront: distanceBeachDirect,
+        onBeach: distanceBeachDirect,
         hotelStartingPrice: startingPrice,
         startingPrice,
         priceFrom: startingPrice,

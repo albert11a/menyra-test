@@ -229,9 +229,13 @@ export function createFocusRuntimeController({
       normalized.distanceCenter = cleanFocusText(item.distanceCenter || item.distanceToCenter || item.centerDistance || "");
       normalized.distanceToCenter = cleanFocusText(item.distanceToCenter || item.distanceCenter || item.centerDistance || "");
       normalized.centerDistance = cleanFocusText(item.centerDistance || item.distanceCenter || item.distanceToCenter || "");
+      normalized.directCenter = item.directCenter === true || item.inCenter === true || item.cityCenterDirect === true;
+      normalized.inCenter = normalized.directCenter;
       normalized.distanceBeach = cleanFocusText(item.distanceBeach || item.distanceToBeach || item.beachDistance || "");
       normalized.distanceToBeach = cleanFocusText(item.distanceToBeach || item.distanceBeach || item.beachDistance || "");
       normalized.beachDistance = cleanFocusText(item.beachDistance || item.distanceBeach || item.distanceToBeach || "");
+      normalized.beachfront = item.beachfront === true || item.onBeach === true || item.amStrand === true;
+      normalized.onBeach = normalized.beachfront;
       normalized.hotelStartingPrice = cleanFocusText(item.hotelStartingPrice || item.startingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
       normalized.startingPrice = cleanFocusText(item.startingPrice || item.hotelStartingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
       normalized.priceFrom = cleanFocusText(item.priceFrom || item.startingPrice || item.hotelStartingPrice || "");
@@ -305,9 +309,13 @@ export function createFocusRuntimeController({
         payload.distanceCenter = cleanFocusText(item.distanceCenter || item.distanceToCenter || item.centerDistance || "");
         payload.distanceToCenter = cleanFocusText(item.distanceToCenter || item.distanceCenter || item.centerDistance || "");
         payload.centerDistance = cleanFocusText(item.centerDistance || item.distanceCenter || item.distanceToCenter || "");
+        payload.directCenter = item.directCenter === true || item.inCenter === true || item.cityCenterDirect === true;
+        payload.inCenter = payload.directCenter;
         payload.distanceBeach = cleanFocusText(item.distanceBeach || item.distanceToBeach || item.beachDistance || "");
         payload.distanceToBeach = cleanFocusText(item.distanceToBeach || item.distanceBeach || item.beachDistance || "");
         payload.beachDistance = cleanFocusText(item.beachDistance || item.distanceBeach || item.distanceToBeach || "");
+        payload.beachfront = item.beachfront === true || item.onBeach === true || item.amStrand === true;
+        payload.onBeach = payload.beachfront;
         payload.hotelStartingPrice = cleanFocusText(item.hotelStartingPrice || item.startingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
         payload.startingPrice = cleanFocusText(item.startingPrice || item.hotelStartingPrice || item.priceFrom || item.fromPrice || item.bestPrice || "");
         payload.priceFrom = cleanFocusText(item.priceFrom || item.startingPrice || item.hotelStartingPrice || "");
@@ -481,6 +489,31 @@ export function createFocusRuntimeController({
     }
   }
 
+  function readFocusModalValue(id = "") {
+    return docObj?.getElementById(id)?.value?.trim() || "";
+  }
+
+  function readFocusModalChecked(id = "") {
+    return docObj?.getElementById(id)?.checked === true;
+  }
+
+  function uniqueFocusTextList(values = []) {
+    const unique = [];
+    (Array.isArray(values) ? values : []).forEach((value) => {
+      const safeValue = cleanFocusText(value);
+      if (safeValue && !unique.includes(safeValue)) unique.push(safeValue);
+    });
+    return unique;
+  }
+
+  function readFocusDistanceField(idPrefix = "", directLabel = "") {
+    if (readFocusModalChecked(`${idPrefix}Direct`)) return directLabel;
+    const amount = readFocusModalValue(`${idPrefix}Value`).replace(",", ".");
+    const unit = readFocusModalValue(`${idPrefix}Unit`).toLowerCase() === "km" ? "km" : "m";
+    if (!amount) return readFocusModalValue(idPrefix);
+    return `${amount} ${unit}`;
+  }
+
   async function saveFocusItemFromModal() {
     if (!state?.user || !docObj) return;
     const restaurantId = getCurrentRestaurantId(state.userProfile);
@@ -497,11 +530,17 @@ export function createFocusRuntimeController({
     const isTravelOffer = isTravelOfferProfile(state.userProfile) || hasTravelOfferFields(modalItem);
     const offerBadgeLabel = docObj.getElementById("focusOfferBadgeLabel")?.value?.trim() || "OFERTA";
     const offerDurationLabel = docObj.getElementById("focusOfferDurationLabel")?.value?.trim() || "";
-    const distanceCenter = docObj.getElementById("focusDistanceCenter")?.value?.trim() || "";
-    const distanceBeach = docObj.getElementById("focusDistanceBeach")?.value?.trim() || "";
+    const distanceCenter = readFocusDistanceField("focusDistanceCenter", "Direkt im Zentrum");
+    const distanceBeach = readFocusDistanceField("focusDistanceBeach", "Direkt am Strand");
+    const distanceCenterDirect = readFocusModalChecked("focusDistanceCenterDirect");
+    const distanceBeachDirect = readFocusModalChecked("focusDistanceBeachDirect");
     const startingPrice = docObj.getElementById("focusStartingPrice")?.value?.trim() || "";
     const priceUnit = normalizeFocusPriceUnit(docObj.getElementById("focusPriceUnit")?.value || "per_person");
-    const features = collectFocusTextList(docObj.getElementById("focusFeaturesText")?.value || "");
+    const featureFood = readFocusModalValue("focusFeatureFoodText");
+    const featureLounger = readFocusModalValue("focusFeatureLoungerText");
+    const featureParking = readFocusModalValue("focusFeatureParkingText");
+    const customFeatures = collectFocusTextList(docObj.getElementById("focusFeaturesText")?.value || "");
+    const features = uniqueFocusTextList([featureFood, featureLounger, featureParking, ...customFeatures]);
     const crop = getFocusModalCrop();
 
     if (!title) {
@@ -542,9 +581,13 @@ export function createFocusRuntimeController({
         payload.distanceCenter = distanceCenter;
         payload.distanceToCenter = distanceCenter;
         payload.centerDistance = distanceCenter;
+        payload.directCenter = distanceCenterDirect;
+        payload.inCenter = distanceCenterDirect;
         payload.distanceBeach = distanceBeach;
         payload.distanceToBeach = distanceBeach;
         payload.beachDistance = distanceBeach;
+        payload.beachfront = distanceBeachDirect;
+        payload.onBeach = distanceBeachDirect;
         payload.hotelStartingPrice = startingPrice;
         payload.startingPrice = startingPrice;
         payload.priceFrom = startingPrice;
