@@ -442,12 +442,12 @@ function collectHotelAmenities(record = {}) {
       else if (item && typeof item === "object") push(item.label || item.name || item.title);
     });
   });
-  if (record.beachfront || record.onBeach || record.amStrand) push("Am Strand");
+  if (record.beachfront || record.onBeach || record.amStrand) push("Në plazh");
   if (record.restaurant || record.hasRestaurant) push("Restaurant");
-  if (record.breakfast || record.breakfastIncluded) push("Fruehstueck");
+  if (record.breakfast || record.breakfastIncluded) push("Mëngjes");
   if (record.pool || record.hasPool) push("Pool");
   if (record.wifi || record.freeWifi || record.hasWifi) push("WLAN");
-  if (record.parking || record.freeParking || record.hasParking) push("Parkplatz");
+  if (record.parking || record.freeParking || record.hasParking) push("Parking");
   if (record.spa || record.wellness) push("Wellness");
   return values.slice(0, 8);
 }
@@ -457,19 +457,24 @@ const HOTEL_DISTANCE_UNITS = [
   { value: "km", label: "km" }
 ];
 
+const HOTEL_CENTER_DIRECT_LABEL = "Në qendër";
+const HOTEL_BEACH_DIRECT_LABEL = "Në plazh";
+const HOTEL_CENTER_DISTANCE_SUFFIX = "nga qendra";
+const HOTEL_BEACH_DISTANCE_SUFFIX = "nga plazhi";
+
 const HOTEL_FOOD_FEATURE_OPTIONS = [
-  "Mëngjes i përfshirë",
+  "Mëngjes",
   "Gjysmë pension",
   "Pension i plotë",
   "All inclusive",
-  "Restorant në hotel",
+  "Restorant",
   "Pa ushqim"
 ];
 
 const HOTEL_LOUNGER_FEATURE_OPTIONS = [
-  "Shezlongë të përfshirë",
+  "Shezlongë falas",
   "Shezlongë me pagesë",
-  "Plazh privat me shezlongë",
+  "Plazh privat",
   "Pa shezlongë"
 ];
 
@@ -493,6 +498,10 @@ function parseHotelDistanceEditorValue(value = "", { direct = false } = {}) {
   const raw = String(value || "").trim();
   const normalized = normalizeHotelEditorKey(raw);
   const isDirect = direct
+    || normalized === "ne_qender"
+    || normalized === "ne_plazh"
+    || normalized === "direkt_ne_qender"
+    || normalized === "direkt_ne_plazh"
     || (normalized.includes("direkt") && (normalized.includes("strand") || normalized.includes("zentrum") || normalized.includes("center")))
     || normalized.includes("am_strand")
     || normalized.includes("im_zentrum");
@@ -541,9 +550,9 @@ function renderHotelFeatureOptionList(options = [], selected = "") {
   const safeSelected = String(selected || "").trim();
   const optionKeys = new Set(options.map(normalizeHotelEditorKey));
   return `
-    <option value="">Auswählen</option>
+    <option value="">Zgjidh</option>
     ${options.map((option) => `<option value="${escapeHtml(option)}" ${normalizeHotelEditorKey(option) === normalizeHotelEditorKey(safeSelected) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-    ${safeSelected && !optionKeys.has(normalizeHotelEditorKey(safeSelected)) ? `<option value="${escapeHtml(safeSelected)}" selected>Aktuell: ${escapeHtml(safeSelected)}</option>` : ""}
+    ${safeSelected && !optionKeys.has(normalizeHotelEditorKey(safeSelected)) ? `<option value="${escapeHtml(safeSelected)}" selected>Aktuale: ${escapeHtml(safeSelected)}</option>` : ""}
   `;
 }
 
@@ -601,7 +610,7 @@ function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], im
       <input id="hotelCardCoverImagesInput" type="file" accept="image/*" multiple class="hidden" />
       <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         <img id="hotelCardCoverHeroPreview" src="${escapeHtml(heroUrl || PLACEHOLDER_IMAGE)}" class="w-full h-52 object-cover bg-white" />
-        <button type="button" id="hotelCardCoverImagesTrigger" aria-label="Titelbilder hochladen" class="absolute top-3 right-3 w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+        <button type="button" id="hotelCardCoverImagesTrigger" aria-label="Ngarko foto" class="absolute top-3 right-3 w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform">
           ${icon("camera", "w-5 h-5")}
           <span class="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center border border-white">
             ${icon("plus", "w-2.5 h-2.5")}
@@ -611,7 +620,7 @@ function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], im
 
       <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
         <div class="flex items-center justify-between">
-          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Titelbilder</p>
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Fotot</p>
           <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${gallery.length}</span>
         </div>
         ${gallery.length ? `
@@ -628,7 +637,7 @@ function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], im
           </div>
         ` : `
           <div class="h-20 rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300">
-            Noch keine Titelbilder
+            Pa foto
           </div>
         `}
       </div>
@@ -647,7 +656,7 @@ function renderHotelDetailCard({ iconName = "info", label = "", value = "", help
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">${escapeHtml(label)}</p>
-          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(value || "Details folgen")}</p>
+          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(value || "Shto detajet")}</p>
           ${helper ? `<p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">${escapeHtml(helper)}</p>` : ""}
         </div>
       </div>
@@ -696,13 +705,13 @@ function renderHotelDetailsView(profile = {}) {
             ${icon("map-pin", "w-10 h-10")}
           </div>
           <div class="absolute left-4 right-4 bottom-4 bg-white/90 backdrop-blur rounded-2xl p-3 border border-white/70">
-            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Standort</p>
-            <p class="text-xs font-black text-slate-900 leading-snug">${escapeHtml(address || city || "Standort folgt")}</p>
+            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lokacioni</p>
+            <p class="text-xs font-black text-slate-900 leading-snug">${escapeHtml(address || city || "Shto lokacionin")}</p>
           </div>
         </div>
         ${mapsUrl ? `
           <a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="w-full h-12 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-            ${icon("navigation", "w-4 h-4")} Karte oeffnen
+            ${icon("navigation", "w-4 h-4")} Hap hartën
           </a>
         ` : ""}
       </div>
@@ -710,36 +719,36 @@ function renderHotelDetailsView(profile = {}) {
       <div class="grid grid-cols-1 gap-4">
         ${renderHotelDetailCard({
           iconName: "map-pin",
-          label: "Adresse",
-          value: [address, city].filter(Boolean).join(", ") || "Standort folgt",
+          label: "Adresa",
+          value: [address, city].filter(Boolean).join(", ") || "Shto lokacionin",
           helper: coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ""
         })}
         ${renderHotelDetailCard({
           iconName: "navigation",
-          label: "Zentrum",
-          value: centerDistance || "Details folgen"
+          label: "Qendra",
+          value: centerDistance || "Shto detajet"
         })}
         ${renderHotelDetailCard({
           iconName: "waves",
-          label: "Strand",
-          value: beachDistance || (record.beachfront || record.onBeach ? "Direkt am Strand" : "Details folgen")
+          label: "Plazhi",
+          value: beachDistance || (record.beachfront || record.onBeach ? HOTEL_BEACH_DIRECT_LABEL : "Shto detajet")
         })}
         ${renderHotelDetailCard({
           iconName: "star",
-          label: "Bewertungen",
-          value: rating ? `${rating}${reviewCount ? ` / ${reviewCount} Bewertungen` : ""}` : "Bewertungen folgen",
+          label: "Vlerësime",
+          value: rating ? `${rating}${reviewCount ? ` / ${reviewCount} vlerësime` : ""}` : "Pa vlerësime",
           helper: readFirstHotelText(record, ["reviewSummary", "ratingSummary", "commentsSummary"])
         })}
       </div>
 
       <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm">
-        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">Inbegriffen</p>
+        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">Të përfshira</p>
         ${amenities.length ? `
           <div class="flex flex-wrap gap-2">
             ${amenities.map((item) => `<span class="px-3 py-2 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-600">${escapeHtml(item)}</span>`).join("")}
           </div>
         ` : `
-          <p class="text-sm font-bold text-slate-400">Ausstattung und Zimmerdetails folgen.</p>
+          <p class="text-sm font-bold text-slate-400">Shto pajisjet dhe detajet e dhomave.</p>
         `}
       </div>
     </div>
@@ -790,6 +799,15 @@ function renderHotelCardAdminView(profile = {}) {
   ]);
   const directCenter = record.directCenter === true || record.inCenter === true || record.cityCenterDirect === true;
   const directBeach = record.beachfront === true || record.onBeach === true || record.amStrand === true;
+  const detailsOpen = editorState.detailsOpen === true || saving;
+  const detailsThumbRaw = imagePreviews[0] || coverImages[0] || "";
+  const detailsThumb = detailsThumbRaw ? getOptimizedImageUrl(detailsThumbRaw, "thumb") : PLACEHOLDER_IMAGE;
+  const detailsSummary = [
+    distanceCenter,
+    distanceBeach,
+    startingPrice ? `${startingPrice} €` : ""
+  ].filter(Boolean).join(" · ") || "Plotëso detajet";
+  const statusIsError = status.includes("fehl") || status.includes("Bitte") || status.includes("Nuk");
   return `
     <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
       <div class="flex items-end justify-between mb-6">
@@ -801,80 +819,110 @@ function renderHotelCardAdminView(profile = {}) {
       </div>
 
       ${restaurantId ? `
-        <div data-hotel-card-editor="${escapeHtml(restaurantId)}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5">
-          <div class="flex items-center justify-between">
+        <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Hotel</span>
               <h3 class="text-xl font-black italic tracking-tighter">Hotel Details</h3>
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hotels und Ofertat</p>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hotel & Ofertat</p>
             </div>
-            <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
+            <button type="button" data-hotel-card-details-open class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
               ${icon("plus", "w-4 h-4")}
+            </button>
+          </div>
+
+          <button type="button" data-hotel-card-details-open class="w-full flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100 text-left active:scale-[0.99] transition-transform">
+            <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
+              <img src="${escapeHtml(detailsThumb || PLACEHOLDER_IMAGE)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
-          </div>
-
-          <div>
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Titelbilder</p>
-            ${renderHotelCardImagesEditor({ existingImages: coverImages, newPreviews: imagePreviews, imageUrlDraft })}
-          </div>
-
-          <div class="grid grid-cols-1 gap-4">
-            ${renderHotelDistanceEditorField({
-              idPrefix: "hotelCardDistanceCenter",
-              iconName: "navigation",
-              label: "Entfernung Zentrum",
-              value: distanceCenter,
-              directLabel: "Direkt im Zentrum",
-              direct: directCenter
-            })}
-            ${renderHotelDistanceEditorField({
-              idPrefix: "hotelCardDistanceBeach",
-              iconName: "waves",
-              label: "Entfernung Strand",
-              value: distanceBeach,
-              directLabel: "Direkt am Strand",
-              direct: directBeach
-            })}
-            <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bestpreis p.P.</label>
-              <input id="hotelCardStartingPrice" type="text" value="${escapeHtml(startingPrice)}" placeholder="145" inputmode="decimal" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(restaurantName)}</p>
+              <p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(detailsSummary)}</p>
+              <p class="text-[9px] font-black uppercase tracking-widest mt-2 text-indigo-600">${detailsOpen ? "Hapur" : "Hap detajet"}</p>
             </div>
-          </div>
-
-          <div class="grid grid-cols-1 gap-4">
-            ${renderHotelFeatureSelect({
-              id: "hotelCardFeatureOneText",
-              iconName: "utensils",
-              label: "Ushqimi",
-              value: featureOne,
-              options: HOTEL_FOOD_FEATURE_OPTIONS
-            })}
-            ${renderHotelFeatureSelect({
-              id: "hotelCardFeatureTwoText",
-              iconName: "waves",
-              label: "Shezlongët",
-              value: featureTwo,
-              options: HOTEL_LOUNGER_FEATURE_OPTIONS
-            })}
-            ${renderHotelFeatureSelect({
-              id: "hotelCardFeatureThreeText",
-              iconName: "square-parking",
-              label: "Parking",
-              value: featureThree,
-              options: HOTEL_PARKING_FEATURE_OPTIONS
-            })}
-            <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Weitere Features</label>
-              <textarea id="hotelCardCustomFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Recepsion 24/7" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(customFeatures.join("\n"))}</textarea>
+            <div class="w-8 h-8 rounded-xl bg-white border border-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+              ${icon("chevron-right", "w-4 h-4")}
             </div>
-          </div>
-
-          ${status ? `<div class="text-center text-[10px] font-black uppercase tracking-widest ${status.includes("fehl") || status.includes("Bitte") ? "text-rose-500" : "text-slate-500"}">${escapeHtml(status)}</div>` : ""}
-
-          <button id="hotelCardSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${saving ? "disabled" : ""}>
-            ${saving ? "Speichern..." : "Hotel Card speichern"}
           </button>
+
+          ${status && !detailsOpen ? `<div class="text-center text-[10px] font-black uppercase tracking-widest mt-4 ${statusIsError ? "text-rose-500" : "text-slate-500"}">${escapeHtml(status)}</div>` : ""}
         </div>
+
+        ${detailsOpen ? `
+          <div data-hotel-card-editor="${escapeHtml(restaurantId)}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 mb-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Hotel</span>
+                <h3 class="text-xl font-black italic tracking-tighter">Hotel Details</h3>
+              </div>
+              <button type="button" data-hotel-card-details-close class="w-10 h-10 rounded-2xl bg-slate-50 text-slate-500 flex items-center justify-center border border-slate-100">
+                ${icon("x", "w-4 h-4")}
+              </button>
+            </div>
+
+            <div>
+              <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Fotot</p>
+              ${renderHotelCardImagesEditor({ existingImages: coverImages, newPreviews: imagePreviews, imageUrlDraft })}
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+              ${renderHotelDistanceEditorField({
+                idPrefix: "hotelCardDistanceCenter",
+                iconName: "navigation",
+                label: "Qendra",
+                value: distanceCenter,
+                directLabel: HOTEL_CENTER_DIRECT_LABEL,
+                direct: directCenter
+              })}
+              ${renderHotelDistanceEditorField({
+                idPrefix: "hotelCardDistanceBeach",
+                iconName: "waves",
+                label: "Plazhi",
+                value: distanceBeach,
+                directLabel: HOTEL_BEACH_DIRECT_LABEL,
+                direct: directBeach
+              })}
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Çmimi më i mirë</label>
+                <input id="hotelCardStartingPrice" type="text" value="${escapeHtml(startingPrice)}" placeholder="145" inputmode="decimal" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+              ${renderHotelFeatureSelect({
+                id: "hotelCardFeatureOneText",
+                iconName: "utensils",
+                label: "Ushqimi",
+                value: featureOne,
+                options: HOTEL_FOOD_FEATURE_OPTIONS
+              })}
+              ${renderHotelFeatureSelect({
+                id: "hotelCardFeatureTwoText",
+                iconName: "waves",
+                label: "Shezlongë",
+                value: featureTwo,
+                options: HOTEL_LOUNGER_FEATURE_OPTIONS
+              })}
+              ${renderHotelFeatureSelect({
+                id: "hotelCardFeatureThreeText",
+                iconName: "square-parking",
+                label: "Parking",
+                value: featureThree,
+                options: HOTEL_PARKING_FEATURE_OPTIONS
+              })}
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Të tjera</label>
+                <textarea id="hotelCardCustomFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Recepsion 24/7" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(customFeatures.join("\n"))}</textarea>
+              </div>
+            </div>
+
+            ${status ? `<div class="text-center text-[10px] font-black uppercase tracking-widest ${statusIsError ? "text-rose-500" : "text-slate-500"}">${escapeHtml(status)}</div>` : ""}
+
+            <button id="hotelCardSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${saving ? "disabled" : ""}>
+              ${saving ? "Po ruhet..." : "Ruaj Hotel Details"}
+            </button>
+          </div>
+        ` : ""}
         ${renderFocusAdminSection(restaurantId, { variant: "travel-offers" })}
       ` : `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">

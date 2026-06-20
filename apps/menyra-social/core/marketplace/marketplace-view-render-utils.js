@@ -675,8 +675,30 @@ function getHotelCategoryLabel(record = {}) {
   );
 }
 
+function formatHotelDistanceLabel(value = "", { suffix = "", directLabel = "" } = {}) {
+  const raw = cleanText(value);
+  if (!raw) return "";
+  const key = normalizeLooseKey(raw);
+  if (
+    key === "direkt_im_zentrum"
+    || key === "direkt_am_zentrum"
+    || key === "direkt_am_strand"
+    || key === "ne_qender"
+    || key === "ne_plazh"
+    || key === "direkt_ne_qender"
+    || key === "direkt_ne_plazh"
+  ) {
+    return directLabel || raw;
+  }
+  const suffixKey = normalizeLooseKey(suffix);
+  if (suffixKey && key.includes(suffixKey)) return raw;
+  const match = raw.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer|m|meter)\b/i);
+  if (!match || !suffix) return raw;
+  return `${match[1].replace(",", ".")} ${match[2].toLowerCase().startsWith("k") ? "km" : "m"} ${suffix}`;
+}
+
 function getHotelDistanceCenter(record = {}) {
-  return cleanText(
+  return formatHotelDistanceLabel(
     record.distanceCenter
     || record.distanceToCenter
     || record.centerDistance
@@ -684,12 +706,13 @@ function getHotelDistanceCenter(record = {}) {
     || record.centerDistanceLabel
     || record.zentrumEntfernung
     || record.distanceCentre
-    || ""
+    || "",
+    { suffix: "nga qendra", directLabel: "Në qendër" }
   );
 }
 
 function getHotelDistanceBeach(record = {}) {
-  return cleanText(
+  return formatHotelDistanceLabel(
     record.distanceBeach
     || record.distanceToBeach
     || record.beachDistance
@@ -697,7 +720,8 @@ function getHotelDistanceBeach(record = {}) {
     || record.strandEntfernung
     || record.lakeDistance
     || record.distanceToLake
-    || ""
+    || "",
+    { suffix: "nga plazhi", directLabel: "Në plazh" }
   );
 }
 
@@ -1528,7 +1552,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
               ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
             <span class="text-[11px] font-bold text-slate-800">${escapeHtml(rating)}</span>
-            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Bewertungen)</span>
+            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} vlerësime)</span>
           </div>
 
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
@@ -1544,11 +1568,11 @@ function renderTravelHotelCard(record = {}, deps = {}) {
           </div>
           <div class="flex items-center gap-3">
             ${cardIcon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
-            <span class="text-[11px] text-slate-600">${escapeHtml(distanceCenter || "Zentrum folgt")}</span>
+            <span class="text-[11px] text-slate-600">${escapeHtml(distanceCenter || "Qendra mungon")}</span>
           </div>
           <div class="flex items-center gap-3">
             ${cardIcon("waves", "w-4 h-4 text-slate-400 shrink-0")}
-            <span class="text-[11px] text-slate-600">${escapeHtml(distanceBeach || "Strand / See folgt")}</span>
+            <span class="text-[11px] text-slate-600">${escapeHtml(distanceBeach || "Plazhi mungon")}</span>
           </div>
         </div>
 
@@ -1712,7 +1736,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
               ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
             <span class="text-[11px] font-bold text-slate-800">${escapeHtml(rating)}</span>
-            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Rezensionen)</span>
+            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} vlerësime)</span>
           </div>
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
           <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-2 flex items-center gap-1.5" style="margin-top:0.5rem;color:#d97706;">
@@ -1726,11 +1750,11 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
         <div class="flex flex-col gap-2.5 text-slate-600">
           <div class="flex items-center gap-3">
             ${cardIcon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
-            <span class="text-[11px] text-slate-600 font-semibold">${escapeHtml(distanceCenter || "Zentrum folgt")}</span>
+            <span class="text-[11px] text-slate-600 font-semibold">${escapeHtml(distanceCenter || "Qendra mungon")}</span>
           </div>
           <div class="flex items-center gap-3">
             ${cardIcon("waves", "w-4 h-4 text-slate-400 shrink-0")}
-            <span class="text-[11px] text-slate-600 font-semibold">${escapeHtml(distanceBeach || "Strand / See folgt")}</span>
+            <span class="text-[11px] text-slate-600 font-semibold">${escapeHtml(distanceBeach || "Plazhi mungon")}</span>
           </div>
         </div>
 

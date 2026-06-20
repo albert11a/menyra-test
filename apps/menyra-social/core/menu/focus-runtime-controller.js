@@ -506,12 +506,12 @@ export function createFocusRuntimeController({
     return unique;
   }
 
-  function readFocusDistanceField(idPrefix = "", directLabel = "") {
+  function readFocusDistanceField(idPrefix = "", directLabel = "", suffix = "") {
     if (readFocusModalChecked(`${idPrefix}Direct`)) return directLabel;
     const amount = readFocusModalValue(`${idPrefix}Value`).replace(",", ".");
     const unit = readFocusModalValue(`${idPrefix}Unit`).toLowerCase() === "km" ? "km" : "m";
     if (!amount) return readFocusModalValue(idPrefix);
-    return `${amount} ${unit}`;
+    return [amount, unit, suffix].filter(Boolean).join(" ");
   }
 
   async function saveFocusItemFromModal() {
@@ -530,8 +530,8 @@ export function createFocusRuntimeController({
     const isTravelOffer = isTravelOfferProfile(state.userProfile) || hasTravelOfferFields(modalItem);
     const offerBadgeLabel = docObj.getElementById("focusOfferBadgeLabel")?.value?.trim() || "OFERTA";
     const offerDurationLabel = docObj.getElementById("focusOfferDurationLabel")?.value?.trim() || "";
-    const distanceCenter = readFocusDistanceField("focusDistanceCenter", "Direkt im Zentrum");
-    const distanceBeach = readFocusDistanceField("focusDistanceBeach", "Direkt am Strand");
+    const distanceCenter = readFocusDistanceField("focusDistanceCenter", "Në qendër", "nga qendra");
+    const distanceBeach = readFocusDistanceField("focusDistanceBeach", "Në plazh", "nga plazhi");
     const distanceCenterDirect = readFocusModalChecked("focusDistanceCenterDirect");
     const distanceBeachDirect = readFocusModalChecked("focusDistanceBeachDirect");
     const startingPrice = docObj.getElementById("focusStartingPrice")?.value?.trim() || "";
@@ -544,13 +544,13 @@ export function createFocusRuntimeController({
     const crop = getFocusModalCrop();
 
     if (!title) {
-      state.focusModal.status = "Bitte Titel eingeben.";
+      state.focusModal.status = isTravelOffer ? "Shkruaj titullin." : "Bitte Titel eingeben.";
       renderOverlaysFn({ updateFocus: true });
       return;
     }
 
     state.focusModal.loading = true;
-    state.focusModal.status = "Speichern...";
+    state.focusModal.status = isTravelOffer ? "Po ruhet..." : "Speichern...";
     renderOverlaysFn({ updateFocus: true });
 
     try {
@@ -609,12 +609,12 @@ export function createFocusRuntimeController({
       if (isTravelOffer) syncTravelOffersToRestaurantState(restaurantId, nextItems);
 
       state.focusModal.loading = false;
-      state.focusModal.status = "Gespeichert.";
+      state.focusModal.status = isTravelOffer ? "U ruajt." : "Gespeichert.";
       closeFocusModalFn();
       renderFn();
     } catch (err) {
       console.error(err);
-      state.focusModal.status = err?.message || "Speichern fehlgeschlagen.";
+      state.focusModal.status = err?.message || (isTravelOffer ? "Nuk u ruajt." : "Speichern fehlgeschlagen.");
       state.focusModal.loading = false;
       renderOverlaysFn({ updateFocus: true });
     }

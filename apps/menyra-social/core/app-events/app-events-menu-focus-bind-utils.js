@@ -164,13 +164,13 @@ export function bindAppMenuFocusEventsCore({
     return raw.split(/[\n,;|]/).map((entry) => entry.trim()).filter(Boolean);
   }
 
-  function readHotelCardDistanceField(idPrefix = "", directLabel = "") {
+  function readHotelCardDistanceField(idPrefix = "", directLabel = "", suffix = "") {
     if (isHotelCardChecked(`${idPrefix}Direct`)) return directLabel;
     const amount = readHotelCardInput(`${idPrefix}Value`).replace(",", ".");
     const unitRaw = readHotelCardInput(`${idPrefix}Unit`).toLowerCase();
     const unit = unitRaw === "km" ? "km" : "m";
     if (!amount) return readHotelCardInput(idPrefix);
-    return `${amount} ${unit}`;
+    return [amount, unit, suffix].filter(Boolean).join(" ");
   }
 
   function ensureHotelCardEditorState() {
@@ -286,8 +286,8 @@ export function bindAppMenuFocusEventsCore({
     const filesFromInput = Array.from(doc.getElementById("hotelCardCoverImagesInput")?.files || []);
     const files = filesFromState.length ? filesFromState : filesFromInput;
     const imagePreviews = Array.isArray(editorState.imagePreviews) ? editorState.imagePreviews.slice() : [];
-    const distanceCenter = readHotelCardDistanceField("hotelCardDistanceCenter", "Direkt im Zentrum");
-    const distanceBeach = readHotelCardDistanceField("hotelCardDistanceBeach", "Direkt am Strand");
+    const distanceCenter = readHotelCardDistanceField("hotelCardDistanceCenter", "Në qendër", "nga qendra");
+    const distanceBeach = readHotelCardDistanceField("hotelCardDistanceBeach", "Në plazh", "nga plazhi");
     const distanceCenterDirect = isHotelCardChecked("hotelCardDistanceCenterDirect");
     const distanceBeachDirect = isHotelCardChecked("hotelCardDistanceBeachDirect");
     const startingPrice = readHotelCardInput("hotelCardStartingPrice").replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
@@ -304,13 +304,14 @@ export function bindAppMenuFocusEventsCore({
       imagePreviews,
       imageUrlDraft: urlDraft,
       saving: true,
-      status: "Speichern..."
+      detailsOpen: true,
+      status: "Po ruhet..."
     };
     render();
 
     try {
       if (files.length && !uploadCompressedImage) {
-        throw new Error("Bild-Upload ist nicht bereit.");
+        throw new Error("Ngarkimi i fotos nuk eshte gati.");
       }
       const uploadedUrls = [];
       for (const file of files) {
@@ -322,7 +323,7 @@ export function bindAppMenuFocusEventsCore({
         });
         const imageUrl = String(uploaded?.cdnUrl || uploaded?.url || "").trim();
         if (!imageUrl) {
-          throw new Error("Bild-Upload hat keine Bild-URL geliefert.");
+          throw new Error("Ngarkimi nuk dha URL te fotos.");
         }
         if (imageUrl && !uploadedUrls.includes(imageUrl)) {
           uploadedUrls.push(imageUrl);
@@ -384,7 +385,8 @@ export function bindAppMenuFocusEventsCore({
         imagePreviews: [],
         imageUrlDraft: "",
         saving: false,
-        status: "Hotel Card gespeichert."
+        detailsOpen: false,
+        status: "U ruajt."
       };
       render();
     } catch (err) {
@@ -396,11 +398,39 @@ export function bindAppMenuFocusEventsCore({
         imagePreviews,
         imageUrlDraft: urlDraft,
         saving: false,
-        status: err?.message || "Hotel Card konnte nicht gespeichert werden."
+        detailsOpen: true,
+        status: err?.message || "Hotel Details nuk u ruajten."
       };
       render();
     }
   }
+
+  doc.querySelectorAll("[data-hotel-card-details-open]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
+        ? state.hotelCardEditor
+        : {};
+      state.hotelCardEditor = {
+        ...current,
+        detailsOpen: true,
+        status: ""
+      };
+      render();
+    });
+  });
+
+  doc.querySelectorAll("[data-hotel-card-details-close]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
+        ? state.hotelCardEditor
+        : {};
+      state.hotelCardEditor = {
+        ...current,
+        detailsOpen: false
+      };
+      render();
+    });
+  });
 
   const hotelCardCoverTrigger = doc.getElementById("hotelCardCoverImagesTrigger");
   const hotelCardCoverInput = doc.getElementById("hotelCardCoverImagesInput");

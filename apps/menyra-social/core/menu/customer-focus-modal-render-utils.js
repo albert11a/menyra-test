@@ -249,17 +249,17 @@ export function renderFocusModalCore({
     { value: "km", label: "km" }
   ];
   const foodFeatureOptions = [
-    "Mëngjes i përfshirë",
+    "Mëngjes",
     "Gjysmë pension",
     "Pension i plotë",
     "All inclusive",
-    "Restorant në hotel",
+    "Restorant",
     "Pa ushqim"
   ];
   const loungerFeatureOptions = [
-    "Shezlongë të përfshirë",
+    "Shezlongë falas",
     "Shezlongë me pagesë",
-    "Plazh privat me shezlongë",
+    "Plazh privat",
     "Pa shezlongë"
   ];
   const parkingFeatureOptions = [
@@ -286,6 +286,10 @@ export function renderFocusModalCore({
     const raw = String(value || "").trim();
     const normalized = normalizeFeatureKey(raw);
     const isDirect = direct
+      || normalized === "ne_qender"
+      || normalized === "ne_plazh"
+      || normalized === "direkt_ne_qender"
+      || normalized === "direkt_ne_plazh"
       || (normalized.includes("direkt") && (normalized.includes("strand") || normalized.includes("zentrum") || normalized.includes("center")))
       || normalized.includes("am_strand")
       || normalized.includes("im_zentrum");
@@ -325,7 +329,7 @@ export function renderFocusModalCore({
     `;
   };
   const renderFeatureOptions = (options = [], selected = "") => `
-    <option value="">Auswählen</option>
+    <option value="">Zgjidh</option>
     ${options.map((option) => `<option value="${escapeHtml(option)}" ${normalizeFeatureKey(option) === normalizeFeatureKey(selected) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
   `;
   const renderFeatureSelect = ({ id = "", iconName = "badge-check", label = "", value = "", options = [] } = {}) => `
@@ -413,11 +417,11 @@ export function renderFocusModalCore({
         ${isTravelOfferContext ? `
           <div class="grid grid-cols-1 gap-3">
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Badge links (OFERTA)</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Badge majtas</label>
               <input id="focusOfferBadgeLabel" type="text" value="${escapeHtml(offerBadgeLabel)}" placeholder="OFERTA" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
             </div>
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Badge rechts (Netë / ditë)</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Netë / ditë</label>
               <input id="focusOfferDurationLabel" type="text" value="${escapeHtml(offerDurationLabel)}" placeholder="3 netë / 4 ditë" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
             </div>
           </div>
@@ -425,25 +429,25 @@ export function renderFocusModalCore({
             ${renderDistanceField({
               idPrefix: "focusDistanceCenter",
               iconName: "navigation",
-              label: "Entfernung Zentrum",
+              label: "Qendra",
               value: offerDistanceCenter,
-              directLabel: "Direkt im Zentrum"
+              directLabel: "Në qendër"
             })}
             ${renderDistanceField({
               idPrefix: "focusDistanceBeach",
               iconName: "waves",
-              label: "Entfernung Strand",
+              label: "Plazhi",
               value: offerDistanceBeach,
-              directLabel: "Direkt am Strand",
+              directLabel: "Në plazh",
               direct: item.beachfront === true || item.onBeach === true
             })}
             <div class="grid grid-cols-[1.2fr_0.8fr] gap-3">
               <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis</label>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Çmimi</label>
                 <input id="focusStartingPrice" type="text" value="${escapeHtml(offerStartingPrice)}" placeholder="145" inputmode="decimal" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
               </div>
               <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Tipi</label>
                 <select id="focusPriceUnit" class="w-full px-4 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100">
                   <option value="per_person" ${offerPriceUnit === "per_person" ? "selected" : ""}>p.P</option>
                   <option value="total" ${offerPriceUnit === "total" ? "selected" : ""}>Totali</option>
@@ -460,7 +464,7 @@ export function renderFocusModalCore({
             ${renderFeatureSelect({
               id: "focusFeatureLoungerText",
               iconName: "waves",
-              label: "Shezlongët",
+              label: "Shezlongë",
               value: offerLoungerFeature,
               options: loungerFeatureOptions
             })}
@@ -472,7 +476,7 @@ export function renderFocusModalCore({
               options: parkingFeatureOptions
             })}
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Weitere Features</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Të tjera</label>
               <textarea id="focusFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Recepsion 24/7" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(offerCustomFeatures.join("\n"))}</textarea>
             </div>
           </div>
@@ -494,7 +498,7 @@ export function renderFocusModalCore({
   const footerHtml = `
     <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
-        ${state.focusModal.loading ? "Speichern..." : "Speichern"}
+        ${state.focusModal.loading ? (isTravelOfferContext ? "Po ruhet..." : "Speichern...") : (isTravelOfferContext ? "Ruaj" : "Speichern")}
       </button>
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
     </div>
