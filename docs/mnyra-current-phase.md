@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 # Mnyra Current Phase
 
@@ -1000,6 +1000,16 @@ Last updated: 2026-06-20
   als Aktualisierung weiter und darf vorhandene Eintraege nicht durch
   `Ofertat werden geladen...` ersetzen. QR, Cart, Order, Routing, Firebase
   Rules und Functions bleiben unveraendert.
+- Schritt 103 ist abgeschlossen: Der obere Travel-Suchbereich wurde nach
+  ausdruecklicher UI-Freigabe optisch an Restaurants/Feed-Gate angeglichen.
+- Bewertung von Schritt 103: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 103:
+  Travel zeigt im Suchkopf jetzt einen flachen Tiefsee-Teal-Hintergrund,
+  dynamischen Text `Find Hotels.` / `Find Motels.` / `Best Offers.` plus
+  `For your Travel.` und ein pillenfoermiges Eingabefeld mit Placeholder
+  `Enter your destination`. Benko, Travel-Tabs, Cards, Suche,
+  Vorschlaege, Routing, QR, Cart, Order, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1101,6 +1111,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step100-travel-hotel-details-editor-corrections.md](./mnyra-step100-travel-hotel-details-editor-corrections.md)
 - Referenz: [docs/mnyra-step101-hotel-details-oferta-editor-stability-fix.md](./mnyra-step101-hotel-details-oferta-editor-stability-fix.md)
 - Referenz: [docs/mnyra-step102-hotel-editor-oferta-loading-text-suppression.md](./mnyra-step102-hotel-editor-oferta-loading-text-suppression.md)
+- Referenz: [docs/mnyra-step103-travel-search-hero-ui.md](./mnyra-step103-travel-search-hero-ui.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1126,7 +1137,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 102 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 103 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1268,6 +1279,14 @@ Editor oeffnen. Bestehende `Ofertat` sollen sofort aus der bekannten
 Restaurant-Wahrheit erscheinen und nicht erst spaeter nachgeladen werden. Der
 Text `Ofertat werden geladen...` darf beim Einstieg in diesen Hotel-Editor-
 Bereich nicht sichtbar sein. Danach eine Oferta bearbeiten und speichern.
+
+Zusaetzlich fuer Schritt 103 manuell pruefen: Travel oeffnen und pruefen, dass
+nur der obere Suchbereich geaendert ist: flacher Tiefsee-Teal-Hintergrund,
+dynamische Zeile `Find Hotels.` / `Find Motels.` / `Best Offers.`, zweite Zeile
+`For your Travel.`, pillenfoermiges Eingabefeld mit Placeholder
+`Enter your destination`, Map-Pin links und Search-Button rechts. Reiseziel wie
+bisher eingeben; Benko, Tabs, Hotel-/Oferta-Cards und Map muessen unveraendert
+bleiben.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

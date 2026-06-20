@@ -37,6 +37,7 @@ const LIST_LIMIT = 24;
 const RESTAURANTS_GATE_COLOR = "#ff4f3f";
 const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 const TRAVEL_BLUE = "#00cce5";
+const TRAVEL_SEARCH_TEAL = "#005f73";
 const RESTAURANT_COORD_CITY_MAX_DISTANCE_KM = 35;
 const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
   Object.freeze({ label: "Prishtina", lat: 42.6629, lng: 21.1655 }),
@@ -1339,41 +1340,46 @@ function renderTravelSearchHero({ travel, deps } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   return `
-    <div id="travelSearchTop" data-travel-search-top style="background:${TRAVEL_BLUE}; padding:4.6rem 1.5rem 6.35rem;">
-      <div class="bg-white border border-white/60 shadow-sm" style="border-radius:2rem; padding:1.4rem;">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style="background:${TRAVEL_BLUE};">
-            ${icon("plane", "w-5 h-5")}
+    <div id="travelSearchTop" data-travel-search-top style="background:${TRAVEL_SEARCH_TEAL};">
+      <div class="loc-top">
+        <div class="loc-title">
+          <div class="text-slider-wrapper">
+            <div class="text-slide-item">Find Hotels.</div>
+            <div class="text-slide-item">Find Motels.</div>
+            <div class="text-slide-item">Best Offers.</div>
           </div>
-          <div class="min-w-0">
-            <p class="text-[10px] font-black uppercase tracking-widest" style="color:${TRAVEL_BLUE};">Travel</p>
-            <h2 class="text-lg font-black tracking-tight text-slate-900 leading-tight">Schreibe dein Reiseziel</h2>
+          <div>For your Travel.</div>
+        </div>
+
+        <div class="loc-search-wrap">
+          <div class="loc-input-row">
+            <span class="loc-pin">${icon("map-pin", "w-5 h-5")}</span>
+            <input
+              id="travelDestinationInput"
+              data-travel-destination-input="true"
+              type="text"
+              value="${escapeHtml(travel.query)}"
+              placeholder="Enter your destination"
+              class="loc-input"
+              inputmode="search"
+              autocomplete="off"
+              autocapitalize="words"
+              spellcheck="false"
+              aria-autocomplete="list"
+              aria-controls="travelDestinationSuggestions"
+              aria-expanded="false"
+            />
+            <div class="loc-request-wrap">
+              <button type="button" data-travel-submit="true" class="loc-request-btn" aria-label="Search destination">
+                ${icon("search", "w-5 h-5")}
+              </button>
+            </div>
           </div>
+          <div id="travelDestinationSuggestions" data-travel-destination-suggestions role="listbox" aria-hidden="true" class="travel-destination-suggestions"></div>
+          ${travel.notice ? `
+            <p data-travel-notice class="loc-status">${escapeHtml(travel.notice)}</p>
+          ` : ""}
         </div>
-        <div class="relative">
-          <input
-            id="travelDestinationInput"
-            data-travel-destination-input="true"
-            type="text"
-            value="${escapeHtml(travel.query)}"
-            placeholder="Prishtina, Vlora, Tirana"
-            class="w-full h-14 rounded-[2rem] border border-slate-100 bg-slate-50 px-5 pr-14 text-sm font-bold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100"
-            inputmode="search"
-            autocomplete="off"
-            autocapitalize="words"
-            spellcheck="false"
-            aria-autocomplete="list"
-            aria-controls="travelDestinationSuggestions"
-            aria-expanded="false"
-          />
-          <button type="button" data-travel-submit="true" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white active:scale-95 transition-all" style="background:${TRAVEL_BLUE};">
-            ${icon("search", "w-4 h-4")}
-          </button>
-        </div>
-        <div id="travelDestinationSuggestions" data-travel-destination-suggestions role="listbox" aria-hidden="true" class="travel-destination-suggestions"></div>
-        ${travel.notice ? `
-          <p data-travel-notice class="mt-3 text-[11px] font-black uppercase tracking-wider text-rose-500">${escapeHtml(travel.notice)}</p>
-        ` : ""}
       </div>
     </div>
   `;

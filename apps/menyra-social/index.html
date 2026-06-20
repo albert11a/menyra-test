@@ -679,6 +679,129 @@
       padding-left: var(--app-content-inline) !important;
       padding-right: var(--app-content-inline) !important;
     }
+    #travelSearchTop {
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+    #travelSearchTop .loc-top {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 8rem 1.5rem 8.85rem;
+    }
+    #travelSearchTop .loc-title {
+      width: 100%;
+      max-width: 22rem;
+      margin: 0 auto 2.15rem;
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      line-height: 1.08;
+    }
+    #travelSearchTop .text-slider-wrapper {
+      position: relative;
+      height: 1.25em;
+      width: 100%;
+      overflow: hidden;
+      margin-bottom: 0.2rem;
+    }
+    #travelSearchTop .text-slide-item {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      opacity: 0;
+      animation: travelLocationTextFadeSlide 9s ease-in-out infinite;
+      will-change: transform, opacity;
+    }
+    #travelSearchTop .text-slide-item:nth-child(1) {
+      animation-delay: 0s;
+    }
+    #travelSearchTop .text-slide-item:nth-child(2) {
+      animation-delay: 3s;
+    }
+    #travelSearchTop .text-slide-item:nth-child(3) {
+      animation-delay: 6s;
+    }
+    @keyframes travelLocationTextFadeSlide {
+      0% { opacity: 0; transform: translateY(100%); }
+      5%, 28% { opacity: 1; transform: translateY(0); }
+      33%, 100% { opacity: 0; transform: translateY(-100%); }
+    }
+    #travelSearchTop .loc-search-wrap {
+      width: 100%;
+      max-width: 22rem;
+      margin: 0 auto;
+    }
+    #travelSearchTop .loc-input-row {
+      position: relative;
+    }
+    #travelSearchTop .loc-pin {
+      position: absolute;
+      left: 1.2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgb(148 163 184);
+      pointer-events: none;
+    }
+    #travelSearchTop .loc-input {
+      width: 100%;
+      border: 0;
+      outline: none;
+      color: #0f172a;
+      background: #fff;
+      border-radius: 9999px;
+      padding: 1rem 4.2rem 1rem 3rem;
+      font-size: 16px;
+      line-height: 1.2;
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgb(0 0 0 / 0.12);
+    }
+    #travelSearchTop .loc-input::placeholder {
+      color: rgb(148 163 184);
+      opacity: 1;
+    }
+    #travelSearchTop .loc-input:focus {
+      box-shadow: 0 0 0 4px rgb(255 255 255 / 0.42), 0 8px 30px rgb(0 0 0 / 0.12);
+    }
+    #travelSearchTop .loc-request-wrap {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    #travelSearchTop .loc-request-btn {
+      position: relative;
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 0;
+      border-radius: 9999px;
+      background: rgb(230 247 248);
+      color: #005f73;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+    }
+    #travelSearchTop .loc-request-btn:active {
+      transform: scale(0.95);
+    }
+    #travelSearchTop .loc-status {
+      margin-top: 0.7rem;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: rgb(255 255 255 / 0.9);
+    }
     #travelView .travel-destination-suggestions {
       position: relative;
       z-index: 30;
@@ -973,6 +1096,13 @@
       box-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);
     }
     @media (max-width: 380px) {
+      #travelSearchTop .loc-top {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+      }
+      #travelSearchTop .loc-title {
+        font-size: 1.72rem;
+      }
       #restaurantsSearchTop .loc-top {
         padding-left: 1.25rem;
         padding-right: 1.25rem;
@@ -982,6 +1112,18 @@
       }
     }
     @media (prefers-reduced-motion: reduce) {
+      #travelSearchTop .text-slide-item {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      #travelSearchTop .text-slide-item:not(:first-child) {
+        display: none;
+      }
+      #travelSearchTop .travel-destination-suggestions,
+      #travelSearchTop .loc-request-btn {
+        transition: none;
+      }
       #restaurantsSearchTop .text-slide-item {
         animation: none;
         opacity: 1;
