@@ -989,6 +989,17 @@ Last updated: 2026-06-20
   Aufklappen nicht mehr neu geladen. Zusaetzlich verdraengt ein laufender
   Loading-State vorhandene Oferta-Eintraege nicht mehr. QR, Cart, Order,
   Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 102 ist abgeschlossen: Beim Einstieg in den Hotel-/Motel-Editor
+  erscheinen bekannte `Ofertat` wieder sofort aus der vorhandenen
+  Restaurant-Wahrheit.
+- Bewertung von Schritt 102: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 102:
+  Vor dem Hotel-Editor-Render werden vorhandene `publicOffers`,
+  `travelOffers` oder `offerItems` aus dem Hotel-/Restaurantdatensatz in den
+  `focus`-State gesetzt. Die frische `public/offers`-Ladung laeuft danach nur
+  als Aktualisierung weiter und darf vorhandene Eintraege nicht durch
+  `Ofertat werden geladen...` ersetzen. QR, Cart, Order, Routing, Firebase
+  Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1089,6 +1100,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step99-travel-hotel-details-editor.md](./mnyra-step99-travel-hotel-details-editor.md)
 - Referenz: [docs/mnyra-step100-travel-hotel-details-editor-corrections.md](./mnyra-step100-travel-hotel-details-editor-corrections.md)
 - Referenz: [docs/mnyra-step101-hotel-details-oferta-editor-stability-fix.md](./mnyra-step101-hotel-details-oferta-editor-stability-fix.md)
+- Referenz: [docs/mnyra-step102-hotel-editor-oferta-loading-text-suppression.md](./mnyra-step102-hotel-editor-oferta-loading-text-suppression.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1114,7 +1126,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 101 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 102 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1250,6 +1262,12 @@ Editor oeffnen und die `Ofertat`-Sektion beobachten. Sie soll nicht erst
 sichtbar werden, verschwinden und erneut auftauchen. `Hotel Details` per Plus
 oder Hotel-Zeile oeffnen und schliessen; dabei darf `Ofertat` nicht neu laden,
 nicht springen und nicht kurz durch `Ofertat werden geladen...` ersetzt werden.
+
+Zusaetzlich fuer Schritt 102 manuell pruefen: Als Hotel-/Motel-Owner Profil ->
+Editor oeffnen. Bestehende `Ofertat` sollen sofort aus der bekannten
+Restaurant-Wahrheit erscheinen und nicht erst spaeter nachgeladen werden. Der
+Text `Ofertat werden geladen...` darf beim Einstieg in diesen Hotel-Editor-
+Bereich nicht sichtbar sein. Danach eine Oferta bearbeiten und speichern.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -357,6 +357,69 @@ function getHotelProfileRecord(profile = {}) {
   };
 }
 
+function normalizeHotelEditorOfferItem(item = {}, fallbackId = "") {
+  const raw = item && typeof item === "object" ? item : {};
+  const id = String(raw.id || raw._id || raw.offerId || raw.menuItemId || fallbackId || "offer").trim();
+  return {
+    ...raw,
+    id,
+    menuItemId: String(raw.menuItemId || raw.targetMenuItemId || raw.itemId || raw.targetItemId || "").trim(),
+    title: raw.title || raw.name || "Oferta",
+    text: raw.text || raw.desc || raw.description || "",
+    imageUrl: raw.imageUrl || raw.image || raw.photoUrl || "",
+    active: raw.active !== false
+  };
+}
+
+function collectHotelEditorOfferItems(record = {}) {
+  const sources = [
+    ...(Array.isArray(record.publicOffers) ? record.publicOffers : []),
+    ...(Array.isArray(record.travelOffers) ? record.travelOffers : []),
+    ...(Array.isArray(record.offerItems) ? record.offerItems : [])
+  ];
+  const seen = new Set();
+  return sources.map((item, index) => normalizeHotelEditorOfferItem(item, `offer_${index}`)).filter((item) => {
+    const key = String(item.id || `${item.title}|${item.text}|${item.imageUrl}`).trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function seedHotelEditorOfferStateFromRecord(profile = {}) {
+  const record = getHotelProfileRecord(profile);
+  const restaurantId = String(profile?.restaurantId || profile?.canonicalRestaurantId || record.restaurantId || record.canonicalRestaurantId || record.id || "").trim();
+  if (!restaurantId) return false;
+  const current = state.focus && typeof state.focus === "object" ? state.focus : {};
+  const sameRestaurant = String(current.restaurantId || "").trim() === restaurantId;
+  const currentTruthSource = String(current.truthSource || "").trim().toLowerCase();
+  if (sameRestaurant && currentTruthSource === "public-menu") return false;
+  const currentItems = sameRestaurant && Array.isArray(current.items) ? current.items : [];
+  if (currentItems.length) return false;
+  const offerItems = collectHotelEditorOfferItems(record);
+  const hasKnownOfferTruth = offerItems.length > 0
+    || Array.isArray(record.publicOffers)
+    || Array.isArray(record.travelOffers)
+    || Array.isArray(record.offerItems)
+    || Number.isFinite(Number(record.publicOffersCount))
+    || Number.isFinite(Number(record.travelOffersCount))
+    || typeof record.hasTravelOffers === "boolean"
+    || String(record.offersTruthState || "").trim();
+  if (!hasKnownOfferTruth) return false;
+  state.focus = {
+    ...current,
+    restaurantId,
+    items: offerItems,
+    enabled: current.enabled !== false,
+    loading: false,
+    error: "",
+    index: 0,
+    truthSource: "restaurant-cache",
+    truthState: offerItems.length ? "seeded" : "knownEmpty"
+  };
+  return true;
+}
+
 function readHotelCoords(record = {}) {
   const candidates = [
     record?.verifiedMapLocation,
@@ -921,7 +984,7 @@ function renderHotelCardAdminView(profile = {}) {
               ${saving ? "Po ruhet..." : "Ruaj Hotel Details"}
             </button>
         </div>
-        ${renderFocusAdminSection(restaurantId, { variant: "travel-offers" })}
+        ${renderFocusAdminSection(restaurantId, { variant: "travel-offers", suppressLoading: true })}
       ` : `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
           <p class="text-sm font-bold text-slate-500">Bitte zuerst dein Hotel-Business im Account auswaehlen.</p>
@@ -2358,7 +2421,7 @@ function renderMenuList(items, { mode = "profile" } = {}) {
   `;
 }
 
-function renderFocusAdminSection(restaurantId, { variant = "focus" } = {}) {
+function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoading = false } = {}) {
   if (!restaurantId) return "";
   const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId, { includeInactive: true });
   const countLabel = formatCount(items.length);
@@ -2414,9 +2477,9 @@ function renderFocusAdminSection(restaurantId, { variant = "focus" } = {}) {
             `;
           }).join("")}
         </div>
-      ` : loading ? `
+      ` : loading && !suppressLoading ? `
         <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(loadingLabel)}</div>
-      ` : `
+      ` : loading ? "" : `
         <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(emptyLabel)}</div>
       `}
     </div>
@@ -2728,7 +2791,9 @@ function renderMenuAdminView() {
   const countLabel = formatCount(items.length);
 
   if (restaurantId && isHotelProfile) {
-    if (!state.focus.loading && state.focus.restaurantId !== restaurantId) {
+    seedHotelEditorOfferStateFromRecord(profile);
+    const focusTruthSource = String(state.focus?.truthSource || "").trim().toLowerCase();
+    if (!state.focus.loading && (state.focus.restaurantId !== restaurantId || focusTruthSource !== "public-menu")) {
       ensureFocusDataForProfile(profile);
     }
     return renderHotelCardAdminView(profile);
