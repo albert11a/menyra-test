@@ -1018,6 +1018,15 @@ Last updated: 2026-06-21
   Radius mit `-2.5rem` und nutzt einen eigenen relativen Layer mit dezentem
   oberen Schatten. Travel-Suche, Tabs, Cards, Map, Routing, QR, Cart, Order,
   Firebase Rules und Functions bleiben unveraendert.
+- Schritt 105 ist abgeschlossen: Travel-Gate-Schrift, -Groesse und -Abstaende
+  wurden enger an Feed-Gate und Restaurants-Gate angeglichen.
+- Bewertung von Schritt 105: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 105:
+  `#travelSearchTop .loc-top` nutzt jetzt den gleichen vertikalen
+  Grundabstand wie die Vergleichs-Gates und der Travel-Titel nutzt dieselbe
+  responsive Headline-Groesse sowie dieselbe Headline-Zeilenanmutung.
+  Travel-Suche, Benko, Tabs, Cards, Map, Routing, QR, Cart, Order, Firebase
+  Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1121,6 +1130,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step102-hotel-editor-oferta-loading-text-suppression.md](./mnyra-step102-hotel-editor-oferta-loading-text-suppression.md)
 - Referenz: [docs/mnyra-step103-travel-search-hero-ui.md](./mnyra-step103-travel-search-hero-ui.md)
 - Referenz: [docs/mnyra-step104-travel-benko-radius-fix.md](./mnyra-step104-travel-benko-radius-fix.md)
+- Referenz: [docs/mnyra-step105-travel-gate-typography-spacing-parity.md](./mnyra-step105-travel-gate-typography-spacing-parity.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1146,7 +1156,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 104 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 105 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1301,6 +1311,12 @@ Zusaetzlich fuer Schritt 104 manuell pruefen: Travel oeffnen und den Uebergang
 vom Teal-Suchkopf zum Benko pruefen. Die oberen linken und rechten Benko-Ecken
 muessen wieder sichtbar rund sein; Tabs, Cards und Map duerfen dadurch nicht
 verschoben oder abgeschnitten wirken.
+
+Zusaetzlich fuer Schritt 105 manuell pruefen: Travel oeffnen und Schrift,
+Headline-Groesse sowie vertikale Abstaende gegen Feed-Gate oder Restaurants-
+Gate vergleichen. Der Abstand zwischen Input und Benko soll wie beim Gate-
+Muster wirken; Suche, Vorschlaege, Benko-Rundung, Tabs, Cards und Map muessen
+unveraendert bleiben.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
