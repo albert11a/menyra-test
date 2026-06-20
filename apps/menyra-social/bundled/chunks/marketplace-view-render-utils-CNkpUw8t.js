@@ -372,7 +372,7 @@ const F=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
         </div>
 
         <div>
-          <div class="flex items-center gap-1.5 mb-1">
+          <div class="flex items-center gap-1.5 mb-2" style="margin-bottom:0.5rem;">
             <div class="flex text-amber-500">
               ${s("star","w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
@@ -381,7 +381,7 @@ const F=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
           </div>
 
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${a(i)}</h2>
-          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5" style="margin-top:0.125rem;">${a(h)}</p>
+          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-2" style="margin-top:0.5rem;">${a(h)}</p>
         </div>
 
         <hr class="border-slate-100" />

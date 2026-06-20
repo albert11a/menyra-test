@@ -1027,6 +1027,16 @@ Last updated: 2026-06-21
   responsive Headline-Groesse sowie dieselbe Headline-Zeilenanmutung.
   Travel-Suche, Benko, Tabs, Cards, Map, Routing, QR, Cart, Order, Firebase
   Rules und Functions bleiben unveraendert.
+- Schritt 106 ist abgeschlossen: Die normale Travel-Hotel-/Motel-Card nutzt
+  in ihrer oberen Textgruppe dieselben vertikalen Abstaende wie die Premium-
+  Oferta-Card.
+- Bewertung von Schritt 106: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 106:
+  Bewertungszeile, Hotelname und Hotel-/Motel-Kategorietext stehen in der
+  normalen Hotel-Card jetzt im gleichen ruhigen Abstand wie Bewertungszeile,
+  Hotelname und Destination in der Premium-Oferta-Card. Bildslider, Logo,
+  Distanzen, Feature-Chips, Preis, Buttons, Oferta-Card, Datenlogik, Routing,
+  QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1131,6 +1141,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step103-travel-search-hero-ui.md](./mnyra-step103-travel-search-hero-ui.md)
 - Referenz: [docs/mnyra-step104-travel-benko-radius-fix.md](./mnyra-step104-travel-benko-radius-fix.md)
 - Referenz: [docs/mnyra-step105-travel-gate-typography-spacing-parity.md](./mnyra-step105-travel-gate-typography-spacing-parity.md)
+- Referenz: [docs/mnyra-step106-travel-hotel-card-title-spacing-parity.md](./mnyra-step106-travel-hotel-card-title-spacing-parity.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1156,7 +1167,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 105 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 106 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1317,6 +1328,12 @@ Headline-Groesse sowie vertikale Abstaende gegen Feed-Gate oder Restaurants-
 Gate vergleichen. Der Abstand zwischen Input und Benko soll wie beim Gate-
 Muster wirken; Suche, Vorschlaege, Benko-Rundung, Tabs, Cards und Map muessen
 unveraendert bleiben.
+
+Zusaetzlich fuer Schritt 106 manuell pruefen: Travel `Hotels` oeffnen und bei
+einer normalen Hotel-/Motel-Card pruefen, dass Bewertungszeile, Hotelname und
+`Hotel`-/`Motel`-Text denselben vertikalen Abstand wie bei der Premium-Oferta-
+Card haben. Travel `Ofertat` kurz gegenpruefen, dass die Premium-Oferta-Card
+selbst unveraendert bleibt.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

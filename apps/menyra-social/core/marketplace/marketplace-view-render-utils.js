@@ -1553,7 +1553,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
         </div>
 
         <div>
-          <div class="flex items-center gap-1.5 mb-1">
+          <div class="flex items-center gap-1.5 mb-2" style="margin-bottom:0.5rem;">
             <div class="flex text-amber-500">
               ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
@@ -1562,7 +1562,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
           </div>
 
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
-          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5" style="margin-top:0.125rem;">${escapeHtml(category)}</p>
+          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-2" style="margin-top:0.5rem;">${escapeHtml(category)}</p>
         </div>
 
         <hr class="border-slate-100" />
