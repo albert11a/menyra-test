@@ -908,6 +908,16 @@ Last updated: 2026-06-20
   Stadt/Destination. Zentrum- und Strand/See-Distanz, Preis, Badge,
   Detailoverlay, `Hotels`-Tab, QR, Cart, Order, Routing, Firebase Rules und
   Functions bleiben unveraendert.
+- Schritt 94 ist abgeschlossen: `Ofertat` zeigt beim ersten Oeffnen nicht mehr
+  kurz `Noch keine Angebote`, solange vollstaendige Restaurant-/Travel-Daten
+  noch laden.
+- Bewertung von Schritt 94: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 94:
+  Preview-/Cache-Hotels ohne Offer-Records erzeugen im `Ofertat`-Tab jetzt
+  `Daten werden geladen ...`. Erst nach `dataLoaded.restaurants === true` wird
+  der echte Empty-State `Noch keine Angebote` gezeigt, falls wirklich keine
+  Offers existieren. Hotel-Tab, Editor, Firebase, QR, Cart, Order, Routing,
+  Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1000,6 +1010,7 @@ Last updated: 2026-06-20
 - Referenz: [docs/mnyra-step91-travel-oferta-premium-card.md](./mnyra-step91-travel-oferta-premium-card.md)
 - Referenz: [docs/mnyra-step92-travel-oferta-badge-visibility.md](./mnyra-step92-travel-oferta-badge-visibility.md)
 - Referenz: [docs/mnyra-step93-travel-oferta-city-icon.md](./mnyra-step93-travel-oferta-city-icon.md)
+- Referenz: [docs/mnyra-step94-travel-oferta-loading-guard.md](./mnyra-step94-travel-oferta-loading-guard.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1025,7 +1036,7 @@ Last updated: 2026-06-20
 
 ## Naechster Schritt
 
-Nach Schritt 93 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 94 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1108,6 +1119,12 @@ Zusaetzlich fuer Schritt 93 manuell pruefen: Travel `Ofertat` zeigt das
 `MapPin`-Icon direkt neben der orangefarbenen Stadt-/Destination-Zeile; die
 alte separate Adresszeile mit Icon ist nicht mehr sichtbar; Zentrum- und
 Strand/See-Distanz bleiben sichtbar; `Hotels`-Tab bleibt unveraendert.
+
+Zusaetzlich fuer Schritt 94 manuell pruefen: App frisch laden und Travel
+`Ofertat` direkt oeffnen; waehrend Restaurant-/Travel-Daten noch laden, soll
+`Daten werden geladen ...` statt `Noch keine Angebote` erscheinen; nach dem
+Laden soll die Oferta-Card normal erscheinen; echte Empty-State-Anzeige nur bei
+wirklich fehlenden Offers nach abgeschlossenem Laden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

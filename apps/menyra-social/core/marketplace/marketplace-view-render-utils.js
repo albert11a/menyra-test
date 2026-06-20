@@ -1565,7 +1565,6 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
   const reviewsCount = Number(record.reviewsCount ?? record.reviewCount ?? record.ratingsCount ?? 0);
   const displayReviewsCount = Number.isFinite(reviewsCount) && reviewsCount > 0 ? reviewsCount : 0;
   const destination = getTravelOfferDestinationLabel(record);
-  const address = getBusinessLocationLabel(record);
   const distanceCenter = getHotelDistanceCenter(record);
   const distanceBeach = getHotelDistanceBeach(record);
   const features = getHotelFeatureChips(record).slice(0, 3);
@@ -1997,6 +1996,9 @@ function renderTravelView({ state, dataLoaded, section, deps } = {}) {
   const visibleItems = filteredItems.slice(0, LIST_LIMIT);
   const activeTab = hasDestination ? travel.activeTab : "offers";
   const restaurantsLoaded = dataLoaded?.restaurants === true;
+  const isOffersTab = activeTab !== "map" && activeTab !== "hotels";
+  const hasVisibleOfferRecords = isOffersTab && buildTravelOfferRecords(visibleItems).length > 0;
+  const shouldShowOffersLoading = isOffersTab && !restaurantsLoaded && !hasVisibleOfferRecords;
   const content = activeTab === "map"
     ? renderTravelMap(visibleItems, deps)
     : (activeTab === "hotels" ? renderTravelHotels(visibleItems, deps) : renderTravelOffers(visibleItems, deps));
@@ -2007,7 +2009,9 @@ function renderTravelView({ state, dataLoaded, section, deps } = {}) {
       <div id="travelBenko" data-travel-benko style="margin-top:-1.75rem; border-top-left-radius:2.5rem; border-top-right-radius:2.5rem; background:#f8fafc; padding:2rem 1.5rem 6.5rem;">
         ${renderTravelTabs({ activeTab, hasDestination, hotelCount: filteredItems.length, deps })}
         <div class="mt-5">
-          ${restaurantsLoaded || allItems.length ? content : renderDataLoadingState(section, deps)}
+          ${shouldShowOffersLoading
+            ? renderDataLoadingState(section, deps)
+            : (restaurantsLoaded || allItems.length ? content : renderDataLoadingState(section, deps))}
         </div>
       </div>
     </section>
