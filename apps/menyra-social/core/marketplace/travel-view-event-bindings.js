@@ -407,7 +407,54 @@ export function bindTravelViewEvents({
         return true;
       }
     } catch {}
+    try {
+      const input = doc.createElement("input");
+      input.value = value;
+      input.setAttribute("readonly", "readonly");
+      input.style.position = "fixed";
+      input.style.left = "-9999px";
+      input.style.opacity = "0";
+      doc.body?.appendChild(input);
+      input.select();
+      const copied = doc.execCommand?.("copy") === true;
+      input.remove();
+      return copied;
+    } catch {}
     return false;
+  };
+  const showTravelOfferToast = (card, message = "") => {
+    const toast = card?.querySelector?.("[data-travel-offer-toast]");
+    const text = cleanText(message);
+    if (!toast || !text) return;
+    toast.textContent = text;
+    toast.classList.remove("hidden");
+    toast.classList.add("flex");
+    if (card.__travelOfferToastTimer) {
+      try { win.clearTimeout(card.__travelOfferToastTimer); } catch {}
+    }
+    card.__travelOfferToastTimer = win.setTimeout?.(() => {
+      toast.classList.add("hidden");
+      toast.classList.remove("flex");
+      card.__travelOfferToastTimer = null;
+    }, 2500);
+  };
+  const setTravelOfferModalOpen = (card, open = false) => {
+    const modal = card?.querySelector?.("[data-travel-offer-modal]");
+    if (!modal) return;
+    modal.classList.toggle("hidden", !open);
+    modal.classList.toggle("flex", !!open);
+    modal.setAttribute("aria-hidden", open ? "false" : "true");
+    if (!open) return;
+    const form = card.querySelector("[data-travel-offer-booking-form]");
+    const success = card.querySelector("[data-travel-offer-booking-success]");
+    if (form) form.classList.remove("hidden");
+    if (success) success.classList.add("hidden");
+    const nameInput = card.querySelector("[data-travel-offer-booking-name]");
+    if (typeof win?.setTimeout === "function") {
+      win.setTimeout(() => {
+        try { nameInput?.focus?.({ preventScroll: true }); } catch {}
+      }, 0);
+    }
   };
   const scrollTravelInputIntoView = () => {
     const input = doc.getElementById("travelDestinationInput");
@@ -663,7 +710,49 @@ export function bindTravelViewEvents({
     btn.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      void copyTravelHotelProfileUrl(btn.getAttribute("data-travel-hotel-share") || "");
+      void copyTravelHotelProfileUrl(btn.getAttribute("data-travel-hotel-share") || "").then((success) => {
+        const offerCard = btn.closest?.("[data-travel-offer-card]");
+        if (!offerCard) return;
+        showTravelOfferToast(
+          offerCard,
+          success ? "Angebots-Link kopiert! Ideal fuer Instagram." : "Link konnte nicht kopiert werden."
+        );
+      });
     });
+  });
+
+  doc.querySelectorAll("[data-travel-offer-card]").forEach((card) => {
+    if (!markBound(card, "OfferCard")) return;
+    card.querySelectorAll("[data-travel-offer-details]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setTravelOfferModalOpen(card, true);
+      });
+    });
+    card.querySelectorAll("[data-travel-offer-close]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setTravelOfferModalOpen(card, false);
+      });
+    });
+    const form = card.querySelector("[data-travel-offer-booking-form]");
+    if (form) {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const nameValue = cleanText(card.querySelector("[data-travel-offer-booking-name]")?.value || "");
+        const phoneValue = cleanText(card.querySelector("[data-travel-offer-booking-phone]")?.value || "");
+        if (!nameValue || !phoneValue) {
+          showTravelOfferToast(card, "Ju lutem plotësoni të gjitha fushat.");
+          return;
+        }
+        const success = card.querySelector("[data-travel-offer-booking-success]");
+        form.classList.add("hidden");
+        if (success) success.classList.remove("hidden");
+        showTravelOfferToast(card, "Kërkesa u dërgua me sukses!");
+      });
+    }
   });
 }

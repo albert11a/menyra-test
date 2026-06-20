@@ -726,6 +726,74 @@ function getHotelPriceUnitLabel(record = {}) {
     : "p.P";
 }
 
+function getTravelOfferPriceSuffix(record = {}) {
+  return normalizeHotelPriceUnit(record.priceUnit || record.hotelPriceUnit || record.offerPriceUnit || "") === "total"
+    ? "Totali"
+    : "Për person";
+}
+
+function getTravelOfferBadgeLabel(record = {}) {
+  const raw = cleanText(record.offerBadgeLabel || record.travelOfferBadgeLabel || record.badgeLabel || "Ofertë");
+  const key = normalizeLooseKey(raw);
+  if (!raw || key === "oferta" || key === "oferte") return "Ofertë";
+  return raw;
+}
+
+function getTravelOfferDurationLabel(record = {}) {
+  return cleanText(record.offerDurationLabel || record.nightsDaysLabel || record.durationLabel || "");
+}
+
+function getTravelOfferDestinationLabel(record = {}) {
+  return cleanText(
+    record.offerDestination
+    || record.destination
+    || record.travelDestination
+    || record.city
+    || record.locationCity
+    || record.primaryCity
+    || getBusinessLocationLabel(record)
+  );
+}
+
+function getTravelOfferDescription(record = {}) {
+  return cleanText(
+    record.offerText
+    || record.offerDescription
+    || record.text
+    || record.description
+    || record.bio
+    || record.about
+    || ""
+  );
+}
+
+function collectTravelOfferDetailList(record = {}) {
+  const rawItems = [
+    record.offerDetails,
+    record.offerDetailItems,
+    record.includedServices,
+    record.inclusions,
+    record.packageIncludes,
+    record.includes
+  ];
+  const details = [];
+  rawItems.forEach((value) => {
+    if (Array.isArray(value)) {
+      value.map(cleanText).filter(Boolean).forEach((entry) => {
+        if (!details.includes(entry)) details.push(entry);
+      });
+      return;
+    }
+    if (typeof value === "string") {
+      collectStringList(value).forEach((entry) => {
+        if (!details.includes(entry)) details.push(entry);
+      });
+    }
+  });
+  if (details.length) return details.slice(0, 8);
+  return getHotelFeatureChips(record).slice(0, 6);
+}
+
 function getHotelFeatureChips(record = {}) {
   if (record.__travelOffer === true) {
     const travelFeatures = [
@@ -1484,6 +1552,283 @@ function renderTravelHotelCard(record = {}, deps = {}) {
   `;
 }
 
+function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  const cardIcon = (name, className) => renderRestaurantCardIcon(name, className, deps);
+  const name = getBusinessName(record);
+  const id = getBusinessId(record);
+  const coverImages = getBusinessCoverImages(record, deps);
+  const firstCoverImage = coverImages[0] || deps.placeholderImage || "";
+  const logoImage = getBusinessImage(record, deps);
+  const rating = getBusinessRating(record) || "0.0";
+  const reviewsCount = Number(record.reviewsCount ?? record.reviewCount ?? record.ratingsCount ?? 0);
+  const displayReviewsCount = Number.isFinite(reviewsCount) && reviewsCount > 0 ? reviewsCount : 0;
+  const destination = getTravelOfferDestinationLabel(record);
+  const address = getBusinessLocationLabel(record);
+  const distanceCenter = getHotelDistanceCenter(record);
+  const distanceBeach = getHotelDistanceBeach(record);
+  const features = getHotelFeatureChips(record).slice(0, 3);
+  const details = collectTravelOfferDetailList(record);
+  const description = getTravelOfferDescription(record) || `${name} - ${destination || address}`;
+  const startingPrice = getHotelStartingPrice(record);
+  const priceSuffix = getTravelOfferPriceSuffix(record);
+  const badgeLabel = getTravelOfferBadgeLabel(record);
+  const durationText = getTravelOfferDurationLabel(record);
+  const priceHeadline = durationText || badgeLabel || "Ofertë";
+  const isLiked = record.isLiked === true || record.liked === true || record.favorite === true || record.favorited === true;
+
+  return `
+    <article
+      data-travel-hotel-card="${escapeHtml(id)}"
+      data-travel-offer-card="${escapeHtml(record.__travelOfferId || record.offerId || id)}"
+      data-travel-hotel-image-index="0"
+      aria-label="${escapeHtml(name)}"
+      class="w-full max-w-[340px] mx-auto bg-white rounded-[28px] overflow-hidden shadow-xl shadow-slate-200 border border-slate-100/60 relative flex flex-col"
+      style="border-radius:28px;border-color:rgba(241,245,249,0.6);"
+    >
+      <div data-travel-offer-toast class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2.5 rounded-full text-[10px] font-semibold shadow-xl z-40 items-center gap-2 max-w-[92%] text-center"></div>
+
+      <div data-travel-hotel-gallery class="h-44 relative overflow-hidden group select-none touch-pan-y" style="touch-action:pan-y;">
+        <img
+          data-travel-hotel-main-image
+          src="${escapeHtml(firstCoverImage)}"
+          alt="${escapeHtml(`${name} Bild 1`)}"
+          loading="lazy"
+          class="w-full h-full object-cover transition-all duration-500 bg-slate-100"
+        />
+        <div class="absolute top-0 inset-x-0 h-12 bg-gradient-to-b from-black/25 to-transparent pointer-events-none"></div>
+
+        ${coverImages.length > 1 ? `
+          <button
+            type="button"
+            data-travel-hotel-image-nav="prev"
+            class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            style="left:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
+            aria-label="Vorheriges Bild"
+          >
+            ${icon("chevron-left", "w-4 h-4")}
+          </button>
+
+          <button
+            type="button"
+            data-travel-hotel-image-nav="next"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
+            style="right:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
+            aria-label="Naechstes Bild"
+          >
+            ${icon("chevron-right", "w-4 h-4")}
+          </button>
+
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+            ${coverImages.map((imageUrl, index) => `
+              <button
+                type="button"
+                data-travel-hotel-dot="${index}"
+                data-travel-hotel-image-src="${escapeHtml(imageUrl)}"
+                class="${index === 0 ? "w-[18px] bg-white shadow-sm" : "w-1.5 bg-white/60"} h-1.5 rounded-full transition-all duration-300"
+                aria-label="Hotelbild ${index + 1}"
+              ></button>
+            `).join("")}
+          </div>
+        ` : `
+          <span data-travel-hotel-dot="0" data-travel-hotel-image-src="${escapeHtml(firstCoverImage)}" class="hidden"></span>
+        `}
+
+        <div class="absolute top-3.5 left-3.5 bg-red-600 text-white shadow-md px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase z-10 border border-red-500">
+          <span>${escapeHtml(badgeLabel)}</span>
+        </div>
+
+        <div class="absolute top-3 right-3 flex gap-1.5 z-10">
+          <button
+            type="button"
+            data-travel-hotel-like="${escapeHtml(id)}"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-rose-500 hover:bg-white transition-all active:scale-95 shadow-sm cursor-pointer"
+            aria-label="Zu Favoriten hinzufuegen"
+          >
+            ${icon("heart", `w-4 h-4 ${isLiked ? "fill-rose-500 text-rose-500" : "text-slate-600"}`)}
+          </button>
+          <button
+            type="button"
+            data-travel-hotel-share="${escapeHtml(id)}"
+            class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 shadow-sm cursor-pointer"
+            title="Teilen"
+            aria-label="Teilen"
+          >
+            ${icon("share-2", "w-3.5 h-3.5")}
+          </button>
+        </div>
+      </div>
+
+      <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5" style="padding-top:3rem;gap:0.875rem;">
+        <div class="absolute -top-10 left-5 z-10" style="top:-2.5rem;left:1.25rem;">
+          <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden" style="width:76px;height:76px;">
+            ${renderImage(logoImage, `${name} Logo`, { ...deps, extraClass: "rounded-full" })}
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <div class="flex text-amber-500">
+              ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
+            </div>
+            <span class="text-[11px] font-bold text-slate-800">${escapeHtml(rating)}</span>
+            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Rezensionen)</span>
+          </div>
+          <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
+          <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5" style="margin-top:0.125rem;">${escapeHtml(destination)}</p>
+        </div>
+
+        <hr class="border-slate-100" />
+
+        <div class="flex flex-col gap-2.5 text-slate-600">
+          <div class="flex items-start gap-3">
+            ${icon("map-pin", "w-4 h-4 text-slate-400 shrink-0 mt-0.5")}
+            <span class="text-[11px] leading-relaxed text-slate-600">${escapeHtml(address)}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            ${cardIcon("navigation", "w-4 h-4 text-slate-400 shrink-0")}
+            <span class="text-[11px] text-slate-600 font-semibold">${escapeHtml(distanceCenter || "Zentrum folgt")}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            ${cardIcon("waves", "w-4 h-4 text-slate-400 shrink-0")}
+            <span class="text-[11px] text-slate-600 font-semibold">${escapeHtml(distanceBeach || "Strand / See folgt")}</span>
+          </div>
+        </div>
+
+        ${features.length ? `
+          <div class="flex flex-wrap gap-1.5 pt-0.5">
+            ${features.map((feature) => `
+              <span class="text-[9px] font-bold bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md border border-slate-100/80">${escapeHtml(feature)}</span>
+            `).join("")}
+          </div>
+        ` : ""}
+
+        <hr class="border-slate-100" />
+
+        <div class="flex items-center justify-between mt-0.5 gap-4">
+          <div class="flex flex-col min-w-0">
+            <span class="text-[9px] uppercase tracking-wider text-rose-600 font-black">${escapeHtml(priceHeadline)}</span>
+            <div class="flex items-baseline gap-0.5">
+              ${startingPrice ? `
+                <span class="text-xl font-black text-slate-900 leading-none">${escapeHtml(startingPrice)}€</span>
+                <span class="text-[9px] text-slate-400 font-bold ml-1 uppercase">${escapeHtml(priceSuffix)}</span>
+              ` : `
+                <span class="text-base font-black text-slate-900 leading-none">Preis folgt</span>
+              `}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            data-travel-offer-details="true"
+            class="flex-1 flex items-center justify-center gap-1 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[130px]"
+            style="max-width:130px;"
+          >
+            <span>Mehr Details</span>
+            ${icon("chevron-right", "w-3.5 h-3.5")}
+          </button>
+        </div>
+      </div>
+
+      <div data-travel-offer-modal class="hidden absolute inset-0 bg-white/98 backdrop-blur-md z-30 flex-col p-4" aria-hidden="true">
+        <div class="flex justify-between items-center mb-3.5">
+          <div class="flex items-center gap-1.5">
+            ${icon("compass", "w-4 h-4 text-slate-900")}
+            <span class="font-extrabold text-xs text-slate-900 uppercase tracking-wider">Detajet e Ofertës</span>
+          </div>
+          <button
+            type="button"
+            data-travel-offer-close="true"
+            class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            aria-label="Schliessen"
+          >
+            ${icon("x", "w-3.5 h-3.5")}
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto flex flex-col gap-4 pr-1 no-scrollbar">
+          <div class="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <div class="w-10 h-10 rounded-full border border-slate-100 shadow-sm overflow-hidden bg-white shrink-0">
+              ${renderImage(logoImage, `${name} Logo`, { ...deps, extraClass: "rounded-full" })}
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-extrabold text-xs text-slate-900 truncate">${escapeHtml(name)}</h3>
+              <p class="text-[9px] text-amber-600 font-semibold uppercase truncate">${escapeHtml(destination)}</p>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-slate-600 leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+            <p class="font-extrabold text-slate-800 text-[10px] uppercase tracking-wider mb-1">Përshkrimi (Beschreibung)</p>
+            ${escapeHtml(description)}
+          </div>
+
+          ${details.length ? `
+            <div class="flex flex-col gap-2">
+              <h4 class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Çfarë përfshihet (Inklusive):</h4>
+              <div class="flex flex-col gap-1.5 pl-1">
+                ${details.map((detail) => `
+                  <div class="flex items-start gap-2 text-[10px] text-slate-700">
+                    ${icon("check-circle-2", "w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5")}
+                    <span>${escapeHtml(detail)}</span>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          ` : ""}
+
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 mt-1">
+            <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-800 mb-2.5 flex items-center gap-1">
+              ${icon("calendar", "w-3.5 h-3.5 text-rose-500")}
+              Rezervo Online (Anfragen)
+            </h4>
+
+            <div data-travel-offer-booking-success class="hidden bg-emerald-50 text-emerald-800 text-center p-3 rounded-lg border border-emerald-200 text-[10px] font-semibold">
+              Sukses! Kërkesa juaj u dërgua. Ju faleminderit!
+            </div>
+
+            <form data-travel-offer-booking-form class="flex flex-col gap-2">
+              <input
+                type="text"
+                data-travel-offer-booking-name
+                placeholder="Emri e Mbiemri (Name)"
+                class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:border-slate-900 transition-colors"
+              />
+              <input
+                type="tel"
+                data-travel-offer-booking-phone
+                placeholder="Numri i telefonit (Telefonnummer)"
+                class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:border-slate-900 transition-colors"
+              />
+              <button
+                type="submit"
+                class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer"
+              >
+                ${icon("send", "w-3 h-3")}
+                Dërgo Kërkesën (Anfrage senden)
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between mt-2 gap-3">
+          <div class="flex flex-col min-w-0">
+            <span class="text-[8px] uppercase tracking-wider text-slate-400 font-bold">${priceSuffix === "Totali" ? "Total" : "Total për person"}</span>
+            <span class="text-sm font-black text-slate-900 truncate">${startingPrice ? `${escapeHtml(startingPrice)} €` : "Preis folgt"}${durationText ? ` (${escapeHtml(durationText)})` : ""}</span>
+          </div>
+          <button
+            type="button"
+            data-travel-offer-close="true"
+            class="text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold px-3 py-1.5 rounded-lg transition-all shrink-0"
+          >
+            Mbyll (Schließen)
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function getTravelOfferItems(record = {}) {
   const rawItems = [
     ...(Array.isArray(record.publicOffers) ? record.publicOffers : []),
@@ -1514,6 +1859,7 @@ function collectTravelOfferFeatures(offer = {}) {
 
 function buildTravelOfferRecord(hotel = {}, offer = {}, index = 0) {
   const features = collectTravelOfferFeatures(offer);
+  const offerDetails = collectTravelOfferDetailList(offer);
   const imageUrl = cleanText(offer.imageUrl || offer.offerImageUrl || offer.titleImageUrl || offer.coverImageUrl || "");
   const offerId = cleanText(offer.id || offer.offerId || offer._id || `offer_${index}`);
   return {
@@ -1523,6 +1869,10 @@ function buildTravelOfferRecord(hotel = {}, offer = {}, index = 0) {
     offerId,
     offerTitle: cleanText(offer.title || offer.name || ""),
     offerText: cleanText(offer.text || offer.description || ""),
+    offerDescription: cleanText(offer.offerDescription || offer.description || offer.text || ""),
+    offerDestination: cleanText(offer.offerDestination || offer.destination || offer.travelDestination || "") || hotel.offerDestination || hotel.destination,
+    offerDetails,
+    includedServices: offerDetails,
     offerBadgeLabel: cleanText(offer.offerBadgeLabel || offer.travelOfferBadgeLabel || offer.badgeLabel || "OFERTA"),
     offerDurationLabel: cleanText(offer.offerDurationLabel || offer.nightsDaysLabel || offer.durationLabel || ""),
     offerImageUrl: imageUrl,
@@ -1561,7 +1911,7 @@ function renderTravelOffers(items = [], deps = {}) {
   }
   return `
     <div class="space-y-4">
-      ${displayItems.map((record) => renderTravelHotelCard(record, deps)).join("")}
+      ${displayItems.map((record) => renderTravelOfertaPremiumCard(record, deps)).join("")}
     </div>
   `;
 }
