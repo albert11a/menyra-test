@@ -429,10 +429,41 @@ export function createSessionDataRuntimeController({
   function hasKnownTravelOffersTruth(record = {}) {
     const truthState = String(record?.offersTruthState || "").trim().toLowerCase();
     if (truthState === "seeded" || truthState === "knownempty" || truthState === "known-empty") return true;
-    if (Array.isArray(record?.publicOffers) || Array.isArray(record?.travelOffers)) return true;
+    if (Array.isArray(record?.publicOffers) || Array.isArray(record?.travelOffers) || Array.isArray(record?.offerItems)) return true;
     if (Number.isFinite(Number(record?.publicOffersCount)) || Number.isFinite(Number(record?.travelOffersCount))) return true;
     if (typeof record?.hasTravelOffers === "boolean") return true;
     return false;
+  }
+
+  function hasTravelOfferPayload(record = {}) {
+    return Array.isArray(record?.publicOffers) || Array.isArray(record?.travelOffers) || Array.isArray(record?.offerItems);
+  }
+
+  function getRestaurantIdentityId(record = {}) {
+    return String(record?.id || record?.restaurantId || record?.canonicalRestaurantId || "").trim();
+  }
+
+  function preserveKnownTravelOffersTruth(incoming = {}, previous = {}) {
+    if (!incoming || typeof incoming !== "object") return incoming;
+    if (!isTravelBusinessRecord(incoming)) return incoming;
+    if (hasTravelOfferPayload(incoming)) return incoming;
+    if (!hasTravelOfferPayload(previous)) return incoming;
+
+    const next = { ...incoming };
+    [
+      "publicOffers",
+      "travelOffers",
+      "offerItems",
+      "publicOffersCount",
+      "travelOffersCount",
+      "hasTravelOffers",
+      "offersTruthState"
+    ].forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(previous, key)) {
+        next[key] = previous[key];
+      }
+    });
+    return next;
   }
 
   function isRestaurantTruthIncomplete(record = {}) {
@@ -1209,7 +1240,15 @@ export function createSessionDataRuntimeController({
     };
     const applyRestaurants = (list = [], { shouldWriteCache = false } = {}) => {
       if (!Array.isArray(list)) return;
-      const canonicalList = filterCanonicalRestaurants(list);
+      const previousById = new Map();
+      (Array.isArray(state.restaurants) ? state.restaurants : []).forEach((record) => {
+        const id = getRestaurantIdentityId(record);
+        if (id) previousById.set(id, record);
+      });
+      const canonicalList = filterCanonicalRestaurants(list).map((record) => {
+        const id = getRestaurantIdentityId(record);
+        return id ? preserveKnownTravelOffersTruth(record, previousById.get(id) || {}) : record;
+      });
       if (shouldWriteCache) writeCacheFn(cacheKeys.restaurants, canonicalList);
       state.restaurants = canonicalList;
       if (canonicalList.length && Array.isArray(state.bootstrapRestaurantPreview) && state.bootstrapRestaurantPreview.length) {
