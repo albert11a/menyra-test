@@ -47,7 +47,7 @@ const F=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
       </span>
     </div>
   `}function at(e={},t={}){const a=t.escapeHtml,s=(b,w)=>B(b,w,t),n=e.record||{},i=e.ad||{},l=z(n),o=j(n),c=r(i.title||o),p=r(i.category||de(n)||n.__marketplaceTypeLabel||"RESTAURANT").toUpperCase(),f=I(n)||"0.0",d=r(i.priceSegment||fe(n)||"€€ - €€€"),u=r(i.imageUrl||G(n,t)),m=typeof t.getOptimizedImageUrl=="function"?r(t.getOptimizedImageUrl(u,"large")):u,k=Math.max(0,Math.min(100,Number(i.cropX??50)||50)),g=Math.max(0,Math.min(100,Number(i.cropY??50)||50)),h=i.bestChoiceBadgeEnabled!==!1,y=i.deliveryBadgeEnabled!==!1,$=i.woltEnabled!==!1;return`
-    <article class="w-72 h-[26rem] flex-shrink-0 bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden border border-slate-100 snap-start relative group" style="width:min(18rem, calc(100vw - 4.5rem));height:26rem;flex:0 0 auto;border-radius:1.5rem;border:1px solid #f1f5f9;background:#fff;">
+    <article class="w-72 h-[24rem] flex-shrink-0 bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden border border-slate-100 snap-start relative group" style="width:min(18rem, calc(100vw - 4.5rem));height:24rem;flex:0 0 auto;border-radius:1.5rem;border:1px solid #f1f5f9;background:#fff;">
       <div class="relative h-44 flex-shrink-0 overflow-hidden bg-slate-100" style="height:11rem;flex:0 0 auto;background:#f1f5f9;">
         ${m?`
           <img
@@ -75,23 +75,23 @@ const F=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
       </div>
 
       <div class="px-5 flex-1 flex flex-col bg-white" style="padding-left:1.25rem;padding-right:1.25rem;flex:1 1 0%;display:flex;flex-direction:column;background:#fff;">
-        <div class="flex-1 flex flex-col justify-center pt-5 pb-5" style="flex:1 1 0%;display:flex;flex-direction:column;justify-content:center;padding-top:1.25rem;padding-bottom:1.25rem;min-height:0;">
+        <div class="flex-1 flex flex-col justify-center pt-4 pb-4" style="flex:1 1 0%;display:flex;flex-direction:column;justify-content:center;padding-top:1rem;padding-bottom:1rem;min-height:0;">
           <span class="text-[10px] font-extrabold text-[#c5a059] tracking-widest uppercase block mb-0.5 line-clamp-1" style="font-size:10px;font-weight:800;color:#c5a059;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.125rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a(p)}</span>
           <h3 class="text-xl font-extrabold text-slate-800 line-clamp-1 group-hover:text-slate-900 transition-colors duration-200" style="font-size:1.25rem;line-height:1.75rem;font-weight:800;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a(c)}</h3>
         </div>
 
-        <div class="flex items-center justify-between text-[11px] text-slate-600 font-semibold border-t border-slate-100 pt-5 pb-10" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#475569;font-weight:600;border-top:1px solid #f1f5f9;padding-top:1.25rem;padding-bottom:2.5rem;gap:0.75rem;">
-          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50" style="width:100px;height:28px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.375rem;min-width:0;">
-            ${s("star","w-3.5 h-3.5 text-amber-500 fill-amber-500 flex-shrink-0")}
+        <div class="flex items-center justify-between text-[10px] text-slate-600 font-semibold border-t border-slate-100 pt-3.5 pb-5" style="display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#475569;font-weight:600;border-top:1px solid #f1f5f9;padding-top:0.875rem;padding-bottom:1.25rem;gap:0.625rem;">
+          <div class="flex items-center justify-center gap-1 bg-slate-50 rounded-md border border-slate-100/50" style="width:88px;height:24px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.25rem;min-width:0;">
+            ${s("star","w-3 h-3 text-amber-500 fill-amber-500 flex-shrink-0")}
             <span class="font-bold text-slate-800">${a(f)}</span>
           </div>
-          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50" style="width:100px;height:28px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.375rem;min-width:0;">
-            ${s("utensils","w-3.5 h-3.5 text-slate-400 flex-shrink-0")}
-            <span class="font-bold text-[11px] truncate" style="font-size:11px;font-weight:700;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a(d)}</span>
+          <div class="flex items-center justify-center gap-1 bg-slate-50 rounded-md border border-slate-100/50" style="width:88px;height:24px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.25rem;min-width:0;">
+            ${s("utensils","w-3 h-3 text-slate-400 flex-shrink-0")}
+            <span class="font-bold text-[10px] truncate" style="font-size:10px;font-weight:700;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a(d)}</span>
           </div>
         </div>
 
-        <div class="pb-9" style="padding-bottom:2.25rem;">
+        <div class="pb-6" style="padding-bottom:1.5rem;">
           <button type="button" data-marketplace-open-business="${a(l)}" data-tab="profile" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]" style="width:100%;background:#0f172a;color:#fff;font-weight:700;padding-top:0.875rem;padding-bottom:0.875rem;border-radius:0.75rem;font-size:0.75rem;line-height:1rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
             ${s("user","w-3.5 h-3.5 text-slate-300")}
             <span>Profil ansehen</span>
@@ -293,8 +293,8 @@ const F=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
     </div>
   `}function rt({items:e=[],adItems:t=[],section:a={},deps:s={}}={}){const n=s.escapeHtml,i=s.icon;return e.length?`
     ${t.length?`
-      <div class="max-w-5xl mx-auto w-full space-y-5 mb-8" style="max-width:64rem;margin-left:auto;margin-right:auto;width:100%;margin-bottom:2rem;">
-        <div class="flex items-center justify-between px-3">
+      <div class="w-full space-y-5 mb-6" style="width:100%;margin-bottom:1.5rem;">
+        <div class="flex items-center justify-between px-0" style="padding-left:0;padding-right:0;">
           <div>
             <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
             <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${n("Premium Partner in deiner Umgebung")}</p>
@@ -309,7 +309,7 @@ const F=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
           </div>
         </div>
         <div class="relative">
-          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-6 pt-2 px-3 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;gap:1.5rem;overflow-x:auto;padding:0.5rem 0.75rem 1.5rem;scroll-snap-type:x mandatory;scroll-behavior:smooth;">
+          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-5 pt-2 px-0 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;gap:1.5rem;overflow-x:auto;padding:0.5rem 0 1.25rem;scroll-snap-type:x mandatory;scroll-behavior:smooth;">
             ${t.map(l=>at(l,s)).join("")}
           </div>
         </div>

@@ -1095,6 +1095,16 @@ Last updated: 2026-06-21
   neuen Tailwind-Arbitrary-Klassen bereits in der statischen CSS enthalten
   sind. Card-Struktur, Ads-Datenlogik, Heart-Freigabe, grosse Restaurant-Cards,
   QR, Cart, Order, Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 113 ist abgeschlossen: Die Restaurant-Premium-Ad-Card fluchtet links
+  mit den Restaurant-/Cafe-Cards darunter und wurde ueber kleinere Rating-/
+  Preisspanne-Pills kompakter gemacht.
+- Bewertung von Schritt 113: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 113:
+  Der Ads-Wrapper und der horizontale Track haben keine zusaetzliche linke
+  Einrueckung mehr; die Ad-Card ist von `26rem` auf `24rem` reduziert und die
+  beiden Info-Pills sind von `100px x 28px` auf `88px x 24px` verkleinert.
+  Ads-Datenlogik, Heart-Freigabe, grosse Restaurant-Cards, QR, Cart, Order,
+  Routing, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1206,6 +1216,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step110-ads-array-timestamp-fix.md](./mnyra-step110-ads-array-timestamp-fix.md)
 - Referenz: [docs/mnyra-step111-heart-ads-approval-timestamp-fix.md](./mnyra-step111-heart-ads-approval-timestamp-fix.md)
 - Referenz: [docs/mnyra-step112-restaurant-ads-card-fit.md](./mnyra-step112-restaurant-ads-card-fit.md)
+- Referenz: [docs/mnyra-step113-restaurant-ads-card-alignment-compact.md](./mnyra-step113-restaurant-ads-card-alignment-compact.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1231,7 +1242,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 112 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 113 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1443,6 +1454,13 @@ Ad oeffnen und pruefen, dass die Highlight-Ad-Card in der horizontalen
 Swipe-Zeile sauber sitzt, auf Mobile nicht zu breit ist, Bild, `Best Choice`,
 `For Delivery`, `WOLT`, Rating, Preisspanne und `Profil ansehen` nicht
 ueberlappen und die grossen Restaurant-/Cafe-Cards unveraendert wirken.
+
+Zusaetzlich fuer Schritt 113 manuell pruefen: Restaurant-Tab mit freigegebener
+Ad oeffnen und pruefen, dass die erste Highlight-Ad links exakt mit den
+Restaurant-/Cafe-Cards darunter fluchtet. Auf Mobile horizontal swipen und
+pruefen, dass die erste Card nicht mehr zusaetzlich eingerueckt startet.
+Bewertung und Preisspanne sollen kleiner wirken, nicht ueberlaufen und die
+kompaktere Ad-Card soll weiterhin alle Inhalte sauber ohne Ueberlappung zeigen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
