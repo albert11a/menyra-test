@@ -919,6 +919,12 @@ function renderRestaurantCardIcon(name = "", className = "", deps = {}) {
   if (name === "utensils") {
     return `<svg ${svgAttrs}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg>`;
   }
+  if (name === "star") {
+    return `<svg ${svgAttrs}><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.751a.53.53 0 0 1 .294.904l-3.738 3.644a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.393 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.155 9.79a.53.53 0 0 1 .294-.906l5.165-.75a2.12 2.12 0 0 0 1.596-1.16z"></path></svg>`;
+  }
+  if (name === "user") {
+    return `<svg ${svgAttrs}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+  }
   if (name === "parking" || name === "square-parking") {
     return `<svg ${svgAttrs}><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 17V7h5a3 3 0 0 1 0 6H9"></path></svg>`;
   }
@@ -1035,9 +1041,41 @@ function collectApprovedRestaurantAdCards(items = []) {
     .slice(0, BEST_LIMIT);
 }
 
+function renderRestaurantAdImageFallback(record = {}, title = "", deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const logoImage = getBusinessImage(record, deps);
+  const fallbackLabel = cleanText(title || getBusinessName(record) || "Premium Highlight");
+  const categoryLabel = cleanText(record.__marketplaceTypeLabel || "Restaurant");
+  if (logoImage) {
+    return `
+      <div class="w-full h-full bg-[#fdfdfd] flex flex-col items-center justify-center p-4 border-b border-slate-100" style="background:#fdfdfd;padding:1rem;border-bottom:1px solid #f1f5f9;">
+        <img
+          src="${escapeHtml(logoImage)}"
+          alt="${escapeHtml(`${fallbackLabel} Logo`)}"
+          loading="lazy"
+          decoding="async"
+          class="w-28 h-28 rounded-full border border-slate-100 bg-white object-contain"
+          style="width:7rem;height:7rem;border-radius:9999px;border:1px solid #f1f5f9;background:#fff;object-fit:contain;padding:0.65rem;"
+        />
+        <span class="text-[10px] font-black tracking-widest text-[#a37f4c] uppercase mt-2 line-clamp-1" style="font-size:10px;font-weight:900;letter-spacing:0.1em;color:#a37f4c;text-transform:uppercase;margin-top:0.5rem;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          ${escapeHtml(fallbackLabel)}
+        </span>
+      </div>
+    `;
+  }
+  return `
+    <div class="w-full h-full bg-[#fdfdfd] flex flex-col items-center justify-center p-4 border-b border-slate-100" style="background:#fdfdfd;padding:1rem;border-bottom:1px solid #f1f5f9;">
+      ${renderRestaurantCardIcon("utensils", "w-12 h-12 text-amber-500 mb-1.5", deps)}
+      <span class="text-[10px] font-black tracking-widest text-[#a37f4c] uppercase mt-1" style="font-size:10px;font-weight:900;letter-spacing:0.1em;color:#a37f4c;text-transform:uppercase;margin-top:0.25rem;">
+        ${escapeHtml(categoryLabel)}
+      </span>
+    </div>
+  `;
+}
+
 function renderRestaurantAdCard(entry = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
-  const icon = deps.icon;
+  const cardIcon = (name, className) => renderRestaurantCardIcon(name, className, deps);
   const record = entry.record || {};
   const ad = entry.ad || {};
   const id = getBusinessId(record);
@@ -1056,8 +1094,8 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
   const showDelivery = ad.deliveryBadgeEnabled !== false;
   const showWolt = ad.woltEnabled !== false;
   return `
-    <article class="w-72 h-[26rem] flex-shrink-0 bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden border border-slate-100 snap-start relative group">
-      <div class="relative h-44 flex-shrink-0 overflow-hidden bg-slate-100">
+    <article class="w-72 h-[26rem] flex-shrink-0 bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden border border-slate-100 snap-start relative group" style="width:min(18rem, calc(100vw - 4.5rem));height:26rem;flex:0 0 auto;border-radius:1.5rem;border:1px solid #f1f5f9;background:#fff;">
+      <div class="relative h-44 flex-shrink-0 overflow-hidden bg-slate-100" style="height:11rem;flex:0 0 auto;background:#f1f5f9;">
         ${image ? `
           <img
             src="${escapeHtml(image)}"
@@ -1065,44 +1103,44 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
             loading="lazy"
             decoding="async"
             class="w-full h-full object-cover"
-            style="object-position:${cropX}% ${cropY}%;"
+            style="width:100%;height:100%;object-fit:cover;object-position:${cropX}% ${cropY}%;"
           />
-        ` : renderImage(getBusinessCoverImage(record, deps), title, deps)}
+        ` : renderRestaurantAdImageFallback(record, title, deps)}
 
         ${(showBestChoice || showDelivery) ? `
-          <div class="absolute top-3 right-3 flex flex-col gap-1 w-[82px] z-10">
-            ${showBestChoice ? `<span class="bg-[#c5a059] text-white text-[6.5px] font-black uppercase tracking-wider h-[18px] flex items-center justify-center rounded-md border border-white/5 shadow-none">Best Choice</span>` : ""}
-            ${showDelivery ? `<span class="bg-[#1f5f4c] text-white text-[6.5px] font-black uppercase tracking-wider h-[18px] flex items-center justify-center rounded-md border border-white/5 shadow-none">For Delivery</span>` : ""}
+          <div class="absolute top-3 right-3 flex flex-col gap-1 w-[82px] z-10" style="top:0.75rem;right:0.75rem;width:82px;gap:0.25rem;z-index:10;">
+            ${showBestChoice ? `<span class="bg-[#c5a059] text-white text-[6.5px] font-black uppercase tracking-wider h-[18px] flex items-center justify-center rounded-md border border-white/5 shadow-none" style="height:18px;border-radius:0.375rem;background:#c5a059;color:#fff;font-size:6.5px;font-weight:900;letter-spacing:0.05em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.05);">Best Choice</span>` : ""}
+            ${showDelivery ? `<span class="bg-[#1f5f4c] text-white text-[6.5px] font-black uppercase tracking-wider h-[18px] flex items-center justify-center rounded-md border border-white/5 shadow-none" style="height:18px;border-radius:0.375rem;background:#1f5f4c;color:#fff;font-size:6.5px;font-weight:900;letter-spacing:0.05em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.05);">For Delivery</span>` : ""}
           </div>
         ` : ""}
 
         ${showWolt ? `
-          <div class="absolute bottom-4 left-4 bg-[#00b4d8] text-white h-[25px] px-3.5 rounded-md flex items-center justify-center border border-cyan-400/20 z-10 shadow-none">
-            <span class="font-sans font-black tracking-widest text-[9px] uppercase">WOLT</span>
+          <div class="absolute bottom-4 left-4 bg-[#00b4d8] text-white h-[25px] px-3.5 rounded-md flex items-center justify-center border border-cyan-400/20 z-10 shadow-none" style="bottom:1rem;left:1rem;height:25px;padding-left:0.875rem;padding-right:0.875rem;border-radius:0.375rem;background:#00b4d8;color:#fff;border:1px solid rgba(34,211,238,0.2);z-index:10;">
+            <span class="font-sans font-black tracking-widest text-[9px] uppercase" style="font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;">WOLT</span>
           </div>
         ` : ""}
       </div>
 
-      <div class="px-5 flex-1 flex flex-col bg-white">
-        <div class="flex-1 flex flex-col justify-center pt-5 pb-5">
-          <span class="text-[10px] font-extrabold text-[#c5a059] tracking-widest uppercase block mb-0.5">${escapeHtml(category)}</span>
-          <h3 class="text-xl font-extrabold text-slate-800 line-clamp-1 group-hover:text-slate-900 transition-colors duration-200">${escapeHtml(title)}</h3>
+      <div class="px-5 flex-1 flex flex-col bg-white" style="padding-left:1.25rem;padding-right:1.25rem;flex:1 1 0%;display:flex;flex-direction:column;background:#fff;">
+        <div class="flex-1 flex flex-col justify-center pt-5 pb-5" style="flex:1 1 0%;display:flex;flex-direction:column;justify-content:center;padding-top:1.25rem;padding-bottom:1.25rem;min-height:0;">
+          <span class="text-[10px] font-extrabold text-[#c5a059] tracking-widest uppercase block mb-0.5 line-clamp-1" style="font-size:10px;font-weight:800;color:#c5a059;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.125rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(category)}</span>
+          <h3 class="text-xl font-extrabold text-slate-800 line-clamp-1 group-hover:text-slate-900 transition-colors duration-200" style="font-size:1.25rem;line-height:1.75rem;font-weight:800;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(title)}</h3>
         </div>
 
-        <div class="flex items-center justify-between text-[11px] text-slate-600 font-semibold border-t border-slate-100 pt-5 pb-10">
-          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50">
-            ${icon("star", "w-3.5 h-3.5 text-amber-500 fill-amber-500 flex-shrink-0")}
+        <div class="flex items-center justify-between text-[11px] text-slate-600 font-semibold border-t border-slate-100 pt-5 pb-10" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#475569;font-weight:600;border-top:1px solid #f1f5f9;padding-top:1.25rem;padding-bottom:2.5rem;gap:0.75rem;">
+          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50" style="width:100px;height:28px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.375rem;min-width:0;">
+            ${cardIcon("star", "w-3.5 h-3.5 text-amber-500 fill-amber-500 flex-shrink-0")}
             <span class="font-bold text-slate-800">${escapeHtml(rating)}</span>
           </div>
-          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50">
-            ${renderRestaurantCardIcon("utensils", "w-3.5 h-3.5 text-slate-400 flex-shrink-0", deps)}
-            <span class="font-bold text-[11px]">${escapeHtml(priceSegment)}</span>
+          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50" style="width:100px;height:28px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.375rem;min-width:0;">
+            ${cardIcon("utensils", "w-3.5 h-3.5 text-slate-400 flex-shrink-0")}
+            <span class="font-bold text-[11px] truncate" style="font-size:11px;font-weight:700;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(priceSegment)}</span>
           </div>
         </div>
 
-        <div class="pb-9">
-          <button type="button" data-marketplace-open-business="${escapeHtml(id)}" data-tab="profile" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
-            ${icon("user", "w-3.5 h-3.5 text-slate-300")}
+        <div class="pb-9" style="padding-bottom:2.25rem;">
+          <button type="button" data-marketplace-open-business="${escapeHtml(id)}" data-tab="profile" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]" style="width:100%;background:#0f172a;color:#fff;font-weight:700;padding-top:0.875rem;padding-bottom:0.875rem;border-radius:0.75rem;font-size:0.75rem;line-height:1rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+            ${cardIcon("user", "w-3.5 h-3.5 text-slate-300")}
             <span>Profil ansehen</span>
           </button>
         </div>
@@ -1409,7 +1447,7 @@ function renderRestaurantsContent({
   }
   return `
     ${adItems.length ? `
-      <div class="max-w-5xl mx-auto w-full space-y-5 mb-8">
+      <div class="max-w-5xl mx-auto w-full space-y-5 mb-8" style="max-width:64rem;margin-left:auto;margin-right:auto;width:100%;margin-bottom:2rem;">
         <div class="flex items-center justify-between px-3">
           <div>
             <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
@@ -1425,7 +1463,7 @@ function renderRestaurantsContent({
           </div>
         </div>
         <div class="relative">
-          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-6 pt-2 px-3 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
+          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-6 pt-2 px-3 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;gap:1.5rem;overflow-x:auto;padding:0.5rem 0.75rem 1.5rem;scroll-snap-type:x mandatory;scroll-behavior:smooth;">
             ${adItems.map((entry) => renderRestaurantAdCard(entry, deps)).join("")}
           </div>
         </div>
