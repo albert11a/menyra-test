@@ -1149,6 +1149,16 @@ Last updated: 2026-06-22
   Dadurch wirkt ein kurzer zweiteiliger Name wie `IN VINO` vorne nicht mehr
   abgeschnitten. Routing, QR, Cart, Order, Menu-Logik, Lead-Farbe, Tabs und
   Profil-Card bleiben unveraendert.
+- Schritt 118 ist abgeschlossen: Der Business-Header nutzt wieder natuerliche
+  Wortabstaende zwischen schwarzem und blauem Namensteil.
+- Bewertung von Schritt 118: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 118:
+  Der Nachfix aus Schritt 117 hatte den schwarzen Namensteil mit `w-full` und
+  `flex-1` zu breit gemacht. Diese kuenstliche Streckung wurde entfernt:
+  kurze Namen wie `IN VINO` stehen wieder normal nah beieinander, waehrend die
+  linke Clip-Reserve fuer kursive Schrift und Ellipsis bei langen vorderen
+  Namen erhalten bleiben. Routing, QR, Cart, Order, Menu-Logik, Lead-Farbe,
+  Tabs und Profil-Card bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1265,6 +1275,7 @@ Last updated: 2026-06-22
 - Referenz: [docs/mnyra-step115-feed-city-source-filter.md](./mnyra-step115-feed-city-source-filter.md)
 - Referenz: [docs/mnyra-step116-business-profile-header-name-color.md](./mnyra-step116-business-profile-header-name-color.md)
 - Referenz: [docs/mnyra-step117-business-header-italic-clip-fix.md](./mnyra-step117-business-header-italic-clip-fix.md)
+- Referenz: [docs/mnyra-step118-business-header-natural-spacing.md](./mnyra-step118-business-header-natural-spacing.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1290,7 +1301,7 @@ Last updated: 2026-06-22
 
 ## Naechster Schritt
 
-Nach Schritt 117 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 118 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1538,6 +1549,13 @@ vergleichbar kurzen zweiteiligen Namen oeffnen und pruefen, dass der schwarze
 vordere Name im Header links nicht mehr angeschnitten wirkt. Danach
 `Beitraege`/`Menue` wechseln und kurz pruefen, dass Header-Icons,
 Name/Kategorien und Profil-Card stabil bleiben.
+
+Zusaetzlich fuer Schritt 118 manuell pruefen: Business-Profil `IN VINO`
+oeffnen und pruefen, dass `IN` und `VINO` normal nah beieinander stehen.
+Einen Namen mit langem vorderen Teil pruefen; dieser soll nicht links
+abgeschnitten werden, sondern bei Platzmangel nur rechts mit Ellipsis gekuerzt
+werden. Danach `Beitraege`/`Menue` wechseln und Header-/Profil-Card-Stabilitaet
+kurz gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -1043,9 +1043,9 @@ import{_ as Dr,n as jc,a as Ld,i as qc,b as yc,c as ih,d as ah,e as fi,f as sh,g
         </div>
       </div>
     `}function st(Ee=Kn()){const ze=jr(),bt=String(Ee?.name||Ee?.restaurantName||Ee?.businessName||"Business").trim()||"Business",Nt=bt.split(/\s+/).filter(Boolean),Kt=String(Nt.length>1?Nt.slice(0,-1).join(" "):Nt[0]||bt).trim(),Jt=Kt&&Kt.length<=5?Kt.toUpperCase():Kt,ft=Nt.length>1?Nt[Nt.length-1]:"Social",Qt=ft.length>10?"tracking-[0.12em]":"tracking-[0.25em]",ln=()=>`
-      <button type="button" data-business-profile-home="true" title="${ne(bt)}" class="block w-full min-w-0 max-w-full text-left active:opacity-90 transition-opacity">
-        <div class="flex items-baseline gap-1.5 min-w-0 w-full max-w-full">
-          <div class="flex-1 min-w-0 pr-2 overflow-visible">
+      <button type="button" data-business-profile-home="true" title="${ne(bt)}" class="inline-block min-w-0 max-w-full text-left active:opacity-90 transition-opacity">
+        <div class="inline-flex items-baseline gap-1.5 min-w-0 max-w-full">
+          <div class="min-w-0 max-w-full overflow-visible" style="flex:0 1 auto;">
             <h1 class="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap ${ze.titleClass} font-black italic tracking-tighter leading-none text-slate-900" style="padding-left:4px;margin-left:-4px;padding-right:4px;">${ne(Jt)}</h1>
           </div>
           <span class="shrink-0 min-w-0 max-w-[44%] overflow-hidden text-ellipsis whitespace-nowrap pl-0.5 ${ze.subtitleClass} font-black text-indigo-600 uppercase ${Qt} mb-[1px]">${ne(ft)}</span>
