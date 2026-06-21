@@ -102,6 +102,10 @@ export function createProfileMenuFocusRenderController(deps = {}) {
     if (isShopMode) return type === "drink" ? tr("menu.variant", "Variante") : tr("menu.product", "Produkt");
     return type === "drink" ? tr("menu.drinkItem", "Getraenk") : tr("menu.foodItem", "Speise");
   };
+  const normalizeBusinessNameColor = (value = "", fallback = "#111827") => {
+    const raw = String(value || "").trim();
+    return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+  };
 
 function resolveMenuSurfaceRestaurantId(profile = null, routePayload = null) {
   return resolveVisiblePublicMenuSurfaceState(state, {
@@ -1103,6 +1107,13 @@ function renderBusinessLandingScreenOne(profile = {}) {
     || "casarita"
   ).trim() || "casarita";
   const businessHeading = businessName.endsWith(".") ? businessName : `${businessName}.`;
+  const businessNameColor = normalizeBusinessNameColor(
+    landing.businessNameColor
+    || profile.businessNameColor
+    || profile.landingBusinessNameColor
+    || "",
+    "#111827"
+  );
   const logoUrl = getOptimizedImageUrl(
     landing.logoUrl
     || profile.avatar
@@ -1170,7 +1181,7 @@ function renderBusinessLandingScreenOne(profile = {}) {
             <div class="rounded-full shadow-sm border border-slate-200 flex items-center justify-center overflow-hidden shrink-0" style="width:48px;height:48px;min-width:48px;min-height:48px;max-width:48px;max-height:48px;flex:0 0 48px;background:#f8fafc;">
               <img src="${escapeHtml(resolvedLogoUrl)}" alt="${escapeHtml(`${businessName} Logo`)}" class="block rounded-full" style="width:100%;height:100%;min-width:100%;min-height:100%;object-fit:cover;object-position:center;max-width:none;max-height:none;" />
             </div>
-            <h2 class="font-black text-left flex items-center" style="font-size:56px;line-height:48px;letter-spacing:-0.05em;color:#111827;">
+            <h2 class="font-black text-left flex items-center" style="font-size:56px;line-height:48px;letter-spacing:-0.05em;color:${escapeHtml(businessNameColor)};">
               ${escapeHtml(businessHeading)}
             </h2>
           </div>
@@ -1339,7 +1350,7 @@ function renderPublicProfileSurface(
   const renderAvatarImage = !!String(avatarUrl || "").trim() && hasAvatarTruth;
   const followersLabel = showIdentityPendingState ? "..." : formatCount(profile.followers);
   const followingLabel = showIdentityPendingState ? "..." : formatCount(profile.following);
-  const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
+  const topPaddingClass = isBusinessProfile ? "pt-2" : "pt-10";
   const followLabel = isFollowing
     ? tr("profile.following", "Following")
     : (hasPendingFollowRequest
@@ -3209,7 +3220,7 @@ function renderProfileView() {
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(isBusiness);
   const topTab = resolveProfilePrimaryTopTab(profile);
-  const topPaddingClass = isBusiness ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
+  const topPaddingClass = isBusiness ? "pt-2" : "pt-10";
   return `
     <div class="app-main-content-safe">
       ${topTab === "profile" || topTab === "menu" ? `

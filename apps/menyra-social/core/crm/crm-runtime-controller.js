@@ -428,11 +428,22 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     return origin ? `${origin}${path}` : path;
   }
 
+  function normalizeLeadBusinessNameColor(value = "", fallback = "#111827") {
+    const raw = String(value || "").trim();
+    return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+  }
+
   function buildLeadLandingScreenOnePayload({
     restaurantId = "",
     base = {}
   } = {}) {
     const businessName = String(base?.name || base?.restaurantName || base?.businessName || "Business").trim() || "Business";
+    const businessNameColor = normalizeLeadBusinessNameColor(
+      base?.businessNameColor
+      || base?.landingBusinessNameColor
+      || base?.landingScreenOne?.businessNameColor
+      || ""
+    );
     const landingSlug = buildLeadLandingSlug(restaurantId, {
       publicSlug: base?.publicSlug || "",
       landingSlug: base?.landingSlug || "",
@@ -452,6 +463,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       restaurantId: String(restaurantId || "").trim(),
       landingSlug,
       businessName,
+      businessNameColor,
       logoUrl: String(base?.logoUrl || base?.logo || "").trim(),
       locationLabel,
       city,
@@ -1584,6 +1596,12 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     restaurantId: safeRestaurantId,
     base: { ...safeBase, landingSlug }
   });
+  const businessNameColor = normalizeLeadBusinessNameColor(
+    safeBase?.businessNameColor
+    || safeBase?.landingBusinessNameColor
+    || landingScreenOne?.businessNameColor
+    || ""
+  );
   const titleImageUrl = resolveTitleImageUrl(safeBase);
   const payload = {
     name: safeBase?.name || safeBase?.restaurantName || "",
@@ -1594,6 +1612,8 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     locationPlace: safeBase?.locationPlace || safeBase?.place || safeBase?.locality || safeBase?.district || "",
     logoUrl: safeBase?.logoUrl || safeBase?.logo || "",
     logo: safeBase?.logo || "",
+    businessNameColor,
+    landingBusinessNameColor: businessNameColor,
     titleImageUrl,
     coverImageUrl: titleImageUrl,
     coverUrl: titleImageUrl,
@@ -1624,6 +1644,8 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     landingRestaurantId: safeRestaurantId,
     landingSlug,
     landingPageUrl: landingUrl,
+    businessNameColor,
+    landingBusinessNameColor: businessNameColor,
     publicMetaUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true });
@@ -1707,6 +1729,18 @@ function normalizeLeadDoc(docSnap) {
     gpsLng: Number.isFinite(Number(fallbackLng)) ? Number(fallbackLng) : null,
     locations,
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
+    businessNameColor: normalizeLeadBusinessNameColor(
+      data.businessNameColor
+      || data.landingBusinessNameColor
+      || data.landingScreenOne?.businessNameColor
+      || ""
+    ),
+    landingBusinessNameColor: normalizeLeadBusinessNameColor(
+      data.landingBusinessNameColor
+      || data.businessNameColor
+      || data.landingScreenOne?.businessNameColor
+      || ""
+    ),
     bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     titleImageUrl,
@@ -1786,6 +1820,18 @@ function normalizeLeadFromRestaurant(rest) {
     city: data.city || "",
     address: locations[0]?.address || data.address || "",
     logoUrl: data.logoUrl || data.logo || "",
+    businessNameColor: normalizeLeadBusinessNameColor(
+      data.businessNameColor
+      || data.landingBusinessNameColor
+      || data.landingScreenOne?.businessNameColor
+      || ""
+    ),
+    landingBusinessNameColor: normalizeLeadBusinessNameColor(
+      data.landingBusinessNameColor
+      || data.businessNameColor
+      || data.landingScreenOne?.businessNameColor
+      || ""
+    ),
     bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     titleImageUrl,
@@ -2036,6 +2082,15 @@ function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
   const country = String(lead?.country || rest?.country || "").trim();
   const address = String(lead?.address || rest?.address || "").trim();
   const logoUrl = String(lead?.logoUrl || lead?.logo || rest?.logoUrl || rest?.logo || "").trim();
+  const businessNameColor = normalizeLeadBusinessNameColor(
+    lead?.businessNameColor
+    || lead?.landingBusinessNameColor
+    || lead?.landingScreenOne?.businessNameColor
+    || rest?.businessNameColor
+    || rest?.landingBusinessNameColor
+    || rest?.landingScreenOne?.businessNameColor
+    || ""
+  );
   const customerType = resolveCustomerType(lead?.customerType || rest?.type || rest?.customerType || "cafe");
   const restaurantStatus = resolveRestaurantStatusFromLead(lead?.status || rest?.status || "registered", rest?.status || "");
   const landingSlug = String(lead?.publicSlug || lead?.landingSlug || rest?.publicSlug || rest?.landingSlug || "").trim();
@@ -2049,6 +2104,8 @@ function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
     address,
     logoUrl,
     logo: logoUrl,
+    businessNameColor,
+    landingBusinessNameColor: businessNameColor,
     status: restaurantStatus,
     leadId: String(lead?.id || rest?.leadId || "").trim(),
     publicSlug: landingSlug,
@@ -2711,6 +2768,14 @@ function syncLeadModalDraftFromForm() {
   };
 
   lead.businessName = readText("leadBusinessName") || lead.businessName || "";
+  lead.businessNameColor = normalizeLeadBusinessNameColor(
+    readValue("leadBusinessNameColor")
+    || lead.businessNameColor
+    || lead.landingBusinessNameColor
+    || lead.landingScreenOne?.businessNameColor
+    || ""
+  );
+  lead.landingBusinessNameColor = lead.businessNameColor;
   lead.customerType = resolveCustomerType(readValue("leadCustomerType") || lead.customerType || "cafe");
   lead.contactFirstName = readText("leadCustomerFirstName") || lead.contactFirstName || "";
   lead.contactLastName = readText("leadCustomerLastName") || lead.contactLastName || "";

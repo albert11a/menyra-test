@@ -35,6 +35,10 @@ export function renderLeadModalCore({
   const statusLabels = LEAD_STATUS_LABELS && typeof LEAD_STATUS_LABELS === "object" ? LEAD_STATUS_LABELS : {};
   const esc = typeof escapeHtml === "function" ? escapeHtml : ((value) => String(value || ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
+  const normalizeBusinessNameColor = (value = "", fallback = "#111827") => {
+    const raw = String(value || "").trim();
+    return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+  };
 
   const lead = state.leadModal.lead || {};
   const isEdit = state.leadModal.mode === "edit";
@@ -49,6 +53,12 @@ export function renderLeadModalCore({
   const leadEmail = lead.socialEmail || lead.email || "";
   const leadStatus = normalizeStatus(lead.status || "registered") || "registered";
   const leadInstagram = lead.instagram || lead.insta || "";
+  const businessNameColor = normalizeBusinessNameColor(
+    lead.businessNameColor
+    || lead.landingBusinessNameColor
+    || lead.landingScreenOne?.businessNameColor
+    || ""
+  );
   const specialEnabled = lead.specialEnabled === true;
   const locations = normalizeLocations(state.leadModal.locations, lead.address || "", state.leadModal.coords || null);
   const canConvert = isEdit && !!lead.id && normalizeStatus(lead.status || "") !== "kunde";
@@ -93,6 +103,10 @@ export function renderLeadModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
           <input id="leadBusinessName" type="text" value="${esc(lead.businessName || lead.name || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name Farbe</label>
+          <input id="leadBusinessNameColor" type="color" value="${esc(businessNameColor)}" class="w-full h-12 px-3 py-2 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>

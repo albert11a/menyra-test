@@ -11,6 +11,11 @@ function formatBuildTimestamp(value = "") {
   });
 }
 
+function normalizeBusinessNameColor(value = "", fallback = "#111827") {
+  const raw = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+}
+
 export function renderLeadSettingsView(ctx = {}) {
   const {
     state,
@@ -109,6 +114,12 @@ export function renderLeadCreationView(ctx = {}) {
   const monthlyPrice = getLeadMonthlyPrice(customerType, settings);
   const yearlyPrice = monthlyPrice * 12;
   const totalPrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
+  const businessNameColor = normalizeBusinessNameColor(
+    lead.businessNameColor
+    || lead.landingBusinessNameColor
+    || lead.landingScreenOne?.businessNameColor
+    || ""
+  );
   const specialEnabled = lead.specialEnabled === true;
   const coords = state.leadModal.coords && Number.isFinite(Number(state.leadModal.coords.lat)) && Number.isFinite(Number(state.leadModal.coords.lng))
     ? { lat: Number(state.leadModal.coords.lat), lng: Number(state.leadModal.coords.lng) }
@@ -164,6 +175,10 @@ export function renderLeadCreationView(ctx = {}) {
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
             <input id="leadBusinessName" type="text" value="${escapeHtml(lead.businessName || "")}" placeholder="Business Name" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name Farbe</label>
+            <input id="leadBusinessNameColor" type="color" value="${escapeHtml(businessNameColor)}" class="w-full mt-2 h-12 px-3 py-2 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>

@@ -6,6 +6,11 @@ import {
   shouldPreserveExistingSlug
 } from "./lead-identity-contract-utils.js";
 
+function normalizeLeadBusinessNameColor(value = "", fallback = "#111827") {
+  const raw = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+}
+
 export async function convertLeadToCustomerCore({
   leadId,
   state,
@@ -153,6 +158,18 @@ export async function convertLeadToCustomerCore({
       email: String(email || restaurant.ownerEmail || restaurant.email || "").trim(),
       logoUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
       avatarUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
+      businessNameColor: normalizeLeadBusinessNameColor(
+        restaurant.businessNameColor
+        || restaurant.landingBusinessNameColor
+        || restaurant.landingScreenOne?.businessNameColor
+        || ""
+      ),
+      landingBusinessNameColor: normalizeLeadBusinessNameColor(
+        restaurant.landingBusinessNameColor
+        || restaurant.businessNameColor
+        || restaurant.landingScreenOne?.businessNameColor
+        || ""
+      ),
       publicSlug: String(restaurant.publicSlug || "").trim(),
       landingSlug: String(restaurant.landingSlug || "").trim(),
       updatedAt: serverTimestamp(),
@@ -175,6 +192,15 @@ export async function convertLeadToCustomerCore({
     let existingRest = identity.existingRestaurant
       || (restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null);
     const businessName = lead.businessName || "Neuer Kunde";
+    const businessNameColor = normalizeLeadBusinessNameColor(
+      lead.businessNameColor
+      || lead.landingBusinessNameColor
+      || lead.landingScreenOne?.businessNameColor
+      || existingRest?.businessNameColor
+      || existingRest?.landingBusinessNameColor
+      || existingRest?.landingScreenOne?.businessNameColor
+      || ""
+    );
     const type = resolveCustomerType(lead.customerType || "cafe");
     const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
     const locations = normalizeLeadLocations(lead.locations || [], lead.address || "", {
@@ -205,6 +231,8 @@ export async function convertLeadToCustomerCore({
       ownerEmail: lead.email || lead.socialEmail || "",
       logoUrl: lead.logoUrl || "",
       logo: lead.logoUrl || "",
+      businessNameColor,
+      landingBusinessNameColor: businessNameColor,
       bestSpotLogoUrl: lead.bestSpotLogoUrl || lead.spotLogoUrl || existingRest?.bestSpotLogoUrl || existingRest?.spotLogoUrl || "",
       spotLogoUrl: lead.bestSpotLogoUrl || lead.spotLogoUrl || existingRest?.bestSpotLogoUrl || existingRest?.spotLogoUrl || "",
       titleImageUrl: lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || existingRest?.titleImageUrl || existingRest?.coverImageUrl || existingRest?.coverUrl || existingRest?.heroUrl || "",
@@ -281,7 +309,9 @@ export async function convertLeadToCustomerCore({
       publicSlug: landingSlug,
       canonicalPublicPath,
       landingSlug,
-      landingPageUrl
+      landingPageUrl,
+      businessNameColor,
+      landingBusinessNameColor: businessNameColor
     };
     if (!existingRest && restaurantId) {
       existingRest = state.restaurants.find((r) => String(r.id) === String(restaurantId)) || existingRest;
@@ -337,6 +367,8 @@ export async function convertLeadToCustomerCore({
       canonicalPublicPath,
       landingSlug,
       landingPageUrl,
+      businessNameColor,
+      landingBusinessNameColor: businessNameColor,
       socialUid,
       socialEmail,
       convertedAt: serverTimestamp(),

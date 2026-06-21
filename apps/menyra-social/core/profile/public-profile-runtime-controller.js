@@ -1641,6 +1641,14 @@ export function createPublicProfileRuntimeController({
     ).trim();
     const landingPageUrl = String(data?.landingPageUrl || rest?.landingPageUrl || "").trim();
     const landingScreenOne = data?.landingScreenOne || rest?.landingScreenOne || null;
+    const businessNameColor = String(
+      data?.businessNameColor
+      || rest?.businessNameColor
+      || data?.landingBusinessNameColor
+      || rest?.landingBusinessNameColor
+      || landingScreenOne?.businessNameColor
+      || ""
+    ).trim();
     const type = normalizeRestaurantType(
       data?.type
       || data?.customerType
@@ -1670,6 +1678,7 @@ export function createPublicProfileRuntimeController({
       landingTemplate,
       landingSlug,
       landingPageUrl,
+      ...(businessNameColor ? { businessNameColor, landingBusinessNameColor: businessNameColor } : {}),
       ...(landingScreenOne && typeof landingScreenOne === "object" ? { landingScreenOne } : {}),
       ...(type ? { type, customerType: type } : {}),
       pendingFollowRequest: false,

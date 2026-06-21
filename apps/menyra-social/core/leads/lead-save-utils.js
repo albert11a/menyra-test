@@ -6,6 +6,11 @@ import {
   shouldPreserveExistingSlug
 } from "./lead-identity-contract-utils.js";
 
+function normalizeLeadBusinessNameColor(value = "", fallback = "#111827") {
+  const raw = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+}
+
 export async function saveLeadFromModalCore({
   state,
   documentObj,
@@ -267,6 +272,18 @@ export async function saveLeadFromModalCore({
       email: String(email || restaurant.ownerEmail || restaurant.email || "").trim(),
       logoUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
       avatarUrl: String(restaurant.logoUrl || restaurant.logo || "").trim(),
+      businessNameColor: normalizeLeadBusinessNameColor(
+        restaurant.businessNameColor
+        || restaurant.landingBusinessNameColor
+        || restaurant.landingScreenOne?.businessNameColor
+        || ""
+      ),
+      landingBusinessNameColor: normalizeLeadBusinessNameColor(
+        restaurant.landingBusinessNameColor
+        || restaurant.businessNameColor
+        || restaurant.landingScreenOne?.businessNameColor
+        || ""
+      ),
       publicSlug: String(restaurant.publicSlug || "").trim(),
       landingSlug: String(restaurant.landingSlug || "").trim(),
       updatedAt: getTimestamp(),
@@ -291,6 +308,13 @@ export async function saveLeadFromModalCore({
   const settings = getSettings();
   syncDraftFromForm();
   const businessName = docObj.getElementById("leadBusinessName")?.value?.trim() || "";
+  const businessNameColor = normalizeLeadBusinessNameColor(
+    docObj.getElementById("leadBusinessNameColor")?.value
+    || lead.businessNameColor
+    || lead.landingBusinessNameColor
+    || lead.landingScreenOne?.businessNameColor
+    || ""
+  );
   const customerType = resolveType(docObj.getElementById("leadCustomerType")?.value || lead.customerType || "cafe");
   const contactFirstName = docObj.getElementById("leadCustomerFirstName")?.value?.trim() || lead.contactFirstName || "";
   const contactLastName = docObj.getElementById("leadCustomerLastName")?.value?.trim() || lead.contactLastName || "";
@@ -534,6 +558,8 @@ export async function saveLeadFromModalCore({
         landingRestaurantId: restaurantId,
         landingSlug,
         landingPageUrl,
+        businessNameColor,
+        landingBusinessNameColor: businessNameColor,
         ...creatorMeta,
         updatedAt: getTimestamp()
       };
@@ -591,6 +617,8 @@ export async function saveLeadFromModalCore({
       ownerName: contactName || "",
       ownerEmail: emailInput || "",
       specialEnabled,
+      businessNameColor,
+      landingBusinessNameColor: businessNameColor,
       contactFirstName,
       contactLastName,
       billingCycle,
@@ -749,6 +777,8 @@ export async function saveLeadFromModalCore({
       landingRestaurantId: restaurantId,
       landingSlug,
       landingPageUrl,
+      businessNameColor,
+      landingBusinessNameColor: businessNameColor,
       socialUid,
       socialEmail,
       updatedAt: getTimestamp(),

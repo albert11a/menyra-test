@@ -870,20 +870,27 @@ export function createAppShellRuntimeController(deps = {}) {
     const viewportUi = resolveBusinessHeaderViewportUi();
     const businessName = String(profile?.name || profile?.restaurantName || profile?.businessName || "Business").trim() || "Business";
     const businessNameParts = businessName.split(/\s+/).filter(Boolean);
-    const rawBusinessTitle = String(businessNameParts[0] || businessName).trim();
+    const rawBusinessTitle = String(
+      businessNameParts.length > 1
+        ? businessNameParts.slice(0, -1).join(" ")
+        : (businessNameParts[0] || businessName)
+    ).trim();
     const businessTitle = rawBusinessTitle && rawBusinessTitle.length <= 5
       ? rawBusinessTitle.toUpperCase()
       : rawBusinessTitle;
     const businessSubtitle = businessNameParts.length > 1
-      ? businessNameParts[1]
+      ? businessNameParts[businessNameParts.length - 1]
       : "Social";
+    const businessSubtitleTrackingClass = businessSubtitle.length > 10
+      ? "tracking-[0.12em]"
+      : "tracking-[0.25em]";
     const renderBusinessName = () => `
-      <button type="button" data-business-profile-home="true" class="min-w-0 max-w-full text-left active:opacity-90 transition-opacity">
+      <button type="button" data-business-profile-home="true" title="${escapeHtml(businessName)}" class="min-w-0 max-w-full text-left active:opacity-90 transition-opacity">
         <div class="flex items-baseline gap-1.5 min-w-0 max-w-full">
           <div class="flex-1 min-w-0 pr-2">
             <h1 class="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap pr-[3px] ${viewportUi.titleClass} font-black italic tracking-tighter leading-none text-slate-900">${escapeHtml(businessTitle)}</h1>
           </div>
-          <span class="min-w-0 max-w-[96px] overflow-hidden text-ellipsis whitespace-nowrap pl-0.5 ${viewportUi.subtitleClass} font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">${escapeHtml(businessSubtitle)}</span>
+          <span class="shrink-0 min-w-0 max-w-[44%] overflow-hidden text-ellipsis whitespace-nowrap pl-0.5 ${viewportUi.subtitleClass} font-black text-indigo-600 uppercase ${businessSubtitleTrackingClass} mb-[1px]">${escapeHtml(businessSubtitle)}</span>
         </div>
       </button>
     `;
@@ -974,7 +981,7 @@ export function createAppShellRuntimeController(deps = {}) {
                 </button>
                 ${menuHeaderActive ? "" : renderBusinessHeaderCenter(activeProfile)}
               </div>
-              ${menuHeaderActive ? renderBusinessHeaderCenter(activeProfile) : ""}
+              ${menuHeaderActive ? `<div class="flex-1 min-w-0">${renderBusinessHeaderCenter(activeProfile)}</div>` : ""}
               ${renderBusinessHeaderActions(activeProfile)}
             </div>
             ${renderLanguagePickerPanel()}

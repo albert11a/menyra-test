@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-21
+Last updated: 2026-06-22
 
 # Mnyra Current Phase
 
@@ -1127,6 +1127,19 @@ Last updated: 2026-06-21
   koennen dadurch nicht mehr im Prishtina-Feed bleiben. GPS ohne echte Stadt
   im Label bleibt weiter koordinaten-/landbasiert. UI/Design, QR, Cart, Order,
   Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 116 ist abgeschlossen: Business-Profil-Header und Business-
+  Profil-Card bleiben beim Wechsel `Beitraege`/`Menue` stabiler, und Leads
+  koennen eine Business-Name-Farbe fuer die Lead-Landing speichern.
+- Bewertung von Schritt 116: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 116:
+  Der Business-Header verliert bei langen Namen nicht mehr still alle
+  Namensbestandteile nach dem zweiten Wort, der Menue-Header reserviert wieder
+  einen stabilen Mittelbereich zwischen Drawer und rechten Actions, und die
+  Business-Profil-Card nutzt fuer Profil/Menu denselben oberen Abstand.
+  Lead-Formulare speichern `businessNameColor` in Lead, Restaurant, User-
+  Bootstrap und Public-Meta; Lead-Landing und app-interne Landing rendern den
+  Business-Namen in dieser Farbe. Routing, QR, Cart, Order, Menu-Logik,
+  Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1241,6 +1254,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step113-restaurant-ads-card-alignment-compact.md](./mnyra-step113-restaurant-ads-card-alignment-compact.md)
 - Referenz: [docs/mnyra-step114-marketplace-city-source-filter.md](./mnyra-step114-marketplace-city-source-filter.md)
 - Referenz: [docs/mnyra-step115-feed-city-source-filter.md](./mnyra-step115-feed-city-source-filter.md)
+- Referenz: [docs/mnyra-step116-business-profile-header-name-color.md](./mnyra-step116-business-profile-header-name-color.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1266,7 +1280,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 115 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 116 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1500,6 +1514,14 @@ Inhalte erscheinen. Header-Location im Feed auf `Prishtina` aendern und
 dieselbe Gegenpruefung wiederholen. GPS/Standort-Button kurz gegenpruefen:
 Ohne echte Stadt im Label soll die bisherige GPS-basierte Feed-Nutzung nicht
 leer werden.
+
+Zusaetzlich fuer Schritt 116 manuell pruefen: Business-Profil mit langem Namen
+oeffnen; im Header bei `Beitraege` und nach Wechsel auf `Menue` pruefen, dass
+Name/Kategorien und rechte Icons nicht sichtbar zusammenrutschen. Profil-Card
+mit Logo, Name, Fans und Folgt soll beim Tabwechsel nicht springen. In Leads
+`Business Name Farbe` setzen, speichern und die Lead-Landing oeffnen; der
+Business-Name soll in der gewaehlten Farbe erscheinen. QR/Menu/Cart kurz
+unveraendert gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

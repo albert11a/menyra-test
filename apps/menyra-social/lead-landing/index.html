@@ -259,15 +259,22 @@
       return "https://placehold.co/200x200/f8fafc/94a3b8?text=LOGO";
     }
 
+    function normalizeBusinessNameColor(value, fallback = "#111827") {
+      const raw = String(value || "").trim();
+      return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+    }
+
     function renderScreenOne(payload = {}) {
       const businessName = String(payload.businessName || "Business").trim() || "Business";
       const logoUrl = resolveLogoUrl(payload.logoUrl, payload.logo);
+      const businessNameColor = normalizeBusinessNameColor(payload.businessNameColor);
       const line1 = String(payload.messageLine1 || `${businessName} ist bereits in Mnyra vorbereitet.`).trim();
       const line2 = String(payload.messageLine2 || "Deine digitale Praesenz ist bereit zur Aktivierung.").trim();
 
       logoNode.src = logoUrl;
       logoNode.alt = `${businessName} Logo`;
       brandNode.textContent = businessName.endsWith(".") ? businessName : `${businessName}.`;
+      brandNode.style.color = businessNameColor;
       messageNode.textContent = "";
       const firstLineNode = document.createElement("span");
       const secondLineNode = document.createElement("span");
@@ -299,6 +306,7 @@
 
         renderScreenOne({
           businessName: screenOne.businessName || meta.name || meta.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
+          businessNameColor: screenOne.businessNameColor || meta.businessNameColor || meta.landingBusinessNameColor || restaurant.businessNameColor || restaurant.landingBusinessNameColor,
           logoUrl: screenOne.logoUrl || meta.logoUrl || meta.logo || restaurant.logoUrl || restaurant.logo,
           logo: restaurant.logo,
           messageLine1: screenOne.messageLine1,
