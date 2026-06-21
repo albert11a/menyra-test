@@ -426,42 +426,12 @@ export function createSessionDataRuntimeController({
     return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b/.test(searchable);
   }
 
-  function isPublicOfferBusinessRecord(record = {}) {
-    if (isTravelBusinessRecord(record)) return true;
-    if (!record || typeof record !== "object") return false;
-    const typeKey = normalizeTravelBusinessType(
-      record.type
-      || record.customerType
-      || record.category
-      || record.kind
-      || record.restaurantType
-      || record.businessProfileType
-      || record.profileType
-      || record.vertical
-      || record.leadType
-      || ""
-    );
-    if (["restaurant", "restaurants", "cafe", "coffee", "fastfood", "fast_food", "food", "bakery", "bar", "grill"].includes(typeKey)) {
-      return true;
-    }
-    const searchable = [
-      record.name,
-      record.restaurantName,
-      record.businessName,
-      record.description,
-      record.bio,
-      record.about
-    ].map((value) => String(value || "").trim().toLowerCase()).join(" ");
-    return /\brestaurant(s)?\b|\bcafe(s)?\b|\bcoffee\b|\bburger\b|\bpizza\b|\bbakery\b|\bgrill\b|\bseafood\b/.test(searchable);
-  }
-
   function hasKnownTravelOffersTruth(record = {}) {
     const truthState = String(record?.offersTruthState || "").trim().toLowerCase();
     if (truthState === "seeded" || truthState === "knownempty" || truthState === "known-empty") return true;
     if (Array.isArray(record?.publicOffers) || Array.isArray(record?.travelOffers) || Array.isArray(record?.offerItems)) return true;
     if (Number.isFinite(Number(record?.publicOffersCount)) || Number.isFinite(Number(record?.travelOffersCount))) return true;
     if (typeof record?.hasTravelOffers === "boolean") return true;
-    if (typeof record?.hasPublicOffers === "boolean") return true;
     return false;
   }
 
@@ -475,7 +445,7 @@ export function createSessionDataRuntimeController({
 
   function preserveKnownTravelOffersTruth(incoming = {}, previous = {}) {
     if (!incoming || typeof incoming !== "object") return incoming;
-    if (!isPublicOfferBusinessRecord(incoming)) return incoming;
+    if (!isTravelBusinessRecord(incoming)) return incoming;
     if (hasTravelOfferPayload(incoming)) return incoming;
     if (!hasTravelOfferPayload(previous)) return incoming;
 
@@ -487,7 +457,6 @@ export function createSessionDataRuntimeController({
       "publicOffersCount",
       "travelOffersCount",
       "hasTravelOffers",
-      "hasPublicOffers",
       "offersTruthState"
     ].forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(previous, key)) {

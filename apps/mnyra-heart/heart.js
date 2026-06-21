@@ -5,9 +5,6 @@ import {
   createHeartAuthController
 } from "./heart-auth.js";
 import {
-  createHeartAdsAdapter
-} from "./heart-ads-adapter.js";
-import {
   bindHeartEvents
 } from "./heart-events.js";
 import {
@@ -57,9 +54,6 @@ const apiClient = createHeartApiClient({
 const monitoringAdapter = createHeartMonitoringAdapter({ apiClient });
 const testRunnerAdapter = createHeartTestRunnerAdapter({ apiClient });
 const setupAdapter = createHeartSetupAdapter({ apiClient });
-const adsAdapter = createHeartAdsAdapter({
-  getAuthState: () => store.getState().auth
-});
 const crmAdminReadLoaders = createHeartCrmAdminReadLoaderDeps({
   getAuthState: () => store.getState().auth,
   getSetupState: () => store.getState().setup
@@ -320,16 +314,6 @@ async function refreshIncidents() {
     actions.setIncidentsData(payload.items);
   } catch (error) {
     actions.setIncidentsError(error?.message || "Meldungen konnten nicht geladen werden.");
-  }
-}
-
-async function refreshAds() {
-  actions.setAdsLoading();
-  try {
-    const items = await adsAdapter.loadAds();
-    actions.setAdsData(items);
-  } catch (error) {
-    actions.setAdsError(error?.message || "Ads konnten nicht geladen werden.");
   }
 }
 
@@ -835,10 +819,6 @@ const operations = {
   },
   async refresh() {
     if (store.getState().auth.status === "authenticated") {
-      if (store.getState().shell.activeView === "ads") {
-        await refreshAds();
-        return;
-      }
       if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView)) {
         await refreshCrmAdmin();
         return;
@@ -877,33 +857,10 @@ const operations = {
   },
   openView(viewKey) {
     actions.setActiveView(viewKey);
-    if (String(viewKey || "").trim() === "ads") {
-      queueMicrotask(() => refreshAds().catch((error) => {
-        setToast("Ads", error?.message || "Ads konnten nicht geladen werden.", "danger");
-      }));
-    }
     if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(String(viewKey || "").trim())) {
       queueMicrotask(() => refreshCrmAdmin().catch((error) => {
         setToast("CRM/Admin", error?.message || "CRM/Admin Daten konnten nicht geladen werden.", "danger");
       }));
-    }
-  },
-  setAdsFilter(filter) {
-    actions.setAdsFilter(filter);
-  },
-  async reviewAd(payload = {}) {
-    const restaurantId = String(payload.restaurantId || "").trim();
-    const adId = String(payload.adId || "").trim();
-    const status = String(payload.status || "").trim();
-    if (!restaurantId || !adId) return;
-    actions.setAdsUpdating(`${restaurantId}:${adId}`);
-    try {
-      await adsAdapter.reviewAd({ restaurantId, adId, status });
-      await refreshAds();
-      setToast("Ads", status === "rejected" ? "Ad wurde abgelehnt." : "Ad wurde freigegeben.", status === "rejected" ? "warning" : "success");
-    } catch (error) {
-      actions.setAdsUpdating("");
-      setToast("Ads", error?.message || "Ad konnte nicht aktualisiert werden.", "danger");
     }
   },
   async setCrmScope(domainKey, scope) {
@@ -1185,11 +1142,8 @@ store.subscribe((state) => {
     authBootstrapSessionKey = authSessionKey;
     queueMicrotask(() => {
       const shouldRefreshCrmAdmin = CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView);
-      const shouldRefreshAds = store.getState().shell.activeView === "ads";
       const refreshPromise = shouldRefreshCrmAdmin
         ? Promise.all([refreshAll(), refreshCrmAdmin()])
-        : shouldRefreshAds
-          ? Promise.all([refreshAll(), refreshAds()])
         : refreshAll();
       refreshPromise.catch((error) => {
         setToast("Erster Abruf", error?.message || "Heart konnte den ersten Status nicht laden.", "danger");

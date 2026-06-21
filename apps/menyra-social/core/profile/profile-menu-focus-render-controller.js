@@ -2449,30 +2449,11 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
   const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId, { includeInactive: true });
   const countLabel = formatCount(items.length);
   const isTravelOffers = String(variant || "").trim().toLowerCase() === "travel-offers";
-  const eyebrow = isTravelOffers ? "Ofertat" : "Ads";
-  const title = isTravelOffers ? "Oferta" : "Restaurant Ads";
-  const helper = isTravelOffers ? "Im Travel und Profil sichtbar" : "Nach CEO-Freigabe im Restaurant-Tab sichtbar";
-  const loadingLabel = isTravelOffers ? "Ofertat werden geladen..." : "Ads werden geladen...";
-  const emptyLabel = isTravelOffers ? "Noch keine Oferta-Eintraege" : "Noch keine Ads";
-  const normalizeAdStatus = (value = "") => {
-    const key = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "");
-    if (["approved", "active", "freigegeben", "accepted", "confirmed", "bestaetigt"].includes(key)) return "approved";
-    if (["rejected", "declined", "abgelehnt", "denied"].includes(key)) return "rejected";
-    return "pending";
-  };
-  const renderAdReviewStatus = (item = {}) => {
-    if (isTravelOffers) return "";
-    const status = normalizeAdStatus(item.reviewStatus || item.approvalStatus || "");
-    const label = status === "approved" ? "Freigegeben" : (status === "rejected" ? "Abgelehnt" : "Pending");
-    const colorClass = status === "approved"
-      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-      : (status === "rejected" ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-amber-50 text-amber-600 border-amber-100");
-    return `<span class="px-2 py-1 rounded-lg border ${colorClass}">${escapeHtml(label)}</span>`;
-  };
+  const eyebrow = isTravelOffers ? "Ofertat" : "Sot ne Fokus";
+  const title = isTravelOffers ? "Oferta" : "Highlights";
+  const helper = isTravelOffers ? "Im Travel und Profil sichtbar" : "Im Profil sichtbar";
+  const loadingLabel = isTravelOffers ? "Ofertat werden geladen..." : tr("focus.loading", "Fokus wird geladen...");
+  const emptyLabel = isTravelOffers ? "Noch keine Oferta-Eintraege" : "Noch keine Fokus-Eintraege";
   return `
     <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
@@ -2488,7 +2469,7 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
 
       <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-4">
         <div>
-          <p class="text-xs font-black text-slate-800">${isTravelOffers ? "Oferta anzeigen" : "Ads aktivieren"}</p>
+          <p class="text-xs font-black text-slate-800">${isTravelOffers ? "Oferta anzeigen" : "Im Fokus anzeigen"}</p>
           <p class="text-[10px] font-bold text-slate-400">${escapeHtml(helper)}</p>
         </div>
         <input id="focusEnabledToggle" type="checkbox" class="w-5 h-5 accent-amber-500" ${enabled ? "checked" : ""} />
@@ -2501,10 +2482,6 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
             const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
             const status = item.active !== false ? "Aktiv" : "Inaktiv";
             const statusClass = item.active !== false ? "text-emerald-600" : "text-slate-400";
-            const adMeta = [
-              item.adCategory,
-              item.adPriceSegment || item.priceSegment || item.priceRange
-            ].map((value) => String(value || "").trim()).filter(Boolean);
             return `
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
                 <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
@@ -2513,11 +2490,7 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.title || "Sot ne Fokus")}</p>
                   ${item.text ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(item.text)}</p>` : ""}
-                  <div class="flex flex-wrap items-center gap-2 mt-2 text-[9px] font-black uppercase tracking-widest">
-                    <span class="${statusClass}">${status}</span>
-                    ${renderAdReviewStatus(item)}
-                    ${adMeta.map((entry) => `<span class="text-slate-400">${escapeHtml(entry)}</span>`).join("")}
-                  </div>
+                  <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${statusClass}">${status}</p>
                 </div>
                 <div class="flex flex-col gap-2">
                   <button data-focus-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>

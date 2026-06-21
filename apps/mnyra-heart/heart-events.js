@@ -133,18 +133,6 @@ export function bindHeartEvents({
       operations.setRunsHistoryTab?.(target.getAttribute("data-history-tab"));
       return;
     }
-    if (action === "set-ads-filter") {
-      operations.setAdsFilter?.(target.getAttribute("data-ads-filter"));
-      return;
-    }
-    if (action === "review-ad") {
-      await operations.reviewAd?.({
-        restaurantId: target.getAttribute("data-restaurant-id"),
-        adId: target.getAttribute("data-ad-id"),
-        status: target.getAttribute("data-review-status")
-      });
-      return;
-    }
     if (action === "toggle-runs-history-edit") {
       operations.toggleRunsHistoryEdit?.();
       return;

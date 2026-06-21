@@ -14,10 +14,7 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   crmstaff: "crmStaff",
   "crm-staff": "crmStaff",
   "crm_staff": "crmStaff",
-  staff: "crmStaff",
-  ads: "ads",
-  ad: "ads",
-  werbung: "ads"
+  staff: "crmStaff"
 });
 
 const PATH_VIEW_ALIASES = Object.freeze({
@@ -26,10 +23,7 @@ const PATH_VIEW_ALIASES = Object.freeze({
   customers: "crmCustomers",
   customer: "crmCustomers",
   kunden: "crmCustomers",
-  kunde: "crmCustomers",
-  ads: "ads",
-  ad: "ads",
-  werbung: "ads"
+  kunde: "crmCustomers"
 });
 
 const SAFE_STAFF_CONTEXT_SEGMENTS = new Set([

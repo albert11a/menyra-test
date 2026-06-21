@@ -5,7 +5,6 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "dashboard", label: "Start" },
   { key: "runs", label: "Laeufe" },
   { key: "incidents", label: "Meldungen" },
-  { key: "ads", label: "Ads" },
   { key: "modules", label: "Bereiche" },
   { key: "crmLeads", label: "Leads" },
   { key: "crmCustomers", label: "Kunden" },
@@ -77,14 +76,6 @@ export function createHeartInitialState() {
         source: "all",
         status: "all"
       }
-    },
-    ads: {
-      status: DEFAULT_STATUS,
-      error: "",
-      items: [],
-      filter: "pending",
-      updatingId: "",
-      lastRefreshAt: ""
     },
     connections: {
       status: DEFAULT_STATUS,
@@ -547,44 +538,6 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
-  function setAdsLoading() {
-    patch((draft) => {
-      draft.ads.status = "loading";
-      draft.ads.error = "";
-    });
-  }
-
-  function setAdsData(items) {
-    patch((draft) => {
-      draft.ads.status = "ready";
-      draft.ads.error = "";
-      draft.ads.items = Array.isArray(items) ? items.slice() : [];
-      draft.ads.updatingId = "";
-      draft.ads.lastRefreshAt = new Date().toISOString();
-    });
-  }
-
-  function setAdsError(message) {
-    patch((draft) => {
-      draft.ads.status = "error";
-      draft.ads.error = String(message || "").trim() || "Ads konnten nicht geladen werden.";
-      draft.ads.updatingId = "";
-    });
-  }
-
-  function setAdsFilter(filter = "pending") {
-    const safeFilter = String(filter || "").trim() || "pending";
-    patch((draft) => {
-      draft.ads.filter = safeFilter;
-    });
-  }
-
-  function setAdsUpdating(updatingId = "") {
-    patch((draft) => {
-      draft.ads.updatingId = String(updatingId || "").trim();
-    });
-  }
-
   function setConnectionsLoading() {
     patch((draft) => {
       draft.connections.status = "loading";
@@ -856,11 +809,6 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setIncidentsData,
       setIncidentsError,
       setIncidentFilter,
-      setAdsLoading,
-      setAdsData,
-      setAdsError,
-      setAdsFilter,
-      setAdsUpdating,
       setConnectionsLoading,
       setConnectionsData,
       setConnectionsError,
