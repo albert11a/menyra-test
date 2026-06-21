@@ -1045,6 +1045,16 @@ Last updated: 2026-06-21
   blauen Auswahlrahmen nicht mehr sichtbar in die Border hineingezogen. Karte,
   Marker-Daten, Auswahlfarbe, Klickverhalten, Routing, QR, Cart, Order,
   Firebase Rules und Functions bleiben unveraendert.
+- Schritt 108 ist abgeschlossen: Der Hotel-/Motel-Editor-State wurde auf die
+  aktuelle Hotel-`restaurantId` begrenzt.
+- Bewertung von Schritt 108: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 108:
+  Der Hotel-Editor verwendet gecachte Editor-Bilder nur noch, wenn sie zur
+  aktuell gerenderten Hotel-ID passen. Beim Account-/Session-Wechsel wird der
+  Hotel-Editor-State geloescht, und lokale Save-Patches nehmen keine alten
+  fremden `profileView`-IDs mehr als Ziel-IDs mit. Sichtbare UI, Travel-Cards,
+  Oferta, Routing, QR, Cart, Order, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1151,6 +1161,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step105-travel-gate-typography-spacing-parity.md](./mnyra-step105-travel-gate-typography-spacing-parity.md)
 - Referenz: [docs/mnyra-step106-travel-hotel-card-title-spacing-parity.md](./mnyra-step106-travel-hotel-card-title-spacing-parity.md)
 - Referenz: [docs/mnyra-step107-discovery-map-marker-pointer.md](./mnyra-step107-discovery-map-marker-pointer.md)
+- Referenz: [docs/mnyra-step108-hotel-editor-state-scope.md](./mnyra-step108-hotel-editor-state-scope.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1176,7 +1187,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 107 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 108 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1349,6 +1360,14 @@ oeffnen, einen Business-Marker antippen und pruefen, dass der kleine Pfeil unter
 dem blauen Auswahlrahmen sauber direkt unter der Marker-Box sitzt und nicht mehr
 unsauber in die blaue Border hineinragt. Einen nicht ausgewaehlten Marker,
 Bottom-Sheet und Profil-Oeffnen kurz gegenpruefen.
+
+Zusaetzlich fuer Schritt 108 manuell pruefen: Mit Hotel A einloggen, Profil ->
+Editor -> Hotel Details oeffnen und Titelbilder merken. Danach abmelden oder
+Account wechseln, mit Hotel B einloggen und denselben Editor oeffnen. Dort
+duerfen keine Titelbilder von Hotel A sichtbar sein. Bei Hotel B ein Bild
+hinzufuegen oder entfernen und speichern; danach Travel `Hotels` fuer Hotel B
+und Hotel A gegenpruefen, dass die Titelbilder nicht zwischen den Hotels
+vermischt wurden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

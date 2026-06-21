@@ -149,9 +149,48 @@ export function bindAppMenuFocusEventsCore({
     return unique;
   }
 
-  function readHotelCardExistingImagesFromDom() {
+  function getVisibleHotelCardRestaurantId() {
+    const editorNode = doc.querySelector("[data-hotel-card-editor]");
+    const editorRestaurantId = String(editorNode?.getAttribute("data-hotel-card-editor") || "").trim();
+    return editorRestaurantId || String(state.userProfile?.restaurantId || "").trim();
+  }
+
+  function hasHotelCardEditorDraft(editor = {}) {
+    if (!editor || typeof editor !== "object") return false;
+    return Array.isArray(editor.existingImages)
+      || Array.isArray(editor.imageFiles)
+      || Array.isArray(editor.imagePreviews)
+      || !!String(editor.imageUrlDraft || "").trim()
+      || editor.saving === true
+      || editor.detailsOpen === true
+      || !!String(editor.status || "").trim();
+  }
+
+  function getHotelCardEditorStateForRestaurant(restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || getVisibleHotelCardRestaurantId() || "").trim();
+    const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
+      ? state.hotelCardEditor
+      : {};
+    const currentRestaurantId = String(current.restaurantId || "").trim();
+    if (safeRestaurantId && currentRestaurantId && currentRestaurantId !== safeRestaurantId) {
+      return { restaurantId: safeRestaurantId };
+    }
+    if (safeRestaurantId && !currentRestaurantId && hasHotelCardEditorDraft(current)) {
+      return { restaurantId: safeRestaurantId };
+    }
+    return {
+      ...current,
+      ...(safeRestaurantId ? { restaurantId: safeRestaurantId } : {})
+    };
+  }
+
+  function readHotelCardExistingImagesFromDom(restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || getVisibleHotelCardRestaurantId() || "").trim();
     const images = [];
     doc.querySelectorAll("[data-hotel-card-existing-image]").forEach((node) => {
+      const editorNode = typeof node.closest === "function" ? node.closest("[data-hotel-card-editor]") : null;
+      const editorRestaurantId = String(editorNode?.getAttribute("data-hotel-card-editor") || "").trim();
+      if (safeRestaurantId && editorRestaurantId && editorRestaurantId !== safeRestaurantId) return;
       const value = String(node.getAttribute("data-hotel-card-existing-image") || "").trim();
       if (value && !images.includes(value)) images.push(value);
     });
@@ -174,27 +213,25 @@ export function bindAppMenuFocusEventsCore({
   }
 
   function ensureHotelCardEditorState() {
-    const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
-      ? state.hotelCardEditor
-      : {};
-    if (!state.hotelCardEditor || typeof state.hotelCardEditor !== "object") {
-      state.hotelCardEditor = current;
-    }
+    const restaurantId = getVisibleHotelCardRestaurantId();
+    const current = getHotelCardEditorStateForRestaurant(restaurantId);
+    state.hotelCardEditor = current;
     if (!Array.isArray(current.existingImages)) {
-      current.existingImages = readHotelCardExistingImagesFromDom();
+      current.existingImages = readHotelCardExistingImagesFromDom(restaurantId);
     }
     if (!Array.isArray(current.imageFiles)) current.imageFiles = [];
     if (!Array.isArray(current.imagePreviews)) current.imagePreviews = [];
     current.imageUrlDraft = String(current.imageUrlDraft || readHotelCardInput("hotelCardCoverImageUrl") || "").trim();
+    if (restaurantId) current.restaurantId = restaurantId;
     return current;
   }
 
   function setHotelCardDetailsOpen(open = false) {
-    const current = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
-      ? state.hotelCardEditor
-      : {};
+    const restaurantId = getVisibleHotelCardRestaurantId();
+    const current = getHotelCardEditorStateForRestaurant(restaurantId);
     state.hotelCardEditor = {
       ...current,
+      ...(restaurantId ? { restaurantId } : {}),
       detailsOpen: !!open,
       status: open ? "" : String(current.status || "")
     };
@@ -265,8 +302,7 @@ export function bindAppMenuFocusEventsCore({
     if (!safeRestaurantId || !payload || typeof payload !== "object") return;
     const targetIds = new Set([
       safeRestaurantId,
-      ...collectHotelCardTargetIds(state.userProfile),
-      ...collectHotelCardTargetIds(state.profileView?.profile)
+      ...collectHotelCardTargetIds(state.userProfile)
     ].map((value) => String(value || "").trim()).filter(Boolean));
     const existing = Array.isArray(state.restaurants) ? state.restaurants : [];
     const restaurantUpdate = updateHotelCardRows(existing, targetIds, payload);
@@ -297,11 +333,27 @@ export function bindAppMenuFocusEventsCore({
   }
 
   async function saveHotelCardDetails() {
-    const restaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const userRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const visibleRestaurantId = getVisibleHotelCardRestaurantId();
+    const restaurantId = userRestaurantId || visibleRestaurantId;
     if (!restaurantId || !setDoc || !makeDocRef || !db) return;
+    if (userRestaurantId && visibleRestaurantId && userRestaurantId !== visibleRestaurantId) {
+      state.hotelCardEditor = {
+        restaurantId: visibleRestaurantId,
+        existingImages: readHotelCardExistingImagesFromDom(visibleRestaurantId),
+        imageFiles: [],
+        imagePreviews: [],
+        imageUrlDraft: readHotelCardInput("hotelCardCoverImageUrl"),
+        saving: false,
+        detailsOpen: true,
+        status: "Bitte Hotel-Editor neu laden."
+      };
+      render();
+      return;
+    }
     const editorState = ensureHotelCardEditorState();
     const urlDraft = readHotelCardInput("hotelCardCoverImageUrl");
-    const existingImages = uniqueTextList(editorState.existingImages || readHotelCardExistingImagesFromDom());
+    const existingImages = uniqueTextList(editorState.existingImages || readHotelCardExistingImagesFromDom(restaurantId));
     const filesFromState = Array.isArray(editorState.imageFiles) ? editorState.imageFiles : [];
     const filesFromInput = Array.from(doc.getElementById("hotelCardCoverImagesInput")?.files || []);
     const files = filesFromState.length ? filesFromState : filesFromInput;
@@ -319,6 +371,7 @@ export function bindAppMenuFocusEventsCore({
 
     state.hotelCardEditor = {
       ...editorState,
+      restaurantId,
       existingImages,
       imageFiles: files,
       imagePreviews,
@@ -400,6 +453,7 @@ export function bindAppMenuFocusEventsCore({
       await setDoc(makeDocRef(db, "restaurants", restaurantId), payload, { merge: true });
       updateHotelCardLocalState(restaurantId, payload);
       state.hotelCardEditor = {
+        restaurantId,
         existingImages: coverImages,
         imageFiles: [],
         imagePreviews: [],
@@ -413,6 +467,7 @@ export function bindAppMenuFocusEventsCore({
       console.error(err);
       state.hotelCardEditor = {
         ...editorState,
+        restaurantId,
         existingImages,
         imageFiles: files,
         imagePreviews,
@@ -461,6 +516,7 @@ export function bindAppMenuFocusEventsCore({
       }).filter(Boolean);
       state.hotelCardEditor = {
         ...editorState,
+        restaurantId: String(editorState.restaurantId || getVisibleHotelCardRestaurantId() || "").trim(),
         imageFiles: [
           ...(Array.isArray(editorState.imageFiles) ? editorState.imageFiles : []),
           ...files
@@ -485,6 +541,7 @@ export function bindAppMenuFocusEventsCore({
       const editorState = ensureHotelCardEditorState();
       state.hotelCardEditor = {
         ...editorState,
+        restaurantId: String(editorState.restaurantId || getVisibleHotelCardRestaurantId() || "").trim(),
         imageUrlDraft: String(hotelCardCoverUrlInput.value || "").trim(),
         status: ""
       };
@@ -508,6 +565,7 @@ export function bindAppMenuFocusEventsCore({
       }
       state.hotelCardEditor = {
         ...editorState,
+        restaurantId: String(editorState.restaurantId || getVisibleHotelCardRestaurantId() || "").trim(),
         existingImages: uniqueTextList(existingImages),
         imageFiles,
         imagePreviews,

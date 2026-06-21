@@ -1,4 +1,4 @@
-import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.js";import"./startup-route-runtime-context-Ba2-q0Mg.js";import"./vendor-firebase-V03pMX6J.js";function Yn(g={}){const l=g.state,Tt=g.resolvePostCountsFn,s=g.escapeHtmlFn,R=g.getOptimizedImageUrlFn,x=g.iconFn,At=g.isLocalBusinessProfileFn,Lt=typeof g.isCeoUserFn=="function"?g.isCeoUserFn:(()=>!1),Ne=g.normalizeHandleFn,Ke=g.logoFitClassFn,M=g.formatCountFn,qe=g.renderProfileShopCartViewFn,Ge=g.renderProfileShopFavoritesViewFn,zt=typeof g.ensurePostsDataForProfileFn=="function"?g.ensurePostsDataForProfileFn:(()=>{}),_t=g.ensureMenuDataForProfileFn,Mt=typeof g.ensureEditorMenuDataForProfileFn=="function"?g.ensureEditorMenuDataForProfileFn:(()=>{}),re=g.ensureFocusDataForProfileFn,Qe=g.ensureTableQrStateForProfileFn,ee=g.isShopCatalogProfileFn,We=g.getBusinessCatalogLabelFn,G=g.normalizeMenuTypeFn,Et=g.primeMenuItemCountsFn,Rt=typeof g.hydrateMenuCardViewerLikesFn=="function"?g.hydrateMenuCardViewerLikesFn:(()=>Promise.resolve()),Bt=g.renderShopProductListFn,Dt=g.getMenuLayoutThemeFn,Ut=g.menuLayoutColors,O=g.resolveMenuItemHeroFn,ie=g.isPlaceholderUrlFn,B=g.placeholderImage,Ot=g.getFirebaseStorageUrlFn,Vt=g.isDirectImageUrlFn,Ye=g.formatPriceFn,Ht=typeof g.resolveCurrencyCodeForMenuItemFn=="function"?g.resolveCurrencyCodeForMenuItemFn:(()=>""),Ze=g.getMenuItemImagesFn,D=g.getMenuItemObjectPositionFn,oe=g.getMenuItemSocialIdFn,Je=g.menuItemMetaKeyFn,Xe=g.ensureMenuItemMetaFn,et=g.resolveMenuItemCountsFn,le=g.getFocusStateForRestaurantFn,ce=g.getTableQrStateForRestaurantFn,de=g.getFocusItemObjectPositionFn,tt=g.getFocusCardClassFn,Nt=g.getFocusIndexFn,te=g.isRestaurantCafeProfileFn,nt=typeof g.getBusinessProfileTypeFn=="function"?g.getBusinessProfileTypeFn:(()=>""),ue=g.getRestaurantMetaByIdFn,Kt=g.buildUrlFn,qt=g.normalizeSearchKeyFn,Gt=g.normalizeFollowHandleFn,V={key:"",inFlightKey:""},u=(e,t=e,n={})=>Nn(e,{fallback:t,params:n}),st=(e="")=>{const t=String(e||"").trim();if(!t)return u("nav.menu","Menue");const n=t.toLowerCase();return n==="menue"||n==="menu"||n==="menü"?u("nav.menu",t):n==="shop"?"Shop":t},Qt=(e="food")=>String(e||"").trim().toLowerCase()==="drink"?u("menu.drinks","Getraenke"):u("menu.food","Speisen"),at=(e={},t=!1)=>{const n=G(e?.type||"food");return t?n==="drink"?u("menu.variant","Variante"):u("menu.product","Produkt"):n==="drink"?u("menu.drinkItem","Getraenk"):u("menu.foodItem","Speise")};function Wt(e=null,t=null){return ae(l,{profile:e,routePayload:t,webDirectEntry:l?.__webDirectEntry}).restaurantId}function rt(e=null,t=""){if(!e||typeof e!="object")return e;const n=String(t||"").trim();if(!n)return e;const a=String(e.canonicalRestaurantId||"").trim();return String(e.restaurantId||"").trim()===n&&a?e:{...e,restaurantId:n,...a?{canonicalRestaurantId:a}:{}}}function Yt(e=""){const t=String(e||"").trim();return t?ae(l,{profile:l?.profileView?.profile||l?.userProfile,routePayload:l?.profileView?.routePayload,webDirectEntry:l?.__webDirectEntry,restaurantId:t}).focus.canRenderFocus:!1}function pe(e={}){const t=String(Ht(e)||"").trim();return t?Ye(e?.price,t):Ye(e?.price)}function Zt(e=[],t="",n=""){const a=String(t||"").trim(),r=String(n||"").trim();if(!a||!r)return"";const i=Array.isArray(e)?e:[];if(!i.length)return`${a}|${r}|empty`;const o=[];return i.forEach(d=>{const c=String(oe(d)||d?.id||"").trim();c&&o.push(c)}),o.length?(o.sort(),`${a}|${r}|${o.join(",")}`):`${a}|${r}|empty`}function Jt(e=[],t=""){const n=String(l.user?.uid||"").trim(),a=Zt(e,t,n);a&&V.inFlightKey!==a&&V.key!==a&&(V.key=a,V.inFlightKey=a,Rt(e,t).catch(r=>{console.error(r),V.key===a&&(V.key="")}).finally(()=>{V.inFlightKey===a&&(V.inFlightKey="")}))}function Xt(e={}){const t=String(e?.uid||"").trim();if(t&&l.followingTargetIds.includes(t))return!0;const n=String(e?.restaurantId||"").trim();if(n&&l.followingTargetIds.includes(n))return!0;const a=Gt(e?.handle||"");return!!(a&&l.followingHandles.includes(a))}function it(e={}){if(e?.specialEnabled===!0)return!0;if(e?.specialEnabled===!1)return!1;const t=String(e?.restaurantId||"").trim();if(!t)return!1;const n=typeof ue=="function"&&ue(t)||null;return n?.specialEnabled===!0?!0:(n?.specialEnabled===!1,!1)}function en(e={}){return K(e)==="testfirst_special"?!0:String(e?.category||"").trim().toLowerCase()==="special"}function ot(e,t,n=!0,{includeImageKey:a=!0}={}){const r=Tt(e),i=e.id?String(e.id):"",o=i?`data-open-post="${s(i)}"`:"",d=i?`data-post-like-count="${s(i)}"`:"",c=i?`data-post-comment-count="${s(i)}"`:"",p=a&&i?`data-img-key="profile-post:${s(i)}"`:"",f=e.type==="wide"||e.type==="hero",h=t&&f?"col-span-2":"",w=t&&f?"aspect-[1.8/1]":"aspect-[4/5]",b=R(e.url,f?"large":"medium",{stableKey:i?`profile-post:${i}`:"",variantGroup:"post-detail"}),k=f?800:400,S=f?400:500;return`
+import{e as ae,f as Kn,t as qn,g as Gn,h as jt,a as Qn}from"../entry/social-app.js";import"./startup-route-runtime-context-Ba2-q0Mg.js";import"./vendor-firebase-V03pMX6J.js";function Jn(g={}){const l=g.state,Tt=g.resolvePostCountsFn,s=g.escapeHtmlFn,R=g.getOptimizedImageUrlFn,x=g.iconFn,At=g.isLocalBusinessProfileFn,Lt=typeof g.isCeoUserFn=="function"?g.isCeoUserFn:(()=>!1),Ne=g.normalizeHandleFn,Ke=g.logoFitClassFn,M=g.formatCountFn,qe=g.renderProfileShopCartViewFn,Ge=g.renderProfileShopFavoritesViewFn,zt=typeof g.ensurePostsDataForProfileFn=="function"?g.ensurePostsDataForProfileFn:(()=>{}),_t=g.ensureMenuDataForProfileFn,Mt=typeof g.ensureEditorMenuDataForProfileFn=="function"?g.ensureEditorMenuDataForProfileFn:(()=>{}),re=g.ensureFocusDataForProfileFn,Qe=g.ensureTableQrStateForProfileFn,ee=g.isShopCatalogProfileFn,We=g.getBusinessCatalogLabelFn,G=g.normalizeMenuTypeFn,Et=g.primeMenuItemCountsFn,Rt=typeof g.hydrateMenuCardViewerLikesFn=="function"?g.hydrateMenuCardViewerLikesFn:(()=>Promise.resolve()),Dt=g.renderShopProductListFn,Bt=g.getMenuLayoutThemeFn,Ut=g.menuLayoutColors,O=g.resolveMenuItemHeroFn,ie=g.isPlaceholderUrlFn,D=g.placeholderImage,Ot=g.getFirebaseStorageUrlFn,Vt=g.isDirectImageUrlFn,Ye=g.formatPriceFn,Ht=typeof g.resolveCurrencyCodeForMenuItemFn=="function"?g.resolveCurrencyCodeForMenuItemFn:(()=>""),Ze=g.getMenuItemImagesFn,B=g.getMenuItemObjectPositionFn,oe=g.getMenuItemSocialIdFn,Je=g.menuItemMetaKeyFn,Xe=g.ensureMenuItemMetaFn,et=g.resolveMenuItemCountsFn,le=g.getFocusStateForRestaurantFn,ce=g.getTableQrStateForRestaurantFn,de=g.getFocusItemObjectPositionFn,tt=g.getFocusCardClassFn,Nt=g.getFocusIndexFn,te=g.isRestaurantCafeProfileFn,nt=typeof g.getBusinessProfileTypeFn=="function"?g.getBusinessProfileTypeFn:(()=>""),ue=g.getRestaurantMetaByIdFn,Kt=g.buildUrlFn,qt=g.normalizeSearchKeyFn,Gt=g.normalizeFollowHandleFn,V={key:"",inFlightKey:""},u=(e,t=e,n={})=>qn(e,{fallback:t,params:n}),st=(e="")=>{const t=String(e||"").trim();if(!t)return u("nav.menu","Menue");const n=t.toLowerCase();return n==="menue"||n==="menu"||n==="menü"?u("nav.menu",t):n==="shop"?"Shop":t},Qt=(e="food")=>String(e||"").trim().toLowerCase()==="drink"?u("menu.drinks","Getraenke"):u("menu.food","Speisen"),at=(e={},t=!1)=>{const n=G(e?.type||"food");return t?n==="drink"?u("menu.variant","Variante"):u("menu.product","Produkt"):n==="drink"?u("menu.drinkItem","Getraenk"):u("menu.foodItem","Speise")};function Wt(e=null,t=null){return ae(l,{profile:e,routePayload:t,webDirectEntry:l?.__webDirectEntry}).restaurantId}function rt(e=null,t=""){if(!e||typeof e!="object")return e;const n=String(t||"").trim();if(!n)return e;const a=String(e.canonicalRestaurantId||"").trim();return String(e.restaurantId||"").trim()===n&&a?e:{...e,restaurantId:n,...a?{canonicalRestaurantId:a}:{}}}function Yt(e=""){const t=String(e||"").trim();return t?ae(l,{profile:l?.profileView?.profile||l?.userProfile,routePayload:l?.profileView?.routePayload,webDirectEntry:l?.__webDirectEntry,restaurantId:t}).focus.canRenderFocus:!1}function pe(e={}){const t=String(Ht(e)||"").trim();return t?Ye(e?.price,t):Ye(e?.price)}function Zt(e=[],t="",n=""){const a=String(t||"").trim(),r=String(n||"").trim();if(!a||!r)return"";const i=Array.isArray(e)?e:[];if(!i.length)return`${a}|${r}|empty`;const o=[];return i.forEach(d=>{const c=String(oe(d)||d?.id||"").trim();c&&o.push(c)}),o.length?(o.sort(),`${a}|${r}|${o.join(",")}`):`${a}|${r}|empty`}function Jt(e=[],t=""){const n=String(l.user?.uid||"").trim(),a=Zt(e,t,n);a&&V.inFlightKey!==a&&V.key!==a&&(V.key=a,V.inFlightKey=a,Rt(e,t).catch(r=>{console.error(r),V.key===a&&(V.key="")}).finally(()=>{V.inFlightKey===a&&(V.inFlightKey="")}))}function Xt(e={}){const t=String(e?.uid||"").trim();if(t&&l.followingTargetIds.includes(t))return!0;const n=String(e?.restaurantId||"").trim();if(n&&l.followingTargetIds.includes(n))return!0;const a=Gt(e?.handle||"");return!!(a&&l.followingHandles.includes(a))}function it(e={}){if(e?.specialEnabled===!0)return!0;if(e?.specialEnabled===!1)return!1;const t=String(e?.restaurantId||"").trim();if(!t)return!1;const n=typeof ue=="function"&&ue(t)||null;return n?.specialEnabled===!0?!0:(n?.specialEnabled===!1,!1)}function en(e={}){return K(e)==="testfirst_special"?!0:String(e?.category||"").trim().toLowerCase()==="special"}function ot(e,t,n=!0,{includeImageKey:a=!0}={}){const r=Tt(e),i=e.id?String(e.id):"",o=i?`data-open-post="${s(i)}"`:"",d=i?`data-post-like-count="${s(i)}"`:"",c=i?`data-post-comment-count="${s(i)}"`:"",p=a&&i?`data-img-key="profile-post:${s(i)}"`:"",f=e.type==="wide"||e.type==="hero",h=t&&f?"col-span-2":"",w=t&&f?"aspect-[1.8/1]":"aspect-[4/5]",b=R(e.url,f?"large":"medium",{stableKey:i?`profile-post:${i}`:"",variantGroup:"post-detail"}),k=f?800:400,S=f?400:500;return`
     <div ${o} role="button" tabindex="0" class="${h} relative ${w} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
         <img src="${s(b)}" loading="lazy" decoding="async" width="${k}" height="${S}" ${p} class="w-full h-full object-cover" />
@@ -72,7 +72,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </div>
         <p class="text-slate-400 text-sm font-bold tracking-wide">${s(u("profile.noCheckins","Keine Check-ins gefunden"))}</p>
       </div>
-    `}function fe(e={}){return String(e?.canonicalRestaurantId||e?.restaurantId||"").trim()?!0:String(e?.role||"").trim().toLowerCase()==="business"}function ge(e={}){const t=String(nt(e)||"").trim().toLowerCase();return t==="hotel"||t==="motel"}function je(e={}){const t=String(e?.canonicalRestaurantId||e?.restaurantId||"").trim(),n=t?ue(t):null;return{...n&&typeof n=="object"?n:{},...e&&typeof e=="object"?e:{}}}function tn(e={},t=""){const n=e&&typeof e=="object"?e:{},a=String(n.id||n._id||n.offerId||n.menuItemId||t||"offer").trim();return{...n,id:a,menuItemId:String(n.menuItemId||n.targetMenuItemId||n.itemId||n.targetItemId||"").trim(),title:n.title||n.name||"Oferta",text:n.text||n.desc||n.description||"",imageUrl:n.imageUrl||n.image||n.photoUrl||"",active:n.active!==!1}}function nn(e={}){const t=[...Array.isArray(e.publicOffers)?e.publicOffers:[],...Array.isArray(e.travelOffers)?e.travelOffers:[],...Array.isArray(e.offerItems)?e.offerItems:[]],n=new Set;return t.map((a,r)=>tn(a,`offer_${r}`)).filter(a=>{const r=String(a.id||`${a.title}|${a.text}|${a.imageUrl}`).trim();return!r||n.has(r)?!1:(n.add(r),!0)})}function sn(e={}){const t=je(e),n=String(e?.restaurantId||e?.canonicalRestaurantId||t.restaurantId||t.canonicalRestaurantId||t.id||"").trim();if(!n)return!1;const a=l.focus&&typeof l.focus=="object"?l.focus:{},r=String(a.restaurantId||"").trim()===n,i=String(a.truthSource||"").trim().toLowerCase();if(r&&i==="public-menu"||(r&&Array.isArray(a.items)?a.items:[]).length)return!1;const d=nn(t);return d.length>0||Array.isArray(t.publicOffers)||Array.isArray(t.travelOffers)||Array.isArray(t.offerItems)||Number.isFinite(Number(t.publicOffersCount))||Number.isFinite(Number(t.travelOffersCount))||typeof t.hasTravelOffers=="boolean"||String(t.offersTruthState||"").trim()?(l.focus={...a,restaurantId:n,items:d,enabled:a.enabled!==!1,loading:!1,error:"",index:0,truthSource:"restaurant-cache",truthState:d.length?"seeded":"knownEmpty"},!0):!1}function an(e={}){const t=[e?.verifiedMapLocation,e?.mapLocation,e?.geo,e?.coordinates,e?.coords,e?.locationCoords,e];for(const n of t){if(!n||typeof n!="object")continue;const a=Number(n.lat??n.latitude),r=Number(n.lng??n.lon??n.longitude);if(Number.isFinite(a)&&Number.isFinite(r))return{lat:a,lng:r}}return null}function E(e={},t=[]){for(const n of t){const a=String(e?.[n]||"").trim();if(a)return a}return""}function me(e){if(Array.isArray(e))return e.map(n=>String(n||"").trim()).filter(Boolean);const t=String(e||"").trim();return t?t.split(/[\n,;|]/).map(n=>n.trim()).filter(Boolean):[]}function rn(e={}){const t=[...me(e.coverImages),...me(e.hotelCoverImages),...me(e.titleImages),e.titleImageUrl,e.coverImageUrl,e.coverUrl,e.heroUrl,e.imageUrl].map(a=>String(a||"").trim()).filter(Boolean),n=[];return t.forEach(a=>{n.includes(a)||n.push(a)}),n.slice(0,8)}function on(e={}){const t=Array.isArray(e.features)?e.features.map(a=>String(a||"").trim()).filter(Boolean):[],n=e.restaurantFeatures&&typeof e.restaurantFeatures=="object"?e.restaurantFeatures:{};return[E(e,["hotelFeatureOneText","gardenTerraceText"])||String(n.gardenTerrace||"").trim()||t[0]||"",E(e,["hotelFeatureTwoText","accessibilityText"])||String(n.accessibility||"").trim()||t[1]||"",E(e,["hotelFeatureThreeText","veganOptionsText"])||String(n.veganOptions||"").trim()||t[2]||""]}function ln(e={}){const t=[],n=(a="")=>{const r=String(a||"").trim();r&&!t.includes(r)&&t.push(r)};return[e.amenities,e.features,e.included,e.facilities,e.hotelAmenities].forEach(a=>{Array.isArray(a)&&a.forEach(r=>{typeof r=="string"?n(r):r&&typeof r=="object"&&n(r.label||r.name||r.title)})}),(e.beachfront||e.onBeach||e.amStrand)&&n("Në plazh"),(e.restaurant||e.hasRestaurant)&&n("Restaurant"),(e.breakfast||e.breakfastIncluded)&&n("Mëngjes"),(e.pool||e.hasPool)&&n("Pool"),(e.wifi||e.freeWifi||e.hasWifi)&&n("WLAN"),(e.parking||e.freeParking||e.hasParking)&&n("Parking"),(e.spa||e.wellness)&&n("Wellness"),t.slice(0,8)}const cn=[{value:"m",label:"m"},{value:"km",label:"km"}],dn="Në qendër",lt="Në plazh",un=["Mëngjes","Gjysmë pension","Pension i plotë","All inclusive","Restorant","Pa ushqim"],pn=["Shezlongë falas","Shezlongë me pagesë","Plazh privat","Pa shezlongë"],fn=["Parking falas","Parking privat","Parking me pagesë","Pa parking"];function H(e=""){return String(e||"").trim().toLowerCase().replace(/[ëèéê]/g,"e").replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"")}function gn(e="",{direct:t=!1}={}){const n=String(e||"").trim(),a=H(n),r=t||a==="ne_qender"||a==="ne_plazh"||a==="direkt_ne_qender"||a==="direkt_ne_plazh"||a.includes("direkt")&&(a.includes("strand")||a.includes("zentrum")||a.includes("center"))||a.includes("am_strand")||a.includes("im_zentrum"),i=n.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer|m|meter)?/i),o=i?i[1].replace(",","."):"",c=(i?String(i[2]||"").trim().toLowerCase():"").startsWith("k")?"km":"m";return{amount:o,unit:c,isDirect:r}}function ct({idPrefix:e="",iconName:t="navigation",label:n="",value:a="",directLabel:r="",direct:i=!1}={}){const o=gn(a,{direct:i});return`
+    `}function fe(e={}){return String(e?.canonicalRestaurantId||e?.restaurantId||"").trim()?!0:String(e?.role||"").trim().toLowerCase()==="business"}function ge(e={}){const t=String(nt(e)||"").trim().toLowerCase();return t==="hotel"||t==="motel"}function je(e={}){const t=String(e?.canonicalRestaurantId||e?.restaurantId||"").trim(),n=t?ue(t):null;return{...n&&typeof n=="object"?n:{},...e&&typeof e=="object"?e:{}}}function tn(e={},t=""){const n=e&&typeof e=="object"?e:{},a=String(n.id||n._id||n.offerId||n.menuItemId||t||"offer").trim();return{...n,id:a,menuItemId:String(n.menuItemId||n.targetMenuItemId||n.itemId||n.targetItemId||"").trim(),title:n.title||n.name||"Oferta",text:n.text||n.desc||n.description||"",imageUrl:n.imageUrl||n.image||n.photoUrl||"",active:n.active!==!1}}function nn(e={}){const t=[...Array.isArray(e.publicOffers)?e.publicOffers:[],...Array.isArray(e.travelOffers)?e.travelOffers:[],...Array.isArray(e.offerItems)?e.offerItems:[]],n=new Set;return t.map((a,r)=>tn(a,`offer_${r}`)).filter(a=>{const r=String(a.id||`${a.title}|${a.text}|${a.imageUrl}`).trim();return!r||n.has(r)?!1:(n.add(r),!0)})}function sn(e={}){const t=je(e),n=String(e?.restaurantId||e?.canonicalRestaurantId||t.restaurantId||t.canonicalRestaurantId||t.id||"").trim();if(!n)return!1;const a=l.focus&&typeof l.focus=="object"?l.focus:{},r=String(a.restaurantId||"").trim()===n,i=String(a.truthSource||"").trim().toLowerCase();if(r&&i==="public-menu"||(r&&Array.isArray(a.items)?a.items:[]).length)return!1;const d=nn(t);return d.length>0||Array.isArray(t.publicOffers)||Array.isArray(t.travelOffers)||Array.isArray(t.offerItems)||Number.isFinite(Number(t.publicOffersCount))||Number.isFinite(Number(t.travelOffersCount))||typeof t.hasTravelOffers=="boolean"||String(t.offersTruthState||"").trim()?(l.focus={...a,restaurantId:n,items:d,enabled:a.enabled!==!1,loading:!1,error:"",index:0,truthSource:"restaurant-cache",truthState:d.length?"seeded":"knownEmpty"},!0):!1}function an(e={}){const t=[e?.verifiedMapLocation,e?.mapLocation,e?.geo,e?.coordinates,e?.coords,e?.locationCoords,e];for(const n of t){if(!n||typeof n!="object")continue;const a=Number(n.lat??n.latitude),r=Number(n.lng??n.lon??n.longitude);if(Number.isFinite(a)&&Number.isFinite(r))return{lat:a,lng:r}}return null}function E(e={},t=[]){for(const n of t){const a=String(e?.[n]||"").trim();if(a)return a}return""}function me(e){if(Array.isArray(e))return e.map(n=>String(n||"").trim()).filter(Boolean);const t=String(e||"").trim();return t?t.split(/[\n,;|]/).map(n=>n.trim()).filter(Boolean):[]}function rn(e={}){const t=[...me(e.coverImages),...me(e.hotelCoverImages),...me(e.titleImages),e.titleImageUrl,e.coverImageUrl,e.coverUrl,e.heroUrl,e.imageUrl].map(a=>String(a||"").trim()).filter(Boolean),n=[];return t.forEach(a=>{n.includes(a)||n.push(a)}),n.slice(0,8)}function on(e={}){return!e||typeof e!="object"?!1:Array.isArray(e.existingImages)||Array.isArray(e.imagePreviews)||Array.isArray(e.imageFiles)||!!String(e.imageUrlDraft||"").trim()||e.saving===!0||e.detailsOpen===!0||!!String(e.status||"").trim()}function ln(e=""){const t=String(e||"").trim(),n=l.hotelCardEditor&&typeof l.hotelCardEditor=="object"?l.hotelCardEditor:{},a=String(n.restaurantId||"").trim();return a?a===t?n:{}:on(n)?{}:n}function cn(e={}){const t=Array.isArray(e.features)?e.features.map(a=>String(a||"").trim()).filter(Boolean):[],n=e.restaurantFeatures&&typeof e.restaurantFeatures=="object"?e.restaurantFeatures:{};return[E(e,["hotelFeatureOneText","gardenTerraceText"])||String(n.gardenTerrace||"").trim()||t[0]||"",E(e,["hotelFeatureTwoText","accessibilityText"])||String(n.accessibility||"").trim()||t[1]||"",E(e,["hotelFeatureThreeText","veganOptionsText"])||String(n.veganOptions||"").trim()||t[2]||""]}function dn(e={}){const t=[],n=(a="")=>{const r=String(a||"").trim();r&&!t.includes(r)&&t.push(r)};return[e.amenities,e.features,e.included,e.facilities,e.hotelAmenities].forEach(a=>{Array.isArray(a)&&a.forEach(r=>{typeof r=="string"?n(r):r&&typeof r=="object"&&n(r.label||r.name||r.title)})}),(e.beachfront||e.onBeach||e.amStrand)&&n("Në plazh"),(e.restaurant||e.hasRestaurant)&&n("Restaurant"),(e.breakfast||e.breakfastIncluded)&&n("Mëngjes"),(e.pool||e.hasPool)&&n("Pool"),(e.wifi||e.freeWifi||e.hasWifi)&&n("WLAN"),(e.parking||e.freeParking||e.hasParking)&&n("Parking"),(e.spa||e.wellness)&&n("Wellness"),t.slice(0,8)}const un=[{value:"m",label:"m"},{value:"km",label:"km"}],pn="Në qendër",lt="Në plazh",fn=["Mëngjes","Gjysmë pension","Pension i plotë","All inclusive","Restorant","Pa ushqim"],gn=["Shezlongë falas","Shezlongë me pagesë","Plazh privat","Pa shezlongë"],mn=["Parking falas","Parking privat","Parking me pagesë","Pa parking"];function H(e=""){return String(e||"").trim().toLowerCase().replace(/[ëèéê]/g,"e").replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"")}function bn(e="",{direct:t=!1}={}){const n=String(e||"").trim(),a=H(n),r=t||a==="ne_qender"||a==="ne_plazh"||a==="direkt_ne_qender"||a==="direkt_ne_plazh"||a.includes("direkt")&&(a.includes("strand")||a.includes("zentrum")||a.includes("center"))||a.includes("am_strand")||a.includes("im_zentrum"),i=n.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer|m|meter)?/i),o=i?i[1].replace(",","."):"",c=(i?String(i[2]||"").trim().toLowerCase():"").startsWith("k")?"km":"m";return{amount:o,unit:c,isDirect:r}}function ct({idPrefix:e="",iconName:t="navigation",label:n="",value:a="",directLabel:r="",direct:i=!1}={}){const o=bn(a,{direct:i});return`
     <div class="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4 space-y-3">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-2xl bg-white text-slate-600 flex items-center justify-center border border-slate-100 shrink-0">
@@ -86,7 +86,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       <div class="grid grid-cols-[1fr_92px] gap-2">
         <input id="${s(e)}Value" type="number" min="0" step="0.1" value="${s(o.amount)}" placeholder="150" inputmode="decimal" class="w-full px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
         <select id="${s(e)}Unit" class="w-full px-3 py-3 bg-white rounded-2xl text-sm font-black border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100">
-          ${cn.map(d=>`<option value="${s(d.value)}" ${o.unit===d.value?"selected":""}>${s(d.label)}</option>`).join("")}
+          ${un.map(d=>`<option value="${s(d.value)}" ${o.unit===d.value?"selected":""}>${s(d.label)}</option>`).join("")}
         </select>
       </div>
       <label class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white border border-slate-100">
@@ -94,7 +94,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         <input id="${s(e)}Direct" type="checkbox" class="w-5 h-5 accent-indigo-600" ${o.isDirect?"checked":""} />
       </label>
     </div>
-  `}function mn(e=[],t=""){const n=String(t||"").trim(),a=new Set(e.map(H));return`
+  `}function xn(e=[],t=""){const n=String(t||"").trim(),a=new Set(e.map(H));return`
     <option value="">Zgjidh</option>
     ${e.map(r=>`<option value="${s(r)}" ${H(r)===H(n)?"selected":""}>${s(r)}</option>`).join("")}
     ${n&&!a.has(H(n))?`<option value="${s(n)}" selected>Aktuale: ${s(n)}</option>`:""}
@@ -107,14 +107,14 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         <label for="${s(e)}" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${s(n)}</label>
       </div>
       <select id="${s(e)}" class="w-full px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100">
-        ${mn(r,a)}
+        ${xn(r,a)}
       </select>
     </div>
-  `}function bn(e={},t=[]){const n=new Set(t.map(H).filter(Boolean)),a=[],r=(i="")=>{const o=String(i||"").trim();if(!o)return;const d=H(o);n.has(d)||a.some(c=>H(c)===d)||a.push(o)};return[e.features,e.hotelFeatures,e.amenities,e.facilities,e.hotelAmenities].forEach(i=>me(i).forEach(r)),a}function xn({existingImages:e=[],newPreviews:t=[],imageUrlDraft:n=""}={}){const a=[...t.map((o,d)=>({src:o,kind:"new",idx:d})),...e.map((o,d)=>({src:o,kind:"existing",idx:d}))].filter(o=>o.src),r=a[0]?.src||n||"",i=r?R(r,"large"):B;return`
+  `}function hn(e={},t=[]){const n=new Set(t.map(H).filter(Boolean)),a=[],r=(i="")=>{const o=String(i||"").trim();if(!o)return;const d=H(o);n.has(d)||a.some(c=>H(c)===d)||a.push(o)};return[e.features,e.hotelFeatures,e.amenities,e.facilities,e.hotelAmenities].forEach(i=>me(i).forEach(r)),a}function vn({existingImages:e=[],newPreviews:t=[],imageUrlDraft:n=""}={}){const a=[...t.map((o,d)=>({src:o,kind:"new",idx:d})),...e.map((o,d)=>({src:o,kind:"existing",idx:d}))].filter(o=>o.src),r=a[0]?.src||n||"",i=r?R(r,"large"):D;return`
     <div class="space-y-4">
       <input id="hotelCardCoverImagesInput" type="file" accept="image/*" multiple class="hidden" />
       <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-        <img id="hotelCardCoverHeroPreview" src="${s(i||B)}" class="w-full h-52 object-cover bg-white" />
+        <img id="hotelCardCoverHeroPreview" src="${s(i||D)}" class="w-full h-52 object-cover bg-white" />
         <button type="button" id="hotelCardCoverImagesTrigger" aria-label="Ngarko foto" class="absolute top-3 right-3 w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform">
           ${x("camera","w-5 h-5")}
           <span class="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center border border-white">
@@ -162,7 +162,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </div>
       </div>
     </div>
-  `}function dt(e={}){const t=je(e),n=an(t),a=E(t,["address","primaryAddress","location","formattedAddress","street"]),r=E(t,["city","locationCity","primaryCity","region","country"]),i=E(t,["beachDistance","distanceToBeach","beachDistanceLabel","strandEntfernung"]),o=E(t,["distanceCenter","distanceToCenter","centerDistance","cityCenterDistance","centerDistanceLabel","zentrumEntfernung","distanceCentre"]),d=E(t,["rating","reviewRating","stars","hotelStars"]),c=E(t,["reviewCount","reviewsCount","ratingsCount","commentsCount"]),p=ln(t),f=n?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${n.lat},${n.lng}`)}`:a||r?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${a} ${r}`.trim())}`:"";return`
+  `}function dt(e={}){const t=je(e),n=an(t),a=E(t,["address","primaryAddress","location","formattedAddress","street"]),r=E(t,["city","locationCity","primaryCity","region","country"]),i=E(t,["beachDistance","distanceToBeach","beachDistanceLabel","strandEntfernung"]),o=E(t,["distanceCenter","distanceToCenter","centerDistance","cityCenterDistance","centerDistanceLabel","zentrumEntfernung","distanceCentre"]),d=E(t,["rating","reviewRating","stars","hotelStars"]),c=E(t,["reviewCount","reviewsCount","ratingsCount","commentsCount"]),p=dn(t),f=n?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${n.lat},${n.lng}`)}`:a||r?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${a} ${r}`.trim())}`:"";return`
     <div class="app-content-inline flex flex-col gap-4 app-main-content-safe animate-in fade-in duration-300">
       <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm overflow-hidden">
         <div class="h-40 rounded-[1.6rem] bg-cyan-50 border border-cyan-100 relative overflow-hidden mb-4">
@@ -200,7 +200,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         `}
       </div>
     </div>
-  `}function hn(e={}){const t=je(e),n=String(e?.restaurantId||t.restaurantId||t.id||"").trim(),a=t?.name||t?.restaurantName||e?.name||"Hotel",r=String(l.hotelCardEditor?.status||"").trim(),i=l.hotelCardEditor?.saving===!0,o=l.hotelCardEditor&&typeof l.hotelCardEditor=="object"?l.hotelCardEditor:{},d=Array.isArray(o.existingImages)?o.existingImages.map(_=>String(_||"").trim()).filter(Boolean):rn(t),c=Array.isArray(o.imagePreviews)?o.imagePreviews.map(_=>String(_||"").trim()).filter(Boolean):[],p=String(o.imageUrlDraft||"").trim(),[f,h,w]=on(t),b=bn(t,[f,h,w]),k=E(t,["distanceCenter","distanceToCenter","centerDistance","cityCenterDistance","centerDistanceLabel","zentrumEntfernung","distanceCentre"]),S=E(t,["distanceBeach","distanceToBeach","beachDistance","beachDistanceLabel","strandEntfernung","lakeDistance","distanceToLake"]),$=E(t,["hotelStartingPrice","startingPrice","priceFrom","fromPrice","bestPrice","roomStartingPrice"]),I=t.directCenter===!0||t.inCenter===!0||t.cityCenterDirect===!0,m=t.beachfront===!0||t.onBeach===!0||t.amStrand===!0,y=o.detailsOpen===!0||i,F=c[0]||d[0]||"",C=F?R(F,"thumb"):B,j=[k,S,$?`${$} €`:""].filter(Boolean).join(" · ")||"Plotëso detajet",L=r.includes("fehl")||r.includes("Bitte")||r.includes("Nuk");return`
+  `}function wn(e={}){const t=je(e),n=String(e?.restaurantId||t.restaurantId||t.id||"").trim(),a=t?.name||t?.restaurantName||e?.name||"Hotel",r=ln(n),i=String(r.status||"").trim(),o=r.saving===!0,d=Array.isArray(r.existingImages)?r.existingImages.map(_=>String(_||"").trim()).filter(Boolean):rn(t),c=Array.isArray(r.imagePreviews)?r.imagePreviews.map(_=>String(_||"").trim()).filter(Boolean):[],p=String(r.imageUrlDraft||"").trim(),[f,h,w]=cn(t),b=hn(t,[f,h,w]),k=E(t,["distanceCenter","distanceToCenter","centerDistance","cityCenterDistance","centerDistanceLabel","zentrumEntfernung","distanceCentre"]),S=E(t,["distanceBeach","distanceToBeach","beachDistance","beachDistanceLabel","strandEntfernung","lakeDistance","distanceToLake"]),y=E(t,["hotelStartingPrice","startingPrice","priceFrom","fromPrice","bestPrice","roomStartingPrice"]),I=t.directCenter===!0||t.inCenter===!0||t.cityCenterDirect===!0,m=t.beachfront===!0||t.onBeach===!0||t.amStrand===!0,$=r.detailsOpen===!0||o,F=c[0]||d[0]||"",C=F?R(F,"thumb"):D,j=[k,S,y?`${y} €`:""].filter(Boolean).join(" · ")||"Plotëso detajet",L=i.includes("fehl")||i.includes("Bitte")||i.includes("Nuk");return`
     <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
       <div class="flex items-end justify-between mb-6">
         <div>
@@ -218,29 +218,29 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
               <h3 class="text-xl font-black italic tracking-tighter">Hotel Details</h3>
               <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hotel & Ofertat</p>
             </div>
-            <button type="button" data-hotel-card-details-open aria-expanded="${y?"true":"false"}" class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
+            <button type="button" data-hotel-card-details-open aria-expanded="${$?"true":"false"}" class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
               ${x("plus","w-4 h-4")}
             </button>
           </div>
 
-          <button type="button" data-hotel-card-details-open aria-expanded="${y?"true":"false"}" class="w-full flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100 text-left active:scale-[0.99] transition-transform">
+          <button type="button" data-hotel-card-details-open aria-expanded="${$?"true":"false"}" class="w-full flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100 text-left active:scale-[0.99] transition-transform">
             <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
-              <img src="${s(C||B)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+              <img src="${s(C||D)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-black text-slate-900 truncate">${s(a)}</p>
               <p class="text-xs text-slate-500 mt-1 line-clamp-2">${s(j)}</p>
-              <p data-hotel-card-details-state class="text-[9px] font-black uppercase tracking-widest mt-2 text-indigo-600">${y?"Hapur":"Hap detajet"}</p>
+              <p data-hotel-card-details-state class="text-[9px] font-black uppercase tracking-widest mt-2 text-indigo-600">${$?"Hapur":"Hap detajet"}</p>
             </div>
             <div class="w-8 h-8 rounded-xl bg-white border border-slate-100 text-slate-400 flex items-center justify-center shrink-0">
               ${x("chevron-right","w-4 h-4")}
             </div>
           </button>
 
-          ${r&&!y?`<div class="text-center text-[10px] font-black uppercase tracking-widest mt-4 ${L?"text-rose-500":"text-slate-500"}">${s(r)}</div>`:""}
+          ${i&&!$?`<div class="text-center text-[10px] font-black uppercase tracking-widest mt-4 ${L?"text-rose-500":"text-slate-500"}">${s(i)}</div>`:""}
         </div>
 
-        <div data-hotel-card-editor="${s(n)}" data-hotel-card-details-panel class="${y?"":"hidden "}bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 mb-6">
+        <div data-hotel-card-editor="${s(n)}" data-hotel-card-details-panel class="${$?"":"hidden "}bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 mb-6">
             <div class="flex items-center justify-between">
               <div>
                 <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Hotel</span>
@@ -253,22 +253,22 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
 
             <div>
               <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Fotot</p>
-              ${xn({existingImages:d,newPreviews:c,imageUrlDraft:p})}
+              ${vn({existingImages:d,newPreviews:c,imageUrlDraft:p})}
             </div>
 
             <div class="grid grid-cols-1 gap-4">
-              ${ct({idPrefix:"hotelCardDistanceCenter",iconName:"navigation",label:"Qendra",value:k,directLabel:dn,direct:I})}
+              ${ct({idPrefix:"hotelCardDistanceCenter",iconName:"navigation",label:"Qendra",value:k,directLabel:pn,direct:I})}
               ${ct({idPrefix:"hotelCardDistanceBeach",iconName:"waves",label:"Plazhi",value:S,directLabel:lt,direct:m})}
               <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Çmimi më i mirë</label>
-                <input id="hotelCardStartingPrice" type="text" value="${s($)}" placeholder="145" inputmode="decimal" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                <input id="hotelCardStartingPrice" type="text" value="${s(y)}" placeholder="145" inputmode="decimal" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
               </div>
             </div>
 
             <div class="grid grid-cols-1 gap-4">
-              ${Te({id:"hotelCardFeatureOneText",iconName:"utensils",label:"Ushqimi",value:f,options:un})}
-              ${Te({id:"hotelCardFeatureTwoText",iconName:"waves",label:"Shezlongë",value:h,options:pn})}
-              ${Te({id:"hotelCardFeatureThreeText",iconName:"square-parking",label:"Parking",value:w,options:fn})}
+              ${Te({id:"hotelCardFeatureOneText",iconName:"utensils",label:"Ushqimi",value:f,options:fn})}
+              ${Te({id:"hotelCardFeatureTwoText",iconName:"waves",label:"Shezlongë",value:h,options:gn})}
+              ${Te({id:"hotelCardFeatureThreeText",iconName:"square-parking",label:"Parking",value:w,options:mn})}
               <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Të tjera</label>
                 <textarea id="hotelCardCustomFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Recepsion 24/7" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${s(b.join(`
@@ -276,10 +276,10 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
               </div>
             </div>
 
-            ${r?`<div class="text-center text-[10px] font-black uppercase tracking-widest ${L?"text-rose-500":"text-slate-500"}">${s(r)}</div>`:""}
+            ${i?`<div class="text-center text-[10px] font-black uppercase tracking-widest ${L?"text-rose-500":"text-slate-500"}">${s(i)}</div>`:""}
 
-            <button id="hotelCardSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${i?"disabled":""}>
-              ${i?"Po ruhet...":"Ruaj Hotel Details"}
+            <button id="hotelCardSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${o?"disabled":""}>
+              ${o?"Po ruhet...":"Ruaj Hotel Details"}
             </button>
         </div>
         ${Oe(n,{variant:"travel-offers",suppressLoading:!0})}
@@ -289,7 +289,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </div>
       `}
     </div>
-  `}function xe(e={}){const t=String(l.profileTopTab||"").trim().toLowerCase(),n=String(l.profileContentTab||"").trim().toLowerCase();return fe(e)?t==="menu"?"menu":n==="menu"||n==="posts"?n:"posts":n==="media"||n==="checkins"?n:"posts"}function Ae(e={}){const t=String(l.profileTopTab||"").trim().toLowerCase();return fe(e)?t==="menu"||t==="cart"||t==="favorites"||t==="landing"?t:"profile":t==="favorites"&&String(l.user?.uid||"").trim()?"favorites":"profile"}function ut(e=0){const t=Math.round(Number(e||0));return Number.isFinite(t)?Math.max(0,Math.min(3,t)):0}function vn(e=0,t=1){const n=Math.max(1,Number(t||0)||1),a=Math.round(Number(e||0));if(!Number.isFinite(a))return 0;const r=a%n;return r<0?r+n:r}function wn(e=0){return ut(e)}function $n(e={}){const t=["Mirë se vini","Welcome","Willkommen","Bienvenido","Bienvenue","Benvenuto","Olá","Welkom","Välkommen","Hoş geldiniz","Yokoso","Huānyíng","Namaste"],n=ut(l.profileLandingStep),a=vn(l.profileLandingGreetingIndex,t.length),r=e?.landingScreenOne&&typeof e.landingScreenOne=="object"?e.landingScreenOne:{},i=String(r.businessName||e.name||"casarita").trim()||"casarita",o=i.endsWith(".")?i:`${i}.`,d=R(r.logoUrl||e.avatar||"","avatar"),p=String(d||"").trim()||"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23f8fafc'/%3E%3Ccircle cx='48' cy='48' r='34' fill='%2394a3b8'/%3E%3Ctext x='48' y='54' text-anchor='middle' font-family='Arial,sans-serif' font-size='16' font-weight='700' fill='white'%3EM%3C/text%3E%3C/svg%3E",f=String(r.messageLine1||"Lokali juaj është përgatitur tashmë në Mnyra.").trim(),h=String(r.messageLine2||"Prezenca juaj digjitale eshte gati për aktivizim.").trim(),w=n>=2,b=n>=3,k=Array.isArray(l.profileView?.posts)?l.profileView.posts:Array.isArray(e?.posts)?e.posts:[],S=wn(n),$=`
+  `}function xe(e={}){const t=String(l.profileTopTab||"").trim().toLowerCase(),n=String(l.profileContentTab||"").trim().toLowerCase();return fe(e)?t==="menu"?"menu":n==="menu"||n==="posts"?n:"posts":n==="media"||n==="checkins"?n:"posts"}function Ae(e={}){const t=String(l.profileTopTab||"").trim().toLowerCase();return fe(e)?t==="menu"||t==="cart"||t==="favorites"||t==="landing"?t:"profile":t==="favorites"&&String(l.user?.uid||"").trim()?"favorites":"profile"}function ut(e=0){const t=Math.round(Number(e||0));return Number.isFinite(t)?Math.max(0,Math.min(3,t)):0}function yn(e=0,t=1){const n=Math.max(1,Number(t||0)||1),a=Math.round(Number(e||0));if(!Number.isFinite(a))return 0;const r=a%n;return r<0?r+n:r}function $n(e=0){return ut(e)}function kn(e={}){const t=["Mirë se vini","Welcome","Willkommen","Bienvenido","Bienvenue","Benvenuto","Olá","Welkom","Välkommen","Hoş geldiniz","Yokoso","Huānyíng","Namaste"],n=ut(l.profileLandingStep),a=yn(l.profileLandingGreetingIndex,t.length),r=e?.landingScreenOne&&typeof e.landingScreenOne=="object"?e.landingScreenOne:{},i=String(r.businessName||e.name||"casarita").trim()||"casarita",o=i.endsWith(".")?i:`${i}.`,d=R(r.logoUrl||e.avatar||"","avatar"),p=String(d||"").trim()||"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%23f8fafc'/%3E%3Ccircle cx='48' cy='48' r='34' fill='%2394a3b8'/%3E%3Ctext x='48' y='54' text-anchor='middle' font-family='Arial,sans-serif' font-size='16' font-weight='700' fill='white'%3EM%3C/text%3E%3C/svg%3E",f=String(r.messageLine1||"Lokali juaj është përgatitur tashmë në Mnyra.").trim(),h=String(r.messageLine2||"Prezenca juaj digjitale eshte gati për aktivizim.").trim(),w=n>=2,b=n>=3,k=Array.isArray(l.profileView?.posts)?l.profileView.posts:Array.isArray(e?.posts)?e.posts:[],S=$n(n),y=`
     <div class="absolute w-full flex justify-center pointer-events-none" style="bottom: var(--landing-swipe-bottom);">
       <div class="flex flex-col items-center animate-bounce text-indigo-600/80">
         <span class="text-[9px] font-bold tracking-[0.25em] uppercase mb-2">Swipe</span>
@@ -308,8 +308,8 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         <div data-landing-glow="1" class="absolute rounded-full pointer-events-none" style="top: 33.333333%; left: 25%; width: 16rem; height: 16rem; background: radial-gradient(circle at center, rgb(224 231 255 / 0.7) 0%, rgb(224 231 255 / 0.45) 42%, rgb(224 231 255 / 0.06) 72%, rgb(224 231 255 / 0) 100%);"></div>
         <div class="flex flex-col items-start relative z-10 w-full" style="padding-left: 2.5rem; padding-right: 2.5rem;">
           <div class="relative w-full flex justify-start items-center mb-5" style="height: 40px;">
-            ${t.map((I,m)=>{const y=m===a,F=m===(a-1+t.length)%t.length;return`
-                <h1 data-landing-greeting-item="${m}" class="absolute left-0 font-medium text-indigo-600 origin-left" style="font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 1.875rem; line-height: 2.25rem; transition: all var(--landing-greeting-duration) cubic-bezier(0.23,1,0.32,1); ${y?"opacity: 1; transform: translateY(0) scale(1);":F?"opacity: 0; transform: translateY(-1.5rem) scale(0.95); pointer-events: none;":!y&&!F?"opacity: 0; transform: translateY(1.5rem) scale(0.95); pointer-events: none;":"opacity: 0;"}">
+            ${t.map((I,m)=>{const $=m===a,F=m===(a-1+t.length)%t.length;return`
+                <h1 data-landing-greeting-item="${m}" class="absolute left-0 font-medium text-indigo-600 origin-left" style="font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 1.875rem; line-height: 2.25rem; transition: all var(--landing-greeting-duration) cubic-bezier(0.23,1,0.32,1); ${$?"opacity: 1; transform: translateY(0) scale(1);":F?"opacity: 0; transform: translateY(-1.5rem) scale(0.95); pointer-events: none;":!$&&!F?"opacity: 0; transform: translateY(1.5rem) scale(0.95); pointer-events: none;":"opacity: 0;"}">
                   ${s(I)}
                 </h1>
               `}).join("")}
@@ -327,21 +327,21 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
             ${s(h)}
           </p>
         </div>
-        ${$}
+        ${y}
       </div>
 
       <div data-landing-panel="1" class="absolute inset-0 transition-transform ${n<1?"translate-y-full":n===1?"translate-y-0":"-translate-y-full"}" style="background: #F8F9FA; opacity: ${n===1?"1":"0"}; pointer-events: ${n===1?"auto":"none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
         <div data-landing-panel-scroll="1" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
           ${he(e,k,{topTabOverride:"profile",tutorialMode:!0,contentTabOverride:"posts",landingHideContent:!0,collapseIdentity:!1,landingMode:!0})}
         </div>
-        ${$}
+        ${y}
       </div>
 
       <div data-landing-panel="2" class="absolute inset-0 transition-transform ${n<2?"translate-y-full":n===2?"translate-y-0":"-translate-y-full"}" style="background: #F8F9FA; opacity: ${n===2?"1":"0"}; pointer-events: ${n===2?"auto":"none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
         <div data-landing-panel-scroll="2" class="h-full overflow-y-auto overscroll-contain" style="-webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: none; padding-top: var(--landing-top-gap); padding-bottom: 0;">
           ${w?he(e,k,{topTabOverride:"profile",tutorialMode:!0,contentTabOverride:"posts",landingHideContent:!1,collapseIdentity:!0,contentReveal:!0,landingMode:!0}):""}
         </div>
-        ${$}
+        ${y}
       </div>
 
       <div data-landing-panel="3" class="absolute inset-0 transition-transform ${n<3?"translate-y-full":"translate-y-0"}" style="background: #F8F9FA; opacity: ${n===3?"1":"0"}; pointer-events: ${n===3?"auto":"none"}; transition-property: transform, opacity; transition-duration: var(--landing-panel-duration); transition-timing-function: cubic-bezier(0.23,1,0.32,1); will-change: transform, opacity;">
@@ -372,17 +372,17 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </button>
       </div>
     </div>
-  `}function he(e={},t=[],{topTabOverride:n="",tutorialMode:a=!1,contentTabOverride:r="",landingHideContent:i=!1,collapseIdentity:o=!1,contentReveal:d=!1,landingMode:c=!1}={}){const p=Xt(e),f=!!e.privateAccount&&e.uid&&String(e.uid)!==String(l.user?.uid||"")&&!p,h=!!e.pendingFollowRequest&&!p,w=e.restaurantId?"Business":u("nav.user","User"),b=String(e.handle||Ne(e.name||"user")).replace(/^@/,""),S=s(e.bio||"").replace(/\n/g,"<br>")||s(u("profile.noBio","Noch keine Bio.")),$=fe(e),I=String(n||Ae(e)).trim().toLowerCase()||"profile",m=String(r||xe(e)).trim().toLowerCase()||"posts",y=m==="menu",F=m==="checkins",C=t,L={...l?.profileView&&typeof l.profileView=="object"?l.profileView:{},profile:e,posts:Array.isArray(C)?C:[]},_=Kn(l,{profileView:L,profileTopTab:I,profileContentTab:m}),Y=String(_?.header?.status||"").trim().toLowerCase()||"loading",v=String(_?.posts?.status||"").trim().toLowerCase()||"loading",P=String(e?.avatar||"").trim(),T=P?R(P,"avatar"):"",A=Ke(!!e.restaurantId),z=e.uid||e.restaurantId||b||"public",$e=c?"":`data-img-key="avatar:public:${s(z)}"`,Z=!!P,J=He=>{if(He==null)return!1;const Pt=Number(He);return Number.isFinite(Pt)&&Pt>=0},ye=Z||J(e?.followers)||J(e?.following),q=jt(Y)&&!ye,Ve=!!String(T||"").trim()&&Z,se=q?"...":M(e.followers),ke=q?"...":M(e.following),Se=$?I==="profile"?"pt-2":"pt-4":"pt-10",Ie=p?u("profile.following","Following"):h?u("profile.requested","Requested"):f?u("profile.request","Request"):u("profile.follow","Follow"),U=p?"bg-slate-100 text-slate-600 shadow-none border border-slate-200":h?"bg-amber-50 text-amber-700 shadow-none border border-amber-200":"bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent",Dn=a?"select-none":"app-main-content-safe",X=a?"pointer-events-none":"",Un=!o,Ct=!i,Ce=d?c?"transition-opacity duration-200":"animate-in fade-in duration-300":"",Ft=m==="posts"&&C.length>0,On=m!=="posts"||Ft||v==="empty"||v==="error",Vn=m==="posts"&&!Ft&&v==="error";return!a&&(m==="posts"||m==="media")&&e?.restaurantId&&jt(v)&&zt(e),`
-    <div class="${Dn}" ${a?'data-landing-tutorial-surface="true"':""}>
+  `}function he(e={},t=[],{topTabOverride:n="",tutorialMode:a=!1,contentTabOverride:r="",landingHideContent:i=!1,collapseIdentity:o=!1,contentReveal:d=!1,landingMode:c=!1}={}){const p=Xt(e),f=!!e.privateAccount&&e.uid&&String(e.uid)!==String(l.user?.uid||"")&&!p,h=!!e.pendingFollowRequest&&!p,w=e.restaurantId?"Business":u("nav.user","User"),b=String(e.handle||Ne(e.name||"user")).replace(/^@/,""),S=s(e.bio||"").replace(/\n/g,"<br>")||s(u("profile.noBio","Noch keine Bio.")),y=fe(e),I=String(n||Ae(e)).trim().toLowerCase()||"profile",m=String(r||xe(e)).trim().toLowerCase()||"posts",$=m==="menu",F=m==="checkins",C=t,L={...l?.profileView&&typeof l.profileView=="object"?l.profileView:{},profile:e,posts:Array.isArray(C)?C:[]},_=Gn(l,{profileView:L,profileTopTab:I,profileContentTab:m}),Y=String(_?.header?.status||"").trim().toLowerCase()||"loading",v=String(_?.posts?.status||"").trim().toLowerCase()||"loading",P=String(e?.avatar||"").trim(),T=P?R(P,"avatar"):"",A=Ke(!!e.restaurantId),z=e.uid||e.restaurantId||b||"public",ye=c?"":`data-img-key="avatar:public:${s(z)}"`,Z=!!P,J=He=>{if(He==null)return!1;const Pt=Number(He);return Number.isFinite(Pt)&&Pt>=0},$e=Z||J(e?.followers)||J(e?.following),q=jt(Y)&&!$e,Ve=!!String(T||"").trim()&&Z,se=q?"...":M(e.followers),ke=q?"...":M(e.following),Se=y?I==="profile"?"pt-2":"pt-4":"pt-10",Ie=p?u("profile.following","Following"):h?u("profile.requested","Requested"):f?u("profile.request","Request"):u("profile.follow","Follow"),U=p?"bg-slate-100 text-slate-600 shadow-none border border-slate-200":h?"bg-amber-50 text-amber-700 shadow-none border border-amber-200":"bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent",On=a?"select-none":"app-main-content-safe",X=a?"pointer-events-none":"",Vn=!o,Ct=!i,Ce=d?c?"transition-opacity duration-200":"animate-in fade-in duration-300":"",Ft=m==="posts"&&C.length>0,Hn=m!=="posts"||Ft||v==="empty"||v==="error",Nn=m==="posts"&&!Ft&&v==="error";return!a&&(m==="posts"||m==="media")&&e?.restaurantId&&jt(v)&&zt(e),`
+    <div class="${On}" ${a?'data-landing-tutorial-surface="true"':""}>
       ${I==="profile"||I==="menu"?`
-      ${Un?`
+      ${Vn?`
         <div class="app-content-inline pb-2 ${Se}">
           <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 ${X}">
             <div class="relative z-10">
               <div class="flex justify-between items-start mb-8">
                 <div class="relative">
                   <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                    ${Ve?`<img src="${s(T)}" decoding="async" width="100" height="100" ${$e} class="w-full h-full rounded-[1.8rem] ${A} border-2 border-white" />`:`<div class="w-full h-full rounded-[1.8rem] border-2 border-white bg-slate-100 flex items-center justify-center ${q?"animate-pulse":""}">${x(e.restaurantId?"store":"user","w-8 h-8 text-slate-300")}</div>`}
+                    ${Ve?`<img src="${s(T)}" decoding="async" width="100" height="100" ${ye} class="w-full h-full rounded-[1.8rem] ${A} border-2 border-white" />`:`<div class="w-full h-full rounded-[1.8rem] border-2 border-white bg-slate-100 flex items-center justify-center ${q?"animate-pulse":""}">${x(e.restaurantId?"store":"user","w-8 h-8 text-slate-300")}</div>`}
                   </div>
                   ${e.isPremium?`
                     <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -406,7 +406,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
 
               <div class="mb-8">
                 <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${s(e.name||"User")}</h1>
-                ${$?"":`<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${s(b)}</p>`}
+                ${y?"":`<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${s(b)}</p>`}
                 <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${S}</p>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${s(e.location||"-")} / ${w}</p>
                 ${q?`<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${s(u("profile.headLoading","Profilkopf wird geladen..."))}</p>`:""}
@@ -442,7 +442,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         ${Le(e,{landingPreview:a,selectedTabOverride:m,compact:o})}
         ${Ct?ze(e,{disabled:a}):""}
 
-        ${Ct?y?`
+        ${Ct?$?`
           <div class="${X} ${Ce}">
             ${ge(e)?dt(e):we(e,{mode:c?"landing":"profile",allowAutoEnsure:!c})}
           </div>
@@ -451,8 +451,8 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
             ${Pe()}
           </div>
         `:`
-          ${On?`
-            ${Vn?`
+          ${Hn?`
+            ${Nn?`
               <div class="app-content-inline ${X}">
                 <div class="py-16 text-center">
                   <p class="text-[10px] font-black uppercase tracking-widest text-rose-500">${s(u("profile.contentLoadError","Inhalte konnten nicht geladen werden"))}</p>
@@ -476,7 +476,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         ${I==="cart"?qe(e):I==="favorites"?Ge(e):""}
       `}
     </div>
-  `}function yn(){const e=l.profileView;if(!e||!e.profile)return"";const t=e.profile,n=e.posts||t.posts||[],a=Ae(t);return a==="landing"?$n(t):he(t,n,{topTabOverride:a,tutorialMode:!1})}function pt(e,{filter:t="all",query:n=""}={}){const a=Array.isArray(e)?e:[],r=qt(n||"");return a.filter(i=>t==="all"||G(i.type)===t?r?`${i.name||""} ${i.category||""} ${i.description||""}`.toLowerCase().includes(r):!0:!1)}function ft(e,t=0){const n=Number(e);return Number.isFinite(n)?Math.max(0,Math.floor(n)):Math.max(0,Number(t)||0)}function ve(e=[]){return(Array.isArray(e)?e.slice():[]).map((n,a)=>({item:n,idx:a,order:ft(n?.orderIndex,a)})).sort((n,a)=>n.order-a.order||n.idx-a.idx).map((n,a)=>({...n.item,orderIndex:ft(n.item?.orderIndex,a)}))}function _e(e={}){const t=String(e?.menuVisibility||"").trim().toLowerCase();return e?.menuHidden===!0||t==="hidden"}function ne(e={}){const t=String(e?.menuSection||e?.displaySection||e?.menuPlacement||"").trim().toLowerCase();return t==="drink"?"drink":t==="food"?"food":G(e?.type||"food")==="drink"?"drink":"food"}function kn(e={}){return String(e?.category||u("menu.other","Sonstiges")).trim()||u("menu.other","Sonstiges")}function Sn(e=""){const t=String(e||"").trim().toLowerCase();return t?(typeof t.normalize=="function"?t.normalize("NFD").replace(/[\u0300-\u036f]/g,""):t).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""):""}const In=4,Cn={thumb:160,small:480,medium:768,large:1280};function gt({mode:e="profile",priorityIndex:t=-1,slideIndex:n=0}={}){return(e==="profile"||e==="landing")&&Number.isFinite(t)&&t>=0&&t<In&&n===0}function Fn({mode:e="profile",priorityIndex:t=-1,slideIndex:n=0}={}){const a=gt({mode:e,priorityIndex:t,slideIndex:n}),r=e==="profile"?' data-image-reveal="menu"':"";return a?`loading="eager" fetchpriority="high"${r}`:`loading="lazy" fetchpriority="low"${r}`}function Pn({variant:e="grid"}={}){return e==="thumb"?"(max-width: 640px) 64px, 64px":e==="hero"?"(max-width: 640px) 94vw, (max-width: 1200px) 74vw, 920px":"(max-width: 640px) 48vw, (max-width: 1200px) 28vw, 360px"}function N(e,{mode:t="profile",priorityIndex:n=-1,slideIndex:a=0,stableKey:r="",preferredSize:i="small",candidateSizes:o=["small","medium","large"],variant:d="grid"}={}){const c=String(e||"").trim(),p=t==="profile"&&r?{stableKey:r}:null,f=gt({mode:t,priorityIndex:n,slideIndex:a}),h=t==="profile"&&!f&&d!=="thumb",w=R(c,i,p),b=ie(w)?B:w,k=Ot(c),S=Vt(c)&&c!==b?c:k,$=[],I=new Set;o.forEach(P=>{const T=Cn[P]||0;if(!T)return;const A=R(c,P,p);if(!A||ie(A))return;const z=`${A}|${T}`;I.has(z)||(I.add(z),$.push(`${A} ${T}w`))});const m=$.length>1?$.join(", "):"",y=m?Pn({variant:d}):"",F=h?"":m,C=h?"":y,j=F?` srcset="${s(F)}"`:"",L=C?` sizes="${s(C)}"`:"",_=Fn({mode:t,priorityIndex:n,slideIndex:a}),Y=`${_}${j}${L}`,v=h?[`data-menu-lazy-src="${s(b)}"`,`data-menu-lazy-fallback="${s(S||B)}"`,m?`data-menu-lazy-srcset="${s(m)}"`:"",y?`data-menu-lazy-sizes="${s(y)}"`:""].filter(Boolean).join(" "):"";return{safeImg:h?B:b,fallbackImg:h?B:S,imageAttrs:Y,lazyAttrs:v?` ${v}`:"",srcsetValue:m,sizesValue:y,loadingAttrs:_}}function Q(e=[],t,n=null){const a=n instanceof Set?n:new Set;return e.map((r,i)=>{const o=kn(r),d=Sn(o),c=!!d&&!a.has(d);return c&&a.add(d),`<div${c?` data-menu-category-anchor="${s(d)}"`:""} class="h-full">${t(r,i)}</div>`}).join("")}function Me(e={}){return String(e?.specialSize||e?.specialCardSize||"").trim().toLowerCase()==="food"?"food":"default"}function jn(e=""){const t=String(e||"").trim();return t?/^(https?:\/\/|mailto:|tel:)/i.test(t)?t:`https://${t.replace(/^\/+/,"")}`:""}function mt(e={}){const t=String(e?.specialActionType||e?.actionType||"").trim().toLowerCase(),n=jn(e?.specialActionUrl||e?.linkUrl||e?.actionUrl||""),a=String(e?.specialActionProductId||e?.targetProductId||"").trim();return t==="link"&&n?{type:"link",url:n,productId:""}:t==="product"&&a?{type:"product",url:"",productId:a}:{type:"self",url:"",productId:""}}function bt(){const e=l.menu.filter||"all";return`
+  `}function Sn(){const e=l.profileView;if(!e||!e.profile)return"";const t=e.profile,n=e.posts||t.posts||[],a=Ae(t);return a==="landing"?kn(t):he(t,n,{topTabOverride:a,tutorialMode:!1})}function pt(e,{filter:t="all",query:n=""}={}){const a=Array.isArray(e)?e:[],r=qt(n||"");return a.filter(i=>t==="all"||G(i.type)===t?r?`${i.name||""} ${i.category||""} ${i.description||""}`.toLowerCase().includes(r):!0:!1)}function ft(e,t=0){const n=Number(e);return Number.isFinite(n)?Math.max(0,Math.floor(n)):Math.max(0,Number(t)||0)}function ve(e=[]){return(Array.isArray(e)?e.slice():[]).map((n,a)=>({item:n,idx:a,order:ft(n?.orderIndex,a)})).sort((n,a)=>n.order-a.order||n.idx-a.idx).map((n,a)=>({...n.item,orderIndex:ft(n.item?.orderIndex,a)}))}function _e(e={}){const t=String(e?.menuVisibility||"").trim().toLowerCase();return e?.menuHidden===!0||t==="hidden"}function ne(e={}){const t=String(e?.menuSection||e?.displaySection||e?.menuPlacement||"").trim().toLowerCase();return t==="drink"?"drink":t==="food"?"food":G(e?.type||"food")==="drink"?"drink":"food"}function In(e={}){return String(e?.category||u("menu.other","Sonstiges")).trim()||u("menu.other","Sonstiges")}function Cn(e=""){const t=String(e||"").trim().toLowerCase();return t?(typeof t.normalize=="function"?t.normalize("NFD").replace(/[\u0300-\u036f]/g,""):t).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""):""}const Fn=4,Pn={thumb:160,small:480,medium:768,large:1280};function gt({mode:e="profile",priorityIndex:t=-1,slideIndex:n=0}={}){return(e==="profile"||e==="landing")&&Number.isFinite(t)&&t>=0&&t<Fn&&n===0}function jn({mode:e="profile",priorityIndex:t=-1,slideIndex:n=0}={}){const a=gt({mode:e,priorityIndex:t,slideIndex:n}),r=e==="profile"?' data-image-reveal="menu"':"";return a?`loading="eager" fetchpriority="high"${r}`:`loading="lazy" fetchpriority="low"${r}`}function Tn({variant:e="grid"}={}){return e==="thumb"?"(max-width: 640px) 64px, 64px":e==="hero"?"(max-width: 640px) 94vw, (max-width: 1200px) 74vw, 920px":"(max-width: 640px) 48vw, (max-width: 1200px) 28vw, 360px"}function N(e,{mode:t="profile",priorityIndex:n=-1,slideIndex:a=0,stableKey:r="",preferredSize:i="small",candidateSizes:o=["small","medium","large"],variant:d="grid"}={}){const c=String(e||"").trim(),p=t==="profile"&&r?{stableKey:r}:null,f=gt({mode:t,priorityIndex:n,slideIndex:a}),h=t==="profile"&&!f&&d!=="thumb",w=R(c,i,p),b=ie(w)?D:w,k=Ot(c),S=Vt(c)&&c!==b?c:k,y=[],I=new Set;o.forEach(P=>{const T=Pn[P]||0;if(!T)return;const A=R(c,P,p);if(!A||ie(A))return;const z=`${A}|${T}`;I.has(z)||(I.add(z),y.push(`${A} ${T}w`))});const m=y.length>1?y.join(", "):"",$=m?Tn({variant:d}):"",F=h?"":m,C=h?"":$,j=F?` srcset="${s(F)}"`:"",L=C?` sizes="${s(C)}"`:"",_=jn({mode:t,priorityIndex:n,slideIndex:a}),Y=`${_}${j}${L}`,v=h?[`data-menu-lazy-src="${s(b)}"`,`data-menu-lazy-fallback="${s(S||D)}"`,m?`data-menu-lazy-srcset="${s(m)}"`:"",$?`data-menu-lazy-sizes="${s($)}"`:""].filter(Boolean).join(" "):"";return{safeImg:h?D:b,fallbackImg:h?D:S,imageAttrs:Y,lazyAttrs:v?` ${v}`:"",srcsetValue:m,sizesValue:$,loadingAttrs:_}}function Q(e=[],t,n=null){const a=n instanceof Set?n:new Set;return e.map((r,i)=>{const o=In(r),d=Cn(o),c=!!d&&!a.has(d);return c&&a.add(d),`<div${c?` data-menu-category-anchor="${s(d)}"`:""} class="h-full">${t(r,i)}</div>`}).join("")}function Me(e={}){return String(e?.specialSize||e?.specialCardSize||"").trim().toLowerCase()==="food"?"food":"default"}function An(e=""){const t=String(e||"").trim();return t?/^(https?:\/\/|mailto:|tel:)/i.test(t)?t:`https://${t.replace(/^\/+/,"")}`:""}function mt(e={}){const t=String(e?.specialActionType||e?.actionType||"").trim().toLowerCase(),n=An(e?.specialActionUrl||e?.linkUrl||e?.actionUrl||""),a=String(e?.specialActionProductId||e?.targetProductId||"").trim();return t==="link"&&n?{type:"link",url:n,productId:""}:t==="product"&&a?{type:"product",url:"",productId:a}:{type:"self",url:"",productId:""}}function bt(){const e=l.menu.filter||"all";return`
     <div class="flex gap-2 mb-5">
       ${(ee(l.userProfile)?[{id:"all",label:u("menu.all","Alle")},{id:"food",label:u("menu.products","Produkte")},{id:"drink",label:u("menu.variants","Varianten")}]:[{id:"all",label:u("menu.all","Alle")},{id:"food",label:u("menu.food","Speisen")},{id:"drink",label:u("menu.drinks","Getraenke")}]).map(a=>`
         <button data-menu-filter="${a.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${e===a.id?"bg-slate-900 text-white shadow-md":"bg-white text-slate-400 border border-slate-100"}">
@@ -484,7 +484,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </button>
       `).join("")}
     </div>
-  `}function Tn(){const e=Dt().id;return`
+  `}function Ln(){const e=Bt().id;return`
     <div class="mb-5 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -504,7 +504,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
   `}function Ee(e,{mode:t="profile",priorityIndex:n=-1}={}){const a=O(e),r=t==="profile"?W(e,{index:0}):"",{safeImg:i,fallbackImg:o,imageAttrs:d,lazyAttrs:c}=N(a,{mode:t,priorityIndex:n,stableKey:r,preferredSize:"thumb",candidateSizes:["thumb","small"],variant:"thumb"}),p=pe(e),f=l.activeTab==="menu"?l.userProfile:l.profileView?.profile||l.userProfile,h=ee(f),w=at(e,h),b=e.category||"",k=e.description||"";return t==="admin"?`
       <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
         <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
-          <img src="${s(i)}" data-fallback-src="${s(o)}"${c} class="w-full h-full object-cover" style="object-position:${D(e)};" ${d} decoding="async" />
+          <img src="${s(i)}" data-fallback-src="${s(o)}"${c} class="w-full h-full object-cover" style="object-position:${B(e)};" ${d} decoding="async" />
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between gap-3">
@@ -529,7 +529,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
     `:`
     <div ${t==="profile"?`data-menu-open="${s(e.id)}" role="button"`:""} class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 ${t==="profile"?"cursor-pointer":""}">
       <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-        <img src="${s(i)}" data-fallback-src="${s(o)}"${c} class="w-full h-full object-cover" style="object-position:${D(e)};" ${d} decoding="async" />
+        <img src="${s(i)}" data-fallback-src="${s(o)}"${c} class="w-full h-full object-cover" style="object-position:${B(e)};" ${d} decoding="async" />
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between gap-4">
@@ -543,19 +543,19 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         ${k?`<p class="text-xs text-slate-500 mt-2 line-clamp-2">${s(k)}</p>`:""}
       </div>
     </div>
-  `}function Re(e,{mode:t="profile",variant:n="food",priorityIndex:a=-1}={}){const r=O(e),i=t==="profile"?W(e,{index:0}):"",o=n==="drink",{safeImg:d,fallbackImg:c,imageAttrs:p,lazyAttrs:f}=N(r,{mode:t,priorityIndex:a,stableKey:i,preferredSize:o?"small":"medium",candidateSizes:o?["small","medium"]:["small","medium","large"],variant:o?"grid":"hero"}),h=pe(e),w=l.activeTab==="menu"?l.userProfile:l.profileView?.profile||l.userProfile,b=ee(w),k=at(e,b),S=e.category||"",$=e.description||"",I=t==="profile"?`data-menu-open="${s(e.id)}" role="button"`:"",m=l.menu.restaurantId||l.profileView?.profile?.restaurantId||l.userProfile.restaurantId||"",y=oe(e),F=Je(m,y),C=F?Xe(F):{likes:[],comments:[],counts:{likes:0,comments:0}},j=et(C),L=`
+  `}function Re(e,{mode:t="profile",variant:n="food",priorityIndex:a=-1}={}){const r=O(e),i=t==="profile"?W(e,{index:0}):"",o=n==="drink",{safeImg:d,fallbackImg:c,imageAttrs:p,lazyAttrs:f}=N(r,{mode:t,priorityIndex:a,stableKey:i,preferredSize:o?"small":"medium",candidateSizes:o?["small","medium"]:["small","medium","large"],variant:o?"grid":"hero"}),h=pe(e),w=l.activeTab==="menu"?l.userProfile:l.profileView?.profile||l.userProfile,b=ee(w),k=at(e,b),S=e.category||"",y=e.description||"",I=t==="profile"?`data-menu-open="${s(e.id)}" role="button"`:"",m=l.menu.restaurantId||l.profileView?.profile?.restaurantId||l.userProfile.restaurantId||"",$=oe(e),F=Je(m,$),C=F?Xe(F):{likes:[],comments:[],counts:{likes:0,comments:0}},j=et(C),L=`
     <div class="mt-2 flex items-center gap-3 text-[10px] font-bold text-slate-400">
       <span class="inline-flex items-center gap-1">
-        ${x("heart","w-3 h-3 text-rose-400")} <span data-menu-like-count="${s(y)}">${s(M(j.likes))}</span>
+        ${x("heart","w-3 h-3 text-rose-400")} <span data-menu-like-count="${s($)}">${s(M(j.likes))}</span>
       </span>
       <span class="inline-flex items-center gap-1">
-        ${x("message-circle","w-3 h-3 text-indigo-400")} <span data-menu-comment-count="${s(y)}">${s(M(j.comments))}</span>
+        ${x("message-circle","w-3 h-3 text-indigo-400")} <span data-menu-comment-count="${s($)}">${s(M(j.comments))}</span>
       </span>
     </div>
   `;return`
     <div ${I} class="w-full ${o?"h-full p-3 rounded-[1.6rem] flex flex-col":"p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${t==="profile"?"cursor-pointer":""}">
       <div class="w-full ${o?"h-28 rounded-[1.4rem]":"h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
-        <img src="${s(d)}" data-fallback-src="${s(c)}"${f} class="w-full h-full object-cover" style="object-position:${D(e)};" ${p} decoding="async" />
+        <img src="${s(d)}" data-fallback-src="${s(c)}"${f} class="w-full h-full object-cover" style="object-position:${B(e)};" ${p} decoding="async" />
       </div>
       ${o?`
         <div class="mt-3 flex flex-1 flex-col">
@@ -573,12 +573,12 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
             ${S?`<span>${s(S)}</span>`:""}
             <span>${s(k)}</span>
           </div>
-          ${$?`<p class="text-xs text-slate-500 mt-2 line-clamp-2">${s($)}</p>`:""}
+          ${y?`<p class="text-xs text-slate-500 mt-2 line-clamp-2">${s(y)}</p>`:""}
           ${L}
         </div>
       `}
     </div>
-  `}function Be(e={}){if(!e?.restaurantId||ee(e))return!1;const t=String(nt(e)||"").trim().toLowerCase();return t==="restaurant"||t==="cafe"||t==="fastfood"}function xt(e){const t=e?.restaurantId||l.menu.restaurantId||l.profileView?.profile?.restaurantId||l.userProfile.restaurantId||"",n=oe(e),a=Je(t,n),r=a?Xe(a):{likes:[],comments:[],counts:{likes:0,comments:0}},i=String(l.user?.uid||"").trim(),o=String(l.user?.handle||"").trim().toLowerCase(),d=!!r.likes?.some(c=>{const p=String(c?.uid||"").trim();if(i&&p&&p===i)return!0;const f=String(c?.handle||"").trim().toLowerCase();return!!o&&!!f&&f===o});return{itemId:n,meta:r,counts:et(r),isLiked:d}}function W(e,{index:t=0}={}){const n=String(e?.restaurantId||l.menu.restaurantId||l.profileView?.profile?.restaurantId||l.userProfile.restaurantId||"").trim(),a=String(e?.id||oe(e)||"").trim();if(!n||!a)return"";const r=Number(t),i=Number.isFinite(r)?Math.max(0,Math.floor(r)):0;return`menu-detail:${n}:${a}:${i}`}function An(e){const t=typeof Ze=="function"?Ze(e):[],n=Array.isArray(t)?t.filter(Boolean):[];if(n.length)return n;const a=O(e);return a?[a]:[]}function K(e){return qn(e?.cardStyle||"",G(e?.type||"food"))}function De(e,{menuItemId:t=""}={}){if(!e)return null;const n=String(t||e.menuItemId||e.itemId||e.productId||"").trim();return{id:e.id||"",title:e.name||e.title||"Sot ne Fokus",text:e.description||e.text||"",imageUrl:O(e)||e.imageUrl||"",objectPosition:e.objectPosition||D(e),menuItemId:n}}function ht(e,t=[],{mode:n="profile"}={}){const a=e?.restaurantId||"";return!a||!Be(e)||!t.length?"":`
+  `}function De(e={}){if(!e?.restaurantId||ee(e))return!1;const t=String(nt(e)||"").trim().toLowerCase();return t==="restaurant"||t==="cafe"||t==="fastfood"}function xt(e){const t=e?.restaurantId||l.menu.restaurantId||l.profileView?.profile?.restaurantId||l.userProfile.restaurantId||"",n=oe(e),a=Je(t,n),r=a?Xe(a):{likes:[],comments:[],counts:{likes:0,comments:0}},i=String(l.user?.uid||"").trim(),o=String(l.user?.handle||"").trim().toLowerCase(),d=!!r.likes?.some(c=>{const p=String(c?.uid||"").trim();if(i&&p&&p===i)return!0;const f=String(c?.handle||"").trim().toLowerCase();return!!o&&!!f&&f===o});return{itemId:n,meta:r,counts:et(r),isLiked:d}}function W(e,{index:t=0}={}){const n=String(e?.restaurantId||l.menu.restaurantId||l.profileView?.profile?.restaurantId||l.userProfile.restaurantId||"").trim(),a=String(e?.id||oe(e)||"").trim();if(!n||!a)return"";const r=Number(t),i=Number.isFinite(r)?Math.max(0,Math.floor(r)):0;return`menu-detail:${n}:${a}:${i}`}function zn(e){const t=typeof Ze=="function"?Ze(e):[],n=Array.isArray(t)?t.filter(Boolean):[];if(n.length)return n;const a=O(e);return a?[a]:[]}function K(e){return Qn(e?.cardStyle||"",G(e?.type||"food"))}function Be(e,{menuItemId:t=""}={}){if(!e)return null;const n=String(t||e.menuItemId||e.itemId||e.productId||"").trim();return{id:e.id||"",title:e.name||e.title||"Sot ne Fokus",text:e.description||e.text||"",imageUrl:O(e)||e.imageUrl||"",objectPosition:e.objectPosition||B(e),menuItemId:n}}function ht(e,t=[],{mode:n="profile"}={}){const a=e?.restaurantId||"";return!a||!De(e)||!t.length?"":`
     <div class="pt-2 pb-4">
       <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
         ${t.map((r,i)=>{const o=r.imageUrl||"",d=String(r.menuItemId||r.id||"").trim(),{safeImg:c,fallbackImg:p,imageAttrs:f,lazyAttrs:h}=N(o,{mode:n,priorityIndex:i,preferredSize:"medium",candidateSizes:["small","medium","large"],variant:"hero",stableKey:d?`menu-focus:${a}:${d}`:""}),w=String(r.menuItemId||"").trim(),b=n==="profile"&&w?`data-menu-open="${s(w)}" role="button"`:"";return`
@@ -601,7 +601,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
   `}function vt(e,{mode:t="profile",priorityIndex:n=-1}={}){const a=O(e),r=t==="profile"?W(e,{index:0}):"",{safeImg:i,fallbackImg:o,imageAttrs:d,lazyAttrs:c}=N(a,{mode:t,priorityIndex:n,stableKey:r,preferredSize:"small",candidateSizes:["small","medium"],variant:"grid"}),p=pe(e),f=t==="profile"?`data-menu-open="${s(e.id)}" role="button"`:"",{itemId:h,counts:w,isLiked:b}=xt(e);return`
     <div ${f} class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative ${t==="profile"?"cursor-pointer":""}">
       <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
-        <img src="${s(i)}" data-fallback-src="${s(o)}"${c} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${D(e)};" ${d} decoding="async" />
+        <img src="${s(i)}" data-fallback-src="${s(o)}"${c} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${B(e)};" ${d} decoding="async" />
         <button
           type="button"
           data-menu-card-like="${s(e.id)}"
@@ -629,9 +629,9 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </div>
       </div>
     </div>
-  `}function Ln(e,t="profile"){if(t!=="profile")return"";const n=mt(e);return n.type==="link"&&n.url?`data-menu-special-link="${s(n.url)}" role="button" tabindex="0"`:n.type==="product"&&n.productId?`data-menu-open="${s(n.productId)}" role="button"`:`data-menu-open="${s(e.id)}" role="button"`}function Ue(e,{mode:t="profile",size:n="default",priorityIndex:a=-1}={}){const r=O(e),i=t==="profile"?W(e,{index:0}):"",o=n==="food",{safeImg:d,fallbackImg:c,imageAttrs:p,lazyAttrs:f}=N(r,{mode:t,priorityIndex:a,stableKey:i,preferredSize:o?"medium":"small",candidateSizes:o?["small","medium","large"]:["small","medium"],variant:o?"hero":"grid"}),h=Ln(e,t),w=String(e.category||"Special").trim()||"Special",b=s(String(e.name||"Special")).replace(/\n/g,"<br>");return n==="food"?`
+  `}function _n(e,t="profile"){if(t!=="profile")return"";const n=mt(e);return n.type==="link"&&n.url?`data-menu-special-link="${s(n.url)}" role="button" tabindex="0"`:n.type==="product"&&n.productId?`data-menu-open="${s(n.productId)}" role="button"`:`data-menu-open="${s(e.id)}" role="button"`}function Ue(e,{mode:t="profile",size:n="default",priorityIndex:a=-1}={}){const r=O(e),i=t==="profile"?W(e,{index:0}):"",o=n==="food",{safeImg:d,fallbackImg:c,imageAttrs:p,lazyAttrs:f}=N(r,{mode:t,priorityIndex:a,stableKey:i,preferredSize:o?"medium":"small",candidateSizes:o?["small","medium","large"]:["small","medium"],variant:o?"hero":"grid"}),h=_n(e,t),w=String(e.category||"Special").trim()||"Special",b=s(String(e.name||"Special")).replace(/\n/g,"<br>");return n==="food"?`
       <div ${h} class="rounded-[2.2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden mb-5 group aspect-[16/9] ${t==="profile"?"cursor-pointer":""}" style="border-radius:2.2rem;aspect-ratio:16 / 9;margin-bottom:20px;">
-        <img src="${s(d)}" data-fallback-src="${s(c)}"${f} class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${D(e)};" ${p} decoding="async" />
+        <img src="${s(d)}" data-fallback-src="${s(c)}"${f} class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${B(e)};" ${p} decoding="async" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
         <div class="absolute top-3 right-3 w-8 h-8 min-w-[2rem] min-h-[2rem] bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white pointer-events-none shrink-0" style="aspect-ratio:1 / 1;">
           ${x("arrow-right","w-4 h-4")}
@@ -645,7 +645,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       </div>
     `:`
     <div ${h} class="bg-slate-900 p-1.5 rounded-[1.8rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col relative overflow-hidden h-full group ${t==="profile"?"cursor-pointer":""}">
-      <img src="${s(d)}" data-fallback-src="${s(c)}"${f} class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${D(e)};" ${p} decoding="async" />
+      <img src="${s(d)}" data-fallback-src="${s(c)}"${f} class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${B(e)};" ${p} decoding="async" />
       <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
       <div class="absolute top-3 right-3 w-8 h-8 min-w-[2rem] min-h-[2rem] bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white pointer-events-none shrink-0" style="aspect-ratio:1 / 1;">
         ${x("arrow-right","w-4 h-4")}
@@ -657,7 +657,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </div>
       </div>
     </div>
-  `}function wt(e,{mode:t="profile",priorityIndex:n=-1}={}){const a=pe(e),r=t==="profile"?`data-menu-open="${s(e.id)}" role="button"`:"",i=An(e),d=(i.length?i:[O(e)||""]).filter(Boolean),c=d.length?d.slice(0,12):[""],p=c.length>1,{itemId:f,counts:h,isLiked:w}=xt(e),b=M(Math.max(0,Number(h.likes)||0)),k=M(Math.max(0,Number(h.comments)||0));return`
+  `}function wt(e,{mode:t="profile",priorityIndex:n=-1}={}){const a=pe(e),r=t==="profile"?`data-menu-open="${s(e.id)}" role="button"`:"",i=zn(e),d=(i.length?i:[O(e)||""]).filter(Boolean),c=d.length?d.slice(0,12):[""],p=c.length>1,{itemId:f,counts:h,isLiked:w}=xt(e),b=M(Math.max(0,Number(h.likes)||0)),k=M(Math.max(0,Number(h.comments)||0));return`
     <div ${r} class="bg-white p-3.5 rounded-[2.2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 group relative ${t==="profile"?"cursor-pointer":""}" style="padding:14px;border-radius:2.2rem;margin-bottom:20px;box-sizing:border-box;">
       <div class="w-full aspect-[16/9] rounded-[1.8rem] overflow-hidden bg-slate-100 mb-4 relative" style="aspect-ratio:16 / 9;border-radius:1.8rem;margin-bottom:16px;">
         ${p?`
@@ -666,19 +666,19 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
             class="w-full h-full flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory hide-scrollbar"
             style="scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;overscroll-behavior-y:auto;"
           >
-            ${c.map((S,$)=>{const I=t==="profile"?W(e,{index:$}):"",m=N(S||"",{mode:t,priorityIndex:n,slideIndex:$,stableKey:I,preferredSize:"medium",candidateSizes:["small","medium","large"],variant:"hero"}),y=$>0,F=y?B:m.safeImg,C=y?B:m.fallbackImg,j=y?m.loadingAttrs:m.imageAttrs,L=y?"":m.lazyAttrs||"",_=y?` data-menu-card-deferred-src="${s(m.safeImg)}"
+            ${c.map((S,y)=>{const I=t==="profile"?W(e,{index:y}):"",m=N(S||"",{mode:t,priorityIndex:n,slideIndex:y,stableKey:I,preferredSize:"medium",candidateSizes:["small","medium","large"],variant:"hero"}),$=y>0,F=$?D:m.safeImg,C=$?D:m.fallbackImg,j=$?m.loadingAttrs:m.imageAttrs,L=$?"":m.lazyAttrs||"",_=$?` data-menu-card-deferred-src="${s(m.safeImg)}"
                     data-menu-card-deferred-fallback="${s(m.fallbackImg)}"
                     ${m.srcsetValue?`data-menu-card-deferred-srcset="${s(m.srcsetValue)}"`:""}
                     ${m.sizesValue?`data-menu-card-deferred-sizes="${s(m.sizesValue)}"`:""}`:"";return`
-                <div class="min-w-full h-full snap-center relative" data-menu-card-gallery-slide="${$}" style="min-width:100%;width:100%;height:100%;scroll-snap-align:center;">
-                  <img src="${s(F)}" data-fallback-src="${s(C)}"${L}${_} class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${D(e)};" ${j} decoding="async" />
+                <div class="min-w-full h-full snap-center relative" data-menu-card-gallery-slide="${y}" style="min-width:100%;width:100%;height:100%;scroll-snap-align:center;">
+                  <img src="${s(F)}" data-fallback-src="${s(C)}"${L}${_} class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${B(e)};" ${j} decoding="async" />
                 </div>
               `}).join("")}
           </div>
         `:`
-          ${c.map((S,$)=>{const I=t==="profile"?W(e,{index:$}):"",{safeImg:m,fallbackImg:y,imageAttrs:F,lazyAttrs:C}=N(S||"",{mode:t,priorityIndex:n,slideIndex:$,stableKey:I,preferredSize:"medium",candidateSizes:["small","medium","large"],variant:"hero"});return`
+          ${c.map((S,y)=>{const I=t==="profile"?W(e,{index:y}):"",{safeImg:m,fallbackImg:$,imageAttrs:F,lazyAttrs:C}=N(S||"",{mode:t,priorityIndex:n,slideIndex:y,stableKey:I,preferredSize:"medium",candidateSizes:["small","medium","large"],variant:"hero"});return`
               <div class="w-full h-full">
-                <img src="${s(m)}" data-fallback-src="${s(y)}"${C} class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${D(e)};" ${F} decoding="async" />
+                <img src="${s(m)}" data-fallback-src="${s($)}"${C} class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${B(e)};" ${F} decoding="async" />
               </div>
             `}).join("")}
         `}
@@ -693,11 +693,11 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </button>
         ${p?`
           <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10 pointer-events-none">
-            ${c.map((S,$)=>`
+            ${c.map((S,y)=>`
               <div
                 data-menu-card-gallery-dot="${s(e.id)}"
-                data-menu-card-gallery-index="${$}"
-                class="${$===0?"w-4 h-1.5 bg-white rounded-full shadow-sm":"w-1.5 h-1.5 bg-white/60 rounded-full shadow-sm"}"
+                data-menu-card-gallery-index="${y}"
+                class="${y===0?"w-4 h-1.5 bg-white rounded-full shadow-sm":"w-1.5 h-1.5 bg-white/60 rounded-full shadow-sm"}"
               ></div>
             `).join("")}
           </div>
@@ -727,12 +727,12 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </div>
       </div>
     </div>
-  `}function zn(e,t,{mode:n="profile",publicMenuSurfaceState:a=null}={}){const r=ve(Array.isArray(t)?t:[]),i=String(e?.restaurantId||"").trim(),o=n==="admin"||Yt(i),d=a?.focus?.canRenderFocus?{items:Array.isArray(a.focus.items)?a.focus.items:[],enabled:!0}:i&&o?le(i):{items:[],enabled:!1},c=d.enabled?(Array.isArray(d.items)?d.items:[]).map(v=>De({...v,objectPosition:de(v)})):[],p=r.filter(v=>K(v)==="testfirst_focus"&&!_e(v)).map(v=>De(v,{menuItemId:v.id||""})).filter(Boolean),f=new Set,h=[...c,...p].filter(v=>{const P=String(v.menuItemId||v.id||`${v.title}|${v.text}|${v.imageUrl}`);return!P||f.has(P)?!1:(f.add(P),!0)}),w=r.filter(v=>!_e(v)),b=w.filter(v=>K(v)!=="testfirst_focus"),k=b.length?b:w,S=b.length?h:[],$=k.filter(v=>ne(v)==="drink"),I=k.filter(v=>ne(v)!=="drink"),m=(v=[])=>{const P=[],T=[];return v.forEach(A=>{const z=K(A);z==="testfirst_food"||z==="testfirst_special"&&Me(A)==="food"?T.push(A):P.push(A)}),{gridItems:P,foodItems:T}},y=(v,P=-1)=>K(v)==="testfirst_special"?Ue(v,{mode:n,priorityIndex:P}):vt(v,{mode:n,priorityIndex:P});let F=0;const C=()=>{const v=F;return F+=1,v},j=new Set,L=(v,P)=>!P.gridItems.length&&!P.foodItems.length?"":`
+  `}function Mn(e,t,{mode:n="profile",publicMenuSurfaceState:a=null}={}){const r=ve(Array.isArray(t)?t:[]),i=String(e?.restaurantId||"").trim(),o=n==="admin"||Yt(i),d=a?.focus?.canRenderFocus?{items:Array.isArray(a.focus.items)?a.focus.items:[],enabled:!0}:i&&o?le(i):{items:[],enabled:!1},c=d.enabled?(Array.isArray(d.items)?d.items:[]).map(v=>Be({...v,objectPosition:de(v)})):[],p=r.filter(v=>K(v)==="testfirst_focus"&&!_e(v)).map(v=>Be(v,{menuItemId:v.id||""})).filter(Boolean),f=new Set,h=[...c,...p].filter(v=>{const P=String(v.menuItemId||v.id||`${v.title}|${v.text}|${v.imageUrl}`);return!P||f.has(P)?!1:(f.add(P),!0)}),w=r.filter(v=>!_e(v)),b=w.filter(v=>K(v)!=="testfirst_focus"),k=b.length?b:w,S=b.length?h:[],y=k.filter(v=>ne(v)==="drink"),I=k.filter(v=>ne(v)!=="drink"),m=(v=[])=>{const P=[],T=[];return v.forEach(A=>{const z=K(A);z==="testfirst_food"||z==="testfirst_special"&&Me(A)==="food"?T.push(A):P.push(A)}),{gridItems:P,foodItems:T}},$=(v,P=-1)=>K(v)==="testfirst_special"?Ue(v,{mode:n,priorityIndex:P}):vt(v,{mode:n,priorityIndex:P});let F=0;const C=()=>{const v=F;return F+=1,v},j=new Set,L=(v,P)=>!P.gridItems.length&&!P.foodItems.length?"":`
       <section class="menu-type-block relative" data-menu-type-block="${s(v)}">
         ${P.gridItems.length?`
           <div class="menu-category-section pb-6 pt-4" data-menu-type="${s(v)}">
             <div class="grid grid-cols-2 auto-rows-fr gap-3 app-content-inline">
-              ${Q(P.gridItems,T=>y(T,C()),j)}
+              ${Q(P.gridItems,T=>$(T,C()),j)}
             </div>
           </div>
         `:""}
@@ -744,7 +744,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
           </div>
         `:""}
       </section>
-    `,_=m($),Y=m(I);return`
+    `,_=m(y),Y=m(I);return`
     <div>
       ${ht(e,S,{mode:n})}
       <div id="menu-section" class="mt-5">
@@ -752,7 +752,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         ${L("food",Y)}
       </div>
     </div>
-  `}function $t(e,{mode:t="profile",useTestfirstCardUi:n=!1,seenCategories:a=null,priorityOffset:r=0}={}){return e.length?n?`
+  `}function yt(e,{mode:t="profile",useTestfirstCardUi:n=!1,seenCategories:a=null,priorityOffset:r=0}={}){return e.length?n?`
       <div class="grid grid-cols-2 auto-rows-fr gap-3">
         ${Q(e,(i,o)=>vt(i,{mode:t,priorityIndex:r+o}),a)}
       </div>
@@ -760,7 +760,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
     <div class="grid grid-cols-2 auto-rows-fr gap-4">
       ${Q(e,(i,o)=>Re(i,{mode:t,variant:"drink",priorityIndex:r+o}),a)}
     </div>
-  `:""}function yt(e,{mode:t="profile",useTestfirstCardUi:n=!1,seenCategories:a=null,priorityOffset:r=0}={}){return e.length?n?`
+  `:""}function $t(e,{mode:t="profile",useTestfirstCardUi:n=!1,seenCategories:a=null,priorityOffset:r=0}={}){return e.length?n?`
       <div>
         ${Q(e,(i,o)=>K(i)==="testfirst_special"&&Me(i)==="food"?Ue(i,{mode:t,size:"food",priorityIndex:r+o}):wt(i,{mode:t,priorityIndex:r+o}),a)}
       </div>
@@ -823,7 +823,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
 
       ${a.length?`
         <div class="space-y-3">
-          ${a.map(b=>{const k=R(b.imageUrl||"","thumb"),S=ie(k)?B:k,$=b.active!==!1?"Aktiv":"Inaktiv",I=b.active!==!1?"text-emerald-600":"text-slate-400";return`
+          ${a.map(b=>{const k=R(b.imageUrl||"","thumb"),S=ie(k)?D:k,y=b.active!==!1?"Aktiv":"Inaktiv",I=b.active!==!1?"text-emerald-600":"text-slate-400";return`
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
                 <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
                   <img src="${s(S)}" class="w-full h-full object-cover" style="object-position:${de(b)};" loading="lazy" decoding="async" />
@@ -831,7 +831,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-black text-slate-900 truncate">${s(b.title||"Sot ne Fokus")}</p>
                   ${b.text?`<p class="text-xs text-slate-500 mt-1 line-clamp-2">${s(b.text)}</p>`:""}
-                  <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${I}">${$}</p>
+                  <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${I}">${y}</p>
                 </div>
                 <div class="flex flex-col gap-2">
                   <button data-focus-edit="${s(b.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>
@@ -846,7 +846,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(w)}</div>
       `}
     </div>
-  `}function _n(e){if(!Be(e)||!it(e))return"";const n=ve((l.menu.items||[]).filter(a=>K(a)==="testfirst_special"));return`
+  `}function En(e){if(!De(e)||!it(e))return"";const n=ve((l.menu.items||[]).filter(a=>K(a)==="testfirst_special"));return`
     <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -860,10 +860,10 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       </div>
       ${n.length?`
         <div class="space-y-3">
-          ${n.map(a=>{const r=R(O(a),"thumb"),i=ie(r)?B:r,o=mt(a),d=o.type==="link"?"Link":o.type==="product"?"Produkt-Modal":"Diese Karte",c=Me(a)==="food"?"Food-Size":"Normal",p=Qt(ne(a));return`
+          ${n.map(a=>{const r=R(O(a),"thumb"),i=ie(r)?D:r,o=mt(a),d=o.type==="link"?"Link":o.type==="product"?"Produkt-Modal":"Diese Karte",c=Me(a)==="food"?"Food-Size":"Normal",p=Qt(ne(a));return`
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
                 <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
-                  <img src="${s(i)}" class="w-full h-full object-cover" style="object-position:${D(a)};" loading="lazy" decoding="async" />
+                  <img src="${s(i)}" class="w-full h-full object-cover" style="object-position:${B(a)};" loading="lazy" decoding="async" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-black text-slate-900 truncate">${s(a.name||"Special")}</p>
@@ -888,7 +888,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       <div class="${tt()} rounded-[2.5rem] p-6 border shadow-sm">
         <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(u("focus.loading","Fokus wird geladen..."))}</div>
       </div>
-    `;const h=Nt(c),w=c[h]||c[0],{safeImg:b,fallbackImg:k,imageAttrs:S,lazyAttrs:$}=N(w.imageUrl||"",{mode:"profile",priorityIndex:0,preferredSize:"medium",candidateSizes:["small","medium","large"],variant:"hero",stableKey:w?.id?`focus-carousel:${i}:${String(w.id)}`:""}),I=w.text||"";return`
+    `;const h=Nt(c),w=c[h]||c[0],{safeImg:b,fallbackImg:k,imageAttrs:S,lazyAttrs:y}=N(w.imageUrl||"",{mode:"profile",priorityIndex:0,preferredSize:"medium",candidateSizes:["small","medium","large"],variant:"hero",stableKey:w?.id?`focus-carousel:${i}:${String(w.id)}`:""}),I=w.text||"";return`
     <div id="focusCarousel" class="${tt()} rounded-[2.5rem] p-6 border shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sot ne Fokus</span>
@@ -904,7 +904,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         `:""}
       </div>
       <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
-        <img data-focus-image src="${s(b)}" data-fallback-src="${s(k)}"${$} class="w-full h-56 object-cover" style="object-position:${de(w)};" ${S} decoding="async" />
+        <img data-focus-image src="${s(b)}" data-fallback-src="${s(k)}"${y} class="w-full h-56 object-cover" style="object-position:${de(w)};" ${S} decoding="async" />
       </div>
       <div class="mt-4">
         <p data-focus-title class="text-lg font-black text-slate-900">${s(w.title||"Sot ne Fokus")}</p>
@@ -912,13 +912,13 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       </div>
       ${c.length>1?`
         <div class="flex items-center justify-center gap-2 mt-4">
-          ${c.map((y,F)=>`
+          ${c.map(($,F)=>`
             <button type="button" data-focus-dot="${F}" class="w-2.5 h-2.5 rounded-full ${F===h?"bg-slate-900":"bg-slate-200"}"></button>
           `).join("")}
         </div>
       `:""}
     </div>
-  `}function Mn(e,t=220){const n=encodeURIComponent(e||"");return`https://api.qrserver.com/v1/create-qr-code/?size=${t}x${t}&data=${n}`}function It({label:e,url:t,caption:n}){if(!t)return"";const a=Mn(t,240);return`
+  `}function Rn(e,t=220){const n=encodeURIComponent(e||"");return`https://api.qrserver.com/v1/create-qr-code/?size=${t}x${t}&data=${n}`}function It({label:e,url:t,caption:n}){if(!t)return"";const a=Rn(t,240);return`
     <button type="button" data-copy-url="${s(t)}" data-copy-label="${s(e)}" class="p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col items-center gap-3 text-left active:scale-[0.98] transition-transform">
       <div class="w-full aspect-square rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
         <img src="${s(a)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
@@ -929,7 +929,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         <p class="text-[9px] font-black uppercase tracking-widest text-slate-300 mt-2">Tippen zum Kopieren</p>
       </div>
     </button>
-  `}function En({profile:e,restaurantId:t,catalogLabel:n}){if(!t||!te(e))return"";if(typeof Qe=="function"){const i=ce?ce(t):null;(!i||i.sameRestaurant!==!0||!i.loading&&!i.loaded&&!i.error)&&Qe(e)}const a=typeof ce=="function"?ce(t):{enabled:!0,count:0,tables:[],loading:!1,saving:!1,error:""},r=(a.tables||[]).map(i=>{const o=Kt("apps/menyra-social/index.html",{r:t,tab:"menu",source:"qr",table:i});return It({label:`Tisch ${i}`,url:o,caption:`${n} fuer Tisch ${i}`})}).join("");return`
+  `}function Dn({profile:e,restaurantId:t,catalogLabel:n}){if(!t||!te(e))return"";if(typeof Qe=="function"){const i=ce?ce(t):null;(!i||i.sameRestaurant!==!0||!i.loading&&!i.loaded&&!i.error)&&Qe(e)}const a=typeof ce=="function"?ce(t):{enabled:!0,count:0,tables:[],loading:!1,saving:!1,error:""},r=(a.tables||[]).map(i=>{const o=Kt("apps/menyra-social/index.html",{r:t,tab:"menu",source:"qr",table:i});return It({label:`Tisch ${i}`,url:o,caption:`${n} fuer Tisch ${i}`})}).join("");return`
     <div class="mt-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
@@ -964,7 +964,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         </div>
       `}
     </div>
-  `}function Rn(){const e=l.userProfile,t=e.restaurantId||"",n=String(l.user?.uid||"").trim(),a=String(l.__authBootstrapInFlightUid||"").trim(),r=!t&&!!n&&(!!l.__authProfileLoadPromise||a===n),i=ge(e),o=te(e),d=l.profileView?.profile?.restaurantId?l.profileView.profile:null,c=Lt()&&!!d?.restaurantId&&te(d),p=st(We(e)),f=t?ue(t):null,h=f?.name||f?.restaurantName||e.name||"Business",w=t&&l.menu.restaurantId===t,b=String(l.menu.source||"").trim().toLowerCase(),k=!!w&&b==="collection",S=!!w&&b==="collection"&&l.menu.loading,$=!!t&&(S||!k),I=k?pt(l.menu.items,{filter:l.menu.filter,query:l.menu.query}):[],y=it(e)?I:I.filter(j=>!en(j)),F=ve(y),C=M(F.length);if(t&&i){sn(e);const j=String(l.focus?.truthSource||"").trim().toLowerCase();return!l.focus.loading&&(l.focus.restaurantId!==t||j!=="public-menu")&&re(e),hn(e)}return t&&o&&!k&&!S&&Mt(e),t&&o&&!l.focus.loading&&l.focus.restaurantId!==t&&re(e),o?`
+  `}function Bn(){const e=l.userProfile,t=e.restaurantId||"",n=String(l.user?.uid||"").trim(),a=String(l.__authBootstrapInFlightUid||"").trim(),r=!t&&!!n&&(!!l.__authProfileLoadPromise||a===n),i=ge(e),o=te(e),d=l.profileView?.profile?.restaurantId?l.profileView.profile:null,c=Lt()&&!!d?.restaurantId&&te(d),p=st(We(e)),f=t?ue(t):null,h=f?.name||f?.restaurantName||e.name||"Business",w=t&&l.menu.restaurantId===t,b=String(l.menu.source||"").trim().toLowerCase(),k=!!w&&b==="collection",S=!!w&&b==="collection"&&l.menu.loading,y=!!t&&(S||!k),I=k?pt(l.menu.items,{filter:l.menu.filter,query:l.menu.query}):[],$=it(e)?I:I.filter(j=>!en(j)),F=ve($),C=M(F.length);if(t&&i){sn(e);const j=String(l.focus?.truthSource||"").trim().toLowerCase();return!l.focus.loading&&(l.focus.restaurantId!==t||j!=="public-menu")&&re(e),wn(e)}return t&&o&&!k&&!S&&Mt(e),t&&o&&!l.focus.loading&&l.focus.restaurantId!==t&&re(e),o?`
     <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
       <div class="flex items-end justify-between mb-6">
         <div>
@@ -993,7 +993,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       `}
 
       ${t?Oe(t):""}
-      ${t&&k?_n(e):""}
+      ${t&&k?En(e):""}
 
       ${t?`
         <div class="mb-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">
@@ -1003,9 +1003,9 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
 
         ${bt()}
 
-        ${$?`<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(u("menu.loading",`${p} wird geladen...`,{label:p}))}</div>`:kt(F,{mode:"admin"})}
+        ${y?`<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(u("menu.loading",`${p} wird geladen...`,{label:p}))}</div>`:kt(F,{mode:"admin"})}
         ${l.menu.error?`<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mt-4">${s(l.menu.error)}</div>`:""}
-        ${En({profile:e,restaurantId:t,catalogLabel:p})}
+        ${Dn({profile:e,restaurantId:t,catalogLabel:p})}
       `:""}
 
     </div>
@@ -1023,13 +1023,13 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       <div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
         ${s(u("menu.noRestaurantId","Keine Restaurant-ID gefunden"))}
       </div>
-    `;const d=rt(e,o),c=te(d);c&&(i=ae(l,{profile:d,routePayload:a,webDirectEntry:r,restaurantId:o,coordinateFocusWithMenu:!0}));const p=String(r?.canonicalRestaurantId||r?.restaurantId||"").trim(),f=new Set(i.targetIds),h=Hn(i.focus.truthState||""),w=i.menu.status==="ready",b=i.focus.canRenderFocus,k=w&&c,S=i.focus.matches===!0&&i.focus.loading===!0,$=t==="landing",m=String(l?.profileView?.menuAccessSource||r?.menuAccessSource||a?.menuAccessSource||"").trim().toLowerCase()==="qr",y=r?.active===!0&&r?.webPriority===!0&&r?.menuFirst===!0&&String(l?.activeTab||"").trim().toLowerCase()==="profile"&&String(l?.profileTopTab||"").trim().toLowerCase()==="menu"&&(p===o||f.has(o)),F=y&&!m,C=["ready","empty","error"].includes(i.menu.status),j=y&&C,L=y&&(!k||i.menu.status!=="ready"),_=!k||i.focus.settled===!0||h==="knownEmpty"||i.menu.status!=="ready";n&&!j&&!C&&_t(d),n&&!L&&!_&&!S&&w&&(!F||C)&&re(d);const v=i.menu.canRenderItems?ve(pt(i.menu.items,{filter:"all",query:""})).filter(U=>!_e(U)):[],P=v.length>0,T=ee(e),A=st(We(e)),z=i.menu.error||"",$e=!!String(z||"").trim(),Z=i.menu.status==="loading"||i.menu.waitingForFocus===!0,J=v.filter(U=>ne(U)==="drink"),ye=v.filter(U=>ne(U)!=="drink"),q=0,Ve=J.length,se=Be(e),ke=new Set;P&&o&&(Et(v,o),Jt(v,o));const Se=o&&b?(Array.isArray(i.focus.items)?i.focus.items:[]).map(U=>De({...U,objectPosition:de(U)})).filter(Boolean):[],Ie=Se.length?ht(d,Se,{mode:t}):"";return $&&Z?'<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>':se?`
+    `;const d=rt(e,o),c=te(d);c&&(i=ae(l,{profile:d,routePayload:a,webDirectEntry:r,restaurantId:o,coordinateFocusWithMenu:!0}));const p=String(r?.canonicalRestaurantId||r?.restaurantId||"").trim(),f=new Set(i.targetIds),h=Kn(i.focus.truthState||""),w=i.menu.status==="ready",b=i.focus.canRenderFocus,k=w&&c,S=i.focus.matches===!0&&i.focus.loading===!0,y=t==="landing",m=String(l?.profileView?.menuAccessSource||r?.menuAccessSource||a?.menuAccessSource||"").trim().toLowerCase()==="qr",$=r?.active===!0&&r?.webPriority===!0&&r?.menuFirst===!0&&String(l?.activeTab||"").trim().toLowerCase()==="profile"&&String(l?.profileTopTab||"").trim().toLowerCase()==="menu"&&(p===o||f.has(o)),F=$&&!m,C=["ready","empty","error"].includes(i.menu.status),j=$&&C,L=$&&(!k||i.menu.status!=="ready"),_=!k||i.focus.settled===!0||h==="knownEmpty"||i.menu.status!=="ready";n&&!j&&!C&&_t(d),n&&!L&&!_&&!S&&w&&(!F||C)&&re(d);const v=i.menu.canRenderItems?ve(pt(i.menu.items,{filter:"all",query:""})).filter(U=>!_e(U)):[],P=v.length>0,T=ee(e),A=st(We(e)),z=i.menu.error||"",ye=!!String(z||"").trim(),Z=i.menu.status==="loading"||i.menu.waitingForFocus===!0,J=v.filter(U=>ne(U)==="drink"),$e=v.filter(U=>ne(U)!=="drink"),q=0,Ve=J.length,se=De(e),ke=new Set;P&&o&&(Et(v,o),Jt(v,o));const Se=o&&b?(Array.isArray(i.focus.items)?i.focus.items:[]).map(U=>Be({...U,objectPosition:de(U)})).filter(Boolean):[],Ie=Se.length?ht(d,Se,{mode:t}):"";return y&&Z?'<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>':se?`
       <div class="app-main-content-safe">
         ${Z?`
           ${Ie}
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(u("menu.loading",`${A} wird geladen...`,{label:A}))}</div>
         `:`
-          ${P?zn(d,v,{mode:t,publicMenuSurfaceState:i}):$e?`<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${s(u("menu.loadError","Menu konnte nicht geladen werden"))}</div>`:Ie||`<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${s(u("menu.noProducts","Keine Produkte"))}</div>`}
+          ${P?Mn(d,v,{mode:t,publicMenuSurfaceState:i}):ye?`<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${s(u("menu.loadError","Menu konnte nicht geladen werden"))}</div>`:Ie||`<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${s(u("menu.noProducts","Keine Produkte"))}</div>`}
           ${z?`<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${s(z)}</div>`:""}
         `}
       </div>
@@ -1043,7 +1043,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       `:`
         ${P?`
           ${T?`
-            ${Bt(v,{profile:e})}
+            ${Dt(v,{profile:e})}
           `:`
             ${J.length?`
               <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="drink">
@@ -1051,23 +1051,23 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
                   <h3 class="text-lg font-black italic tracking-tighter">${s(u("menu.drinks","Getraenke"))}</h3>
                 </div>
                 <div data-menu-type="drink">
-                  ${$t(J,{mode:t,useTestfirstCardUi:se,seenCategories:ke,priorityOffset:q})}
+                  ${yt(J,{mode:t,useTestfirstCardUi:se,seenCategories:ke,priorityOffset:q})}
                 </div>
               </section>
             `:""}
-            ${ye.length?`
+            ${$e.length?`
               <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="food">
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="text-lg font-black italic tracking-tighter">${s(u("menu.food","Speisen"))}</h3>
                 </div>
                 <div data-menu-type="food">
-                  ${yt(ye,{mode:t,useTestfirstCardUi:se,seenCategories:ke,priorityOffset:Ve})}
+                  ${$t($e,{mode:t,useTestfirstCardUi:se,seenCategories:ke,priorityOffset:Ve})}
                 </div>
               </section>
             `:""}
           `}
         `:`
-          ${$e?`
+          ${ye?`
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
               <div class="text-center py-16 text-rose-500 font-black uppercase text-[10px] tracking-[0.3em]">
                 ${s(u("menu.loadError","Menu konnte nicht geladen werden"))}
@@ -1084,7 +1084,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         ${z?`<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${s(z)}</div>`:""}
       `}
     </div>
-  `}function Bn(){const e=l.userProfile,t=At(e),n=t?l.businessPosts:l.userPosts,a=String(l.user?.uid||e?.uid||"").trim(),r=String(e?.restaurantId||"").trim(),i=String(l.__userPostsLoadingUid||"").trim(),o=String(l.__businessPostsLoadingRestaurantId||"").trim(),d=String(l.__authBootstrapInFlightUid||"").trim(),c=!!a&&i===a,p=!!r&&o===r,f=!!a&&d===a,h=t?p||f&&!n.length:c||f&&!n.length,w=String(e.handle||Ne(e.name||"user")).replace(/^@/,""),k=s(e.bio||"").replace(/\n/g,"<br>")||s(u("profile.noBio","Noch keine Bio.")),S=xe(e),$=S==="menu",I=S==="checkins",m=n,y=R(e.avatar,"avatar"),F=Ke(t),C=Ae(e);return`
+  `}function Un(){const e=l.userProfile,t=At(e),n=t?l.businessPosts:l.userPosts,a=String(l.user?.uid||e?.uid||"").trim(),r=String(e?.restaurantId||"").trim(),i=String(l.__userPostsLoadingUid||"").trim(),o=String(l.__businessPostsLoadingRestaurantId||"").trim(),d=String(l.__authBootstrapInFlightUid||"").trim(),c=!!a&&i===a,p=!!r&&o===r,f=!!a&&d===a,h=t?p||f&&!n.length:c||f&&!n.length,w=String(e.handle||Ne(e.name||"user")).replace(/^@/,""),k=s(e.bio||"").replace(/\n/g,"<br>")||s(u("profile.noBio","Noch keine Bio.")),S=xe(e),y=S==="menu",I=S==="checkins",m=n,$=R(e.avatar,"avatar"),F=Ke(t),C=Ae(e);return`
     <div class="app-main-content-safe">
       ${C==="profile"||C==="menu"?`
       <div class="app-content-inline pb-2 ${t?C==="profile"?"pt-2":"pt-4":"pt-10"}">
@@ -1094,7 +1094,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${s(y)}" decoding="async" width="100" height="100" data-img-key="avatar:self" class="w-full h-full rounded-[1.8rem] ${F} border-2 border-white" />
+                  <img src="${s($)}" decoding="async" width="100" height="100" data-img-key="avatar:self" class="w-full h-full rounded-[1.8rem] ${F} border-2 border-white" />
                 </div>
                 ${e.isPremium?`
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -1139,7 +1139,7 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
       ${Le(e)}
       ${ze(e)}
 
-      ${$?`
+      ${y?`
         ${ge(e)?dt(e):we(e)}
       `:I?`
         ${Pe()}
@@ -1170,4 +1170,4 @@ import{e as ae,f as Hn,t as Nn,g as Kn,h as jt,a as qn}from"../entry/social-app.
         ${C==="cart"?qe(e):C==="favorites"?Ge(e):""}
       `}
     </div>
-  `}return{renderProfilePostCardFancy:ot,renderProfilePostsFancy:Fe,renderProfileCheckins:Pe,renderProfileTabs:Le,renderProfileViewControls:ze,renderPublicProfileView:yn,renderMenuFilterRow:bt,renderMenuLayoutSection:Tn,renderMenuItemCard:Ee,renderMenuItemCardStacked:Re,renderMenuDrinkGrid:$t,renderMenuFoodList:yt,renderMenuList:kt,renderFocusAdminSection:Oe,renderFocusCarousel:St,renderMenuQrCard:It,renderMenuAdminView:Rn,renderProfileMenuView:we,renderProfileView:Bn}}export{Yn as createProfileMenuFocusRenderController};
+  `}return{renderProfilePostCardFancy:ot,renderProfilePostsFancy:Fe,renderProfileCheckins:Pe,renderProfileTabs:Le,renderProfileViewControls:ze,renderPublicProfileView:Sn,renderMenuFilterRow:bt,renderMenuLayoutSection:Ln,renderMenuItemCard:Ee,renderMenuItemCardStacked:Re,renderMenuDrinkGrid:yt,renderMenuFoodList:$t,renderMenuList:kt,renderFocusAdminSection:Oe,renderFocusCarousel:St,renderMenuQrCard:It,renderMenuAdminView:Bn,renderProfileMenuView:we,renderProfileView:Un}}export{Jn as createProfileMenuFocusRenderController};

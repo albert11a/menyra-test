@@ -1112,6 +1112,7 @@ export function createSessionDataRuntimeController({
     state.userPosts = [];
     state.businessPosts = [];
     state.profileView = null;
+    state.hotelCardEditor = null;
     state.profileModal = { open: false, profile: null };
     state.chatSettingsOpen = false;
     state.chatListScope = "inbox";

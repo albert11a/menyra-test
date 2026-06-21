@@ -799,6 +799,7 @@ const state = {
   profileViewMode: "grid",
   profileTopTab: "profile",
   profileContentTab: "posts",
+  hotelCardEditor: null,
   profileSurface: {
     target: { key: "", restaurantId: "", uid: "", handle: "" },
     header: { status: "loading", truthState: "", identityTruthState: "" },

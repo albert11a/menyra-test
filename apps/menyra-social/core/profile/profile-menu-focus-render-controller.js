@@ -474,6 +474,29 @@ function collectHotelCoverImages(record = {}) {
   return unique.slice(0, 8);
 }
 
+function hasHotelCardEditorScopedDraft(editor = {}) {
+  if (!editor || typeof editor !== "object") return false;
+  return Array.isArray(editor.existingImages)
+    || Array.isArray(editor.imagePreviews)
+    || Array.isArray(editor.imageFiles)
+    || !!String(editor.imageUrlDraft || "").trim()
+    || editor.saving === true
+    || editor.detailsOpen === true
+    || !!String(editor.status || "").trim();
+}
+
+function getHotelCardEditorStateForRestaurant(restaurantId = "") {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const editor = state.hotelCardEditor && typeof state.hotelCardEditor === "object"
+    ? state.hotelCardEditor
+    : {};
+  const editorRestaurantId = String(editor.restaurantId || "").trim();
+  if (editorRestaurantId) {
+    return editorRestaurantId === safeRestaurantId ? editor : {};
+  }
+  return hasHotelCardEditorScopedDraft(editor) ? {} : editor;
+}
+
 function getHotelCardFeatureValues(record = {}) {
   const features = Array.isArray(record.features) ? record.features.map((item) => String(item || "").trim()).filter(Boolean) : [];
   const restaurantFeatures = record.restaurantFeatures && typeof record.restaurantFeatures === "object"
@@ -822,9 +845,9 @@ function renderHotelCardAdminView(profile = {}) {
   const record = getHotelProfileRecord(profile);
   const restaurantId = String(profile?.restaurantId || record.restaurantId || record.id || "").trim();
   const restaurantName = record?.name || record?.restaurantName || profile?.name || "Hotel";
-  const status = String(state.hotelCardEditor?.status || "").trim();
-  const saving = state.hotelCardEditor?.saving === true;
-  const editorState = state.hotelCardEditor && typeof state.hotelCardEditor === "object" ? state.hotelCardEditor : {};
+  const editorState = getHotelCardEditorStateForRestaurant(restaurantId);
+  const status = String(editorState.status || "").trim();
+  const saving = editorState.saving === true;
   const coverImages = Array.isArray(editorState.existingImages)
     ? editorState.existingImages.map((item) => String(item || "").trim()).filter(Boolean)
     : collectHotelCoverImages(record);
