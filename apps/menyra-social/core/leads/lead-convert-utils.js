@@ -11,6 +11,38 @@ function normalizeLeadBusinessNameColor(value = "", fallback = "#111827") {
   return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
 }
 
+function resolveLeadBusinessNamePartColors(source = {}) {
+  const landing = source?.landingScreenOne && typeof source.landingScreenOne === "object"
+    ? source.landingScreenOne
+    : {};
+  const legacyColor = normalizeLeadBusinessNameColor(
+    source?.businessNameColor
+    || source?.landingBusinessNameColor
+    || landing.businessNameColor
+    || "",
+    ""
+  );
+  const legacyPart2Color = legacyColor && legacyColor.toLowerCase() !== "#111827" ? legacyColor : "";
+  return {
+    part1: normalizeLeadBusinessNameColor(
+      source?.businessNameColorPart1
+      || source?.landingBusinessNameColorPart1
+      || landing.businessNameColorPart1
+      || legacyColor
+      || "",
+      "#111827"
+    ),
+    part2: normalizeLeadBusinessNameColor(
+      source?.businessNameColorPart2
+      || source?.landingBusinessNameColorPart2
+      || landing.businessNameColorPart2
+      || legacyPart2Color
+      || "",
+      "#4f46e5"
+    )
+  };
+}
+
 export async function convertLeadToCustomerCore({
   leadId,
   state,
@@ -147,6 +179,7 @@ export async function convertLeadToCustomerCore({
       if (!String(creatorPatch.createdByUid || "").trim()) creatorPatch.createdByUid = actorUid;
       if (!String(creatorPatch.createdByRole || "").trim()) creatorPatch.createdByRole = "ceo";
     }
+    const businessNameColors = resolveLeadBusinessNamePartColors(restaurant);
     const payload = {
       uid: safeUid,
       role: "business",
@@ -170,6 +203,10 @@ export async function convertLeadToCustomerCore({
         || restaurant.landingScreenOne?.businessNameColor
         || ""
       ),
+      businessNameColorPart1: businessNameColors.part1,
+      businessNameColorPart2: businessNameColors.part2,
+      landingBusinessNameColorPart1: businessNameColors.part1,
+      landingBusinessNameColorPart2: businessNameColors.part2,
       publicSlug: String(restaurant.publicSlug || "").trim(),
       landingSlug: String(restaurant.landingSlug || "").trim(),
       updatedAt: serverTimestamp(),
@@ -201,6 +238,13 @@ export async function convertLeadToCustomerCore({
       || existingRest?.landingScreenOne?.businessNameColor
       || ""
     );
+    const businessNameColors = resolveLeadBusinessNamePartColors({
+      ...(existingRest || {}),
+      ...(lead || {}),
+      landingScreenOne: lead?.landingScreenOne || existingRest?.landingScreenOne || null
+    });
+    const businessNameColorPart1 = businessNameColors.part1;
+    const businessNameColorPart2 = businessNameColors.part2;
     const type = resolveCustomerType(lead.customerType || "cafe");
     const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
     const locations = normalizeLeadLocations(lead.locations || [], lead.address || "", {
@@ -233,6 +277,10 @@ export async function convertLeadToCustomerCore({
       logo: lead.logoUrl || "",
       businessNameColor,
       landingBusinessNameColor: businessNameColor,
+      businessNameColorPart1,
+      businessNameColorPart2,
+      landingBusinessNameColorPart1: businessNameColorPart1,
+      landingBusinessNameColorPart2: businessNameColorPart2,
       bestSpotLogoUrl: lead.bestSpotLogoUrl || lead.spotLogoUrl || existingRest?.bestSpotLogoUrl || existingRest?.spotLogoUrl || "",
       spotLogoUrl: lead.bestSpotLogoUrl || lead.spotLogoUrl || existingRest?.bestSpotLogoUrl || existingRest?.spotLogoUrl || "",
       titleImageUrl: lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || existingRest?.titleImageUrl || existingRest?.coverImageUrl || existingRest?.coverUrl || existingRest?.heroUrl || "",
@@ -311,7 +359,11 @@ export async function convertLeadToCustomerCore({
       landingSlug,
       landingPageUrl,
       businessNameColor,
-      landingBusinessNameColor: businessNameColor
+      landingBusinessNameColor: businessNameColor,
+      businessNameColorPart1,
+      businessNameColorPart2,
+      landingBusinessNameColorPart1: businessNameColorPart1,
+      landingBusinessNameColorPart2: businessNameColorPart2
     };
     if (!existingRest && restaurantId) {
       existingRest = state.restaurants.find((r) => String(r.id) === String(restaurantId)) || existingRest;
@@ -369,6 +421,10 @@ export async function convertLeadToCustomerCore({
       landingPageUrl,
       businessNameColor,
       landingBusinessNameColor: businessNameColor,
+      businessNameColorPart1,
+      businessNameColorPart2,
+      landingBusinessNameColorPart1: businessNameColorPart1,
+      landingBusinessNameColorPart2: businessNameColorPart2,
       socialUid,
       socialEmail,
       convertedAt: serverTimestamp(),

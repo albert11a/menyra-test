@@ -16,6 +16,38 @@ function normalizeBusinessNameColor(value = "", fallback = "#111827") {
   return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
 }
 
+function resolveBusinessNamePartColors(source = {}) {
+  const landing = source?.landingScreenOne && typeof source.landingScreenOne === "object"
+    ? source.landingScreenOne
+    : {};
+  const legacyColor = normalizeBusinessNameColor(
+    source?.businessNameColor
+    || source?.landingBusinessNameColor
+    || landing.businessNameColor
+    || "",
+    ""
+  );
+  const legacyPart2Color = legacyColor && legacyColor.toLowerCase() !== "#111827" ? legacyColor : "";
+  return {
+    part1: normalizeBusinessNameColor(
+      source?.businessNameColorPart1
+      || source?.landingBusinessNameColorPart1
+      || landing.businessNameColorPart1
+      || legacyColor
+      || "",
+      "#111827"
+    ),
+    part2: normalizeBusinessNameColor(
+      source?.businessNameColorPart2
+      || source?.landingBusinessNameColorPart2
+      || landing.businessNameColorPart2
+      || legacyPart2Color
+      || "",
+      "#4f46e5"
+    )
+  };
+}
+
 export function renderLeadSettingsView(ctx = {}) {
   const {
     state,
@@ -114,12 +146,7 @@ export function renderLeadCreationView(ctx = {}) {
   const monthlyPrice = getLeadMonthlyPrice(customerType, settings);
   const yearlyPrice = monthlyPrice * 12;
   const totalPrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
-  const businessNameColor = normalizeBusinessNameColor(
-    lead.businessNameColor
-    || lead.landingBusinessNameColor
-    || lead.landingScreenOne?.businessNameColor
-    || ""
-  );
+  const businessNameColors = resolveBusinessNamePartColors(lead);
   const specialEnabled = lead.specialEnabled === true;
   const coords = state.leadModal.coords && Number.isFinite(Number(state.leadModal.coords.lat)) && Number.isFinite(Number(state.leadModal.coords.lng))
     ? { lat: Number(state.leadModal.coords.lat), lng: Number(state.leadModal.coords.lng) }
@@ -177,16 +204,25 @@ export function renderLeadCreationView(ctx = {}) {
             <input id="leadBusinessName" type="text" value="${escapeHtml(lead.businessName || "")}" placeholder="Business Name" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name Farbe</label>
-            <input id="leadBusinessNameColor" type="color" value="${escapeHtml(businessNameColor)}" class="w-full mt-2 h-12 px-3 py-2 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-          </div>
-          <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
             <input id="leadEmail" type="email" value="${escapeHtml(lead.email || buildLeadAccountEmail(lead.businessName || ""))}" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
             <input id="leadPassword" type="password" value="${escapeHtml(lead.password || "")}" placeholder="leer = kein Login wird erstellt" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        </div>
+        <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Business Name Farben</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 1</label>
+              <input id="leadBusinessNameColorPart1" type="text" value="${escapeHtml(businessNameColors.part1)}" placeholder="#111827" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-black uppercase border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 2</label>
+              <input id="leadBusinessNameColorPart2" type="text" value="${escapeHtml(businessNameColors.part2)}" placeholder="#4f46e5" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-black uppercase border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">

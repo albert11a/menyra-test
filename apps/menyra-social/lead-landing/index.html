@@ -109,6 +109,11 @@
 
     .brand-name {
       margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: 0.16em;
+      row-gap: 0;
       font-size: clamp(42px, 10vw, 56px);
       font-weight: 900;
       line-height: 0.92;
@@ -264,17 +269,47 @@
       return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
     }
 
+    function splitBusinessNameParts(value) {
+      const businessName = String(value || "Business").trim() || "Business";
+      const baseName = businessName.replace(/\.+$/g, "").trim() || businessName;
+      const parts = baseName.split(/\s+/).filter(Boolean);
+      if (parts.length <= 1) {
+        return { part1: `${baseName}.`, part2: "" };
+      }
+      return {
+        part1: parts.slice(0, -1).join(" "),
+        part2: `${parts[parts.length - 1]}.`
+      };
+    }
+
+    function renderBrandName(value, colorPart1, colorPart2) {
+      const parts = splitBusinessNameParts(value);
+      brandNode.textContent = "";
+      const firstPartNode = document.createElement("span");
+      firstPartNode.textContent = parts.part1;
+      firstPartNode.style.color = colorPart1;
+      brandNode.appendChild(firstPartNode);
+      if (parts.part2) {
+        const secondPartNode = document.createElement("span");
+        secondPartNode.textContent = parts.part2;
+        secondPartNode.style.color = colorPart2;
+        brandNode.appendChild(secondPartNode);
+      }
+    }
+
     function renderScreenOne(payload = {}) {
       const businessName = String(payload.businessName || "Business").trim() || "Business";
       const logoUrl = resolveLogoUrl(payload.logoUrl, payload.logo);
       const businessNameColor = normalizeBusinessNameColor(payload.businessNameColor);
+      const legacyPart2Color = businessNameColor && businessNameColor.toLowerCase() !== "#111827" ? businessNameColor : "";
+      const businessNameColorPart1 = normalizeBusinessNameColor(payload.businessNameColorPart1 || businessNameColor, "#111827");
+      const businessNameColorPart2 = normalizeBusinessNameColor(payload.businessNameColorPart2 || legacyPart2Color, "#4f46e5");
       const line1 = String(payload.messageLine1 || `${businessName} ist bereits in Mnyra vorbereitet.`).trim();
       const line2 = String(payload.messageLine2 || "Deine digitale Praesenz ist bereit zur Aktivierung.").trim();
 
       logoNode.src = logoUrl;
       logoNode.alt = `${businessName} Logo`;
-      brandNode.textContent = businessName.endsWith(".") ? businessName : `${businessName}.`;
-      brandNode.style.color = businessNameColor;
+      renderBrandName(businessName, businessNameColorPart1, businessNameColorPart2);
       messageNode.textContent = "";
       const firstLineNode = document.createElement("span");
       const secondLineNode = document.createElement("span");
@@ -307,6 +342,8 @@
         renderScreenOne({
           businessName: screenOne.businessName || meta.name || meta.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
           businessNameColor: screenOne.businessNameColor || meta.businessNameColor || meta.landingBusinessNameColor || restaurant.businessNameColor || restaurant.landingBusinessNameColor,
+          businessNameColorPart1: screenOne.businessNameColorPart1 || meta.businessNameColorPart1 || meta.landingBusinessNameColorPart1 || restaurant.businessNameColorPart1 || restaurant.landingBusinessNameColorPart1,
+          businessNameColorPart2: screenOne.businessNameColorPart2 || meta.businessNameColorPart2 || meta.landingBusinessNameColorPart2 || restaurant.businessNameColorPart2 || restaurant.landingBusinessNameColorPart2,
           logoUrl: screenOne.logoUrl || meta.logoUrl || meta.logo || restaurant.logoUrl || restaurant.logo,
           logo: restaurant.logo,
           messageLine1: screenOne.messageLine1,

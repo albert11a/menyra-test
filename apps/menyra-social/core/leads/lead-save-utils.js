@@ -11,6 +11,39 @@ function normalizeLeadBusinessNameColor(value = "", fallback = "#111827") {
   return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
 }
 
+function resolveLeadBusinessNamePartColors(source = {}, legacyFallback = "") {
+  const landing = source?.landingScreenOne && typeof source.landingScreenOne === "object"
+    ? source.landingScreenOne
+    : {};
+  const legacyColor = normalizeLeadBusinessNameColor(
+    source?.businessNameColor
+    || source?.landingBusinessNameColor
+    || landing.businessNameColor
+    || legacyFallback
+    || "",
+    ""
+  );
+  const legacyPart2Color = legacyColor && legacyColor.toLowerCase() !== "#111827" ? legacyColor : "";
+  return {
+    part1: normalizeLeadBusinessNameColor(
+      source?.businessNameColorPart1
+      || source?.landingBusinessNameColorPart1
+      || landing.businessNameColorPart1
+      || legacyColor
+      || "",
+      "#111827"
+    ),
+    part2: normalizeLeadBusinessNameColor(
+      source?.businessNameColorPart2
+      || source?.landingBusinessNameColorPart2
+      || landing.businessNameColorPart2
+      || legacyPart2Color
+      || "",
+      "#4f46e5"
+    )
+  };
+}
+
 export async function saveLeadFromModalCore({
   state,
   documentObj,
@@ -262,6 +295,7 @@ export async function saveLeadFromModalCore({
       if (!String(creatorPatch.createdByUid || "").trim()) creatorPatch.createdByUid = actorUid;
       if (!String(creatorPatch.createdByRole || "").trim()) creatorPatch.createdByRole = "ceo";
     }
+    const businessNameColors = resolveLeadBusinessNamePartColors(restaurant);
     const payload = {
       uid: safeUid,
       role: "business",
@@ -284,6 +318,10 @@ export async function saveLeadFromModalCore({
         || restaurant.landingScreenOne?.businessNameColor
         || ""
       ),
+      businessNameColorPart1: businessNameColors.part1,
+      businessNameColorPart2: businessNameColors.part2,
+      landingBusinessNameColorPart1: businessNameColors.part1,
+      landingBusinessNameColorPart2: businessNameColors.part2,
       publicSlug: String(restaurant.publicSlug || "").trim(),
       landingSlug: String(restaurant.landingSlug || "").trim(),
       updatedAt: getTimestamp(),
@@ -308,12 +346,34 @@ export async function saveLeadFromModalCore({
   const settings = getSettings();
   syncDraftFromForm();
   const businessName = docObj.getElementById("leadBusinessName")?.value?.trim() || "";
-  const businessNameColor = normalizeLeadBusinessNameColor(
+  const legacyBusinessNameColorValue = (
     docObj.getElementById("leadBusinessNameColor")?.value
     || lead.businessNameColor
     || lead.landingBusinessNameColor
     || lead.landingScreenOne?.businessNameColor
     || ""
+  );
+  const legacyBusinessNameColor = normalizeLeadBusinessNameColor(legacyBusinessNameColorValue, "");
+  const legacyBusinessNameColorPart2 = legacyBusinessNameColor && legacyBusinessNameColor.toLowerCase() !== "#111827"
+    ? legacyBusinessNameColor
+    : "";
+  const businessNameColor = normalizeLeadBusinessNameColor(legacyBusinessNameColor);
+  const businessNameColorPart1 = normalizeLeadBusinessNameColor(
+    docObj.getElementById("leadBusinessNameColorPart1")?.value
+    || lead.businessNameColorPart1
+    || lead.landingBusinessNameColorPart1
+    || lead.landingScreenOne?.businessNameColorPart1
+    || legacyBusinessNameColor
+    || ""
+  );
+  const businessNameColorPart2 = normalizeLeadBusinessNameColor(
+    docObj.getElementById("leadBusinessNameColorPart2")?.value
+    || lead.businessNameColorPart2
+    || lead.landingBusinessNameColorPart2
+    || lead.landingScreenOne?.businessNameColorPart2
+    || legacyBusinessNameColorPart2
+    || "",
+    "#4f46e5"
   );
   const customerType = resolveType(docObj.getElementById("leadCustomerType")?.value || lead.customerType || "cafe");
   const contactFirstName = docObj.getElementById("leadCustomerFirstName")?.value?.trim() || lead.contactFirstName || "";
@@ -560,6 +620,10 @@ export async function saveLeadFromModalCore({
         landingPageUrl,
         businessNameColor,
         landingBusinessNameColor: businessNameColor,
+        businessNameColorPart1,
+        businessNameColorPart2,
+        landingBusinessNameColorPart1: businessNameColorPart1,
+        landingBusinessNameColorPart2: businessNameColorPart2,
         ...creatorMeta,
         updatedAt: getTimestamp()
       };
@@ -619,6 +683,10 @@ export async function saveLeadFromModalCore({
       specialEnabled,
       businessNameColor,
       landingBusinessNameColor: businessNameColor,
+      businessNameColorPart1,
+      businessNameColorPart2,
+      landingBusinessNameColorPart1: businessNameColorPart1,
+      landingBusinessNameColorPart2: businessNameColorPart2,
       contactFirstName,
       contactLastName,
       billingCycle,
@@ -779,6 +847,10 @@ export async function saveLeadFromModalCore({
       landingPageUrl,
       businessNameColor,
       landingBusinessNameColor: businessNameColor,
+      businessNameColorPart1,
+      businessNameColorPart2,
+      landingBusinessNameColorPart1: businessNameColorPart1,
+      landingBusinessNameColorPart2: businessNameColorPart2,
       socialUid,
       socialEmail,
       updatedAt: getTimestamp(),

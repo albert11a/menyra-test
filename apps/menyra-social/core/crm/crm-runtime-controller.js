@@ -433,6 +433,38 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
   }
 
+  function resolveLeadBusinessNamePartColors(source = {}) {
+    const landing = source?.landingScreenOne && typeof source.landingScreenOne === "object"
+      ? source.landingScreenOne
+      : {};
+    const legacyColor = normalizeLeadBusinessNameColor(
+      source?.businessNameColor
+      || source?.landingBusinessNameColor
+      || landing.businessNameColor
+      || "",
+      ""
+    );
+    const legacyPart2Color = legacyColor && legacyColor.toLowerCase() !== "#111827" ? legacyColor : "";
+    return {
+      part1: normalizeLeadBusinessNameColor(
+        source?.businessNameColorPart1
+        || source?.landingBusinessNameColorPart1
+        || landing.businessNameColorPart1
+        || legacyColor
+        || "",
+        "#111827"
+      ),
+      part2: normalizeLeadBusinessNameColor(
+        source?.businessNameColorPart2
+        || source?.landingBusinessNameColorPart2
+        || landing.businessNameColorPart2
+        || legacyPart2Color
+        || "",
+        "#4f46e5"
+      )
+    };
+  }
+
   function buildLeadLandingScreenOnePayload({
     restaurantId = "",
     base = {}
@@ -444,6 +476,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       || base?.landingScreenOne?.businessNameColor
       || ""
     );
+    const businessNameColors = resolveLeadBusinessNamePartColors(base);
     const landingSlug = buildLeadLandingSlug(restaurantId, {
       publicSlug: base?.publicSlug || "",
       landingSlug: base?.landingSlug || "",
@@ -464,6 +497,8 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       landingSlug,
       businessName,
       businessNameColor,
+      businessNameColorPart1: businessNameColors.part1,
+      businessNameColorPart2: businessNameColors.part2,
       logoUrl: String(base?.logoUrl || base?.logo || "").trim(),
       locationLabel,
       city,
@@ -982,6 +1017,11 @@ function createLeadDraftState(mode = "create", lead = null) {
   const yearlyPrice = monthlyPrice * 12;
   const country = normalizeLeadCountry(lead?.country || rest?.country || settings.defaultCountry);
   const titleImageUrl = resolveTitleImageUrl(lead) || resolveTitleImageUrl(rest);
+  const businessNameColors = resolveLeadBusinessNamePartColors({
+    ...(rest || {}),
+    ...(lead || {}),
+    landingScreenOne: lead?.landingScreenOne || rest?.landingScreenOne || null
+  });
   const merged = {
     ...(lead || {}),
     restaurantId: lead?.restaurantId || rest?.id || lead?.landingRestaurantId || "",
@@ -991,6 +1031,28 @@ function createLeadDraftState(mode = "create", lead = null) {
     canonicalPublicPath: lead?.canonicalPublicPath || rest?.canonicalPublicPath || "",
     landingPageUrl: lead?.landingPageUrl || rest?.landingPageUrl || "",
     businessName,
+    businessNameColor: normalizeLeadBusinessNameColor(
+      lead?.businessNameColor
+      || lead?.landingBusinessNameColor
+      || lead?.landingScreenOne?.businessNameColor
+      || rest?.businessNameColor
+      || rest?.landingBusinessNameColor
+      || rest?.landingScreenOne?.businessNameColor
+      || ""
+    ),
+    landingBusinessNameColor: normalizeLeadBusinessNameColor(
+      lead?.landingBusinessNameColor
+      || lead?.businessNameColor
+      || lead?.landingScreenOne?.businessNameColor
+      || rest?.landingBusinessNameColor
+      || rest?.businessNameColor
+      || rest?.landingScreenOne?.businessNameColor
+      || ""
+    ),
+    businessNameColorPart1: businessNameColors.part1,
+    businessNameColorPart2: businessNameColors.part2,
+    landingBusinessNameColorPart1: businessNameColors.part1,
+    landingBusinessNameColorPart2: businessNameColors.part2,
     city: lead?.city || rest?.city || "",
     address: locations[0]?.address || lead?.address || rest?.address || "",
     phone: lead?.phone || rest?.phone || "",
@@ -1602,6 +1664,12 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     || landingScreenOne?.businessNameColor
     || ""
   );
+  const businessNameColors = resolveLeadBusinessNamePartColors({
+    ...safeBase,
+    landingScreenOne
+  });
+  const businessNameColorPart1 = businessNameColors.part1;
+  const businessNameColorPart2 = businessNameColors.part2;
   const titleImageUrl = resolveTitleImageUrl(safeBase);
   const payload = {
     name: safeBase?.name || safeBase?.restaurantName || "",
@@ -1614,6 +1682,10 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     logo: safeBase?.logo || "",
     businessNameColor,
     landingBusinessNameColor: businessNameColor,
+    businessNameColorPart1,
+    businessNameColorPart2,
+    landingBusinessNameColorPart1: businessNameColorPart1,
+    landingBusinessNameColorPart2: businessNameColorPart2,
     titleImageUrl,
     coverImageUrl: titleImageUrl,
     coverUrl: titleImageUrl,
@@ -1646,6 +1718,10 @@ async function ensureRestaurantPublicMeta(restaurantId, base, options = {}) {
     landingPageUrl: landingUrl,
     businessNameColor,
     landingBusinessNameColor: businessNameColor,
+    businessNameColorPart1,
+    businessNameColorPart2,
+    landingBusinessNameColorPart1: businessNameColorPart1,
+    landingBusinessNameColorPart2: businessNameColorPart2,
     publicMetaUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true });
@@ -1711,6 +1787,7 @@ function normalizeLeadDoc(docSnap) {
   });
   const primary = getPrimaryLeadLocation(locations);
   const titleImageUrl = resolveTitleImageUrl(data);
+  const businessNameColors = resolveLeadBusinessNamePartColors(data);
   return withLeadSearchKey({
     id: safeLeadId,
     businessName: data.businessName || data.name || "",
@@ -1741,6 +1818,10 @@ function normalizeLeadDoc(docSnap) {
       || data.landingScreenOne?.businessNameColor
       || ""
     ),
+    businessNameColorPart1: businessNameColors.part1,
+    businessNameColorPart2: businessNameColors.part2,
+    landingBusinessNameColorPart1: businessNameColors.part1,
+    landingBusinessNameColorPart2: businessNameColors.part2,
     bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     titleImageUrl,
@@ -1807,6 +1888,7 @@ function normalizeLeadFromRestaurant(rest) {
   });
   const primary = getPrimaryLeadLocation(locations);
   const titleImageUrl = resolveTitleImageUrl(data);
+  const businessNameColors = resolveLeadBusinessNamePartColors(data);
   return withLeadSearchKey({
     id: safeLeadId,
     businessName: data.name || data.restaurantName || "",
@@ -1832,6 +1914,10 @@ function normalizeLeadFromRestaurant(rest) {
       || data.landingScreenOne?.businessNameColor
       || ""
     ),
+    businessNameColorPart1: businessNameColors.part1,
+    businessNameColorPart2: businessNameColors.part2,
+    landingBusinessNameColorPart1: businessNameColors.part1,
+    landingBusinessNameColorPart2: businessNameColors.part2,
     bestSpotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     spotLogoUrl: data.bestSpotLogoUrl || data.spotLogoUrl || "",
     titleImageUrl,
@@ -2091,6 +2177,11 @@ function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
     || rest?.landingScreenOne?.businessNameColor
     || ""
   );
+  const businessNameColors = resolveLeadBusinessNamePartColors({
+    ...(rest || {}),
+    ...(lead || {}),
+    landingScreenOne: lead?.landingScreenOne || rest?.landingScreenOne || null
+  });
   const customerType = resolveCustomerType(lead?.customerType || rest?.type || rest?.customerType || "cafe");
   const restaurantStatus = resolveRestaurantStatusFromLead(lead?.status || rest?.status || "registered", rest?.status || "");
   const landingSlug = String(lead?.publicSlug || lead?.landingSlug || rest?.publicSlug || rest?.landingSlug || "").trim();
@@ -2106,6 +2197,10 @@ function buildLeadLandingMetaBaseFromLead(lead = {}, restaurant = null) {
     logo: logoUrl,
     businessNameColor,
     landingBusinessNameColor: businessNameColor,
+    businessNameColorPart1: businessNameColors.part1,
+    businessNameColorPart2: businessNameColors.part2,
+    landingBusinessNameColorPart1: businessNameColors.part1,
+    landingBusinessNameColorPart2: businessNameColors.part2,
     status: restaurantStatus,
     leadId: String(lead?.id || rest?.leadId || "").trim(),
     publicSlug: landingSlug,
@@ -2776,6 +2871,28 @@ function syncLeadModalDraftFromForm() {
     || ""
   );
   lead.landingBusinessNameColor = lead.businessNameColor;
+  const legacyPart2Color = lead.businessNameColor && lead.businessNameColor.toLowerCase() !== "#111827"
+    ? lead.businessNameColor
+    : "";
+  lead.businessNameColorPart1 = normalizeLeadBusinessNameColor(
+    readValue("leadBusinessNameColorPart1")
+    || lead.businessNameColorPart1
+    || lead.landingBusinessNameColorPart1
+    || lead.landingScreenOne?.businessNameColorPart1
+    || lead.businessNameColor
+    || ""
+  );
+  lead.businessNameColorPart2 = normalizeLeadBusinessNameColor(
+    readValue("leadBusinessNameColorPart2")
+    || lead.businessNameColorPart2
+    || lead.landingBusinessNameColorPart2
+    || lead.landingScreenOne?.businessNameColorPart2
+    || legacyPart2Color
+    || "",
+    "#4f46e5"
+  );
+  lead.landingBusinessNameColorPart1 = lead.businessNameColorPart1;
+  lead.landingBusinessNameColorPart2 = lead.businessNameColorPart2;
   lead.customerType = resolveCustomerType(readValue("leadCustomerType") || lead.customerType || "cafe");
   lead.contactFirstName = readText("leadCustomerFirstName") || lead.contactFirstName || "";
   lead.contactLastName = readText("leadCustomerLastName") || lead.contactLastName || "";

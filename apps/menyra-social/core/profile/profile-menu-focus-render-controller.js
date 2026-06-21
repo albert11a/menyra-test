@@ -1106,7 +1106,6 @@ function renderBusinessLandingScreenOne(profile = {}) {
     || profile.name
     || "casarita"
   ).trim() || "casarita";
-  const businessHeading = businessName.endsWith(".") ? businessName : `${businessName}.`;
   const businessNameColor = normalizeBusinessNameColor(
     landing.businessNameColor
     || profile.businessNameColor
@@ -1114,6 +1113,33 @@ function renderBusinessLandingScreenOne(profile = {}) {
     || "",
     "#111827"
   );
+  const legacyPart2Color = businessNameColor && businessNameColor.toLowerCase() !== "#111827" ? businessNameColor : "";
+  const businessNameColorPart1 = normalizeBusinessNameColor(
+    landing.businessNameColorPart1
+    || profile.businessNameColorPart1
+    || profile.landingBusinessNameColorPart1
+    || businessNameColor
+    || "",
+    "#111827"
+  );
+  const businessNameColorPart2 = normalizeBusinessNameColor(
+    landing.businessNameColorPart2
+    || profile.businessNameColorPart2
+    || profile.landingBusinessNameColorPart2
+    || legacyPart2Color
+    || "",
+    "#4f46e5"
+  );
+  const businessNameBase = businessName.replace(/\.+$/g, "").trim() || businessName;
+  const businessNameParts = businessNameBase.split(/\s+/).filter(Boolean);
+  const businessHeadingPart1 = businessNameParts.length > 1
+    ? businessNameParts.slice(0, -1).join(" ")
+    : businessNameBase;
+  const businessHeadingPart2 = businessNameParts.length > 1
+    ? businessNameParts[businessNameParts.length - 1]
+    : "";
+  const businessHeadingPart1Text = businessHeadingPart2 ? businessHeadingPart1 : `${businessHeadingPart1}.`;
+  const businessHeadingPart2Text = businessHeadingPart2 ? `${businessHeadingPart2}.` : "";
   const logoUrl = getOptimizedImageUrl(
     landing.logoUrl
     || profile.avatar
@@ -1181,8 +1207,8 @@ function renderBusinessLandingScreenOne(profile = {}) {
             <div class="rounded-full shadow-sm border border-slate-200 flex items-center justify-center overflow-hidden shrink-0" style="width:48px;height:48px;min-width:48px;min-height:48px;max-width:48px;max-height:48px;flex:0 0 48px;background:#f8fafc;">
               <img src="${escapeHtml(resolvedLogoUrl)}" alt="${escapeHtml(`${businessName} Logo`)}" class="block rounded-full" style="width:100%;height:100%;min-width:100%;min-height:100%;object-fit:cover;object-position:center;max-width:none;max-height:none;" />
             </div>
-            <h2 class="font-black text-left flex items-center" style="font-size:56px;line-height:48px;letter-spacing:-0.05em;color:${escapeHtml(businessNameColor)};">
-              ${escapeHtml(businessHeading)}
+            <h2 class="font-black text-left flex flex-wrap items-baseline" style="font-size:56px;line-height:48px;letter-spacing:-0.05em;column-gap:0.16em;row-gap:0;">
+              <span style="color:${escapeHtml(businessNameColorPart1)};">${escapeHtml(businessHeadingPart1Text)}</span>${businessHeadingPart2Text ? `<span style="color:${escapeHtml(businessNameColorPart2)};">${escapeHtml(businessHeadingPart2Text)}</span>` : ""}
             </h2>
           </div>
           <p class="text-slate-500 text-sm leading-relaxed font-medium text-left" style="max-width: 340px;">

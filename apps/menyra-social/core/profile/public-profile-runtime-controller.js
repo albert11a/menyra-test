@@ -1641,6 +1641,10 @@ export function createPublicProfileRuntimeController({
     ).trim();
     const landingPageUrl = String(data?.landingPageUrl || rest?.landingPageUrl || "").trim();
     const landingScreenOne = data?.landingScreenOne || rest?.landingScreenOne || null;
+    const normalizeBusinessNameColor = (value = "", fallback = "") => {
+      const raw = String(value || "").trim();
+      return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+    };
     const businessNameColor = String(
       data?.businessNameColor
       || rest?.businessNameColor
@@ -1649,6 +1653,25 @@ export function createPublicProfileRuntimeController({
       || landingScreenOne?.businessNameColor
       || ""
     ).trim();
+    const businessNameColorPart1 = normalizeBusinessNameColor(
+      data?.businessNameColorPart1
+      || rest?.businessNameColorPart1
+      || data?.landingBusinessNameColorPart1
+      || rest?.landingBusinessNameColorPart1
+      || landingScreenOne?.businessNameColorPart1
+      || businessNameColor
+      || ""
+    );
+    const legacyPart2Color = businessNameColor && businessNameColor.toLowerCase() !== "#111827" ? businessNameColor : "";
+    const businessNameColorPart2 = normalizeBusinessNameColor(
+      data?.businessNameColorPart2
+      || rest?.businessNameColorPart2
+      || data?.landingBusinessNameColorPart2
+      || rest?.landingBusinessNameColorPart2
+      || landingScreenOne?.businessNameColorPart2
+      || legacyPart2Color
+      || ""
+    );
     const type = normalizeRestaurantType(
       data?.type
       || data?.customerType
@@ -1679,6 +1702,8 @@ export function createPublicProfileRuntimeController({
       landingSlug,
       landingPageUrl,
       ...(businessNameColor ? { businessNameColor, landingBusinessNameColor: businessNameColor } : {}),
+      ...(businessNameColorPart1 ? { businessNameColorPart1, landingBusinessNameColorPart1: businessNameColorPart1 } : {}),
+      ...(businessNameColorPart2 ? { businessNameColorPart2, landingBusinessNameColorPart2: businessNameColorPart2 } : {}),
       ...(landingScreenOne && typeof landingScreenOne === "object" ? { landingScreenOne } : {}),
       ...(type ? { type, customerType: type } : {}),
       pendingFollowRequest: false,

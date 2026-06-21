@@ -1174,6 +1174,17 @@ Last updated: 2026-06-22
   beide Namensteile besser in die verfuegbare Breite passen. Routing, QR,
   Cart, Order, Menu-Logik, Lead-Farbe, Tabs und Profil-Card bleiben
   unveraendert.
+- Schritt 120 ist abgeschlossen: Leads koennen den Landing-Business-Namen in
+  zwei getrennten Hex-Farben steuern.
+- Bewertung von Schritt 120: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 120:
+  Das Lead-Formular hat direkt vor `Kunden Daten` einen eigenen Bereich
+  `Business Name Farben` mit `Farbe Teil 1` und `Farbe Teil 2`. Die Werte
+  werden als Hex-Farben gespeichert, in Lead, Restaurant, Business-User und
+  Public-Meta weitergegeben und von app-interner Landing sowie separater
+  Lead-Landing getrennt gerendert. Das alte `businessNameColor` bleibt als
+  Rueckwaerts-Fallback erhalten. Routing, QR, Cart, Order, Menu-Daten und
+  Firebase Rules bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1292,6 +1303,7 @@ Last updated: 2026-06-22
 - Referenz: [docs/mnyra-step117-business-header-italic-clip-fix.md](./mnyra-step117-business-header-italic-clip-fix.md)
 - Referenz: [docs/mnyra-step118-business-header-natural-spacing.md](./mnyra-step118-business-header-natural-spacing.md)
 - Referenz: [docs/mnyra-step119-business-header-empty-menu-long-name.md](./mnyra-step119-business-header-empty-menu-long-name.md)
+- Referenz: [docs/mnyra-step120-lead-business-name-split-colors.md](./mnyra-step120-lead-business-name-split-colors.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1317,7 +1329,7 @@ Last updated: 2026-06-22
 
 ## Naechster Schritt
 
-Nach Schritt 119 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 120 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1581,6 +1593,15 @@ angezeigt werden. Einen langen mehrteiligen Namen wie
 `70s pastry and bakery` pruefen; der Name soll kompakter wirken und besser in
 den Header passen. Einen normalen zweiteiligen Namen wie `IN VINO`
 gegenpruefen; der blaue zweite Teil soll weiter sichtbar bleiben.
+
+Zusaetzlich fuer Schritt 120 manuell pruefen: Lead erstellen oder bearbeiten
+und kontrollieren, dass `Business Name Farben` direkt vor `Kunden Daten`
+steht. `Farbe Teil 1` und `Farbe Teil 2` mit Hex-Werten setzen, speichern und
+die Lead-Landing oeffnen; bei mehrteiligen Namen soll der vordere Namensteil
+Teil-1-Farbe und der letzte Namensteil Teil-2-Farbe nutzen. Einen einteiligen
+Namen wie `kosovamanswear` pruefen; es soll kein zusaetzlicher zweiter Teil
+erscheinen. Lead zu Kunde aktivieren und pruefen, dass die Farben erhalten
+bleiben.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -39,6 +39,37 @@ export function renderLeadModalCore({
     const raw = String(value || "").trim();
     return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
   };
+  const resolveBusinessNamePartColors = (source = {}) => {
+    const landing = source?.landingScreenOne && typeof source.landingScreenOne === "object"
+      ? source.landingScreenOne
+      : {};
+    const legacyColor = normalizeBusinessNameColor(
+      source?.businessNameColor
+      || source?.landingBusinessNameColor
+      || landing.businessNameColor
+      || "",
+      ""
+    );
+    const legacyPart2Color = legacyColor && legacyColor.toLowerCase() !== "#111827" ? legacyColor : "";
+    return {
+      part1: normalizeBusinessNameColor(
+        source?.businessNameColorPart1
+        || source?.landingBusinessNameColorPart1
+        || landing.businessNameColorPart1
+        || legacyColor
+        || "",
+        "#111827"
+      ),
+      part2: normalizeBusinessNameColor(
+        source?.businessNameColorPart2
+        || source?.landingBusinessNameColorPart2
+        || landing.businessNameColorPart2
+        || legacyPart2Color
+        || "",
+        "#4f46e5"
+      )
+    };
+  };
 
   const lead = state.leadModal.lead || {};
   const isEdit = state.leadModal.mode === "edit";
@@ -53,12 +84,7 @@ export function renderLeadModalCore({
   const leadEmail = lead.socialEmail || lead.email || "";
   const leadStatus = normalizeStatus(lead.status || "registered") || "registered";
   const leadInstagram = lead.instagram || lead.insta || "";
-  const businessNameColor = normalizeBusinessNameColor(
-    lead.businessNameColor
-    || lead.landingBusinessNameColor
-    || lead.landingScreenOne?.businessNameColor
-    || ""
-  );
+  const businessNameColors = resolveBusinessNamePartColors(lead);
   const specialEnabled = lead.specialEnabled === true;
   const locations = normalizeLocations(state.leadModal.locations, lead.address || "", state.leadModal.coords || null);
   const canConvert = isEdit && !!lead.id && normalizeStatus(lead.status || "") !== "kunde";
@@ -104,9 +130,15 @@ export function renderLeadModalCore({
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
           <input id="leadBusinessName" type="text" value="${esc(lead.businessName || lead.name || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name Farbe</label>
-          <input id="leadBusinessNameColor" type="color" value="${esc(businessNameColor)}" class="w-full h-12 px-3 py-2 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 1</label>
+            <input id="leadBusinessNameColorPart1" type="text" value="${esc(businessNameColors.part1)}" placeholder="#111827" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-black uppercase border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 2</label>
+            <input id="leadBusinessNameColorPart2" type="text" value="${esc(businessNameColors.part2)}" placeholder="#4f46e5" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-black uppercase border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
