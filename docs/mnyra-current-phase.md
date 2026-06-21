@@ -1037,6 +1037,14 @@ Last updated: 2026-06-21
   Hotelname und Destination in der Premium-Oferta-Card. Bildslider, Logo,
   Distanzen, Feature-Chips, Preis, Buttons, Oferta-Card, Datenlogik, Routing,
   QR, Cart, Order, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 107 ist abgeschlossen: Der Pfeil unter dem Entdecker-/Discovery-
+  Map-Marker wurde sauber unter der Marker-Box ausgerichtet.
+- Bewertung von Schritt 107: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 107:
+  Der Marker-Pfeil nutzt keinen negativen Top-Margin mehr und wird dadurch beim
+  blauen Auswahlrahmen nicht mehr sichtbar in die Border hineingezogen. Karte,
+  Marker-Daten, Auswahlfarbe, Klickverhalten, Routing, QR, Cart, Order,
+  Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1142,6 +1150,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step104-travel-benko-radius-fix.md](./mnyra-step104-travel-benko-radius-fix.md)
 - Referenz: [docs/mnyra-step105-travel-gate-typography-spacing-parity.md](./mnyra-step105-travel-gate-typography-spacing-parity.md)
 - Referenz: [docs/mnyra-step106-travel-hotel-card-title-spacing-parity.md](./mnyra-step106-travel-hotel-card-title-spacing-parity.md)
+- Referenz: [docs/mnyra-step107-discovery-map-marker-pointer.md](./mnyra-step107-discovery-map-marker-pointer.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1167,7 +1176,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 106 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 107 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1334,6 +1343,12 @@ einer normalen Hotel-/Motel-Card pruefen, dass Bewertungszeile, Hotelname und
 `Hotel`-/`Motel`-Text denselben vertikalen Abstand wie bei der Premium-Oferta-
 Card haben. Travel `Ofertat` kurz gegenpruefen, dass die Premium-Oferta-Card
 selbst unveraendert bleibt.
+
+Zusaetzlich fuer Schritt 107 manuell pruefen: Entdecker-/Discovery-Karte
+oeffnen, einen Business-Marker antippen und pruefen, dass der kleine Pfeil unter
+dem blauen Auswahlrahmen sauber direkt unter der Marker-Box sitzt und nicht mehr
+unsauber in die blaue Border hineinragt. Einen nicht ausgewaehlten Marker,
+Bottom-Sheet und Profil-Oeffnen kurz gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
