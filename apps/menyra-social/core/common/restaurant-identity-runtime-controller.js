@@ -168,6 +168,29 @@ function normalizeOfferPriceUnit(value = "") {
   return "per_person";
 }
 
+function normalizeOfferReviewStatus(value = "") {
+  const key = normalizeLooseTypeKey(value);
+  if (["approved", "active", "freigegeben", "accepted", "confirmed", "bestaetigt"].includes(key)) return "approved";
+  if (["rejected", "declined", "abgelehnt", "denied"].includes(key)) return "rejected";
+  return "pending";
+}
+
+function isRestaurantAdOfferItem(item = {}) {
+  const key = normalizeLooseTypeKey(item?.adType || item?.kind || item?.type || "");
+  return item?.isRestaurantAd === true
+    || item?.restaurantAd === true
+    || key === "restaurant_ad"
+    || key === "ad"
+    || key === "ads"
+    || item?.adCategory !== undefined
+    || item?.adPriceSegment !== undefined
+    || item?.priceSegment !== undefined
+    || item?.woltEnabled !== undefined
+    || item?.woltUrl !== undefined
+    || item?.reviewStatus !== undefined
+    || item?.approvalStatus !== undefined;
+}
+
 function collectTravelOfferFeatures(item = {}) {
   return [
     ...collectOfferTextList(item.features),
@@ -183,7 +206,7 @@ function normalizePublicTravelOfferItem(item = {}, fallbackId = "") {
   const row = item && typeof item === "object" ? item : {};
   const id = String(row.id || row.offerId || row._id || fallbackId || "").trim();
   const features = collectTravelOfferFeatures(row);
-  return {
+  const normalized = {
     id,
     title: String(row.title || row.name || "").trim(),
     text: String(row.text || row.desc || row.description || "").trim(),
@@ -207,6 +230,27 @@ function normalizePublicTravelOfferItem(item = {}, fallbackId = "") {
     features,
     offerFeatures: features
   };
+  if (isRestaurantAdOfferItem(row)) {
+    const reviewStatus = normalizeOfferReviewStatus(row.reviewStatus || row.approvalStatus || "");
+    const priceSegment = String(row.adPriceSegment || row.priceSegment || row.priceRange || row.priceLabel || row.budget || "").trim();
+    normalized.isRestaurantAd = true;
+    normalized.adType = "restaurant_ad";
+    normalized.reviewStatus = reviewStatus;
+    normalized.approvalStatus = reviewStatus;
+    normalized.reviewRequestedAt = String(row.reviewRequestedAt || row.requestedAt || "").trim();
+    normalized.reviewedAt = String(row.reviewedAt || "").trim();
+    normalized.reviewedByUid = String(row.reviewedByUid || "").trim();
+    normalized.reviewedByName = String(row.reviewedByName || "").trim();
+    normalized.adCategory = String(row.adCategory || row.categoryLabel || "RESTAURANT").trim();
+    normalized.adPriceSegment = priceSegment;
+    normalized.priceSegment = priceSegment;
+    normalized.priceRange = priceSegment;
+    normalized.woltEnabled = row.woltEnabled !== false;
+    normalized.woltUrl = String(row.woltUrl || row.deliveryUrl || "").trim();
+    normalized.choiceBadge = String(row.choiceBadge || row.bestChoiceBadge || "Best Choice").trim();
+    normalized.deliveryBadge = String(row.deliveryBadge || row.deliveryLabel || "For Delivery").trim();
+  }
+  return normalized;
 }
 
 function collectPublicTravelOffers(data = {}) {
@@ -244,6 +288,34 @@ function hasTravelBusinessShape(record = {}, normalizeRestaurantTypeFn = (value)
   return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b/.test(searchable);
 }
 
+function hasPublicOffersBusinessShape(record = {}, normalizeRestaurantTypeFn = (value) => value) {
+  if (hasTravelBusinessShape(record, normalizeRestaurantTypeFn)) return true;
+  const normalizedType = normalizeLooseTypeKey(normalizeRestaurantTypeFn(
+    record?.type
+    || record?.customerType
+    || record?.category
+    || record?.kind
+    || record?.restaurantType
+    || record?.businessProfileType
+    || record?.profileType
+    || record?.vertical
+    || record?.leadType
+    || ""
+  ));
+  if (["restaurant", "restaurants", "cafe", "coffee", "fastfood", "fast_food", "food", "bakery", "bar", "grill"].includes(normalizedType)) {
+    return true;
+  }
+  const searchable = [
+    record?.name,
+    record?.restaurantName,
+    record?.businessName,
+    record?.description,
+    record?.bio,
+    record?.about
+  ].map((value) => String(value || "").trim().toLowerCase()).join(" ");
+  return /\brestaurant(s)?\b|\bcafe(s)?\b|\bcoffee\b|\bburger\b|\bpizza\b|\bbakery\b|\bgrill\b|\bseafood\b/.test(searchable);
+}
+
 function buildTravelOffersSignature(record = {}) {
   const items = Array.isArray(record.publicOffers)
     ? record.publicOffers
@@ -260,6 +332,11 @@ function buildTravelOffersSignature(record = {}) {
       String(item.distanceBeach || item.distanceToBeach || "").trim(),
       String(item.hotelStartingPrice || item.startingPrice || item.priceFrom || "").trim(),
       normalizeOfferPriceUnit(item.priceUnit || item.offerPriceUnit || ""),
+      String(item.adType || "").trim(),
+      String(item.reviewStatus || item.approvalStatus || "").trim(),
+      String(item.adCategory || "").trim(),
+      String(item.adPriceSegment || item.priceSegment || item.priceRange || "").trim(),
+      String(item.woltUrl || "").trim(),
       collectTravelOfferFeatures(item).join("+")
     ].join(":"))
     .join("~");
@@ -591,6 +668,7 @@ export function createRestaurantIdentityRuntimeController({
       merged.publicOffersCount = publicOffers.length;
       merged.travelOffersCount = publicOffers.length;
       merged.hasTravelOffers = activeOffers.length > 0;
+      merged.hasPublicOffers = activeOffers.length > 0;
       merged.offersTruthState = publicOffers.length ? "seeded" : "knownEmpty";
     }
     const reconciled = reconcileRestaurantTruthRecordCore(rest, merged, {
@@ -604,6 +682,7 @@ export function createRestaurantIdentityRuntimeController({
       reconciled.publicOffersCount = publicOffers.length;
       reconciled.travelOffersCount = publicOffers.length;
       reconciled.hasTravelOffers = activeOffers.length > 0;
+      reconciled.hasPublicOffers = activeOffers.length > 0;
       reconciled.offersTruthState = publicOffers.length ? "seeded" : "knownEmpty";
     }
     return reconciled;
@@ -652,7 +731,7 @@ export function createRestaurantIdentityRuntimeController({
       }
       const metaMergedForType = mergeRestaurantMeta(rest, meta);
       let offerInfo = null;
-      if (hasTravelBusinessShape(metaMergedForType, normalizeRestaurantType)) {
+      if (hasPublicOffersBusinessShape(metaMergedForType, normalizeRestaurantType)) {
         try {
           const offersSnap = await getDocSafe(makeDocRef(db, "restaurants", rid, "public", "offers"));
           const offerData = offersSnap && typeof offersSnap.exists === "function" && offersSnap.exists()

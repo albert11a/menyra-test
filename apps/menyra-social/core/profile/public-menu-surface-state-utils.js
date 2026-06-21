@@ -77,6 +77,33 @@ function normalizeFocusTargetKey(value = "") {
     .replace(/^-+|-+$/g, "");
 }
 
+function normalizeFocusAdStatus(value = "") {
+  const key = normalizeFocusTargetKey(value).replace(/-/g, "_");
+  if (["approved", "active", "freigegeben", "accepted", "confirmed", "bestaetigt"].includes(key)) return "approved";
+  if (["rejected", "declined", "abgelehnt", "denied"].includes(key)) return "rejected";
+  return "pending";
+}
+
+function isRestaurantAdFocusItem(item = {}) {
+  const key = normalizeFocusTargetKey(item?.adType || item?.kind || item?.type || "").replace(/-/g, "_");
+  return item?.isRestaurantAd === true
+    || item?.restaurantAd === true
+    || key === "restaurant_ad"
+    || key === "ad"
+    || key === "ads"
+    || item?.adCategory !== undefined
+    || item?.adPriceSegment !== undefined
+    || item?.priceSegment !== undefined
+    || item?.reviewStatus !== undefined
+    || item?.approvalStatus !== undefined;
+}
+
+function isPublicVisibleFocusItem(item = {}) {
+  if (!item || item.active === false) return false;
+  if (!isRestaurantAdFocusItem(item)) return true;
+  return normalizeFocusAdStatus(item.reviewStatus || item.approvalStatus || "") === "approved";
+}
+
 function buildMenuFocusTargetIndex(menuItems = []) {
   const ids = new Set();
   const categories = new Set();
@@ -161,7 +188,9 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     && isVisiblePublicMenuSurfaceIdMatch(focusRestaurantId, surfaceIds.targetIds);
   const rawFocusItems = samePublicFocus && Array.isArray(focus.items) ? focus.items : [];
   const menuFocusTargetIndex = buildMenuFocusTargetIndex(menuItems);
-  const focusItems = rawFocusItems.filter((item) => focusItemMatchesLoadedMenu(item, menuFocusTargetIndex));
+  const focusItems = rawFocusItems
+    .filter(isPublicVisibleFocusItem)
+    .filter((item) => focusItemMatchesLoadedMenu(item, menuFocusTargetIndex));
   const focusInvalidForMenu = samePublicFocus
     && focusTruthState === "seeded"
     && rawFocusItems.length > 0

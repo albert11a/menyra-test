@@ -21,6 +21,9 @@ import {
   renderIncidentsView
 } from "./heart-incidents-render.js";
 import {
+  renderAdsView
+} from "./heart-ads-render.js";
+import {
   renderModulesView
 } from "./heart-modules-render.js";
 import {
@@ -35,6 +38,7 @@ const NAV_HINTS = Object.freeze({
   dashboard: "Status, Schnellstarts und Uebersicht",
   runs: "Verlauf, Beweise und Berichte",
   incidents: "Warnungen und Stoerungen",
+  ads: "Restaurant Ads freigeben",
   modules: "Bereiche und Gesundheitsstatus",
   crmLeads: "CRM Leads",
   crmCustomers: "CRM Kunden",
@@ -59,6 +63,7 @@ function getNavIcon(key = "") {
     dashboard: "home",
     runs: "list",
     incidents: "bell",
+    ads: "image",
     modules: "grid",
     crmLeads: "list",
     crmCustomers: "user",
@@ -194,6 +199,9 @@ function renderViewBody(state, runtime = {}) {
     if (state.incidents.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Meldungen werden geladen...</div></section>`;
     if (state.incidents.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.incidents.error || "Meldungen konnten nicht geladen werden.")}</div></section>`;
     return renderIncidentsView(state.incidents.items, state.incidents.filters);
+  }
+  if (state.shell.activeView === "ads") {
+    return renderAdsView(state.ads || {});
   }
   if (state.shell.activeView === "modules") {
     if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Bereiche werden geladen...</div></section>`;

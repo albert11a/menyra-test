@@ -61,6 +61,57 @@ export function createFocusRuntimeController({
     return String(value || "").trim();
   }
 
+  function normalizeLooseFocusKey(value = "") {
+    let key = cleanFocusText(value).toLowerCase();
+    if (!key) return "";
+    try {
+      if (typeof key.normalize === "function") {
+        key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+      }
+    } catch {}
+    return key
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function normalizeAdReviewStatus(value = "") {
+    const key = normalizeLooseFocusKey(value);
+    if (["approved", "active", "freigegeben", "accepted", "confirmed", "bestaetigt"].includes(key)) return "approved";
+    if (["rejected", "declined", "abgelehnt", "denied"].includes(key)) return "rejected";
+    return "pending";
+  }
+
+  function hasRestaurantAdFields(item = {}) {
+    return item?.isRestaurantAd === true
+      || item?.restaurantAd === true
+      || item?.adType !== undefined
+      || item?.adCategory !== undefined
+      || item?.adPriceSegment !== undefined
+      || item?.priceSegment !== undefined
+      || item?.choiceBadge !== undefined
+      || item?.deliveryBadge !== undefined
+      || item?.woltEnabled !== undefined
+      || item?.woltUrl !== undefined
+      || item?.reviewStatus !== undefined
+      || item?.approvalStatus !== undefined;
+  }
+
+  function isRestaurantAdItem(item = {}) {
+    const typeKey = normalizeLooseFocusKey(item?.adType || item?.kind || item?.type || "");
+    return item?.isRestaurantAd === true
+      || item?.restaurantAd === true
+      || typeKey === "restaurant_ad"
+      || typeKey === "ad"
+      || typeKey === "ads"
+      || hasRestaurantAdFields(item);
+  }
+
+  function isPublicVisibleFocusItem(item = {}) {
+    if (!item || item.active === false) return false;
+    if (!isRestaurantAdItem(item)) return true;
+    return normalizeAdReviewStatus(item.reviewStatus || item.approvalStatus || "") === "approved";
+  }
+
   function collectProfileRestaurantIds(...records) {
     const ids = [];
     records.forEach((record = {}) => {
@@ -243,6 +294,26 @@ export function createFocusRuntimeController({
       normalized.features = features;
       normalized.offerFeatures = features;
     }
+    if (isRestaurantAdItem(item)) {
+      const reviewStatus = normalizeAdReviewStatus(item.reviewStatus || item.approvalStatus || "");
+      const priceSegment = cleanFocusText(item.adPriceSegment || item.priceSegment || item.priceRange || item.priceLabel || item.budget || "");
+      normalized.isRestaurantAd = true;
+      normalized.adType = "restaurant_ad";
+      normalized.reviewStatus = reviewStatus;
+      normalized.approvalStatus = reviewStatus;
+      normalized.reviewRequestedAt = cleanFocusText(item.reviewRequestedAt || item.requestedAt || "");
+      normalized.reviewedAt = cleanFocusText(item.reviewedAt || "");
+      normalized.reviewedByUid = cleanFocusText(item.reviewedByUid || "");
+      normalized.reviewedByName = cleanFocusText(item.reviewedByName || "");
+      normalized.adCategory = cleanFocusText(item.adCategory || item.categoryLabel || "RESTAURANT");
+      normalized.adPriceSegment = priceSegment;
+      normalized.priceSegment = priceSegment;
+      normalized.priceRange = priceSegment;
+      normalized.woltEnabled = item.woltEnabled !== false;
+      normalized.woltUrl = cleanFocusText(item.woltUrl || item.deliveryUrl || "");
+      normalized.choiceBadge = cleanFocusText(item.choiceBadge || item.bestChoiceBadge || "Best Choice");
+      normalized.deliveryBadge = cleanFocusText(item.deliveryBadge || item.deliveryLabel || "For Delivery");
+    }
     return normalized;
   }
 
@@ -323,6 +394,26 @@ export function createFocusRuntimeController({
         payload.features = features;
         payload.offerFeatures = features;
       }
+      if (isRestaurantAdItem(item)) {
+        const reviewStatus = normalizeAdReviewStatus(item.reviewStatus || item.approvalStatus || "");
+        const priceSegment = cleanFocusText(item.adPriceSegment || item.priceSegment || item.priceRange || item.priceLabel || item.budget || "");
+        payload.isRestaurantAd = true;
+        payload.adType = "restaurant_ad";
+        payload.reviewStatus = reviewStatus;
+        payload.approvalStatus = reviewStatus;
+        payload.reviewRequestedAt = cleanFocusText(item.reviewRequestedAt || "");
+        payload.reviewedAt = cleanFocusText(item.reviewedAt || "");
+        payload.reviewedByUid = cleanFocusText(item.reviewedByUid || "");
+        payload.reviewedByName = cleanFocusText(item.reviewedByName || "");
+        payload.adCategory = cleanFocusText(item.adCategory || item.categoryLabel || "RESTAURANT");
+        payload.adPriceSegment = priceSegment;
+        payload.priceSegment = priceSegment;
+        payload.priceRange = priceSegment;
+        payload.woltEnabled = item.woltEnabled !== false;
+        payload.woltUrl = cleanFocusText(item.woltUrl || item.deliveryUrl || "");
+        payload.choiceBadge = cleanFocusText(item.choiceBadge || item.bestChoiceBadge || "Best Choice");
+        payload.deliveryBadge = cleanFocusText(item.deliveryBadge || item.deliveryLabel || "For Delivery");
+      }
       return payload;
     });
     const payload = {
@@ -342,7 +433,7 @@ export function createFocusRuntimeController({
     const list = Array.isArray(items) ? items : [];
     return list
       .map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`))
-      .filter((item) => item && item.active !== false);
+      .filter(isPublicVisibleFocusItem);
   }
 
   function getFocusStateForRestaurant(restaurantId, { includeInactive = false } = {}) {
@@ -350,7 +441,7 @@ export function createFocusRuntimeController({
     const same = !!safeRestaurantId && state?.focus?.restaurantId === safeRestaurantId;
     const rawItems = same ? (Array.isArray(state?.focus?.items) ? state.focus.items : []) : [];
     const normalized = rawItems.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
-    const items = includeInactive ? normalized : normalized.filter((item) => item && item.active !== false);
+    const items = includeInactive ? normalized : normalized.filter(isPublicVisibleFocusItem);
     const enabled = same ? state?.focus?.enabled !== false : true;
     const loading = !!safeRestaurantId && (!!state?.focus?.loading || !same);
     return { items, enabled, loading, same };
@@ -528,6 +619,7 @@ export function createFocusRuntimeController({
     const active = docObj.getElementById("focusActive")?.checked !== false;
     const modalItem = state.focusModal?.item || {};
     const isTravelOffer = isTravelOfferProfile(state.userProfile) || hasTravelOfferFields(modalItem);
+    const isRestaurantAd = !isTravelOffer && (isRestaurantCafeProfile(state.userProfile) || isRestaurantAdItem(modalItem));
     const offerBadgeLabel = docObj.getElementById("focusOfferBadgeLabel")?.value?.trim() || "OFERTA";
     const offerDurationLabel = docObj.getElementById("focusOfferDurationLabel")?.value?.trim() || "";
     const distanceCenter = readFocusDistanceField("focusDistanceCenter", "Në qendër", "nga qendra");
@@ -541,16 +633,23 @@ export function createFocusRuntimeController({
     const featureParking = readFocusModalValue("focusFeatureParkingText");
     const customFeatures = collectFocusTextList(docObj.getElementById("focusFeaturesText")?.value || "");
     const features = uniqueFocusTextList([featureFood, featureLounger, featureParking, ...customFeatures]);
+    const adCategory = readFocusModalValue("focusAdCategory") || "RESTAURANT";
+    const adPriceSegment = readFocusModalValue("focusAdPriceSegment");
+    const adWoltUrl = readFocusModalValue("focusAdWoltUrl");
+    const adWoltEnabledInput = docObj.getElementById("focusAdWoltEnabled");
+    const adWoltEnabled = adWoltEnabledInput ? adWoltEnabledInput.checked === true : true;
+    const choiceBadge = readFocusModalValue("focusAdChoiceBadge") || "Best Choice";
+    const deliveryBadge = readFocusModalValue("focusAdDeliveryBadge") || "For Delivery";
     const crop = getFocusModalCrop();
 
     if (!title) {
-      state.focusModal.status = isTravelOffer ? "Shkruaj titullin." : "Bitte Titel eingeben.";
+      state.focusModal.status = isTravelOffer ? "Shkruaj titullin." : (isRestaurantAd ? "Bitte Ad-Titel eingeben." : "Bitte Titel eingeben.");
       renderOverlaysFn({ updateFocus: true });
       return;
     }
 
     state.focusModal.loading = true;
-    state.focusModal.status = isTravelOffer ? "Po ruhet..." : "Speichern...";
+    state.focusModal.status = isTravelOffer ? "Po ruhet..." : (isRestaurantAd ? "Wird zur Freigabe gesendet..." : "Speichern...");
     renderOverlaysFn({ updateFocus: true });
 
     try {
@@ -595,6 +694,21 @@ export function createFocusRuntimeController({
         payload.features = features;
         payload.offerFeatures = features;
       }
+      if (isRestaurantAd) {
+        payload.isRestaurantAd = true;
+        payload.adType = "restaurant_ad";
+        payload.reviewStatus = "pending";
+        payload.approvalStatus = "pending";
+        payload.reviewRequestedAt = new Date().toISOString();
+        payload.adCategory = adCategory;
+        payload.adPriceSegment = adPriceSegment;
+        payload.priceSegment = adPriceSegment;
+        payload.priceRange = adPriceSegment;
+        payload.woltEnabled = adWoltEnabled;
+        payload.woltUrl = adWoltUrl;
+        payload.choiceBadge = choiceBadge;
+        payload.deliveryBadge = deliveryBadge;
+      }
       const nextItems = Array.isArray(state.focus.items) ? state.focus.items.slice() : [];
       const idx = nextItems.findIndex((item) => String(item.id) === String(id));
       if (idx >= 0) {
@@ -606,15 +720,15 @@ export function createFocusRuntimeController({
       const truthState = nextItems.length ? "seeded" : "knownEmpty";
       focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, truthSource: "public-menu", truthState, ts: Date.now() });
       state.focus = { ...state.focus, restaurantId, items: nextItems, loading: false, error: "", truthSource: "public-menu", truthState };
-      if (isTravelOffer) syncTravelOffersToRestaurantState(restaurantId, nextItems);
+      if (isTravelOffer || isRestaurantAd) syncTravelOffersToRestaurantState(restaurantId, nextItems);
 
       state.focusModal.loading = false;
-      state.focusModal.status = isTravelOffer ? "U ruajt." : "Gespeichert.";
+      state.focusModal.status = isTravelOffer ? "U ruajt." : (isRestaurantAd ? "Zur CEO-Freigabe gesendet." : "Gespeichert.");
       closeFocusModalFn();
       renderFn();
     } catch (err) {
       console.error(err);
-      state.focusModal.status = err?.message || (isTravelOffer ? "Nuk u ruajt." : "Speichern fehlgeschlagen.");
+      state.focusModal.status = err?.message || (isTravelOffer ? "Nuk u ruajt." : (isRestaurantAd ? "Ad konnte nicht gespeichert werden." : "Speichern fehlgeschlagen."));
       state.focusModal.loading = false;
       renderOverlaysFn({ updateFocus: true });
     }
@@ -632,7 +746,7 @@ export function createFocusRuntimeController({
       const truthState = nextItems.length ? "seeded" : "knownEmpty";
       focusCacheMap.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, truthSource: "public-menu", truthState, ts: Date.now() });
       state.focus = { ...state.focus, restaurantId, items: nextItems, truthSource: "public-menu", truthState };
-      if (isTravelOfferProfile(state.userProfile) || hasTravelOfferFields(removedItem)) syncTravelOffersToRestaurantState(restaurantId, nextItems);
+      if (isTravelOfferProfile(state.userProfile) || hasTravelOfferFields(removedItem) || isRestaurantAdItem(removedItem)) syncTravelOffersToRestaurantState(restaurantId, nextItems);
       renderFn();
     } catch (err) {
       console.error(err);

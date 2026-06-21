@@ -229,7 +229,7 @@ function normalizeWebRouteFocusItem(item = {}, index = 0) {
   const row = item && typeof item === "object" ? item : {};
   const id = String(row?.id || row?._id || `focus_${Math.max(0, Number(index) || 0)}`).trim();
   if (!id) return null;
-  return {
+  const normalized = {
     id,
     title: String(row?.title || row?.name || "Sot ne Fokus").trim() || "Sot ne Fokus",
     text: String(row?.text || row?.desc || row?.description || "").trim(),
@@ -238,6 +238,31 @@ function normalizeWebRouteFocusItem(item = {}, index = 0) {
     cropY: Number.isFinite(Number(row?.cropY)) ? Number(row.cropY) : 50,
     active: row?.active !== false
   };
+  const adType = String(row?.adType || row?.kind || row?.type || "").trim();
+  if (row?.isRestaurantAd === true || row?.restaurantAd === true || adType || row?.reviewStatus !== undefined || row?.approvalStatus !== undefined) {
+    normalized.isRestaurantAd = row?.isRestaurantAd === true || row?.restaurantAd === true || adType.toLowerCase().replace(/[^a-z0-9]+/g, "_") === "restaurant_ad";
+    normalized.adType = normalized.isRestaurantAd ? "restaurant_ad" : adType;
+    normalized.reviewStatus = String(row?.reviewStatus || row?.approvalStatus || "pending").trim() || "pending";
+    normalized.approvalStatus = normalized.reviewStatus;
+  }
+  return normalized;
+}
+
+function normalizeWebRouteAdStatus(value = "") {
+  const key = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (["approved", "active", "freigegeben", "accepted", "confirmed", "bestaetigt"].includes(key)) return "approved";
+  if (["rejected", "declined", "abgelehnt", "denied"].includes(key)) return "rejected";
+  return "pending";
+}
+
+function isVisibleWebRouteFocusItem(item = {}) {
+  if (!item || item.active === false) return false;
+  if (item.isRestaurantAd !== true && String(item.adType || "").trim().toLowerCase() !== "restaurant_ad") return true;
+  return normalizeWebRouteAdStatus(item.reviewStatus || item.approvalStatus || "") === "approved";
 }
 
 function normalizeIncomingWebRoutePayload(payload = null) {
@@ -298,7 +323,7 @@ function normalizeIncomingWebRoutePayload(payload = null) {
   const focusItems = focusItemsRaw
     .map((row, index) => normalizeWebRouteFocusItem(row, index))
     .filter(Boolean)
-    .filter((row) => row.active !== false);
+    .filter(isVisibleWebRouteFocusItem);
   const resolveSectionTruthState = (section = {}, fallbackCount = 0) => {
     const explicitState = normalizeTruthState(String(section?.state || "").trim().toLowerCase(), "unknown");
     if (explicitState === "knownEmpty") return "knownEmpty";

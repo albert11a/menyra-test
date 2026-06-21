@@ -1055,6 +1055,15 @@ Last updated: 2026-06-21
   fremden `profileView`-IDs mehr als Ziel-IDs mit. Sichtbare UI, Travel-Cards,
   Oferta, Routing, QR, Cart, Order, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 109 ist abgeschlossen: Restaurant-/Cafe-Ads koennen im Menu-Editor
+  angelegt und in Heart vom CEO freigegeben oder abgelehnt werden.
+- Bewertung von Schritt 109: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 109:
+  Restaurant-Ads laufen ueber den bestehenden `public/offers`-Pfad, werden beim
+  Speichern als `pending` markiert und bleiben oeffentlich verborgen, bis Heart
+  sie auf `approved` setzt. Der obere Restaurant-Slider rendert nur approved
+  Ads als neue Premium-Ad-Cards; Restaurant-Listen-Cards, Travel-Oferta, QR,
+  Cart, Order, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1162,6 +1171,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step106-travel-hotel-card-title-spacing-parity.md](./mnyra-step106-travel-hotel-card-title-spacing-parity.md)
 - Referenz: [docs/mnyra-step107-discovery-map-marker-pointer.md](./mnyra-step107-discovery-map-marker-pointer.md)
 - Referenz: [docs/mnyra-step108-hotel-editor-state-scope.md](./mnyra-step108-hotel-editor-state-scope.md)
+- Referenz: [docs/mnyra-step109-restaurant-ads-approval-cards.md](./mnyra-step109-restaurant-ads-approval-cards.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1187,8 +1197,10 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 108 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 109 sind die naechsten sinnvollen separaten Folgeschritte:
 
+- Separater Rules-/Functions-Hardening-Schritt fuer Restaurant-Ad-Freigaben,
+  falls die CEO-Freigabe serverseitig hart erzwungen werden soll.
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
 - Separater Hotel-Profil-Details-Schritt fuer weitergehende Ausstattung,
@@ -1368,6 +1380,14 @@ duerfen keine Titelbilder von Hotel A sichtbar sein. Bei Hotel B ein Bild
 hinzufuegen oder entfernen und speichern; danach Travel `Hotels` fuer Hotel B
 und Hotel A gegenpruefen, dass die Titelbilder nicht zwischen den Hotels
 vermischt wurden.
+
+Zusaetzlich fuer Schritt 109 manuell pruefen: Als Restaurant/Cafe im Menu-Editor
+eine Ad mit Bild, Kategorie und Preisspanne anlegen. Sie darf direkt danach im
+Restaurant-Tab oben noch nicht erscheinen. In Heart den neuen Tab `Ads` oeffnen,
+die Ad unter `Pending` freigeben und danach den Restaurant-Tab erneut oeffnen:
+die Ad muss oben als Premium-Card erscheinen und das Restaurantprofil oeffnen.
+Eine zweite Ad ablehnen und pruefen, dass sie verborgen bleibt. Travel-Oferta
+kurz gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

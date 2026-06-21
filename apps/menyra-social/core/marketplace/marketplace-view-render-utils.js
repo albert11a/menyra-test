@@ -1011,6 +1011,129 @@ function renderBestCard(record = {}, deps = {}) {
   `;
 }
 
+function normalizeRestaurantAdReviewStatus(value = "") {
+  const key = normalizeLooseKey(value);
+  if (["approved", "active", "freigegeben", "accepted", "confirmed", "bestaetigt"].includes(key)) return "approved";
+  if (["rejected", "declined", "abgelehnt", "denied"].includes(key)) return "rejected";
+  return "pending";
+}
+
+function isRestaurantAdOffer(item = {}) {
+  const key = normalizeLooseKey(item?.adType || item?.kind || item?.type || "");
+  return item?.isRestaurantAd === true
+    || item?.restaurantAd === true
+    || key === "restaurant_ad"
+    || key === "ad"
+    || key === "ads"
+    || item?.adCategory !== undefined
+    || item?.adPriceSegment !== undefined
+    || item?.priceSegment !== undefined;
+}
+
+function getApprovedRestaurantAdCards(record = {}) {
+  const offers = Array.isArray(record.publicOffers)
+    ? record.publicOffers
+    : (Array.isArray(record.travelOffers)
+      ? record.travelOffers
+      : (Array.isArray(record.offerItems) ? record.offerItems : []));
+  return offers
+    .filter((offer) => offer && offer.active !== false)
+    .filter(isRestaurantAdOffer)
+    .filter((offer) => normalizeRestaurantAdReviewStatus(offer.reviewStatus || offer.approvalStatus || "") === "approved")
+    .map((offer, index) => ({
+      ...record,
+      __restaurantAd: offer,
+      __restaurantAdSort: index
+    }));
+}
+
+function getRestaurantAdImage(card = {}, deps = {}) {
+  const ad = card.__restaurantAd || {};
+  const image = cleanText(ad.imageUrl || ad.image || ad.photoUrl || "");
+  if (image) {
+    return typeof deps.getOptimizedImageUrl === "function"
+      ? cleanText(deps.getOptimizedImageUrl(image, "large"))
+      : image;
+  }
+  return getBusinessCoverImage(card, deps);
+}
+
+function renderRestaurantAdCard(card = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  const ad = card.__restaurantAd || {};
+  const id = getBusinessId(card);
+  const businessName = getBusinessName(card);
+  const title = cleanText(ad.title || ad.name || businessName);
+  const category = cleanText(ad.adCategory || ad.categoryLabel || getRestaurantCuisineLabel(card) || card.__marketplaceTypeLabel || "RESTAURANT");
+  const rating = getBusinessRating(card) || "4.8";
+  const priceSegment = cleanText(ad.adPriceSegment || ad.priceSegment || ad.priceRange || getRestaurantPriceRange(card) || "€€ - €€€");
+  const image = getRestaurantAdImage(card, deps);
+  const cropX = Math.max(0, Math.min(100, Number(ad.cropX ?? 50) || 50));
+  const cropY = Math.max(0, Math.min(100, Number(ad.cropY ?? 50) || 50));
+  const choiceBadge = cleanText(ad.choiceBadge || "Best Choice");
+  const deliveryBadge = cleanText(ad.deliveryBadge || "For Delivery");
+  const woltEnabled = ad.woltEnabled !== false;
+  const hasImage = !!image && !(typeof deps.isPlaceholderUrl === "function" && deps.isPlaceholderUrl(image));
+  return `
+    <button type="button" data-marketplace-open-business="${escapeHtml(id)}" class="w-72 h-[26rem] flex-shrink-0 bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden border border-slate-100 snap-start relative group text-left active:scale-[0.98]">
+      <div class="relative h-44 flex-shrink-0 overflow-hidden bg-slate-50">
+        ${hasImage ? `
+          <img
+            src="${escapeHtml(image)}"
+            alt="${escapeHtml(title)}"
+            loading="lazy"
+            class="w-full h-full object-cover"
+            style="object-position:${cropX}% ${cropY}%;"
+          />
+        ` : `
+          <div class="w-full h-full bg-[#fdfdfd] flex flex-col items-center justify-center p-4 border-b border-slate-100">
+            ${renderRestaurantCardIcon("utensils", "w-12 h-12 text-[#c5a059] mb-2", deps)}
+            <span class="text-[10px] font-black tracking-widest text-[#a37f4c] uppercase mt-1">${escapeHtml(businessName)}</span>
+          </div>
+        `}
+
+        <div class="absolute top-3 right-3 flex flex-col gap-1 w-[82px] z-10">
+          ${choiceBadge ? `<span class="bg-[#c5a059] text-white text-[6.5px] font-black uppercase tracking-wider h-[18px] flex items-center justify-center rounded-md border border-white/5 shadow-none">${escapeHtml(choiceBadge)}</span>` : ""}
+          ${deliveryBadge ? `<span class="bg-[#1f5f4c] text-white text-[6.5px] font-black uppercase tracking-wider h-[18px] flex items-center justify-center rounded-md border border-white/5 shadow-none">${escapeHtml(deliveryBadge)}</span>` : ""}
+        </div>
+
+        ${woltEnabled ? `
+          <div class="absolute bottom-4 left-4 bg-[#00b4d8] text-white h-[25px] px-3.5 rounded-md flex items-center justify-center border border-cyan-400/20 z-10 shadow-none">
+            <span class="font-sans font-black tracking-widest text-[9px] uppercase">WOLT</span>
+          </div>
+        ` : ""}
+      </div>
+
+      <div class="px-5 flex-1 flex flex-col bg-white">
+        <div class="flex-1 flex flex-col justify-center pt-5 pb-5">
+          <span class="text-[10px] font-extrabold text-[#c5a059] tracking-widest uppercase block mb-0.5 line-clamp-1">${escapeHtml(category)}</span>
+          <h3 class="text-xl font-extrabold text-slate-800 line-clamp-1">${escapeHtml(title)}</h3>
+          ${title !== businessName ? `<span class="text-[10px] font-bold text-slate-400 mt-1 line-clamp-1">${escapeHtml(businessName)}</span>` : ""}
+        </div>
+
+        <div class="flex items-center justify-between text-[11px] text-slate-600 font-semibold border-t border-slate-100 pt-5 pb-10">
+          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50">
+            ${icon("star", "w-3.5 h-3.5 text-amber-500 fill-amber-500 flex-shrink-0")}
+            <span class="font-bold text-slate-850">${escapeHtml(rating)}</span>
+          </div>
+          <div class="flex items-center justify-center gap-1.5 bg-slate-50 w-[100px] h-[28px] rounded-md border border-slate-100/50">
+            ${renderRestaurantCardIcon("utensils", "w-3.5 h-3.5 text-slate-400 flex-shrink-0", deps)}
+            <span class="font-bold text-[11px]">${escapeHtml(priceSegment)}</span>
+          </div>
+        </div>
+
+        <div class="pb-9">
+          <span class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-sm">
+            ${icon("user", "w-3.5 h-3.5 text-slate-350")}
+            <span>Profil ansehen</span>
+          </span>
+        </div>
+      </div>
+    </button>
+  `;
+}
+
 function renderListCard(record = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
@@ -1298,7 +1421,7 @@ function renderRestaurantSearchGate({ deps } = {}) {
 
 function renderRestaurantsContent({
   items = [],
-  bestItems = [],
+  adItems = [],
   section = {},
   deps = {}
 } = {}) {
@@ -1306,11 +1429,13 @@ function renderRestaurantsContent({
     return renderEmptyState(section, deps);
   }
   return `
-    <div style="margin-bottom:2rem;">
-      <div class="flex gap-3 overflow-x-auto hide-scrollbar snap-x" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
-        ${bestItems.map((record) => renderBestCard(record, deps)).join("")}
+    ${adItems.length ? `
+      <div style="margin-bottom:2rem;">
+        <div class="flex gap-6 overflow-x-auto hide-scrollbar snap-x pb-6 pt-2 px-1" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
+          ${adItems.map((record) => renderRestaurantAdCard(record, deps)).join("")}
+        </div>
       </div>
-    </div>
+    ` : ""}
 
     <div class="space-y-4">
       ${items.map((record) => renderRestaurantListCard(record, deps)).join("")}
@@ -1330,11 +1455,11 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
     ? allItems.filter((record) => matchesRestaurantViewerLocation(record, storedLocation))
     : allItems;
   const visibleItems = hasLocation ? locationItems : locationItems.slice(0, LIST_LIMIT);
-  const bestItems = visibleItems.slice(0, BEST_LIMIT);
+  const adItems = visibleItems.flatMap(getApprovedRestaurantAdCards).slice(0, BEST_LIMIT);
   const restaurantsLoaded = dataLoaded?.restaurants === true;
   const content = restaurantsLoaded || allItems.length ? renderRestaurantsContent({
     items: visibleItems,
-    bestItems,
+    adItems,
     section,
     deps
   }) : renderDataLoadingState(section, deps);

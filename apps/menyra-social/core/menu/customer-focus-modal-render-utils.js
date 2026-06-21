@@ -194,6 +194,18 @@ export function renderFocusModalCore({
     });
     return values;
   };
+  const normalizeContextKey = (value = "") => {
+    let key = cleanProfileText(value).toLowerCase();
+    if (!key) return "";
+    try {
+      if (typeof key.normalize === "function") {
+        key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+      }
+    } catch {}
+    return key
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  };
   const hasTravelAccommodationShape = (...records) => {
     if (collectTypeCandidates(...records).some((type) => (
       type.includes("hotel")
@@ -216,6 +228,25 @@ export function renderFocusModalCore({
       return /\bhotel(s)?\b|\bmotel(s)?\b|\bhostel\b|\bresort\b|\baccommodation\b/.test(searchable);
     });
   };
+  const hasRestaurantCafeShape = (...records) => {
+    if (collectTypeCandidates(...records).some((type) => {
+      const key = normalizeContextKey(type);
+      return ["restaurant", "restaurants", "cafe", "coffee", "fastfood", "fast_food", "food", "bakery", "bar", "grill"].includes(key);
+    })) {
+      return true;
+    }
+    return records.some((record = {}) => {
+      const searchable = [
+        record?.name,
+        record?.restaurantName,
+        record?.businessName,
+        record?.description,
+        record?.bio,
+        record?.about
+      ].map((value) => cleanProfileText(value).toLowerCase()).join(" ");
+      return /\brestaurant(s)?\b|\bcafe(s)?\b|\bcoffee\b|\bburger\b|\bpizza\b|\bbakery\b|\bgrill\b|\bseafood\b/.test(searchable);
+    });
+  };
   const hasTravelOfferFields = item?.isTravelOffer === true
     || item?.travelOffer === true
     || item?.offerBadgeLabel !== undefined
@@ -226,14 +257,28 @@ export function renderFocusModalCore({
     || item?.priceUnit !== undefined
     || item?.features !== undefined
     || item?.offerFeatures !== undefined;
+  const isRestaurantAdItem = item?.isRestaurantAd === true
+    || item?.restaurantAd === true
+    || normalizeContextKey(item?.adType || item?.kind || item?.type || "") === "restaurant_ad"
+    || item?.adCategory !== undefined
+    || item?.adPriceSegment !== undefined
+    || item?.priceSegment !== undefined
+    || item?.woltEnabled !== undefined
+    || item?.woltUrl !== undefined
+    || item?.reviewStatus !== undefined
+    || item?.approvalStatus !== undefined;
   const isTravelOfferContext = hasTravelAccommodationShape(state?.userProfile, profileViewRecord, restaurantRecord)
     || hasTravelOfferFields;
+  const isRestaurantAdContext = !isTravelOfferContext
+    && (hasRestaurantCafeShape(state?.userProfile, profileViewRecord, restaurantRecord) || isRestaurantAdItem);
   const title = isTravelOfferContext
     ? (isEdit ? "Oferta bearbeiten" : "Oferta hinzufuegen")
-    : (isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen");
-  const eyebrow = isTravelOfferContext ? (isEdit ? "Oferta" : "Neu") : (isEdit ? "Bearbeiten" : "Neu");
-  const titlePlaceholder = isTravelOfferContext ? "Sommer-Angebot" : "Sot ne Fokus";
-  const activeHelper = isTravelOfferContext ? "Sichtbar fuer Travel und Gaeste" : "Sichtbar fuer Gaeste";
+    : (isRestaurantAdContext ? (isEdit ? "Ad bearbeiten" : "Ad hinzufuegen") : (isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen"));
+  const eyebrow = isTravelOfferContext ? (isEdit ? "Oferta" : "Neu") : (isRestaurantAdContext ? "Ads" : (isEdit ? "Bearbeiten" : "Neu"));
+  const titlePlaceholder = isTravelOfferContext ? "Sommer-Angebot" : (isRestaurantAdContext ? "Speise oder Aktion" : "Sot ne Fokus");
+  const activeHelper = isTravelOfferContext
+    ? "Sichtbar fuer Travel und Gaeste"
+    : (isRestaurantAdContext ? "Nach CEO-Freigabe im Restaurant-Tab sichtbar" : "Sichtbar fuer Gaeste");
   const collectTextList = (value) => {
     if (Array.isArray(value)) return value.map((entry) => String(entry || "").trim()).filter(Boolean);
     const raw = String(value || "").trim();
@@ -364,6 +409,22 @@ export function renderFocusModalCore({
   const offerParkingFeature = findFeatureOption(offerFeatures, parkingFeatureOptions);
   const selectedFeatureKeys = new Set([offerFoodFeature, offerLoungerFeature, offerParkingFeature].map(normalizeFeatureKey).filter(Boolean));
   const offerCustomFeatures = offerFeatures.filter((feature) => !selectedFeatureKeys.has(normalizeFeatureKey(feature)));
+  const normalizeReviewStatus = (value = "") => {
+    const key = normalizeContextKey(value);
+    if (["approved", "active", "freigegeben", "accepted", "confirmed", "bestaetigt"].includes(key)) return "approved";
+    if (["rejected", "declined", "abgelehnt", "denied"].includes(key)) return "rejected";
+    return "pending";
+  };
+  const adReviewStatus = normalizeReviewStatus(item.reviewStatus || item.approvalStatus || "");
+  const adReviewLabel = adReviewStatus === "approved"
+    ? "CEO-Freigabe aktiv"
+    : (adReviewStatus === "rejected" ? "Vom CEO abgelehnt" : "Wartet auf CEO-Freigabe");
+  const adCategory = String(item.adCategory || item.categoryLabel || "RESTAURANT").trim();
+  const adPriceSegment = String(item.adPriceSegment || item.priceSegment || item.priceRange || item.priceLabel || "").trim();
+  const adWoltUrl = String(item.woltUrl || item.deliveryUrl || "").trim();
+  const adWoltEnabled = item.woltEnabled !== false;
+  const adChoiceBadge = String(item.choiceBadge || item.bestChoiceBadge || "Best Choice").trim();
+  const adDeliveryBadge = String(item.deliveryBadge || item.deliveryLabel || "For Delivery").trim();
   const preview = state.focusModal.imagePreview || item.imageUrl || "";
   const imageUrl = getOptimizedImageUrl(preview, "large");
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
@@ -414,6 +475,43 @@ export function renderFocusModalCore({
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
           <textarea id="focusText" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
         </div>
+        ${isRestaurantAdContext ? `
+          <div class="grid grid-cols-1 gap-3">
+            <div class="rounded-[1.7rem] border border-amber-100 bg-amber-50/60 p-4">
+              <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest">Review</p>
+              <p class="text-xs font-black text-slate-800 mt-1">${escapeHtml(adReviewLabel)}</p>
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
+              <input id="focusAdCategory" type="text" value="${escapeHtml(adCategory)}" placeholder="RESTAURANT" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preisspanne</label>
+              <input id="focusAdPriceSegment" type="text" value="${escapeHtml(adPriceSegment)}" placeholder="€€ - €€€" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Wolt URL (optional)</label>
+              <input id="focusAdWoltUrl" type="url" value="${escapeHtml(adWoltUrl)}" placeholder="https://wolt.com/..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <p class="text-xs font-black text-slate-800">Wolt Badge</p>
+                <p class="text-[10px] font-bold text-slate-400">Zeigt das blaue WOLT Label auf der Ad-Card</p>
+              </div>
+              <input id="focusAdWoltEnabled" type="checkbox" class="w-5 h-5 accent-amber-500" ${adWoltEnabled ? "checked" : ""} />
+            </label>
+            <div class="grid grid-cols-1 gap-3">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Badge 1</label>
+                <input id="focusAdChoiceBadge" type="text" value="${escapeHtml(adChoiceBadge)}" placeholder="Best Choice" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Badge 2</label>
+                <input id="focusAdDeliveryBadge" type="text" value="${escapeHtml(adDeliveryBadge)}" placeholder="For Delivery" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+              </div>
+            </div>
+          </div>
+        ` : ""}
         ${isTravelOfferContext ? `
           <div class="grid grid-cols-1 gap-3">
             <div>
@@ -498,7 +596,9 @@ export function renderFocusModalCore({
   const footerHtml = `
     <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
-        ${state.focusModal.loading ? (isTravelOfferContext ? "Po ruhet..." : "Speichern...") : (isTravelOfferContext ? "Ruaj" : "Speichern")}
+        ${state.focusModal.loading
+          ? (isTravelOfferContext ? "Po ruhet..." : (isRestaurantAdContext ? "Wird gesendet..." : "Speichern..."))
+          : (isTravelOfferContext ? "Ruaj" : (isRestaurantAdContext ? "Zur Freigabe senden" : "Speichern"))}
       </button>
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
     </div>
