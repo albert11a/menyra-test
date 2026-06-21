@@ -1159,6 +1159,21 @@ Last updated: 2026-06-22
   linke Clip-Reserve fuer kursive Schrift und Ellipsis bei langen vorderen
   Namen erhalten bleiben. Routing, QR, Cart, Order, Menu-Logik, Lead-Farbe,
   Tabs und Profil-Card bleiben unveraendert.
+- Schritt 119 ist abgeschlossen: Business-Header ohne Menue-Kategorien nutzt
+  wieder die normale Name-Position, und lange einteilige Business-Namen
+  verlieren den Zusatz `Social`. Lange mehrteilige Business-Namen nutzen eine
+  kompaktere Titelgroesse.
+- Bewertung von Schritt 119: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 119:
+  Das spezielle Menue-Mittelbereich-Layout wird nur noch verwendet, wenn echte
+  Menue-Kategorien vorhanden sind. Ein Profil ohne Produkte zeigt den Namen
+  dadurch nicht mehr leicht anders positioniert. Bei langen Ein-Wort-Namen wie
+  `kosovamanswear` wird der Fallback-Subtitle `Social` ausgeblendet, damit der
+  eigentliche Name mehr Platz bekommt. Lange mehrteilige Namen wie
+  `70s pastry and bakery` werden im Header etwas kleiner dargestellt, damit
+  beide Namensteile besser in die verfuegbare Breite passen. Routing, QR,
+  Cart, Order, Menu-Logik, Lead-Farbe, Tabs und Profil-Card bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1276,6 +1291,7 @@ Last updated: 2026-06-22
 - Referenz: [docs/mnyra-step116-business-profile-header-name-color.md](./mnyra-step116-business-profile-header-name-color.md)
 - Referenz: [docs/mnyra-step117-business-header-italic-clip-fix.md](./mnyra-step117-business-header-italic-clip-fix.md)
 - Referenz: [docs/mnyra-step118-business-header-natural-spacing.md](./mnyra-step118-business-header-natural-spacing.md)
+- Referenz: [docs/mnyra-step119-business-header-empty-menu-long-name.md](./mnyra-step119-business-header-empty-menu-long-name.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1301,7 +1317,7 @@ Last updated: 2026-06-22
 
 ## Naechster Schritt
 
-Nach Schritt 118 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 119 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1556,6 +1572,15 @@ Einen Namen mit langem vorderen Teil pruefen; dieser soll nicht links
 abgeschnitten werden, sondern bei Platzmangel nur rechts mit Ellipsis gekuerzt
 werden. Danach `Beitraege`/`Menue` wechseln und Header-/Profil-Card-Stabilitaet
 kurz gegenpruefen.
+
+Zusaetzlich fuer Schritt 119 manuell pruefen: Business-Profil ohne
+Menue-Produkte oeffnen und auf `Menue` wechseln; der Name soll gleich
+positioniert wirken wie bei `Beitraege`. Ein langes Ein-Wort-Business wie
+`kosovamanswear` pruefen; der Zusatz `Social` soll dann im Header nicht mehr
+angezeigt werden. Einen langen mehrteiligen Namen wie
+`70s pastry and bakery` pruefen; der Name soll kompakter wirken und besser in
+den Header passen. Einen normalen zweiteiligen Namen wie `IN VINO`
+gegenpruefen; der blaue zweite Teil soll weiter sichtbar bleiben.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

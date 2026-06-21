@@ -740,6 +740,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const isTight = viewportWidth > 0 && viewportWidth <= 360;
     return {
       titleClass: isCompact ? "text-[1.35rem]" : "text-2xl",
+      longTitleClass: isCompact ? "text-[1.15rem]" : "text-xl",
       subtitleClass: isCompact ? "text-[8px]" : "text-[9px]",
       actionButtonClass: isCompact ? "w-9 h-9" : "w-10 h-10",
       actionIconClass: isCompact ? "w-4 h-4" : "w-5 h-5",
@@ -880,17 +881,20 @@ export function createAppShellRuntimeController(deps = {}) {
       : rawBusinessTitle;
     const businessSubtitle = businessNameParts.length > 1
       ? businessNameParts[businessNameParts.length - 1]
-      : "Social";
+      : (businessTitle.length > 10 ? "" : "Social");
     const businessSubtitleTrackingClass = businessSubtitle.length > 10
       ? "tracking-[0.12em]"
       : "tracking-[0.25em]";
+    const compactNameLayout = businessName.replace(/\s+/g, "").length > 12 || rawBusinessTitle.length > 13;
+    const businessTitleClass = compactNameLayout ? viewportUi.longTitleClass : viewportUi.titleClass;
+    const businessNameGapClass = compactNameLayout ? "gap-1" : "gap-1.5";
     const renderBusinessName = () => `
       <button type="button" data-business-profile-home="true" title="${escapeHtml(businessName)}" class="inline-block min-w-0 max-w-full text-left active:opacity-90 transition-opacity">
-        <div class="inline-flex items-baseline gap-1.5 min-w-0 max-w-full">
+        <div class="inline-flex items-baseline ${businessNameGapClass} min-w-0 max-w-full">
           <div class="min-w-0 max-w-full overflow-visible" style="flex:0 1 auto;">
-            <h1 class="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap ${viewportUi.titleClass} font-black italic tracking-tighter leading-none text-slate-900" style="padding-left:4px;margin-left:-4px;padding-right:4px;">${escapeHtml(businessTitle)}</h1>
+            <h1 class="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap ${businessTitleClass} font-black italic tracking-tighter leading-none text-slate-900" style="padding-left:4px;margin-left:-4px;padding-right:4px;">${escapeHtml(businessTitle)}</h1>
           </div>
-          <span class="shrink-0 min-w-0 max-w-[44%] overflow-hidden text-ellipsis whitespace-nowrap pl-0.5 ${viewportUi.subtitleClass} font-black text-indigo-600 uppercase ${businessSubtitleTrackingClass} mb-[1px]">${escapeHtml(businessSubtitle)}</span>
+          ${businessSubtitle ? `<span class="shrink-0 min-w-0 max-w-[44%] overflow-hidden text-ellipsis whitespace-nowrap pl-0.5 ${viewportUi.subtitleClass} font-black text-indigo-600 uppercase ${businessSubtitleTrackingClass} mb-[1px]">${escapeHtml(businessSubtitle)}</span>` : ""}
         </div>
       </button>
     `;
@@ -971,17 +975,18 @@ export function createAppShellRuntimeController(deps = {}) {
     if (isBusinessProfileHeaderContext(activeProfile)) {
       const viewportUi = resolveBusinessHeaderViewportUi();
       const menuHeaderActive = isBusinessMenuHeaderContext(activeProfile);
+      const menuCategoryHeaderActive = menuHeaderActive && getBusinessHeaderMenuCategories(activeProfile).length > 0;
       return `
         <div class="smart-header-shell">
           <div id="smart-header-top" class="smart-header-top">
-            <div class="${viewportUi.headerPaddingClass} h-16 flex items-center ${menuHeaderActive ? viewportUi.headerGapClass : `justify-between ${viewportUi.headerGapClass}`}">
-              <div class="flex ${menuHeaderActive ? "shrink-0" : "flex-1 min-w-0"} items-center ${viewportUi.headerGapClass} ${viewportUi.leftGroupPaddingClass}">
+            <div class="${viewportUi.headerPaddingClass} h-16 flex items-center ${menuCategoryHeaderActive ? viewportUi.headerGapClass : `justify-between ${viewportUi.headerGapClass}`}">
+              <div class="flex ${menuCategoryHeaderActive ? "shrink-0" : "flex-1 min-w-0"} items-center ${viewportUi.headerGapClass} ${viewportUi.leftGroupPaddingClass}">
                 <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 ${viewportUi.drawerButtonClass} rounded-full transition-colors active:scale-95 flex items-center justify-center shrink-0">
                   ${icon("menu", viewportUi.drawerIconClass)}
                 </button>
-                ${menuHeaderActive ? "" : renderBusinessHeaderCenter(activeProfile)}
+                ${menuCategoryHeaderActive ? "" : renderBusinessHeaderCenter(activeProfile)}
               </div>
-              ${menuHeaderActive ? `<div class="flex-1 min-w-0">${renderBusinessHeaderCenter(activeProfile)}</div>` : ""}
+              ${menuCategoryHeaderActive ? `<div class="flex-1 min-w-0">${renderBusinessHeaderCenter(activeProfile)}</div>` : ""}
               ${renderBusinessHeaderActions(activeProfile)}
             </div>
             ${renderLanguagePickerPanel()}
