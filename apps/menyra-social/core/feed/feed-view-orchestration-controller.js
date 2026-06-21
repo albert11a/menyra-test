@@ -74,6 +74,48 @@ export function createFeedViewOrchestrationController({
   const MAX_BEST_SPOT_ITEMS = 15;
   const BEST_SPOT_HEAD_COUNT = 6;
   const MAX_TRACK_STORY_ITEMS = 15;
+  const FEED_COORD_CITY_MAX_DISTANCE_KM = 35;
+  const FEED_LOCATION_TEXT_FIELDS = Object.freeze([
+    "city",
+    "locationCity",
+    "primaryCity",
+    "place",
+    "locationPlace",
+    "primaryPlace",
+    "postalCity",
+    "address",
+    "primaryAddress",
+    "formattedAddress",
+    "fullAddress",
+    "addressText",
+    "streetAddress",
+    "street",
+    "locationLabel",
+    "displayLocation",
+    "locality",
+    "town",
+    "municipality",
+    "village",
+    "neighborhood",
+    "neighbourhood",
+    "area",
+    "district",
+    "county",
+    "region",
+    "state",
+    "province"
+  ]);
+  const FEED_NESTED_LOCATION_FIELDS = Object.freeze([
+    "location",
+    "primaryLocation",
+    "businessLocation",
+    "venueLocation",
+    "addressInfo",
+    "geo",
+    "coords",
+    "coordinates",
+    "geoPoint"
+  ]);
   const TRACK_CARD_WIDTH_STYLE = "flex:0 0 29%;width:29%;max-width:120px;";
   const TRACK_CARD_HEIGHT_STYLE = "height:13rem;";
   const TRACK_CARD_RADIUS_STYLE = "border-radius:1rem;";
@@ -287,6 +329,101 @@ export function createFeedViewOrchestrationController({
     || entry?.rid
     || ""
   ).trim();
+  const pushFeedLocationText = (values = [], value = "") => {
+    if (typeof value === "string" || typeof value === "number") {
+      const text = String(value || "").trim();
+      if (text) values.push(text);
+    }
+  };
+  const appendFeedLocationFields = (values = [], source = {}) => {
+    if (!source || typeof source !== "object") return;
+    FEED_LOCATION_TEXT_FIELDS.forEach((field) => pushFeedLocationText(values, source[field]));
+    if (typeof source.location === "string" || typeof source.location === "number") {
+      pushFeedLocationText(values, source.location);
+    }
+  };
+  const normalizeFeedCityKey = (value = "") => normalizeLocationQuery(value)
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const resolveFeedCityAliasGroups = () => FEED_LOCATION_CITY_OPTIONS
+    .map((option) => [option?.id, option?.label, option?.city, ...(Array.isArray(option?.aliases) ? option.aliases : [])]
+      .map(normalizeFeedCityKey)
+      .filter(Boolean))
+    .filter((group) => group.length);
+  const expandFeedCityKeys = (value = "") => {
+    const key = normalizeFeedCityKey(value);
+    if (!key) return [];
+    const keys = new Set([key]);
+    resolveFeedCityAliasGroups().forEach((group) => {
+      if (group.includes(key)) group.forEach((alias) => keys.add(alias));
+    });
+    return Array.from(keys);
+  };
+  const matchesFeedCityText = (values = [], cityKeys = []) => {
+    const normalizedValues = (Array.isArray(values) ? values : [])
+      .map(normalizeFeedCityKey)
+      .filter(Boolean);
+    if (!normalizedValues.length || !cityKeys.length) return false;
+    const haystack = normalizedValues.join(" ");
+    return cityKeys.some((cityKey) => {
+      const tokens = cityKey.split(" ").filter(Boolean);
+      return normalizedValues.some((value) => value === cityKey || value.includes(cityKey))
+        || (tokens.length > 0 && tokens.every((token) => haystack.includes(token)));
+    });
+  };
+  const containsKnownFeedCity = (values = []) => {
+    const normalizedValues = (Array.isArray(values) ? values : [])
+      .map(normalizeFeedCityKey)
+      .filter(Boolean);
+    if (!normalizedValues.length) return false;
+    const haystack = normalizedValues.join(" ");
+    return resolveFeedCityAliasGroups().some((group) => group.some((cityKey) => {
+      const tokens = cityKey.split(" ").filter(Boolean);
+      return normalizedValues.some((value) => value === cityKey || value.includes(cityKey))
+        || (tokens.length > 0 && tokens.every((token) => haystack.includes(token)));
+    }));
+  };
+  const inferFeedCityLabelFromCoords = (record = {}) => {
+    const coords = normalizeEntityCoords(record);
+    if (!coords) return "";
+    const nearest = FEED_LOCATION_CITY_OPTIONS
+      .map((entry) => {
+        const cityCoords = normalizeViewerCoords(entry);
+        return {
+          label: String(entry?.label || "").trim(),
+          distanceKm: cityCoords ? haversineDistanceKm(coords, cityCoords) : Number.POSITIVE_INFINITY
+        };
+      })
+      .filter((entry) => entry.label && Number.isFinite(entry.distanceKm))
+      .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+    return nearest && nearest.distanceKm <= FEED_COORD_CITY_MAX_DISTANCE_KM ? nearest.label : "";
+  };
+  const collectFeedCityTextCandidates = (...records) => {
+    const values = [];
+    records.forEach((record) => {
+      if (!record || typeof record !== "object") return;
+      appendFeedLocationFields(values, record);
+      FEED_NESTED_LOCATION_FIELDS.forEach((field) => appendFeedLocationFields(values, record[field]));
+      if (Array.isArray(record.locations)) {
+        record.locations.forEach((location) => appendFeedLocationFields(values, location));
+      }
+    });
+    return values;
+  };
+  const collectFeedInferredCityCandidates = (...records) => {
+    const values = [];
+    records.forEach((record) => pushFeedLocationText(values, inferFeedCityLabelFromCoords(record)));
+    return values;
+  };
+  const matchesFeedViewerCity = ({ entry = {}, restaurant = null, viewerCity = "" } = {}) => {
+    const cityKeys = expandFeedCityKeys(viewerCity);
+    if (!cityKeys.length) return true;
+    const explicitValues = collectFeedCityTextCandidates(restaurant, entry);
+    if (matchesFeedCityText(explicitValues, cityKeys)) return true;
+    if (containsKnownFeedCity(explicitValues)) return false;
+    return matchesFeedCityText(collectFeedInferredCityCandidates(restaurant, entry), cityKeys);
+  };
   const resolveFeedGeoScopedCollections = ({
     feedPosts = [],
     stories = []
@@ -294,10 +431,12 @@ export function createFeedViewOrchestrationController({
     const safeFeedPosts = Array.isArray(feedPosts) ? feedPosts : [];
     const safeStories = Array.isArray(stories) ? stories : [];
     const viewerLocation = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const viewerCity = resolveFeedViewerCityQuery(viewerLocation);
     const viewerCountryCode = resolveCountryCodeFromAnyRecord(viewerLocation);
     const viewerCoords = normalizeViewerCoords(viewerLocation);
     const restaurantMap = resolveFeedRestaurantMap();
     const shouldStrictCountryFilter = !!viewerCountryCode;
+    const shouldStrictCityFilter = !!viewerCity;
     const withGeoMeta = (entry = {}, { type = "post", fallbackIndex = 0 } = {}) => {
       const restaurantId = resolveFeedEntryRestaurantId(entry);
       const restaurant = restaurantId ? restaurantMap.get(restaurantId) || null : null;
@@ -308,6 +447,7 @@ export function createFeedViewOrchestrationController({
       if (shouldStrictCountryFilter) {
         if (!countryCode || countryCode !== viewerCountryCode) return null;
       }
+      if (shouldStrictCityFilter && !matchesFeedViewerCity({ entry, restaurant, viewerCity })) return null;
       const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(entry);
       const distanceKm = viewerCoords && coords
         ? haversineDistanceKm(viewerCoords, coords)
@@ -396,6 +536,7 @@ export function createFeedViewOrchestrationController({
     const safeFallbackFeedPosts = Array.isArray(fallbackFeedPosts) ? fallbackFeedPosts : [];
     const sourcePosts = safeFeedPosts.length ? safeFeedPosts : safeFallbackFeedPosts;
     const viewerLocation = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const viewerCity = resolveFeedViewerCityQuery(viewerLocation);
     const viewerCoords = normalizeViewerCoords(viewerLocation);
     const viewerCountryCode = resolveCountryCodeFromAnyRecord(viewerLocation);
     const restaurantMap = resolveFeedRestaurantMap();
@@ -422,6 +563,9 @@ export function createFeedViewOrchestrationController({
         ...(post && typeof post === "object" ? post : {})
       });
       if (viewerCountryCode && (!countryCode || countryCode !== viewerCountryCode)) {
+        return null;
+      }
+      if (viewerCity && !matchesFeedViewerCity({ entry: post, restaurant, viewerCity })) {
         return null;
       }
       const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(post);
@@ -514,6 +658,9 @@ export function createFeedViewOrchestrationController({
       }
       const countryCode = resolveCountryCodeFromAnyRecord(restaurant);
       if (viewerCountryCode && (!countryCode || countryCode !== viewerCountryCode)) {
+        return null;
+      }
+      if (viewerCity && !matchesFeedViewerCity({ entry: restaurant, restaurant, viewerCity })) {
         return null;
       }
       const coords = normalizeEntityCoords(restaurant);
@@ -692,6 +839,7 @@ export function createFeedViewOrchestrationController({
     const sourceStories = safeStories.length ? safeStories : safeFallbackStories;
     if (!sourceStories.length) return [];
     const viewerLocation = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const viewerCity = resolveFeedViewerCityQuery(viewerLocation);
     const viewerCoords = normalizeViewerCoords(viewerLocation);
     const restaurantMap = resolveFeedRestaurantMap();
     const dedupedStories = new Map();
@@ -700,6 +848,7 @@ export function createFeedViewOrchestrationController({
       const restaurantId = identity.storyRestaurantId;
       if (!restaurantId) return;
       const restaurant = restaurantMap.get(restaurantId) || null;
+      if (viewerCity && !matchesFeedViewerCity({ entry: story, restaurant, viewerCity })) return;
       const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(story);
       const distanceKm = viewerCoords && coords
         ? haversineDistanceKm(viewerCoords, coords)
@@ -959,11 +1108,11 @@ export function createFeedViewOrchestrationController({
     "rruga", "street", "bulevard", "boulevard", "lagj", "district", "neighborhood", "quarter", "park", "mall", "plaza"
   ];
   const FEED_LOCATION_CITY_OPTIONS = Object.freeze([
-    { id: "prishtina", label: "Prishtina", lat: 42.6629, lng: 21.1655, aliases: ["prishtine", "prishtin"] },
-    { id: "prizren", label: "Prizren", lat: 42.2139, lng: 20.7397, aliases: ["prizr"] },
-    { id: "peja", label: "Peja", lat: 42.6591, lng: 20.2883, aliases: ["peje"] },
-    { id: "gjakova", label: "Gjakova", lat: 42.3803, lng: 20.4308, aliases: ["gjakove"] },
-    { id: "ferizaj", label: "Ferizaj", lat: 42.3706, lng: 21.1553, aliases: ["feri"] },
+    { id: "prishtina", label: "Prishtina", lat: 42.6629, lng: 21.1655, aliases: ["prishtine", "prishtin", "pristina"] },
+    { id: "prizren", label: "Prizren", lat: 42.2139, lng: 20.7397, aliases: ["prizr", "prizreni"] },
+    { id: "peja", label: "Peja", lat: 42.6591, lng: 20.2883, aliases: ["peje", "pec"] },
+    { id: "gjakova", label: "Gjakova", lat: 42.3803, lng: 20.4308, aliases: ["gjakove", "djakova"] },
+    { id: "ferizaj", label: "Ferizaj", lat: 42.3706, lng: 21.1553, aliases: ["feri", "ferizaji", "uroshevac"] },
     { id: "gjilan", label: "Gjilan", lat: 42.4635, lng: 21.4699, aliases: ["gjilani"] },
     { id: "mitrovica", label: "Mitrovica", lat: 42.8914, lng: 20.8660, aliases: ["mitrovice", "mitro"] },
     { id: "vushtrria", label: "Vushtrria", lat: 42.8231, lng: 20.9675, aliases: ["vushtrri"] },
@@ -1021,6 +1170,21 @@ export function createFeedViewOrchestrationController({
     .replace(/[^a-z0-9\s-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  const isGenericFeedLocationLabel = (value = "") => {
+    const key = normalizeLocationQuery(value);
+    return key === "current location"
+      || key === "vendndodhja aktuale"
+      || key === "trenutna lokacija"
+      || key === "standort"
+      || key === "aktueller standort";
+  };
+  const resolveFeedViewerCityQuery = (viewerLocation = null) => {
+    const city = String(viewerLocation?.city || "").trim();
+    if (city && !isGenericFeedLocationLabel(city)) return city;
+    const label = String(viewerLocation?.label || "").trim();
+    if (label && !isGenericFeedLocationLabel(label)) return label;
+    return "";
+  };
   const toCountryCode = (value = "") => {
     const normalized = normalizeLocationQuery(value);
     if (!normalized) return "";
@@ -1153,7 +1317,8 @@ export function createFeedViewOrchestrationController({
     const coords = normalizeViewerCoords(value);
     if (!coords) return null;
     const label = String(value?.label || value?.city || "").trim();
-    const city = String(value?.city || label).trim();
+    const rawCity = String(value?.city || "").trim();
+    const city = rawCity || (isGenericFeedLocationLabel(label) ? "" : label);
     const source = String(value?.source || "").trim().toLowerCase();
     const countryCode = resolveCountryCodeFromAnyRecord({
       ...(value && typeof value === "object" ? value : {}),

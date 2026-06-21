@@ -1116,6 +1116,17 @@ Last updated: 2026-06-21
   kennt jetzt Kosovo-Staedte und Schreibvarianten in Vorschlaegen und Matching.
   UI/Design, QR, Cart, Order, Routing, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 115 ist abgeschlossen: Der Feed nutzt bei gesetzter Stadt dieselbe
+  harte Stadtwahrheit fuer Posts, Stories und Best-Spots.
+- Bewertung von Schritt 115: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 115:
+  Feed-Posts, Feed-Stories und die obere Best-Spot-/Spot-Story-Zeile werden
+  bei echter Stadtwahl wie `Prishtina` nicht mehr nur nach Land plus Distanz
+  sortiert, sondern gegen Stadt-/Alias-/Location-Text und, falls noetig,
+  gegen aus Koordinaten abgeleitete Stadtwahrheit gefiltert. Ferizaj-Inhalte
+  koennen dadurch nicht mehr im Prishtina-Feed bleiben. GPS ohne echte Stadt
+  im Label bleibt weiter koordinaten-/landbasiert. UI/Design, QR, Cart, Order,
+  Routing, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1229,6 +1240,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step112-restaurant-ads-card-fit.md](./mnyra-step112-restaurant-ads-card-fit.md)
 - Referenz: [docs/mnyra-step113-restaurant-ads-card-alignment-compact.md](./mnyra-step113-restaurant-ads-card-alignment-compact.md)
 - Referenz: [docs/mnyra-step114-marketplace-city-source-filter.md](./mnyra-step114-marketplace-city-source-filter.md)
+- Referenz: [docs/mnyra-step115-feed-city-source-filter.md](./mnyra-step115-feed-city-source-filter.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1254,7 +1266,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 114 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 115 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1480,6 +1492,14 @@ Restaurants/-Cafes erscheinen. Danach `Ferizaj` setzen und pruefen, dass
 Ferizaj-Treffer erscheinen. Travel oeffnen, `Prishtina`/`Prishtine`,
 `Ferizaj`, `Prizren`, `Peja` oder `Gjilan` eingeben und pruefen, dass Kosovo-
 Vorschlaege erscheinen und passende Hotels/Motels gefunden werden.
+
+Zusaetzlich fuer Schritt 115 manuell pruefen: Feed-Gate auf `Prishtina` setzen
+und im Feed pruefen, dass keine Ferizaj-Posts, Ferizaj-Stories oder Ferizaj-
+Best-Spots sichtbar sind. Danach `Ferizaj` setzen und pruefen, dass Ferizaj-
+Inhalte erscheinen. Header-Location im Feed auf `Prishtina` aendern und
+dieselbe Gegenpruefung wiederholen. GPS/Standort-Button kurz gegenpruefen:
+Ohne echte Stadt im Label soll die bisherige GPS-basierte Feed-Nutzung nicht
+leer werden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
