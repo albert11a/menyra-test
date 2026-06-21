@@ -1075,6 +1075,17 @@ Last updated: 2026-06-21
   `updatedAt`-Timestamp bleibt weiterhin ein Firestore-Server-Timestamp.
   Sichtbare UI, Ads-Freigabelogik, Heart, Restaurant-Cards, QR, Cart, Order,
   Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 111 ist abgeschlossen: Mnyra Heart kann Ads akzeptieren oder
+  ablehnen, ohne dass Firestore den Schreibvorgang wegen `serverTimestamp()`
+  innerhalb von `public/ads.items` ablehnt.
+- Bewertung von Schritt 111: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 111:
+  Der Heart-Approval-Pfad schreibt `reviewedAt` und `updatedAt` innerhalb des
+  betroffenen Ads-Array-Items jetzt als normale Client-Zeitwerte. Der
+  dokumentweite `updatedAt` auf `restaurants/{restaurantId}/public/ads` bleibt
+  weiterhin ein Firestore-Server-Timestamp. Sichtbare UI, Ads-Statuslogik,
+  Editor, Restaurant-Cards, QR, Cart, Order, Routing, Firebase Rules und
+  Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1184,6 +1195,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step108-hotel-editor-state-scope.md](./mnyra-step108-hotel-editor-state-scope.md)
 - Referenz: [docs/mnyra-step109-restaurant-ads-system.md](./mnyra-step109-restaurant-ads-system.md)
 - Referenz: [docs/mnyra-step110-ads-array-timestamp-fix.md](./mnyra-step110-ads-array-timestamp-fix.md)
+- Referenz: [docs/mnyra-step111-heart-ads-approval-timestamp-fix.md](./mnyra-step111-heart-ads-approval-timestamp-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1407,6 +1419,14 @@ Firestore-Meldung zu `serverTimestamp()` innerhalb von Arrays erscheint. Danach
 Mnyra Heart -> `Ads` oeffnen und pruefen, dass die neue Ad als `pending` zur
 Freigabe sichtbar ist. Eine bestehende Ad bearbeiten und erneut speichern;
 auch sie muss pending bleiben und ohne Fehlermeldung gespeichert werden.
+
+Zusaetzlich fuer Schritt 111 manuell pruefen: Mnyra Heart -> `Ads` oeffnen,
+eine pending Ad akzeptieren und pruefen, dass keine Firestore-Meldung zu
+`serverTimestamp()` innerhalb von Arrays erscheint. Danach im Restaurant-Tab
+pruefen, dass die akzeptierte Ad in der kleinen horizontalen Swipe-Zeile
+erscheint. Eine zweite pending Ad ablehnen und pruefen, dass auch Ablehnen ohne
+Firestore-Fehler speichert und die Ad nicht in der Restaurant-Swipe-Zeile
+erscheint.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

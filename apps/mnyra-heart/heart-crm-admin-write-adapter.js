@@ -1322,6 +1322,10 @@ export function createHeartCrmAdminWriteAdapter({
     return "";
   }
 
+  function createClientAdApprovalTimestamp() {
+    return new Date();
+  }
+
   function parseAdCompositeId(value = "") {
     const raw = asText(value);
     if (!raw) return { restaurantId: "", adId: "" };
@@ -1354,14 +1358,15 @@ export function createHeartCrmAdminWriteAdapter({
       || heartState.auth?.user?.displayName
       || heartState.auth?.user?.email
     );
+    const now = createClientAdApprovalTimestamp();
     items[index] = {
       ...items[index],
       status: nextStatus,
       approvalStatus: nextStatus,
-      reviewedAt: serverTimestamp(),
+      reviewedAt: now,
       reviewedByUid: reviewerUid,
       reviewedByName: reviewerName,
-      updatedAt: serverTimestamp()
+      updatedAt: now
     };
     await setDoc(ref, {
       ...data,
