@@ -1140,6 +1140,15 @@ Last updated: 2026-06-22
   Bootstrap und Public-Meta; Lead-Landing und app-interne Landing rendern den
   Business-Namen in dieser Farbe. Routing, QR, Cart, Order, Menu-Logik,
   Firebase Rules und Functions bleiben unveraendert.
+- Schritt 117 ist abgeschlossen: Der vordere schwarze Business-Name im Header
+  wird bei kursiver Schrift nicht mehr links angeschnitten.
+- Bewertung von Schritt 117: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 117:
+  Der Business-Header-Titel nutzt die volle verfuegbare Header-Breite und
+  bekommt links eine kleine Clip-Reserve fuer kursiven Glyphen-Ueberhang.
+  Dadurch wirkt ein kurzer zweiteiliger Name wie `IN VINO` vorne nicht mehr
+  abgeschnitten. Routing, QR, Cart, Order, Menu-Logik, Lead-Farbe, Tabs und
+  Profil-Card bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1255,6 +1264,7 @@ Last updated: 2026-06-22
 - Referenz: [docs/mnyra-step114-marketplace-city-source-filter.md](./mnyra-step114-marketplace-city-source-filter.md)
 - Referenz: [docs/mnyra-step115-feed-city-source-filter.md](./mnyra-step115-feed-city-source-filter.md)
 - Referenz: [docs/mnyra-step116-business-profile-header-name-color.md](./mnyra-step116-business-profile-header-name-color.md)
+- Referenz: [docs/mnyra-step117-business-header-italic-clip-fix.md](./mnyra-step117-business-header-italic-clip-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1280,7 +1290,7 @@ Last updated: 2026-06-22
 
 ## Naechster Schritt
 
-Nach Schritt 116 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 117 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1522,6 +1532,12 @@ mit Logo, Name, Fans und Folgt soll beim Tabwechsel nicht springen. In Leads
 `Business Name Farbe` setzen, speichern und die Lead-Landing oeffnen; der
 Business-Name soll in der gewaehlten Farbe erscheinen. QR/Menu/Cart kurz
 unveraendert gegenpruefen.
+
+Zusaetzlich fuer Schritt 117 manuell pruefen: Business-Profil `IN VINO` oder
+vergleichbar kurzen zweiteiligen Namen oeffnen und pruefen, dass der schwarze
+vordere Name im Header links nicht mehr angeschnitten wirkt. Danach
+`Beitraege`/`Menue` wechseln und kurz pruefen, dass Header-Icons,
+Name/Kategorien und Profil-Card stabil bleiben.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
