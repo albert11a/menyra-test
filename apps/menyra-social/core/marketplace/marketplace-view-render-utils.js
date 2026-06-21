@@ -1558,7 +1558,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
           <span data-travel-hotel-dot="0" data-travel-hotel-image-src="${escapeHtml(firstCoverImage)}" class="hidden"></span>
         `}
 
-        <div class="absolute top-3.5 right-3.5 flex gap-2 z-10">
+        <div class="absolute top-3.5 right-3.5 flex gap-2 z-10" style="position:absolute;top:0.875rem;right:0.875rem;z-index:30;display:flex;gap:0.5rem;">
           <button
             type="button"
             data-marketplace-open-map="${escapeHtml(id)}"
@@ -1751,7 +1751,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
           <span>${escapeHtml(badgeLabel)}</span>
         </div>
 
-        <div class="absolute top-3 right-3 flex gap-1.5 z-10">
+        <div class="absolute top-3 right-3 flex gap-1.5 z-10" style="position:absolute;top:0.75rem;right:0.75rem;z-index:30;display:flex;gap:0.375rem;">
           <button
             type="button"
             data-marketplace-open-map="${escapeHtml(id)}"

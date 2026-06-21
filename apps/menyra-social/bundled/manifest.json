@@ -31,13 +31,13 @@
     ]
   },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
-    "file": "chunks/discovery-runtime-controller-DTV8NS85.js",
+    "file": "chunks/discovery-runtime-controller-DOgZngp7.js",
     "name": "discovery-runtime-controller",
     "src": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js": {
-    "file": "chunks/marketplace-view-render-utils-DedLFkpn.js",
+    "file": "chunks/marketplace-view-render-utils-B2XEL0Fe.js",
     "name": "marketplace-view-render-utils",
     "src": "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
     "isDynamicEntry": true

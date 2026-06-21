@@ -508,6 +508,49 @@ function resolveLeafletMarkerKey(location = {}, fallbackIndex = 0) {
   return `${id}:${locationIndex}`;
 }
 
+function getSelectedBusinessMapLocation() {
+  const selected = state.selectedBusiness && typeof state.selectedBusiness === "object"
+    ? state.selectedBusiness
+    : null;
+  if (!selected || !hasUsableMapCoords(selected)) return null;
+  const raw = selected.raw && typeof selected.raw === "object" ? selected.raw : selected;
+  const normalized = {
+    ...selected,
+    id: String(selected.id || selected.restaurantId || raw.id || raw.restaurantId || "").trim(),
+    restaurantId: String(selected.restaurantId || raw.restaurantId || selected.id || raw.id || "").trim(),
+    canonicalRestaurantId: String(selected.canonicalRestaurantId || raw.canonicalRestaurantId || raw.restaurantId || raw.id || "").trim(),
+    markerKey: resolveLeafletMarkerKey(selected),
+    hasVerifiedCoords: true,
+    locationStatus: selected.locationStatus || "verified",
+    raw
+  };
+  if (!normalized.id) return null;
+  return isDiscoverableMapBusiness(normalized) ? normalized : null;
+}
+
+function appendSelectedBusinessLocation(locations = []) {
+  const selected = getSelectedBusinessMapLocation();
+  if (!selected) return locations;
+  const selectedKey = resolveLeafletMarkerKey(selected);
+  const selectedIds = new Set([
+    selected.id,
+    selected.restaurantId,
+    selected.canonicalRestaurantId,
+    selected.documentId
+  ].map((value) => String(value || "").trim()).filter(Boolean));
+  const exists = locations.some((entry) => {
+    if (resolveLeafletMarkerKey(entry) === selectedKey) return true;
+    const entryIds = [
+      entry?.id,
+      entry?.restaurantId,
+      entry?.canonicalRestaurantId,
+      entry?.documentId
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+    return entryIds.some((id) => selectedIds.has(id));
+  });
+  return exists ? locations : [selected, ...locations];
+}
+
 function buildMarkerVisualSignature(location = {}, { selected = false } = {}) {
   const coords = normalizeCoordPair(location?.lat, location?.lng);
   const lat = coords ? Number(coords.lat).toFixed(6) : "";
@@ -654,9 +697,10 @@ function isDiscoverableRestaurant(rest = {}) {
 }
 
 function getDiscoverableMapLocations(locations = state.businessLocations) {
-  return (Array.isArray(locations) ? locations : []).filter((location) => (
+  const baseLocations = (Array.isArray(locations) ? locations : []).filter((location) => (
     isDiscoverableMapBusiness(location) && hasUsableMapCoords(location)
   ));
+  return appendSelectedBusinessLocation(baseLocations);
 }
 
 function formatBusinessLocationLabel(value = "") {
