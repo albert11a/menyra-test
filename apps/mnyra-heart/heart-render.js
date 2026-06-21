@@ -38,6 +38,7 @@ const NAV_HINTS = Object.freeze({
   modules: "Bereiche und Gesundheitsstatus",
   crmLeads: "CRM Leads",
   crmCustomers: "CRM Kunden",
+  crmAds: "CRM Ads",
   crmStaff: "CRM Staff",
   connections: "Einrichtung, Konten und Links"
 });
@@ -45,6 +46,7 @@ const NAV_HINTS = Object.freeze({
 const CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW = Object.freeze({
   crmLeads: "leads",
   crmCustomers: "customers",
+  crmAds: "ads",
   crmStaff: "staff"
 });
 
@@ -62,6 +64,7 @@ function getNavIcon(key = "") {
     modules: "grid",
     crmLeads: "list",
     crmCustomers: "user",
+    crmAds: "image",
     crmStaff: "users",
     connections: "settings"
   };
@@ -235,6 +238,14 @@ function getPageHeaderState(state) {
     return {
       eyebrow: "",
       title: "Leads",
+      status: "",
+      timestamp: ""
+    };
+  }
+  if (state.shell.activeView === "crmAds") {
+    return {
+      eyebrow: "",
+      title: "Ads",
       status: "",
       timestamp: ""
     };

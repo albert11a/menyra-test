@@ -134,6 +134,8 @@ export function renderFocusModalCore({
   if (!state?.focusModal?.open) return "";
   const item = state.focusModal.item || {};
   const isEdit = state.focusModal.mode === "edit";
+  const modalKind = String(state.focusModal.kind || "").trim().toLowerCase();
+  const isAdContext = modalKind === "ad";
   const cleanProfileText = (value = "") => String(value || "").trim();
   const collectProfileRestaurantIds = (...records) => {
     const ids = [];
@@ -226,14 +228,20 @@ export function renderFocusModalCore({
     || item?.priceUnit !== undefined
     || item?.features !== undefined
     || item?.offerFeatures !== undefined;
-  const isTravelOfferContext = hasTravelAccommodationShape(state?.userProfile, profileViewRecord, restaurantRecord)
-    || hasTravelOfferFields;
-  const title = isTravelOfferContext
+  const isTravelOfferContext = !isAdContext && (
+    hasTravelAccommodationShape(state?.userProfile, profileViewRecord, restaurantRecord)
+    || hasTravelOfferFields
+  );
+  const title = isAdContext
+    ? (isEdit ? "Ad bearbeiten" : "Ad erstellen")
+    : isTravelOfferContext
     ? (isEdit ? "Oferta bearbeiten" : "Oferta hinzufuegen")
     : (isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen");
-  const eyebrow = isTravelOfferContext ? (isEdit ? "Oferta" : "Neu") : (isEdit ? "Bearbeiten" : "Neu");
-  const titlePlaceholder = isTravelOfferContext ? "Sommer-Angebot" : "Sot ne Fokus";
-  const activeHelper = isTravelOfferContext ? "Sichtbar fuer Travel und Gaeste" : "Sichtbar fuer Gaeste";
+  const eyebrow = isAdContext ? "Ads" : (isTravelOfferContext ? (isEdit ? "Oferta" : "Neu") : (isEdit ? "Bearbeiten" : "Neu"));
+  const titlePlaceholder = isAdContext ? "Premium Highlight" : (isTravelOfferContext ? "Sommer-Angebot" : "Sot ne Fokus");
+  const activeHelper = isAdContext
+    ? "Nach Heart-Freigabe im Restaurant-Carousel sichtbar"
+    : (isTravelOfferContext ? "Sichtbar fuer Travel und Gaeste" : "Sichtbar fuer Gaeste");
   const collectTextList = (value) => {
     if (Array.isArray(value)) return value.map((entry) => String(entry || "").trim()).filter(Boolean);
     const raw = String(value || "").trim();
@@ -364,6 +372,15 @@ export function renderFocusModalCore({
   const offerParkingFeature = findFeatureOption(offerFeatures, parkingFeatureOptions);
   const selectedFeatureKeys = new Set([offerFoodFeature, offerLoungerFeature, offerParkingFeature].map(normalizeFeatureKey).filter(Boolean));
   const offerCustomFeatures = offerFeatures.filter((feature) => !selectedFeatureKeys.has(normalizeFeatureKey(feature)));
+  const adCategory = String(item.category || item.adCategory || "RESTAURANT").trim();
+  const adPriceSegment = String(item.priceSegment || item.priceRange || item.priceLabel || "€€ - €€€").trim();
+  const adBestChoiceEnabled = item.bestChoiceBadgeEnabled !== false;
+  const adDeliveryEnabled = item.deliveryBadgeEnabled !== false;
+  const adWoltEnabled = item.woltEnabled !== false;
+  const adStatus = String(item.status || item.approvalStatus || "pending").trim().toLowerCase();
+  const adStatusLabel = adStatus === "approved"
+    ? "Freigegeben"
+    : (adStatus === "rejected" ? "Abgelehnt" : "Wartet auf Heart-Freigabe");
   const preview = state.focusModal.imagePreview || item.imageUrl || "";
   const imageUrl = getOptimizedImageUrl(preview, "large");
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
@@ -414,6 +431,34 @@ export function renderFocusModalCore({
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
           <textarea id="focusText" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
         </div>
+        ${isAdContext ? `
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
+              <input id="adCategory" type="text" value="${escapeHtml(adCategory)}" placeholder="RESTAURANT" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preisspanne</label>
+              <input id="adPriceSegment" type="text" value="${escapeHtml(adPriceSegment)}" placeholder="€€ - €€€" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+            </div>
+            <div class="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4 space-y-3">
+              <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Card Badges</p>
+              <label class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white border border-slate-100">
+                <span class="text-xs font-black text-slate-700">Best Choice</span>
+                <input id="adBestChoiceEnabled" type="checkbox" class="w-5 h-5 accent-amber-500" ${adBestChoiceEnabled ? "checked" : ""} />
+              </label>
+              <label class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white border border-slate-100">
+                <span class="text-xs font-black text-slate-700">For Delivery</span>
+                <input id="adDeliveryEnabled" type="checkbox" class="w-5 h-5 accent-amber-500" ${adDeliveryEnabled ? "checked" : ""} />
+              </label>
+              <label class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white border border-slate-100">
+                <span class="text-xs font-black text-slate-700">WOLT Badge</span>
+                <input id="adWoltEnabled" type="checkbox" class="w-5 h-5 accent-amber-500" ${adWoltEnabled ? "checked" : ""} />
+              </label>
+              <p class="text-[10px] font-bold text-slate-400">Status: ${escapeHtml(adStatusLabel)}</p>
+            </div>
+          </div>
+        ` : ""}
         ${isTravelOfferContext ? `
           <div class="grid grid-cols-1 gap-3">
             <div>
@@ -498,7 +543,9 @@ export function renderFocusModalCore({
   const footerHtml = `
     <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
-        ${state.focusModal.loading ? (isTravelOfferContext ? "Po ruhet..." : "Speichern...") : (isTravelOfferContext ? "Ruaj" : "Speichern")}
+        ${state.focusModal.loading
+          ? (isAdContext ? "Speichern..." : (isTravelOfferContext ? "Po ruhet..." : "Speichern..."))
+          : (isAdContext ? "Zur Freigabe speichern" : (isTravelOfferContext ? "Ruaj" : "Speichern"))}
       </button>
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
     </div>

@@ -41,6 +41,7 @@ import {
 export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
   leads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.leads]),
   customers: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.customers]),
+  ads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.ads]),
   staff: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.staff]),
   businessAccounts: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.businessAccounts])
 });
@@ -48,12 +49,14 @@ export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
 export const HEART_CRM_ADMIN_WRITE_VIEW_MISSING_DEPS = Object.freeze({
   leads: Object.freeze([]),
   customers: Object.freeze([]),
+  ads: Object.freeze([]),
   staff: Object.freeze([])
 });
 
 const CRM_READ_SECTIONS = Object.freeze([
   { key: "leads", title: "Leads", eyebrow: "CRM", icon: "list" },
   { key: "customers", title: "Kunden", eyebrow: "CRM", icon: "user" },
+  { key: "ads", title: "Ads", eyebrow: "Heart", icon: "image" },
   { key: "staff", title: "Staff", eyebrow: "CEO", icon: "users" }
 ]);
 const CRM_READ_SECTION_BY_KEY = Object.freeze(
@@ -242,6 +245,12 @@ function itemMatchesQuery(item = {}, query = "") {
     item.phone,
     item.instagram,
     item.city,
+    item.title,
+    item.text,
+    item.category,
+    item.priceSegment,
+    item.restaurantId,
+    item.adId,
     item.country,
     statusValue,
     labelFromMap(statusValue, LEAD_STATUS_LABELS),
@@ -399,9 +408,19 @@ function renderScopeTabs(sectionKey = "", sectionState = {}, items = [], crmAdmi
 }
 
 function renderSearchControl(sectionKey = "", sectionState = {}) {
-  if (sectionKey !== "leads" && sectionKey !== "customers") return "";
-  const placeholder = sectionKey === "leads" ? "Lead suchen..." : "Kunde suchen...";
-  const inputId = sectionKey === "leads" ? "leadsSearchInput" : "customersSearchInput";
+  if (sectionKey !== "leads" && sectionKey !== "customers" && sectionKey !== "ads") return "";
+  const placeholders = {
+    leads: "Lead suchen...",
+    customers: "Kunde suchen...",
+    ads: "Ad suchen..."
+  };
+  const inputIds = {
+    leads: "leadsSearchInput",
+    customers: "customersSearchInput",
+    ads: "adsSearchInput"
+  };
+  const placeholder = placeholders[sectionKey] || "Suchen...";
+  const inputId = inputIds[sectionKey] || "crmSearchInput";
   return `
     <div class="heart-crm-control-row">
       <span class="heart-crm-control-row__icon">${renderHeartIcon("search")}</span>
@@ -502,6 +521,51 @@ function renderCustomerCard(rest = {}, sectionState = {}) {
       ])}
       <div class="heart-crm-action-row">
         ${renderCrmEditButton("customers", firstText(rest.id, rest.restaurantId, rest.customerId))}
+      </div>
+    </article>
+  `;
+}
+
+function adStatusLabel(value = "") {
+  const status = asText(value).toLowerCase();
+  if (status === "approved") return "Freigegeben";
+  if (status === "rejected") return "Abgelehnt";
+  return "Wartet";
+}
+
+function renderAdCard(ad = {}) {
+  const adId = firstText(ad.id);
+  const title = firstText(ad.title, "Ad");
+  const businessName = firstText(ad.businessName, ad.restaurantName, ad.name, "Business");
+  const imageUrl = firstText(ad.imageUrl);
+  const statusValue = firstText(ad.status, "pending");
+  const statusLabel = adStatusLabel(statusValue);
+  const metaLine = [firstText(ad.category), firstText(ad.priceSegment), firstText(ad.city)].filter(Boolean).join(" / ");
+  const canApprove = statusValue !== "approved";
+  const canReject = statusValue !== "rejected";
+  return `
+    <article class="heart-crm-card heart-crm-card--ad">
+      <div class="heart-crm-card-head">
+        <div class="heart-crm-ad-thumb" aria-hidden="true">
+          ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />` : renderHeartIcon("image")}
+        </div>
+        <div class="heart-crm-card-main">
+          <p class="heart-crm-card-title">${escapeHtml(title)}</p>
+          <p class="heart-crm-card-meta">${escapeHtml(businessName)}</p>
+          ${metaLine ? `<p class="heart-crm-card-subline">${escapeHtml(metaLine)}</p>` : ""}
+        </div>
+        ${renderChip(statusLabel, statusTone(statusValue), "heart-crm-status-pill")}
+      </div>
+      ${ad.text ? `<p class="heart-crm-card-meta">${escapeHtml(ad.text)}</p>` : ""}
+      ${renderExtraMetaChips([
+        { label: ad.active === false ? "Inaktiv" : "Aktiv", tone: ad.active === false ? "warning" : "success" },
+        { label: ad.woltEnabled === false ? "" : "WOLT", tone: "info" },
+        { label: ad.bestChoiceBadgeEnabled === false ? "" : "Best Choice", tone: "warning" },
+        { label: ad.deliveryBadgeEnabled === false ? "" : "For Delivery", tone: "success" }
+      ])}
+      <div class="heart-crm-action-row">
+        <button type="button" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" data-action="set-crm-ad-status" data-ad-id="${escapeHtml(adId)}" data-ad-status="approved" ${canApprove ? "" : "disabled"}>Akzeptieren</button>
+        <button type="button" class="heart-crm-action-placeholder" data-action="set-crm-ad-status" data-ad-id="${escapeHtml(adId)}" data-ad-status="rejected" ${canReject ? "" : "disabled"}>Ablehnen</button>
       </div>
     </article>
   `;
@@ -634,6 +698,7 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
     const emptyLabels = {
       leads: "Keine Leads",
       customers: "Keine Kunden",
+      ads: "Keine Ads",
       staff: "Noch kein CEO Staff"
     };
     return renderStateBlock(emptyLabels[sectionKey] || "Keine Eintraege", "neutral");
@@ -641,6 +706,7 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
   const renderers = {
     leads: (item) => renderLeadCard(item, sectionState),
     customers: (item) => renderCustomerCard(item, sectionState),
+    ads: (item) => renderAdCard(item),
     staff: (item) => renderStaffCard(item, crmAdmin)
   };
   const rows = items.map((item) => renderers[sectionKey]?.(item) || "").join("");

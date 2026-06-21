@@ -32,6 +32,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
     ? deps.ensureEditorMenuDataForProfileFn
     : (() => {});
   const ensureFocusDataForProfile = deps.ensureFocusDataForProfileFn;
+  const ensureAdsDataForProfile = typeof deps.ensureAdsDataForProfileFn === "function"
+    ? deps.ensureAdsDataForProfileFn
+    : (() => {});
   const ensureTableQrStateForProfile = deps.ensureTableQrStateForProfileFn;
   const isShopCatalogProfile = deps.isShopCatalogProfileFn;
   const getBusinessCatalogLabel = deps.getBusinessCatalogLabelFn;
@@ -59,6 +62,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const ensureMenuItemMeta = deps.ensureMenuItemMetaFn;
   const resolveMenuItemCounts = deps.resolveMenuItemCountsFn;
   const getFocusStateForRestaurant = deps.getFocusStateForRestaurantFn;
+  const getAdsStateForRestaurant = typeof deps.getAdsStateForRestaurantFn === "function"
+    ? deps.getAdsStateForRestaurantFn
+    : (() => ({ items: [], enabled: true, loading: false, same: false }));
   const getTableQrStateForRestaurant = deps.getTableQrStateForRestaurantFn;
   const getFocusItemObjectPosition = deps.getFocusItemObjectPositionFn;
   const getFocusCardClass = deps.getFocusCardClassFn;
@@ -2509,6 +2515,82 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
   `;
 }
 
+function isAdsAdminProfile(profile = {}) {
+  if (!profile?.restaurantId) return false;
+  const type = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
+  if (["hotel", "hotels", "motel", "motels", "travel", "hostel", "resort", "accommodation"].includes(type)) return false;
+  return isShopCatalogProfile(profile)
+    || isRestaurantCafeProfile(profile)
+    || ["restaurant", "cafe", "coffee", "fastfood", "food", "ecommerce"].includes(type)
+    || !type;
+}
+
+function getAdStatusView(item = {}) {
+  if (item.active === false) return { label: "Inaktiv", className: "text-slate-400" };
+  const status = String(item.status || item.approvalStatus || "pending").trim().toLowerCase();
+  if (status === "approved") return { label: "Freigegeben", className: "text-emerald-600" };
+  if (status === "rejected") return { label: "Abgelehnt", className: "text-rose-600" };
+  return { label: "Wartet auf Heart", className: "text-amber-600" };
+}
+
+function renderAdsAdminSection(profile, restaurantId) {
+  if (!restaurantId || !isAdsAdminProfile(profile)) return "";
+  const { items, loading } = getAdsStateForRestaurant(restaurantId, { includeInactive: true });
+  const countLabel = formatCount(items.length);
+  return `
+    <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Ads</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Restaurant Ads</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(countLabel)} Eintraege</p>
+        </div>
+        <button type="button" data-ad-add class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow active:scale-95">
+          ${icon("plus", "w-4 h-4")}
+        </button>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-4">
+        <p class="text-xs font-black text-slate-800">Swipe Ads</p>
+        <p class="text-[10px] font-bold text-slate-400">Neue oder geaenderte Ads werden erst nach Heart-Freigabe im Restaurant-Tab angezeigt.</p>
+      </div>
+
+      ${items.length ? `
+        <div class="space-y-3">
+          ${items.map((item) => {
+            const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "thumb");
+            const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
+            const status = getAdStatusView(item);
+            const categoryLabel = item.category || "RESTAURANT";
+            const priceLabel = item.priceSegment || "€€ - €€€";
+            return `
+              <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
+                <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
+                  <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" style="object-position:${getFocusItemObjectPosition(item)};" loading="lazy" decoding="async" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.title || "Ad")}</p>
+                  ${item.text ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(item.text)}</p>` : ""}
+                  <p class="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">${escapeHtml(categoryLabel)} · ${escapeHtml(priceLabel)}</p>
+                  <p class="text-[9px] font-black uppercase tracking-widest mt-1 ${status.className}">${escapeHtml(status.label)}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <button data-ad-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>
+                  <button data-ad-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : loading ? `
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">Ads werden geladen...</div>
+      ` : `
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Ads</div>
+      `}
+    </div>
+  `;
+}
+
 function renderSpecialAdminSection(profile) {
   const isTestfirst = isTestfirstMenuProfile(profile);
   if (!isTestfirst || !isSpecialEnabledForProfile(profile)) return "";
@@ -2829,6 +2911,9 @@ function renderMenuAdminView() {
   if (restaurantId && isEligible && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
   }
+  if (restaurantId && isAdsAdminProfile(profile)) {
+    ensureAdsDataForProfile(profile);
+  }
 
   if (!isEligible) {
     if (canInspectPublicMenu) {
@@ -2876,6 +2961,7 @@ function renderMenuAdminView() {
       `)}
 
       ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
+      ${restaurantId ? renderAdsAdminSection(profile, restaurantId) : ""}
       ${restaurantId && hasAuthoringMenuTruth ? renderSpecialAdminSection(profile) : ""}
 
       ${restaurantId ? `

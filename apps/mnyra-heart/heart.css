@@ -2617,6 +2617,25 @@ body {
   object-fit: cover;
 }
 
+.heart-crm-ad-thumb {
+  width: 76px;
+  height: 56px;
+  border-radius: 18px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(245, 244, 239, 0.08);
+  color: var(--heart-text-soft);
+}
+
+.heart-crm-ad-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .heart-crm-chip-row {
   flex-wrap: wrap;
 }

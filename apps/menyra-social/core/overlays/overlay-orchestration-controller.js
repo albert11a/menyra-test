@@ -252,10 +252,14 @@ export function createOverlayOrchestrationController({
     renderOverlays();
   }
 
-  function openFocusModal(mode = "create", item = null) {
+  function openFocusModal(mode = "create", item = null, options = {}) {
     const crop = getFocusItemCropFn(item);
+    const kind = String(options?.kind || item?.modalKind || item?.kind || "focus").trim().toLowerCase() === "ad"
+      ? "ad"
+      : "focus";
     state.focusModal = {
       open: true,
+      kind,
       mode,
       item,
       status: "",
@@ -271,6 +275,7 @@ export function createOverlayOrchestrationController({
   function closeFocusModal() {
     state.focusModal = {
       open: false,
+      kind: "focus",
       mode: "create",
       item: null,
       status: "",

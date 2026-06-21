@@ -1,5 +1,5 @@
 const DEFAULT_STATUS = "idle";
-const CRM_ADMIN_DOMAIN_KEYS = Object.freeze(["leads", "customers", "staff", "businessAccounts"]);
+const CRM_ADMIN_DOMAIN_KEYS = Object.freeze(["leads", "customers", "ads", "staff", "businessAccounts"]);
 
 export const HEART_NAV_ITEMS = Object.freeze([
   { key: "dashboard", label: "Start" },
@@ -8,6 +8,7 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "modules", label: "Bereiche" },
   { key: "crmLeads", label: "Leads" },
   { key: "crmCustomers", label: "Kunden" },
+  { key: "crmAds", label: "Ads" },
   { key: "crmStaff", label: "Staff" },
   { key: "connections", label: "Einrichtung" }
 ]);
@@ -112,7 +113,7 @@ export function createHeartInitialState() {
           scopeCountExact: {},
           scopeLoaded: {},
           loadedAt: "",
-          scope: key === "staff" || key === "businessAccounts" ? "" : "own",
+          scope: key === "staff" || key === "businessAccounts" || key === "ads" ? "" : "own",
           query: "",
           categoryFilter: "",
           statusFilter: "",
@@ -658,7 +659,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         scopeCounts: {},
         scopeCountExact: {},
         scopeLoaded: {},
-        scope: key === "staff" || key === "businessAccounts" ? "" : "own"
+        scope: key === "staff" || key === "businessAccounts" || key === "ads" ? "" : "own"
       };
     });
   }

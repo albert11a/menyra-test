@@ -152,6 +152,7 @@ import { createSocialRouteRuntimeRegistry } from "./core/app-shell/route-runtime
 import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-runtime-cluster.js";
 import { createMarketplaceRuntimeBoundary } from "./core/marketplace/marketplace-runtime-boundary.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
+import { createAdsRuntimeController } from "./core/menu/ads-runtime-controller.js";
 import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
@@ -391,6 +392,7 @@ const userProfileCache = new Map();
 const restaurantOwnerCache = new Map();
 const menuCache = new Map();
 const focusCache = new Map();
+const adsCache = new Map();
 const menuItemCountsRequested = new Set();
 const PERF_WARM_KEY = "menyra_social_perf_warm_v1";
 const PERF_CONNECTION = typeof navigator !== "undefined"
@@ -869,8 +871,17 @@ const state = {
     index: 0,
     truthState: "unknown"
   },
+  ads: {
+    restaurantId: "",
+    items: [],
+    loading: false,
+    enabled: true,
+    error: "",
+    truthState: "unknown"
+  },
   focusModal: {
     open: false,
+    kind: "focus",
     mode: "create",
     item: null,
     status: "",
@@ -2703,7 +2714,7 @@ const {
   saveFocusEnabled,
   publishFocusItems,
   focusCacheKey,
-  saveFocusItemFromModal,
+  saveFocusItemFromModal: saveFocusItemFromModalCore,
   deleteFocusItemById
 } = (focusRuntimeController = createFocusRuntimeController({
   state,
@@ -2729,6 +2740,37 @@ const {
   confirmFn: typeof confirm === "function" ? confirm : () => false,
   alertFn: typeof alert === "function" ? alert : () => {}
 }));
+
+const {
+  getAdsStateForRestaurant,
+  ensureAdsDataForProfile,
+  saveAdItemFromModal,
+  deleteAdItemById
+} = createAdsRuntimeController({
+  state,
+  db,
+  documentObj: typeof document === "undefined" ? null : document,
+  adsCache,
+  docFn: doc,
+  getDocFn: getDoc,
+  setDocFn: setDoc,
+  serverTimestampFn: serverTimestamp,
+  uploadCompressedImageFn: uploadCompressedImage,
+  getAdItemCropFn: getFocusItemCrop,
+  getAdsModalCropFn: getFocusModalCrop,
+  clampCropPercentFn: clampCropPercent,
+  renderFn: render,
+  renderOverlaysFn: (...args) => renderOverlays(...args),
+  closeFocusModalFn: (...args) => closeFocusModal(...args),
+  confirmFn: typeof confirm === "function" ? confirm : () => false,
+  alertFn: typeof alert === "function" ? alert : () => {}
+});
+
+function saveFocusItemFromModal() {
+  const modalKind = String(state.focusModal?.kind || "").trim().toLowerCase();
+  if (modalKind === "ad") return saveAdItemFromModal();
+  return saveFocusItemFromModalCore();
+}
 
 const crmDomainRuntimeCluster = createCrmDomainRuntimeBoundary({
   stateDeps: { state, dataLoaded },
@@ -4117,6 +4159,7 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
     ensureMenuItemMetaFn: socialEngagementSupportRuntimeController.ensureMenuItemMeta,
     resolveMenuItemCountsFn: socialEngagementSupportRuntimeController.resolveMenuItemCounts,
     getFocusStateForRestaurantFn: getFocusStateForRestaurant,
+    getAdsStateForRestaurantFn: getAdsStateForRestaurant,
     getTableQrStateForRestaurantFn: getTableQrStateForRestaurant,
     getFocusItemObjectPositionFn: getFocusItemObjectPosition,
     getFocusCardClassFn: getFocusCardClass,
@@ -4127,6 +4170,7 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
     buildUrlFn: buildUrl,
     normalizeSearchKeyFn: normalizeSearchKey,
     normalizeFollowHandleFn: normalizeFollowHandle,
+    ensureAdsDataForProfileFn: ensureAdsDataForProfile,
     requestRenderFn: () => requestRuntimeUiRefresh()
   },
   dataLoaders: {
@@ -4663,6 +4707,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     saveMenuStatusBadgeVisible,
     saveFocusEnabled,
     deleteFocusItemById,
+    deleteAdItemById,
     setFocusIndex,
     toggleProfilePostMenu,
     toggleProfilePostWidth,

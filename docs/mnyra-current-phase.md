@@ -1055,6 +1055,16 @@ Last updated: 2026-06-21
   fremden `profileView`-IDs mehr als Ziel-IDs mit. Sichtbare UI, Travel-Cards,
   Oferta, Routing, QR, Cart, Order, Firebase Rules und Functions bleiben
   unveraendert.
+- Schritt 109 ist abgeschlossen: Restaurant-/Cafe-/Food-/Ecommerce-Profile
+  koennen separate Ads im Menu Editor erstellen, und Mnyra Heart kann diese Ads
+  freigeben oder ablehnen.
+- Bewertung von Schritt 109: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 109:
+  Die kleine horizontale Restaurant-Swipe-Zeile wird jetzt aus freigegebenen
+  Public-Ads gespeist und nutzt die neue Premium-Card-Struktur. Neue oder
+  bearbeitete Ads bleiben bis zur Heart-Freigabe `pending`; die grossen
+  Restaurant-Cards, QR, Cart, Order, Routing, Firebase Rules und Functions
+  bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1162,6 +1172,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step106-travel-hotel-card-title-spacing-parity.md](./mnyra-step106-travel-hotel-card-title-spacing-parity.md)
 - Referenz: [docs/mnyra-step107-discovery-map-marker-pointer.md](./mnyra-step107-discovery-map-marker-pointer.md)
 - Referenz: [docs/mnyra-step108-hotel-editor-state-scope.md](./mnyra-step108-hotel-editor-state-scope.md)
+- Referenz: [docs/mnyra-step109-restaurant-ads-system.md](./mnyra-step109-restaurant-ads-system.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1187,7 +1198,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 108 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 109 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1368,6 +1379,16 @@ duerfen keine Titelbilder von Hotel A sichtbar sein. Bei Hotel B ein Bild
 hinzufuegen oder entfernen und speichern; danach Travel `Hotels` fuer Hotel B
 und Hotel A gegenpruefen, dass die Titelbilder nicht zwischen den Hotels
 vermischt wurden.
+
+Zusaetzlich fuer Schritt 109 manuell pruefen: Als Restaurant/Cafe Profil ->
+Editor oeffnen und eine Ad mit Bild, Kategorie, Preisspanne und Badges anlegen.
+Die Ad muss danach `pending` sein. In Mnyra Heart den Tab `Ads` oeffnen, die Ad
+akzeptieren und danach im Restaurant-Tab pruefen, dass die kleine horizontale
+Swipe-Zeile die neue Premium-Ad-Card zeigt. Pending oder abgelehnte Ads duerfen
+nicht erscheinen. Die grossen Restaurant-/Cafe-Cards, QR, Public Menu,
+Warenkorb und Order-Flows kurz unveraendert gegenpruefen. Mit Ecommerce
+zusaetzlich pruefen, dass Ads im Editor erstellt und in Heart zur Freigabe
+angezeigt werden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

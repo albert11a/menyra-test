@@ -439,6 +439,19 @@ export function createSessionDataRuntimeController({
     return Array.isArray(record?.publicOffers) || Array.isArray(record?.travelOffers) || Array.isArray(record?.offerItems);
   }
 
+  function hasKnownAdsTruth(record = {}) {
+    const truthState = String(record?.adsTruthState || "").trim().toLowerCase();
+    if (truthState === "seeded" || truthState === "knownempty" || truthState === "known-empty") return true;
+    if (Array.isArray(record?.publicAds) || Array.isArray(record?.restaurantAds)) return true;
+    if (Number.isFinite(Number(record?.publicAdsCount)) || Number.isFinite(Number(record?.approvedAdsCount))) return true;
+    if (typeof record?.hasApprovedAds === "boolean") return true;
+    return false;
+  }
+
+  function hasAdsPayload(record = {}) {
+    return Array.isArray(record?.publicAds) || Array.isArray(record?.restaurantAds);
+  }
+
   function getRestaurantIdentityId(record = {}) {
     return String(record?.id || record?.restaurantId || record?.canonicalRestaurantId || "").trim();
   }
@@ -458,6 +471,27 @@ export function createSessionDataRuntimeController({
       "travelOffersCount",
       "hasTravelOffers",
       "offersTruthState"
+    ].forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(previous, key)) {
+        next[key] = previous[key];
+      }
+    });
+    return next;
+  }
+
+  function preserveKnownAdsTruth(incoming = {}, previous = {}) {
+    if (!incoming || typeof incoming !== "object") return incoming;
+    if (hasAdsPayload(incoming)) return incoming;
+    if (!hasKnownAdsTruth(previous)) return incoming;
+
+    const next = { ...incoming };
+    [
+      "publicAds",
+      "restaurantAds",
+      "publicAdsCount",
+      "approvedAdsCount",
+      "hasApprovedAds",
+      "adsTruthState"
     ].forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(previous, key)) {
         next[key] = previous[key];
@@ -1248,7 +1282,9 @@ export function createSessionDataRuntimeController({
       });
       const canonicalList = filterCanonicalRestaurants(list).map((record) => {
         const id = getRestaurantIdentityId(record);
-        return id ? preserveKnownTravelOffersTruth(record, previousById.get(id) || {}) : record;
+        if (!id) return record;
+        const previous = previousById.get(id) || {};
+        return preserveKnownAdsTruth(preserveKnownTravelOffersTruth(record, previous), previous);
       });
       if (shouldWriteCache) writeCacheFn(cacheKeys.restaurants, canonicalList);
       state.restaurants = canonicalList;

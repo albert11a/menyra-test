@@ -22,6 +22,7 @@ export function bindAppMenuFocusEventsCore({
   saveFocusEnabledFn,
   openFocusModalFn,
   deleteFocusItemByIdFn,
+  deleteAdItemByIdFn,
   setFocusIndexFn,
   toggleProfilePostMenuFn,
   toggleProfilePostWidthFn,
@@ -64,6 +65,7 @@ export function bindAppMenuFocusEventsCore({
   const saveFocusEnabled = typeof saveFocusEnabledFn === "function" ? saveFocusEnabledFn : null;
   const openFocusModal = typeof openFocusModalFn === "function" ? openFocusModalFn : (() => {});
   const deleteFocusItemById = typeof deleteFocusItemByIdFn === "function" ? deleteFocusItemByIdFn : null;
+  const deleteAdItemById = typeof deleteAdItemByIdFn === "function" ? deleteAdItemByIdFn : null;
   const setFocusIndex = typeof setFocusIndexFn === "function" ? setFocusIndexFn : (() => {});
   const toggleProfilePostMenu = typeof toggleProfilePostMenuFn === "function" ? toggleProfilePostMenuFn : (() => {});
   const toggleProfilePostWidth = typeof toggleProfilePostWidthFn === "function" ? toggleProfilePostWidthFn : (() => {});
@@ -1100,6 +1102,29 @@ export function bindAppMenuFocusEventsCore({
       const itemId = btn.dataset.focusDelete || "";
       if (!itemId || !deleteFocusItemById) return;
       void deleteFocusItemById(itemId);
+    });
+  });
+
+  doc.querySelectorAll("[data-ad-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openFocusModal("create", null, { kind: "ad" });
+    });
+  });
+
+  doc.querySelectorAll("[data-ad-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.adEdit || "";
+      const item = (state.ads.items || []).find((it) => String(it.id) === String(itemId));
+      if (!item) return;
+      openFocusModal("edit", item, { kind: "ad" });
+    });
+  });
+
+  doc.querySelectorAll("[data-ad-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.adDelete || "";
+      if (!itemId || !deleteAdItemById) return;
+      void deleteAdItemById(itemId);
     });
   });
 

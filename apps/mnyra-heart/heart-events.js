@@ -210,6 +210,13 @@ export function bindHeartEvents({
       await operations.deleteCrmStaff?.();
       return;
     }
+    if (action === "set-crm-ad-status") {
+      await operations.setCrmAdStatus?.(
+        target.getAttribute("data-ad-id"),
+        target.getAttribute("data-ad-status")
+      );
+      return;
+    }
     if (action === "trigger-crm-file") {
       operations.triggerCrmFile?.(target.getAttribute("data-crm-file-input"));
       return;

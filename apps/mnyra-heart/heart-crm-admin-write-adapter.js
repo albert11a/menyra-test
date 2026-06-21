@@ -1315,6 +1315,67 @@ export function createHeartCrmAdminWriteAdapter({
     return actionOutcome("staff", result);
   }
 
+  function normalizeAdApprovalStatus(value = "") {
+    const key = asText(value).toLowerCase();
+    if (key === "approved" || key === "accepted") return "approved";
+    if (key === "rejected" || key === "declined") return "rejected";
+    return "";
+  }
+
+  function parseAdCompositeId(value = "") {
+    const raw = asText(value);
+    if (!raw) return { restaurantId: "", adId: "" };
+    const [restaurantId, ...rest] = raw.split("::");
+    return {
+      restaurantId: asText(restaurantId),
+      adId: asText(rest.join("::"))
+    };
+  }
+
+  async function setAdApprovalStatus(adCompositeId = "", status = "") {
+    const { restaurantId, adId } = parseAdCompositeId(adCompositeId);
+    const nextStatus = normalizeAdApprovalStatus(status);
+    if (!restaurantId || !adId || !nextStatus) {
+      return { ok: false, message: "Ad oder Status fehlt." };
+    }
+    const ref = doc(db, "restaurants", restaurantId, "public", "ads");
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? (snap.data() || {}) : {};
+    const items = Array.isArray(data.items) ? data.items.slice() : [];
+    const index = items.findIndex((item) => asText(item?.id || item?.adId) === adId);
+    if (index < 0) {
+      return { ok: false, message: "Ad wurde nicht gefunden." };
+    }
+    const heartState = getHeartState();
+    const reviewerUid = asText(heartState.auth?.user?.uid);
+    const reviewerName = asText(
+      heartState.auth?.profile?.name
+      || heartState.auth?.profile?.displayName
+      || heartState.auth?.user?.displayName
+      || heartState.auth?.user?.email
+    );
+    items[index] = {
+      ...items[index],
+      status: nextStatus,
+      approvalStatus: nextStatus,
+      reviewedAt: serverTimestamp(),
+      reviewedByUid: reviewerUid,
+      reviewedByName: reviewerName,
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(ref, {
+      ...data,
+      items,
+      truthSource: "public-ads",
+      truthState: items.length ? "seeded" : "knownEmpty",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return {
+      ok: true,
+      message: nextStatus === "approved" ? "Ad freigegeben." : "Ad abgelehnt."
+    };
+  }
+
   function syncLeadDerivedFields() {
     const controller = ensureRuntimeController();
     controller.syncLeadDerivedFields();
@@ -1486,6 +1547,7 @@ export function createHeartCrmAdminWriteAdapter({
     convertLeadToCustomer,
     saveLeadSettings,
     saveCustomerFromModal,
+    setAdApprovalStatus,
     saveCeoStaffFromView,
     deleteCeoStaffFromView,
     syncLeadDerivedFields,

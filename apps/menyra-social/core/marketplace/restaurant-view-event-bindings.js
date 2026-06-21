@@ -135,6 +135,7 @@ export function bindRestaurantViewEvents({
   const statusEl = doc.getElementById("restaurantLocationStatus");
   const locateBtn = doc.getElementById("btnRestaurantLocateMe");
   const locatePulse = doc.getElementById("restaurantLocatePulse");
+  const adsTrack = doc.querySelector("[data-restaurant-ads-track]");
 
   const setStatus = (message = "") => {
     if (!statusEl) return;
@@ -282,4 +283,18 @@ export function bindRestaurantViewEvents({
       );
     });
   }
+
+  doc.querySelectorAll("[data-restaurant-ads-scroll]").forEach((btn) => {
+    if (!markBound(btn, "AdsScroll")) return;
+    btn.addEventListener("click", () => {
+      if (!adsTrack) return;
+      const direction = cleanText(btn.getAttribute("data-restaurant-ads-scroll"));
+      const delta = direction === "left" ? -1 : 1;
+      const amount = Math.max(220, Number(adsTrack.clientWidth || 0) * 0.7);
+      adsTrack.scrollTo({
+        left: Number(adsTrack.scrollLeft || 0) + (amount * delta),
+        behavior: "smooth"
+      });
+    });
+  });
 }

@@ -297,6 +297,7 @@ export function createBridgeShellRuntimeCluster({
     saveMenuStatusBadgeVisible: shellApi.saveMenuStatusBadgeVisible,
     saveFocusEnabled: shellApi.saveFocusEnabled,
     deleteFocusItemById: shellApi.deleteFocusItemById,
+    deleteAdItemById: shellApi.deleteAdItemById,
     setFocusIndex: shellApi.setFocusIndex,
     toggleProfilePostMenu: shellApi.toggleProfilePostMenu,
     toggleProfilePostWidth: shellApi.toggleProfilePostWidth,

@@ -81,10 +81,11 @@ const notifiedCompletedRunIds = new Set();
 const CRM_ADMIN_READ_DOMAINS = Object.freeze([
   { key: "leads", consumerKey: "leads" },
   { key: "customers", consumerKey: "customers" },
+  { key: "ads", consumerKey: "ads" },
   { key: "staff", consumerKey: "staff" },
   { key: "businessAccounts", consumerKey: "businessAccounts" }
 ]);
-const CRM_ADMIN_VISIBLE_VIEW_KEYS = new Set(["crmLeads", "crmCustomers", "crmStaff"]);
+const CRM_ADMIN_VISIBLE_VIEW_KEYS = new Set(["crmLeads", "crmCustomers", "crmAds", "crmStaff"]);
 const CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN = Object.freeze(
   CRM_ADMIN_READ_DOMAINS.reduce((map, item) => ({
     ...map,
@@ -402,6 +403,7 @@ function resolveCrmReadLimit(domainKey = "", scope = "", options = {}) {
       return Math.min(Math.max(CRM_ADMIN_DEFAULT_READ_LIMIT, Math.ceil(storedCount)), CRM_ADMIN_MAX_READ_LIMIT);
     }
   }
+  if (domainKey === "ads") return 100;
   return CRM_ADMIN_DEFAULT_READ_LIMIT;
 }
 
@@ -486,6 +488,7 @@ function getCrmSearchInputId(domainKey = "") {
   const key = String(domainKey || "").trim();
   if (key === "leads") return "leadsSearchInput";
   if (key === "customers") return "customersSearchInput";
+  if (key === "ads") return "adsSearchInput";
   return "";
 }
 
@@ -880,6 +883,27 @@ const operations = {
   },
   setCrmStatusFilter(domainKey, statusFilter) {
     actions.setCrmAdminSectionUi(domainKey, { statusFilter });
+  },
+  async setCrmAdStatus(adId = "", status = "") {
+    const safeAdId = String(adId || "").trim();
+    const safeStatus = String(status || "").trim();
+    if (!safeAdId || !safeStatus) return;
+    try {
+      const domain = getCrmConsumerDomain("ads");
+      if (!domain?.writeReady || typeof domain?.setStatus !== "function") {
+        const missing = Array.isArray(domain?.missingWriteDeps) ? domain.missingWriteDeps.join(", ") : "";
+        throw new Error(missing ? `Fehlende Ads-Freigabe-Dependency: ${missing}` : "Ads-Freigabe ist nicht bereit.");
+      }
+      const result = await domain.setStatus(safeAdId, safeStatus);
+      if (!actionSucceeded(result)) {
+        setToast("Ads", result?.message || "Ad-Status konnte nicht geaendert werden.", "warning");
+        return;
+      }
+      await loadCrmAdminDomain("ads", { scope: "" });
+      setToast("Ads", result?.message || "Ad-Status geaendert.", "success");
+    } catch (error) {
+      setToast("Ads", error?.message || "Ad-Status konnte nicht geaendert werden.", "danger");
+    }
   },
   openCrmEditor({ domainKey = "", itemId = "", mode = "edit" } = {}) {
     actions.setModal({

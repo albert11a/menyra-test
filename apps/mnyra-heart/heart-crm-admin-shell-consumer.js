@@ -8,12 +8,14 @@ export const HEART_CRM_ADMIN_CONSUMER_MODE = "read-write";
 export const HEART_CRM_ADMIN_READ_LOADER_DEPS = Object.freeze({
   leads: "loadLeads",
   customers: "loadCustomers",
+  ads: "loadAds",
   staff: "loadCeoStaff",
   businessAccounts: "loadBusinessAccounts"
 });
 export const HEART_CRM_ADMIN_WRITE_DEPS = Object.freeze({
   leads: Object.freeze(["saveLeadFromModal", "deleteLeadFromModal", "convertLeadToCustomer", "saveLeadSettings"]),
   customers: Object.freeze(["saveCustomerFromModal"]),
+  ads: Object.freeze(["setAdApprovalStatus"]),
   staff: Object.freeze(["saveCeoStaffFromView", "deleteCeoStaffFromView"])
 });
 
@@ -155,6 +157,12 @@ export function createHeartCrmAdminShellConsumer(deps = {}) {
     }, {
       missingReadDeps: readLoaderDeps.missingByDomain.customers,
       missingWriteDeps: writeDeps.missingByDomain.customers
+    }),
+    ads: createDomain(readLoaderDeps.available.loadAds, {
+      setStatus: writeDeps.available.setAdApprovalStatus
+    }, {
+      missingReadDeps: readLoaderDeps.missingByDomain.ads,
+      missingWriteDeps: writeDeps.missingByDomain.ads
     }),
     staff: createDomain(adapter.staff.load, {
       save: adapter.staff.saveCeo,

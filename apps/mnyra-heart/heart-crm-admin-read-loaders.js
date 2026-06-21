@@ -465,6 +465,55 @@ export function createHeartCrmAdminReadLoaderDeps({
     });
   };
 
+  const normalizeAdStatus = (value = "") => {
+    const key = asText(value).toLowerCase();
+    if (key === "approved" || key === "accepted" || key === "active") return "approved";
+    if (key === "rejected" || key === "declined" || key === "denied") return "rejected";
+    return "pending";
+  };
+
+  const normalizeHeartAdItem = (ad = {}, restaurant = {}, meta = {}, index = 0) => {
+    const restaurantId = asText(restaurant.id || restaurant.restaurantId || meta.restaurantId);
+    const adId = asText(ad.id || ad.adId || `ad_${index}`);
+    const restaurantName = asText(
+      meta.name
+      || meta.restaurantName
+      || restaurant.name
+      || restaurant.restaurantName
+      || restaurant.businessName
+      || "Business"
+    );
+    const city = asText(meta.city || restaurant.city || restaurant.address || restaurant.location);
+    const status = normalizeAdStatus(ad.status || ad.approvalStatus || "");
+    return {
+      id: `${restaurantId}::${adId}`,
+      adId,
+      restaurantId,
+      title: asText(ad.title || ad.name || "Ad"),
+      text: asText(ad.text || ad.desc || ad.description),
+      imageUrl: asText(ad.imageUrl || ad.image || ad.photoUrl),
+      cropX: Math.max(0, Math.min(100, Number(ad.cropX ?? 50) || 50)),
+      cropY: Math.max(0, Math.min(100, Number(ad.cropY ?? 50) || 50)),
+      active: ad.active !== false,
+      status,
+      category: asText(ad.category || ad.adCategory || "RESTAURANT"),
+      priceSegment: asText(ad.priceSegment || ad.priceRange || ad.priceLabel || "€€ - €€€"),
+      bestChoiceBadgeEnabled: ad.bestChoiceBadgeEnabled !== false,
+      deliveryBadgeEnabled: ad.deliveryBadgeEnabled !== false,
+      woltEnabled: ad.woltEnabled !== false,
+      businessName: restaurantName,
+      restaurantName,
+      name: restaurantName,
+      city,
+      type: normalizeRestaurantType(meta.type || meta.customerType || restaurant.type || restaurant.customerType || ""),
+      ownerEmail: asText(restaurant.ownerEmail || restaurant.email || restaurant.socialEmail),
+      submittedAt: ad.submittedAt || ad.updatedAt || null,
+      reviewedAt: ad.reviewedAt || null,
+      reviewedByUid: asText(ad.reviewedByUid),
+      reviewedByName: asText(ad.reviewedByName)
+    };
+  };
+
   return Object.freeze({
     version: HEART_CRM_ADMIN_READ_LOADERS_VERSION,
     async loadLeads(options = {}) {
@@ -515,6 +564,52 @@ export function createHeartCrmAdminReadLoaderDeps({
         hasGlobalCeoAccessFn: hasGlobalCeoAccess,
         toDateSafeFn: toDateSafe
       });
+    },
+    async loadAds(options = {}) {
+      if (!isCeoUser() && !hasGlobalCeoAccess()) {
+        return { items: [], rows: [], hasMore: false, knownCount: 0, countExact: true, missingContext: "CEO access" };
+      }
+      const desiredCount = Math.max(20, Math.min(100, Number(options.limit || HEART_CRM_READ_PAGE_SIZE * 3) || HEART_CRM_READ_PAGE_SIZE * 3));
+      const restaurantsSnap = await getDocs(query(collection(db, "restaurants"), limit(desiredCount)));
+      const restaurants = [];
+      restaurantsSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        restaurants.push({ id: docSnap.id, ...data });
+      });
+      const items = (await Promise.all(restaurants
+        .filter((restaurant) => canCurrentCeoSeeRow(restaurant))
+        .map(async (restaurant) => {
+          const restaurantId = asText(restaurant.id || restaurant.restaurantId);
+          if (!restaurantId) return [];
+          let meta = {};
+          let adsData = {};
+          try {
+            const [metaSnap, adsSnap] = await Promise.all([
+              getDoc(doc(db, "restaurants", restaurantId, "public", "meta")).catch(() => null),
+              getDoc(doc(db, "restaurants", restaurantId, "public", "ads")).catch(() => null)
+            ]);
+            if (metaSnap?.exists?.()) meta = metaSnap.data() || {};
+            if (adsSnap?.exists?.()) adsData = adsSnap.data() || {};
+          } catch {}
+          const adItems = Array.isArray(adsData.items) ? adsData.items : [];
+          return adItems
+            .map((ad, index) => normalizeHeartAdItem(ad, restaurant, meta, index))
+            .filter((ad) => ad.restaurantId && ad.adId);
+        }))).flat();
+      const sortedItems = items.sort((a, b) => {
+        const statusRank = { pending: 0, approved: 1, rejected: 2 };
+        return (statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9)
+          || String(a.businessName || "").localeCompare(String(b.businessName || ""))
+          || String(a.title || "").localeCompare(String(b.title || ""));
+      });
+      return {
+        items: sortedItems,
+        rows: sortedItems,
+        hasMore: false,
+        knownCount: sortedItems.length,
+        countExact: true,
+        scope: ""
+      };
     },
     async loadCeoStaff(options = {}) {
       if (!isCeoUser() && !hasGlobalCeoAccess()) {
