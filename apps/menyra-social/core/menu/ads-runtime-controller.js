@@ -45,6 +45,22 @@ export function createAdsRuntimeController({
     return String(value || "").trim();
   }
 
+  function createClientAdTimestamp() {
+    return new Date();
+  }
+
+  function isServerTimestampSentinel(value) {
+    if (!value || typeof value !== "object") return false;
+    const methodName = String(value?._methodName || value?._delegate?._methodName || "").toLowerCase();
+    const constructorName = String(value?.constructor?.name || "").toLowerCase();
+    return methodName.includes("servertimestamp") || constructorName.includes("servertimestamp");
+  }
+
+  function normalizeWritableAdTimestamp(value, fallback = null) {
+    if (!value || isServerTimestampSentinel(value)) return fallback;
+    return value;
+  }
+
   function adsCacheKey(restaurantId) {
     return `${restaurantId || ""}`;
   }
@@ -151,6 +167,7 @@ export function createAdsRuntimeController({
   async function publishAdItems(restaurantId, items) {
     const safeRestaurantId = cleanAdText(restaurantId);
     if (!safeRestaurantId || !makeDocRef || !setDoc || !db) return;
+    const now = createClientAdTimestamp();
     const normalizedItems = (Array.isArray(items) ? items : []).map((item) => ({
       id: cleanAdText(item.id || createAdId()),
       title: cleanAdText(item.title || ""),
@@ -165,10 +182,10 @@ export function createAdsRuntimeController({
       bestChoiceBadgeEnabled: item.bestChoiceBadgeEnabled !== false,
       deliveryBadgeEnabled: item.deliveryBadgeEnabled !== false,
       woltEnabled: item.woltEnabled !== false,
-      createdAt: item.createdAt || null,
-      updatedAt: item.updatedAt || serverTimestamp(),
-      submittedAt: item.submittedAt || null,
-      reviewedAt: item.reviewedAt || null,
+      createdAt: normalizeWritableAdTimestamp(item.createdAt, null),
+      updatedAt: normalizeWritableAdTimestamp(item.updatedAt, now),
+      submittedAt: normalizeWritableAdTimestamp(item.submittedAt, null),
+      reviewedAt: normalizeWritableAdTimestamp(item.reviewedAt, null),
       reviewedByUid: cleanAdText(item.reviewedByUid || ""),
       reviewedByName: cleanAdText(item.reviewedByName || "")
     }));
@@ -352,6 +369,7 @@ export function createAdsRuntimeController({
       }
       const previous = state.focusModal.item || {};
       const id = previous.id || createAdId();
+      const now = createClientAdTimestamp();
       const payload = {
         ...previous,
         id,
@@ -367,9 +385,9 @@ export function createAdsRuntimeController({
         deliveryBadgeEnabled,
         woltEnabled,
         status: "pending",
-        createdAt: previous.createdAt || serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        submittedAt: serverTimestamp(),
+        createdAt: normalizeWritableAdTimestamp(previous.createdAt, now),
+        updatedAt: now,
+        submittedAt: now,
         reviewedAt: null,
         reviewedByUid: "",
         reviewedByName: ""

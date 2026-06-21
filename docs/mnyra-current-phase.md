@@ -1065,6 +1065,16 @@ Last updated: 2026-06-21
   bearbeitete Ads bleiben bis zur Heart-Freigabe `pending`; die grossen
   Restaurant-Cards, QR, Cart, Order, Routing, Firebase Rules und Functions
   bleiben unveraendert.
+- Schritt 110 ist abgeschlossen: Ads koennen wieder zur Heart-Freigabe
+  gespeichert werden, ohne dass Firestore den Schreibvorgang wegen
+  `serverTimestamp()` innerhalb eines Arrays ablehnt.
+- Bewertung von Schritt 110: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 110:
+  Ads-Item-Zeitfelder innerhalb von `restaurants/{restaurantId}/public/ads.items`
+  werden vor dem Schreiben als normale Werte gespeichert; der dokumentweite
+  `updatedAt`-Timestamp bleibt weiterhin ein Firestore-Server-Timestamp.
+  Sichtbare UI, Ads-Freigabelogik, Heart, Restaurant-Cards, QR, Cart, Order,
+  Routing, Firebase Rules und Functions bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1173,6 +1183,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step107-discovery-map-marker-pointer.md](./mnyra-step107-discovery-map-marker-pointer.md)
 - Referenz: [docs/mnyra-step108-hotel-editor-state-scope.md](./mnyra-step108-hotel-editor-state-scope.md)
 - Referenz: [docs/mnyra-step109-restaurant-ads-system.md](./mnyra-step109-restaurant-ads-system.md)
+- Referenz: [docs/mnyra-step110-ads-array-timestamp-fix.md](./mnyra-step110-ads-array-timestamp-fix.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1389,6 +1400,13 @@ nicht erscheinen. Die grossen Restaurant-/Cafe-Cards, QR, Public Menu,
 Warenkorb und Order-Flows kurz unveraendert gegenpruefen. Mit Ecommerce
 zusaetzlich pruefen, dass Ads im Editor erstellt und in Heart zur Freigabe
 angezeigt werden.
+
+Zusaetzlich fuer Schritt 110 manuell pruefen: Als Restaurant/Cafe Profil ->
+Editor oeffnen, eine neue Ad mit Bild speichern und pruefen, dass keine
+Firestore-Meldung zu `serverTimestamp()` innerhalb von Arrays erscheint. Danach
+Mnyra Heart -> `Ads` oeffnen und pruefen, dass die neue Ad als `pending` zur
+Freigabe sichtbar ist. Eine bestehende Ad bearbeiten und erneut speichern;
+auch sie muss pending bleiben und ohne Fehlermeldung gespeichert werden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
