@@ -5,7 +5,29 @@ const TRAVEL_SUGGESTION_MIN_QUERY_LENGTH = 2;
 const TRAVEL_SUGGESTION_LIMIT = 6;
 const HOTEL_CARD_SWIPE_THRESHOLD_PX = 28;
 const HOTEL_CARD_SWIPE_VERTICAL_DRIFT_PX = 44;
-const TRAVEL_ALBANIA_CITY_OPTIONS = Object.freeze([
+const TRAVEL_CITY_OPTIONS = Object.freeze([
+  Object.freeze({ id: "prishtina", label: "Prishtina", aliases: Object.freeze(["prishtine", "prishtin", "pristina"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "ferizaj", label: "Ferizaj", aliases: Object.freeze(["ferizaji", "uroshevac"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "peja", label: "Peja", aliases: Object.freeze(["peje", "pec"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "prizren", label: "Prizren", aliases: Object.freeze(["prizreni"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "gjakova", label: "Gjakova", aliases: Object.freeze(["gjakove", "djakova"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "gjilan", label: "Gjilan", aliases: Object.freeze(["gjilani"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "mitrovica", label: "Mitrovica", aliases: Object.freeze(["mitrovice"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "vushtrria", label: "Vushtrria", aliases: Object.freeze(["vushtrri"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "podujeva", label: "Podujeva", aliases: Object.freeze(["podujeve", "podujevo", "besiana"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "fushe kosove", label: "Fushe Kosove", aliases: Object.freeze(["fushë kosovë", "fushe kosova", "fush kosove", "fush kosova"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "lipjan", label: "Lipjan", aliases: Object.freeze(["lipjani"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "suhareka", label: "Suhareka", aliases: Object.freeze(["suhareke", "theranda"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "rahovec", label: "Rahovec", aliases: Object.freeze(["rahoveci"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "drenas", label: "Drenas", aliases: Object.freeze(["gllogoc"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "skenderaj", label: "Skenderaj", aliases: Object.freeze(["skenderaji"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "malisheva", label: "Malisheva", aliases: Object.freeze(["malisheve"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "kamenica", label: "Kamenica", aliases: Object.freeze(["kamenice", "kamenica kosove"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "decan", label: "Decan", aliases: Object.freeze(["decani"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "istog", label: "Istog", aliases: Object.freeze(["istogu"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "klina", label: "Klina", aliases: Object.freeze(["kline"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "vite", label: "Viti", aliases: Object.freeze(["vitia", "vite"]), countryLabel: "Kosovo" }),
+  Object.freeze({ id: "hani i elezit", label: "Hani i Elezit", aliases: Object.freeze(["hani elezit"]), countryLabel: "Kosovo" }),
   Object.freeze({ id: "tirana", label: "Tirana", aliases: Object.freeze(["tirane"]) }),
   Object.freeze({ id: "durres", label: "Durres", aliases: Object.freeze(["durresi"]) }),
   Object.freeze({ id: "vlora", label: "Vlora", aliases: Object.freeze(["vlore"]) }),
@@ -92,7 +114,7 @@ function expandTravelQueryKeys(value = "") {
   const key = normalizeLooseKey(value);
   if (!key) return [];
   const keys = new Set([key]);
-  TRAVEL_ALBANIA_CITY_OPTIONS.forEach((option) => {
+  TRAVEL_CITY_OPTIONS.forEach((option) => {
     const aliases = [option.id, option.label, ...(Array.isArray(option.aliases) ? option.aliases : [])]
       .map(normalizeLooseKey)
       .filter(Boolean);
@@ -275,7 +297,7 @@ function scoreTravelCitySuggestion(option = {}, query = "") {
 function getTravelCitySuggestions(query = "", limit = TRAVEL_SUGGESTION_LIMIT) {
   const queryKey = normalizeLooseKey(query);
   if (queryKey.length < TRAVEL_SUGGESTION_MIN_QUERY_LENGTH) return [];
-  return TRAVEL_ALBANIA_CITY_OPTIONS
+  return TRAVEL_CITY_OPTIONS
     .filter((option) => matchesTravelCityOption(option, query))
     .sort((a, b) => scoreTravelCitySuggestion(a, query) - scoreTravelCitySuggestion(b, query)
       || String(a.label || "").localeCompare(String(b.label || "")))
@@ -284,7 +306,7 @@ function getTravelCitySuggestions(query = "", limit = TRAVEL_SUGGESTION_LIMIT) {
       type: "city",
       value: cleanText(option.label),
       label: cleanText(option.label),
-      meta: "Albanien"
+      meta: cleanText(option.countryLabel || "Albanien")
     }));
 }
 

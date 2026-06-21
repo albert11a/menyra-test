@@ -1105,6 +1105,17 @@ Last updated: 2026-06-21
   beiden Info-Pills sind von `100px x 28px` auf `88px x 24px` verkleinert.
   Ads-Datenlogik, Heart-Freigabe, grosse Restaurant-Cards, QR, Cart, Order,
   Routing, Firebase Rules und Functions bleiben unveraendert.
+- Schritt 114 ist abgeschlossen: Marketplace-Stadtfilter und Travel-
+  Destination-Suche wurden auf Stadtwahrheit gehaertet.
+- Bewertung von Schritt 114: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 114:
+  Bei gesetzter Feed-/Restaurant-Gate-Stadt entscheidet fuer Restaurants/Cafes
+  nicht mehr der reine 35-km-Abstand zur Viewer-Koordinate, sondern Stadt-,
+  Alias-, Location-Text- oder aus Koordinaten abgeleitete Stadtwahrheit. Dadurch
+  kann `Prishtina` keine Ferizaj-Treffer nur wegen Naehe durchlassen. Travel
+  kennt jetzt Kosovo-Staedte und Schreibvarianten in Vorschlaegen und Matching.
+  UI/Design, QR, Cart, Order, Routing, Firebase Rules und Functions bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1217,6 +1228,7 @@ Last updated: 2026-06-21
 - Referenz: [docs/mnyra-step111-heart-ads-approval-timestamp-fix.md](./mnyra-step111-heart-ads-approval-timestamp-fix.md)
 - Referenz: [docs/mnyra-step112-restaurant-ads-card-fit.md](./mnyra-step112-restaurant-ads-card-fit.md)
 - Referenz: [docs/mnyra-step113-restaurant-ads-card-alignment-compact.md](./mnyra-step113-restaurant-ads-card-alignment-compact.md)
+- Referenz: [docs/mnyra-step114-marketplace-city-source-filter.md](./mnyra-step114-marketplace-city-source-filter.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1242,7 +1254,7 @@ Last updated: 2026-06-21
 
 ## Naechster Schritt
 
-Nach Schritt 113 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 114 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1461,6 +1473,13 @@ Restaurant-/Cafe-Cards darunter fluchtet. Auf Mobile horizontal swipen und
 pruefen, dass die erste Card nicht mehr zusaetzlich eingerueckt startet.
 Bewertung und Preisspanne sollen kleiner wirken, nicht ueberlaufen und die
 kompaktere Ad-Card soll weiterhin alle Inhalte sauber ohne Ueberlappung zeigen.
+
+Zusaetzlich fuer Schritt 114 manuell pruefen: Feed-Gate oder Restaurant-Gate
+auf `Prishtina` setzen und Restaurant-Tab oeffnen; es duerfen keine Ferizaj-
+Restaurants/-Cafes erscheinen. Danach `Ferizaj` setzen und pruefen, dass
+Ferizaj-Treffer erscheinen. Travel oeffnen, `Prishtina`/`Prishtine`,
+`Ferizaj`, `Prizren`, `Peja` oder `Gjilan` eingeben und pruefen, dass Kosovo-
+Vorschlaege erscheinen und passende Hotels/Motels gefunden werden.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -54,6 +54,28 @@ const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
   Object.freeze({ label: "Smederevo", lat: 44.6644, lng: 20.9276 })
 ]);
 const TRAVEL_DESTINATION_ALIAS_GROUPS = Object.freeze([
+  Object.freeze(["prishtina", "prishtine", "prishtin", "pristina"]),
+  Object.freeze(["ferizaj", "ferizaji", "uroshevac"]),
+  Object.freeze(["peja", "peje", "pec"]),
+  Object.freeze(["prizren", "prizreni"]),
+  Object.freeze(["gjakova", "gjakove", "djakova"]),
+  Object.freeze(["gjilan", "gjilani"]),
+  Object.freeze(["mitrovica", "mitrovice"]),
+  Object.freeze(["vushtrria", "vushtrri"]),
+  Object.freeze(["podujeva", "podujeve", "podujevo", "besiana"]),
+  Object.freeze(["fushe kosove", "fushe kosova", "fush kosove", "fush kosova"]),
+  Object.freeze(["lipjan"]),
+  Object.freeze(["suhareka", "suhareke", "theranda"]),
+  Object.freeze(["rahovec", "rahoveci"]),
+  Object.freeze(["drenas", "gllogoc"]),
+  Object.freeze(["skenderaj", "skenderaji"]),
+  Object.freeze(["malisheva", "malisheve"]),
+  Object.freeze(["kamenica", "kamenice", "kamenica kosove"]),
+  Object.freeze(["decan", "decani"]),
+  Object.freeze(["istog", "istogu"]),
+  Object.freeze(["klina", "kline"]),
+  Object.freeze(["vite", "vitia"]),
+  Object.freeze(["hani i elezit", "hani elezit"]),
   Object.freeze(["tirana", "tirane"]),
   Object.freeze(["durres", "durresi"]),
   Object.freeze(["vlora", "vlore"]),
@@ -478,6 +500,7 @@ function matchesRestaurantViewerLocation(record = {}, viewerLocation = null) {
   const query = cleanText(viewerLocation.city || viewerLocation.label || "");
   if (query) {
     if (matchesRestaurantLocationText(record, query)) return true;
+    return false;
   }
   const viewerCoords = normalizeLocationCoords(viewerLocation);
   const recordCoords = readCoords(record);
@@ -1376,12 +1399,20 @@ function readStoredRestaurantLocation() {
     const parsed = JSON.parse(raw);
     const coords = normalizeLocationCoords(parsed);
     if (!coords) return null;
+    const source = cleanText(parsed?.source || "");
+    const label = cleanText(parsed?.label || parsed?.city || "");
+    const rawCity = cleanText(parsed?.city || "");
+    const labelKey = normalizeLooseKey(label);
+    const isGenericLocationLabel = labelKey === "current_location"
+      || labelKey === "currentlocation"
+      || labelKey === "standort"
+      || labelKey === "aktueller_standort";
     return {
       lat: coords.lat,
       lng: coords.lng,
-      label: cleanText(parsed?.label || parsed?.city || ""),
-      city: cleanText(parsed?.city || parsed?.label || ""),
-      source: cleanText(parsed?.source || "")
+      label,
+      city: rawCity || (isGenericLocationLabel ? "" : label),
+      source
     };
   } catch {
     return null;
