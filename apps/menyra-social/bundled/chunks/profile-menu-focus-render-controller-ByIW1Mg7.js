@@ -380,12 +380,12 @@ import{e as ce,f as gs,t as ms,g as bs,h as Ae,a as xs}from"../entry/social-app.
     <div class="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 text-slate-900 flex items-center justify-center shrink-0">
       ${f(a,"w-4 h-4")}
     </div>
-    <div class="min-w-0">
+    <div class="min-w-0 flex-1" style="min-width:0;max-width:100%;overflow:hidden;">
       <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">${s(n)}</span>
-      <span class="block mt-1 text-sm font-black text-slate-900 truncate">${s(i)}</span>
+      <span class="block mt-1 text-sm font-black text-slate-900 truncate" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s(i)}</span>
     </div>
-  `;return e?`<a href="${s(e)}" target="${e.startsWith("tel:")?"_self":"_blank"}" rel="noreferrer" class="flex items-center gap-4 text-left">${o}</a>`:`<button type="button" ${t} class="flex items-center gap-4 text-left w-full">${o}</button>`}function Va({profileName:e="",safeBio:t="",metaLine:a="",identityPending:n=!1,followersLabel:r=""}={}){return`
-    <div aria-hidden="true" style="grid-area:1/1;visibility:hidden;pointer-events:none;">
+  `;return e?`<a href="${s(e)}" target="${e.startsWith("tel:")?"_self":"_blank"}" rel="noreferrer" class="flex items-center gap-4 text-left min-w-0 w-full max-w-full" style="min-width:0;width:100%;max-width:100%;overflow:hidden;box-sizing:border-box;">${o}</a>`:`<button type="button" ${t} class="flex items-center gap-4 text-left min-w-0 w-full max-w-full" style="min-width:0;width:100%;max-width:100%;overflow:hidden;box-sizing:border-box;">${o}</button>`}function Va({profileName:e="",safeBio:t="",metaLine:a="",identityPending:n=!1,followersLabel:r=""}={}){return`
+    <div aria-hidden="true" style="grid-area:1/1;visibility:hidden;pointer-events:none;min-width:0;max-width:100%;overflow:hidden;">
       <div class="h-40 w-full"></div>
       <div class="px-8 pb-8 relative z-20" style="margin-top:-3rem;">
         <div class="flex items-end justify-between w-full">
@@ -435,21 +435,21 @@ import{e as ce,f as gs,t as ms,g as bs,h as Ae,a as xs}from"../entry/social-app.
         ${f("message-circle","w-5 h-5")}
       </button>
     `;if(l){const _=[ye({href:b,iconName:"phone",eyebrow:u("profile.call","Anrufen"),value:N}),ye({href:j,iconName:"map-pin",eyebrow:u("profile.address","Adresse"),value:S||y}),A].filter(Boolean).join("");return`
-      <div data-landing-tutorial-target="identity" data-business-profile-card="${s(o)}" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${n}" style="${p}min-height: var(--business-profile-card-min-height, 440px);display:grid;">
+      <div data-landing-tutorial-target="identity" data-business-profile-card="${s(o)}" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${n}" style="${p}min-height: var(--business-profile-card-min-height, 440px);display:grid;grid-template-columns:minmax(0,1fr);width:100%;max-width:100%;min-width:0;box-sizing:border-box;">
         ${Va({profileName:k,safeBio:w,metaLine:F,identityPending:v,followersLabel:h})}
-        <div class="p-8 flex flex-col justify-between" style="grid-area:1/1;min-height:100%;">
+        <div class="p-8 min-w-0 max-w-full overflow-hidden flex flex-col justify-between" style="grid-area:1/1;min-height:100%;width:100%;max-width:100%;box-sizing:border-box;">
           <button type="button" data-profile-card-info-close="${s(o)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
             ${f("x","w-4 h-4")}
           </button>
-          <div class="pr-10">
+          <div class="pr-10 min-w-0 max-w-full overflow-hidden">
             <h2 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${s(u("profile.contactInfo","Kontakt & Infos"))}</h2>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${s(y)}</p>
           </div>
-          <div class="mt-8 flex flex-col gap-4">
+          <div class="mt-8 flex flex-col gap-4 min-w-0 max-w-full overflow-hidden">
             ${_||`<div class="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(u("profile.noContactInfo","Noch keine Kontaktdaten"))}</div>`}
           </div>
-          <div class="mt-8 pt-6 border-t border-slate-100">
-            <button type="button" data-profile-card-info-close="${s(o)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all">
+          <div class="mt-8 pt-6 border-t border-slate-100 min-w-0 max-w-full overflow-hidden">
+            <button type="button" data-profile-card-info-close="${s(o)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all flex items-center justify-center" style="width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;">
               ${s(u("profile.backToProfile","Zurueck zum Profil"))}
             </button>
           </div>

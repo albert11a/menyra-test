@@ -1249,6 +1249,19 @@ Last updated: 2026-06-25
   plus diese Doku. Nicht geaendert wurden Texte, Farben, Spacing,
   Profilbild-/Titelbild-Ladewege, Routing, QR, Cart, Order, Menu-Daten,
   Firebase Rules und Functions.
+- Schritt 127 ist abgeschlossen: Das Social-Bundle wurde fuer den Profil-Info-
+  Overlay-Fix nachgebaut und der App-Build-Token wurde aktualisiert.
+- Bewertung von Schritt 127: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 127:
+  Der Browser laedt die Profil-Renderer-Logik ueber das gebaute Lazy-Bundle
+  `apps/menyra-social/bundled/chunks/profile-menu-focus-render-controller-*.js`.
+  Deshalb wurde das Bundle neu gebaut, sodass `entry/social-app.js` und
+  `manifest.json` jetzt auf den neuen Chunk mit dem Overflow-Fix zeigen. Der
+  App-Build-Token in `apps/menyra-social/index.html` wurde auf
+  `2026-06-25-profile-info-overlay-bundle-01` gesetzt, damit Raw-Fallback,
+  PWA- und Service-Worker-Pfade ebenfalls einen frischen Build-Stand sehen.
+  Nicht geaendert wurden Routing, QR, Cart, Order, Menu-Daten, Firebase Rules
+  und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1397,7 +1410,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 126 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 127 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1714,6 +1727,13 @@ Screenshot oeffnen und `Info` klicken. Der Adresswert `Casa Rita Restaurant...`
 muss innerhalb der Card mit Ellipsis enden und darf rechts nicht aus der Card
 laufen. Der untere `Zurueck zum Profil`-Button muss komplett innerhalb der Card
 bleiben und links/rechts denselben Innenabstand wie der Info-Inhalt haben.
+
+Zusaetzlich fuer Schritt 127 manuell pruefen: App hart neu laden, bei Bedarf mit
+`?sw-reset=1`, und danach dasselbe Profil erneut oeffnen. Im Browser darf nicht
+mehr der alte Chunk
+`profile-menu-focus-render-controller-Ct0xfHZ9.js` geladen werden, sondern der
+neue gebaute Profil-Renderer-Chunk. Danach dieselbe Info-Card-Breitenpruefung
+aus Schritt 126 wiederholen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
