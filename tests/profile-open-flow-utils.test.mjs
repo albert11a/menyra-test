@@ -82,3 +82,40 @@ test("direct business profile route does not queue browser history push", async 
 
   assert.equal(state.__nextRouteHistoryMode, "");
 });
+
+test("direct route known-empty menu snapshot does not seed public menu empty", async () => {
+  const state = createState("feed");
+  state.menu = {
+    restaurantId: "moka",
+    items: [],
+    loading: false,
+    error: "",
+    source: "public",
+    truthState: "knownEmpty"
+  };
+  state.__publicRouteBootstrap = {
+    restaurantId: "moka",
+    identity: { name: "Moka Coffee", handle: "moka" },
+    menu: { state: "knownEmpty", knownEmpty: true, count: 0, items: [] },
+    truth: { identity: "seeded", menu: "knownEmpty" },
+    businessSnapshot: {
+      restaurantId: "moka",
+      identity: { name: "Moka Coffee", handle: "moka" },
+      menu: { state: "knownEmpty", knownEmpty: true, count: 0, items: [] },
+      focus: { state: "unknown", items: [] },
+      posts: { state: "unknown", items: [] },
+      truth: { identity: "seeded", menu: "knownEmpty", focus: "unknown", posts: "unknown" }
+    }
+  };
+  const controller = createController(state);
+
+  await controller.openProfileViewFromBusiness(
+    { id: "moka", restaurantId: "moka", name: "Moka Coffee" },
+    { showBack: false, topTab: "menu" }
+  );
+
+  assert.equal(state.menu.restaurantId, "moka");
+  assert.deepEqual(state.menu.items, []);
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.truthState, "unknown");
+});

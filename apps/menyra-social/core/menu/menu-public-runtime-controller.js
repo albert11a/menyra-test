@@ -396,16 +396,37 @@ export function createMenuPublicRuntimeController({
     }
   }
 
+  function createPublicMenuReadResult(status = "error", {
+    items = [],
+    error = null
+  } = {}) {
+    const safeStatus = status === "ready" || status === "empty" || status === "error"
+      ? status
+      : "error";
+    return {
+      status: safeStatus,
+      items: Array.isArray(items) ? items : [],
+      error: error || null
+    };
+  }
+
   async function loadPublicMenuItems(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
-    if (!safeRestaurantId || !makeDocRef || !getDoc || !db) return [];
+    if (!safeRestaurantId || !makeDocRef || !getDoc || !db) {
+      return createPublicMenuReadResult("error", {
+        error: new Error("public menu read unavailable")
+      });
+    }
     try {
       const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "menu"));
-      if (!snap.exists()) return [];
-      return normalizeMenuItemsForRestaurant(coerceMenuItemsFromData(snap.data() || {}), safeRestaurantId);
+      if (!snap.exists()) return createPublicMenuReadResult("empty");
+      const items = normalizeMenuItemsForRestaurant(coerceMenuItemsFromData(snap.data() || {}), safeRestaurantId);
+      return createPublicMenuReadResult(items.length ? "ready" : "empty", { items });
     } catch (err) {
       console.error(err);
-      return [];
+      return createPublicMenuReadResult("error", {
+        error: err || new Error("public menu read failed")
+      });
     }
   }
 
@@ -422,6 +443,7 @@ export function createMenuPublicRuntimeController({
       statusBadgeVisible: nextStatusBadgeVisible,
       truthSource: safeSource === "public" ? "public-menu" : safeSource,
       truthState: list.length ? "seeded" : "knownEmpty",
+      emptyVerified: !list.length && safeSource === "public",
       ts: Date.now()
     });
     return list;
@@ -728,7 +750,10 @@ export function createMenuPublicRuntimeController({
   async function loadMenuHybrid(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return [];
-    const publicItems = await loadPublicMenuItems(safeRestaurantId);
+    const publicResult = await loadPublicMenuItems(safeRestaurantId);
+    const publicItems = Array.isArray(publicResult)
+      ? publicResult
+      : (Array.isArray(publicResult?.items) ? publicResult.items : []);
     if (publicItems.length) return publicItems;
     const [collectionItems, legacyItems] = await Promise.all([
       loadMenuItemsFromCollection(safeRestaurantId),

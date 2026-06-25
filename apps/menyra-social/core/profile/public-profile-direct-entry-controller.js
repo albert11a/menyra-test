@@ -644,10 +644,11 @@ export function createPublicProfileDirectEntryController({
       routeSnapshot?.posts?.state || routeBootstrap?.posts?.state || routeTruth?.posts || "",
       routePostsSeed.length ? "seeded" : "unknown"
     );
-    const routeMenuState = normalizeTruthState(
+    const routeMenuStateRaw = normalizeTruthState(
       routeSnapshot?.menu?.state || routeBootstrap?.menu?.state || routeTruth?.menu || "",
       routeMenuSeed.length ? "seeded" : "unknown"
     );
+    const routeMenuState = routeMenuStateRaw === "seeded" && routeMenuSeed.length ? "seeded" : "unknown";
     const routeFocusState = normalizeTruthState(
       routeSnapshot?.focus?.state || routeBootstrap?.focus?.state || routeTruth?.focus || "",
       routeFocusSeed.length ? "seeded" : "unknown"
@@ -793,7 +794,9 @@ export function createPublicProfileDirectEntryController({
         const existingMenuRestaurantId = String(state.menu.restaurantId || "").trim();
         const hasKnownMenuTruth = isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu.source || "").trim().toLowerCase() === "public"
-          && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
+          && existingMenuTruth === "seeded"
+          && Array.isArray(state.menu.items)
+          && state.menu.items.length > 0;
         const existingItems = isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu.source || "").trim().toLowerCase() === "public"
           && Array.isArray(state.menu.items)
@@ -807,9 +810,7 @@ export function createPublicProfileDirectEntryController({
           error: "",
           source: "public",
           routeSeed: hasKnownMenuTruth ? state.menu.routeSeed === true : false,
-          truthState: hasKnownMenuTruth
-            ? (existingMenuTruth === "seeded" ? "seeded" : "knownEmpty")
-            : "unknown"
+          truthState: hasKnownMenuTruth ? "seeded" : "unknown"
         };
       }
     }

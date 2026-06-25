@@ -606,13 +606,14 @@ export function createProfileOpenFlowControllerCore({
         || "",
         routePostsSeed.length ? "seeded" : "unknown"
       );
-      const routeMenuState = normalizeTruthState(
+      const routeMenuStateRaw = normalizeTruthState(
         routeSnapshotSeed?.menu?.state
         || routeBootstrapSeed?.menu?.state
         || routeTruthSeed?.menu
         || "",
         routeMenuSeed.length ? "seeded" : "unknown"
       );
+      const routeMenuState = routeMenuStateRaw === "seeded" && routeMenuSeed.length ? "seeded" : "unknown";
       const routeFocusState = normalizeTruthState(
         routeSnapshotSeed?.focus?.state
         || routeBootstrapSeed?.focus?.state
@@ -710,8 +711,8 @@ export function createProfileOpenFlowControllerCore({
         const menuTruthState = normalizeTruthState(
           sameRestaurantMenu ? (menu.truthState || "") : "",
           sameRestaurantMenu
-            ? (menuItems.length > 0 ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
-            : normalizeTruthState(routeSnapshotSeed?.menu?.state || routeBootstrapSeed?.menu?.state || routeTruthSeed?.menu || "", routeMenuSeedItems.length ? "seeded" : "unknown")
+            ? (menuItems.length > 0 ? "seeded" : "unknown")
+            : (routeMenuSeedItems.length ? "seeded" : "unknown")
         );
         const focusTruthState = normalizeTruthState(
           sameRestaurantFocus ? (focus.truthState || "") : "",
@@ -1044,9 +1045,11 @@ export function createProfileOpenFlowControllerCore({
           const existingMenuTruth = String(state.menu?.truthState || "").trim().toLowerCase();
           const hasKnownMenuTruth = String(state.menu?.restaurantId || "").trim() === targetMenuRestaurantId
             && String(state.menu?.source || "").trim().toLowerCase() === "public"
-            && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
+            && existingMenuTruth === "seeded"
+            && Array.isArray(state.menu?.items)
+            && state.menu.items.length > 0;
           if (hasKnownMenuTruth) {
-            effectiveRouteMenuState = existingMenuTruth === "seeded" ? "seeded" : "knownEmpty";
+            effectiveRouteMenuState = "seeded";
           }
           state.menu = {
             ...state.menu,
@@ -1060,9 +1063,7 @@ export function createProfileOpenFlowControllerCore({
             error: "",
             source: "public",
             routeSeed: hasKnownMenuTruth ? state.menu.routeSeed === true : false,
-            truthState: hasKnownMenuTruth
-              ? (existingMenuTruth === "seeded" ? "seeded" : "knownEmpty")
-              : "unknown"
+            truthState: hasKnownMenuTruth ? "seeded" : "unknown"
           };
         }
         if (effectiveRouteFocusState === "seeded") {

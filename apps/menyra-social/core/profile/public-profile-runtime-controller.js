@@ -926,7 +926,13 @@ export function createPublicProfileRuntimeController({
     );
     if (safePosts.length > 0) postsTruthState = "seeded";
     const menuTruthFallback = sameRestaurantMenu
-      ? (menuItemsFromLive.length ? "seeded" : (menuSurfaceState.menu.status === "loading" ? "unknown" : "knownEmpty"))
+      ? (
+        menuItemsFromLive.length
+          ? "seeded"
+          : (menuSurfaceState.menu.status === "empty"
+            ? "knownEmpty"
+            : (menuSurfaceState.menu.status === "error" ? "error" : "unknown"))
+      )
       : "unknown";
     let menuTruthState = normalizeTruthState(
       sameRestaurantMenu ? (menuSurfaceState.menu.truthState || "") : "",
