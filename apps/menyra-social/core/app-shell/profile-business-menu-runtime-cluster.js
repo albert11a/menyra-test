@@ -175,12 +175,13 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   const isNormalWebDirectProfileVisible = () => {
     const webDirectEntry = getWebDirectEntryState();
-    if (webDirectEntry?.active !== true || webDirectEntry?.webPriority !== true || webDirectEntry?.postsFirst !== true) {
+    if (webDirectEntry?.active !== true || webDirectEntry?.webPriority !== true) {
       return false;
     }
     const activeTab = String(state?.activeTab || "").trim().toLowerCase();
     const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
-    return activeTab === "profile" && profileTopTab === "profile";
+    if (activeTab !== "profile" || profileTopTab !== "profile") return false;
+    return webDirectEntry?.postsFirst === true || webDirectEntry?.menuFirst === true;
   };
 
   const isVisiblePublicBusinessSurface = () => isVisiblePublicMenuFirstSurface() || isNormalWebDirectProfileVisible();
@@ -346,6 +347,14 @@ export function createProfileBusinessMenuRuntimeCluster({
     };
   };
 
+  const isRetryableBusinessPostsReadError = (result = {}) => {
+    const status = String(result?.status || "").trim().toLowerCase();
+    if (status !== "error") return false;
+    const code = String(result?.error?.code || "").trim().toLowerCase();
+    const name = String(result?.error?.name || "").trim();
+    return code === "deadline-exceeded" || name === "MnyraPublicProfileReadTimeoutError";
+  };
+
   const queueVisiblePublicPostsReconcile = (restaurantId = "") => {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || visiblePublicPostsFreshReconcileKeys.has(safeRestaurantId)) return;
@@ -466,8 +475,9 @@ export function createProfileBusinessMenuRuntimeCluster({
     const visibleTargetIds = collectVisibleMenuTargetIds(visibleProfileView.profile);
     if (!visibleTargetIds.has(restaurantId) && visibleProfileView.restaurantId !== restaurantId) return null;
     const currentAvatar = String(visibleProfileView.profile?.avatar || "").trim();
+    const currentTitleImage = resolveBusinessTitleImageUrl(visibleProfileView.profile);
     const identityReady = String(visibleProfileView.profile?.identityTruthState || "").trim().toLowerCase() === "ready";
-    if (currentAvatar && identityReady) return null;
+    if (currentAvatar && currentTitleImage && identityReady) return null;
     const currentRequest = visiblePublicIdentityHydrationPromises.get(restaurantId);
     if (currentRequest) return currentRequest;
     const request = Promise.resolve(fetchBusinessProfileDoc({
@@ -961,6 +971,10 @@ export function createProfileBusinessMenuRuntimeCluster({
       const nextPosts = Array.isArray(posts) ? posts : [];
       const livePosts = Array.isArray(liveProfileView.view.posts) ? liveProfileView.view.posts : [];
       if (postsStatus === "error" && !nextPosts.length) {
+        if (isRetryableBusinessPostsReadError(postsResult)) {
+          scheduleVisiblePublicPostsRetry(safeProfile, canonicalRestaurantId || postsResult.restaurantId || firstLoadId || requestedRestaurantId);
+          return;
+        }
         refreshVisiblePublicProfile({
           postsLoaded: true,
           truthState: livePosts.length ? "stable" : "error"

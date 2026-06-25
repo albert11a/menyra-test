@@ -173,3 +173,141 @@ test("public posts ensure renders visible posts without waiting for slow canonic
   assert.equal(result.profile.postsLoaded, true);
   assert.equal(result.profile.truthState, "stable");
 });
+
+test("public identity hydration still loads missing title image when avatar identity is ready", async () => {
+  const state = createState();
+  state.profileView.profile = {
+    ...state.profileView.profile,
+    restaurantId: "bro-pizza",
+    canonicalRestaurantId: "restaurant-a",
+    avatar: "https://cdn.example/avatar.jpg",
+    titleImageUrl: "",
+    coverImageUrl: "",
+    coverUrl: "",
+    heroUrl: "",
+    identityTruthState: "ready"
+  };
+  state.profileView.routePayload = {
+    restaurantId: "bro-pizza",
+    canonicalRestaurantId: "restaurant-a"
+  };
+  state.__webDirectEntry = {
+    active: true,
+    restaurantId: "bro-pizza",
+    canonicalRestaurantId: "restaurant-a",
+    webPriority: true,
+    menuFirst: true
+  };
+  const committed = deferred();
+  const cluster = createProfileBusinessMenuRuntimeCluster({
+    state,
+    profileMenuDeps: {
+      state,
+      importModuleFn: async () => ({
+        createProfileMenuFocusRenderController: () => ({
+          renderPublicProfileView: () => "",
+          renderMenuAdminView: () => "",
+          renderProfileView: () => ""
+        })
+      }),
+      isRestaurantCafeProfileFn: () => true,
+      requestRenderFn: () => {}
+    },
+    dataLoaders: {
+      fetchBusinessProfileDocFn: async () => ({
+        id: "restaurant-a",
+        data: {
+          avatarUrl: "https://cdn.example/avatar.jpg",
+          titleImageUrl: "https://cdn.example/cover.jpg",
+          name: "Bro Pizza"
+        }
+      }),
+      showPublicProfileFn: (profile, posts) => {
+        state.profileView = {
+          ...state.profileView,
+          profile,
+          posts
+        };
+        if (profile.titleImageUrl) committed.resolve(profile);
+      },
+      loadMenuForRestaurantFn: async () => ({ items: [{ id: "item-1" }], truthState: "seeded" }),
+      loadFocusForRestaurantFn: async () => ({ items: [], truthState: "knownEmpty" })
+    }
+  });
+
+  cluster.ensureMenuDataForProfile(state.profileView.profile);
+  const profile = await withTestDeadline(committed.promise);
+
+  assert.equal(profile.titleImageUrl, "https://cdn.example/cover.jpg");
+  assert.equal(profile.coverImageUrl, "https://cdn.example/cover.jpg");
+  assert.equal(profile.coverUrl, "https://cdn.example/cover.jpg");
+  assert.equal(profile.heroUrl, "https://cdn.example/cover.jpg");
+});
+
+test("menu-first profile retries posts after a deadline instead of committing content error", async () => {
+  const state = createState();
+  state.profileTopTab = "profile";
+  state.profileContentTab = "posts";
+  state.__webDirectEntry = {
+    active: true,
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a",
+    webPriority: true,
+    menuFirst: true,
+    postsFirst: false
+  };
+  const committed = deferred();
+  const commits = [];
+  let postCalls = 0;
+  const cluster = createProfileBusinessMenuRuntimeCluster({
+    state,
+    profileMenuDeps: {
+      state,
+      importModuleFn: async () => ({
+        createProfileMenuFocusRenderController: () => ({
+          renderPublicProfileView: () => "",
+          renderMenuAdminView: () => "",
+          renderProfileView: () => ""
+        })
+      }),
+      isRestaurantCafeProfileFn: () => true,
+      requestRenderFn: () => {}
+    },
+    dataLoaders: {
+      showPublicProfileFn: (profile, posts) => {
+        commits.push({ profile, posts });
+        state.profileView = {
+          ...state.profileView,
+          profile,
+          posts
+        };
+        if (posts.length) committed.resolve({ profile, posts });
+      },
+      loadBusinessPostsForRestaurantFn: async (restaurantId, options = {}) => {
+        postCalls += 1;
+        if (options.returnStatus === true) {
+          return {
+            posts: [],
+            status: "error",
+            restaurantId,
+            error: { code: "deadline-exceeded", name: "MnyraPublicProfileReadTimeoutError" }
+          };
+        }
+        return [{
+          id: "post-1",
+          restaurantId,
+          url: "https://cdn.example/post-1.jpg"
+        }];
+      }
+    }
+  });
+
+  cluster.ensurePostsDataForProfile(state.profileView.profile);
+  const result = await withTestDeadline(committed.promise, 600);
+
+  assert.ok(postCalls >= 2);
+  assert.equal(commits.some((entry) => entry.profile.truthState === "error"), false);
+  assert.equal(result.posts.length, 1);
+  assert.equal(result.profile.postsLoaded, true);
+  assert.equal(result.profile.truthState, "stable");
+});
