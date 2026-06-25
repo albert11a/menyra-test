@@ -611,6 +611,37 @@ test("public business posts initial page dedupes concurrent visible reads", asyn
   assert.deepEqual(secondPosts, firstPosts);
 });
 
+test("public business posts initial fallback stays bounded", async () => {
+  const queryCalls = [];
+  const rows = [
+    { id: "post-1", url: "https://cdn.example/post-1.jpg", status: "active" },
+    { id: "post-2", url: "https://cdn.example/post-2.jpg", status: "active" },
+    { id: "post-3", url: "https://cdn.example/post-3.jpg", status: "active" }
+  ];
+  const controller = createBusinessPostsController({
+    fastLimits: { publicBusinessPostsInitialPage: 2 },
+    getDocsFn: async (refOrQuery) => {
+      const constraints = Array.isArray(refOrQuery?.constraints) ? refOrQuery.constraints : [];
+      queryCalls.push(constraints);
+      const hasOrderBy = constraints.some((constraint) => constraint?.type === "orderBy");
+      const limitValue = constraints.find((constraint) => constraint?.type === "limit")?.value;
+      if (hasOrderBy) throw new Error("ordered query unavailable");
+      assert.equal(limitValue, 2);
+      return createDocsSnapshot(rows.slice(0, Number(limitValue)));
+    }
+  });
+
+  const posts = await controller.loadBusinessPostsForRestaurant("restaurant-fallback", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+
+  assert.equal(posts.length, 2);
+  assert.equal(queryCalls.length, 2);
+  assert.equal(queryCalls[0].some((constraint) => constraint?.type === "orderBy"), true);
+  assert.equal(queryCalls[1].some((constraint) => constraint?.type === "limit"), true);
+});
+
 test("public business posts status keeps read errors distinct from empty", async () => {
   const controller = createBusinessPostsController({
     getDocsFn: async () => {

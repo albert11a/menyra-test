@@ -1430,7 +1430,7 @@ Last updated: 2026-06-25
 
 ## Workflow ab jetzt (verbindlich)
 
-- Es wird nur auf Branch `refactorapp` gearbeitet.
+- Es wird nur auf Branch `mnyra2027` gearbeitet.
 - `finale-mnyra` und `finale-mnyra-clean` bleiben Referenz-Branches.
 - Keine direkte Arbeit auf `main`.
 - Nach jedem Schritt:
@@ -1813,6 +1813,36 @@ Menue -> Profil pruefen; Menue-Items/Fokus duerfen nicht erst leer wirken und
 dann springen. Nach einem spaeteren Function-Deployment den Bootstrap-Endpoint
 fuer `r=casarita` kontrollieren; er muss `publicRoute.businessSnapshot` mit
 `identity`, `menu.items`, `posts` und `truth` liefern.
+
+Schritt 131: Public-Web-Posts-First-Ladepfad auf Branch `mnyra2027`
+beruhigt. Der normale Direct-Web-Posts-Pfad akzeptiert die erste begrenzte
+Posts-Seite jetzt als sichtbare Ready-Wahrheit und startet danach keinen
+sofortigen Full-Read/Force-Reconcile fuer dieselben Beitraege. Posts-Ensure
+startet auf der Posts-First-Oberflaeche keine Menu-Retry-Hydration mehr.
+Der Initial-Posts-Fallback bleibt ebenfalls begrenzt; zusaetzliche Loading-
+Diagnostics trennen `initial`, `full` und `reconcile` fuer Public-Profile-
+Posts. Das Social-Bundle wurde neu gebaut, damit der normale Browser-Pfad
+die Aenderung ohne Raw-Entry-Flag verwendet.
+
+Geaendert in Schritt 131: `AGENTS.md`, `docs/mnyra-current-phase.md`,
+`apps/menyra-social/core/profile/profile-open-flow-utils.js`,
+`apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`,
+`apps/menyra-social/core/profile/public-profile-runtime-controller.js`,
+`apps/menyra-social/bundled/*`,
+`tests/profile-open-flow-utils.test.mjs` und
+`tests/public-profile-runtime-controller.test.mjs`.
+
+Bewusst nicht geaendert in Schritt 131: keine UI-/Designwerte, keine
+Firestore-Daten, keine Rules, keine Functions, kein Function-Deployment,
+keine Public-/App-Grenzen, keine QR-/Menu-First-Logik, keine Smoke- oder
+Playwright-Tests. Der Nutzer prueft manuell.
+
+Zusaetzlich fuer Schritt 131 manuell pruefen: `/casarita` kalt oeffnen und
+hart refreshen; Header und erste Beitraege sollen ohne langen zweiten
+Posts-Ladehaenger sichtbar werden. Danach `/casarita/menu` pruefen, dass Menu
+und Fokus weiter normal laden. Im Browser mit `?mnyraDebugLoading=1` pruefen,
+dass Public-Profile-Posts als `initial` gemessen werden und kein sofortiger
+`reconcile`/Full-Read fuer dieselbe Posts-First-Anzeige folgt.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

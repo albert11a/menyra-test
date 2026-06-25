@@ -8,6 +8,10 @@ import {
 } from "./public-profile-surface-controller.js";
 import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
 import { mergeMonotonicPublicProfileIdentity } from "./public-profile-identity-merge-utils.js";
+import {
+  markMnyraLoadingEventCore as markLoadingEvent,
+  timeMnyraLoadingAsyncCore as timeLoadingAsync
+} from "../common/loading-diagnostics-utils.js";
 
 export function createPublicProfileRuntimeController({
   state = null,
@@ -1917,6 +1921,19 @@ export function createPublicProfileRuntimeController({
         return { posts: [], status: "empty", restaurantId: effectiveRestaurantId };
       }
       try {
+        const postsLoadPhase = shouldUseInitialPage ? "initial" : (force ? "reconcile" : "full");
+        markLoadingEvent("public profile posts load requested", {
+          restaurantId: effectiveRestaurantId,
+          phase: postsLoadPhase,
+          force,
+          source: "restaurants.socialPosts"
+        });
+        const readPostsSnapshot = (label, refOrQuery) => timeLoadingAsync(label, () => getDocsSafe(refOrQuery), {
+          restaurantId: effectiveRestaurantId,
+          phase: postsLoadPhase,
+          force,
+          source: "restaurants.socialPosts"
+        });
         const ref = makeCollectionRef(db, "restaurants", effectiveRestaurantId, "socialPosts");
         let snap = null;
         let usedInitialPageLimit = false;
@@ -1928,24 +1945,27 @@ export function createPublicProfileRuntimeController({
               constraints.push(buildLimit(initialPageLimit));
               usedInitialPageLimit = true;
             }
-            snap = await getDocsSafe(buildQuery(ref, ...constraints));
+            snap = await readPostsSnapshot("public profile socialPosts load", buildQuery(ref, ...constraints));
           } else if (shouldUseInitialPage && buildQuery && buildLimit) {
             usedInitialPageLimit = true;
-            snap = await getDocsSafe(buildQuery(ref, buildLimit(initialPageLimit)));
+            snap = await readPostsSnapshot("public profile socialPosts load", buildQuery(ref, buildLimit(initialPageLimit)));
+          } else if (shouldUseInitialPage) {
+            throw new Error("bounded public profile socialPosts read unavailable");
           } else {
-            snap = await getDocsSafe(ref);
+            snap = await readPostsSnapshot("public profile socialPosts load", ref);
           }
         } catch {
           if (shouldUseInitialPage && buildQuery && buildLimit) {
             try {
               usedInitialPageLimit = true;
-              snap = await getDocsSafe(buildQuery(ref, buildLimit(initialPageLimit)));
+              snap = await readPostsSnapshot("public profile socialPosts bounded fallback load", buildQuery(ref, buildLimit(initialPageLimit)));
             } catch {
-              usedInitialPageLimit = false;
-              snap = await getDocsSafe(ref);
+              throw new Error("bounded public profile socialPosts fallback failed");
             }
+          } else if (shouldUseInitialPage) {
+            throw new Error("bounded public profile socialPosts fallback unavailable");
           } else {
-            snap = await getDocsSafe(ref);
+            snap = await readPostsSnapshot("public profile socialPosts fallback load", ref);
           }
         }
         const rows = [];

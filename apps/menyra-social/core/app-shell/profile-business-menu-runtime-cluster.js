@@ -337,6 +337,7 @@ export function createProfileBusinessMenuRuntimeCluster({
   const queueVisiblePublicPostsReconcile = (restaurantId = "") => {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || visiblePublicPostsFreshReconcileKeys.has(safeRestaurantId)) return;
+    if (isNormalWebDirectProfileVisible()) return;
     visiblePublicPostsFreshReconcileKeys.add(safeRestaurantId);
     Promise.resolve(loadBusinessPostsForRestaurant(safeRestaurantId, {
       skipProfileResolve: true,
@@ -676,8 +677,6 @@ export function createProfileBusinessMenuRuntimeCluster({
         postsLoaded: true,
         truthState: "stable"
       }, safePosts);
-      const resolvedPostsRestaurantId = String(safePosts[0]?.restaurantId || safePosts[0]?.ownerId || restaurantId).trim() || restaurantId;
-      queueVisiblePublicPostsReconcile(resolvedPostsRestaurantId);
       return;
     }
   };
@@ -858,7 +857,10 @@ export function createProfileBusinessMenuRuntimeCluster({
     const visibleProfileView = getVisiblePublicProfileView();
     if (!visibleProfileView) return;
     void ensureVisibleBusinessIdentityHydration(profile, requestedRestaurantId);
-    scheduleVisiblePublicMenuRetry(profile, requestedRestaurantId);
+    const isPostsFirstSurface = isNormalWebDirectProfileVisible();
+    if (!isPostsFirstSurface) {
+      scheduleVisiblePublicMenuRetry(profile, requestedRestaurantId);
+    }
     scheduleVisiblePublicPostsRetry(profile, requestedRestaurantId);
     const safeProfile = profile && typeof profile === "object" ? profile : {};
     const surfaceTargetRestaurantId = resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
@@ -922,8 +924,10 @@ export function createProfileBusinessMenuRuntimeCluster({
         postsLoaded: true,
         truthState: nextPosts.length ? "stable" : "empty"
       }, nextPosts);
-      queueVisiblePublicPostsReconcile(resolvedRestaurantId);
-      scheduleVisiblePublicMenuRetry(safeProfile, canonicalRestaurantId || resolvedRestaurantId || requestedRestaurantId);
+      if (!isPostsFirstSurface) {
+        queueVisiblePublicPostsReconcile(resolvedRestaurantId);
+        scheduleVisiblePublicMenuRetry(safeProfile, canonicalRestaurantId || resolvedRestaurantId || requestedRestaurantId);
+      }
     }).finally(() => {
       if (publicProfilePostsEnsurePromise === request) {
         publicProfilePostsEnsurePromise = null;

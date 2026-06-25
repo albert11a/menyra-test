@@ -1492,12 +1492,22 @@ export function createProfileOpenFlowControllerCore({
         && safeMenuAccessSource !== "qr";
       if (deferPostsResolutionToVisiblePostsSurface) {
         posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
-      } else if (earlyPostsResult?.ok && earlyPostsResult.initialPage !== true && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
+      } else if (
+        earlyPostsResult?.ok
+        && (earlyPostsResult.initialPage !== true || isWebPostsFirstPath)
+        && earlyPostsRestaurantId
+        && earlyPostsRestaurantId === resolvedRestaurantId
+      ) {
         posts = earlyPostsResult.posts;
         postsLoadStatus = String(earlyPostsResult.status || "").trim().toLowerCase();
       } else if (earlyPostsPromise) {
         const earlyResult = earlyPostsResult || await earlyPostsPromise;
-        if (earlyResult?.ok && earlyResult.initialPage !== true && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
+        if (
+          earlyResult?.ok
+          && (earlyResult.initialPage !== true || isWebPostsFirstPath)
+          && earlyPostsRestaurantId
+          && earlyPostsRestaurantId === resolvedRestaurantId
+        ) {
           posts = earlyResult.posts;
           postsLoadStatus = String(earlyResult.status || "").trim().toLowerCase();
         }

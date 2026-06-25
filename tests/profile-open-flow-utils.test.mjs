@@ -20,7 +20,8 @@ function createState(activeTab = "search") {
   };
 }
 
-function createController(state, showCalls = []) {
+function createController(state, showCalls = [], overrides = {}) {
+  const safeOverrides = overrides && typeof overrides === "object" ? overrides : {};
   return createProfileOpenFlowControllerCore({
     state,
     isLocalBusinessProfile: () => false,
@@ -48,11 +49,11 @@ function createController(state, showCalls = []) {
       state.activeTab = "profile";
       state.profileView = { profile, posts, directEntry: options?.directEntry || null };
     },
-    fetchBusinessProfileDoc: async ({ restaurantId }) => ({
+    fetchBusinessProfileDoc: safeOverrides.fetchBusinessProfileDoc || (async ({ restaurantId }) => ({
       id: String(restaurantId || "moka"),
       data: { name: "Moka Coffee", publicSlug: "moka" }
-    }),
-    loadBusinessPostsForRestaurant: async () => [],
+    })),
+    loadBusinessPostsForRestaurant: safeOverrides.loadBusinessPostsForRestaurant || (async () => []),
     normalizeExternalUserProfile: (value) => value || {},
     openGuestAuthPrompt: () => false,
     userProfileCache: new Map(),
@@ -72,6 +73,39 @@ test("app-initiated business profile open queues browser history push", async ()
 
   assert.equal(state.__nextRouteHistoryMode, "push");
   assert.equal(showCalls.length > 0, true);
+});
+
+test("direct web posts route accepts the initial posts page without a second full read", async () => {
+  const state = createState("feed");
+  const showCalls = [];
+  const postLoadCalls = [];
+  const controller = createController(state, showCalls, {
+    loadBusinessPostsForRestaurant: async (restaurantId, options = {}) => {
+      postLoadCalls.push({ restaurantId, options });
+      return {
+        posts: [
+          {
+            id: "post-1",
+            restaurantId: String(restaurantId || ""),
+            url: "https://cdn.example/post-1.jpg",
+            caption: "Visible post"
+          }
+        ],
+        status: "ready",
+        restaurantId
+      };
+    }
+  });
+
+  await controller.openProfileViewFromBusiness(
+    { id: "moka", restaurantId: "moka", canonicalRestaurantId: "moka", name: "Moka Coffee" },
+    { showBack: false, topTab: "profile" }
+  );
+
+  assert.equal(postLoadCalls.length, 1);
+  assert.equal(postLoadCalls[0].restaurantId, "moka");
+  assert.equal(postLoadCalls[0].options.initialPage, true);
+  assert.equal(showCalls.at(-1).posts.length, 1);
 });
 
 test("direct business profile route does not queue browser history push", async () => {
