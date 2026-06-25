@@ -1275,6 +1275,22 @@ Last updated: 2026-06-25
   `2026-06-25-profile-avatar-coldstart-01` gesetzt. Nicht geaendert wurden
   sichtbares Design, Texte, Spacing, Routing, QR, Cart, Order, Menu-Daten,
   Firebase Rules und Functions.
+- Schritt 129 ist abgeschlossen: Der Business-Profil-Cold-Start nutzt wieder
+  die Profil-Wahrheit wie `main` und schuetzt den Header vor schwachen
+  Fallback-Zwischenstaenden.
+- Bewertung von Schritt 129: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 129:
+  Der in Schritt 128 eingefuehrte Avatar-LocalStorage-Cache wurde wieder
+  entfernt. Die Business-Profil-Card rendert das Profilbild jetzt wieder direkt
+  aus `profile.avatar` beziehungsweise der vom Profil-Renderer uebergebenen
+  Avatar-URL. Zusaetzlich behaelt der Public-Business-Open-Flow bei einem
+  kurzen Cold-Start-/Timeout-Zwischenstand die vorhandene Seed- oder Live-
+  Header-Wahrheit fuer Name, Avatar, Bio, Location und Titelbild, statt kurz ein
+  schwaches Fallback-Profil wie `Lokal` ohne Avatar als fertige Wahrheit zu
+  rendern. Das Social-Bundle wurde erneut gebaut und der App-Build-Token wurde
+  auf `2026-06-25-profile-coldstart-truth-01` gesetzt. Nicht geaendert wurden
+  sichtbares Design, Routing, QR, Cart, Order, Menu-Daten, Firebase Rules und
+  Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1423,7 +1439,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 128 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 129 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1753,6 +1769,12 @@ Profilbild kalt oeffnen oder hart refreshen. Das Profilbild in der oberen
 Profil-Card darf nicht mehr kurz durch den grauen Store-Fallback verschwinden.
 Danach erneut hart laden; falls der Browser noch alte Assets haelt, einmal mit
 `?sw-reset=1` oeffnen und danach ohne Parameter erneut pruefen.
+
+Zusaetzlich fuer Schritt 129 manuell pruefen: Dasselbe Business-Profil kalt
+oeffnen oder hart refreshen. Name und Profilbild duerfen nicht erst korrekt
+erscheinen, dann kurz auf `Lokal` oder einen leeren/grauen Fallback wechseln
+und danach erneut korrekt erscheinen. Danach einmal mit `?sw-reset=1` oeffnen
+und ohne Parameter erneut laden, damit der neue Bundle-Stand sicher aktiv ist.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

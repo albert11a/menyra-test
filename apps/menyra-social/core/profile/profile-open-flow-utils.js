@@ -1325,11 +1325,15 @@ export function createProfileOpenFlowControllerCore({
       }
       const profileSnap = await profileSnapPromise;
 
-      const resolvedDisplayName = resolveBusinessDisplayNameFallback({
-        safeName,
-        rest,
-        lookupKey: targetRestaurantLookupId
-      });
+      const preserveStableHeaderForInterim = !profileSnap && !!stableBusinessProfile;
+      const resolvedDisplayName = pickFirstText(
+        preserveStableHeaderForInterim ? stableBusinessProfile?.name : "",
+        resolveBusinessDisplayNameFallback({
+          safeName,
+          rest,
+          lookupKey: targetRestaurantLookupId
+        })
+      );
 
       const normalizedResolvedProfile = normalizeBusinessProfile({
         profileDoc: profileSnap,
@@ -1337,11 +1341,36 @@ export function createProfileOpenFlowControllerCore({
         fallbackName: resolvedDisplayName,
         posts: []
       });
+      const resolvedProfileForInterim = preserveStableHeaderForInterim
+        ? {
+          ...normalizedResolvedProfile,
+          name: pickFirstText(stableBusinessProfile?.name, normalizedResolvedProfile?.name),
+          handle: pickFirstText(stableBusinessProfile?.handle, normalizedResolvedProfile?.handle),
+          uid: pickFirstText(stableBusinessProfile?.uid, normalizedResolvedProfile?.uid),
+          bio: pickFirstText(stableBusinessProfile?.bio, normalizedResolvedProfile?.bio),
+          avatar: pickFirstText(stableBusinessProfile?.avatar, normalizedResolvedProfile?.avatar),
+          titleImageUrl: pickBusinessTitleImageText(stableBusinessProfile, normalizedResolvedProfile),
+          coverImageUrl: pickBusinessTitleImageText(stableBusinessProfile, normalizedResolvedProfile),
+          coverUrl: pickBusinessTitleImageText(stableBusinessProfile, normalizedResolvedProfile),
+          heroUrl: pickBusinessTitleImageText(stableBusinessProfile, normalizedResolvedProfile),
+          coverImages: Array.isArray(stableBusinessProfile?.coverImages)
+            ? stableBusinessProfile.coverImages
+            : (Array.isArray(normalizedResolvedProfile?.coverImages) ? normalizedResolvedProfile.coverImages : []),
+          location: pickFirstText(stableBusinessProfile?.location, normalizedResolvedProfile?.location),
+          followers: stableBusinessProfile?.followers ?? normalizedResolvedProfile?.followers ?? null,
+          following: stableBusinessProfile?.following ?? normalizedResolvedProfile?.following ?? null,
+          pendingFollowRequest: stableBusinessProfile?.pendingFollowRequest === true
+        }
+        : normalizedResolvedProfile;
+      const resolvedIdentityStatus = profileSnap
+        ? "ready"
+        : resolveLoadingIdentityTruthState(stableBusinessProfile);
+
       const resolved = withCanonicalRestaurantId(applySurfaceTruthPatch({
-        ...normalizedResolvedProfile,
+        ...resolvedProfileForInterim,
         canonicalRestaurantId: resolveCanonicalRestaurantIdCandidate(
-          normalizedResolvedProfile?.canonicalRestaurantId,
-          normalizedResolvedProfile?.restaurantId,
+          resolvedProfileForInterim?.canonicalRestaurantId,
+          resolvedProfileForInterim?.restaurantId,
           targetCanonicalRestaurantId,
           routeSnapshotRestaurantId
         ),
@@ -1354,7 +1383,7 @@ export function createProfileOpenFlowControllerCore({
           targetRestaurantLookupId
         )
       }, {
-        identityStatus: "ready",
+        identityStatus: resolvedIdentityStatus,
         postsStatus: "loading"
       }));
       const resolvedProfileRestaurantId = String(
