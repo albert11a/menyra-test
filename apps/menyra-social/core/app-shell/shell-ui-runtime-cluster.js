@@ -553,6 +553,14 @@ export function createShellUiRuntimeCluster({
     return getSessionDataRuntimeController().loadMenuForRestaurant(...arguments);
   }
 
+  async function loadPublicMenuBundleForRestaurant() {
+    const controller = getSessionDataRuntimeController();
+    if (typeof controller.loadPublicMenuBundleForRestaurant === "function") {
+      return controller.loadPublicMenuBundleForRestaurant(...arguments);
+    }
+    return controller.loadMenuForRestaurant(...arguments);
+  }
+
   async function saveMenuItemFromModal() {
     return saveMenuItemFromModalCore({
       state,
@@ -647,6 +655,7 @@ export function createShellUiRuntimeCluster({
     loadBusinessPosts,
     loadFocusForRestaurant,
     loadMenuForRestaurant,
+    loadPublicMenuBundleForRestaurant,
     saveMenuItemFromModal,
     deleteMenuItemById
   };

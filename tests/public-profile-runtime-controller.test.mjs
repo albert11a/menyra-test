@@ -3,6 +3,16 @@ import test from "node:test";
 
 import { createPublicProfileRuntimeController } from "../apps/menyra-social/core/profile/public-profile-runtime-controller.js";
 
+async function withMutedConsoleError(task) {
+  const original = console.error;
+  console.error = () => {};
+  try {
+    return await task();
+  } finally {
+    console.error = original;
+  }
+}
+
 function createProfileSwitchState() {
   return {
     activeTab: "profile",
@@ -599,6 +609,23 @@ test("public business posts initial page dedupes concurrent visible reads", asyn
   const [firstPosts, secondPosts] = await Promise.all([firstRead, secondRead]);
   assert.equal(firstPosts.length, 1);
   assert.deepEqual(secondPosts, firstPosts);
+});
+
+test("public business posts returnStatus reports read errors without fake empty", async () => {
+  const controller = createBusinessPostsController({
+    getDocsFn: async () => {
+      throw new Error("posts unavailable");
+    }
+  });
+
+  const result = await withMutedConsoleError(() => controller.loadBusinessPostsForRestaurant("restaurant-error", {
+    skipProfileResolve: true,
+    returnStatus: true
+  }));
+
+  assert.deepEqual(result.posts, []);
+  assert.equal(result.status, "error");
+  assert.equal(result.restaurantId, "restaurant-error");
 });
 
 test("business profile doc reuses cached public route restaurant id", async () => {

@@ -152,6 +152,12 @@ export function createSessionDataRuntimeController({
   let businessPostsNetworkLoadRestaurantId = "";
   const menuNetworkLoadPromises = new Map();
   const menuNetworkLoadVersions = new Map();
+  const focusNetworkLoadPromises = new Map();
+  const focusNetworkLoadVersions = new Map();
+  const publicMenuBundleLoadPromises = new Map();
+  const publicMenuBundleLoadVersions = new Map();
+  const publicMenuBundleActiveMenuKeys = new Set();
+  const publicMenuBundleActiveFocusKeys = new Set();
   const menuFreshReconcileQueuedKeys = new Set();
   const focusFreshReconcileQueuedKeys = new Set();
   let storiesRefreshQueued = false;
@@ -623,6 +629,7 @@ export function createSessionDataRuntimeController({
       loadBusinessPosts: async () => {},
       loadFocusForRestaurant: async () => {},
       loadMenuForRestaurant: async () => {},
+      loadPublicMenuBundleForRestaurant: async () => {},
       bootstrapUser: async () => {}
     };
   }
@@ -1069,6 +1076,48 @@ export function createSessionDataRuntimeController({
     return Number(menuNetworkLoadVersions.get(safeKey) || 0) === Number(version || 0);
   }
 
+  function nextFocusNetworkLoadVersion(cacheKey = "") {
+    const safeKey = String(cacheKey || "").trim();
+    if (!safeKey) return 0;
+    const nextVersion = Math.max(0, Number(focusNetworkLoadVersions.get(safeKey) || 0) || 0) + 1;
+    focusNetworkLoadVersions.set(safeKey, nextVersion);
+    return nextVersion;
+  }
+
+  function isCurrentFocusNetworkLoad(cacheKey = "", version = 0) {
+    const safeKey = String(cacheKey || "").trim();
+    if (!safeKey) return true;
+    return Number(focusNetworkLoadVersions.get(safeKey) || 0) === Number(version || 0);
+  }
+
+  function buildPublicMenuBundleLoadKey(restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    return safeRestaurantId ? `public-menu-bundle:${safeRestaurantId}` : "";
+  }
+
+  function nextPublicMenuBundleLoadVersion(bundleKey = "") {
+    const safeKey = String(bundleKey || "").trim();
+    if (!safeKey) return 0;
+    const nextVersion = Math.max(0, Number(publicMenuBundleLoadVersions.get(safeKey) || 0) || 0) + 1;
+    publicMenuBundleLoadVersions.set(safeKey, nextVersion);
+    return nextVersion;
+  }
+
+  function isCurrentPublicMenuBundleLoad(bundleKey = "", version = 0) {
+    const safeKey = String(bundleKey || "").trim();
+    if (!safeKey) return true;
+    return Number(publicMenuBundleLoadVersions.get(safeKey) || 0) === Number(version || 0);
+  }
+
+  function normalizeFocusTruthStateKey(value = "") {
+    const key = String(value || "").trim().toLowerCase();
+    if (key === "knownempty" || key === "known-empty") return "knownEmpty";
+    if (key === "seeded") return "seeded";
+    if (key === "error") return "error";
+    if (key === "unknown") return "unknown";
+    return "";
+  }
+
   function updateMenuStatusBadgeState(restaurantId, visible) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return;
@@ -1478,6 +1527,14 @@ export function createSessionDataRuntimeController({
     userPostsNetworkLoadUid = "";
     businessPostsNetworkLoadPromise = null;
     businessPostsNetworkLoadRestaurantId = "";
+    menuNetworkLoadPromises.clear();
+    menuNetworkLoadVersions.clear();
+    focusNetworkLoadPromises.clear();
+    focusNetworkLoadVersions.clear();
+    publicMenuBundleLoadPromises.clear();
+    publicMenuBundleLoadVersions.clear();
+    publicMenuBundleActiveMenuKeys.clear();
+    publicMenuBundleActiveFocusKeys.clear();
     setUserAvatarCacheFn("");
     setLastShellAvatarUrlFn("");
     dataLoaded.profile = false;
@@ -1877,24 +1934,45 @@ export function createSessionDataRuntimeController({
   }
 
   async function loadFocusForRestaurant(restaurantId, { force = false, prefetchOnly = false } = {}) {
-    if (!restaurantId) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) {
       if (prefetchOnly) return { items: [], enabled: true, truthSource: "public-menu", truthState: "unknown" };
       state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "", truthState: "unknown" };
       return;
     }
-    if (!prefetchOnly && !shouldCommitVisiblePublicFocusState(restaurantId)) {
-      return loadFocusForRestaurant(restaurantId, { force, prefetchOnly: true });
+    if (!prefetchOnly && !shouldCommitVisiblePublicFocusState(safeRestaurantId)) {
+      return loadFocusForRestaurant(safeRestaurantId, { force, prefetchOnly: true });
     }
-    const cacheKey = focusCacheKeyFn(restaurantId);
+    const cacheKey = focusCacheKeyFn(safeRestaurantId);
     const queueFreshFocusReconcile = () => {
       if (prefetchOnly || focusFreshReconcileQueuedKeys.has(cacheKey)) return;
       focusFreshReconcileQueuedKeys.add(cacheKey);
       queueMicrotask(() => {
-        void loadFocusForRestaurant(restaurantId, { force: true })
+        void loadFocusForRestaurant(safeRestaurantId, { force: true })
           .finally(() => {
             focusFreshReconcileQueuedKeys.delete(cacheKey);
           });
       });
+    };
+    const commitFocusPayload = (payload = {}, { loading = false } = {}) => {
+      if (publicMenuBundleActiveFocusKeys.has(cacheKey)) return;
+      if (!shouldCommitVisiblePublicFocusState(safeRestaurantId)) return;
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      const truthState = normalizeFocusTruthStateKey(payload.truthState || "") || (items.length ? "seeded" : "unknown");
+      state.focus = {
+        ...state.focus,
+        restaurantId: safeRestaurantId,
+        items,
+        enabled: payload.enabled !== false,
+        loading: !!loading,
+        error: truthState === "error" ? (String(payload.errorMessage || "").trim() || "Fokus laden fehlgeschlagen.") : "",
+        index: 0,
+        truthSource: "public-menu",
+        truthState
+      };
+      if (isVisiblePublicMenuSurface(safeRestaurantId, "public")) {
+        requestRender();
+      }
     };
     const cached = focusCacheMap.get(cacheKey);
     const cachedTruthState = String(cached?.truthState || "").trim().toLowerCase();
@@ -1912,40 +1990,56 @@ export function createSessionDataRuntimeController({
         truthState: cachedItems.length ? "seeded" : "knownEmpty"
       };
       if (prefetchOnly) return cachedPayload;
-      if (!shouldCommitVisiblePublicFocusState(restaurantId)) return cachedPayload;
-      state.focus = {
-        ...state.focus,
-        restaurantId,
-        items: cachedPayload.items,
-        enabled: cachedPayload.enabled,
-        loading: false,
-        error: "",
-        index: 0,
-        truthSource: cachedPayload.truthSource,
-        truthState: cachedPayload.truthState
-      };
-      if (isVisiblePublicMenuSurface(restaurantId, "public")) {
-        requestRender();
-      }
+      commitFocusPayload(cachedPayload);
       queueFreshFocusReconcile();
       return cachedPayload;
     }
-    if (prefetchOnly) {
+
+    const sameRestaurant = String(state?.focus?.restaurantId || "").trim() === safeRestaurantId;
+    const stableItems = sameRestaurant && Array.isArray(state.focus.items)
+      ? state.focus.items.slice()
+      : [];
+    const stableEnabled = sameRestaurant
+      ? state.focus.enabled !== false
+      : true;
+    const inFlight = focusNetworkLoadPromises.get(cacheKey);
+    if (inFlight) {
+      const payload = await inFlight;
+      if (!prefetchOnly && shouldCommitVisiblePublicFocusState(safeRestaurantId)) {
+        commitFocusPayload(payload);
+      }
+      return payload;
+    }
+    if (!prefetchOnly && shouldCommitVisiblePublicFocusState(safeRestaurantId)) {
+      state.focus = {
+        ...state.focus,
+        restaurantId: safeRestaurantId,
+        items: stableItems,
+        enabled: stableEnabled,
+        loading: true,
+        error: "",
+        truthSource: "public-menu",
+        truthState: stableItems.length ? "seeded" : "unknown"
+      };
+      requestRender();
+    }
+    const requestVersion = nextFocusNetworkLoadVersion(cacheKey);
+    const request = (async () => {
       try {
         const [items, enabled] = await Promise.all([
           timeLoadingAsync("public/offers load", () => runWithLoadDeadline(
-            () => loadFocusItemsFn(restaurantId),
+            () => loadFocusItemsFn(safeRestaurantId),
             {
               timeoutMs: resolveLoadDeadlineMs("focusItemsMs", 2600),
               scope: "public/offers"
             }
           ), {
-            restaurantId,
-            prefetchOnly: true,
+            restaurantId: safeRestaurantId,
+            prefetchOnly,
             source: "public/offers"
           }),
           runWithLoadDeadline(
-            () => loadFocusMetaFn(restaurantId),
+            () => loadFocusMetaFn(safeRestaurantId),
             {
               timeoutMs: resolveLoadDeadlineMs("focusMetaMs", 1800),
               scope: "public/offers-meta"
@@ -1958,100 +2052,35 @@ export function createSessionDataRuntimeController({
         const safeItems = Array.isArray(items) ? items : [];
         const truthState = safeItems.length > 0 ? "seeded" : "knownEmpty";
         const payload = { items: safeItems, enabled, truthSource: "public-menu", truthState };
-        focusCacheMap.set(cacheKey, { ...payload, ts: Date.now() });
+        if (isCurrentFocusNetworkLoad(cacheKey, requestVersion)) {
+          focusCacheMap.set(cacheKey, { ...payload, ts: Date.now() });
+        }
         return payload;
       } catch (err) {
         console.error(err);
-        return { items: [], enabled: true, truthSource: "public-menu", truthState: "unknown" };
+        const fallbackItems = !prefetchOnly && sameRestaurant && Array.isArray(state.focus.items)
+          ? state.focus.items
+          : stableItems;
+        const hasFallbackItems = fallbackItems.length > 0;
+        return {
+          items: fallbackItems,
+          enabled: hasFallbackItems ? state.focus.enabled !== false : true,
+          truthSource: "public-menu",
+          truthState: hasFallbackItems ? "seeded" : "error",
+          errorMessage: hasFallbackItems ? "" : "Fokus laden fehlgeschlagen."
+        };
+      } finally {
+        if (focusNetworkLoadPromises.get(cacheKey) === request) {
+          focusNetworkLoadPromises.delete(cacheKey);
+        }
       }
-    }
-    const sameRestaurant = state.focus.restaurantId === restaurantId;
-    const stableItems = sameRestaurant && Array.isArray(state.focus.items)
-      ? state.focus.items.slice()
-      : [];
-    const stableEnabled = sameRestaurant
-      ? state.focus.enabled !== false
-      : true;
-    if (shouldCommitVisiblePublicFocusState(restaurantId)) {
-      state.focus = {
-        ...state.focus,
-        restaurantId,
-        items: stableItems,
-        enabled: stableEnabled,
-        loading: true,
-        error: "",
-        truthSource: "public-menu",
-        truthState: stableItems.length ? "seeded" : "unknown"
-      };
-      requestRender();
-    }
-    try {
-      const [items, enabled] = await Promise.all([
-        timeLoadingAsync("public/offers load", () => runWithLoadDeadline(
-          () => loadFocusItemsFn(restaurantId),
-          {
-            timeoutMs: resolveLoadDeadlineMs("focusItemsMs", 2600),
-            scope: "public/offers"
-          }
-        ), {
-          restaurantId,
-          source: "public/offers"
-        }),
-        runWithLoadDeadline(
-          () => loadFocusMetaFn(restaurantId),
-          {
-            timeoutMs: resolveLoadDeadlineMs("focusMetaMs", 1800),
-            scope: "public/offers-meta"
-          }
-        ).catch((err) => {
-          console.error(err);
-          return true;
-        })
-      ]);
-      const safeItems = Array.isArray(items) ? items : [];
-      const truthState = safeItems.length > 0 ? "seeded" : "knownEmpty";
-      const payload = { items: safeItems, enabled, truthSource: "public-menu", truthState };
-      focusCacheMap.set(cacheKey, { ...payload, ts: Date.now() });
-      if (!shouldCommitVisiblePublicFocusState(restaurantId)) return payload;
-      state.focus = {
-        ...state.focus,
-        restaurantId,
-        items: safeItems,
-        enabled,
-        loading: false,
-        error: "",
-        index: 0,
-        truthSource: "public-menu",
-        truthState
-      };
-      requestRender();
-      return payload;
-    } catch (err) {
-      console.error(err);
-      const fallbackItems = state.focus.restaurantId === restaurantId && Array.isArray(state.focus.items)
-        ? state.focus.items
-        : stableItems;
-      const hasFallbackItems = fallbackItems.length > 0;
-      const fallbackPayload = {
-        items: fallbackItems,
-        enabled: state.focus.enabled !== false,
-        truthSource: hasFallbackItems ? state.focus.truthSource : "public-menu",
-        truthState: hasFallbackItems ? "seeded" : "knownEmpty"
-      };
-      if (!shouldCommitVisiblePublicFocusState(restaurantId)) return fallbackPayload;
-      state.focus = {
-        ...state.focus,
-        restaurantId,
-        items: fallbackItems,
-        enabled: fallbackPayload.enabled,
-        loading: false,
-        error: hasFallbackItems ? "" : "Fokus laden fehlgeschlagen.",
-        truthSource: fallbackPayload.truthSource,
-        truthState: fallbackPayload.truthState
-      };
-      requestRender();
-      return fallbackPayload;
-    }
+    })();
+    focusNetworkLoadPromises.set(cacheKey, request);
+    const payload = await request;
+    if (prefetchOnly) return payload;
+    if (!isCurrentFocusNetworkLoad(cacheKey, requestVersion)) return payload;
+    commitFocusPayload(payload);
+    return payload;
   }
 
   async function loadMenuForRestaurant(restaurantId, { force = false, source = "public", prefetchOnly = false } = {}) {
@@ -2167,7 +2196,7 @@ export function createSessionDataRuntimeController({
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true,
         truthState: cachedItems.length ? "seeded" : "knownEmpty"
       };
-      if (prefetchOnly) return cachedPayload;
+      if (prefetchOnly || publicMenuBundleActiveMenuKeys.has(cacheKey)) return cachedPayload;
       if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return cachedPayload;
       state.menu = {
         ...state.menu,
@@ -2202,6 +2231,7 @@ export function createSessionDataRuntimeController({
         });
         return persistedPayload;
       }
+      if (publicMenuBundleActiveMenuKeys.has(cacheKey)) return persistedPayload;
       if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return persistedPayload;
       state.menu = {
         ...state.menu,
@@ -2238,6 +2268,7 @@ export function createSessionDataRuntimeController({
         && inFlightResult
         && Array.isArray(inFlightResult.items)
         && shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)
+        && !publicMenuBundleActiveMenuKeys.has(cacheKey)
         && !shouldIgnoreWeakerPublicMenuResult({
           restaurantId: safeRestaurantId,
           source: safeSource,
@@ -2333,7 +2364,12 @@ export function createSessionDataRuntimeController({
           return payload;
         } catch (err) {
           console.error(err);
-          return { items: [], statusBadgeVisible: true, truthState: "unknown" };
+          return {
+            items: [],
+            statusBadgeVisible: true,
+            truthState: "error",
+            errorMessage: "Menu laden fehlgeschlagen."
+          };
         } finally {
           if (isCurrentMenuNetworkLoad(cacheKey, requestVersion)) {
             menuNetworkLoadPromises.delete(cacheKey);
@@ -2462,6 +2498,7 @@ export function createSessionDataRuntimeController({
         }
         if (!isCurrentMenuNetworkLoad(cacheKey, requestVersion)) return payload;
         if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return payload;
+        if (publicMenuBundleActiveMenuKeys.has(cacheKey)) return payload;
         if (shouldIgnoreWeakerPublicMenuResult({
           restaurantId: safeRestaurantId,
           source: safeSource,
@@ -2527,6 +2564,7 @@ export function createSessionDataRuntimeController({
         };
         if (!isCurrentMenuNetworkLoad(cacheKey, requestVersion)) return fallbackPayload;
         if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return fallbackPayload;
+        if (publicMenuBundleActiveMenuKeys.has(cacheKey)) return fallbackPayload;
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
@@ -2548,6 +2586,250 @@ export function createSessionDataRuntimeController({
     })();
     menuNetworkLoadPromises.set(cacheKey, request);
     return await request;
+  }
+
+  function getVisiblePublicMenuBundlePayload(restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const targetIds = collectVisiblePublicMenuTargetIds();
+    const menuRestaurantId = String(state?.menu?.restaurantId || "").trim();
+    const focusRestaurantId = String(state?.focus?.restaurantId || "").trim();
+    const menuMatches = String(state?.menu?.source || "").trim().toLowerCase() === "public"
+      && !!menuRestaurantId
+      && (menuRestaurantId === safeRestaurantId || targetIds.has(menuRestaurantId));
+    const focusMatches = String(state?.focus?.truthSource || "").trim().toLowerCase() === "public-menu"
+      && !!focusRestaurantId
+      && (focusRestaurantId === safeRestaurantId || targetIds.has(focusRestaurantId));
+    const menuItems = menuMatches && Array.isArray(state?.menu?.items) ? state.menu.items : [];
+    const focusItems = focusMatches && Array.isArray(state?.focus?.items) ? state.focus.items : [];
+    const menuTruthState = menuMatches ? normalizeMenuTruthStateKey(state?.menu?.truthState || "") : "unknown";
+    const focusTruthState = focusMatches ? normalizeFocusTruthStateKey(state?.focus?.truthState || "") : "unknown";
+    return {
+      restaurantId: safeRestaurantId,
+      menu: {
+        items: menuItems,
+        statusBadgeVisible: typeof state?.menu?.statusBadgeVisible === "boolean" ? state.menu.statusBadgeVisible : true,
+        truthState: menuTruthState || (menuItems.length ? "seeded" : "unknown"),
+        errorMessage: menuMatches ? String(state?.menu?.error || "").trim() : ""
+      },
+      focus: {
+        items: focusItems,
+        enabled: state?.focus?.enabled !== false,
+        truthSource: "public-menu",
+        truthState: focusTruthState || (focusItems.length ? "seeded" : "unknown"),
+        errorMessage: focusMatches ? String(state?.focus?.error || "").trim() : ""
+      }
+    };
+  }
+
+  function hasSettledVisiblePublicMenuBundle(restaurantId = "") {
+    const payload = getVisiblePublicMenuBundlePayload(restaurantId);
+    const menuTruthState = normalizeMenuTruthStateKey(payload.menu.truthState || "");
+    const focusTruthState = normalizeFocusTruthStateKey(payload.focus.truthState || "");
+    if (menuTruthState === "knownEmpty" || menuTruthState === "error") return true;
+    if (menuTruthState !== "seeded" || !payload.menu.items.length) return false;
+    return focusTruthState === "seeded"
+      || focusTruthState === "knownEmpty"
+      || focusTruthState === "error";
+  }
+
+  function normalizeMenuBundleFocusPayload(payload = {}, fallbackPayload = {}) {
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    let truthState = normalizeFocusTruthStateKey(payload.truthState || "") || (items.length ? "seeded" : "unknown");
+    if (truthState === "unknown" && !items.length) truthState = "error";
+    return {
+      items,
+      enabled: payload.enabled !== false,
+      truthSource: "public-menu",
+      truthState,
+      errorMessage: truthState === "error"
+        ? (String(payload.errorMessage || fallbackPayload.errorMessage || "").trim() || "Fokus laden fehlgeschlagen.")
+        : ""
+    };
+  }
+
+  function commitPublicMenuBundle(restaurantId = "", bundle = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId || !shouldCommitVisiblePublicMenuState(safeRestaurantId, "public")) return false;
+    const existing = getVisiblePublicMenuBundlePayload(safeRestaurantId);
+    const rawMenu = bundle?.menu && typeof bundle.menu === "object" ? bundle.menu : {};
+    const rawFocus = bundle?.focus && typeof bundle.focus === "object" ? bundle.focus : {};
+    let menuItems = Array.isArray(rawMenu.items) ? rawMenu.items : [];
+    let menuTruthState = normalizeMenuTruthStateKey(rawMenu.truthState || "") || (menuItems.length ? "seeded" : "unknown");
+    let menuError = menuTruthState === "error" ? (String(rawMenu.errorMessage || "").trim() || "Menu laden fehlgeschlagen.") : "";
+    const existingMenuHasItems = Array.isArray(existing.menu.items) && existing.menu.items.length > 0;
+    if ((menuTruthState === "unknown" || menuTruthState === "error") && existingMenuHasItems) {
+      menuItems = existing.menu.items;
+      menuTruthState = "seeded";
+      menuError = "";
+    } else if (menuTruthState === "unknown" && !menuItems.length) {
+      menuTruthState = "error";
+      menuError = "Menu laden fehlgeschlagen.";
+    }
+    state.menu = {
+      ...state.menu,
+      restaurantId: safeRestaurantId,
+      items: menuItems,
+      loading: false,
+      error: menuError,
+      source: "public",
+      statusBadgeVisible: typeof rawMenu.statusBadgeVisible === "boolean" ? rawMenu.statusBadgeVisible : true,
+      routeSeed: false,
+      truthState: menuTruthState
+    };
+    let focusPayload = normalizeMenuBundleFocusPayload(rawFocus, existing.focus);
+    if (menuTruthState !== "seeded") {
+      focusPayload = {
+        items: [],
+        enabled: true,
+        truthSource: "public-menu",
+        truthState: menuTruthState === "error" ? "error" : "knownEmpty",
+        errorMessage: menuTruthState === "error" ? menuError : ""
+      };
+    }
+    state.focus = {
+      ...state.focus,
+      restaurantId: safeRestaurantId,
+      items: focusPayload.items,
+      enabled: focusPayload.enabled !== false,
+      loading: false,
+      error: focusPayload.truthState === "error" ? (focusPayload.errorMessage || "Fokus laden fehlgeschlagen.") : "",
+      index: 0,
+      truthSource: "public-menu",
+      truthState: focusPayload.truthState
+    };
+    requestRender();
+    return true;
+  }
+
+  async function loadPublicMenuBundleForRestaurant(restaurantId, { force = false, prefetchOnly = false } = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) {
+      return {
+        restaurantId: "",
+        menu: { items: [], statusBadgeVisible: true, truthState: "unknown" },
+        focus: { items: [], enabled: true, truthSource: "public-menu", truthState: "unknown" },
+        status: "unknown"
+      };
+    }
+    if (!prefetchOnly && !shouldCommitVisiblePublicMenuState(safeRestaurantId, "public")) {
+      return loadPublicMenuBundleForRestaurant(safeRestaurantId, { force, prefetchOnly: true });
+    }
+    if (!force && !prefetchOnly && hasSettledVisiblePublicMenuBundle(safeRestaurantId)) {
+      return {
+        ...getVisiblePublicMenuBundlePayload(safeRestaurantId),
+        status: "ready"
+      };
+    }
+    const bundleKey = buildPublicMenuBundleLoadKey(safeRestaurantId);
+    const inFlight = publicMenuBundleLoadPromises.get(bundleKey);
+    if (inFlight) {
+      const bundle = await inFlight;
+      if (!prefetchOnly && shouldCommitVisiblePublicMenuState(safeRestaurantId, "public")) {
+        commitPublicMenuBundle(safeRestaurantId, bundle);
+      }
+      return bundle;
+    }
+    const menuCacheKey = menuCacheKeyFn(safeRestaurantId, "public");
+    const focusCacheKey = focusCacheKeyFn(safeRestaurantId);
+    const menuMemoryCache = menuCacheMap.get(menuCacheKey);
+    const menuMemoryItems = Array.isArray(menuMemoryCache?.items) ? menuMemoryCache.items : [];
+    const menuMemoryTruthState = normalizeMenuTruthStateKey(menuMemoryCache?.truthState || "");
+    const hasHotMenuMemoryCache = isFreshMenuMemoryCacheEntry(menuMemoryCache, "public")
+      && String(menuMemoryCache?.truthSource || "").trim().toLowerCase() === "public-menu"
+      && (
+        menuMemoryItems.length > 0
+        || (
+          menuMemoryTruthState === "knownEmpty"
+          && menuMemoryCache?.emptyVerified === true
+          && isConfirmedCanonicalPublicMenuRead(safeRestaurantId, "public")
+        )
+      );
+    const persistedMenuCache = hasHotMenuMemoryCache
+      ? { items: [], truthState: "unknown" }
+      : readMenuPersistentCache(safeRestaurantId, "public", { ignoreTtl: false });
+    const persistedMenuItems = Array.isArray(persistedMenuCache.items) ? persistedMenuCache.items : [];
+    const hasHotMenuCache = hasHotMenuMemoryCache || persistedMenuItems.length > 0;
+    const hotMenuCacheHasProducts = menuMemoryItems.length > 0 || persistedMenuItems.length > 0;
+    const focusMemoryCache = focusCacheMap.get(focusCacheKey);
+    const focusMemoryItems = Array.isArray(focusMemoryCache?.items) ? focusMemoryCache.items : [];
+    const focusMemoryTruthState = normalizeFocusTruthStateKey(focusMemoryCache?.truthState || "");
+    const hasHotFocusCache = String(focusMemoryCache?.truthSource || "").trim().toLowerCase() === "public-menu"
+      && (
+        focusMemoryItems.length > 0
+        || focusMemoryTruthState === "knownEmpty"
+        || focusMemoryTruthState === "error"
+      );
+    const hasHotBundleCache = hasHotMenuCache && (!hotMenuCacheHasProducts || hasHotFocusCache);
+    const existing = getVisiblePublicMenuBundlePayload(safeRestaurantId);
+    const existingMenuSettled = hasSettledVisiblePublicMenuBundle(safeRestaurantId);
+    if (!prefetchOnly && !existingMenuSettled && !hasHotBundleCache && shouldCommitVisiblePublicMenuState(safeRestaurantId, "public")) {
+      state.menu = {
+        ...state.menu,
+        restaurantId: safeRestaurantId,
+        items: existing.menu.items,
+        loading: true,
+        error: "",
+        source: "public",
+        routeSeed: false,
+        truthState: existing.menu.items.length ? "seeded" : "unknown"
+      };
+      state.focus = {
+        ...state.focus,
+        restaurantId: safeRestaurantId,
+        items: existing.focus.items,
+        enabled: existing.focus.enabled !== false,
+        loading: true,
+        error: "",
+        truthSource: "public-menu",
+        truthState: existing.focus.items.length ? "seeded" : "unknown"
+      };
+      requestRender();
+    }
+    const requestVersion = nextPublicMenuBundleLoadVersion(bundleKey);
+    publicMenuBundleActiveMenuKeys.add(menuCacheKey);
+    publicMenuBundleActiveFocusKeys.add(focusCacheKey);
+    const request = (async () => {
+      try {
+        const [menuPayload, focusPayload] = await Promise.all([
+          loadMenuForRestaurant(safeRestaurantId, { source: "public", force, prefetchOnly: true }),
+          loadFocusForRestaurant(safeRestaurantId, { force, prefetchOnly: true })
+        ]);
+        return {
+          restaurantId: safeRestaurantId,
+          menu: menuPayload && typeof menuPayload === "object"
+            ? menuPayload
+            : { items: [], statusBadgeVisible: true, truthState: "error", errorMessage: "Menu laden fehlgeschlagen." },
+          focus: focusPayload && typeof focusPayload === "object"
+            ? focusPayload
+            : { items: [], enabled: true, truthSource: "public-menu", truthState: "error", errorMessage: "Fokus laden fehlgeschlagen." },
+          status: "ready",
+          generation: requestVersion
+        };
+      } catch (err) {
+        console.error(err);
+        return {
+          restaurantId: safeRestaurantId,
+          menu: { items: [], statusBadgeVisible: true, truthState: "error", errorMessage: "Menu laden fehlgeschlagen." },
+          focus: { items: [], enabled: true, truthSource: "public-menu", truthState: "error", errorMessage: "Fokus laden fehlgeschlagen." },
+          status: "error",
+          generation: requestVersion
+        };
+      } finally {
+        if (publicMenuBundleLoadPromises.get(bundleKey) === request) {
+          publicMenuBundleLoadPromises.delete(bundleKey);
+        }
+      }
+    })();
+    publicMenuBundleLoadPromises.set(bundleKey, request);
+    const bundle = await request;
+    if (!prefetchOnly && isCurrentPublicMenuBundleLoad(bundleKey, requestVersion)) {
+      commitPublicMenuBundle(safeRestaurantId, bundle);
+    }
+    if (isCurrentPublicMenuBundleLoad(bundleKey, requestVersion)) {
+      publicMenuBundleActiveMenuKeys.delete(menuCacheKey);
+      publicMenuBundleActiveFocusKeys.delete(focusCacheKey);
+    }
+    return bundle;
   }
 
   async function bootstrapUser(user) {
@@ -2634,8 +2916,7 @@ export function createSessionDataRuntimeController({
         if (hasBusinessProfile) {
           preloadTasks.push(
             loadBusinessPosts({ force: false }),
-            loadMenuForRestaurant(restaurantId, { source: "public", prefetchOnly: true }),
-            loadFocusForRestaurant(restaurantId, { prefetchOnly: true })
+            loadPublicMenuBundleForRestaurant(restaurantId, { prefetchOnly: true })
           );
         } else {
           preloadTasks.push(loadUserPosts({ force: false }));
@@ -2685,6 +2966,7 @@ export function createSessionDataRuntimeController({
     loadBusinessPosts,
     loadFocusForRestaurant,
     loadMenuForRestaurant,
+    loadPublicMenuBundleForRestaurant,
     bootstrapUser
   };
 }

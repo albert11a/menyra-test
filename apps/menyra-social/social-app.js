@@ -1275,6 +1275,7 @@ const {
   loadBusinessPosts,
   loadFocusForRestaurant,
   loadMenuForRestaurant,
+  loadPublicMenuBundleForRestaurant,
   saveMenuItemFromModal,
   deleteMenuItemById
 } = shellUiRuntimeCluster;
@@ -4215,7 +4216,8 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
     fetchBusinessProfileDocFn: (...args) => fetchBusinessProfileDoc(...args),
     loadBusinessPostsForRestaurantFn: (...args) => loadBusinessPostsForRestaurant(...args),
     loadMenuForRestaurantFn: (...args) => loadMenuForRestaurant(...args),
-    loadFocusForRestaurantFn: (...args) => loadFocusForRestaurant(...args)
+    loadFocusForRestaurantFn: (...args) => loadFocusForRestaurant(...args),
+    loadPublicMenuBundleForRestaurantFn: (...args) => loadPublicMenuBundleForRestaurant(...args)
   },
   bridgeBindingsApi: {
     renderProfileShopCartViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderProfileShopCartView?.(...args) || "",

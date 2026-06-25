@@ -71,6 +71,7 @@ function createController({
   state = createVisibleMenuState(),
   renderFn = () => {},
   menuCache = null,
+  focusCache = null,
   readCacheFn = () => null,
   writeCacheFn = () => {},
   loadDeadlines = {
@@ -91,6 +92,7 @@ function createController({
     dataLoaded: {},
     renderFn,
     menuCache,
+    focusCache,
     readCacheFn,
     writeCacheFn,
     menuCacheKeyFn: (restaurantId, source = "public") => `${restaurantId}:${source}`,
@@ -120,6 +122,15 @@ function publicMenuSurface(state) {
     routePayload: state?.profileView?.routePayload || null,
     webDirectEntry: state?.__webDirectEntry || null
   }).menu;
+}
+
+function publicMenuBundleSurface(state) {
+  return resolveVisiblePublicMenuSurfaceState(state, {
+    profile: state?.profileView?.profile || null,
+    routePayload: state?.profileView?.routePayload || null,
+    webDirectEntry: state?.__webDirectEntry || null,
+    coordinateFocusWithMenu: true
+  });
 }
 
 const productOne = { id: "item-1", name: "Pizza", category: "Pizza" };
@@ -490,9 +501,211 @@ test("public focus load releases menu coordination when Firebase offers do not r
     controller.loadFocusForRestaurant("restaurant-a")
   ));
 
-  assert.equal(result.truthState, "knownEmpty");
+  assert.equal(result.truthState, "error");
   assert.equal(state.focus.restaurantId, "restaurant-a");
   assert.equal(state.focus.loading, false);
   assert.equal(state.focus.error, "Fokus laden fehlgeschlagen.");
-  assert.equal(state.focus.truthState, "knownEmpty");
+  assert.equal(state.focus.truthState, "error");
+});
+
+test("public menu bundle waits for delayed focus and commits products atomically", async () => {
+  const state = createVisibleMenuState();
+  const focusRequest = deferred();
+  const renders = [];
+  const controller = createController({
+    state,
+    renderFn: () => {
+      const surface = publicMenuBundleSurface(state);
+      renders.push({
+        menuStatus: surface.menu.status,
+        canRenderItems: surface.menu.canRenderItems,
+        focusStatus: surface.focus.status
+      });
+    },
+    loadDeadlines: {
+      menuItemsMs: 1000,
+      menuCollectionItemsMs: 1000,
+      menuMetaMs: 1000,
+      focusItemsMs: 1000,
+      focusMetaMs: 1000
+    },
+    loadPublicMenuItemsFn: async () => ({ status: "ready", items: [productOne], error: null }),
+    loadFocusItemsFn: () => focusRequest.promise
+  });
+
+  const pending = controller.loadPublicMenuBundleForRestaurant("restaurant-a");
+  await Promise.resolve();
+
+  assert.equal(publicMenuBundleSurface(state).menu.canRenderItems, false);
+  assert.equal(renders.some((entry) => entry.canRenderItems && entry.focusStatus === "unknown"), false);
+
+  focusRequest.resolve([{ id: "focus-1", title: "Pizza", targetMenuItemId: "item-1" }]);
+  await pending;
+
+  const surface = publicMenuBundleSurface(state);
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.focus.status, "ready");
+  assert.deepEqual(state.menu.items, [productOne]);
+  assert.equal(state.focus.items.length, 1);
+});
+
+test("public menu bundle renders products when focus is confirmed empty", async () => {
+  const state = createVisibleMenuState();
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: async () => ({ status: "ready", items: [productOne], error: null }),
+    loadFocusItemsFn: async () => []
+  });
+
+  await controller.loadPublicMenuBundleForRestaurant("restaurant-a");
+
+  const surface = publicMenuBundleSurface(state);
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.focus.status, "empty");
+  assert.equal(state.focus.loading, false);
+});
+
+test("public menu bundle renders products when focus read fails", async () => {
+  const state = createVisibleMenuState();
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: async () => ({ status: "ready", items: [productOne], error: null }),
+    loadFocusItemsFn: async () => {
+      throw new Error("focus unavailable");
+    }
+  });
+
+  await withMutedConsoleError(() => controller.loadPublicMenuBundleForRestaurant("restaurant-a"));
+
+  const surface = publicMenuBundleSurface(state);
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.focus.status, "error");
+  assert.equal(state.focus.loading, false);
+});
+
+test("public menu bundle uses hot menu and focus cache without visible reload", async () => {
+  const state = createVisibleMenuState();
+  const menuCache = new Map([
+    ["restaurant-a:public", {
+      items: [productOne],
+      statusBadgeVisible: true,
+      truthSource: "public-menu",
+      truthState: "seeded",
+      ts: Date.now()
+    }]
+  ]);
+  const focusCache = new Map([
+    ["restaurant-a", {
+      items: [{ id: "focus-1", title: "Pizza", targetMenuItemId: "item-1" }],
+      enabled: true,
+      truthSource: "public-menu",
+      truthState: "seeded",
+      ts: Date.now()
+    }]
+  ]);
+  const renders = [];
+  const controller = createController({
+    state,
+    menuCache,
+    focusCache,
+    renderFn: () => {
+      renders.push(publicMenuBundleSurface(state).menu.status);
+    }
+  });
+
+  await controller.loadPublicMenuBundleForRestaurant("restaurant-a");
+
+  assert.equal(renders.includes("loading"), false);
+  assert.equal(publicMenuBundleSurface(state).menu.status, "ready");
+  assert.equal(publicMenuBundleSurface(state).focus.status, "ready");
+});
+
+test("public menu bundle dedupes rapid visible requests", async () => {
+  const state = createVisibleMenuState();
+  const menuRequest = deferred();
+  const focusRequest = deferred();
+  let menuReads = 0;
+  let focusReads = 0;
+  const controller = createController({
+    state,
+    loadDeadlines: {
+      menuItemsMs: 1000,
+      menuCollectionItemsMs: 1000,
+      menuMetaMs: 1000,
+      focusItemsMs: 1000,
+      focusMetaMs: 1000
+    },
+    loadPublicMenuItemsFn: () => {
+      menuReads += 1;
+      return menuRequest.promise;
+    },
+    loadFocusItemsFn: () => {
+      focusReads += 1;
+      return focusRequest.promise;
+    }
+  });
+
+  const first = controller.loadPublicMenuBundleForRestaurant("restaurant-a");
+  const second = controller.loadPublicMenuBundleForRestaurant("restaurant-a");
+  await Promise.resolve();
+
+  assert.equal(menuReads, 1);
+  assert.equal(focusReads, 1);
+
+  menuRequest.resolve({ status: "ready", items: [productOne], error: null });
+  focusRequest.resolve([]);
+  await Promise.all([first, second]);
+
+  assert.equal(publicMenuBundleSurface(state).menu.status, "ready");
+  assert.equal(publicMenuBundleSurface(state).focus.status, "empty");
+});
+
+test("stale public menu bundle from previous restaurant cannot overwrite current profile", async () => {
+  const state = createVisibleMenuState({
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a"
+  });
+  const restaurantA = deferred();
+  const controller = createController({
+    state,
+    loadDeadlines: {
+      menuItemsMs: 1000,
+      menuCollectionItemsMs: 1000,
+      menuMetaMs: 1000,
+      focusItemsMs: 1000,
+      focusMetaMs: 1000
+    },
+    loadPublicMenuItemsFn: (restaurantId) => (
+      restaurantId === "restaurant-a"
+        ? restaurantA.promise
+        : Promise.resolve({ status: "ready", items: [productTwo], error: null })
+    ),
+    loadFocusItemsFn: async () => []
+  });
+
+  const stale = controller.loadPublicMenuBundleForRestaurant("restaurant-a");
+  state.profileView.profile = {
+    restaurantId: "restaurant-b",
+    canonicalRestaurantId: "restaurant-b",
+    role: "business"
+  };
+  state.profileView.routePayload = {
+    restaurantId: "restaurant-b",
+    canonicalRestaurantId: "restaurant-b"
+  };
+  state.__webDirectEntry.restaurantId = "restaurant-b";
+  state.__webDirectEntry.canonicalRestaurantId = "restaurant-b";
+  await controller.loadPublicMenuBundleForRestaurant("restaurant-b");
+
+  assert.equal(state.menu.restaurantId, "restaurant-b");
+  assert.deepEqual(state.menu.items, [productTwo]);
+
+  restaurantA.resolve({ status: "ready", items: [productOne], error: null });
+  await stale;
+
+  assert.equal(state.menu.restaurantId, "restaurant-b");
+  assert.deepEqual(state.menu.items, [productTwo]);
 });
