@@ -384,6 +384,17 @@ export function createDeeplinkFlowControllerCore({
     const liveDirectEntry = liveProfileView?.directEntry && typeof liveProfileView.directEntry === "object"
       ? liveProfileView.directEntry
       : null;
+    const liveProfileTruthState = String(liveProfile?.truthState || "").trim().toLowerCase();
+    const liveProfileIdentityTruthState = String(liveProfile?.identityTruthState || "").trim().toLowerCase();
+    const liveProfileHasHydratedIdentity = liveProfileIdentityTruthState === "ready"
+      || liveProfileTruthState === "stable"
+      || liveProfileTruthState === "ready"
+      || liveProfileTruthState === "empty"
+      || !!(
+        String(liveProfile?.name || "").trim()
+        && String(liveProfile?.name || "").trim().toLowerCase() !== "lokal"
+      )
+      || !!String(liveProfile?.avatar || "").trim();
     const liveMenuAccessSource = String(liveProfileView?.menuAccessSource || "").trim().toLowerCase();
     const liveTableNumber = normalizeTableNumberCore(liveProfileView?.tableNumber || 0);
     const liveRouteContextMatches = liveMenuAccessSource === requestedAccessSource
@@ -391,10 +402,16 @@ export function createDeeplinkFlowControllerCore({
         requestedAccessSource !== "qr"
         || liveTableNumber === requestedTableNumber
       );
+    const liveRouteRestaurantId = String(liveProfile?.restaurantId || "").trim();
+    const liveRouteCanonicalRestaurantId = String(liveProfile?.canonicalRestaurantId || "").trim();
     const isPendingRouteSeedContinuation = String(liveDirectEntry?.owner || "").trim().toLowerCase() === "web-direct"
       && liveDirectEntry?.routeFirst === true
       && liveDirectEntry?.active !== false
-      && String(liveProfile?.restaurantId || "").trim() === safeRestaurantId;
+      && (
+        liveRouteRestaurantId === safeRestaurantId
+        || liveRouteCanonicalRestaurantId === safeRestaurantId
+      )
+      && !liveProfileHasHydratedIdentity;
     const liveBusinessSurfaceMatchesRoute = liveSurfaceTopTab === requestedSurfaceTopTab
       && liveSurfaceContentTab === requestedSurfaceContentTab;
     const canShortCircuitBusinessRoute = !isPendingRouteSeedContinuation

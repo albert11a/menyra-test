@@ -154,6 +154,337 @@ test("direct public profile route does not queue browser history push", () => {
   assert.equal(state.__nextRouteHistoryMode, "");
 });
 
+function createStableProfileRuntimeState(profile = {}, posts = []) {
+  return {
+    activeTab: "profile",
+    profileTopTab: "profile",
+    profileContentTab: "posts",
+    profileBackTab: "",
+    profileLandingStep: 0,
+    profileLandingGreetingIndex: 0,
+    profileLandingTourIndex: 0,
+    drawerOpen: false,
+    profileViewMode: "grid",
+    profilePostMenuId: null,
+    profileModal: { open: false, profile: null },
+    profileView: {
+      profile,
+      posts,
+      routePayload: {
+        owner: "web-direct",
+        routeFirst: true,
+        restaurantId: profile.restaurantId || "",
+        canonicalRestaurantId: profile.canonicalRestaurantId || profile.restaurantId || "",
+        identity: {
+          name: profile.name || "",
+          handle: profile.handle || "",
+          avatar: profile.avatar || "",
+          titleImageUrl: profile.titleImageUrl || "",
+          coverImageUrl: profile.coverImageUrl || "",
+          coverUrl: profile.coverUrl || "",
+          heroUrl: profile.heroUrl || "",
+          bio: profile.bio || ""
+        },
+        truth: {
+          identity: profile.identityTruthState || profile.truthState || "",
+          posts: profile.postsLoaded ? "seeded" : ""
+        },
+        businessSnapshot: {
+          restaurantId: profile.canonicalRestaurantId || profile.restaurantId || "",
+          identity: {
+            publicSlug: profile.publicSlug || "",
+            landingSlug: profile.landingSlug || "",
+            handle: profile.handle || ""
+          },
+          truth: { identity: profile.identityTruthState || profile.truthState || "" },
+          posts: { state: profile.postsLoaded ? "seeded" : "" }
+        }
+      },
+      directEntry: {
+        active: true,
+        owner: "web-direct",
+        routeFirst: true,
+        webPriority: true,
+        postsFirst: true,
+        topTab: "profile",
+        contentTab: "posts",
+        phase: profile.postsLoaded ? "ready" : "loading"
+      }
+    },
+    menu: { restaurantId: profile.restaurantId || "", items: [], truthState: "unknown" },
+    focus: { restaurantId: profile.restaurantId || "", items: [], truthState: "unknown" }
+  };
+}
+
+function createProfileRuntimeController(state) {
+  return createPublicProfileRuntimeController({
+    state,
+    render: () => {},
+    normalizeHandle: (value = "") => String(value || "").trim().toLowerCase()
+  });
+}
+
+function readyRestaurantProfile(overrides = {}) {
+  return {
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a",
+    publicSlug: "restaurant-a",
+    landingSlug: "restaurant-a",
+    name: "Restaurant A",
+    handle: "restaurant-a",
+    bio: "Known bio",
+    location: "Known city",
+    followers: 12,
+    following: 3,
+    avatar: "https://cdn.example/restaurant-a-avatar.jpg",
+    titleImageUrl: "https://cdn.example/restaurant-a-cover.jpg",
+    coverImageUrl: "https://cdn.example/restaurant-a-cover.jpg",
+    coverUrl: "https://cdn.example/restaurant-a-cover.jpg",
+    heroUrl: "https://cdn.example/restaurant-a-cover.jpg",
+    postsLoaded: true,
+    truthState: "stable",
+    identityTruthState: "ready",
+    ...overrides
+  };
+}
+
+test("same restaurant loading update cannot regress ready public profile identity", () => {
+  const casaritaId = "Lzm6RpNu3ErSDtGCHxpi";
+  const state = createStableProfileRuntimeState({
+    restaurantId: casaritaId,
+    canonicalRestaurantId: casaritaId,
+    publicSlug: "casarita",
+    landingSlug: "casarita",
+    name: "Lokal",
+    handle: "casarita",
+    bio: "Profil wird geladen...",
+    location: "-",
+    followers: null,
+    following: null,
+    avatar: "",
+    titleImageUrl: "",
+    coverImageUrl: "",
+    coverUrl: "",
+    heroUrl: "",
+    postsLoaded: false,
+    truthState: "route-pending-loading",
+    identityTruthState: "loading"
+  });
+  const controller = createProfileRuntimeController(state);
+
+  controller.showPublicProfile(readyRestaurantProfile({
+    restaurantId: casaritaId,
+    canonicalRestaurantId: casaritaId,
+    publicSlug: "casarita",
+    landingSlug: "casarita",
+    name: "Casa Rita Restaurant",
+    handle: "casarita",
+    bio: "Mexican food in Prishtina",
+    location: "Prishtina",
+    followers: 47,
+    following: 5,
+    avatar: "https://cdn.example/casarita-logo.jpg",
+    titleImageUrl: "https://cdn.example/casarita-cover.jpg",
+    coverImageUrl: "https://cdn.example/casarita-cover.jpg",
+    coverUrl: "https://cdn.example/casarita-cover.jpg",
+    heroUrl: "https://cdn.example/casarita-cover.jpg"
+  }), [], {
+    showBack: false,
+    topTab: "profile",
+    contentTab: "posts",
+    directEntry: {
+      active: true,
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      topTab: "profile",
+      contentTab: "posts",
+      phase: "ready"
+    }
+  });
+
+  controller.showPublicProfile({
+    restaurantId: "casarita",
+    canonicalRestaurantId: "",
+    publicSlug: "casarita",
+    landingSlug: "casarita",
+    name: "Lokal",
+    handle: "casarita",
+    bio: "Profil wird geladen...",
+    location: "-",
+    followers: null,
+    following: null,
+    avatar: "",
+    titleImageUrl: "",
+    coverImageUrl: "",
+    coverUrl: "",
+    heroUrl: "",
+    postsLoaded: false,
+    truthState: "route-pending-loading",
+    identityTruthState: "loading"
+  }, [], {
+    showBack: false,
+    topTab: "profile",
+    contentTab: "posts",
+    directEntry: {
+      active: true,
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      topTab: "profile",
+      contentTab: "posts",
+      phase: "loading"
+    }
+  });
+
+  assert.equal(state.profileView.profile.name, "Casa Rita Restaurant");
+  assert.equal(state.profileView.profile.bio, "Mexican food in Prishtina");
+  assert.equal(state.profileView.profile.location, "Prishtina");
+  assert.equal(state.profileView.profile.followers, 47);
+  assert.equal(state.profileView.profile.following, 5);
+  assert.equal(state.profileView.profile.avatar, "https://cdn.example/casarita-logo.jpg");
+  assert.equal(state.profileView.profile.titleImageUrl, "https://cdn.example/casarita-cover.jpg");
+  assert.equal(state.profileView.directEntry.phase, "ready");
+});
+
+test("same restaurant empty image update preserves visible Bro Pizza avatar and cover", () => {
+  const broPizza = readyRestaurantProfile({
+    restaurantId: "bro-pizza-id",
+    canonicalRestaurantId: "bro-pizza-id",
+    publicSlug: "bro-pizza",
+    landingSlug: "bro-pizza",
+    name: "Bro Pizza",
+    handle: "bro-pizza",
+    avatar: "https://cdn.example/bro-pizza-logo.jpg",
+    titleImageUrl: "https://cdn.example/bro-pizza-cover.jpg",
+    coverImageUrl: "https://cdn.example/bro-pizza-cover.jpg",
+    coverUrl: "https://cdn.example/bro-pizza-cover.jpg",
+    heroUrl: "https://cdn.example/bro-pizza-cover.jpg"
+  });
+  const state = createStableProfileRuntimeState(broPizza);
+  const controller = createProfileRuntimeController(state);
+
+  controller.showPublicProfile({
+    ...broPizza,
+    avatar: "",
+    titleImageUrl: "",
+    coverImageUrl: "",
+    coverUrl: "",
+    heroUrl: "",
+    postsLoaded: false,
+    truthState: "loading",
+    identityTruthState: "loading"
+  }, []);
+
+  assert.equal(state.profileView.profile.avatar, "https://cdn.example/bro-pizza-logo.jpg");
+  assert.equal(state.profileView.profile.titleImageUrl, "https://cdn.example/bro-pizza-cover.jpg");
+  assert.equal(state.profileView.profile.coverImageUrl, "https://cdn.example/bro-pizza-cover.jpg");
+  assert.equal(state.profileView.profile.coverUrl, "https://cdn.example/bro-pizza-cover.jpg");
+  assert.equal(state.profileView.profile.heroUrl, "https://cdn.example/bro-pizza-cover.jpg");
+});
+
+test("posts loading and ready updates do not weaken profile identity", () => {
+  const readyProfile = readyRestaurantProfile();
+  const state = createStableProfileRuntimeState(readyProfile);
+  const controller = createProfileRuntimeController(state);
+
+  controller.showPublicProfile({
+    restaurantId: readyProfile.restaurantId,
+    canonicalRestaurantId: readyProfile.canonicalRestaurantId,
+    publicSlug: readyProfile.publicSlug,
+    landingSlug: readyProfile.landingSlug,
+    handle: readyProfile.handle,
+    postsLoaded: false,
+    truthState: "loading",
+    identityTruthState: "loading"
+  }, []);
+  controller.showPublicProfile({
+    restaurantId: readyProfile.restaurantId,
+    canonicalRestaurantId: readyProfile.canonicalRestaurantId,
+    publicSlug: readyProfile.publicSlug,
+    landingSlug: readyProfile.landingSlug,
+    handle: readyProfile.handle,
+    postsLoaded: true,
+    truthState: "stable",
+    identityTruthState: "ready"
+  }, [{ id: "post-1", restaurantId: readyProfile.restaurantId }]);
+
+  assert.equal(state.profileView.profile.name, readyProfile.name);
+  assert.equal(state.profileView.profile.bio, readyProfile.bio);
+  assert.equal(state.profileView.profile.location, readyProfile.location);
+  assert.equal(state.profileView.profile.followers, readyProfile.followers);
+  assert.equal(state.profileView.profile.avatar, readyProfile.avatar);
+  assert.equal(state.profileView.profile.titleImageUrl, readyProfile.titleImageUrl);
+  assert.deepEqual(state.profileView.posts, [{ id: "post-1", restaurantId: readyProfile.restaurantId }]);
+});
+
+test("different restaurant loading state does not inherit previous restaurant identity", () => {
+  const state = createStableProfileRuntimeState(readyRestaurantProfile({
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a",
+    publicSlug: "restaurant-a",
+    name: "Restaurant A"
+  }));
+  const controller = createProfileRuntimeController(state);
+
+  controller.showPublicProfile({
+    restaurantId: "restaurant-b",
+    canonicalRestaurantId: "restaurant-b",
+    publicSlug: "restaurant-b",
+    landingSlug: "restaurant-b",
+    name: "Lokal",
+    handle: "restaurant-b",
+    bio: "Profil wird geladen...",
+    location: "-",
+    followers: null,
+    following: null,
+    avatar: "",
+    titleImageUrl: "",
+    coverImageUrl: "",
+    coverUrl: "",
+    heroUrl: "",
+    postsLoaded: false,
+    truthState: "loading",
+    identityTruthState: "loading"
+  }, []);
+
+  assert.equal(state.profileView.profile.restaurantId, "restaurant-b");
+  assert.equal(state.profileView.profile.name, "Lokal");
+  assert.equal(state.profileView.profile.bio, "Profil wird geladen...");
+  assert.equal(state.profileView.profile.avatar, "");
+  assert.equal(state.profileView.profile.titleImageUrl, "");
+});
+
+test("newer confirmed real public profile images can replace older real images", () => {
+  const readyProfile = readyRestaurantProfile({
+    avatar: "https://cdn.example/old-avatar.jpg",
+    titleImageUrl: "https://cdn.example/old-cover.jpg",
+    coverImageUrl: "https://cdn.example/old-cover.jpg",
+    coverUrl: "https://cdn.example/old-cover.jpg",
+    heroUrl: "https://cdn.example/old-cover.jpg"
+  });
+  const state = createStableProfileRuntimeState(readyProfile);
+  const controller = createProfileRuntimeController(state);
+
+  controller.showPublicProfile({
+    ...readyProfile,
+    avatar: "https://cdn.example/new-avatar.jpg",
+    titleImageUrl: "https://cdn.example/new-cover.jpg",
+    coverImageUrl: "https://cdn.example/new-cover.jpg",
+    coverUrl: "https://cdn.example/new-cover.jpg",
+    heroUrl: "https://cdn.example/new-cover.jpg",
+    postsLoaded: true,
+    truthState: "stable",
+    identityTruthState: "ready"
+  }, []);
+
+  assert.equal(state.profileView.profile.avatar, "https://cdn.example/new-avatar.jpg");
+  assert.equal(state.profileView.profile.titleImageUrl, "https://cdn.example/new-cover.jpg");
+  assert.equal(state.profileView.profile.coverImageUrl, "https://cdn.example/new-cover.jpg");
+  assert.equal(state.profileView.profile.coverUrl, "https://cdn.example/new-cover.jpg");
+  assert.equal(state.profileView.profile.heroUrl, "https://cdn.example/new-cover.jpg");
+});
+
 function createDocsSnapshot(rows = []) {
   return {
     forEach(callback) {

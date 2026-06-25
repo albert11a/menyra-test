@@ -7,6 +7,7 @@ import {
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
 import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
+import { mergeMonotonicPublicProfileIdentity } from "./public-profile-identity-merge-utils.js";
 
 export function createPublicProfileRuntimeController({
   state = null,
@@ -839,6 +840,10 @@ export function createPublicProfileRuntimeController({
       String(profile.name || "").trim(),
       String(profile.handle || "").trim().toLowerCase(),
       String(profile.avatar || "").trim(),
+      String(profile.titleImageUrl || "").trim(),
+      String(profile.coverImageUrl || "").trim(),
+      String(profile.coverUrl || "").trim(),
+      String(profile.heroUrl || "").trim(),
       String(profile.location || "").trim(),
       String(profile.bio || "").trim(),
       String(profile.role || "").trim().toLowerCase(),
@@ -1082,6 +1087,10 @@ export function createPublicProfileRuntimeController({
         name: nextSnapshot.identity.name,
         handle: nextSnapshot.identity.handle,
         avatar: nextSnapshot.identity.avatar,
+        titleImageUrl: nextSnapshot.identity.titleImageUrl,
+        coverImageUrl: nextSnapshot.identity.coverImageUrl,
+        coverUrl: nextSnapshot.identity.coverUrl,
+        heroUrl: nextSnapshot.identity.heroUrl,
         location: nextSnapshot.identity.location,
         bio: nextSnapshot.identity.bio,
         followers: nextSnapshot.identity.followers,
@@ -1147,7 +1156,12 @@ export function createPublicProfileRuntimeController({
       String(payload?.phase || "").trim().toLowerCase(),
       String(payload?.identity?.name || "").trim(),
       String(payload?.identity?.avatar || "").trim(),
+      String(payload?.identity?.titleImageUrl || "").trim(),
+      String(payload?.identity?.coverImageUrl || "").trim(),
+      String(payload?.identity?.coverUrl || "").trim(),
+      String(payload?.identity?.heroUrl || "").trim(),
       String(payload?.identity?.location || "").trim(),
+      String(payload?.identity?.bio || "").trim(),
       String(payload?.identity?.followers ?? ""),
       String(payload?.identity?.following ?? ""),
       String(payload?.truth?.identity || "").trim().toLowerCase(),
@@ -1336,7 +1350,7 @@ export function createPublicProfileRuntimeController({
       || (sameVisibleIncomingProfile ? currentCanonicalRestaurantId : "")
       || ""
     ).trim();
-    const nextProfile = profile ? {
+    const nextProfileCandidate = profile ? {
       ...profile,
       ...(resolvedCanonicalRestaurantId ? { canonicalRestaurantId: resolvedCanonicalRestaurantId } : {}),
       ...(
@@ -1370,6 +1384,17 @@ export function createPublicProfileRuntimeController({
       } : {}),
       posts: projectedPosts
     } : profile;
+    const nextProfile = profile
+      ? {
+        ...mergeMonotonicPublicProfileIdentity({
+          currentProfile,
+          incomingProfile: nextProfileCandidate,
+          currentRoutePayload,
+          incomingRoutePayload: incomingCanonicalRoutePayload
+        }),
+        posts: projectedPosts
+      }
+      : profile;
 
     const sameVisibleProfile = isSameVisibleProfile(currentProfile || null, nextProfile);
     const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();

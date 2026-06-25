@@ -2108,7 +2108,16 @@ function applyPendingInitialRouteState() {
       ? state.profileView
       : null;
     const currentProfileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
+    const currentProfileCanonicalRestaurantId = String(state.profileView?.profile?.canonicalRestaurantId || "").trim();
     const currentProfileTruthState = String(state.profileView?.profile?.truthState || "").trim().toLowerCase();
+    const currentProfileIdentityTruthState = String(state.profileView?.profile?.identityTruthState || "").trim().toLowerCase();
+    const currentProfileName = String(state.profileView?.profile?.name || "").trim();
+    const currentProfileHasHydratedIdentity = currentProfileIdentityTruthState === "ready"
+      || currentProfileTruthState === "stable"
+      || currentProfileTruthState === "ready"
+      || currentProfileTruthState === "empty"
+      || (!!currentProfileName && currentProfileName.toLowerCase() !== "lokal")
+      || !!String(state.profileView?.profile?.avatar || "").trim();
     const currentProfileTopTab = String(state.profileTopTab || "").trim().toLowerCase();
     const currentProfileContentTab = String(state.profileContentTab || "").trim().toLowerCase();
     const currentBusinessSurfaceTopTab = currentProfileTopTab === "menu" ? "menu" : "profile";
@@ -2122,16 +2131,37 @@ function applyPendingInitialRouteState() {
     const currentDirectEntry = currentProfileView?.directEntry && typeof currentProfileView.directEntry === "object"
       ? currentProfileView.directEntry
       : null;
+    const currentMenuAccessSource = String(currentProfileView?.menuAccessSource || "").trim().toLowerCase();
+    const currentTableNumber = Math.max(0, Number(currentProfileView?.tableNumber || 0) || 0);
+    const pendingMenuAccessSource = String(pendingDirectEntry.menuAccessSource || "").trim().toLowerCase() === "qr" ? "qr" : "";
+    const pendingTableNumber = pendingMenuAccessSource === "qr"
+      ? Math.max(0, Number(pendingDirectEntry.tableNumber || 0) || 0)
+      : 0;
+    const currentRouteContextMatches = currentMenuAccessSource === pendingMenuAccessSource
+      && (
+        pendingMenuAccessSource !== "qr"
+        || currentTableNumber === pendingTableNumber
+      );
     const isPendingRouteSeedContinuation = String(currentDirectEntry?.owner || "").trim().toLowerCase() === "web-direct"
       && currentDirectEntry?.routeFirst === true
       && currentDirectEntry?.active !== false
-      && currentProfileRestaurantId === pendingDirectEntry.restaurantId;
+      && (
+        currentProfileRestaurantId === pendingDirectEntry.restaurantId
+        || currentProfileCanonicalRestaurantId === pendingDirectEntry.restaurantId
+      )
+      && !currentProfileHasHydratedIdentity;
     const pendingProfileAlreadyOpen = isPendingProfileAlreadyOpenCore({
       pendingProfileRestaurantId: pendingDirectEntry.restaurantId,
       currentProfileRestaurantId,
+      currentProfileCanonicalRestaurantId,
+      currentProfilePublicSlug: state.profileView?.profile?.publicSlug || "",
+      currentProfileLandingSlug: state.profileView?.profile?.landingSlug || "",
+      currentProfileHandle: state.profileView?.profile?.handle || "",
+      currentRoutePayload: state.profileView?.routePayload || null,
       currentProfileTruthState
     })
       && !isPendingRouteSeedContinuation
+      && currentRouteContextMatches
       && currentBusinessSurfaceTopTab === pendingBusinessSurfaceTopTab
       && currentBusinessSurfaceContentTab === pendingBusinessSurfaceContentTab;
     if (!pendingProfileAlreadyOpen) {

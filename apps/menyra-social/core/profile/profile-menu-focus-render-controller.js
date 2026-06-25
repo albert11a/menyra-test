@@ -1359,8 +1359,8 @@ function persistBusinessTitleImageCache(items = {}) {
 
 function resolveBusinessTitleImageCacheKeys(profile = {}, fallback = "business") {
   const keys = [
-    profile?.restaurantId,
     profile?.canonicalRestaurantId,
+    profile?.restaurantId,
     profile?.uid,
     profile?.handle,
     profile?.publicSlug,
@@ -1406,8 +1406,8 @@ function readBusinessTitleImageUrlFromCache(keys = []) {
 
 function resolveBusinessProfileKey(profile = {}, fallback = "business") {
   return String(
-    profile?.restaurantId
-    || profile?.canonicalRestaurantId
+    profile?.canonicalRestaurantId
+    || profile?.restaurantId
     || profile?.uid
     || profile?.handle
     || profile?.name
@@ -1761,7 +1761,7 @@ function renderPublicProfileSurface(
   const avatarRaw = String(profile?.avatar || "").trim();
   const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : "";
   const avatarFit = logoFitClass(!!profile.restaurantId);
-  const avatarKey = profile.uid || profile.restaurantId || handle || "public";
+  const avatarKey = profile.canonicalRestaurantId || profile.restaurantId || profile.uid || handle || "public";
   const avatarImgKeyAttr = landingMode ? "" : `data-img-key="avatar:public:${escapeHtml(avatarKey)}"`;
   const hasAvatarTruth = !!avatarRaw;
   const hasCountSeed = (value) => {

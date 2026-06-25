@@ -1308,6 +1308,104 @@ export function createAppShellRuntimeController(deps = {}) {
     });
   }
 
+  function isStablePublicProfileImageKey(key = "") {
+    const safeKey = String(key || "").trim();
+    return safeKey.startsWith("avatar:public:") || safeKey.startsWith("business-cover:");
+  }
+
+  function readImageSrc(img = null) {
+    if (!(img instanceof HTMLImageElement)) return "";
+    return String(img.currentSrc || img.getAttribute("src") || "").trim();
+  }
+
+  function isRealPublicProfileImageSrc(src = "") {
+    const safeSrc = String(src || "").trim();
+    if (!safeSrc) return false;
+    if (typeof isPlaceholderUrl === "function" && isPlaceholderUrl(safeSrc)) return false;
+    if (PLACEHOLDER_IMAGE && safeSrc === PLACEHOLDER_IMAGE) return false;
+    return true;
+  }
+
+  function collectStablePublicProfileImages(root = null) {
+    const images = new Map();
+    if (!root || String(state?.activeTab || "").trim().toLowerCase() !== "profile") return images;
+    root.querySelectorAll?.("img[data-img-key]")?.forEach((img) => {
+      if (!(img instanceof HTMLImageElement)) return;
+      const key = String(img.dataset?.imgKey || "").trim();
+      const src = readImageSrc(img);
+      if (!isStablePublicProfileImageKey(key) || !isRealPublicProfileImageSrc(src)) return;
+      images.set(key, img);
+    });
+    return images;
+  }
+
+  function syncImageAttributesPreservingSource(target = null, source = null) {
+    if (!(target instanceof HTMLImageElement) || !(source instanceof HTMLImageElement)) return;
+    const protectedAttrs = new Set(["src", "srcset"]);
+    Array.from(source.attributes || []).forEach((attr) => {
+      if (!attr?.name || protectedAttrs.has(String(attr.name).toLowerCase())) return;
+      if (!target.hasAttribute(attr.name)) source.removeAttribute(attr.name);
+    });
+    Array.from(target.attributes || []).forEach((attr) => {
+      if (!attr?.name || protectedAttrs.has(String(attr.name).toLowerCase())) return;
+      source.setAttribute(attr.name, attr.value);
+    });
+  }
+
+  function decodePublicProfileImageSrc(src = "") {
+    const safeSrc = String(src || "").trim();
+    if (!isRealPublicProfileImageSrc(safeSrc) || !win || typeof win.Image !== "function") {
+      return Promise.resolve(false);
+    }
+    return new Promise((resolve) => {
+      const img = new win.Image();
+      let settled = false;
+      const done = (ok) => {
+        if (settled) return;
+        settled = true;
+        resolve(!!ok);
+      };
+      const finishLoadedImage = () => {
+        if (typeof img.decode === "function") {
+          img.decode().then(() => done(true)).catch(() => done(true));
+          return;
+        }
+        done(true);
+      };
+      img.onload = finishLoadedImage;
+      img.onerror = () => done(false);
+      img.src = safeSrc;
+      if (img.complete && Number(img.naturalWidth || 0) > 0) {
+        finishLoadedImage();
+      }
+    });
+  }
+
+  function preserveStablePublicProfileImages(previousImages = new Map()) {
+    if (!previousImages?.size || !appEl) return;
+    appEl.querySelectorAll?.("img[data-img-key]")?.forEach((target) => {
+      if (!(target instanceof HTMLImageElement)) return;
+      const key = String(target.dataset?.imgKey || "").trim();
+      if (!isStablePublicProfileImageKey(key)) return;
+      const previous = previousImages.get(key);
+      if (!(previous instanceof HTMLImageElement)) return;
+      const previousSrc = readImageSrc(previous);
+      if (!isRealPublicProfileImageSrc(previousSrc)) return;
+      const nextSrc = readImageSrc(target);
+      syncImageAttributesPreservingSource(target, previous);
+      if (target.parentNode) {
+        target.parentNode.replaceChild(previous, target);
+      }
+      if (!isRealPublicProfileImageSrc(nextSrc) || nextSrc === previousSrc) return;
+      decodePublicProfileImageSrc(nextSrc).then((decoded) => {
+        if (!decoded || !previous.isConnected) return;
+        const currentKey = String(previous.dataset?.imgKey || "").trim();
+        if (currentKey !== key) return;
+        previous.setAttribute("src", nextSrc);
+      });
+    });
+  }
+
   function stopDetachedProfileViewListener() {
     if (state.profileView) return;
     const unsub = getProfileViewUnsub();
@@ -1563,6 +1661,9 @@ export function createAppShellRuntimeController(deps = {}) {
       const reuseLeafletMapCanvas = preserveMainScroll && state.activeTab === "map"
         ? doc?.getElementById("leafletMap")
         : null;
+      const stablePublicProfileImages = mode === "main"
+        ? collectStablePublicProfileImages(appEl)
+        : new Map();
       const preservedMapSearchQuery = preserveMainScroll && state.activeTab === "map"
         ? String(doc?.getElementById("mapSearchInput")?.value || "")
         : "";
@@ -1573,6 +1674,7 @@ export function createAppShellRuntimeController(deps = {}) {
       if (appEl) {
         if (!shouldReuseExistingMountedHtml) {
           appEl.innerHTML = nextHtml;
+          preserveStablePublicProfileImages(stablePublicProfileImages);
         }
         appEl.removeAttribute("aria-busy");
         appEl.dataset.startupInteractionSafety = startupInteractionSafety;
