@@ -1262,6 +1262,19 @@ Last updated: 2026-06-25
   PWA- und Service-Worker-Pfade ebenfalls einen frischen Build-Stand sehen.
   Nicht geaendert wurden Routing, QR, Cart, Order, Menu-Daten, Firebase Rules
   und Functions.
+- Schritt 128 ist abgeschlossen: Business-Profilbilder bleiben beim Cold-Start
+  der neuen Profil-Card ueber leere Zwischenrender stabil.
+- Bewertung von Schritt 128: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 128:
+  Die Business-Profil-Card merkt sich jetzt die letzte gueltige Avatar-URL pro
+  Business-Profil-Schluessel und rendert diese weiter, wenn waehrend eines
+  Cold-Starts kurz ein Profil-Zwischenstand ohne `avatar` ankommt. Dadurch soll
+  das Profilbild nicht mehr erst erscheinen, dann kurz durch den Store-Fallback
+  verschwinden und danach erneut erscheinen. Das Social-Bundle wurde erneut
+  gebaut und der App-Build-Token wurde auf
+  `2026-06-25-profile-avatar-coldstart-01` gesetzt. Nicht geaendert wurden
+  sichtbares Design, Texte, Spacing, Routing, QR, Cart, Order, Menu-Daten,
+  Firebase Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1410,7 +1423,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 127 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 128 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1734,6 +1747,12 @@ mehr der alte Chunk
 `profile-menu-focus-render-controller-Ct0xfHZ9.js` geladen werden, sondern der
 neue gebaute Profil-Renderer-Chunk. Danach dieselbe Info-Card-Breitenpruefung
 aus Schritt 126 wiederholen.
+
+Zusaetzlich fuer Schritt 128 manuell pruefen: Dasselbe Business-Profil mit
+Profilbild kalt oeffnen oder hart refreshen. Das Profilbild in der oberen
+Profil-Card darf nicht mehr kurz durch den grauen Store-Fallback verschwinden.
+Danach erneut hart laden; falls der Browser noch alte Assets haelt, einmal mit
+`?sw-reset=1` oeffnen und danach ohne Parameter erneut pruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -1323,6 +1323,8 @@ function normalizeBusinessProfileText(value = "") {
 
 const BUSINESS_TITLE_IMAGE_CACHE_STORAGE_KEY = "mnyra_business_title_image_cache_v1";
 const BUSINESS_TITLE_IMAGE_CACHE_MAX_ENTRIES = 80;
+const BUSINESS_AVATAR_CACHE_STORAGE_KEY = "mnyra_business_avatar_cache_v1";
+const BUSINESS_AVATAR_CACHE_MAX_ENTRIES = 120;
 
 function getBusinessTitleImageCacheItems() {
   if (!state) return {};
@@ -1404,6 +1406,72 @@ function readBusinessTitleImageUrlFromCache(keys = []) {
   return "";
 }
 
+function getBusinessAvatarCacheItems() {
+  if (!state) return {};
+  const current = state.businessAvatarCache && typeof state.businessAvatarCache === "object"
+    ? state.businessAvatarCache
+    : null;
+  if (current?.loaded === true && current.items && typeof current.items === "object") {
+    return current.items;
+  }
+  let items = {};
+  try {
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    const raw = storage?.getItem?.(BUSINESS_AVATAR_CACHE_STORAGE_KEY) || "";
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (parsed && typeof parsed === "object") {
+      Object.entries(parsed).forEach(([key, value]) => {
+        const safeKey = normalizeBusinessProfileText(key);
+        const safeValue = normalizeBusinessProfileText(value);
+        if (safeKey && safeValue && !isPlaceholderUrl(safeValue)) items[safeKey] = safeValue;
+      });
+    }
+  } catch {}
+  state.businessAvatarCache = { loaded: true, items };
+  return items;
+}
+
+function persistBusinessAvatarCache(items = {}) {
+  try {
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    if (!storage) return;
+    storage.setItem(BUSINESS_AVATAR_CACHE_STORAGE_KEY, JSON.stringify(items));
+  } catch {}
+}
+
+function rememberBusinessAvatarUrl(keys = [], url = "") {
+  const safeUrl = normalizeBusinessProfileText(url);
+  if (!safeUrl || isPlaceholderUrl(safeUrl)) return;
+  const items = getBusinessAvatarCacheItems();
+  let changed = false;
+  keys.forEach((key) => {
+    const safeKey = normalizeBusinessProfileText(key);
+    if (!safeKey || items[safeKey] === safeUrl) return;
+    items[safeKey] = safeUrl;
+    changed = true;
+  });
+  const entries = Object.entries(items);
+  if (entries.length > BUSINESS_AVATAR_CACHE_MAX_ENTRIES) {
+    const trimmed = entries.slice(entries.length - BUSINESS_AVATAR_CACHE_MAX_ENTRIES);
+    Object.keys(items).forEach((key) => delete items[key]);
+    trimmed.forEach(([key, value]) => {
+      items[key] = value;
+    });
+    changed = true;
+  }
+  if (changed) persistBusinessAvatarCache(items);
+}
+
+function readBusinessAvatarUrlFromCache(keys = []) {
+  const items = getBusinessAvatarCacheItems();
+  for (const key of keys) {
+    const safeKey = normalizeBusinessProfileText(key);
+    const safeUrl = safeKey ? normalizeBusinessProfileText(items[safeKey]) : "";
+    if (safeUrl && !isPlaceholderUrl(safeUrl)) return safeUrl;
+  }
+  return "";
+}
+
 function resolveBusinessProfileKey(profile = {}, fallback = "business") {
   return String(
     profile?.restaurantId
@@ -1446,6 +1514,24 @@ function resolveBusinessTitleImageUrl(profile = {}, options = {}) {
   const resolved = getOptimizedImageUrl(raw, "medium", stableKey ? { stableKey } : undefined);
   if (resolved && !isPlaceholderUrl(resolved)) {
     rememberBusinessTitleImageUrl(cacheKeys, resolved);
+    return resolved;
+  }
+  return "";
+}
+
+function resolveBusinessAvatarUrl(profile = {}, options = {}) {
+  const raw = normalizeBusinessProfileText(profile?.avatar || "");
+  const cacheKeys = Array.isArray(options.cacheKeys) ? options.cacheKeys : [];
+  const stableKey = normalizeBusinessProfileText(options.stableKey || cacheKeys[0] || "");
+  if (!raw) {
+    const cached = readBusinessAvatarUrlFromCache(cacheKeys);
+    if (cached) return cached;
+    const resolvedCached = stableKey ? getOptimizedImageUrl("", "avatar", { stableKey }) : "";
+    return resolvedCached && !isPlaceholderUrl(resolvedCached) ? resolvedCached : "";
+  }
+  const resolved = getOptimizedImageUrl(raw, "avatar", stableKey ? { stableKey } : undefined);
+  if (resolved && !isPlaceholderUrl(resolved)) {
+    rememberBusinessAvatarUrl(cacheKeys, resolved);
     return resolved;
   }
   return "";
@@ -1565,9 +1651,20 @@ function renderBusinessProfileCardHeightSizer({
 function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const mode = options.mode === "self" ? "self" : "public";
   const disabledBlockClass = options.disabledBlockClass || "";
-  const avatarUrl = options.avatarUrl || getOptimizedImageUrl(profile.avatar || "", "avatar");
-  const avatarFit = options.avatarFit || logoFitClass(!!profile.restaurantId);
   const cardKey = resolveBusinessProfileKey(profile, mode);
+  const avatarCacheKeys = resolveBusinessTitleImageCacheKeys(profile, cardKey);
+  const avatarStableKey = `business-avatar:${cardKey}`;
+  const directAvatarUrl = normalizeBusinessProfileText(options.avatarUrl || "");
+  const avatarUrl = directAvatarUrl && !isPlaceholderUrl(directAvatarUrl)
+    ? directAvatarUrl
+    : resolveBusinessAvatarUrl(profile, {
+        cacheKeys: avatarCacheKeys,
+        stableKey: avatarStableKey
+      });
+  if (normalizeBusinessProfileText(profile?.avatar || "") && avatarUrl && !isPlaceholderUrl(avatarUrl)) {
+    rememberBusinessAvatarUrl(avatarCacheKeys, avatarUrl);
+  }
+  const avatarFit = options.avatarFit || logoFitClass(!!profile.restaurantId);
   const cardInfoOpen = String(state?.profileCardInfoOpen || "") === cardKey;
   const measuredInfoHeight = Number(state?.profileCardInfoHeights?.[cardKey] || 0);
   const lockedInfoHeightStyle = cardInfoOpen && Number.isFinite(measuredInfoHeight) && measuredInfoHeight > 0
@@ -1576,9 +1673,10 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const avatarImgKeyAttr = options.avatarImgKeyAttr || (mode === "self"
     ? `data-img-key="avatar:self"`
     : `data-img-key="avatar:public:${escapeHtml(cardKey)}"`);
-  const renderAvatarImage = options.renderAvatarImage !== false
-    && !!String(avatarUrl || "").trim()
-    && !!String(profile?.avatar || "").trim();
+  const hasDirectAvatarTruth = !!normalizeBusinessProfileText(profile?.avatar || "");
+  const hasRenderableAvatar = !!normalizeBusinessProfileText(avatarUrl) && !isPlaceholderUrl(avatarUrl);
+  const renderAvatarImage = hasRenderableAvatar
+    && (options.renderAvatarImage !== false || !hasDirectAvatarTruth);
   const identityPending = !!options.identityPending;
   const followersLabel = options.followersLabel ?? formatCount(profile.followers);
   const profileName = normalizeBusinessProfileText(profile?.name) || "User";
