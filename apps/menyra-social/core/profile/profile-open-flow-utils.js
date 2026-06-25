@@ -593,8 +593,12 @@ export function createProfileOpenFlowControllerCore({
       const routePostsSeed = Array.isArray(routeSnapshotSeed?.posts?.items)
         ? routeSnapshotSeed.posts.items
         : (Array.isArray(routeBootstrapSeed?.posts?.items) ? routeBootstrapSeed.posts.items : []);
-      const routeMenuSeed = [];
-      const routeFocusSeed = [];
+      const routeMenuSeed = Array.isArray(routeSnapshotSeed?.menu?.items)
+        ? routeSnapshotSeed.menu.items
+        : (Array.isArray(routeBootstrapSeed?.menu?.items) ? routeBootstrapSeed.menu.items : []);
+      const routeFocusSeed = Array.isArray(routeSnapshotSeed?.focus?.items)
+        ? routeSnapshotSeed.focus.items
+        : (Array.isArray(routeBootstrapSeed?.focus?.items) ? routeBootstrapSeed.focus.items : []);
       const routePostsState = normalizeTruthState(
         routeSnapshotSeed?.posts?.state
         || routeBootstrapSeed?.posts?.state
@@ -602,8 +606,20 @@ export function createProfileOpenFlowControllerCore({
         || "",
         routePostsSeed.length ? "seeded" : "unknown"
       );
-      const routeMenuState = "unknown";
-      const routeFocusState = "unknown";
+      const routeMenuState = normalizeTruthState(
+        routeSnapshotSeed?.menu?.state
+        || routeBootstrapSeed?.menu?.state
+        || routeTruthSeed?.menu
+        || "",
+        routeMenuSeed.length ? "seeded" : "unknown"
+      );
+      const routeFocusState = normalizeTruthState(
+        routeSnapshotSeed?.focus?.state
+        || routeBootstrapSeed?.focus?.state
+        || routeTruthSeed?.focus
+        || "",
+        routeFocusSeed.length ? "seeded" : "unknown"
+      );
       let effectiveRoutePostsState = routePostsState;
       let effectiveRouteMenuState = routeMenuState;
       let effectiveRouteFocusState = routeFocusState;
@@ -672,12 +688,18 @@ export function createProfileOpenFlowControllerCore({
         const sameRestaurantFocus = publicMenuHasItems
           && String(focus.restaurantId || "").trim() === safeRestaurantId
           && String(focus.truthSource || "").trim().toLowerCase() === "public-menu";
+        const routeMenuSeedItems = Array.isArray(routeSnapshotSeed?.menu?.items)
+          ? routeSnapshotSeed.menu.items
+          : (Array.isArray(routeBootstrapSeed?.menu?.items) ? routeBootstrapSeed.menu.items : []);
+        const routeFocusSeedItems = Array.isArray(routeSnapshotSeed?.focus?.items)
+          ? routeSnapshotSeed.focus.items
+          : (Array.isArray(routeBootstrapSeed?.focus?.items) ? routeBootstrapSeed.focus.items : []);
         const menuItems = sameRestaurantMenu && Array.isArray(menu.items)
           ? menu.items
-          : [];
+          : routeMenuSeedItems;
         const focusItems = sameRestaurantFocus && Array.isArray(focus.items)
           ? focus.items
-          : [];
+          : routeFocusSeedItems;
         const postsTruthState = normalizeTruthState(
           routeSnapshotSeed?.posts?.state
           || routeBootstrapSeed?.posts?.state
@@ -689,13 +711,13 @@ export function createProfileOpenFlowControllerCore({
           sameRestaurantMenu ? (menu.truthState || "") : "",
           sameRestaurantMenu
             ? (menuItems.length > 0 ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
-            : "unknown"
+            : normalizeTruthState(routeSnapshotSeed?.menu?.state || routeBootstrapSeed?.menu?.state || routeTruthSeed?.menu || "", routeMenuSeedItems.length ? "seeded" : "unknown")
         );
         const focusTruthState = normalizeTruthState(
           sameRestaurantFocus ? (focus.truthState || "") : "",
           sameRestaurantFocus
             ? (focusItems.length > 0 ? "seeded" : (focus.loading ? "unknown" : "knownEmpty"))
-            : "unknown"
+            : normalizeTruthState(routeSnapshotSeed?.focus?.state || routeBootstrapSeed?.focus?.state || routeTruthSeed?.focus || "", routeFocusSeedItems.length ? "seeded" : "unknown")
         );
         const identityTruthState = normalizeTruthState(
           routeTruthSeed?.identity || "",

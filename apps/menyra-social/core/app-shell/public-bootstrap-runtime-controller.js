@@ -30,6 +30,7 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
       const name = isGenericBusinessBootstrapLabel(nameRaw) ? "" : nameRaw;
       const publicSlug = String(row?.publicSlug || row?.landingSlug || row?.handle || "").trim();
       const logoUrl = String(row?.logoUrl || row?.logo || row?.logoURL || "").trim();
+      const titleImageUrl = String(row?.titleImageUrl || row?.coverImageUrl || row?.coverUrl || row?.heroUrl || "").trim();
       const city = String(row?.city || "").trim();
       const type = normalizeRestaurantType(
         row?.type
@@ -53,6 +54,10 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
             : (row?.canonicalPublicPath || "")
         ).trim(),
         logoUrl,
+        titleImageUrl,
+        coverImageUrl: String(row?.coverImageUrl || titleImageUrl).trim(),
+        coverUrl: String(row?.coverUrl || titleImageUrl).trim(),
+        heroUrl: String(row?.heroUrl || titleImageUrl).trim(),
         city,
         ...(type ? { type, customerType: type } : {})
       };
@@ -435,6 +440,10 @@ function normalizeIncomingWebRoutePayload(payload = null) {
       handle: businessSnapshot.identity.handle,
       publicSlug: businessSnapshot.identity.publicSlug,
       avatar: businessSnapshot.identity.avatar,
+      titleImageUrl: businessSnapshot.identity.titleImageUrl,
+      coverImageUrl: businessSnapshot.identity.coverImageUrl,
+      coverUrl: businessSnapshot.identity.coverUrl,
+      heroUrl: businessSnapshot.identity.heroUrl,
       location: businessSnapshot.identity.location,
       bio: businessSnapshot.identity.bio,
       followers: businessSnapshot.identity.followers,
@@ -652,16 +661,24 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routePostsSeed = Array.isArray(routeSnapshot?.posts?.items)
     ? routeSnapshot.posts.items
     : (Array.isArray(safeRoutePayload?.posts?.items) ? safeRoutePayload.posts.items : []);
-  const routeMenuSeed = [];
-  const routeFocusSeed = [];
+  const routeMenuSeed = Array.isArray(routeSnapshot?.menu?.items)
+    ? routeSnapshot.menu.items
+    : (Array.isArray(safeRoutePayload?.menu?.items) ? safeRoutePayload.menu.items : []);
+  const routeFocusSeed = Array.isArray(routeSnapshot?.focus?.items)
+    ? routeSnapshot.focus.items
+    : (Array.isArray(safeRoutePayload?.focus?.items) ? safeRoutePayload.focus.items : []);
   const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
     ? routeSnapshot.truth
     : (safeRoutePayload?.truth && typeof safeRoutePayload.truth === "object" ? safeRoutePayload.truth : {});
   const routePostsState = normalizeTruthState(routeSnapshot?.posts?.state || safeRoutePayload?.posts?.state || routeTruth?.posts || "", (
     routePostsSeed.length ? "seeded" : "unknown"
   ));
-  const routeMenuState = "unknown";
-  const routeFocusState = "unknown";
+  const routeMenuState = normalizeTruthState(routeSnapshot?.menu?.state || safeRoutePayload?.menu?.state || routeTruth?.menu || "", (
+    routeMenuSeed.length ? "seeded" : "unknown"
+  ));
+  const routeFocusState = normalizeTruthState(routeSnapshot?.focus?.state || safeRoutePayload?.focus?.state || routeTruth?.focus || "", (
+    routeFocusSeed.length ? "seeded" : "unknown"
+  ));
   let resolvedRoutePostsState = routePostsState;
   let resolvedRouteMenuState = routeMenuState;
   let resolvedRouteFocusState = routeFocusState;

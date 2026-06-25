@@ -2505,6 +2505,12 @@ function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
   const canonicalPublicPath = publicSlug
     ? buildCanonicalPublicRoutePath(publicSlug, "profile")
     : asText(data.canonicalPublicPath);
+  const titleImageUrl = asText(
+    data.titleImageUrl
+    || data.coverImageUrl
+    || data.coverUrl
+    || data.heroUrl
+  );
   return {
     id: asText(restaurantId),
     name: asText(data.name || data.restaurantName || data.displayName),
@@ -2514,6 +2520,10 @@ function mapPublicRestaurantPreview(restaurantId = "", data = {}) {
     landingSlug: asText(data.landingSlug || publicSlug),
     canonicalPublicPath,
     logoUrl: asText(data.logoUrl || data.logo || data.logoURL),
+    titleImageUrl,
+    coverImageUrl: asText(data.coverImageUrl || titleImageUrl),
+    coverUrl: asText(data.coverUrl || titleImageUrl),
+    heroUrl: asText(data.heroUrl || titleImageUrl),
     city: asText(data.city || data.address),
     ...(type ? { type, customerType: type } : {})
   };
@@ -2726,6 +2736,13 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   const identityName = asText(restaurantPreview.name || restaurantPreview.restaurantName);
   const identityHandle = asText(restaurantPreview.handle || restaurantPreview.publicSlug || restaurantPreview.landingSlug);
   const identityAvatar = asText(restaurantPreview.logoUrl);
+  const identityTitleImageUrl = asText(
+    restaurantPreview.titleImageUrl
+    || normalizedRestaurantData.titleImageUrl
+    || normalizedRestaurantData.coverImageUrl
+    || normalizedRestaurantData.coverUrl
+    || normalizedRestaurantData.heroUrl
+  );
   const identityLocation = asText(restaurantPreview.city);
   const identityBio = asText(
     normalizedRestaurantData.bio
@@ -2765,6 +2782,10 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
       publicSlug: asText(restaurantPreview.publicSlug),
       canonicalPublicPath: asText(restaurantPreview.canonicalPublicPath),
       avatar: identityAvatar,
+      titleImageUrl: identityTitleImageUrl,
+      coverImageUrl: asText(restaurantPreview.coverImageUrl || identityTitleImageUrl),
+      coverUrl: asText(restaurantPreview.coverUrl || identityTitleImageUrl),
+      heroUrl: asText(restaurantPreview.heroUrl || identityTitleImageUrl),
       location: identityLocation,
       bio: identityBio,
       followers: identityFollowers,
@@ -2825,6 +2846,10 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
       publicSlug: snapshot.identity.publicSlug,
       canonicalPublicPath: snapshot.identity.canonicalPublicPath,
       avatar: snapshot.identity.avatar,
+      titleImageUrl: snapshot.identity.titleImageUrl,
+      coverImageUrl: snapshot.identity.coverImageUrl,
+      coverUrl: snapshot.identity.coverUrl,
+      heroUrl: snapshot.identity.heroUrl,
       location: snapshot.identity.location,
       bio: snapshot.identity.bio,
       followers: snapshot.identity.followers,

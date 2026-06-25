@@ -1776,6 +1776,44 @@ erscheinen, dann kurz auf `Lokal` oder einen leeren/grauen Fallback wechseln
 und danach erneut korrekt erscheinen. Danach einmal mit `?sw-reset=1` oeffnen
 und ohne Parameter erneut laden, damit der neue Bundle-Stand sicher aktiv ist.
 
+Schritt 130: Casa-Rita Coldstart-/Bootstrap-Snapshot geprueft und den
+vorhandenen Direct-Route-Seed gehaertet. Read-only Firebase-Befund:
+`restaurants/Lzm6RpNu3ErSDtGCHxpi` und `public/meta` enthalten Logo,
+Titelbild und Slug-Daten; `public/menu` enthaelt 39 Menue-Items mit Bildern;
+`socialPosts` enthaelt einen sichtbaren Bildpost. `publicRoutes/casarita`
+enthaelt aber nur Route-Metadaten. Der live erreichbare
+`socialBootstrapFeed` liefert fuer `r=casarita` aktuell nur
+`restaurants/feedPosts/stories`, aber kein `publicRoute.businessSnapshot`.
+Deshalb startet Casa Rita bei echter URL-/Refresh-Kaltlast nicht aus derselben
+starken Profil-/Menue-Wahrheit wie ein bereits warm navigiertes Profil.
+
+Geaendert in Schritt 130: `functions/index.js` gibt im vorhandenen
+Direct-Route-Snapshot zusaetzlich Titelbild-/Cover-/Hero-URLs aus.
+`apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js`
+uebernimmt diese Header-Bildfelder und wirft vorhandene
+`businessSnapshot.menu.items`/`focus.items` nicht mehr weg.
+`apps/menyra-social/core/profile/public-profile-direct-entry-controller.js`
+seedet Direct-Entry-Profile jetzt mit Titelbild und vorhandenen
+Menue-/Focus-Snapshot-Items. `apps/menyra-social/core/profile/profile-open-flow-utils.js`
+erhaelt die Snapshot-Items auch beim spaeteren Profil-Open-Payload. Das
+Social-Bundle wurde neu gebaut.
+
+Bewusst nicht geaendert in Schritt 130: keine UI-/Designwerte, keine
+Firestore-Daten, keine Rules, kein Function-Deployment, kein Playwright- oder
+Smoke-Test. Der Nutzer prueft manuell. Wichtig: Solange die live deployte
+`socialBootstrapFeed`-Function noch keinen `publicRoute.businessSnapshot`
+ausliefert, kann der Client den allerersten Direct-Route-Request nur
+abfedern, aber nicht vollstaendig mit Server-Snapshot starten.
+
+Zusaetzlich fuer Schritt 130 manuell pruefen: Auf Branch `refactorprofil2`
+`/casarita` kalt oeffnen und hart refreshen. Profilbild, Titelbild, Name und
+Menuebilder sollen nicht sichtbar auf leere/graue oder `Lokal`-Zustaende
+zurueckfallen. Danach `/casarita?top=menu` und normales Stoebern Profil ->
+Menue -> Profil pruefen; Menue-Items/Fokus duerfen nicht erst leer wirken und
+dann springen. Nach einem spaeteren Function-Deployment den Bootstrap-Endpoint
+fuer `r=casarita` kontrollieren; er muss `publicRoute.businessSnapshot` mit
+`identity`, `menu.items`, `posts` und `truth` liefern.
+
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
 und eine sauber verifizierte Trennung von Public Profile/Menu/Cart/Order/QR.
