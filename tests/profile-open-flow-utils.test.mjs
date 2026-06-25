@@ -28,8 +28,8 @@ function createController(state, showCalls = [], overrides = {}) {
     getRestaurantMetaById: () => null,
     normalizeSearchKey: (value = "") => String(value || "").trim().toLowerCase(),
     render: () => {},
-    ensureMenuDataForProfile: () => {},
-    ensureFocusDataForProfile: () => {},
+    ensureMenuDataForProfile: safeOverrides.ensureMenuDataForProfile || (() => {}),
+    ensureFocusDataForProfile: safeOverrides.ensureFocusDataForProfile || (() => {}),
     hydrateRestaurantsByIds: async () => null,
     normalizeExternalProfile: ({ profileDoc, restaurant, fallbackName, posts }) => {
       const restaurantId = String(profileDoc?.id || restaurant?.id || "moka").trim();
@@ -79,7 +79,11 @@ test("direct web posts route accepts the initial posts page without a second ful
   const state = createState("feed");
   const showCalls = [];
   const postLoadCalls = [];
+  const menuEnsureCalls = [];
   const controller = createController(state, showCalls, {
+    ensureMenuDataForProfile: (profile) => {
+      menuEnsureCalls.push(profile);
+    },
     loadBusinessPostsForRestaurant: async (restaurantId, options = {}) => {
       postLoadCalls.push({ restaurantId, options });
       return {
@@ -101,10 +105,12 @@ test("direct web posts route accepts the initial posts page without a second ful
     { id: "moka", restaurantId: "moka", canonicalRestaurantId: "moka", name: "Moka Coffee" },
     { showBack: false, topTab: "profile" }
   );
+  await Promise.resolve();
 
   assert.equal(postLoadCalls.length, 1);
   assert.equal(postLoadCalls[0].restaurantId, "moka");
   assert.equal(postLoadCalls[0].options.initialPage, true);
+  assert.equal(menuEnsureCalls.length, 0);
   assert.equal(showCalls.at(-1).posts.length, 1);
 });
 

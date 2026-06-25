@@ -1262,6 +1262,7 @@ export function createProfileOpenFlowControllerCore({
       });
 
       const shouldWarmPublicMenuBundle = !!(loadingCanonicalRestaurantId || targetMenuRestaurantId)
+        && !isWebPostsFirstPath
         && !isLandingTopTab
         && safeMenuAccessSource !== "qr";
       if (shouldWarmPublicMenuBundle) {

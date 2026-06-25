@@ -1882,6 +1882,35 @@ und eine sauber verifizierte Trennung von Public Profile/Menu/Cart/Order/QR.
 Dieser groessere Schritt darf erst nach manueller Stabilitaetspruefung und
 einem eigenen Vertrag geplant werden.
 
+Schritt 133: Public-Web-Posts-First-Ladeweg weiter entlastet. Die erneute
+Pruefung der Ladewege hat gezeigt, dass der normale Direct-Web-Posts-Pfad
+nach Schritt 131 zwar keinen sofortigen Full-Read mehr fuer dieselben
+Beitraege erzwingt, aber direkt nach dem ersten Public-Profile-Render noch
+das Public-Menu-Bundle im Hintergrund vorwaermen konnte. Fuer die sichtbare
+Posts-First-Oberflaeche ist das nicht notwendig und konkurriert mit den
+sichtbaren Profil-/Posts-Reads. Direct-Web-Posts-First startet deshalb jetzt
+keine Menu-Hydration mehr, solange der Nutzer nicht selbst in den Menu-Pfad
+geht. Menu-First, QR/Menu-Zugaenge und spaetere Menu-Navigation bleiben
+unveraendert.
+
+Geaendert in Schritt 133:
+`apps/menyra-social/core/profile/profile-open-flow-utils.js`,
+`tests/profile-open-flow-utils.test.mjs`,
+`apps/menyra-social/bundled/*` und
+`docs/mnyra-current-phase.md`.
+
+Bewusst nicht geaendert in Schritt 133: keine UI-/Designwerte, keine
+Firestore-Daten, keine Rules, keine Functions, kein Function-Deployment,
+keine neuen Collections, keine Route-Struktur, kein persistenter Public-
+Cache und keine Smoke- oder Playwright-Tests. Der Nutzer prueft manuell.
+
+Zusaetzlich fuer Schritt 133 manuell pruefen: `/casarita?sw-reset=1`
+oder ein anderes Public-Profil hart oeffnen; Beitraege sollen ohne
+zusaetzliche Menu-Vorwaermarbeit sichtbar werden. Danach aktiv auf `Menue`
+klicken oder `/casarita/menu` oeffnen; das Menu soll weiterhin normal laden.
+Mit `?mnyraDebugLoading=1` kann kontrolliert werden, dass Posts-First nicht
+sofort eine Menu-Hydration neben dem sichtbaren Posts-Read startet.
+
 ## Guardrails fuer die naechsten Schritte
 
 - keine Produktaenderungen
