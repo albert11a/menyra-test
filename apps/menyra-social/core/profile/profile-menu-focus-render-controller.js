@@ -1769,13 +1769,15 @@ function renderPublicProfileSurface(
     const numeric = Number(value);
     return Number.isFinite(numeric) && numeric >= 0;
   };
+  const hasFollowersCount = hasCountSeed(profile?.followers);
+  const hasFollowingCount = hasCountSeed(profile?.following);
   const hasIdentityDataSeed = hasAvatarTruth
-    || hasCountSeed(profile?.followers)
-    || hasCountSeed(profile?.following);
+    || hasFollowersCount
+    || hasFollowingCount;
   const showIdentityPendingState = isSettlingProfileSurfaceStatus(headerStatus) && !hasIdentityDataSeed;
   const renderAvatarImage = !!String(avatarUrl || "").trim() && hasAvatarTruth;
-  const followersLabel = showIdentityPendingState ? "..." : formatCount(profile.followers);
-  const followingLabel = showIdentityPendingState ? "..." : formatCount(profile.following);
+  const followersLabel = (showIdentityPendingState || !hasFollowersCount) ? "..." : formatCount(profile.followers);
+  const followingLabel = (showIdentityPendingState || !hasFollowingCount) ? "..." : formatCount(profile.following);
   const topPaddingClass = isBusinessProfile ? "pt-2" : "pt-10";
   const followLabel = isFollowing
     ? tr("profile.following", "Following")

@@ -1844,6 +1844,38 @@ und Fokus weiter normal laden. Im Browser mit `?mnyraDebugLoading=1` pruefen,
 dass Public-Profile-Posts als `initial` gemessen werden und kein sofortiger
 `reconcile`/Full-Read fuer dieselbe Posts-First-Anzeige folgt.
 
+Schritt 132: Public-Profile-Tab- und Fan-Count-Stabilitaet auf Branch
+`mnyra2027` repariert. Ursache 1 war ein spaeter `showPublicProfile`-Update
+aus dem Posts-First-Pfad, das nach einem Nutzerklick auf `Menue` wieder den
+alten expliziten `profile/posts`-TopTab durchsetzen konnte. Der sichtbare
+Live-TopTab ist fuer dasselbe Web-Direct-Business jetzt autoritativ, solange
+ein spaeteres Update nur dieselbe Profilinstanz nachzieht. Ursache 2 war die
+Count-Normalisierung: fehlende Fan-Count-Quellen wurden als echte `0`
+normalisiert. Public-Identity-Counts bleiben jetzt `null`, solange kein
+Count-Feld vorhanden ist; echte `0` bleibt erlaubt. Die Anzeige zeigt fuer
+unbekannte Counts `...`, bis der Restaurant-Read den echten Wert liefert.
+Live read-only geprueft: `restaurants/Lzm6RpNu3ErSDtGCHxpi` enthaelt
+`followersCount=2` und `followingCount=1`, `publicRoutes/casarita` enthaelt
+keine Count-Felder.
+
+Geaendert in Schritt 132:
+`apps/menyra-social/core/profile/public-profile-runtime-controller.js`,
+`apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`,
+`apps/menyra-social/bundled/*`,
+`tests/public-profile-runtime-controller.test.mjs` und
+`docs/mnyra-current-phase.md`.
+
+Bewusst nicht geaendert in Schritt 132: keine UI-/Designwerte, keine
+Firestore-Daten, keine Rules, keine Functions, kein Function-Deployment,
+keine neuen Collections, keine Route-Struktur und keine Smoke- oder
+Playwright-Tests. Der Nutzer prueft manuell.
+
+Zusaetzlich fuer Schritt 132 manuell pruefen: `/casarita` oeffnen, von
+`Beitraege` auf `Menue` klicken und mindestens zwei Sekunden warten; der Tab
+darf nicht auf `Beitraege` zurueckspringen. Danach `/casarita/menu?sw-reset=1`
+hart refreshen; die Fan-Zahl soll nach dem Profil-Read `2` anzeigen und nicht
+als dauerhafte `0` stehenbleiben.
+
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
 und eine sauber verifizierte Trennung von Public Profile/Menu/Cart/Order/QR.

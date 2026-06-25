@@ -13,6 +13,14 @@ import {
   timeMnyraLoadingAsyncCore as timeLoadingAsync
 } from "../common/loading-diagnostics-utils.js";
 
+function pickDefaultCountValue(...values) {
+  for (const value of values) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return Math.max(0, numeric);
+  }
+  return 0;
+}
+
 export function createPublicProfileRuntimeController({
   state = null,
   db = null,
@@ -29,7 +37,7 @@ export function createPublicProfileRuntimeController({
   brandUi = null,
   fastLimits = {},
   resolvePreferredHandle = () => "",
-  pickCountValue = () => 0,
+  pickCountValue = pickDefaultCountValue,
   normalizeRestaurantType = (value) => value,
   normalizeHandle = (value = "") => String(value || "").trim().toLowerCase(),
   sanitizeDisplayName = (value = "", fallback = "") => String(value || fallback || ""),
@@ -46,6 +54,16 @@ export function createPublicProfileRuntimeController({
   const buildOrderBy = typeof orderByFn === "function" ? orderByFn : null;
   const buildLimit = typeof limitFn === "function" ? limitFn : null;
   const brandSocialName = String(brandUi?.social || "Menyra").trim() || "Menyra";
+  const hasKnownCountInput = (value) => {
+    if (value === null || value === undefined) return false;
+    return Number.isFinite(Number(value));
+  };
+  const pickKnownCountValue = (...values) => {
+    if (!values.some(hasKnownCountInput)) return null;
+    const picked = pickCountValue(...values);
+    const numeric = Number(picked);
+    return Number.isFinite(numeric) ? Math.max(0, numeric) : null;
+  };
   let profileViewUnsub = null;
   let profileViewListenerKey = "";
   let profileViewReadOnceKey = "";
@@ -481,15 +499,20 @@ export function createPublicProfileRuntimeController({
       viewProfile[key] = value;
       changed = true;
     };
+    const assignCountIfKnown = (key, ...values) => {
+      const count = pickKnownCountValue(...values);
+      if (count === null) return;
+      assignIfDefined(key, count);
+    };
     if (profile?.restaurantId) {
-      assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
-      assignIfDefined("following", data.followingCount ?? viewProfile.following);
+      assignCountIfKnown("followers", data.followersCount, data.followers, data.fansCount, data.fans);
+      assignCountIfKnown("following", data.followingCount, data.following);
       assignIfDefined("avatar", data.logoUrl || data.logo || viewProfile.avatar);
       assignIfDefined("name", data.name || data.restaurantName || viewProfile.name);
       assignIfDefined("location", data.city || viewProfile.location);
     } else {
-      assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
-      assignIfDefined("following", data.followingCount ?? viewProfile.following);
+      assignCountIfKnown("followers", data.followersCount, data.followers, data.fansCount, data.fans);
+      assignCountIfKnown("following", data.followingCount, data.following);
       assignIfDefined("privateAccount", !!data.privateAccount);
       assignIfDefined("avatar", data.avatarUrl || data.avatar || viewProfile.avatar);
       assignIfDefined("name", data.displayName || viewProfile.name);
@@ -1416,15 +1439,10 @@ export function createPublicProfileRuntimeController({
     const normalizedCurrentTopTab = liveTopTabValue
       ? normalizeTopTab(liveTopTabValue, "profile")
       : "";
-    const currentDirectEntryTopTab = String(currentDirectEntry?.topTab || "").trim();
-    const normalizedCurrentDirectEntryTopTab = currentDirectEntryTopTab
-      ? normalizeTopTab(currentDirectEntryTopTab, "profile")
-      : "";
     const preserveLiveBusinessTopTab = sameVisibleProfile
       && normalizedExplicitTopTab
       && normalizedCurrentTopTab
       && normalizedExplicitTopTab !== normalizedCurrentTopTab
-      && normalizedCurrentTopTab !== normalizedCurrentDirectEntryTopTab
       && currentDirectEntry?.routeFirst === true
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
       && !!String(
@@ -1669,7 +1687,7 @@ export function createPublicProfileRuntimeController({
     const rest = restaurant || {};
     const displayName = resolveBusinessDisplayName(data, rest, fallbackName);
     const handle = resolvePreferredHandle({ handle: data?.handle || rest?.handle || "", name: displayName }, displayName);
-    const followers = pickCountValue(
+    const followers = pickKnownCountValue(
       data?.followersCount,
       data?.followers,
       data?.fansCount,
@@ -1679,7 +1697,7 @@ export function createPublicProfileRuntimeController({
       rest?.fansCount,
       rest?.fans
     );
-    const following = pickCountValue(data?.followingCount, data?.following, rest?.followingCount, rest?.following);
+    const following = pickKnownCountValue(data?.followingCount, data?.following, rest?.followingCount, rest?.following);
     const restaurantId = String(data?.restaurantId || data?.landingRestaurantId || profileDoc?.id || rest?.id || "").trim();
     const landingEnabled = data?.landingEnabled ?? rest?.landingEnabled ?? true;
     const landingTemplate = String(data?.landingTemplate || rest?.landingTemplate || "").trim();
@@ -1802,8 +1820,8 @@ export function createPublicProfileRuntimeController({
       bio: data?.bio || data?.description || fallback?.bio || "",
       avatar: data?.avatarUrl || data?.avatar || fallback?.avatar || "",
       location: data?.city || fallback?.location || "Prishtina",
-      followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans, fallback?.followers),
-      following: pickCountValue(data?.followingCount, data?.following, fallback?.following),
+      followers: pickKnownCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans, fallback?.followers),
+      following: pickKnownCountValue(data?.followingCount, data?.following, fallback?.following),
       privateAccount: !!data?.privateAccount,
       role: data?.role || fallback?.role || "user",
       pendingFollowRequest: false,

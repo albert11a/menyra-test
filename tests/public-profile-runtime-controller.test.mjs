@@ -164,6 +164,60 @@ test("direct public profile route does not queue browser history push", () => {
   assert.equal(state.__nextRouteHistoryMode, "");
 });
 
+test("same public business keeps user-selected menu tab against stale posts update", () => {
+  const profile = {
+    restaurantId: "casarita",
+    canonicalRestaurantId: "casarita",
+    publicSlug: "casarita",
+    landingSlug: "casarita",
+    name: "Casarita",
+    handle: "casarita",
+    followers: 2,
+    following: 1,
+    postsLoaded: true,
+    truthState: "stable",
+    identityTruthState: "ready"
+  };
+  const state = createStableProfileRuntimeState(profile);
+  state.profileTopTab = "menu";
+  state.profileContentTab = "menu";
+  state.profileView.directEntry = {
+    ...state.profileView.directEntry,
+    menuFirst: true,
+    postsFirst: false,
+    topTab: "menu",
+    contentTab: "menu",
+    phase: "ready"
+  };
+  const controller = createProfileRuntimeController(state);
+
+  controller.showPublicProfile({
+    ...profile,
+    postsLoaded: true,
+    truthState: "stable"
+  }, [], {
+    showBack: false,
+    topTab: "profile",
+    contentTab: "posts",
+    directEntry: {
+      active: true,
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      postsFirst: true,
+      topTab: "profile",
+      contentTab: "posts",
+      phase: "ready"
+    }
+  });
+
+  assert.equal(state.profileTopTab, "menu");
+  assert.equal(state.profileContentTab, "menu");
+  assert.equal(state.profileView.directEntry.topTab, "menu");
+  assert.equal(state.profileView.directEntry.contentTab, "menu");
+  assert.equal(state.profileView.directEntry.menuFirst, true);
+});
+
 function createStableProfileRuntimeState(profile = {}, posts = []) {
   return {
     activeTab: "profile",
@@ -257,6 +311,52 @@ function readyRestaurantProfile(overrides = {}) {
     ...overrides
   };
 }
+
+test("public identity normalizer keeps missing fan counts unknown", () => {
+  const controller = createPublicProfileRuntimeController({
+    state: {},
+    normalizeHandle: (value = "") => String(value || "").trim().toLowerCase()
+  });
+
+  const missingCountsProfile = controller.normalizeExternalProfile({
+    profileDoc: {
+      id: "restaurant-no-counts",
+      data: {
+        name: "No Counts",
+        publicSlug: "no-counts"
+      }
+    }
+  });
+  const zeroCountsProfile = controller.normalizeExternalProfile({
+    profileDoc: {
+      id: "restaurant-zero-counts",
+      data: {
+        name: "Zero Counts",
+        publicSlug: "zero-counts",
+        followersCount: 0,
+        followingCount: 0
+      }
+    }
+  });
+  const liveCountsProfile = controller.normalizeExternalProfile({
+    profileDoc: {
+      id: "restaurant-live-counts",
+      data: {
+        name: "Live Counts",
+        publicSlug: "live-counts",
+        followersCount: 2,
+        followingCount: 1
+      }
+    }
+  });
+
+  assert.equal(missingCountsProfile.followers, null);
+  assert.equal(missingCountsProfile.following, null);
+  assert.equal(zeroCountsProfile.followers, 0);
+  assert.equal(zeroCountsProfile.following, 0);
+  assert.equal(liveCountsProfile.followers, 2);
+  assert.equal(liveCountsProfile.following, 1);
+});
 
 test("same restaurant loading update cannot regress ready public profile identity", () => {
   const casaritaId = "Lzm6RpNu3ErSDtGCHxpi";
