@@ -648,6 +648,8 @@ function createDocsSnapshot(rows = []) {
 function createBusinessPostsController({
   rows = [],
   fastLimits = {},
+  getDocFn = null,
+  docFn = null,
   getDocsFn = null,
   queryCalls = []
 } = {}) {
@@ -666,6 +668,10 @@ function createBusinessPostsController({
   return createPublicProfileRuntimeController({
     state: {},
     db: {},
+    docFn: typeof docFn === "function" ? docFn : ((_db, ...path) => ({ path })),
+    getDocFn: typeof getDocFn === "function"
+      ? getDocFn
+      : (async () => ({ exists: () => false, data: () => ({}) })),
     fastLimits,
     collectionFn: (_db, ...path) => ({ path }),
     queryFn: (ref, ...constraints) => ({ ref, constraints }),
@@ -739,6 +745,8 @@ test("public business posts initial page dedupes concurrent visible reads", asyn
     initialPage: true
   });
 
+  await Promise.resolve();
+
   assert.equal(getDocsCalls, 1);
   assert.equal(queryCalls[0].find((constraint) => constraint?.type === "limit")?.value, 1);
 
@@ -794,6 +802,59 @@ test("public business posts status keeps read errors distinct from empty", async
   assert.deepEqual(result.posts, []);
   assert.equal(result.status, "error");
   assert.equal(result.restaurantId, "restaurant-error");
+});
+
+test("public business posts read deadline returns an error instead of hanging", async () => {
+  const controller = createBusinessPostsController({
+    fastLimits: {
+      publicBusinessPostsInitialReadMs: 20
+    },
+    getDocsFn: async () => new Promise(() => {})
+  });
+
+  const startedAt = Date.now();
+  const result = await withMutedConsoleError(() => controller.loadBusinessPostsForRestaurant("restaurant-timeout", {
+    skipProfileResolve: true,
+    initialPage: true,
+    returnStatus: true
+  }));
+
+  assert.deepEqual(result.posts, []);
+  assert.equal(result.status, "error");
+  assert.equal(result.restaurantId, "restaurant-timeout");
+  assert.equal(result.error?.code, "deadline-exceeded");
+  assert.ok(Date.now() - startedAt < 1000);
+});
+
+test("public business posts profile resolve timeout does not create a known empty posts cache", async () => {
+  let calls = 0;
+  const controller = createBusinessPostsController({
+    fastLimits: {
+      publicProfileDocReadMs: 20,
+      publicBusinessPostsInitialReadMs: 100
+    },
+    getDocFn: async () => new Promise(() => {}),
+    getDocsFn: async () => {
+      calls += 1;
+      return createDocsSnapshot([]);
+    }
+  });
+
+  const result = await withMutedConsoleError(() => controller.loadBusinessPostsForRestaurant("restaurant-resolve-timeout", {
+    initialPage: true,
+    returnStatus: true
+  }));
+  const second = await withMutedConsoleError(() => controller.loadBusinessPostsForRestaurant("restaurant-resolve-timeout", {
+    skipProfileResolve: true,
+    initialPage: true,
+    returnStatus: true
+  }));
+
+  assert.deepEqual(result.posts, []);
+  assert.equal(result.status, "error");
+  assert.equal(result.error?.code, "deadline-exceeded");
+  assert.equal(second.status, "empty");
+  assert.equal(calls, 2);
 });
 
 test("business profile doc reuses cached public route restaurant id", async () => {

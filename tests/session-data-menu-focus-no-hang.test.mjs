@@ -490,9 +490,9 @@ test("public focus load releases menu coordination when Firebase offers do not r
     controller.loadFocusForRestaurant("restaurant-a")
   ));
 
-  assert.equal(result.truthState, "knownEmpty");
+  assert.equal(result.truthState, "error");
   assert.equal(state.focus.restaurantId, "restaurant-a");
   assert.equal(state.focus.loading, false);
   assert.equal(state.focus.error, "Fokus laden fehlgeschlagen.");
-  assert.equal(state.focus.truthState, "knownEmpty");
+  assert.equal(state.focus.truthState, "error");
 });

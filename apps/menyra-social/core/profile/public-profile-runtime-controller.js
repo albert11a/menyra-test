@@ -78,6 +78,9 @@ export function createPublicProfileRuntimeController({
   const canonicalRestaurantIdByRouteId = new Map();
   const PUBLIC_BUSINESS_EMPTY_POSTS_TTL_MS = 15_000;
   const PUBLIC_BUSINESS_POSTS_INITIAL_PAGE_FALLBACK_LIMIT = 12;
+  const PUBLIC_PROFILE_DOC_READ_TIMEOUT_MS = 4_000;
+  const PUBLIC_BUSINESS_POSTS_INITIAL_READ_TIMEOUT_MS = 5_500;
+  const PUBLIC_BUSINESS_POSTS_FULL_READ_TIMEOUT_MS = 9_000;
 
   function resolvePublicBusinessPostsInitialPageLimit() {
     const limitCandidates = [
@@ -93,6 +96,85 @@ export function createPublicProfileRuntimeController({
       }
     }
     return PUBLIC_BUSINESS_POSTS_INITIAL_PAGE_FALLBACK_LIMIT;
+  }
+
+  function resolvePositiveFastLimit(candidates = [], fallbackMs = 0) {
+    for (const candidate of candidates) {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return Math.max(1, Math.round(parsed));
+      }
+    }
+    const fallback = Number(fallbackMs);
+    return Number.isFinite(fallback) && fallback > 0 ? Math.max(1, Math.round(fallback)) : 0;
+  }
+
+  function resolvePublicProfileDocReadTimeoutMs() {
+    return resolvePositiveFastLimit([
+      fastLimits?.publicProfileDocReadMs,
+      fastLimits?.publicProfileDocDeadlineMs,
+      fastLimits?.businessProfileDocReadMs,
+      fastLimits?.profileDocReadMs
+    ], PUBLIC_PROFILE_DOC_READ_TIMEOUT_MS);
+  }
+
+  function resolvePublicBusinessPostsReadTimeoutMs({ initialPage = false, force = false } = {}) {
+    if (initialPage === true && force !== true) {
+      return resolvePositiveFastLimit([
+        fastLimits?.publicBusinessPostsInitialReadMs,
+        fastLimits?.publicBusinessPostsInitialDeadlineMs,
+        fastLimits?.businessPostsInitialReadMs,
+        fastLimits?.businessPostsReadMs
+      ], PUBLIC_BUSINESS_POSTS_INITIAL_READ_TIMEOUT_MS);
+    }
+    return resolvePositiveFastLimit([
+      fastLimits?.publicBusinessPostsReadMs,
+      fastLimits?.publicBusinessPostsDeadlineMs,
+      fastLimits?.businessPostsReadMs,
+      fastLimits?.profilePostsReadMs
+    ], PUBLIC_BUSINESS_POSTS_FULL_READ_TIMEOUT_MS);
+  }
+
+  function createPublicProfileReadDeadlineError(scope = "public profile read", timeoutMs = 0) {
+    const safeScope = String(scope || "public profile read").trim() || "public profile read";
+    const err = new Error(`${safeScope} timed out after ${Math.max(1, Math.round(Number(timeoutMs) || 0))}ms`);
+    err.name = "MnyraPublicProfileReadTimeoutError";
+    err.code = "deadline-exceeded";
+    err.scope = safeScope;
+    return err;
+  }
+
+  function isPublicProfileReadDeadlineError(err) {
+    return String(err?.code || "").trim().toLowerCase() === "deadline-exceeded"
+      || String(err?.name || "").trim() === "MnyraPublicProfileReadTimeoutError";
+  }
+
+  function runPublicProfileReadWithDeadline(task, { timeoutMs = 0, scope = "public profile read" } = {}) {
+    const runTask = typeof task === "function" ? task : (() => task);
+    const safeTimeoutMs = Math.max(0, Math.round(Number(timeoutMs) || 0));
+    if (!safeTimeoutMs) return Promise.resolve().then(() => runTask());
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timerId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(createPublicProfileReadDeadlineError(scope, safeTimeoutMs));
+      }, safeTimeoutMs);
+      Promise.resolve()
+        .then(() => runTask())
+        .then((value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timerId);
+          resolve(value);
+        })
+        .catch((err) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timerId);
+          reject(err);
+        });
+    });
   }
 
   function buildBusinessPostsInFlightKey(restaurantId = "", initialPage = false) {
@@ -1832,7 +1914,13 @@ export function createPublicProfileRuntimeController({
   }
 
   async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
-    return resolveRestaurantDocByRouteId(restaurantId, restaurant);
+    return runPublicProfileReadWithDeadline(
+      () => resolveRestaurantDocByRouteId(restaurantId, restaurant),
+      {
+        timeoutMs: resolvePublicProfileDocReadTimeoutMs(),
+        scope: "public profile restaurant doc"
+      }
+    );
   }
 
   function markBusinessPostsKnownEmpty(...restaurantIds) {
@@ -1911,15 +1999,22 @@ export function createPublicProfileRuntimeController({
     const request = (async () => {
       let effectiveRestaurantId = routeRestaurantId;
       let shouldSkipProfileResolve = !!skipProfileResolve;
+      let profileResolveError = null;
       if (cachedCanonicalRestaurantId) {
         effectiveRestaurantId = cachedCanonicalRestaurantId;
         shouldSkipProfileResolve = true;
       }
       if (!shouldSkipProfileResolve) {
-        const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
-        effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
-        if (resolvedDoc?.id) {
-          cacheResolvedRestaurantDoc(routeRestaurantId, null, resolvedDoc);
+        try {
+          const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
+          effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
+          if (resolvedDoc?.id) {
+            cacheResolvedRestaurantDoc(routeRestaurantId, null, resolvedDoc);
+          }
+        } catch (err) {
+          profileResolveError = err;
+          console.error(err);
+          effectiveRestaurantId = routeRestaurantId;
         }
       }
       if (!effectiveRestaurantId) {
@@ -1947,12 +2042,27 @@ export function createPublicProfileRuntimeController({
           force,
           source: "restaurants.socialPosts"
         });
-        const readPostsSnapshot = (label, refOrQuery) => timeLoadingAsync(label, () => getDocsSafe(refOrQuery), {
-          restaurantId: effectiveRestaurantId,
-          phase: postsLoadPhase,
-          force,
-          source: "restaurants.socialPosts"
+        const postsReadTimeoutMs = resolvePublicBusinessPostsReadTimeoutMs({
+          initialPage: shouldUseInitialPage,
+          force
         });
+        const readPostsSnapshot = (label, refOrQuery) => timeLoadingAsync(
+          label,
+          () => runPublicProfileReadWithDeadline(
+            () => getDocsSafe(refOrQuery),
+            {
+              timeoutMs: postsReadTimeoutMs,
+              scope: "public profile socialPosts"
+            }
+          ),
+          {
+            restaurantId: effectiveRestaurantId,
+            phase: postsLoadPhase,
+            force,
+            source: "restaurants.socialPosts",
+            timeoutMs: postsReadTimeoutMs
+          }
+        );
         const ref = makeCollectionRef(db, "restaurants", effectiveRestaurantId, "socialPosts");
         let snap = null;
         let usedInitialPageLimit = false;
@@ -1973,12 +2083,14 @@ export function createPublicProfileRuntimeController({
           } else {
             snap = await readPostsSnapshot("public profile socialPosts load", ref);
           }
-        } catch {
+        } catch (err) {
+          if (isPublicProfileReadDeadlineError(err)) throw err;
           if (shouldUseInitialPage && buildQuery && buildLimit) {
             try {
               usedInitialPageLimit = true;
               snap = await readPostsSnapshot("public profile socialPosts bounded fallback load", buildQuery(ref, buildLimit(initialPageLimit)));
-            } catch {
+            } catch (fallbackErr) {
+              if (isPublicProfileReadDeadlineError(fallbackErr)) throw fallbackErr;
               throw new Error("bounded public profile socialPosts fallback failed");
             }
           } else if (shouldUseInitialPage) {
@@ -1998,6 +2110,13 @@ export function createPublicProfileRuntimeController({
           writeBusinessPostsCache(normalizedPosts, [effectiveRestaurantId, routeRestaurantId], {
             initialPage: usedInitialPageLimit
           });
+        } else if (profileResolveError) {
+          return {
+            posts: [],
+            status: "error",
+            restaurantId: effectiveRestaurantId,
+            error: profileResolveError
+          };
         } else {
           markBusinessPostsKnownEmpty(effectiveRestaurantId, routeRestaurantId);
         }

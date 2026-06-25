@@ -2036,7 +2036,7 @@ export function createSessionDataRuntimeController({
         items: fallbackItems,
         enabled: state.focus.enabled !== false,
         truthSource: hasFallbackItems ? state.focus.truthSource : "public-menu",
-        truthState: hasFallbackItems ? "seeded" : "knownEmpty"
+        truthState: hasFallbackItems ? "seeded" : "error"
       };
       if (!shouldCommitVisiblePublicFocusState(restaurantId)) return fallbackPayload;
       state.focus = {
