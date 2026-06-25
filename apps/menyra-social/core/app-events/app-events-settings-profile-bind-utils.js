@@ -212,4 +212,22 @@ export function bindAppSettingsProfileEventsCore({
       });
     });
   });
+
+  doc.querySelectorAll("[data-profile-card-info-open]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = String(btn.dataset.profileCardInfoOpen || "").trim();
+      if (!key) return;
+      state.profileCardInfoOpen = key;
+      render();
+    });
+  });
+
+  doc.querySelectorAll("[data-profile-card-info-close]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = String(btn.dataset.profileCardInfoClose || "").trim();
+      if (key && String(state.profileCardInfoOpen || "") !== key) return;
+      state.profileCardInfoOpen = "";
+      render();
+    });
+  });
 }

@@ -379,6 +379,14 @@ export function createProfileBusinessMenuRuntimeCluster({
     || ""
   ).trim();
 
+  const resolveBusinessTitleImageUrl = (data = {}) => String(
+    data?.titleImageUrl
+    || data?.coverImageUrl
+    || data?.coverUrl
+    || data?.heroUrl
+    || ""
+  ).trim();
+
   const normalizeProfileDocPayload = (profileDoc = null) => {
     const data = profileDoc?.data && typeof profileDoc.data === "object"
       ? profileDoc.data
@@ -395,6 +403,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const visibleTargetIds = collectVisibleMenuTargetIds(visibleProfileView.profile);
     if (!visibleTargetIds.has(safeRestaurantId) && visibleProfileView.restaurantId !== safeRestaurantId) return false;
     const avatar = resolveBusinessAvatarUrl(data);
+    const titleImageUrl = resolveBusinessTitleImageUrl(data);
     const name = String(data.name || data.restaurantName || data.displayName || data.businessName || "").trim();
     const location = String(data.city || data.address || data.location || "").trim();
     const bio = String(data.bio || data.description || data.about || "").trim();
@@ -405,12 +414,25 @@ export function createProfileBusinessMenuRuntimeCluster({
       canonicalRestaurantId: safeRestaurantId
     };
     if (avatar) patch.avatar = avatar;
+    if (titleImageUrl) {
+      patch.titleImageUrl = titleImageUrl;
+      patch.coverImageUrl = data.coverImageUrl || titleImageUrl;
+      patch.coverUrl = data.coverUrl || titleImageUrl;
+      patch.heroUrl = data.heroUrl || titleImageUrl;
+    }
     if (name) patch.name = name;
     if (location) patch.location = location;
+    if (data.address) patch.address = data.address;
+    if (data.phone) patch.phone = data.phone;
+    if (data.instagram || data.insta) patch.instagram = data.instagram || data.insta;
+    if (data.instagramUrl) patch.instagramUrl = data.instagramUrl;
+    if (data.tiktok || data.tikTok) patch.tiktok = data.tiktok || data.tikTok;
+    if (data.tiktokUrl || data.tikTokUrl) patch.tiktokUrl = data.tiktokUrl || data.tikTokUrl;
+    if (Array.isArray(data.coverImages)) patch.coverImages = data.coverImages;
     if (bio) patch.bio = bio;
     if (followers !== undefined) patch.followers = followers;
     if (following !== undefined) patch.following = following;
-    if (avatar || name || location || bio || followers !== undefined || following !== undefined) {
+    if (avatar || titleImageUrl || name || location || bio || followers !== undefined || following !== undefined) {
       patch.identityTruthState = "ready";
     }
     return refreshVisiblePublicProfile(patch);

@@ -798,6 +798,7 @@ const state = {
   favoriteMenuItems: createEmptyFavoriteMenuItemsState(),
   profileView: null,
   profileBackTab: "feed",
+  profileCardInfoOpen: "",
   profileViewMode: "grid",
   profileTopTab: "profile",
   profileContentTab: "posts",

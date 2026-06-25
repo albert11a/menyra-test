@@ -1317,6 +1317,251 @@ function renderProfileViewControls(
   `;
 }
 
+function normalizeBusinessProfileText(value = "") {
+  return String(value || "").trim();
+}
+
+function resolveBusinessProfileKey(profile = {}, fallback = "business") {
+  return String(
+    profile?.restaurantId
+    || profile?.canonicalRestaurantId
+    || profile?.uid
+    || profile?.handle
+    || profile?.name
+    || fallback
+  ).trim() || fallback;
+}
+
+function resolveBusinessTitleImageRaw(profile = {}) {
+  const images = Array.isArray(profile?.coverImages)
+    ? profile.coverImages
+    : (Array.isArray(profile?.titleImages) ? profile.titleImages : []);
+  const firstImage = images.map((item) => String(item || "").trim()).find(Boolean) || "";
+  return String(
+    profile?.titleImageUrl
+    || profile?.coverImageUrl
+    || profile?.coverUrl
+    || profile?.heroUrl
+    || firstImage
+    || ""
+  ).trim();
+}
+
+function resolveBusinessTitleImageUrl(profile = {}) {
+  const raw = resolveBusinessTitleImageRaw(profile);
+  if (!raw) return "";
+  const resolved = getOptimizedImageUrl(raw, "medium");
+  return resolved && !isPlaceholderUrl(resolved) ? resolved : "";
+}
+
+function resolveBusinessSocialUrl(value = "", network = "") {
+  const raw = normalizeBusinessProfileText(value);
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const clean = raw
+    .replace(/^@+/, "")
+    .replace(/^instagram\.com\//i, "")
+    .replace(/^www\.instagram\.com\//i, "")
+    .replace(/^tiktok\.com\/@?/i, "")
+    .replace(/^www\.tiktok\.com\/@?/i, "")
+    .replace(/^\/+/, "")
+    .trim();
+  if (!clean) return "";
+  if (network === "tiktok") return `https://www.tiktok.com/@${encodeURIComponent(clean)}`;
+  if (network === "instagram") return `https://www.instagram.com/${encodeURIComponent(clean)}`;
+  return "";
+}
+
+function resolveBusinessPhoneHref(phone = "") {
+  const raw = normalizeBusinessProfileText(phone);
+  if (!raw) return "";
+  const dial = raw.replace(/[^\d+]/g, "");
+  return dial ? `tel:${dial}` : "";
+}
+
+function resolveBusinessMapHref(profile = {}) {
+  const lat = Number(profile?.gpsLat ?? profile?.lat);
+  const lng = Number(profile?.gpsLng ?? profile?.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  }
+  const label = [
+    profile?.address,
+    profile?.locationPlace || profile?.place,
+    profile?.location,
+    profile?.city,
+    profile?.country
+  ].map((item) => normalizeBusinessProfileText(item)).filter(Boolean).join(", ");
+  return label ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(label)}` : "";
+}
+
+function renderBusinessQuickLink({ href = "", label = "", iconName = "", body = "" } = {}) {
+  const safeHref = normalizeBusinessProfileText(href);
+  if (!safeHref) return "";
+  return `
+    <a href="${escapeHtml(safeHref)}" target="_blank" rel="noreferrer" title="${escapeHtml(label)}" class="w-9 h-9 rounded-full bg-white text-slate-900 shadow-lg border border-white/80 flex items-center justify-center active:scale-95 transition-transform">
+      ${body || icon(iconName, "w-4 h-4")}
+    </a>
+  `;
+}
+
+function renderBusinessInfoRow({ href = "", buttonAttrs = "", iconName = "", eyebrow = "", value = "" } = {}) {
+  const safeValue = normalizeBusinessProfileText(value);
+  if (!safeValue) return "";
+  const content = `
+    <div class="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 text-slate-900 flex items-center justify-center shrink-0">
+      ${icon(iconName, "w-4 h-4")}
+    </div>
+    <div class="min-w-0">
+      <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">${escapeHtml(eyebrow)}</span>
+      <span class="block mt-1 text-sm font-black text-slate-900 truncate">${escapeHtml(safeValue)}</span>
+    </div>
+  `;
+  if (href) {
+    return `<a href="${escapeHtml(href)}" target="${href.startsWith("tel:") ? "_self" : "_blank"}" rel="noreferrer" class="flex items-center gap-4 text-left">${content}</a>`;
+  }
+  return `<button type="button" ${buttonAttrs} class="flex items-center gap-4 text-left w-full">${content}</button>`;
+}
+
+function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
+  const mode = options.mode === "self" ? "self" : "public";
+  const disabledBlockClass = options.disabledBlockClass || "";
+  const avatarUrl = options.avatarUrl || getOptimizedImageUrl(profile.avatar || "", "avatar");
+  const avatarFit = options.avatarFit || logoFitClass(!!profile.restaurantId);
+  const cardKey = resolveBusinessProfileKey(profile, mode);
+  const cardInfoOpen = String(state?.profileCardInfoOpen || "") === cardKey;
+  const avatarImgKeyAttr = options.avatarImgKeyAttr || (mode === "self"
+    ? `data-img-key="avatar:self"`
+    : `data-img-key="avatar:public:${escapeHtml(cardKey)}"`);
+  const renderAvatarImage = options.renderAvatarImage !== false
+    && !!String(avatarUrl || "").trim()
+    && !!String(profile?.avatar || "").trim();
+  const identityPending = !!options.identityPending;
+  const followersLabel = options.followersLabel ?? formatCount(profile.followers);
+  const profileName = normalizeBusinessProfileText(profile?.name) || "User";
+  const typeLabel = normalizeBusinessProfileText(options.typeLabel || profile?.customerType || profile?.type || "Business");
+  const locationLabel = normalizeBusinessProfileText(profile?.location || "-");
+  const metaLine = mode === "public" ? `${locationLabel} / ${typeLabel}` : locationLabel;
+  const safeBio = options.bioHtml || (escapeHtml(profile?.bio || "").replace(/\n/g, "<br>") || escapeHtml(tr("profile.noBio", "Noch keine Bio.")));
+  const coverUrl = resolveBusinessTitleImageUrl(profile);
+  const titleImageKey = `business-cover:${cardKey}`;
+  const mapHref = resolveBusinessMapHref(profile);
+  const instagramHref = resolveBusinessSocialUrl(profile?.instagramUrl || profile?.instagram || profile?.insta || "", "instagram");
+  const tiktokHref = resolveBusinessSocialUrl(profile?.tiktokUrl || profile?.tiktok || profile?.tikTok || "", "tiktok");
+  const phone = normalizeBusinessProfileText(profile?.phone || profile?.telephone || profile?.contactPhone || "");
+  const phoneHref = resolveBusinessPhoneHref(phone);
+  const addressLabel = normalizeBusinessProfileText(
+    profile?.address
+    || profile?.locationLabel
+    || [profile?.place || profile?.locationPlace, profile?.location || profile?.city].map((item) => normalizeBusinessProfileText(item)).filter(Boolean).join(", ")
+  );
+  const socialRows = [
+    renderBusinessInfoRow({ href: instagramHref, iconName: "instagram", eyebrow: "Instagram", value: profile?.instagram || profile?.instagramUrl || profile?.insta || "" }),
+    renderBusinessInfoRow({ href: tiktokHref, iconName: "music-2", eyebrow: "TikTok", value: profile?.tiktok || profile?.tiktokUrl || profile?.tikTok || "" })
+  ].filter(Boolean).join("");
+  const actionHtml = mode === "self"
+    ? `
+      <button data-nav="upload" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent group">
+        <span class="relative z-10 flex items-center gap-2">${icon("plus", "w-4 h-4")} Status</span>
+        <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+      </button>
+      <button data-nav="settings" class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-900 active:scale-[0.95] transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
+        ${icon("settings", "w-5 h-5")}
+      </button>
+    `
+    : `
+      <button data-landing-tutorial-target="follow" data-public-profile-follow="${escapeHtml(profile.handle || "")}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" ${options.hasPendingFollowRequest ? "disabled" : ""} class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${options.followTone || "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"} ${options.hasPendingFollowRequest ? "opacity-90 cursor-default" : ""}">
+        <span class="relative z-10 flex items-center gap-2">
+          ${options.isFollowing ? icon("check", "w-4 h-4") : ""}
+          ${escapeHtml(options.followLabel || tr("profile.follow", "Follow"))}
+        </span>
+      </button>
+      <button data-landing-tutorial-target="chat" data-open-chat="profile" data-chat-uid="${escapeHtml(profile.uid || "")}" data-chat-handle="${escapeHtml(profile.handle || "")}" data-chat-name="${escapeHtml(profile.name || "")}" data-chat-avatar="${escapeHtml(profile.avatar || "")}" ${options.isLocked ? "disabled" : ""} class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 ${options.isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-900 active:scale-[0.95]"} transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
+        ${icon("message-circle", "w-5 h-5")}
+      </button>
+    `;
+  if (cardInfoOpen) {
+    const infoRows = [
+      renderBusinessInfoRow({ href: phoneHref, iconName: "phone", eyebrow: tr("profile.call", "Anrufen"), value: phone }),
+      renderBusinessInfoRow({ href: mapHref, iconName: "map-pin", eyebrow: tr("profile.address", "Adresse"), value: addressLabel || locationLabel }),
+      socialRows
+    ].filter(Boolean).join("");
+    return `
+      <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}">
+        <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
+          ${icon("x", "w-4 h-4")}
+        </button>
+        <div class="pr-10">
+          <h2 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(tr("profile.contactInfo", "Kontakt & Infos"))}</h2>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(locationLabel)}</p>
+        </div>
+        <div class="mt-8 flex flex-col gap-4">
+          ${infoRows || `<div class="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("profile.noContactInfo", "Noch keine Kontaktdaten"))}</div>`}
+        </div>
+        <div class="mt-8 pt-6 border-t border-slate-100">
+          <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all">
+            ${escapeHtml(tr("profile.backToProfile", "Zurueck zum Profil"))}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}">
+      <div class="h-40 w-full bg-slate-900 relative overflow-hidden flex items-center justify-center select-none">
+        ${coverUrl
+          ? `<img src="${escapeHtml(coverUrl)}" data-img-key="${escapeHtml(titleImageKey)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" alt="${escapeHtml(profileName)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />`
+          : `<div class="absolute inset-0 bg-gradient-to-br from-slate-900 to-indigo-900"></div><div class="relative z-10 w-14 h-14 rounded-[1.8rem] bg-white/10 text-white/70 flex items-center justify-center">${icon("store", "w-7 h-7")}</div>`
+        }
+        <div class="absolute inset-0" style="background:rgba(15,23,42,0.24);"></div>
+        <div class="absolute inset-x-0 bottom-0" style="height:4rem;background:linear-gradient(to top, #fff 0%, rgba(255,255,255,.82) 42%, rgba(255,255,255,0) 100%);"></div>
+        <div class="absolute top-4 right-4 flex items-center gap-2 z-30">
+          ${renderBusinessQuickLink({ href: mapHref, label: tr("profile.openMap", "Karte oeffnen"), iconName: "map" })}
+          ${renderBusinessQuickLink({ href: tiktokHref, label: "TikTok", iconName: "music-2" })}
+          ${renderBusinessQuickLink({ href: instagramHref, label: "Instagram", iconName: "instagram" })}
+        </div>
+      </div>
+      <div class="px-8 pb-8 relative z-20" style="margin-top:-3rem;">
+        <div class="flex items-end justify-between w-full">
+          <div ${mode === "self" ? `id="profileAvatarTrigger"` : ""} class="relative ${mode === "self" ? "cursor-pointer group" : ""}">
+            <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
+              ${renderAvatarImage
+                ? `<img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white bg-white" />`
+                : `<div class="w-full h-full rounded-[1.8rem] border-2 border-white bg-slate-100 flex items-center justify-center ${identityPending ? "animate-pulse" : ""}">${icon("store", "w-8 h-8 text-slate-300")}</div>`
+              }
+            </div>
+            ${profile.isPremium ? `
+              <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
+                ${icon("badge-check", "w-4 h-4 fill-blue-500 text-white")}
+              </div>
+            ` : ""}
+          </div>
+          <div class="flex items-center gap-6 pb-1 pr-2">
+            <div data-landing-tutorial-target="fans" class="flex flex-col items-center min-w-0">
+              <span class="font-black text-2xl ${identityPending ? "text-slate-300" : "text-slate-900"} leading-none mb-1">${escapeHtml(String(followersLabel))}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.fans", "Fans"))}</span>
+            </div>
+            <div class="w-px h-8 bg-slate-100"></div>
+            <button type="button" data-profile-card-info-open="${escapeHtml(cardKey)}" class="flex flex-col items-center min-w-0 active:scale-95 transition-transform">
+              <span class="h-7 flex items-center justify-center text-slate-900">${icon("info", "w-5 h-5")}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.info", "Info"))}</span>
+            </button>
+          </div>
+        </div>
+        <div class="mt-6 mb-8">
+          <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profileName)}</h1>
+          <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${safeBio}</p>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(metaLine)}</p>
+          ${identityPending ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Profilkopf wird geladen..."))}</p>` : ""}
+        </div>
+        <div class="flex items-center gap-4">
+          ${actionHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderPublicProfileSurface(
   profile = {},
   posts = [],
@@ -1415,6 +1660,24 @@ function renderPublicProfileSurface(
       ${topTab === "profile" || topTab === "menu" ? `
       ${showIdentitySection ? `
         <div class="app-content-inline pb-2 ${topPaddingClass}">
+          ${isBusinessProfile ? renderBusinessProfileIdentityCard(profile, {
+            mode: "public",
+            disabledBlockClass,
+            avatarUrl,
+            avatarFit,
+            avatarKey,
+            avatarImgKeyAttr,
+            renderAvatarImage,
+            identityPending: showIdentityPendingState,
+            followersLabel,
+            followLabel,
+            followTone,
+            isFollowing,
+            hasPendingFollowRequest,
+            isLocked,
+            bioHtml,
+            typeLabel
+          }) : `
           <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 ${disabledBlockClass}">
             <div class="relative z-10">
               <div class="flex justify-between items-start mb-8">
@@ -1466,6 +1729,7 @@ function renderPublicProfileSurface(
               </div>
             </div>
           </div>
+          `}
         </div>
       ` : ""}
 
@@ -3252,6 +3516,13 @@ function renderProfileView() {
       ${topTab === "profile" || topTab === "menu" ? `
       <div class="app-content-inline pb-2 ${topPaddingClass}">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
+        ${isBusiness ? renderBusinessProfileIdentityCard(profile, {
+          mode: "self",
+          avatarUrl,
+          avatarFit,
+          followersLabel: formatCount(profile.followers),
+          bioHtml
+        }) : `
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="relative z-10">
             <div class="flex justify-between items-start mb-8">
@@ -3297,6 +3568,7 @@ function renderProfileView() {
             </div>
           </div>
         </div>
+        `}
       </div>
 
       ${renderProfileTabs(profile)}

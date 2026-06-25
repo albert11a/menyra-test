@@ -1011,6 +1011,10 @@ export function createPublicProfileRuntimeController({
         name: identityName,
         handle: identityHandle,
         avatar: identityAvatar,
+        titleImageUrl: String(safeProfile.titleImageUrl || safeProfile.coverImageUrl || safeProfile.coverUrl || safeProfile.heroUrl || safeIdentity?.titleImageUrl || "").trim(),
+        coverImageUrl: String(safeProfile.coverImageUrl || safeProfile.titleImageUrl || safeIdentity?.coverImageUrl || "").trim(),
+        coverUrl: String(safeProfile.coverUrl || safeProfile.titleImageUrl || safeIdentity?.coverUrl || "").trim(),
+        heroUrl: String(safeProfile.heroUrl || safeProfile.titleImageUrl || safeIdentity?.heroUrl || "").trim(),
         location: identityLocation,
         bio: identityBio,
         followers: followersValue,
@@ -1345,6 +1349,18 @@ export function createPublicProfileRuntimeController({
         handle: String(profile?.handle || "").trim() ? profile.handle : currentProfile?.handle,
         bio: String(profile?.bio || "").trim() ? profile.bio : currentProfile?.bio,
         avatar: String(profile?.avatar || "").trim() ? profile.avatar : currentProfile?.avatar,
+        titleImageUrl: String(profile?.titleImageUrl || profile?.coverImageUrl || profile?.coverUrl || profile?.heroUrl || "").trim()
+          ? (profile.titleImageUrl || profile.coverImageUrl || profile.coverUrl || profile.heroUrl)
+          : currentProfile?.titleImageUrl,
+        coverImageUrl: String(profile?.coverImageUrl || profile?.titleImageUrl || "").trim()
+          ? (profile.coverImageUrl || profile.titleImageUrl)
+          : currentProfile?.coverImageUrl,
+        coverUrl: String(profile?.coverUrl || profile?.titleImageUrl || "").trim()
+          ? (profile.coverUrl || profile.titleImageUrl)
+          : currentProfile?.coverUrl,
+        heroUrl: String(profile?.heroUrl || profile?.titleImageUrl || "").trim()
+          ? (profile.heroUrl || profile.titleImageUrl)
+          : currentProfile?.heroUrl,
         location: String(profile?.location || "").trim() ? profile.location : currentProfile?.location,
         followers: profile?.followers ?? currentProfile?.followers,
         following: profile?.following ?? currentProfile?.following,
@@ -1682,6 +1698,20 @@ export function createPublicProfileRuntimeController({
       || rest?.restaurantType
       || ""
     );
+    const titleImageUrl = String(
+      data?.titleImageUrl
+      || rest?.titleImageUrl
+      || data?.coverImageUrl
+      || rest?.coverImageUrl
+      || data?.coverUrl
+      || rest?.coverUrl
+      || data?.heroUrl
+      || rest?.heroUrl
+      || ""
+    ).trim();
+    const coverImages = Array.isArray(data?.coverImages)
+      ? data.coverImages
+      : (Array.isArray(rest?.coverImages) ? rest.coverImages : []);
     return {
       name: displayName,
       handle: handle || normalizeHandle(displayName),
@@ -1689,6 +1719,19 @@ export function createPublicProfileRuntimeController({
       bio: data?.bio || data?.description || rest?.description || rest?.bio || rest?.about || `Offizieller Account auf ${brandSocialName}.`,
       avatar: data?.avatarUrl || data?.avatar || rest?.logoUrl || rest?.logo || "",
       location: data?.city || rest?.city || "Kosovo",
+      place: data?.place || data?.locationPlace || rest?.place || rest?.locationPlace || "",
+      locationPlace: data?.locationPlace || data?.place || rest?.locationPlace || rest?.place || "",
+      address: data?.address || rest?.address || "",
+      phone: data?.phone || rest?.phone || "",
+      instagram: data?.instagram || data?.insta || rest?.instagram || rest?.insta || "",
+      instagramUrl: data?.instagramUrl || rest?.instagramUrl || "",
+      tiktok: data?.tiktok || data?.tikTok || rest?.tiktok || rest?.tikTok || "",
+      tiktokUrl: data?.tiktokUrl || data?.tikTokUrl || rest?.tiktokUrl || rest?.tikTokUrl || "",
+      titleImageUrl,
+      coverImageUrl: data?.coverImageUrl || rest?.coverImageUrl || titleImageUrl,
+      coverUrl: data?.coverUrl || rest?.coverUrl || titleImageUrl,
+      heroUrl: data?.heroUrl || rest?.heroUrl || titleImageUrl,
+      coverImages,
       followers,
       following,
       privateAccount: false,

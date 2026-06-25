@@ -368,6 +368,10 @@ function normalizeIncomingWebRoutePayload(payload = null) {
       handle: String(identity?.handle || "").trim(),
       publicSlug: String(identity?.publicSlug || identity?.landingSlug || "").trim(),
       avatar: String(identity?.avatar || "").trim(),
+      titleImageUrl: String(identity?.titleImageUrl || identity?.coverImageUrl || identity?.coverUrl || identity?.heroUrl || "").trim(),
+      coverImageUrl: String(identity?.coverImageUrl || identity?.titleImageUrl || "").trim(),
+      coverUrl: String(identity?.coverUrl || identity?.titleImageUrl || "").trim(),
+      heroUrl: String(identity?.heroUrl || identity?.titleImageUrl || "").trim(),
       location: String(identity?.location || "").trim(),
       bio: String(identity?.bio || "").trim(),
       followers: normalizeCountOrNull(identity?.followers),
@@ -696,11 +700,13 @@ function applyWebDirectRouteSeedFromBootstrap({
   const currentName = String(profile.name || "").trim();
   const currentHandle = String(profile.handle || "").trim();
   const currentAvatar = String(profile.avatar || "").trim();
+  const currentTitleImage = String(profile.titleImageUrl || profile.coverImageUrl || profile.coverUrl || profile.heroUrl || "").trim();
   const currentLocation = String(profile.location || "").trim();
   const currentType = String(profile.type || profile.customerType || "").trim();
   const canUsePreviewName = !currentName || isGenericBusinessBootstrapLabel(currentName);
   const canUsePreviewHandle = !currentHandle;
   const canUsePreviewAvatar = !currentAvatar;
+  const canUsePreviewTitleImage = !currentTitleImage;
   const canUsePreviewLocation = !currentLocation;
   const canUsePreviewType = !currentType;
   const nextName = String(
@@ -724,6 +730,18 @@ function applyWebDirectRouteSeedFromBootstrap({
     || canonicalRestaurant?.logo
     || canonicalRestaurant?.logoURL
     || (canUsePreviewAvatar ? (previewFallback?.logoUrl || previewFallback?.logo || previewFallback?.logoURL || "") : "")
+    || ""
+  ).trim();
+  const nextTitleImage = String(
+    routeIdentity?.titleImageUrl
+    || routeIdentity?.coverImageUrl
+    || routeIdentity?.coverUrl
+    || routeIdentity?.heroUrl
+    || canonicalRestaurant?.titleImageUrl
+    || canonicalRestaurant?.coverImageUrl
+    || canonicalRestaurant?.coverUrl
+    || canonicalRestaurant?.heroUrl
+    || (canUsePreviewTitleImage ? (previewFallback?.titleImageUrl || previewFallback?.coverImageUrl || previewFallback?.coverUrl || previewFallback?.heroUrl || "") : "")
     || ""
   ).trim();
   const nextLocation = String(
@@ -766,6 +784,13 @@ function applyWebDirectRouteSeedFromBootstrap({
   }
   if (nextAvatar && nextAvatar !== String(profile.avatar || "").trim()) {
     profile.avatar = nextAvatar;
+    changed = true;
+  }
+  if (nextTitleImage && nextTitleImage !== currentTitleImage) {
+    profile.titleImageUrl = nextTitleImage;
+    profile.coverImageUrl = profile.coverImageUrl || nextTitleImage;
+    profile.coverUrl = profile.coverUrl || nextTitleImage;
+    profile.heroUrl = profile.heroUrl || nextTitleImage;
     changed = true;
   }
   if (nextLocation && nextLocation !== String(profile.location || "").trim()) {
@@ -1070,6 +1095,10 @@ function applyWebDirectRouteSeedFromBootstrap({
         handle: String(profile.handle || "").trim(),
         publicSlug: String(profile.publicSlug || profile.landingSlug || "").trim(),
         avatar: String(profile.avatar || "").trim(),
+        titleImageUrl: String(profile.titleImageUrl || profile.coverImageUrl || profile.coverUrl || profile.heroUrl || "").trim(),
+        coverImageUrl: String(profile.coverImageUrl || profile.titleImageUrl || "").trim(),
+        coverUrl: String(profile.coverUrl || profile.titleImageUrl || "").trim(),
+        heroUrl: String(profile.heroUrl || profile.titleImageUrl || "").trim(),
         location: String(profile.location || "").trim(),
         bio: String(profile.bio || "").trim(),
         followers: profile.followers ?? null,
