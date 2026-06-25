@@ -217,6 +217,22 @@ export function bindAppSettingsProfileEventsCore({
     btn.addEventListener("click", () => {
       const key = String(btn.dataset.profileCardInfoOpen || "").trim();
       if (!key) return;
+      const card = typeof btn.closest === "function"
+        ? btn.closest("[data-business-profile-card]")
+        : null;
+      const rect = card && typeof card.getBoundingClientRect === "function"
+        ? card.getBoundingClientRect()
+        : null;
+      const cardHeight = rect && Number.isFinite(rect.height) ? Math.ceil(rect.height) : 0;
+      if (cardHeight > 0) {
+        const heights = state.profileCardInfoHeights && typeof state.profileCardInfoHeights === "object"
+          ? state.profileCardInfoHeights
+          : {};
+        state.profileCardInfoHeights = {
+          ...heights,
+          [key]: cardHeight
+        };
+      }
       state.profileCardInfoOpen = key;
       render();
     });

@@ -1569,6 +1569,10 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const avatarFit = options.avatarFit || logoFitClass(!!profile.restaurantId);
   const cardKey = resolveBusinessProfileKey(profile, mode);
   const cardInfoOpen = String(state?.profileCardInfoOpen || "") === cardKey;
+  const measuredInfoHeight = Number(state?.profileCardInfoHeights?.[cardKey] || 0);
+  const lockedInfoHeightStyle = cardInfoOpen && Number.isFinite(measuredInfoHeight) && measuredInfoHeight > 0
+    ? `height:${Math.ceil(measuredInfoHeight)}px;`
+    : "";
   const avatarImgKeyAttr = options.avatarImgKeyAttr || (mode === "self"
     ? `data-img-key="avatar:self"`
     : `data-img-key="avatar:public:${escapeHtml(cardKey)}"`);
@@ -1631,7 +1635,7 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
       socialRows
     ].filter(Boolean).join("");
     return `
-      <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="min-height: var(--business-profile-card-min-height, 440px);display:grid;">
+      <div data-landing-tutorial-target="identity" data-business-profile-card="${escapeHtml(cardKey)}" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="${lockedInfoHeightStyle}min-height: var(--business-profile-card-min-height, 440px);display:grid;">
         ${renderBusinessProfileCardHeightSizer({ profileName, safeBio, metaLine, identityPending, followersLabel })}
         <div class="p-8 flex flex-col justify-between" style="grid-area:1/1;min-height:100%;">
           <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
@@ -1654,7 +1658,7 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
     `;
   }
   return `
-    <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="min-height: var(--business-profile-card-min-height, 440px);">
+    <div data-landing-tutorial-target="identity" data-business-profile-card="${escapeHtml(cardKey)}" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="min-height: var(--business-profile-card-min-height, 440px);">
       <div class="h-40 w-full bg-slate-900 relative overflow-hidden flex items-center justify-center select-none">
         ${coverUrl
           ? `<img src="${escapeHtml(coverUrl)}" data-img-key="${escapeHtml(titleImageKey)}" alt="${escapeHtml(profileName)}" class="w-full h-full object-cover" loading="eager" fetchpriority="high" decoding="async" onerror="this.style.display='none'" />`

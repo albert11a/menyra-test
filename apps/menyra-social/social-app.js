@@ -799,6 +799,7 @@ const state = {
   profileView: null,
   profileBackTab: "feed",
   profileCardInfoOpen: "",
+  profileCardInfoHeights: {},
   businessTitleImageCache: { loaded: false, items: {} },
   profileViewMode: "grid",
   profileTopTab: "profile",

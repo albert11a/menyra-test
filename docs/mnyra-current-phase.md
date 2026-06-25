@@ -1213,6 +1213,15 @@ Last updated: 2026-06-25
   vertikalen Struktur wie die sichtbare Profil-Seite. Dadurch soll die Card beim
   Wechsel auf `Info` nicht mehr kuerzer werden, ohne die sichtbare Profil-Seite,
   Texte, Schriftgroessen, Profilbild- oder Titelbild-Ladewege zu veraendern.
+- Schritt 124 ist abgeschlossen: Die Business-Profil-Info-Card uebernimmt beim
+  Klick jetzt die real gemessene Profil-Card-Hoehe.
+- Bewertung von Schritt 124: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 124:
+  Beim Klick auf `Info` wird die aktuelle Card-Hoehe im Browser gemessen und die
+  Info-Ansicht exakt auf diese Pixelhoehe gesetzt. Dadurch soll die Card beim
+  Umschalten nicht mehr sichtbar in der vertikalen Hoehe springen. Sichtbare
+  Texte, Schriftgroessen, Profilbild- und Titelbild-Ladewege bleiben
+  unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1335,6 +1344,7 @@ Last updated: 2026-06-25
 - Referenz: [docs/mnyra-step121-business-profile-card-ui.md](./mnyra-step121-business-profile-card-ui.md)
 - Referenz: [docs/mnyra-step122-business-profile-card-stability.md](./mnyra-step122-business-profile-card-stability.md)
 - Referenz: [docs/mnyra-step123-business-profile-info-height-match.md](./mnyra-step123-business-profile-info-height-match.md)
+- Referenz: [docs/mnyra-step124-business-profile-info-measured-height.md](./mnyra-step124-business-profile-info-measured-height.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1360,7 +1370,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 123 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 124 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1657,6 +1667,12 @@ Start-Hoehe der Profil-Card merken und dann `Info` oeffnen. Die Info-Card soll
 dieselbe vertikale Hoehe wie die Profil-Card behalten. Danach zurueck zum Profil
 wechseln und mehrmals wiederholen; Texte, Schriftgroessen, Profilbild und
 Titelbild sollen unveraendert wirken.
+
+Zusaetzlich fuer Schritt 124 manuell pruefen: Business-Profil oeffnen und direkt
+auf `Info` klicken. Die Info-Card soll die exakt gleiche vertikale Hoehe wie die
+Profil-Card im Moment des Klicks behalten. Danach zurueck wechseln und mit
+kurzer sowie langer Bio erneut pruefen; es soll kein sichtbares Kleiner- oder
+Groesserwerden der Card mehr auftreten.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
