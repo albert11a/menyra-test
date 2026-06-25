@@ -1911,6 +1911,45 @@ klicken oder `/casarita/menu` oeffnen; das Menu soll weiterhin normal laden.
 Mit `?mnyraDebugLoading=1` kann kontrolliert werden, dass Posts-First nicht
 sofort eine Menu-Hydration neben dem sichtbaren Posts-Read startet.
 
+Schritt 134: Generischen Profil-Menu-Tab-Ruecksprung und lokalen gzip-
+Pruefpfad repariert. Ursache fuer den beobachteten Ruecksprung war, dass der
+Schutz gegen spaete `profile/posts`-Updates nur fuer Web-Direct-RouteFirst-
+Profile galt. Wenn ein Nutzer in einem bereits sichtbaren Business-Profil auf
+`Menue` wechselte, konnte ein spaeterer Profil-/Posts-Update fuer dasselbe
+Profil den Live-Tab wieder auf `Beitraege` setzen. Der Live-Tab bleibt jetzt
+fuer dasselbe sichtbare Business-Profil autoritativ, wenn ein spaeter stale
+Update erneut `profile/posts` erzwingen will. Andere explizite Ziele werden
+nicht pauschal blockiert.
+
+Zusaetzlich erzeugt `npm run build:menyra-social:bundle` nach dem Vite-Build
+lokale `.gz`-Assets fuer die gebauten JS/CSS/JSON-Dateien. Der lokale
+`scripts/local-dev-server.mjs` liefert diese Dateien bei
+`Accept-Encoding: gzip` mit `Content-Encoding: gzip` aus. So kann der lokale
+Bundle-Pfad vor Main/Deploy real komprimiert geprueft werden, statt nur die
+Vite-Groessenanzeige zu lesen. Die `.gz`-Dateien bleiben lokale Build-
+Artefakte und werden nicht versioniert.
+
+Geaendert in Schritt 134:
+`apps/menyra-social/core/profile/public-profile-runtime-controller.js`,
+`tests/public-profile-runtime-controller.test.mjs`,
+`scripts/local-dev-server.mjs`,
+`scripts/gzip-menyra-social-bundle.mjs`,
+`package.json`,
+`.gitignore`,
+`apps/menyra-social/bundled/*` und
+`docs/mnyra-current-phase.md`.
+
+Bewusst nicht geaendert in Schritt 134: keine UI-/Designwerte, keine
+Firestore-Daten, keine Rules, keine Functions, kein Function-Deployment,
+keine neuen Collections, keine Route-Struktur und keine Smoke- oder
+Playwright-Tests. Der Nutzer prueft manuell.
+
+Zusaetzlich fuer Schritt 134 manuell pruefen: Ein beliebiges Business-Profil
+oeffnen, auf `Menue` klicken und mindestens zwei Sekunden warten; der Tab darf
+nicht auf `Beitraege` zurueckspringen. Danach mit `npm run dev` lokal laden
+und im Netzwerk-Panel bei `/apps/menyra-social/bundled/entry/social-app.js`
+oder einem Chunk `Content-Encoding: gzip` pruefen.
+
 ## Guardrails fuer die naechsten Schritte
 
 - keine Produktaenderungen

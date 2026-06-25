@@ -32,6 +32,17 @@ const MIME_TYPES = new Map([
   [".txt", "text/plain; charset=utf-8"]
 ]);
 
+const GZIP_ELIGIBLE_EXTENSIONS = new Set([
+  ".html",
+  ".js",
+  ".mjs",
+  ".css",
+  ".json",
+  ".webmanifest",
+  ".svg",
+  ".txt"
+]);
+
 const SOCIAL_ROUTES = new Set([
   "/feed",
   "/search",
@@ -107,6 +118,26 @@ function resolveFilePath(publicPath = "") {
   return "";
 }
 
+function requestAcceptsGzip(req) {
+  const accepted = String(req?.headers?.["accept-encoding"] || "").toLowerCase();
+  return accepted.split(",").some((entry) => entry.trim().split(";")[0] === "gzip");
+}
+
+function resolveServedFile(req, filePath = "") {
+  if (!filePath) return { filePath: "", gzip: false };
+  const ext = extname(filePath).toLowerCase();
+  if (!GZIP_ELIGIBLE_EXTENSIONS.has(ext) || !requestAcceptsGzip(req)) {
+    return { filePath, gzip: false };
+  }
+  const gzipPath = `${filePath}.gz`;
+  try {
+    if (existsSync(gzipPath) && statSync(gzipPath).isFile()) {
+      return { filePath: gzipPath, gzip: true };
+    }
+  } catch {}
+  return { filePath, gzip: false };
+}
+
 function rewritePath(pathname = "/") {
   const path = pathname.replace(/\/+$/, "") || "/";
 
@@ -152,15 +183,23 @@ function serveFile(req, res, filePath = "") {
   }
   const ext = extname(filePath).toLowerCase();
   const contentType = MIME_TYPES.get(ext) || "application/octet-stream";
-  res.writeHead(200, {
+  const servedFile = resolveServedFile(req, filePath);
+  const headers = {
     "content-type": contentType,
-    "cache-control": "no-store"
+    "cache-control": "no-store",
+    "vary": "Accept-Encoding"
+  };
+  if (servedFile.gzip) {
+    headers["content-encoding"] = "gzip";
+  }
+  res.writeHead(200, {
+    ...headers
   });
   if (req.method === "HEAD") {
     res.end();
     return;
   }
-  createReadStream(filePath).on("error", () => {
+  createReadStream(servedFile.filePath).on("error", () => {
     if (!res.headersSent) send(res, 500, "Read error");
     else res.destroy();
   }).pipe(res);

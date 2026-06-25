@@ -1443,7 +1443,8 @@ export function createPublicProfileRuntimeController({
       && normalizedExplicitTopTab
       && normalizedCurrentTopTab
       && normalizedExplicitTopTab !== normalizedCurrentTopTab
-      && currentDirectEntry?.routeFirst === true
+      && normalizedExplicitTopTab === "profile"
+      && normalizedCurrentTopTab !== "profile"
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
       && !!String(
         nextProfile?.canonicalRestaurantId

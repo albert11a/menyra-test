@@ -218,6 +218,43 @@ test("same public business keeps user-selected menu tab against stale posts upda
   assert.equal(state.profileView.directEntry.menuFirst, true);
 });
 
+test("same in-app business keeps user-selected menu tab against late profile update", () => {
+  const profile = {
+    restaurantId: "moka",
+    canonicalRestaurantId: "moka",
+    publicSlug: "moka",
+    landingSlug: "moka",
+    name: "Moka Coffee",
+    handle: "moka",
+    postsLoaded: true,
+    truthState: "stable",
+    identityTruthState: "ready"
+  };
+  const state = createStableProfileRuntimeState(profile);
+  state.profileTopTab = "menu";
+  state.profileContentTab = "menu";
+  state.profileBackTab = "search";
+  state.profileView.routePayload = null;
+  state.profileView.directEntry = null;
+  state.__webDirectEntry = { active: false };
+  const controller = createProfileRuntimeController(state);
+
+  controller.showPublicProfile({
+    ...profile,
+    postsLoaded: true,
+    truthState: "stable"
+  }, [], {
+    showBack: true,
+    backTab: "search",
+    topTab: "profile",
+    contentTab: "posts"
+  });
+
+  assert.equal(state.profileTopTab, "menu");
+  assert.equal(state.profileContentTab, "menu");
+  assert.equal(state.profileView.directEntry, null);
+});
+
 function createStableProfileRuntimeState(profile = {}, posts = []) {
   return {
     activeTab: "profile",
