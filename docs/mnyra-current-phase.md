@@ -1222,6 +1222,19 @@ Last updated: 2026-06-25
   Umschalten nicht mehr sichtbar in der vertikalen Hoehe springen. Sichtbare
   Texte, Schriftgroessen, Profilbild- und Titelbild-Ladewege bleiben
   unveraendert.
+- Schritt 125 ist abgeschlossen: Die Business-Profil-Info-Card wurde gegen
+  horizontales Aufziehen beim Klick auf `Info` gesichert.
+- Bewertung von Schritt 125: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 125:
+  Die Info-Ansicht der Business-Profil-Card begrenzt ihre Grid-Spalte und ihre
+  Info-Zeilen jetzt explizit auf die vorhandene Card-Breite. Lange Kontakt-,
+  Standort- oder Social-Werte duerfen die Card dadurch nicht mehr breiter als
+  die normale Profil-Card machen, sondern bleiben innerhalb der bestehenden
+  Truncation. Geaendert wurde nur
+  `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`.
+  Nicht geaendert wurden sichtbare Texte, Farben, Spacing, Profilbild- oder
+  Titelbild-Ladewege, Routing, QR, Cart, Order, Menu-Daten, Firebase Rules und
+  Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1370,7 +1383,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 124 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 125 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1673,6 +1686,14 @@ auf `Info` klicken. Die Info-Card soll die exakt gleiche vertikale Hoehe wie die
 Profil-Card im Moment des Klicks behalten. Danach zurueck wechseln und mit
 kurzer sowie langer Bio erneut pruefen; es soll kein sichtbares Kleiner- oder
 Groesserwerden der Card mehr auftreten.
+
+Zusaetzlich fuer Schritt 125 manuell pruefen: Business-Profil auf Mobile-Breite
+oeffnen und oben in der Profil-Card auf `Info` klicken. Die Info-Card darf nicht
+breiter als die normale Profil-Card werden; lange Adresse, Telefon-, Instagram-
+oder TikTok-Werte sollen innerhalb der Card abgeschnitten werden statt
+horizontal zu ueberlaufen. Danach zurueck zum Profil wechseln und erneut `Info`
+oeffnen; Hoehe, Titelbild, Profilbild, Quick-Links und Buttons sollen weiter wie
+vorher wirken.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

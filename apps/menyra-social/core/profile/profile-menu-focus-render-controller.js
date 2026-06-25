@@ -1509,15 +1509,15 @@ function renderBusinessInfoRow({ href = "", buttonAttrs = "", iconName = "", eye
     <div class="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 text-slate-900 flex items-center justify-center shrink-0">
       ${icon(iconName, "w-4 h-4")}
     </div>
-    <div class="min-w-0">
+    <div class="min-w-0 flex-1">
       <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">${escapeHtml(eyebrow)}</span>
       <span class="block mt-1 text-sm font-black text-slate-900 truncate">${escapeHtml(safeValue)}</span>
     </div>
   `;
   if (href) {
-    return `<a href="${escapeHtml(href)}" target="${href.startsWith("tel:") ? "_self" : "_blank"}" rel="noreferrer" class="flex items-center gap-4 text-left">${content}</a>`;
+    return `<a href="${escapeHtml(href)}" target="${href.startsWith("tel:") ? "_self" : "_blank"}" rel="noreferrer" class="flex items-center gap-4 text-left min-w-0 w-full max-w-full">${content}</a>`;
   }
-  return `<button type="button" ${buttonAttrs} class="flex items-center gap-4 text-left w-full">${content}</button>`;
+  return `<button type="button" ${buttonAttrs} class="flex items-center gap-4 text-left min-w-0 w-full max-w-full">${content}</button>`;
 }
 
 function renderBusinessProfileCardHeightSizer({
@@ -1528,7 +1528,7 @@ function renderBusinessProfileCardHeightSizer({
   followersLabel = ""
 } = {}) {
   return `
-    <div aria-hidden="true" style="grid-area:1/1;visibility:hidden;pointer-events:none;">
+    <div aria-hidden="true" style="grid-area:1/1;visibility:hidden;pointer-events:none;min-width:0;max-width:100%;overflow:hidden;">
       <div class="h-40 w-full"></div>
       <div class="px-8 pb-8 relative z-20" style="margin-top:-3rem;">
         <div class="flex items-end justify-between w-full">
@@ -1635,9 +1635,9 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
       socialRows
     ].filter(Boolean).join("");
     return `
-      <div data-landing-tutorial-target="identity" data-business-profile-card="${escapeHtml(cardKey)}" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="${lockedInfoHeightStyle}min-height: var(--business-profile-card-min-height, 440px);display:grid;">
+      <div data-landing-tutorial-target="identity" data-business-profile-card="${escapeHtml(cardKey)}" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="${lockedInfoHeightStyle}min-height: var(--business-profile-card-min-height, 440px);display:grid;grid-template-columns:minmax(0,1fr);width:100%;max-width:100%;min-width:0;box-sizing:border-box;">
         ${renderBusinessProfileCardHeightSizer({ profileName, safeBio, metaLine, identityPending, followersLabel })}
-        <div class="p-8 flex flex-col justify-between" style="grid-area:1/1;min-height:100%;">
+        <div class="p-8 min-w-0 max-w-full overflow-hidden flex flex-col justify-between" style="grid-area:1/1;min-height:100%;width:100%;">
           <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
             ${icon("x", "w-4 h-4")}
           </button>
