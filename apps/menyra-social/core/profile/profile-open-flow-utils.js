@@ -933,13 +933,21 @@ export function createProfileOpenFlowControllerCore({
       const earlyPostsPromise = shouldWarmPostsForSurface && earlyPostsRestaurantId
         ? Promise.resolve(loadBusinessPosts(earlyPostsRestaurantId, {
           skipProfileResolve: earlyPostsSkipProfileResolve,
-          initialPage: shouldUseInitialPostsPage
+          initialPage: shouldUseInitialPostsPage,
+          returnStatus: true
         }))
-          .then((rows) => ({
-            ok: true,
-            posts: Array.isArray(rows) ? rows : [],
-            initialPage: shouldUseInitialPostsPage
-          }))
+          .then((result) => {
+            const posts = Array.isArray(result?.posts)
+              ? result.posts
+              : (Array.isArray(result) ? result : []);
+            const status = String(result?.status || "").trim().toLowerCase() || (posts.length ? "ready" : "empty");
+            return {
+              ok: status !== "error",
+              posts,
+              status,
+              initialPage: shouldUseInitialPostsPage
+            };
+          })
           .catch((err) => {
             console.error(err);
             return {
@@ -1478,6 +1486,7 @@ export function createProfileOpenFlowControllerCore({
       if (!resolvedRestaurantId) return;
       acceptedRestaurantIds.add(resolvedRestaurantId);
       let posts = null;
+      let postsLoadStatus = "";
       const deferPostsResolutionToVisiblePostsSurface = isMenuTopTab
         && isWebRoutePriorityPath
         && safeMenuAccessSource !== "qr";
@@ -1485,10 +1494,12 @@ export function createProfileOpenFlowControllerCore({
         posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
       } else if (earlyPostsResult?.ok && earlyPostsResult.initialPage !== true && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
         posts = earlyPostsResult.posts;
+        postsLoadStatus = String(earlyPostsResult.status || "").trim().toLowerCase();
       } else if (earlyPostsPromise) {
         const earlyResult = earlyPostsResult || await earlyPostsPromise;
         if (earlyResult?.ok && earlyResult.initialPage !== true && earlyPostsRestaurantId && earlyPostsRestaurantId === resolvedRestaurantId) {
           posts = earlyResult.posts;
+          postsLoadStatus = String(earlyResult.status || "").trim().toLowerCase();
         }
       }
       if (!Array.isArray(posts)) {
@@ -1497,9 +1508,17 @@ export function createProfileOpenFlowControllerCore({
           targetCanonicalRestaurantId,
           routeSnapshotRestaurantId
         );
-        posts = await loadBusinessPosts(resolvedRestaurantId, {
-          skipProfileResolve: skipProfileResolveForPosts
+        const postsResult = await loadBusinessPosts(resolvedRestaurantId, {
+          skipProfileResolve: skipProfileResolveForPosts,
+          returnStatus: true
         });
+        posts = Array.isArray(postsResult?.posts)
+          ? postsResult.posts
+          : (Array.isArray(postsResult) ? postsResult : []);
+        postsLoadStatus = String(postsResult?.status || "").trim().toLowerCase();
+        if (postsLoadStatus === "error" && !posts.length) {
+          posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
+        }
       }
       const latestRestaurantId = String(
         state?.profileView?.profile?.canonicalRestaurantId
@@ -1513,6 +1532,9 @@ export function createProfileOpenFlowControllerCore({
       const resolvedPostsStatus = resolvedPosts.length > 0
         ? "ready"
         : (
+          postsLoadStatus === "error"
+            ? "error"
+            :
           deferPostsResolutionToVisiblePostsSurface
             ? (routePostsState === "knownEmpty" ? "empty" : "loading")
             : "empty"
