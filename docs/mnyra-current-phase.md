@@ -1235,6 +1235,20 @@ Last updated: 2026-06-25
   Nicht geaendert wurden sichtbare Texte, Farben, Spacing, Profilbild- oder
   Titelbild-Ladewege, Routing, QR, Cart, Order, Menu-Daten, Firebase Rules und
   Functions.
+- Schritt 126 ist abgeschlossen: Der innere Info-Card-Content-Layer wurde
+  gegen Padding-bedingten Horizontal-Overflow korrigiert.
+- Bewertung von Schritt 126: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 126:
+  Der `p-8`-Overlay-Layer der Business-Profil-Info-Ansicht nutzt jetzt
+  `box-sizing:border-box`, damit `width:100%` nicht mehr zusaetzlich um das
+  Padding breiter wird. Zusaetzlich begrenzen Info-Zeilen, Textwerte und der
+  Zurueck-Button ihre Breite inline auf die vorhandene Card-Breite. Damit
+  sollen lange Adress- oder Social-Werte sichtbar abgeschnitten werden, statt
+  Text und Button rechts aus der Card laufen zu lassen. Geaendert wurde nur
+  `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
+  plus diese Doku. Nicht geaendert wurden Texte, Farben, Spacing,
+  Profilbild-/Titelbild-Ladewege, Routing, QR, Cart, Order, Menu-Daten,
+  Firebase Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1383,7 +1397,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 125 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 126 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1694,6 +1708,12 @@ oder TikTok-Werte sollen innerhalb der Card abgeschnitten werden statt
 horizontal zu ueberlaufen. Danach zurueck zum Profil wechseln und erneut `Info`
 oeffnen; Hoehe, Titelbild, Profilbild, Quick-Links und Buttons sollen weiter wie
 vorher wirken.
+
+Zusaetzlich fuer Schritt 126 manuell pruefen: Dasselbe Business-Profil aus dem
+Screenshot oeffnen und `Info` klicken. Der Adresswert `Casa Rita Restaurant...`
+muss innerhalb der Card mit Ellipsis enden und darf rechts nicht aus der Card
+laufen. Der untere `Zurueck zum Profil`-Button muss komplett innerhalb der Card
+bleiben und links/rechts denselben Innenabstand wie der Info-Inhalt haben.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

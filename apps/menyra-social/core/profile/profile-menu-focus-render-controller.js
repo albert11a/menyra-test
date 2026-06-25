@@ -1509,15 +1509,15 @@ function renderBusinessInfoRow({ href = "", buttonAttrs = "", iconName = "", eye
     <div class="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 text-slate-900 flex items-center justify-center shrink-0">
       ${icon(iconName, "w-4 h-4")}
     </div>
-    <div class="min-w-0 flex-1">
+    <div class="min-w-0 flex-1" style="min-width:0;max-width:100%;overflow:hidden;">
       <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">${escapeHtml(eyebrow)}</span>
-      <span class="block mt-1 text-sm font-black text-slate-900 truncate">${escapeHtml(safeValue)}</span>
+      <span class="block mt-1 text-sm font-black text-slate-900 truncate" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(safeValue)}</span>
     </div>
   `;
   if (href) {
-    return `<a href="${escapeHtml(href)}" target="${href.startsWith("tel:") ? "_self" : "_blank"}" rel="noreferrer" class="flex items-center gap-4 text-left min-w-0 w-full max-w-full">${content}</a>`;
+    return `<a href="${escapeHtml(href)}" target="${href.startsWith("tel:") ? "_self" : "_blank"}" rel="noreferrer" class="flex items-center gap-4 text-left min-w-0 w-full max-w-full" style="min-width:0;width:100%;max-width:100%;overflow:hidden;box-sizing:border-box;">${content}</a>`;
   }
-  return `<button type="button" ${buttonAttrs} class="flex items-center gap-4 text-left min-w-0 w-full max-w-full">${content}</button>`;
+  return `<button type="button" ${buttonAttrs} class="flex items-center gap-4 text-left min-w-0 w-full max-w-full" style="min-width:0;width:100%;max-width:100%;overflow:hidden;box-sizing:border-box;">${content}</button>`;
 }
 
 function renderBusinessProfileCardHeightSizer({
@@ -1637,19 +1637,19 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
     return `
       <div data-landing-tutorial-target="identity" data-business-profile-card="${escapeHtml(cardKey)}" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="${lockedInfoHeightStyle}min-height: var(--business-profile-card-min-height, 440px);display:grid;grid-template-columns:minmax(0,1fr);width:100%;max-width:100%;min-width:0;box-sizing:border-box;">
         ${renderBusinessProfileCardHeightSizer({ profileName, safeBio, metaLine, identityPending, followersLabel })}
-        <div class="p-8 min-w-0 max-w-full overflow-hidden flex flex-col justify-between" style="grid-area:1/1;min-height:100%;width:100%;">
+        <div class="p-8 min-w-0 max-w-full overflow-hidden flex flex-col justify-between" style="grid-area:1/1;min-height:100%;width:100%;max-width:100%;box-sizing:border-box;">
           <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
             ${icon("x", "w-4 h-4")}
           </button>
-          <div class="pr-10">
+          <div class="pr-10 min-w-0 max-w-full overflow-hidden">
             <h2 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(tr("profile.contactInfo", "Kontakt & Infos"))}</h2>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(locationLabel)}</p>
           </div>
-          <div class="mt-8 flex flex-col gap-4">
+          <div class="mt-8 flex flex-col gap-4 min-w-0 max-w-full overflow-hidden">
             ${infoRows || `<div class="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("profile.noContactInfo", "Noch keine Kontaktdaten"))}</div>`}
           </div>
-          <div class="mt-8 pt-6 border-t border-slate-100">
-            <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all">
+          <div class="mt-8 pt-6 border-t border-slate-100 min-w-0 max-w-full overflow-hidden">
+            <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all flex items-center justify-center" style="width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;">
               ${escapeHtml(tr("profile.backToProfile", "Zurueck zum Profil"))}
             </button>
           </div>
