@@ -2350,6 +2350,29 @@ function isTestfirstMenuProfile(profile = {}) {
   return businessType === "restaurant" || businessType === "cafe" || businessType === "fastfood";
 }
 
+function shouldUseModernPublicMenuCards(profile = {}, {
+  items = [],
+  menuSurfaceState = null,
+  mode = "profile"
+} = {}) {
+  if (isTestfirstMenuProfile(profile)) return true;
+  const safeMode = String(mode || "profile").trim().toLowerCase();
+  if (safeMode !== "profile" && safeMode !== "landing") return false;
+  if (!profile?.restaurantId || isShopCatalogProfile(profile)) return false;
+  const businessType = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
+  if (businessType === "hotel" || businessType === "motel" || businessType === "ecommerce") return false;
+  const menu = menuSurfaceState?.menu && typeof menuSurfaceState.menu === "object"
+    ? menuSurfaceState.menu
+    : {};
+  const surfaceItems = Array.isArray(menu.items) ? menu.items : [];
+  const hasPublicMenuProducts = String(menu.source || "").trim().toLowerCase() === "public"
+    && menu.status === "ready"
+    && ((Array.isArray(items) && items.length > 0) || surfaceItems.length > 0);
+  // During cold public-route refresh the profile type can arrive after menu
+  // products. Restaurant public menus must still use the modern card renderer.
+  return hasPublicMenuProducts && !businessType;
+}
+
 function getMenuCardSocialMeta(item) {
   const restaurantId = item?.restaurantId
     || state.menu.restaurantId
@@ -2417,9 +2440,9 @@ function buildFocusCardItem(item, { menuItemId = "" } = {}) {
   };
 }
 
-function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile" } = {}) {
+function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile", force = false } = {}) {
   const restaurantId = profile?.restaurantId || "";
-  if (!restaurantId || !isTestfirstMenuProfile(profile) || !focusItems.length) return "";
+  if (!restaurantId || (!force && !isTestfirstMenuProfile(profile)) || !focusItems.length) return "";
   return `
     <div class="pt-2 pb-4">
       <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
@@ -2696,7 +2719,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
   `;
 }
 
-function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMenuSurfaceState = null } = {}) {
+function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMenuSurfaceState = null, forceModernCards = false } = {}) {
   const allItems = sortMenuItemsByOrder(Array.isArray(items) ? items : []);
   const restaurantId = String(profile?.restaurantId || "").trim();
   const canUseFocusState = mode === "admin" || hasPublicFocusTruthForRestaurant(restaurantId);
@@ -2796,7 +2819,7 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMe
 
   return `
     <div>
-      ${renderTestfirstFocusSection(profile, displayFocusItems, { mode })}
+      ${renderTestfirstFocusSection(profile, displayFocusItems, { mode, force: forceModernCards })}
       <div id="menu-section" class="mt-5">
         ${renderTypeBlock("drink", drinkBucket)}
         ${renderTypeBlock("food", foodBucket)}
@@ -3533,8 +3556,8 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       .filter((item) => !isMenuItemHidden(item))
     : [];
   const hasItems = items.length > 0;
-  const isShop = isShopCatalogProfile(profile);
-  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
+  const isShop = isShopCatalogProfile(surfaceProfile);
+  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(surfaceProfile));
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
   const isLoading = menuSurfaceState.menu.status === "loading"
@@ -3543,7 +3566,11 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
   const foodPriorityOffset = drinkItems.length;
-  const useTestfirstCardUi = isTestfirstMenuProfile(profile);
+  const useTestfirstCardUi = shouldUseModernPublicMenuCards(surfaceProfile, {
+    items,
+    menuSurfaceState,
+    mode
+  });
   const anchoredCategories = new Set();
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
@@ -3560,7 +3587,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     })()
     : [];
   const testfirstStableFocusSection = testfirstFocusItemsFromState.length
-    ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode })
+    ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode, force: useTestfirstCardUi })
     : "";
   if (isLandingMode && isLoading) {
     return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
@@ -3573,7 +3600,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
         ` : `
           ${hasItems
-            ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })
+            ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState, forceModernCards: useTestfirstCardUi })
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
               : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))
