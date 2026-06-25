@@ -1205,6 +1205,14 @@ Last updated: 2026-06-25
   geladen, bekommt einen kleinen temporaeren Last-Good-Cache und wird im
   Public-Web-Direct-Seed frueher weitergereicht. Profilbild-Ladeweg, Routing,
   QR, Cart, Order, Menu-Daten und Firebase Rules bleiben unveraendert.
+- Schritt 123 ist abgeschlossen: Die Business-Profil-Info-Seite wurde nochmals
+  auf die reale Profil-Card-Hoehe stabilisiert.
+- Bewertung von Schritt 123: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 123:
+  Die Info-Seite nutzt jetzt einen unsichtbaren Hoehen-Sizer mit derselben
+  vertikalen Struktur wie die sichtbare Profil-Seite. Dadurch soll die Card beim
+  Wechsel auf `Info` nicht mehr kuerzer werden, ohne die sichtbare Profil-Seite,
+  Texte, Schriftgroessen, Profilbild- oder Titelbild-Ladewege zu veraendern.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1326,6 +1334,7 @@ Last updated: 2026-06-25
 - Referenz: [docs/mnyra-step120-lead-business-name-split-colors.md](./mnyra-step120-lead-business-name-split-colors.md)
 - Referenz: [docs/mnyra-step121-business-profile-card-ui.md](./mnyra-step121-business-profile-card-ui.md)
 - Referenz: [docs/mnyra-step122-business-profile-card-stability.md](./mnyra-step122-business-profile-card-stability.md)
+- Referenz: [docs/mnyra-step123-business-profile-info-height-match.md](./mnyra-step123-business-profile-info-height-match.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1351,7 +1360,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 122 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 123 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1642,6 +1651,12 @@ refreshen und direkt nach dem Reload beobachten; das Titelbild soll nicht kurz
 auf neutralen Fallback springen oder nach dem Laden flackern. Danach denselben
 Refresh erneut pruefen, damit der lokale Last-Good-Cache greift. Ein Business
 ohne Titelbild und den Profilbild-Upload kurz unveraendert gegenpruefen.
+
+Zusaetzlich fuer Schritt 123 manuell pruefen: Business-Profil oeffnen, die
+Start-Hoehe der Profil-Card merken und dann `Info` oeffnen. Die Info-Card soll
+dieselbe vertikale Hoehe wie die Profil-Card behalten. Danach zurueck zum Profil
+wechseln und mehrmals wiederholen; Texte, Schriftgroessen, Profilbild und
+Titelbild sollen unveraendert wirken.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

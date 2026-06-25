@@ -1520,6 +1520,48 @@ function renderBusinessInfoRow({ href = "", buttonAttrs = "", iconName = "", eye
   return `<button type="button" ${buttonAttrs} class="flex items-center gap-4 text-left w-full">${content}</button>`;
 }
 
+function renderBusinessProfileCardHeightSizer({
+  profileName = "",
+  safeBio = "",
+  metaLine = "",
+  identityPending = false,
+  followersLabel = ""
+} = {}) {
+  return `
+    <div aria-hidden="true" style="grid-area:1/1;visibility:hidden;pointer-events:none;">
+      <div class="h-40 w-full"></div>
+      <div class="px-8 pb-8 relative z-20" style="margin-top:-3rem;">
+        <div class="flex items-end justify-between w-full">
+          <div class="relative">
+            <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px]"></div>
+          </div>
+          <div class="flex items-center gap-6 pb-1 pr-2">
+            <div class="flex flex-col items-center min-w-0">
+              <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(String(followersLabel))}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.fans", "Fans"))}</span>
+            </div>
+            <div class="w-px h-8 bg-slate-100"></div>
+            <div class="flex flex-col items-center min-w-0">
+              <span class="h-7 flex items-center justify-center text-slate-900"></span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">${escapeHtml(tr("profile.info", "Info"))}</span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 mb-8">
+          <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profileName)}</h1>
+          <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${safeBio}</p>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(metaLine)}</p>
+          ${identityPending ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Profilkopf wird geladen..."))}</p>` : ""}
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex-1 h-[56px] rounded-[1.2rem]"></div>
+          <div class="w-[56px] h-[56px] rounded-[1.2rem]"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const mode = options.mode === "self" ? "self" : "public";
   const disabledBlockClass = options.disabledBlockClass || "";
@@ -1589,21 +1631,24 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
       socialRows
     ].filter(Boolean).join("");
     return `
-      <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 shadow-sm flex flex-col justify-between ${disabledBlockClass}" style="min-height: var(--business-profile-card-min-height, 440px);">
-        <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
-          ${icon("x", "w-4 h-4")}
-        </button>
-        <div class="pr-10">
-          <h2 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(tr("profile.contactInfo", "Kontakt & Infos"))}</h2>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(locationLabel)}</p>
-        </div>
-        <div class="mt-8 flex flex-col gap-4">
-          ${infoRows || `<div class="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("profile.noContactInfo", "Noch keine Kontaktdaten"))}</div>`}
-        </div>
-        <div class="mt-8 pt-6 border-t border-slate-100">
-          <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all">
-            ${escapeHtml(tr("profile.backToProfile", "Zurueck zum Profil"))}
+      <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="min-height: var(--business-profile-card-min-height, 440px);display:grid;">
+        ${renderBusinessProfileCardHeightSizer({ profileName, safeBio, metaLine, identityPending, followersLabel })}
+        <div class="p-8 flex flex-col justify-between" style="grid-area:1/1;min-height:100%;">
+          <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
+            ${icon("x", "w-4 h-4")}
           </button>
+          <div class="pr-10">
+            <h2 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(tr("profile.contactInfo", "Kontakt & Infos"))}</h2>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(locationLabel)}</p>
+          </div>
+          <div class="mt-8 flex flex-col gap-4">
+            ${infoRows || `<div class="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("profile.noContactInfo", "Noch keine Kontaktdaten"))}</div>`}
+          </div>
+          <div class="mt-8 pt-6 border-t border-slate-100">
+            <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all">
+              ${escapeHtml(tr("profile.backToProfile", "Zurueck zum Profil"))}
+            </button>
+          </div>
         </div>
       </div>
     `;
