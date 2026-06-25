@@ -12,6 +12,25 @@ function pickBusinessProfileText(...values) {
   return "";
 }
 
+function pickBusinessTitleImageText(...records) {
+  for (const record of records) {
+    if (!record || typeof record !== "object") continue;
+    const images = Array.isArray(record.coverImages)
+      ? record.coverImages
+      : (Array.isArray(record.titleImages) ? record.titleImages : []);
+    const firstImage = images.map((item) => String(item || "").trim()).find(Boolean) || "";
+    const text = pickBusinessProfileText(
+      record.titleImageUrl,
+      record.coverImageUrl,
+      record.coverUrl,
+      record.heroUrl,
+      firstImage
+    );
+    if (text) return text;
+  }
+  return "";
+}
+
 export function normalizeBusinessProfileTarget(input, { source = "" } = {}) {
   const inputIsObject = input && typeof input === "object";
   const safeInput = inputIsObject ? input : {};
@@ -687,6 +706,7 @@ export function createProfileOpenFlowControllerCore({
           ) ? "seeded" : "unknown"
         );
         const identityBio = String(safeProfile.bio || routeIdentitySeed?.bio || "").trim();
+        const identityTitleImage = pickBusinessTitleImageText(safeProfile, routeIdentitySeed);
         const resolvedMenuItems = menuTruthState === "seeded"
           ? menuItems
           : [];
@@ -740,6 +760,10 @@ export function createProfileOpenFlowControllerCore({
             name: String(safeProfile.name || routeIdentitySeed?.name || "").trim(),
             handle: String(safeProfile.handle || routeIdentitySeed?.handle || "").trim(),
             avatar: String(safeProfile.avatar || routeIdentitySeed?.avatar || "").trim(),
+            titleImageUrl: identityTitleImage,
+            coverImageUrl: identityTitleImage,
+            coverUrl: identityTitleImage,
+            heroUrl: identityTitleImage,
             location: String(safeProfile.location || routeIdentitySeed?.location || "").trim(),
             bio: identityBio,
             followers: safeProfile.followers ?? null,
@@ -806,6 +830,10 @@ export function createProfileOpenFlowControllerCore({
             name: nextSnapshot.identity.name,
             handle: nextSnapshot.identity.handle,
             avatar: nextSnapshot.identity.avatar,
+            titleImageUrl: nextSnapshot.identity.titleImageUrl,
+            coverImageUrl: nextSnapshot.identity.coverImageUrl,
+            coverUrl: nextSnapshot.identity.coverUrl,
+            heroUrl: nextSnapshot.identity.heroUrl,
             location: nextSnapshot.identity.location,
             bio: nextSnapshot.identity.bio,
             followers: nextSnapshot.identity.followers,
@@ -928,6 +956,15 @@ export function createProfileOpenFlowControllerCore({
           uid: pickFirstText(liveBusinessProfile?.uid),
           bio: String(routeIdentitySeed?.bio || "").trim() || pickFirstText(liveBusinessProfile?.bio, rest?.bio, rest?.description),
           avatar: pickFirstText(routeIdentitySeed?.avatar, liveBusinessProfile?.avatar, rest?.logoUrl, rest?.logo, rest?.avatar),
+          titleImageUrl: pickBusinessTitleImageText(routeIdentitySeed, liveBusinessProfile, rest),
+          coverImageUrl: pickBusinessTitleImageText(routeIdentitySeed, liveBusinessProfile, rest),
+          coverUrl: pickBusinessTitleImageText(routeIdentitySeed, liveBusinessProfile, rest),
+          heroUrl: pickBusinessTitleImageText(routeIdentitySeed, liveBusinessProfile, rest),
+          coverImages: Array.isArray(routeIdentitySeed?.coverImages)
+            ? routeIdentitySeed.coverImages
+            : (Array.isArray(liveBusinessProfile?.coverImages)
+              ? liveBusinessProfile.coverImages
+              : (Array.isArray(rest?.coverImages) ? rest.coverImages : [])),
           location: pickFirstText(routeIdentitySeed?.location, liveBusinessProfile?.location, rest?.city, rest?.address),
           followers: routeIdentitySeed?.followers ?? liveBusinessProfile?.followers ?? null,
           following: routeIdentitySeed?.following ?? liveBusinessProfile?.following ?? null,
@@ -1132,6 +1169,15 @@ export function createProfileOpenFlowControllerCore({
         uid: pickFirstText(stableBusinessProfile?.uid),
         bio: pickFirstText(stableBusinessProfile?.bio, rest?.bio, rest?.description, "Profil wird geladen..."),
         avatar: pickFirstText(stableBusinessProfile?.avatar, rest?.logoUrl, rest?.logo, rest?.avatar),
+        titleImageUrl: pickBusinessTitleImageText(stableBusinessProfile, routeIdentitySeed, rest),
+        coverImageUrl: pickBusinessTitleImageText(stableBusinessProfile, routeIdentitySeed, rest),
+        coverUrl: pickBusinessTitleImageText(stableBusinessProfile, routeIdentitySeed, rest),
+        heroUrl: pickBusinessTitleImageText(stableBusinessProfile, routeIdentitySeed, rest),
+        coverImages: Array.isArray(stableBusinessProfile?.coverImages)
+          ? stableBusinessProfile.coverImages
+          : (Array.isArray(routeIdentitySeed?.coverImages)
+            ? routeIdentitySeed.coverImages
+            : (Array.isArray(rest?.coverImages) ? rest.coverImages : [])),
         location: pickFirstText(stableBusinessProfile?.location, rest?.city, rest?.address),
         followers: stableBusinessProfile?.followers ?? null,
         following: stableBusinessProfile?.following ?? null,

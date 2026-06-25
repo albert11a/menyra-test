@@ -1321,6 +1321,89 @@ function normalizeBusinessProfileText(value = "") {
   return String(value || "").trim();
 }
 
+const BUSINESS_TITLE_IMAGE_CACHE_STORAGE_KEY = "mnyra_business_title_image_cache_v1";
+const BUSINESS_TITLE_IMAGE_CACHE_MAX_ENTRIES = 80;
+
+function getBusinessTitleImageCacheItems() {
+  if (!state) return {};
+  const current = state.businessTitleImageCache && typeof state.businessTitleImageCache === "object"
+    ? state.businessTitleImageCache
+    : null;
+  if (current?.loaded === true && current.items && typeof current.items === "object") {
+    return current.items;
+  }
+  let items = {};
+  try {
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    const raw = storage?.getItem?.(BUSINESS_TITLE_IMAGE_CACHE_STORAGE_KEY) || "";
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (parsed && typeof parsed === "object") {
+      Object.entries(parsed).forEach(([key, value]) => {
+        const safeKey = normalizeBusinessProfileText(key);
+        const safeValue = normalizeBusinessProfileText(value);
+        if (safeKey && safeValue && !isPlaceholderUrl(safeValue)) items[safeKey] = safeValue;
+      });
+    }
+  } catch {}
+  state.businessTitleImageCache = { loaded: true, items };
+  return items;
+}
+
+function persistBusinessTitleImageCache(items = {}) {
+  try {
+    const storage = typeof window !== "undefined" ? window.localStorage : null;
+    if (!storage) return;
+    storage.setItem(BUSINESS_TITLE_IMAGE_CACHE_STORAGE_KEY, JSON.stringify(items));
+  } catch {}
+}
+
+function resolveBusinessTitleImageCacheKeys(profile = {}, fallback = "business") {
+  const keys = [
+    profile?.restaurantId,
+    profile?.canonicalRestaurantId,
+    profile?.uid,
+    profile?.handle,
+    profile?.publicSlug,
+    profile?.landingSlug,
+    profile?.name,
+    fallback
+  ].map((item) => normalizeBusinessProfileText(item)).filter(Boolean);
+  return [...new Set(keys)];
+}
+
+function rememberBusinessTitleImageUrl(keys = [], url = "") {
+  const safeUrl = normalizeBusinessProfileText(url);
+  if (!safeUrl || isPlaceholderUrl(safeUrl)) return;
+  const items = getBusinessTitleImageCacheItems();
+  let changed = false;
+  keys.forEach((key) => {
+    const safeKey = normalizeBusinessProfileText(key);
+    if (!safeKey || items[safeKey] === safeUrl) return;
+    items[safeKey] = safeUrl;
+    changed = true;
+  });
+  const entries = Object.entries(items);
+  if (entries.length > BUSINESS_TITLE_IMAGE_CACHE_MAX_ENTRIES) {
+    const trimmed = entries.slice(entries.length - BUSINESS_TITLE_IMAGE_CACHE_MAX_ENTRIES);
+    Object.keys(items).forEach((key) => delete items[key]);
+    trimmed.forEach(([key, value]) => {
+      items[key] = value;
+    });
+    changed = true;
+  }
+  if (changed) persistBusinessTitleImageCache(items);
+}
+
+function readBusinessTitleImageUrlFromCache(keys = []) {
+  const items = getBusinessTitleImageCacheItems();
+  for (const key of keys) {
+    const safeKey = normalizeBusinessProfileText(key);
+    const safeUrl = safeKey ? normalizeBusinessProfileText(items[safeKey]) : "";
+    if (safeUrl && !isPlaceholderUrl(safeUrl)) return safeUrl;
+  }
+  return "";
+}
+
 function resolveBusinessProfileKey(profile = {}, fallback = "business") {
   return String(
     profile?.restaurantId
@@ -1347,11 +1430,25 @@ function resolveBusinessTitleImageRaw(profile = {}) {
   ).trim();
 }
 
-function resolveBusinessTitleImageUrl(profile = {}) {
+function resolveBusinessTitleImageUrl(profile = {}, options = {}) {
   const raw = resolveBusinessTitleImageRaw(profile);
-  if (!raw) return "";
-  const resolved = getOptimizedImageUrl(raw, "medium");
-  return resolved && !isPlaceholderUrl(resolved) ? resolved : "";
+  const cacheKeys = Array.isArray(options.cacheKeys) ? options.cacheKeys : [];
+  const stableKey = normalizeBusinessProfileText(options.stableKey || cacheKeys[0] || "");
+  if (!raw) {
+    if (options.allowCacheFallback === true) {
+      const cached = readBusinessTitleImageUrlFromCache(cacheKeys);
+      if (cached) return cached;
+      const resolvedCached = stableKey ? getOptimizedImageUrl("", "medium", { stableKey }) : "";
+      return resolvedCached && !isPlaceholderUrl(resolvedCached) ? resolvedCached : "";
+    }
+    return "";
+  }
+  const resolved = getOptimizedImageUrl(raw, "medium", stableKey ? { stableKey } : undefined);
+  if (resolved && !isPlaceholderUrl(resolved)) {
+    rememberBusinessTitleImageUrl(cacheKeys, resolved);
+    return resolved;
+  }
+  return "";
 }
 
 function resolveBusinessSocialUrl(value = "", network = "") {
@@ -1443,8 +1540,13 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const locationLabel = normalizeBusinessProfileText(profile?.location || "-");
   const metaLine = mode === "public" ? `${locationLabel} / ${typeLabel}` : locationLabel;
   const safeBio = options.bioHtml || (escapeHtml(profile?.bio || "").replace(/\n/g, "<br>") || escapeHtml(tr("profile.noBio", "Noch keine Bio.")));
-  const coverUrl = resolveBusinessTitleImageUrl(profile);
   const titleImageKey = `business-cover:${cardKey}`;
+  const titleImageCacheKeys = resolveBusinessTitleImageCacheKeys(profile, cardKey);
+  const coverUrl = resolveBusinessTitleImageUrl(profile, {
+    cacheKeys: titleImageCacheKeys,
+    stableKey: titleImageKey,
+    allowCacheFallback: options.allowTitleImageCacheFallback === true
+  });
   const mapHref = resolveBusinessMapHref(profile);
   const instagramHref = resolveBusinessSocialUrl(profile?.instagramUrl || profile?.instagram || profile?.insta || "", "instagram");
   const tiktokHref = resolveBusinessSocialUrl(profile?.tiktokUrl || profile?.tiktok || profile?.tikTok || "", "tiktok");
@@ -1487,7 +1589,7 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
       socialRows
     ].filter(Boolean).join("");
     return `
-      <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}">
+      <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 shadow-sm flex flex-col justify-between ${disabledBlockClass}" style="min-height: var(--business-profile-card-min-height, 440px);">
         <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="absolute top-6 right-6 w-9 h-9 rounded-full border border-slate-100 bg-white text-slate-400 flex items-center justify-center active:scale-95">
           ${icon("x", "w-4 h-4")}
         </button>
@@ -1507,10 +1609,10 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
     `;
   }
   return `
-    <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}">
+    <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm ${disabledBlockClass}" style="min-height: var(--business-profile-card-min-height, 440px);">
       <div class="h-40 w-full bg-slate-900 relative overflow-hidden flex items-center justify-center select-none">
         ${coverUrl
-          ? `<img src="${escapeHtml(coverUrl)}" data-img-key="${escapeHtml(titleImageKey)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" alt="${escapeHtml(profileName)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />`
+          ? `<img src="${escapeHtml(coverUrl)}" data-img-key="${escapeHtml(titleImageKey)}" alt="${escapeHtml(profileName)}" class="w-full h-full object-cover" loading="eager" fetchpriority="high" decoding="async" onerror="this.style.display='none'" />`
           : `<div class="absolute inset-0 bg-gradient-to-br from-slate-900 to-indigo-900"></div><div class="relative z-10 w-14 h-14 rounded-[1.8rem] bg-white/10 text-white/70 flex items-center justify-center">${icon("store", "w-7 h-7")}</div>`
         }
         <div class="absolute inset-0" style="background:rgba(15,23,42,0.24);"></div>
@@ -1676,7 +1778,9 @@ function renderPublicProfileSurface(
             hasPendingFollowRequest,
             isLocked,
             bioHtml,
-            typeLabel
+            typeLabel,
+            allowTitleImageCacheFallback: isSettlingProfileSurfaceStatus(headerStatus)
+              || isSettlingProfileSurfaceStatus(postsStatus)
           }) : `
           <div data-landing-tutorial-target="identity" class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100 ${disabledBlockClass}">
             <div class="relative z-10">

@@ -1195,6 +1195,16 @@ Last updated: 2026-06-25
   Schrift-/Textformate fuer Profilname, Bio und Location/Meta bleiben auf dem
   bisherigen Mnyra-Format. Routing, QR, Cart, Order, Menu-Daten und Firebase
   Rules bleiben unveraendert.
+- Schritt 122 ist abgeschlossen: Die neue Business-Profil-Card wurde gegen
+  leere Quick-Link-Icons, Info-Hoehensprung und Titelbild-Flackern nachgehaertet.
+- Bewertung von Schritt 122: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 122:
+  Die oberen Quick-Link-Icons rendern jetzt inline statt nur ueber spaetere
+  Lucide-Hydration. Profil- und Info-Seite der Business-Card teilen dieselbe
+  Mindesthoehe. Das Titelbild wird frueh und ohne generischen Reveal-Fade
+  geladen, bekommt einen kleinen temporaeren Last-Good-Cache und wird im
+  Public-Web-Direct-Seed frueher weitergereicht. Profilbild-Ladeweg, Routing,
+  QR, Cart, Order, Menu-Daten und Firebase Rules bleiben unveraendert.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1315,6 +1325,7 @@ Last updated: 2026-06-25
 - Referenz: [docs/mnyra-step119-business-header-empty-menu-long-name.md](./mnyra-step119-business-header-empty-menu-long-name.md)
 - Referenz: [docs/mnyra-step120-lead-business-name-split-colors.md](./mnyra-step120-lead-business-name-split-colors.md)
 - Referenz: [docs/mnyra-step121-business-profile-card-ui.md](./mnyra-step121-business-profile-card-ui.md)
+- Referenz: [docs/mnyra-step122-business-profile-card-stability.md](./mnyra-step122-business-profile-card-stability.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1340,7 +1351,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 121 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 122 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1622,6 +1633,15 @@ Format wie bisher wirken. Profilbild-Upload, Status, Settings, Follow und Chat
 kurz gegenpruefen. Ein Business ohne Titelbild muss den neutralen Fallback
 zeigen, ein Business mit Titelbild muss das Titelbild laden. Ein normales
 User-Profil kurz gegenpruefen; dessen Card muss unveraendert bleiben.
+
+Zusaetzlich fuer Schritt 122 manuell pruefen: Business-Profil oeffnen und
+mehrmals zwischen Profil und Info wechseln; die Card soll nicht sichtbar in der
+Hoehe springen. Die oberen runden Buttons fuer Karte, TikTok und Instagram
+duerfen nicht leer ohne Icon erscheinen. Ein Business mit Titelbild hart
+refreshen und direkt nach dem Reload beobachten; das Titelbild soll nicht kurz
+auf neutralen Fallback springen oder nach dem Laden flackern. Danach denselben
+Refresh erneut pruefen, damit der lokale Last-Good-Cache greift. Ein Business
+ohne Titelbild und den Profilbild-Upload kurz unveraendert gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
