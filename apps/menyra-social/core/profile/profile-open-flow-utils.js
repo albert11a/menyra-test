@@ -264,6 +264,11 @@ export function createProfileOpenFlowControllerCore({
     if (safeFallback === "knownempty" || safeFallback === "known-empty") return "knownEmpty";
     return "unknown";
   };
+  const isRetryablePublicProfileReadError = (err = null) => {
+    const code = String(err?.code || "").trim().toLowerCase();
+    const name = String(err?.name || "").trim();
+    return code === "deadline-exceeded" || name === "MnyraPublicProfileReadTimeoutError";
+  };
   const applySurfaceTruthPatch = (
     profile = {},
     {
@@ -476,6 +481,7 @@ export function createProfileOpenFlowControllerCore({
     let targetRestaurantLookupId = "";
     let targetMenuRestaurantId = "";
     let targetCanonicalRestaurantId = "";
+    let routeSnapshotRestaurantId = "";
     try {
       const businessTarget = normalizeBusinessProfileTarget(input);
       const safeName = String(businessTarget.name || "").trim();
@@ -632,7 +638,7 @@ export function createProfileOpenFlowControllerCore({
           || String(routeIdentitySeed?.avatar || "").trim()
         ) ? "seeded" : "unknown"
       );
-      const routeSnapshotRestaurantId = String(
+      routeSnapshotRestaurantId = String(
         routeSnapshotSeed?.restaurantId
         || routeBootstrapSeed?.restaurantId
         || ""
@@ -1488,6 +1494,7 @@ export function createProfileOpenFlowControllerCore({
       acceptedRestaurantIds.add(resolvedRestaurantId);
       let posts = null;
       let postsLoadStatus = "";
+      let postsLoadError = null;
       const deferPostsResolutionToVisiblePostsSurface = isMenuTopTab
         && isWebRoutePriorityPath
         && safeMenuAccessSource !== "qr";
@@ -1527,6 +1534,7 @@ export function createProfileOpenFlowControllerCore({
           ? postsResult.posts
           : (Array.isArray(postsResult) ? postsResult : []);
         postsLoadStatus = String(postsResult?.status || "").trim().toLowerCase();
+        postsLoadError = postsResult?.error || null;
         if (postsLoadStatus === "error" && !posts.length) {
           posts = Array.isArray(resolvedInterim.posts) ? resolvedInterim.posts : [];
         }
@@ -1544,7 +1552,7 @@ export function createProfileOpenFlowControllerCore({
         ? "ready"
         : (
           postsLoadStatus === "error"
-            ? "error"
+            ? (isRetryablePublicProfileReadError(postsLoadError) ? "loading" : "error")
             :
           deferPostsResolutionToVisiblePostsSurface
             ? (routePostsState === "knownEmpty" ? "empty" : "loading")
@@ -1623,17 +1631,17 @@ export function createProfileOpenFlowControllerCore({
         const livePosts = Array.isArray(liveView.posts) ? liveView.posts : [];
         const liveIdentityState = normalizeIdentityTruthState(
           liveProfile.identityTruthState,
-          livePosts.length ? "ready" : "error"
+          livePosts.length || isRetryablePublicProfileReadError(err) ? "ready" : "error"
         );
         const resolvedIdentityStatus = livePosts.length
           ? "ready"
-          : (liveIdentityState === "ready" ? "ready" : "error");
+          : (liveIdentityState === "ready" ? "ready" : (isRetryablePublicProfileReadError(err) ? "loading" : "error"));
         liveView.profile = withCanonicalRestaurantId(applySurfaceTruthPatch({
           ...liveProfile,
           posts: livePosts
         }, {
           identityStatus: resolvedIdentityStatus,
-          postsStatus: livePosts.length ? "ready" : "error"
+          postsStatus: livePosts.length ? "ready" : (isRetryablePublicProfileReadError(err) ? "loading" : "error")
         }), resolveCanonicalRestaurantIdCandidate(
           liveCanonicalRestaurantId,
           targetCanonicalRestaurantId,

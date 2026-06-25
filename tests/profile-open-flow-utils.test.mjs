@@ -159,3 +159,100 @@ test("direct route known-empty menu snapshot does not seed public menu empty", a
   assert.equal(state.menu.loading, true);
   assert.equal(state.menu.truthState, "unknown");
 });
+
+test("direct business posts route keeps retryable posts read errors loading", async () => {
+  const state = createState("feed");
+  const showCalls = [];
+  const controller = createController(state, showCalls, {
+    loadBusinessPostsForRestaurant: async (restaurantId) => ({
+      posts: [],
+      status: "error",
+      restaurantId,
+      error: { code: "deadline-exceeded", name: "MnyraPublicProfileReadTimeoutError" }
+    })
+  });
+
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    await controller.openProfileViewFromBusiness(
+      { id: "moka", restaurantId: "moka", canonicalRestaurantId: "moka", name: "Moka Coffee" },
+      { showBack: false, topTab: "profile" }
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(showCalls.at(-1).profile.truthState, "loading");
+  assert.equal(showCalls.at(-1).profile.postsLoaded, false);
+  assert.deepEqual(showCalls.at(-1).posts, []);
+});
+
+test("business open flow catch keeps deadline failures retryable for visible profile", async () => {
+  const state = createState("feed");
+  const renderCalls = [];
+  const deadlineError = new Error("posts timeout");
+  deadlineError.name = "MnyraPublicProfileReadTimeoutError";
+  deadlineError.code = "deadline-exceeded";
+  const controller = createProfileOpenFlowControllerCore({
+    state,
+    isLocalBusinessProfile: () => false,
+    getRestaurantMetaById: () => null,
+    normalizeSearchKey: (value = "") => String(value || "").trim().toLowerCase(),
+    render: () => {
+      renderCalls.push({
+        truthState: state.profileView?.profile?.truthState,
+        postsLoaded: state.profileView?.profile?.postsLoaded
+      });
+    },
+    ensureMenuDataForProfile: () => {},
+    ensureFocusDataForProfile: () => {},
+    hydrateRestaurantsByIds: async () => null,
+    normalizeExternalProfile: ({ profileDoc, restaurant, fallbackName, posts }) => {
+      const restaurantId = String(profileDoc?.id || restaurant?.id || "moka").trim();
+      return {
+        restaurantId,
+        canonicalRestaurantId: restaurantId,
+        name: fallbackName || restaurantId,
+        handle: restaurantId,
+        role: "business",
+        posts: Array.isArray(posts) ? posts : [],
+        postsLoaded: true,
+        truthState: "stable"
+      };
+    },
+    showPublicProfile: (profile, posts, options) => {
+      state.activeTab = "profile";
+      state.profileView = { profile, posts, directEntry: options?.directEntry || null };
+    },
+    fetchBusinessProfileDoc: async ({ restaurantId }) => ({
+      id: String(restaurantId || "moka"),
+      data: { name: "Moka Coffee", publicSlug: "moka" }
+    }),
+    loadBusinessPostsForRestaurant: async () => {
+      throw deadlineError;
+    },
+    normalizeExternalUserProfile: (value) => value || {},
+    openGuestAuthPrompt: () => false,
+    userProfileCache: new Map(),
+    hasPendingFollowRequest: async () => false,
+    fetchUserDocByUid: async () => null,
+    resolveUserByHandle: async () => null,
+    loadUserPostsForUser: async () => []
+  });
+
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    await controller.openProfileViewFromBusiness(
+      { id: "moka", restaurantId: "moka", canonicalRestaurantId: "moka", name: "Moka Coffee" },
+      { showBack: false, topTab: "profile" }
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(renderCalls.length > 0, true);
+  assert.equal(state.profileView.profile.truthState, "loading");
+  assert.equal(state.profileView.profile.postsLoaded, false);
+});

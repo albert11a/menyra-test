@@ -244,6 +244,64 @@ test("public identity hydration still loads missing title image when avatar iden
   assert.equal(profile.heroUrl, "https://cdn.example/cover.jpg");
 });
 
+test("public identity hydration applies fansCount as visible followers count", async () => {
+  const state = createState();
+  state.profileView.profile = {
+    ...state.profileView.profile,
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a",
+    avatar: "",
+    titleImageUrl: "",
+    followers: null,
+    following: null,
+    identityTruthState: "seeded"
+  };
+  const committed = deferred();
+  const cluster = createProfileBusinessMenuRuntimeCluster({
+    state,
+    profileMenuDeps: {
+      state,
+      importModuleFn: async () => ({
+        createProfileMenuFocusRenderController: () => ({
+          renderPublicProfileView: () => "",
+          renderMenuAdminView: () => "",
+          renderProfileView: () => ""
+        })
+      }),
+      isRestaurantCafeProfileFn: () => true,
+      requestRenderFn: () => {}
+    },
+    dataLoaders: {
+      fetchBusinessProfileDocFn: async () => ({
+        id: "restaurant-a",
+        data: {
+          name: "Moka Coffee",
+          avatarUrl: "https://cdn.example/avatar.jpg",
+          fansCount: 23,
+          followingCount: 0
+        }
+      }),
+      showPublicProfileFn: (profile, posts) => {
+        state.profileView = {
+          ...state.profileView,
+          profile,
+          posts
+        };
+        if (profile.followers === 23) committed.resolve(profile);
+      },
+      loadMenuForRestaurantFn: async () => ({ items: [{ id: "item-1" }], truthState: "seeded" }),
+      loadFocusForRestaurantFn: async () => ({ items: [], truthState: "knownEmpty" })
+    }
+  });
+
+  cluster.ensureMenuDataForProfile(state.profileView.profile);
+  const profile = await withTestDeadline(committed.promise);
+
+  assert.equal(profile.followers, 23);
+  assert.equal(profile.following, 0);
+  assert.equal(profile.identityTruthState, "ready");
+});
+
 test("menu-first profile retries posts after a deadline instead of committing content error", async () => {
   const state = createState();
   state.profileTopTab = "profile";

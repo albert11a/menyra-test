@@ -416,6 +416,14 @@ export function createProfileBusinessMenuRuntimeCluster({
     const id = String(profileDoc?.id || data?.id || "").trim();
     return { id, data };
   };
+  const pickVisibleCountValue = (...values) => {
+    for (const value of values) {
+      if (value === null || value === undefined) continue;
+      const numeric = Number(value);
+      if (Number.isFinite(numeric)) return Math.max(0, numeric);
+    }
+    return undefined;
+  };
 
   const refreshVisibleBusinessIdentityFromDoc = (restaurantId = "", data = {}) => {
     const safeRestaurantId = String(restaurantId || "").trim();
@@ -429,8 +437,8 @@ export function createProfileBusinessMenuRuntimeCluster({
     const name = String(data.name || data.restaurantName || data.displayName || data.businessName || "").trim();
     const location = String(data.city || data.address || data.location || "").trim();
     const bio = String(data.bio || data.description || data.about || "").trim();
-    const followers = data.followersCount ?? data.followers;
-    const following = data.followingCount ?? data.following;
+    const followers = pickVisibleCountValue(data.followersCount, data.followers, data.fansCount, data.fans);
+    const following = pickVisibleCountValue(data.followingCount, data.following);
     const patch = {
       restaurantId: safeRestaurantId,
       canonicalRestaurantId: safeRestaurantId
