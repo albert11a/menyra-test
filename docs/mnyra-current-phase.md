@@ -2001,6 +2001,33 @@ pruefen; alte Daten duerfen nicht in das neue Profil springen. Zum Schluss ein
 normales Userprofil ueber Handle oeffnen; gecachte Profildaten sollen sofort
 erscheinen, waehrend der Follow-Status spaeter nachzieht.
 
+Schritt 136: Profilfix92-Hotfix fuer zu hart entfernte Public-Render-Fallbacks.
+Nach Schritt 135 konnten echte App-Pfade schlechter werden, weil noch nicht
+alle Refresh-/Navigationswege garantiert vor dem Rendern einen Posts-, Menu-
+oder Focus-Ensure starten. Die Public-Renderer duerfen deshalb wieder einen
+kontrollierten Fallback anstossen, wenn die sichtbare Section noch im Loading-
+Zustand ist. Der Fallback laeuft asynchron nach dem Render-Tick, ist pro
+Section/Profile gedrosselt und landet weiter in der Coordinator-/Ensure-
+Dedupe-Schicht. Damit wird kein alter synchroner Render-Request-Loop
+wiederhergestellt, aber fehlende Firebase-Reads werden wieder verlaesslich
+angeschoben.
+
+Geaendert in Schritt 136:
+`apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`,
+`apps/menyra-social/bundled/*` und `docs/mnyra-current-phase.md`.
+
+Bewusst nicht geaendert in Schritt 136: keine UI-/Designwerte, keine
+Firestore-Daten, keine Rules, keine Functions, kein Function-Deployment, keine
+neuen Datenquellen und keine Playwright-/Smoke-Tests. Der Nutzer prueft
+manuell.
+
+Zusaetzlich fuer Schritt 136 manuell pruefen: Ein Business-/Commercial-Profil
+hart refreshen, direkt Profil -> Menue wechseln und danach zurueck zu
+Beitraege. Wenn eine Section sichtbar noch laedt, muss der passende Firebase-
+Read wieder starten; bereits geladene Daten duerfen nicht verschwinden. Danach
+Profil A -> Profil B schnell wechseln und pruefen, dass keine alten Daten
+uebernommen werden.
+
 ## Guardrails fuer die naechsten Schritte
 
 - keine Produktaenderungen

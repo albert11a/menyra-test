@@ -77,6 +77,29 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const buildUrl = deps.buildUrlFn;
   const normalizeSearchKey = deps.normalizeSearchKeyFn;
   const normalizeFollowHandle = deps.normalizeFollowHandleFn;
+  const queuedProfileRenderEnsures = new Map();
+  const queueProfileRenderEnsure = (section = "", profile = {}, callback = null) => {
+    if (typeof callback !== "function") return;
+    const key = [
+      String(section || "").trim().toLowerCase(),
+      String(profile?.canonicalRestaurantId || profile?.restaurantId || profile?.uid || profile?.handle || "").trim()
+    ].filter(Boolean).join(":");
+    if (!key) return;
+    const now = Date.now();
+    const lastRunAt = Number(queuedProfileRenderEnsures.get(key) || 0) || 0;
+    if (now - lastRunAt < 500) return;
+    queuedProfileRenderEnsures.set(key, now);
+    const run = () => {
+      try {
+        callback(profile);
+      } catch {}
+    };
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(run);
+    } else {
+      setTimeout(run, 0);
+    }
+  };
   const menuCardViewerLikeHydrationState = {
     key: "",
     inFlightKey: ""
@@ -1804,6 +1827,14 @@ function renderPublicProfileSurface(
   const showPostsError = activeContentTab === "posts"
     && !hasRenderablePosts
     && postsStatus === "error";
+  if (
+    !tutorialMode
+    && (activeContentTab === "posts" || activeContentTab === "media")
+    && profile?.restaurantId
+    && isSettlingProfileSurfaceStatus(postsStatus)
+  ) {
+    queueProfileRenderEnsure("posts", profile, ensurePostsDataForProfile);
+  }
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
       ${topTab === "profile" || topTab === "menu" ? `
@@ -3177,6 +3208,9 @@ function renderFocusCarousel(profile, {
   });
   if (requirePublicMenuTruth && surface.menu.status !== "ready") return "";
   const hasPublicFocusTruth = !requirePublicMenuTruth || surface.focus.canRenderFocus;
+  if (allowAutoEnsure && !state.focus.loading && !hasPublicFocusTruth) {
+    queueProfileRenderEnsure("focus", buildMenuSurfaceProfile(profile, restaurantId), ensureFocusDataForProfile);
+  }
   if (requirePublicMenuTruth && !hasPublicFocusTruth) return "";
   const { items, loading } = hasPublicFocusTruth
     ? {
@@ -3525,6 +3559,18 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     || menuSurfaceState.focus.settled === true
     || currentFocusTruth === "knownEmpty"
     || menuSurfaceState.menu.status !== "ready";
+  if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
+    queueProfileRenderEnsure("menu", surfaceProfile, ensureMenuDataForProfile);
+  }
+  if (
+    allowAutoEnsure
+    && !skipFirstVisibleFocusEnsure
+    && !hasSettledFocusTruth
+    && !focusLoadingForSurface
+    && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth)
+  ) {
+    queueProfileRenderEnsure("focus", surfaceProfile, ensureFocusDataForProfile);
+  }
   // Public focus belongs to the public menu presentation. If menu items are
   // ready but focus truth is still unknown, keep the visible menu in loading so
   // focus cannot jump in above already-rendered products.
