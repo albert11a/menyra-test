@@ -405,7 +405,7 @@ export function createMenuPublicRuntimeController({
       return normalizeMenuItemsForRestaurant(coerceMenuItemsFromData(snap.data() || {}), safeRestaurantId);
     } catch (err) {
       console.error(err);
-      return [];
+      throw err;
     }
   }
 
