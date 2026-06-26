@@ -2717,15 +2717,23 @@ async function buildPublicRouteBootstrapPayload(routeContext = {}) {
   const normalizedRestaurantData = publicRouteMeta?.data || restaurantData;
   const restaurantPreview = mapPublicRestaurantPreview(restaurantId, normalizedRestaurantData);
   const surface = safeRouteContext.surface === "menu" ? "menu" : "profile";
-  const postsLimit = surface === "profile" ? 14 : 8;
-  const menuLimit = surface === "menu" ? 72 : 28;
+  const shouldLoadPostsSeed = surface === "profile";
+  const shouldLoadMenuSeed = surface === "menu";
+  const postsLimit = 14;
+  const menuLimit = 72;
   const [postsSeedData, menuSeedData, menuMeta, focusSeedData] = await Promise.all([
-    queryPublicPostsForRestaurant(restaurantId, postsLimit),
-    queryPublicMenuItemsForRestaurant(restaurantId, { limitCount: menuLimit }),
-    surface === "menu"
+    shouldLoadPostsSeed
+      ? queryPublicPostsForRestaurant(restaurantId, postsLimit)
+      : Promise.resolve({ state: "unknown", count: 0, items: [] }),
+    shouldLoadMenuSeed
+      ? queryPublicMenuItemsForRestaurant(restaurantId, { limitCount: menuLimit })
+      : Promise.resolve({ state: "unknown", count: 0, items: [] }),
+    shouldLoadMenuSeed
       ? queryPublicMenuMetaForRestaurant(restaurantId)
       : Promise.resolve({ statusBadgeVisible: true }),
-    queryPublicFocusSeedForRestaurant(restaurantId, { limitCount: 8 })
+    shouldLoadMenuSeed
+      ? queryPublicFocusSeedForRestaurant(restaurantId, { limitCount: 8 })
+      : Promise.resolve({ state: "unknown", count: 0, items: [], enabled: true })
   ]);
   const postsSeed = Array.isArray(postsSeedData?.items) ? postsSeedData.items : [];
   const menuSeed = Array.isArray(menuSeedData?.items) ? menuSeedData.items : [];

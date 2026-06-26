@@ -1,20 +1,44 @@
 const DEFAULT_ALLOWED_META_KEYS = new Set([
   "active",
+  "cacheHit",
+  "commitAccepted",
   "count",
+  "discardReason",
+  "duplicateRequestsPrevented",
   "elapsedMs",
   "force",
+  "functionName",
+  "generation",
   "items",
   "label",
   "phase",
   "prefetchOnly",
+  "profileKey",
   "requestedId",
+  "requestId",
+  "resultStatus",
   "restaurantId",
   "route",
   "scope",
+  "section",
   "source",
   "status",
   "targetId",
   "truthState"
+]);
+
+const COUNTER_KEYS = new Set([
+  "cache_hits",
+  "cache_misses",
+  "canonical_resolves",
+  "cloud_function_calls",
+  "duplicate_requests_prevented",
+  "firestore_read_count",
+  "menu_reads",
+  "focus_reads",
+  "posts_reads",
+  "retry_count",
+  "stale_results_discarded"
 ]);
 
 function getWindowObj(windowObj = null) {
@@ -70,6 +94,22 @@ function sanitizeMeta(meta = {}, extraAllowedKeys = []) {
   return out;
 }
 
+function getCounterStore(windowObj = null) {
+  const win = getWindowObj(windowObj);
+  if (win) {
+    if (!win.__mnyraLoadingCounters || typeof win.__mnyraLoadingCounters !== "object") {
+      win.__mnyraLoadingCounters = {};
+    }
+    return win.__mnyraLoadingCounters;
+  }
+  const root = typeof globalThis !== "undefined" ? globalThis : null;
+  if (!root) return {};
+  if (!root.__mnyraLoadingCounters || typeof root.__mnyraLoadingCounters !== "object") {
+    root.__mnyraLoadingCounters = {};
+  }
+  return root.__mnyraLoadingCounters;
+}
+
 export function isMnyraLoadingDebugEnabledCore({ windowObj = null } = {}) {
   return isEnabled(windowObj);
 }
@@ -84,6 +124,33 @@ export function markMnyraLoadingEventCore(label = "", meta = {}, {
   try {
     console.debug("[mnyra][loading]", safeLabel, safeMeta);
   } catch {}
+}
+
+export function incrementMnyraLoadingCounterCore(key = "", amount = 1, {
+  windowObj = null
+} = {}) {
+  const safeKey = String(key || "").trim();
+  if (!COUNTER_KEYS.has(safeKey)) return 0;
+  const numericAmount = Number(amount);
+  const increment = Number.isFinite(numericAmount) ? numericAmount : 1;
+  const store = getCounterStore(windowObj);
+  store[safeKey] = Math.max(0, Number(store[safeKey] || 0) || 0) + increment;
+  return store[safeKey];
+}
+
+export function getMnyraLoadingCountersCore({
+  windowObj = null
+} = {}) {
+  return { ...getCounterStore(windowObj) };
+}
+
+export function resetMnyraLoadingCountersCore({
+  windowObj = null
+} = {}) {
+  const store = getCounterStore(windowObj);
+  Object.keys(store).forEach((key) => {
+    delete store[key];
+  });
 }
 
 export async function timeMnyraLoadingAsyncCore(label = "", task = null, meta = {}, {

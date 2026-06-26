@@ -306,7 +306,7 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     .filter((row) => row.active !== false);
   const resolveSectionTruthState = (section = {}, fallbackCount = 0, {
     allowKnownEmpty = true,
-    allowCountEmpty = true
+    allowCountEmpty = false
   } = {}) => {
     const explicitState = normalizeTruthState(String(section?.state || "").trim().toLowerCase(), "unknown");
     if (explicitState === "knownEmpty") return allowKnownEmpty ? "knownEmpty" : "unknown";

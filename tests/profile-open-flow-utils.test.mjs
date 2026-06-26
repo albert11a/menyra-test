@@ -20,6 +20,24 @@ function createState(activeTab = "search") {
   };
 }
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+function withTestDeadline(promise, timeoutMs = 100) {
+  let timerId = null;
+  const timeout = new Promise((_resolve, reject) => {
+    timerId = setTimeout(() => reject(new Error("test deadline exceeded")), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timerId) clearTimeout(timerId);
+  });
+}
+
 function createController(state, showCalls = [], overrides = {}) {
   const safeOverrides = overrides && typeof overrides === "object" ? overrides : {};
   return createProfileOpenFlowControllerCore({
@@ -56,10 +74,10 @@ function createController(state, showCalls = [], overrides = {}) {
     loadBusinessPostsForRestaurant: safeOverrides.loadBusinessPostsForRestaurant || (async () => []),
     normalizeExternalUserProfile: (value) => value || {},
     openGuestAuthPrompt: () => false,
-    userProfileCache: new Map(),
-    hasPendingFollowRequest: async () => false,
+    userProfileCache: safeOverrides.userProfileCache || new Map(),
+    hasPendingFollowRequest: safeOverrides.hasPendingFollowRequest || (async () => false),
     fetchUserDocByUid: async () => null,
-    resolveUserByHandle: async () => null,
+    resolveUserByHandle: safeOverrides.resolveUserByHandle || (async () => null),
     loadUserPostsForUser: async () => []
   });
 }
@@ -121,6 +139,45 @@ test("direct business profile route does not queue browser history push", async 
   await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: false });
 
   assert.equal(state.__nextRouteHistoryMode, "");
+});
+
+test("cached user profile renders before pending follow status resolves", async () => {
+  const state = createState("feed");
+  const showCalls = [];
+  const pendingFollow = deferred();
+  const userProfileCache = new Map([
+    ["alice", {
+      uid: "uid-alice",
+      handle: "alice",
+      name: "Alice",
+      posts: [],
+      postsLoaded: true,
+      truthState: "stable",
+      identityTruthState: "ready"
+    }]
+  ]);
+  const controller = createController(state, showCalls, {
+    userProfileCache,
+    hasPendingFollowRequest: async () => {
+      await pendingFollow.promise;
+      return true;
+    }
+  });
+
+  await withTestDeadline(
+    controller.openProfileFromUser({ handle: "alice" }, { showBack: false }),
+    80
+  );
+
+  assert.equal(showCalls.length, 1);
+  assert.equal(showCalls[0].profile.uid, "uid-alice");
+  assert.equal(showCalls[0].profile.pendingFollowRequest, undefined);
+
+  pendingFollow.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(state.profileView.profile.pendingFollowRequest, true);
 });
 
 test("direct route known-empty menu snapshot does not seed public menu empty", async () => {

@@ -208,6 +208,7 @@ export function createProfileOpenFlowControllerCore({
   const loadUserPosts = typeof loadUserPostsForUser === "function"
     ? loadUserPostsForUser
     : (() => Promise.resolve([]));
+  let externalUserProfileOpenGeneration = 0;
   const pickFirstText = (...values) => {
     for (const value of values) {
       const text = String(value || "").trim();
@@ -927,6 +928,7 @@ export function createProfileOpenFlowControllerCore({
         routeSnapshotRestaurantId
       );
       const shouldWarmPostsForSurface = !!earlyPostsRestaurantId
+        && !isMenuTopTab
         && (
           isWebRoutePriorityPath
           || safeTargetSource === "map"
@@ -1747,6 +1749,41 @@ export function createProfileOpenFlowControllerCore({
       targetHandle = explicitHandle;
       targetRouteId = routeId;
       if (!explicitUid && !explicitHandle && !routeId) return;
+      const openGeneration = ++externalUserProfileOpenGeneration;
+      const requestTarget = {
+        uid: explicitUid || (isLikelyOpaqueUserUid(routeId) ? routeId : ""),
+        handle: explicitHandle || (!isLikelyOpaqueUserUid(routeId) ? routeId : "")
+      };
+      const isCurrentUserProfileRequest = ({ uid = "", handle = "" } = {}) => {
+        if (externalUserProfileOpenGeneration !== openGeneration) return false;
+        if (state.activeTab !== "profile") return false;
+        return isSameUserProfileTarget(state?.profileView?.profile, {
+          uid: uid || requestTarget.uid || routeId,
+          handle: handle || requestTarget.handle || routeId
+        });
+      };
+      const refreshPendingFollowForVisibleProfile = (profile = {}) => {
+        const uid = String(profile?.uid || explicitUid || "").trim();
+        if (!uid) return;
+        Promise.resolve(checkPendingFollowRequest(uid))
+          .then((pendingFollowRequest) => {
+            if (!isCurrentUserProfileRequest({
+              uid,
+              handle: profile?.handle || requestTarget.handle
+            })) return;
+            const liveView = state?.profileView;
+            const liveProfile = liveView?.profile && typeof liveView.profile === "object"
+              ? liveView.profile
+              : null;
+            if (!liveView || !liveProfile) return;
+            liveView.profile = {
+              ...liveProfile,
+              pendingFollowRequest: pendingFollowRequest === true
+            };
+            renderApp();
+          })
+          .catch(() => null);
+      };
       if (!isDirectRouteRequest && isOwnUserTarget({ uid: explicitUid || routeId, handle: explicitHandle || routeId })) {
         openOwnUserProfile({ showBack });
         return;
@@ -1763,7 +1800,6 @@ export function createProfileOpenFlowControllerCore({
       const cacheKey = explicitUid || explicitHandle || routeId;
       const cached = userProfileCacheMap.get(cacheKey);
       if (cached) {
-        cached.pendingFollowRequest = await checkPendingFollowRequest(cached.uid || explicitUid || "");
         const cachedPosts = Array.isArray(cached.posts) ? cached.posts : [];
         const cachedTruthState = String(cached.truthState || "").trim().toLowerCase();
         const cachedPostsStatus = cachedPosts.length
@@ -1782,6 +1818,7 @@ export function createProfileOpenFlowControllerCore({
           contentTab: safeContentTab,
           directEntry: buildUserDirectEntry(cachedPosts.length ? "ready" : "loading")
         });
+        refreshPendingFollowForVisibleProfile(cached);
         return;
       }
       const liveView = state?.profileView;
@@ -1803,7 +1840,6 @@ export function createProfileOpenFlowControllerCore({
         fallback: stableUserProfile || safeInput || { uid: explicitUid, handle: explicitHandle || routeId, routeId },
         posts: stableUserPosts
       });
-      fallbackProfile.pendingFollowRequest = await checkPendingFollowRequest(fallbackProfile.uid || explicitUid || "");
       const fallbackProfileWithSurfaceTruth = applySurfaceTruthPatch({
         ...fallbackProfile,
         posts: stableUserPosts
@@ -1817,6 +1853,7 @@ export function createProfileOpenFlowControllerCore({
         contentTab: safeContentTab,
         directEntry: buildUserDirectEntry(stableUserPosts.length ? "ready" : "loading")
       });
+      refreshPendingFollowForVisibleProfile(fallbackProfileWithSurfaceTruth);
 
       let userDoc = null;
       const tryResolveByUid = async (uidValue = "") => {
@@ -1877,20 +1914,23 @@ export function createProfileOpenFlowControllerCore({
         fallback: safeInput || { uid: explicitUid, handle: explicitHandle || routeId, routeId },
         posts
       });
-      resolvedProfile.pendingFollowRequest = await checkPendingFollowRequest(resolvedProfile.uid || "");
       Object.assign(resolvedProfile, applySurfaceTruthPatch(resolvedProfile, {
         identityStatus: "ready",
         postsStatus: Array.isArray(posts) && posts.length > 0 ? "ready" : "empty"
       }));
       userProfileCacheMap.set(cacheKey, resolvedProfile);
       if (state.activeTab !== "profile") return;
-      if (explicitUid && state.profileView?.profile?.uid !== explicitUid) return;
+      if (!isCurrentUserProfileRequest({
+        uid: userDoc.id || resolvedProfile.uid || explicitUid,
+        handle: resolvedProfile.handle || explicitHandle || routeId
+      })) return;
       showPublicProfileView(resolvedProfile, resolvedProfile.posts, {
         showBack,
         topTab: "profile",
         contentTab: safeContentTab,
         directEntry: buildUserDirectEntry("ready")
       });
+      refreshPendingFollowForVisibleProfile(resolvedProfile);
     } catch (err) {
       console.error(err);
       if (state.activeTab === "profile") {

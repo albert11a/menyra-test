@@ -1950,6 +1950,57 @@ nicht auf `Beitraege` zurueckspringen. Danach mit `npm run dev` lokal laden
 und im Netzwerk-Panel bei `/apps/menyra-social/bundled/entry/social-app.js`
 oder einem Chunk `Content-Encoding: gzip` pruefen.
 
+Schritt 135: Profilfix92-Grundlage auf Branch `profilfix92` von `main`
+umgesetzt. Fuer Public-Business-Profile gibt es jetzt einen kleinen
+kanonischen Profile-Load-Coordinator mit `business:{restaurantId}` und
+`user:{uid}`-Keys, Generation, Section-State, Request-ID-Guard,
+In-Memory-Section-Cache, Dedupe fuer aktive Section-Requests und
+Debug-Zaehlern. Die Public-Business-Ensures fuer Posts, Menu und Focus laufen
+ueber diesen Coordinator; alte globale Ensure-Zeiger werden beim Wechsel auf
+einen neuen Business-Profile-Key geloescht. Menu und Focus koennen auf
+Menu-First-Routen parallel starten; Focus wartet technisch nicht mehr auf ein
+fertiges Menu. Public-Renderer starten fuer sichtbare Profile keine
+Posts/Menu/Focus-Requests mehr.
+
+Zusaetzlich wurde `count: 0` in Route-/Bootstrap-Payloads entschaerft:
+Ein leerer Count gilt nicht mehr automatisch als bestaetigtes `knownEmpty`;
+nur explizite `knownEmpty`-Signale duerfen eine Section als leer bestaetigen.
+Der direkte `socialBootstrapFeed`-Route-Snapshot laedt jetzt
+route-spezifisch: Profil-/Posts-Oberflaechen erhalten Posts, aber kein
+Menu/Focus; Menu-/QR-Oberflaechen erhalten Menu/Focus, aber keine Posts.
+Normale Userprofile zeigen Cache- und Fallback-Daten sofort; Follow-/Pending-
+Status wird im Hintergrund aktualisiert und Handle-Routen sind durch einen
+lokalen Open-Generation-Guard gegen spaete Ergebnisse geschuetzt.
+
+Geaendert in Schritt 135:
+`apps/menyra-social/core/profile/profile-load-coordinator.js`,
+`apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`,
+`apps/menyra-social/core/common/loading-diagnostics-utils.js`,
+`apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`,
+`apps/menyra-social/core/profile/profile-open-flow-utils.js`,
+`apps/menyra-social/core/profile/public-profile-surface-controller.js`,
+`apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js`,
+`functions/index.js`, die zugehoerigen Tests und `apps/menyra-social/bundled/*`.
+
+Bewusst nicht geaendert in Schritt 135: keine UI-/Designwerte, keine
+Firestore-Daten, keine Rules, keine IAM- oder Region-Aenderung, kein
+Function-Deployment, kein persistenter Firestore-Cache, kein Warenkorb,
+keine Bestellung, keine Waiter-App, kein Editor-Refactor, keine Notifications,
+kein Chat-Refactor und keine Playwright-/Smoke-Tests. Die alten tiefen Menu-,
+Focus- und Posts-Loader bleiben als Datenquellen erhalten; ersetzt wurde die
+Public-Profile-Request-Koordination davor. Weitere Legacy-Caches in den tiefen
+Loadern werden erst nach manueller Stabilitaetspruefung entfernt.
+
+Zusaetzlich fuer Schritt 135 manuell pruefen: `/casarita` kalt oeffnen und
+hart refreshen; Header und Beitraege sollen kontrolliert laden und nicht auf
+falsche Empty-Zustaende fallen. Danach `/casarita/menu` und einen QR-Menu-Link
+hart oeffnen; Menu und Focus sollen unabhaengig laden, und Posts sollen auf
+diesem Cold Start nicht sichtbar vorgeladen werden. Danach zwanzig schnelle
+Tabwechsel zwischen `Beitraege` und `Menue` sowie Profil A -> Profil B
+pruefen; alte Daten duerfen nicht in das neue Profil springen. Zum Schluss ein
+normales Userprofil ueber Handle oeffnen; gecachte Profildaten sollen sofort
+erscheinen, waehrend der Follow-Status spaeter nachzieht.
+
 ## Guardrails fuer die naechsten Schritte
 
 - keine Produktaenderungen

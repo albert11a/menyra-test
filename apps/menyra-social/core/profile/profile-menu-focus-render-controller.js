@@ -1804,14 +1804,6 @@ function renderPublicProfileSurface(
   const showPostsError = activeContentTab === "posts"
     && !hasRenderablePosts
     && postsStatus === "error";
-  if (
-    !tutorialMode
-    && (activeContentTab === "posts" || activeContentTab === "media")
-    && profile?.restaurantId
-    && isSettlingProfileSurfaceStatus(postsStatus)
-  ) {
-    ensurePostsDataForProfile(profile);
-  }
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
       ${topTab === "profile" || topTab === "menu" ? `
@@ -3185,9 +3177,6 @@ function renderFocusCarousel(profile, {
   });
   if (requirePublicMenuTruth && surface.menu.status !== "ready") return "";
   const hasPublicFocusTruth = !requirePublicMenuTruth || surface.focus.canRenderFocus;
-  if (allowAutoEnsure && !state.focus.loading && !hasPublicFocusTruth) {
-    ensureFocusDataForProfile(buildMenuSurfaceProfile(profile, restaurantId));
-  }
   if (requirePublicMenuTruth && !hasPublicFocusTruth) return "";
   const { items, loading } = hasPublicFocusTruth
     ? {
@@ -3536,19 +3525,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     || menuSurfaceState.focus.settled === true
     || currentFocusTruth === "knownEmpty"
     || menuSurfaceState.menu.status !== "ready";
-  if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
-    ensureMenuDataForProfile(surfaceProfile);
-  }
-  if (
-    allowAutoEnsure
-    && !skipFirstVisibleFocusEnsure
-    && !hasSettledFocusTruth
-    && !focusLoadingForSurface
-    && hasConfirmedPublicMenuItems
-    && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth)
-  ) {
-    ensureFocusDataForProfile(surfaceProfile);
-  }
   // Public focus belongs to the public menu presentation. If menu items are
   // ready but focus truth is still unknown, keep the visible menu in loading so
   // focus cannot jump in above already-rendered products.
