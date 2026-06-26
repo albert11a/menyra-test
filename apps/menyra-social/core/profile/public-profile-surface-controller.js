@@ -50,6 +50,10 @@ function resolveRoutePayloadSectionState(routePayload = null, section = "") {
   if (items.length > 0) return "seeded";
   if (payloadSection?.knownEmpty === true || snapshotSection?.knownEmpty === true) return "knownEmpty";
   if (payloadSection?.unknown === true || snapshotSection?.unknown === true) return "unknown";
+  const count = Number(snapshotSection?.count ?? payloadSection?.count);
+  if (Number.isFinite(count) && count === 0 && payloadSection?.seeded !== true && snapshotSection?.seeded !== true) {
+    return "knownEmpty";
+  }
   return "";
 }
 

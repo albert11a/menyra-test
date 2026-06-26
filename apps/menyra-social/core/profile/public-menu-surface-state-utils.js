@@ -12,64 +12,11 @@ function addSurfaceId(ids, value = "") {
   if (safeValue && !ids.includes(safeValue)) ids.push(safeValue);
 }
 
-function normalizeSurfaceRouteKey(value = "") {
-  let key = String(value || "").trim().toLowerCase();
-  if (!key) return "";
-  try {
-    if (typeof key.normalize === "function") {
-      key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
-    }
-  } catch {}
-  return key
-    .replace(/^@+/, "")
-    .replace(/&/g, " and ")
-    .replace(/['"`]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function resolveSurfacePublicPathSlug(value = "") {
-  const text = String(value || "").trim();
-  if (!text) return "";
-  const clean = text.split("?")[0].split("#")[0].replace(/\/+$/, "");
-  const parts = clean.split("/").map((part) => part.trim()).filter(Boolean);
-  return parts.length ? parts[parts.length - 1] : clean;
-}
-
-function resolveKnownSurfaceCanonicalId(value = "", restaurants = []) {
-  const safeValue = String(value || "").trim();
-  if (!safeValue || !Array.isArray(restaurants)) return "";
-  if (restaurants.some((row) => String(row?.id || "").trim() === safeValue)) return safeValue;
-  const routeKey = normalizeSurfaceRouteKey(safeValue);
-  if (!routeKey) return "";
-  for (const row of restaurants) {
-    const restaurantId = String(row?.id || "").trim();
-    if (!restaurantId) continue;
-    const candidates = [
-      row?.publicSlug,
-      row?.landingSlug,
-      row?.businessSlug,
-      row?.slug,
-      row?.routeSlug,
-      row?.handle,
-      resolveSurfacePublicPathSlug(row?.canonicalPublicPath || ""),
-      row?.name,
-      row?.restaurantName,
-      row?.businessName
-    ];
-    if (candidates.some((candidate) => normalizeSurfaceRouteKey(candidate || "") === routeKey)) {
-      return restaurantId;
-    }
-  }
-  return "";
-}
-
 export function resolveVisiblePublicMenuSurfaceIds({
   profile = null,
   routePayload = null,
   webDirectEntry = null,
-  restaurantId = "",
-  restaurants = []
+  restaurantId = ""
 } = {}) {
   const safeProfile = profile && typeof profile === "object" ? profile : {};
   const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : {};
@@ -90,19 +37,7 @@ export function resolveVisiblePublicMenuSurfaceIds({
     safeRoutePayload.restaurantId,
     safeWebDirectEntry.restaurantId
   ].forEach((value) => addSurfaceId(ids, value));
-  ids.slice().forEach((value) => {
-    addSurfaceId(ids, resolveKnownSurfaceCanonicalId(value, restaurants));
-  });
   const canonicalRestaurantId = String(
-    resolveKnownSurfaceCanonicalId(restaurantId, restaurants)
-    || resolveKnownSurfaceCanonicalId(safeProfile.canonicalRestaurantId, restaurants)
-    || resolveKnownSurfaceCanonicalId(safeRoutePayload.canonicalRestaurantId, restaurants)
-    || resolveKnownSurfaceCanonicalId(routeSnapshot.restaurantId, restaurants)
-    || resolveKnownSurfaceCanonicalId(safeWebDirectEntry.canonicalRestaurantId, restaurants)
-    || resolveKnownSurfaceCanonicalId(safeProfile.restaurantId, restaurants)
-    || resolveKnownSurfaceCanonicalId(safeRoutePayload.restaurantId, restaurants)
-    || resolveKnownSurfaceCanonicalId(safeWebDirectEntry.restaurantId, restaurants)
-    ||
     safeProfile.canonicalRestaurantId
     || safeRoutePayload.canonicalRestaurantId
     || routeSnapshot.restaurantId
@@ -193,8 +128,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     profile,
     routePayload,
     webDirectEntry,
-    restaurantId,
-    restaurants: state?.restaurants
+    restaurantId
   });
   const menu = state?.menu && typeof state.menu === "object" ? state.menu : {};
   const focus = state?.focus && typeof state.focus === "object" ? state.focus : {};
@@ -205,33 +139,14 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   const menuItems = samePublicMenu && Array.isArray(menu.items) ? menu.items : [];
   const menuTruthState = samePublicMenu ? normalizePublicMenuTruthState(menu.truthState || "") : "unknown";
   const menuError = samePublicMenu ? String(menu.error || "").trim() : "";
-  const sameCanonicalPublicMenu = samePublicMenu
-    && (
-      !String(surfaceIds.restaurantId || "").trim()
-      || menuRestaurantId === String(surfaceIds.restaurantId || "").trim()
-    );
-  const routeSurfaceRestaurantId = String(
-    routePayload?.restaurantId
-    || webDirectEntry?.restaurantId
-    || profile?.restaurantId
-    || ""
-  ).trim();
-  const knownCanonicalForRoute = resolveKnownSurfaceCanonicalId(routeSurfaceRestaurantId, state?.restaurants);
-  const canRenderKnownEmptyMenu = sameCanonicalPublicMenu
-    && (
-      String(routePayload?.businessSnapshot?.restaurantId || "").trim() === menuRestaurantId
-      || knownCanonicalForRoute === menuRestaurantId
-      || (!!routeSurfaceRestaurantId && routeSurfaceRestaurantId !== menuRestaurantId)
-      || !routeSurfaceRestaurantId
-    );
   let menuStatus = "loading";
   if (!surfaceIds.restaurantId && !surfaceIds.targetIds.length) {
     menuStatus = "loading";
   } else if (samePublicMenu) {
     if (menuTruthState === "seeded") {
-      menuStatus = menuItems.length ? "ready" : "loading";
+      menuStatus = menuItems.length ? "ready" : "empty";
     } else if (menuTruthState === "knownEmpty") {
-      menuStatus = canRenderKnownEmptyMenu ? "empty" : "loading";
+      menuStatus = "empty";
     } else if (menuTruthState === "error" || (menuError && !menu.loading)) {
       menuStatus = "error";
     } else {

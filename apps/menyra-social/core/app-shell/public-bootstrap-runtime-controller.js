@@ -30,7 +30,6 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
       const name = isGenericBusinessBootstrapLabel(nameRaw) ? "" : nameRaw;
       const publicSlug = String(row?.publicSlug || row?.landingSlug || row?.handle || "").trim();
       const logoUrl = String(row?.logoUrl || row?.logo || row?.logoURL || "").trim();
-      const titleImageUrl = String(row?.titleImageUrl || row?.coverImageUrl || row?.coverUrl || row?.heroUrl || "").trim();
       const city = String(row?.city || "").trim();
       const type = normalizeRestaurantType(
         row?.type
@@ -54,10 +53,6 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
             : (row?.canonicalPublicPath || "")
         ).trim(),
         logoUrl,
-        titleImageUrl,
-        coverImageUrl: String(row?.coverImageUrl || titleImageUrl).trim(),
-        coverUrl: String(row?.coverUrl || titleImageUrl).trim(),
-        heroUrl: String(row?.heroUrl || titleImageUrl).trim(),
         city,
         ...(type ? { type, customerType: type } : {})
       };
@@ -304,24 +299,18 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     .map((row, index) => normalizeWebRouteFocusItem(row, index))
     .filter(Boolean)
     .filter((row) => row.active !== false);
-  const resolveSectionTruthState = (section = {}, fallbackCount = 0, {
-    allowKnownEmpty = true,
-    allowCountEmpty = false
-  } = {}) => {
+  const resolveSectionTruthState = (section = {}, fallbackCount = 0) => {
     const explicitState = normalizeTruthState(String(section?.state || "").trim().toLowerCase(), "unknown");
-    if (explicitState === "knownEmpty") return allowKnownEmpty ? "knownEmpty" : "unknown";
+    if (explicitState === "knownEmpty") return "knownEmpty";
     if (explicitState === "seeded") return fallbackCount > 0 ? "seeded" : "unknown";
     if (explicitState === "unknown") return "unknown";
     if (section?.seeded === true) return fallbackCount > 0 ? "seeded" : "unknown";
     if (fallbackCount > 0) return "seeded";
-    if ((allowKnownEmpty && section?.knownEmpty === true) || (allowCountEmpty && Number(section?.count) === 0 && section?.unknown !== true)) return "knownEmpty";
+    if (section?.knownEmpty === true || (Number(section?.count) === 0 && section?.unknown !== true)) return "knownEmpty";
     return "unknown";
   };
   const postsState = resolveSectionTruthState(snapshotPosts?.state ? snapshotPosts : payload?.posts, postsItems.length);
-  const menuState = resolveSectionTruthState(snapshotMenu?.state ? snapshotMenu : payload?.menu, menuItems.length, {
-    allowKnownEmpty: false,
-    allowCountEmpty: false
-  });
+  const menuState = resolveSectionTruthState(snapshotMenu?.state ? snapshotMenu : payload?.menu, menuItems.length);
   const focusState = resolveSectionTruthState(snapshotFocus?.state ? snapshotFocus : payload?.focus, focusItems.length);
   const requestedPostsCount = Number(snapshotPosts?.count ?? payload?.posts?.count);
   const postsCount = Number.isFinite(requestedPostsCount)
@@ -446,10 +435,6 @@ function normalizeIncomingWebRoutePayload(payload = null) {
       handle: businessSnapshot.identity.handle,
       publicSlug: businessSnapshot.identity.publicSlug,
       avatar: businessSnapshot.identity.avatar,
-      titleImageUrl: businessSnapshot.identity.titleImageUrl,
-      coverImageUrl: businessSnapshot.identity.coverImageUrl,
-      coverUrl: businessSnapshot.identity.coverUrl,
-      heroUrl: businessSnapshot.identity.heroUrl,
       location: businessSnapshot.identity.location,
       bio: businessSnapshot.identity.bio,
       followers: businessSnapshot.identity.followers,
@@ -667,25 +652,16 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routePostsSeed = Array.isArray(routeSnapshot?.posts?.items)
     ? routeSnapshot.posts.items
     : (Array.isArray(safeRoutePayload?.posts?.items) ? safeRoutePayload.posts.items : []);
-  const routeMenuSeed = Array.isArray(routeSnapshot?.menu?.items)
-    ? routeSnapshot.menu.items
-    : (Array.isArray(safeRoutePayload?.menu?.items) ? safeRoutePayload.menu.items : []);
-  const routeFocusSeed = Array.isArray(routeSnapshot?.focus?.items)
-    ? routeSnapshot.focus.items
-    : (Array.isArray(safeRoutePayload?.focus?.items) ? safeRoutePayload.focus.items : []);
+  const routeMenuSeed = [];
+  const routeFocusSeed = [];
   const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
     ? routeSnapshot.truth
     : (safeRoutePayload?.truth && typeof safeRoutePayload.truth === "object" ? safeRoutePayload.truth : {});
   const routePostsState = normalizeTruthState(routeSnapshot?.posts?.state || safeRoutePayload?.posts?.state || routeTruth?.posts || "", (
     routePostsSeed.length ? "seeded" : "unknown"
   ));
-  const routeMenuStateRaw = normalizeTruthState(routeSnapshot?.menu?.state || safeRoutePayload?.menu?.state || routeTruth?.menu || "", (
-    routeMenuSeed.length ? "seeded" : "unknown"
-  ));
-  const routeMenuState = routeMenuStateRaw === "seeded" && routeMenuSeed.length ? "seeded" : "unknown";
-  const routeFocusState = normalizeTruthState(routeSnapshot?.focus?.state || safeRoutePayload?.focus?.state || routeTruth?.focus || "", (
-    routeFocusSeed.length ? "seeded" : "unknown"
-  ));
+  const routeMenuState = "unknown";
+  const routeFocusState = "unknown";
   let resolvedRoutePostsState = routePostsState;
   let resolvedRouteMenuState = routeMenuState;
   let resolvedRouteFocusState = routeFocusState;
@@ -879,11 +855,9 @@ function applyWebDirectRouteSeedFromBootstrap({
     const currentMenuRestaurantId = String(state?.menu?.restaurantId || "").trim();
     const hasSeededMenuTruth = isRouteTargetId(currentMenuRestaurantId)
       && String(state?.menu?.source || "").trim().toLowerCase() === "public"
-      && currentMenuTruth === "seeded"
-      && Array.isArray(state?.menu?.items)
-      && state.menu.items.length > 0;
+      && (currentMenuTruth === "seeded" || currentMenuTruth === "knownempty" || currentMenuTruth === "known-empty");
     if (hasSeededMenuTruth) {
-      resolvedRouteMenuState = "seeded";
+      resolvedRouteMenuState = currentMenuTruth === "seeded" ? "seeded" : "knownEmpty";
       const mergedMenuState = {
         ...(state?.menu || {}),
         restaurantId: currentMenuRestaurantId || safeRestaurantId,

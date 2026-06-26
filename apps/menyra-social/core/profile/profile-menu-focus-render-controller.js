@@ -77,29 +77,6 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const buildUrl = deps.buildUrlFn;
   const normalizeSearchKey = deps.normalizeSearchKeyFn;
   const normalizeFollowHandle = deps.normalizeFollowHandleFn;
-  const queuedProfileRenderEnsures = new Map();
-  const queueProfileRenderEnsure = (section = "", profile = {}, callback = null) => {
-    if (typeof callback !== "function") return;
-    const key = [
-      String(section || "").trim().toLowerCase(),
-      String(profile?.canonicalRestaurantId || profile?.restaurantId || profile?.uid || profile?.handle || "").trim()
-    ].filter(Boolean).join(":");
-    if (!key) return;
-    const now = Date.now();
-    const lastRunAt = Number(queuedProfileRenderEnsures.get(key) || 0) || 0;
-    if (now - lastRunAt < 500) return;
-    queuedProfileRenderEnsures.set(key, now);
-    const run = () => {
-      try {
-        callback(profile);
-      } catch {}
-    };
-    if (typeof queueMicrotask === "function") {
-      queueMicrotask(run);
-    } else {
-      setTimeout(run, 0);
-    }
-  };
   const menuCardViewerLikeHydrationState = {
     key: "",
     inFlightKey: ""
@@ -1382,8 +1359,8 @@ function persistBusinessTitleImageCache(items = {}) {
 
 function resolveBusinessTitleImageCacheKeys(profile = {}, fallback = "business") {
   const keys = [
-    profile?.canonicalRestaurantId,
     profile?.restaurantId,
+    profile?.canonicalRestaurantId,
     profile?.uid,
     profile?.handle,
     profile?.publicSlug,
@@ -1429,8 +1406,8 @@ function readBusinessTitleImageUrlFromCache(keys = []) {
 
 function resolveBusinessProfileKey(profile = {}, fallback = "business") {
   return String(
-    profile?.canonicalRestaurantId
-    || profile?.restaurantId
+    profile?.restaurantId
+    || profile?.canonicalRestaurantId
     || profile?.uid
     || profile?.handle
     || profile?.name
@@ -1588,12 +1565,9 @@ function renderBusinessProfileCardHeightSizer({
 function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const mode = options.mode === "self" ? "self" : "public";
   const disabledBlockClass = options.disabledBlockClass || "";
-  const cardKey = resolveBusinessProfileKey(profile, mode);
-  const directAvatarUrl = normalizeBusinessProfileText(options.avatarUrl || "");
-  const avatarRaw = normalizeBusinessProfileText(profile?.avatar || "");
-  const fallbackAvatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : "";
-  const avatarUrl = directAvatarUrl || fallbackAvatarUrl;
+  const avatarUrl = options.avatarUrl || getOptimizedImageUrl(profile.avatar || "", "avatar");
   const avatarFit = options.avatarFit || logoFitClass(!!profile.restaurantId);
+  const cardKey = resolveBusinessProfileKey(profile, mode);
   const cardInfoOpen = String(state?.profileCardInfoOpen || "") === cardKey;
   const measuredInfoHeight = Number(state?.profileCardInfoHeights?.[cardKey] || 0);
   const lockedInfoHeightStyle = cardInfoOpen && Number.isFinite(measuredInfoHeight) && measuredInfoHeight > 0
@@ -1602,10 +1576,9 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const avatarImgKeyAttr = options.avatarImgKeyAttr || (mode === "self"
     ? `data-img-key="avatar:self"`
     : `data-img-key="avatar:public:${escapeHtml(cardKey)}"`);
-  const hasRenderableAvatar = !!normalizeBusinessProfileText(avatarUrl) && !isPlaceholderUrl(avatarUrl);
-  const renderAvatarImage = typeof options.renderAvatarImage === "boolean"
-    ? options.renderAvatarImage && hasRenderableAvatar
-    : hasRenderableAvatar;
+  const renderAvatarImage = options.renderAvatarImage !== false
+    && !!String(avatarUrl || "").trim()
+    && !!String(profile?.avatar || "").trim();
   const identityPending = !!options.identityPending;
   const followersLabel = options.followersLabel ?? formatCount(profile.followers);
   const profileName = normalizeBusinessProfileText(profile?.name) || "User";
@@ -1784,7 +1757,7 @@ function renderPublicProfileSurface(
   const avatarRaw = String(profile?.avatar || "").trim();
   const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : "";
   const avatarFit = logoFitClass(!!profile.restaurantId);
-  const avatarKey = profile.canonicalRestaurantId || profile.restaurantId || profile.uid || handle || "public";
+  const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   const avatarImgKeyAttr = landingMode ? "" : `data-img-key="avatar:public:${escapeHtml(avatarKey)}"`;
   const hasAvatarTruth = !!avatarRaw;
   const hasCountSeed = (value) => {
@@ -1792,15 +1765,13 @@ function renderPublicProfileSurface(
     const numeric = Number(value);
     return Number.isFinite(numeric) && numeric >= 0;
   };
-  const hasFollowersCount = hasCountSeed(profile?.followers);
-  const hasFollowingCount = hasCountSeed(profile?.following);
   const hasIdentityDataSeed = hasAvatarTruth
-    || hasFollowersCount
-    || hasFollowingCount;
+    || hasCountSeed(profile?.followers)
+    || hasCountSeed(profile?.following);
   const showIdentityPendingState = isSettlingProfileSurfaceStatus(headerStatus) && !hasIdentityDataSeed;
   const renderAvatarImage = !!String(avatarUrl || "").trim() && hasAvatarTruth;
-  const followersLabel = (showIdentityPendingState || !hasFollowersCount) ? "..." : formatCount(profile.followers);
-  const followingLabel = (showIdentityPendingState || !hasFollowingCount) ? "..." : formatCount(profile.following);
+  const followersLabel = showIdentityPendingState ? "..." : formatCount(profile.followers);
+  const followingLabel = showIdentityPendingState ? "..." : formatCount(profile.following);
   const topPaddingClass = isBusinessProfile ? "pt-2" : "pt-10";
   const followLabel = isFollowing
     ? tr("profile.following", "Following")
@@ -1833,7 +1804,7 @@ function renderPublicProfileSurface(
     && profile?.restaurantId
     && isSettlingProfileSurfaceStatus(postsStatus)
   ) {
-    queueProfileRenderEnsure("posts", profile, ensurePostsDataForProfile);
+    ensurePostsDataForProfile(profile);
   }
   return `
     <div class="${rootClass}" ${tutorialMode ? "data-landing-tutorial-surface=\"true\"" : ""}>
@@ -2375,29 +2346,6 @@ function isTestfirstMenuProfile(profile = {}) {
   return businessType === "restaurant" || businessType === "cafe" || businessType === "fastfood";
 }
 
-function shouldUseModernPublicMenuCards(profile = {}, {
-  items = [],
-  menuSurfaceState = null,
-  mode = "profile"
-} = {}) {
-  if (isTestfirstMenuProfile(profile)) return true;
-  const safeMode = String(mode || "profile").trim().toLowerCase();
-  if (safeMode !== "profile" && safeMode !== "landing") return false;
-  if (!profile?.restaurantId || isShopCatalogProfile(profile)) return false;
-  const businessType = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
-  if (businessType === "hotel" || businessType === "motel" || businessType === "ecommerce") return false;
-  const menu = menuSurfaceState?.menu && typeof menuSurfaceState.menu === "object"
-    ? menuSurfaceState.menu
-    : {};
-  const surfaceItems = Array.isArray(menu.items) ? menu.items : [];
-  const hasPublicMenuProducts = String(menu.source || "").trim().toLowerCase() === "public"
-    && menu.status === "ready"
-    && ((Array.isArray(items) && items.length > 0) || surfaceItems.length > 0);
-  // During cold public-route refresh the profile type can arrive after menu
-  // products. Restaurant public menus must still use the modern card renderer.
-  return hasPublicMenuProducts && !businessType;
-}
-
 function getMenuCardSocialMeta(item) {
   const restaurantId = item?.restaurantId
     || state.menu.restaurantId
@@ -2465,9 +2413,9 @@ function buildFocusCardItem(item, { menuItemId = "" } = {}) {
   };
 }
 
-function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile", force = false } = {}) {
+function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile" } = {}) {
   const restaurantId = profile?.restaurantId || "";
-  if (!restaurantId || (!force && !isTestfirstMenuProfile(profile)) || !focusItems.length) return "";
+  if (!restaurantId || !isTestfirstMenuProfile(profile) || !focusItems.length) return "";
   return `
     <div class="pt-2 pb-4">
       <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
@@ -2744,7 +2692,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
   `;
 }
 
-function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMenuSurfaceState = null, forceModernCards = false } = {}) {
+function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMenuSurfaceState = null } = {}) {
   const allItems = sortMenuItemsByOrder(Array.isArray(items) ? items : []);
   const restaurantId = String(profile?.restaurantId || "").trim();
   const canUseFocusState = mode === "admin" || hasPublicFocusTruthForRestaurant(restaurantId);
@@ -2844,7 +2792,7 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMe
 
   return `
     <div>
-      ${renderTestfirstFocusSection(profile, displayFocusItems, { mode, force: forceModernCards })}
+      ${renderTestfirstFocusSection(profile, displayFocusItems, { mode })}
       <div id="menu-section" class="mt-5">
         ${renderTypeBlock("drink", drinkBucket)}
         ${renderTypeBlock("food", foodBucket)}
@@ -3209,7 +3157,7 @@ function renderFocusCarousel(profile, {
   if (requirePublicMenuTruth && surface.menu.status !== "ready") return "";
   const hasPublicFocusTruth = !requirePublicMenuTruth || surface.focus.canRenderFocus;
   if (allowAutoEnsure && !state.focus.loading && !hasPublicFocusTruth) {
-    queueProfileRenderEnsure("focus", buildMenuSurfaceProfile(profile, restaurantId), ensureFocusDataForProfile);
+    ensureFocusDataForProfile(buildMenuSurfaceProfile(profile, restaurantId));
   }
   if (requirePublicMenuTruth && !hasPublicFocusTruth) return "";
   const { items, loading } = hasPublicFocusTruth
@@ -3560,16 +3508,17 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     || currentFocusTruth === "knownEmpty"
     || menuSurfaceState.menu.status !== "ready";
   if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
-    queueProfileRenderEnsure("menu", surfaceProfile, ensureMenuDataForProfile);
+    ensureMenuDataForProfile(surfaceProfile);
   }
   if (
     allowAutoEnsure
     && !skipFirstVisibleFocusEnsure
     && !hasSettledFocusTruth
     && !focusLoadingForSurface
+    && hasConfirmedPublicMenuItems
     && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth)
   ) {
-    queueProfileRenderEnsure("focus", surfaceProfile, ensureFocusDataForProfile);
+    ensureFocusDataForProfile(surfaceProfile);
   }
   // Public focus belongs to the public menu presentation. If menu items are
   // ready but focus truth is still unknown, keep the visible menu in loading so
@@ -3580,8 +3529,8 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       .filter((item) => !isMenuItemHidden(item))
     : [];
   const hasItems = items.length > 0;
-  const isShop = isShopCatalogProfile(surfaceProfile);
-  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(surfaceProfile));
+  const isShop = isShopCatalogProfile(profile);
+  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
   const isLoading = menuSurfaceState.menu.status === "loading"
@@ -3590,11 +3539,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
   const foodPriorityOffset = drinkItems.length;
-  const useTestfirstCardUi = shouldUseModernPublicMenuCards(surfaceProfile, {
-    items,
-    menuSurfaceState,
-    mode
-  });
+  const useTestfirstCardUi = isTestfirstMenuProfile(profile);
   const anchoredCategories = new Set();
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
@@ -3611,7 +3556,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     })()
     : [];
   const testfirstStableFocusSection = testfirstFocusItemsFromState.length
-    ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode, force: useTestfirstCardUi })
+    ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode })
     : "";
   if (isLandingMode && isLoading) {
     return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
@@ -3624,7 +3569,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
         ` : `
           ${hasItems
-            ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState, forceModernCards: useTestfirstCardUi })
+            ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
               : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))

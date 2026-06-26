@@ -257,7 +257,7 @@ export function createFocusRuntimeController({
       return items.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
     } catch (err) {
       console.error(err);
-      throw err;
+      return [];
     }
   }
 

@@ -7,19 +7,6 @@ import {
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
 import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
-import { mergeMonotonicPublicProfileIdentity } from "./public-profile-identity-merge-utils.js";
-import {
-  markMnyraLoadingEventCore as markLoadingEvent,
-  timeMnyraLoadingAsyncCore as timeLoadingAsync
-} from "../common/loading-diagnostics-utils.js";
-
-function pickDefaultCountValue(...values) {
-  for (const value of values) {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) return Math.max(0, numeric);
-  }
-  return 0;
-}
 
 export function createPublicProfileRuntimeController({
   state = null,
@@ -37,7 +24,7 @@ export function createPublicProfileRuntimeController({
   brandUi = null,
   fastLimits = {},
   resolvePreferredHandle = () => "",
-  pickCountValue = pickDefaultCountValue,
+  pickCountValue = () => 0,
   normalizeRestaurantType = (value) => value,
   normalizeHandle = (value = "") => String(value || "").trim().toLowerCase(),
   sanitizeDisplayName = (value = "", fallback = "") => String(value || fallback || ""),
@@ -54,16 +41,6 @@ export function createPublicProfileRuntimeController({
   const buildOrderBy = typeof orderByFn === "function" ? orderByFn : null;
   const buildLimit = typeof limitFn === "function" ? limitFn : null;
   const brandSocialName = String(brandUi?.social || "Menyra").trim() || "Menyra";
-  const hasKnownCountInput = (value) => {
-    if (value === null || value === undefined) return false;
-    return Number.isFinite(Number(value));
-  };
-  const pickKnownCountValue = (...values) => {
-    if (!values.some(hasKnownCountInput)) return null;
-    const picked = pickCountValue(...values);
-    const numeric = Number(picked);
-    return Number.isFinite(numeric) ? Math.max(0, numeric) : null;
-  };
   let profileViewUnsub = null;
   let profileViewListenerKey = "";
   let profileViewReadOnceKey = "";
@@ -78,9 +55,6 @@ export function createPublicProfileRuntimeController({
   const canonicalRestaurantIdByRouteId = new Map();
   const PUBLIC_BUSINESS_EMPTY_POSTS_TTL_MS = 15_000;
   const PUBLIC_BUSINESS_POSTS_INITIAL_PAGE_FALLBACK_LIMIT = 12;
-  const PUBLIC_PROFILE_DOC_READ_TIMEOUT_MS = 4_000;
-  const PUBLIC_BUSINESS_POSTS_INITIAL_READ_TIMEOUT_MS = 5_500;
-  const PUBLIC_BUSINESS_POSTS_FULL_READ_TIMEOUT_MS = 9_000;
 
   function resolvePublicBusinessPostsInitialPageLimit() {
     const limitCandidates = [
@@ -96,85 +70,6 @@ export function createPublicProfileRuntimeController({
       }
     }
     return PUBLIC_BUSINESS_POSTS_INITIAL_PAGE_FALLBACK_LIMIT;
-  }
-
-  function resolvePositiveFastLimit(candidates = [], fallbackMs = 0) {
-    for (const candidate of candidates) {
-      const parsed = Number(candidate);
-      if (Number.isFinite(parsed) && parsed > 0) {
-        return Math.max(1, Math.round(parsed));
-      }
-    }
-    const fallback = Number(fallbackMs);
-    return Number.isFinite(fallback) && fallback > 0 ? Math.max(1, Math.round(fallback)) : 0;
-  }
-
-  function resolvePublicProfileDocReadTimeoutMs() {
-    return resolvePositiveFastLimit([
-      fastLimits?.publicProfileDocReadMs,
-      fastLimits?.publicProfileDocDeadlineMs,
-      fastLimits?.businessProfileDocReadMs,
-      fastLimits?.profileDocReadMs
-    ], PUBLIC_PROFILE_DOC_READ_TIMEOUT_MS);
-  }
-
-  function resolvePublicBusinessPostsReadTimeoutMs({ initialPage = false, force = false } = {}) {
-    if (initialPage === true && force !== true) {
-      return resolvePositiveFastLimit([
-        fastLimits?.publicBusinessPostsInitialReadMs,
-        fastLimits?.publicBusinessPostsInitialDeadlineMs,
-        fastLimits?.businessPostsInitialReadMs,
-        fastLimits?.businessPostsReadMs
-      ], PUBLIC_BUSINESS_POSTS_INITIAL_READ_TIMEOUT_MS);
-    }
-    return resolvePositiveFastLimit([
-      fastLimits?.publicBusinessPostsReadMs,
-      fastLimits?.publicBusinessPostsDeadlineMs,
-      fastLimits?.businessPostsReadMs,
-      fastLimits?.profilePostsReadMs
-    ], PUBLIC_BUSINESS_POSTS_FULL_READ_TIMEOUT_MS);
-  }
-
-  function createPublicProfileReadDeadlineError(scope = "public profile read", timeoutMs = 0) {
-    const safeScope = String(scope || "public profile read").trim() || "public profile read";
-    const err = new Error(`${safeScope} timed out after ${Math.max(1, Math.round(Number(timeoutMs) || 0))}ms`);
-    err.name = "MnyraPublicProfileReadTimeoutError";
-    err.code = "deadline-exceeded";
-    err.scope = safeScope;
-    return err;
-  }
-
-  function isPublicProfileReadDeadlineError(err) {
-    return String(err?.code || "").trim().toLowerCase() === "deadline-exceeded"
-      || String(err?.name || "").trim() === "MnyraPublicProfileReadTimeoutError";
-  }
-
-  function runPublicProfileReadWithDeadline(task, { timeoutMs = 0, scope = "public profile read" } = {}) {
-    const runTask = typeof task === "function" ? task : (() => task);
-    const safeTimeoutMs = Math.max(0, Math.round(Number(timeoutMs) || 0));
-    if (!safeTimeoutMs) return Promise.resolve().then(() => runTask());
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const timerId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        reject(createPublicProfileReadDeadlineError(scope, safeTimeoutMs));
-      }, safeTimeoutMs);
-      Promise.resolve()
-        .then(() => runTask())
-        .then((value) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timerId);
-          resolve(value);
-        })
-        .catch((err) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timerId);
-          reject(err);
-        });
-    });
   }
 
   function buildBusinessPostsInFlightKey(restaurantId = "", initialPage = false) {
@@ -581,20 +476,15 @@ export function createPublicProfileRuntimeController({
       viewProfile[key] = value;
       changed = true;
     };
-    const assignCountIfKnown = (key, ...values) => {
-      const count = pickKnownCountValue(...values);
-      if (count === null) return;
-      assignIfDefined(key, count);
-    };
     if (profile?.restaurantId) {
-      assignCountIfKnown("followers", data.followersCount, data.followers, data.fansCount, data.fans);
-      assignCountIfKnown("following", data.followingCount, data.following);
+      assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
+      assignIfDefined("following", data.followingCount ?? viewProfile.following);
       assignIfDefined("avatar", data.logoUrl || data.logo || viewProfile.avatar);
       assignIfDefined("name", data.name || data.restaurantName || viewProfile.name);
       assignIfDefined("location", data.city || viewProfile.location);
     } else {
-      assignCountIfKnown("followers", data.followersCount, data.followers, data.fansCount, data.fans);
-      assignCountIfKnown("following", data.followingCount, data.following);
+      assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
+      assignIfDefined("following", data.followingCount ?? viewProfile.following);
       assignIfDefined("privateAccount", !!data.privateAccount);
       assignIfDefined("avatar", data.avatarUrl || data.avatar || viewProfile.avatar);
       assignIfDefined("name", data.displayName || viewProfile.name);
@@ -949,10 +839,6 @@ export function createPublicProfileRuntimeController({
       String(profile.name || "").trim(),
       String(profile.handle || "").trim().toLowerCase(),
       String(profile.avatar || "").trim(),
-      String(profile.titleImageUrl || "").trim(),
-      String(profile.coverImageUrl || "").trim(),
-      String(profile.coverUrl || "").trim(),
-      String(profile.heroUrl || "").trim(),
       String(profile.location || "").trim(),
       String(profile.bio || "").trim(),
       String(profile.role || "").trim().toLowerCase(),
@@ -1035,13 +921,7 @@ export function createPublicProfileRuntimeController({
     );
     if (safePosts.length > 0) postsTruthState = "seeded";
     const menuTruthFallback = sameRestaurantMenu
-      ? (
-        menuItemsFromLive.length
-          ? "seeded"
-          : (menuSurfaceState.menu.status === "empty"
-            ? "knownEmpty"
-            : (menuSurfaceState.menu.status === "error" ? "error" : "unknown"))
-      )
+      ? (menuItemsFromLive.length ? "seeded" : (menuSurfaceState.menu.status === "loading" ? "unknown" : "knownEmpty"))
       : "unknown";
     let menuTruthState = normalizeTruthState(
       sameRestaurantMenu ? (menuSurfaceState.menu.truthState || "") : "",
@@ -1202,10 +1082,6 @@ export function createPublicProfileRuntimeController({
         name: nextSnapshot.identity.name,
         handle: nextSnapshot.identity.handle,
         avatar: nextSnapshot.identity.avatar,
-        titleImageUrl: nextSnapshot.identity.titleImageUrl,
-        coverImageUrl: nextSnapshot.identity.coverImageUrl,
-        coverUrl: nextSnapshot.identity.coverUrl,
-        heroUrl: nextSnapshot.identity.heroUrl,
         location: nextSnapshot.identity.location,
         bio: nextSnapshot.identity.bio,
         followers: nextSnapshot.identity.followers,
@@ -1271,12 +1147,7 @@ export function createPublicProfileRuntimeController({
       String(payload?.phase || "").trim().toLowerCase(),
       String(payload?.identity?.name || "").trim(),
       String(payload?.identity?.avatar || "").trim(),
-      String(payload?.identity?.titleImageUrl || "").trim(),
-      String(payload?.identity?.coverImageUrl || "").trim(),
-      String(payload?.identity?.coverUrl || "").trim(),
-      String(payload?.identity?.heroUrl || "").trim(),
       String(payload?.identity?.location || "").trim(),
-      String(payload?.identity?.bio || "").trim(),
       String(payload?.identity?.followers ?? ""),
       String(payload?.identity?.following ?? ""),
       String(payload?.truth?.identity || "").trim().toLowerCase(),
@@ -1465,7 +1336,7 @@ export function createPublicProfileRuntimeController({
       || (sameVisibleIncomingProfile ? currentCanonicalRestaurantId : "")
       || ""
     ).trim();
-    const nextProfileCandidate = profile ? {
+    const nextProfile = profile ? {
       ...profile,
       ...(resolvedCanonicalRestaurantId ? { canonicalRestaurantId: resolvedCanonicalRestaurantId } : {}),
       ...(
@@ -1499,17 +1370,6 @@ export function createPublicProfileRuntimeController({
       } : {}),
       posts: projectedPosts
     } : profile;
-    const nextProfile = profile
-      ? {
-        ...mergeMonotonicPublicProfileIdentity({
-          currentProfile,
-          incomingProfile: nextProfileCandidate,
-          currentRoutePayload,
-          incomingRoutePayload: incomingCanonicalRoutePayload
-        }),
-        posts: projectedPosts
-      }
-      : profile;
 
     const sameVisibleProfile = isSameVisibleProfile(currentProfile || null, nextProfile);
     const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
@@ -1521,12 +1381,16 @@ export function createPublicProfileRuntimeController({
     const normalizedCurrentTopTab = liveTopTabValue
       ? normalizeTopTab(liveTopTabValue, "profile")
       : "";
+    const currentDirectEntryTopTab = String(currentDirectEntry?.topTab || "").trim();
+    const normalizedCurrentDirectEntryTopTab = currentDirectEntryTopTab
+      ? normalizeTopTab(currentDirectEntryTopTab, "profile")
+      : "";
     const preserveLiveBusinessTopTab = sameVisibleProfile
       && normalizedExplicitTopTab
       && normalizedCurrentTopTab
       && normalizedExplicitTopTab !== normalizedCurrentTopTab
-      && normalizedExplicitTopTab === "profile"
-      && normalizedCurrentTopTab !== "profile"
+      && normalizedCurrentTopTab !== normalizedCurrentDirectEntryTopTab
+      && currentDirectEntry?.routeFirst === true
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
       && !!String(
         nextProfile?.canonicalRestaurantId
@@ -1770,7 +1634,7 @@ export function createPublicProfileRuntimeController({
     const rest = restaurant || {};
     const displayName = resolveBusinessDisplayName(data, rest, fallbackName);
     const handle = resolvePreferredHandle({ handle: data?.handle || rest?.handle || "", name: displayName }, displayName);
-    const followers = pickKnownCountValue(
+    const followers = pickCountValue(
       data?.followersCount,
       data?.followers,
       data?.fansCount,
@@ -1780,7 +1644,7 @@ export function createPublicProfileRuntimeController({
       rest?.fansCount,
       rest?.fans
     );
-    const following = pickKnownCountValue(data?.followingCount, data?.following, rest?.followingCount, rest?.following);
+    const following = pickCountValue(data?.followingCount, data?.following, rest?.followingCount, rest?.following);
     const restaurantId = String(data?.restaurantId || data?.landingRestaurantId || profileDoc?.id || rest?.id || "").trim();
     const landingEnabled = data?.landingEnabled ?? rest?.landingEnabled ?? true;
     const landingTemplate = String(data?.landingTemplate || rest?.landingTemplate || "").trim();
@@ -1903,8 +1767,8 @@ export function createPublicProfileRuntimeController({
       bio: data?.bio || data?.description || fallback?.bio || "",
       avatar: data?.avatarUrl || data?.avatar || fallback?.avatar || "",
       location: data?.city || fallback?.location || "Prishtina",
-      followers: pickKnownCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans, fallback?.followers),
-      following: pickKnownCountValue(data?.followingCount, data?.following, fallback?.following),
+      followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans, fallback?.followers),
+      following: pickCountValue(data?.followingCount, data?.following, fallback?.following),
       privateAccount: !!data?.privateAccount,
       role: data?.role || fallback?.role || "user",
       pendingFollowRequest: false,
@@ -1914,13 +1778,7 @@ export function createPublicProfileRuntimeController({
   }
 
   async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
-    return runPublicProfileReadWithDeadline(
-      () => resolveRestaurantDocByRouteId(restaurantId, restaurant),
-      {
-        timeoutMs: resolvePublicProfileDocReadTimeoutMs(),
-        scope: "public profile restaurant doc"
-      }
-    );
+    return resolveRestaurantDocByRouteId(restaurantId, restaurant);
   }
 
   function markBusinessPostsKnownEmpty(...restaurantIds) {
@@ -1953,21 +1811,9 @@ export function createPublicProfileRuntimeController({
     return true;
   }
 
-  async function loadBusinessPostsForRestaurant(restaurantId, { skipProfileResolve = false, force = false, initialPage = false, returnStatus = false } = {}) {
+  async function loadBusinessPostsForRestaurant(restaurantId, { skipProfileResolve = false, force = false, initialPage = false } = {}) {
     const routeRestaurantId = String(restaurantId || "").trim();
-    const formatResult = (result = {}) => {
-      const posts = Array.isArray(result.posts) ? result.posts : [];
-      if (!returnStatus) return posts;
-      return {
-        posts,
-        status: String(result.status || "").trim().toLowerCase() || (posts.length ? "ready" : "empty"),
-        restaurantId: String(result.restaurantId || routeRestaurantId || "").trim(),
-        error: result.error || null
-      };
-    };
-    if (!routeRestaurantId || !makeCollectionRef || !db) {
-      return formatResult({ posts: [], status: "error", restaurantId: routeRestaurantId });
-    }
+    if (!routeRestaurantId || !makeCollectionRef || !db) return [];
     const shouldUseInitialPage = initialPage === true && force !== true;
     const cachedCanonicalRestaurantId = String(
       canonicalRestaurantIdByRouteId.get(routeRestaurantId)
@@ -1980,46 +1826,35 @@ export function createPublicProfileRuntimeController({
         const cached = readCachedBusinessPosts(cachedId, { initialPage: shouldUseInitialPage });
         if (Array.isArray(cached) && cached.length > 0) {
           clearBusinessPostsKnownEmpty(...cachedIds);
-          return formatResult({ posts: cached, status: "ready", restaurantId: cachedId });
+          return cached;
         }
       }
     }
+    if (!force && cachedIds.some((cachedId) => isBusinessPostsKnownEmpty(cachedId))) return [];
     const requestRestaurantId = cachedCanonicalRestaurantId || routeRestaurantId;
-    if (!force && cachedIds.some((cachedId) => isBusinessPostsKnownEmpty(cachedId))) {
-      return formatResult({ posts: [], status: "empty", restaurantId: requestRestaurantId });
-    }
     const requestKey = buildBusinessPostsInFlightKey(requestRestaurantId, shouldUseInitialPage);
     const fullRequestKey = buildBusinessPostsInFlightKey(requestRestaurantId, false);
     const inFlight = shouldUseInitialPage && fullRequestKey
       ? (publicBusinessPostsInFlight.get(fullRequestKey) || publicBusinessPostsInFlight.get(requestKey))
       : publicBusinessPostsInFlight.get(requestKey);
     if (inFlight) {
-      return formatResult(await inFlight);
+      return inFlight;
     }
     const request = (async () => {
       let effectiveRestaurantId = routeRestaurantId;
       let shouldSkipProfileResolve = !!skipProfileResolve;
-      let profileResolveError = null;
       if (cachedCanonicalRestaurantId) {
         effectiveRestaurantId = cachedCanonicalRestaurantId;
         shouldSkipProfileResolve = true;
       }
       if (!shouldSkipProfileResolve) {
-        try {
-          const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
-          effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
-          if (resolvedDoc?.id) {
-            cacheResolvedRestaurantDoc(routeRestaurantId, null, resolvedDoc);
-          }
-        } catch (err) {
-          profileResolveError = err;
-          console.error(err);
-          effectiveRestaurantId = routeRestaurantId;
+        const resolvedDoc = await fetchBusinessProfileDoc({ restaurantId: routeRestaurantId });
+        effectiveRestaurantId = String(resolvedDoc?.id || routeRestaurantId || "").trim();
+        if (resolvedDoc?.id) {
+          cacheResolvedRestaurantDoc(routeRestaurantId, null, resolvedDoc);
         }
       }
-      if (!effectiveRestaurantId) {
-        return { posts: [], status: "error", restaurantId: routeRestaurantId };
-      }
+      if (!effectiveRestaurantId) return [];
       if (!force) {
         const resolvedCached = readCachedBusinessPosts(effectiveRestaurantId, { initialPage: shouldUseInitialPage });
         if (Array.isArray(resolvedCached) && resolvedCached.length > 0) {
@@ -2027,42 +1862,14 @@ export function createPublicProfileRuntimeController({
           if (routeRestaurantId !== effectiveRestaurantId) {
             writeBusinessPostsCache(resolvedCached, [routeRestaurantId], { initialPage: shouldUseInitialPage });
           }
-          return { posts: resolvedCached, status: "ready", restaurantId: effectiveRestaurantId };
+          return resolvedCached;
         }
       }
       if (!force && isBusinessPostsKnownEmpty(effectiveRestaurantId)) {
         markBusinessPostsKnownEmpty(effectiveRestaurantId, routeRestaurantId);
-        return { posts: [], status: "empty", restaurantId: effectiveRestaurantId };
+        return [];
       }
       try {
-        const postsLoadPhase = shouldUseInitialPage ? "initial" : (force ? "reconcile" : "full");
-        markLoadingEvent("public profile posts load requested", {
-          restaurantId: effectiveRestaurantId,
-          phase: postsLoadPhase,
-          force,
-          source: "restaurants.socialPosts"
-        });
-        const postsReadTimeoutMs = resolvePublicBusinessPostsReadTimeoutMs({
-          initialPage: shouldUseInitialPage,
-          force
-        });
-        const readPostsSnapshot = (label, refOrQuery) => timeLoadingAsync(
-          label,
-          () => runPublicProfileReadWithDeadline(
-            () => getDocsSafe(refOrQuery),
-            {
-              timeoutMs: postsReadTimeoutMs,
-              scope: "public profile socialPosts"
-            }
-          ),
-          {
-            restaurantId: effectiveRestaurantId,
-            phase: postsLoadPhase,
-            force,
-            source: "restaurants.socialPosts",
-            timeoutMs: postsReadTimeoutMs
-          }
-        );
         const ref = makeCollectionRef(db, "restaurants", effectiveRestaurantId, "socialPosts");
         let snap = null;
         let usedInitialPageLimit = false;
@@ -2074,29 +1881,24 @@ export function createPublicProfileRuntimeController({
               constraints.push(buildLimit(initialPageLimit));
               usedInitialPageLimit = true;
             }
-            snap = await readPostsSnapshot("public profile socialPosts load", buildQuery(ref, ...constraints));
+            snap = await getDocsSafe(buildQuery(ref, ...constraints));
           } else if (shouldUseInitialPage && buildQuery && buildLimit) {
             usedInitialPageLimit = true;
-            snap = await readPostsSnapshot("public profile socialPosts load", buildQuery(ref, buildLimit(initialPageLimit)));
-          } else if (shouldUseInitialPage) {
-            throw new Error("bounded public profile socialPosts read unavailable");
+            snap = await getDocsSafe(buildQuery(ref, buildLimit(initialPageLimit)));
           } else {
-            snap = await readPostsSnapshot("public profile socialPosts load", ref);
+            snap = await getDocsSafe(ref);
           }
-        } catch (err) {
-          if (isPublicProfileReadDeadlineError(err)) throw err;
+        } catch {
           if (shouldUseInitialPage && buildQuery && buildLimit) {
             try {
               usedInitialPageLimit = true;
-              snap = await readPostsSnapshot("public profile socialPosts bounded fallback load", buildQuery(ref, buildLimit(initialPageLimit)));
-            } catch (fallbackErr) {
-              if (isPublicProfileReadDeadlineError(fallbackErr)) throw fallbackErr;
-              throw new Error("bounded public profile socialPosts fallback failed");
+              snap = await getDocsSafe(buildQuery(ref, buildLimit(initialPageLimit)));
+            } catch {
+              usedInitialPageLimit = false;
+              snap = await getDocsSafe(ref);
             }
-          } else if (shouldUseInitialPage) {
-            throw new Error("bounded public profile socialPosts fallback unavailable");
           } else {
-            snap = await readPostsSnapshot("public profile socialPosts fallback load", ref);
+            snap = await getDocsSafe(ref);
           }
         }
         const rows = [];
@@ -2110,33 +1912,22 @@ export function createPublicProfileRuntimeController({
           writeBusinessPostsCache(normalizedPosts, [effectiveRestaurantId, routeRestaurantId], {
             initialPage: usedInitialPageLimit
           });
-        } else if (profileResolveError) {
-          return {
-            posts: [],
-            status: "error",
-            restaurantId: effectiveRestaurantId,
-            error: profileResolveError
-          };
         } else {
           markBusinessPostsKnownEmpty(effectiveRestaurantId, routeRestaurantId);
         }
-        return {
-          posts: normalizedPosts,
-          status: normalizedPosts.length > 0 ? "ready" : "empty",
-          restaurantId: effectiveRestaurantId
-        };
+        return normalizedPosts;
       } catch (err) {
         console.error(err);
         const fallbackCached = readCachedBusinessPosts(effectiveRestaurantId, { initialPage: true })
           || readCachedBusinessPosts(routeRestaurantId, { initialPage: true });
         if (Array.isArray(fallbackCached) && fallbackCached.length > 0) {
           clearBusinessPostsKnownEmpty(effectiveRestaurantId, routeRestaurantId);
-          return { posts: fallbackCached, status: "ready", restaurantId: effectiveRestaurantId };
+          return fallbackCached;
         }
         if (isBusinessPostsKnownEmpty(effectiveRestaurantId) || isBusinessPostsKnownEmpty(routeRestaurantId)) {
-          return { posts: [], status: "empty", restaurantId: effectiveRestaurantId };
+          return [];
         }
-        return { posts: [], status: "error", restaurantId: effectiveRestaurantId, error: err };
+        return [];
       }
     })().finally(() => {
       if (publicBusinessPostsInFlight.get(requestKey) === request) {
@@ -2144,7 +1935,7 @@ export function createPublicProfileRuntimeController({
       }
     });
     publicBusinessPostsInFlight.set(requestKey, request);
-    return formatResult(await request);
+    return request;
   }
 
   return {

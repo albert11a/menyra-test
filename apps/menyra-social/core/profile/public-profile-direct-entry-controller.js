@@ -150,21 +150,6 @@ function resolveCanonicalPublicPath(publicSlug = "") {
   });
 }
 
-function pickBusinessTitleImageText(...sources) {
-  for (const source of sources) {
-    if (!source || typeof source !== "object") continue;
-    const value = String(
-      source.titleImageUrl
-      || source.coverImageUrl
-      || source.coverUrl
-      || source.heroUrl
-      || ""
-    ).trim();
-    if (value) return value;
-  }
-  return "";
-}
-
 function resolveProfileSeedPublicSlug(routeIdentity = null, preview = null) {
   const routeSlug = normalizeLookupSlug(
     routeIdentity?.publicSlug
@@ -274,8 +259,6 @@ function buildRoutePayloadSeed({
     ? safeSnapshot.focus
     : (safeRouteBootstrap?.focus && typeof safeRouteBootstrap.focus === "object" ? safeRouteBootstrap.focus : {});
   const routePostsItems = Array.isArray(routePosts?.items) ? routePosts.items : [];
-  const routeMenuItemsFromSeed = Array.isArray(routeMenu?.items) ? routeMenu.items : [];
-  const routeFocusItemsFromSeed = Array.isArray(routeFocus?.items) ? routeFocus.items : [];
   const menu = state?.menu || {};
   const hasLivePublicMenu = String(menu.restaurantId || "").trim() === safeRestaurantId
     && String(menu.source || "").trim().toLowerCase() === "public"
@@ -289,7 +272,7 @@ function buildRoutePayloadSeed({
       ? (livePublicMenuItems.length ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
       : "unknown"
   );
-  const routeMenuItems = livePublicMenuState === "seeded" ? livePublicMenuItems : routeMenuItemsFromSeed;
+  const routeMenuItems = livePublicMenuState === "seeded" ? livePublicMenuItems : [];
   const focus = state?.focus || {};
   const livePublicFocusItems = hasLivePublicMenu
     && String(focus.restaurantId || "").trim() === safeRestaurantId
@@ -297,16 +280,12 @@ function buildRoutePayloadSeed({
     && Array.isArray(focus.items)
     ? focus.items
     : [];
-  const routeFocusItems = livePublicFocusItems.length ? livePublicFocusItems : routeFocusItemsFromSeed;
+  const routeFocusItems = livePublicFocusItems;
   const routePostsState = normalizeTruthState(routePosts?.state || safeTruth?.posts || "", (
     safePosts.length || routePostsItems.length ? "seeded" : "unknown"
   ));
-  const routeMenuState = hasLivePublicMenu
-    ? livePublicMenuState
-    : normalizeTruthState(routeMenu?.state || safeTruth?.menu || "", routeMenuItems.length ? "seeded" : "unknown");
-  const routeFocusState = livePublicFocusItems.length
-    ? "seeded"
-    : normalizeTruthState(routeFocus?.state || safeTruth?.focus || "", routeFocusItems.length ? "seeded" : "unknown");
+  const routeMenuState = hasLivePublicMenu ? livePublicMenuState : "unknown";
+  const routeFocusState = livePublicFocusItems.length ? "seeded" : "unknown";
   const routeIdentityState = normalizeTruthState(safeTruth?.identity || "", (
     String(routeIdentity?.name || "").trim()
     || String(routeIdentity?.handle || "").trim()
@@ -359,10 +338,6 @@ function buildRoutePayloadSeed({
       name: String(safeProfile.name || routeIdentity?.name || "").trim(),
       handle: String(safeProfile.handle || routeIdentity?.handle || "").trim(),
       avatar: String(safeProfile.avatar || routeIdentity?.avatar || "").trim(),
-      titleImageUrl: pickBusinessTitleImageText(safeProfile, routeIdentity),
-      coverImageUrl: pickBusinessTitleImageText(safeProfile, routeIdentity),
-      coverUrl: pickBusinessTitleImageText(safeProfile, routeIdentity),
-      heroUrl: pickBusinessTitleImageText(safeProfile, routeIdentity),
       location: String(safeProfile.location || routeIdentity?.location || "").trim(),
       bio: String(safeProfile.bio || routeIdentity?.bio || "").trim(),
       followers: normalizeCountOrNull(safeProfile.followers ?? routeIdentity?.followers),
@@ -437,10 +412,6 @@ function buildRoutePayloadSeed({
       name: nextSnapshot.identity.name,
       handle: nextSnapshot.identity.handle,
       avatar: nextSnapshot.identity.avatar,
-      titleImageUrl: nextSnapshot.identity.titleImageUrl,
-      coverImageUrl: nextSnapshot.identity.coverImageUrl,
-      coverUrl: nextSnapshot.identity.coverUrl,
-      heroUrl: nextSnapshot.identity.heroUrl,
       location: nextSnapshot.identity.location,
       bio: nextSnapshot.identity.bio,
       followers: nextSnapshot.identity.followers,
@@ -604,14 +575,12 @@ export function createPublicProfileDirectEntryController({
     const entry = resolvePendingDirectEntry(pendingRoute);
     if (!entry.active || !entry.restaurantId) return null;
     const routeBootstrap = resolveRouteBootstrapSeedForEntry(state, entry);
+    const routeIdentity = routeBootstrap?.identity && typeof routeBootstrap.identity === "object"
+      ? routeBootstrap.identity
+      : null;
     const routeSnapshot = routeBootstrap?.businessSnapshot && typeof routeBootstrap.businessSnapshot === "object"
       ? routeBootstrap.businessSnapshot
       : null;
-    const routeIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
-      ? routeSnapshot.identity
-      : (routeBootstrap?.identity && typeof routeBootstrap.identity === "object"
-        ? routeBootstrap.identity
-        : null);
     const canonicalRestaurantId = String(
       routeSnapshot?.restaurantId
       || routeBootstrap?.canonicalRestaurantId
@@ -631,12 +600,8 @@ export function createPublicProfileDirectEntryController({
     const routePostsSeed = Array.isArray(routeBootstrap?.posts?.items)
       ? routeBootstrap.posts.items
       : [];
-    const routeMenuSeed = Array.isArray(routeSnapshot?.menu?.items)
-      ? routeSnapshot.menu.items
-      : (Array.isArray(routeBootstrap?.menu?.items) ? routeBootstrap.menu.items : []);
-    const routeFocusSeed = Array.isArray(routeSnapshot?.focus?.items)
-      ? routeSnapshot.focus.items
-      : (Array.isArray(routeBootstrap?.focus?.items) ? routeBootstrap.focus.items : []);
+    const routeMenuSeed = [];
+    const routeFocusSeed = [];
     const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
       ? routeSnapshot.truth
       : (routeBootstrap?.truth && typeof routeBootstrap.truth === "object" ? routeBootstrap.truth : {});
@@ -644,15 +609,8 @@ export function createPublicProfileDirectEntryController({
       routeSnapshot?.posts?.state || routeBootstrap?.posts?.state || routeTruth?.posts || "",
       routePostsSeed.length ? "seeded" : "unknown"
     );
-    const routeMenuStateRaw = normalizeTruthState(
-      routeSnapshot?.menu?.state || routeBootstrap?.menu?.state || routeTruth?.menu || "",
-      routeMenuSeed.length ? "seeded" : "unknown"
-    );
-    const routeMenuState = routeMenuStateRaw === "seeded" && routeMenuSeed.length ? "seeded" : "unknown";
-    const routeFocusState = normalizeTruthState(
-      routeSnapshot?.focus?.state || routeBootstrap?.focus?.state || routeTruth?.focus || "",
-      routeFocusSeed.length ? "seeded" : "unknown"
-    );
+    const routeMenuState = "unknown";
+    const routeFocusState = "unknown";
     const routeIdentityState = normalizeTruthState(routeTruth?.identity || "", (
       String(routeIdentity?.name || "").trim()
       || String(routeIdentity?.handle || "").trim()
@@ -673,7 +631,6 @@ export function createPublicProfileDirectEntryController({
     const seedHandle = String(routeIdentity?.handle || preview?.handle || "").trim().replace(/^@/, "").toLowerCase();
     const seedPublicSlug = resolveProfileSeedPublicSlug(routeIdentity, preview);
     const seedAvatar = String(routeIdentity?.avatar || preview?.logoUrl || preview?.logo || preview?.avatar || "").trim();
-    const seedTitleImage = pickBusinessTitleImageText(routeIdentity, preview);
     const seedLocation = String(routeIdentity?.location || preview?.city || preview?.address || "").trim();
     const seedBio = String(routeIdentity?.bio || "").trim();
     const seedFollowers = normalizeCountOrNull(routeIdentity?.followers);
@@ -687,7 +644,7 @@ export function createPublicProfileDirectEntryController({
     const hasRouteSeededPosts = routePostsState === "seeded" && seededPosts.length > 0;
     const postsReadySeed = hasRouteSeededPosts || routePostsState === "knownEmpty";
     const hasHeaderTruth = routeIdentityState === "seeded"
-      || !!(seedBusinessName || seedHandle || seedAvatar || seedTitleImage || seedLocation || seedFollowers !== null || seedFollowing !== null);
+      || !!(seedBusinessName || seedHandle || seedAvatar || seedLocation || seedFollowers !== null || seedFollowing !== null);
     if (routeLayoutColor && String(state?.menuLayout?.cardColor || "").trim().toLowerCase() !== routeLayoutColor) {
       state.menuLayout = {
         ...(state?.menuLayout || {}),
@@ -700,10 +657,6 @@ export function createPublicProfileDirectEntryController({
       uid: "",
       bio: routeBioState === "knownEmpty" ? "" : seedBio,
       avatar: seedAvatar,
-      titleImageUrl: seedTitleImage,
-      coverImageUrl: seedTitleImage,
-      coverUrl: seedTitleImage,
-      heroUrl: seedTitleImage,
       location: seedLocation,
       followers: seedFollowers,
       following: seedFollowing,
@@ -794,9 +747,7 @@ export function createPublicProfileDirectEntryController({
         const existingMenuRestaurantId = String(state.menu.restaurantId || "").trim();
         const hasKnownMenuTruth = isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu.source || "").trim().toLowerCase() === "public"
-          && existingMenuTruth === "seeded"
-          && Array.isArray(state.menu.items)
-          && state.menu.items.length > 0;
+          && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
         const existingItems = isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu.source || "").trim().toLowerCase() === "public"
           && Array.isArray(state.menu.items)
@@ -810,7 +761,9 @@ export function createPublicProfileDirectEntryController({
           error: "",
           source: "public",
           routeSeed: hasKnownMenuTruth ? state.menu.routeSeed === true : false,
-          truthState: hasKnownMenuTruth ? "seeded" : "unknown"
+          truthState: hasKnownMenuTruth
+            ? (existingMenuTruth === "seeded" ? "seeded" : "knownEmpty")
+            : "unknown"
         };
       }
     }

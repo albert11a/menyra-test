@@ -12,7 +12,6 @@ firebase-debug.*.log
 
 # Build artifacts
 dist/
-apps/menyra-social/bundled/**/*.gz
 
 # Runner artifacts
 tests/mnyra-heart-runner/artifacts/
