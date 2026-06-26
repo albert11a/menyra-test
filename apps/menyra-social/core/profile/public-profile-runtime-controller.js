@@ -1927,7 +1927,7 @@ export function createPublicProfileRuntimeController({
         if (isBusinessPostsKnownEmpty(effectiveRestaurantId) || isBusinessPostsKnownEmpty(routeRestaurantId)) {
           return [];
         }
-        return [];
+        throw err;
       }
     })().finally(() => {
       if (publicBusinessPostsInFlight.get(requestKey) === request) {

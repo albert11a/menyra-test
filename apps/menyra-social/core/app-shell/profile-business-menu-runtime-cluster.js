@@ -363,6 +363,32 @@ export function createProfileBusinessMenuRuntimeCluster({
       });
   };
 
+  const preserveVisiblePublicPostsAfterLoadFailure = ({
+    requestedRestaurantId = "",
+    canonicalRestaurantId = "",
+    targetRestaurantId = ""
+  } = {}) => {
+    const liveProfileView = getVisiblePublicProfileView();
+    if (!liveProfileView) return;
+    const liveRestaurantId = String(liveProfileView.restaurantId || "").trim();
+    const acceptedRestaurantIds = new Set(
+      [
+        requestedRestaurantId,
+        canonicalRestaurantId,
+        targetRestaurantId
+      ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    );
+    if (liveRestaurantId && acceptedRestaurantIds.size && !acceptedRestaurantIds.has(liveRestaurantId)) return;
+    const currentPosts = Array.isArray(liveProfileView.view.posts) ? liveProfileView.view.posts : [];
+    if (currentPosts.length > 0) return;
+    refreshVisiblePublicProfile({
+      postsLoaded: false,
+      truthState: "unknown"
+    }, currentPosts);
+  };
+
   const resolveBusinessAvatarUrl = (data = {}) => String(
     data?.logoUrl
     || data?.logoURL
@@ -876,9 +902,16 @@ export function createProfileBusinessMenuRuntimeCluster({
     const safeProfile = profile && typeof profile === "object" ? profile : {};
     const surfaceTargetRestaurantId = resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
     if (hasMatchingVisiblePostsEnsureInFlight(surfaceTargetRestaurantId, requestedRestaurantId, safeProfile)) return;
+    const requestContext = {
+      requestedRestaurantId,
+      canonicalRestaurantId: "",
+      targetRestaurantId: ""
+    };
     const request = Promise.resolve().then(async () => {
       const canonicalRestaurantId = await resolveProfileRestaurantId(safeProfile);
       const targetRestaurantId = String(canonicalRestaurantId || requestedRestaurantId || "").trim();
+      requestContext.canonicalRestaurantId = canonicalRestaurantId || "";
+      requestContext.targetRestaurantId = targetRestaurantId;
       if (!targetRestaurantId) return;
       let posts = await loadBusinessPostsForRestaurant(targetRestaurantId, {
         skipProfileResolve: !!canonicalRestaurantId,
@@ -919,6 +952,9 @@ export function createProfileBusinessMenuRuntimeCluster({
       }, nextPosts);
       queueVisiblePublicPostsReconcile(resolvedRestaurantId);
       scheduleVisiblePublicMenuRetry(safeProfile, canonicalRestaurantId || resolvedRestaurantId || requestedRestaurantId);
+    }).catch((err) => {
+      console.error(err);
+      preserveVisiblePublicPostsAfterLoadFailure(requestContext);
     }).finally(() => {
       if (publicProfilePostsEnsurePromise === request) {
         publicProfilePostsEnsurePromise = null;

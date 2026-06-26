@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createSessionDataRuntimeController } from "../apps/menyra-social/core/app-shell/session-data-runtime-controller.js";
+import { createFocusRuntimeController } from "../apps/menyra-social/core/menu/focus-runtime-controller.js";
 
 const never = () => new Promise(() => {});
 
@@ -150,9 +151,87 @@ test("public focus load releases menu coordination when Firebase offers do not r
     controller.loadFocusForRestaurant("restaurant-a")
   ));
 
-  assert.equal(result.truthState, "knownEmpty");
+  assert.equal(result.truthState, "unknown");
   assert.equal(state.focus.restaurantId, "restaurant-a");
   assert.equal(state.focus.loading, false);
   assert.equal(state.focus.error, "Fokus laden fehlgeschlagen.");
+  assert.equal(state.focus.truthState, "unknown");
+});
+
+test("public focus transient load failure preserves existing focus items", async () => {
+  const state = createVisibleMenuState();
+  const existingFocusItems = [{ id: "focus-1", title: "Lunch" }];
+  state.menu = {
+    restaurantId: "restaurant-a",
+    items: [{ id: "item-1", category: "Pizza" }],
+    loading: false,
+    error: "",
+    source: "public",
+    statusBadgeVisible: true,
+    routeSeed: false,
+    truthState: "seeded"
+  };
+  state.focus = {
+    restaurantId: "restaurant-a",
+    items: existingFocusItems,
+    loading: false,
+    enabled: true,
+    error: "",
+    index: 0,
+    truthSource: "public-menu",
+    truthState: "seeded"
+  };
+  const controller = createController({
+    state,
+    loadFocusItemsFn: async () => {
+      throw new Error("transient focus read failed");
+    }
+  });
+
+  const result = await withMutedConsoleError(() => (
+    controller.loadFocusForRestaurant("restaurant-a", { force: true })
+  ));
+
+  assert.equal(result.truthState, "seeded");
+  assert.equal(state.focus.restaurantId, "restaurant-a");
+  assert.equal(state.focus.loading, false);
+  assert.equal(state.focus.error, "");
+  assert.equal(state.focus.truthState, "seeded");
+  assert.deepEqual(state.focus.items, existingFocusItems);
+});
+
+test("public focus missing document is a confirmed empty state", async () => {
+  const state = createVisibleMenuState();
+  state.menu = {
+    restaurantId: "restaurant-a",
+    items: [{ id: "item-1", category: "Pizza" }],
+    loading: false,
+    error: "",
+    source: "public",
+    statusBadgeVisible: true,
+    routeSeed: false,
+    truthState: "seeded"
+  };
+  const focusRuntime = createFocusRuntimeController({
+    state,
+    db: {},
+    docFn: (_db, ...path) => ({ path }),
+    getDocFn: async () => ({
+      exists: () => false,
+      data: () => ({})
+    })
+  });
+  const controller = createController({
+    state,
+    loadFocusItemsFn: (...args) => focusRuntime.loadFocusItems(...args)
+  });
+
+  const result = await controller.loadFocusForRestaurant("restaurant-a", { force: true });
+
+  assert.equal(result.truthState, "knownEmpty");
+  assert.equal(state.focus.restaurantId, "restaurant-a");
+  assert.equal(state.focus.loading, false);
+  assert.equal(state.focus.error, "");
+  assert.deepEqual(state.focus.items, []);
   assert.equal(state.focus.truthState, "knownEmpty");
 });

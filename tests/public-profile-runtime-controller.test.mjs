@@ -3,6 +3,16 @@ import test from "node:test";
 
 import { createPublicProfileRuntimeController } from "../apps/menyra-social/core/profile/public-profile-runtime-controller.js";
 
+async function withMutedConsoleError(task) {
+  const original = console.error;
+  console.error = () => {};
+  try {
+    return await task();
+  } finally {
+    console.error = original;
+  }
+}
+
 function createProfileSwitchState() {
   return {
     activeTab: "profile",
@@ -268,6 +278,86 @@ test("public business posts initial page dedupes concurrent visible reads", asyn
   const [firstPosts, secondPosts] = await Promise.all([firstRead, secondRead]);
   assert.equal(firstPosts.length, 1);
   assert.deepEqual(secondPosts, firstPosts);
+});
+
+test("public business posts transient read uses positive cache instead of empty fallback", async () => {
+  let failReads = false;
+  const rows = [
+    { id: "post-1", url: "https://cdn.example/post-1.jpg", status: "active" }
+  ];
+  const controller = createBusinessPostsController({
+    rows,
+    getDocsFn: async (refOrQuery) => {
+      if (failReads) throw new Error("transient posts read failed");
+      const constraints = Array.isArray(refOrQuery?.constraints) ? refOrQuery.constraints : [];
+      const limitValue = constraints.find((constraint) => constraint?.type === "limit")?.value;
+      return createDocsSnapshot(Number.isFinite(Number(limitValue)) ? rows.slice(0, Number(limitValue)) : rows);
+    }
+  });
+
+  const firstPosts = await controller.loadBusinessPostsForRestaurant("restaurant-cache", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+  assert.equal(firstPosts.length, 1);
+
+  failReads = true;
+  const fallbackPosts = await withMutedConsoleError(() => (
+    controller.loadBusinessPostsForRestaurant("restaurant-cache", {
+      skipProfileResolve: true,
+      force: true,
+      initialPage: true
+    })
+  ));
+
+  assert.equal(fallbackPosts.length, 1);
+  assert.equal(fallbackPosts[0].id, "post-1");
+});
+
+test("public business posts transient read throws when no cache or known empty exists", async () => {
+  const controller = createBusinessPostsController({
+    getDocsFn: async () => {
+      throw new Error("transient posts read failed");
+    }
+  });
+
+  await assert.rejects(
+    () => withMutedConsoleError(() => (
+      controller.loadBusinessPostsForRestaurant("restaurant-error", {
+        skipProfileResolve: true,
+        initialPage: true
+      })
+    )),
+    /transient posts read failed/
+  );
+});
+
+test("public business posts confirmed empty remains empty on later transient read failure", async () => {
+  let failReads = false;
+  const controller = createBusinessPostsController({
+    rows: [],
+    getDocsFn: async () => {
+      if (failReads) throw new Error("transient posts read failed");
+      return createDocsSnapshot([]);
+    }
+  });
+
+  const emptyPosts = await controller.loadBusinessPostsForRestaurant("restaurant-empty", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+  assert.deepEqual(emptyPosts, []);
+
+  failReads = true;
+  const stillEmptyPosts = await withMutedConsoleError(() => (
+    controller.loadBusinessPostsForRestaurant("restaurant-empty", {
+      skipProfileResolve: true,
+      force: true,
+      initialPage: true
+    })
+  ));
+
+  assert.deepEqual(stillEmptyPosts, []);
 });
 
 test("business profile doc reuses cached public route restaurant id", async () => {
