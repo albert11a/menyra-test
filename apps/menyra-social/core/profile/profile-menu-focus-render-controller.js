@@ -3074,6 +3074,186 @@ function renderAdsAdminSection(profile, restaurantId) {
   `;
 }
 
+function collectShoppingLandingTextList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean);
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  return raw.split(/[\n,;|]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function getShoppingLandingRecord(profile = {}) {
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  const restaurant = restaurantId ? getRestaurantMetaById(restaurantId) : null;
+  return {
+    ...(restaurant && typeof restaurant === "object" ? restaurant : {}),
+    ...(profile && typeof profile === "object" ? profile : {}),
+    ...(restaurantId ? { restaurantId } : {})
+  };
+}
+
+function getShoppingLandingCardData(record = {}) {
+  return record.shoppingLandingCard && typeof record.shoppingLandingCard === "object"
+    ? record.shoppingLandingCard
+    : {};
+}
+
+function getShoppingLandingStoredProductIds(record = {}) {
+  const card = getShoppingLandingCardData(record);
+  return [
+    ...collectShoppingLandingTextList(card.productIds),
+    ...collectShoppingLandingTextList(record.shoppingLandingCardProductIds),
+    ...collectShoppingLandingTextList(record.shoppingLandingProductIds)
+  ].filter(Boolean);
+}
+
+function getShoppingLandingEditorStateForRestaurant(restaurantId = "") {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const editor = state.shoppingLandingCardEditor && typeof state.shoppingLandingCardEditor === "object"
+    ? state.shoppingLandingCardEditor
+    : {};
+  const editorRestaurantId = String(editor.restaurantId || "").trim();
+  if (editorRestaurantId && editorRestaurantId !== safeRestaurantId) return {};
+  return editor;
+}
+
+function getShoppingLandingProductHero(item = {}) {
+  const resolved = resolveMenuItemHero(item);
+  if (resolved) return resolved;
+  const candidates = [
+    ...(Array.isArray(item.imageUrls) ? item.imageUrls : []),
+    ...(Array.isArray(item.images) ? item.images : []),
+    item.imageUrl,
+    item.image,
+    item.photoUrl,
+    item.coverUrl,
+    item.img,
+    item.thumbnail
+  ].map((entry) => String(entry || "").trim()).filter(Boolean);
+  return candidates[0] || "";
+}
+
+function buildShoppingLandingProductPreview(item = {}) {
+  const id = String(item?.id || item?.productId || item?.menuItemId || "").trim();
+  if (!id) return null;
+  const rawImg = getShoppingLandingProductHero(item);
+  const imgUrl = rawImg ? getOptimizedImageUrl(rawImg, "thumb") : "";
+  return {
+    id,
+    name: String(item.name || item.title || "Produkt").trim(),
+    price: formatMenuItemPrice(item),
+    imageUrl: imgUrl && !isPlaceholderUrl(imgUrl) ? imgUrl : "",
+    objectPosition: getMenuItemObjectPosition(item)
+  };
+}
+
+function renderShoppingLandingCardAdminSection(profile = {}, restaurantId = "", menuItems = []) {
+  if (!restaurantId || !isShopCatalogProfile(profile)) return "";
+  const record = getShoppingLandingRecord(profile);
+  const card = getShoppingLandingCardData(record);
+  const editor = getShoppingLandingEditorStateForRestaurant(restaurantId);
+  const saving = editor.saving === true;
+  const status = String(editor.status || "").trim();
+  const statusIsError = /fehl|error|nicht|nuk|kein/i.test(status);
+  const storedImage = String(card.imageUrl || record.shoppingLandingCardImageUrl || record.shoppingLandingImageUrl || "").trim();
+  const profileImage = String(record.logoUrl || record.logo || record.logoURL || record.avatar || profile.avatar || "").trim();
+  const imageDraft = String(editor.imageUrlDraft ?? storedImage).trim();
+  const imagePreview = String(editor.imagePreview || imageDraft || profileImage || "").trim();
+  const previewImage = imagePreview ? getOptimizedImageUrl(imagePreview, "large") : PLACEHOLDER_IMAGE;
+  const titleDraft = String(editor.titleDraft ?? (card.title || record.shoppingLandingCardTitle || profile.name || "")).trim();
+  const active = editor.active !== undefined
+    ? editor.active !== false
+    : (card.active !== false && record.shoppingLandingCardEnabled !== false);
+  const storedProductIds = getShoppingLandingStoredProductIds(record);
+  const editorProductIds = Array.isArray(editor.productIds)
+    ? editor.productIds.map((item) => String(item || "").trim()).filter(Boolean)
+    : null;
+  const selectedProductIds = new Set(editorProductIds || storedProductIds);
+  const productOptions = (Array.isArray(menuItems) ? menuItems : [])
+    .filter((item) => item && String(item.id || "").trim() && item.hidden !== true && item.available !== false)
+    .map(buildShoppingLandingProductPreview)
+    .filter(Boolean);
+  const selectedCountLabel = selectedProductIds.size
+    ? `${formatCount(selectedProductIds.size)} ausgewaehlt`
+    : "Keine Auswahl = alle Produkte";
+  return `
+    <div data-shopping-landing-card-editor="${escapeHtml(restaurantId)}" class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-[9px] font-black text-orange-500 uppercase tracking-widest">Landing Card</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Shopping Card</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(selectedCountLabel)}</p>
+        </div>
+        <button type="button" id="shoppingLandingImageTrigger" class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow active:scale-95" aria-label="Bild hochladen">
+          ${icon("plus", "w-4 h-4")}
+        </button>
+      </div>
+
+      <input id="shoppingLandingImageInput" type="file" accept="image/*" class="hidden" />
+      <input id="shoppingLandingImageUrl" type="hidden" value="${escapeHtml(imageDraft)}" />
+
+      <div class="relative h-44 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 mb-4">
+        <img src="${escapeHtml(previewImage || PLACEHOLDER_IMAGE)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+        <div class="absolute inset-x-0 top-0 h-16 pointer-events-none" style="background:linear-gradient(to bottom, rgba(255,255,255,0.7), transparent);"></div>
+        <div class="absolute left-4 bottom-4 right-4">
+          <span class="inline-flex max-w-full truncate text-[10px] uppercase tracking-wider font-extrabold text-slate-800 bg-white backdrop-blur-sm py-1 px-2.5 rounded-full" style="background:rgba(255,255,255,0.8);">
+            ${escapeHtml(titleDraft || "Shop Picks")}
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <label for="shoppingLandingTitleInput" class="text-[10px] font-black text-slate-400 uppercase ml-2">Titel</label>
+          <input id="shoppingLandingTitleInput" type="text" value="${escapeHtml(titleDraft)}" placeholder="Summer Picks" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-amber-100" />
+        </div>
+
+        <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+          <div>
+            <p class="text-xs font-black text-slate-800">Shopping-Tab anzeigen</p>
+            <p class="text-[10px] font-bold text-slate-400">Diese Card erscheint im Tab Shopping.</p>
+          </div>
+          <input id="shoppingLandingActiveToggle" type="checkbox" class="w-5 h-5 accent-amber-500" style="accent-color:#f97316;" ${active ? "checked" : ""} />
+        </label>
+
+        <div class="rounded-[1.8rem] border border-slate-100 bg-slate-50 p-4">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Produkte</p>
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">${escapeHtml(formatCount(productOptions.length))}</span>
+          </div>
+          ${productOptions.length ? `
+            <div class="grid grid-cols-1 gap-2">
+              ${productOptions.map((product) => {
+                const checked = selectedProductIds.has(product.id);
+                const image = product.imageUrl || PLACEHOLDER_IMAGE;
+                return `
+                  <label class="flex items-center gap-3 rounded-2xl bg-white border border-slate-100 p-3">
+                    <input type="checkbox" data-shopping-landing-product="${escapeHtml(product.id)}" class="w-4 h-4 accent-amber-500" style="accent-color:#f97316;" ${checked ? "checked" : ""} />
+                    <span class="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                      <img src="${escapeHtml(image)}" class="w-full h-full object-cover" style="object-position:${escapeHtml(product.objectPosition || "50% 50%")};" loading="lazy" decoding="async" />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block text-xs font-black text-slate-900 truncate">${escapeHtml(product.name)}</span>
+                      ${product.price ? `<span class="block text-[10px] font-bold text-slate-400 mt-0.5">${escapeHtml(product.price)}</span>` : ""}
+                    </span>
+                  </label>
+                `;
+              }).join("")}
+            </div>
+          ` : `
+            <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Produkte</div>
+          `}
+        </div>
+
+        ${status ? `<div class="text-center text-[10px] font-black uppercase tracking-widest ${statusIsError ? "text-rose-500" : "text-slate-500"}">${escapeHtml(status)}</div>` : ""}
+
+        <button id="shoppingLandingSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${saving ? "disabled" : ""}>
+          ${saving ? "Speichern..." : "Landing Card speichern"}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 function renderSpecialAdminSection(profile) {
   const isTestfirst = isTestfirstMenuProfile(profile);
   if (!isTestfirst || !isSpecialEnabledForProfile(profile)) return "";
@@ -3445,6 +3625,7 @@ function renderMenuAdminView() {
 
       ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
       ${restaurantId ? renderAdsAdminSection(profile, restaurantId) : ""}
+      ${restaurantId ? renderShoppingLandingCardAdminSection(profile, restaurantId, hasAuthoringMenuTruth ? state.menu.items : []) : ""}
       ${restaurantId && hasAuthoringMenuTruth ? renderSpecialAdminSection(profile) : ""}
 
       ${restaurantId ? `

@@ -535,10 +535,35 @@ export function createOverlayOrchestrationController({
     if (!itemId) return;
     const { index: previewIndex } = resolveMenuCardPreviewFromTrigger(trigger);
     const source = trigger?.dataset?.menuOpenSource || "menu";
+    const parseMarketplaceProduct = () => {
+      if (source !== "marketplace") return null;
+      const raw = String(trigger?.getAttribute?.("data-menu-open-product") || "").trim();
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+        return {
+          ...parsed,
+          id: String(parsed.id || itemId).trim(),
+          restaurantId: String(
+            trigger?.dataset?.menuOpenRestaurant
+            || parsed.restaurantId
+            || ""
+          ).trim(),
+          catalogMode: parsed.catalogMode || "shop",
+          restaurantType: parsed.restaurantType || parsed.customerType || "ecommerce",
+          customerType: parsed.customerType || parsed.restaurantType || "ecommerce"
+        };
+      } catch {
+        return null;
+      }
+    };
     const sourceItems = source === "favorites"
       ? (Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [])
       : (state.menu.items || []);
-    const item = sourceItems.find((it) => String(it.id) === String(itemId));
+    const item = source === "marketplace"
+      ? parseMarketplaceProduct()
+      : sourceItems.find((it) => String(it.id) === String(itemId));
     if (!item) return;
     const detailItem = source === "favorites"
       ? {

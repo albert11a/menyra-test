@@ -586,6 +586,20 @@ export function bindAppMenuFocusEventsCore({
     });
   }
 
+  if (doc.querySelector("[data-shopping-landing-card-editor]")) {
+    void import("../profile/shopping-landing-card-editor-bindings.js")
+      .then((module) => module?.bindShoppingLandingCardEditorEvents?.({
+        documentObj: doc,
+        state,
+        renderFn: render,
+        setDocFn: setDoc,
+        docFn: makeDocRef,
+        db,
+        serverTimestampFn: serverTimestamp,
+        uploadCompressedImageFn: uploadCompressedImage
+      }));
+  }
+
   const menuSearchInput = doc.getElementById("menuSearchInput");
   if (menuSearchInput) {
     menuSearchInput.addEventListener("input", () => {

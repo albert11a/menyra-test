@@ -1214,6 +1214,310 @@ function renderListCard(record = {}, deps = {}) {
   `;
 }
 
+function readShoppingList(value) {
+  if (Array.isArray(value)) return value.map(cleanText).filter(Boolean);
+  const raw = cleanText(value);
+  if (!raw) return [];
+  return raw.split(/[\n,;|]/).map(cleanText).filter(Boolean);
+}
+
+function getShoppingProductId(product = {}) {
+  return cleanText(product.id || product.productId || product.menuItemId || product.itemId || "");
+}
+
+function getShoppingProductName(product = {}) {
+  return cleanText(product.name || product.title || product.productName || "Produkt");
+}
+
+function getShoppingProductImage(product = {}, deps = {}) {
+  const candidates = [
+    ...(Array.isArray(product.imageUrls) ? product.imageUrls : []),
+    ...(Array.isArray(product.images) ? product.images : []),
+    product.imageUrl,
+    product.image,
+    product.photoUrl,
+    product.coverUrl,
+    product.img,
+    product.thumbnail
+  ].map(cleanText).filter(Boolean);
+  const source = candidates[0] || "";
+  if (!source) return "";
+  return typeof deps.getOptimizedImageUrl === "function"
+    ? cleanText(deps.getOptimizedImageUrl(source, "medium"))
+    : source;
+}
+
+function formatShoppingProductPrice(product = {}) {
+  const explicit = cleanText(product.priceLabel || product.displayPrice || product.formattedPrice || "");
+  if (explicit) return explicit;
+  const value = Number(product.price ?? product.amount ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const currency = cleanText(product.currency || product.currencyCode || "€");
+  const normalized = value % 1 === 0 ? String(value) : value.toFixed(2).replace(".", ",");
+  return currency === "EUR" || currency === "€" ? `${normalized} €` : `${normalized} ${currency}`;
+}
+
+function buildShoppingProductSnapshot(product = {}, deps = {}, restaurantId = "") {
+  const id = getShoppingProductId(product);
+  if (!id) return null;
+  const imageUrl = getShoppingProductImage(product, deps);
+  return {
+    id,
+    restaurantId,
+    name: getShoppingProductName(product),
+    title: getShoppingProductName(product),
+    description: cleanText(product.description || product.text || ""),
+    category: cleanText(product.category || product.type || ""),
+    price: product.price ?? "",
+    priceLabel: formatShoppingProductPrice(product),
+    currency: cleanText(product.currency || product.currencyCode || ""),
+    imageUrl,
+    imageUrls: imageUrl ? [imageUrl] : [],
+    type: cleanText(product.type || "food") || "food",
+    catalogMode: "shop",
+    restaurantType: "ecommerce",
+    customerType: "ecommerce"
+  };
+}
+
+function collectShoppingProductSources(record = {}) {
+  const card = record.shoppingLandingCard && typeof record.shoppingLandingCard === "object"
+    ? record.shoppingLandingCard
+    : {};
+  return [
+    ...(Array.isArray(card.products) ? card.products : []),
+    ...(Array.isArray(record.shoppingLandingProducts) ? record.shoppingLandingProducts : []),
+    ...(Array.isArray(record.landingProducts) ? record.landingProducts : []),
+    ...(Array.isArray(record.productPreview) ? record.productPreview : []),
+    ...(Array.isArray(record.productsPreview) ? record.productsPreview : []),
+    ...(Array.isArray(record.publicMenuItems) ? record.publicMenuItems : []),
+    ...(Array.isArray(record.menuItems) ? record.menuItems : [])
+  ].filter((item) => item && typeof item === "object");
+}
+
+function getShoppingLandingProductIds(record = {}) {
+  const card = record.shoppingLandingCard && typeof record.shoppingLandingCard === "object"
+    ? record.shoppingLandingCard
+    : {};
+  return [
+    ...readShoppingList(card.productIds),
+    ...readShoppingList(record.shoppingLandingCardProductIds),
+    ...readShoppingList(record.shoppingLandingProductIds)
+  ];
+}
+
+function collectShoppingLandingProducts(record = {}, deps = {}) {
+  const restaurantId = getBusinessId(record);
+  const byId = new Map();
+  collectShoppingProductSources(record).forEach((product) => {
+    const snapshot = buildShoppingProductSnapshot(product, deps, restaurantId);
+    if (!snapshot?.id || byId.has(snapshot.id)) return;
+    byId.set(snapshot.id, snapshot);
+  });
+  const all = Array.from(byId.values());
+  if (!all.length) return [];
+  const selectedIds = getShoppingLandingProductIds(record);
+  if (!selectedIds.length) return all.slice(0, 4);
+  const selected = selectedIds.map((id) => byId.get(id)).filter(Boolean);
+  return (selected.length ? selected : all).slice(0, 4);
+}
+
+function getShoppingLandingCard(record = {}, deps = {}) {
+  const card = record.shoppingLandingCard && typeof record.shoppingLandingCard === "object"
+    ? record.shoppingLandingCard
+    : {};
+  if (card.active === false || record.shoppingLandingCardEnabled === false) return null;
+  const name = getBusinessName(record);
+  const logoImage = getBusinessImage(record, deps);
+  const rawHero = cleanText(
+    card.imageUrl
+    || card.heroImageUrl
+    || record.shoppingLandingCardImageUrl
+    || record.shoppingLandingImageUrl
+    || ""
+  );
+  const heroImage = rawHero
+    ? (typeof deps.getOptimizedImageUrl === "function" ? cleanText(deps.getOptimizedImageUrl(rawHero, "large")) : rawHero)
+    : logoImage;
+  const title = cleanText(card.title || record.shoppingLandingCardTitle || record.landingCardTitle || name);
+  const mainText = cleanText(card.subtitle || card.text || record.shoppingLandingCardSubtitle || record.categoryLabel || "Shop Picks");
+  return {
+    id: getBusinessId(record),
+    title,
+    brand: name,
+    heroImage,
+    logoImage,
+    mainText,
+    products: collectShoppingLandingProducts(record, deps)
+  };
+}
+
+function renderShoppingLandingHero(card = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  if (card.heroImage) {
+    return `
+      <img
+        src="${escapeHtml(card.heroImage)}"
+        alt="${escapeHtml(card.title || card.brand)}"
+        loading="lazy"
+        decoding="async"
+        class="absolute inset-0 w-full h-full object-cover"
+      />
+      <div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(to bottom, rgba(255,255,255,0.7), transparent 55%, rgba(0,0,0,0.1));"></div>
+    `;
+  }
+  return `
+    <div class="absolute inset-0" style="background:linear-gradient(to bottom, #60a5fa, #c7d2fe 48%, #fef3c7);"></div>
+    <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(#000 1px, transparent 1px);background-size:12px 12px;"></div>
+    <div class="absolute inset-x-0 top-0 h-16 pointer-events-none z-10" style="background:linear-gradient(to bottom, rgba(255,255,255,0.7), transparent);"></div>
+  `;
+}
+
+function renderShoppingProductVisual(product = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const name = getShoppingProductName(product);
+  const image = getShoppingProductImage(product, deps);
+  const payload = escapeHtml(JSON.stringify(product));
+  const id = getShoppingProductId(product);
+  const restaurantId = cleanText(product.restaurantId || "");
+  return `
+    <button
+      type="button"
+      data-menu-open="${escapeHtml(id)}"
+      data-menu-open-source="marketplace"
+      data-menu-open-restaurant="${escapeHtml(restaurantId)}"
+      data-menu-open-product="${payload}"
+      class="flex-shrink-0 h-48 rounded-2xl shadow-sm border border-slate-100 hover:border-slate-300 transition-all cursor-pointer active:scale-95 flex items-center justify-center relative overflow-hidden bg-white"
+      style="width:58%;scroll-snap-align:start;"
+      aria-label="${escapeHtml(name)}"
+    >
+      ${image ? `
+        <img src="${escapeHtml(image)}" alt="${escapeHtml(name)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
+      ` : `
+        <span class="text-4xl font-black text-slate-300">${escapeHtml(name.slice(0, 1).toUpperCase() || "S")}</span>
+      `}
+      ${product.oldPrice || product.compareAtPrice ? `
+        <span class="absolute top-2 right-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-lg leading-none shadow-sm">%</span>
+      ` : ""}
+    </button>
+  `;
+}
+
+function renderShoppingLandingCard(record = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  const card = getShoppingLandingCard(record, deps);
+  if (!card?.id) return "";
+  return `
+    <article class="flex flex-col group" data-shopping-card data-shopping-search-text="${escapeHtml(`${card.brand} ${card.title}`.toLowerCase())}">
+      <div class="relative h-44 rounded-2xl flex flex-col items-center justify-center overflow-hidden p-3 shadow-sm hover:shadow-md transition-all duration-300 bg-slate-100">
+        ${renderShoppingLandingHero(card, deps)}
+        <div class="relative z-20 flex flex-col items-center justify-center text-center px-2">
+          ${card.logoImage ? `
+            <img src="${escapeHtml(card.logoImage)}" alt="${escapeHtml(`${card.brand} Logo`)}" loading="lazy" decoding="async" class="w-12 h-12 rounded-2xl object-cover bg-white border border-white/60 shadow-sm mb-2" style="background:rgba(255,255,255,0.85);" />
+          ` : ""}
+          <span class="text-[10px] uppercase tracking-wider font-extrabold text-slate-800 bg-white backdrop-blur-sm py-1 px-2.5 rounded-full max-w-full truncate" style="background:rgba(255,255,255,0.75);">
+            ${escapeHtml(card.mainText)}
+          </span>
+        </div>
+        <div class="absolute top-2 right-2 flex flex-col gap-1.5 z-20">
+          <button
+            type="button"
+            data-shopping-like="${escapeHtml(card.id)}"
+            class="p-1.5 rounded-full bg-white hover:bg-white text-slate-800 backdrop-blur-sm shadow-sm transition-all active:scale-95"
+            style="background:rgba(255,255,255,0.8);"
+            aria-label="Favorit"
+          >
+            ${icon("heart", "w-3.5 h-3.5 text-slate-700")}
+          </button>
+        </div>
+      </div>
+
+      ${card.products.length ? `
+        <div class="mt-2 px-2.5 overflow-hidden" style="margin-left:-0.625rem;margin-right:-0.625rem;">
+          <div class="flex gap-2.5 overflow-x-auto hide-scrollbar py-1 px-0.5" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-behavior:smooth;scroll-snap-type:x mandatory;">
+            ${card.products.map((product) => renderShoppingProductVisual(product, deps)).join("")}
+          </div>
+        </div>
+      ` : ""}
+
+      <div class="mt-2 px-0.5 flex flex-col">
+        <div>
+          <div class="flex items-center gap-1 mb-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight truncate">${escapeHtml(card.brand)}</span>
+          </div>
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[11px] font-bold text-slate-800 leading-tight">Më shumë</span>
+            <button
+              type="button"
+              data-marketplace-open-business="${escapeHtml(card.id)}"
+              data-tab="profile"
+              class="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all duration-300 active:scale-95 flex-shrink-0"
+              aria-label="Shop oeffnen"
+            >
+              ${icon("chevron-right", "w-3.5 h-3.5")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
+  const icon = deps.icon;
+  const items = filterMarketplaceBusinessesCore(state, section.key, deps)
+    .slice(0, LIST_LIMIT)
+    .map((record) => withTypeLabel({
+      ...record,
+      __marketplaceType: resolveBusinessType(record, deps)
+    }, section));
+  const loaded = dataLoaded?.restaurants === true;
+  if (!items.length) {
+    return `
+      <section data-shopping-view class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
+        ${loaded ? renderEmptyState(section, deps) : renderDataLoadingState(section, deps)}
+      </section>
+    `;
+  }
+  const left = [];
+  const right = [];
+  items.forEach((record, index) => {
+    const markup = renderShoppingLandingCard(record, deps);
+    if (!markup) return;
+    (index % 2 === 0 ? left : right).push(markup);
+  });
+  return `
+    <section data-shopping-view class="min-h-full bg-slate-50 text-slate-900 animate-in slide-in-from-right-10 duration-500">
+      <header class="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-md px-4 pt-6 pb-4 h-16 flex items-center justify-between overflow-hidden">
+        <div data-shopping-search-title class="transition-all duration-300 ease-in-out flex-shrink-0 opacity-100" style="max-width:80%;">
+          <h1 class="text-[13px] font-black text-slate-800 tracking-tight whitespace-nowrap uppercase">Entdecke die besten shops</h1>
+        </div>
+        <div data-shopping-search-shell class="flex items-center transition-all duration-300 ease-in-out w-9">
+          <button type="button" data-shopping-search-toggle class="p-2 hover:bg-slate-200 rounded-full text-slate-700 transition-all ml-auto active:scale-90" aria-label="Shops suchen">
+            ${icon("search", "w-4 h-4")}
+          </button>
+          <div data-shopping-search-panel class="hidden items-center w-full border-b border-slate-900 pb-1.5" style="border-bottom-width:2px;">
+            ${icon("search", "w-4 h-4 text-slate-400 flex-shrink-0 mr-2")}
+            <input type="text" data-shopping-search-input placeholder="Shops suchen..." class="bg-transparent text-xs font-bold text-slate-800 w-full focus:outline-none placeholder-slate-400" autocomplete="off" />
+            <button type="button" data-shopping-search-close class="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors flex-shrink-0" aria-label="Suche schliessen">
+              ${icon("x", "w-3.5 h-3.5")}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="flex-1 p-3 pb-24">
+        <div class="grid grid-cols-2 gap-3 items-start" data-shopping-card-grid>
+          <div class="flex flex-col gap-6">${left.join("")}</div>
+          <div class="flex flex-col gap-6" style="padding-top:4rem;">${right.join("")}</div>
+        </div>
+      </main>
+    </section>
+  `;
+}
+
 function renderRestaurantListCard(record = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
@@ -2361,6 +2665,10 @@ export function renderMarketplaceViewCore({
 
   if (section.key === "restaurants") {
     return renderRestaurantsView({ state, dataLoaded, section, deps });
+  }
+
+  if (section.key === "shopping") {
+    return renderShoppingView({ state, dataLoaded, section, deps });
   }
 
   const items = filterMarketplaceBusinessesCore(state, section.key, deps)

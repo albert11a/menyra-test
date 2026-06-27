@@ -914,6 +914,14 @@ export function bindAppShellEventsCore({
       }));
   }
 
+  if (doc.querySelector("[data-shopping-view]")) {
+    void import("../marketplace/shopping-view-event-bindings.js")
+      .then((module) => module?.bindShoppingViewEvents?.({
+        documentObj: doc,
+        windowObj: win
+      }));
+  }
+
   doc.querySelectorAll("[data-auth-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.drawerOpen = false;

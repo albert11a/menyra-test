@@ -1291,6 +1291,26 @@ Last updated: 2026-06-27
   `index.html` fuer den Build-Token und diese Doku. Nicht geaendert wurden
   sichtbares Design, Map-Rendering, Restaurant-Cards, QR, Cart, Orders,
   Firebase Rules und Functions.
+- Schritt 130 ist abgeschlossen: Der Shopping-Tab rendert fuer Ecommerce-Shops
+  eigene Landing Cards mit Titelbildbereich und Produktbildstreifen.
+- Bewertung von Schritt 130: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 130:
+  Ecommerce-Shop-Owner bekommen im Shop/Menu-Editor eine eigene `Landing Card`-
+  Sektion zum Hochladen des Card-Bilds und Auswaehlen vorhandener Produkte.
+  Der Shopping-Tab liest diese `shoppingLanding*`-Daten und rendert ein
+  zweispaltiges, versetztes Card-Layout. Fehlt ein Landing-Bild, wird das
+  Shop-Profilbild verwendet; fehlen ausgewaehlte Produkte, werden vorhandene
+  Produkte genutzt; fehlen Produkte komplett, wird der Produktstreifen
+  weggelassen. Die Shopping-Suche/Like-Visuals liegen in einem eigenen Lazy-
+  Binding, und der Landing-Card-Editor liegt in einem eigenen Lazy-Chunk, damit
+  `social-app.js` nicht mit Shopping-Card-Logik belastet wird.
+  Der App-Build-Token wurde auf
+  `2026-06-27-shopping-landing-cards-01` aktualisiert und das Bundle wurde neu
+  gebaut. `npm run check:social-bundle` bleibt rot, weil der bestehende
+  `entry/social-app.js` schon auf `main` ueber dem gesetzten Budget liegt
+  (`main`: 1.118.236 raw / 303.181 gzip Bytes; Schritt 130: 1.119.234 raw /
+  303.449 gzip Bytes). Nicht geaendert wurden Firebase Rules, Functions,
+  Infrastruktur, Public-/App-Routing-Grenzen, QR, Cart und Orders.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1779,6 +1799,21 @@ klicken. Erwartung: Die interne Entdecker-Karte oeffnet zuerst das passende
 Business, danach fuehrt Browser-Zurueck wieder zum vorherigen Business-Profil.
 Bei hartem Reload oder `?debug-build=1` muss der Build-Stand
 `2026-06-27-profile-map-back-01` aktiv sein.
+
+Zusaetzlich fuer Schritt 130 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-landing-cards-01` aktiv sein. Als Ecommerce-Shop Profil ->
+Shop/Menu-Editor oeffnen, in `Landing Card` ein Bild ueber Plus auswaehlen,
+vorhandene Produkte markieren und speichern. Danach den Tab `Shopping` oeffnen:
+Die Card soll zweispaltig im neuen Landing-Card-Layout erscheinen, oben das
+hochgeladene Bild zeigen und darunter die ausgewaehlten Produktbilder. Ohne
+Landing-Bild soll das Shop-Profilbild als Fallback erscheinen. Ohne markierte
+Produkte sollen vorhandene Shop-Produkte erscheinen; bei Shops ohne Produkte
+soll der Produktstreifen fehlen. Ein Produktbild klicken und pruefen, dass das
+bestehende Produktdetail-Overlay direkt mit diesem Produkt oeffnet. `Më shumë`
+klicken und pruefen, dass der passende Shop oeffnet. Suche im Shopping-Tab
+oeffnen, nach Shop-Namen filtern und wieder schliessen. Restaurants-Tab,
+Travel-Tab, QR, Cart und Orders kurz unveraendert gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
