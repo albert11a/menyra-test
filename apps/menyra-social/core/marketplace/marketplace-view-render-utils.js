@@ -39,7 +39,16 @@ const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 const TRAVEL_BLUE = "#00cce5";
 const TRAVEL_SEARCH_TEAL = "#005f73";
 const SHOPPING_BRAND_INTRO_COLOR = "#4b766d";
-const SHOPPING_BRAND_INTRO_LINES = Object.freeze(["FIND YOUR", "BUY YOUR", "STYLE YOUR"]);
+const SHOPPING_BRAND_INTRO_LINES = Object.freeze([
+  "Fashion",
+  "Beauty",
+  "Sneaker",
+  "Baby",
+  "Home",
+  "Grocery",
+  "Electronics",
+  "Local"
+]);
 const RESTAURANT_COORD_CITY_MAX_DISTANCE_KM = 35;
 const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
   Object.freeze({ label: "Prishtina", lat: 42.6629, lng: 21.1655 }),
@@ -1507,47 +1516,46 @@ function renderShoppingBrandIntroCard(deps = {}) {
     <style>
       .shopping-brand-intro-card .text-slider-wrapper {
         position: relative;
-        height: 1.12em;
+        height: 2.16em;
         width: 100%;
         overflow: hidden;
-        margin-bottom: 0.18rem;
       }
       .shopping-brand-intro-card .text-slide-item {
         position: absolute;
         inset: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         white-space: nowrap;
         opacity: 0;
-        animation: shoppingBrandIntroTextFadeSlide 9s ease-in-out infinite;
+        animation: shoppingBrandIntroTextFadeSlide 24s ease-in-out infinite;
         will-change: transform, opacity;
       }
-      .shopping-brand-intro-card .text-slide-item:nth-child(1) {
-        animation-delay: 0s;
-      }
-      .shopping-brand-intro-card .text-slide-item:nth-child(2) {
-        animation-delay: 3s;
-      }
-      .shopping-brand-intro-card .text-slide-item:nth-child(3) {
-        animation-delay: 6s;
+      .shopping-brand-intro-card .text-slide-item span {
+        display: block;
+        line-height: 1.02;
       }
       @keyframes shoppingBrandIntroTextFadeSlide {
         0% { opacity: 0; transform: translateY(100%); }
-        5%, 28% { opacity: 1; transform: translateY(0); }
-        33%, 100% { opacity: 0; transform: translateY(-100%); }
+        2%, 10.5% { opacity: 1; transform: translateY(0); }
+        12.5%, 100% { opacity: 0; transform: translateY(-100%); }
       }
     </style>
     <article
       class="shopping-brand-intro-card flex items-center justify-center text-center shadow-sm overflow-hidden"
-      style="width:100%;min-height:11.5rem;border-radius:1rem;background:${SHOPPING_BRAND_INTRO_COLOR};color:#ffffff;padding:1.15rem 0.75rem;"
+      style="width:100%;min-height:12.75rem;border-radius:1rem;background:${SHOPPING_BRAND_INTRO_COLOR};color:#ffffff;padding:1.15rem 0.75rem;"
       aria-label="Shopping Brand"
     >
       <div class="w-full" style="font-weight:900;letter-spacing:0;line-height:1.08;font-size:1.65rem;">
         <div class="text-slider-wrapper">
-          ${SHOPPING_BRAND_INTRO_LINES.map((line) => `<div class="text-slide-item">${escapeHtml(line)}</div>`).join("")}
+          ${SHOPPING_BRAND_INTRO_LINES.map((line, index) => `
+            <div class="text-slide-item" style="animation-delay:${index * 3}s;">
+              <span>${escapeHtml(line)}</span>
+              <span>${escapeHtml("Shop")}</span>
+            </div>
+          `).join("")}
         </div>
-        <div style="font-size:1em;color:#ffffff;">Brand</div>
       </div>
     </article>
   `;

@@ -1363,6 +1363,19 @@ Last updated: 2026-06-27
   neu gebaut. Nicht geaendert wurden Shopping-Produktlogik, Product-Modal,
   Search-Handling, Shop-Editor, Cart, Checkout, Orders, QR, Routing, Firebase
   Rules und Functions.
+- Schritt 135 ist abgeschlossen: Die Shopping-Brand-Intro-Card wurde etwas
+  hoeher gemacht und auf konkrete Shop-Kategorie-Texte umgestellt.
+- Bewertung von Schritt 135: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 135:
+  Die Intro-Card zeigt jetzt zweizeilige Slides mit `Fashion / Shop`,
+  `Beauty / Shop`, `Sneaker / Shop`, `Baby / Shop`, `Home / Shop`,
+  `Grocery / Shop`, `Electronics / Shop` und `Local / Shop`. Die Animation
+  wurde auf acht Slides erweitert und die Card wurde vertikal leicht
+  vergroessert. Der App-Build-Token wurde auf
+  `2026-06-27-shopping-brand-intro-card-03` aktualisiert und das Bundle wurde
+  neu gebaut. Nicht geaendert wurden Shopping-Produktlogik, Product-Modal,
+  Search-Handling, Shop-Editor, Cart, Checkout, Orders, QR, Routing, Firebase
+  Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1490,6 +1503,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step132-shopping-card-product-dedupe.md](./mnyra-step132-shopping-card-product-dedupe.md)
 - Referenz: [docs/mnyra-step133-shopping-brand-intro-card.md](./mnyra-step133-shopping-brand-intro-card.md)
 - Referenz: [docs/mnyra-step134-shopping-brand-intro-card-sizing.md](./mnyra-step134-shopping-brand-intro-card-sizing.md)
+- Referenz: [docs/mnyra-step135-shopping-brand-intro-card-texts.md](./mnyra-step135-shopping-brand-intro-card-texts.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1907,6 +1921,15 @@ und pruefen, dass die Brand-Intro-Card rechts oben dieselbe Breite wie die
 anderen Shopping-Cards hat, auf gleicher Hoehe wie die linke erste Card startet
 und nicht mehr leuchtend mint wirkt. Schrift und Zeilenhoehe sollen naeher am
 Feed-/Restaurant-Gate wirken. Eine Shopping-Card, eine Produktkachel und die
+Shopping-Suche kurz gegenpruefen.
+
+Zusaetzlich fuer Schritt 135 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-brand-intro-card-03` aktiv sein. Den Shopping-Tab oeffnen
+und pruefen, dass die Brand-Intro-Card rechts oben etwas hoeher wirkt. Die
+Animation soll zweizeilig `Fashion / Shop`, `Beauty / Shop`, `Sneaker / Shop`,
+`Baby / Shop`, `Home / Shop`, `Grocery / Shop`, `Electronics / Shop` und
+`Local / Shop` zeigen. Eine Shopping-Card, eine Produktkachel und die
 Shopping-Suche kurz gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
