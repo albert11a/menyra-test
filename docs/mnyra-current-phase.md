@@ -1399,6 +1399,24 @@ Last updated: 2026-06-27
   wurde neu gebaut. Nicht geaendert wurden Produktdetail-Modal, Produktdaten,
   Shop-Oeffnung, Shopping-Suche, Cart, Checkout, Orders, QR, Routing, Firebase
   Rules und Functions.
+- Schritt 138 ist abgeschlossen: E-Commerce-/Shopping-Profile zeigen im Profil
+  und Editor einen echten Shop-Katalog statt Restaurant-Menue-Bezeichnungen.
+- Bewertung von Schritt 138: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 138:
+  Shop-Profile zeigen im Profil-Tab `Shop` statt `Menue`; im Shop-Editor gibt
+  es keine `Getraenke`-/Varianten-Sektion mehr, sondern eine `Produkte`-
+  Sektion. Shop-Produkte werden beim Speichern auf `type: "food"` und
+  `menuSection: "food"` normalisiert; alte Shop-Kategorien wie `Speisen` oder
+  `Getraenke` werden im Shop-Kontext als `Produkte` behandelt. Restaurant Ads
+  werden fuer Shop-/E-Commerce-Profile nicht mehr geladen oder angezeigt.
+  `Sot ne Fokus` nutzt dieselbe Highlight-UI wie Restaurants, bleibt aber pro
+  Shop-`restaurantId` getrennt. Der oeffentliche Shop-Tab wartet bei
+  Shop-/E-Commerce-Profilen nicht mehr auf Fokus-Truth, bevor vorhandene
+  Produkte gerendert werden. Der App-Build-Token wurde auf
+  `2026-06-27-shopping-profile-editor-02` aktualisiert und das Bundle wurde
+  neu gebaut. Nicht geaendert wurden Firebase Rules, Functions,
+  Firestore-Pfade, Restaurant-/Cafe-Editor, Travel, QR, Cart, Checkout,
+  Orders, Routing und Marketplace-Produktlogik.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1529,6 +1547,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step135-shopping-brand-intro-card-texts.md](./mnyra-step135-shopping-brand-intro-card-texts.md)
 - Referenz: [docs/mnyra-step136-shopping-brand-intro-card-fixed-shop.md](./mnyra-step136-shopping-brand-intro-card-fixed-shop.md)
 - Referenz: [docs/mnyra-step137-shopping-product-tile-no-press.md](./mnyra-step137-shopping-product-tile-no-press.md)
+- Referenz: [docs/mnyra-step138-shopping-profile-editor.md](./mnyra-step138-shopping-profile-editor.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1971,6 +1990,21 @@ mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
 oeffnen, den Produktstreifen in einer Shopping-Card horizontal sliden und eine
 Produktkachel antippen. Die Kachel soll nicht mehr kleiner werden und keinen
 sichtbaren Rahmen behalten; das Produktdetail-Modal soll weiterhin oeffnen.
+
+Zusaetzlich fuer Schritt 138 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-profile-editor-02` aktiv sein. Ein E-Commerce-/Shop-
+Profil oeffnen; die Tabs sollen `Beitraege` und `Shop` zeigen. Im Shop-Tab
+pruefen, dass vorhandene Produkte ohne Haenger auf `Shop wird geladen...`
+erscheinen und `Sot ne Fokus` dieselbe Highlight-UI wie Restaurants nutzt,
+ohne die Produktliste zu blockieren. Shop/Menu-Editor oeffnen; `Restaurant
+Ads`, `Getraenke` und Varianten-/Getraenke-Filter duerfen dort nicht sichtbar
+sein. Produkte sollen unter `Produkte` stehen. Ein Produkt erstellen oder
+bearbeiten; im Dialog darf kein Restaurant-Typ `Speise/Getraenk` bzw.
+`Variante` sichtbar sein. Danach Shop-Profil, Produktdetail, Cart/Checkout und
+Shopping-Tab kurz gegenpruefen. Restaurant-/Cafe-Editor gegenpruefen, dass
+`Speisen`, `Getraenke` und `Restaurant Ads` dort weiter wie bisher
+funktionieren.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

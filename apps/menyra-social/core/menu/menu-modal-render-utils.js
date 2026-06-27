@@ -42,6 +42,17 @@ function parseMenuStockValue(value) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
 }
 
+function isLegacyShopMenuCategoryValue(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["speisen", "food", "getraenke", "getränke", "drink", "drinks", "beverage", "beverages"].includes(normalized);
+}
+
+function normalizeShopMenuCategoryLabel(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return isLegacyShopMenuCategoryValue(raw) ? "Produkte" : raw;
+}
+
 export function renderMenuItemModalCore({
   state,
   isShopCatalogProfile,
@@ -152,15 +163,17 @@ export function renderMenuItemModalCore({
     return "center";
   };
   const cropPreset = resolveCropPreset(crop.x);
-  const categoryValue = String(item.category || "Sonstiges").trim() || "Sonstiges";
+  const rawCategoryValue = String(item.category || (isShop ? "Produkte" : "Sonstiges")).trim() || (isShop ? "Produkte" : "Sonstiges");
+  const categoryValue = isShop ? normalizeShopMenuCategoryLabel(rawCategoryValue) : rawCategoryValue;
   const categoryIsSpecial = (value) => String(value || "").trim().toLowerCase() === "special";
   const categoryOptions = Array.from(
     new Set([
       categoryValue,
       ...(Array.isArray(state.menu?.items) ? state.menu.items.map((entry) => String(entry?.category || "").trim()) : []),
-      ...MENU_CATEGORY_MASTER_LIST
+      ...(isShop ? ["Produkte"] : MENU_CATEGORY_MASTER_LIST)
     ].filter((entry) => {
       if (!entry) return false;
+      if (isShop && isLegacyShopMenuCategoryValue(entry)) return false;
       if (!specialEnabled && categoryIsSpecial(entry)) return false;
       return true;
     }))
@@ -316,13 +329,17 @@ export function renderMenuItemModalCore({
             </datalist>
           </div>
         </div>
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
-          <select id="menuItemType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="food" ${typeValue === "food" ? "selected" : ""}>${isShop ? "Produkt" : "Speise"}</option>
-            <option value="drink" ${typeValue === "drink" ? "selected" : ""}>${isShop ? "Variante" : "Getraenk"}</option>
-          </select>
-        </div>
+        ${isShop ? `
+          <input id="menuItemType" type="hidden" value="food" />
+        ` : `
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+            <select id="menuItemType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+              <option value="food" ${typeValue === "food" ? "selected" : ""}>Speise</option>
+              <option value="drink" ${typeValue === "drink" ? "selected" : ""}>Getraenk</option>
+            </select>
+          </div>
+        `}
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
           <select id="menuItemVisibility" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
@@ -684,10 +701,11 @@ export function renderMenuDetailModalCore({
   const fallbackImg = isDirectUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPriceLabel(item.price, item);
   const catalogProfile = getCatalogProfile(item);
-  const typeLabel = isShopCatalog(catalogProfile)
-    ? (normalizeType(item.type) === "drink" ? tr("menu.variant", "Variante") : tr("menu.product", "Produkt"))
+  const isShop = isShopCatalog(catalogProfile);
+  const typeLabel = isShop
+    ? tr("menu.product", "Produkt")
     : (normalizeType(item.type) === "drink" ? tr("menu.drinkItem", "Getraenk") : tr("menu.foodItem", "Speise"));
-  const category = item.category || "";
+  const category = isShop ? normalizeShopMenuCategoryLabel(item.category) : (item.category || "");
   const desc = item.longDescription || item.description || "";
   const ingredients = String(item.ingredients || item.ingredient || item.inhaltsstoffe || "").trim();
   const allergens = item.allergens || "";
@@ -696,7 +714,6 @@ export function renderMenuDetailModalCore({
   const sizes = Array.isArray(item.sizes) ? item.sizes : [];
   const colors = Array.isArray(item.colors) ? item.colors : [];
   const stock = parseMenuStockValue(item.stock);
-  const isShop = isShopCatalog(catalogProfile);
   const menuType = String(normalizeType(item.type || "") || "").trim().toLowerCase();
   const isFoodOrDrink = menuType === "food" || menuType === "drink";
   const soldOut = isShop

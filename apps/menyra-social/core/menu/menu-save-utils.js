@@ -89,6 +89,10 @@ export async function saveMenuItemFromModalCore({
     pushId(value);
     return Array.from(seen);
   };
+  const isLegacyShopMenuCategory = (value = "") => {
+    const normalized = String(value || "").trim().toLowerCase();
+    return ["speisen", "food", "getraenke", "getränke", "drink", "drinks", "beverage", "beverages"].includes(normalized);
+  };
   if (!restaurantId) {
     state.menuModal.status = "Kein Restaurant ausgewaehlt.";
     renderOverlays({ updateMenu: true });
@@ -96,13 +100,15 @@ export async function saveMenuItemFromModalCore({
   }
   const name = documentObj.getElementById("menuItemName")?.value?.trim() || "";
   const price = documentObj.getElementById("menuItemPrice")?.value?.trim() || "";
-  const category = documentObj.getElementById("menuItemCategory")?.value?.trim() || "";
+  const categoryInput = documentObj.getElementById("menuItemCategory")?.value?.trim() || "";
+  const category = isShop && isLegacyShopMenuCategory(categoryInput) ? "Produkte" : categoryInput;
   const categoryIsSpecial = String(category || "").trim().toLowerCase() === "special";
+  const fallbackCategory = isShop ? "Produkte" : "Sonstiges";
   const normalizedCategory = categoryIsSpecial && !specialEnabled
-    ? "Sonstiges"
-    : (category || "Sonstiges");
+    ? fallbackCategory
+    : (category || fallbackCategory);
   const type = documentObj.getElementById("menuItemType")?.value || "food";
-  const normalizedType = normalizeMenuType(type);
+  const normalizedType = isShop ? "food" : normalizeMenuType(type);
   const description = documentObj.getElementById("menuItemDesc")?.value?.trim() || "";
   const ingredients = String(
     documentObj.getElementById("menuItemIngredients")?.value
@@ -127,7 +133,7 @@ export async function saveMenuItemFromModalCore({
   const colors = normalizeOptionList(documentObj.getElementById("menuItemColors")?.value || "");
   const visibilityInput = String(documentObj.getElementById("menuItemVisibility")?.value || "").trim().toLowerCase();
   const available = visibilityInput === "unavailable" ? false : true;
-  const menuSection = normalizedType === "drink" ? "drink" : "food";
+  const menuSection = isShop ? "food" : (normalizedType === "drink" ? "drink" : "food");
   const crossSellInputEls = Array.from(documentObj.querySelectorAll("[data-menu-cross-sell-option]"));
   const selectedCrossSellItemIds = normalizeCrossSellItemIds(
     crossSellInputEls

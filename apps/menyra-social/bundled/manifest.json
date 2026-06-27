@@ -66,7 +66,7 @@
     ]
   },
   "apps/menyra-social/core/menu/menu-modal-render-utils.js": {
-    "file": "chunks/menu-modal-render-utils-B8d8LGjl.js",
+    "file": "chunks/menu-modal-render-utils-CpMZWnNX.js",
     "name": "menu-modal-render-utils",
     "src": "apps/menyra-social/core/menu/menu-modal-render-utils.js",
     "isDynamicEntry": true,
@@ -99,7 +99,7 @@
     ]
   },
   "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js": {
-    "file": "chunks/profile-menu-focus-render-controller-CX6aBKva.js",
+    "file": "chunks/profile-menu-focus-render-controller-k9nAwLBw.js",
     "name": "profile-menu-focus-render-controller",
     "src": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
     "isDynamicEntry": true,

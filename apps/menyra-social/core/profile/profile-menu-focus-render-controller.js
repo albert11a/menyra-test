@@ -92,14 +92,24 @@ export function createProfileMenuFocusRenderController(deps = {}) {
     if (normalized === "shop") return "Shop";
     return safeLabel;
   };
-  const menuSectionLabel = (section = "food") => (
-    String(section || "").trim().toLowerCase() === "drink"
+  const normalizeShopProductCategoryLabel = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const normalized = raw.toLowerCase();
+    if (["speisen", "food", "getraenke", "getränke", "drink", "drinks", "beverage", "beverages"].includes(normalized)) {
+      return tr("menu.products", "Produkte");
+    }
+    return raw;
+  };
+  const menuSectionLabel = (section = "food", isShopMode = false) => {
+    if (isShopMode) return tr("menu.products", "Produkte");
+    return String(section || "").trim().toLowerCase() === "drink"
       ? tr("menu.drinks", "Getraenke")
-      : tr("menu.food", "Speisen")
-  );
+      : tr("menu.food", "Speisen");
+  };
   const menuItemTypeLabel = (item = {}, isShopMode = false) => {
     const type = normalizeMenuType(item?.type || "food");
-    if (isShopMode) return type === "drink" ? tr("menu.variant", "Variante") : tr("menu.product", "Produkt");
+    if (isShopMode) return tr("menu.product", "Produkt");
     return type === "drink" ? tr("menu.drinkItem", "Getraenk") : tr("menu.foodItem", "Speise");
   };
   const normalizeBusinessNameColor = (value = "", fallback = "#111827") => {
@@ -1272,10 +1282,14 @@ function renderProfileTabs(
   const isBusinessProfile = isBusinessProfileEntity(profile);
   const activeTab = String(selectedTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
   const isHotelProfile = isHotelBusinessProfile(profile);
+  const isShopProfile = isShopCatalogProfile(profile);
+  const catalogTabLabel = isHotelProfile
+    ? "Details"
+    : (isShopProfile ? "Shop" : tr("nav.menu", "Menue"));
   const tabs = isBusinessProfile
     ? [
       { id: "posts", label: tr("profile.posts", "Beitraege") },
-      { id: "menu", label: isHotelProfile ? "Details" : tr("nav.menu", "Menue"), surface: isHotelProfile ? "hotel-details" : "menu" }
+      { id: "menu", label: catalogTabLabel, surface: isHotelProfile ? "hotel-details" : "menu" }
     ]
     : [
       { id: "posts", label: tr("profile.posts", "Beitraege") },
@@ -2178,13 +2192,13 @@ function resolveSpecialCardAction(item = {}) {
 }
 
 function renderMenuFilterRow() {
-  const filter = state.menu.filter || "all";
   const isShop = isShopCatalogProfile(state.userProfile);
+  const rawFilter = String(state.menu.filter || "all").trim().toLowerCase() || "all";
+  const filter = isShop && rawFilter === "drink" ? "all" : rawFilter;
   const labels = isShop
     ? [
       { id: "all", label: tr("menu.all", "Alle") },
-      { id: "food", label: tr("menu.products", "Produkte") },
-      { id: "drink", label: tr("menu.variants", "Varianten") }
+      { id: "food", label: tr("menu.products", "Produkte") }
     ]
     : [
       { id: "all", label: tr("menu.all", "Alle") },
@@ -2245,7 +2259,7 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
   const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
   const isShopMode = isShopCatalogProfile(catalogProfile);
   const typeLabel = menuItemTypeLabel(item, isShopMode);
-  const category = item.category || "";
+  const category = isShopMode ? normalizeShopProductCategoryLabel(item.category) : (item.category || "");
   const desc = item.description || "";
   if (mode === "admin") {
     return `
@@ -2316,7 +2330,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food", p
   const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
   const isShopMode = isShopCatalogProfile(catalogProfile);
   const typeLabel = menuItemTypeLabel(item, isShopMode);
-  const category = item.category || "";
+  const category = isShopMode ? normalizeShopProductCategoryLabel(item.category) : (item.category || "");
   const desc = item.description || "";
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
@@ -2444,7 +2458,8 @@ function buildFocusCardItem(item, { menuItemId = "" } = {}) {
 
 function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile" } = {}) {
   const restaurantId = profile?.restaurantId || "";
-  if (!restaurantId || !isTestfirstMenuProfile(profile) || !focusItems.length) return "";
+  const canUseHighlightFocusUi = isTestfirstMenuProfile(profile) || isShopCatalogProfile(profile);
+  if (!restaurantId || !canUseHighlightFocusUi || !focusItems.length) return "";
   return `
     <div class="pt-2 pb-4">
       <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
@@ -2870,6 +2885,8 @@ function renderMenuFoodList(items, { mode = "profile", useTestfirstCardUi = fals
 function renderMenuList(items, { mode = "profile" } = {}) {
   if (mode === "admin") {
     const activeFilter = String(state?.menu?.filter || "all").trim().toLowerCase();
+    const isShop = isShopCatalogProfile(state.userProfile);
+    const productTitle = tr("menu.products", "Produkte");
     const drinkItems = items.filter((item) => normalizeMenuType(item?.type) === "drink");
     const foodItems = items.filter((item) => normalizeMenuType(item?.type) !== "drink");
     const renderSection = (title, list, { addType = "" } = {}) => `
@@ -2892,6 +2909,9 @@ function renderMenuList(items, { mode = "profile" } = {}) {
         }
       </div>
     `;
+    if (isShop) {
+      return renderSection(productTitle, items, { addType: "food" });
+    }
     const allSections = [
       { title: tr("menu.drinks", "Getraenke"), list: drinkItems, addType: "drink" },
       { title: tr("menu.food", "Speisen"), list: foodItems, addType: "food" }
@@ -3002,9 +3022,9 @@ function isAdsAdminProfile(profile = {}) {
   if (!profile?.restaurantId) return false;
   const type = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
   if (["hotel", "hotels", "motel", "motels", "travel", "hostel", "resort", "accommodation"].includes(type)) return false;
-  return isShopCatalogProfile(profile)
-    || isRestaurantCafeProfile(profile)
-    || ["restaurant", "cafe", "coffee", "fastfood", "food", "ecommerce"].includes(type)
+  if (type === "ecommerce" || isShopCatalogProfile(profile)) return false;
+  return isRestaurantCafeProfile(profile)
+    || ["restaurant", "cafe", "coffee", "fastfood", "food"].includes(type)
     || !type;
 }
 
@@ -3652,6 +3672,7 @@ function renderMenuAdminView() {
   const canInspectPublicMenu = isCeoUser()
     && !!publicMenuProfile?.restaurantId
     && isRestaurantCafeProfile(publicMenuProfile);
+  const isShopProfile = isShopCatalogProfile(profile);
   const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const restaurant = restaurantId ? getRestaurantMetaById(restaurantId) : null;
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
@@ -3660,8 +3681,9 @@ function renderMenuAdminView() {
   const hasAuthoringMenuTruth = !!sameRestaurant && menuSource === "collection";
   const isAuthoringMenuLoading = !!sameRestaurant && menuSource === "collection" && state.menu.loading;
   const isLoading = !!restaurantId && (isAuthoringMenuLoading || !hasAuthoringMenuTruth);
+  const effectiveMenuFilter = isShopProfile ? "all" : state.menu.filter;
   const rawItems = hasAuthoringMenuTruth
-    ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: state.menu.query })
+    ? getFilteredMenuItems(state.menu.items, { filter: effectiveMenuFilter, query: state.menu.query })
     : [];
   const specialEnabled = isSpecialEnabledForProfile(profile);
   const scopedItems = specialEnabled
@@ -3781,7 +3803,8 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     `;
   }
   const surfaceProfile = buildMenuSurfaceProfile(profile, restaurantId);
-  const shouldCoordinateMenuWithFocus = isRestaurantCafeProfile(surfaceProfile);
+  const isShop = isShopCatalogProfile(surfaceProfile);
+  const shouldCoordinateMenuWithFocus = isRestaurantCafeProfile(surfaceProfile) && !isShop;
   if (shouldCoordinateMenuWithFocus) {
     menuSurfaceState = resolveVisiblePublicMenuSurfaceState(state, {
       profile: surfaceProfile,
@@ -3851,7 +3874,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       .filter((item) => !isMenuItemHidden(item))
     : [];
   const hasItems = items.length > 0;
-  const isShop = isShopCatalogProfile(profile);
   const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
@@ -3862,6 +3884,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const drinkPriorityOffset = 0;
   const foodPriorityOffset = drinkItems.length;
   const useTestfirstCardUi = isTestfirstMenuProfile(profile);
+  const useHighlightFocusUi = useTestfirstCardUi || isShop;
   const anchoredCategories = new Set();
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
@@ -3903,7 +3926,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   }
   return `
     <div class="app-content-inline app-main-content-safe space-y-5">
-      ${renderFocusCarousel(surfaceProfile, {
+      ${useHighlightFocusUi ? testfirstStableFocusSection : renderFocusCarousel(surfaceProfile, {
         restaurantId,
         suppressLoading: true,
         allowAutoEnsure: hasConfirmedPublicMenuItems && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth),
