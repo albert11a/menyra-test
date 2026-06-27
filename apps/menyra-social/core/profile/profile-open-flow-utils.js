@@ -1376,16 +1376,18 @@ export function createProfileOpenFlowControllerCore({
       );
       const restaurantMatchesRouteTarget = (restaurantId = "") => {
         const safeRestaurantId = String(restaurantId || "").trim();
-        if (!safeRestaurantId) return true;
-        return acceptedRestaurantIds.has(safeRestaurantId);
+        return !!safeRestaurantId && acceptedRestaurantIds.has(safeRestaurantId);
+      };
+      const getVisibleProfileRestaurantId = () => {
+        return String(
+          state?.profileView?.profile?.canonicalRestaurantId
+          || state?.profileView?.profile?.restaurantId
+          || ""
+        ).trim();
       };
 
       if (state.activeTab !== "profile") return;
-      const visibleRestaurantId = String(
-        state?.profileView?.profile?.canonicalRestaurantId
-        || state?.profileView?.profile?.restaurantId
-        || ""
-      ).trim();
+      const visibleRestaurantId = getVisibleProfileRestaurantId();
       if (!restaurantMatchesRouteTarget(visibleRestaurantId)) return;
       const interimPosts = stableBusinessPosts.length
         ? stableBusinessPosts
@@ -1474,11 +1476,7 @@ export function createProfileOpenFlowControllerCore({
           skipProfileResolve: skipProfileResolveForPosts
         });
       }
-      const latestRestaurantId = String(
-        state?.profileView?.profile?.canonicalRestaurantId
-        || state?.profileView?.profile?.restaurantId
-        || ""
-      ).trim();
+      const latestRestaurantId = getVisibleProfileRestaurantId();
       if (state.activeTab !== "profile") return;
       if (!restaurantMatchesRouteTarget(latestRestaurantId)) return;
 

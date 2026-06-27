@@ -1473,8 +1473,21 @@ export function createPublicProfileRuntimeController({
     const preservedLandingGreetingIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingGreetingIndex) : 0;
     const preservedLandingTourIndex = preserveLandingState ? normalizeLandingIndex(state?.profileLandingTourIndex) : 0;
     const previousContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
+    const normalizeBackTabCandidate = (candidate = "") => {
+      const safeCandidate = String(candidate || "").trim();
+      return safeCandidate && safeCandidate !== "profile" ? safeCandidate : "";
+    };
+    const explicitBackTab = normalizeBackTabCandidate(backTab);
+    const currentActiveBackTab = normalizeBackTabCandidate(state?.activeTab);
+    const currentProfileBackTab = normalizeBackTabCandidate(state?.profileBackTab);
     const nextProfileBackTab = showBack
-      ? (backTab || state.activeTab || "feed")
+      ? (
+        explicitBackTab
+        || (sameVisibleProfile ? currentProfileBackTab : "")
+        || currentActiveBackTab
+        || currentProfileBackTab
+        || "feed"
+      )
       : "";
     const explicitContentTab = String(contentTab || "").trim().toLowerCase();
     const effectiveExplicitContentTab = preserveLiveBusinessTopTab ? "" : explicitContentTab;
