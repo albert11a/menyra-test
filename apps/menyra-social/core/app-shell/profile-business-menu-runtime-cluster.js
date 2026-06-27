@@ -744,6 +744,14 @@ export function createProfileBusinessMenuRuntimeCluster({
     visiblePublicMenuRetryTimers.set(retryKey, timers);
   };
 
+  const scheduleVisiblePublicMenuRetryFromPostsEnsure = (profile = {}, fallbackId = "") => {
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
+    const profileContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
+    if (activeTab !== "profile" || (profileTopTab !== "menu" && profileContentTab !== "menu")) return;
+    scheduleVisiblePublicMenuRetry(profile, fallbackId);
+  };
+
   const scheduleVisiblePublicPostsRetry = (profile = {}, fallbackId = "") => {
     if (!isNormalWebDirectProfileVisible()) return;
     const ids = collectVisibleMenuLoadIds(profile, fallbackId);
@@ -897,7 +905,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const visibleProfileView = getVisiblePublicProfileView();
     if (!visibleProfileView) return;
     void ensureVisibleBusinessIdentityHydration(profile, requestedRestaurantId);
-    scheduleVisiblePublicMenuRetry(profile, requestedRestaurantId);
+    scheduleVisiblePublicMenuRetryFromPostsEnsure(profile, requestedRestaurantId);
     scheduleVisiblePublicPostsRetry(profile, requestedRestaurantId);
     const safeProfile = profile && typeof profile === "object" ? profile : {};
     const surfaceTargetRestaurantId = resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
@@ -951,7 +959,7 @@ export function createProfileBusinessMenuRuntimeCluster({
         truthState: nextPosts.length ? "stable" : "empty"
       }, nextPosts);
       queueVisiblePublicPostsReconcile(resolvedRestaurantId);
-      scheduleVisiblePublicMenuRetry(safeProfile, canonicalRestaurantId || resolvedRestaurantId || requestedRestaurantId);
+      scheduleVisiblePublicMenuRetryFromPostsEnsure(safeProfile, canonicalRestaurantId || resolvedRestaurantId || requestedRestaurantId);
     }).catch((err) => {
       console.error(err);
       preserveVisiblePublicPostsAfterLoadFailure(requestContext);
