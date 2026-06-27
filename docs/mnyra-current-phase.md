@@ -1311,6 +1311,21 @@ Last updated: 2026-06-27
   (`main`: 1.118.236 raw / 303.181 gzip Bytes; Schritt 130: 1.119.234 raw /
   303.449 gzip Bytes). Nicht geaendert wurden Firebase Rules, Functions,
   Infrastruktur, Public-/App-Routing-Grenzen, QR, Cart und Orders.
+- Schritt 131 ist abgeschlossen: Der Shopping-Landing-Card-Editor kann pro
+  ausgewaehltem Produkt ein eigenes Card-Bild setzen.
+- Bewertung von Schritt 131: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 131:
+  Shop-Owner koennen fuer jedes in der Shopping Card ausgewaehlte Produkt ein
+  vorhandenes Produktbild als Card-Bild waehlen oder ein eigenes Card-only-Bild
+  hochladen. Gespeichert wird diese Auswahl als `productImageOverrides` in der
+  Shopping-Landing-Card und als `cardImageUrl` in den Produkt-Snapshots,
+  waehrend das normale Produktbild in `imageUrl` erhalten bleibt. Der
+  Shopping-Tab rendert Produktkacheln bevorzugt mit `cardImageUrl`; das
+  Produktdetail bleibt beim normalen Produktbild. Doppelte Default-/Override-
+  Bildvarianten in der Card-Bild-Auswahl werden vermieden. Der App-Build-Token
+  wurde auf `2026-06-27-shopping-landing-cards-04` aktualisiert und das Bundle
+  wurde neu gebaut. Nicht geaendert wurden Produkt-/Menu-Item-Daten, Warenkorb,
+  Checkout, Routing, Firebase Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1434,6 +1449,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step122-business-profile-card-stability.md](./mnyra-step122-business-profile-card-stability.md)
 - Referenz: [docs/mnyra-step123-business-profile-info-height-match.md](./mnyra-step123-business-profile-info-height-match.md)
 - Referenz: [docs/mnyra-step124-business-profile-info-measured-height.md](./mnyra-step124-business-profile-info-measured-height.md)
+- Referenz: [docs/mnyra-step131-shopping-card-product-images.md](./mnyra-step131-shopping-card-product-images.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1814,6 +1830,19 @@ bestehende Produktdetail-Overlay direkt mit diesem Produkt oeffnet. `Më shumë`
 klicken und pruefen, dass der passende Shop oeffnet. Suche im Shopping-Tab
 oeffnen, nach Shop-Namen filtern und wieder schliessen. Restaurants-Tab,
 Travel-Tab, QR, Cart und Orders kurz unveraendert gegenpruefen.
+
+Zusaetzlich fuer Schritt 131 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-landing-cards-04` aktiv sein. Als Ecommerce-Shop Profil ->
+Shop/Menu-Editor oeffnen, in `Landing Card` ein Produkt auswaehlen und im
+Bereich `Card-Bild` ein anderes vorhandenes Produktbild markieren. Speichern,
+den Tab `Shopping` oeffnen und pruefen, dass die Produktkachel dieses Bild
+zeigt. Dasselbe Produkt antippen und pruefen, dass das Produktdetail weiter das
+normale Produktbild nutzt. Danach fuer dasselbe Produkt ein eigenes Card-Bild
+ueber `Upload` auswaehlen, speichern und erneut im Shopping-Tab pruefen. Mit
+`Standard` zuruecksetzen, speichern und pruefen, dass die Card wieder das
+normale Produktbild verwendet. Cart, Checkout, QR und Routing kurz unveraendert
+gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

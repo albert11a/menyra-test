@@ -1229,8 +1229,28 @@ function getShoppingProductName(product = {}) {
   return cleanText(product.name || product.title || product.productName || "Produkt");
 }
 
+function readShoppingProductImageCandidate(entry) {
+  if (!entry) return "";
+  if (typeof entry === "string") return cleanText(entry);
+  if (typeof entry !== "object") return cleanText(entry);
+  return cleanText(
+    entry.url
+    || entry.src
+    || entry.cdnUrl
+    || entry.imageUrl
+    || entry.image
+    || entry.photoUrl
+    || entry.thumbnail
+    || ""
+  );
+}
+
 function getShoppingProductImage(product = {}, deps = {}) {
   const candidates = [
+    product.cardImageUrl,
+    product.shoppingCardImageUrl,
+    product.shoppingLandingImageUrl,
+    product.productCardImageUrl,
     ...(Array.isArray(product.imageUrls) ? product.imageUrls : []),
     ...(Array.isArray(product.images) ? product.images : []),
     product.imageUrl,
@@ -1239,7 +1259,26 @@ function getShoppingProductImage(product = {}, deps = {}) {
     product.coverUrl,
     product.img,
     product.thumbnail
-  ].map(cleanText).filter(Boolean);
+  ].map(readShoppingProductImageCandidate).filter(Boolean);
+  const source = candidates[0] || "";
+  if (!source) return "";
+  return typeof deps.getOptimizedImageUrl === "function"
+    ? cleanText(deps.getOptimizedImageUrl(source, "medium"))
+    : source;
+}
+
+function getShoppingProductSourceImage(product = {}, deps = {}) {
+  const candidates = [
+    product.sourceImageUrl,
+    ...(Array.isArray(product.imageUrls) ? product.imageUrls : []),
+    ...(Array.isArray(product.images) ? product.images : []),
+    product.imageUrl,
+    product.image,
+    product.photoUrl,
+    product.coverUrl,
+    product.img,
+    product.thumbnail
+  ].map(readShoppingProductImageCandidate).filter(Boolean);
   const source = candidates[0] || "";
   if (!source) return "";
   return typeof deps.getOptimizedImageUrl === "function"
@@ -1260,7 +1299,14 @@ function formatShoppingProductPrice(product = {}) {
 function buildShoppingProductSnapshot(product = {}, deps = {}, restaurantId = "") {
   const id = getShoppingProductId(product);
   if (!id) return null;
-  const imageUrl = getShoppingProductImage(product, deps);
+  const sourceImageUrl = getShoppingProductSourceImage(product, deps);
+  const cardImageUrl = cleanText(
+    product.cardImageUrl
+    || product.shoppingCardImageUrl
+    || product.shoppingLandingImageUrl
+    || product.productCardImageUrl
+    || ""
+  );
   return {
     id,
     restaurantId,
@@ -1271,8 +1317,10 @@ function buildShoppingProductSnapshot(product = {}, deps = {}, restaurantId = ""
     price: product.price ?? "",
     priceLabel: formatShoppingProductPrice(product),
     currency: cleanText(product.currency || product.currencyCode || ""),
-    imageUrl,
-    imageUrls: imageUrl ? [imageUrl] : [],
+    sourceImageUrl,
+    cardImageUrl,
+    imageUrl: sourceImageUrl,
+    imageUrls: sourceImageUrl ? [sourceImageUrl] : [],
     type: cleanText(product.type || "food") || "food",
     catalogMode: "shop",
     restaurantType: "ecommerce",

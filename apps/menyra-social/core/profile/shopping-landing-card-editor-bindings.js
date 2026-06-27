@@ -34,7 +34,68 @@ function collectProductIdsFromDom(documentObj) {
   return ids;
 }
 
+function normalizeProductImageOverrides(value = {}) {
+  if (!value || typeof value !== "object") return {};
+  return Object.entries(value).reduce((acc, [key, imageUrl]) => {
+    const id = String(key || "").trim();
+    const url = String(imageUrl || "").trim();
+    if (id && url) acc[id] = url;
+    return acc;
+  }, {});
+}
+
+function normalizeProductImageFiles(value = {}) {
+  if (!value || typeof value !== "object") return {};
+  return Object.entries(value).reduce((acc, [key, file]) => {
+    const id = String(key || "").trim();
+    if (id && file && String(file.type || "").startsWith("image/")) acc[id] = file;
+    return acc;
+  }, {});
+}
+
+function findProductImageInput(documentObj, productId = "") {
+  const safeProductId = String(productId || "").trim();
+  if (!safeProductId) return null;
+  return Array.from(documentObj?.querySelectorAll?.("[data-shopping-landing-product-image-input]") || [])
+    .find((node) => String(node.getAttribute("data-shopping-landing-product-image-input") || "").trim() === safeProductId)
+    || null;
+}
+
+function collectProductImageOverridesFromDom(documentObj, state, restaurantId = "") {
+  const editorState = getEditorState(state, restaurantId);
+  const next = normalizeProductImageOverrides(editorState.productImageOverrides);
+  documentObj?.querySelectorAll?.("[data-shopping-landing-product-image-choice]").forEach((node) => {
+    if (!node.checked) return;
+    const id = String(node.getAttribute("data-shopping-landing-product-image-choice") || "").trim();
+    if (!id) return;
+    const value = String(node.value || "").trim();
+    if (value) next[id] = value;
+    else delete next[id];
+  });
+  return next;
+}
+
+function readImageCandidateValue(entry) {
+  if (!entry) return "";
+  if (typeof entry === "string") return entry.trim();
+  if (typeof entry !== "object") return String(entry || "").trim();
+  return String(
+    entry.url
+    || entry.src
+    || entry.cdnUrl
+    || entry.imageUrl
+    || entry.image
+    || entry.photoUrl
+    || entry.thumbnail
+    || ""
+  ).trim();
+}
+
 function getItemImage(item = {}) {
+  return getItemImageCandidates(item)[0] || "";
+}
+
+function getItemImageCandidates(item = {}) {
   const candidates = [
     ...(Array.isArray(item.imageUrls) ? item.imageUrls : []),
     ...(Array.isArray(item.images) ? item.images : []),
@@ -44,8 +105,8 @@ function getItemImage(item = {}) {
     item.coverUrl,
     item.img,
     item.thumbnail
-  ].map((entry) => String(entry || "").trim()).filter(Boolean);
-  return candidates[0] || "";
+  ].map(readImageCandidateValue).filter(Boolean);
+  return candidates.filter((entry, index) => candidates.indexOf(entry) === index);
 }
 
 function formatItemPrice(item = {}) {
@@ -58,10 +119,11 @@ function formatItemPrice(item = {}) {
   return currency === "EUR" || currency === "€" ? `${normalized} €` : `${normalized} ${currency}`;
 }
 
-function buildProductSnapshot(item = {}, restaurantId = "") {
+function buildProductSnapshot(item = {}, restaurantId = "", productImageOverrides = {}) {
   const id = String(item.id || item.productId || item.menuItemId || "").trim();
   if (!id) return null;
-  const imageUrl = getItemImage(item);
+  const sourceImageUrl = getItemImage(item);
+  const cardImageUrl = String(productImageOverrides?.[id] || "").trim();
   const name = String(item.name || item.title || "Produkt").trim();
   return {
     id,
@@ -73,8 +135,10 @@ function buildProductSnapshot(item = {}, restaurantId = "") {
     price: item.price ?? "",
     priceLabel: formatItemPrice(item),
     currency: String(item.currency || item.currencyCode || "").trim(),
-    imageUrl,
-    imageUrls: imageUrl ? [imageUrl] : [],
+    sourceImageUrl,
+    cardImageUrl,
+    imageUrl: sourceImageUrl,
+    imageUrls: sourceImageUrl ? [sourceImageUrl] : [],
     type: String(item.type || "food").trim() || "food",
     catalogMode: "shop",
     restaurantType: "ecommerce",
@@ -84,7 +148,7 @@ function buildProductSnapshot(item = {}, restaurantId = "") {
   };
 }
 
-function buildProductSnapshots(state, restaurantId = "", selectedIds = []) {
+function buildProductSnapshots(state, restaurantId = "", selectedIds = [], productImageOverrides = {}) {
   const menuItems = Array.isArray(state?.menu?.items) ? state.menu.items : [];
   const selected = new Set((Array.isArray(selectedIds) ? selectedIds : []).map((id) => String(id || "").trim()).filter(Boolean));
   const candidates = selected.size
@@ -92,11 +156,22 @@ function buildProductSnapshots(state, restaurantId = "", selectedIds = []) {
     : menuItems.filter((item) => item && item.hidden !== true && item.available !== false);
   const snapshots = [];
   candidates.forEach((item) => {
-    const snapshot = buildProductSnapshot(item, restaurantId);
+    const snapshot = buildProductSnapshot(item, restaurantId, productImageOverrides);
     if (!snapshot?.id || snapshots.some((entry) => entry.id === snapshot.id)) return;
     snapshots.push(snapshot);
   });
   return snapshots.slice(0, 8);
+}
+
+function pruneDefaultProductImageOverrides(state, productImageOverrides = {}) {
+  const menuItems = Array.isArray(state?.menu?.items) ? state.menu.items : [];
+  const next = normalizeProductImageOverrides(productImageOverrides);
+  Object.keys(next).forEach((id) => {
+    const item = menuItems.find((entry) => String(entry?.id || entry?.productId || entry?.menuItemId || "").trim() === id);
+    const defaultImage = getItemImage(item || {});
+    if (defaultImage && next[id] === defaultImage) delete next[id];
+  });
+  return next;
 }
 
 function collectIdentityIds(record = {}) {
@@ -174,6 +249,7 @@ function buildEditorPatch(documentObj, state, restaurantId = "", overrides = {})
     titleDraft: readInput(documentObj, "shoppingLandingTitleInput"),
     productIds: collectProductIdsFromDom(documentObj),
     imageUrlDraft: readInput(documentObj, "shoppingLandingImageUrl"),
+    productImageOverrides: collectProductImageOverridesFromDom(documentObj, state, restaurantId),
     active: documentObj.getElementById("shoppingLandingActiveToggle")?.checked !== false,
     status: "",
     ...overrides
@@ -217,6 +293,15 @@ export function bindShoppingLandingCardEditorEvents({
     const active = doc.getElementById("shoppingLandingActiveToggle")?.checked !== false;
     const urlDraft = readInput(doc, "shoppingLandingImageUrl");
     const file = doc.getElementById("shoppingLandingImageInput")?.files?.[0] || editorState.imageFile || null;
+    const selectedSet = new Set(selectedProductIds);
+    let productImageOverrides = collectProductImageOverridesFromDom(doc, state, restaurantId);
+    const productImageFiles = normalizeProductImageFiles(editorState.productImageFiles);
+    const productImagePreviews = editorState.productImagePreviews && typeof editorState.productImagePreviews === "object"
+      ? { ...editorState.productImagePreviews }
+      : {};
+    Object.keys(productImageOverrides).forEach((id) => {
+      if (!selectedSet.has(id)) delete productImageOverrides[id];
+    });
     state.shoppingLandingCardEditor = {
       ...editorState,
       restaurantId,
@@ -225,6 +310,9 @@ export function bindShoppingLandingCardEditorEvents({
       active,
       imageUrlDraft: urlDraft,
       imageFile: file,
+      productImageOverrides,
+      productImageFiles,
+      productImagePreviews,
       saving: true,
       status: "Wird gespeichert..."
     };
@@ -241,12 +329,28 @@ export function bindShoppingLandingCardEditorEvents({
         });
         imageUrl = String(uploaded?.cdnUrl || uploaded?.url || imageUrl || "").trim();
       }
-      const products = buildProductSnapshots(state, restaurantId, selectedProductIds);
+      for (const [productId, productFile] of Object.entries(productImageFiles)) {
+        if (!selectedSet.has(productId)) continue;
+        if (!uploadCompressedImage) throw new Error("Bild-Upload ist nicht bereit.");
+        const uploaded = await uploadCompressedImage(productFile, restaurantId, {
+          maxSize: 1080,
+          quality: 0.82,
+          mimeType: "image/jpeg"
+        });
+        const uploadedUrl = String(uploaded?.cdnUrl || uploaded?.url || "").trim();
+        if (uploadedUrl) productImageOverrides[productId] = uploadedUrl;
+      }
+      productImageOverrides = pruneDefaultProductImageOverrides(state, productImageOverrides);
+      Object.keys(productImageOverrides).forEach((id) => {
+        if (!selectedSet.has(id)) delete productImageOverrides[id];
+      });
+      const products = buildProductSnapshots(state, restaurantId, selectedProductIds, productImageOverrides);
       const landingCard = {
         active,
         title,
         imageUrl,
         productIds: selectedProductIds,
+        productImageOverrides,
         products
       };
       const payload = {
@@ -255,6 +359,7 @@ export function bindShoppingLandingCardEditorEvents({
         shoppingLandingCardTitle: title,
         shoppingLandingCardImageUrl: imageUrl,
         shoppingLandingCardProductIds: selectedProductIds,
+        shoppingLandingProductImageOverrides: productImageOverrides,
         shoppingLandingProducts: products,
         shoppingLandingProductsCount: products.length,
         shoppingLandingUpdatedAt: serverTimestamp()
@@ -269,6 +374,9 @@ export function bindShoppingLandingCardEditorEvents({
         imageUrlDraft: imageUrl,
         imageFile: null,
         imagePreview: "",
+        productImageOverrides,
+        productImageFiles: {},
+        productImagePreviews: {},
         saving: false,
         status: "Landing Card gespeichert."
       };
@@ -283,6 +391,9 @@ export function bindShoppingLandingCardEditorEvents({
         active,
         imageUrlDraft: urlDraft,
         imageFile: file,
+        productImageOverrides,
+        productImageFiles,
+        productImagePreviews,
         saving: false,
         status: err?.message || "Landing Card konnte nicht gespeichert werden."
       };
@@ -331,6 +442,80 @@ export function bindShoppingLandingCardEditorEvents({
     input.addEventListener("change", () => {
       const restaurantId = getVisibleId();
       state.shoppingLandingCardEditor = buildEditorPatch(doc, state, restaurantId);
+      render();
+    });
+  });
+
+  doc.querySelectorAll("[data-shopping-landing-product-image-choice]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const restaurantId = getVisibleId();
+      state.shoppingLandingCardEditor = buildEditorPatch(doc, state, restaurantId);
+      render();
+    });
+  });
+
+  doc.querySelectorAll("[data-shopping-landing-product-image-upload]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const productId = String(button.getAttribute("data-shopping-landing-product-image-upload") || "").trim();
+      if (!productId) return;
+      const input = findProductImageInput(doc, productId);
+      if (input && typeof input.click === "function") input.click();
+    });
+  });
+
+  doc.querySelectorAll("[data-shopping-landing-product-image-input]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const productId = String(input.getAttribute("data-shopping-landing-product-image-input") || "").trim();
+      const file = Array.from(input.files || []).find((entry) => entry && String(entry.type || "").startsWith("image/"));
+      if (!productId || !file) return;
+      const restaurantId = getVisibleId();
+      const editorState = getState(restaurantId);
+      let preview = "";
+      try {
+        preview = doc.defaultView?.URL?.createObjectURL
+          ? doc.defaultView.URL.createObjectURL(file)
+          : "";
+      } catch {}
+      const productImageFiles = {
+        ...normalizeProductImageFiles(editorState.productImageFiles),
+        [productId]: file
+      };
+      const productImagePreviews = {
+        ...(editorState.productImagePreviews && typeof editorState.productImagePreviews === "object" ? editorState.productImagePreviews : {}),
+        ...(preview ? { [productId]: preview } : {})
+      };
+      const productImageOverrides = {
+        ...normalizeProductImageOverrides(editorState.productImageOverrides),
+        ...(preview ? { [productId]: preview } : {})
+      };
+      state.shoppingLandingCardEditor = buildEditorPatch(doc, state, restaurantId, {
+        productImageFiles,
+        productImagePreviews,
+        productImageOverrides
+      });
+      render();
+    });
+  });
+
+  doc.querySelectorAll("[data-shopping-landing-product-image-reset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const productId = String(button.getAttribute("data-shopping-landing-product-image-reset") || "").trim();
+      if (!productId) return;
+      const restaurantId = getVisibleId();
+      const editorState = getState(restaurantId);
+      const productImageOverrides = normalizeProductImageOverrides(editorState.productImageOverrides);
+      const productImageFiles = normalizeProductImageFiles(editorState.productImageFiles);
+      const productImagePreviews = editorState.productImagePreviews && typeof editorState.productImagePreviews === "object"
+        ? { ...editorState.productImagePreviews }
+        : {};
+      delete productImageOverrides[productId];
+      delete productImageFiles[productId];
+      delete productImagePreviews[productId];
+      state.shoppingLandingCardEditor = buildEditorPatch(doc, state, restaurantId, {
+        productImageOverrides,
+        productImageFiles,
+        productImagePreviews
+      });
       render();
     });
   });
