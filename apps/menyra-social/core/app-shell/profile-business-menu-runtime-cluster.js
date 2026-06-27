@@ -503,6 +503,17 @@ export function createProfileBusinessMenuRuntimeCluster({
     visiblePublicIdentityHydrationPromises.set(restaurantId, request);
     return request;
   };
+
+  const resolveCachedCanonicalRestaurantId = (...values) => {
+    for (const value of values) {
+      const safeValue = String(value || "").trim();
+      if (!safeValue) continue;
+      const cachedRestaurantId = String(canonicalRestaurantIdCache.get(safeValue) || "").trim();
+      if (cachedRestaurantId) return cachedRestaurantId;
+    }
+    return "";
+  };
+
   const resolveLatestCanonicalMenuRestaurantId = (fallbackId = "") => {
     const visibleProfileView = getVisiblePublicProfileView();
     const routePayload = getVisibleRoutePayload();
@@ -510,12 +521,19 @@ export function createProfileBusinessMenuRuntimeCluster({
       ? routePayload.businessSnapshot
       : {};
     const webDirectEntry = getWebDirectEntryState();
+    const cachedCanonicalRestaurantId = resolveCachedCanonicalRestaurantId(
+      fallbackId,
+      visibleProfileView?.restaurantId,
+      visibleProfileView?.profile?.restaurantId,
+      routePayload?.restaurantId,
+      webDirectEntry?.restaurantId
+    );
     const candidates = [
       visibleProfileView?.profile?.canonicalRestaurantId,
       routePayload?.canonicalRestaurantId,
       routeSnapshot?.restaurantId,
       webDirectEntry?.canonicalRestaurantId,
-      fallbackId
+      cachedCanonicalRestaurantId
     ];
     for (const candidate of candidates) {
       const safeCandidate = String(candidate || "").trim();
@@ -541,6 +559,13 @@ export function createProfileBusinessMenuRuntimeCluster({
     addId(routePayload?.canonicalRestaurantId);
     addId(routeSnapshot.restaurantId);
     addId(webDirectEntry?.canonicalRestaurantId);
+    addId(resolveCachedCanonicalRestaurantId(
+      fallbackId,
+      getMenuRestaurantForProfile(safeProfile),
+      safeProfile.restaurantId,
+      routePayload?.restaurantId,
+      webDirectEntry?.restaurantId
+    ));
     addId(fallbackId);
     addId(getMenuRestaurantForProfile(safeProfile));
     addId(safeProfile.restaurantId);
