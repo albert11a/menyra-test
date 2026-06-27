@@ -1340,7 +1340,7 @@ function getShoppingLandingCard(record = {}, deps = {}) {
     ? (typeof deps.getOptimizedImageUrl === "function" ? cleanText(deps.getOptimizedImageUrl(rawHero, "large")) : rawHero)
     : logoImage;
   const title = cleanText(card.title || record.shoppingLandingCardTitle || record.landingCardTitle || name);
-  const mainText = cleanText(card.subtitle || card.text || record.shoppingLandingCardSubtitle || record.categoryLabel || "Shop Picks");
+  const mainText = cleanText(card.subtitle || card.text || record.shoppingLandingCardSubtitle || record.categoryLabel || "");
   return {
     id: getBusinessId(record),
     title,
@@ -1363,13 +1363,10 @@ function renderShoppingLandingHero(card = {}, deps = {}) {
         decoding="async"
         class="absolute inset-0 w-full h-full object-cover"
       />
-      <div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(to bottom, rgba(255,255,255,0.7), transparent 55%, rgba(0,0,0,0.1));"></div>
     `;
   }
   return `
-    <div class="absolute inset-0" style="background:linear-gradient(to bottom, #60a5fa, #c7d2fe 48%, #fef3c7);"></div>
-    <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(#000 1px, transparent 1px);background-size:12px 12px;"></div>
-    <div class="absolute inset-x-0 top-0 h-16 pointer-events-none z-10" style="background:linear-gradient(to bottom, rgba(255,255,255,0.7), transparent);"></div>
+    <div class="absolute inset-0 bg-slate-100"></div>
   `;
 }
 
@@ -1387,8 +1384,8 @@ function renderShoppingProductVisual(product = {}, deps = {}) {
       data-menu-open-source="marketplace"
       data-menu-open-restaurant="${escapeHtml(restaurantId)}"
       data-menu-open-product="${payload}"
-      class="flex-shrink-0 h-48 rounded-2xl shadow-sm border border-slate-100 hover:border-slate-300 transition-all cursor-pointer active:scale-95 flex items-center justify-center relative overflow-hidden bg-white"
-      style="width:58%;scroll-snap-align:start;"
+      class="flex-shrink-0 rounded-2xl shadow-sm border border-slate-100 hover:border-slate-300 transition-all cursor-pointer active:scale-95 flex items-center justify-center relative overflow-hidden bg-white"
+      style="width:62%;height:12.25rem;scroll-snap-align:start;"
       aria-label="${escapeHtml(name)}"
     >
       ${image ? `
@@ -1410,27 +1407,13 @@ function renderShoppingLandingCard(record = {}, deps = {}) {
   if (!card?.id) return "";
   return `
     <article class="flex flex-col group" data-shopping-card data-shopping-search-text="${escapeHtml(`${card.brand} ${card.title}`.toLowerCase())}">
-      <div class="relative h-44 rounded-2xl flex flex-col items-center justify-center overflow-hidden p-3 shadow-sm hover:shadow-md transition-all duration-300 bg-slate-100">
+      <div class="relative rounded-2xl flex flex-col items-center justify-center overflow-hidden p-3 shadow-sm hover:shadow-md transition-all duration-300 bg-slate-100" style="height:11.5rem;">
         ${renderShoppingLandingHero(card, deps)}
-        <div class="relative z-20 flex flex-col items-center justify-center text-center px-2">
-          ${card.logoImage ? `
-            <img src="${escapeHtml(card.logoImage)}" alt="${escapeHtml(`${card.brand} Logo`)}" loading="lazy" decoding="async" class="w-12 h-12 rounded-2xl object-cover bg-white border border-white/60 shadow-sm mb-2" style="background:rgba(255,255,255,0.85);" />
-          ` : ""}
-          <span class="text-[10px] uppercase tracking-wider font-extrabold text-slate-800 bg-white backdrop-blur-sm py-1 px-2.5 rounded-full max-w-full truncate" style="background:rgba(255,255,255,0.75);">
-            ${escapeHtml(card.mainText)}
-          </span>
-        </div>
-        <div class="absolute top-2 right-2 flex flex-col gap-1.5 z-20">
-          <button
-            type="button"
-            data-shopping-like="${escapeHtml(card.id)}"
-            class="p-1.5 rounded-full bg-white hover:bg-white text-slate-800 backdrop-blur-sm shadow-sm transition-all active:scale-95"
-            style="background:rgba(255,255,255,0.8);"
-            aria-label="Favorit"
-          >
-            ${icon("heart", "w-3.5 h-3.5 text-slate-700")}
-          </button>
-        </div>
+        ${card.logoImage ? `
+          <div class="absolute top-2 right-2 z-20 w-9 h-9 rounded-2xl bg-white border border-white/70 shadow-sm overflow-hidden" aria-hidden="true">
+            <img src="${escapeHtml(card.logoImage)}" alt="" loading="lazy" decoding="async" class="w-full h-full object-cover" />
+          </div>
+        ` : ""}
       </div>
 
       ${card.products.length ? `
@@ -1442,21 +1425,18 @@ function renderShoppingLandingCard(record = {}, deps = {}) {
       ` : ""}
 
       <div class="mt-2 px-0.5 flex flex-col">
-        <div>
-          <div class="flex items-center gap-1 mb-0.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight truncate">${escapeHtml(card.brand)}</span>
-          </div>
-          <div class="flex items-center justify-between gap-1">
-            <span class="text-[11px] font-bold text-slate-800 leading-tight">Më shumë</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate leading-tight">${escapeHtml(card.brand)}</span>
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="text-[12px] font-bold text-slate-800 leading-tight">Më shumë</span>
             <button
               type="button"
               data-marketplace-open-business="${escapeHtml(card.id)}"
               data-tab="profile"
-              class="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all duration-300 active:scale-95 flex-shrink-0"
+              class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all duration-300 active:scale-95 flex-shrink-0"
               aria-label="Shop oeffnen"
             >
-              ${icon("chevron-right", "w-3.5 h-3.5")}
+              ${icon("chevron-right", "w-4 h-4")}
             </button>
           </div>
         </div>
@@ -1495,21 +1475,21 @@ function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
           <h1 class="text-[13px] font-black text-slate-800 tracking-tight whitespace-nowrap uppercase">Entdecke die besten shops</h1>
         </div>
         <div data-shopping-search-shell class="flex items-center transition-all duration-300 ease-in-out w-9">
-          <button type="button" data-shopping-search-toggle class="p-2 hover:bg-slate-200 rounded-full text-slate-700 transition-all ml-auto active:scale-90" aria-label="Shops suchen">
+          <button type="button" data-shopping-search-toggle class="p-2 hover:bg-slate-200 rounded-full text-slate-700 transition-all ml-auto active:scale-90 outline-none focus:outline-none focus-visible:outline-none focus:ring-0" style="outline:none;box-shadow:none;" aria-label="Shops suchen">
             ${icon("search", "w-4 h-4")}
           </button>
-          <div data-shopping-search-panel class="hidden items-center w-full border-b border-slate-900 pb-1.5" style="border-bottom-width:2px;">
+          <div data-shopping-search-panel class="hidden items-center w-full border-b border-slate-900 pb-1.5 outline-none focus-within:outline-none focus-within:ring-0" style="border-bottom-width:2px;box-shadow:none;">
             ${icon("search", "w-4 h-4 text-slate-400 flex-shrink-0 mr-2")}
-            <input type="text" data-shopping-search-input placeholder="Shops suchen..." class="bg-transparent text-xs font-bold text-slate-800 w-full focus:outline-none placeholder-slate-400" autocomplete="off" />
-            <button type="button" data-shopping-search-close class="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors flex-shrink-0" aria-label="Suche schliessen">
+            <input type="text" data-shopping-search-input placeholder="Shops suchen..." class="bg-transparent text-xs font-bold text-slate-800 w-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder-slate-400" style="box-shadow:none;" autocomplete="off" />
+            <button type="button" data-shopping-search-close class="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors flex-shrink-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0" style="outline:none;box-shadow:none;" aria-label="Suche schliessen">
               ${icon("x", "w-3.5 h-3.5")}
             </button>
           </div>
         </div>
       </header>
 
-      <main class="flex-1 p-3 pb-24">
-        <div class="grid grid-cols-2 gap-3 items-start" data-shopping-card-grid>
+      <main class="flex-1 px-2 pt-3 pb-24">
+        <div class="grid grid-cols-2 gap-2 items-start" data-shopping-card-grid>
           <div class="flex flex-col gap-6">${left.join("")}</div>
           <div class="flex flex-col gap-6" style="padding-top:4rem;">${right.join("")}</div>
         </div>
