@@ -38,7 +38,7 @@ const RESTAURANTS_GATE_COLOR = "#ff4f3f";
 const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 const TRAVEL_BLUE = "#00cce5";
 const TRAVEL_SEARCH_TEAL = "#005f73";
-const SHOPPING_BRAND_INTRO_COLOR = "#74e0b4";
+const SHOPPING_BRAND_INTRO_COLOR = "#4b766d";
 const SHOPPING_BRAND_INTRO_LINES = Object.freeze(["FIND YOUR", "BUY YOUR", "STYLE YOUR"]);
 const RESTAURANT_COORD_CITY_MAX_DISTANCE_KM = 35;
 const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
@@ -1539,15 +1539,15 @@ function renderShoppingBrandIntroCard(deps = {}) {
       }
     </style>
     <article
-      class="shopping-brand-intro-card self-end flex items-center justify-center text-center shadow-sm overflow-hidden"
-      style="width:88%;min-height:8.75rem;border-radius:1.6rem;background:${SHOPPING_BRAND_INTRO_COLOR};color:#073b32;padding:1.05rem 0.9rem;"
+      class="shopping-brand-intro-card flex items-center justify-center text-center shadow-sm overflow-hidden"
+      style="width:100%;min-height:11.5rem;border-radius:1rem;background:${SHOPPING_BRAND_INTRO_COLOR};color:#ffffff;padding:1.15rem 0.75rem;"
       aria-label="Shopping Brand"
     >
-      <div class="w-full" style="font-weight:900;letter-spacing:0;line-height:1.03;font-size:1.16rem;">
+      <div class="w-full" style="font-weight:900;letter-spacing:0;line-height:1.08;font-size:1.65rem;">
         <div class="text-slider-wrapper">
           ${SHOPPING_BRAND_INTRO_LINES.map((line) => `<div class="text-slide-item">${escapeHtml(line)}</div>`).join("")}
         </div>
-        <div style="font-size:1.18em;color:#ffffff;text-shadow:0 1px 0 rgba(7,59,50,0.14);">Brand</div>
+        <div style="font-size:1em;color:#ffffff;">Brand</div>
       </div>
     </article>
   `;
@@ -1600,7 +1600,7 @@ function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
       <main class="flex-1 px-2 pt-3 pb-24">
         <div class="grid grid-cols-2 gap-2 items-start" data-shopping-card-grid>
           <div class="flex flex-col gap-6">${left.join("")}</div>
-          <div class="flex flex-col gap-6" style="padding-top:4rem;">${hasRenderedShoppingCards ? renderShoppingBrandIntroCard(deps) : ""}${right.join("")}</div>
+          <div class="flex flex-col gap-6">${hasRenderedShoppingCards ? renderShoppingBrandIntroCard(deps) : ""}${right.join("")}</div>
         </div>
       </main>
     </section>
