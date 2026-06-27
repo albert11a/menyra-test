@@ -55,6 +55,8 @@ export function createProfileBusinessMenuRuntimeCluster({
   const visiblePublicPostsFreshReconcileKeys = new Set();
   const visiblePublicIdentityHydrationPromises = new Map();
   const visiblePublicFocusPrefetchPromises = new Map();
+  const visiblePublicFocusLoadPromises = new Map();
+  const visiblePublicMenuLoadPromises = new Map();
 
   const getVisiblePublicProfileView = () => {
     const view = state?.profileView && typeof state.profileView === "object"
@@ -604,6 +606,8 @@ export function createProfileBusinessMenuRuntimeCluster({
   const prefetchVisiblePublicFocus = (restaurantId = "") => {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return Promise.resolve(null);
+    const activeLoadRequest = visiblePublicFocusLoadPromises.get(safeRestaurantId);
+    if (activeLoadRequest) return activeLoadRequest;
     const existingRequest = visiblePublicFocusPrefetchPromises.get(safeRestaurantId);
     if (existingRequest) return existingRequest;
     const request = Promise.resolve(loadFocusForRestaurant(safeRestaurantId, { prefetchOnly: true }))
@@ -614,6 +618,24 @@ export function createProfileBusinessMenuRuntimeCluster({
         }
       });
     visiblePublicFocusPrefetchPromises.set(safeRestaurantId, request);
+    return request;
+  };
+
+  const loadVisiblePublicFocus = (restaurantId = "", options = {}) => {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return Promise.resolve(null);
+    if (options?.prefetchOnly === true) return prefetchVisiblePublicFocus(safeRestaurantId);
+    const existingRequest = visiblePublicFocusLoadPromises.get(safeRestaurantId);
+    if (existingRequest) return existingRequest;
+    const focusPrefetchRequest = visiblePublicFocusPrefetchPromises.get(safeRestaurantId);
+    const request = Promise.resolve(focusPrefetchRequest || null)
+      .then(() => loadFocusForRestaurant(safeRestaurantId, options))
+      .finally(() => {
+        if (visiblePublicFocusLoadPromises.get(safeRestaurantId) === request) {
+          visiblePublicFocusLoadPromises.delete(safeRestaurantId);
+        }
+      });
+    visiblePublicFocusLoadPromises.set(safeRestaurantId, request);
     return request;
   };
 
@@ -666,54 +688,65 @@ export function createProfileBusinessMenuRuntimeCluster({
       ? collectOwnBusinessMenuLoadIds(profile, fallbackId)
       : collectVisibleMenuLoadIds(profile, fallbackId);
     if (!ids.length) return;
-    const canonicalMenuRestaurantId = ownBusinessProfileMenuSurface
-      ? ids[0]
-      : resolveLatestCanonicalMenuRestaurantId(ids[0]);
-    if (canonicalMenuRestaurantId) {
-      clearAliasMenuEmptyStateForCanonicalLoad({
-        requestedRestaurantId: fallbackId || getMenuRestaurantForProfile(profile),
-        canonicalRestaurantId: canonicalMenuRestaurantId,
-        profile
-      });
-    }
-    if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
-    for (const restaurantId of ids) {
-      if (!isPublicMenuLoadSurface(profile)) return;
-      if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
-      const existingFocusRequest = hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)
-        ? publicProfileFocusEnsurePromise
-        : null;
-      const focusPrefetchRequest = existingFocusRequest
-        ? existingFocusRequest
-        : prefetchVisiblePublicFocus(restaurantId);
-      if (existingFocusRequest) {
-        await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
-        continue;
-      }
-      const menuPayload = await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
-      const hasMenuItems = Array.isArray(menuPayload?.items)
-        ? menuPayload.items.length > 0
-        : (
-          String(state?.menu?.restaurantId || "").trim() === restaurantId
-          && String(state?.menu?.source || "").trim().toLowerCase() === "public"
-          && String(state?.menu?.truthState || "").trim().toLowerCase() === "seeded"
-          && Array.isArray(state?.menu?.items)
-          && state.menu.items.length > 0
-        );
-      if (!hasMenuItems || hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)) {
-        continue;
-      }
-      const focusExperienceRequest = Promise.resolve(focusPrefetchRequest)
-        .then(() => loadFocusForRestaurant(restaurantId))
-        .finally(() => {
-          if (publicProfileFocusEnsurePromise === focusExperienceRequest) {
-            publicProfileFocusEnsurePromise = null;
-            publicProfileFocusEnsureTargetId = "";
-          }
+    const loadKey = `${ownBusinessProfileMenuSurface ? "own" : "public"}::${ids.join("|")}`;
+    const existingMenuLoadRequest = visiblePublicMenuLoadPromises.get(loadKey);
+    if (existingMenuLoadRequest) return existingMenuLoadRequest;
+    const request = (async () => {
+      const canonicalMenuRestaurantId = ownBusinessProfileMenuSurface
+        ? ids[0]
+        : resolveLatestCanonicalMenuRestaurantId(ids[0]);
+      if (canonicalMenuRestaurantId) {
+        clearAliasMenuEmptyStateForCanonicalLoad({
+          requestedRestaurantId: fallbackId || getMenuRestaurantForProfile(profile),
+          canonicalRestaurantId: canonicalMenuRestaurantId,
+          profile
         });
-      publicProfileFocusEnsurePromise = focusExperienceRequest;
-      publicProfileFocusEnsureTargetId = restaurantId;
-    }
+      }
+      if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
+      for (const restaurantId of ids) {
+        if (!isPublicMenuLoadSurface(profile)) return;
+        if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
+        const existingFocusRequest = hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)
+          ? publicProfileFocusEnsurePromise
+          : null;
+        const focusPrefetchRequest = existingFocusRequest
+          ? existingFocusRequest
+          : prefetchVisiblePublicFocus(restaurantId);
+        if (existingFocusRequest) {
+          await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
+          continue;
+        }
+        const menuPayload = await Promise.resolve(loadMenuForRestaurant(restaurantId, { source: "public" }));
+        const hasMenuItems = Array.isArray(menuPayload?.items)
+          ? menuPayload.items.length > 0
+          : (
+            String(state?.menu?.restaurantId || "").trim() === restaurantId
+            && String(state?.menu?.source || "").trim().toLowerCase() === "public"
+            && String(state?.menu?.truthState || "").trim().toLowerCase() === "seeded"
+            && Array.isArray(state?.menu?.items)
+            && state.menu.items.length > 0
+          );
+        if (!hasMenuItems || hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)) {
+          continue;
+        }
+        const focusExperienceRequest = Promise.resolve(focusPrefetchRequest)
+          .then(() => loadVisiblePublicFocus(restaurantId))
+          .finally(() => {
+            if (publicProfileFocusEnsurePromise === focusExperienceRequest) {
+              publicProfileFocusEnsurePromise = null;
+              publicProfileFocusEnsureTargetId = "";
+            }
+          });
+        publicProfileFocusEnsurePromise = focusExperienceRequest;
+        publicProfileFocusEnsureTargetId = restaurantId;
+      }
+    })().finally(() => {
+      if (visiblePublicMenuLoadPromises.get(loadKey) === request) {
+        visiblePublicMenuLoadPromises.delete(loadKey);
+      }
+    });
+    visiblePublicMenuLoadPromises.set(loadKey, request);
+    return request;
   };
 
   const loadVisiblePublicPostsIds = async (profile = {}, fallbackId = "") => {
@@ -912,7 +945,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     const request = Promise.resolve().then(async () => {
       const restaurantId = await resolveProfileRestaurantId(profile);
       if (!restaurantId) return;
-      await Promise.resolve(loadFocusForRestaurant(restaurantId));
+      await Promise.resolve(loadVisiblePublicFocus(restaurantId));
     }).finally(() => {
       if (publicProfileFocusEnsurePromise === request) {
         publicProfileFocusEnsurePromise = null;
