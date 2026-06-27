@@ -1348,11 +1348,12 @@ function getShoppingLandingProductIds(record = {}) {
   const card = record.shoppingLandingCard && typeof record.shoppingLandingCard === "object"
     ? record.shoppingLandingCard
     : {};
-  return [
+  const ids = [
     ...readShoppingList(card.productIds),
     ...readShoppingList(record.shoppingLandingCardProductIds),
     ...readShoppingList(record.shoppingLandingProductIds)
   ];
+  return ids.filter((id, index) => ids.indexOf(id) === index);
 }
 
 function collectShoppingLandingProducts(record = {}, deps = {}) {

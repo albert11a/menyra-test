@@ -1325,6 +1325,20 @@ Last updated: 2026-06-27
   App-Build-Token wurde auf `2026-06-27-shopping-card-image-picker-01`
   aktualisiert und das Bundle wurde neu gebaut. Nicht geaendert wurden Cart,
   Checkout, Orders, QR, Routing, Firebase Rules und Functions.
+- Schritt 132 ist abgeschlossen: Doppelte Produkte in Shopping Cards werden
+  beim Rendern dedupliziert.
+- Bewertung von Schritt 132: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 132:
+  Die Shopping Card liest Produkt-IDs aus mehreren Speicherfeldern, damit alte
+  und neue gespeicherte Daten kompatibel bleiben. Diese zusammengefuehrte ID-
+  Liste wird jetzt vor dem Rendern eindeutig gemacht. Dadurch erscheint ein
+  Produkt nicht mehr zweimal in derselben Shopping-Card, wenn seine ID sowohl
+  in `shoppingLandingCard.productIds` als auch in `shoppingLandingCardProductIds`
+  vorhanden ist. Der App-Build-Token wurde auf
+  `2026-06-27-shopping-card-image-picker-02` aktualisiert und das Bundle wurde
+  neu gebaut. Nicht geaendert wurden Shop-Editor-Layout, Produktbilder,
+  Produktdetail-Modal, Cart, Checkout, Orders, QR, Routing, Firebase Rules und
+  Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1449,6 +1463,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step123-business-profile-info-height-match.md](./mnyra-step123-business-profile-info-height-match.md)
 - Referenz: [docs/mnyra-step124-business-profile-info-measured-height.md](./mnyra-step124-business-profile-info-measured-height.md)
 - Referenz: [docs/mnyra-step131-shopping-card-image-picker.md](./mnyra-step131-shopping-card-image-picker.md)
+- Referenz: [docs/mnyra-step132-shopping-card-product-dedupe.md](./mnyra-step132-shopping-card-product-dedupe.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1842,6 +1857,13 @@ Danach ueber `Upload` ein eigenes Card-only-Bild setzen, speichern und pruefen,
 dass nur die Shopping-Card-Kachel dieses Bild nutzt. Mit `Standard`
 zuruecksetzen, speichern und pruefen, dass die Card wieder Bild 1 nutzt. Cart,
 Checkout, QR und Routing kurz unveraendert gegenpruefen.
+
+Zusaetzlich fuer Schritt 132 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-card-image-picker-02` aktiv sein. Den Shopping-Tab
+oeffnen und eine Shopping-Card mit gespeicherten Produkten pruefen. Erwartung:
+Jedes Produkt erscheint in derselben Card nur einmal. Danach eine Produktkachel
+antippen und pruefen, dass das Produkt-Modal weiterhin oeffnet.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
