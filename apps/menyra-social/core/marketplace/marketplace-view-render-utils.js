@@ -1449,8 +1449,8 @@ function renderShoppingProductVisual(product = {}, deps = {}) {
       data-menu-open-source="marketplace"
       data-menu-open-restaurant="${escapeHtml(restaurantId)}"
       data-menu-open-product="${payload}"
-      class="flex-shrink-0 rounded-2xl shadow-sm border border-slate-100 hover:border-slate-300 transition-all cursor-pointer active:scale-95 flex items-center justify-center relative overflow-hidden bg-white"
-      style="width:62%;height:12.25rem;scroll-snap-align:start;"
+      class="flex-shrink-0 rounded-2xl shadow-sm border border-slate-100 cursor-pointer flex items-center justify-center relative overflow-hidden bg-white outline-none focus:outline-none focus-visible:outline-none focus:ring-0"
+      style="width:62%;height:12.25rem;scroll-snap-align:start;outline:none;-webkit-tap-highlight-color:transparent;"
       aria-label="${escapeHtml(name)}"
     >
       ${image ? `

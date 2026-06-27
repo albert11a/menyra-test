@@ -1387,6 +1387,18 @@ Last updated: 2026-06-27
   neu gebaut. Nicht geaendert wurden Shopping-Produktlogik, Product-Modal,
   Search-Handling, Shop-Editor, Cart, Checkout, Orders, QR, Routing, Firebase
   Rules und Functions.
+- Schritt 137 ist abgeschlossen: Die kleinen Produktkacheln im Shopping-
+  Produktstreifen verlieren den sichtbaren Press-/Focus-Effekt.
+- Bewertung von Schritt 137: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 137:
+  Bei den kleinen Shopping-Produktbuttons wurden `active:scale-95`, der
+  Hover-Border-Wechsel und die allgemeine Transition entfernt. Zusaetzlich wird
+  der Browser-Focus-Outline und Mobile-Tap-Highlight fuer diese Buttons
+  unterdrueckt. Der App-Build-Token wurde auf
+  `2026-06-27-shopping-product-tile-no-press-01` aktualisiert und das Bundle
+  wurde neu gebaut. Nicht geaendert wurden Produktdetail-Modal, Produktdaten,
+  Shop-Oeffnung, Shopping-Suche, Cart, Checkout, Orders, QR, Routing, Firebase
+  Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1516,6 +1528,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step134-shopping-brand-intro-card-sizing.md](./mnyra-step134-shopping-brand-intro-card-sizing.md)
 - Referenz: [docs/mnyra-step135-shopping-brand-intro-card-texts.md](./mnyra-step135-shopping-brand-intro-card-texts.md)
 - Referenz: [docs/mnyra-step136-shopping-brand-intro-card-fixed-shop.md](./mnyra-step136-shopping-brand-intro-card-fixed-shop.md)
+- Referenz: [docs/mnyra-step137-shopping-product-tile-no-press.md](./mnyra-step137-shopping-product-tile-no-press.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1951,6 +1964,13 @@ und pruefen, dass nur die obere Kategorie-Zeile dynamisch wechselt und in
 Grossbuchstaben erscheint. `SHOP` soll darunter dauerhaft stehen bleiben und
 bold wirken. Eine Shopping-Card, eine Produktkachel und die Shopping-Suche kurz
 gegenpruefen.
+
+Zusaetzlich fuer Schritt 137 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-product-tile-no-press-01` aktiv sein. Den Shopping-Tab
+oeffnen, den Produktstreifen in einer Shopping-Card horizontal sliden und eine
+Produktkachel antippen. Die Kachel soll nicht mehr kleiner werden und keinen
+sichtbaren Rahmen behalten; das Produktdetail-Modal soll weiterhin oeffnen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
