@@ -1230,9 +1230,10 @@ export function createProfileOpenFlowControllerCore({
         })
       });
 
-      const shouldWarmPublicMenuBundle = !!(loadingCanonicalRestaurantId || targetMenuRestaurantId)
+      const canWarmPublicMenuBundle = !!(loadingCanonicalRestaurantId || targetMenuRestaurantId)
         && !isLandingTopTab
         && safeMenuAccessSource !== "qr";
+      const shouldWarmPublicMenuBundle = canWarmPublicMenuBundle && !isWebPostsFirstPath;
       if (shouldWarmPublicMenuBundle) {
         Promise.resolve().then(() => {
           const warmCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
@@ -1531,6 +1532,44 @@ export function createProfileOpenFlowControllerCore({
           directEntry: resolvedReadyDirectEntry
         })
       });
+      if (canWarmPublicMenuBundle && isWebPostsFirstPath && typeof setTimeout === "function") {
+        setTimeout(() => {
+          const warmCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
+            resolvedRestaurantId,
+            loadingCanonicalRestaurantId,
+            targetCanonicalRestaurantId,
+            targetMenuRestaurantId
+          );
+          const warmRestaurantId = warmCanonicalRestaurantId || targetMenuRestaurantId || resolvedRestaurantId;
+          if (!warmRestaurantId) return;
+          const liveProfile = state?.profileView?.profile;
+          const liveRestaurantId = String(
+            liveProfile?.canonicalRestaurantId
+            || liveProfile?.restaurantId
+            || ""
+          ).trim();
+          const warmTargetIds = new Set(
+            [
+              warmRestaurantId,
+              warmCanonicalRestaurantId,
+              resolvedRestaurantId,
+              loadingCanonicalRestaurantId,
+              targetCanonicalRestaurantId,
+              targetMenuRestaurantId,
+              targetRestaurantLookupId,
+              routeSnapshotRestaurantId
+            ]
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
+          );
+          if (state.activeTab !== "profile" || !liveRestaurantId || !warmTargetIds.has(liveRestaurantId)) return;
+          ensureMenuData({
+            ...resolvedWithPosts,
+            restaurantId: warmRestaurantId,
+            canonicalRestaurantId: warmCanonicalRestaurantId || warmRestaurantId
+          });
+        }, 2400);
+      }
       if (reusedInitialPostsForFinalProfile && typeof setTimeout === "function") {
         setTimeout(() => {
           const liveView = state?.profileView;
