@@ -3106,6 +3106,24 @@ function getShoppingLandingStoredProductIds(record = {}) {
   ].filter(Boolean);
 }
 
+function normalizeShoppingLandingProductImageOverrides(value = {}) {
+  if (!value || typeof value !== "object") return {};
+  return Object.entries(value).reduce((acc, [key, imageUrl]) => {
+    const id = String(key || "").trim();
+    const url = String(imageUrl || "").trim();
+    if (id && url) acc[id] = url;
+    return acc;
+  }, {});
+}
+
+function getShoppingLandingStoredProductImageOverrides(record = {}) {
+  const card = getShoppingLandingCardData(record);
+  return {
+    ...normalizeShoppingLandingProductImageOverrides(record.shoppingLandingProductImageOverrides),
+    ...normalizeShoppingLandingProductImageOverrides(card.productImageOverrides)
+  };
+}
+
 function getShoppingLandingEditorStateForRestaurant(restaurantId = "") {
   const safeRestaurantId = String(restaurantId || "").trim();
   const editor = state.shoppingLandingCardEditor && typeof state.shoppingLandingCardEditor === "object"
@@ -3116,10 +3134,26 @@ function getShoppingLandingEditorStateForRestaurant(restaurantId = "") {
   return editor;
 }
 
-function getShoppingLandingProductHero(item = {}) {
+function readShoppingLandingImageCandidateValue(entry) {
+  if (!entry) return "";
+  if (typeof entry === "string") return entry.trim();
+  if (typeof entry !== "object") return String(entry || "").trim();
+  return String(
+    entry.url
+    || entry.src
+    || entry.cdnUrl
+    || entry.imageUrl
+    || entry.image
+    || entry.photoUrl
+    || entry.thumbnail
+    || ""
+  ).trim();
+}
+
+function getShoppingLandingProductImageCandidates(item = {}) {
   const resolved = resolveMenuItemHero(item);
-  if (resolved) return resolved;
   const candidates = [
+    resolved,
     ...(Array.isArray(item.imageUrls) ? item.imageUrls : []),
     ...(Array.isArray(item.images) ? item.images : []),
     item.imageUrl,
@@ -3128,20 +3162,35 @@ function getShoppingLandingProductHero(item = {}) {
     item.coverUrl,
     item.img,
     item.thumbnail
-  ].map((entry) => String(entry || "").trim()).filter(Boolean);
-  return candidates[0] || "";
+  ].map(readShoppingLandingImageCandidateValue).filter(Boolean);
+  return candidates.filter((entry, index) => candidates.indexOf(entry) === index);
 }
 
-function buildShoppingLandingProductPreview(item = {}) {
+function getShoppingLandingProductHero(item = {}) {
+  return getShoppingLandingProductImageCandidates(item)[0] || "";
+}
+
+function buildShoppingLandingProductPreview(item = {}, productImageOverrides = {}, productImagePreviews = {}) {
   const id = String(item?.id || item?.productId || item?.menuItemId || "").trim();
   if (!id) return null;
-  const rawImg = getShoppingLandingProductHero(item);
-  const imgUrl = rawImg ? getOptimizedImageUrl(rawImg, "thumb") : "";
+  const imageCandidates = getShoppingLandingProductImageCandidates(item).map((rawUrl) => ({
+    rawUrl,
+    imageUrl: getOptimizedImageUrl(rawUrl, "thumb")
+  })).filter((candidate) => candidate.rawUrl && !isPlaceholderUrl(candidate.imageUrl));
+  const defaultRaw = imageCandidates[0]?.rawUrl || "";
+  const overrideRaw = String(productImageOverrides?.[id] || "").trim();
+  const previewRaw = String(productImagePreviews?.[id] || "").trim();
+  const selectedRaw = previewRaw || overrideRaw || defaultRaw;
+  const imgUrl = selectedRaw ? getOptimizedImageUrl(selectedRaw, "thumb") : "";
   return {
     id,
     name: String(item.name || item.title || "Produkt").trim(),
     price: formatMenuItemPrice(item),
     imageUrl: imgUrl && !isPlaceholderUrl(imgUrl) ? imgUrl : "",
+    defaultImageRaw: defaultRaw,
+    cardImageUrl: overrideRaw,
+    previewImageUrl: previewRaw,
+    imageCandidates,
     objectPosition: getMenuItemObjectPosition(item)
   };
 }
@@ -3168,9 +3217,16 @@ function renderShoppingLandingCardAdminSection(profile = {}, restaurantId = "", 
     ? editor.productIds.map((item) => String(item || "").trim()).filter(Boolean)
     : null;
   const selectedProductIds = new Set(editorProductIds || storedProductIds);
+  const productImageOverrides = {
+    ...getShoppingLandingStoredProductImageOverrides(record),
+    ...normalizeShoppingLandingProductImageOverrides(editor.productImageOverrides)
+  };
+  const productImagePreviews = editor.productImagePreviews && typeof editor.productImagePreviews === "object"
+    ? editor.productImagePreviews
+    : {};
   const productOptions = (Array.isArray(menuItems) ? menuItems : [])
     .filter((item) => item && String(item.id || "").trim() && item.hidden !== true && item.available !== false)
-    .map(buildShoppingLandingProductPreview)
+    .map((item) => buildShoppingLandingProductPreview(item, productImageOverrides, productImagePreviews))
     .filter(Boolean);
   const selectedCountLabel = selectedProductIds.size
     ? `${formatCount(selectedProductIds.size)} ausgewaehlt`
@@ -3225,17 +3281,73 @@ function renderShoppingLandingCardAdminSection(profile = {}, restaurantId = "", 
               ${productOptions.map((product) => {
                 const checked = selectedProductIds.has(product.id);
                 const image = product.imageUrl || PLACEHOLDER_IMAGE;
+                const defaultRaw = String(product.defaultImageRaw || product.imageCandidates[0]?.rawUrl || "").trim();
+                const overrideRaw = String(product.cardImageUrl || "").trim();
+                const previewRaw = String(product.previewImageUrl || "").trim();
+                const hasOverride = !!(previewRaw || (overrideRaw && overrideRaw !== defaultRaw));
+                const customRaw = previewRaw || (
+                  overrideRaw
+                  && !product.imageCandidates.some((candidate) => candidate.rawUrl === overrideRaw)
+                    ? overrideRaw
+                    : ""
+                );
                 return `
-                  <label class="flex items-center gap-3 rounded-2xl bg-white border border-slate-100 p-3">
-                    <input type="checkbox" data-shopping-landing-product="${escapeHtml(product.id)}" class="w-4 h-4 accent-amber-500" style="accent-color:#f97316;" ${checked ? "checked" : ""} />
-                    <span class="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0">
-                      <img src="${escapeHtml(image)}" class="w-full h-full object-cover" style="object-position:${escapeHtml(product.objectPosition || "50% 50%")};" loading="lazy" decoding="async" />
-                    </span>
-                    <span class="min-w-0 flex-1">
-                      <span class="block text-xs font-black text-slate-900 truncate">${escapeHtml(product.name)}</span>
-                      ${product.price ? `<span class="block text-[10px] font-bold text-slate-400 mt-0.5">${escapeHtml(product.price)}</span>` : ""}
-                    </span>
-                  </label>
+                  <div class="rounded-2xl bg-white border border-slate-100 p-3">
+                    <label class="flex items-center gap-3">
+                      <input type="checkbox" data-shopping-landing-product="${escapeHtml(product.id)}" class="w-4 h-4 accent-amber-500" style="accent-color:#f97316;" ${checked ? "checked" : ""} />
+                      <span class="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                        <img src="${escapeHtml(image)}" class="w-full h-full object-cover" style="object-position:${escapeHtml(product.objectPosition || "50% 50%")};" loading="lazy" decoding="async" />
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block text-xs font-black text-slate-900 truncate">${escapeHtml(product.name)}</span>
+                        ${product.price ? `<span class="block text-[10px] font-bold text-slate-400 mt-0.5">${escapeHtml(product.price)}</span>` : ""}
+                      </span>
+                    </label>
+                    ${checked ? `
+                      <div class="mt-3 pt-3 border-t border-slate-100">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                          <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Card-Bild</span>
+                          <div class="flex items-center gap-2">
+                            ${hasOverride ? `
+                              <button type="button" data-shopping-landing-product-image-reset="${escapeHtml(product.id)}" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-500 active:scale-95">
+                                Standard
+                              </button>
+                            ` : ""}
+                            <button type="button" data-shopping-landing-product-image-upload="${escapeHtml(product.id)}" class="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest active:scale-95">
+                              Upload
+                            </button>
+                            <input type="file" accept="image/*" data-shopping-landing-product-image-input="${escapeHtml(product.id)}" class="hidden" />
+                          </div>
+                        </div>
+                        <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                          ${product.imageCandidates.map((candidate, imageIndex) => {
+                            const isDefault = imageIndex === 0;
+                            const selected = previewRaw
+                              ? false
+                              : (isDefault ? !hasOverride : overrideRaw === candidate.rawUrl);
+                            return `
+                              <label class="shrink-0 w-16">
+                                <input type="radio" name="shoppingLandingProductImage_${escapeHtml(product.id)}" data-shopping-landing-product-image-choice="${escapeHtml(product.id)}" value="${isDefault ? "" : escapeHtml(candidate.rawUrl)}" class="hidden" ${selected ? "checked" : ""} />
+                                <span class="block h-16 rounded-2xl overflow-hidden border ${selected ? "border-slate-900" : "border-slate-100"} bg-slate-100">
+                                  <img src="${escapeHtml(candidate.imageUrl)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+                                </span>
+                                <span class="block mt-1 text-[8px] font-black uppercase tracking-widest text-center text-slate-400">${imageIndex + 1}</span>
+                              </label>
+                            `;
+                          }).join("")}
+                          ${customRaw ? `
+                            <label class="shrink-0 w-16">
+                              <input type="radio" name="shoppingLandingProductImage_${escapeHtml(product.id)}" data-shopping-landing-product-image-choice="${escapeHtml(product.id)}" value="${escapeHtml(customRaw)}" class="hidden" checked />
+                              <span class="block h-16 rounded-2xl overflow-hidden border border-slate-900 bg-slate-100">
+                                <img src="${escapeHtml(getOptimizedImageUrl(customRaw, "thumb"))}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+                              </span>
+                              <span class="block mt-1 text-[8px] font-black uppercase tracking-widest text-center text-slate-400">Upload</span>
+                            </label>
+                          ` : ""}
+                        </div>
+                      </div>
+                    ` : ""}
+                  </div>
                 `;
               }).join("")}
             </div>
