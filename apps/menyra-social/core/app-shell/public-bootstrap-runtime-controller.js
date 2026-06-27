@@ -1429,14 +1429,16 @@ export function createPublicBootstrapRuntimeController({
       if (routePathname) {
         url.searchParams.set("pathname", routePathname);
       }
+      const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
       const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
         ? state.__webDirectEntry
         : null;
+      const canUseProfileRouteFallback = activeTabKey === "profile" || !!webDirectEntry;
       const routeRestaurantId = String(
         webDirectEntry?.canonicalRestaurantId
         || webDirectEntry?.restaurantId
-        || state?.profileView?.profile?.canonicalRestaurantId
-        || state?.profileView?.profile?.restaurantId
+        || (canUseProfileRouteFallback ? state?.profileView?.profile?.canonicalRestaurantId : "")
+        || (canUseProfileRouteFallback ? state?.profileView?.profile?.restaurantId : "")
         || ""
       ).trim();
       if (routeRestaurantId && !url.searchParams.get("r")) {
@@ -1444,14 +1446,14 @@ export function createPublicBootstrapRuntimeController({
       }
       const routeTopTab = String(
         webDirectEntry?.topTab
-        || state?.profileTopTab
+        || (canUseProfileRouteFallback ? state?.profileTopTab : "")
         || ""
       ).trim().toLowerCase();
       if (routeTopTab && !url.searchParams.get("top")) {
         url.searchParams.set("top", routeTopTab);
       }
       const routeSource = String(
-        state?.profileView?.menuAccessSource
+        (canUseProfileRouteFallback ? state?.profileView?.menuAccessSource : "")
         || webDirectEntry?.menuAccessSource
         || ""
       ).trim().toLowerCase();
@@ -1459,7 +1461,7 @@ export function createPublicBootstrapRuntimeController({
         url.searchParams.set("src", routeSource);
       }
       const tableNumber = Math.max(0, Number(
-        state?.profileView?.tableNumber
+        canUseProfileRouteFallback ? state?.profileView?.tableNumber : 0
         || 0
       ) || 0);
       if (tableNumber > 0 && !url.searchParams.get("table")) {
@@ -1486,8 +1488,12 @@ export function createPublicBootstrapRuntimeController({
       ? String(webDirectEntry?.canonicalRestaurantId || webDirectEntry?.restaurantId || "").trim()
       : "";
     const incomingRoutePayload = resolveIncomingRouteBootstrapPayload(payload);
-    if (incomingRoutePayload) {
+    const canAcceptRouteBootstrapPayload = activeTabKey === "profile"
+      && (!!webDirectEntry || !!state?.profileView);
+    if (incomingRoutePayload && canAcceptRouteBootstrapPayload) {
       state.__publicRouteBootstrap = incomingRoutePayload;
+    } else if (incomingRoutePayload && !canAcceptRouteBootstrapPayload) {
+      state.__publicRouteBootstrap = null;
     } else if (Object.prototype.hasOwnProperty.call(payload, "publicRoute")) {
       state.__publicRouteBootstrap = null;
     }

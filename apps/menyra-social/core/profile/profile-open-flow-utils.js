@@ -628,6 +628,34 @@ export function createProfileOpenFlowControllerCore({
       if (targetCanonicalRestaurantId) {
         targetMenuRestaurantId = targetCanonicalRestaurantId;
       }
+      const getDirectRouteTargetIds = () => new Set(
+        [
+          targetRestaurantLookupId,
+          targetMenuRestaurantId,
+          targetCanonicalRestaurantId,
+          routeSnapshotRestaurantId,
+          routeBootstrapSeed?.canonicalRestaurantId,
+          routeBootstrapSeed?.restaurantId
+        ]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+      );
+      const isDirectWebRouteStillCurrent = () => {
+        if (!isDirectWebEntryRequest) return true;
+        if (String(state?.activeTab || "").trim().toLowerCase() !== "profile") return false;
+        const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
+          ? state.__webDirectEntry
+          : null;
+        if (!webDirectEntry || webDirectEntry.webPriority !== true) return false;
+        const targetIds = getDirectRouteTargetIds();
+        const entryIds = [
+          webDirectEntry.canonicalRestaurantId,
+          webDirectEntry.restaurantId
+        ]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean);
+        return entryIds.some((entryId) => targetIds.has(entryId));
+      };
       const buildDirectEntryMeta = (phase = "loading") => ({
         active: true,
         source: "route",
@@ -1216,6 +1244,7 @@ export function createProfileOpenFlowControllerCore({
           : "seeded"
       );
 
+      if (!isDirectWebRouteStillCurrent()) return;
       showPublicProfileView(loadingProfileWithSurfaceTruth, loadingProfileWithSurfaceTruth.posts, {
         showBack,
         topTab: resolvedTopTab,
@@ -1295,6 +1324,8 @@ export function createProfileOpenFlowControllerCore({
               || ""
             ).trim();
             if (
+              !isDirectWebRouteStillCurrent()
+              ||
               state.activeTab !== "profile"
               || (liveRestaurantId && !earlyPostsAcceptedRestaurantIds.has(liveRestaurantId))
             ) {
@@ -1386,6 +1417,7 @@ export function createProfileOpenFlowControllerCore({
         ).trim();
       };
 
+      if (!isDirectWebRouteStillCurrent()) return;
       if (state.activeTab !== "profile") return;
       const visibleRestaurantId = getVisibleProfileRestaurantId();
       if (!restaurantMatchesRouteTarget(visibleRestaurantId)) return;
@@ -1477,6 +1509,7 @@ export function createProfileOpenFlowControllerCore({
         });
       }
       const latestRestaurantId = getVisibleProfileRestaurantId();
+      if (!isDirectWebRouteStillCurrent()) return;
       if (state.activeTab !== "profile") return;
       if (!restaurantMatchesRouteTarget(latestRestaurantId)) return;
 

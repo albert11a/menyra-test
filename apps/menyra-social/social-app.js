@@ -2017,6 +2017,20 @@ function isAuthRestorePendingProtectedRoute(tab = state.activeTab, { hasProfileV
   return !!(snapshotUid || profileUid || profileRestaurantId);
 }
 
+function clearPublicProfileRouteStateAfterRouteExit() {
+  if (!state || typeof state !== "object") return;
+  state.profileView = null;
+  state.profileModal = { open: false, profile: null };
+  state.profileBackTab = "feed";
+  state.__publicRouteBootstrap = null;
+}
+
+function hasCurrentWindowPublicProfileRoute() {
+  const routeState = resolveInitialRouteStateFromWindowLocation();
+  return !!String(routeState?.pendingProfileRestaurantId || "").trim()
+    || !!String(routeState?.pendingUserRouteId || "").trim();
+}
+
 function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {}) {
   if (isAuthRestorePendingProtectedRoute(tab, { hasProfileView })) {
     return String(tab || "").trim().toLowerCase() || "feed";
@@ -2170,6 +2184,13 @@ function applyPendingInitialRouteState() {
       active: false,
       phase: ""
     });
+    const hasPendingPublicProfileRoute = !!String(pendingRoute?.pendingProfileRestaurantId || "").trim()
+      || !!String(pendingRoute?.pendingUserRouteId || "").trim();
+    const hasWindowPublicProfileRoute = hasCurrentWindowPublicProfileRoute();
+    const nextActiveTabKey = String(state.activeTab || "").trim().toLowerCase();
+    if (!hasPendingPublicProfileRoute && !hasWindowPublicProfileRoute && nextActiveTabKey) {
+      clearPublicProfileRouteStateAfterRouteExit();
+    }
   }
   const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
   if (activeTabKey === "home") state.activeTab = "feed";
