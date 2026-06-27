@@ -1262,6 +1262,23 @@ Last updated: 2026-06-25
   PWA- und Service-Worker-Pfade ebenfalls einen frischen Build-Stand sehen.
   Nicht geaendert wurden Routing, QR, Cart, Order, Menu-Daten, Firebase Rules
   und Functions.
+- Schritt 128 ist abgeschlossen: Der Karte-Button in Business-Profil-Cards nutzt
+  denselben internen Entdecker-Kartenpfad wie der Karte-Button der Restaurant-
+  und Cafe-Cards im Restaurants-Tab.
+- Bewertung von Schritt 128: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 128:
+  Business-Profil-Quick-Links mit interner Restaurant-ID rendern den bestehenden
+  runden Karte-Button jetzt als `data-marketplace-open-map`-Button. Dadurch
+  greift der vorhandene Card-Handler und die interne Entdecker-Karte wird mit
+  dem passenden Business geoeffnet, statt den Nutzer auf Google Maps zu leiten.
+  Ohne interne Ziel-ID bleibt der bisherige externe Maps-Fallback erhalten.
+  Der App-Build-Token wurde auf `2026-06-27-profile-map-button-01`
+  aktualisiert, damit der Browser den neuen Entry mit dem neuen Chunk-Hash
+  nachlaedt. Geaendert wurden nur der Profil-Renderer, der zugehoerige gebaute
+  Profil-Renderer-Chunk, `entry/social-app.js`, `manifest.json`, `index.html`
+  und diese Doku.
+  Nicht geaendert wurden sichtbares Design, Restaurant-Cards, Map-Rendering, QR,
+  Cart, Orders, Firebase Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1410,7 +1427,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 127 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 128 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1734,6 +1751,14 @@ mehr der alte Chunk
 `profile-menu-focus-render-controller-Ct0xfHZ9.js` geladen werden, sondern der
 neue gebaute Profil-Renderer-Chunk. Danach dieselbe Info-Card-Breitenpruefung
 aus Schritt 126 wiederholen.
+
+Zusaetzlich fuer Schritt 128 manuell pruefen: Business-Profil aus dem
+Restaurants-Tab oeffnen und oben in der Profil-Card den runden Karte-Button
+klicken. Es soll dieselbe interne Entdecker-Karte oeffnen wie beim Karte-Button
+der Restaurant-/Cafe-Card, mit dem passenden Business ausgewaehlt. TikTok- und
+Instagram-Quick-Links sowie Profil, Info, Menu, QR, Cart und Order-Flows kurz
+unveraendert gegenpruefen. Bei hartem Reload oder `?debug-build=1` muss der
+Build-Stand `2026-06-27-profile-map-button-01` aktiv sein.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

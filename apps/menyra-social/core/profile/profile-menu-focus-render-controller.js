@@ -1415,6 +1415,17 @@ function resolveBusinessProfileKey(profile = {}, fallback = "business") {
   ).trim() || fallback;
 }
 
+function resolveBusinessProfileMapTargetId(profile = {}) {
+  return String(
+    profile?.canonicalRestaurantId
+    || profile?.restaurantId
+    || profile?.id
+    || profile?.landingRestaurantId
+    || profile?.documentId
+    || ""
+  ).trim();
+}
+
 function resolveBusinessTitleImageRaw(profile = {}) {
   const images = Array.isArray(profile?.coverImages)
     ? profile.coverImages
@@ -1492,12 +1503,22 @@ function resolveBusinessMapHref(profile = {}) {
   return label ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(label)}` : "";
 }
 
-function renderBusinessQuickLink({ href = "", label = "", iconName = "", body = "" } = {}) {
+function renderBusinessQuickLink({ href = "", label = "", iconName = "", body = "", buttonAttrs = "" } = {}) {
   const safeHref = normalizeBusinessProfileText(href);
-  if (!safeHref) return "";
+  const safeButtonAttrs = String(buttonAttrs || "").trim();
+  if (!safeHref && !safeButtonAttrs) return "";
+  const content = body || icon(iconName, "w-4 h-4");
+  const className = "w-9 h-9 rounded-full bg-white text-slate-900 shadow-lg border border-white/80 flex items-center justify-center active:scale-95 transition-transform";
+  if (safeButtonAttrs) {
+    return `
+    <button type="button" ${safeButtonAttrs} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}" class="${className}">
+      ${content}
+    </button>
+  `;
+  }
   return `
-    <a href="${escapeHtml(safeHref)}" target="_blank" rel="noreferrer" title="${escapeHtml(label)}" class="w-9 h-9 rounded-full bg-white text-slate-900 shadow-lg border border-white/80 flex items-center justify-center active:scale-95 transition-transform">
-      ${body || icon(iconName, "w-4 h-4")}
+    <a href="${escapeHtml(safeHref)}" target="_blank" rel="noreferrer" title="${escapeHtml(label)}" class="${className}">
+      ${content}
     </a>
   `;
 }
@@ -1594,6 +1615,14 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
     allowCacheFallback: options.allowTitleImageCacheFallback === true
   });
   const mapHref = resolveBusinessMapHref(profile);
+  const mapTargetId = resolveBusinessProfileMapTargetId(profile);
+  const mapQuickLink = mapTargetId
+    ? renderBusinessQuickLink({
+        buttonAttrs: `data-marketplace-open-map="${escapeHtml(mapTargetId)}"`,
+        label: tr("profile.openMap", "Karte oeffnen"),
+        iconName: "map"
+      })
+    : renderBusinessQuickLink({ href: mapHref, label: tr("profile.openMap", "Karte oeffnen"), iconName: "map" });
   const instagramHref = resolveBusinessSocialUrl(profile?.instagramUrl || profile?.instagram || profile?.insta || "", "instagram");
   const tiktokHref = resolveBusinessSocialUrl(profile?.tiktokUrl || profile?.tiktok || profile?.tikTok || "", "tiktok");
   const phone = normalizeBusinessProfileText(profile?.phone || profile?.telephone || profile?.contactPhone || "");
@@ -1667,7 +1696,7 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
         <div class="absolute inset-0" style="background:rgba(15,23,42,0.24);"></div>
         <div class="absolute inset-x-0 bottom-0" style="height:4rem;background:linear-gradient(to top, #fff 0%, rgba(255,255,255,.82) 42%, rgba(255,255,255,0) 100%);"></div>
         <div class="absolute top-4 right-4 flex items-center gap-2 z-30">
-          ${renderBusinessQuickLink({ href: mapHref, label: tr("profile.openMap", "Karte oeffnen"), iconName: "map" })}
+          ${mapQuickLink}
           ${renderBusinessQuickLink({ href: tiktokHref, label: "TikTok", iconName: "music-2" })}
           ${renderBusinessQuickLink({ href: instagramHref, label: "Instagram", iconName: "instagram" })}
         </div>
