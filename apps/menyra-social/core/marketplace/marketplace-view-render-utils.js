@@ -40,14 +40,14 @@ const TRAVEL_BLUE = "#00cce5";
 const TRAVEL_SEARCH_TEAL = "#005f73";
 const SHOPPING_BRAND_INTRO_COLOR = "#4b766d";
 const SHOPPING_BRAND_INTRO_LINES = Object.freeze([
-  "Fashion",
-  "Beauty",
-  "Sneaker",
-  "Baby",
-  "Home",
-  "Grocery",
-  "Electronics",
-  "Local"
+  "FASHION",
+  "BEAUTY",
+  "SNEAKER",
+  "BABY",
+  "HOME",
+  "GROCERY",
+  "ELECTRONICS",
+  "LOCAL"
 ]);
 const RESTAURANT_COORD_CITY_MAX_DISTANCE_KM = 35;
 const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
@@ -1516,25 +1516,21 @@ function renderShoppingBrandIntroCard(deps = {}) {
     <style>
       .shopping-brand-intro-card .text-slider-wrapper {
         position: relative;
-        height: 2.16em;
+        height: 1.08em;
         width: 100%;
         overflow: hidden;
+        margin-bottom: 0.04rem;
       }
       .shopping-brand-intro-card .text-slide-item {
         position: absolute;
         inset: 0;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
         white-space: nowrap;
         opacity: 0;
         animation: shoppingBrandIntroTextFadeSlide 24s ease-in-out infinite;
         will-change: transform, opacity;
-      }
-      .shopping-brand-intro-card .text-slide-item span {
-        display: block;
-        line-height: 1.02;
       }
       @keyframes shoppingBrandIntroTextFadeSlide {
         0% { opacity: 0; transform: translateY(100%); }
@@ -1551,11 +1547,11 @@ function renderShoppingBrandIntroCard(deps = {}) {
         <div class="text-slider-wrapper">
           ${SHOPPING_BRAND_INTRO_LINES.map((line, index) => `
             <div class="text-slide-item" style="animation-delay:${index * 3}s;">
-              <span>${escapeHtml(line)}</span>
-              <span>${escapeHtml("Shop")}</span>
+              ${escapeHtml(line)}
             </div>
           `).join("")}
         </div>
+        <div style="font-weight:900;color:#ffffff;">SHOP</div>
       </div>
     </article>
   `;

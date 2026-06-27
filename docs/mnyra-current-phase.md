@@ -1376,6 +1376,17 @@ Last updated: 2026-06-27
   neu gebaut. Nicht geaendert wurden Shopping-Produktlogik, Product-Modal,
   Search-Handling, Shop-Editor, Cart, Checkout, Orders, QR, Routing, Firebase
   Rules und Functions.
+- Schritt 136 ist abgeschlossen: Die Shopping-Brand-Intro-Card animiert nur
+  noch die obere Kategorie-Zeile; `SHOP` bleibt als feste bold zweite Zeile.
+- Bewertung von Schritt 136: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 136:
+  Die obere Zeile rotiert jetzt in Grossbuchstaben zwischen `FASHION`,
+  `BEAUTY`, `SNEAKER`, `BABY`, `HOME`, `GROCERY`, `ELECTRONICS` und `LOCAL`.
+  `SHOP` steht darunter dauerhaft und bold. Der App-Build-Token wurde auf
+  `2026-06-27-shopping-brand-intro-card-04` aktualisiert und das Bundle wurde
+  neu gebaut. Nicht geaendert wurden Shopping-Produktlogik, Product-Modal,
+  Search-Handling, Shop-Editor, Cart, Checkout, Orders, QR, Routing, Firebase
+  Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1504,6 +1515,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step133-shopping-brand-intro-card.md](./mnyra-step133-shopping-brand-intro-card.md)
 - Referenz: [docs/mnyra-step134-shopping-brand-intro-card-sizing.md](./mnyra-step134-shopping-brand-intro-card-sizing.md)
 - Referenz: [docs/mnyra-step135-shopping-brand-intro-card-texts.md](./mnyra-step135-shopping-brand-intro-card-texts.md)
+- Referenz: [docs/mnyra-step136-shopping-brand-intro-card-fixed-shop.md](./mnyra-step136-shopping-brand-intro-card-fixed-shop.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1931,6 +1943,14 @@ Animation soll zweizeilig `Fashion / Shop`, `Beauty / Shop`, `Sneaker / Shop`,
 `Baby / Shop`, `Home / Shop`, `Grocery / Shop`, `Electronics / Shop` und
 `Local / Shop` zeigen. Eine Shopping-Card, eine Produktkachel und die
 Shopping-Suche kurz gegenpruefen.
+
+Zusaetzlich fuer Schritt 136 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-brand-intro-card-04` aktiv sein. Den Shopping-Tab oeffnen
+und pruefen, dass nur die obere Kategorie-Zeile dynamisch wechselt und in
+Grossbuchstaben erscheint. `SHOP` soll darunter dauerhaft stehen bleiben und
+bold wirken. Eine Shopping-Card, eine Produktkachel und die Shopping-Suche kurz
+gegenpruefen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
