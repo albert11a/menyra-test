@@ -822,12 +822,20 @@ export function createProfileBusinessMenuRuntimeCluster({
         fallbackId || getMenuRestaurantForProfile(profile)
       )).catch(() => null);
     }, delay));
+    const ensureDelays = [7200, 12800];
+    ensureDelays.forEach((delay) => {
+      timers.push(setTimeout(() => {
+        if (getVisiblePostsForCurrentProfile().length) return;
+        const nextProfile = state?.profileView?.profile || profile;
+        ensurePostsDataForProfile(nextProfile);
+      }, delay));
+    });
     const clearTimerSet = () => {
       const activeTimers = visiblePublicPostsRetryTimers.get(retryKey) || [];
       activeTimers.forEach((timerId) => clearTimeout(timerId));
       visiblePublicPostsRetryTimers.delete(retryKey);
     };
-    timers.push(setTimeout(clearTimerSet, delays[delays.length - 1] + 500));
+    timers.push(setTimeout(clearTimerSet, ensureDelays[ensureDelays.length - 1] + 500));
     visiblePublicPostsRetryTimers.set(retryKey, timers);
   };
 
