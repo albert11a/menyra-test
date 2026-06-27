@@ -209,6 +209,9 @@ export function bindAppShellEventsCore({
     const selection = resolveMarketplaceMapSelection(businessId);
     if (selection) state.selectedBusiness = selection;
     if (state.search && typeof state.search === "object") state.search.query = "";
+    if (isBusinessProfileView()) {
+      state.__nextRouteHistoryMode = "push";
+    }
     setState({
       activeTab: "map",
       drawerOpen: false,

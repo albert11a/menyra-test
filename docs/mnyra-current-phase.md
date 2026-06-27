@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-25
+Last updated: 2026-06-27
 
 # Mnyra Current Phase
 
@@ -1279,6 +1279,18 @@ Last updated: 2026-06-25
   und diese Doku.
   Nicht geaendert wurden sichtbares Design, Restaurant-Cards, Map-Rendering, QR,
   Cart, Orders, Firebase Rules und Functions.
+- Schritt 129 ist abgeschlossen: Browser-Zurueck von der Entdecker-Karte zur
+  vorherigen Business-Profil-URL wurde fuer Profil-Karte-Buttons gehaertet.
+- Bewertung von Schritt 129: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 129:
+  Wenn der Business-Profil-Karte-Button die interne Entdecker-Karte oeffnet,
+  wird der Route-Sync jetzt als History-`push` markiert. Dadurch bleibt die
+  Profil-URL als vorheriger Browser-History-Eintrag erhalten und Browser-
+  Zurueck kann das Profil wieder rekonstruieren. Geaendert wurden nur der
+  bestehende App-Events-Handler, der gebaute `entry/social-app.js`,
+  `index.html` fuer den Build-Token und diese Doku. Nicht geaendert wurden
+  sichtbares Design, Map-Rendering, Restaurant-Cards, QR, Cart, Orders,
+  Firebase Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1427,7 +1439,7 @@ Last updated: 2026-06-25
 
 ## Naechster Schritt
 
-Nach Schritt 128 sind die naechsten sinnvollen separaten Folgeschritte:
+Nach Schritt 129 sind die naechsten sinnvollen separaten Folgeschritte:
 
 - Separater Hotel-Zimmer-/Buchungsanfrage-Schritt fuer Zimmer, Preise,
   Verfuegbarkeit und Anfragefluss, falls fachlich freigegeben.
@@ -1758,7 +1770,15 @@ klicken. Es soll dieselbe interne Entdecker-Karte oeffnen wie beim Karte-Button
 der Restaurant-/Cafe-Card, mit dem passenden Business ausgewaehlt. TikTok- und
 Instagram-Quick-Links sowie Profil, Info, Menu, QR, Cart und Order-Flows kurz
 unveraendert gegenpruefen. Bei hartem Reload oder `?debug-build=1` muss der
-Build-Stand `2026-06-27-profile-map-button-01` aktiv sein.
+Build-Stand `2026-06-27-profile-map-button-01` oder ein neuerer Profil-Map-
+Build-Stand aktiv sein.
+
+Zusaetzlich fuer Schritt 129 manuell pruefen: Business-Profil oeffnen, den
+runden Karte-Button in der Profil-Card klicken und danach Browser-Zurueck
+klicken. Erwartung: Die interne Entdecker-Karte oeffnet zuerst das passende
+Business, danach fuehrt Browser-Zurueck wieder zum vorherigen Business-Profil.
+Bei hartem Reload oder `?debug-build=1` muss der Build-Stand
+`2026-06-27-profile-map-back-01` aktiv sein.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
