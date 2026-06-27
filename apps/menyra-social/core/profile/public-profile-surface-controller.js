@@ -181,10 +181,13 @@ function resolvePostsStatus({
   const list = Array.isArray(posts) ? posts : [];
   if (list.length) return "ready";
   const routePostsState = resolveRoutePayloadSectionState(routePayload, "posts");
+  const truthState = resolveProfileTruthState(profile?.truthState || "");
   if (routePostsState === "seeded") return "ready";
   if (routePostsState === "knownEmpty") return "empty";
-  if (routePostsState === "unknown" && profile?.postsLoaded !== true) return "loading";
-  const truthState = resolveProfileTruthState(profile?.truthState || "");
+  if (routePostsState === "unknown" && profile?.postsLoaded !== true) {
+    if (truthState === "error") return "error";
+    return "loading";
+  }
   if (profile?.postsLoaded === true) {
     if (truthState === "error") return "error";
     return "empty";

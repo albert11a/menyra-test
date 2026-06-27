@@ -387,7 +387,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (currentPosts.length > 0) return;
     refreshVisiblePublicProfile({
       postsLoaded: false,
-      truthState: "unknown"
+      truthState: "error"
     }, currentPosts);
   };
 

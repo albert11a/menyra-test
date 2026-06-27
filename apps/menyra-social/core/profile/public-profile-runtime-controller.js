@@ -55,6 +55,53 @@ export function createPublicProfileRuntimeController({
   const canonicalRestaurantIdByRouteId = new Map();
   const PUBLIC_BUSINESS_EMPTY_POSTS_TTL_MS = 15_000;
   const PUBLIC_BUSINESS_POSTS_INITIAL_PAGE_FALLBACK_LIMIT = 12;
+  const PUBLIC_PROFILE_ROUTE_RESOLVE_DEADLINE_MS = 6_500;
+  const PUBLIC_BUSINESS_POSTS_INITIAL_READ_DEADLINE_MS = 5_200;
+  const PUBLIC_BUSINESS_POSTS_FULL_READ_DEADLINE_MS = 7_000;
+
+  function resolvePublicProfileDeadlineMs(key = "", fallbackMs = 0) {
+    const direct = Number(fastLimits?.[key]);
+    if (Number.isFinite(direct) && direct > 0) return Math.max(1, Math.round(direct));
+    const fallback = Number(fallbackMs);
+    return Number.isFinite(fallback) && fallback > 0 ? Math.max(1, Math.round(fallback)) : 0;
+  }
+
+  function createPublicProfileLoadDeadlineError(scope = "public-profile.load", timeoutMs = 0) {
+    const safeScope = String(scope || "public-profile.load").trim() || "public-profile.load";
+    const err = new Error(`${safeScope} timed out after ${Math.max(1, Math.round(Number(timeoutMs) || 0))}ms`);
+    err.name = "MnyraLoadTimeoutError";
+    err.code = "deadline-exceeded";
+    err.scope = safeScope;
+    return err;
+  }
+
+  function runPublicProfileLoadWithDeadline(task, { timeoutMs = 0, scope = "public-profile.load" } = {}) {
+    const runTask = typeof task === "function" ? task : (() => task);
+    const safeTimeoutMs = Math.max(0, Math.round(Number(timeoutMs) || 0));
+    if (!safeTimeoutMs) return Promise.resolve().then(() => runTask());
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timerId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(createPublicProfileLoadDeadlineError(scope, safeTimeoutMs));
+      }, safeTimeoutMs);
+      Promise.resolve()
+        .then(() => runTask())
+        .then((value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timerId);
+          resolve(value);
+        })
+        .catch((err) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timerId);
+          reject(err);
+        });
+    });
+  }
 
   function resolvePublicBusinessPostsInitialPageLimit() {
     const limitCandidates = [
@@ -261,7 +308,7 @@ export function createPublicProfileRuntimeController({
     if (inFlightRequest) {
       return inFlightRequest;
     }
-    const request = (async () => {
+    const request = runPublicProfileLoadWithDeadline(async () => {
       const cachedRestaurant = restaurant || findRestaurantInStateByRouteId(routeId) || null;
       const routeSlug = normalizeLandingSlugKey(routeId || cachedRestaurant?.publicSlug || cachedRestaurant?.landingSlug || "");
       let cachedRouteRestaurantId = "";
@@ -357,7 +404,10 @@ export function createPublicProfileRuntimeController({
         return resolved;
       }
       return null;
-    })().finally(() => {
+    }, {
+      timeoutMs: resolvePublicProfileDeadlineMs("publicProfileRouteResolveMs", PUBLIC_PROFILE_ROUTE_RESOLVE_DEADLINE_MS),
+      scope: "public/profile-route"
+    }).finally(() => {
       restaurantDocRouteInFlight.delete(inFlightKey);
     });
     restaurantDocRouteInFlight.set(inFlightKey, request);
@@ -1840,7 +1890,7 @@ export function createPublicProfileRuntimeController({
     if (inFlight) {
       return inFlight;
     }
-    const request = (async () => {
+    const request = runPublicProfileLoadWithDeadline(async () => {
       let effectiveRestaurantId = routeRestaurantId;
       let shouldSkipProfileResolve = !!skipProfileResolve;
       if (cachedCanonicalRestaurantId) {
@@ -1929,7 +1979,13 @@ export function createPublicProfileRuntimeController({
         }
         throw err;
       }
-    })().finally(() => {
+    }, {
+      timeoutMs: resolvePublicProfileDeadlineMs(
+        shouldUseInitialPage ? "publicBusinessPostsInitialMs" : "publicBusinessPostsMs",
+        shouldUseInitialPage ? PUBLIC_BUSINESS_POSTS_INITIAL_READ_DEADLINE_MS : PUBLIC_BUSINESS_POSTS_FULL_READ_DEADLINE_MS
+      ),
+      scope: shouldUseInitialPage ? "public/business-posts-initial" : "public/business-posts"
+    }).finally(() => {
       if (publicBusinessPostsInFlight.get(requestKey) === request) {
         publicBusinessPostsInFlight.delete(requestKey);
       }
