@@ -1339,6 +1339,17 @@ Last updated: 2026-06-27
   neu gebaut. Nicht geaendert wurden Shop-Editor-Layout, Produktbilder,
   Produktdetail-Modal, Cart, Checkout, Orders, QR, Routing, Firebase Rules und
   Functions.
+- Schritt 133 ist abgeschlossen: Im Shopping-Tab wurde rechts am Anfang der
+  zweiten Spalte eine kompakte Brand-Intro-Card ergaenzt.
+- Bewertung von Schritt 133: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 133:
+  Die neue mintfarbene Card nutzt eine Gate-aehnliche dynamische obere Textzeile
+  mit `FIND YOUR`, `BUY YOUR` und `STYLE YOUR`; darunter bleibt `Brand` fest
+  sichtbar. Die Aenderung ist auf das Shopping-Grid begrenzt. Der App-Build-
+  Token wurde auf `2026-06-27-shopping-brand-intro-card-01` aktualisiert und
+  das Bundle wurde neu gebaut. Nicht geaendert wurden Shopping-Produktlogik,
+  Product-Modal, Search-Handling, Shop-Editor, Cart, Checkout, Orders, QR,
+  Routing, Firebase Rules und Functions.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1464,6 +1475,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step124-business-profile-info-measured-height.md](./mnyra-step124-business-profile-info-measured-height.md)
 - Referenz: [docs/mnyra-step131-shopping-card-image-picker.md](./mnyra-step131-shopping-card-image-picker.md)
 - Referenz: [docs/mnyra-step132-shopping-card-product-dedupe.md](./mnyra-step132-shopping-card-product-dedupe.md)
+- Referenz: [docs/mnyra-step133-shopping-brand-intro-card.md](./mnyra-step133-shopping-brand-intro-card.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -1864,6 +1876,15 @@ mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
 oeffnen und eine Shopping-Card mit gespeicherten Produkten pruefen. Erwartung:
 Jedes Produkt erscheint in derselben Card nur einmal. Danach eine Produktkachel
 antippen und pruefen, dass das Produkt-Modal weiterhin oeffnet.
+
+Zusaetzlich fuer Schritt 133 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-27-shopping-brand-intro-card-01` aktiv sein. Den Shopping-Tab oeffnen
+und rechts am Anfang der zweiten Spalte die neue mintfarbene Brand-Intro-Card
+pruefen. Die obere Zeile soll dynamisch `FIND YOUR`, `BUY YOUR` und
+`STYLE YOUR` zeigen; darunter soll `Brand` fest sichtbar bleiben. Eine
+Shopping-Card, eine Produktkachel und die Shopping-Suche kurz gegenpruefen,
+dass Shop-Oeffnung, Produkt-Modal und Filter weiter wie bisher funktionieren.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

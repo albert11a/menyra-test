@@ -38,6 +38,8 @@ const RESTAURANTS_GATE_COLOR = "#ff4f3f";
 const FEED_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 const TRAVEL_BLUE = "#00cce5";
 const TRAVEL_SEARCH_TEAL = "#005f73";
+const SHOPPING_BRAND_INTRO_COLOR = "#74e0b4";
+const SHOPPING_BRAND_INTRO_LINES = Object.freeze(["FIND YOUR", "BUY YOUR", "STYLE YOUR"]);
 const RESTAURANT_COORD_CITY_MAX_DISTANCE_KM = 35;
 const RESTAURANT_COORD_CITY_OPTIONS = Object.freeze([
   Object.freeze({ label: "Prishtina", lat: 42.6629, lng: 21.1655 }),
@@ -1499,6 +1501,58 @@ function renderShoppingLandingCard(record = {}, deps = {}) {
   `;
 }
 
+function renderShoppingBrandIntroCard(deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  return `
+    <style>
+      .shopping-brand-intro-card .text-slider-wrapper {
+        position: relative;
+        height: 1.12em;
+        width: 100%;
+        overflow: hidden;
+        margin-bottom: 0.18rem;
+      }
+      .shopping-brand-intro-card .text-slide-item {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        opacity: 0;
+        animation: shoppingBrandIntroTextFadeSlide 9s ease-in-out infinite;
+        will-change: transform, opacity;
+      }
+      .shopping-brand-intro-card .text-slide-item:nth-child(1) {
+        animation-delay: 0s;
+      }
+      .shopping-brand-intro-card .text-slide-item:nth-child(2) {
+        animation-delay: 3s;
+      }
+      .shopping-brand-intro-card .text-slide-item:nth-child(3) {
+        animation-delay: 6s;
+      }
+      @keyframes shoppingBrandIntroTextFadeSlide {
+        0% { opacity: 0; transform: translateY(100%); }
+        5%, 28% { opacity: 1; transform: translateY(0); }
+        33%, 100% { opacity: 0; transform: translateY(-100%); }
+      }
+    </style>
+    <article
+      class="shopping-brand-intro-card self-end flex items-center justify-center text-center shadow-sm overflow-hidden"
+      style="width:88%;min-height:8.75rem;border-radius:1.6rem;background:${SHOPPING_BRAND_INTRO_COLOR};color:#073b32;padding:1.05rem 0.9rem;"
+      aria-label="Shopping Brand"
+    >
+      <div class="w-full" style="font-weight:900;letter-spacing:0;line-height:1.03;font-size:1.16rem;">
+        <div class="text-slider-wrapper">
+          ${SHOPPING_BRAND_INTRO_LINES.map((line) => `<div class="text-slide-item">${escapeHtml(line)}</div>`).join("")}
+        </div>
+        <div style="font-size:1.18em;color:#ffffff;text-shadow:0 1px 0 rgba(7,59,50,0.14);">Brand</div>
+      </div>
+    </article>
+  `;
+}
+
 function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
   const icon = deps.icon;
   const items = filterMarketplaceBusinessesCore(state, section.key, deps)
@@ -1522,6 +1576,7 @@ function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
     if (!markup) return;
     (index % 2 === 0 ? left : right).push(markup);
   });
+  const hasRenderedShoppingCards = left.length + right.length > 0;
   return `
     <section data-shopping-view class="min-h-full bg-slate-50 text-slate-900 animate-in slide-in-from-right-10 duration-500">
       <header class="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-md px-4 pt-6 pb-4 h-16 flex items-center justify-between overflow-hidden">
@@ -1545,7 +1600,7 @@ function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
       <main class="flex-1 px-2 pt-3 pb-24">
         <div class="grid grid-cols-2 gap-2 items-start" data-shopping-card-grid>
           <div class="flex flex-col gap-6">${left.join("")}</div>
-          <div class="flex flex-col gap-6" style="padding-top:4rem;">${right.join("")}</div>
+          <div class="flex flex-col gap-6" style="padding-top:4rem;">${hasRenderedShoppingCards ? renderShoppingBrandIntroCard(deps) : ""}${right.join("")}</div>
         </div>
       </main>
     </section>
