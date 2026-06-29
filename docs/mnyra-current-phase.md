@@ -5,6 +5,39 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 145 ist abgeschlossen: Firebase-/Emulator-Testgrenze fuer riskante
+  Schreibflows inventarisiert.
+- Bewertung von Schritt 145: `analysiert, keine Production-Mutation`.
+- Wichtigster Effekt aus Schritt 145:
+  Es ist jetzt klar dokumentiert, dass echte Post-/Upload-/Order-/Rollen-
+  Schreibflows weiterhin nicht gegen Production getestet werden duerfen.
+  Firestore/Auth Emulator starten lokal technisch erfolgreich; ein echtes
+  Staging-Setup braucht aber noch Web-App-Konfiguration und Seed-Daten.
+- Geaendert in Schritt 145:
+  `STAGING_AND_TEST_DATA_SETUP.md`,
+  `docs/mnyra-current-phase.md`.
+- Bewusst nicht geaendert in Schritt 145:
+  keine `.firebaserc`-Alias-Aenderung auf Verdacht, keine Firebase-Projekt-
+  Erstellung, keine Web-App-Erstellung, keine Firestore-/Auth-/Storage-Daten,
+  keine Functions-Deploys, keine Production-Schreib- oder Mutationslaeufe.
+- Verifikation Schritt 145:
+  `java -version` zeigt Java 26, `firebase --version` zeigt 15.1.0,
+  `firebase projects:list --json` erfolgreich. Read-only sichtbar:
+  Production `menyra-c0e68`, Testkandidat `testmnyramatrix`.
+  `firebase apps:list --project testmnyramatrix --json` erfolgreich mit
+  leerer App-Liste. `firebase apps:list --project menyra-c0e68 --json`
+  erfolgreich mit Web-App `menyra-web`.
+  Emulator-Smoke:
+  `firebase emulators:exec --only 'firestore,auth' 'node -e "console.log(''emulator-smoke-ok'')"'`
+  bestanden.
+- Offener Blocker nach Schritt 145:
+  Staging/Emulator-Seeds fehlen weiter fuer belastbare E2E-Schreibtests:
+  Personas, Business/Restaurant, Menu, Posts, Upload-/Media-Mock, Orders und
+  Rollen-/Staff-/Waiter-Daten. Bundle-Budget-Blocker bleibt unveraendert.
+- Manuelle Testliste Schritt 145:
+  Vor echten Schreibtests zuerst Staging-Web-App/Config und Seed-Daten
+  vorbereiten oder Emulator-Seeds anlegen. Danach erst Post, Upload, Checkout,
+  Waiter/Owner/CEO-Flows ausfuehren.
 - Schritt 144 ist abgeschlossen: Statischer Lade-Text- und Public-Bundle-
   Split-Audit aktualisiert.
 - Bewertung von Schritt 144: `bestanden, nur Tooling-Metadaten geaendert`.

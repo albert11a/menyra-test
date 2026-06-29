@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: main
+Branch: systemfix2027
 Stand: 2026-06-29
 
 # Staging and Test Data Setup
@@ -8,6 +8,12 @@ Stand: 2026-06-29
 
 - `.firebaserc` zeigt nur `menyra-c0e68`.
 - `firebase.json` enthaelt jetzt eine Emulator-Sektion fuer Functions, Firestore, Auth und Emulator UI.
+- Java 26 und Firebase CLI 15.1.0 sind lokal vorhanden.
+- Firestore/Auth Emulator starten lokal per
+  `firebase emulators:exec --only 'firestore,auth' 'node -e "console.log(''emulator-smoke-ok'')"'`
+  erfolgreich.
+- Im verbundenen Firebase Account ist `testmnyramatrix` als moeglicher
+  Staging-Kandidat sichtbar, aber dort ist aktuell keine Web-App registriert.
 - Keine sicheren Staging-Credentials im Repo.
 - Keine Production-Daten wurden geschrieben, geloescht oder manipuliert.
 - Order-Callable `createRestaurantOrder` ist auf Production deployed. Firestore-Rules sind nach erfolgreichem Vercel-Deploy fuer `main` deployed. Es wurde nur CORS-Preflight getestet, kein produktiver Order-Schreibtest.
@@ -81,6 +87,8 @@ Der Social-Client verbindet Firebase Functions bei lokalen Hosts (`localhost`, `
 Empfohlen:
 
 - `.firebaserc` Alias `staging`.
+- Firebase Web-App fuer Staging/Testprojekt inklusive nicht-geheimer
+  Web-App-Konfiguration.
 - `firebase.json` Emulator-Sektion.
 - `.env.staging.example` ohne Secrets.
 - Runner Config `tests/mnyra-heart-runner/config/staging-guest-config.json`.
