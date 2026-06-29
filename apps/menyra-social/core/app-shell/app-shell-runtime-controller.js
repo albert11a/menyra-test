@@ -1,6 +1,6 @@
 import { resolveStartupRenderGate } from "../auth/startup-render-gate-utils.js";
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
-import { getLang, getSupportedLanguages, t } from "/shared/i18n/i18n.js";
+import { getLang, getSupportedLanguages, t } from "../../../../shared/i18n/i18n.js";
 
 export function createAppShellRuntimeController(deps = {}) {
   const {

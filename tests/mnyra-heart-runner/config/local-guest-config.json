@@ -3,7 +3,7 @@
     "guest": {
       "app": "social",
       "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/",
-      "guestRouteUrl": "http://127.0.0.1:4173/apps/menyra-social/?tab=menu&src=qr&r=10Z8UNFsx4ha5wnZIloy&table=1"
+      "guestRouteUrl": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=menu&src=qr&r=10Z8UNFsx4ha5wnZIloy&table=1"
     },
     "ceo": {
       "app": "social",
@@ -21,7 +21,7 @@
   "actions": {
     "guest": {
       "qrMenu": {
-        "url": "http://127.0.0.1:4173/apps/menyra-social/?tab=menu&src=qr&r=10Z8UNFsx4ha5wnZIloy&table=1",
+        "url": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=menu&src=qr&r=10Z8UNFsx4ha5wnZIloy&table=1",
         "menuVisibleSelector": "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
         "productOpenSelector": "[data-menu-open]",
         "productOpenSamples": 4,

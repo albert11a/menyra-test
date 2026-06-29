@@ -78,7 +78,14 @@ export function createPublicProfileRuntimeController({
   function runPublicProfileLoadWithDeadline(task, { timeoutMs = 0, scope = "public-profile.load" } = {}) {
     const runTask = typeof task === "function" ? task : (() => task);
     const safeTimeoutMs = Math.max(0, Math.round(Number(timeoutMs) || 0));
-    if (!safeTimeoutMs) return Promise.resolve().then(() => runTask());
+    const executeTask = () => {
+      try {
+        return Promise.resolve(runTask());
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    };
+    if (!safeTimeoutMs) return executeTask();
     return new Promise((resolve, reject) => {
       let settled = false;
       const timerId = setTimeout(() => {
@@ -86,8 +93,7 @@ export function createPublicProfileRuntimeController({
         settled = true;
         reject(createPublicProfileLoadDeadlineError(scope, safeTimeoutMs));
       }, safeTimeoutMs);
-      Promise.resolve()
-        .then(() => runTask())
+      executeTask()
         .then((value) => {
           if (settled) return;
           settled = true;

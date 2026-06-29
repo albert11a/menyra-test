@@ -1,0 +1,133 @@
+Status: CURRENT
+Branch: launchready2027
+Stand: 2026-06-29
+
+# Bugs Found
+
+## 1. BUG-001 - Order-Preise, Totals und Status sind clientseitig manipulierbar
+
+- Prioritaet: P0
+- Bereich: Orders / Firestore Security / QR Checkout
+- Was passt nicht? `restaurants/{restaurantId}/orders` erlaubt Create, wenn nur `restaurantId` und optional `buyerUid` passen. Preise, `total`, `items`, `status`, `itemCount`, Kontaktdaten und Timestamps werden nicht gegen serverseitige Menu-Daten validiert.
+- Warum passt es nicht? Ein Gast oder eingeloggter User kann einen manipulierten Order-Payload direkt an Firestore senden.
+- Reproduktion: statisch in `firestore.rules` Zeilen 445-450 und 656-660; Client-Payload in `apps/menyra-social/core/orders/orders-runtime-controller.js` Zeilen 521-540 ff.
+- Erwartet: Order-Erstellung ueber Callable/HTTPS Function oder Rules mit strikt validiertem Schema; Preise/Total nur serverseitig berechnet.
+- Tatsaechlich: Client schreibt `items[].price`, `total`, `status` direkt; Function `buildCanonicalOrderProjection()` spiegelt `source.total` und `source.items`.
+- Betroffene Dateien/Funktionen: `firestore.rules`, `submitShopCheckout()`, `buildCanonicalOrderProjection()`, `syncOrderMirrorsOnRestaurantOrderWrite`.
+- Was wurde gefixt? Noch nicht, weil ein sicherer Fix einen Order-Contract und Emulator/Staging-Tests braucht.
+- Was muss noch gemacht werden? Order-Create Function bauen, Rules direkte Guest/User-Order-Creates sperren, Menu-Items serverseitig lesen, Total serverseitig berechnen, Status-Transitions nur Staff/Waiter erlauben, Emulator-Tests ergaenzen.
+
+## 2. BUG-002 - Social/Follower-Counter koennen beliebig manipuliert werden
+
+- Prioritaet: P0
+- Bereich: Social / Firestore Security / Datenintegritaet
+- Was passt nicht? `socialCounterUpdateAllowed()` und `followerCounterUpdateAllowed()` pruefen nur betroffene Felder, nicht Werte, Ownership, Like-/Follow-Dokumente oder Increment-Richtung.
+- Warum passt es nicht? Jeder eingeloggte User kann Counter wie `likesCount`, `commentsCount`, `followersCount`, `followingCount` direkt auf beliebige Werte setzen, sofern die betroffenen Match-Regeln greifen.
+- Reproduktion: `firestore.rules` Zeilen 339-347 und Verwendungen bei User Posts, Restaurant Posts, Menu Social, Restaurants und SocialFeed.
+- Erwartet: Counter werden serverseitig aus Like/Comment/Follow-Dokumenten abgeleitet oder per validierten Cloud Functions gepflegt.
+- Tatsaechlich: Rules erlauben counter-only Updates fuer signierte Nutzer.
+- Betroffene Dateien/Funktionen: `firestore.rules`, Social Engagement Runtime, Chat Follow Runtime.
+- Was wurde gefixt? Noch nicht; Fix braucht Counter-Contract und Migration.
+- Was muss noch gemacht werden? Direkte Counter-Updates sperren, Aggregation per Function/transaction, Emulator-Tests fuer Fake Counter Writes.
+
+## 3. BUG-003 - Lokaler Guest-Runner nutzte falsche QR-URL
+
+- Prioritaet: P1
+- Bereich: Test Harness / QR / Public Menu
+- Was passt nicht? `tests/mnyra-heart-runner/config/local-guest-config.json` nutzte `/apps/menyra-social/?...`. Die App interpretierte `menyra-social` als Slug/Restaurant-Kontext und normalisierte auf `/menu?r=menyra-social...`.
+- Warum passt es nicht? Lokale QR-Tests testeten nicht den beabsichtigten Restaurant-Kontext.
+- Reproduktion: Guest-Pack Artifact `guest-pack-20260629052936`, final URL `http://127.0.0.1:4173/menu?r=menyra-social&src=qr&table=1`.
+- Erwartet: lokaler Runner oeffnet App-Einstieg und behalt `r=10Z8UNFsx4ha5wnZIloy`.
+- Tatsaechlich: falscher Restaurant-Kontext, 0 Produkte.
+- Betroffene Datei: `tests/mnyra-heart-runner/config/local-guest-config.json`.
+- Was wurde gefixt? Ja, URL auf `/apps/menyra-social/index.html?...` geaendert.
+- Was muss noch gemacht werden? Lokalen Harness spaeter mit echtem Rewrite-Server oder Vercel-Dev validieren.
+
+## 4. BUG-004 - Lokaler QR/Menu Guest-Pack erkennt nur 2/27 Produkte und Cart scheitert
+
+- Prioritaet: P1, P0-nahe fuer Launch falls in Staging reproduzierbar
+- Bereich: Public QR/Menu/Cart
+- Was passt nicht? Nach Harness-Fix ist das Menue sichtbar, aber der Runner erkennt nur 2 statt 27 erwarteter Produkte; Cart-Vorbereitung scheitert.
+- Warum passt es nicht? Moegliche Ursachen: Testrestaurant/Testdaten unvollstaendig, Selector passt nicht mehr, Menu-Daten laden nur partiell, lokale Static/Rewrites unterscheiden sich von Staging, oder Product/Card-Interaktion ist instabil.
+- Reproduktion: `npm run guest-pack` mit `config/local-guest-config.json` gegen lokalen `dist` Static Server. Artifact `tests/mnyra-heart-runner/artifacts/guest-pack-20260629053303`.
+- Erwartet: QR/Menu zeigt komplette Produktliste, Produktdetail laesst sich oeffnen, Cart ist vorbereitbar.
+- Tatsaechlich: Menu sichtbar, 2/27 Produkte, Cart failed.
+- Betroffene Dateien/Funktionen: vermutlich Public Menu Runtime, Menu Renderer, Guest Runner Selectors/Testdaten; genaue Ursache nicht ohne Staging isoliert.
+- Was wurde gefixt? Nur Harness-URL; Produkt-/Cart-Ursache nicht gefixt.
+- Was muss noch gemacht werden? Auf Staging/Emulator mit Seed-Restaurant reproduzieren, Selector und Menu-Datenquelle pruefen, Cart-Interaktion reparieren.
+
+## 5. BUG-005 - Node-Tests konnten Browser-absoluten i18n-Import nicht aufloesen
+
+- Prioritaet: P1
+- Bereich: Tests / Runtime Portability
+- Was passt nicht? `/shared/i18n/i18n.js` wurde im Node-Testprozess als absoluter Windows-Pfad gesucht.
+- Warum passt es nicht? Browser-absolute Imports sind im gebuendelten Browser ok, aber nicht direkt in Node-Tests.
+- Reproduktion: initial `node --test tests\\*.test.mjs`, 2 Modulauflosungsfehler.
+- Erwartet: gleiche Module sind im Browser und Node-Test importierbar.
+- Tatsaechlich: `ERR_MODULE_NOT_FOUND`.
+- Betroffene Dateien: `app-shell-runtime-controller.js`, `shell-dom-runtime-controller.js`.
+- Was wurde gefixt? Ja, relative Imports zu `../../../../shared/i18n/i18n.js`.
+- Was muss noch gemacht werden? Bei neuen Core-Modulen keine Browser-absolute Imports verwenden, wenn Node-Tests sie direkt laden.
+
+## 6. BUG-006 - Public Business Posts Dedupe-Test startete Read zu spaet
+
+- Prioritaet: P1
+- Bereich: Public Profile / Runtime Dedupe / Tests
+- Was passt nicht? Der initiale Public-Business-Posts-Read wurde durch den Deadline-Wrapper erst im Microtask gestartet; parallele sichtbare Reads waren im Test nicht sofort dedupliziert.
+- Warum passt es nicht? In-Flight- und Test-Semantik erwarten, dass die Aufgabe beim Aufruf registriert wird.
+- Reproduktion: initial `public business posts initial page dedupes concurrent visible reads` mit `getDocsCalls === 0`.
+- Erwartet: erster Read startet sofort, zweiter bekommt gleiche Promise.
+- Tatsaechlich: Read startete verzögert und lief in Timeout.
+- Betroffene Datei/Funktion: `public-profile-runtime-controller.js`, `runPublicProfileLoadWithDeadline()`.
+- Was wurde gefixt? Ja, Task startet synchron mit Promise-Wrapping.
+- Was muss noch gemacht werden? Keine weitere Aktion; Regression-Test ist gruen.
+
+## 7. BUG-007 - Social Hauptbundle ueberschreitet Budget
+
+- Prioritaet: P1
+- Bereich: Performance / Launch
+- Was passt nicht? `apps/menyra-social/bundled/entry/social-app.js` ueberschreitet raw und gzip Budget.
+- Warum passt es nicht? Public/QR und App-Start tragen weiterhin viel Social-App-Code; Analyse markiert public-profile/menu/QR Abhaengigkeiten als high-risk fuer blindes Splitting.
+- Reproduktion: `npm run check:social-bundle`.
+- Erwartet: raw <= 1,052,000 Bytes, gzip <= 285,000 Bytes.
+- Tatsaechlich: raw 1,120,205, gzip 303,761.
+- Betroffene Dateien/Funktionen: `social-app.js` static graph, public profile/menu bootstrap/runtime.
+- Was wurde gefixt? Nicht gefixt; Splitting ohne manuelle Public/QR-Regression waere riskant.
+- Was muss noch gemacht werden? Nach Staging-QR/Menu gruen gezielte Split-Planung um public-profile-runtime Abhaengigkeiten.
+
+## 8. BUG-008 - Keine getrennte Staging-/Emulator-Konfiguration sichtbar
+
+- Prioritaet: P1
+- Bereich: QA / Firebase / Launch Process
+- Was passt nicht? `.firebaserc` zeigt nur Default `menyra-c0e68`; `firebase.json` hat keine Emulator-Sektion.
+- Warum passt es nicht? Rollen-, Order-, Rules- und Upload-Tests koennen ohne Risiko nicht end-to-end ausgefuehrt werden.
+- Reproduktion: `.firebaserc`, `firebase.json`.
+- Erwartet: Staging-Projekt oder Emulator-Harness mit Seed-Daten fuer alle Rollen.
+- Tatsaechlich: nur Default-Projekt sichtbar, keine Emulator-Konfig.
+- Was wurde gefixt? Nicht gefixt.
+- Was muss noch gemacht werden? Staging/Emulator einrichten und Seed-Daten definieren.
+
+## 9. BUG-009 - SEO/Launch-Standarddateien fehlen oder sind unvollstaendig
+
+- Prioritaet: P1
+- Bereich: SEO / Launch
+- Was passt nicht? `robots.txt`, `sitemap.xml`, `favicon.ico` wurden nicht gefunden; OG/Twitter/canonical/meta description sind in den Haupt-HTML-Einstiegen nicht launchfertig sichtbar.
+- Warum passt es nicht? Public Restaurant/QR/Website-First Launch braucht kontrollierte Indexierung und Share Previews.
+- Reproduktion: `rg --files -g robots.txt -g sitemap.xml -g favicon.ico`.
+- Erwartet: Robots, Sitemap, Favicon, OG/Twitter/canonical/meta pro public route.
+- Tatsaechlich: Dateien fehlen im Repo-Root.
+- Was wurde gefixt? Nicht gefixt, weil SEO/Branding/Product Copy Freigabe braucht.
+- Was muss noch gemacht werden? Standarddateien und dynamic public share metadata planen/umsetzen.
+
+## 10. BUG-010 - Lokaler Static-Server simuliert Vercel-Rewrites nicht
+
+- Prioritaet: P2
+- Bereich: Test Harness / Routing
+- Was passt nicht? `/feed` ist im Python-Static-Server 404, obwohl Vercel `/feed` auf Social Index rewritet.
+- Warum passt es nicht? Einfacher Static-Server kann `vercel.json` Rewrite-Regeln nicht nachbilden.
+- Reproduktion: `Invoke-WebRequest http://127.0.0.1:4173/feed` nach `python -m http.server ... --directory dist`.
+- Erwartet: lokale E2E-Tests koennen alle Launch-Routen direkt aufrufen.
+- Tatsaechlich: nur direkte `/apps/menyra-social/index.html`-URLs sind belastbar.
+- Was wurde gefixt? Nicht gefixt.
+- Was muss noch gemacht werden? Lokalen Rewrite-Testserver oder `vercel dev`/dedizierten static fallback fuer QA nutzen.
+

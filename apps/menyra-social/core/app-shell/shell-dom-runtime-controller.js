@@ -1,5 +1,5 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
-import { t } from "/shared/i18n/i18n.js";
+import { t } from "../../../../shared/i18n/i18n.js";
 
 function getUnreadNotificationsCount(state = null) {
   if (!state) return 0;
