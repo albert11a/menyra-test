@@ -324,7 +324,6 @@ import { bindCrmStaffEventsCore } from "./core/app-events/app-events-crm-staff-b
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-messaging.js";
-const FIREBASE_FUNCTIONS_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-functions.js";
 const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "";
@@ -5169,15 +5168,43 @@ function isFollowingProfile(profile = {}) {
 let firebaseFunctionsModulePromise = null;
 let writeUserNotificationPromise = null;
 let createRestaurantOrderPromise = null;
+let firebaseFunctionsEmulatorConnected = false;
+
+function resolveLocalFunctionsEmulatorTarget() {
+  if (typeof window === "undefined") return null;
+  const host = String(window.location?.hostname || "").trim();
+  if (!host) return null;
+  const lowerHost = host.toLowerCase();
+  const isLocalHost = lowerHost === "localhost"
+    || lowerHost === "127.0.0.1"
+    || lowerHost === "::1"
+    || /^192\.168\./.test(lowerHost)
+    || /^10\./.test(lowerHost)
+    || /^172\.(1[6-9]|2\d|3[0-1])\./.test(lowerHost);
+  if (!isLocalHost) return null;
+  return {
+    host: lowerHost === "localhost" ? "127.0.0.1" : host,
+    port: 5001
+  };
+}
+
+function connectLocalFunctionsEmulatorIfNeeded(firebaseFunctions, functionsObj) {
+  if (firebaseFunctionsEmulatorConnected) return;
+  const target = resolveLocalFunctionsEmulatorTarget();
+  if (!target || typeof firebaseFunctions?.connectFunctionsEmulator !== "function") return;
+  firebaseFunctions.connectFunctionsEmulator(functionsObj, target.host, target.port);
+  firebaseFunctionsEmulatorConnected = true;
+}
 
 async function ensureWriteUserNotificationFn() {
   if (writeUserNotificationPromise) return writeUserNotificationPromise;
   writeUserNotificationPromise = (async () => {
     if (!firebaseFunctionsModulePromise) {
-      firebaseFunctionsModulePromise = import(FIREBASE_FUNCTIONS_MODULE_URL);
+      firebaseFunctionsModulePromise = import("/shared/vendor/firebase/11.0.0/firebase-functions.js");
     }
     const firebaseFunctions = await firebaseFunctionsModulePromise;
     const functionsObj = firebaseFunctions.getFunctions(app, "us-central1");
+    connectLocalFunctionsEmulatorIfNeeded(firebaseFunctions, functionsObj);
     const callable = firebaseFunctions.httpsCallable(functionsObj, "writeUserNotification");
     return async (input = {}) => {
       const result = await callable(input);
@@ -5200,10 +5227,11 @@ async function ensureCreateRestaurantOrderFn() {
   if (createRestaurantOrderPromise) return createRestaurantOrderPromise;
   createRestaurantOrderPromise = (async () => {
     if (!firebaseFunctionsModulePromise) {
-      firebaseFunctionsModulePromise = import(FIREBASE_FUNCTIONS_MODULE_URL);
+      firebaseFunctionsModulePromise = import("/shared/vendor/firebase/11.0.0/firebase-functions.js");
     }
     const firebaseFunctions = await firebaseFunctionsModulePromise;
     const functionsObj = firebaseFunctions.getFunctions(app, "us-central1");
+    connectLocalFunctionsEmulatorIfNeeded(firebaseFunctions, functionsObj);
     const callable = firebaseFunctions.httpsCallable(functionsObj, "createRestaurantOrder");
     return async (input = {}) => {
       const result = await callable(input);

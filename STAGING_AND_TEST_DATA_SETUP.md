@@ -7,7 +7,7 @@ Stand: 2026-06-29
 ## Aktueller Zustand
 
 - `.firebaserc` zeigt nur `menyra-c0e68`.
-- `firebase.json` enthaelt Functions und Firestore, aber keine Emulator-Sektion.
+- `firebase.json` enthaelt jetzt eine Emulator-Sektion fuer Functions, Firestore, Auth und Emulator UI.
 - Keine sicheren Staging-Credentials im Repo.
 - Keine Production-Daten wurden veraendert.
 - Order-Callable `createRestaurantOrder` ist im Code vorhanden, aber in diesem Schritt nicht gegen Staging/Emulator deployt oder live ausgefuehrt.
@@ -28,8 +28,17 @@ Echte End-to-End Launch-Readiness ist ohne Staging/Emulator nicht belastbar prue
 2. Lokaler Emulator:
    - Firestore Emulator
    - Auth Emulator
-- Functions Emulator fuer Order Callable
+   - Functions Emulator fuer Order Callable
    - optional Storage Emulator oder Media Mock
+
+Lokale Ports:
+
+- Functions: `0.0.0.0:5001`
+- Firestore: `0.0.0.0:8080`
+- Auth: `0.0.0.0:9099`
+- Emulator UI: `127.0.0.1:4000`
+
+Der Social-Client verbindet Firebase Functions bei lokalen Hosts (`localhost`, `127.0.0.1`, `192.168.*`, `10.*`, `172.16-31.*`) automatisch mit dem Functions Emulator auf demselben Host und Port `5001`.
 
 ## Seed Personas
 
@@ -77,13 +86,14 @@ Empfohlen:
 - Runner Config `tests/mnyra-heart-runner/config/staging-guest-config.json`.
 - Rules Test Script, z.B. `npm run test:rules`.
 - Staging Deploy Gate fuer `createRestaurantOrder` und `firestore.rules`.
+- Lokal: `firebase emulators:start --only functions,firestore,auth` plus Seed-Daten.
 
 ## Was in diesem Schritt real getestet wurde
 
 - Lokal mit Static Server: Guest QR/Menu read-only, keine Order-Mutation.
 - Mit Mocks/Unit: Runtime Controller Tests.
 - Mit Unit-Test: Order-Checkout-Intent, serverseitige Preisberechnung, versteckte Items, spoofed Buyer UID, Rule-Create-Sperre statisch.
-- Nicht getestet: echte Staging-Auth, echte Staging-Orders, echte Uploads, echte Waiter-Statusupdates.
+- Nicht getestet: echter lokaler Emulatorlauf mit Seed-Daten, echte Staging-Auth, echte Staging-Orders, echte Uploads, echte Waiter-Statusupdates.
 
 ## Naechster Order-Staging-Test
 

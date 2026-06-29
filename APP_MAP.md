@@ -166,7 +166,7 @@ Diese Karte basiert auf statischer Codeanalyse, `AGENTS.md`, `docs/mnyra-launch-
 
 ## Grosse Bundles/Dateien
 
-- Build `entry/social-app.js`: 1,120,655 Bytes raw / 303,831 Bytes gzip.
-- Build `vendor-firebase`: 441,950 Bytes raw / 132,600 Bytes gzip.
+- Build `entry/social-app.js`: 1,121,224 Bytes raw / 304,055 Bytes gzip.
+- Build `vendor-firebase`: 452,940 Bytes raw / 136,460 Bytes gzip.
 - Bundle budget ist aktuell fehlgeschlagen.
 - Alte grosse Testartefakte unter `tests/mnyra-heart-runner/artifacts` und `tmp/heart-run-*` wurden nicht veraendert.

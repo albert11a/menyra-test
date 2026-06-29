@@ -90,7 +90,7 @@ Stand: 2026-06-29
 - Warum passt es nicht? Public/QR und App-Start tragen weiterhin viel Social-App-Code; Analyse markiert public-profile/menu/QR Abhaengigkeiten als high-risk fuer blindes Splitting.
 - Reproduktion: `npm run check:social-bundle`.
 - Erwartet: raw <= 1,052,000 Bytes, gzip <= 285,000 Bytes.
-- Tatsaechlich nach aktuellem Build: raw 1,120,655, gzip 303,831.
+- Tatsaechlich nach aktuellem Build: raw 1,121,224, gzip 304,055.
 - Betroffene Dateien/Funktionen: `social-app.js` static graph, public profile/menu bootstrap/runtime.
 - Was wurde gefixt? Nicht gefixt; Splitting ohne manuelle Public/QR-Regression waere riskant.
 - Was muss noch gemacht werden? Nach Staging-QR/Menu gruen gezielte Split-Planung um public-profile-runtime Abhaengigkeiten.
@@ -130,3 +130,29 @@ Stand: 2026-06-29
 - Tatsaechlich: nur direkte `/apps/menyra-social/index.html`-URLs sind belastbar.
 - Was wurde gefixt? Nicht gefixt.
 - Was muss noch gemacht werden? Lokalen Rewrite-Testserver oder `vercel dev`/dedizierten static fallback fuer QA nutzen.
+
+## 11. BUG-011 - Public-Business-Open-Flow konnte im Fehlerpfad crashen
+
+- Prioritaet: P1
+- Bereich: Public Profile / QR Menu / Runtime Error Handling
+- Was passt nicht? Bei einem Fehler im Public-Business-Open-Flow referenzierte der Catch-Pfad `routeSnapshotRestaurantId`, obwohl die Variable nur innerhalb des `try`-Blocks deklariert war.
+- Warum passt es nicht? Ein transienter Public-Profile-/Posts-Timeout konnte dadurch zu `ReferenceError: routeSnapshotRestaurantId is not defined` eskalieren.
+- Reproduktion: lokaler QR/Menu-Flow mit `public/business-posts` Timeout; Console zeigte `profile-open-flow-utils-*.js ReferenceError`.
+- Erwartet: Fehlerpfad behaelt vorhandenen Profilzustand oder markiert Error, aber wirft keinen neuen ReferenceError.
+- Tatsaechlich: Promise-Catch war selbst kaputt.
+- Betroffene Datei/Funktion: `apps/menyra-social/core/profile/profile-open-flow-utils.js`, `openProfileViewFromBusiness()`.
+- Was wurde gefixt? Ja, `routeSnapshotRestaurantId` wird jetzt im aeusseren Scope initialisiert.
+- Was muss noch gemacht werden? Staging/Slow-Network-QR erneut pruefen; Timeouts selbst bleiben Performance-/Datenlade-Thema.
+
+## 12. BUG-012 - Lokaler Checkout rief Production-Functions an und lief in CORS
+
+- Prioritaet: P1, P0-nahe falls dadurch echte lokale Tests gegen Production versucht werden
+- Bereich: Orders / Local QA / Firebase Functions
+- Was passt nicht? Lokaler QR-Checkout von `http://192.168.1.168:5173` rief `https://us-central1-menyra-c0e68.cloudfunctions.net/createRestaurantOrder` direkt auf und wurde vom Browser im CORS-Preflight geblockt.
+- Warum passt es nicht? Lokale mutierende Tests duerfen nicht gegen Production laufen; fuer den neuen sicheren Order-Pfad braucht es Functions Emulator oder Staging Deploy.
+- Reproduktion: lokaler Checkout, Console `No Access-Control-Allow-Origin` und `POST ... createRestaurantOrder net::ERR_FAILED`.
+- Erwartet: Lokal nutzt Emulator/Testumgebung, nicht Production Cloud Functions.
+- Tatsaechlich: Lokaler Build versuchte Production-Function.
+- Betroffene Dateien/Funktionen: `apps/menyra-social/social-app.js`, `firebase.json`, `createRestaurantOrderViaCallable()`.
+- Was wurde gefixt? Ja, lokale Hosts verbinden Functions automatisch mit dem Functions Emulator auf Port `5001`; `firebase.json` enthaelt Emulator-Ports.
+- Was muss noch gemacht werden? Emulator starten und Seed-Daten anlegen oder Staging Deploy nutzen; ohne Emulator ist ein lokaler Order-Submit bewusst nicht erfolgreich.

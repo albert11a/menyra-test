@@ -19,8 +19,9 @@ Stand: 2026-06-29
 
 ## Tests jetzt gruen
 
-- `node --test tests\\*.test.mjs`: 89/89 bestanden.
+- `node --test tests\\*.test.mjs`: 90/90 bestanden.
 - `node --test tests\\orders-secure-checkout.test.mjs`: 5/5 bestanden.
+- `node --test tests\\profile-open-flow-utils.test.mjs tests\\orders-secure-checkout.test.mjs`: 8/8 bestanden.
 - `node -c functions\\order-security.js; node -c functions\\index.js`: bestanden.
 - `npm run build`: bestanden.
 - `npm run analyze:public-profile-split`: bestanden.

@@ -20,7 +20,7 @@ function createState(activeTab = "search") {
   };
 }
 
-function createController(state, showCalls = []) {
+function createController(state, showCalls = [], overrides = {}) {
   return createProfileOpenFlowControllerCore({
     state,
     isLocalBusinessProfile: () => false,
@@ -59,7 +59,8 @@ function createController(state, showCalls = []) {
     hasPendingFollowRequest: async () => false,
     fetchUserDocByUid: async () => null,
     resolveUserByHandle: async () => null,
-    loadUserPostsForUser: async () => []
+    loadUserPostsForUser: async () => [],
+    ...overrides
   });
 }
 
@@ -81,4 +82,28 @@ test("direct business profile route does not queue browser history push", async 
   await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: false });
 
   assert.equal(state.__nextRouteHistoryMode, "");
+});
+
+test("business profile open fallback does not throw when route snapshot id is unavailable", async () => {
+  const state = createState("profile");
+  state.profileView = {
+    profile: {
+      restaurantId: "moka",
+      canonicalRestaurantId: "moka",
+      name: "Moka Coffee",
+      role: "business",
+      posts: []
+    },
+    posts: []
+  };
+  const controller = createController(state, [], {
+    fetchBusinessProfileDoc: async () => {
+      throw new Error("simulated-profile-read-failure");
+    }
+  });
+
+  await assert.doesNotReject(() => (
+    controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: false })
+  ));
+  assert.equal(state.profileView.profile.restaurantId, "moka");
 });

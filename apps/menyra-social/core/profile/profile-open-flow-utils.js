@@ -476,6 +476,7 @@ export function createProfileOpenFlowControllerCore({
     let targetRestaurantLookupId = "";
     let targetMenuRestaurantId = "";
     let targetCanonicalRestaurantId = "";
+    let routeSnapshotRestaurantId = "";
     try {
       const businessTarget = normalizeBusinessProfileTarget(input);
       const safeName = String(businessTarget.name || "").trim();
@@ -615,7 +616,7 @@ export function createProfileOpenFlowControllerCore({
           || String(routeIdentitySeed?.avatar || "").trim()
         ) ? "seeded" : "unknown"
       );
-      const routeSnapshotRestaurantId = String(
+      routeSnapshotRestaurantId = String(
         routeSnapshotSeed?.restaurantId
         || routeBootstrapSeed?.restaurantId
         || ""

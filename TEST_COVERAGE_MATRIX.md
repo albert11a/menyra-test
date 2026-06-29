@@ -8,8 +8,9 @@ Legende: `bestanden` = ausgefuehrt und gruen. `fehlgeschlagen` = ausgefuehrt und
 
 | Route/Bereich | Rolle/Persona | Aktion | Cold Load | Refresh | Normal Load | Account-Wechsel | Mobile | Slow Network | Erwartet | Tatsaechlich | Status | Risiko | Bug-ID |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Node Runtime Tests | alle | `node --test tests/*.test.mjs` | n/a | n/a | ja | n/a | n/a | n/a | 89/89 gruen | 89/89 gruen nach Order-Security-Fix | bestanden | niedrig | BUG-001, BUG-005, BUG-006 |
+| Node Runtime Tests | alle | `node --test tests/*.test.mjs` | n/a | n/a | ja | n/a | n/a | n/a | 90/90 gruen | 90/90 gruen nach Checkout-Runtime-Fix | bestanden | niedrig | BUG-001, BUG-005, BUG-006, BUG-011, BUG-012 |
 | Order Security Unit | Guest/User | sicherer Checkout-Contract | n/a | n/a | ja | n/a | n/a | n/a | Client sendet keine Preise/Totals/Status, Server rechnet aus Menu | 5/5 Regressionstests gruen | bestanden | mittel bis Staging | BUG-001 |
+| Public Business Open Fallback | Guest | Profil-Load-Fehler abfangen | ja | ja | ja | n/a | n/a | n/a | kein `routeSnapshotRestaurantId` Crash | Regressionstest gruen | bestanden | niedrig | BUG-011 |
 | Build | alle | `npm run build` | n/a | n/a | ja | n/a | n/a | n/a | Production-Build erfolgreich | erfolgreich mit Chunk-Warnung | bestanden | mittel | BUG-007 |
 | Bundle Budget | alle | `npm run check:social-bundle` | n/a | n/a | ja | n/a | n/a | n/a | Budget eingehalten | raw/gzip ueber Budget | fehlgeschlagen | P1 | BUG-007 |
 | Public split analysis | public | `npm run analyze:public-profile-split` | n/a | n/a | ja | n/a | n/a | n/a | Analyse ok | ok, aber weitere Splits blockiert bis manuelle Tests gruen | bestanden | mittel | BUG-007 |

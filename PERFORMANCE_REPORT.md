@@ -16,8 +16,8 @@ Stand: 2026-06-29
 | Asset | Raw | Gzip | Bewertung |
 |---|---:|---:|---|
 | `entry/social-public-entry.js` | 1.24 kB | 0.66 kB | gut |
-| `entry/social-app.js` | 1,120.66 kB | 303.83 kB | P1, ueber Budget |
-| `vendor-firebase` | 441.95 kB | 132.60 kB | hoch |
+| `entry/social-app.js` | 1,121.22 kB | 304.06 kB | P1, ueber Budget |
+| `vendor-firebase` | 452.94 kB | 136.46 kB | hoch; enthaelt jetzt Firebase Functions fuer Callable Order/Notifications |
 | `profile-menu-focus-render-controller` | 145.73 kB | 34.19 kB | bereits dynamic |
 | `crm-domain-runtime-cluster` | 85.96 kB | 24.22 kB | bereits dynamic |
 | `marketplace-view-render-utils` | 89.94 kB | 20.97 kB | relevant |
@@ -26,8 +26,8 @@ Stand: 2026-06-29
 
 Fehlgeschlagen:
 
-- Raw Budget: 1,052,000 Bytes, Ist 1,120,655.
-- Gzip Budget: 285,000 Bytes, Ist 303,831.
+- Raw Budget: 1,052,000 Bytes, Ist 1,121,224.
+- Gzip Budget: 285,000 Bytes, Ist 304,055.
 
 ## Public/Profile Split Analyse
 

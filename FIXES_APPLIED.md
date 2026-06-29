@@ -51,6 +51,25 @@ Stand: 2026-06-29
   - `npm run build` gruen.
 - Restrisiko: echter QR-Checkout, Order-Mirror und Waiter-Status muessen noch gegen Staging/Emulator mit deployter Function und Rules validiert werden.
 
+## Fix 5: Lokaler Checkout-Crash nach Order-Security-Fix
+
+- Dateien:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/profile/profile-open-flow-utils.js`
+  - `firebase.json`
+  - `tests/profile-open-flow-utils.test.mjs`
+- Problem 1: Der lokale/bundled Checkout lud Firebase Functions ueber einen Variablen-Dynamic-Import aus `/shared/vendor/...`; dadurch lief Functions in einem anderen Firebase-App-Komponentenkontext und `getFunctions(app)` warf `Service functions is not available`.
+- Aenderung 1: Functions wird jetzt per statisch analysierbarem Dynamic Import geladen, sodass Vite es in den bestehenden `vendor-firebase`-Chunk bundelt.
+- Problem 2: Im Public-Business-Open-Flow konnte der Catch-Pfad `routeSnapshotRestaurantId` referenzieren, obwohl die Variable nur im `try`-Block deklariert war.
+- Aenderung 2: `routeSnapshotRestaurantId` wird im aeusseren Funktionsscope initialisiert und im `try` nur gesetzt.
+- Problem 3: Lokaler Checkout von `localhost`/LAN-IP fiel gegen Production-Functions in CORS, statt lokal sicher ueber Emulator/Staging zu laufen.
+- Aenderung 3: Lokale Origins verbinden Firebase Functions automatisch mit dem Functions Emulator auf demselben Host, Port `5001`; `firebase.json` enthaelt jetzt Emulator-Ports fuer Functions, Firestore, Auth und UI.
+- Verifikation:
+  - `node --test tests\\profile-open-flow-utils.test.mjs tests\\orders-secure-checkout.test.mjs` gruen.
+  - `node --test tests\\*.test.mjs` gruen: 90/90.
+  - `npm run build` gruen.
+- Restrisiko: Lokal funktioniert ein echter Order-Submit nur mit laufendem Functions/Firestore Emulator und passenden Seed-Daten. Ohne Emulator kommt ein lokaler Verbindungsfehler; das ist sicherer als ein Production-CORS-Versuch.
+
 ## Nicht gefixt in diesem Schritt
 
 - Staging-/Emulator-E2E fuer Order Security.

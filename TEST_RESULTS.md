@@ -25,6 +25,8 @@ Stand: 2026-06-29
 | `node --test tests\\orders-secure-checkout.test.mjs` nach Order-Security-Fix | 5 pass / 0 fail | bestanden |
 | `node -c functions\\order-security.js; node -c functions\\index.js` | ok | bestanden |
 | `node --test tests\\*.test.mjs` nach Order-Security-Fix | 89 pass / 0 fail | bestanden |
+| `node --test tests\\profile-open-flow-utils.test.mjs tests\\orders-secure-checkout.test.mjs` nach Checkout-Runtime-Fix | 8 pass / 0 fail | bestanden |
+| `node --test tests\\*.test.mjs` nach Checkout-Runtime-Fix | 90 pass / 0 fail | bestanden |
 | `npm run build` | erfolgreich | bestanden |
 | `npm run check:social-bundle` | Exit 1 | fehlgeschlagen |
 | `npm run analyze:public-profile-split` | status ok | bestanden |
@@ -46,16 +48,16 @@ Stand: 2026-06-29
 - Vite Build: erfolgreich.
 - Static Output nach `dist`: erzeugt.
 - Wichtige Build-Groessen:
-  - `apps/menyra-social/bundled/entry/social-app.js`: 1,120.66 kB raw / 303.83 kB gzip.
-  - `vendor-firebase`: 441.95 kB raw / 132.60 kB gzip.
+  - `apps/menyra-social/bundled/entry/social-app.js`: 1,121.22 kB raw / 304.06 kB gzip.
+  - `vendor-firebase`: 452.94 kB raw / 136.46 kB gzip.
 - Vite warnte vor Chunks ueber 500 kB.
 
 ## Bundle Budget
 
 `npm run check:social-bundle`:
 
-- `socialEntry.rawBytes` nach Order-Security-Build: 1,120,655, Budget 1,052,000.
-- `socialEntry.gzipBytes`: 303,831, Budget 285,000.
+- `socialEntry.rawBytes` nach lokalem Emulator-Gate: 1,121,224, Budget 1,052,000.
+- `socialEntry.gzipBytes`: 304,055, Budget 285,000.
 - `publicEntry.gzipBytes`: 656.
 - Status: fehlgeschlagen.
 
