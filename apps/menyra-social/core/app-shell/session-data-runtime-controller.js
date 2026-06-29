@@ -1998,15 +1998,15 @@ export function createSessionDataRuntimeController({
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: inFlightItems,
-          loading: false,
-          error: inFlightUnknown ? "Menu laden fehlgeschlagen." : "",
+          loading: inFlightUnknown,
+          error: "",
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
           routeSeed: false,
           truthState: inFlightUnknown
-            ? "error"
+            ? "unknown"
             : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty")))
         };
         requestRender();

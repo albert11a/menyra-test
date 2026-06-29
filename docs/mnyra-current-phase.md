@@ -5,6 +5,44 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 147 ist abgeschlossen: Firebase-/Datenfluss-Audit fuer Leads,
+  Restaurants, PublicRoutes, Menu, Posts, Stories und BusinessAccounts plus
+  kleiner Public-Menu-In-flight-Error-State-Fix.
+- Bewertung von Schritt 147: `bestanden, read-only Production-Audit, keine
+  Production-Mutation`.
+- Wichtigster Effekt aus Schritt 147:
+  Firebase wirkt nicht als genereller Performance-Engpass. Casarita hat
+  konsistente Public-Menu-Daten (`public/menu` seeded, 39 Items; `menuItems`
+  39 Items). Das beobachtete kurze `Menu konnte nicht geladen werden`, obwohl
+  spaeter Daten erscheinen, passte zu einem Loader-State-Race: ein laufendes
+  `unknown`-/Prefetch-Ergebnis wurde als sichtbarer Fehler uebernommen. Dieser
+  kleine Fehlerzustand wurde korrigiert und getestet.
+- Geaendert in Schritt 147:
+  `FIREBASE_DATA_FLOW_AUDIT.md`,
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`,
+  `tests/session-data-menu-focus-no-hang.test.mjs`,
+  `docs/mnyra-current-phase.md`.
+- Bewusst nicht geaendert in Schritt 147:
+  keine UI-/Design-Aenderung, kein Routing-Umbau, keine Firestore-Regeln,
+  keine Functions, keine Datenmigration, keine Production-Firebase-Schreib-,
+  Loesch- oder Mutationslaeufe, keine Smoke-/Playwright-Laeufe.
+- Verifikation Schritt 147:
+  Read-only Production-Audit via bestehende Scripts:
+  `audit-mnyra-data-contract-readonly.cjs`,
+  `backfill-mnyra-data-contract-dryrun.cjs`,
+  `audit-mnyra-live-readonly.cjs --slug casarita`.
+  Targeted Unit-Test:
+  `node --test tests\session-data-menu-focus-no-hang.test.mjs` bestanden
+  (`7/7`).
+- Offene Folgearbeit nach Schritt 147:
+  Datenmigrationen nur nach Backup/Staging: Public-Menu-/Offers-Truth-
+  Metadaten, Owner-/User-Relationen, ein Public-vs-Legacy-Menu-Mismatch,
+  User-Status-Migration und ein malformed User-Dokument.
+- Manuelle Testliste Schritt 147:
+  `/casarita` und `/casarita/menu` hart laden, kurz auf falsche
+  `Menu konnte nicht geladen werden`-Anzeige achten, zwischen Profil und Menu
+  wechseln, Beitraege-Tab oeffnen, daneben Feed/Restaurants vergleichen,
+  keine QR-/Order-/Checkout-Schreibflows ausfuehren.
 - Schritt 146 ist abgeschlossen: Social-Haupteinstieg fuer Public Profile/Menu
   weiter gesplittet und Bundle-Budget wieder gruen gemacht.
 - Bewertung von Schritt 146: `bestanden, browser-verifiziert`.

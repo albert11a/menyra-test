@@ -110,6 +110,28 @@ test("public menu load leaves loading state when Firebase menu items do not retu
   assert.equal(state.menu.truthState, "unknown");
 });
 
+test("visible public menu does not turn an in-flight unknown prefetch into an error", async () => {
+  const state = createVisibleMenuState();
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: never
+  });
+
+  const prefetch = withMutedConsoleError(() => (
+    controller.loadMenuForRestaurant("restaurant-a", { source: "public", prefetchOnly: true })
+  ));
+  const result = await withMutedConsoleError(() => (
+    controller.loadMenuForRestaurant("restaurant-a", { source: "public" })
+  ));
+  await prefetch;
+
+  assert.equal(result.truthState, "unknown");
+  assert.equal(state.menu.restaurantId, "restaurant-a");
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "unknown");
+});
+
 test("menu editor collection load leaves loading state when Firebase products do not return", async () => {
   const state = createVisibleMenuState();
   state.profileView = null;
