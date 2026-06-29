@@ -1,10 +1,142 @@
 Status: CURRENT
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 # Mnyra Current Phase
 
 ## Stand
 
+- Schritt 150 ist abgeschlossen: Phase 2 der Ladeweg-Vereinfachung fuehrt
+  einen zentralen Canonical Public Business Context ein und haengt Profile-
+  Shell, Public-Menu-Entscheidung und Profil-Beitraege schrittweise daran.
+- Bewertung von Schritt 150: `Tests/Build/Browser bestanden, Bundle-Budget
+  minimal rot, keine Production-Mutation, kein Deploy`.
+- Start-Commit Phase 2:
+  `05970041 Harden public menu canonical loading`.
+- Phase-2-Commits:
+  `4e72afe5 Add canonical public business context core`,
+  `868646a9 Wire canonical context into public profile loaders`,
+  `577f9835 Keep canonical context out of social entry`.
+- Architektur vorher:
+  Slug, Alias, PublicRoute, RoutePayload, Web-Direct-Entry, Cache,
+  requestedId und canonicalId wurden an mehreren Stellen separat gewichtet.
+  Profilkopf, Menu und Beitraege konnten dadurch je nach Timing aus
+  unterschiedlichen Zwischenwahrheiten starten. Empty-/unknown-Zustaende
+  konnten sichtbare Shell- oder Menu-Zustaende frueh beeinflussen.
+- Architektur nach Schritt 150:
+  `createCanonicalPublicBusinessContextCore` normalisiert die Einstiegshinweise
+  in eine interne Context-Wahrheit mit `canonicalRestaurantId`,
+  `canonicalSlug`, `inputSlug`, `inputId`, `routeSource`, `tableNumber`,
+  `isQr`, `accessSource`, `profileStatus`, `menuStatus`, `postsStatus` und
+  last-stable-Daten. Public-Profile setzt diesen Context in
+  `state.publicBusinessContext`. Profile-Shell-Merges behalten stabile
+  canonical Header-Daten fuer denselben canonical Context, bis vollstaendigere
+  Daten da sind. Profile/Menu/Posts-Loader lesen diesen Context zuerst und
+  fallen nur noch auf alte Hinweise zur ID-Aufloesung zurueck.
+- Canonical-Context-Regel ab Schritt 150:
+  Slug, Alias, PublicRoute, QR-Link, Route-ID, Web-Direct-Entry und Cache sind
+  Hinweise. Wenn ein canonical Restaurant-Kontext feststeht, laden Profile-
+  Shell, Guest-Menu und Profil-Beitraege ueber diese Wahrheit. Guest-Menu
+  bleibt `restaurants/{restaurantId}/public/menu`; `menuItems` bleibt
+  Legacy/Editor/Migration und gewinnt nicht als Public-Gast-Wahrheit.
+- Entmachtete Ladewege:
+  Profil-Beitraege laden bei sichtbarem canonical Context nicht mehr auf den
+  Route-/Alias-Fallback zurueck, wenn der canonical Read leer ist. Menu-
+  Ziel-IDs werden ueber den Context bzw. `state.publicBusinessContext`
+  gesammelt, bevor alte Slug-/Route-/Cache-Hinweise greifen. Partial/empty
+  Profil-Updates fuer dieselbe canonical ID ueberschreiben nicht mehr Name,
+  Logo/Cover, Bio/Info und weitere Shell-Felder aus der letzten stabilen
+  canonical Shell.
+- Cold Start / Hard Refresh nach Schritt 150:
+  Cold Start und Hard Refresh laufen weiter durch die bestehenden PublicRoute-
+  und Web-Direct-Einstiege, bauen danach aber denselben Context auf. Cache und
+  RoutePayload bleiben Vorschau/Hinweis. Canonical Ergebnisse gewinnen. Leere
+  `unknown`-/partial-Zwischenzustaende duerfen stabile Header-, Menu- oder
+  Posts-Daten nicht als finale Wahrheit ersetzen.
+- Geaendert in Schritt 150:
+  `apps/menyra-social/core/profile/canonical-public-business-context-utils.js`,
+  `apps/menyra-social/core/profile/public-profile-runtime-controller.js`,
+  `apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`,
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`,
+  `tests/canonical-public-business-context-utils.test.mjs`,
+  `tests/public-profile-runtime-controller.test.mjs`,
+  `tests/profile-business-menu-runtime-cluster.test.mjs`,
+  gebaute Dateien unter `apps/menyra-social/bundled/`.
+- Neue/erweiterte Tests Schritt 150:
+  Slug-only Context bleibt `resolving` und macht den Slug nicht zur canonical
+  ID; PublicRoute/Alias promoted canonical ID; QR bewahrt Table-Kontext;
+  Business/User-Kontext kann eine canonical Restaurant-ID liefern; Profile,
+  Menu und Posts-Status bleiben unabhaengig; stable Shell merge bewahrt
+  Header-Daten bei partial canonical Updates; canonical vollstaendige Daten
+  gewinnen; Profil-Beitraege verwenden canonical RoutePayload statt Alias-
+  Fallback.
+- Verifikation Schritt 150:
+  `node --test tests/*.test.mjs` bestanden (`117/117`),
+  `npm run build` bestanden,
+  `npm run check:social-bundle` nicht bestanden wegen minimalem Budget-
+  Ueberlauf: `social-app.js` raw `1048930` von `1052000`, gzip `285122` von
+  `285000` (`+122` gzip). Es wurde bewusst keine riskante Mikro-Optimierung
+  an der Canonical-Logik gemacht. Eine sichere Code-Splitting-Korrektur
+  verschob den neuen Context-Helper in einen Lazy-Chunk; das Restbudget ist
+  Performance-Follow-up.
+- Browserpruefung Schritt 150 lokal auf `http://localhost:5174`, ohne
+  Schreibflows, Checkout, Order, QR-Schreibaktionen, Migration oder Deploy:
+  `/casarita`, `/casarita/menu`, `/casa-rita/menu`,
+  `/casarita/menu?src=qr&table=7`, `/moka-coffee`, `/aktashbar/menu`,
+  `/tanushaj-resort/menu`, `/hotel-vista-mare`, `/bro-pizza`,
+  `/bro-pizza/menu`, `/moa-risto-bar`, `/moa-risto-bar/menu`,
+  `/terrassiere`, `/terrassiere/menu`.
+  Ergebnis: sichtbarer Inhalt, kein falscher `Profil wird geladen`-Fallback,
+  kein falscher `Menu konnte nicht geladen werden`-Text, keine dauerhaften
+  Loading-Zustaende, kein horizontaler Overflow. Profil/Menu/Beitraege-
+  Wechsel funktionierten auf den Routen mit Menu-Tab. QR behielt
+  `tableNumber=7`, `accessSource=qr`, `rawAccessSource=qr`, `isQr=true`.
+  `/casa-rita/menu` canonicalisierte sichtbar auf `/casarita/menu`.
+- Browser-Datenformen Schritt 150:
+  Seeded Menu: `/casarita/menu`.
+  Menu ohne Truth-Metadaten: `/aktashbar/menu`.
+  Offers-/Details-ohne-Menu: `/tanushaj-resort/menu`,
+  `/hotel-vista-mare`.
+  Social-/Beitraege-Profilprojektionen sichtbar geprueft:
+  `/casarita`, `/moka-coffee`, `/bro-pizza`, `/moa-risto-bar`,
+  `/terrassiere`.
+  Zusaetzliche echte PublicRoutes: Bro Pizza, Moa Risto Bar, Terrassiere.
+- Browser-Hinweise Schritt 150:
+  Ein einmaliger Console-Fehler trat beim ersten Oeffnen von
+  `/aktashbar/menu` auf:
+  `Failed to load resource: net::ERR_CONNECTION_CLOSED` fuer
+  `socialBootstrapFeed`. Der Fehler wiederholte sich nach Refresh nicht und
+  fuehrte zu keinem sichtbaren App-Error. Die Startup-Runtime-Diagnose zeigt
+  bei mehreren Nicht-Casarita-Slugs weiterhin den Slug als
+  `pendingProfileRestaurantId` (`moka-coffee`, `aktashbar`, `bro-pizza`,
+  `moa-risto-bar`, `terrassiere`), obwohl sichtbare Profil-/Menu-Daten
+  stabil laden. Das ist Phase-3-Arbeit: StartupRouteRuntime/PublicRoute-
+  Bootstrap selbst muss noch frueher die canonical Restaurant-ID exponieren.
+- Bewusst nicht geaendert in Schritt 150:
+  keine UI-/Design-Aenderung, keine Datenmigration, keine PublicRoute- oder
+  Slug-Migration, keine Firestore-Regeln, keine Functions, keine
+  Production-Firebase-Schreib-, Loesch- oder Mutationslaeufe, kein Deploy,
+  keine Checkout-/Order-/QR-Schreibflows. Alte Resolver wurden nicht geloescht,
+  sondern hinter dem neuen Context weiter als Hinweise genutzt.
+- Rollback Schritt 150:
+  `git revert 577f9835`,
+  `git revert 868646a9`,
+  `git revert 4e72afe5`.
+  Wenn der Doku-Commit separat zurueckgenommen werden soll, den finalen
+  Schritt-150-Doku-Commit ebenfalls per `git revert <commit>` rueckgaengig
+  machen.
+- Offene Folgearbeit Phase 3:
+  StartupRouteRuntime/PublicRoute-Bootstrap muss canonical IDs fuer alle Slugs
+  frueher und eindeutig exponieren; Business/User/Owner-Verknuepfungen sollen
+  denselben Context statt eigener requestedId-Wege nutzen; Stories koennen an
+  denselben Context angeschlossen werden; Bundle-Performance-Follow-up fuer
+  `social-app.js` gzip `+122`; Datenbereinigung weiterhin nur nach Backup/
+  Staging fuer Public-Menu-/Offers-Truth-Metadaten, Owner-/User-Relationen,
+  Legacy-Menu-Mismatch und alte `users/*/posts`.
+- Manuelle Testliste Schritt 150:
+  Die oben genannten Routen hart laden, danach Profil/Menu/Beitraege wechseln
+  und erneut hard refreshen. Console, horizontalen Overflow, falsche
+  `Profil wird geladen`-/`Menu konnte nicht geladen werden`-Texte und QR-
+  Table-Kontext pruefen. Keine Schreibflows ausfuehren.
 - Schritt 149 ist abgeschlossen: Phase 1 der Ladeweg-Vereinfachung macht fuer
   sichtbare Public-Menu-Loads die bekannte canonical `restaurantId` staerker
   als Slug-/Alias-/Route-/Cache-Hinweise.
