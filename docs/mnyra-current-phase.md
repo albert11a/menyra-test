@@ -5,6 +5,152 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 151 ist abgeschlossen: Phase 3 der Ladeweg-Vereinfachung zieht die
+  canonical Restaurant-ID frueher in StartupRouteRuntime/PublicRoute-/QR-
+  Bootstrap, ohne UI-/Design-Aenderung.
+- Bewertung von Schritt 151: `Tests/Build/Browser bestanden, Bundle-Budget
+  minimal rot, keine Production-Mutation, kein Deploy`.
+- Start-Commit Phase 3:
+  `930d0a000d3fb5175243c8e43188070a2d1d4a16 Document canonical context phase 2`.
+- Phase-3-Code-Commit:
+  `b1ef797dea2e46a3a3a5a13463ac044415d21820 Expose canonical public routes during startup`.
+- Architektur vorher:
+  PublicRoute/Profile-Loader konnten nach dem ersten Route-Parse noch den
+  Slug oder Alias als `pendingProfileRestaurantId` sehen, bis die spaetere
+  PublicRoute-Aufloesung ankam. Phase 2 stellte sicher, dass canonical ID
+  gewinnt, sobald sie da ist; Phase 3 verkuerzt jetzt den Weg bis zu diesem
+  Punkt.
+- Architektur nach Schritt 151:
+  StartupRouteRuntime liest bereits synchron aus
+  `__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__`, wenn ein Bootstrap-/Preload-Cache
+  vorhanden ist. PublicRoute-Preloads promoten neu gefundene Slug-/Alias-
+  Aufloesungen ueber
+  `promoteStartupRouteRuntimeContextWithPublicRouteResolution` in den
+  Startup-Context. Bei QR-Links gewinnt ein direktes
+  `r=<restaurantId>` als schneller canonical ID Hinweis, waehrend `table`,
+  `tableNumber`, `isQr` und `accessSource=qr` erhalten bleiben. Die schoene
+  URL bleibt ein Slug; intern wird nach PublicRoute-Aufloesung auf
+  `restaurants/{canonicalRestaurantId}` gearbeitet.
+- PublicRoute-Regel ab Schritt 151:
+  `publicRoutes/{slug}` ist Slug/Alias -> canonical `restaurantId` Resolver.
+  RoutePayload bleibt Vorschau/Hinweis und keine Datenwahrheit. Sobald eine
+  bekannte PublicRoute zur aktuellen Route passt, setzt der Startup-Context
+  `publicBusiness.isCanonicalResolved=true`, `routeId=<restaurantId>` und
+  `pendingProfileRestaurantId=<restaurantId>`. Unpassende Preload-Ergebnisse
+  werden ignoriert, damit kein anderer Slug den aktuellen Start ueberschreibt.
+- QR-Regel ab Schritt 151:
+  `/slug/menu?src=qr&r=<restaurantId>&table=7` nutzt `r` sofort als direkte
+  ID, behaelt aber den Slug als Route-/Canonicalisierungs-Hinweis. Ohne `r`
+  faellt QR sauber auf Slug/PublicRoute zurueck. Alias wie
+  `/casa-rita/menu` bleibt Aufloesungshinweis; canonical Slug/ID gewinnen,
+  sobald sie bekannt sind.
+- Geaendert in Schritt 151:
+  `apps/menyra-social/core/router/startup-route-runtime-context.js`,
+  `apps/menyra-social/core/auth/initial-route-state.js`,
+  `apps/menyra-social/core/router/public-business-route-utils.js`,
+  `apps/menyra-social/core/router/public-route-cache-boot-hook.js`,
+  `apps/menyra-social/core/router/public-route-cache-early-preload.js`,
+  `apps/menyra-social/core/router/public-route-cache-preload.js`,
+  `apps/menyra-social/social-app.js`,
+  `tests/startup-route-runtime-context.test.mjs`,
+  `tests/initial-route-state-public-route-cache.test.mjs`,
+  gebaute Dateien unter `apps/menyra-social/bundled/`.
+- Neue/erweiterte Tests Schritt 151:
+  Slug Startup nutzt cached PublicRoute canonical ID; Alias Startup loest auf
+  canonical Restaurant-ID; QR mit `r` gewinnt gegen Slug-Hinweis und behaelt
+  Table-/QR-Kontext; QR ohne `r` faellt auf Slug/PublicRoute zurueck; spaete
+  PublicRoute-Promotion aktualisiert den Startup-Context; unpassende
+  PublicRoute-Promotion wird ignoriert; fehlende PublicRoute laesst den Slug
+  nur als resolving input stehen. Bestehende Tests sichern weiter ab, dass
+  Guest-Public-Menu nicht `menuItems` als Wahrheit nutzt und Profile/Menu/
+  Posts denselben canonical Context erhalten.
+- Verifikation Schritt 151:
+  `node --test tests/*.test.mjs` bestanden (`125/125`),
+  `npm run build` bestanden,
+  `npm run check:social-bundle` nicht bestanden wegen minimalem Budget-
+  Ueberlauf: `social-app.js` raw `1050494` von `1052000`, gzip `285577` von
+  `285000` (`+577` gzip). Die neue Startup-/Canonical-Logik wurde nicht fuer
+  eine riskante Mikro-Optimierung zurueckgebaut; Bundle-Reduktion bleibt
+  Performance-Follow-up.
+- Browserpruefung Schritt 151 lokal auf `http://localhost:5174`, ohne
+  Schreibflows, Checkout, Order, QR-Schreibaktionen, Migration oder Deploy:
+  `/casarita`, `/casarita/menu`, `/casa-rita/menu`,
+  `/casarita/menu?src=qr&table=7`,
+  `/casarita/menu?src=qr&r=Lzm6RpNu3ErSDtGCHxpi&table=7`,
+  `/moka-coffee`, `/aktashbar/menu`, `/tanushaj-resort/menu`,
+  `/hotel-vista-mare`, `/bro-pizza`, `/bro-pizza/menu`,
+  `/moa-risto-bar`, `/moa-risto-bar/menu`, `/terrassiere`,
+  `/terrassiere/menu`.
+  Ergebnis: kein falscher `Profil wird geladen`-Fallback, kein falscher
+  `Menu konnte nicht geladen werden`-Text, keine Console Errors, kein
+  horizontaler Overflow. Profilkopf, Cover/Titelbild, Logo/Avatar, Name,
+  Buttons und Info-Bereich blieben stabil. QR behielt `table=7`,
+  `accessSource=qr`, `isQr=true`.
+- Browser-Messformat Schritt 151:
+  Zeiten sind ms bis `canonical restaurantId / Profilkopf / erstes Menu-Item /
+  erster Beitrag / Loader weg`. `-` bedeutet fachlich nicht vorhanden oder auf
+  dieser Route nicht sichtbar.
+
+  | Route | Cold Start | Hard Refresh | Normale Navigation |
+  | --- | ---: | ---: | --- |
+  | `/casarita` | `1.5 / 622 / - / 1234 / 338` | `0.2 / 143 / - / 420 / 36` | Menu `221`, Posts `84` |
+  | `/casarita/menu` | `1.9 / 657 / 1078 / - / 351` | `0.2 / 227 / 514 / - / 123` | Menu `97`, Posts `195` |
+  | `/casa-rita/menu` | `1.4 / 624 / 1161 / - / 343` | `0.2 / 188 / 486 / - / 75` | Menu `90`, Posts `197`; Alias -> `/casarita/menu` |
+  | `/casarita/menu?src=qr&table=7` | `1.3 / 631 / 1080 / - / 342` | `0.4 / 222 / 611 / - / 114` | Menu `92`, Posts `180`; QR-Kontext erhalten |
+  | `/casarita/menu?src=qr&r=Lzm6RpNu3ErSDtGCHxpi&table=7` | `1.1 / 662 / 1150 / - / 358` | `0.3 / 186 / 505 / - / 59` | Menu `79`, Posts `190`; direkte QR-ID erhalten |
+  | `/moka-coffee` | `409.7 / 647 / - / 1346 / 351` | `195.4 / 159 / - / 525 / 42` | Menu `138`, Posts `3`, zurueck Menu `4` |
+  | `/aktashbar/menu` | `443.4 / 635 / 1213 / - / 350` | `229.4 / 144 / 631 / - / 39` | Menu `114`, Posts `4`, zurueck Menu `109` |
+  | `/tanushaj-resort/menu` | `425.7 / 644 / - / - / 345` | `232.9 / 273 / - / - / 57` | Kein Menu-Item; Posts/Profil `4`, kein Loader-Haenger |
+  | `/hotel-vista-mare` | `415.6 / 638 / - / 1369 / 351` | `229.9 / 150 / - / 600 / 40` | Kein Menu-Item; Posts `3`, kein Loader-Haenger |
+  | `/bro-pizza` | `441.1 / 627 / - / 1371 / 345` | `237.5 / 143 / - / 495 / 33` | Menu `111`, Posts `4`, zurueck Menu `3` |
+  | `/bro-pizza/menu` | `420.9 / 635 / 1163 / - / 351` | `161.2 / 158 / 450 / - / 53` | Menu `62`, Posts `194` |
+  | `/moa-risto-bar` | `376.5 / 635 / - / 1273 / 348` | `215.8 / 309 / - / 536 / 95` | Menu `191`, Posts `56` |
+  | `/moa-risto-bar/menu` | `436.9 / 618 / 1125 / - / 346` | `233.8 / 206 / 590 / - / 96` | Menu `66`, Posts `172` |
+  | `/terrassiere` | `487.3 / 707 / - / 1449 / 359` | `183.5 / 149 / - / 513 / 36` | Menu `206`, Posts `71` |
+  | `/terrassiere/menu` | `507.6 / 629 / 1240 / - / 340` | `213.9 / 176 / 543 / - / 70` | Menu `61`, Posts `179` |
+
+- Messauswertung Schritt 151:
+  Bei Casarita/QR/Launch-known Links ist die canonical ID praktisch sofort da
+  (`~0.2-1.9ms`). Bei anderen Slugs kommt sie nach dem ersten PublicRoute-
+  Read typischerweise nach `~376-508ms` cold und `~161-238ms` hard refresh.
+  Der fruehere Phase-2-Fall, in dem `pendingProfileRestaurantId` bei
+  Nicht-Casarita dauerhaft als Slug stehen blieb, wurde nicht mehr als finaler
+  Zustand beobachtet; liest man absichtlich vor der Promotion, ist der Slug
+  weiter nur resolving input. Profilkopf erscheint meist vor Menu/Posts, weil
+  ID-Aufloesung und Firebase-Reads parallel anlaufen. Sichtbare Loader waren
+  kurz und verschwanden, sobald Header/Menu/Post-Daten verfuegbar waren.
+- Einordnung der Restlatenz Schritt 151:
+  Wenn `Menu wird geladen` oder Beitraege noch sichtbar sind, liegt die
+  Hauptzeit nach der ID-Aufloesung bei Firebase Read und Bild-/DOM-Aufbau,
+  nicht bei einem dauerhaft falschen Slug/Alias-Context. `tanushaj-resort`
+  und `hotel-vista-mare` zeigen fachlich Details/Offers bzw. Profil-/Post-
+  Daten und kein erstes Menu-Item; das ist fehlende/andere Datenform, kein
+  falscher Public-Menu-Fehler. Es wurde kein Fall beobachtet, in dem die UI
+  unnoetig auf einen anderen Bereich wartete, nachdem die canonical ID bekannt
+  war.
+- Bewusst nicht geaendert in Schritt 151:
+  keine UI-/Design-Aenderung, keine PublicRoute-/Slug-Migration, keine
+  Datenmigration, keine Firestore-Regeln, keine Functions, keine Production-
+  Firebase-Schreib-, Loesch- oder Mutationslaeufe, kein Deploy, keine
+  Checkout-/Order-/QR-Schreibflows, keine Spezialloesung fuer Casarita, keine
+  Umstellung von `restaurants/{restaurantId}/public/menu` auf `menuItems`.
+- Rollback Schritt 151:
+  `git revert b1ef797d`.
+  Wenn der Doku-Commit separat zurueckgenommen werden soll, den finalen
+  Schritt-151-Doku-Commit ebenfalls per `git revert <commit>` rueckgaengig
+  machen.
+- Offene Folgearbeit Phase 4:
+  Stories an denselben canonical PublicBusinessContext anschliessen; Owner-/
+  Business-/User-Verknuepfungen weiter auf den zentralen Context reduzieren;
+  sichere Bundle-Reduktion fuer `social-app.js` gzip `+577`; Datenbereinigung
+  weiterhin nur nach Backup/Staging fuer Public-Menu-/Offers-Truth-Metadaten,
+  Owner-/User-Relationen, Legacy-Menu-Mismatch und alte `users/*/posts`.
+- Manuelle Testliste Schritt 151:
+  Die oben genannten Routen hart laden, danach normal Profil/Menu/Beitraege
+  wechseln und zurueckgehen. Console, horizontalen Overflow, falsche
+  `Profil wird geladen`-/`Menu konnte nicht geladen werden`-Texte,
+  dauerhaftes `Menu wird geladen`/`Beitraege laden`, fruehe canonical
+  `restaurantId` und QR-Table-Kontext pruefen. Keine Schreibflows ausfuehren.
 - Schritt 150 ist abgeschlossen: Phase 2 der Ladeweg-Vereinfachung fuehrt
   einen zentralen Canonical Public Business Context ein und haengt Profile-
   Shell, Public-Menu-Entscheidung und Profil-Beitraege schrittweise daran.
