@@ -5,6 +5,45 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 148 ist abgeschlossen: Firebase-/Datenfluss-Audit von der bisherigen
+  stichproben-/Einzelfall-lastigen Auswertung auf einen kompletten Read-only-
+  Inventarlauf erweitert.
+- Bewertung von Schritt 148: `bestanden, kompletter Read-only Production-
+  Inventar-Check, keine Production-Mutation`.
+- Wichtigster Effekt aus Schritt 148:
+  Es wurde ein reproduzierbares Complete-Audit-Script angelegt und gegen
+  Production nur lesend ausgefuehrt. Der Lauf hat alle relevanten Datenformen
+  vollstaendig inventarisiert: 135 Leads, 141 Restaurants, 139 PublicRoutes,
+  126 Users, 58 SocialFeed-Dokumente, 98 Public-Menu-Dokumente, 391 Legacy-
+  MenuItems, 58 Restaurant-SocialPosts, 37 Stories und 13 Staff-Accounts.
+  Der neue primaere Report liegt lokal unter
+  `C:\mnyra-secrets\mnyra-systemfix2027-complete-data-flow-audit-20260629.json`
+  und meldet `warnings=0`.
+- Geaendert in Schritt 148:
+  `FIREBASE_DATA_FLOW_AUDIT.md`,
+  `functions/scripts/audit-mnyra-complete-data-flow-readonly.cjs`,
+  `docs/mnyra-current-phase.md`.
+- Bewusst nicht geaendert in Schritt 148:
+  keine UI-/Design-Aenderung, kein Produkt-Refactor, kein Routing-Umbau, keine
+  Firestore-Regeln, keine Functions, keine Datenmigration, keine Production-
+  Firebase-Schreib-, Loesch- oder Mutationslaeufe, keine Smoke-/Playwright-
+  Laeufe.
+- Verifikation Schritt 148:
+  `node functions\scripts\audit-mnyra-complete-data-flow-readonly.cjs --out C:\mnyra-secrets\mnyra-systemfix2027-complete-data-flow-audit-20260629.json`
+  mit Production-Credentials nur lesend ausgefuehrt. Ergebnis:
+  `leads=135`, `restaurants=141`, `publicRoutes=139`, `users=126`,
+  `warnings=0`.
+- Offene Folgearbeit nach Schritt 148:
+  Datenmigrationen weiterhin nur nach Backup/Staging: alter Lead-Link
+  `convertedRestaurantId`, Public-Menu-/Offers-Truth-Metadaten, ein
+  Public-vs-Legacy-Menu-Mismatch, Owner-/User-Relationen, User-Status-
+  Migration, malformed User-Dokument und alte `users/*/posts` ohne
+  Restaurant-Link.
+- Manuelle Testliste Schritt 148:
+  Mehrere Public-Slugs unterschiedlicher Datenformen hart laden:
+  Menu mit `seeded`, Menu ohne Truth-Metadaten, Offers ohne Menu. Dann Profil,
+  `/menu`, Beitraege und Feed vergleichen; keine QR-/Order-/Checkout-
+  Schreibflows ausfuehren.
 - Schritt 147 ist abgeschlossen: Firebase-/Datenfluss-Audit fuer Leads,
   Restaurants, PublicRoutes, Menu, Posts, Stories und BusinessAccounts plus
   kleiner Public-Menu-In-flight-Error-State-Fix.
