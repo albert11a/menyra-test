@@ -6,6 +6,7 @@ const SOCIAL_ENTRY_SOURCE = "apps/menyra-social/social-app.js";
 const SOCIAL_ENTRY_BUNDLE = "apps/menyra-social/bundled/entry/social-app.js";
 const PUBLIC_ENTRY_BUNDLE = "apps/menyra-social/bundled/entry/social-public-entry.js";
 const MANIFEST = "apps/menyra-social/bundled/manifest.json";
+const EXPECTED_BRANCH = "systemfix2027";
 
 const TARGET_MODULES = [
   {
@@ -226,7 +227,7 @@ const staticCandidateBytes = targetModules
 
 const result = {
   status: "ok",
-  branchExpected: "refactorapp",
+  branchExpected: EXPECTED_BRANCH,
   entry: {
     source: SOCIAL_ENTRY_SOURCE,
     bundle: {

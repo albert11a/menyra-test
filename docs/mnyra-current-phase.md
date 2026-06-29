@@ -5,6 +5,36 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 144 ist abgeschlossen: Statischer Lade-Text- und Public-Bundle-
+  Split-Audit aktualisiert.
+- Bewertung von Schritt 144: `bestanden, nur Tooling-Metadaten geaendert`.
+- Wichtigster Effekt aus Schritt 144:
+  Sichtbare Lade-Texte wurden statisch auf weitere Daten-Fallback-Risiken
+  geprueft. Es wurde kein zweiter klarer Fall wie der Profil-Bio-Fallback aus
+  Schritt 141 gefunden; die verbleibenden Treffer haengen an echten
+  `loading`-Flags. Zusaetzlich wurde die Public-Profile-Split-Analyse erneut
+  ausgefuehrt und der veraltete Analyse-Metadatenwert `branchExpected` von
+  `refactorapp` auf `systemfix2027` korrigiert.
+- Geaendert in Schritt 144:
+  `scripts/analyze-mnyra-public-profile-split.mjs`,
+  `docs/mnyra-current-phase.md`.
+- Bewusst nicht geaendert in Schritt 144:
+  keine App-Logik, keine UI-/Design-Aenderung, keine Routing-Aenderung, keine
+  Firebase-/Functions-/Rules-Aenderung, keine Bundle-Budget-Erhoehung.
+- Verifikation Schritt 144:
+  `npm run analyze:public-profile-split` bestanden; Ausgabe meldet jetzt
+  `branchExpected: "systemfix2027"`. Die Analyse bestaetigt weiter:
+  `social-app.js` raw `1121916`, gzip `304298`; `social-public-entry.js`
+  raw `1243`, gzip `656`; mehrere Public-Profile-Module bleiben
+  `social-entry-static-graph` und sind wegen Public Profile/Menu/QR/Cart/Order
+  weiterhin keine Blind-Split-Kandidaten.
+- Offener Blocker nach Schritt 144:
+  unveraendert der Bundle-Budget-Blocker:
+  `social-app.js` raw `1121916` > Budget `1052000`, gzip `304298` > Budget
+  `285000`.
+- Manuelle Testliste Schritt 144:
+  keine zusaetzliche manuelle UI-Pruefung noetig, weil nur Analyse-Tooling und
+  Dokumentation geaendert wurden.
 - Schritt 143 ist abgeschlossen: Desktop-/Responsive-Gegencheck der kritischen
   Public-Guest-Flächen auf `systemfix2027`.
 - Bewertung von Schritt 143: `bestanden, kein Code-Fix noetig`.
