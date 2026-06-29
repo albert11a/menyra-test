@@ -22,6 +22,9 @@ Stand: 2026-06-29
 | `npm ls --depth=0` | ok, `vite@7.3.2` | bestanden |
 | `node --test tests\\*.test.mjs` vor Fix | 77 pass / 3 fail | fehlgeschlagen |
 | `node --test tests\\*.test.mjs` nach Fix | 84 pass / 0 fail | bestanden |
+| `node --test tests\\orders-secure-checkout.test.mjs` nach Order-Security-Fix | 5 pass / 0 fail | bestanden |
+| `node -c functions\\order-security.js; node -c functions\\index.js` | ok | bestanden |
+| `node --test tests\\*.test.mjs` nach Order-Security-Fix | 89 pass / 0 fail | bestanden |
 | `npm run build` | erfolgreich | bestanden |
 | `npm run check:social-bundle` | Exit 1 | fehlgeschlagen |
 | `npm run analyze:public-profile-split` | status ok | bestanden |
@@ -43,7 +46,7 @@ Stand: 2026-06-29
 - Vite Build: erfolgreich.
 - Static Output nach `dist`: erzeugt.
 - Wichtige Build-Groessen:
-  - `apps/menyra-social/bundled/entry/social-app.js`: 1,120.21 kB raw / 303.76 kB gzip.
+  - `apps/menyra-social/bundled/entry/social-app.js`: 1,120.66 kB raw / 303.83 kB gzip.
   - `vendor-firebase`: 441.95 kB raw / 132.60 kB gzip.
 - Vite warnte vor Chunks ueber 500 kB.
 
@@ -51,10 +54,19 @@ Stand: 2026-06-29
 
 `npm run check:social-bundle`:
 
-- `socialEntry.rawBytes`: 1,120,205, Budget 1,052,000.
-- `socialEntry.gzipBytes`: 303,761, Budget 285,000.
+- `socialEntry.rawBytes` nach Order-Security-Build: 1,120,655, Budget 1,052,000.
+- `socialEntry.gzipBytes`: 303,831, Budget 285,000.
 - `publicEntry.gzipBytes`: 656.
 - Status: fehlgeschlagen.
+
+## Order-Security Regression
+
+- Client-Checkout sendet nur noch Order Intent: `restaurantId`, Tisch/Kontakt, `itemId`, Menge, Optionen, Kommentar und Guest-Session.
+- Client-Checkout sendet keine `price`, `name`, `imageUrl`, `total`, `status`, `buyerUid` oder `guestLookupToken` mehr.
+- Server-Helper berechnet `total` aus Menu-Daten und ignoriert manipulierte Client-Preise/Totals.
+- Server-Helper lehnt versteckte/nicht verfuegbare Menu-Items ab.
+- Server-Helper lehnt spoofed `buyerUid` ab.
+- Firestore Rules enthalten fuer `restaurants/{restaurantId}/orders` jetzt `allow create: if false`.
 
 ## Lokaler Guest/QR-Runner
 
@@ -83,4 +95,3 @@ Runner:
 - Keine Login-Rollenlaeufe fuer User A/B/Business/Staff/Waiter/Owner/CEO mangels Staging-Credentials.
 - Keine Firestore Rules Emulator-Tests; Emulator-Konfig fehlt.
 - Keine Upload-Tests mit echten Dateien/Credentials.
-

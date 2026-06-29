@@ -12,6 +12,12 @@ const {
   logFunctionWarn,
   logFunctionError
 } = require("./logging");
+const {
+  OrderValidationError,
+  normalizeCreateOrderInput,
+  buildSecureRestaurantOrderPayload,
+  coerceMenuItemsFromOrderSource
+} = require("./order-security");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -3511,6 +3517,124 @@ exports.sendWebPushOnNotificationCreate = functions
         status: "failed"
       });
       throw error;
+    }
+  });
+
+function createOrderLookupToken(prefix = "order") {
+  const safePrefix = asText(prefix, "order").toLowerCase().replace(/[^a-z0-9_-]/g, "") || "order";
+  return `${safePrefix}_${crypto.randomBytes(18).toString("hex")}`;
+}
+
+async function loadOrderMenuItemsForRestaurant(restaurantId, requestedItems = []) {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return [];
+  const restaurantRef = db.collection("restaurants").doc(safeRestaurantId);
+  const publicMenuRef = restaurantRef.collection("public").doc("menu");
+  const requestedIds = Array.from(new Set(
+    (Array.isArray(requestedItems) ? requestedItems : [])
+      .map((item) => asText(item?.itemId || item?.id))
+      .filter(Boolean)
+  )).slice(0, 100);
+
+  const [publicMenuSnap, ...menuItemSnaps] = await Promise.all([
+    publicMenuRef.get().catch(() => null),
+    ...requestedIds.map((itemId) => restaurantRef.collection("menuItems").doc(itemId).get().catch(() => null))
+  ]);
+  const items = [];
+  if (publicMenuSnap?.exists) {
+    items.push(...coerceMenuItemsFromOrderSource(publicMenuSnap.data() || {}));
+  }
+  menuItemSnaps.forEach((snap) => {
+    if (!snap?.exists) return;
+    items.push(...coerceMenuItemsFromOrderSource(snap.data() || {}, snap.id));
+  });
+  return items;
+}
+
+exports.createRestaurantOrder = functions
+  .region("us-central1")
+  .https.onCall(async (data, context) => {
+    const flow = "orders.create.callable";
+    const authUid = asText(context?.auth?.uid);
+    let input = null;
+    let logContext = buildCallableLogContext(context, {
+      endpoint: "createRestaurantOrder",
+      actorUid: authUid
+    });
+
+    try {
+      input = normalizeCreateOrderInput(data, { authUid });
+      logContext = buildCallableLogContext(context, {
+        endpoint: "createRestaurantOrder",
+        actorUid: authUid,
+        restaurantId: input.restaurantId,
+        itemCount: input.items.length
+      });
+
+      const restaurantRef = db.collection("restaurants").doc(input.restaurantId);
+      const orderRef = restaurantRef.collection("orders").doc();
+      const actorRef = authUid ? db.collection("users").doc(authUid) : null;
+      const [restaurantSnap, actorSnap, menuItems] = await Promise.all([
+        restaurantRef.get(),
+        actorRef ? actorRef.get().catch(() => null) : Promise.resolve(null),
+        loadOrderMenuItemsForRestaurant(input.restaurantId, input.items)
+      ]);
+
+      if (!restaurantSnap.exists) {
+        logFunctionWarn(flow, {
+          ...logContext,
+          status: "failed_precondition",
+          reason: "restaurant_missing"
+        });
+        throw new functions.https.HttpsError("failed-precondition", "Restaurant was not found.");
+      }
+
+      const orderPayload = buildSecureRestaurantOrderPayload({
+        input,
+        authUid,
+        authData: context?.auth?.token || {},
+        actorData: actorSnap?.exists ? (actorSnap.data() || {}) : {},
+        restaurantData: restaurantSnap.data() || {},
+        menuItems,
+        orderId: orderRef.id,
+        nowIso: new Date().toISOString(),
+        serverTimestampValue: admin.firestore.FieldValue.serverTimestamp(),
+        tokenFactory: createOrderLookupToken
+      });
+
+      await orderRef.set(orderPayload.writeData, { merge: false });
+      logFunctionInfo(flow, {
+        ...logContext,
+        status: "completed",
+        orderId: orderPayload.orderId,
+        totalCents: orderPayload.writeData.totalCents,
+        itemCount: orderPayload.writeData.itemCount
+      });
+      return {
+        ok: true,
+        orderId: orderPayload.orderId,
+        restaurantId: orderPayload.restaurantId,
+        guestLookupToken: orderPayload.guestLookupToken,
+        order: orderPayload.clientOrder
+      };
+    } catch (error) {
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      if (error instanceof OrderValidationError) {
+        logFunctionWarn(flow, {
+          ...logContext,
+          status: error.code || "invalid-argument",
+          reason: error.message,
+          details: error.details || {}
+        });
+        throw new functions.https.HttpsError(error.code || "invalid-argument", error.message);
+      }
+      logFunctionError(flow, error, {
+        ...logContext,
+        status: "failed"
+      });
+      throw new functions.https.HttpsError("internal", "Order could not be created.");
     }
   });
 

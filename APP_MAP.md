@@ -136,7 +136,7 @@ Diese Karte basiert auf statischer Codeanalyse, `AGENTS.md`, `docs/mnyra-launch-
 - Menu save/edit: menu modal/save utils write menu item payloads.
 - Social posts: user posts, restaurant social posts, menu social posts; likes/comments subcollections.
 - Deletes: posts/comments/staff/menu/orders teilweise in client/runtime und rules verteilt.
-- Orders: client schreibt direkt in `restaurants/{restaurantId}/orders`; Cloud Function spiegelt nach user orders/orderLookup.
+- Orders: Checkout ruft Callable `createRestaurantOrder`; Function schreibt `restaurants/{restaurantId}/orders`, serverseitig berechnete Preise/Totals und Guest Lookup. Direkte Client-Creates sind in `firestore.rules` gesperrt; Mirror-Function spiegelt nach user orders/orderLookup.
 
 ## Image-Komponenten und Stabilitaet
 
@@ -166,7 +166,7 @@ Diese Karte basiert auf statischer Codeanalyse, `AGENTS.md`, `docs/mnyra-launch-
 
 ## Grosse Bundles/Dateien
 
-- Build `entry/social-app.js`: 1,120,205 Bytes raw / 303,761 Bytes gzip.
+- Build `entry/social-app.js`: 1,120,655 Bytes raw / 303,831 Bytes gzip.
 - Build `vendor-firebase`: 441,950 Bytes raw / 132,600 Bytes gzip.
 - Bundle budget ist aktuell fehlgeschlagen.
 - Alte grosse Testartefakte unter `tests/mnyra-heart-runner/artifacts` und `tmp/heart-run-*` wurden nicht veraendert.

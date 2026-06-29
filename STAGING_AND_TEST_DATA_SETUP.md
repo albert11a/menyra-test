@@ -10,6 +10,7 @@ Stand: 2026-06-29
 - `firebase.json` enthaelt Functions und Firestore, aber keine Emulator-Sektion.
 - Keine sicheren Staging-Credentials im Repo.
 - Keine Production-Daten wurden veraendert.
+- Order-Callable `createRestaurantOrder` ist im Code vorhanden, aber in diesem Schritt nicht gegen Staging/Emulator deployt oder live ausgefuehrt.
 
 ## Bewertung
 
@@ -27,7 +28,7 @@ Echte End-to-End Launch-Readiness ist ohne Staging/Emulator nicht belastbar prue
 2. Lokaler Emulator:
    - Firestore Emulator
    - Auth Emulator
-   - Functions Emulator fuer Order Callable
+- Functions Emulator fuer Order Callable
    - optional Storage Emulator oder Media Mock
 
 ## Seed Personas
@@ -75,10 +76,25 @@ Empfohlen:
 - `.env.staging.example` ohne Secrets.
 - Runner Config `tests/mnyra-heart-runner/config/staging-guest-config.json`.
 - Rules Test Script, z.B. `npm run test:rules`.
+- Staging Deploy Gate fuer `createRestaurantOrder` und `firestore.rules`.
 
 ## Was in diesem Schritt real getestet wurde
 
 - Lokal mit Static Server: Guest QR/Menu read-only, keine Order-Mutation.
 - Mit Mocks/Unit: Runtime Controller Tests.
+- Mit Unit-Test: Order-Checkout-Intent, serverseitige Preisberechnung, versteckte Items, spoofed Buyer UID, Rule-Create-Sperre statisch.
 - Nicht getestet: echte Staging-Auth, echte Staging-Orders, echte Uploads, echte Waiter-Statusupdates.
 
+## Naechster Order-Staging-Test
+
+1. Function und Rules in Staging/Emulator deployen.
+2. Seed-Restaurant mit `public/menu` und optional `menuItems` anlegen.
+3. QR-Link mit `src=qr&r=<restaurantId>&table=1` oeffnen.
+4. Produkt in Warenkorb legen und Checkout senden.
+5. Pruefen:
+   - `restaurants/{restaurantId}/orders/{orderId}` existiert.
+   - `total` und `totalCents` entsprechen Server-Menu-Preis.
+   - keine Client-Manipulation von Preis/Status moeglich.
+   - Guest `orderLookup` wurde erzeugt.
+   - Waiter/Owner sieht Order.
+   - direkter Firestore-Create aus Client/Rules-Test wird abgelehnt.

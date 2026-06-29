@@ -10,7 +10,7 @@ Geprueft wurden `firestore.rules`, relevante Client-Order-Flows und Cloud Functi
 
 ## P0: Order-Manipulation
 
-### Befund
+### Befund vor Fix
 
 `validOrderCreateForRestaurant(restaurantId)` prueft nur:
 
@@ -32,21 +32,31 @@ Nicht geprueft werden:
 - `businessName/businessAvatar`
 - `createdAt/updatedAt`
 
-### Auswirkung
+### Auswirkung vor Fix
 
 Ein Client kann einen Order-Payload mit `total: 0`, falschen Preisen, fremden Artikeln oder beliebigem Status schreiben. Die Cloud Function `buildCanonicalOrderProjection()` spiegelt diese Werte weiter.
 
-### Bewertung
+### Umgesetzter Fix
 
-P0. Nicht launchbereit fuer echte QR-Bestellungen.
+- `functions/order-security.js` definiert einen serverseitigen Order-Contract.
+- Callable `createRestaurantOrder` liest Restaurant und Menu-Items serverseitig.
+- Client-Checkout sendet nur noch Order Intent, keine Preise/Totals/Status/Buyer-Meta.
+- `total` und `totalCents` werden aus serverseitigen Menu-Preisen berechnet.
+- Initialstatus ist serverseitig `Neu` / `bestellung`.
+- Guest Lookup Token wird serverseitig erzeugt.
+- `firestore.rules` blockiert direkte Creates auf `restaurants/{restaurantId}/orders`.
+- Regressionstest: `tests/orders-secure-checkout.test.mjs`.
 
-### Fix-Richtung
+### Bewertung nach Fix
 
-- Order-Erstellung in Cloud Function.
-- Server liest Menu-Items und berechnet Preise/Total.
-- Firestore Rules blockieren direkte Guest/User Order Creates.
-- Status-Updates nur fuer Waiter/Staff/Owner/CEO mit erlaubten Transitionen.
-- Emulator-Tests fuer manipulierte Payloads.
+Code-seitig deutlich verbessert, aber vor Grosslaunch noch nicht voll geschlossen. Die Function und Rules muessen in Staging/Emulator deployt und mit echter QR-Bestellung, Order-Mirror und Waiter-Ansicht getestet werden.
+
+### Offene Sicherheitsarbeit
+
+- Firestore Emulator-Test: direkter Client-Create mit `total=0` wird geblockt.
+- Staging-Test: Callable schreibt korrekte Order und Mirrors.
+- Status-Updates nur fuer Waiter/Staff/Owner/CEO mit erlaubten Transitionen explizit testen/haerten.
+- Delete-Regel fuer Orders restriktiv pruefen.
 
 ## P0: Counter-Manipulation
 
@@ -86,9 +96,8 @@ Bewertung: Nicht bestanden, sondern nicht testbar ohne Staging-Credentials.
 ## Muss-vor-Launch Security Gates
 
 1. Firestore Emulator Rules Tests.
-2. Callable Order Function.
-3. Keine direkten Client-Order-Prices/Totals.
+2. Callable Order Function in Staging deployen und testen.
+3. Keine direkten Client-Order-Prices/Totals. Code-Fix umgesetzt, Staging-Gate offen.
 4. Keine direkten Client-Counter-Writes.
 5. Staging-Rollenlauf fuer Guest, User, Business, Waiter, Staff, Owner, CEO.
 6. Negative Tests fuer fremde Restaurant IDs, fremde Buyer UIDs, Status-Manipulation, Counter-Manipulation.
-

@@ -40,6 +40,7 @@ export function createPublicRouteRuntimeCluster({
   const waitForPendingWritesFn = firebaseApi.waitForPendingWritesFn || firebaseApi.waitForPendingWrites;
   const onSnapshotFn = firebaseApi.onSnapshotFn || firebaseApi.onSnapshot;
   const writeBatchFn = firebaseApi.writeBatchFn || firebaseApi.writeBatch;
+  const createRestaurantOrderFn = firebaseApi.createRestaurantOrderFn || firebaseApi.createRestaurantOrder || firebaseApi.createOrderFn;
   const render = toFunction(renderApi.renderFn || renderApi.render);
   const getLastRenderMode = toFunction(renderApi.getLastRenderModeFn || renderApi.getLastRenderMode, () => "");
   const reportCriticalRuntimeFailure = toFunction(
@@ -115,6 +116,7 @@ export function createPublicRouteRuntimeCluster({
       limitFn,
       onSnapshotFn,
       writeBatchFn,
+      createOrderFn: createRestaurantOrderFn,
       serverTimestampFn,
       normalizeShopCartStateFn: toFunction(publicRouteState.normalizeShopCartState, (raw) => raw || {}),
       isLocalBusinessProfileFn: toFunction(profileApi.isLocalBusinessProfileFn || profileApi.isLocalBusinessProfile, () => false),

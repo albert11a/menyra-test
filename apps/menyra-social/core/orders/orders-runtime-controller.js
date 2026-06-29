@@ -15,6 +15,7 @@ export function createOrdersRuntimeController({
   limitFn = null,
   onSnapshotFn = null,
   writeBatchFn = null,
+  createOrderFn = null,
   serverTimestampFn = () => null,
   normalizeShopCartStateFn = (raw) => raw || {},
   isLocalBusinessProfileFn = () => false,
@@ -42,6 +43,7 @@ export function createOrdersRuntimeController({
   const limit = typeof limitFn === "function" ? limitFn : null;
   const onSnapshot = typeof onSnapshotFn === "function" ? onSnapshotFn : null;
   const writeBatch = typeof writeBatchFn === "function" ? writeBatchFn : null;
+  const createOrder = typeof createOrderFn === "function" ? createOrderFn : null;
   const serverTimestamp = typeof serverTimestampFn === "function" ? serverTimestampFn : (() => null);
   const normalizeShopCartState = typeof normalizeShopCartStateFn === "function"
     ? normalizeShopCartStateFn
@@ -146,6 +148,30 @@ export function createOrdersRuntimeController({
       }
     }
     throw lastError || new Error("checkout-commit-retry-failed");
+  }
+
+  async function callCreateOrderWithBackoff(input, {
+    attempts = 3,
+    baseDelayMs = 260
+  } = {}) {
+    if (!createOrder) throw new Error("checkout-create-order-unavailable");
+    const totalAttempts = Math.max(1, Math.round(Number(attempts) || 1));
+    let lastError = null;
+    for (let attempt = 0; attempt < totalAttempts; attempt += 1) {
+      try {
+        const result = await createOrder(input);
+        return result?.data && typeof result.data === "object" ? result.data : result;
+      } catch (err) {
+        lastError = err;
+        if (attempt >= totalAttempts - 1 || !isTransientCheckoutError(err)) {
+          throw err;
+        }
+        const baseDelay = Math.max(100, Number(baseDelayMs) || 100);
+        const delay = Math.round(baseDelay * (attempt + 1) * (0.65 + Math.random() * 0.35));
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw lastError || new Error("checkout-create-order-retry-failed");
   }
 
   function resolveActiveGuestScopeUid() {
@@ -449,7 +475,18 @@ export function createOrdersRuntimeController({
   async function submitShopCheckout() {
     const cart = normalizeShopCartState(state?.shopCart);
     if (checkoutSubmitInFlight || cart.loading || !cart.restaurantId || !cart.items.length) return;
-    if (!collection || !makeDocRef || !writeBatch || !db) return;
+    if (!createOrder) {
+      if (state) {
+        state.shopCart = {
+          ...cart,
+          loading: false,
+          checkoutOpen: true,
+          status: "Bestellservice ist nicht verfuegbar."
+        };
+      }
+      renderFn();
+      return;
+    }
 
     const hasUser = !!String(state?.user?.uid || "").trim();
     const currentGuestScopeUid = hasUser ? "" : resolveActiveGuestScopeUid();
@@ -478,7 +515,6 @@ export function createOrdersRuntimeController({
       renderFn();
       return;
     }
-    const guestLookupToken = hasUser ? "" : createOpaqueOrderToken("order");
     const tableNumber = Math.max(0, Number(cart.tableNumber || cart.form?.tableNumber || 0) || 0);
     const isTableService = String(cart.serviceMode || "").trim().toLowerCase() === "table" && tableNumber > 0;
     const isHospitalityOrder = ["restaurant", "cafe", "fastfood"].includes(resolveCartBusinessType(cart));
@@ -509,37 +545,15 @@ export function createOrdersRuntimeController({
 
     const restaurant = getRestaurantMetaById(cart.restaurantId) || {};
     const businessAvatar = cart.businessAvatar || restaurant.logoUrl || restaurant.logo || "";
-    const orderRef = makeDocRef(collection(db, "restaurants", cart.restaurantId, "orders"));
-    const orderId = orderRef.id;
-    const nowIso = new Date().toISOString();
-    const buyerHandle = hasUser
-      ? String(
-        state?.userProfile?.handle
-        || normalizeHandle(state?.userProfile?.name || state?.user?.displayName || "user")
-      ).replace(/^@/, "").trim()
-      : "guest";
-    const payload = {
-      id: orderId,
+    const orderRequest = {
       restaurantId: cart.restaurantId,
-      businessName: cart.businessName || restaurant.name || restaurant.restaurantName || "Shop",
-      businessAvatar,
-      buyerUid: hasUser ? String(state?.user?.uid || "").trim() : "",
-      buyerName: hasUser
-        ? (state?.userProfile?.name || state?.user?.displayName || contact.name || "User")
-        : (contact.name || "Gast"),
-      buyerHandle,
-      buyerAvatar: hasUser ? (state?.userProfile?.avatar || "") : "",
+      serviceMode: String(cart.serviceMode || "").trim(),
       contact,
       tableNumber,
       tableLabel: tableNumber ? `Tisch ${tableNumber}` : "",
       items: cart.items.map((item) => ({
-        id: item.id,
-        itemId: item.itemId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        imageUrl: item.imageUrl,
-        category: item.category,
+        itemId: String(item.itemId || item.id || "").trim(),
+        quantity: Math.max(1, Number(item.quantity || 1) || 1),
         comment: String(item.comment || "").trim(),
         cartKey: item.cartKey || buildShopVariantKey(item.itemId || item.id || "", {
           size: item.selectedSize || "",
@@ -550,18 +564,8 @@ export function createOrdersRuntimeController({
         cropX: clampCropPercent(item.cropX ?? 50, 50),
         cropY: clampCropPercent(item.cropY ?? 50, 50)
       })),
-      itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
-      total: getShopCartTotal(cart.items),
-      status: "Neu",
-      orderSource: "canonical",
       guestScopeUid: hasUser ? "" : currentGuestScopeUid,
-      guestSessionId,
-      guestLookupToken,
-      orderLookupToken: guestLookupToken,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      createdAtClient: nowIso,
-      updatedAtClient: nowIso
+      guestSessionId
     };
 
     if (state) {
@@ -570,14 +574,16 @@ export function createOrdersRuntimeController({
     checkoutSubmitInFlight = true;
     renderFn();
     try {
-      await commitBatchWithBackoff(() => {
-        const batch = writeBatch(db);
-        batch.set(orderRef, payload, { merge: true });
-        return batch;
-      }, {
+      const result = await callCreateOrderWithBackoff(orderRequest, {
         attempts: 3,
         baseDelayMs: 260
       });
+      const orderId = String(result?.orderId || result?.order?.id || "").trim();
+      if (!orderId) throw new Error("checkout-order-id-missing");
+      const guestLookupToken = hasUser
+        ? ""
+        : String(result?.guestLookupToken || result?.order?.guestLookupToken || result?.order?.orderLookupToken || "").trim();
+      if (!hasUser && !guestLookupToken) throw new Error("checkout-guest-lookup-token-missing");
       if (!hasUser && state) {
         rememberGuestLookupEntry({
           restaurantId: cart.restaurantId,
@@ -585,7 +591,24 @@ export function createOrdersRuntimeController({
           lookupToken: guestLookupToken,
           createdAt: Date.now()
         }, currentGuestScopeUid);
-        const guestOrder = normalizeOrderDoc(payload, orderId);
+        const returnedOrder = result?.order && typeof result.order === "object"
+          ? result.order
+          : {
+            id: orderId,
+            restaurantId: cart.restaurantId,
+            businessName: cart.businessName || restaurant.name || restaurant.restaurantName || "Shop",
+            businessAvatar,
+            contact,
+            tableNumber,
+            tableLabel: tableNumber ? `Tisch ${tableNumber}` : "",
+            items: [],
+            itemCount: 0,
+            total: 0,
+            status: "Neu",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        const guestOrder = normalizeOrderDoc(returnedOrder, orderId);
         state.orders = {
           ...state.orders,
           loading: false,

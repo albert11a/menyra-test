@@ -2669,7 +2669,8 @@ const {
     serverTimestamp,
     waitForPendingWrites,
     onSnapshot,
-    writeBatch
+    writeBatch,
+    createRestaurantOrderFn: createRestaurantOrderViaCallable
   },
   storageApi: {
     safeStorage,
@@ -5167,6 +5168,7 @@ function isFollowingProfile(profile = {}) {
 
 let firebaseFunctionsModulePromise = null;
 let writeUserNotificationPromise = null;
+let createRestaurantOrderPromise = null;
 
 async function ensureWriteUserNotificationFn() {
   if (writeUserNotificationPromise) return writeUserNotificationPromise;
@@ -5192,6 +5194,32 @@ async function ensureWriteUserNotificationFn() {
 async function writeUserNotificationViaCallable(input = {}) {
   const writer = await ensureWriteUserNotificationFn();
   return await writer(input);
+}
+
+async function ensureCreateRestaurantOrderFn() {
+  if (createRestaurantOrderPromise) return createRestaurantOrderPromise;
+  createRestaurantOrderPromise = (async () => {
+    if (!firebaseFunctionsModulePromise) {
+      firebaseFunctionsModulePromise = import(FIREBASE_FUNCTIONS_MODULE_URL);
+    }
+    const firebaseFunctions = await firebaseFunctionsModulePromise;
+    const functionsObj = firebaseFunctions.getFunctions(app, "us-central1");
+    const callable = firebaseFunctions.httpsCallable(functionsObj, "createRestaurantOrder");
+    return async (input = {}) => {
+      const result = await callable(input);
+      return result?.data || null;
+    };
+  })().catch((err) => {
+    firebaseFunctionsModulePromise = null;
+    createRestaurantOrderPromise = null;
+    throw err;
+  });
+  return createRestaurantOrderPromise;
+}
+
+async function createRestaurantOrderViaCallable(input = {}) {
+  const createOrder = await ensureCreateRestaurantOrderFn();
+  return await createOrder(input);
 }
 
 let authPersistenceReady = null;

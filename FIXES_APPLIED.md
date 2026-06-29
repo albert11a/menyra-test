@@ -31,12 +31,31 @@ Stand: 2026-06-29
 - Verifikation: Guest-Pack blieb danach auf korrekter URL und erkannte Menu sichtbar statt falscher Landing/0 Produkte.
 - Restfehler: Guest-Pack erkennt nur 2/27 Produkte und Cart scheitert.
 
+## Fix 4: Order-Erstellung serverseitig abgesichert
+
+- Dateien:
+  - `functions/order-security.js`
+  - `functions/index.js`
+  - `firestore.rules`
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/app-shell/public-route-runtime-cluster.js`
+  - `apps/menyra-social/core/orders/orders-runtime-controller.js`
+  - `tests/orders-secure-checkout.test.mjs`
+- Problem: QR/Checkout konnte Orders direkt aus dem Browser mit eigenen `items[].price`, `total`, `status`, Buyer- und Meta-Feldern in Firestore schreiben.
+- Aenderung: Checkout nutzt jetzt Callable `createRestaurantOrder`; die Function liest Restaurant/Menu serverseitig, validiert Item-IDs/Optionen, berechnet `total`/`totalCents`, setzt Initialstatus `Neu` und erzeugt Guest-Lookup-Token serverseitig. Direkte Client-Creates auf `restaurants/{restaurantId}/orders` sind in `firestore.rules` gesperrt.
+- Risiko: mittel; erfordert Deploy von Functions und Rules. Lokale Checkout-Mutation ohne Functions Emulator ist danach bewusst nicht mehr moeglich.
+- Verifikation:
+  - `node --test tests\\orders-secure-checkout.test.mjs` gruen.
+  - `node --test tests\\*.test.mjs` gruen: 89/89.
+  - `node -c functions\\order-security.js; node -c functions\\index.js` gruen.
+  - `npm run build` gruen.
+- Restrisiko: echter QR-Checkout, Order-Mirror und Waiter-Status muessen noch gegen Staging/Emulator mit deployter Function und Rules validiert werden.
+
 ## Nicht gefixt in diesem Schritt
 
-- P0 Order Security.
+- Staging-/Emulator-E2E fuer Order Security.
 - P0 Counter Security.
 - P1 Bundle Budget.
 - P1 SEO/Launch-Dateien.
 - P1 Staging/Emulator-Konfiguration.
 - P1 QR/Menu Produktvollstaendigkeit und Cart-Runner-Fehler.
-

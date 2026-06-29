@@ -4,18 +4,18 @@ Stand: 2026-06-29
 
 # Bugs Found
 
-## 1. BUG-001 - Order-Preise, Totals und Status sind clientseitig manipulierbar
+## 1. BUG-001 - Order-Preise, Totals und Status waren clientseitig manipulierbar
 
-- Prioritaet: P0
+- Prioritaet: P0, Code-Fix umgesetzt; bleibt Launch-Gate bis Staging/Emulator gruen ist
 - Bereich: Orders / Firestore Security / QR Checkout
-- Was passt nicht? `restaurants/{restaurantId}/orders` erlaubt Create, wenn nur `restaurantId` und optional `buyerUid` passen. Preise, `total`, `items`, `status`, `itemCount`, Kontaktdaten und Timestamps werden nicht gegen serverseitige Menu-Daten validiert.
+- Was passt nicht? Vor dem Fix erlaubte `restaurants/{restaurantId}/orders` Create, wenn nur `restaurantId` und optional `buyerUid` passten. Preise, `total`, `items`, `status`, `itemCount`, Kontaktdaten und Timestamps wurden nicht gegen serverseitige Menu-Daten validiert.
 - Warum passt es nicht? Ein Gast oder eingeloggter User kann einen manipulierten Order-Payload direkt an Firestore senden.
-- Reproduktion: statisch in `firestore.rules` Zeilen 445-450 und 656-660; Client-Payload in `apps/menyra-social/core/orders/orders-runtime-controller.js` Zeilen 521-540 ff.
+- Reproduktion vor Fix: statisch in `firestore.rules` und Client-Payload in `apps/menyra-social/core/orders/orders-runtime-controller.js`. Nach Fix ist direkte Rule-Create gesperrt und der Client sendet nur noch Order Intent an `createRestaurantOrder`.
 - Erwartet: Order-Erstellung ueber Callable/HTTPS Function oder Rules mit strikt validiertem Schema; Preise/Total nur serverseitig berechnet.
-- Tatsaechlich: Client schreibt `items[].price`, `total`, `status` direkt; Function `buildCanonicalOrderProjection()` spiegelt `source.total` und `source.items`.
-- Betroffene Dateien/Funktionen: `firestore.rules`, `submitShopCheckout()`, `buildCanonicalOrderProjection()`, `syncOrderMirrorsOnRestaurantOrderWrite`.
-- Was wurde gefixt? Noch nicht, weil ein sicherer Fix einen Order-Contract und Emulator/Staging-Tests braucht.
-- Was muss noch gemacht werden? Order-Create Function bauen, Rules direkte Guest/User-Order-Creates sperren, Menu-Items serverseitig lesen, Total serverseitig berechnen, Status-Transitions nur Staff/Waiter erlauben, Emulator-Tests ergaenzen.
+- Tatsaechlich nach Fix: Client ruft Callable `createRestaurantOrder`; Function berechnet Preise/Total aus `restaurants/{restaurantId}/public/menu` und `menuItems`; Rules blockieren direkte Creates. Order-Mirror nutzt den servergeschriebenen Order-Datensatz.
+- Betroffene Dateien/Funktionen: `firestore.rules`, `submitShopCheckout()`, `createRestaurantOrder`, `functions/order-security.js`, `syncOrderMirrorsOnRestaurantOrderWrite`.
+- Was wurde gefixt? Ja: Server-Contract, Callable Function, Client-Migration, direkte Rule-Sperre und Regressionstest `tests/orders-secure-checkout.test.mjs`.
+- Was muss noch gemacht werden? Function/Rules in Staging deployen, QR-Checkout mit Seed-Restaurant senden, `restaurants/{restaurantId}/orders`, `users/{uid}/orders`, `orderLookup` und Waiter-Ansicht verifizieren. Status-Transitions sollten als eigener Rules/Function-Test noch haerter modelliert werden.
 
 ## 2. BUG-002 - Social/Follower-Counter koennen beliebig manipuliert werden
 
@@ -90,7 +90,7 @@ Stand: 2026-06-29
 - Warum passt es nicht? Public/QR und App-Start tragen weiterhin viel Social-App-Code; Analyse markiert public-profile/menu/QR Abhaengigkeiten als high-risk fuer blindes Splitting.
 - Reproduktion: `npm run check:social-bundle`.
 - Erwartet: raw <= 1,052,000 Bytes, gzip <= 285,000 Bytes.
-- Tatsaechlich: raw 1,120,205, gzip 303,761.
+- Tatsaechlich nach aktuellem Build: raw 1,120,655, gzip 303,831.
 - Betroffene Dateien/Funktionen: `social-app.js` static graph, public profile/menu bootstrap/runtime.
 - Was wurde gefixt? Nicht gefixt; Splitting ohne manuelle Public/QR-Regression waere riskant.
 - Was muss noch gemacht werden? Nach Staging-QR/Menu gruen gezielte Split-Planung um public-profile-runtime Abhaengigkeiten.
@@ -130,4 +130,3 @@ Stand: 2026-06-29
 - Tatsaechlich: nur direkte `/apps/menyra-social/index.html`-URLs sind belastbar.
 - Was wurde gefixt? Nicht gefixt.
 - Was muss noch gemacht werden? Lokalen Rewrite-Testserver oder `vercel dev`/dedizierten static fallback fuer QA nutzen.
-

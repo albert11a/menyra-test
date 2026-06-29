@@ -6,9 +6,11 @@ Stand: 2026-06-29
 
 ## Entscheidung
 
-MNYRA ist nicht grosslaunchbereit, solange Order-Integritaet und Counter-Integritaet clientseitig manipulierbar bleiben. Diese Punkte muessen vor jedem echten Restaurant-/QR-Launch geschlossen werden.
+MNYRA ist weiterhin nicht grosslaunchbereit. Die Order-Integritaet ist code-seitig gehaertet, aber noch nicht per deployter Staging-/Emulator-E2E verifiziert. Counter-Integritaet bleibt als offener P0 bestehen.
 
 ## P0-1 Order-Erstellung absichern
+
+Status: Code-Fix umgesetzt am 2026-06-29, Staging/Emulator-Gate offen.
 
 Ziel: Client darf keine Preise, Totals, Status, Ownership oder Restaurant-Zuordnung vertrauenswuerdig setzen.
 
@@ -16,25 +18,26 @@ Ziel: Client darf keine Preise, Totals, Status, Ownership oder Restaurant-Zuordn
    - Input: `restaurantId`, `tableNumber/tableLabel`, `items: [{ itemId, quantity, selectedSize, selectedColor, comment }]`, Kontaktfelder.
    - Verboten im Client-Input: `price`, `total`, `itemCount`, `status`, `businessName`, `businessAvatar`, `createdAt`, `updatedAt`, `buyerAvatar`, beliebige `buyerUid`.
 
-2. Cloud Function bauen:
-   - Callable/HTTPS `createOrder`.
-   - Restaurant und Menu-Items serverseitig lesen.
-   - Preise, Currency, Item-Namen und Total serverseitig berechnen.
-   - Guest Session/Lookup Token serverseitig erzeugen oder validieren.
+2. Cloud Function gebaut:
+   - Callable `createRestaurantOrder`.
+   - Restaurant und Menu-Items werden serverseitig gelesen.
+   - Preise, Item-Namen und Total werden serverseitig berechnet.
+   - Guest Lookup Token wird serverseitig erzeugt.
    - Status initial fix auf `Neu`.
-   - Order in `restaurants/{restaurantId}/orders` schreiben.
+   - Order wird in `restaurants/{restaurantId}/orders` geschrieben.
 
-3. Firestore Rules hart machen:
-   - Guest/User direkte `create` auf `restaurants/{restaurantId}/orders` sperren oder nur Function/Admin erlauben.
-   - Order `update` nur Waiter/Owner/Staff/CEO mit erlaubten Status-Transitions.
-   - `delete` nur sehr restriktiv oder gar nicht clientseitig.
+3. Firestore Rules gehaertet:
+   - Guest/User direkte `create` auf `restaurants/{restaurantId}/orders` gesperrt.
+   - Offen: Order `update` nur Waiter/Owner/Staff/CEO mit explizit erlaubten Status-Transitions modellieren.
+   - Offen: `delete` noch restriktiver pruefen oder clientseitig komplett sperren.
 
 4. Tests:
-   - Emulator-Test: Guest kann manipulierten Preis nicht schreiben.
-   - Emulator-Test: User kann `total=0` nicht schreiben.
-   - Emulator-Test: User kann fremden `buyerUid` nicht setzen.
-   - Emulator-Test: Waiter darf Status erlaubte Transition, Guest nicht.
-   - Function-Test: Total wird aus Menu-Daten berechnet.
+   - Unit-Test: Client sendet keine Preise/Totals/Status/Bilder/Namen.
+   - Unit-Test: Function-Helper berechnet Total aus Menu-Daten.
+   - Unit-Test: versteckte/nicht verfuegbare Items werden abgelehnt.
+   - Unit-Test: spoofed `buyerUid` wird abgelehnt.
+   - Offen: Emulator-Test, dass direkte Firestore-Creates geblockt werden.
+   - Offen: Staging-Test fuer QR-Checkout, Order-Mirror und Waiter-Sichtbarkeit.
 
 ## P0-2 Counter-Manipulation schliessen
 
@@ -65,10 +68,11 @@ Ziel: Likes, Comments, Followers, Following Counts sind abgeleitete Werte, nicht
 
 ## Reihenfolge
 
-1. Order Contract festlegen.
-2. Emulator/Staging-Testdaten anlegen.
-3. Order Function und Rules Tests implementieren.
-4. Direct Client Order Write migrieren.
-5. Counter Rules/Functions migrieren.
-6. QR/Menu/Waiter End-to-End gegen Staging laufen lassen.
-
+1. Order Contract festlegen. Status: erledigt.
+2. Direct Client Order Write migrieren. Status: erledigt.
+3. Order Function implementieren. Status: erledigt.
+4. Direkte Order-Creates in Rules sperren. Status: erledigt.
+5. Emulator/Staging-Testdaten anlegen. Status: offen.
+6. Order Function und Rules Tests im Emulator implementieren. Status: offen.
+7. Counter Rules/Functions migrieren. Status: offen.
+8. QR/Menu/Waiter End-to-End gegen Staging laufen lassen. Status: offen.

@@ -16,7 +16,7 @@ Stand: 2026-06-29
 | Asset | Raw | Gzip | Bewertung |
 |---|---:|---:|---|
 | `entry/social-public-entry.js` | 1.24 kB | 0.66 kB | gut |
-| `entry/social-app.js` | 1,120.21 kB | 303.76 kB | P1, ueber Budget |
+| `entry/social-app.js` | 1,120.66 kB | 303.83 kB | P1, ueber Budget |
 | `vendor-firebase` | 441.95 kB | 132.60 kB | hoch |
 | `profile-menu-focus-render-controller` | 145.73 kB | 34.19 kB | bereits dynamic |
 | `crm-domain-runtime-cluster` | 85.96 kB | 24.22 kB | bereits dynamic |
@@ -26,8 +26,8 @@ Stand: 2026-06-29
 
 Fehlgeschlagen:
 
-- Raw Budget: 1,052,000 Bytes, Ist 1,120,205.
-- Gzip Budget: 285,000 Bytes, Ist 303,761.
+- Raw Budget: 1,052,000 Bytes, Ist 1,120,655.
+- Gzip Budget: 285,000 Bytes, Ist 303,831.
 
 ## Public/Profile Split Analyse
 
@@ -67,4 +67,3 @@ Bewertung: Die lokale HTML-Navigation ist schnell, aber das ist kein vollstaendi
 3. Firebase Reads pro Route instrumentieren.
 4. Public/QR Slow-4G und Cache-Cold Messung mit Staging-Daten einfuehren.
 5. Bildgroessen fuer Restaurant Cover, Logo, Menu Items und Feed auditieren.
-

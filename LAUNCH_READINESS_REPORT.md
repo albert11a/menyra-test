@@ -7,18 +7,21 @@ Stand: 2026-06-29
 ## Entscheidung
 
 - Grosslaunch bereit: Nein
-- Score: 42/100
-- Grund: Es gibt gruene Runtime-Tests und einen erfolgreichen Build, aber offene P0-Security-Risiken bei Orders und Countern sowie nicht bestandene QR/Menu/Cart-Verifikation.
+- Score: 52/100
+- Grund: Es gibt gruene Runtime-Tests, einen erfolgreichen Build und einen code-seitigen Order-Security-Fix. Grosslaunch bleibt blockiert durch offenen Counter-P0, fehlende Staging/Emulator-Verifikation fuer Orders/QR/Waiter und nicht bestandene QR/Menu/Cart-Verifikation.
 
 ## Was bereits gefixt wurde
 
 - Node-Testbruch durch absolute i18n Imports.
 - Public-Business-Posts Dedupe/Deadline Timing.
 - Lokale Guest-Runner QR-URL.
+- Order-Erstellung auf Callable `createRestaurantOrder` migriert; direkte Firestore-Order-Creates gesperrt; Preise/Totals werden serverseitig aus Menu-Daten berechnet.
 
 ## Tests jetzt gruen
 
-- `node --test tests\\*.test.mjs`: 84/84 bestanden.
+- `node --test tests\\*.test.mjs`: 89/89 bestanden.
+- `node --test tests\\orders-secure-checkout.test.mjs`: 5/5 bestanden.
+- `node -c functions\\order-security.js; node -c functions\\index.js`: bestanden.
 - `npm run build`: bestanden.
 - `npm run analyze:public-profile-split`: bestanden.
 
@@ -29,8 +32,8 @@ Stand: 2026-06-29
 
 ## Offene P0 Punkte
 
-1. Order-Erstellung vertraut Client-Preisen, Totals und Status.
-2. Social/Follower-Counter sind clientseitig manipulierbar.
+1. Social/Follower-Counter sind clientseitig manipulierbar.
+2. Order-Security braucht noch Staging/Emulator-Deploy-Verifikation fuer QR-Checkout, Mirror und Waiter-Ansicht.
 
 ## Offene P1 Punkte
 
@@ -50,6 +53,7 @@ Stand: 2026-06-29
 - Staff/business read loader.
 - Order Security.
 - Firestore Rules.
+- Order Callable Contract.
 
 ## Braucht echtes Staging
 
@@ -63,13 +67,13 @@ Stand: 2026-06-29
 
 ## Naechste konkrete Schritte
 
-1. Staging/Emulator mit Seed-Daten einrichten.
-2. Order-Create Contract und Cloud Function bauen.
-3. Firestore Rules fuer Orders und Counter haerten.
-4. Rules/Function Emulator Tests ergaenzen.
-5. QR/Menu/Cart Guest-Pack gegen Staging gruen bekommen.
-6. Account-Wechsel A/B/Business/Staff/Waiter/Owner/CEO automatisiert testen.
-7. Bundle Budget nach gruenem QR/Menu gezielt senken.
-8. SEO/robots/sitemap/favicon/OG/canonical finalisieren.
-9. Launch-Rehearsal mit Staging-Daten und manueller Abnahme.
-
+1. Functions und Firestore Rules in Staging/Emulator deployen.
+2. Seed-Restaurant mit Menu, QR-Tischen und Rollen anlegen.
+3. QR-Checkout senden und Restaurant-Order, User/Guest-Mirror, OrderLookup und Waiter-Ansicht pruefen.
+4. Counter Rules/Functions haerten.
+5. Rules/Function Emulator Tests ergaenzen.
+6. QR/Menu/Cart Guest-Pack gegen Staging gruen bekommen.
+7. Account-Wechsel A/B/Business/Staff/Waiter/Owner/CEO automatisiert testen.
+8. Bundle Budget nach gruenem QR/Menu gezielt senken.
+9. SEO/robots/sitemap/favicon/OG/canonical finalisieren.
+10. Launch-Rehearsal mit Staging-Daten und manueller Abnahme.

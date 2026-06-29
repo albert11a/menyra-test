@@ -17,11 +17,14 @@ Stand: 2026-06-29
 
 ### Orders
 
-- Guest kann keine direkte Firestore Order mit `total: 0` schreiben.
-- Guest kann keinen fremden `restaurantId` schreiben.
-- Signed-in User kann keinen fremden `buyerUid` setzen.
-- Client kann `status` nicht auf `Fertig`/`Bezahlt` setzen.
-- Function berechnet `total` aus Menu-Daten.
+- Vorhanden: Client-Checkout sendet keine Preise/Totals/Status/Namen/Bilder.
+- Vorhanden: Function-Helper berechnet `total` aus Menu-Daten.
+- Vorhanden: Function-Helper lehnt versteckte/nicht verfuegbare Items ab.
+- Vorhanden: Function-Helper lehnt spoofed `buyerUid` ab.
+- Vorhanden: statischer Rules-Test fuer direkte Order-Create-Sperre.
+- Offen: Firestore Emulator bestaetigt, dass Guest keine direkte Order mit `total: 0` schreiben kann.
+- Offen: Guest kann keinen fremden `restaurantId` schreiben.
+- Offen: Client kann `status` nicht auf `Fertig`/`Bezahlt` setzen.
 - Waiter darf Status nur in erlaubter Richtung aendern.
 - Owner/CEO darf lesen; normaler fremder User darf nicht listen.
 
@@ -73,4 +76,3 @@ Stand: 2026-06-29
 6. Login/Logout pruefen.
 7. Business/Profile/Menu pruefen.
 8. Waiter/Orders pruefen, falls Staging-Daten vorhanden.
-
