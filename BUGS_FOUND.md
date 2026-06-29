@@ -1,12 +1,12 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # Bugs Found
 
 ## 1. BUG-001 - Order-Preise, Totals und Status waren clientseitig manipulierbar
 
-- Prioritaet: P0, Code-Fix umgesetzt; bleibt Launch-Gate bis Staging/Emulator gruen ist
+- Prioritaet: P0, Code-Fix und Production-Deploy umgesetzt; bleibt Launch-Gate bis Testdaten-E2E gruen ist
 - Bereich: Orders / Firestore Security / QR Checkout
 - Was passt nicht? Vor dem Fix erlaubte `restaurants/{restaurantId}/orders` Create, wenn nur `restaurantId` und optional `buyerUid` passten. Preise, `total`, `items`, `status`, `itemCount`, Kontaktdaten und Timestamps wurden nicht gegen serverseitige Menu-Daten validiert.
 - Warum passt es nicht? Ein Gast oder eingeloggter User kann einen manipulierten Order-Payload direkt an Firestore senden.
@@ -15,7 +15,7 @@ Stand: 2026-06-29
 - Tatsaechlich nach Fix: Client ruft Callable `createRestaurantOrder`; Function berechnet Preise/Total aus `restaurants/{restaurantId}/public/menu` und `menuItems`; Rules blockieren direkte Creates. Order-Mirror nutzt den servergeschriebenen Order-Datensatz.
 - Betroffene Dateien/Funktionen: `firestore.rules`, `submitShopCheckout()`, `createRestaurantOrder`, `functions/order-security.js`, `syncOrderMirrorsOnRestaurantOrderWrite`.
 - Was wurde gefixt? Ja: Server-Contract, Callable Function, Client-Migration, direkte Rule-Sperre und Regressionstest `tests/orders-secure-checkout.test.mjs`.
-- Was muss noch gemacht werden? Function/Rules in Staging deployen, QR-Checkout mit Seed-Restaurant senden, `restaurants/{restaurantId}/orders`, `users/{uid}/orders`, `orderLookup` und Waiter-Ansicht verifizieren. Status-Transitions sollten als eigener Rules/Function-Test noch haerter modelliert werden.
+- Was muss noch gemacht werden? QR-Checkout mit Seed-Restaurant senden, `restaurants/{restaurantId}/orders`, `users/{uid}/orders`, `orderLookup` und Waiter-Ansicht verifizieren. Status-Transitions sollten als eigener Rules/Function-Test noch haerter modelliert werden.
 
 ## 2. BUG-002 - Social/Follower-Counter koennen beliebig manipuliert werden
 
@@ -95,16 +95,16 @@ Stand: 2026-06-29
 - Was wurde gefixt? Nicht gefixt; Splitting ohne manuelle Public/QR-Regression waere riskant.
 - Was muss noch gemacht werden? Nach Staging-QR/Menu gruen gezielte Split-Planung um public-profile-runtime Abhaengigkeiten.
 
-## 8. BUG-008 - Keine getrennte Staging-/Emulator-Konfiguration sichtbar
+## 8. BUG-008 - Keine getrennte Staging-Konfiguration und noch kein Seed-Testdatensatz sichtbar
 
 - Prioritaet: P1
 - Bereich: QA / Firebase / Launch Process
-- Was passt nicht? `.firebaserc` zeigt nur Default `menyra-c0e68`; `firebase.json` hat keine Emulator-Sektion.
-- Warum passt es nicht? Rollen-, Order-, Rules- und Upload-Tests koennen ohne Risiko nicht end-to-end ausgefuehrt werden.
+- Was passt nicht? `.firebaserc` zeigt nur Default `menyra-c0e68`; `firebase.json` hat jetzt Emulator-Ports, aber noch keine Seed-/Rules-Testautomatisierung und kein getrenntes Staging-Projekt im Repo.
+- Warum passt es nicht? Rollen-, Order-, Rules- und Upload-Tests koennen ohne Seed-Daten und klare Staging-/Emulator-Routine nicht belastbar end-to-end ausgefuehrt werden.
 - Reproduktion: `.firebaserc`, `firebase.json`.
 - Erwartet: Staging-Projekt oder Emulator-Harness mit Seed-Daten fuer alle Rollen.
-- Tatsaechlich: nur Default-Projekt sichtbar, keine Emulator-Konfig.
-- Was wurde gefixt? Nicht gefixt.
+- Tatsaechlich: nur Default-Projekt sichtbar, Emulator-Konfig vorhanden, Seed-/Rules-Testharness offen.
+- Was wurde gefixt? Teilweise: Emulator-Ports fuer Functions, Firestore, Auth und UI wurden ergaenzt.
 - Was muss noch gemacht werden? Staging/Emulator einrichten und Seed-Daten definieren.
 
 ## 9. BUG-009 - SEO/Launch-Standarddateien fehlen oder sind unvollstaendig
@@ -154,5 +154,5 @@ Stand: 2026-06-29
 - Erwartet: Lokal nutzt Emulator/Testumgebung, nicht Production Cloud Functions.
 - Tatsaechlich: Lokaler Build versuchte Production-Function.
 - Betroffene Dateien/Funktionen: `apps/menyra-social/social-app.js`, `firebase.json`, `createRestaurantOrderViaCallable()`.
-- Was wurde gefixt? Ja, lokale Hosts verbinden Functions automatisch mit dem Functions Emulator auf Port `5001`; `firebase.json` enthaelt Emulator-Ports.
-- Was muss noch gemacht werden? Emulator starten und Seed-Daten anlegen oder Staging Deploy nutzen; ohne Emulator ist ein lokaler Order-Submit bewusst nicht erfolgreich.
+- Was wurde gefixt? Ja, lokale Hosts verbinden Functions automatisch mit dem Functions Emulator auf Port `5001`; `firebase.json` enthaelt Emulator-Ports. Production-Preflight fuer `createRestaurantOrder` liefert nach Deploy `204` mit passendem CORS-Origin.
+- Was muss noch gemacht werden? Emulator starten und Seed-Daten anlegen oder Staging/Testdaten nutzen; ohne Emulator ist ein lokaler Order-Submit bewusst nicht erfolgreich.

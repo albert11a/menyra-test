@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # Regression Test Plan

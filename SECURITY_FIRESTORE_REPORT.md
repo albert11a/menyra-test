@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # Security Firestore Report
@@ -49,12 +49,12 @@ Ein Client kann einen Order-Payload mit `total: 0`, falschen Preisen, fremden Ar
 
 ### Bewertung nach Fix
 
-Code-seitig deutlich verbessert, aber vor Grosslaunch noch nicht voll geschlossen. Die Function und Rules muessen in Staging/Emulator deployt und mit echter QR-Bestellung, Order-Mirror und Waiter-Ansicht getestet werden.
+Code-seitig deutlich verbessert und am 2026-06-29 auf Production deployed. Vor Grosslaunch ist der Bereich trotzdem noch nicht voll geschlossen, weil QR-Bestellung, Order-Mirror und Waiter-Ansicht nur mit Testdaten/E2E sicher verifiziert werden koennen. Es wurde kein produktiver Order-Schreibtest ausgefuehrt.
 
 ### Offene Sicherheitsarbeit
 
 - Firestore Emulator-Test: direkter Client-Create mit `total=0` wird geblockt.
-- Staging-Test: Callable schreibt korrekte Order und Mirrors.
+- Testdaten-E2E: Callable schreibt korrekte Order und Mirrors.
 - Status-Updates nur fuer Waiter/Staff/Owner/CEO mit erlaubten Transitionen explizit testen/haerten.
 - Delete-Regel fuer Orders restriktiv pruefen.
 
@@ -82,7 +82,7 @@ P0 fuer Datenintegritaet und Trust.
 ## P1: Staging/Rules-Testluecke
 
 - `.firebaserc` zeigt nur Default `menyra-c0e68`.
-- `firebase.json` hat keine Emulator-Konfiguration.
+- `firebase.json` hat jetzt Emulator-Konfiguration; Seed-/Rules-Testharness fehlt noch.
 - Keine Firestore Rules Unit Tests gefunden.
 
 Bewertung: P1, weil Security-Fixes ohne Emulator/Staging schwer sicher zu validieren sind.
@@ -96,7 +96,7 @@ Bewertung: Nicht bestanden, sondern nicht testbar ohne Staging-Credentials.
 ## Muss-vor-Launch Security Gates
 
 1. Firestore Emulator Rules Tests.
-2. Callable Order Function in Staging deployen und testen.
+2. Callable Order Function mit Staging-/Emulator-Testdaten testen.
 3. Keine direkten Client-Order-Prices/Totals. Code-Fix umgesetzt, Staging-Gate offen.
 4. Keine direkten Client-Counter-Writes.
 5. Staging-Rollenlauf fuer Guest, User, Business, Waiter, Staff, Owner, CEO.

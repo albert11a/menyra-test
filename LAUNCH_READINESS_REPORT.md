@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # Launch Readiness Report
@@ -7,8 +7,8 @@ Stand: 2026-06-29
 ## Entscheidung
 
 - Grosslaunch bereit: Nein
-- Score: 52/100
-- Grund: Es gibt gruene Runtime-Tests, einen erfolgreichen Build und einen code-seitigen Order-Security-Fix. Grosslaunch bleibt blockiert durch offenen Counter-P0, fehlende Staging/Emulator-Verifikation fuer Orders/QR/Waiter und nicht bestandene QR/Menu/Cart-Verifikation.
+- Score: 58/100
+- Grund: Es gibt gruene Runtime-Tests, einen erfolgreichen Build, erfolgreiche Vercel-Deployments fuer `main`, eine live deployte Order-Callable-Function und live deployte Firestore-Rules. Grosslaunch bleibt blockiert durch offenen Counter-P0, fehlende echte Rollen-/Staging-E2E-Verifikation fuer QR/Waiter und nicht bestandene QR/Menu/Cart-Verifikation.
 
 ## Was bereits gefixt wurde
 
@@ -16,6 +16,7 @@ Stand: 2026-06-29
 - Public-Business-Posts Dedupe/Deadline Timing.
 - Lokale Guest-Runner QR-URL.
 - Order-Erstellung auf Callable `createRestaurantOrder` migriert; direkte Firestore-Order-Creates gesperrt; Preise/Totals werden serverseitig aus Menu-Daten berechnet.
+- Production-Rollout am 2026-06-29: Function `createRestaurantOrder` deployed, `main` auf GitHub gepusht, zwei Vercel-Deployments fuer Commit `575bd7b6` erfolgreich, danach Firestore-Rules deployed.
 
 ## Tests jetzt gruen
 
@@ -34,7 +35,7 @@ Stand: 2026-06-29
 ## Offene P0 Punkte
 
 1. Social/Follower-Counter sind clientseitig manipulierbar.
-2. Order-Security braucht noch Staging/Emulator-Deploy-Verifikation fuer QR-Checkout, Mirror und Waiter-Ansicht.
+2. Order-Security braucht noch echte QR-Checkout-, Mirror- und Waiter-Verifikation mit Testdaten; Code, Function und Rules sind live, aber keine produktiven Schreibtests wurden ausgefuehrt.
 
 ## Offene P1 Punkte
 
@@ -68,9 +69,9 @@ Stand: 2026-06-29
 
 ## Naechste konkrete Schritte
 
-1. Functions und Firestore Rules in Staging/Emulator deployen.
-2. Seed-Restaurant mit Menu, QR-Tischen und Rollen anlegen.
-3. QR-Checkout senden und Restaurant-Order, User/Guest-Mirror, OrderLookup und Waiter-Ansicht pruefen.
+1. Staging/Emulator mit Seed-Restaurant, Menu, QR-Tischen und Rollen anlegen.
+2. QR-Checkout gegen Testdaten senden und Restaurant-Order, User/Guest-Mirror, OrderLookup und Waiter-Ansicht pruefen.
+3. Firestore Rules Emulator-Tests fuer direkte Order-Creates und Manipulationsversuche ergaenzen.
 4. Counter Rules/Functions haerten.
 5. Rules/Function Emulator Tests ergaenzen.
 6. QR/Menu/Cart Guest-Pack gegen Staging gruen bekommen.

@@ -1,16 +1,16 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # P0 Fix Plan
 
 ## Entscheidung
 
-MNYRA ist weiterhin nicht grosslaunchbereit. Die Order-Integritaet ist code-seitig gehaertet, aber noch nicht per deployter Staging-/Emulator-E2E verifiziert. Counter-Integritaet bleibt als offener P0 bestehen.
+MNYRA ist weiterhin nicht grosslaunchbereit. Die Order-Integritaet ist code-seitig gehaertet und auf Production deployed, aber noch nicht per Testdaten-E2E fuer QR/Mirror/Waiter verifiziert. Counter-Integritaet bleibt als offener P0 bestehen.
 
 ## P0-1 Order-Erstellung absichern
 
-Status: Code-Fix umgesetzt am 2026-06-29, Staging/Emulator-Gate offen.
+Status: Code-Fix und Production-Deploy umgesetzt am 2026-06-29, Testdaten-E2E-Gate offen.
 
 Ziel: Client darf keine Preise, Totals, Status, Ownership oder Restaurant-Zuordnung vertrauenswuerdig setzen.
 
@@ -38,6 +38,7 @@ Ziel: Client darf keine Preise, Totals, Status, Ownership oder Restaurant-Zuordn
    - Unit-Test: spoofed `buyerUid` wird abgelehnt.
    - Offen: Emulator-Test, dass direkte Firestore-Creates geblockt werden.
    - Offen: Staging-Test fuer QR-Checkout, Order-Mirror und Waiter-Sichtbarkeit.
+   - Production-Preflight: `createRestaurantOrder` antwortet fuer Production- und lokalen LAN-Origin mit CORS `204`; kein Order-Schreibtest auf Production ausgefuehrt.
 
 ## P0-2 Counter-Manipulation schliessen
 

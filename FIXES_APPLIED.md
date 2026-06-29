@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # Fixes Applied
@@ -69,6 +69,16 @@ Stand: 2026-06-29
   - `node --test tests\\*.test.mjs` gruen: 90/90.
   - `npm run build` gruen.
 - Restrisiko: Lokal funktioniert ein echter Order-Submit nur mit laufendem Functions/Firestore Emulator und passenden Seed-Daten. Ohne Emulator kommt ein lokaler Verbindungsfehler; das ist sicherer als ein Production-CORS-Versuch.
+
+## Production Rollout 2026-06-29
+
+- Branch: `main`
+- Commits auf `main`: `f0e2f213`, `5ecebe12`, `575bd7b6`.
+- Cloud Function: `createRestaurantOrder(us-central1)` erfolgreich auf Projekt `menyra-c0e68` deployed.
+- Frontend: `main` auf GitHub gepusht; GitHub meldete zwei erfolgreiche Vercel-Deployments fuer Commit `575bd7b6`.
+- Firestore Rules: nach erfolgreichem Vercel-Deploy auf `menyra-c0e68` deployed.
+- Verifikation: `node --test tests\\*.test.mjs` gruen, `npm run build` gruen, Production- und LAN-CORS-Preflight fuer `createRestaurantOrder` jeweils HTTP 204.
+- Nicht gemacht: kein produktiver Order-Schreibtest, keine Production-Datenmanipulation.
 
 ## Nicht gefixt in diesem Schritt
 

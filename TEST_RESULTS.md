@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # Test Results
@@ -8,6 +8,7 @@ Stand: 2026-06-29
 
 - Startzustand: `main`, sauber.
 - Neue Branch erstellt: `launchready2027`.
+- Danach auf Nutzerwunsch: `main` fast-forwarded auf `launchready2027`, nach GitHub gepusht und deployed.
 - `node --version`: `v24.12.0`.
 - `npm --version`: `11.6.2`.
 - `node_modules`: vorhanden.
@@ -30,6 +31,11 @@ Stand: 2026-06-29
 | `npm run build` | erfolgreich | bestanden |
 | `npm run check:social-bundle` | Exit 1 | fehlgeschlagen |
 | `npm run analyze:public-profile-split` | status ok | bestanden |
+| `firebase deploy --only functions:createRestaurantOrder --project menyra-c0e68 --non-interactive` | erfolgreich | bestanden |
+| GitHub/Vercel Status fuer Commit `575bd7b6` | 2 Vercel-Statuses success | bestanden |
+| `firebase deploy --only firestore:rules --project menyra-c0e68 --non-interactive` | erfolgreich, Rules kompiliert mit Warnungen | bestanden |
+| CORS-Preflight `createRestaurantOrder` Production-Origin | HTTP 204 | bestanden |
+| CORS-Preflight `createRestaurantOrder` lokaler LAN-Origin | HTTP 204 | bestanden |
 | Lokaler Static-Server `dist` + Guest-Pack vor Harness-Fix | Exit 1 | fehlgeschlagen, falsche lokale QR-URL |
 | Lokaler Static-Server `dist` + Guest-Pack nach Harness-Fix | Exit 1 | fehlgeschlagen, Menu nur 2/27 Produkte, Cart nicht vorbereitbar |
 
@@ -95,5 +101,5 @@ Runner:
 - Keine destruktiven Production-Tests.
 - Keine echten Order-Schreibtests.
 - Keine Login-Rollenlaeufe fuer User A/B/Business/Staff/Waiter/Owner/CEO mangels Staging-Credentials.
-- Keine Firestore Rules Emulator-Tests; Emulator-Konfig fehlt.
+- Keine Firestore Rules Emulator-Tests; Emulator-Konfig ist vorhanden, aber Seed-Daten/Rules-Harness wurden noch nicht ausgefuehrt.
 - Keine Upload-Tests mit echten Dateien/Credentials.

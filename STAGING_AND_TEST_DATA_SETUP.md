@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: launchready2027
+Branch: main
 Stand: 2026-06-29
 
 # Staging and Test Data Setup
@@ -9,8 +9,8 @@ Stand: 2026-06-29
 - `.firebaserc` zeigt nur `menyra-c0e68`.
 - `firebase.json` enthaelt jetzt eine Emulator-Sektion fuer Functions, Firestore, Auth und Emulator UI.
 - Keine sicheren Staging-Credentials im Repo.
-- Keine Production-Daten wurden veraendert.
-- Order-Callable `createRestaurantOrder` ist im Code vorhanden, aber in diesem Schritt nicht gegen Staging/Emulator deployt oder live ausgefuehrt.
+- Keine Production-Daten wurden geschrieben, geloescht oder manipuliert.
+- Order-Callable `createRestaurantOrder` ist auf Production deployed. Firestore-Rules sind nach erfolgreichem Vercel-Deploy fuer `main` deployed. Es wurde nur CORS-Preflight getestet, kein produktiver Order-Schreibtest.
 
 ## Bewertung
 
@@ -97,7 +97,7 @@ Empfohlen:
 
 ## Naechster Order-Staging-Test
 
-1. Function und Rules in Staging/Emulator deployen.
+1. Staging/Emulator oder klar markierte Testdaten vorbereiten.
 2. Seed-Restaurant mit `public/menu` und optional `menuItems` anlegen.
 3. QR-Link mit `src=qr&r=<restaurantId>&table=1` oeffnen.
 4. Produkt in Warenkorb legen und Checkout senden.
