@@ -1,4 +1,8 @@
 {
+  "_canonical-public-business-context-utils-DZuekqbl.js": {
+    "file": "chunks/canonical-public-business-context-utils-DZuekqbl.js",
+    "name": "canonical-public-business-context-utils"
+  },
   "_startup-route-runtime-context-6Co7bthZ.js": {
     "file": "chunks/startup-route-runtime-context-6Co7bthZ.js",
     "name": "startup-route-runtime-context"
@@ -15,12 +19,13 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js": {
-    "file": "chunks/profile-business-menu-runtime-cluster-Di3cCMTt.js",
+    "file": "chunks/profile-business-menu-runtime-cluster-rDvpXyf9.js",
     "name": "profile-business-menu-runtime-cluster",
     "src": "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
     "isDynamicEntry": true,
     "imports": [
       "_startup-route-runtime-context-6Co7bthZ.js",
+      "_canonical-public-business-context-utils-DZuekqbl.js",
       "apps/menyra-social/social-app.js",
       "_vendor-firebase-D0kNzhPF.js"
     ],
@@ -136,12 +141,13 @@
     ]
   },
   "apps/menyra-social/core/profile/public-profile-runtime-controller.js": {
-    "file": "chunks/public-profile-runtime-controller-C2q-5isn.js",
+    "file": "chunks/public-profile-runtime-controller-CM5N46Hq.js",
     "name": "public-profile-runtime-controller",
     "src": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
+      "_canonical-public-business-context-utils-DZuekqbl.js",
       "_startup-route-runtime-context-6Co7bthZ.js",
       "_vendor-firebase-D0kNzhPF.js"
     ]
