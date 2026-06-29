@@ -5,6 +5,53 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 142 ist abgeschlossen: Direkte Guest-Auth-Routen `/login` und
+  `/register` bleiben wieder auf ihrer Auth-URL und zeigen direkt das
+  Auth-Formular.
+- Bewertung von Schritt 142: `bestanden mit offenem Bundle-Budget-Blocker`.
+- Wichtigster Effekt aus Schritt 142:
+  Der Public-/Guest-Startup darf Auth-Routen nicht mehr vor dem Auth-Callback
+  auf `/feed` zuruecksyncen und der signed-out Cleanup schliesst ein durch die
+  aktuelle Auth-Route geoeffnetes Formular nicht mehr sofort wieder. Der
+  sichtbare Header-Auth-Button blieb funktionsfaehig; jetzt funktionieren auch
+  direkte `/login`- und `/register`-Links.
+- Geaendert in Schritt 142:
+  `apps/menyra-social/social-app.js`,
+  `apps/menyra-social/core/auth/auth-session-startup-coordinator.js`,
+  `tests/auth-session-startup-coordinator.test.mjs`,
+  `apps/menyra-social/bundled/entry/social-app.js`.
+- Bewusst nicht geaendert in Schritt 142:
+  keine UI-/Design-Aenderung, keine Formularlabels, keine Auth-Provider- oder
+  Firebase-Konfiguration, keine Firestore Rules, keine Functions, keine
+  Production-Firebase-Schreib- oder Mutationslaeufe.
+- Verifikation Schritt 142:
+  `node --test tests/auth-session-startup-coordinator.test.mjs` bestanden,
+  `node --test tests/*.test.mjs` bestanden mit 97/97 Tests,
+  `npm run build` bestanden.
+- Browser-Verifikation Schritt 142:
+  lokal auf `http://localhost:5174` bei Mobile-Breite 390x844:
+  `/login?verify=auth-route-fix-2` bleibt auf `/login`, zeigt
+  `Email / User` und `Passwort`, ohne `wird geladen`, ohne horizontalen
+  Overflow und mit 0 Console-Errors. `/register?verify=auth-route-fix-2`
+  bleibt auf `/register`, zeigt `Dein Name`, `Email / User` und `Passwort`,
+  ohne `wird geladen`, ohne horizontalen Overflow und mit 0 Console-Errors.
+- Zusaetzliche Public-Guest-Audit-Beobachtung in Schritt 142:
+  `/feed`, `/restaurants`, `/travel`, `/shopping`, `/search`, `/map`,
+  `/casarita`, `/casarita/menu`, `/orders`, sichtbarer Auth-Button und
+  Produktdetail-Oeffnung wurden im Browser ohne Production-Schreibaktionen
+  geprueft. Restaurants zeigt ohne Stadt erwartbar nur den City-Gate; nach
+  `Prishtina` erscheinen Cards. Map rendert Leaflet/Tiles/Marker, obwohl der
+  reine Textauszug niedrig ist.
+- Offener Blocker nach Schritt 142:
+  `npm run check:social-bundle` schlaegt weiter fehl:
+  `social-app.js` raw `1121916` > Budget `1052000`, gzip `304298` > Budget
+  `285000`. Das ist ein separater Performance-/Bundle-Gate-Blocker und wurde
+  in Schritt 142 nicht durch Budget-Erhoehung kaschiert.
+- Manuelle Testliste Schritt 142:
+  `/login` hart laden und pruefen, dass die URL `/login` bleibt und das
+  Login-Formular sichtbar ist. `/register` hart laden und pruefen, dass die URL
+  `/register` bleibt und das Registrierungsformular sichtbar ist. Danach den
+  Header-Login-Button auf `/feed` gegenpruefen.
 - Schritt 141 ist abgeschlossen: Profil-Refresh-Bio-Fallback fuer
   Business-Profile ohne Bio auf `systemfix2027` gehaertet.
 - Bewertung von Schritt 141: `bestanden mit offenem Bundle-Budget-Blocker`.

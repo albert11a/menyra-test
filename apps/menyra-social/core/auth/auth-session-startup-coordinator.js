@@ -291,6 +291,12 @@ export function createAuthSessionStartupCoordinator({
     return isQrMenuProfileLaunchActive() || isWebDirectProfileLaunchActive();
   }
 
+  function hasCurrentAuthRouteIntent() {
+    const pathname = String(windowObj?.location?.pathname || "").trim().toLowerCase();
+    const firstSegment = pathname.replace(/^\/+/, "").split("/")[0] || "";
+    return firstSegment === "login" || firstSegment === "register";
+  }
+
   function runNonBlockingRouteOpenWithTimeline() {
     if (state?.user?.__cachedAuthUser === true) {
       markStartup("non-blocking route open skipped", { reason: "cached-auth-restore" });
@@ -598,7 +604,11 @@ export function createAuthSessionStartupCoordinator({
     if (state) {
       state.user = user;
     }
+    const authWasOpenBeforePendingRouteApply = state?.auth?.open === true;
     applyPendingInitialRouteState();
+    const authOpenedByPendingAuthRoute = !authWasOpenBeforePendingRouteApply
+      && !state?.user
+      && state?.auth?.open === true;
     if (user) {
       markProfileTruthLoading();
       markBootstrapInFlight(nextUid);
@@ -645,14 +655,17 @@ export function createAuthSessionStartupCoordinator({
       const openedProtectedRouteAuth = typeof openPendingProtectedRouteAuthPrompt === "function"
         ? openPendingProtectedRouteAuthPrompt()
         : false;
-      if (state?.auth && !openedProtectedRouteAuth) {
+      const keepGuestAuthOpen = openedProtectedRouteAuth
+        || authOpenedByPendingAuthRoute
+        || (state?.auth?.open === true && hasCurrentAuthRouteIntent());
+      if (state?.auth && !keepGuestAuthOpen) {
         state.auth.open = false;
         state.auth.loading = false;
       } else if (state?.auth) {
         state.auth.loading = false;
       }
       loadGuestScopedPersisted();
-      if (state && !openedProtectedRouteAuth) {
+      if (state && !keepGuestAuthOpen) {
         state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
       }
       requestRender("auth.signedOut");
@@ -661,7 +674,7 @@ export function createAuthSessionStartupCoordinator({
           reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
         });
       };
-      if (!isWebDirectGuestProfileLaunchActive() && !openedProtectedRouteAuth) {
+      if (!isWebDirectGuestProfileLaunchActive() && !keepGuestAuthOpen) {
         queueMicrotaskSafe(runSignedOutEnsure);
       }
     }

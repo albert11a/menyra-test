@@ -1983,6 +1983,12 @@ try {
     pendingProfileTopTab: String(initialRouteState?.pendingProfileTopTab || "").trim().toLowerCase()
   });
   pendingRouteState.applyInitialRouteState(initialRouteState);
+  const initialAuthMode = normalizeAuthMode(initialRouteState?.pendingAuthMode || "");
+  if (!state.user && initialAuthMode && state.auth) {
+    state.auth.mode = initialAuthMode;
+    state.auth.open = true;
+    state.auth.loading = false;
+  }
   markStartupTimeline("pending route applied", {
     pendingInitialTab: String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase(),
     pendingProfileRestaurantId: String(pendingRouteState.getPendingState?.()?.pendingProfileRestaurantId || "").trim()
