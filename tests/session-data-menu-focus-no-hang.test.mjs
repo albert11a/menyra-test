@@ -65,6 +65,7 @@ function createVisibleMenuState() {
 function createController({
   state = createVisibleMenuState(),
   renderFn = () => {},
+  menuCache = null,
   loadPublicMenuItemsFn = async () => [],
   loadMenuItemsFromCollectionFn = async () => [],
   loadMenuMetaFn = async () => ({ statusBadgeVisible: true }),
@@ -75,6 +76,7 @@ function createController({
     state,
     dataLoaded: {},
     renderFn,
+    menuCache,
     menuCacheKeyFn: (restaurantId, source = "public") => `${restaurantId}:${source}`,
     focusCacheKeyFn: (restaurantId) => `${restaurantId}`,
     loadDeadlines: {
@@ -92,7 +94,7 @@ function createController({
   });
 }
 
-test("public menu load leaves loading state when Firebase menu items do not return", async () => {
+test("public menu unknown load stays pending instead of becoming a visible error", async () => {
   const state = createVisibleMenuState();
   const controller = createController({
     state,
@@ -105,8 +107,8 @@ test("public menu load leaves loading state when Firebase menu items do not retu
 
   assert.equal(result.truthState, "unknown");
   assert.equal(state.menu.restaurantId, "restaurant-a");
-  assert.equal(state.menu.loading, false);
-  assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.error, "");
   assert.equal(state.menu.truthState, "unknown");
 });
 
@@ -130,6 +132,62 @@ test("visible public menu does not turn an in-flight unknown prefetch into an er
   assert.equal(state.menu.loading, true);
   assert.equal(state.menu.error, "");
   assert.equal(state.menu.truthState, "unknown");
+});
+
+test("visible public menu loads canonical restaurant id instead of route alias", async () => {
+  const state = createVisibleMenuState();
+  state.profileView.profile = {
+    restaurantId: "route-alias",
+    canonicalRestaurantId: "canonical-restaurant",
+    publicSlug: "alias-slug",
+    role: "business"
+  };
+  state.profileView.routePayload = {
+    restaurantId: "route-alias",
+    canonicalRestaurantId: "canonical-restaurant",
+    publicSlug: "alias-slug",
+    businessSnapshot: {
+      restaurantId: "canonical-restaurant"
+    }
+  };
+  state.__webDirectEntry = {
+    active: true,
+    restaurantId: "route-alias",
+    canonicalRestaurantId: "canonical-restaurant",
+    webPriority: true,
+    menuFirst: true
+  };
+  const loadedRestaurantIds = [];
+  const menuCache = new Map([
+    ["alias-slug:public", {
+      items: [],
+      statusBadgeVisible: true,
+      truthSource: "public-menu",
+      truthState: "knownEmpty",
+      ts: Date.now()
+    }]
+  ]);
+  const controller = createController({
+    state,
+    menuCache,
+    loadPublicMenuItemsFn: async (restaurantId) => {
+      loadedRestaurantIds.push(restaurantId);
+      return [{ id: "item-1", title: "Canonical item" }];
+    },
+    loadMenuItemsFromCollectionFn: async () => {
+      throw new Error("legacy menuItems must not win public menu load");
+    }
+  });
+
+  const result = await controller.loadMenuForRestaurant("alias-slug", { source: "public" });
+
+  assert.deepEqual(loadedRestaurantIds, ["canonical-restaurant"]);
+  assert.equal(result.truthState, "seeded");
+  assert.equal(state.menu.restaurantId, "canonical-restaurant");
+  assert.equal(state.menu.source, "public");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "");
+  assert.deepEqual(state.menu.items, [{ id: "item-1", title: "Canonical item" }]);
 });
 
 test("menu editor collection load leaves loading state when Firebase products do not return", async () => {

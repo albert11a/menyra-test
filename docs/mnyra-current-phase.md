@@ -5,6 +5,62 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 149 ist abgeschlossen: Phase 1 der Ladeweg-Vereinfachung macht fuer
+  sichtbare Public-Menu-Loads die bekannte canonical `restaurantId` staerker
+  als Slug-/Alias-/Route-/Cache-Hinweise.
+- Bewertung von Schritt 149: `bestanden, browser-verifiziert, keine
+  Production-Mutation`.
+- Wichtigster Effekt aus Schritt 149:
+  Wenn ein sichtbarer Public-Menu-Surface bereits eine canonical
+  `restaurantId` aus Profil, RoutePayload, BusinessSnapshot oder Web-Direct-
+  Entry kennt, wird `loadMenuForRestaurant` vor Cache/In-flight/Firebase-Read
+  auf diese ID ausgerichtet. Ein Alias-/Slug-/Route-Zwischenwert kann dadurch
+  nicht mehr als Guest-Menu-Lade-ID gewinnen. Public-Guest-Menu bleibt weiter
+  ausschliesslich `restaurants/{restaurantId}/public/menu`; `menuItems` bleibt
+  Legacy/Editor/Migration. Zusaetzlich bleibt ein leeres `unknown` Public-
+  Menu-Fallback sichtbar pending statt als finaler `Menu laden fehlgeschlagen`
+  Fehler.
+- Geaendert in Schritt 149:
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`,
+  `tests/session-data-menu-focus-no-hang.test.mjs`,
+  `apps/menyra-social/social-app.js`,
+  `apps/menyra-social/bundled/entry/social-app.js`,
+  `docs/mnyra-current-phase.md`.
+- Bewusst nicht geaendert in Schritt 149:
+  keine UI-/Design-Aenderung, kein breiter Routing-Umbau, keine
+  PublicRoute-/Slug-Migration, keine Firestore-Regeln, keine Functions, keine
+  Production-Firebase-Schreib-, Loesch- oder Mutationslaeufe, kein Deploy,
+  keine Checkout-/Order-/QR-Schreibflows. Der entfernte `console.debug` war
+  nur Startup-Timeline-Konsolenausgabe; die Timeline-Daten auf `window`
+  bleiben erhalten.
+- Verifikation Schritt 149:
+  `node --test tests/*.test.mjs` bestanden (`107/107`),
+  `npm run build` bestanden,
+  `npm run check:social-bundle` bestanden (`social-app.js` raw `1048614`,
+  gzip `284993`, Budget gzip `285000`).
+  Browserpruefung lokal auf `http://localhost:5175` ohne Schreibflows:
+  `/casarita/menu`, `/aktashbar/menu`, `/tanushaj-resort/menu`,
+  `/hotel-vista-mare`, `/moka-coffee`, `/casarita/menu?src=qr&table=7`,
+  `/casa-rita/menu`. Ergebnis: sichtbarer Inhalt, keine Console-Errors,
+  kein falscher `Menu konnte nicht geladen werden`-Text, keine dauerhaften
+  Loading-Texte, kein horizontaler Overflow. QR-Kontext blieb erhalten:
+  `pendingProfileAccessSource=qr`, `pendingProfileTableNumber=7`,
+  `publicBusiness.isQr=true`. Alias `/casa-rita/menu` canonicalisierte auf
+  `/casarita/menu` mit canonical Restaurant-ID `Lzm6RpNu3ErSDtGCHxpi`.
+- Offene Folgearbeit nach Schritt 149:
+  Canonical-ID-Wahrheit als naechstes auf Profil-Beitraege, QR/Table-Meta und
+  Business/User-Kontext weiter zentralisieren. Resort-/Offers-only-Flaechen
+  bleiben fachlich getrennt: `hotel-vista-mare` und `tanushaj-resort` zeigten
+  Details statt Menu-Tab. Datenmigrationen weiterhin nur nach Backup/Staging:
+  Public-Menu-/Offers-Truth-Metadaten, Owner-/User-Relationen,
+  Public-vs-Legacy-Mismatch und User-Status-/malformed-User-Themen.
+- Manuelle Testliste Schritt 149:
+  `/casarita/menu`, `/aktashbar/menu`, `/tanushaj-resort/menu`,
+  `/hotel-vista-mare`, `/moka-coffee`, `/casarita/menu?src=qr&table=7` und
+  `/casa-rita/menu` hart laden. Danach Profil/Menu/Beitraege wechseln,
+  Browser-Console pruefen, auf `Menu konnte nicht geladen werden`, dauerhaftes
+  `wird geladen` und horizontalen Overflow achten. Keine Checkout-/Order- oder
+  QR-Schreibaktionen ausfuehren.
 - Schritt 148 ist abgeschlossen: Firebase-/Datenfluss-Audit von der bisherigen
   stichproben-/Einzelfall-lastigen Auswertung auf einen kompletten Read-only-
   Inventarlauf erweitert.

@@ -1814,11 +1814,23 @@ export function createSessionDataRuntimeController({
   }
 
   async function loadMenuForRestaurant(restaurantId, { force = false, source = "public", prefetchOnly = false } = {}) {
-    const safeRestaurantId = String(restaurantId || "").trim();
+    let safeRestaurantId = String(restaurantId || "").trim();
     const sourceRaw = String(source || "public").trim().toLowerCase();
     const safeSource = sourceRaw === "collection"
       ? "collection"
       : (sourceRaw === "migration" ? "migration" : "public");
+    const visibleMenuTargetIds = collectVisiblePublicMenuTargetIds();
+    const canonicalMenuRestaurantId = safeSource === "public" && isPublicProfileMenuVisible()
+      && (
+        state?.profileView?.profile?.canonicalRestaurantId
+        || state?.profileView?.routePayload?.canonicalRestaurantId
+        || state?.profileView?.routePayload?.businessSnapshot?.restaurantId
+        || (state?.__webDirectEntry?.active === true ? state.__webDirectEntry.canonicalRestaurantId : "")
+        || ""
+      );
+    if (canonicalMenuRestaurantId && (!safeRestaurantId || visibleMenuTargetIds.has(safeRestaurantId))) {
+      safeRestaurantId = canonicalMenuRestaurantId;
+    }
     const timeMenuItemsLoad = (label, task, meta = {}) => timeLoadingAsync(label, task, {
       restaurantId: safeRestaurantId,
       source: safeSource,
@@ -1854,7 +1866,6 @@ export function createSessionDataRuntimeController({
         startMenuMetaListener(safeRestaurantId, { source: safeSource });
       }
     }
-    const visibleMenuTargetIds = collectVisiblePublicMenuTargetIds();
     const currentMenuRestaurantId = String(state?.menu?.restaurantId || "").trim();
     const currentMenuSource = String(state?.menu?.source || "").trim().toLowerCase() || "public";
     const menuStateMatchesVisibleSurface = currentMenuSource === safeSource
@@ -2229,12 +2240,13 @@ export function createSessionDataRuntimeController({
           truthState: fallbackItems.length > 0 ? "seeded" : "unknown"
         };
         if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return fallbackPayload;
+        const keepUnknownPublicMenuPending = safeSource === "public" && !fallbackItems.length;
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: fallbackItems,
-          loading: false,
-          error: fallbackItems.length ? "" : "Menu laden fehlgeschlagen.",
+          loading: keepUnknownPublicMenuPending,
+          error: fallbackItems.length || keepUnknownPublicMenuPending ? "" : "Menu laden fehlgeschlagen.",
           source: safeSource,
           statusBadgeVisible: fallbackStatusBadgeVisible,
           routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true,

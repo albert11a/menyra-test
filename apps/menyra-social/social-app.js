@@ -1708,9 +1708,6 @@ function markStartupTimeline(event = "", detail = {}) {
   };
   timeline.push(entry);
   window.__MENYRA_SOCIAL_LAST_STARTUP_TIMELINE_EVENT__ = entry;
-  try {
-    console.debug(`[mnyra][startup] +${entry.deltaMs}ms ${safeEvent}`, entry.detail);
-  } catch {}
 }
 
 if (ENABLE_STARTUP_TIMELINE && typeof window !== "undefined") {
