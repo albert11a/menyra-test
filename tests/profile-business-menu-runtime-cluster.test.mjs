@@ -3,25 +3,33 @@ import test from "node:test";
 
 import { createProfileBusinessMenuRuntimeCluster } from "../apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js";
 
-function createVisiblePublicProfileState({ posts = [], postsLoaded = false, truthState = "unknown" } = {}) {
+function createVisiblePublicProfileState({
+  posts = [],
+  postsLoaded = false,
+  truthState = "unknown",
+  profile = null,
+  routePayload = null,
+  webDirectEntry = null
+} = {}) {
+  const safeProfile = profile || {
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a",
+    role: "business",
+    postsLoaded,
+    truthState
+  };
   return {
     activeTab: "profile",
     profileTopTab: "profile",
     profileContentTab: "posts",
     profileBackTab: "",
     profileView: {
-      profile: {
-        restaurantId: "restaurant-a",
-        canonicalRestaurantId: "restaurant-a",
-        role: "business",
-        postsLoaded,
-        truthState
-      },
+      profile: safeProfile,
       posts,
-      routePayload: null,
+      routePayload,
       directEntry: null
     },
-    __webDirectEntry: {
+    __webDirectEntry: webDirectEntry || {
       active: true,
       restaurantId: "restaurant-a",
       canonicalRestaurantId: "restaurant-a",
@@ -155,4 +163,61 @@ test("public profile posts successful empty read commits empty truth", async () 
   assert.equal(state.profileView.profile.postsLoaded, true);
   assert.equal(state.profileView.profile.truthState, "empty");
   assert.deepEqual(state.profileView.posts, []);
+});
+
+test("public profile posts use canonical route payload instead of alias fallback", async () => {
+  const state = createVisiblePublicProfileState({
+    profile: {
+      restaurantId: "route-alias",
+      role: "business",
+      postsLoaded: false,
+      truthState: "unknown"
+    },
+    routePayload: {
+      restaurantId: "route-alias",
+      canonicalRestaurantId: "canonical-restaurant",
+      businessSnapshot: {
+        restaurantId: "canonical-restaurant"
+      }
+    },
+    webDirectEntry: {
+      active: true,
+      restaurantId: "route-alias",
+      canonicalRestaurantId: "canonical-restaurant",
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      postsFirst: true,
+      topTab: "profile",
+      contentTab: "posts"
+    }
+  });
+  const readIds = [];
+  const showCalls = [];
+  const cluster = createCluster({
+    state,
+    showCalls,
+    loadBusinessPostsForRestaurantFn: async (restaurantId) => {
+      readIds.push(restaurantId);
+      if (restaurantId === "route-alias") {
+        throw new Error("route alias must not be used as profile post truth");
+      }
+      return [];
+    }
+  });
+
+  await withNoopRetryTimers(async () => {
+    cluster.ensurePostsDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+  });
+
+  assert.equal(readIds.length >= 1, true);
+  assert.equal(readIds.every((id) => id === "canonical-restaurant"), true);
+  assert.equal(showCalls.length >= 1, true);
+  const lastCall = showCalls[showCalls.length - 1];
+  assert.equal(lastCall.profile.restaurantId, "canonical-restaurant");
+  assert.equal(lastCall.profile.canonicalRestaurantId, "canonical-restaurant");
+  assert.equal(lastCall.profile.postsLoaded, true);
+  assert.equal(lastCall.profile.truthState, "empty");
+  assert.deepEqual(lastCall.posts, []);
 });

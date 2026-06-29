@@ -1,5 +1,6 @@
 import { clearPostEntityMap, projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
 import { resolveVisibleProfileSurface } from "../profile/public-profile-surface-controller.js";
+import { createCanonicalPublicBusinessContextCore } from "../profile/canonical-public-business-context-utils.js";
 import { normalizeRestaurantPostDocCore, normalizeUserPostDocCore } from "../feed/post-doc-normalize-utils.js";
 import {
   buildRestaurantTruthSignatureCore,
@@ -216,52 +217,25 @@ export function createSessionDataRuntimeController({
     });
   }
 
-  function addVisibleMenuTargetId(targetSet, value = "") {
-    const safeValue = String(value || "").trim();
-    if (safeValue) targetSet.add(safeValue);
-  }
-
   function collectVisiblePublicMenuTargetIds() {
-    const ids = new Set();
     const profile = state?.profileView?.profile && typeof state.profileView.profile === "object"
       ? state.profileView.profile
       : {};
     const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
       ? state.profileView.routePayload
       : {};
-    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
-      ? routePayload.businessSnapshot
-      : {};
-    const routeIdentity = routePayload?.identity && typeof routePayload.identity === "object"
-      ? routePayload.identity
-      : {};
-    const snapshotIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
-      ? routeSnapshot.identity
-      : {};
     const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
       ? state.__webDirectEntry
       : {};
-    [
-      profile.canonicalRestaurantId,
-      profile.restaurantId,
-      profile.publicSlug,
-      profile.landingSlug,
-      profile.handle,
-      routePayload.canonicalRestaurantId,
-      routePayload.restaurantId,
-      routePayload.publicSlug,
-      routePayload.landingSlug,
-      routeIdentity.publicSlug,
-      routeIdentity.landingSlug,
-      routeIdentity.handle,
-      routeSnapshot.restaurantId,
-      snapshotIdentity.publicSlug,
-      snapshotIdentity.landingSlug,
-      snapshotIdentity.handle,
-      webDirectEntry.canonicalRestaurantId,
-      webDirectEntry.restaurantId
-    ].forEach((value) => addVisibleMenuTargetId(ids, value));
-    return ids;
+    return new Set(createCanonicalPublicBusinessContextCore({
+      profile,
+      routePayload,
+      webDirectEntry,
+      restaurantId: state?.profileView?.restaurantId || "",
+      accessSource: state?.profileView?.menuAccessSource || "",
+      tableNumber: state?.profileView?.tableNumber || 0,
+      lastStableMenuData: state?.menu || null
+    }).targetIds);
   }
 
   function isQrGuestMenuSessionForRestaurant(restaurantId = "") {
@@ -1821,13 +1795,15 @@ export function createSessionDataRuntimeController({
       : (sourceRaw === "migration" ? "migration" : "public");
     const visibleMenuTargetIds = collectVisiblePublicMenuTargetIds();
     const canonicalMenuRestaurantId = safeSource === "public" && isPublicProfileMenuVisible()
-      && (
-        state?.profileView?.profile?.canonicalRestaurantId
-        || state?.profileView?.routePayload?.canonicalRestaurantId
-        || state?.profileView?.routePayload?.businessSnapshot?.restaurantId
-        || (state?.__webDirectEntry?.active === true ? state.__webDirectEntry.canonicalRestaurantId : "")
-        || ""
-      );
+      && createCanonicalPublicBusinessContextCore({
+        profile: state?.profileView?.profile || null,
+        routePayload: state?.profileView?.routePayload || null,
+        webDirectEntry: state?.__webDirectEntry || null,
+        restaurantId: safeRestaurantId,
+        accessSource: state?.profileView?.menuAccessSource || "",
+        tableNumber: state?.profileView?.tableNumber || 0,
+        lastStableMenuData: state?.menu || null
+      }).canonicalRestaurantId;
     if (canonicalMenuRestaurantId && (!safeRestaurantId || visibleMenuTargetIds.has(safeRestaurantId))) {
       safeRestaurantId = canonicalMenuRestaurantId;
     }

@@ -164,6 +164,57 @@ test("direct public profile route does not queue browser history push", () => {
   assert.equal(state.__nextRouteHistoryMode, "");
 });
 
+test("partial canonical profile update preserves stable header shell", () => {
+  const state = createProfileSwitchState();
+  state.profileView.profile = {
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a",
+    name: "Stable Restaurant",
+    handle: "stable-restaurant",
+    avatar: "stable-logo.png",
+    titleImageUrl: "stable-cover.jpg",
+    location: "Pristina",
+    postsLoaded: true,
+    truthState: "stable"
+  };
+  const controller = createPublicProfileRuntimeController({
+    state,
+    render: () => {},
+    normalizeHandle: (value = "") => String(value || "").trim().toLowerCase()
+  });
+
+  controller.showPublicProfile({
+    restaurantId: "restaurant-a",
+    canonicalRestaurantId: "restaurant-a",
+    name: "",
+    handle: "",
+    avatar: "",
+    titleImageUrl: "",
+    postsLoaded: false,
+    truthState: "loading"
+  }, [], {
+    showBack: false,
+    topTab: "profile",
+    contentTab: "posts",
+    routePayload: {
+      restaurantId: "route-alias",
+      canonicalRestaurantId: "restaurant-a",
+      publicSlug: "stable-restaurant",
+      businessSnapshot: { restaurantId: "restaurant-a" }
+    }
+  });
+
+  assert.equal(state.profileView.profile.restaurantId, "restaurant-a");
+  assert.equal(state.profileView.profile.canonicalRestaurantId, "restaurant-a");
+  assert.equal(state.profileView.profile.name, "Stable Restaurant");
+  assert.equal(state.profileView.profile.avatar, "stable-logo.png");
+  assert.equal(state.profileView.profile.titleImageUrl, "stable-cover.jpg");
+  assert.equal(state.profileView.profile.location, "Pristina");
+  assert.equal(state.publicBusinessContext.canonicalRestaurantId, "restaurant-a");
+  assert.equal(state.publicBusinessContext.profileStatus, "ready");
+  assert.equal(state.publicBusinessContext.routeSource, "slug");
+});
+
 function createDocsSnapshot(rows = []) {
   return {
     forEach(callback) {

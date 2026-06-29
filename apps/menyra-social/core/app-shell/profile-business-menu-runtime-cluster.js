@@ -1,6 +1,10 @@
 import { createBusinessAccountsRuntimeController } from "../business-accounts/business-accounts-runtime-controller.js";
 import { createProfileMenuFocusRenderBoundary } from "../profile/profile-menu-focus-render-boundary.js";
 import { getMenuRestaurantForProfileCore } from "../profile/profile-menu-focus-utils.js";
+import {
+  createCanonicalPublicBusinessContextCore,
+  getCanonicalPublicBusinessLoadIds
+} from "../profile/canonical-public-business-context-utils.js";
 import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
 
 export function createProfileBusinessMenuRuntimeCluster({
@@ -86,6 +90,34 @@ export function createProfileBusinessMenuRuntimeCluster({
       : null
   );
 
+  const buildVisiblePublicBusinessContext = (profile = {}, fallbackId = "") => {
+    const visibleProfileView = getVisiblePublicProfileView();
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const visibleProfile = visibleProfileView?.profile || null;
+    const routePayload = getVisibleRoutePayload();
+    const webDirectEntry = getWebDirectEntryState();
+    const activeProfile = visibleProfile || safeProfile;
+    const posts = Array.isArray(visibleProfileView?.view?.posts) ? visibleProfileView.view.posts : [];
+    return createCanonicalPublicBusinessContextCore({
+      profile: {
+        ...(safeProfile || {}),
+        ...(activeProfile || {})
+      },
+      routePayload,
+      webDirectEntry,
+      userProfile: state?.userProfile || null,
+      restaurantId: fallbackId || getMenuRestaurantForProfile(safeProfile),
+      accessSource: state?.profileView?.menuAccessSource || "",
+      tableNumber: state?.profileView?.tableNumber || 0,
+      profileStatus: visibleProfile?.truthState || "",
+      menuStatus: state?.menu?.loading ? "loading" : "",
+      postsStatus: posts.length ? "ready" : (visibleProfile?.postsLoaded === true ? "empty" : "unknown"),
+      lastStableProfileData: visibleProfile || null,
+      lastStableMenuData: state?.menu || null,
+      lastStablePostsData: posts
+    });
+  };
+
   const addTargetId = (targetSet, value = "") => {
     const safeValue = String(value || "").trim();
     if (safeValue) targetSet.add(safeValue);
@@ -93,66 +125,13 @@ export function createProfileBusinessMenuRuntimeCluster({
 
   const collectVisibleMenuTargetIds = (profile = {}) => {
     const ids = new Set();
-    const safeProfile = profile && typeof profile === "object" ? profile : {};
-    const visibleProfile = state?.profileView?.profile && typeof state.profileView.profile === "object"
-      ? state.profileView.profile
-      : {};
-    const routePayload = getVisibleRoutePayload();
-    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
-      ? routePayload.businessSnapshot
-      : {};
-    const routeIdentity = routePayload?.identity && typeof routePayload.identity === "object"
-      ? routePayload.identity
-      : {};
-    const snapshotIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
-      ? routeSnapshot.identity
-      : {};
-    const webDirectEntry = getWebDirectEntryState();
-    [
-      safeProfile.canonicalRestaurantId,
-      safeProfile.restaurantId,
-      safeProfile.publicSlug,
-      safeProfile.landingSlug,
-      safeProfile.handle,
-      visibleProfile.canonicalRestaurantId,
-      visibleProfile.restaurantId,
-      visibleProfile.publicSlug,
-      visibleProfile.landingSlug,
-      visibleProfile.handle,
-      routePayload?.canonicalRestaurantId,
-      routePayload?.restaurantId,
-      routePayload?.publicSlug,
-      routePayload?.landingSlug,
-      routeIdentity.publicSlug,
-      routeIdentity.landingSlug,
-      routeIdentity.handle,
-      routeSnapshot.restaurantId,
-      snapshotIdentity.publicSlug,
-      snapshotIdentity.landingSlug,
-      snapshotIdentity.handle,
-      webDirectEntry?.canonicalRestaurantId,
-      webDirectEntry?.restaurantId
-    ].forEach((value) => addTargetId(ids, value));
+    buildVisiblePublicBusinessContext(profile).targetIds.forEach((value) => addTargetId(ids, value));
     return ids;
   };
 
   const resolveMenuSurfaceTargetId = (profile = {}) => {
-    const safeProfile = profile && typeof profile === "object" ? profile : {};
-    const routePayload = getVisibleRoutePayload();
-    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
-      ? routePayload.businessSnapshot
-      : {};
-    const webDirectEntry = getWebDirectEntryState();
-    return String(
-      safeProfile.canonicalRestaurantId
-      || routePayload?.canonicalRestaurantId
-      || routeSnapshot.restaurantId
-      || webDirectEntry?.canonicalRestaurantId
-      || getMenuRestaurantForProfile(safeProfile)
-      || routePayload?.restaurantId
-      || webDirectEntry?.restaurantId
-      || ""
-    ).trim();
+    const context = buildVisiblePublicBusinessContext(profile);
+    return String(context.canonicalRestaurantId || getCanonicalPublicBusinessLoadIds(context)[0] || "").trim();
   };
 
   const isWebDirectMenuVisible = () => {
@@ -516,7 +495,9 @@ export function createProfileBusinessMenuRuntimeCluster({
     return "";
   };
 
-  const resolveLatestCanonicalMenuRestaurantId = (fallbackId = "") => {
+  const resolveLatestCanonicalMenuRestaurantId = (fallbackId = "", profile = {}) => {
+    const context = buildVisiblePublicBusinessContext(profile, fallbackId);
+    if (context.canonicalRestaurantId) return context.canonicalRestaurantId;
     const visibleProfileView = getVisiblePublicProfileView();
     const routePayload = getVisibleRoutePayload();
     const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
@@ -551,16 +532,11 @@ export function createProfileBusinessMenuRuntimeCluster({
       if (safeValue && !ids.includes(safeValue)) ids.push(safeValue);
     };
     const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const context = buildVisiblePublicBusinessContext(safeProfile, fallbackId);
+    addId(resolveLatestCanonicalMenuRestaurantId(fallbackId, safeProfile));
+    getCanonicalPublicBusinessLoadIds(context).forEach((value) => addId(value));
     const routePayload = getVisibleRoutePayload();
-    const routeSnapshot = routePayload?.businessSnapshot && typeof routePayload.businessSnapshot === "object"
-      ? routePayload.businessSnapshot
-      : {};
     const webDirectEntry = getWebDirectEntryState();
-    addId(resolveLatestCanonicalMenuRestaurantId(fallbackId));
-    addId(safeProfile.canonicalRestaurantId);
-    addId(routePayload?.canonicalRestaurantId);
-    addId(routeSnapshot.restaurantId);
-    addId(webDirectEntry?.canonicalRestaurantId);
     addId(resolveCachedCanonicalRestaurantId(
       fallbackId,
       getMenuRestaurantForProfile(safeProfile),
@@ -752,7 +728,10 @@ export function createProfileBusinessMenuRuntimeCluster({
   const loadVisiblePublicPostsIds = async (profile = {}, fallbackId = "") => {
     if (!isNormalWebDirectProfileVisible()) return;
     if (!showPublicProfile) return;
-    const ids = collectVisibleMenuLoadIds(profile, fallbackId);
+    const context = buildVisiblePublicBusinessContext(profile, fallbackId);
+    const ids = context.canonicalRestaurantId
+      ? [context.canonicalRestaurantId]
+      : collectVisibleMenuLoadIds(profile, fallbackId);
     if (!ids.length || getVisiblePostsForCurrentProfile().length) return;
     for (const restaurantId of ids) {
       if (!isNormalWebDirectProfileVisible()) return;
@@ -842,6 +821,13 @@ export function createProfileBusinessMenuRuntimeCluster({
   const resolveCanonicalRestaurantId = async (profile = {}) => {
     const requestedRestaurantId = String(getMenuRestaurantForProfile(profile) || "").trim();
     if (!requestedRestaurantId) return "";
+    const contextCanonicalRestaurantId = buildVisiblePublicBusinessContext(profile, requestedRestaurantId).canonicalRestaurantId;
+    if (contextCanonicalRestaurantId && contextCanonicalRestaurantId !== requestedRestaurantId) {
+      canonicalRestaurantIdCache.set(requestedRestaurantId, contextCanonicalRestaurantId);
+      canonicalRestaurantIdCache.set(contextCanonicalRestaurantId, contextCanonicalRestaurantId);
+      void ensureVisibleBusinessIdentityHydration(profile, contextCanonicalRestaurantId);
+      return contextCanonicalRestaurantId;
+    }
     const cachedCanonicalRestaurantId = String(canonicalRestaurantIdCache.get(requestedRestaurantId) || "").trim();
     const canonicalRestaurantIdHint = String(profile?.canonicalRestaurantId || "").trim();
     if (canonicalRestaurantIdHint) {
@@ -992,13 +978,6 @@ export function createProfileBusinessMenuRuntimeCluster({
         initialPage: true
       });
       posts = Array.isArray(posts) ? posts : [];
-      if (!posts.length && requestedRestaurantId && requestedRestaurantId !== targetRestaurantId) {
-        const fallback = await loadBusinessPostsForRestaurant(requestedRestaurantId, {
-          skipProfileResolve: true,
-          initialPage: true
-        });
-        posts = Array.isArray(fallback) ? fallback : [];
-      }
       const liveProfileView = getVisiblePublicProfileView();
       if (!liveProfileView) return;
       const liveRestaurantId = String(liveProfileView.restaurantId || "").trim();

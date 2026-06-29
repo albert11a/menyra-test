@@ -6,6 +6,10 @@ import {
   isVisibleProfileSettledForShortCircuit,
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
+import {
+  createCanonicalPublicBusinessContextCore,
+  mergeStableCanonicalProfileShellCore
+} from "./canonical-public-business-context-utils.js";
 import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
 
 export function createPublicProfileRuntimeController({
@@ -452,21 +456,10 @@ export function createPublicProfileRuntimeController({
   }
 
   function resolveProfileCanonicalRestaurantId(profile = null, routePayload = null) {
-    const safeProfile = profile && typeof profile === "object" ? profile : null;
-    const safeRoutePayload = routePayload && typeof routePayload === "object"
-      ? routePayload
-      : null;
-    const snapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
-      ? safeRoutePayload.businessSnapshot
-      : null;
-    return String(
-      safeProfile?.canonicalRestaurantId
-      || safeRoutePayload?.canonicalRestaurantId
-      || snapshot?.restaurantId
-      || safeProfile?.restaurantId
-      || safeRoutePayload?.restaurantId
-      || ""
-    ).trim();
+    return createCanonicalPublicBusinessContextCore({
+      profile,
+      routePayload
+    }).canonicalRestaurantId;
   }
 
   function resolveProfileViewListenerTarget(profile = null) {
@@ -1392,7 +1385,7 @@ export function createPublicProfileRuntimeController({
       || (sameVisibleIncomingProfile ? currentCanonicalRestaurantId : "")
       || ""
     ).trim();
-    const nextProfile = profile ? {
+    let nextProfile = profile ? {
       ...profile,
       ...(resolvedCanonicalRestaurantId ? { canonicalRestaurantId: resolvedCanonicalRestaurantId } : {}),
       ...(
@@ -1426,6 +1419,19 @@ export function createPublicProfileRuntimeController({
       } : {}),
       posts: projectedPosts
     } : profile;
+    const initialPublicBusinessContext = createCanonicalPublicBusinessContextCore({
+      profile: nextProfile,
+      routePayload: incomingCanonicalRoutePayload,
+      webDirectEntry: incomingDirectEntry,
+      accessSource: normalizedMenuAccessSource,
+      tableNumber: safeTableNumber,
+      profileStatus: incomingProfileSettling ? "resolving" : "ready",
+      lastStableProfileData: currentProfile || null,
+      lastStablePostsData: currentPosts
+    });
+    if (nextProfile) {
+      nextProfile = mergeStableCanonicalProfileShellCore(currentProfile, nextProfile, initialPublicBusinessContext);
+    }
 
     const sameVisibleProfile = isSameVisibleProfile(currentProfile || null, nextProfile);
     const previousTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
@@ -1613,6 +1619,21 @@ export function createPublicProfileRuntimeController({
       profileTopTab: resolvedTopTab,
       profileContentTab: nextContentTab
     });
+    const nextPublicBusinessContext = createCanonicalPublicBusinessContextCore({
+      profile: nextProfile,
+      routePayload: nextRoutePayload,
+      webDirectEntry: nextDirectEntry,
+      accessSource: normalizedMenuAccessSource,
+      tableNumber: safeTableNumber,
+      profileStatus: nextSurface?.status || "ready",
+      menuStatus: nextSurface?.menu?.status || "unknown",
+      postsStatus: nextSurface?.posts?.status || "unknown",
+      lastStableProfileData: nextProfile || null,
+      lastStableMenuData: state?.menu || null,
+      lastStablePostsData: projectedPosts,
+      coldStart: !currentView && showBack === false,
+      hardRefresh: !currentView && showBack === false
+    });
     const canShortCircuitSurface = isVisibleProfileSettledForShortCircuit(state, {
       currentProfile,
       nextProfile
@@ -1635,6 +1656,7 @@ export function createPublicProfileRuntimeController({
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
     ) {
       state.profileSurface = nextSurface;
+      state.publicBusinessContext = nextPublicBusinessContext;
       syncWebDirectEntryState({
         restaurantId: String(nextProfile?.restaurantId || nextCanonicalRestaurantId || "").trim(),
         canonicalRestaurantId: nextCanonicalRestaurantId,
@@ -1648,6 +1670,7 @@ export function createPublicProfileRuntimeController({
       return;
     }
     state.profileView = nextView;
+    state.publicBusinessContext = nextPublicBusinessContext;
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = nextContentTab;
     state.profileTopTab = resolvedTopTab;

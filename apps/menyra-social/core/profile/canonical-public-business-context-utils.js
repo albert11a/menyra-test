@@ -59,7 +59,8 @@ function normalizeRouteSource({
 }
 
 export function normalizeCanonicalPublicBusinessProfileStatus(value = "", fallback = "resolving") {
-  return normalizeKnownStatus(value, fallback, PROFILE_STATUSES);
+  const safeFallback = PROFILE_STATUSES.has(cleanLower(fallback)) ? fallback : "resolving";
+  return normalizeKnownStatus(value, safeFallback, PROFILE_STATUSES);
 }
 
 export function normalizeCanonicalPublicBusinessSectionStatus(value = "", fallback = "unknown") {
@@ -111,8 +112,24 @@ export function createCanonicalPublicBusinessContextCore({
   const userRestaurantId = firstText(safeUserProfile.restaurantId, safeUserProfile.businessRestaurantId);
   const canonicalRestaurantId = firstText(
     explicitCanonicalRestaurantId,
+    safeProfile.restaurantId,
     userRestaurantId,
     isLikelyRestaurantId(routeId) ? routeId : ""
+  );
+  const routeSlug = firstText(
+    inputSlug,
+    safeRoutePayload.publicSlug,
+    safeRoutePayload.landingSlug,
+    safeRoutePayload?.identity?.publicSlug,
+    safeRoutePayload?.identity?.landingSlug,
+    safeRoutePayload?.identity?.handle,
+    routeSnapshot?.identity?.publicSlug,
+    routeSnapshot?.identity?.landingSlug,
+    routeSnapshot?.identity?.handle,
+    safeProfile.publicSlug,
+    safeProfile.landingSlug,
+    safeProfile.handle,
+    !isLikelyRestaurantId(routeId) ? routeId : ""
   );
   const normalizedAccessSource = cleanLower(
     accessSource
@@ -127,7 +144,7 @@ export function createCanonicalPublicBusinessContextCore({
   const source = normalizeRouteSource({
     routeSource,
     accessSource: normalizedAccessSource,
-    inputSlug,
+    inputSlug: routeSlug,
     inputId: routeId,
     routeContext: safeRouteContext,
     userProfile: safeUserProfile
@@ -143,7 +160,7 @@ export function createCanonicalPublicBusinessContextCore({
     safeRoutePayload.restaurantId,
     safeWebDirectEntry.restaurantId,
     routeId,
-    inputSlug,
+    routeSlug,
     safeProfile.publicSlug,
     safeProfile.landingSlug,
     safeProfile.handle,
@@ -163,7 +180,7 @@ export function createCanonicalPublicBusinessContextCore({
   return {
     canonicalRestaurantId,
     canonicalSlug: cleanText(canonicalSlug || safeProfile.publicSlug || safeProfile.landingSlug || safeRoutePayload.canonicalSlug || ""),
-    inputSlug: cleanText(inputSlug || (!isLikelyRestaurantId(routeId) ? routeId : "")),
+    inputSlug: cleanText(routeSlug),
     inputId: cleanText(routeId),
     routeSource: source,
     tableNumber: normalizedTableNumber,
