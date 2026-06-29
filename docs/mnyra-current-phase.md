@@ -5,6 +5,35 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 143 ist abgeschlossen: Desktop-/Responsive-Gegencheck der kritischen
+  Public-Guest-Flächen auf `systemfix2027`.
+- Bewertung von Schritt 143: `bestanden, kein Code-Fix noetig`.
+- Wichtigster Effekt aus Schritt 143:
+  Die in Schritt 141/142 beruehrten und audit-relevanten Public-Flächen wurden
+  nicht nur mobil, sondern auch auf Desktop-Breite gegen offensichtliche
+  Ladehaenger, Console-Errors und horizontalen Overflow geprueft.
+- Geaendert in Schritt 143:
+  keine Produktdateien; nur diese Phasen-Dokumentation.
+- Bewusst nicht geaendert in Schritt 143:
+  keine UI-/Design-Aenderung, keine Routing-Aenderung, keine Produktlogik,
+  keine Firestore Rules, keine Functions, keine Production-Firebase-Schreib-
+  oder Mutationslaeufe.
+- Verifikation Schritt 143:
+  Browser-Audit lokal auf `http://localhost:5174` bei 1366x768 fuer `/feed`,
+  `/restaurants` mit `Prishtina`, `/travel`, `/shopping`, `/casarita`,
+  `/casarita/menu`, `/login` und `/register`. Ergebnis: 0 Console-Errors,
+  keine `wird geladen`-Haenger, kein horizontaler Overflow. `/login` und
+  `/register` blieben auf ihrer direkten Auth-URL und zeigten die erwarteten
+  Formularfelder.
+- Offener Blocker nach Schritt 143:
+  unveraendert der Bundle-Budget-Blocker aus Schritt 142:
+  `social-app.js` raw `1121916` > Budget `1052000`, gzip `304298` > Budget
+  `285000`.
+- Manuelle Testliste Schritt 143:
+  Desktop-Browser oeffnen und `/feed`, `/restaurants` mit Stadt,
+  `/casarita/menu`, `/login` und `/register` hart laden. Erwartung: kein
+  horizontaler Scrollbalken, kein stehenbleibender Lade-Text, keine roten
+  Console-Errors.
 - Schritt 142 ist abgeschlossen: Direkte Guest-Auth-Routen `/login` und
   `/register` bleiben wieder auf ihrer Auth-URL und zeigen direkt das
   Auth-Formular.
