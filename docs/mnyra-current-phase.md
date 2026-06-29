@@ -5,7 +5,47 @@ Last updated: 2026-06-29
 
 ## Stand
 
-- Schritt 139 ist gestartet: Launch-Hardening-Serie `systemfix2027`.
+- Schritt 140 ist abgeschlossen: Public-Guest Console-Error-Cleanup fuer
+  `/:slug/menu` und `/feed` auf `systemfix2027`.
+- Bewertung von Schritt 140: `bestanden mit offenem Bundle-Budget-Blocker`.
+- Wichtigster Effekt aus Schritt 140:
+  Der oeffentliche Guest-/QR-Menu-Pfad nutzt bei optionalem Focus-Meta-Timeout
+  weiter den bestehenden Fallback, meldet diesen erwarteten Fallback aber nicht
+  mehr als Browser-`console.error`. Guest-Stories springen nicht mehr in die
+  `collectionGroup("stories")`-Query, die wegen privater Story-Pfade
+  Permission-Fehler ausloesen kann, sondern nutzen den vorhandenen
+  feed-basierten Story-Fallback. Eingeloggte User behalten den kanonischen
+  Story-Read.
+- Geaendert in Schritt 140:
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`,
+  `apps/menyra-social/core/stories/story-feed-runtime-controller.js`,
+  `apps/menyra-social/core/app-shell/profile-identity-runtime-cluster.js`,
+  `tests/session-data-menu-focus-no-hang.test.mjs`,
+  `tests/story-feed-runtime-controller.test.mjs`,
+  `apps/menyra-social/bundled/entry/social-app.js`.
+- Bewusst nicht geaendert in Schritt 140:
+  keine Firestore Rules, keine Functions, keine Produktlogik fuer Checkout oder
+  Bestellungen, keine UI-/Design-Aenderung, keine Production-Firebase-Schreib-
+  oder Mutationslaeufe.
+- Verifikation Schritt 140:
+  `node --test tests/session-data-menu-focus-no-hang.test.mjs tests/story-feed-runtime-controller.test.mjs`
+  bestanden, `node --test tests/*.test.mjs` bestanden mit 93/93 Tests,
+  `npm run build` bestanden.
+- Browser-Verifikation Schritt 140:
+  lokal auf `http://localhost:5174`: `/casarita/menu?src=qr&table=1` auf
+  Mobile-Breite nach 6 Sekunden mit 0 Console-Errors, 39 Menu-Aktionen, keinem
+  `Menu wird geladen`-Haenger und keinem horizontalen Overflow. `/feed` nach
+  6 Sekunden mit 0 Console-Errors, sichtbarem Inhalt und keinem Error-Overlay.
+  Guest-Produktdetail und lokaler Warenkorb wurden ohne Checkout-/Order-Submit
+  geprueft.
+- Offener Blocker nach Schritt 140:
+  `npm run check:social-bundle` schlaegt weiter fehl:
+  `social-app.js` raw `1121539` > Budget `1052000`, gzip `304229` > Budget
+  `285000`. Das ist ein separater Performance-/Bundle-Gate-Blocker und wurde
+  in Schritt 140 nicht durch Budget-Erhoehung kaschiert.
+- Schritt 139 ist abgeschlossen: Launch-Hardening-Serie `systemfix2027`
+  gestartet, Branch-/Firebase-Sicherheitsgrenze und Audit-Reihenfolge
+  dokumentiert.
 - Arbeitsbasis fuer Schritt 139 ist Branch `systemfix2027`, erstellt von `origin/main`.
 - Ziel von Schritt 139 ist zuerst systematische Inventur, Audit-Planung,
   Testdaten-/Firebase-Sicherheitsgrenze und sichere Verifikation ohne

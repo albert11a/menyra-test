@@ -175,6 +175,19 @@ export function createSessionDataRuntimeController({
     return err;
   }
 
+  function isLoadDeadlineError(err, scope = "") {
+    if (!err) return false;
+    const safeScope = String(scope || "").trim();
+    const matchesDeadline = err.name === "MnyraLoadTimeoutError" || err.code === "deadline-exceeded";
+    if (!matchesDeadline) return false;
+    return !safeScope || String(err.scope || "").trim() === safeScope;
+  }
+
+  function logFocusMetaFallbackError(err) {
+    if (isLoadDeadlineError(err, "public/offers-meta")) return;
+    console.error(err);
+  }
+
   function runWithLoadDeadline(task, { timeoutMs = 0, scope = "firebase.load" } = {}) {
     const runTask = typeof task === "function" ? task : (() => task);
     const safeTimeoutMs = Math.max(0, Math.round(Number(timeoutMs) || 0));
@@ -1697,7 +1710,7 @@ export function createSessionDataRuntimeController({
               scope: "public/offers-meta"
             }
           ).catch((err) => {
-            console.error(err);
+            logFocusMetaFallbackError(err);
             return true;
           })
         ]);
@@ -1750,7 +1763,7 @@ export function createSessionDataRuntimeController({
             scope: "public/offers-meta"
           }
         ).catch((err) => {
-          console.error(err);
+          logFocusMetaFallbackError(err);
           return true;
         })
       ]);

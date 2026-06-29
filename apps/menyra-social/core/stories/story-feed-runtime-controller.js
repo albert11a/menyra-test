@@ -372,6 +372,18 @@ export function createStoryFeedRuntimeController({
     return true;
   }
 
+  function isGuestSession() {
+    return !String(state?.user?.uid || "").trim();
+  }
+
+  function refreshVisibleFeedSurface() {
+    const inMain = getLastRenderMode() === "main";
+    const updatedFeed = state?.activeTab === "feed" && inMain && updateFeedDom();
+    if (!updatedFeed && state?.activeTab === "feed") {
+      render();
+    }
+  }
+
   async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
     const cached = readCache(cacheKeys.stories, cacheTtlMs.stories);
     if (cached?.data?.length) {
@@ -391,6 +403,12 @@ export function createStoryFeedRuntimeController({
         }
         return true;
       }
+    }
+
+    if (isGuestSession() && allowFeedDerivedStoryFallback) {
+      const updated = refreshFeedStories({ posts: state?.feedPosts, force: force || !state?.stories?.length });
+      if (updated && refreshUi) refreshVisibleFeedSurface();
+      return updated;
     }
 
     if (!db || !collectionGroup || !getDocs || !query || !limit) return false;
@@ -487,13 +505,7 @@ export function createStoryFeedRuntimeController({
         writeCache(cacheKeys.stories, nextStories);
         queueStoryIdentityHydration(nextStories, { max: fastLimits.storyIdentityHydration });
 
-        if (shouldRefreshUi) {
-          const inMain = getLastRenderMode() === "main";
-          const updatedFeed = state?.activeTab === "feed" && inMain && updateFeedDom();
-          if (!updatedFeed && state?.activeTab === "feed") {
-            render();
-          }
-        }
+        if (shouldRefreshUi) refreshVisibleFeedSurface();
         return true;
       } catch (err) {
         console.error(err);

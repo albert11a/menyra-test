@@ -158,6 +158,39 @@ test("public focus load releases menu coordination when Firebase offers do not r
   assert.equal(state.focus.truthState, "unknown");
 });
 
+test("public focus meta deadline fallback does not emit console error", async () => {
+  const state = createVisibleMenuState();
+  state.menu = {
+    restaurantId: "restaurant-a",
+    items: [{ id: "item-1", category: "Pizza" }],
+    loading: false,
+    error: "",
+    source: "public",
+    statusBadgeVisible: true,
+    routeSeed: false,
+    truthState: "seeded"
+  };
+  const controller = createController({
+    state,
+    loadFocusMetaFn: never
+  });
+  const original = console.error;
+  let consoleErrors = 0;
+  console.error = () => {
+    consoleErrors += 1;
+  };
+  try {
+    const result = await controller.loadFocusForRestaurant("restaurant-a", { force: true });
+    assert.equal(result.truthState, "knownEmpty");
+    assert.equal(state.focus.restaurantId, "restaurant-a");
+    assert.equal(state.focus.loading, false);
+    assert.equal(state.focus.error, "");
+    assert.equal(consoleErrors, 0);
+  } finally {
+    console.error = original;
+  }
+});
+
 test("public focus transient load failure preserves existing focus items", async () => {
   const state = createVisibleMenuState();
   const existingFocusItems = [{ id: "focus-1", title: "Lunch" }];
