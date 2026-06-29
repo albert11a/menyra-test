@@ -248,6 +248,14 @@ export function isQrLikePublicBusinessAccessSourceCore(value = "") {
     || source === "scan-qr";
 }
 
+export function isLikelyPublicBusinessRestaurantIdCore(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  if (LAUNCH_PUBLIC_BUSINESS_CANONICAL_SLUGS[raw.toLowerCase()]) return true;
+  const compact = raw.replace(/[^A-Za-z0-9]/g, "");
+  return compact.length >= 16 && /[A-Z]/.test(raw) && /\d/.test(raw);
+}
+
 export function normalizePublicBusinessSlugCore(value = "", {
   allowReserved = false
 } = {}) {

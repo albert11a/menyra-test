@@ -132,6 +132,7 @@ import {
 } from "./core/router/public-business-route-utils.js";
 import {
   createStartupRouteRuntimeContext,
+  PUBLIC_ROUTE_RESOLUTION_EVENT,
   publishStartupRouteRuntimeContext,
   readStartupRouteRuntimeContext
 } from "./core/router/startup-route-runtime-context.js";
@@ -4837,6 +4838,8 @@ let browserPopstateRouteSyncBound = false;
 let lastPopstateReplayLocationKey = "";
 let lastPopstateReplayAtMs = 0;
 const POPSTATE_REPLAY_DEDUP_WINDOW_MS = 120;
+let publicRouteCanonicalPromotionSyncBound = false;
+let lastPublicRouteCanonicalPromotionReplayKey = "";
 
 function resolveInitialRouteStateFromWindowLocation() {
   if (typeof window === "undefined") return null;
@@ -4885,6 +4888,41 @@ function replayRouteFromWindowLocation() {
   return openedProfile;
 }
 
+function replayCanonicalPublicRouteFromWindowLocation(source = "public-route") {
+  if (typeof window === "undefined") return false;
+  const routeContext = readStartupRouteRuntimeContext();
+  if (routeContext?.publicBusiness?.isCanonicalResolved !== true) return false;
+  const restaurantId = String(routeContext?.pendingProfileRestaurantId || routeContext?.publicBusiness?.routeId || "").trim();
+  if (!restaurantId) return false;
+  const replayKey = [
+    resolveWindowLocationReplayKey(),
+    restaurantId,
+    String(routeContext?.pendingProfileTopTab || "").trim().toLowerCase(),
+    String(routeContext?.pendingProfileAccessSource || "").trim().toLowerCase(),
+    String(Math.max(0, Number(routeContext?.pendingProfileTableNumber || 0) || 0))
+  ].join("|");
+  if (replayKey && replayKey === lastPublicRouteCanonicalPromotionReplayKey) return false;
+  lastPublicRouteCanonicalPromotionReplayKey = replayKey;
+  markStartupTimeline("public route canonical replay", {
+    source: String(source || "public-route").trim(),
+    pendingProfileRestaurantId: restaurantId,
+    pendingProfileTopTab: String(routeContext?.pendingProfileTopTab || "").trim().toLowerCase()
+  });
+  return replayRouteFromWindowLocation();
+}
+
+function bindPublicRouteCanonicalPromotionSync() {
+  if (publicRouteCanonicalPromotionSyncBound) return;
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
+  publicRouteCanonicalPromotionSyncBound = true;
+  window.addEventListener(PUBLIC_ROUTE_RESOLUTION_EVENT, () => {
+    replayCanonicalPublicRouteFromWindowLocation("event");
+  });
+  queueMicrotask(() => {
+    replayCanonicalPublicRouteFromWindowLocation("microtask");
+  });
+}
+
 function bindBrowserPopstateRouteSync() {
   if (browserPopstateRouteSyncBound) return;
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") return;
@@ -4907,6 +4945,7 @@ function bindBrowserPopstateRouteSync() {
 }
 
 bindBrowserPopstateRouteSync();
+bindPublicRouteCanonicalPromotionSync();
 
 mediaUploadRuntimeController = createDeferredMediaUploadRuntimeController();
 

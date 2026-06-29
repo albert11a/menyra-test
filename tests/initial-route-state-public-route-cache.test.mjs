@@ -31,6 +31,84 @@ test("initial route state can use a cached publicRoutes resolution for path slug
   assert.equal(state.pendingInitialTab, "profile");
 });
 
+test("initial route state resolves alias cache to canonical restaurant id", () => {
+  const state = resolveInitialRouteState({
+    qs: makeQs({}),
+    pathname: "/casa-rita/menu",
+    normalizeInitialTab: (value) => value,
+    normalizeAuthMode: (value) => value,
+    readPublicRouteResolution: (slug) => {
+      if (slug !== "casa-rita") return null;
+      return {
+        found: true,
+        status: "redirect",
+        inputSlug: "casa-rita",
+        canonicalSlug: "casarita",
+        restaurantId: "Lzm6RpNu3ErSDtGCHxpi",
+        source: "publicRoutes"
+      };
+    }
+  });
+
+  assert.equal(state.pendingProfileRestaurantId, "Lzm6RpNu3ErSDtGCHxpi");
+  assert.equal(state.pendingProfileTopTab, "menu");
+  assert.equal(state.pendingInitialTab, "profile");
+});
+
+test("initial route state lets qr r query id beat unresolved path slug", () => {
+  const state = resolveInitialRouteState({
+    qs: makeQs({ r: "BroPizzaRestaurant123", src: "qr", table: "7" }),
+    pathname: "/bro-pizza/menu",
+    normalizeInitialTab: (value) => value,
+    normalizeAuthMode: (value) => value,
+    readPublicRouteResolution: () => null
+  });
+
+  assert.equal(state.pendingProfileRestaurantId, "BroPizzaRestaurant123");
+  assert.equal(state.pendingProfileTopTab, "menu");
+  assert.equal(state.pendingProfileAccessSource, "qr");
+  assert.equal(state.pendingProfileTableNumber, 7);
+});
+
+test("initial route state falls back from qr without r to slug publicRoute cache", () => {
+  const state = resolveInitialRouteState({
+    qs: makeQs({ src: "qr", table: "7" }),
+    pathname: "/bro-pizza/menu",
+    normalizeInitialTab: (value) => value,
+    normalizeAuthMode: (value) => value,
+    readPublicRouteResolution: (slug) => {
+      if (slug !== "bro-pizza") return null;
+      return {
+        found: true,
+        status: "active",
+        inputSlug: "bro-pizza",
+        canonicalSlug: "bro-pizza",
+        restaurantId: "BroPizzaRestaurant123",
+        source: "publicRoutes"
+      };
+    }
+  });
+
+  assert.equal(state.pendingProfileRestaurantId, "BroPizzaRestaurant123");
+  assert.equal(state.pendingProfileTopTab, "menu");
+  assert.equal(state.pendingProfileAccessSource, "qr");
+  assert.equal(state.pendingProfileTableNumber, 7);
+});
+
+test("initial route state keeps missing publicRoute slug as resolving input only", () => {
+  const state = resolveInitialRouteState({
+    qs: makeQs({}),
+    pathname: "/unknown-bistro/menu",
+    normalizeInitialTab: (value) => value,
+    normalizeAuthMode: (value) => value,
+    readPublicRouteResolution: () => null
+  });
+
+  assert.equal(state.pendingProfileRestaurantId, "unknown-bistro");
+  assert.equal(state.pendingProfileTopTab, "menu");
+  assert.equal(state.pendingInitialTab, "profile");
+});
+
 test("initial route state can use a cached publicRoutes resolution for query restaurant ids", () => {
   const state = resolveInitialRouteState({
     qs: makeQs({ r: "moka-coffee", src: "qr", table: "7" }),

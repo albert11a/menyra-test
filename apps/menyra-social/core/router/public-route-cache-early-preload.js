@@ -8,6 +8,7 @@ import {
   query,
   where
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
+import { promoteStartupRouteRuntimeContextWithPublicRouteResolution } from "./startup-route-runtime-context.js";
 
 const PUBLIC_ROUTE_CACHE_GLOBAL_KEY = "__MENYRA_PUBLIC_ROUTE_RESOLUTIONS__";
 const PUBLIC_ROUTE_EARLY_PRELOAD_DONE_KEY = "__MENYRA_PUBLIC_ROUTE_EARLY_PRELOAD_DONE__";
@@ -275,6 +276,7 @@ async function preloadEarlyPublicRouteCache() {
     cache.set(slug, resolution);
     cache.set(resolution.canonicalSlug, resolution);
     cache.set(resolution.restaurantId, resolution);
+    promoteStartupRouteRuntimeContextWithPublicRouteResolution(resolution);
     results.push(resolution);
   }
   return results;

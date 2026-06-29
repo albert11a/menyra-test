@@ -6,6 +6,7 @@ function isBrowserRuntime() {
 
 const PUBLIC_ROUTE_CACHE_PRELOAD_IDLE_TIMEOUT_MS = 4500;
 const PUBLIC_ROUTE_CACHE_PRELOAD_FALLBACK_DELAY_MS = 1200;
+const PUBLIC_ROUTE_EARLY_PRELOAD_PROMISE_GLOBAL_KEY = "__MENYRA_PUBLIC_ROUTE_EARLY_PRELOAD_PROMISE__";
 
 function shouldPreloadPublicRouteCache() {
   if (!isBrowserRuntime()) return false;
@@ -36,7 +37,15 @@ function shouldPreloadPublicRouteCache() {
 }
 
 function importPublicRouteCacheEarlyPreload() {
-  return import("/apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01").catch(() => null);
+  try {
+    const existing = globalThis?.[PUBLIC_ROUTE_EARLY_PRELOAD_PROMISE_GLOBAL_KEY];
+    if (existing && typeof existing.then === "function") return existing;
+    const promise = import("/apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01").catch(() => null);
+    globalThis[PUBLIC_ROUTE_EARLY_PRELOAD_PROMISE_GLOBAL_KEY] = promise;
+    return promise;
+  } catch {
+    return Promise.resolve(null);
+  }
 }
 
 function schedulePublicRouteCacheEarlyPreload() {
@@ -47,6 +56,7 @@ function schedulePublicRouteCacheEarlyPreload() {
   const run = () => {
     void importPublicRouteCacheEarlyPreload();
   };
+  run();
   if (typeof window.requestIdleCallback === "function") {
     window.requestIdleCallback(run, { timeout: PUBLIC_ROUTE_CACHE_PRELOAD_IDLE_TIMEOUT_MS });
     return;

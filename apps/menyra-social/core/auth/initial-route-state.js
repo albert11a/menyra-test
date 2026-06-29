@@ -6,6 +6,7 @@ import {
   resolveLaunchPublicBusinessRouteCore
 } from "../router/public-business-route-resolver.js";
 import {
+  isLikelyPublicBusinessRestaurantIdCore,
   isQrLikePublicBusinessAccessSourceCore,
   normalizePublicBusinessSlugCore,
   normalizePublicUserContentTabCore,
@@ -67,13 +68,33 @@ function readCachedPublicRouteResolution(value = "", readPublicRouteResolution =
 }
 
 function resolveInitialPublicBusinessRestaurantId(value = "", readPublicRouteResolution = null) {
+  return resolveInitialPublicBusinessRouteHint(value, readPublicRouteResolution).restaurantId;
+}
+
+function resolveInitialPublicBusinessRouteHint(value = "", readPublicRouteResolution = null) {
   const raw = String(value || "").trim();
-  if (!raw) return "";
+  if (!raw) return { restaurantId: "", confirmed: false, source: "" };
   const cached = readCachedPublicRouteResolution(raw, readPublicRouteResolution);
-  if (cached?.restaurantId) return String(cached.restaurantId || "").trim();
+  if (cached?.restaurantId) {
+    return {
+      restaurantId: String(cached.restaurantId || "").trim(),
+      confirmed: true,
+      source: cached.source || "cache"
+    };
+  }
   const launchResolution = resolveLaunchPublicBusinessRouteCore(raw);
-  if (launchResolution?.restaurantId) return String(launchResolution.restaurantId || "").trim();
-  return normalizePublicBusinessSlugCore(raw, { allowReserved: false });
+  if (launchResolution?.restaurantId && launchResolution.source !== "none") {
+    return {
+      restaurantId: String(launchResolution.restaurantId || "").trim(),
+      confirmed: true,
+      source: launchResolution.source || "launch"
+    };
+  }
+  return {
+    restaurantId: normalizePublicBusinessSlugCore(raw, { allowReserved: false }),
+    confirmed: false,
+    source: "slug"
+  };
 }
 
 export function resolveInitialRouteState({
@@ -95,15 +116,19 @@ export function resolveInitialRouteState({
   const pathRoute = parseSiteRoutePathCore(readPathname);
   const routeContext = normalizeStartupRouteContext(startupRouteContext);
 
-  const routeRestaurantIdFromQuery = resolveInitialPublicBusinessRestaurantId(
+  const rawRouteRestaurantIdFromQuery = (
     readQuery("r")
     || readQuery("restaurant")
     || readQuery("restaurantId")
     || readQuery("rid")
     || readQuery("businessId")
-    || "",
+    || ""
+  );
+  const routeRestaurantHintFromQuery = resolveInitialPublicBusinessRouteHint(
+    rawRouteRestaurantIdFromQuery,
     readPublicRouteResolution
   );
+  const routeRestaurantIdFromQuery = routeRestaurantHintFromQuery.restaurantId;
   const routeUserIdFromQuery = (
     readQuery("uid")
     || readQuery("user")
@@ -127,10 +152,29 @@ export function resolveInitialRouteState({
           : null
       )
   );
+  const routeRestaurantHintFromPath = resolveInitialPublicBusinessRouteHint(
+    pathBusinessRoute?.restaurantId || "",
+    readPublicRouteResolution
+  );
+  const routeRestaurantHintFromContext = resolveInitialPublicBusinessRouteHint(
+    routeContext?.pendingProfileRestaurantId || "",
+    readPublicRouteResolution
+  );
+  const directQueryRestaurantId = isLikelyPublicBusinessRestaurantIdCore(rawRouteRestaurantIdFromQuery)
+    ? String(rawRouteRestaurantIdFromQuery || "").trim()
+    : "";
+  const directContextRestaurantId = isLikelyPublicBusinessRestaurantIdCore(routeContext?.pendingProfileRestaurantId || "")
+    ? String(routeContext?.pendingProfileRestaurantId || "").trim()
+    : "";
   const pendingProfileRestaurantId = String(
-    resolveInitialPublicBusinessRestaurantId(pathBusinessRoute?.restaurantId || "", readPublicRouteResolution)
-    || routeRestaurantIdFromQuery
+    directQueryRestaurantId
+    || directContextRestaurantId
+    || (routeRestaurantHintFromPath.confirmed ? routeRestaurantHintFromPath.restaurantId : "")
+    || (routeRestaurantHintFromQuery.confirmed ? routeRestaurantHintFromQuery.restaurantId : "")
+    || (routeRestaurantHintFromContext.confirmed ? routeRestaurantHintFromContext.restaurantId : "")
     || routeContext?.pendingProfileRestaurantId
+    || routeRestaurantHintFromPath.restaurantId
+    || routeRestaurantIdFromQuery
     || ""
   ).trim();
 

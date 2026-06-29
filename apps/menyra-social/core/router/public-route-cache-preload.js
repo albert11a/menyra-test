@@ -5,6 +5,7 @@ import {
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 import { createPublicRouteDocReaderCore } from "./public-route-doc-reader.js";
 import { resolvePublicBusinessRouteCore } from "./public-business-route-resolver.js";
+import { promoteStartupRouteRuntimeContextWithPublicRouteResolution } from "./startup-route-runtime-context.js";
 import {
   normalizePublicBusinessSlugCore,
   parseSiteRoutePathCore
@@ -97,6 +98,7 @@ async function preloadPublicRouteCacheCore() {
         cache.set(slug, resolution);
         if (resolution.canonicalSlug) cache.set(resolution.canonicalSlug, resolution);
         if (resolution.restaurantId) cache.set(resolution.restaurantId, resolution);
+        promoteStartupRouteRuntimeContextWithPublicRouteResolution(resolution);
         results.push(resolution);
       }
     } catch {}
