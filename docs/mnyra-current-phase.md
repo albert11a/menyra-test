@@ -1,10 +1,22 @@
 Status: CURRENT
-Last updated: 2026-06-27
+Last updated: 2026-06-29
 
 # Mnyra Current Phase
 
 ## Stand
 
+- Schritt 139 ist gestartet: Launch-Hardening-Serie `systemfix2027`.
+- Arbeitsbasis fuer Schritt 139 ist Branch `systemfix2027`, erstellt von `origin/main`.
+- Ziel von Schritt 139 ist zuerst systematische Inventur, Audit-Planung,
+  Testdaten-/Firebase-Sicherheitsgrenze und sichere Verifikation ohne
+  Produktlogik-, UI-, Routing-, Rules- oder Firebase-Produktionsaenderungen.
+- Production-Firebase darf in dieser Serie nicht durch Codex-Testlaeufe
+  beschrieben oder riskant veraendert werden. Testlaeufe muessen ueber lokale
+  Daten, Emulatoren, separate Testkonfiguration oder ausdruecklich freigegebene
+  Testressourcen laufen.
+- Browser-/Website-Pruefung ist fuer diese Serie vom Nutzer ausdruecklich
+  gewuenscht. Sie bleibt trotzdem schrittweise, dokumentiert und ohne
+  Blind-Umbau.
 - Schritt 1 ist abgeschlossen.
 - Schritt 2 ist jetzt dokumentiert.
 - Schritt 3 ist abgeschlossen: Public-Route-Vertragskern zentralisiert.

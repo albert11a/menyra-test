@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-05-26
+Last updated: 2026-06-29
 
 # Mnyra Repo-Regeln
 
@@ -55,9 +55,11 @@ Die aktuellen Planungsquellen sind:
 
 Diese Dateien definieren den aktuellen Masterstand und die aktuelle Phase. Aeltere datierte Dokumente sind nur historische Referenz.
 
-## Dauerhafte Mnyra-Arbeitsregeln (ab diesem Mainline-Neustart)
+## Dauerhafte Mnyra-Arbeitsregeln (ab diesem Launch-Hardening-Neustart)
 
-- Fuer Mnyra wird ab jetzt ausschliesslich auf Branch `refactorapp` gearbeitet.
+- Fuer Mnyra wird fuer die Launch-Hardening-Serie ab 2026-06-29 ausschliesslich auf Branch `systemfix2027` gearbeitet.
+- `systemfix2027` wurde von `origin/main` erstellt und ist die Arbeitsbasis fuer systematische Launch-Pruefung, sichere Fixes und Dokumentation.
+- Die fruehere `refactorapp`-Arbeitsregel ist fuer diese neue Launch-Hardening-Serie abgeloest.
 - `finale-mnyra` und `finale-mnyra-clean` bleiben Referenz-Branches.
 - Es gibt keine direkte Arbeit auf `main`.
 - Nach jedem Schritt wird sauber dokumentiert:
