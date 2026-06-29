@@ -107,3 +107,14 @@ test("business profile open fallback does not throw when route snapshot id is un
   ));
   assert.equal(state.profileView.profile.restaurantId, "moka");
 });
+
+test("business profile loading surface does not use loading text as missing bio fallback", async () => {
+  const state = createState("feed");
+  const showCalls = [];
+  const controller = createController(state, showCalls);
+
+  await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: true });
+
+  assert.equal(showCalls.length > 0, true);
+  assert.equal(showCalls.some(({ profile }) => profile?.bio === "Profil wird geladen..."), false);
+});

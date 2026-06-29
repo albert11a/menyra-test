@@ -5,6 +5,49 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 141 ist abgeschlossen: Profil-Refresh-Bio-Fallback fuer
+  Business-Profile ohne Bio auf `systemfix2027` gehaertet.
+- Bewertung von Schritt 141: `bestanden mit offenem Bundle-Budget-Blocker`.
+- Wichtigster Effekt aus Schritt 141:
+  Der sichtbare Business-Profil-Seed nutzt `Profil wird geladen...` nicht mehr
+  als Bio-Ersatz, wenn ein Business keine Bio oder Beschreibung hat. Dadurch
+  kann nach Refresh kein falscher Lade-Text in der Profil-Card stehen bleiben,
+  waehrend Posts oder Menu bereits sichtbar sind. Echte Lade-/Truth-Zustaende
+  bleiben unveraendert.
+- Geaendert in Schritt 141:
+  `apps/menyra-social/core/profile/profile-open-flow-utils.js`,
+  `tests/profile-open-flow-utils.test.mjs`,
+  `apps/menyra-social/bundled/manifest.json`,
+  `apps/menyra-social/bundled/entry/social-app.js`,
+  `apps/menyra-social/bundled/chunks/profile-open-flow-utils-IjBfYFh_.js`
+  ersetzt den vorherigen Build-Chunk
+  `apps/menyra-social/bundled/chunks/profile-open-flow-utils-Kul0OXrj.js`.
+- Bewusst nicht geaendert in Schritt 141:
+  keine UI-/Design-Aenderung, keine Layout-/Spacing-/Typografie-Aenderung,
+  keine Firestore Rules, keine Functions, keine Checkout-/Order-Produktlogik,
+  keine Production-Firebase-Schreib- oder Mutationslaeufe.
+- Verifikation Schritt 141:
+  `node --test tests/profile-open-flow-utils.test.mjs` bestanden,
+  `node --test tests/*.test.mjs` bestanden mit 94/94 Tests,
+  `npm run build` bestanden.
+- Browser-Verifikation Schritt 141:
+  lokal auf `http://localhost:5174` bei Mobile-Breite 390x844:
+  `/casarita?verify=profile-bio-fallback-fix-1` nach 7 Sekunden ohne
+  `Profil wird geladen`, ohne sonstigen `wird geladen`-Haenger, ohne
+  horizontalen Overflow und ohne DOM-Runtime-Errors. Danach
+  `/casarita/menu?verify=profile-bio-fallback-fix-1` nach 8 Sekunden mit
+  sichtbaren Menu-Items, ohne `Profil wird geladen`, ohne `Menu wird geladen`,
+  ohne horizontalen Overflow und mit 0 Browser-Console-Errors.
+- Offener Blocker nach Schritt 141:
+  `npm run check:social-bundle` schlaegt weiter fehl:
+  `social-app.js` raw `1121539` > Budget `1052000`, gzip `304231` > Budget
+  `285000`. Das ist ein separater Performance-/Bundle-Gate-Blocker und wurde
+  in Schritt 141 nicht durch Budget-Erhoehung kaschiert.
+- Manuelle Testliste Schritt 141:
+  Business-Profil ohne Bio/Beschreibung direkt oeffnen und hart refreshen;
+  Profil-Card, Posts und Menu muessen ohne stehenbleibendes
+  `Profil wird geladen...` erscheinen. Danach ein Business mit Bio, ein
+  Business-Menu (`/:slug/menu`) und den QR-Menu-Pfad kurz gegenpruefen.
 - Schritt 140 ist abgeschlossen: Public-Guest Console-Error-Cleanup fuer
   `/:slug/menu` und `/feed` auf `systemfix2027`.
 - Bewertung von Schritt 140: `bestanden mit offenem Bundle-Budget-Blocker`.

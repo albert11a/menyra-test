@@ -1196,7 +1196,7 @@ export function createProfileOpenFlowControllerCore({
         name: loadingDisplayName,
         handle: pickFirstText(stableBusinessProfile?.handle, rest?.handle),
         uid: pickFirstText(stableBusinessProfile?.uid),
-        bio: pickFirstText(stableBusinessProfile?.bio, rest?.bio, rest?.description, "Profil wird geladen..."),
+        bio: pickFirstText(stableBusinessProfile?.bio, rest?.bio, rest?.description),
         avatar: pickFirstText(stableBusinessProfile?.avatar, rest?.logoUrl, rest?.logo, rest?.avatar),
         titleImageUrl: pickBusinessTitleImageText(stableBusinessProfile, routeIdentitySeed, rest),
         coverImageUrl: pickBusinessTitleImageText(stableBusinessProfile, routeIdentitySeed, rest),
