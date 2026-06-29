@@ -18,14 +18,14 @@ const TARGET_MODULES = [
   {
     path: "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
     role: "public profile/menu orchestration cluster",
-    splitRisk: "high",
-    nextAction: "keep static until manual Public Profile/Menu/QR/Cart testing is green"
+    splitRisk: "already-split",
+    nextAction: "must stay dynamic via profile-business-menu runtime boundary"
   },
   {
     path: "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
     role: "public profile runtime data/show-state controller",
-    splitRisk: "high",
-    nextAction: "map dependencies before moving behind a route runtime boundary"
+    splitRisk: "already-split",
+    nextAction: "must stay dynamic via public-profile runtime boundary"
   },
   {
     path: "apps/menyra-social/core/profile/public-profile-direct-entry-controller.js",
@@ -241,9 +241,9 @@ const result = {
   },
   targetModules,
   nextSafeTechnicalMove: {
-    recommendedStep: "manual verification first, then split planning around public-profile-runtime-controller dependencies",
+    recommendedStep: "keep remaining direct-entry/public-bootstrap runtime static until QR/cart/order staging coverage exists",
     blockedUntilManualCheck: true,
-    reason: "Public Profile, Public Menu, Cart, Order and QR/table context still share runtime state and must not be split blind."
+    reason: "Public Profile and Public Menu are split and manually checked; QR/cart/order write flows still need safe staging or emulator seed coverage before further public-route splits."
   }
 };
 

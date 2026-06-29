@@ -145,7 +145,7 @@ import {
   createPublicRouteInitialState,
   createPublicRouteStateController
 } from "./core/app-shell/public-route-state-controller.js";
-import { createProfileBusinessMenuRuntimeCluster } from "./core/app-shell/profile-business-menu-runtime-cluster.js";
+import { createProfileBusinessMenuRuntimeBoundary } from "./core/app-shell/profile-business-menu-runtime-boundary.js";
 import { createProfileIdentityRuntimeCluster } from "./core/app-shell/profile-identity-runtime-cluster.js";
 import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-cluster.js";
 import { createSocialRouteRuntimeRegistry } from "./core/app-shell/route-runtime-registry.js";
@@ -2471,6 +2471,7 @@ const {
   getProfileViewUnsub,
   setProfileViewUnsub,
   stopProfileViewListener,
+  preloadPublicProfileRuntime,
   showPublicProfile,
   normalizeExternalProfile,
   normalizeExternalUserProfile,
@@ -2544,6 +2545,13 @@ const {
   loadBusinessStaffProfile,
   loadAuthProfile
 } = profileIdentityRuntimeCluster;
+const shouldPreloadProfileRuntime = shouldPreloadProfileMenuFocusRenderer({
+  state,
+  pendingRoute: pendingRouteState.getPendingState?.() || {}
+});
+if (shouldPreloadProfileRuntime) {
+  preloadPublicProfileRuntime?.();
+}
 socialEngagementSupportRuntimeController = createSocialEngagementSupportRuntimeController({
   state,
   db,
@@ -4136,7 +4144,7 @@ async function loadPostLikesForModal(postId) {
   return socialEngagementRuntimeController.loadPostLikesForModal(...arguments);
 }
 
-const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluster({
+const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeBoundary({
   state,
   businessAccountsDeps: {
     state,
@@ -4232,10 +4240,7 @@ const {
   renderMenuAdminView,
   renderProfileView
 } = profileBusinessMenuRuntimeCluster;
-if (shouldPreloadProfileMenuFocusRenderer({
-  state,
-  pendingRoute: pendingRouteState.getPendingState?.() || {}
-})) {
+if (shouldPreloadProfileRuntime) {
   preloadProfileMenuFocusRender();
 }
 

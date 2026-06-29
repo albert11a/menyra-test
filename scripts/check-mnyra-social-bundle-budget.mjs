@@ -7,6 +7,8 @@ const MANIFEST = "apps/menyra-social/bundled/manifest.json";
 const SOCIAL_SOURCE = "apps/menyra-social/social-app.js";
 const ROUTE_RUNTIME_REGISTRY_SOURCE = "apps/menyra-social/core/app-shell/route-runtime-registry.js";
 const PROFILE_MENU_FOCUS_BOUNDARY_SOURCE = "apps/menyra-social/core/profile/profile-menu-focus-render-boundary.js";
+const PROFILE_BUSINESS_MENU_CLUSTER_SOURCE = "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js";
+const PROFILE_MENU_FOCUS_RENDER_CONTROLLER_SOURCE = "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js";
 
 const SOCIAL_ENTRY_RAW_BUDGET = 1_052_000;
 const SOCIAL_ENTRY_GZIP_BUDGET = 285_000;
@@ -77,9 +79,10 @@ const socialDynamicImports = new Set(Array.isArray(socialManifest?.dynamicImport
   "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js",
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
   "apps/menyra-social/core/orders/orders-runtime-controller.js",
+  "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
+  "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
   "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
   "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
-  "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
   "apps/menyra-social/core/menu/menu-modal-render-utils.js"
 ].forEach((entry) => {
   if (socialStaticImports.has(entry)) {
@@ -89,6 +92,16 @@ const socialDynamicImports = new Set(Array.isArray(socialManifest?.dynamicImport
     fail(`${entry} is no longer registered as a social-app dynamic import`);
   }
 });
+
+const profileBusinessMenuManifest = manifest[PROFILE_BUSINESS_MENU_CLUSTER_SOURCE] || null;
+const profileBusinessMenuDynamicImports = new Set(
+  Array.isArray(profileBusinessMenuManifest?.dynamicImports)
+    ? profileBusinessMenuManifest.dynamicImports
+    : []
+);
+if (!profileBusinessMenuDynamicImports.has(PROFILE_MENU_FOCUS_RENDER_CONTROLLER_SOURCE)) {
+  fail(`${PROFILE_MENU_FOCUS_RENDER_CONTROLLER_SOURCE} is no longer registered as a profile-business-menu dynamic import`);
+}
 
 const publicDynamicImports = new Set(Array.isArray(publicManifest?.dynamicImports) ? publicManifest.dynamicImports : []);
 if (!publicDynamicImports.has("apps/menyra-social/social-app.js")) {
@@ -113,8 +126,20 @@ expectSourceIncludes(
 
 expectSourceIncludes(
   socialSource,
-  "if (shouldPreloadProfileMenuFocusRenderer({ state, pendingRoute: pendingRouteState.getPendingState?.() || {} })) { preloadProfileMenuFocusRender(); }",
-  "social-app no longer performs the guarded Profile/Menu/Focus early preload"
+  "const shouldPreloadProfileRuntime = shouldPreloadProfileMenuFocusRenderer({ state, pendingRoute: pendingRouteState.getPendingState?.() || {} });",
+  "social-app no longer computes the guarded Profile/Menu/Focus preload decision"
+);
+
+expectSourceIncludes(
+  socialSource,
+  "if (shouldPreloadProfileRuntime) { preloadPublicProfileRuntime?.(); }",
+  "social-app no longer preloads the public profile runtime for profile/menu startup"
+);
+
+expectSourceIncludes(
+  socialSource,
+  "if (shouldPreloadProfileRuntime) { preloadProfileMenuFocusRender(); }",
+  "social-app no longer preloads the Profile/Menu/Focus renderer for profile/menu startup"
 );
 
 expectSourceIncludes(

@@ -1,4 +1,4 @@
-import { createPublicProfileRuntimeController } from "../profile/public-profile-runtime-controller.js";
+import { createPublicProfileRuntimeBoundary } from "../profile/public-profile-runtime-boundary.js";
 import { createSelfProfileRuntimeController } from "../profile/self-profile-runtime-controller.js";
 import { createRestaurantIdentityRuntimeController } from "../common/restaurant-identity-runtime-controller.js";
 import { createStoryFeedRuntimeController } from "../stories/story-feed-runtime-controller.js";
@@ -57,7 +57,7 @@ export function createProfileIdentityRuntimeCluster({
     }
   }
 
-  const publicProfileRuntimeController = createPublicProfileRuntimeController({
+  const publicProfileRuntimeController = createPublicProfileRuntimeBoundary({
     state,
     db: firebaseApi.db || null,
     docFn: firebaseApi.docFn || null,

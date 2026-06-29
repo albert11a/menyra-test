@@ -5,6 +5,48 @@ Last updated: 2026-06-29
 
 ## Stand
 
+- Schritt 146 ist abgeschlossen: Social-Haupteinstieg fuer Public Profile/Menu
+  weiter gesplittet und Bundle-Budget wieder gruen gemacht.
+- Bewertung von Schritt 146: `bestanden, browser-verifiziert`.
+- Wichtigster Effekt aus Schritt 146:
+  `apps/menyra-social/bundled/entry/social-app.js` liegt wieder unter dem
+  Budget: raw `1048355` von `1052000`, gzip `284987` von `285000`.
+  Public-Profile-Datenruntime und Profile/Business/Menu-Orchestrator werden
+  jetzt ueber kleine Lazy-Boundaries geladen; der Profile/Menu/Focus-Renderer
+  bleibt transitive lazy hinter dem Profile-Business-Menu-Chunk.
+- Geaendert in Schritt 146:
+  `apps/menyra-social/social-app.js`,
+  `apps/menyra-social/core/app-shell/profile-identity-runtime-cluster.js`,
+  `apps/menyra-social/core/app-shell/profile-business-menu-runtime-boundary.js`,
+  `apps/menyra-social/core/profile/public-profile-runtime-boundary.js`,
+  `scripts/check-mnyra-social-bundle-budget.mjs`,
+  `scripts/analyze-mnyra-public-profile-split.mjs`,
+  `tests/profile-business-menu-runtime-boundary.test.mjs`,
+  `tests/public-profile-runtime-boundary.test.mjs`,
+  gebaute Dateien unter `apps/menyra-social/bundled/`.
+- Bewusst nicht geaendert in Schritt 146:
+  keine sichtbaren UI-/Design-Aenderungen, keine Public-Route-Neuordnung,
+  kein Split von `public-profile-direct-entry-controller` oder
+  `public-bootstrap-runtime-controller`, keine Firebase-/Production-Mutationen,
+  keine QR-/Checkout-/Order-Schreibtests gegen Production.
+- Verifikation Schritt 146:
+  `node --test tests/*.test.mjs` bestanden (`105/105`),
+  `npm run build` bestanden,
+  `npm run check:social-bundle` bestanden,
+  `npm run analyze:public-profile-split` bestanden.
+  Browser manuell mit Playwright gegen `http://localhost:5174`:
+  Mobile `390x844` und Desktop `1366x768` fuer `/casarita` und
+  `/casarita/menu`. Ergebnis: keine Console-Errors, kein
+  `Profil wird geladen`, kein `Menu wird geladen`, keine kaputten Bilder,
+  keine horizontale Overflow-Erkennung; Menu-Items sichtbar.
+- Offener Blocker nach Schritt 146:
+  Weitere Public-Route-Splits fuer Direct-Entry/Bootstrap bleiben bewusst
+  blockiert, bis QR/Cart/Order-Flows mit Staging- oder Emulator-Seed-Daten
+  sicher abdeckbar sind.
+- Manuelle Testliste Schritt 146:
+  `/casarita` hart refreshen, `/casarita/menu` hart refreshen, zwischen
+  `BEITRAEGE` und `MENUE` wechseln, Menu-Item oeffnen, zurueck zur
+  Profilansicht wechseln, danach Browser-Console pruefen.
 - Schritt 145 ist abgeschlossen: Firebase-/Emulator-Testgrenze fuer riskante
   Schreibflows inventarisiert.
 - Bewertung von Schritt 145: `analysiert, keine Production-Mutation`.
