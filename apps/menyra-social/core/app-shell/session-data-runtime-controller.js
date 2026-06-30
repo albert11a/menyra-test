@@ -151,7 +151,6 @@ export function createSessionDataRuntimeController({
   let businessPostsNetworkLoadPromise = null;
   let businessPostsNetworkLoadRestaurantId = "";
   const menuNetworkLoadPromises = new Map();
-  let menuVisibleLoadGeneration = 0;
   const menuFreshReconcileQueuedKeys = new Set();
   const focusFreshReconcileQueuedKeys = new Set();
   let storiesRefreshQueued = false;
@@ -1921,17 +1920,6 @@ export function createSessionDataRuntimeController({
       && shouldPreserveVisibleMenuTruth;
     const shouldPrioritizeVisibleMenuTruth = prioritizeVisibleMenuTruth;
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
-    const visibleLoadGeneration = prefetchOnly ? 0 : ++menuVisibleLoadGeneration;
-    if (!prefetchOnly) {
-      markLoadingEvent("menu.state", {
-        restaurantId: safeRestaurantId,
-        source: safeSource,
-        generation: visibleLoadGeneration,
-        transition: "request-start",
-        force: !!force,
-        prefetchOnly: false
-      });
-    }
     const queueFreshMenuReconcile = () => {
       if (menuFreshReconcileQueuedKeys.has(cacheKey)) return;
       menuFreshReconcileQueuedKeys.add(cacheKey);
@@ -2019,10 +2007,6 @@ export function createSessionDataRuntimeController({
       const inFlightTruthKey = inFlightTruthState.toLowerCase();
       const inFlightKnownEmpty = inFlightTruthKey === "knownempty" || inFlightTruthKey === "known-empty";
       const inFlightUnknown = !inFlightItems.length && !inFlightKnownEmpty && inFlightTruthKey !== "seeded";
-      const keepVisibleItemsDuringUnknown = inFlightUnknown
-        && menuStateMatchesVisibleSurface
-        && Array.isArray(state.menu.items)
-        && state.menu.items.length > 0;
       if (
         !prefetchOnly
         && inFlightResult
@@ -2032,29 +2016,18 @@ export function createSessionDataRuntimeController({
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
-          items: keepVisibleItemsDuringUnknown ? state.menu.items : inFlightItems,
-          loading: keepVisibleItemsDuringUnknown ? false : inFlightUnknown,
+          items: inFlightItems,
+          loading: inFlightUnknown,
           error: "",
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
-          routeSeed: keepVisibleItemsDuringUnknown ? state.menu.routeSeed === true : false,
-          truthState: keepVisibleItemsDuringUnknown
-            ? (String(state.menu.truthState || "").trim() || "seeded")
-            : (inFlightUnknown
-              ? "unknown"
-              : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty"))))
+          routeSeed: false,
+          truthState: inFlightUnknown
+            ? "unknown"
+            : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty")))
         };
-        markLoadingEvent("menu.state", {
-          restaurantId: safeRestaurantId,
-          source: safeSource,
-          generation: visibleLoadGeneration,
-          transition: keepVisibleItemsDuringUnknown ? "error-suppressed" : (inFlightUnknown ? "loading" : "success"),
-          reason: keepVisibleItemsDuringUnknown ? "stale-visible" : "in-flight-result",
-          items: keepVisibleItemsDuringUnknown ? state.menu.items.length : inFlightItems.length,
-          truthState: state.menu.truthState
-        });
         requestRender();
       }
       return inFlightResult;
@@ -2127,7 +2100,7 @@ export function createSessionDataRuntimeController({
         ...state.menu,
         restaurantId: safeRestaurantId,
         items: keepCurrentItems ? state.menu.items : [],
-        loading: !keepCurrentItems,
+        loading: true,
         error: "",
         source: safeSource,
         routeSeed: keepCurrentItems ? state.menu.routeSeed === true : false,
@@ -2135,15 +2108,6 @@ export function createSessionDataRuntimeController({
           ? String(state.menu.truthState || "").trim().toLowerCase() || "seeded"
           : "unknown"
       };
-      markLoadingEvent("menu.state", {
-        restaurantId: safeRestaurantId,
-        source: safeSource,
-        generation: visibleLoadGeneration,
-        transition: keepCurrentItems ? "stale-visible" : "loading",
-        reason: keepCurrentItems ? "revalidate-with-items" : "visible-read-start",
-        items: keepCurrentItems ? state.menu.items.length : 0,
-        truthState: state.menu.truthState
-      });
       requestRender();
     }
     const request = (async () => {
@@ -2239,15 +2203,6 @@ export function createSessionDataRuntimeController({
           routeSeed: false,
           truthState
         };
-        markLoadingEvent("menu.state", {
-          restaurantId: safeRestaurantId,
-          source: safeSource,
-          generation: visibleLoadGeneration,
-          transition: items.length ? "success" : "empty",
-          reason: "firebase-resolved",
-          items: items.length,
-          truthState
-        });
         if (safeSource === "public" && items.length === 0) {
           const currentFocusRestaurantId = String(state?.focus?.restaurantId || "").trim();
           if (currentFocusRestaurantId === safeRestaurantId) {
@@ -2305,15 +2260,6 @@ export function createSessionDataRuntimeController({
           routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true,
           truthState: fallbackPayload.truthState
         };
-        markLoadingEvent("menu.state", {
-          restaurantId: safeRestaurantId,
-          source: safeSource,
-          generation: visibleLoadGeneration,
-          transition: fallbackItems.length || keepUnknownPublicMenuPending ? "error-suppressed" : "error-visible",
-          reason: fallbackItems.length ? "stale-visible" : (keepUnknownPublicMenuPending ? "public-unknown-pending" : "final-error"),
-          items: fallbackItems.length,
-          truthState: fallbackPayload.truthState
-        });
         requestRender();
         return fallbackPayload;
       } finally {
