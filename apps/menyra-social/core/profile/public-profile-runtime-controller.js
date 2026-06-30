@@ -885,6 +885,70 @@ export function createPublicProfileRuntimeController({
     return true;
   }
 
+  function hasMeaningfulHeaderText(value = "") {
+    const text = String(value || "").trim();
+    if (!text) return false;
+    const normalized = text.toLowerCase();
+    return normalized !== "profil wird geladen..." && normalized !== "profile loading...";
+  }
+
+  function hasCountSeed(value) {
+    if (value === null || value === undefined) return false;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0;
+  }
+
+  function isVisibleHeaderRegression(currentProfile = null, nextProfile = null) {
+    if (!currentProfile || !nextProfile) return false;
+    const textKeys = [
+      "name",
+      "handle",
+      "bio",
+      "avatar",
+      "titleImageUrl",
+      "coverImageUrl",
+      "coverUrl",
+      "heroUrl",
+      "location"
+    ];
+    for (const key of textKeys) {
+      if (hasMeaningfulHeaderText(currentProfile?.[key]) && !hasMeaningfulHeaderText(nextProfile?.[key])) {
+        return true;
+      }
+    }
+    const currentFollowers = Number(currentProfile?.followers);
+    const nextFollowers = Number(nextProfile?.followers);
+    if (Number.isFinite(currentFollowers) && currentFollowers > 0) {
+      if (!hasCountSeed(nextProfile?.followers) || (Number.isFinite(nextFollowers) && nextFollowers === 0)) {
+        return true;
+      }
+    }
+    const currentFollowing = Number(currentProfile?.following);
+    const nextFollowing = Number(nextProfile?.following);
+    if (Number.isFinite(currentFollowing) && currentFollowing > 0) {
+      if (!hasCountSeed(nextProfile?.following) || (Number.isFinite(nextFollowing) && nextFollowing === 0)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function resolveHeaderCountForMerge(nextValue, currentValue) {
+    const currentNumeric = Number(currentValue);
+    const nextNumeric = Number(nextValue);
+    if (
+      Number.isFinite(currentNumeric)
+      && currentNumeric > 0
+      && (
+        !hasCountSeed(nextValue)
+        || (Number.isFinite(nextNumeric) && nextNumeric === 0)
+      )
+    ) {
+      return currentValue;
+    }
+    return nextValue ?? currentValue;
+  }
+
   function buildProfileRenderSignature(profile = null) {
     if (!profile || typeof profile !== "object") return "";
     const canonicalRestaurantId = resolveProfileCanonicalRestaurantId(profile);
@@ -1377,12 +1441,18 @@ export function createPublicProfileRuntimeController({
     const projectedPosts = shouldPreserveVisiblePosts
       ? currentPosts
       : incomingProjectedPosts;
+    const hasVisibleHeaderRegression = isVisibleHeaderRegression(currentProfile, profile);
     const shouldPreserveHeaderSeed = sameVisibleIncomingProfile
       && currentProfile
-      && incomingProfileSettling
       && (
-        !blockStaleCarryForWebDirect
-        || (preserveWebDirectRouteTruth && currentRoutePayloadHasIdentityTruth)
+        hasVisibleHeaderRegression
+        || (
+          incomingProfileSettling
+          && (
+            !blockStaleCarryForWebDirect
+            || (preserveWebDirectRouteTruth && currentRoutePayloadHasIdentityTruth)
+          )
+        )
       );
     const currentCanonicalRestaurantId = resolveProfileCanonicalRestaurantId(currentProfile, currentRoutePayload);
     const incomingCanonicalRoutePayload = incomingRoutePayload || (sameVisibleIncomingProfile ? currentRoutePayload : null);
@@ -1418,8 +1488,8 @@ export function createPublicProfileRuntimeController({
           ? (profile.heroUrl || profile.titleImageUrl)
           : currentProfile?.heroUrl,
         location: String(profile?.location || "").trim() ? profile.location : currentProfile?.location,
-        followers: profile?.followers ?? currentProfile?.followers,
-        following: profile?.following ?? currentProfile?.following,
+        followers: resolveHeaderCountForMerge(profile?.followers, currentProfile?.followers),
+        following: resolveHeaderCountForMerge(profile?.following, currentProfile?.following),
         pendingFollowRequest: typeof profile?.pendingFollowRequest === "boolean"
           ? profile.pendingFollowRequest
           : currentProfile?.pendingFollowRequest
