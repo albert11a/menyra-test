@@ -5,6 +5,56 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 156 ist abgeschlossen: Der sichtbare Public-Menu-Fehler aus Schritt
+  155 wurde fuer transiente Public-Reads wieder entfernt und durch stillen
+  Auto-Retry ersetzt.
+- Bewertung von Schritt 156: `Gezielte Tests bestanden, Syntax-Check
+  bestanden, Build bestanden, Bundle-Budget rot, kein Browser-Smoke durch
+  Codex, kein Deploy, keine Production-Mutation`.
+- Root Cause Schritt 156:
+  Schritt 155 hat den alten Endlos-Loader beseitigt, indem ein Public-Menu-
+  Timeout ohne Fallback als sichtbarer `error`-Truth-State gesetzt wurde. Bei
+  echten Refresh-/Tabwechsel-Rennen war das zu hart: ein Folge-Load konnte das
+  Menu oft direkt laden, aber der Nutzer sah vorher `Menu konnte nicht geladen
+  werden`.
+- Geaendert in Schritt 156:
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  behandelt sichtbare Public-Menu-Timeouts ohne Fallback wieder als
+  `truthState: unknown`, `loading: true`, `error: ""` und plant automatisch
+  einen neuen sichtbaren Public-Menu-Load mit kurzem Backoff. Wenn alte
+  passende Menu-Items vorhanden sind, bleiben sie sichtbar und der Retry laeuft
+  im Hintergrund. Erfolgreiche Cache-/Netzwerk-Reads raeumen offene Retry-
+  Timer auf. Der gleiche stille Retry gilt auch, wenn eine sichtbare Anfrage
+  auf einen fehlgeschlagenen Public-Prefetch wartet.
+  `tests/session-data-menu-focus-no-hang.test.mjs` prueft jetzt, dass kein
+  sichtbarer Public-Menu-Fehlertext gesetzt wird und ein Folge-Load nach einem
+  transienten Timeout sauber zu `seeded` recovered.
+- Verifikation Schritt 156:
+  `node --check
+  apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  bestanden.
+  `node --test tests/session-data-menu-focus-no-hang.test.mjs
+  tests/public-menu-surface-state-utils.test.mjs` bestanden (`17/17`).
+  `npm run build` bestanden.
+- Bundle-Guard Schritt 156:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1053418` von `1052000` (`+1418`), gzip `286208` von
+  `285000` (`+1208`). Das Budget ist weiter rot; die Public-Menu-Retry-
+  Korrektur wurde nicht fuer eine riskante Mikro-Optimierung zurueckgebaut.
+- Bewusst nicht geaendert in Schritt 156:
+  keine Firebase Rules, keine Functions, keine Datenmigration, kein Deploy,
+  keine Public-/App-Routing-Verschiebung, keine Posts-Cache-Truth-Aenderung,
+  keine UI-Design-Aenderung, kein Browser-Smoke durch Codex.
+- Manuelle Testliste Schritt 156:
+  Mehrere Public-Restaurant/Cafe-Profile und QR-Menu-Links mehrmals hart
+  refreshen, besonders schnell zwischen `Menu/Shop` und `Beitraege` wechseln.
+  Erwartung: `Menu konnte nicht geladen werden` erscheint bei transienten
+  Public-Read-Problemen nicht mehr. Menu/Shop bleibt im Ladezustand oder zeigt
+  vorhandene Items und versucht automatisch erneut zu laden. Sobald Firebase
+  antwortet, werden Produkte normal sichtbar. Danach ein Profil mit wirklich
+  leerem Public-Menu gegenpruefen: Ein erfolgreicher Empty-Read darf weiterhin
+  normal als leerer Zustand enden.
+
 - Schritt 155 ist abgeschlossen: Public Menu und Focus sind im sichtbaren
   Business-Profil entkoppelt. Menu-/Shop-Produkte duerfen rendern, sobald ihre
   eigene Public-Menu-Truth ready ist; ein noch unbekannter Focus haelt nur noch

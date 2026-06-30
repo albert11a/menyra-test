@@ -154,6 +154,8 @@ export function createSessionDataRuntimeController({
   let businessPostsNetworkLoadRestaurantId = "";
   const menuNetworkLoadPromises = new Map();
   const menuFreshReconcileQueuedKeys = new Set();
+  const publicMenuRetryTimers = new Map();
+  const publicMenuRetryAttemptCounts = new Map();
   const focusFreshReconcileQueuedKeys = new Set();
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
@@ -381,6 +383,41 @@ export function createSessionDataRuntimeController({
       }
     }
     throw lastError || new Error("menu-load-retry-failed");
+  }
+
+  function clearPublicMenuRetry(cacheKey = "") {
+    const key = String(cacheKey || "").trim();
+    if (!key) return;
+    const timer = publicMenuRetryTimers.get(key);
+    if (timer && typeof clearTimeout === "function") {
+      clearTimeout(timer);
+    }
+    publicMenuRetryTimers.delete(key);
+    publicMenuRetryAttemptCounts.delete(key);
+  }
+
+  function queueVisiblePublicMenuRetry(restaurantId = "", source = "public", cacheKey = "") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeSource = String(source || "public").trim().toLowerCase() || "public";
+    if (!safeRestaurantId || safeSource !== "public" || typeof setTimeout !== "function") return;
+    if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, "public")) return;
+    const key = String(cacheKey || menuCacheKeyFn(safeRestaurantId, "public") || `${safeRestaurantId}:public`).trim();
+    if (!key || publicMenuRetryTimers.has(key)) return;
+    const nextAttempt = Math.max(1, (Number(publicMenuRetryAttemptCounts.get(key)) || 0) + 1);
+    publicMenuRetryAttemptCounts.set(key, nextAttempt);
+    const delayMs = Math.min(5000, Math.round(320 * Math.pow(1.65, nextAttempt - 1)));
+    const timer = setTimeout(() => {
+      publicMenuRetryTimers.delete(key);
+      if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, "public")) return;
+      void loadMenuForRestaurant(safeRestaurantId, { force: true, source: "public" })
+        .catch((err) => {
+          console.error(err);
+        });
+    }, delayMs);
+    if (timer && typeof timer.unref === "function") {
+      timer.unref();
+    }
+    publicMenuRetryTimers.set(key, timer);
   }
 
   function isGenericBusinessLabel(value = "") {
@@ -2026,6 +2063,7 @@ export function createSessionDataRuntimeController({
       };
       if (prefetchOnly) return cachedPayload;
       if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return cachedPayload;
+      clearPublicMenuRetry(cacheKey);
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -2060,6 +2098,7 @@ export function createSessionDataRuntimeController({
         return persistedPayload;
       }
       if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return persistedPayload;
+      clearPublicMenuRetry(cacheKey);
       state.menu = {
         ...state.menu,
         restaurantId: safeRestaurantId,
@@ -2091,7 +2130,7 @@ export function createSessionDataRuntimeController({
       const inFlightKnownEmpty = inFlightTruthKey === "knownempty" || inFlightTruthKey === "known-empty";
       const inFlightError = inFlightTruthKey === "error";
       const inFlightUnknown = !inFlightItems.length && !inFlightKnownEmpty && inFlightTruthKey !== "seeded" && !inFlightError;
-      const settlePublicUnknownAsError = safeSource === "public" && inFlightUnknown;
+      const retryPublicUnknown = safeSource === "public" && !inFlightItems.length && (inFlightUnknown || inFlightError);
       if (
         !prefetchOnly
         && inFlightResult
@@ -2102,19 +2141,26 @@ export function createSessionDataRuntimeController({
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: inFlightItems,
-          loading: safeSource === "public" ? false : inFlightUnknown,
-          error: inFlightError || settlePublicUnknownAsError ? "Menu laden fehlgeschlagen." : "",
+          loading: retryPublicUnknown ? true : inFlightUnknown,
+          error: retryPublicUnknown ? "" : (inFlightError ? "Menu laden fehlgeschlagen." : ""),
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
           routeSeed: false,
-          truthState: inFlightError || settlePublicUnknownAsError
+          truthState: retryPublicUnknown
+            ? "unknown"
+            : (inFlightError
             ? "error"
             : (inFlightUnknown
               ? "unknown"
-              : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty"))))
+              : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty")))))
         };
+        if (retryPublicUnknown) {
+          queueVisiblePublicMenuRetry(safeRestaurantId, safeSource, cacheKey);
+        } else if (!inFlightUnknown && !inFlightError) {
+          clearPublicMenuRetry(cacheKey);
+        }
         requestRender();
       }
       return inFlightResult;
@@ -2170,7 +2216,7 @@ export function createSessionDataRuntimeController({
           return payload;
         } catch (err) {
           console.error(err);
-          return { items: [], statusBadgeVisible: true, truthState: safeSource === "public" ? "error" : "unknown" };
+          return { items: [], statusBadgeVisible: true, truthState: "unknown" };
         } finally {
           menuNetworkLoadPromises.delete(cacheKey);
         }
@@ -2270,6 +2316,7 @@ export function createSessionDataRuntimeController({
         items = Array.isArray(items) ? items : [];
         const truthState = items.length > 0 ? "seeded" : "knownEmpty";
         const payload = { items, statusBadgeVisible, truthState };
+        clearPublicMenuRetry(cacheKey);
         menuCacheMap.set(cacheKey, {
           items,
           statusBadgeVisible,
@@ -2308,7 +2355,7 @@ export function createSessionDataRuntimeController({
         return payload;
       } catch (err) {
         console.error(err);
-        const allowExpiredPersistedFallback = safeSource !== "public";
+        const allowExpiredPersistedFallback = true;
         const stalePersistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: allowExpiredPersistedFallback });
         const liveMenuRestaurantId = String(state?.menu?.restaurantId || "").trim();
         const liveMenuSource = String(state?.menu?.source || "").trim().toLowerCase() || "public";
@@ -2333,15 +2380,18 @@ export function createSessionDataRuntimeController({
         const fallbackPayload = {
           items: fallbackItems,
           statusBadgeVisible: fallbackStatusBadgeVisible,
-          truthState: hasFallbackItems ? "seeded" : (safeSource === "public" ? "error" : "unknown")
+          truthState: hasFallbackItems ? "seeded" : "unknown"
         };
         if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return fallbackPayload;
+        if (safeSource === "public") {
+          queueVisiblePublicMenuRetry(safeRestaurantId, safeSource, cacheKey);
+        }
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: fallbackItems,
-          loading: false,
-          error: hasFallbackItems ? "" : "Menu laden fehlgeschlagen.",
+          loading: safeSource === "public" && !hasFallbackItems,
+          error: safeSource === "public" ? "" : (hasFallbackItems ? "" : "Menu laden fehlgeschlagen."),
           source: safeSource,
           statusBadgeVisible: fallbackStatusBadgeVisible,
           routeSeed: hasFallbackItems && state.menu.routeSeed === true,

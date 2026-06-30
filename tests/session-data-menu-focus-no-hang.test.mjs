@@ -122,7 +122,7 @@ function createObjectCacheStore() {
   };
 }
 
-test("public menu unknown load settles as a visible retryable error", async () => {
+test("public menu unknown load stays in silent retry loading instead of visible error", async () => {
   const state = createVisibleMenuState();
   const controller = createController({
     state,
@@ -133,14 +133,14 @@ test("public menu unknown load settles as a visible retryable error", async () =
     controller.loadMenuForRestaurant("restaurant-a", { source: "public" })
   ));
 
-  assert.equal(result.truthState, "error");
+  assert.equal(result.truthState, "unknown");
   assert.equal(state.menu.restaurantId, "restaurant-a");
-  assert.equal(state.menu.loading, false);
-  assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
-  assert.equal(state.menu.truthState, "error");
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "unknown");
 });
 
-test("visible public menu settles an in-flight unknown prefetch as an error", async () => {
+test("visible public menu keeps an in-flight unknown prefetch in silent retry loading", async () => {
   const state = createVisibleMenuState();
   const controller = createController({
     state,
@@ -155,11 +155,40 @@ test("visible public menu settles an in-flight unknown prefetch as an error", as
   ));
   await prefetch;
 
-  assert.equal(result.truthState, "error");
+  assert.equal(result.truthState, "unknown");
   assert.equal(state.menu.restaurantId, "restaurant-a");
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "unknown");
+});
+
+test("public menu silent retry can recover after a transient timeout", async () => {
+  const state = createVisibleMenuState();
+  let calls = 0;
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: async () => {
+      calls += 1;
+      if (calls === 1) return never();
+      return [{ id: "item-1", title: "Recovered item" }];
+    }
+  });
+
+  const firstResult = await withMutedConsoleError(() => (
+    controller.loadMenuForRestaurant("restaurant-a", { source: "public" })
+  ));
+
+  assert.equal(firstResult.truthState, "unknown");
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.error, "");
+
+  const recovered = await controller.loadMenuForRestaurant("restaurant-a", { source: "public", force: true });
+
+  assert.equal(recovered.truthState, "seeded");
   assert.equal(state.menu.loading, false);
-  assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
-  assert.equal(state.menu.truthState, "error");
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "seeded");
+  assert.deepEqual(state.menu.items, [{ id: "item-1", title: "Recovered item" }]);
 });
 
 test("visible public menu loads canonical restaurant id instead of route alias", async () => {
