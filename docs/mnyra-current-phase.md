@@ -5,6 +5,72 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 152 ist abgeschlossen: Public-Profilkopf/Menu/Focus/Beitraege wurden
+  gegen Refresh-, Mehrfach-Refresh- und schlechte-Netz-Zwischenzustaende mit
+  persistenten Last-Good-Daten gehaertet, ohne UI-/Design-Aenderung.
+- Bewertung von Schritt 152: `Tests/Build bestanden, Bundle-Budget rot,
+  keine Production-Mutation, kein Deploy, kein Browser-Smoke durch Codex`.
+- Code-/Build-Commit Schritt 152:
+  `91edaf1d Harden public profile cached loading`.
+- Root Cause Schritt 152:
+  Der Restaurant-Tab fuehlt sich stabiler an, weil `loadRestaurants()` sofort
+  aus persistentem Restaurantcache rendert und Fresh-Reads nur nachziehen.
+  Public-Profil-Beitraege und Public-Focus hatten dagegen nur In-Memory-
+  Caches; nach Refresh oder Mehrfach-Refresh waren diese weg und die sichtbare
+  Seite wartete wieder auf Resolver/Firestore. Zusaetzlich konnte ein frueher
+  `knownEmpty`-Menu-Zustand im Profile/Menu-Orchestrator sichtbare Menu-Reads
+  ueberspringen, obwohl spaeter bzw. persistent Produkte vorhanden waren.
+- Geaendert in Schritt 152:
+  `apps/menyra-social/core/profile/public-profile-runtime-controller.js`
+  liest/schreibt fuer Public-Posts einen persistenten Initial-Posts-Cache und
+  nutzt den bestehenden Full-Posts-Cache nur fuer echte Full-Reads. Initial-
+  Reads verschmutzen den Full-Cache nicht.
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  liest/schreibt Public-Focus persistent und fuehrt Fresh-Reconcile still aus,
+  damit vorhandene Focus-Daten nicht erneut in sichtbares Loading kippen.
+  `apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js`
+  laesst sichtbare Public-Menu-Reads nur noch bei echten `seeded` Items
+  kurzschliessen; `knownEmpty` blockiert den sichtbaren Ladeweg nicht mehr.
+  `apps/menyra-social/core/app-shell/profile-identity-runtime-cluster.js` und
+  `apps/menyra-social/social-app.js` reichen Cache-APIs an die Public-Profile-
+  Runtime weiter. `apps/menyra-social/core/app-shell/social-app-cache-config.js`
+  definiert den Focus-Cache. Tests und gebaute Dateien unter
+  `apps/menyra-social/bundled/` wurden aktualisiert.
+- Neue/erweiterte Tests Schritt 152:
+  Public-Business-Posts-Initial-Cache ueberlebt Refresh; Initial-Cache erfuellt
+  keinen Full-Posts-Request; Public-Focus ueberlebt Refresh aus persistentem
+  Cache ohne sichtbares Loading; bestehende No-Hang-/Transient-Failure-Tests
+  bleiben aktiv.
+- Verifikation Schritt 152:
+  `node --test tests/public-profile-runtime-controller.test.mjs` bestanden
+  (`11/11`),
+  `node --test tests/session-data-menu-focus-no-hang.test.mjs` bestanden
+  (`9/9`),
+  `node --test tests/profile-business-menu-runtime-cluster.test.mjs` bestanden
+  (`3/3`),
+  `node --test tests/*.test.mjs` bestanden (`128/128`),
+  `npm run build` bestanden.
+- Bundle-Guard Schritt 152:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1052483` von `1052000` (`+483`), gzip `285895` von
+  `285000` (`+895`). Das Budget war bereits vor diesem Schritt rot/knapp; die
+  funktionale Ladehaertung wurde nicht fuer eine riskante Mikro-Optimierung
+  zurueckgebaut.
+- Bewusst nicht geaendert in Schritt 152:
+  keine UI-/Design-Aenderung, keine Texte versteckt, keine Loader nur
+  kosmetisch entfernt, keine Firebase Rules, keine Functions, keine
+  Datenmigration, kein Deploy, kein Public-/App-Routing-Umbau.
+- Manuelle Testliste Schritt 152:
+  Ein Public-Profil mit vorhandenen Beitraegen und Menu/Focus oeffnen, zweimal
+  hart refreshen, dann schnell zwischen Profil, Menu und Beitraege wechseln.
+  Danach dieselbe Route erneut oeffnen und eine andere Public-Route testen.
+  Erwartung: Profilkopf bleibt stabil, vorhandene Beitraege/Focus/Menu-Daten
+  erscheinen aus Last-Good-Cache sofort oder deutlich schneller und kippen
+  nicht zwischendurch in falsche Empty-/Error-Zustaende. Bei schlechtem Netz
+  duerfen Fresh-Reads nachziehen, aber vorhandene Daten sollen nicht fuer
+  lange Loader verschwinden. Mit `?sw-reset=1` einmal hart neu laden, falls
+  der Browser noch alte Chunks haelt.
+
 - Nachtrag 2026-06-30: Die nach Schritt 151 kurz getesteten Folgeversuche
   fuer Public-Focus/Menu-Koordination und frueheren Public-Posts-Read wurden
   wieder entfernt. Der Nutzer meldete als Regression, dass nach zweimaligem
