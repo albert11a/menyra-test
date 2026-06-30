@@ -4759,7 +4759,6 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     saveSettings,
     disablePushDeviceRegistration: async (...args) => await getPushRuntimeController().disablePushDeviceRegistration(...args),
     getPushActivationIssueMessage: () => getPushRuntimeController().getPushActivationIssueMessage(),
-    loadMenuForRestaurant,
     bindAppChatUploadEventsCore,
     deleteChatThreadById,
     setChatThreadArchivedById,

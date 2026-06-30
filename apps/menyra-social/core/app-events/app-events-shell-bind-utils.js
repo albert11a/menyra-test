@@ -37,7 +37,6 @@ export function bindAppShellEventsCore({
   ensureMenuDataForProfileFn,
   ensureFocusDataForProfileFn,
   loadBusinessPostsForRestaurantFn,
-  loadMenuForRestaurantFn,
   openProfileViewFromBusinessFn
 } = {}) {
   const doc = documentObj || null;
@@ -83,9 +82,6 @@ export function bindAppShellEventsCore({
     : (() => {});
   const loadBusinessPostsForRestaurant = typeof loadBusinessPostsForRestaurantFn === "function"
     ? loadBusinessPostsForRestaurantFn
-    : null;
-  const loadMenuForRestaurant = typeof loadMenuForRestaurantFn === "function"
-    ? loadMenuForRestaurantFn
     : null;
   const openProfileViewFromBusiness = typeof openProfileViewFromBusinessFn === "function"
     ? openProfileViewFromBusinessFn
@@ -204,12 +200,6 @@ export function bindAppShellEventsCore({
       Promise.resolve(loadBusinessPostsForRestaurant(safeRestaurantId, {
         skipProfileResolve: true,
         initialPage: true
-      })).catch(() => null);
-    }
-    if (loadMenuForRestaurant) {
-      Promise.resolve(loadMenuForRestaurant(safeRestaurantId, {
-        source: "public",
-        prefetchOnly: true
       })).catch(() => null);
     }
   };

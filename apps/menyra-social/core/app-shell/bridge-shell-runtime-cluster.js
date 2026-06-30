@@ -77,7 +77,6 @@ export function createBridgeShellRuntimeCluster({
     showPublicProfile: profileApi.showPublicProfile,
     fetchBusinessProfileDoc: profileApi.fetchBusinessProfileDoc,
     loadBusinessPostsForRestaurant: feedApi.loadBusinessPostsForRestaurant,
-    loadMenuForRestaurant: shellApi.loadMenuForRestaurant,
     normalizeExternalUserProfile: profileApi.normalizeExternalUserProfile,
     openGuestAuthPrompt: profileApi.openGuestAuthPrompt,
     userProfileCache: profileApi.userProfileCache,
