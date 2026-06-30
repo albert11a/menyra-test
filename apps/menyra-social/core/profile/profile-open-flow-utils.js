@@ -1260,8 +1260,7 @@ export function createProfileOpenFlowControllerCore({
         })
       });
 
-      const canWarmPublicMenuBundle = !isLandingTopTab
-        && safeMenuAccessSource !== "qr";
+      const canWarmPublicMenuBundle = !isLandingTopTab;
       const publicMenuWarmTargetIds = new Set();
       const warmPublicMenuBundle = (profileSeed = {}, ...candidateIds) => {
         if (!canWarmPublicMenuBundle) return;

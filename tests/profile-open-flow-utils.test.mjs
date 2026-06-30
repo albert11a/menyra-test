@@ -46,7 +46,13 @@ function createController(state, showCalls = [], overrides = {}) {
     showPublicProfile: (profile, posts, options) => {
       showCalls.push({ profile, posts, options });
       state.activeTab = "profile";
-      state.profileView = { profile, posts, directEntry: options?.directEntry || null };
+      state.profileView = {
+        profile,
+        posts,
+        directEntry: options?.directEntry || null,
+        menuAccessSource: options?.menuAccessSource || "",
+        tableNumber: options?.tableNumber || 0
+      };
     },
     fetchBusinessProfileDoc: async ({ restaurantId }) => ({
       id: String(restaurantId || "moka"),
@@ -144,4 +150,44 @@ test("direct posts-first business profile route warms menu data without waiting 
   assert.equal(menuWarmCalls.length > 0, true);
   assert.equal(menuWarmCalls[0].restaurantId, "moka");
   assert.equal(menuWarmCalls[0].canonicalRestaurantId, "moka");
+});
+
+test("direct qr menu route warms canonical menu data after slug-only cold start", async () => {
+  const state = createState("profile");
+  state.__webDirectEntry = {
+    active: true,
+    webPriority: true,
+    menuFirst: true,
+    restaurantId: "moka-slug",
+    canonicalRestaurantId: "moka-slug",
+    menuAccessSource: "qr",
+    tableNumber: 7
+  };
+  const showCalls = [];
+  const menuWarmCalls = [];
+  const controller = createController(state, showCalls, {
+    ensureMenuDataForProfile: (profile = {}) => {
+      menuWarmCalls.push({
+        restaurantId: profile.restaurantId,
+        canonicalRestaurantId: profile.canonicalRestaurantId
+      });
+    },
+    fetchBusinessProfileDoc: async () => ({
+      id: "moka-canonical",
+      data: { name: "Moka Coffee", publicSlug: "moka-slug" }
+    })
+  });
+
+  await controller.openProfileViewFromBusiness(
+    { id: "moka-slug", name: "Moka Coffee" },
+    { showBack: false, topTab: "menu", menuAccessSource: "qr", tableNumber: 7 }
+  );
+  await Promise.resolve();
+
+  assert.equal(showCalls.at(-1)?.options?.menuAccessSource, "qr");
+  assert.equal(showCalls.at(-1)?.options?.tableNumber, 7);
+  assert.equal(menuWarmCalls.some((call) => (
+    call.restaurantId === "moka-canonical"
+    && call.canonicalRestaurantId === "moka-canonical"
+  )), true);
 });
