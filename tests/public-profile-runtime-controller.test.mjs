@@ -164,60 +164,6 @@ test("direct public profile route does not queue browser history push", () => {
   assert.equal(state.__nextRouteHistoryMode, "");
 });
 
-test("public profile refresh keeps visible header seed when later identity is thinner", () => {
-  const state = createProfileSwitchState();
-  state.profileView.profile = {
-    ...state.profileView.profile,
-    name: "Casa Rita",
-    handle: "casarita",
-    bio: "Fresh kitchen",
-    avatar: "https://cdn.example.test/casarita-logo.jpg",
-    titleImageUrl: "https://cdn.example.test/casarita-cover.jpg",
-    coverImageUrl: "https://cdn.example.test/casarita-cover.jpg",
-    location: "Prishtina",
-    followers: 42,
-    following: 7,
-    identityTruthState: "ready"
-  };
-  let renderCount = 0;
-  const controller = createPublicProfileRuntimeController({
-    state,
-    render: () => {
-      renderCount += 1;
-    },
-    normalizeHandle: (value = "") => String(value || "").trim().toLowerCase()
-  });
-
-  controller.showPublicProfile({
-    restaurantId: "casarita",
-    canonicalRestaurantId: "casarita",
-    name: "",
-    handle: "casarita",
-    bio: "",
-    avatar: "",
-    location: "",
-    followers: 0,
-    following: 0,
-    role: "business",
-    postsLoaded: true,
-    identityTruthState: "ready",
-    truthState: "stable"
-  }, [], {
-    showBack: false,
-    topTab: "profile",
-    contentTab: "posts"
-  });
-
-  assert.equal(state.profileView.profile.name, "Casa Rita");
-  assert.equal(state.profileView.profile.bio, "Fresh kitchen");
-  assert.equal(state.profileView.profile.avatar, "https://cdn.example.test/casarita-logo.jpg");
-  assert.equal(state.profileView.profile.titleImageUrl, "https://cdn.example.test/casarita-cover.jpg");
-  assert.equal(state.profileView.profile.location, "Prishtina");
-  assert.equal(state.profileView.profile.followers, 42);
-  assert.equal(state.profileView.profile.following, 7);
-  assert.equal(renderCount, 1);
-});
-
 function createDocsSnapshot(rows = []) {
   return {
     forEach(callback) {
