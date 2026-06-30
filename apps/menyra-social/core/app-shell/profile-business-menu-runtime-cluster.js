@@ -995,9 +995,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     scheduleVisiblePublicMenuRetryFromPostsEnsure(profile, requestedRestaurantId);
     scheduleVisiblePublicPostsRetry(profile, requestedRestaurantId);
     const safeProfile = profile && typeof profile === "object" ? profile : {};
-    const surfaceContext = buildVisiblePublicBusinessContext(safeProfile, requestedRestaurantId);
-    const earlyCanonicalRestaurantId = String(surfaceContext.canonicalRestaurantId || "").trim();
-    const surfaceTargetRestaurantId = earlyCanonicalRestaurantId || resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
+    const surfaceTargetRestaurantId = resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
     if (hasMatchingVisiblePostsEnsureInFlight(surfaceTargetRestaurantId, requestedRestaurantId, safeProfile)) return;
     const requestContext = {
       requestedRestaurantId,
@@ -1005,32 +1003,15 @@ export function createProfileBusinessMenuRuntimeCluster({
       targetRestaurantId: ""
     };
     const request = Promise.resolve().then(async () => {
-      let earlyPostsReadError = null;
-      const earlyPostsRead = earlyCanonicalRestaurantId
-        ? Promise.resolve(loadBusinessPostsForRestaurant(earlyCanonicalRestaurantId, {
-            skipProfileResolve: true,
-            initialPage: true
-          })).catch((err) => {
-            earlyPostsReadError = err;
-            return null;
-          })
-        : Promise.resolve(null);
       const canonicalRestaurantId = await resolveProfileRestaurantId(safeProfile);
       const targetRestaurantId = String(canonicalRestaurantId || requestedRestaurantId || "").trim();
       requestContext.canonicalRestaurantId = canonicalRestaurantId || "";
       requestContext.targetRestaurantId = targetRestaurantId;
       if (!targetRestaurantId) return;
-      let posts = null;
-      if (earlyCanonicalRestaurantId && earlyCanonicalRestaurantId === targetRestaurantId) {
-        posts = await earlyPostsRead;
-        if (!Array.isArray(posts) && earlyPostsReadError) throw earlyPostsReadError;
-      } else {
-        posts = await loadBusinessPostsForRestaurant(targetRestaurantId, {
-          skipProfileResolve: !!canonicalRestaurantId,
-          initialPage: true
-        });
-        void earlyPostsRead;
-      }
+      let posts = await loadBusinessPostsForRestaurant(targetRestaurantId, {
+        skipProfileResolve: !!canonicalRestaurantId,
+        initialPage: true
+      });
       posts = Array.isArray(posts) ? posts : [];
       const liveProfileView = getVisiblePublicProfileView();
       if (!liveProfileView) return;
