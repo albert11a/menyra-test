@@ -96,6 +96,7 @@ function createCluster({
   loadMenuForRestaurantFn = async () => ({ items: [], truthState: "unknown" }),
   loadFocusForRestaurantFn = async () => ({ items: [], truthState: "unknown" }),
   loadBusinessPostsForRestaurantFn,
+  fetchBusinessProfileDocFn = null,
   showCalls
 }) {
   return createProfileBusinessMenuRuntimeCluster({
@@ -104,6 +105,7 @@ function createCluster({
       loadMenuForRestaurantFn,
       loadFocusForRestaurantFn,
       loadBusinessPostsForRestaurantFn,
+      fetchBusinessProfileDocFn,
       showPublicProfileFn: (profile, posts, options) => {
         showCalls.push({ profile, posts, options });
         state.profileView = {
@@ -228,6 +230,50 @@ test("public profile posts use canonical route payload instead of alias fallback
   assert.deepEqual(lastCall.posts, []);
 });
 
+test("public profile posts starts canonical read while identity resolve is pending", async () => {
+  let resolveIdentity;
+  const identityPromise = new Promise((resolve) => {
+    resolveIdentity = resolve;
+  });
+  const state = createVisiblePublicProfileState({
+    profile: {
+      restaurantId: "restaurant-a",
+      canonicalRestaurantId: "restaurant-a",
+      role: "business",
+      postsLoaded: false,
+      truthState: "unknown"
+    }
+  });
+  const readIds = [];
+  const showCalls = [];
+  const cluster = createCluster({
+    state,
+    showCalls,
+    fetchBusinessProfileDocFn: () => identityPromise,
+    loadBusinessPostsForRestaurantFn: async (restaurantId) => {
+      readIds.push(restaurantId);
+      return [{ id: "post-a", restaurantId, url: "https://cdn.example/post-a.jpg" }];
+    }
+  });
+
+  await withNoopRetryTimers(async () => {
+    cluster.ensurePostsDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+
+    assert.deepEqual(readIds, ["restaurant-a"]);
+    assert.equal(showCalls.length, 0);
+
+    resolveIdentity({ id: "restaurant-a", data: { name: "Restaurant A" } });
+    await waitForAsyncEnsure();
+    await waitForAsyncEnsure();
+  });
+
+  assert.equal(showCalls.length >= 1, true);
+  const lastCall = showCalls[showCalls.length - 1];
+  assert.equal(lastCall.profile.restaurantId, "restaurant-a");
+  assert.deepEqual(lastCall.posts.map((post) => post.id), ["post-a"]);
+});
+
 test("public profile menu starts focus load when menu truth is already settled", async () => {
   const state = createVisiblePublicProfileState({
     profile: {
@@ -294,9 +340,11 @@ test("public profile menu starts focus load when menu truth is already settled",
     loadBusinessPostsForRestaurantFn: async () => []
   });
 
-  cluster.ensureMenuDataForProfile(state.profileView.profile);
-  await waitForAsyncEnsure();
-  await waitForAsyncEnsure();
+  await withNoopRetryTimers(async () => {
+    cluster.ensureMenuDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+    await waitForAsyncEnsure();
+  });
 
   assert.deepEqual(focusReadIds, ["restaurant-a"]);
   assert.equal(state.focus.restaurantId, "restaurant-a");
