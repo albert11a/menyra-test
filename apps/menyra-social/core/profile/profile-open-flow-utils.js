@@ -1260,26 +1260,67 @@ export function createProfileOpenFlowControllerCore({
         })
       });
 
-      const canWarmPublicMenuBundle = !!(loadingCanonicalRestaurantId || targetMenuRestaurantId)
-        && !isLandingTopTab
+      const canWarmPublicMenuBundle = !isLandingTopTab
         && safeMenuAccessSource !== "qr";
-      const shouldWarmPublicMenuBundle = canWarmPublicMenuBundle && !isWebPostsFirstPath;
-      if (shouldWarmPublicMenuBundle) {
+      const publicMenuWarmTargetIds = new Set();
+      const warmPublicMenuBundle = (profileSeed = {}, ...candidateIds) => {
+        if (!canWarmPublicMenuBundle) return;
+        const warmCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
+          ...candidateIds,
+          profileSeed?.canonicalRestaurantId,
+          profileSeed?.restaurantId,
+          loadingCanonicalRestaurantId,
+          targetCanonicalRestaurantId,
+          targetMenuRestaurantId
+        );
+        const warmRestaurantId = warmCanonicalRestaurantId || String(
+          profileSeed?.canonicalRestaurantId
+          || profileSeed?.restaurantId
+          || targetMenuRestaurantId
+          || ""
+        ).trim();
+        if (!warmRestaurantId) return;
+        const warmKey = warmCanonicalRestaurantId || warmRestaurantId;
+        if (publicMenuWarmTargetIds.has(warmKey)) return;
+        publicMenuWarmTargetIds.add(warmKey);
         Promise.resolve().then(() => {
-          const warmCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
-            loadingCanonicalRestaurantId,
-            targetCanonicalRestaurantId,
-            targetMenuRestaurantId
+          const liveProfile = state?.profileView?.profile;
+          const liveRestaurantId = String(
+            liveProfile?.canonicalRestaurantId
+            || liveProfile?.restaurantId
+            || ""
+          ).trim();
+          const acceptedWarmTargetIds = new Set(
+            [
+              warmRestaurantId,
+              warmCanonicalRestaurantId,
+              profileSeed?.canonicalRestaurantId,
+              profileSeed?.restaurantId,
+              ...candidateIds,
+              loadingCanonicalRestaurantId,
+              targetCanonicalRestaurantId,
+              targetMenuRestaurantId,
+              targetRestaurantLookupId,
+              routeSnapshotRestaurantId
+            ]
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
           );
-          const warmRestaurantId = warmCanonicalRestaurantId || targetMenuRestaurantId;
-          if (!warmRestaurantId) return;
+          if (!isDirectWebRouteStillCurrent() || state.activeTab !== "profile") return;
+          if (liveRestaurantId && !acceptedWarmTargetIds.has(liveRestaurantId)) return;
           ensureMenuData({
-            ...loadingProfileWithSurfaceTruth,
+            ...profileSeed,
             restaurantId: warmRestaurantId,
             canonicalRestaurantId: warmCanonicalRestaurantId || warmRestaurantId
           });
         });
-      }
+      };
+      warmPublicMenuBundle(
+        loadingProfileWithSurfaceTruth,
+        loadingCanonicalRestaurantId,
+        targetCanonicalRestaurantId,
+        targetMenuRestaurantId
+      );
 
       const canShortCircuitNormalWebDirectMenuPath = isWebRoutePriorityPath
         && isMenuTopTab
@@ -1564,44 +1605,13 @@ export function createProfileOpenFlowControllerCore({
           directEntry: resolvedReadyDirectEntry
         })
       });
-      if (canWarmPublicMenuBundle && isWebPostsFirstPath && typeof setTimeout === "function") {
-        setTimeout(() => {
-          const warmCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
-            resolvedRestaurantId,
-            loadingCanonicalRestaurantId,
-            targetCanonicalRestaurantId,
-            targetMenuRestaurantId
-          );
-          const warmRestaurantId = warmCanonicalRestaurantId || targetMenuRestaurantId || resolvedRestaurantId;
-          if (!warmRestaurantId) return;
-          const liveProfile = state?.profileView?.profile;
-          const liveRestaurantId = String(
-            liveProfile?.canonicalRestaurantId
-            || liveProfile?.restaurantId
-            || ""
-          ).trim();
-          const warmTargetIds = new Set(
-            [
-              warmRestaurantId,
-              warmCanonicalRestaurantId,
-              resolvedRestaurantId,
-              loadingCanonicalRestaurantId,
-              targetCanonicalRestaurantId,
-              targetMenuRestaurantId,
-              targetRestaurantLookupId,
-              routeSnapshotRestaurantId
-            ]
-              .map((value) => String(value || "").trim())
-              .filter(Boolean)
-          );
-          if (state.activeTab !== "profile" || !liveRestaurantId || !warmTargetIds.has(liveRestaurantId)) return;
-          ensureMenuData({
-            ...resolvedWithPosts,
-            restaurantId: warmRestaurantId,
-            canonicalRestaurantId: warmCanonicalRestaurantId || warmRestaurantId
-          });
-        }, 2400);
-      }
+      warmPublicMenuBundle(
+        resolvedWithPosts,
+        resolvedRestaurantId,
+        loadingCanonicalRestaurantId,
+        targetCanonicalRestaurantId,
+        targetMenuRestaurantId
+      );
       if (reusedInitialPostsForFinalProfile && typeof setTimeout === "function") {
         setTimeout(() => {
           const liveView = state?.profileView;

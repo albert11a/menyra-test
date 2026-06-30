@@ -118,3 +118,30 @@ test("business profile loading surface does not use loading text as missing bio 
   assert.equal(showCalls.length > 0, true);
   assert.equal(showCalls.some(({ profile }) => profile?.bio === "Profil wird geladen..."), false);
 });
+
+test("direct posts-first business profile route warms menu data without waiting for delayed timers", async () => {
+  const state = createState("profile");
+  state.__webDirectEntry = {
+    active: true,
+    webPriority: true,
+    postsFirst: true,
+    restaurantId: "moka",
+    canonicalRestaurantId: "moka"
+  };
+  const menuWarmCalls = [];
+  const controller = createController(state, [], {
+    ensureMenuDataForProfile: (profile = {}) => {
+      menuWarmCalls.push({
+        restaurantId: profile.restaurantId,
+        canonicalRestaurantId: profile.canonicalRestaurantId
+      });
+    }
+  });
+
+  await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: false });
+  await Promise.resolve();
+
+  assert.equal(menuWarmCalls.length > 0, true);
+  assert.equal(menuWarmCalls[0].restaurantId, "moka");
+  assert.equal(menuWarmCalls[0].canonicalRestaurantId, "moka");
+});
