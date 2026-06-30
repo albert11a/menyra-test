@@ -232,7 +232,11 @@ function createBusinessPostsController({
   rows = [],
   fastLimits = {},
   getDocsFn = null,
-  queryCalls = []
+  queryCalls = [],
+  readCacheFn = null,
+  writeCacheFn = null,
+  businessPostsKeyFn = (rid) => (rid ? `business-posts::${rid}` : ""),
+  cacheTtlMs = { posts: 10 * 60 * 1000 }
 } = {}) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const readDocs = typeof getDocsFn === "function"
@@ -254,8 +258,32 @@ function createBusinessPostsController({
     queryFn: (ref, ...constraints) => ({ ref, constraints }),
     orderByFn: (field, direction) => ({ type: "orderBy", field, direction }),
     limitFn: (value) => ({ type: "limit", value }),
-    getDocsFn: readDocs
+    getDocsFn: readDocs,
+    readCacheFn,
+    writeCacheFn,
+    businessPostsKeyFn,
+    cacheTtlMs
   });
+}
+
+function createObjectCacheStore() {
+  const store = new Map();
+  return {
+    readCacheFn: (key, ttlMs) => {
+      if (!key || !store.has(key)) return null;
+      const payload = store.get(key);
+      const age = Date.now() - Number(payload.ts || 0);
+      return {
+        data: Array.isArray(payload.data) ? payload.data : [],
+        meta: payload.meta || null,
+        fresh: ttlMs ? age <= ttlMs : true
+      };
+    },
+    writeCacheFn: (key, data, meta = null) => {
+      if (!key || !Array.isArray(data)) return;
+      store.set(key, { ts: Date.now(), data, meta });
+    }
+  };
 }
 
 test("public business posts initial page uses a bounded read without becoming the full cache", async () => {
@@ -363,6 +391,79 @@ test("public business posts transient read uses positive cache instead of empty 
 
   assert.equal(fallbackPosts.length, 1);
   assert.equal(fallbackPosts[0].id, "post-1");
+});
+
+test("public business posts initial page survives refresh through persistent cache", async () => {
+  const cacheStore = createObjectCacheStore();
+  const rows = [
+    { id: "post-1", url: "https://cdn.example/post-1.jpg", status: "active" },
+    { id: "post-2", url: "https://cdn.example/post-2.jpg", status: "active" }
+  ];
+  const firstController = createBusinessPostsController({
+    rows,
+    fastLimits: { publicBusinessPostsInitialPage: 1 },
+    ...cacheStore
+  });
+
+  const firstPosts = await firstController.loadBusinessPostsForRestaurant("restaurant-refresh", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+  assert.equal(firstPosts.length, 1);
+
+  let refreshNetworkReads = 0;
+  const refreshedController = createBusinessPostsController({
+    getDocsFn: async () => {
+      refreshNetworkReads += 1;
+      throw new Error("network should not be needed for cached initial page");
+    },
+    ...cacheStore
+  });
+
+  const cachedPosts = await refreshedController.loadBusinessPostsForRestaurant("restaurant-refresh", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+
+  assert.equal(refreshNetworkReads, 0);
+  assert.equal(cachedPosts.length, 1);
+  assert.equal(cachedPosts[0].id, "post-1");
+});
+
+test("public business posts initial cache does not satisfy a full posts request", async () => {
+  const cacheStore = createObjectCacheStore();
+  const rows = [
+    { id: "post-1", url: "https://cdn.example/post-1.jpg", status: "active" },
+    { id: "post-2", url: "https://cdn.example/post-2.jpg", status: "active" }
+  ];
+  const firstController = createBusinessPostsController({
+    rows,
+    fastLimits: { publicBusinessPostsInitialPage: 1 },
+    ...cacheStore
+  });
+
+  const firstPosts = await firstController.loadBusinessPostsForRestaurant("restaurant-full-refresh", {
+    skipProfileResolve: true,
+    initialPage: true
+  });
+  assert.equal(firstPosts.length, 1);
+
+  let fullReads = 0;
+  const refreshedController = createBusinessPostsController({
+    rows,
+    getDocsFn: async () => {
+      fullReads += 1;
+      return createDocsSnapshot(rows);
+    },
+    ...cacheStore
+  });
+
+  const fullPosts = await refreshedController.loadBusinessPostsForRestaurant("restaurant-full-refresh", {
+    skipProfileResolve: true
+  });
+
+  assert.equal(fullReads, 1);
+  assert.equal(fullPosts.length, 2);
 });
 
 test("public business posts transient read throws when no cache or known empty exists", async () => {

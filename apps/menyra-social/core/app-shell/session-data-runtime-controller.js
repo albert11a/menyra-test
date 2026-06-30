@@ -140,6 +140,8 @@ export function createSessionDataRuntimeController({
   const subscribeSnapshot = typeof onSnapshotFn === "function" ? onSnapshotFn : null;
   const menuPersistentCachePrefix = String(cacheKeys?.menu || "menyra_social_menu_cache_v1").trim() || "menyra_social_menu_cache_v1";
   const menuPersistentCacheTtlMs = Math.max(0, Number(cacheTtl?.menu || (15 * 60 * 1000)) || 0);
+  const focusPersistentCachePrefix = String(cacheKeys?.focus || "menyra_social_focus_cache_v1").trim() || "menyra_social_focus_cache_v1";
+  const focusPersistentCacheTtlMs = Math.max(0, Number(cacheTtl?.focus || cacheTtl?.menu || (15 * 60 * 1000)) || 0);
   let menuMetaUnsub = null;
   let menuMetaRestaurantId = "";
   let restaurantsFreshReconcileQueued = false;
@@ -932,6 +934,51 @@ export function createSessionDataRuntimeController({
     return Number.isFinite(ts) && ts > 0 && Date.now() - ts <= menuPersistentCacheTtlMs;
   }
 
+  function buildFocusPersistentCacheKey(restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    return safeRestaurantId ? `${focusPersistentCachePrefix}::${safeRestaurantId}` : "";
+  }
+
+  function readFocusPersistentCache(restaurantId = "") {
+    const cacheKey = buildFocusPersistentCacheKey(restaurantId);
+    if (!cacheKey || typeof readCacheFn !== "function") {
+      return { items: [], enabled: true, fresh: false, truthState: "unknown" };
+    }
+    const cached = readCacheFn(cacheKey, focusPersistentCacheTtlMs);
+    if (String(cached?.meta?.truthSource || "").trim().toLowerCase() !== "public-menu") {
+      return { items: [], enabled: true, fresh: false, truthState: "unknown" };
+    }
+    const data = Array.isArray(cached?.data) ? cached.data : [];
+    const enabled = typeof cached?.meta?.enabled === "boolean" ? cached.meta.enabled : true;
+    const cachedTruthState = String(cached?.meta?.truthState || "").trim().toLowerCase();
+    const knownEmpty = cachedTruthState === "knownempty" || cachedTruthState === "known-empty";
+    const truthState = data.length > 0
+      ? "seeded"
+      : (cached?.fresh === true && knownEmpty ? "knownEmpty" : "unknown");
+    return {
+      items: data,
+      enabled,
+      fresh: cached?.fresh === true,
+      truthState
+    };
+  }
+
+  function writeFocusPersistentCache(restaurantId = "", payload = {}) {
+    const cacheKey = buildFocusPersistentCacheKey(restaurantId);
+    if (!cacheKey || typeof writeCacheFn !== "function") return;
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    const truthStateRaw = String(payload?.truthState || "").trim().toLowerCase();
+    const truthState = items.length > 0
+      ? "seeded"
+      : ((truthStateRaw === "knownempty" || truthStateRaw === "known-empty") ? "knownEmpty" : "unknown");
+    if (!items.length && truthState !== "knownEmpty") return;
+    writeCacheFn(cacheKey, items, {
+      truthSource: "public-menu",
+      truthState,
+      enabled: payload?.enabled !== false
+    });
+  }
+
   function startMenuMetaListener(restaurantId, { source = "public" } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!shouldUseRealtimeMenuMetaListener(safeRestaurantId, source)) {
@@ -1642,21 +1689,21 @@ export function createSessionDataRuntimeController({
     await request;
   }
 
-  async function loadFocusForRestaurant(restaurantId, { force = false, prefetchOnly = false } = {}) {
+  async function loadFocusForRestaurant(restaurantId, { force = false, prefetchOnly = false, silent = false } = {}) {
     if (!restaurantId) {
       if (prefetchOnly) return { items: [], enabled: true, truthSource: "public-menu", truthState: "unknown" };
       state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "", truthState: "unknown" };
       return;
     }
     if (!prefetchOnly && !shouldCommitVisiblePublicFocusState(restaurantId)) {
-      return loadFocusForRestaurant(restaurantId, { force, prefetchOnly: true });
+      return loadFocusForRestaurant(restaurantId, { force, prefetchOnly: true, silent });
     }
     const cacheKey = focusCacheKeyFn(restaurantId);
     const queueFreshFocusReconcile = () => {
       if (prefetchOnly || focusFreshReconcileQueuedKeys.has(cacheKey)) return;
       focusFreshReconcileQueuedKeys.add(cacheKey);
       queueMicrotask(() => {
-        void loadFocusForRestaurant(restaurantId, { force: true })
+        void loadFocusForRestaurant(restaurantId, { force: true, silent: true })
           .finally(() => {
             focusFreshReconcileQueuedKeys.delete(cacheKey);
           });
@@ -1696,6 +1743,40 @@ export function createSessionDataRuntimeController({
       queueFreshFocusReconcile();
       return cachedPayload;
     }
+    const persistedFocus = !force ? readFocusPersistentCache(restaurantId) : null;
+    const persistedItems = Array.isArray(persistedFocus?.items) ? persistedFocus.items : [];
+    const persistedTruthState = String(persistedFocus?.truthState || "").trim();
+    const persistedTruthKey = persistedTruthState.toLowerCase();
+    const hasPersistedFocusTruth = persistedItems.length > 0
+      || persistedTruthKey === "knownempty"
+      || persistedTruthKey === "known-empty";
+    if (hasPersistedFocusTruth && !force) {
+      const persistedPayload = {
+        items: persistedItems,
+        enabled: persistedFocus?.enabled !== false,
+        truthSource: "public-menu",
+        truthState: persistedItems.length ? "seeded" : "knownEmpty"
+      };
+      focusCacheMap.set(cacheKey, { ...persistedPayload, ts: Date.now() });
+      if (prefetchOnly) return persistedPayload;
+      if (!shouldCommitVisiblePublicFocusState(restaurantId)) return persistedPayload;
+      state.focus = {
+        ...state.focus,
+        restaurantId,
+        items: persistedPayload.items,
+        enabled: persistedPayload.enabled,
+        loading: false,
+        error: "",
+        index: 0,
+        truthSource: persistedPayload.truthSource,
+        truthState: persistedPayload.truthState
+      };
+      if (isVisiblePublicMenuSurface(restaurantId, "public")) {
+        requestRender();
+      }
+      queueFreshFocusReconcile();
+      return persistedPayload;
+    }
     if (prefetchOnly) {
       try {
         const [items, enabled] = await Promise.all([
@@ -1725,6 +1806,7 @@ export function createSessionDataRuntimeController({
         const truthState = safeItems.length > 0 ? "seeded" : "knownEmpty";
         const payload = { items: safeItems, enabled, truthSource: "public-menu", truthState };
         focusCacheMap.set(cacheKey, { ...payload, ts: Date.now() });
+        writeFocusPersistentCache(restaurantId, payload);
         return payload;
       } catch (err) {
         console.error(err);
@@ -1738,7 +1820,7 @@ export function createSessionDataRuntimeController({
     const stableEnabled = sameRestaurant
       ? state.focus.enabled !== false
       : true;
-    if (shouldCommitVisiblePublicFocusState(restaurantId)) {
+    if (shouldCommitVisiblePublicFocusState(restaurantId) && !silent) {
       state.focus = {
         ...state.focus,
         restaurantId,
@@ -1778,6 +1860,7 @@ export function createSessionDataRuntimeController({
       const truthState = safeItems.length > 0 ? "seeded" : "knownEmpty";
       const payload = { items: safeItems, enabled, truthSource: "public-menu", truthState };
       focusCacheMap.set(cacheKey, { ...payload, ts: Date.now() });
+      writeFocusPersistentCache(restaurantId, payload);
       if (!shouldCommitVisiblePublicFocusState(restaurantId)) return payload;
       state.focus = {
         ...state.focus,

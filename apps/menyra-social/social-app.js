@@ -2401,6 +2401,7 @@ const profileIdentityRuntimeCluster = createProfileIdentityRuntimeCluster({
     avatarKey,
     readCacheFn: readCache,
     writeCacheFn: writeCache,
+    businessPostsKeyFn: businessPostsKey,
     cacheKeys: CACHE_KEYS,
     cacheTtlMs: CACHE_TTL_MS
   },

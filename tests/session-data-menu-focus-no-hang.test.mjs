@@ -70,12 +70,20 @@ function createController({
   loadMenuItemsFromCollectionFn = async () => [],
   loadMenuMetaFn = async () => ({ statusBadgeVisible: true }),
   loadFocusItemsFn = async () => [],
-  loadFocusMetaFn = async () => true
+  loadFocusMetaFn = async () => true,
+  readCacheFn = null,
+  writeCacheFn = null,
+  cacheKeys = {},
+  cacheTtl = {}
 } = {}) {
   return createSessionDataRuntimeController({
     state,
     dataLoaded: {},
     renderFn,
+    readCacheFn,
+    writeCacheFn,
+    cacheKeys,
+    cacheTtl,
     menuCache,
     menuCacheKeyFn: (restaurantId, source = "public") => `${restaurantId}:${source}`,
     focusCacheKeyFn: (restaurantId) => `${restaurantId}`,
@@ -92,6 +100,26 @@ function createController({
     loadFocusItemsFn,
     loadFocusMetaFn
   });
+}
+
+function createObjectCacheStore() {
+  const store = new Map();
+  return {
+    readCacheFn: (key, ttlMs) => {
+      if (!key || !store.has(key)) return null;
+      const payload = store.get(key);
+      const age = Date.now() - Number(payload.ts || 0);
+      return {
+        data: Array.isArray(payload.data) ? payload.data : [],
+        meta: payload.meta || null,
+        fresh: ttlMs ? age <= ttlMs : true
+      };
+    },
+    writeCacheFn: (key, data, meta = null) => {
+      if (!key || !Array.isArray(data)) return;
+      store.set(key, { ts: Date.now(), data, meta });
+    }
+  };
 }
 
 test("public menu unknown load stays pending instead of becoming a visible error", async () => {
@@ -311,6 +339,51 @@ test("public focus transient load failure preserves existing focus items", async
   assert.equal(state.focus.error, "");
   assert.equal(state.focus.truthState, "seeded");
   assert.deepEqual(state.focus.items, existingFocusItems);
+});
+
+test("public focus survives refresh through persistent cache", async () => {
+  const cacheStore = createObjectCacheStore();
+  const focusItems = [{ id: "focus-1", title: "Lunch" }];
+  const firstState = createVisibleMenuState();
+  firstState.menu = {
+    restaurantId: "restaurant-a",
+    items: [{ id: "item-1", category: "Pizza" }],
+    loading: false,
+    error: "",
+    source: "public",
+    statusBadgeVisible: true,
+    routeSeed: false,
+    truthState: "seeded"
+  };
+  const firstController = createController({
+    state: firstState,
+    cacheKeys: { focus: "focus-cache" },
+    cacheTtl: { focus: 10 * 60 * 1000 },
+    loadFocusItemsFn: async () => focusItems,
+    ...cacheStore
+  });
+
+  const firstResult = await firstController.loadFocusForRestaurant("restaurant-a");
+  assert.equal(firstResult.truthState, "seeded");
+
+  const refreshedState = createVisibleMenuState();
+  refreshedState.menu = firstState.menu;
+  const refreshedController = createController({
+    state: refreshedState,
+    cacheKeys: { focus: "focus-cache" },
+    cacheTtl: { focus: 10 * 60 * 1000 },
+    loadFocusItemsFn: async () => {
+      return focusItems;
+    },
+    ...cacheStore
+  });
+
+  const cachedResult = await refreshedController.loadFocusForRestaurant("restaurant-a");
+
+  assert.equal(cachedResult.truthState, "seeded");
+  assert.deepEqual(refreshedState.focus.items, focusItems);
+  assert.equal(refreshedState.focus.loading, false);
+  assert.equal(refreshedState.focus.error, "");
 });
 
 test("public focus missing document is a confirmed empty state", async () => {

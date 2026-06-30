@@ -19,7 +19,7 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js": {
-    "file": "chunks/profile-business-menu-runtime-cluster-DF0teS6i.js",
+    "file": "chunks/profile-business-menu-runtime-cluster-Dc_CdoFR.js",
     "name": "profile-business-menu-runtime-cluster",
     "src": "apps/menyra-social/core/app-shell/profile-business-menu-runtime-cluster.js",
     "isDynamicEntry": true,
@@ -141,7 +141,7 @@
     ]
   },
   "apps/menyra-social/core/profile/public-profile-runtime-controller.js": {
-    "file": "chunks/public-profile-runtime-controller-BFX4UVCA.js",
+    "file": "chunks/public-profile-runtime-controller-CoxP0V3U.js",
     "name": "public-profile-runtime-controller",
     "src": "apps/menyra-social/core/profile/public-profile-runtime-controller.js",
     "isDynamicEntry": true,

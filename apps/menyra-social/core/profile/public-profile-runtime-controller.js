@@ -25,6 +25,10 @@ export function createPublicProfileRuntimeController({
   getDocsFn = async () => null,
   onSnapshotFn = null,
   render = () => {},
+  readCacheFn = null,
+  writeCacheFn = null,
+  businessPostsKeyFn = () => "",
+  cacheTtlMs = {},
   brandUi = null,
   fastLimits = {},
   resolvePreferredHandle = () => "",
@@ -38,6 +42,9 @@ export function createPublicProfileRuntimeController({
   const getDocSafe = typeof getDocFn === "function" ? getDocFn : (async () => null);
   const getDocsSafe = typeof getDocsFn === "function" ? getDocsFn : (async () => null);
   const onSnapshotSafe = typeof onSnapshotFn === "function" ? onSnapshotFn : null;
+  const readCacheSafe = typeof readCacheFn === "function" ? readCacheFn : (() => null);
+  const writeCacheSafe = typeof writeCacheFn === "function" ? writeCacheFn : (() => {});
+  const buildBusinessPostsCacheKey = typeof businessPostsKeyFn === "function" ? businessPostsKeyFn : (() => "");
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const makeCollectionRef = typeof collectionFn === "function" ? collectionFn : null;
   const buildQuery = typeof queryFn === "function" ? queryFn : null;
@@ -62,6 +69,8 @@ export function createPublicProfileRuntimeController({
   const PUBLIC_PROFILE_ROUTE_RESOLVE_DEADLINE_MS = 6_500;
   const PUBLIC_BUSINESS_POSTS_INITIAL_READ_DEADLINE_MS = 5_200;
   const PUBLIC_BUSINESS_POSTS_FULL_READ_DEADLINE_MS = 7_000;
+  const PUBLIC_BUSINESS_POSTS_INITIAL_CACHE_PREFIX = "menyra_social_public_business_posts_initial_cache_v1";
+  const publicBusinessPostsPersistentTtlMs = Math.max(0, Number(cacheTtlMs?.posts || (10 * 60 * 1000)) || 0);
 
   function resolvePublicProfileDeadlineMs(key = "", fallbackMs = 0) {
     const direct = Number(fastLimits?.[key]);
@@ -134,6 +143,57 @@ export function createPublicProfileRuntimeController({
     return safeRestaurantId ? `${safeRestaurantId}::${initialPage ? "initial" : "full"}` : "";
   }
 
+  function buildPublicBusinessPostsInitialCacheKey(restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    return safeRestaurantId ? `${PUBLIC_BUSINESS_POSTS_INITIAL_CACHE_PREFIX}::${safeRestaurantId}` : "";
+  }
+
+  function normalizePersistentBusinessPosts(posts = [], restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const rows = (Array.isArray(posts) ? posts : [])
+      .map((post) => ({
+        ...(post || {}),
+        ownerType: post?.ownerType || "restaurant",
+        ownerId: post?.ownerId || post?.restaurantId || safeRestaurantId,
+        restaurantId: post?.restaurantId || post?.ownerId || safeRestaurantId
+      }))
+      .filter((post) => post && post.url);
+    return projectPostCollectionThroughEntityMap(state, rows);
+  }
+
+  function readPersistentBusinessPosts(restaurantId = "", { initialPage = false } = {}) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return null;
+    const readPositiveCache = (cacheKey = "") => {
+      if (!cacheKey) return null;
+      const cached = readCacheSafe(cacheKey, publicBusinessPostsPersistentTtlMs);
+      const rows = Array.isArray(cached?.data) ? cached.data : [];
+      if (!rows.length) return null;
+      const posts = normalizePersistentBusinessPosts(rows, safeRestaurantId);
+      return posts.length ? { posts, fresh: cached?.fresh === true } : null;
+    };
+    return readPositiveCache(buildBusinessPostsCacheKey(safeRestaurantId))
+      || (initialPage ? readPositiveCache(buildPublicBusinessPostsInitialCacheKey(safeRestaurantId)) : null);
+  }
+
+  function writePersistentBusinessPosts(posts = [], restaurantIds = [], { initialPage = false } = {}) {
+    const safePosts = Array.isArray(posts) ? posts : [];
+    if (!safePosts.length) return;
+    const ids = Array.from(new Set((Array.isArray(restaurantIds) ? restaurantIds : [])
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)));
+    ids.forEach((restaurantId) => {
+      const cacheKey = initialPage
+        ? buildPublicBusinessPostsInitialCacheKey(restaurantId)
+        : buildBusinessPostsCacheKey(restaurantId);
+      if (!cacheKey) return;
+      writeCacheSafe(cacheKey, safePosts, {
+        postsTruthSource: initialPage ? "public-profile-initial" : "public-profile",
+        postsTruthState: "seeded"
+      });
+    });
+  }
+
   function readCachedBusinessPosts(restaurantId = "", { initialPage = false } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return null;
@@ -146,7 +206,7 @@ export function createPublicProfileRuntimeController({
     return null;
   }
 
-  function writeBusinessPostsCache(posts = [], restaurantIds = [], { initialPage = false } = {}) {
+  function writeBusinessPostsCache(posts = [], restaurantIds = [], { initialPage = false, persist = true } = {}) {
     const safePosts = Array.isArray(posts) ? posts : [];
     const ids = Array.from(new Set((Array.isArray(restaurantIds) ? restaurantIds : [])
       .map((value) => String(value || "").trim())
@@ -159,6 +219,9 @@ export function createPublicProfileRuntimeController({
       publicBusinessPostsCache.set(restaurantId, safePosts);
       publicBusinessPostsInitialPageCache.set(restaurantId, safePosts);
     });
+    if (persist) {
+      writePersistentBusinessPosts(safePosts, ids, { initialPage });
+    }
   }
 
   function clearBusinessPostsPositiveCache(...restaurantIds) {
@@ -1919,6 +1982,17 @@ export function createPublicProfileRuntimeController({
         if (Array.isArray(cached) && cached.length > 0) {
           clearBusinessPostsKnownEmpty(...cachedIds);
           return cached;
+        }
+      }
+      for (const cachedId of cachedIds) {
+        const persisted = readPersistentBusinessPosts(cachedId, { initialPage: shouldUseInitialPage });
+        if (Array.isArray(persisted?.posts) && persisted.posts.length > 0) {
+          clearBusinessPostsKnownEmpty(...cachedIds);
+          writeBusinessPostsCache(persisted.posts, cachedIds, {
+            initialPage: shouldUseInitialPage,
+            persist: false
+          });
+          return persisted.posts;
         }
       }
     }

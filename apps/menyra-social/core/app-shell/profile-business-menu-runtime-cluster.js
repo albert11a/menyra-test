@@ -552,7 +552,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     return ids;
   };
 
-  const hasSettledVisiblePublicMenuTruthForIds = (ids = []) => {
+  const hasSeededVisiblePublicMenuTruthForIds = (ids = []) => {
     if (!state?.menu || typeof state.menu !== "object") return false;
     const menuSource = String(state.menu.source || "").trim().toLowerCase();
     if (menuSource !== "public") return false;
@@ -560,10 +560,9 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!currentMenuRestaurantId) return false;
     const matchesVisibleId = ids.map((value) => String(value || "").trim()).filter(Boolean).includes(currentMenuRestaurantId);
     if (!matchesVisibleId) return false;
-    const menuTruthState = String(state.menu.truthState || "").trim().toLowerCase();
-    return menuTruthState === "seeded"
-      || menuTruthState === "knownempty"
-      || menuTruthState === "known-empty";
+    return String(state.menu.truthState || "").trim().toLowerCase() === "seeded"
+      && Array.isArray(state.menu.items)
+      && state.menu.items.length > 0;
   };
 
   const hasConfirmedPublicMenuItemsForFocus = (ids = []) => {
@@ -678,10 +677,10 @@ export function createProfileBusinessMenuRuntimeCluster({
           profile
         });
       }
-      if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
+      if (hasSeededVisiblePublicMenuTruthForIds(ids)) return;
       for (const restaurantId of ids) {
         if (!isPublicMenuLoadSurface(profile)) return;
-        if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
+        if (hasSeededVisiblePublicMenuTruthForIds(ids)) return;
         const existingFocusRequest = hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)
           ? publicProfileFocusEnsurePromise
           : null;

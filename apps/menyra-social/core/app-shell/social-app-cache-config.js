@@ -3,7 +3,8 @@ export const CACHE_KEYS = {
   restaurants: "menyra_social_restaurants_cache_v1",
   restaurantsPreview: "menyra_social_restaurants_preview_cache_v1",
   stories: "menyra_social_stories_cache_v1",
-  menu: "menyra_social_menu_cache_v1"
+  menu: "menyra_social_menu_cache_v1",
+  focus: "menyra_social_focus_cache_v1"
 };
 
 export const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v2::${uid}` : "");
@@ -15,6 +16,7 @@ export const customerPageCacheKey = (uid, scope) => (uid && scope ? `menyra_soci
 export const CACHE_TTL_MS = {
   feed: 10 * 60 * 1000,
   menu: 15 * 60 * 1000,
+  focus: 15 * 60 * 1000,
   posts: 10 * 60 * 1000,
   restaurants: 60 * 60 * 1000,
   stories: 10 * 60 * 1000,
