@@ -5,6 +5,56 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 154 ist abgeschlossen: QR-Menu-First-Routen nutzen jetzt denselben
+  fruehen Public-Menu-Warmup wie normale Public-Business-Profile, ohne den
+  QR-/Table-Kontext zu verlieren.
+- Bewertung von Schritt 154: `Tests/Build bestanden, Bundle-Budget rot,
+  keine Production-Mutation, kein Deploy, kein Browser-Smoke durch Codex`.
+- Code-/Build-Commit Schritt 154:
+  `4a6effd1 Include QR in public menu warmup`.
+- Root Cause Schritt 154:
+  QR hatte bereits einen eigenen Menu-First-Aufruf, blieb aber vom gemeinsamen
+  `warmPublicMenuBundle` ausgeschlossen. Bei QR-Cold-Load ohne direkte
+  `r=<restaurantId>`-ID konnte der erste Aufruf noch mit Slug/Alias starten,
+  waehrend die spaeter aufgeloeste canonical Restaurant-ID keinen zweiten
+  sofortigen Menu-Warmup ueber denselben Pfad bekam.
+- Geaendert in Schritt 154:
+  `apps/menyra-social/core/profile/profile-open-flow-utils.js` schliesst
+  `menuAccessSource=qr` nicht mehr vom gemeinsamen Public-Menu-Warmup aus.
+  QR behaelt den bestehenden Menu-First-Ensure, die schnelleren QR-Gast-
+  Retry-Parameter und den Table-Kontext; zusaetzlich kann nach der
+  Profilaufloesung sofort ein canonical Menu-Warmup folgen.
+  `tests/profile-open-flow-utils.test.mjs` deckt den QR-Cold-Load-Fall ab,
+  bei dem die Route nur mit Slug startet und der Profil-Read spaeter die
+  canonical Restaurant-ID liefert. Gebaute Dateien unter
+  `apps/menyra-social/bundled/` wurden aktualisiert.
+- Verifikation Schritt 154:
+  `node --test tests/profile-open-flow-utils.test.mjs` bestanden (`6/6`),
+  `node --test tests/session-data-menu-focus-no-hang.test.mjs` bestanden
+  (`9/9`),
+  `node --test tests/startup-route-runtime-context.test.mjs
+  tests/initial-route-state-public-route-cache.test.mjs
+  tests/route-runtime-registry.test.mjs` bestanden (`23/23`),
+  `node --test tests/*.test.mjs` bestanden (`130/130`),
+  `npm run build` bestanden.
+- Bundle-Guard Schritt 154:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1052483` von `1052000` (`+483`), gzip `285894` von
+  `285000` (`+894`). Das ist weiter der bekannte Budget-Ueberlauf; der QR-
+  Robustheitsfix wurde nicht fuer eine riskante Mikro-Optimierung entfernt.
+- Bewusst nicht geaendert in Schritt 154:
+  keine UI-/Design-Aenderung, keine QR-URL-Aenderung, kein Checkout-/Order-
+  Verhalten, keine Firestore Rules, keine Functions, keine Datenmigration,
+  kein Deploy, kein Browser-Smoke durch Codex.
+- Manuelle Testliste Schritt 154:
+  QR-Link mit direkter ID testen, z.B. `/casarita/menu?src=qr&r=<id>&table=7`,
+  und QR-Link ohne `r`, z.B. `/casarita/menu?src=qr&table=7` oder ein anderes
+  echtes Restaurant/Cafe. Jeweils Cold Load, zweimal hart refreshen und danach
+  normal Menu, Warenkorb/Order-Kontext und Zurueck/erneutes Oeffnen testen.
+  Erwartung: Menu/Produkte starten sofort und stabil, Table bleibt erhalten,
+  vorhandene Produkte erscheinen nicht kurz als fehlend, und QR bleibt Menu-
+  First statt in das normale Profil umzuschlagen.
+
 - Schritt 153 ist abgeschlossen: Der normale Public-Business-Profilpfad startet
   Menu/Shop/Focus-Warmup jetzt sofort parallel zum Profil-/Beitraege-Pfad,
   ohne UI-/Design-Aenderung.
