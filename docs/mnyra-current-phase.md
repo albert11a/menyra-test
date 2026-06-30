@@ -5,6 +5,65 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 153 ist abgeschlossen: Der normale Public-Business-Profilpfad startet
+  Menu/Shop/Focus-Warmup jetzt sofort parallel zum Profil-/Beitraege-Pfad,
+  ohne UI-/Design-Aenderung.
+- Bewertung von Schritt 153: `Tests/Build bestanden, Bundle-Budget rot,
+  keine Production-Mutation, kein Deploy, kein Browser-Smoke durch Codex`.
+- Code-/Build-Commit Schritt 153:
+  `8622a92a Simplify public profile menu warmup`.
+- Root Cause Schritt 153:
+  Normale posts-first Public-Profile (`/:slug`) hatten einen Sonderpfad:
+  Menu/Shop wurde dort nicht nach dem ersten Profil-Surface gewarmt, sondern
+  erst nach Beitraege-Aufloesung und zusaetzlich per `setTimeout(..., 2400)`.
+  Dadurch konnten Profilkopf oder Beitraege schon sichtbar sein, waehrend
+  Menu, Shop-Produkte und der daran gekoppelte Focus-Pfad spaeter oder
+  ungleichmaessig starteten.
+- Geaendert in Schritt 153:
+  `apps/menyra-social/core/profile/profile-open-flow-utils.js` nutzt jetzt
+  einen gemeinsamen deduplizierten `warmPublicMenuBundle`-Pfad. Der Warmup
+  startet sofort nach dem ersten Public-Profil-Surface und versucht nach der
+  Profilaufloesung erneut mit der dann besseren canonical Restaurant-ID, ohne
+  den alten 2400-ms-Timer. Der Warmup prueft weiter, ob die sichtbare Route
+  noch zum Ziel gehoert. QR-Menu und Landing bleiben ausgeschlossen.
+  `tests/profile-open-flow-utils.test.mjs` prueft, dass eine direkte
+  posts-first Public-Business-Route Menu-Daten ohne Warten auf delayed Timer
+  anstoesst. Gebaute Dateien unter `apps/menyra-social/bundled/` wurden nach
+  `npm run build` aktualisiert.
+- Wirkung Schritt 153:
+  Public-Profile, Public-Menu, Restaurant/Cafe-Profile und Shop/E-Commerce-
+  Profile benutzen fuer den fruehen Menu-/Produkt-Warmup nicht mehr zwei
+  unterschiedliche Zeitpfade. Focus bleibt am bestehenden Menu-Truth-Mechanismus
+  gekoppelt und profitiert davon, dass Menu/Shop frueher startet; es wurde kein
+  neuer sichtbarer Focus-Zustand eingefuehrt.
+- Verifikation Schritt 153:
+  `node --test tests/profile-open-flow-utils.test.mjs` bestanden (`5/5`),
+  `node --test tests/profile-business-menu-runtime-cluster.test.mjs` bestanden
+  (`3/3`),
+  `node --test tests/session-data-menu-focus-no-hang.test.mjs` bestanden
+  (`9/9`),
+  `node --test tests/*.test.mjs` bestanden (`129/129`),
+  `npm run build` bestanden.
+- Bundle-Guard Schritt 153:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1052483` von `1052000` (`+483`), gzip `285893` von
+  `285000` (`+893`). Das ist der bereits bekannte Budget-Ueberlauf aus dem
+  vorherigen Schritt; der Ladefix wurde nicht fuer eine riskante
+  Mikro-Optimierung zurueckgebaut.
+- Bewusst nicht geaendert in Schritt 153:
+  keine UI-/Design-Aenderung, keine sichtbaren Texte versteckt, keine Loader
+  kosmetisch entfernt, keine Firestore Rules, keine Functions, keine
+  Datenmigration, kein Deploy, kein Public-/App-Routing-Umbau, kein QR-
+  Sonderverhalten geaendert.
+- Manuelle Testliste Schritt 153:
+  Mehrere Public-Business-Profile oeffnen, darunter Restaurant/Cafe und ein
+  Shop/E-Commerce-Profil. Jeweils Cold Start, zweimal harten Refresh, normale
+  Navigation, Profil -> Menu/Shop -> Beitraege -> zurueck und erneutes Oeffnen
+  derselben Route testen. Erwartung: Profilkopf, Beitraege, Menu/Shop-Produkte
+  und Focus starten sichtbar zuverlaessiger und ohne lange kuenstliche
+  Nachlaufzeit; vorhandene Produkte/Beitraege duerfen nicht kurz wie fehlend
+  wirken. QR-Menu einmal gegenpruefen; QR soll unveraendert bleiben.
+
 - Schritt 152 ist abgeschlossen: Public-Profilkopf/Menu/Focus/Beitraege wurden
   gegen Refresh-, Mehrfach-Refresh- und schlechte-Netz-Zwischenzustaende mit
   persistenten Last-Good-Daten gehaertet, ohne UI-/Design-Aenderung.
