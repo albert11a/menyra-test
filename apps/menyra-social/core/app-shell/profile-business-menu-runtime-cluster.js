@@ -579,6 +579,21 @@ export function createProfileBusinessMenuRuntimeCluster({
     return ids.map((value) => String(value || "").trim()).filter(Boolean).includes(currentMenuRestaurantId);
   };
 
+  const hasSettledVisiblePublicFocusTruthForIds = (ids = []) => {
+    if (!state?.focus || typeof state.focus !== "object") return false;
+    const focusTruthSource = String(state.focus.truthSource || "").trim().toLowerCase();
+    if (focusTruthSource !== "public-menu") return false;
+    const focusRestaurantId = String(state.focus.restaurantId || "").trim();
+    if (!focusRestaurantId) return false;
+    const matchesVisibleId = ids.map((value) => String(value || "").trim()).filter(Boolean).includes(focusRestaurantId);
+    if (!matchesVisibleId) return false;
+    const focusTruthState = String(state.focus.truthState || "").trim().toLowerCase();
+    return focusTruthState === "seeded"
+      || focusTruthState === "knownempty"
+      || focusTruthState === "known-empty"
+      || focusTruthState === "error";
+  };
+
   const prefetchVisiblePublicFocus = (restaurantId = "") => {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return Promise.resolve(null);
@@ -613,6 +628,28 @@ export function createProfileBusinessMenuRuntimeCluster({
       });
     visiblePublicFocusLoadPromises.set(safeRestaurantId, request);
     return request;
+  };
+
+  const ensureVisiblePublicFocusForConfirmedMenu = (profile = {}, ids = []) => {
+    const safeIds = (Array.isArray(ids) ? ids : [])
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+    if (!safeIds.length) return false;
+    if (!hasConfirmedPublicMenuItemsForFocus(safeIds)) return false;
+    if (hasSettledVisiblePublicFocusTruthForIds(safeIds)) return false;
+    const restaurantId = String(state?.menu?.restaurantId || safeIds[0] || "").trim();
+    if (!restaurantId) return false;
+    if (hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)) return true;
+    const request = Promise.resolve(loadVisiblePublicFocus(restaurantId))
+      .finally(() => {
+        if (publicProfileFocusEnsurePromise === request) {
+          publicProfileFocusEnsurePromise = null;
+          publicProfileFocusEnsureTargetId = "";
+        }
+      });
+    publicProfileFocusEnsurePromise = request;
+    publicProfileFocusEnsureTargetId = restaurantId;
+    return true;
   };
 
   const getVisiblePostsForCurrentProfile = () => {
@@ -678,10 +715,16 @@ export function createProfileBusinessMenuRuntimeCluster({
           profile
         });
       }
-      if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
+      if (hasSettledVisiblePublicMenuTruthForIds(ids)) {
+        ensureVisiblePublicFocusForConfirmedMenu(profile, ids);
+        return;
+      }
       for (const restaurantId of ids) {
         if (!isPublicMenuLoadSurface(profile)) return;
-        if (hasSettledVisiblePublicMenuTruthForIds(ids)) return;
+        if (hasSettledVisiblePublicMenuTruthForIds(ids)) {
+          ensureVisiblePublicFocusForConfirmedMenu(profile, ids);
+          return;
+        }
         const existingFocusRequest = hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)
           ? publicProfileFocusEnsurePromise
           : null;
@@ -705,16 +748,8 @@ export function createProfileBusinessMenuRuntimeCluster({
         if (!hasMenuItems || hasMatchingVisibleFocusEnsureInFlight(restaurantId, restaurantId, profile)) {
           continue;
         }
-        const focusExperienceRequest = Promise.resolve(focusPrefetchRequest)
-          .then(() => loadVisiblePublicFocus(restaurantId))
-          .finally(() => {
-            if (publicProfileFocusEnsurePromise === focusExperienceRequest) {
-              publicProfileFocusEnsurePromise = null;
-              publicProfileFocusEnsureTargetId = "";
-            }
-          });
-        publicProfileFocusEnsurePromise = focusExperienceRequest;
-        publicProfileFocusEnsureTargetId = restaurantId;
+        void focusPrefetchRequest;
+        ensureVisiblePublicFocusForConfirmedMenu(profile, [restaurantId, ...ids]);
       }
     })().finally(() => {
       if (visiblePublicMenuLoadPromises.get(loadKey) === request) {
