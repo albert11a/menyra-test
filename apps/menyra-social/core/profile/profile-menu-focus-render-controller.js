@@ -2456,6 +2456,211 @@ function buildFocusCardItem(item, { menuItemId = "" } = {}) {
   };
 }
 
+function renderSkeletonBlock(className = "") {
+  return `<div aria-hidden="true" class="${className} bg-slate-100 animate-pulse"></div>`;
+}
+
+function renderFocusCarouselSkeleton() {
+  const focusCardClass = getFocusCardClass();
+  return `
+    <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm" data-focus-skeleton="true" aria-hidden="true">
+      <div class="flex items-center justify-between mb-4">
+        ${renderSkeletonBlock("h-3 w-24 rounded-full")}
+        <div class="flex items-center gap-2">
+          ${renderSkeletonBlock("w-9 h-9 rounded-full")}
+          ${renderSkeletonBlock("w-9 h-9 rounded-full")}
+        </div>
+      </div>
+      <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
+        ${renderSkeletonBlock("w-full h-56")}
+      </div>
+      <div class="mt-4 space-y-2">
+        ${renderSkeletonBlock("h-5 w-2/3 rounded-full")}
+        ${renderSkeletonBlock("h-4 w-full rounded-full")}
+        ${renderSkeletonBlock("h-4 w-3/5 rounded-full")}
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstFocusSkeleton() {
+  return `
+    <div class="pt-2 pb-4" data-focus-skeleton="true" aria-hidden="true">
+      <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
+        <div class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col mb-2" style="box-shadow:0 4px 14px rgba(0,0,0,0.03);">
+          <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative" style="aspect-ratio:16 / 9;">
+            ${renderSkeletonBlock("w-full h-full")}
+          </div>
+          <div class="px-2 py-4 space-y-2">
+            ${renderSkeletonBlock("h-5 w-2/3 rounded-full")}
+            ${renderSkeletonBlock("h-4 w-full rounded-full")}
+            ${renderSkeletonBlock("h-4 w-1/2 rounded-full")}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstDrinkGridCardSkeleton() {
+  return `
+    <div class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col relative" aria-hidden="true">
+      <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
+        ${renderSkeletonBlock("w-full h-full")}
+        ${renderSkeletonBlock("absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90")}
+      </div>
+      <div class="px-1.5 pb-1 flex flex-col flex-1">
+        <div class="mb-1 space-y-2">
+          ${renderSkeletonBlock("h-4 w-4/5 rounded-full")}
+          ${renderSkeletonBlock("h-3 w-3/5 rounded-full")}
+        </div>
+        ${renderSkeletonBlock("h-3 w-full rounded-full mb-1")}
+        ${renderSkeletonBlock("h-3 w-2/3 rounded-full mb-3")}
+        <div class="mt-auto pt-2 flex items-center justify-between">
+          ${renderSkeletonBlock("h-4 w-14 rounded-full")}
+          ${renderSkeletonBlock("w-8 h-8 rounded-full bg-slate-900/10")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstFoodCardSkeleton() {
+  return `
+    <div class="bg-white p-3.5 rounded-[2.2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 relative" style="padding:14px;border-radius:2.2rem;margin-bottom:20px;box-sizing:border-box;" aria-hidden="true">
+      <div class="w-full aspect-[16/9] rounded-[1.8rem] overflow-hidden bg-slate-100 mb-4 relative" style="aspect-ratio:16 / 9;border-radius:1.8rem;margin-bottom:16px;">
+        ${renderSkeletonBlock("w-full h-full")}
+        ${renderSkeletonBlock("absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90")}
+      </div>
+      <div class="px-2" style="padding-left:8px;padding-right:8px;">
+        <div class="flex items-start justify-between gap-3 mb-1.5" style="gap:12px;margin-bottom:6px;">
+          <div class="min-w-0 flex-1">
+            ${renderSkeletonBlock("h-5 w-4/5 rounded-full")}
+          </div>
+          ${renderSkeletonBlock("h-5 w-14 rounded-full shrink-0")}
+        </div>
+        ${renderSkeletonBlock("h-4 w-full rounded-full mb-2")}
+        ${renderSkeletonBlock("h-4 w-2/3 rounded-full mb-4")}
+        <div class="flex items-center justify-between border-t border-slate-50 pt-4 pb-1" style="padding-top:16px;padding-bottom:4px;">
+          <div></div>
+          <div class="h-11 w-32 rounded-2xl bg-slate-100 animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstMenuSkeleton() {
+  return `
+    <div id="menu-section" class="mt-5" data-menu-skeleton="true">
+      <section class="menu-type-block relative" data-menu-type-block="drink">
+        <div class="menu-category-section pb-6 pt-4" data-menu-type="drink">
+          <div class="grid grid-cols-2 auto-rows-fr gap-3 app-content-inline">
+            ${Array.from({ length: 4 }, () => renderTestfirstDrinkGridCardSkeleton()).join("")}
+          </div>
+        </div>
+      </section>
+      <section class="menu-type-block relative" data-menu-type-block="food">
+        <div class="menu-category-section pb-6 pt-4" data-menu-type="food">
+          <div class="app-content-inline">
+            ${Array.from({ length: 2 }, () => renderTestfirstFoodCardSkeleton()).join("")}
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderStandardStackedCardSkeleton(variant = "food") {
+  const isDrink = variant === "drink";
+  return `
+    <div class="w-full ${isDrink ? "h-full p-3 rounded-[1.6rem] flex flex-col" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm" aria-hidden="true">
+      <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
+        ${renderSkeletonBlock("w-full h-full")}
+      </div>
+      ${isDrink ? `
+        <div class="mt-3 flex flex-1 flex-col space-y-2">
+          ${renderSkeletonBlock("h-4 w-4/5 rounded-full")}
+          ${renderSkeletonBlock("h-3 w-1/2 rounded-full")}
+          <div class="mt-2 flex items-center gap-3">
+            ${renderSkeletonBlock("h-3 w-10 rounded-full")}
+            ${renderSkeletonBlock("h-3 w-10 rounded-full")}
+          </div>
+        </div>
+      ` : `
+        <div class="mt-4">
+          <div class="flex items-start justify-between gap-4">
+            ${renderSkeletonBlock("h-4 w-3/5 rounded-full")}
+            ${renderSkeletonBlock("h-4 w-14 rounded-full")}
+          </div>
+          ${renderSkeletonBlock("h-3 w-2/5 rounded-full mt-2")}
+          ${renderSkeletonBlock("h-3 w-full rounded-full mt-3")}
+          ${renderSkeletonBlock("h-3 w-2/3 rounded-full mt-2")}
+          <div class="mt-3 flex items-center gap-3">
+            ${renderSkeletonBlock("h-3 w-10 rounded-full")}
+            ${renderSkeletonBlock("h-3 w-10 rounded-full")}
+          </div>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderShopProductCardSkeleton() {
+  return `
+    <article class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col" aria-hidden="true">
+      <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
+        ${renderSkeletonBlock("w-full h-full")}
+      </div>
+      <div class="pt-3 flex-1 flex flex-col min-w-0">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1 space-y-2">
+            ${renderSkeletonBlock("h-4 w-full rounded-full")}
+            ${renderSkeletonBlock("h-4 w-3/5 rounded-full")}
+          </div>
+          ${renderSkeletonBlock("h-3 w-10 rounded-full shrink-0")}
+        </div>
+        ${renderSkeletonBlock("h-3 w-full rounded-full mt-3")}
+        ${renderSkeletonBlock("h-3 w-2/3 rounded-full mt-2")}
+      </div>
+    </article>
+  `;
+}
+
+function renderStandardMenuSkeleton({ isShop = false } = {}) {
+  if (isShop) {
+    return `
+      <div class="grid grid-cols-2 gap-4" data-menu-skeleton="true">
+        ${Array.from({ length: 4 }, () => renderShopProductCardSkeleton()).join("")}
+      </div>
+    `;
+  }
+  return `
+    <div data-menu-skeleton="true" class="space-y-5">
+      <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="drink">
+        <div class="flex items-center justify-between mb-4">
+          ${renderSkeletonBlock("h-5 w-24 rounded-full")}
+        </div>
+        <div data-menu-type="drink">
+          <div class="grid grid-cols-2 auto-rows-fr gap-4">
+            ${Array.from({ length: 4 }, () => renderStandardStackedCardSkeleton("drink")).join("")}
+          </div>
+        </div>
+      </section>
+      <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="food">
+        <div class="flex items-center justify-between mb-4">
+          ${renderSkeletonBlock("h-5 w-24 rounded-full")}
+        </div>
+        <div data-menu-type="food">
+          <div class="space-y-4">
+            ${Array.from({ length: 2 }, () => renderStandardStackedCardSkeleton("food")).join("")}
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile" } = {}) {
   const restaurantId = profile?.restaurantId || "";
   const canUseHighlightFocusUi = isTestfirstMenuProfile(profile) || isShopCatalogProfile(profile);
@@ -2736,7 +2941,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
   `;
 }
 
-function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMenuSurfaceState = null } = {}) {
+function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMenuSurfaceState = null, focusFallbackHtml = "" } = {}) {
   const allItems = sortMenuItemsByOrder(Array.isArray(items) ? items : []);
   const restaurantId = String(profile?.restaurantId || "").trim();
   const canUseFocusState = mode === "admin" || hasPublicFocusTruthForRestaurant(restaurantId);
@@ -2836,7 +3041,7 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile", publicMe
 
   return `
     <div>
-      ${renderTestfirstFocusSection(profile, displayFocusItems, { mode })}
+      ${renderTestfirstFocusSection(profile, displayFocusItems, { mode }) || focusFallbackHtml}
       <div id="menu-section" class="mt-5">
         ${renderTypeBlock("drink", drinkBucket)}
         ${renderTypeBlock("food", foodBucket)}
@@ -3825,7 +4030,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const hasPublicFocusTruth = menuSurfaceState.focus.canRenderFocus;
   const shouldCoordinatePublicFocus = hasConfirmedPublicMenuItems && shouldCoordinateMenuWithFocus;
   const focusLoadingForSurface = menuSurfaceState.focus.matches === true && menuSurfaceState.focus.loading === true;
-  const isLandingMode = mode === "landing";
   const menuAccessSource = String(
     state?.profileView?.menuAccessSource
     || webDirectEntry?.menuAccessSource
@@ -3865,20 +4069,17 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   ) {
     ensureFocusDataForProfile(surfaceProfile);
   }
-  // Public focus belongs to the public menu presentation. If menu items are
-  // ready but focus truth is still unknown, keep the visible menu in loading so
-  // focus cannot jump in above already-rendered products.
+  // Public focus keeps its own reserved slot. The menu body must render as soon
+  // as its public truth is ready, even while focus truth is still loading.
   const canRenderCoordinatedMenu = menuSurfaceState.menu.canRenderItems;
   const items = canRenderCoordinatedMenu
     ? sortMenuItemsByOrder(getFilteredMenuItems(menuSurfaceState.menu.items, { filter: "all", query: "" }))
       .filter((item) => !isMenuItemHidden(item))
     : [];
   const hasItems = items.length > 0;
-  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
-  const isLoading = menuSurfaceState.menu.status === "loading"
-    || menuSurfaceState.menu.waitingForFocus === true;
+  const isLoading = menuSurfaceState.menu.status === "loading";
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
@@ -3900,21 +4101,38 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
         .filter(Boolean);
     })()
     : [];
+  const hasUnavailablePublicFocus = currentFocusTruth === "knownEmpty"
+    || menuSurfaceState.focus.status === "empty"
+    || menuSurfaceState.focus.status === "error";
+  const shouldReservePublicFocusSpace = shouldCoordinateMenuWithFocus
+    && !hasPublicFocusTruth
+    && !hasUnavailablePublicFocus
+    && menuSurfaceState.menu.status !== "empty"
+    && menuSurfaceState.menu.status !== "error";
   const testfirstStableFocusSection = testfirstFocusItemsFromState.length
     ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode })
-    : "";
-  if (isLandingMode && isLoading) {
-    return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
-  }
+    : (shouldReservePublicFocusSpace ? renderTestfirstFocusSkeleton() : "");
+  const standardFocusSection = useHighlightFocusUi
+    ? testfirstStableFocusSection
+    : (renderFocusCarousel(surfaceProfile, {
+      restaurantId,
+      suppressLoading: true,
+      allowAutoEnsure: hasConfirmedPublicMenuItems && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth),
+      requirePublicMenuTruth: true
+    }) || (shouldReservePublicFocusSpace ? renderFocusCarouselSkeleton() : ""));
   if (useTestfirstCardUi) {
     return `
       <div class="app-main-content-safe">
         ${isLoading ? `
           ${testfirstStableFocusSection}
-          <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
+          ${renderTestfirstMenuSkeleton()}
         ` : `
           ${hasItems
-            ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })
+            ? renderTestfirstMenuContent(surfaceProfile, items, {
+              mode,
+              publicMenuSurfaceState: menuSurfaceState,
+              focusFallbackHtml: testfirstStableFocusSection
+            })
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
               : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))
@@ -3926,16 +4144,9 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   }
   return `
     <div class="app-content-inline app-main-content-safe space-y-5">
-      ${useHighlightFocusUi ? testfirstStableFocusSection : renderFocusCarousel(surfaceProfile, {
-        restaurantId,
-        suppressLoading: true,
-        allowAutoEnsure: hasConfirmedPublicMenuItems && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth),
-        requirePublicMenuTruth: true
-      })}
+      ${standardFocusSection}
       ${isLoading ? `
-        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
-        </div>
+        ${renderStandardMenuSkeleton({ isShop })}
       ` : `
         ${!hasItems ? `
           ${hasError ? `

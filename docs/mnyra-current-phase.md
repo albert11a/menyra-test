@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 # Mnyra Current Phase
 
@@ -1433,6 +1433,21 @@ Last updated: 2026-06-30
   wurde neu gebaut. Nicht geaendert wurden UI/Design, Menu-/Fokus-Wasserfall,
   Posts-Warmup, Lazy-Renderer-Skeleton, QR, Cart, Checkout, Orders, Routing,
   Firebase Rules, Functions und Firestore-Pfade.
+- Schritt 140 ist abgeschlossen: Focus-/Menu-Ladezustand im Business-Profil-
+  Menu wurde platzstabiler gemacht und das fertige Menu wartet nicht mehr auf
+  spaete Focus-/Angebotsdaten.
+- Bewertung von Schritt 140: `bestanden mit Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 140:
+  Ein fertiges Public-Menu wird nicht mehr durch `waitingForFocus`
+  zurueckgehalten. Wenn Focus/Angebote noch nicht bereit sind, bleibt oberhalb
+  des Menus ein reservierter Focus-Skeleton-Platz sichtbar. Darunter werden
+  Card-nahe Menu-Skeletons im Format der bestehenden Drink-/Food-/Shop-Cards
+  gerendert, statt eine reine Text-Ladeflaeche zu zeigen. Der App-Build-Token
+  wurde auf `2026-07-01-focus-menu-skeletons-01` aktualisiert und das Bundle
+  wurde neu gebaut. Diese sichtbare Loading-UI-Aenderung wurde vom Nutzer
+  ausdruecklich freigegeben. Nicht geaendert wurden QR, Warenkorb, Checkout,
+  Orders, Routing, Firebase Rules, Functions, Firestore-Pfade, Posts-Skeletons
+  und Public-Renderer-Splitting.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1565,6 +1580,7 @@ Last updated: 2026-06-30
 - Referenz: [docs/mnyra-step137-shopping-product-tile-no-press.md](./mnyra-step137-shopping-product-tile-no-press.md)
 - Referenz: [docs/mnyra-step138-shopping-profile-editor.md](./mnyra-step138-shopping-profile-editor.md)
 - Referenz: [docs/mnyra-step139-profile-identity-hydration.md](./mnyra-step139-profile-identity-hydration.md)
+- Referenz: [docs/mnyra-step140-focus-menu-loading-skeletons.md](./mnyra-step140-focus-menu-loading-skeletons.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -2033,6 +2049,21 @@ und TikTok-Daten nicht dauerhaft verlieren. Danach `Beitraege`, `Info` und
 oder Adressdaten duerfen nicht in ein anderes Profil uebernommen werden. QR-
 Scan/QR-URL kurz gegenpruefen: Profil oeffnet weiter mit offenem Menu und
 unveraenderter Warenkorb-Logik.
+
+Zusaetzlich fuer Schritt 140 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-07-01-focus-menu-skeletons-01` aktiv sein. Ein Restaurant-/Cafe-
+Business-Profil direkt auf `/:slug/menu` oeffnen oder dort refreshen. Solange
+Focus/Angebote noch laden, soll oben ein reservierter Focus-Skeleton-Platz
+bleiben und darunter sollen moderne Card-Skeletons im Format der echten Menu-
+Cards stehen. Sobald Menu-Produkte bereit sind, muessen sie sichtbar werden,
+auch wenn Focus noch nicht fertig ist. Beim spaeteren Eintreffen von Focus darf
+das Menu nicht sichtbar nach unten springen. Ein Profil ohne Focus/Angebote
+kurz pruefen: Das Menu darf nicht dauerhaft blockiert bleiben. Ein Shop-/
+E-Commerce-Profil kurz pruefen: Product-Skeletons sollen in derselben
+zweispaltigen Card-Struktur erscheinen und danach durch echte Produkte ersetzt
+werden. QR-URL kurz gegenpruefen: Profil oeffnet weiter mit offenem Menu und
+unveraenderter Warenkorb-/Order-Logik.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

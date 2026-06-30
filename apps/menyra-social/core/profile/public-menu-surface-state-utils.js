@@ -121,8 +121,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   profile = null,
   routePayload = null,
   webDirectEntry = null,
-  restaurantId = "",
-  coordinateFocusWithMenu = false
+  restaurantId = ""
 } = {}) {
   const surfaceIds = resolveVisiblePublicMenuSurfaceIds({
     profile,
@@ -187,11 +186,8 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   const canRenderFocus = focusStatus === "ready"
     && samePublicFocus
     && focusItems.length > 0;
-  const focusSettled = focusStatus === "ready" || focusStatus === "empty" || focusStatus === "error";
-  const menuWaitingForFocus = coordinateFocusWithMenu === true
-    && menuStatus === "ready"
-    && !focusSettled;
-  const canRenderMenuItems = menuStatus === "ready" && !menuWaitingForFocus;
+  const menuWaitingForFocus = false;
+  const canRenderMenuItems = menuStatus === "ready";
 
   return {
     restaurantId: surfaceIds.restaurantId,
