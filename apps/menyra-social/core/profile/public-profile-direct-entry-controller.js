@@ -46,6 +46,51 @@ function mapFeedPostToProfileSeedPost(post = {}, restaurantId = "") {
   };
 }
 
+function normalizeRouteMenuOrderIndex(value, fallback = 0) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Math.max(0, Number(fallback) || 0);
+  return Math.max(0, Math.floor(numeric));
+}
+
+function normalizeRouteMenuSeedItem(item = {}, restaurantId = "", index = 0) {
+  const row = item && typeof item === "object" ? item : {};
+  const safeRestaurantId = String(restaurantId || row.restaurantId || "").trim();
+  if (!safeRestaurantId) return null;
+  const fallbackNameToken = String(row?.name || row?.title || row?.category || "item")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "item";
+  const id = String(
+    row?.id
+    || row?.itemId
+    || row?.menuItemId
+    || row?.productId
+    || `${fallbackNameToken}_${Math.max(0, Number(index) || 0)}`
+  ).trim();
+  if (!id) return null;
+  const imageUrlsRaw = [];
+  if (Array.isArray(row?.imageUrls)) imageUrlsRaw.push(...row.imageUrls);
+  if (Array.isArray(row?.images)) imageUrlsRaw.push(...row.images);
+  if (row?.imageUrl) imageUrlsRaw.unshift(row.imageUrl);
+  if (row?.image) imageUrlsRaw.push(row.image);
+  const imageUrls = Array.from(new Set(imageUrlsRaw
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean)));
+  const imageUrl = String(row?.imageUrl || imageUrls[0] || "").trim();
+  return {
+    ...row,
+    id,
+    restaurantId: safeRestaurantId,
+    orderIndex: normalizeRouteMenuOrderIndex(
+      row?.orderIndex ?? row?.sortOrder ?? row?.position ?? row?.rank,
+      index
+    ),
+    imageUrl,
+    imageUrls
+  };
+}
+
 function normalizeProfileTopTab(value = "", fallback = "profile") {
   const topTab = safeLower(value);
   if (topTab === "profile") return "profile";
@@ -600,7 +645,15 @@ export function createPublicProfileDirectEntryController({
     const routePostsSeed = Array.isArray(routeBootstrap?.posts?.items)
       ? routeBootstrap.posts.items
       : [];
-    const routeMenuSeed = [];
+    const routeMenuSeedRaw = Array.isArray(routeSnapshot?.menu?.items)
+      ? routeSnapshot.menu.items
+      : (Array.isArray(routeBootstrap?.menu?.items)
+        ? routeBootstrap.menu.items
+        : (Array.isArray(routeBootstrap?.menuItems) ? routeBootstrap.menuItems : []));
+    const routeMenuSeed = routeMenuSeedRaw
+      .map((row, index) => normalizeRouteMenuSeedItem(row, entryRestaurantId, index))
+      .filter(Boolean)
+      .sort((a, b) => normalizeRouteMenuOrderIndex(a?.orderIndex) - normalizeRouteMenuOrderIndex(b?.orderIndex));
     const routeFocusSeed = [];
     const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
       ? routeSnapshot.truth
@@ -609,7 +662,10 @@ export function createPublicProfileDirectEntryController({
       routeSnapshot?.posts?.state || routeBootstrap?.posts?.state || routeTruth?.posts || "",
       routePostsSeed.length ? "seeded" : "unknown"
     );
-    const routeMenuState = "unknown";
+    const routeMenuState = normalizeTruthState(
+      routeSnapshot?.menu?.state || routeBootstrap?.menu?.state || routeTruth?.menu || "",
+      routeMenuSeed.length ? "seeded" : "unknown"
+    );
     const routeFocusState = "unknown";
     const routeIdentityState = normalizeTruthState(routeTruth?.identity || "", (
       String(routeIdentity?.name || "").trim()

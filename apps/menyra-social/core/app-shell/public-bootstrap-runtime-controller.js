@@ -652,7 +652,15 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routePostsSeed = Array.isArray(routeSnapshot?.posts?.items)
     ? routeSnapshot.posts.items
     : (Array.isArray(safeRoutePayload?.posts?.items) ? safeRoutePayload.posts.items : []);
-  const routeMenuSeed = [];
+  const routeMenuSeedRaw = Array.isArray(routeSnapshot?.menu?.items)
+    ? routeSnapshot.menu.items
+    : (Array.isArray(safeRoutePayload?.menu?.items)
+      ? safeRoutePayload.menu.items
+      : (Array.isArray(safeRoutePayload?.menuItems) ? safeRoutePayload.menuItems : []));
+  const routeMenuSeed = routeMenuSeedRaw
+    .map((row, index) => normalizeWebRouteMenuItem(row, safeRestaurantId, index))
+    .filter(Boolean)
+    .sort((a, b) => normalizeBootstrapMenuOrderIndex(a?.orderIndex) - normalizeBootstrapMenuOrderIndex(b?.orderIndex));
   const routeFocusSeed = [];
   const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
     ? routeSnapshot.truth
@@ -660,7 +668,9 @@ function applyWebDirectRouteSeedFromBootstrap({
   const routePostsState = normalizeTruthState(routeSnapshot?.posts?.state || safeRoutePayload?.posts?.state || routeTruth?.posts || "", (
     routePostsSeed.length ? "seeded" : "unknown"
   ));
-  const routeMenuState = "unknown";
+  const routeMenuState = normalizeTruthState(routeSnapshot?.menu?.state || safeRoutePayload?.menu?.state || routeTruth?.menu || "", (
+    routeMenuSeed.length ? "seeded" : "unknown"
+  ));
   const routeFocusState = "unknown";
   let resolvedRoutePostsState = routePostsState;
   let resolvedRouteMenuState = routeMenuState;

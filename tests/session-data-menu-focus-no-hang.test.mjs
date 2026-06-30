@@ -191,6 +191,36 @@ test("public menu silent retry can recover after a transient timeout", async () 
   assert.deepEqual(state.menu.items, [{ id: "item-1", title: "Recovered item" }]);
 });
 
+test("visible public menu keeps route-seeded products when live refresh times out", async () => {
+  const state = createVisibleMenuState();
+  const routeSeedItems = [{ id: "item-1", title: "Seeded item" }];
+  state.menu = {
+    restaurantId: "restaurant-a",
+    items: routeSeedItems,
+    loading: false,
+    error: "",
+    source: "public",
+    statusBadgeVisible: true,
+    routeSeed: true,
+    truthState: "seeded"
+  };
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: never
+  });
+
+  const result = await withMutedConsoleError(() => (
+    controller.loadMenuForRestaurant("restaurant-a", { source: "public" })
+  ));
+
+  assert.equal(result.truthState, "seeded");
+  assert.equal(state.menu.restaurantId, "restaurant-a");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "seeded");
+  assert.deepEqual(state.menu.items, routeSeedItems);
+});
+
 test("visible public menu loads canonical restaurant id instead of route alias", async () => {
   const state = createVisibleMenuState();
   state.profileView.profile = {

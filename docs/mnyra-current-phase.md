@@ -5,6 +5,70 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 158 ist abgeschlossen: Public-/QR-Menu nutzt Server-Route-Menu-
+  Seeds wieder direkt und loescht sichtbare Produkte bei einem Live-Refresh
+  nicht mehr auf Loader zurueck.
+- Bewertung von Schritt 158: `Gezielte Tests bestanden, Syntax-Checks
+  bestanden, Build bestanden, Bundle-Budget rot, kein Browser-Smoke durch
+  Codex, kein Deploy, keine Production-Mutation`.
+- Root Cause Schritt 158:
+  Der vorherige Empty-Cache-Fix hat den falschen Empty-Zustand entfernt, aber
+  dadurch wurde auf Handy/Refresh der eigentliche Hänger sichtbar: wenn der
+  Live-Read von `restaurants/{id}/public/menu` nicht rechtzeitig antwortete,
+  blieb die sichtbare Surface auf `loading`. Zusaetzlich wurden vorhandene
+  Route-/Server-Menu-Items in zwei Web-Direct-Pfaden nicht als Menu-Seed
+  uebernommen (`routeMenuSeed = []`). Selbst wenn der Server bereits Menu-
+  Items geliefert hatte, konnte der Client also wieder in einen sichtbaren
+  Live-Loader fallen. Beim Live-Refresh wurden vorhandene sichtbare Items
+  ausserdem vor dem Firebase-Read auf `[]` gesetzt.
+- Geaendert in Schritt 158:
+  `apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js`
+  uebernimmt `businessSnapshot.menu.items` bzw. `publicRoute.menu.items`
+  wieder als sortierten Public-Menu-Seed.
+  `apps/menyra-social/core/profile/public-profile-direct-entry-controller.js`
+  nutzt denselben einfachen Seed-Vertrag fuer den Direct-Entry-Pfad.
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  behaelt bereits sichtbare Public-Menu-Items waehrend eines Live-Refreshs
+  bei; ein Timeout oder in-flight Unknown darf vorhandene Produkte nicht mehr
+  durch `Menu wird geladen` ersetzen.
+  `tests/public-bootstrap-runtime-controller.test.mjs` und
+  `tests/session-data-menu-focus-no-hang.test.mjs` sichern diese beiden
+  Faelle ab.
+- Verifikation Schritt 158:
+  `node --check
+  apps/menyra-social/core/app-shell/session-data-runtime-controller.js`,
+  `node --check
+  apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js`
+  und `node --check
+  apps/menyra-social/core/profile/public-profile-direct-entry-controller.js`
+  bestanden.
+  `node --test tests/session-data-menu-focus-no-hang.test.mjs
+  tests/public-bootstrap-runtime-controller.test.mjs
+  tests/public-menu-surface-state-utils.test.mjs
+  tests/profile-open-flow-utils.test.mjs
+  tests/profile-business-menu-runtime-cluster.test.mjs` bestanden (`29/29`).
+  `npm run build` bestanden.
+- Bundle-Guard Schritt 158:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1055581` von `1052000` (`+3581`), gzip `286766` von
+  `285000` (`+1766`). Das Budget ist weiter rot; der Public-Menu-Hängerfix
+  wurde nicht fuer eine riskante Mikro-Optimierung zurueckgebaut.
+- Bewusst nicht geaendert in Schritt 158:
+  keine Firebase Rules, keine Functions, keine Datenmigration, kein Deploy,
+  keine automatische Public-Freigabe von `menuItems`, keine Public-/App-
+  Routing-Verschiebung, keine UI-Design-Aenderung, kein Browser-Smoke durch
+  Codex. Der Fix bleibt beim einfachen Public-Vertrag: Server/Public-Route-
+  Seed anzeigen, Live-Firebase danach aktualisieren, sichtbare Produkte nicht
+  wegloeschen.
+- Manuelle Testliste Schritt 158:
+  Betroffenen Public-/QR-Link auf Handy hart refreshen. Erwartung: Wenn die
+  Route Menu-Items liefert, erscheinen Produkte sofort und werden nicht durch
+  `Menu wird geladen` ersetzt. Danach denselben Link auf Desktop testen.
+  Danach Menu -> Beitraege -> Menu wechseln; Menu soll weiterhin sichtbar
+  bleiben und nicht erst durch den Beitraege-Tab recovern. Zuletzt ein Profil
+  ohne Public-Menu testen: dort darf der leere Zustand weiterhin korrekt
+  erscheinen.
+
 - Schritt 157 ist abgeschlossen: Sichtbare Public-/QR-Menu-Flächen vertrauen
   einem lokal gecachten `knownEmpty`-Menu nicht mehr als finaler Wahrheit,
   solange auf der aktuellen sichtbaren Menu-Fläche noch keine settled

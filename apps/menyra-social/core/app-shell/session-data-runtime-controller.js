@@ -2130,6 +2130,11 @@ export function createSessionDataRuntimeController({
     if (inFlight) {
       const inFlightResult = await inFlight;
       const inFlightItems = Array.isArray(inFlightResult?.items) ? inFlightResult.items : [];
+      const liveVisibleItems = menuStateMatchesVisibleSurface && Array.isArray(state?.menu?.items)
+        ? state.menu.items
+        : [];
+      const keepLiveVisibleItems = !inFlightItems.length && liveVisibleItems.length > 0;
+      const nextInFlightItems = keepLiveVisibleItems ? liveVisibleItems : inFlightItems;
       const inFlightTruthState = String(inFlightResult?.truthState || "").trim();
       const inFlightTruthKey = inFlightTruthState.toLowerCase();
       const inFlightKnownEmpty = inFlightTruthKey === "knownempty" || inFlightTruthKey === "known-empty";
@@ -2145,25 +2150,27 @@ export function createSessionDataRuntimeController({
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
-          items: inFlightItems,
-          loading: retryPublicUnknown ? true : inFlightUnknown,
-          error: retryPublicUnknown ? "" : (inFlightError ? "Menu laden fehlgeschlagen." : ""),
+          items: nextInFlightItems,
+          loading: keepLiveVisibleItems ? false : (retryPublicUnknown ? true : inFlightUnknown),
+          error: keepLiveVisibleItems ? "" : (retryPublicUnknown ? "" : (inFlightError ? "Menu laden fehlgeschlagen." : "")),
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
-          routeSeed: false,
-          truthState: retryPublicUnknown
+          routeSeed: keepLiveVisibleItems ? state.menu.routeSeed === true : false,
+          truthState: keepLiveVisibleItems
+            ? "seeded"
+            : (retryPublicUnknown
             ? "unknown"
             : (inFlightError
             ? "error"
             : (inFlightUnknown
               ? "unknown"
-              : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty")))))
+              : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty"))))))
         };
-        if (retryPublicUnknown) {
+        if (retryPublicUnknown && !keepLiveVisibleItems) {
           queueVisiblePublicMenuRetry(safeRestaurantId, safeSource, cacheKey);
-        } else if (!inFlightUnknown && !inFlightError) {
+        } else if (keepLiveVisibleItems || (!inFlightUnknown && !inFlightError)) {
           clearPublicMenuRetry(cacheKey);
         }
         requestRender();
@@ -2231,7 +2238,7 @@ export function createSessionDataRuntimeController({
     }
     const keepCurrentItems = menuStateMatchesVisibleSurface
       && Array.isArray(state.menu.items)
-      && !blockWebDirectMenuCacheSeed
+      && state.menu.items.length > 0
       && (!shouldPrioritizeVisibleMenuTruth || state.menu.items.length > 0);
     if (shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) {
       state.menu = {
