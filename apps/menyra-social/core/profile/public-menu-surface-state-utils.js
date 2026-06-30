@@ -143,7 +143,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     menuStatus = "loading";
   } else if (samePublicMenu) {
     if (menuTruthState === "seeded") {
-      menuStatus = menuItems.length ? "ready" : "empty";
+      menuStatus = menuItems.length ? "ready" : "loading";
     } else if (menuTruthState === "knownEmpty") {
       menuStatus = "empty";
     } else if (menuTruthState === "error" || (menuError && !menu.loading)) {
@@ -170,7 +170,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     if (!samePublicFocus) {
       focusStatus = "unknown";
     } else if (focusTruthState === "seeded") {
-      focusStatus = focus.enabled !== false && focusItems.length > 0 ? "ready" : "empty";
+      focusStatus = focus.enabled !== false && focusItems.length > 0 ? "ready" : "loading";
     } else if (focusTruthState === "knownEmpty") {
       focusStatus = "empty";
     } else if (focusTruthState === "error" || (String(focus.error || "").trim() && !focus.loading)) {
@@ -186,6 +186,9 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   const canRenderFocus = focusStatus === "ready"
     && samePublicFocus
     && focusItems.length > 0;
+  const focusSettled = focusStatus === "ready"
+    || focusStatus === "empty"
+    || focusStatus === "error";
   const menuWaitingForFocus = false;
   const canRenderMenuItems = menuStatus === "ready";
 

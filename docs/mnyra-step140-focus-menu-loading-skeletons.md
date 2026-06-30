@@ -30,8 +30,13 @@ Card-nahe Skeletons.
 - Das Testfirst-Loading-Markup behaelt den bestehenden `menu-section`-Anker,
   damit die sichtbare Menu-Flaeche beim Wechsel von Skeleton zu echten Cards
   nicht leer oder sprunghaft wirkt.
+- Im Hotfix nach Review-Gate wurde `focusSettled` wieder explizit definiert,
+  damit `resolveVisiblePublicMenuSurfaceState()` keinen Runtime-Fehler wirft.
+- Im Hotfix nach Review-Gate wird `seeded + []` fuer Menu und Focus als
+  `loading` behandelt, nicht als authoritative `empty`. Nur `knownEmpty`
+  bleibt ein bestaetigter Empty-Zustand.
 - `apps/menyra-social/index.html` setzt den App-Build-Token auf
-  `2026-07-01-focus-menu-skeletons-01`.
+  `2026-07-01-focus-menu-skeletons-02`.
 - Das Menyra-Social-Bundle wurde neu gebaut; dadurch wurden der
   Profil-Menu-Focus-Chunk, `bundled/entry/social-app.js` und
   `bundled/manifest.json` aktualisiert.
@@ -54,16 +59,22 @@ Card-nahe Skeletons.
 - `node --check apps/menyra-social/core/profile/public-menu-surface-state-utils.js`:
   bestanden.
 - `npm run build:menyra-social:bundle`: bestanden.
+- Direkter Modul-Test fuer `public-menu-surface-state-utils.js`:
+  `seeded + []` -> `menu.status === "loading"`,
+  `knownEmpty + []` -> `menu.status === "empty"`,
+  `menu ready + focus seeded empty` -> `menu.canRenderItems === true` und
+  `focus.status === "loading"`, sowie kein `focusSettled`-ReferenceError:
+  bestanden.
 - `npm run check:social-bundle`: nicht bestanden, weil der bestehende
   `entry/social-app.js` weiter ueber dem gesetzten Budget liegt
-  (`1.121.743` raw / `304.392` gzip Bytes gegen `1.052.000` raw /
+  (`1.121.779` raw / `304.403` gzip Bytes gegen `1.052.000` raw /
   `285.000` gzip Bytes).
 
 ## Manuell Testen
 
 1. App hart neu laden, bei Bedarf mit `?sw-reset=1`.
 2. Mit `?debug-build=1` pruefen, dass
-   `2026-07-01-focus-menu-skeletons-01` aktiv ist.
+   `2026-07-01-focus-menu-skeletons-02` aktiv ist.
 3. Ein Restaurant-/Cafe-Business-Profil direkt auf `/:slug/menu` oeffnen oder
    dorthin refreshen.
 4. Pruefen, dass oberhalb des Menus ein Focus-Platz reserviert bleibt, solange
