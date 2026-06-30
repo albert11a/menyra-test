@@ -3,10 +3,12 @@ const DEFAULT_ALLOWED_META_KEYS = new Set([
   "count",
   "elapsedMs",
   "force",
+  "generation",
   "items",
   "label",
   "phase",
   "prefetchOnly",
+  "reason",
   "requestedId",
   "restaurantId",
   "route",
@@ -14,6 +16,7 @@ const DEFAULT_ALLOWED_META_KEYS = new Set([
   "source",
   "status",
   "targetId",
+  "transition",
   "truthState"
 ]);
 

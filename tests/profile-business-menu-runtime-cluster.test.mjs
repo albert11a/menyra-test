@@ -68,6 +68,16 @@ function waitForAsyncEnsure() {
   });
 }
 
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolveFn, rejectFn) => {
+    resolve = resolveFn;
+    reject = rejectFn;
+  });
+  return { promise, resolve, reject };
+}
+
 async function withMutedConsoleError(task) {
   const original = console.error;
   console.error = () => {};
@@ -91,13 +101,19 @@ async function withNoopRetryTimers(task) {
   }
 }
 
-function createCluster({ state, loadBusinessPostsForRestaurantFn, showCalls }) {
+function createCluster({
+  state,
+  loadBusinessPostsForRestaurantFn,
+  fetchBusinessProfileDocFn = null,
+  showCalls
+}) {
   return createProfileBusinessMenuRuntimeCluster({
     state,
     dataLoaders: {
       loadMenuForRestaurantFn: async () => ({ items: [], truthState: "unknown" }),
       loadFocusForRestaurantFn: async () => ({ items: [], truthState: "unknown" }),
       loadBusinessPostsForRestaurantFn,
+      fetchBusinessProfileDocFn,
       showPublicProfileFn: (profile, posts, options) => {
         showCalls.push({ profile, posts, options });
         state.profileView = {
@@ -139,6 +155,37 @@ test("public profile posts transient failure preserves visible posts without emp
   assert.equal(state.profileView.profile.postsLoaded, true);
   assert.equal(state.profileView.profile.truthState, "stable");
   assert.deepEqual(state.profileView.posts, existingPosts);
+});
+
+test("public profile posts failed canonical read can commit final error without retry or stale data", async () => {
+  const state = createVisiblePublicProfileState({
+    posts: [],
+    postsLoaded: false,
+    truthState: "unknown",
+    webDirectEntry: {
+      active: false,
+      restaurantId: "restaurant-a",
+      canonicalRestaurantId: "restaurant-a"
+    }
+  });
+  const showCalls = [];
+  const cluster = createCluster({
+    state,
+    showCalls,
+    loadBusinessPostsForRestaurantFn: async () => {
+      throw new Error("canonical posts read failed");
+    }
+  });
+
+  await withMutedConsoleError(async () => {
+    cluster.ensurePostsDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+  });
+
+  assert.equal(showCalls.length, 1);
+  assert.equal(state.profileView.profile.postsLoaded, false);
+  assert.equal(state.profileView.profile.truthState, "error");
+  assert.deepEqual(state.profileView.posts, []);
 });
 
 test("public profile posts successful empty read commits empty truth", async () => {
@@ -220,4 +267,116 @@ test("public profile posts use canonical route payload instead of alias fallback
   assert.equal(lastCall.profile.postsLoaded, true);
   assert.equal(lastCall.profile.truthState, "empty");
   assert.deepEqual(lastCall.posts, []);
+});
+
+test("public profile posts starts visible target read before canonical resolve settles", async () => {
+  const canonicalResolve = createDeferred();
+  const state = createVisiblePublicProfileState({
+    profile: {
+      restaurantId: "route-slug",
+      role: "business",
+      postsLoaded: false,
+      truthState: "unknown"
+    },
+    webDirectEntry: {
+      active: true,
+      restaurantId: "route-slug",
+      canonicalRestaurantId: "",
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      postsFirst: true,
+      topTab: "profile",
+      contentTab: "posts"
+    }
+  });
+  const readIds = [];
+  const showCalls = [];
+  const cluster = createCluster({
+    state,
+    showCalls,
+    fetchBusinessProfileDocFn: () => canonicalResolve.promise,
+    loadBusinessPostsForRestaurantFn: async (restaurantId) => {
+      readIds.push(restaurantId);
+      return [];
+    }
+  });
+
+  await withNoopRetryTimers(async () => {
+    cluster.ensurePostsDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+    assert.deepEqual(readIds, ["route-slug"]);
+    canonicalResolve.resolve({ id: "canonical-restaurant", data: { name: "Canonical" } });
+    await waitForAsyncEnsure();
+  });
+
+  assert.deepEqual(readIds.slice(0, 2), ["route-slug", "canonical-restaurant"]);
+});
+
+test("public profile posts stale generation cannot overwrite newer visible success", async () => {
+  const firstRead = createDeferred();
+  const secondRead = createDeferred();
+  const state = createVisiblePublicProfileState({
+    profile: {
+      restaurantId: "restaurant-a",
+      canonicalRestaurantId: "restaurant-a",
+      role: "business",
+      postsLoaded: false,
+      truthState: "unknown"
+    }
+  });
+  const showCalls = [];
+  const cluster = createCluster({
+    state,
+    showCalls,
+    loadBusinessPostsForRestaurantFn: (restaurantId) => {
+      if (restaurantId === "restaurant-a") return firstRead.promise;
+      if (restaurantId === "restaurant-b") return secondRead.promise;
+      return [];
+    }
+  });
+
+  await withNoopRetryTimers(async () => {
+    cluster.ensurePostsDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+
+    state.profileView.profile = {
+      restaurantId: "restaurant-b",
+      canonicalRestaurantId: "restaurant-b",
+      role: "business",
+      postsLoaded: false,
+      truthState: "unknown"
+    };
+    state.profileView.posts = [];
+    state.__webDirectEntry = {
+      active: true,
+      restaurantId: "restaurant-b",
+      canonicalRestaurantId: "restaurant-b",
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      postsFirst: true,
+      topTab: "profile",
+      contentTab: "posts"
+    };
+
+    cluster.ensurePostsDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+
+    secondRead.resolve([
+      { id: "post-b", restaurantId: "restaurant-b", url: "https://cdn.example/post-b.jpg" }
+    ]);
+    await waitForAsyncEnsure();
+
+    firstRead.resolve([
+      { id: "post-a", restaurantId: "restaurant-a", url: "https://cdn.example/post-a.jpg" }
+    ]);
+    await waitForAsyncEnsure();
+  });
+
+  const lastCall = showCalls[showCalls.length - 1];
+  assert.equal(lastCall.profile.restaurantId, "restaurant-b");
+  assert.deepEqual(lastCall.posts.map((post) => post.id), ["post-b"]);
+  assert.equal(state.profileView.profile.restaurantId, "restaurant-b");
+  assert.deepEqual(state.profileView.posts.map((post) => post.id), ["post-b"]);
 });

@@ -134,6 +134,71 @@ test("visible public menu does not turn an in-flight unknown prefetch into an er
   assert.equal(state.menu.truthState, "unknown");
 });
 
+test("visible public menu keeps stale items when in-flight prefetch resolves unknown", async () => {
+  const state = createVisibleMenuState();
+  state.menu = {
+    restaurantId: "restaurant-a",
+    items: [{ id: "item-stale", title: "Visible item" }],
+    loading: false,
+    error: "",
+    source: "public",
+    statusBadgeVisible: true,
+    routeSeed: false,
+    truthState: "seeded"
+  };
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: never
+  });
+
+  const prefetch = withMutedConsoleError(() => (
+    controller.loadMenuForRestaurant("restaurant-a", { source: "public", prefetchOnly: true })
+  ));
+  const result = await withMutedConsoleError(() => (
+    controller.loadMenuForRestaurant("restaurant-a", { source: "public" })
+  ));
+  await prefetch;
+
+  assert.equal(result.truthState, "unknown");
+  assert.equal(state.menu.restaurantId, "restaurant-a");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "seeded");
+  assert.deepEqual(state.menu.items, [{ id: "item-stale", title: "Visible item" }]);
+});
+
+test("visible public menu keeps stale items visible while revalidate is pending", async () => {
+  const state = createVisibleMenuState();
+  state.menu = {
+    restaurantId: "restaurant-a",
+    items: [{ id: "item-stale", title: "Visible item" }],
+    loading: false,
+    error: "",
+    source: "public",
+    statusBadgeVisible: true,
+    routeSeed: false,
+    truthState: "seeded"
+  };
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: never
+  });
+
+  const load = withMutedConsoleError(() => (
+    controller.loadMenuForRestaurant("restaurant-a", { source: "public", force: true })
+  ));
+
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "");
+  assert.deepEqual(state.menu.items, [{ id: "item-stale", title: "Visible item" }]);
+
+  const result = await load;
+  assert.equal(result.truthState, "seeded");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "");
+  assert.deepEqual(state.menu.items, [{ id: "item-stale", title: "Visible item" }]);
+});
+
 test("visible public menu loads canonical restaurant id instead of route alias", async () => {
   const state = createVisibleMenuState();
   state.profileView.profile = {

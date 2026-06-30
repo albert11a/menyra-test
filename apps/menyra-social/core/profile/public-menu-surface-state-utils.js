@@ -188,10 +188,12 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     && samePublicFocus
     && focusItems.length > 0;
   const focusSettled = focusStatus === "ready" || focusStatus === "empty" || focusStatus === "error";
+  const hasUsableMenuItems = menuStatus === "ready" && menuItems.length > 0;
   const menuWaitingForFocus = coordinateFocusWithMenu === true
     && menuStatus === "ready"
-    && !focusSettled;
-  const canRenderMenuItems = menuStatus === "ready" && !menuWaitingForFocus;
+    && !focusSettled
+    && !hasUsableMenuItems;
+  const canRenderMenuItems = menuStatus === "ready" && (hasUsableMenuItems || !menuWaitingForFocus);
 
   return {
     restaurantId: surfaceIds.restaurantId,

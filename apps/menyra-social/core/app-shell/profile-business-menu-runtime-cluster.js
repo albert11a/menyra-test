@@ -52,6 +52,7 @@ export function createProfileBusinessMenuRuntimeCluster({
   let publicProfileMenuEnsureTargetId = "";
   let publicProfileFocusEnsurePromise = null;
   let publicProfileFocusEnsureTargetId = "";
+  let publicProfilePostsEnsureGeneration = 0;
   const canonicalRestaurantIdPromises = new Map();
   const canonicalRestaurantIdCache = new Map();
   const visiblePublicMenuRetryTimers = new Map();
@@ -347,7 +348,8 @@ export function createProfileBusinessMenuRuntimeCluster({
   const preserveVisiblePublicPostsAfterLoadFailure = ({
     requestedRestaurantId = "",
     canonicalRestaurantId = "",
-    targetRestaurantId = ""
+    targetRestaurantId = "",
+    generation = 0
   } = {}) => {
     const liveProfileView = getVisiblePublicProfileView();
     if (!liveProfileView) return;
@@ -364,10 +366,35 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (liveRestaurantId && acceptedRestaurantIds.size && !acceptedRestaurantIds.has(liveRestaurantId)) return;
     const currentPosts = Array.isArray(liveProfileView.view.posts) ? liveProfileView.view.posts : [];
     if (currentPosts.length > 0) return;
+    const retryStillActive = Array.from(visiblePublicPostsRetryTimers.keys()).some((key) => {
+      if (!key) return false;
+      return Array.from(acceptedRestaurantIds).some((id) => key.includes(id));
+    });
+    const newerRequestActive = Number(generation) > 0
+      && Number(generation) !== publicProfilePostsEnsureGeneration;
+    if (retryStillActive || newerRequestActive) {
+      markLoadingEvent("posts.state", {
+        restaurantId: liveRestaurantId || targetRestaurantId || canonicalRestaurantId || requestedRestaurantId,
+        generation,
+        transition: "error-suppressed",
+        reason: retryStillActive ? "retry-active" : "stale-generation",
+        items: 0,
+        truthState: "unknown"
+      });
+      return;
+    }
     refreshVisiblePublicProfile({
       postsLoaded: false,
       truthState: "error"
     }, currentPosts);
+    markLoadingEvent("posts.state", {
+      restaurantId: liveRestaurantId || targetRestaurantId || canonicalRestaurantId || requestedRestaurantId,
+      generation,
+      transition: "error-visible",
+      reason: "final-error",
+      items: 0,
+      truthState: "error"
+    });
   };
 
   const resolveBusinessAvatarUrl = (data = {}) => String(
@@ -960,24 +987,84 @@ export function createProfileBusinessMenuRuntimeCluster({
     scheduleVisiblePublicMenuRetryFromPostsEnsure(profile, requestedRestaurantId);
     scheduleVisiblePublicPostsRetry(profile, requestedRestaurantId);
     const safeProfile = profile && typeof profile === "object" ? profile : {};
-    const surfaceTargetRestaurantId = resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
+    const surfaceContext = buildVisiblePublicBusinessContext(safeProfile, requestedRestaurantId);
+    const surfaceTargetRestaurantId = surfaceContext.canonicalRestaurantId || resolveMenuSurfaceTargetId(safeProfile) || requestedRestaurantId;
     if (hasMatchingVisiblePostsEnsureInFlight(surfaceTargetRestaurantId, requestedRestaurantId, safeProfile)) return;
+    const requestGeneration = ++publicProfilePostsEnsureGeneration;
     const requestContext = {
       requestedRestaurantId,
       canonicalRestaurantId: "",
-      targetRestaurantId: ""
+      targetRestaurantId: "",
+      generation: requestGeneration
     };
     const request = Promise.resolve().then(async () => {
+      const firstLoadTargetId = String(surfaceTargetRestaurantId || requestedRestaurantId || "").trim();
+      const firstLoadUsesCanonical = !!surfaceContext.canonicalRestaurantId
+        && firstLoadTargetId === surfaceContext.canonicalRestaurantId;
+      markLoadingEvent("posts.state", {
+        restaurantId: firstLoadTargetId,
+        requestedId: requestedRestaurantId,
+        generation: requestGeneration,
+        transition: "request-start",
+        reason: firstLoadUsesCanonical ? "canonical-target" : "visible-target",
+        source: "firebase"
+      });
+      let firstLoadError = null;
+      const firstPostsRead = firstLoadTargetId
+        ? Promise.resolve(loadBusinessPostsForRestaurant(firstLoadTargetId, {
+            skipProfileResolve: firstLoadUsesCanonical,
+            initialPage: true
+          })).catch((err) => {
+            firstLoadError = err;
+            return null;
+          })
+        : Promise.resolve(null);
       const canonicalRestaurantId = await resolveProfileRestaurantId(safeProfile);
       const targetRestaurantId = String(canonicalRestaurantId || requestedRestaurantId || "").trim();
       requestContext.canonicalRestaurantId = canonicalRestaurantId || "";
       requestContext.targetRestaurantId = targetRestaurantId;
       if (!targetRestaurantId) return;
-      let posts = await loadBusinessPostsForRestaurant(targetRestaurantId, {
-        skipProfileResolve: !!canonicalRestaurantId,
-        initialPage: true
-      });
+      let posts = null;
+      if (firstLoadTargetId === targetRestaurantId) {
+        posts = await firstPostsRead;
+        if (!Array.isArray(posts) && firstLoadError) throw firstLoadError;
+      } else {
+        markLoadingEvent("posts.state", {
+          restaurantId: targetRestaurantId,
+          requestedId: requestedRestaurantId,
+          generation: requestGeneration,
+          transition: "request-start",
+          reason: "canonical-target",
+          source: "firebase"
+        });
+        posts = await loadBusinessPostsForRestaurant(targetRestaurantId, {
+          skipProfileResolve: !!canonicalRestaurantId,
+          initialPage: true
+        });
+        void firstPostsRead;
+      }
       posts = Array.isArray(posts) ? posts : [];
+      markLoadingEvent("posts.state", {
+        restaurantId: targetRestaurantId,
+        requestedId: requestedRestaurantId,
+        generation: requestGeneration,
+        transition: posts.length ? "success" : "empty",
+        reason: "firebase-resolved",
+        items: posts.length,
+        truthState: posts.length ? "stable" : "empty"
+      });
+      if (requestGeneration !== publicProfilePostsEnsureGeneration) {
+        markLoadingEvent("posts.state", {
+          restaurantId: targetRestaurantId,
+          requestedId: requestedRestaurantId,
+          generation: requestGeneration,
+          transition: "error-suppressed",
+          reason: "stale-generation",
+          items: posts.length,
+          truthState: posts.length ? "stable" : "empty"
+        });
+        return;
+      }
       const liveProfileView = getVisiblePublicProfileView();
       if (!liveProfileView) return;
       const liveRestaurantId = String(liveProfileView.restaurantId || "").trim();
