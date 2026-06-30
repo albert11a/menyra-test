@@ -16,6 +16,27 @@ function createState(activeTab = "search") {
     drawerOpen: false,
     userProfile: {},
     restaurants: [],
+    menu: {
+      restaurantId: "",
+      items: [],
+      loading: false,
+      error: "",
+      source: "public",
+      statusBadgeVisible: true,
+      routeSeed: false,
+      truthState: "unknown"
+    },
+    focus: {
+      restaurantId: "",
+      items: [],
+      loading: false,
+      enabled: true,
+      error: "",
+      index: 0,
+      truthSource: "public-menu",
+      truthState: "unknown"
+    },
+    menuLayout: {},
     __nextRouteHistoryMode: ""
   };
 }
@@ -49,6 +70,7 @@ function createController(state, showCalls = [], overrides = {}) {
       state.profileView = {
         profile,
         posts,
+        routePayload: options?.routePayload || null,
         directEntry: options?.directEntry || null,
         menuAccessSource: options?.menuAccessSource || "",
         tableNumber: options?.tableNumber || 0
@@ -190,4 +212,117 @@ test("direct qr menu route warms canonical menu data after slug-only cold start"
     call.restaurantId === "moka-canonical"
     && call.canonicalRestaurantId === "moka-canonical"
   )), true);
+});
+
+test("direct menu business profile route applies route menu seed before live menu load", async () => {
+  const state = createState("profile");
+  state.__webDirectEntry = {
+    active: true,
+    webPriority: true,
+    menuFirst: true,
+    restaurantId: "moka",
+    canonicalRestaurantId: "moka"
+  };
+  state.__publicRouteBootstrap = {
+    owner: "web-direct",
+    routeFirst: true,
+    restaurantId: "moka",
+    canonicalRestaurantId: "moka",
+    surface: "menu",
+    topTab: "menu",
+    contentTab: "menu",
+    identity: {
+      name: "Moka Coffee"
+    },
+    menu: {
+      state: "seeded",
+      items: [
+        { id: "late", name: "Late item", orderIndex: 5 },
+        { id: "early", name: "Early item", orderIndex: 1 }
+      ],
+      count: 2,
+      statusBadgeVisible: true
+    },
+    focus: {
+      state: "knownEmpty",
+      items: [],
+      count: 0,
+      enabled: true
+    },
+    businessSnapshot: {
+      restaurantId: "moka",
+      identity: {
+        name: "Moka Coffee"
+      },
+      posts: {
+        state: "knownEmpty",
+        items: [],
+        count: 0
+      },
+      menu: {
+        state: "seeded",
+        items: [
+          { id: "late", name: "Late item", orderIndex: 5 },
+          { id: "early", name: "Early item", orderIndex: 1 }
+        ],
+        count: 2,
+        statusBadgeVisible: true
+      },
+      focus: {
+        state: "knownEmpty",
+        items: [],
+        count: 0,
+        enabled: true
+      },
+      truth: {
+        identity: "seeded",
+        posts: "knownEmpty",
+        menu: "seeded",
+        focus: "knownEmpty"
+      }
+    },
+    truth: {
+      identity: "seeded",
+      posts: "knownEmpty",
+      menu: "seeded",
+      focus: "knownEmpty"
+    }
+  };
+  const showCalls = [];
+  const menuWarmCalls = [];
+  const controller = createController(state, showCalls, {
+    ensureMenuDataForProfile: (profile = {}) => {
+      menuWarmCalls.push({
+        restaurantId: profile.restaurantId,
+        canonicalRestaurantId: profile.canonicalRestaurantId
+      });
+    },
+    loadBusinessPostsForRestaurant: async () => []
+  });
+
+  await controller.openProfileViewFromBusiness(
+    { id: "moka", name: "Moka Coffee" },
+    { showBack: false, topTab: "menu" }
+  );
+  await Promise.resolve();
+
+  assert.equal(state.menu.restaurantId, "moka");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.routeSeed, true);
+  assert.equal(state.menu.truthState, "seeded");
+  assert.deepEqual(state.menu.items.map((item) => item.id), ["early", "late"]);
+  assert.equal(state.focus.restaurantId, "moka");
+  assert.equal(state.focus.loading, false);
+  assert.equal(state.focus.truthSource, "public-menu");
+  assert.equal(state.focus.truthState, "knownEmpty");
+  const seededRoutePayloadCall = showCalls.find((call) => (
+    call?.options?.routePayload?.menu?.state === "seeded"
+  ));
+  assert.ok(seededRoutePayloadCall);
+  assert.deepEqual(
+    seededRoutePayloadCall.options.routePayload.menu.items.map((item) => item.id),
+    ["early", "late"]
+  );
+  assert.equal(menuWarmCalls.length > 0, true);
 });

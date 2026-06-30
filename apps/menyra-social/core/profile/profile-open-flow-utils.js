@@ -31,6 +31,67 @@ function pickBusinessTitleImageText(...records) {
   return "";
 }
 
+function normalizeRouteMenuOrderIndex(value, fallback = 0) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Math.max(0, Number(fallback) || 0);
+  return Math.max(0, Math.floor(numeric));
+}
+
+function normalizeRouteMenuSeedItem(item = {}, restaurantId = "", index = 0) {
+  const row = item && typeof item === "object" ? item : {};
+  const safeRestaurantId = String(restaurantId || row.restaurantId || "").trim();
+  if (!safeRestaurantId) return null;
+  const fallbackNameToken = String(row?.name || row?.title || row?.category || "item")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "item";
+  const id = String(
+    row?.id
+    || row?.itemId
+    || row?.menuItemId
+    || row?.productId
+    || `${fallbackNameToken}_${Math.max(0, Number(index) || 0)}`
+  ).trim();
+  if (!id) return null;
+  const imageUrlsRaw = [];
+  if (Array.isArray(row?.imageUrls)) imageUrlsRaw.push(...row.imageUrls);
+  if (Array.isArray(row?.images)) imageUrlsRaw.push(...row.images);
+  if (row?.imageUrl) imageUrlsRaw.unshift(row.imageUrl);
+  if (row?.image) imageUrlsRaw.push(row.image);
+  const imageUrls = Array.from(new Set(imageUrlsRaw
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean)));
+  const imageUrl = String(row?.imageUrl || imageUrls[0] || "").trim();
+  return {
+    ...row,
+    id,
+    restaurantId: safeRestaurantId,
+    orderIndex: normalizeRouteMenuOrderIndex(
+      row?.orderIndex ?? row?.sortOrder ?? row?.position ?? row?.rank,
+      index
+    ),
+    imageUrl,
+    imageUrls
+  };
+}
+
+function normalizeRouteFocusSeedItem(item = {}, index = 0) {
+  const row = item && typeof item === "object" ? item : {};
+  const id = String(row?.id || row?._id || `focus_${Math.max(0, Number(index) || 0)}`).trim();
+  if (!id) return null;
+  return {
+    ...row,
+    id,
+    title: String(row?.title || row?.name || "Sot ne Fokus").trim() || "Sot ne Fokus",
+    text: String(row?.text || row?.desc || row?.description || "").trim(),
+    imageUrl: String(row?.imageUrl || row?.image || row?.photoUrl || "").trim(),
+    cropX: Number.isFinite(Number(row?.cropX)) ? Number(row.cropX) : 50,
+    cropY: Number.isFinite(Number(row?.cropY)) ? Number(row.cropY) : 50,
+    active: row?.active !== false
+  };
+}
+
 export function normalizeBusinessProfileTarget(input, { source = "" } = {}) {
   const inputIsObject = input && typeof input === "object";
   const safeInput = inputIsObject ? input : {};
@@ -594,8 +655,30 @@ export function createProfileOpenFlowControllerCore({
       const routePostsSeed = Array.isArray(routeSnapshotSeed?.posts?.items)
         ? routeSnapshotSeed.posts.items
         : (Array.isArray(routeBootstrapSeed?.posts?.items) ? routeBootstrapSeed.posts.items : []);
-      const routeMenuSeed = [];
-      const routeFocusSeed = [];
+      const routeMenuSeedRestaurantId = String(
+        routeSnapshotSeed?.restaurantId
+        || routeBootstrapSeed?.canonicalRestaurantId
+        || routeBootstrapSeed?.restaurantId
+        || targetMenuRestaurantId
+        || ""
+      ).trim();
+      const routeMenuSeedRaw = Array.isArray(routeSnapshotSeed?.menu?.items)
+        ? routeSnapshotSeed.menu.items
+        : (Array.isArray(routeBootstrapSeed?.menu?.items)
+          ? routeBootstrapSeed.menu.items
+          : (Array.isArray(routeBootstrapSeed?.menuItems) ? routeBootstrapSeed.menuItems : []));
+      const routeMenuSeed = routeMenuSeedRaw
+        .map((row, index) => normalizeRouteMenuSeedItem(row, routeMenuSeedRestaurantId, index))
+        .filter(Boolean)
+        .sort((a, b) => normalizeRouteMenuOrderIndex(a?.orderIndex) - normalizeRouteMenuOrderIndex(b?.orderIndex));
+      const routeFocusSeedRaw = Array.isArray(routeSnapshotSeed?.focus?.items)
+        ? routeSnapshotSeed.focus.items
+        : (Array.isArray(routeBootstrapSeed?.focus?.items)
+          ? routeBootstrapSeed.focus.items
+          : (Array.isArray(routeBootstrapSeed?.focusItems) ? routeBootstrapSeed.focusItems : []));
+      const routeFocusSeed = routeFocusSeedRaw
+        .map((row, index) => normalizeRouteFocusSeedItem(row, index))
+        .filter((row) => row && row.active !== false);
       const routePostsState = normalizeTruthState(
         routeSnapshotSeed?.posts?.state
         || routeBootstrapSeed?.posts?.state
@@ -603,8 +686,20 @@ export function createProfileOpenFlowControllerCore({
         || "",
         routePostsSeed.length ? "seeded" : "unknown"
       );
-      const routeMenuState = "unknown";
-      const routeFocusState = "unknown";
+      const routeMenuState = normalizeTruthState(
+        routeSnapshotSeed?.menu?.state
+        || routeBootstrapSeed?.menu?.state
+        || routeTruthSeed?.menu
+        || "",
+        routeMenuSeed.length ? "seeded" : "unknown"
+      );
+      const routeFocusState = normalizeTruthState(
+        routeSnapshotSeed?.focus?.state
+        || routeBootstrapSeed?.focus?.state
+        || routeTruthSeed?.focus
+        || "",
+        routeFocusSeed.length ? "seeded" : "unknown"
+      );
       let effectiveRoutePostsState = routePostsState;
       let effectiveRouteMenuState = routeMenuState;
       let effectiveRouteFocusState = routeFocusState;
@@ -1081,6 +1176,7 @@ export function createProfileOpenFlowControllerCore({
             loading: false,
             error: "",
             index: 0,
+            truthSource: "public-menu",
             truthState: "seeded"
           };
         } else if (effectiveRouteFocusState === "knownEmpty") {
@@ -1092,6 +1188,7 @@ export function createProfileOpenFlowControllerCore({
             loading: false,
             error: "",
             index: 0,
+            truthSource: "public-menu",
             truthState: "knownEmpty"
           };
         } else {
@@ -1120,6 +1217,7 @@ export function createProfileOpenFlowControllerCore({
             enabled: routeSnapshotSeed?.focus?.enabled !== false,
             loading: hasKnownFocusTruth ? false : true,
             error: "",
+            truthSource: "public-menu",
             truthState: hasKnownFocusTruth
               ? (existingFocusTruth === "seeded" ? "seeded" : "knownEmpty")
               : "unknown"

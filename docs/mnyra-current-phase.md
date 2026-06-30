@@ -5,6 +5,66 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 159 ist abgeschlossen: Der normale Public-/QR-Business-Open-Flow
+  nutzt den Server-Route-Menu-Seed jetzt ebenfalls direkt statt ihn als
+  `unknown` zu verwerfen.
+- Bewertung von Schritt 159: `Breite gezielte Public/Profile-Tests bestanden,
+  Syntax-Check bestanden, Build bestanden, Bundle-Budget rot, kein Browser-
+  Smoke durch Codex, kein Deploy, keine Production-Mutation`.
+- Root Cause Schritt 159:
+  Schritt 158 hat Bootstrap- und Direct-Entry-Pfade gefixt, aber der breite
+  `profile-open-flow-utils.js`-Pfad hatte weiterhin hart
+  `routeMenuSeed = []` und `routeMenuState = "unknown"`. Bei Refresh bzw.
+  beim Durchstoebern konnte genau dieser Pfad den bereits vom Server
+  gelieferten `businessSnapshot.menu.items`-Seed verwerfen. Danach hing die
+  sichtbare Menu-Flaeche wieder am mobilen Live-Firebase-Read. Der Beitraege-
+  Tab konnte das Menu spaeter wieder anstossen, weil dort zusaetzliche
+  Menu-Retries geplant werden.
+- Geaendert in Schritt 159:
+  `apps/menyra-social/core/profile/profile-open-flow-utils.js` normalisiert
+  Route-Menu-Items aus `businessSnapshot.menu.items`,
+  `publicRoute.menu.items` bzw. `menuItems`, sortiert sie und setzt die
+  sichtbare Public-Menu-Wahrheit sofort auf `seeded`. Vorhandene Route-Focus-
+  Wahrheit wird im selben Pfad korrekt mit `truthSource: public-menu`
+  uebernommen, damit Focus nicht unnoetig als unbekannt stehen bleibt.
+  `tests/profile-open-flow-utils.test.mjs` enthaelt einen Regressionsfall fuer
+  den echten Web-Direct/Menu-Refresh-Pfad mit `state.__publicRouteBootstrap`.
+- Verifikation Schritt 159:
+  `node --check
+  apps/menyra-social/core/profile/profile-open-flow-utils.js` bestanden.
+  `node --test tests/profile-open-flow-utils.test.mjs
+  tests/public-profile-runtime-controller.test.mjs
+  tests/public-profile-runtime-boundary.test.mjs
+  tests/profile-business-menu-runtime-cluster.test.mjs
+  tests/profile-business-menu-runtime-boundary.test.mjs
+  tests/public-bootstrap-runtime-controller.test.mjs
+  tests/session-data-menu-focus-no-hang.test.mjs
+  tests/public-menu-surface-state-utils.test.mjs
+  tests/canonical-public-business-context-utils.test.mjs
+  tests/public-business-route-resolver.test.mjs
+  tests/public-route-doc-reader.test.mjs
+  tests/initial-route-state-public-route-cache.test.mjs` bestanden (`74/74`).
+  `npm run build` bestanden.
+- Bundle-Guard Schritt 159:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1055581` von `1052000` (`+3581`), gzip `286767` von
+  `285000` (`+1767`). Das Budget war bereits rot und wurde nicht fuer diesen
+  gezielten Refresh-Fix riskant umgebaut.
+- Bewusst nicht geaendert in Schritt 159:
+  keine Firebase Rules, keine Functions, keine Datenmigration, kein Deploy,
+  keine automatische Public-Freigabe von `menuItems`, keine Public-/App-
+  Routing-Verschiebung, keine UI-Design-Aenderung, kein Browser-Smoke durch
+  Codex. Beitraege wurden nicht umgebaut; die konkrete Ursache war, dass der
+  normale Business-Open-Flow Menu-Seeds weggeworfen hat und Beitraege nur als
+  spaeterer Retry-Ausloeser sichtbar wurden.
+- Manuelle Testliste Schritt 159:
+  Einen betroffenen Public-/QR-Menu-Link auf Handy hart refreshen. Erwartung:
+  Produkte aus dem Public-Route-Seed erscheinen sofort und bleiben sichtbar.
+  Danach mehrere Business-Profile im Public-Browsing oeffnen und zwischen
+  Menu/Shop und Beitraege wechseln; Menu darf nicht erst durch den Beitraege-
+  Tab recovern. Danach Desktop gegenpruefen. Ein wirklich leeres Public-Menu
+  muss weiter als leer erscheinen.
+
 - Schritt 158 ist abgeschlossen: Public-/QR-Menu nutzt Server-Route-Menu-
   Seeds wieder direkt und loescht sichtbare Produkte bei einem Live-Refresh
   nicht mehr auf Loader zurueck.
