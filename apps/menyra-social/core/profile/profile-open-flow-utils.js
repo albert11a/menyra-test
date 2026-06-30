@@ -1022,6 +1022,7 @@ export function createProfileOpenFlowControllerCore({
         routeSnapshotRestaurantId
       );
       const shouldWarmPostsForSurface = !!earlyPostsRestaurantId
+        && !isMenuTopTab
         && (
           isWebRoutePriorityPath
           || safeTargetSource === "map"
@@ -1419,13 +1420,12 @@ export function createProfileOpenFlowControllerCore({
         targetMenuRestaurantId
       );
 
-      const canShortCircuitNormalWebDirectMenuPath = isWebRoutePriorityPath
+      const canShortCircuitWebDirectMenuPath = isWebRoutePriorityPath
         && isMenuTopTab
-        && safeMenuAccessSource !== "qr"
         && !!routeSnapshotSeed
         && routeIdentityState === "seeded"
         && !!loadingCanonicalRestaurantId;
-      if (canShortCircuitNormalWebDirectMenuPath) {
+      if (canShortCircuitWebDirectMenuPath) {
         return;
       }
 

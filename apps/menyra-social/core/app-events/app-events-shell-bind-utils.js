@@ -36,6 +36,8 @@ export function bindAppShellEventsCore({
   ensurePostsDataForProfileFn,
   ensureMenuDataForProfileFn,
   ensureFocusDataForProfileFn,
+  loadBusinessPostsForRestaurantFn,
+  loadMenuForRestaurantFn,
   openProfileViewFromBusinessFn
 } = {}) {
   const doc = documentObj || null;
@@ -79,6 +81,12 @@ export function bindAppShellEventsCore({
   const ensureFocusDataForProfile = typeof ensureFocusDataForProfileFn === "function"
     ? ensureFocusDataForProfileFn
     : (() => {});
+  const loadBusinessPostsForRestaurant = typeof loadBusinessPostsForRestaurantFn === "function"
+    ? loadBusinessPostsForRestaurantFn
+    : null;
+  const loadMenuForRestaurant = typeof loadMenuForRestaurantFn === "function"
+    ? loadMenuForRestaurantFn
+    : null;
   const openProfileViewFromBusiness = typeof openProfileViewFromBusinessFn === "function"
     ? openProfileViewFromBusinessFn
     : null;
@@ -140,6 +148,70 @@ export function bindAppShellEventsCore({
       }
     }
     return null;
+  };
+  const getMarketplaceBusinessId = (record = {}) => String(
+    record?.id
+    || record?.restaurantId
+    || record?.canonicalRestaurantId
+    || ""
+  ).trim();
+  const findMarketplaceBusinessSnapshot = (restaurantId = "") => {
+    const target = String(restaurantId || "").trim();
+    if (!target) return null;
+    const rows = [
+      ...(Array.isArray(state.restaurants) ? state.restaurants : []),
+      ...(Array.isArray(state.bootstrapRestaurantPreview) ? state.bootstrapRestaurantPreview : [])
+    ];
+    return rows.find((row) => {
+      if (!row || typeof row !== "object") return false;
+      const ids = [
+        row.id,
+        row.restaurantId,
+        row.canonicalRestaurantId,
+        row.documentId
+      ].map((value) => String(value || "").trim()).filter(Boolean);
+      return ids.includes(target);
+    }) || null;
+  };
+  const buildMarketplaceBusinessOpenInput = (restaurantId = "") => {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const snapshot = findMarketplaceBusinessSnapshot(safeRestaurantId);
+    if (!snapshot) {
+      return {
+        id: safeRestaurantId,
+        restaurantId: safeRestaurantId,
+        source: "marketplace"
+      };
+    }
+    const documentId = getMarketplaceBusinessId(snapshot) || safeRestaurantId;
+    return {
+      id: documentId,
+      restaurantId: documentId,
+      canonicalRestaurantId: String(snapshot.canonicalRestaurantId || snapshot.restaurantId || snapshot.id || documentId).trim(),
+      publicSlug: String(snapshot.publicSlug || snapshot.landingSlug || snapshot.handle || "").trim(),
+      landingSlug: String(snapshot.landingSlug || snapshot.publicSlug || "").trim(),
+      handle: String(snapshot.handle || "").trim(),
+      name: String(snapshot.name || snapshot.restaurantName || snapshot.businessName || "").trim(),
+      source: "marketplace",
+      documentId,
+      initialSnapshot: { ...snapshot, id: documentId }
+    };
+  };
+  const warmMarketplaceBusinessDetails = (restaurantId = "") => {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return;
+    if (loadBusinessPostsForRestaurant) {
+      Promise.resolve(loadBusinessPostsForRestaurant(safeRestaurantId, {
+        skipProfileResolve: true,
+        initialPage: true
+      })).catch(() => null);
+    }
+    if (loadMenuForRestaurant) {
+      Promise.resolve(loadMenuForRestaurant(safeRestaurantId, {
+        source: "public",
+        prefetchOnly: true
+      })).catch(() => null);
+    }
   };
   const collectMarketplaceBusinessIds = (record = {}) => {
     const raw = record?.raw && typeof record.raw === "object" ? record.raw : {};
@@ -884,10 +956,23 @@ export function bindAppShellEventsCore({
   });
 
   doc.querySelectorAll("[data-marketplace-open-business]").forEach((btn) => {
+    if (btn.dataset.marketplaceOpenBound === "true") return;
+    btn.dataset.marketplaceOpenBound = "true";
+    const warmFromButton = () => {
+      const restaurantId = String(btn.dataset.marketplaceOpenBusiness || "").trim();
+      if (!restaurantId) return;
+      const snapshot = findMarketplaceBusinessSnapshot(restaurantId);
+      const warmRestaurantId = getMarketplaceBusinessId(snapshot || {}) || restaurantId;
+      warmMarketplaceBusinessDetails(warmRestaurantId);
+    };
+    btn.addEventListener("pointerenter", warmFromButton, { passive: true });
+    btn.addEventListener("focus", warmFromButton);
     btn.addEventListener("click", () => {
       const restaurantId = String(btn.dataset.marketplaceOpenBusiness || "").trim();
       if (!restaurantId || !openProfileViewFromBusiness) return;
-      void openProfileViewFromBusiness({ id: restaurantId }, {
+      const openInput = buildMarketplaceBusinessOpenInput(restaurantId);
+      warmMarketplaceBusinessDetails(openInput.canonicalRestaurantId || openInput.restaurantId || restaurantId);
+      void openProfileViewFromBusiness(openInput, {
         showBack: true,
         topTab: btn.dataset.tab
       });

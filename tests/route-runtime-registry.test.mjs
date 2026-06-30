@@ -135,3 +135,27 @@ test("public runtime slots keep the existing renderer as fallback", () => {
 
   assert.equal(registry.renderActiveRoute(), "fallback-public-profile");
 });
+
+test("list runtimes can preload while keeping fallback renderers", () => {
+  const state = {
+    activeTab: "restaurants"
+  };
+  const calls = [];
+  const registry = createSocialRouteRuntimeRegistry({
+    state,
+    renderers: {
+      restaurants: () => {
+        calls.push("render-restaurants");
+        return "restaurants";
+      }
+    },
+    routeRuntimes: {
+      restaurants: {
+        preload: () => calls.push("preload-profile-open-flow")
+      }
+    }
+  });
+
+  assert.equal(registry.renderActiveRoute(), "restaurants");
+  assert.deepEqual(calls, ["preload-profile-open-flow", "render-restaurants"]);
+});

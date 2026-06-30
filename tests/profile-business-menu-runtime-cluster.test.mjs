@@ -91,12 +91,18 @@ async function withNoopRetryTimers(task) {
   }
 }
 
-function createCluster({ state, loadBusinessPostsForRestaurantFn, showCalls }) {
+function createCluster({
+  state,
+  loadMenuForRestaurantFn = async () => ({ items: [], truthState: "unknown" }),
+  loadFocusForRestaurantFn = async () => ({ items: [], truthState: "unknown" }),
+  loadBusinessPostsForRestaurantFn,
+  showCalls
+}) {
   return createProfileBusinessMenuRuntimeCluster({
     state,
     dataLoaders: {
-      loadMenuForRestaurantFn: async () => ({ items: [], truthState: "unknown" }),
-      loadFocusForRestaurantFn: async () => ({ items: [], truthState: "unknown" }),
+      loadMenuForRestaurantFn,
+      loadFocusForRestaurantFn,
       loadBusinessPostsForRestaurantFn,
       showPublicProfileFn: (profile, posts, options) => {
         showCalls.push({ profile, posts, options });
@@ -220,4 +226,53 @@ test("public profile posts use canonical route payload instead of alias fallback
   assert.equal(lastCall.profile.postsLoaded, true);
   assert.equal(lastCall.profile.truthState, "empty");
   assert.deepEqual(lastCall.posts, []);
+});
+
+test("public profile posts ensure warms menu immediately on posts surface", async () => {
+  const state = createVisiblePublicProfileState({
+    posts: [],
+    postsLoaded: false,
+    truthState: "unknown"
+  });
+  const menuReadIds = [];
+  const focusReadIds = [];
+  const showCalls = [];
+  const cluster = createCluster({
+    state,
+    showCalls,
+    loadMenuForRestaurantFn: async (restaurantId) => {
+      menuReadIds.push(restaurantId);
+      const items = [{ id: "item-1", restaurantId }];
+      state.menu = {
+        ...state.menu,
+        restaurantId,
+        items,
+        loading: false,
+        source: "public",
+        truthState: "seeded"
+      };
+      return { items, truthState: "seeded" };
+    },
+    loadFocusForRestaurantFn: async (restaurantId) => {
+      focusReadIds.push(restaurantId);
+      state.focus = {
+        ...state.focus,
+        restaurantId,
+        items: [],
+        loading: false,
+        truthSource: "public-menu",
+        truthState: "knownEmpty"
+      };
+      return { items: [], truthState: "knownEmpty" };
+    },
+    loadBusinessPostsForRestaurantFn: async () => []
+  });
+
+  await withNoopRetryTimers(async () => {
+    cluster.ensurePostsDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+  });
+
+  assert.deepEqual(menuReadIds, ["restaurant-a"]);
+  assert.equal(focusReadIds.includes("restaurant-a"), true);
 });

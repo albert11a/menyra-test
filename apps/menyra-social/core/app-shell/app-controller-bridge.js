@@ -61,6 +61,10 @@ export function createAppControllerBridge({
     return profileOpenFlowControllerPromise;
   }
 
+  function preloadProfileOpenFlowController() {
+    void ensureProfileOpenFlowController().catch(() => {});
+  }
+
   function callProfileOpenFlow(methodName = "", args = [], fallbackValue = undefined) {
     const loadedMethod = typeof profileOpenFlowController?.[methodName] === "function"
       ? profileOpenFlowController[methodName]
@@ -339,7 +343,8 @@ export function createAppControllerBridge({
     },
     discovery: {
       ...discovery,
-      openProfileViewFromBusiness
+      openProfileViewFromBusiness,
+      preloadProfileOpenFlow: preloadProfileOpenFlowController
     }
   });
   const feedSearchMapBridge = feedSearchMapRouteRuntime.bridgeBindings;
@@ -540,6 +545,20 @@ export function createAppControllerBridge({
       loadNotificationsFromFirebase
     },
     bridgeApi,
-    routeRuntimes: feedSearchMapRouteRuntime.routeRuntimes
+    routeRuntimes: Object.freeze({
+      ...feedSearchMapRouteRuntime.routeRuntimes,
+      restaurants: Object.freeze({
+        key: "restaurants",
+        preload: preloadProfileOpenFlowController
+      }),
+      travel: Object.freeze({
+        key: "travel",
+        preload: preloadProfileOpenFlowController
+      }),
+      shopping: Object.freeze({
+        key: "shopping",
+        preload: preloadProfileOpenFlowController
+      })
+    })
   };
 }

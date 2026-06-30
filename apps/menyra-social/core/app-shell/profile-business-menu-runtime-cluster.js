@@ -781,10 +781,11 @@ export function createProfileBusinessMenuRuntimeCluster({
   };
 
   const scheduleVisiblePublicMenuRetryFromPostsEnsure = (profile = {}, fallbackId = "") => {
-    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
-    const profileTopTab = String(state?.profileTopTab || "").trim().toLowerCase();
-    const profileContentTab = String(state?.profileContentTab || "").trim().toLowerCase();
-    if (activeTab !== "profile" || (profileTopTab !== "menu" && profileContentTab !== "menu")) return;
+    if (!isPublicMenuLoadSurface(profile)) return;
+    void Promise.resolve(loadVisiblePublicMenuIds(
+      state?.profileView?.profile || profile,
+      fallbackId || getMenuRestaurantForProfile(profile)
+    )).catch(() => null);
     scheduleVisiblePublicMenuRetry(profile, fallbackId);
   };
 

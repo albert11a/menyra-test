@@ -61,6 +61,7 @@ export function createFeedSearchMapRouteRuntime({
 } = {}) {
   const feedBridge = createFeedRuntimeBridge(feed);
   const openProfileViewFromBusiness = asFn(discovery.openProfileViewFromBusiness, () => {});
+  const preloadProfileOpenFlow = asFn(discovery.preloadProfileOpenFlow, () => {});
   let discoveryRuntimeController = null;
   let discoveryRuntimeControllerPromise = null;
 
@@ -140,6 +141,17 @@ export function createFeedSearchMapRouteRuntime({
 
   const queueDiscoveryRuntimeControllerLoad = () => {
     void ensureDiscoveryRuntimeController().catch(() => null);
+  };
+
+  const preloadBusinessOpenFlow = () => {
+    try {
+      preloadProfileOpenFlow();
+    } catch {}
+  };
+
+  const preloadDiscoveryAndBusinessOpenFlow = () => {
+    preloadBusinessOpenFlow();
+    queueDiscoveryRuntimeControllerLoad();
   };
 
   const renderDeferredDiscoveryView = (mode = "search") => {
@@ -234,18 +246,18 @@ export function createFeedSearchMapRouteRuntime({
     feed: Object.freeze({
       key: "feed",
       render: feedBridge.renderFeedView,
-      preload: () => {}
+      preload: preloadBusinessOpenFlow
     }),
     search: Object.freeze({
       key: "search",
       render: discoveryBridge.renderSearchView,
-      preload: queueDiscoveryRuntimeControllerLoad,
+      preload: preloadDiscoveryAndBusinessOpenFlow,
       ensureLoaded: ensureDiscoveryRuntimeController
     }),
     map: Object.freeze({
       key: "map",
       render: discoveryBridge.renderMapView,
-      preload: queueDiscoveryRuntimeControllerLoad,
+      preload: preloadDiscoveryAndBusinessOpenFlow,
       ensureLoaded: ensureDiscoveryRuntimeController
     })
   });

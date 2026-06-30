@@ -21,7 +21,7 @@ const LEAFLET_VENDOR_HOST_SUFFIXES = [
   "unpkg.com"
 ];
 const NAVIGATION_FETCH_TIMEOUT_MS = 6500;
-const STRICT_PUBLIC_NAVIGATION_FETCH_TIMEOUT_MS = 9000;
+const STRICT_PUBLIC_NAVIGATION_FETCH_TIMEOUT_MS = 4500;
 const RUNTIME_FETCH_TIMEOUT_MS = 5200;
 const IMAGE_FALLBACK_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='#f1f5f9'/></svg>";
 const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
@@ -551,9 +551,6 @@ self.addEventListener("fetch", (event) => {
         }
         return networkResp;
       } catch {
-        if (strictPublicNavigation) {
-          return new Response("Offline", { status: 503, statusText: "Offline" });
-        }
         const cachedShell = await getCachedAppShellResponse();
         return cachedShell || new Response("Offline", { status: 503, statusText: "Offline" });
       }

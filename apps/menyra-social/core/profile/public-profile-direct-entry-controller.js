@@ -91,6 +91,22 @@ function normalizeRouteMenuSeedItem(item = {}, restaurantId = "", index = 0) {
   };
 }
 
+function normalizeRouteFocusSeedItem(item = {}, index = 0) {
+  const row = item && typeof item === "object" ? item : {};
+  const id = String(row?.id || row?._id || `focus_${Math.max(0, Number(index) || 0)}`).trim();
+  if (!id) return null;
+  return {
+    ...row,
+    id,
+    title: String(row?.title || row?.name || "Sot ne Fokus").trim() || "Sot ne Fokus",
+    text: String(row?.text || row?.desc || row?.description || "").trim(),
+    imageUrl: String(row?.imageUrl || row?.image || row?.photoUrl || "").trim(),
+    cropX: Number.isFinite(Number(row?.cropX)) ? Number(row.cropX) : 50,
+    cropY: Number.isFinite(Number(row?.cropY)) ? Number(row.cropY) : 50,
+    active: row?.active !== false
+  };
+}
+
 function normalizeProfileTopTab(value = "", fallback = "profile") {
   const topTab = safeLower(value);
   if (topTab === "profile") return "profile";
@@ -304,33 +320,60 @@ function buildRoutePayloadSeed({
     ? safeSnapshot.focus
     : (safeRouteBootstrap?.focus && typeof safeRouteBootstrap.focus === "object" ? safeRouteBootstrap.focus : {});
   const routePostsItems = Array.isArray(routePosts?.items) ? routePosts.items : [];
+  const routeMenuSeedRaw = Array.isArray(routeMenu?.items)
+    ? routeMenu.items
+    : (Array.isArray(safeRouteBootstrap?.menuItems) ? safeRouteBootstrap.menuItems : []);
+  const routeMenuSeedItems = routeMenuSeedRaw
+    .map((row, index) => normalizeRouteMenuSeedItem(row, safeRestaurantId, index))
+    .filter(Boolean)
+    .sort((a, b) => normalizeRouteMenuOrderIndex(a?.orderIndex) - normalizeRouteMenuOrderIndex(b?.orderIndex));
+  const routeFocusSeedRaw = Array.isArray(routeFocus?.items)
+    ? routeFocus.items
+    : (Array.isArray(safeRouteBootstrap?.focusItems) ? safeRouteBootstrap.focusItems : []);
+  const routeFocusSeedItems = routeFocusSeedRaw
+    .map((row, index) => normalizeRouteFocusSeedItem(row, index))
+    .filter((row) => row && row.active !== false);
   const menu = state?.menu || {};
-  const hasLivePublicMenu = String(menu.restaurantId || "").trim() === safeRestaurantId
-    && String(menu.source || "").trim().toLowerCase() === "public"
-    && String(menu.truthState || "").trim().toLowerCase() === "seeded"
-    && Array.isArray(menu.items)
-    && menu.items.length > 0;
-  const livePublicMenuItems = hasLivePublicMenu ? menu.items : [];
+  const sameLivePublicMenu = String(menu.restaurantId || "").trim() === safeRestaurantId
+    && String(menu.source || "").trim().toLowerCase() === "public";
+  const livePublicMenuItems = sameLivePublicMenu && Array.isArray(menu.items) ? menu.items : [];
   const livePublicMenuState = normalizeTruthState(
-    hasLivePublicMenu ? (menu.truthState || "") : "",
-    hasLivePublicMenu
+    sameLivePublicMenu ? (menu.truthState || "") : "",
+    sameLivePublicMenu
       ? (livePublicMenuItems.length ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
       : "unknown"
   );
-  const routeMenuItems = livePublicMenuState === "seeded" ? livePublicMenuItems : [];
+  const routeMenuSeedState = normalizeTruthState(routeMenu?.state || safeTruth?.menu || "", (
+    routeMenuSeedItems.length ? "seeded" : "unknown"
+  ));
+  const routeMenuItems = livePublicMenuState === "seeded"
+    ? livePublicMenuItems
+    : (routeMenuSeedState === "seeded" ? routeMenuSeedItems : []);
   const focus = state?.focus || {};
-  const livePublicFocusItems = hasLivePublicMenu
+  const sameLivePublicFocus = sameLivePublicMenu
     && String(focus.restaurantId || "").trim() === safeRestaurantId
-    && String(focus.truthSource || "").trim().toLowerCase() === "public-menu"
+    && String(focus.truthSource || "").trim().toLowerCase() === "public-menu";
+  const livePublicFocusItems = sameLivePublicFocus
     && Array.isArray(focus.items)
     ? focus.items
     : [];
-  const routeFocusItems = livePublicFocusItems;
+  const livePublicFocusState = normalizeTruthState(
+    sameLivePublicFocus ? (focus.truthState || "") : "",
+    sameLivePublicFocus
+      ? (livePublicFocusItems.length ? "seeded" : (focus.loading ? "unknown" : "knownEmpty"))
+      : "unknown"
+  );
+  const routeFocusSeedState = normalizeTruthState(routeFocus?.state || safeTruth?.focus || "", (
+    routeFocusSeedItems.length ? "seeded" : "unknown"
+  ));
+  const routeFocusItems = livePublicFocusState === "seeded"
+    ? livePublicFocusItems
+    : (routeFocusSeedState === "seeded" ? routeFocusSeedItems : []);
   const routePostsState = normalizeTruthState(routePosts?.state || safeTruth?.posts || "", (
     safePosts.length || routePostsItems.length ? "seeded" : "unknown"
   ));
-  const routeMenuState = hasLivePublicMenu ? livePublicMenuState : "unknown";
-  const routeFocusState = livePublicFocusItems.length ? "seeded" : "unknown";
+  const routeMenuState = livePublicMenuState !== "unknown" ? livePublicMenuState : routeMenuSeedState;
+  const routeFocusState = livePublicFocusState !== "unknown" ? livePublicFocusState : routeFocusSeedState;
   const routeIdentityState = normalizeTruthState(safeTruth?.identity || "", (
     String(routeIdentity?.name || "").trim()
     || String(routeIdentity?.handle || "").trim()
@@ -346,14 +389,14 @@ function buildRoutePayloadSeed({
   const nextFocusItems = routeFocusState === "seeded"
     ? routeFocusItems
     : [];
-  const routeMenuCount = 0;
+  const routeMenuCount = Math.max(routeMenuSeedItems.length, Math.max(0, Number(routeMenu?.count || 0) || 0));
   const routePostsCount = Math.max(0, Number(routePosts?.count || 0) || 0);
-  const routeFocusCount = 0;
+  const routeFocusCount = Math.max(routeFocusSeedItems.length, Math.max(0, Number(routeFocus?.count || 0) || 0));
   const menuCount = routeMenuState === "seeded"
     ? nextMenuItems.length
     : (routeMenuState === "knownEmpty"
       ? 0
-      : (hasLivePublicMenu ? menu.items.length : routeMenuCount));
+      : routeMenuCount);
   const postsCount = routePostsState === "seeded"
     ? safePosts.length
     : (routePostsState === "knownEmpty" ? 0 : routePostsCount);
@@ -654,7 +697,14 @@ export function createPublicProfileDirectEntryController({
       .map((row, index) => normalizeRouteMenuSeedItem(row, entryRestaurantId, index))
       .filter(Boolean)
       .sort((a, b) => normalizeRouteMenuOrderIndex(a?.orderIndex) - normalizeRouteMenuOrderIndex(b?.orderIndex));
-    const routeFocusSeed = [];
+    const routeFocusSeedRaw = Array.isArray(routeSnapshot?.focus?.items)
+      ? routeSnapshot.focus.items
+      : (Array.isArray(routeBootstrap?.focus?.items)
+        ? routeBootstrap.focus.items
+        : (Array.isArray(routeBootstrap?.focusItems) ? routeBootstrap.focusItems : []));
+    const routeFocusSeed = routeFocusSeedRaw
+      .map((row, index) => normalizeRouteFocusSeedItem(row, index))
+      .filter((row) => row && row.active !== false);
     const routeTruth = routeSnapshot?.truth && typeof routeSnapshot.truth === "object"
       ? routeSnapshot.truth
       : (routeBootstrap?.truth && typeof routeBootstrap.truth === "object" ? routeBootstrap.truth : {});
@@ -666,7 +716,13 @@ export function createPublicProfileDirectEntryController({
       routeSnapshot?.menu?.state || routeBootstrap?.menu?.state || routeTruth?.menu || "",
       routeMenuSeed.length ? "seeded" : "unknown"
     );
-    const routeFocusState = "unknown";
+    const routeFocusState = normalizeTruthState(
+      routeSnapshot?.focus?.state
+      || routeBootstrap?.focus?.state
+      || routeTruth?.focus
+      || "",
+      routeFocusSeed.length ? "seeded" : "unknown"
+    );
     const routeIdentityState = normalizeTruthState(routeTruth?.identity || "", (
       String(routeIdentity?.name || "").trim()
       || String(routeIdentity?.handle || "").trim()

@@ -99,3 +99,95 @@ test("profile business menu runtime boundary replays sync menu actions after loa
     ["preload-render"]
   ]);
 });
+
+test("profile business menu runtime boundary warms visible public profile after lazy load", async () => {
+  const calls = [];
+  const state = {
+    activeTab: "profile",
+    profileTopTab: "profile",
+    profileContentTab: "posts",
+    profileView: {
+      profile: {
+        restaurantId: "restaurant-a",
+        canonicalRestaurantId: "restaurant-a"
+      },
+      posts: [],
+      menuAccessSource: "",
+      tableNumber: 0,
+      directEntry: {
+        active: true,
+        topTab: "profile",
+        contentTab: "posts",
+        postsFirst: true
+      }
+    }
+  };
+  const boundary = createProfileBusinessMenuRuntimeBoundary({
+    state,
+    importModuleFn: async () => ({
+      createProfileBusinessMenuRuntimeCluster: () => ({
+        preloadProfileMenuFocusRender: () => calls.push(["preload-render"]),
+        ensurePostsDataForProfile: (profile) => calls.push(["posts", profile.restaurantId]),
+        ensureMenuDataForProfile: (profile) => calls.push(["menu", profile.restaurantId]),
+        renderPublicProfileView: () => "public-profile"
+      })
+    })
+  });
+
+  await boundary.ensureLoaded();
+
+  assert.deepEqual(calls, [
+    ["preload-render"],
+    ["posts", "restaurant-a"]
+  ]);
+
+  assert.equal(boundary.renderPublicProfileView(), "public-profile");
+  assert.deepEqual(calls, [
+    ["preload-render"],
+    ["posts", "restaurant-a"]
+  ]);
+});
+
+test("profile business menu runtime boundary warms menu directly for qr public profile", async () => {
+  const calls = [];
+  const state = {
+    activeTab: "profile",
+    profileTopTab: "menu",
+    profileContentTab: "menu",
+    profileView: {
+      profile: {
+        restaurantId: "restaurant-a",
+        canonicalRestaurantId: "restaurant-a"
+      },
+      posts: [],
+      menuAccessSource: "qr",
+      tableNumber: 7,
+      directEntry: {
+        active: true,
+        topTab: "menu",
+        contentTab: "menu",
+        menuFirst: true,
+        menuAccessSource: "qr",
+        tableNumber: 7
+      }
+    }
+  };
+  const boundary = createProfileBusinessMenuRuntimeBoundary({
+    state,
+    importModuleFn: async () => ({
+      createProfileBusinessMenuRuntimeCluster: () => ({
+        preloadProfileMenuFocusRender: () => calls.push(["preload-render"]),
+        ensurePostsDataForProfile: (profile) => calls.push(["posts", profile.restaurantId]),
+        ensureMenuDataForProfile: (profile) => calls.push(["menu", profile.restaurantId])
+      })
+    })
+  });
+
+  await boundary.ensureLoaded();
+
+  assert.deepEqual(calls, [
+    ["preload-render"],
+    ["posts", "restaurant-a"],
+    ["menu", "restaurant-a"]
+  ]);
+});

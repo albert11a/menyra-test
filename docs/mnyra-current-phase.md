@@ -5,6 +5,140 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 160 ist abgeschlossen: Public-/QR-/Profil-Business-Ladewege fuer
+  Menu, Focus und Beitraege sind gegen mobile Refresh- und Tabwechsel-Haenger
+  weiter abgesichert.
+- Bewertung von Schritt 160: `153/153 Tests bestanden, Build bestanden,
+  Browser-Smoke Mobile/Public/QR/Profil-Tabwechsel bestanden, Bundle-Budget
+  rot, kein Deploy, keine Firebase-/Production-Mutation`.
+- Root Cause Schritt 160:
+  Nach Schritt 158/159 konnte der Einstieg den Route-Menu-Seed zwar in
+  `state.menu` schreiben, aber die letzte sichtbare Surface-Entscheidung
+  vertraute weiterhin ausschliesslich `state.menu`. Wenn ein mobiler
+  `public/menu`-Live-Read beim Refresh in `unknown/loading` oder ein alter
+  `knownEmpty`-Zustand dazwischenkam, ignorierte die UI den bereits im
+  aktuellen Route-Payload vorhandenen `businessSnapshot.menu.items`-Seed und
+  zeigte weiter `Menu wird geladen` bzw. zeitweise `Keine Produkte`.
+  Zusaetzlich hatte der Direct-Entry-Payload Route-Menu-/Focus-Seeds wieder
+  verloren, wenn noch kein Live-State existierte, und der Menu/Focus-Warmup
+  aus dem Beitraege-Pfad war weiter an den sichtbaren Menu-Tab gekoppelt. Das
+  erklaert, warum Tabwechsel manchmal half und manchmal nicht. Zweiter
+  Befund: der sichtbare App-Build-Token war alt, `sw-reset=1` loeschte den
+  Legacy-Root-Cache `menyra-cache-*` nicht, und eine bestehende
+  Service-Worker-Registration wurde nicht auf die neue `sw.js?v=...` URL
+  aktualisiert. Dadurch konnte ein Handy plausibel alten Code testen.
+  Dritter Befund nach breiter Ladeweg-Pruefung: die Firestore-Regeln
+  blockieren Public-Reads nicht; `publicRoutes`, `restaurants`,
+  `restaurants/{id}/public/*` und `socialPosts` sind lesbar. Der langsame
+  Zustand entsteht vor allem im Client-Vertrag: Public/QR haengt weiter am
+  grossen Social-App-Start, der Public-Entry importiert die volle App, QR war
+  beim Menu-Short-Circuit explizit ausgeschlossen, und Menu-Routen starteten
+  einen fruehen Posts-Read. Zusaetzlich renderte der Public-Renderer interne
+  `loading/unknown`-Zustaende als sichtbare Texte (`Menu wird geladen`,
+  `Beitraege werden geladen`), obwohl die Daten spaeter korrekt ankamen.
+- Geaendert in Schritt 160:
+  `apps/menyra-social/core/profile/public-menu-surface-state-utils.js` nutzt
+  aktuelle Route-Menu- und Route-Focus-Seed-Items als sichtbaren Public-
+  Fallback, wenn `state.menu`/`state.focus` fuer dieselbe Surface noch
+  `unknown/loading` oder stale `knownEmpty` sind. Der Fallback greift nur fuer
+  echte Items und nur wenn der Route-Seed zum aktuellen Profilziel passt; ein
+  alter Route-Payload eines anderen Profils wird nicht als Menu-/Focus-
+  Wahrheit akzeptiert. `knownEmpty` aus der Route wird hier bewusst nicht als
+  sichtbarer Menu-Fallback genutzt, damit falsche `Keine Produkte`-Zustaende
+  nicht verstaerkt werden.
+  `apps/menyra-social/core/profile/public-profile-direct-entry-controller.js`
+  behaelt Route-Menu- und Route-Focus-Seeds auch im Direct-Entry-Route-Payload,
+  bevor Live-Reads schreiben. `apps/menyra-social/core/app-shell/
+  public-bootstrap-runtime-controller.js` uebernimmt Focus-Seeds aus dem
+  Public-Route-Bootstrap. `apps/menyra-social/core/app-shell/
+  profile-business-menu-runtime-cluster.js` startet Menu/Focus-Warmup jetzt
+  sofort aus dem Public-Beitraege-Pfad und nicht erst, wenn der Menu-Tab
+  sichtbar ist. `apps/menyra-social/core/profile/
+  profile-menu-focus-render-controller.js` reserviert den Focus-Platz als
+  Skeleton bereits waehrend Menu noch laedt, damit die Reihenfolge Focus vor
+  Menu stabil bleibt.
+  `apps/menyra-social/core/profile/profile-open-flow-utils.js` behandelt QR-
+  Menu-Routen mit gueltigem Route-Snapshot jetzt genauso menu-first wie normale
+  Web-Menu-Routen und startet fuer direkte Menu-Routen keinen fruehen
+  Posts-Read mehr. `apps/menyra-social/core/profile/
+  profile-menu-focus-render-controller.js` zeigt im Public-Pfad fuer
+  unbekannte/ladende Menu- und Beitraege-Zustaende stabile Skeleton-
+  Platzhalter statt blockierender Lade-/Fehlertexte; echte bestaetigte Empty-
+  States bleiben moeglich.
+  `apps/menyra-social/core/app-events/app-events-shell-bind-utils.js` oeffnet
+  Marketplace-/Shopping-Business-Klicks mit dem vorhandenen Business-Snapshot
+  und waermt Menu/Beitraege vor, damit normale Business-Besuche aus Listen
+  nicht unnoetig in einen kalten Profilpfad fallen. `apps/menyra-social/core/
+  app-events/app-events-main-bind-utils.js`, `apps/menyra-social/core/app-shell/
+  app-shell-runtime-controller.js` und `apps/menyra-social/core/app-shell/
+  controller-deps-factory.js` reichen dafuer die bestehenden Menu-/Posts-
+  Loader an den Event-Binder durch. `apps/menyra-social/core/app-shell/
+  bridge-shell-runtime-cluster.js` und `apps/menyra-social/social-app.js`
+  geben den Menu-Loader an diese Bridge weiter.
+  `apps/menyra-social/sw.js` reduziert den strikten Public-Navigation-Timeout
+  von 9000 ms auf 4500 ms und faellt auch bei Public-Navigationen auf eine
+  vorhandene App-Shell zurueck. `apps/menyra-social/index.html` setzt den
+  Build-Token auf `2026-06-30-public-menu-refresh-02` und `sw-reset=1` loescht neben
+  `mnyra-social-cache-*` auch `menyra-cache*`. `apps/menyra-social/core/push/
+  push-service-worker-utils.js` registriert eine neue Service-Worker-URL,
+  wenn die vorhandene Registration noch auf eine andere `sw.js?v=...` Version
+  zeigt, und nutzt `updateViaCache: "none"`.
+  Der gebaute Social-Bundle-Einstieg wurde neu erzeugt.
+- Neue/erweiterte Tests Schritt 160:
+  `tests/public-menu-surface-state-utils.test.mjs` deckt den offenen
+  Refresh-Fall ab: `state.menu` ist `unknown/loading`, aber der aktuelle
+  Route-Payload enthaelt Menu-Produkte; die Surface muss `ready` sein. Route-
+  Focus-Seeds werden gleich behandelt und stale Route-Menu-/Focus-Seeds gegen
+  ein anderes Profilziel sind blockiert.
+  `tests/profile-business-menu-runtime-cluster.test.mjs` prueft, dass der
+  Beitraege-Pfad Menu/Focus sofort im Hintergrund waermt.
+  `tests/public-profile-direct-entry-controller.test.mjs` prueft, dass der
+  Direct-Entry-Payload Menu- und Focus-Seeds vor Live-Reads behaelt.
+  `tests/public-bootstrap-runtime-controller.test.mjs` prueft Focus-Seed-
+  Bootstrap.
+  `tests/push-service-worker-utils.test.mjs` prueft SW-Re-Registration bei
+  geaenderter Version, Update bei gleicher Version und Erstinstallation mit
+  `updateViaCache: none`. `tests/social-index-cache-reset.test.mjs` prueft
+  Build-Token, Cache-Reset-Prefixe und den weniger blockierenden Public-
+  Navigation-Fallback des Service Workers. `tests/profile-open-flow-utils.test.mjs`
+  prueft zusaetzlich, dass QR/Menu mit Route-Seed keinen Profil-Read und keinen
+  Posts-Read startet.
+- Verifikation Schritt 160:
+  `node --test tests/*.test.mjs` bestanden (`153/153`). `npm run build`
+  bestanden.
+- Browser-Smoke Schritt 160:
+  Lokaler Server auf `http://localhost:5187`. Mit Mobile-Viewport `390x844`
+  und `?debug-build=1&sw-reset=1` wurde verifiziert:
+  `/feed` zeigt Build `2026-06-30-public-menu-refresh-02`.
+  `/casarita/menu` rendert nach Refresh ohne Lade-/Fehlertexte und ohne
+  Console-Errors; 81 Menu-Elemente wurden im DOM gefunden.
+  `/casarita/menu?src=qr&table=7` rendert nach Refresh ebenfalls ohne
+  `Menu wird geladen`, `Menu konnte nicht geladen werden` oder `Keine
+  Produkte`; 81 Menu-Elemente wurden gefunden. `/casarita` rendert ohne
+  `Beitraege werden geladen`; der mobile Wechsel auf `Menue` zeigt Produkte
+  ohne Loading/Error. Browser-Konsole: 0 Errors.
+- Bundle-Guard Schritt 160:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1064999` von `1052000` (`+12999`), gzip `289037` von
+  `285000` (`+4037`). Das Budget war bereits rot; ein groesserer Bundle-Split
+  wurde fuer diesen gezielten Stabilitaetsfix bewusst nicht begonnen.
+- Bewusst nicht geaendert in Schritt 160:
+  keine Firebase Rules, keine Functions, keine Datenmigration, kein Deploy,
+  keine automatische Public-Freigabe von internen `menuItems`, kein echter
+  Lightweight-Public-Bundle, kein breiter Routing-Umbau. Public/QR Menu bleibt
+  auf `restaurants/{restaurantId}/public/menu` und aktuellem Route-Seed.
+- Manuelle Testliste Schritt 160:
+  Auf dem Handy zuerst den betroffenen Link einmal mit
+  `?debug-build=1&sw-reset=1` oeffnen. Erwartung: unten rechts steht
+  `build 2026-06-30-public-menu-refresh-02`; falls ein anderer Build steht,
+  wird alter Code getestet. Danach denselben Public-/QR-Menu-Link mehrfach
+  hart refreshen und zwischen `Beitraege` und `Menue` wechseln. Erwartung:
+  Produkte erscheinen ohne dauerhaftes `Menu wird geladen`, ohne
+  `Menu konnte nicht geladen werden` und ohne falsches `Keine Produkte`.
+  Zusaetzlich ein Business aus Feed/Suche/Shopping oeffnen und direkt auf
+  `Menue` wechseln; Erwartung: kein dauerhafter Ladezustand fuer Menu oder
+  Beitraege.
+
 - Schritt 159 ist abgeschlossen: Der normale Public-/QR-Business-Open-Flow
   nutzt den Server-Route-Menu-Seed jetzt ebenfalls direkt statt ihn als
   `unknown` zu verwerfen.

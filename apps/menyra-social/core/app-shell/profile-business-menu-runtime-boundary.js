@@ -14,6 +14,60 @@ export function createProfileBusinessMenuRuntimeBoundary(deps = {}) {
     : (() => {});
   let controller = null;
   let controllerPromise = null;
+  let lastVisiblePublicProfileWarmupKey = "";
+
+  function getVisiblePublicProfileForWarmup() {
+    const state = deps?.state && typeof deps.state === "object" ? deps.state : null;
+    if (!state) return null;
+    if (String(state.activeTab || "").trim().toLowerCase() !== "profile") return null;
+    const view = state.profileView && typeof state.profileView === "object" ? state.profileView : null;
+    const profile = view?.profile && typeof view.profile === "object" ? view.profile : null;
+    if (!view || !profile) return null;
+    const restaurantId = String(profile.canonicalRestaurantId || profile.restaurantId || "").trim();
+    if (!restaurantId) return null;
+    return { state, view, profile, restaurantId };
+  }
+
+  function buildVisiblePublicProfileWarmupKey(visible = null) {
+    if (!visible) return "";
+    const directEntry = visible.view?.directEntry && typeof visible.view.directEntry === "object"
+      ? visible.view.directEntry
+      : null;
+    return [
+      visible.restaurantId,
+      String(visible.state?.profileTopTab || directEntry?.topTab || "").trim().toLowerCase(),
+      String(visible.state?.profileContentTab || directEntry?.contentTab || "").trim().toLowerCase(),
+      String(visible.view?.menuAccessSource || directEntry?.menuAccessSource || "").trim().toLowerCase(),
+      String(visible.view?.tableNumber || directEntry?.tableNumber || 0).trim()
+    ].join("::");
+  }
+
+  function shouldWarmMenuDirectly(visible = null) {
+    if (!visible) return false;
+    const directEntry = visible.view?.directEntry && typeof visible.view.directEntry === "object"
+      ? visible.view.directEntry
+      : null;
+    const topTab = String(visible.state?.profileTopTab || directEntry?.topTab || "").trim().toLowerCase();
+    const contentTab = String(visible.state?.profileContentTab || directEntry?.contentTab || "").trim().toLowerCase();
+    const menuAccessSource = String(visible.view?.menuAccessSource || directEntry?.menuAccessSource || "").trim().toLowerCase();
+    return topTab === "menu"
+      || contentTab === "menu"
+      || menuAccessSource === "qr"
+      || directEntry?.menuFirst === true;
+  }
+
+  function warmVisiblePublicProfileData(loadedController = null) {
+    const visible = getVisiblePublicProfileForWarmup();
+    if (!visible || !loadedController) return;
+    const warmupKey = buildVisiblePublicProfileWarmupKey(visible);
+    if (!warmupKey || warmupKey === lastVisiblePublicProfileWarmupKey) return;
+    lastVisiblePublicProfileWarmupKey = warmupKey;
+    callControllerMethod(loadedController, "preloadProfileMenuFocusRender", []);
+    callControllerMethod(loadedController, "ensurePostsDataForProfile", [visible.profile]);
+    if (shouldWarmMenuDirectly(visible)) {
+      callControllerMethod(loadedController, "ensureMenuDataForProfile", [visible.profile]);
+    }
+  }
 
   function ensureLoaded() {
     if (controller) return Promise.resolve(controller);
@@ -25,6 +79,7 @@ export function createProfileBusinessMenuRuntimeBoundary(deps = {}) {
             throw new Error();
           }
           controller = createCluster(deps);
+          warmVisiblePublicProfileData(controller);
           requestRender();
           return controller;
         })
@@ -55,6 +110,7 @@ export function createProfileBusinessMenuRuntimeBoundary(deps = {}) {
       preload();
       return "";
     }
+    warmVisiblePublicProfileData(controller);
     return callControllerMethod(controller, methodName, args, "");
   }
 

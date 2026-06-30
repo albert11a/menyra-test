@@ -326,3 +326,103 @@ test("direct menu business profile route applies route menu seed before live men
   );
   assert.equal(menuWarmCalls.length > 0, true);
 });
+
+test("direct qr menu route uses route seed without waiting for profile reads", async () => {
+  const state = createState("profile");
+  state.__webDirectEntry = {
+    active: true,
+    webPriority: true,
+    menuFirst: true,
+    restaurantId: "moka",
+    canonicalRestaurantId: "moka",
+    menuAccessSource: "qr",
+    tableNumber: 7
+  };
+  state.__publicRouteBootstrap = {
+    owner: "web-direct",
+    routeFirst: true,
+    restaurantId: "moka",
+    canonicalRestaurantId: "moka",
+    surface: "menu",
+    topTab: "menu",
+    contentTab: "menu",
+    menuAccessSource: "qr",
+    tableNumber: 7,
+    identity: {
+      name: "Moka Coffee"
+    },
+    businessSnapshot: {
+      restaurantId: "moka",
+      identity: {
+        name: "Moka Coffee"
+      },
+      posts: {
+        state: "knownEmpty",
+        items: [],
+        count: 0
+      },
+      menu: {
+        state: "seeded",
+        items: [
+          { id: "qr-item", name: "QR item", orderIndex: 1 }
+        ],
+        count: 1,
+        statusBadgeVisible: true
+      },
+      focus: {
+        state: "knownEmpty",
+        items: [],
+        count: 0,
+        enabled: true
+      },
+      truth: {
+        identity: "seeded",
+        posts: "knownEmpty",
+        menu: "seeded",
+        focus: "knownEmpty"
+      }
+    },
+    truth: {
+      identity: "seeded",
+      posts: "knownEmpty",
+      menu: "seeded",
+      focus: "knownEmpty"
+    }
+  };
+  const showCalls = [];
+  const menuWarmCalls = [];
+  let profileReadCalls = 0;
+  let postsReadCalls = 0;
+  const controller = createController(state, showCalls, {
+    ensureMenuDataForProfile: (profile = {}) => {
+      menuWarmCalls.push({
+        restaurantId: profile.restaurantId,
+        canonicalRestaurantId: profile.canonicalRestaurantId
+      });
+    },
+    fetchBusinessProfileDoc: async () => {
+      profileReadCalls += 1;
+      return null;
+    },
+    loadBusinessPostsForRestaurant: async () => {
+      postsReadCalls += 1;
+      return [];
+    }
+  });
+
+  await controller.openProfileViewFromBusiness(
+    { id: "moka", name: "Moka Coffee" },
+    { showBack: false, topTab: "menu", menuAccessSource: "qr", tableNumber: 7 }
+  );
+  await Promise.resolve();
+
+  assert.equal(state.menu.restaurantId, "moka");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.truthState, "seeded");
+  assert.deepEqual(state.menu.items.map((item) => item.id), ["qr-item"]);
+  assert.equal(showCalls.at(-1)?.options?.menuAccessSource, "qr");
+  assert.equal(showCalls.at(-1)?.options?.tableNumber, 7);
+  assert.equal(menuWarmCalls.length > 0, true);
+  assert.equal(profileReadCalls, 0);
+  assert.equal(postsReadCalls, 0);
+});

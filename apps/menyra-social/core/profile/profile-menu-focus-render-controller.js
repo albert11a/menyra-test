@@ -321,6 +321,35 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { includeIma
   return cards.join("");
 }
 
+function renderPublicPostsPendingPlaceholder(viewMode = "feed") {
+  const isGrid = viewMode === "grid";
+  if (isGrid) {
+    return `
+      <div data-public-posts-pending="true" aria-hidden="true" class="grid grid-cols-2 gap-4 app-content-inline grid-flow-dense">
+        ${Array.from({ length: 2 }).map(() => `
+          <div class="aspect-[4/5] rounded-[2rem] bg-white border border-slate-100 overflow-hidden shadow-sm">
+            <div class="h-full w-full bg-slate-100 animate-pulse"></div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+  return `
+    <div data-public-posts-pending="true" aria-hidden="true" class="flex flex-col gap-8 app-content-inline">
+      ${Array.from({ length: 2 }).map(() => `
+        <div class="bg-white rounded-[2.2rem] border border-slate-100 overflow-hidden shadow-sm">
+          <div class="aspect-[4/5] bg-slate-100 animate-pulse"></div>
+          <div class="p-5">
+            <div class="h-4 w-2/3 rounded-full bg-slate-200 animate-pulse"></div>
+            <div class="mt-3 h-3 w-5/6 rounded-full bg-slate-100 animate-pulse"></div>
+            <div class="mt-2 h-3 w-1/2 rounded-full bg-slate-100 animate-pulse"></div>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderProfileCheckins() {
   const checkins = state.profileCheckins || [];
   if (!checkins.length) {
@@ -1965,10 +1994,8 @@ function renderPublicProfileSurface(
               </div>
             `}
           ` : `
-            <div class="app-content-inline ${disabledBlockClass}">
-              <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm ${contentAnimationClass}">
-                <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.postsLoading", "Beitraege werden geladen..."))}</div>
-              </div>
+            <div class="${disabledBlockClass} ${contentAnimationClass}">
+              ${renderPublicPostsPendingPlaceholder(state.profileViewMode)}
             </div>
           `}
         `) : ""}
@@ -2517,6 +2544,35 @@ function renderTestfirstFocusSkeletonSection(profile, { count = 2 } = {}) {
             </div>
           </div>
         `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstMenuSkeletonSection(profile, { count = 4 } = {}) {
+  const restaurantId = profile?.restaurantId || "";
+  const canUseHighlightFocusUi = isTestfirstMenuProfile(profile) || isShopCatalogProfile(profile);
+  if (!restaurantId || !canUseHighlightFocusUi) return "";
+  const safeCount = Math.max(2, Math.min(6, Number(count) || 4));
+  return `
+    <div data-public-menu-pending="true" aria-hidden="true" id="menu-section" class="mt-5">
+      <div class="menu-category-section pb-6 pt-4" data-menu-type="pending">
+        <div class="grid grid-cols-2 auto-rows-fr gap-3 app-content-inline">
+          ${Array.from({ length: safeCount }).map(() => `
+            <div class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col relative">
+              <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 animate-pulse"></div>
+              <div class="px-1.5 pb-1 flex flex-col flex-1">
+                <div class="h-4 w-3/4 rounded-full bg-slate-200 animate-pulse mb-2"></div>
+                <div class="h-3 w-full rounded-full bg-slate-100 animate-pulse mb-2"></div>
+                <div class="h-3 w-2/3 rounded-full bg-slate-100 animate-pulse mb-5"></div>
+                <div class="mt-auto pt-2 flex items-center justify-between">
+                  <div class="h-4 w-14 rounded-full bg-slate-200 animate-pulse"></div>
+                  <div class="w-8 h-8 rounded-full bg-slate-100 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
       </div>
     </div>
   `;
@@ -3538,6 +3594,32 @@ function renderPublicFocusSkeletonSection(profile, { count = 2 } = {}) {
   `;
 }
 
+function renderPublicMenuSkeletonSection(profile, { count = 3 } = {}) {
+  const safeCount = Math.max(2, Math.min(4, Number(count) || 3));
+  return `
+    <div data-public-menu-pending="true" aria-hidden="true" class="space-y-5">
+      ${Array.from({ length: safeCount }).map(() => `
+        <div class="bg-white rounded-[2.5rem] p-3.5 border border-slate-100 shadow-sm overflow-hidden">
+          <div class="aspect-[16/9] rounded-[2rem] bg-slate-100 animate-pulse"></div>
+          <div class="px-2 py-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="h-5 w-3/4 rounded-full bg-slate-200 animate-pulse"></div>
+                <div class="mt-3 h-3 w-full rounded-full bg-slate-100 animate-pulse"></div>
+                <div class="mt-2 h-3 w-2/3 rounded-full bg-slate-100 animate-pulse"></div>
+              </div>
+              <div class="h-5 w-16 rounded-full bg-slate-200 animate-pulse shrink-0"></div>
+            </div>
+            <div class="mt-5 flex items-center justify-end">
+              <div class="h-11 w-28 rounded-2xl bg-slate-100 animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderFocusCarousel(profile, {
   restaurantId: restaurantIdOverride = "",
   suppressLoading = false,
@@ -3905,11 +3987,16 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     || menuSurfaceState.focus.settled === true
     || currentFocusTruth === "knownEmpty"
     || menuSurfaceState.menu.status !== "ready";
-  const shouldRenderFocusSkeleton = shouldCoordinatePublicFocus
-    && hasConfirmedPublicMenuItems
+  const shouldReservePublicFocusSlot = shouldCoordinateMenuWithFocus
+    && (hasConfirmedPublicMenuItems || menuSurfaceState.menu.status === "loading");
+  const shouldRenderFocusSkeleton = shouldReservePublicFocusSlot
     && !hasPublicFocusTruth
     && menuSurfaceState.focus.settled !== true
-    && (menuSurfaceState.focus.status === "loading" || menuSurfaceState.focus.status === "unknown");
+    && (
+      menuSurfaceState.menu.status === "loading"
+      || menuSurfaceState.focus.status === "loading"
+      || menuSurfaceState.focus.status === "unknown"
+    );
   if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
     ensureMenuDataForProfile(surfaceProfile);
   }
@@ -3932,7 +4019,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       .filter((item) => !isMenuItemHidden(item))
     : [];
   const hasItems = items.length > 0;
-  const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
   const isLoading = menuSurfaceState.menu.status === "loading";
@@ -3971,15 +4057,14 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       <div class="app-main-content-safe">
         ${isLoading ? `
           ${testfirstStableFocusSection || testfirstFocusSkeletonSection}
-          <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
+          ${renderTestfirstMenuSkeletonSection(surfaceProfile, { count: 4 })}
         ` : `
           ${hasItems
             ? `${testfirstFocusSkeletonSection}${renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })}`
             : (hasError
-              ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
+              ? `${testfirstStableFocusSection || testfirstFocusSkeletonSection || renderTestfirstMenuSkeletonSection(surfaceProfile, { count: 4 })}`
               : (testfirstStableFocusSection || testfirstFocusSkeletonSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))
           }
-          ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         `}
       </div>
     `;
@@ -3998,17 +4083,11 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     <div class="app-content-inline app-main-content-safe space-y-5">
       ${coordinatedFocusSection}
       ${isLoading ? `
-        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
-        </div>
+        ${renderPublicMenuSkeletonSection(surfaceProfile, { count: 3 })}
       ` : `
         ${!hasItems ? `
           ${hasError ? `
-            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-              <div class="text-center py-16 text-rose-500 font-black uppercase text-[10px] tracking-[0.3em]">
-                ${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}
-              </div>
-            </div>
+            ${renderPublicMenuSkeletonSection(surfaceProfile, { count: 3 })}
           ` : `
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
               <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
@@ -4042,7 +4121,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
             ` : ""}
           `}
         `}
-        ${error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
       `}
     </div>
   `;

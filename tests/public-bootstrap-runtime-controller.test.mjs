@@ -97,11 +97,19 @@ test("web-direct bootstrap applies public route menu seed immediately", () => {
           count: 2,
           statusBadgeVisible: true
         },
+        focus: {
+          state: "seeded",
+          items: [
+            { id: "focus-1", title: "Breakfast", imageUrl: "https://example.test/focus.jpg" }
+          ],
+          count: 1,
+          enabled: true
+        },
         truth: {
           identity: "seeded",
           posts: "knownEmpty",
           menu: "seeded",
-          focus: "unknown"
+          focus: "seeded"
         }
       }
     }
@@ -114,4 +122,8 @@ test("web-direct bootstrap applies public route menu seed immediately", () => {
   assert.equal(state.menu.truthState, "seeded");
   assert.equal(state.menu.routeSeed, true);
   assert.deepEqual(state.menu.items.map((item) => item.id), ["tea", "coffee"]);
+  assert.equal(state.focus.restaurantId, "restaurant-a");
+  assert.equal(state.focus.loading, false);
+  assert.equal(state.focus.truthState, "seeded");
+  assert.deepEqual(state.focus.items.map((item) => item.id), ["focus-1"]);
 });
