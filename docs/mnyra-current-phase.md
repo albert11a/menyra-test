@@ -5,6 +5,64 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 157 ist abgeschlossen: Sichtbare Public-/QR-Menu-Flächen vertrauen
+  einem lokal gecachten `knownEmpty`-Menu nicht mehr als finaler Wahrheit,
+  solange auf der aktuellen sichtbaren Menu-Fläche noch keine settled
+  Menu-Wahrheit vorhanden ist.
+- Bewertung von Schritt 157: `Gezielte Tests bestanden, Syntax-Check
+  bestanden, Build bestanden, Bundle-Budget rot, kein Browser-Smoke durch
+  Codex, kein Deploy, keine Production-Mutation`.
+- Root Cause Schritt 157:
+  Auf Handy/QR konnte ein frueherer leerer Public-Menu-Zustand aus Memory-
+  oder `localStorage`-Cache (`knownEmpty`) direkt als `Keine Produkte`
+  gerendert werden. Der sichtbare Public-Menu-Load plante zwar spaeter einen
+  Reconcile, aber der erste sichtbare Zustand war dadurch falsch bzw.
+  geraeteabhaengig: Desktop konnte mit frischem Zustand Produkte zeigen,
+  waehrend das Handy wegen lokalem Empty-Cache zuerst leer blieb. Ein Wechsel
+  zu `Beitraege` konnte das Menu danach wieder anstossen, weil dieser Pfad
+  zusaetzlich Menu-Retries plant.
+- Geaendert in Schritt 157:
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  ueberspringt leere `knownEmpty`-Memory- und Persistenz-Caches fuer sichtbare
+  Public-Menu-Flächen, wenn die aktuelle sichtbare Surface noch keine settled
+  Menu-Wahrheit hat. Positive Cache-Treffer mit echten Items bleiben weiter
+  instant. Ein erfolgreicher echter Firebase-Empty-Read darf weiterhin
+  `knownEmpty` setzen.
+  `tests/session-data-menu-focus-no-hang.test.mjs` prueft den Handy-/Refresh-
+  Fall: erst wird ein leerer Public-Menu-Cache geschrieben, danach muss ein
+  sichtbarer zweiter Public-Menu-Load live lesen und frische Produkte anzeigen.
+- Verifikation Schritt 157:
+  `node --check
+  apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  bestanden.
+  `node --test tests/session-data-menu-focus-no-hang.test.mjs
+  tests/public-menu-surface-state-utils.test.mjs
+  tests/profile-business-menu-runtime-cluster.test.mjs
+  tests/profile-open-flow-utils.test.mjs` bestanden (`27/27`).
+  `npm run build` bestanden.
+- Bundle-Guard Schritt 157:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1053528` von `1052000` (`+1528`), gzip `286301` von
+  `285000` (`+1301`). Das Budget ist weiter rot; der kleine Public-Menu-
+  Zuverlaessigkeitsfix wurde nicht fuer eine riskante Mikro-Optimierung
+  zurueckgebaut.
+- Bewusst nicht geaendert in Schritt 157:
+  keine Firebase Rules, keine Functions, keine Datenmigration, kein Deploy,
+  keine automatische Public-Freigabe von `menuItems`, keine Public-/App-
+  Routing-Verschiebung, keine UI-Design-Aenderung, kein Browser-Smoke durch
+  Codex. Beitraege wurden nicht umgebaut, weil sie keinen persistenten
+  leeren Handy-Cache wie Menu nutzen; sie lesen live aus
+  `restaurants/{id}/socialPosts` und filtern auf aktive Posts mit URL.
+- Manuelle Testliste Schritt 157:
+  Auf einem Handy ein betroffenes Public-/QR-Menu mehrfach hart refreshen.
+  Erwartung: ein alter leerer Handy-Cache darf nicht final `Keine Produkte`
+  anzeigen, wenn Firebase inzwischen Public-Menu-Items hat; der sichtbare
+  Load muss live nachladen und Produkte anzeigen. Danach auf Desktop denselben
+  Public-/QR-Link testen. Danach Menu -> Beitraege -> Menu wechseln und
+  pruefen, dass Menu nicht erst durch den Beitraege-Tab wiederkommt. Zuletzt
+  ein wirklich leeres Public-Menu pruefen: nach erfolgreichem Firebase-Read
+  darf `Keine Produkte` weiterhin korrekt erscheinen.
+
 - Schritt 156 ist abgeschlossen: Der sichtbare Public-Menu-Fehler aus Schritt
   155 wurde fuer transiente Public-Reads wieder entfernt und durch stillen
   Auto-Retry ersetzt.

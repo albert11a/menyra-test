@@ -2039,6 +2039,9 @@ export function createSessionDataRuntimeController({
       && isVisiblePublicMenuSurface(safeRestaurantId, safeSource)
       && shouldPreserveVisibleMenuTruth;
     const shouldPrioritizeVisibleMenuTruth = prioritizeVisibleMenuTruth;
+    const shouldVerifyVisibleKnownEmptyCache = safeSource === "public"
+      && isVisiblePublicMenuSurface(safeRestaurantId, safeSource)
+      && !hasVisibleSettledMenuTruth;
     const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
     const queueFreshMenuReconcile = () => {
       if (menuFreshReconcileQueuedKeys.has(cacheKey)) return;
@@ -2055,7 +2058,8 @@ export function createSessionDataRuntimeController({
     const cachedItems = Array.isArray(cached?.items) ? cached.items : [];
     const cachedTruthState = String(cached?.truthState || "").trim().toLowerCase();
     const hasKnownEmptyMemoryMenu = cachedTruthState === "knownempty" || cachedTruthState === "known-empty";
-    if (cached && canUseMemoryMenuCache && (cachedItems.length || hasKnownEmptyMemoryMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
+    const bypassKnownEmptyMemoryMenu = shouldVerifyVisibleKnownEmptyCache && hasKnownEmptyMemoryMenu && !cachedItems.length;
+    if (cached && canUseMemoryMenuCache && (cachedItems.length || hasKnownEmptyMemoryMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed && !bypassKnownEmptyMemoryMenu) {
       const cachedPayload = {
         items: cachedItems,
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true,
@@ -2081,7 +2085,8 @@ export function createSessionDataRuntimeController({
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
     const hasKnownEmptyPersistedMenu = persistedMenu.truthState === "knownEmpty";
-    if ((persistedMenu.items.length || hasKnownEmptyPersistedMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
+    const bypassKnownEmptyPersistedMenu = shouldVerifyVisibleKnownEmptyCache && hasKnownEmptyPersistedMenu && !persistedMenu.items.length;
+    if ((persistedMenu.items.length || hasKnownEmptyPersistedMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed && !bypassKnownEmptyPersistedMenu) {
       const persistedPayload = {
         items: persistedMenu.items,
         statusBadgeVisible: persistedMenu.statusBadgeVisible,

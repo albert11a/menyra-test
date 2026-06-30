@@ -247,6 +247,43 @@ test("visible public menu loads canonical restaurant id instead of route alias",
   assert.deepEqual(state.menu.items, [{ id: "item-1", title: "Canonical item" }]);
 });
 
+test("visible public menu verifies cached known-empty state before showing no products", async () => {
+  const cacheStore = createObjectCacheStore();
+  const firstState = createVisibleMenuState();
+  const firstController = createController({
+    state: firstState,
+    cacheKeys: { menu: "menu-cache" },
+    cacheTtl: { menu: 10 * 60 * 1000 },
+    loadPublicMenuItemsFn: async () => [],
+    ...cacheStore
+  });
+
+  const firstResult = await firstController.loadMenuForRestaurant("restaurant-a", { source: "public" });
+  assert.equal(firstResult.truthState, "knownEmpty");
+
+  const refreshedState = createVisibleMenuState();
+  const loadedRestaurantIds = [];
+  const refreshedController = createController({
+    state: refreshedState,
+    cacheKeys: { menu: "menu-cache" },
+    cacheTtl: { menu: 10 * 60 * 1000 },
+    loadPublicMenuItemsFn: async (restaurantId) => {
+      loadedRestaurantIds.push(restaurantId);
+      return [{ id: "item-1", title: "Fresh item" }];
+    },
+    ...cacheStore
+  });
+
+  const refreshedResult = await refreshedController.loadMenuForRestaurant("restaurant-a", { source: "public" });
+
+  assert.deepEqual(loadedRestaurantIds, ["restaurant-a"]);
+  assert.equal(refreshedResult.truthState, "seeded");
+  assert.equal(refreshedState.menu.loading, false);
+  assert.equal(refreshedState.menu.error, "");
+  assert.equal(refreshedState.menu.truthState, "seeded");
+  assert.deepEqual(refreshedState.menu.items, [{ id: "item-1", title: "Fresh item" }]);
+});
+
 test("menu editor collection load leaves loading state when Firebase products do not return", async () => {
   const state = createVisibleMenuState();
   state.profileView = null;
