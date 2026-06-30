@@ -686,6 +686,7 @@ export function createPublicProfileDirectEntryController({
       pendingFollowRequest: false,
       postsLoaded: postsReadySeed,
       posts: seededPosts,
+      identityDocHydrated: false,
       identityTruthState: hasHeaderTruth ? "ready" : "loading",
       truthState: hasRouteSeededPosts
         ? "stable"

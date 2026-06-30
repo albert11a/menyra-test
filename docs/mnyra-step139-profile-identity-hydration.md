@@ -31,8 +31,12 @@ Schritte.
   wegen `avatar + identityTruthState: "ready"` ab. Stattdessen wird das echte
   Business-Dokument pro sichtbarer Restaurant-ID einmal nachgeholt und danach
   dedupliziert.
+- Im Review-Gate wurde `identityDocHydrated` als profil-eigener Marker
+  ergaenzt: neue Web-Direct-Seeds starten mit `false`, echte Doc-Patches setzen
+  `true`, und die Render-Signature beruecksichtigt den Marker sowie
+  `telephone` und `contactPhone`.
 - `apps/menyra-social/index.html` setzt den App-Build-Token auf
-  `2026-06-30-profile-identity-hydration-01`.
+  `2026-07-01-profile-identity-hydration-gate-01`.
 - Das Menyra-Social-Bundle wurde neu gebaut; dadurch wurde
   `apps/menyra-social/bundled/entry/social-app.js` aktualisiert.
 
@@ -60,14 +64,14 @@ Schritte.
 - `npm run build:menyra-social:bundle`: bestanden.
 - `npm run check:social-bundle`: nicht bestanden, weil der bestehende
   `entry/social-app.js` weiter ueber dem gesetzten Budget liegt
-  (`1.121.581` raw / `304.335` gzip Bytes gegen `1.052.000` raw /
+  (`1.121.821` raw / `304.408` gzip Bytes gegen `1.052.000` raw /
   `285.000` gzip Bytes).
 
 ## Manuell Testen
 
 1. App hart neu laden, bei Bedarf mit `?sw-reset=1`.
 2. Mit `?debug-build=1` pruefen, dass
-   `2026-06-30-profile-identity-hydration-01` aktiv ist.
+   `2026-07-01-profile-identity-hydration-gate-01` aktiv ist.
 3. Ein Business-Profil direkt ueber seine Public-URL oeffnen und refreshen.
 4. Direkt nach dem Refresh pruefen, dass die obere Business-Profilkarte Cover,
    Profilbild, Bio, Ort/Adresse, Telefon sowie Instagram/TikTok-Links nicht

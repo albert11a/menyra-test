@@ -1426,12 +1426,13 @@ Last updated: 2026-06-30
   Business-Identity-Hydration kennen jetzt dieselben Card-relevanten Felder
   wie Cover, Social, Telefon, Adresse, Ort, Bio und `coverImages`. Ein fruehes
   `identityTruthState: "ready"` mit Avatar verhindert den einmaligen echten
-  Business-Dokument-Read fuer die sichtbare Restaurant-ID nicht mehr. Der App-
-  Build-Token wurde auf `2026-06-30-profile-identity-hydration-01`
-  aktualisiert und das Bundle wurde neu gebaut. Nicht geaendert wurden UI/
-  Design, Menu-/Fokus-Wasserfall, Posts-Warmup, Lazy-Renderer-Skeleton, QR,
-  Cart, Checkout, Orders, Routing, Firebase Rules, Functions und Firestore-
-  Pfade.
+  Business-Dokument-Read fuer die sichtbare Restaurant-ID nicht mehr. Im
+  Review-Gate wurde `identityDocHydrated` als profil-eigener Marker ergaenzt
+  und in die Render-Signature aufgenommen. Der App-Build-Token wurde auf
+  `2026-07-01-profile-identity-hydration-gate-01` aktualisiert und das Bundle
+  wurde neu gebaut. Nicht geaendert wurden UI/Design, Menu-/Fokus-Wasserfall,
+  Posts-Warmup, Lazy-Renderer-Skeleton, QR, Cart, Checkout, Orders, Routing,
+  Firebase Rules, Functions und Firestore-Pfade.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -2024,7 +2025,7 @@ funktionieren.
 
 Zusaetzlich fuer Schritt 139 manuell pruefen: App hart neu laden, bei Bedarf
 mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
-`2026-06-30-profile-identity-hydration-01` aktiv sein. Ein Business-Profil
+`2026-07-01-profile-identity-hydration-gate-01` aktiv sein. Ein Business-Profil
 direkt ueber seine Public-URL oeffnen und refreshen. Die obere Business-
 Profilkarte darf vorhandene Cover-, Bio-, Ort-/Adress-, Telefon-, Instagram-
 und TikTok-Daten nicht dauerhaft verlieren. Danach `Beitraege`, `Info` und

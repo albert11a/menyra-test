@@ -543,6 +543,7 @@ export function createPublicProfileRuntimeController({
       const patch = buildBusinessProfileVisiblePatch(data, viewProfile, {
         includeIdentityTruthState: true
       });
+      patch.identityDocHydrated = true;
       Object.entries(patch).forEach(([key, value]) => assignIfDefined(key, value));
     } else {
       assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
@@ -911,11 +912,14 @@ export function createPublicProfileRuntimeController({
       String(profile.locationPlace || "").trim(),
       String(profile.address || "").trim(),
       String(profile.phone || "").trim(),
+      String(profile.telephone || "").trim(),
+      String(profile.contactPhone || "").trim(),
       String(profile.bio || "").trim(),
       String(profile.instagram || "").trim(),
       String(profile.instagramUrl || "").trim(),
       String(profile.tiktok || "").trim(),
       String(profile.tiktokUrl || "").trim(),
+      String(profile.identityDocHydrated === true ? "1" : "0"),
       String(profile.role || "").trim().toLowerCase(),
       String(profile.identityTruthState || "").trim().toLowerCase(),
       String(profile.truthState || "").trim().toLowerCase(),
@@ -1839,6 +1843,7 @@ export function createPublicProfileRuntimeController({
       ...(type ? { type, customerType: type } : {}),
       pendingFollowRequest: false,
       identityTruthState: "ready",
+      identityDocHydrated: true,
       posts: posts || []
     };
   }

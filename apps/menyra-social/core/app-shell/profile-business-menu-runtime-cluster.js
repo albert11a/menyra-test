@@ -413,7 +413,8 @@ export function createProfileBusinessMenuRuntimeCluster({
         includeIdentityTruthState: true
       }),
       restaurantId: safeRestaurantId,
-      canonicalRestaurantId: safeRestaurantId
+      canonicalRestaurantId: safeRestaurantId,
+      identityDocHydrated: true
     };
     return refreshVisiblePublicProfile(patch);
   };
@@ -434,7 +435,8 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!visibleTargetIds.has(restaurantId) && visibleProfileView.restaurantId !== restaurantId) return null;
     const currentAvatar = String(visibleProfileView.profile?.avatar || "").trim();
     const identityReady = String(visibleProfileView.profile?.identityTruthState || "").trim().toLowerCase() === "ready";
-    if (currentAvatar && identityReady && visiblePublicIdentityHydrationCompletedIds.has(restaurantId)) return null;
+    const identityDocHydrated = visibleProfileView.profile?.identityDocHydrated === true;
+    if (currentAvatar && identityReady && (identityDocHydrated || visiblePublicIdentityHydrationCompletedIds.has(restaurantId))) return null;
     const currentRequest = visiblePublicIdentityHydrationPromises.get(restaurantId);
     if (currentRequest) return currentRequest;
     const request = Promise.resolve(fetchBusinessProfileDoc({
