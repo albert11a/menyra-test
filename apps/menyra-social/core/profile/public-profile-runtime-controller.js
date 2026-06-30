@@ -7,6 +7,10 @@ import {
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
 import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
+import {
+  buildBusinessProfileVisiblePatch,
+  buildProfileCoverImagesSignature
+} from "./profile-visible-patch-utils.js";
 
 export function createPublicProfileRuntimeController({
   state = null,
@@ -528,16 +532,18 @@ export function createPublicProfileRuntimeController({
     let changed = false;
     const assignIfDefined = (key, value) => {
       if (value === undefined) return;
-      if (viewProfile[key] === value) return;
+      const sameValue = Array.isArray(value)
+        ? JSON.stringify(viewProfile[key] || []) === JSON.stringify(value)
+        : viewProfile[key] === value;
+      if (sameValue) return;
       viewProfile[key] = value;
       changed = true;
     };
     if (profile?.restaurantId) {
-      assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
-      assignIfDefined("following", data.followingCount ?? viewProfile.following);
-      assignIfDefined("avatar", data.logoUrl || data.logo || viewProfile.avatar);
-      assignIfDefined("name", data.name || data.restaurantName || viewProfile.name);
-      assignIfDefined("location", data.city || viewProfile.location);
+      const patch = buildBusinessProfileVisiblePatch(data, viewProfile, {
+        includeIdentityTruthState: true
+      });
+      Object.entries(patch).forEach(([key, value]) => assignIfDefined(key, value));
     } else {
       assignIfDefined("followers", data.followersCount ?? viewProfile.followers);
       assignIfDefined("following", data.followingCount ?? viewProfile.following);
@@ -895,8 +901,21 @@ export function createPublicProfileRuntimeController({
       String(profile.name || "").trim(),
       String(profile.handle || "").trim().toLowerCase(),
       String(profile.avatar || "").trim(),
+      String(profile.titleImageUrl || "").trim(),
+      String(profile.coverImageUrl || "").trim(),
+      String(profile.coverUrl || "").trim(),
+      String(profile.heroUrl || "").trim(),
+      buildProfileCoverImagesSignature(profile),
       String(profile.location || "").trim(),
+      String(profile.place || "").trim(),
+      String(profile.locationPlace || "").trim(),
+      String(profile.address || "").trim(),
+      String(profile.phone || "").trim(),
       String(profile.bio || "").trim(),
+      String(profile.instagram || "").trim(),
+      String(profile.instagramUrl || "").trim(),
+      String(profile.tiktok || "").trim(),
+      String(profile.tiktokUrl || "").trim(),
       String(profile.role || "").trim().toLowerCase(),
       String(profile.identityTruthState || "").trim().toLowerCase(),
       String(profile.truthState || "").trim().toLowerCase(),

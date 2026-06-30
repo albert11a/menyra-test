@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-06-27
+Last updated: 2026-06-30
 
 # Mnyra Current Phase
 
@@ -1417,6 +1417,21 @@ Last updated: 2026-06-27
   neu gebaut. Nicht geaendert wurden Firebase Rules, Functions,
   Firestore-Pfade, Restaurant-/Cafe-Editor, Travel, QR, Cart, Checkout,
   Orders, Routing und Marketplace-Produktlogik.
+- Schritt 139 ist abgeschlossen: Business-Profilkarten werden nach Refresh/
+  Cold-Start ueber einen gemeinsamen sichtbaren Identity-Patch vollstaendiger
+  nachhydratisiert.
+- Bewertung von Schritt 139: `bestanden mit kleinem Rest-Risiko`.
+- Wichtigster Effekt aus Schritt 139:
+  Web-Direct-Seed, Profil-Dokument-Patch, Render-Signature und sichtbare
+  Business-Identity-Hydration kennen jetzt dieselben Card-relevanten Felder
+  wie Cover, Social, Telefon, Adresse, Ort, Bio und `coverImages`. Ein fruehes
+  `identityTruthState: "ready"` mit Avatar verhindert den einmaligen echten
+  Business-Dokument-Read fuer die sichtbare Restaurant-ID nicht mehr. Der App-
+  Build-Token wurde auf `2026-06-30-profile-identity-hydration-01`
+  aktualisiert und das Bundle wurde neu gebaut. Nicht geaendert wurden UI/
+  Design, Menu-/Fokus-Wasserfall, Posts-Warmup, Lazy-Renderer-Skeleton, QR,
+  Cart, Checkout, Orders, Routing, Firebase Rules, Functions und Firestore-
+  Pfade.
 - Historischer Hinweis:
   Der fruehere fehlgeschlagene Versuch `4805fcf` bleibt als Archiv-Kontext bestehen;
   der jetzige Schritt 12 auf `junivitefinal` ersetzt diesen Stand.
@@ -1548,6 +1563,7 @@ Last updated: 2026-06-27
 - Referenz: [docs/mnyra-step136-shopping-brand-intro-card-fixed-shop.md](./mnyra-step136-shopping-brand-intro-card-fixed-shop.md)
 - Referenz: [docs/mnyra-step137-shopping-product-tile-no-press.md](./mnyra-step137-shopping-product-tile-no-press.md)
 - Referenz: [docs/mnyra-step138-shopping-profile-editor.md](./mnyra-step138-shopping-profile-editor.md)
+- Referenz: [docs/mnyra-step139-profile-identity-hydration.md](./mnyra-step139-profile-identity-hydration.md)
 
 ## Harte Invariante (verbindlich)
 
@@ -2005,6 +2021,17 @@ bearbeiten; im Dialog darf kein Restaurant-Typ `Speise/Getraenk` bzw.
 Shopping-Tab kurz gegenpruefen. Restaurant-/Cafe-Editor gegenpruefen, dass
 `Speisen`, `Getraenke` und `Restaurant Ads` dort weiter wie bisher
 funktionieren.
+
+Zusaetzlich fuer Schritt 139 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-06-30-profile-identity-hydration-01` aktiv sein. Ein Business-Profil
+direkt ueber seine Public-URL oeffnen und refreshen. Die obere Business-
+Profilkarte darf vorhandene Cover-, Bio-, Ort-/Adress-, Telefon-, Instagram-
+und TikTok-Daten nicht dauerhaft verlieren. Danach `Beitraege`, `Info` und
+`Menu` wechseln und ein zweites Business-Profil oeffnen; alte Social-, Cover-
+oder Adressdaten duerfen nicht in ein anderes Profil uebernommen werden. QR-
+Scan/QR-URL kurz gegenpruefen: Profil oeffnet weiter mit offenem Menu und
+unveraenderter Warenkorb-Logik.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

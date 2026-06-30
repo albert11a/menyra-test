@@ -9,6 +9,7 @@ import {
   normalizePublicBusinessSlugCore
 } from "../router/public-business-route-utils.js";
 import { isBootstrapRestaurantPreviewRecordCore } from "../common/restaurant-identity-runtime-controller.js";
+import { buildBusinessProfileVisiblePatch } from "./profile-visible-patch-utils.js";
 
 function safeLower(value = "") {
   return String(value || "").trim().toLowerCase();
@@ -635,6 +636,20 @@ export function createPublicProfileDirectEntryController({
     const seedBio = String(routeIdentity?.bio || "").trim();
     const seedFollowers = normalizeCountOrNull(routeIdentity?.followers);
     const seedFollowing = normalizeCountOrNull(routeIdentity?.following);
+    const seedIdentityPatch = buildBusinessProfileVisiblePatch(
+      {
+        ...(preview && typeof preview === "object" ? preview : {}),
+        ...(routeIdentity && typeof routeIdentity === "object" ? routeIdentity : {})
+      },
+      {
+        name: seedBusinessName,
+        avatar: seedAvatar,
+        location: seedLocation,
+        bio: seedBio,
+        followers: seedFollowers,
+        following: seedFollowing
+      }
+    );
     const hasCanonicalSnapshot = !!routeSnapshot;
     const seededPosts = routePostsState === "seeded"
       ? (routePostsSeed.length
@@ -652,14 +667,15 @@ export function createPublicProfileDirectEntryController({
       };
     }
     const seededProfile = {
-      name: seedBusinessName,
+      ...seedIdentityPatch,
+      name: seedIdentityPatch.name || seedBusinessName,
       handle: seedHandle,
       uid: "",
-      bio: routeBioState === "knownEmpty" ? "" : seedBio,
-      avatar: seedAvatar,
-      location: seedLocation,
-      followers: seedFollowers,
-      following: seedFollowing,
+      bio: routeBioState === "knownEmpty" ? "" : (seedIdentityPatch.bio || seedBio),
+      avatar: seedIdentityPatch.avatar || seedAvatar,
+      location: seedIdentityPatch.location || seedLocation,
+      followers: seedIdentityPatch.followers ?? seedFollowers,
+      following: seedIdentityPatch.following ?? seedFollowing,
       privateAccount: false,
       role: "business",
       restaurantId: entryRestaurantId,

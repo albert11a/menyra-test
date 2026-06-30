@@ -1,6 +1,7 @@
 import { createBusinessAccountsRuntimeController } from "../business-accounts/business-accounts-runtime-controller.js";
 import { createProfileMenuFocusRenderBoundary } from "../profile/profile-menu-focus-render-boundary.js";
 import { getMenuRestaurantForProfileCore } from "../profile/profile-menu-focus-utils.js";
+import { buildBusinessProfileVisiblePatch } from "../profile/profile-visible-patch-utils.js";
 import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
 
 export function createProfileBusinessMenuRuntimeCluster({
@@ -54,6 +55,7 @@ export function createProfileBusinessMenuRuntimeCluster({
   const visiblePublicPostsRetryTimers = new Map();
   const visiblePublicPostsFreshReconcileKeys = new Set();
   const visiblePublicIdentityHydrationPromises = new Map();
+  const visiblePublicIdentityHydrationCompletedIds = new Set();
   const visiblePublicFocusPrefetchPromises = new Map();
   const visiblePublicFocusLoadPromises = new Map();
   const visiblePublicMenuLoadPromises = new Map();
@@ -391,30 +393,6 @@ export function createProfileBusinessMenuRuntimeCluster({
     }, currentPosts);
   };
 
-  const resolveBusinessAvatarUrl = (data = {}) => String(
-    data?.logoUrl
-    || data?.logoURL
-    || data?.logo
-    || data?.avatarUrl
-    || data?.avatarURL
-    || data?.avatar
-    || data?.photoURL
-    || data?.photoUrl
-    || data?.imageUrl
-    || data?.imageURL
-    || data?.image
-    || data?.coverLogoUrl
-    || ""
-  ).trim();
-
-  const resolveBusinessTitleImageUrl = (data = {}) => String(
-    data?.titleImageUrl
-    || data?.coverImageUrl
-    || data?.coverUrl
-    || data?.heroUrl
-    || ""
-  ).trim();
-
   const normalizeProfileDocPayload = (profileDoc = null) => {
     const data = profileDoc?.data && typeof profileDoc.data === "object"
       ? profileDoc.data
@@ -430,39 +408,13 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!visibleProfileView) return false;
     const visibleTargetIds = collectVisibleMenuTargetIds(visibleProfileView.profile);
     if (!visibleTargetIds.has(safeRestaurantId) && visibleProfileView.restaurantId !== safeRestaurantId) return false;
-    const avatar = resolveBusinessAvatarUrl(data);
-    const titleImageUrl = resolveBusinessTitleImageUrl(data);
-    const name = String(data.name || data.restaurantName || data.displayName || data.businessName || "").trim();
-    const location = String(data.city || data.address || data.location || "").trim();
-    const bio = String(data.bio || data.description || data.about || "").trim();
-    const followers = data.followersCount ?? data.followers;
-    const following = data.followingCount ?? data.following;
     const patch = {
+      ...buildBusinessProfileVisiblePatch(data, visibleProfileView.profile, {
+        includeIdentityTruthState: true
+      }),
       restaurantId: safeRestaurantId,
       canonicalRestaurantId: safeRestaurantId
     };
-    if (avatar) patch.avatar = avatar;
-    if (titleImageUrl) {
-      patch.titleImageUrl = titleImageUrl;
-      patch.coverImageUrl = data.coverImageUrl || titleImageUrl;
-      patch.coverUrl = data.coverUrl || titleImageUrl;
-      patch.heroUrl = data.heroUrl || titleImageUrl;
-    }
-    if (name) patch.name = name;
-    if (location) patch.location = location;
-    if (data.address) patch.address = data.address;
-    if (data.phone) patch.phone = data.phone;
-    if (data.instagram || data.insta) patch.instagram = data.instagram || data.insta;
-    if (data.instagramUrl) patch.instagramUrl = data.instagramUrl;
-    if (data.tiktok || data.tikTok) patch.tiktok = data.tiktok || data.tikTok;
-    if (data.tiktokUrl || data.tikTokUrl) patch.tiktokUrl = data.tiktokUrl || data.tikTokUrl;
-    if (Array.isArray(data.coverImages)) patch.coverImages = data.coverImages;
-    if (bio) patch.bio = bio;
-    if (followers !== undefined) patch.followers = followers;
-    if (following !== undefined) patch.following = following;
-    if (avatar || titleImageUrl || name || location || bio || followers !== undefined || following !== undefined) {
-      patch.identityTruthState = "ready";
-    }
     return refreshVisiblePublicProfile(patch);
   };
 
@@ -482,7 +434,7 @@ export function createProfileBusinessMenuRuntimeCluster({
     if (!visibleTargetIds.has(restaurantId) && visibleProfileView.restaurantId !== restaurantId) return null;
     const currentAvatar = String(visibleProfileView.profile?.avatar || "").trim();
     const identityReady = String(visibleProfileView.profile?.identityTruthState || "").trim().toLowerCase() === "ready";
-    if (currentAvatar && identityReady) return null;
+    if (currentAvatar && identityReady && visiblePublicIdentityHydrationCompletedIds.has(restaurantId)) return null;
     const currentRequest = visiblePublicIdentityHydrationPromises.get(restaurantId);
     if (currentRequest) return currentRequest;
     const request = Promise.resolve(fetchBusinessProfileDoc({
@@ -494,6 +446,8 @@ export function createProfileBusinessMenuRuntimeCluster({
         const resolvedRestaurantId = id || restaurantId;
         if (data && typeof data === "object") {
           refreshVisibleBusinessIdentityFromDoc(resolvedRestaurantId, data);
+          visiblePublicIdentityHydrationCompletedIds.add(restaurantId);
+          visiblePublicIdentityHydrationCompletedIds.add(resolvedRestaurantId);
         }
       })
       .catch(() => null)
