@@ -5,6 +5,30 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Nachtrag 2026-06-30: Die nach Schritt 151 kurz getesteten Folgeversuche
+  fuer Public-Focus/Menu-Koordination und frueheren Public-Posts-Read wurden
+  wieder entfernt. Der Nutzer meldete als Regression, dass nach zweimaligem
+  Refresh keine Focus-, Menu- oder Beitragsbereiche mehr erschienen.
+- Ruecknahme:
+  Die Dokumentations-/Code-Commits `7b0adc2c`, `9f615ab5`, `da780a06` und
+  `88463e38` wurden per Revert zurueckgenommen:
+  `835d87eb`, `ca3cfb78`, `c510eb3f`, `c0533d94`.
+- Ergebnis der Ruecknahme:
+  Die betroffene Public-Profile/Menu/Posts-Logik und die gebauten Bundle-
+  Dateien stehen wieder auf dem Zustand vor diesen zwei Folgeversuchen. Es
+  wurde keine neue Lade-Logik daruebergelegt.
+- Bewusst nicht geaendert im Ruecknahme-Schritt:
+  keine UI-/Design-Aenderung, keine Routing-Aenderung, keine Firebase Rules,
+  keine Functions, keine Datenmigration, kein Deploy, keine Production-
+  Mutation.
+- Manuelle Testliste Ruecknahme:
+  Public-Profil oeffnen, zweimal hart refreshen, danach zwischen Profil,
+  Menu und Beitraege wechseln. Erwartung fuer diesen Ruecknahme-Schritt ist
+  nur, dass die durch die zwei Folgeversuche eingefuehrte Verschlechterung
+  nicht mehr aktiv ist. Falls Focus/Menu/Beitraege weiterhin haengen, muss
+  der naechste Schritt vom stabilen Schritt-151-Stand aus neu diagnostizieren
+  statt die revertete Logik erneut einzubauen.
+
 - Schritt 151 ist abgeschlossen: Phase 3 der Ladeweg-Vereinfachung zieht die
   canonical Restaurant-ID frueher in StartupRouteRuntime/PublicRoute-/QR-
   Bootstrap, ohne UI-/Design-Aenderung.
