@@ -1145,6 +1145,10 @@ export function createSessionDataRuntimeController({
     state.bootstrapRestaurantPreview = [];
     state.userPosts = [];
     state.businessPosts = [];
+    state.profileLoadVersion = Number(state.profileLoadVersion || 0) + 1;
+    state.profileLoadTargetKey = "";
+    state.profileLoadTarget = null;
+    state.__pendingProfileTarget = null;
     state.profileView = null;
     state.hotelCardEditor = null;
     state.profileModal = { open: false, profile: null };

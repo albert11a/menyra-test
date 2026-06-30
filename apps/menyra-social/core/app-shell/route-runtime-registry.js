@@ -26,23 +26,30 @@ function hasPublicProfileView(state = {}) {
   return !!(state?.profileView && typeof state.profileView === "object");
 }
 
+function hasPendingPublicProfileTarget(state = {}) {
+  const target = state?.__pendingProfileTarget;
+  return !!(target && typeof target === "object" && target.active !== false);
+}
+
 function getActiveWebDirectEntry(state = {}) {
   const entry = state?.__webDirectEntry;
   return entry && typeof entry === "object" && entry.active === true ? entry : null;
 }
 
 function isPublicMenuRuntime(state = {}) {
-  if (!hasPublicProfileView(state)) return false;
+  if (!hasPublicProfileView(state) && !hasPendingPublicProfileTarget(state)) return false;
   const profileView = state.profileView || {};
+  const pendingTarget = state.__pendingProfileTarget || {};
   const directEntry = getActiveWebDirectEntry(state);
   const routePayload = profileView.routePayload && typeof profileView.routePayload === "object"
     ? profileView.routePayload
-    : null;
-  const profileTopTab = normalizeRouteKey(state.profileTopTab || profileView.topTab);
-  const profileContentTab = normalizeRouteKey(state.profileContentTab || profileView.contentTab);
+    : (pendingTarget.routePayload && typeof pendingTarget.routePayload === "object" ? pendingTarget.routePayload : null);
+  const profileTopTab = normalizeRouteKey(state.profileTopTab || profileView.topTab || pendingTarget.topTab);
+  const profileContentTab = normalizeRouteKey(state.profileContentTab || profileView.contentTab || pendingTarget.contentTab);
   const menuAccessSource = normalizeRouteKey(
     profileView.menuAccessSource
     || routePayload?.menuAccessSource
+    || pendingTarget.menuAccessSource
     || directEntry?.menuAccessSource
   );
   return profileTopTab === "menu"
@@ -62,7 +69,7 @@ export function resolveSocialRouteRuntimeKey(state = {}) {
   if (activeTab === "map") return "map";
   if (activeTab === "staff") return "staff";
   if (activeTab === "businessaccounts") return "businessAccounts";
-  if (activeTab === "profile" && hasPublicProfileView(state)) {
+  if (activeTab === "profile" && (hasPublicProfileView(state) || hasPendingPublicProfileTarget(state))) {
     return isPublicMenuRuntime(state) ? "publicMenu" : "publicBusiness";
   }
   return "defaultSocial";
@@ -103,7 +110,7 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
     if (activeTab === "chat") return renderChat();
     if (activeTab === "search") return renderSearch();
     if (activeTab === "map") return renderMap();
-    if (activeTab === "profile") return hasPublicProfileView(state) ? renderPublicProfile() : renderOwnProfile();
+    if (activeTab === "profile") return (hasPublicProfileView(state) || hasPendingPublicProfileTarget(state)) ? renderPublicProfile() : renderOwnProfile();
     if (activeTab === "menu") return renderMenuAdmin();
     if (activeTab === "orders") return renderOrders();
     if (activeTab === "staff") return renderStaff();

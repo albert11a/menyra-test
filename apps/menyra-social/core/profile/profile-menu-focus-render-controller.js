@@ -1994,7 +1994,19 @@ function renderPublicProfileSurface(
 
 function renderPublicProfileView() {
   const view = state.profileView;
-  if (!view || !view.profile) return "";
+  if (!view || !view.profile) {
+    const pendingTarget = state?.__pendingProfileTarget && typeof state.__pendingProfileTarget === "object" && state.__pendingProfileTarget.active !== false
+      ? state.__pendingProfileTarget
+      : null;
+    if (!pendingTarget) return "";
+    return `
+      <div class="app-content-inline py-16">
+        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.loading", "Profil wird geladen..."))}</div>
+        </div>
+      </div>
+    `;
+  }
   const profile = view.profile;
   const posts = view.posts || profile.posts || [];
   const topTab = resolveProfilePrimaryTopTab(profile);

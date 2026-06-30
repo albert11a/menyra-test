@@ -1,4 +1,8 @@
 import { mapFollowingSnapshotCore } from "./following-listener-utils.js";
+import {
+  createProfileTargetTransaction,
+  resolveProfileTargetKeyFromProfile
+} from "../profile/profile-target-transaction.js";
 
 export function createFollowRuntimeController(deps = {}) {
   const state = deps.state;
@@ -19,6 +23,11 @@ export function createFollowRuntimeController(deps = {}) {
   const getLastRenderMode = typeof deps.getLastRenderModeFn === "function"
     ? deps.getLastRenderModeFn
     : (() => "");
+  const profileTransaction = createProfileTargetTransaction({
+    state,
+    render
+  });
+  const patchVisibleProfileIfCurrent = profileTransaction.patchVisibleProfileIfCurrent;
 
   let followingUnsub = null;
 
@@ -82,7 +91,10 @@ export function createFollowRuntimeController(deps = {}) {
     if (state.profileView?.profile) {
       const viewHandle = normalizeFollowHandle(state.profileView.profile.handle || "");
       if (viewHandle && nextHandles.includes(viewHandle)) {
-        state.profileView.profile.pendingFollowRequest = false;
+        patchVisibleProfileIfCurrent(
+          resolveProfileTargetKeyFromProfile(state.profileView.profile, state.profileView),
+          { profile: { pendingFollowRequest: false } }
+        );
       }
     }
     saveFollowing(nextHandles, nextTargetIds);

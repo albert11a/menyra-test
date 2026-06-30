@@ -3,6 +3,7 @@ import {
   normalizePublicBusinessSlugCore
 } from "../router/public-business-route-utils.js";
 import { markMnyraLoadingEventCore as markLoadingEvent } from "../common/loading-diagnostics-utils.js";
+import { normalizeProfileTargetKey } from "./profile-target-transaction.js";
 
 function pickBusinessProfileText(...values) {
   for (const value of values) {
@@ -144,6 +145,10 @@ export function createProfileOpenFlowControllerCore({
   hydrateRestaurantsByIds,
   normalizeExternalProfile,
   showPublicProfile,
+  beginProfileLoad,
+  isCurrentProfileLoad,
+  cancelProfileLoad,
+  patchVisibleProfileIfCurrent,
   fetchBusinessProfileDoc,
   loadBusinessPostsForRestaurant,
   normalizeExternalUserProfile,
@@ -181,6 +186,38 @@ export function createProfileOpenFlowControllerCore({
   const showPublicProfileView = typeof showPublicProfile === "function"
     ? showPublicProfile
     : (() => {});
+  const beginProfileLoadFn = typeof beginProfileLoad === "function"
+    ? beginProfileLoad
+    : ((target = {}) => {
+      const targetKey = normalizeProfileTargetKey(target);
+      const loadId = Number(state?.profileLoadVersion || 0) + 1;
+      if (state && typeof state === "object") {
+        state.profileLoadVersion = loadId;
+        state.profileLoadTargetKey = targetKey;
+        state.profileLoadTarget = { ...(target || {}), targetKey, loadId, active: true };
+        state.__pendingProfileTarget = state.profileLoadTarget;
+      }
+      return { loadId, targetKey, target: state?.profileLoadTarget || null };
+    });
+  const isCurrentProfileLoadFn = typeof isCurrentProfileLoad === "function"
+    ? isCurrentProfileLoad
+    : ((loadId, targetKey = "") => (
+      Number(loadId || 0) === Number(state?.profileLoadVersion || 0)
+      && (!targetKey || String(targetKey || "") === String(state?.profileLoadTargetKey || ""))
+    ));
+  const cancelProfileLoadFn = typeof cancelProfileLoad === "function"
+    ? cancelProfileLoad
+    : ((reason = "") => {
+      if (!state || typeof state !== "object") return;
+      state.profileLoadVersion = Number(state.profileLoadVersion || 0) + 1;
+      state.profileLoadTargetKey = "";
+      state.profileLoadTarget = null;
+      state.__pendingProfileTarget = null;
+      state.__lastProfileLoadCancelReason = String(reason || "").trim();
+    });
+  const patchVisibleProfileIfCurrentFn = typeof patchVisibleProfileIfCurrent === "function"
+    ? patchVisibleProfileIfCurrent
+    : (() => false);
   const fetchBusinessProfile = typeof fetchBusinessProfileDoc === "function"
     ? fetchBusinessProfileDoc
     : (() => Promise.resolve(null));
@@ -347,6 +384,7 @@ export function createProfileOpenFlowControllerCore({
   const openOwnBusinessProfile = ({ showBack = true, topTab } = {}) => {
     const prevTab = state?.activeTab || "feed";
     const nextTopTab = topTab === "menu" ? "menu" : "profile";
+    cancelProfileLoadFn("open-own-business-profile");
     queueProfileHistoryPush({
       showBack,
       previousTab: prevTab,
@@ -476,6 +514,9 @@ export function createProfileOpenFlowControllerCore({
     let targetRestaurantLookupId = "";
     let targetMenuRestaurantId = "";
     let targetCanonicalRestaurantId = "";
+    let activeProfileLoadId = 0;
+    let activeProfileTargetKey = "";
+    let routeSnapshotRestaurantId = "";
     try {
       const businessTarget = normalizeBusinessProfileTarget(input);
       const safeName = String(businessTarget.name || "").trim();
@@ -548,6 +589,59 @@ export function createProfileOpenFlowControllerCore({
           lookupId: targetRestaurantLookupId
         })
       });
+      const profileLoad = beginProfileLoadFn({
+        kind: "business",
+        restaurantId: targetMenuRestaurantId || targetRestaurantLookupId,
+        canonicalRestaurantId: targetCanonicalRestaurantId,
+        lookupId: targetRestaurantLookupId || lookupText,
+        topTab: resolvedTopTab,
+        contentTab: resolvedContentTab,
+        surface: resolvedTopTab === "menu" ? "menu" : "profile",
+        menuAccessSource: safeMenuAccessSource === "qr" ? "qr" : "",
+        tableNumber: safeMenuAccessSource === "qr" ? safeTableNumber : 0,
+        showBack
+      });
+      const profileLoadId = profileLoad.loadId;
+      const profileTargetKey = profileLoad.targetKey;
+      activeProfileLoadId = profileLoadId;
+      activeProfileTargetKey = profileTargetKey;
+      const isProfileOpenLoadCurrent = () => isCurrentProfileLoadFn(profileLoadId, profileTargetKey);
+      const commitPublicProfileForLoad = (profileValue, postsValue, options = {}) => {
+        if (!isProfileOpenLoadCurrent()) return false;
+        showPublicProfileView(profileValue, postsValue, {
+          ...options,
+          profileLoadId,
+          profileTargetKey
+        });
+        return true;
+      };
+      state.activeTab = "profile";
+      state.profileTopTab = resolvedTopTab;
+      state.profileContentTab = resolvedContentTab;
+      state.profileModal = { open: false, profile: null };
+      state.profileViewMode = "grid";
+      state.profilePostMenuId = null;
+      state.drawerOpen = false;
+      state.profileBackTab = showBack ? (state.profileBackTab || "feed") : "";
+      if (isDirectWebEntryRequest) {
+        state.__webDirectEntry = {
+          ...(state.__webDirectEntry && typeof state.__webDirectEntry === "object" ? state.__webDirectEntry : {}),
+          active: true,
+          restaurantId: targetMenuRestaurantId || targetRestaurantLookupId,
+          canonicalRestaurantId: targetCanonicalRestaurantId,
+          surface: resolvedTopTab === "menu" ? "menu" : "profile",
+          topTab: resolvedTopTab,
+          contentTab: resolvedContentTab,
+          menuAccessSource: safeMenuAccessSource === "qr" ? "qr" : "",
+          tableNumber: safeMenuAccessSource === "qr" ? safeTableNumber : 0,
+          explicitLanding: isLandingTopTab,
+          menuFirst: resolvedTopTab === "menu",
+          postsFirst: resolvedTopTab === "profile",
+          webPriority: isWebRoutePriorityPath,
+          phase: "loading",
+          ts: Date.now()
+        };
+      }
       const resolveDirectRouteBootstrapSeed = () => {
         const candidate = state?.__publicRouteBootstrap && typeof state.__publicRouteBootstrap === "object"
           ? state.__publicRouteBootstrap
@@ -615,7 +709,7 @@ export function createProfileOpenFlowControllerCore({
           || String(routeIdentitySeed?.avatar || "").trim()
         ) ? "seeded" : "unknown"
       );
-      const routeSnapshotRestaurantId = String(
+      routeSnapshotRestaurantId = String(
         routeSnapshotSeed?.restaurantId
         || routeBootstrapSeed?.restaurantId
         || ""
@@ -641,6 +735,7 @@ export function createProfileOpenFlowControllerCore({
           .filter(Boolean)
       );
       const isDirectWebRouteStillCurrent = () => {
+        if (!isProfileOpenLoadCurrent()) return false;
         if (!isDirectWebEntryRequest) return true;
         if (String(state?.activeTab || "").trim().toLowerCase() !== "profile") return false;
         const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
@@ -1245,19 +1340,16 @@ export function createProfileOpenFlowControllerCore({
       );
 
       if (!isDirectWebRouteStillCurrent()) return;
-      showPublicProfileView(loadingProfileWithSurfaceTruth, loadingProfileWithSurfaceTruth.posts, {
-        showBack,
-        topTab: resolvedTopTab,
-        contentTab: resolvedContentTab,
-        menuAccessSource: safeMenuAccessSource,
-        tableNumber: safeTableNumber,
-        directEntry: loadingDirectEntry,
-        routePayload: buildRoutePayloadMeta("seeded", {
-          profile: loadingProfileWithSurfaceTruth,
-          posts: loadingProfileWithSurfaceTruth.posts,
-          directEntry: loadingDirectEntry
-        })
-      });
+      if (state.__pendingProfileTarget && typeof state.__pendingProfileTarget === "object") {
+        state.__pendingProfileTarget = {
+          ...state.__pendingProfileTarget,
+          routePayload: buildRoutePayloadMeta("seeded", {
+            profile: loadingProfileWithSurfaceTruth,
+            posts: loadingProfileWithSurfaceTruth.posts,
+            directEntry: loadingDirectEntry
+          })
+        };
+      }
 
       const canWarmPublicMenuBundle = !!(loadingCanonicalRestaurantId || targetMenuRestaurantId)
         && !isLandingTopTab
@@ -1286,9 +1378,7 @@ export function createProfileOpenFlowControllerCore({
         && !!routeSnapshotSeed
         && routeIdentityState === "seeded"
         && !!loadingCanonicalRestaurantId;
-      if (canShortCircuitNormalWebDirectMenuPath) {
-        return;
-      }
+      void canShortCircuitNormalWebDirectMenuPath;
 
       const profileLookupRestaurantId = resolveCanonicalRestaurantIdCandidate(
         targetCanonicalRestaurantId,
@@ -1339,19 +1429,16 @@ export function createProfileOpenFlowControllerCore({
               postsStatus: "ready"
             });
             const earlyPostsDirectEntry = buildDirectEntryMeta("ready");
-            showPublicProfileView(earlyPostsProfile, result.posts, {
-              showBack,
-              topTab: resolvedTopTab,
-              contentTab: resolvedContentTab,
-              menuAccessSource: safeMenuAccessSource,
-              tableNumber: safeTableNumber,
-              directEntry: earlyPostsDirectEntry,
-              routePayload: buildRoutePayloadMeta("ready", {
-                profile: earlyPostsProfile,
-                posts: result.posts,
-                directEntry: earlyPostsDirectEntry
-              })
-            });
+            if (state.__pendingProfileTarget && typeof state.__pendingProfileTarget === "object") {
+              state.__pendingProfileTarget = {
+                ...state.__pendingProfileTarget,
+                routePayload: buildRoutePayloadMeta("ready", {
+                  profile: earlyPostsProfile,
+                  posts: result.posts,
+                  directEntry: earlyPostsDirectEntry
+                })
+              };
+            }
           })
           .catch(() => null);
       }
@@ -1420,7 +1507,7 @@ export function createProfileOpenFlowControllerCore({
       if (!isDirectWebRouteStillCurrent()) return;
       if (state.activeTab !== "profile") return;
       const visibleRestaurantId = getVisibleProfileRestaurantId();
-      if (!restaurantMatchesRouteTarget(visibleRestaurantId)) return;
+      if (visibleRestaurantId && !restaurantMatchesRouteTarget(visibleRestaurantId)) return;
       const interimPosts = stableBusinessPosts.length
         ? stableBusinessPosts
         : [];
@@ -1437,19 +1524,16 @@ export function createProfileOpenFlowControllerCore({
         (isMenuTopTab || interimPosts.length > 0 || routePostsState === "knownEmpty") ? "ready" : "loading"
       );
 
-      showPublicProfileView(resolvedInterim, interimPosts, {
-        showBack,
-        topTab: resolvedTopTab,
-        contentTab: resolvedContentTab,
-        menuAccessSource: safeMenuAccessSource,
-        tableNumber: safeTableNumber,
-        directEntry: resolvedInterimDirectEntry,
-        routePayload: buildRoutePayloadMeta(resolvedInterimDirectEntry.phase, {
-          profile: resolvedInterim,
-          posts: interimPosts,
-          directEntry: resolvedInterimDirectEntry
-        })
-      });
+      if (state.__pendingProfileTarget && typeof state.__pendingProfileTarget === "object") {
+        state.__pendingProfileTarget = {
+          ...state.__pendingProfileTarget,
+          routePayload: buildRoutePayloadMeta(resolvedInterimDirectEntry.phase, {
+            profile: resolvedInterim,
+            posts: interimPosts,
+            directEntry: resolvedInterimDirectEntry
+          })
+        };
+      }
 
       const resolvedRestaurantId = String(
         resolvedProfileRestaurantId
@@ -1511,7 +1595,7 @@ export function createProfileOpenFlowControllerCore({
       const latestRestaurantId = getVisibleProfileRestaurantId();
       if (!isDirectWebRouteStillCurrent()) return;
       if (state.activeTab !== "profile") return;
-      if (!restaurantMatchesRouteTarget(latestRestaurantId)) return;
+      if (latestRestaurantId && !restaurantMatchesRouteTarget(latestRestaurantId)) return;
 
       const resolvedPosts = Array.isArray(posts) ? posts : [];
       const resolvedPostsStatus = resolvedPosts.length > 0
@@ -1530,27 +1614,8 @@ export function createProfileOpenFlowControllerCore({
       }), resolvedRestaurantId);
       const resolvedReadyDirectEntry = buildDirectEntryMeta("ready");
       const safeLandingStep = Math.max(0, Number(state?.profileLandingStep || 0) || 0);
-      if (isLandingTopTab && safeLandingStep < 2) {
-        const liveView = state?.profileView;
-        const liveProfile = liveView?.profile;
-        const liveRestaurantId = String(
-          liveProfile?.canonicalRestaurantId
-          || liveProfile?.restaurantId
-          || ""
-        ).trim();
-        if (liveView && liveProfile && (!liveRestaurantId || liveRestaurantId === resolvedRestaurantId)) {
-          liveView.posts = resolvedWithPosts.posts;
-          liveView.profile = withCanonicalRestaurantId(applySurfaceTruthPatch({
-            ...liveProfile,
-            posts: resolvedWithPosts.posts
-          }, {
-            identityStatus: "ready",
-            postsStatus: resolvedPostsStatus
-          }), resolvedRestaurantId);
-        }
-        return;
-      }
-      showPublicProfileView(resolvedWithPosts, resolvedWithPosts.posts, {
+      void safeLandingStep;
+      commitPublicProfileForLoad(resolvedWithPosts, resolvedWithPosts.posts, {
         showBack,
         topTab: resolvedTopTab,
         contentTab: resolvedContentTab,
@@ -1565,6 +1630,7 @@ export function createProfileOpenFlowControllerCore({
       });
       if (canWarmPublicMenuBundle && isWebPostsFirstPath && typeof setTimeout === "function") {
         setTimeout(() => {
+          if (!isProfileOpenLoadCurrent()) return;
           const warmCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
             resolvedRestaurantId,
             loadingCanonicalRestaurantId,
@@ -1603,6 +1669,7 @@ export function createProfileOpenFlowControllerCore({
       }
       if (reusedInitialPostsForFinalProfile && typeof setTimeout === "function") {
         setTimeout(() => {
+          if (!isProfileOpenLoadCurrent()) return;
           const liveView = state?.profileView;
           const liveProfile = liveView?.profile;
           const liveRestaurantId = String(
@@ -1624,6 +1691,7 @@ export function createProfileOpenFlowControllerCore({
                 || ""
               ).trim();
               if (state.activeTab !== "profile" || !currentRestaurantId || !restaurantMatchesRouteTarget(currentRestaurantId)) return;
+              if (!isProfileOpenLoadCurrent()) return;
               const currentPosts = Array.isArray(currentView?.posts) ? currentView.posts : [];
               if (buildPostsSignature(currentPosts) === buildPostsSignature(nextPosts)) return;
               const nextStatus = nextPosts.length ? "ready" : "empty";
@@ -1637,7 +1705,7 @@ export function createProfileOpenFlowControllerCore({
               const nextDirectEntry = currentView?.directEntry && typeof currentView.directEntry === "object"
                 ? currentView.directEntry
                 : resolvedReadyDirectEntry;
-              showPublicProfileView(nextProfile, nextPosts, {
+              commitPublicProfileForLoad(nextProfile, nextPosts, {
                 showBack,
                 topTab: state?.profileTopTab || resolvedTopTab,
                 contentTab: state?.profileContentTab || resolvedContentTab,
@@ -1656,6 +1724,7 @@ export function createProfileOpenFlowControllerCore({
       }
     } catch (err) {
       console.error(err);
+      if (activeProfileLoadId && !isCurrentProfileLoadFn(activeProfileLoadId, activeProfileTargetKey)) return;
       const liveView = state?.profileView;
       const liveProfile = liveView?.profile;
       const liveRestaurantId = String(liveProfile?.restaurantId || "").trim();
@@ -1690,7 +1759,7 @@ export function createProfileOpenFlowControllerCore({
         const resolvedIdentityStatus = livePosts.length
           ? "ready"
           : (liveIdentityState === "ready" ? "ready" : "error");
-        liveView.profile = withCanonicalRestaurantId(applySurfaceTruthPatch({
+        const nextProfile = withCanonicalRestaurantId(applySurfaceTruthPatch({
           ...liveProfile,
           posts: livePosts
         }, {
@@ -1701,7 +1770,9 @@ export function createProfileOpenFlowControllerCore({
           targetCanonicalRestaurantId,
           routeSnapshotRestaurantId
         ));
-        renderApp();
+        if (patchVisibleProfileIfCurrentFn(activeProfileTargetKey, { profile: nextProfile, posts: livePosts })) {
+          renderApp();
+        }
       }
     }
   };
@@ -1719,6 +1790,7 @@ export function createProfileOpenFlowControllerCore({
 
   const openOwnUserProfile = ({ showBack = true } = {}) => {
     const prevTab = state?.activeTab || "feed";
+    cancelProfileLoadFn("open-own-user-profile");
     queueProfileHistoryPush({
       showBack,
       previousTab: prevTab,
@@ -1760,6 +1832,8 @@ export function createProfileOpenFlowControllerCore({
     let targetUid = "";
     let targetHandle = "";
     let targetRouteId = "";
+    let activeProfileLoadId = 0;
+    let activeProfileTargetKey = "";
     try {
       const safeInput = input && typeof input === "object" ? input : {};
       const routeId = String(
@@ -1813,6 +1887,38 @@ export function createProfileOpenFlowControllerCore({
           handle: explicitHandle || routeId
         })
       });
+      const profileLoad = beginProfileLoadFn({
+        kind: "user",
+        uid: explicitUid,
+        handle: explicitHandle || routeId,
+        routeId,
+        topTab: "profile",
+        contentTab: safeContentTab,
+        surface: "profile",
+        showBack
+      });
+      const profileLoadId = profileLoad.loadId;
+      const profileTargetKey = profileLoad.targetKey;
+      activeProfileLoadId = profileLoadId;
+      activeProfileTargetKey = profileTargetKey;
+      const isUserProfileLoadCurrent = () => isCurrentProfileLoadFn(profileLoadId, profileTargetKey);
+      const commitUserProfileForLoad = (profileValue, postsValue, options = {}) => {
+        if (!isUserProfileLoadCurrent()) return false;
+        showPublicProfileView(profileValue, postsValue, {
+          ...options,
+          profileLoadId,
+          profileTargetKey
+        });
+        return true;
+      };
+      state.activeTab = "profile";
+      state.profileTopTab = "profile";
+      state.profileContentTab = safeContentTab;
+      state.profileModal = { open: false, profile: null };
+      state.profileViewMode = "grid";
+      state.profilePostMenuId = null;
+      state.drawerOpen = false;
+      state.profileBackTab = showBack ? (state.profileBackTab || "feed") : "";
 
       const cacheKey = explicitUid || explicitHandle || routeId;
       const cached = userProfileCacheMap.get(cacheKey);
@@ -1830,13 +1936,12 @@ export function createProfileOpenFlowControllerCore({
           identityStatus: normalizeIdentityTruthState(cached.identityTruthState, "ready"),
           postsStatus: cachedPostsStatus
         }));
-        showPublicProfileView(cached, cached.posts || [], {
-          showBack,
-          topTab: "profile",
-          contentTab: safeContentTab,
-          directEntry: buildUserDirectEntry(cachedPosts.length ? "ready" : "loading")
-        });
-        return;
+        if (state.__pendingProfileTarget && typeof state.__pendingProfileTarget === "object") {
+          state.__pendingProfileTarget = {
+            ...state.__pendingProfileTarget,
+            cachedProfile: cached
+          };
+        }
       }
       const liveView = state?.profileView;
       const liveProfile = liveView?.profile && typeof liveView.profile === "object"
@@ -1865,12 +1970,12 @@ export function createProfileOpenFlowControllerCore({
         identityStatus: resolveLoadingIdentityTruthState(stableUserProfile),
         postsStatus: stableUserPosts.length > 0 ? "ready" : "loading"
       });
-      showPublicProfileView(fallbackProfileWithSurfaceTruth, stableUserPosts, {
-        showBack,
-        topTab: "profile",
-        contentTab: safeContentTab,
-        directEntry: buildUserDirectEntry(stableUserPosts.length ? "ready" : "loading")
-      });
+      if (state.__pendingProfileTarget && typeof state.__pendingProfileTarget === "object") {
+        state.__pendingProfileTarget = {
+          ...state.__pendingProfileTarget,
+          fallbackProfile: fallbackProfileWithSurfaceTruth
+        };
+      }
 
       let userDoc = null;
       const tryResolveByUid = async (uidValue = "") => {
@@ -1905,22 +2010,23 @@ export function createProfileOpenFlowControllerCore({
       }
 
       if (!userDoc) {
-        if (state.activeTab === "profile") {
+        if (state.activeTab === "profile" && isUserProfileLoadCurrent()) {
           const liveView = state?.profileView;
           const liveProfile = liveView?.profile;
           if (liveView && liveProfile && isSameUserProfileTarget(liveProfile, {
             uid: explicitUid || routeId,
             handle: explicitHandle || routeId
           })) {
-            liveView.profile = applySurfaceTruthPatch({
+            const nextProfile = applySurfaceTruthPatch({
               ...liveProfile,
               posts: []
             }, {
               identityStatus: normalizeIdentityTruthState(liveProfile.identityTruthState, "error"),
               postsStatus: "error"
             });
-            liveView.posts = [];
-            renderApp();
+            if (patchVisibleProfileIfCurrentFn(profileTargetKey, { profile: nextProfile, posts: [] })) {
+              renderApp();
+            }
           }
         }
         return;
@@ -1938,8 +2044,9 @@ export function createProfileOpenFlowControllerCore({
       }));
       userProfileCacheMap.set(cacheKey, resolvedProfile);
       if (state.activeTab !== "profile") return;
-      if (explicitUid && state.profileView?.profile?.uid !== explicitUid) return;
-      showPublicProfileView(resolvedProfile, resolvedProfile.posts, {
+      if (!isUserProfileLoadCurrent()) return;
+      if (explicitUid && state.profileView?.profile?.uid && state.profileView.profile.uid !== explicitUid) return;
+      commitUserProfileForLoad(resolvedProfile, resolvedProfile.posts, {
         showBack,
         topTab: "profile",
         contentTab: safeContentTab,
@@ -1947,6 +2054,7 @@ export function createProfileOpenFlowControllerCore({
       });
     } catch (err) {
       console.error(err);
+      if (activeProfileLoadId && !isCurrentProfileLoadFn(activeProfileLoadId, activeProfileTargetKey)) return;
       if (state.activeTab === "profile") {
         const liveView = state?.profileView;
         const liveProfile = liveView?.profile;
@@ -1955,14 +2063,16 @@ export function createProfileOpenFlowControllerCore({
           handle: targetHandle || targetRouteId
         })) {
           const livePosts = Array.isArray(liveView.posts) ? liveView.posts : [];
-          liveView.profile = applySurfaceTruthPatch({
+          const nextProfile = applySurfaceTruthPatch({
             ...liveProfile,
             posts: livePosts
           }, {
             identityStatus: normalizeIdentityTruthState(liveProfile.identityTruthState, livePosts.length ? "ready" : "error"),
             postsStatus: livePosts.length ? "ready" : "error"
           });
-          renderApp();
+          if (patchVisibleProfileIfCurrentFn(activeProfileTargetKey, { profile: nextProfile, posts: livePosts })) {
+            renderApp();
+          }
         }
       }
     }

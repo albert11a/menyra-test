@@ -30,6 +30,40 @@ test("public menu route resolves to publicMenu runtime", () => {
   assert.equal(resolveSocialRouteRuntimeKey(state), "publicMenu");
 });
 
+test("pending public profile route resolves without a visible profileView", () => {
+  const state = {
+    activeTab: "profile",
+    profileTopTab: "profile",
+    profileView: null,
+    __pendingProfileTarget: {
+      active: true,
+      kind: "business",
+      targetKey: "business:restaurant-1",
+      restaurantId: "restaurant-1",
+      topTab: "profile"
+    }
+  };
+
+  assert.equal(resolveSocialRouteRuntimeKey(state), "publicBusiness");
+});
+
+test("pending public menu route resolves without a visible profileView", () => {
+  const state = {
+    activeTab: "profile",
+    profileTopTab: "menu",
+    profileView: null,
+    __pendingProfileTarget: {
+      active: true,
+      kind: "business",
+      targetKey: "business:restaurant-1",
+      restaurantId: "restaurant-1",
+      topTab: "menu"
+    }
+  };
+
+  assert.equal(resolveSocialRouteRuntimeKey(state), "publicMenu");
+});
+
 test("public cart and favorites surfaces stay on publicMenu runtime", () => {
   const baseState = {
     activeTab: "profile",
@@ -134,4 +168,28 @@ test("public runtime slots keep the existing renderer as fallback", () => {
   });
 
   assert.equal(registry.renderActiveRoute(), "fallback-public-profile");
+});
+
+test("pending public profile renders the public profile fallback instead of own profile", () => {
+  const state = {
+    activeTab: "profile",
+    profileTopTab: "profile",
+    profileView: null,
+    __pendingProfileTarget: {
+      active: true,
+      kind: "business",
+      targetKey: "business:restaurant-1",
+      restaurantId: "restaurant-1",
+      topTab: "profile"
+    }
+  };
+  const registry = createSocialRouteRuntimeRegistry({
+    state,
+    renderers: {
+      profile: () => "own-profile",
+      publicProfile: () => "pending-public-profile"
+    }
+  });
+
+  assert.equal(registry.renderActiveRoute(), "pending-public-profile");
 });

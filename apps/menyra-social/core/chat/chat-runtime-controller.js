@@ -133,9 +133,18 @@ import {
   deriveFollowTargetIdentityCore,
   isSelfFollowTargetCore
 } from "../follow/follow-target-utils.js";
+import {
+  createProfileTargetTransaction,
+  resolveProfileTargetKeyFromProfile
+} from "../profile/profile-target-transaction.js";
 
 export function createChatRuntimeController(deps = {}) {
   const state = deps.state;
+  const profileTransaction = createProfileTargetTransaction({
+    state,
+    render: deps.renderFn
+  });
+  const patchVisibleProfileIfCurrent = profileTransaction.patchVisibleProfileIfCurrent;
   const safeStorage = deps.safeStorage;
   const STORAGE_KEYS = deps.STORAGE_KEYS || {};
   const chatIndexKey = typeof deps.chatIndexKey === "function"
@@ -1164,7 +1173,10 @@ export function createChatRuntimeController(deps = {}) {
         state.profileModal.profile.pendingFollowRequest = true;
       }
       if (state.profileView?.profile?.uid === targetUid) {
-        state.profileView.profile.pendingFollowRequest = true;
+        patchVisibleProfileIfCurrent(
+          resolveProfileTargetKeyFromProfile(state.profileView.profile, state.profileView),
+          { profile: { pendingFollowRequest: true } }
+        );
       }
       render();
     } catch (err) {
@@ -1449,12 +1461,19 @@ export function createChatRuntimeController(deps = {}) {
       return Number.isFinite(n) ? n : 0;
     };
     const isBusiness = isLocalBusinessProfile(state.userProfile);
+    const buildFollowerDeltaPatch = (profileLike = null) => {
+      if (!profileLike) return null;
+      const patch = {
+        followers: Math.max(0, toNum(profileLike.followers) + delta)
+      };
+      if (delta > 0 && "pendingFollowRequest" in profileLike) {
+        patch.pendingFollowRequest = false;
+      }
+      return patch;
+    };
     const applyFollowerDelta = (profileLike = null) => {
       if (!profileLike) return;
-      profileLike.followers = Math.max(0, toNum(profileLike.followers) + delta);
-      if (delta > 0 && "pendingFollowRequest" in profileLike) {
-        profileLike.pendingFollowRequest = false;
-      }
+      Object.assign(profileLike, buildFollowerDeltaPatch(profileLike));
     };
     try {
       if (isUnfollow) {
@@ -1534,11 +1553,21 @@ export function createChatRuntimeController(deps = {}) {
         updatedProfiles.add(profileLike);
         applyFollowerDelta(profileLike);
       };
+      const updateVisibleProfile = (profileLike = null) => {
+        if (!profileLike || updatedProfiles.has(profileLike)) return;
+        updatedProfiles.add(profileLike);
+        const patch = buildFollowerDeltaPatch(profileLike);
+        if (!patch) return;
+        patchVisibleProfileIfCurrent(
+          resolveProfileTargetKeyFromProfile(profileLike, state.profileView),
+          { profile: patch }
+        );
+      };
       if (matchesTargetProfile(profileModal)) {
         updateUniqueProfile(profileModal);
       }
       if (matchesTargetProfile(profileView)) {
-        updateUniqueProfile(profileView);
+        updateVisibleProfile(profileView);
       }
 
       businessProfileCache.forEach((cached) => {

@@ -66,10 +66,20 @@ function readWebDirectEntry(state = {}) {
     : null;
 }
 
+function readPendingProfileTarget(state = {}) {
+  return state?.__pendingProfileTarget && typeof state.__pendingProfileTarget === "object" && state.__pendingProfileTarget.active !== false
+    ? state.__pendingProfileTarget
+    : null;
+}
+
 function readProfileDirectEntry(state = {}) {
   const profileView = readProfileView(state);
   if (profileView?.directEntry && typeof profileView.directEntry === "object") {
     return profileView.directEntry;
+  }
+  const pendingTarget = readPendingProfileTarget(state);
+  if (pendingTarget?.profileView?.directEntry && typeof pendingTarget.profileView.directEntry === "object") {
+    return pendingTarget.profileView.directEntry;
   }
   return readWebDirectEntry(state);
 }
@@ -81,12 +91,17 @@ function resolvePublicProfileRestaurantId(state = {}) {
     : null;
   const routePayload = readRoutePayload(profileView);
   const webDirectEntry = readWebDirectEntry(state);
+  const pendingTarget = readPendingProfileTarget(state);
   return String(
     profile?.canonicalRestaurantId
     || routePayload?.canonicalRestaurantId
     || routePayload?.businessSnapshot?.restaurantId
     || profile?.restaurantId
     || routePayload?.restaurantId
+    || pendingTarget?.canonicalRestaurantId
+    || pendingTarget?.restaurantId
+    || pendingTarget?.routePayload?.canonicalRestaurantId
+    || pendingTarget?.routePayload?.restaurantId
     || webDirectEntry?.canonicalRestaurantId
     || webDirectEntry?.restaurantId
     || ""
@@ -125,10 +140,12 @@ export function isAuthStartupSettled(state = {}) {
 
 export function isSafePublicStartupSurface(state = {}) {
   const profileView = readProfileView(state);
-  if (!profileView) return false;
+  const pendingTarget = readPendingProfileTarget(state);
+  if (!profileView && !pendingTarget) return false;
   if (safeLower(state?.activeTab || "") !== "profile") return false;
   const restaurantId = resolvePublicProfileRestaurantId(state);
-  if (!restaurantId) return false;
+  const pendingUserRoute = safeLower(pendingTarget?.kind || "") === "user";
+  if (!restaurantId && !pendingUserRoute) return false;
 
   const directEntry = readProfileDirectEntry(state);
   const webDirectEntry = readWebDirectEntry(state);
@@ -136,9 +153,11 @@ export function isSafePublicStartupSurface(state = {}) {
     state?.profileTopTab
     || directEntry?.topTab
     || webDirectEntry?.topTab
+    || pendingTarget?.topTab
     || ""
   ) || "profile";
   if (!SAFE_PUBLIC_TOP_TABS.has(topTab)) return false;
+  if (pendingTarget) return true;
 
   const directOwner = safeLower(directEntry?.owner || webDirectEntry?.owner || "");
   const isWebDirectPublicRoute = directOwner === "web-direct"

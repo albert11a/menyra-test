@@ -797,6 +797,10 @@ const state = {
   ...createPublicRouteInitialState(),
   favoriteMenuItems: createEmptyFavoriteMenuItemsState(),
   profileView: null,
+  profileLoadVersion: 0,
+  profileLoadTargetKey: "",
+  profileLoadTarget: null,
+  __pendingProfileTarget: null,
   profileBackTab: "feed",
   profileCardInfoOpen: "",
   profileCardInfoHeights: {},
@@ -2019,6 +2023,10 @@ function isAuthRestorePendingProtectedRoute(tab = state.activeTab, { hasProfileV
 
 function clearPublicProfileRouteStateAfterRouteExit() {
   if (!state || typeof state !== "object") return;
+  state.profileLoadVersion = Number(state.profileLoadVersion || 0) + 1;
+  state.profileLoadTargetKey = "";
+  state.profileLoadTarget = null;
+  state.__pendingProfileTarget = null;
   state.profileView = null;
   state.profileModal = { open: false, profile: null };
   state.profileBackTab = "feed";
@@ -3424,6 +3432,18 @@ function setState(patch) {
       hasProfileView: !!state.profileView
     });
     patch.activeTab = normalizeLegacyHomeTab(patch.activeTab);
+  }
+  if (
+    patch
+    && (
+      (Object.prototype.hasOwnProperty.call(patch, "profileView") && patch.profileView === null)
+      || (Object.prototype.hasOwnProperty.call(patch, "activeTab") && String(patch.activeTab || "").trim().toLowerCase() !== "profile")
+    )
+  ) {
+    state.profileLoadVersion = Number(state.profileLoadVersion || 0) + 1;
+    state.profileLoadTargetKey = "";
+    state.profileLoadTarget = null;
+    state.__pendingProfileTarget = null;
   }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {

@@ -1,3 +1,8 @@
+import {
+  createProfileTargetTransaction,
+  resolveProfileTargetKeyFromProfile
+} from "./profile-target-transaction.js";
+
 function readInput(documentObj, id = "") {
   const node = documentObj?.getElementById?.(id);
   return node ? String(node.value || "").trim() : "";
@@ -205,9 +210,12 @@ function updateRows(rows = [], targetIds = new Set(), payload = {}) {
   return { rows: nextRows, seen };
 }
 
-function updateLocalState(state, restaurantId = "", payload = {}) {
+function updateLocalState(state, restaurantId = "", payload = {}, patchVisibleProfileIfCurrent = null) {
   const safeRestaurantId = String(restaurantId || "").trim();
   if (!safeRestaurantId || !payload || typeof payload !== "object") return;
+  const patchVisibleProfile = typeof patchVisibleProfileIfCurrent === "function"
+    ? patchVisibleProfileIfCurrent
+    : createProfileTargetTransaction({ state }).patchVisibleProfileIfCurrent;
   const targetIds = new Set([
     safeRestaurantId,
     ...collectIdentityIds(state?.userProfile)
@@ -231,14 +239,13 @@ function updateLocalState(state, restaurantId = "", payload = {}) {
     };
   }
   if (collectIdentityIds(state.profileView?.profile).some((id) => targetIds.has(id))) {
-    state.profileView = {
-      ...state.profileView,
+    const profileTargetKey = resolveProfileTargetKeyFromProfile(state.profileView.profile, state.profileView);
+    patchVisibleProfile(profileTargetKey, {
       profile: {
-        ...state.profileView.profile,
         ...payload,
         restaurantId: safeRestaurantId
       }
-    };
+    });
   }
 }
 
@@ -264,7 +271,8 @@ export function bindShoppingLandingCardEditorEvents({
   docFn,
   db,
   serverTimestampFn,
-  uploadCompressedImageFn
+  uploadCompressedImageFn,
+  patchVisibleProfileIfCurrentFn
 } = {}) {
   const doc = documentObj || null;
   if (!doc || !state) return;
@@ -278,6 +286,9 @@ export function bindShoppingLandingCardEditorEvents({
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const serverTimestamp = typeof serverTimestampFn === "function" ? serverTimestampFn : (() => null);
   const uploadCompressedImage = typeof uploadCompressedImageFn === "function" ? uploadCompressedImageFn : null;
+  const patchVisibleProfileIfCurrent = typeof patchVisibleProfileIfCurrentFn === "function"
+    ? patchVisibleProfileIfCurrentFn
+    : createProfileTargetTransaction({ state, render }).patchVisibleProfileIfCurrent;
 
   const getVisibleId = () => getVisibleRestaurantId(doc, state);
   const getState = (restaurantId = "") => getEditorState(state, restaurantId || getVisibleId());
@@ -365,7 +376,7 @@ export function bindShoppingLandingCardEditorEvents({
         shoppingLandingUpdatedAt: serverTimestamp()
       };
       await setDoc(makeDocRef(db, "restaurants", restaurantId), payload, { merge: true });
-      updateLocalState(state, restaurantId, payload);
+      updateLocalState(state, restaurantId, payload, patchVisibleProfileIfCurrent);
       state.shoppingLandingCardEditor = {
         restaurantId,
         titleDraft: title,

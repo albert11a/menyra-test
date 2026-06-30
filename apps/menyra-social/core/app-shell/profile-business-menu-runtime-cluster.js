@@ -304,7 +304,8 @@ export function createProfileBusinessMenuRuntimeCluster({
       menuAccessSource: safeView?.menuAccessSource || "",
       tableNumber: safeView?.tableNumber || 0,
       directEntry: safeView?.directEntry || null,
-      routePayload: safeView?.routePayload || null
+      routePayload: safeView?.routePayload || null,
+      profileTargetKey: safeView?.__profileTargetKey || safeView?.profile?.__profileTargetKey || ""
     };
   };
 

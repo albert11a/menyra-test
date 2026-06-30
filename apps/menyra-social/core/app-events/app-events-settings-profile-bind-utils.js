@@ -188,6 +188,10 @@ export function bindAppSettingsProfileEventsCore({
 
   doc.querySelectorAll("[data-public-profile-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      state.profileLoadVersion = Number(state.profileLoadVersion || 0) + 1;
+      state.profileLoadTargetKey = "";
+      state.profileLoadTarget = null;
+      state.__pendingProfileTarget = null;
       state.profileView = null;
       const backTab = state.profileBackTab || "feed";
       state.profileBackTab = "feed";

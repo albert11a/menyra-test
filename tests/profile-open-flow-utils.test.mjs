@@ -71,7 +71,9 @@ test("app-initiated business profile open queues browser history push", async ()
   await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: true });
 
   assert.equal(state.__nextRouteHistoryMode, "push");
-  assert.equal(showCalls.length > 0, true);
+  assert.equal(showCalls.length, 1);
+  assert.equal(showCalls[0].options.profileLoadId > 0, true);
+  assert.equal(showCalls[0].options.profileTargetKey, "business:moka");
 });
 
 test("direct business profile route does not queue browser history push", async () => {

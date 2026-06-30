@@ -1,3 +1,8 @@
+import {
+  createProfileTargetTransaction,
+  resolveProfileTargetKeyFromProfile
+} from "../profile/profile-target-transaction.js";
+
 export function bindAppMenuFocusEventsCore({
   documentObj,
   state,
@@ -35,6 +40,8 @@ export function bindAppMenuFocusEventsCore({
   const doc = documentObj || null;
   if (!doc || !state) return { profileMenuBound };
   const render = typeof renderFn === "function" ? renderFn : (() => {});
+  const profileTransaction = createProfileTargetTransaction({ state, render });
+  const patchVisibleProfileIfCurrent = profileTransaction.patchVisibleProfileIfCurrent;
   const saveMenuLayoutToStorage = typeof saveMenuLayoutToStorageFn === "function"
     ? saveMenuLayoutToStorageFn
     : (() => {});
@@ -323,14 +330,13 @@ export function bindAppMenuFocusEventsCore({
       };
     }
     if (collectHotelCardIdentityIds(state.profileView?.profile).some((id) => targetIds.has(id))) {
-      state.profileView = {
-        ...state.profileView,
+      const profileTargetKey = resolveProfileTargetKeyFromProfile(state.profileView.profile, state.profileView);
+      patchVisibleProfileIfCurrent(profileTargetKey, {
         profile: {
-          ...state.profileView.profile,
           ...payload,
           restaurantId: safeRestaurantId
         }
-      };
+      });
     }
   }
 
@@ -596,7 +602,8 @@ export function bindAppMenuFocusEventsCore({
         docFn: makeDocRef,
         db,
         serverTimestampFn: serverTimestamp,
-        uploadCompressedImageFn: uploadCompressedImage
+        uploadCompressedImageFn: uploadCompressedImage,
+        patchVisibleProfileIfCurrentFn: patchVisibleProfileIfCurrent
       }));
   }
 

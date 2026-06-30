@@ -7,6 +7,10 @@ import {
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
 import { resolveVisiblePublicMenuSurfaceState } from "./public-menu-surface-state-utils.js";
+import {
+  createProfileTargetTransaction,
+  resolveProfileTargetKeyFromProfile
+} from "./profile-target-transaction.js";
 
 export function createPublicProfileRuntimeController({
   state = null,
@@ -53,6 +57,11 @@ export function createPublicProfileRuntimeController({
   const restaurantDocRouteCache = new Map();
   const restaurantDocRouteInFlight = new Map();
   const canonicalRestaurantIdByRouteId = new Map();
+  const profileTransaction = createProfileTargetTransaction({
+    state,
+    render: renderApp,
+    resolveVisibleProfileSurface
+  });
   const PUBLIC_BUSINESS_EMPTY_POSTS_TTL_MS = 15_000;
   const PUBLIC_BUSINESS_POSTS_INITIAL_PAGE_FALLBACK_LIMIT = 12;
   const PUBLIC_PROFILE_ROUTE_RESOLVE_DEADLINE_MS = 6_500;
@@ -526,10 +535,11 @@ export function createPublicProfileRuntimeController({
     if (!viewProfile) return false;
     if (!isSameVisibleProfile(viewProfile, profile)) return false;
     let changed = false;
+    const profilePatch = {};
     const assignIfDefined = (key, value) => {
       if (value === undefined) return;
       if (viewProfile[key] === value) return;
-      viewProfile[key] = value;
+      profilePatch[key] = value;
       changed = true;
     };
     if (profile?.restaurantId) {
@@ -547,11 +557,8 @@ export function createPublicProfileRuntimeController({
       assignIfDefined("location", data.city || viewProfile.location);
     }
     if (!changed) return false;
-    state.profileSurface = resolveVisibleProfileSurface(state, {
-      profileView: state?.profileView || null,
-      profileTopTab: state?.profileTopTab || "",
-      profileContentTab: state?.profileContentTab || ""
-    });
+    const targetKey = resolveProfileTargetKeyFromProfile(viewProfile, state?.profileView || null);
+    if (!profileTransaction.patchVisibleProfileIfCurrent(targetKey, { profile: profilePatch })) return false;
     renderApp();
     return true;
   }
@@ -1270,7 +1277,9 @@ export function createPublicProfileRuntimeController({
     menuAccessSource = null,
     tableNumber = null,
     directEntry = null,
-    routePayload = null
+    routePayload = null,
+    profileLoadId = null,
+    profileTargetKey = ""
   } = {}) {
     const hasExplicitMenuAccessSource = menuAccessSource !== null && menuAccessSource !== undefined;
     const requestedMenuAccessSource = hasExplicitMenuAccessSource
@@ -1587,6 +1596,24 @@ export function createPublicProfileRuntimeController({
       routePayload: nextRoutePayload,
       directEntry: nextDirectEntry
     };
+    const nextProfileTargetKey = String(
+      profileTargetKey
+      || resolveProfileTargetKeyFromProfile(nextProfile, nextView)
+      || ""
+    ).trim();
+    if (
+      profileLoadId !== null
+      && profileLoadId !== undefined
+      && !profileTransaction.isCurrentProfileLoad(profileLoadId, nextProfileTargetKey)
+    ) {
+      return;
+    }
+    if (nextProfileTargetKey) {
+      nextView.__profileTargetKey = nextProfileTargetKey;
+      if (nextProfile && typeof nextProfile === "object") {
+        nextProfile.__profileTargetKey = nextProfileTargetKey;
+      }
+    }
     const currentSignature = buildProfileRenderSignature(currentProfile);
     const nextSignature = buildProfileRenderSignature(nextProfile);
     const currentTopTab = String(state?.profileTopTab || "").trim();
@@ -1635,6 +1662,11 @@ export function createPublicProfileRuntimeController({
       && String(state?.activeTab || "").trim().toLowerCase() === "profile"
     ) {
       state.profileSurface = nextSurface;
+      if (nextProfileTargetKey) {
+        state.profileLoadTargetKey = nextProfileTargetKey;
+        state.profileLoadTarget = null;
+        state.__pendingProfileTarget = null;
+      }
       syncWebDirectEntryState({
         restaurantId: String(nextProfile?.restaurantId || nextCanonicalRestaurantId || "").trim(),
         canonicalRestaurantId: nextCanonicalRestaurantId,
@@ -1647,10 +1679,21 @@ export function createPublicProfileRuntimeController({
       attachProfileViewListener(nextProfile);
       return;
     }
-    state.profileView = nextView;
-    state.profileModal = { open: false, profile: null };
-    state.profileContentTab = nextContentTab;
-    state.profileTopTab = resolvedTopTab;
+    const didCommit = profileTransaction.commitPublicProfileBundleIfCurrent({
+      loadId: profileLoadId,
+      targetKey: nextProfileTargetKey,
+      view: nextView,
+      topTab: resolvedTopTab,
+      contentTab: nextContentTab,
+      backTab: nextProfileBackTab,
+      showBack,
+      menuAccessSource: normalizedMenuAccessSource,
+      tableNumber: safeTableNumber,
+      directEntry: nextDirectEntry,
+      routePayload: nextRoutePayload,
+      renderNow: false
+    });
+    if (!didCommit) return;
     if (resolvedTopTab === "landing") {
       if (preserveLandingState) {
         state.profileLandingStep = preservedLandingStep;
@@ -1666,11 +1709,6 @@ export function createPublicProfileRuntimeController({
       state.profileLandingGreetingIndex = 0;
       state.profileLandingTourIndex = 0;
     }
-    state.profileViewMode = "grid";
-    state.profilePostMenuId = null;
-    state.drawerOpen = false;
-    state.profileBackTab = nextProfileBackTab;
-    state.activeTab = "profile";
     resetStalePublicMenuStateForProfileSwitch({
       sameVisibleProfile,
       profile: nextProfile,
@@ -1685,6 +1723,11 @@ export function createPublicProfileRuntimeController({
       profileTopTab: resolvedTopTab,
       profileContentTab: nextContentTab
     });
+    if (nextProfileTargetKey) {
+      state.profileLoadTargetKey = nextProfileTargetKey;
+      state.profileLoadTarget = null;
+      state.__pendingProfileTarget = null;
+    }
     syncWebDirectEntryState({
       restaurantId: String(nextProfile?.restaurantId || nextCanonicalRestaurantId || "").trim(),
       canonicalRestaurantId: nextCanonicalRestaurantId,
@@ -2018,6 +2061,10 @@ export function createPublicProfileRuntimeController({
     setProfileViewUnsub,
     stopProfileViewListener,
     attachProfileViewListener,
+    beginProfileLoad: profileTransaction.beginProfileLoad,
+    isCurrentProfileLoad: profileTransaction.isCurrentProfileLoad,
+    cancelProfileLoad: profileTransaction.cancelProfileLoad,
+    patchVisibleProfileIfCurrent: profileTransaction.patchVisibleProfileIfCurrent,
     showPublicProfile,
     normalizeExternalProfile,
     normalizeExternalUserProfile,

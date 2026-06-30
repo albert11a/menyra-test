@@ -9,6 +9,7 @@ import {
   normalizePublicBusinessSlugCore
 } from "../router/public-business-route-utils.js";
 import { isBootstrapRestaurantPreviewRecordCore } from "../common/restaurant-identity-runtime-controller.js";
+import { normalizeProfileTargetKey } from "./profile-target-transaction.js";
 
 function safeLower(value = "") {
   return String(value || "").trim().toLowerCase();
@@ -696,7 +697,7 @@ export function createPublicProfileDirectEntryController({
       routeBootstrap,
       phase: directPhase
     });
-    state.profileView = {
+    const pendingProfileView = {
       profile: seededProfile,
       posts: seededPosts,
       menuAccessSource: entry.menuAccessSource,
@@ -714,10 +715,35 @@ export function createPublicProfileDirectEntryController({
         phase: directPhase,
         topTab: entry.topTab,
         contentTab: entry.contentTab,
-        explicitLanding: entry.explicitLanding
+          explicitLanding: entry.explicitLanding
       }
     };
-    if (state.menu && typeof state.menu === "object") {
+    const pendingTargetKey = normalizeProfileTargetKey({
+      kind: "business",
+      restaurantId: entryRestaurantId || entry.restaurantId,
+      canonicalRestaurantId,
+      topTab: entry.topTab,
+      contentTab: entry.contentTab
+    });
+    state.__pendingProfileTarget = {
+      kind: "business",
+      active: true,
+      targetKey: pendingTargetKey,
+      restaurantId: entryRestaurantId || entry.restaurantId,
+      canonicalRestaurantId,
+      topTab: entry.topTab,
+      contentTab: entry.contentTab,
+      surface: entry.visibleSurface,
+      menuAccessSource: entry.menuAccessSource,
+      tableNumber: entry.tableNumber,
+      routePayload: routePayloadSeed,
+      profileView: pendingProfileView,
+      phase: directPhase,
+      ts: Date.now()
+    };
+    if (pendingTargetKey) state.profileLoadTargetKey = pendingTargetKey;
+    const shouldCommitRouteSeedToVisibleState = false;
+    if (shouldCommitRouteSeedToVisibleState && state.menu && typeof state.menu === "object") {
       if (routeMenuState === "seeded") {
         state.menu = {
           ...state.menu,
@@ -767,7 +793,7 @@ export function createPublicProfileDirectEntryController({
         };
       }
     }
-    if (state.focus && typeof state.focus === "object") {
+    if (shouldCommitRouteSeedToVisibleState && state.focus && typeof state.focus === "object") {
       if (routeFocusState === "seeded") {
         state.focus = {
           ...state.focus,
@@ -851,7 +877,7 @@ export function createPublicProfileDirectEntryController({
       phase: directPhase
     });
     const nextSurface = resolveVisibleProfileSurfaceSafe(state, {
-      profileView: state.profileView,
+      profileView: pendingProfileView,
       profileTopTab: state.profileTopTab,
       profileContentTab: state.profileContentTab
     });

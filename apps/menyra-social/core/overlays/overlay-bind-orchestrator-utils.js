@@ -124,13 +124,12 @@ export function bindOverlayEventsCore({
       toggleFollowFn: toggleFollow,
       onProfileOpenFn: () => {
         if (!state?.profileModal?.profile) return;
-        state.profileView = {
-          profile: state.profileModal.profile,
-          posts: state.profileModal.profile.posts || []
-        };
-        state.profileModal = { open: false, profile: null };
-        state.activeTab = "profile";
-        rerender();
+        const profile = state.profileModal.profile;
+        showPublicProfile(profile, profile.posts || [], {
+          showBack: true,
+          topTab: "profile",
+          contentTab: "posts"
+        });
       }
     });
   }
