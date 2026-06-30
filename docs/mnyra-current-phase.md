@@ -5,6 +5,68 @@ Last updated: 2026-06-30
 
 ## Stand
 
+- Schritt 155 ist abgeschlossen: Public Menu und Focus sind im sichtbaren
+  Business-Profil entkoppelt. Menu-/Shop-Produkte duerfen rendern, sobald ihre
+  eigene Public-Menu-Truth ready ist; ein noch unbekannter Focus haelt nur noch
+  einen Focus-Skeleton-Platz oberhalb frei.
+- Bewertung von Schritt 155: `Gezielte Tests bestanden, Syntax-Checks
+  bestanden, Build bestanden, Bundle-Budget rot, kein Browser-Smoke durch
+  Codex, kein Deploy, keine Production-Mutation`.
+- Root Cause Schritt 155:
+  Der Public-Menu-Surface-State hatte bei Restaurant/Cafe-Profilen
+  `coordinateFocusWithMenu` so umgesetzt, dass ein ready Menu weiter als
+  sichtbares Loading behandelt wurde, solange Focus noch `unknown` oder
+  `loading` war. Dadurch konnten vorhandene Produkte hinter Focus-Truth warten.
+  Zusaetzlich blieb ein Public-Menu-Read ohne Cache/Fallback bei Timeout auf
+  `loading: true`, `truthState: unknown` und ohne Fehlertext; dadurch konnte
+  Menu/Shop sichtbar lange haengen.
+- Geaendert in Schritt 155:
+  `apps/menyra-social/core/profile/public-menu-surface-state-utils.js` laesst
+  Menu-Items bei `menu.status=ready` immer rendern und gibt fuer ungeklaerten
+  Focus nur noch `focus.pendingPlaceholder` aus.
+  `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
+  rendert fuer ungeklaerten Public-Focus zwei Skeleton-Focus-Cards oberhalb
+  des Menus, damit die Reihenfolge Focus vor Menu stabil bleibt, ohne die
+  Produkte zu blockieren. Die vorhandenen Focus-Card-Klassen und Proportionen
+  werden wiederverwendet.
+  `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  setzt sichtbare Public-Menu-Unknowns nach Deadline ohne Fallback auf einen
+  settled `error`-Truth-State statt auf dauerhaftes Loading. Das gilt auch,
+  wenn die sichtbare Anfrage auf einen laufenden Public-Prefetch wartet.
+  Tests in `tests/public-menu-surface-state-utils.test.mjs` und
+  `tests/session-data-menu-focus-no-hang.test.mjs` wurden an die neue No-Hang-
+  Wahrheit angepasst.
+- Verifikation Schritt 155:
+  `node --test tests/public-menu-surface-state-utils.test.mjs
+  tests/session-data-menu-focus-no-hang.test.mjs` bestanden (`16/16`).
+  `node --check
+  apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`,
+  `node --check
+  apps/menyra-social/core/app-shell/session-data-runtime-controller.js` und
+  `node --check
+  apps/menyra-social/core/profile/public-menu-surface-state-utils.js`
+  bestanden. `npm run build` bestanden.
+- Bundle-Guard Schritt 155:
+  `npm run check:social-bundle` nicht bestanden:
+  `social-app.js` raw `1052594` von `1052000` (`+594`), gzip `285931` von
+  `285000` (`+931`). Das ist weiter der bekannte Budget-Ueberlauf; der
+  No-Hang-Fix wurde nicht fuer eine riskante Mikro-Optimierung zurueckgebaut.
+- Bewusst nicht geaendert in Schritt 155:
+  keine Firebase Rules, keine Functions, keine Datenmigration, kein Deploy,
+  keine Public-/App-Routing-Verschiebung, keine Posts-Cache-Truth-Aenderung,
+  kein Browser-Smoke durch Codex. Posts wurden in diesem Schritt nicht
+  umgebaut, weil sie eigene Deadlines/Empty/Error-States haben und der klare
+  Endloshaenger hier bei Menu/Focus lag.
+- Manuelle Testliste Schritt 155:
+  Mehrere Restaurant/Cafe-Public-Profile und QR-Menu-Links cold oeffnen,
+  darunter ein Profil mit Focus und eines ohne Focus. Erwartung: Produkte im
+  Menu erscheinen, sobald Menu ready ist, auch wenn Focus noch laedt; oberhalb
+  bleibt waehrenddessen ein Focus-Skeleton-Platz stehen und die Produktliste
+  springt nicht nach oben. Bei blockiertem oder langsamem Public-Menu darf
+  nicht dauerhaft `Menu/Shop wird geladen...` stehen bleiben, sondern der
+  vorhandene Fehlerzustand muss sichtbar werden. Danach normal Profil ->
+  Menu/Shop -> Beitraege -> zurueck und QR mit Table-Kontext gegenpruefen.
+
 - Schritt 154 ist abgeschlossen: QR-Menu-First-Routen nutzen jetzt denselben
   fruehen Public-Menu-Warmup wie normale Public-Business-Profile, ohne den
   QR-/Table-Kontext zu verlieren.

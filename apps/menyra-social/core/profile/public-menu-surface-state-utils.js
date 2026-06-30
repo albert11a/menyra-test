@@ -188,10 +188,10 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     && samePublicFocus
     && focusItems.length > 0;
   const focusSettled = focusStatus === "ready" || focusStatus === "empty" || focusStatus === "error";
-  const menuWaitingForFocus = coordinateFocusWithMenu === true
+  const focusPendingPlaceholder = coordinateFocusWithMenu === true
     && menuStatus === "ready"
     && !focusSettled;
-  const canRenderMenuItems = menuStatus === "ready" && !menuWaitingForFocus;
+  const canRenderMenuItems = menuStatus === "ready";
 
   return {
     restaurantId: surfaceIds.restaurantId,
@@ -205,7 +205,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
       loading: samePublicMenu ? !!menu.loading : false,
       items: menuItems,
       canRenderItems: canRenderMenuItems,
-      waitingForFocus: menuWaitingForFocus,
+      waitingForFocus: false,
       error: menuError
     },
     focus: {
@@ -219,6 +219,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
       rawItems: rawFocusItems,
       canRenderFocus,
       settled: focusSettled,
+      pendingPlaceholder: focusPendingPlaceholder,
       invalidForMenu: focusInvalidForMenu
     }
   };

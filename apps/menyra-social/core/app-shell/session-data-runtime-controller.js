@@ -2089,7 +2089,9 @@ export function createSessionDataRuntimeController({
       const inFlightTruthState = String(inFlightResult?.truthState || "").trim();
       const inFlightTruthKey = inFlightTruthState.toLowerCase();
       const inFlightKnownEmpty = inFlightTruthKey === "knownempty" || inFlightTruthKey === "known-empty";
-      const inFlightUnknown = !inFlightItems.length && !inFlightKnownEmpty && inFlightTruthKey !== "seeded";
+      const inFlightError = inFlightTruthKey === "error";
+      const inFlightUnknown = !inFlightItems.length && !inFlightKnownEmpty && inFlightTruthKey !== "seeded" && !inFlightError;
+      const settlePublicUnknownAsError = safeSource === "public" && inFlightUnknown;
       if (
         !prefetchOnly
         && inFlightResult
@@ -2100,16 +2102,18 @@ export function createSessionDataRuntimeController({
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: inFlightItems,
-          loading: inFlightUnknown,
-          error: "",
+          loading: safeSource === "public" ? false : inFlightUnknown,
+          error: inFlightError || settlePublicUnknownAsError ? "Menu laden fehlgeschlagen." : "",
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
           routeSeed: false,
-          truthState: inFlightUnknown
-            ? "unknown"
-            : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty")))
+          truthState: inFlightError || settlePublicUnknownAsError
+            ? "error"
+            : (inFlightUnknown
+              ? "unknown"
+              : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty"))))
         };
         requestRender();
       }
@@ -2166,7 +2170,7 @@ export function createSessionDataRuntimeController({
           return payload;
         } catch (err) {
           console.error(err);
-          return { items: [], statusBadgeVisible: true, truthState: "unknown" };
+          return { items: [], statusBadgeVisible: true, truthState: safeSource === "public" ? "error" : "unknown" };
         } finally {
           menuNetworkLoadPromises.delete(cacheKey);
         }
@@ -2325,22 +2329,22 @@ export function createSessionDataRuntimeController({
         const fallbackStatusBadgeVisible = typeof stalePersistedMenu.statusBadgeVisible === "boolean"
           ? stalePersistedMenu.statusBadgeVisible
           : true;
+        const hasFallbackItems = fallbackItems.length > 0;
         const fallbackPayload = {
           items: fallbackItems,
           statusBadgeVisible: fallbackStatusBadgeVisible,
-          truthState: fallbackItems.length > 0 ? "seeded" : "unknown"
+          truthState: hasFallbackItems ? "seeded" : (safeSource === "public" ? "error" : "unknown")
         };
         if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return fallbackPayload;
-        const keepUnknownPublicMenuPending = safeSource === "public" && !fallbackItems.length;
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: fallbackItems,
-          loading: keepUnknownPublicMenuPending,
-          error: fallbackItems.length || keepUnknownPublicMenuPending ? "" : "Menu laden fehlgeschlagen.",
+          loading: false,
+          error: hasFallbackItems ? "" : "Menu laden fehlgeschlagen.",
           source: safeSource,
           statusBadgeVisible: fallbackStatusBadgeVisible,
-          routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true,
+          routeSeed: hasFallbackItems && state.menu.routeSeed === true,
           truthState: fallbackPayload.truthState
         };
         requestRender();

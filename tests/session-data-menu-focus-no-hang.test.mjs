@@ -122,7 +122,7 @@ function createObjectCacheStore() {
   };
 }
 
-test("public menu unknown load stays pending instead of becoming a visible error", async () => {
+test("public menu unknown load settles as a visible retryable error", async () => {
   const state = createVisibleMenuState();
   const controller = createController({
     state,
@@ -133,14 +133,14 @@ test("public menu unknown load stays pending instead of becoming a visible error
     controller.loadMenuForRestaurant("restaurant-a", { source: "public" })
   ));
 
-  assert.equal(result.truthState, "unknown");
+  assert.equal(result.truthState, "error");
   assert.equal(state.menu.restaurantId, "restaurant-a");
-  assert.equal(state.menu.loading, true);
-  assert.equal(state.menu.error, "");
-  assert.equal(state.menu.truthState, "unknown");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
+  assert.equal(state.menu.truthState, "error");
 });
 
-test("visible public menu does not turn an in-flight unknown prefetch into an error", async () => {
+test("visible public menu settles an in-flight unknown prefetch as an error", async () => {
   const state = createVisibleMenuState();
   const controller = createController({
     state,
@@ -155,11 +155,11 @@ test("visible public menu does not turn an in-flight unknown prefetch into an er
   ));
   await prefetch;
 
-  assert.equal(result.truthState, "unknown");
+  assert.equal(result.truthState, "error");
   assert.equal(state.menu.restaurantId, "restaurant-a");
-  assert.equal(state.menu.loading, true);
-  assert.equal(state.menu.error, "");
-  assert.equal(state.menu.truthState, "unknown");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
+  assert.equal(state.menu.truthState, "error");
 });
 
 test("visible public menu loads canonical restaurant id instead of route alias", async () => {

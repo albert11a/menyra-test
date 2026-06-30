@@ -32,7 +32,7 @@ test("public menu surface keeps focus pending when menu is ready but focus is st
   assert.equal(surface.focus.settled, false);
 });
 
-test("public menu surface can coordinate item rendering until focus settles", () => {
+test("public menu surface reserves focus without blocking item rendering", () => {
   const surface = resolveVisiblePublicMenuSurfaceState({
     menu: {
       restaurantId: "restaurant-a",
@@ -51,9 +51,10 @@ test("public menu surface can coordinate item rendering until focus settles", ()
   }, { profile, coordinateFocusWithMenu: true });
 
   assert.equal(surface.menu.status, "ready");
-  assert.equal(surface.menu.canRenderItems, false);
-  assert.equal(surface.menu.waitingForFocus, true);
+  assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.menu.waitingForFocus, false);
   assert.equal(surface.focus.status, "loading");
+  assert.equal(surface.focus.pendingPlaceholder, true);
 });
 
 test("public menu surface releases coordinated item rendering when focus is empty", () => {
@@ -77,6 +78,7 @@ test("public menu surface releases coordinated item rendering when focus is empt
   assert.equal(surface.menu.status, "ready");
   assert.equal(surface.menu.canRenderItems, true);
   assert.equal(surface.menu.waitingForFocus, false);
+  assert.equal(surface.focus.pendingPlaceholder, false);
   assert.equal(surface.focus.status, "empty");
 });
 

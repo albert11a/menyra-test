@@ -2499,6 +2499,29 @@ function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile
   `;
 }
 
+function renderTestfirstFocusSkeletonSection(profile, { count = 2 } = {}) {
+  const restaurantId = profile?.restaurantId || "";
+  const canUseHighlightFocusUi = isTestfirstMenuProfile(profile) || isShopCatalogProfile(profile);
+  if (!restaurantId || !canUseHighlightFocusUi) return "";
+  const safeCount = Math.max(1, Math.min(2, Number(count) || 2));
+  return `
+    <div data-focus-skeleton="true" aria-hidden="true" class="pt-2 pb-4">
+      <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
+        ${Array.from({ length: safeCount }).map(() => `
+          <div class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col relative mb-2" style="box-shadow:0 4px 14px rgba(0,0,0,0.03);">
+            <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative animate-pulse" style="aspect-ratio:16 / 9;"></div>
+            <div class="px-2 py-4">
+              <div class="h-4 w-2/3 rounded-full bg-slate-200 animate-pulse"></div>
+              <div class="mt-3 h-3 w-5/6 rounded-full bg-slate-100 animate-pulse"></div>
+              <div class="mt-2 h-3 w-1/2 rounded-full bg-slate-100 animate-pulse"></div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderTestfirstDrinkGridCard(item, { mode = "profile", priorityIndex = -1 } = {}) {
   const rawImg = resolveMenuItemHero(item);
   const menuDetailStableKey = mode === "profile"
@@ -3480,6 +3503,41 @@ function renderMenuOrderSection(items = []) {
   `;
 }
 
+function renderPublicFocusSkeletonSection(profile, { count = 2 } = {}) {
+  if (!isRestaurantCafeProfile(profile)) return "";
+  const focusCardClass = getFocusCardClass();
+  const safeCount = Math.max(1, Math.min(2, Number(count) || 2));
+  return `
+    <div data-focus-skeleton="true" aria-hidden="true" class="overflow-hidden">
+      <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-1">
+        ${Array.from({ length: safeCount }).map(() => `
+          <div class="min-w-[85%] sm:min-w-[300px] snap-center ${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <div class="h-3 w-24 rounded-full bg-slate-200 animate-pulse"></div>
+              <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-full bg-slate-100 border border-slate-100 animate-pulse"></div>
+                <div class="w-9 h-9 rounded-full bg-slate-100 border border-slate-100 animate-pulse"></div>
+              </div>
+            </div>
+            <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
+              <div class="w-full h-56 bg-slate-100 animate-pulse"></div>
+            </div>
+            <div class="mt-4">
+              <div class="h-5 w-2/3 rounded-full bg-slate-200 animate-pulse"></div>
+              <div class="mt-3 h-3 w-5/6 rounded-full bg-slate-100 animate-pulse"></div>
+              <div class="mt-2 h-3 w-1/2 rounded-full bg-slate-100 animate-pulse"></div>
+            </div>
+            <div class="flex items-center justify-center gap-2 mt-4">
+              <div class="w-2.5 h-2.5 rounded-full bg-slate-200 animate-pulse"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-slate-100 animate-pulse"></div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderFocusCarousel(profile, {
   restaurantId: restaurantIdOverride = "",
   suppressLoading = false,
@@ -3512,12 +3570,7 @@ function renderFocusCarousel(profile, {
   if (!items.length && !loading) return "";
   if (suppressLoading && loading && !items.length) return "";
   if (loading && !items.length) {
-    const focusCardClass = getFocusCardClass();
-    return `
-      <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm">
-        <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("focus.loading", "Fokus wird geladen..."))}</div>
-      </div>
-    `;
+    return renderPublicFocusSkeletonSection(profile, { count: 2 });
   }
 
   const idx = getFocusIndex(items);
@@ -3852,6 +3905,11 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     || menuSurfaceState.focus.settled === true
     || currentFocusTruth === "knownEmpty"
     || menuSurfaceState.menu.status !== "ready";
+  const shouldRenderFocusSkeleton = shouldCoordinatePublicFocus
+    && hasConfirmedPublicMenuItems
+    && !hasPublicFocusTruth
+    && menuSurfaceState.focus.settled !== true
+    && (menuSurfaceState.focus.status === "loading" || menuSurfaceState.focus.status === "unknown");
   if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
     ensureMenuDataForProfile(surfaceProfile);
   }
@@ -3865,9 +3923,9 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   ) {
     ensureFocusDataForProfile(surfaceProfile);
   }
-  // Public focus belongs to the public menu presentation. If menu items are
-  // ready but focus truth is still unknown, keep the visible menu in loading so
-  // focus cannot jump in above already-rendered products.
+  // Public focus belongs above the menu, but unresolved focus truth must not
+  // block already confirmed public menu items. The skeleton reserves the focus
+  // slot while products render underneath.
   const canRenderCoordinatedMenu = menuSurfaceState.menu.canRenderItems;
   const items = canRenderCoordinatedMenu
     ? sortMenuItemsByOrder(getFilteredMenuItems(menuSurfaceState.menu.items, { filter: "all", query: "" }))
@@ -3877,8 +3935,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(profile));
   const error = menuSurfaceState.menu.error || "";
   const hasError = !!String(error || "").trim();
-  const isLoading = menuSurfaceState.menu.status === "loading"
-    || menuSurfaceState.menu.waitingForFocus === true;
+  const isLoading = menuSurfaceState.menu.status === "loading";
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
@@ -3903,6 +3960,9 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   const testfirstStableFocusSection = testfirstFocusItemsFromState.length
     ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode })
     : "";
+  const testfirstFocusSkeletonSection = shouldRenderFocusSkeleton
+    ? renderTestfirstFocusSkeletonSection(surfaceProfile, { count: 2 })
+    : "";
   if (isLandingMode && isLoading) {
     return `<div class="app-content-inline app-main-content-safe" style="min-height: 34vh;"></div>`;
   }
@@ -3910,28 +3970,33 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     return `
       <div class="app-main-content-safe">
         ${isLoading ? `
-          ${testfirstStableFocusSection}
+          ${testfirstStableFocusSection || testfirstFocusSkeletonSection}
           <div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
         ` : `
           ${hasItems
-            ? renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })
+            ? `${testfirstFocusSkeletonSection}${renderTestfirstMenuContent(surfaceProfile, items, { mode, publicMenuSurfaceState: menuSurfaceState })}`
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
-              : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))
+              : (testfirstStableFocusSection || testfirstFocusSkeletonSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))
           }
           ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         `}
       </div>
     `;
   }
-  return `
-    <div class="app-content-inline app-main-content-safe space-y-5">
-      ${useHighlightFocusUi ? testfirstStableFocusSection : renderFocusCarousel(surfaceProfile, {
+  const coordinatedFocusSection = useHighlightFocusUi
+    ? (testfirstStableFocusSection || testfirstFocusSkeletonSection)
+    : (shouldRenderFocusSkeleton
+      ? renderPublicFocusSkeletonSection(surfaceProfile, { count: 2 })
+      : renderFocusCarousel(surfaceProfile, {
         restaurantId,
         suppressLoading: true,
         allowAutoEnsure: hasConfirmedPublicMenuItems && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth),
         requirePublicMenuTruth: true
-      })}
+      }));
+  return `
+    <div class="app-content-inline app-main-content-safe space-y-5">
+      ${coordinatedFocusSection}
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
           <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("menu.loading", `${catalogLabel} wird geladen...`, { label: catalogLabel }))}</div>
