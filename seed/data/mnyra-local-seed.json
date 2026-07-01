@@ -1,6 +1,32 @@
 {
   "projectId": "mnyra-local",
   "description": "Synthetic local-only Mnyra seed data for refactor preparation.",
+  "authUsers": [
+    {
+      "uid": "shopper-demo",
+      "email": "shopper.local@example.test",
+      "displayName": "Local Shopper",
+      "password": "local-test-password"
+    },
+    {
+      "uid": "owner-demo",
+      "email": "owner.local@example.test",
+      "displayName": "Local Owner",
+      "password": "local-test-password"
+    },
+    {
+      "uid": "waiter-demo",
+      "email": "waiter.local@example.test",
+      "displayName": "Local Waiter",
+      "password": "local-test-password"
+    },
+    {
+      "uid": "heart-demo",
+      "email": "heart.local@example.test",
+      "displayName": "Local Heart CEO",
+      "password": "local-test-password"
+    }
+  ],
   "documents": [
     {
       "path": "publicRoutes/pidhimadh",
@@ -33,6 +59,12 @@
         "public": true,
         "visibility": "public",
         "ownerUid": "owner-demo",
+        "ownerEmail": "owner.local@example.test",
+        "email": "",
+        "contactEmail": "",
+        "socialEmail": "",
+        "loginEmail": "",
+        "accountEmail": "",
         "rating": 4.8,
         "priceRange": "€€",
         "openingHours": {
@@ -108,6 +140,8 @@
         "restaurantId": "pidhi-madh",
         "role": "waiter",
         "active": true,
+        "status": "active",
+        "staffStatus": "active",
         "waiterAccess": true,
         "businessAccess": false
       }
@@ -242,6 +276,12 @@
         "category": "Shopping",
         "city": "Prishtina",
         "ownerUid": "owner-demo",
+        "ownerEmail": "owner.local@example.test",
+        "email": "",
+        "contactEmail": "",
+        "socialEmail": "",
+        "loginEmail": "",
+        "accountEmail": "",
         "public": true
       }
     },
@@ -267,6 +307,12 @@
         "category": "Travel",
         "city": "Prizren",
         "ownerUid": "owner-demo",
+        "ownerEmail": "owner.local@example.test",
+        "email": "",
+        "contactEmail": "",
+        "socialEmail": "",
+        "loginEmail": "",
+        "accountEmail": "",
         "public": true
       }
     },

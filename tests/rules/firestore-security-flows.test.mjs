@@ -1,9 +1,231 @@
-import test from "node:test";
+import test, { after, before, beforeEach } from "node:test";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+} from "@firebase/rules-unit-testing";
+import { AUTH_FIXTURES, firestoreFor } from "./auth-fixtures.mjs";
 
-test.skip("guest cannot write a manipulated order outside the order contract", async () => {});
-test.skip("user cannot directly manipulate likes/comments/follower counters", async () => {});
-test.skip("waiter can read only orders for an authorized restaurant", async () => {});
-test.skip("owner can edit only the owned business", async () => {});
-test.skip("CEO/Heart can approve ads through the admin contract", async () => {});
-test.skip("public can read only public profile/menu/posts surfaces", async () => {});
-test.skip("private user data remains protected", async () => {});
+const repoRoot = dirname(
+  fileURLToPath(new URL("../../package.json", import.meta.url)),
+);
+const projectId = process.env.MNYRA_RULES_PROJECT_ID || "mnyra-local";
+const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8080";
+const [host, portText] = firestoreHost.split(":");
+const seed = JSON.parse(
+  await readFile(resolve(repoRoot, "seed/data/mnyra-local-seed.json"), "utf8"),
+);
+
+let testEnv;
+
+before(async () => {
+  const rules = await readFile(resolve(repoRoot, "firestore.rules"), "utf8");
+  testEnv = await initializeTestEnvironment({
+    projectId,
+    firestore: {
+      host,
+      port: Number(portText || 8080),
+      rules,
+    },
+  });
+});
+
+beforeEach(async () => {
+  await testEnv.clearFirestore();
+  await seedFirestore();
+});
+
+after(async () => {
+  if (testEnv) {
+    await testEnv.cleanup();
+  }
+});
+
+async function seedFirestore(extraDocuments = []) {
+  const documents = [...(seed.documents || []), ...extraDocuments];
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const batchSize = 400;
+    for (let index = 0; index < documents.length; index += batchSize) {
+      const batch = db.batch();
+      for (const document of documents.slice(index, index + batchSize)) {
+        batch.set(db.doc(document.path), document.data || {});
+      }
+      await batch.commit();
+    }
+  });
+}
+
+test("guest order contract allows valid guest orders and denies manipulated payloads", async () => {
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+
+  await assertSucceeds(
+    guestDb.doc("restaurants/pidhi-madh/orders/order-guest-valid").set({
+      restaurantId: "pidhi-madh",
+      table: "table-02",
+      buyerUid: "",
+      items: [],
+      total: 0,
+    }),
+  );
+
+  await assertFails(
+    guestDb.doc("restaurants/pidhi-madh/orders/order-forged-buyer").set({
+      restaurantId: "pidhi-madh",
+      table: "table-02",
+      buyerUid: "shopper-demo",
+      items: [],
+      total: 0,
+    }),
+  );
+
+  await assertFails(
+    guestDb.doc("restaurants/pidhi-madh/orders/order-wrong-restaurant").set({
+      restaurantId: "other-restaurant",
+      table: "table-02",
+      buyerUid: "",
+      items: [],
+      total: 0,
+    }),
+  );
+});
+
+test("user cannot directly manipulate likes/comments/follower counters", async () => {
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+
+  await assertFails(
+    userDb.doc("socialFeed/post-demo-001").update({
+      likesCount: 999,
+      commentsCount: 999,
+    }),
+  );
+
+  await assertFails(
+    userDb.doc("restaurants/pidhi-madh").update({
+      followersCount: 999,
+    }),
+  );
+});
+
+test("waiter can read only orders for an authorized restaurant", async () => {
+  await seedFirestore([
+    {
+      path: "restaurants/other-restaurant",
+      data: {
+        id: "other-restaurant",
+        name: "Other Restaurant",
+        ownerUid: "other-owner",
+        ownerEmail: "other-owner@example.test",
+        email: "",
+        contactEmail: "",
+        socialEmail: "",
+        loginEmail: "",
+        accountEmail: "",
+      },
+    },
+    {
+      path: "restaurants/other-restaurant/orders/order-other-001",
+      data: {
+        id: "order-other-001",
+        restaurantId: "other-restaurant",
+        status: "new",
+        items: [],
+      },
+    },
+  ]);
+
+  const waiterDb = firestoreFor(testEnv, AUTH_FIXTURES.waiter);
+
+  await assertSucceeds(
+    waiterDb.doc("restaurants/pidhi-madh/orders/order-demo-001").get(),
+  );
+  await assertSucceeds(
+    waiterDb.collection("restaurants/pidhi-madh/orders").get(),
+  );
+  await assertFails(
+    waiterDb.doc("restaurants/other-restaurant/orders/order-other-001").get(),
+  );
+  await assertFails(
+    waiterDb.collection("restaurants/other-restaurant/orders").get(),
+  );
+});
+
+test("owner can edit only the owned business", async () => {
+  await seedFirestore([
+    {
+      path: "restaurants/other-restaurant",
+      data: {
+        id: "other-restaurant",
+        name: "Other Restaurant",
+        ownerUid: "other-owner",
+        ownerEmail: "other-owner@example.test",
+        email: "",
+        contactEmail: "",
+        socialEmail: "",
+        loginEmail: "",
+        accountEmail: "",
+      },
+    },
+  ]);
+
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+
+  await assertSucceeds(
+    ownerDb.doc("restaurants/pidhi-madh").update({
+      bio: "Owner-updated local test bio",
+    }),
+  );
+
+  await assertFails(
+    ownerDb.doc("restaurants/other-restaurant").update({
+      bio: "Should not be allowed",
+    }),
+  );
+});
+
+test("CEO/Heart can approve ads through the admin contract", async () => {
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+
+  await assertSucceeds(
+    heartDb.doc("leads/ad-demo-001").update({
+      status: "approved",
+      approvedByUid: "heart-demo",
+    }),
+  );
+
+  await assertFails(
+    ownerDb.doc("leads/ad-demo-001").update({
+      status: "approved",
+      approvedByUid: "owner-demo",
+    }),
+  );
+});
+
+test("public can read only public profile/menu/posts surfaces", async () => {
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+
+  await assertSucceeds(guestDb.doc("publicRoutes/pidhimadh").get());
+  await assertSucceeds(guestDb.doc("restaurants/pidhi-madh").get());
+  await assertSucceeds(
+    guestDb.doc("restaurants/pidhi-madh/public/profile").get(),
+  );
+  await assertSucceeds(guestDb.doc("restaurants/pidhi-madh/public/menu").get());
+  await assertSucceeds(
+    guestDb.doc("restaurants/pidhi-madh/menuItems/menu-001").get(),
+  );
+  await assertSucceeds(
+    guestDb.doc("restaurants/pidhi-madh/socialPosts/post-demo-001").get(),
+  );
+  await assertFails(guestDb.doc("users/owner-demo").get());
+});
+
+test("private user data remains protected", async () => {
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+
+  await assertSucceeds(userDb.doc("users/shopper-demo").get());
+  await assertFails(userDb.doc("users/waiter-demo").get());
+});

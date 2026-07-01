@@ -21,4 +21,5 @@ tests/mnyra-heart-runner/tmp-*.png
 playwright-report/
 test-results/
 seed/export/
+firebase-export-*/
 tmp/
