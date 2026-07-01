@@ -81,9 +81,10 @@ Browser-checked P0 points:
 
 Still blocking P0 points:
 
-- Public profile/meta/offers/ads do not yet have dedicated pure projection
-  builders. Current coverage validates seed/public docs and menu save
-  normalization, but runtime reads still depend on transitional mixed data.
+- The dedicated public route/profile/meta/offers/ads projection builders now
+  exist with matrix-driven contract tests. Public profile read-once hydration
+  and discovery identity still depend partly on transitional mixed
+  `restaurants/{id}` data, so root-read tightening is not active yet.
 - Heart Ads remains blocked for paid launch. The local Ads view loaded as
   read-only/count 0, and the current array model is still too coarse for
   auditable paid moderation.
@@ -93,9 +94,43 @@ Still blocking P0 points:
 Public runtime extraction decision:
 
 - Extraction planning may continue behind false flags.
-- No activated public runtime split should start until the projection builders
-  are addressed. Owner/Menu proof and the public-startup denied `list` are no
-  longer blockers.
+- The missing-builder prerequisite is closed. No activated public runtime split
+  should start until profile/meta reads are moved off mixed root restaurant
+  records and route parity is reverified. Owner/Menu proof and the
+  public-startup denied `list` are no longer blockers.
+
+## Public Projection Builder Block Completed 2026-07-01
+
+The pure builder layer now lives in
+`apps/menyra-social/core/public-profile/public-projection-builders.js` and
+covers route, profile, meta, offers and ads projections.
+
+Current guarantees:
+
+- Outputs are explicit allowlists, serializable plain objects and deterministic
+  for the same input.
+- Restaurant, shop and hotel/travel fixtures reject nested owner, staff, CRM,
+  billing, booking-admin and private pricing data.
+- Offer price fields normalize to numbers or `null`.
+- Public ads include approved active display records only; draft, pending,
+  rejected and inactive records are removed.
+- Seed public projection documents reproduce the same contracts through the
+  builders.
+- Public focus offer reads and public discovery offer/ad enrichment use the new
+  builder layer.
+
+Public read tightening can now be designed against stable contracts. It is not
+ready to activate until the public profile/meta runtime stops reading and
+merging broad root restaurant data. The existing runtime extraction plan
+therefore remains false-flag-only. The ads array model was intentionally not
+migrated and remains a paid-launch blocker.
+
+Verification for this block is green across Unit (120), Rules (17), Functions
+(4), lint, format, architecture and build. Public/owner browser coverage passed
+on desktop and mobile with the current seed; one desktop owner public-menu
+projection assertion required a targeted retry after an immediate-read race.
+The tracked social bundle entry was rebuilt. No Rules, route, collection or
+feature-flag activation was included.
 
 ## P1: First Controlled Restaurant Launch
 
@@ -142,7 +177,9 @@ Public runtime extraction decision:
 
 ## Next Safe Refactor Step
 
-The next safe engineering step is not a visual redesign. Implement dedicated
-public profile/meta/offers/ads projection builders with matrix-driven tests.
-Keep Ads and analytics disabled and keep runtime extraction behind false flags
-until those public contracts are complete.
+The next safe engineering step is a guarded public profile/meta read cutover:
+preserve current visible profile and landing behavior while replacing mixed
+root restaurant hydration with the tested projection contracts. Do not tighten
+Firestore root reads until that cutover and the direct-refresh/QR route matrix
+pass. Keep Ads and analytics disabled and keep runtime extraction behind false
+flags.

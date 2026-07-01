@@ -22,32 +22,65 @@ production data or approve production launch.
 
 ## Matrix
 
-| Area                            | Status               | Coverage now                                                                                                     | Remaining launch work                                                                      |
-| ------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Owner login                     | Browser smoke passed | `/menu` preserves the protected route through login and opens the seeded owner context on desktop/mobile.        | Keep local owner account bootstrap in the browser launch gate.                             |
-| Business ownership mapping      | Automated green      | Rules tests cover owner writes only for owned business.                                                          | Add owner account bootstrap and lead conversion rollback tests.                            |
-| Public profile contract         | Browser smoke passed | Contract docs, seed projection tests and public route browser smoke cover restaurant/shop/hotel.                 | Move runtime reads off mixed `restaurants/{id}` data before tightening rules.              |
-| Public/private profile boundary | Automated green      | Rules tests cover guest public reads/private denial; projection tests reject forbidden fields.                   | Add pure builders for profile/meta/offers/ads before runtime extraction.                   |
-| Menu editor price contract      | Browser smoke passed | Unit tests plus Owner E2E prove string prices save and publish as numbers, never strings.                        | Keep numeric/null projection assertions in the mutation smoke.                             |
-| Owner menu management           | Browser smoke passed | Own create/edit/delete/publish, foreign-business read-only UI and 12 seeded QR tables pass on desktop/mobile.    | Add owner order-dashboard mutation proof before pilot operations.                          |
-| Product/shop item management    | Manual required      | Shop public smoke passes and the shop owner reaches the seeded product editor on desktop/mobile.                 | Add shop owner product create/edit/delete browser proof.                                   |
-| Hotel/travel offers             | Manual required      | Hotel public coverage passes and the hotel owner reaches Hotel Details/Oferta controls on desktop/mobile.        | Add hotel owner offer create/edit/delete browser proof.                                    |
-| QR table menu context           | Browser smoke passed | Desktop/mobile QR route preserves query and creates callable table order.                                        | Keep manual real-device QR scan rehearsal before pilot.                                    |
-| Guest order creation            | Browser smoke passed | QR E2E creates callable order with server menu pricing and allowed payload fields.                               | Add signed-in customer order variation later.                                              |
-| Waiter login                    | Browser smoke passed | Waiter logs in locally and sees own restaurant order.                                                            | Add tablet/manual device proof before pilot.                                               |
-| Waiter order status update      | Browser smoke passed | Waiter changes status; direct writes to total/items and foreign order read are denied.                           | Add owner-facing staff lifecycle UI tests.                                                 |
-| Staff revocation                | Automated green      | Rules tests cover revoked waiter and stale hints denied.                                                         | Add browser revocation session test after staff UI is stable.                              |
-| Heart non-CEO block             | Browser smoke passed | Owner account is blocked from Heart with CEO-required message.                                                   | Keep this in Heart smoke pack.                                                             |
-| Heart lead mutation             | Browser smoke passed | CEO local browser probe created, updated and deleted a throwaway lead.                                           | Add durable E2E spec and audit-log expectations.                                           |
-| Heart local Functions safety    | Browser smoke passed | `/heart?firebase-emulator=1` now uses `127.0.0.1:5001`; production Functions calls are avoided in emulator mode. | Keep raw URL assertion in future Heart E2E.                                                |
-| Lead to account conversion      | Manual required      | Existing code path reviewed in audit.                                                                            | Needs mutation tests for restaurant, user and public route bootstrap.                      |
-| Owner ad submission             | Security risk        | Rules tests document owner/Heart public ads doc boundary.                                                        | Do not sell ads until per-ad records or stronger moderation rules exist.                   |
-| Heart ad approval               | Blocked              | Heart Ads view loads locally but seed returns count 0/read-only; no approval controls rendered.                  | Add auditable approval history and approved-only public render contract.                   |
-| Public approved-only ads        | Automated green      | Projection tests require approved-only, display-safe public ads and no moderation UIDs.                          | Replace array ads before paid launch.                                                      |
-| Analytics                       | Security risk        | No stable trusted event schema in this P0 block.                                                                 | Block paid analytics until event, aggregation and permission model exists.                 |
-| Public route refresh matrix     | Browser smoke passed | Desktop/mobile direct and refresh checks passed for profile/menu/posts/QR routes.                                | Keep route smoke in launch gate.                                                           |
-| Public startup console          | Browser smoke passed | The denied Feed story collection-group read is mapped and no longer scheduled on public startup.                 | Resolve the collection-group contract separately before Feed stories become a launch gate. |
-| Bundle/performance              | Performance risk     | `npm run build` passed; the tracked `social-app.js` bundle includes the menu save and public-startup gates.      | Public runtime extraction and bundle budgets remain later P3 work.                         |
+| Area                            | Status               | Coverage now                                                                                                                              | Remaining launch work                                                                              |
+| ------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Owner login                     | Browser smoke passed | `/menu` preserves the protected route through login and opens the seeded owner context on desktop/mobile.                                 | Keep local owner account bootstrap in the browser launch gate.                                     |
+| Business ownership mapping      | Automated green      | Rules tests cover owner writes only for owned business.                                                                                   | Add owner account bootstrap and lead conversion rollback tests.                                    |
+| Public profile contract         | Automated green      | Pure route/profile/meta/offers/ads builders, seed parity and mixed restaurant/shop/hotel fixtures cover the field contract.               | Move public profile read-once hydration off mixed `restaurants/{id}` data before tightening rules. |
+| Public/private profile boundary | Automated green      | Rules tests cover guest public reads/private denial; builders recursively reject private fields and return deterministic plain objects.   | Prepare profile/meta runtime cutover; do not tighten root reads until the cutover is verified.     |
+| Menu editor price contract      | Browser smoke passed | Unit tests plus Owner E2E prove string prices save and publish as numbers, never strings.                                                 | Keep numeric/null projection assertions in the mutation smoke.                                     |
+| Owner menu management           | Browser smoke passed | Own create/edit/delete/publish, foreign-business read-only UI and 12 seeded QR tables pass on desktop/mobile.                             | Add owner order-dashboard mutation proof before pilot operations.                                  |
+| Product/shop item management    | Manual required      | Shop public smoke passes and the shop owner reaches the seeded product editor on desktop/mobile.                                          | Add shop owner product create/edit/delete browser proof.                                           |
+| Hotel/travel offers             | Manual required      | Hotel public coverage passes; the pure offers builder normalizes numeric prices and strips booking/admin fields.                          | Add hotel owner offer create/edit/delete browser proof.                                            |
+| QR table menu context           | Browser smoke passed | Desktop/mobile QR route preserves query and creates callable table order.                                                                 | Keep manual real-device QR scan rehearsal before pilot.                                            |
+| Guest order creation            | Browser smoke passed | QR E2E creates callable order with server menu pricing and allowed payload fields.                                                        | Add signed-in customer order variation later.                                                      |
+| Waiter login                    | Browser smoke passed | Waiter logs in locally and sees own restaurant order.                                                                                     | Add tablet/manual device proof before pilot.                                                       |
+| Waiter order status update      | Browser smoke passed | Waiter changes status; direct writes to total/items and foreign order read are denied.                                                    | Add owner-facing staff lifecycle UI tests.                                                         |
+| Staff revocation                | Automated green      | Rules tests cover revoked waiter and stale hints denied.                                                                                  | Add browser revocation session test after staff UI is stable.                                      |
+| Heart non-CEO block             | Browser smoke passed | Owner account is blocked from Heart with CEO-required message.                                                                            | Keep this in Heart smoke pack.                                                                     |
+| Heart lead mutation             | Browser smoke passed | CEO local browser probe created, updated and deleted a throwaway lead.                                                                    | Add durable E2E spec and audit-log expectations.                                                   |
+| Heart local Functions safety    | Browser smoke passed | `/heart?firebase-emulator=1` now uses `127.0.0.1:5001`; production Functions calls are avoided in emulator mode.                          | Keep raw URL assertion in future Heart E2E.                                                        |
+| Lead to account conversion      | Manual required      | Existing code path reviewed in audit.                                                                                                     | Needs mutation tests for restaurant, user and public route bootstrap.                              |
+| Owner ad submission             | Security risk        | Rules tests document owner/Heart public ads doc boundary.                                                                                 | Do not sell ads until per-ad records or stronger moderation rules exist.                           |
+| Heart ad approval               | Blocked              | Heart Ads view loads locally but seed returns count 0/read-only; no approval controls rendered.                                           | Add auditable approval history and approved-only public render contract.                           |
+| Public approved-only ads        | Automated green      | The public discovery read uses the ads builder; tests remove pending/rejected/draft/inactive ads and moderation/private targeting fields. | Replace array ads before paid launch.                                                              |
+| Analytics                       | Security risk        | No stable trusted event schema in this P0 block.                                                                                          | Block paid analytics until event, aggregation and permission model exists.                         |
+| Public route refresh matrix     | Browser smoke passed | Desktop/mobile direct and refresh checks passed for profile/menu/posts/QR routes.                                                         | Keep route smoke in launch gate.                                                                   |
+| Public startup console          | Browser smoke passed | The denied Feed story collection-group read is mapped and no longer scheduled on public startup.                                          | Resolve the collection-group contract separately before Feed stories become a launch gate.         |
+| Bundle/performance              | Performance risk     | `npm run build` passed; the tracked `social-app.js` bundle includes the menu save and public-startup gates.                               | Public runtime extraction and bundle budgets remain later P3 work.                                 |
+
+## Public Projection Builder Block 2026-07-01
+
+Implemented pure builders:
+
+- `buildPublicRouteProjection`
+- `buildPublicProfileProjection`
+- `buildPublicMetaProjection`
+- `buildPublicOffersProjection`
+- `buildPublicAdsProjection`
+
+Targeted Node coverage passes for seed parity, restaurant/shop/hotel mixed
+inputs, recursive private-field denial, numeric offer prices, approved-only ads
+and deterministic serializable output. Public focus offer reads and public
+restaurant discovery offers/ads now use the relevant builders.
+
+This closes the missing-builder blocker but does not itself close broad public
+root reads. Public read tightening may be prepared from these contracts; it may
+not be activated until public profile/meta identity hydration no longer depends
+on mixed `restaurants/{id}` rows. Runtime extraction remains behind false
+feature flags. Ads remain blocked for paid launch because their mutable array
+model is unchanged.
+
+Verification for this block:
+
+- Unit 120/120, Rules 17/17 and Functions 4/4 passed.
+- Lint, format check, architecture check and production build passed.
+- The current seed passed Public Profile, Public Menu/QR, Shop Owner, Hotel
+  Owner and Owner Menu Playwright coverage on desktop/mobile. One desktop Owner
+  Menu run observed the known immediate-read projection race after create; the
+  same mobile path and the targeted desktop retry passed.
+- The tracked `bundled/entry/social-app.js` was rebuilt and is part of this
+  block. No runtime feature flag was enabled.
 
 ## Manual Browser Matrix To Run Before Launch
 

@@ -1,3 +1,5 @@
+import { buildPublicOffersProjection } from "../public-profile/public-projection-builders.js";
+
 export function createFocusRuntimeController({
   state = null,
   db = null,
@@ -253,7 +255,11 @@ export function createFocusRuntimeController({
       const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "offers"));
       if (!snap.exists()) return [];
       const data = snap.data() || {};
-      const items = Array.isArray(data.items) ? data.items : [];
+      const projection = buildPublicOffersProjection({
+        ...data,
+        restaurantId: safeRestaurantId
+      });
+      const items = projection.items;
       return items.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
     } catch (err) {
       console.error(err);

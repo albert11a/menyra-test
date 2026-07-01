@@ -1,3 +1,8 @@
+import {
+  buildPublicAdsProjection,
+  buildPublicOffersProjection
+} from "../public-profile/public-projection-builders.js";
+
 function toFiniteNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "string") {
@@ -179,42 +184,8 @@ function collectTravelOfferFeatures(item = {}) {
   ].filter(Boolean).filter((entry, index, list) => list.indexOf(entry) === index);
 }
 
-function normalizePublicTravelOfferItem(item = {}, fallbackId = "") {
-  const row = item && typeof item === "object" ? item : {};
-  const id = String(row.id || row.offerId || row._id || fallbackId || "").trim();
-  const features = collectTravelOfferFeatures(row);
-  return {
-    id,
-    title: String(row.title || row.name || "").trim(),
-    text: String(row.text || row.desc || row.description || "").trim(),
-    imageUrl: String(row.imageUrl || row.image || row.photoUrl || row.offerImageUrl || "").trim(),
-    cropX: Math.max(0, Math.min(100, Number(row.cropX ?? 50) || 50)),
-    cropY: Math.max(0, Math.min(100, Number(row.cropY ?? 50) || 50)),
-    active: row.active !== false,
-    isTravelOffer: row.isTravelOffer === true || row.travelOffer === true,
-    offerBadgeLabel: String(row.offerBadgeLabel || row.travelOfferBadgeLabel || row.badgeLabel || "OFERTA").trim(),
-    offerDurationLabel: String(row.offerDurationLabel || row.nightsDaysLabel || row.durationLabel || "").trim(),
-    distanceCenter: String(row.distanceCenter || row.distanceToCenter || row.centerDistance || "").trim(),
-    distanceToCenter: String(row.distanceToCenter || row.distanceCenter || row.centerDistance || "").trim(),
-    centerDistance: String(row.centerDistance || row.distanceCenter || row.distanceToCenter || "").trim(),
-    distanceBeach: String(row.distanceBeach || row.distanceToBeach || row.beachDistance || "").trim(),
-    distanceToBeach: String(row.distanceToBeach || row.distanceBeach || row.beachDistance || "").trim(),
-    beachDistance: String(row.beachDistance || row.distanceBeach || row.distanceToBeach || "").trim(),
-    hotelStartingPrice: String(row.hotelStartingPrice || row.startingPrice || row.priceFrom || row.fromPrice || row.bestPrice || "").trim(),
-    startingPrice: String(row.startingPrice || row.hotelStartingPrice || row.priceFrom || row.fromPrice || row.bestPrice || "").trim(),
-    priceFrom: String(row.priceFrom || row.startingPrice || row.hotelStartingPrice || "").trim(),
-    priceUnit: normalizeOfferPriceUnit(row.priceUnit || row.hotelPriceUnit || row.offerPriceUnit || ""),
-    features,
-    offerFeatures: features
-  };
-}
-
 function collectPublicTravelOffers(data = {}) {
-  const row = data && typeof data === "object" ? data : {};
-  const items = Array.isArray(row.items) ? row.items : [];
-  return items
-    .map((item, idx) => normalizePublicTravelOfferItem(item, item?.id || `offer_${idx}`))
-    .filter((item) => item.id || item.title || item.imageUrl || item.text);
+  return buildPublicOffersProjection(data).items;
 }
 
 function normalizePublicAdStatus(value = "") {
@@ -224,32 +195,8 @@ function normalizePublicAdStatus(value = "") {
   return "pending";
 }
 
-function normalizePublicAdItem(item = {}, fallbackId = "") {
-  const row = item && typeof item === "object" ? item : {};
-  const id = String(row.id || row.adId || row._id || fallbackId || "").trim();
-  return {
-    id,
-    title: String(row.title || row.name || "").trim(),
-    text: String(row.text || row.desc || row.description || "").trim(),
-    imageUrl: String(row.imageUrl || row.image || row.photoUrl || "").trim(),
-    cropX: Math.max(0, Math.min(100, Number(row.cropX ?? 50) || 50)),
-    cropY: Math.max(0, Math.min(100, Number(row.cropY ?? 50) || 50)),
-    active: row.active !== false,
-    status: normalizePublicAdStatus(row.status || row.approvalStatus || ""),
-    category: String(row.category || row.adCategory || "RESTAURANT").trim(),
-    priceSegment: String(row.priceSegment || row.priceRange || row.priceLabel || "€€ - €€€").trim(),
-    bestChoiceBadgeEnabled: row.bestChoiceBadgeEnabled !== false,
-    deliveryBadgeEnabled: row.deliveryBadgeEnabled !== false,
-    woltEnabled: row.woltEnabled !== false
-  };
-}
-
 function collectPublicAds(data = {}) {
-  const row = data && typeof data === "object" ? data : {};
-  const items = Array.isArray(row.items) ? row.items : [];
-  return items
-    .map((item, idx) => normalizePublicAdItem(item, item?.id || `ad_${idx}`))
-    .filter((item) => item.id || item.title || item.imageUrl || item.text);
+  return buildPublicAdsProjection(data).items;
 }
 
 function hasTravelBusinessShape(record = {}, normalizeRestaurantTypeFn = (value) => value) {
