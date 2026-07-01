@@ -24,6 +24,16 @@ async function prepareFirebaseEmulatorPage(page: Page) {
       });
     },
   );
+  await page.route(
+    /^https:\/\/images\.example\.local(?:\/.*)?$/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="#eef2f7"/></svg>',
+      });
+    },
+  );
 }
 
 export const test = base.extend({

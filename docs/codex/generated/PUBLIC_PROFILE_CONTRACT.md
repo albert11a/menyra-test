@@ -50,7 +50,7 @@ Public rendering may use these fields once they are present in projection docs:
 | `restaurants/{id}/public/meta`           | Public business type, category, visibility flags, public QR table metadata and non-sensitive display state. |
 | `restaurants/{id}/public/menu`           | Published item id, name, description, category, numeric price, currency, image URL, availability, ordering. |
 | `restaurants/{id}/public/offers`         | Public offer id, title, public description, city, price and public image/reference fields.                  |
-| `restaurants/{id}/public/ads`            | Approved public ad items only, with public title/media/copy/status and moderation ids safe for display.     |
+| `restaurants/{id}/public/ads`            | Approved public ad items only, with public title/media/copy/status/display fields and no moderation ids.    |
 | `restaurants/{id}/socialPosts/{postId}`  | Public post text/media/counts that are intended for the business profile.                                   |
 | `restaurants/{id}/orderLookup/{tableId}` | Minimal active QR/table lookup state only.                                                                  |
 
@@ -63,16 +63,16 @@ number or `null`.
 These fields must not be required by public rendering and must not be copied
 into public projection docs:
 
-| Category             | Prohibited examples                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
-| Ownership            | `ownerUid`, owner email aliases, login email, account email, contact email used for admin access.     |
-| Billing and payments | Billing notes, payment ids, payout state, invoices, card/customer identifiers, plan metadata.         |
-| Staff and roles      | Staff UIDs, staff invites, `role`, `roles`, `ceoPath`, waiter/business access flags, admin notes.     |
-| Orders               | Buyer UID, buyer contact data, order private notes, raw device/session data, untrusted totals.        |
-| CRM and leads        | Lead source internals, sales notes, customer status history, Heart-only audit metadata.               |
-| Analytics            | Raw event payloads, IP/device/user agent data, raw counters that can be spoofed by clients.           |
-| Ads                  | Draft ads, pending ads, rejected ads, internal moderation comments, pricing/budget/private targeting. |
-| Private documents    | Any document under private/internal collections or non-public operational subcollections.             |
+| Category             | Prohibited examples                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Ownership            | `ownerUid`, owner email aliases, login email, account email, contact email used for admin access.                        |
+| Billing and payments | Billing notes, payment ids, payout state, invoices, card/customer identifiers, plan metadata.                            |
+| Staff and roles      | Staff UIDs, staff invites, `role`, `roles`, `ceoPath`, waiter/business access flags, admin notes.                        |
+| Orders               | Buyer UID, buyer contact data, order private notes, raw device/session data, untrusted totals.                           |
+| CRM and leads        | Lead source internals, sales notes, customer status history, Heart-only audit metadata.                                  |
+| Analytics            | Raw event payloads, IP/device/user agent data, raw counters that can be spoofed by clients.                              |
+| Ads                  | Draft ads, pending ads, rejected ads, moderator UIDs, creator UIDs, internal comments, pricing/budget/private targeting. |
+| Private documents    | Any document under private/internal collections or non-public operational subcollections.                                |
 
 ## Current Transitional Dependencies
 

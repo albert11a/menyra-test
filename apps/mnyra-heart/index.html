@@ -32,6 +32,22 @@
     const heartLocalHost = isHeartLocalDevelopmentHost(window.location.hostname);
     const heartCloudFunctionsBase = "https://us-central1-menyra-c0e68.cloudfunctions.net/";
     const heartPreviewHost = /\.vercel\.app$/i.test(window.location.hostname);
+    function getHeartEmulatorFunctionsBase() {
+      try {
+        const runtime = window.__MENYRA_FIREBASE_EMULATORS__;
+        const source = runtime && typeof runtime === "object" ? runtime : {};
+        const queryEnabled = new URLSearchParams(window.location.search).get("firebase-emulator") === "1";
+        if (source.enabled !== true && !queryEnabled) return "";
+        const projectId = String(source.projectId || "mnyra-local").trim();
+        if (!/^(mnyra-local|demo-|test-|local-)/.test(projectId)) return "";
+        const host = String(source.host || "127.0.0.1").trim() || "127.0.0.1";
+        const functionsPort = Math.max(1, Number(source.functionsPort || 5001) || 5001);
+        return `http://${host}:${functionsPort}/${projectId}/us-central1/`;
+      } catch {
+        return "";
+      }
+    }
+    const heartEmulatorFunctionsBase = getHeartEmulatorFunctionsBase();
     if (!heartPreviewHost) {
       const manifestLink = document.createElement("link");
       manifestLink.rel = "manifest";
@@ -40,7 +56,7 @@
       document.head.appendChild(manifestLink);
     }
     window.__MNYRA_HEART_CONFIG__ = Object.freeze({
-      apiBase: heartLocalHost ? heartCloudFunctionsBase : "/api/heart/",
+      apiBase: heartEmulatorFunctionsBase || (heartLocalHost ? heartCloudFunctionsBase : "/api/heart/"),
       fallbackApiBase: heartLocalHost ? "" : ""
     });
   </script>

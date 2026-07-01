@@ -317,7 +317,7 @@ export async function saveMenuItemFromModalCore({
     const idx = nextItems.findIndex((it) => String(it.id) === String(id));
     const normalized = normalizeMenuItemDoc(payload, id);
     if (idx >= 0) {
-      nextItems[idx] = { ...nextItems[idx], ...normalized };
+      nextItems[idx] = normalized;
     } else {
       nextItems.push(normalized);
     }

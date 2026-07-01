@@ -1,9 +1,95 @@
-import { test } from "@playwright/test";
+import { expect, test } from "./firebase-emulator-fixture";
 
-test.describe("public profile smoke", () => {
-  test.skip("loads a public business profile from local seeded route", async ({
+const PRIVATE_MARKERS = [
+  "owner.local@example.test",
+  "shop-owner.local@example.test",
+  "hotel-owner.local@example.test",
+  "owner-demo",
+  "shop-owner-demo",
+  "hotel-owner-demo",
+  "billingNote",
+  "local-only private fixture",
+  "ownerUid",
+  "accountEmail",
+  "staffIndex",
+];
+
+const PUBLIC_PROFILE_ROUTES = [
+  {
+    path: "/pidhimadh",
+    reload: true,
+    expectedText: "PIDHImadh",
+  },
+  {
+    path: "/pidhimadh/posts",
+    expectedText: "PIDHImadh",
+  },
+  {
+    path: "/shopdemo",
+    reload: true,
+    expectedText: "Local Shop Demo",
+  },
+  {
+    path: "/shopdemo/posts",
+    expectedText: "Local Shop Demo",
+  },
+  {
+    path: "/hoteldemo",
+    reload: true,
+    expectedText: "Local Hotel Demo",
+  },
+  {
+    path: "/hoteldemo/posts",
+    expectedText: "Local Hotel Demo",
+  },
+];
+
+function withEmulatorParams(path: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}firebase-emulator=1&sw-reset=1`;
+}
+
+async function expectNoPrivateMarkers(page, routeLabel: string) {
+  const bodyText = await page.locator("body").innerText();
+  expect(
+    bodyText.trim().length,
+    `${routeLabel} should render content`,
+  ).toBeGreaterThan(40);
+  for (const marker of PRIVATE_MARKERS) {
+    expect(bodyText, `${routeLabel} leaked ${marker}`).not.toContain(marker);
+  }
+  await expect(
+    page.locator(".vite-error-overlay, #webpack-dev-server-client-overlay"),
+  ).toHaveCount(0);
+}
+
+async function expectPublicProfileRoute(
+  page,
+  route: (typeof PUBLIC_PROFILE_ROUTES)[number],
+) {
+  await page.goto(withEmulatorParams(route.path), {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.locator("body")).toContainText(route.expectedText, {
+    timeout: 20_000,
+  });
+  await expectNoPrivateMarkers(page, route.path);
+
+  if (route.reload) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toContainText(route.expectedText, {
+      timeout: 20_000,
+    });
+    await expectNoPrivateMarkers(page, `${route.path} refresh`);
+  }
+}
+
+test.describe("public profile launch smoke", () => {
+  test("opens seeded public profile and posts routes without private field leaks", async ({
     page,
   }) => {
-    await page.goto("/pidhimadh");
+    for (const route of PUBLIC_PROFILE_ROUTES) {
+      await expectPublicProfileRoute(page, route);
+    }
   });
 });

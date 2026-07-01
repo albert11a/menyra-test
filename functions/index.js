@@ -475,8 +475,8 @@ function buildServerAuthNotificationPayload({
     source: "server",
     createdByUid: safeActorUid,
     targetUid: safeTargetUid,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    createdAt: admin.firestore.FieldValue.serverTimestamp()
+    updatedAt: FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp()
   };
 }
 
@@ -2211,7 +2211,7 @@ async function ensureBootstrapRestaurantPublicRouteMeta(restaurantId = "", data 
         landingSlug: nextLandingSlug,
         canonicalPublicPath: nextData.canonicalPublicPath,
         landingRestaurantId: nextData.landingRestaurantId,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });
     } catch {}
   }
@@ -2323,7 +2323,7 @@ async function mergeMissingPublicRouteMetadata({
   if (!Object.keys(patch).length) {
     return { slug: safeSlug, action: "unchanged", alreadyOwned: true };
   }
-  patch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+  patch.updatedAt = FieldValue.serverTimestamp();
   await (routeRef || db.collection("publicRoutes").doc(safeSlug)).set(patch, { merge: true });
   return { slug: safeSlug, action: "metadata-updated", alreadyOwned: true };
 }
@@ -2402,7 +2402,7 @@ async function claimUniquePublicRouteForRestaurant({
         if (!asText(routeData.status)) patch.status = safeRouteStatus;
         if (!asText(routeData.restaurantStatus) && restaurantStatus) patch.restaurantStatus = restaurantStatus;
         if (Object.keys(patch).length) {
-          patch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+          patch.updatedAt = FieldValue.serverTimestamp();
           transaction.set(routeRef, patch, { merge: true });
           return { slug, action: "updated" };
         }
@@ -2413,8 +2413,8 @@ async function claimUniquePublicRouteForRestaurant({
         canonicalSlug: slug,
         status: safeRouteStatus,
         restaurantStatus,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });
       return { slug, action: "created" };
     });
@@ -2471,7 +2471,7 @@ async function ensurePublicRouteForRestaurantWrite(restaurantId = "", data = {})
   if (shouldStoreNewClaim && asText(source.canonicalPublicPath) !== canonicalPublicPath) restaurantPatch.canonicalPublicPath = canonicalPublicPath;
   if (shouldStoreNewClaim && !asText(source.landingRestaurantId)) restaurantPatch.landingRestaurantId = safeRestaurantId;
   if (Object.keys(restaurantPatch).length) {
-    restaurantPatch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+    restaurantPatch.updatedAt = FieldValue.serverTimestamp();
     await db.collection("restaurants").doc(safeRestaurantId).set(restaurantPatch, { merge: true });
   }
   return {
@@ -3495,7 +3495,7 @@ exports.sendWebPushOnNotificationCreate = functions
             enabled: false,
             token: "",
             lastErrorCode: errorCode,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
           }, { merge: true }));
         });
       });

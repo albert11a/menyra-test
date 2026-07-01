@@ -386,8 +386,7 @@
             "imageUrl": "https://images.example.local/menu-024.jpg"
           }
         ],
-        "currency": "EUR",
-        "lastSeededBy": "mnyrasocial"
+        "currency": "EUR"
       }
     },
     {
@@ -426,11 +425,9 @@
             "id": "ad-approved-local",
             "title": "Local Lunch Offer",
             "status": "approved",
-            "createdByUid": "owner-demo",
-            "approvedByUid": "heart-demo"
+            "active": true
           }
-        ],
-        "lastSeededBy": "mnyrasocial"
+        ]
       }
     },
     {
@@ -694,8 +691,7 @@
             "imageUrl": "https://images.example.local/shop-shirt.jpg"
           }
         ],
-        "currency": "EUR",
-        "lastSeededBy": "mnyrasocial"
+        "currency": "EUR"
       }
     },
     {

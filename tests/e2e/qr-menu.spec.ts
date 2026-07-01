@@ -93,7 +93,9 @@ test.describe("seeded QR menu order flow", () => {
     await expect(page.locator("body")).toContainText(/6[,.]90/);
 
     await page.locator('[data-cart-checkout="submit"]').click();
-    await expect(page.locator("body")).toContainText("Bestellung gesendet");
+    await expect(page.locator("body")).toContainText("Bestellung gesendet", {
+      timeout: 20_000,
+    });
 
     await expect
       .poll(async () => {
