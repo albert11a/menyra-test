@@ -22,6 +22,8 @@ Last updated: 2026-07-01
 - Firestore Rules tests and auth fixtures under `tests/rules`.
 - Minimal Firestore Rules hardening for protected social/follower counters and
   private root user reads.
+- Minimal Firestore Rules hardening for QR/menu order creates and waiter order
+  status updates.
 - Firebase Functions emulator validation under `tests/functions`.
 - Playwright E2E scaffold under `tests/e2e`.
 - False runtime feature flags in `shared/config/feature-flags.js`.
@@ -54,6 +56,7 @@ Existing `npm run build` remains the normal Vite/Vercel static build.
 - `docs/codex/generated/ARCHITECTURE_DEPENDENCY_REPORT.md`
 - `docs/codex/generated/BUNDLE_ANALYSIS_REPORT.md`
 - `docs/codex/generated/FIRESTORE_RULES_SECURITY_GAP_REPORT.md`
+- `docs/codex/generated/ORDER_QR_WAITER_FLOW_AUDIT.md`
 - `docs/codex/generated/dependency-cruiser-check.txt`
 - `docs/codex/generated/madge-social-app-graph.json`
 - `docs/codex/generated/madge-cycles.txt`
@@ -63,7 +66,7 @@ Existing `npm run build` remains the normal Vite/Vercel static build.
 Green:
 
 - `npm run test:unit`: 102 passed.
-- `npm run test:rules`: 7 passed, 0 failed, 0 skipped.
+- `npm run test:rules`: 12 passed, 0 failed, 0 skipped.
 - `npm run test:functions`: 2 passed.
 - `npm run arch:report`: report generated.
 - `npm run arch:check`: passed, 330 modules and 489 dependencies cruised.
@@ -94,6 +97,10 @@ Observed:
   changed.
 - Seed visibility was verified in the emulator: PIDHImadh, 24 Menu Items, Posts,
   Orders, Waiter User, Owner User, CEO/Heart User, Shop, Hotel and pending Ads.
+- Latest seed verification after the QR/Menu/Order/Waiter pass confirmed
+  PIDHImadh, 24 Menu Items, 1 restaurant Social Post, `socialFeed/post-demo-001`,
+  1 restaurant Order, Waiter User, Owner User, CEO/Heart User, Shop, Hotel,
+  pending Ad and 4 Auth users.
 
 Red:
 
@@ -115,6 +122,7 @@ Not run:
 - No `social-app.js` change.
 - No `functions/index.js` change.
 - No QR/menu/cart/order behavior.
+- No QR/menu/waiter runtime refactor.
 - No production Firebase configuration or deploy flow.
 - No real customer data.
 
@@ -154,6 +162,48 @@ New confirmed security gaps:
 
 - None found in this pass.
 
+## QR/Menu/Order/Waiter Hardening
+
+Audit report:
+
+- `docs/codex/generated/ORDER_QR_WAITER_FLOW_AUDIT.md`
+
+Closed or hardened:
+
+- Guest and signed-in order creates now reject arbitrary item `price`, `total`
+  and non-initial `status`.
+- Order create now validates menu item ids against
+  `restaurants/{restaurantId}/menuItems/{itemId}` and requires the submitted
+  price to match the menu item price.
+- Order create now requires `itemCount` and `total` to match submitted line
+  items.
+- Waiter order updates are restricted to `status`, `updatedAt` and
+  `updatedAtClient`.
+- Waiter cannot mutate order `items`, item prices or `total`.
+- Waiter cannot delete orders.
+- Guest and normal users cannot read/list foreign restaurant orders.
+- Owner can read own restaurant orders and cannot read foreign restaurant
+  orders.
+- CEO/Heart keeps the existing admin order access contract.
+
+Documented remaining risk:
+
+- The active checkout still creates canonical orders directly from the browser.
+  Rules now validate the payload, but there is no secure callable/HTTP server
+  Function that creates canonical orders and computes prices before write.
+- A concrete `createRestaurantOrder` implementation plan is documented before
+  any UI/runtime migration.
+- Client-created orders are capped at 8 items in Rules to stay within menu item
+  validation limits; larger carts should move to server-side order creation.
+
+E2E scaffold:
+
+- `tests/e2e/qr-menu.spec.ts` now targets seeded QR menu URL
+  `/pidhimadh/menu?src=qr&table=2`.
+- `tests/e2e/waiter.spec.ts` now targets seeded waiter order URL
+  `/waiter/?restaurant=pidhi-madh&order=order-demo-001`.
+- Both Playwright tests remain skipped by design.
+
 ## Risks Found
 
 - Existing app bundle remains too large for a true lightweight public entry.
@@ -164,25 +214,38 @@ New confirmed security gaps:
   allow/deny coverage.
 - Previously confirmed Rules gaps for direct counter manipulation and foreign
   root user reads are now closed by emulator-tested rules.
+- QR/Menu/Order/Waiter security now has explicit allow/deny Rules coverage.
+- No server-side canonical order creation Function exists yet; this is the next
+  security step before any order runtime split.
 - Functions emulator hub is reachable; local startup still reports the host
   Node 24 vs requested Node 20 mismatch.
+- Existing `syncOrderMirrorsOnRestaurantOrderWrite` trigger showed a local
+  emulator runtime error on `serverTimestamp`; this is documented in the
+  QR/Menu/Order/Waiter audit and needs a dedicated Functions trigger test before
+  code changes.
 - CI workflow is prepared but not yet proven in GitHub Actions.
 - npm audit reports transitive vulnerabilities that need separate dependency
   review.
 
 ## Next Safe Refactor Order
 
-1. Investigate the local Functions emulator Node 20/Node 24 mismatch separately
+1. Implement `createRestaurantOrder` behind a false flag and migrate checkout
+   from direct client Firestore create to server-side canonical order creation.
+2. Add a focused Functions trigger test for
+   `syncOrderMirrorsOnRestaurantOrderWrite`, then apply the smallest safe
+   `serverTimestamp` fix.
+3. Investigate the local Functions emulator Node 20/Node 24 mismatch separately
    from product refactor work.
-2. Convert public profile/menu Playwright TODOs into seeded local smoke tests.
-3. Re-run architecture and bundle reports from a clean build.
-4. Start first real runtime split behind false flags only after security tests
+4. Convert public profile/menu Playwright TODOs into seeded local smoke tests.
+5. Re-run architecture and bundle reports from a clean build.
+6. Start first real runtime split behind false flags only after security tests
    are green.
 
 ## First Recommended Real Refactor
 
 Start with Public Profile if the team wants the lowest write-risk surface. Start
-with QR/Menu only if cart/order/table-context Rules tests are implemented first.
+with QR/Menu only after the server-side `createRestaurantOrder` path is added
+behind a false flag or explicitly accepted as a later separate security step.
 
 ## Clear Warning
 

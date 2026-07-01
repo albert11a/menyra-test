@@ -500,9 +500,180 @@ service cloud.firestore {
 
     function validOrderCreateForRestaurant(restaurantId) {
       return request.resource.data.restaurantId == restaurantId
+        && request.resource.data.keys().hasOnly(orderCreateAllowedFields())
+        && validOrderCreateBuyer()
+        && validInitialOrderStatus()
+        && validOrderItemsForRestaurant(restaurantId)
+        && validOrderItemCount()
+        && validOrderTotal()
         && (
-          (!signedIn() && (!request.resource.data.keys().hasAny(["buyerUid"]) || request.resource.data.buyerUid == ""))
-          || (signedIn() && request.resource.data.buyerUid == authUid())
+          !request.resource.data.keys().hasAny(["orderLookupToken", "guestLookupToken"])
+          || !signedIn()
+        );
+    }
+
+    function validOrderCreateBuyer() {
+      return (!signedIn() && (!request.resource.data.keys().hasAny(["buyerUid"]) || request.resource.data.buyerUid == ""))
+        || (signedIn() && request.resource.data.buyerUid == authUid());
+    }
+
+    function orderCreateAllowedFields() {
+      return [
+        "id",
+        "restaurantId",
+        "businessName",
+        "businessAvatar",
+        "buyerUid",
+        "buyerName",
+        "buyerHandle",
+        "buyerAvatar",
+        "contact",
+        "table",
+        "tableNumber",
+        "tableLabel",
+        "items",
+        "itemCount",
+        "total",
+        "status",
+        "orderSource",
+        "guestScopeUid",
+        "guestSessionId",
+        "guestLookupToken",
+        "orderLookupToken",
+        "createdAt",
+        "updatedAt",
+        "createdAtClient",
+        "updatedAtClient"
+      ];
+    }
+
+    function orderItemAllowedFields() {
+      return [
+        "id",
+        "itemId",
+        "name",
+        "price",
+        "quantity",
+        "imageUrl",
+        "category",
+        "comment",
+        "cartKey",
+        "selectedSize",
+        "selectedColor",
+        "cropX",
+        "cropY"
+      ];
+    }
+
+    function menuItemPath(restaurantId, itemId) {
+      return /databases/$(database)/documents/restaurants/$(restaurantId)/menuItems/$(itemId);
+    }
+
+    function validInitialOrderStatus() {
+      return !request.resource.data.keys().hasAny(["status"])
+        || request.resource.data.status == "Neu"
+        || request.resource.data.status == "new"
+        || request.resource.data.status == "bestellung";
+    }
+
+    function validMutableOrderStatus(value) {
+      return value == "bestellung"
+        || value == "angenommen"
+        || value == "fertig"
+        || value == "archiv";
+    }
+
+    function validOrderItemForRestaurant(restaurantId, item) {
+      return item is map
+        && item.keys().hasOnly(orderItemAllowedFields())
+        && item.itemId is string
+        && item.itemId != ""
+        && item.name is string
+        && item.name != ""
+        && item.price is number
+        && item.price >= 0
+        && item.quantity is number
+        && item.quantity >= 1
+        && item.quantity <= 99
+        && exists(menuItemPath(restaurantId, item.itemId))
+        && get(menuItemPath(restaurantId, item.itemId)).data.available != false
+        && get(menuItemPath(restaurantId, item.itemId)).data.price == item.price;
+    }
+
+    function validOrderItemAt(restaurantId, index) {
+      return request.resource.data.items.size() <= index
+        || validOrderItemForRestaurant(restaurantId, request.resource.data.items[index]);
+    }
+
+    function validOrderItemsForRestaurant(restaurantId) {
+      return request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 8
+        && validOrderItemAt(restaurantId, 0)
+        && validOrderItemAt(restaurantId, 1)
+        && validOrderItemAt(restaurantId, 2)
+        && validOrderItemAt(restaurantId, 3)
+        && validOrderItemAt(restaurantId, 4)
+        && validOrderItemAt(restaurantId, 5)
+        && validOrderItemAt(restaurantId, 6)
+        && validOrderItemAt(restaurantId, 7);
+    }
+
+    function orderItemQuantityAt(index) {
+      return request.resource.data.items.size() > index ? request.resource.data.items[index].quantity : 0;
+    }
+
+    function orderItemTotalAt(index) {
+      return request.resource.data.items.size() > index
+        ? request.resource.data.items[index].price * request.resource.data.items[index].quantity
+        : 0;
+    }
+
+    function orderItemQuantitySum() {
+      return orderItemQuantityAt(0)
+        + orderItemQuantityAt(1)
+        + orderItemQuantityAt(2)
+        + orderItemQuantityAt(3)
+        + orderItemQuantityAt(4)
+        + orderItemQuantityAt(5)
+        + orderItemQuantityAt(6)
+        + orderItemQuantityAt(7);
+    }
+
+    function orderItemsTotal() {
+      return orderItemTotalAt(0)
+        + orderItemTotalAt(1)
+        + orderItemTotalAt(2)
+        + orderItemTotalAt(3)
+        + orderItemTotalAt(4)
+        + orderItemTotalAt(5)
+        + orderItemTotalAt(6)
+        + orderItemTotalAt(7);
+    }
+
+    function validOrderItemCount() {
+      return request.resource.data.itemCount is number
+        && request.resource.data.itemCount == orderItemQuantitySum();
+    }
+
+    function validOrderTotal() {
+      let expectedTotal = orderItemsTotal();
+      return request.resource.data.total is number
+        && request.resource.data.total >= expectedTotal - 0.01
+        && request.resource.data.total <= expectedTotal + 0.01;
+    }
+
+    function orderUpdateAllowedFields() {
+      return ["status", "updatedAt", "updatedAtClient"];
+    }
+
+    function validOrderStatusUpdateForRestaurant(restaurantId) {
+      return canAccessRestaurantOrdersDoc(restaurantId)
+        && request.resource.data.restaurantId == resource.data.restaurantId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(orderUpdateAllowedFields())
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["status"])
+          || validMutableOrderStatus(request.resource.data.status)
         );
     }
 
@@ -714,7 +885,8 @@ service cloud.firestore {
         allow get: if canAccessRestaurantOrdersDoc(restaurantId) || buyerOwnsOrder();
         allow list: if canAccessRestaurantOrdersDoc(restaurantId);
         allow create: if validOrderCreateForRestaurant(restaurantId);
-        allow update, delete: if canAccessRestaurantOrdersDoc(restaurantId);
+        allow update: if validOrderStatusUpdateForRestaurant(restaurantId);
+        allow delete: if isCeoActor();
       }
 
       match /orderLookup/{lookupToken} {
