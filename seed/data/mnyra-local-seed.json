@@ -77,7 +77,9 @@
           "sunday": "10:00-21:00"
         },
         "coverUrl": "https://images.example.local/pidhi-cover.jpg",
-        "logoUrl": "https://images.example.local/pidhi-logo.jpg"
+        "logoUrl": "https://images.example.local/pidhi-logo.jpg",
+        "tableQrEnabled": true,
+        "tableQrCount": 12
       }
     },
     {
@@ -102,7 +104,224 @@
       "data": {
         "restaurantId": "pidhi-madh",
         "public": true,
-        "categories": ["Breakfast", "Grill", "Pasta", "Dessert", "Drinks"],
+        "items": [
+          {
+            "id": "menu-001",
+            "itemId": "menu-001",
+            "name": "Local Breakfast Plate",
+            "category": "Breakfast",
+            "price": 6.9,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-001.jpg"
+          },
+          {
+            "id": "menu-002",
+            "itemId": "menu-002",
+            "name": "Village Omelette",
+            "category": "Breakfast",
+            "price": 5.5,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-002.jpg"
+          },
+          {
+            "id": "menu-003",
+            "itemId": "menu-003",
+            "name": "Cheese Burek",
+            "category": "Breakfast",
+            "price": 3.2,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-003.jpg"
+          },
+          {
+            "id": "menu-004",
+            "itemId": "menu-004",
+            "name": "Fresh Yogurt Bowl",
+            "category": "Breakfast",
+            "price": 4.4,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-004.jpg"
+          },
+          {
+            "id": "menu-005",
+            "itemId": "menu-005",
+            "name": "Grilled Chicken",
+            "category": "Grill",
+            "price": 8.8,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-005.jpg"
+          },
+          {
+            "id": "menu-006",
+            "itemId": "menu-006",
+            "name": "Beef Qofte",
+            "category": "Grill",
+            "price": 7.2,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-006.jpg"
+          },
+          {
+            "id": "menu-007",
+            "itemId": "menu-007",
+            "name": "Lamb Skewers",
+            "category": "Grill",
+            "price": 11.9,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-007.jpg"
+          },
+          {
+            "id": "menu-008",
+            "itemId": "menu-008",
+            "name": "Family Grill Board",
+            "category": "Grill",
+            "price": 24.9,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-008.jpg"
+          },
+          {
+            "id": "menu-009",
+            "itemId": "menu-009",
+            "name": "Pasta Arrabbiata",
+            "category": "Pasta",
+            "price": 6.8,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-009.jpg"
+          },
+          {
+            "id": "menu-010",
+            "itemId": "menu-010",
+            "name": "Creamy Mushroom Pasta",
+            "category": "Pasta",
+            "price": 7.4,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-010.jpg"
+          },
+          {
+            "id": "menu-011",
+            "itemId": "menu-011",
+            "name": "Chicken Alfredo",
+            "category": "Pasta",
+            "price": 8.2,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-011.jpg"
+          },
+          {
+            "id": "menu-012",
+            "itemId": "menu-012",
+            "name": "Seafood Pasta",
+            "category": "Pasta",
+            "price": 10.5,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-012.jpg"
+          },
+          {
+            "id": "menu-013",
+            "itemId": "menu-013",
+            "name": "Tomato Soup",
+            "category": "Breakfast",
+            "price": 3.9,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-013.jpg"
+          },
+          {
+            "id": "menu-014",
+            "itemId": "menu-014",
+            "name": "Seasonal Salad",
+            "category": "Breakfast",
+            "price": 4.8,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-014.jpg"
+          },
+          {
+            "id": "menu-015",
+            "itemId": "menu-015",
+            "name": "House Burger",
+            "category": "Grill",
+            "price": 7.9,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-015.jpg"
+          },
+          {
+            "id": "menu-016",
+            "itemId": "menu-016",
+            "name": "Crispy Potatoes",
+            "category": "Grill",
+            "price": 2.9,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-016.jpg"
+          },
+          {
+            "id": "menu-017",
+            "itemId": "menu-017",
+            "name": "Baklava Slice",
+            "category": "Dessert",
+            "price": 2.5,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-017.jpg"
+          },
+          {
+            "id": "menu-018",
+            "itemId": "menu-018",
+            "name": "Chocolate Cake",
+            "category": "Dessert",
+            "price": 3.8,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-018.jpg"
+          },
+          {
+            "id": "menu-019",
+            "itemId": "menu-019",
+            "name": "Fruit Plate",
+            "category": "Dessert",
+            "price": 4.2,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-019.jpg"
+          },
+          {
+            "id": "menu-020",
+            "itemId": "menu-020",
+            "name": "Vanilla Pudding",
+            "category": "Dessert",
+            "price": 2.8,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-020.jpg"
+          },
+          {
+            "id": "menu-021",
+            "itemId": "menu-021",
+            "name": "Espresso",
+            "category": "Drinks",
+            "price": 1.2,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-021.jpg"
+          },
+          {
+            "id": "menu-022",
+            "itemId": "menu-022",
+            "name": "Fresh Lemonade",
+            "category": "Drinks",
+            "price": 2.4,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-022.jpg"
+          },
+          {
+            "id": "menu-023",
+            "itemId": "menu-023",
+            "name": "Sparkling Water",
+            "category": "Drinks",
+            "price": 1.5,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-023.jpg"
+          },
+          {
+            "id": "menu-024",
+            "itemId": "menu-024",
+            "name": "Local Tea",
+            "category": "Drinks",
+            "price": 1.6,
+            "available": true,
+            "imageUrl": "https://images.example.local/menu-024.jpg"
+          }
+        ],
         "currency": "EUR",
         "lastSeededBy": "mnyrasocial"
       }
@@ -206,6 +425,8 @@
         "id": "order-demo-001",
         "restaurantId": "pidhi-madh",
         "table": "table-01",
+        "tableNumber": 2,
+        "tableLabel": "Tisch 2",
         "status": "new",
         "buyerUid": "",
         "items": [
@@ -216,7 +437,12 @@
             "price": 6.9
           }
         ],
-        "total": 13.8
+        "itemCount": 2,
+        "total": 13.8,
+        "createdAt": "2026-07-01T07:00:00.000Z",
+        "updatedAt": "2026-07-01T07:00:00.000Z",
+        "createdAtClient": "2026-07-01T07:00:00.000Z",
+        "updatedAtClient": "2026-07-01T07:00:00.000Z"
       }
     },
     {

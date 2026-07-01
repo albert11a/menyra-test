@@ -1,18 +1,130 @@
-import { expect, test } from "@playwright/test";
+import {
+  deleteRestaurantOrder,
+  listRestaurantOrders,
+} from "./firebase-emulator-admin";
+import { expect, test } from "./firebase-emulator-fixture";
 
-const SEEDED_QR_MENU_PATH = "/pidhimadh/menu?src=qr&table=2";
+const SEEDED_QR_MENU_PATH =
+  "/pidhimadh/menu?src=qr&table=2&firebase-emulator=1&sw-reset=1";
+const RESTAURANT_ID = "pidhi-madh";
+const SEEDED_ITEM_ID = "menu-001";
+const SEEDED_ITEM_NAME = "Local Breakfast Plate";
+const SEEDED_ITEM_PRICE = 6.9;
+const ALLOWED_ORDER_FIELDS = new Set([
+  "id",
+  "restaurantId",
+  "businessName",
+  "businessAvatar",
+  "buyerUid",
+  "buyerName",
+  "buyerHandle",
+  "buyerAvatar",
+  "contact",
+  "table",
+  "tableNumber",
+  "tableLabel",
+  "items",
+  "itemCount",
+  "total",
+  "status",
+  "orderSource",
+  "guestScopeUid",
+  "guestSessionId",
+  "guestLookupToken",
+  "orderLookupToken",
+  "createdAt",
+  "updatedAt",
+  "createdAtClient",
+  "updatedAtClient",
+]);
+const ALLOWED_ORDER_ITEM_FIELDS = new Set([
+  "id",
+  "itemId",
+  "name",
+  "price",
+  "quantity",
+  "imageUrl",
+  "category",
+  "comment",
+  "cartKey",
+  "selectedSize",
+  "selectedColor",
+  "cropX",
+  "cropY",
+]);
 
-test.describe("qr menu smoke", () => {
-  test.skip("opens QR menu with table context and keeps cart flow available", async ({
+test.describe("seeded QR menu order flow", () => {
+  test("creates a rules-compatible table order from the seeded menu", async ({
     page,
   }) => {
+    const beforeIds = new Set(
+      (await listRestaurantOrders(RESTAURANT_ID)).map((order) => order.id),
+    );
+    let createdOrderId = "";
+
     await page.goto(SEEDED_QR_MENU_PATH);
 
-    await expect(page.locator("body")).toContainText(/PIDHImadh|Local/i);
-    await expect(
-      page.locator(
-        "[data-cart-checkout], [data-cart-qty], #menuDetailAddToCartBtn",
-      ),
-    ).toBeVisible();
+    await expect(page.locator("body")).toContainText("PIDHImadh");
+    const menuItem = page
+      .locator(`[data-menu-open="${SEEDED_ITEM_ID}"]`)
+      .filter({ hasText: SEEDED_ITEM_NAME });
+    await expect(menuItem).toContainText(SEEDED_ITEM_NAME);
+    await menuItem.click();
+
+    await expect(page.locator("#menuDetailTitle")).toContainText(
+      SEEDED_ITEM_NAME,
+    );
+    await page.locator("#menuDetailAddToCartBtn").click();
+
+    const cartItem = page
+      .locator(`[data-cart-qty^="${SEEDED_ITEM_ID}::"]`)
+      .first();
+    await expect(cartItem).toBeVisible();
+    await expect(page.locator("body")).toContainText(SEEDED_ITEM_NAME);
+    await expect(page.locator("body")).toContainText(/6[,.]90/);
+
+    await page.locator('[data-cart-checkout="submit"]').click();
+    await expect(page.locator("body")).toContainText("Bestellung gesendet");
+
+    await expect
+      .poll(async () => {
+        const orders = await listRestaurantOrders(RESTAURANT_ID);
+        const created = orders.find((order) => !beforeIds.has(order.id));
+        createdOrderId = created?.id || "";
+        return createdOrderId;
+      })
+      .not.toBe("");
+
+    try {
+      const createdOrder = (await listRestaurantOrders(RESTAURANT_ID)).find(
+        (order) => order.id === createdOrderId,
+      );
+      expect(createdOrder).toBeTruthy();
+      const payload = createdOrder?.data || {};
+      expect(payload.restaurantId).toBe(RESTAURANT_ID);
+      expect(["Neu", "new", "bestellung"]).toContain(payload.status);
+      expect(payload.tableNumber).toBe(2);
+      expect(payload.itemCount).toBe(1);
+      expect(payload.total).toBeCloseTo(SEEDED_ITEM_PRICE, 2);
+      expect(
+        Object.keys(payload).every((key) => ALLOWED_ORDER_FIELDS.has(key)),
+      ).toBe(true);
+      expect(payload.items).toHaveLength(1);
+      expect(payload.items[0]).toMatchObject({
+        itemId: SEEDED_ITEM_ID,
+        name: SEEDED_ITEM_NAME,
+        quantity: 1,
+        price: SEEDED_ITEM_PRICE,
+      });
+      expect(
+        Object.keys(payload.items[0]).every((key) =>
+          ALLOWED_ORDER_ITEM_FIELDS.has(key),
+        ),
+      ).toBe(true);
+    } finally {
+      if (createdOrderId) {
+        await deleteRestaurantOrder(RESTAURANT_ID, createdOrderId);
+      }
+    }
   });
 });

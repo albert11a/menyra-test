@@ -5,7 +5,11 @@ Generated: 2026-07-01
 Scope: QR menu, cart checkout, restaurant order creation, order reads, waiter
 order updates, owner/CEO order access, Functions mirror/notification triggers
 and local emulator seed coverage. No UI, route, DOM id, collection rename,
-`social-app.js` refactor or Functions source change was made.
+`social-app.js` source refactor or Functions source change was made. The only
+product-runtime change is numeric normalization of the existing order item
+price before the direct Firestore write. The generated social bundle was
+rebuilt so the validated browser path contains that fix and the local emulator
+configuration.
 
 ## Audited files
 
@@ -16,9 +20,13 @@ and local emulator seed coverage. No UI, route, DOM id, collection rename,
 - `apps/menyra-social/core/router/startup-route-runtime-context.js`
 - `apps/menyra-social/core/router/public-business-route-utils.js`
 - `apps/waiter/waiter-app.js`
+- `shared/firebase-config.js`
 - `functions/index.js`
 - `firestore.rules`
 - `tests/rules/firestore-security-flows.test.mjs`
+- `tests/functions/functions-emulator.test.mjs`
+- `tests/e2e/firebase-emulator-admin.ts`
+- `tests/e2e/firebase-emulator-fixture.ts`
 - `tests/e2e/qr-menu.spec.ts`
 - `tests/e2e/waiter.spec.ts`
 - `seed/data/mnyra-local-seed.json`
@@ -46,9 +54,23 @@ The client currently sends:
   `orderLookupToken`
 - timestamps: server timestamp sentinels plus client ISO strings
 
-Before this pass, Rules only checked `restaurantId` and `buyerUid`. That meant a
-guest or signed-in user could provide arbitrary `total`, item `price` and
-initial `status`.
+The real browser flow exposed one client/Rules mismatch:
+
+- `normalizeMenuItemDocCore()` keeps menu prices as strings for rendering.
+- `submitShopCheckout()` previously copied that value directly into
+  `items[].price`.
+- The captured Firestore request therefore contained `"price": "6.9"`.
+- Rules correctly rejected it because the order contract requires a numeric
+  price equal to the trusted `menuItems/{itemId}` price.
+- The minimal client fix is
+  `price: parsePriceValue(item.price)` in
+  `apps/menyra-social/core/orders/orders-runtime-controller.js`.
+
+No Rules relaxation was needed.
+
+Before the preceding Rules hardening pass, Rules only checked `restaurantId`
+and `buyerUid`. That meant a guest or signed-in user could provide arbitrary
+`total`, item `price` and initial `status`.
 
 ## Rules hardening applied
 
@@ -127,15 +149,19 @@ canonical restaurant order document is written.
 
 Observed local trigger gap:
 
-- During local emulator shutdown after seed/rules validation,
-  `syncOrderMirrorsOnRestaurantOrderWrite` logged
+- `tests/functions/functions-emulator.test.mjs` now exercises an order write and
+  asserts the exact logging-emulator failure for
+  `syncOrderMirrorsOnRestaurantOrderWrite`.
+- The Functions emulator repeatedly logged
   `Cannot read properties of undefined (reading 'serverTimestamp')` from
-  `functions/index.js`.
-- `npm run test:functions` is still green because the current Functions test only
-  validates emulator hub/package safety, not trigger behavior.
-- No Functions source was changed in this pass. The smallest safe follow-up is a
-  dedicated Functions trigger test and then a minimal server timestamp fix in
-  `buildCanonicalOrderProjection`.
+  `buildCanonicalOrderProjection()` at `functions/index.js:267`.
+- The behavior is worker-dependent in the local emulator: some invocations
+  complete, while other workers fail with the same stack and are killed.
+- The audit test therefore asserts the exact failure in the current Functions
+  emulator session instead of incorrectly requiring every invocation to fail.
+- No Functions source was changed. The smallest safe follow-up is to isolate why
+  the emulator stub sometimes lacks `admin.firestore.FieldValue`, then apply a
+  minimal server timestamp fix with a success-path mirror assertion.
 
 ## Server order creation implementation plan
 
@@ -246,34 +272,67 @@ Feature flag plan:
 
 Result: `npm run test:rules` is green with 12 passed, 0 failed, 0 skipped.
 
-## E2E scaffold
+## Browser E2E validation
 
-The skipped Playwright smoke tests were made more directly activatable:
+Local browser configuration:
 
-- `tests/e2e/qr-menu.spec.ts` now targets
-  `/pidhimadh/menu?src=qr&table=2` and checks for seeded menu/cart affordances.
-- `tests/e2e/waiter.spec.ts` now targets
-  `/waiter/?restaurant=pidhi-madh&order=order-demo-001` and checks for waiter
-  shell/order controls.
+- Production Firebase remains the default.
+- On `localhost`, `127.0.0.1` or `::1`, the explicit query
+  `firebase-emulator=1` selects project `mnyra-local` and connects Firestore on
+  port 8080 plus Auth on port 9099.
+- The Playwright fixture can set the same explicit configuration through
+  `globalThis.__MENYRA_FIREBASE_EMULATORS__`.
+- The separately named Waiter Firebase app is connected through the same helper.
 
-They remain skipped because emulator auth and a local browser flow are not fully
-wired in this prep step, and repo guardrails avoid Playwright runs unless
-explicitly requested.
+QR/Menu/Cart/Order:
+
+- `tests/e2e/qr-menu.spec.ts` opens the seeded QR URL for table 2.
+- PIDHImadh and `Local Breakfast Plate` are visible from
+  `restaurants/pidhi-madh/public/menu`.
+- The product is added to cart and checkout is submitted.
+- The new canonical order appears under
+  `restaurants/pidhi-madh/orders/{orderId}`.
+- The test verifies the allowed top-level/item fields, initial status,
+  restaurant id, table number, `itemCount == 1` and `total == 6.9`.
+- The public menu seed now contains the same 24 products as the trusted
+  `menuItems` price documents; the redundant string-only `categories` field was
+  removed because the current coercion code interpreted it as empty products.
+
+Waiter:
+
+- `tests/e2e/waiter.spec.ts` signs in as `waiter.local@example.test`.
+- The waiter sees the seeded PIDHImadh order and does not see/read a generated
+  `shop-demo` order.
+- Direct attempts to mutate `total` or `items` are denied.
+- The normal UI status change to `angenommen` succeeds.
+- The test confirms the order total and items remain unchanged.
+
+Result:
+
+- Desktop Chromium: QR flow passed; Waiter flow passed.
+- Pixel 5/mobile Chromium: QR flow passed; Waiter flow passed.
+- Four active tests passed; eight unrelated prepared smoke tests remain skipped.
 
 ## Check results
 
 - `npm run test:rules`: 12 passed, 0 failed, 0 skipped.
-- `npm run test:functions`: 2 passed, 0 failed.
+- `npm run test:functions`: 3 passed, 0 failed.
 - `npm run test:unit`: 102 passed, 0 failed.
 - `npm run lint`: passed.
 - `npm run format:check`: passed.
 - `npm run arch:check`: passed, 330 modules and 489 dependencies cruised.
+- `npm run test:e2e`: 4 passed, 8 skipped.
+- `npm run build:menyra-social:bundle`: passed; generated bundle artifacts were
+  updated.
+- `npm run build`: passed; Vercel static output was prepared in `dist`.
 - `npm run emulators:seed`: seeded 48 Firestore documents and 4 Auth users.
 
 Seed verification:
 
 - Restaurant `PIDHImadh`: visible.
 - Menu Items: 24.
+- Public menu snapshot: 24 items.
+- QR/table config: enabled with 12 tables.
 - Social Posts: 1 restaurant post plus `socialFeed/post-demo-001`.
 - Orders: 1 seeded restaurant order.
 - Waiter User: visible.
@@ -289,8 +348,11 @@ Seed verification:
 - Orders still use a direct browser Firestore create path. Rules now validate
   prices/totals against current menu item docs, but a dedicated server Function
   is still the safer long-term canonical write path.
-- Existing order mirror trigger behavior is not yet covered by Functions tests
-  and showed a local `serverTimestamp` runtime error in the emulator.
+- The order mirror trigger is now covered by a dedicated failure-reproduction
+  test, but the worker-dependent `serverTimestamp` runtime error is not fixed.
+- The Functions emulator runs on host Node 24 while the Functions package
+  requests Node 20; that mismatch remains a possible contributor and needs
+  separate isolation.
 - Rules currently cap client-created order items at 8 to stay below Rules read
   limits while validating menu prices. Larger carts need server-side creation.
 - Variant/add-on pricing is not modeled as a trusted server contract yet.

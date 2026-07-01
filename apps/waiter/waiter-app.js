@@ -1,4 +1,7 @@
-import { app as sharedApp } from "/shared/firebase-config.js?v=2026-03-10-startup-1";
+import {
+  app as sharedApp,
+  connectLocalFirebaseEmulators
+} from "/shared/firebase-config.js?v=2026-03-10-startup-1";
 import { createRuntimeErrorReporter } from "/shared/runtime-error-reporter.js?v=2026-03-23-runtime-errors-1";
 import {
   getApps,
@@ -128,6 +131,7 @@ function getWaiterDb() {
   } catch {
     waiterDb = getFirestore(app);
   }
+  connectLocalFirebaseEmulators({ firestore: waiterDb });
   return waiterDb;
 }
 
@@ -141,6 +145,7 @@ function getWaiterAuth() {
   } catch {
     waiterAuth = getAuth(app);
   }
+  connectLocalFirebaseEmulators({ authInstance: waiterAuth });
   return waiterAuth;
 }
 

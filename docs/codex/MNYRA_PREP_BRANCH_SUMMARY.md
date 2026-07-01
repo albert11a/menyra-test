@@ -24,8 +24,9 @@ Last updated: 2026-07-01
   private root user reads.
 - Minimal Firestore Rules hardening for QR/menu order creates and waiter order
   status updates.
-- Firebase Functions emulator validation under `tests/functions`.
-- Playwright E2E scaffold under `tests/e2e`.
+- Firebase Functions emulator validation and order-trigger failure reproduction
+  under `tests/functions`.
+- Active seeded QR/Menu/Order and Waiter Playwright coverage under `tests/e2e`.
 - False runtime feature flags in `shared/config/feature-flags.js`.
 - CI preparation workflow in `.github/workflows/ci.yml`.
 
@@ -67,7 +68,8 @@ Green:
 
 - `npm run test:unit`: 102 passed.
 - `npm run test:rules`: 12 passed, 0 failed, 0 skipped.
-- `npm run test:functions`: 2 passed.
+- `npm run test:functions`: 3 passed.
+- `npm run test:e2e`: 4 passed, 8 unrelated prepared tests skipped.
 - `npm run arch:report`: report generated.
 - `npm run arch:check`: passed, 330 modules and 489 dependencies cruised.
 - `npm run arch:graph`: graph JSON generated.
@@ -75,7 +77,10 @@ Green:
 - `npm run lint`: passed after vendor files were excluded and lint was scoped to errors.
 - `npm run format:check`: passed.
 - `npm run bundle:report`: report generated.
-- `npm run build`: passed.
+- `npm run build`: passed with the final browser-validation sources and prepared
+  the Vercel static output in `dist`.
+- `npm run build:menyra-social:bundle`: passed in the browser validation pass;
+  generated social bundle files were intentionally updated.
 - `npm run emulators:seed`: seeded 48 Firestore documents and 4 Auth users.
 
 Observed:
@@ -85,9 +90,9 @@ Observed:
   broaden dependency changes.
 - `npm install --save-dev firebase-admin@13.10.0` changed the audit summary to
   15 vulnerabilities (1 low, 13 moderate, 1 high). No `npm audit fix` was run.
-- `npm run build` regenerated tracked bundled files during the check. Those
-  generated product bundle diffs were restored so this prep branch does not
-  activate bundle/product changes.
+- The browser validation pass rebuilt the tracked social bundle so the explicit
+  local emulator configuration and numeric order price payload are present in
+  the real browser entry.
 - `social-app.js` remains the largest bundle at about 299 kB gzip in the
   current tracked bundle output.
 - `npm run emulators:start` started Auth, Firestore, Functions and UI locally.
@@ -98,9 +103,10 @@ Observed:
 - Seed visibility was verified in the emulator: PIDHImadh, 24 Menu Items, Posts,
   Orders, Waiter User, Owner User, CEO/Heart User, Shop, Hotel and pending Ads.
 - Latest seed verification after the QR/Menu/Order/Waiter pass confirmed
-  PIDHImadh, 24 Menu Items, 1 restaurant Social Post, `socialFeed/post-demo-001`,
-  1 restaurant Order, Waiter User, Owner User, CEO/Heart User, Shop, Hotel,
-  pending Ad and 4 Auth users.
+  PIDHImadh, 24 trusted Menu Items, a matching 24-item public menu snapshot,
+  QR/table config enabled for 12 tables, 1 restaurant Social Post,
+  `socialFeed/post-demo-001`, 1 restaurant Order, Waiter User, Owner User,
+  CEO/Heart User, Shop, Hotel, pending Ad and 4 Auth users.
 
 Red:
 
@@ -108,9 +114,8 @@ Red:
 
 Not run:
 
-- `npm run test:e2e`: Playwright is prepared but not run per repo guardrail.
-- `npm run build:analyze`: configured but not run to avoid committing analyzer
-  HTML and repeated tracked bundle rewrites in this prep step.
+- `npm run build:analyze`: configured but not run because bundle-size analysis
+  is outside this validation scope.
 
 ## What Was Not Changed
 
@@ -119,9 +124,11 @@ Not run:
 - No broad Firestore Rules restructure.
 - No Firestore collection names.
 - No `social-app.js` runtime extraction.
-- No `social-app.js` change.
+- No `apps/menyra-social/social-app.js` source refactor. Its generated bundled
+  entry changed through the normal Vite build.
 - No `functions/index.js` change.
-- No QR/menu/cart/order behavior.
+- No QR/menu/cart/order UI or route behavior; the existing order payload now
+  normalizes item price to a number before the Rules-validated write.
 - No QR/menu/waiter runtime refactor.
 - No production Firebase configuration or deploy flow.
 - No real customer data.
@@ -196,18 +203,26 @@ Documented remaining risk:
 - Client-created orders are capped at 8 items in Rules to stay within menu item
   validation limits; larger carts should move to server-side order creation.
 
-E2E scaffold:
+E2E browser validation:
 
-- `tests/e2e/qr-menu.spec.ts` now targets seeded QR menu URL
-  `/pidhimadh/menu?src=qr&table=2`.
-- `tests/e2e/waiter.spec.ts` now targets seeded waiter order URL
-  `/waiter/?restaurant=pidhi-madh&order=order-demo-001`.
-- Both Playwright tests remain skipped by design.
+- `tests/e2e/qr-menu.spec.ts` opens the seeded table-2 QR menu, verifies
+  PIDHImadh and `Local Breakfast Plate`, adds it to cart, submits checkout and
+  validates the resulting canonical order fields, status, `itemCount` and
+  total.
+- The browser request initially sent `items[].price` as string `"6.9"`. Rules
+  correctly denied it; the client now uses the existing numeric price parser.
+- `tests/e2e/waiter.spec.ts` signs in with the seed waiter, verifies authorized
+  PIDHImadh orders, denies foreign restaurant reads and item/price/total writes,
+  and permits only the normal status update.
+- Both flows pass on desktop Chromium and the Pixel 5/mobile profile.
+- Local emulator mode is explicit and localhost-only through
+  `firebase-emulator=1` or the Playwright runtime fixture; production remains
+  the default.
 
 ## Risks Found
 
 - Existing app bundle remains too large for a true lightweight public entry.
-- Playwright tests are still scaffolded and not real coverage yet.
+- QR/Menu/Cart/Order and Waiter now have real emulator-backed browser coverage.
 - Rules auth fixtures are now wired for Guest, normal User, Restaurant Owner,
   Waiter and CEO/Heart.
 - Security-sensitive order/staff/owner/Heart/public-read flows now have green
@@ -220,23 +235,23 @@ E2E scaffold:
 - Functions emulator hub is reachable; local startup still reports the host
   Node 24 vs requested Node 20 mismatch.
 - Existing `syncOrderMirrorsOnRestaurantOrderWrite` trigger showed a local
-  emulator runtime error on `serverTimestamp`; this is documented in the
-  QR/Menu/Order/Waiter audit and needs a dedicated Functions trigger test before
-  code changes.
+  emulator runtime error on `serverTimestamp`; the dedicated Functions test now
+  reproduces the exact session log and stack. The failure is worker-dependent,
+  and Functions source remains unchanged.
 - CI workflow is prepared but not yet proven in GitHub Actions.
 - npm audit reports transitive vulnerabilities that need separate dependency
   review.
 
 ## Next Safe Refactor Order
 
-1. Implement `createRestaurantOrder` behind a false flag and migrate checkout
+1. Isolate the worker-dependent `admin.firestore.FieldValue` failure in
+   `syncOrderMirrorsOnRestaurantOrderWrite`, including the local Node 20/Node 24
+   mismatch, then apply the smallest safe timestamp fix.
+2. Add a success-path mirror assertion after that Functions fix.
+3. Implement `createRestaurantOrder` behind a false flag and migrate checkout
    from direct client Firestore create to server-side canonical order creation.
-2. Add a focused Functions trigger test for
-   `syncOrderMirrorsOnRestaurantOrderWrite`, then apply the smallest safe
-   `serverTimestamp` fix.
-3. Investigate the local Functions emulator Node 20/Node 24 mismatch separately
-   from product refactor work.
-4. Convert public profile/menu Playwright TODOs into seeded local smoke tests.
+4. Convert remaining public profile/menu Playwright TODOs into seeded local
+   smoke tests.
 5. Re-run architecture and bundle reports from a clean build.
 6. Start first real runtime split behind false flags only after security tests
    are green.

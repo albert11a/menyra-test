@@ -536,7 +536,7 @@ export function createOrdersRuntimeController({
         id: item.id,
         itemId: item.itemId,
         name: item.name,
-        price: item.price,
+        price: parsePriceValue(item.price),
         quantity: item.quantity,
         imageUrl: item.imageUrl,
         category: item.category,
