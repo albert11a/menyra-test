@@ -1,0 +1,7 @@
+Dependency Cruiser baseline check
+Exit code: 0
+This prep branch records warnings as baseline and does not fail on legacy coupling yet.
+
+
+✔ no dependency violations found (330 modules, 489 dependencies cruised)
+

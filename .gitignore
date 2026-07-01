@@ -9,6 +9,8 @@ Thumbs.db
 # Firebase CLI debug artifacts
 firebase-debug.log
 firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
 
 # Build artifacts
 dist/
@@ -16,4 +18,7 @@ dist/
 # Runner artifacts
 tests/mnyra-heart-runner/artifacts/
 tests/mnyra-heart-runner/tmp-*.png
+playwright-report/
+test-results/
+seed/export/
 tmp/

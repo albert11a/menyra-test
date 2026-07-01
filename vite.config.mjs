@@ -1,9 +1,11 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const repoRoot = dirname(fileURLToPath(import.meta.url));
 const socialRoot = resolve(repoRoot, "apps/menyra-social");
+const analyzeBundle = process.env.MNYRA_BUNDLE_ANALYZE === "1";
 
 function normalizeForRollup(id = "") {
   return String(id || "").split("?")[0].replace(/\\/g, "/");
@@ -53,7 +55,19 @@ function localHeartPrettyRoutePlugin() {
 }
 
 export default defineConfig({
-  plugins: [localHeartPrettyRoutePlugin()],
+  plugins: [
+    localHeartPrettyRoutePlugin(),
+    ...(analyzeBundle
+      ? [
+          visualizer({
+            filename: resolve(repoRoot, "docs/codex/generated/bundle-stats.html"),
+            gzipSize: true,
+            brotliSize: true,
+            template: "treemap"
+          })
+        ]
+      : [])
+  ],
   appType: "custom",
   base: "/apps/menyra-social/bundled/",
   publicDir: false,

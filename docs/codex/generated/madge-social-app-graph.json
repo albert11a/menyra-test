@@ -1,0 +1,599 @@
+{
+  "../../shared/ceo-access.js": [],
+  "../../shared/i18n/en.js": [],
+  "../../shared/i18n/i18n.js": [
+    "../../shared/i18n/en.js",
+    "../../shared/i18n/sq.js",
+    "../../shared/i18n/sr.js"
+  ],
+  "../../shared/i18n/sq.js": [],
+  "../../shared/i18n/sr.js": [],
+  "_shared/image-compressor.js": [],
+  "_shared/image-resolver.js": [],
+  "_shared/social-core.js": [],
+  "_shared/social-storage.js": [],
+  "core/app-events/app-events-chat-upload-bind-utils.js": [],
+  "core/app-events/app-events-crm-staff-bind-utils.js": [],
+  "core/app-events/app-events-main-bind-utils.js": [],
+  "core/app-events/app-events-menu-focus-bind-utils.js": [
+    "core/profile/shopping-landing-card-editor-bindings.js"
+  ],
+  "core/app-events/app-events-settings-profile-bind-utils.js": [],
+  "core/app-events/app-events-shell-bind-utils.js": [
+    "core/chat/chat-v1-guard.js",
+    "core/marketplace/shopping-view-event-bindings.js",
+    "core/marketplace/travel-view-event-bindings.js"
+  ],
+  "core/app-shell/app-controller-bridge.js": [
+    "core/app-shell/feed-search-map-runtime.js",
+    "core/feed/feed-view-orchestration-controller.js",
+    "core/overlays/overlay-orchestration-controller.js",
+    "core/profile/profile-open-flow-utils.js",
+    "core/router/deeplink-flow-utils.js",
+    "core/shop/shop-view-cart-orchestration-controller.js"
+  ],
+  "core/app-shell/app-shell-runtime-controller.js": [
+    "../../shared/i18n/i18n.js",
+    "core/auth/startup-render-gate-utils.js",
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/app-shell/app-startup-bootstrap.js": [
+    "core/app-shell/public-bootstrap-runtime-controller.js",
+    "core/app-shell/public-bootstrap-startup-utils.js",
+    "core/auth/auth-post-login-route-open-utils.js",
+    "core/auth/auth-session-startup-coordinator.js"
+  ],
+  "core/app-shell/app-startup-runtime-cluster.js": [
+    "core/app-shell/app-startup-bootstrap.js"
+  ],
+  "core/app-shell/bridge-shell-runtime-cluster.js": [
+    "core/app-shell/controller-deps-factory.js"
+  ],
+  "core/app-shell/controller-deps-factory.js": [
+    "core/app-shell/app-controller-bridge.js",
+    "core/app-shell/app-shell-runtime-controller.js",
+    "core/app-shell/session-data-runtime-controller.js",
+    "core/stories/story-system-controller.js"
+  ],
+  "core/app-shell/feed-search-map-runtime.js": [
+    "core/discovery/discovery-runtime-controller.js"
+  ],
+  "core/app-shell/profile-business-menu-runtime-cluster.js": [
+    "core/business-accounts/business-accounts-runtime-controller.js",
+    "core/common/loading-diagnostics-utils.js",
+    "core/profile/profile-menu-focus-render-boundary.js",
+    "core/profile/profile-menu-focus-utils.js",
+    "core/profile/profile-visible-patch-utils.js"
+  ],
+  "core/app-shell/profile-identity-runtime-cluster.js": [
+    "core/auth/auth-profile-resolution-runtime.js",
+    "core/auth/tab-auth-load-utils.js",
+    "core/common/restaurant-identity-runtime-controller.js",
+    "core/media/avatar-logo-cache.js",
+    "core/profile/public-profile-runtime-controller.js",
+    "core/profile/self-profile-runtime-controller.js",
+    "core/stories/story-feed-runtime-controller.js"
+  ],
+  "core/app-shell/public-bootstrap-runtime-controller.js": [
+    "core/common/restaurant-identity-runtime-controller.js",
+    "core/profile/post-entity-registry-utils.js"
+  ],
+  "core/app-shell/public-bootstrap-startup-utils.js": [],
+  "core/app-shell/public-route-runtime-cluster.js": [
+    "core/app-shell/public-route-state-controller.js",
+    "core/menu/menu-public-runtime-controller.js",
+    "core/menu/table-qr-runtime-controller.js",
+    "core/orders/orders-runtime-controller.js",
+    "core/profile/public-profile-direct-entry-controller.js"
+  ],
+  "core/app-shell/public-route-state-controller.js": [
+    "core/common/state-factories.js",
+    "core/media/crop-utils.js",
+    "core/shop/shop-cart-access-utils.js",
+    "core/shop/shop-cart-state-utils.js",
+    "core/shop/shop-variant-utils.js"
+  ],
+  "core/app-shell/route-runtime-registry.js": [],
+  "core/app-shell/session-data-runtime-cluster.js": [
+    "core/app-shell/controller-deps-factory.js",
+    "core/app-shell/session-data-runtime-controller.js"
+  ],
+  "core/app-shell/session-data-runtime-controller.js": [
+    "core/common/loading-diagnostics-utils.js",
+    "core/common/restaurant-identity-runtime-controller.js",
+    "core/feed/post-doc-normalize-utils.js",
+    "core/profile/post-entity-registry-utils.js",
+    "core/profile/public-profile-surface-controller.js"
+  ],
+  "core/app-shell/session-runtime-cluster.js": [
+    "core/app-shell/session-tab-lifecycle-runtime-controller.js",
+    "core/follow/follow-runtime-controller.js",
+    "core/notifications/notification-support-runtime-controller.js",
+    "core/notifications/notifications-runtime-controller.js",
+    "core/push/push-runtime-controller.js"
+  ],
+  "core/app-shell/session-tab-lifecycle-runtime-controller.js": [
+    "core/auth/tab-auth-load-utils.js",
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/app-shell/shell-dom-runtime-controller.js": [
+    "../../shared/i18n/i18n.js",
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/app-shell/shell-ui-runtime-cluster.js": [
+    "core/chat/chat-v1-guard.js",
+    "core/crm/crm-shared-render-utils.js",
+    "core/menu/customer-focus-modal-render-utils.js",
+    "core/menu/menu-delete-utils.js",
+    "core/menu/menu-modal-render-utils.js",
+    "core/menu/menu-save-utils.js",
+    "core/notifications/notifications-render-utils.js",
+    "core/orders/orders-render-utils.js",
+    "core/overlays/overlay-basic-render-utils.js",
+    "core/ui/main-shell-render-utils.js",
+    "core/ui/settings-render-utils.js"
+  ],
+  "core/app-shell/social-app-cache-config.js": [],
+  "core/app-shell/social-app-default-state-config.js": [],
+  "core/app-shell/social-app-domain-config.js": [],
+  "core/auth/auth-bootstrap-flow-utils.js": [],
+  "core/auth/auth-bootstrap-snapshot.js": [],
+  "core/auth/auth-post-login-route-open-utils.js": [
+    "core/auth/auth-bootstrap-flow-utils.js"
+  ],
+  "core/auth/auth-profile-resolution-runtime.js": [],
+  "core/auth/auth-session-startup-coordinator.js": [
+    "core/auth/auth-bootstrap-flow-utils.js",
+    "core/auth/auth-post-login-route-open-utils.js"
+  ],
+  "core/auth/auth-shell-snapshot-utils.js": [],
+  "core/auth/auth-startup-state-utils.js": [
+    "core/auth/auth-bootstrap-snapshot.js",
+    "core/auth/auth-shell-snapshot-utils.js",
+    "core/auth/session-tab-guards.js"
+  ],
+  "core/auth/auth-user-bootstrap-utils.js": [],
+  "core/auth/initial-route-state.js": [
+    "core/menu/table-qr-utils.js",
+    "core/router/public-business-route-resolver.js",
+    "core/router/public-business-route-utils.js",
+    "core/router/public-route-cache-boot-hook.js"
+  ],
+  "core/auth/pending-route-startup-state.js": [],
+  "core/auth/route-auth-utils.js": [],
+  "core/auth/session-tab-guards.js": [
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/auth/startup-render-gate-utils.js": [],
+  "core/auth/tab-auth-load-utils.js": [],
+  "core/business-accounts/business-accounts-runtime-controller.js": [
+    "core/crm/crm-admin-business-account-write-facade.js",
+    "core/crm/crm-business-account-read-loader-core.js"
+  ],
+  "core/chat/chat-app-runtime-boundary.js": [
+    "core/chat/chat-app-runtime-lazy-facade.js",
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/chat/chat-app-runtime-facade.js": [
+    "core/chat/chat-dom-utils.js",
+    "core/chat/chat-runtime-cluster.js"
+  ],
+  "core/chat/chat-app-runtime-lazy-facade.js": [
+    "core/chat/chat-app-runtime-facade.js",
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/chat/chat-compose-utils.js": [],
+  "core/chat/chat-dom-utils.js": [],
+  "core/chat/chat-list-render-utils.js": [],
+  "core/chat/chat-message-listener-utils.js": [],
+  "core/chat/chat-message-state-utils.js": [],
+  "core/chat/chat-message-utils.js": [],
+  "core/chat/chat-read-sync-utils.js": [],
+  "core/chat/chat-remote-read-sync-plan-utils.js": [],
+  "core/chat/chat-remote-read-write-utils.js": [],
+  "core/chat/chat-remote-sync-utils.js": [],
+  "core/chat/chat-render-utils.js": [],
+  "core/chat/chat-route-open-utils.js": [],
+  "core/chat/chat-runtime-cluster.js": [
+    "core/chat/chat-runtime-controller.js"
+  ],
+  "core/chat/chat-runtime-controller.js": [
+    "core/chat/chat-compose-utils.js",
+    "core/chat/chat-list-render-utils.js",
+    "core/chat/chat-message-listener-utils.js",
+    "core/chat/chat-message-state-utils.js",
+    "core/chat/chat-message-utils.js",
+    "core/chat/chat-read-sync-utils.js",
+    "core/chat/chat-remote-read-sync-plan-utils.js",
+    "core/chat/chat-remote-read-write-utils.js",
+    "core/chat/chat-remote-sync-utils.js",
+    "core/chat/chat-render-utils.js",
+    "core/chat/chat-send-flow-utils.js",
+    "core/chat/chat-thread-action-state-utils.js",
+    "core/chat/chat-thread-index-utils.js",
+    "core/chat/chat-thread-listener-utils.js",
+    "core/chat/chat-thread-state-utils.js",
+    "core/chat/chat-utils.js",
+    "core/feed/post-doc-normalize-utils.js",
+    "core/follow/follow-accepted-state-utils.js",
+    "core/follow/follow-request-payload-utils.js",
+    "core/follow/follow-target-utils.js",
+    "core/notifications/notification-comment-highlight-utils.js",
+    "core/notifications/notification-read-state-utils.js",
+    "core/notifications/notification-target-utils.js",
+    "core/notifications/post-notification-fetch-utils.js",
+    "core/notifications/post-notification-open-utils.js"
+  ],
+  "core/chat/chat-send-flow-utils.js": [],
+  "core/chat/chat-thread-action-state-utils.js": [],
+  "core/chat/chat-thread-index-utils.js": [],
+  "core/chat/chat-thread-listener-utils.js": [],
+  "core/chat/chat-thread-state-utils.js": [],
+  "core/chat/chat-utils.js": [],
+  "core/chat/chat-v1-guard.js": [],
+  "core/common/count-format-utils.js": [],
+  "core/common/currency-utils.js": [],
+  "core/common/html-utils.js": [],
+  "core/common/loading-diagnostics-utils.js": [],
+  "core/common/price-utils.js": [],
+  "core/common/restaurant-identity-runtime-controller.js": [],
+  "core/common/state-factories.js": [],
+  "core/common/task-schedule-utils.js": [],
+  "core/common/text-normalize-utils.js": [],
+  "core/crm/ceo-access-utils.js": [
+    "../../shared/ceo-access.js"
+  ],
+  "core/crm/ceo-crm-count-runtime-controller.js": [
+    "core/crm/ceo-staff-sync-utils.js"
+  ],
+  "core/crm/ceo-meta-utils.js": [],
+  "core/crm/ceo-normalize-utils.js": [],
+  "core/crm/ceo-staff-sync-utils.js": [],
+  "core/crm/crm-admin-business-account-write-facade.js": [],
+  "core/crm/crm-admin-read-loader-core.js": [
+    "core/crm/crm-business-account-read-loader-core.js"
+  ],
+  "core/crm/crm-business-account-read-loader-core.js": [],
+  "core/crm/crm-ceo-scope-support-runtime.js": [
+    "core/crm/ceo-access-utils.js",
+    "core/crm/ceo-crm-count-runtime-controller.js",
+    "core/crm/ceo-meta-utils.js",
+    "core/crm/ceo-normalize-utils.js",
+    "core/crm/crm-scope-state-utils.js"
+  ],
+  "core/crm/crm-domain-runtime-boundary.js": [
+    "core/crm/crm-domain-runtime-cluster.js"
+  ],
+  "core/crm/crm-domain-runtime-cluster.js": [
+    "core/crm/crm-runtime-cluster.js"
+  ],
+  "core/crm/crm-lead-geo-support-runtime.js": [
+    "core/leads/lead-country-utils.js",
+    "core/leads/lead-location-utils.js",
+    "core/leads/lead-pricing-utils.js",
+    "core/leads/lead-settings-utils.js",
+    "core/leads/lead-taxonomy-utils.js",
+    "core/leads/lead-type-utils.js",
+    "core/map/geo-coord-utils.js",
+    "core/map/plus-code-utils.js"
+  ],
+  "core/crm/crm-runtime-cluster.js": [
+    "core/crm/crm-runtime-controller.js"
+  ],
+  "core/crm/crm-runtime-controller.js": [
+    "core/common/loading-diagnostics-utils.js",
+    "core/crm/crm-admin-read-loader-core.js",
+    "core/leads/lead-identity-contract-utils.js"
+  ],
+  "core/crm/crm-scope-state-utils.js": [],
+  "core/crm/crm-shared-render-utils.js": [],
+  "core/crm/staff-save-utils.js": [],
+  "core/discovery/discovery-runtime-controller.js": [],
+  "core/feed/feed-cache-utils.js": [],
+  "core/feed/feed-story-utils.js": [],
+  "core/feed/feed-view-orchestration-controller.js": [],
+  "core/feed/feed-visibility-runtime-cluster.js": [
+    "core/feed/feed-story-utils.js",
+    "core/feed/post-doc-normalize-utils.js",
+    "core/profile/post-entity-registry-utils.js"
+  ],
+  "core/feed/post-doc-normalize-utils.js": [],
+  "core/follow/follow-accepted-state-utils.js": [],
+  "core/follow/follow-request-payload-utils.js": [],
+  "core/follow/follow-runtime-controller.js": [
+    "core/follow/following-listener-utils.js"
+  ],
+  "core/follow/follow-target-utils.js": [],
+  "core/follow/following-listener-utils.js": [],
+  "core/leads/lead-country-utils.js": [],
+  "core/leads/lead-identity-contract-utils.js": [],
+  "core/leads/lead-location-utils.js": [],
+  "core/leads/lead-pricing-utils.js": [],
+  "core/leads/lead-settings-utils.js": [],
+  "core/leads/lead-taxonomy-utils.js": [],
+  "core/leads/lead-type-utils.js": [],
+  "core/map/geo-coord-utils.js": [],
+  "core/map/plus-code-utils.js": [],
+  "core/map/search-score-utils.js": [],
+  "core/marketplace/marketplace-runtime-boundary.js": [
+    "core/marketplace/marketplace-view-render-utils.js"
+  ],
+  "core/marketplace/marketplace-view-render-utils.js": [],
+  "core/marketplace/restaurant-view-event-bindings.js": [],
+  "core/marketplace/shopping-view-event-bindings.js": [],
+  "core/marketplace/travel-view-event-bindings.js": [
+    "core/marketplace/restaurant-view-event-bindings.js"
+  ],
+  "core/media/avatar-logo-cache.js": [],
+  "core/media/crop-utils.js": [],
+  "core/media/media-upload-runtime-cluster.js": [
+    "core/media/media-upload-runtime-controller.js"
+  ],
+  "core/media/media-upload-runtime-controller.js": [
+    "core/media/media-upload-view-render-utils.js"
+  ],
+  "core/media/media-upload-view-render-utils.js": [],
+  "core/menu/ads-runtime-controller.js": [],
+  "core/menu/catalog-mode-utils.js": [],
+  "core/menu/customer-focus-modal-render-utils.js": [],
+  "core/menu/focus-runtime-controller.js": [],
+  "core/menu/menu-card-style-utils.js": [],
+  "core/menu/menu-delete-utils.js": [],
+  "core/menu/menu-doc-normalize-utils.js": [
+    "core/media/crop-utils.js",
+    "core/menu/menu-card-style-utils.js",
+    "core/menu/menu-input-utils.js"
+  ],
+  "core/menu/menu-input-utils.js": [],
+  "core/menu/menu-item-coercion-utils.js": [],
+  "core/menu/menu-layout-utils.js": [],
+  "core/menu/menu-modal-render-utils.js": [
+    "core/menu/menu-card-style-utils.js"
+  ],
+  "core/menu/menu-public-runtime-controller.js": [
+    "core/menu/menu-card-style-utils.js"
+  ],
+  "core/menu/menu-save-utils.js": [
+    "core/menu/menu-card-style-utils.js"
+  ],
+  "core/menu/table-qr-runtime-controller.js": [
+    "core/menu/table-qr-utils.js"
+  ],
+  "core/menu/table-qr-utils.js": [],
+  "core/notifications/notification-comment-highlight-utils.js": [],
+  "core/notifications/notification-item-utils.js": [],
+  "core/notifications/notification-native-push-utils.js": [],
+  "core/notifications/notification-query-utils.js": [],
+  "core/notifications/notification-read-state-utils.js": [],
+  "core/notifications/notification-route-open-utils.js": [],
+  "core/notifications/notification-support-runtime-controller.js": [
+    "core/notifications/notification-write-utils.js"
+  ],
+  "core/notifications/notification-target-utils.js": [],
+  "core/notifications/notification-write-utils.js": [],
+  "core/notifications/notifications-render-utils.js": [],
+  "core/notifications/notifications-runtime-controller.js": [
+    "core/notifications/notification-item-utils.js",
+    "core/notifications/notification-native-push-utils.js",
+    "core/notifications/notification-query-utils.js",
+    "core/notifications/notifications-runtime-flow-utils.js"
+  ],
+  "core/notifications/notifications-runtime-flow-utils.js": [],
+  "core/notifications/post-notification-fetch-utils.js": [],
+  "core/notifications/post-notification-open-utils.js": [],
+  "core/orders/order-normalize-utils.js": [],
+  "core/orders/orders-render-utils.js": [],
+  "core/orders/orders-runtime-controller.js": [
+    "core/orders/order-normalize-utils.js",
+    "core/profile/restaurant-type-utils.js"
+  ],
+  "core/overlays/menu-detail-update-utils.js": [],
+  "core/overlays/overlay-basic-bind-utils.js": [],
+  "core/overlays/overlay-basic-render-utils.js": [
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/overlays/overlay-bind-orchestrator-utils.js": [],
+  "core/overlays/overlay-chat-post-bind-utils.js": [],
+  "core/overlays/overlay-comment-render-utils.js": [],
+  "core/overlays/overlay-menu-detail-bind-utils.js": [],
+  "core/overlays/overlay-menu-focus-bind-utils.js": [],
+  "core/overlays/overlay-orchestration-controller.js": [
+    "core/chat/chat-v1-guard.js"
+  ],
+  "core/overlays/overlay-render-orchestrator-utils.js": [],
+  "core/overlays/overlay-root-ui-utils.js": [],
+  "core/overlays/post-modal-update-utils.js": [],
+  "core/profile/business-profile-type-utils.js": [],
+  "core/profile/business-visibility-utils.js": [],
+  "core/profile/handle-utils.js": [],
+  "core/profile/post-entity-registry-utils.js": [],
+  "core/profile/profile-display-utils.js": [],
+  "core/profile/profile-menu-focus-render-boundary.js": [
+    "core/profile/profile-menu-focus-render-controller.js"
+  ],
+  "core/profile/profile-menu-focus-render-controller.js": [
+    "core/menu/menu-card-style-utils.js",
+    "core/profile/public-menu-surface-state-utils.js",
+    "core/profile/public-profile-surface-controller.js"
+  ],
+  "core/profile/profile-menu-focus-render-preload-utils.js": [],
+  "core/profile/profile-menu-focus-utils.js": [],
+  "core/profile/profile-open-flow-utils.js": [
+    "core/common/loading-diagnostics-utils.js",
+    "core/router/public-business-route-utils.js"
+  ],
+  "core/profile/profile-route-open-utils.js": [
+    "core/router/public-business-route-utils.js"
+  ],
+  "core/profile/profile-visible-patch-utils.js": [],
+  "core/profile/public-menu-surface-state-utils.js": [],
+  "core/profile/public-profile-direct-entry-controller.js": [
+    "core/common/restaurant-identity-runtime-controller.js",
+    "core/profile/profile-route-open-utils.js",
+    "core/profile/profile-visible-patch-utils.js",
+    "core/router/public-business-route-utils.js"
+  ],
+  "core/profile/public-profile-runtime-controller.js": [
+    "core/feed/post-doc-normalize-utils.js",
+    "core/profile/post-entity-registry-utils.js",
+    "core/profile/profile-visible-patch-utils.js",
+    "core/profile/public-menu-surface-state-utils.js",
+    "core/profile/public-profile-surface-controller.js"
+  ],
+  "core/profile/public-profile-surface-controller.js": [
+    "core/profile/public-menu-surface-state-utils.js"
+  ],
+  "core/profile/restaurant-identity-utils.js": [],
+  "core/profile/restaurant-type-utils.js": [],
+  "core/profile/role-switch-utils.js": [],
+  "core/profile/self-profile-runtime-controller.js": [],
+  "core/profile/shopping-landing-card-editor-bindings.js": [],
+  "core/profile/social-engagement-runtime-boundary.js": [
+    "core/profile/social-engagement-runtime-controller.js"
+  ],
+  "core/profile/social-engagement-runtime-controller.js": [],
+  "core/profile/social-engagement-support-runtime-controller.js": [
+    "core/overlays/menu-detail-update-utils.js",
+    "core/overlays/overlay-comment-render-utils.js",
+    "core/overlays/post-modal-update-utils.js"
+  ],
+  "core/push/push-activation-utils.js": [],
+  "core/push/push-alert-utils.js": [],
+  "core/push/push-device-registration-utils.js": [],
+  "core/push/push-messaging-utils.js": [],
+  "core/push/push-open-target-message-utils.js": [],
+  "core/push/push-permission-utils.js": [],
+  "core/push/push-route-query-utils.js": [],
+  "core/push/push-runtime-controller.js": [
+    "core/push/push-activation-utils.js",
+    "core/push/push-alert-utils.js",
+    "core/push/push-device-registration-utils.js",
+    "core/push/push-messaging-utils.js",
+    "core/push/push-permission-utils.js",
+    "core/push/push-seen-storage-utils.js",
+    "core/push/push-service-worker-utils.js",
+    "core/push/push-token-storage-utils.js"
+  ],
+  "core/push/push-seen-storage-utils.js": [],
+  "core/push/push-service-worker-utils.js": [],
+  "core/push/push-token-storage-utils.js": [],
+  "core/router/deeplink-flow-utils.js": [
+    "core/chat/chat-v1-guard.js",
+    "core/menu/table-qr-utils.js",
+    "core/router/public-business-route-resolver.js",
+    "core/router/public-business-route-utils.js"
+  ],
+  "core/router/public-business-route-resolver.js": [
+    "core/router/public-business-route-utils.js"
+  ],
+  "core/router/public-business-route-utils.js": [],
+  "core/router/public-route-cache-boot-hook.js": [],
+  "core/router/startup-route-runtime-context.js": [
+    "core/menu/table-qr-utils.js",
+    "core/router/public-business-route-utils.js"
+  ],
+  "core/shop/shop-cart-access-utils.js": [],
+  "core/shop/shop-cart-state-utils.js": [],
+  "core/shop/shop-variant-utils.js": [],
+  "core/shop/shop-view-cart-orchestration-controller.js": [
+    "core/profile/restaurant-type-utils.js"
+  ],
+  "core/stories/story-feed-runtime-controller.js": [
+    "core/feed/feed-story-utils.js"
+  ],
+  "core/stories/story-system-controller.js": [],
+  "core/ui/dom-focus-utils.js": [],
+  "core/ui/main-shell-render-utils.js": [],
+  "core/ui/settings-render-utils.js": [],
+  "social-app.js": [
+    "_shared/image-compressor.js",
+    "_shared/image-resolver.js",
+    "_shared/social-core.js",
+    "_shared/social-storage.js",
+    "core/app-events/app-events-chat-upload-bind-utils.js",
+    "core/app-events/app-events-crm-staff-bind-utils.js",
+    "core/app-events/app-events-main-bind-utils.js",
+    "core/app-events/app-events-menu-focus-bind-utils.js",
+    "core/app-events/app-events-settings-profile-bind-utils.js",
+    "core/app-events/app-events-shell-bind-utils.js",
+    "core/app-shell/app-startup-runtime-cluster.js",
+    "core/app-shell/bridge-shell-runtime-cluster.js",
+    "core/app-shell/profile-business-menu-runtime-cluster.js",
+    "core/app-shell/profile-identity-runtime-cluster.js",
+    "core/app-shell/public-route-runtime-cluster.js",
+    "core/app-shell/public-route-state-controller.js",
+    "core/app-shell/route-runtime-registry.js",
+    "core/app-shell/session-data-runtime-cluster.js",
+    "core/app-shell/session-runtime-cluster.js",
+    "core/app-shell/shell-dom-runtime-controller.js",
+    "core/app-shell/shell-ui-runtime-cluster.js",
+    "core/app-shell/social-app-cache-config.js",
+    "core/app-shell/social-app-default-state-config.js",
+    "core/app-shell/social-app-domain-config.js",
+    "core/auth/auth-startup-state-utils.js",
+    "core/auth/auth-user-bootstrap-utils.js",
+    "core/auth/initial-route-state.js",
+    "core/auth/pending-route-startup-state.js",
+    "core/auth/route-auth-utils.js",
+    "core/auth/session-tab-guards.js",
+    "core/auth/startup-render-gate-utils.js",
+    "core/chat/chat-app-runtime-boundary.js",
+    "core/chat/chat-route-open-utils.js",
+    "core/chat/chat-thread-action-state-utils.js",
+    "core/chat/chat-v1-guard.js",
+    "core/common/count-format-utils.js",
+    "core/common/currency-utils.js",
+    "core/common/html-utils.js",
+    "core/common/price-utils.js",
+    "core/common/state-factories.js",
+    "core/common/task-schedule-utils.js",
+    "core/common/text-normalize-utils.js",
+    "core/crm/crm-ceo-scope-support-runtime.js",
+    "core/crm/crm-domain-runtime-boundary.js",
+    "core/crm/crm-lead-geo-support-runtime.js",
+    "core/crm/crm-shared-render-utils.js",
+    "core/crm/staff-save-utils.js",
+    "core/feed/feed-cache-utils.js",
+    "core/feed/feed-visibility-runtime-cluster.js",
+    "core/leads/lead-type-utils.js",
+    "core/map/search-score-utils.js",
+    "core/marketplace/marketplace-runtime-boundary.js",
+    "core/media/crop-utils.js",
+    "core/media/media-upload-runtime-cluster.js",
+    "core/media/media-upload-view-render-utils.js",
+    "core/menu/ads-runtime-controller.js",
+    "core/menu/catalog-mode-utils.js",
+    "core/menu/focus-runtime-controller.js",
+    "core/menu/menu-doc-normalize-utils.js",
+    "core/menu/menu-input-utils.js",
+    "core/menu/menu-item-coercion-utils.js",
+    "core/menu/menu-layout-utils.js",
+    "core/notifications/notification-route-open-utils.js",
+    "core/notifications/post-notification-open-utils.js",
+    "core/overlays/overlay-basic-bind-utils.js",
+    "core/overlays/overlay-bind-orchestrator-utils.js",
+    "core/overlays/overlay-chat-post-bind-utils.js",
+    "core/overlays/overlay-menu-detail-bind-utils.js",
+    "core/overlays/overlay-menu-focus-bind-utils.js",
+    "core/overlays/overlay-render-orchestrator-utils.js",
+    "core/overlays/overlay-root-ui-utils.js",
+    "core/profile/business-profile-type-utils.js",
+    "core/profile/business-visibility-utils.js",
+    "core/profile/handle-utils.js",
+    "core/profile/profile-display-utils.js",
+    "core/profile/profile-menu-focus-render-preload-utils.js",
+    "core/profile/profile-route-open-utils.js",
+    "core/profile/public-profile-surface-controller.js",
+    "core/profile/restaurant-identity-utils.js",
+    "core/profile/restaurant-type-utils.js",
+    "core/profile/role-switch-utils.js",
+    "core/profile/social-engagement-runtime-boundary.js",
+    "core/profile/social-engagement-support-runtime-controller.js",
+    "core/push/push-open-target-message-utils.js",
+    "core/push/push-route-query-utils.js",
+    "core/router/public-business-route-utils.js",
+    "core/router/startup-route-runtime-context.js",
+    "core/shop/shop-cart-access-utils.js",
+    "core/ui/dom-focus-utils.js"
+  ]
+}
