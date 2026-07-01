@@ -85,7 +85,9 @@ Green:
 
 ## Review Of Commit d13aa637
 
-Review result: mergeable. No product correction was required.
+Review result: mergeable as an emulator-backed preparation change. The later
+real-data LAN validation found that this is not yet a production-ready order
+flow; no product correction was made during the review itself.
 
 - Local Firebase emulator mode requires both a loopback hostname
   (`localhost`, `127.0.0.1` or `::1`) and an explicit opt-in through
@@ -118,6 +120,66 @@ Review result: mergeable. No product correction was required.
   passed with 8 unrelated prepared tests skipped; lint, format, architecture
   and build passed. The Functions suite still reproduces the intentionally
   unresolved worker-dependent `serverTimestamp` failure.
+
+## Production Order Compatibility Blocker
+
+Real-data LAN validation was performed on
+`http://192.168.1.168:5173` without `firebase-emulator=1`.
+
+> Production Rules blockieren direkte Client-Order-Creates. Der aktuelle Client nutzt noch direkten Firestore-Write. Deshalb scheitert jeder Production-Order-Submit, unabhängig von Restaurant, Auth oder QR-Kontext.
+
+Verified generically:
+
+- The server served the tracked bundle produced by `d13aa637`; its manifest
+  SHA-256 matched the workspace file exactly. Firebase project
+  `menyra-c0e68` was active and emulator mode was `false`.
+- The current checkout controller writes directly to
+  `restaurants/{restaurantId}/orders/{orderId}`.
+- The active Production Firestore ruleset was updated on
+  `2026-06-29T12:29:57Z` and has `allow create: if false` for restaurant
+  orders. It explicitly expects order creation through the
+  `createRestaurantOrder` Cloud Function.
+- The new local Rules are not deployed. They must not be deployed as-is:
+  Production `menuItems.price` values can be strings, while the local direct
+  create contract requires numeric menu prices and strict equality.
+- The deployed generic `createRestaurantOrder` callable exists and is active
+  in `us-central1`. A write-free invalid-input probe reached it and returned
+  `functions/invalid-argument: restaurantId is required`.
+- The current branch does not call that Function and no longer contains its
+  source or `functions/order-security.js`. Historical commit `5ecebe12`
+  contains the server-controlled implementation and client intent contract.
+- The historical server contract accepts string or numeric menu prices,
+  computes cents, totals, buyer identity and initial status on the server, and
+  ignores client price, total, status and buyer fields.
+- Waiter reads and updates the same canonical restaurant order path. Its UI
+  changes only status/timestamps, but deployed Production Rules still allow a
+  broader authorized waiter update than the tightened local Rules. Production
+  Rules therefore also need a reviewed status-only update alignment.
+
+Casarita was used only as a real-data reproduction example. It proved that a
+QR/table cart reaches submit with matching restaurant/item IDs, numeric price,
+`itemCount` and total before Production Rules reject the direct create. No
+Casarita-specific fix or route handling is planned.
+
+No usable Production test restaurant currently exists. The only test-named
+restaurant found is deleted and has no owner, menu or orderable items; the
+emulator-only `pidhi-madh` restaurant does not exist in Production. No actual
+Production order was created.
+
+Required gate before further refactors:
+
+1. Restore one generic client order service that calls the existing
+   `createRestaurantOrder` callable for every internal restaurant, cafe/bar,
+   QR-table and future shop order.
+2. Restore the matching Function source and server order-security module into
+   this branch so deployed and repository contracts are versioned together.
+3. Keep direct restaurant order creates denied in Production Rules and retain
+   status/timestamp-only waiter updates.
+4. Route local emulator E2E through the same Function after the known local
+   `serverTimestamp` runtime issue is isolated.
+5. Provision a clearly marked `mnyra-test-restaurant`, menu, QR table, owner
+   and waiter only after explicit Production-data approval, then validate the
+   full LAN browser-to-waiter flow there.
 
 Observed:
 
