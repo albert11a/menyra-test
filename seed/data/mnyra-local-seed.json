@@ -1,0 +1,604 @@
+{
+  "projectId": "mnyra-local",
+  "description": "Synthetic local-only Mnyra seed data for refactor preparation.",
+  "documents": [
+    {
+      "path": "publicRoutes/pidhimadh",
+      "data": {
+        "slug": "pidhimadh",
+        "restaurantId": "pidhi-madh",
+        "type": "business",
+        "surface": "profile",
+        "public": true,
+        "canonicalPath": "/pidhimadh",
+        "menuPath": "/pidhimadh/menu"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh",
+      "data": {
+        "id": "pidhi-madh",
+        "slug": "pidhimadh",
+        "name": "PIDHImadh",
+        "businessType": "restaurant",
+        "category": "Restaurant",
+        "city": "Prishtina",
+        "country": "Kosovo",
+        "address": "Rruga Test 12, Prishtina",
+        "phone": "+383 44 000 111",
+        "instagram": "https://instagram.example/pidhimadh",
+        "tiktok": "https://tiktok.example/@pidhimadh",
+        "website": "https://local.example/pidhimadh",
+        "bio": "Synthetic local restaurant used for Mnyra refactor tests.",
+        "public": true,
+        "visibility": "public",
+        "ownerUid": "owner-demo",
+        "rating": 4.8,
+        "priceRange": "€€",
+        "openingHours": {
+          "monday": "09:00-22:00",
+          "tuesday": "09:00-22:00",
+          "wednesday": "09:00-22:00",
+          "thursday": "09:00-22:00",
+          "friday": "09:00-23:00",
+          "saturday": "10:00-23:00",
+          "sunday": "10:00-21:00"
+        },
+        "coverUrl": "https://images.example.local/pidhi-cover.jpg",
+        "logoUrl": "https://images.example.local/pidhi-logo.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/public/profile",
+      "data": {
+        "restaurantId": "pidhi-madh",
+        "slug": "pidhimadh",
+        "name": "PIDHImadh",
+        "bio": "Synthetic public profile for local emulator tests.",
+        "city": "Prishtina",
+        "address": "Rruga Test 12, Prishtina",
+        "phone": "+383 44 000 111",
+        "instagram": "https://instagram.example/pidhimadh",
+        "tiktok": "https://tiktok.example/@pidhimadh",
+        "coverUrl": "https://images.example.local/pidhi-cover.jpg",
+        "logoUrl": "https://images.example.local/pidhi-logo.jpg",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/public/menu",
+      "data": {
+        "restaurantId": "pidhi-madh",
+        "public": true,
+        "categories": ["Breakfast", "Grill", "Pasta", "Dessert", "Drinks"],
+        "currency": "EUR",
+        "lastSeededBy": "mnyrasocial"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/public/offers",
+      "data": {
+        "restaurantId": "pidhi-madh",
+        "items": [
+          {
+            "id": "focus-01",
+            "title": "Lunch Combo",
+            "itemId": "menu-001",
+            "price": 8.9
+          },
+          {
+            "id": "focus-02",
+            "title": "Family Grill",
+            "itemId": "menu-008",
+            "price": 24.9
+          },
+          {
+            "id": "focus-03",
+            "title": "Sweet Finish",
+            "itemId": "menu-021",
+            "price": 4.5
+          }
+        ]
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/staff/waiter-demo",
+      "data": {
+        "uid": "waiter-demo",
+        "restaurantId": "pidhi-madh",
+        "role": "waiter",
+        "active": true,
+        "waiterAccess": true,
+        "businessAccess": false
+      }
+    },
+    {
+      "path": "users/owner-demo",
+      "data": {
+        "uid": "owner-demo",
+        "email": "owner.local@example.test",
+        "displayName": "Local Owner",
+        "role": "business",
+        "roles": ["business"],
+        "restaurantId": "pidhi-madh"
+      }
+    },
+    {
+      "path": "users/waiter-demo",
+      "data": {
+        "uid": "waiter-demo",
+        "email": "waiter.local@example.test",
+        "displayName": "Local Waiter",
+        "role": "staff",
+        "roles": ["staff"],
+        "staffRestaurantId": "pidhi-madh",
+        "waiterRestaurantId": "pidhi-madh",
+        "waiterAccess": true,
+        "businessAccess": false
+      }
+    },
+    {
+      "path": "users/heart-demo",
+      "data": {
+        "uid": "heart-demo",
+        "email": "heart.local@example.test",
+        "displayName": "Local Heart CEO",
+        "role": "ceo",
+        "roles": ["ceo"]
+      }
+    },
+    {
+      "path": "users/shopper-demo",
+      "data": {
+        "uid": "shopper-demo",
+        "email": "shopper.local@example.test",
+        "displayName": "Local Shopper",
+        "role": "user",
+        "roles": ["user"]
+      }
+    },
+    {
+      "path": "superadmins/heart-demo",
+      "data": {
+        "uid": "heart-demo",
+        "email": "heart.local@example.test",
+        "role": "ceo",
+        "ceoPath": ["heart-demo"]
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/orders/order-demo-001",
+      "data": {
+        "id": "order-demo-001",
+        "restaurantId": "pidhi-madh",
+        "table": "table-01",
+        "status": "new",
+        "buyerUid": "",
+        "items": [
+          {
+            "itemId": "menu-001",
+            "name": "Local Breakfast Plate",
+            "quantity": 2,
+            "price": 6.9
+          }
+        ],
+        "total": 13.8
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/orderLookup/table-01",
+      "data": {
+        "restaurantId": "pidhi-madh",
+        "table": "table-01",
+        "active": true
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/socialPosts/post-demo-001",
+      "data": {
+        "id": "post-demo-001",
+        "restaurantId": "pidhi-madh",
+        "text": "Synthetic local post for Public Profile tests.",
+        "mediaUrl": "https://images.example.local/post-001.jpg",
+        "likesCount": 2,
+        "commentsCount": 1,
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/socialPosts/post-demo-001/comments/comment-001",
+      "data": {
+        "uid": "shopper-demo",
+        "text": "Looks good in local seed.",
+        "likesCount": 0
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/socialPosts/post-demo-001/likes/shopper-demo",
+      "data": {
+        "uid": "shopper-demo"
+      }
+    },
+    {
+      "path": "socialFeed/post-demo-001",
+      "data": {
+        "id": "post-demo-001",
+        "rid": "pidhi-madh",
+        "restaurantId": "pidhi-madh",
+        "text": "Synthetic feed post for local tests.",
+        "city": "Prishtina",
+        "public": true,
+        "likesCount": 2,
+        "commentsCount": 1
+      }
+    },
+    {
+      "path": "restaurants/shop-demo",
+      "data": {
+        "id": "shop-demo",
+        "slug": "shopdemo",
+        "name": "Local Shop Demo",
+        "businessType": "shop",
+        "category": "Shopping",
+        "city": "Prishtina",
+        "ownerUid": "owner-demo",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/shop-demo/menuItems/shop-item-001",
+      "data": {
+        "id": "shop-item-001",
+        "restaurantId": "shop-demo",
+        "name": "Local Cotton Shirt",
+        "category": "Products",
+        "price": 19.9,
+        "available": true,
+        "imageUrl": "https://images.example.local/shop-shirt.jpg"
+      }
+    },
+    {
+      "path": "restaurants/hotel-demo",
+      "data": {
+        "id": "hotel-demo",
+        "slug": "hoteldemo",
+        "name": "Local Hotel Demo",
+        "businessType": "hotel",
+        "category": "Travel",
+        "city": "Prizren",
+        "ownerUid": "owner-demo",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/hotel-demo/public/offers",
+      "data": {
+        "items": [
+          {
+            "id": "travel-offer-001",
+            "title": "Weekend Stay",
+            "city": "Prizren",
+            "price": 59
+          }
+        ]
+      }
+    },
+    {
+      "path": "leads/ad-demo-001",
+      "data": {
+        "id": "ad-demo-001",
+        "type": "ad",
+        "restaurantId": "pidhi-madh",
+        "status": "pending",
+        "title": "Local Launch Ad",
+        "createdByUid": "owner-demo",
+        "ceoPath": ["heart-demo"]
+      }
+    },
+    {
+      "path": "staffAdmins/heart-demo",
+      "data": {
+        "uid": "heart-demo",
+        "email": "heart.local@example.test",
+        "role": "ceo"
+      }
+    },
+    {
+      "path": "staffIndex/waiter-demo",
+      "data": {
+        "uid": "waiter-demo",
+        "restaurantId": "pidhi-madh",
+        "role": "waiter",
+        "active": true
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-001",
+      "data": {
+        "id": "menu-001",
+        "restaurantId": "pidhi-madh",
+        "name": "Local Breakfast Plate",
+        "category": "Breakfast",
+        "price": 6.9,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-001.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-002",
+      "data": {
+        "id": "menu-002",
+        "restaurantId": "pidhi-madh",
+        "name": "Village Omelette",
+        "category": "Breakfast",
+        "price": 5.5,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-002.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-003",
+      "data": {
+        "id": "menu-003",
+        "restaurantId": "pidhi-madh",
+        "name": "Cheese Burek",
+        "category": "Breakfast",
+        "price": 3.2,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-003.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-004",
+      "data": {
+        "id": "menu-004",
+        "restaurantId": "pidhi-madh",
+        "name": "Fresh Yogurt Bowl",
+        "category": "Breakfast",
+        "price": 4.4,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-004.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-005",
+      "data": {
+        "id": "menu-005",
+        "restaurantId": "pidhi-madh",
+        "name": "Grilled Chicken",
+        "category": "Grill",
+        "price": 8.8,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-005.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-006",
+      "data": {
+        "id": "menu-006",
+        "restaurantId": "pidhi-madh",
+        "name": "Beef Qofte",
+        "category": "Grill",
+        "price": 7.2,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-006.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-007",
+      "data": {
+        "id": "menu-007",
+        "restaurantId": "pidhi-madh",
+        "name": "Lamb Skewers",
+        "category": "Grill",
+        "price": 11.9,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-007.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-008",
+      "data": {
+        "id": "menu-008",
+        "restaurantId": "pidhi-madh",
+        "name": "Family Grill Board",
+        "category": "Grill",
+        "price": 24.9,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-008.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-009",
+      "data": {
+        "id": "menu-009",
+        "restaurantId": "pidhi-madh",
+        "name": "Pasta Arrabbiata",
+        "category": "Pasta",
+        "price": 6.8,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-009.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-010",
+      "data": {
+        "id": "menu-010",
+        "restaurantId": "pidhi-madh",
+        "name": "Creamy Mushroom Pasta",
+        "category": "Pasta",
+        "price": 7.4,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-010.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-011",
+      "data": {
+        "id": "menu-011",
+        "restaurantId": "pidhi-madh",
+        "name": "Chicken Alfredo",
+        "category": "Pasta",
+        "price": 8.2,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-011.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-012",
+      "data": {
+        "id": "menu-012",
+        "restaurantId": "pidhi-madh",
+        "name": "Seafood Pasta",
+        "category": "Pasta",
+        "price": 10.5,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-012.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-013",
+      "data": {
+        "id": "menu-013",
+        "restaurantId": "pidhi-madh",
+        "name": "Tomato Soup",
+        "category": "Breakfast",
+        "price": 3.9,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-013.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-014",
+      "data": {
+        "id": "menu-014",
+        "restaurantId": "pidhi-madh",
+        "name": "Seasonal Salad",
+        "category": "Breakfast",
+        "price": 4.8,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-014.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-015",
+      "data": {
+        "id": "menu-015",
+        "restaurantId": "pidhi-madh",
+        "name": "House Burger",
+        "category": "Grill",
+        "price": 7.9,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-015.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-016",
+      "data": {
+        "id": "menu-016",
+        "restaurantId": "pidhi-madh",
+        "name": "Crispy Potatoes",
+        "category": "Grill",
+        "price": 2.9,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-016.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-017",
+      "data": {
+        "id": "menu-017",
+        "restaurantId": "pidhi-madh",
+        "name": "Baklava Slice",
+        "category": "Dessert",
+        "price": 2.5,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-017.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-018",
+      "data": {
+        "id": "menu-018",
+        "restaurantId": "pidhi-madh",
+        "name": "Chocolate Cake",
+        "category": "Dessert",
+        "price": 3.8,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-018.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-019",
+      "data": {
+        "id": "menu-019",
+        "restaurantId": "pidhi-madh",
+        "name": "Fruit Plate",
+        "category": "Dessert",
+        "price": 4.2,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-019.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-020",
+      "data": {
+        "id": "menu-020",
+        "restaurantId": "pidhi-madh",
+        "name": "Vanilla Pudding",
+        "category": "Dessert",
+        "price": 2.8,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-020.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-021",
+      "data": {
+        "id": "menu-021",
+        "restaurantId": "pidhi-madh",
+        "name": "Espresso",
+        "category": "Drinks",
+        "price": 1.2,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-021.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-022",
+      "data": {
+        "id": "menu-022",
+        "restaurantId": "pidhi-madh",
+        "name": "Fresh Lemonade",
+        "category": "Drinks",
+        "price": 2.4,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-022.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-023",
+      "data": {
+        "id": "menu-023",
+        "restaurantId": "pidhi-madh",
+        "name": "Sparkling Water",
+        "category": "Drinks",
+        "price": 1.5,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-023.jpg"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/menuItems/menu-024",
+      "data": {
+        "id": "menu-024",
+        "restaurantId": "pidhi-madh",
+        "name": "Local Tea",
+        "category": "Drinks",
+        "price": 1.6,
+        "available": true,
+        "imageUrl": "https://images.example.local/menu-024.jpg"
+      }
+    }
+  ]
+}

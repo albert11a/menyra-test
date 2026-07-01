@@ -1,0 +1,49 @@
+name: mnyra-prep-ci
+
+on:
+  push:
+    branches:
+      - mnyrasocial
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Rules scaffold tests
+        run: npm run test:rules
+
+      - name: Functions scaffold tests
+        run: npm run test:functions
+
+      - name: Architecture report
+        run: npm run arch:report
+
+      - name: Architecture check baseline
+        run: npm run arch:check
+
+      - name: Build
+        run: npm run build
+
+      - name: Bundle report
+        run: npm run bundle:report
