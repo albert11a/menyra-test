@@ -234,8 +234,6 @@ function buildRoutePayloadSeed({
     safeProfile.canonicalRestaurantId
     || safeEntry.canonicalRestaurantId
     || safeRouteBootstrap?.canonicalRestaurantId
-    || safeSnapshot?.restaurantId
-    || safeRouteBootstrap?.restaurantId
     || ""
   ).trim();
   const safeRestaurantId = String(
@@ -583,9 +581,7 @@ export function createPublicProfileDirectEntryController({
       ? routeBootstrap.businessSnapshot
       : null;
     const canonicalRestaurantId = String(
-      routeSnapshot?.restaurantId
-      || routeBootstrap?.canonicalRestaurantId
-      || routeBootstrap?.restaurantId
+      routeBootstrap?.canonicalRestaurantId
       || ""
     ).trim();
     const entryRestaurantId = canonicalRestaurantId || String(entry.restaurantId || "").trim();
@@ -762,9 +758,14 @@ export function createPublicProfileDirectEntryController({
       } else {
         const existingMenuTruth = String(state.menu.truthState || "").trim().toLowerCase();
         const existingMenuRestaurantId = String(state.menu.restaurantId || "").trim();
+        const existingMenuIsCanonical = !!canonicalRestaurantId
+          && existingMenuRestaurantId === canonicalRestaurantId;
         const hasKnownMenuTruth = isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu.source || "").trim().toLowerCase() === "public"
-          && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
+          && (
+            existingMenuTruth === "seeded"
+            || (existingMenuIsCanonical && (existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty"))
+          );
         const existingItems = isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu.source || "").trim().toLowerCase() === "public"
           && Array.isArray(state.menu.items)
@@ -813,12 +814,15 @@ export function createPublicProfileDirectEntryController({
         const existingFocusTruth = String(state.focus.truthState || "").trim().toLowerCase();
         const existingMenuRestaurantId = String(state.menu?.restaurantId || "").trim();
         const existingFocusRestaurantId = String(state.focus.restaurantId || "").trim();
+        const existingMenuIsCanonicalForFocus = !!canonicalRestaurantId
+          && existingMenuRestaurantId === canonicalRestaurantId;
         const publicMenuHasItemsForFocus = isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu?.source || "").trim().toLowerCase() === "public"
           && String(state.menu?.truthState || "").trim().toLowerCase() === "seeded"
           && Array.isArray(state.menu?.items)
           && state.menu.items.length > 0;
-        const publicMenuKnownEmptyForFocus = isEntryTargetId(existingMenuRestaurantId)
+        const publicMenuKnownEmptyForFocus = existingMenuIsCanonicalForFocus
+          && isEntryTargetId(existingMenuRestaurantId)
           && String(state.menu?.source || "").trim().toLowerCase() === "public"
           && (
             String(state.menu?.truthState || "").trim().toLowerCase() === "knownempty"

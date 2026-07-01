@@ -37,21 +37,43 @@ export function resolveVisiblePublicMenuSurfaceIds({
     safeRoutePayload.restaurantId,
     safeWebDirectEntry.restaurantId
   ].forEach((value) => addSurfaceId(ids, value));
-  const canonicalRestaurantId = String(
+  const authoritativeRestaurantId = String(
     safeProfile.canonicalRestaurantId
     || safeRoutePayload.canonicalRestaurantId
-    || routeSnapshot.restaurantId
     || safeWebDirectEntry.canonicalRestaurantId
+    || ""
+  ).trim();
+  const resolvedRestaurantId = String(
+    authoritativeRestaurantId
+    || routeSnapshot.restaurantId
     || restaurantId
     || safeProfile.restaurantId
     || safeRoutePayload.restaurantId
     || safeWebDirectEntry.restaurantId
     || ""
   ).trim();
-  addSurfaceId(ids, canonicalRestaurantId);
+  addSurfaceId(ids, authoritativeRestaurantId);
+  addSurfaceId(ids, resolvedRestaurantId);
   return {
-    restaurantId: canonicalRestaurantId,
+    restaurantId: resolvedRestaurantId,
+    authoritativeRestaurantId,
     targetIds: ids
+  };
+}
+
+export function resolvePublicMenuRenderDecision(menuSurface = {}, visibleItems = []) {
+  const menu = menuSurface && typeof menuSurface === "object" ? menuSurface : {};
+  const items = Array.isArray(visibleItems) ? visibleItems : [];
+  const hasItems = items.length > 0;
+  const confirmedEmpty = menu.confirmedEmpty === true;
+  const hasError = menu.status === "error" || !!String(menu.error || "").trim();
+  const shouldRenderNoProducts = !hasItems && confirmedEmpty && !hasError;
+  return {
+    hasItems,
+    confirmedEmpty,
+    hasError,
+    isLoading: !hasItems && !confirmedEmpty && !hasError,
+    shouldRenderNoProducts
   };
 }
 
@@ -137,14 +159,20 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     && isVisiblePublicMenuSurfaceIdMatch(menuRestaurantId, surfaceIds.targetIds);
   const menuItems = samePublicMenu && Array.isArray(menu.items) ? menu.items : [];
   const menuTruthState = samePublicMenu ? normalizePublicMenuTruthState(menu.truthState || "") : "unknown";
+  const menuRawTruthState = samePublicMenu ? String(menu.truthState || "").trim() : "";
   const menuError = samePublicMenu ? String(menu.error || "").trim() : "";
+  const menuMatchesAuthoritativeRestaurant = samePublicMenu
+    && !!surfaceIds.authoritativeRestaurantId
+    && menuRestaurantId === surfaceIds.authoritativeRestaurantId;
+  const menuConfirmedEmpty = menuMatchesAuthoritativeRestaurant
+    && menuTruthState === "knownEmpty";
   let menuStatus = "loading";
   if (!surfaceIds.restaurantId && !surfaceIds.targetIds.length) {
     menuStatus = "loading";
   } else if (samePublicMenu) {
     if (menuTruthState === "seeded") {
       menuStatus = menuItems.length ? "ready" : "loading";
-    } else if (menuTruthState === "knownEmpty") {
+    } else if (menuConfirmedEmpty) {
       menuStatus = "empty";
     } else if (menuTruthState === "error" || (menuError && !menu.loading)) {
       menuStatus = "error";
@@ -198,6 +226,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
 
   return {
     restaurantId: surfaceIds.restaurantId,
+    authoritativeRestaurantId: surfaceIds.authoritativeRestaurantId,
     targetIds: surfaceIds.targetIds,
     menu: {
       status: menuStatus,
@@ -205,9 +234,13 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
       restaurantId: samePublicMenu ? menuRestaurantId : surfaceIds.restaurantId,
       source: samePublicMenu ? "public" : menuSource,
       truthState: menuTruthState,
+      rawTruthState: menuRawTruthState,
       loading: samePublicMenu ? !!menu.loading : false,
+      hydrating: samePublicMenu ? menu.hydrating === true : false,
       items: menuItems,
       canRenderItems: canRenderMenuItems,
+      confirmedEmpty: menuConfirmedEmpty,
+      matchesAuthoritativeRestaurant: menuMatchesAuthoritativeRestaurant,
       waitingForFocus: menuWaitingForFocus,
       error: menuError
     },

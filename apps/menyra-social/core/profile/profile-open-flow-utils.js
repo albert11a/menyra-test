@@ -620,9 +620,12 @@ export function createProfileOpenFlowControllerCore({
         || routeBootstrapSeed?.restaurantId
         || ""
       ).trim();
+      const routeBootstrapCanonicalRestaurantId = String(
+        routeBootstrapSeed?.canonicalRestaurantId
+        || ""
+      ).trim();
       targetCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
-        routeSnapshotRestaurantId,
-        routeBootstrapSeed?.canonicalRestaurantId,
+        routeBootstrapCanonicalRestaurantId,
         targetCanonicalRestaurantId
       );
       if (targetCanonicalRestaurantId) {
@@ -680,8 +683,7 @@ export function createProfileOpenFlowControllerCore({
         const safeCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
           safeProfile.canonicalRestaurantId,
           targetCanonicalRestaurantId,
-          routeSnapshotRestaurantId,
-          routeBootstrapSeed?.canonicalRestaurantId
+          routeBootstrapCanonicalRestaurantId
         );
         const safeRestaurantId = resolveCanonicalRestaurantIdCandidate(
           safeCanonicalRestaurantId,
@@ -713,12 +715,17 @@ export function createProfileOpenFlowControllerCore({
           || "",
           safePosts.length > 0 ? "seeded" : (safeProfile.postsLoaded === true ? "knownEmpty" : "unknown")
         );
-        const menuTruthState = normalizeTruthState(
+        let menuTruthState = normalizeTruthState(
           sameRestaurantMenu ? (menu.truthState || "") : "",
           sameRestaurantMenu
             ? (menuItems.length > 0 ? "seeded" : (menu.loading ? "unknown" : "knownEmpty"))
             : "unknown"
         );
+        const publicMenuReadIsCanonical = !!safeCanonicalRestaurantId
+          && String(menu.restaurantId || "").trim() === safeCanonicalRestaurantId;
+        if (menuTruthState === "knownEmpty" && !publicMenuReadIsCanonical) {
+          menuTruthState = "unknown";
+        }
         const focusTruthState = normalizeTruthState(
           sameRestaurantFocus ? (focus.truthState || "") : "",
           sameRestaurantFocus
@@ -918,12 +925,12 @@ export function createProfileOpenFlowControllerCore({
       const prioritizePostsSurface = resolvedTopTab === "profile" && resolvedContentTab === "posts";
       const earlyPostsRestaurantId = resolveCanonicalRestaurantIdCandidate(
         targetCanonicalRestaurantId,
-        routeSnapshotRestaurantId,
+        routeBootstrapCanonicalRestaurantId,
         targetMenuRestaurantId
       );
       const earlyPostsSkipProfileResolve = !!resolveCanonicalRestaurantIdCandidate(
         targetCanonicalRestaurantId,
-        routeSnapshotRestaurantId
+        routeBootstrapCanonicalRestaurantId
       );
       const shouldWarmPostsForSurface = !!earlyPostsRestaurantId
         && (
@@ -971,7 +978,7 @@ export function createProfileOpenFlowControllerCore({
         : [];
       const routeSeedCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
         targetCanonicalRestaurantId,
-        routeSnapshotRestaurantId
+        routeBootstrapCanonicalRestaurantId
       );
       const routeSeedProfile = routeSnapshotSeed
         ? applySurfaceTruthPatch({
@@ -1048,9 +1055,14 @@ export function createProfileOpenFlowControllerCore({
           };
         } else {
           const existingMenuTruth = String(state.menu?.truthState || "").trim().toLowerCase();
+          const existingMenuIsCanonical = !!routeSeedCanonicalRestaurantId
+            && String(state.menu?.restaurantId || "").trim() === routeSeedCanonicalRestaurantId;
           const hasKnownMenuTruth = String(state.menu?.restaurantId || "").trim() === targetMenuRestaurantId
             && String(state.menu?.source || "").trim().toLowerCase() === "public"
-            && (existingMenuTruth === "seeded" || existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty");
+            && (
+              existingMenuTruth === "seeded"
+              || (existingMenuIsCanonical && (existingMenuTruth === "knownempty" || existingMenuTruth === "known-empty"))
+            );
           if (hasKnownMenuTruth) {
             effectiveRouteMenuState = existingMenuTruth === "seeded" ? "seeded" : "knownEmpty";
           }
@@ -1140,7 +1152,7 @@ export function createProfileOpenFlowControllerCore({
             const ensureCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
               targetCanonicalRestaurantId,
               routeSeedCanonicalRestaurantId,
-              routeSnapshotRestaurantId
+              routeBootstrapCanonicalRestaurantId
             );
             if (!skipFirstVisibleMenuEnsure) {
               ensureMenuData({
@@ -1159,7 +1171,7 @@ export function createProfileOpenFlowControllerCore({
           const ensureCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
             targetCanonicalRestaurantId,
             routeSeedCanonicalRestaurantId,
-            routeSnapshotRestaurantId
+            routeBootstrapCanonicalRestaurantId
           );
           if (!skipFirstVisibleMenuEnsure) {
             ensureMenuData({
@@ -1188,7 +1200,7 @@ export function createProfileOpenFlowControllerCore({
       const loadingCanonicalRestaurantId = resolveCanonicalRestaurantIdCandidate(
         targetCanonicalRestaurantId,
         routeSeedCanonicalRestaurantId,
-        routeSnapshotRestaurantId
+        routeBootstrapCanonicalRestaurantId
       );
 
       const loadingProfile = {
@@ -1375,7 +1387,7 @@ export function createProfileOpenFlowControllerCore({
           normalizedResolvedProfile?.canonicalRestaurantId,
           normalizedResolvedProfile?.restaurantId,
           targetCanonicalRestaurantId,
-          routeSnapshotRestaurantId
+          routeBootstrapCanonicalRestaurantId
         ),
         ...resolveCanonicalBusinessRouteFields(
           profileSnap?.data?.publicSlug,
@@ -1465,7 +1477,7 @@ export function createProfileOpenFlowControllerCore({
       const skipProfileResolveForPosts = !!resolveCanonicalRestaurantIdCandidate(
         resolvedProfileRestaurantId,
         targetCanonicalRestaurantId,
-        routeSnapshotRestaurantId
+        routeBootstrapCanonicalRestaurantId
       );
       const buildPostsSignature = (items = []) => (Array.isArray(items) ? items : [])
         .map((post) => [
@@ -1699,7 +1711,7 @@ export function createProfileOpenFlowControllerCore({
         }), resolveCanonicalRestaurantIdCandidate(
           liveCanonicalRestaurantId,
           targetCanonicalRestaurantId,
-          routeSnapshotRestaurantId
+          routeBootstrapCanonicalRestaurantId
         ));
         renderApp();
       }

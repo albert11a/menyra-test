@@ -83,13 +83,21 @@ async function withNoopRetryTimers(task) {
   }
 }
 
-function createCluster({ state, loadBusinessPostsForRestaurantFn, showCalls }) {
+function createCluster({
+  state,
+  loadBusinessPostsForRestaurantFn,
+  loadMenuForRestaurantFn = async () => ({ items: [], truthState: "unknown" }),
+  loadFocusForRestaurantFn = async () => ({ items: [], truthState: "unknown" }),
+  fetchBusinessProfileDocFn = null,
+  showCalls
+}) {
   return createProfileBusinessMenuRuntimeCluster({
     state,
     dataLoaders: {
-      loadMenuForRestaurantFn: async () => ({ items: [], truthState: "unknown" }),
-      loadFocusForRestaurantFn: async () => ({ items: [], truthState: "unknown" }),
+      loadMenuForRestaurantFn,
+      loadFocusForRestaurantFn,
       loadBusinessPostsForRestaurantFn,
+      fetchBusinessProfileDocFn,
       showPublicProfileFn: (profile, posts, options) => {
         showCalls.push({ profile, posts, options });
         state.profileView = {
@@ -103,6 +111,89 @@ function createCluster({ state, loadBusinessPostsForRestaurantFn, showCalls }) {
     }
   });
 }
+
+test("public slug menu stays pending until the canonical menu load returns products", async () => {
+  const slug = "70-s-pastry-and-bakery";
+  const canonicalRestaurantId = "YZq9MI9qZBr2u58KEdix";
+  const state = createVisiblePublicProfileState();
+  state.profileTopTab = "menu";
+  state.profileContentTab = "menu";
+  state.profileView.profile = {
+    ...state.profileView.profile,
+    restaurantId: slug,
+    canonicalRestaurantId: "",
+    publicSlug: slug
+  };
+  state.__webDirectEntry = {
+    ...state.__webDirectEntry,
+    restaurantId: slug,
+    canonicalRestaurantId: "",
+    menuFirst: true,
+    postsFirst: false,
+    topTab: "menu",
+    contentTab: "menu"
+  };
+  state.menu = {
+    ...state.menu,
+    restaurantId: slug,
+    loading: true,
+    truthState: "unknown"
+  };
+  const showCalls = [];
+  const menuCalls = [];
+  const truthTransitions = [];
+  const cluster = createCluster({
+    state,
+    showCalls,
+    loadBusinessPostsForRestaurantFn: async () => [],
+    fetchBusinessProfileDocFn: async () => ({
+      id: canonicalRestaurantId,
+      data: { name: "Pastry", publicSlug: slug }
+    }),
+    loadMenuForRestaurantFn: async (restaurantId) => {
+      menuCalls.push(restaurantId);
+      if (restaurantId === canonicalRestaurantId) {
+        state.menu = {
+          ...state.menu,
+          restaurantId,
+          items: [{ id: "item-1", category: "Pastry" }],
+          loading: false,
+          source: "public",
+          truthState: "seeded"
+        };
+      } else {
+        state.menu = {
+          ...state.menu,
+          restaurantId,
+          items: [],
+          loading: true,
+          source: "public",
+          truthState: "unknown"
+        };
+      }
+      truthTransitions.push(state.menu.truthState);
+      return {
+        items: state.menu.items,
+        truthState: state.menu.truthState,
+        pendingCanonical: restaurantId !== canonicalRestaurantId
+      };
+    }
+  });
+
+  await withNoopRetryTimers(async () => {
+    cluster.ensureMenuDataForProfile(state.profileView.profile);
+    await waitForAsyncEnsure();
+    await waitForAsyncEnsure();
+    await waitForAsyncEnsure();
+  });
+
+  assert.equal(menuCalls.includes(slug), true);
+  assert.equal(menuCalls.includes(canonicalRestaurantId), true);
+  assert.equal(truthTransitions.includes("knownEmpty"), false);
+  assert.equal(state.menu.restaurantId, canonicalRestaurantId);
+  assert.equal(state.menu.truthState, "seeded");
+  assert.equal(state.menu.items.length, 1);
+});
 
 test("public profile posts transient failure preserves visible posts without empty truth", async () => {
   const existingPosts = [

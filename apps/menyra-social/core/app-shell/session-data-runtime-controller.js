@@ -251,6 +251,46 @@ export function createSessionDataRuntimeController({
     return ids;
   }
 
+  function resolveVisibleCanonicalPublicMenuRestaurantId() {
+    const hasVisibleProfile = state?.profileView?.profile && typeof state.profileView.profile === "object";
+    const profile = hasVisibleProfile
+      ? state.profileView.profile
+      : {};
+    const routePayload = state?.profileView?.routePayload && typeof state.profileView.routePayload === "object"
+      ? state.profileView.routePayload
+      : {};
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object" && state.__webDirectEntry.active === true
+      ? state.__webDirectEntry
+      : {};
+    const ownProfile = !hasVisibleProfile && state?.userProfile && typeof state.userProfile === "object"
+      ? state.userProfile
+      : {};
+    return String(
+      profile.canonicalRestaurantId
+      || routePayload.canonicalRestaurantId
+      || webDirectEntry.canonicalRestaurantId
+      || ownProfile.canonicalRestaurantId
+      || ownProfile.restaurantId
+      || ""
+    ).trim();
+  }
+
+  function isAuthoritativePublicMenuRead(restaurantId = "", source = "public") {
+    const safeSource = String(source || "public").trim().toLowerCase() || "public";
+    if (safeSource !== "public") return true;
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const canonicalRestaurantId = resolveVisibleCanonicalPublicMenuRestaurantId();
+    return !!safeRestaurantId
+      && !!canonicalRestaurantId
+      && safeRestaurantId === canonicalRestaurantId;
+  }
+
+  function resolveLoadedMenuTruthState(items = [], restaurantId = "", source = "public") {
+    const safeItems = Array.isArray(items) ? items : [];
+    if (safeItems.length > 0) return "seeded";
+    return isAuthoritativePublicMenuRead(restaurantId, source) ? "knownEmpty" : "unknown";
+  }
+
   function isQrGuestMenuSessionForRestaurant(restaurantId = "") {
     const hasUser = !!String(state?.user?.uid || "").trim();
     if (hasUser) return false;
@@ -303,6 +343,8 @@ export function createSessionDataRuntimeController({
     const safeSource = String(source || "public").trim().toLowerCase();
     if (safeSource !== "public") return true;
     if (!isPublicProfileMenuVisible()) return true;
+    const canonicalRestaurantId = resolveVisibleCanonicalPublicMenuRestaurantId();
+    if (canonicalRestaurantId && String(restaurantId || "").trim() !== canonicalRestaurantId) return false;
     return isVisiblePublicMenuSurface(restaurantId, safeSource);
   }
 
@@ -1903,7 +1945,9 @@ export function createSessionDataRuntimeController({
     const cachedItems = Array.isArray(cached?.items) ? cached.items : [];
     const cachedTruthState = String(cached?.truthState || "").trim().toLowerCase();
     const hasKnownEmptyMemoryMenu = cachedTruthState === "knownempty" || cachedTruthState === "known-empty";
-    if (cached && canUseMemoryMenuCache && (cachedItems.length || hasKnownEmptyMemoryMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
+    const hasAuthoritativeKnownEmptyMemoryMenu = hasKnownEmptyMemoryMenu
+      && isAuthoritativePublicMenuRead(safeRestaurantId, safeSource);
+    if (cached && canUseMemoryMenuCache && (cachedItems.length || hasAuthoritativeKnownEmptyMemoryMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
       const cachedPayload = {
         items: cachedItems,
         statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true,
@@ -1927,7 +1971,8 @@ export function createSessionDataRuntimeController({
       return cachedPayload;
     }
     const persistedMenu = readMenuPersistentCache(safeRestaurantId, safeSource, { ignoreTtl: false });
-    const hasKnownEmptyPersistedMenu = persistedMenu.truthState === "knownEmpty";
+    const hasKnownEmptyPersistedMenu = persistedMenu.truthState === "knownEmpty"
+      && isAuthoritativePublicMenuRead(safeRestaurantId, safeSource);
     if ((persistedMenu.items.length || hasKnownEmptyPersistedMenu) && !force && !shouldPrioritizeVisibleMenuTruth && !blockWebDirectMenuCacheSeed) {
       const persistedPayload = {
         items: persistedMenu.items,
@@ -1974,7 +2019,13 @@ export function createSessionDataRuntimeController({
       const inFlightTruthState = String(inFlightResult?.truthState || "").trim();
       const inFlightTruthKey = inFlightTruthState.toLowerCase();
       const inFlightKnownEmpty = inFlightTruthKey === "knownempty" || inFlightTruthKey === "known-empty";
-      const inFlightUnknown = !inFlightItems.length && !inFlightKnownEmpty && inFlightTruthKey !== "seeded";
+      const inFlightPendingCanonical = inFlightResult?.pendingCanonical === true;
+      const resolvedInFlightTruthState = inFlightItems.length
+        ? "seeded"
+        : ((inFlightKnownEmpty || inFlightPendingCanonical)
+          ? resolveLoadedMenuTruthState(inFlightItems, safeRestaurantId, safeSource)
+          : "unknown");
+      const inFlightUnknown = resolvedInFlightTruthState === "unknown";
       if (
         !prefetchOnly
         && inFlightResult
@@ -1985,16 +2036,14 @@ export function createSessionDataRuntimeController({
           ...state.menu,
           restaurantId: safeRestaurantId,
           items: inFlightItems,
-          loading: false,
-          error: inFlightUnknown ? "Menu laden fehlgeschlagen." : "",
+          loading: inFlightUnknown && inFlightPendingCanonical,
+          error: inFlightUnknown && !inFlightPendingCanonical ? "Menu laden fehlgeschlagen." : "",
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
           routeSeed: false,
-          truthState: inFlightUnknown
-            ? "error"
-            : (inFlightKnownEmpty ? "knownEmpty" : (inFlightTruthState || (inFlightItems.length ? "seeded" : "knownEmpty")))
+          truthState: resolvedInFlightTruthState
         };
         requestRender();
       }
@@ -2040,14 +2089,17 @@ export function createSessionDataRuntimeController({
           const statusBadgeVisible = typeof meta?.statusBadgeVisible === "boolean"
             ? meta.statusBadgeVisible
             : true;
-          const truthState = items.length > 0 ? "seeded" : "knownEmpty";
-          const payload = { items, statusBadgeVisible, truthState };
-          menuCacheMap.set(cacheKey, {
-            ...payload,
-            truthSource: "public-menu",
-            ts: Date.now()
-          });
-          writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
+          const truthState = resolveLoadedMenuTruthState(items, safeRestaurantId, safeSource);
+          const pendingCanonical = !items.length && truthState === "unknown";
+          const payload = { items, statusBadgeVisible, truthState, pendingCanonical };
+          if (truthState !== "unknown") {
+            menuCacheMap.set(cacheKey, {
+              ...payload,
+              truthSource: "public-menu",
+              ts: Date.now()
+            });
+            writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
+          }
           return payload;
         } catch (err) {
           console.error(err);
@@ -2149,29 +2201,32 @@ export function createSessionDataRuntimeController({
           statusBadgeVisible = meta.statusBadgeVisible;
         }
         items = Array.isArray(items) ? items : [];
-        const truthState = items.length > 0 ? "seeded" : "knownEmpty";
-        const payload = { items, statusBadgeVisible, truthState };
-        menuCacheMap.set(cacheKey, {
-          items,
-          statusBadgeVisible,
-          truthSource: safeSource === "public" ? "public-menu" : safeSource,
-          truthState,
-          ts: Date.now()
-        });
-        writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
+        const truthState = resolveLoadedMenuTruthState(items, safeRestaurantId, safeSource);
+        const pendingCanonical = safeSource === "public" && !items.length && truthState === "unknown";
+        const payload = { items, statusBadgeVisible, truthState, pendingCanonical };
+        if (truthState !== "unknown") {
+          menuCacheMap.set(cacheKey, {
+            items,
+            statusBadgeVisible,
+            truthSource: safeSource === "public" ? "public-menu" : safeSource,
+            truthState,
+            ts: Date.now()
+          });
+          writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
+        }
         if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return payload;
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
           items,
-          loading: false,
+          loading: pendingCanonical,
           error: "",
           source: safeSource,
           statusBadgeVisible,
           routeSeed: false,
           truthState
         };
-        if (safeSource === "public" && items.length === 0) {
+        if (safeSource === "public" && truthState === "knownEmpty") {
           const currentFocusRestaurantId = String(state?.focus?.restaurantId || "").trim();
           if (currentFocusRestaurantId === safeRestaurantId) {
             state.focus = {

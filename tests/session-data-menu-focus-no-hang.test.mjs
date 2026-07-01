@@ -62,6 +62,29 @@ function createVisibleMenuState() {
   };
 }
 
+function createUnresolvedSlugMenuState() {
+  const state = createVisibleMenuState();
+  state.profileView.profile = {
+    ...state.profileView.profile,
+    restaurantId: "70-s-pastry-and-bakery",
+    canonicalRestaurantId: "",
+    publicSlug: "70-s-pastry-and-bakery"
+  };
+  state.profileView.routePayload = {
+    restaurantId: "70-s-pastry-and-bakery",
+    canonicalRestaurantId: "",
+    businessSnapshot: {
+      restaurantId: "70-s-pastry-and-bakery"
+    }
+  };
+  state.__webDirectEntry = {
+    ...state.__webDirectEntry,
+    restaurantId: "70-s-pastry-and-bakery",
+    canonicalRestaurantId: ""
+  };
+  return state;
+}
+
 function createController({
   state = createVisibleMenuState(),
   renderFn = () => {},
@@ -108,6 +131,57 @@ test("public menu load leaves loading state when Firebase menu items do not retu
   assert.equal(state.menu.loading, false);
   assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
   assert.equal(state.menu.truthState, "unknown");
+});
+
+test("missing restaurants slug public menu remains pending before canonical resolution", async () => {
+  const state = createUnresolvedSlugMenuState();
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: async () => []
+  });
+
+  const result = await controller.loadMenuForRestaurant("70-s-pastry-and-bakery", { source: "public" });
+
+  assert.equal(result.truthState, "unknown");
+  assert.equal(result.pendingCanonical, true);
+  assert.equal(state.menu.restaurantId, "70-s-pastry-and-bakery");
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "unknown");
+});
+
+test("canonical public menu empty read commits terminal known-empty truth", async () => {
+  const state = createVisibleMenuState();
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: async () => []
+  });
+
+  const result = await controller.loadMenuForRestaurant("restaurant-a", { source: "public" });
+
+  assert.equal(result.truthState, "knownEmpty");
+  assert.equal(result.pendingCanonical, false);
+  assert.equal(state.menu.restaurantId, "restaurant-a");
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "knownEmpty");
+});
+
+test("canonical public menu item read commits seeded products", async () => {
+  const state = createVisibleMenuState();
+  const items = [{ id: "item-1", category: "Pizza" }];
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: async () => items
+  });
+
+  const result = await controller.loadMenuForRestaurant("restaurant-a", { source: "public" });
+
+  assert.equal(result.truthState, "seeded");
+  assert.deepEqual(result.items, items);
+  assert.equal(state.menu.loading, false);
+  assert.equal(state.menu.truthState, "seeded");
+  assert.deepEqual(state.menu.items, items);
 });
 
 test("menu editor collection load leaves loading state when Firebase products do not return", async () => {

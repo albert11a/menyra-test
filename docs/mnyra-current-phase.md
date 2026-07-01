@@ -1444,10 +1444,14 @@ Last updated: 2026-07-01
   Card-nahe Menu-Skeletons im Format der bestehenden Drink-/Food-/Shop-Cards
   gerendert, statt eine reine Text-Ladeflaeche zu zeigen. Im Hotfix nach
   Review-Gate wurden `focusSettled` wiederhergestellt und `seeded + []` fuer
-  Menu/Focus als `loading` behandelt. Der abschliessende Contract-Patch bindet
-  `Keine Produkte` im Profil-Renderer an bestaetigte Menu-Wahrheit und deckt
-  die Empty-/Ready-/Focus-Waiting-Faelle im Unit-Test ab. Der App-Build-Token
-  wurde auf `2026-07-01-focus-menu-skeletons-03` aktualisiert und das Bundle
+  Menu/Focus als `loading` behandelt. Die finale Ergaenzung bindet terminales
+  Empty jetzt an einen abgeschlossenen Read fuer die bekannte kanonische
+  Restaurant-ID. Ein leerer Read gegen `restaurants/{slug}/public/menu` bleibt
+  pending; synthetische Route-Snapshots duerfen einen Slug nicht mehr als
+  kanonische ID hochstufen. `Keine Produkte` wird ausschliesslich ueber
+  `confirmedEmpty === true` gerendert, niemals allein ueber eine leere Raw-
+  oder Filterliste. Der App-Build-Token wurde auf
+  `2026-07-01-focus-menu-skeletons-04` aktualisiert und das Bundle
   wurde neu gebaut. Diese sichtbare Loading-UI-Aenderung wurde vom Nutzer
   ausdruecklich freigegeben. Nicht geaendert wurden QR, Warenkorb, Checkout,
   Orders, Routing, Firebase Rules, Functions, Firestore-Pfade, Posts-Skeletons
@@ -2056,7 +2060,7 @@ unveraenderter Warenkorb-Logik.
 
 Zusaetzlich fuer Schritt 140 manuell pruefen: App hart neu laden, bei Bedarf
 mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
-`2026-07-01-focus-menu-skeletons-03` aktiv sein. Ein Restaurant-/Cafe-
+  `2026-07-01-focus-menu-skeletons-04` aktiv sein. Ein Restaurant-/Cafe-
 Business-Profil direkt auf `/:slug/menu` oeffnen oder dort refreshen. Solange
 Focus/Angebote noch laden, soll oben ein reservierter Focus-Skeleton-Platz
 bleiben und darunter sollen moderne Card-Skeletons im Format der echten Menu-
@@ -2067,7 +2071,11 @@ kurz pruefen: Das Menu darf nicht dauerhaft blockiert bleiben. Ein Shop-/
 E-Commerce-Profil kurz pruefen: Product-Skeletons sollen in derselben
 zweispaltigen Card-Struktur erscheinen und danach durch echte Produkte ersetzt
 werden. QR-URL kurz gegenpruefen: Profil oeffnet weiter mit offenem Menu und
-unveraenderter Warenkorb-/Order-Logik.
+unveraenderter Warenkorb-/Order-Logik. Casarita und mindestens ein weiteres
+Restaurant ueber `/:slug/menu` hart refreshen: Casarita darf direkt Produkte
+zeigen; das andere Restaurant muss bis zur kanonischen Menu-Wahrheit Skeleton
+statt kurz `Keine Produkte` zeigen. Optional `?debug-menu-state=1` nutzen und
+den einmaligen `[mnyra][public-menu.first-render]`-Datensatz vergleichen.
 
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer

@@ -306,7 +306,7 @@ function normalizeIncomingWebRoutePayload(payload = null) {
     if (explicitState === "unknown") return "unknown";
     if (section?.seeded === true) return fallbackCount > 0 ? "seeded" : "unknown";
     if (fallbackCount > 0) return "seeded";
-    if (section?.knownEmpty === true || (Number(section?.count) === 0 && section?.unknown !== true)) return "knownEmpty";
+    if (section?.knownEmpty === true) return "knownEmpty";
     return "unknown";
   };
   const postsState = resolveSectionTruthState(snapshotPosts?.state ? snapshotPosts : payload?.posts, postsItems.length);

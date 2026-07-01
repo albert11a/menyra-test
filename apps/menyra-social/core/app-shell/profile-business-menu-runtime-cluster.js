@@ -541,9 +541,10 @@ export function createProfileBusinessMenuRuntimeCluster({
     const matchesVisibleId = ids.map((value) => String(value || "").trim()).filter(Boolean).includes(currentMenuRestaurantId);
     if (!matchesVisibleId) return false;
     const menuTruthState = String(state.menu.truthState || "").trim().toLowerCase();
-    return menuTruthState === "seeded"
-      || menuTruthState === "knownempty"
-      || menuTruthState === "known-empty";
+    if (menuTruthState === "seeded") return true;
+    if (menuTruthState !== "knownempty" && menuTruthState !== "known-empty") return false;
+    const canonicalRestaurantId = resolveLatestCanonicalMenuRestaurantId();
+    return !!canonicalRestaurantId && currentMenuRestaurantId === canonicalRestaurantId;
   };
 
   const hasConfirmedPublicMenuItemsForFocus = (ids = []) => {

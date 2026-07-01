@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  resolvePublicMenuRenderDecision,
   resolveVisiblePublicMenuSurfaceState
 } from "../apps/menyra-social/core/profile/public-menu-surface-state-utils.js";
 
@@ -51,7 +52,85 @@ test("public menu surface exposes no-products only for confirmed empty truth", (
   }, { profile });
 
   assert.equal(surface.menu.status, "empty");
+  assert.equal(surface.menu.confirmedEmpty, true);
   assert.equal(surface.menu.canRenderItems, false);
+});
+
+test("public menu surface does not confirm empty for an unresolved public slug", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "70-s-pastry-and-bakery",
+      source: "public",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: "70-s-pastry-and-bakery",
+      canonicalRestaurantId: ""
+    },
+    routePayload: {
+      restaurantId: "70-s-pastry-and-bakery",
+      canonicalRestaurantId: "",
+      businessSnapshot: {
+        restaurantId: "70-s-pastry-and-bakery"
+      }
+    },
+    webDirectEntry: {
+      active: true,
+      restaurantId: "70-s-pastry-and-bakery",
+      canonicalRestaurantId: ""
+    }
+  });
+
+  assert.equal(surface.authoritativeRestaurantId, "");
+  assert.equal(surface.menu.status, "loading");
+  assert.equal(surface.menu.confirmedEmpty, false);
+  assert.equal(surface.menu.canRenderItems, false);
+});
+
+test("public menu surface rejects slug empty truth after canonical id resolves", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "70-s-pastry-and-bakery",
+      source: "public",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: "70-s-pastry-and-bakery",
+      canonicalRestaurantId: "YZq9MI9qZBr2u58KEdix"
+    }
+  });
+
+  assert.equal(surface.authoritativeRestaurantId, "YZq9MI9qZBr2u58KEdix");
+  assert.equal(surface.menu.status, "loading");
+  assert.equal(surface.menu.confirmedEmpty, false);
+  assert.equal(surface.menu.matchesAuthoritativeRestaurant, false);
+});
+
+test("public menu surface confirms empty only for the canonical public menu read", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "YZq9MI9qZBr2u58KEdix",
+      source: "public",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: "YZq9MI9qZBr2u58KEdix",
+      canonicalRestaurantId: "YZq9MI9qZBr2u58KEdix"
+    }
+  });
+
+  assert.equal(surface.menu.status, "empty");
+  assert.equal(surface.menu.confirmedEmpty, true);
+  assert.equal(surface.menu.matchesAuthoritativeRestaurant, true);
 });
 
 test("public menu surface renders ready menu items", () => {
@@ -67,6 +146,50 @@ test("public menu surface renders ready menu items", () => {
 
   assert.equal(surface.menu.status, "ready");
   assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.menu.confirmedEmpty, false);
+});
+
+test("Casarita-like canonical route seed renders products immediately", () => {
+  const casaritaId = "Lzm6RpNu3ErSDtGCHxpi";
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: casaritaId,
+      source: "public",
+      truthState: "seeded",
+      items: [{ id: "item-1", category: "Pizza" }],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: casaritaId,
+      canonicalRestaurantId: casaritaId,
+      publicSlug: "casarita"
+    }
+  });
+
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.menu.items.length, 1);
+});
+
+test("filtered empty canonical items never trigger global no-products", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "restaurant-a",
+      source: "public",
+      truthState: "seeded",
+      items: [{ id: "hidden-item", category: "Pizza", menuHidden: true }],
+      loading: false
+    }
+  }, { profile });
+  const decision = resolvePublicMenuRenderDecision(surface.menu, []);
+
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.menu.items.length, 1);
+  assert.equal(decision.hasItems, false);
+  assert.equal(decision.confirmedEmpty, false);
+  assert.equal(decision.shouldRenderNoProducts, false);
+  assert.equal(decision.isLoading, true);
 });
 
 test("public menu surface keeps ready items renderable while focus is loading", () => {

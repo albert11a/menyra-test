@@ -5,6 +5,7 @@ import {
 } from "./public-profile-surface-controller.js";
 import {
   normalizePublicMenuTruthState,
+  resolvePublicMenuRenderDecision,
   resolveVisiblePublicMenuSurfaceState
 } from "./public-menu-surface-state-utils.js";
 import { t } from "/shared/i18n/i18n.js";
@@ -80,6 +81,66 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const menuCardViewerLikeHydrationState = {
     key: "",
     inFlightKey: ""
+  };
+  const publicMenuFirstRenderDebugKeys = new Set();
+  const isPublicMenuFirstRenderDebugEnabled = () => {
+    try {
+      if (globalThis?.__MENYRA_DEBUG_MENU_STATE__ === true) return true;
+      const params = new URLSearchParams(globalThis?.location?.search || "");
+      return params.get("debug-menu-state") === "1";
+    } catch {
+      return false;
+    }
+  };
+  const logPublicMenuFirstRenderState = ({
+    profile = null,
+    routePayload = null,
+    surface = null,
+    decision = null
+  } = {}) => {
+    if (!isPublicMenuFirstRenderDebugEnabled()) return;
+    const safeSurface = surface && typeof surface === "object" ? surface : {};
+    const menu = safeSurface.menu && typeof safeSurface.menu === "object" ? safeSurface.menu : {};
+    const safeProfile = profile && typeof profile === "object" ? profile : {};
+    const safeRoutePayload = routePayload && typeof routePayload === "object" ? routePayload : {};
+    const routeIdentity = safeRoutePayload?.businessSnapshot?.identity || safeRoutePayload?.identity || {};
+    const businessId = String(
+      safeSurface.authoritativeRestaurantId
+      || safeSurface.restaurantId
+      || menu.restaurantId
+      || ""
+    ).trim();
+    const slug = String(
+      safeProfile.publicSlug
+      || safeProfile.landingSlug
+      || safeProfile.handle
+      || routeIdentity.publicSlug
+      || routeIdentity.landingSlug
+      || routeIdentity.handle
+      || ""
+    ).trim();
+    const logKey = `${businessId || "pending"}::${slug || "no-slug"}`;
+    if (publicMenuFirstRenderDebugKeys.has(logKey)) return;
+    publicMenuFirstRenderDebugKeys.add(logKey);
+    const rawItems = Array.isArray(menu.items) ? menu.items : [];
+    const categoriesLength = new Set(
+      rawItems.map((item) => String(item?.category || "").trim()).filter(Boolean)
+    ).size;
+    const rawTruthState = String(menu.rawTruthState || menu.truthState || "").trim();
+    console.debug("[mnyra][public-menu.first-render]", {
+      businessId,
+      slug,
+      itemsLength: rawItems.length,
+      categoriesLength,
+      menuStatus: String(menu.status || "loading"),
+      truthState: rawTruthState,
+      isLoading: decision?.isLoading === true,
+      isHydrating: menu.hydrating === true || rawTruthState.toLowerCase() === "hydrating",
+      confirmedEmpty: menu.confirmedEmpty === true,
+      canRenderItems: menu.canRenderItems === true,
+      shouldRenderNoProducts: decision?.shouldRenderNoProducts === true,
+      source: String(menu.source || "")
+    });
   };
   const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   const translateCatalogLabel = (label = "") => {
@@ -4076,12 +4137,20 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     ? sortMenuItemsByOrder(getFilteredMenuItems(menuSurfaceState.menu.items, { filter: "all", query: "" }))
       .filter((item) => !isMenuItemHidden(item))
     : [];
-  const hasItems = items.length > 0;
   const error = menuSurfaceState.menu.error || "";
-  const menuIsConfirmedEmpty = menuSurfaceState.menu.status === "empty"
-    || (menuSurfaceState.menu.status === "ready" && !hasItems);
-  const hasError = menuSurfaceState.menu.status === "error" || !!String(error || "").trim();
-  const isLoading = !hasItems && !menuIsConfirmedEmpty && !hasError;
+  const menuRenderDecision = resolvePublicMenuRenderDecision(menuSurfaceState.menu, items);
+  const {
+    hasItems,
+    hasError,
+    isLoading,
+    shouldRenderNoProducts
+  } = menuRenderDecision;
+  logPublicMenuFirstRenderState({
+    profile: surfaceProfile,
+    routePayload,
+    surface: menuSurfaceState,
+    decision: menuRenderDecision
+  });
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
@@ -4137,7 +4206,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
             })
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
-              : (menuIsConfirmedEmpty
+               : (shouldRenderNoProducts
                 ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`
                 : renderTestfirstMenuSkeleton()))
           }
@@ -4159,7 +4228,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
                 ${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}
               </div>
             </div>
-          ` : menuIsConfirmedEmpty ? `
+          ` : shouldRenderNoProducts ? `
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
               <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
                 ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
