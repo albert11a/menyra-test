@@ -10,6 +10,7 @@ async function prepareFirebaseEmulatorPage(page: Page) {
         host: "127.0.0.1",
         firestorePort: 8080,
         authPort: 9099,
+        functionsPort: 5001,
       },
     });
   });

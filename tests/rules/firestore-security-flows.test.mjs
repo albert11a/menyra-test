@@ -122,10 +122,10 @@ function otherRestaurantDocuments() {
   ];
 }
 
-test("guest order contract allows valid guest orders and denies manipulated payloads", async () => {
+test("guest direct order creates remain blocked", async () => {
   const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
 
-  await assertSucceeds(
+  await assertFails(
     guestDb
       .doc("restaurants/pidhi-madh/orders/order-guest-valid")
       .set(validOrderPayload()),
@@ -182,10 +182,10 @@ test("guest order contract allows valid guest orders and denies manipulated payl
   );
 });
 
-test("signed-in order contract allows own valid orders and denies manipulated payloads", async () => {
+test("signed-in direct order creates remain blocked", async () => {
   const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
 
-  await assertSucceeds(
+  await assertFails(
     userDb.doc("restaurants/pidhi-madh/orders/order-user-valid").set(
       validOrderPayload({
         buyerUid: "shopper-demo",

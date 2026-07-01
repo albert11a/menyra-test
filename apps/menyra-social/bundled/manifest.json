@@ -77,7 +77,7 @@
     ]
   },
   "apps/menyra-social/core/orders/orders-runtime-controller.js": {
-    "file": "chunks/orders-runtime-controller-B-6VohM3.js",
+    "file": "chunks/orders-runtime-controller-CR-4dN6P.js",
     "name": "orders-runtime-controller",
     "src": "apps/menyra-social/core/orders/orders-runtime-controller.js",
     "isDynamicEntry": true,

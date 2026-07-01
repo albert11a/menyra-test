@@ -41,6 +41,19 @@ async function openLoggingSocket() {
   return { messages, socket };
 }
 
+async function callCreateRestaurantOrder(data) {
+  const response = await fetch(
+    "http://127.0.0.1:5001/mnyra-local/us-central1/createRestaurantOrder",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data }),
+    },
+  );
+  const body = await response.json();
+  return { response, body };
+}
+
 test("firebase emulator hub exposes the local Functions emulator", async () => {
   const response = await fetch("http://127.0.0.1:4400/emulators");
   assert.equal(response.ok, true);
@@ -59,6 +72,107 @@ test("functions package stays local and is not a production deploy command", asy
   assert.ok(
     !Object.values(pkg.scripts || {}).some((script) => /deploy/i.test(script)),
   );
+});
+
+test("createRestaurantOrder computes canonical numeric prices and rejects invalid targets", async () => {
+  const suffix = Date.now();
+  const restaurantId = `functions-order-${suffix}`;
+  const restaurantRef = functionsTestDb.doc(`restaurants/${restaurantId}`);
+  const numericItemRef = restaurantRef
+    .collection("menuItems")
+    .doc("numeric-item");
+  const stringItemRef = restaurantRef
+    .collection("menuItems")
+    .doc("string-item");
+  let createdOrderId = "";
+
+  await Promise.all([
+    restaurantRef.set({
+      id: restaurantId,
+      name: "Functions Order Test",
+      ownerUid: "functions-owner",
+    }),
+    numericItemRef.set({
+      id: "numeric-item",
+      name: "Numeric Price Item",
+      price: 4,
+      available: true,
+    }),
+    stringItemRef.set({
+      id: "string-item",
+      name: "String Price Item",
+      price: "3,40",
+      available: true,
+    }),
+  ]);
+
+  try {
+    const success = await callCreateRestaurantOrder({
+      restaurantId,
+      serviceMode: "table",
+      source: "qr",
+      tableNumber: 2,
+      items: [
+        { itemId: "numeric-item", quantity: 1, price: 999 },
+        { itemId: "string-item", quantity: 2, price: 999 },
+      ],
+      total: 2997,
+      itemCount: 99,
+      status: "archiv",
+      buyerUid: "forged-buyer",
+      guestScopeUid: "functions-guest",
+      guestSessionId: "functions-session",
+    });
+    assert.equal(success.response.ok, true, JSON.stringify(success.body));
+    assert.equal(success.body.result.ok, true);
+    createdOrderId = success.body.result.orderId;
+    assert.ok(createdOrderId);
+
+    const createdSnapshot = await restaurantRef
+      .collection("orders")
+      .doc(createdOrderId)
+      .get();
+    assert.equal(createdSnapshot.exists, true);
+    const created = createdSnapshot.data();
+    assert.equal(created.restaurantId, restaurantId);
+    assert.equal(created.status, "Neu");
+    assert.equal(created.itemCount, 3);
+    assert.equal(created.total, 10.8);
+    assert.equal(created.totalCents, 1080);
+    assert.equal(created.buyerUid, "");
+    assert.equal(created.items[0].price, 4);
+    assert.equal(created.items[0].priceCents, 400);
+    assert.equal(created.items[1].price, 3.4);
+    assert.equal(created.items[1].priceCents, 340);
+    assert.equal(typeof created.items[0].price, "number");
+    assert.equal(typeof created.items[1].price, "number");
+    assert.ok(created.createdAt);
+    assert.ok(created.updatedAt);
+
+    const invalidItem = await callCreateRestaurantOrder({
+      restaurantId,
+      items: [{ itemId: "missing-item", quantity: 1 }],
+    });
+    assert.equal(invalidItem.response.ok, false);
+    assert.equal(invalidItem.body.error.status, "FAILED_PRECONDITION");
+
+    const invalidRestaurant = await callCreateRestaurantOrder({
+      restaurantId: `missing-${restaurantId}`,
+      items: [{ itemId: "numeric-item", quantity: 1 }],
+    });
+    assert.equal(invalidRestaurant.response.ok, false);
+    assert.equal(invalidRestaurant.body.error.status, "FAILED_PRECONDITION");
+  } finally {
+    const orderSnapshots = await restaurantRef.collection("orders").get();
+    const lookupSnapshots = await restaurantRef.collection("orderLookup").get();
+    await Promise.allSettled([
+      ...orderSnapshots.docs.map((snapshot) => snapshot.ref.delete()),
+      ...lookupSnapshots.docs.map((snapshot) => snapshot.ref.delete()),
+      numericItemRef.delete(),
+      stringItemRef.delete(),
+      restaurantRef.delete(),
+    ]);
+  }
 });
 
 test("order mirror trigger reproduces the local serverTimestamp runtime failure", async () => {

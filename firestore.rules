@@ -884,7 +884,7 @@ service cloud.firestore {
       match /orders/{orderId} {
         allow get: if canAccessRestaurantOrdersDoc(restaurantId) || buyerOwnsOrder();
         allow list: if canAccessRestaurantOrdersDoc(restaurantId);
-        allow create: if validOrderCreateForRestaurant(restaurantId);
+        allow create: if false;
         allow update: if validOrderStatusUpdateForRestaurant(restaurantId);
         allow delete: if isCeoActor();
       }

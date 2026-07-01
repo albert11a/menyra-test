@@ -22,12 +22,13 @@ Last updated: 2026-07-01
 - Firestore Rules tests and auth fixtures under `tests/rules`.
 - Minimal Firestore Rules hardening for protected social/follower counters and
   private root user reads.
-- Minimal Firestore Rules hardening for QR/menu order creates and waiter order
-  status updates.
+- Generic callable order creation with direct Firestore creates blocked and
+  waiter updates restricted to status/timestamp fields.
 - Firebase Functions emulator validation and order-trigger failure reproduction
   under `tests/functions`.
 - Active seeded QR/Menu/Order and Waiter Playwright coverage under `tests/e2e`.
-- False runtime feature flags in `shared/config/feature-flags.js`.
+- False replacement-runtime feature flags plus the active callable-order
+  contract flag in `shared/config/feature-flags.js`.
 - CI preparation workflow in `.github/workflows/ci.yml`.
 
 ## Scripts Added
@@ -57,7 +58,9 @@ Existing `npm run build` remains the normal Vite/Vercel static build.
 - `docs/codex/generated/ARCHITECTURE_DEPENDENCY_REPORT.md`
 - `docs/codex/generated/BUNDLE_ANALYSIS_REPORT.md`
 - `docs/codex/generated/FIRESTORE_RULES_SECURITY_GAP_REPORT.md`
+- `docs/codex/generated/CREATE_RESTAURANT_ORDER_FUNCTION_AUDIT.md`
 - `docs/codex/generated/ORDER_QR_WAITER_FLOW_AUDIT.md`
+- `docs/codex/MNYRA_MENU_PRICE_CONTRACT.md`
 - `docs/codex/generated/dependency-cruiser-check.txt`
 - `docs/codex/generated/madge-social-app-graph.json`
 - `docs/codex/generated/madge-cycles.txt`
@@ -66,12 +69,12 @@ Existing `npm run build` remains the normal Vite/Vercel static build.
 
 Green:
 
-- `npm run test:unit`: 102 passed.
+- `npm run test:unit`: 103 passed.
 - `npm run test:rules`: 12 passed, 0 failed, 0 skipped.
-- `npm run test:functions`: 3 passed.
+- `npm run test:functions`: 4 passed.
 - `npm run test:e2e`: 4 passed, 8 unrelated prepared tests skipped.
 - `npm run arch:report`: report generated.
-- `npm run arch:check`: passed, 330 modules and 489 dependencies cruised.
+- `npm run arch:check`: passed, 333 modules and 493 dependencies cruised.
 - `npm run arch:graph`: graph JSON generated.
 - `npm run arch:cycles`: passed, no circular dependency found by Madge baseline.
 - `npm run lint`: passed after vendor files were excluded and lint was scoped to errors.
@@ -121,7 +124,11 @@ flow; no product correction was made during the review itself.
   and build passed. The Functions suite still reproduces the intentionally
   unresolved worker-dependent `serverTimestamp` failure.
 
-## Production Order Compatibility Blocker
+## Pre-Fix Production Order Compatibility Blocker
+
+This records the diagnosis at `c8989e42` before the callable restoration
+documented below. Statements about the then-current direct client are
+historical, not the current branch contract.
 
 Real-data LAN validation was performed on
 `http://192.168.1.168:5173` without `firebase-emulator=1`.
@@ -133,19 +140,19 @@ Verified generically:
 - The server served the tracked bundle produced by `d13aa637`; its manifest
   SHA-256 matched the workspace file exactly. Firebase project
   `menyra-c0e68` was active and emulator mode was `false`.
-- The current checkout controller writes directly to
+- At diagnosis time the checkout controller wrote directly to
   `restaurants/{restaurantId}/orders/{orderId}`.
 - The active Production Firestore ruleset was updated on
   `2026-06-29T12:29:57Z` and has `allow create: if false` for restaurant
   orders. It explicitly expects order creation through the
   `createRestaurantOrder` Cloud Function.
-- The new local Rules are not deployed. They must not be deployed as-is:
-  Production `menuItems.price` values can be strings, while the local direct
-  create contract requires numeric menu prices and strict equality.
+- At diagnosis time local Rules allowed validated direct creates and therefore
+  differed from Production. The current branch now restores `allow create: if
+false`; no Rules were deployed.
 - The deployed generic `createRestaurantOrder` callable exists and is active
   in `us-central1`. A write-free invalid-input probe reached it and returned
   `functions/invalid-argument: restaurantId is required`.
-- The current branch does not call that Function and no longer contains its
+- The branch at `c8989e42` did not call that Function and did not contain its
   source or `functions/order-security.js`. Historical commit `5ecebe12`
   contains the server-controlled implementation and client intent contract.
 - The historical server contract accepts string or numeric menu prices,
@@ -166,7 +173,7 @@ restaurant found is deleted and has no owner, menu or orderable items; the
 emulator-only `pidhi-madh` restaurant does not exist in Production. No actual
 Production order was created.
 
-Required gate before further refactors:
+Required gate identified by that diagnosis:
 
 1. Restore one generic client order service that calls the existing
    `createRestaurantOrder` callable for every internal restaurant, cafe/bar,
@@ -196,8 +203,8 @@ Observed:
 - `npm run emulators:start` started Auth, Firestore, Functions and UI locally.
   Firebase CLI emitted online project lookup warnings for `mnyra-local` and the
   Functions emulator warned that the host uses Node 24 while `functions` request
-  Node 20. Function definitions loaded in this pass. No Functions source was
-  changed.
+  Node 20. Function definitions loaded in that preceding pass. No Functions
+  source was changed during the diagnosis.
 - Seed visibility was verified in the emulator: PIDHImadh, 24 Menu Items, Posts,
   Orders, Waiter User, Owner User, CEO/Heart User, Shop, Hotel and pending Ads.
 - Latest seed verification after the QR/Menu/Order/Waiter pass confirmed
@@ -224,9 +231,10 @@ Not run:
 - No `social-app.js` runtime extraction.
 - No `apps/menyra-social/social-app.js` source refactor. Its generated bundled
   entry changed through the normal Vite build.
-- No `functions/index.js` change.
-- No QR/menu/cart/order UI or route behavior; the existing order payload now
-  normalizes item price to a number before the Rules-validated write.
+- No unrelated Functions product logic change; only the generic callable export
+  and its order-security module were restored.
+- No QR/menu/cart/order UI or route behavior; checkout now submits order intent
+  to the callable instead of creating the Firestore document directly.
 - No QR/menu/waiter runtime refactor.
 - No production Firebase configuration or deploy flow.
 - No real customer data.
@@ -267,99 +275,94 @@ New confirmed security gaps:
 
 - None found in this pass.
 
-## QR/Menu/Order/Waiter Hardening
+## Callable Order Restoration
 
-Audit report:
+Audits:
 
+- `docs/codex/generated/CREATE_RESTAURANT_ORDER_FUNCTION_AUDIT.md`
 - `docs/codex/generated/ORDER_QR_WAITER_FLOW_AUDIT.md`
+- `docs/codex/MNYRA_MENU_PRICE_CONTRACT.md`
 
-Closed or hardened:
+The generic Production-compatible order contract is restored:
 
-- Guest and signed-in order creates now reject arbitrary item `price`, `total`
-  and non-initial `status`.
-- Order create now validates menu item ids against
-  `restaurants/{restaurantId}/menuItems/{itemId}` and requires the submitted
-  price to match the menu item price.
-- Order create now requires `itemCount` and `total` to match submitted line
-  items.
-- Waiter order updates are restricted to `status`, `updatedAt` and
-  `updatedAtClient`.
-- Waiter cannot mutate order `items`, item prices or `total`.
-- Waiter cannot delete orders.
-- Guest and normal users cannot read/list foreign restaurant orders.
-- Owner can read own restaurant orders and cannot read foreign restaurant
-  orders.
-- CEO/Heart keeps the existing admin order access contract.
+- Checkout uses the dedicated lazy `createRestaurantOrder` client service.
+- The browser sends restaurant/table/contact plus item IDs, quantities and
+  optional variant/note metadata only.
+- Client price, total, item count, status, buyer, owner, waiter and admin values
+  are not sent as trusted order fields.
+- The callable reads trusted
+  `restaurants/{restaurantId}/menuItems/{itemId}` documents.
+- Numeric prices and transitional strings such as `"4.00"` and `"3,40"` are
+  converted to cents; order item prices and totals are stored as numbers.
+- Initial status and timestamps are server-controlled.
+- Direct guest and signed-in Firestore order creates are blocked.
+- Waiter updates remain restricted to status/timestamp fields.
 
-Documented remaining risk:
+Commit `5ecebe12` was used as the proven historical reference. It was never an
+ancestor of `mnyrasocial`, so this was branch divergence rather than a later
+revert. The restored implementation does not modify `social-app.js`; it adds a
+dedicated client service and fixes the historical raw-string order price.
 
-- The active checkout still creates canonical orders directly from the browser.
-  Rules now validate the payload, but there is no secure callable/HTTP server
-  Function that creates canonical orders and computes prices before write.
-- A concrete `createRestaurantOrder` implementation plan is documented before
-  any UI/runtime migration.
-- Client-created orders are capped at 8 items in Rules to stay within menu item
-  validation limits; larger carts should move to server-side order creation.
+`USE_CREATE_RESTAURANT_ORDER_FUNCTION=true` activates the required write
+contract. The prepared replacement runtime flags remain false. There is no
+direct Firestore fallback.
 
-E2E browser validation:
+## Browser Validation
 
-- `tests/e2e/qr-menu.spec.ts` opens the seeded table-2 QR menu, verifies
-  PIDHImadh and `Local Breakfast Plate`, adds it to cart, submits checkout and
-  validates the resulting canonical order fields, status, `itemCount` and
-  total.
-- The browser request initially sent `items[].price` as string `"6.9"`. Rules
-  correctly denied it; the client now uses the existing numeric price parser.
-- `tests/e2e/waiter.spec.ts` signs in with the seed waiter, verifies authorized
-  PIDHImadh orders, denies foreign restaurant reads and item/price/total writes,
-  and permits only the normal status update.
-- Both flows pass on desktop Chromium and the Pixel 5/mobile profile.
-- Local emulator mode is explicit and localhost-only through
-  `firebase-emulator=1` or the Playwright runtime fixture; production remains
-  the default.
+The seeded desktop and mobile QR flow now:
 
-## Risks Found
+1. opens `PIDHImadh` from the table-2 QR context;
+2. loads the known `Local Breakfast Plate` menu item;
+3. adds it to cart and submits through the Functions emulator;
+4. creates a server order with numeric `price: 6.9`, `itemCount: 1`,
+   `total: 6.9`, `totalCents: 690` and `status: "Neu"`;
+5. signs in as the seeded waiter and displays that exact Function-created
+   order;
+6. changes status to `angenommen` while items and total remain unchanged.
 
-- Existing app bundle remains too large for a true lightweight public entry.
-- QR/Menu/Cart/Order and Waiter now have real emulator-backed browser coverage.
-- Rules auth fixtures are now wired for Guest, normal User, Restaurant Owner,
-  Waiter and CEO/Heart.
-- Security-sensitive order/staff/owner/Heart/public-read flows now have green
-  allow/deny coverage.
-- Previously confirmed Rules gaps for direct counter manipulation and foreign
-  root user reads are now closed by emulator-tested rules.
-- QR/Menu/Order/Waiter security now has explicit allow/deny Rules coverage.
-- No server-side canonical order creation Function exists yet; this is the next
-  security step before any order runtime split.
-- Functions emulator hub is reachable; local startup still reports the host
-  Node 24 vs requested Node 20 mismatch.
-- Existing `syncOrderMirrorsOnRestaurantOrderWrite` trigger showed a local
-  emulator runtime error on `serverTimestamp`; the dedicated Functions test now
-  reproduces the exact session log and stack. The failure is worker-dependent,
-  and Functions source remains unchanged.
-- CI workflow is prepared but not yet proven in GitHub Actions.
-- npm audit reports transitive vulnerabilities that need separate dependency
-  review.
+The independent waiter test still denies foreign restaurant reads and direct
+item/total writes. Both tests pass on desktop Chromium and Pixel 5.
 
-## Next Safe Refactor Order
+## Production Boundary
 
-1. Isolate the worker-dependent `admin.firestore.FieldValue` failure in
-   `syncOrderMirrorsOnRestaurantOrderWrite`, including the local Node 20/Node 24
-   mismatch, then apply the smallest safe timestamp fix.
-2. Add a success-path mirror assertion after that Functions fix.
-3. Implement `createRestaurantOrder` behind a false flag and migrate checkout
-   from direct client Firestore create to server-side canonical order creation.
-4. Convert remaining public profile/menu Playwright TODOs into seeded local
-   smoke tests.
-5. Re-run architecture and bundle reports from a clean build.
-6. Start first real runtime split behind false flags only after security tests
-   are green.
+No Production deploy, Production test restaurant or customer order was
+created. Normal/LAN requests continue to use the Production Firebase app and
+callable. Functions emulator connection requires the existing explicit
+loopback-only opt-in.
 
-## First Recommended Real Refactor
+Before a web release, deploy and verify the versioned Function first so the
+numeric order-price correction is active, then deploy the web bundle. A real
+write test requires explicit approval and a dedicated
+`mnyra-test-restaurant` with test owner, waiter, QR table, numeric menu prices
+and cleanup policy.
 
-Start with Public Profile if the team wants the lowest write-risk surface. Start
-with QR/Menu only after the server-side `createRestaurantOrder` path is added
-behind a false flag or explicitly accepted as a later separate security step.
+## Remaining Risks
+
+- The existing mirror and waiter-notification workers still reproduce the local
+  `admin.firestore.FieldValue.serverTimestamp()` error. Canonical order create
+  and Waiter collection visibility are green, but mirrors/notifications are not
+  yet reliable locally.
+- The emulator host runs Node 24 while the Functions package requests Node 20.
+- Variant/add-on pricing, fees, discounts, taxes and tips do not yet have a
+  trusted server pricing model.
+- Guest rate limiting and idempotency remain future server hardening work.
+- Production `menuItems.price` still needs an approved migration to numbers;
+  string parsing is transitional protection only.
+- Existing bundle size remains outside this scoped fix.
+
+## Next Safe Steps
+
+1. Replace the failing legacy `admin.firestore.FieldValue` access with the
+   explicit Admin Firestore import in a dedicated Functions fix and convert the
+   reproduction into mirror/notification success assertions.
+2. Deploy and verify `createRestaurantOrder` before releasing the matching web
+   bundle.
+3. After explicit approval, provision `mnyra-test-restaurant` and validate the
+   LAN browser-to-waiter flow without touching customer restaurants.
+4. Plan and dry-run the numeric `menuItems.price` migration.
+5. Add rate/idempotency and variant-price contracts before wider public scale.
 
 ## Clear Warning
 
-No new runtime has been activated. All new runtime flags remain `false`.
+No replacement runtime, UI, route, DOM ID or collection change was activated.
+No Production deployment or Production data write was performed.

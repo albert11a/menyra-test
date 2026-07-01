@@ -12,6 +12,12 @@ const {
   logFunctionWarn,
   logFunctionError
 } = require("./logging");
+const { FieldValue } = require("firebase-admin/firestore");
+const {
+  OrderValidationError,
+  normalizeCreateOrderInput,
+  buildSecureRestaurantOrderPayload
+} = require("./order-security");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -3511,6 +3517,102 @@ exports.sendWebPushOnNotificationCreate = functions
         status: "failed"
       });
       throw error;
+    }
+  });
+
+function createOrderLookupToken(prefix = "order") {
+  return `${asText(prefix, "order")}_${crypto.randomBytes(24).toString("base64url")}`;
+}
+
+async function loadTrustedOrderMenuItems(restaurantRef, requestedItems = []) {
+  const requestedIds = Array.from(new Set(
+    (Array.isArray(requestedItems) ? requestedItems : [])
+      .map((item) => asText(item?.itemId))
+      .filter(Boolean)
+  ));
+  const snapshots = await Promise.all(
+    requestedIds.map((itemId) => restaurantRef.collection("menuItems").doc(itemId).get())
+  );
+  return snapshots
+    .filter((snapshot) => snapshot.exists)
+    .map((snapshot) => ({ id: snapshot.id, ...(snapshot.data() || {}) }));
+}
+
+exports.createRestaurantOrder = functions
+  .region("us-central1")
+  .https.onCall(async (data, context) => {
+    const flow = "orders.create.callable";
+    const authUid = asText(context?.auth?.uid);
+    let logContext = buildCallableLogContext(context, {
+      endpoint: "createRestaurantOrder",
+      actorUid: authUid
+    });
+
+    try {
+      const input = normalizeCreateOrderInput(data);
+      logContext = buildCallableLogContext(context, {
+        endpoint: "createRestaurantOrder",
+        actorUid: authUid,
+        restaurantId: input.restaurantId,
+        itemCount: input.items.length
+      });
+
+      const restaurantRef = db.collection("restaurants").doc(input.restaurantId);
+      const actorRef = authUid ? db.collection("users").doc(authUid) : null;
+      const [restaurantSnapshot, actorSnapshot, menuItems] = await Promise.all([
+        restaurantRef.get(),
+        actorRef ? actorRef.get().catch(() => null) : Promise.resolve(null),
+        loadTrustedOrderMenuItems(restaurantRef, input.items)
+      ]);
+      if (!restaurantSnapshot.exists) {
+        throw new OrderValidationError("Restaurant was not found.", "failed-precondition");
+      }
+
+      const orderRef = restaurantRef.collection("orders").doc();
+      const orderPayload = buildSecureRestaurantOrderPayload({
+        input,
+        authUid,
+        authData: context?.auth?.token || {},
+        actorData: actorSnapshot?.exists ? (actorSnapshot.data() || {}) : {},
+        restaurantData: restaurantSnapshot.data() || {},
+        menuItems,
+        orderId: orderRef.id,
+        nowIso: new Date().toISOString(),
+        serverTimestampValue: FieldValue.serverTimestamp(),
+        tokenFactory: createOrderLookupToken
+      });
+
+      await orderRef.set(orderPayload.writeData, { merge: false });
+      logFunctionInfo(flow, {
+        ...logContext,
+        status: "completed",
+        orderId: orderPayload.orderId,
+        totalCents: orderPayload.writeData.totalCents,
+        itemCount: orderPayload.writeData.itemCount
+      });
+      return {
+        ok: true,
+        orderId: orderPayload.orderId,
+        restaurantId: orderPayload.restaurantId,
+        guestLookupToken: orderPayload.guestLookupToken,
+        order: orderPayload.clientOrder
+      };
+    } catch (error) {
+      if (error instanceof functions.https.HttpsError) throw error;
+      if (error instanceof OrderValidationError) {
+        logFunctionWarn(flow, {
+          ...logContext,
+          status: error.code,
+          reason: error.message,
+          details: error.details || {}
+        });
+        throw new functions.https.HttpsError(error.code, error.message, error.details);
+      }
+      logFunctionError(flow, error, {
+        ...logContext,
+        status: "failed"
+      });
+      throw new functions.https.HttpsError("internal", "Order could not be created.");
     }
   });
 

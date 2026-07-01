@@ -3,6 +3,7 @@ export const USE_NEW_PUBLIC_PROFILE_RUNTIME = false;
 export const USE_NEW_QR_MENU_RUNTIME = false;
 export const USE_NEW_WAITER_RUNTIME = false;
 export const USE_NEW_OWNER_RUNTIME = false;
+export const USE_CREATE_RESTAURANT_ORDER_FUNCTION = true;
 
 export const MNYRA_FEATURE_FLAGS = Object.freeze({
   USE_NEW_PUBLIC_MENU_RUNTIME,
@@ -10,6 +11,7 @@ export const MNYRA_FEATURE_FLAGS = Object.freeze({
   USE_NEW_QR_MENU_RUNTIME,
   USE_NEW_WAITER_RUNTIME,
   USE_NEW_OWNER_RUNTIME,
+  USE_CREATE_RESTAURANT_ORDER_FUNCTION,
 });
 
 export default MNYRA_FEATURE_FLAGS;

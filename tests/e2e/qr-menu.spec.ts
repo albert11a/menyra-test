@@ -21,13 +21,20 @@ const ALLOWED_ORDER_FIELDS = new Set([
   "buyerAvatar",
   "contact",
   "table",
+  "tableId",
   "tableNumber",
   "tableLabel",
+  "serviceMode",
+  "source",
   "items",
   "itemCount",
   "total",
+  "totalCents",
   "status",
+  "statusKey",
   "orderSource",
+  "pricingSource",
+  "pricingVersion",
   "guestScopeUid",
   "guestSessionId",
   "guestLookupToken",
@@ -42,8 +49,10 @@ const ALLOWED_ORDER_ITEM_FIELDS = new Set([
   "itemId",
   "name",
   "price",
+  "priceCents",
   "quantity",
   "imageUrl",
+  "imageUrls",
   "category",
   "comment",
   "cartKey",
@@ -54,7 +63,7 @@ const ALLOWED_ORDER_ITEM_FIELDS = new Set([
 ]);
 
 test.describe("seeded QR menu order flow", () => {
-  test("creates a rules-compatible table order from the seeded menu", async ({
+  test("creates a callable table order and exposes it to the waiter", async ({
     page,
   }) => {
     const beforeIds = new Set(
@@ -106,6 +115,9 @@ test.describe("seeded QR menu order flow", () => {
       expect(payload.tableNumber).toBe(2);
       expect(payload.itemCount).toBe(1);
       expect(payload.total).toBeCloseTo(SEEDED_ITEM_PRICE, 2);
+      expect(payload.totalCents).toBe(690);
+      expect(payload.orderSource).toBe("serverCallable");
+      expect(payload.pricingSource).toBe("server_menu");
       expect(
         Object.keys(payload).every((key) => ALLOWED_ORDER_FIELDS.has(key)),
       ).toBe(true);
@@ -121,6 +133,39 @@ test.describe("seeded QR menu order flow", () => {
           ALLOWED_ORDER_ITEM_FIELDS.has(key),
         ),
       ).toBe(true);
+
+      const immutableItems = structuredClone(payload.items);
+      const immutableTotal = payload.total;
+      await page.goto(
+        `/waiter/?restaurant=${RESTAURANT_ID}&order=${createdOrderId}&firebase-emulator=1`,
+      );
+      await page.locator("#loginEmail").fill("waiter.local@example.test");
+      await page.locator("#loginPassword").fill("local-test-password");
+      await page.locator("#loginForm").press("Enter");
+      await expect(page.locator("#logoutBtn")).toBeVisible();
+      await expect(
+        page.locator(`[data-order-id="${createdOrderId}"]`).first(),
+      ).toBeVisible();
+      await expect(page.locator("body")).toContainText(SEEDED_ITEM_NAME);
+      await page
+        .locator(
+          `[data-order-action="angenommen"][data-order-id="${createdOrderId}"]`,
+        )
+        .last()
+        .click();
+      await expect
+        .poll(async () => {
+          const updated = (await listRestaurantOrders(RESTAURANT_ID)).find(
+            (order) => order.id === createdOrderId,
+          );
+          return updated?.data?.status;
+        })
+        .toBe("angenommen");
+      const updatedOrder = (await listRestaurantOrders(RESTAURANT_ID)).find(
+        (order) => order.id === createdOrderId,
+      );
+      expect(updatedOrder?.data?.items).toEqual(immutableItems);
+      expect(updatedOrder?.data?.total).toBe(immutableTotal);
     } finally {
       if (createdOrderId) {
         await deleteRestaurantOrder(RESTAURANT_ID, createdOrderId);

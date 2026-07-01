@@ -47,7 +47,8 @@ function readLocalFirebaseEmulatorSettings() {
       projectId,
       host: String(source.host || "127.0.0.1").trim() || "127.0.0.1",
       firestorePort: Math.max(1, Number(source.firestorePort || 8080) || 8080),
-      authPort: Math.max(1, Number(source.authPort || 9099) || 9099)
+      authPort: Math.max(1, Number(source.authPort || 9099) || 9099),
+      functionsPort: Math.max(1, Number(source.functionsPort || 5001) || 5001)
     });
   } catch {
     return null;
@@ -70,6 +71,10 @@ const connectedAuthInstances = new WeakSet();
 
 export function isLocalFirebaseEmulatorMode() {
   return !!localFirebaseEmulatorSettings;
+}
+
+export function getLocalFirebaseEmulatorSettings() {
+  return localFirebaseEmulatorSettings;
 }
 
 export function connectLocalFirebaseEmulators({ firestore = null, authInstance = null } = {}) {
