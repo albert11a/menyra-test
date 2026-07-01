@@ -35,8 +35,16 @@ Card-nahe Skeletons.
 - Im Hotfix nach Review-Gate wird `seeded + []` fuer Menu und Focus als
   `loading` behandelt, nicht als authoritative `empty`. Nur `knownEmpty`
   bleibt ein bestaetigter Empty-Zustand.
+- Der abschliessende Contract-Patch leitet `Keine Produkte` im Profil-Renderer
+  nur noch aus bestaetigter Menu-Wahrheit ab: `menu.status === "empty"` oder
+  ein bereits fertiger Public-Snapshot, dessen Produkte alle bewusst
+  ausgeblendet sind. Ungeklaerte, hydrierende oder nur leer geseedete Menu-
+  Zustaende bleiben Skeleton.
+- Bereits geladene Focus-Eintraege mit ungueltigem Menu-Ziel gelten weiter als
+  settled/unverfuegbar; ein wirklich leerer `seeded`-Preview bleibt dagegen
+  pending.
 - `apps/menyra-social/index.html` setzt den App-Build-Token auf
-  `2026-07-01-focus-menu-skeletons-02`.
+  `2026-07-01-focus-menu-skeletons-03`.
 - Das Menyra-Social-Bundle wurde neu gebaut; dadurch wurden der
   Profil-Menu-Focus-Chunk, `bundled/entry/social-app.js` und
   `bundled/manifest.json` aktualisiert.
@@ -59,22 +67,20 @@ Card-nahe Skeletons.
 - `node --check apps/menyra-social/core/profile/public-menu-surface-state-utils.js`:
   bestanden.
 - `npm run build:menyra-social:bundle`: bestanden.
-- Direkter Modul-Test fuer `public-menu-surface-state-utils.js`:
-  `seeded + []` -> `menu.status === "loading"`,
-  `knownEmpty + []` -> `menu.status === "empty"`,
-  `menu ready + focus seeded empty` -> `menu.canRenderItems === true` und
-  `focus.status === "loading"`, sowie kein `focusSettled`-ReferenceError:
-  bestanden.
+- `node --test tests/public-menu-surface-state-utils.test.mjs`: bestanden.
+  Abgedeckt sind unsettled/unknown/loading Menu-Zustaende, leerer
+  nicht-authoritative Seed, authoritative `knownEmpty`, renderbare Menu-Items
+  und Menu-Rendering waehrend Focus noch laedt.
 - `npm run check:social-bundle`: nicht bestanden, weil der bestehende
   `entry/social-app.js` weiter ueber dem gesetzten Budget liegt
-  (`1.121.779` raw / `304.403` gzip Bytes gegen `1.052.000` raw /
+  (`1.121.792` raw / `304.401` gzip Bytes gegen `1.052.000` raw /
   `285.000` gzip Bytes).
 
 ## Manuell Testen
 
 1. App hart neu laden, bei Bedarf mit `?sw-reset=1`.
 2. Mit `?debug-build=1` pruefen, dass
-   `2026-07-01-focus-menu-skeletons-02` aktiv ist.
+   `2026-07-01-focus-menu-skeletons-03` aktiv ist.
 3. Ein Restaurant-/Cafe-Business-Profil direkt auf `/:slug/menu` oeffnen oder
    dorthin refreshen.
 4. Pruefen, dass oberhalb des Menus ein Focus-Platz reserviert bleibt, solange

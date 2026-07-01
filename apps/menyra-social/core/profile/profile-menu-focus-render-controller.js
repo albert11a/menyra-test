@@ -4078,8 +4078,10 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     : [];
   const hasItems = items.length > 0;
   const error = menuSurfaceState.menu.error || "";
-  const hasError = !!String(error || "").trim();
-  const isLoading = menuSurfaceState.menu.status === "loading";
+  const menuIsConfirmedEmpty = menuSurfaceState.menu.status === "empty"
+    || (menuSurfaceState.menu.status === "ready" && !hasItems);
+  const hasError = menuSurfaceState.menu.status === "error" || !!String(error || "").trim();
+  const isLoading = !hasItems && !menuIsConfirmedEmpty && !hasError;
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
@@ -4135,7 +4137,9 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
             })
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
-              : (testfirstStableFocusSection || `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`))
+              : (menuIsConfirmedEmpty
+                ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`
+                : renderTestfirstMenuSkeleton()))
           }
           ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         `}
@@ -4155,12 +4159,14 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
                 ${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}
               </div>
             </div>
-          ` : `
+          ` : menuIsConfirmedEmpty ? `
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
               <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
                 ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
               </div>
             </div>
+          ` : `
+            ${renderStandardMenuSkeleton({ isShop })}
           `}
         ` : `
           ${isShop ? `

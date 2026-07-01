@@ -7,7 +7,54 @@ import {
 
 const profile = { restaurantId: "restaurant-a", canonicalRestaurantId: "restaurant-a" };
 
-test("public menu surface keeps focus pending when menu is ready but focus is still loading", () => {
+test("public menu surface keeps empty items loading for unsettled menu truth", () => {
+  for (const truthState of ["unknown", "loading", "hydrating", "pending", "unsettled"]) {
+    const surface = resolveVisiblePublicMenuSurfaceState({
+      menu: {
+        restaurantId: "restaurant-a",
+        source: "public",
+        truthState,
+        items: [],
+        loading: true
+      }
+    }, { profile });
+
+    assert.equal(surface.menu.status, "loading", `truthState=${truthState}`);
+    assert.equal(surface.menu.canRenderItems, false, `truthState=${truthState}`);
+  }
+});
+
+test("public menu surface keeps an empty seeded preview non-authoritative", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "restaurant-a",
+      source: "public",
+      truthState: "seeded",
+      items: [],
+      loading: false
+    }
+  }, { profile });
+
+  assert.equal(surface.menu.status, "loading");
+  assert.equal(surface.menu.canRenderItems, false);
+});
+
+test("public menu surface exposes no-products only for confirmed empty truth", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "restaurant-a",
+      source: "public",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, { profile });
+
+  assert.equal(surface.menu.status, "empty");
+  assert.equal(surface.menu.canRenderItems, false);
+});
+
+test("public menu surface renders ready menu items", () => {
   const surface = resolveVisiblePublicMenuSurfaceState({
     menu: {
       restaurantId: "restaurant-a",
@@ -15,24 +62,14 @@ test("public menu surface keeps focus pending when menu is ready but focus is st
       truthState: "seeded",
       items: [{ id: "item-1", category: "Pizza" }],
       loading: false
-    },
-    focus: {
-      restaurantId: "restaurant-a",
-      truthSource: "public-menu",
-      truthState: "unknown",
-      items: [],
-      loading: true
     }
   }, { profile });
 
   assert.equal(surface.menu.status, "ready");
   assert.equal(surface.menu.canRenderItems, true);
-  assert.equal(surface.focus.status, "loading");
-  assert.equal(surface.focus.canRenderFocus, false);
-  assert.equal(surface.focus.settled, false);
 });
 
-test("public menu surface can coordinate item rendering until focus settles", () => {
+test("public menu surface keeps ready items renderable while focus is loading", () => {
   const surface = resolveVisiblePublicMenuSurfaceState({
     menu: {
       restaurantId: "restaurant-a",
@@ -51,9 +88,11 @@ test("public menu surface can coordinate item rendering until focus settles", ()
   }, { profile, coordinateFocusWithMenu: true });
 
   assert.equal(surface.menu.status, "ready");
-  assert.equal(surface.menu.canRenderItems, false);
-  assert.equal(surface.menu.waitingForFocus, true);
+  assert.equal(surface.menu.canRenderItems, true);
+  assert.equal(surface.menu.waitingForFocus, false);
   assert.equal(surface.focus.status, "loading");
+  assert.equal(surface.focus.canRenderFocus, false);
+  assert.equal(surface.focus.settled, false);
 });
 
 test("public menu surface releases coordinated item rendering when focus is empty", () => {

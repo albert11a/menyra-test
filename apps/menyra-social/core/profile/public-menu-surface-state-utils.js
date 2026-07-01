@@ -170,7 +170,11 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
     if (!samePublicFocus) {
       focusStatus = "unknown";
     } else if (focusTruthState === "seeded") {
-      focusStatus = focus.enabled !== false && focusItems.length > 0 ? "ready" : "loading";
+      if (focus.enabled === false || focusInvalidForMenu) {
+        focusStatus = "empty";
+      } else {
+        focusStatus = focusItems.length > 0 ? "ready" : "loading";
+      }
     } else if (focusTruthState === "knownEmpty") {
       focusStatus = "empty";
     } else if (focusTruthState === "error" || (String(focus.error || "").trim() && !focus.loading)) {
