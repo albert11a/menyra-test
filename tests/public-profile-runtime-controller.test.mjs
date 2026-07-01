@@ -164,6 +164,116 @@ test("direct public profile route does not queue browser history push", () => {
   assert.equal(state.__nextRouteHistoryMode, "");
 });
 
+test("public profile header preserve does not keep loading bio as final bio", () => {
+  const state = {
+    activeTab: "profile",
+    profileTopTab: "menu",
+    profileContentTab: "menu",
+    profileBackTab: "",
+    profileLandingStep: 0,
+    profileLandingGreetingIndex: 0,
+    profileLandingTourIndex: 0,
+    drawerOpen: false,
+    profileViewMode: "grid",
+    profilePostMenuId: null,
+    profileModal: { open: false, profile: null },
+    profileView: {
+      profile: {
+        restaurantId: "mama-id",
+        canonicalRestaurantId: "mama-id",
+        name: "Mama Mantia",
+        handle: "mama-mantia",
+        bio: "Profil wird geladen...",
+        identityTruthState: "ready",
+        postsLoaded: false,
+        truthState: "route-pending-loading"
+      },
+      posts: [],
+      routePayload: {
+        owner: "web-direct",
+        routeFirst: true,
+        restaurantId: "mama-mantia",
+        canonicalRestaurantId: "mama-id",
+        truth: { identity: "seeded" },
+        identity: { name: "Mama Mantia", handle: "mama-mantia" },
+        businessSnapshot: {
+          restaurantId: "mama-id",
+          truth: { identity: "seeded" }
+        }
+      },
+      directEntry: {
+        active: true,
+        owner: "web-direct",
+        routeFirst: true,
+        webPriority: true,
+        menuFirst: true,
+        topTab: "menu",
+        contentTab: "menu"
+      }
+    },
+    __webDirectEntry: {
+      active: true,
+      restaurantId: "mama-mantia",
+      canonicalRestaurantId: "mama-id",
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      menuFirst: true,
+      topTab: "menu",
+      contentTab: "menu"
+    },
+    menu: {
+      restaurantId: "mama-id",
+      items: [],
+      loading: true,
+      error: "",
+      source: "public",
+      truthState: "unknown"
+    },
+    focus: {
+      restaurantId: "mama-id",
+      items: [],
+      loading: true,
+      error: "",
+      truthSource: "public-menu",
+      truthState: "unknown"
+    }
+  };
+  const controller = createPublicProfileRuntimeController({
+    state,
+    render: () => {},
+    normalizeHandle: (value = "") => String(value || "").trim().toLowerCase()
+  });
+
+  controller.showPublicProfile({
+    restaurantId: "mama-id",
+    canonicalRestaurantId: "mama-id",
+    name: "Mama Mantia",
+    handle: "mama-mantia",
+    bio: "",
+    identityTruthState: "ready",
+    postsLoaded: false,
+    truthState: "loading"
+  }, [], {
+    showBack: false,
+    topTab: "menu",
+    contentTab: "menu",
+    directEntry: {
+      active: true,
+      owner: "web-direct",
+      routeFirst: true,
+      webPriority: true,
+      menuFirst: true,
+      topTab: "menu",
+      contentTab: "menu"
+    },
+    routePayload: state.profileView.routePayload
+  });
+
+  assert.equal(state.profileView.profile.name, "Mama Mantia");
+  assert.equal(state.profileView.profile.bio, "");
+});
+
 function createDocsSnapshot(rows = []) {
   return {
     forEach(callback) {

@@ -112,6 +112,69 @@ test("public menu surface rejects slug empty truth after canonical id resolves",
   assert.equal(surface.menu.matchesAuthoritativeRestaurant, false);
 });
 
+test("public menu surface treats an unhydrated slug canonical seed as unresolved", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "in-vino",
+      source: "public",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: "in-vino",
+      canonicalRestaurantId: "in-vino",
+      publicSlug: "in-vino",
+      identityDocHydrated: false
+    },
+    routePayload: {
+      restaurantId: "in-vino",
+      canonicalRestaurantId: "in-vino",
+      businessSnapshot: {
+        identity: {
+          publicSlug: "in-vino",
+          handle: "in-vino"
+        }
+      }
+    },
+    webDirectEntry: {
+      active: true,
+      restaurantId: "in-vino",
+      canonicalRestaurantId: "in-vino"
+    }
+  });
+
+  assert.equal(surface.authoritativeRestaurantId, "");
+  assert.equal(surface.menu.status, "loading");
+  assert.equal(surface.menu.confirmedEmpty, false);
+  assert.equal(surface.menu.canRenderItems, false);
+});
+
+test("public menu surface can confirm empty for a hydrated slug canonical profile", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "moka",
+      source: "public",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: "moka",
+      canonicalRestaurantId: "moka",
+      publicSlug: "moka",
+      identityDocHydrated: true
+    }
+  });
+
+  assert.equal(surface.authoritativeRestaurantId, "moka");
+  assert.equal(surface.menu.status, "empty");
+  assert.equal(surface.menu.confirmedEmpty, true);
+  assert.equal(surface.menu.matchesAuthoritativeRestaurant, true);
+});
+
 test("public menu surface confirms empty only for the canonical public menu read", () => {
   const surface = resolveVisiblePublicMenuSurfaceState({
     menu: {

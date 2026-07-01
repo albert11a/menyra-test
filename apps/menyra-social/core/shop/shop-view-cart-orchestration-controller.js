@@ -58,11 +58,72 @@ export function createShopViewCartOrchestrationController({
     };
   }
   const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
+  const isDebugRenderEnabled = () => {
+    try {
+      if (globalThis?.__MENYRA_DEBUG_MENU_STATE__ === true || globalThis?.__MENYRA_DEBUG_PROFILE_RENDER__ === true) return true;
+      const params = new URLSearchParams(globalThis?.location?.search || "");
+      return params.get("debug-menu-state") === "1" || params.get("debug-profile-render") === "1";
+    } catch {
+      return false;
+    }
+  };
+  const getDebugBuildToken = () => {
+    try {
+      return String(
+        globalThis?.__MNYRA_BUILD_TOKEN__
+        || globalThis?.__MENYRA_SOCIAL_APP_VERSION__
+        || ""
+      ).trim();
+    } catch {
+      return "";
+    }
+  };
+  const renderDebugAttrs = (source = "") => {
+    if (!isDebugRenderEnabled()) return "";
+    const safeSource = escapeHtmlFn(String(source || "shop-product-list:no-products"));
+    return ` data-debug-renderer="shop-view-cart-orchestration-controller" data-debug-source="${safeSource}"`;
+  };
+  const logNoProductsRender = ({ source = "shop-product-list", items = [] } = {}) => {
+    if (!isDebugRenderEnabled()) return;
+    const profile = state?.profileView?.profile || state?.userProfile || {};
+    const canonicalRestaurantId = String(profile?.canonicalRestaurantId || "").trim();
+    const requestedRestaurantId = String(profile?.restaurantId || state?.menu?.restaurantId || "").trim();
+    const visibleItems = Array.isArray(items) ? items : [];
+    console.warn("[mnyra:no-products-render]", {
+      component: "shop-view-cart-orchestration-controller",
+      functionName: "renderShopProductList",
+      slug: String(profile?.publicSlug || profile?.landingSlug || profile?.handle || "").trim(),
+      businessId: canonicalRestaurantId || requestedRestaurantId,
+      requestedRestaurantId,
+      canonicalRestaurantId,
+      restaurantIdSource: canonicalRestaurantId ? "profile.canonicalRestaurantId" : "profile.restaurantId",
+      menuReadPath: (canonicalRestaurantId || requestedRestaurantId) ? `restaurants/${canonicalRestaurantId || requestedRestaurantId}/public/menu` : "",
+      activeTab: String(state?.activeTab || "").trim(),
+      profileTopTab: String(state?.profileTopTab || "").trim(),
+      profileContentTab: String(state?.profileContentTab || "").trim(),
+      itemsLength: visibleItems.length,
+      rawItemsLength: visibleItems.length,
+      filteredItemsLength: visibleItems.length,
+      categoriesLength: new Set(visibleItems.map((item) => String(item?.category || "").trim()).filter(Boolean)).size,
+      loading: false,
+      pending: false,
+      hydrating: false,
+      status: "",
+      truthState: String(state?.menu?.truthState || "").trim(),
+      confirmedEmpty: false,
+      canRenderItems: false,
+      renderDecision: "shop-product-list-no-products",
+      source,
+      buildToken: getDebugBuildToken(),
+      stack: new Error().stack
+    });
+  };
 
   function renderShopProductList(items, { source = "menu", showRestaurantName = false } = {}) {
     if (!items.length) {
+      logNoProductsRender({ source, items });
       return `
-      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"${renderDebugAttrs(`${source}:no-products`)}>
         <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
           ${escapeHtmlFn(tr("menu.noProducts", "Keine Produkte"))}
         </div>

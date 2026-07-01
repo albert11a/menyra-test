@@ -2077,6 +2077,20 @@ zeigen; das andere Restaurant muss bis zur kanonischen Menu-Wahrheit Skeleton
 statt kurz `Keine Produkte` zeigen. Optional `?debug-menu-state=1` nutzen und
 den einmaligen `[mnyra][public-menu.first-render]`-Datensatz vergleichen.
 
+Zusaetzlich fuer Schritt 141 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-07-01-public-route-menu-parity-01` aktiv sein. Casarita,
+`mama-mantia/menu` und `in-vino/menu` direkt oeffnen oder hart refreshen.
+Alle drei duerfen kein kurzes `Keine Produkte` zeigen, der Profilkopf darf
+nicht dauerhaft `Profil wird geladen...` behalten und der Pending-Zustand darf
+keinen Wechsel von `standard-menu-skeleton` zu `testfirst-menu-skeleton` mehr
+zeigen. Erwartet ist der Casarita-kompatible Pending-Zustand mit
+`testfirst-focus-skeleton` und `testfirst-menu-skeleton`, danach die
+kanonischen Produkte/Focus-Daten. Optional
+`?debug-menu-state=1&debug-profile-render=1` nutzen: fuer die drei Public-
+Route-Menues muss `standardSkeletonCount` im Runtime-Vergleich `0` bleiben.
+Referenz: [docs/mnyra-step141-public-route-menu-parity.md](./mnyra-step141-public-route-menu-parity.md).
+
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
 und eine sauber verifizierte Trennung von Public Profile/Menu/Cart/Order/QR.

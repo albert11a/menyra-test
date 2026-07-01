@@ -12,6 +12,94 @@ function addSurfaceId(ids, value = "") {
   if (safeValue && !ids.includes(safeValue)) ids.push(safeValue);
 }
 
+function normalizePublicAliasKey(value = "") {
+  let key = String(value || "").trim().toLowerCase();
+  if (!key) return "";
+  try {
+    if (typeof key.normalize === "function") {
+      key = key.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    }
+  } catch {}
+  return key
+    .replace(/^@+/, "")
+    .replace(/&/g, " and ")
+    .replace(/['"`]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function addPublicAliasKey(keys, value = "") {
+  const key = normalizePublicAliasKey(value);
+  if (key) keys.add(key);
+}
+
+function collectPublicAliasKeys({
+  profile = {},
+  routePayload = {},
+  routeSnapshot = {},
+  webDirectEntry = {}
+} = {}) {
+  const keys = new Set();
+  const routeIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
+    ? routeSnapshot.identity
+    : (routePayload?.identity && typeof routePayload.identity === "object" ? routePayload.identity : {});
+  [
+    profile.publicSlug,
+    profile.businessSlug,
+    profile.landingSlug,
+    profile.slug,
+    profile.routeSlug,
+    profile.handle,
+    routePayload.publicSlug,
+    routePayload.businessSlug,
+    routePayload.landingSlug,
+    routePayload.slug,
+    routePayload.routeSlug,
+    routePayload.restaurantId,
+    routePayload.handle,
+    routeIdentity.publicSlug,
+    routeIdentity.businessSlug,
+    routeIdentity.landingSlug,
+    routeIdentity.slug,
+    routeIdentity.routeSlug,
+    routeIdentity.handle,
+    webDirectEntry.publicSlug,
+    webDirectEntry.businessSlug,
+    webDirectEntry.landingSlug,
+    webDirectEntry.slug,
+    webDirectEntry.routeSlug,
+    webDirectEntry.restaurantId,
+    webDirectEntry.handle
+  ].forEach((value) => addPublicAliasKey(keys, value));
+  return keys;
+}
+
+function publicAliasLooksLikeCanonicalCandidate(value = "", aliasKeys = new Set()) {
+  const safeValue = String(value || "").trim();
+  if (!safeValue) return false;
+  const key = normalizePublicAliasKey(safeValue);
+  return !!key && aliasKeys.has(key);
+}
+
+function isResolvedCanonicalAliasCandidate(owner = {}) {
+  const safeOwner = owner && typeof owner === "object" ? owner : {};
+  const phase = String(safeOwner.phase || safeOwner.directEntry?.phase || "").trim().toLowerCase();
+  return safeOwner.identityDocHydrated === true
+    || safeOwner.businessDocHydrated === true
+    || safeOwner.resolvedCanonical === true
+    || phase === "ready";
+}
+
+function pickAuthoritativeRestaurantId(candidates = [], aliasKeys = new Set()) {
+  for (const candidate of candidates) {
+    const value = String(candidate?.value || "").trim();
+    if (!value) continue;
+    if (!publicAliasLooksLikeCanonicalCandidate(value, aliasKeys)) return value;
+    if (isResolvedCanonicalAliasCandidate(candidate?.owner)) return value;
+  }
+  return "";
+}
+
 export function resolveVisiblePublicMenuSurfaceIds({
   profile = null,
   routePayload = null,
@@ -26,6 +114,12 @@ export function resolveVisiblePublicMenuSurfaceIds({
   const safeWebDirectEntry = webDirectEntry && typeof webDirectEntry === "object" && webDirectEntry.active === true
     ? webDirectEntry
     : {};
+  const publicAliasKeys = collectPublicAliasKeys({
+    profile: safeProfile,
+    routePayload: safeRoutePayload,
+    routeSnapshot,
+    webDirectEntry: safeWebDirectEntry
+  });
   const ids = [];
   [
     restaurantId,
@@ -37,12 +131,11 @@ export function resolveVisiblePublicMenuSurfaceIds({
     safeRoutePayload.restaurantId,
     safeWebDirectEntry.restaurantId
   ].forEach((value) => addSurfaceId(ids, value));
-  const authoritativeRestaurantId = String(
-    safeProfile.canonicalRestaurantId
-    || safeRoutePayload.canonicalRestaurantId
-    || safeWebDirectEntry.canonicalRestaurantId
-    || ""
-  ).trim();
+  const authoritativeRestaurantId = pickAuthoritativeRestaurantId([
+    { value: safeProfile.canonicalRestaurantId, owner: safeProfile },
+    { value: safeRoutePayload.canonicalRestaurantId, owner: safeRoutePayload },
+    { value: safeWebDirectEntry.canonicalRestaurantId, owner: safeWebDirectEntry }
+  ], publicAliasKeys);
   const resolvedRestaurantId = String(
     authoritativeRestaurantId
     || routeSnapshot.restaurantId

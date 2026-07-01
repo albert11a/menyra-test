@@ -63,6 +63,33 @@ export function createPublicProfileRuntimeController({
   const PUBLIC_BUSINESS_POSTS_INITIAL_READ_DEADLINE_MS = 5_200;
   const PUBLIC_BUSINESS_POSTS_FULL_READ_DEADLINE_MS = 7_000;
 
+  function normalizeProfileBioPlaceholderKey(value = "") {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\u2026/g, "...")
+      .replace(/[.!]+$/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function isProfileLoadingBioPlaceholder(value = "") {
+    const key = normalizeProfileBioPlaceholderKey(value);
+    return key === "profil wird geladen"
+      || key === "profil wird geladen..."
+      || key === "profile is loading"
+      || key === "profile is loading..."
+      || key === "profile loading"
+      || key === "profile loading...";
+  }
+
+  function resolvePublicBusinessBio(...values) {
+    for (const value of values) {
+      const text = String(value || "").trim();
+      if (text && !isProfileLoadingBioPlaceholder(text)) return text;
+    }
+    return "";
+  }
+
   function resolvePublicProfileDeadlineMs(key = "", fallbackMs = 0) {
     const direct = Number(fastLimits?.[key]);
     if (Number.isFinite(direct) && direct > 0) return Math.max(1, Math.round(direct));
@@ -1427,7 +1454,7 @@ export function createPublicProfileRuntimeController({
       ...(shouldPreserveHeaderSeed ? {
         name: String(profile?.name || "").trim() ? profile.name : currentProfile?.name,
         handle: String(profile?.handle || "").trim() ? profile.handle : currentProfile?.handle,
-        bio: String(profile?.bio || "").trim() ? profile.bio : currentProfile?.bio,
+        bio: resolvePublicBusinessBio(profile?.bio, currentProfile?.bio),
         avatar: String(profile?.avatar || "").trim() ? profile.avatar : currentProfile?.avatar,
         titleImageUrl: String(profile?.titleImageUrl || profile?.coverImageUrl || profile?.coverUrl || profile?.heroUrl || "").trim()
           ? (profile.titleImageUrl || profile.coverImageUrl || profile.coverUrl || profile.heroUrl)
@@ -1809,7 +1836,14 @@ export function createPublicProfileRuntimeController({
       name: displayName,
       handle: handle || normalizeHandle(displayName),
       uid: data?.uid || rest?.ownerUid || profileDoc?.id || "",
-      bio: data?.bio || data?.description || rest?.description || rest?.bio || rest?.about || `Offizieller Account auf ${brandSocialName}.`,
+      bio: resolvePublicBusinessBio(
+        data?.bio,
+        data?.description,
+        rest?.description,
+        rest?.bio,
+        rest?.about,
+        `Offizieller Account auf ${brandSocialName}.`
+      ),
       avatar: data?.avatarUrl || data?.avatar || rest?.logoUrl || rest?.logo || "",
       location: data?.city || rest?.city || "Kosovo",
       place: data?.place || data?.locationPlace || rest?.place || rest?.locationPlace || "",

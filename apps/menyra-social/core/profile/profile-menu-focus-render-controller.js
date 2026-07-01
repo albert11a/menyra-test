@@ -85,9 +85,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const publicMenuFirstRenderDebugKeys = new Set();
   const isPublicMenuFirstRenderDebugEnabled = () => {
     try {
-      if (globalThis?.__MENYRA_DEBUG_MENU_STATE__ === true) return true;
+      if (globalThis?.__MENYRA_DEBUG_MENU_STATE__ === true || globalThis?.__MENYRA_DEBUG_PROFILE_RENDER__ === true) return true;
       const params = new URLSearchParams(globalThis?.location?.search || "");
-      return params.get("debug-menu-state") === "1";
+      return params.get("debug-menu-state") === "1" || params.get("debug-profile-render") === "1";
     } catch {
       return false;
     }
@@ -140,6 +140,164 @@ export function createProfileMenuFocusRenderController(deps = {}) {
       canRenderItems: menu.canRenderItems === true,
       shouldRenderNoProducts: decision?.shouldRenderNoProducts === true,
       source: String(menu.source || "")
+    });
+  };
+  const getDebugBuildToken = () => {
+    try {
+      return String(
+        globalThis?.__MNYRA_BUILD_TOKEN__
+        || globalThis?.__MENYRA_SOCIAL_APP_VERSION__
+        || ""
+      ).trim();
+    } catch {
+      return "";
+    }
+  };
+  const escapeDebugAttribute = (value = "") => escapeHtml(String(value || ""));
+  const renderDebugAttrs = ({
+    renderer = "profile-menu-focus-render-controller",
+    skeleton = "",
+    source = ""
+  } = {}) => {
+    if (!isPublicMenuFirstRenderDebugEnabled()) return "";
+    const attrs = [
+      renderer ? `data-debug-renderer="${escapeDebugAttribute(renderer)}"` : "",
+      skeleton ? `data-debug-skeleton="${escapeDebugAttribute(skeleton)}"` : "",
+      source ? `data-debug-source="${escapeDebugAttribute(source)}"` : ""
+    ].filter(Boolean);
+    return attrs.length ? ` ${attrs.join(" ")}` : "";
+  };
+  const resolveDebugMenuContext = ({
+    component = "profile-menu-focus-render-controller",
+    functionName = "",
+    profile = null,
+    routePayload = null,
+    surface = null,
+    decision = null,
+    items = null,
+    rawItems = null,
+    filteredItems = null,
+    renderDecision = "",
+    source = ""
+  } = {}) => {
+    const safeSurface = surface && typeof surface === "object" ? surface : {};
+    const menu = safeSurface.menu && typeof safeSurface.menu === "object" ? safeSurface.menu : {};
+    const focus = safeSurface.focus && typeof safeSurface.focus === "object" ? safeSurface.focus : {};
+    const safeProfile = profile && typeof profile === "object"
+      ? profile
+      : (state?.profileView?.profile && typeof state.profileView.profile === "object" ? state.profileView.profile : {});
+    const safeRoutePayload = routePayload && typeof routePayload === "object"
+      ? routePayload
+      : (state?.profileView?.routePayload && typeof state.profileView.routePayload === "object" ? state.profileView.routePayload : {});
+    const routeSnapshot = safeRoutePayload?.businessSnapshot && typeof safeRoutePayload.businessSnapshot === "object"
+      ? safeRoutePayload.businessSnapshot
+      : {};
+    const routeIdentity = routeSnapshot?.identity && typeof routeSnapshot.identity === "object"
+      ? routeSnapshot.identity
+      : (safeRoutePayload?.identity && typeof safeRoutePayload.identity === "object" ? safeRoutePayload.identity : {});
+    const webDirectEntry = state?.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      ? state.__webDirectEntry
+      : {};
+    const slug = String(
+      safeProfile.publicSlug
+      || safeProfile.landingSlug
+      || safeProfile.handle
+      || routeIdentity.publicSlug
+      || routeIdentity.landingSlug
+      || routeIdentity.handle
+      || webDirectEntry.publicSlug
+      || ""
+    ).trim();
+    const requestedRestaurantId = String(
+      safeProfile.restaurantId
+      || safeRoutePayload.restaurantId
+      || webDirectEntry.restaurantId
+      || ""
+    ).trim();
+    const canonicalRestaurantId = String(
+      safeProfile.canonicalRestaurantId
+      || safeRoutePayload.canonicalRestaurantId
+      || safeSurface.authoritativeRestaurantId
+      || webDirectEntry.canonicalRestaurantId
+      || routeSnapshot.restaurantId
+      || ""
+    ).trim();
+    let restaurantIdSource = "";
+    if (safeProfile.canonicalRestaurantId) restaurantIdSource = "profile.canonicalRestaurantId";
+    else if (safeRoutePayload.canonicalRestaurantId) restaurantIdSource = "routePayload.canonicalRestaurantId";
+    else if (safeSurface.authoritativeRestaurantId) restaurantIdSource = "surface.authoritativeRestaurantId";
+    else if (webDirectEntry.canonicalRestaurantId) restaurantIdSource = "webDirectEntry.canonicalRestaurantId";
+    else if (routeSnapshot.restaurantId) restaurantIdSource = "routeSnapshot.restaurantId";
+    else if (safeProfile.restaurantId) restaurantIdSource = "profile.restaurantId";
+    else if (safeRoutePayload.restaurantId) restaurantIdSource = "routePayload.restaurantId";
+    else if (webDirectEntry.restaurantId) restaurantIdSource = "webDirectEntry.restaurantId";
+    const businessId = String(
+      canonicalRestaurantId
+      || safeSurface.restaurantId
+      || menu.restaurantId
+      || requestedRestaurantId
+      || ""
+    ).trim();
+    const rawMenuItems = Array.isArray(rawItems)
+      ? rawItems
+      : (Array.isArray(menu.items) ? menu.items : []);
+    const visibleItems = Array.isArray(items) ? items : rawMenuItems;
+    const filteredVisibleItems = Array.isArray(filteredItems) ? filteredItems : visibleItems;
+    const categoriesLength = new Set(
+      filteredVisibleItems.map((item) => String(item?.category || "").trim()).filter(Boolean)
+    ).size;
+    const status = String(menu.status || (decision?.isLoading ? "loading" : "") || "").trim();
+    const truthState = String(menu.rawTruthState || menu.truthState || "").trim();
+    const confirmedEmpty = menu.confirmedEmpty === true || decision?.confirmedEmpty === true;
+    const hasError = decision?.hasError === true || status === "error" || !!String(menu.error || "").trim();
+    const hasItems = filteredVisibleItems.length > 0 || decision?.hasItems === true;
+    const pending = !hasItems && !confirmedEmpty && !hasError;
+    const menuReadId = canonicalRestaurantId || requestedRestaurantId || businessId || "";
+    return {
+      component,
+      functionName,
+      slug,
+      businessId,
+      requestedRestaurantId,
+      canonicalRestaurantId,
+      restaurantIdSource,
+      menuReadPath: menuReadId ? `restaurants/${menuReadId}/public/menu` : "",
+      activeTab: String(state?.activeTab || "").trim(),
+      profileTopTab: String(state?.profileTopTab || "").trim(),
+      profileContentTab: String(state?.profileContentTab || "").trim(),
+      itemsLength: visibleItems.length,
+      rawItemsLength: rawMenuItems.length,
+      filteredItemsLength: filteredVisibleItems.length,
+      categoriesLength,
+      focusItemsLength: Array.isArray(focus.items) ? focus.items.length : 0,
+      loading: menu.loading === true || decision?.isLoading === true || status === "loading",
+      pending,
+      hydrating: menu.hydrating === true || truthState.toLowerCase() === "hydrating",
+      status,
+      truthState,
+      confirmedEmpty,
+      canRenderItems: menu.canRenderItems === true,
+      renderDecision: renderDecision || (decision?.shouldRenderNoProducts ? "no-products" : (decision?.isLoading ? "loading" : "")),
+      source: source || String(menu.source || ""),
+      buildToken: getDebugBuildToken()
+    };
+  };
+  const logNoProductsRender = (context = {}) => {
+    if (!isPublicMenuFirstRenderDebugEnabled()) return;
+    console.warn("[mnyra:no-products-render]", {
+      ...resolveDebugMenuContext(context),
+      stack: new Error().stack
+    });
+  };
+  const logSkeletonRender = (skeletonName = "", context = {}) => {
+    if (!isPublicMenuFirstRenderDebugEnabled()) return;
+    console.info("[mnyra:skeleton-render]", {
+      skeletonName,
+      ...resolveDebugMenuContext({
+        ...context,
+        renderDecision: context.renderDecision || "skeleton"
+      }),
+      reason: String(context.reason || "").trim()
     });
   };
   const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
@@ -2447,6 +2605,7 @@ function isTestfirstMenuProfile(profile = {}) {
   if (!profile?.restaurantId) return false;
   if (isShopCatalogProfile(profile)) return false;
   const businessType = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
+  if (!businessType) return isRestaurantCafeProfile(profile);
   return businessType === "restaurant" || businessType === "cafe" || businessType === "fastfood";
 }
 
@@ -2521,12 +2680,17 @@ function renderSkeletonBlock(className = "") {
   return `<div aria-hidden="true" class="${className} bg-slate-100 animate-pulse"></div>`;
 }
 
-function renderFocusCarouselSkeleton() {
-  const focusCardClass = getFocusCardClass();
-  return `
-    <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm" data-focus-skeleton="true" aria-hidden="true">
-      <div class="flex items-center justify-between mb-4">
-        ${renderSkeletonBlock("h-3 w-24 rounded-full")}
+  function renderFocusCarouselSkeleton(debugContext = {}) {
+    logSkeletonRender("focus-carousel-skeleton", {
+      ...debugContext,
+      functionName: "renderFocusCarouselSkeleton",
+      source: debugContext?.source || "public-focus"
+    });
+    const focusCardClass = getFocusCardClass();
+    return `
+      <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm" data-focus-skeleton="true"${renderDebugAttrs({ skeleton: "focus-carousel-skeleton", source: "public-focus" })} aria-hidden="true">
+        <div class="flex items-center justify-between mb-4">
+          ${renderSkeletonBlock("h-3 w-24 rounded-full")}
         <div class="flex items-center gap-2">
           ${renderSkeletonBlock("w-9 h-9 rounded-full")}
           ${renderSkeletonBlock("w-9 h-9 rounded-full")}
@@ -2544,10 +2708,15 @@ function renderFocusCarouselSkeleton() {
   `;
 }
 
-function renderTestfirstFocusSkeleton() {
-  return `
-    <div class="pt-2 pb-4" data-focus-skeleton="true" aria-hidden="true">
-      <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
+  function renderTestfirstFocusSkeleton(debugContext = {}) {
+    logSkeletonRender("testfirst-focus-skeleton", {
+      ...debugContext,
+      functionName: "renderTestfirstFocusSkeleton",
+      source: debugContext?.source || "public-focus"
+    });
+    return `
+      <div class="pt-2 pb-4" data-focus-skeleton="true"${renderDebugAttrs({ skeleton: "testfirst-focus-skeleton", source: "public-focus" })} aria-hidden="true">
+        <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
         <div class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col mb-2" style="box-shadow:0 4px 14px rgba(0,0,0,0.03);">
           <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative" style="aspect-ratio:16 / 9;">
             ${renderSkeletonBlock("w-full h-full")}
@@ -2611,10 +2780,15 @@ function renderTestfirstFoodCardSkeleton() {
   `;
 }
 
-function renderTestfirstMenuSkeleton() {
-  return `
-    <div id="menu-section" class="mt-5" data-menu-skeleton="true">
-      <section class="menu-type-block relative" data-menu-type-block="drink">
+  function renderTestfirstMenuSkeleton(debugContext = {}) {
+    logSkeletonRender("testfirst-menu-skeleton", {
+      ...debugContext,
+      functionName: "renderTestfirstMenuSkeleton",
+      source: debugContext?.source || "public-menu"
+    });
+    return `
+      <div id="menu-section" class="mt-5" data-menu-skeleton="true"${renderDebugAttrs({ skeleton: "testfirst-menu-skeleton", source: "public-menu" })}>
+        <section class="menu-type-block relative" data-menu-type-block="drink">
         <div class="menu-category-section pb-6 pt-4" data-menu-type="drink">
           <div class="grid grid-cols-2 auto-rows-fr gap-3 app-content-inline">
             ${Array.from({ length: 4 }, () => renderTestfirstDrinkGridCardSkeleton()).join("")}
@@ -2667,10 +2841,10 @@ function renderStandardStackedCardSkeleton(variant = "food") {
   `;
 }
 
-function renderShopProductCardSkeleton() {
-  return `
-    <article class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col" aria-hidden="true">
-      <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
+  function renderShopProductCardSkeleton() {
+    return `
+      <article class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col"${renderDebugAttrs({ skeleton: "shop-product-card-skeleton", source: "public-menu" })} aria-hidden="true">
+        <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
         ${renderSkeletonBlock("w-full h-full")}
       </div>
       <div class="pt-3 flex-1 flex flex-col min-w-0">
@@ -2688,17 +2862,23 @@ function renderShopProductCardSkeleton() {
   `;
 }
 
-function renderStandardMenuSkeleton({ isShop = false } = {}) {
-  if (isShop) {
+  function renderStandardMenuSkeleton({ isShop = false, debugContext = {} } = {}) {
+    logSkeletonRender(isShop ? "standard-shop-product-skeleton" : "standard-menu-skeleton", {
+      ...debugContext,
+      functionName: "renderStandardMenuSkeleton",
+      source: debugContext?.source || "public-menu",
+      reason: debugContext?.reason || (isShop ? "shop-products-loading" : "menu-loading")
+    });
+    if (isShop) {
+      return `
+        <div class="grid grid-cols-2 gap-4" data-menu-skeleton="true"${renderDebugAttrs({ skeleton: "standard-shop-product-skeleton", source: "public-menu" })}>
+          ${Array.from({ length: 4 }, () => renderShopProductCardSkeleton()).join("")}
+        </div>
+      `;
+    }
     return `
-      <div class="grid grid-cols-2 gap-4" data-menu-skeleton="true">
-        ${Array.from({ length: 4 }, () => renderShopProductCardSkeleton()).join("")}
-      </div>
-    `;
-  }
-  return `
-    <div data-menu-skeleton="true" class="space-y-5">
-      <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="drink">
+      <div data-menu-skeleton="true"${renderDebugAttrs({ skeleton: "standard-menu-skeleton", source: "public-menu" })} class="space-y-5">
+        <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="drink">
         <div class="flex items-center justify-between mb-4">
           ${renderSkeletonBlock("h-5 w-24 rounded-full")}
         </div>
@@ -3171,7 +3351,17 @@ function renderMenuList(items, { mode = "profile" } = {}) {
         </div>
         ${list.length
           ? `<div class="space-y-3">${list.map((entry) => renderMenuItemCard(entry, { mode: "admin" })).join("")}</div>`
-          : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`
+          : (() => {
+            logNoProductsRender({
+              functionName: "renderMenuList.adminSection",
+              items: list,
+              rawItems: list,
+              filteredItems: list,
+              renderDecision: "admin-section-no-products",
+              source: "admin-menu"
+            });
+            return `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300"${renderDebugAttrs({ source: "admin-menu:no-products" })}>${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`;
+          })()
         }
       </div>
     `;
@@ -3206,8 +3396,16 @@ function renderMenuList(items, { mode = "profile" } = {}) {
     `;
   }
   if (!items.length) {
+    logNoProductsRender({
+      functionName: "renderMenuList",
+      items,
+      rawItems: items,
+      filteredItems: items,
+      renderDecision: "menu-list-no-products",
+      source: mode
+    });
     return `
-      <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
+      <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]"${renderDebugAttrs({ source: `${mode}:no-products` })}>
         ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
       </div>
     `;
@@ -4151,6 +4349,16 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     surface: menuSurfaceState,
     decision: menuRenderDecision
   });
+  const menuDebugContext = {
+    profile: surfaceProfile,
+    routePayload,
+    surface: menuSurfaceState,
+    decision: menuRenderDecision,
+    rawItems: menuSurfaceState.menu.items,
+    items,
+    filteredItems: items,
+    source: "public-menu"
+  };
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
@@ -4182,7 +4390,10 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     && menuSurfaceState.menu.status !== "error";
   const testfirstStableFocusSection = testfirstFocusItemsFromState.length
     ? renderTestfirstFocusSection(surfaceProfile, testfirstFocusItemsFromState, { mode })
-    : (shouldReservePublicFocusSpace ? renderTestfirstFocusSkeleton() : "");
+    : (shouldReservePublicFocusSpace ? renderTestfirstFocusSkeleton({
+      ...menuDebugContext,
+      reason: "focus-truth-pending"
+    }) : "");
   const standardFocusSection = useHighlightFocusUi
     ? testfirstStableFocusSection
     : (renderFocusCarousel(surfaceProfile, {
@@ -4190,13 +4401,19 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
       suppressLoading: true,
       allowAutoEnsure: hasConfirmedPublicMenuItems && (!isNormalWebDirectFirstVisibleMenuPath || hasSettledPublicMenuTruth),
       requirePublicMenuTruth: true
-    }) || (shouldReservePublicFocusSpace ? renderFocusCarouselSkeleton() : ""));
+    }) || (shouldReservePublicFocusSpace ? renderFocusCarouselSkeleton({
+      ...menuDebugContext,
+      reason: "focus-truth-pending"
+    }) : ""));
   if (useTestfirstCardUi) {
     return `
       <div class="app-main-content-safe">
         ${isLoading ? `
           ${testfirstStableFocusSection}
-          ${renderTestfirstMenuSkeleton()}
+          ${renderTestfirstMenuSkeleton({
+            ...menuDebugContext,
+            reason: "menu-loading"
+          })}
         ` : `
           ${hasItems
             ? renderTestfirstMenuContent(surfaceProfile, items, {
@@ -4207,8 +4424,18 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
             : (hasError
               ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
                : (shouldRenderNoProducts
-                ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`
-                : renderTestfirstMenuSkeleton()))
+                ? (() => {
+                  logNoProductsRender({
+                    ...menuDebugContext,
+                    functionName: "renderProfileMenuView",
+                    renderDecision: "testfirst-no-products"
+                  });
+                  return `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300"${renderDebugAttrs({ source: "public-menu:no-products" })}>${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`;
+                })()
+                : renderTestfirstMenuSkeleton({
+                  ...menuDebugContext,
+                  reason: "menu-not-confirmed-empty"
+                })))
           }
           ${error ? `<div class="app-content-inline pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         `}
@@ -4219,7 +4446,13 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     <div class="app-content-inline app-main-content-safe space-y-5">
       ${standardFocusSection}
       ${isLoading ? `
-        ${renderStandardMenuSkeleton({ isShop })}
+        ${renderStandardMenuSkeleton({
+          isShop,
+          debugContext: {
+            ...menuDebugContext,
+            reason: "menu-loading"
+          }
+        })}
       ` : `
         ${!hasItems ? `
           ${hasError ? `
@@ -4229,13 +4462,26 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
               </div>
             </div>
           ` : shouldRenderNoProducts ? `
-            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+            ${(() => {
+              logNoProductsRender({
+                ...menuDebugContext,
+                functionName: "renderProfileMenuView",
+                renderDecision: isShop ? "shop-no-products" : "standard-no-products"
+              });
+              return `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"${renderDebugAttrs({ source: "public-menu:no-products" })}>
               <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
                 ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
               </div>
-            </div>
+            </div>`;
+            })()}
           ` : `
-            ${renderStandardMenuSkeleton({ isShop })}
+            ${renderStandardMenuSkeleton({
+              isShop,
+              debugContext: {
+                ...menuDebugContext,
+                reason: "menu-not-confirmed-empty"
+              }
+            })}
           `}
         ` : `
           ${isShop ? `
