@@ -210,8 +210,8 @@ function buildRestaurantOrderNotificationPayload({
     source: "server",
     createdByUid: "system",
     link: buildRestaurantOrderWaiterLink(restaurantId, orderId),
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
   };
 }
 
@@ -270,7 +270,7 @@ function buildCanonicalOrderProjection({
     canonicalPath: safeRestaurantId && safeOrderId
       ? `restaurants/${safeRestaurantId}/orders/${safeOrderId}`
       : "",
-    mirroredAt: admin.firestore.FieldValue.serverTimestamp(),
+    mirroredAt: FieldValue.serverTimestamp(),
     source: "server"
   };
 }

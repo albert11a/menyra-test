@@ -127,6 +127,8 @@ test("createRestaurantOrder computes canonical numeric prices and rejects invali
     assert.equal(success.body.result.ok, true);
     createdOrderId = success.body.result.orderId;
     assert.ok(createdOrderId);
+    const guestLookupToken = success.body.result.guestLookupToken;
+    assert.ok(guestLookupToken);
 
     const createdSnapshot = await restaurantRef
       .collection("orders")
@@ -149,6 +151,44 @@ test("createRestaurantOrder computes canonical numeric prices and rejects invali
     assert.ok(created.createdAt);
     assert.ok(created.updatedAt);
 
+    const mirrorSnapshot = await waitFor(async () => {
+      const snapshot = await restaurantRef
+        .collection("orderLookup")
+        .doc(guestLookupToken)
+        .get();
+      return snapshot.exists ? snapshot : null;
+    });
+    assert.ok(
+      mirrorSnapshot,
+      "expected guest order mirror after callable order",
+    );
+    const mirror = mirrorSnapshot.data();
+    assert.equal(mirror.id, createdOrderId);
+    assert.equal(mirror.restaurantId, restaurantId);
+    assert.equal(mirror.lookupToken, guestLookupToken);
+    assert.equal(mirror.mirrorType, "guest_order_lookup");
+    assert.equal(mirror.total, 10.8);
+    assert.ok(mirror.mirroredAt);
+
+    const notificationRef = functionsTestDb.doc(
+      `users/functions-owner/notifications/restaurant_order_${createdOrderId}`,
+    );
+    const notificationSnapshot = await waitFor(async () => {
+      const snapshot = await notificationRef.get();
+      return snapshot.exists ? snapshot : null;
+    });
+    assert.ok(
+      notificationSnapshot,
+      "expected owner waiter notification after callable order",
+    );
+    const notification = notificationSnapshot.data();
+    assert.equal(notification.type, "restaurant_order");
+    assert.equal(notification.restaurantId, restaurantId);
+    assert.equal(notification.orderId, createdOrderId);
+    assert.equal(notification.userUid, "functions-owner");
+    assert.ok(notification.createdAt);
+    assert.ok(notification.updatedAt);
+
     const invalidItem = await callCreateRestaurantOrder({
       restaurantId,
       items: [{ itemId: "missing-item", quantity: 1 }],
@@ -165,9 +205,16 @@ test("createRestaurantOrder computes canonical numeric prices and rejects invali
   } finally {
     const orderSnapshots = await restaurantRef.collection("orders").get();
     const lookupSnapshots = await restaurantRef.collection("orderLookup").get();
+    const notificationSnapshots = await functionsTestDb
+      .collection("users")
+      .doc("functions-owner")
+      .collection("notifications")
+      .where("restaurantId", "==", restaurantId)
+      .get();
     await Promise.allSettled([
       ...orderSnapshots.docs.map((snapshot) => snapshot.ref.delete()),
       ...lookupSnapshots.docs.map((snapshot) => snapshot.ref.delete()),
+      ...notificationSnapshots.docs.map((snapshot) => snapshot.ref.delete()),
       numericItemRef.delete(),
       stringItemRef.delete(),
       restaurantRef.delete(),
@@ -175,26 +222,46 @@ test("createRestaurantOrder computes canonical numeric prices and rejects invali
   }
 });
 
-test("order mirror trigger reproduces the local serverTimestamp runtime failure", async () => {
-  const orderId = `order-functions-repro-${Date.now()}`;
-  const orderRef = functionsTestDb.doc(
-    `restaurants/pidhi-madh/orders/${orderId}`,
+test("order mirror and waiter notification triggers write server timestamps", async () => {
+  const suffix = Date.now();
+  const restaurantId = `functions-trigger-${suffix}`;
+  const ownerUid = `functions-owner-${suffix}`;
+  const waiterUid = `functions-waiter-${suffix}`;
+  const orderId = `order-functions-regression-${suffix}`;
+  const restaurantRef = functionsTestDb.doc(`restaurants/${restaurantId}`);
+  const staffRef = restaurantRef.collection("staff").doc(waiterUid);
+  const orderRef = restaurantRef.collection("orders").doc(orderId);
+  const mirrorRef = restaurantRef.collection("orderLookup").doc(orderId);
+  const ownerNotificationRef = functionsTestDb.doc(
+    `users/${ownerUid}/notifications/restaurant_order_${orderId}`,
   );
-  const mirrorRef = functionsTestDb.doc(
-    `restaurants/pidhi-madh/orderLookup/${orderId}`,
+  const waiterNotificationRef = functionsTestDb.doc(
+    `users/${waiterUid}/notifications/restaurant_order_${orderId}`,
   );
   const { messages, socket } = await openLoggingSocket();
 
   try {
+    await Promise.all([
+      restaurantRef.set({
+        id: restaurantId,
+        name: "Functions Trigger Test",
+        ownerUid,
+      }),
+      staffRef.set({
+        active: true,
+        waiterAccess: true,
+      }),
+    ]);
+
     await orderRef.set({
       id: orderId,
-      restaurantId: "pidhi-madh",
-      businessName: "PIDHImadh",
+      restaurantId,
+      businessName: "Functions Trigger Test",
       buyerUid: "",
-      buyerName: "Functions Repro",
+      buyerName: "Functions Regression",
       buyerHandle: "guest",
       contact: {
-        name: "Functions Repro",
+        name: "Functions Regression",
         tableNumber: 2,
         tableLabel: "Tisch 2",
       },
@@ -221,22 +288,68 @@ test("order mirror trigger reproduces the local serverTimestamp runtime failure"
       updatedAtClient: new Date().toISOString(),
     });
 
-    const matchingLog = await waitFor(() =>
-      messages.find((entry) => {
-        const serialized = JSON.stringify(entry);
-        return (
-          serialized.includes("syncOrderMirrorsOnRestaurantOrderWrite") &&
-          serialized.includes("orders.mirror.sync") &&
-          serialized.includes(
-            "Cannot read properties of undefined (reading 'serverTimestamp')",
-          ) &&
-          serialized.includes("buildCanonicalOrderProjection")
-        );
-      }),
+    const mirrorSnapshot = await waitFor(async () => {
+      const snapshot = await mirrorRef.get();
+      return snapshot.exists ? snapshot : null;
+    });
+    assert.ok(mirrorSnapshot, "expected guest order mirror");
+    const mirror = mirrorSnapshot.data();
+    assert.equal(mirror.restaurantId, restaurantId);
+    assert.equal(mirror.id, orderId);
+    assert.equal(mirror.lookupToken, orderId);
+    assert.equal(mirror.mirrorType, "guest_order_lookup");
+    assert.equal(mirror.statusKey, "bestellung");
+    assert.ok(mirror.mirroredAt);
+
+    const ownerNotificationSnapshot = await waitFor(async () => {
+      const snapshot = await ownerNotificationRef.get();
+      return snapshot.exists ? snapshot : null;
+    });
+    assert.ok(ownerNotificationSnapshot, "expected owner order notification");
+    const ownerNotification = ownerNotificationSnapshot.data();
+    assert.equal(ownerNotification.type, "restaurant_order");
+    assert.equal(ownerNotification.restaurantId, restaurantId);
+    assert.equal(ownerNotification.orderId, orderId);
+    assert.equal(ownerNotification.userUid, ownerUid);
+    assert.ok(ownerNotification.createdAt);
+    assert.ok(ownerNotification.updatedAt);
+
+    const waiterNotificationSnapshot = await waitFor(async () => {
+      const snapshot = await waiterNotificationRef.get();
+      return snapshot.exists ? snapshot : null;
+    });
+    assert.ok(waiterNotificationSnapshot, "expected waiter order notification");
+    const waiterNotification = waiterNotificationSnapshot.data();
+    assert.equal(waiterNotification.type, "restaurant_order");
+    assert.equal(waiterNotification.restaurantId, restaurantId);
+    assert.equal(waiterNotification.orderId, orderId);
+    assert.equal(waiterNotification.userUid, waiterUid);
+    assert.ok(waiterNotification.createdAt);
+    assert.ok(waiterNotification.updatedAt);
+
+    const serverTimestampErrorLog = messages.find((entry) => {
+      const serialized = JSON.stringify(entry);
+      return (
+        serialized.includes("serverTimestamp") &&
+        serialized.includes(
+          "Cannot read properties of undefined (reading 'serverTimestamp')",
+        )
+      );
+    });
+    assert.equal(
+      serverTimestampErrorLog,
+      undefined,
+      "did not expect a serverTimestamp runtime error",
     );
-    assert.ok(matchingLog, "expected the mirror trigger serverTimestamp error");
   } finally {
     socket.close();
-    await Promise.allSettled([orderRef.delete(), mirrorRef.delete()]);
+    await Promise.allSettled([
+      orderRef.delete(),
+      mirrorRef.delete(),
+      ownerNotificationRef.delete(),
+      waiterNotificationRef.delete(),
+      staffRef.delete(),
+      restaurantRef.delete(),
+    ]);
   }
 });

@@ -15,6 +15,9 @@ emulators and seeded `PIDHImadh` data.
 - Firestore Rules keep direct guest and signed-in creates blocked.
 - The Function reads trusted `menuItems`, calculates item prices, `itemCount`
   and `total`, sets the initial status and writes the restaurant order.
+- The background order mirror and waiter/owner notification triggers now use
+  the Admin Firestore `FieldValue.serverTimestamp()` import and write their
+  timestamp fields locally without reproducing the previous runtime error.
 - The Function accepts numeric and transitional string menu prices such as
   `"4.00"` and `"3,40"`, but stored order item prices are always numbers.
 - The seeded waiter sees the Function-created order, can change its status and
@@ -167,6 +170,10 @@ Function coverage verifies:
 - ignored client price, total, item count, status and buyer values;
 - numeric stored order prices and total;
 - server initial status and timestamps;
+- callable-created guest `orderLookup` mirror and owner waiter notification;
+- direct order-trigger guest mirror plus owner and waiter notification
+  documents;
+- absence of the previous trigger `serverTimestamp` runtime error;
 - rejection of missing item and restaurant IDs.
 
 Rules coverage verifies direct creates remain blocked for guest and signed-in
@@ -183,19 +190,31 @@ Playwright verifies on desktop Chromium and Pixel 5:
 - items and total are byte-for-byte unchanged after the status update;
 - foreign restaurant reads and direct item/total changes remain denied.
 
-## Known Separate Functions Failure
+## Resolved Mirror And Notification Trigger Failure
 
-The callable itself is green. The existing background mirror and waiter
-notification workers still reproduce the worker-specific error:
+The callable itself was already green. The separate background order mirror and
+waiter notification workers previously reproduced the local runtime error:
 
 `Cannot read properties of undefined (reading 'serverTimestamp')`
 
-The failing legacy helpers use `admin.firestore.FieldValue.serverTimestamp()`.
-The callable uses the explicit `FieldValue` import and is not blocked by that
-error. The background failure currently prevents reliable local order mirrors
-and waiter notification documents, but it does not prevent the canonical order
-write or Waiter collection visibility. The dedicated reproduction test remains
-green and no broad Functions rewrite was included here.
+The isolated fix replaces the legacy
+`admin.firestore.FieldValue.serverTimestamp()` access in the order-trigger
+helpers with the explicit Admin Firestore `FieldValue.serverTimestamp()` import
+already used by `createRestaurantOrder`.
+
+Verified locally:
+
+- `createRestaurantOrder` writes the canonical restaurant order.
+- The mirror trigger writes the guest `restaurants/{restaurantId}/orderLookup`
+  document for the callable-created order.
+- The waiter notification trigger writes the owner notification for the
+  callable-created order.
+- A direct trigger regression writes the guest mirror plus owner and waiter
+  notification documents.
+- The previous `serverTimestamp` runtime error is not reproduced.
+
+No UI, route, `social-app.js`, Firestore Rules or production data change was
+included.
 
 ## Production Test Restaurant Plan
 

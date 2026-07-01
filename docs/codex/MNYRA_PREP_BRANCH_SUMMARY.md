@@ -24,8 +24,8 @@ Last updated: 2026-07-01
   private root user reads.
 - Generic callable order creation with direct Firestore creates blocked and
   waiter updates restricted to status/timestamp fields.
-- Firebase Functions emulator validation and order-trigger failure reproduction
-  under `tests/functions`.
+- Firebase Functions emulator validation and order mirror/notification trigger
+  regression coverage under `tests/functions`.
 - Active seeded QR/Menu/Order and Waiter Playwright coverage under `tests/e2e`.
 - False replacement-runtime feature flags plus the active callable-order
   contract flag in `shared/config/feature-flags.js`.
@@ -297,6 +297,9 @@ The generic Production-compatible order contract is restored:
 - Initial status and timestamps are server-controlled.
 - Direct guest and signed-in Firestore order creates are blocked.
 - Waiter updates remain restricted to status/timestamp fields.
+- Order mirror and waiter/owner notification triggers use the Admin Firestore
+  `FieldValue.serverTimestamp()` import and no longer reproduce the local
+  `admin.firestore.FieldValue.serverTimestamp()` runtime failure.
 
 Commit `5ecebe12` was used as the proven historical reference. It was never an
 ancestor of `mnyrasocial`, so this was branch divergence rather than a later
@@ -323,6 +326,26 @@ The seeded desktop and mobile QR flow now:
 The independent waiter test still denies foreign restaurant reads and direct
 item/total writes. Both tests pass on desktop Chromium and Pixel 5.
 
+## Order Mirror And Notification Timestamp Fix
+
+The known local trigger failure is fixed in the scoped order-trigger helpers:
+
+- `buildCanonicalOrderProjection()` now writes `mirroredAt` with the Admin
+  Firestore `FieldValue.serverTimestamp()` import.
+- `buildRestaurantOrderNotificationPayload()` now writes `createdAt` and
+  `updatedAt` with the same Admin SDK API.
+- `createRestaurantOrder` already used the correct import and remains
+  unchanged.
+- The Functions regression now verifies that a callable-created order writes
+  the canonical restaurant order, the guest `orderLookup` mirror and the owner
+  waiter notification.
+- A direct trigger regression also verifies guest mirror creation plus owner
+  and waiter notification documents, and asserts that the previous
+  `serverTimestamp` runtime error is not logged.
+
+No UI, route, `social-app.js`, Firestore Rules or production data change was
+included.
+
 ## Production Boundary
 
 No Production deploy, Production test restaurant or customer order was
@@ -338,10 +361,6 @@ and cleanup policy.
 
 ## Remaining Risks
 
-- The existing mirror and waiter-notification workers still reproduce the local
-  `admin.firestore.FieldValue.serverTimestamp()` error. Canonical order create
-  and Waiter collection visibility are green, but mirrors/notifications are not
-  yet reliable locally.
 - The emulator host runs Node 24 while the Functions package requests Node 20.
 - Variant/add-on pricing, fees, discounts, taxes and tips do not yet have a
   trusted server pricing model.
@@ -352,15 +371,12 @@ and cleanup policy.
 
 ## Next Safe Steps
 
-1. Replace the failing legacy `admin.firestore.FieldValue` access with the
-   explicit Admin Firestore import in a dedicated Functions fix and convert the
-   reproduction into mirror/notification success assertions.
-2. Deploy and verify `createRestaurantOrder` before releasing the matching web
+1. Deploy and verify `createRestaurantOrder` before releasing the matching web
    bundle.
-3. After explicit approval, provision `mnyra-test-restaurant` and validate the
+2. After explicit approval, provision `mnyra-test-restaurant` and validate the
    LAN browser-to-waiter flow without touching customer restaurants.
-4. Plan and dry-run the numeric `menuItems.price` migration.
-5. Add rate/idempotency and variant-price contracts before wider public scale.
+3. Plan and dry-run the numeric `menuItems.price` migration.
+4. Add rate/idempotency and variant-price contracts before wider public scale.
 
 ## Clear Warning
 
