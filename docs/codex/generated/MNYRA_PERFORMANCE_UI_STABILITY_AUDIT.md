@@ -57,6 +57,12 @@ Recent current-phase work focuses on public menu/focus skeleton parity and
 direct refresh behavior. That is the right direction, but it is not a complete
 UI stability proof.
 
+Clean Web follow-up on 2026-07-02 fixed the most visible small loading issues:
+Public Menu now retains existing visible items during transient `unknown` reads,
+Public Profile avatars/logos use stable last-good image keys during header
+settling, avatar image markup has explicit fallbacks and Heart CRM lists keep
+rows visible while read-only domains refresh.
+
 Current UI risks:
 
 - Public route refresh can still reveal stale tracked bundles if build is not
@@ -69,12 +75,20 @@ Current UI risks:
 - Images and media need fallback/loading/error states by business type.
 - Owner/Heart/admin views need dense operational UI checks, not marketing-style
   assumptions.
+- Shop product and Hotel offer mutations still need vertical-specific browser
+  coverage before those verticals leave manual/P2 status.
 
 ## Manual Browser Checks Still Required
 
-Do not treat this audit as a browser verification pass. Playwright/smoke checks
-were not requested and repo instructions forbid running them unless explicitly
-asked.
+The 2026-07-02 Clean Web task explicitly requested browser checks, so targeted
+Public Profile/Menu/QR, Owner/Menu and Waiter Playwright coverage is part of
+that pass. Real-device mobile/3G checks are still manual.
+
+Final Clean Web verification passed: Unit 123/123, Rules 17/17, Functions 4/4,
+lint, format, architecture check, production build and targeted Playwright
+16/16. The build updated the tracked social bundle and replaced the hashed
+profile-render chunk. The large `social-app.js` bundle warning remains a P3
+performance/runtime-extraction risk, not a Clean Web correctness failure.
 
 Before launch, manually verify at least:
 

@@ -132,6 +132,33 @@ projection assertion required a targeted retry after an immediate-read race.
 The tracked social bundle entry was rebuilt. No Rules, route, collection or
 feature-flag activation was included.
 
+## Clean Web Loading Pass Completed 2026-07-02
+
+The Clean Web pass is scoped to visible loading stability and does not continue
+Public Read Cutover, runtime extraction or a broad `social-app.js` refactor.
+
+Fixed or covered:
+
+- Public Menu/QR keeps existing visible items during transient `unknown`
+  projection reads instead of briefly clearing the list.
+- Public Profile avatars/logos use stable last-good image keys while header
+  data settles, and avatar images now expose explicit fallbacks.
+- Heart CRM read-only lists keep populated rows visible during refresh instead
+  of replacing them with repeated loading blocks.
+- Public Profile/Menu/QR and Waiter browser specs now include fallback,
+  broken-image, empty-menu and button recovery checks.
+- Final local verification passed Unit 123/123, Rules 17/17, Functions 4/4,
+  lint, format, architecture check, build and targeted Playwright 16/16.
+- The tracked social bundle was rebuilt, including the new hashed profile
+  render chunk.
+
+Still open before the relevant verticals launch:
+
+- Shop owner product mutation image/list stability.
+- Hotel owner offer/details mutation image/list stability.
+- Durable authenticated Heart lead mutation E2E.
+- Real phone/tablet and slow-network QR/Menu/Waiter checks.
+
 ## P1: First Controlled Restaurant Launch
 
 | Workstream                 | Business value                           | Exit criteria                                                                                |
@@ -177,9 +204,10 @@ feature-flag activation was included.
 
 ## Next Safe Refactor Step
 
-The next safe engineering step is a guarded public profile/meta read cutover:
-preserve current visible profile and landing behavior while replacing mixed
-root restaurant hydration with the tested projection contracts. Do not tighten
-Firestore root reads until that cutover and the direct-refresh/QR route matrix
-pass. Keep Ads and analytics disabled and keep runtime extraction behind false
-flags.
+Do not start Public Read Cutover, runtime extraction or a broad
+`social-app.js` refactor from the Clean Web task. The next safe work item should
+be chosen explicitly after the Clean Web verification and commit are complete.
+When public read cutover is requested later, keep it guarded, preserve current
+visible profile/menu behavior, do not tighten Firestore root reads until the
+direct-refresh/QR matrix passes, keep Ads and analytics disabled and keep
+runtime extraction behind false flags.

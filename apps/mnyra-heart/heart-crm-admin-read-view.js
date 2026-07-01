@@ -692,8 +692,14 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
   const status = asText(sectionState.status);
   const missingContextLabel = getMissingContextLabel(sectionState.missingContext || "");
   if (missingContextLabel) return renderStateBlock(missingContextLabel, "warning");
-  if (status === "loading") return renderStateBlock(`${section.title} laden...`, "neutral");
   if (status === "error") return renderStateBlock(sectionState.error || "Read-only Abruf fehlgeschlagen.", "danger");
+  const renderers = {
+    leads: (item) => renderLeadCard(item, sectionState),
+    customers: (item) => renderCustomerCard(item, sectionState),
+    ads: (item) => renderAdCard(item),
+    staff: (item) => renderStaffCard(item, crmAdmin)
+  };
+  if (status === "loading" && !items.length) return renderStateBlock(`${section.title} laden...`, "neutral");
   if (!items.length) {
     const emptyLabels = {
       leads: "Keine Leads",
@@ -703,16 +709,11 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
     };
     return renderStateBlock(emptyLabels[sectionKey] || "Keine Eintraege", "neutral");
   }
-  const renderers = {
-    leads: (item) => renderLeadCard(item, sectionState),
-    customers: (item) => renderCustomerCard(item, sectionState),
-    ads: (item) => renderAdCard(item),
-    staff: (item) => renderStaffCard(item, crmAdmin)
-  };
   const rows = items.map((item) => renderers[sectionKey]?.(item) || "").join("");
   return `
-    <div class="heart-crm-list-stack">
+    <div class="heart-crm-list-stack" ${status === "loading" ? `data-heart-crm-refreshing="${escapeHtml(sectionKey)}"` : ""}>
       ${rows}
+      ${status === "loading" ? renderStateBlock(`${section.title} werden aktualisiert...`, "neutral") : ""}
     </div>
   `;
 }

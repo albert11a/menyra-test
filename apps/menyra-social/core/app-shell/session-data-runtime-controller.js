@@ -291,6 +291,30 @@ export function createSessionDataRuntimeController({
     return isAuthoritativePublicMenuRead(restaurantId, source) ? "knownEmpty" : "unknown";
   }
 
+  function resolveVisibleMenuRetentionState(restaurantId = "", source = "public", { pendingCanonical = false } = {}) {
+    if (!pendingCanonical) return null;
+    const safeSource = String(source || "public").trim().toLowerCase() || "public";
+    if (safeSource !== "public") return null;
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return null;
+    const currentMenuSource = String(state?.menu?.source || "").trim().toLowerCase() || "public";
+    if (currentMenuSource !== "public") return null;
+    const currentMenuRestaurantId = String(state?.menu?.restaurantId || "").trim();
+    if (!currentMenuRestaurantId) return null;
+    const visibleMenuTargetIds = collectVisiblePublicMenuTargetIds();
+    const menuMatchesVisibleSurface = currentMenuRestaurantId === safeRestaurantId
+      || visibleMenuTargetIds.has(currentMenuRestaurantId)
+      || visibleMenuTargetIds.has(safeRestaurantId);
+    const currentItems = Array.isArray(state?.menu?.items) ? state.menu.items : [];
+    if (!menuMatchesVisibleSurface || !currentItems.length) return null;
+    const currentTruthState = String(state?.menu?.truthState || "").trim().toLowerCase() || "seeded";
+    return {
+      items: currentItems,
+      routeSeed: state?.menu?.routeSeed === true,
+      truthState: currentTruthState
+    };
+  }
+
   function isQrGuestMenuSessionForRestaurant(restaurantId = "") {
     const hasUser = !!String(state?.user?.uid || "").trim();
     if (hasUser) return false;
@@ -2034,18 +2058,21 @@ export function createSessionDataRuntimeController({
         && Array.isArray(inFlightResult.items)
         && shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)
       ) {
+        const retentionState = resolveVisibleMenuRetentionState(safeRestaurantId, safeSource, {
+          pendingCanonical: inFlightUnknown && inFlightPendingCanonical
+        });
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
-          items: inFlightItems,
-          loading: inFlightUnknown && inFlightPendingCanonical,
+          items: retentionState ? retentionState.items : inFlightItems,
+          loading: retentionState ? true : (inFlightUnknown && inFlightPendingCanonical),
           error: inFlightUnknown && !inFlightPendingCanonical ? "Menu laden fehlgeschlagen." : "",
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
             : true,
-          routeSeed: false,
-          truthState: resolvedInFlightTruthState
+          routeSeed: retentionState ? retentionState.routeSeed : false,
+          truthState: retentionState ? retentionState.truthState : resolvedInFlightTruthState
         };
         requestRender();
       }
@@ -2115,7 +2142,7 @@ export function createSessionDataRuntimeController({
     }
     const keepCurrentItems = menuStateMatchesVisibleSurface
       && Array.isArray(state.menu.items)
-      && !blockWebDirectMenuCacheSeed
+      && (!blockWebDirectMenuCacheSeed || state.menu.items.length > 0)
       && (!shouldPrioritizeVisibleMenuTruth || state.menu.items.length > 0);
     if (shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) {
       state.menu = {
@@ -2217,16 +2244,19 @@ export function createSessionDataRuntimeController({
           writeMenuPersistentCache(safeRestaurantId, safeSource, items, { statusBadgeVisible });
         }
         if (!shouldCommitVisiblePublicMenuState(safeRestaurantId, safeSource)) return payload;
+        const retentionState = resolveVisibleMenuRetentionState(safeRestaurantId, safeSource, {
+          pendingCanonical
+        });
         state.menu = {
           ...state.menu,
           restaurantId: safeRestaurantId,
-          items,
-          loading: pendingCanonical,
+          items: retentionState ? retentionState.items : items,
+          loading: retentionState ? true : pendingCanonical,
           error: "",
           source: safeSource,
           statusBadgeVisible,
-          routeSeed: false,
-          truthState
+          routeSeed: retentionState ? retentionState.routeSeed : false,
+          truthState: retentionState ? retentionState.truthState : truthState
         };
         if (safeSource === "public" && truthState === "knownEmpty") {
           const currentFocusRestaurantId = String(state?.focus?.restaurantId || "").trim();

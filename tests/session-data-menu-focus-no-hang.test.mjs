@@ -179,6 +179,33 @@ test("missing restaurants slug public menu remains pending before canonical reso
   assert.equal(state.menu.truthState, "unknown");
 });
 
+test("visible public menu keeps current items during transient unknown refresh", async () => {
+  const state = createUnresolvedSlugMenuState();
+  const visibleItems = [{ id: "item-1", category: "Pizza" }];
+  state.menu = {
+    ...state.menu,
+    restaurantId: "70-s-pastry-and-bakery",
+    items: visibleItems,
+    loading: false,
+    source: "public",
+    truthState: "seeded"
+  };
+  const controller = createController({
+    state,
+    loadPublicMenuItemsFn: async () => []
+  });
+
+  const result = await controller.loadMenuForRestaurant("70-s-pastry-and-bakery", { source: "public" });
+
+  assert.equal(result.truthState, "unknown");
+  assert.equal(result.pendingCanonical, true);
+  assert.equal(state.menu.restaurantId, "70-s-pastry-and-bakery");
+  assert.equal(state.menu.loading, true);
+  assert.equal(state.menu.error, "");
+  assert.equal(state.menu.truthState, "seeded");
+  assert.deepEqual(state.menu.items, visibleItems);
+});
+
 test("canonical public menu empty read commits terminal known-empty truth", async () => {
   const state = createVisibleMenuState();
   const controller = createController({

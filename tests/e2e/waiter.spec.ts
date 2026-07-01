@@ -95,13 +95,13 @@ test.describe("seeded waiter order flow", () => {
         )
         .last()
         .click();
-      await expect(
-        page
-          .locator(
-            `[data-order-action="fertig"][data-order-id="${SEEDED_ORDER_ID}"]`,
-          )
-          .last(),
-      ).toBeVisible();
+      const finishedButton = page
+        .locator(
+          `[data-order-action="fertig"][data-order-id="${SEEDED_ORDER_ID}"]`,
+        )
+        .last();
+      await expect(finishedButton).toBeVisible();
+      await expect(finishedButton).toBeEnabled();
       await expect
         .poll(async () => {
           const order = await readRestaurantOrder(

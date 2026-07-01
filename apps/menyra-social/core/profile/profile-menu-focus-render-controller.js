@@ -1818,9 +1818,10 @@ function renderBusinessProfileCardHeightSizer({
 function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const mode = options.mode === "self" ? "self" : "public";
   const disabledBlockClass = options.disabledBlockClass || "";
-  const avatarUrl = options.avatarUrl || getOptimizedImageUrl(profile.avatar || "", "avatar");
-  const avatarFit = options.avatarFit || logoFitClass(!!profile.restaurantId);
   const cardKey = resolveBusinessProfileKey(profile, mode);
+  const avatarStableKey = mode === "self" ? "avatar:self" : `avatar:public:${cardKey}`;
+  const avatarUrl = options.avatarUrl || getOptimizedImageUrl(profile.avatar || "", "avatar", { stableKey: avatarStableKey });
+  const avatarFit = options.avatarFit || logoFitClass(!!profile.restaurantId);
   const cardInfoOpen = String(state?.profileCardInfoOpen || "") === cardKey;
   const measuredInfoHeight = Number(state?.profileCardInfoHeights?.[cardKey] || 0);
   const lockedInfoHeightStyle = cardInfoOpen && Number.isFinite(measuredInfoHeight) && measuredInfoHeight > 0
@@ -1829,9 +1830,12 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const avatarImgKeyAttr = options.avatarImgKeyAttr || (mode === "self"
     ? `data-img-key="avatar:self"`
     : `data-img-key="avatar:public:${escapeHtml(cardKey)}"`);
-  const renderAvatarImage = options.renderAvatarImage !== false
-    && !!String(avatarUrl || "").trim()
-    && !!String(profile?.avatar || "").trim();
+  const renderAvatarImage = options.renderAvatarImage === true
+    ? !!String(avatarUrl || "").trim() && !isPlaceholderUrl(avatarUrl)
+    : (options.renderAvatarImage !== false
+      && !!String(avatarUrl || "").trim()
+      && !isPlaceholderUrl(avatarUrl)
+      && !!String(profile?.avatar || "").trim());
   const identityPending = !!options.identityPending;
   const followersLabel = options.followersLabel ?? formatCount(profile.followers);
   const profileName = normalizeBusinessProfileText(profile?.name) || "User";
@@ -1938,7 +1942,7 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
           <div ${mode === "self" ? `id="profileAvatarTrigger"` : ""} class="relative ${mode === "self" ? "cursor-pointer group" : ""}">
             <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
               ${renderAvatarImage
-                ? `<img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white bg-white" />`
+                ? `<img src="${escapeHtml(avatarUrl)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white bg-white" />`
                 : `<div class="w-full h-full rounded-[1.8rem] border-2 border-white bg-slate-100 flex items-center justify-center ${identityPending ? "animate-pulse" : ""}">${icon("store", "w-8 h-8 text-slate-300")}</div>`
               }
             </div>
@@ -2015,12 +2019,16 @@ function renderPublicProfileSurface(
   });
   const headerStatus = String(surfaceSnapshot?.header?.status || "").trim().toLowerCase() || "loading";
   const postsStatus = String(surfaceSnapshot?.posts?.status || "").trim().toLowerCase() || "loading";
-  const avatarRaw = String(profile?.avatar || "").trim();
-  const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : "";
-  const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
+  const avatarStableKey = `avatar:public:${avatarKey}`;
+  const avatarRaw = String(profile?.avatar || "").trim();
+  const avatarUrl = getOptimizedImageUrl(avatarRaw, "avatar", { stableKey: avatarStableKey });
+  const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarImgKeyAttr = landingMode ? "" : `data-img-key="avatar:public:${escapeHtml(avatarKey)}"`;
-  const hasAvatarTruth = !!avatarRaw;
+  const hasCachedAvatar = !avatarRaw
+    && !!String(avatarUrl || "").trim()
+    && !isPlaceholderUrl(avatarUrl);
+  const hasAvatarTruth = !!avatarRaw || (hasCachedAvatar && isSettlingProfileSurfaceStatus(headerStatus));
   const hasCountSeed = (value) => {
     if (value === null || value === undefined) return false;
     const numeric = Number(value);
@@ -2030,7 +2038,9 @@ function renderPublicProfileSurface(
     || hasCountSeed(profile?.followers)
     || hasCountSeed(profile?.following);
   const showIdentityPendingState = isSettlingProfileSurfaceStatus(headerStatus) && !hasIdentityDataSeed;
-  const renderAvatarImage = !!String(avatarUrl || "").trim() && hasAvatarTruth;
+  const renderAvatarImage = !!String(avatarUrl || "").trim()
+    && !isPlaceholderUrl(avatarUrl)
+    && hasAvatarTruth;
   const followersLabel = showIdentityPendingState ? "..." : formatCount(profile.followers);
   const followingLabel = showIdentityPendingState ? "..." : formatCount(profile.following);
   const topPaddingClass = isBusinessProfile ? "pt-2" : "pt-10";
@@ -2098,7 +2108,7 @@ function renderPublicProfileSurface(
                 <div class="relative">
                   <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
                     ${renderAvatarImage
-                      ? `<img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />`
+                      ? `<img src="${escapeHtml(avatarUrl)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" decoding="async" width="100" height="100" ${avatarImgKeyAttr} class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />`
                       : `<div class="w-full h-full rounded-[1.8rem] border-2 border-white bg-slate-100 flex items-center justify-center ${showIdentityPendingState ? "animate-pulse" : ""}">${icon(profile.restaurantId ? "store" : "user", "w-8 h-8 text-slate-300")}</div>`
                     }
                   </div>
@@ -4555,7 +4565,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" data-img-key="avatar:self" class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
+                  <img src="${escapeHtml(avatarUrl)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" decoding="async" width="100" height="100" data-img-key="avatar:self" class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">

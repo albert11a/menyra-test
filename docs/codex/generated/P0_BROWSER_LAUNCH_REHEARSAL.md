@@ -136,6 +136,14 @@ public-safe item instead of spreading the previous dirty state into it.
 
 ## Resolved Browser/Runtime Findings And Known Issues
 
+- Clean Web follow-up on 2026-07-02 addressed the visible loading issues found
+  after the public projection builder block: public menu keeps existing visible
+  items during transient `unknown` reads, profile avatars/logos use stable
+  last-good image keys during settling, profile avatar images have explicit
+  fallbacks and Heart CRM lists keep populated rows visible during refresh.
+- The Clean Web targeted browser matrix passed after rebuilding tracked bundles:
+  Public Profile/Menu/QR, Owner/Menu and Waiter passed 16/16 across desktop and
+  mobile.
 - The public-startup denied `list` is mapped in
   `docs/codex/generated/PUBLIC_STARTUP_DENIED_LIST_AUDIT.md` and no longer
   occurs in the targeted public startup smoke.
@@ -147,6 +155,8 @@ public-safe item instead of spreading the previous dirty state into it.
   noisy or network-dependent.
 - Shop product mutation and hotel offer mutation are still manual follow-ups;
   this block proves only their owner-context entry surfaces.
+- Real-device mobile/3G checks remain required for QR/menu image decode,
+  tap-target feel and tablet Waiter operation.
 
 ## Bundle Status
 
@@ -168,6 +178,15 @@ block and is included in the final commit. The build retained the existing
 large-chunk warning (`social-app.js` 1,129.72 kB, 306.53 kB gzip); this remains
 the documented P3 bundle/performance risk and did not fail the build.
 
+Clean Web rebuild on 2026-07-02 updated the tracked social bundle again:
+
+- `apps/menyra-social/bundled/entry/social-app.js`
+- `apps/menyra-social/bundled/manifest.json`
+- deleted old hashed profile render chunk
+  `profile-menu-focus-render-controller-ClqNBCUU.js`
+- added new hashed profile render chunk
+  `profile-menu-focus-render-controller-lbWlArsR.js`
+
 ## P1 Controlled Restaurant Launch Decision
 
 The Owner/Menu mutation and public-startup denied-list blockers are closed.
@@ -186,5 +205,6 @@ Blocking items:
 
 Allowed next step:
 
-- Implement the dedicated public projection builders and keep Ads/analytics
-  disabled. Runtime extraction may continue as planning behind false flags only.
+- Complete Clean Web verification and keep Ads/analytics disabled. Public Read
+  Cutover and runtime extraction must not start from this report without a new
+  explicit task.

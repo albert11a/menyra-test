@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "./firebase-emulator-fixture";
 
 const PRIVATE_MARKERS = [
@@ -63,6 +65,28 @@ async function expectNoPrivateMarkers(page, routeLabel: string) {
   ).toHaveCount(0);
 }
 
+async function expectNoBrokenLoadedImages(page: Page, routeLabel: string) {
+  const brokenImages = await page
+    .locator("img")
+    .evaluateAll((images) =>
+      images
+        .filter((image) => image.complete && image.naturalWidth === 0)
+        .map((image) => image.getAttribute("src") || image.currentSrc || ""),
+    );
+  expect(brokenImages, `${routeLabel} should not render broken images`).toEqual(
+    [],
+  );
+}
+
+async function expectProfileAvatarFallback(page: Page, routeLabel: string) {
+  const avatar = page.locator('img[data-img-key^="avatar:public"]').first();
+  if ((await avatar.count()) === 0) return;
+  await expect(
+    avatar,
+    `${routeLabel} public avatar should have an image fallback`,
+  ).toHaveAttribute("data-fallback-src", /.+/);
+}
+
 async function expectPublicProfileRoute(
   page,
   route: (typeof PUBLIC_PROFILE_ROUTES)[number],
@@ -74,6 +98,8 @@ async function expectPublicProfileRoute(
     timeout: 20_000,
   });
   await expectNoPrivateMarkers(page, route.path);
+  await expectProfileAvatarFallback(page, route.path);
+  await expectNoBrokenLoadedImages(page, route.path);
 
   if (route.reload) {
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -81,6 +107,8 @@ async function expectPublicProfileRoute(
       timeout: 20_000,
     });
     await expectNoPrivateMarkers(page, `${route.path} refresh`);
+    await expectProfileAvatarFallback(page, `${route.path} refresh`);
+    await expectNoBrokenLoadedImages(page, `${route.path} refresh`);
   }
 }
 

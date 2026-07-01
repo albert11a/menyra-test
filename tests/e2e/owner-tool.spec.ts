@@ -107,12 +107,20 @@ test.describe("owner tool smoke", () => {
         .toBe(12.34);
       expect(typeof createdItem?.data?.price).toBe("number");
 
-      const publicMenuAfterCreate =
-        await readRestaurantPublicMenu("pidhi-madh");
-      const publicCreatedItem = publicMenuAfterCreate?.items?.find(
-        (item) => item.id === createdItem?.id,
-      );
-      expect(publicCreatedItem).toBeTruthy();
+      let publicCreatedItem:
+        | NonNullable<
+            Awaited<ReturnType<typeof readRestaurantPublicMenu>>
+          >["items"][number]
+        | undefined;
+      await expect
+        .poll(async () => {
+          const publicMenu = await readRestaurantPublicMenu("pidhi-madh");
+          publicCreatedItem = publicMenu?.items?.find(
+            (item) => item.id === createdItem?.id,
+          );
+          return Boolean(publicCreatedItem);
+        })
+        .toBe(true);
       expect(
         publicCreatedItem?.price === null ||
           typeof publicCreatedItem?.price === "number",
@@ -132,10 +140,20 @@ test.describe("owner tool smoke", () => {
         })
         .toBe(18.75);
 
-      const publicMenuAfterEdit = await readRestaurantPublicMenu("pidhi-madh");
-      const publicEditedItem = publicMenuAfterEdit?.items?.find(
-        (item) => item.id === createdItem?.id,
-      );
+      let publicEditedItem:
+        | NonNullable<
+            Awaited<ReturnType<typeof readRestaurantPublicMenu>>
+          >["items"][number]
+        | undefined;
+      await expect
+        .poll(async () => {
+          const publicMenu = await readRestaurantPublicMenu("pidhi-madh");
+          publicEditedItem = publicMenu?.items?.find(
+            (item) => item.id === createdItem?.id,
+          );
+          return publicEditedItem?.price;
+        })
+        .toBe(18.75);
       expect(publicEditedItem?.price).toBe(18.75);
       expect(typeof publicEditedItem?.price).toBe("number");
 
