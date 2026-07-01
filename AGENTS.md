@@ -1,68 +1,95 @@
 Status: CURRENT
-Last updated: 2026-05-26
+Last updated: 2026-07-01
 
-# Mnyra Repo-Regeln
+# Mnyra Codex Rules
 
-## Aktuelle Wahrheit
+## Current Truth
 
-Die aktuelle Arbeitsgrundlage fuer Mnyra ist genau diese Dreiergruppe:
+Use these files first when judging project state and priorities:
 
 - `AGENTS.md`
 - `docs/mnyra-launch-masterplan.md`
 - `docs/mnyra-current-phase.md`
+- `docs/codex/MNYRA_REFACTOR_MASTER_PLAN.md`
 
-Wenn spaetere Codex-Threads Regeln, Prioritaeten oder den aktuellen Projektstand einschaetzen, muessen sie sich zuerst an diesen drei Dateien orientieren.
+Older dated notes are archive context unless they are explicitly marked
+`Status: CURRENT`.
 
-Datierte Notizen, aeltere Plaene oder historische Analysen sind nur Referenzmaterial. Sie gelten nicht als aktuelle Wahrheit, ausser sie sind selbst ausdruecklich mit `Status: CURRENT` markiert. Historische Dokumente sollen als Archiv-Kontext behandelt werden, idealerweise unter `docs/archive/`.
+## Repo Overview
 
-## Produkt-Richtung
+- `apps/menyra-social`: main social web app, public profile/menu/QR, feed, travel,
+  shopping, owner/editor and authenticated surfaces.
+- `apps/mnyra-heart`: Heart/CRM/admin app.
+- `apps/waiter`: waiter-facing app.
+- `functions`: Firebase Functions and Heart server handlers.
+- `shared`: shared config, vendor wrappers and cross-app utilities.
+- `tests`: Node regression tests, Heart runner and prepared E2E/rules scaffolding.
+- `seed`: local emulator-only seed data and seed scripts.
 
-Mnyra wird website-first vorbereitet.
+## Core Commands
 
-Das bedeutet nicht, dass die sichtbare Oberflaeche jetzt veraendert werden darf. Die aktuelle Produktoberflaeche bleibt waehrend dieser Phase visuell stabil.
+- Install: `npm install`
+- Dev server: `npm run dev`
+- Build: `npm run build`
+- Unit tests: `npm test` or `npm run test:unit`
+- Rules tests: `npm run test:rules`
+- Functions tests: `npm run test:functions`
+- E2E scaffold: `npm run test:e2e`
+- All non-browser baseline checks: `npm run test:all`
+- Lint: `npm run lint`
+- Format check: `npm run format:check`
+- Architecture report/check: `npm run arch:report`, `npm run arch:check`
+- Architecture graph/cycles: `npm run arch:graph`, `npm run arch:cycles`
+- Bundle analysis: `npm run build:analyze`, `npm run bundle:report`
+- Local emulators: `npm run emulators:start`
+- Local seed: `npm run emulators:seed`
+- Emulator export: `npm run emulators:export`
 
-## Harte Umsetzungsregeln
+## Branch Rules
 
-- Keine sichtbaren UI- oder Design-Aenderungen ohne ausdrueckliche Freigabe.
-- Keine Aenderungen an Layout, Farben, Typografie, Spacing, visuellen Komponenten oder UX-Design ohne ausdrueckliche Freigabe.
-- Bestehende sichtbare Oberflaeche nicht auf Verdacht umbauen.
-- Erst planen, dann umsetzen.
-- Immer nur kleine, sichere Schritte mit niedrigem Blast Radius.
-- Keine grossen Umbauten auf Verdacht.
-- Keine Public-/App-Grenzen blind verschieben.
-- Wenn Routing, Truth, Rollen oder Zustaendigkeiten unklar sind: zuerst klaeren, dann erst umbauen.
-- Jede Aenderung muss sich am Mnyra-Masterplan orientieren.
+- This preparation branch is `mnyrasocial`, created from current `main`.
+- Do not work directly on `main`.
+- Do not merge this branch into `main` automatically.
+- If another task explicitly returns to the previous mainline flow, follow the
+  branch rule in `docs/mnyra-current-phase.md` for that task.
 
-## Test- und Ausfuehrungsregeln fuer Codex
+## Architecture Rules
 
-- Keine Smoke-Tests oder Playwright-Laeufe durch Codex, ausser der Nutzer fordert das spaeter ausdruecklich an.
-- Der Nutzer testet manuell.
-- Nach spaeteren Umsetzungs-Schritten liefert Codex nur eine kurze manuelle Testliste.
-- Keine Produktlogik, Regeln oder Infrastruktur auf Verdacht anfassen.
+- Website-first remains the direction, but visible UI stays stable unless the
+  user explicitly approves a visual change.
+- Public route truth, reserved routes, public visibility and read/write ownership
+  must be clear before runtime extraction.
+- Future runtimes must keep clear ownership:
+  public profile, public menu/QR, social feed, business owner, waiter,
+  Heart/CRM, travel, shopping and analytics.
+- `shared` may not depend on app runtimes.
+- `functions` may not import browser app code.
+- New runtime work must start behind false feature flags.
 
-## Reihenfolge-Regel
+## Safety Rules
 
-Vor groesseren technischen Schritten muessen zuerst Vertrag, Routing-Wahrheit, Public-Visibility und Zustaendigkeiten klar sein.
+- No production Firebase data for local tests or seeds.
+- Emulator project ID is `mnyra-local`.
+- No Firestore collection renames without explicit approval.
+- No route changes, DOM ID removals, old logic deletion or large product
+  refactors in prep work.
+- Do not run production deploy commands from Codex.
+- Do not run Playwright/smoke checks unless the user explicitly asks for that
+  run; prepared skipped tests are allowed.
 
-Solange diese Basis nicht sauber festgezogen ist, sind breite Routing-Umbauten, Public-Redesigns, aggressive Performance-Arbeit oder riskante Refactors nicht erlaubt.
+## Definition Of Done
 
-## Planungsquellen
+- Scope is documented before implementation.
+- Changes are small and reversible.
+- No hidden UI/product/routing behavior changes are included.
+- Relevant docs and generated reports are updated.
+- Commands run and failures are documented.
+- Commit hash, changed files, skipped checks and manual test list are reported.
 
-Die aktuellen Planungsquellen sind:
+## Review Checklist
 
-- `docs/mnyra-launch-masterplan.md`
-- `docs/mnyra-current-phase.md`
-
-Diese Dateien definieren den aktuellen Masterstand und die aktuelle Phase. Aeltere datierte Dokumente sind nur historische Referenz.
-
-## Dauerhafte Mnyra-Arbeitsregeln (ab diesem Mainline-Neustart)
-
-- Fuer Mnyra wird ab jetzt ausschliesslich auf Branch `refactorapp` gearbeitet.
-- `finale-mnyra` und `finale-mnyra-clean` bleiben Referenz-Branches.
-- Es gibt keine direkte Arbeit auf `main`.
-- Nach jedem Schritt wird sauber dokumentiert:
-  was der Schritt war, was geaendert wurde, welche Dateien geaendert wurden, was bewusst nicht geaendert wurde, wie man manuell testet und wie der Schritt bewertet wurde.
-- Nach jedem Schritt gibt es einen klaren Commit.
-- Nach jedem Schritt werden Commit-Hash und geaenderte Dateien klar gemeldet.
-- Nach jedem Schritt wird eine kurze manuelle Testliste geliefert.
-- Es gibt keine stillen Zusatz-Aenderungen ausserhalb des jeweils vereinbarten Schritts.
+- Does the change respect public/app boundaries?
+- Does it avoid activating new runtime behavior by default?
+- Does it avoid production config or real customer data?
+- Are tests/checks scoped to prep infrastructure?
+- Are risks and next safe refactor steps documented?
