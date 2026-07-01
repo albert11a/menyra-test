@@ -94,6 +94,19 @@ test("guest order contract allows valid guest orders and denies manipulated payl
 });
 
 test("user cannot directly manipulate likes/comments/follower counters", async () => {
+  await seedFirestore([
+    {
+      path: "users/shopper-demo/posts/user-post-001",
+      data: {
+        id: "user-post-001",
+        uid: "shopper-demo",
+        text: "Local user post",
+        likesCount: 0,
+        commentsCount: 0,
+      },
+    },
+  ]);
+
   const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
 
   await assertFails(
@@ -107,6 +120,60 @@ test("user cannot directly manipulate likes/comments/follower counters", async (
     userDb.doc("restaurants/pidhi-madh").update({
       followersCount: 999,
     }),
+  );
+
+  await assertFails(
+    userDb.doc("users/shopper-demo").update({
+      followingCount: 999,
+    }),
+  );
+
+  await assertFails(
+    userDb.doc("users/shopper-demo/posts/user-post-001").update({
+      likesCount: 999,
+    }),
+  );
+
+  await assertFails(
+    userDb.doc("users/shopper-demo/posts/user-post-forged-counter").set({
+      id: "user-post-forged-counter",
+      uid: "shopper-demo",
+      text: "Forged counter",
+      likesCount: 999,
+      commentsCount: 999,
+    }),
+  );
+
+  await assertSucceeds(
+    userDb.doc("users/shopper-demo/posts/user-post-zero-counter").set({
+      id: "user-post-zero-counter",
+      uid: "shopper-demo",
+      text: "Initial counters are zero",
+      likesCount: 0,
+      commentsCount: 0,
+    }),
+  );
+
+  await assertSucceeds(
+    userDb
+      .doc(
+        "restaurants/pidhi-madh/socialPosts/post-demo-001/likes/shopper-demo",
+      )
+      .set({
+        uid: "shopper-demo",
+      }),
+  );
+
+  await assertSucceeds(
+    userDb
+      .doc(
+        "restaurants/pidhi-madh/socialPosts/post-demo-001/comments/comment-user-001",
+      )
+      .set({
+        uid: "shopper-demo",
+        text: "Allowed comment document",
+        likesCount: 0,
+      }),
   );
 });
 
@@ -225,7 +292,11 @@ test("public can read only public profile/menu/posts surfaces", async () => {
 
 test("private user data remains protected", async () => {
   const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
 
   await assertSucceeds(userDb.doc("users/shopper-demo").get());
   await assertFails(userDb.doc("users/waiter-demo").get());
+  await assertSucceeds(ownerDb.doc("users/waiter-demo").get());
+  await assertSucceeds(heartDb.doc("users/waiter-demo").get());
 });

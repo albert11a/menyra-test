@@ -336,15 +336,60 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(allowedFields);
     }
 
-    function socialCounterUpdateAllowed() {
-      return signedIn() && (
-        (resource != null && counterOnlyUpdate(["likesCount", "commentsCount"]))
-        || (resource == null && counterOnlyCreate(["likesCount", "commentsCount"]))
+    function socialCountersValidOnCreate() {
+      return (
+        !request.resource.data.keys().hasAny(["likesCount"])
+        || request.resource.data.likesCount == 0
+      ) && (
+        !request.resource.data.keys().hasAny(["commentsCount"])
+        || request.resource.data.commentsCount == 0
       );
     }
 
+    function socialCountersUnchanged() {
+      return resource != null
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["likesCount", "commentsCount"]);
+    }
+
+    function commentCountersValidOnCreate() {
+      return !request.resource.data.keys().hasAny(["likesCount"])
+        || request.resource.data.likesCount == 0;
+    }
+
+    function commentCountersUnchanged() {
+      return resource != null
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["likesCount"]);
+    }
+
+    function followerCountersValidOnCreate() {
+      return (
+        !request.resource.data.keys().hasAny(["followersCount"])
+        || request.resource.data.followersCount == 0
+      ) && (
+        !request.resource.data.keys().hasAny(["followingCount"])
+        || request.resource.data.followingCount == 0
+      );
+    }
+
+    function followerCountersUnchanged() {
+      return resource != null
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["followersCount", "followingCount"]);
+    }
+
+    function protectedUserCountersValidOnCreate() {
+      return socialCountersValidOnCreate() && followerCountersValidOnCreate();
+    }
+
+    function protectedUserCountersUnchanged() {
+      return socialCountersUnchanged() && followerCountersUnchanged();
+    }
+
+    function socialCounterUpdateAllowed() {
+      return false;
+    }
+
     function followerCounterUpdateAllowed() {
-      return signedIn() && counterOnlyUpdate(["followersCount", "followingCount"]);
+      return false;
     }
 
     function privilegedUserFields() {
@@ -408,13 +453,15 @@ service cloud.firestore {
     function selfUserCreateAllowed(userId) {
       return isSelf(userId)
         && !request.resource.data.keys().hasAny(privilegedUserFieldsExceptRole())
-        && safeSelfBootstrapRoleAllowed(request.resource.data);
+        && safeSelfBootstrapRoleAllowed(request.resource.data)
+        && protectedUserCountersValidOnCreate();
     }
 
     function selfUserUpdateAllowed(userId) {
       return isSelf(userId)
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(privilegedUserFieldsExceptRole())
-        && safeSelfBootstrapRoleUpdateAllowed();
+        && safeSelfBootstrapRoleUpdateAllowed()
+        && protectedUserCountersUnchanged();
     }
 
     function ceoManagedUserWriteAllowed(userId) {
@@ -433,6 +480,15 @@ service cloud.firestore {
 
     function otherUserCounterWriteAllowed(userId) {
       return signedIn() && authUid() != userId && followerCounterUpdateAllowed();
+    }
+
+    function ownerManagedStaffUserReadAllowed(userId) {
+      let existingRestaurantId = resource != null ? staffRestaurantIdFromData(resource.data) : "";
+      return signedIn()
+        && authUid() != userId
+        && existingRestaurantId != ""
+        && isRestaurantOwner(existingRestaurantId)
+        && isStaffUserPayload(resource.data);
     }
 
     function buyerOwnsOrder() {
@@ -457,7 +513,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get, list: if signedIn();
+      allow get, list: if isSelf(userId) || isCeoActor() || ownerManagedStaffUserReadAllowed(userId);
       allow create: if selfUserCreateAllowed(userId) || ceoManagedUserWriteAllowed(userId) || ownerManagedStaffUserCreateAllowed(userId);
       allow update: if selfUserUpdateAllowed(userId) || ceoManagedUserWriteAllowed(userId) || ownerManagedStaffUserUpdateAllowed(userId) || otherUserCounterWriteAllowed(userId);
       allow delete: if isSelf(userId) || ceoManagedUserWriteAllowed(userId) || ownerManagedStaffUserDeleteAllowed(userId);
@@ -496,8 +552,8 @@ service cloud.firestore {
 
       match /posts/{postId} {
         allow read: if signedIn();
-        allow create: if isSelf(userId) || ceoManagedUserWriteAllowed(userId);
-        allow update: if isSelf(userId) || ceoManagedUserWriteAllowed(userId) || socialCounterUpdateAllowed();
+        allow create: if (isSelf(userId) || ceoManagedUserWriteAllowed(userId)) && socialCountersValidOnCreate();
+        allow update: if ((isSelf(userId) || ceoManagedUserWriteAllowed(userId)) && socialCountersUnchanged()) || socialCounterUpdateAllowed();
         allow delete: if isSelf(userId) || ceoManagedUserWriteAllowed(userId);
 
         match /likes/{likeId} {
@@ -508,9 +564,9 @@ service cloud.firestore {
 
         match /comments/{commentId} {
           allow read: if signedIn();
-          allow create: if signedIn() && request.resource.data.uid == authUid();
+          allow create: if signedIn() && request.resource.data.uid == authUid() && commentCountersValidOnCreate();
           allow update: if (signedIn() && resource.data.uid == authUid())
-            || (signedIn() && counterOnlyUpdate(["likesCount"]));
+            && commentCountersUnchanged();
           allow delete: if signedIn() && (
             resource.data.uid == authUid()
             || isSelf(userId)
@@ -572,7 +628,7 @@ service cloud.firestore {
     match /restaurants/{restaurantId} {
       allow read: if true;
       allow create: if canCreateRestaurantDoc(restaurantId);
-      allow update: if canManageRestaurantDoc(restaurantId) || isCeoActor() || followerCounterUpdateAllowed();
+      allow update: if ((canManageRestaurantDoc(restaurantId) || isCeoActor()) && followerCountersUnchanged()) || followerCounterUpdateAllowed();
       allow delete: if isCeoActor();
 
       match /public/{publicDocId} {
@@ -587,7 +643,8 @@ service cloud.firestore {
 
       match /menuSocial/{itemId} {
         allow read: if true;
-        allow create, update: if canManageRestaurantDoc(restaurantId) || isCeoActor() || socialCounterUpdateAllowed();
+        allow create: if (canManageRestaurantDoc(restaurantId) || isCeoActor()) && socialCountersValidOnCreate();
+        allow update: if ((canManageRestaurantDoc(restaurantId) || isCeoActor()) && socialCountersUnchanged()) || socialCounterUpdateAllowed();
         allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
 
         match /likes/{likeId} {
@@ -598,9 +655,9 @@ service cloud.firestore {
 
         match /comments/{commentId} {
           allow read: if true;
-          allow create: if signedIn() && request.resource.data.uid == authUid();
+          allow create: if signedIn() && request.resource.data.uid == authUid() && commentCountersValidOnCreate();
           allow update: if (signedIn() && resource.data.uid == authUid())
-            || (signedIn() && counterOnlyUpdate(["likesCount"]));
+            && commentCountersUnchanged();
           allow delete: if signedIn() && (
             resource.data.uid == authUid()
             || canManageRestaurantDoc(restaurantId)
@@ -618,8 +675,8 @@ service cloud.firestore {
 
       match /socialPosts/{postId} {
         allow read: if true;
-        allow create: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-        allow update: if canManageRestaurantDoc(restaurantId) || isCeoActor() || socialCounterUpdateAllowed();
+        allow create: if (canManageRestaurantDoc(restaurantId) || isCeoActor()) && socialCountersValidOnCreate();
+        allow update: if ((canManageRestaurantDoc(restaurantId) || isCeoActor()) && socialCountersUnchanged()) || socialCounterUpdateAllowed();
         allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
 
         match /likes/{likeId} {
@@ -630,9 +687,9 @@ service cloud.firestore {
 
         match /comments/{commentId} {
           allow read: if true;
-          allow create: if signedIn() && request.resource.data.uid == authUid();
+          allow create: if signedIn() && request.resource.data.uid == authUid() && commentCountersValidOnCreate();
           allow update: if (signedIn() && resource.data.uid == authUid())
-            || (signedIn() && counterOnlyUpdate(["likesCount"]));
+            && commentCountersUnchanged();
           allow delete: if signedIn() && (
             resource.data.uid == authUid()
             || canManageRestaurantDoc(restaurantId)
@@ -678,10 +735,12 @@ service cloud.firestore {
       allow create: if (
         socialFeedRestaurantIdFromData(request.resource.data) != ""
         && (canManageRestaurantDoc(socialFeedRestaurantIdFromData(request.resource.data)) || isCeoActor())
+        && socialCountersValidOnCreate()
       );
       allow update: if (
         socialFeedRestaurantIdFromData(request.resource.data) != ""
         && (canManageRestaurantDoc(socialFeedRestaurantIdFromData(request.resource.data)) || isCeoActor())
+        && socialCountersUnchanged()
       ) || socialCounterUpdateAllowed();
       allow delete: if (
         socialFeedRestaurantIdFromData(resource.data) != ""
