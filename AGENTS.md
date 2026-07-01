@@ -45,6 +45,22 @@ Older dated notes are archive context unless they are explicitly marked
 - Local seed: `npm run emulators:seed`
 - Emulator export: `npm run emulators:export`
 
+## Browser-Visible Build Rules
+
+- After every change that can be visible in the browser, run `npm run build`
+  before closing the task.
+- Mnyra loads tracked bundle files. If only source code changes but no build is
+  run, local `192.x.x.x:5173` views can still show older code instead of the
+  current progress.
+- If the build changes tracked bundle files, inspect them and commit them when
+  they belong to the source change.
+- Final reports after browser-visible work must state whether `npm run build`
+  was run, whether bundle files changed and whether changed bundle files were
+  committed.
+- This build requirement is local and repo-based only. Do not run Firebase
+  deploys, Rules deploys, Functions deploys or any production deploy command for
+  this requirement.
+
 ## Branch Rules
 
 - This preparation branch is `mnyrasocial`, created from current `main`.
