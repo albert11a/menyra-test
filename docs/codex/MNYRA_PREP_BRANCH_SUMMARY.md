@@ -61,6 +61,7 @@ Existing `npm run build` remains the normal Vite/Vercel static build.
 - `docs/codex/generated/CREATE_RESTAURANT_ORDER_FUNCTION_AUDIT.md`
 - `docs/codex/generated/ORDER_QR_WAITER_FLOW_AUDIT.md`
 - `docs/codex/MNYRA_MENU_PRICE_CONTRACT.md`
+- `docs/codex/MNYRA_PRODUCTION_ORDER_RELEASE_PLAN.md`
 - `docs/codex/generated/dependency-cruiser-check.txt`
 - `docs/codex/generated/madge-social-app-graph.json`
 - `docs/codex/generated/madge-cycles.txt`
@@ -359,6 +360,26 @@ write test requires explicit approval and a dedicated
 `mnyra-test-restaurant` with test owner, waiter, QR table, numeric menu prices
 and cleanup policy.
 
+## Production Order Release Plan
+
+The safe release plan is documented in
+`docs/codex/MNYRA_PRODUCTION_ORDER_RELEASE_PLAN.md`.
+
+Current release order:
+
+1. deploy and verify Functions first;
+2. deploy Rules second only if the live ruleset is not already aligned with the
+   branch contract;
+3. release tracked web bundles after the callable and triggers are live;
+4. provision and use only the approved `mnyra-test-restaurant` for the manual
+   live order test.
+
+Web must not deploy first because the browser bundle now calls
+`createRestaurantOrder` and has no direct Firestore create fallback. If the web
+bundle reaches users before the matching Functions source, checkout can hit a
+missing or older callable contract while Rules still correctly block direct
+client order creates.
+
 ## Remaining Risks
 
 - The emulator host runs Node 24 while the Functions package requests Node 20.
@@ -371,8 +392,8 @@ and cleanup policy.
 
 ## Next Safe Steps
 
-1. Deploy and verify `createRestaurantOrder` before releasing the matching web
-   bundle.
+1. Follow `docs/codex/MNYRA_PRODUCTION_ORDER_RELEASE_PLAN.md` for the approved
+   Production release sequence.
 2. After explicit approval, provision `mnyra-test-restaurant` and validate the
    LAN browser-to-waiter flow without touching customer restaurants.
 3. Plan and dry-run the numeric `menuItems.price` migration.
