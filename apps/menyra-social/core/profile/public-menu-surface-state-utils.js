@@ -280,6 +280,11 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   const samePublicFocus = focusTruthSource === "public-menu"
     && isVisiblePublicMenuSurfaceIdMatch(focusRestaurantId, surfaceIds.targetIds);
   const rawFocusItems = samePublicFocus && Array.isArray(focus.items) ? focus.items : [];
+  const focusMatchesAuthoritativeRestaurant = samePublicFocus
+    && !!surfaceIds.authoritativeRestaurantId
+    && focusRestaurantId === surfaceIds.authoritativeRestaurantId;
+  const focusConfirmedEmpty = focusMatchesAuthoritativeRestaurant
+    && focusTruthState === "knownEmpty";
   const menuFocusTargetIndex = buildMenuFocusTargetIndex(menuItems);
   const focusItems = rawFocusItems.filter((item) => focusItemMatchesLoadedMenu(item, menuFocusTargetIndex));
   const focusInvalidForMenu = samePublicFocus
@@ -296,7 +301,7 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
       } else {
         focusStatus = focusItems.length > 0 ? "ready" : "loading";
       }
-    } else if (focusTruthState === "knownEmpty") {
+    } else if (focusConfirmedEmpty) {
       focusStatus = "empty";
     } else if (focusTruthState === "error" || (String(focus.error || "").trim() && !focus.loading)) {
       focusStatus = "error";
@@ -348,6 +353,8 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
       rawItems: rawFocusItems,
       canRenderFocus,
       settled: focusSettled,
+      confirmedEmpty: focusConfirmedEmpty,
+      matchesAuthoritativeRestaurant: focusMatchesAuthoritativeRestaurant,
       invalidForMenu: focusInvalidForMenu
     }
   };

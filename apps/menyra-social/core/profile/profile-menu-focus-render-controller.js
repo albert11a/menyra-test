@@ -4,7 +4,6 @@ import {
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
 import {
-  normalizePublicMenuTruthState,
   resolvePublicMenuRenderDecision,
   resolveVisiblePublicMenuSurfaceState
 } from "./public-menu-surface-state-utils.js";
@@ -4284,7 +4283,6 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     || ""
   ).trim();
   const webDirectSurfaceTargetIds = new Set(menuSurfaceState.targetIds);
-  const currentFocusTruth = normalizePublicMenuTruthState(menuSurfaceState.focus.truthState || "");
   const hasConfirmedPublicMenuItems = menuSurfaceState.menu.status === "ready";
   const hasPublicFocusTruth = menuSurfaceState.focus.canRenderFocus;
   const shouldCoordinatePublicFocus = hasConfirmedPublicMenuItems && shouldCoordinateMenuWithFocus;
@@ -4313,7 +4311,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     && (!shouldCoordinatePublicFocus || menuSurfaceState.menu.status !== "ready");
   const hasSettledFocusTruth = !shouldCoordinatePublicFocus
     || menuSurfaceState.focus.settled === true
-    || currentFocusTruth === "knownEmpty"
+    || menuSurfaceState.focus.confirmedEmpty === true
     || menuSurfaceState.menu.status !== "ready";
   if (allowAutoEnsure && !skipFirstVisibleMenuEnsure && !hasSettledPublicMenuTruth) {
     ensureMenuDataForProfile(surfaceProfile);
@@ -4380,8 +4378,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
         .filter(Boolean);
     })()
     : [];
-  const hasUnavailablePublicFocus = currentFocusTruth === "knownEmpty"
-    || menuSurfaceState.focus.status === "empty"
+  const hasUnavailablePublicFocus = menuSurfaceState.focus.status === "empty"
     || menuSurfaceState.focus.status === "error";
   const shouldReservePublicFocusSpace = shouldCoordinateMenuWithFocus
     && !hasPublicFocusTruth

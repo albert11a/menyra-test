@@ -305,6 +305,79 @@ test("public menu surface releases coordinated item rendering when focus is empt
   assert.equal(surface.focus.status, "empty");
 });
 
+test("public menu surface does not settle focus empty from a stale slug read", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      source: "public",
+      truthState: "seeded",
+      items: [{ id: "item-1", category: "Mantia" }],
+      loading: false
+    },
+    focus: {
+      restaurantId: "mama-mantia",
+      truthSource: "public-menu",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      canonicalRestaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      publicSlug: "mama-mantia"
+    },
+    routePayload: {
+      restaurantId: "mama-mantia",
+      canonicalRestaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      identity: { publicSlug: "mama-mantia" }
+    },
+    webDirectEntry: {
+      active: true,
+      restaurantId: "mama-mantia",
+      canonicalRestaurantId: "RUb9gIPSGoYM2qT3xXxJ"
+    }
+  });
+
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.focus.matches, true);
+  assert.equal(surface.focus.matchesAuthoritativeRestaurant, false);
+  assert.equal(surface.focus.confirmedEmpty, false);
+  assert.equal(surface.focus.status, "unknown");
+  assert.equal(surface.focus.settled, false);
+});
+
+test("public menu surface confirms focus empty only for the canonical focus read", () => {
+  const surface = resolveVisiblePublicMenuSurfaceState({
+    menu: {
+      restaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      source: "public",
+      truthState: "seeded",
+      items: [{ id: "item-1", category: "Mantia" }],
+      loading: false
+    },
+    focus: {
+      restaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      truthSource: "public-menu",
+      truthState: "knownEmpty",
+      items: [],
+      loading: false
+    }
+  }, {
+    profile: {
+      restaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      canonicalRestaurantId: "RUb9gIPSGoYM2qT3xXxJ",
+      publicSlug: "mama-mantia"
+    }
+  });
+
+  assert.equal(surface.menu.status, "ready");
+  assert.equal(surface.focus.matchesAuthoritativeRestaurant, true);
+  assert.equal(surface.focus.confirmedEmpty, true);
+  assert.equal(surface.focus.status, "empty");
+  assert.equal(surface.focus.settled, true);
+});
+
 test("public menu surface renders seeded focus only for the same restaurant target", () => {
   const surface = resolveVisiblePublicMenuSurfaceState({
     menu: {

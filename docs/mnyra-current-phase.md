@@ -2091,6 +2091,20 @@ kanonischen Produkte/Focus-Daten. Optional
 Route-Menues muss `standardSkeletonCount` im Runtime-Vergleich `0` bleiben.
 Referenz: [docs/mnyra-step141-public-route-menu-parity.md](./mnyra-step141-public-route-menu-parity.md).
 
+Zusaetzlich fuer Schritt 142 manuell pruefen: App hart neu laden, bei Bedarf
+mit `?sw-reset=1`, und bei `?debug-build=1` muss der Build-Stand
+`2026-07-01-public-focus-parity-01` aktiv sein. Casarita,
+`mama-mantia/menu` und `in-vino/menu` direkt oeffnen oder hart refreshen.
+Bei `mama-mantia/menu` darf der Focus-Skeleton nicht kurz verschwinden,
+solange darunter noch der Menu-Skeleton steht. Es darf kein
+`standard-menu-skeleton`, kein kurzes `Keine Produkte` und kein dauerhaftes
+`Profil wird geladen...` erscheinen. Wenn die Menu-Produkte vor Focus fertig
+sind, duerfen die Produkte sichtbar werden; der obere Focus-Bereich darf dabei
+nicht kurz leer springen. Optional
+`?debug-menu-state=1&debug-profile-render=1` nutzen: im Runtime-Vergleich muss
+`focusMissingWhileMenuSkeleton` leer bleiben.
+Referenz: [docs/mnyra-step142-public-focus-skeleton-parity.md](./mnyra-step142-public-focus-skeleton-parity.md).
+
 Ein Ziel um 100 kB gzip ist mit sicheren Boundary-Schnitten allein nicht
 realistisch. Dafuer braucht es spaeter einen echten leichten Public-Renderer
 und eine sauber verifizierte Trennung von Public Profile/Menu/Cart/Order/QR.
