@@ -83,6 +83,42 @@ Green:
   generated social bundle files were intentionally updated.
 - `npm run emulators:seed`: seeded 48 Firestore documents and 4 Auth users.
 
+## Review Of Commit d13aa637
+
+Review result: mergeable. No product correction was required.
+
+- Local Firebase emulator mode requires both a loopback hostname
+  (`localhost`, `127.0.0.1` or `::1`) and an explicit opt-in through
+  `firebase-emulator=1` or the test runtime object with `enabled: true`.
+  Without that opt-in, the existing production project configuration and
+  normal Firebase initialization remain active. No production-host path can
+  enable the emulator through the query parameter.
+- The checkout price fix changes only `items[].price` from the cart's stored
+  string representation to the existing numeric parser result before write.
+  The normal UI puts the loaded menu-detail item price into the cart; there is
+  no free-form price input. Browser/cart state is still untrusted, so Firestore
+  Rules remain authoritative by requiring the submitted `itemId` to exist in
+  `restaurants/{restaurantId}/menuItems` and its numeric price to match.
+- `itemCount` is calculated from the normalized numeric quantities and `total`
+  from numeric price times quantity. Firestore Rules independently recompute
+  both values, with a one-cent tolerance for the total. The seeded QR order
+  passed this contract on desktop and mobile.
+- The Waiter source change only connects its existing named Firebase app to
+  local emulators. Its existing order write still changes only `status`,
+  `updatedAt` and `updatedAtClient`; role/access resolution and UI actions were
+  not changed. Rules deny foreign restaurant reads and changes to items,
+  prices or totals.
+- `apps/menyra-social/bundled` is an intentional tracked runtime output: the
+  social HTML loads its manifest and generated entries, and repository history
+  regularly commits those files. Keeping the rebuilt output ensures the real
+  browser entry contains the source changes. A fresh `npm run build` reproduced
+  the committed hashes and bytes with no Git diff, so the bundle should remain
+  in `d13aa637`.
+- Review rerun: Rules 12 passed, Functions 3 passed, Unit 102 passed, E2E 4
+  passed with 8 unrelated prepared tests skipped; lint, format, architecture
+  and build passed. The Functions suite still reproduces the intentionally
+  unresolved worker-dependent `serverTimestamp` failure.
+
 Observed:
 
 - `npm install` completed with npm audit summary: 16 vulnerabilities

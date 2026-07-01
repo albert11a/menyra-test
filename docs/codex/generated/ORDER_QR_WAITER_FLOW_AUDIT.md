@@ -327,6 +327,35 @@ Result:
 - `npm run build`: passed; Vercel static output was prepared in `dist`.
 - `npm run emulators:seed`: seeded 48 Firestore documents and 4 Auth users.
 
+## Post-commit review of d13aa637
+
+- Merge assessment: mergeable; no corrective product change was found.
+- Emulator selection is production-safe within this contract: loopback host is
+  mandatory, and emulator mode additionally requires `firebase-emulator=1` or
+  the explicit test runtime object. A normal request without opt-in keeps the
+  production Firebase configuration, while a production hostname cannot enable
+  emulator mode through the query parameter.
+- In the normal UI flow, `state.menuDetail.item` is the source passed into the
+  cart and therefore the source of the price. Cart persistence represents that
+  price as a string; checkout now parses it to a Firestore number. This is not a
+  security trust boundary: Firestore Rules verify the item and exact numeric
+  price against `restaurants/{restaurantId}/menuItems/{itemId}`.
+- Checkout computes `itemCount` from normalized quantities and `total` from
+  parsed prices times quantities. Rules recompute both and permit only a
+  one-cent total tolerance. The browser-created seed order satisfies both.
+- The Waiter commit diff contains only emulator wiring. Existing writes remain
+  limited to `status`, `updatedAt` and `updatedAtClient`; existing role/access
+  resolution was not bypassed or modified. Rules and browser tests deny foreign
+  orders plus item/price/total mutation.
+- The social bundle is deliberately tracked and is the manifest-backed runtime
+  loaded by the social HTML. A clean `npm run build` reproduced the committed
+  bundle exactly and left no Git diff. Removing it from this commit would leave
+  the tracked browser runtime stale relative to source, so it should stay.
+- Fresh review checks passed: Rules 12, Functions 3, Unit 102, E2E 4 with 8
+  unrelated prepared tests skipped, plus lint, format, architecture and build.
+  The Functions test continues to reproduce the documented worker-dependent
+  `serverTimestamp` runtime failure; no Functions source was changed.
+
 Seed verification:
 
 - Restaurant `PIDHImadh`: visible.
