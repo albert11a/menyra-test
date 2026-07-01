@@ -775,6 +775,8 @@ export function createSessionDataRuntimeController({
   }
 
   function scheduleStoriesRefresh({ force = false, refreshUi = false } = {}) {
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "feed") return;
     storiesRefreshForce = storiesRefreshForce || !!force;
     storiesRefreshUi = storiesRefreshUi || !!refreshUi;
     if (storiesRefreshQueued) return;

@@ -7,7 +7,8 @@ Branch: `mnyrasocial`
 ## Scope
 
 This rehearsal covered local-only public projection tests and browser smoke
-checks for the launch-critical public profile/menu/QR/order/waiter/Heart paths.
+checks for the launch-critical public profile/menu/QR/order/waiter/owner/Heart
+paths. The follow-up also mapped and removed the public-startup denied `list`.
 It did not deploy, touch production data, rename collections, change routes,
 loosen Firestore Rules, redesign UI or start runtime extraction.
 
@@ -54,6 +55,9 @@ All actor use was against local emulators only.
 | `/hoteldemo/menu` direct + refresh        | Passed                      | Passed  |
 | QR callable order -> waiter board         | Passed                      | Passed  |
 | Waiter seeded order/status flow           | Passed                      | Passed  |
+| `/menu` owner login/editor/mutation       | Passed                      | Passed  |
+| `/menu` shop owner editor entry           | Passed                      | Passed  |
+| `/menu` hotel details/offer entry         | Passed                      | Passed  |
 | Heart non-CEO block                       | Passed in interactive probe | Not run |
 | Heart CEO login/dashboard/local Functions | Passed in interactive probe | Not run |
 | Heart lead create/update/delete           | Passed in interactive probe | Not run |
@@ -66,26 +70,54 @@ All actor use was against local emulators only.
   - Passed, 2 tests.
 - `npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/public-profile.spec.ts tests/e2e/public-menu.spec.ts tests/e2e/qr-menu.spec.ts tests/e2e/waiter.spec.ts`
   - Passed, 8 tests.
+- `npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/owner-tool.spec.ts`
+  - Passed, 6 tests across desktop and mobile projects.
+- `npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/owner-tool.spec.ts tests/e2e/public-profile.spec.ts tests/e2e/public-menu.spec.ts tests/e2e/qr-menu.spec.ts tests/e2e/waiter.spec.ts`
+  - Final follow-up matrix passed, 16 tests across desktop and mobile projects.
+- Final baseline: Functions 4/4, Rules 17/17 and Unit 111/111 passed;
+  lint, format check, architecture check and build also passed.
 
 The first QR desktop run failed because the test waited only the default 5s for
 `Bestellung gesendet` while the UI was still sending. The assertion was changed
 to a 20s timeout and the full four-spec rehearsal passed after that.
 
+## Owner Entry Point Analysis
+
+- The existing internal Owner/Menu entry is `/menu`; emulator runs add
+  `?firebase-emulator=1&sw-reset=1`.
+- Route parsing treats `/menu` as a reserved system route with
+  `activeTab = "menu"`. It is not normalized as a Public Business Profile.
+- For a guest, the pending protected route remains URL truth while the existing
+  login prompt opens. After successful Auth, the app-shell profile bootstrap
+  keeps the Menu tab and the route registry renders `renderMenuAdminView()`.
+- `users/owner-demo` has `role: "business"`, `roles: ["business"]` and
+  `restaurantId: "pidhi-madh"`. The restaurant has matching `ownerUid` and
+  `ownerEmail`; no local Owner role or Business assignment was missing.
+- No feature flag hides the existing Menu/QR owner surface. Restaurant type
+  selects Menu plus Table QR; Shop selects Product editor; Hotel selects Hotel
+  Details plus Oferta.
+- `/apps/menyra-social/` is an app-shell file path, not an Owner entry route.
+  Using it in the first rehearsal caused the false conclusion that the Owner
+  surface had no stable local entry.
+
 ## Flow Results
 
-| Flow                            | Result                  | Notes                                                                                                                                                                             |
-| ------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public projection contract      | Passed                  | Seed projection docs are whitelisted and recursively reject private fields.                                                                                                       |
-| Public profile/menu DOM privacy | Passed                  | Public E2E checks reject owner emails, owner UIDs, billing notes, staff hints and private markers in DOM text.                                                                    |
-| Public menu price contract      | Passed                  | Public menu seed prices are numbers or `null`; editor string input saves/publishes numeric prices.                                                                                |
-| QR table context                | Passed                  | `src=qr` and `table=2` are preserved and callable order uses server menu pricing.                                                                                                 |
-| Waiter status flow              | Passed                  | Waiter login sees own restaurant order, changes status and cannot mutate total/items or read a foreign order.                                                                     |
-| Waiter revoked/stale hints      | Automated rules covered | Browser spec covers active waiter; revoked/stale-hint denial remains rules-level in this block.                                                                                   |
-| Owner/menu browser mutation     | Blocked/manual required | The public auth prompt is reachable, but owner login did not expose the owner editor/menu surface from a stable local route. `/apps/menyra-social/` rewrites to a public profile. |
-| Heart non-CEO block             | Passed                  | Owner session showed `CEO-Zugang erforderlich` in Heart.                                                                                                                          |
-| Heart CEO local Functions       | Passed after fix        | `/heart?firebase-emulator=1` now uses `127.0.0.1:5001`, not production Cloud Functions.                                                                                           |
-| Heart lead create/update/delete | Passed                  | A throwaway lead was created, renamed and deleted through the browser; the final list was empty.                                                                                  |
-| Heart ads                       | Blocked                 | Ads view loads read-only with count 0 in the seed; no pending ad approval controls rendered. Array ads remain a paid-launch blocker.                                              |
+| Flow                            | Result                  | Notes                                                                                                                                                                                                                  |
+| ------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public projection contract      | Passed                  | Seed projection docs are whitelisted and recursively reject private fields.                                                                                                                                            |
+| Public profile/menu DOM privacy | Passed                  | Public E2E checks reject owner emails, owner UIDs, billing notes, staff hints and private markers in DOM text.                                                                                                         |
+| Public menu price contract      | Passed                  | Public menu seed prices are numbers or `null`; editor string input saves/publishes numeric prices.                                                                                                                     |
+| QR table context                | Passed                  | `src=qr` and `table=2` are preserved and callable order uses server menu pricing.                                                                                                                                      |
+| Waiter status flow              | Passed                  | Waiter login sees own restaurant order, changes status and cannot mutate total/items or read a foreign order.                                                                                                          |
+| Waiter revoked/stale hints      | Automated rules covered | Browser spec covers active waiter; revoked/stale-hint denial remains rules-level in this block.                                                                                                                        |
+| Owner/menu browser mutation     | Passed                  | `/menu` is the existing protected owner entry. Owner login opens `pidhi-madh`; create/edit/delete/publish, string-to-number price, foreign-business read-only behavior and 12 seeded QR tables pass on desktop/mobile. |
+| Shop owner entry                | Passed/light proof      | `shop-owner.local@example.test` opens the `shop-demo` product editor on desktop/mobile; product mutation remains a later vertical-specific test.                                                                       |
+| Hotel owner entry               | Passed/light proof      | `hotel-owner.local@example.test` opens Hotel Details and Oferta controls on desktop/mobile; offer mutation remains a later vertical-specific test.                                                                     |
+| Public startup denied `list`    | Resolved                | The legacy Feed `collectionGroup("stories")` read was scheduled after restaurant loading on public routes. Global story loading is now deferred to the Feed tab without a Rules change.                                |
+| Heart non-CEO block             | Passed                  | Owner session showed `CEO-Zugang erforderlich` in Heart.                                                                                                                                                               |
+| Heart CEO local Functions       | Passed after fix        | `/heart?firebase-emulator=1` now uses `127.0.0.1:5001`, not production Cloud Functions.                                                                                                                                |
+| Heart lead create/update/delete | Passed                  | A throwaway lead was created, renamed and deleted through the browser; the final list was empty.                                                                                                                       |
+| Heart ads                       | Blocked                 | Ads view loads read-only with count 0 in the seed; no pending ad approval controls rendered. Array ads remain a paid-launch blocker.                                                                                   |
 
 ## Private Field Leak Check
 
@@ -102,22 +134,26 @@ public-safe item instead of spreading the previous dirty state into it.
 - `test-results/.last-run.json` records the final green run.
 - The initial QR failure trace was removed by the final passing run.
 
-## Known Browser/Runtime Issues
+## Resolved Browser/Runtime Findings And Known Issues
 
-- Public interactive probe still logged one denied Firestore `list` during
-  public startup. It did not break the public DOM smoke, but it should be
-  mapped before P1 launch.
+- The public-startup denied `list` is mapped in
+  `docs/codex/generated/PUBLIC_STARTUP_DENIED_LIST_AUDIT.md` and no longer
+  occurs in the targeted public startup smoke.
+- `/menu`, not `/apps/menyra-social/`, is the existing protected Owner/Menu
+  entry point. The app shell preserves it through the login prompt and switches
+  to the authenticated owner context after profile bootstrap.
 - Local seed image URLs use `https://images.example.local`. The E2E fixture now
   fulfills those fake URLs with a local SVG placeholder so browser tests are not
   noisy or network-dependent.
-- Owner editor route automation is not stable enough yet for create/edit/delete
-  browser coverage.
+- Shop product mutation and hotel offer mutation are still manual follow-ups;
+  this block proves only their owner-context entry surfaces.
 
 ## Bundle Status
 
 Browser-visible files changed in this block:
 
 - `apps/menyra-social/core/menu/menu-save-utils.js`
+- `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
 - `apps/mnyra-heart/index.html`
 - `heart/index.html`
 - E2E fixture/spec files
@@ -126,24 +162,29 @@ Browser-visible files changed in this block:
 
 - `apps/menyra-social/bundled/entry/social-app.js`
 
-That bundle change belongs to the menu save-path normalization fix and is part
-of this block.
+The current follow-up rebuild keeps that tracked bundle current and adds the
+public-route Feed-story scheduling gate. The bundle change is part of this
+block and is included in the final commit. The build retained the existing
+large-chunk warning (`social-app.js` 1,129.72 kB, 306.53 kB gzip); this remains
+the documented P3 bundle/performance risk and did not fail the build.
 
 ## P1 Controlled Restaurant Launch Decision
 
-P1 controlled restaurant launch is still blocked.
+The Owner/Menu mutation and public-startup denied-list blockers are closed.
+P1 controlled restaurant launch is still not approved by this report.
 
 Blocking items:
 
-- Owner/menu editor browser mutation flow needs a stable local owner entrypoint
-  and create/edit/delete/publish/QR settings proof.
 - Public profile/meta/offers/ads need dedicated projection builders before
   public reads can be tightened or runtime extraction can activate.
 - Heart ads are not launch-safe: the current array model lacks auditable per-ad
   moderation records and the local Ads view had no pending approval controls.
-- The public startup denied `list` console error must be mapped or removed.
+  Ads must remain explicitly outside the controlled restaurant launch scope.
+- Owner order-dashboard management and real-device QR/table operation remain
+  manual pilot checks; this task covered Owner/Menu/QR settings, not owner order
+  operations.
 
 Allowed next step:
 
-- Continue contract/test preparation and public runtime extraction planning
-  behind false flags only. Do not activate extraction or launch paid ads yet.
+- Implement the dedicated public projection builders and keep Ads/analytics
+  disabled. Runtime extraction may continue as planning behind false flags only.

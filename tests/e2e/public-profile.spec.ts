@@ -92,4 +92,30 @@ test.describe("public profile launch smoke", () => {
       await expectPublicProfileRoute(page, route);
     }
   });
+
+  test("does not issue a denied Firestore list during public startup", async ({
+    page,
+  }) => {
+    const deniedListErrors: string[] = [];
+    page.on("console", (message) => {
+      const text = message.text();
+      if (
+        message.type() === "error" &&
+        (text.includes("false for 'list'") ||
+          (text.includes("permission-denied") && text.includes("list")))
+      ) {
+        deniedListErrors.push(text);
+      }
+    });
+
+    await page.goto(withEmulatorParams("/pidhimadh"), {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("body")).toContainText("PIDHImadh", {
+      timeout: 20_000,
+    });
+    await page.waitForTimeout(4_000);
+
+    expect(deniedListErrors).toEqual([]);
+  });
 });

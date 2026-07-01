@@ -115,6 +115,35 @@ function createController({
   });
 }
 
+test("public profile restaurant loading does not schedule the feed story query", async () => {
+  const state = {
+    activeTab: "profile",
+    restaurants: [],
+    bootstrapRestaurantPreview: [],
+    stories: [],
+    feedPosts: []
+  };
+  let storyLoads = 0;
+  const controller = createSessionDataRuntimeController({
+    state,
+    dataLoaded: {},
+    db: {},
+    collectionFn: (_db, collectionName) => ({ collectionName }),
+    queryFn: (ref) => ref,
+    getDocsFn: async () => ({
+      forEach() {}
+    }),
+    loadStoriesForFeedFn: async () => {
+      storyLoads += 1;
+    }
+  });
+
+  await controller.loadRestaurants();
+  await Promise.resolve();
+
+  assert.equal(storyLoads, 0);
+});
+
 test("public menu load leaves loading state when Firebase menu items do not return", async () => {
   const state = createVisibleMenuState();
   const controller = createController({

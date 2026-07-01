@@ -1,6 +1,6 @@
 import { expect, test as base, type Page } from "@playwright/test";
 
-async function prepareFirebaseEmulatorPage(page: Page) {
+export async function prepareFirebaseEmulatorPage(page: Page) {
   await page.addInitScript(() => {
     Object.defineProperty(globalThis, "__MENYRA_FIREBASE_EMULATORS__", {
       configurable: true,

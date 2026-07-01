@@ -50,9 +50,9 @@ renames, broad UI changes or runtime extraction.
 | 7     | Manual launch rehearsal            | Browser/device checklist from the matrix.                                                            | Recorded owner, public, QR, waiter and Heart smoke results.                 |
 | 8     | Public runtime extraction planning | Follow-up implementation plan only after contracts/tests are stable.                                 | Extraction starts behind false flags and without route/product drift.       |
 
-The next engineering block should complete the remaining owner editor browser
-blocker and public projection builder gap before any activated public runtime
-split.
+The Owner/Menu browser blocker and public-startup denied-list blocker are now
+closed. The next engineering block should complete the public projection
+builder gap before any activated public runtime split.
 
 ## P0 Browser Rehearsal Completed 2026-07-01
 
@@ -68,29 +68,34 @@ Browser-checked P0 points:
   hands it to the waiter board.
 - Waiter login/order/status flow passes locally; item/total writes and foreign
   order reads are denied in the browser spec.
+- `/menu` is the stable protected owner entry. Restaurant owner
+  create/edit/delete/publish, numeric price projection, foreign-business
+  read-only behavior and seeded QR tables pass on desktop/mobile.
+- Shop and hotel owners reach their existing Product and Hotel Details/Oferta
+  editor contexts on desktop/mobile; their vertical-specific mutations remain
+  later work.
+- The denied public-startup `list` was the legacy Feed story collection-group
+  preload. It is mapped and no longer scheduled outside the Feed tab.
 - Heart non-CEO block, CEO login, local Functions routing and lead
   create/update/delete pass in an interactive local browser probe.
 
 Still blocking P0 points:
 
-- Owner/menu editor browser mutation flow is not launch-proven. The local owner
-  auth prompt is reachable, but a stable owner editor route did not expose the
-  menu/QR settings surface for create/edit/delete/publish proof.
 - Public profile/meta/offers/ads do not yet have dedicated pure projection
   builders. Current coverage validates seed/public docs and menu save
   normalization, but runtime reads still depend on transitional mixed data.
 - Heart Ads remains blocked for paid launch. The local Ads view loaded as
   read-only/count 0, and the current array model is still too coarse for
   auditable paid moderation.
-- A public startup probe still logged one denied Firestore `list`; it did not
-  break route smoke, but it must be mapped before P1.
+- Owner order-dashboard operation and real-device QR/table use remain manual
+  pilot checks outside this browser mutation task.
 
 Public runtime extraction decision:
 
 - Extraction planning may continue behind false flags.
-- No activated public runtime split should start until owner/menu browser proof,
-  projection builders and the denied public `list` are addressed or explicitly
-  accepted out of P1 scope.
+- No activated public runtime split should start until the projection builders
+  are addressed. Owner/Menu proof and the public-startup denied `list` are no
+  longer blockers.
 
 ## P1: First Controlled Restaurant Launch
 
@@ -137,6 +142,7 @@ Public runtime extraction decision:
 
 ## Next Safe Refactor Step
 
-The next safe engineering step is not a visual redesign. It is a contract pass:
-freeze public route/profile/menu fields, document public projections, then add
-matrix-driven tests before any runtime extraction or production launch.
+The next safe engineering step is not a visual redesign. Implement dedicated
+public profile/meta/offers/ads projection builders with matrix-driven tests.
+Keep Ads and analytics disabled and keep runtime extraction behind false flags
+until those public contracts are complete.

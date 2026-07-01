@@ -111,3 +111,77 @@ export async function restoreSeedWaiterOrder() {
       { merge: true },
     );
 }
+
+export async function readRestaurantMenuItemByName(
+  restaurantId: string,
+  name: string,
+) {
+  const snapshot = await adminDb
+    .collection("restaurants")
+    .doc(restaurantId)
+    .collection("menuItems")
+    .where("name", "==", name)
+    .limit(1)
+    .get();
+  const document = snapshot.docs[0];
+  return document ? { id: document.id, data: document.data() } : null;
+}
+
+export async function readRestaurantPublicMenu(restaurantId: string) {
+  const snapshot = await adminDb
+    .collection("restaurants")
+    .doc(restaurantId)
+    .collection("public")
+    .doc("menu")
+    .get();
+  return snapshot.exists ? snapshot.data() || null : null;
+}
+
+export async function deleteRestaurantMenuItemsByNames(
+  restaurantId: string,
+  names: string[],
+) {
+  const normalizedNames = new Set(
+    names.map((name) => String(name || "").trim()).filter(Boolean),
+  );
+  if (!normalizedNames.size) return;
+
+  const restaurantRef = adminDb.collection("restaurants").doc(restaurantId);
+  const menuItemsRef = restaurantRef.collection("menuItems");
+  const snapshots = await Promise.all(
+    Array.from(normalizedNames, (name) =>
+      menuItemsRef.where("name", "==", name).get(),
+    ),
+  );
+  const documents = snapshots.flatMap((snapshot) => snapshot.docs);
+  const removedIds = new Set(documents.map((document) => document.id));
+  const publicMenuRef = restaurantRef.collection("public").doc("menu");
+  const publicMenuSnapshot = await publicMenuRef.get();
+  const publicMenu = publicMenuSnapshot.exists
+    ? publicMenuSnapshot.data() || {}
+    : {};
+  const publicItems = Array.isArray(publicMenu.items) ? publicMenu.items : [];
+  const nextPublicItems = publicItems.filter((item) => {
+    const itemId = String(item?.id || item?.itemId || "").trim();
+    const itemName = String(item?.name || "").trim();
+    return !removedIds.has(itemId) && !normalizedNames.has(itemName);
+  });
+  const batch = adminDb.batch();
+  documents.forEach((document) => batch.delete(document.ref));
+  if (
+    publicMenuSnapshot.exists &&
+    nextPublicItems.length !== publicItems.length
+  ) {
+    batch.set(
+      publicMenuRef,
+      {
+        items: nextPublicItems,
+        menuTruthState: nextPublicItems.length ? "seeded" : "knownEmpty",
+        updatedAt: FieldValue.serverTimestamp(),
+        publishedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
+  await batch.commit();
+}
