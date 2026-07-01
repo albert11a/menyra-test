@@ -22,6 +22,24 @@ export const AUTH_FIXTURES = Object.freeze({
       name: "Local Owner",
     },
   },
+  shopOwner: {
+    label: "Shop Owner",
+    uid: "shop-owner-demo",
+    token: {
+      email: "shop-owner.local@example.test",
+      email_verified: true,
+      name: "Local Shop Owner",
+    },
+  },
+  hotelOwner: {
+    label: "Hotel Owner",
+    uid: "hotel-owner-demo",
+    token: {
+      email: "hotel-owner.local@example.test",
+      email_verified: true,
+      name: "Local Hotel Owner",
+    },
+  },
   waiter: {
     label: "Waiter",
     uid: "waiter-demo",

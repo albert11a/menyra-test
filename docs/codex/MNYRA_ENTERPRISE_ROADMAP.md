@@ -31,6 +31,28 @@ tests catch up.
 | Ads safety decision               | Avoids unsafe paid ad product.                     | Ads remain internal/test-only or move to safer per-ad records with moderation audit trail.       |
 | Manual launch rehearsal           | Catches UI/device failures not covered by tests.   | Public profile/menu/QR/order/waiter/owner/Heart checks recorded on mobile and desktop.           |
 
+## P0 Implementation Block Started 2026-07-01
+
+This branch now starts the first real P0 implementation phase after the
+enterprise readiness audit. The block is intentionally limited to contracts,
+local seed data, automated rules/unit coverage and small correctness fixes. It
+does not approve production data, production deploys, route changes, collection
+renames, broad UI changes or runtime extraction.
+
+| Order | Work item                          | Output                                                                                               | Exit signal                                                                 |
+| ----- | ---------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 1     | Public profile contract            | `docs/codex/generated/PUBLIC_PROFILE_CONTRACT.md`                                                    | Allowed/prohibited public fields and current route contracts are explicit.  |
+| 2     | Auth and role flow audit           | `docs/codex/generated/AUTH_AND_ROLE_FLOW_AUDIT.md`                                                   | Owner, waiter, staff hint, Heart and lead mutation boundaries are mapped.   |
+| 3     | Business tool test matrix          | `docs/codex/generated/BUSINESS_TOOL_TEST_MATRIX.md`                                                  | Launch-critical business flows are labeled automated, manual, red or green. |
+| 4     | Local seed expansion               | Restaurant, shop, hotel, owner, waiter, Heart, public projection and private fixtures in local seed. | Emulator-only fixtures can drive rules and manual launch checks.            |
+| 5     | Menu price correctness             | Menu editor and public menu publish paths normalize prices to numbers.                               | Unit coverage proves string editor input saves/publishes numeric prices.    |
+| 6     | Rules coverage expansion           | Owner menu, private profile denial, waiter revocation, stale staff hints, Heart leads and ads tests. | Rules tests prove current P0 boundaries before launch rehearsal.            |
+| 7     | Manual launch rehearsal            | Browser/device checklist from the matrix.                                                            | Recorded owner, public, QR, waiter and Heart smoke results.                 |
+| 8     | Public runtime extraction planning | Follow-up implementation plan only after contracts/tests are stable.                                 | Extraction starts behind false flags and without route/product drift.       |
+
+The next engineering block should complete projection builder tests and manual
+browser launch rehearsal before any public runtime split.
+
 ## P1: First Controlled Restaurant Launch
 
 | Workstream                 | Business value                           | Exit criteria                                                                                |

@@ -1,4 +1,5 @@
 import { isTestfirstMenuProfileTypeCore, normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
+import { parsePriceValueCore } from "../common/price-utils.js";
 
 export async function saveMenuItemFromModalCore({
   state,
@@ -100,6 +101,7 @@ export async function saveMenuItemFromModalCore({
   }
   const name = documentObj.getElementById("menuItemName")?.value?.trim() || "";
   const price = documentObj.getElementById("menuItemPrice")?.value?.trim() || "";
+  const normalizedPrice = parsePriceValueCore(price);
   const categoryInput = documentObj.getElementById("menuItemCategory")?.value?.trim() || "";
   const category = isShop && isLegacyShopMenuCategory(categoryInput) ? "Produkte" : categoryInput;
   const categoryIsSpecial = String(category || "").trim().toLowerCase() === "special";
@@ -286,7 +288,7 @@ export async function saveMenuItemFromModalCore({
       colors: isShop ? colors : [],
       cropX: crop.x,
       cropY: crop.y,
-      price: price ?? "",
+      price: normalizedPrice,
       available,
       hidden: false,
       statusHidden: false,

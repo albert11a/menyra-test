@@ -15,6 +15,18 @@
       "password": "local-test-password"
     },
     {
+      "uid": "shop-owner-demo",
+      "email": "shop-owner.local@example.test",
+      "displayName": "Local Shop Owner",
+      "password": "local-test-password"
+    },
+    {
+      "uid": "hotel-owner-demo",
+      "email": "hotel-owner.local@example.test",
+      "displayName": "Local Hotel Owner",
+      "password": "local-test-password"
+    },
+    {
       "uid": "waiter-demo",
       "email": "waiter.local@example.test",
       "displayName": "Local Waiter",
@@ -38,6 +50,30 @@
         "public": true,
         "canonicalPath": "/pidhimadh",
         "menuPath": "/pidhimadh/menu"
+      }
+    },
+    {
+      "path": "publicRoutes/shopdemo",
+      "data": {
+        "slug": "shopdemo",
+        "restaurantId": "shop-demo",
+        "type": "business",
+        "surface": "profile",
+        "public": true,
+        "canonicalPath": "/shopdemo",
+        "menuPath": "/shopdemo/menu"
+      }
+    },
+    {
+      "path": "publicRoutes/hoteldemo",
+      "data": {
+        "slug": "hoteldemo",
+        "restaurantId": "hotel-demo",
+        "type": "business",
+        "surface": "profile",
+        "public": true,
+        "canonicalPath": "/hoteldemo",
+        "menuPath": "/hoteldemo/menu"
       }
     },
     {
@@ -96,6 +132,34 @@
         "tiktok": "https://tiktok.example/@pidhimadh",
         "coverUrl": "https://images.example.local/pidhi-cover.jpg",
         "logoUrl": "https://images.example.local/pidhi-logo.jpg",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/public/meta",
+      "data": {
+        "restaurantId": "pidhi-madh",
+        "slug": "pidhimadh",
+        "name": "PIDHImadh",
+        "type": "restaurant",
+        "customerType": "restaurant",
+        "city": "Prishtina",
+        "country": "Kosovo",
+        "address": "Rruga Test 12, Prishtina",
+        "phone": "+383 44 000 111",
+        "instagram": "https://instagram.example/pidhimadh",
+        "tiktok": "https://tiktok.example/@pidhimadh",
+        "coverUrl": "https://images.example.local/pidhi-cover.jpg",
+        "logoUrl": "https://images.example.local/pidhi-logo.jpg",
+        "tableQrEnabled": true,
+        "tableQrCount": 12,
+        "tables": [
+          {
+            "id": "table-01",
+            "number": 2,
+            "label": "Tisch 2"
+          }
+        ],
         "public": true
       }
     },
@@ -353,6 +417,32 @@
       }
     },
     {
+      "path": "restaurants/pidhi-madh/public/ads",
+      "data": {
+        "restaurantId": "pidhi-madh",
+        "public": true,
+        "items": [
+          {
+            "id": "ad-approved-local",
+            "title": "Local Lunch Offer",
+            "status": "approved",
+            "createdByUid": "owner-demo",
+            "approvedByUid": "heart-demo"
+          }
+        ],
+        "lastSeededBy": "mnyrasocial"
+      }
+    },
+    {
+      "path": "restaurants/pidhi-madh/private/internal",
+      "data": {
+        "restaurantId": "pidhi-madh",
+        "private": true,
+        "ownerEmail": "owner.local@example.test",
+        "billingNote": "local-only private fixture"
+      }
+    },
+    {
       "path": "restaurants/pidhi-madh/staff/waiter-demo",
       "data": {
         "uid": "waiter-demo",
@@ -374,6 +464,28 @@
         "role": "business",
         "roles": ["business"],
         "restaurantId": "pidhi-madh"
+      }
+    },
+    {
+      "path": "users/shop-owner-demo",
+      "data": {
+        "uid": "shop-owner-demo",
+        "email": "shop-owner.local@example.test",
+        "displayName": "Local Shop Owner",
+        "role": "business",
+        "roles": ["business"],
+        "restaurantId": "shop-demo"
+      }
+    },
+    {
+      "path": "users/hotel-owner-demo",
+      "data": {
+        "uid": "hotel-owner-demo",
+        "email": "hotel-owner.local@example.test",
+        "displayName": "Local Hotel Owner",
+        "role": "business",
+        "roles": ["business"],
+        "restaurantId": "hotel-demo"
       }
     },
     {
@@ -501,13 +613,20 @@
         "businessType": "shop",
         "category": "Shopping",
         "city": "Prishtina",
-        "ownerUid": "owner-demo",
-        "ownerEmail": "owner.local@example.test",
+        "country": "Kosovo",
+        "address": "Rruga Shop 5, Prishtina",
+        "phone": "+383 44 000 222",
+        "instagram": "https://instagram.example/shopdemo",
+        "bio": "Synthetic local shop used for Mnyra refactor tests.",
+        "ownerUid": "shop-owner-demo",
+        "ownerEmail": "shop-owner.local@example.test",
         "email": "",
         "contactEmail": "",
         "socialEmail": "",
         "loginEmail": "",
         "accountEmail": "",
+        "logoUrl": "https://images.example.local/shop-logo.jpg",
+        "coverUrl": "https://images.example.local/shop-cover.jpg",
         "public": true
       }
     },
@@ -524,6 +643,71 @@
       }
     },
     {
+      "path": "restaurants/shop-demo/public/profile",
+      "data": {
+        "restaurantId": "shop-demo",
+        "slug": "shopdemo",
+        "name": "Local Shop Demo",
+        "bio": "Synthetic public shop profile for local emulator tests.",
+        "city": "Prishtina",
+        "address": "Rruga Shop 5, Prishtina",
+        "phone": "+383 44 000 222",
+        "instagram": "https://instagram.example/shopdemo",
+        "coverUrl": "https://images.example.local/shop-cover.jpg",
+        "logoUrl": "https://images.example.local/shop-logo.jpg",
+        "businessType": "shop",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/shop-demo/public/meta",
+      "data": {
+        "restaurantId": "shop-demo",
+        "slug": "shopdemo",
+        "name": "Local Shop Demo",
+        "type": "ecommerce",
+        "customerType": "ecommerce",
+        "businessType": "shop",
+        "city": "Prishtina",
+        "country": "Kosovo",
+        "address": "Rruga Shop 5, Prishtina",
+        "phone": "+383 44 000 222",
+        "instagram": "https://instagram.example/shopdemo",
+        "coverUrl": "https://images.example.local/shop-cover.jpg",
+        "logoUrl": "https://images.example.local/shop-logo.jpg",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/shop-demo/public/menu",
+      "data": {
+        "restaurantId": "shop-demo",
+        "public": true,
+        "items": [
+          {
+            "id": "shop-item-001",
+            "itemId": "shop-item-001",
+            "name": "Local Cotton Shirt",
+            "category": "Products",
+            "price": 19.9,
+            "available": true,
+            "imageUrl": "https://images.example.local/shop-shirt.jpg"
+          }
+        ],
+        "currency": "EUR",
+        "lastSeededBy": "mnyrasocial"
+      }
+    },
+    {
+      "path": "restaurants/shop-demo/private/internal",
+      "data": {
+        "restaurantId": "shop-demo",
+        "private": true,
+        "ownerEmail": "shop-owner.local@example.test",
+        "billingNote": "local-only private fixture"
+      }
+    },
+    {
       "path": "restaurants/hotel-demo",
       "data": {
         "id": "hotel-demo",
@@ -532,19 +716,63 @@
         "businessType": "hotel",
         "category": "Travel",
         "city": "Prizren",
-        "ownerUid": "owner-demo",
-        "ownerEmail": "owner.local@example.test",
+        "country": "Kosovo",
+        "address": "Rruga Hotel 7, Prizren",
+        "phone": "+383 44 000 333",
+        "instagram": "https://instagram.example/hoteldemo",
+        "bio": "Synthetic local hotel used for Mnyra refactor tests.",
+        "ownerUid": "hotel-owner-demo",
+        "ownerEmail": "hotel-owner.local@example.test",
         "email": "",
         "contactEmail": "",
         "socialEmail": "",
         "loginEmail": "",
         "accountEmail": "",
+        "logoUrl": "https://images.example.local/hotel-logo.jpg",
+        "coverUrl": "https://images.example.local/hotel-cover.jpg",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/hotel-demo/public/profile",
+      "data": {
+        "restaurantId": "hotel-demo",
+        "slug": "hoteldemo",
+        "name": "Local Hotel Demo",
+        "bio": "Synthetic public hotel profile for local emulator tests.",
+        "city": "Prizren",
+        "address": "Rruga Hotel 7, Prizren",
+        "phone": "+383 44 000 333",
+        "instagram": "https://instagram.example/hoteldemo",
+        "coverUrl": "https://images.example.local/hotel-cover.jpg",
+        "logoUrl": "https://images.example.local/hotel-logo.jpg",
+        "businessType": "hotel",
+        "public": true
+      }
+    },
+    {
+      "path": "restaurants/hotel-demo/public/meta",
+      "data": {
+        "restaurantId": "hotel-demo",
+        "slug": "hoteldemo",
+        "name": "Local Hotel Demo",
+        "type": "hotel",
+        "customerType": "hotel",
+        "businessType": "hotel",
+        "city": "Prizren",
+        "country": "Kosovo",
+        "address": "Rruga Hotel 7, Prizren",
+        "phone": "+383 44 000 333",
+        "instagram": "https://instagram.example/hoteldemo",
+        "coverUrl": "https://images.example.local/hotel-cover.jpg",
+        "logoUrl": "https://images.example.local/hotel-logo.jpg",
         "public": true
       }
     },
     {
       "path": "restaurants/hotel-demo/public/offers",
       "data": {
+        "restaurantId": "hotel-demo",
         "items": [
           {
             "id": "travel-offer-001",
@@ -553,6 +781,15 @@
             "price": 59
           }
         ]
+      }
+    },
+    {
+      "path": "restaurants/hotel-demo/private/internal",
+      "data": {
+        "restaurantId": "hotel-demo",
+        "private": true,
+        "ownerEmail": "hotel-owner.local@example.test",
+        "billingNote": "local-only private fixture"
       }
     },
     {

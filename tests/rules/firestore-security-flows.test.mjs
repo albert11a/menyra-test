@@ -59,6 +59,21 @@ async function seedFirestore(extraDocuments = []) {
   });
 }
 
+async function writeDocumentsWithoutRules(documents = []) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const batch = db.batch();
+    for (const document of documents) {
+      batch.set(
+        db.doc(document.path),
+        document.data || {},
+        document.options || {},
+      );
+    }
+    await batch.commit();
+  });
+}
+
 function validOrderPayload(overrides = {}) {
   const item = {
     id: "menu-001",
@@ -476,6 +491,168 @@ test("owner can edit only the owned business", async () => {
   );
 });
 
+test("owner can manage menu and public menu only for the owned business", async () => {
+  await seedFirestore([
+    {
+      path: "restaurants/other-restaurant",
+      data: {
+        id: "other-restaurant",
+        name: "Other Restaurant",
+        ownerUid: "other-owner",
+        ownerEmail: "other-owner@example.test",
+        email: "",
+        contactEmail: "",
+        socialEmail: "",
+        loginEmail: "",
+        accountEmail: "",
+      },
+    },
+  ]);
+
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+
+  await assertSucceeds(
+    ownerDb.doc("restaurants/pidhi-madh/menuItems/menu-owner-contract").set({
+      id: "menu-owner-contract",
+      restaurantId: "pidhi-madh",
+      name: "Owner Contract Item",
+      category: "Contract",
+      price: 9.9,
+      available: true,
+    }),
+  );
+  await assertSucceeds(
+    ownerDb.doc("restaurants/pidhi-madh/public/menu").set(
+      {
+        restaurantId: "pidhi-madh",
+        items: [
+          {
+            id: "menu-owner-contract",
+            itemId: "menu-owner-contract",
+            name: "Owner Contract Item",
+            category: "Contract",
+            price: 9.9,
+            available: true,
+          },
+        ],
+      },
+      { merge: true },
+    ),
+  );
+  await assertFails(
+    ownerDb
+      .doc("restaurants/other-restaurant/menuItems/menu-owner-contract")
+      .set({
+        id: "menu-owner-contract",
+        restaurantId: "other-restaurant",
+        name: "Foreign Contract Item",
+        category: "Contract",
+        price: 9.9,
+        available: true,
+      }),
+  );
+  await assertFails(
+    ownerDb.doc("restaurants/other-restaurant/public/menu").set(
+      {
+        restaurantId: "other-restaurant",
+        items: [],
+      },
+      { merge: true },
+    ),
+  );
+});
+
+test("revoked waiter loses restaurant order access", async () => {
+  await writeDocumentsWithoutRules([
+    {
+      path: "restaurants/pidhi-madh/staff/waiter-demo",
+      data: {
+        uid: "waiter-demo",
+        restaurantId: "pidhi-madh",
+        role: "waiter",
+        active: false,
+        status: "disabled",
+        staffStatus: "disabled",
+        waiterAccess: false,
+        businessAccess: false,
+      },
+    },
+    {
+      path: "users/waiter-demo",
+      data: {
+        uid: "waiter-demo",
+        email: "waiter.local@example.test",
+        displayName: "Local Waiter",
+        role: "staff",
+        roles: ["staff"],
+        staffRestaurantId: "pidhi-madh",
+        waiterRestaurantId: "pidhi-madh",
+        waiterAccess: false,
+        businessAccess: false,
+        staffActive: false,
+        staffStatus: "disabled",
+        status: "disabled",
+      },
+    },
+  ]);
+
+  const waiterDb = firestoreFor(testEnv, AUTH_FIXTURES.waiter);
+
+  await assertFails(
+    waiterDb.doc("restaurants/pidhi-madh/orders/order-demo-001").get(),
+  );
+  await assertFails(waiterDb.collection("restaurants/pidhi-madh/orders").get());
+  await assertFails(
+    waiterDb.doc("restaurants/pidhi-madh/orders/order-demo-001").update({
+      status: "angenommen",
+      updatedAtClient: "2026-07-01T08:00:00.000Z",
+    }),
+  );
+});
+
+test("stale staffIndex and user staff hints alone do not grant waiter order access", async () => {
+  await writeDocumentsWithoutRules([
+    {
+      path: "users/outside-demo",
+      data: {
+        uid: "outside-demo",
+        email: "outside.local@example.test",
+        displayName: "Outside Staff",
+        role: "staff",
+        roles: ["staff"],
+        staffRestaurantId: "pidhi-madh",
+        waiterRestaurantId: "pidhi-madh",
+        waiterAccess: true,
+        businessAccess: false,
+        staffActive: true,
+        staffStatus: "active",
+        status: "active",
+      },
+    },
+    {
+      path: "staffIndex/outside-demo",
+      data: {
+        uid: "outside-demo",
+        restaurantId: "pidhi-madh",
+        role: "waiter",
+        active: true,
+      },
+    },
+  ]);
+
+  const outsiderDb = firestoreFor(testEnv, AUTH_FIXTURES.outsider);
+
+  await assertFails(
+    outsiderDb.doc("restaurants/pidhi-madh/orders/order-demo-001").get(),
+  );
+  await assertFails(
+    outsiderDb.doc("restaurants/pidhi-madh/orders/order-demo-001").update({
+      status: "angenommen",
+      updatedAtClient: "2026-07-01T08:15:00.000Z",
+    }),
+  );
+});
+
 test("CEO/Heart can approve ads through the admin contract", async () => {
   const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
   const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
@@ -495,6 +672,92 @@ test("CEO/Heart can approve ads through the admin contract", async () => {
   );
 });
 
+test("Heart lead mutations are CEO scoped and non-CEO actors are denied", async () => {
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+
+  await assertSucceeds(
+    heartDb.doc("leads/lead-contract-001").set({
+      id: "lead-contract-001",
+      businessName: "Contract Lead",
+      status: "registered",
+      createdByUid: "heart-demo",
+      ceoPath: ["heart-demo"],
+    }),
+  );
+  await assertSucceeds(
+    heartDb.doc("leads/lead-contract-001").update({
+      status: "kunde",
+      convertedAtClient: "2026-07-01T09:00:00.000Z",
+    }),
+  );
+  await assertFails(
+    ownerDb.doc("leads/lead-contract-001").update({
+      status: "kunde",
+    }),
+  );
+  await assertFails(userDb.doc("leads/lead-contract-001").delete());
+  await assertSucceeds(heartDb.doc("leads/lead-contract-001").delete());
+});
+
+test("public ad array writes are limited to owner and Heart actors", async () => {
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+
+  await assertSucceeds(
+    ownerDb.doc("restaurants/pidhi-madh/public/ads").set(
+      {
+        items: [
+          {
+            id: "ad-array-001",
+            title: "Pending Owner Ad",
+            status: "pending",
+            active: true,
+          },
+        ],
+        truthSource: "public-ads",
+        truthState: "seeded",
+      },
+      { merge: true },
+    ),
+  );
+  await assertFails(
+    userDb.doc("restaurants/pidhi-madh/public/ads").set(
+      {
+        items: [
+          {
+            id: "ad-array-001",
+            title: "Forged Approved Ad",
+            status: "approved",
+            active: true,
+          },
+        ],
+      },
+      { merge: true },
+    ),
+  );
+  await assertSucceeds(
+    heartDb.doc("restaurants/pidhi-madh/public/ads").set(
+      {
+        items: [
+          {
+            id: "ad-array-001",
+            title: "Pending Owner Ad",
+            status: "approved",
+            active: true,
+            reviewedByUid: "heart-demo",
+          },
+        ],
+        truthSource: "public-ads",
+        truthState: "seeded",
+      },
+      { merge: true },
+    ),
+  );
+});
+
 test("public can read only public profile/menu/posts surfaces", async () => {
   const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
 
@@ -509,6 +772,9 @@ test("public can read only public profile/menu/posts surfaces", async () => {
   );
   await assertSucceeds(
     guestDb.doc("restaurants/pidhi-madh/socialPosts/post-demo-001").get(),
+  );
+  await assertFails(
+    guestDb.doc("restaurants/pidhi-madh/private/internal").get(),
   );
   await assertFails(guestDb.doc("users/owner-demo").get());
 });

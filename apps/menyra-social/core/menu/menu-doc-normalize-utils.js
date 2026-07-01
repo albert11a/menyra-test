@@ -1,4 +1,5 @@
 import { getMenuItemCropCore } from "../media/crop-utils.js";
+import { parsePriceValueCore } from "../common/price-utils.js";
 import { normalizeOptionListCore, normalizeMenuTypeCore } from "./menu-input-utils.js";
 import { normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
 
@@ -241,7 +242,7 @@ export function normalizeMenuItemDocCore(data, id, {
     colors,
     cropX: crop.x,
     cropY: crop.y,
-    price: d.price ?? "",
+    price: parsePriceValueCore(d.price),
     available: d.available !== false,
     hidden,
     statusHidden,

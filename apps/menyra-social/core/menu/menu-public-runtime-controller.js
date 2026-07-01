@@ -1,4 +1,5 @@
 import { normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
+import { parsePriceValueCore } from "../common/price-utils.js";
 import { t } from "/shared/i18n/i18n.js";
 
 export function createMenuPublicRuntimeController({
@@ -674,7 +675,7 @@ export function createMenuPublicRuntimeController({
         colors: Array.isArray(item.colors) ? item.colors : [],
         cropX: clampCropPercent(item.cropX ?? 50, 50),
         cropY: clampCropPercent(item.cropY ?? 50, 50),
-        price: item.price ?? "",
+        price: parsePriceValueCore(item.price),
         available: item.available !== false,
         hidden: item.menuHidden === true,
         menuHidden: item.menuHidden === true,
