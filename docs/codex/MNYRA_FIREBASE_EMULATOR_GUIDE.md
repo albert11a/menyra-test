@@ -30,6 +30,12 @@ Do not use production Firebase data for tests or seeds.
 3. In another terminal, run `npm run emulators:seed`.
 4. Run rules/functions tests only against the emulator.
 
+`npm run emulators:start` sets `FUNCTIONS_DISCOVERY_TIMEOUT=120` by default
+before starting Firebase emulators. This keeps local Functions discovery stable
+for the larger `functions/index.js` source without changing Functions runtime
+logic. Operators can still override the value by setting
+`FUNCTIONS_DISCOVERY_TIMEOUT` explicitly before running the command.
+
 ## Guardrails
 
 - `seed/scripts/seed-firestore.mjs` refuses non-local project IDs unless

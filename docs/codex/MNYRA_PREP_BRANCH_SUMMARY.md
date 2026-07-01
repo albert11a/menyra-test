@@ -18,6 +18,8 @@ Last updated: 2026-07-01
 - Bundle analysis report generation and optional Rollup visualizer hook.
 - ESLint and Prettier baseline checks.
 - Local Firebase Emulator config in `firebase.json`.
+- Local emulator startup hardening with `FUNCTIONS_DISCOVERY_TIMEOUT=120` for
+  Functions discovery.
 - Local synthetic seed data and seed script under `seed/`.
 - Firestore Rules tests and auth fixtures under `tests/rules`.
 - Minimal Firestore Rules hardening for protected social/follower counters and
@@ -360,6 +362,10 @@ write test requires explicit approval and a dedicated
 `mnyra-test-restaurant` with test owner, waiter, QR table, numeric menu prices
 and cleanup policy.
 
+The `mnyra-test-restaurant` preparation remains a plan/dry-run only: do not
+create the restaurant, owner, waiter, QR table, menu item or public menu data in
+Production until that specific Production write is explicitly approved.
+
 ## Production Order Release Plan
 
 The safe release plan is documented in
@@ -379,6 +385,28 @@ Web must not deploy first because the browser bundle now calls
 bundle reaches users before the matching Functions source, checkout can hit a
 missing or older callable contract while Rules still correctly block direct
 client order creates.
+
+Local release-prep emulator startup now sets `FUNCTIONS_DISCOVERY_TIMEOUT=120`
+through `npm run emulators:start`. This only stabilizes local Functions
+discovery for the existing source and does not change Functions logic or any
+deploy setting.
+
+## Release Preparation Hardening
+
+- `AGENTS.md` contains the browser-visible build rule: run `npm run build`, check
+  tracked bundle diffs and report build/bundle status before task close.
+- `npm run emulators:start` starts Firebase emulators through the local wrapper
+  with `FUNCTIONS_DISCOVERY_TIMEOUT=120` by default.
+- CI prep also exports `FUNCTIONS_DISCOVERY_TIMEOUT=120` for the Functions test
+  step.
+- `mnyra-test-restaurant` remains only a planned/dry-run Production test data
+  set until an explicit Production-write approval exists.
+- 2026-07-01 hardening checks passed: `npm run test:functions` (4 passed),
+  `npm run test:rules` (12 passed), `npm run test:unit` (103 passed),
+  `npm run lint`, `npm run format:check`, `npm run arch:check` and
+  `npm run build`.
+- `npm run build` produced no tracked bundle diff in
+  `apps/menyra-social/bundled`.
 
 ## Remaining Risks
 

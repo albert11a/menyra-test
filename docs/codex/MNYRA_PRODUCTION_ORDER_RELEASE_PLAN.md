@@ -121,6 +121,11 @@ creating a real order:
 
 No customer order should be created at this gate.
 
+Local/emulator preparation uses `FUNCTIONS_DISCOVERY_TIMEOUT=120` when starting
+emulators through `npm run emulators:start`. This only hardens local discovery
+of the existing Functions source; it does not change Functions code and is not a
+deploy setting.
+
 ## Rules Gate
 
 Before or during the Rules release window, compare the live ruleset against this
@@ -154,6 +159,10 @@ Before web release:
 ## Dedicated Test Restaurant Plan
 
 Create Production test data only after explicit approval.
+
+This section is a plan/dry-run checklist. Do not create the restaurant, owner,
+waiter, QR table, menu item or public menu data in Production until explicit
+approval is given for that Production write.
 
 - Restaurant ID: `mnyra-test-restaurant`.
 - Slug: `mnyra-test-restaurant`.
