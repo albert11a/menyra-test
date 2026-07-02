@@ -87,6 +87,58 @@ async function expectMenuNotPersistentlyEmpty(page: Page, routeLabel: string) {
   ).not.toContainText("Keine Produkte", { timeout: 1_000 });
 }
 
+async function expectPublicMenuDiagnostics(page: Page, routeLabel: string) {
+  const surface = page
+    .locator("[data-menu-state][data-focus-state][data-focus-stale]")
+    .first();
+  await expect(
+    surface,
+    `${routeLabel} should expose menu/focus diagnostics`,
+  ).toBeVisible({
+    timeout: 20_000,
+  });
+  const diagnostics = await surface.evaluate((node) => ({
+    menuState: node.getAttribute("data-menu-state") || "",
+    menuItemCount: Number(node.getAttribute("data-menu-item-count") || "0"),
+    focusState: node.getAttribute("data-focus-state") || "",
+    focusBusinessId: node.getAttribute("data-focus-business-id") || "",
+    focusItemCount: Number(node.getAttribute("data-focus-item-count") || "0"),
+    focusSource: node.getAttribute("data-focus-source") || "",
+    focusStale: node.getAttribute("data-focus-stale") || "",
+  }));
+  expect(
+    ["loading", "present", "known-empty", "error"],
+    `${routeLabel} should expose a known menu state`,
+  ).toContain(diagnostics.menuState);
+  expect(
+    [
+      "unknown",
+      "loading",
+      "present",
+      "known-empty",
+      "error",
+      "stale-wrong-business",
+    ],
+    `${routeLabel} should expose a known focus state`,
+  ).toContain(diagnostics.focusState);
+  expect(
+    diagnostics.focusStale,
+    `${routeLabel} should not expose stale focus`,
+  ).toBe("false");
+  expect(
+    diagnostics.focusState,
+    `${routeLabel} should not render wrong-business focus`,
+  ).not.toBe("stale-wrong-business");
+  expect(
+    diagnostics.menuItemCount,
+    `${routeLabel} should keep menu item count non-negative`,
+  ).toBeGreaterThanOrEqual(0);
+  expect(
+    diagnostics.focusItemCount,
+    `${routeLabel} should keep focus item count non-negative`,
+  ).toBeGreaterThanOrEqual(0);
+}
+
 async function expectPublicMenuRoute(
   page,
   route: (typeof PUBLIC_MENU_ROUTES)[number],
@@ -103,6 +155,7 @@ async function expectPublicMenuRoute(
   await expectNoPrivateMarkers(page, route.path);
   if (route.expectNonEmptyMenu) {
     await expectMenuNotPersistentlyEmpty(page, route.path);
+    await expectPublicMenuDiagnostics(page, route.path);
   }
   await expectNoBrokenLoadedImages(page, route.path);
 
@@ -114,6 +167,7 @@ async function expectPublicMenuRoute(
     await expectNoPrivateMarkers(page, `${route.path} refresh`);
     if (route.expectNonEmptyMenu) {
       await expectMenuNotPersistentlyEmpty(page, `${route.path} refresh`);
+      await expectPublicMenuDiagnostics(page, `${route.path} refresh`);
     }
     await expectNoBrokenLoadedImages(page, `${route.path} refresh`);
   }

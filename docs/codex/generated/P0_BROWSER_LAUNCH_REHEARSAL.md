@@ -421,3 +421,42 @@ Cleanup verification after shell removal:
 - Local `127.0.0.1:5173` returned HTTP 200; the old configured
   `192.168.1.168:5173` LAN URL timed out on this network; current WLAN
   `172.20.10.3:5173` returned HTTP 200.
+
+## Public Focus Marker Follow-Up 2026-07-02
+
+The launch rehearsal now has a direct DOM gate for public Menu/Focus state:
+seeded Public Menu/QR routes must expose `data-menu-state`,
+`data-menu-item-count`, `data-focus-state`, `data-focus-business-id`,
+`data-focus-item-count`, `data-focus-source` and `data-focus-stale`.
+
+Added/updated evidence:
+
+- `node --test tests/public-menu-surface-state-utils.test.mjs` passed with
+  Focus states `loading`, `present`, `known-empty` and
+  `stale-wrong-business` covered.
+- `npx playwright test --config tests/e2e/playwright.config.ts
+tests/e2e/public-menu.spec.ts` passed `10/10` across desktop Chromium and
+  mobile Chrome after rebuilding tracked bundles.
+- The browser marker assertion rejects stale wrong-business Focus on seeded
+  public Menu/QR routes.
+- Pixel 5 timing probe: normal `/pidhimadh/menu` reached Menu and Focus present
+  at `735 ms`; normal QR at `612 ms`; Fast 3G restaurant Menu/Focus at about
+  `11.6 s`; Slow 3G still had no app text or marker by `12 s`.
+
+Bundle status for this follow-up: `npm run build` changed the tracked social
+entry, manifest and Profile/Menu/Focus chunk hash. The old
+`profile-menu-focus-render-controller-lbWlArsR.js` is deleted and
+`profile-menu-focus-render-controller-CmFLZ7KC.js` is added.
+
+This does not issue a launch-go. The public 3G blank-root blocker, real
+phone/QR/media proof, Heart mobile Search/image issue and Feed story permission
+issue remain open.
+
+Final verification for this follow-up passed Functions `4/4`, Rules `17/17`,
+Unit `134/134`, lint, format check, architecture check and build. Public
+Menu/QR focused Playwright passed `10/10`; the full relevant desktop/mobile
+matrix ended `32 passed`, `1 failed`, `1 skipped` with only the known mobile
+Heart Search diagnostic failing. Bundle output changed as documented above and
+must remain with the source change. Local `127.0.0.1:5173` and current WLAN
+`172.20.10.3:5173` returned HTTP 200; configured `192.168.1.168:5173` timed out
+on this network.

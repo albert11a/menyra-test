@@ -309,3 +309,26 @@ bounded at `8` failed fake image requests with `0` visible broken images. Slow
 Final baseline passed Functions `4/4`, Rules `17/17`, Unit `134/134`, lint,
 format check, architecture check and build. The build kept the known large
 `social-app.js` warning and changed no tracked bundled browser files.
+
+## Public Focus Marker Follow-Up 2026-07-02
+
+Matrix update:
+
+| Tool / area                  | Status               | Added coverage                                                                                            | Remaining work                                    |
+| ---------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Public Restaurant Menu/Focus | Browser smoke passed | DOM markers prove Menu/Focus state, counts, source and stale flag on `/pidhimadh/menu` and QR.            | Real phone/3G remains required.                   |
+| Public Focus stale guard     | Automated green      | Unit test marks different-business Focus as `stale-wrong-business`; Public Menu E2E rejects stale marker. | Keep in launch gate.                              |
+| Public 3G startup            | Blocked              | Focus markers confirm no stale Focus once runtime mounts.                                                 | Blank root before runtime still blocks launch.    |
+| Shop product menu            | Mixed                | Product list remains visible; marker exposes non-blocking Focus state.                                    | Product mutation/media stability still P2 manual. |
+
+Relevant verification for this follow-up: focused public state unit tests passed
+`20/20`; Public Menu/QR Playwright passed `10/10` on desktop and mobile after a
+fresh tracked bundle build. No Owner, Waiter, Heart, Feed, Rules or production
+data changes were made.
+
+Full closeout verification: Functions `4/4`, Rules `17/17`, Unit `134/134`,
+lint, format check, architecture check and build passed. The relevant
+desktop/mobile Playwright matrix ended `32 passed`, `1 failed`, `1 skipped`;
+the failure is the known Heart mobile Search diagnostic, so Heart remains open.
+Mobile was checked through Playwright mobile Chrome only; real phone/3G/tablet
+business-tool checks remain manual.

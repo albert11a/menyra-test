@@ -320,3 +320,39 @@ Cleanup verification after shell removal:
 - Required baseline passed Functions `4/4`, Rules `17/17`, Unit `134/134`,
   lint, format check, architecture check and build. The build kept the known
   large `social-app.js` warning and changed no tracked bundled browser files.
+
+## Public Focus Diagnostic Contract 2026-07-02
+
+This follow-up adds a small measurable Focus contract without changing visible
+UI, routes, Firestore Rules or data shape. Public Menu roots now expose
+`data-menu-state`, `data-menu-item-count`, `data-focus-state`,
+`data-focus-business-id`, `data-focus-item-count`, `data-focus-source` and
+`data-focus-stale`.
+
+| Bereich      | Route/Flow                    | gefundenes Problem                                                                  | sichtbarer Effekt fuer Nutzer                                                       | vermutete Ursache                                                              | Fix-Status                                                 | Prioritaet | Test/Beleg                                                                        |
+| ------------ | ----------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------- |
+| Public Focus | `/pidhimadh/menu`, QR menu    | Menu-vs-Focus state was only inferable from pixels/logs, not asserted in DOM.       | Future regressions could claim Focus is stable without proving stale/loading state. | Renderer had debug logs but no stable state markers.                           | Fixed with pure Focus state helper and public DOM markers. | P1         | `tests/public-menu-surface-state-utils.test.mjs`, `tests/e2e/public-menu.spec.ts` |
+| Public Focus | Cross-business Focus          | Wrong-business Focus needed a direct guard state for tests.                         | Stale Focus could be hard to distinguish from loading/unknown if it regressed.      | Surface state rejected stale data but did not expose a named stale diagnostic. | Fixed as `stale-wrong-business`, never renderable.         | P0         | Unit test for foreign Focus and browser stale flag assertion.                     |
+| Public 3G    | Public restaurant/shop routes | Slow 3G still has no DOM marker at 12 s because the public runtime has not mounted. | Page can look blank before real content exists.                                     | Large shared runtime and Firebase/vendor chunks.                               | Open; not a Focus fix.                                     | P1         | `MNYRA_FOCUS_STABILITY_AUDIT.md` timing matrix.                                   |
+
+Timing evidence from Pixel 5 Playwright: normal `/pidhimadh/menu` reached app
+text at `325 ms`, menu item and Focus present at `735 ms`; normal QR menu
+reached menu item and Focus present at `612 ms`; Fast 3G reached restaurant
+menu and Focus present at about `11.6 s`; Slow 3G still had no app text or
+markers at `12 s`.
+
+The updated build changes tracked browser bundle output again: social app
+entry, manifest, deleted
+`profile-menu-focus-render-controller-lbWlArsR.js` and added
+`profile-menu-focus-render-controller-CmFLZ7KC.js`.
+
+Final verification for this follow-up passed Functions `4/4`, Rules `17/17`,
+Unit `134/134`, lint, format check, architecture check and build. Public
+Menu/QR focused Playwright passed `10/10` across desktop Chromium and mobile
+Chrome. The full relevant matrix ended `32 passed`, `1 failed`, `1 skipped`;
+the failure is the known mobile Heart Search diagnostic
+(`Expected "Diagnostic", Received ""`), not a fixed issue. `127.0.0.1:5173`
+served HTTP 200, configured `192.168.1.168:5173` timed out on this network and
+active WLAN `172.20.10.3:5173` served HTTP 200. No deploy, production data
+change, Rules change, route rename or collection rename was made. There is no
+launch-go.

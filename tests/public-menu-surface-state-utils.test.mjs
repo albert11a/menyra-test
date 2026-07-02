@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  resolvePublicFocusState,
+  resolvePublicMenuFocusDiagnostics,
   resolvePublicMenuRenderDecision,
   resolveVisiblePublicMenuSurfaceState,
 } from "../apps/menyra-social/core/profile/public-menu-surface-state-utils.js";
@@ -362,6 +364,16 @@ test("public menu surface keeps ready items renderable while focus is loading", 
   assert.equal(surface.focus.status, "loading");
   assert.equal(surface.focus.canRenderFocus, false);
   assert.equal(surface.focus.settled, false);
+  assert.equal(resolvePublicFocusState(surface), "loading");
+  assert.deepEqual(resolvePublicMenuFocusDiagnostics(surface), {
+    menuState: "present",
+    menuItemCount: 1,
+    focusState: "loading",
+    focusBusinessId: "restaurant-a",
+    focusItemCount: 0,
+    focusSource: "public-menu",
+    focusStale: false,
+  });
 });
 
 test("public menu surface releases coordinated item rendering when focus is empty", () => {
@@ -468,6 +480,7 @@ test("public menu surface confirms focus empty only for the canonical focus read
   assert.equal(surface.focus.confirmedEmpty, true);
   assert.equal(surface.focus.status, "empty");
   assert.equal(surface.focus.settled, true);
+  assert.equal(resolvePublicFocusState(surface), "known-empty");
 });
 
 test("public menu surface renders seeded focus only for the same restaurant target", () => {
@@ -500,6 +513,8 @@ test("public menu surface renders seeded focus only for the same restaurant targ
   assert.equal(surface.focus.status, "ready");
   assert.equal(surface.focus.canRenderFocus, true);
   assert.equal(surface.focus.items.length, 1);
+  assert.equal(resolvePublicFocusState(surface), "present");
+  assert.equal(resolvePublicMenuFocusDiagnostics(surface).focusItemCount, 1);
 });
 
 test("public menu surface ignores stale focus from another restaurant", () => {
@@ -525,6 +540,17 @@ test("public menu surface ignores stale focus from another restaurant", () => {
 
   assert.equal(surface.focus.status, "unknown");
   assert.equal(surface.focus.canRenderFocus, false);
+  assert.equal(surface.focus.staleWrongBusiness, true);
+  assert.equal(resolvePublicFocusState(surface), "stale-wrong-business");
+  assert.deepEqual(resolvePublicMenuFocusDiagnostics(surface), {
+    menuState: "present",
+    menuItemCount: 1,
+    focusState: "stale-wrong-business",
+    focusBusinessId: "restaurant-b",
+    focusItemCount: 0,
+    focusSource: "public-menu",
+    focusStale: true,
+  });
 });
 
 test("public menu surface treats menu-targeted focus as unavailable when target is missing", () => {

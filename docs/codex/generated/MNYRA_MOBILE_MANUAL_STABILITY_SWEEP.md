@@ -389,3 +389,33 @@ Cleanup verification after shell removal:
 - Final baseline passed Functions `4/4`, Rules `17/17`, Unit `134/134`, lint,
   format check, architecture check and build. The build retained the known large
   `social-app.js` warning and changed no tracked bundled browser files.
+
+## 26. Public Focus Marker Follow-Up 2026-07-02
+
+This follow-up adds mobile-readable DOM markers for public Menu/Focus state.
+It does not change the visible UI and does not close the real-phone/3G gate.
+
+Pixel 5 marker probe:
+
+| Route                            | Normal mobile                                          | Fast 3G mobile                                          | Slow 3G mobile                  |
+| -------------------------------- | ------------------------------------------------------ | ------------------------------------------------------- | ------------------------------- |
+| `/pidhimadh/menu`                | Menu and Focus present at `735 ms`, stale `false`      | Menu and Focus present at `11629 ms`, stale `false`     | No app text or marker by `12 s` |
+| `/pidhimadh/menu?src=qr&table=2` | Menu and Focus present at `612 ms`, QR query retained  | Menu and Focus present at `11588 ms`, QR query retained | Not rerun in this cap           |
+| `/shopdemo/menu`                 | Product visible at `578 ms`; Focus marker non-blocking | Product visible at `11535 ms`; Focus `known-empty`      | Not rerun in this cap           |
+
+Updated automated proof:
+
+- Focus/Menu state unit tests passed `20/20`.
+- Public Menu E2E passed `10/10` across desktop Chromium and mobile Chrome.
+- The stale wrong-business Focus state is now a named testable state.
+
+Real phone, physical QR scan, LAN emulator safety, real image decode and carrier
+3G remain untested. There is still no launch-go.
+
+Final automated verification for the marker pass passed Functions `4/4`, Rules
+`17/17`, Unit `134/134`, lint, format check, architecture check and build.
+Public Menu/QR focused Playwright passed `10/10`; the broader relevant
+desktop/mobile matrix retained the known Heart mobile Search failure
+(`32 passed`, `1 failed`, `1 skipped`). `127.0.0.1:5173` and current WLAN
+`172.20.10.3:5173` responded with HTTP 200; configured `192.168.1.168:5173`
+timed out on this network.

@@ -265,3 +265,35 @@ lint, format check, architecture check and build. Non-Heart Playwright passed
 Heart Search failure (`32 passed`, `1 failed`, `1 skipped`). The build retained
 the known large `social-app.js` warning and changed no tracked bundled browser
 files.
+
+## Public Focus Marker Follow-Up 2026-07-02
+
+Additional fixed/covered behavior:
+
+- Public menu roots expose stable Menu/Focus diagnostic attributes for
+  `unknown`, `loading`, `present`, `known-empty`, `error` and
+  `stale-wrong-business`.
+- Unit coverage proves `unknown` is not collapsed into `known-empty`, present
+  Focus is counted, canonical empty Focus is `known-empty` and different
+  business Focus is marked stale and not renderable.
+- Public Menu/QR E2E now rejects `data-focus-stale="true"` on seeded public
+  routes and verifies that marker counts stay numeric.
+
+Measured Pixel 5 timings after the marker build:
+
+| Route                            | Normal result                                              | Fast 3G result                                     | Slow 3G result                  |
+| -------------------------------- | ---------------------------------------------------------- | -------------------------------------------------- | ------------------------------- |
+| `/pidhimadh/menu`                | Menu and Focus present at `735 ms`                         | Menu and Focus present at `11629 ms`               | No app text or marker by `12 s` |
+| `/pidhimadh/menu?src=qr&table=2` | Menu and Focus present at `612 ms`                         | Menu and Focus present at `11588 ms`               | Not rerun in this cap           |
+| `/shopdemo/menu`                 | Product visible at `578 ms`; Focus diagnostic non-blocking | Product visible at `11535 ms`; Focus `known-empty` | Not rerun in this cap           |
+
+This closes a measurement/guardrail gap, not the broader 3G startup blocker.
+Real phone/3G and media decode checks remain required before launch acceptance.
+
+Final verification for this marker pass: Functions `4/4`, Rules `17/17`, Unit
+`134/134`, lint, format check, architecture check and build passed. Public
+Menu/QR Playwright passed `10/10` on desktop and mobile. The full relevant
+matrix retained the known mobile Heart Search failure (`32 passed`, `1 failed`,
+`1 skipped`), so Heart image/Search stability remains open. The tracked browser
+bundle delta is the social entry, manifest and Profile/Menu/Focus chunk hash
+replacement.

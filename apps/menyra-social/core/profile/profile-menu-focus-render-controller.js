@@ -4,6 +4,7 @@ import {
   resolveVisibleProfileSurface
 } from "./public-profile-surface-controller.js";
 import {
+  resolvePublicMenuFocusDiagnostics,
   resolvePublicMenuRenderDecision,
   resolveVisiblePublicMenuSurfaceState
 } from "./public-menu-surface-state-utils.js";
@@ -153,6 +154,7 @@ export function createProfileMenuFocusRenderController(deps = {}) {
     }
   };
   const escapeDebugAttribute = (value = "") => escapeHtml(String(value || ""));
+  const escapeDiagnosticAttribute = (value = "") => escapeHtml(String(value ?? ""));
   const renderDebugAttrs = ({
     renderer = "profile-menu-focus-render-controller",
     skeleton = "",
@@ -165,6 +167,19 @@ export function createProfileMenuFocusRenderController(deps = {}) {
       source ? `data-debug-source="${escapeDebugAttribute(source)}"` : ""
     ].filter(Boolean);
     return attrs.length ? ` ${attrs.join(" ")}` : "";
+  };
+  const renderPublicMenuSurfaceAttrs = (surface = {}, visibleItems = []) => {
+    const diagnostics = resolvePublicMenuFocusDiagnostics(surface, visibleItems);
+    const attrs = [
+      `data-menu-state="${escapeDiagnosticAttribute(diagnostics.menuState)}"`,
+      `data-menu-item-count="${escapeDiagnosticAttribute(diagnostics.menuItemCount)}"`,
+      `data-focus-state="${escapeDiagnosticAttribute(diagnostics.focusState)}"`,
+      `data-focus-business-id="${escapeDiagnosticAttribute(diagnostics.focusBusinessId)}"`,
+      `data-focus-item-count="${escapeDiagnosticAttribute(diagnostics.focusItemCount)}"`,
+      `data-focus-source="${escapeDiagnosticAttribute(diagnostics.focusSource)}"`,
+      `data-focus-stale="${diagnostics.focusStale ? "true" : "false"}"`
+    ];
+    return ` ${attrs.join(" ")}`;
   };
   const resolveDebugMenuContext = ({
     component = "profile-menu-focus-render-controller",
@@ -4367,6 +4382,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     filteredItems: items,
     source: "public-menu"
   };
+  const publicMenuSurfaceAttrs = renderPublicMenuSurfaceAttrs(menuSurfaceState, items);
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const drinkPriorityOffset = 0;
@@ -4414,7 +4430,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     }) : ""));
   if (useTestfirstCardUi) {
     return `
-      <div class="app-main-content-safe">
+      <div class="app-main-content-safe"${publicMenuSurfaceAttrs}>
         ${isLoading ? `
           ${testfirstStableFocusSection}
           ${renderTestfirstMenuSkeleton({
@@ -4450,7 +4466,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
     `;
   }
   return `
-    <div class="app-content-inline app-main-content-safe space-y-5">
+    <div class="app-content-inline app-main-content-safe space-y-5"${publicMenuSurfaceAttrs}>
       ${standardFocusSection}
       ${isLoading ? `
         ${renderStandardMenuSkeleton({

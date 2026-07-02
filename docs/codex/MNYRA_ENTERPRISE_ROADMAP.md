@@ -416,3 +416,34 @@ format check, architecture check and build. Non-Heart Playwright passed
 mobile Heart Search failure (`32 passed`, `1 failed`, `1 skipped`). The build
 kept the known large `social-app.js` warning and changed no tracked bundled
 browser files.
+
+## Public Focus Marker Gate 2026-07-02
+
+The next P1 launch gate now includes explicit public Menu/Focus DOM markers.
+This is a small guardrail step, not a roadmap change:
+
+- `resolvePublicFocusState(surface)` distinguishes `unknown`, `loading`,
+  `present`, `known-empty`, `error` and `stale-wrong-business`.
+- Public menu roots expose state/count/source/stale attributes that Playwright
+  can assert without pixel-diffing.
+- Different-business Focus is a named non-renderable state and seeded public
+  Menu/QR routes reject stale Focus in browser tests.
+- Normal local restaurant menu and QR menu reached Focus present with Menu at
+  `735 ms` and `612 ms`; Fast 3G reached both at about `11.6 s`; Slow 3G still
+  had no marker by `12 s`.
+
+Roadmap impact:
+
+- Public Menu/Focus parity has better regression evidence.
+- The P1 blank public startup issue remains open and still requires the P3
+  Public Profile/Menu/QR runtime split and bundle-budget work.
+- Real phone/3G/QR/media, Heart mobile Search/image and Feed story permission
+  blockers remain before a launch decision.
+- No launch-go is issued by this marker gate.
+
+Verification for the marker gate passed Functions `4/4`, Rules `17/17`, Unit
+`134/134`, lint, format check, architecture check and build. Public Menu/QR
+focused Playwright passed `10/10`; the broader relevant desktop/mobile matrix
+retained the known Heart mobile Search failure (`32 passed`, `1 failed`,
+`1 skipped`). Bundle output changed only in the tracked social entry, manifest
+and Profile/Menu/Focus chunk hash replacement required by the source change.

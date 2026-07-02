@@ -170,6 +170,49 @@ export function resolvePublicMenuRenderDecision(menuSurface = {}, visibleItems =
   };
 }
 
+function mapPublicMenuStatusForDiagnostics(status = "") {
+  const key = String(status || "").trim().toLowerCase();
+  if (key === "ready") return "present";
+  if (key === "empty") return "known-empty";
+  if (key === "error") return "error";
+  return "loading";
+}
+
+export function resolvePublicFocusState(surface = {}) {
+  const safeSurface = surface && typeof surface === "object" ? surface : {};
+  const menu = safeSurface.menu && typeof safeSurface.menu === "object" ? safeSurface.menu : {};
+  const focus = safeSurface.focus && typeof safeSurface.focus === "object" ? safeSurface.focus : {};
+  const focusStatus = String(focus.status || "").trim().toLowerCase();
+  const menuStatus = String(menu.status || "").trim().toLowerCase();
+  if (focus.staleWrongBusiness === true) return "stale-wrong-business";
+  if (focusStatus === "ready") return "present";
+  if (focusStatus === "empty") return "known-empty";
+  if (focusStatus === "error") return "error";
+  if (focusStatus === "loading") return "loading";
+  if (menuStatus === "empty") return "known-empty";
+  return "unknown";
+}
+
+export function resolvePublicMenuFocusDiagnostics(surface = {}, visibleItems = null) {
+  const safeSurface = surface && typeof surface === "object" ? surface : {};
+  const menu = safeSurface.menu && typeof safeSurface.menu === "object" ? safeSurface.menu : {};
+  const focus = safeSurface.focus && typeof safeSurface.focus === "object" ? safeSurface.focus : {};
+  const menuItems = Array.isArray(visibleItems)
+    ? visibleItems
+    : (Array.isArray(menu.items) ? menu.items : []);
+  const focusItems = Array.isArray(focus.items) ? focus.items : [];
+  const focusRawRestaurantId = String(focus.rawRestaurantId || focus.restaurantId || "").trim();
+  return {
+    menuState: mapPublicMenuStatusForDiagnostics(menu.status),
+    menuItemCount: menuItems.length,
+    focusState: resolvePublicFocusState(safeSurface),
+    focusBusinessId: focusRawRestaurantId || String(safeSurface.authoritativeRestaurantId || safeSurface.restaurantId || "").trim(),
+    focusItemCount: focus.canRenderFocus === true ? focusItems.length : 0,
+    focusSource: String(focus.truthSource || "").trim(),
+    focusStale: focus.staleWrongBusiness === true
+  };
+}
+
 export function isVisiblePublicMenuSurfaceIdMatch(value = "", targetIds = []) {
   const safeValue = String(value || "").trim();
   if (!safeValue) return false;
@@ -279,6 +322,9 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
   const focusTruthState = normalizePublicMenuTruthState(focus.truthState || "");
   const samePublicFocus = focusTruthSource === "public-menu"
     && isVisiblePublicMenuSurfaceIdMatch(focusRestaurantId, surfaceIds.targetIds);
+  const staleWrongBusinessFocus = focusTruthSource === "public-menu"
+    && !!focusRestaurantId
+    && !samePublicFocus;
   const rawFocusItems = samePublicFocus && Array.isArray(focus.items) ? focus.items : [];
   const focusMatchesAuthoritativeRestaurant = samePublicFocus
     && !!surfaceIds.authoritativeRestaurantId
@@ -351,11 +397,13 @@ export function resolveVisiblePublicMenuSurfaceState(state = {}, {
       loading: samePublicFocus ? !!focus.loading : false,
       items: canRenderFocus ? focusItems : [],
       rawItems: rawFocusItems,
+      rawRestaurantId: focusRestaurantId,
       canRenderFocus,
       settled: focusSettled,
       confirmedEmpty: focusConfirmedEmpty,
       matchesAuthoritativeRestaurant: focusMatchesAuthoritativeRestaurant,
-      invalidForMenu: focusInvalidForMenu
+      invalidForMenu: focusInvalidForMenu,
+      staleWrongBusiness: staleWrongBusinessFocus
     }
   };
 }

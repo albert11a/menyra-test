@@ -303,3 +303,35 @@ format check, architecture check and build. Non-Heart Playwright passed
 mobile Heart Search failure (`32 passed`, `1 failed`, `1 skipped`). The build
 kept the known large `social-app.js` warning and changed no tracked bundled
 browser files.
+
+## Public Focus Marker Follow-Up 2026-07-02
+
+The public Menu/Focus renderer now emits safe DOM diagnostics so future
+performance and loading probes can distinguish Menu present, Focus loading,
+Focus present, Focus known-empty and stale wrong-business Focus. This is a
+guardrail and measurement fix, not a bundle-size fix.
+
+Performance interpretation after the focused Pixel 5 probe:
+
+- Normal local `/pidhimadh/menu`: app text `325 ms`, header `585 ms`, Menu item
+  and Focus present `735 ms`.
+- Normal local QR menu: app text `251 ms`, header `481 ms`, Menu item and Focus
+  present `612 ms`.
+- Fast 3G local restaurant menu: Menu and Focus present together at about
+  `11.6 s`.
+- Slow 3G local restaurant menu: no app text, Menu, Focus marker or skeleton by
+  the `12 s` cap.
+
+Conclusion: Focus is now directly measurable and did not lag Menu in the
+restaurant routes once the public runtime was available. The remaining P1
+visible defect is still the blank public startup interval before the runtime
+mounts, caused by the large shared runtime and Firebase/vendor loading. Public
+runtime extraction and bundle budgets remain the structural P3 work.
+
+Final verification for this marker pass: Functions `4/4`, Rules `17/17`, Unit
+`134/134`, lint, format check, architecture check and build passed. Public
+Menu/QR focused Playwright passed `10/10`; the broader relevant matrix ended
+`32 passed`, `1 failed`, `1 skipped` because the existing mobile Heart Search
+diagnostic still fails. The build replaced the tracked Profile/Menu/Focus chunk
+with `profile-menu-focus-render-controller-CmFLZ7KC.js` and retained the known
+large `social-app.js` warning.
