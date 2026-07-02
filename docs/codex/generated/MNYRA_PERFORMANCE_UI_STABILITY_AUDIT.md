@@ -267,3 +267,34 @@ the existing P3 public-runtime/bundle work and was not started here. Small
 stability fixes did remove the broken-image request loop and production
 bootstrap call in emulator mode. Heart Search focus and Feed story permission
 remain separate P1 issues.
+
+## Public Startup Shell Follow-Up 2026-07-02
+
+The latest Clean Web follow-up removes the _empty root_ part of the 3G finding
+without claiming a performance win. Public website starts now render a small
+HTML `MNYRA` startup shell before the public entry bundle mounts. This shell is
+generic, public-only and contains no route/business/menu data.
+
+Performance interpretation:
+
+- Fixed: constrained-network public starts no longer look like a completely
+  blank/broken document while JavaScript loads.
+- Still open: the actual Public Profile/Menu useful content is still gated by
+  the large `social-app.js`, Firebase vendor code and the profile/menu renderer
+  chunk.
+- Still required: public runtime extraction, route-level bundle budgets and
+  real phone/3G media checks before launch acceptance.
+
+Evidence:
+
+- New `tests/e2e/public-profile.spec.ts` startup-shell case passed on desktop
+  and mobile by blocking the public entry and asserting a nonblank, generic
+  shell.
+- Slow-3G CDP probe on `/pidhimadh/menu` showed the shell at 1s and 12s, while
+  real menu text was still absent at 12s.
+- Relevant browser matrix passed `35/35` with one intentional desktop Heart
+  skip.
+
+Final verification passed Functions `4/4`, Rules `17/17`, Unit `134/134`,
+lint, format check, architecture check and build. The build retained the known
+large `social-app.js` warning and changed no tracked bundle files.

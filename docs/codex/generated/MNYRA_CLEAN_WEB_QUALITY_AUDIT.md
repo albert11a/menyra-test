@@ -276,3 +276,54 @@ Final verification for this follow-up:
 
 Full matrices, environment and artifact locations are in
 `MNYRA_MOBILE_MANUAL_STABILITY_SWEEP.md`. There is no Clean Web launch-go.
+
+## Public Startup Shell Follow-Up 2026-07-02
+
+This follow-up addresses the visible blank-root part of the mobile/3G public
+startup finding without starting runtime extraction, changing routes, loosening
+Rules or faking business data.
+
+| Bereich                | Route/Flow                                                                        | gefundenes Problem                                                                                            | sichtbarer Effekt fuer Nutzer                                                               | vermutete Ursache                                                                                       | Fix-Status                                                                                                                                                      | Prioritaet              | Test/Beleg                                                                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Public mobile/3G       | `/pidhimadh`, `/pidhimadh/menu`, `/pidhimadh/posts`, QR, shop/hotel public routes | The HTML `#app` root was empty until the public entry and large app bundle mounted.                           | Under throttled mobile startup the page looked blank/broken before real content could load. | Public route detection existed in the head, but no truthful initial DOM was rendered before the bundle. | Fixed for the blank-root effect: public website starts now show a neutral `MNYRA` startup shell with stable skeleton geometry. Real content delay remains open. | P1 mitigated            | New Playwright test blocks the public entry and asserts the shell is visible and contains no business/menu text. Slow-3G CDP probe on `/pidhimadh/menu` showed `MNYRA` shell visible after 1s and 12s. |
+| Public startup privacy | Public startup shell before app mount                                             | A first-paint shell could accidentally imply specific business data if it used route names or cached content. | Users could briefly see wrong or stale business identity during startup.                    | Any HTML-only shell runs before canonical public route data is confirmed.                               | Fixed by using only generic brand/skeleton content; no business name, product, table or private data is embedded.                                               | P1                      | `tests/e2e/public-profile.spec.ts` asserts the shell does not contain `PIDHImadh` or `Local Breakfast Plate`.                                                                                          |
+| Public Profile/Menu/QR | Direct load, refresh, QR query                                                    | New shell must not persist after normal app mount or interfere with QR/source/table.                          | A stuck shell would hide real content or break QR flow.                                     | Root-level initial markup can conflict with app render if not replaced.                                 | Verified: app render replaces the shell; QR/source/table tests remain green.                                                                                    | P1                      | Relevant Playwright matrix passed `35 passed`, `1 skipped` across desktop/mobile; desktop Heart skip is intentional.                                                                                   |
+| Heart/CEO              | Mobile Leads diagnostic                                                           | Prior report had an open Heart Search/flicker concern after rollback.                                         | Heart could still feel unstable if real phone/3G reproduces image or Search focus churn.    | The exact real-device trigger is still not proven; diagnostics now exist.                               | Local mobile diagnostic passed in this pass; real phone/3G remains required before closure.                                                                     | P1 open for real device | `tests/e2e/heart.spec.ts --project=mobile-chrome` passed; no production requests or permission errors observed locally.                                                                                |
+| Feed/Discovery/Social  | `/feed` stories                                                                   | Feed still performs a denied `collectionGroup("stories")` read in the mobile sweep.                           | Console is not clean and story data may be incomplete.                                      | Current story read contract does not satisfy Rules.                                                     | Not fixed here; no Rules loosening or catch-and-ignore.                                                                                                         | P1 open                 | Kept documented as a data/Rules contract follow-up.                                                                                                                                                    |
+| Shop/Hotel owner       | Product/offer image mutations                                                     | Entry surfaces are covered, but create/edit/delete media mutation stability is not durable.                   | Product/offer images may still flicker or lose state during real mutation flows.            | Existing E2E proves entry only.                                                                         | Not fixed here; needs vertical-specific tests.                                                                                                                  | P2 open                 | Owner Playwright entry cases remain green.                                                                                                                                                             |
+
+Current browser evidence for this follow-up:
+
+- `npx playwright test tests/e2e/public-profile.spec.ts --config tests/e2e/playwright.config.ts --project=mobile-chrome`
+  passed `5/5`.
+- Relevant full browser matrix passed `35/35` with one intentional desktop
+  Heart skip: Public Profile/Menu/QR, Owner/Menu/Orders, Waiter and mobile
+  Heart.
+- Slow-3G CDP probe on `/pidhimadh/menu` showed a nonblank public shell after
+  1s and 12s; real menu content was still delayed. Therefore the blank-root
+  symptom is fixed, but the large public bundle remains a launch performance
+  risk.
+
+Still not launch-go:
+
+- real phone/3G QR/media/Waiter checks were not run;
+- Feed story denied read remains P1;
+- forced Owner/Waiter listener-error behavior remains unproved;
+- Shop product and Hotel offer mutations remain P2 vertical-specific gaps;
+- public runtime/bundle extraction remains the structural fix for slow useful
+  content.
+
+Final verification for this follow-up:
+
+- `npm run test:functions` passed `4/4`.
+- `npm run test:rules` passed `17/17`; expected permission-denied lines are the
+  denial assertions.
+- `npm run test:unit` passed `134/134`.
+- `npm run lint`, `npm run format:check`, `npm run arch:check` passed.
+- `npm run build` passed with the existing large `social-app.js` chunk warning.
+- Relevant Playwright passed `35 passed`, `1 skipped` across desktop/mobile.
+- Local URL check: `http://127.0.0.1:5173/` returned HTTP 200. The configured
+  old LAN URL `http://192.168.1.168:5173/` timed out on this network; the
+  current WLAN IP `http://172.20.10.3:5173/` returned HTTP 200.
+- Bundle status: the build changed no tracked files under
+  `apps/menyra-social/bundled`.

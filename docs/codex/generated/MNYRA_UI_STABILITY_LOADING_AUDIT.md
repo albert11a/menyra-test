@@ -227,3 +227,44 @@ Still open:
 - Feed logs a denied story list;
 - a brief `Noch keine Bio.` state and sub-44px controls remain P2;
 - real device/media decode was not tested.
+
+## Public Startup Shell Follow-Up 2026-07-02
+
+Fixed in this follow-up:
+
+- Public website starts now render a neutral HTML startup shell inside `#app`
+  before the public entry bundle mounts. The shell is enabled only when the
+  existing synchronous public-route detector marks the request as a public
+  website start.
+- The shell uses generic `MNYRA` brand/skeleton geometry only. It does not
+  embed restaurant names, menu items, QR table context, cached business data or
+  private fields.
+- Normal app rendering replaces the shell and clears the startup flag; the
+  shell is not retained after the real Public Profile/Menu view mounts.
+
+Evidence:
+
+- New Playwright coverage in `tests/e2e/public-profile.spec.ts` blocks the
+  public entry and verifies the startup shell is visible, still busy, and does
+  not claim `PIDHImadh` or `Local Breakfast Plate`.
+- Relevant browser matrix passed `35/35` with one intentional desktop Heart
+  skip across Public Profile/Menu/QR, Owner/Menu/Orders, Waiter and mobile
+  Heart.
+- A Slow-3G CDP probe on `/pidhimadh/menu` showed `MNYRA` shell text after 1s
+  and after 12s. The real menu text was still not present at 12s, so useful
+  content performance remains a bundle/runtime issue.
+
+Updated status:
+
+- The previous "blank root" visual failure is mitigated.
+- Public useful content is still too slow on constrained mobile networks until
+  a real lightweight public runtime or bundle split exists.
+- Real phone/3G, QR scan, image decode and waiter tablet checks remain manual
+  launch requirements.
+
+Final verification for this follow-up passed: Functions `4/4`, Rules `17/17`,
+Unit `134/134`, lint, format check, architecture check, build and relevant
+Playwright `35/35` with one intentional desktop Heart skip. `npm run build`
+changed no tracked files under `apps/menyra-social/bundled`. `127.0.0.1:5173`
+and the current WLAN URL `172.20.10.3:5173` responded with HTTP 200; the old
+configured `192.168.1.168:5173` LAN URL timed out on this network.

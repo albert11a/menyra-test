@@ -337,3 +337,35 @@ Verification recorded for this sweep:
 - QR emulator isolation follow-up passed `2/2` on desktop/mobile.
 - Build passed with the existing large-chunk warning and changed the tracked
   Social bundle entry.
+
+## 25. Public Startup Shell Follow-Up 2026-07-02
+
+Follow-up status after the Clean Web startup-shell fix:
+
+- The old "blank app root" observation is superseded for public website starts.
+  The HTML now renders a generic `MNYRA` startup shell before the public entry
+  bundle mounts.
+- The shell is public-only and contains no restaurant, product, QR table,
+  cached business or private data.
+- A Slow-3G CDP probe on `/pidhimadh/menu` observed the shell after 1s and
+  after 12s. `Local Breakfast Plate` was still absent at 12s, so useful content
+  is still delayed by the large runtime.
+
+Updated issue list:
+
+| Priority | Issue                                               | Status                             |
+| -------- | --------------------------------------------------- | ---------------------------------- |
+| P1       | Empty public root under emulated 3G                 | Mitigated by startup shell         |
+| P1       | Slow useful public content under emulated 3G        | Open; runtime/bundle work required |
+| P1       | Feed story collection-group read denied             | Open; Rules unchanged              |
+| P1       | Safe physical-phone LAN emulator path absent        | Open                               |
+| P1       | Forced Owner/Waiter listener errors unproved        | Open evidence gap                  |
+| P2       | Real media decode/flicker for Owner, Shop and Hotel | Open; real phone/3G not tested     |
+
+Additional browser evidence: relevant Playwright passed `35/35` with one
+intentional desktop Heart skip after the startup-shell change.
+
+Final verification for the follow-up passed Functions `4/4`, Rules `17/17`,
+Unit `134/134`, lint, format check, architecture check and build. The build
+kept the known large `social-app.js` warning and changed no tracked bundled
+browser files.

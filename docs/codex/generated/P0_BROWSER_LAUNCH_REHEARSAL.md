@@ -375,3 +375,41 @@ data. QR query/history stayed stable. The launch rehearsal still fails overall:
 
 `agent-browser` was unavailable; Playwright/manual browser emulation was used.
 No real device was tested and no launch-go is issued.
+
+## Public Startup Shell Follow-Up 2026-07-02
+
+The latest Clean Web follow-up adds a small public-only HTML startup shell.
+This is not a runtime extraction and does not change routes, Firestore Rules,
+collections, production data, Ads or Analytics.
+
+New launch-rehearsal evidence:
+
+- Public startup no longer has an empty `#app` root while the public entry is
+  still loading. A neutral `MNYRA` skeleton shell is rendered only for
+  synchronous public website starts.
+- The shell contains no route/business/menu data. The new regression blocks the
+  public bundle and asserts the shell does not contain `PIDHImadh` or
+  `Local Breakfast Plate`.
+- Normal Public Profile/Menu rendering replaces the shell; QR `src=qr` and
+  `table` behavior remain green.
+- Relevant Playwright matrix passed `35 passed`, `1 skipped`: desktop/mobile
+  Public Profile/Menu/QR, Owner/Menu/Orders and Waiter, plus mobile Heart
+  diagnostics. The skipped test is the intentional desktop Heart diagnostic
+  skip.
+- Slow-3G CDP probe on `/pidhimadh/menu`: after 1s and after 12s the page was
+  not blank and showed the `MNYRA` shell; real menu content was still delayed.
+
+Updated launch interpretation:
+
+- The blank-root symptom from the mobile sweep is fixed.
+- The underlying public useful-content delay remains a P1 launch concern and a
+  P3 structural runtime/bundle task.
+- Feed story permission, forced Owner/Waiter listener errors, disabled/deleted
+  cart item UX and real phone/3G QR/media/tablet checks remain open.
+
+Final verification for this follow-up: Functions `4/4`, Rules `17/17`, Unit
+`134/134`, lint, format check, architecture check, build and relevant
+Playwright `35/35` passed with one intentional desktop Heart skip. The build
+changed no tracked bundle files. Local `127.0.0.1:5173` returned HTTP 200;
+`192.168.1.168:5173` timed out because the current WLAN address is
+`172.20.10.3`, which returned HTTP 200.

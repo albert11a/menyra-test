@@ -277,3 +277,25 @@ check and build.
 The relevant full Playwright run finished `32 passed`, `1 failed`, `1 skipped`.
 The failure is accepted evidence of the open Heart mobile focus problem, not a
 test-suite success. Real device and 3G business-tool acceptance remain open.
+
+## Public Startup Shell Follow-Up 2026-07-02
+
+| Tool / area                  | Mobile observation                                                                                                       | Automated result                                                                                                                                   | Remaining work                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Public website startup       | Public routes now show a neutral `MNYRA` startup shell instead of an empty root while the public entry is still loading. | New Public Profile E2E blocks the public bundle and passed desktop/mobile; relevant matrix passed `35/35` with one intentional desktop Heart skip. | Useful content under 3G is still delayed by the large runtime; real phone/3G check remains required. |
+| Restaurant Owner Menu/Orders | No regression in current matrix.                                                                                         | Owner Menu CRUD, numeric price, Orders list/refresh/scope passed desktop/mobile.                                                                   | Forced listener errors and real image replacement remain.                                            |
+| Waiter                       | No regression in current matrix.                                                                                         | Waiter status/security flow passed desktop/mobile.                                                                                                 | Tablet, zero-order and active revocation remain.                                                     |
+| Heart Leads                  | Local mobile diagnostic passed in this run.                                                                              | Mobile Heart diagnostic passed; no production request or permission error observed.                                                                | Real phone/3G image/Search behavior still needs manual proof before closing the rollback concern.    |
+
+Matrix status update:
+
+- `Clean Web loading stability` improves from "blank root open" to "startup
+  shell mitigated, useful content delay still open".
+- This does not approve launch. Feed story permissions, real device QR/media,
+  disabled/deleted cart item UX, Shop product mutation and Hotel offer mutation
+  remain outside the closed evidence.
+
+Final verification for this update passed Functions `4/4`, Rules `17/17`, Unit
+`134/134`, lint, format check, architecture check, build and relevant
+Playwright `35/35` with one intentional desktop Heart skip. No tracked bundled
+browser files changed in the build.

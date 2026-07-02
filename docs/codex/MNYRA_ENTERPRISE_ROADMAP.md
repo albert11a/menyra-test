@@ -376,3 +376,29 @@ Before the next launch decision:
 The sweep did safely close the local Public/QR production-bootstrap leak and
 the failed-responsive-image retry loop. It did not start runtime extraction or
 change the product roadmap order.
+
+## Public Startup Shell Gate Update 2026-07-02
+
+The Clean Web follow-up implements the first item in the sweep's next-step
+list at a narrow visual level: public website starts now have a truthful
+generic first-render shell while the public bundle loads.
+
+Roadmap impact:
+
+- P1 visual blank-root risk is mitigated for public starts. The document is no
+  longer empty while JavaScript loads.
+- P1 useful-content performance is still not solved. The shell does not reduce
+  the `social-app.js`/Firebase/profile-menu bundle cost and must not be read as
+  launch approval for slow mobile networks.
+- P3 public runtime extraction and bundle budgets remain the structural work.
+- Real phone/3G QR scan, image decode, Waiter tablet use, Feed story permission
+  and forced Owner/Waiter error behavior remain before a controlled launch
+  decision.
+
+Current evidence: relevant Playwright passed `35/35` with one intentional
+desktop Heart skip; a Slow-3G CDP probe showed the public shell after 1s and
+12s on `/pidhimadh/menu`, but not real menu content by 12s.
+
+Final verification passed Functions `4/4`, Rules `17/17`, Unit `134/134`,
+lint, format check, architecture check and build. The build kept the known
+large `social-app.js` warning and changed no tracked bundled browser files.
