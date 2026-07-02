@@ -376,40 +376,48 @@ data. QR query/history stayed stable. The launch rehearsal still fails overall:
 `agent-browser` was unavailable; Playwright/manual browser emulation was used.
 No real device was tested and no launch-go is issued.
 
-## Public Startup Shell Follow-Up 2026-07-02
+## Public Startup Shell Product Review Removal 2026-07-02
 
-The latest Clean Web follow-up adds a small public-only HTML startup shell.
-This is not a runtime extraction and does not change routes, Firestore Rules,
-collections, production data, Ads or Analytics.
-
-New launch-rehearsal evidence:
-
-- Public startup no longer has an empty `#app` root while the public entry is
-  still loading. A neutral `MNYRA` skeleton shell is rendered only for
-  synchronous public website starts.
-- The shell contains no route/business/menu data. The new regression blocks the
-  public bundle and asserts the shell does not contain `PIDHImadh` or
-  `Local Breakfast Plate`.
-- Normal Public Profile/Menu rendering replaces the shell; QR `src=qr` and
-  `table` behavior remain green.
-- Relevant Playwright matrix passed `35 passed`, `1 skipped`: desktop/mobile
-  Public Profile/Menu/QR, Owner/Menu/Orders and Waiter, plus mobile Heart
-  diagnostics. The skipped test is the intentional desktop Heart diagnostic
-  skip.
-- Slow-3G CDP probe on `/pidhimadh/menu`: after 1s and after 12s the page was
-  not blank and showed the `MNYRA` shell; real menu content was still delayed.
+The Public Startup Shell from `16be1d0d` was removed after product review. It
+was a cosmetic mitigation only; Mnyra should not hide the measured 3G startup
+problem behind a generic shell, skeleton, dummy content or hidden business data.
+This cleanup does not change routes, Firestore Rules, collections, production
+data, Ads, Analytics, Heart, Feed, Shop/Hotel mutations or runtime extraction.
 
 Updated launch interpretation:
 
-- The blank-root symptom from the mobile sweep is fixed.
-- The underlying public useful-content delay remains a P1 launch concern and a
-  P3 structural runtime/bundle task.
+- Public startup can again show an empty `#app` root under constrained startup
+  before the public bundle/runtime arrives. This is an expected open P1 visible
+  defect, not a regression to hide.
+- The structural cause remains P3 public runtime/bundle work: split Public
+  Profile and Public Menu/QR runtime, avoid unneeded Firebase/Auth/Firestore
+  before public first content, make route-specific public entry points and set
+  bundle budgets.
+- Public/QR production-isolation and the broken menu-image request-loop fix
+  remain required retained fixes.
 - Feed story permission, forced Owner/Waiter listener errors, disabled/deleted
   cart item UX and real phone/3G QR/media/tablet checks remain open.
 
-Final verification for this follow-up: Functions `4/4`, Rules `17/17`, Unit
-`134/134`, lint, format check, architecture check, build and relevant
-Playwright `35/35` passed with one intentional desktop Heart skip. The build
-changed no tracked bundle files. Local `127.0.0.1:5173` returned HTTP 200;
-`192.168.1.168:5173` timed out because the current WLAN address is
-`172.20.10.3`, which returned HTTP 200.
+There is no launch-go.
+
+Cleanup verification after shell removal:
+
+- Shell-specific source/output markers were absent after build.
+- Mobile Public route probe passed cold isolated, refresh and warm states for
+  `/pidhimadh`, `/pidhimadh/menu`, `/pidhimadh/menu?src=qr&table=2`,
+  `/pidhimadh/posts`, `/shopdemo` and `/hoteldemo`.
+- Back/Forward preserved QR source/table state.
+- Production Firebase/Functions request count was `0` in emulator mode.
+- Broken responsive image request loop remained bounded: `8` failed fake image
+  requests, `0` visible broken images.
+- Slow 3G on `/pidhimadh/menu` had an empty body after 12s and real menu
+  content after about `44.5 s`; this remains a P1 launch blocker.
+- Non-Heart Playwright passed `32/32`. Full matrix with existing Heart
+  diagnostic ended `32 passed`, `1 failed`, `1 skipped` because the known mobile
+  Heart Search diagnostic still fails.
+- Functions `4/4`, Rules `17/17`, Unit `134/134`, lint, format check,
+  architecture check and build passed. The build kept the known large
+  `social-app.js` warning and changed no tracked bundled browser files.
+- Local `127.0.0.1:5173` returned HTTP 200; the old configured
+  `192.168.1.168:5173` LAN URL timed out on this network; current WLAN
+  `172.20.10.3:5173` returned HTTP 200.

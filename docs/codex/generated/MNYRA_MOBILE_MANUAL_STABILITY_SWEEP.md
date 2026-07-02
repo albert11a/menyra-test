@@ -338,34 +338,54 @@ Verification recorded for this sweep:
 - Build passed with the existing large-chunk warning and changed the tracked
   Social bundle entry.
 
-## 25. Public Startup Shell Follow-Up 2026-07-02
+## 25. Public Startup Shell Product Review Removal 2026-07-02
 
-Follow-up status after the Clean Web startup-shell fix:
-
-- The old "blank app root" observation is superseded for public website starts.
-  The HTML now renders a generic `MNYRA` startup shell before the public entry
-  bundle mounts.
-- The shell is public-only and contains no restaurant, product, QR table,
-  cached business or private data.
-- A Slow-3G CDP probe on `/pidhimadh/menu` observed the shell after 1s and
-  after 12s. `Local Breakfast Plate` was still absent at 12s, so useful content
-  is still delayed by the large runtime.
+Product review removed the `16be1d0d` Public Startup Shell. The shell was only a
+cosmetic mitigation for the blank public root under throttled startup; it was
+not a performance fix and is not the desired product direction. Mnyra should
+not mask 3G startup with a generic shell, dummy content, hidden business data or
+a Mnyra-like skeleton screen.
 
 Updated issue list:
 
-| Priority | Issue                                               | Status                             |
-| -------- | --------------------------------------------------- | ---------------------------------- |
-| P1       | Empty public root under emulated 3G                 | Mitigated by startup shell         |
-| P1       | Slow useful public content under emulated 3G        | Open; runtime/bundle work required |
-| P1       | Feed story collection-group read denied             | Open; Rules unchanged              |
-| P1       | Safe physical-phone LAN emulator path absent        | Open                               |
-| P1       | Forced Owner/Waiter listener errors unproved        | Open evidence gap                  |
-| P2       | Real media decode/flicker for Owner, Shop and Hotel | Open; real phone/3G not tested     |
+| Priority | Issue                                               | Status                                                |
+| -------- | --------------------------------------------------- | ----------------------------------------------------- |
+| P1       | Empty public root under emulated 3G                 | Open again after shell removal; expected known defect |
+| P1       | Slow useful public content under emulated 3G        | Open; runtime/bundle work required                    |
+| P1       | Feed story collection-group read denied             | Open; Rules unchanged                                 |
+| P1       | Safe physical-phone LAN emulator path absent        | Open                                                  |
+| P1       | Forced Owner/Waiter listener errors unproved        | Open evidence gap                                     |
+| P2       | Real media decode/flicker for Owner, Shop and Hotel | Open; real phone/3G not tested                        |
 
-Additional browser evidence: relevant Playwright passed `35/35` with one
-intentional desktop Heart skip after the startup-shell change.
+Retained fixes from the broader sweep: Public/QR emulator bootstrap isolation
+and the broken responsive menu image `srcset` request-loop fix remain required
+and must stay green.
 
-Final verification for the follow-up passed Functions `4/4`, Rules `17/17`,
-Unit `134/134`, lint, format check, architecture check and build. The build
-kept the known large `social-app.js` warning and changed no tracked bundled
-browser files.
+The real solution remains a separate Public Runtime Split / 3G Stability
+Architecture Plan: split Public Profile and Public Menu/QR runtime, avoid
+Firebase/Auth/Firestore before public first content where not needed, make
+route-specific public entry points, define bundle budgets and verify real
+phone/3G/QR/media behavior. There is no launch-go.
+
+Cleanup verification after shell removal:
+
+- Shell-specific source/output markers were absent:
+  `data-public-startup-shell`, `.mnyra-public-startup-shell`,
+  `public-website-startup` and `MNYRA wird geladen`.
+- Mobile route probe passed cold isolated, refresh and warm states for
+  `/pidhimadh`, `/pidhimadh/menu`, `/pidhimadh/menu?src=qr&table=2`,
+  `/pidhimadh/posts`, `/shopdemo` and `/hoteldemo`.
+- Back/Forward preserved QR `src=qr` and `table=2`.
+- Public/QR emulator probe observed `0` production Firebase/Functions
+  requests.
+- Broken image-loop probe observed `8` failed fake image requests and `0`
+  visible broken images.
+- Slow-3G probe on `/pidhimadh/menu` showed `0` body text after 12s, no shell
+  markers and real menu content after about `44.5 s`; this is the expected open
+  P1/P3 finding, not a launch pass.
+- Non-Heart Playwright matrix passed `32/32`. The full matrix with existing
+  Heart diagnostics finished `32 passed`, `1 failed`, `1 skipped`; the failure
+  is the known Heart mobile Search diagnostic and was not fixed here.
+- Final baseline passed Functions `4/4`, Rules `17/17`, Unit `134/134`, lint,
+  format check, architecture check and build. The build retained the known large
+  `social-app.js` warning and changed no tracked bundled browser files.

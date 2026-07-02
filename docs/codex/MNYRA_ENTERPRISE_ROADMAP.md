@@ -377,28 +377,42 @@ The sweep did safely close the local Public/QR production-bootstrap leak and
 the failed-responsive-image retry loop. It did not start runtime extraction or
 change the product roadmap order.
 
-## Public Startup Shell Gate Update 2026-07-02
+## Public Startup Shell Product Review Removal 2026-07-02
 
-The Clean Web follow-up implements the first item in the sweep's next-step
-list at a narrow visual level: public website starts now have a truthful
-generic first-render shell while the public bundle loads.
+The Public Startup Shell from `16be1d0d` was deliberately removed after product
+review. It was a cosmetic mitigation only, not the enterprise-grade answer to
+slow public startup. Mnyra should not hide 3G startup cost behind a generic
+shell, skeleton, dummy content or hidden business data.
 
 Roadmap impact:
 
-- P1 visual blank-root risk is mitigated for public starts. The document is no
-  longer empty while JavaScript loads.
-- P1 useful-content performance is still not solved. The shell does not reduce
-  the `social-app.js`/Firebase/profile-menu bundle cost and must not be read as
-  launch approval for slow mobile networks.
+- P1 visual blank-root risk is open again for constrained public starts and
+  blocks launch acceptance.
+- P1 useful-content performance remains unsolved because the shared
+  `social-app.js`, Firebase vendor code and profile/menu renderer still gate
+  public first content.
 - P3 public runtime extraction and bundle budgets remain the structural work.
+- The next larger follow-up should be a separate Public Runtime Split / 3G
+  Stability Architecture Plan: split Public Profile and Public Menu/QR runtime,
+  avoid unnecessary Firebase/Auth/Firestore before public first content, define
+  route-specific public entry points and set bundle budgets.
 - Real phone/3G QR scan, image decode, Waiter tablet use, Feed story permission
   and forced Owner/Waiter error behavior remain before a controlled launch
   decision.
 
-Current evidence: relevant Playwright passed `35/35` with one intentional
-desktop Heart skip; a Slow-3G CDP probe showed the public shell after 1s and
-12s on `/pidhimadh/menu`, but not real menu content by 12s.
+There is no launch-go.
 
-Final verification passed Functions `4/4`, Rules `17/17`, Unit `134/134`,
-lint, format check, architecture check and build. The build kept the known
-large `social-app.js` warning and changed no tracked bundled browser files.
+Cleanup verification passed for the intended scope: shell-specific source/output
+markers were absent after build; the mobile Public route probe passed cold
+isolated, refresh, warm and Back/Forward states; QR `src=qr&table=2` stayed
+stable; production Firebase/Functions request count was `0`; broken image-loop
+remained bounded at `8` failed fake image requests and `0` visible broken
+images. Slow 3G remained blank after 12s and reached real menu content after
+about `44.5 s`, so the launch blocker remains real.
+
+Final baseline passed Functions `4/4`, Rules `17/17`, Unit `134/134`, lint,
+format check, architecture check and build. Non-Heart Playwright passed
+`32/32`; the full matrix with existing Heart diagnostics retained the known
+mobile Heart Search failure (`32 passed`, `1 failed`, `1 skipped`). The build
+kept the known large `social-app.js` warning and changed no tracked bundled
+browser files.

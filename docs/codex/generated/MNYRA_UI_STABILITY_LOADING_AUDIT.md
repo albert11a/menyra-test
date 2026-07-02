@@ -228,43 +228,40 @@ Still open:
 - a brief `Noch keine Bio.` state and sub-44px controls remain P2;
 - real device/media decode was not tested.
 
-## Public Startup Shell Follow-Up 2026-07-02
+## Public Startup Shell Product Review Removal 2026-07-02
 
-Fixed in this follow-up:
-
-- Public website starts now render a neutral HTML startup shell inside `#app`
-  before the public entry bundle mounts. The shell is enabled only when the
-  existing synchronous public-route detector marks the request as a public
-  website start.
-- The shell uses generic `MNYRA` brand/skeleton geometry only. It does not
-  embed restaurant names, menu items, QR table context, cached business data or
-  private fields.
-- Normal app rendering replaces the shell and clears the startup flag; the
-  shell is not retained after the real Public Profile/Menu view mounts.
-
-Evidence:
-
-- New Playwright coverage in `tests/e2e/public-profile.spec.ts` blocks the
-  public entry and verifies the startup shell is visible, still busy, and does
-  not claim `PIDHImadh` or `Local Breakfast Plate`.
-- Relevant browser matrix passed `35/35` with one intentional desktop Heart
-  skip across Public Profile/Menu/QR, Owner/Menu/Orders, Waiter and mobile
-  Heart.
-- A Slow-3G CDP probe on `/pidhimadh/menu` showed `MNYRA` shell text after 1s
-  and after 12s. The real menu text was still not present at 12s, so useful
-  content performance remains a bundle/runtime issue.
+The Public Startup Shell from `16be1d0d` was removed after product review. It
+was a cosmetic first-paint mitigation, not a real loading-stability or
+performance solution. The product direction is to keep the blank/slow startup
+finding visible until the public runtime and bundle architecture are corrected.
 
 Updated status:
 
-- The previous "blank root" visual failure is mitigated.
-- Public useful content is still too slow on constrained mobile networks until
-  a real lightweight public runtime or bundle split exists.
+- No fake shell, replacement shell, Mnyra-like skeleton shell, dummy business
+  data or hidden public data is used for constrained public startup.
+- Public routes can still look blank under emulated Fast/Slow 3G before the
+  public bundle/runtime arrives. This remains a P1 visible launch blocker and a
+  P3 structural runtime/bundle issue.
+- Public/QR emulator bootstrap isolation and the broken responsive image
+  request-loop fix remain the retained small fixes from the broader sweep.
 - Real phone/3G, QR scan, image decode and waiter tablet checks remain manual
-  launch requirements.
+  launch requirements. There is no launch-go.
 
-Final verification for this follow-up passed: Functions `4/4`, Rules `17/17`,
-Unit `134/134`, lint, format check, architecture check, build and relevant
-Playwright `35/35` with one intentional desktop Heart skip. `npm run build`
-changed no tracked files under `apps/menyra-social/bundled`. `127.0.0.1:5173`
-and the current WLAN URL `172.20.10.3:5173` responded with HTTP 200; the old
-configured `192.168.1.168:5173` LAN URL timed out on this network.
+Required real fix: split Public Profile and Public Menu/QR runtime, avoid
+unneeded Firebase/Auth/Firestore before public first content, make route-specific
+public entry points, define bundle budgets and verify on real phone/3G/QR/media.
+
+Cleanup verification after shell removal: shell-specific source/output markers
+were absent, the mobile Public route probe passed cold isolated, refresh, warm
+and Back/Forward states, QR `src=qr&table=2` stayed stable, production
+Firebase/Functions request count was `0`, and the broken image-loop probe stayed
+bounded at `8` failed fake image requests with `0` visible broken images. Slow
+3G on `/pidhimadh/menu` was blank after 12s and reached real menu content after
+about `44.5 s`, so the P1/P3 startup blocker remains open.
+
+Final verification passed Functions `4/4`, Rules `17/17`, Unit `134/134`,
+lint, format check, architecture check and build. Non-Heart Playwright passed
+`32/32`; the full matrix with existing Heart diagnostics had the known mobile
+Heart Search failure (`32 passed`, `1 failed`, `1 skipped`). The build retained
+the known large `social-app.js` warning and changed no tracked bundled browser
+files.

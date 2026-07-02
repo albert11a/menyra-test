@@ -277,53 +277,46 @@ Final verification for this follow-up:
 Full matrices, environment and artifact locations are in
 `MNYRA_MOBILE_MANUAL_STABILITY_SWEEP.md`. There is no Clean Web launch-go.
 
-## Public Startup Shell Follow-Up 2026-07-02
+## Public Startup Shell Product Review Removal 2026-07-02
 
-This follow-up addresses the visible blank-root part of the mobile/3G public
-startup finding without starting runtime extraction, changing routes, loosening
-Rules or faking business data.
+The Public Startup Shell introduced in `16be1d0d` was removed after product
+review. It was technically safe as a cosmetic mitigation, but it made the
+Slow/3G startup feel less broken without fixing the cause. Product direction is
+to leave this as an honest P1/P3 blocker until the public runtime and bundle
+architecture are corrected.
 
-| Bereich                | Route/Flow                                                                        | gefundenes Problem                                                                                            | sichtbarer Effekt fuer Nutzer                                                               | vermutete Ursache                                                                                       | Fix-Status                                                                                                                                                      | Prioritaet              | Test/Beleg                                                                                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Public mobile/3G       | `/pidhimadh`, `/pidhimadh/menu`, `/pidhimadh/posts`, QR, shop/hotel public routes | The HTML `#app` root was empty until the public entry and large app bundle mounted.                           | Under throttled mobile startup the page looked blank/broken before real content could load. | Public route detection existed in the head, but no truthful initial DOM was rendered before the bundle. | Fixed for the blank-root effect: public website starts now show a neutral `MNYRA` startup shell with stable skeleton geometry. Real content delay remains open. | P1 mitigated            | New Playwright test blocks the public entry and asserts the shell is visible and contains no business/menu text. Slow-3G CDP probe on `/pidhimadh/menu` showed `MNYRA` shell visible after 1s and 12s. |
-| Public startup privacy | Public startup shell before app mount                                             | A first-paint shell could accidentally imply specific business data if it used route names or cached content. | Users could briefly see wrong or stale business identity during startup.                    | Any HTML-only shell runs before canonical public route data is confirmed.                               | Fixed by using only generic brand/skeleton content; no business name, product, table or private data is embedded.                                               | P1                      | `tests/e2e/public-profile.spec.ts` asserts the shell does not contain `PIDHImadh` or `Local Breakfast Plate`.                                                                                          |
-| Public Profile/Menu/QR | Direct load, refresh, QR query                                                    | New shell must not persist after normal app mount or interfere with QR/source/table.                          | A stuck shell would hide real content or break QR flow.                                     | Root-level initial markup can conflict with app render if not replaced.                                 | Verified: app render replaces the shell; QR/source/table tests remain green.                                                                                    | P1                      | Relevant Playwright matrix passed `35 passed`, `1 skipped` across desktop/mobile; desktop Heart skip is intentional.                                                                                   |
-| Heart/CEO              | Mobile Leads diagnostic                                                           | Prior report had an open Heart Search/flicker concern after rollback.                                         | Heart could still feel unstable if real phone/3G reproduces image or Search focus churn.    | The exact real-device trigger is still not proven; diagnostics now exist.                               | Local mobile diagnostic passed in this pass; real phone/3G remains required before closure.                                                                     | P1 open for real device | `tests/e2e/heart.spec.ts --project=mobile-chrome` passed; no production requests or permission errors observed locally.                                                                                |
-| Feed/Discovery/Social  | `/feed` stories                                                                   | Feed still performs a denied `collectionGroup("stories")` read in the mobile sweep.                           | Console is not clean and story data may be incomplete.                                      | Current story read contract does not satisfy Rules.                                                     | Not fixed here; no Rules loosening or catch-and-ignore.                                                                                                         | P1 open                 | Kept documented as a data/Rules contract follow-up.                                                                                                                                                    |
-| Shop/Hotel owner       | Product/offer image mutations                                                     | Entry surfaces are covered, but create/edit/delete media mutation stability is not durable.                   | Product/offer images may still flicker or lose state during real mutation flows.            | Existing E2E proves entry only.                                                                         | Not fixed here; needs vertical-specific tests.                                                                                                                  | P2 open                 | Owner Playwright entry cases remain green.                                                                                                                                                             |
+| Bereich                    | Route/Flow                                                                        | gefundenes Problem                                                                                             | sichtbarer Effekt fuer Nutzer                                                            | vermutete Ursache                                                                         | Fix-Status                                                                    | Prioritaet | Test/Beleg                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------- |
+| Public mobile/3G           | `/pidhimadh`, `/pidhimadh/menu`, `/pidhimadh/posts`, QR, shop/hotel public routes | Shell removed after product review; the public root can again be blank until the public bundle/runtime mounts. | Under throttled mobile startup the page can look blank/broken before real content loads. | Large shared runtime, Firebase vendor code and profile/menu renderer block first content. | Open; no fake shell, replacement shell, skeleton shell or dummy data is used. | P1         | Existing Fast/Slow 3G sweep remains the blocking evidence; new cleanup browser run must confirm normal routes. |
+| Public Profile/Menu/QR     | Direct load, refresh, QR query                                                    | Shell removal must not regress normal public routes, QR source/table context or private-field boundaries.      | Normal users should still see the correct business/menu once the app loads.              | HTML cleanup only; public runtime path is unchanged.                                      | Retained; verify through Public Profile/Menu/QR matrix.                       | P1         | Public Playwright matrix and request checks.                                                                   |
+| Public/QR production calls | Public/QR emulator mode                                                           | Emulator startup must not call production Functions.                                                           | Local verification would be unsafe/noisy if production bootstrap returned.               | Prior fixed endpoint selection must remain active.                                        | Retained; no production calls allowed in emulator.                            | P1         | Public production-isolation E2E.                                                                               |
+| Public menu images         | Broken responsive menu images                                                     | Failed responsive image candidates must not create a `srcset` request loop.                                    | Broken seed images should fail boundedly with fallback, not flood network/console.       | Prior fixed fallback must continue removing failed candidates.                            | Retained.                                                                     | P1         | Public menu image/fallback tests.                                                                              |
+| Heart/CEO                  | Mobile Leads diagnostic                                                           | No Heart fix in this cleanup.                                                                                  | Heart can still feel unstable if real phone/3G reproduces image or Search focus churn.   | Exact real-device trigger remains unproven.                                               | Open; no Heart code changed.                                                  | P1         | Existing diagnostic remains evidence only.                                                                     |
+| Feed/Discovery/Social      | `/feed` stories                                                                   | Feed still performs a denied `collectionGroup("stories")` read in the mobile sweep.                            | Console is not clean and story data may be incomplete.                                   | Current story read contract does not satisfy Rules.                                       | Open; no Feed fix and no Rules loosening.                                     | P1         | Kept documented as a data/Rules contract follow-up.                                                            |
+| Shop/Hotel owner           | Product/offer image mutations                                                     | Entry surfaces are covered, but create/edit/delete media mutation stability is not durable.                    | Product/offer images may still flicker or lose state during real mutation flows.         | Existing E2E proves entry only.                                                           | Open; no Shop/Hotel mutation in this cleanup.                                 | P2         | Owner entry cases only.                                                                                        |
 
-Current browser evidence for this follow-up:
+Required real fix: Public Profile Runtime split, Public Menu/QR Runtime split,
+avoid unneeded Firebase/Auth/Firestore before public first content, route-specific
+public entry points, bundle budgets and real phone/3G/QR/media checks. There is
+no launch-go.
 
-- `npx playwright test tests/e2e/public-profile.spec.ts --config tests/e2e/playwright.config.ts --project=mobile-chrome`
-  passed `5/5`.
-- Relevant full browser matrix passed `35/35` with one intentional desktop
-  Heart skip: Public Profile/Menu/QR, Owner/Menu/Orders, Waiter and mobile
-  Heart.
-- Slow-3G CDP probe on `/pidhimadh/menu` showed a nonblank public shell after
-  1s and 12s; real menu content was still delayed. Therefore the blank-root
-  symptom is fixed, but the large public bundle remains a launch performance
-  risk.
+Cleanup verification after shell removal:
 
-Still not launch-go:
-
-- real phone/3G QR/media/Waiter checks were not run;
-- Feed story denied read remains P1;
-- forced Owner/Waiter listener-error behavior remains unproved;
-- Shop product and Hotel offer mutations remain P2 vertical-specific gaps;
-- public runtime/bundle extraction remains the structural fix for slow useful
-  content.
-
-Final verification for this follow-up:
-
-- `npm run test:functions` passed `4/4`.
-- `npm run test:rules` passed `17/17`; expected permission-denied lines are the
-  denial assertions.
-- `npm run test:unit` passed `134/134`.
-- `npm run lint`, `npm run format:check`, `npm run arch:check` passed.
-- `npm run build` passed with the existing large `social-app.js` chunk warning.
-- Relevant Playwright passed `35 passed`, `1 skipped` across desktop/mobile.
-- Local URL check: `http://127.0.0.1:5173/` returned HTTP 200. The configured
-  old LAN URL `http://192.168.1.168:5173/` timed out on this network; the
-  current WLAN IP `http://172.20.10.3:5173/` returned HTTP 200.
-- Bundle status: the build changed no tracked files under
-  `apps/menyra-social/bundled`.
+- Removed from source/output: shell markup, shell CSS, shell DOM markers and the
+  shell-specific E2E case.
+- Mobile Public route probe passed cold isolated, refresh and warm states for
+  `/pidhimadh`, `/pidhimadh/menu`, `/pidhimadh/menu?src=qr&table=2`,
+  `/pidhimadh/posts`, `/shopdemo` and `/hoteldemo`; Back/Forward preserved QR
+  `src=qr` and `table=2`.
+- Public/QR production isolation remained green with `0` production
+  Firebase/Functions requests.
+- Broken responsive image loop remained fixed: `8` failed fake image requests,
+  `0` visible broken images.
+- Slow 3G on `/pidhimadh/menu` was blank after 12s with no shell markers and
+  loaded real menu content after about `44.5 s`.
+- Non-Heart Playwright passed `32/32`; full matrix with existing Heart
+  diagnostics ended `32 passed`, `1 failed`, `1 skipped` because the known
+  mobile Heart Search diagnostic still fails. No Heart fix was made.
+- Required baseline passed Functions `4/4`, Rules `17/17`, Unit `134/134`,
+  lint, format check, architecture check and build. The build kept the known
+  large `social-app.js` warning and changed no tracked bundled browser files.

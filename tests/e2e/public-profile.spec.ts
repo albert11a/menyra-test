@@ -111,9 +111,6 @@ async function expectPublicProfileRoute(
   await expect(page.locator("body")).toContainText(route.expectedText, {
     timeout: 20_000,
   });
-  await expect(page.locator('[data-public-startup-shell="true"]')).toHaveCount(
-    0,
-  );
   await expectNoPrivateMarkers(page, route.path);
   await expectProfileAvatarFallback(page, route.path);
   await expectNoBrokenLoadedImages(page, route.path);
@@ -123,9 +120,6 @@ async function expectPublicProfileRoute(
     await expect(page.locator("body")).toContainText(route.expectedText, {
       timeout: 20_000,
     });
-    await expect(
-      page.locator('[data-public-startup-shell="true"]'),
-    ).toHaveCount(0);
     await expectNoPrivateMarkers(page, `${route.path} refresh`);
     await expectProfileAvatarFallback(page, `${route.path} refresh`);
     await expectNoBrokenLoadedImages(page, `${route.path} refresh`);
@@ -133,44 +127,6 @@ async function expectPublicProfileRoute(
 }
 
 test.describe("public profile launch smoke", () => {
-  test("shows a truthful public startup shell before the public bundle mounts", async ({
-    page,
-  }) => {
-    await page.route(
-      /\/apps\/menyra-social\/bundled\/entry\/social-public-entry\.js(?:\?.*)?$/,
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: "text/javascript",
-          body: "",
-        });
-      },
-    );
-    await page.route(
-      /\/apps\/menyra-social\/social-public-entry\.js(?:\?.*)?$/,
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: "text/javascript",
-          body: "",
-        });
-      },
-    );
-
-    await page.goto(withEmulatorParams("/pidhimadh/menu"), {
-      waitUntil: "domcontentloaded",
-    });
-
-    const shell = page.locator('[data-public-startup-shell="true"]');
-    await expect(shell).toBeVisible();
-    await expect(shell).toHaveAttribute("data-startup-shell-kind", "public");
-    await expect(shell).toHaveAttribute("data-startup-shell-state", "loading");
-    await expect(page.locator("#app")).toHaveAttribute("aria-busy", "true");
-    await expect(shell).toContainText("MNYRA");
-    await expect(shell).not.toContainText("PIDHImadh");
-    await expect(shell).not.toContainText("Local Breakfast Plate");
-  });
-
   test("opens seeded public profile and posts routes without private field leaks", async ({
     page,
   }) => {

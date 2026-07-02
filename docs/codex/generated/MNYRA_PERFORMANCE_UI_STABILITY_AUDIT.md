@@ -268,33 +268,38 @@ stability fixes did remove the broken-image request loop and production
 bootstrap call in emulator mode. Heart Search focus and Feed story permission
 remain separate P1 issues.
 
-## Public Startup Shell Follow-Up 2026-07-02
+## Public Startup Shell Product Review Removal 2026-07-02
 
-The latest Clean Web follow-up removes the _empty root_ part of the 3G finding
-without claiming a performance win. Public website starts now render a small
-HTML `MNYRA` startup shell before the public entry bundle mounts. This shell is
-generic, public-only and contains no route/business/menu data.
+The `16be1d0d` Public Startup Shell was removed after product review. It hid the
+empty-root symptom but did not reduce transfer size, parse cost, Firebase vendor
+loading or public route runtime coupling. Mnyra should not present a generic
+shell as a substitute for real 3G stability.
 
 Performance interpretation:
 
-- Fixed: constrained-network public starts no longer look like a completely
-  blank/broken document while JavaScript loads.
-- Still open: the actual Public Profile/Menu useful content is still gated by
-  the large `social-app.js`, Firebase vendor code and the profile/menu renderer
-  chunk.
-- Still required: public runtime extraction, route-level bundle budgets and
-  real phone/3G media checks before launch acceptance.
+- Open P1 visible effect: constrained-network public starts can again look
+  blank before useful content arrives.
+- Open P3 structural cause: Public Profile/Menu/QR are still gated by the large
+  shared runtime, Firebase vendor code and profile/menu renderer chunk.
+- Retained fixes: Public/QR emulator bootstrap isolation and the failed image
+  `srcset` request-loop fix remain part of the clean-web baseline.
+- No launch-go: real phone/3G/QR/media checks and bundle/runtime architecture
+  work remain required.
 
-Evidence:
+Required real fix: split Public Profile and Public Menu/QR runtime, avoid
+unneeded Firebase/Auth/Firestore before public first content, make route-specific
+public entry points and set enforceable bundle budgets.
 
-- New `tests/e2e/public-profile.spec.ts` startup-shell case passed on desktop
-  and mobile by blocking the public entry and asserting a nonblank, generic
-  shell.
-- Slow-3G CDP probe on `/pidhimadh/menu` showed the shell at 1s and 12s, while
-  real menu text was still absent at 12s.
-- Relevant browser matrix passed `35/35` with one intentional desktop Heart
-  skip.
+Cleanup verification after shell removal: source/output shell markers were
+absent, the mobile Public route probe passed cold isolated, refresh, warm and
+Back/Forward states, and production Firebase/Functions request count was `0`.
+Slow 3G on `/pidhimadh/menu` showed an empty body after 12s and real menu
+content after about `44.5 s`, confirming the remaining P1 visible effect and P3
+runtime/bundle cause.
 
-Final verification passed Functions `4/4`, Rules `17/17`, Unit `134/134`,
-lint, format check, architecture check and build. The build retained the known
-large `social-app.js` warning and changed no tracked bundle files.
+Final baseline passed Functions `4/4`, Rules `17/17`, Unit `134/134`, lint,
+format check, architecture check and build. Non-Heart Playwright passed
+`32/32`; the full matrix with existing Heart diagnostics retained the known
+mobile Heart Search failure (`32 passed`, `1 failed`, `1 skipped`). The build
+kept the known large `social-app.js` warning and changed no tracked bundled
+browser files.
