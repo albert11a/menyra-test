@@ -36,6 +36,7 @@ export function bindAppShellEventsCore({
   ensurePostsDataForProfileFn,
   ensureMenuDataForProfileFn,
   ensureFocusDataForProfileFn,
+  openOwnBusinessProfileFn,
   openProfileViewFromBusinessFn
 } = {}) {
   const doc = documentObj || null;
@@ -79,6 +80,9 @@ export function bindAppShellEventsCore({
   const ensureFocusDataForProfile = typeof ensureFocusDataForProfileFn === "function"
     ? ensureFocusDataForProfileFn
     : (() => {});
+  const openOwnBusinessProfile = typeof openOwnBusinessProfileFn === "function"
+    ? openOwnBusinessProfileFn
+    : null;
   const openProfileViewFromBusiness = typeof openProfileViewFromBusinessFn === "function"
     ? openProfileViewFromBusinessFn
     : null;
@@ -865,6 +869,17 @@ export function bindAppShellEventsCore({
       const nextProfileTopTab = requestedTab === "favorites"
         ? "favorites"
         : (requestedTab === "profile" ? "profile" : state.profileTopTab);
+      if (requestedTab === "profile" && openOwnBusinessProfile) {
+        state.chatSettingsOpen = false;
+        state.chatListScope = "inbox";
+        state.chatThreadMenuId = "";
+        state.settingsView = "main";
+        state.selectedBusiness = null;
+        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
+        state.likesModal = { open: false, postId: "", animate: false };
+        openOwnBusinessProfile({ showBack: false, topTab: "profile" });
+        return;
+      }
       setState({
         activeTab,
         profileTopTab: nextProfileTopTab,

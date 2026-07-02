@@ -344,14 +344,127 @@ export function createProfileOpenFlowControllerCore({
     return ownNames.includes(targetName);
   };
 
+  const collectOwnBusinessSurfaceIds = () => {
+    const ids = new Set();
+    const addId = (value = "") => {
+      const safeValue = String(value || "").trim();
+      if (safeValue) ids.add(safeValue);
+    };
+    const ownProfile = state?.userProfile && typeof state.userProfile === "object"
+      ? state.userProfile
+      : {};
+    addId(ownProfile.canonicalRestaurantId);
+    addId(ownProfile.restaurantId);
+    const ownRestaurantId = String(ownProfile.restaurantId || ownProfile.canonicalRestaurantId || "").trim();
+    const ownRest = ownRestaurantId ? getRestaurantMeta(ownRestaurantId) : null;
+    addId(ownRest?.canonicalRestaurantId);
+    addId(ownRest?.restaurantId);
+    addId(ownRest?.id);
+    return ids;
+  };
+
+  const deactivateStaleWebDirectEntryForOwnProfile = () => {
+    if (!state || typeof state !== "object") return;
+    const current = state.__webDirectEntry && typeof state.__webDirectEntry === "object"
+      ? state.__webDirectEntry
+      : null;
+    if (!current?.active) return;
+    state.__webDirectEntry = {
+      ...current,
+      active: false,
+      webPriority: false,
+      menuFirst: false,
+      postsFirst: false,
+      phase: "",
+      ts: Date.now()
+    };
+  };
+
+  const resetWrongBusinessPublicMenuFocusForOwnProfile = ({ loading = false } = {}) => {
+    if (!state || typeof state !== "object") return false;
+    const ownIds = collectOwnBusinessSurfaceIds();
+    const nextRestaurantId = String(
+      state?.userProfile?.canonicalRestaurantId
+      || state?.userProfile?.restaurantId
+      || ""
+    ).trim();
+    if (!nextRestaurantId || !ownIds.size) return false;
+    let changed = false;
+
+    const currentMenu = state.menu && typeof state.menu === "object" ? state.menu : null;
+    const currentMenuRestaurantId = String(currentMenu?.restaurantId || "").trim();
+    const currentMenuSource = String(currentMenu?.source || "").trim().toLowerCase() || "public";
+    if (currentMenu && currentMenuSource === "public") {
+      const currentMenuTruth = String(currentMenu.truthState || "").trim().toLowerCase();
+      const currentMenuHasPayload = !!currentMenuRestaurantId
+        || (Array.isArray(currentMenu.items) && currentMenu.items.length > 0)
+        || currentMenu.loading === true
+        || (!!currentMenuTruth && currentMenuTruth !== "unknown");
+      const currentMenuMatchesOwnBusiness = !!currentMenuRestaurantId && ownIds.has(currentMenuRestaurantId);
+      if (currentMenuHasPayload && !currentMenuMatchesOwnBusiness) {
+        state.menu = {
+          ...currentMenu,
+          restaurantId: nextRestaurantId,
+          items: [],
+          loading: !!loading,
+          error: "",
+          source: "public",
+          statusBadgeVisible: currentMenu.statusBadgeVisible !== false,
+          routeSeed: false,
+          truthState: "unknown"
+        };
+        changed = true;
+      }
+    }
+
+    const currentFocus = state.focus && typeof state.focus === "object" ? state.focus : null;
+    const currentFocusRestaurantId = String(currentFocus?.restaurantId || "").trim();
+    const currentFocusTruthSource = String(currentFocus?.truthSource || "").trim().toLowerCase();
+    const currentFocusTruth = String(currentFocus?.truthState || "").trim().toLowerCase();
+    const currentFocusLooksPublic = currentFocusTruthSource === "public-menu"
+      || (
+        currentMenuSource === "public"
+        && !!currentFocusRestaurantId
+        && currentFocusRestaurantId === currentMenuRestaurantId
+      );
+    if (currentFocus && currentFocusLooksPublic) {
+      const currentFocusHasPayload = !!currentFocusRestaurantId
+        || (Array.isArray(currentFocus.items) && currentFocus.items.length > 0)
+        || currentFocus.loading === true
+        || (!!currentFocusTruth && currentFocusTruth !== "unknown");
+      const currentFocusMatchesOwnBusiness = !!currentFocusRestaurantId && ownIds.has(currentFocusRestaurantId);
+      if (currentFocusHasPayload && !currentFocusMatchesOwnBusiness) {
+        state.focus = {
+          ...currentFocus,
+          restaurantId: nextRestaurantId,
+          items: [],
+          loading: !!loading,
+          enabled: currentFocus.enabled !== false,
+          error: "",
+          index: 0,
+          truthSource: "public-menu",
+          truthState: "unknown"
+        };
+        changed = true;
+      }
+    }
+    return changed;
+  };
+
   const openOwnBusinessProfile = ({ showBack = true, topTab } = {}) => {
     const prevTab = state?.activeTab || "feed";
     const nextTopTab = topTab === "menu" ? "menu" : "profile";
+    const menuVisible = nextTopTab === "menu";
     queueProfileHistoryPush({
       showBack,
       previousTab: prevTab,
       sameTarget: !state.profileView
     });
+    deactivateStaleWebDirectEntryForOwnProfile();
+    if (state && typeof state === "object") {
+      state.__publicRouteBootstrap = null;
+    }
+    resetWrongBusinessPublicMenuFocusForOwnProfile({ loading: menuVisible });
     state.profileView = null;
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = "posts";
@@ -362,9 +475,9 @@ export function createProfileOpenFlowControllerCore({
     state.activeTab = "profile";
     state.profileBackTab = showBack ? prevTab : "";
     renderApp();
-    if (nextTopTab === "menu") {
-      ensureMenuData();
-      ensureFocusData();
+    if (menuVisible) {
+      ensureMenuData(state?.userProfile);
+      ensureFocusData(state?.userProfile);
     }
   };
 

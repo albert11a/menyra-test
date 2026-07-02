@@ -318,6 +318,7 @@ export function createAppControllerBridge({
     ),
     setStateFn: feed.setState,
     openGuestAuthPromptFn: feed.openGuestAuthPrompt,
+    openOwnBusinessProfileFn: (options = {}) => openOwnBusinessProfile(options),
     openProfileViewFromBusinessFn: (input, options = {}) => openProfileViewFromBusiness(input, options),
     openPostModalFn: async (post) => openPostModalBridge(post),
     togglePostLikeFn: async (postId) => overlay.togglePostLike(postId),

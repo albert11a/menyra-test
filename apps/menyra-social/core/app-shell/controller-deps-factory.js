@@ -1875,6 +1875,7 @@ export function createBridgeShellBootstrapBundle({
     saveUserProfileToStorage,
     persistPrivateAccountSetting,
     uploadAvatar,
+    openOwnBusinessProfile,
     openProfileViewFromBusiness,
     findPostById,
     openPostModal: bridgeBindings.openPostModal,

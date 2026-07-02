@@ -167,6 +167,36 @@ Still open before the relevant verticals launch:
 - Durable authenticated Heart lead mutation E2E.
 - Real phone/tablet and slow-network QR/Menu/Waiter checks.
 
+## P0 Business Context Leak Fixed 2026-07-02
+
+The Business/Profile/Menu/Focus context bleed is fixed as a separate P0 after
+the Heart Leads follow-up rollback. The issue was that a signed-in business
+owner could visit a public business and return to the own profile/menu while
+stale public direct-entry Menu/Focus state from the previous business remained
+eligible for rendering.
+
+Implemented guard:
+
+- owner-profile open deactivates stale `__webDirectEntry`;
+- public route bootstrap state is cleared before own-profile render;
+- wrong-business public Menu/Focus payloads are retargeted to the signed-in
+  business and emptied while own data loads;
+- shell/feed profile nav uses the same own-profile opener.
+
+Mobile evidence: the new mobile Chrome Playwright regression logs in as
+`owner.local@example.test`, opens `/shopdemo/menu`, returns to `/menu`, verifies
+own `pidhi-madh` Menu/Focus items and verifies the previous shop item/focus is
+absent after return and refresh.
+
+Final verification passed Functions 4/4, Rules 17/17, Unit 124/124, lint,
+format check, architecture check, build, mobile Public Profile/Menu/Owner
+Playwright 7/7 and mobile QR Menu Playwright 1/1. The tracked browser bundle was
+rebuilt and the hashed `profile-open-flow-utils` chunk changed.
+
+Remaining P1 evidence: add dedicated shop-owner and hotel-owner return flows
+when vertical mutation tests are expanded; real phone/3G rehearsal is still
+required before launch.
+
 Rollback verification for `f3963b07` passed Functions 4/4, Rules 17/17, Unit
 123/123, lint, final format check, architecture check and build. The build did
 not change tracked social bundle files. Mobile Heart Leads diagnosis was not run

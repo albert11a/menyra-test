@@ -58,27 +58,28 @@ All actor use was against local emulators only.
 
 ## Routes And Viewports
 
-| Route/context                             | Desktop                        | Mobile                                        |
-| ----------------------------------------- | ------------------------------ | --------------------------------------------- |
-| `/pidhimadh` direct + refresh             | Passed                         | Passed                                        |
-| `/pidhimadh/posts` alias                  | Passed                         | Passed                                        |
-| `/shopdemo` direct + refresh              | Passed                         | Passed                                        |
-| `/shopdemo/posts` alias                   | Passed                         | Passed                                        |
-| `/hoteldemo` direct + refresh             | Passed                         | Passed                                        |
-| `/hoteldemo/posts` alias                  | Passed                         | Passed                                        |
-| `/pidhimadh/menu` direct + refresh        | Passed                         | Passed                                        |
-| `/pidhimadh/menu?src=qr&table=2`          | Passed                         | Passed                                        |
-| `/shopdemo/menu` direct + refresh         | Passed                         | Passed                                        |
-| `/hoteldemo/menu` direct + refresh        | Passed                         | Passed                                        |
-| QR callable order -> waiter board         | Passed                         | Passed                                        |
-| Waiter seeded order/status flow           | Passed                         | Passed                                        |
-| `/menu` owner login/editor/mutation       | Passed                         | Passed                                        |
-| `/menu` shop owner editor entry           | Passed                         | Passed                                        |
-| `/menu` hotel details/offer entry         | Passed                         | Passed                                        |
-| Heart non-CEO block                       | Passed in interactive probe    | Not run                                       |
-| Heart CEO login/dashboard/local Functions | Passed in interactive probe    | Not run                                       |
-| Heart lead create/update/delete           | Historical probe only          | Not accepted as mobile visual stability proof |
-| Heart Leads image/Search stability        | Open after `f3963b07` rollback | Mobile-first diagnosis required               |
+| Route/context                               | Desktop                        | Mobile                                        |
+| ------------------------------------------- | ------------------------------ | --------------------------------------------- |
+| `/pidhimadh` direct + refresh               | Passed                         | Passed                                        |
+| `/pidhimadh/posts` alias                    | Passed                         | Passed                                        |
+| `/shopdemo` direct + refresh                | Passed                         | Passed                                        |
+| `/shopdemo/posts` alias                     | Passed                         | Passed                                        |
+| `/hoteldemo` direct + refresh               | Passed                         | Passed                                        |
+| `/hoteldemo/posts` alias                    | Passed                         | Passed                                        |
+| `/pidhimadh/menu` direct + refresh          | Passed                         | Passed                                        |
+| `/pidhimadh/menu?src=qr&table=2`            | Passed                         | Passed                                        |
+| `/shopdemo/menu` direct + refresh           | Passed                         | Passed                                        |
+| `/hoteldemo/menu` direct + refresh          | Passed                         | Passed                                        |
+| QR callable order -> waiter board           | Passed                         | Passed                                        |
+| Waiter seeded order/status flow             | Passed                         | Passed                                        |
+| `/menu` owner login/editor/mutation         | Passed                         | Passed                                        |
+| `/menu` owner return after `/shopdemo/menu` | Not rerun in desktop project   | Passed                                        |
+| `/menu` shop owner editor entry             | Passed                         | Passed                                        |
+| `/menu` hotel details/offer entry           | Passed                         | Passed                                        |
+| Heart non-CEO block                         | Passed in interactive probe    | Not run                                       |
+| Heart CEO login/dashboard/local Functions   | Passed in interactive probe    | Not run                                       |
+| Heart lead create/update/delete             | Historical probe only          | Not accepted as mobile visual stability proof |
+| Heart Leads image/Search stability          | Open after `f3963b07` rollback | Mobile-first diagnosis required               |
 
 ## Automated Commands
 
@@ -92,6 +93,10 @@ All actor use was against local emulators only.
   - Passed, 6 tests across desktop and mobile projects.
 - `npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/owner-tool.spec.ts tests/e2e/public-profile.spec.ts tests/e2e/public-menu.spec.ts tests/e2e/qr-menu.spec.ts tests/e2e/waiter.spec.ts`
   - Final follow-up matrix passed, 16 tests across desktop and mobile projects.
+- `npx playwright test tests/e2e/public-profile.spec.ts tests/e2e/public-menu.spec.ts tests/e2e/owner-tool.spec.ts --config tests/e2e/playwright.config.ts --project=mobile-chrome`
+  - P0 context-leak follow-up passed, 7/7 mobile tests.
+- `npx playwright test tests/e2e/qr-menu.spec.ts --config tests/e2e/playwright.config.ts --project=mobile-chrome`
+  - P0 context-leak follow-up passed, 1/1 mobile QR test.
 - Final baseline: Functions 4/4, Rules 17/17 and Unit 111/111 passed;
   lint, format check, architecture check and build also passed.
 
@@ -129,6 +134,7 @@ to a 20s timeout and the full four-spec rehearsal passed after that.
 | Waiter status flow              | Passed                  | Waiter login sees own restaurant order, changes status and cannot mutate total/items or read a foreign order.                                                                                                          |
 | Waiter revoked/stale hints      | Automated rules covered | Browser spec covers active waiter; revoked/stale-hint denial remains rules-level in this block.                                                                                                                        |
 | Owner/menu browser mutation     | Passed                  | `/menu` is the existing protected owner entry. Owner login opens `pidhi-madh`; create/edit/delete/publish, string-to-number price, foreign-business read-only behavior and 12 seeded QR tables pass on desktop/mobile. |
+| Business context isolation      | Passed on mobile        | Restaurant owner opens `/shopdemo/menu`, returns to `/menu`, sees `PIDHImadh`, `Local Breakfast Plate` and `Lunch Combo`, and does not see `Local Cotton Shirt` or `Shop Focus` after return/refresh.                  |
 | Shop owner entry                | Passed/light proof      | `shop-owner.local@example.test` opens the `shop-demo` product editor on desktop/mobile; product mutation remains a later vertical-specific test.                                                                       |
 | Hotel owner entry               | Passed/light proof      | `hotel-owner.local@example.test` opens Hotel Details and Oferta controls on desktop/mobile; offer mutation remains a later vertical-specific test.                                                                     |
 | Public startup denied `list`    | Resolved                | The legacy Feed `collectionGroup("stories")` read was scheduled after restaurant loading on public routes. Global story loading is now deferred to the Feed tab without a Rules change.                                |
@@ -165,6 +171,8 @@ public-safe item instead of spreading the previous dirty state into it.
 - The Clean Web targeted browser matrix passed after rebuilding tracked bundles:
   Public Profile/Menu/QR, Owner/Menu and Waiter passed 16/16 across desktop and
   mobile.
+- The P0 business context regression passed on mobile Chrome: restaurant owner
+  return from `/shopdemo/menu` to `/menu` does not show shop Menu/Focus data.
 - The public-startup denied `list` is mapped in
   `docs/codex/generated/PUBLIC_STARTUP_DENIED_LIST_AUDIT.md` and no longer
   occurs in the targeted public startup smoke.
@@ -209,6 +217,15 @@ Clean Web rebuild on 2026-07-02 updated the tracked social bundle again:
   `profile-menu-focus-render-controller-ClqNBCUU.js`
 - added new hashed profile render chunk
   `profile-menu-focus-render-controller-lbWlArsR.js`
+
+P0 context-leak rebuild on 2026-07-02 updated tracked browser bundle output:
+
+- `apps/menyra-social/bundled/entry/social-app.js`
+- `apps/menyra-social/bundled/manifest.json`
+- deleted old hashed profile open-flow chunk
+  `profile-open-flow-utils-nDcq3JLz.js`
+- added new hashed profile open-flow chunk
+  `profile-open-flow-utils-DRWhfuTW.js`
 
 ## P1 Controlled Restaurant Launch Decision
 

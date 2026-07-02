@@ -16,6 +16,9 @@ const PRIVATE_MARKERS = [
   "staffIndex",
 ];
 
+const OWNER_ENTRY_URL = "/menu?firebase-emulator=1&sw-reset=1";
+const OWNER_PASSWORD = "local-test-password";
+
 const PUBLIC_PROFILE_ROUTES = [
   {
     path: "/pidhimadh",
@@ -49,6 +52,17 @@ const PUBLIC_PROFILE_ROUTES = [
 function withEmulatorParams(path: string) {
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}firebase-emulator=1&sw-reset=1`;
+}
+
+async function loginAtOwnerMenu(page: Page, email: string) {
+  await page.goto(OWNER_ENTRY_URL, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#authForm")).toBeVisible({ timeout: 20_000 });
+  await page.locator("#authEmail").fill(email);
+  await page.locator("#authPassword").fill(OWNER_PASSWORD);
+  await page.locator('#authForm button[type="submit"]').click();
+  await expect(page.getByText("Editor", { exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 async function expectNoPrivateMarkers(page, routeLabel: string) {
@@ -145,5 +159,43 @@ test.describe("public profile launch smoke", () => {
     await page.waitForTimeout(4_000);
 
     expect(deniedListErrors).toEqual([]);
+  });
+
+  test("business owner returns from public shop menu to own menu/focus context", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    await loginAtOwnerMenu(page, "owner.local@example.test");
+
+    await page.goto(withEmulatorParams("/shopdemo/menu"), {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("body")).toContainText("Local Shop Demo", {
+      timeout: 20_000,
+    });
+    await expect(page.locator("body")).toContainText("Local Cotton Shirt", {
+      timeout: 20_000,
+    });
+
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toContainText("PIDHImadh", {
+      timeout: 20_000,
+    });
+    await expect(page).toHaveURL(/\/menu/);
+    await expect(page.locator("body")).toContainText("Local Breakfast Plate", {
+      timeout: 20_000,
+    });
+    await expect(page.locator("body")).toContainText("Lunch Combo", {
+      timeout: 20_000,
+    });
+    await expect(page.locator("body")).not.toContainText("Local Cotton Shirt");
+    await expect(page.locator("body")).not.toContainText("Shop Focus");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toContainText("PIDHImadh", {
+      timeout: 20_000,
+    });
+    await expect(page.locator("body")).not.toContainText("Local Cotton Shirt");
   });
 });

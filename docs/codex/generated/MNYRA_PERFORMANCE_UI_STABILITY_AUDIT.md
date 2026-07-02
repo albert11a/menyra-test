@@ -96,6 +96,9 @@ Current UI risks:
   assumptions.
 - Heart Leads profile-image flicker and Search disruption remain open after the
   `f3963b07` rollback and need mobile-first diagnosis before any fix.
+- Business/Profile/Menu/Focus context bleed is fixed in the current P0 task:
+  owner-profile return deactivates stale public direct-entry state and refuses
+  to keep wrong-business public Menu/Focus payloads visible.
 - Shop product and Hotel offer mutations still need vertical-specific browser
   coverage before those verticals leave manual/P2 status.
 
@@ -123,10 +126,12 @@ Before launch, manually verify at least:
 7. Cart, checkout, order confirmation and guest recovery.
 8. Waiter tablet/mobile board and status transitions.
 9. Owner menu/product/focus/QR/ads flows.
-10. Heart leads/customers/ads/staff flows, starting with mobile-first Lead
+10. Business owner return from foreign public business to own profile/menu for
+    restaurant, shop and hotel owner accounts.
+11. Heart leads/customers/ads/staff flows, starting with mobile-first Lead
     image flicker and Search focus diagnosis.
-11. Shop product and hotel/travel offer variants.
-12. Mobile narrow viewport text overflow and tap target behavior.
+12. Shop product and hotel/travel offer variants.
+13. Mobile narrow viewport text overflow and tap target behavior.
 
 ## Performance Gates Before Enterprise Launch
 

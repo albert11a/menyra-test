@@ -126,6 +126,7 @@ export function createAppShellRuntimeController(deps = {}) {
     saveUserProfileToStorageFn,
     persistPrivateAccountSettingFn,
     uploadAvatarFn,
+    openOwnBusinessProfileFn,
     openProfileViewFromBusinessFn,
     findPostByIdFn,
     openPostModalFn,
@@ -1884,6 +1885,9 @@ export function createAppShellRuntimeController(deps = {}) {
       saveUserProfileToStorageFn: confirmed("profile.storage.save", saveUserProfileToStorageFn),
       persistPrivateAccountSettingFn: confirmed("profile.private.persist", persistPrivateAccountSettingFn),
       uploadAvatarFn: confirmed("profile.avatar.upload", uploadAvatarFn),
+      openOwnBusinessProfileFn: typeof openOwnBusinessProfileFn === "function"
+        ? (...args) => runBudgetWrapped("profile_open", () => openOwnBusinessProfileFn(...args))
+        : null,
       openProfileViewFromBusinessFn: (...args) => runBudgetWrapped("profile_open", () => openProfileViewFromBusinessFn(...args)),
       findPostByIdFn,
       openPostModalFn,

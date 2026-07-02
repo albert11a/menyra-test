@@ -27,6 +27,7 @@ export function createFeedViewOrchestrationController({
   buildUploadStateForIntentFn = (_intent = "", currentUpload = {}) => currentUpload,
   setStateFn = () => {},
   openGuestAuthPromptFn = () => false,
+  openOwnBusinessProfileFn = null,
   openProfileViewFromBusinessFn = () => {},
   openPostModalFn = async () => {},
   togglePostLikeFn = async () => {},
@@ -3978,6 +3979,19 @@ export function createFeedViewOrchestrationController({
           const nextProfileTopTab = tab === "favorites"
             ? "favorites"
             : (tab === "profile" ? "profile" : state.profileTopTab);
+          if (tab === "profile" && typeof openOwnBusinessProfileFn === "function") {
+            state.chatSettingsOpen = false;
+            state.chatListScope = "inbox";
+            state.chatThreadMenuId = "";
+            state.settingsView = "main";
+            state.selectedBusiness = null;
+            state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
+            state.likesModal = { open: false, postId: "", animate: false };
+            state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", bestSpotLogoFile: null, bestSpotLogoPreview: "", coords: null, locations: [] };
+            state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
+            openOwnBusinessProfileFn({ showBack: false, topTab: "profile" });
+            return;
+          }
           setStateFn({
             activeTab,
             profileTopTab: nextProfileTopTab,

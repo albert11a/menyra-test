@@ -31,14 +31,43 @@ business problem.
 
 ## Business Tool Status
 
-| Area                   | Status                          | Notes                                                                                | Next action                                                 |
-| ---------------------- | ------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| Public profile/menu/QR | Clean-Web fixes remain in place | Existing public image/menu retention work from `aaf902d0` remains the baseline.      | Keep mobile real-device QR/menu checks before launch.       |
-| Owner menu             | Clean-Web baseline remains      | No new owner fix was added in this rollback.                                         | Keep owner mobile edit/publish rehearsal in launch gate.    |
-| Waiter board           | Clean-Web baseline remains      | No new waiter fix was added in this rollback.                                        | Keep tablet/mobile status-flow rehearsal in launch gate.    |
-| Heart Leads            | Open                            | `f3963b07` was reverted; Lead image flicker and Search disruption remain unresolved. | Run a separate mobile-first diagnosis before any new fix.   |
-| Shop products          | Manual/P2                       | Product mutation image/list stability is not yet durable launch evidence.            | Add vertical-specific mobile-first mutation coverage later. |
-| Hotel offers           | Manual/P2                       | Offer/details mutation image/list stability is not yet durable launch evidence.      | Add vertical-specific mobile-first mutation coverage later. |
+| Area                   | Status                          | Notes                                                                                                     | Next action                                                          |
+| ---------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Public profile/menu/QR | Clean-Web fixes remain in place | Existing public image/menu retention work from `aaf902d0` remains the baseline.                           | Keep mobile real-device QR/menu checks before launch.                |
+| Business context       | P0 fixed in current task        | Own profile/menu return now clears stale public direct-entry and wrong-business Menu/Focus state.         | Keep the new mobile owner-return Playwright case in the launch gate. |
+| Owner menu             | P0 context bleed fixed          | Restaurant owner returning from `/shopdemo/menu` to `/menu` shows `pidhi-madh` Menu/Focus, not shop data. | Add shop/hotel owner return E2E when vertical mutation tests expand. |
+| Waiter board           | Clean-Web baseline remains      | No new waiter fix was added in this rollback.                                                             | Keep tablet/mobile status-flow rehearsal in launch gate.             |
+| Heart Leads            | Open                            | `f3963b07` was reverted; Lead image flicker and Search disruption remain unresolved.                      | Run a separate mobile-first diagnosis before any new fix.            |
+| Shop products          | Manual/P2                       | Product mutation image/list stability is not yet durable launch evidence.                                 | Add vertical-specific mobile-first mutation coverage later.          |
+| Hotel offers           | Manual/P2                       | Offer/details mutation image/list stability is not yet durable launch evidence.                           | Add vertical-specific mobile-first mutation coverage later.          |
+
+## P0 Business Context Leak Fix 2026-07-02
+
+Finding: a signed-in business owner could view a public business and then return
+to the own profile/menu while stale public direct-entry, Menu or Focus state
+from the previous business remained eligible for rendering. This was a P0 trust
+issue because Mnyra must never show Header/Profile from Business A with
+Menu/Focus from Business B.
+
+Fix: `openOwnBusinessProfile()` now deactivates stale public direct-entry state,
+clears the public route bootstrap and retargets wrong-business public Menu/Focus
+payloads to the signed-in business before own data loads. App shell and feed
+profile navigation now call the same own-profile opener instead of bypassing the
+cleanup.
+
+Mobile evidence: the new mobile Chrome regression logs in as
+`owner.local@example.test`, opens `/shopdemo/menu`, returns to `/menu`, verifies
+`PIDHImadh`, `Local Breakfast Plate` and `Lunch Combo`, and verifies
+`Local Cotton Shirt` and `Shop Focus` are absent after return and refresh.
+
+Final verification: Functions 4/4, Rules 17/17, Unit 124/124, lint, format
+check, architecture check and build passed. Mobile Playwright passed Public
+Profile/Menu/Owner 7/7 and QR Menu 1/1. The build updated the tracked social
+bundle, manifest and hashed `profile-open-flow-utils` chunk.
+
+Remaining risk: shop-owner and hotel-owner return flows use the same generic
+fix path but should get dedicated mobile E2E coverage when those verticals move
+from manual/P2 mutation status.
 
 ## Not Done In This Rollback
 

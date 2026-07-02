@@ -38,6 +38,7 @@ new fix.
 | Area                            | Status               | Coverage now                                                                                                                                                                      | Remaining launch work                                                                              |
 | ------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Owner login                     | Browser smoke passed | `/menu` preserves the protected route through login and opens the seeded owner context on desktop/mobile.                                                                         | Keep local owner account bootstrap in the browser launch gate.                                     |
+| Business context isolation      | P0 fixed             | New unit and mobile Chrome E2E prove restaurant owner return from `/shopdemo/menu` to `/menu` shows own `pidhi-madh` Menu/Focus and no shop item/focus bleed.                     | Add shop-owner and hotel-owner dedicated return E2E when vertical mutation tests expand.           |
 | Business ownership mapping      | Automated green      | Rules tests cover owner writes only for owned business.                                                                                                                           | Add owner account bootstrap and lead conversion rollback tests.                                    |
 | Public profile contract         | Automated green      | Pure route/profile/meta/offers/ads builders, seed parity and mixed restaurant/shop/hotel fixtures cover the field contract.                                                       | Move public profile read-once hydration off mixed `restaurants/{id}` data before tightening rules. |
 | Public/private profile boundary | Automated green      | Rules tests cover guest public reads/private denial; builders recursively reject private fields and return deterministic plain objects.                                           | Prepare profile/meta runtime cutover; do not tighten root reads until the cutover is verified.     |
@@ -134,6 +135,31 @@ diagnosis was not run in this rollback.
 Final verification for this pass: Unit 123/123, Rules 17/17, Functions 4/4,
 lint, format, architecture check, build and targeted Playwright 16/16 passed.
 The build updated the tracked social bundle and hashed profile-render chunk.
+
+## P0 Business Context Leak Fix 2026-07-02
+
+Business/Profile/Menu/Focus context bleed is fixed for the generic owner-return
+path. `openOwnBusinessProfile()` now clears stale public route priority and
+retargets wrong-business public Menu/Focus state to the signed-in business
+before rendering. Shell/feed profile navigation now routes through that same
+opener.
+
+Current evidence:
+
+- profile-open unit regression for stale `shop-demo` Menu/Focus under a
+  `pidhi-madh` owner;
+- existing public Menu/Focus wrong-target guard tests;
+- mobile Chrome Playwright owner-return regression from `/shopdemo/menu` back
+  to `/menu`.
+- final baseline passed Functions 4/4, Rules 17/17, Unit 124/124, lint, format
+  check, architecture check and build;
+- mobile Playwright passed Public Profile/Menu/Owner 7/7 and QR Menu 1/1.
+
+Bundle status: the build updated the tracked social bundle entry, manifest and
+hashed `profile-open-flow-utils` chunk.
+
+Remaining manual/P1 evidence: shop-owner and hotel-owner dedicated return flows
+on mobile, plus real-phone/3G rehearsal.
 
 ## P0 Exit Criteria
 
