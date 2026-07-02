@@ -10,6 +10,23 @@ This audit covers current bundle shape, public route performance risk, UI
 stability risk, loading states, manual browser checks and architecture blockers.
 It is docs-only and does not change runtime code or build config.
 
+## Rollback Update 2026-07-02
+
+Commit `f3963b07` (`fix: stabilize heart leads interactions`) has been backed
+out. Its Heart Leads DOM-local search filtering, active-search render skips,
+CRM avatar marker/fallback changes, desktop sidebar CSS fix, emulator-only lead
+fixture and Heart E2E changes are no longer accepted as the solution.
+
+Reason: real usage still shows rapid Lead profile-image flicker and Search
+input disruption. Green desktop tests or DOM-marker assertions are not enough to
+close this class of issue. Mnyra is mobile-first, so image flicker, Search/input
+focus and business-tool stability must be evaluated mobile-first.
+
+Rollback verification passed Functions 4/4, Rules 17/17, Unit 123/123, lint,
+final format check, architecture check and build. The build did not change
+tracked files under `apps/menyra-social/bundled`; the existing large
+`social-app.js` chunk warning remains.
+
 ## Current Architecture Evidence
 
 - Main social source: `apps/menyra-social/social-app.js`
@@ -57,14 +74,13 @@ Recent current-phase work focuses on public menu/focus skeleton parity and
 direct refresh behavior. That is the right direction, but it is not a complete
 UI stability proof.
 
-Clean Web follow-up on 2026-07-02 fixed the most visible small loading issues:
-Public Menu now retains existing visible items during transient `unknown` reads,
-Public Profile avatars/logos use stable last-good image keys during header
-settling, avatar image markup has explicit fallbacks and Heart CRM lists keep
-rows visible while read-only domains refresh. The Heart Leads follow-up now
-keeps active search focus and the existing lead avatar DOM stable during typing,
-skips unrelated Heart background renders while the visible CRM section is
-unchanged and restores desktop sidebar clickability.
+Clean Web follow-up on 2026-07-02 fixed several small loading issues: Public
+Menu now retains existing visible items during transient `unknown` reads, Public
+Profile avatars/logos use stable last-good image keys during header settling,
+avatar image markup has explicit fallbacks and Heart CRM lists keep rows visible
+while read-only domains refresh. The later Heart Leads interaction/image
+follow-up `f3963b07` was reverted and must not be counted as a solved flicker
+issue.
 
 Current UI risks:
 
@@ -78,9 +94,8 @@ Current UI risks:
 - Images and media need fallback/loading/error states by business type.
 - Owner/Heart/admin views need dense operational UI checks, not marketing-style
   assumptions.
-- Heart lead create/edit/delete still needs a durable mutation E2E with cleanup
-  and audit assertions; the new Heart E2E covers search/image/tab stability and
-  opening an existing lead modal.
+- Heart Leads profile-image flicker and Search disruption remain open after the
+  `f3963b07` rollback and need mobile-first diagnosis before any fix.
 - Shop product and Hotel offer mutations still need vertical-specific browser
   coverage before those verticals leave manual/P2 status.
 
@@ -88,14 +103,14 @@ Current UI risks:
 
 The 2026-07-02 Clean Web task explicitly requested browser checks, so targeted
 Public Profile/Menu/QR, Owner/Menu and Waiter Playwright coverage is part of
-that pass. Real-device mobile/3G checks are still manual.
+that pass. Real-device mobile/3G checks are still manual and carry more weight
+than desktop-only evidence.
 
-Final Heart Leads follow-up verification passed: Unit 124/124, Rules 17/17,
-Functions 4/4, lint, format, architecture check, production build and targeted
-Heart Playwright 4/4 across Chromium and Mobile Chrome. The follow-up build did
-not change tracked Social bundle files. The large `social-app.js` bundle warning
-remains a P3 performance/runtime-extraction risk, not a Clean Web correctness
-failure.
+Final Clean Web verification passed: Unit 123/123, Rules 17/17, Functions 4/4,
+lint, format, architecture check, production build and targeted Playwright
+16/16. The build updated the tracked social bundle and replaced the hashed
+profile-render chunk. The large `social-app.js` bundle warning remains a P3
+performance/runtime-extraction risk, not a Clean Web correctness failure.
 
 Before launch, manually verify at least:
 
@@ -108,9 +123,8 @@ Before launch, manually verify at least:
 7. Cart, checkout, order confirmation and guest recovery.
 8. Waiter tablet/mobile board and status transitions.
 9. Owner menu/product/focus/QR/ads flows.
-10. Heart leads/customers/ads/staff flows; search/image/tab stability now has
-    desktop/mobile E2E, but lead create/edit/delete still needs durable
-    mutation coverage.
+10. Heart leads/customers/ads/staff flows, starting with mobile-first Lead
+    image flicker and Search focus diagnosis.
 11. Shop product and hotel/travel offer variants.
 12. Mobile narrow viewport text overflow and tap target behavior.
 

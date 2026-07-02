@@ -801,32 +801,6 @@
       }
     },
     {
-      "path": "leads/lead-demo-001",
-      "data": {
-        "id": "lead-demo-001",
-        "businessName": "Local Heart Lead",
-        "restaurantName": "Local Heart Lead",
-        "name": "Local Heart Lead",
-        "customerType": "restaurant",
-        "status": "registered",
-        "email": "local-heart-lead@example.test",
-        "phone": "+383 44 000 444",
-        "city": "Prishtina",
-        "country": "Kosovo",
-        "address": "Rruga Lead 4, Prishtina",
-        "logoUrl": "https://images.example.local/heart-lead-logo.jpg",
-        "coverUrl": "https://images.example.local/heart-lead-cover.jpg",
-        "publicSlug": "localheartlead",
-        "canonicalPublicPath": "/localheartlead",
-        "landingEnabled": true,
-        "createdByUid": "heart-demo",
-        "createdByName": "Local Heart CEO",
-        "ceoRootUid": "heart-demo",
-        "ceoRootName": "Local Heart CEO",
-        "ceoPath": ["heart-demo"]
-      }
-    },
-    {
       "path": "staffAdmins/heart-demo",
       "data": {
         "uid": "heart-demo",

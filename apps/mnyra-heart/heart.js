@@ -86,13 +86,6 @@ const CRM_ADMIN_READ_DOMAINS = Object.freeze([
   { key: "businessAccounts", consumerKey: "businessAccounts" }
 ]);
 const CRM_ADMIN_VISIBLE_VIEW_KEYS = new Set(["crmLeads", "crmCustomers", "crmAds", "crmStaff"]);
-const CRM_ADMIN_SEARCH_DOMAIN_KEYS = Object.freeze(["leads", "customers", "ads"]);
-const CRM_ADMIN_DOMAIN_BY_VISIBLE_VIEW = Object.freeze({
-  crmLeads: "leads",
-  crmCustomers: "customers",
-  crmAds: "ads",
-  crmStaff: "staff"
-});
 const CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN = Object.freeze(
   CRM_ADMIN_READ_DOMAINS.reduce((map, item) => ({
     ...map,
@@ -499,99 +492,6 @@ function getCrmSearchInputId(domainKey = "") {
   return "";
 }
 
-function normalizeCrmSearchPreviewKey(value = "") {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function getCrmSearchPreviewTokens(query = "") {
-  return normalizeCrmSearchPreviewKey(query).split(" ").filter(Boolean);
-}
-
-function getCrmSearchAttrSelector(attributeName = "", value = "") {
-  const safeValue = String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  return `[${attributeName}="${safeValue}"]`;
-}
-
-function applyCrmSearchFilterToDom(domainKey = "", query = "") {
-  const safeDomainKey = String(domainKey || "").trim();
-  if (!CRM_ADMIN_SEARCH_DOMAIN_KEYS.includes(safeDomainKey) || !root) return;
-  const listSelector = getCrmSearchAttrSelector("data-heart-crm-list-stack", safeDomainKey);
-  const rowSelector = getCrmSearchAttrSelector("data-heart-crm-row", safeDomainKey);
-  const list = root.querySelector(listSelector);
-  if (!list) return;
-  const tokens = getCrmSearchPreviewTokens(query);
-  let visibleCount = 0;
-  list.querySelectorAll(rowSelector).forEach((row) => {
-    const haystack = normalizeCrmSearchPreviewKey(row.getAttribute("data-heart-crm-search-text") || row.textContent || "");
-    const compactHaystack = haystack.replace(/\s+/g, "");
-    const matches = !tokens.length || tokens.every((token) => haystack.includes(token) || compactHaystack.includes(token));
-    row.hidden = !matches;
-    if (matches) visibleCount += 1;
-  });
-  const emptyState = list.querySelector(getCrmSearchAttrSelector("data-heart-crm-search-empty", safeDomainKey));
-  if (emptyState) emptyState.hidden = visibleCount > 0;
-  list.setAttribute("data-heart-crm-search-query", String(query || ""));
-}
-
-function isCrmSearchInputActive(domainKey = "") {
-  if (typeof document === "undefined") return false;
-  const inputId = getCrmSearchInputId(domainKey);
-  const active = document.activeElement;
-  return !!inputId && !!active && active.id === inputId && active.matches?.("[data-crm-search]");
-}
-
-function cloneForCrmSearchCompare(state = {}) {
-  const clone = JSON.parse(JSON.stringify(state || {}));
-  CRM_ADMIN_SEARCH_DOMAIN_KEYS.forEach((domainKey) => {
-    if (clone.crmAdmin?.sections?.[domainKey]) {
-      clone.crmAdmin.sections[domainKey].query = "";
-    }
-  });
-  return clone;
-}
-
-function getRenderlessCrmSearchDomain(priorState = {}, nextState = {}) {
-  const changedDomains = CRM_ADMIN_SEARCH_DOMAIN_KEYS.filter((domainKey) => (
-    String(priorState?.crmAdmin?.sections?.[domainKey]?.query || "")
-      !== String(nextState?.crmAdmin?.sections?.[domainKey]?.query || "")
-  ));
-  if (changedDomains.length !== 1) return "";
-  const priorComparable = cloneForCrmSearchCompare(priorState);
-  const nextComparable = cloneForCrmSearchCompare(nextState);
-  return JSON.stringify(priorComparable) === JSON.stringify(nextComparable) ? changedDomains[0] : "";
-}
-
-function getComparableCrmShellState(state = {}) {
-  return {
-    activeView: state.shell?.activeView || "",
-    navOpen: state.shell?.navOpen === true,
-    quickActionsOpen: state.shell?.quickActionsOpen === true,
-    modal: state.shell?.modal || {}
-  };
-}
-
-function getComparableCrmSectionState(state = {}, domainKey = "") {
-  const section = JSON.parse(JSON.stringify(state.crmAdmin?.sections?.[domainKey] || {}));
-  if (Object.prototype.hasOwnProperty.call(section, "query")) section.query = "";
-  return section;
-}
-
-function getActiveSearchStableCrmDomain(priorState = {}, nextState = {}) {
-  const activeView = String(nextState?.shell?.activeView || "").trim();
-  if (String(priorState?.shell?.activeView || "").trim() !== activeView) return "";
-  const domainKey = CRM_ADMIN_DOMAIN_BY_VISIBLE_VIEW[activeView] || "";
-  if (!CRM_ADMIN_SEARCH_DOMAIN_KEYS.includes(domainKey) || !isCrmSearchInputActive(domainKey)) return "";
-  if (JSON.stringify(getComparableCrmShellState(priorState)) !== JSON.stringify(getComparableCrmShellState(nextState))) return "";
-  if (JSON.stringify(getComparableCrmSectionState(priorState, domainKey)) !== JSON.stringify(getComparableCrmSectionState(nextState, domainKey))) return "";
-  return domainKey;
-}
-
 function captureCrmSearchFocus(domainKey = "") {
   if (typeof document === "undefined") return null;
   const active = document.activeElement;
@@ -974,15 +874,8 @@ const operations = {
     await loadCrmAdminDomain(safeDomainKey, { scope: safeScope });
   },
   setCrmQuery(domainKey, query) {
-    const safeDomainKey = String(domainKey || "").trim();
-    const nextQuery = String(query || "");
-    const currentQuery = String(store.getState().crmAdmin?.sections?.[safeDomainKey]?.query || "");
-    if (currentQuery === nextQuery) {
-      applyCrmSearchFilterToDom(safeDomainKey, nextQuery);
-      return;
-    }
     const focusSnapshot = captureCrmSearchFocus(domainKey);
-    actions.setCrmAdminSectionUi(safeDomainKey, { query: nextQuery });
+    actions.setCrmAdminSectionUi(domainKey, { query });
     restoreCrmSearchFocus(focusSnapshot);
   },
   setCrmCategoryFilter(domainKey, categoryFilter) {
@@ -1250,24 +1143,6 @@ bindHeartEvents({ root, operations });
 store.subscribe((state) => {
   const priorState = previousState;
   previousState = state;
-
-  const renderlessSearchDomain = getRenderlessCrmSearchDomain(priorState, state);
-  if (renderlessSearchDomain && isCrmSearchInputActive(renderlessSearchDomain)) {
-    applyCrmSearchFilterToDom(
-      renderlessSearchDomain,
-      state.crmAdmin?.sections?.[renderlessSearchDomain]?.query || ""
-    );
-    return;
-  }
-
-  const stableSearchDomain = getActiveSearchStableCrmDomain(priorState, state);
-  if (stableSearchDomain) {
-    applyCrmSearchFilterToDom(
-      stableSearchDomain,
-      state.crmAdmin?.sections?.[stableSearchDomain]?.query || ""
-    );
-    return;
-  }
 
   renderHeartApp(root, state, renderRuntime);
   syncViewportSurface(state);

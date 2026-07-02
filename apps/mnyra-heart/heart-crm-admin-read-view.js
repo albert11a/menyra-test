@@ -225,10 +225,16 @@ function normalizeSearchKey(value = "") {
     .trim();
 }
 
-function getItemSearchText(item = {}) {
+function getSearchTokens(query = "") {
+  return normalizeSearchKey(query).split(" ").filter(Boolean);
+}
+
+function itemMatchesQuery(item = {}, query = "") {
+  const queryTokens = getSearchTokens(query);
+  if (!queryTokens.length) return true;
   const typeValue = firstText(item.customerType, item.type, item.category, item.leadType);
   const statusValue = firstText(item.status);
-  return normalizeSearchKey([
+  const haystack = normalizeSearchKey([
     item.businessName,
     item.restaurantName,
     item.name,
@@ -252,16 +258,6 @@ function getItemSearchText(item = {}) {
     typeLabel(typeValue),
     item.handle
   ].filter(Boolean).join(" "));
-}
-
-function getSearchTokens(query = "") {
-  return normalizeSearchKey(query).split(" ").filter(Boolean);
-}
-
-function itemMatchesQuery(item = {}, query = "") {
-  const queryTokens = getSearchTokens(query);
-  if (!queryTokens.length) return true;
-  const haystack = getItemSearchText(item);
   const compactHaystack = haystack.replace(/\s+/g, "");
   return queryTokens.every((token) => haystack.includes(token) || compactHaystack.includes(token));
 }
@@ -289,16 +285,14 @@ function renderChip(label = "", tone = "neutral", extraClass = "") {
   return `<span class="heart-crm-chip heart-crm-chip--${safeTone} ${escapeHtml(extraClass)}">${escapeHtml(safeLabel)}</span>`;
 }
 
-function renderAvatar({ imageUrl = "", label = "", size = "default", imageKey = "" } = {}) {
+function renderAvatar({ imageUrl = "", label = "", size = "default" } = {}) {
   const safeImageUrl = asText(imageUrl);
   const safeLabel = firstText(label, "M");
-  const initials = getInitials(safeLabel);
-  const safeImageKey = firstText(imageKey, safeImageUrl, safeLabel);
   return `
     <div class="heart-crm-avatar heart-crm-avatar--${escapeHtml(size)}">
       ${safeImageUrl
-        ? `<img src="${escapeHtml(safeImageUrl)}" alt="" loading="lazy" decoding="async" data-heart-crm-image-key="${escapeHtml(safeImageKey)}" data-heart-crm-stable-src="${escapeHtml(safeImageUrl)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false;" /><span hidden>${escapeHtml(initials)}</span>`
-        : `<span>${escapeHtml(initials)}</span>`}
+        ? `<img src="${escapeHtml(safeImageUrl)}" alt="" loading="lazy" />`
+        : `<span>${escapeHtml(getInitials(safeLabel))}</span>`}
     </div>
   `;
 }
@@ -484,11 +478,10 @@ function renderLeadCard(lead = {}, sectionState = {}) {
   const statusLabel = labelFromMap(statusValue, LEAD_STATUS_LABELS);
   const profileUrl = resolveLeadProfileUrl(lead);
   const leadId = firstText(lead.id, lead.leadId);
-  const searchText = getItemSearchText(lead);
   return `
-    <article class="heart-crm-card heart-crm-card--lead" data-heart-crm-row="leads" data-heart-crm-row-id="${escapeHtml(leadId)}" data-heart-crm-search-text="${escapeHtml(searchText)}">
+    <article class="heart-crm-card heart-crm-card--lead">
       <div class="heart-crm-card-head">
-        ${renderAvatar({ imageUrl: logoUrl, label: businessName, imageKey: `leads:${leadId || businessName}` })}
+        ${renderAvatar({ imageUrl: logoUrl, label: businessName })}
         <div class="heart-crm-card-main">
           <p class="heart-crm-card-title">${escapeHtml(businessName)}</p>
           ${emailLine ? `<p class="heart-crm-card-meta">${escapeHtml(emailLine)}</p>` : ""}
@@ -511,12 +504,10 @@ function renderCustomerCard(rest = {}, sectionState = {}) {
   const city = firstText(rest.city, rest.address, rest.country);
   const statusValue = firstText(rest.status, "kunde");
   const statusLabel = labelFromMap(statusValue, CUSTOMER_STATUS_LABELS);
-  const customerId = firstText(rest.id, rest.restaurantId, rest.customerId);
-  const searchText = getItemSearchText(rest);
   return `
-    <article class="heart-crm-card" data-heart-crm-row="customers" data-heart-crm-row-id="${escapeHtml(customerId)}" data-heart-crm-search-text="${escapeHtml(searchText)}">
+    <article class="heart-crm-card">
       <div class="heart-crm-card-head">
-        ${renderAvatar({ imageUrl: logoUrl, label: name, imageKey: `customers:${customerId || name}` })}
+        ${renderAvatar({ imageUrl: logoUrl, label: name })}
         <div class="heart-crm-card-main">
           <p class="heart-crm-card-title">${escapeHtml(name)}</p>
           <p class="heart-crm-card-meta">${escapeHtml([type, city].filter(Boolean).join(" / "))}</p>
@@ -529,7 +520,7 @@ function renderCustomerCard(rest = {}, sectionState = {}) {
         { label: firstText(rest.phone), tone: "info" }
       ])}
       <div class="heart-crm-action-row">
-        ${renderCrmEditButton("customers", customerId)}
+        ${renderCrmEditButton("customers", firstText(rest.id, rest.restaurantId, rest.customerId))}
       </div>
     </article>
   `;
@@ -552,12 +543,11 @@ function renderAdCard(ad = {}) {
   const metaLine = [firstText(ad.category), firstText(ad.priceSegment), firstText(ad.city)].filter(Boolean).join(" / ");
   const canApprove = statusValue !== "approved";
   const canReject = statusValue !== "rejected";
-  const searchText = getItemSearchText(ad);
   return `
-    <article class="heart-crm-card heart-crm-card--ad" data-heart-crm-row="ads" data-heart-crm-row-id="${escapeHtml(adId)}" data-heart-crm-search-text="${escapeHtml(searchText)}">
+    <article class="heart-crm-card heart-crm-card--ad">
       <div class="heart-crm-card-head">
         <div class="heart-crm-ad-thumb" aria-hidden="true">
-          ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" decoding="async" data-heart-crm-image-key="${escapeHtml(`ads:${adId || title}`)}" data-heart-crm-stable-src="${escapeHtml(imageUrl)}" onerror="this.hidden=true;" />` : renderHeartIcon("image")}
+          ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />` : renderHeartIcon("image")}
         </div>
         <div class="heart-crm-card-main">
           <p class="heart-crm-card-title">${escapeHtml(title)}</p>
@@ -606,7 +596,7 @@ function renderStaffCard(entry = {}, crmAdmin = {}) {
   return `
     <button type="button" class="heart-crm-card heart-crm-card--staff heart-crm-card--button" data-action="open-crm-editor" data-crm-domain="staff" data-crm-item-id="${escapeHtml(staffId)}" data-crm-mode="edit" data-staff-edit="${escapeHtml(staffId)}">
       <div class="heart-crm-card-head">
-        ${renderAvatar({ imageUrl: avatarUrl, label: name, size: "large", imageKey: `staff:${staffId || email || name}` })}
+        ${renderAvatar({ imageUrl: avatarUrl, label: name, size: "large" })}
         <div class="heart-crm-card-main">
           <p class="heart-crm-card-title">${escapeHtml(name)}</p>
           <p class="heart-crm-card-meta">@${escapeHtml(handle)}</p>
@@ -721,9 +711,8 @@ function renderSectionList(sectionKey = "", section = {}, sectionState = {}, crm
   }
   const rows = items.map((item) => renderers[sectionKey]?.(item) || "").join("");
   return `
-    <div class="heart-crm-list-stack" data-heart-crm-list-stack="${escapeHtml(sectionKey)}" ${status === "loading" ? `data-heart-crm-refreshing="${escapeHtml(sectionKey)}"` : ""}>
+    <div class="heart-crm-list-stack" ${status === "loading" ? `data-heart-crm-refreshing="${escapeHtml(sectionKey)}"` : ""}>
       ${rows}
-      <div class="heart-crm-state heart-crm-state--neutral" data-heart-crm-search-empty="${escapeHtml(sectionKey)}" hidden>Keine Treffer</div>
       ${status === "loading" ? renderStateBlock(`${section.title} werden aktualisiert...`, "neutral") : ""}
     </div>
   `;
@@ -793,7 +782,7 @@ function renderCrmReadSection(section, consumer, crmAdmin = {}) {
     : "Noch kein read-only Abruf in dieser Session.";
 
   return `
-    <section id="${escapeHtml(section.key)}View" class="heart-crm-social-view heart-crm-social-view--${escapeHtml(section.key)}" data-heart-crm-section="${escapeHtml(section.key)}">
+    <section id="${escapeHtml(section.key)}View" class="heart-crm-social-view heart-crm-social-view--${escapeHtml(section.key)}">
       ${showSectionHeader ? `<div class="heart-crm-social-head">
         <div>
           <span class="heart-crm-social-eyebrow">${escapeHtml(section.eyebrow)}</span>

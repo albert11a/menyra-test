@@ -17,19 +17,24 @@ restaurant public profile, menu, QR order and waiter status flow. Do not sell
 analytics, ads, shops, hotels or broad CRM promises until their contracts and
 tests catch up.
 
+Mnyra is mobile-first. Real phone/mobile browser behavior is the primary launch
+criterion for visible loading, image flicker, Search/input focus and business
+tools. Desktop manual tests can support the decision, but they do not close a
+visual issue when mobile remains unverified or contradictory.
+
 ## P0: Before Any Paying Customer Or Production Data
 
-| Workstream                        | Business value                                     | Exit criteria                                                                                    |
-| --------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Public route contract freeze      | Prevent broken links and stale local assumptions.  | `/:slug`, `/:slug/menu`, `/:slug/posts`, QR `src=qr` and `table` behavior documented and tested. |
-| Public/private profile projection | Prevent accidental business/private data exposure. | Public profile/menu/discovery reads no longer depend on broad mixed private fields.              |
-| Restaurant order release gate     | Enables first real revenue workflow.               | Functions, rules, unit, build and manual QR/order/waiter matrix pass against emulator seed.      |
-| Numeric menu price migration      | Protects order totals and customer trust.          | Menu item prices normalized to a stable numeric contract with migration/tests.                   |
-| Staff/waiter revocation tests     | Protects restaurant operations.                    | Invite, role change, revoke, stale device and denied restaurant switch tests exist.              |
-| Heart/lead mutation audit         | Protects account provisioning.                     | Lead save/convert/delete and owner account bootstrap have tests and audit metadata.              |
-| Minimal analytics design          | Prevents spoofed or useless metrics.               | Event schema, permissions and aggregation plan approved before any tracking is sold.             |
-| Ads safety decision               | Avoids unsafe paid ad product.                     | Ads remain internal/test-only or move to safer per-ad records with moderation audit trail.       |
-| Manual launch rehearsal           | Catches UI/device failures not covered by tests.   | Public profile/menu/QR/order/waiter/owner/Heart checks recorded on mobile and desktop.           |
+| Workstream                        | Business value                                     | Exit criteria                                                                                                      |
+| --------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Public route contract freeze      | Prevent broken links and stale local assumptions.  | `/:slug`, `/:slug/menu`, `/:slug/posts`, QR `src=qr` and `table` behavior documented and tested.                   |
+| Public/private profile projection | Prevent accidental business/private data exposure. | Public profile/menu/discovery reads no longer depend on broad mixed private fields.                                |
+| Restaurant order release gate     | Enables first real revenue workflow.               | Functions, rules, unit, build and manual QR/order/waiter matrix pass against emulator seed.                        |
+| Numeric menu price migration      | Protects order totals and customer trust.          | Menu item prices normalized to a stable numeric contract with migration/tests.                                     |
+| Staff/waiter revocation tests     | Protects restaurant operations.                    | Invite, role change, revoke, stale device and denied restaurant switch tests exist.                                |
+| Heart/lead mutation audit         | Protects account provisioning.                     | Lead save/convert/delete and owner account bootstrap have tests and audit metadata.                                |
+| Minimal analytics design          | Prevents spoofed or useless metrics.               | Event schema, permissions and aggregation plan approved before any tracking is sold.                               |
+| Ads safety decision               | Avoids unsafe paid ad product.                     | Ads remain internal/test-only or move to safer per-ad records with moderation audit trail.                         |
+| Manual launch rehearsal           | Catches UI/device failures not covered by tests.   | Public profile/menu/QR/order/waiter/owner/Heart checks recorded mobile-first; desktop is supporting evidence only. |
 
 ## P0 Implementation Block Started 2026-07-01
 
@@ -145,30 +150,27 @@ Fixed or covered:
   data settles, and avatar images now expose explicit fallbacks.
 - Heart CRM read-only lists keep populated rows visible during refresh instead
   of replacing them with repeated loading blocks.
-- Heart Leads search now keeps focus and the existing avatar DOM stable while
-  typing, including during unrelated background Heart updates.
-- Heart CRM cards now expose stable image/source attributes and same-container
-  fallback initials for lead/customer/ad/staff images.
-- Heart desktop sidebar CSS was restored so the main Leads surface is actually
-  clickable on desktop widths.
 - Public Profile/Menu/QR and Waiter browser specs now include fallback,
   broken-image, empty-menu and button recovery checks.
-- Heart browser spec is now active for CEO login, non-CEO block, emulator-only
-  network routing, Leads search/image stability and tab navigation on desktop
-  and mobile.
-- Final Heart follow-up verification passed Unit 124/124, Rules 17/17,
-  Functions 4/4, lint, format, architecture check, build and targeted Heart
-  Playwright 4/4.
+- Final local verification passed Unit 123/123, Rules 17/17, Functions 4/4,
+  lint, format, architecture check, build and targeted Playwright 16/16.
 - The tracked social bundle was rebuilt, including the new hashed profile
   render chunk.
 
 Still open before the relevant verticals launch:
 
+- Heart Leads profile-image flicker and Search disruption are open again after
+  `f3963b07` was reverted. The next Heart block must be mobile-first diagnosis,
+  not another blind DOM-local filtering or desktop CSS patch.
 - Shop owner product mutation image/list stability.
 - Hotel owner offer/details mutation image/list stability.
-- Durable authenticated Heart lead create/edit/delete E2E with cleanup/audit
-  assertions.
+- Durable authenticated Heart lead mutation E2E.
 - Real phone/tablet and slow-network QR/Menu/Waiter checks.
+
+Rollback verification for `f3963b07` passed Functions 4/4, Rules 17/17, Unit
+123/123, lint, final format check, architecture check and build. The build did
+not change tracked social bundle files. Mobile Heart Leads diagnosis was not run
+and remains open.
 
 ## P1: First Controlled Restaurant Launch
 

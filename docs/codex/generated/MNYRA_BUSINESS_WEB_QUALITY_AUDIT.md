@@ -4,56 +4,66 @@ Status: CURRENT
 Generated: 2026-07-02
 Branch: `mnyrasocial`
 
-## Scope
+## Current Rollback Note
 
-This follow-up covers the business-facing Heart/CEO Leads regression found
-after the broader Clean Web pass. It uses only local emulator data and does not
-deploy, touch production data, loosen Firestore Rules, rename routes or
-collections, activate ads/analytics or redesign the Heart UI.
+Commit `f3963b07` (`fix: stabilize heart leads interactions`) has been backed
+out. The follow-up Heart Leads fix is no longer accepted as solved because real
+usage still shows, and may worsen, profile-image flicker in the Leads list.
 
-## Findings
+The affected symptoms remain open:
 
-| Area                 | Route/Flow                                           | Found problem                                                                                                                                          | Visible user effect                                                                                             | Suspected cause                                                                                     | Fix status                                                                                                                     | Priority | Test/Evidence                                                                                              |
-| -------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------- |
-| Heart/CEO            | `/heart?firebase-emulator=1&view=leads` Leads search | Typing in the Leads search wrote every keypress into the Heart store, and the global subscriber replaced `root.innerHTML`.                             | Search focus felt disrupted and lead profile images could remount/flicker while typing.                         | Search query state changes were treated like full-app render changes.                               | Fixed: pure CRM search updates now filter the existing DOM rows and skip full render while the search input is active.         | P1       | `tests/e2e/heart.spec.ts` desktop/mobile checks focus and stable avatar DOM marker while typing.           |
-| Heart/CEO            | Leads tab during initial background refresh          | Background Heart data updates from other CRM/admin domains could remount the active Leads list even when the visible Leads section had not changed.    | Lead logo/profile images flickered after the list was already visible, especially on mobile.                    | Store subscriber rendered the active view for unrelated background domain/dashboard updates.        | Fixed: active CRM search keeps the visible section mounted when the visible section, modal and nav state are unchanged.        | P1       | Heart E2E preserves a marker on the seeded lead `<img>` through desktop and mobile search.                 |
-| Heart/CEO            | Leads avatar fallback                                | Lead cards had no stable image key or inline fallback initials for broken image URLs.                                                                  | A broken logo could look like a grey/broken image rather than a clean business fallback.                        | Avatar renderer emitted only an `<img>` for available URLs.                                         | Fixed: CRM avatars expose `data-heart-crm-image-key`, `data-heart-crm-stable-src` and fallback initials in the same container. | P2       | `tests/heart-crm-read-view-stability.test.mjs` asserts stable image attributes and fallback initials.      |
-| Heart/CEO            | Desktop Heart shell                                  | A later CSS block reset the sidebar to `width: 100vw` after the desktop sidebar media rule.                                                            | Search input could be visible but not actually clickable because the sidebar/header intercepted pointer events. | CSS order regression between the base Heart shell block and later mobile-first shell block.         | Fixed: later desktop media override restores the 320px sidebar column and keeps the main shell clickable.                      | P1       | First Heart E2E failed with sidebar/header intercepting Search; rerun passed after CSS fix.                |
-| Heart/CEO            | Mobile Heart tab navigation                          | Mobile navigation lives in the drawer and is off-viewport when closed.                                                                                 | Test and manual flows must open the drawer before switching Heart tabs on phone widths.                         | Expected mobile drawer behavior, not a product bug.                                                 | Covered: E2E helper opens the drawer before mobile tab clicks.                                                                 | P2       | Heart E2E passes on `mobile-chrome`.                                                                       |
-| Heart/CEO            | Lead create/edit/delete                              | Existing local browser probe covered throwaway lead create/update/delete, but this follow-up keeps durable E2E focused on search/image/list stability. | Write-flow button regressions still need a dedicated durable mutation spec with cleanup/audit assertions.       | Lead write paths are broader than the scoped flicker fix and touch save/delete/conversion adapters. | Open, documented.                                                                                                              | P1       | Manual emulator mutation proof remains from prior rehearsal; new durable spec covers open/edit modal only. |
-| Posts/Stories/Videos | Public/social media surfaces                         | No new media runtime change was made in this follow-up.                                                                                                | Broader story/video loading stability can still require separate checks when those surfaces enter launch scope. | Large shared social runtime and media upload paths are outside this Heart Leads scope.              | Documented, not changed.                                                                                                       | P2       | No new production calls or media writes; keep separate media QA.                                           |
+- Lead profile image appears and disappears in fast repeated states.
+- Search input is hard to use while the image/card flicker is active.
+- The user may need to click Search again after the flicker stops.
+- Green desktop or DOM-marker tests are not sufficient evidence for closing the
+  issue.
 
-## Local Data And Safety
+## Mobile-First Rule
 
-- Added one emulator-only fixture: `leads/lead-demo-001`.
-- The seed now writes 63 local Firestore documents and 6 Auth users after
-  `npm run emulators:seed`.
-- Heart E2E asserts that emulator mode does not call production Functions,
-  Auth or Firestore hosts.
-- No production accounts, leads, orders, ads or Firestore Rules were changed.
+Mnyra is mobile-first. Business-tool acceptance must prioritize real phone or
+mobile-viewport behavior over desktop-only manual checks. Desktop manual testing
+can support a decision, but it is not the launch criterion for image flicker,
+input focus, loading stability or business-tool usability.
 
-## Verification
+If desktop and mobile disagree, mobile wins until the mobile issue is diagnosed.
+No desktop-only CSS change should be accepted as the main solution for a mobile
+business problem.
 
-Completed during the fix:
+## Business Tool Status
 
-- `npm run test:unit` passed, 124/124.
-- `npm run test:rules` passed, 17/17.
-- `npm run test:functions` passed, 4/4.
-- `npm run lint` passed.
-- `npm run format:check` passed after Prettier formatted the updated reports
-  and Heart E2E spec.
-- `npm run arch:check` passed.
-- `npm run build` passed with the existing large `social-app.js` chunk warning;
-  no tracked Social bundle files changed in this follow-up.
-- `node --test tests/heart-crm-read-view-stability.test.mjs` passed, 3/3.
-- `npx playwright test tests/e2e/heart.spec.ts --config tests/e2e/playwright.config.ts --project=chromium` passed, 2/2.
-- `npx playwright test tests/e2e/heart.spec.ts --config tests/e2e/playwright.config.ts --project=mobile-chrome` passed, 2/2.
+| Area                   | Status                          | Notes                                                                                | Next action                                                 |
+| ---------------------- | ------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Public profile/menu/QR | Clean-Web fixes remain in place | Existing public image/menu retention work from `aaf902d0` remains the baseline.      | Keep mobile real-device QR/menu checks before launch.       |
+| Owner menu             | Clean-Web baseline remains      | No new owner fix was added in this rollback.                                         | Keep owner mobile edit/publish rehearsal in launch gate.    |
+| Waiter board           | Clean-Web baseline remains      | No new waiter fix was added in this rollback.                                        | Keep tablet/mobile status-flow rehearsal in launch gate.    |
+| Heart Leads            | Open                            | `f3963b07` was reverted; Lead image flicker and Search disruption remain unresolved. | Run a separate mobile-first diagnosis before any new fix.   |
+| Shop products          | Manual/P2                       | Product mutation image/list stability is not yet durable launch evidence.            | Add vertical-specific mobile-first mutation coverage later. |
+| Hotel offers           | Manual/P2                       | Offer/details mutation image/list stability is not yet durable launch evidence.      | Add vertical-specific mobile-first mutation coverage later. |
 
-## Remaining Business Web Blockers
+## Not Done In This Rollback
 
-- P1: durable Heart lead create/edit/delete E2E with cleanup and audit
-  assertions.
-- P1: owner order-dashboard operation before controlled restaurant pilot.
-- P2: shop owner product mutation image/list stability.
-- P2: hotel owner offer/details mutation image/list stability.
-- P2: real phone/3G QR, public menu, waiter tablet and Heart Leads rehearsal.
+- No new Heart Leads fix was implemented.
+- No Firestore Rules were loosened.
+- No production data, accounts, leads, orders or ads were changed.
+- No production deploy was run.
+- No routes or collections were renamed.
+
+## Required Follow-Up
+
+Run the next Heart Leads block as mobile-first diagnosis only. It should observe
+image `src` changes, card rebuilds, Lead reload frequency, avatar URL value/null
+transitions, fallback/onerror behavior and background refresh overwrites before
+choosing a fix.
+
+## Rollback Verification
+
+Rollback checks passed: Functions 4/4, Rules 17/17, Unit 123/123, lint, final
+format check, architecture check and build.
+
+The first format check flagged only `seed/data/mnyra-local-seed.json` and
+`tests/e2e/heart.spec.ts` after the revert. Prettier was applied to those two
+revert-affected files and the repeated format check passed.
+
+Bundle status: `npm run build` did not change tracked files under
+`apps/menyra-social/bundled`. Mobile Heart Leads diagnosis was not run in this
+rollback and remains the next separate block.

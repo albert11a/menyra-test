@@ -1,5 +1,5 @@
 Status: CURRENT
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 # Mnyra Codex Rules
 
@@ -60,6 +60,23 @@ Older dated notes are archive context unless they are explicitly marked
 - This build requirement is local and repo-based only. Do not run Firebase
   deploys, Rules deploys, Functions deploys or any production deploy command for
   this requirement.
+
+## Mobile-First UI Rules
+
+- Mnyra is mobile-first. Real mobile browser behavior and phone-sized checks
+  carry more weight than desktop-only manual checks.
+- Desktop manual tests are useful supporting evidence, but they are not the
+  main launch criterion for visible UI, loading, flicker, image, input-focus or
+  business-tool quality.
+- If desktop and mobile behavior disagree, prioritize mobile until the mobile
+  issue is understood and documented.
+- For image flicker, search fields, input focus and business tools, check
+  mobile first. Do not accept a desktop-only CSS change as the solution for a
+  mobile business problem.
+- Final reports after browser-visible work must state whether mobile was
+  checked. If only desktop was checked, do not report the visual issue as solved.
+- Browser-visible changes still require `npm run build` and bundle-status
+  reporting.
 
 ## Branch Rules
 
