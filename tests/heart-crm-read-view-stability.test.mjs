@@ -38,9 +38,40 @@ test("Heart CRM keeps populated leads visible while a refresh is loading", () =>
   });
 
   assert.match(html, /Stable Lead Cafe/);
+  assert.match(html, /data-heart-crm-row="leads"/);
+  assert.match(html, /data-heart-crm-search-text="stable lead cafe/);
   assert.match(html, /data-heart-crm-refreshing="leads"/);
   assert.match(html, /Leads werden aktualisiert/);
   assert.doesNotMatch(html, /Keine Leads/);
+});
+
+test("Heart CRM renders stable lead avatar image attributes and fallback initials", () => {
+  const html = renderHeartCrmAdminReadView({
+    consumerDeps: createConsumerDeps(),
+    activeDomain: "leads",
+    crmAdmin: {
+      sections: {
+        leads: {
+          status: "ready",
+          scope: "own",
+          items: [
+            {
+              id: "lead-image-1",
+              businessName: "Logo Stable Bistro",
+              status: "registered",
+              email: "logo@example.test",
+              logoUrl: "https://images.example.local/lead-logo.jpg"
+            }
+          ]
+        }
+      }
+    }
+  });
+
+  assert.match(html, /data-heart-crm-row-id="lead-image-1"/);
+  assert.match(html, /data-heart-crm-image-key="leads:lead-image-1"/);
+  assert.match(html, /data-heart-crm-stable-src="https:\/\/images\.example\.local\/lead-logo\.jpg"/);
+  assert.match(html, /<span hidden>LS<\/span>/);
 });
 
 test("Heart CRM still shows first-load loading state when no rows exist", () => {

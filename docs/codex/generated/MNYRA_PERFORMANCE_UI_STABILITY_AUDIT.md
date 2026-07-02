@@ -61,7 +61,10 @@ Clean Web follow-up on 2026-07-02 fixed the most visible small loading issues:
 Public Menu now retains existing visible items during transient `unknown` reads,
 Public Profile avatars/logos use stable last-good image keys during header
 settling, avatar image markup has explicit fallbacks and Heart CRM lists keep
-rows visible while read-only domains refresh.
+rows visible while read-only domains refresh. The Heart Leads follow-up now
+keeps active search focus and the existing lead avatar DOM stable during typing,
+skips unrelated Heart background renders while the visible CRM section is
+unchanged and restores desktop sidebar clickability.
 
 Current UI risks:
 
@@ -75,6 +78,9 @@ Current UI risks:
 - Images and media need fallback/loading/error states by business type.
 - Owner/Heart/admin views need dense operational UI checks, not marketing-style
   assumptions.
+- Heart lead create/edit/delete still needs a durable mutation E2E with cleanup
+  and audit assertions; the new Heart E2E covers search/image/tab stability and
+  opening an existing lead modal.
 - Shop product and Hotel offer mutations still need vertical-specific browser
   coverage before those verticals leave manual/P2 status.
 
@@ -84,11 +90,12 @@ The 2026-07-02 Clean Web task explicitly requested browser checks, so targeted
 Public Profile/Menu/QR, Owner/Menu and Waiter Playwright coverage is part of
 that pass. Real-device mobile/3G checks are still manual.
 
-Final Clean Web verification passed: Unit 123/123, Rules 17/17, Functions 4/4,
-lint, format, architecture check, production build and targeted Playwright
-16/16. The build updated the tracked social bundle and replaced the hashed
-profile-render chunk. The large `social-app.js` bundle warning remains a P3
-performance/runtime-extraction risk, not a Clean Web correctness failure.
+Final Heart Leads follow-up verification passed: Unit 124/124, Rules 17/17,
+Functions 4/4, lint, format, architecture check, production build and targeted
+Heart Playwright 4/4 across Chromium and Mobile Chrome. The follow-up build did
+not change tracked Social bundle files. The large `social-app.js` bundle warning
+remains a P3 performance/runtime-extraction risk, not a Clean Web correctness
+failure.
 
 Before launch, manually verify at least:
 
@@ -101,7 +108,9 @@ Before launch, manually verify at least:
 7. Cart, checkout, order confirmation and guest recovery.
 8. Waiter tablet/mobile board and status transitions.
 9. Owner menu/product/focus/QR/ads flows.
-10. Heart leads/customers/ads/staff flows.
+10. Heart leads/customers/ads/staff flows; search/image/tab stability now has
+    desktop/mobile E2E, but lead create/edit/delete still needs durable
+    mutation coverage.
 11. Shop product and hotel/travel offer variants.
 12. Mobile narrow viewport text overflow and tap target behavior.
 

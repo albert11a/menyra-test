@@ -23,7 +23,8 @@ loosen Firestore Rules, redesign UI or start runtime extraction.
   - Firestore: `127.0.0.1:8080`
   - Functions: `127.0.0.1:5001`
 - Local seed command: `npm run emulators:seed`
-- Seed result: 62 Firestore documents and 6 Auth users seeded locally.
+- Seed result: 63 Firestore documents and 6 Auth users seeded locally after the
+  Heart Leads fixture was added.
 - Browser runner: Playwright, projects `chromium` and `mobile-chrome`.
 
 ## Seed Actors
@@ -58,7 +59,8 @@ All actor use was against local emulators only.
 | `/menu` owner login/editor/mutation       | Passed                      | Passed  |
 | `/menu` shop owner editor entry           | Passed                      | Passed  |
 | `/menu` hotel details/offer entry         | Passed                      | Passed  |
-| Heart non-CEO block                       | Passed in interactive probe | Not run |
+| Heart non-CEO block                       | Passed in E2E               | Passed  |
+| Heart CEO Leads search/image stability    | Passed in E2E               | Passed  |
 | Heart CEO login/dashboard/local Functions | Passed in interactive probe | Not run |
 | Heart lead create/update/delete           | Passed in interactive probe | Not run |
 
@@ -74,8 +76,13 @@ All actor use was against local emulators only.
   - Passed, 6 tests across desktop and mobile projects.
 - `npx playwright test --config tests/e2e/playwright.config.ts tests/e2e/owner-tool.spec.ts tests/e2e/public-profile.spec.ts tests/e2e/public-menu.spec.ts tests/e2e/qr-menu.spec.ts tests/e2e/waiter.spec.ts`
   - Final follow-up matrix passed, 16 tests across desktop and mobile projects.
-- Final baseline: Functions 4/4, Rules 17/17 and Unit 111/111 passed;
-  lint, format check, architecture check and build also passed.
+- `npx playwright test tests/e2e/heart.spec.ts --config tests/e2e/playwright.config.ts --project=chromium`
+  - Passed, 2 tests.
+- `npx playwright test tests/e2e/heart.spec.ts --config tests/e2e/playwright.config.ts --project=mobile-chrome`
+  - Passed, 2 tests.
+- Heart follow-up final baseline: Functions 4/4, Rules 17/17 and Unit 124/124
+  passed; lint, format check, architecture check, build and targeted Heart
+  Playwright 4/4 also passed.
 
 The first QR desktop run failed because the test waited only the default 5s for
 `Bestellung gesendet` while the UI was still sending. The assertion was changed
@@ -114,9 +121,10 @@ to a 20s timeout and the full four-spec rehearsal passed after that.
 | Shop owner entry                | Passed/light proof      | `shop-owner.local@example.test` opens the `shop-demo` product editor on desktop/mobile; product mutation remains a later vertical-specific test.                                                                       |
 | Hotel owner entry               | Passed/light proof      | `hotel-owner.local@example.test` opens Hotel Details and Oferta controls on desktop/mobile; offer mutation remains a later vertical-specific test.                                                                     |
 | Public startup denied `list`    | Resolved                | The legacy Feed `collectionGroup("stories")` read was scheduled after restaurant loading on public routes. Global story loading is now deferred to the Feed tab without a Rules change.                                |
-| Heart non-CEO block             | Passed                  | Owner session showed `CEO-Zugang erforderlich` in Heart.                                                                                                                                                               |
-| Heart CEO local Functions       | Passed after fix        | `/heart?firebase-emulator=1` now uses `127.0.0.1:5001`, not production Cloud Functions.                                                                                                                                |
-| Heart lead create/update/delete | Passed                  | A throwaway lead was created, renamed and deleted through the browser; the final list was empty.                                                                                                                       |
+| Heart non-CEO block             | Passed                  | Owner session showed `CEO-Zugang erforderlich` in Heart; active E2E now covers this on desktop/mobile.                                                                                                                 |
+| Heart CEO local Functions       | Passed after fix        | `/heart?firebase-emulator=1` now uses `127.0.0.1:5001`, not production Cloud Functions; active E2E rejects production Functions/Auth/Firestore hosts.                                                                  |
+| Heart Leads search/image        | Passed                  | Active E2E proves seeded CEO Leads list stays non-empty, search keeps focus and the lead avatar DOM is not remounted during typing on desktop/mobile.                                                                  |
+| Heart lead create/update/delete | Passed                  | A throwaway lead was created, renamed and deleted through the browser; durable mutation E2E with cleanup/audit assertions remains open.                                                                                |
 | Heart ads                       | Blocked                 | Ads view loads read-only with count 0 in the seed; no pending ad approval controls rendered. Array ads remain a paid-launch blocker.                                                                                   |
 
 ## Private Field Leak Check
@@ -140,7 +148,10 @@ public-safe item instead of spreading the previous dirty state into it.
   after the public projection builder block: public menu keeps existing visible
   items during transient `unknown` reads, profile avatars/logos use stable
   last-good image keys during settling, profile avatar images have explicit
-  fallbacks and Heart CRM lists keep populated rows visible during refresh.
+  fallbacks and Heart CRM lists keep populated rows visible during refresh. The
+  Heart Leads follow-up additionally keeps search focus and avatar DOM stable
+  during typing, restores desktop sidebar clickability and covers this in
+  active desktop/mobile Heart E2E.
 - The Clean Web targeted browser matrix passed after rebuilding tracked bundles:
   Public Profile/Menu/QR, Owner/Menu and Waiter passed 16/16 across desktop and
   mobile.

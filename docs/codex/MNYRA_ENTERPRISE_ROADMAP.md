@@ -145,10 +145,20 @@ Fixed or covered:
   data settles, and avatar images now expose explicit fallbacks.
 - Heart CRM read-only lists keep populated rows visible during refresh instead
   of replacing them with repeated loading blocks.
+- Heart Leads search now keeps focus and the existing avatar DOM stable while
+  typing, including during unrelated background Heart updates.
+- Heart CRM cards now expose stable image/source attributes and same-container
+  fallback initials for lead/customer/ad/staff images.
+- Heart desktop sidebar CSS was restored so the main Leads surface is actually
+  clickable on desktop widths.
 - Public Profile/Menu/QR and Waiter browser specs now include fallback,
   broken-image, empty-menu and button recovery checks.
-- Final local verification passed Unit 123/123, Rules 17/17, Functions 4/4,
-  lint, format, architecture check, build and targeted Playwright 16/16.
+- Heart browser spec is now active for CEO login, non-CEO block, emulator-only
+  network routing, Leads search/image stability and tab navigation on desktop
+  and mobile.
+- Final Heart follow-up verification passed Unit 124/124, Rules 17/17,
+  Functions 4/4, lint, format, architecture check, build and targeted Heart
+  Playwright 4/4.
 - The tracked social bundle was rebuilt, including the new hashed profile
   render chunk.
 
@@ -156,7 +166,8 @@ Still open before the relevant verticals launch:
 
 - Shop owner product mutation image/list stability.
 - Hotel owner offer/details mutation image/list stability.
-- Durable authenticated Heart lead mutation E2E.
+- Durable authenticated Heart lead create/edit/delete E2E with cleanup/audit
+  assertions.
 - Real phone/tablet and slow-network QR/Menu/Waiter checks.
 
 ## P1: First Controlled Restaurant Launch
