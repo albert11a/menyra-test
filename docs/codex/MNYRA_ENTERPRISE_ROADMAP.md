@@ -202,6 +202,38 @@ Rollback verification for `f3963b07` passed Functions 4/4, Rules 17/17, Unit
 not change tracked social bundle files. Mobile Heart Leads diagnosis was not run
 and remains open.
 
+## Current Clean Web Follow-Up 2026-07-02
+
+The current follow-up keeps the same launch discipline: no deploy, no
+production data, no Rules loosening, no route/collection rename, no redesign
+and no broad `social-app.js` refactor.
+
+Completed in this follow-up:
+
+- Shell avatar fallback gap closed for authenticated header, restoring-session
+  header and drawer avatars.
+- Heart Leads mobile diagnostic guard added. It creates and removes only an
+  emulator-local diagnostic lead, checks lead avatar visibility, records
+  card/avatar/list/Search-focus counters and rejects external production
+  Firebase/Mnyra calls in emulator mode.
+- Public Profile/Menu/QR, Owner/Menu, Waiter and Heart relevant mobile browser
+  checks passed locally.
+- Desktop supporting checks passed for public, owner and waiter flows.
+
+Still not closed:
+
+- Heart Leads real image flicker/Search disruption remains a P1 open product
+  issue until the new diagnostics are used on real phone/3G or a reproducible
+  mobile run.
+- Shop product mutation and Hotel offer mutation media/list stability remain P2
+  vertical work.
+- Large public-route bundle cost remains P3/runtime-extraction work.
+
+Final required baseline passed for this follow-up: Functions 4/4, Rules 17/17,
+Unit 127/127, lint, format check, architecture check and build. The build
+changed only `apps/menyra-social/bundled/entry/social-app.js`; no tracked
+bundle manifest or hashed chunk changed.
+
 ## P1: First Controlled Restaurant Launch
 
 | Workstream                 | Business value                           | Exit criteria                                                                                |

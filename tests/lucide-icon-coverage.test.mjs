@@ -63,7 +63,11 @@ function extractInlineIconNames() {
   const text = read(path.join(socialRoot, "social-app.js"));
   const iconObjectMatch = text.match(/const INLINE_LUCIDE_ICON_NODES = Object\.freeze\(\{([\s\S]*?)\n\}\);/);
   assert.ok(iconObjectMatch, "INLINE_LUCIDE_ICON_NODES block should exist");
-  return new Set(Array.from(iconObjectMatch[1].matchAll(/"([^"]+)":\s*Object\.freeze/g), (match) => match[1]));
+  const inlineNames = new Set(Array.from(iconObjectMatch[1].matchAll(/"([^"]+)":\s*Object\.freeze/g), (match) => match[1]));
+  for (const match of iconObjectMatch[1].matchAll(/^\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*Object\.freeze/gm)) {
+    inlineNames.add(match[1]);
+  }
+  return inlineNames;
 }
 
 test("modal and drawer literal lucide icon names exist in the local lucide build", () => {

@@ -285,13 +285,18 @@ function renderChip(label = "", tone = "neutral", extraClass = "") {
   return `<span class="heart-crm-chip heart-crm-chip--${safeTone} ${escapeHtml(extraClass)}">${escapeHtml(safeLabel)}</span>`;
 }
 
-function renderAvatar({ imageUrl = "", label = "", size = "default" } = {}) {
+function renderAvatar({ imageUrl = "", label = "", size = "default", domainKey = "", itemId = "" } = {}) {
   const safeImageUrl = asText(imageUrl);
   const safeLabel = firstText(label, "M");
+  const markerAttrs = [
+    `data-heart-crm-avatar="${escapeHtml(asText(domainKey) || "generic")}"`,
+    `data-heart-crm-avatar-id="${escapeHtml(asText(itemId))}"`,
+    `data-heart-crm-avatar-src="${escapeHtml(safeImageUrl)}"`
+  ].join(" ");
   return `
-    <div class="heart-crm-avatar heart-crm-avatar--${escapeHtml(size)}">
+    <div class="heart-crm-avatar heart-crm-avatar--${escapeHtml(size)}" ${markerAttrs}>
       ${safeImageUrl
-        ? `<img src="${escapeHtml(safeImageUrl)}" alt="" loading="lazy" />`
+        ? `<img src="${escapeHtml(safeImageUrl)}" alt="" loading="lazy" data-heart-crm-avatar-image data-heart-crm-avatar-src="${escapeHtml(safeImageUrl)}" />`
         : `<span>${escapeHtml(getInitials(safeLabel))}</span>`}
     </div>
   `;
@@ -479,9 +484,9 @@ function renderLeadCard(lead = {}, sectionState = {}) {
   const profileUrl = resolveLeadProfileUrl(lead);
   const leadId = firstText(lead.id, lead.leadId);
   return `
-    <article class="heart-crm-card heart-crm-card--lead">
+    <article class="heart-crm-card heart-crm-card--lead" data-heart-lead-card data-crm-domain="leads" data-crm-card-id="${escapeHtml(leadId)}">
       <div class="heart-crm-card-head">
-        ${renderAvatar({ imageUrl: logoUrl, label: businessName })}
+        ${renderAvatar({ imageUrl: logoUrl, label: businessName, domainKey: "leads", itemId: leadId })}
         <div class="heart-crm-card-main">
           <p class="heart-crm-card-title">${escapeHtml(businessName)}</p>
           ${emailLine ? `<p class="heart-crm-card-meta">${escapeHtml(emailLine)}</p>` : ""}

@@ -179,6 +179,44 @@ public-safe item instead of spreading the previous dirty state into it.
 - `/menu`, not `/apps/menyra-social/`, is the existing protected Owner/Menu
   entry point. The app shell preserves it through the login prompt and switches
   to the authenticated owner context after profile bootstrap.
+
+## Current Clean Web Follow-Up 2026-07-02
+
+This follow-up ran against local emulators and the existing local server on
+`http://127.0.0.1:5173`. It seeded only `mnyra-local` data and made no
+production writes or deploys.
+
+New browser evidence:
+
+- Mobile Chrome targeted Playwright passed 10/10 for Public Profile/Menu/QR,
+  Owner/Menu, Waiter and Heart Leads diagnostics.
+- Desktop Chromium targeted Playwright passed 9/9 for the same public, owner
+  and waiter flows; Heart diagnostic was skipped by design outside
+  `mobile-chrome`.
+- Heart Leads diagnostic E2E now asserts no external production Firebase/Mnyra
+  requests in emulator mode, no permission-denied console errors, stable Search
+  value/focus during typed Search, visible lead cards after tab navigation and
+  visible lead cards/images after refresh.
+
+New fixed browser-visible gap:
+
+- Shell header/restoring-session/drawer avatars now expose fallback sources for
+  the existing app-shell image fallback binder.
+
+Open browser launch blockers:
+
+- Heart Leads image flicker/Search disruption is still open as a P1
+  mobile-first product issue if it reproduces on real phone/3G. The current
+  work adds diagnostics and guardrails; it does not claim product closure.
+- Shop product mutation and Hotel offer mutation media/list stability remain
+  P2 manual/vertical-specific coverage gaps.
+
+Final required baseline for this follow-up passed: Functions 4/4, Rules 17/17,
+Unit 127/127, lint, format check, architecture check and build. The build
+changed only `apps/menyra-social/bundled/entry/social-app.js`; no tracked
+bundle manifest or hashed chunk changed. The existing large `social-app.js`
+chunk warning remains a P3 performance/runtime-extraction risk.
+
 - Local seed image URLs use `https://images.example.local`. The E2E fixture now
   fulfills those fake URLs with a local SVG placeholder so browser tests are not
   noisy or network-dependent.

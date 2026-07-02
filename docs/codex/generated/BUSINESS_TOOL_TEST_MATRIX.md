@@ -161,6 +161,37 @@ hashed `profile-open-flow-utils` chunk.
 Remaining manual/P1 evidence: shop-owner and hotel-owner dedicated return flows
 on mobile, plus real-phone/3G rehearsal.
 
+## Current Clean Web Follow-Up 2026-07-02
+
+New status updates:
+
+- Public/Owner shell avatar fallback: P1 fixed. Header, restoring-session and
+  drawer avatar images now expose `data-fallback-src` for the existing fallback
+  binder.
+- Heart Leads mobile diagnosis: P1 diagnostic coverage added. The mobile E2E
+  creates an emulator-only diagnostic lead, checks the lead image, records card
+  rebuild/avatar/list/Search-focus counters, verifies refresh/navigation
+  stability and rejects external production Firebase/Mnyra calls.
+- Heart Leads product flicker: still P1 open if reproduced on real phone/3G.
+  This pass does not ship another blind Heart fix.
+- Restaurant Owner/Menu, Public Profile/Menu/QR and Waiter status flow: current
+  targeted mobile and desktop browser checks passed.
+- Shop product mutation and Hotel offer mutation remain P2 manual because the
+  current browser checks prove entry, not media mutation stability.
+
+Current automated evidence:
+
+- `node --test tests/auth-shell-chrome-sync.test.mjs tests/heart-crm-read-view-stability.test.mjs`
+  passed, 8/8.
+- Mobile Chrome relevant Playwright passed, 10/10.
+- Desktop Chromium relevant Playwright passed, 9/9 with Heart diagnostic
+  intentionally skipped.
+
+Final required baseline passed: Functions 4/4, Rules 17/17, Unit 127/127,
+lint, format check, architecture check and build. The build changed only
+`apps/menyra-social/bundled/entry/social-app.js`; no tracked bundle manifest or
+hashed chunk changed.
+
 ## P0 Exit Criteria
 
 P0 can move to controlled restaurant launch only when:

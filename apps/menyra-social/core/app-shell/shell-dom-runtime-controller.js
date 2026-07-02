@@ -60,6 +60,7 @@ export function createShellDomRuntimeController({
   getLastRenderMode = () => "",
   getVerifiedMapLocationFn = () => null,
   isPlaceholderUrl = () => false,
+  placeholderImage = "",
   escapeHtml = (value = "") => String(value || ""),
   icon = () => "",
   deleteDocFn = async () => {},
@@ -326,7 +327,7 @@ export function createShellDomRuntimeController({
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
           ${isGuest
             ? `<div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("user", "w-4 h-4")}</div>`
-            : `<img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />`
+            : `<img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" data-fallback-src="${escapeHtml(placeholderImage)}" class="w-10 h-10 rounded-xl ${avatarFit}" />`
           }
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(isGuest ? tr("nav.guest", "Gast") : (state?.userProfile?.name || tr("nav.user", "User")))}</p>

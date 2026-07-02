@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createAppShellRuntimeController } from "../apps/menyra-social/core/app-shell/app-shell-runtime-controller.js";
 import { createShellDomRuntimeController } from "../apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js";
 import { createSessionTabLifecycleRuntimeController } from "../apps/menyra-social/core/app-shell/session-tab-lifecycle-runtime-controller.js";
 
@@ -101,6 +102,51 @@ test("shell chrome update refreshes notification badges while chat v1 is disable
   assert.equal(documentObj.headerAnchor.querySelector('[data-unread-badge="header"]').textContent, "1");
   assert.equal(documentObj.drawerNotifications.querySelector('[data-unread-badge="drawer"]').textContent, "1");
   assert.equal(documentObj.drawerChat.querySelector('[data-chat-badge="drawer"]'), null);
+});
+
+test("authenticated header avatar exposes fallback source", () => {
+  const controller = createAppShellRuntimeController({
+    state: { userProfile: {} },
+    PLACEHOLDER_IMAGE: "placeholder.jpg",
+    getAuthInitialized: () => true,
+    isGuestSession: () => false,
+    escapeHtml: (value = "") => String(value || ""),
+    icon: () => ""
+  });
+
+  const html = controller.renderHeaderActionButton("https://images.example.local/avatar.jpg", "object-cover");
+
+  assert.match(html, /id="headerAvatar"/);
+  assert.match(html, /data-img-key="avatar:header"/);
+  assert.match(html, /data-fallback-src="placeholder\.jpg"/);
+});
+
+test("drawer avatar exposes fallback source", () => {
+  const controller = createShellDomRuntimeController({
+    state: {
+      user: { uid: "user-123" },
+      userProfile: {
+        uid: "user-123",
+        name: "Local Owner",
+        avatar: "https://images.example.local/owner.jpg"
+      }
+    },
+    brandUi: { title: "MNYRA" },
+    isGuestSession: () => false,
+    isCeoUser: () => false,
+    resolveUserAvatar: (value = "") => String(value || "").trim(),
+    placeholderImage: "placeholder.jpg",
+    resolveHeaderBranding: () => ({ title: "MNYRA", subtitle: "", logoUrl: "", isBusinessLogo: false }),
+    isPlaceholderUrl: (value) => !String(value || "").trim(),
+    escapeHtml: (value = "") => String(value || ""),
+    icon: () => ""
+  });
+
+  const html = controller.renderDrawer();
+
+  assert.match(html, /id="drawerAvatar"/);
+  assert.match(html, /data-img-key="avatar:drawer"/);
+  assert.match(html, /data-fallback-src="placeholder\.jpg"/);
 });
 
 test("login live listeners warm notification chrome while chat v1 is disabled", () => {

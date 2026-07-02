@@ -133,6 +133,42 @@ Before launch, manually verify at least:
 12. Shop product and hotel/travel offer variants.
 13. Mobile narrow viewport text overflow and tap target behavior.
 
+## Current Clean Web Follow-Up 2026-07-02
+
+Current small fixes and diagnostics:
+
+- App-shell profile avatar images now opt into the existing fallback binder via
+  `data-fallback-src` for authenticated header, restoring-session header and
+  drawer avatars. This reduces broken/grey avatar states without redesigning
+  the shell.
+- Heart CRM Lead cards and avatars now expose diagnostic data attributes. The
+  mobile E2E can count card rebuilds, avatar `src` changes, list-empty
+  transitions and Search focus loss while also rejecting external production
+  Firebase/Mnyra requests in emulator mode.
+
+Current browser evidence:
+
+- Mobile Chrome targeted Playwright passed Public Profile/Menu/QR, Owner/Menu,
+  Waiter and Heart, 10/10.
+- Desktop Chromium targeted Playwright passed Public Profile/Menu/QR,
+  Owner/Menu and Waiter, 9/9; Heart diagnostic is mobile-only by design.
+- Targeted Node regressions for avatar fallbacks and Heart marker output
+  passed, 8/8.
+
+Remaining stability/performance risks:
+
+- Heart Leads profile-image flicker and Search disruption are still open as a
+  P1 mobile-first product issue if reproduced on real phone/3G. The current
+  change measures it; it does not claim to fix it.
+- Shop product and Hotel offer media mutation stability remain P2 coverage
+  gaps.
+- The large `social-app.js` public-route bundle remains a P3 extraction/budget
+  risk and is not solved by this small stability pass.
+- Final baseline passed for this follow-up: Functions 4/4, Rules 17/17, Unit
+  127/127, lint, format check, architecture check and build. The build changed
+  only `apps/menyra-social/bundled/entry/social-app.js`; no tracked bundle
+  manifest or hashed chunk changed.
+
 ## Performance Gates Before Enterprise Launch
 
 | Gate                    | Requirement                                                                         |

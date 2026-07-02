@@ -84,6 +84,37 @@ image `src` changes, card rebuilds, Lead reload frequency, avatar URL value/null
 transitions, fallback/onerror behavior and background refresh overwrites before
 choosing a fix.
 
+## Current Clean Web Follow-Up 2026-07-02
+
+This follow-up implements the requested Heart step as diagnosis and guardrails,
+not as another product-side Heart fix.
+
+Done:
+
+- Added stable Heart Lead card/avatar diagnostic attributes.
+- Added a mobile-only Heart E2E that creates an emulator-local diagnostic lead,
+  verifies the Lead image, types in Search, records mutation/focus/list/image
+  counters, navigates Heart tabs, refreshes and asserts no external production
+  Firebase/Mnyra calls in emulator mode.
+- Fixed a separate public/owner shell quality issue: authenticated header,
+  restoring-session header and drawer avatars now expose fallback sources for
+  the existing image fallback binder.
+- Re-ran the relevant browser matrix locally: mobile Chrome 10/10 passed;
+  desktop Chromium 9/9 passed with the Heart diagnostic intentionally skipped.
+
+Still open:
+
+- Heart Leads image flicker/Search disruption is not declared solved. The next
+  product fix must use the new mobile diagnostic evidence and should avoid
+  DOM-local filtering, global render skips or desktop-only CSS patches.
+- Shop product and Hotel offer media mutation stability remain P2 manual gaps.
+- Real phone/3G visual checks remain required before launch acceptance.
+
+Final required baseline passed for this follow-up: Functions 4/4, Rules 17/17,
+Unit 127/127, lint, format check, architecture check and build. The build
+changed only `apps/menyra-social/bundled/entry/social-app.js`; no tracked
+bundle manifest or hashed chunk changed.
+
 ## Rollback Verification
 
 Rollback checks passed: Functions 4/4, Rules 17/17, Unit 123/123, lint, final

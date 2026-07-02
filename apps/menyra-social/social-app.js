@@ -2611,6 +2611,7 @@ shellDomRuntimeController = createShellDomRuntimeController({
   render,
   getLastRenderMode: () => lastRenderMode,
   getVerifiedMapLocationFn: (...args) => crmRuntimeController?.getVerifiedMapLocation?.(...args) || null,
+  placeholderImage: PLACEHOLDER_IMAGE,
   isPlaceholderUrl,
   escapeHtml,
   icon,

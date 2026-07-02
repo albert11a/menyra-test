@@ -112,6 +112,35 @@ export async function restoreSeedWaiterOrder() {
     );
 }
 
+export async function createHeartDiagnosticLead(leadId: string) {
+  await adminDb
+    .collection("leads")
+    .doc(leadId)
+    .set({
+      id: leadId,
+      businessName: "Heart Diagnostic Cafe",
+      restaurantName: "Heart Diagnostic Cafe",
+      name: "Heart Diagnostic Cafe",
+      customerType: "cafe",
+      status: "registered",
+      email: "heart-diagnostic@example.test",
+      city: "Prishtina",
+      logoUrl: "https://images.example.local/heart-diagnostic-logo.jpg",
+      createdByUid: "heart-demo",
+      createdByRole: "ceo",
+      createdByName: "Local Heart CEO",
+      ceoRootUid: "heart-demo",
+      ceoRootName: "Local Heart CEO",
+      ceoPath: ["heart-demo"],
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+}
+
+export async function deleteHeartDiagnosticLead(leadId: string) {
+  await adminDb.collection("leads").doc(leadId).delete();
+}
+
 export async function readRestaurantMenuItemByName(
   restaurantId: string,
   name: string,

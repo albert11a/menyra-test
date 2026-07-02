@@ -93,6 +93,41 @@ The build updated tracked browser bundle output:
 `profile-open-flow-utils-nDcq3JLz.js` and added
 `profile-open-flow-utils-DRWhfuTW.js`.
 
+## Current Follow-Up 2026-07-02
+
+Accepted fixes in this follow-up:
+
+- Authenticated shell avatars now expose `data-fallback-src`, so the existing
+  image fallback binder can recover broken header, restoring-session and drawer
+  profile images instead of leaving inconsistent broken/grey states.
+- Heart Leads now has diagnostic-only card/avatar markers and a mobile-first
+  E2E probe that records card adds/removes, avatar `src` changes, list-empty
+  transitions, Search focus loss and production request leaks.
+
+Current verified stable behavior:
+
+- Mobile Chrome targeted Playwright passed Public Profile/Menu/QR, Owner/Menu,
+  Waiter and Heart, 10/10.
+- Desktop Chromium targeted Playwright passed Public Profile/Menu/QR,
+  Owner/Menu and Waiter, 9/9; the Heart diagnostic is intentionally skipped on
+  desktop because the reported business problem is mobile-first.
+- Targeted Node regressions for shell avatar fallbacks and Heart diagnostic
+  markers passed, 8/8.
+
+Still open:
+
+- Heart Leads profile-image flicker and Search disruption are not claimed
+  fixed. The new test is a measurement guard, not a product-side flicker fix.
+- Shop product create/edit/delete and Hotel offer/details create/edit/delete
+  image/list stability remain P2 vertical-specific coverage gaps.
+- Real phone/3G visual rehearsal is still required before launch acceptance.
+
+Final required baseline for this follow-up passed: Functions 4/4, Rules 17/17,
+Unit 127/127, lint, format check, architecture check and build. The build
+changed only `apps/menyra-social/bundled/entry/social-app.js`; no tracked
+bundle manifest or hashed chunk changed. The existing large `social-app.js`
+chunk warning remains a P3 performance/runtime-extraction risk.
+
 ## Verification
 
 Final local verification for this pass:

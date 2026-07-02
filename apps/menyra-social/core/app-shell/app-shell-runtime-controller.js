@@ -621,7 +621,7 @@ export function createAppShellRuntimeController(deps = {}) {
       if (restoringAvatar && !isPlaceholderUrl(restoringAvatar)) {
         return `
         <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
-          <img src="${escapeHtml(restoringAvatar)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+          <img src="${escapeHtml(restoringAvatar)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
         </div>
       `;
       }
@@ -641,7 +641,7 @@ export function createAppShellRuntimeController(deps = {}) {
     }
     return `
     <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-      <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+      <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
     </button>
   `;
   }
