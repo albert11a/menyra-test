@@ -179,3 +179,33 @@ Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
 130/130, lint, format check, architecture check, build and relevant Playwright
 25/25 with one intentional desktop Heart skip. The build changed no tracked
 bundle files.
+
+## Owner Orders Follow-Up 2026-07-02
+
+Additional fixed behavior:
+
+- Owner Orders no longer replaces populated order cards with the full
+  `Bestellungen werden geladen...` block during refresh.
+- If an order refresh reports an error while cards already exist, the existing
+  cards stay visible and the error is shown above them.
+- First-load loading and clean empty state still render as before.
+
+Additional coverage:
+
+- `tests/orders-render-utils.test.mjs`
+- `tests/e2e/owner-tool.spec.ts` owner-orders cases for restaurant owner list,
+  refresh, foreign-order non-visibility and shop owner empty state.
+
+Still open after this follow-up: forced order listener errors, disabled/deleted
+cart item browser UX, active-session staff revocation and real phone/3G checks.
+
+Final verification for this follow-up:
+
+- Functions 4/4 after restarting the full local emulator set and reseeding;
+  first attempt failed/hung because Hub/Functions were not running.
+- Rules 17/17, Unit 133/133, lint, format check, architecture check and build
+  passed.
+- Relevant Playwright passed 29/29 with one intentional desktop Heart skip.
+- Mobile Chrome Playwright was included; real phone/3G remains manual.
+- Build changed the tracked social bundle entry only:
+  `apps/menyra-social/bundled/entry/social-app.js`.

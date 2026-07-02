@@ -61,6 +61,19 @@ Older dated notes are archive context unless they are explicitly marked
   deploys, Rules deploys, Functions deploys or any production deploy command for
   this requirement.
 
+## Local Dev Server Rules
+
+- For local browser-visible work, keep the Mnyra local web server available at
+  `http://192.168.1.168:5173/` when the user needs to inspect the app.
+- Before reporting that local UI work is ready to view, verify that
+  `http://127.0.0.1:5173/` and `http://192.168.1.168:5173/` respond.
+- If port `5173` is inactive or refuses connections, restart the local server
+  from the repo with `npm run dev` or `node scripts/local-dev-server.mjs`.
+- Prefer starting a detached local server with logs when the user needs it to
+  stay available beyond the current command session.
+- Keep this local-only. Do not use Firebase deploys, production deploys or
+  production data to satisfy local server availability.
+
 ## Mobile-First UI Rules
 
 - Mnyra is mobile-first. Real mobile browser behavior and phone-sized checks

@@ -220,3 +220,44 @@ Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
 130/130, lint, format check, architecture check, build and relevant Playwright
 25/25 with one intentional desktop Heart skip. The build changed no tracked
 bundle files.
+
+## Owner Orders Clean-Web Follow-Up 2026-07-02
+
+Finding: the existing Owner Orders renderer used the same visible refresh-risk
+pattern as earlier CRM lists. When `state.orders.loading` became true, populated
+order cards were replaced by the full `Bestellungen werden geladen...` block.
+That could make the dashboard look empty or repeatedly reloading during a
+refresh even though the previous orders were still valid visible truth.
+
+Fix: `renderOrdersViewCore` now keeps existing order cards visible during
+refresh loading or refresh error. True first-load loading, true empty state and
+first-load error behavior remain unchanged.
+
+New evidence:
+
+- `tests/orders-render-utils.test.mjs` covers row retention during refresh
+  loading/error and preserves first-load loading/empty behavior.
+- `tests/e2e/owner-tool.spec.ts` now opens `/orders` as restaurant owner and
+  shop owner. It verifies own restaurant order visibility after refresh, foreign
+  shop order non-visibility and a clean owner empty state.
+
+Remaining open items: forced Owner/Waiter listener failure behavior,
+disabled/deleted cart item browser UX, active-session staff revocation and real
+phone/3G QR/tablet checks.
+
+Final verification for this follow-up:
+
+- First `npm run test:functions` attempt failed/hung because Emulator Hub and
+  Functions were not running; after starting the full local emulator set and
+  running `npm run emulators:seed`, the re-run passed 4/4.
+- `npm run test:rules` passed 17/17, `npm run test:unit` passed 133/133,
+  `npm run lint`, `npm run format:check`, `npm run arch:check` and
+  `npm run build` passed.
+- Relevant Playwright passed 29/29 with one intentional desktop Heart skip,
+  covering Public Profile/Menu/QR, Owner/Menu/Orders, Waiter and mobile Heart.
+- Mobile was checked through the mobile Chrome Playwright project. Real
+  phone/3G remains manual and is not claimed solved.
+- Local `127.0.0.1:5173` and `192.168.1.168:5173` responded with HTTP 200.
+- Bundle status: `npm run build` changed
+  `apps/menyra-social/bundled/entry/social-app.js`; no tracked manifest or
+  hashed chunk changed.

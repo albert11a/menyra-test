@@ -20,6 +20,7 @@ tests/mnyra-heart-runner/artifacts/
 tests/mnyra-heart-runner/tmp-*.png
 playwright-report/
 test-results/
+logs/
 seed/export/
 firebase-export-*/
 tmp/

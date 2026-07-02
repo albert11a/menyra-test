@@ -1,9 +1,13 @@
 import type { Page } from "@playwright/test";
 
 import {
+  createForeignRestaurantOrder,
   deleteRestaurantMenuItemsByNames,
+  deleteRestaurantOrder,
+  listRestaurantOrders,
   readRestaurantMenuItemByName,
   readRestaurantPublicMenu,
+  restoreSeedWaiterOrder,
 } from "./firebase-emulator-admin";
 import {
   expect,
@@ -37,6 +41,83 @@ async function openHiddenMenuAction(page: Page, selector: string) {
 }
 
 test.describe("owner tool smoke", () => {
+  test("restaurant owner orders stay visible and scoped after refresh", async ({
+    page,
+  }, testInfo) => {
+    testInfo.setTimeout(60_000);
+    const suffix = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-");
+    const foreignOrderId = `owner-orders-foreign-${suffix}`;
+
+    await restoreSeedWaiterOrder();
+    await deleteRestaurantOrder("shop-demo", foreignOrderId);
+    await createForeignRestaurantOrder(foreignOrderId);
+
+    try {
+      await loginAtOwnerMenu(page, "owner.local@example.test");
+      await page.goto("/orders?firebase-emulator=1&sw-reset=1", {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.locator("#ordersView")).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(page.locator("body")).toContainText(
+        "Local Breakfast Plate",
+        { timeout: 20_000 },
+      );
+      await expect(page.locator("body")).toContainText("Tisch 2");
+      await expect(page.locator("body")).not.toContainText(
+        "Foreign Restaurant Item",
+      );
+      await expect(page.locator("body")).not.toContainText(
+        "Noch keine Bestellungen",
+      );
+
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expect(page.locator("#ordersView")).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(page.locator("body")).toContainText(
+        "Local Breakfast Plate",
+        { timeout: 20_000 },
+      );
+      await expect(page.locator("body")).not.toContainText(
+        "Foreign Restaurant Item",
+      );
+    } finally {
+      await Promise.allSettled([
+        restoreSeedWaiterOrder(),
+        deleteRestaurantOrder("shop-demo", foreignOrderId),
+      ]);
+    }
+  });
+
+  test("shop owner orders empty state is stable and not cross-filled", async ({
+    page,
+  }) => {
+    const existingShopOrders = await listRestaurantOrders("shop-demo");
+    await Promise.allSettled(
+      existingShopOrders.map((order) =>
+        deleteRestaurantOrder("shop-demo", order.id),
+      ),
+    );
+
+    await loginAtOwnerMenu(page, "shop-owner.local@example.test");
+    await page.goto("/orders?firebase-emulator=1&sw-reset=1", {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("#ordersView")).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator("body")).toContainText(
+      "Noch keine Bestellungen",
+      {
+        timeout: 20_000,
+      },
+    );
+    await expect(page.locator("body")).not.toContainText(
+      "Local Breakfast Plate",
+    );
+    await expect(page.locator("body")).not.toContainText("PIDHImadh");
+  });
+
   test("restaurant owner creates, edits, publishes and deletes a numeric-price menu item", async ({
     page,
     browser,

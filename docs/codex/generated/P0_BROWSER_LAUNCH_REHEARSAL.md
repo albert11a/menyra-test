@@ -333,3 +333,26 @@ This is not a launch approval. It confirms:
   proven.
 - Real phone/3G QR scan, image decode and waiter tablet behavior are still
   manual P1 rehearsal items.
+
+## Owner Orders Follow-Up 2026-07-02
+
+The Owner Orders rehearsal gap is narrowed but not fully closed:
+
+- New mobile browser evidence opens `/orders` as the restaurant owner, keeps the
+  seeded order visible after refresh and confirms a foreign shop order is not
+  shown.
+- New mobile browser evidence opens `/orders` as a shop owner with no shop
+  orders and confirms the clean `Noch keine Bestellungen` state without
+  cross-filled restaurant data.
+- Renderer unit coverage now keeps existing order cards visible during refresh
+  loading/error states.
+
+Remaining P1 rehearsal items: forced owner/waiter load errors,
+disabled/deleted cart item UX, active-session staff revocation and real
+phone/3G QR/tablet checks.
+
+Verification update: the Owner Orders follow-up passed Functions 4/4 after a
+full emulator restart and reseed, Rules 17/17, Unit 133/133, lint, format,
+architecture check, build and relevant Playwright 29/29 with one intentional
+desktop Heart skip. Mobile Chrome Playwright was included; real phone/3G is
+still manual. Build changed `apps/menyra-social/bundled/entry/social-app.js`.

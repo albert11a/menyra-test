@@ -242,3 +242,23 @@ plain "ready" reading of the matrix. The current evidence is:
   launch rehearsal requirements.
 - Heart, Ads/Analytics, Shop product mutation and Hotel offer mutation are not
   restaurant-pilot-ready from this evidence.
+
+## Owner Orders Follow-Up 2026-07-02
+
+Owner Orders matrix update:
+
+- Restaurant owner `/orders` now has browser evidence for own-order list,
+  refresh stability and foreign-order non-visibility.
+- Shop owner `/orders` now has browser evidence for a clean empty state without
+  restaurant-order bleed.
+- Orders renderer now has unit evidence that existing cards stay visible during
+  refresh loading/error states.
+
+Remaining gaps: forced owner/waiter order load error, full owner order
+operations, active-session waiter revocation and disabled/deleted cart item UX.
+
+Verification update: relevant Playwright passed on desktop and mobile for
+Owner/Menu/Orders as part of the 29/29 follow-up run, with one intentional
+desktop Heart skip. The full local baseline passed after emulator restart and
+reseed: Functions 4/4, Rules 17/17, Unit 133/133, lint, format, architecture
+check and build.

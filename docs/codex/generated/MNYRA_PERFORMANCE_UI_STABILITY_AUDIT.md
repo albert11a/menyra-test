@@ -229,3 +229,27 @@ Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
 130/130, lint, format check, architecture check, build and relevant Playwright
 25/25 with one intentional desktop Heart skip. The build changed no tracked
 bundle files. The existing large `social-app.js` chunk warning remains.
+
+## Owner Orders Stability Follow-Up 2026-07-02
+
+The Owner Orders view had a visible refresh-risk pattern: populated orders were
+hidden whenever the Orders state returned to `loading`. That is now fixed in
+the renderer by retaining existing cards during refresh loading/error and only
+using the full loading block for true first load.
+
+New evidence narrows the restaurant-pilot Owner Orders risk:
+
+- Unit coverage proves card retention during refresh loading/error.
+- Mobile browser coverage proves restaurant-owner list/refresh/non-foreign
+  behavior and shop-owner empty state.
+
+Remaining performance/stability caveats are unchanged: forced listener errors,
+disabled/deleted cart item UX, real phone/3G behavior and the large
+`social-app.js` public-route bundle remain open risks.
+
+Final verification for the follow-up passed after a full emulator restart and
+reseed: Functions 4/4, Rules 17/17, Unit 133/133, lint, format check,
+architecture check, build and relevant Playwright 29/29 with one intentional
+desktop Heart skip. The build changed only
+`apps/menyra-social/bundled/entry/social-app.js`; the large `social-app.js`
+chunk warning remains a documented P3 runtime-extraction risk.

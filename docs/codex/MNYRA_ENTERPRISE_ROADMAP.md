@@ -270,8 +270,9 @@ Restaurant Pilot evidence after `ad8425ae`. It does not add product fixes.
 
 Current hard limits:
 
-- Owner Order Dashboard has a code-level `orders` entry and Rules coverage, but
-  no browser proof for owner list, empty, loading or error states.
+- Owner Order Dashboard now has basic mobile browser proof for owner list,
+  refresh, empty and foreign-order non-visibility; forced load/error behavior
+  remains unproven before pilot operations.
 - Guest QR order is browser-proven; signed-in customer order remains a separate
   P2 browser gap.
 - Waiter happy path/status refresh is browser-proven; forced listener failure
@@ -281,16 +282,37 @@ Current hard limits:
 - Heart, Shop/Hotel mutations, Ads and Analytics are not made ready by the
   restaurant pilot work.
 
+## Owner Orders Follow-Up 2026-07-02
+
+The restaurant-pilot Owner Orders gap is narrowed by targeted code and browser
+evidence:
+
+- Existing Owner Orders cards remain visible during refresh loading/error
+  instead of being replaced by a full loading block.
+- Restaurant owner `/orders` is browser-proven for own-order list, refresh and
+  foreign-order non-visibility.
+- Shop owner `/orders` is browser-proven for a clean empty state.
+
+This does not approve launch by itself. Forced owner/waiter load errors,
+disabled/deleted cart item UX, active-session waiter revocation and real
+phone/3G rehearsal remain required before pilot operations are called ready.
+
+Verification update: the Owner Orders follow-up passed Functions 4/4 after
+full local emulator restart and reseed, Rules 17/17, Unit 133/133, lint,
+format, architecture check, build and relevant Playwright 29/29 with one
+intentional desktop Heart skip. Mobile Chrome Playwright was included; real
+phone/3G remains manual.
+
 ## P1: First Controlled Restaurant Launch
 
-| Workstream                 | Business value                           | Exit criteria                                                                                                                        |
-| -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Restaurant public website  | Gives businesses a reliable public page. | Profile, menu, hours, address, map, posts and contact CTAs verified for seed and pilot data.                                         |
-| QR ordering                | Primary local commerce value.            | Guest QR order stays green; signed-in customer order and disabled/deleted cart item gaps are closed or explicitly held out of scope. |
-| Waiter operations          | Makes orders operationally usable.       | Waiter board/status path, empty board, load error and active-session staff revocation behavior are verified on mobile/tablet.        |
-| Owner menu/order dashboard | Lets businesses self-manage.             | Owner menu/QR stays green and Owner Orders list/empty/loading/error/non-foreign behavior is browser-proven before pilot ops.         |
-| Heart support console      | Lets internal team support pilots.       | Heart support scope is explicitly limited or mobile-first Lead flicker/search and safe support flows are proven.                     |
-| Release checklist          | Prevents accidental prod changes.        | No deploy from Codex; production release has explicit human gate and rollback plan.                                                  |
+| Workstream                 | Business value                           | Exit criteria                                                                                                                                            |
+| -------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Restaurant public website  | Gives businesses a reliable public page. | Profile, menu, hours, address, map, posts and contact CTAs verified for seed and pilot data.                                                             |
+| QR ordering                | Primary local commerce value.            | Guest QR order stays green; signed-in customer order and disabled/deleted cart item gaps are closed or explicitly held out of scope.                     |
+| Waiter operations          | Makes orders operationally usable.       | Waiter board/status path, empty board, load error and active-session staff revocation behavior are verified on mobile/tablet.                            |
+| Owner menu/order dashboard | Lets businesses self-manage.             | Owner menu/QR stays green; Owner Orders list/empty/refresh/non-foreign behavior remains green and forced load/error behavior is proven before pilot ops. |
+| Heart support console      | Lets internal team support pilots.       | Heart support scope is explicitly limited or mobile-first Lead flicker/search and safe support flows are proven.                                         |
+| Release checklist          | Prevents accidental prod changes.        | No deploy from Codex; production release has explicit human gate and rollback plan.                                                                      |
 
 ## P2: Monetization And Admin Expansion
 
