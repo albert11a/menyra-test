@@ -199,4 +199,35 @@ test.describe("public menu launch smoke", () => {
     await expect(page.locator("body")).not.toContainText(/table\s*NaN/i);
     await expectNoBrokenLoadedImages(page, "/pidhimadh/menu invalid table");
   });
+
+  test("stops retrying failed responsive menu images and shows fallbacks", async ({
+    page,
+  }) => {
+    let failedImageRequests = 0;
+    await page.route(
+      /^https:\/\/images\.example\.local(?:\/.*)?$/,
+      async (route) => {
+        failedImageRequests += 1;
+        await route.abort("failed");
+      },
+    );
+
+    await page.goto(withEmulatorParams("/pidhimadh/menu"), {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("body")).toContainText("Local Breakfast Plate", {
+      timeout: 20_000,
+    });
+    await page.waitForTimeout(2_000);
+
+    expect(failedImageRequests).toBeLessThan(30);
+    const visibleBrokenImages = await page
+      .locator("img:visible")
+      .evaluateAll(
+        (images) =>
+          images.filter((image) => image.complete && image.naturalWidth === 0)
+            .length,
+      );
+    expect(visibleBrokenImages).toBe(0);
+  });
 });

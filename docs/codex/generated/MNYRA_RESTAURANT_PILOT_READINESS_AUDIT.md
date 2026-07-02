@@ -131,3 +131,16 @@ Real phone/3G image-decode behavior remains manual.
 
 `npm run build` changed no tracked bundle files. No files under
 `apps/menyra-social/bundled` were modified by this task.
+
+## Mobile Manual Stability Sweep 2026-07-02
+
+The restaurant pilot passed the covered normal-network mobile profile, menu,
+QR, Owner Orders and Waiter status/refresh paths. QR kept `src=qr&table=2` over
+back, forward and refresh. Emulator startup is now production-isolated, and a
+failed responsive menu image settles on a fallback without an unbounded retry
+loop.
+
+Pilot readiness remains blocked by the measured blank public startup under
+emulated 3G (about 11.1 s Fast / 41.8 s Slow), safe physical-phone LAN emulator
+setup, real QR/media decode and forced Owner/Waiter listener-error evidence.
+This is not a launch-go.

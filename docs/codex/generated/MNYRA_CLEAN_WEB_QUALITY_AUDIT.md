@@ -261,3 +261,18 @@ Final verification for this follow-up:
 - Bundle status: `npm run build` changed
   `apps/menyra-social/bundled/entry/social-app.js`; no tracked manifest or
   hashed chunk changed.
+
+## Mobile Manual Stability Sweep 2026-07-02
+
+| Area               | Route/flow              | Found issue                                   | User-visible effect                      | Cause                                                        | Fix status            | Priority | Test/evidence                                              |
+| ------------------ | ----------------------- | --------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------ | --------------------- | -------- | ---------------------------------------------------------- |
+| Public/QR local    | profile/menu/QR         | Production bootstrap request in emulator mode | Local test was not production-isolated   | Endpoint selected after QR Early Return / production default | Fixed                 | P1       | Desktop/mobile isolation E2E plus post-fix request capture |
+| Public menu images | broken responsive image | Hundreds of retries per image                 | Console/network storm and hidden image   | Broken `srcset` remained active after `src` fallback         | Fixed                 | P1       | Unit + browser failure injection                           |
+| Public mobile      | all 10 public routes    | Empty root under throttled cold load          | App looks blank/broken                   | 1.14 MB entry plus Firebase/runtime chunks                   | Open                  | P1       | Fast/Slow 3G screenshots and timings                       |
+| Heart              | Leads Search            | Focus lost after typing                       | Search interaction is interrupted        | Not diagnosed in this scope                                  | Open, no Heart fix    | P1       | Mobile Playwright failure trace                            |
+| Feed               | `/feed`                 | Denied story collection-group read            | Console not clean; story data incomplete | Read contract does not satisfy Rules                         | Open, Rules unchanged | P1       | Fresh mobile context console capture                       |
+| Public profile     | direct cold load        | Brief `Noch keine Bio.`                       | Header data flashes incomplete           | Early identity placeholder before canonical document         | Open                  | P2       | DOM transition capture                                     |
+| Mobile controls    | header/category chips   | 32-40px controls                              | Weaker touch ergonomics                  | Current fixed dimensions                                     | Open                  | P2       | Pixel 5 bounding-box capture                               |
+
+Full matrices, environment and artifact locations are in
+`MNYRA_MOBILE_MANUAL_STABILITY_SWEEP.md`. There is no Clean Web launch-go.

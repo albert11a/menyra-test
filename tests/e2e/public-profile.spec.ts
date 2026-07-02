@@ -161,6 +161,48 @@ test.describe("public profile launch smoke", () => {
     expect(deniedListErrors).toEqual([]);
   });
 
+  test("keeps public emulator startup off production Firebase services", async ({
+    page,
+  }) => {
+    const productionRequests: string[] = [];
+    const localBootstrapRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (
+        /(?:cloudfunctions\.net|firestore\.googleapis\.com|identitytoolkit\.googleapis\.com)/i.test(
+          url,
+        )
+      ) {
+        productionRequests.push(url);
+      }
+      if (
+        url.startsWith(
+          "http://127.0.0.1:5001/mnyra-local/us-central1/socialBootstrapFeed",
+        )
+      ) {
+        localBootstrapRequests.push(url);
+      }
+    });
+
+    await page.goto(withEmulatorParams("/pidhimadh"), {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("body")).toContainText("PIDHImadh", {
+      timeout: 20_000,
+    });
+    await expect.poll(() => localBootstrapRequests.length).toBeGreaterThan(0);
+
+    await page.goto(withEmulatorParams("/pidhimadh/menu?src=qr&table=2"), {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("body")).toContainText("Local Breakfast Plate", {
+      timeout: 20_000,
+    });
+    await page.waitForTimeout(1_000);
+
+    expect(productionRequests).toEqual([]);
+  });
+
   test("business owner returns from public shop menu to own menu/focus context", async ({
     page,
   }) => {

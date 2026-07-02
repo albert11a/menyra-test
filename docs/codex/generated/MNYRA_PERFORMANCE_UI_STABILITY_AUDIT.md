@@ -253,3 +253,17 @@ architecture check, build and relevant Playwright 29/29 with one intentional
 desktop Heart skip. The build changed only
 `apps/menyra-social/bundled/entry/social-app.js`; the large `social-app.js`
 chunk warning remains a documented P3 runtime-extraction risk.
+
+## Mobile Manual Stability Sweep 2026-07-02
+
+The prior bundle warning is now tied to visible mobile evidence. Cold Public
+Profile/Menu became useful after about 11.1 seconds on emulated Fast 3G and
+41.8 seconds on emulated Slow 3G. The 8/12-second screenshots were still blank.
+The primary transfers were `social-app.js` at about 1.136 MB raw, Firebase at
+about 442 kB and, for menu, the profile/menu renderer at about 160 kB.
+
+The visible blank screen is P1 for launch; the safe structural correction is
+the existing P3 public-runtime/bundle work and was not started here. Small
+stability fixes did remove the broken-image request loop and production
+bootstrap call in emulator mode. Heart Search focus and Feed story permission
+remain separate P1 issues.

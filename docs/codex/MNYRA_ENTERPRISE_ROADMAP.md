@@ -355,3 +355,24 @@ When public read cutover is requested later, keep it guarded, preserve current
 visible profile/menu behavior, do not tighten Firestore root reads until the
 direct-refresh/QR matrix passes, keep Ads and analytics disabled and keep
 runtime extraction behind false flags.
+
+## Mobile Manual Stability Sweep Gate 2026-07-02
+
+The sweep converts the existing bundle/runtime risk into a measured launch
+gate: public profile/menu first useful content is about 11.1 seconds on
+emulated Fast 3G and 41.8 seconds on emulated Slow 3G, with a blank root before
+that. Public runtime extraction remains P3 architecture work, but the visible
+effect is P1 and blocks launch acceptance.
+
+Before the next launch decision:
+
+1. define a lightweight truthful public first-render contract;
+2. diagnose the reproduced Heart mobile Search focus failure from its trace;
+3. replace the denied Feed story read with an explicit permitted projection or
+   ownership contract without loosening Rules;
+4. establish a safe physical-phone LAN emulator path;
+5. run real-device QR/media/Waiter and Shop/Hotel mutation rehearsals.
+
+The sweep did safely close the local Public/QR production-bootstrap leak and
+the failed-responsive-image retry loop. It did not start runtime extraction or
+change the product roadmap order.

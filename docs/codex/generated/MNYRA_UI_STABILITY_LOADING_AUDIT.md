@@ -209,3 +209,21 @@ Final verification for this follow-up:
 - Mobile Chrome Playwright was included; real phone/3G remains manual.
 - Build changed the tracked social bundle entry only:
   `apps/menyra-social/bundled/entry/social-app.js`.
+
+## Mobile Manual Stability Sweep 2026-07-02
+
+Fixed in the sweep:
+
+- Public/QR emulator bootstrap uses local Functions instead of a production
+  Functions endpoint.
+- Failed menu `srcset` candidates are removed before fallback, reducing the
+  observed five-second failure case from thousands of console/request retries
+  to eight bounded image failures and zero visible broken images.
+
+Still open:
+
+- public routes show a blank root for about 11.1 s Fast 3G / 41.8 s Slow 3G;
+- Heart mobile Search lost focus in the diagnostic Playwright run;
+- Feed logs a denied story list;
+- a brief `Noch keine Bio.` state and sub-44px controls remain P2;
+- real device/media decode was not tested.

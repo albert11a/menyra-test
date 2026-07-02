@@ -162,3 +162,18 @@ Owner Orders follow-up build changed tracked browser output:
 No tracked bundle manifest or hashed chunk file changed. The changed tracked
 bundle belongs to the browser-visible Orders renderer fix and must be included
 with the source change.
+
+## Mobile Manual Stability Sweep 2026-07-02
+
+The new mobile sweep is documented in
+`MNYRA_MOBILE_MANUAL_STABILITY_SWEEP.md`. Restaurant profile/menu/QR,
+Owner Menu/Orders and Waiter stayed correctly scoped on normal-network mobile
+emulation. Two bounded fixes landed: local Public/QR bootstrap no longer calls
+production Functions, and failed responsive menu images no longer retry in a
+request loop.
+
+There is still no pilot launch-go. Public restaurant profile/menu stayed blank
+for about 11.1 seconds on Fast 3G and 41.8 seconds on Slow 3G. Real phone QR,
+image decode and waiter tablet behavior remain untested. The separate Heart
+mobile diagnostic reproduced Search focus loss; Heart was not fixed in this
+scope. Feed also still logs a denied story collection-group read.

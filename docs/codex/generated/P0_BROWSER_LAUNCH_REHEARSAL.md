@@ -356,3 +356,22 @@ full emulator restart and reseed, Rules 17/17, Unit 133/133, lint, format,
 architecture check, build and relevant Playwright 29/29 with one intentional
 desktop Heart skip. Mobile Chrome Playwright was included; real phone/3G is
 still manual. Build changed `apps/menyra-social/bundled/entry/social-app.js`.
+
+## Mobile Manual Stability Sweep 2026-07-02
+
+The sweep used fresh Pixel 5 contexts for Cold, isolated/private-equivalent,
+Warm/Refresh, Fast 3G, Slow 3G and Offline/Recover states. It covered the full
+restaurant/shop/hotel public matrix, Owner Menu/Orders, Waiter, Heart,
+Feed/Restaurants/Travel/Shopping/Map and cross-business navigation.
+
+Normal-network and cross-business paths did not expose wrong business/order
+data. QR query/history stayed stable. The launch rehearsal still fails overall:
+
+- public routes are blank for about 11.1 s Fast 3G / 41.8 s Slow 3G;
+- Heart mobile Search focus was lost in the diagnostic trace;
+- Feed logs a denied story list;
+- a safe physical-phone LAN emulator path and real-device media/QR proof are
+  absent.
+
+`agent-browser` was unavailable; Playwright/manual browser emulation was used.
+No real device was tested and no launch-go is issued.

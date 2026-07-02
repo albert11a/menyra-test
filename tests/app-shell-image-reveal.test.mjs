@@ -7,7 +7,7 @@ class FakeImageElement {
   constructor(src, { complete = true, naturalWidth = 120 } = {}) {
     this.dataset = {
       fallbackSrc: "",
-      imageReveal: "menu"
+      imageReveal: "menu",
     };
     this.style = {};
     this.currentSrc = src;
@@ -52,7 +52,7 @@ function createRoot(images = []) {
       if (selector === "img[data-menu-lazy-src]") return [];
       if (selector === "img[data-fallback-src]") return images;
       return [];
-    }
+    },
   };
 }
 
@@ -66,8 +66,8 @@ function createController() {
       removeEventListener() {},
       setTimeout() {
         return 0;
-      }
-    }
+      },
+    },
   });
 }
 
@@ -102,10 +102,13 @@ test("menu image reveal keeps a previously revealed src visible across rerenders
     await Promise.resolve();
     await Promise.resolve();
 
-    const rerenderedImage = new FakeImageElement("https://cdn.example/menu-b.jpg", {
-      complete: false,
-      naturalWidth: 0
-    });
+    const rerenderedImage = new FakeImageElement(
+      "https://cdn.example/menu-b.jpg",
+      {
+        complete: false,
+        naturalWidth: 0,
+      },
+    );
 
     controller.bindImageFallbacks(createRoot([rerenderedImage]));
 
@@ -119,12 +122,32 @@ test("menu image reveal still hides a new unloaded src until load", async () => 
     const controller = createController();
     const image = new FakeImageElement("https://cdn.example/menu-c.jpg", {
       complete: false,
-      naturalWidth: 0
+      naturalWidth: 0,
     });
 
     controller.bindImageFallbacks(createRoot([image]));
 
     assert.equal(image.style.opacity, "0");
     assert.equal(image.dataset.imageRevealReady, "0");
+  });
+});
+
+test("menu image fallback removes failed responsive candidates before retrying", async () => {
+  await withFakeImageElement(async () => {
+    const controller = createController();
+    const image = new FakeImageElement("https://cdn.example/menu-d.jpg", {
+      complete: false,
+      naturalWidth: 0,
+    });
+    image.dataset.fallbackSrc = "https://cdn.example/menu-d.jpg";
+    image.setAttribute("srcset", "https://cdn.example/menu-d.jpg 480w");
+    image.setAttribute("sizes", "94vw");
+
+    controller.bindImageFallbacks(createRoot([image]));
+    image.listeners.get("error")?.();
+
+    assert.equal(image.getAttribute("src"), "placeholder.jpg");
+    assert.equal(image.getAttribute("srcset"), "");
+    assert.equal(image.getAttribute("sizes"), "");
   });
 });

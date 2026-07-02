@@ -2226,6 +2226,27 @@
           setDegraded("bootstrap", { active: false, message: "" });
         }
       }
+      const resolveLocalBootstrapEndpoint = () => {
+        try {
+          const hostname = String(window.location.hostname || "").trim().toLowerCase();
+          if (!["localhost", "127.0.0.1", "::1"].includes(hostname)) return "";
+          const runtime = window.__MENYRA_FIREBASE_EMULATORS__;
+          const source = runtime && typeof runtime === "object" ? runtime : {};
+          const queryEnabled = new URLSearchParams(window.location.search || "").get("firebase-emulator") === "1";
+          if (source.enabled !== true && !queryEnabled) return "";
+          const projectId = String(source.projectId || "mnyra-local").trim();
+          if (!/^(mnyra-local|demo-|test-|local-)/.test(projectId)) return "";
+          const host = String(source.host || "127.0.0.1").trim() || "127.0.0.1";
+          const functionsPort = Math.max(1, Number(source.functionsPort || 5001) || 5001);
+          return `http://${host}:${functionsPort}/${encodeURIComponent(projectId)}/us-central1/socialBootstrapFeed`;
+        } catch {
+          return "";
+        }
+      };
+      const localBootstrapEndpoint = resolveLocalBootstrapEndpoint();
+      if (localBootstrapEndpoint && !window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__) {
+        window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__ = localBootstrapEndpoint;
+      }
       if (!shouldFetchBootstrap) {
         window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = null;
         return;

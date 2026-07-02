@@ -1294,6 +1294,8 @@ export function createAppShellRuntimeController(deps = {}) {
       if (img.dataset.fallbackBound === "true") return;
       img.dataset.fallbackBound = "true";
       img.addEventListener("error", () => {
+        img.removeAttribute("srcset");
+        img.removeAttribute("sizes");
         const fallback = img.dataset.fallbackSrc || "";
         const current = img.getAttribute("src") || "";
         if (fallback && current !== fallback) {

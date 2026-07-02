@@ -262,3 +262,18 @@ Owner/Menu/Orders as part of the 29/29 follow-up run, with one intentional
 desktop Heart skip. The full local baseline passed after emulator restart and
 reseed: Functions 4/4, Rules 17/17, Unit 133/133, lint, format, architecture
 check and build.
+
+## Mobile Manual Stability Sweep 2026-07-02
+
+| Tool                  | Mobile observation                                     | Automated result                         | Remaining work                         |
+| --------------------- | ------------------------------------------------------ | ---------------------------------------- | -------------------------------------- |
+| Restaurant Owner Menu | Correct 24-item editor/focus/QR context                | CRUD/publish passed desktop/mobile       | Real image replacement and phone pass  |
+| Owner Orders          | Own order retained; shop empty state clean             | List/refresh/scope passed                | Forced listener error                  |
+| Shop Owner            | Product editor entry stable                            | Entry passed                             | Product media mutation P2              |
+| Hotel Owner           | Details/Oferta entry stable                            | Entry passed                             | Offer media mutation P2                |
+| Waiter                | Status action enabled before/after and after refresh   | Status/security passed                   | Zero-order, revocation and tablet pass |
+| Heart Leads           | Empty observation stable; diagnostic Search lost focus | Mobile diagnostic failed focus assertion | P1 diagnosis only; no blind Heart fix  |
+
+The relevant full Playwright run finished `32 passed`, `1 failed`, `1 skipped`.
+The failure is accepted evidence of the open Heart mobile focus problem, not a
+test-suite success. Real device and 3G business-tool acceptance remain open.
