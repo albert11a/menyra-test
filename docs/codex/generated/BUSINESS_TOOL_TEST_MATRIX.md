@@ -223,3 +223,22 @@ Matrix updates:
 Final verification passed: Functions 4/4, Rules 17/17, Unit 130/130, lint,
 format check, architecture check, build and relevant Playwright 25/25 with one
 intentional desktop Heart skip. The build changed no tracked bundle files.
+
+## Restaurant Pilot Gap Review 2026-07-02
+
+The hard gap review in
+`docs/codex/generated/MNYRA_RESTAURANT_PILOT_GAP_REVIEW.md` supersedes any
+plain "ready" reading of the matrix. The current evidence is:
+
+- Public Profile/Menu, QR guest order, Waiter status refresh and Owner menu
+  editing have automated emulator/browser coverage.
+- Owner Order Dashboard is not browser-proven. A code-level Orders entry exists
+  and Rules block foreign owner reads, but list/empty/loading/error UI remains a
+  P1 pilot blocker.
+- Signed-in customer order, disabled/deleted cart item handling, forced
+  owner/waiter load errors, active-session staff revocation and exact three-hop
+  context switching remain gaps.
+- Real phone/3G QR scan, image decode and waiter tablet behavior remain manual
+  launch rehearsal requirements.
+- Heart, Ads/Analytics, Shop product mutation and Hotel offer mutation are not
+  restaurant-pilot-ready from this evidence.

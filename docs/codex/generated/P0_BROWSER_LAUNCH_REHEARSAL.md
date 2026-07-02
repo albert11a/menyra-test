@@ -316,3 +316,20 @@ Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
 130/130, lint, format check, architecture check, build and relevant Playwright
 25/25 with one intentional desktop Heart skip. The build changed no tracked
 bundle files.
+
+## Restaurant Pilot Gap Review 2026-07-02
+
+The follow-up hard review is recorded in
+`docs/codex/generated/MNYRA_RESTAURANT_PILOT_GAP_REVIEW.md`.
+
+This is not a launch approval. It confirms:
+
+- Public Profile/Menu/QR, guest order submit, Waiter status refresh and Owner
+  menu editing have meaningful automated local evidence.
+- Owner Order Dashboard still lacks browser proof for owner list, empty,
+  loading, error and foreign-order non-visibility states.
+- Signed-in customer order, disabled/deleted cart item handling, forced
+  owner/waiter order load errors and active-session staff revocation are not
+  proven.
+- Real phone/3G QR scan, image decode and waiter tablet behavior are still
+  manual P1 rehearsal items.

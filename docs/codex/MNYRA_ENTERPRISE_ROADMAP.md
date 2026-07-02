@@ -263,16 +263,34 @@ Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
 25/25 with one intentional desktop Heart skip. The build changed no tracked
 bundle files.
 
+## Restaurant Pilot Gap Review 2026-07-02
+
+`docs/codex/generated/MNYRA_RESTAURANT_PILOT_GAP_REVIEW.md` hardens the
+Restaurant Pilot evidence after `ad8425ae`. It does not add product fixes.
+
+Current hard limits:
+
+- Owner Order Dashboard has a code-level `orders` entry and Rules coverage, but
+  no browser proof for owner list, empty, loading or error states.
+- Guest QR order is browser-proven; signed-in customer order remains a separate
+  P2 browser gap.
+- Waiter happy path/status refresh is browser-proven; forced listener failure
+  and active-session staff revocation remain unproven.
+- Real phone/3G QR scan, image decode and waiter tablet use remain manual P1
+  launch rehearsal items.
+- Heart, Shop/Hotel mutations, Ads and Analytics are not made ready by the
+  restaurant pilot work.
+
 ## P1: First Controlled Restaurant Launch
 
-| Workstream                 | Business value                           | Exit criteria                                                                                |
-| -------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Restaurant public website  | Gives businesses a reliable public page. | Profile, menu, hours, address, map, posts and contact CTAs verified for seed and pilot data. |
-| QR ordering                | Primary local commerce value.            | Guest and signed-in order flows pass manual and automated checks.                            |
-| Waiter operations          | Makes orders operationally usable.       | Waiter board, status flow, device registration and notifications verified.                   |
-| Owner menu/order dashboard | Lets businesses self-manage.             | Owner can edit menu, publish, configure QR and manage orders without admin help.             |
-| Heart support console      | Lets internal team support pilots.       | Heart can search customer, inspect lead/account/ad states and resolve issues safely.         |
-| Release checklist          | Prevents accidental prod changes.        | No deploy from Codex; production release has explicit human gate and rollback plan.          |
+| Workstream                 | Business value                           | Exit criteria                                                                                                                        |
+| -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Restaurant public website  | Gives businesses a reliable public page. | Profile, menu, hours, address, map, posts and contact CTAs verified for seed and pilot data.                                         |
+| QR ordering                | Primary local commerce value.            | Guest QR order stays green; signed-in customer order and disabled/deleted cart item gaps are closed or explicitly held out of scope. |
+| Waiter operations          | Makes orders operationally usable.       | Waiter board/status path, empty board, load error and active-session staff revocation behavior are verified on mobile/tablet.        |
+| Owner menu/order dashboard | Lets businesses self-manage.             | Owner menu/QR stays green and Owner Orders list/empty/loading/error/non-foreign behavior is browser-proven before pilot ops.         |
+| Heart support console      | Lets internal team support pilots.       | Heart support scope is explicitly limited or mobile-first Lead flicker/search and safe support flows are proven.                     |
+| Release checklist          | Prevents accidental prod changes.        | No deploy from Codex; production release has explicit human gate and rollback plan.                                                  |
 
 ## P2: Monetization And Admin Expansion
 
