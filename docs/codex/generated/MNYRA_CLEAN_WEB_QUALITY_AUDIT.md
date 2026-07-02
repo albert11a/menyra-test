@@ -179,3 +179,44 @@ Current follow-up final verification:
 - Required baseline passed: `npm run test:functions` 4/4, `npm run test:rules` 17/17, `npm run test:unit` 127/127, `npm run lint`, `npm run format:check`, `npm run arch:check` and `npm run build`.
 - `npm run build` changed only `apps/menyra-social/bundled/entry/social-app.js`; no tracked bundle manifest or hashed chunk file changed in this follow-up.
 - Build warning: the existing large `social-app.js` chunk warning remains a documented P3 performance/runtime-extraction risk.
+
+## Restaurant Pilot Loading Extension 2026-07-02
+
+The Restaurant Pilot readiness extension adds explicit data-loading, loading,
+empty, error and race-state coverage for the guest -> QR -> order -> waiter ->
+owner slice. The detailed map is in
+`docs/codex/generated/MNYRA_RESTAURANT_PILOT_READINESS_AUDIT.md`.
+
+New findings:
+
+- Public Menu empty state is clean for a local restaurant with no menu items:
+  `Keine Produkte`, no false error and no foreign menu fallback.
+- Missing `restaurants/{id}/public/menu` projection in the local fixture does
+  not produce a false visible menu error.
+- Invalid QR `table=abc` is sanitized by dropping the invalid table while
+  keeping `src=qr`; no `Tisch NaN` state is rendered.
+- QR order submit is protected against double-click double orders.
+- Waiter status update remains visible after refresh under the next status tab.
+- MCP gutcheck without the E2E image route produced many
+  `images.example.local` DNS errors from fake seed URLs; the Playwright fixture
+  fulfills these locally, and real phone/3G image behavior remains manual.
+
+New fixed/covered items:
+
+- Added order in-flight and error-release unit coverage.
+- Added Public Menu error-truth unit coverage.
+- Added mobile-first Playwright coverage for empty menu, missing projection,
+  invalid table, QR double submit and Waiter refresh.
+
+Still open:
+
+- P1 owner order-dashboard empty/error/load behavior before pilot operations.
+- P1 disabled/deleted menu item in cart needs a focused server/error
+  simulation.
+- P1 real phone/3G QR/table rehearsal.
+- P1 Heart Leads image/Search flicker remains open from the rollback.
+
+Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
+130/130, lint, format check, architecture check, build and relevant Playwright
+25/25 with one intentional desktop Heart skip. The build changed no tracked
+bundle files.

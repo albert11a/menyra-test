@@ -141,3 +141,41 @@ Final local verification for this pass:
   hashed profile render chunk.
 - Browser: targeted Playwright passed, 16/16, covering Public Profile/Menu/QR,
   Owner/Menu and Waiter on desktop and mobile.
+
+## Restaurant Pilot Loading Extension 2026-07-02
+
+This extension verifies the restaurant pilot beyond happy path. It adds a
+dedicated audit file at
+`docs/codex/generated/MNYRA_RESTAURANT_PILOT_READINESS_AUDIT.md`.
+
+Additional stable behavior now covered:
+
+- Public Menu valid QR route preserves `src=qr&table=2` through refresh.
+- Public Menu local empty fixture shows `Keine Produkte` without false error or
+  stale `pidhimadh` items.
+- A missing public menu projection does not show a false `Fehler` state during
+  normal loading.
+- Invalid QR table input is sanitized: `src=qr` remains, invalid `table=abc`
+  is dropped and no `NaN` label appears.
+- QR checkout double submit creates exactly one local order.
+- Waiter board remains visible after status change plus refresh.
+
+Coverage added:
+
+- `tests/orders-runtime-controller-state.test.mjs`
+- `tests/public-menu-surface-state-utils.test.mjs`
+- `tests/e2e/public-menu.spec.ts`
+- `tests/e2e/qr-menu.spec.ts`
+- `tests/e2e/waiter.spec.ts`
+
+Open UI stability items for restaurant pilot:
+
+- Owner order-dashboard loading/empty/error state remains P1 manual/blocker
+  before pilot operations.
+- Disabled/deleted menu item in cart still needs focused error simulation.
+- Real phone/3G QR scan, image decode and waiter tablet checks remain required.
+
+Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
+130/130, lint, format check, architecture check, build and relevant Playwright
+25/25 with one intentional desktop Heart skip. The build changed no tracked
+bundle files.

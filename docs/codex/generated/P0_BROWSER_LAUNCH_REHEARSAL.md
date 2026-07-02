@@ -286,3 +286,33 @@ Allowed next step:
 - Run a separate mobile-first Heart Leads flicker diagnosis and keep
   Ads/analytics disabled. Public Read Cutover and runtime extraction must not
   start from this report without a new explicit task.
+
+## Restaurant Pilot Readiness Extension 2026-07-02
+
+The separate Restaurant Pilot audit now maps data loading, loading states, empty
+states, error states and slow/race states for the guest -> QR -> order -> waiter
+-> owner flow.
+
+New mobile-first automated evidence:
+
+- Public Menu seeded routes, QR refresh, empty-menu fixture, missing menu
+  projection fixture and invalid table sanitizing passed on mobile Chrome.
+- QR order double-submit produced exactly one order in local Firestore.
+- Waiter status change plus refresh kept the order visible under the next
+  status tab.
+- Unit coverage proves Public Menu error state requires real error truth and
+  order submit loading releases after real submit errors.
+
+Still not a P1 launch approval:
+
+- Owner order-dashboard loading/empty/error handling is not yet durable browser
+  evidence.
+- Disabled/deleted menu item in cart still needs focused server/error
+  simulation.
+- Real phone/3G QR/table operation and image-decode behavior are still manual.
+- Heart Leads image/Search flicker remains a separate P1 support-console issue.
+
+Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
+130/130, lint, format check, architecture check, build and relevant Playwright
+25/25 with one intentional desktop Heart skip. The build changed no tracked
+bundle files.

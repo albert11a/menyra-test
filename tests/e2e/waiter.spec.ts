@@ -115,6 +115,16 @@ test.describe("seeded waiter order flow", () => {
       const after = await readRestaurantOrder("pidhi-madh", SEEDED_ORDER_ID);
       expect(after?.total).toBe(13.8);
       expect(after?.items).toEqual(before?.items);
+
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expect(page.locator("#logoutBtn")).toBeVisible({ timeout: 20_000 });
+      await page.locator('[data-tab="angenommen"]').click();
+      await expect(
+        page.locator(`[data-order-id="${SEEDED_ORDER_ID}"]`).first(),
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator("body")).toContainText("PIDHImadh");
+      await expect(finishedButton).toBeVisible();
+      await expect(finishedButton).toBeEnabled();
     } finally {
       await Promise.allSettled([
         restoreSeedWaiterOrder(),

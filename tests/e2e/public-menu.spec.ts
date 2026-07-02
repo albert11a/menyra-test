@@ -1,5 +1,10 @@
 import type { Page } from "@playwright/test";
 
+import {
+  deletePilotRestaurantFixture,
+  upsertPilotBrokenMenuRestaurant,
+  upsertPilotEmptyMenuRestaurant,
+} from "./firebase-emulator-admin";
 import { expect, test } from "./firebase-emulator-fixture";
 
 const PRIVATE_MARKERS = [
@@ -25,6 +30,7 @@ const PUBLIC_MENU_ROUTES = [
   },
   {
     path: "/pidhimadh/menu?src=qr&table=2",
+    reload: true,
     expectedText: "Local Breakfast Plate",
     expectedUrlParts: ["src=qr", "table=2"],
     expectNonEmptyMenu: true,
@@ -120,5 +126,77 @@ test.describe("public menu launch smoke", () => {
     for (const route of PUBLIC_MENU_ROUTES) {
       await expectPublicMenuRoute(page, route);
     }
+  });
+
+  test("shows a clean empty state for a restaurant with no menu items", async ({
+    page,
+  }, testInfo) => {
+    const suffix = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-");
+    const restaurantId = `pilot-empty-menu-${suffix}`;
+    const slug = `pilot-empty-menu-${suffix}`;
+    await deletePilotRestaurantFixture({ restaurantId, slug });
+    await upsertPilotEmptyMenuRestaurant({ restaurantId, slug });
+
+    try {
+      await page.goto(withEmulatorParams(`/${slug}/menu`), {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.locator("body")).toContainText("Pilot Empty Menu", {
+        timeout: 20_000,
+      });
+      await expect(page.locator("body")).toContainText("Keine Produkte", {
+        timeout: 20_000,
+      });
+      await expect(page.locator("body")).not.toContainText(/Fehler|failed/i);
+      await expect(page.locator("body")).not.toContainText(
+        "Local Breakfast Plate",
+      );
+      await expectNoBrokenLoadedImages(page, `/${slug}/menu`);
+    } finally {
+      await deletePilotRestaurantFixture({ restaurantId, slug });
+    }
+  });
+
+  test("does not show a false menu error while a public menu projection is absent", async ({
+    page,
+  }, testInfo) => {
+    const suffix = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-");
+    const restaurantId = `pilot-missing-menu-${suffix}`;
+    const slug = `pilot-missing-menu-${suffix}`;
+    await deletePilotRestaurantFixture({ restaurantId, slug });
+    await upsertPilotBrokenMenuRestaurant({ restaurantId, slug });
+
+    try {
+      await page.goto(withEmulatorParams(`/${slug}/menu`), {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.locator("body")).toContainText("Pilot Broken Menu", {
+        timeout: 20_000,
+      });
+      await page.waitForTimeout(1_000);
+      await expect(page.locator("body")).not.toContainText(/Fehler|failed/i);
+      await expect(page.locator("body")).not.toContainText(
+        "Local Breakfast Plate",
+      );
+      await expectNoBrokenLoadedImages(page, `/${slug}/menu`);
+    } finally {
+      await deletePilotRestaurantFixture({ restaurantId, slug });
+    }
+  });
+
+  test("keeps QR source stable and avoids invalid table labels", async ({
+    page,
+  }) => {
+    await page.goto(withEmulatorParams("/pidhimadh/menu?src=qr&table=abc"), {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("body")).toContainText("Local Breakfast Plate", {
+      timeout: 20_000,
+    });
+    expect(page.url()).toContain("src=qr");
+    expect(page.url()).not.toContain("table=abc");
+    await expect(page.locator("body")).not.toContainText(/Tisch\s*NaN/i);
+    await expect(page.locator("body")).not.toContainText(/table\s*NaN/i);
+    await expectNoBrokenLoadedImages(page, "/pidhimadh/menu invalid table");
   });
 });

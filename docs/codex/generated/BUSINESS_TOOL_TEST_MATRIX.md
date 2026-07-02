@@ -203,3 +203,23 @@ P0 can move to controlled restaurant launch only when:
 5. Owner editor, ads and public startup denied-list blockers are closed or
    explicitly held out of P1 scope.
 6. Ads and analytics remain disabled or explicitly blocked from paid launch.
+
+## Restaurant Pilot Readiness Extension 2026-07-02
+
+The Restaurant Pilot extension adds non-happy-path coverage for loading, empty,
+error and race states in the restaurant flow.
+
+Matrix updates:
+
+| Area                           | Status                | Added coverage                                                                                                  | Remaining launch work                                                           |
+| ------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Public Menu empty state        | Browser smoke passed  | Mobile E2E creates a local empty restaurant and verifies `Keine Produkte` without false error or foreign items. | Add category-level empty fixture if category UX becomes pilot-critical.         |
+| Public Menu missing projection | Browser smoke passed  | Mobile E2E verifies absent `public/menu` projection does not show a false error.                                | Add forced Firestore failure injection separately.                              |
+| QR table context               | Browser smoke passed  | Valid QR route refresh preserves `src=qr&table=2`; invalid `table=abc` is sanitized without `NaN`.              | Real QR scan on phone/tablet remains manual.                                    |
+| Guest order double submit      | Automated green       | QR E2E dispatches two submit clicks and asserts exactly one new order; unit test covers in-flight guard.        | Add disabled/deleted item server-error simulation.                              |
+| Waiter refresh after status    | Browser smoke passed  | Waiter E2E changes status, reloads and verifies the order remains visible.                                      | Tablet/manual and forced listener error injection remain.                       |
+| Owner order dashboard          | Blocked for pilot ops | Data path mapped only.                                                                                          | Add browser proof for owner orders loading/empty/error before pilot operations. |
+
+Final verification passed: Functions 4/4, Rules 17/17, Unit 130/130, lint,
+format check, architecture check, build and relevant Playwright 25/25 with one
+intentional desktop Heart skip. The build changed no tracked bundle files.

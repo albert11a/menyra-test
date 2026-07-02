@@ -199,3 +199,33 @@ Follow the current refactor master plan. Do not extract `social-app.js` blindly.
 Performance and UI stability are currently Yellow/Red. The product can continue
 local prep, but enterprise launch needs public runtime splitting, bundle budgets,
 manual mobile/browser proof and route-specific loading guarantees.
+
+## Restaurant Pilot Readiness Extension 2026-07-02
+
+The restaurant pilot now has an explicit loading/error/race audit in
+`docs/codex/generated/MNYRA_RESTAURANT_PILOT_READINESS_AUDIT.md`.
+
+Stability evidence added:
+
+- Public Menu canonical empty state and missing-projection behavior are tested
+  with temporary emulator fixtures.
+- Public Menu error state is unit-tested to require real menu error truth.
+- QR `src=qr&table=2` refresh and invalid table sanitizing are mobile-tested.
+- QR order double submit is covered in browser and unit tests.
+- Waiter board status refresh is mobile-tested.
+
+Performance/stability caveats:
+
+- The MCP browser gutcheck without E2E image stubbing generated repeated
+  `images.example.local` DNS errors from fake local seed URLs. This is not a
+  production data issue, but it confirms that real broken-image behavior must
+  remain part of mobile/3G manual checks.
+- Owner order-dashboard loading/empty/error behavior is still P1 before pilot
+  operations.
+- The large `social-app.js` public-route bundle remains a P3 extraction risk;
+  no runtime extraction was started.
+
+Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
+130/130, lint, format check, architecture check, build and relevant Playwright
+25/25 with one intentional desktop Heart skip. The build changed no tracked
+bundle files. The existing large `social-app.js` chunk warning remains.

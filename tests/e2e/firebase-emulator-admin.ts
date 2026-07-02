@@ -66,6 +66,211 @@ export async function deleteRestaurantOrder(
   ]);
 }
 
+export async function listRestaurantMenuItems(restaurantId: string) {
+  const snapshot = await adminDb
+    .collection("restaurants")
+    .doc(restaurantId)
+    .collection("menuItems")
+    .get();
+  return snapshot.docs.map((docSnapshot) => ({
+    id: docSnapshot.id,
+    data: docSnapshot.data(),
+  }));
+}
+
+export async function upsertPilotEmptyMenuRestaurant({
+  restaurantId,
+  slug,
+}: {
+  restaurantId: string;
+  slug: string;
+}) {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const safeSlug = String(slug || "").trim();
+  if (!safeRestaurantId || !safeSlug) {
+    throw new Error("Pilot empty menu fixture requires restaurantId and slug.");
+  }
+  const restaurantRef = adminDb.collection("restaurants").doc(safeRestaurantId);
+  await Promise.all([
+    adminDb
+      .collection("publicRoutes")
+      .doc(safeSlug)
+      .set({
+        slug: safeSlug,
+        restaurantId: safeRestaurantId,
+        type: "business",
+        active: true,
+        canonicalPath: `/${safeSlug}`,
+        menuPath: `/${safeSlug}/menu`,
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+    restaurantRef.set(
+      {
+        id: safeRestaurantId,
+        restaurantId: safeRestaurantId,
+        slug: safeSlug,
+        publicSlug: safeSlug,
+        businessSlug: safeSlug,
+        name: "Pilot Empty Menu",
+        restaurantName: "Pilot Empty Menu",
+        type: "restaurant",
+        customerType: "restaurant",
+        isPublic: true,
+        visibility: "public",
+        logoUrl: "https://images.example.local/pilot-empty-menu-logo.jpg",
+        coverUrl: "https://images.example.local/pilot-empty-menu-cover.jpg",
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    ),
+    restaurantRef.collection("public").doc("profile").set({
+      restaurantId: safeRestaurantId,
+      slug: safeSlug,
+      publicSlug: safeSlug,
+      name: "Pilot Empty Menu",
+      restaurantName: "Pilot Empty Menu",
+      type: "restaurant",
+      customerType: "restaurant",
+      logoUrl: "https://images.example.local/pilot-empty-menu-logo.jpg",
+      coverUrl: "https://images.example.local/pilot-empty-menu-cover.jpg",
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+    restaurantRef.collection("public").doc("meta").set({
+      restaurantId: safeRestaurantId,
+      slug: safeSlug,
+      publicSlug: safeSlug,
+      name: "Pilot Empty Menu",
+      restaurantName: "Pilot Empty Menu",
+      type: "restaurant",
+      customerType: "restaurant",
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+    restaurantRef.collection("public").doc("menu").set({
+      restaurantId: safeRestaurantId,
+      items: [],
+      categories: [],
+      menuTruthState: "knownEmpty",
+      updatedAt: FieldValue.serverTimestamp(),
+      publishedAt: FieldValue.serverTimestamp(),
+    }),
+    restaurantRef.collection("public").doc("offers").set({
+      restaurantId: safeRestaurantId,
+      enabled: false,
+      items: [],
+      offerTruthState: "knownEmpty",
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+  ]);
+}
+
+export async function upsertPilotBrokenMenuRestaurant({
+  restaurantId,
+  slug,
+}: {
+  restaurantId: string;
+  slug: string;
+}) {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const safeSlug = String(slug || "").trim();
+  if (!safeRestaurantId || !safeSlug) {
+    throw new Error(
+      "Pilot broken menu fixture requires restaurantId and slug.",
+    );
+  }
+  const restaurantRef = adminDb.collection("restaurants").doc(safeRestaurantId);
+  await Promise.all([
+    adminDb
+      .collection("publicRoutes")
+      .doc(safeSlug)
+      .set({
+        slug: safeSlug,
+        restaurantId: safeRestaurantId,
+        type: "business",
+        active: true,
+        canonicalPath: `/${safeSlug}`,
+        menuPath: `/${safeSlug}/menu`,
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+    restaurantRef.set(
+      {
+        id: safeRestaurantId,
+        restaurantId: safeRestaurantId,
+        slug: safeSlug,
+        publicSlug: safeSlug,
+        businessSlug: safeSlug,
+        name: "Pilot Broken Menu",
+        restaurantName: "Pilot Broken Menu",
+        type: "restaurant",
+        customerType: "restaurant",
+        isPublic: true,
+        visibility: "public",
+        logoUrl: "https://images.example.local/pilot-broken-menu-logo.jpg",
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    ),
+    restaurantRef.collection("public").doc("profile").set({
+      restaurantId: safeRestaurantId,
+      slug: safeSlug,
+      publicSlug: safeSlug,
+      name: "Pilot Broken Menu",
+      restaurantName: "Pilot Broken Menu",
+      type: "restaurant",
+      customerType: "restaurant",
+      logoUrl: "https://images.example.local/pilot-broken-menu-logo.jpg",
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+    restaurantRef.collection("public").doc("meta").set({
+      restaurantId: safeRestaurantId,
+      slug: safeSlug,
+      publicSlug: safeSlug,
+      name: "Pilot Broken Menu",
+      restaurantName: "Pilot Broken Menu",
+      type: "restaurant",
+      customerType: "restaurant",
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+    restaurantRef.collection("public").doc("offers").set({
+      restaurantId: safeRestaurantId,
+      enabled: false,
+      items: [],
+      offerTruthState: "knownEmpty",
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+    restaurantRef.collection("public").doc("menu").delete(),
+  ]);
+}
+
+export async function deletePilotRestaurantFixture({
+  restaurantId,
+  slug,
+}: {
+  restaurantId: string;
+  slug: string;
+}) {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const safeSlug = String(slug || "").trim();
+  if (!safeRestaurantId || !safeSlug) return;
+  const restaurantRef = adminDb.collection("restaurants").doc(safeRestaurantId);
+  const menuItems = await listRestaurantMenuItems(safeRestaurantId).catch(
+    () => [],
+  );
+  const orders = await listRestaurantOrders(safeRestaurantId).catch(() => []);
+  const batch = adminDb.batch();
+  batch.delete(adminDb.collection("publicRoutes").doc(safeSlug));
+  ["profile", "meta", "menu", "offers", "ads"].forEach((docId) => {
+    batch.delete(restaurantRef.collection("public").doc(docId));
+  });
+  menuItems.forEach((item) =>
+    batch.delete(restaurantRef.collection("menuItems").doc(item.id)),
+  );
+  orders.forEach((order) =>
+    batch.delete(restaurantRef.collection("orders").doc(order.id)),
+  );
+  batch.delete(restaurantRef);
+  await batch.commit();
+}
+
 export async function createForeignRestaurantOrder(orderId: string) {
   await adminDb
     .collection("restaurants")

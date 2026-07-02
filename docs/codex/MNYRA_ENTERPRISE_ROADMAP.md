@@ -234,6 +234,35 @@ Unit 127/127, lint, format check, architecture check and build. The build
 changed only `apps/menyra-social/bundled/entry/social-app.js`; no tracked
 bundle manifest or hashed chunk changed.
 
+## Restaurant Pilot Readiness Extension 2026-07-02
+
+The Restaurant Pilot extension adds non-happy-path readiness work to the first
+restaurant launch slice. The detailed audit is
+`docs/codex/generated/MNYRA_RESTAURANT_PILOT_READINESS_AUDIT.md`.
+
+Added gates now covered locally:
+
+- Public Menu real seeded content, clean empty state and missing public-menu
+  projection behavior.
+- QR valid table retention and invalid table sanitizing.
+- Cart/order double-submit protection.
+- Waiter status change plus refresh visibility.
+- Unit guards for Public Menu error truth and order submit error release.
+
+This improves the first restaurant pilot evidence, but it does not approve the
+pilot yet. Remaining P1 launch gates:
+
+- Owner order-dashboard loading/empty/error proof.
+- Disabled/deleted cart item simulation against the callable/server pricing
+  path.
+- Real phone/3G QR scan, public menu image decode and waiter tablet pass.
+- Heart Leads mobile image/Search flicker diagnosis for support readiness.
+
+Final verification for this extension passed: Functions 4/4, Rules 17/17, Unit
+130/130, lint, format check, architecture check, build and relevant Playwright
+25/25 with one intentional desktop Heart skip. The build changed no tracked
+bundle files.
+
 ## P1: First Controlled Restaurant Launch
 
 | Workstream                 | Business value                           | Exit criteria                                                                                |

@@ -92,7 +92,12 @@ test.describe("seeded QR menu order flow", () => {
     await expect(page.locator("body")).toContainText(SEEDED_ITEM_NAME);
     await expect(page.locator("body")).toContainText(/6[,.]90/);
 
-    await page.locator('[data-cart-checkout="submit"]').click();
+    const submitButton = page.locator('[data-cart-checkout="submit"]').first();
+    await expect(submitButton).toBeVisible();
+    await submitButton.evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
     await expect(page.locator("body")).toContainText("Bestellung gesendet", {
       timeout: 20_000,
     });
@@ -100,11 +105,11 @@ test.describe("seeded QR menu order flow", () => {
     await expect
       .poll(async () => {
         const orders = await listRestaurantOrders(RESTAURANT_ID);
-        const created = orders.find((order) => !beforeIds.has(order.id));
-        createdOrderId = created?.id || "";
-        return createdOrderId;
+        const created = orders.filter((order) => !beforeIds.has(order.id));
+        createdOrderId = created[0]?.id || "";
+        return created.length;
       })
-      .not.toBe("");
+      .toBe(1);
 
     try {
       const createdOrder = (await listRestaurantOrders(RESTAURANT_ID)).find(
