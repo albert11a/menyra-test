@@ -1,32 +1,54 @@
 const browserGlobals = {
+  AbortController: "readonly",
   Blob: "readonly",
+  CSS: "readonly",
   CustomEvent: "readonly",
   DOMParser: "readonly",
+  Element: "readonly",
   Event: "readonly",
   File: "readonly",
   FileReader: "readonly",
   FormData: "readonly",
   Headers: "readonly",
+  HTMLButtonElement: "readonly",
+  HTMLDetailsElement: "readonly",
+  HTMLElement: "readonly",
+  HTMLFormElement: "readonly",
+  HTMLImageElement: "readonly",
+  HTMLInputElement: "readonly",
+  HTMLTextAreaElement: "readonly",
+  HTMLVideoElement: "readonly",
   Image: "readonly",
   IntersectionObserver: "readonly",
   KeyboardEvent: "readonly",
+  MouseEvent: "readonly",
   MutationObserver: "readonly",
+  Notification: "readonly",
   Request: "readonly",
   Response: "readonly",
+  SVGElement: "readonly",
+  TextDecoder: "readonly",
+  TextEncoder: "readonly",
   URL: "readonly",
   URLSearchParams: "readonly",
+  WebSocket: "readonly",
+  Worker: "readonly",
   alert: "readonly",
   atob: "readonly",
   btoa: "readonly",
   confirm: "readonly",
+  createImageBitmap: "readonly",
   crypto: "readonly",
   document: "readonly",
   fetch: "readonly",
+  getComputedStyle: "readonly",
   history: "readonly",
   localStorage: "readonly",
   location: "readonly",
+  matchMedia: "readonly",
   navigator: "readonly",
   performance: "readonly",
+  queueMicrotask: "readonly",
   requestAnimationFrame: "readonly",
   sessionStorage: "readonly",
   setInterval: "readonly",
@@ -36,6 +58,20 @@ const browserGlobals = {
   window: "readonly",
 };
 
+// Service-Worker- / Worker-Kontext-Globals (sw.js, pwa.js, media-worker).
+// Als readonly global harmlos, da nie neu zugewiesen.
+const workerGlobals = {
+  self: "readonly",
+  caches: "readonly",
+  clients: "readonly",
+  registration: "readonly",
+  importScripts: "readonly",
+  skipWaiting: "readonly",
+  ServiceWorkerGlobalScope: "readonly",
+  WorkerGlobalScope: "readonly",
+  postMessage: "readonly",
+};
+
 const nodeGlobals = {
   Buffer: "readonly",
   __dirname: "readonly",
@@ -43,6 +79,10 @@ const nodeGlobals = {
   console: "readonly",
   global: "readonly",
   process: "readonly",
+  require: "readonly",
+  module: "readonly",
+  exports: "writable",
+  setImmediate: "readonly",
 };
 
 export default [
@@ -66,6 +106,7 @@ export default [
       sourceType: "module",
       globals: {
         ...browserGlobals,
+        ...workerGlobals,
         ...nodeGlobals,
       },
     },
@@ -75,7 +116,7 @@ export default [
     rules: {
       "no-console": "off",
       "no-empty": ["warn", { allowEmptyCatch: true }],
-      "no-undef": "warn",
+      "no-undef": "error",
       "no-unused-vars": [
         "warn",
         {

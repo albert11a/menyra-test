@@ -1215,7 +1215,7 @@ export function createChatAppRuntimeLazyFacade({
     }));
     if (typeof renderApi.render === "function") renderApi.render();
     if (typeof nextValue === "boolean") {
-      void persistCurrentChatMessagePatch(safeId, { [flag]: nextValue });
+      void callRealAsync("persistCurrentChatMessagePatch", [safeId, { [flag]: nextValue }], undefined, "chat.message.patch");
     }
   }
 

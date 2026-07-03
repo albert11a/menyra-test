@@ -2265,7 +2265,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
   const distanceBeach = getHotelDistanceBeach(record);
   const features = getHotelFeatureChips(record).slice(0, 3);
   const details = collectTravelOfferDetailList(record);
-  const description = getTravelOfferDescription(record) || `${name} - ${destination || address}`;
+  const description = getTravelOfferDescription(record) || `${name} - ${destination || record.address || ""}`;
   const startingPrice = getHotelStartingPrice(record);
   const priceSuffix = getTravelOfferPriceSuffix(record);
   const badgeLabel = getTravelOfferBadgeLabel(record);

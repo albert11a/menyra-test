@@ -1789,8 +1789,7 @@ export function createProfileOpenFlowControllerCore({
         [
           targetRestaurantLookupId,
           targetMenuRestaurantId,
-          targetCanonicalRestaurantId,
-          routeSnapshotRestaurantId
+          targetCanonicalRestaurantId
         ]
           .map((value) => String(value || "").trim())
           .filter(Boolean)
@@ -1823,8 +1822,7 @@ export function createProfileOpenFlowControllerCore({
           postsStatus: livePosts.length ? "ready" : "error"
         }), resolveCanonicalRestaurantIdCandidate(
           liveCanonicalRestaurantId,
-          targetCanonicalRestaurantId,
-          routeBootstrapCanonicalRestaurantId
+          targetCanonicalRestaurantId
         ));
         renderApp();
       }
