@@ -193,20 +193,32 @@ function isCeoRole(profile = {}) {
   return roles.includes("ceo");
 }
 
+// Vertrauenswuerdige CEO/Superadmin-Signale aus verifizierten Custom Claims.
+// Claims werden ausschliesslich serverseitig gesetzt und sind nicht vom Nutzer editierbar.
+function hasTrustedCeoClaim(claims = {}) {
+  if (!claims || typeof claims !== "object") return false;
+  if (claims.ceo === true || claims.superadmin === true || claims.superAdmin === true) return true;
+  const roles = normalizeRoleList(claims.roles || claims.role || "");
+  return roles.includes("ceo") || roles.includes("superadmin");
+}
+
+// SICHERHEIT: Global-CEO-Zugriff darf NICHT von nutzer-editierbaren Feldern
+// (Anzeigename, Handle, beliebige E-Mail-Domain) abhaengen. Deshalb nur exakte,
+// VERIFIZIERTE Owner-E-Mail aus dem ID-Token. displayName/handle/name entfallen.
 function isAlbertCeoUser(user = {}, profile = {}) {
-  const email = normalizeEmailValue(user.email || profile.email || profile.ownerEmail || "");
+  const email = normalizeEmailValue(user.email);
+  if (!email) return false;
   if (HIDDEN_LEGACY_CEO_EMAILS.includes(email)) return false;
-  const handles = [profile.handle, profile.name, user.displayName]
-    .map((item) => normalizeHandleValue(item))
-    .filter(Boolean);
-  if (handles.some((item) => ALBERT_CEO_ALIASES.includes(item))) return true;
-  if (ALBERT_CEO_EMAILS.includes(email)) return true;
-  return ALBERT_CEO_ALIASES.some((alias) => email.startsWith(`${alias}@`));
+  if (user.emailVerified !== true) return false;
+  return ALBERT_CEO_EMAILS.includes(email);
 }
 
 function hasGlobalCeoAccess(user = {}, profile = {}) {
   const uid = asText(user.uid || profile.uid);
-  return uid === ALBERT_CEO_UID || isAlbertCeoUser(user, profile);
+  if (uid && uid === ALBERT_CEO_UID) return true;
+  if (hasTrustedCeoClaim(user.claims)) return true;
+  if (user.isSuperadmin === true) return true;
+  return isAlbertCeoUser(user, profile);
 }
 
 function canAccessHeartAsCeo(user = {}, profile = {}) {
@@ -222,6 +234,19 @@ async function loadUserProfile(db, uid) {
     return { uid: safeUid, ...serializeFirestoreValue(snap.data() || {}) };
   } catch {
     return { uid: safeUid, roles: [], role: "" };
+  }
+}
+
+// Vertrauenswuerdige Superadmin-Mitgliedschaft: superadmins/{uid} ist per
+// Firestore-Rules schreibgeschuetzt und daher nicht selbst vergebbar.
+async function isSuperadminUid(db, uid) {
+  const safeUid = asText(uid);
+  if (!safeUid) return false;
+  try {
+    const snap = await db.collection("superadmins").doc(safeUid).get();
+    return snap.exists;
+  } catch {
+    return false;
   }
 }
 
@@ -287,7 +312,10 @@ async function verifyCeoRequest(req, res, db, {
   const user = {
     uid,
     email: asText(decodedToken?.email),
-    displayName: asText(decodedToken?.name || decodedToken?.displayName)
+    emailVerified: decodedToken?.email_verified === true,
+    displayName: asText(decodedToken?.name || decodedToken?.displayName),
+    claims: decodedToken || {},
+    isSuperadmin: await isSuperadminUid(db, uid)
   };
   if (!canAccessHeartAsCeo(user, profile || {})) {
     logFunctionWarn("heart.auth.request", {
@@ -344,10 +372,12 @@ module.exports = {
   parseBearerToken,
   parseRequestJson,
   isCeoRole,
+  hasTrustedCeoClaim,
   isAlbertCeoUser,
   hasGlobalCeoAccess,
   canAccessHeartAsCeo,
   loadUserProfile,
+  isSuperadminUid,
   verifyCeoRequest,
   createRunId,
   createIncidentId
