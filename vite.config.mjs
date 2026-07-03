@@ -11,11 +11,40 @@ function normalizeForRollup(id = "") {
   return String(id || "").split("?")[0].replace(/\\/g, "/");
 }
 
+// Domain-Ordner unter apps/menyra-social/core/, die in eigene, parallel geladene
+// Chunks ausgelagert werden, damit der Entry (entry/social-app.js) unter Budget
+// bleibt. Bewusst AUSGENOMMEN: app-shell/common/router/ui (eng mit dem Entry-
+// Orchestrator verwoben -> hoeheres Cross-Chunk-Zyklus-Risiko). Verhaltensneutral:
+// Rollup verdrahtet statische Sibling-Chunks, modulepreload laedt sie parallel.
+const SOCIAL_DOMAIN_CHUNKS = [
+  "feed",
+  "marketplace",
+  "stories",
+  "leads",
+  "overlays",
+  "notifications",
+  "push",
+  "media",
+  "map",
+  "shop",
+  "follow",
+  "business-accounts",
+  "public-profile",
+  "auth",
+  "app-events",
+];
+
 function socialManualChunks(id) {
   const clean = normalizeForRollup(id);
 
   if (clean.includes("/shared/vendor/firebase/11.0.0/")) {
     return "vendor-firebase";
+  }
+
+  for (const domain of SOCIAL_DOMAIN_CHUNKS) {
+    if (clean.includes(`/apps/menyra-social/core/${domain}/`)) {
+      return `domain-${domain}`;
+    }
   }
 
   return undefined;
