@@ -371,7 +371,9 @@ export function createMenuPublicRuntimeController({
         if (!query || !orderBy || !limit) throw new Error("favorite query helpers unavailable");
         snap = await getDocs(query(ref, orderBy("savedAtClient", "desc"), limit(120)));
       } catch {
-        snap = await getDocs(ref);
+        snap = (query && limit)
+          ? await getDocs(query(ref, limit(120)))
+          : await getDocs(ref);
       }
       const items = snap.docs
         .map((docSnap) => normalizeFavoriteMenuItemDoc(docSnap.data() || {}, docSnap.id))
@@ -445,7 +447,12 @@ export function createMenuPublicRuntimeController({
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !collection || !getDocs || !db) return [];
     try {
-      const snap = await getDocs(collection(db, "restaurants", safeRestaurantId, "menuItems"));
+      // Grosszuegiger Sicherheits-Cap gegen unbegrenzte Reads; schneidet reale
+      // Menues (typisch << 500 Items) nicht ab.
+      const menuRef = collection(db, "restaurants", safeRestaurantId, "menuItems");
+      const snap = (query && limit)
+        ? await getDocs(query(menuRef, limit(500)))
+        : await getDocs(menuRef);
       const list = snap.docs.map((docSnap) => normalizeMenuItemDoc(docSnap.data(), docSnap.id));
       return normalizeMenuItemsForRestaurant(list, safeRestaurantId);
     } catch (err) {

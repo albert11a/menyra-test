@@ -1424,7 +1424,9 @@ export function createProfileOpenFlowControllerCore({
         restaurantId: profileLookupRestaurantId,
         restaurant: rest
       }), {
-        timeoutMs: isWebRoutePriorityPath ? 1800 : 0,
+        // Timeout auf ALLEN Oeffnungspfaden (vorher 0 = kein Timeout bei
+        // In-App-Navigation -> konnte den Profil-Open haengen lassen).
+        timeoutMs: isWebRoutePriorityPath ? 1800 : 4000,
         fallbackValue: null
       });
       let earlyPostsResult = null;
