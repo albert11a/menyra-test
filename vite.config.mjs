@@ -13,20 +13,22 @@ function normalizeForRollup(id = "") {
 
 // Domain-Ordner unter apps/menyra-social/core/, die in eigene, parallel geladene
 // Chunks ausgelagert werden, damit der Entry (entry/social-app.js) unter Budget
-// bleibt. Bewusst AUSGENOMMEN: app-shell/common/router/ui (eng mit dem Entry-
-// Orchestrator verwoben -> hoeheres Cross-Chunk-Zyklus-Risiko). Verhaltensneutral:
-// Rollup verdrahtet statische Sibling-Chunks, modulepreload laedt sie parallel.
+// bleibt. Bewusst AUSGENOMMEN:
+//  - app-shell/common/router/ui: eng mit dem Entry-Orchestrator verwoben (Zyklus).
+//  - marketplace/media/overlays/shop: enthalten LAZY (dynamisch importierte)
+//    Render-/Upload-Cluster; sie hier zu gruppieren wuerde sie mit ihrer
+//    statischen Boundary in einen eager Chunk zwingen und damit den Cold-Start
+//    verschlechtern. Sie bleiben ungegruppt -> ihre schweren Teile laden erst
+//    on-demand (Rollup-Dynamic-Chunks).
+// Verhaltensneutral: Rollup verdrahtet statische Sibling-Chunks, modulepreload
+// laedt sie parallel.
 const SOCIAL_DOMAIN_CHUNKS = [
   "feed",
-  "marketplace",
   "stories",
   "leads",
-  "overlays",
   "notifications",
   "push",
-  "media",
   "map",
-  "shop",
   "follow",
   "business-accounts",
   "public-profile",
