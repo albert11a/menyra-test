@@ -1,0 +1,52 @@
+name: mnyra-e2e
+
+# Manuell auslösbarer End-to-End-Lauf gegen die Firebase-Emulatoren.
+# Bewusst NICHT als Pflicht-Gate auf PRs: die E2E-Suite haengt an Emulatoren
+# (Firestore/Auth/Functions) + Seed + lokalem Dev-Server und muss zuerst einmal
+# auf dem GitHub-Runner gruen laufen, bevor sie verpflichtend gemacht wird.
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Setup Java (Firestore emulator requires it)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E under Firebase emulators
+        run: |
+          npx firebase emulators:exec \
+            --only firestore,auth,functions \
+            --project mnyra-local \
+            "node seed/scripts/seed-firestore.mjs \
+             && (node scripts/local-dev-server.mjs &) \
+             && timeout 60 bash -c 'until curl -sf http://127.0.0.1:5173/apps/menyra-social/index.html >/dev/null; do sleep 1; done' \
+             && npm run test:e2e"
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
