@@ -406,6 +406,45 @@ function renderShell(state, runtime = {}) {
   `;
 }
 
+// Fokus + Cursor eines gerade bearbeiteten Feldes erfassen, bevor die Shell per
+// innerHTML neu geschrieben wird. So stiehlt ein Hintergrund-Refresh (3s-Polling)
+// oder ein Zustands-Update keinem tippenden Nutzer den Fokus / die Cursorposition.
+function captureHeartActiveField(rootNode) {
+  if (typeof document === "undefined") return null;
+  const active = document.activeElement;
+  if (!active || active === document.body || !rootNode.contains(active)) return null;
+  const tag = String(active.tagName || "").toLowerCase();
+  const isField = tag === "input" || tag === "textarea" || tag === "select"
+    || active.isContentEditable === true;
+  if (!isField) return null;
+  const id = String(active.id || "").trim();
+  if (!id) return null; // nur eindeutig wiederfindbare Felder
+  let selectionStart = null;
+  let selectionEnd = null;
+  try {
+    if (Number.isFinite(Number(active.selectionStart))) selectionStart = Number(active.selectionStart);
+    if (Number.isFinite(Number(active.selectionEnd))) selectionEnd = Number(active.selectionEnd);
+  } catch {}
+  return { id, selectionStart, selectionEnd };
+}
+
+function restoreHeartActiveField(rootNode, snapshot) {
+  if (!snapshot?.id || typeof document === "undefined") return;
+  const next = rootNode.querySelector(`#${(window.CSS && CSS.escape) ? CSS.escape(snapshot.id) : snapshot.id}`);
+  if (!next || next === document.activeElement) return;
+  try {
+    next.focus({ preventScroll: true });
+    if (
+      Number.isInteger(snapshot.selectionStart)
+      && Number.isInteger(snapshot.selectionEnd)
+      && typeof next.setSelectionRange === "function"
+    ) {
+      const len = String(next.value || "").length;
+      next.setSelectionRange(Math.min(snapshot.selectionStart, len), Math.min(snapshot.selectionEnd, len));
+    }
+  } catch {}
+}
+
 export function renderHeartApp(rootNode, state, runtime = {}) {
   if (!rootNode) return;
   let markup = "";
@@ -420,5 +459,11 @@ export function renderHeartApp(rootNode, state, runtime = {}) {
   } else {
     markup = renderLoadingGate();
   }
+  // Identisches Markup nicht neu schreiben -> kein unnoetiges DOM-Neuaufbauen
+  // (verhindert Flackern/Bild-Neuladen bei Hintergrund-Refreshes ohne Aenderung).
+  if (rootNode.__heartLastMarkup === markup) return;
+  const focusSnapshot = captureHeartActiveField(rootNode);
   rootNode.innerHTML = markup;
+  rootNode.__heartLastMarkup = markup;
+  restoreHeartActiveField(rootNode, focusSnapshot);
 }
