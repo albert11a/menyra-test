@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Interne / nicht indexierbare Bereiche
+Disallow: /hub/
+Disallow: /heart/
+Disallow: /api/
+Disallow: /apps/menyra-social/bundled/
+
+Sitemap: https://www.mnyra.com/sitemap.xml

@@ -24,6 +24,7 @@ export function createSelfProfileRuntimeController({
   docFn = null,
   getDocFn = async () => null,
   getDocFromServerFn = null,
+  getDocFromCacheFn = null,
   getDocsFn = async () => null,
   onSnapshotFn = null,
   setDocFn = async () => {},
@@ -83,6 +84,7 @@ export function createSelfProfileRuntimeController({
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const getDoc = typeof getDocFn === "function" ? getDocFn : (async () => null);
   const getDocFromServer = typeof getDocFromServerFn === "function" ? getDocFromServerFn : null;
+  const getDocFromCache = typeof getDocFromCacheFn === "function" ? getDocFromCacheFn : null;
   const getDocs = typeof getDocsFn === "function" ? getDocsFn : (async () => null);
   const onSnapshot = typeof onSnapshotFn === "function" ? onSnapshotFn : null;
   const setDoc = typeof setDocFn === "function" ? setDocFn : (async () => {});
@@ -839,13 +841,21 @@ export function createSelfProfileRuntimeController({
     if (!uid || !makeDocRef || !db) return null;
     const ref = makeDocRef(db, "users", uid);
     let snap = null;
-    if (getDocFromServer) {
+    // Instant-Load: zuerst aus dem lokalen Firestore-Cache lesen (kein Netz-RTT).
+    // Ist der Doc gecacht, sofort zurueckgeben und im Hintergrund vom Server
+    // reconcilen (der Live-onSnapshot-Listener aktualisiert die UI ohnehin).
+    if (getDocFromCache) {
       try {
-        snap = await getDocFromServer(ref);
+        const cached = await getDocFromCache(ref);
+        if (cached && typeof cached.exists === "function" && cached.exists()) {
+          if (getDocFromServer) { void Promise.resolve(getDocFromServer(ref)).catch(() => {}); }
+          return cached;
+        }
       } catch {}
     }
+    // Kein Cache-Treffer: normaler Read (Server, mit Cache-Fallback offline).
     try {
-      snap = snap || await getDoc(ref);
+      snap = await getDoc(ref);
     } catch {
       snap = null;
     }

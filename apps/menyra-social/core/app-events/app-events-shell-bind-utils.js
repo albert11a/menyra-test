@@ -1053,8 +1053,6 @@ export function bindAppShellEventsCore({
       handleProfileTopTabChange("cart", { smoothTop: true, forceProfile: true });
       return;
     }
-
-    console.log("Warenkorb geklickt");
   };
 
   doc.querySelectorAll("[data-profile-top-tab]").forEach((btn) => {
@@ -1078,7 +1076,7 @@ export function bindAppShellEventsCore({
         return;
       }
       if (action === "kellner") {
-        console.log("Kellner gerufen");
+        // Kellnerruf: aktuell kein Live-Handler angebunden (Platzhalter-Aktion).
       }
     });
   });

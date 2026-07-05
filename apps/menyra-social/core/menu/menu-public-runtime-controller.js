@@ -371,7 +371,9 @@ export function createMenuPublicRuntimeController({
         if (!query || !orderBy || !limit) throw new Error("favorite query helpers unavailable");
         snap = await getDocs(query(ref, orderBy("savedAtClient", "desc"), limit(120)));
       } catch {
-        snap = await getDocs(ref);
+        snap = (query && limit)
+          ? await getDocs(query(ref, limit(120)))
+          : await getDocs(ref);
       }
       const items = snap.docs
         .map((docSnap) => normalizeFavoriteMenuItemDoc(docSnap.data() || {}, docSnap.id))
@@ -444,14 +446,31 @@ export function createMenuPublicRuntimeController({
   async function loadMenuItemsFromCollection(restaurantId) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !collection || !getDocs || !db) return [];
-    try {
-      const snap = await getDocs(collection(db, "restaurants", safeRestaurantId, "menuItems"));
-      const list = snap.docs.map((docSnap) => normalizeMenuItemDoc(docSnap.data(), docSnap.id));
-      return normalizeMenuItemsForRestaurant(list, safeRestaurantId);
-    } catch (err) {
-      console.error(err);
-      return [];
+    // Grosszuegiger Sicherheits-Cap gegen unbegrenzte Reads; schneidet reale
+    // Menues (typisch << 500 Items) nicht ab.
+    const menuRef = collection(db, "restaurants", safeRestaurantId, "menuItems");
+    const readMenuSnap = () => ((query && limit)
+      ? getDocs(query(menuRef, limit(500)))
+      : getDocs(menuRef));
+    // Zuverlaessigkeit: ein transienter Netz-Aussetzer (3G/4G) darf nicht dazu
+    // fuehren, dass ein vorhandenes Menue als leer erscheint. Deshalb ein
+    // beschraenkter Retry, BEVOR wir aufgeben. Ein erfolgreicher Read wird nie
+    // wiederholt -> kein Verhaltensrisiko fuer den Normalfall.
+    let lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const snap = await readMenuSnap();
+        const list = snap.docs.map((docSnap) => normalizeMenuItemDoc(docSnap.data(), docSnap.id));
+        return normalizeMenuItemsForRestaurant(list, safeRestaurantId);
+      } catch (err) {
+        lastErr = err;
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 450));
+        }
+      }
     }
+    console.error(lastErr);
+    return [];
   }
 
   function hasMenuItemImages(item) {

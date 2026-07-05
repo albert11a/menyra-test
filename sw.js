@@ -171,6 +171,19 @@ self.addEventListener('fetch', (event) => {
   const scheme = url.protocol;
   const isHttp = scheme === 'http:' || scheme === 'https:';
   if (!isHttp) return;
+
+  // Firestore/Functions/Google-APIs NIEMALS durch den SW cachen oder aus dem
+  // Cache bedienen: Firestore-Streaming-GETs sonst mit Overhead belegt und bei
+  // Netz-Blip stale ausgeliefert. Direkt ans Netzwerk durchreichen.
+  const host = url.hostname;
+  if (
+    host === 'firestore.googleapis.com'
+    || host.endsWith('.cloudfunctions.net')
+    || host.endsWith('.googleapis.com')
+  ) {
+    return;
+  }
+
   const acceptHeader = req.headers.get('Accept') || '';
   const isNavigation = acceptHeader.includes('text/html') || req.mode === 'navigate';
 

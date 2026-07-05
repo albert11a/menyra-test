@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - mnyrasocial
+      - main
+      - claudefix
   pull_request:
   workflow_dispatch:
 
@@ -32,11 +34,10 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
-      - name: Rules scaffold tests
-        run: npm run test:rules
-
-      - name: Functions scaffold tests
-        run: npm run test:functions
+      # Hinweis: test:rules und test:functions brauchen den Firestore-Emulator
+      # (Port 8080). Dieser 'prep'-Job startet keinen Emulator, daher wuerden sie
+      # hier zwangslaeufig mit ECONNREFUSED fehlschlagen. Sie laufen stattdessen im
+      # emulator-gestuetzten Workflow (ci-e2e.yml, firebase emulators:exec).
 
       - name: Architecture report
         run: npm run arch:report
@@ -46,6 +47,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Bundle budget gate
+        run: npm run check:social-bundle
 
       - name: Bundle report
         run: npm run bundle:report

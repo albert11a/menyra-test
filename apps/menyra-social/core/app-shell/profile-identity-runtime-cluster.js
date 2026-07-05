@@ -155,6 +155,7 @@ export function createProfileIdentityRuntimeCluster({
     docFn: firebaseApi.docFn || null,
     getDocFn: firebaseApi.getDocFn || null,
     getDocFromServerFn: firebaseApi.getDocFromServerFn || null,
+    getDocFromCacheFn: firebaseApi.getDocFromCacheFn || null,
     getDocsFn: firebaseApi.getDocsFn || null,
     onSnapshotFn: firebaseApi.onSnapshotFn || null,
     setDocFn: firebaseApi.setDocFn || null,

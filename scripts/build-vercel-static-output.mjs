@@ -16,6 +16,7 @@ const deployablePaths = [
 
 const optionalRootFiles = [
   "favicon.ico",
+  "favicon.svg",
   "robots.txt",
   "sitemap.xml",
   "manifest.json",

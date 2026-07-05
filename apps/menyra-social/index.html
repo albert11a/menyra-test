@@ -347,6 +347,33 @@
     })();
   </script>
   <title>MNYRA Social</title>
+  <meta name="description" content="MNYRA – Social- und Business-Plattform für Restaurants: Feed, Entdecken, Karte, Speisekarte, Bestellungen und Chat an einem Ort." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://www.mnyra.com/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="MNYRA" />
+  <meta property="og:title" content="MNYRA Social" />
+  <meta property="og:description" content="Social- und Business-Plattform für Restaurants: Feed, Entdecken, Karte, Speisekarte, Bestellungen und Chat." />
+  <meta property="og:url" content="https://www.mnyra.com/" />
+  <meta property="og:image" content="https://www.mnyra.com/apps/menyra-social/assets/icon-512.png" />
+  <meta property="og:locale" content="de_DE" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="MNYRA Social" />
+  <meta name="twitter:description" content="Social- und Business-Plattform für Restaurants." />
+  <meta name="twitter:image" content="https://www.mnyra.com/apps/menyra-social/assets/icon-512.png" />
+  <script>
+    /* Selbstreferenzierendes Canonical + og:url: verhindert, dass Crawler alle
+       SPA-Routen als Duplikat der Startseite werten. Setzt die tatsächliche URL. */
+    (() => {
+      try {
+        const href = location.origin + location.pathname;
+        const canonical = document.querySelector('link[rel="canonical"]');
+        if (canonical) canonical.setAttribute("href", href);
+        const ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl) ogUrl.setAttribute("content", href);
+      } catch {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
@@ -358,7 +385,18 @@
   <link rel="dns-prefetch" href="//us-central1-menyra-c0e68.cloudfunctions.net">
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
+  <!-- Entdecker-Karte: Verbindungen zu Leaflet-CDN + Kartenkacheln vorbereiten
+       (spart auf 3G den DNS/TLS-Aufbau, wenn die Karte geoeffnet wird). -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="//tile.openstreetmap.org">
+  <link rel="dns-prefetch" href="//a.tile.openstreetmap.org">
+  <link rel="dns-prefetch" href="//b.tile.openstreetmap.org">
+  <link rel="dns-prefetch" href="//c.tile.openstreetmap.org">
+  <link rel="dns-prefetch" href="//basemaps.cartocdn.com">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="icon" type="image/png" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
+  <link rel="apple-touch-icon" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>

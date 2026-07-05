@@ -244,7 +244,10 @@ export function createFeedVisibilityRuntimeCluster({
           : ref;
         snap = await getDocs(orderedQuery);
       } catch (_err) {
-        snap = await getDocs(ref);
+        const fallbackLimit = Number(constants.fastLimits?.userPosts) || 24;
+        snap = (query && limit)
+          ? await getDocs(query(ref, limit(fallbackLimit)))
+          : await getDocs(ref);
       }
       const rows = [];
       snap?.forEach?.((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));

@@ -3037,7 +3037,7 @@ export function createFeedViewOrchestrationController({
       : `loading="lazy" fetchpriority="low"`;
     const starBadgeIcon = `<svg viewBox="0 0 24 24" width="8" height="8" aria-hidden="true" focusable="false" style="display:block;color:#fbbf24;fill:currentColor;stroke:currentColor;stroke-width:1.5;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     const visualLayer = avatarUrl
-      ? `<img src="${escapeHtmlFn(avatarUrl)}" ${imgAttrs} decoding="async" width="120" height="208" ${avatarAttr} ${avatarKeyAttr} class="absolute inset-0 w-full h-full object-cover" />`
+      ? `<img src="${escapeHtmlFn(getOptimizedImageUrlFn(avatarUrl, "small"))}" ${imgAttrs} decoding="async" width="120" height="208" ${avatarAttr} ${avatarKeyAttr} class="absolute inset-0 w-full h-full object-cover" />`
       : `<div class="absolute inset-0 flex items-center justify-center text-white/85" style="background:linear-gradient(145deg,#1f2937 0%,#0f172a 60%,#020617 100%);">${iconFn("map-pin", "w-6 h-6")}</div>`;
     const openTag = restaurantId
       ? `<button type="button" data-profile-business="${escapeHtmlFn(label)}" data-profile-id="${escapeHtmlFn(restaurantId)}" data-best-spot-item="${safeSpotId}" class="flex-none w-[29%] sm:w-[120px] snap-start cursor-pointer text-left" style="${buildTrackCardShellStyle()}">`
@@ -3074,7 +3074,7 @@ export function createFeedViewOrchestrationController({
       const attrs = eager
         ? `preload="auto" fetchpriority="high"`
         : `preload="metadata" fetchpriority="low"`;
-      const posterAttr = preview.poster ? `poster="${escapeHtmlFn(preview.poster)}"` : "";
+      const posterAttr = preview.poster ? `poster="${escapeHtmlFn(getOptimizedImageUrlFn(preview.poster, "small"))}"` : "";
       const storyPreviewIdAttr = storyId ? `data-story-preview-id="${escapeHtmlFn(storyId)}"` : "";
       return `
         <video src="${escapeHtmlFn(preview.src)}" ${posterAttr} ${attrs} data-story-preview-video ${storyPreviewIdAttr} autoplay muted loop playsinline draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>
@@ -3085,7 +3085,7 @@ export function createFeedViewOrchestrationController({
         ? `loading="eager" fetchpriority="high"`
         : `loading="lazy" fetchpriority="low"`;
       return `
-        <img src="${escapeHtmlFn(preview.src)}" ${attrs} decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />
+        <img src="${escapeHtmlFn(getOptimizedImageUrlFn(preview.src, "small"))}" ${attrs} decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />
       `;
     }
     return `
@@ -3187,6 +3187,14 @@ export function createFeedViewOrchestrationController({
     const imageUrl = getOptimizedImageUrlFn(post.image, "medium", {
       stableKey: postId ? `feed-hero:${postId}` : ""
     });
+    // Responsive Kandidaten (kleines Display / 3G laedt kleines Bild). Ohne
+    // stableKey, damit der Last-Good-Cache nur an der src-Variante haengt.
+    const heroSrcset = escapeHtmlFn(
+      `${getOptimizedImageUrlFn(post.image, "small")} 480w, `
+      + `${imageUrl} 768w, `
+      + `${getOptimizedImageUrlFn(post.image, "large")} 1280w`
+    );
+    const heroSizes = "(max-width: 640px) 100vw, 600px";
     return `
     <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
@@ -3202,8 +3210,8 @@ export function createFeedViewOrchestrationController({
         ${iconFn("more-horizontal", "w-5 h-5 text-slate-400")}
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
-        <div class="relative rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtmlFn(imageUrl)}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-1000" />
+        <div class="relative rounded-[3rem] overflow-hidden bg-slate-200" style="aspect-ratio:4/5">
+          <img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE

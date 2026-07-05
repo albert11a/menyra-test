@@ -685,7 +685,7 @@ const D=Object.freeze({restaurants:Object.freeze({key:"restaurants",title:"Resta
         </div>
       </div>
     </article>
-  `}function Pt(e={},t={}){const a=t.escapeHtml,n=t.icon,s=(I,B)=>P(I,B,t),i=j(e),r=z(e),o=fe(e,t),c=o[0]||t.placeholderImage||"",u=_(e,t),d=S(e)||"0.0",f=Number(e.reviewsCount??e.reviewCount??e.ratingsCount??0),p=Number.isFinite(f)&&f>0?f:0,h=et(e),k=xe(e),g=ve(e),m=ee(e).slice(0,3),y=we(e),$=tt(e)||`${i} - ${h||address}`,b=ye(e),w=We(e),O=Ze(e),U=Qe(e),T=U||O||"Ofertë",L=e.isLiked===!0||e.liked===!0||e.favorite===!0||e.favorited===!0;return`
+  `}function Pt(e={},t={}){const a=t.escapeHtml,n=t.icon,s=(I,B)=>P(I,B,t),i=j(e),r=z(e),o=fe(e,t),c=o[0]||t.placeholderImage||"",u=_(e,t),d=S(e)||"0.0",f=Number(e.reviewsCount??e.reviewCount??e.ratingsCount??0),p=Number.isFinite(f)&&f>0?f:0,h=et(e),k=xe(e),g=ve(e),m=ee(e).slice(0,3),y=we(e),$=tt(e)||`${i} - ${h||e.address||""}`,b=ye(e),w=We(e),O=Ze(e),U=Qe(e),T=U||O||"Ofertë",L=e.isLiked===!0||e.liked===!0||e.favorite===!0||e.favorited===!0;return`
     <article
       data-travel-hotel-card="${a(r)}"
       data-travel-offer-card="${a(e.__travelOfferId||e.offerId||r)}"

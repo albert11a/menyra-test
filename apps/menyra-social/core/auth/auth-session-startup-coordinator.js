@@ -1,6 +1,11 @@
 import { shouldResetUserScopedStateCore } from "./auth-bootstrap-flow-utils.js";
 import { createPostLoginRouteOpenCoordinator } from "./auth-post-login-route-open-utils.js";
 
+// Sicherheitsnetz: spaetestens nach dieser Zeit wird die App-Shell entsperrt
+// (mit gecachter Identitaet), falls der Auth-Bootstrap wegen eines haengenden
+// Firestore-Reads nie settled. Normale Loads settlen deutlich frueher (cache-first).
+const AUTH_BOOTSTRAP_WATCHDOG_MS = 4000;
+
 export function createAuthSessionStartupCoordinator({
   state = null,
   auth = null,
@@ -608,6 +613,20 @@ export function createAuthSessionStartupCoordinator({
       }
       schedulePendingRouteReplayWithTimeline();
       requestRender("auth.userShellSeed");
+      // Watchdog: ein haengender (nie rejectender) Firestore-Read im Bootstrap
+      // darf die Shell nicht dauerhaft sperren. Feuert die Deadline, bevor der
+      // Bootstrap settled, entsperren wir die Shell mit der bereits geprimten
+      // (Instant-Snapshot-)Identitaet; der echte Bootstrap laeuft weiter und
+      // gleicht bei Rueckkehr ab. Kein Abbruch des laufenden Reads.
+      let bootstrapConcluded = false;
+      let bootstrapWatchdogUnlocked = false;
+      const bootstrapWatchdogTimer = setTimeoutSafe(() => {
+        if (bootstrapConcluded) return;
+        if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+        bootstrapWatchdogUnlocked = true;
+        markProfileTruthReady();
+        requestRender("auth.bootstrapWatchdog");
+      }, AUTH_BOOTSTRAP_WATCHDOG_MS);
       void (async () => {
         try {
           await bootstrapUser(user, { transitionSeq });
@@ -616,12 +635,16 @@ export function createAuthSessionStartupCoordinator({
           requestRender("auth.bootstrapSettled");
         } catch (err) {
           reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
-          if (isCurrentAuthTransition(transitionSeq, nextUid)) {
+          // Hat der Watchdog die Shell bereits (mit Cache) entsperrt, downgraden
+          // wir eine sichtbare UI NICHT nachtraeglich auf "error".
+          if (!bootstrapWatchdogUnlocked && isCurrentAuthTransition(transitionSeq, nextUid)) {
             markProfileTruthError();
             clearBootstrapInFlight(nextUid);
             requestRender("auth.bootstrapFailed");
           }
         } finally {
+          bootstrapConcluded = true;
+          clearTimeout(bootstrapWatchdogTimer);
           clearBootstrapInFlight(nextUid);
         }
       })();

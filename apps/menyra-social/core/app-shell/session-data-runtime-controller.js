@@ -1415,7 +1415,10 @@ export function createSessionDataRuntimeController({
     }
     restaurantsNetworkLoadPromise = (async () => {
       try {
-        const snap = await getDocsFn(queryFn(collectionFn(db, "restaurants")));
+        const snap = await runWithLoadDeadline(
+          () => getDocsFn(queryFn(collectionFn(db, "restaurants"))),
+          { timeoutMs: 7000, scope: "restaurants.load" }
+        );
         const rawList = [];
         snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
         applyRestaurants(rawList, { shouldWriteCache: false });
@@ -1564,11 +1567,16 @@ export function createSessionDataRuntimeController({
     const request = (async () => {
       try {
         const ref = collectionFn(db, "users", uid, "posts");
+        const userPostsLimit = Math.max(1, Number(fastLimits.userPosts) || 24);
         let snap = null;
         try {
-          snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc")));
+          snap = typeof limitFn === "function"
+            ? await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(userPostsLimit)))
+            : await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc")));
         } catch (err) {
-          snap = await getDocsFn(ref);
+          snap = typeof limitFn === "function"
+            ? await getDocsFn(queryFn(ref, limitFn(userPostsLimit)))
+            : await getDocsFn(ref);
         }
         const rows = [];
         snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
@@ -1648,16 +1656,23 @@ export function createSessionDataRuntimeController({
     const request = (async () => {
       try {
         const ref = collectionFn(db, "restaurants", restaurantId, "socialPosts");
+        const businessPostsLimit = Math.max(1, Number(fastLimits.businessPosts) || 24);
         let snap = null;
         try {
           snap = await timeLoadingAsync("socialPosts load", () => (
-            getDocsFn(queryFn(ref, orderByFn("createdAt", "desc")))
+            typeof limitFn === "function"
+              ? getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(businessPostsLimit)))
+              : getDocsFn(queryFn(ref, orderByFn("createdAt", "desc")))
           ), {
             restaurantId,
             source: "restaurants.socialPosts"
           });
         } catch (err) {
-          snap = await timeLoadingAsync("socialPosts load fallback", () => getDocsFn(ref), {
+          snap = await timeLoadingAsync("socialPosts load fallback", () => (
+            typeof limitFn === "function"
+              ? getDocsFn(queryFn(ref, limitFn(businessPostsLimit)))
+              : getDocsFn(ref)
+          ), {
             restaurantId,
             source: "restaurants.socialPosts"
           });
