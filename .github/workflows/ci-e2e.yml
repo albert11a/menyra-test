@@ -33,12 +33,14 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E under Firebase emulators
+      - name: Run rules + functions + E2E under Firebase emulators
         run: |
           npx firebase emulators:exec \
             --only firestore,auth,functions \
             --project mnyra-local \
-            "node seed/scripts/seed-firestore.mjs \
+            "npm run test:rules \
+             && npm run test:functions \
+             && node seed/scripts/seed-firestore.mjs \
              && (node scripts/local-dev-server.mjs &) \
              && timeout 60 bash -c 'until curl -sf http://127.0.0.1:5173/apps/menyra-social/index.html >/dev/null; do sleep 1; done' \
              && npm run test:e2e"
