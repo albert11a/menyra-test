@@ -489,8 +489,19 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
   if (url.protocol !== "https:" && url.protocol !== "http:") return;
-  if (isLeafletVendorRequest(url, req)) return;
-  if (isMapTileRequest(url, req)) return;
+  // Entdecker-Karte: Leaflet (versionsfest @1.9.4) und Kartenkacheln (pro
+  // Koordinate unveraenderlich) cache-first bedienen. Beim ersten Mal aus dem
+  // Netz + gecacht, danach sofort aus dem Cache -> zweites Karten-Oeffnen /
+  // Zoomen/Verschieben ist auf 3G quasi instant. Bei Fehlschlag faellt cacheFirst
+  // auf das bisherige Verhalten (Netzwerk bzw. leere Kachel) zurueck.
+  if (isLeafletVendorRequest(url, req)) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
+  if (isMapTileRequest(url, req)) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
 
   const inScope = isInSocialScope(url);
   const isNavigation = req.mode === "navigate";
