@@ -948,6 +948,16 @@ service cloud.firestore {
       allow create, update, delete: if isCeoActor();
     }
 
+    // Collection-Group-Query auf "stories": Der Client laedt Stories per
+    // collectionGroup("stories"). Firestore verlangt dafuer eine Regel mit
+    // rekursivem Pfad-Wildcard; die verschachtelte restaurants/{rid}/stories-
+    // Regel deckt Collection-Group-Queries NICHT ab, weshalb die list-Abfrage
+    // sonst auf die Catch-all-Deny faellt ("false for 'list'"). Stories sind
+    // ohnehin oeffentlich lesbar (siehe nested rule), daher identische Bedingung.
+    match /{path=**}/stories/{storyId} {
+      allow read: if true;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
