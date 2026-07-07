@@ -3220,12 +3220,19 @@ exports.socialBootstrapFeed = functions
         const name = canonicalName || sourceName;
         const img = canonicalLogo || sourceLogo;
         if (!name) return;
+        // Story-Medien mitliefern, damit die Feed-Kachel sofort Foto/Video
+        // zeigt statt nur des Business-Logos (Cold-Start ohne Zweit-Query).
         storiesByRestaurant.set(rid, {
           id: rid,
           restaurantId: rid,
           name,
           img,
           isLive: data.isLive !== undefined ? !!data.isLive : true,
+          mediaType: asText(data.mediaType || data.type).toLowerCase(),
+          imageUrl: asText(data.imageUrl || data.thumbUrl || data.mediaImage),
+          videoUrl: asText(data.videoUrl || data.playbackUrl),
+          mediaUrl: asText(data.mediaUrl || data.url),
+          embedUrl: asText(data.embedUrl),
           createdAt: toMillis(data.createdAt)
         });
       });
@@ -3238,7 +3245,12 @@ exports.socialBootstrapFeed = functions
           restaurantId: row.restaurantId,
           name: row.name,
           img: row.img,
-          isLive: !!row.isLive
+          isLive: !!row.isLive,
+          mediaType: row.mediaType,
+          imageUrl: row.imageUrl,
+          videoUrl: row.videoUrl,
+          mediaUrl: row.mediaUrl,
+          embedUrl: row.embedUrl
         }));
 
       res.set("Cache-Control", "public, max-age=30, s-maxage=90, stale-while-revalidate=180");

@@ -97,7 +97,10 @@ export function createStorySystemController({
     mediaUrl = "",
     mediaType = "image",
     createdByUid = "",
-    menuItemId = ""
+    menuItemId = "",
+    menuItemName = "",
+    menuItemPrice = "",
+    menuItemImage = ""
   } = {}) {
     if (!db || typeof collectionFn !== "function" || typeof docFn !== "function" || typeof setDocFn !== "function" || typeof serverTimestampFn !== "function") {
       throw new Error("Story Runtime nicht bereit.");
@@ -119,9 +122,13 @@ export function createStorySystemController({
       status: "active",
       active: true,
       isLive: true,
-      // Markiertes Produkt/Gericht: Der Story-Viewer rendert daraus den
-      // "Produkt ansehen"-Deep-Link (/menu?r=...&item=...).
+      // Markiertes Produkt/Gericht: Der Story-Viewer rendert daraus die
+      // Produkt-Card (Foto, Name, Preis) mit Deep-Link /menu?r=...&item=...
+      // Name/Preis/Bild als Snapshot, damit der Viewer keinen Zweit-Read braucht.
       menuItemId: String(menuItemId || "").trim(),
+      menuItemName: String(menuItemName || "").trim(),
+      menuItemPrice: menuItemPrice ?? "",
+      menuItemImage: String(menuItemImage || "").trim(),
       createdByUid: String(createdByUid || "").trim(),
       createdAt: nowTs,
       updatedAt: nowTs

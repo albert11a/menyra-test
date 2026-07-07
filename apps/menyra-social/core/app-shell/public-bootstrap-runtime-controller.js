@@ -121,7 +121,7 @@ function normalizePublicBootstrapFeedPosts(rows = [], {
     .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
 }
 
-function normalizePublicBootstrapStories(rows = []) {
+export function normalizePublicBootstrapStories(rows = []) {
   return (Array.isArray(rows) ? rows : [])
     .map((row) => {
       const restaurantId = String(row?.restaurantId || row?.id || row?.rid || "").trim();
@@ -129,15 +129,84 @@ function normalizePublicBootstrapStories(rows = []) {
       const nameRaw = String(row?.name || row?.businessName || row?.restaurantName || "").trim();
       const name = isGenericBusinessBootstrapLabel(nameRaw) ? "" : nameRaw;
       const img = String(row?.img || row?.logo || row?.logoUrl || "").trim();
+      // Story-Medien durchreichen: Die Feed-Kachel zeigt Foto/Video-Loop der
+      // Story; ohne diese Felder wuerde sie aufs Business-Logo zurueckfallen.
       return {
         id: restaurantId,
         restaurantId,
         name,
         img,
-        isLive: !!row?.isLive
+        isLive: !!row?.isLive,
+        mediaType: String(row?.mediaType || "").trim().toLowerCase(),
+        imageUrl: String(row?.imageUrl || "").trim(),
+        videoUrl: String(row?.videoUrl || "").trim(),
+        mediaUrl: String(row?.mediaUrl || "").trim(),
+        embedUrl: String(row?.embedUrl || "").trim()
       };
     })
     .filter(Boolean);
+}
+
+export function hasBootstrapStoryMedia(row = {}) {
+  return !!String(
+    row?.videoUrl
+    || row?.imageUrl
+    || row?.mediaUrl
+    || row?.embedUrl
+    || ""
+  ).trim();
+}
+
+export function buildStoryBootstrapSignatureCore(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => {
+      const restaurantId = String(item?.restaurantId || item?.id || "").trim();
+      const name = String(item?.name || "").trim();
+      const img = String(item?.img || item?.logo || "").trim();
+      const isLive = item?.isLive ? "1" : "0";
+      const mediaSrc = String(
+        item?.videoUrl
+        || item?.imageUrl
+        || item?.mediaUrl
+        || item?.embedUrl
+        || ""
+      ).trim();
+      return `${restaurantId}|${name}|${img}|${isLive}|${mediaSrc}`;
+    })
+    .join(",");
+}
+
+export function mergeBootstrapStoriesCore(existing = [], incoming = []) {
+  const existingByRestaurant = new Map();
+  (Array.isArray(existing) ? existing : []).forEach((row) => {
+    const id = String(row?.restaurantId || row?.id || "").trim();
+    if (!id || existingByRestaurant.has(id)) return;
+    existingByRestaurant.set(id, row);
+  });
+  const byRestaurant = new Map();
+  (Array.isArray(incoming) ? incoming : []).forEach((row) => {
+    const id = String(row?.restaurantId || row?.id || "").trim();
+    if (!id) return;
+    const existingRow = existingByRestaurant.get(id) || null;
+    // Ein Bootstrap-Eintrag ohne Medien darf einen bereits geladenen
+    // Story-Eintrag mit Foto/Video nicht "downgraden" (Kachel wuerde sonst
+    // wieder nur das Logo zeigen). Identity-Felder trotzdem uebernehmen.
+    if (existingRow && hasBootstrapStoryMedia(existingRow) && !hasBootstrapStoryMedia(row)) {
+      byRestaurant.set(id, {
+        ...existingRow,
+        name: String(row?.name || "").trim() || existingRow.name,
+        img: String(row?.img || "").trim() || existingRow.img,
+        isLive: row?.isLive !== undefined ? !!row.isLive : existingRow.isLive
+      });
+      return;
+    }
+    byRestaurant.set(id, row);
+  });
+  existingByRestaurant.forEach((row, id) => {
+    if (byRestaurant.has(id)) return;
+    byRestaurant.set(id, row);
+  });
+  return Array.from(byRestaurant.values());
 }
 
 function normalizeWebRouteSeedPost(post = {}, restaurantId = "") {
@@ -1321,18 +1390,6 @@ export function createPublicBootstrapRuntimeController({
       .join(",");
   }
 
-  function buildStoryBootstrapSignature(items = []) {
-    return (Array.isArray(items) ? items : [])
-      .map((item) => {
-        const restaurantId = String(item?.restaurantId || item?.id || "").trim();
-        const name = String(item?.name || "").trim();
-        const img = String(item?.img || item?.logo || "").trim();
-        const isLive = item?.isLive ? "1" : "0";
-        return `${restaurantId}|${name}|${img}|${isLive}`;
-      })
-      .join(",");
-  }
-
   function mergeBootstrapFeedPosts(existing = [], incoming = []) {
     const byId = new Map();
     (Array.isArray(existing) ? existing : []).forEach((row) => {
@@ -1347,21 +1404,6 @@ export function createPublicBootstrapRuntimeController({
     });
     return Array.from(byId.values())
       .sort((a, b) => toMillisSafe(b?.createdAt) - toMillisSafe(a?.createdAt));
-  }
-
-  function mergeBootstrapStories(existing = [], incoming = []) {
-    const byRestaurant = new Map();
-    (Array.isArray(incoming) ? incoming : []).forEach((row) => {
-      const id = String(row?.restaurantId || row?.id || "").trim();
-      if (!id) return;
-      byRestaurant.set(id, row);
-    });
-    (Array.isArray(existing) ? existing : []).forEach((row) => {
-      const id = String(row?.restaurantId || row?.id || "").trim();
-      if (!id || byRestaurant.has(id)) return;
-      byRestaurant.set(id, row);
-    });
-    return Array.from(byRestaurant.values());
   }
 
   function resolveBootstrapTimeoutMs(timeoutMs) {
@@ -1573,10 +1615,10 @@ export function createPublicBootstrapRuntimeController({
       const existingStories = Array.isArray(state.stories) ? state.stories : [];
       const normalizedIncomingStories = normalizeStoryItemsForDisplay(incomingStories);
       const mergedStories = normalizeStoryItemsForDisplay(
-        mergeBootstrapStories(existingStories, normalizedIncomingStories)
+        mergeBootstrapStoriesCore(existingStories, normalizedIncomingStories)
       );
-      const prevStorySignature = buildStoryBootstrapSignature(existingStories);
-      const nextStorySignature = buildStoryBootstrapSignature(mergedStories);
+      const prevStorySignature = buildStoryBootstrapSignatureCore(existingStories);
+      const nextStorySignature = buildStoryBootstrapSignatureCore(mergedStories);
       if (mergedStories.length && nextStorySignature !== prevStorySignature) {
         state.stories = mergedStories;
         setFeedStoriesSignature(buildStoriesSignature(mergedStories));

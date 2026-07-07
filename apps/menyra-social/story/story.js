@@ -8,7 +8,7 @@ import {
   orderBy,
   query
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-import { createStoryViewerRuntimeController } from "../core/stories/story-viewer-runtime-controller.js?v=2026-07-07-story-reels-video-posts-1";
+import { createStoryViewerRuntimeController } from "../core/stories/story-viewer-runtime-controller.js?v=2026-07-07-story-product-card-2";
 
 const storyViewerRuntimeController = createStoryViewerRuntimeController({
   db,

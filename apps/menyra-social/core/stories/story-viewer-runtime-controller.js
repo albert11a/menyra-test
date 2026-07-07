@@ -1,3 +1,5 @@
+import { formatPriceCore } from "../common/price-utils.js";
+
 function toDateSafe(value) {
   try {
     if (value && typeof value.toDate === "function") return value.toDate();
@@ -89,6 +91,9 @@ function mapStoryDoc(docSnap) {
     title: String(row.title || row.captionTitle || "").trim(),
     description: String(row.description || row.caption || row.text || "").trim(),
     menuItemId: String(row.menuItemId || row.itemId || "").trim(),
+    menuItemName: String(row.menuItemName || "").trim(),
+    menuItemPrice: row.menuItemPrice ?? "",
+    menuItemImage: String(row.menuItemImage || "").trim(),
     mediaType: mediaType === "image" ? "image" : (mediaType === "video" ? "video" : ""),
     embedUrl,
     videoUrl,
@@ -696,6 +701,137 @@ export function createStoryViewerRuntimeController({
     });
   }
 
+  function formatProductPriceLabel(value) {
+    if (value === null || value === undefined || value === "") return "";
+    const label = formatPriceCore(value);
+    return label === "-" ? "" : label;
+  }
+
+  // Breite Produkt-Card fuer markierte Produkte: links Foto, rechts Name und
+  // Preis, dazu "Mehr". Klick fuehrt exakt zum Produkt im Menue.
+  function createProductCardElement(story = {}, restaurantId = "") {
+    const card = doc.createElement("a");
+    card.className = "productCard";
+    card.href = `/menu?r=${encodeURIComponent(restaurantId)}&item=${encodeURIComponent(story.menuItemId)}&src=story`;
+    card.dataset.storyProductItem = String(story.menuItemId || "").trim();
+
+    const thumb = doc.createElement("div");
+    thumb.className = "productCardThumb";
+    thumb.textContent = "🍽";
+    const thumbImg = doc.createElement("img");
+    thumbImg.className = "productCardThumbImg";
+    thumbImg.alt = "";
+    thumbImg.loading = "lazy";
+    thumbImg.decoding = "async";
+    thumbImg.dataset.storyProductImg = "1";
+    if (story.menuItemImage) {
+      thumbImg.src = story.menuItemImage;
+    } else {
+      thumbImg.style.display = "none";
+    }
+    thumb.appendChild(thumbImg);
+    card.appendChild(thumb);
+
+    const info = doc.createElement("div");
+    info.className = "productCardInfo";
+    const nameEl = doc.createElement("div");
+    nameEl.className = "productCardName";
+    nameEl.dataset.storyProductName = "1";
+    nameEl.textContent = story.menuItemName || "Produkt ansehen";
+    info.appendChild(nameEl);
+    const priceEl = doc.createElement("div");
+    priceEl.className = "productCardPrice";
+    priceEl.dataset.storyProductPrice = "1";
+    const priceLabel = formatProductPriceLabel(story.menuItemPrice);
+    priceEl.textContent = priceLabel;
+    if (!priceLabel) priceEl.style.display = "none";
+    info.appendChild(priceEl);
+    card.appendChild(info);
+
+    const moreBtn = doc.createElement("span");
+    moreBtn.className = "productCardBtn";
+    moreBtn.textContent = "Mehr";
+    card.appendChild(moreBtn);
+    return card;
+  }
+
+  // Aeltere Stories haben nur die Produkt-ID (kein Name/Preis/Bild-Snapshot):
+  // Produktdaten einmalig nachladen, cachen und die gerenderten Cards fuellen
+  // (auch nach einem Re-Render aus dem Frisch-Abgleich).
+  const productDataCache = new Map();
+  const productLoadsInFlight = new Set();
+
+  function applyProductDataToCards(itemId = "", { name = "", priceLabel = "", imageUrl = "" } = {}) {
+    if (!doc) return;
+    const safeId = String(itemId || "").trim();
+    if (!safeId) return;
+    doc.querySelectorAll(".productCard").forEach((card) => {
+      if (String(card?.dataset?.storyProductItem || "").trim() !== safeId) return;
+      const nameEl = card.querySelector("[data-story-product-name]");
+      if (nameEl && name) nameEl.textContent = name;
+      const priceEl = card.querySelector("[data-story-product-price]");
+      if (priceEl && priceLabel) {
+        priceEl.textContent = priceLabel;
+        priceEl.style.display = "";
+      }
+      const imgEl = card.querySelector("[data-story-product-img]");
+      if (imgEl && imageUrl && !imgEl.getAttribute("src")) {
+        imgEl.src = imageUrl;
+        imgEl.style.display = "";
+      }
+    });
+  }
+
+  async function hydrateStoryProductCards(restaurantId = "") {
+    if (!db || typeof docFn !== "function" || typeof getDocFn !== "function" || !doc) return;
+    const rid = String(restaurantId || "").trim();
+    if (!rid) return;
+    const pendingItemIds = new Set();
+    reelEntries.forEach((entry) => {
+      const story = entry?.story || {};
+      const itemId = String(story.menuItemId || "").trim();
+      if (!itemId) return;
+      const cached = productDataCache.get(itemId);
+      if (cached) {
+        applyProductDataToCards(itemId, cached);
+        return;
+      }
+      if (story.menuItemName && story.menuItemImage) return;
+      if (productLoadsInFlight.has(itemId)) return;
+      pendingItemIds.add(itemId);
+    });
+    if (!pendingItemIds.size) return;
+    await Promise.all(Array.from(pendingItemIds).map(async (itemId) => {
+      productLoadsInFlight.add(itemId);
+      try {
+        const snap = await getDocFn(docFn(db, "restaurants", rid, "menuItems", itemId));
+        if (!snap.exists()) return;
+        const row = snap.data() || {};
+        const name = String(row.name || row.title || "").trim();
+        const priceLabel = formatProductPriceLabel(row.price);
+        const imageUrl = String(
+          row.imageUrl
+          || row.image
+          || (Array.isArray(row.images) ? row.images[0] : "")
+          || ""
+        ).trim();
+        productDataCache.set(itemId, { name, priceLabel, imageUrl });
+        reelEntries.forEach((entry) => {
+          const story = entry?.story || {};
+          if (String(story.menuItemId || "").trim() !== itemId) return;
+          if (!story.menuItemName) story.menuItemName = name;
+          if (!story.menuItemImage) story.menuItemImage = imageUrl;
+          if (story.menuItemPrice === "" || story.menuItemPrice === null || story.menuItemPrice === undefined) {
+            story.menuItemPrice = row.price ?? "";
+          }
+        });
+        applyProductDataToCards(itemId, { name, priceLabel, imageUrl });
+      } catch {} finally {
+        productLoadsInFlight.delete(itemId);
+      }
+    }));
+  }
+
   function renderStories(stories, container, meta, restaurantId, { startEntryId = "" } = {}) {
     if (!doc || !container) return;
     if (activeIndexSyncFrame && win?.cancelAnimationFrame) {
@@ -738,13 +874,7 @@ export function createStoryViewerRuntimeController({
         content.appendChild(descEl);
       }
       if (story.menuItemId) {
-        const linkBtn = doc.createElement("a");
-        linkBtn.className = "contentBtn";
-        // Deep-Link auf das exakt markierte Produkt (item), damit das Menue
-        // direkt darauf fokussieren kann; r/src bleiben abwaertskompatibel.
-        linkBtn.href = `/menu?r=${encodeURIComponent(restaurantId)}&item=${encodeURIComponent(story.menuItemId)}&src=story`;
-        linkBtn.innerHTML = "<span>👀</span><span>Produkt ansehen</span>";
-        content.appendChild(linkBtn);
+        content.appendChild(createProductCardElement(story, restaurantId));
       }
       reel.appendChild(content);
 
@@ -918,6 +1048,7 @@ export function createStoryViewerRuntimeController({
       restaurantMeta = storyCache.meta || warmHint?.meta || null;
       currentStorySignature = storyCache.signature || buildStorySignature(storyCache.stories);
       renderStories(storyCache.stories, reelsContainer, restaurantMeta, rid, { startEntryId: startPostId });
+      void hydrateStoryProductCards(rid);
       loadingState.style.display = "none";
       didRenderFromCache = true;
       bindSoundToggle();
@@ -955,6 +1086,7 @@ export function createStoryViewerRuntimeController({
     const nextStorySignature = buildStorySignature(stories);
     if (!didRenderFromCache || nextStorySignature !== currentStorySignature) {
       renderStories(stories, reelsContainer, warmHint?.meta || null, rid, { startEntryId: startPostId });
+      void hydrateStoryProductCards(rid);
       loadingState.style.display = "none";
       if (!didRenderFromCache) {
         bindSoundToggle();

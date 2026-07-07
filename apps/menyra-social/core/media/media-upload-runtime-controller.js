@@ -216,7 +216,18 @@ export function createMediaUploadRuntimeController({
           const row = docSnap?.data?.() || {};
           const id = String(docSnap?.id || "").trim();
           if (!id) return;
-          items.push({ id, name: String(row.name || row.title || "").trim() || id });
+          items.push({
+            id,
+            name: String(row.name || row.title || "").trim() || id,
+            // Preis + Bild als Snapshot fuer die Produkt-Card im Story-Viewer.
+            price: row.price ?? "",
+            imageUrl: String(
+              row.imageUrl
+              || row.image
+              || (Array.isArray(row.images) ? row.images[0] : "")
+              || ""
+            ).trim()
+          });
         });
         items.sort((a, b) => a.name.localeCompare(b.name));
         storyTagItemsCache.set(rid, { status: "ready", items });
@@ -365,21 +376,36 @@ export function createMediaUploadRuntimeController({
           || docObj?.getElementById("uploadStoryMenuItemSelect")?.value
           || ""
         ).trim();
+        const taggedItem = storyMenuItemId
+          ? (storyTagItemsCache.get(restaurantId)?.items || []).find((item) => String(item?.id || "") === storyMenuItemId) || null
+          : null;
         await storySystemController?.createBusinessStory?.({
           restaurantId,
           caption,
           mediaUrl: cdnUrl,
           mediaType,
           createdByUid: state.user.uid,
-          menuItemId: storyMenuItemId
+          menuItemId: storyMenuItemId,
+          menuItemName: taggedItem?.name || "",
+          menuItemPrice: taggedItem?.price ?? "",
+          menuItemImage: taggedItem?.imageUrl || ""
         });
         const ownRestaurant = (state.restaurants || []).find((row) => String(row?.id || "").trim() === restaurantId) || {};
+        const ownName = ownRestaurant?.name || ownRestaurant?.restaurantName || state.userProfile?.name || "";
+        const ownLogo = ownRestaurant?.logoUrl || ownRestaurant?.logo || state.userProfile?.avatar || "";
+        // Medien-Felder mitgeben, damit die Feed-Kachel sofort das frische
+        // Foto/Video zeigt (nicht das Business-Logo als Fallback).
         const optimisticStory = normalizeStoryItemForDisplay({
           id: restaurantId,
           restaurantId,
-          name: ownRestaurant?.name || ownRestaurant?.restaurantName || state.userProfile?.name || "",
-          img: ownRestaurant?.logoUrl || ownRestaurant?.logo || state.userProfile?.avatar || "",
-          isLive: true
+          name: ownName,
+          img: ownLogo,
+          isLive: true,
+          mediaType,
+          mediaUrl: cdnUrl,
+          videoUrl: mediaType === "video" ? cdnUrl : "",
+          imageUrl: mediaType === "image" ? cdnUrl : "",
+          createdAt: Date.now()
         });
         if (optimisticStory) {
           const deduped = [optimisticStory, ...((state.stories || []).filter((item) => String(item?.restaurantId || "") !== restaurantId))];
@@ -395,6 +421,27 @@ export function createMediaUploadRuntimeController({
           if (state.activeTab === "feed" && getLastRenderMode() === "main") {
             updateFeedDom();
           }
+        }
+        // Nach dem Posten direkt zur eigenen Story (Reels-Ansicht) statt Feed.
+        const viewerUrl = String(storySystemController?.buildStoryViewerUrl?.(restaurantId) || "").trim();
+        const win = docObj?.defaultView || null;
+        if (viewerUrl && win?.location) {
+          if (win.sessionStorage) {
+            try {
+              win.sessionStorage.setItem(`mnyra_story_viewer_hint_v1:${restaurantId}`, JSON.stringify({
+                restaurantId,
+                meta: { name: ownName, restaurantName: ownName, logoUrl: ownLogo },
+                savedAt: Date.now()
+              }));
+              // Alten Viewer-Cache verwerfen, damit die frisch gepostete
+              // Story sofort ganz oben erscheint statt eines alten Stands.
+              win.sessionStorage.removeItem(`mnyra_story_viewer_cache_v2:${restaurantId}`);
+            } catch {}
+          }
+          releaseUploadPreviewUrl(state.upload.preview);
+          state.upload = { preview: "", caption: "", file: null, status: "", mode: "feed" };
+          win.location.assign(viewerUrl);
+          return;
         }
         await loadStoriesForFeed({ force: true, refreshUi: true });
       } else if (isBusiness) {
