@@ -653,7 +653,9 @@ export function createStoryViewerRuntimeController({
       if (story.menuItemId) {
         const linkBtn = doc.createElement("a");
         linkBtn.className = "contentBtn";
-        linkBtn.href = `/menu?r=${encodeURIComponent(restaurantId)}&src=story`;
+        // Deep-Link auf das exakt markierte Produkt (item), damit das Menue
+        // direkt darauf fokussieren kann; r/src bleiben abwaertskompatibel.
+        linkBtn.href = `/menu?r=${encodeURIComponent(restaurantId)}&item=${encodeURIComponent(story.menuItemId)}&src=story`;
         linkBtn.innerHTML = "<span>👀</span><span>Produkt ansehen</span>";
         content.appendChild(linkBtn);
       }
