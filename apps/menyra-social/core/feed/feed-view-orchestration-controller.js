@@ -3200,9 +3200,16 @@ export function createFeedViewOrchestrationController({
     const heroPoster = post.poster
       ? getOptimizedImageUrlFn(post.poster, "medium", { stableKey: postId ? `feed-hero-poster:${postId}` : "" })
       : imageUrl;
-    const heroMediaHtml = (post.isVideo && post.videoUrl)
+    const heroInner = (post.isVideo && post.videoUrl)
       ? `<video src="${escapeHtmlFn(post.videoUrl)}" poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline preload="none" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
       : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
+    // Klick auf das Beitragsbild/-video oeffnet die Stories des Business
+    // (gleiche Reels-Ansicht wie die Story-Vorschau). Die Like/Kommentar/Share-
+    // Buttons liegen als absolute Overlay-Geschwister darueber und bleiben klickbar.
+    const heroStoryUrl = post.restaurantId ? String(buildStoryViewerUrlFn(post.restaurantId) || "").trim() : "";
+    const heroMediaHtml = heroStoryUrl
+      ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Stories von ${escapeHtmlFn(post.business)} ansehen" class="block w-full h-full">${heroInner}</a>`
+      : heroInner;
     return `
     <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
@@ -3903,12 +3910,12 @@ export function createFeedViewOrchestrationController({
     const handleStoryWarmup = (target) => {
       if (isLocationView()) return;
       if (!(target instanceof Element)) return;
-      const storyLink = target.closest("[data-story-item]");
+      const storyLink = target.closest("[data-story-item]") || target.closest("[data-feed-post-open]");
       if (!(storyLink instanceof Element)) return;
       const storyTruth = String(storyLink.getAttribute("data-story-truth") || "").trim().toLowerCase();
       if (storyTruth === "feed-fallback") return;
       warmStoryViewer(
-        storyLink.getAttribute("data-story-item") || "",
+        storyLink.getAttribute("data-story-item") || storyLink.getAttribute("data-feed-post-open") || "",
         storyLink.getAttribute("data-story-url") || storyLink.getAttribute("href") || ""
       );
     };
