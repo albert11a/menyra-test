@@ -123,10 +123,13 @@ test("renderStoryMenuItemTagPickerCore stays empty without items", () => {
     renderStoryMenuItemTagPickerCore({ storyTag: { status: "ready", items: [] } }),
     ""
   );
-  assert.equal(
-    renderStoryMenuItemTagPickerCore({ storyTag: { status: "error", items: [] } }),
-    ""
-  );
+});
+
+test("renderStoryMenuItemTagPickerCore shows a hint when loading failed", () => {
+  const html = renderStoryMenuItemTagPickerCore({
+    storyTag: { status: "error", items: [] }
+  });
+  assert.match(html, /Produkte konnten nicht geladen werden/);
 });
 
 test("renderStoryMenuItemTagPickerCore shows loading hint while items load", () => {

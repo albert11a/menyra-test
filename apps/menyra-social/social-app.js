@@ -5299,11 +5299,25 @@ async function ensureMediaUploadRuntimeController() {
 }
 
 function createDeferredMediaUploadRuntimeController() {
+  let upgradeQueued = false;
   return {
     detectUploadMediaType(file) {
       return detectUploadMediaTypeCore(file);
     },
     renderUploadView() {
+      // Der volle Upload-Controller (inkl. Produkt-Tag-Auswahl fuer Stories)
+      // wird sofort beim ersten Render des Upload-Screens nachgeladen und
+      // ersetzt diesen Platzhalter – nicht erst beim Klick auf "Posten".
+      if (!upgradeQueued) {
+        upgradeQueued = true;
+        void ensureMediaUploadRuntimeController()
+          .then(() => render())
+          .catch(() => {});
+      }
+      const uploadMode = storySystemController?.normalizeUploadIntent?.(state?.upload?.mode, { fallback: "feed" }) || "feed";
+      const canTagStoryProduct = uploadMode === "story"
+        && isLocalBusinessProfile(state?.userProfile)
+        && !!String(state?.userProfile?.restaurantId || "").trim();
       return renderUploadViewCore({
         state,
         storySystemController,
@@ -5311,7 +5325,8 @@ function createDeferredMediaUploadRuntimeController() {
         getOptimizedImageUrlFn: getOptimizedImageUrl,
         escapeHtmlFn: escapeHtml,
         iconFn: icon,
-        detectUploadMediaTypeFn: detectUploadMediaTypeCore
+        detectUploadMediaTypeFn: detectUploadMediaTypeCore,
+        storyTag: canTagStoryProduct ? { status: "loading", items: [] } : null
       });
     },
     async uploadCompressedImage(...args) {

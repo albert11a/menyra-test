@@ -23,6 +23,14 @@ export function renderStoryMenuItemTagPickerCore({
       </div>
     `;
   }
+  if (status === "error" && !items.length) {
+    return `
+      <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
+        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren</p>
+        <p class="text-xs font-medium text-slate-400 mt-2">Produkte konnten nicht geladen werden. Story posten geht trotzdem.</p>
+      </div>
+    `;
+  }
   if (!items.length) return "";
   const options = items.map((item = {}) => {
     const id = String(item.id || "").trim();
