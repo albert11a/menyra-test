@@ -92,7 +92,8 @@ export function createStorySystemController({
     caption = "",
     mediaUrl = "",
     mediaType = "image",
-    createdByUid = ""
+    createdByUid = "",
+    menuItemId = ""
   } = {}) {
     if (!db || typeof collectionFn !== "function" || typeof docFn !== "function" || typeof setDocFn !== "function" || typeof serverTimestampFn !== "function") {
       throw new Error("Story Runtime nicht bereit.");
@@ -114,6 +115,9 @@ export function createStorySystemController({
       status: "active",
       active: true,
       isLive: true,
+      // Markiertes Produkt/Gericht: Der Story-Viewer rendert daraus den
+      // "Produkt ansehen"-Deep-Link (/menu?r=...&item=...).
+      menuItemId: String(menuItemId || "").trim(),
       createdByUid: String(createdByUid || "").trim(),
       createdAt: nowTs,
       updatedAt: nowTs

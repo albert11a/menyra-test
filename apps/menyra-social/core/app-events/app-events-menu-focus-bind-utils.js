@@ -1,3 +1,8 @@
+import {
+  buildMenuOpenSelectorCore,
+  resolveMenuItemDeepLinkTargetCore
+} from "../menu/menu-item-deeplink-utils.js";
+
 export function bindAppMenuFocusEventsCore({
   documentObj,
   state,
@@ -1000,6 +1005,35 @@ export function bindAppMenuFocusEventsCore({
       triggerMenuDetailOpenFromGesture(btn);
     });
   });
+
+  // Story-Produkt-Deep-Link (/menu?r=...&item=...): sobald die passende
+  // Produktkarte gerendert ist, genau einmal automatisch das Produkt oeffnen.
+  // Solange das Menue (3G/Cold-Start) noch laedt, wird bei jedem Bind-Pass
+  // erneut geprueft; ein Fremd-Menue oeffnet nie ein falsches Produkt.
+  (() => {
+    const win = doc.defaultView;
+    if (!win || win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__) return;
+    const target = resolveMenuItemDeepLinkTargetCore({ search: win.location?.search || "" });
+    if (!target.itemId) {
+      win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__ = true;
+      return;
+    }
+    if (state.menuDetail?.open) {
+      win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__ = true;
+      return;
+    }
+    if (target.restaurantId) {
+      const activeMenuRestaurantId = String(state.menu?.restaurantId || "").trim();
+      if (activeMenuRestaurantId !== target.restaurantId) return;
+    }
+    const btn = doc.querySelector(buildMenuOpenSelectorCore(target.itemId, win.CSS));
+    if (!btn) return;
+    win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__ = true;
+    try {
+      btn.scrollIntoView({ block: "center", behavior: "auto" });
+    } catch {}
+    triggerMenuDetailOpenFromGesture(btn);
+  })();
 
   doc.querySelectorAll("[data-cart-qty]").forEach((btn) => {
     btn.addEventListener("click", () => {

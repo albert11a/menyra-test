@@ -5246,6 +5246,9 @@ function createMediaUploadRuntimeControllerConfig() {
       collectionFn: collection,
       docFn: doc,
       setDocFn: setDoc,
+      getDocsFn: getDocs,
+      queryFn: query,
+      limitFn: limit,
       serverTimestampFn: serverTimestamp
     },
     mediaApi: {

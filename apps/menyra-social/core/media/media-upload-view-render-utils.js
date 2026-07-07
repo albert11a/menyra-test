@@ -5,6 +5,43 @@ export function detectUploadMediaTypeCore(file) {
   return "";
 }
 
+export function renderStoryMenuItemTagPickerCore({
+  storyTag = null,
+  selectedMenuItemId = "",
+  escapeHtmlFn = (value) => String(value || "")
+} = {}) {
+  if (!storyTag || typeof storyTag !== "object") return "";
+  const escapeHtml = typeof escapeHtmlFn === "function" ? escapeHtmlFn : ((value) => String(value || ""));
+  const status = String(storyTag.status || "").trim().toLowerCase();
+  const items = Array.isArray(storyTag.items) ? storyTag.items : [];
+  const selectedId = String(selectedMenuItemId || "").trim();
+  if (status === "loading" && !items.length) {
+    return `
+      <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
+        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren</p>
+        <p class="text-xs font-medium text-slate-400 mt-2">Produkte werden geladen...</p>
+      </div>
+    `;
+  }
+  if (!items.length) return "";
+  const options = items.map((item = {}) => {
+    const id = String(item.id || "").trim();
+    if (!id) return "";
+    const label = String(item.name || "").trim() || id;
+    const selectedAttr = id === selectedId ? " selected" : "";
+    return `<option value="${escapeHtml(id)}"${selectedAttr}>${escapeHtml(label)}</option>`;
+  }).join("");
+  return `
+    <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
+      <label for="uploadStoryMenuItemSelect" class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren (optional)</label>
+      <select id="uploadStoryMenuItemSelect" class="w-full mt-2 bg-transparent text-sm font-medium outline-none">
+        <option value="">Kein Produkt</option>
+        ${options}
+      </select>
+    </div>
+  `;
+}
+
 export function renderUploadViewCore({
   state = null,
   storySystemController = null,
@@ -12,7 +49,8 @@ export function renderUploadViewCore({
   getOptimizedImageUrlFn = (value) => String(value || "").trim(),
   escapeHtmlFn = (value) => String(value || ""),
   iconFn = () => "",
-  detectUploadMediaTypeFn = detectUploadMediaTypeCore
+  detectUploadMediaTypeFn = detectUploadMediaTypeCore,
+  storyTag = null
 } = {}) {
   const profile = state?.userProfile || {};
   const uploadMode = storySystemController?.normalizeUploadIntent?.(state?.upload?.mode, { fallback: "feed" }) || "feed";
@@ -67,6 +105,11 @@ export function renderUploadViewCore({
           <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
             <textarea id="uploadCaption" placeholder="${isStoryMode ? "Story Text..." : "Bildunterschrift..."}" class="w-full bg-transparent text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state?.upload?.caption)}</textarea>
           </div>
+          ${isStoryMode ? renderStoryMenuItemTagPickerCore({
+            storyTag,
+            selectedMenuItemId: state?.upload?.menuItemId || "",
+            escapeHtmlFn: escapeHtml
+          }) : ""}
           <button id="uploadPostBtn" class="w-full bg-indigo-600 text-white py-4 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/30">${state?.upload?.status || (isStoryMode ? "Story posten" : "Posten")}</button>
           <div class="text-center text-[10px] font-bold text-slate-400">${escapeHtml(state?.upload?.status)}</div>
         </div>

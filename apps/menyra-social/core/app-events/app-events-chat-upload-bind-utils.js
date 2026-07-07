@@ -267,4 +267,11 @@ export function bindAppChatUploadEventsCore({
       state.upload.caption = uploadCaption.value;
     });
   }
+
+  const uploadStoryMenuItemSelect = doc.getElementById("uploadStoryMenuItemSelect");
+  if (uploadStoryMenuItemSelect) {
+    uploadStoryMenuItemSelect.addEventListener("change", () => {
+      state.upload.menuItemId = String(uploadStoryMenuItemSelect.value || "").trim();
+    });
+  }
 }

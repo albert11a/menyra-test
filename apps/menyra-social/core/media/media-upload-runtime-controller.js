@@ -15,6 +15,9 @@ export function createMediaUploadRuntimeController({
   collectionFn = null,
   docFn = null,
   setDocFn = async () => {},
+  getDocsFn = null,
+  queryFn = null,
+  limitFn = null,
   serverTimestampFn = () => null,
   storySystemController = null,
   isLocalBusinessProfileFn = () => false,
@@ -40,6 +43,9 @@ export function createMediaUploadRuntimeController({
   const collection = typeof collectionFn === "function" ? collectionFn : null;
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const setDoc = typeof setDocFn === "function" ? setDocFn : (async () => {});
+  const getDocs = typeof getDocsFn === "function" ? getDocsFn : null;
+  const makeQuery = typeof queryFn === "function" ? queryFn : null;
+  const makeLimit = typeof limitFn === "function" ? limitFn : null;
   const serverTimestamp = typeof serverTimestampFn === "function" ? serverTimestampFn : (() => null);
   const fetchMedia = typeof fetchFn === "function"
     ? fetchFn
@@ -189,6 +195,47 @@ export function createMediaUploadRuntimeController({
     };
   }
 
+  // Produkt-Tag-Auswahl fuer Stories: Menue-Items pro Restaurant einmalig
+  // laden und im Speicher halten, damit der Upload-Screen sofort rendert.
+  const storyTagItemsCache = new Map();
+  const STORY_TAG_ITEMS_LIMIT = 200;
+
+  function ensureStoryTagItemsLoaded(restaurantId = "") {
+    const rid = String(restaurantId || "").trim();
+    if (!rid || storyTagItemsCache.has(rid)) return;
+    if (!db || !collection || !getDocs || !makeQuery) return;
+    storyTagItemsCache.set(rid, { status: "loading", items: [] });
+    void (async () => {
+      try {
+        const itemsRef = collection(db, "restaurants", rid, "menuItems");
+        const snap = await getDocs(
+          makeLimit ? makeQuery(itemsRef, makeLimit(STORY_TAG_ITEMS_LIMIT)) : makeQuery(itemsRef)
+        );
+        const items = [];
+        snap.forEach((docSnap) => {
+          const row = docSnap?.data?.() || {};
+          const id = String(docSnap?.id || "").trim();
+          if (!id) return;
+          items.push({ id, name: String(row.name || row.title || "").trim() || id });
+        });
+        items.sort((a, b) => a.name.localeCompare(b.name));
+        storyTagItemsCache.set(rid, { status: "ready", items });
+      } catch {
+        storyTagItemsCache.set(rid, { status: "error", items: [] });
+      }
+      render();
+    })();
+  }
+
+  function resolveStoryTagStateForUpload() {
+    if (resolveUploadMode() !== "story") return null;
+    if (!isLocalBusinessProfile(state?.userProfile)) return null;
+    const rid = String(state?.userProfile?.restaurantId || "").trim();
+    if (!rid) return null;
+    ensureStoryTagItemsLoaded(rid);
+    return storyTagItemsCache.get(rid) || null;
+  }
+
   function renderUploadView() {
     return renderUploadViewCore({
       state,
@@ -197,7 +244,8 @@ export function createMediaUploadRuntimeController({
       getOptimizedImageUrlFn: getOptimizedImageUrl,
       escapeHtmlFn: escapeHtml,
       iconFn: icon,
-      detectUploadMediaTypeFn: detectUploadMediaType
+      detectUploadMediaTypeFn: detectUploadMediaType,
+      storyTag: resolveStoryTagStateForUpload()
     });
   }
 
@@ -312,12 +360,18 @@ export function createMediaUploadRuntimeController({
       if (!cdnUrl) throw new Error("Upload fehlgeschlagen.");
 
       if (isStoryMode) {
+        const storyMenuItemId = String(
+          state.upload?.menuItemId
+          || docObj?.getElementById("uploadStoryMenuItemSelect")?.value
+          || ""
+        ).trim();
         await storySystemController?.createBusinessStory?.({
           restaurantId,
           caption,
           mediaUrl: cdnUrl,
           mediaType,
-          createdByUid: state.user.uid
+          createdByUid: state.user.uid,
+          menuItemId: storyMenuItemId
         });
         const ownRestaurant = (state.restaurants || []).find((row) => String(row?.id || "").trim() === restaurantId) || {};
         const optimisticStory = normalizeStoryItemForDisplay({

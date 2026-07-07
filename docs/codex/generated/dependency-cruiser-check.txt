@@ -3,5 +3,5 @@ Exit code: 0
 This prep branch records warnings as baseline and does not fail on legacy coupling yet.
 
 
-✔ no dependency violations found (334 modules, 498 dependencies cruised)
+✔ no dependency violations found (336 modules, 501 dependencies cruised)
 
