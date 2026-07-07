@@ -3195,6 +3195,14 @@ export function createFeedViewOrchestrationController({
       + `${getOptimizedImageUrlFn(post.image, "large")} 1280w`
     );
     const heroSizes = "(max-width: 640px) 100vw, 600px";
+    // Video-Posts: Loop-Autoplay (stumm) statt statischem Bild. Bild-Posts
+    // rendern exakt wie zuvor (unveraendert). Poster = Titelbild fuer Cold/3G.
+    const heroPoster = post.poster
+      ? getOptimizedImageUrlFn(post.poster, "medium", { stableKey: postId ? `feed-hero-poster:${postId}` : "" })
+      : imageUrl;
+    const heroMediaHtml = (post.isVideo && post.videoUrl)
+      ? `<video src="${escapeHtmlFn(post.videoUrl)}" poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline preload="none" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
+      : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
     return `
     <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
@@ -3211,7 +3219,7 @@ export function createFeedViewOrchestrationController({
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative rounded-[3rem] overflow-hidden bg-slate-200" style="aspect-ratio:4/5">
-          <img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />
+          ${heroMediaHtml}
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE

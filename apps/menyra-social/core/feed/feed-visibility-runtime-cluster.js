@@ -197,9 +197,17 @@ export function createFeedVisibilityRuntimeCluster({
       || ""
     ).trim();
     const postId = String(row?.id || canonicalPost?.id || "").trim();
+    const mediaType = String(canonicalPost?.mediaType || row?.mediaType || row?.media?.[0]?.type || "").trim().toLowerCase();
+    const rawMediaUrl = String(canonicalPost?.url || row?.mediaUrl || row?.media?.[0]?.url || "").trim();
+    const isVideo = mediaType === "video" || row?.isVideo === true || /\.(mp4|webm|mov|m3u8)(\?|$)/i.test(rawMediaUrl);
+    const videoUrl = isVideo ? rawMediaUrl : "";
+    const poster = String(row?.thumbUrl || row?.media?.[0]?.thumbUrl || canonicalPost?.thumbUrl || "").trim();
     return {
       id: postId,
       restaurantId,
+      isVideo,
+      videoUrl,
+      poster,
       business: row?.businessName || row?.restaurantName || restaurant?.name || restaurant?.restaurantName || "Business",
       logo: restaurant?.logoUrl || restaurant?.logo || rowLogo || "",
       location: row?.city || restaurant?.city || "",

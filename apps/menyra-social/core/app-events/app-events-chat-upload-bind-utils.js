@@ -233,12 +233,7 @@ export function bindAppChatUploadEventsCore({
         uploadFileInput.value = "";
         return;
       }
-      if (isVideo && mode !== "story") {
-        state.upload.status = "Video nur fuer Story Upload moeglich.";
-        render();
-        uploadFileInput.value = "";
-        return;
-      }
+      void mode;
       revokePreviewUrl(state.upload?.preview);
       if (isVideo && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
         state.upload.preview = URL.createObjectURL(file);

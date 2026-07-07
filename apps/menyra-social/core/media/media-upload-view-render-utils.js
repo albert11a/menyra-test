@@ -49,7 +49,7 @@ export function renderUploadViewCore({
   const previewUrl = isVideoPreview
     ? String(state?.upload?.preview || "").trim()
     : getOptimizedImageUrl(state?.upload?.preview, "large");
-  const uploadAccept = isStoryMode ? "image/*,video/*" : "image/*";
+  const uploadAccept = "image/*,video/*";
   return `
     <div class="p-6 animate-in slide-in-from-bottom-10 duration-700 min-h-[70vh] flex flex-col">
       <header class="flex items-center justify-between mb-8">

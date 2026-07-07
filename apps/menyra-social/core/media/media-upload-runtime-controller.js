@@ -249,13 +249,16 @@ export function createMediaUploadRuntimeController({
     await setDoc(makeDocRef(db, "socialFeed", postId), feedPayload, { merge: true });
   }
 
-  async function createUserPost({ uid, caption, url }) {
+  async function createUserPost({ uid, caption, url, mediaType }) {
     if (!collection || !makeDocRef || !db) return;
+    const isVideo = mediaType === "video";
     const postRef = makeDocRef(collection(db, "users", uid, "posts"));
     await setDoc(postRef, {
       url,
       caption,
-      type: "square",
+      type: isVideo ? "video" : "square",
+      mediaType: isVideo ? "video" : "image",
+      isVideo,
       likesCount: 0,
       commentsCount: 0,
       createdAt: serverTimestamp()
@@ -298,12 +301,6 @@ export function createMediaUploadRuntimeController({
         render();
         return;
       }
-      if (!isStoryMode && mediaType !== "image") {
-        state.upload.status = "Feed Upload nur mit Bild moeglich.";
-        render();
-        return;
-      }
-
       const uploadResult = mediaType === "video"
         ? await uploadRawMediaFile(state.upload.file, ownerId)
         : await uploadCompressedImage(state.upload.file, ownerId, {
@@ -351,7 +348,7 @@ export function createMediaUploadRuntimeController({
           restaurantId,
           caption,
           mediaUrl: cdnUrl,
-          mediaType: "image"
+          mediaType
         });
         await loadFeedPosts({ force: true });
         await loadBusinessPosts({ force: true });
@@ -359,7 +356,8 @@ export function createMediaUploadRuntimeController({
         await createUserPost({
           uid: state.user.uid,
           caption,
-          url: cdnUrl
+          url: cdnUrl,
+          mediaType
         });
         await loadUserPosts({ force: true });
       }
