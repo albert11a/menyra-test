@@ -14,7 +14,7 @@ function createFakeMenuOpenButton(itemId) {
   };
 }
 
-function createFakeEnvironment({ search = "", menuOpenButton = null } = {}) {
+function createFakeEnvironment({ search = "", menuOpenButton = null, menuTabButton = null } = {}) {
   const win = {
     location: { search },
     CSS: { escape: (value) => String(value) },
@@ -25,11 +25,15 @@ function createFakeEnvironment({ search = "", menuOpenButton = null } = {}) {
     defaultView: win,
     querySelectorAll: () => [],
     getElementById: () => null,
-    querySelector: (selector) => (
-      menuOpenButton && selector === `[data-menu-open="${menuOpenButton.dataset.menuOpen}"]`
-        ? menuOpenButton
-        : null
-    ),
+    querySelector: (selector) => {
+      if (menuOpenButton && selector === `[data-menu-open="${menuOpenButton.dataset.menuOpen}"]`) {
+        return menuOpenButton;
+      }
+      if (menuTabButton && selector.includes("data-profile-top-tab")) {
+        return menuTabButton;
+      }
+      return null;
+    },
     addEventListener: () => {}
   };
   return { win, doc };
@@ -102,6 +106,63 @@ test("without item param the deep link check settles immediately", () => {
   });
   assert.equal(openedTriggers.length, 0);
   assert.equal(win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__, true);
+});
+
+test("deep link switches to the menu tab when route landed on the profile tab", () => {
+  const menuTabButton = {
+    clicks: 0,
+    click() {
+      this.clicks += 1;
+    }
+  };
+  const { win, doc } = createFakeEnvironment({
+    search: "?r=rest_1&item=item_7&src=story",
+    menuOpenButton: null,
+    menuTabButton
+  });
+  const state = createFakeState({ menuRestaurantId: "" });
+  state.activeTab = "profile";
+  state.profileTopTab = "profile";
+  state.profileView = { profile: { restaurantId: "rest_1" } };
+  const openedTriggers = [];
+  const bind = () => bindAppMenuFocusEventsCore({
+    documentObj: doc,
+    state,
+    triggerMenuDetailOpenFromGestureFn: (trigger) => openedTriggers.push(trigger),
+    profileMenuBound: true
+  });
+  bind();
+  assert.equal(menuTabButton.clicks, 1);
+  assert.equal(openedTriggers.length, 0);
+  assert.notEqual(win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__, true);
+  // Der Tab-Wechsel passiert nur einmal, auch wenn weitere Renders folgen.
+  bind();
+  assert.equal(menuTabButton.clicks, 1);
+});
+
+test("deep link never switches tabs on a foreign business profile", () => {
+  const menuTabButton = {
+    clicks: 0,
+    click() {
+      this.clicks += 1;
+    }
+  };
+  const { doc } = createFakeEnvironment({
+    search: "?r=rest_1&item=item_7",
+    menuOpenButton: null,
+    menuTabButton
+  });
+  const state = createFakeState({ menuRestaurantId: "" });
+  state.activeTab = "profile";
+  state.profileTopTab = "profile";
+  state.profileView = { profile: { restaurantId: "rest_OTHER" } };
+  bindAppMenuFocusEventsCore({
+    documentObj: doc,
+    state,
+    triggerMenuDetailOpenFromGestureFn: () => {},
+    profileMenuBound: true
+  });
+  assert.equal(menuTabButton.clicks, 0);
 });
 
 test("deep link fires only once per page load", () => {

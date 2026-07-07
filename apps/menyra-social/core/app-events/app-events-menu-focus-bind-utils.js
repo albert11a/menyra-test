@@ -1022,17 +1022,36 @@ export function bindAppMenuFocusEventsCore({
       win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__ = true;
       return;
     }
-    if (target.restaurantId) {
-      const activeMenuRestaurantId = String(state.menu?.restaurantId || "").trim();
-      if (activeMenuRestaurantId !== target.restaurantId) return;
+    const activeMenuRestaurantId = String(state.menu?.restaurantId || "").trim();
+    const menuMatchesTarget = !target.restaurantId || activeMenuRestaurantId === target.restaurantId;
+    const btn = menuMatchesTarget
+      ? doc.querySelector(buildMenuOpenSelectorCore(target.itemId, win.CSS))
+      : null;
+    if (btn) {
+      win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__ = true;
+      try {
+        btn.scrollIntoView({ block: "center", behavior: "auto" });
+      } catch {}
+      triggerMenuDetailOpenFromGesture(btn);
+      return;
     }
-    const btn = doc.querySelector(buildMenuOpenSelectorCore(target.itemId, win.CSS));
-    if (!btn) return;
-    win.__MENYRA_MENU_ITEM_DEEPLINK_DONE__ = true;
-    try {
-      btn.scrollIntoView({ block: "center", behavior: "auto" });
-    } catch {}
-    triggerMenuDetailOpenFromGesture(btn);
+    // Karte noch nicht da: Wenn die Route auf dem Profil-Tab des richtigen
+    // Business gelandet ist, einmalig zum Menue-Tab wechseln, damit die
+    // Menue-Flaeche laedt und die Karte erscheint.
+    if (win.__MENYRA_MENU_ITEM_DEEPLINK_TAB__) return;
+    if (String(state.activeTab || "").trim().toLowerCase() !== "profile") return;
+    if (String(state.profileTopTab || "").trim().toLowerCase() === "menu") return;
+    const profileRestaurantId = String(state.profileView?.profile?.restaurantId || "").trim();
+    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const targetOnVisibleProfile = !target.restaurantId
+      || target.restaurantId === profileRestaurantId
+      || target.restaurantId === ownRestaurantId
+      || target.restaurantId === activeMenuRestaurantId;
+    if (!targetOnVisibleProfile) return;
+    const menuTabBtn = doc.querySelector('[data-profile-top-tab="menu"], [data-business-top-tab="menu"]');
+    if (!menuTabBtn || typeof menuTabBtn.click !== "function") return;
+    win.__MENYRA_MENU_ITEM_DEEPLINK_TAB__ = true;
+    menuTabBtn.click();
   })();
 
   doc.querySelectorAll("[data-cart-qty]").forEach((btn) => {

@@ -123,6 +123,7 @@ export function createFeedViewOrchestrationController({
   const storyPreviewStateMap = new WeakMap();
   let storyPreviewObserver = null;
   let storyPreviewLifecycleBound = false;
+  let storyPreviewGestureRetryBound = false;
   const buildTrackCardShellStyle = ({ withMarginLeft = false } = {}) => (
     `${TRACK_CARD_WIDTH_STYLE}${withMarginLeft ? "margin-left:1.25rem;" : ""}`
   );
@@ -3443,7 +3444,31 @@ export function createFeedViewOrchestrationController({
     }
     state.active = true;
     video.dataset.storyPreviewActive = "1";
-    void video.play().catch(() => {});
+    void video.play().catch(() => {
+      // Autoplay blockiert (z.B. iOS-Stromsparmodus): wenigstens ein echtes
+      // Video-Frame statt Poster/Logo anzeigen und nach der ersten
+      // Nutzer-Geste den Loop erneut starten.
+      try {
+        if (!video.dataset.storyPreviewFrameSeek && Number(video.currentTime || 0) <= 0.01) {
+          video.dataset.storyPreviewFrameSeek = "1";
+          video.currentTime = Math.max(0.05, Number(state.previewStart || 0));
+        }
+      } catch {}
+      bindStoryPreviewGestureRetry();
+    });
+  }
+
+  function bindStoryPreviewGestureRetry() {
+    if (storyPreviewGestureRetryBound || !doc) return;
+    storyPreviewGestureRetryBound = true;
+    const retryVisiblePreviews = () => {
+      doc.querySelectorAll("video[data-story-preview-video]").forEach((video) => {
+        if (String(video.dataset.storyPreviewVisible || "0") !== "1") return;
+        playStoryPreview(video);
+      });
+    };
+    doc.addEventListener("touchend", retryVisiblePreviews, { once: true, passive: true });
+    doc.addEventListener("pointerdown", retryVisiblePreviews, { once: true, passive: true });
   }
 
   function pauseStoryPreview(video) {

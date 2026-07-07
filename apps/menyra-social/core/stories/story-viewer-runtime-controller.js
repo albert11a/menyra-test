@@ -177,6 +177,7 @@ export function createStoryViewerRuntimeController({
   const storyHintPrefix = "mnyra_story_viewer_hint_v1:";
   let storyStandaloneTopbar = null;
   let reelEntries = [];
+  let renderGeneration = 0;
   let activeIndex = 0;
   let activeIndexSyncFrame = 0;
   let hasUnlockedMedia = false;
@@ -786,6 +787,8 @@ export function createStoryViewerRuntimeController({
     if (!db || typeof docFn !== "function" || typeof getDocFn !== "function" || !doc) return;
     const rid = String(restaurantId || "").trim();
     if (!rid) return;
+    const generationAtStart = renderGeneration;
+    let fetchedAny = false;
     const pendingItemIds = new Set();
     reelEntries.forEach((entry) => {
       const story = entry?.story || {};
@@ -816,6 +819,7 @@ export function createStoryViewerRuntimeController({
           || ""
         ).trim();
         productDataCache.set(itemId, { name, priceLabel, imageUrl });
+        fetchedAny = true;
         reelEntries.forEach((entry) => {
           const story = entry?.story || {};
           if (String(story.menuItemId || "").trim() !== itemId) return;
@@ -830,6 +834,14 @@ export function createStoryViewerRuntimeController({
         productLoadsInFlight.delete(itemId);
       }
     }));
+    // Nachgeladene Produktdaten in den Session-Cache uebernehmen, damit die
+    // Produkt-Card beim naechsten Oeffnen sofort gefuellt ist.
+    if (fetchedAny && generationAtStart === renderGeneration && reelEntries.length) {
+      writeStoryCache(rid, {
+        meta: readStoryCache(rid)?.meta || null,
+        stories: reelEntries.map((entry) => entry.story)
+      });
+    }
   }
 
   function renderStories(stories, container, meta, restaurantId, { startEntryId = "" } = {}) {
@@ -840,6 +852,7 @@ export function createStoryViewerRuntimeController({
     }
     videos.clear();
     reelEntries = [];
+    renderGeneration += 1;
     activeIndex = 0;
     container.innerHTML = "";
     hideStandaloneTopbar();

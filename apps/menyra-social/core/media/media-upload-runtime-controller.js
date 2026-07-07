@@ -247,6 +247,66 @@ export function createMediaUploadRuntimeController({
     return storyTagItemsCache.get(rid) || null;
   }
 
+  // Poster fuer Video-Stories: erstes Frame als JPEG einfangen, damit die
+  // Feed-Kachel und der Reels-Viewer sofort ein echtes Bild zeigen - auch
+  // wenn Video-Autoplay blockiert ist (z.B. iOS-Stromsparmodus).
+  async function captureVideoPosterFile(file) {
+    const win = docObj?.defaultView || null;
+    if (!file || !docObj || !win || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return null;
+    const objectUrl = URL.createObjectURL(file);
+    const video = docObj.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.preload = "auto";
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = win.setTimeout(() => reject(new Error("poster timeout")), 5000);
+        video.onloadeddata = () => {
+          win.clearTimeout(timer);
+          resolve();
+        };
+        video.onerror = () => {
+          win.clearTimeout(timer);
+          reject(new Error("poster load failed"));
+        };
+        video.src = objectUrl;
+      });
+      try {
+        await new Promise((resolve) => {
+          const timer = win.setTimeout(resolve, 1200);
+          video.onseeked = () => {
+            win.clearTimeout(timer);
+            resolve();
+          };
+          video.currentTime = Math.min(0.1, Math.max(0, (Number(video.duration) || 1) / 10));
+        });
+      } catch {}
+      const width = Number(video.videoWidth) || 0;
+      const height = Number(video.videoHeight) || 0;
+      if (!width || !height) return null;
+      const canvas = docObj.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(video, 0, 0, width, height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
+      if (!blob || !blob.size) return null;
+      return new File([blob], "story-poster.jpg", { type: "image/jpeg" });
+    } catch {
+      return null;
+    } finally {
+      try {
+        video.removeAttribute("src");
+        video.load?.();
+      } catch {}
+      try {
+        URL.revokeObjectURL(objectUrl);
+      } catch {}
+    }
+  }
+
   function renderUploadView() {
     return renderUploadViewCore({
       state,
@@ -379,12 +439,27 @@ export function createMediaUploadRuntimeController({
         const taggedItem = storyMenuItemId
           ? (storyTagItemsCache.get(restaurantId)?.items || []).find((item) => String(item?.id || "") === storyMenuItemId) || null
           : null;
+        let storyPosterUrl = "";
+        if (mediaType === "video") {
+          try {
+            const posterFile = await captureVideoPosterFile(state.upload.file);
+            if (posterFile) {
+              const posterUpload = await uploadCompressedImage(posterFile, ownerId, {
+                maxSize: 720,
+                quality: 0.72,
+                mimeType: "image/jpeg"
+              });
+              storyPosterUrl = String(posterUpload?.cdnUrl || posterUpload?.url || "").trim();
+            }
+          } catch {}
+        }
         await storySystemController?.createBusinessStory?.({
           restaurantId,
           caption,
           mediaUrl: cdnUrl,
           mediaType,
           createdByUid: state.user.uid,
+          posterUrl: storyPosterUrl,
           menuItemId: storyMenuItemId,
           menuItemName: taggedItem?.name || "",
           menuItemPrice: taggedItem?.price ?? "",
@@ -404,7 +479,7 @@ export function createMediaUploadRuntimeController({
           mediaType,
           mediaUrl: cdnUrl,
           videoUrl: mediaType === "video" ? cdnUrl : "",
-          imageUrl: mediaType === "image" ? cdnUrl : "",
+          imageUrl: mediaType === "image" ? cdnUrl : storyPosterUrl,
           createdAt: Date.now()
         });
         if (optimisticStory) {

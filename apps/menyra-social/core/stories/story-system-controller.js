@@ -97,6 +97,7 @@ export function createStorySystemController({
     mediaUrl = "",
     mediaType = "image",
     createdByUid = "",
+    posterUrl = "",
     menuItemId = "",
     menuItemName = "",
     menuItemPrice = "",
@@ -117,7 +118,9 @@ export function createStorySystemController({
       caption: String(caption || "").trim(),
       mediaType: kind,
       mediaUrl: media,
-      imageUrl: kind === "image" ? media : "",
+      // Video-Stories bekommen ein echtes Poster (erstes Frame), damit die
+      // Feed-Kachel auch ohne Autoplay ein Bild zeigt (iOS-Stromsparmodus).
+      imageUrl: kind === "image" ? media : String(posterUrl || "").trim(),
       videoUrl: kind === "video" ? media : "",
       status: "active",
       active: true,

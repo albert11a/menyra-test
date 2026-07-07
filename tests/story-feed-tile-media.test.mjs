@@ -108,3 +108,32 @@ test("createBusinessStory persists the product snapshot for the story card", asy
   assert.equal(writes[0].menuItemPrice, 8.5);
   assert.equal(writes[0].menuItemImage, "https://cdn.example.com/pizza.jpg");
 });
+
+test("createBusinessStory stores the captured poster as imageUrl for video stories", async () => {
+  const writes = [];
+  const controller = createStorySystemController({
+    db: {},
+    collectionFn: () => ({}),
+    docFn: () => ({ id: "story_2" }),
+    setDocFn: async (_ref, payload) => {
+      writes.push(payload);
+    },
+    serverTimestampFn: () => "ts"
+  });
+  await controller.createBusinessStory({
+    restaurantId: "rest_1",
+    mediaUrl: "https://cdn.example.com/story.mp4",
+    mediaType: "video",
+    posterUrl: "https://cdn.example.com/poster.jpg"
+  });
+  assert.equal(writes[0].videoUrl, "https://cdn.example.com/story.mp4");
+  assert.equal(writes[0].imageUrl, "https://cdn.example.com/poster.jpg");
+  // Bild-Stories bleiben unveraendert: imageUrl = Medien-URL.
+  await controller.createBusinessStory({
+    restaurantId: "rest_1",
+    mediaUrl: "https://cdn.example.com/photo.jpg",
+    mediaType: "image",
+    posterUrl: "https://cdn.example.com/ignored.jpg"
+  });
+  assert.equal(writes[1].imageUrl, "https://cdn.example.com/photo.jpg");
+});
