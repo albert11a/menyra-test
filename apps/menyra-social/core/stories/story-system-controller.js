@@ -57,10 +57,14 @@ export function createStorySystemController({
     };
   }
 
-  function buildStoryViewerUrl(restaurantId = "") {
+  function buildStoryViewerUrl(restaurantId = "", { postId = "" } = {}) {
     const rid = String(restaurantId || "").trim();
     if (!rid) return buildUrlFn("apps/menyra-social/story/index.html");
-    return buildUrlFn("apps/menyra-social/story/index.html", { r: rid });
+    const params = { r: rid };
+    // Video-Beitraege springen im Reels-Viewer direkt zu ihrem Video.
+    const safePostId = String(postId || "").trim();
+    if (safePostId) params.post = safePostId;
+    return buildUrlFn("apps/menyra-social/story/index.html", params);
   }
 
   function isBusinessStoryPostEligible(profile = null) {

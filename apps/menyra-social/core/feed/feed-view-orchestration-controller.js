@@ -18,7 +18,7 @@ export function createFeedViewOrchestrationController({
   iconFn = () => "",
   escapeHtmlFn = (value) => String(value || ""),
   buildUrlFn = () => "",
-  buildStoryViewerUrlFn = (restaurantId = "") => buildUrlFn("apps/menyra-social/index.html", { r: restaurantId, tab: "profile" }),
+  buildStoryViewerUrlFn = (restaurantId = "", _options = {}) => buildUrlFn("apps/menyra-social/index.html", { r: restaurantId, tab: "profile" }),
   resolveRestaurantLogoFn = () => "",
   resolveStoryRenderIdentityFn = null,
   getOptimizedImageUrlFn = () => "",
@@ -3204,9 +3204,15 @@ export function createFeedViewOrchestrationController({
       ? `<video src="${escapeHtmlFn(post.videoUrl)}" poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline preload="none" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
       : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
     // Klick auf das Beitragsbild/-video oeffnet die Stories des Business
-    // (gleiche Reels-Ansicht wie die Story-Vorschau). Die Like/Kommentar/Share-
+    // (gleiche Reels-Ansicht wie die Story-Vorschau). Video-Beitraege springen
+    // im Viewer direkt zu ihrem Video (?post=...). Die Like/Kommentar/Share-
     // Buttons liegen als absolute Overlay-Geschwister darueber und bleiben klickbar.
-    const heroStoryUrl = post.restaurantId ? String(buildStoryViewerUrlFn(post.restaurantId) || "").trim() : "";
+    const heroStoryUrl = post.restaurantId
+      ? String(buildStoryViewerUrlFn(
+        post.restaurantId,
+        post.isVideo && post.videoUrl && postId ? { postId } : {}
+      ) || "").trim()
+      : "";
     const heroMediaHtml = heroStoryUrl
       ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Stories von ${escapeHtmlFn(post.business)} ansehen" class="block w-full h-full">${heroInner}</a>`
       : heroInner;

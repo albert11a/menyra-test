@@ -301,9 +301,9 @@ export function createAppControllerBridge({
     iconFn: feed.icon,
     escapeHtmlFn: feed.escapeHtml,
     buildUrlFn: feed.buildUrl,
-    buildStoryViewerUrlFn: (restaurantId = "") => (
+    buildStoryViewerUrlFn: (restaurantId = "", options = {}) => (
       typeof feed.buildStoryViewerUrl === "function"
-        ? feed.buildStoryViewerUrl(restaurantId)
+        ? feed.buildStoryViewerUrl(restaurantId, options)
         : feed.buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "profile" })
     ),
     resolveRestaurantLogoFn: feed.resolveRestaurantLogo,

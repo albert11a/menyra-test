@@ -422,7 +422,7 @@ export function buildAppControllerBridgeDeps({
       icon,
       escapeHtml,
       buildUrl,
-      buildStoryViewerUrl: (restaurantId = "") => storySystemController.buildStoryViewerUrl(restaurantId),
+      buildStoryViewerUrl: (restaurantId = "", options = {}) => storySystemController.buildStoryViewerUrl(restaurantId, options),
       resolveRestaurantLogo,
       getOptimizedImageUrl,
       buildUploadStateForIntent: (intent = "", currentUpload = {}) => storySystemController.buildUploadStateForIntent(intent, currentUpload),

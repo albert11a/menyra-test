@@ -10,7 +10,9 @@
   <meta http-equiv="Expires" content="0" />
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
-  <link rel="modulepreload" href="./story.js?v=2026-03-19-story-sound-toggle-1" />
+  <!-- Medien-CDN vorab verbinden: Story-/Video-Streams starten schneller (3G/Cold-Start). -->
+  <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin />
+  <link rel="modulepreload" href="./story.js?v=2026-07-07-story-reels-video-posts-1" />
 
   <style>
     :root {
@@ -344,6 +346,6 @@
     <div class="emptyDesc">Aktive Stories werden hier angezeigt.</div>
   </div>
 
-  <script type="module" src="./story.js?v=2026-03-19-story-sound-toggle-1"></script>
+  <script type="module" src="./story.js?v=2026-07-07-story-reels-video-posts-1"></script>
 </body>
 </html>

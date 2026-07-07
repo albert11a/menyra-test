@@ -95,8 +95,61 @@ function mapStoryDoc(docSnap) {
     imageUrl,
     libraryId: String(row.libraryId || "").trim(),
     videoId: String(row.videoId || "").trim(),
-    createdAt: toDateSafe(row.createdAt) || toDateSafe(row.updatedAt) || new Date(0)
+    createdAt: toDateSafe(row.createdAt) || toDateSafe(row.updatedAt) || new Date(0),
+    source: "story"
   };
+}
+
+// Video-Posts des Business (restaurants/{rid}/socialPosts) werden hinter den
+// Stories in die Reels-Liste gehaengt: Klick auf einen Video-Beitrag im Feed
+// startet direkt bei diesem Video, die restlichen Videos folgen beim Swipen.
+export function mapVideoPostDocCore(docSnap, restaurantId = "") {
+  const row = docSnap?.data?.() || {};
+  const status = String(row.status || "active").trim().toLowerCase();
+  if (status && status !== "active") return null;
+  const firstMedia = Array.isArray(row.media) && row.media.length ? (row.media[0] || {}) : {};
+  const mediaUrl = String(firstMedia.url || row.mediaUrl || row.videoUrl || row.url || "").trim();
+  const rawMediaType = String(firstMedia.type || row.mediaType || "").trim().toLowerCase();
+  const isVideo = rawMediaType === "video" || (!rawMediaType && isLikelyVideoMediaUrl(mediaUrl));
+  if (!isVideo || !mediaUrl) return null;
+  return {
+    id: docSnap.id,
+    restaurantId: String(restaurantId || "").trim(),
+    title: "",
+    description: String(row.caption || row.content || "").trim(),
+    menuItemId: String(row.menuItemId || "").trim(),
+    mediaType: "video",
+    embedUrl: "",
+    videoUrl: mediaUrl,
+    imageUrl: String(firstMedia.thumbUrl || row.thumbUrl || row.poster || "").trim(),
+    libraryId: "",
+    videoId: "",
+    createdAt: toDateSafe(row.createdAt) || toDateSafe(row.createdAtClient) || toDateSafe(row.updatedAt) || new Date(0),
+    source: "post"
+  };
+}
+
+export function mergeStoriesWithVideoPostsCore(stories = [], videoPosts = []) {
+  const safeStories = Array.isArray(stories) ? stories : [];
+  const safePosts = Array.isArray(videoPosts) ? videoPosts : [];
+  const seenMediaUrls = new Set();
+  const seenIds = new Set();
+  safeStories.forEach((story = {}) => {
+    const mediaKey = String(story.videoUrl || story.mediaUrl || "").trim();
+    if (mediaKey) seenMediaUrls.add(mediaKey);
+    const id = String(story.id || "").trim();
+    if (id) seenIds.add(id);
+  });
+  const dedupedPosts = safePosts.filter((post = {}) => {
+    const id = String(post.id || "").trim();
+    if (id && seenIds.has(id)) return false;
+    const mediaKey = String(post.videoUrl || "").trim();
+    if (mediaKey && seenMediaUrls.has(mediaKey)) return false;
+    if (mediaKey) seenMediaUrls.add(mediaKey);
+    if (id) seenIds.add(id);
+    return true;
+  });
+  return [...safeStories, ...dedupedPosts];
 }
 
 export function createStoryViewerRuntimeController({
@@ -199,6 +252,40 @@ export function createStoryViewerRuntimeController({
     });
     stories.sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
     return stories.slice(0, Math.max(1, Number(max) || 20));
+  }
+
+  async function loadBusinessVideoPosts(restaurantId, max = 12) {
+    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return [];
+    const rid = String(restaurantId || "").trim();
+    if (!rid) return [];
+    const ref = collectionFn(db, "restaurants", rid, "socialPosts");
+    const fetchLimit = Math.max(1, Number(max) || 12) * 3;
+    let snap = null;
+    try {
+      if (typeof orderByFn === "function" && typeof limitFn === "function") {
+        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fetchLimit)));
+      } else {
+        snap = await getDocsFn(queryFn(ref));
+      }
+    } catch {
+      try {
+        if (typeof limitFn === "function") {
+          snap = await getDocsFn(queryFn(ref, limitFn(fetchLimit)));
+        } else {
+          snap = await getDocsFn(queryFn(ref));
+        }
+      } catch {
+        return [];
+      }
+    }
+
+    const videoPosts = [];
+    snap.forEach((docSnap) => {
+      const mapped = mapVideoPostDocCore(docSnap, rid);
+      if (mapped) videoPosts.push(mapped);
+    });
+    videoPosts.sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
+    return videoPosts.slice(0, Math.max(1, Number(max) || 12));
   }
 
   function appendQueryParams(urlString, params = {}) {
@@ -609,7 +696,7 @@ export function createStoryViewerRuntimeController({
     });
   }
 
-  function renderStories(stories, container, meta, restaurantId) {
+  function renderStories(stories, container, meta, restaurantId, { startEntryId = "" } = {}) {
     if (!doc || !container) return;
     if (activeIndexSyncFrame && win?.cancelAnimationFrame) {
       win.cancelAnimationFrame(activeIndexSyncFrame);
@@ -683,8 +770,21 @@ export function createStoryViewerRuntimeController({
     });
     container.appendChild(fragment);
     updateRenderedTopbarMeta(meta);
-    primeNearbyMedia(0);
-    setActiveIndex(0, { force: true });
+    // Direktstart bei einem bestimmten Reel (?post=<id>): Klick auf einen
+    // Video-Beitrag im Feed springt sofort zu genau diesem Video, ohne dass
+    // vorher das erste Reel gemountet/geladen wird (spart Daten auf 3G/4G).
+    const safeStartEntryId = String(startEntryId || "").trim();
+    const startEntry = safeStartEntryId
+      ? reelEntries.find((row) => String(row?.story?.id || "").trim() === safeStartEntryId)
+      : null;
+    const startIndex = startEntry ? startEntry.index : 0;
+    if (startIndex > 0) {
+      try {
+        startEntry.reel.scrollIntoView({ behavior: "auto", block: "start" });
+      } catch {}
+    }
+    primeNearbyMedia(startIndex);
+    setActiveIndex(startIndex, { force: true });
   }
 
   function bindSoundToggle() {
@@ -806,6 +906,7 @@ export function createStoryViewerRuntimeController({
     let stories = [];
     let didRenderFromCache = false;
     let currentStorySignature = "";
+    const startPostId = getParam("post");
     const metaPromise = loadRestaurantMeta(rid);
     const warmHint = readWarmStoryHint(rid);
     const storyCache = readStoryCache(rid);
@@ -816,7 +917,7 @@ export function createStoryViewerRuntimeController({
     if (storyCache?.stories?.length) {
       restaurantMeta = storyCache.meta || warmHint?.meta || null;
       currentStorySignature = storyCache.signature || buildStorySignature(storyCache.stories);
-      renderStories(storyCache.stories, reelsContainer, restaurantMeta, rid);
+      renderStories(storyCache.stories, reelsContainer, restaurantMeta, rid, { startEntryId: startPostId });
       loadingState.style.display = "none";
       didRenderFromCache = true;
       bindSoundToggle();
@@ -826,7 +927,13 @@ export function createStoryViewerRuntimeController({
     }
 
     try {
-      stories = await loadStories(rid, 20);
+      // Stories und Video-Posts parallel laden (ein Roundtrip statt zwei):
+      // Stories zuerst in der Liste, Video-Beitraege des Business dahinter.
+      const [loadedStories, loadedVideoPosts] = await Promise.all([
+        loadStories(rid, 20).catch(() => []),
+        loadBusinessVideoPosts(rid, 12).catch(() => [])
+      ]);
+      stories = mergeStoriesWithVideoPostsCore(loadedStories, loadedVideoPosts);
     } catch (err) {
       console.error(err);
     }
@@ -847,7 +954,7 @@ export function createStoryViewerRuntimeController({
 
     const nextStorySignature = buildStorySignature(stories);
     if (!didRenderFromCache || nextStorySignature !== currentStorySignature) {
-      renderStories(stories, reelsContainer, warmHint?.meta || null, rid);
+      renderStories(stories, reelsContainer, warmHint?.meta || null, rid, { startEntryId: startPostId });
       loadingState.style.display = "none";
       if (!didRenderFromCache) {
         bindSoundToggle();
