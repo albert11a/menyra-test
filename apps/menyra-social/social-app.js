@@ -5391,11 +5391,15 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
 }
 
 async function uploadRawMediaFile(file, ownerId, options = {}) {
-  return getMediaUploadRuntimeController().uploadRawMediaFile(file, ownerId, options);
+  // Voll-Controller sicherstellen: der Platzhalter-Controller (vor dem ersten
+  // Upload-Screen) kennt nur uploadCompressedImage/handleUploadPost.
+  const controller = await ensureMediaUploadRuntimeController();
+  return controller.uploadRawMediaFile(file, ownerId, options);
 }
 
 async function captureVideoPosterFile(file) {
-  return getMediaUploadRuntimeController().captureVideoPosterFile(file);
+  const controller = await ensureMediaUploadRuntimeController();
+  return controller.captureVideoPosterFile(file);
 }
 
 startAppStartupRuntimeCluster({
