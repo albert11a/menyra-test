@@ -72,3 +72,94 @@ export function buildStoryFirstTrackItems({ stories = [], spots = [] } = {}) {
     ...safeSpots.map((spot) => ({ type: "spot", spot }))
   ];
 }
+
+// Erkennt anhand der Datei-Endung, ob eine Media-URL ein Video ist.
+export function isLikelyVideoMediaUrl(value = "") {
+  const url = String(value || "").trim().toLowerCase();
+  if (!url) return false;
+  return /\.(m3u8|mpd|mp4|webm|mov|m4v|ogv)($|\?)/.test(url);
+}
+
+// Loest das Vorschau-Media EINER Story auf.
+//
+// Wichtig (vom Nutzer bestaetigt): NUR echtes Story-Media zaehlt
+// (imageUrl/thumbUrl, videoUrl/playbackUrl, mediaUrl/url/media[0].url,
+// embed, thumbnails/poster). Business-Titelbild, Cover oder Logo
+// (coverImage/image/img/logo) sind KEINE Story und werden nie als Vorschau
+// verwendet. Fehlt echtes Media, ist kind === "none" (Kachel wird dann nicht
+// als Story gerendert).
+//
+// Robustheit: ein vorhandenes mediaUrl wird als Bild genutzt, sobald es kein
+// Video ist – auch wenn mediaType fehlt oder abweicht (aeltere/inkonsistente
+// Story-Dokumente).
+export function resolveStoryPreviewMedia(story = {}) {
+  const src = story && typeof story === "object" ? story : {};
+  const rawMediaType = String(src.mediaType || src.type || "").trim().toLowerCase();
+  const imageUrl = String(src.imageUrl || src.thumbUrl || src.mediaImage || "").trim();
+  const videoUrl = String(src.videoUrl || src.playbackUrl || "").trim();
+  const mediaUrl = String(
+    src.mediaUrl
+    || src.url
+    || (Array.isArray(src.media) ? (src.media[0]?.url || src.media[0]?.mediaUrl || "") : "")
+    || ""
+  ).trim();
+  const embedUrl = String(src.embedUrl || "").trim();
+  const fallbackImage = String(
+    src.thumbUrl
+    || src.thumbnail
+    || src.thumbnailUrl
+    || src.previewImage
+    || src.previewUrl
+    || src.poster
+    || src.posterUrl
+    || ""
+  ).trim();
+  const inferredVideo = isLikelyVideoMediaUrl(mediaUrl);
+  const resolvedVideoUrl = videoUrl || (rawMediaType === "video" ? mediaUrl : (inferredVideo ? mediaUrl : ""));
+  // Kein Video vorhanden? Dann ist ein gesetztes mediaUrl das Bild – egal was
+  // mediaType sagt. So verschwindet keine echte Bild-Story mehr faelschlich.
+  const resolvedImageUrl = imageUrl || (resolvedVideoUrl ? "" : mediaUrl);
+  if (resolvedVideoUrl) {
+    return {
+      kind: "video",
+      src: resolvedVideoUrl,
+      poster: resolvedImageUrl || fallbackImage,
+      signature: `video:${resolvedVideoUrl}|${resolvedImageUrl || fallbackImage || ""}`
+    };
+  }
+  if (resolvedImageUrl) {
+    return {
+      kind: "image",
+      src: resolvedImageUrl,
+      poster: resolvedImageUrl,
+      signature: `image:${resolvedImageUrl}`
+    };
+  }
+  if (fallbackImage) {
+    return {
+      kind: "image",
+      src: fallbackImage,
+      poster: fallbackImage,
+      signature: `fallback:${fallbackImage}`
+    };
+  }
+  if (embedUrl) {
+    return {
+      kind: "embed",
+      src: embedUrl,
+      poster: "",
+      signature: `embed:${embedUrl}`
+    };
+  }
+  return {
+    kind: "none",
+    src: "",
+    poster: "",
+    signature: "none"
+  };
+}
+
+// Eine Story ist nur dann eine echte Story-Kachel, wenn sie echtes Media hat.
+export function storyHasRenderableMedia(story = {}) {
+  return resolveStoryPreviewMedia(story).kind !== "none";
+}

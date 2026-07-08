@@ -3,7 +3,8 @@ import {
   classifyStoryGeoScope,
   shouldKeepStoryInScope,
   compareStoryTrackMeta,
-  buildStoryFirstTrackItems
+  buildStoryFirstTrackItems,
+  resolveStoryPreviewMedia
 } from "./feed-story-track-utils.js";
 
 export function createFeedViewOrchestrationController({
@@ -154,80 +155,8 @@ export function createFeedViewOrchestrationController({
     || story?.publishedAt
     || null
   );
-  const isLikelyVideoMediaUrl = (value = "") => {
-    const url = String(value || "").trim().toLowerCase();
-    if (!url) return false;
-    if (/\.m3u8($|\?)/.test(url)) return true;
-    if (/\.mpd($|\?)/.test(url)) return true;
-    if (/\.mp4($|\?)/.test(url)) return true;
-    if (/\.webm($|\?)/.test(url)) return true;
-    if (/\.mov($|\?)/.test(url)) return true;
-    if (/\.m4v($|\?)/.test(url)) return true;
-    if (/\.ogv($|\?)/.test(url)) return true;
-    return false;
-  };
-  const resolveStoryPreviewMedia = (story = {}) => {
-    const rawMediaType = String(story?.mediaType || story?.type || "").trim().toLowerCase();
-    const imageUrl = String(story?.imageUrl || story?.thumbUrl || "").trim();
-    const videoUrl = String(story?.videoUrl || story?.playbackUrl || "").trim();
-    const mediaUrl = String(story?.mediaUrl || story?.url || "").trim();
-    const embedUrl = String(story?.embedUrl || "").trim();
-    // Story-Vorschau NUR aus echten Story-Medien ableiten. Business-Titelbild,
-    // Cover oder Logo (coverImage/image/img/logo) sind KEINE Story und duerfen
-    // nie als Vorschau erscheinen. Fehlt echtes Story-Media, zeigt die Kachel
-    // den neutralen Platzhalter (kein Cover-Fallback).
-    const fallbackImage = String(
-      story?.thumbUrl
-      || story?.thumbnail
-      || story?.thumbnailUrl
-      || story?.previewImage
-      || story?.previewUrl
-      || story?.poster
-      || story?.posterUrl
-      || ""
-    ).trim();
-    const inferredVideo = isLikelyVideoMediaUrl(mediaUrl);
-    const resolvedVideoUrl = videoUrl || (rawMediaType === "video" ? mediaUrl : (inferredVideo ? mediaUrl : ""));
-    const resolvedImageUrl = imageUrl || (rawMediaType === "image" ? mediaUrl : "");
-    if (resolvedVideoUrl) {
-      return {
-        kind: "video",
-        src: resolvedVideoUrl,
-        poster: resolvedImageUrl || fallbackImage,
-        signature: `video:${resolvedVideoUrl}|${resolvedImageUrl || fallbackImage || ""}`
-      };
-    }
-    if (resolvedImageUrl) {
-      return {
-        kind: "image",
-        src: resolvedImageUrl,
-        poster: resolvedImageUrl,
-        signature: `image:${resolvedImageUrl}`
-      };
-    }
-    if (fallbackImage) {
-      return {
-        kind: "image",
-        src: fallbackImage,
-        poster: fallbackImage,
-        signature: `fallback:${fallbackImage}`
-      };
-    }
-    if (embedUrl) {
-      return {
-        kind: "embed",
-        src: embedUrl,
-        poster: "",
-        signature: `embed:${embedUrl}`
-      };
-    }
-    return {
-      kind: "none",
-      src: "",
-      poster: "",
-      signature: "none"
-    };
-  };
+  // resolveStoryPreviewMedia + isLikelyVideoMediaUrl liegen jetzt pur/testbar in
+  // ./feed-story-track-utils.js und werden oben importiert.
   const buildStoryRenderSignature = (story = {}) => {
     const truthSource = normalizeStoryTruthSource(story);
     const preview = resolveStoryPreviewMedia(story);
@@ -911,6 +840,10 @@ export function createFeedViewOrchestrationController({
         : Number.POSITIVE_INFINITY;
       const createdAtMs = toStoryTimestampMs(story);
       const preview = resolveStoryPreviewMedia(story);
+      // Eine Story-Kachel muss echtes Story-Media haben. Business ohne echtes
+      // Story-Media (nur Logo/Cover) wird NICHT als leere Story-Kachel gezeigt;
+      // es erscheint hoechstens als Discovery-/Best-Spot-Kachel.
+      if (preview.kind === "none") return;
       const storyLabel = String(identity.storyLabel || "").trim() || "Story";
       const storyUrl = buildStoryViewerUrlFn(restaurantId);
       const profileImageUrl = resolveRestaurantLogoFn(

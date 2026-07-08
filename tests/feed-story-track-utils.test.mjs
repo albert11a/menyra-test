@@ -9,7 +9,10 @@ import {
   shouldKeepStoryInScope,
   storyScopeOrderRank,
   compareStoryTrackMeta,
-  buildStoryFirstTrackItems
+  buildStoryFirstTrackItems,
+  resolveStoryPreviewMedia,
+  storyHasRenderableMedia,
+  isLikelyVideoMediaUrl
 } from "../apps/menyra-social/core/feed/feed-story-track-utils.js";
 
 test("classifyStoryGeoScope: no viewer city => near", () => {
@@ -84,4 +87,52 @@ test("buildStoryFirstTrackItems: handles empty inputs", () => {
     buildStoryFirstTrackItems({ spots: [{ id: "p1" }] }).map((i) => i.type),
     ["spot"]
   );
+});
+
+test("resolveStoryPreviewMedia: mediaUrl image works without mediaType", () => {
+  // Genau der Live-Bug: Bild liegt in mediaUrl, mediaType fehlt.
+  const preview = resolveStoryPreviewMedia({ mediaUrl: "https://cdn.example.com/story.jpg" });
+  assert.equal(preview.kind, "image");
+  assert.equal(preview.src, "https://cdn.example.com/story.jpg");
+  assert.equal(storyHasRenderableMedia({ mediaUrl: "https://cdn.example.com/story.jpg" }), true);
+});
+
+test("resolveStoryPreviewMedia: imageUrl preferred", () => {
+  const preview = resolveStoryPreviewMedia({
+    imageUrl: "https://cdn.example.com/a.jpg",
+    mediaUrl: "https://cdn.example.com/b.jpg"
+  });
+  assert.equal(preview.kind, "image");
+  assert.equal(preview.src, "https://cdn.example.com/a.jpg");
+});
+
+test("resolveStoryPreviewMedia: reads media[0].url array shape", () => {
+  const preview = resolveStoryPreviewMedia({ media: [{ url: "https://cdn.example.com/m.jpg" }] });
+  assert.equal(preview.kind, "image");
+  assert.equal(preview.src, "https://cdn.example.com/m.jpg");
+});
+
+test("resolveStoryPreviewMedia: video via videoUrl and via extension", () => {
+  assert.equal(resolveStoryPreviewMedia({ videoUrl: "https://cdn.example.com/v.mp4" }).kind, "video");
+  const inferred = resolveStoryPreviewMedia({ mediaUrl: "https://cdn.example.com/v.mp4" });
+  assert.equal(inferred.kind, "video");
+  assert.equal(inferred.src, "https://cdn.example.com/v.mp4");
+});
+
+test("resolveStoryPreviewMedia: logo/cover/title image is NOT story media", () => {
+  // Nur img (=Logo) / image / coverImage -> keine echte Story -> none.
+  const preview = resolveStoryPreviewMedia({
+    img: "https://cdn.example.com/logo.png",
+    image: "https://cdn.example.com/cover.jpg",
+    coverImage: "https://cdn.example.com/title.jpg"
+  });
+  assert.equal(preview.kind, "none");
+  assert.equal(storyHasRenderableMedia({ img: "https://cdn.example.com/logo.png" }), false);
+});
+
+test("isLikelyVideoMediaUrl detects video extensions", () => {
+  assert.equal(isLikelyVideoMediaUrl("https://x/y.mp4"), true);
+  assert.equal(isLikelyVideoMediaUrl("https://x/y.m3u8?t=1"), true);
+  assert.equal(isLikelyVideoMediaUrl("https://x/y.jpg"), false);
+  assert.equal(isLikelyVideoMediaUrl(""), false);
 });
