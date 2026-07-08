@@ -19,7 +19,11 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   crmstaff: "crmStaff",
   "crm-staff": "crmStaff",
   "crm_staff": "crmStaff",
-  staff: "crmStaff"
+  staff: "crmStaff",
+  analytics: "analytics",
+  analytic: "analytics",
+  statistik: "analytics",
+  statistiken: "analytics"
 });
 
 const PATH_VIEW_ALIASES = Object.freeze({

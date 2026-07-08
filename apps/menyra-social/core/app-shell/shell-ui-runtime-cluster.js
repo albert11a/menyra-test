@@ -486,6 +486,7 @@ export function createShellUiRuntimeCluster({
       renderProfileViewFn: mainApi.renderProfileViewFn || (() => ""),
       renderMenuAdminViewFn: mainApi.renderMenuAdminViewFn || (() => ""),
       renderOrdersViewFn: renderOrdersView,
+      renderAnalyticsViewFn: mainApi.renderAnalyticsViewFn || (() => ""),
       renderStaffViewFn: mainApi.renderStaffViewFn || (() => ""),
       renderBusinessAccountsViewFn: mainApi.renderBusinessAccountsViewFn || (() => ""),
       renderSettingsViewFn: renderSettingsView,

@@ -152,6 +152,8 @@ import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-c
 import { createSocialRouteRuntimeRegistry } from "./core/app-shell/route-runtime-registry.js";
 import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-runtime-cluster.js";
 import { createMarketplaceRuntimeBoundary } from "./core/marketplace/marketplace-runtime-boundary.js";
+import { initAnalyticsTracker, observeAnalyticsState } from "./core/analytics/analytics-tracker.js";
+import { createAnalyticsViewController } from "./core/analytics/analytics-view-controller.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createAdsRuntimeController } from "./core/menu/ads-runtime-controller.js";
 import {
@@ -1217,6 +1219,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderTravelViewFn: (...args) => renderTravelView(...args),
     renderShoppingViewFn: (...args) => renderShoppingView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
+    renderAnalyticsViewFn: (...args) => renderAnalyticsView(...args),
     renderBusinessAccountsViewFn: (...args) => renderBusinessAccountsView(...args),
     renderStaffViewFn: (...args) => renderStaffView(...args),
     bindBusinessAccountsEventsFn: (...args) => bindBusinessAccountsEvents(...args)
@@ -1882,6 +1885,11 @@ function render(...args) {
   const startupRenderGate = resolveStartupRenderGate(state);
   const result = renderShell(...args);
   try {
+    // Analytics: State-Transitions + neue Impression-Ziele nach jedem Render
+    // erfassen (no-op solange der Tracker nicht initialisiert ist).
+    observeAnalyticsState();
+  } catch {}
+  try {
     if (typeof window !== "undefined") {
       window.__MENYRA_SOCIAL_APP_MOUNTED__ = true;
     }
@@ -1941,6 +1949,30 @@ function preloadMarketplaceRuntime() {
 
 function renderRestaurantsView() {
   return getMarketplaceRuntimeBoundary().renderRestaurantsView();
+}
+
+let analyticsViewController = null;
+function getAnalyticsViewController() {
+  if (!analyticsViewController) {
+    analyticsViewController = createAnalyticsViewController({
+      state,
+      renderFn: () => render(),
+      documentObj: typeof document === "undefined" ? null : document,
+      firestoreApi: {
+        db,
+        collectionFn: collection,
+        queryFn: query,
+        whereFn: where,
+        documentIdFn: documentId,
+        getDocsFn: getDocs
+      }
+    });
+  }
+  return analyticsViewController;
+}
+
+function renderAnalyticsView() {
+  return getAnalyticsViewController().renderAnalyticsView();
 }
 
 function renderTravelView() {
@@ -4825,7 +4857,8 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
     restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
-    settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView
+    settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView,
+    analytics: renderAnalyticsView
   }
 });
 let browserPopstateRouteSyncBound = false;
@@ -5403,5 +5436,10 @@ startAppStartupRuntimeCluster({
   browserApi: {
     windowObj: typeof window === "undefined" ? null : window
   }
+});
+initAnalyticsTracker({
+  state,
+  windowObj: typeof window === "undefined" ? null : window,
+  documentObj: typeof document === "undefined" ? null : document
 });
 scheduleRuntimeDiagnosticsStartup();

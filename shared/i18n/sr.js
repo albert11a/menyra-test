@@ -15,6 +15,7 @@ export default {
   "nav.chat": "Chat",
   "nav.profile": "Profil",
   "nav.menu": "Meni",
+  "nav.analytics": "Analitika",
   "nav.favorites": "Omiljeno",
   "nav.updates": "Obavestenja",
   "nav.staff": "Osoblje",

@@ -304,6 +304,7 @@ export function createShellDomRuntimeController({
         { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
         { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
+        { id: "analytics", label: tr("nav.analytics", "Analytics"), icon: "bar-chart-3", hidden: !showMenuTab },
         { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
         { id: "notifications", label: tr("nav.updates", "Updates"), icon: "bell", badge: unread, badgeType: "notifications" },
@@ -434,6 +435,10 @@ export function createShellDomRuntimeController({
           menuIcon.setAttribute("data-lucide", catalogIcon);
         }
       }
+    }
+    const analyticsNavBtn = doc?.querySelector('[data-nav="analytics"]');
+    if (analyticsNavBtn) {
+      analyticsNavBtn.classList.toggle("hidden", !showMenuTab);
     }
     const favoritesNavBtn = doc?.querySelector('[data-nav="favorites"]');
     if (favoritesNavBtn) {

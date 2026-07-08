@@ -2,6 +2,9 @@ function findActionTarget(target) {
   return target?.closest?.([
     "[data-action]",
     "[data-nav-key]",
+    "[data-analytics-range]",
+    "[data-analytics-custom-apply]",
+    "[data-analytics-retry]",
     "[data-run-id]",
     "[data-lead-location-add]",
     "[data-lead-location-remove]",
@@ -34,6 +37,22 @@ export function bindHeartEvents({
     if (target.hasAttribute("data-nav-key")) {
       event.preventDefault();
       operations.openView?.(target.getAttribute("data-nav-key"));
+      return;
+    }
+
+    if (target.hasAttribute("data-analytics-range")) {
+      event.preventDefault();
+      await operations.setAnalyticsRange?.(target.getAttribute("data-analytics-range"));
+      return;
+    }
+    if (target.hasAttribute("data-analytics-custom-apply")) {
+      event.preventDefault();
+      await operations.applyAnalyticsCustomRange?.();
+      return;
+    }
+    if (target.hasAttribute("data-analytics-retry")) {
+      event.preventDefault();
+      await operations.retryAnalytics?.();
       return;
     }
 
@@ -352,6 +371,12 @@ export function bindHeartEvents({
       return;
     }
 
+    const analyticsSelect = event.target?.closest?.("[data-analytics-business-select]");
+    if (analyticsSelect) {
+      await operations.selectAnalyticsBusiness?.(analyticsSelect.value);
+      return;
+    }
+
     const select = event.target?.closest?.("[data-incident-filter]");
     if (!select) return;
     operations.setIncidentFilter?.(select.getAttribute("data-incident-filter"), select.value);
@@ -361,6 +386,12 @@ export function bindHeartEvents({
     const crmSearch = event.target?.closest?.("[data-crm-search]");
     if (crmSearch) {
       operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
+      return;
+    }
+
+    const analyticsSearch = event.target?.closest?.("[data-analytics-business-search]");
+    if (analyticsSearch) {
+      operations.setAnalyticsBusinessQuery?.(analyticsSearch.value);
       return;
     }
 

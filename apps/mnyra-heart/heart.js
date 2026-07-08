@@ -20,6 +20,9 @@ import {
   createHeartMonitoringAdapter
 } from "./heart-monitoring-adapter.js";
 import {
+  createHeartAnalyticsAdapter
+} from "./heart-analytics-adapter.js";
+import {
   createHeartSetupAdapter
 } from "./heart-setup-adapter.js";
 import {
@@ -38,6 +41,9 @@ import {
 import {
   getPackLabel
 } from "./heart-ui-utils.js";
+import {
+  bindAnalyticsChartInteractions
+} from "../menyra-social/core/analytics/analytics-dashboard-render-utils.js";
 
 const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
@@ -52,6 +58,7 @@ const apiClient = createHeartApiClient({
   fallbackApiBase: runtimeConfig.fallbackApiBase || document.querySelector('meta[name="heart-api-fallback-base"]')?.content || ""
 });
 const monitoringAdapter = createHeartMonitoringAdapter({ apiClient });
+const analyticsAdapter = createHeartAnalyticsAdapter();
 const testRunnerAdapter = createHeartTestRunnerAdapter({ apiClient });
 const setupAdapter = createHeartSetupAdapter({ apiClient });
 const crmAdminReadLoaders = createHeartCrmAdminReadLoaderDeps({
@@ -804,6 +811,48 @@ async function deleteSetupPersona(personaKey = "") {
   }
 }
 
+let analyticsLoadSeq = 0;
+
+async function refreshAnalyticsBusinesses({ force = false } = {}) {
+  const current = store.getState().analytics || {};
+  if (!force && (current.businesses || []).length) return;
+  actions.patchAnalytics({ businessesStatus: "loading", businessesError: "" });
+  try {
+    const businesses = await analyticsAdapter.loadBusinesses();
+    actions.patchAnalytics({ businessesStatus: "ready", businessesError: "", businesses });
+  } catch (error) {
+    actions.patchAnalytics({
+      businessesStatus: "error",
+      businessesError: error?.message || "Businesses konnten nicht geladen werden."
+    });
+  }
+}
+
+async function refreshAnalyticsDashboard({ force = false } = {}) {
+  const analytics = store.getState().analytics || {};
+  if (!analytics.selectedBusinessId) return;
+  if (!force && analytics.status === "loading") return;
+  analyticsLoadSeq += 1;
+  const seq = analyticsLoadSeq;
+  actions.patchAnalytics({ status: "loading", error: "" });
+  try {
+    const model = await analyticsAdapter.loadDashboardModel({
+      restaurantId: analytics.selectedBusinessId,
+      rangeKey: analytics.rangeKey || "7d",
+      customFrom: analytics.customFrom || "",
+      customTo: analytics.customTo || ""
+    });
+    if (seq !== analyticsLoadSeq) return;
+    actions.patchAnalytics({ status: "ready", error: "", model, lastLoadedAt: new Date().toISOString() });
+  } catch (error) {
+    if (seq !== analyticsLoadSeq) return;
+    actions.patchAnalytics({
+      status: "error",
+      error: error?.message || "Analytics konnten nicht geladen werden."
+    });
+  }
+}
+
 const operations = {
   async login({ email, password }) {
     try {
@@ -822,6 +871,11 @@ const operations = {
   },
   async refresh() {
     if (store.getState().auth.status === "authenticated") {
+      if (store.getState().shell.activeView === "analytics") {
+        await refreshAnalyticsBusinesses({ force: true });
+        await refreshAnalyticsDashboard({ force: true });
+        return;
+      }
       if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView)) {
         await refreshCrmAdmin();
         return;
@@ -865,6 +919,50 @@ const operations = {
         setToast("CRM/Admin", error?.message || "CRM/Admin Daten konnten nicht geladen werden.", "danger");
       }));
     }
+    if (String(viewKey || "").trim() === "analytics") {
+      queueMicrotask(() => refreshAnalyticsBusinesses().catch(() => {}));
+    }
+  },
+  setAnalyticsBusinessQuery(query) {
+    actions.patchAnalytics({ businessQuery: String(query || "") });
+  },
+  async selectAnalyticsBusiness(businessId) {
+    const safeId = String(businessId || "").trim();
+    const analytics = store.getState().analytics || {};
+    const business = (analytics.businesses || []).find((row) => row.id === safeId) || null;
+    actions.patchAnalytics({
+      selectedBusinessId: safeId,
+      selectedBusinessName: business?.name || "",
+      model: null,
+      status: safeId ? "loading" : "idle",
+      error: ""
+    });
+    if (safeId) await refreshAnalyticsDashboard({ force: true });
+  },
+  async setAnalyticsRange(rangeKey) {
+    const safeKey = String(rangeKey || "7d").trim() || "7d";
+    actions.patchAnalytics({ rangeKey: safeKey });
+    if (safeKey !== "custom") {
+      await refreshAnalyticsDashboard({ force: true });
+    }
+  },
+  async applyAnalyticsCustomRange() {
+    const fromInput = document.querySelector("[data-analytics-custom-from]");
+    const toInput = document.querySelector("[data-analytics-custom-to]");
+    actions.patchAnalytics({
+      rangeKey: "custom",
+      customFrom: String(fromInput?.value || "").trim(),
+      customTo: String(toInput?.value || "").trim()
+    });
+    await refreshAnalyticsDashboard({ force: true });
+  },
+  async retryAnalytics() {
+    const analytics = store.getState().analytics || {};
+    if (analytics.businessesStatus === "error") {
+      await refreshAnalyticsBusinesses({ force: true });
+      return;
+    }
+    await refreshAnalyticsDashboard({ force: true });
   },
   async setCrmScope(domainKey, scope) {
     const safeDomainKey = String(domainKey || "").trim();
@@ -1145,6 +1243,11 @@ store.subscribe((state) => {
   previousState = state;
 
   renderHeartApp(root, state, renderRuntime);
+  if (state.shell.activeView === "analytics") {
+    try {
+      bindAnalyticsChartInteractions(root);
+    } catch {}
+  }
   syncViewportSurface(state);
   syncRunPolling(state);
 
