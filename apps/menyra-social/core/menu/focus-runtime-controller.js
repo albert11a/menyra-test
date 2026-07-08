@@ -1,4 +1,5 @@
 import { buildPublicOffersProjection } from "../public-profile/public-projection-builders.js";
+import { isVideoMediaItemCore } from "../media/video-poster-utils.js";
 
 export function createFocusRuntimeController({
   state = null,
@@ -11,6 +12,8 @@ export function createFocusRuntimeController({
   setDocFn = async () => {},
   serverTimestampFn = () => null,
   uploadCompressedImageFn = async () => ({}),
+  uploadRawMediaFileFn = null,
+  captureVideoPosterFn = null,
   getFocusItemCropFn = () => ({ x: 50, y: 50 }),
   getFocusModalCropFn = () => ({ x: 50, y: 50 }),
   clampCropPercentFn = (value, fallback = 50) => fallback,
@@ -34,6 +37,8 @@ export function createFocusRuntimeController({
   const uploadCompressedImage = typeof uploadCompressedImageFn === "function"
     ? uploadCompressedImageFn
     : (async () => ({}));
+  const uploadRawMediaFile = typeof uploadRawMediaFileFn === "function" ? uploadRawMediaFileFn : null;
+  const captureVideoPoster = typeof captureVideoPosterFn === "function" ? captureVideoPosterFn : null;
   const getFocusItemCrop = typeof getFocusItemCropFn === "function"
     ? getFocusItemCropFn
     : (() => ({ x: 50, y: 50 }));
@@ -211,6 +216,10 @@ export function createFocusRuntimeController({
     const item = data || {};
     const id = item.id || item._id || fallbackId || createFocusId();
     const crop = getFocusItemCrop(item);
+    const videoUrl = String(item.videoUrl || item.video || item.clipUrl || "").trim();
+    const isVideo = isVideoMediaItemCore(item);
+    const posterUrl = String(item.posterUrl || item.poster || item.videoPoster || "").trim();
+    const imageUrl = String(item.imageUrl || item.image || item.photoUrl || (isVideo ? posterUrl : "") || "").trim();
     const normalized = {
       id,
       menuItemId: String(item.menuItemId || item.targetMenuItemId || item.itemId || item.targetItemId || "").trim(),
@@ -218,7 +227,10 @@ export function createFocusRuntimeController({
       targetCategory: String(item.targetCategory || item.categoryTarget || item.menuCategory || "").trim(),
       title: item.title || item.name || "Sot ne Fokus",
       text: item.text || item.desc || item.description || "",
-      imageUrl: item.imageUrl || item.image || item.photoUrl || "",
+      imageUrl,
+      mediaType: isVideo ? "video" : "image",
+      videoUrl: isVideo ? videoUrl : "",
+      posterUrl: isVideo ? (posterUrl || imageUrl) : "",
       cropX: crop.x,
       cropY: crop.y,
       active: item.active !== false
@@ -298,11 +310,15 @@ export function createFocusRuntimeController({
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !setDoc || !db) return;
     const normalizedItems = (items || []).map((item) => {
+      const isVideoItem = isVideoMediaItemCore(item);
       const payload = {
         id: item.id || "",
         title: item.title || "",
         text: item.text || "",
         imageUrl: item.imageUrl || "",
+        mediaType: isVideoItem ? "video" : "image",
+        videoUrl: isVideoItem ? String(item.videoUrl || "").trim() : "",
+        posterUrl: isVideoItem ? String(item.posterUrl || item.imageUrl || "").trim() : "",
         cropX: clampCropPercent(item.cropX ?? 50, 50),
         cropY: clampCropPercent(item.cropY ?? 50, 50),
         active: item.active !== false
@@ -404,8 +420,20 @@ export function createFocusRuntimeController({
     const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "large");
     const safeImg = isPlaceholderUrl(imgUrl) ? placeholderImage : imgUrl;
 
+    const itemIsVideo = isVideoMediaItemCore(item) && !!String(item.videoUrl || "").trim();
+    const videoEl = root.querySelector("[data-focus-video]");
     const imgEl = root.querySelector("[data-focus-image]");
-    if (typeof HTMLImageElement !== "undefined" && imgEl instanceof HTMLImageElement) {
+    // Beim Rotieren kann sich der Medientyp aendern (Foto <-> Video). Passt der
+    // vorhandene Knoten nicht, komplett neu rendern statt fehlerhaft patchen.
+    if ((itemIsVideo && !videoEl) || (!itemIsVideo && !imgEl)) {
+      renderFn();
+      return true;
+    }
+    if (itemIsVideo && videoEl) {
+      const videoSrc = String(item.videoUrl || "").trim();
+      if (videoEl.getAttribute("src") !== videoSrc) videoEl.setAttribute("src", videoSrc);
+      if (safeImg && videoEl.getAttribute("poster") !== safeImg) videoEl.setAttribute("poster", safeImg);
+    } else if (typeof HTMLImageElement !== "undefined" && imgEl instanceof HTMLImageElement) {
       if (imgEl.getAttribute("src") !== safeImg) imgEl.setAttribute("src", safeImg);
     }
     const titleEl = root.querySelector("[data-focus-title]");
@@ -561,13 +589,48 @@ export function createFocusRuntimeController({
 
     try {
       let imageUrl = imageUrlInput || state.focusModal.item?.imageUrl || "";
-      if (state.focusModal.imageFile) {
+      let videoUrl = "";
+      let posterUrl = "";
+      let mediaType = "image";
+      const focusVideoFile = state.focusModal.videoFile || null;
+      if (focusVideoFile && uploadRawMediaFile) {
+        // Fokus-Video wie ein Foto hochladen, erstes Frame als Poster.
+        const videoResult = await uploadRawMediaFile(focusVideoFile, restaurantId);
+        videoUrl = String(videoResult?.cdnUrl || videoResult?.url || "").trim();
+        if (!videoUrl) throw new Error(isTravelOffer ? "Videoja nuk u ngarkua." : "Video-Upload fehlgeschlagen.");
+        if (captureVideoPoster) {
+          try {
+            const posterFile = await captureVideoPoster(focusVideoFile);
+            if (posterFile) {
+              const posterResult = await uploadCompressedImage(
+                posterFile,
+                restaurantId,
+                { maxSize: 1080, quality: 0.78, mimeType: "image/jpeg" }
+              );
+              posterUrl = String(posterResult?.cdnUrl || posterResult?.url || "").trim();
+            }
+          } catch {}
+        }
+        mediaType = "video";
+        imageUrl = posterUrl || imageUrl;
+      } else if (state.focusModal.imageFile) {
         const { cdnUrl } = await uploadCompressedImage(
           state.focusModal.imageFile,
           restaurantId,
           { maxSize: 1080, quality: 0.8, mimeType: "image/jpeg" }
         );
         imageUrl = cdnUrl || imageUrl;
+      } else if (
+        !state.focusModal.imageFile
+        && isVideoMediaItemCore(state.focusModal.item)
+        && (!imageUrlInput || imageUrlInput === String(state.focusModal.item?.imageUrl || "").trim())
+      ) {
+        // Bearbeiten ohne neue Medien: bestehendes Video behalten. Das
+        // Bild-URL-Feld ist mit dem Poster vorbefuellt, daher zaehlt nur eine
+        // echte Aenderung als Foto-Wechsel.
+        videoUrl = String(state.focusModal.item?.videoUrl || "").trim();
+        posterUrl = String(state.focusModal.item?.posterUrl || state.focusModal.item?.imageUrl || "").trim();
+        mediaType = videoUrl ? "video" : "image";
       }
 
       const id = state.focusModal.item?.id || createFocusId();
@@ -576,6 +639,9 @@ export function createFocusRuntimeController({
         title,
         text,
         imageUrl,
+        mediaType,
+        videoUrl: mediaType === "video" ? videoUrl : "",
+        posterUrl: mediaType === "video" ? (posterUrl || imageUrl) : "",
         cropX: crop.x,
         cropY: crop.y,
         active

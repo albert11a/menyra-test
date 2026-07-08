@@ -2,6 +2,7 @@ import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
 } from "./media-upload-view-render-utils.js";
+import { captureVideoPosterFileCore } from "./video-poster-utils.js";
 
 export function createMediaUploadRuntimeController({
   state = null,
@@ -251,60 +252,7 @@ export function createMediaUploadRuntimeController({
   // Feed-Kachel und der Reels-Viewer sofort ein echtes Bild zeigen - auch
   // wenn Video-Autoplay blockiert ist (z.B. iOS-Stromsparmodus).
   async function captureVideoPosterFile(file) {
-    const win = docObj?.defaultView || null;
-    if (!file || !docObj || !win || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return null;
-    const objectUrl = URL.createObjectURL(file);
-    const video = docObj.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.setAttribute("playsinline", "");
-    video.preload = "auto";
-    try {
-      await new Promise((resolve, reject) => {
-        const timer = win.setTimeout(() => reject(new Error("poster timeout")), 5000);
-        video.onloadeddata = () => {
-          win.clearTimeout(timer);
-          resolve();
-        };
-        video.onerror = () => {
-          win.clearTimeout(timer);
-          reject(new Error("poster load failed"));
-        };
-        video.src = objectUrl;
-      });
-      try {
-        await new Promise((resolve) => {
-          const timer = win.setTimeout(resolve, 1200);
-          video.onseeked = () => {
-            win.clearTimeout(timer);
-            resolve();
-          };
-          video.currentTime = Math.min(0.1, Math.max(0, (Number(video.duration) || 1) / 10));
-        });
-      } catch {}
-      const width = Number(video.videoWidth) || 0;
-      const height = Number(video.videoHeight) || 0;
-      if (!width || !height) return null;
-      const canvas = docObj.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return null;
-      ctx.drawImage(video, 0, 0, width, height);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
-      if (!blob || !blob.size) return null;
-      return new File([blob], "story-poster.jpg", { type: "image/jpeg" });
-    } catch {
-      return null;
-    } finally {
-      try {
-        video.removeAttribute("src");
-        video.load?.();
-      } catch {}
-      try {
-        URL.revokeObjectURL(objectUrl);
-      } catch {}
-    }
+    return captureVideoPosterFileCore(file, { documentObj: docObj });
   }
 
   function renderUploadView() {
@@ -554,6 +502,7 @@ export function createMediaUploadRuntimeController({
     requestMediaActionTicket,
     uploadCompressedImage,
     uploadRawMediaFile,
+    captureVideoPosterFile,
     renderUploadView,
     createBusinessPost,
     createUserPost,

@@ -1228,7 +1228,9 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     resolveNotificationAvatarFn: (...args) => resolveNotificationAvatar(...args)
   },
   uploadApi: {
-    uploadCompressedImageFn: (...args) => uploadCompressedImage(...args)
+    uploadCompressedImageFn: (...args) => uploadCompressedImage(...args),
+    uploadRawMediaFileFn: (...args) => uploadRawMediaFile(...args),
+    captureVideoPosterFn: (...args) => captureVideoPosterFile(...args)
   },
   actionApi: {
     confirmFn: typeof confirm === "function" ? confirm : () => false,
@@ -2786,6 +2788,8 @@ const {
   setDocFn: setDoc,
   serverTimestampFn: serverTimestamp,
   uploadCompressedImageFn: uploadCompressedImage,
+  uploadRawMediaFileFn: uploadRawMediaFile,
+  captureVideoPosterFn: captureVideoPosterFile,
   getFocusItemCropFn: getFocusItemCrop,
   getFocusModalCropFn: getFocusModalCrop,
   clampCropPercentFn: clampCropPercent,
@@ -3400,7 +3404,8 @@ function getMenuModalCrop() {
 }
 
 function syncMenuModalCropPreview() {
-  const preview = document.getElementById("menuItemHeroPreview");
+  const preview = document.getElementById("menuItemHeroPreview")
+    || document.getElementById("menuItemHeroVideo");
   const crop = getMenuModalCrop();
   if (preview) {
     preview.style.objectPosition = `${crop.x}% ${crop.y}%`;
@@ -3427,7 +3432,8 @@ function getFocusModalCrop() {
 }
 
 function syncFocusModalCropPreview() {
-  const preview = document.getElementById("focusHeroPreview");
+  const preview = document.getElementById("focusHeroPreview")
+    || document.getElementById("focusHeroVideo");
   const crop = getFocusModalCrop();
   if (preview) {
     preview.style.objectPosition = `${crop.x}% ${crop.y}%`;
@@ -5382,6 +5388,14 @@ function getMediaUploadRuntimeController() {
 
 async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType }) {
   return getMediaUploadRuntimeController().uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType });
+}
+
+async function uploadRawMediaFile(file, ownerId, options = {}) {
+  return getMediaUploadRuntimeController().uploadRawMediaFile(file, ownerId, options);
+}
+
+async function captureVideoPosterFile(file) {
+  return getMediaUploadRuntimeController().captureVideoPosterFile(file);
 }
 
 startAppStartupRuntimeCluster({

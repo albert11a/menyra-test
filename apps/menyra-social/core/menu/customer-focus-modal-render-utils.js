@@ -1,3 +1,5 @@
+import { isVideoMediaItemCore } from "../media/video-poster-utils.js";
+
 export function renderCustomerModalCore({
   state,
   getOptimizedImageUrl,
@@ -384,6 +386,23 @@ export function renderFocusModalCore({
   const preview = state.focusModal.imagePreview || item.imageUrl || "";
   const imageUrl = getOptimizedImageUrl(preview, "large");
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
+  // Video-Vorschau im Fokus-Editor.
+  const focusDraftVideoUrl = String(state.focusModal.videoPreview || "").trim();
+  const focusDraftPoster = String(state.focusModal.videoPosterPreview || "").trim();
+  const focusHasDraftVideo = !!(state.focusModal.videoFile && focusDraftVideoUrl);
+  const focusItemIsVideo = isVideoMediaItemCore(item)
+    && !state.focusModal.imageFile
+    && !state.focusModal.imagePreview
+    && !focusHasDraftVideo;
+  const focusHeroIsVideo = focusHasDraftVideo || focusItemIsVideo;
+  const focusHeroVideoUrl = focusHasDraftVideo
+    ? focusDraftVideoUrl
+    : (focusItemIsVideo ? String(item.videoUrl || "").trim() : "");
+  const focusHeroPoster = focusHasDraftVideo
+    ? focusDraftPoster
+    : (focusItemIsVideo
+      ? (String(item.posterUrl || "").trim() ? getOptimizedImageUrl(String(item.posterUrl).trim(), "large") : safeImage)
+      : "");
   const active = item.active !== false;
   const status = state.focusModal.status || "";
   const crop = getFocusModalCrop();
@@ -402,13 +421,25 @@ export function renderFocusModalCore({
   `;
   const bodyHtml = `
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
-      <input type="file" id="focusImageInput" class="hidden" accept="image/*" />
-      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-        <img id="focusHeroPreview" src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" />
+      <input type="file" id="focusImageInput" class="hidden" accept="image/*,video/*" />
+      <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        ${focusHeroIsVideo && focusHeroVideoUrl ? `
+          <video id="focusHeroVideo" src="${escapeHtml(focusHeroVideoUrl)}" ${focusHeroPoster ? `poster="${escapeHtml(focusHeroPoster)}"` : ""} class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" muted loop playsinline autoplay preload="metadata"></video>
+          <span class="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+            ${icon("play", "w-3 h-3")} Video
+          </span>
+        ` : `
+          <img id="focusHeroPreview" src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" />
+        `}
       </div>
       <button id="focusImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-        Foto hochladen
+        Foto oder Video hochladen
       </button>
+      ${focusHeroIsVideo ? `
+        <button type="button" id="focusVideoRemove" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform">
+          Video entfernen
+        </button>
+      ` : ""}
       <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
         <div class="flex items-center justify-between">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Horizontal</p>

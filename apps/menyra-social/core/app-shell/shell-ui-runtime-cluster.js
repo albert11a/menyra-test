@@ -564,6 +564,8 @@ export function createShellUiRuntimeCluster({
       normalizeOptionList: menuApi.normalizeOptionListFn,
       getMenuModalCrop: menuApi.getMenuModalCropFn,
       uploadCompressedImage: uploadApi.uploadCompressedImageFn,
+      uploadRawMediaFile: uploadApi.uploadRawMediaFileFn,
+      captureVideoPoster: uploadApi.captureVideoPosterFn,
       doc: actionApi.docFn,
       collection: actionApi.collectionFn,
       db: actionApi.db,

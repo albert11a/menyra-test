@@ -525,6 +525,14 @@ function normalizePublicOfferItem(value, index = 0) {
     "imageUrl",
     source.imageUrl || source.image || source.photoUrl || source.offerImageUrl,
   );
+  assignUrl(output, "videoUrl", source.videoUrl || source.video || source.clipUrl);
+  assignUrl(output, "posterUrl", source.posterUrl || source.poster || source.videoPoster);
+  if (
+    cleanText(source.mediaType).toLowerCase() === "video"
+    || cleanUrl(source.videoUrl || source.video || source.clipUrl)
+  ) {
+    output.mediaType = "video";
+  }
   assignUrl(output, "mediaUrl", source.mediaUrl);
   assignUrl(output, "referenceUrl", source.referenceUrl);
   assignText(

@@ -267,12 +267,21 @@ export function createOverlayOrchestrationController({
       cropX: crop.x,
       cropY: crop.y,
       imageFile: null,
-      imagePreview: ""
+      imagePreview: "",
+      videoFile: null,
+      videoPreview: "",
+      videoPosterPreview: ""
     };
     renderOverlays({ updateFocus: true });
   }
 
   function closeFocusModal() {
+    const staleFocusVideoPreview = String(state.focusModal?.videoPreview || "").trim();
+    if (staleFocusVideoPreview.startsWith("blob:") && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+      try {
+        URL.revokeObjectURL(staleFocusVideoPreview);
+      } catch {}
+    }
     state.focusModal = {
       open: false,
       kind: "focus",
@@ -283,7 +292,10 @@ export function createOverlayOrchestrationController({
       cropX: 50,
       cropY: 50,
       imageFile: null,
-      imagePreview: ""
+      imagePreview: "",
+      videoFile: null,
+      videoPreview: "",
+      videoPosterPreview: ""
     };
     renderOverlays({ updateFocus: true });
   }
@@ -303,12 +315,21 @@ export function createOverlayOrchestrationController({
       cropY: crop.y,
       imageFiles: [],
       imagePreviews: [],
-      existingImages: uniqImages
+      existingImages: uniqImages,
+      videoFile: null,
+      videoPreview: "",
+      videoPosterPreview: ""
     };
     renderOverlays({ updateMenu: true });
   }
 
   function closeMenuModal() {
+    const staleVideoPreview = String(state.menuModal?.videoPreview || "").trim();
+    if (staleVideoPreview.startsWith("blob:") && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+      try {
+        URL.revokeObjectURL(staleVideoPreview);
+      } catch {}
+    }
     state.menuModal = {
       open: false,
       mode: "create",
@@ -320,7 +341,10 @@ export function createOverlayOrchestrationController({
       cropY: 50,
       imageFiles: [],
       imagePreviews: [],
-      existingImages: []
+      existingImages: [],
+      videoFile: null,
+      videoPreview: "",
+      videoPosterPreview: ""
     };
     renderOverlays({ updateMenu: true });
   }

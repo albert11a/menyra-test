@@ -213,6 +213,14 @@ export function normalizeMenuItemDocCore(data, id, {
       || d.deliveryURL
       || ""
   );
+  const videoUrl = normalizeImg(
+    d.videoUrl || d.video || d.videoURL || d.videoSrc || d.mediaVideoUrl || d.clipUrl || ""
+  );
+  const posterUrl = normalizeImg(
+    d.posterUrl || d.poster || d.videoPoster || d.videoThumbUrl || d.thumbUrl || ""
+  );
+  const mediaTypeRaw = String(d.mediaType || "").trim().toLowerCase();
+  const mediaType = mediaTypeRaw === "video" || videoUrl ? "video" : "image";
   const normalizedId = String(d.id || id || "").trim();
   const crossSellItemIds = normalizeCrossSellItemIds(
     d.crossSellItemIds
@@ -256,7 +264,10 @@ export function normalizeMenuItemDocCore(data, id, {
     specialActionUrl: specialActionType === "link" ? specialActionUrl : "",
     specialActionProductId: specialActionType === "product" ? specialActionProductId : "",
     crossSellItemIds,
-    imageUrl: mergedImages[0] || "",
+    mediaType,
+    videoUrl: mediaType === "video" ? videoUrl : "",
+    posterUrl: mediaType === "video" ? (posterUrl || mergedImages[0] || "") : "",
+    imageUrl: mergedImages[0] || (mediaType === "video" ? posterUrl : "") || "",
     imageUrls: mergedImages
   };
 }

@@ -10,6 +10,8 @@ export async function saveMenuItemFromModalCore({
   normalizeOptionList,
   getMenuModalCrop,
   uploadCompressedImage,
+  uploadRawMediaFile,
+  captureVideoPoster,
   doc,
   collection,
   db,
@@ -240,7 +242,42 @@ export async function saveMenuItemFromModalCore({
       if (cdnUrl) uploadedUrls.push(String(cdnUrl));
     }
 
+    // Video-Support fuer Speisen: Video wie ein Foto hochladen und aus dem
+    // ersten Frame ein Poster erzeugen. Das Poster wird als imageUrl gesetzt,
+    // damit jede bestehende Foto-Kachel sofort den ersten Frame zeigt, bevor
+    // das Video startet.
+    const videoFile = state.menuModal.videoFile || null;
+    let videoUrl = "";
+    let posterUrl = "";
+    let mediaType = "image";
+    if (videoFile && typeof uploadRawMediaFile === "function") {
+      const videoResult = await uploadRawMediaFile(videoFile, ownerId);
+      videoUrl = String(videoResult?.cdnUrl || videoResult?.url || "").trim();
+      if (!videoUrl) throw new Error("Video-Upload fehlgeschlagen.");
+      if (typeof captureVideoPoster === "function") {
+        try {
+          const posterFile = await captureVideoPoster(videoFile);
+          if (posterFile) {
+            const posterResult = await uploadCompressedImage(
+              posterFile,
+              ownerId,
+              { maxSize: 1080, quality: 0.78, mimeType: "image/jpeg" }
+            );
+            posterUrl = String(posterResult?.cdnUrl || posterResult?.url || "").trim();
+          }
+        } catch {}
+      }
+      mediaType = "video";
+    } else if (!videoFile && !imageUrlInput && !files.length && state.menuModal.item?.videoUrl) {
+      // Bearbeiten ohne neue Medien: bestehendes Video behalten. (Neue Fotos
+      // oder das "Video entfernen" setzen item.videoUrl leer -> wieder Foto.)
+      videoUrl = String(state.menuModal.item.videoUrl || "").trim();
+      posterUrl = String(state.menuModal.item.posterUrl || state.menuModal.item.imageUrl || "").trim();
+      mediaType = videoUrl ? "video" : "image";
+    }
+
     const merged = [
+      ...(mediaType === "video" && posterUrl ? [posterUrl] : []),
       imageUrlInput,
       ...(existingImages || []),
       ...(uploadedUrls || [])
@@ -309,6 +346,9 @@ export async function saveMenuItemFromModalCore({
         : {}),
       imageUrl: imageUrl || "",
       imageUrls,
+      mediaType,
+      videoUrl: mediaType === "video" ? videoUrl : "",
+      posterUrl: mediaType === "video" ? (posterUrl || imageUrl || "") : "",
       updatedAt: serverTimestamp()
     };
     if (mode !== "edit") payload.createdAt = serverTimestamp();

@@ -1,3 +1,14 @@
+import { isVideoFileCore, captureVideoPosterFileCore } from "../media/video-poster-utils.js";
+
+function revokeObjectUrlSafe(url) {
+  const safe = String(url || "").trim();
+  if (!safe.startsWith("blob:")) return;
+  if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
+  try {
+    URL.revokeObjectURL(safe);
+  } catch {}
+}
+
 export function bindMenuOverlayEventsCore({
   documentObj,
   bindModalDismissFn,
@@ -92,10 +103,48 @@ export function bindMenuOverlayEventsCore({
   if (menuImageTrigger && menuImageInput) {
     menuImageTrigger.addEventListener("click", () => menuImageInput.click());
   }
+  const clearMenuVideoDraft = () => {
+    revokeObjectUrlSafe(state.menuModal?.videoPreview);
+    state.menuModal.videoFile = null;
+    state.menuModal.videoPreview = "";
+    state.menuModal.videoPosterPreview = "";
+  };
   if (menuImageInput) {
     menuImageInput.addEventListener("change", (e) => {
-      const files = Array.from(e.target.files || []);
+      const allFiles = Array.from(e.target.files || []);
+      if (!allFiles.length) return;
+      const videoFile = allFiles.find((file) => isVideoFileCore(file));
+      if (videoFile) {
+        // Video ausgewaehlt: ersetzt die Foto-Auswahl. Erstes Frame als
+        // Poster einfangen, damit die Vorschau sofort ein Bild zeigt.
+        clearMenuVideoDraft();
+        const objectUrl = (typeof URL !== "undefined" && typeof URL.createObjectURL === "function")
+          ? URL.createObjectURL(videoFile)
+          : "";
+        state.menuModal.videoFile = videoFile;
+        state.menuModal.videoPreview = objectUrl;
+        state.menuModal.imageFiles = [];
+        state.menuModal.imagePreviews = [];
+        if (menuImageInput) menuImageInput.value = "";
+        renderOverlays({ updateMenu: true });
+        void (async () => {
+          try {
+            const posterFile = await captureVideoPosterFileCore(videoFile, { documentObj: doc });
+            if (!posterFile) return;
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (state.menuModal?.videoFile !== videoFile) return;
+              state.menuModal.videoPosterPreview = reader.result || "";
+              renderOverlays({ updateMenu: true });
+            };
+            reader.readAsDataURL(posterFile);
+          } catch {}
+        })();
+        return;
+      }
+      const files = allFiles.filter((file) => !isVideoFileCore(file));
       if (!files.length) return;
+      clearMenuVideoDraft();
       const nextFiles = [...(state.menuModal.imageFiles || []), ...files];
       const previews = [];
       let remaining = files.length;
@@ -116,6 +165,23 @@ export function bindMenuOverlayEventsCore({
         };
         reader.readAsDataURL(file);
       });
+    });
+  }
+  const menuVideoRemove = doc.getElementById("menuItemVideoRemove");
+  if (menuVideoRemove) {
+    menuVideoRemove.addEventListener("click", () => {
+      clearMenuVideoDraft();
+      // Bestehendes gespeichertes Video ebenfalls entfernen, damit Speichern
+      // das Item auf "kein Medium" zuruecksetzt.
+      if (state.menuModal.item) {
+        state.menuModal.item = {
+          ...state.menuModal.item,
+          mediaType: "image",
+          videoUrl: "",
+          posterUrl: ""
+        };
+      }
+      renderOverlays({ updateMenu: true });
     });
   }
   const syncSpecialActionFields = () => {
@@ -237,10 +303,45 @@ export function bindFocusOverlayEventsCore({
   if (focusImageTrigger && focusImageInput) {
     focusImageTrigger.addEventListener("click", () => focusImageInput.click());
   }
+  const clearFocusVideoDraft = () => {
+    revokeObjectUrlSafe(state.focusModal?.videoPreview);
+    state.focusModal.videoFile = null;
+    state.focusModal.videoPreview = "";
+    state.focusModal.videoPosterPreview = "";
+  };
   if (focusImageInput) {
     focusImageInput.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (isVideoFileCore(file)) {
+        // Fokus-Video ausgewaehlt: ersetzt die Foto-Auswahl, erstes Frame
+        // als Poster fuer die sofortige Vorschau.
+        clearFocusVideoDraft();
+        const objectUrl = (typeof URL !== "undefined" && typeof URL.createObjectURL === "function")
+          ? URL.createObjectURL(file)
+          : "";
+        state.focusModal.videoFile = file;
+        state.focusModal.videoPreview = objectUrl;
+        state.focusModal.imageFile = null;
+        state.focusModal.imagePreview = "";
+        if (focusImageInput) focusImageInput.value = "";
+        renderOverlays({ updateFocus: true });
+        void (async () => {
+          try {
+            const posterFile = await captureVideoPosterFileCore(file, { documentObj: doc });
+            if (!posterFile) return;
+            const posterReader = new FileReader();
+            posterReader.onloadend = () => {
+              if (state.focusModal?.videoFile !== file) return;
+              state.focusModal.videoPosterPreview = posterReader.result || "";
+              renderOverlays({ updateFocus: true });
+            };
+            posterReader.readAsDataURL(posterFile);
+          } catch {}
+        })();
+        return;
+      }
+      clearFocusVideoDraft();
       const reader = new FileReader();
       reader.onloadend = () => {
         state.focusModal.imageFile = file;
@@ -248,6 +349,21 @@ export function bindFocusOverlayEventsCore({
         renderOverlays({ updateFocus: true });
       };
       reader.readAsDataURL(file);
+    });
+  }
+  const focusVideoRemove = doc.getElementById("focusVideoRemove");
+  if (focusVideoRemove) {
+    focusVideoRemove.addEventListener("click", () => {
+      clearFocusVideoDraft();
+      if (state.focusModal.item) {
+        state.focusModal.item = {
+          ...state.focusModal.item,
+          mediaType: "image",
+          videoUrl: "",
+          posterUrl: ""
+        };
+      }
+      renderOverlays({ updateFocus: true });
     });
   }
   if (focusCropX) {
