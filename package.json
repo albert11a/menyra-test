@@ -25,7 +25,10 @@
     "emulators:export": "firebase emulators:export seed/export --project mnyra-local --force",
     "emulators:seed": "node seed/scripts/seed-firestore.mjs",
     "analyze:public-profile-split": "node scripts/analyze-mnyra-public-profile-split.mjs",
-    "check:social-bundle": "node scripts/check-mnyra-social-bundle-budget.mjs"
+    "check:social-bundle": "node scripts/check-mnyra-social-bundle-budget.mjs",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:indexes": "firebase deploy --only firestore:indexes",
+    "deploy:firestore": "firebase deploy --only firestore:rules,firestore:indexes"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",

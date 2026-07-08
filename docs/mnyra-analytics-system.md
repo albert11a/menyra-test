@@ -113,6 +113,33 @@ Integration Heart:
   View `heart-analytics-render.js` (Business-Auswahl mit Suche),
   Operations/Events in `heart.js` / `heart-events.js`.
 
+## 2b. Aktivierung / Deploy (WICHTIG)
+
+Die Analytics-Reads sind durch `firestore.rules` geschuetzt
+(`restaurants/{rid}/analyticsDaily` + `analyticsEvents`, Reads nur fuer
+Owner/Staff mit businessAccess und CEO). **Vercel deployt nur das Frontend –
+Firestore-Rules werden separat deployt.** Solange die Rules nicht live sind,
+faellt jeder Analytics-Read auf die Catch-all-Deny und der Client zeigt
+„Kein Zugriff auf diese Analytics" (auch fuer den berechtigten Owner/CEO).
+
+Nach jeder Aenderung an `firestore.rules` (oder `firestore.indexes.json`)
+einmalig gegen das Live-Projekt deployen:
+
+```
+npm run deploy:rules       # nur Firestore-Rules
+npm run deploy:indexes     # nur Firestore-Indizes
+npm run deploy:firestore   # beides
+```
+
+Voraussetzung: `firebase login` (oder `FIREBASE_TOKEN`) mit Zugriff auf das
+Live-Projekt. Der Analytics-Read haengt ausschliesslich an diesen Rules;
+sobald sie live sind, funktionieren Owner- und CEO-Analytics sofort.
+
+CEO-Erkennung in den Rules (`isCeoActor()` in `firestore.rules`) akzeptiert
+UID, `ceo`-Rolle im User-Doc, `superadmins`-Eintrag **und** die verifizierte
+Token-E-Mail (`isGlobalCeoEmail()`), synchron zu `shared/ceo-access.js`. Damit
+laesst der Client keinen CEO in Heart, den die Rules dann blockieren.
+
 ## 3. Rollenlogik
 
 - CEO (Heart): waehlt beliebiges Business, sieht alles (`isCeoActor()` in Rules).

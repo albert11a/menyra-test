@@ -1,3 +1,11 @@
+import {
+  STORY_SCOPE_FOREIGN,
+  classifyStoryGeoScope,
+  shouldKeepStoryInScope,
+  compareStoryTrackMeta,
+  buildStoryFirstTrackItems
+} from "./feed-story-track-utils.js";
+
 export function createFeedViewOrchestrationController({
   state = null,
   toDateSafeFn = (value) => value,
@@ -427,6 +435,18 @@ export function createFeedViewOrchestrationController({
     if (containsKnownFeedCity(explicitValues)) return false;
     return matchesFeedCityText(collectFeedInferredCityCandidates(restaurant, entry), cityKeys);
   };
+  // Fuer echte Storys: nah / unbekannt / fern unterscheiden. Fehlende Stadt-
+  // daten => "unbekannt" (Story bleibt erhalten), nur eine erkannte fremde
+  // Stadt => "fern" (verworfen). Feed-Posts nutzen weiter matchesFeedViewerCity.
+  const classifyStoryCityScope = ({ entry = {}, restaurant = null, viewerCity = "" } = {}) => {
+    const cityKeys = expandFeedCityKeys(viewerCity);
+    if (!cityKeys.length) return classifyStoryGeoScope({ hasViewerCity: false });
+    const explicitValues = collectFeedCityTextCandidates(restaurant, entry);
+    const cityMatchesViewer = matchesFeedCityText(explicitValues, cityKeys)
+      || matchesFeedCityText(collectFeedInferredCityCandidates(restaurant, entry), cityKeys);
+    const businessHasKnownForeignCity = !cityMatchesViewer && containsKnownFeedCity(explicitValues);
+    return classifyStoryGeoScope({ hasViewerCity: true, cityMatchesViewer, businessHasKnownForeignCity });
+  };
   const resolveFeedGeoScopedCollections = ({
     feedPosts = [],
     stories = []
@@ -478,18 +498,39 @@ export function createFeedViewOrchestrationController({
         return a.fallbackIndex - b.fallbackIndex;
       })
       .map((row) => row.entry);
+    // Echte Storys werden NICHT wie Feed-Posts hart weggefiltert: fehlende
+    // Stadt-/Landdaten => "unbekannt" (bleibt erhalten, spaeter einsortiert),
+    // nur eine eindeutig fremde Stadt/Land => verworfen. So verschwinden echte
+    // aktive Storys nie nur wegen lueckenhafter Standortdaten.
+    const withStoryGeoMeta = (entry = {}, fallbackIndex = 0) => {
+      const restaurantId = resolveFeedEntryRestaurantId(entry);
+      const restaurant = restaurantId ? restaurantMap.get(restaurantId) || null : null;
+      const countryCode = resolveCountryCodeFromAnyRecord({
+        ...(restaurant && typeof restaurant === "object" ? restaurant : {}),
+        ...(entry && typeof entry === "object" ? entry : {})
+      });
+      const foreignByCountry = shouldStrictCountryFilter && !!countryCode && countryCode !== viewerCountryCode;
+      const cityScope = shouldStrictCityFilter
+        ? classifyStoryCityScope({ entry, restaurant, viewerCity })
+        : classifyStoryGeoScope({ hasViewerCity: false });
+      const scope = foreignByCountry ? STORY_SCOPE_FOREIGN : cityScope;
+      const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(entry);
+      const distanceKm = viewerCoords && coords
+        ? haversineDistanceKm(viewerCoords, coords)
+        : Number.POSITIVE_INFINITY;
+      return {
+        entry,
+        fallbackIndex,
+        scope,
+        distanceKm,
+        isLive: !!entry?.isLive,
+        createdAtMs: toStoryTimestampMs(entry)
+      };
+    };
     const scopedStories = safeStories
-      .map((story, index) => withGeoMeta(story, { type: "story", fallbackIndex: index }))
-      .filter(Boolean)
-      .sort((a, b) => {
-        const aFinite = Number.isFinite(a.distanceKm);
-        const bFinite = Number.isFinite(b.distanceKm);
-        if (aFinite && bFinite && Math.abs(a.distanceKm - b.distanceKm) > 0.001) {
-          return a.distanceKm - b.distanceKm;
-        }
-        if (aFinite !== bFinite) return aFinite ? -1 : 1;
-        return a.fallbackIndex - b.fallbackIndex;
-      })
+      .map((story, index) => withStoryGeoMeta(story, index))
+      .filter((meta) => shouldKeepStoryInScope(meta.scope))
+      .sort(compareStoryTrackMeta)
       .map((row) => row.entry);
     return {
       feedPosts: scopedFeedPosts,
@@ -858,7 +899,12 @@ export function createFeedViewOrchestrationController({
       const restaurantId = identity.storyRestaurantId;
       if (!restaurantId) return;
       const restaurant = restaurantMap.get(restaurantId) || null;
-      if (viewerCity && !matchesFeedViewerCity({ entry: story, restaurant, viewerCity })) return;
+      // Echte Story nur bei eindeutig fremder Stadt verwerfen; fehlende
+      // Standortdaten ("unbekannt") bleiben in der Reihe.
+      const scope = viewerCity
+        ? classifyStoryCityScope({ entry: story, restaurant, viewerCity })
+        : classifyStoryGeoScope({ hasViewerCity: false });
+      if (!shouldKeepStoryInScope(scope)) return;
       const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(story);
       const distanceKm = viewerCoords && coords
         ? haversineDistanceKm(viewerCoords, coords)
@@ -881,6 +927,7 @@ export function createFeedViewOrchestrationController({
         storyUrl,
         profileImageUrl,
         preview,
+        scope,
         distanceKm,
         createdAtMs,
         isLive: !!story?.isLive,
@@ -895,36 +942,17 @@ export function createFeedViewOrchestrationController({
         dedupedStories.set(restaurantId, candidate);
       }
     });
-    const deduped = Array.from(dedupedStories.values());
-    const hasFiniteDistance = deduped.some((row) => Number.isFinite(row?.distanceKm));
-    const scopedStories = hasFiniteDistance
-      ? deduped.filter((row) => Number.isFinite(row?.distanceKm))
-      : deduped;
-    return scopedStories
-      .sort(compareStoryDistanceFirst)
+    // Kein Wegfiltern von Storys ohne Koordinate mehr: nah -> unbekannt -> fern
+    // per Scope/Distanz sortieren, damit echte Storys immer erhalten bleiben.
+    return Array.from(dedupedStories.values())
+      .sort(compareStoryTrackMeta)
       .slice(0, MAX_TRACK_STORY_ITEMS);
   };
-  const buildMixedSpotStoryTrackItems = ({ spots = [], stories = [] } = {}) => {
-    const safeSpots = Array.isArray(spots) ? spots : [];
-    const safeStories = Array.isArray(stories) ? stories : [];
-    if (!safeSpots.length && !safeStories.length) return [];
-    if (!safeStories.length) return safeSpots.map((spot) => ({ type: "spot", spot }));
-    if (!safeSpots.length) return safeStories.map((story) => ({ type: "story", story }));
-    const mixed = [];
-    let spotIndex = 0;
-    let storyIndex = 0;
-    while (spotIndex < safeSpots.length || storyIndex < safeStories.length) {
-      if (spotIndex < safeSpots.length) {
-        mixed.push({ type: "spot", spot: safeSpots[spotIndex] });
-        spotIndex += 1;
-      }
-      if (storyIndex < safeStories.length) {
-        mixed.push({ type: "story", story: safeStories[storyIndex] });
-        storyIndex += 1;
-      }
-    }
-    return mixed;
-  };
+  // Echte Storys zuerst, danach die Discovery-/Best-Spot-Kacheln (getrennt,
+  // nicht mehr im Wechsel). Eine Story tarnt sich nie als Spot.
+  const buildMixedSpotStoryTrackItems = ({ spots = [], stories = [] } = {}) => (
+    buildStoryFirstTrackItems({ stories, spots })
+  );
   const buildSpotStoryTrackSignature = ({ spots = [], stories = [] } = {}) => buildMixedSpotStoryTrackItems({ spots, stories })
     .map((entry) => {
       if (entry.type === "spot") {
