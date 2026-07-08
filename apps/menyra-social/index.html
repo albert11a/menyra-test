@@ -1756,8 +1756,11 @@
       }
       .map-view-root {
         flex: 1 1 auto;
-        min-height: 0;
-        height: auto;
+        /* Auf Mobile direkt an die (bereits frueh gesetzte) Viewport-Hoehe
+           koppeln, statt an die Flex-100%-Kette. So ist die Karte ab dem
+           ersten Paint fullscreen und blitzt nie kurz als kleine Karte auf. */
+        min-height: var(--map-shell-height);
+        height: var(--map-shell-height);
         padding: 0;
       }
       .map-view-intro,
@@ -1766,7 +1769,7 @@
       }
       .map-view-surface {
         flex: 1 1 auto;
-        min-height: 0;
+        min-height: var(--map-shell-height);
         height: 100%;
         border-radius: 0;
         border: 0;

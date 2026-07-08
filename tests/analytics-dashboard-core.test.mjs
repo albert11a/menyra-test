@@ -13,7 +13,8 @@ import {
   buildSourceBreakdown,
   buildHourlyDistribution,
   buildConversionFunnel,
-  buildAnalyticsDashboardModel
+  buildAnalyticsDashboardModel,
+  describeAnalyticsError
 } from "../apps/menyra-social/core/analytics/analytics-dashboard-core.js";
 
 const NOW = new Date(2026, 6, 8, 15, 0); // 2026-07-08
@@ -142,4 +143,18 @@ test("dashboard model compares against previous period", () => {
 
   const emptyModel = buildAnalyticsDashboardModel({ range, currentDays: [], previousDays: [] });
   assert.equal(emptyModel.hasAnyData, false);
+});
+
+test("describeAnalyticsError classifies permission, network and validation", () => {
+  assert.equal(describeAnalyticsError({ code: "permission-denied" }).kind, "permission");
+  assert.equal(
+    describeAnalyticsError({ message: "Missing or insufficient permissions." }).kind,
+    "permission"
+  );
+  assert.equal(describeAnalyticsError({ code: "unavailable" }).kind, "network");
+  // Reine Validierungsmeldung ohne Firestore-Code bleibt erhalten.
+  const validation = describeAnalyticsError(new Error("Ungültiger Zeitraum: Bitte Von/Bis prüfen."));
+  assert.equal(validation.kind, "validation");
+  assert.match(validation.message, /Ungültiger Zeitraum/);
+  assert.equal(describeAnalyticsError({}).kind, "unknown");
 });

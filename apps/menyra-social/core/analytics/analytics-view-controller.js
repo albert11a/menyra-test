@@ -2,7 +2,7 @@
 // Ein Business sieht ausschliesslich die Analytics des eigenen Restaurants
 // (state.userProfile.restaurantId). Laden erfolgt lazy beim ersten Render.
 
-import { resolveAnalyticsRange, buildAnalyticsDashboardModel } from "./analytics-dashboard-core.js";
+import { resolveAnalyticsRange, buildAnalyticsDashboardModel, describeAnalyticsError } from "./analytics-dashboard-core.js";
 import { loadAnalyticsDailyRange } from "./analytics-daily-loader.js";
 import {
   ensureAnalyticsStylesInjected,
@@ -96,7 +96,7 @@ export function createAnalyticsViewController({
       if (seq !== loadSeq) return;
       console.error("[mnyra][analytics] dashboard load failed", err);
       view.status = "error";
-      view.error = "Analytics konnten nicht geladen werden.";
+      view.error = describeAnalyticsError(err).message;
     }
     render();
   }

@@ -164,15 +164,16 @@ export function createFeedViewOrchestrationController({
     const videoUrl = String(story?.videoUrl || story?.playbackUrl || "").trim();
     const mediaUrl = String(story?.mediaUrl || story?.url || "").trim();
     const embedUrl = String(story?.embedUrl || "").trim();
-    // Do not fall back to logo/avatar media for story preview cards.
+    // Story-Vorschau NUR aus echten Story-Medien ableiten. Business-Titelbild,
+    // Cover oder Logo (coverImage/image/img/logo) sind KEINE Story und duerfen
+    // nie als Vorschau erscheinen. Fehlt echtes Story-Media, zeigt die Kachel
+    // den neutralen Platzhalter (kein Cover-Fallback).
     const fallbackImage = String(
-      story?.img
-      || story?.image
+      story?.thumbUrl
       || story?.thumbnail
       || story?.thumbnailUrl
       || story?.previewImage
       || story?.previewUrl
-      || story?.coverImage
       || story?.poster
       || story?.posterUrl
       || ""
@@ -826,9 +827,16 @@ export function createFeedViewOrchestrationController({
         ].join("|")
       }));
   };
+  // Echte (kanonische) Stories haben Vorrang vor Feed-Fallback-Kacheln: ein
+  // Business mit aktiver Story zeigt nie das Feed-Post-Bild statt der Story.
+  const storyTruthRank = (story = {}) => (
+    normalizeStoryTruthSource(story) === "feed-fallback" ? 1 : 0
+  );
   const compareStoryDistanceFirst = (a = {}, b = {}) => {
     const distanceCompare = compareDistanceValues(a.distanceKm, b.distanceKm);
     if (distanceCompare !== 0) return distanceCompare;
+    const truthCompare = storyTruthRank(a) - storyTruthRank(b);
+    if (truthCompare !== 0) return truthCompare;
     const aLive = !!a.isLive;
     const bLive = !!b.isLive;
     if (aLive !== bLive) return aLive ? -1 : 1;

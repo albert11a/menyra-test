@@ -7,7 +7,11 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from "@firebase/rules-unit-testing";
+import firebase from "firebase/compat/app";
+import "firebase/compat/firestore";
 import { AUTH_FIXTURES, firestoreFor } from "./auth-fixtures.mjs";
+
+const serverTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
 
 const repoRoot = dirname(
   fileURLToPath(new URL("../../package.json", import.meta.url)),
@@ -788,4 +792,110 @@ test("private user data remains protected", async () => {
   await assertFails(userDb.doc("users/waiter-demo").get());
   await assertSucceeds(ownerDb.doc("users/waiter-demo").get());
   await assertSucceeds(heartDb.doc("users/waiter-demo").get());
+});
+
+const ANALYTICS_DAILY_DOC = "restaurants/pidhi-madh/analyticsDaily/2026-07-08";
+const ANALYTICS_OTHER_DAILY_DOC = "restaurants/other-restaurant/analyticsDaily/2026-07-08";
+
+function analyticsDailySeed() {
+  return [
+    {
+      path: ANALYTICS_DAILY_DOC,
+      data: { date: "2026-07-08", counters: { business_profile_view: 5 } },
+    },
+    {
+      path: "restaurants/other-restaurant",
+      data: { id: "other-restaurant", name: "Other", ownerUid: "other-owner" },
+    },
+    {
+      path: ANALYTICS_OTHER_DAILY_DOC,
+      data: { date: "2026-07-08", counters: { business_profile_view: 9 } },
+    },
+  ];
+}
+
+test("business owner reads only its own analytics aggregates", async () => {
+  await seedFirestore(analyticsDailySeed());
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+
+  await assertSucceeds(ownerDb.doc(ANALYTICS_DAILY_DOC).get());
+  await assertSucceeds(
+    ownerDb.collection("restaurants/pidhi-madh/analyticsDaily").get(),
+  );
+  // Fremd-Business bleibt fuer den Owner tabu.
+  await assertFails(ownerDb.doc(ANALYTICS_OTHER_DAILY_DOC).get());
+  await assertFails(
+    ownerDb.collection("restaurants/other-restaurant/analyticsDaily").get(),
+  );
+});
+
+test("CEO by role and CEO by known email can read any business analytics", async () => {
+  await seedFirestore(analyticsDailySeed());
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const ceoEmailDb = firestoreFor(testEnv, AUTH_FIXTURES.ceoByEmail);
+
+  for (const db of [heartDb, ceoEmailDb]) {
+    await assertSucceeds(db.doc(ANALYTICS_DAILY_DOC).get());
+    await assertSucceeds(db.doc(ANALYTICS_OTHER_DAILY_DOC).get());
+    await assertSucceeds(
+      db.collection("restaurants/other-restaurant/analyticsDaily").get(),
+    );
+    await assertSucceeds(
+      db.collection("restaurants/pidhi-madh/analyticsEvents").get(),
+    );
+  }
+});
+
+test("outsiders and guests cannot read business analytics", async () => {
+  await seedFirestore(analyticsDailySeed());
+  const outsiderDb = firestoreFor(testEnv, AUTH_FIXTURES.outsider);
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+
+  await assertFails(outsiderDb.doc(ANALYTICS_DAILY_DOC).get());
+  await assertFails(
+    outsiderDb.collection("restaurants/pidhi-madh/analyticsDaily").get(),
+  );
+  await assertFails(guestDb.doc(ANALYTICS_DAILY_DOC).get());
+  await assertFails(
+    guestDb.collection("restaurants/pidhi-madh/analyticsEvents").get(),
+  );
+});
+
+test("valid analytics events can be tracked but not tampered", async () => {
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+  const eventsCol = "restaurants/pidhi-madh/analyticsEvents";
+
+  await assertSucceeds(
+    guestDb.collection(eventsCol).add({
+      name: "qr_scan",
+      businessId: "pidhi-madh",
+      sessionId: "sess-1",
+      source: "qr",
+      day: "2026-07-08",
+      hour: 12,
+      createdAt: serverTimestamp(),
+    }),
+  );
+  // Unbekannter Event-Name wird abgewiesen.
+  await assertFails(
+    guestDb.collection(eventsCol).add({
+      name: "totally_made_up",
+      businessId: "pidhi-madh",
+      sessionId: "s",
+      day: "2026-07-08",
+      hour: 12,
+      createdAt: serverTimestamp(),
+    }),
+  );
+  // Falsche businessId (Pfad != businessId) wird abgewiesen.
+  await assertFails(
+    guestDb.collection(eventsCol).add({
+      name: "qr_scan",
+      businessId: "other-restaurant",
+      sessionId: "s",
+      day: "2026-07-08",
+      hour: 12,
+      createdAt: serverTimestamp(),
+    }),
+  );
 });

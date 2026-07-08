@@ -37,9 +37,19 @@ service cloud.firestore {
       return signedIn() && authUid() == "aklBkkIuZ7Nrpx266TJn63rrxX62";
     }
 
+    // Bekannte CEO-Identitaet per verifizierter Token-E-Mail. Muss mit der
+    // Client-Logik (shared/ceo-access.js -> ALBERT_CEO_EMAILS) synchron bleiben,
+    // damit der Client keinen CEO in Heart hereinlaesst, den die Rules dann
+    // beim Firestore-Read blockieren ("Missing or insufficient permissions").
+    function isGlobalCeoEmail() {
+      let email = authEmail();
+      return email != "" && email.lower() == "alberthoti.vsa@gmail.com";
+    }
+
     function isCeoActor() {
       return signedIn() && (
         isGlobalCeoUid()
+        || isGlobalCeoEmail()
         || (currentUserExists() && hasRoleFromData(currentUserData(), "ceo"))
         || exists(/databases/$(database)/documents/superadmins/$(authUid()))
       );

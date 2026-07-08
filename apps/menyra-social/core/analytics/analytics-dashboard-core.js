@@ -168,6 +168,44 @@ export function summarizeAnalyticsDays(days = []) {
   return { summary, merged, byDay };
 }
 
+// Klassifiziert einen Ladefehler und liefert eine verstaendliche Meldung.
+// Permission-Fehler werden klar benannt (nicht als generischer Fehler getarnt),
+// alles andere bekommt eine neutrale Meldung. Wird von Social und Heart geteilt.
+export function describeAnalyticsError(error = null) {
+  const code = String(error?.code || "").trim().toLowerCase();
+  const message = String(error?.message || "").trim().toLowerCase();
+  const isPermission = code === "permission-denied"
+    || code.endsWith("/permission-denied")
+    || message.includes("missing or insufficient permissions")
+    || message.includes("permission_denied");
+  if (isPermission) {
+    return {
+      kind: "permission",
+      message: "Kein Zugriff auf diese Analytics. Bitte prüfen, ob die Berechtigung (Business-Owner oder CEO) korrekt ist."
+    };
+  }
+  const isNetwork = code === "unavailable"
+    || message.includes("network")
+    || message.includes("offline")
+    || message.includes("failed to fetch");
+  if (isNetwork) {
+    return {
+      kind: "network",
+      message: "Verbindung unterbrochen. Bitte Internetverbindung prüfen und erneut versuchen."
+    };
+  }
+  // Reine Validierungsfehler (kein Firestore-Fehlercode) behalten ihre
+  // aussagekraeftige Original-Meldung, z. B. "Ungültiger Zeitraum …".
+  const original = String(error?.message || "").trim();
+  if (!code && original) {
+    return { kind: "validation", message: original };
+  }
+  return {
+    kind: "unknown",
+    message: "Analytics konnten nicht geladen werden. Bitte erneut versuchen."
+  };
+}
+
 export function computeDeltaPercent(current = 0, previous = 0) {
   const cur = num(current);
   const prev = num(previous);

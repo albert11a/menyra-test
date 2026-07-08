@@ -44,6 +44,9 @@ import {
 import {
   bindAnalyticsChartInteractions
 } from "../menyra-social/core/analytics/analytics-dashboard-render-utils.js";
+import {
+  describeAnalyticsError
+} from "../menyra-social/core/analytics/analytics-dashboard-core.js";
 
 const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
@@ -823,7 +826,7 @@ async function refreshAnalyticsBusinesses({ force = false } = {}) {
   } catch (error) {
     actions.patchAnalytics({
       businessesStatus: "error",
-      businessesError: error?.message || "Businesses konnten nicht geladen werden."
+      businessesError: describeAnalyticsError(error).message
     });
   }
 }
@@ -848,7 +851,7 @@ async function refreshAnalyticsDashboard({ force = false } = {}) {
     if (seq !== analyticsLoadSeq) return;
     actions.patchAnalytics({
       status: "error",
-      error: error?.message || "Analytics konnten nicht geladen werden."
+      error: describeAnalyticsError(error).message
     });
   }
 }
