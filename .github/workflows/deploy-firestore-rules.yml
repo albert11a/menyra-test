@@ -1,0 +1,40 @@
+name: Deploy Firestore Rules
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-firestore-rules:
+    name: Deploy Firestore Rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: mnyrasocial
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Firebase service account
+        env:
+          FIREBASE_SERVICE_ACCOUNT_MENYRA_C0E68: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MENYRA_C0E68 }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_MENYRA_C0E68" ]; then
+            echo "Missing GitHub secret: FIREBASE_SERVICE_ACCOUNT_MENYRA_C0E68"
+            exit 1
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT_MENYRA_C0E68" > "$RUNNER_TEMP/firebase-service-account.json"
+
+      - name: Deploy Firestore rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: npm run deploy:rules
