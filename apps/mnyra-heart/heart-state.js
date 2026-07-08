@@ -6,6 +6,7 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "runs", label: "Laeufe" },
   { key: "incidents", label: "Meldungen" },
   { key: "modules", label: "Bereiche" },
+  { key: "analytics", label: "Analytics" },
   { key: "crmLeads", label: "Leads" },
   { key: "crmCustomers", label: "Kunden" },
   { key: "crmAds", label: "Ads" },
@@ -92,6 +93,21 @@ export function createHeartInitialState() {
       searchStatus: DEFAULT_STATUS,
       searchError: "",
       searchResults: []
+    },
+    analytics: {
+      businessesStatus: DEFAULT_STATUS,
+      businessesError: "",
+      businesses: [],
+      businessQuery: "",
+      selectedBusinessId: "",
+      selectedBusinessName: "",
+      rangeKey: "7d",
+      customFrom: "",
+      customTo: "",
+      status: DEFAULT_STATUS,
+      error: "",
+      model: null,
+      lastLoadedAt: ""
     },
     crmAdmin: {
       status: DEFAULT_STATUS,
@@ -615,6 +631,16 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  function patchAnalytics(patchValue = {}) {
+    if (!patchValue || typeof patchValue !== "object") return;
+    patch((draft) => {
+      draft.analytics = sanitizeStateValue({
+        ...(draft.analytics && typeof draft.analytics === "object" ? draft.analytics : {}),
+        ...patchValue
+      });
+    });
+  }
+
   function setCrmAdminContract(contract = {}) {
     patch((draft) => {
       draft.crmAdmin.readLoadersReady = contract.readLoadersReady === true;
@@ -820,6 +846,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setSetupSearchLoading,
       setSetupSearchResults,
       setSetupSearchError,
+      patchAnalytics,
       setCrmAdminContract,
       setCrmAdminLoading,
       setCrmAdminMissing,

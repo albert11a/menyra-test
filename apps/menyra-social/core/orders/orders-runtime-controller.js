@@ -4,6 +4,7 @@ import {
 } from "./order-normalize-utils.js";
 import { createRestaurantOrder } from "./create-restaurant-order-client.js";
 import { normalizeRestaurantTypeCore } from "../profile/restaurant-type-utils.js";
+import { trackAnalyticsEvent } from "../analytics/analytics-tracker.js";
 
 export function createOrdersRuntimeController({
   state = null,
@@ -583,6 +584,22 @@ export function createOrdersRuntimeController({
       });
       const orderId = String(result?.orderId || result?.order?.id || "").trim();
       if (!orderId) throw new Error("checkout-order-id-missing");
+      try {
+        trackAnalyticsEvent("order_completed", {
+          businessId: cart.restaurantId,
+          source: isTableService ? "qr" : "direct",
+          tableNumber,
+          orderId,
+          value: getShopCartTotal(cart.items),
+          quantity: cart.items.reduce((sum, item) => sum + Math.max(1, Number(item?.quantity || 1) || 1), 0),
+          items: cart.items.map((item) => ({
+            productId: item?.itemId || item?.id || "",
+            name: item?.name || item?.title || "",
+            quantity: Math.max(1, Number(item?.quantity || 1) || 1),
+            revenue: parsePriceValue(item?.price) * Math.max(1, Number(item?.quantity || 1) || 1)
+          }))
+        });
+      } catch {}
       const guestLookupToken = hasUser
         ? ""
         : String(result?.guestLookupToken || result?.order?.guestLookupToken || result?.order?.orderLookupToken || "").trim();

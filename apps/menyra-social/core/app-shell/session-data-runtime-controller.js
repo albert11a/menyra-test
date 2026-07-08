@@ -1224,6 +1224,8 @@ export function createSessionDataRuntimeController({
     state.likesModal = { open: false, postId: "", animate: false };
     state.menuDetail = createEmptyMenuDetailStateFn();
     state.menuItemMeta = {};
+    // Analytics-Dashboard ist user-/business-gebunden: beim Account-Wechsel leeren.
+    state.analyticsView = null;
     requestedMenuItemCounts.clear();
     state.leads = {};
     state.customers = {};

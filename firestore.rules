@@ -683,6 +683,62 @@ service cloud.firestore {
         : (data.restaurantId is string ? data.restaurantId : "");
     }
 
+    function analyticsEventAllowedFields() {
+      return [
+        "name", "businessId", "sessionId", "userId", "source",
+        "postId", "productId", "productName", "menuId",
+        "categoryId", "categoryName", "contactKind", "tableId",
+        "orderId", "value", "quantity", "isUnique", "items",
+        "day", "hour", "createdAt"
+      ];
+    }
+
+    function validAnalyticsEventName(name) {
+      return name in [
+        "business_profile_view", "profile_contact_click",
+        "post_impression", "post_click", "post_like", "post_share",
+        "menu_open", "category_open", "product_view", "product_like",
+        "qr_scan", "call_waiter_click",
+        "order_started", "order_completed",
+        "feed_impression", "feed_click"
+      ];
+    }
+
+    function validAnalyticsEventCreate(restaurantId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(analyticsEventAllowedFields())
+        && data.name is string
+        && validAnalyticsEventName(data.name)
+        && data.businessId is string
+        && data.businessId == restaurantId
+        && data.day is string
+        && data.day.size() == 10
+        && data.hour is number
+        && data.hour >= 0
+        && data.hour <= 23
+        && data.sessionId is string
+        && data.sessionId.size() <= 120
+        && data.createdAt == request.time
+        // Wenn eine userId mitgeschickt wird, muss sie zur Auth-Session gehoeren.
+        && (!("userId" in data) || (signedIn() && data.userId == authUid()));
+    }
+
+    function analyticsDailyAllowedFields() {
+      return [
+        "date", "updatedAt", "counters", "uniques", "profileSources",
+        "contacts", "hourly", "posts", "products", "categories",
+        "tables", "orders"
+      ];
+    }
+
+    function validAnalyticsDailyWrite(dayId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly(analyticsDailyAllowedFields())
+        && data.date is string
+        && data.date == dayId
+        && dayId.size() == 10;
+    }
+
     match /users/{userId} {
       allow get, list: if isSelf(userId) || isCeoActor() || ownerManagedStaffUserReadAllowed(userId);
       allow create: if selfUserCreateAllowed(userId) || ceoManagedUserWriteAllowed(userId) || ownerManagedStaffUserCreateAllowed(userId);
@@ -899,6 +955,22 @@ service cloud.firestore {
         allow get: if isSelf(staffUid) || canManageRestaurantStaffDoc(restaurantId);
         allow list: if canManageRestaurantStaffDoc(restaurantId);
         allow create, update, delete: if canManageRestaurantStaffDoc(restaurantId);
+      }
+
+      // Analytics: Events und Tages-Aggregate.
+      // Writes sind bewusst auch fuer Gaeste erlaubt (Tracking im Public-/QR-Flow),
+      // aber streng auf Form und erlaubte Felder validiert. Reads sind privat:
+      // nur das Business selbst (Owner/Staff mit businessAccess) und der CEO.
+      match /analyticsEvents/{eventId} {
+        allow get, list: if hasRestaurantBusinessAccess(restaurantId) || isCeoActor();
+        allow create: if validAnalyticsEventCreate(restaurantId);
+        allow update, delete: if false;
+      }
+
+      match /analyticsDaily/{dayId} {
+        allow get, list: if hasRestaurantBusinessAccess(restaurantId) || isCeoActor();
+        allow create, update: if validAnalyticsDailyWrite(dayId);
+        allow delete: if false;
       }
     }
 
