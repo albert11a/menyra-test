@@ -24,6 +24,7 @@
     "emulators:start": "node scripts/start-local-emulators.mjs",
     "emulators:export": "firebase emulators:export seed/export --project mnyra-local --force",
     "emulators:seed": "node seed/scripts/seed-firestore.mjs",
+    "deploy:rules": "firebase deploy --only firestore:rules --project menyra-c0e68",
     "analyze:public-profile-split": "node scripts/analyze-mnyra-public-profile-split.mjs",
     "check:social-bundle": "node scripts/check-mnyra-social-bundle-budget.mjs"
   },
