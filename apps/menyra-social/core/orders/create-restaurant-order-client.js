@@ -1,9 +1,5 @@
 import { USE_CREATE_RESTAURANT_ORDER_FUNCTION } from "../../../../shared/config/feature-flags.js";
 
-const FIREBASE_CONFIG_MODULE_URL =
-  "/shared/firebase-config.js?v=2026-05-02-public-startup-diet-01";
-const FIREBASE_FUNCTIONS_MODULE_URL =
-  "/shared/vendor/firebase/11.0.0/firebase-functions.js";
 const FUNCTION_NAME = "createRestaurantOrder";
 const FUNCTION_REGION = "us-central1";
 
@@ -77,9 +73,11 @@ async function ensureCreateOrderCallable() {
     throw new Error("create-restaurant-order-function-disabled");
   }
   if (!createOrderCallablePromise) {
+    // Literale Import-Strings: im Bundled-Modus dedupliziert Vite auf die
+    // gebuendelten Firebase-Module (keine zweite rohe Kopie); Raw-Modus gleich.
     createOrderCallablePromise = Promise.all([
-      import(FIREBASE_CONFIG_MODULE_URL),
-      import(FIREBASE_FUNCTIONS_MODULE_URL),
+      import("/shared/firebase-config.js?v=2026-05-02-public-startup-diet-01"),
+      import("/shared/vendor/firebase/11.0.0/firebase-functions.js"),
     ])
       .then(([firebaseConfigModule, functionsModule]) => {
         const firebaseApp = firebaseConfigModule?.app;

@@ -1,4 +1,4 @@
-import{t as y}from"./domain-app-events-rkgdN7NR.js";import"./domain-auth-GDqJX7rW.js";function z({state:o,getOptimizedImageUrl:p,escapeHtml:x,icon:u,formatRelative:v,toDateSafe:b}={}){if(!o?.chatModal?.open||!o?.chatModal?.profile)return"";const h=typeof p=="function"?p:(l=>l||""),d=typeof x=="function"?x:(l=>String(l??"")),m=typeof u=="function"?u:(()=>""),t=(l,$=l,e={})=>y(l,{fallback:$,params:e}),w=typeof v=="function"?v:(l=>String(l??"")),a=typeof b=="function"?b:(l=>l),s=o.chatModal.profile,f=h(s.avatar,"avatar"),g=Array.isArray(o.chatModal.messages)?o.chatModal.messages:[];return`
+import{t as y}from"./domain-feed-social-eager-Cx_kjKKd.js";import"./domain-auth-BL21ERPm.js";import"./domain-public-profile-BW4dw-Ab.js";import"./domain-media-eager-B90n_Ot7.js";function R({state:o,getOptimizedImageUrl:p,escapeHtml:x,icon:u,formatRelative:v,toDateSafe:b}={}){if(!o?.chatModal?.open||!o?.chatModal?.profile)return"";const h=typeof p=="function"?p:(l=>l||""),d=typeof x=="function"?x:(l=>String(l??"")),m=typeof u=="function"?u:(()=>""),t=(l,$=l,e={})=>y(l,{fallback:$,params:e}),w=typeof v=="function"?v:(l=>String(l??"")),a=typeof b=="function"?b:(l=>l),s=o.chatModal.profile,f=h(s.avatar,"avatar"),g=Array.isArray(o.chatModal.messages)?o.chatModal.messages:[];return`
     <div class="fixed inset-0 z-[65] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="chatModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
@@ -39,7 +39,7 @@ import{t as y}from"./domain-app-events-rkgdN7NR.js";import"./domain-auth-GDqJX7r
         </div>
       </div>
     </div>
-  `}function K({state:o,isFollowingProfile:p,getOptimizedImageUrl:x,formatCount:u,escapeHtml:v,icon:b}={}){if(!o?.profileModal?.open||!o?.profileModal?.profile)return"";const h=typeof p=="function"?p:(()=>!1),d=typeof x=="function"?x:(i=>i||""),m=typeof u=="function"?u:(i=>String(i??"0")),t=typeof v=="function"?v:(i=>String(i??"")),w=typeof b=="function"?b:(()=>""),a=(i,c=i,n={})=>y(i,{fallback:c,params:n}),s=o.profileModal.profile,f=h(s),g=!!s.pendingFollowRequest&&!f,l=!!s.privateAccount&&s.uid&&String(s.uid)!==String(o.user?.uid||"")&&!f,$=s.restaurantId?a("profile.business","Business"):a("profile.user","User"),e=d(s.avatar,"avatar");return`
+  `}function D({state:o,isFollowingProfile:p,getOptimizedImageUrl:x,formatCount:u,escapeHtml:v,icon:b}={}){if(!o?.profileModal?.open||!o?.profileModal?.profile)return"";const h=typeof p=="function"?p:(()=>!1),d=typeof x=="function"?x:(i=>i||""),m=typeof u=="function"?u:(i=>String(i??"0")),t=typeof v=="function"?v:(i=>String(i??"")),w=typeof b=="function"?b:(()=>""),a=(i,c=i,n={})=>y(i,{fallback:c,params:n}),s=o.profileModal.profile,f=h(s),g=!!s.pendingFollowRequest&&!f,l=!!s.privateAccount&&s.uid&&String(s.uid)!==String(o.user?.uid||"")&&!f,$=s.restaurantId?a("profile.business","Business"):a("profile.user","User"),e=d(s.avatar,"avatar");return`
     <div class="fixed inset-0 z-[60] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="profileModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
@@ -85,7 +85,7 @@ import{t as y}from"./domain-app-events-rkgdN7NR.js";import"./domain-auth-GDqJX7r
         </div>
       </div>
     </div>
-  `}function R({state:o,ensurePostMeta:p,findPostById:x,resolveLikeAvatar:u,escapeHtml:v,icon:b}={}){if(!o?.likesModal?.open||!o?.likesModal?.postId)return"";const h=typeof p=="function"?p:(()=>({})),d=typeof x=="function"?x:(()=>null),m=typeof u=="function"?u:(()=>""),t=typeof v=="function"?v:(e=>String(e??"")),w=typeof b=="function"?b:(()=>""),a=(e,i=e,c={})=>y(e,{fallback:i,params:c}),f=h(o.likesModal.postId).likes||[],g=d(o.likesModal.postId),l=Number(g?.likes)||f.length;return`
+  `}function G({state:o,ensurePostMeta:p,findPostById:x,resolveLikeAvatar:u,escapeHtml:v,icon:b}={}){if(!o?.likesModal?.open||!o?.likesModal?.postId)return"";const h=typeof p=="function"?p:(()=>({})),d=typeof x=="function"?x:(()=>null),m=typeof u=="function"?u:(()=>""),t=typeof v=="function"?v:(e=>String(e??"")),w=typeof b=="function"?b:(()=>""),a=(e,i=e,c={})=>y(e,{fallback:i,params:c}),f=h(o.likesModal.postId).likes||[],g=d(o.likesModal.postId),l=Number(g?.likes)||f.length;return`
       <div class="fixed inset-0 z-[80] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
         <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
       <div class="modal-frame">
@@ -114,7 +114,7 @@ import{t as y}from"./domain-app-events-rkgdN7NR.js";import"./domain-auth-GDqJX7r
         </div>
       </div>
     </div>
-  `}function D({state:o,ensurePostMeta:p,resolvePostCounts:x,getOptimizedImageUrl:u,ensureCommentShape:v,currentUserBadge:b,renderPostComments:h,formatDateLabel:d,escapeHtml:m,icon:t}={}){if(!o?.postModal?.open||!o?.postModal?.post)return"";const w=typeof p=="function"?p:(()=>({})),a=typeof x=="function"?x:(()=>({likeLabel:"0",commentLabel:"0"})),s=typeof u=="function"?u:(r=>r||""),f=typeof v=="function"?v:(r=>r||{}),g=typeof b=="function"?b:(()=>({uid:"",handle:""})),l=typeof h=="function"?h:(()=>""),$=typeof d=="function"?d:(r=>String(r??"")),e=typeof m=="function"?m:(r=>String(r??"")),i=typeof t=="function"?t:(()=>""),c=(r,B=r,N={})=>y(r,{fallback:B,params:N}),n=o.postModal.post,k=w(n.id),M=a(n),j=n.caption||n.title||"",A=n.url||n.image||"",I=s(A,"large",{stableKey:n?.id?`post-modal:${String(n.id)}`:""}),C=(k.comments||[]).map(f),L=g(),F=k.likes?.some(r=>r.uid===L.uid||r.handle===L.handle),S=C.find(r=>r.id===o.postModal.replyTo);return`
+  `}function O({state:o,ensurePostMeta:p,resolvePostCounts:x,getOptimizedImageUrl:u,ensureCommentShape:v,currentUserBadge:b,renderPostComments:h,formatDateLabel:d,escapeHtml:m,icon:t}={}){if(!o?.postModal?.open||!o?.postModal?.post)return"";const w=typeof p=="function"?p:(()=>({})),a=typeof x=="function"?x:(()=>({likeLabel:"0",commentLabel:"0"})),s=typeof u=="function"?u:(r=>r||""),f=typeof v=="function"?v:(r=>r||{}),g=typeof b=="function"?b:(()=>({uid:"",handle:""})),l=typeof h=="function"?h:(()=>""),$=typeof d=="function"?d:(r=>String(r??"")),e=typeof m=="function"?m:(r=>String(r??"")),i=typeof t=="function"?t:(()=>""),c=(r,B=r,N={})=>y(r,{fallback:B,params:N}),n=o.postModal.post,k=w(n.id),M=a(n),j=n.caption||n.title||"",A=n.url||n.image||"",I=s(A,"large",{stableKey:n?.id?`post-modal:${String(n.id)}`:""}),C=(k.comments||[]).map(f),L=g(),F=k.likes?.some(r=>r.uid===L.uid||r.handle===L.handle),S=C.find(r=>r.id===o.postModal.replyTo);return`
       <div class="fixed inset-0 z-[70] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
         <div class="modal-frame">
@@ -171,4 +171,4 @@ import{t as y}from"./domain-app-events-rkgdN7NR.js";import"./domain-auth-GDqJX7r
         </div>
       </div>
     </div>
-  `}export{z as renderChatModalCore,R as renderLikesModalCore,D as renderPostModalCore,K as renderProfileModalCore};
+  `}export{R as renderChatModalCore,G as renderLikesModalCore,O as renderPostModalCore,D as renderProfileModalCore};

@@ -19,9 +19,6 @@ import {
   ANALYTICS_UNIQUE_EVENTS
 } from "./analytics-event-schema.js";
 
-const FIREBASE_CONFIG_MODULE_URL = "/shared/firebase-config.js?v=2026-05-02-public-startup-diet-01";
-const FIREBASE_FIRESTORE_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
-
 const SESSION_STORAGE_KEY = "mnyra_analytics_session_v1";
 const DEDUPE_STORAGE_KEY = "mnyra_analytics_dedupe_v1";
 const FLUSH_INTERVAL_MS = 2500;
@@ -153,9 +150,12 @@ function currentUserId() {
 
 async function ensureFirebase() {
   if (!trackerRuntime.firebasePromise) {
+    // Literale Import-Strings statt @vite-ignore/Variablen: im Bundled-Modus
+    // loest Vite sie auf denselben vendor-firebase-Chunk auf (keine zweite,
+    // rohe Firebase-Kopie mehr); im Raw-Modus identisches Verhalten.
     trackerRuntime.firebasePromise = Promise.all([
-      import(/* @vite-ignore */ FIREBASE_CONFIG_MODULE_URL),
-      import(/* @vite-ignore */ FIREBASE_FIRESTORE_MODULE_URL)
+      import("/shared/firebase-config.js?v=2026-05-02-public-startup-diet-01"),
+      import("/shared/vendor/firebase/11.0.0/firebase-firestore.js")
     ]).then(([configModule, firestoreModule]) => {
       if (!configModule?.db) throw new Error("analytics-firebase-db-unavailable");
       return { db: configModule.db, firestore: firestoreModule };

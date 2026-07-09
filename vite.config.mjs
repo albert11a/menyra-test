@@ -22,8 +22,103 @@ function normalizeForRollup(id = "") {
 //    on-demand (Rollup-Dynamic-Chunks).
 // Verhaltensneutral: Rollup verdrahtet statische Sibling-Chunks, modulepreload
 // laedt sie parallel.
+// Explizite Datei-Listen: Module dieser Domains, die HEUTE statisch (eager)
+// im Social-Entry stecken. Sie wandern in eigene, parallel geladene und
+// content-gehashte Chunks. Bewusst NUR die aktuell eagere Teilmenge pro
+// Ordner - dieselben Ordner enthalten auch LAZY-Cluster (dynamische Chunks
+// wie profile-menu-focus-render-controller oder menu-modal-render-utils),
+// die hier NICHT auftauchen duerfen, sonst wuerden sie eager erzwungen.
+// Neue Dateien landen standardmaessig weiter im Entry (sicherer Default).
+const SOCIAL_EAGER_FILE_CHUNKS = {
+  "domain-feed-social-eager": [
+    "core/profile/business-profile-type-utils.js",
+    "core/profile/business-visibility-utils.js",
+    "core/profile/handle-utils.js",
+    "core/profile/profile-display-utils.js",
+    "core/profile/profile-menu-focus-render-boundary.js",
+    "core/profile/profile-menu-focus-render-preload-utils.js",
+    "core/profile/profile-menu-focus-utils.js",
+    "core/profile/profile-route-open-utils.js",
+    "core/profile/profile-visible-patch-utils.js",
+    "core/profile/public-menu-surface-state-utils.js",
+    "core/profile/public-profile-direct-entry-controller.js",
+    "core/profile/public-profile-runtime-controller.js",
+    "core/profile/public-profile-surface-controller.js",
+    "core/profile/restaurant-identity-utils.js",
+    "core/profile/restaurant-type-utils.js",
+    "core/profile/role-switch-utils.js",
+    "core/profile/self-profile-runtime-controller.js",
+    "core/profile/social-engagement-runtime-boundary.js",
+    "core/profile/social-engagement-support-runtime-controller.js",
+    "core/overlays/menu-detail-update-utils.js",
+    "core/overlays/overlay-basic-bind-utils.js",
+    "core/overlays/overlay-bind-orchestrator-utils.js",
+    "core/overlays/overlay-chat-post-bind-utils.js",
+    "core/overlays/overlay-comment-render-utils.js",
+    "core/overlays/overlay-menu-detail-bind-utils.js",
+    "core/overlays/overlay-menu-focus-bind-utils.js",
+    "core/overlays/overlay-orchestration-controller.js",
+    "core/overlays/overlay-render-orchestrator-utils.js",
+    "core/overlays/overlay-root-ui-utils.js",
+    "core/overlays/post-modal-update-utils.js",
+    "core/shop/shop-cart-access-utils.js",
+    "core/shop/shop-cart-state-utils.js",
+    "core/shop/shop-variant-utils.js",
+    "core/shop/shop-view-cart-orchestration-controller.js"
+  ],
+  "domain-menu-eager": [
+    "core/menu/ads-runtime-controller.js",
+    "core/menu/catalog-mode-utils.js",
+    "core/menu/customer-focus-modal-render-utils.js",
+    "core/menu/focus-runtime-controller.js",
+    "core/menu/menu-card-style-utils.js",
+    "core/menu/menu-delete-utils.js",
+    "core/menu/menu-doc-normalize-utils.js",
+    "core/menu/menu-input-utils.js",
+    "core/menu/menu-item-coercion-utils.js",
+    "core/menu/menu-layout-utils.js",
+    "core/menu/menu-public-runtime-controller.js",
+    "core/menu/menu-save-utils.js",
+    "core/menu/table-qr-runtime-controller.js"
+  ],
+  "domain-crm-eager": [
+    "core/crm/ceo-crm-count-runtime-controller.js",
+    "core/crm/ceo-meta-utils.js",
+    "core/crm/ceo-normalize-utils.js",
+    "core/crm/ceo-staff-sync-utils.js",
+    "core/crm/crm-ceo-scope-support-runtime.js",
+    "core/crm/crm-domain-runtime-boundary.js",
+    "core/crm/crm-lead-geo-support-runtime.js",
+    "core/crm/crm-scope-state-utils.js",
+    "core/crm/crm-shared-render-utils.js",
+    "core/crm/staff-save-utils.js"
+  ],
+  "domain-media-eager": [
+    "core/media/avatar-logo-cache.js",
+    "core/media/crop-utils.js",
+    "core/media/media-upload-view-render-utils.js",
+    "core/media/video-poster-utils.js"
+  ],
+  "domain-chat-eager": [
+    "core/chat/chat-app-runtime-boundary.js",
+    "core/chat/chat-route-open-utils.js",
+    "core/chat/chat-thread-action-state-utils.js"
+  ],
+  "domain-orders-eager": [
+    "core/orders/orders-render-utils.js"
+  ],
+  "domain-marketplace-eager": [
+    "core/marketplace/marketplace-runtime-boundary.js"
+  ]
+};
+
+const SOCIAL_EAGER_FILE_CHUNK_BY_SUFFIX = new Map(
+  Object.entries(SOCIAL_EAGER_FILE_CHUNKS).flatMap(([chunkName, files]) =>
+    files.map((file) => [`/apps/menyra-social/${file}`, chunkName])
+  )
+);
+
 const SOCIAL_DOMAIN_CHUNKS = [
-  "feed",
   "stories",
   "leads",
   "notifications",
@@ -34,13 +129,34 @@ const SOCIAL_DOMAIN_CHUNKS = [
   "public-profile",
   "auth",
   "app-events",
+  // analytics hat keine Lazy-Cluster -> ganzer Ordner als eigener Chunk.
+  "analytics",
 ];
 
 function socialManualChunks(id) {
   const clean = normalizeForRollup(id);
 
+  // core/feed teilt sich mit den eager Profil-/Overlay-/Shop-Modulen einen
+  // Import-Zyklus. Alle Beteiligten kommen in EINEN Chunk, damit der Zyklus
+  // chunk-intern bleibt (Rollup-Warnung "Circular chunk" vermeiden).
+  if (clean.includes("/apps/menyra-social/core/feed/")) {
+    return "domain-feed-social-eager";
+  }
+
   if (clean.includes("/shared/vendor/firebase/11.0.0/")) {
+    // Functions wird nur von Lazy-Flows (Bestellung, Notification-Write)
+    // dynamisch importiert - eigener Chunk, damit es nicht den eager
+    // vendor-firebase-Chunk vergroessert.
+    if (clean.endsWith("/firebase-functions.js")) {
+      return "vendor-firebase-functions";
+    }
     return "vendor-firebase";
+  }
+
+  for (const [suffix, chunkName] of SOCIAL_EAGER_FILE_CHUNK_BY_SUFFIX) {
+    if (clean.endsWith(suffix)) {
+      return chunkName;
+    }
   }
 
   for (const domain of SOCIAL_DOMAIN_CHUNKS) {

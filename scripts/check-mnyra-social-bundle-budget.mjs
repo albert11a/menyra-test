@@ -69,8 +69,33 @@ if (!publicManifest || publicManifest.file !== "entry/social-public-entry.js") {
   fail("social-public-bundled-entry manifest entry missing or changed");
 }
 
-const socialStaticImports = new Set(Array.isArray(socialManifest?.imports) ? socialManifest.imports : []);
-const socialDynamicImports = new Set(Array.isArray(socialManifest?.dynamicImports) ? socialManifest.dynamicImports : []);
+// Lazy-Vertrag: die folgenden Module duerfen NIE in den eager (statischen)
+// Import-Graph des Social-Entry rutschen und muessen weiterhin als
+// Dynamic-Import registriert sein. Seit dem manualChunks-Split liegen die
+// import()-Callsites teils in ausgelagerten eager Chunks - deshalb wird der
+// statische Graph transitiv verfolgt statt nur die direkten Entry-Imports.
+function collectStaticImportClosure(manifestObj, startKey) {
+  const closure = new Set();
+  const queue = [startKey];
+  while (queue.length) {
+    const key = queue.pop();
+    if (closure.has(key)) continue;
+    closure.add(key);
+    const node = manifestObj[key];
+    (Array.isArray(node?.imports) ? node.imports : []).forEach((importKey) => {
+      if (!closure.has(importKey)) queue.push(importKey);
+    });
+  }
+  return closure;
+}
+
+const socialStaticClosure = collectStaticImportClosure(manifest, "apps/menyra-social/social-app.js");
+const dynamicImportRegistrations = new Set();
+Object.values(manifest).forEach((node) => {
+  (Array.isArray(node?.dynamicImports) ? node.dynamicImports : []).forEach((key) => {
+    dynamicImportRegistrations.add(key);
+  });
+});
 
 [
   "apps/menyra-social/core/profile/profile-open-flow-utils.js",
@@ -82,11 +107,17 @@ const socialDynamicImports = new Set(Array.isArray(socialManifest?.dynamicImport
   "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
   "apps/menyra-social/core/menu/menu-modal-render-utils.js"
 ].forEach((entry) => {
-  if (socialStaticImports.has(entry)) {
+  if (socialStaticClosure.has(entry)) {
     fail(`${entry} is static again in social-app`);
   }
-  if (!socialDynamicImports.has(entry)) {
-    fail(`${entry} is no longer registered as a social-app dynamic import`);
+  if (manifest[entry] && manifest[entry].isDynamicEntry !== true) {
+    fail(`${entry} lost its dynamic-entry status`);
+  }
+  if (!dynamicImportRegistrations.has(entry)) {
+    fail(`${entry} is no longer registered as a dynamic import anywhere in the bundle`);
+  }
+  if (!manifest[entry]) {
+    fail(`${entry} has no manifest entry (inlined into an eager chunk?)`);
   }
 });
 

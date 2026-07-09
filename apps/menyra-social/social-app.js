@@ -327,7 +327,6 @@ import { bindCrmStaffEventsCore } from "./core/app-events/app-events-crm-staff-b
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-messaging.js";
-const FIREBASE_FUNCTIONS_MODULE_URL = "/shared/vendor/firebase/11.0.0/firebase-functions.js";
 const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_FALLBACK_URL = "";
@@ -345,7 +344,6 @@ const PUSH_SW_URL = (() => {
 })();
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
-const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-04-30-lead-search-light";
 const BUILD_INFO_ENDPOINT_URL = "/api/build-info";
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
@@ -2845,7 +2843,6 @@ const crmDomainRuntimeCluster = createCrmDomainRuntimeBoundary({
     LEAD_STATUS_ORDER,
     LEAD_STATUS_LABELS,
     PLACEHOLDER_IMAGE,
-    CRM_LAZY_RENDERERS_MODULE_URL,
     BUILD_INFO_ENDPOINT_URL,
     enqueueMicrotaskCore,
     PRISHTINA_COORDS,
@@ -5215,7 +5212,10 @@ async function ensureWriteUserNotificationFn() {
   if (writeUserNotificationPromise) return writeUserNotificationPromise;
   writeUserNotificationPromise = (async () => {
     if (!firebaseFunctionsModulePromise) {
-      firebaseFunctionsModulePromise = import(FIREBASE_FUNCTIONS_MODULE_URL);
+      // Literaler Import-String: Vite buendelt das Functions-Modul in den
+      // gemeinsamen Firebase-Vendor-Graph, damit getFunctions(app) dieselbe
+      // Firebase-App-Kopie sieht wie der Rest der App (Raw-Modus unveraendert).
+      firebaseFunctionsModulePromise = import("/shared/vendor/firebase/11.0.0/firebase-functions.js");
     }
     const firebaseFunctions = await firebaseFunctionsModulePromise;
     const functionsObj = firebaseFunctions.getFunctions(app, "us-central1");

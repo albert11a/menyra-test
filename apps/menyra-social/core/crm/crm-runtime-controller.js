@@ -58,7 +58,6 @@ export function createCrmRuntimeController(deps = {}) {
     isPlaceholderUrl,
     normalizeCeoCountry,
     PLACEHOLDER_IMAGE,
-    CRM_LAZY_RENDERERS_MODULE_URL,
     BUILD_INFO_ENDPOINT_URL,
     enqueueMicrotaskCore,
     extractPlusCodeFromText,
@@ -841,7 +840,9 @@ function getCrmLazyRendererContext() {
 async function ensureCrmLazyRenderersLoaded() {
   if (crmLazyRenderers) return crmLazyRenderers;
   if (!crmLazyRenderersPromise) {
-    crmLazyRenderersPromise = import(CRM_LAZY_RENDERERS_MODULE_URL)
+    // Literaler Import-String: Vite buendelt die Lazy-Renderer als Chunk mit
+    // geteilten Modul-Instanzen (statt roher Zweit-Kopie); Raw-Modus gleich.
+    crmLazyRenderersPromise = import("/apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-04-30-lead-search-light")
       .then((mod) => {
         crmLazyRenderers = {
           renderLeadSettingsView: mod.renderLeadSettingsView,

@@ -42,6 +42,12 @@ const LEAFLET_VENDOR_HOST_SUFFIXES = [
   'cdn.jsdelivr.net',
   'unpkg.com'
 ];
+const EXTERNAL_STATIC_HOSTS = new Set([
+  'www.gstatic.com',
+  'fonts.gstatic.com',
+  'cdn.jsdelivr.net',
+  'unpkg.com'
+]);
 
 async function fetchWithTimeout(request, timeoutMs = RUNTIME_FETCH_TIMEOUT_MS) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
@@ -298,7 +304,7 @@ async function cacheFirst(request) {
   }
 }
 
-async function staleWhileRevalidateImage(request) {
+async function staleWhileRevalidate(request, { imageFallback = false } = {}) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
   const networkPromise = fetchWithTimeout(request)
@@ -316,7 +322,9 @@ async function staleWhileRevalidateImage(request) {
     return cached;
   }
   const network = await networkPromise;
-  return network || buildImageFallbackResponse();
+  if (network) return network;
+  if (imageFallback) return buildImageFallbackResponse();
+  return new Response('', { status: 504, statusText: 'Fetch failed' });
 }
 
 // Non-hashed code assets: hit the network first but allow conditional
@@ -422,6 +430,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isSameOrigin = url.origin === self.location.origin;
+
+  // API-Proxys (z.B. /api/heart/* -> Cloud Functions) nie abfangen:
+  // Langlaeufer/Streams duerfen weder Timeout noch Cache sehen.
+  if (isSameOrigin && url.pathname.startsWith('/api/')) return;
+
   // Media/video streams: range requests must reach the network untouched.
   if (req.headers.get('range')) return;
 
@@ -443,11 +457,17 @@ self.addEventListener('fetch', (event) => {
 
   const isImage = req.destination === 'image' || /\.(png|jpg|jpeg|webp|avif|svg|gif)$/i.test(url.pathname) || url.href.includes('/image/fetch');
   if (isImage) {
-    event.respondWith(staleWhileRevalidateImage(req));
+    event.respondWith(staleWhileRevalidate(req, { imageFallback: true }));
     return;
   }
 
-  const isSameOrigin = url.origin === self.location.origin;
+  // Bundle-Manifest: kleine Build-Metadatei, noetig um den Entry aufzuloesen.
+  // Network-first mit Revalidierung + Cache-Fallback, damit die App auch
+  // offline/bei Netz-Blip aus dem Cache booten kann.
+  if (isSameOrigin && url.pathname === SOCIAL_BUNDLED_MANIFEST_PATH) {
+    event.respondWith(networkFirstRevalidatedCodeAsset(req));
+    return;
+  }
 
   // Immutable Vite build output: content hash in filename -> cache-first.
   if (isImmutableBundledAsset(url)) {
@@ -466,21 +486,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Default: network-first with timeout, cache on success, fallback to cache
-  event.respondWith((async () => {
-    try {
-      const networkResp = await fetchWithTimeout(req);
-      try {
-        if (networkResp && networkResp.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put(req, networkResp.clone());
-        }
-      } catch (e) {}
-      return networkResp;
-    } catch (err) {
-      const cached = await caches.match(req);
-      if (cached) return cached;
-      throw err;
-    }
-  })());
+  // Fonts (same-origin) und bekannte externe Static-Hosts (gstatic-Fonts,
+  // jsdelivr/unpkg): stale-while-revalidate fuer schnelle Wiederholungsloads.
+  const isFont = req.destination === 'font';
+  const isExternalStatic = EXTERNAL_STATIC_HOSTS.has(host)
+    && ['script', 'style', 'font', 'image'].includes(req.destination);
+  if ((isFont && isSameOrigin) || isExternalStatic) {
+    event.respondWith(staleWhileRevalidate(req, { imageFallback: req.destination === 'image' }));
+    return;
+  }
+
+  // Alles andere (Daten-Fetches, JSON, Streams, unbekannte Ziele) NICHT
+  // abfangen: kein Timeout, kein Cache - das Netzwerk verhaelt sich exakt so,
+  // als gaebe es den Service Worker nicht. Nur so bleiben Firestore-Emulator,
+  // Long-Polling und aehnliche Langlaeufer garantiert unberuehrt.
 });
