@@ -165,9 +165,10 @@ export function createFeedViewOrchestrationController({
     const mediaUrl = String(story?.mediaUrl || story?.url || "").trim();
     const embedUrl = String(story?.embedUrl || "").trim();
     // Do not fall back to logo/avatar media for story preview cards.
+    // `story.img` is the business logo/title image and must never be used as
+    // the story preview – the preview is always the latest story post media.
     const fallbackImage = String(
-      story?.img
-      || story?.image
+      story?.image
       || story?.thumbnail
       || story?.thumbnailUrl
       || story?.previewImage
@@ -446,10 +447,14 @@ export function createFeedViewOrchestrationController({
         ...(restaurant && typeof restaurant === "object" ? restaurant : {}),
         ...(entry && typeof entry === "object" ? entry : {})
       });
-      if (shouldStrictCountryFilter) {
+      // Aktive (live) Stories sind vom Business frisch gepostete Inhalte und
+      // muessen in der Story-Reihe immer erscheinen – sie werden nie durch die
+      // strikte Land-/Stadt-Filterung entfernt (sonst fehlen sie in der Reihe).
+      const isActiveStory = type === "story" && !!entry?.isLive;
+      if (shouldStrictCountryFilter && !isActiveStory) {
         if (!countryCode || countryCode !== viewerCountryCode) return null;
       }
-      if (shouldStrictCityFilter && !matchesFeedViewerCity({ entry, restaurant, viewerCity })) return null;
+      if (shouldStrictCityFilter && !isActiveStory && !matchesFeedViewerCity({ entry, restaurant, viewerCity })) return null;
       const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(entry);
       const distanceKm = viewerCoords && coords
         ? haversineDistanceKm(viewerCoords, coords)
@@ -835,6 +840,20 @@ export function createFeedViewOrchestrationController({
     if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
     return a.fallbackIndex - b.fallbackIndex;
   };
+  // Reihenfolge der Story-Reihe: Aktive (live) Stories immer zuerst und in
+  // stabiler Reihenfolge (neueste zuerst, danach Ausgangsindex), damit die
+  // Kacheln beim Nachladen nicht mehr "springen". Nicht-aktive Eintraege
+  // (Feed-Fallback) folgen nach Distanz.
+  const compareStoryTrackOrder = (a = {}, b = {}) => {
+    const aLive = !!a.isLive;
+    const bLive = !!b.isLive;
+    if (aLive !== bLive) return aLive ? -1 : 1;
+    if (aLive && bLive) {
+      if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
+      return a.fallbackIndex - b.fallbackIndex;
+    }
+    return compareStoryDistanceFirst(a, b);
+  };
   const resolveStoryTrackItems = (stories = [], fallbackStories = []) => {
     const safeStories = Array.isArray(stories) ? stories : [];
     const safeFallbackStories = Array.isArray(fallbackStories) ? fallbackStories : [];
@@ -888,34 +907,42 @@ export function createFeedViewOrchestrationController({
       }
     });
     const deduped = Array.from(dedupedStories.values());
-    const hasFiniteDistance = deduped.some((row) => Number.isFinite(row?.distanceKm));
+    // Aktive (live) Stories duerfen nie an der Distanz-Filterung scheitern –
+    // fehlt ihnen eine Koordinate, bleiben sie trotzdem in der Reihe.
+    const hasFiniteDistance = deduped.some((row) => Number.isFinite(row?.distanceKm) && !row?.isLive);
     const scopedStories = hasFiniteDistance
-      ? deduped.filter((row) => Number.isFinite(row?.distanceKm))
+      ? deduped.filter((row) => !!row?.isLive || Number.isFinite(row?.distanceKm))
       : deduped;
     return scopedStories
-      .sort(compareStoryDistanceFirst)
+      .sort(compareStoryTrackOrder)
       .slice(0, MAX_TRACK_STORY_ITEMS);
   };
   const buildMixedSpotStoryTrackItems = ({ spots = [], stories = [] } = {}) => {
     const safeSpots = Array.isArray(spots) ? spots : [];
     const safeStories = Array.isArray(stories) ? stories : [];
     if (!safeSpots.length && !safeStories.length) return [];
-    if (!safeStories.length) return safeSpots.map((spot) => ({ type: "spot", spot }));
-    if (!safeSpots.length) return safeStories.map((story) => ({ type: "story", story }));
+    // Aktive (live) Stories fuehren die Reihe immer an – so sind sie sicher
+    // sichtbar und ihre Position bleibt beim Nachladen stabil (kein Springen).
+    const liveStories = safeStories.filter((story) => !!story?.isLive);
+    const restStories = safeStories.filter((story) => !story?.isLive);
+    const leading = liveStories.map((story) => ({ type: "story", story }));
+    if (!safeSpots.length && !restStories.length) return leading;
+    if (!restStories.length) return [...leading, ...safeSpots.map((spot) => ({ type: "spot", spot }))];
+    if (!safeSpots.length) return [...leading, ...restStories.map((story) => ({ type: "story", story }))];
     const mixed = [];
     let spotIndex = 0;
     let storyIndex = 0;
-    while (spotIndex < safeSpots.length || storyIndex < safeStories.length) {
+    while (spotIndex < safeSpots.length || storyIndex < restStories.length) {
       if (spotIndex < safeSpots.length) {
         mixed.push({ type: "spot", spot: safeSpots[spotIndex] });
         spotIndex += 1;
       }
-      if (storyIndex < safeStories.length) {
-        mixed.push({ type: "story", story: safeStories[storyIndex] });
+      if (storyIndex < restStories.length) {
+        mixed.push({ type: "story", story: restStories[storyIndex] });
         storyIndex += 1;
       }
     }
-    return mixed;
+    return [...leading, ...mixed];
   };
   const buildSpotStoryTrackSignature = ({ spots = [], stories = [] } = {}) => buildMixedSpotStoryTrackItems({ spots, stories })
     .map((entry) => {
