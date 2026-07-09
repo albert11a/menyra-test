@@ -156,7 +156,7 @@
     ]
   },
   "apps/menyra-social/_shared/image-compressor.js": {
-    "file": "chunks/image-compressor-D8ssfxKV.js",
+    "file": "chunks/image-compressor-09cai4FO.js",
     "name": "image-compressor",
     "src": "apps/menyra-social/_shared/image-compressor.js",
     "isDynamicEntry": true
@@ -206,12 +206,13 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/media/media-upload-runtime-cluster.js": {
-    "file": "chunks/media-upload-runtime-cluster-CtJ1HH0e.js",
+    "file": "chunks/media-upload-runtime-cluster-CelXLbMc.js",
     "name": "media-upload-runtime-cluster",
     "src": "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-media-eager-B90n_Ot7.js"
+      "_domain-media-eager-B90n_Ot7.js",
+      "apps/menyra-social/_shared/image-compressor.js"
     ]
   },
   "apps/menyra-social/core/menu/menu-modal-render-utils.js": {

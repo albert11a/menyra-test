@@ -3,6 +3,7 @@ import {
   renderUploadViewCore
 } from "./media-upload-view-render-utils.js";
 import { captureVideoPosterFileCore } from "./video-poster-utils.js";
+import { compressImageThumb } from "../../_shared/image-compressor.js";
 
 export function createMediaUploadRuntimeController({
   state = null,
@@ -152,10 +153,22 @@ export function createMediaUploadRuntimeController({
     if (!String(file.type || "").startsWith("image/")) throw new Error("Nur Bilder erlaubt.");
 
     const compressedFile = await compressImage(file, maxSize, quality, mimeType);
+    // Kleine Thumb-Variante (480px WebP/JPEG) fuer Grid-/Avatar-Anfragen
+    // mitschicken: der Media-Worker liefert sie bei ?w<=480 statt des
+    // Originals aus. Ein Fehler hier darf den Upload nie blockieren.
+    let thumbFile = null;
+    try {
+      thumbFile = await compressImageThumb(file, 480, 0.7);
+    } catch {
+      thumbFile = null;
+    }
     const ticket = await requestMediaActionTicket("image_upload", { restaurantId: ownerId });
     const form = new FormData();
     form.append("file", compressedFile, compressedFile.name || "image.jpg");
     form.append("restaurantId", ownerId || "");
+    if (thumbFile) {
+      form.append("thumb", thumbFile, thumbFile.name || "thumb.webp");
+    }
 
     const res = await fetchMedia(`${mediaBaseUrl}/image/upload`, {
       method: "POST",
@@ -268,19 +281,22 @@ export function createMediaUploadRuntimeController({
     });
   }
 
-  async function createBusinessPost({ restaurantId, caption, mediaUrl, mediaType }) {
+  async function createBusinessPost({ restaurantId, caption, mediaUrl, mediaType, posterUrl = "" }) {
     if (!collection || !makeDocRef || !db) return;
     const base = (state?.restaurants || []).find((row) => String(row?.id || "") === String(restaurantId)) || {};
     const postRef = makeDocRef(collection(db, "restaurants", restaurantId, "socialPosts"));
     const postId = postRef.id;
     const nowIso = new Date().toISOString();
+    // thumbUrl speist im Feed post.poster: Bilder nutzen sich selbst,
+    // Videos das beim Upload eingefangene Poster-Standbild.
+    const safePosterUrl = String(posterUrl || "").trim();
     const payload = {
       postType: "food",
       caption,
       media: [{
         url: mediaUrl,
         type: mediaType,
-        thumbUrl: mediaType === "image" ? mediaUrl : ""
+        thumbUrl: mediaType === "image" ? mediaUrl : safePosterUrl
       }],
       city: base.city || "Prishtina",
       createdAt: serverTimestamp(),
@@ -304,7 +320,7 @@ export function createMediaUploadRuntimeController({
       content: String(caption || ""),
       captionShort: String(caption || "").slice(0, 90),
       mediaUrl: mediaUrl,
-      thumbUrl: mediaType === "image" ? mediaUrl : "",
+      thumbUrl: mediaType === "image" ? mediaUrl : safePosterUrl,
       mediaType,
       likesCount: 0,
       commentsCount: 0,
@@ -316,7 +332,7 @@ export function createMediaUploadRuntimeController({
     await setDoc(makeDocRef(db, "socialFeed", postId), feedPayload, { merge: true });
   }
 
-  async function createUserPost({ uid, caption, url, mediaType }) {
+  async function createUserPost({ uid, caption, url, mediaType, posterUrl = "" }) {
     if (!collection || !makeDocRef || !db) return;
     const isVideo = mediaType === "video";
     const postRef = makeDocRef(collection(db, "users", uid, "posts"));
@@ -326,6 +342,9 @@ export function createMediaUploadRuntimeController({
       type: isVideo ? "video" : "square",
       mediaType: isVideo ? "video" : "image",
       isVideo,
+      // Standbild fuer Video-Posts (leer bei Bildern): Renderer nutzen es
+      // als poster, damit auf 3G sofort etwas sichtbar ist.
+      thumbUrl: isVideo ? String(posterUrl || "").trim() : "",
       likesCount: 0,
       commentsCount: 0,
       createdAt: serverTimestamp()
@@ -378,6 +397,24 @@ export function createMediaUploadRuntimeController({
       const cdnUrl = String(uploadResult?.cdnUrl || uploadResult?.url || "").trim();
       if (!cdnUrl) throw new Error("Upload fehlgeschlagen.");
 
+      // Poster fuer ALLE Video-Uploads (Story, Feed, User-Post): erstes Frame
+      // als JPEG. Die Kachel zeigt damit sofort ein Standbild (wichtig auf
+      // 3G und wenn Autoplay blockiert ist). Fehler blockieren nichts.
+      let videoPosterUrl = "";
+      if (mediaType === "video") {
+        try {
+          const posterFile = await captureVideoPosterFile(state.upload.file);
+          if (posterFile) {
+            const posterUpload = await uploadCompressedImage(posterFile, ownerId, {
+              maxSize: 720,
+              quality: 0.72,
+              mimeType: "image/jpeg"
+            });
+            videoPosterUrl = String(posterUpload?.cdnUrl || posterUpload?.url || "").trim();
+          }
+        } catch {}
+      }
+
       if (isStoryMode) {
         const storyMenuItemId = String(
           state.upload?.menuItemId
@@ -387,20 +424,7 @@ export function createMediaUploadRuntimeController({
         const taggedItem = storyMenuItemId
           ? (storyTagItemsCache.get(restaurantId)?.items || []).find((item) => String(item?.id || "") === storyMenuItemId) || null
           : null;
-        let storyPosterUrl = "";
-        if (mediaType === "video") {
-          try {
-            const posterFile = await captureVideoPosterFile(state.upload.file);
-            if (posterFile) {
-              const posterUpload = await uploadCompressedImage(posterFile, ownerId, {
-                maxSize: 720,
-                quality: 0.72,
-                mimeType: "image/jpeg"
-              });
-              storyPosterUrl = String(posterUpload?.cdnUrl || posterUpload?.url || "").trim();
-            }
-          } catch {}
-        }
+        const storyPosterUrl = videoPosterUrl;
         await storySystemController?.createBusinessStory?.({
           restaurantId,
           caption,
@@ -472,7 +496,8 @@ export function createMediaUploadRuntimeController({
           restaurantId,
           caption,
           mediaUrl: cdnUrl,
-          mediaType
+          mediaType,
+          posterUrl: videoPosterUrl
         });
         await loadFeedPosts({ force: true });
         await loadBusinessPosts({ force: true });
@@ -481,7 +506,8 @@ export function createMediaUploadRuntimeController({
           uid: state.user.uid,
           caption,
           url: cdnUrl,
-          mediaType
+          mediaType,
+          posterUrl: videoPosterUrl
         });
         await loadUserPosts({ force: true });
       }

@@ -124,6 +124,21 @@ function isImageKey(key = "") {
   return /\.(avif|webp|png|jpe?g|gif)$/i.test(String(key || ""));
 }
 
+// Client-seitig erzeugte Thumb-Variante (480px, beim Upload mitgeschickt).
+// Reihenfolge: webp bevorzugt, jpg als Encoder-Fallback aelterer Browser.
+const THUMB_VARIANT_MAX_WIDTH = 480;
+const THUMB_VARIANT_MAX_BYTES = 2 * 1024 * 1024;
+
+function thumbVariantKeys(key = "") {
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return [];
+  return [`${safeKey}.thumb.webp`, `${safeKey}.thumb.jpg`];
+}
+
+function isThumbVariantKey(key = "") {
+  return /\.thumb\.(webp|jpg)$/i.test(String(key || ""));
+}
+
 function parseMediaTransformOptions(url) {
   if (!(url instanceof URL)) return null;
   const width = parsePositiveInt(url.searchParams.get("w"), 32, 2000);
@@ -309,6 +324,27 @@ async function handleImageUpload(request, env, cors) {
     }
   });
 
+  // Optionale, client-seitig verkleinerte Thumb-Variante (480px webp/jpg):
+  // wird bei kleinen Groessenanfragen (?w<=480) statt des Originals
+  // ausgeliefert. Fehler hier duerfen den Haupt-Upload nie brechen.
+  try {
+    const thumb = form.get("thumb");
+    if (thumb && typeof thumb.arrayBuffer === "function" && thumb.size > 0 && thumb.size <= THUMB_VARIANT_MAX_BYTES) {
+      const thumbMime = String(thumb.type || "").toLowerCase();
+      const thumbExt = thumbMime === "image/webp"
+        ? "webp"
+        : ((thumbMime === "image/jpeg" || thumbMime === "image/jpg") ? "jpg" : "");
+      if (thumbExt) {
+        await env.MEDIA_BUCKET.put(`${key}.thumb.${thumbExt}`, await thumb.arrayBuffer(), {
+          httpMetadata: {
+            contentType: thumbMime,
+            cacheControl: "public, max-age=31536000, immutable"
+          }
+        });
+      }
+    }
+  } catch {}
+
   const origin = new URL(request.url).origin;
   const cdnUrl = `${origin}/media/${key}`;
 
@@ -416,7 +452,30 @@ async function handleMedia(request, env, ctx) {
         cacheControl = `public, max-age=${storyTtl}`;
     }
 
-    const transform = isImageKey(key) ? parseMediaTransformOptions(url) : null;
+    const transform = isImageKey(key) && !isThumbVariantKey(key) ? parseMediaTransformOptions(url) : null;
+
+    // Kleine Groessenanfragen (Avatare, Grid-Thumbs, ?w<=480): beim Upload
+    // erzeugte Thumb-Variante direkt aus R2 ausliefern. Das braucht kein
+    // Cloudflare Image Resizing und spart auf 3G ~90% der Bild-Bytes.
+    // Bestandsbilder ohne Variante fallen unveraendert auf Transform/Original.
+    if (transform && Number(transform.width) > 0 && Number(transform.width) <= THUMB_VARIANT_MAX_WIDTH) {
+        for (const thumbKey of thumbVariantKeys(key)) {
+            let thumbObject = null;
+            try {
+                thumbObject = await env.MEDIA_BUCKET.get(thumbKey);
+            } catch {}
+            if (!thumbObject) continue;
+            const thumbHeaders = new Headers();
+            thumbObject.writeHttpMetadata(thumbHeaders);
+            thumbHeaders.set('etag', thumbObject.httpEtag);
+            thumbHeaders.set('cache-control', cacheControl);
+            thumbHeaders.set('access-control-allow-origin', '*');
+            const thumbResponse = new Response(thumbObject.body, { headers: thumbHeaders });
+            ctx.waitUntil(cache.put(request, thumbResponse.clone()));
+            return thumbResponse;
+        }
+    }
+
     if (transform) {
         const r2Base = publicBase(env);
         if (r2Base) {
