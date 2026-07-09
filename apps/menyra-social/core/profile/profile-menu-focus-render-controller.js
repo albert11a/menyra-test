@@ -2490,15 +2490,16 @@ function renderMenuLayoutSection() {
 // Video ueber dem Poster plus Play-Badge oben links. Setzt einen relativ
 // positionierten Container voraus. Das Video liegt ueber dem <img>-Poster,
 // laesst Klicks aber durch (pointer-events:none), damit die Karte oeffnet.
-function menuItemVideoLayer(item, { poster = "", objectPosition = "50% 50%" } = {}) {
+function menuItemVideoLayer(item, { poster = "", objectPosition = "50% 50%", badge = true } = {}) {
   if (!isVideoMediaItemCore(item)) return "";
   const videoUrl = String(item.videoUrl || "").trim();
+  if (!videoUrl) return "";
   const posterAttr = poster ? ` poster="${escapeHtml(poster)}"` : "";
-  const videoHtml = videoUrl
-    ? `<video data-autoplay-video src="${escapeHtml(videoUrl)}"${posterAttr} class="absolute inset-0 w-full h-full object-cover pointer-events-none z-[1]" style="object-position:${objectPosition};" muted loop playsinline autoplay preload="metadata"></video>`
+  const videoHtml = `<video data-autoplay-video src="${escapeHtml(videoUrl)}"${posterAttr} class="absolute inset-0 w-full h-full object-cover pointer-events-none z-[1]" style="object-position:${objectPosition};" muted loop playsinline autoplay preload="metadata"></video>`;
+  const badgeHtml = badge
+    ? `<div class="absolute top-3 left-3 w-7 h-7 rounded-full bg-black/35 backdrop-blur-md text-white flex items-center justify-center pointer-events-none z-10"><svg viewBox="0 0 24 24" class="w-3.5 h-3.5 fill-white block"><path d="M8 5v14l11-7z"></path></svg></div>`
     : "";
-  const badge = `<div class="absolute top-3 left-3 w-7 h-7 rounded-full bg-black/35 backdrop-blur-md text-white flex items-center justify-center pointer-events-none z-10"><svg viewBox="0 0 24 24" class="w-3.5 h-3.5 fill-white block"><path d="M8 5v14l11-7z"></path></svg></div>`;
-  return videoHtml + badge;
+  return videoHtml + badgeHtml;
 }
 
 function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {}) {
@@ -2707,13 +2708,20 @@ function resolveMenuCardStyle(item) {
 function buildFocusCardItem(item, { menuItemId = "" } = {}) {
   if (!item) return null;
   const resolvedMenuItemId = String(menuItemId || item.menuItemId || item.itemId || item.productId || "").trim();
+  const isVideo = isVideoMediaItemCore(item);
+  const videoUrl = String(item.videoUrl || "").trim();
+  const posterUrl = String(item.posterUrl || "").trim();
+  const heroImage = resolveMenuItemHero(item) || item.imageUrl || (isVideo ? posterUrl : "") || "";
   return {
     id: item.id || "",
     title: item.name || item.title || "Sot ne Fokus",
     text: item.description || item.text || "",
-    imageUrl: resolveMenuItemHero(item) || item.imageUrl || "",
+    imageUrl: heroImage,
     objectPosition: item.objectPosition || getMenuItemObjectPosition(item),
-    menuItemId: resolvedMenuItemId
+    menuItemId: resolvedMenuItemId,
+    mediaType: isVideo ? "video" : "image",
+    videoUrl: isVideo ? videoUrl : "",
+    posterUrl: isVideo ? (posterUrl || heroImage) : ""
   };
 }
 
@@ -2969,7 +2977,8 @@ function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile
             <div ${wrapperAttrs} class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col group relative mb-2 ${wrapperAttrs ? "cursor-pointer" : ""}" style="box-shadow:0 4px 14px rgba(0,0,0,0.03);">
               <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative" style="aspect-ratio:16 / 9;">
                 <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${item.objectPosition || "50% 50%"};" ${imageAttrs} decoding="async" />
-                <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50">
+                ${menuItemVideoLayer(item, { poster: safeImg, objectPosition: item.objectPosition || "50% 50%", badge: false })}
+                <div class="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50">
                   ${icon("sparkles", "w-3 h-3 text-amber-500")}
                   <span class="text-[10px] font-black text-slate-900 uppercase tracking-widest pt-[1px]">Tipp</span>
                 </div>

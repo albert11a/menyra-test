@@ -3311,7 +3311,8 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "map-pin-off": Object.freeze([["path", { d: "M5.43 5.43A8 8 0 0 0 4 10c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 1.202 0 32 32 0 0 0 2.824-2.707" }], ["path", { d: "M17.167 17.167C18.815 15.234 20 12.787 20 10a8 8 0 0 0-8-8c-1.482 0-2.87.403-4.061 1.104" }], ["path", { d: "m2 2 20 20" }], ["path", { d: "M9.5 9.5a3 3 0 0 0 4 4" }], ["path", { d: "M14.5 9.5a3 3 0 0 0-4-4" }]]),
   "send": Object.freeze([["path", { d: "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" }], ["path", { d: "m21.854 2.147-10.94 10.939" }]]),
   "utensils": Object.freeze([["path", { d: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" }], ["path", { d: "M7 2v20" }], ["path", { d: "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" }]]),
-  "clock": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 6v6l4 2" }]])
+  "clock": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 6v6l4 2" }]]),
+  "bar-chart-3": Object.freeze([["path", { d: "M3 3v18h18" }], ["path", { d: "M18 17V9" }], ["path", { d: "M13 17V5" }], ["path", { d: "M8 17v-3" }]])
 });
 
 function buildIconAttributeString(attributes = {}) {
