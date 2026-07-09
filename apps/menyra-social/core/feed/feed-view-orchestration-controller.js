@@ -146,6 +146,28 @@ export function createFeedViewOrchestrationController({
     || story?.publishedAt
     || null
   );
+  // Letztes echtes Feed-Post-Bild eines Business (neuester Post mit Bild).
+  // Dient als Story-Vorschau, wenn die Story selbst kein Medium mitbringt –
+  // niemals das Logo, sondern immer ein tatsaechlicher Beitrag.
+  const resolveLatestFeedPostImage = (restaurantId = "") => {
+    const rid = String(restaurantId || "").trim();
+    if (!rid) return "";
+    const posts = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
+    let bestImage = "";
+    let bestMs = -1;
+    posts.forEach((post) => {
+      const postRid = String(post?.restaurantId || post?.ownerId || "").trim();
+      if (postRid !== rid) return;
+      const image = String(post?.image || post?.url || post?.poster || "").trim();
+      if (!image) return;
+      const ms = toTimestampMs(post?.createdAt || post?.updatedAt);
+      if (ms >= bestMs) {
+        bestMs = ms;
+        bestImage = image;
+      }
+    });
+    return bestImage;
+  };
   const isLikelyVideoMediaUrl = (value = "") => {
     const url = String(value || "").trim().toLowerCase();
     if (!url) return false;
@@ -167,6 +189,9 @@ export function createFeedViewOrchestrationController({
     // Do not fall back to logo/avatar media for story preview cards.
     // `story.img` is the business logo/title image and must never be used as
     // the story preview – the preview is always the latest story post media.
+    // `feedPreviewImage` is the latest real feed post photo of the business,
+    // used only when the story doc itself carries no media (so the tile still
+    // shows an actual post instead of an empty camera placeholder).
     const fallbackImage = String(
       story?.image
       || story?.thumbnail
@@ -176,6 +201,7 @@ export function createFeedViewOrchestrationController({
       || story?.coverImage
       || story?.poster
       || story?.posterUrl
+      || story?.feedPreviewImage
       || ""
     ).trim();
     const inferredVideo = isLikelyVideoMediaUrl(mediaUrl);
@@ -869,13 +895,18 @@ export function createFeedViewOrchestrationController({
       const restaurantId = identity.storyRestaurantId;
       if (!restaurantId) return;
       const restaurant = restaurantMap.get(restaurantId) || null;
-      if (viewerCity && !matchesFeedViewerCity({ entry: story, restaurant, viewerCity })) return;
+      // Aktive (live) Stories nie per Stadt-Filter entfernen (siehe #1).
+      if (viewerCity && !story?.isLive && !matchesFeedViewerCity({ entry: story, restaurant, viewerCity })) return;
       const coords = normalizeEntityCoords(restaurant) || normalizeEntityCoords(story);
       const distanceKm = viewerCoords && coords
         ? haversineDistanceKm(viewerCoords, coords)
         : Number.POSITIVE_INFINITY;
       const createdAtMs = toStoryTimestampMs(story);
-      const preview = resolveStoryPreviewMedia(story);
+      // Fehlt der Story ein eigenes Medium, nimm das letzte echte Feed-Post-Bild
+      // des Business als Vorschau – niemals das Logo/Titelbild.
+      const feedPreviewImage = resolveLatestFeedPostImage(restaurantId);
+      const storyForPreview = feedPreviewImage ? { ...story, feedPreviewImage } : story;
+      const preview = resolveStoryPreviewMedia(storyForPreview);
       const storyLabel = String(identity.storyLabel || "").trim() || "Story";
       const storyUrl = buildStoryViewerUrlFn(restaurantId);
       const profileImageUrl = resolveRestaurantLogoFn(
@@ -891,6 +922,7 @@ export function createFeedViewOrchestrationController({
         storyLabel,
         storyUrl,
         profileImageUrl,
+        feedPreviewImage,
         preview,
         distanceKm,
         createdAtMs,
