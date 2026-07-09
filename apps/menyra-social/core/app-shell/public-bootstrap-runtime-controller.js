@@ -1329,6 +1329,7 @@ export function createPublicBootstrapRuntimeController({
   queueStoryIdentityHydration = () => {},
   syncFeedPostLogos = () => false,
   updateFeedDom = () => false,
+  loadStoriesForFeed = null,
   render = () => {},
   reportCriticalRuntimeFailure = () => {},
   getLastRenderMode = () => "",
@@ -1344,6 +1345,28 @@ export function createPublicBootstrapRuntimeController({
   let publicBootstrapListenerBound = false;
   let publicBootstrapFetchPromise = null;
   let renderRequested = false;
+  let publicStoriesHydrationRequested = false;
+
+  // Der Bootstrap liefert Stories teils nur mit Identitaet (Logo/Name) – die
+  // echten Story-Medien (Foto/Video) haengen davon ab, dass die deployte Cloud
+  // Function sie mitschickt. Damit die Vorschau-Kachel auf der oeffentlichen
+  // Seite zuverlaessig das gepostete Story-Medium zeigt, laden wir die Stories
+  // einmalig direkt aus Firestore nach (collectionGroup-Query, oeffentlich
+  // lesbar). Netz-Stories mit Medium ersetzen dann die medienlosen Platzhalter.
+  function hydratePublicStoriesOnce() {
+    if (publicStoriesHydrationRequested) return;
+    if (typeof loadStoriesForFeed !== "function") return;
+    const activeTab = String(state?.activeTab || "").trim().toLowerCase();
+    if (activeTab !== "feed") return;
+    publicStoriesHydrationRequested = true;
+    scheduleNonCriticalTask(() => {
+      try {
+        void Promise.resolve(
+          loadStoriesForFeed({ force: true, refreshUi: state?.activeTab === "feed" })
+        ).catch(() => null);
+      } catch {}
+    }, 220);
+  }
 
   function requestRender() {
     if (renderRequested) return;
@@ -1644,6 +1667,9 @@ export function createPublicBootstrapRuntimeController({
         queueStoryIdentityHydration(state.stories, { max: fastLimits.storyIdentityHydration });
       }
     }
+
+    // Echte Story-Medien direkt aus Firestore nachladen (einmalig, Feed-Tab).
+    hydratePublicStoriesOnce();
 
     if (changed) {
       const inMain = getLastRenderMode() === "main";

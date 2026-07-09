@@ -203,6 +203,7 @@ export function createPublicRouteRuntimeCluster({
     queueStoryIdentityHydration: toFunction(publicBootstrapApi.queueStoryIdentityHydrationFn || publicBootstrapApi.queueStoryIdentityHydration),
     syncFeedPostLogos: toFunction(publicBootstrapApi.syncFeedPostLogosFn || publicBootstrapApi.syncFeedPostLogos, () => false),
     updateFeedDom: toFunction(publicBootstrapApi.updateFeedDomFn || publicBootstrapApi.updateFeedDom, () => false),
+    loadStoriesForFeed: toFunction(publicBootstrapApi.loadStoriesForFeedFn || publicBootstrapApi.loadStoriesForFeed, null),
     render,
     reportCriticalRuntimeFailure,
     getLastRenderMode,

@@ -2756,7 +2756,8 @@ const {
     setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
     queueStoryIdentityHydration,
     syncFeedPostLogos,
-    updateFeedDom: (...args) => updateFeedDom(...args)
+    updateFeedDom: (...args) => updateFeedDom(...args),
+    loadStoriesForFeed: (...args) => loadStoriesForFeed(...args)
   },
   errorApi: {
     reportCriticalRuntimeFailure
