@@ -1288,7 +1288,7 @@ installViewportObservers();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const serviceWorkerUrl = new URL("./sw.js?v=2026-03-21-heart-shell-v7", import.meta.url);
+    const serviceWorkerUrl = new URL("./sw.js?v=2026-07-09-heart-shell-v8", import.meta.url);
     navigator.serviceWorker.register(serviceWorkerUrl).catch(() => {});
   });
 }

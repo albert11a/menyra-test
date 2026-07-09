@@ -157,9 +157,13 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-07-01-public-focus-parity-01";
+      const APP_BUILD_TOKEN = "2026-07-09-loading-performance-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
+      // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
+      // Vite-Bundle-Manifest ersetzt. Spart auf dem Cold-Start-Kritikpfad den
+      // blockierenden manifest.json-Roundtrip (Fallback: Laufzeit-Fetch bleibt).
+      window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_INLINE__ = null;/*__MNYRA_INLINE_BUNDLE_MANIFEST__*/
       try {
         const initialRoute = readPublicStartupRoute(window.location.pathname || "");
         const routeKind = String(initialRoute?.kind || "").trim();
@@ -173,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-01-public-focus-parity-01").trim() || "2026-07-01-public-focus-parity-01";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim() || "2026-07-09-loading-performance-01";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -219,7 +223,11 @@
             const cacheKeys = await caches.keys();
             await Promise.all(
               cacheKeys
-                .filter((key) => String(key || "").startsWith("mnyra-social-cache-"))
+                .filter((key) => {
+                  const safeKey = String(key || "");
+                  return safeKey.startsWith("mnyra-social-cache-")
+                    || safeKey.startsWith("menyra-cache-");
+                })
                 .map((key) => caches.delete(key).catch(() => false))
             );
           }
@@ -401,7 +409,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-01-public-focus-parity-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -466,13 +474,15 @@
       };
       const loadBundleManifest = async () => {
         if (shouldForceRawEntry()) return null;
+        const inlineManifest = window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_INLINE__;
+        if (inlineManifest && typeof inlineManifest === "object") return inlineManifest;
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         const timeoutId = controller
           ? window.setTimeout(() => controller.abort(), BUNDLE_MANIFEST_TIMEOUT_MS)
           : 0;
         try {
           const response = await fetch(BUNDLE_MANIFEST_URL, {
-            cache: "no-store",
+            cache: "no-cache",
             credentials: "same-origin",
             signal: controller?.signal
           });
@@ -2386,7 +2396,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-01-public-focus-parity-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -2437,6 +2447,8 @@
         };
       const loadManifest = async () => {
         if (shouldForceRawEntry()) return null;
+        const inlineManifest = window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_INLINE__;
+        if (inlineManifest && typeof inlineManifest === "object") return inlineManifest;
         try {
           const existingPromise = window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_PROMISE__;
           if (existingPromise && typeof existingPromise.then === "function") {
@@ -2449,7 +2461,7 @@
           : 0;
         try {
           const response = await fetch(BUNDLE_MANIFEST_URL, {
-            cache: "no-store",
+            cache: "no-cache",
             credentials: "same-origin",
             signal: controller?.signal
           });
@@ -2633,7 +2645,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-01-public-focus-parity-01").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {

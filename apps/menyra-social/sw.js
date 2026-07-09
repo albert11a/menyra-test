@@ -93,7 +93,7 @@ async function getCachedAppShellResponse() {
 async function precacheAppShell() {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const shellRequest = new Request(APP_SHELL_URL, { cache: "reload" });
+    const shellRequest = new Request(APP_SHELL_URL, { cache: "no-cache" });
     const shellResponse = await fetchWithTimeout(shellRequest, NAVIGATION_FETCH_TIMEOUT_MS);
     if (!shellResponse || (!shellResponse.ok && shellResponse.type !== "opaque")) return;
     const cloneForIndex = shellResponse.clone();
@@ -447,7 +447,9 @@ async function cacheFirst(request) {
 async function cacheVersionedCodeAssetFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const refreshRequest = new Request(request, { cache: "reload" });
+  // "no-cache" statt "reload": erlaubt konditionale Revalidierung (ETag/304)
+  // statt vollem Re-Download - identische Frische, deutlich weniger Bytes auf 3G.
+  const refreshRequest = new Request(request, { cache: "no-cache" });
   const refreshPromise = fetchWithTimeout(refreshRequest, RUNTIME_FETCH_TIMEOUT_MS)
     .then(async (response) => {
       if (response && (response.ok || response.type === "opaque")) {
@@ -471,7 +473,7 @@ async function cacheVersionedCodeAssetFirst(request) {
 async function networkFirstBuildMetadata(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const refreshRequest = new Request(request, { cache: "reload" });
+    const refreshRequest = new Request(request, { cache: "no-cache" });
     const response = await fetchWithTimeout(refreshRequest, RUNTIME_FETCH_TIMEOUT_MS);
     if (response && (response.ok || response.type === "opaque")) {
       cache.put(request, response.clone()).catch(() => null);
@@ -548,7 +550,7 @@ self.addEventListener("fetch", (event) => {
             return preloadResponse;
           }
         }
-        const navReq = new Request(req, { cache: strictPublicNavigation ? "reload" : "no-cache" });
+        const navReq = new Request(req, { cache: "no-cache" });
         const networkResp = await fetchWithTimeout(navReq, navTimeoutMs);
         if (!networkResp || (!networkResp.ok && networkResp.type !== "opaque")) {
           throw new Error(`navigation-response-not-ok:${networkResp?.status || 0}`);
@@ -580,7 +582,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       try {
-        const networkReq = new Request(req, { cache: hasVersionToken ? "reload" : "no-cache" });
+        const networkReq = new Request(req, { cache: "no-cache" });
         const networkResp = await fetchWithTimeout(networkReq, RUNTIME_FETCH_TIMEOUT_MS);
         if (networkResp && (networkResp.ok || networkResp.type === "opaque")) {
           cache.put(req, networkResp.clone()).catch(() => null);

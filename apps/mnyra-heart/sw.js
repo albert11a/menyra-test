@@ -1,4 +1,5 @@
-const HEART_CACHE = "mnyra-heart-shell-v7";
+const HEART_CACHE_PREFIX = "mnyra-heart-shell-";
+const HEART_CACHE = "mnyra-heart-shell-v8";
 const SHELL_ASSETS = [
   "/heart/",
   "/heart/index.html",
@@ -55,7 +56,15 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== HEART_CACHE).map((key) => caches.delete(key)));
+    // Nur EIGENE alte Caches loeschen: der Cache-Storage ist origin-weit geteilt.
+    // Fremde Prefixe (menyra-cache-*, mnyra-social-cache-*) gehoeren anderen
+    // Service Workern - sie mitzuloeschen wirft deren Offline-Shell und
+    // Bild-Caches weg und macht die naechsten Loads unnoetig langsam.
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith(HEART_CACHE_PREFIX) && key !== HEART_CACHE)
+        .map((key) => caches.delete(key))
+    );
     await self.clients.claim();
   })());
 });
