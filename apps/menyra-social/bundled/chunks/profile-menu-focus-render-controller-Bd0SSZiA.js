@@ -1361,7 +1361,7 @@ import{f as he,g as Yn,i as Zn,h as Jn,j as Xn,k as xe,b as es}from"../entry/soc
       </div>
       <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
         ${Zn(m)&&String(m.videoUrl||"").trim()?`
-          <video data-focus-media="video" data-focus-video src="${n(String(m.videoUrl||"").trim())}" ${b?`poster="${n(b)}"`:""} class="w-full h-56 object-cover" style="object-position:${le(m)};" muted loop playsinline autoplay preload="metadata"></video>
+          <video data-focus-media="video" data-focus-video src="${n(String(m.videoUrl||"").trim())}" ${b?`poster="${n(b)}"`:""} class="w-full h-56 object-cover" style="object-position:${le(m)};" controls muted loop playsinline autoplay preload="metadata"></video>
         `:`
           <img data-focus-media="image" data-focus-image src="${n(b)}" data-fallback-src="${n(k)}"${S} class="w-full h-56 object-cover" style="object-position:${le(m)};" ${v} decoding="async" />
         `}

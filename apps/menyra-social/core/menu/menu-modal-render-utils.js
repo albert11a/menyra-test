@@ -273,7 +273,7 @@ export function renderMenuItemModalCore({
       <input type="file" id="menuItemImageInput" class="hidden" accept="image/*,video/*" multiple />
       <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         ${heroIsVideo ? `
-          <video id="menuItemHeroVideo" src="${esc(heroVideoUrl)}" ${heroVideoPoster ? `poster="${esc(heroVideoPoster)}"` : ""} class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" muted loop playsinline autoplay preload="metadata"></video>
+          <video id="menuItemHeroVideo" src="${esc(heroVideoUrl)}" ${heroVideoPoster ? `poster="${esc(heroVideoPoster)}"` : ""} class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" controls muted loop playsinline autoplay preload="metadata"></video>
           <span class="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
             ${iconFn("play", "w-3 h-3")} Video
           </span>
@@ -735,7 +735,7 @@ export function renderMenuDetailModalCore({
     ? (String(item.posterUrl || "").trim() ? getOptimizedImage(String(item.posterUrl).trim(), "large") : safeImg)
     : "";
   const detailHeroMediaHtml = (extraImgClass = "") => (detailIsVideo && detailVideoUrl
-    ? `<video id="menuDetailHeroVideo" src="${esc(detailVideoUrl)}" ${detailVideoPoster ? `poster="${esc(detailVideoPoster)}"` : ""} class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" muted loop playsinline autoplay preload="metadata"></video>`
+    ? `<video id="menuDetailHeroVideo" src="${esc(detailVideoUrl)}" ${detailVideoPoster ? `poster="${esc(detailVideoPoster)}"` : ""} class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" controls playsinline preload="metadata"></video>`
     : `<img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />`);
   const priceLabel = formatPriceLabel(item.price, item);
   const catalogProfile = getCatalogProfile(item);

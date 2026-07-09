@@ -717,7 +717,10 @@ export function createMenuPublicRuntimeController({
           : "",
         woltUrl: normalizeExternalUrl(item.woltUrl || item.woltLink || ""),
         imageUrl: item.imageUrl || null,
-        imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : []
+        imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
+        mediaType: String(item.mediaType || "").trim().toLowerCase() === "video" || String(item.videoUrl || "").trim() ? "video" : "image",
+        videoUrl: String(item.videoUrl || "").trim(),
+        posterUrl: String(item.posterUrl || item.imageUrl || "").trim()
       })),
       statusBadgeVisible: resolveMenuStatusBadgeVisible(state?.menu?.statusBadgeVisible),
       menuTruthSource: "public-menu",

@@ -4038,7 +4038,7 @@ function renderFocusCarousel(profile, {
       </div>
       <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
         ${isVideoMediaItemCore(item) && String(item.videoUrl || "").trim() ? `
-          <video data-focus-media="video" data-focus-video src="${escapeHtml(String(item.videoUrl || "").trim())}" ${safeImg ? `poster="${escapeHtml(safeImg)}"` : ""} class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" muted loop playsinline autoplay preload="metadata"></video>
+          <video data-focus-media="video" data-focus-video src="${escapeHtml(String(item.videoUrl || "").trim())}" ${safeImg ? `poster="${escapeHtml(safeImg)}"` : ""} class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" controls muted loop playsinline autoplay preload="metadata"></video>
         ` : `
           <img data-focus-media="image" data-focus-image src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
         `}
