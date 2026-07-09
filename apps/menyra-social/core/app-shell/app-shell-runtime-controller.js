@@ -203,6 +203,7 @@ export function createAppShellRuntimeController(deps = {}) {
   let lastRuntimeDegradedBannerSignature = "";
   let lastFeedLocationRenderKey = "";
   let menuLazyImageObserver = null;
+  let autoplayVideoObserver = null;
   const revealedMenuImageSrcs = new Set();
   const REVEALED_MENU_IMAGE_SRC_MAX = 500;
 
@@ -1308,6 +1309,57 @@ export function createAppShellRuntimeController(deps = {}) {
           armImageReveal(img);
         }
       });
+    });
+    activateAutoplayVideos(root);
+  }
+
+  // Stummes Auto-Loop-Video (Speisen-Grid, Fokus-Karussell) zuverlaessig
+  // starten, sobald es bereit ist. Das autoplay-Attribut allein greift bei
+  // dynamisch eingefuegten Videos (iOS/PWA) nicht immer, darum hier explizit
+  // play() auf canplay + sichtbar via IntersectionObserver.
+  function ensureAutoplayVideoObserver() {
+    if (autoplayVideoObserver || typeof IntersectionObserver === "undefined") return autoplayVideoObserver;
+    autoplayVideoObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target;
+        if (!video) return;
+        if (entry.isIntersecting) {
+          video.muted = true;
+          const attempt = video.play();
+          if (attempt && typeof attempt.catch === "function") attempt.catch(() => {});
+        } else if (!video.paused) {
+          try { video.pause(); } catch {}
+        }
+      });
+    }, { root: null, rootMargin: "160px 0px", threshold: 0.25 });
+    return autoplayVideoObserver;
+  }
+
+  function activateAutoplayVideos(root = doc) {
+    if (!root || typeof root.querySelectorAll !== "function") return;
+    root.querySelectorAll("video[data-autoplay-video]").forEach((video) => {
+      if (video.dataset.autoplayBound === "1") return;
+      video.dataset.autoplayBound = "1";
+      video.muted = true;
+      video.defaultMuted = true;
+      video.setAttribute("muted", "");
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      const tryPlay = () => {
+        video.muted = true;
+        const attempt = video.play();
+        if (attempt && typeof attempt.catch === "function") attempt.catch(() => {});
+      };
+      video.addEventListener("loadeddata", tryPlay);
+      video.addEventListener("canplay", tryPlay);
+      const observer = ensureAutoplayVideoObserver();
+      if (observer) {
+        try { observer.observe(video); } catch { tryPlay(); }
+      } else {
+        tryPlay();
+      }
+      if (video.readyState >= 2) tryPlay();
     });
   }
 

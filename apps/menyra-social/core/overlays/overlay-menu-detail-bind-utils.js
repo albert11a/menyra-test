@@ -435,6 +435,18 @@ export function bindMenuDetailOverlayEventsCore({
       if (pauseIcon) pauseIcon.classList.toggle("hidden", !playing);
     };
     detailVideo.muted = true;
+    detailVideo.playsInline = true;
+    let autoStarted = false;
+    const autoStart = () => {
+      if (autoStarted) return;
+      autoStarted = true;
+      detailVideo.muted = true;
+      const attempt = detailVideo.play();
+      if (attempt && typeof attempt.catch === "function") attempt.catch(() => {});
+    };
+    detailVideo.addEventListener("loadeddata", autoStart);
+    detailVideo.addEventListener("canplay", autoStart);
+    if (detailVideo.readyState >= 2) autoStart();
     if (toggleBtn) {
       toggleBtn.addEventListener("click", (evt) => {
         evt.stopPropagation();
