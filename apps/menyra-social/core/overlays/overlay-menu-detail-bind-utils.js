@@ -422,6 +422,36 @@ export function bindMenuDetailOverlayEventsCore({
   const menuDetailComments = doc.getElementById("menuDetailComments");
   if (menuDetailComments) applyCommentAvatarCache(menuDetailComments);
 
+  // Video-Speise: stummes Auto-Loop + eigener Play/Pause-Button oben links
+  // (wie bei Beitraegen, ohne Ton, keine nativen Controls).
+  const detailVideo = doc.querySelector("[data-menu-detail-video]");
+  if (detailVideo) {
+    const toggleBtn = doc.querySelector("[data-menu-video-toggle]");
+    const syncVideoIcons = () => {
+      const playing = !detailVideo.paused && !detailVideo.ended;
+      const playIcon = toggleBtn?.querySelector("[data-video-icon-play]");
+      const pauseIcon = toggleBtn?.querySelector("[data-video-icon-pause]");
+      if (playIcon) playIcon.classList.toggle("hidden", playing);
+      if (pauseIcon) pauseIcon.classList.toggle("hidden", !playing);
+    };
+    detailVideo.muted = true;
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", (evt) => {
+        evt.stopPropagation();
+        detailVideo.muted = true;
+        if (detailVideo.paused || detailVideo.ended) {
+          void detailVideo.play().catch(() => {});
+        } else {
+          detailVideo.pause();
+        }
+      });
+    }
+    detailVideo.addEventListener("play", syncVideoIcons);
+    detailVideo.addEventListener("pause", syncVideoIcons);
+    detailVideo.addEventListener("ended", syncVideoIcons);
+    syncVideoIcons();
+  }
+
   doc.querySelectorAll("[data-menu-gallery-nav]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const dir = btn.dataset.menuGalleryNav || "next";

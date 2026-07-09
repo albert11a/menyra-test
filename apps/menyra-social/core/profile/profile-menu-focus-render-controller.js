@@ -2486,6 +2486,13 @@ function renderMenuLayoutSection() {
   `;
 }
 
+// Play-Badge oben links fuer Video-Speisen im Grid (wie bei Beitraegen).
+// Setzt einen absolut positionierten Marker voraus (Container = relative).
+function menuItemVideoBadge(item) {
+  if (!isVideoMediaItemCore(item)) return "";
+  return `<div class="absolute top-3 left-3 w-7 h-7 rounded-full bg-black/35 backdrop-blur-md text-white flex items-center justify-center pointer-events-none z-10"><svg viewBox="0 0 24 24" class="w-3.5 h-3.5 fill-white block"><path d="M8 5v14l11-7z"></path></svg></div>`;
+}
+
 function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {}) {
   const rawImg = resolveMenuItemHero(item);
   const menuDetailStableKey = mode === "profile"
@@ -2599,8 +2606,9 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food", p
   `;
   return `
     <div ${wrapperAttrs} class="w-full ${isDrink ? "h-full p-3 rounded-[1.6rem] flex flex-col" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${mode === "profile" ? "cursor-pointer" : ""}">
-      <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
+      <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100 relative">
         <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        ${menuItemVideoBadge(item)}
       </div>
       ${isDrink ? `
         <div class="mt-3 flex flex-1 flex-col">
@@ -2992,6 +3000,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile", priorityIndex = 
     <div ${wrapperAttrs} class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
         <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        ${menuItemVideoBadge(item)}
         <button
           type="button"
           data-menu-card-like="${escapeHtml(item.id)}"
@@ -3055,6 +3064,7 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default", 
     return `
       <div ${wrapperAttrs} class="rounded-[2.2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden mb-5 group aspect-[16/9] ${mode === "profile" ? "cursor-pointer" : ""}" style="border-radius:2.2rem;aspect-ratio:16 / 9;margin-bottom:20px;">
         <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
+        ${menuItemVideoBadge(item)}
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
         <div class="absolute top-3 right-3 w-8 h-8 min-w-[2rem] min-h-[2rem] bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white pointer-events-none shrink-0" style="aspect-ratio:1 / 1;">
           ${icon("arrow-right", "w-4 h-4")}
@@ -4038,7 +4048,10 @@ function renderFocusCarousel(profile, {
       </div>
       <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
         ${isVideoMediaItemCore(item) && String(item.videoUrl || "").trim() ? `
-          <video data-focus-media="video" data-focus-video src="${escapeHtml(String(item.videoUrl || "").trim())}" ${safeImg ? `poster="${escapeHtml(safeImg)}"` : ""} class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" controls muted loop playsinline autoplay preload="metadata"></video>
+          <video data-focus-media="video" data-focus-video src="${escapeHtml(String(item.videoUrl || "").trim())}" ${safeImg ? `poster="${escapeHtml(safeImg)}"` : ""} class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" muted loop playsinline autoplay preload="metadata"></video>
+          <div class="absolute top-3 left-3 w-8 h-8 rounded-full bg-black/35 backdrop-blur-md text-white flex items-center justify-center pointer-events-none">
+            <svg viewBox="0 0 24 24" class="w-4 h-4 fill-white block"><path d="M8 5v14l11-7z"></path></svg>
+          </div>
         ` : `
           <img data-focus-media="image" data-focus-image src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}"${lazyAttrs} class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" ${imageAttrs} decoding="async" />
         `}

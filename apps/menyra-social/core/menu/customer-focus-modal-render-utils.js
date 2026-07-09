@@ -424,7 +424,7 @@ export function renderFocusModalCore({
       <input type="file" id="focusImageInput" class="hidden" accept="image/*,video/*" />
       <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         ${focusHeroIsVideo && focusHeroVideoUrl ? `
-          <video id="focusHeroVideo" src="${escapeHtml(focusHeroVideoUrl)}" ${focusHeroPoster ? `poster="${escapeHtml(focusHeroPoster)}"` : ""} class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" controls muted loop playsinline autoplay preload="metadata"></video>
+          <video id="focusHeroVideo" src="${escapeHtml(focusHeroVideoUrl)}" ${focusHeroPoster ? `poster="${escapeHtml(focusHeroPoster)}"` : ""} class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" muted loop playsinline autoplay preload="metadata"></video>
           <span class="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
             ${icon("play", "w-3 h-3")} Video
           </span>
