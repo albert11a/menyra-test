@@ -1039,6 +1039,55 @@ const operations = {
       }
     });
   },
+  pickDestinationImage(placeId = "", imageTarget = "") {
+    const safePlaceId = String(placeId || "").trim();
+    if (!safePlaceId) return;
+    const inputId = imageTarget === "gallery"
+      ? `destPlaceGalleryFile_${safePlaceId}`
+      : `destPlaceCoverFile_${safePlaceId}`;
+    document.getElementById(inputId)?.click?.();
+  },
+  async handleDestinationImageChange(imageTarget = "", placeId = "", files = []) {
+    const safePlaceId = String(placeId || "").trim();
+    const kind = imageTarget === "gallery" ? "gallery" : "cover";
+    const imageFiles = (Array.isArray(files) ? files : [])
+      .filter((file) => file && String(file.type || "").startsWith("image/"))
+      .slice(0, kind === "gallery" ? 12 : 1);
+    if (!safePlaceId || !imageFiles.length) return;
+    // Erst die sichtbaren Eingaben sichern, dann hochladen: das Re-Render
+    // waehrend/nach dem Upload darf keine ungespeicherten Feldwerte verlieren.
+    const draft = captureDestinationDraftFromDom();
+    if (!draft) return;
+    const editor = store.getState().destinations?.editor || {};
+    actions.patchDestinationEditor({
+      draft,
+      uploadingImage: true,
+      status: imageFiles.length > 1 ? `${imageFiles.length} Bilder werden hochgeladen...` : "Bild wird hochgeladen...",
+      error: ""
+    });
+    try {
+      const uploadedUrls = [];
+      for (const file of imageFiles) {
+        uploadedUrls.push(await destinationsAdapter.uploadDestinationImage(file, editor.destinationId));
+      }
+      const places = draft.places.map((place) => {
+        if (place.id !== safePlaceId) return place;
+        if (kind === "cover") return { ...place, coverImageUrl: uploadedUrls[0] || place.coverImageUrl };
+        return { ...place, gallery: [...(place.gallery || []), ...uploadedUrls] };
+      });
+      actions.patchDestinationEditor({
+        uploadingImage: false,
+        draft: { ...draft, places },
+        status: `${uploadedUrls.length > 1 ? `${uploadedUrls.length} Bilder` : "Bild"} hochgeladen. Entwurf speichern nicht vergessen.`
+      });
+    } catch (error) {
+      actions.patchDestinationEditor({
+        uploadingImage: false,
+        error: error?.message || "Bild-Upload fehlgeschlagen."
+      });
+      setToast("Destination", error?.message || "Bild-Upload fehlgeschlagen.", "danger");
+    }
+  },
   async saveDestinationDraft() {
     const draft = captureDestinationDraftFromDom();
     if (!draft) return;

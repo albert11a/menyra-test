@@ -3857,6 +3857,21 @@ body {
   color: var(--heart-text-soft);
 }
 
+.heart-destination-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.heart-destination-cover-preview {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: var(--heart-radius-sm, 8px);
+  border: 1px solid var(--heart-border);
+  background: var(--heart-surface-soft);
+}
+
 .heart-lead-destination-summary {
   margin: 12px 0 4px;
   color: var(--heart-text-muted);

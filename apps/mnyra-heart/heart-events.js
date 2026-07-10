@@ -272,6 +272,13 @@ export function bindHeartEvents({
       operations.removeDestinationPlace?.(target.getAttribute("data-place-id") || "");
       return;
     }
+    if (action === "pick-destination-image") {
+      operations.pickDestinationImage?.(
+        target.getAttribute("data-place-id") || "",
+        target.getAttribute("data-image-target") || ""
+      );
+      return;
+    }
     if (action === "save-destination-draft") {
       await operations.saveDestinationDraft?.();
       return;
@@ -379,6 +386,16 @@ export function bindHeartEvents({
     ].join(", "));
     if (crmFileInput) {
       await operations.handleCrmFileChange?.(crmFileInput.id || crmFileInput.getAttribute("data-crm-file-input"), crmFileInput.files?.[0] || null);
+      return;
+    }
+
+    const destinationImageInput = event.target?.closest?.("[data-destination-image-input]");
+    if (destinationImageInput) {
+      await operations.handleDestinationImageChange?.(
+        destinationImageInput.getAttribute("data-destination-image-input") || "",
+        destinationImageInput.getAttribute("data-place-id") || "",
+        destinationImageInput.files ? Array.from(destinationImageInput.files) : []
+      );
       return;
     }
 

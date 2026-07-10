@@ -1,6 +1,11 @@
 import {
+  auth,
   db
 } from "/shared/firebase-config.js";
+import {
+  BUNNY_EDGE_BASE,
+  MEDIA_TICKET_ENDPOINT
+} from "/shared/bunny-edge.js";
 import {
   collection,
   deleteDoc,
@@ -19,6 +24,12 @@ import {
   normalizeDestinationDocCore,
   normalizeDestinationPayloadCore
 } from "../menyra-social/core/destinations/destination-template-core.js";
+import {
+  createMediaUploadRuntimeCluster
+} from "../menyra-social/core/media/media-upload-runtime-cluster.js";
+import {
+  compressImage
+} from "../menyra-social/_shared/image-compressor.js";
 
 export const HEART_DESTINATIONS_ADAPTER_VERSION = "heart-destinations-adapter.v1";
 
@@ -38,11 +49,51 @@ export function createHeartDestinationsAdapter({
   let publicListCache = { items: [], loadedAt: 0 };
 
   function buildCreatorMeta() {
-    const auth = typeof getAuthState === "function" ? (getAuthState() || {}) : {};
+    const authState = typeof getAuthState === "function" ? (getAuthState() || {}) : {};
     return {
-      createdByUid: asText(auth.user?.uid),
-      createdByName: asText(auth.profile?.name || auth.user?.displayName || auth.user?.email)
+      createdByUid: asText(authState.user?.uid),
+      createdByName: asText(authState.profile?.name || authState.user?.displayName || authState.user?.email)
     };
+  }
+
+  // Gleicher Media-Worker-Pfad wie die CRM-Logo-Uploads (Ticket + CDN-URL),
+  // aber lazy: der Upload-Cluster entsteht erst beim ersten Bild.
+  let mediaUploadRuntime = null;
+
+  function ensureMediaUploadRuntime() {
+    if (mediaUploadRuntime) return mediaUploadRuntime;
+    mediaUploadRuntime = createMediaUploadRuntimeCluster({
+      stateDeps: {
+        state: {},
+        auth,
+        documentObj: typeof document === "undefined" ? null : document
+      },
+      constants: {
+        mediaBaseUrl: BUNNY_EDGE_BASE,
+        mediaTicketEndpoint: MEDIA_TICKET_ENDPOINT,
+        cacheKeys: {},
+        fastLimits: {}
+      },
+      firebaseApi: { db },
+      mediaApi: {
+        fetchFn: typeof fetch === "function" ? fetch.bind(globalThis) : null,
+        compressImageFn: compressImage
+      }
+    });
+    return mediaUploadRuntime;
+  }
+
+  async function uploadDestinationImage(file, destinationId = "") {
+    if (!file) throw new Error("Bild fehlt.");
+    const ownerId = asText(destinationId) || "heart-destinations";
+    const { url, cdnUrl } = await ensureMediaUploadRuntime().uploadCompressedImage(file, ownerId, {
+      maxSize: 1600,
+      quality: 0.82,
+      mimeType: "image/jpeg"
+    });
+    const imageUrl = asText(cdnUrl || url);
+    if (!imageUrl) throw new Error("Upload lieferte keine Bild-URL.");
+    return imageUrl;
   }
 
   async function listDestinations() {
@@ -155,6 +206,7 @@ export function createHeartDestinationsAdapter({
     saveDraft,
     publishDestination,
     deleteDestination,
-    listPublishedDestinations
+    listPublishedDestinations,
+    uploadDestinationImage
   });
 }

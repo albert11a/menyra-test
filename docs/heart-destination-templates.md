@@ -72,12 +72,28 @@ sonst 600 m/min Auto).
 - Publish schreibt eine kleine Public-Projektion (nur aktive Orte) statt
   des kompletten Admin-Dokuments.
 
+## Foto-Upload im Editor
+
+Titelbild und Galerie lassen sich pro Ort direkt hochladen ("Titelbild
+hochladen" / "Galerie-Bilder hochladen", mehrere Dateien auf einmal). Der
+Upload nutzt denselben Media-Worker-Pfad wie die CRM-Logo-Uploads
+(`issueMediaActionTicket` + `image/upload`, CDN-URL zurueck) und traegt die
+URL in die bestehenden Felder ein - manuell eingefuegte URLs funktionieren
+weiterhin. Der Upload-Cluster im Adapter entsteht lazy beim ersten Bild.
+Ungespeicherte Editor-Eingaben bleiben beim Re-Render nach dem Upload
+erhalten (Draft wird vorher aus dem DOM gesichert); gespeichert wird wie
+immer erst mit "Entwurf speichern".
+
+## Rules-Tests
+
+`tests/rules/firestore-security-flows.test.mjs` deckt beide Collections ab:
+`heartDestinations` nur fuer CEO-Actors (Gast/User/Owner/Hotel-Owner werden
+bei get/list/set/update/delete abgewiesen), `destinationsPublic` oeffentlich
+lesbar, aber nur CEO darf schreiben/loeschen.
+
 ## Offene Folgearbeiten
 
-- Foto-Upload direkt im Destination-Editor (aktuell: Bild-URLs, z. B. aus
-  bestehendem CDN-Upload kopiert).
 - Hotel-Detailseite (Design-Vorlage `mnyrahotelpreview.html`) an
   `destinationsPublic` + Overrides anbinden, sobald das Design freigegeben
   ist - als lazy Public-Chunk, nicht im Entry.
 - Optional: Versions-Pinning pro Lead ("nur zukuenftige Leads aktualisieren").
-- Firestore-Rules-Tests fuer die zwei neuen Collections.

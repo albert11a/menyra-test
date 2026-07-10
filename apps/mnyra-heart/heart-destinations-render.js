@@ -137,13 +137,22 @@ function renderPlaceEditorRow(place = {}) {
           <input id="destPlaceLng_${id}" name="destPlaceLng_${id}" type="text" inputmode="decimal" value="${place.lng == null ? "" : escapeHtml(String(place.lng))}" placeholder="19.4231" />
         </label>
         <label class="heart-crm-modal-field heart-crm-modal-field--wide">
-          <span>Titelbild URL</span>
+          <span>Titelbild (URL oder Upload)</span>
           <input id="destPlaceCover_${id}" name="destPlaceCover_${id}" type="text" value="${escapeHtml(place.coverImageUrl)}" placeholder="https://..." />
         </label>
+        <div class="heart-crm-modal-field heart-crm-modal-field--wide heart-destination-upload-row">
+          ${place.coverImageUrl ? `<img class="heart-destination-cover-preview" src="${escapeHtml(place.coverImageUrl)}" alt="" loading="lazy" />` : ""}
+          <button type="button" class="heart-crm-action-placeholder" data-action="pick-destination-image" data-image-target="cover" data-place-id="${id}">${renderHeartIcon("plus")} <span>Titelbild hochladen</span></button>
+          <input id="destPlaceCoverFile_${id}" type="file" accept="image/*" data-destination-image-input="cover" data-place-id="${id}" hidden />
+        </div>
         <label class="heart-crm-modal-field heart-crm-modal-field--wide">
           <span>Galerie URLs (eine pro Zeile, optional)</span>
           <textarea id="destPlaceGallery_${id}" name="destPlaceGallery_${id}" placeholder="https://...">${escapeHtml((place.gallery || []).join("\n"))}</textarea>
         </label>
+        <div class="heart-crm-modal-field heart-crm-modal-field--wide heart-destination-upload-row">
+          <button type="button" class="heart-crm-action-placeholder" data-action="pick-destination-image" data-image-target="gallery" data-place-id="${id}">${renderHeartIcon("plus")} <span>Galerie-Bilder hochladen</span></button>
+          <input id="destPlaceGalleryFile_${id}" type="file" accept="image/*" multiple data-destination-image-input="gallery" data-place-id="${id}" hidden />
+        </div>
         <label class="heart-crm-modal-field">
           <span>Prioritaet (0-100)</span>
           <input id="destPlacePriority_${id}" name="destPlacePriority_${id}" type="number" min="0" max="100" step="1" value="${escapeHtml(String(place.priority ?? 0))}" />
@@ -174,7 +183,7 @@ function renderDestinationEditor(destinations = {}) {
     ...category,
     places: draft.places.filter((place) => place.category === category.key)
   }));
-  const busy = editor.saving || editor.publishing || editor.deleting || editor.loading;
+  const busy = editor.saving || editor.publishing || editor.deleting || editor.loading || editor.uploadingImage;
   return `
     <section class="heart-crm-inline-editor heart-crm-inline-editor--destination">
       <div class="heart-modal__header">
