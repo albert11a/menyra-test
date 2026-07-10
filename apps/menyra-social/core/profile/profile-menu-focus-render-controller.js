@@ -482,16 +482,26 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
   const aspectClass = isGrid
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
-  const imageUrl = getOptimizedImageUrl(item.url, isWide ? "large" : "medium", {
+  const width = isWide ? 800 : 400;
+  const height = isWide ? 400 : 500;
+  // Video-Posts: als Vorschau NUR das Standbild (Poster) zeigen - frueher
+  // landete hier die Video-URL in einem <img> (kaputte graue Kachel).
+  // Ohne Poster zeigt ein statisches <video preload="metadata"> das erste
+  // Frame; abgespielt wird erst nach dem Oeffnen im Post-Modal.
+  const posterRaw = String(item.posterUrl || item.thumbUrl || item.poster || "").trim();
+  const isVideoPost = item.isVideo === true;
+  const mediaSourceUrl = isVideoPost && posterRaw ? posterRaw : item.url;
+  const imageUrl = getOptimizedImageUrl(mediaSourceUrl, isWide ? "large" : "medium", {
     stableKey: postId ? `profile-post:${postId}` : "",
     variantGroup: "post-detail"
   });
-  const width = isWide ? 800 : 400;
-  const height = isWide ? 400 : 500;
+  const mediaHtml = (isVideoPost && !posterRaw && item.url)
+    ? `<video src="${escapeHtml(String(item.url))}" preload="metadata" muted playsinline width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover pointer-events-none"></video>`
+    : `<img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover" />`;
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover" />
+        ${mediaHtml}
         ${item.isVideo ? `<div class="absolute top-3 left-3 w-7 h-7 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center">${icon("play", "w-3.5 h-3.5 fill-white block")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">

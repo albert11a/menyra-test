@@ -184,6 +184,36 @@ export function bindPostOverlayEventsCore({
   bindModalDismiss(postModalOverlay, closePostModal, { selfOnly: true });
   bindModalDismiss(postModalClose, closePostModal);
 
+  // Video-Post im Modal: startet NICHT automatisch - Play/Pause nur ueber
+  // den Button oben links (Icon + aria-label laufen ueber die Video-Events).
+  const postModalVideoToggle = doc.querySelector("[data-post-modal-video-toggle]");
+  const postModalVideo = doc.getElementById("postModalVideo");
+  if (postModalVideoToggle && postModalVideo) {
+    const playIcon = postModalVideoToggle.querySelector('[data-post-modal-video-icon="play"]');
+    const pauseIcon = postModalVideoToggle.querySelector('[data-post-modal-video-icon="pause"]');
+    const setToggleUi = (playing) => {
+      playIcon?.classList?.toggle("hidden", !!playing);
+      pauseIcon?.classList?.toggle("hidden", !playing);
+      postModalVideoToggle.setAttribute("aria-label", playing ? "Video pausieren" : "Video abspielen");
+    };
+    postModalVideo.addEventListener("play", () => setToggleUi(true));
+    postModalVideo.addEventListener("pause", () => setToggleUi(false));
+    postModalVideoToggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (postModalVideo.paused) {
+        try {
+          postModalVideo.preload = "auto";
+        } catch {}
+        void postModalVideo.play().catch(() => setToggleUi(false));
+        return;
+      }
+      try {
+        postModalVideo.pause();
+      } catch {}
+    });
+  }
+
   const postLikeBtn = doc.getElementById("postLikeBtn");
   if (postLikeBtn) {
     postLikeBtn.addEventListener("click", () => {

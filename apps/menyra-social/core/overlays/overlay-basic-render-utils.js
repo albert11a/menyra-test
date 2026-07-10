@@ -266,6 +266,17 @@ export function renderPostModalCore({
   const imageUrl = getImage(rawImageUrl, "large", {
     stableKey: post?.id ? `post-modal:${String(post.id)}` : ""
   });
+  // Video-Posts: Standbild (Poster) zeigen, Wiedergabe erst per Play-Button.
+  // Frueher landete die Video-URL im <img> (kaputtes Bild), ein Video gab es
+  // im Post-Modal gar nicht.
+  const isVideoPost = post.isVideo === true
+    || String(post.mediaType || "").trim().toLowerCase() === "video";
+  const videoSrc = isVideoPost ? String(post.videoUrl || post.url || "").trim() : "";
+  const posterRaw = String(post.posterUrl || post.poster || post.thumbUrl || "").trim();
+  const posterUrl = posterRaw
+    ? getImage(posterRaw, "large", { stableKey: post?.id ? `post-modal-poster:${String(post.id)}` : "" })
+    : "";
+  const posterIsReal = !!posterUrl && !posterUrl.startsWith("data:");
   const comments = (meta.comments || []).map(ensureComment);
   const userBadge = getUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
@@ -287,8 +298,16 @@ export function renderPostModalCore({
                 <button id="postModalClose" type="button" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
               </div>
 
-              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover" loading="eager" fetchpriority="high" decoding="sync" />
+              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100 relative">
+                ${(isVideoPost && videoSrc) ? `
+                  <video id="postModalVideo" src="${esc(videoSrc)}" ${posterIsReal ? `poster="${esc(posterUrl)}"` : ""} preload="${posterIsReal ? "none" : "metadata"}" muted loop playsinline class="w-full h-[22rem] object-cover block"></video>
+                  <button type="button" data-post-modal-video-toggle aria-label="Video abspielen" class="absolute top-4 left-4 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
+                    <span data-post-modal-video-icon="play">${iconFn("play", "w-4 h-4")}</span>
+                    <span data-post-modal-video-icon="pause" class="hidden">${iconFn("pause", "w-4 h-4")}</span>
+                  </button>
+                ` : `
+                  <img src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover" loading="eager" fetchpriority="high" decoding="sync" />
+                `}
               </div>
 
               ${caption ? `

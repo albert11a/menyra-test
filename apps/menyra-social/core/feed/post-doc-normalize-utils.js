@@ -12,6 +12,21 @@ function resolvePostMediaUrl(data = {}) {
   ).trim();
 }
 
+// Standbild fuer Video-Posts (Poster/erstes Frame): eigenes Feld, damit
+// Grid-Karten und das Post-Modal eine Vorschau zeigen koennen, ohne die
+// Video-Bytes zu laden.
+function resolvePostPosterUrl(data = {}) {
+  return String(
+    data.posterUrl
+    || data.thumbUrl
+    || data.media?.[0]?.thumbUrl
+    || data.media?.[0]?.posterUrl
+    || data.imageUrl
+    || data.image
+    || ""
+  ).trim();
+}
+
 function resolvePostIsVideo(data = {}) {
   const type = String(
     data.media?.[0]?.type
@@ -33,6 +48,7 @@ export function normalizeUserPostDocCore(postId, data = {}, ownerId = "") {
     likes: data.likesCount ?? data.likes ?? 0,
     comments: data.commentsCount ?? data.comments ?? 0,
     isVideo: resolvePostIsVideo(data),
+    posterUrl: resolvePostPosterUrl(data),
     ownerType: "user",
     ownerId: ownerId || ""
   };
@@ -49,6 +65,7 @@ export function normalizeRestaurantPostDocCore(postId, data = {}, restaurantId =
     likes: data.likesCount ?? data.likes ?? 0,
     comments: data.commentsCount ?? data.comments ?? 0,
     isVideo: resolvePostIsVideo(data),
+    posterUrl: resolvePostPosterUrl(data),
     ownerType: "restaurant",
     ownerId: restaurantId || "",
     restaurantId: restaurantId || ""
