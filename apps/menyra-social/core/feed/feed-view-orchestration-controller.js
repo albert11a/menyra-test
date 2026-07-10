@@ -3072,13 +3072,24 @@ export function createFeedViewOrchestrationController({
     const preview = resolveStoryPreviewMedia(story);
     const eager = index < 5;
     if (preview.kind === "video" && preview.src) {
-      const attrs = eager
-        ? `preload="auto" fetchpriority="high"`
-        : `preload="metadata" fetchpriority="low"`;
-      const posterAttr = preview.poster ? `poster="${escapeHtmlFn(getOptimizedImageUrlFn(preview.poster, "small"))}"` : "";
+      // Im Feed spielt NICHTS automatisch: Video-Kacheln (Stories-Zeile,
+      // Spot-Track, Feed-Fallback-Beitraege) zeigen nur ein Standbild.
+      // Mit Poster wird ein reines <img> gerendert (0 Video-Bytes); ohne
+      // Poster zeigt ein statisches <video preload="metadata"> das erste
+      // Frame. Kein data-story-preview-video-Attribut -> die Boomerang-/
+      // Observer-Logik fasst diese Elemente nicht an. Abgespielt wird erst
+      // im Story-Viewer nach dem Antippen.
       const storyPreviewIdAttr = storyId ? `data-story-preview-id="${escapeHtmlFn(storyId)}"` : "";
+      if (preview.poster) {
+        const imgAttrs = eager
+          ? `loading="eager" fetchpriority="high"`
+          : `loading="lazy" fetchpriority="low"`;
+        return `
+        <img src="${escapeHtmlFn(getOptimizedImageUrlFn(preview.poster, "small"))}" ${imgAttrs} ${storyPreviewIdAttr} decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />
+      `;
+      }
       return `
-        <video src="${escapeHtmlFn(preview.src)}" ${posterAttr} ${attrs} data-story-preview-video ${storyPreviewIdAttr} autoplay muted loop playsinline draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>
+        <video src="${escapeHtmlFn(preview.src)}" preload="metadata" ${storyPreviewIdAttr} data-story-preview-frame muted playsinline draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>
       `;
     }
     if (preview.src) {
