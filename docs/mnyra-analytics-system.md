@@ -134,12 +134,16 @@ Integration Heart:
   `analyticsDaily` muessen separat nach Firebase deployt werden, sonst laufen
   alle Reads (Dashboard) und Writes (Tracking) in `permission-denied` und der
   Analytics-Tab zeigt "Analytics konnten nicht geladen werden".
-- Einmalig manuell:
-  `npx firebase-tools deploy --only firestore:rules,firestore:indexes --project menyra-c0e68`
+- Manuell: `FIREBASE_SERVICE_ACCOUNT='<sa-json>' node scripts/deploy-firestore-rules.mjs`
+  (Admin-SDK-Rules-API; funktioniert mit dem Standard-Service-Account
+  `firebase-adminsdk-...@`. `firebase deploy --only firestore:rules` braucht
+  dagegen zusaetzliche Service-Usage-Rechte.)
 - Automatisch: Workflow `.github/workflows/deploy-firestore-rules.yml` deployt
-  bei jeder Aenderung an `firestore.rules`/`firestore.indexes.json` auf `main`.
-  Voraussetzung: Repo-Secret `FIREBASE_SERVICE_ACCOUNT` (Service-Account-JSON,
-  Rollen "Firebase Rules Admin" + "Cloud Datastore Index Admin").
+  bei jeder Aenderung an `firestore.rules` auf `main`. Voraussetzung:
+  Repo-Secret `FIREBASE_SERVICE_ACCOUNT` (Service-Account-JSON aus der
+  Firebase Console, Projekteinstellungen -> Dienstkonten).
+- Rules-Deploy erfolgt am 2026-07-10 erstmalig manuell (vorher war das
+  Ruleset vom 2026-06-29 aktiv, ohne Analytics-Regeln).
 - Hinweis: Solange die Rules nicht deployt waren, wurden auch keine Events/
   Aggregate geschrieben. Nach dem Rules-Deploy startet die Datensammlung bei
   null; Zahlen erscheinen zuerst unter "Heute".

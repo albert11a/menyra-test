@@ -1,11 +1,16 @@
 name: deploy-firestore-rules
 
 # Vercel deployt bei Push auf main nur das Frontend (dist/).
-# Firestore-Rules und -Indexes wurden bisher nie automatisch deployt --
-# dadurch liefen in Produktion veraltete Rules (z. B. fehlten die
-# analyticsDaily/analyticsEvents-Regeln => Analytics-Tab: permission-denied).
-# Dieser Workflow schliesst die Luecke: bei jeder Aenderung an
-# firestore.rules / firestore.indexes.json auf main wird nach Firebase deployt.
+# Firestore-Rules wurden bisher nie automatisch deployt -- dadurch liefen in
+# Produktion veraltete Rules (z. B. fehlten die analyticsDaily/analyticsEvents-
+# Regeln => Analytics-Tab: permission-denied). Dieser Workflow schliesst die
+# Luecke: bei jeder Aenderung an firestore.rules auf main wird nach Firebase
+# deployt (via Admin-SDK-Rules-API, siehe scripts/deploy-firestore-rules.mjs).
+#
+# Hinweis: firestore.indexes.json wird hier NICHT deployt -- dafuer braeuchte
+# der Service-Account zusaetzlich die Rolle "Cloud Datastore Index Admin";
+# Indexes bei Bedarf manuell deployen:
+#   npx firebase-tools deploy --only firestore:indexes --project menyra-c0e68
 
 on:
   push:
@@ -13,7 +18,7 @@ on:
       - main
     paths:
       - firestore.rules
-      - firestore.indexes.json
+      - scripts/deploy-firestore-rules.mjs
   workflow_dispatch:
 
 jobs:
@@ -34,20 +39,14 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT fehlt. In den Repo-Settings unter Secrets ein Service-Account-JSON (Rolle: Firebase Rules Admin + Cloud Datastore Index Admin, Projekt menyra-c0e68) hinterlegen."
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT fehlt. In den Repo-Settings (Settings -> Secrets and variables -> Actions) das Service-Account-JSON aus der Firebase Console (Projekteinstellungen -> Dienstkonten -> Neuen privaten Schluessel generieren) hinterlegen."
             exit 1
           fi
 
-      - name: Write service account key
+      - name: Install firebase-admin
+        run: npm install --no-save --no-audit --no-fund firebase-admin
+
+      - name: Deploy Firestore rules
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
-
-      - name: Deploy Firestore rules and indexes
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
-        run: npx --yes firebase-tools@15 deploy --only firestore:rules,firestore:indexes --project menyra-c0e68 --non-interactive --force
-
-      - name: Cleanup key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/firebase-sa.json"
+        run: node scripts/deploy-firestore-rules.mjs
