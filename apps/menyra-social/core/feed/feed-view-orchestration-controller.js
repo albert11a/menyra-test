@@ -3072,24 +3072,13 @@ export function createFeedViewOrchestrationController({
     const preview = resolveStoryPreviewMedia(story);
     const eager = index < 5;
     if (preview.kind === "video" && preview.src) {
-      // Im Feed spielt NICHTS automatisch: Video-Kacheln (Stories-Zeile,
-      // Spot-Track, Feed-Fallback-Beitraege) zeigen nur ein Standbild.
-      // Mit Poster wird ein reines <img> gerendert (0 Video-Bytes); ohne
-      // Poster zeigt ein statisches <video preload="metadata"> das erste
-      // Frame. Kein data-story-preview-video-Attribut -> die Boomerang-/
-      // Observer-Logik fasst diese Elemente nicht an. Abgespielt wird erst
-      // im Story-Viewer nach dem Antippen.
+      const attrs = eager
+        ? `preload="auto" fetchpriority="high"`
+        : `preload="metadata" fetchpriority="low"`;
+      const posterAttr = preview.poster ? `poster="${escapeHtmlFn(getOptimizedImageUrlFn(preview.poster, "small"))}"` : "";
       const storyPreviewIdAttr = storyId ? `data-story-preview-id="${escapeHtmlFn(storyId)}"` : "";
-      if (preview.poster) {
-        const imgAttrs = eager
-          ? `loading="eager" fetchpriority="high"`
-          : `loading="lazy" fetchpriority="low"`;
-        return `
-        <img src="${escapeHtmlFn(getOptimizedImageUrlFn(preview.poster, "small"))}" ${imgAttrs} ${storyPreviewIdAttr} decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />
-      `;
-      }
       return `
-        <video src="${escapeHtmlFn(preview.src)}" preload="metadata" ${storyPreviewIdAttr} data-story-preview-frame muted playsinline draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>
+        <video src="${escapeHtmlFn(preview.src)}" ${posterAttr} ${attrs} data-story-preview-video ${storyPreviewIdAttr} autoplay muted loop playsinline draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>
       `;
     }
     if (preview.src) {
@@ -3212,17 +3201,11 @@ export function createFeedViewOrchestrationController({
     const heroPoster = post.poster
       ? getOptimizedImageUrlFn(post.poster, "medium", { stableKey: postId ? `feed-hero-poster:${postId}` : "" })
       : imageUrl;
-    // Beitrags-Videos starten NICHT mehr automatisch: sofort sichtbar ist nur
-    // das Standbild (Poster bzw. erstes Frame ueber preload=metadata, wenn
-    // kein echtes Poster existiert), die Wiedergabe startet erst ueber den
-    // Play-Button oben links. Das spart pro Karte die kompletten Video-Bytes
-    // auf 3G. Stories-Vorschau, Speisen-Grid und Fokus bleiben unveraendert.
-    const heroPosterSafe = String(heroPoster || "").trim();
-    const heroPosterIsReal = !!heroPosterSafe && !heroPosterSafe.startsWith("data:");
-    const heroVideoPosterAttr = heroPosterIsReal ? `poster="${escapeHtmlFn(heroPosterSafe)}"` : "";
-    const heroVideoPreload = heroPosterIsReal ? "none" : "metadata";
+    // Feed-Beitraege: Loop-Autoplay (stumm) wie urspruenglich - im Feed darf
+    // automatisch abgespielt werden. In den PROFIL-Beitraegen dagegen nicht
+    // (dort Standbild + Play-Button, siehe Profil-/Modal-Renderer).
     const heroInner = (post.isVideo && post.videoUrl)
-      ? `<video src="${escapeHtmlFn(post.videoUrl)}" ${heroVideoPosterAttr} data-feed-post-video="${escapeHtmlFn(postId)}" muted loop playsinline preload="${heroVideoPreload}" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
+      ? `<video src="${escapeHtmlFn(post.videoUrl)}" poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline preload="none" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
       : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
     // Klick auf das Beitragsbild/-video oeffnet die Stories des Business
     // (gleiche Reels-Ansicht wie die Story-Vorschau). Video-Beitraege springen
@@ -3254,14 +3237,8 @@ export function createFeedViewOrchestrationController({
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative rounded-[3rem] overflow-hidden bg-slate-200" style="aspect-ratio:4/5">
           ${heroMediaHtml}
-          ${(post.isVideo && post.videoUrl) ? `
-            <button type="button" data-feed-video-toggle="${escapeHtmlFn(postId)}" aria-label="Video abspielen" class="absolute top-6 left-6 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
-              <span data-feed-video-icon="play">${iconFn("play", "w-4 h-4")}</span>
-              <span data-feed-video-icon="pause" class="hidden">${iconFn("pause", "w-4 h-4")}</span>
-            </button>
-          ` : ""}
           ${post.isLive ? `
-            <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg"${(post.isVideo && post.videoUrl) ? ` style="left:5rem;"` : ""}>
+            <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
             </div>
           ` : ""}
@@ -3495,36 +3472,6 @@ export function createFeedViewOrchestrationController({
     };
     doc.addEventListener("touchend", retryVisiblePreviews, { once: true, passive: true });
     doc.addEventListener("pointerdown", retryVisiblePreviews, { once: true, passive: true });
-  }
-
-  // Beitrags-Video (Feed-Karte): Wiedergabe erst nach explizitem Play-Klick.
-  // Der Button oben links toggelt Play/Pause und synchronisiert sein Icon
-  // ueber die play/pause-Events des Videos.
-  function toggleFeedPostVideoPlayback(video, toggleBtn) {
-    if (!HtmlVideoElementCtor || !(video instanceof HtmlVideoElementCtor)) return;
-    const playIcon = toggleBtn?.querySelector?.('[data-feed-video-icon="play"]');
-    const pauseIcon = toggleBtn?.querySelector?.('[data-feed-video-icon="pause"]');
-    const setToggleUi = (playing) => {
-      playIcon?.classList?.toggle("hidden", !!playing);
-      pauseIcon?.classList?.toggle("hidden", !playing);
-      toggleBtn?.setAttribute?.("aria-label", playing ? "Video pausieren" : "Video abspielen");
-    };
-    if (video.dataset.feedVideoUiBound !== "1") {
-      video.dataset.feedVideoUiBound = "1";
-      video.addEventListener("play", () => setToggleUi(true));
-      video.addEventListener("pause", () => setToggleUi(false));
-    }
-    if (video.paused) {
-      try {
-        video.preload = "auto";
-      } catch {}
-      void video.play().then(() => setToggleUi(true)).catch(() => setToggleUi(false));
-      return;
-    }
-    try {
-      video.pause();
-    } catch {}
-    setToggleUi(false);
   }
 
   function pauseStoryPreview(video) {
@@ -4015,15 +3962,6 @@ export function createFeedViewOrchestrationController({
     feedView.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      const videoToggleBtn = target.closest("[data-feed-video-toggle]");
-      if (videoToggleBtn) {
-        event.preventDefault();
-        event.stopPropagation();
-        const feedCard = videoToggleBtn.closest("[data-feed-id]");
-        const heroVideo = feedCard?.querySelector?.("video[data-feed-post-video]") || null;
-        if (heroVideo) toggleFeedPostVideoPlayback(heroVideo, videoToggleBtn);
-        return;
-      }
       const storyLink = target.closest("[data-story-item]");
       if (storyLink) {
         handleStoryWarmup(storyLink);
