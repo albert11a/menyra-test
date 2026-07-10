@@ -72,12 +72,37 @@ sonst 600 m/min Auto).
 - Publish schreibt eine kleine Public-Projektion (nur aktive Orte) statt
   des kompletten Admin-Dokuments.
 
+## Hotel-Detailseite (Design mnyrahotelpreview)
+
+Umgesetzt nach der freigegebenen Vorlage:
+
+- `core/profile/hotel-detail-render-utils.js` (pure, 8 Node-Tests) rendert
+  die Sektionen im Preview-Design mit eigenen Inline-SVG-Icons und scoped
+  `.mhd-` CSS (`styles/hotel-detail.css`, lazy per `<link>` injiziert):
+  Dhoma (Zimmer-Rail), Destination-Kategorie-Rails (Qyteti, Plazha, ...),
+  Perfshihet (Amenities), Lokacioni (Map-Karte), Vleresimet (Rating).
+- `core/destinations/destination-public-loader.js` laedt
+  `destinationsPublic/{id}` mit In-Memory- + localStorage-Cache (6 h TTL,
+  Pending-Dedupe). `peek*` erlaubt synchrones Rendern bei Wiederbesuch.
+- `renderHotelDetailsView` (in `profile-menu-focus-render-controller.js`)
+  rendert sofort synchron; fehlt das Template im Cache, wird ein
+  Skeleton gezeigt und per rAF/DOM in den Platzhalter
+  (`#mnyraHotelDestinationSections`) nachgefuellt. Distanz + Geh-/Fahrzeit
+  pro Ort aus Hotel-Pin + Ort-Koordinaten; Overrides (ausgeblendet,
+  fixiert, eigene Fotos/Texte) werden angewandt.
+
+Ladewege: Der neue Code liegt komplett im lazy Profil-Chunk
+(`profile-menu-focus-render-controller`, +~16 KB) und laedt nur beim
+Oeffnen einer Profilansicht. `social-app.js` bleibt groessengleich
+(nur Chunk-Hash-Referenzen aendern sich); Firebase kommt aus dem
+gemeinsamen `vendor-firebase`-Chunk, nicht dupliziert.
+
 ## Offene Folgearbeiten
 
 - Foto-Upload direkt im Destination-Editor (aktuell: Bild-URLs, z. B. aus
   bestehendem CDN-Upload kopiert).
-- Hotel-Detailseite (Design-Vorlage `mnyrahotelpreview.html`) an
-  `destinationsPublic` + Overrides anbinden, sobald das Design freigegeben
-  ist - als lazy Public-Chunk, nicht im Entry.
+- Echte Bewertungen/Reviews auf der Hotel-Detailseite (aktuell nur
+  Rating-Kachel aus vorhandenen Feldern; Review-Karten der Vorlage folgen,
+  sobald eine Review-Quelle steht).
 - Optional: Versions-Pinning pro Lead ("nur zukuenftige Leads aktualisieren").
 - Firestore-Rules-Tests fuer die zwei neuen Collections.

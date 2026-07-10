@@ -10,6 +10,19 @@ import {
   resolveVisiblePublicMenuSurfaceState
 } from "./public-menu-surface-state-utils.js";
 import { t } from "/shared/i18n/i18n.js";
+import {
+  HOTEL_DESTINATION_SECTIONS_CONTAINER_ID,
+  ensureHotelDetailStylesInjectedCore,
+  renderHotelDestinationSectionsCore,
+  renderHotelDetailViewCore
+} from "./hotel-detail-render-utils.js";
+import {
+  loadPublishedDestinationCore,
+  peekPublishedDestinationCore
+} from "../destinations/destination-public-loader.js";
+import {
+  normalizeDestinationOverridesCore
+} from "../destinations/destination-merge-core.js";
 
 export function createProfileMenuFocusRenderController(deps = {}) {
   const state = deps.state;
@@ -1003,21 +1016,41 @@ function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], im
   `;
 }
 
-function renderHotelDetailCard({ iconName = "info", label = "", value = "", helper = "" } = {}) {
-  return `
-    <div class="bg-white rounded-[2rem] border border-slate-100 p-5 shadow-sm">
-      <div class="flex items-start gap-4">
-        <div class="w-11 h-11 rounded-[1.25rem] bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
-          ${icon(iconName, "w-5 h-5")}
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">${escapeHtml(label)}</p>
-          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(value || "Shto detajet")}</p>
-          ${helper ? `<p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">${escapeHtml(helper)}</p>` : ""}
-        </div>
-      </div>
-    </div>
-  `;
+// Fuellt die Destination-Sektionen (Qyteti, Plazha, ...) nach dem Laden des
+// veroeffentlichten Templates per DOM in den Platzhalter. Robust gegen den
+// Zeitpunkt des DOM-Schreibens (rAF-Poll) und gegen Navigationswechsel
+// (Container-Datensatz muss weiterhin passen).
+function scheduleHotelDestinationFill({ destinationId = "", overrides = {}, hotelCoords = null } = {}) {
+  const safeId = String(destinationId || "").trim();
+  if (!safeId || typeof document === "undefined") return;
+  const buildHtml = (template) => renderHotelDestinationSectionsCore({
+    template,
+    overrides,
+    hotelCoords,
+    imageUrlFn: (url) => getOptimizedImageUrl(url, "medium")
+  });
+  let attempts = 0;
+  const tryInject = () => {
+    const container = document.getElementById(HOTEL_DESTINATION_SECTIONS_CONTAINER_ID);
+    if (!container) {
+      if (attempts++ < 20) requestAnimationFrame(tryInject);
+      return;
+    }
+    if (String(container.dataset.destinationId || "") !== safeId) return; // andere Ansicht
+    if (container.dataset.destinationFilled === safeId) return; // bereits gefuellt
+    loadPublishedDestinationCore(safeId).then((template) => {
+      const liveContainer = document.getElementById(HOTEL_DESTINATION_SECTIONS_CONTAINER_ID);
+      if (!liveContainer || String(liveContainer.dataset.destinationId || "") !== safeId) return;
+      liveContainer.dataset.destinationFilled = safeId;
+      liveContainer.innerHTML = template ? buildHtml(template) : "";
+    }).catch(() => {});
+  };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(tryInject);
+  else queueMicrotask(tryInject);
+}
+
+function collectHotelRoomOffers(record = {}) {
+  return collectHotelEditorOfferItems(record).filter((item) => item.active !== false && String(item.title || "").trim());
 }
 
 function renderHotelDetailsView(profile = {}) {
@@ -1031,82 +1064,51 @@ function renderHotelDetailsView(profile = {}) {
     "street"
   ]);
   const city = readFirstHotelText(record, ["city", "locationCity", "primaryCity", "region", "country"]);
-  const beachDistance = readFirstHotelText(record, [
-    "beachDistance",
-    "distanceToBeach",
-    "beachDistanceLabel",
-    "strandEntfernung"
-  ]);
-  const centerDistance = readFirstHotelText(record, [
-    "distanceCenter",
-    "distanceToCenter",
-    "centerDistance",
-    "cityCenterDistance",
-    "centerDistanceLabel",
-    "zentrumEntfernung",
-    "distanceCentre"
-  ]);
   const rating = readFirstHotelText(record, ["rating", "reviewRating", "stars", "hotelStars"]);
   const reviewCount = readFirstHotelText(record, ["reviewCount", "reviewsCount", "ratingsCount", "commentsCount"]);
+  const ratingSummary = readFirstHotelText(record, ["reviewSummary", "ratingSummary", "commentsSummary"]);
   const amenities = collectHotelAmenities(record);
+  const offers = collectHotelRoomOffers(record);
+  const destinationId = String(record.destinationId || "").trim();
+  const destinationName = String(record.destinationName || "").trim();
+  const overrides = normalizeDestinationOverridesCore(record.destinationOverrides || {});
   const mapsUrl = coords
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${coords.lat},${coords.lng}`)}`
     : (address || city ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address} ${city}`.trim())}` : "");
+
+  ensureHotelDetailStylesInjectedCore();
+
+  // Bei Wiederbesuch liegt das Template im Cache -> sofort synchron rendern.
+  const cachedTemplate = destinationId ? peekPublishedDestinationCore(destinationId) : null;
+  const destinationSectionsHtml = cachedTemplate
+    ? renderHotelDestinationSectionsCore({
+        template: cachedTemplate,
+        overrides,
+        hotelCoords: coords,
+        imageUrlFn: (url) => getOptimizedImageUrl(url, "medium")
+      })
+    : "";
+
+  if (destinationId && !cachedTemplate) {
+    scheduleHotelDestinationFill({ destinationId, overrides, hotelCoords: coords });
+  }
+
   return `
-    <div class="app-content-inline flex flex-col gap-4 app-main-content-safe animate-in fade-in duration-300">
-      <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm overflow-hidden">
-        <div class="h-40 rounded-[1.6rem] bg-cyan-50 border border-cyan-100 relative overflow-hidden mb-4">
-          <div class="absolute inset-0 opacity-80" style="background-image: linear-gradient(135deg, rgba(0,204,229,0.18), rgba(15,23,42,0.04));"></div>
-          <div class="absolute inset-0 flex items-center justify-center text-cyan-600">
-            ${icon("map-pin", "w-10 h-10")}
-          </div>
-          <div class="absolute left-4 right-4 bottom-4 bg-white/90 backdrop-blur rounded-2xl p-3 border border-white/70">
-            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lokacioni</p>
-            <p class="text-xs font-black text-slate-900 leading-snug">${escapeHtml(address || city || "Shto lokacionin")}</p>
-          </div>
-        </div>
-        ${mapsUrl ? `
-          <a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="w-full h-12 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-            ${icon("navigation", "w-4 h-4")} Hap hartën
-          </a>
-        ` : ""}
-      </div>
-
-      <div class="grid grid-cols-1 gap-4">
-        ${renderHotelDetailCard({
-          iconName: "map-pin",
-          label: "Adresa",
-          value: [address, city].filter(Boolean).join(", ") || "Shto lokacionin",
-          helper: coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ""
-        })}
-        ${renderHotelDetailCard({
-          iconName: "navigation",
-          label: "Qendra",
-          value: centerDistance || "Shto detajet"
-        })}
-        ${renderHotelDetailCard({
-          iconName: "waves",
-          label: "Plazhi",
-          value: beachDistance || (record.beachfront || record.onBeach ? HOTEL_BEACH_DIRECT_LABEL : "Shto detajet")
-        })}
-        ${renderHotelDetailCard({
-          iconName: "star",
-          label: "Vlerësime",
-          value: rating ? `${rating}${reviewCount ? ` / ${reviewCount} vlerësime` : ""}` : "Pa vlerësime",
-          helper: readFirstHotelText(record, ["reviewSummary", "ratingSummary", "commentsSummary"])
-        })}
-      </div>
-
-      <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm">
-        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">Të përfshira</p>
-        ${amenities.length ? `
-          <div class="flex flex-wrap gap-2">
-            ${amenities.map((item) => `<span class="px-3 py-2 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-600">${escapeHtml(item)}</span>`).join("")}
-          </div>
-        ` : `
-          <p class="text-sm font-bold text-slate-400">Shto pajisjet dhe detajet e dhomave.</p>
-        `}
-      </div>
+    <div class="app-content-inline app-main-content-safe animate-in fade-in duration-300">
+      ${renderHotelDetailViewCore({
+        offers,
+        amenities,
+        address,
+        city,
+        destinationId,
+        destinationName,
+        destinationSectionsHtml,
+        mapsUrl,
+        rating,
+        reviewCount,
+        ratingSummary,
+        imageUrlFn: (url) => getOptimizedImageUrl(url, "medium")
+      })}
     </div>
   `;
 }
