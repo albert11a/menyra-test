@@ -695,7 +695,11 @@ function readRouteSlugForBusinessTypeHint() {
   try {
     const pathname = String(globalThis?.location?.pathname || "");
     const segments = pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
-    const first = String(segments[0] || "").trim().toLowerCase();
+    let first = String(segments[0] || "").trim();
+    try {
+      first = decodeURIComponent(first);
+    } catch {}
+    first = first.trim().toLowerCase();
     if (!first || first.includes(".") || BUSINESS_TYPE_HINT_RESERVED_ROUTES.has(first)) return "";
     return first;
   } catch {
@@ -719,7 +723,19 @@ function resolveStableBusinessProfileType(profile = {}) {
 
 function isHotelBusinessProfile(profile = {}) {
   const type = resolveStableBusinessProfileType(profile);
-  return type === "hotel" || type === "motel";
+  if (type === "hotel" || type === "motel") return true;
+  if (type) return false;
+  // Typ (noch) unbekannt: Hotel-Beweis direkt aus dem Datensatz - Zimmer und
+  // Destination gibt es nur bei Hotels/Motels. So bleibt der Details-Tab auch
+  // dann stabil, wenn Meta/Hint nach einem iOS-Resume nicht greifbar sind.
+  const record = getHotelProfileRecord(profile);
+  const hasHotelEvidence = collectHotelRoomsCore(record).length > 0
+    || !!String(record.destinationId || "").trim();
+  if (hasHotelEvidence) {
+    persistBusinessTypeHint(profile, "hotel");
+    return true;
+  }
+  return false;
 }
 
 function getHotelProfileRecord(profile = {}) {
@@ -1254,6 +1270,81 @@ function scheduleHotelDetailsPendingResolve(profile = {}, restaurantId = "") {
     container.innerHTML = renderHotelDetailsBody(profile);
   };
   setTimeout(tick, 250);
+}
+
+// Selbstheilung fuer den Katalog-Tab: Wenn der Business-Typ beim Paint noch
+// unbekannt war (z.B. nach iOS-Safari-Resume: Meta-Cache leer, Hint nicht
+// greifbar), wird der Menu-Fallback gerendert und hier beobachtet. Sobald der
+// Typ sich als Hotel/Motel aufloest, tauschen wir die Flaeche gegen die
+// Details-Ansicht und korrigieren Label + Surface des Tab-Buttons - ohne auf
+// einen weiteren globalen Render-Pass angewiesen zu sein.
+const BUSINESS_CATALOG_TYPE_PENDING_ATTR = "data-business-catalog-type-pending";
+let businessCatalogTypeResolveKey = "";
+
+function buildCatalogTypePendingKey(profile = {}) {
+  const raw = String(
+    profile?.canonicalRestaurantId
+    || profile?.restaurantId
+    || profile?.publicSlug
+    || profile?.handle
+    || readRouteSlugForBusinessTypeHint()
+    || ""
+  ).trim().toLowerCase();
+  return raw.replace(/[^a-z0-9_-]/g, "");
+}
+
+function resolveCurrentCatalogTabProfile(fallbackProfile = {}) {
+  const viewProfile = state?.profileView?.profile;
+  if (viewProfile && typeof viewProfile === "object" && isBusinessProfileEntity(viewProfile)) {
+    return viewProfile;
+  }
+  const ownProfile = state?.userProfile;
+  if (ownProfile && typeof ownProfile === "object" && isBusinessProfileEntity(ownProfile)) {
+    return ownProfile;
+  }
+  return fallbackProfile && typeof fallbackProfile === "object" ? fallbackProfile : {};
+}
+
+function applyHotelCatalogTabDomFix() {
+  document.querySelectorAll('[data-profile-tab="menu"]').forEach((btn) => {
+    btn.setAttribute("data-profile-tab-surface", "hotel-details");
+    btn.textContent = "Details";
+  });
+}
+
+function scheduleBusinessCatalogTabTypeResolve(pendingKey = "", fallbackProfile = {}) {
+  if (typeof document === "undefined" || typeof setTimeout !== "function") return;
+  const safeKey = String(pendingKey || "").trim();
+  if (!safeKey || businessCatalogTypeResolveKey === safeKey) return;
+  businessCatalogTypeResolveKey = safeKey;
+  let attempts = 0;
+  const tick = () => {
+    const container = document.querySelector(`[${BUSINESS_CATALOG_TYPE_PENDING_ATTR}="${safeKey}"]`);
+    if (!container) {
+      businessCatalogTypeResolveKey = "";
+      return;
+    }
+    const profile = resolveCurrentCatalogTabProfile(fallbackProfile);
+    const stableType = resolveStableBusinessProfileType(profile);
+    const isHotel = isHotelBusinessProfile(profile);
+    if (!stableType && !isHotel) {
+      if (attempts++ < 40) {
+        setTimeout(tick, 300);
+        return;
+      }
+      businessCatalogTypeResolveKey = "";
+      container.removeAttribute(BUSINESS_CATALOG_TYPE_PENDING_ATTR);
+      return;
+    }
+    businessCatalogTypeResolveKey = "";
+    container.removeAttribute(BUSINESS_CATALOG_TYPE_PENDING_ATTR);
+    if (!isHotel) return;
+    persistBusinessTypeHint(profile, stableType || "hotel");
+    container.classList.add("animate-in", "fade-in", "duration-300");
+    container.innerHTML = renderHotelDetailsView(profile);
+    applyHotelCatalogTabDomFix();
+  };
+  setTimeout(tick, 300);
 }
 
 function renderHotelDetailsView(profile = {}) {
@@ -2449,9 +2540,19 @@ function renderPublicProfileSurface(
         })}
         ${shouldRenderContent ? renderProfileViewControls(profile, { disabled: tutorialMode }) : ""}
 
-        ${shouldRenderContent ? (isMenuTab ? `
-          <div class="${disabledBlockClass} ${contentAnimationClass}">
-            ${isHotelBusinessProfile(profile)
+        ${shouldRenderContent ? (isMenuTab ? (() => {
+          const isHotelCatalogSurface = isHotelBusinessProfile(profile);
+          const catalogTypePendingKey = !isHotelCatalogSurface
+            && isBusinessProfile
+            && !tutorialMode
+            && !landingMode
+            && !resolveStableBusinessProfileType(profile)
+            ? buildCatalogTypePendingKey(profile)
+            : "";
+          if (catalogTypePendingKey) scheduleBusinessCatalogTabTypeResolve(catalogTypePendingKey, profile);
+          return `
+          <div class="${disabledBlockClass} ${contentAnimationClass}"${catalogTypePendingKey ? ` ${BUSINESS_CATALOG_TYPE_PENDING_ATTR}="${escapeHtml(catalogTypePendingKey)}"` : ""}>
+            ${isHotelCatalogSurface
               ? renderHotelDetailsView(profile)
               : renderProfileMenuView(profile, {
                   mode: landingMode ? "landing" : "profile",
@@ -2459,7 +2560,8 @@ function renderPublicProfileSurface(
                 })
             }
           </div>
-        ` : isCheckinTab ? `
+        `;
+        })() : isCheckinTab ? `
           <div class="${disabledBlockClass} ${contentAnimationClass}">
             ${renderProfileCheckins()}
           </div>
@@ -4930,9 +5032,20 @@ function renderProfileView() {
       ${renderProfileTabs(profile)}
       ${renderProfileViewControls(profile)}
 
-      ${isMenuTab ? `
-        ${isHotelBusinessProfile(profile) ? renderHotelDetailsView(profile) : renderProfileMenuView(profile)}
-      ` : isCheckinTab ? `
+      ${isMenuTab ? (() => {
+        const isHotelCatalogSurface = isHotelBusinessProfile(profile);
+        const catalogTypePendingKey = !isHotelCatalogSurface
+          && isBusiness
+          && !resolveStableBusinessProfileType(profile)
+          ? buildCatalogTypePendingKey(profile)
+          : "";
+        if (catalogTypePendingKey) scheduleBusinessCatalogTabTypeResolve(catalogTypePendingKey, profile);
+        return `
+        <div${catalogTypePendingKey ? ` ${BUSINESS_CATALOG_TYPE_PENDING_ATTR}="${escapeHtml(catalogTypePendingKey)}"` : ""}>
+          ${isHotelCatalogSurface ? renderHotelDetailsView(profile) : renderProfileMenuView(profile)}
+        </div>
+      `;
+      })() : isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `
         ${isPostsLoading && !filteredPosts.length ? `

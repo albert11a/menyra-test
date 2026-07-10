@@ -9,8 +9,14 @@ export function getBusinessProfileTypeCore(profile = {}, {
     ? normalizeRestaurantTypeFn
     : ((value) => String(value || "").trim());
 
-  if (!profile?.restaurantId) return "";
-  const rest = getRestaurantMetaById(profile.restaurantId);
+  // Auch Profile, die nur die kanonische Restaurant-ID tragen (z.B. Snapshot/
+  // Route-Seeds nach einem iOS-Resume), muessen ihren Typ aufloesen koennen -
+  // sonst faellt ein Hotel-Profil faelschlich auf den Menu-Tab zurueck.
+  const primaryId = String(profile?.restaurantId || "").trim();
+  const canonicalId = String(profile?.canonicalRestaurantId || "").trim();
+  if (!primaryId && !canonicalId) return "";
+  const rest = (primaryId ? getRestaurantMetaById(primaryId) : null)
+    || (canonicalId ? getRestaurantMetaById(canonicalId) : null);
   const typeRaw = rest?.type
     || rest?.customerType
     || rest?.category
