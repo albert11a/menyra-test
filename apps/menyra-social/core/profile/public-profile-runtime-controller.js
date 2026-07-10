@@ -27,6 +27,9 @@ export function createPublicProfileRuntimeController({
   render = () => {},
   brandUi = null,
   fastLimits = {},
+  readCacheFn = null,
+  writeCacheFn = null,
+  publicBusinessPostsSeedKeyFn = null,
   resolvePreferredHandle = () => "",
   pickCountValue = () => 0,
   normalizeRestaurantType = (value) => value,
@@ -44,6 +47,11 @@ export function createPublicProfileRuntimeController({
   const buildWhere = typeof whereFn === "function" ? whereFn : null;
   const buildOrderBy = typeof orderByFn === "function" ? orderByFn : null;
   const buildLimit = typeof limitFn === "function" ? limitFn : null;
+  const readCacheSafe = typeof readCacheFn === "function" ? readCacheFn : (() => null);
+  const writeCacheSafe = typeof writeCacheFn === "function" ? writeCacheFn : (() => {});
+  const buildBusinessPostsSeedKey = typeof publicBusinessPostsSeedKeyFn === "function"
+    ? publicBusinessPostsSeedKeyFn
+    : (() => "");
   const brandSocialName = String(brandUi?.social || "Menyra").trim() || "Menyra";
   let profileViewUnsub = null;
   let profileViewListenerKey = "";
@@ -58,6 +66,8 @@ export function createPublicProfileRuntimeController({
   const restaurantDocRouteInFlight = new Map();
   const canonicalRestaurantIdByRouteId = new Map();
   const PUBLIC_BUSINESS_EMPTY_POSTS_TTL_MS = 15_000;
+  const PUBLIC_BUSINESS_POSTS_SEED_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+  const PUBLIC_BUSINESS_POSTS_SEED_MAX_ITEMS = 24;
   const PUBLIC_BUSINESS_POSTS_INITIAL_PAGE_FALLBACK_LIMIT = 12;
   const PUBLIC_PROFILE_ROUTE_RESOLVE_DEADLINE_MS = 6_500;
   const PUBLIC_BUSINESS_POSTS_INITIAL_READ_DEADLINE_MS = 5_200;
@@ -186,6 +196,53 @@ export function createPublicProfileRuntimeController({
       publicBusinessPostsCache.set(restaurantId, safePosts);
       publicBusinessPostsInitialPageCache.set(restaurantId, safePosts);
     });
+    persistBusinessPostsSeed(safePosts, ids);
+  }
+
+  function persistBusinessPostsSeed(posts = [], restaurantIds = []) {
+    const safePosts = (Array.isArray(posts) ? posts : []).slice(0, PUBLIC_BUSINESS_POSTS_SEED_MAX_ITEMS);
+    if (!safePosts.length) return;
+    for (const restaurantIdRaw of restaurantIds) {
+      const key = buildBusinessPostsSeedKey(String(restaurantIdRaw || "").trim());
+      if (key) writeCacheSafe(key, safePosts);
+    }
+  }
+
+  function clearBusinessPostsSeed(...restaurantIds) {
+    for (const restaurantIdRaw of restaurantIds) {
+      const key = buildBusinessPostsSeedKey(String(restaurantIdRaw || "").trim());
+      if (key) writeCacheSafe(key, []);
+    }
+  }
+
+  // Sync-Seed fuer den ersten sichtbaren Posts-Zustand: Speicher-Cache zuerst,
+  // danach der persistierte Seed aus dem letzten frischen Load. Der Seed ist
+  // bewusst KEINE Wahrheit - der Live-Load laeuft danach normal weiter und
+  // ersetzt ihn still.
+  function peekBusinessPostsSeed(...restaurantIds) {
+    const ids = restaurantIds
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+    for (const restaurantId of ids) {
+      const memoryCached = readCachedBusinessPosts(restaurantId, { initialPage: true });
+      if (Array.isArray(memoryCached) && memoryCached.length > 0) return memoryCached;
+    }
+    for (const restaurantId of ids) {
+      const key = buildBusinessPostsSeedKey(restaurantId);
+      if (!key) continue;
+      const persisted = readCacheSafe(key, PUBLIC_BUSINESS_POSTS_SEED_MAX_AGE_MS);
+      if (!persisted?.fresh || !Array.isArray(persisted.data)) continue;
+      const rows = persisted.data.filter((row) => (
+        row
+        && typeof row === "object"
+        && String(row.id || "").trim()
+        && String(row.url || "").trim()
+      ));
+      if (!rows.length) continue;
+      const projected = projectPostCollectionThroughEntityMap(state, rows);
+      if (projected.length) return projected;
+    }
+    return [];
   }
 
   function clearBusinessPostsPositiveCache(...restaurantIds) {
@@ -1917,6 +1974,7 @@ export function createPublicProfileRuntimeController({
       clearBusinessPostsPositiveCache(restaurantId);
       publicBusinessPostsEmptyUntilCache.set(restaurantId, emptyUntil);
     }
+    clearBusinessPostsSeed(...restaurantIds);
   }
 
   function clearBusinessPostsKnownEmpty(...restaurantIds) {
@@ -2081,6 +2139,7 @@ export function createPublicProfileRuntimeController({
     normalizeExternalProfile,
     normalizeExternalUserProfile,
     fetchBusinessProfileDoc,
-    loadBusinessPostsForRestaurant
+    loadBusinessPostsForRestaurant,
+    peekBusinessPostsSeed
   };
 }

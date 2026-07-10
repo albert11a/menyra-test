@@ -8,6 +8,7 @@ export const CACHE_KEYS = {
 
 export const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v2::${uid}` : "");
 export const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v2::${rid}` : "");
+export const publicBusinessPostsSeedKey = (rid) => (rid ? `menyra_social_public_business_posts_seed_v1::${rid}` : "");
 export const staffCacheKey = (uid) => (uid ? `menyra_social_staff_cache_v1::${uid}` : "");
 export const leadPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_leads_cache_v1::${uid}::${scope}` : "");
 export const customerPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_customers_cache_v1::${uid}::${scope}` : "");

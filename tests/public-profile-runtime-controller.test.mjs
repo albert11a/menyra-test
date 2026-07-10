@@ -291,7 +291,8 @@ function createBusinessPostsController({
   rows = [],
   fastLimits = {},
   getDocsFn = null,
-  queryCalls = []
+  queryCalls = [],
+  extraDeps = {}
 } = {}) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const readDocs = typeof getDocsFn === "function"
@@ -313,9 +314,31 @@ function createBusinessPostsController({
     queryFn: (ref, ...constraints) => ({ ref, constraints }),
     orderByFn: (field, direction) => ({ type: "orderBy", field, direction }),
     limitFn: (value) => ({ type: "limit", value }),
-    getDocsFn: readDocs
+    getDocsFn: readDocs,
+    ...extraDeps
   });
 }
+
+function createFakeCacheStore() {
+  const store = new Map();
+  return {
+    store,
+    readCacheFn: (key, ttlMs) => {
+      const raw = store.get(key);
+      if (!raw) return null;
+      const payload = JSON.parse(raw);
+      if (!payload || !Array.isArray(payload.data)) return null;
+      const age = Date.now() - (payload.ts || 0);
+      return { data: payload.data, meta: payload.meta || null, fresh: ttlMs ? age <= ttlMs : true };
+    },
+    writeCacheFn: (key, data, meta = null) => {
+      if (!Array.isArray(data)) return;
+      store.set(key, JSON.stringify({ ts: Date.now(), data, meta }));
+    }
+  };
+}
+
+const testBusinessPostsSeedKey = (rid) => (rid ? `test_public_business_posts_seed::${rid}` : "");
 
 test("public business posts initial page uses a bounded read without becoming the full cache", async () => {
   const queryCalls = [];
@@ -468,6 +491,68 @@ test("public business posts confirmed empty remains empty on later transient rea
   ));
 
   assert.deepEqual(stillEmptyPosts, []);
+});
+
+test("business posts fresh load persists a seed that a cold session can peek synchronously", async () => {
+  const cacheStore = createFakeCacheStore();
+  const rows = [
+    { id: "post-1", url: "https://cdn.example/post-1.jpg", status: "active", createdAt: 2 },
+    { id: "post-2", url: "https://cdn.example/post-2.jpg", status: "active", createdAt: 1 }
+  ];
+  const warmController = createBusinessPostsController({
+    rows,
+    extraDeps: {
+      readCacheFn: cacheStore.readCacheFn,
+      writeCacheFn: cacheStore.writeCacheFn,
+      publicBusinessPostsSeedKeyFn: testBusinessPostsSeedKey
+    }
+  });
+
+  const freshPosts = await warmController.loadBusinessPostsForRestaurant("restaurant-seed", {
+    skipProfileResolve: true
+  });
+  assert.equal(freshPosts.length, 2);
+
+  const coldController = createPublicProfileRuntimeController({
+    state: {},
+    readCacheFn: cacheStore.readCacheFn,
+    writeCacheFn: cacheStore.writeCacheFn,
+    publicBusinessPostsSeedKeyFn: testBusinessPostsSeedKey
+  });
+  const seededPosts = coldController.peekBusinessPostsSeed("missing-id", "restaurant-seed");
+  assert.equal(seededPosts.length, 2);
+  assert.equal(seededPosts[0].id, "post-1");
+});
+
+test("business posts known-empty result clears the persisted seed", async () => {
+  const cacheStore = createFakeCacheStore();
+  const extraDeps = {
+    readCacheFn: cacheStore.readCacheFn,
+    writeCacheFn: cacheStore.writeCacheFn,
+    publicBusinessPostsSeedKeyFn: testBusinessPostsSeedKey
+  };
+  const rows = [
+    { id: "post-1", url: "https://cdn.example/post-1.jpg", status: "active" }
+  ];
+  const warmController = createBusinessPostsController({ rows, extraDeps });
+  await warmController.loadBusinessPostsForRestaurant("restaurant-emptied", {
+    skipProfileResolve: true
+  });
+  assert.equal(
+    createPublicProfileRuntimeController({ state: {}, ...extraDeps })
+      .peekBusinessPostsSeed("restaurant-emptied").length,
+    1
+  );
+
+  const emptiedController = createBusinessPostsController({ rows: [], extraDeps });
+  const emptyPosts = await emptiedController.loadBusinessPostsForRestaurant("restaurant-emptied", {
+    skipProfileResolve: true,
+    force: true
+  });
+  assert.deepEqual(emptyPosts, []);
+
+  const coldController = createPublicProfileRuntimeController({ state: {}, ...extraDeps });
+  assert.deepEqual(coldController.peekBusinessPostsSeed("restaurant-emptied"), []);
 });
 
 test("business profile doc reuses cached public route restaurant id", async () => {

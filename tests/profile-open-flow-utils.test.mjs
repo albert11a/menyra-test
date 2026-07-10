@@ -83,6 +83,7 @@ function createController(state, showCalls = [], overrides = {}) {
       data: { name: "Moka Coffee", publicSlug: "moka" }
     })),
     loadBusinessPostsForRestaurant: overrides.loadBusinessPostsForRestaurant || (async () => []),
+    peekBusinessPostsSeed: overrides.peekBusinessPostsSeed || (() => []),
     normalizeExternalUserProfile: (value) => value || {},
     openGuestAuthPrompt: () => false,
     userProfileCache: new Map(),
@@ -111,6 +112,53 @@ test("direct business profile route does not queue browser history push", async 
   await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: false });
 
   assert.equal(state.__nextRouteHistoryMode, "");
+});
+
+test("business profile open renders persisted posts seed instantly and replaces it with fresh posts", async () => {
+  const state = createState("search");
+  const showCalls = [];
+  const seedPosts = [
+    { id: "seed-post-1", url: "https://cdn.example/seed-1.jpg", restaurantId: "moka" }
+  ];
+  const freshPosts = [
+    { id: "fresh-post-1", url: "https://cdn.example/fresh-1.jpg", restaurantId: "moka" },
+    { id: "fresh-post-2", url: "https://cdn.example/fresh-2.jpg", restaurantId: "moka" }
+  ];
+  const controller = createController(state, showCalls, {
+    peekBusinessPostsSeed: () => seedPosts,
+    loadBusinessPostsForRestaurant: async () => freshPosts
+  });
+
+  await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: true });
+
+  assert.equal(showCalls.length > 0, true);
+  const firstCall = showCalls[0];
+  assert.deepEqual(firstCall.posts.map((post) => post.id), ["seed-post-1"]);
+  assert.equal(firstCall.profile.postsLoaded, true);
+  assert.equal(firstCall.profile.truthState, "stable");
+  const finalCall = showCalls[showCalls.length - 1];
+  assert.deepEqual(finalCall.posts.map((post) => post.id), ["fresh-post-1", "fresh-post-2"]);
+  assert.equal(finalCall.profile.postsLoaded, true);
+  assert.equal(finalCall.profile.truthState, "stable");
+});
+
+test("business profile open keeps loading state when no posts seed exists", async () => {
+  const state = createState("search");
+  const showCalls = [];
+  const controller = createController(state, showCalls, {
+    peekBusinessPostsSeed: () => [],
+    loadBusinessPostsForRestaurant: async () => []
+  });
+
+  await controller.openProfileViewFromBusiness({ id: "moka", name: "Moka Coffee" }, { showBack: true });
+
+  const firstCall = showCalls[0];
+  assert.deepEqual(firstCall.posts, []);
+  assert.equal(firstCall.profile.postsLoaded, false);
+  const finalCall = showCalls[showCalls.length - 1];
+  assert.deepEqual(finalCall.posts, []);
+  assert.equal(finalCall.profile.postsLoaded, true);
+  assert.equal(finalCall.profile.truthState, "empty");
 });
 
 test("own business profile clears stale public route menu and focus context", async () => {

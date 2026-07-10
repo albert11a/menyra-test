@@ -146,6 +146,7 @@ export function createProfileOpenFlowControllerCore({
   showPublicProfile,
   fetchBusinessProfileDoc,
   loadBusinessPostsForRestaurant,
+  peekBusinessPostsSeed,
   normalizeExternalUserProfile,
   openGuestAuthPrompt,
   userProfileCache,
@@ -187,6 +188,9 @@ export function createProfileOpenFlowControllerCore({
   const loadBusinessPosts = typeof loadBusinessPostsForRestaurant === "function"
     ? loadBusinessPostsForRestaurant
     : (() => Promise.resolve([]));
+  const peekBusinessPostsSeedFn = typeof peekBusinessPostsSeed === "function"
+    ? peekBusinessPostsSeed
+    : (() => []);
   const normalizeExternalUserProfileFn = typeof normalizeExternalUserProfile === "function"
     ? normalizeExternalUserProfile
     : ((value) => value || {});
@@ -1138,9 +1142,25 @@ export function createProfileOpenFlowControllerCore({
         })
         : null;
       const stableBusinessProfile = liveBusinessProfile || routeSeedProfile;
-      const stableBusinessPosts = liveBusinessProfile
+      let stableBusinessPosts = liveBusinessProfile
         ? liveBusinessPosts
         : routeSeedPosts;
+      // Seed aus dem letzten frischen Posts-Load, damit die Beitraege sofort
+      // sichtbar sind statt "Beitraege werden geladen...". Nur auf der
+      // Posts-Oberflaeche und nie gegen eine bekannte Leer-Wahrheit; der
+      // Live-Load unten ersetzt den Seed anschliessend still.
+      if (
+        !stableBusinessPosts.length
+        && prioritizePostsSurface
+        && routePostsState !== "knownEmpty"
+      ) {
+        stableBusinessPosts = peekBusinessPostsSeedFn(
+          targetCanonicalRestaurantId,
+          routeBootstrapCanonicalRestaurantId,
+          targetMenuRestaurantId,
+          targetRestaurantLookupId
+        );
+      }
       if (routeSnapshotSeed && targetMenuRestaurantId) {
         if (effectiveRouteMenuState === "seeded") {
           state.menu = {

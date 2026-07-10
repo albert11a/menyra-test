@@ -30,6 +30,9 @@ export function createAppControllerBridge({
       showPublicProfile: (profileValue, posts, options = {}) => profile.showPublicProfile(profileValue, posts, options),
       fetchBusinessProfileDoc: (payload = {}) => profile.fetchBusinessProfileDoc(payload),
       loadBusinessPostsForRestaurant: (...args) => profile.loadBusinessPostsForRestaurant(...args),
+      peekBusinessPostsSeed: (...args) => (
+        typeof profile.peekBusinessPostsSeed === "function" ? profile.peekBusinessPostsSeed(...args) : []
+      ),
       normalizeExternalUserProfile: (payload = {}) => profile.normalizeExternalUserProfile(payload),
       openGuestAuthPrompt: (message = "") => profile.openGuestAuthPrompt(message),
       userProfileCache: profile.userProfileCache,
