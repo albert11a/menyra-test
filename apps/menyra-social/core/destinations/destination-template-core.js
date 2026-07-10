@@ -107,6 +107,7 @@ export function normalizeDestinationPlaceCore(raw = {}, { index = 0 } = {}) {
     name: asText(source.name),
     category: normalizeDestinationCategoryKeyCore(source.category),
     description: asText(source.description ?? source.text).slice(0, 600),
+    address: asText(source.address ?? source.plusCode).slice(0, 240),
     lat,
     lng,
     coverImageUrl: asText(source.coverImageUrl ?? source.imageUrl ?? source.coverUrl),

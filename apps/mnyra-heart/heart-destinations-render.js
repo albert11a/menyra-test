@@ -101,7 +101,85 @@ function renderDestinationsList(destinations = {}) {
 // Destination-Editor (Entwurf)
 // ---------------------------------------------------------------------------
 
-function renderPlaceEditorRow(place = {}) {
+function formatPlaceCoordLabel(place = {}) {
+  const lat = Number(place?.lat);
+  const lng = Number(place?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
+
+// Standort wie beim Lead: Plus Code/Adresse eingeben oder per Pin auf der
+// Karte festlegen. Lat/Lng leben nur noch als Hidden-Inputs fuer den Draft.
+function renderPlaceLocationBlock(place = {}) {
+  const id = escapeHtml(place.id);
+  const coordsLabel = formatPlaceCoordLabel(place);
+  return `
+    <div class="heart-crm-location-row heart-crm-modal-field--wide">
+      <div class="heart-crm-location-row__head">
+        <span>Standort</span>
+      </div>
+      <label class="heart-crm-modal-field heart-crm-modal-field--wide">
+        <span>Adresse</span>
+        <input id="destPlaceAddress_${id}" name="destPlaceAddress_${id}" data-dest-place-address="${id}" type="text" value="${escapeHtml(place.address || "")}" placeholder="Plus Code oder Adresse" />
+      </label>
+      <input type="hidden" id="destPlaceLat_${id}" value="${place.lat == null ? "" : escapeHtml(String(place.lat))}" />
+      <input type="hidden" id="destPlaceLng_${id}" value="${place.lng == null ? "" : escapeHtml(String(place.lng))}" />
+      <div id="destPlaceCoords_${id}" class="heart-crm-coords-label ${coordsLabel ? "" : "heart-crm-coords-label--hidden"}">
+        ${renderHeartIcon("checkCircle")} <span>${escapeHtml(coordsLabel || "Standort auf Karte fixiert")}</span>
+      </div>
+      <button type="button" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary" data-action="pick-destination-place-location" data-place-id="${id}">
+        ${renderHeartIcon("mapPin")} <span>Auf Karte festlegen</span>
+      </button>
+    </div>
+  `;
+}
+
+// Fotos werden hochgeladen (komprimierter CDN-Upload) statt als URL gepflegt.
+// Die URLs leben in Hidden-Feldern, damit readDestinationDraftFromDom sie liest.
+function renderPlaceMediaBlock(place = {}, { busy = false } = {}) {
+  const id = escapeHtml(place.id);
+  const coverUrl = asText(place.coverImageUrl);
+  const gallery = Array.isArray(place.gallery) ? place.gallery : [];
+  const galleryThumbs = gallery.map((url, index) => `
+    <div class="heart-destination-media__thumb">
+      <img src="${escapeHtml(url)}" alt="" loading="lazy" />
+      <button type="button" data-action="remove-destination-gallery-image" data-place-id="${id}" data-image-index="${index}" aria-label="Foto entfernen">${renderHeartIcon("x")}</button>
+    </div>
+  `).join("");
+  return `
+    <div class="heart-destination-media heart-crm-modal-field--wide">
+      <div class="heart-destination-media__section">
+        <span class="heart-destination-media__label">Titelbild</span>
+        <div class="heart-destination-media__cover">
+          ${coverUrl
+            ? `
+              <div class="heart-destination-media__thumb heart-destination-media__thumb--cover">
+                <img id="destPlaceCoverPreview_${id}" src="${escapeHtml(coverUrl)}" alt="" loading="lazy" />
+                <button type="button" data-action="remove-destination-cover-image" data-place-id="${id}" aria-label="Titelbild entfernen">${renderHeartIcon("x")}</button>
+              </div>
+            `
+            : `<div class="heart-destination-media__thumb heart-destination-media__thumb--cover heart-destination-media__thumb--empty">${renderHeartIcon("image")}</div>`}
+          <input type="file" id="destPlaceCoverFile_${id}" data-dest-file-input="true" data-dest-place-id="${id}" data-dest-file-kind="cover" accept="image/*" hidden />
+          <button type="button" class="heart-crm-action-placeholder" data-action="trigger-crm-file" data-crm-file-input="destPlaceCoverFile_${id}" ${busy ? "disabled aria-disabled=\"true\"" : ""}>
+            ${renderHeartIcon("camera")} <span>Titelbild hochladen</span>
+          </button>
+        </div>
+        <input type="hidden" id="destPlaceCover_${id}" value="${escapeHtml(coverUrl)}" />
+      </div>
+      <div class="heart-destination-media__section">
+        <span class="heart-destination-media__label">Galerie (${gallery.length}/12, optional)</span>
+        ${galleryThumbs ? `<div class="heart-destination-media__thumbs">${galleryThumbs}</div>` : ""}
+        <input type="file" id="destPlaceGalleryFile_${id}" data-dest-file-input="true" data-dest-place-id="${id}" data-dest-file-kind="gallery" accept="image/*" multiple hidden />
+        <button type="button" class="heart-crm-action-placeholder" data-action="trigger-crm-file" data-crm-file-input="destPlaceGalleryFile_${id}" ${busy ? "disabled aria-disabled=\"true\"" : ""}>
+          ${renderHeartIcon("plus")} <span>Fotos hochladen</span>
+        </button>
+        <textarea id="destPlaceGallery_${id}" name="destPlaceGallery_${id}" hidden>${escapeHtml(gallery.join("\n"))}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+function renderPlaceEditorRow(place = {}, { busy = false } = {}) {
   const id = escapeHtml(place.id);
   const categoryOptions = DESTINATION_PLACE_CATEGORIES
     .map((category) => `<option value="${escapeHtml(category.key)}" ${place.category === category.key ? "selected" : ""}>${escapeHtml(category.labelDe)}</option>`)
@@ -128,22 +206,8 @@ function renderPlaceEditorRow(place = {}) {
           <span>Kurzbeschreibung</span>
           <textarea id="destPlaceDesc_${id}" name="destPlaceDesc_${id}" placeholder="Kurze Beschreibung fuer die Hotelseite...">${escapeHtml(place.description)}</textarea>
         </label>
-        <label class="heart-crm-modal-field">
-          <span>Latitude</span>
-          <input id="destPlaceLat_${id}" name="destPlaceLat_${id}" type="text" inputmode="decimal" value="${place.lat == null ? "" : escapeHtml(String(place.lat))}" placeholder="41.8734" />
-        </label>
-        <label class="heart-crm-modal-field">
-          <span>Longitude</span>
-          <input id="destPlaceLng_${id}" name="destPlaceLng_${id}" type="text" inputmode="decimal" value="${place.lng == null ? "" : escapeHtml(String(place.lng))}" placeholder="19.4231" />
-        </label>
-        <label class="heart-crm-modal-field heart-crm-modal-field--wide">
-          <span>Titelbild URL</span>
-          <input id="destPlaceCover_${id}" name="destPlaceCover_${id}" type="text" value="${escapeHtml(place.coverImageUrl)}" placeholder="https://..." />
-        </label>
-        <label class="heart-crm-modal-field heart-crm-modal-field--wide">
-          <span>Galerie URLs (eine pro Zeile, optional)</span>
-          <textarea id="destPlaceGallery_${id}" name="destPlaceGallery_${id}" placeholder="https://...">${escapeHtml((place.gallery || []).join("\n"))}</textarea>
-        </label>
+        ${renderPlaceLocationBlock(place)}
+        ${renderPlaceMediaBlock(place, { busy })}
         <label class="heart-crm-modal-field">
           <span>Prioritaet (0-100)</span>
           <input id="destPlacePriority_${id}" name="destPlacePriority_${id}" type="number" min="0" max="100" step="1" value="${escapeHtml(String(place.priority ?? 0))}" />
@@ -174,7 +238,7 @@ function renderDestinationEditor(destinations = {}) {
     ...category,
     places: draft.places.filter((place) => place.category === category.key)
   }));
-  const busy = editor.saving || editor.publishing || editor.deleting || editor.loading;
+  const busy = editor.saving || editor.publishing || editor.deleting || editor.loading || editor.uploading;
   return `
     <section class="heart-crm-inline-editor heart-crm-inline-editor--destination">
       <div class="heart-modal__header">
@@ -206,7 +270,7 @@ function renderDestinationEditor(destinations = {}) {
                 <p>${escapeHtml(group.labelDe)} (${group.places.length})</p>
                 <button type="button" class="heart-crm-action-placeholder" data-action="add-destination-place" data-category="${escapeHtml(group.key)}">${renderHeartIcon("plus")} <span>Ort</span></button>
               </div>
-              ${group.places.map((place) => renderPlaceEditorRow(place)).join("")}
+              ${group.places.map((place) => renderPlaceEditorRow(place, { busy })).join("")}
             </section>
           `).join("")}
         `}
@@ -252,6 +316,8 @@ export function readDestinationDraftFromDom(currentDraft = {}, documentObj = typ
     if (category != null) updated.category = category;
     const description = readValue(`destPlaceDesc_${place.id}`);
     if (description != null) updated.description = description.trim();
+    const address = readValue(`destPlaceAddress_${place.id}`);
+    if (address != null) updated.address = address.trim();
     const lat = readValue(`destPlaceLat_${place.id}`);
     if (lat != null) updated.lat = lat.trim() === "" ? null : Number(String(lat).replace(",", "."));
     const lng = readValue(`destPlaceLng_${place.id}`);

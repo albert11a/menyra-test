@@ -272,6 +272,21 @@ export function bindHeartEvents({
       operations.removeDestinationPlace?.(target.getAttribute("data-place-id") || "");
       return;
     }
+    if (action === "pick-destination-place-location") {
+      await operations.pickDestinationPlaceLocation?.(target.getAttribute("data-place-id") || "");
+      return;
+    }
+    if (action === "remove-destination-gallery-image") {
+      operations.removeDestinationGalleryImage?.(
+        target.getAttribute("data-place-id") || "",
+        target.getAttribute("data-image-index") || ""
+      );
+      return;
+    }
+    if (action === "remove-destination-cover-image") {
+      operations.removeDestinationCoverImage?.(target.getAttribute("data-place-id") || "");
+      return;
+    }
     if (action === "save-destination-draft") {
       await operations.saveDestinationDraft?.();
       return;
@@ -369,6 +384,18 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
+    const destFileInput = event.target?.closest?.("[data-dest-file-input]");
+    if (destFileInput) {
+      const files = Array.from(destFileInput.files || []);
+      await operations.handleDestinationFileChange?.(
+        destFileInput.getAttribute("data-dest-place-id") || "",
+        destFileInput.getAttribute("data-dest-file-kind") || "",
+        files
+      );
+      destFileInput.value = "";
+      return;
+    }
+
     const crmFileInput = event.target?.closest?.([
       "[data-crm-file-input]",
       "#leadLogoInput",
@@ -453,6 +480,14 @@ export function bindHeartEvents({
   }
 
   async function handleFocusOut(event) {
+    const destPlaceAddressInput = event.target?.closest?.("[data-dest-place-address]");
+    if (destPlaceAddressInput) {
+      await operations.refineDestinationPlaceAddress?.(
+        destPlaceAddressInput.getAttribute("data-dest-place-address"),
+        destPlaceAddressInput.value
+      );
+      return;
+    }
     const leadLocationInput = event.target?.closest?.("[data-lead-location-address]");
     if (!leadLocationInput) return;
     await operations.refineCrmLeadLocationAddress?.(

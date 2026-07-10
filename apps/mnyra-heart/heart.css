@@ -3935,3 +3935,292 @@ body {
     justify-content: flex-start;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Destination-Orte: Foto-Uploads (Titelbild + Galerie) statt URL-Felder
+--------------------------------------------------------------------------- */
+
+.heart-destination-media {
+  display: grid;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--heart-border);
+  border-radius: 20px;
+  background: rgba(245, 244, 239, 0.035);
+}
+
+.heart-destination-media__section {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.heart-destination-media__label {
+  color: var(--heart-text-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.heart-destination-media__cover {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.heart-destination-media__thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.heart-destination-media__thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--heart-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(245, 244, 239, 0.06);
+}
+
+.heart-destination-media__thumb--cover {
+  width: 96px;
+  height: 72px;
+}
+
+.heart-destination-media__thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.heart-destination-media__thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--heart-text-muted);
+}
+
+.heart-destination-media__thumb--empty svg {
+  width: 22px;
+  height: 22px;
+}
+
+.heart-destination-media__thumb button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.heart-destination-media__thumb button svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Destination-Orts-Picker: gleicher Pin-Picker-Look wie beim Lead-Standort,
+   aber eigenes Modal, damit Lead- und Destination-Confirm sich nie mischen.
+--------------------------------------------------------------------------- */
+
+.heart-dest-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--heart-safe-top);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: var(--heart-safe-bottom);
+  padding-left: env(safe-area-inset-left, 0px);
+  background: transparent;
+}
+
+.heart-dest-picker--hidden {
+  display: none !important;
+}
+
+.heart-dest-picker__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+.heart-dest-picker__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 40px 40px 0 0;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.heart-dest-picker__head,
+.heart-dest-picker__foot {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: #ffffff;
+}
+
+.heart-dest-picker__head {
+  justify-content: space-between;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.heart-dest-picker__head h3,
+.heart-dest-picker__head p {
+  margin: 0;
+}
+
+.heart-dest-picker__head h3 {
+  color: #0f172a;
+  font-size: 1.125rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.heart-dest-picker__head p {
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.heart-dest-picker__close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.heart-dest-picker__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.heart-dest-picker__map-wrap {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.heart-dest-picker__map {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  min-height: 0;
+  background: #e2e8f0;
+}
+
+.heart-dest-picker__map .leaflet-container,
+.heart-dest-picker__map.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+.heart-dest-picker__pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 30;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  filter: drop-shadow(0 25px 25px rgba(15, 23, 42, 0.15));
+}
+
+.heart-dest-picker__pin-head {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #ffffff;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  animation: heart-social-picker-bounce 1s infinite;
+}
+
+.heart-dest-picker__pin-head svg {
+  width: 20px;
+  height: 20px;
+  color: #ffffff;
+  fill: #4f46e5;
+}
+
+.heart-dest-picker__pin-stem {
+  width: 4px;
+  height: 16px;
+  margin: -4px auto 0;
+  border-radius: 999px;
+  background: #1e293b;
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+}
+
+.heart-dest-picker__foot {
+  justify-content: center;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.heart-dest-picker__confirm {
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  transition: transform 150ms ease;
+}
+
+.heart-dest-picker__confirm:active {
+  transform: scale(0.95);
+}
+
+.heart-dest-picker__confirm svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}

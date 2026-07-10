@@ -33,6 +33,10 @@ import {
   readDestinationDraftFromDom
 } from "./heart-destinations-render.js";
 import {
+  createHeartDestinationLocationPicker,
+  resolveDestinationCoordsFromText
+} from "./heart-destination-location-picker.js";
+import {
   normalizeDestinationOverridesCore
 } from "../menyra-social/core/destinations/destination-merge-core.js";
 import {
@@ -74,6 +78,7 @@ const setupAdapter = createHeartSetupAdapter({ apiClient });
 const destinationsAdapter = createHeartDestinationsAdapter({
   getAuthState: () => store.getState().auth
 });
+const destinationLocationPicker = createHeartDestinationLocationPicker();
 const crmAdminReadLoaders = createHeartCrmAdminReadLoaderDeps({
   getAuthState: () => store.getState().auth,
   getSetupState: () => store.getState().setup
@@ -597,6 +602,44 @@ function captureDestinationDraftFromDom() {
   const draft = readDestinationDraftFromDom(editor.draft || {});
   actions.patchDestinationEditor({ draft });
   return draft;
+}
+
+function readDestinationPlaceCoordsFromDom(placeId = "") {
+  const latRaw = String(document.getElementById(`destPlaceLat_${placeId}`)?.value || "").trim();
+  const lngRaw = String(document.getElementById(`destPlaceLng_${placeId}`)?.value || "").trim();
+  if (!latRaw || !lngRaw) return null;
+  const lat = Number(latRaw.replace(",", "."));
+  const lng = Number(lngRaw.replace(",", "."));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+// Schreibt gepickte/aufgeloeste Koordinaten wie beim Lead direkt in die
+// Hidden-Inputs plus Koordinaten-Badge, ohne den Editor neu zu rendern.
+function applyDestinationPlaceCoordsToDom(placeId = "", coords = null) {
+  const lat = Number(coords?.lat);
+  const lng = Number(coords?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  const latInput = document.getElementById(`destPlaceLat_${placeId}`);
+  const lngInput = document.getElementById(`destPlaceLng_${placeId}`);
+  if (!latInput || !lngInput) return false;
+  latInput.value = String(lat);
+  lngInput.value = String(lng);
+  const badge = document.getElementById(`destPlaceCoords_${placeId}`);
+  if (badge) {
+    const label = badge.querySelector("span");
+    if (label) label.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    badge.classList.remove("heart-crm-coords-label--hidden");
+  }
+  return true;
+}
+
+// Startpunkt fuer den Karten-Picker: erster Ort des Entwurfs mit Koordinaten
+// (Orte einer Destination liegen nah beieinander).
+function findDestinationDraftFallbackCoords(draft = null) {
+  const places = Array.isArray(draft?.places) ? draft.places : [];
+  const match = places.find((place) => Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng)));
+  return match ? { lat: Number(match.lat), lng: Number(match.lng) } : null;
 }
 
 function getLeadDestinationDraftContext() {
@@ -1124,6 +1167,101 @@ const operations = {
         error: error?.message || "Destination konnte nicht geloescht werden."
       });
     }
+  },
+  // Standort eines Destination-Orts wie beim Lead: Plus Code/Adresse wird beim
+  // Verlassen des Felds aufgeloest, Koordinaten landen in den Hidden-Inputs.
+  async refineDestinationPlaceAddress(placeId = "", value = "") {
+    const safeId = String(placeId || "").trim();
+    const text = String(value || "").trim();
+    if (!safeId || !text) return;
+    try {
+      const coords = await resolveDestinationCoordsFromText(text);
+      if (coords) applyDestinationPlaceCoordsToDom(safeId, coords);
+    } catch {}
+  },
+  async pickDestinationPlaceLocation(placeId = "") {
+    const safeId = String(placeId || "").trim();
+    if (!safeId) return;
+    try {
+      const addressValue = String(document.getElementById(`destPlaceAddress_${safeId}`)?.value || "").trim();
+      let initialCoords = readDestinationPlaceCoordsFromDom(safeId);
+      if (!initialCoords && addressValue) {
+        initialCoords = await resolveDestinationCoordsFromText(addressValue);
+      }
+      if (!initialCoords) {
+        const editor = store.getState().destinations?.editor || {};
+        initialCoords = findDestinationDraftFallbackCoords(readDestinationDraftFromDom(editor.draft || {}));
+      }
+      const picked = await destinationLocationPicker.open({ initialCoords });
+      if (!picked) return;
+      applyDestinationPlaceCoordsToDom(safeId, picked);
+      captureDestinationDraftFromDom();
+    } catch (error) {
+      setToast("Karte", error?.message || "Standort-Picker konnte nicht geoeffnet werden.", "danger");
+    }
+  },
+  // Fotos fuer Destination-Orte werden sofort komprimiert hochgeladen; im
+  // Entwurf stehen danach nur noch CDN-URLs.
+  async handleDestinationFileChange(placeId = "", kind = "", files = []) {
+    const safeId = String(placeId || "").trim();
+    const safeKind = String(kind || "").trim();
+    const imageFiles = (Array.isArray(files) ? files : [])
+      .filter((file) => file && String(file.type || "").startsWith("image/"));
+    if (!safeId || !safeKind || !imageFiles.length) return;
+    const draft = captureDestinationDraftFromDom();
+    const place = (draft?.places || []).find((item) => item.id === safeId);
+    if (!place) return;
+    actions.patchDestinationEditor({ uploading: true, status: "Bild wird hochgeladen...", error: "" });
+    try {
+      let coverUrl = "";
+      const uploadedGalleryUrls = [];
+      if (safeKind === "cover") {
+        coverUrl = await crmAdminWriteAdapter.uploadDestinationImage(imageFiles[0], { maxSize: 1280 });
+      } else {
+        const existingCount = Array.isArray(place.gallery) ? place.gallery.length : 0;
+        const batch = imageFiles.slice(0, Math.max(0, 12 - existingCount));
+        if (!batch.length) throw new Error("Galerie ist voll (max. 12 Bilder).");
+        for (const file of batch) {
+          uploadedGalleryUrls.push(await crmAdminWriteAdapter.uploadDestinationImage(file, { maxSize: 1280 }));
+        }
+      }
+      // Draft nach dem Upload frisch aus dem DOM lesen, damit Eingaben
+      // waehrend des Uploads nicht ueberschrieben werden.
+      const finalDraft = captureDestinationDraftFromDom() || draft;
+      const finalPlace = (finalDraft?.places || []).find((item) => item.id === safeId);
+      if (finalPlace) {
+        if (safeKind === "cover") {
+          finalPlace.coverImageUrl = coverUrl;
+        } else {
+          const gallery = Array.isArray(finalPlace.gallery) ? finalPlace.gallery.slice() : [];
+          finalPlace.gallery = [...gallery, ...uploadedGalleryUrls].slice(0, 12);
+        }
+      }
+      actions.patchDestinationEditor({ uploading: false, status: "", draft: { ...finalDraft } });
+      setToast("Destination", safeKind === "cover" ? "Titelbild hochgeladen." : "Fotos hochgeladen.", "success");
+    } catch (error) {
+      actions.patchDestinationEditor({ uploading: false, status: "" });
+      setToast("Upload", error?.message || "Bild konnte nicht hochgeladen werden.", "danger");
+    }
+  },
+  removeDestinationGalleryImage(placeId = "", imageIndex = "") {
+    const safeId = String(placeId || "").trim();
+    const index = Number(imageIndex);
+    if (!safeId || !Number.isInteger(index) || index < 0) return;
+    const draft = captureDestinationDraftFromDom();
+    const place = (draft?.places || []).find((item) => item.id === safeId);
+    if (!place || !Array.isArray(place.gallery) || index >= place.gallery.length) return;
+    place.gallery = place.gallery.filter((_, itemIndex) => itemIndex !== index);
+    actions.patchDestinationEditor({ draft: { ...draft } });
+  },
+  removeDestinationCoverImage(placeId = "") {
+    const safeId = String(placeId || "").trim();
+    if (!safeId) return;
+    const draft = captureDestinationDraftFromDom();
+    const place = (draft?.places || []).find((item) => item.id === safeId);
+    if (!place) return;
+    place.coverImageUrl = "";
+    actions.patchDestinationEditor({ draft: { ...draft } });
   },
   setLeadDestination(destinationId = "") {
     const context = getLeadDestinationDraftContext();

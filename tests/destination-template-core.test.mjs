@@ -32,6 +32,7 @@ test("normalizeDestinationPlaceCore sanitizes fields and keeps ids", () => {
     id: "place_a",
     name: "  Plazhi i Velipojës ",
     category: "Plazha",
+    address: "  8G7Q+2X Velipojë ",
     lat: "41.8734",
     lng: "19.4231",
     priority: 350,
@@ -43,6 +44,7 @@ test("normalizeDestinationPlaceCore sanitizes fields and keeps ids", () => {
   assert.equal(place.id, "place_a");
   assert.equal(place.name, "Plazhi i Velipojës");
   assert.equal(place.category, "beach");
+  assert.equal(place.address, "8G7Q+2X Velipojë");
   assert.equal(place.lat, 41.8734);
   assert.equal(place.lng, 19.4231);
   assert.equal(place.priority, 100);

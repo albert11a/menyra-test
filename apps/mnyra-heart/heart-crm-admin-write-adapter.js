@@ -295,7 +295,8 @@ function loadLeafletScript(jsUrl, cssUrl, timeoutMs = LEAFLET_LOAD_TIMEOUT_MS) {
   });
 }
 
-async function ensureLeafletLoaded() {
+// Auch fuer Heart-eigene Karten (z. B. Destination-Orts-Picker) nutzbar.
+export async function ensureLeafletLoaded() {
   if (typeof window !== "undefined" && window.L) return true;
   if (typeof window !== "undefined" && typeof document !== "undefined") {
     if (!socialLeafletLoaderController) {
@@ -1533,6 +1534,26 @@ export function createHeartCrmAdminWriteAdapter({
     return { ok: true };
   }
 
+  // Destination-Orte (Heart -> Orte & Destinationen) laden Fotos ueber denselben
+  // komprimierten CDN-Upload wie Lead-Logos/Titelbilder, statt URLs zu pflegen.
+  async function uploadDestinationImage(file, { maxSize = 1280, quality = 0.82 } = {}) {
+    if (!file) throw new Error("Bitte ein Bild auswaehlen.");
+    ensureRuntimeController();
+    if (!mediaUploadRuntime || typeof mediaUploadRuntime.uploadCompressedImage !== "function") {
+      throw new Error("Media Upload ist nicht verfuegbar.");
+    }
+    const ownerId = asText(runtimeState.user?.uid || auth.currentUser?.uid);
+    if (!ownerId) throw new Error("Bitte zuerst anmelden.");
+    const result = await mediaUploadRuntime.uploadCompressedImage(file, ownerId, {
+      maxSize,
+      quality,
+      mimeType: "image/jpeg"
+    });
+    const url = asText(result?.cdnUrl || result?.url);
+    if (!url) throw new Error("Upload fehlgeschlagen.");
+    return url;
+  }
+
   function setStaffAvatarFile(file) {
     const controller = ensureRuntimeController();
     controller.syncStaffFormFromDom();
@@ -1568,6 +1589,7 @@ export function createHeartCrmAdminWriteAdapter({
     setLeadBestSpotLogoFile,
     setLeadTitleImageFile,
     setCustomerLogoFile,
-    setStaffAvatarFile
+    setStaffAvatarFile,
+    uploadDestinationImage
   });
 }

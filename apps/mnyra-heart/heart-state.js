@@ -33,6 +33,7 @@ export function createHeartDestinationsInitialState() {
       saving: false,
       publishing: false,
       deleting: false,
+      uploading: false,
       status: "",
       error: "",
       draft: null
@@ -722,6 +723,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         saving: false,
         publishing: false,
         deleting: false,
+        uploading: false,
         status: "",
         error: "",
         draft: editorDraft && typeof editorDraft === "object" ? editorDraft : null
@@ -750,6 +752,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         saving: false,
         publishing: false,
         deleting: false,
+        uploading: false,
         status: "",
         error: "",
         draft: null

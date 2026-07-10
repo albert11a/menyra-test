@@ -22,7 +22,8 @@ Entfernungen werden pro Hotel aus den Koordinaten automatisch berechnet.
 
 Ort (`places[]`): `id`, `name`, `category`
 (`city|beach|sights|activities|nature|food|nearby`), `description`,
-`lat`/`lng`, `coverImageUrl`, `gallery[]`, `priority` (0-100), `pinned`,
+`address` (eingegebener Plus Code / Adresstext), `lat`/`lng`,
+`coverImageUrl`, `gallery[]`, `priority` (0-100), `pinned`,
 `season` (`all|summer|winter`), `active`.
 
 ## Lead-Verknuepfung (keine Kopie)
@@ -118,10 +119,38 @@ gemeinsamen `vendor-firebase`-Chunk, nicht dupliziert.
   wird es wiederverwendet. Mobil: Ein-Finger-Drag deaktiviert
   (Seiten-Scroll bleibt fluessig), Zwei-Finger-Zoom aktiv.
 
+## Standort + Fotos im Destination-Editor (wie beim Lead)
+
+Der Orts-Editor (Stadt, Straende, Sehenswuerdigkeiten, ...) pflegt Standort
+und Fotos jetzt genauso wie der Lead-Editor:
+
+- **Standort**: pro Ort ein Feld `Adresse` (Plus Code voll/kurz, Adresse oder
+  `lat, lng`-Text). Beim Verlassen des Felds werden die Koordinaten wie beim
+  Lead aufgeloest (`plus-code-utils` via `crm-lead-geo-support-runtime`,
+  Nominatim-Fallback) und als Badge angezeigt. Alternativ oeffnet
+  `Auf Karte festlegen` einen Pin-Picker (Karte unter festem Pin verschieben,
+  `Hier bestaetigen`). Manuelle Latitude-/Longitude-Felder sind entfallen;
+  `lat`/`lng` leben als Hidden-Inputs im Draft.
+- **Pin-Picker**: eigenes Heart-Modul
+  `heart-destination-location-picker.js` (eigene Modal-DOM/CSS
+  `.heart-dest-picker`, bewusst getrennt vom Social-CRM-Picker
+  `#locationPickerModal`, damit sich die Confirm-Handler von Lead- und
+  Destination-Flow nie mischen). Leaflet kommt aus dem bestehenden Loader des
+  Write-Adapters (`ensureLeafletLoaded`, jetzt exportiert), Kacheln wie im
+  Social-Picker (Carto Voyager). Startpunkt: vorhandene Ort-Koordinaten ->
+  aufgeloeste Adresse -> erster Ort des Entwurfs mit Koordinaten -> Default.
+- **Fotos hochladen statt URL**: `Titelbild URL` und `Galerie URLs` sind durch
+  Upload-Controls ersetzt (Titelbild einzeln, Galerie multi, max. 12).
+  Upload laeuft ueber denselben komprimierten CDN-Upload wie Lead-Logos
+  (`uploadDestinationImage` im Write-Adapter ->
+  `mediaUploadRuntime.uploadCompressedImage`, ownerId = CEO-uid,
+  `image_upload`-Ticket erlaubt Self-Owner). Im Draft stehen danach nur
+  CDN-URLs (Hidden-Input/Hidden-Textarea, `readDestinationDraftFromDom`
+  unveraendert kompatibel). Thumbnails mit Entfernen-Knopf, waehrend eines
+  Uploads sind Upload-/Footer-Buttons gesperrt (`editor.uploading`).
+
 ## Offene Folgearbeiten
 
-- Foto-Upload direkt im Destination-Editor (aktuell: Bild-URLs, z. B. aus
-  bestehendem CDN-Upload kopiert).
 - Echte Bewertungen/Reviews auf der Hotel-Detailseite (aktuell nur
   Rating-Kachel aus vorhandenen Feldern; Review-Karten der Vorlage folgen,
   sobald eine Review-Quelle steht).
