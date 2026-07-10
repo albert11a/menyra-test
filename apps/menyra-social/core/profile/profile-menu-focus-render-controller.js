@@ -488,6 +488,8 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
   // landete hier die Video-URL in einem <img> (kaputte graue Kachel).
   // Ohne Poster zeigt ein statisches <video preload="metadata"> das erste
   // Frame; abgespielt wird erst nach dem Oeffnen im Post-Modal.
+  // "#t=0.001" ist noetig, damit auch iOS-Safari das erste Frame rendert -
+  // ohne Zeit-Fragment bleibt die Kachel dort weiss.
   const posterRaw = String(item.posterUrl || item.thumbUrl || item.poster || "").trim();
   const isVideoPost = item.isVideo === true;
   const mediaSourceUrl = isVideoPost && posterRaw ? posterRaw : item.url;
@@ -495,8 +497,12 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
     stableKey: postId ? `profile-post:${postId}` : "",
     variantGroup: "post-detail"
   });
-  const mediaHtml = (isVideoPost && !posterRaw && item.url)
-    ? `<video src="${escapeHtml(String(item.url))}" preload="metadata" muted playsinline width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover pointer-events-none"></video>`
+  const rawVideoUrl = String(item.url || "").trim();
+  const staticPreviewSrc = rawVideoUrl && !rawVideoUrl.includes("#")
+    ? `${rawVideoUrl}#t=0.001`
+    : rawVideoUrl;
+  const mediaHtml = (isVideoPost && !posterRaw && rawVideoUrl)
+    ? `<video src="${escapeHtml(staticPreviewSrc)}" preload="metadata" muted playsinline webkit-playsinline width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover pointer-events-none"></video>`
     : `<img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover" />`;
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">

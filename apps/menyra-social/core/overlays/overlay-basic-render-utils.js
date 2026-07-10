@@ -300,10 +300,10 @@ export function renderPostModalCore({
 
               <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100 relative">
                 ${(isVideoPost && videoSrc) ? `
-                  <video id="postModalVideo" src="${esc(videoSrc)}" ${posterIsReal ? `poster="${esc(posterUrl)}"` : ""} preload="${posterIsReal ? "none" : "metadata"}" muted loop playsinline class="w-full h-[22rem] object-cover block"></video>
-                  <button type="button" data-post-modal-video-toggle aria-label="Video abspielen" class="absolute top-4 left-4 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
-                    <span data-post-modal-video-icon="play">${iconFn("play", "w-4 h-4")}</span>
-                    <span data-post-modal-video-icon="pause" class="hidden">${iconFn("pause", "w-4 h-4")}</span>
+                  <video id="postModalVideo" src="${esc(videoSrc)}" ${posterIsReal ? `poster="${esc(posterUrl)}"` : ""} preload="auto" autoplay muted loop playsinline webkit-playsinline class="w-full h-[22rem] object-cover block"></video>
+                  <button type="button" data-post-modal-video-toggle aria-label="Video pausieren" class="absolute top-4 left-4 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
+                    <span data-post-modal-video-icon="play" class="hidden">${iconFn("play", "w-4 h-4")}</span>
+                    <span data-post-modal-video-icon="pause">${iconFn("pause", "w-4 h-4")}</span>
                   </button>
                 ` : `
                   <img src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover" loading="eager" fetchpriority="high" decoding="sync" />

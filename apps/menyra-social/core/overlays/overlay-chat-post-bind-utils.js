@@ -184,8 +184,9 @@ export function bindPostOverlayEventsCore({
   bindModalDismiss(postModalOverlay, closePostModal, { selfOnly: true });
   bindModalDismiss(postModalClose, closePostModal);
 
-  // Video-Post im Modal: startet NICHT automatisch - Play/Pause nur ueber
-  // den Button oben links (Icon + aria-label laufen ueber die Video-Events).
+  // Video-Post im Modal: startet beim Oeffnen automatisch (stumm, Loop);
+  // der Button oben links pausiert/startet. Icon + aria-label laufen ueber
+  // die Video-Events, damit sie auch bei blockiertem Autoplay stimmen.
   const postModalVideoToggle = doc.querySelector("[data-post-modal-video-toggle]");
   const postModalVideo = doc.getElementById("postModalVideo");
   if (postModalVideoToggle && postModalVideo) {
@@ -198,13 +199,15 @@ export function bindPostOverlayEventsCore({
     };
     postModalVideo.addEventListener("play", () => setToggleUi(true));
     postModalVideo.addEventListener("pause", () => setToggleUi(false));
+    // Autoplay aktiv anstossen (iOS/Stromsparmodus blockiert das Attribut
+    // gelegentlich) und den Button-Zustand mit der Realitaet abgleichen.
+    postModalVideo.muted = true;
+    void postModalVideo.play().catch(() => {});
+    setToggleUi(!postModalVideo.paused);
     postModalVideoToggle.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (postModalVideo.paused) {
-        try {
-          postModalVideo.preload = "auto";
-        } catch {}
         void postModalVideo.play().catch(() => setToggleUi(false));
         return;
       }

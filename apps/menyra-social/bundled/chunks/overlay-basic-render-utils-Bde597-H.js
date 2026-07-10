@@ -1,4 +1,4 @@
-import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-BL21ERPm.js";import"./domain-public-profile-BW4dw-Ab.js";import"./domain-media-eager-B90n_Ot7.js";function P({state:a,getOptimizedImageUrl:p,escapeHtml:u,icon:x,formatRelative:v,toDateSafe:b}={}){if(!a?.chatModal?.open||!a?.chatModal?.profile)return"";const h=typeof p=="function"?p:(l=>l||""),n=typeof u=="function"?u:(l=>String(l??"")),m=typeof x=="function"?x:(()=>""),t=(l,$=l,e={})=>y(l,{fallback:$,params:e}),w=typeof v=="function"?v:(l=>String(l??"")),i=typeof b=="function"?b:(l=>l),o=a.chatModal.profile,f=h(o.avatar,"avatar"),g=Array.isArray(a.chatModal.messages)?a.chatModal.messages:[];return`
+import{t as $}from"./domain-feed-social-eager-DnZWCgHX.js";import"./domain-auth-BL21ERPm.js";import"./domain-public-profile-BW4dw-Ab.js";import"./domain-media-eager-B90n_Ot7.js";function P({state:a,getOptimizedImageUrl:p,escapeHtml:u,icon:x,formatRelative:v,toDateSafe:b}={}){if(!a?.chatModal?.open||!a?.chatModal?.profile)return"";const h=typeof p=="function"?p:(l=>l||""),n=typeof u=="function"?u:(l=>String(l??"")),m=typeof x=="function"?x:(()=>""),t=(l,y=l,e={})=>$(l,{fallback:y,params:e}),w=typeof v=="function"?v:(l=>String(l??"")),i=typeof b=="function"?b:(l=>l),o=a.chatModal.profile,f=h(o.avatar,"avatar"),g=Array.isArray(a.chatModal.messages)?a.chatModal.messages:[];return`
     <div class="fixed inset-0 z-[65] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="chatModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
@@ -39,7 +39,7 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
         </div>
       </div>
     </div>
-  `}function W({state:a,isFollowingProfile:p,getOptimizedImageUrl:u,formatCount:x,escapeHtml:v,icon:b}={}){if(!a?.profileModal?.open||!a?.profileModal?.profile)return"";const h=typeof p=="function"?p:(()=>!1),n=typeof u=="function"?u:(d=>d||""),m=typeof x=="function"?x:(d=>String(d??"0")),t=typeof v=="function"?v:(d=>String(d??"")),w=typeof b=="function"?b:(()=>""),i=(d,c=d,s={})=>y(d,{fallback:c,params:s}),o=a.profileModal.profile,f=h(o),g=!!o.pendingFollowRequest&&!f,l=!!o.privateAccount&&o.uid&&String(o.uid)!==String(a.user?.uid||"")&&!f,$=o.restaurantId?i("profile.business","Business"):i("profile.user","User"),e=n(o.avatar,"avatar");return`
+  `}function W({state:a,isFollowingProfile:p,getOptimizedImageUrl:u,formatCount:x,escapeHtml:v,icon:b}={}){if(!a?.profileModal?.open||!a?.profileModal?.profile)return"";const h=typeof p=="function"?p:(()=>!1),n=typeof u=="function"?u:(d=>d||""),m=typeof x=="function"?x:(d=>String(d??"0")),t=typeof v=="function"?v:(d=>String(d??"")),w=typeof b=="function"?b:(()=>""),i=(d,c=d,s={})=>$(d,{fallback:c,params:s}),o=a.profileModal.profile,f=h(o),g=!!o.pendingFollowRequest&&!f,l=!!o.privateAccount&&o.uid&&String(o.uid)!==String(a.user?.uid||"")&&!f,y=o.restaurantId?i("profile.business","Business"):i("profile.user","User"),e=n(o.avatar,"avatar");return`
     <div class="fixed inset-0 z-[60] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
       <div id="profileModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
@@ -53,7 +53,7 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
               <img src="${t(e)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-black">@${t(o.handle)}</p>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${t(o.location)} / ${$}</p>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${t(o.location)} / ${y}</p>
               </div>
               <div class="flex items-center gap-2">
 
@@ -85,7 +85,7 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
         </div>
       </div>
     </div>
-  `}function E({state:a,ensurePostMeta:p,findPostById:u,resolveLikeAvatar:x,escapeHtml:v,icon:b}={}){if(!a?.likesModal?.open||!a?.likesModal?.postId)return"";const h=typeof p=="function"?p:(()=>({})),n=typeof u=="function"?u:(()=>null),m=typeof x=="function"?x:(()=>""),t=typeof v=="function"?v:(e=>String(e??"")),w=typeof b=="function"?b:(()=>""),i=(e,d=e,c={})=>y(e,{fallback:d,params:c}),f=h(a.likesModal.postId).likes||[],g=n(a.likesModal.postId),l=Number(g?.likes)||f.length;return`
+  `}function E({state:a,ensurePostMeta:p,findPostById:u,resolveLikeAvatar:x,escapeHtml:v,icon:b}={}){if(!a?.likesModal?.open||!a?.likesModal?.postId)return"";const h=typeof p=="function"?p:(()=>({})),n=typeof u=="function"?u:(()=>null),m=typeof x=="function"?x:(()=>""),t=typeof v=="function"?v:(e=>String(e??"")),w=typeof b=="function"?b:(()=>""),i=(e,d=e,c={})=>$(e,{fallback:d,params:c}),f=h(a.likesModal.postId).likes||[],g=n(a.likesModal.postId),l=Number(g?.likes)||f.length;return`
       <div class="fixed inset-0 z-[80] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
         <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
       <div class="modal-frame">
@@ -114,7 +114,7 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
         </div>
       </div>
     </div>
-  `}function J({state:a,ensurePostMeta:p,resolvePostCounts:u,getOptimizedImageUrl:x,ensureCommentShape:v,currentUserBadge:b,renderPostComments:h,formatDateLabel:n,escapeHtml:m,icon:t}={}){if(!a?.postModal?.open||!a?.postModal?.post)return"";const w=typeof p=="function"?p:(()=>({})),i=typeof u=="function"?u:(()=>({likeLabel:"0",commentLabel:"0"})),o=typeof x=="function"?x:(r=>r||""),f=typeof v=="function"?v:(r=>r||{}),g=typeof b=="function"?b:(()=>({uid:"",handle:""})),l=typeof h=="function"?h:(()=>""),$=typeof n=="function"?n:(r=>String(r??"")),e=typeof m=="function"?m:(r=>String(r??"")),d=typeof t=="function"?t:(()=>""),c=(r,q=r,z={})=>y(r,{fallback:q,params:z}),s=a.postModal.post,M=w(s.id),j=i(s),C=s.caption||s.title||"",N=s.url||s.image||"",R=o(N,"large",{stableKey:s?.id?`post-modal:${String(s.id)}`:""}),S=s.isVideo===!0||String(s.mediaType||"").trim().toLowerCase()==="video",L=S?String(s.videoUrl||s.url||"").trim():"",F=String(s.posterUrl||s.poster||s.thumbUrl||"").trim(),k=F?o(F,"large",{stableKey:s?.id?`post-modal-poster:${String(s.id)}`:""}):"",A=!!k&&!k.startsWith("data:"),I=(M.comments||[]).map(f),U=g(),B=M.likes?.some(r=>r.uid===U.uid||r.handle===U.handle),T=I.find(r=>r.id===a.postModal.replyTo);return`
+  `}function J({state:a,ensurePostMeta:p,resolvePostCounts:u,getOptimizedImageUrl:x,ensureCommentShape:v,currentUserBadge:b,renderPostComments:h,formatDateLabel:n,escapeHtml:m,icon:t}={}){if(!a?.postModal?.open||!a?.postModal?.post)return"";const w=typeof p=="function"?p:(()=>({})),i=typeof u=="function"?u:(()=>({likeLabel:"0",commentLabel:"0"})),o=typeof x=="function"?x:(r=>r||""),f=typeof v=="function"?v:(r=>r||{}),g=typeof b=="function"?b:(()=>({uid:"",handle:""})),l=typeof h=="function"?h:(()=>""),y=typeof n=="function"?n:(r=>String(r??"")),e=typeof m=="function"?m:(r=>String(r??"")),d=typeof t=="function"?t:(()=>""),c=(r,q=r,z={})=>$(r,{fallback:q,params:z}),s=a.postModal.post,M=w(s.id),j=i(s),C=s.caption||s.title||"",T=s.url||s.image||"",N=o(T,"large",{stableKey:s?.id?`post-modal:${String(s.id)}`:""}),S=s.isVideo===!0||String(s.mediaType||"").trim().toLowerCase()==="video",L=S?String(s.videoUrl||s.url||"").trim():"",F=String(s.posterUrl||s.poster||s.thumbUrl||"").trim(),k=F?o(F,"large",{stableKey:s?.id?`post-modal-poster:${String(s.id)}`:""}):"",R=!!k&&!k.startsWith("data:"),A=(M.comments||[]).map(f),I=g(),U=M.likes?.some(r=>r.uid===I.uid||r.handle===I.handle),B=A.find(r=>r.id===a.postModal.replyTo);return`
       <div class="fixed inset-0 z-[70] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
         <div class="modal-frame">
@@ -123,7 +123,7 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
               <div class="flex items-center justify-between mb-4">
                 <div>
                   <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${e(c("post.title","Post"))}</span>
-                  <h3 class="text-xl font-black italic tracking-tighter">${e($(s.createdAt||new Date))}</h3>
+                  <h3 class="text-xl font-black italic tracking-tighter">${e(y(s.createdAt||new Date))}</h3>
                   <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${e(c("post.photo","Foto"))}</p>
                 </div>
                 <button id="postModalClose" type="button" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${d("x","w-4 h-4")}</button>
@@ -131,13 +131,13 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
 
               <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100 relative">
                 ${S&&L?`
-                  <video id="postModalVideo" src="${e(L)}" ${A?`poster="${e(k)}"`:""} preload="${A?"none":"metadata"}" muted loop playsinline class="w-full h-[22rem] object-cover block"></video>
-                  <button type="button" data-post-modal-video-toggle aria-label="Video abspielen" class="absolute top-4 left-4 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
-                    <span data-post-modal-video-icon="play">${d("play","w-4 h-4")}</span>
-                    <span data-post-modal-video-icon="pause" class="hidden">${d("pause","w-4 h-4")}</span>
+                  <video id="postModalVideo" src="${e(L)}" ${R?`poster="${e(k)}"`:""} preload="auto" autoplay muted loop playsinline webkit-playsinline class="w-full h-[22rem] object-cover block"></video>
+                  <button type="button" data-post-modal-video-toggle aria-label="Video pausieren" class="absolute top-4 left-4 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
+                    <span data-post-modal-video-icon="play" class="hidden">${d("play","w-4 h-4")}</span>
+                    <span data-post-modal-video-icon="pause">${d("pause","w-4 h-4")}</span>
                   </button>
                 `:`
-                  <img src="${e(R)}" data-img-key="post-modal:${e(s.id)}" class="w-full h-[22rem] object-cover" loading="eager" fetchpriority="high" decoding="sync" />
+                  <img src="${e(N)}" data-img-key="post-modal:${e(s.id)}" class="w-full h-[22rem] object-cover" loading="eager" fetchpriority="high" decoding="sync" />
                 `}
               </div>
 
@@ -146,8 +146,8 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
               `:""}
 
               <div class="mt-4 flex items-center justify-between">
-                <button id="postLikeBtn" data-post-id="${e(s.id)}" class="flex items-center gap-2 text-sm font-black ${B?"text-rose-500":"text-slate-700"}">
-                  ${d("heart","w-5 h-5")} ${e(B?c("likes.liked","Gefaellt"):c("likes.like","Like"))}
+                <button id="postLikeBtn" data-post-id="${e(s.id)}" class="flex items-center gap-2 text-sm font-black ${U?"text-rose-500":"text-slate-700"}">
+                  ${d("heart","w-5 h-5")} ${e(U?c("likes.liked","Gefaellt"):c("likes.like","Like"))}
                 </button>
                 <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   <button id="postLikesBtn" data-post-id="${e(s.id)}" class="hover:text-slate-700">${e(j.likeLabel)} ${e(c("likes.count","Likes"))}</button>
@@ -156,12 +156,12 @@ import{t as y}from"./domain-feed-social-eager-4Nbp9uW9.js";import"./domain-auth-
               </div>
 
               <div id="postModalComments" class="mt-5 space-y-4">
-                ${l(I)}
+                ${l(A)}
               </div>
 
-              ${T?`
+              ${B?`
                 <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div class="text-[10px] font-bold uppercase text-slate-400">${e(c("post.replyTo","Antwort an @{handle}",{handle:T.handle}))}</div>
+                  <div class="text-[10px] font-bold uppercase text-slate-400">${e(c("post.replyTo","Antwort an @{handle}",{handle:B.handle}))}</div>
                   <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${e(c("common.cancel","Abbrechen"))}</button>
                 </div>
               `:""}
