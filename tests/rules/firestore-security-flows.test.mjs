@@ -758,6 +758,135 @@ test("public ad array writes are limited to owner and Heart actors", async () =>
   );
 });
 
+function destinationTemplateDocuments() {
+  const place = {
+    id: "place-beach-001",
+    name: "Velipoje Beach",
+    category: "beach",
+    description: "Langer Sandstrand",
+    lat: 41.8703,
+    lng: 19.4189,
+    coverImageUrl: "",
+    gallery: [],
+    priority: 80,
+    pinned: false,
+    season: "summer",
+    active: true,
+  };
+  return [
+    {
+      path: "heartDestinations/velipoje",
+      data: {
+        id: "velipoje",
+        name: "Velipoje",
+        slug: "velipoje",
+        draft: { name: "Velipoje", description: "Entwurf", places: [place] },
+        published: {
+          name: "Velipoje",
+          description: "Veroeffentlicht",
+          places: [place],
+        },
+        publishedVersion: 1,
+      },
+    },
+    {
+      path: "destinationsPublic/velipoje",
+      data: {
+        id: "velipoje",
+        name: "Velipoje",
+        version: 1,
+        places: [place],
+      },
+    },
+  ];
+}
+
+test("destination templates are readable and writable only by CEO actors", async () => {
+  await seedFirestore(destinationTemplateDocuments());
+
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const hotelOwnerDb = firestoreFor(testEnv, AUTH_FIXTURES.hotelOwner);
+
+  await assertSucceeds(heartDb.doc("heartDestinations/velipoje").get());
+  await assertSucceeds(heartDb.collection("heartDestinations").get());
+  await assertSucceeds(
+    heartDb.doc("heartDestinations/shengjin").set({
+      id: "shengjin",
+      name: "Shengjin",
+      slug: "shengjin",
+      draft: { name: "Shengjin", description: "", places: [] },
+    }),
+  );
+  await assertSucceeds(
+    heartDb.doc("heartDestinations/velipoje").update({
+      "draft.description": "Korrigierter Entwurf",
+    }),
+  );
+  await assertSucceeds(heartDb.doc("heartDestinations/shengjin").delete());
+
+  await assertFails(guestDb.doc("heartDestinations/velipoje").get());
+  await assertFails(guestDb.collection("heartDestinations").get());
+  await assertFails(userDb.doc("heartDestinations/velipoje").get());
+  await assertFails(ownerDb.doc("heartDestinations/velipoje").get());
+  await assertFails(hotelOwnerDb.doc("heartDestinations/velipoje").get());
+  await assertFails(
+    userDb.doc("heartDestinations/velipoje").update({
+      "draft.description": "Forged draft",
+    }),
+  );
+  await assertFails(
+    ownerDb.doc("heartDestinations/forged").set({
+      id: "forged",
+      name: "Forged Destination",
+    }),
+  );
+  await assertFails(hotelOwnerDb.doc("heartDestinations/velipoje").delete());
+});
+
+test("published destination projections are public read but CEO-only write", async () => {
+  await seedFirestore(destinationTemplateDocuments());
+
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+  const hotelOwnerDb = firestoreFor(testEnv, AUTH_FIXTURES.hotelOwner);
+
+  await assertSucceeds(guestDb.doc("destinationsPublic/velipoje").get());
+  await assertSucceeds(guestDb.collection("destinationsPublic").get());
+  await assertSucceeds(userDb.doc("destinationsPublic/velipoje").get());
+  await assertSucceeds(hotelOwnerDb.collection("destinationsPublic").get());
+
+  await assertFails(
+    guestDb.doc("destinationsPublic/forged").set({
+      id: "forged",
+      name: "Forged Public Destination",
+      places: [],
+    }),
+  );
+  await assertFails(
+    userDb.doc("destinationsPublic/velipoje").update({
+      name: "Forged rename",
+    }),
+  );
+  await assertFails(
+    hotelOwnerDb.doc("destinationsPublic/velipoje").delete(),
+  );
+
+  await assertSucceeds(
+    heartDb.doc("destinationsPublic/velipoje").set(
+      {
+        version: 2,
+        publishedAtClient: "2026-07-10T12:00:00.000Z",
+      },
+      { merge: true },
+    ),
+  );
+  await assertSucceeds(heartDb.doc("destinationsPublic/velipoje").delete());
+});
+
 test("public can read only public profile/menu/posts surfaces", async () => {
   const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
 
