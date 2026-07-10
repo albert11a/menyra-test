@@ -3814,3 +3814,124 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Orte & Destinationen (Destination-Templates)
+--------------------------------------------------------------------------- */
+
+.heart-destination-intro {
+  margin: 0 0 16px;
+  color: var(--heart-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.heart-destination-card .heart-crm-avatar span svg {
+  width: 18px;
+  height: 18px;
+}
+
+.heart-destination-group {
+  margin-top: 14px;
+}
+
+.heart-destination-place {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--heart-border);
+  border-radius: var(--heart-radius-md);
+  background: var(--heart-surface-soft);
+}
+
+.heart-destination-place__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.heart-destination-place__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--heart-text-soft);
+}
+
+.heart-lead-destination-summary {
+  margin: 12px 0 4px;
+  color: var(--heart-text-muted);
+  font-size: 12px;
+}
+
+.heart-lead-destination-group {
+  margin-top: 12px;
+}
+
+.heart-lead-destination-group__title {
+  margin: 0 0 6px;
+  color: var(--heart-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heart-lead-destination-place {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-top: 6px;
+  border: 1px solid var(--heart-border);
+  border-radius: var(--heart-radius-md);
+  background: var(--heart-surface-soft);
+}
+
+.heart-lead-destination-place--hidden {
+  opacity: 0.45;
+}
+
+.heart-lead-destination-place__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.heart-lead-destination-place__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--heart-text);
+}
+
+.heart-lead-destination-place__pin svg {
+  width: 14px;
+  height: 14px;
+  color: var(--heart-warning);
+}
+
+.heart-lead-destination-place__meta {
+  color: var(--heart-text-muted);
+  font-size: 11.5px;
+}
+
+.heart-lead-destination-place__actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+  .heart-lead-destination-place {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .heart-lead-destination-place__actions {
+    justify-content: flex-start;
+  }
+}

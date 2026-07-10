@@ -26,6 +26,16 @@ import {
   createHeartSetupAdapter
 } from "./heart-setup-adapter.js";
 import {
+  createHeartDestinationsAdapter
+} from "./heart-destinations-adapter.js";
+import {
+  createEmptyDestinationPlace,
+  readDestinationDraftFromDom
+} from "./heart-destinations-render.js";
+import {
+  normalizeDestinationOverridesCore
+} from "../menyra-social/core/destinations/destination-merge-core.js";
+import {
   renderHeartApp
 } from "./heart-render.js";
 import {
@@ -61,6 +71,9 @@ const monitoringAdapter = createHeartMonitoringAdapter({ apiClient });
 const analyticsAdapter = createHeartAnalyticsAdapter();
 const testRunnerAdapter = createHeartTestRunnerAdapter({ apiClient });
 const setupAdapter = createHeartSetupAdapter({ apiClient });
+const destinationsAdapter = createHeartDestinationsAdapter({
+  getAuthState: () => store.getState().auth
+});
 const crmAdminReadLoaders = createHeartCrmAdminReadLoaderDeps({
   getAuthState: () => store.getState().auth,
   getSetupState: () => store.getState().setup
@@ -551,6 +564,60 @@ function syncCrmStaffFormFromDom() {
   } catch {}
 }
 
+async function refreshDestinations() {
+  actions.setDestinationsLoading();
+  try {
+    const items = await destinationsAdapter.listDestinations();
+    actions.setDestinationsData(items);
+  } catch (error) {
+    actions.setDestinationsError(error?.message || "Destinationen konnten nicht geladen werden.");
+  }
+}
+
+async function loadPublishedDestinations({ force = false } = {}) {
+  const published = store.getState().destinations?.published || {};
+  if (published.status === "loading") return;
+  actions.patchDestinationsPublished({ status: "loading", error: "" });
+  try {
+    const items = await destinationsAdapter.listPublishedDestinations({ force });
+    actions.patchDestinationsPublished({ status: "ready", error: "", items });
+  } catch (error) {
+    actions.patchDestinationsPublished({
+      status: "error",
+      error: error?.message || "Destinationen konnten nicht geladen werden."
+    });
+  }
+}
+
+// Aktuellen Editor-Zustand aus den uncontrolled Inputs sichern, bevor eine
+// Aktion (Ort hinzufuegen/entfernen, speichern) den Editor neu rendert.
+function captureDestinationDraftFromDom() {
+  const editor = store.getState().destinations?.editor || {};
+  if (!editor.open) return null;
+  const draft = readDestinationDraftFromDom(editor.draft || {});
+  actions.patchDestinationEditor({ draft });
+  return draft;
+}
+
+function getLeadDestinationDraftContext() {
+  const modal = getOpenCrmModal();
+  if (!modal || modal.crmDomain !== "leads") return null;
+  const draft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
+  const baseLead = (store.getState().crmAdmin?.sections?.leads?.items || [])
+    .find((item) => String(item?.id || "") === String(modal.itemId || "")) || {};
+  const merged = { ...baseLead, ...draft };
+  return {
+    modal,
+    destinationId: String(merged.destinationId || "").trim(),
+    overrides: normalizeDestinationOverridesCore(merged.destinationOverrides || {})
+  };
+}
+
+function patchLeadDestinationDraft(patchValue = {}) {
+  syncCrmLeadDraftFromForm();
+  actions.setCrmEditorDraft(patchValue);
+}
+
 async function ensureRunDetail(runId = "") {
   const safeRunId = String(runId || "").trim();
   if (!safeRunId) return;
@@ -922,6 +989,175 @@ const operations = {
     if (String(viewKey || "").trim() === "analytics") {
       queueMicrotask(() => refreshAnalyticsBusinesses().catch(() => {}));
     }
+    if (String(viewKey || "").trim() === "destinations") {
+      queueMicrotask(() => refreshDestinations().catch(() => {}));
+    }
+  },
+  async openDestinationEditor(destinationId = "") {
+    const safeId = String(destinationId || "").trim();
+    if (!safeId) {
+      actions.openDestinationEditor({ destinationId: "", draft: { name: "", description: "", places: [] } });
+      return;
+    }
+    actions.openDestinationEditor({ destinationId: safeId, loading: true });
+    try {
+      const destination = await destinationsAdapter.loadDestination(safeId);
+      if (!destination) throw new Error("Destination wurde nicht gefunden.");
+      actions.openDestinationEditor({ destinationId: safeId, draft: destination.draft });
+    } catch (error) {
+      actions.patchDestinationEditor({
+        loading: false,
+        error: error?.message || "Destination konnte nicht geladen werden."
+      });
+    }
+  },
+  closeDestinationEditor() {
+    actions.closeDestinationEditor();
+  },
+  addDestinationPlace(categoryKey = "") {
+    const draft = captureDestinationDraftFromDom();
+    if (!draft) return;
+    actions.patchDestinationEditor({
+      status: "",
+      error: "",
+      draft: {
+        ...draft,
+        places: [...draft.places, createEmptyDestinationPlace(categoryKey)]
+      }
+    });
+  },
+  removeDestinationPlace(placeId = "") {
+    const draft = captureDestinationDraftFromDom();
+    const safePlaceId = String(placeId || "").trim();
+    if (!draft || !safePlaceId) return;
+    actions.patchDestinationEditor({
+      status: "",
+      error: "",
+      draft: {
+        ...draft,
+        places: draft.places.filter((place) => place.id !== safePlaceId)
+      }
+    });
+  },
+  async saveDestinationDraft() {
+    const draft = captureDestinationDraftFromDom();
+    if (!draft) return;
+    const editor = store.getState().destinations?.editor || {};
+    actions.patchDestinationEditor({ saving: true, status: "", error: "" });
+    try {
+      const result = await destinationsAdapter.saveDraft(editor.destinationId, draft);
+      actions.patchDestinationEditor({
+        saving: false,
+        destinationId: result.id,
+        status: "Entwurf gespeichert."
+      });
+      setToast("Destination", "Entwurf gespeichert.", "success");
+      await refreshDestinations();
+    } catch (error) {
+      actions.patchDestinationEditor({
+        saving: false,
+        error: error?.message || "Entwurf konnte nicht gespeichert werden."
+      });
+      setToast("Destination", error?.message || "Entwurf konnte nicht gespeichert werden.", "danger");
+    }
+  },
+  async publishDestination(destinationId = "", fromEditor = false) {
+    let safeId = String(destinationId || "").trim();
+    if (fromEditor) {
+      // Erst den sichtbaren Entwurf speichern, damit genau das veroeffentlicht
+      // wird, was im Editor steht.
+      const draft = captureDestinationDraftFromDom();
+      const editor = store.getState().destinations?.editor || {};
+      safeId = safeId || String(editor.destinationId || "").trim();
+      if (!draft || !safeId) return;
+      actions.patchDestinationEditor({ publishing: true, status: "", error: "" });
+      try {
+        await destinationsAdapter.saveDraft(safeId, draft);
+      } catch (error) {
+        actions.patchDestinationEditor({
+          publishing: false,
+          error: error?.message || "Entwurf konnte vor dem Veroeffentlichen nicht gespeichert werden."
+        });
+        return;
+      }
+    }
+    if (!safeId) return;
+    const confirmed = typeof confirm === "function"
+      ? confirm("Veroeffentlichen? Alle mit diesem Template verbundenen Hotels bekommen den neuen Stand. Hotel-eigene Anpassungen bleiben bestehen.")
+      : true;
+    if (!confirmed) {
+      if (fromEditor) actions.patchDestinationEditor({ publishing: false });
+      return;
+    }
+    try {
+      const result = await destinationsAdapter.publishDestination(safeId);
+      if (fromEditor) {
+        actions.patchDestinationEditor({ publishing: false, status: `Veroeffentlicht (v${result.version}).` });
+      }
+      setToast("Destination", `Veroeffentlicht: v${result.version} mit ${result.placeCount} Orten.`, "success");
+      await refreshDestinations();
+      await loadPublishedDestinations({ force: true });
+    } catch (error) {
+      if (fromEditor) {
+        actions.patchDestinationEditor({ publishing: false, error: error?.message || "Veroeffentlichen fehlgeschlagen." });
+      }
+      setToast("Destination", error?.message || "Veroeffentlichen fehlgeschlagen.", "danger");
+    }
+  },
+  async deleteDestination(destinationId = "") {
+    const safeId = String(destinationId || "").trim();
+    if (!safeId) return;
+    const confirmed = typeof confirm === "function"
+      ? confirm("Destination wirklich loeschen? Verbundene Hotels zeigen dann keine Template-Orte mehr.")
+      : true;
+    if (!confirmed) return;
+    actions.patchDestinationEditor({ deleting: true, status: "", error: "" });
+    try {
+      await destinationsAdapter.deleteDestination(safeId);
+      actions.closeDestinationEditor();
+      setToast("Destination", "Destination geloescht.", "success");
+      await refreshDestinations();
+      await loadPublishedDestinations({ force: true });
+    } catch (error) {
+      actions.patchDestinationEditor({
+        deleting: false,
+        error: error?.message || "Destination konnte nicht geloescht werden."
+      });
+    }
+  },
+  setLeadDestination(destinationId = "") {
+    const context = getLeadDestinationDraftContext();
+    if (!context) return;
+    const safeId = String(destinationId || "").trim();
+    const published = store.getState().destinations?.published?.items || [];
+    const selected = published.find((item) => item.id === safeId) || null;
+    patchLeadDestinationDraft({
+      destinationId: safeId,
+      destinationName: selected?.name || "",
+      destinationOverrides: normalizeDestinationOverridesCore({})
+    });
+  },
+  toggleLeadDestinationPin(placeId = "") {
+    const context = getLeadDestinationDraftContext();
+    const safePlaceId = String(placeId || "").trim();
+    if (!context || !safePlaceId) return;
+    const pinned = context.overrides.pinned.includes(safePlaceId)
+      ? context.overrides.pinned.filter((id) => id !== safePlaceId)
+      : [...context.overrides.pinned, safePlaceId];
+    patchLeadDestinationDraft({
+      destinationOverrides: { ...context.overrides, pinned }
+    });
+  },
+  toggleLeadDestinationVisibility(placeId = "") {
+    const context = getLeadDestinationDraftContext();
+    const safePlaceId = String(placeId || "").trim();
+    if (!context || !safePlaceId) return;
+    const hidden = context.overrides.hidden.includes(safePlaceId)
+      ? context.overrides.hidden.filter((id) => id !== safePlaceId)
+      : [...context.overrides.hidden, safePlaceId];
+    patchLeadDestinationDraft({
+      destinationOverrides: { ...context.overrides, hidden }
+    });
   },
   setAnalyticsBusinessQuery(query) {
     actions.patchAnalytics({ businessQuery: String(query || "") });
@@ -1011,6 +1247,9 @@ const operations = {
       mode,
       draft: {}
     });
+    if (String(domainKey || "").trim() === "leads" && mode !== "settings") {
+      queueMicrotask(() => loadPublishedDestinations().catch(() => {}));
+    }
   },
   toggleCrmLeadActions(open) {
     const modal = getOpenCrmModal();

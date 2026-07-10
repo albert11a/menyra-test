@@ -223,6 +223,11 @@ function normalizeLeadDoc(docSnap = {}) {
     veganOptionsText: data.veganOptionsText || "",
     specialEnabled: data.specialEnabled === true,
     note: data.note || "",
+    destinationId: asText(data.destinationId),
+    destinationName: asText(data.destinationName),
+    destinationOverrides: data.destinationOverrides && typeof data.destinationOverrides === "object"
+      ? data.destinationOverrides
+      : {},
     status,
     restaurantId: safeRestaurantId,
     publicSlug: safeLandingSlug,
@@ -284,6 +289,11 @@ function normalizeLeadFromRestaurant(rest = {}) {
     veganOptionsText: rest.veganOptionsText || "",
     specialEnabled: rest.specialEnabled === true,
     note: "",
+    destinationId: asText(rest.destinationId),
+    destinationName: asText(rest.destinationName),
+    destinationOverrides: rest.destinationOverrides && typeof rest.destinationOverrides === "object"
+      ? rest.destinationOverrides
+      : {},
     status,
     restaurantId: safeRestaurantId,
     publicSlug: safeLandingSlug,

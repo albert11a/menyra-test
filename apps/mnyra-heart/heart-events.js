@@ -256,6 +256,45 @@ export function bindHeartEvents({
       await operations.pickCrmStaffLocation?.();
       return;
     }
+    if (action === "open-destination-editor") {
+      await operations.openDestinationEditor?.(target.getAttribute("data-destination-id") || "");
+      return;
+    }
+    if (action === "close-destination-editor") {
+      operations.closeDestinationEditor?.();
+      return;
+    }
+    if (action === "add-destination-place") {
+      operations.addDestinationPlace?.(target.getAttribute("data-category") || "");
+      return;
+    }
+    if (action === "remove-destination-place") {
+      operations.removeDestinationPlace?.(target.getAttribute("data-place-id") || "");
+      return;
+    }
+    if (action === "save-destination-draft") {
+      await operations.saveDestinationDraft?.();
+      return;
+    }
+    if (action === "publish-destination") {
+      await operations.publishDestination?.(
+        target.getAttribute("data-destination-id") || "",
+        target.getAttribute("data-destination-from-editor") === "true"
+      );
+      return;
+    }
+    if (action === "delete-destination") {
+      await operations.deleteDestination?.(target.getAttribute("data-destination-id") || "");
+      return;
+    }
+    if (action === "toggle-lead-destination-pin") {
+      operations.toggleLeadDestinationPin?.(target.getAttribute("data-place-id") || "");
+      return;
+    }
+    if (action === "toggle-lead-destination-visibility") {
+      operations.toggleLeadDestinationVisibility?.(target.getAttribute("data-place-id") || "");
+      return;
+    }
     if (action === "set-crm-scope") {
       await operations.setCrmScope?.(
         target.getAttribute("data-crm-domain"),
@@ -346,6 +385,10 @@ export function bindHeartEvents({
     const changedId = String(event.target?.id || "").trim();
     if (["leadCustomerType", "leadBillingCycle", "leadCountry", "leadStatus"].includes(changedId)) {
       operations.syncCrmLeadDerivedFields?.();
+      return;
+    }
+    if (changedId === "leadDestinationSelect") {
+      operations.setLeadDestination?.(event.target.value);
       return;
     }
     if (changedId === "staffCountry") {

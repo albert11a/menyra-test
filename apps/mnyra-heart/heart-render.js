@@ -33,6 +33,9 @@ import {
 import {
   renderHeartAnalyticsView
 } from "./heart-analytics-render.js";
+import {
+  renderHeartDestinationsView
+} from "./heart-destinations-render.js";
 
 const NAV_HINTS = Object.freeze({
   dashboard: "Status, Schnellstarts und Uebersicht",
@@ -44,6 +47,7 @@ const NAV_HINTS = Object.freeze({
   crmCustomers: "CRM Kunden",
   crmAds: "CRM Ads",
   crmStaff: "CRM Staff",
+  destinations: "Orte & Destination-Templates",
   connections: "Einrichtung, Konten und Links"
 });
 
@@ -71,6 +75,7 @@ function getNavIcon(key = "") {
     crmCustomers: "user",
     crmAds: "image",
     crmStaff: "users",
+    destinations: "mapPin",
     connections: "settings"
   };
   return icons[String(key || "").trim()] || "home";
@@ -211,6 +216,9 @@ function renderViewBody(state, runtime = {}) {
   if (state.shell.activeView === "analytics") {
     return renderHeartAnalyticsView(state.analytics || {});
   }
+  if (state.shell.activeView === "destinations") {
+    return renderHeartDestinationsView(state.destinations || {});
+  }
   const crmReadDomain = CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW[state.shell.activeView];
   if (crmReadDomain) {
     return renderHeartCrmAdminReadView({
@@ -221,7 +229,8 @@ function renderViewBody(state, runtime = {}) {
         userProfile: state.auth.profile || null
       },
       activeDomain: crmReadDomain,
-      modal: state.shell.modal || {}
+      modal: state.shell.modal || {},
+      destinationsPublished: state.destinations?.published || {}
     });
   }
   if (state.shell.activeView === "connections") {
@@ -347,6 +356,7 @@ function renderShell(state, runtime = {}) {
   const userName = state.auth.profile?.name || state.auth.user?.email || "CEO";
   const pageHeader = getPageHeaderState(state);
   const isLeadsView = state.shell.activeView === "crmLeads";
+  const hasOwnViewHeader = isLeadsView || state.shell.activeView === "destinations";
   const timestamp = pageHeader.timestamp
     ? `Aktualisiert ${formatRelative(pageHeader.timestamp)}`
     : "Warte auf erste Synchronisation";
@@ -382,7 +392,7 @@ function renderShell(state, runtime = {}) {
           </div>
         </header>
         <main class="heart-main-content">
-          ${isLeadsView ? "" : `<section class="heart-page-header">
+          ${hasOwnViewHeader ? "" : `<section class="heart-page-header">
             <div>
               ${pageHeader.eyebrow ? `<p class="heart-page-header__eyebrow">${escapeHtml(pageHeader.eyebrow)}</p>` : ""}
               <h1 class="heart-page-header__title">${escapeHtml(pageHeader.title)}</h1>

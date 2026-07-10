@@ -999,6 +999,18 @@ service cloud.firestore {
       allow delete: if canAccessCeoScopedData(resource.data);
     }
 
+    // Destination-Templates (Heart -> Orte): Entwuerfe sind CEO-only.
+    match /heartDestinations/{destinationId} {
+      allow read, write: if isCeoActor();
+    }
+
+    // Veroeffentlichte Destination-Projektionen: oeffentlich lesbar, damit
+    // Hotel-Detailseiten Template-Orte ohne CEO-Session laden koennen.
+    match /destinationsPublic/{destinationId} {
+      allow read: if true;
+      allow write: if isCeoActor();
+    }
+
     match /superadmins/{uid} {
       allow get: if (isSelf(uid) && isCeoActor()) || canAccessCeoRecordData(resource.data);
       allow list: if canAccessCeoRecordData(resource.data);

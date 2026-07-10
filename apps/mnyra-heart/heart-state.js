@@ -11,8 +11,34 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "crmCustomers", label: "Kunden" },
   { key: "crmAds", label: "Ads" },
   { key: "crmStaff", label: "Staff" },
+  { key: "destinations", label: "Orte" },
   { key: "connections", label: "Einrichtung" }
 ]);
+
+export function createHeartDestinationsInitialState() {
+  return {
+    status: "idle",
+    error: "",
+    items: [],
+    loadedAt: "",
+    published: {
+      status: "idle",
+      error: "",
+      items: []
+    },
+    editor: {
+      open: false,
+      destinationId: "",
+      loading: false,
+      saving: false,
+      publishing: false,
+      deleting: false,
+      status: "",
+      error: "",
+      draft: null
+    }
+  };
+}
 
 export function createHeartInitialState() {
   return {
@@ -109,6 +135,7 @@ export function createHeartInitialState() {
       model: null,
       lastLoadedAt: ""
     },
+    destinations: createHeartDestinationsInitialState(),
     crmAdmin: {
       status: DEFAULT_STATUS,
       error: "",
@@ -641,6 +668,95 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  function ensureDestinationsSlice(draft) {
+    if (!draft.destinations || typeof draft.destinations !== "object") {
+      draft.destinations = createHeartDestinationsInitialState();
+    }
+    return draft.destinations;
+  }
+
+  function setDestinationsLoading() {
+    patch((draft) => {
+      const slice = ensureDestinationsSlice(draft);
+      slice.status = "loading";
+      slice.error = "";
+    });
+  }
+
+  function setDestinationsData(items = []) {
+    patch((draft) => {
+      const slice = ensureDestinationsSlice(draft);
+      slice.status = "ready";
+      slice.error = "";
+      slice.items = sanitizeStateValue(Array.isArray(items) ? items.slice() : []);
+      slice.loadedAt = new Date().toISOString();
+    });
+  }
+
+  function setDestinationsError(message = "") {
+    patch((draft) => {
+      const slice = ensureDestinationsSlice(draft);
+      slice.status = "error";
+      slice.error = String(message || "").trim() || "Destinationen konnten nicht geladen werden.";
+    });
+  }
+
+  function patchDestinationsPublished(patchValue = {}) {
+    if (!patchValue || typeof patchValue !== "object") return;
+    patch((draft) => {
+      const slice = ensureDestinationsSlice(draft);
+      slice.published = sanitizeStateValue({
+        ...(slice.published && typeof slice.published === "object" ? slice.published : {}),
+        ...patchValue
+      });
+    });
+  }
+
+  function openDestinationEditor({ destinationId = "", draft: editorDraft = null, loading = false } = {}) {
+    patch((draft) => {
+      const slice = ensureDestinationsSlice(draft);
+      slice.editor = sanitizeStateValue({
+        open: true,
+        destinationId: String(destinationId || "").trim(),
+        loading: !!loading,
+        saving: false,
+        publishing: false,
+        deleting: false,
+        status: "",
+        error: "",
+        draft: editorDraft && typeof editorDraft === "object" ? editorDraft : null
+      });
+    });
+  }
+
+  function patchDestinationEditor(patchValue = {}) {
+    if (!patchValue || typeof patchValue !== "object") return;
+    patch((draft) => {
+      const slice = ensureDestinationsSlice(draft);
+      slice.editor = sanitizeStateValue({
+        ...(slice.editor && typeof slice.editor === "object" ? slice.editor : {}),
+        ...patchValue
+      });
+    });
+  }
+
+  function closeDestinationEditor() {
+    patch((draft) => {
+      const slice = ensureDestinationsSlice(draft);
+      slice.editor = {
+        open: false,
+        destinationId: "",
+        loading: false,
+        saving: false,
+        publishing: false,
+        deleting: false,
+        status: "",
+        error: "",
+        draft: null
+      };
+    });
+  }
+
   function setCrmAdminContract(contract = {}) {
     patch((draft) => {
       draft.crmAdmin.readLoadersReady = contract.readLoadersReady === true;
@@ -847,6 +963,13 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setSetupSearchResults,
       setSetupSearchError,
       patchAnalytics,
+      setDestinationsLoading,
+      setDestinationsData,
+      setDestinationsError,
+      patchDestinationsPublished,
+      openDestinationEditor,
+      patchDestinationEditor,
+      closeDestinationEditor,
       setCrmAdminContract,
       setCrmAdminLoading,
       setCrmAdminMissing,

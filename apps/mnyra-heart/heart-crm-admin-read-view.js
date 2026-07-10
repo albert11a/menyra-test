@@ -37,6 +37,9 @@ import {
 import {
   normalizeLeadTypeKeyCore
 } from "../menyra-social/core/leads/lead-type-utils.js";
+import {
+  renderLeadDestinationFieldset
+} from "./heart-destinations-render.js";
 
 export const HEART_CRM_ADMIN_READ_VIEW_MISSING_DEPS = Object.freeze({
   leads: Object.freeze([HEART_CRM_ADMIN_READ_LOADER_DEPS.leads]),
@@ -969,7 +972,7 @@ function renderModalMissingWriteNotice(domainKey = "") {
   `;
 }
 
-function renderLeadEditorModalBody(lead = {}, mode = "edit") {
+function renderLeadEditorModalBody(lead = {}, mode = "edit", context = {}) {
   const isCreate = mode === "create";
   const title = isCreate ? "Neuer Lead" : "Lead bearbeiten";
   const logoUrl = firstText(lead.logoUrl, lead.logo, lead.imageUrl, lead.bestSpotLogoUrl);
@@ -1042,6 +1045,7 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit") {
         </div>
         <div class="heart-crm-location-list">${locationRows}</div>
       </section>
+      ${renderLeadDestinationFieldset(lead, context.destinationsPublished || {})}
       ${renderModalFieldset("Adresse", `
         ${renderModalField("Land", country, { id: "leadCountry", options: countryOptions })}
         ${renderModalField("Waehrung", currencyCode, { id: "leadCurrency", readonly: true })}
@@ -1184,7 +1188,7 @@ export function renderHeartCrmAdminModal({ crmAdmin = null, modal = {} } = {}) {
         <div class="heart-crm-modal-body">${renderStateBlock("Der ausgewaehlte CRM Eintrag ist nicht in der aktuellen Liste geladen.", "warning")}</div>
       `;
     }
-    if (domainKey === "leads") return renderLeadEditorModalBody(item || {}, mode);
+    if (domainKey === "leads") return renderLeadEditorModalBody(item || {}, mode, {});
     if (domainKey === "customers") return renderCustomerEditorModalBody(item || {});
     if (domainKey === "staff") return renderStaffEditorModalBody(item || {}, crmAdmin || {}, mode);
     return `
@@ -1256,7 +1260,7 @@ function renderInlineLeadSettings(crmAdmin = {}, modal = {}) {
   `;
 }
 
-function renderInlineLeadEditor(crmAdmin = {}, modal = {}) {
+function renderInlineLeadEditor(crmAdmin = {}, modal = {}, context = {}) {
   const mode = asText(modal.mode) || "edit";
   const modalDraft = modal.draft && typeof modal.draft === "object" ? modal.draft : {};
   const baseItem = mode === "create" ? {} : findCrmItem(crmAdmin || {}, "leads", modal.itemId);
@@ -1279,7 +1283,7 @@ function renderInlineLeadEditor(crmAdmin = {}, modal = {}) {
   }
   return `
     <section class="heart-crm-inline-editor heart-crm-inline-editor--lead">
-      ${renderLeadEditorModalBody(item || {}, mode)}
+      ${renderLeadEditorModalBody(item || {}, mode, context)}
     </section>
   `;
 }
@@ -1312,7 +1316,7 @@ function renderInlineStaffEditor(crmAdmin = {}, modal = {}) {
   `;
 }
 
-export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null, activeDomain = "leads", modal = {} } = {}) {
+export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null, activeDomain = "leads", modal = {}, destinationsPublished = {} } = {}) {
   const {
     consumer,
     error
@@ -1336,7 +1340,7 @@ export function renderHeartCrmAdminReadView({ consumerDeps = {}, crmAdmin = null
       ${isLeadSettingsOpen
         ? renderInlineLeadSettings(crmAdmin || {}, modal || {})
         : isLeadEditorOpen
-        ? renderInlineLeadEditor(crmAdmin || {}, modal || {})
+        ? renderInlineLeadEditor(crmAdmin || {}, modal || {}, { destinationsPublished })
         : isStaffEditorOpen
           ? renderInlineStaffEditor(crmAdmin || {}, modal || {})
           : renderCrmReadSection(section, consumer, crmAdmin || {})}

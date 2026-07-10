@@ -413,6 +413,27 @@ export async function saveLeadFromModalCore({
   };
   const featureList = [gardenTerraceText, accessibilityText, veganOptionsText].filter(Boolean);
   const note = docObj.getElementById("leadNote")?.value?.trim() || "";
+  // Destination-Template (nur vorhanden, wenn der Editor das Feld rendert,
+  // z. B. in Heart). Ohne die Felder bleiben gespeicherte Werte unveraendert.
+  const destinationIdInput = docObj.getElementById("leadDestinationId");
+  const hasDestinationFields = !!destinationIdInput;
+  const destinationId = String(destinationIdInput?.value || "").trim();
+  const destinationName = destinationId
+    ? String(docObj.getElementById("leadDestinationName")?.value || "").trim()
+    : "";
+  let destinationOverrides = {};
+  if (hasDestinationFields && destinationId) {
+    try {
+      const rawOverrides = String(docObj.getElementById("leadDestinationOverrides")?.value || "").trim();
+      const parsedOverrides = rawOverrides ? JSON.parse(rawOverrides) : null;
+      if (parsedOverrides && typeof parsedOverrides === "object") destinationOverrides = parsedOverrides;
+    } catch {
+      destinationOverrides = {};
+    }
+  }
+  const destinationPatch = hasDestinationFields
+    ? { destinationId, destinationName, destinationOverrides }
+    : {};
   const billingCycle = docObj.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
   const statusValue = docObj.getElementById("leadStatus")?.value || lead.status || "registered";
   const locationInputs = Array.from(docObj.querySelectorAll("[data-lead-location-address]"));
@@ -718,6 +739,7 @@ export async function saveLeadFromModalCore({
       landingRestaurantId: restaurantId,
       landingSlug,
       landingPageUrl,
+      ...destinationPatch,
       ...creatorMeta,
       updatedAt: getTimestamp()
     };
@@ -853,6 +875,7 @@ export async function saveLeadFromModalCore({
       landingBusinessNameColorPart2: businessNameColorPart2,
       socialUid,
       socialEmail,
+      ...destinationPatch,
       updatedAt: getTimestamp(),
       ...creatorMeta
     };
