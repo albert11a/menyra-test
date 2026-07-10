@@ -43,6 +43,28 @@ test("resolveStableBusinessTypeCore prefers live type, falls back to hint", () =
   assert.equal(resolveStableBusinessTypeCore("", ""), "");
 });
 
+test("businessTypeHintKeysCore falls back to route slug for empty cold-start profiles", () => {
+  // Cold-Start: das frueh gerenderte Profil hat noch keine Identitaetsfelder,
+  // nur der Slug aus der URL kann den gespeicherten Hinweis finden.
+  assert.deepEqual(
+    businessTypeHintKeysCore({}, { extraSlugs: ["Hotel-Vela"] }),
+    ["s:hotel-vela"]
+  );
+  // Profil-Schluessel haben Vorrang, Duplikate werden nicht doppelt gelistet.
+  assert.deepEqual(
+    businessTypeHintKeysCore({ restaurantId: "rest_1", publicSlug: "hotel-vela" }, { extraSlugs: ["hotel-vela", ""] }),
+    ["r:rest_1", "s:hotel-vela"]
+  );
+});
+
+test("cold-start round trip via route slug resolves hotel without profile identity", () => {
+  const loadedProfile = { restaurantId: "rest_9", publicSlug: "hotel-x", handle: "hotel-x" };
+  const { store } = writeBusinessTypeHintCore({}, businessTypeHintKeysCore(loadedProfile), "hotel");
+  // Naechster Cold Start: leeres Profil, aber URL-Slug /hotel-x
+  const coldKeys = businessTypeHintKeysCore({}, { extraSlugs: ["hotel-x"] });
+  assert.equal(resolveStableBusinessTypeCore("", readBusinessTypeHintCore(store, coldKeys)), "hotel");
+});
+
 test("hint round trip resolves hotel on the next (cold) paint", () => {
   // 1. Paint mit bekanntem Live-Typ -> Hinweis wird gespeichert
   const profile = { restaurantId: "rest_9", publicSlug: "hotel-x" };

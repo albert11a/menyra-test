@@ -129,7 +129,36 @@ function renderSectionTitle({ iconName = "pin", eyebrow = "", title = "" } = {})
   `;
 }
 
+// "300 m" / "1.2 km" (Lead-Eingabe) -> Meter, fuer die Geh-/Fahrzeit-Schaetzung.
+export function parseManualDistanceLabelToMetersCore(label = "") {
+  const raw = asText(label);
+  if (!raw) return null;
+  const match = raw.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer|m|meter)?/i);
+  if (!match) return null;
+  const amount = Number(String(match[1] || "").replace(",", "."));
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  const unit = String(match[2] || "m").trim().toLowerCase();
+  return Math.round(unit.startsWith("k") ? amount * 1000 : amount);
+}
+
 function renderPlaceDistance(place = {}) {
+  // Manuell gepflegte Distanz (z. B. Deti/Plazha aus dem Lead-Editor) hat
+  // Vorrang vor der automatisch berechneten Entfernung.
+  const manual = place.manualDistance && typeof place.manualDistance === "object" ? place.manualDistance : null;
+  if (manual) {
+    const manualLabel = asText(manual.label);
+    if (!manualLabel) return "";
+    const manualMeters = parseManualDistanceLabelToMetersCore(manualLabel);
+    const travelLabel = manual.direct !== true && Number.isFinite(manualMeters)
+      ? formatTravelLabelCore(manualMeters, TRAVEL_LABELS_SQ)
+      : "";
+    return `
+      <div class="mhd-distance">
+        <span>${mhdIcon("nav", "mhd-icon--sm")}${escapeHtml(manualLabel)}</span>
+        ${travelLabel ? `<span>${mhdIcon("clock", "mhd-icon--sm")}${escapeHtml(travelLabel)}</span>` : ""}
+      </div>
+    `;
+  }
   const distanceLabel = formatDistanceLabelCore(place.distanceMeters);
   if (!distanceLabel) return "";
   const travelLabel = formatTravelLabelCore(place.distanceMeters, TRAVEL_LABELS_SQ);
@@ -168,7 +197,8 @@ export function renderHotelDestinationSectionsCore({
   template = null,
   overrides = {},
   hotelCoords = null,
-  imageUrlFn = null
+  imageUrlFn = null,
+  manualBeachDistance = null
 } = {}) {
   if (!template || !Array.isArray(template.places) || !template.places.length) return "";
   const resolved = resolveLeadDestinationPlacesCore({
@@ -181,6 +211,21 @@ export function renderHotelDestinationSectionsCore({
     .filter((place) => Number.isFinite(place.distanceMeters))
     .sort((a, b) => a.distanceMeters - b.distanceMeters)[0] || null;
   const groups = groupDestinationPlacesByCategoryCore(resolved);
+  // Deti/Plazha: die im Lead gepflegte Stranddistanz ("300 m", "Në plazh")
+  // ersetzt beim ersten Plazha-Ort die automatisch berechneten Meter.
+  const manualBeach = manualBeachDistance && typeof manualBeachDistance === "object" ? manualBeachDistance : null;
+  const manualBeachLabel = manualBeach
+    ? (manualBeach.direct === true ? "Në plazh" : asText(manualBeach.label))
+    : "";
+  if (manualBeachLabel) {
+    const beachGroup = groups.find((group) => group.key === "beach");
+    if (beachGroup?.places?.length) {
+      beachGroup.places[0] = {
+        ...beachGroup.places[0],
+        manualDistance: { label: manualBeachLabel, direct: manualBeach.direct === true }
+      };
+    }
+  }
   return groups.map((group) => `
     <section class="mhd-section">
       ${renderSectionTitle({
@@ -203,6 +248,19 @@ export function renderHotelDestinationSkeletonCore() {
     <section class="mhd-section">
       <div class="mhd-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
     </section>
+  `;
+}
+
+// Ganzseitiges Skeleton fuer die Details-Ansicht, solange der Hotel-Datensatz
+// (Zimmer, Destination, Ausstattung) noch nicht geladen ist - verhindert,
+// dass erst nur die Karte erscheint und die restlichen Sektionen nachspringen.
+export function renderHotelDetailPendingViewCore() {
+  return `
+    <div class="mhd">
+      ${renderHotelDestinationSkeletonCore()}
+      ${renderHotelDestinationSkeletonCore()}
+      ${renderHotelDestinationSkeletonCore()}
+    </div>
   `;
 }
 

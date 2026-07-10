@@ -15,6 +15,7 @@ import {
   HOTEL_DETAIL_MAP_CONTAINER_ID,
   ensureHotelDetailStylesInjectedCore,
   renderHotelDestinationSectionsCore,
+  renderHotelDetailPendingViewCore,
   renderHotelDetailViewCore
 } from "./hotel-detail-render-utils.js";
 import {
@@ -677,6 +678,31 @@ function persistBusinessTypeHint(profile = {}, type = "") {
   } catch {}
 }
 
+// Reservierte erste Pfadsegmente, die nie ein Business-Slug sind (gleiche
+// Liste wie im Public-Route-Preload). Nur fuer den Typ-Hinweis-Fallback.
+const BUSINESS_TYPE_HINT_RESERVED_ROUTES = new Set([
+  "feed", "search", "discover", "map", "location", "user", "waiter", "wr", "leads",
+  "admin", "ceo", "owner", "staff", "kitchen", "profile", "menu", "orders", "notifications",
+  "settings", "upload", "customers", "business-accounts", "businessaccounts", "chat", "social",
+  "heart", "hub", "apps", "api", "shared", "assets", "_shared", "core", "login", "register",
+  "post", "posts", "story", "stories", "manifest", "sw", "favicon", "robots", "sitemap", "b", "lp"
+]);
+
+// Beim Cold Start traegt das frueh gerenderte Profil oft noch keine
+// Identitaetsfelder - dann findet nur der Slug aus der URL den gespeicherten
+// Typ-Hinweis (sonst blitzt bei Hotels kurz der Menu-Tab statt Details auf).
+function readRouteSlugForBusinessTypeHint() {
+  try {
+    const pathname = String(globalThis?.location?.pathname || "");
+    const segments = pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+    const first = String(segments[0] || "").trim().toLowerCase();
+    if (!first || first.includes(".") || BUSINESS_TYPE_HINT_RESERVED_ROUTES.has(first)) return "";
+    return first;
+  } catch {
+    return "";
+  }
+}
+
 function resolveStableBusinessProfileType(profile = {}) {
   const liveType = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
   if (liveType) {
@@ -685,7 +711,9 @@ function resolveStableBusinessProfileType(profile = {}) {
   }
   return resolveStableBusinessTypeCore(
     "",
-    readBusinessTypeHintCore(readBusinessTypeHintStore(), businessTypeHintKeysCore(profile))
+    readBusinessTypeHintCore(readBusinessTypeHintStore(), businessTypeHintKeysCore(profile, {
+      extraSlugs: [readRouteSlugForBusinessTypeHint()]
+    }))
   );
 }
 
@@ -1083,14 +1111,15 @@ function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], im
 // veroeffentlichten Templates per DOM in den Platzhalter. Robust gegen den
 // Zeitpunkt des DOM-Schreibens (rAF-Poll) und gegen Navigationswechsel
 // (Container-Datensatz muss weiterhin passen).
-function scheduleHotelDestinationFill({ destinationId = "", overrides = {}, hotelCoords = null } = {}) {
+function scheduleHotelDestinationFill({ destinationId = "", overrides = {}, hotelCoords = null, manualBeachDistance = null } = {}) {
   const safeId = String(destinationId || "").trim();
   if (!safeId || typeof document === "undefined") return;
   const buildHtml = (template) => renderHotelDestinationSectionsCore({
     template,
     overrides,
     hotelCoords,
-    imageUrlFn: (url) => getOptimizedImageUrl(url, "medium")
+    imageUrlFn: (url) => getOptimizedImageUrl(url, "medium"),
+    manualBeachDistance
   });
   let attempts = 0;
   const tryInject = () => {
@@ -1168,7 +1197,94 @@ function collectHotelRoomOffers(record = {}) {
   return collectHotelEditorOfferItems(record).filter((item) => item.active !== false && String(item.title || "").trim());
 }
 
+// Deti/Plazha: manuell im Lead-/Hotel-Editor gepflegte Stranddistanz
+// ("300 m", "1.2 km") bzw. "Direkt am Strand" - ersetzt in der Plazha-Sektion
+// die automatisch aus dem Hotel-Pin berechneten Meter.
+function readHotelManualBeachDistance(record = {}) {
+  const direct = record.beachfront === true || record.onBeach === true || record.amStrand === true;
+  const label = readFirstHotelText(record, [
+    "distanceBeach",
+    "distanceToBeach",
+    "beachDistance",
+    "beachDistanceLabel",
+    "strandEntfernung"
+  ]);
+  if (!direct && !label) return null;
+  return { label, direct };
+}
+
+function hotelRecordHasDetailContent(record = {}) {
+  return !!(
+    collectHotelRoomsCore(record).length
+    || collectHotelRoomOffers(record).length
+    || collectHotelAmenities(record).length
+    || String(record.destinationId || "").trim()
+    || readFirstHotelText(record, ["rating", "reviewRating", "stars", "hotelStars"])
+  );
+}
+
+const HOTEL_DETAILS_PENDING_CONTAINER_ID = "mnyraHotelDetailsPendingRoot";
+let hotelDetailsPendingResolveKey = "";
+
+// Beim Cold Start ist der volle Hotel-Datensatz (Zimmer, Destination,
+// Ausstattung) oft noch nicht in state.restaurants - statt einer halben Seite
+// (nur Karte) zeigen wir ein Skeleton und tauschen es gegen die komplette
+// Ansicht, sobald der Datensatz da ist (spaetestens nach ~6s Best-Effort).
+function scheduleHotelDetailsPendingResolve(profile = {}, restaurantId = "") {
+  if (typeof document === "undefined" || typeof setTimeout !== "function") return;
+  const safeRestaurantId = String(restaurantId || "").trim();
+  if (!safeRestaurantId || hotelDetailsPendingResolveKey === safeRestaurantId) return;
+  hotelDetailsPendingResolveKey = safeRestaurantId;
+  let attempts = 0;
+  const tick = () => {
+    const container = document.getElementById(HOTEL_DETAILS_PENDING_CONTAINER_ID);
+    if (!container || String(container.dataset.hotelDetailsPending || "") !== safeRestaurantId) {
+      hotelDetailsPendingResolveKey = "";
+      return;
+    }
+    const meta = typeof getRestaurantMetaById === "function" ? getRestaurantMetaById(safeRestaurantId) : null;
+    const ready = !!meta || hotelRecordHasDetailContent(getHotelProfileRecord(profile));
+    if (!ready && attempts++ < 24) {
+      setTimeout(tick, 250);
+      return;
+    }
+    hotelDetailsPendingResolveKey = "";
+    container.removeAttribute("data-hotel-details-pending");
+    container.classList.add("animate-in", "fade-in", "duration-300");
+    container.innerHTML = renderHotelDetailsBody(profile);
+  };
+  setTimeout(tick, 250);
+}
+
 function renderHotelDetailsView(profile = {}) {
+  const gateRecord = getHotelProfileRecord(profile);
+  const gateRestaurantId = String(
+    profile?.canonicalRestaurantId
+    || profile?.restaurantId
+    || gateRecord.canonicalRestaurantId
+    || gateRecord.restaurantId
+    || ""
+  ).trim();
+  const gateMeta = gateRestaurantId && typeof getRestaurantMetaById === "function"
+    ? getRestaurantMetaById(gateRestaurantId)
+    : null;
+  if (gateRestaurantId && !gateMeta && !hotelRecordHasDetailContent(gateRecord)) {
+    ensureHotelDetailStylesInjectedCore();
+    scheduleHotelDetailsPendingResolve(profile, gateRestaurantId);
+    return `
+      <div id="${HOTEL_DETAILS_PENDING_CONTAINER_ID}" data-hotel-details-pending="${escapeHtml(gateRestaurantId)}" class="app-content-inline app-main-content-safe">
+        ${renderHotelDetailPendingViewCore()}
+      </div>
+    `;
+  }
+  return `
+    <div class="app-content-inline app-main-content-safe animate-in fade-in duration-300">
+      ${renderHotelDetailsBody(profile)}
+    </div>
+  `;
+}
+
+function renderHotelDetailsBody(profile = {}) {
   const record = getHotelProfileRecord(profile);
   const coords = readHotelCoords(record);
   const address = readFirstHotelText(record, [
@@ -1199,6 +1315,8 @@ function renderHotelDetailsView(profile = {}) {
 
   ensureHotelDetailStylesInjectedCore();
 
+  const manualBeachDistance = readHotelManualBeachDistance(record);
+
   // Bei Wiederbesuch liegt das Template im Cache -> sofort synchron rendern.
   const cachedTemplate = destinationId ? peekPublishedDestinationCore(destinationId) : null;
   const destinationSectionsHtml = cachedTemplate
@@ -1206,12 +1324,13 @@ function renderHotelDetailsView(profile = {}) {
         template: cachedTemplate,
         overrides,
         hotelCoords: coords,
-        imageUrlFn: (url) => getOptimizedImageUrl(url, "medium")
+        imageUrlFn: (url) => getOptimizedImageUrl(url, "medium"),
+        manualBeachDistance
       })
     : "";
 
   if (destinationId && !cachedTemplate) {
-    scheduleHotelDestinationFill({ destinationId, overrides, hotelCoords: coords });
+    scheduleHotelDestinationFill({ destinationId, overrides, hotelCoords: coords, manualBeachDistance });
   }
   if (coords) {
     scheduleHotelDetailMapInit(cachedTemplate
@@ -1219,28 +1338,24 @@ function renderHotelDetailsView(profile = {}) {
       : []);
   }
 
-  return `
-    <div class="app-content-inline app-main-content-safe animate-in fade-in duration-300">
-      ${renderHotelDetailViewCore({
-        rooms,
-        offers,
-        amenities,
-        address,
-        city,
-        cityImageUrl: readFirstHotelText(record, ["titleImageUrl", "coverImageUrl", "heroUrl"]),
-        destinationId,
-        destinationName,
-        destinationSectionsHtml,
-        mapsUrl,
-        hotelCoords: coords,
-        hotelName,
-        rating,
-        reviewCount,
-        ratingSummary,
-        imageUrlFn: (url) => getOptimizedImageUrl(url, "medium")
-      })}
-    </div>
-  `;
+  return renderHotelDetailViewCore({
+    rooms,
+    offers,
+    amenities,
+    address,
+    city,
+    cityImageUrl: readFirstHotelText(record, ["titleImageUrl", "coverImageUrl", "heroUrl"]),
+    destinationId,
+    destinationName,
+    destinationSectionsHtml,
+    mapsUrl,
+    hotelCoords: coords,
+    hotelName,
+    rating,
+    reviewCount,
+    ratingSummary,
+    imageUrlFn: (url) => getOptimizedImageUrl(url, "medium")
+  });
 }
 
 function renderHotelCardAdminView(profile = {}) {

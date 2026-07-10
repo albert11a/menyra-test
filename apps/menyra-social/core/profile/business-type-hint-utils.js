@@ -10,13 +10,27 @@ function asText(value = "") {
 // Stabile Schluessel fuer den Typ-Hinweis: primaer die restaurantId, zusaetzlich
 // der oeffentliche Slug - damit ein Deep-Link ueber den Slug (noch ohne geladene
 // restaurantId) trotzdem sofort den bekannten Business-Typ findet.
-export function businessTypeHintKeysCore(profile = {}) {
+// extraSlugs erlaubt beim LESEN einen Fallback auf den Slug aus der URL, weil
+// das frueh gerenderte Cold-Start-Profil oft noch gar keine Identitaetsfelder
+// traegt (weder restaurantId noch publicSlug).
+export function businessTypeHintKeysCore(profile = {}, { extraSlugs = [] } = {}) {
   const source = profile && typeof profile === "object" ? profile : {};
   const keys = [];
-  const restaurantId = asText(source.restaurantId || source.canonicalRestaurantId || source.landingRestaurantId);
-  const slug = asText(source.publicSlug || source.landingSlug).toLowerCase();
-  if (restaurantId) keys.push(`r:${restaurantId}`);
-  if (slug) keys.push(`s:${slug}`);
+  const addKey = (key = "") => {
+    if (key && !keys.includes(key)) keys.push(key);
+  };
+  [source.restaurantId, source.canonicalRestaurantId, source.landingRestaurantId]
+    .map((value) => asText(value))
+    .filter(Boolean)
+    .forEach((restaurantId) => addKey(`r:${restaurantId}`));
+  [source.publicSlug, source.landingSlug, source.handle, source.slug, source.businessSlug]
+    .map((value) => asText(value).replace(/^@+/, "").toLowerCase())
+    .filter(Boolean)
+    .forEach((slug) => addKey(`s:${slug}`));
+  (Array.isArray(extraSlugs) ? extraSlugs : [])
+    .map((value) => asText(value).replace(/^@+/, "").toLowerCase())
+    .filter(Boolean)
+    .forEach((slug) => addKey(`s:${slug}`));
   return keys;
 }
 

@@ -4,9 +4,11 @@ import assert from "node:assert/strict";
 import {
   HOTEL_DESTINATION_SECTIONS_CONTAINER_ID,
   HOTEL_DETAIL_MAP_CONTAINER_ID,
+  parseManualDistanceLabelToMetersCore,
   renderHotelAmenitiesSectionCore,
   renderHotelCityFallbackSectionCore,
   renderHotelDestinationSectionsCore,
+  renderHotelDetailPendingViewCore,
   renderHotelDetailViewCore,
   renderHotelMapSectionCore,
   renderHotelRoomsSectionCore
@@ -52,6 +54,43 @@ test("renderHotelDestinationSectionsCore respects hidden override", () => {
 test("renderHotelDestinationSectionsCore returns empty string without places", () => {
   assert.equal(renderHotelDestinationSectionsCore({ template: null }), "");
   assert.equal(renderHotelDestinationSectionsCore({ template: { places: [] } }), "");
+});
+
+test("manual beach distance from the lead replaces the computed meters", () => {
+  const html = renderHotelDestinationSectionsCore({
+    template: TEMPLATE,
+    overrides: {},
+    hotelCoords: HOTEL_COORDS,
+    manualBeachDistance: { label: "300 m", direct: false }
+  });
+  // Der erste Plazha-Ort zeigt die Lead-Eingabe statt der Haversine-Meter.
+  assert.match(html, />300 m</);
+  // Gehzeit wird aus der Lead-Eingabe geschaetzt (300 m -> Minuten in Fuss).
+  assert.match(html, /min në këmbë/);
+});
+
+test("manual beach distance direct flag renders Në plazh", () => {
+  const html = renderHotelDestinationSectionsCore({
+    template: TEMPLATE,
+    overrides: {},
+    hotelCoords: HOTEL_COORDS,
+    manualBeachDistance: { label: "", direct: true }
+  });
+  assert.match(html, /Në plazh/);
+});
+
+test("parseManualDistanceLabelToMetersCore parses m and km labels", () => {
+  assert.equal(parseManualDistanceLabelToMetersCore("300 m"), 300);
+  assert.equal(parseManualDistanceLabelToMetersCore("1,2 km"), 1200);
+  assert.equal(parseManualDistanceLabelToMetersCore("450"), 450);
+  assert.equal(parseManualDistanceLabelToMetersCore(""), null);
+  assert.equal(parseManualDistanceLabelToMetersCore("direkt"), null);
+});
+
+test("renderHotelDetailPendingViewCore renders skeleton sections", () => {
+  const html = renderHotelDetailPendingViewCore();
+  assert.match(html, /mhd-skeleton/);
+  assert.ok((html.match(/mhd-skeleton/g) || []).length >= 3);
 });
 
 test("renderHotelRoomsSectionCore renders active offers with price", () => {
