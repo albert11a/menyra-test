@@ -23,6 +23,13 @@ import {
 import {
   normalizeDestinationOverridesCore
 } from "../destinations/destination-merge-core.js";
+import {
+  BUSINESS_TYPE_HINT_STORAGE_KEY,
+  businessTypeHintKeysCore,
+  readBusinessTypeHintCore,
+  resolveStableBusinessTypeCore,
+  writeBusinessTypeHintCore
+} from "./business-type-hint-utils.js";
 
 export function createProfileMenuFocusRenderController(deps = {}) {
   const state = deps.state;
@@ -626,8 +633,54 @@ function isBusinessProfileEntity(profile = {}) {
   return String(profile?.role || "").trim().toLowerCase() === "business";
 }
 
+// Persistenter Business-Typ-Hinweis: verhindert, dass bei Hotel-/Motel-Profilen
+// beim ersten Paint (Snapshot/Cache ohne Typ, Meta noch nicht geladen) kurz der
+// Menu-Tab statt Details erscheint. Bei Refresh und Wiederbesuch ist der Typ so
+// sofort synchron bekannt.
+let businessTypeHintStoreCache = null;
+
+function readBusinessTypeHintStore() {
+  if (businessTypeHintStoreCache) return businessTypeHintStoreCache;
+  if (typeof localStorage === "undefined") {
+    businessTypeHintStoreCache = {};
+    return businessTypeHintStoreCache;
+  }
+  try {
+    const raw = localStorage.getItem(BUSINESS_TYPE_HINT_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    businessTypeHintStoreCache = parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    businessTypeHintStoreCache = {};
+  }
+  return businessTypeHintStoreCache;
+}
+
+function persistBusinessTypeHint(profile = {}, type = "") {
+  const keys = businessTypeHintKeysCore(profile);
+  if (!keys.length) return;
+  const { store, changed } = writeBusinessTypeHintCore(readBusinessTypeHintStore(), keys, type);
+  if (!changed) return;
+  businessTypeHintStoreCache = store;
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(BUSINESS_TYPE_HINT_STORAGE_KEY, JSON.stringify(store));
+  } catch {}
+}
+
+function resolveStableBusinessProfileType(profile = {}) {
+  const liveType = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
+  if (liveType) {
+    persistBusinessTypeHint(profile, liveType);
+    return liveType;
+  }
+  return resolveStableBusinessTypeCore(
+    "",
+    readBusinessTypeHintCore(readBusinessTypeHintStore(), businessTypeHintKeysCore(profile))
+  );
+}
+
 function isHotelBusinessProfile(profile = {}) {
-  const type = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
+  const type = resolveStableBusinessProfileType(profile);
   return type === "hotel" || type === "motel";
 }
 
