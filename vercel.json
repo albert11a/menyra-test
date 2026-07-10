@@ -18,6 +18,7 @@
     { "source": "/social", "destination": "/feed", "permanent": false },
     { "source": "/social/", "destination": "/feed", "permanent": false },
     { "source": "/b/:slug/menu", "destination": "/:slug/menu", "permanent": false },
+    { "source": "/b/:slug/details", "destination": "/:slug/details", "permanent": false },
     { "source": "/b/:slug/posts", "destination": "/:slug/posts", "permanent": false },
     { "source": "/b/:slug/qr", "destination": "/:slug/menu?src=qr", "permanent": false },
     { "source": "/b/:slug", "destination": "/:slug", "permanent": false },

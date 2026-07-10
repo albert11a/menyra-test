@@ -61,6 +61,9 @@ const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
   "kitchen",
   "profile",
   "menu",
+  "details",
+  "detail",
+  "detajet",
   "orders",
   "notifications",
   "settings",
@@ -104,6 +107,16 @@ const BUSINESS_POST_SEGMENTS = new Set([
   "overview"
 ]);
 
+// Hotel-/Motel-Profile nutzen fuer den Katalog-Tab den Pfad "/details" statt
+// "/menu" (der Tab heisst dort "Details"). Beide Segment-Familien landen auf
+// demselben internen Tab (topTab/contentTab "menu"), nur der kanonische Pfad
+// unterscheidet sich je nach Business-Typ.
+const BUSINESS_DETAILS_SEGMENTS = new Set([
+  "details",
+  "detail",
+  "detajet"
+]);
+
 const BUSINESS_MENU_SEGMENTS = new Set([
   "menu",
   "karte",
@@ -111,7 +124,8 @@ const BUSINESS_MENU_SEGMENTS = new Set([
   "shop",
   "focus",
   "highlights",
-  "highlight"
+  "highlight",
+  ...BUSINESS_DETAILS_SEGMENTS
 ]);
 
 const LAUNCH_PUBLIC_BUSINESS_ROUTE_ALIASES = Object.freeze({
@@ -495,6 +509,7 @@ function parseCanonicalBusinessPathSegments(segments = []) {
       restaurantId: routeRestaurantId,
       topTab: "menu",
       contentTab: "menu",
+      catalogSegment: BUSINESS_DETAILS_SEGMENTS.has(surfaceSegment) ? "details" : "menu",
       accessSource: ""
     };
   }
@@ -604,6 +619,7 @@ export function parsePublicBusinessRoutePathCore(pathname = "", {
       restaurantId: resolveLaunchPublicBusinessRouteId(secondSlug),
       topTab: firstTopTab,
       contentTab: firstTopTab === "menu" ? "menu" : "posts",
+      catalogSegment: BUSINESS_DETAILS_SEGMENTS.has(safeLowerText(rawFirst)) ? "details" : "menu",
       accessSource: firstQrHint ? "qr" : ""
     };
   }
@@ -615,6 +631,7 @@ export function parsePublicBusinessRoutePathCore(pathname = "", {
       restaurantId: resolveLaunchPublicBusinessRouteId(firstSlug),
       topTab: secondTopTab,
       contentTab: secondTopTab === "menu" ? "menu" : "posts",
+      catalogSegment: BUSINESS_DETAILS_SEGMENTS.has(safeLowerText(rawSecond)) ? "details" : "menu",
       accessSource: secondQrHint ? "qr" : ""
     };
   }
@@ -691,12 +708,14 @@ export function parseSiteRoutePathCore(pathname = "") {
         topTab: businessRoute.topTab,
         contentTab: businessRoute.contentTab,
         accessSource: businessRoute.accessSource,
-        pathnameHint: readCurrentMatchedPath(segments)
+        pathnameHint: readCurrentMatchedPath(segments),
+        catalogSegment: businessRoute.catalogSegment || ""
       }),
       routePath: readCurrentMatchedPath(segments),
       restaurantId: businessRoute.restaurantId,
       profileTopTab: businessRoute.topTab,
       profileContentTab: businessRoute.contentTab,
+      profileCatalogSegment: businessRoute.catalogSegment || "",
       accessSource: businessRoute.accessSource,
       isLegacy: businessRoute.isLegacy === true
     };
@@ -733,7 +752,8 @@ export function buildCanonicalPublicBusinessPathCore({
   contentTab = "",
   accessSource = "",
   pathnameHint = "",
-  forcePostsPath = false
+  forcePostsPath = false,
+  catalogSegment = ""
 } = {}) {
   const safeSlug = resolveLaunchPublicBusinessCanonicalSlug(slug || "");
   if (!safeSlug) return "";
@@ -742,12 +762,27 @@ export function buildCanonicalPublicBusinessPathCore({
     contentTab || (safeTopTab === "menu" ? "menu" : "posts"),
     safeTopTab === "menu" ? "menu" : "posts"
   );
+  // Hotels/Motels tragen im kanonischen Pfad "/details" statt "/menu".
+  const safeCatalogSegment = BUSINESS_DETAILS_SEGMENTS.has(safeLowerText(catalogSegment))
+    ? "details"
+    : "menu";
   const basePath = `/${encodeURIComponent(safeSlug)}`;
-  if (safeTopTab === "menu" || safeContentTab === "menu") return `${basePath}/menu`;
-  if (isQrLikePublicBusinessAccessSourceCore(accessSource)) return `${basePath}/menu`;
+  if (safeTopTab === "menu" || safeContentTab === "menu") return `${basePath}/${safeCatalogSegment}`;
+  if (isQrLikePublicBusinessAccessSourceCore(accessSource)) return `${basePath}/${safeCatalogSegment}`;
   void pathnameHint;
   void forcePostsPath;
   return basePath;
+}
+
+// Entscheidet das Katalog-Pfadsegment anhand des Business-Typs:
+// Hotels/Motels -> "details", alle anderen -> "menu".
+export function resolveCatalogRouteSegmentForBusinessTypeCore(type = "") {
+  const key = safeLowerText(type);
+  return key === "hotel" || key === "motel" ? "details" : "menu";
+}
+
+export function isDetailsCatalogRouteSegmentCore(value = "") {
+  return BUSINESS_DETAILS_SEGMENTS.has(safeLowerText(value));
 }
 
 export function buildCanonicalPublicUserPathCore({

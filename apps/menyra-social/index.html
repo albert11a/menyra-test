@@ -25,11 +25,11 @@
         }));
       };
       const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set(
-        "b feed search discover map location user waiter wr leads admin ceo owner staff kitchen profile menu orders notifications settings upload customers business-accounts businessaccounts chat social heart hub apps api shared assets _shared core login register post posts story stories lp lead-landing index.html manifest.webmanifest manifest.json sw.js favicon.ico robots.txt sitemap.xml menyra-restaurants"
+        "b feed search discover map location user waiter wr leads admin ceo owner staff kitchen profile menu details detail detajet orders notifications settings upload customers business-accounts businessaccounts chat social heart hub apps api shared assets _shared core login register post posts story stories lp lead-landing index.html manifest.webmanifest manifest.json sw.js favicon.ico robots.txt sitemap.xml menyra-restaurants"
           .split(" ")
       );
       const BUSINESS_POST_SEGMENTS = new Set("posts post profile home overview".split(" "));
-      const BUSINESS_MENU_SEGMENTS = new Set("menu karte speisekarte shop focus highlights highlight".split(" "));
+      const BUSINESS_MENU_SEGMENTS = new Set("menu karte speisekarte shop focus highlights highlight details detail detajet".split(" "));
       const safeLowerText = (value = "") => String(value || "").trim().toLowerCase();
       const safeDecodePathSegment = (value = "") => {
         const raw = String(value || "").trim();

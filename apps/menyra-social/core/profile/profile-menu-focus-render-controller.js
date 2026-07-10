@@ -682,7 +682,8 @@ function persistBusinessTypeHint(profile = {}, type = "") {
 // Liste wie im Public-Route-Preload). Nur fuer den Typ-Hinweis-Fallback.
 const BUSINESS_TYPE_HINT_RESERVED_ROUTES = new Set([
   "feed", "search", "discover", "map", "location", "user", "waiter", "wr", "leads",
-  "admin", "ceo", "owner", "staff", "kitchen", "profile", "menu", "orders", "notifications",
+  "admin", "ceo", "owner", "staff", "kitchen", "profile", "menu", "details", "detail",
+  "detajet", "orders", "notifications",
   "settings", "upload", "customers", "business-accounts", "businessaccounts", "chat", "social",
   "heart", "hub", "apps", "api", "shared", "assets", "_shared", "core", "login", "register",
   "post", "posts", "story", "stories", "manifest", "sw", "favicon", "robots", "sitemap", "b", "lp"

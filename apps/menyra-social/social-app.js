@@ -129,8 +129,14 @@ import {
   buildCanonicalPublicUserPathCore,
   extractPublicBusinessSlugCore,
   extractPublicUserRouteIdCore,
-  parseSiteRoutePathCore
+  parseSiteRoutePathCore,
+  resolveCatalogRouteSegmentForBusinessTypeCore
 } from "./core/router/public-business-route-utils.js";
+import {
+  BUSINESS_TYPE_HINT_STORAGE_KEY,
+  businessTypeHintKeysCore,
+  readBusinessTypeHintCore
+} from "./core/profile/business-type-hint-utils.js";
 import {
   createStartupRouteRuntimeContext,
   publishStartupRouteRuntimeContext,
@@ -1536,6 +1542,42 @@ function resolveRouteQueryStateForCurrentView() {
   return routeState;
 }
 
+// Katalog-Pfadsegment fuer den Route-Sync: Hotels/Motels bekommen "/details"
+// statt "/menu". Live-Typ hat Vorrang; solange Meta noch laedt, greift der
+// persistierte Typ-Hinweis (gleicher Store wie im Profil-Renderer). Der
+// localStorage-Read wird ueber den Rohstring gecacht, damit der Sync pro
+// Render-Pass keinen JSON.parse bezahlt.
+const businessTypeHintRouteCache = { raw: null, store: {} };
+
+function readBusinessTypeHintStoreForRoute() {
+  try {
+    const raw = localStorage.getItem(BUSINESS_TYPE_HINT_STORAGE_KEY) || "";
+    if (businessTypeHintRouteCache.raw !== raw) {
+      const parsed = raw ? JSON.parse(raw) : {};
+      businessTypeHintRouteCache.raw = raw;
+      businessTypeHintRouteCache.store = parsed && typeof parsed === "object" ? parsed : {};
+    }
+    return businessTypeHintRouteCache.store;
+  } catch {
+    return {};
+  }
+}
+
+function resolvePublicBusinessCatalogRouteSegment(routeState = {}) {
+  const targetProfile = state.profileView?.profile && typeof state.profileView.profile === "object"
+    ? state.profileView.profile
+    : (state.userProfile && typeof state.userProfile === "object" ? state.userProfile : {});
+  const liveType = getBusinessProfileType(targetProfile);
+  if (liveType) return resolveCatalogRouteSegmentForBusinessTypeCore(liveType);
+  const hintType = readBusinessTypeHintCore(
+    readBusinessTypeHintStoreForRoute(),
+    businessTypeHintKeysCore(targetProfile, {
+      extraSlugs: [String(routeState?.canonicalPublicSlug || "").trim()]
+    })
+  );
+  return resolveCatalogRouteSegmentForBusinessTypeCore(hintType);
+}
+
 function buildCurrentRouteSyncKey(url, routeState = {}) {
   if (!(url instanceof URL)) return "";
   const safeRouteState = routeState && typeof routeState === "object" ? routeState : {};
@@ -1596,7 +1638,8 @@ function syncActiveTabRouteQuery() {
         topTab: routeState.profileTopTab,
         contentTab: routeState.profileContentTab,
         accessSource: routeState.profileAccessSource,
-        pathnameHint: currentPathRoute.kind === "business" ? currentUrl.pathname : ""
+        pathnameHint: currentPathRoute.kind === "business" ? currentUrl.pathname : "",
+        catalogSegment: resolvePublicBusinessCatalogRouteSegment(routeState)
       }) || currentUrl.pathname;
       clearProfileRouteQueryParams(nextUrl.searchParams);
       setCanonicalRouteQueryParam(
