@@ -127,7 +127,24 @@ Integration Heart:
 - `tests/analytics-tracker-state.test.mjs` – Transition-Erkennung (Profil/Menu/Produkt/
   Checkout), Dedupe, Own-Profile-Skip, Queue-Flush-Gruppierung.
 
-## 5. Bewusste Grenzen / Naechste Schritte
+## 5. Deployment der Firestore-Rules (WICHTIG)
+
+- Der Vercel-Auto-Deploy bei Push auf `main` deployt **nur das Frontend**.
+  Die in diesem Feature neu hinzugekommenen Rules fuer `analyticsEvents` und
+  `analyticsDaily` muessen separat nach Firebase deployt werden, sonst laufen
+  alle Reads (Dashboard) und Writes (Tracking) in `permission-denied` und der
+  Analytics-Tab zeigt "Analytics konnten nicht geladen werden".
+- Einmalig manuell:
+  `npx firebase-tools deploy --only firestore:rules,firestore:indexes --project menyra-c0e68`
+- Automatisch: Workflow `.github/workflows/deploy-firestore-rules.yml` deployt
+  bei jeder Aenderung an `firestore.rules`/`firestore.indexes.json` auf `main`.
+  Voraussetzung: Repo-Secret `FIREBASE_SERVICE_ACCOUNT` (Service-Account-JSON,
+  Rollen "Firebase Rules Admin" + "Cloud Datastore Index Admin").
+- Hinweis: Solange die Rules nicht deployt waren, wurden auch keine Events/
+  Aggregate geschrieben. Nach dem Rules-Deploy startet die Datensammlung bei
+  null; Zahlen erscheinen zuerst unter "Heute".
+
+## 6. Bewusste Grenzen / Naechste Schritte
 
 - Aggregation erfolgt clientseitig via Firestore-Increments (kein neuer
   Functions-Deploy noetig). Ein spaeterer Umzug auf eine Cloud Function

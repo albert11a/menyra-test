@@ -1,0 +1,53 @@
+name: deploy-firestore-rules
+
+# Vercel deployt bei Push auf main nur das Frontend (dist/).
+# Firestore-Rules und -Indexes wurden bisher nie automatisch deployt --
+# dadurch liefen in Produktion veraltete Rules (z. B. fehlten die
+# analyticsDaily/analyticsEvents-Regeln => Analytics-Tab: permission-denied).
+# Dieser Workflow schliesst die Luecke: bei jeder Aenderung an
+# firestore.rules / firestore.indexes.json auf main wird nach Firebase deployt.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - firestore.rules
+      - firestore.indexes.json
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT fehlt. In den Repo-Settings unter Secrets ein Service-Account-JSON (Rolle: Firebase Rules Admin + Cloud Datastore Index Admin, Projekt menyra-c0e68) hinterlegen."
+            exit 1
+          fi
+
+      - name: Write service account key
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+
+      - name: Deploy Firestore rules and indexes
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: npx --yes firebase-tools@15 deploy --only firestore:rules,firestore:indexes --project menyra-c0e68 --non-interactive --force
+
+      - name: Cleanup key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"
