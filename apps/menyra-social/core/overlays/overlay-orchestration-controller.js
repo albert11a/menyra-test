@@ -1,4 +1,5 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+import { observeAnalyticsState } from "../analytics/analytics-tracker.js";
 import { t } from "/shared/i18n/i18n.js";
 
 export function createOverlayOrchestrationController({
@@ -651,7 +652,7 @@ export function createOverlayOrchestrationController({
   }
 
   function renderOverlays(options = {}) {
-    return renderOverlaysCoreFn({
+    const result = renderOverlaysCoreFn({
       options,
       state,
       documentObj: getDocumentObjFn(),
@@ -668,6 +669,12 @@ export function createOverlayOrchestrationController({
       syncModalOpenUiStateFn: syncModalOpenUiState,
       bindOverlayEventsFn: bindOverlayEvents
     });
+    // Analytics: Overlay-Renders laufen am Haupt-render() vorbei; ohne diesen
+    // Aufruf sieht der Tracker menuDetail-Transitions (product_view) nie.
+    try {
+      observeAnalyticsState();
+    } catch {}
+    return result;
   }
 
   function bindModalDismiss(target, handler, { selfOnly = false } = {}) {
