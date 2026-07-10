@@ -97,6 +97,27 @@ Oeffnen einer Profilansicht. `social-app.js` bleibt groessengleich
 (nur Chunk-Hash-Referenzen aendern sich); Firebase kommt aus dem
 gemeinsamen `vendor-firebase`-Chunk, nicht dupliziert.
 
+## Dhomat-Editor, Qyteti-Fallback und Live-Entdecker-Karte
+
+- **Dhomat-Editor** (Hotel-Admin-Ansicht, unter Hotel Details): Zimmer mit
+  Name, Preis/Nacht, Personen, Krevate, m², Etikett, Beschreibung, Foto-Upload
+  (komprimiert via bestehendem CDN-Upload) und Aktiv-Schalter. Gespeichert als
+  `hotelRooms[]` am Restaurant-Dokument (`hotel-rooms-utils.js`, 6 Tests);
+  die Detailseite rendert die Dhoma-Rail bevorzugt aus `hotelRooms`
+  (Alt-Angebote bleiben Fallback). Bindings laden lazy nur, wenn
+  `[data-hotel-rooms-editor]` im DOM steht (`hotel-rooms-editor-bindings.js`).
+- **Qyteti-Fallback**: Ohne Destination-Template zeigt die Detailseite eine
+  Qyteti-Karte aus der Hotel-Location (Stadt + Adresse + Titelbild), damit die
+  Sektion nie leer ist.
+- **Live-Entdecker-Karte**: Die Map-Karte der Detailseite ist jetzt die echte
+  Karte (Leaflet 1.9.4 + Carto-Voyager-Kacheln wie im Map-Tab, OSM-Fallback),
+  Hotel-Pin mittig zentriert, Template-Orte als kategorie-farbige Marker mit
+  Tooltip. Initialisiert erst beim Scrollen in den Sichtbereich
+  (IntersectionObserver) ueber einen eigenen Lazy-Chunk
+  (`hotel-detail-map-runtime`, ~4 KB); ist window.L vom Map-Tab schon da,
+  wird es wiederverwendet. Mobil: Ein-Finger-Drag deaktiviert
+  (Seiten-Scroll bleibt fluessig), Zwei-Finger-Zoom aktiv.
+
 ## Offene Folgearbeiten
 
 - Foto-Upload direkt im Destination-Editor (aktuell: Bild-URLs, z. B. aus

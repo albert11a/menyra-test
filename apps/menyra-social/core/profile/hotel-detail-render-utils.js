@@ -63,7 +63,8 @@ const ICON_PATHS = Object.freeze({
   snow: `<path d="M12 2v20M4.93 4.93l14.14 14.14M2 12h20M4.93 19.07 19.07 4.93M8 5l4 2 4-2M8 19l4-2 4 2"/>`,
   shield: `<path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><path d="m9 12 2 2 4-4"/>`,
   umbrella: `<path d="M2 12h20M12 12v8a2 2 0 0 0 4 0M2 12a10 10 0 0 1 20 0M12 2v1"/>`,
-  users: `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3.2a4 4 0 0 1 0 7.6M22 21v-2a4 4 0 0 0-3-3.9"/><circle cx="9" cy="7" r="4"/>`
+  users: `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3.2a4 4 0 0 1 0 7.6M22 21v-2a4 4 0 0 0-3-3.9"/><circle cx="9" cy="7" r="4"/>`,
+  size: `<path d="M15 3h6v6M21 3l-7 7M3 21l7-7M9 21H3v-6"/>`
 });
 
 const CATEGORY_ICONS = Object.freeze({
@@ -214,11 +215,24 @@ function normalizeRoomPriceLabel(item = {}, fallbackCurrency = "€") {
   return currency === "€" || currency.toUpperCase() === "EUR" ? `€${price}` : `${price} ${currency}`;
 }
 
+function renderRoomMetaRow(metaParts = []) {
+  const parts = (Array.isArray(metaParts) ? metaParts : [])
+    .filter((part) => asText(part?.label));
+  if (!parts.length) return "";
+  return `
+    <div class="mhd-distance">
+      ${parts.map((part) => `<span>${mhdIcon(part.icon || "check", "mhd-icon--sm")}${escapeHtml(part.label)}</span>`).join("")}
+    </div>
+  `;
+}
+
 export function renderHotelRoomsSectionCore({
+  rooms = [],
   offers = [],
   imageUrlFn = null
 } = {}) {
-  const items = (Array.isArray(offers) ? offers : [])
+  // Bevorzugt echte Zimmer (Dhomat-Editor); Angebote nur als Altbestand-Fallback.
+  const items = (Array.isArray(rooms) && rooms.length ? rooms : (Array.isArray(offers) ? offers : []))
     .filter((item) => item && item.active !== false && asText(item.title));
   if (!items.length) return "";
   return `
@@ -238,11 +252,41 @@ export function renderHotelRoomsSectionCore({
                   <h3>${escapeHtml(item.title)}</h3>
                   ${priceLabel ? `<span class="mhd-price"><strong>${escapeHtml(priceLabel)}</strong><small>/ natë</small></span>` : ""}
                 </div>
-                ${asText(item.text) ? `<p class="mhd-copy">${escapeHtml(item.text)}</p>` : ""}
+                ${renderRoomMetaRow(item.metaParts)}
+                ${asText(item.text || item.description) ? `<p class="mhd-copy">${escapeHtml(item.text || item.description)}</p>` : ""}
               </div>
             </article>
           `;
         }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+// Qyteti-Fallback ohne Destination-Template: eine Karte aus der Hotel-Location
+// (Stadt + Adresse), damit die Sektion nie leer wirkt.
+export function renderHotelCityFallbackSectionCore({
+  city = "",
+  address = "",
+  imageUrl = "",
+  imageUrlFn = null
+} = {}) {
+  const safeCity = asText(city);
+  if (!safeCity) return "";
+  const rawImage = asText(imageUrl);
+  const resolvedImage = rawImage && typeof imageUrlFn === "function" ? asText(imageUrlFn(rawImage)) || rawImage : rawImage;
+  return `
+    <section class="mhd-section">
+      ${renderSectionTitle({ iconName: "building", eyebrow: SECTION_EYEBROWS_SQ.city, title: SECTION_TITLES_SQ.city })}
+      <div class="mhd-rail">
+        <article class="mhd-card">
+          <div class="mhd-photo">${resolvedImage ? `<img src="${escapeHtml(resolvedImage)}" alt="${escapeHtml(safeCity)}" loading="lazy" decoding="async" />` : ""}</div>
+          <div class="mhd-card-body">
+            <span class="mhd-pill">${escapeHtml(SECTION_TITLES_SQ.city)}</span>
+            <h3>${escapeHtml(safeCity)}</h3>
+            ${asText(address) ? `<p class="mhd-copy">${escapeHtml(address)}</p>` : ""}
+          </div>
+        </article>
       </div>
     </section>
   `;
@@ -274,20 +318,28 @@ export function renderHotelAmenitiesSectionCore({ amenities = [] } = {}) {
   `;
 }
 
+export const HOTEL_DETAIL_MAP_CONTAINER_ID = "mnyraHotelDetailMap";
+
 export function renderHotelMapSectionCore({
   address = "",
   city = "",
   destinationName = "",
-  mapsUrl = ""
+  mapsUrl = "",
+  hotelCoords = null,
+  hotelName = ""
 } = {}) {
   const addressLine = [asText(address), asText(city)].filter(Boolean).join(", ")
     || asText(destinationName);
   if (!addressLine && !mapsUrl) return "";
+  const hasLiveMap = hasFiniteCoordsCore(hotelCoords);
+  const coordAttrs = hasLiveMap
+    ? `id="${HOTEL_DETAIL_MAP_CONTAINER_ID}" data-map-lat="${escapeHtml(String(hotelCoords.lat))}" data-map-lng="${escapeHtml(String(hotelCoords.lng))}" data-map-name="${escapeHtml(asText(hotelName))}"`
+    : "";
   return `
     <section class="mhd-section">
-      ${renderSectionTitle({ iconName: "compass", eyebrow: SECTION_EYEBROWS_SQ.map, title: "Lokacioni" })}
+      ${renderSectionTitle({ iconName: "compass", eyebrow: SECTION_EYEBROWS_SQ.map, title: "Harta e zbulimit" })}
       <div class="mhd-map-card">
-        <div class="mhd-map-art">
+        <div class="mhd-map-art ${hasLiveMap ? "mhd-map-art--live" : ""}" ${coordAttrs}>
           <div class="mhd-map-water"></div>
           <span class="mhd-map-pin">${mhdIcon("bed")}</span>
         </div>
@@ -341,14 +393,18 @@ export function renderHotelRatingSectionCore({
  * eingesetzt; bei Cache-Treffer koennen sie direkt mitgegeben werden).
  */
 export function renderHotelDetailViewCore({
+  rooms = [],
   offers = [],
   amenities = [],
   address = "",
   city = "",
+  cityImageUrl = "",
   destinationId = "",
   destinationName = "",
   destinationSectionsHtml = "",
   mapsUrl = "",
+  hotelCoords = null,
+  hotelName = "",
   rating = "",
   reviewCount = "",
   ratingSummary = "",
@@ -359,12 +415,13 @@ export function renderHotelDetailViewCore({
     || (hasDestination ? renderHotelDestinationSkeletonCore() : "");
   return `
     <div class="mhd">
-      ${renderHotelRoomsSectionCore({ offers, imageUrlFn })}
+      ${renderHotelRoomsSectionCore({ rooms, offers, imageUrlFn })}
       <div id="${HOTEL_DESTINATION_SECTIONS_CONTAINER_ID}" data-destination-id="${escapeHtml(destinationId)}" style="display:contents">
         ${destinationContent}
       </div>
+      ${hasDestination ? "" : renderHotelCityFallbackSectionCore({ city, address, imageUrl: cityImageUrl, imageUrlFn })}
       ${renderHotelAmenitiesSectionCore({ amenities })}
-      ${renderHotelMapSectionCore({ address, city, destinationName, mapsUrl })}
+      ${renderHotelMapSectionCore({ address, city, destinationName, mapsUrl, hotelCoords, hotelName })}
       ${renderHotelRatingSectionCore({ rating, reviewCount, summary: ratingSummary })}
     </div>
   `;

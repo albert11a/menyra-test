@@ -605,6 +605,20 @@ export function bindAppMenuFocusEventsCore({
       }));
   }
 
+  if (doc.querySelector("[data-hotel-rooms-editor]")) {
+    void import("./hotel-rooms-editor-bindings.js")
+      .then((module) => module?.bindHotelRoomsEditorEvents?.({
+        documentObj: doc,
+        state,
+        renderFn: render,
+        setDocFn: setDoc,
+        docFn: makeDocRef,
+        db,
+        serverTimestampFn: serverTimestamp,
+        uploadCompressedImageFn: uploadCompressedImage
+      }));
+  }
+
   const menuSearchInput = doc.getElementById("menuSearchInput");
   if (menuSearchInput) {
     menuSearchInput.addEventListener("input", () => {

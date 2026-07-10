@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 
 import {
   HOTEL_DESTINATION_SECTIONS_CONTAINER_ID,
+  HOTEL_DETAIL_MAP_CONTAINER_ID,
   renderHotelAmenitiesSectionCore,
+  renderHotelCityFallbackSectionCore,
   renderHotelDestinationSectionsCore,
   renderHotelDetailViewCore,
+  renderHotelMapSectionCore,
   renderHotelRoomsSectionCore
 } from "../apps/menyra-social/core/profile/hotel-detail-render-utils.js";
 
@@ -100,4 +103,56 @@ test("renderHotelDetailViewCore omits destination container content without dest
   const html = renderHotelDetailViewCore({ offers: [{ title: "Dhome", active: true }] });
   assert.doesNotMatch(html, /mhd-skeleton/);
   assert.match(html, /data-destination-id=""/);
+});
+
+test("renderHotelRoomsSectionCore prefers rooms with meta parts over offers", () => {
+  const html = renderHotelRoomsSectionCore({
+    rooms: [{
+      title: "Dhome Deluxe",
+      priceLabel: "€118",
+      metaParts: [
+        { icon: "users", label: "2 persona" },
+        { icon: "bed", label: "1 king" },
+        { icon: "size", label: "31 m²" }
+      ],
+      active: true
+    }],
+    offers: [{ title: "Alte Oferta", active: true }]
+  });
+  assert.match(html, /Dhome Deluxe/);
+  assert.match(html, /2 persona/);
+  assert.match(html, /31 m²/);
+  assert.match(html, /€118/);
+  assert.doesNotMatch(html, /Alte Oferta/);
+});
+
+test("renderHotelCityFallbackSectionCore renders city card without template", () => {
+  const html = renderHotelCityFallbackSectionCore({ city: "Velipoje", address: "Rruga e Plazhit 1" });
+  assert.match(html, /Qyteti/);
+  assert.match(html, /Velipoje/);
+  assert.match(html, /Rruga e Plazhit 1/);
+  assert.equal(renderHotelCityFallbackSectionCore({ city: "" }), "");
+});
+
+test("renderHotelDetailViewCore shows city fallback only without destination", () => {
+  const withoutDestination = renderHotelDetailViewCore({ city: "Velipoje", address: "Rruga 1" });
+  assert.match(withoutDestination, /Velipoje/);
+  const withDestination = renderHotelDetailViewCore({ city: "Velipoje", destinationId: "dest_1" });
+  assert.doesNotMatch(withDestination, /mhd-pill">Qyteti/);
+});
+
+test("renderHotelMapSectionCore emits live map container with coords", () => {
+  const html = renderHotelMapSectionCore({
+    address: "Rruga 1",
+    city: "Velipoje",
+    mapsUrl: "https://maps.google.com/?q=1,2",
+    hotelCoords: { lat: 41.87, lng: 19.42 },
+    hotelName: "Hotel Vela"
+  });
+  assert.match(html, new RegExp(HOTEL_DETAIL_MAP_CONTAINER_ID));
+  assert.match(html, /data-map-lat="41.87"/);
+  assert.match(html, /data-map-name="Hotel Vela"/);
+  assert.match(html, /Harta e zbulimit/);
+  const withoutCoords = renderHotelMapSectionCore({ address: "Rruga 1", city: "Velipoje", mapsUrl: "x" });
+  assert.doesNotMatch(withoutCoords, new RegExp(HOTEL_DETAIL_MAP_CONTAINER_ID));
 });

@@ -12,16 +12,26 @@ import {
 import { t } from "/shared/i18n/i18n.js";
 import {
   HOTEL_DESTINATION_SECTIONS_CONTAINER_ID,
+  HOTEL_DETAIL_MAP_CONTAINER_ID,
   ensureHotelDetailStylesInjectedCore,
   renderHotelDestinationSectionsCore,
   renderHotelDetailViewCore
 } from "./hotel-detail-render-utils.js";
 import {
+  buildHotelRoomMetaPartsCore,
+  collectHotelRoomsCore,
+  formatHotelRoomPriceLabelCore
+} from "./hotel-rooms-utils.js";
+import {
+  renderHotelRoomsEditorSection
+} from "./hotel-rooms-editor-render-utils.js";
+import {
   loadPublishedDestinationCore,
   peekPublishedDestinationCore
 } from "../destinations/destination-public-loader.js";
 import {
-  normalizeDestinationOverridesCore
+  normalizeDestinationOverridesCore,
+  resolveLeadDestinationPlacesCore
 } from "../destinations/destination-merge-core.js";
 import {
   BUSINESS_TYPE_HINT_STORAGE_KEY,
@@ -1096,10 +1106,62 @@ function scheduleHotelDestinationFill({ destinationId = "", overrides = {}, hote
       if (!liveContainer || String(liveContainer.dataset.destinationId || "") !== safeId) return;
       liveContainer.dataset.destinationFilled = safeId;
       liveContainer.innerHTML = template ? buildHtml(template) : "";
+      // Template-Orte auch auf die Entdecker-Karte bringen.
+      if (template) {
+        pushHotelDetailMapPlaces(resolveLeadDestinationPlacesCore({
+          places: template.places,
+          overrides,
+          hotelCoords
+        }));
+      }
     }).catch(() => {});
   };
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(tryInject);
   else queueMicrotask(tryInject);
+}
+
+function pushHotelDetailMapPlaces(places = []) {
+  if (typeof document === "undefined") return;
+  const container = document.getElementById(HOTEL_DETAIL_MAP_CONTAINER_ID);
+  if (!container) return;
+  if (typeof container.__mhdSetPlaces === "function") container.__mhdSetPlaces(places);
+  else container.__mhdPlaces = Array.isArray(places) ? places : [];
+}
+
+// Initialisiert die Live-Entdecker-Karte erst, wenn die Karte in den sichtbaren
+// Bereich scrollt (IntersectionObserver) - Leaflet + Kacheln kosten sonst
+// unnoetig Ladezeit auf dem kritischen Pfad.
+function scheduleHotelDetailMapInit(initialPlaces = []) {
+  if (typeof document === "undefined") return;
+  let attempts = 0;
+  const tryObserve = () => {
+    const container = document.getElementById(HOTEL_DETAIL_MAP_CONTAINER_ID);
+    if (!container) {
+      if (attempts++ < 20) requestAnimationFrame(tryObserve);
+      return;
+    }
+    if (Array.isArray(initialPlaces) && initialPlaces.length) pushHotelDetailMapPlaces(initialPlaces);
+    if (container.dataset.mhdMapObserved === "1") return;
+    container.dataset.mhdMapObserved = "1";
+    const init = () => {
+      import("./hotel-detail-map-runtime.js")
+        .then((module) => module.ensureHotelDetailMap({ container }))
+        .catch(() => {});
+    };
+    if (typeof IntersectionObserver === "function") {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          init();
+        }
+      }, { rootMargin: "240px" });
+      observer.observe(container);
+    } else {
+      init();
+    }
+  };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(tryObserve);
+  else queueMicrotask(tryObserve);
 }
 
 function collectHotelRoomOffers(record = {}) {
@@ -1122,9 +1184,15 @@ function renderHotelDetailsView(profile = {}) {
   const ratingSummary = readFirstHotelText(record, ["reviewSummary", "ratingSummary", "commentsSummary"]);
   const amenities = collectHotelAmenities(record);
   const offers = collectHotelRoomOffers(record);
+  const rooms = collectHotelRoomsCore(record).map((room) => ({
+    ...room,
+    priceLabel: formatHotelRoomPriceLabelCore(room),
+    metaParts: buildHotelRoomMetaPartsCore(room)
+  }));
   const destinationId = String(record.destinationId || "").trim();
   const destinationName = String(record.destinationName || "").trim();
   const overrides = normalizeDestinationOverridesCore(record.destinationOverrides || {});
+  const hotelName = readFirstHotelText(record, ["name", "restaurantName", "businessName"]) || "Hotel";
   const mapsUrl = coords
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${coords.lat},${coords.lng}`)}`
     : (address || city ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address} ${city}`.trim())}` : "");
@@ -1145,18 +1213,27 @@ function renderHotelDetailsView(profile = {}) {
   if (destinationId && !cachedTemplate) {
     scheduleHotelDestinationFill({ destinationId, overrides, hotelCoords: coords });
   }
+  if (coords) {
+    scheduleHotelDetailMapInit(cachedTemplate
+      ? resolveLeadDestinationPlacesCore({ places: cachedTemplate.places, overrides, hotelCoords: coords })
+      : []);
+  }
 
   return `
     <div class="app-content-inline app-main-content-safe animate-in fade-in duration-300">
       ${renderHotelDetailViewCore({
+        rooms,
         offers,
         amenities,
         address,
         city,
+        cityImageUrl: readFirstHotelText(record, ["titleImageUrl", "coverImageUrl", "heroUrl"]),
         destinationId,
         destinationName,
         destinationSectionsHtml,
         mapsUrl,
+        hotelCoords: coords,
+        hotelName,
         rating,
         reviewCount,
         ratingSummary,
@@ -1332,6 +1409,11 @@ function renderHotelCardAdminView(profile = {}) {
               ${saving ? "Po ruhet..." : "Ruaj Hotel Details"}
             </button>
         </div>
+        ${renderHotelRoomsEditorSection({
+          restaurantId,
+          record,
+          editorState: state.hotelRoomsEditor && typeof state.hotelRoomsEditor === "object" ? state.hotelRoomsEditor : {}
+        })}
         ${renderFocusAdminSection(restaurantId, { variant: "travel-offers", suppressLoading: true })}
       ` : `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">

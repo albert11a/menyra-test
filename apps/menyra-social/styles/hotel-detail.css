@@ -349,3 +349,61 @@
 @media (prefers-reduced-motion: reduce) {
   .mhd-skeleton span { animation: none; }
 }
+
+/* Live-Entdecker-Karte im Hotel-Detail */
+
+.mhd-map-art--live { background: #eef0f0; }
+.mhd-map-art--live .leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: #eef0f0;
+  font: inherit;
+}
+
+.mhd-map-marker { background: transparent; border: 0; }
+
+.mhd-map-hotel-pin {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--mhd-ink, #1a1d2e);
+  border: 4px solid #fff;
+  border-radius: 50% 50% 50% 12px;
+  box-shadow: 0 9px 18px rgba(24, 33, 30, 0.28);
+  transform: rotate(-45deg);
+}
+.mhd-map-hotel-pin svg {
+  width: 17px;
+  height: 17px;
+  transform: rotate(45deg);
+}
+
+.mhd-map-place-pin {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: #64748b;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(24, 33, 30, 0.3);
+}
+.mhd-map-place-pin--beach { background: #31a8d4; }
+.mhd-map-place-pin--city { background: #1a1d2e; }
+.mhd-map-place-pin--nature { background: #2b7a3f; }
+.mhd-map-place-pin--sights { background: #b06a10; }
+.mhd-map-place-pin--activities { background: #7c5cd6; }
+.mhd-map-place-pin--food { background: #c2454f; }
+
+.mhd-map-tooltip {
+  padding: 4px 8px;
+  color: var(--mhd-ink, #1a1d2e);
+  background: #fff;
+  border: 1px solid rgba(26, 29, 46, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(26, 29, 46, 0.12);
+  font-size: 11px;
+  font-weight: 800;
+}
