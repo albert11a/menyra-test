@@ -1,5 +1,15 @@
 import { normalizeMenuCardStyleCore } from "../menu/menu-card-style-utils.js";
 import { isVideoMediaItemCore } from "../media/video-poster-utils.js";
+import { db } from "/shared/firebase-config.js?v=2026-05-02-public-startup-diet-01";
+import {
+  doc as firestoreDoc,
+  getDoc as firestoreGetDoc
+} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
+import {
+  buildHotelDestinationSectionsCore,
+  formatHotelPlaceDistanceCore,
+  resolveHotelDestinationContextCore
+} from "../destinations/hotel-destination-content-core.js";
 import {
   isSettlingProfileSurfaceStatus,
   resolveVisibleProfileSurface
@@ -11,8 +21,65 @@ import {
 } from "./public-menu-surface-state-utils.js";
 import { t } from "/shared/i18n/i18n.js";
 
+// Veroeffentlichte Destination-Projektionen fuer Hotel-Detailseiten: klein,
+// public-read (destinationsPublic), einmal pro Session je Destination geladen.
+const hotelDestinationPublicCache = new Map();
+
+// destinationId/-Overrides stehen auf dem Restaurant-ROOT-Dokument (Heart-
+// Lead-Save). Public-Profile laden oft nur Projektionen ohne diese Felder -
+// dann wird der Root-Doc einmal pro Restaurant nachgeladen (public read).
+const hotelDestinationLinkCache = new Map();
+
+function ensureHotelDestinationLink(restaurantId = "", onSettled = () => {}) {
+  const safeId = String(restaurantId || "").trim();
+  if (!safeId || hotelDestinationLinkCache.has(safeId)) return;
+  hotelDestinationLinkCache.set(safeId, { status: "loading", context: null });
+  firestoreGetDoc(firestoreDoc(db, "restaurants", safeId))
+    .then((snap) => {
+      const data = snap.exists() ? (snap.data() || {}) : {};
+      hotelDestinationLinkCache.set(safeId, {
+        status: "ready",
+        context: resolveHotelDestinationContextCore(data)
+      });
+    })
+    .catch(() => {
+      hotelDestinationLinkCache.set(safeId, { status: "error", context: null });
+    })
+    .finally(() => {
+      try {
+        onSettled();
+      } catch {}
+    });
+}
+
+function ensureHotelDestinationPublicDoc(destinationId = "", onSettled = () => {}) {
+  const safeId = String(destinationId || "").trim();
+  if (!safeId || hotelDestinationPublicCache.has(safeId)) return;
+  hotelDestinationPublicCache.set(safeId, { status: "loading", name: "", places: [] });
+  firestoreGetDoc(firestoreDoc(db, "destinationsPublic", safeId))
+    .then((snap) => {
+      const data = snap.exists() ? (snap.data() || {}) : {};
+      hotelDestinationPublicCache.set(safeId, {
+        status: "ready",
+        name: String(data.name || "").trim(),
+        places: Array.isArray(data.places) ? data.places : []
+      });
+    })
+    .catch(() => {
+      hotelDestinationPublicCache.set(safeId, { status: "error", name: "", places: [] });
+    })
+    .finally(() => {
+      try {
+        onSettled();
+      } catch {}
+    });
+}
+
 export function createProfileMenuFocusRenderController(deps = {}) {
   const state = deps.state;
+  const requestRender = typeof deps.requestRenderFn === "function"
+    ? deps.requestRenderFn
+    : (() => {});
   const resolvePostCounts = deps.resolvePostCountsFn;
   const escapeHtml = deps.escapeHtmlFn;
   const getOptimizedImageUrl = deps.getOptimizedImageUrlFn;
@@ -615,7 +682,9 @@ function isBusinessProfileEntity(profile = {}) {
 
 function isHotelBusinessProfile(profile = {}) {
   const type = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
-  return type === "hotel" || type === "motel";
+  // "travel" ist die Business-Kategorie der Hotel-Leads (siehe Seed/CRM und
+  // die Hotel-Erkennung im session-data-runtime-controller).
+  return type === "hotel" || type === "motel" || type === "travel";
 }
 
 function getHotelProfileRecord(profile = {}) {
@@ -1003,21 +1072,147 @@ function renderHotelCardImagesEditor({ existingImages = [], newPreviews = [], im
   `;
 }
 
-function renderHotelDetailCard({ iconName = "info", label = "", value = "", helper = "" } = {}) {
+function renderHotelSectionTitle({ iconName = "map-pin", eyebrow = "", title = "" } = {}) {
   return `
-    <div class="bg-white rounded-[2rem] border border-slate-100 p-5 shadow-sm">
-      <div class="flex items-start gap-4">
-        <div class="w-11 h-11 rounded-[1.25rem] bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
-          ${icon(iconName, "w-5 h-5")}
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">${escapeHtml(label)}</p>
-          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(value || "Shto detajet")}</p>
-          ${helper ? `<p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">${escapeHtml(helper)}</p>` : ""}
-        </div>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-11 h-11 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-900 shrink-0">
+        ${icon(iconName, "w-5 h-5")}
+      </div>
+      <div>
+        ${eyebrow ? `<p class="text-[9px] font-black uppercase tracking-[0.13em] text-slate-400 mb-0.5">${escapeHtml(eyebrow)}</p>` : ""}
+        <h2 class="text-[24px] font-black text-slate-900 leading-none tracking-tight">${escapeHtml(title)}</h2>
       </div>
     </div>
   `;
+}
+
+function renderHotelRailPhoto(imageUrl = "", altText = "", heightClass = "h-40") {
+  const image = String(imageUrl || "").trim();
+  return `
+    <div class="relative ${heightClass} bg-gradient-to-br from-slate-100 to-slate-50 overflow-hidden">
+      ${image
+        ? `<img src="${escapeHtml(getOptimizedImageUrl(image))}" alt="${escapeHtml(altText)}" loading="lazy" class="w-full h-full object-cover" />`
+        : `<div class="w-full h-full flex items-center justify-center text-slate-300">${icon("image", "w-8 h-8")}</div>`}
+      <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent via-white/40 to-white pointer-events-none"></div>
+    </div>
+  `;
+}
+
+function renderHotelRoomOfferCard(item = {}) {
+  const price = String(item.price ?? item.priceLabel ?? "").trim();
+  return `
+    <article class="flex-none w-[min(70vw,300px)] snap-start bg-white rounded-[1.4rem] border border-slate-100 shadow-sm overflow-hidden">
+      ${renderHotelRailPhoto(item.imageUrl, item.title, "h-44")}
+      <div class="relative -mt-8 px-4 pb-4 z-[1]">
+        <div class="flex items-start justify-between gap-3">
+          <h3 class="text-[17px] font-black text-slate-900 leading-tight">${escapeHtml(item.title || "Oferta")}</h3>
+          ${price ? `<span class="shrink-0 text-right"><strong class="block text-[18px] font-black text-slate-900 leading-none">${escapeHtml(price)}</strong><small class="text-[10px] font-bold text-slate-400">/ natë</small></span>` : ""}
+        </div>
+        ${item.text ? `<p class="mt-2 text-[12px] text-slate-500 leading-relaxed">${escapeHtml(String(item.text).slice(0, 220))}</p>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function renderHotelDestinationPlaceCard(place = {}) {
+  const { distance, travel } = formatHotelPlaceDistanceCore(place.distanceMeters);
+  return `
+    <article class="flex-none w-[min(70vw,300px)] snap-start bg-white rounded-[1.4rem] border border-slate-100 shadow-sm overflow-hidden">
+      ${renderHotelRailPhoto(place.coverImageUrl, place.name)}
+      <div class="relative -mt-8 px-4 pb-4 z-[1]">
+        ${place.pinned ? `<span class="inline-flex items-center gap-1 min-h-[24px] px-2.5 rounded-full bg-slate-900 text-white text-[9px] font-black uppercase tracking-wider mb-2">${icon("map-pin", "w-3 h-3")} E zgjedhur</span>` : ""}
+        <h3 class="text-[17px] font-black text-slate-900 leading-tight">${escapeHtml(place.name)}</h3>
+        ${(distance || travel) ? `
+          <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] font-bold text-slate-600">
+            ${distance ? `<span class="inline-flex items-center gap-1.5">${icon("navigation", "w-3.5 h-3.5")}${escapeHtml(distance)}</span>` : ""}
+            ${travel ? `<span class="inline-flex items-center gap-1.5">${icon("clock", "w-3.5 h-3.5")}${escapeHtml(travel)}</span>` : ""}
+          </div>
+        ` : ""}
+        ${place.description ? `<p class="mt-2 text-[12px] text-slate-500 leading-relaxed">${escapeHtml(String(place.description).slice(0, 220))}</p>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function renderHotelRail(cardsHtml = "") {
+  return `
+    <div class="flex gap-4 overflow-x-auto snap-x pb-2 -mx-1 px-1" style="scrollbar-width:none;">
+      ${cardsHtml}
+    </div>
+  `;
+}
+
+function renderHotelDestinationSkeletonSection() {
+  return `
+    <section>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-11 h-11 rounded-2xl bg-slate-100 animate-pulse"></div>
+        <div class="h-6 w-36 rounded-lg bg-slate-100 animate-pulse"></div>
+      </div>
+      ${renderHotelRail([0, 1].map(() => `
+        <div class="flex-none w-[min(70vw,300px)] rounded-[1.4rem] bg-white border border-slate-100 shadow-sm overflow-hidden">
+          <div class="h-40 bg-slate-100 animate-pulse"></div>
+          <div class="p-4 space-y-2">
+            <div class="h-4 w-2/3 rounded bg-slate-100 animate-pulse"></div>
+            <div class="h-3 w-1/2 rounded bg-slate-100 animate-pulse"></div>
+          </div>
+        </div>
+      `).join(""))}
+    </section>
+  `;
+}
+
+function hotelAmenityIconName(label = "") {
+  const key = String(label || "").toLowerCase();
+  if (/(wifi|wlan|internet)/.test(key)) return "wifi";
+  if (/(parking|parkim|garage)/.test(key)) return "car";
+  if (/(mengjes|mëngjes|breakfast|fruehstueck|frühstück)/.test(key)) return "coffee";
+  if (/(pool|pishin)/.test(key)) return "waves";
+  if (/(plazh|strand|beach|det )/.test(key)) return "umbrella";
+  if (/(klim|kondicion|air.?con)/.test(key)) return "snowflake";
+  if (/(restaurant|restorant|bar)/.test(key)) return "utensils";
+  if (/(spa|wellness|sauna)/.test(key)) return "sparkles";
+  if (/(recep|24)/.test(key)) return "shield";
+  if (/(pastrim|clean|housekeeping)/.test(key)) return "sparkles";
+  return "check";
+}
+
+function renderHotelDestinationSections(record = {}, coords = null) {
+  let context = resolveHotelDestinationContextCore(record);
+  if (!context.destinationId) {
+    const restaurantId = String(record.canonicalRestaurantId || record.restaurantId || record.id || "").trim();
+    if (!restaurantId) return "";
+    const link = hotelDestinationLinkCache.get(restaurantId) || null;
+    if (!link || link.status === "loading") {
+      ensureHotelDestinationLink(restaurantId, requestRender);
+      return renderHotelDestinationSkeletonSection();
+    }
+    if (link.status !== "ready" || !link.context?.destinationId) return "";
+    context = link.context;
+  }
+  if (!hotelDestinationPublicCache.has(context.destinationId)) {
+    ensureHotelDestinationPublicDoc(context.destinationId, requestRender);
+  }
+  const entry = hotelDestinationPublicCache.get(context.destinationId) || null;
+  if (!entry || entry.status === "loading") {
+    return renderHotelDestinationSkeletonSection();
+  }
+  if (entry.status !== "ready" || !entry.places.length) return "";
+  const sections = buildHotelDestinationSectionsCore({
+    places: entry.places,
+    overrides: context.overrides,
+    hotelCoords: coords
+  });
+  return sections.map((section) => `
+    <section>
+      ${renderHotelSectionTitle({
+        iconName: section.meta.icon,
+        eyebrow: section.meta.eyebrow,
+        title: section.label
+      })}
+      ${renderHotelRail(section.places.map((place) => renderHotelDestinationPlaceCard(place)).join(""))}
+    </section>
+  `).join("");
 }
 
 function renderHotelDetailsView(profile = {}) {
@@ -1049,64 +1244,90 @@ function renderHotelDetailsView(profile = {}) {
   const rating = readFirstHotelText(record, ["rating", "reviewRating", "stars", "hotelStars"]);
   const reviewCount = readFirstHotelText(record, ["reviewCount", "reviewsCount", "ratingsCount", "commentsCount"]);
   const amenities = collectHotelAmenities(record);
+  const offers = collectHotelEditorOfferItems(record)
+    .filter((item) => item.active !== false && (String(item.title || "").trim() || String(item.imageUrl || "").trim()))
+    .slice(0, 12);
   const mapsUrl = coords
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${coords.lat},${coords.lng}`)}`
     : (address || city ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address} ${city}`.trim())}` : "");
+
+  const routeRows = [
+    beachDistance || record.beachfront || record.onBeach
+      ? { iconName: "waves", label: "PLAZHI MË I AFËRT", value: beachDistance || HOTEL_BEACH_DIRECT_LABEL }
+      : null,
+    centerDistance ? { iconName: "car", label: "QENDRA", value: centerDistance } : null
+  ].filter(Boolean);
+
   return `
-    <div class="app-content-inline flex flex-col gap-4 app-main-content-safe animate-in fade-in duration-300">
-      <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm overflow-hidden">
-        <div class="h-40 rounded-[1.6rem] bg-cyan-50 border border-cyan-100 relative overflow-hidden mb-4">
-          <div class="absolute inset-0 opacity-80" style="background-image: linear-gradient(135deg, rgba(0,204,229,0.18), rgba(15,23,42,0.04));"></div>
-          <div class="absolute inset-0 flex items-center justify-center text-cyan-600">
-            ${icon("map-pin", "w-10 h-10")}
+    <div class="app-content-inline flex flex-col gap-10 app-main-content-safe animate-in fade-in duration-300">
+      ${offers.length ? `
+        <section>
+          ${renderHotelSectionTitle({ iconName: "bed", eyebrow: "Qëndrimi yt", title: "Dhoma & Oferta" })}
+          ${renderHotelRail(offers.map((item) => renderHotelRoomOfferCard(item)).join(""))}
+        </section>
+      ` : ""}
+
+      ${renderHotelDestinationSections(record, coords)}
+
+      ${amenities.length ? `
+        <section>
+          ${renderHotelSectionTitle({ iconName: "check", eyebrow: "Pa pagesë shtesë", title: "Përfshihet" })}
+          <div class="grid grid-cols-2 gap-2.5">
+            ${amenities.map((item) => `
+              <div class="min-h-[72px] flex items-center gap-3 p-3 bg-white rounded-[1.1rem] border border-slate-100 shadow-sm">
+                <span class="w-9 h-9 rounded-xl bg-slate-50 text-slate-900 flex items-center justify-center shrink-0">${icon(hotelAmenityIconName(item), "w-4 h-4")}</span>
+                <p class="text-[12px] font-black text-slate-900 leading-tight">${escapeHtml(item)}</p>
+              </div>
+            `).join("")}
           </div>
-          <div class="absolute left-4 right-4 bottom-4 bg-white/90 backdrop-blur rounded-2xl p-3 border border-white/70">
-            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lokacioni</p>
-            <p class="text-xs font-black text-slate-900 leading-snug">${escapeHtml(address || city || "Shto lokacionin")}</p>
+        </section>
+      ` : ""}
+
+      <section>
+        ${renderHotelSectionTitle({ iconName: "compass", eyebrow: "Zbulo zonën", title: "Lokacioni" })}
+        <div class="bg-white rounded-[1.8rem] border border-slate-100 p-3 shadow-sm">
+          <div class="h-40 rounded-[1.3rem] bg-cyan-50 border border-cyan-100 relative overflow-hidden">
+            <div class="absolute inset-0 opacity-80" style="background-image: linear-gradient(135deg, rgba(0,204,229,0.18), rgba(15,23,42,0.04));"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-cyan-600">${icon("map-pin", "w-10 h-10")}</div>
+          </div>
+          <div class="p-3 pt-4">
+            <div class="flex items-start gap-3">
+              <span class="w-10 h-10 rounded-xl bg-slate-50 text-slate-900 flex items-center justify-center shrink-0">${icon("map-pin", "w-4 h-4")}</span>
+              <div class="min-w-0">
+                <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Lokacioni</p>
+                <p class="text-[14px] font-black text-slate-900 leading-snug">${escapeHtml([address, city].filter(Boolean).join(", ") || "Shto lokacionin")}</p>
+              </div>
+            </div>
+            ${routeRows.map((row) => `
+              <div class="min-h-[64px] flex items-center gap-3 mt-2.5 p-3 bg-slate-50 rounded-[1.1rem]">
+                <span class="w-9 h-9 rounded-xl bg-white text-slate-900 flex items-center justify-center shrink-0">${icon(row.iconName, "w-4 h-4")}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-[8.5px] font-black uppercase tracking-widest text-slate-400 mb-0.5">${escapeHtml(row.label)}</p>
+                  <p class="text-[12.5px] font-black text-slate-900">${escapeHtml(row.value)}</p>
+                </div>
+              </div>
+            `).join("")}
+            ${mapsUrl ? `
+              <a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="mt-4 w-full h-12 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                ${icon("navigation", "w-4 h-4")} Hap hartën
+              </a>
+            ` : ""}
           </div>
         </div>
-        ${mapsUrl ? `
-          <a href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="w-full h-12 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-            ${icon("navigation", "w-4 h-4")} Hap hartën
-          </a>
-        ` : ""}
-      </div>
+      </section>
 
-      <div class="grid grid-cols-1 gap-4">
-        ${renderHotelDetailCard({
-          iconName: "map-pin",
-          label: "Adresa",
-          value: [address, city].filter(Boolean).join(", ") || "Shto lokacionin",
-          helper: coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ""
-        })}
-        ${renderHotelDetailCard({
-          iconName: "navigation",
-          label: "Qendra",
-          value: centerDistance || "Shto detajet"
-        })}
-        ${renderHotelDetailCard({
-          iconName: "waves",
-          label: "Plazhi",
-          value: beachDistance || (record.beachfront || record.onBeach ? HOTEL_BEACH_DIRECT_LABEL : "Shto detajet")
-        })}
-        ${renderHotelDetailCard({
-          iconName: "star",
-          label: "Vlerësime",
-          value: rating ? `${rating}${reviewCount ? ` / ${reviewCount} vlerësime` : ""}` : "Pa vlerësime",
-          helper: readFirstHotelText(record, ["reviewSummary", "ratingSummary", "commentsSummary"])
-        })}
-      </div>
-
-      <div class="bg-white rounded-[2.2rem] border border-slate-100 p-5 shadow-sm">
-        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">Të përfshira</p>
-        ${amenities.length ? `
-          <div class="flex flex-wrap gap-2">
-            ${amenities.map((item) => `<span class="px-3 py-2 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-600">${escapeHtml(item)}</span>`).join("")}
+      ${rating ? `
+        <section>
+          ${renderHotelSectionTitle({ iconName: "star", eyebrow: "Nga vizitorët", title: "Vlerësimet" })}
+          <div class="bg-slate-900 text-white rounded-[1.8rem] p-6 shadow-lg flex items-center gap-4">
+            <strong class="text-[46px] font-black leading-none tracking-tighter">${escapeHtml(rating)}</strong>
+            <div class="min-w-0">
+              <div class="flex gap-0.5 text-amber-400">${[0, 1, 2, 3, 4].map(() => icon("star", "w-4 h-4 fill-current")).join("")}</div>
+              <p class="mt-1.5 text-[11px] font-bold text-slate-400">${escapeHtml(reviewCount ? `${reviewCount} vlerësime` : "Vlerësime nga vizitorët")}</p>
+            </div>
           </div>
-        ` : `
-          <p class="text-sm font-bold text-slate-400">Shto pajisjet dhe detajet e dhomave.</p>
-        `}
-      </div>
+        </section>
+      ` : ""}
     </div>
   `;
 }

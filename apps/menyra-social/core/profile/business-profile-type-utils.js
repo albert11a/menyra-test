@@ -13,11 +13,13 @@ export function getBusinessProfileTypeCore(profile = {}, {
   const rest = getRestaurantMetaById(profile.restaurantId);
   const typeRaw = rest?.type
     || rest?.customerType
+    || rest?.businessType
     || rest?.category
     || rest?.kind
     || rest?.restaurantType
     || profile?.type
     || profile?.customerType
+    || profile?.businessType
     || profile?.category
     || profile?.kind
     || profile?.restaurantType

@@ -91,9 +91,27 @@ immer erst mit "Entwurf speichern".
 bei get/list/set/update/delete abgewiesen), `destinationsPublic` oeffentlich
 lesbar, aber nur CEO darf schreiben/loeschen.
 
+## Hotel-Detailseite
+
+Der Detail-Tab von Hotel-Profilen (`renderHotelDetailsView`,
+`core/profile/profile-menu-focus-render-controller.js` - eigener Lazy-Chunk,
+nicht im Entry) folgt der freigegebenen Design-Vorlage `mnyrahotelpreview.html`:
+
+- Zimmer/Offer-Rail aus den vorhandenen Hotel-Offers (nur wenn vorhanden).
+- Destination-Sektionen (Qyteti, Plazha, ...) aus `destinationsPublic/
+  {destinationId}` + `destinationOverrides` vom Restaurant-Dokument
+  (beides schreibt der Heart-Lead-Save). Entfernung + Geh-/Fahrzeit werden
+  aus Hotel-Pin und Ort-Koordinaten berechnet; versteckte Orte bleiben weg,
+  Foto-/Text-Patches des Hotels gewinnen. Merge/Sortierung:
+  `hotel-destination-content-core.js` (pure, getestet) auf Basis der
+  bestehenden merge-/distance-Cores.
+- Inklusiv-Leistungen als Icon-Grid, Karten-Card mit "Hap hartën" und
+  Distanz-Zeilen (Plazhi/Qendra), Bewertungs-Card bei vorhandenem Rating.
+
+`destinationsPublic` wird beim ersten Rendern des Tabs lazy per getDoc
+geladen (Session-Cache je Destination); bis dahin zeigt die Seite ein
+Skeleton, danach rendert `requestRenderFn` die fertigen Sektionen.
+
 ## Offene Folgearbeiten
 
-- Hotel-Detailseite (Design-Vorlage `mnyrahotelpreview.html`) an
-  `destinationsPublic` + Overrides anbinden, sobald das Design freigegeben
-  ist - als lazy Public-Chunk, nicht im Entry.
 - Optional: Versions-Pinning pro Lead ("nur zukuenftige Leads aktualisieren").
