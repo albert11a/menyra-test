@@ -24,6 +24,9 @@ import {
   formatHotelRoomPriceLabelCore
 } from "./hotel-rooms-utils.js";
 import {
+  normalizeHotelStaySectionCore
+} from "./hotel-stay-section-utils.js";
+import {
   renderHotelRoomsEditorSection
 } from "./hotel-rooms-editor-render-utils.js";
 import {
@@ -1243,6 +1246,45 @@ function collectHotelRoomOffers(record = {}) {
   return collectHotelEditorOfferItems(record).filter((item) => item.active !== false && String(item.title || "").trim());
 }
 
+// Oferta fuers "Me shume"-Modal und die Qendrimi-Sektion aufbereiten:
+// Preis-Label, Meta-Zeile (Dauer/Distanzen) und Badge aus den Offer-Feldern.
+function buildHotelOfferDisplayItems(record = {}) {
+  return collectHotelRoomOffers(record).map((offer) => {
+    const priceRaw = String(offer.hotelStartingPrice || offer.startingPrice || offer.priceFrom || offer.price || "").trim();
+    const priceLabel = priceRaw
+      ? (/^\d+(?:[.,]\d+)?$/.test(priceRaw) ? `€${priceRaw}` : priceRaw)
+      : "";
+    const priceUnit = String(offer.priceUnit || "").trim().toLowerCase();
+    const metaParts = [];
+    const durationLabel = String(offer.offerDurationLabel || "").trim();
+    if (durationLabel) metaParts.push({ icon: "clock", label: durationLabel });
+    const centerLabel = offer.directCenter === true || offer.inCenter === true
+      ? "Në qendër"
+      : String(offer.distanceCenter || "").trim();
+    if (centerLabel) metaParts.push({ icon: "nav", label: centerLabel });
+    const beachLabel = offer.beachfront === true || offer.onBeach === true
+      ? "Në plazh"
+      : String(offer.distanceBeach || "").trim();
+    if (beachLabel) metaParts.push({ icon: "waves", label: beachLabel });
+    return {
+      ...offer,
+      priceLabel,
+      priceSuffix: priceLabel ? (priceUnit === "total" ? "totali" : "/ person") : "",
+      metaParts,
+      tag: String(offer.tag || offer.offerBadgeLabel || "").trim()
+    };
+  });
+}
+
+// "Me shume"-Modal der Detailseite: Items lazy registrieren, ein delegierter
+// Listener uebernimmt Klicks - unabhaengig von Re-Renders der Seite.
+function scheduleHotelStayDetailModalSetup(payload = {}) {
+  if (typeof document === "undefined") return;
+  void import("./hotel-stay-detail-modal.js")
+    .then((module) => module?.registerHotelStayDetailItems?.(payload))
+    .catch(() => {});
+}
+
 // Manuell gepflegte Gehzeit zum Strand (Minuten) aus dem Hotel-/Lead-Editor.
 function readHotelBeachWalkMinutes(record = {}) {
   const raw = readFirstHotelText(record, [
@@ -1434,12 +1476,18 @@ function renderHotelDetailsBody(profile = {}) {
   const reviewCount = readFirstHotelText(record, ["reviewCount", "reviewsCount", "ratingsCount", "commentsCount"]);
   const ratingSummary = readFirstHotelText(record, ["reviewSummary", "ratingSummary", "commentsSummary"]);
   const amenities = collectHotelAmenities(record);
-  const offers = collectHotelRoomOffers(record);
+  const offers = buildHotelOfferDisplayItems(record);
   const rooms = collectHotelRoomsCore(record).map((room) => ({
     ...room,
     priceLabel: formatHotelRoomPriceLabelCore(room),
     metaParts: buildHotelRoomMetaPartsCore(room)
   }));
+  const staySection = normalizeHotelStaySectionCore(record.hotelStaySection);
+  scheduleHotelStayDetailModalSetup({
+    rooms,
+    offers,
+    imageUrlFn: (url, variant = "large") => getOptimizedImageUrl(url, variant)
+  });
   const destinationId = String(record.destinationId || "").trim();
   const destinationName = String(record.destinationName || "").trim();
   const overrides = normalizeDestinationOverridesCore(record.destinationOverrides || {});
@@ -1476,6 +1524,7 @@ function renderHotelDetailsBody(profile = {}) {
   return renderHotelDetailViewCore({
     rooms,
     offers,
+    staySection,
     amenities,
     address,
     city,
@@ -1665,7 +1714,9 @@ function renderHotelCardAdminView(profile = {}) {
         ${renderHotelRoomsEditorSection({
           restaurantId,
           record,
-          editorState: state.hotelRoomsEditor && typeof state.hotelRoomsEditor === "object" ? state.hotelRoomsEditor : {}
+          editorState: state.hotelRoomsEditor && typeof state.hotelRoomsEditor === "object" ? state.hotelRoomsEditor : {},
+          hasOffers: getFocusStateForRestaurant(restaurantId, { includeInactive: true }).items.length > 0
+            || collectHotelRoomOffers(record).length > 0
         })}
         ${renderFocusAdminSection(restaurantId, { variant: "travel-offers", suppressLoading: true })}
       ` : `

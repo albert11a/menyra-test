@@ -124,6 +124,48 @@ export function renderCustomerModalCore({
   `;
 }
 
+export const MAX_FOCUS_OFFER_EXTRA_IMAGES = 10;
+
+// Zusatzfotos der Oferta: gespeicherte URLs + neue lokale Vorschauen, jeweils
+// mit Entfernen-Button; die Galerie erscheint im "Me shume"-Modal der Gaeste.
+function renderOfferExtraImagesEditor({ state, getOptimizedImageUrl, escapeHtml } = {}) {
+  const modal = state?.focusModal || {};
+  const existing = (Array.isArray(modal.existingExtraImages) ? modal.existingExtraImages : [])
+    .map((url) => String(url || "").trim())
+    .filter(Boolean);
+  // Previews nicht filtern: der Index muss zu extraImageFiles passen.
+  const previews = (Array.isArray(modal.extraImagePreviews) ? modal.extraImagePreviews : [])
+    .map((url) => String(url || "").trim());
+  const totalCount = existing.length + previews.length;
+  const tile = (url, index, source) => `
+    <div class="relative w-20 h-20 rounded-2xl overflow-hidden bg-white border border-slate-100 shrink-0">
+      ${url
+        ? `<img src="${escapeHtml(source === "existing" ? getOptimizedImageUrl(url, "thumb") : url)}" alt="" loading="lazy" decoding="async" class="w-full h-full object-cover" />`
+        : `<span class="w-full h-full flex items-center justify-center text-[8px] font-black text-slate-300 uppercase">Foto</span>`}
+      <button type="button" data-focus-extra-image-remove="${index}" data-focus-extra-image-source="${source}" class="absolute top-1 right-1 w-6 h-6 rounded-lg bg-white/90 text-slate-500 flex items-center justify-center text-[10px] font-black shadow" aria-label="Hiq foton">✕</button>
+    </div>
+  `;
+  return `
+    <div class="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fotot e tjera</p>
+        <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">${totalCount} / ${MAX_FOCUS_OFFER_EXTRA_IMAGES}</span>
+      </div>
+      <p class="text-[10px] font-bold text-slate-400">Shfaqen te "Më shumë" në detajet e hotelit.</p>
+      ${totalCount ? `
+        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          ${existing.map((url, index) => tile(url, index, "existing")).join("")}
+          ${previews.map((url, index) => tile(url, index, "new")).join("")}
+        </div>
+      ` : ""}
+      <input type="file" id="focusExtraImagesInput" class="hidden" accept="image/*" multiple />
+      <button type="button" id="focusExtraImagesTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform" ${totalCount >= MAX_FOCUS_OFFER_EXTRA_IMAGES ? "disabled" : ""}>
+        Shto foto
+      </button>
+    </div>
+  `;
+}
+
 export function renderFocusModalCore({
   state,
   getOptimizedImageUrl,
@@ -555,6 +597,7 @@ export function renderFocusModalCore({
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Të tjera</label>
               <textarea id="focusFeaturesText" rows="4" placeholder="Pool&#10;Spa&#10;Recepsion 24/7" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(offerCustomFeatures.join("\n"))}</textarea>
             </div>
+            ${renderOfferExtraImagesEditor({ state, getOptimizedImageUrl, escapeHtml })}
           </div>
         ` : ""}
         <div>

@@ -899,7 +899,10 @@ const state = {
     cropX: 50,
     cropY: 50,
     imageFile: null,
-    imagePreview: ""
+    imagePreview: "",
+    existingExtraImages: [],
+    extraImageFiles: [],
+    extraImagePreviews: []
   },
   leads: {},
   customers: {},

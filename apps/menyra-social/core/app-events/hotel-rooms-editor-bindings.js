@@ -1,13 +1,23 @@
 import {
+  MAX_HOTEL_ROOM_IMAGES,
   createHotelRoomIdCore,
   normalizeHotelRoomsCore
 } from "../profile/hotel-rooms-utils.js";
+import {
+  normalizeHotelStaySectionCore
+} from "../profile/hotel-stay-section-utils.js";
 
-export const HOTEL_ROOMS_EDITOR_BINDINGS_VERSION = "hotel-rooms-editor-bindings.v1";
+export const HOTEL_ROOMS_EDITOR_BINDINGS_VERSION = "hotel-rooms-editor-bindings.v2";
 
 function asText(value = "") {
   if (value == null) return "";
   return String(value).trim();
+}
+
+function asUrlList(value = []) {
+  return (Array.isArray(value) ? value : [])
+    .map(asText)
+    .filter(Boolean);
 }
 
 /**
@@ -44,7 +54,7 @@ export function bindHotelRoomsEditorEvents({
       ? state.hotelRoomsEditor
       : {};
     if (asText(current.restaurantId) !== restaurantId) {
-      return { restaurantId, rooms: null, imageFiles: {}, imagePreviews: {}, saving: false, status: "" };
+      return { restaurantId, rooms: null, imageFiles: {}, imagePreviews: {}, saving: false, status: "", staySection: "" };
     }
     return {
       restaurantId,
@@ -52,7 +62,8 @@ export function bindHotelRoomsEditorEvents({
       imageFiles: current.imageFiles && typeof current.imageFiles === "object" ? current.imageFiles : {},
       imagePreviews: current.imagePreviews && typeof current.imagePreviews === "object" ? current.imagePreviews : {},
       saving: current.saving === true,
-      status: asText(current.status)
+      status: asText(current.status),
+      staySection: asText(current.staySection)
     };
   }
 
@@ -61,10 +72,16 @@ export function bindHotelRoomsEditorEvents({
     return node ? String(node.value || "") : "";
   }
 
+  // Bestehende Galerie-URLs pro Zimmer aus dem Hidden-Input (Zeile = URL).
+  function readRoomImages(roomId = "") {
+    return asUrlList(readValue(`hotelRoomImagesData_${roomId}`).split("\n"));
+  }
+
   function readRoomsFromDom() {
     return Array.from(doc.querySelectorAll("[data-hotel-room-row]")).map((row) => {
       const roomId = asText(row.getAttribute("data-hotel-room-row"));
       const activeNode = doc.getElementById(`hotelRoomActive_${roomId}`);
+      const images = readRoomImages(roomId);
       return {
         id: roomId,
         title: readValue(`hotelRoomTitle_${roomId}`).trim(),
@@ -74,7 +91,8 @@ export function bindHotelRoomsEditorEvents({
         size: readValue(`hotelRoomSize_${roomId}`).trim(),
         tag: readValue(`hotelRoomTag_${roomId}`).trim(),
         description: readValue(`hotelRoomDesc_${roomId}`).trim(),
-        imageUrl: readValue(`hotelRoomImageUrl_${roomId}`).trim(),
+        images,
+        imageUrl: images[0] || "",
         active: activeNode && "checked" in activeNode ? !!activeNode.checked : true
       };
     });
@@ -82,6 +100,27 @@ export function bindHotelRoomsEditorEvents({
 
   function patchEditorState(patch = {}) {
     state.hotelRoomsEditor = { ...ensureEditorState(), ...patch };
+  }
+
+  function roomFiles(editorState, roomId) {
+    const entry = editorState.imageFiles?.[roomId];
+    if (Array.isArray(entry)) return entry.filter(Boolean);
+    return entry ? [entry] : [];
+  }
+
+  // Previews bewusst NICHT filtern: der Index muss zu imageFiles passen.
+  function roomPreviews(editorState, roomId) {
+    const entry = editorState.imagePreviews?.[roomId];
+    const list = Array.isArray(entry) ? entry : (entry ? [entry] : []);
+    return list.map(asText);
+  }
+
+  function revokePreviewUrl(url = "") {
+    const safe = asText(url);
+    if (!safe.startsWith("blob:")) return;
+    try {
+      doc.defaultView?.URL?.revokeObjectURL?.(safe);
+    } catch {}
   }
 
   // Lokalen App-Zustand aktualisieren, damit die Detailseite die Zimmer sofort
@@ -111,12 +150,13 @@ export function bindHotelRoomsEditorEvents({
     patchEditorState({ rooms: domRooms, saving: true, status: "Po ruhen..." });
     render();
     try {
-      const imageFiles = editorState.imageFiles || {};
       const roomsWithImages = [];
       for (const room of domRooms) {
-        let imageUrl = asText(room.imageUrl);
-        const file = imageFiles[room.id] || null;
-        if (file) {
+        const existingImages = asUrlList(room.images);
+        const files = roomFiles(editorState, room.id);
+        const uploadedUrls = [];
+        for (const file of files) {
+          if (existingImages.length + uploadedUrls.length >= MAX_HOTEL_ROOM_IMAGES) break;
           if (!uploadCompressedImage) throw new Error("Ngarkimi i fotos nuk eshte gati.");
           const uploaded = await uploadCompressedImage(file, restaurantId, {
             maxSize: 1080,
@@ -125,21 +165,26 @@ export function bindHotelRoomsEditorEvents({
           });
           const uploadedUrl = asText(uploaded?.cdnUrl || uploaded?.url);
           if (!uploadedUrl) throw new Error("Ngarkimi nuk dha URL te fotos.");
-          imageUrl = uploadedUrl;
+          uploadedUrls.push(uploadedUrl);
         }
-        roomsWithImages.push({ ...room, imageUrl });
+        const images = [...existingImages, ...uploadedUrls].slice(0, MAX_HOTEL_ROOM_IMAGES);
+        roomsWithImages.push({ ...room, images, imageUrl: images[0] || "" });
       }
       const hotelRooms = normalizeHotelRoomsCore(roomsWithImages).filter((room) => room.title);
       const payload = { hotelRooms, updatedAt: serverTimestamp() };
       await setDoc(makeDocRef(db, "restaurants", restaurantId), payload, { merge: true });
       updateLocalRecords({ hotelRooms });
+      Object.values(ensureEditorState().imagePreviews || {}).forEach((entry) => {
+        (Array.isArray(entry) ? entry : [entry]).forEach(revokePreviewUrl);
+      });
       state.hotelRoomsEditor = {
         restaurantId,
         rooms: hotelRooms,
         imageFiles: {},
         imagePreviews: {},
         saving: false,
-        status: "Dhomat u ruajten."
+        status: "Dhomat u ruajten.",
+        staySection: ensureEditorState().staySection
       };
       render();
     } catch (err) {
@@ -148,6 +193,34 @@ export function bindHotelRoomsEditorEvents({
       render();
     }
   }
+
+  // Auswahl "Dhomat vs. Oferta" fuer die Detailseiten-Sektion: wird sofort
+  // gespeichert, unabhaengig vom "Ruaj Dhomat"-Button.
+  async function saveStaySection(nextSection = "") {
+    if (!setDoc || !makeDocRef || !db) return;
+    const staySection = normalizeHotelStaySectionCore(nextSection);
+    patchEditorState({ rooms: readRoomsFromDom(), staySection, status: "" });
+    render();
+    try {
+      await setDoc(makeDocRef(db, "restaurants", restaurantId), {
+        hotelStaySection: staySection,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      updateLocalRecords({ hotelStaySection: staySection });
+    } catch (err) {
+      console.error(err);
+      patchEditorState({ status: "Zgjedhja nuk u ruajt." });
+      render();
+    }
+  }
+
+  doc.querySelectorAll("[data-hotel-stay-section-choice]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const choice = asText(btn.getAttribute("data-hotel-stay-section-choice"));
+      if (!choice || btn.disabled) return;
+      void saveStaySection(choice);
+    });
+  });
 
   const addBtn = doc.getElementById("hotelRoomAddBtn");
   if (addBtn) {
@@ -165,6 +238,7 @@ export function bindHotelRoomsEditorEvents({
       const editorState = ensureEditorState();
       const imageFiles = { ...editorState.imageFiles };
       const imagePreviews = { ...editorState.imagePreviews };
+      roomPreviews(editorState, roomId).forEach(revokePreviewUrl);
       delete imageFiles[roomId];
       delete imagePreviews[roomId];
       patchEditorState({
@@ -173,6 +247,39 @@ export function bindHotelRoomsEditorEvents({
         imagePreviews,
         status: ""
       });
+      render();
+    });
+  });
+
+  // Einzelnes Foto entfernen: "existing" loescht die gespeicherte URL aus dem
+  // Zimmer, "new" verwirft Datei + lokale Vorschau vor dem Upload.
+  doc.querySelectorAll("[data-hotel-room-image-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const roomId = asText(btn.getAttribute("data-hotel-room-image-remove"));
+      const index = Number(btn.getAttribute("data-hotel-room-image-index"));
+      const source = asText(btn.getAttribute("data-hotel-room-image-source"));
+      if (!roomId || !Number.isFinite(index)) return;
+      const editorState = ensureEditorState();
+      const rooms = readRoomsFromDom();
+      if (source === "existing") {
+        const room = rooms.find((entry) => entry.id === roomId);
+        if (room) {
+          room.images = asUrlList(room.images).filter((_, i) => i !== index);
+          room.imageUrl = room.images[0] || "";
+        }
+        patchEditorState({ rooms, status: "" });
+      } else {
+        const files = roomFiles(editorState, roomId).filter((_, i) => i !== index);
+        const previews = roomPreviews(editorState, roomId);
+        revokePreviewUrl(previews[index]);
+        const nextPreviews = previews.filter((_, i) => i !== index);
+        patchEditorState({
+          rooms,
+          imageFiles: { ...editorState.imageFiles, [roomId]: files },
+          imagePreviews: { ...editorState.imagePreviews, [roomId]: nextPreviews },
+          status: ""
+        });
+      }
       render();
     });
   });
@@ -187,18 +294,29 @@ export function bindHotelRoomsEditorEvents({
   doc.querySelectorAll("[data-hotel-room-image-input]").forEach((input) => {
     input.addEventListener("change", () => {
       const roomId = asText(input.getAttribute("data-hotel-room-image-input"));
-      const file = Array.from(input.files || []).find((entry) => entry && String(entry.type || "").startsWith("image/")) || null;
-      if (!roomId || !file) return;
+      const files = Array.from(input.files || [])
+        .filter((entry) => entry && String(entry.type || "").startsWith("image/"));
+      if (!roomId || !files.length) return;
       const editorState = ensureEditorState();
-      let previewUrl = "";
-      try {
-        previewUrl = doc.defaultView?.URL?.createObjectURL ? doc.defaultView.URL.createObjectURL(file) : "";
-      } catch {}
+      const rooms = readRoomsFromDom();
+      const existingCount = asUrlList(rooms.find((entry) => entry.id === roomId)?.images).length;
+      const currentFiles = roomFiles(editorState, roomId);
+      const currentPreviews = roomPreviews(editorState, roomId);
+      const freeSlots = Math.max(0, MAX_HOTEL_ROOM_IMAGES - existingCount - currentFiles.length);
+      const accepted = files.slice(0, freeSlots);
+      const newPreviews = accepted.map((file) => {
+        try {
+          return doc.defaultView?.URL?.createObjectURL ? doc.defaultView.URL.createObjectURL(file) : "";
+        } catch {
+          return "";
+        }
+      });
+      // Files und Previews bleiben index-synchron (Entfernen per Index).
       patchEditorState({
-        rooms: readRoomsFromDom(),
-        imageFiles: { ...editorState.imageFiles, [roomId]: file },
-        imagePreviews: { ...editorState.imagePreviews, ...(previewUrl ? { [roomId]: previewUrl } : {}) },
-        status: ""
+        rooms,
+        imageFiles: { ...editorState.imageFiles, [roomId]: [...currentFiles, ...accepted] },
+        imagePreviews: { ...editorState.imagePreviews, [roomId]: [...currentPreviews, ...newPreviews] },
+        status: accepted.length < files.length ? `Maksimumi ${MAX_HOTEL_ROOM_IMAGES} foto për dhomë.` : ""
       });
       try { input.value = ""; } catch {}
       render();

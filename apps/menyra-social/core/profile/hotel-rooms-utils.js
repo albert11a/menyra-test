@@ -1,6 +1,7 @@
-export const HOTEL_ROOMS_UTILS_VERSION = "hotel-rooms-utils.v1";
+export const HOTEL_ROOMS_UTILS_VERSION = "hotel-rooms-utils.v2";
 
 const MAX_HOTEL_ROOMS = 20;
+export const MAX_HOTEL_ROOM_IMAGES = 8;
 
 function asText(value = "") {
   if (value == null) return "";
@@ -21,15 +22,33 @@ export function createHotelRoomIdCore(nowMs = Date.now(), randomValue = Math.ran
   return `room_${timePart}_${randomPart}`;
 }
 
+// Mehrere Fotos pro Zimmer: images[0] bleibt als imageUrl gespiegelt, damit
+// Altbestand (nur imageUrl) und neue Galerie-Daten dieselbe Wahrheit teilen.
+export function normalizeHotelRoomImagesCore(source = {}) {
+  const raw = source && typeof source === "object" ? source : {};
+  const list = [
+    ...(Array.isArray(raw.images) ? raw.images : []),
+    asText(raw.imageUrl ?? raw.image ?? raw.photoUrl)
+  ];
+  const unique = [];
+  list.forEach((entry) => {
+    const url = asText(entry);
+    if (url && !unique.includes(url)) unique.push(url);
+  });
+  return unique.slice(0, MAX_HOTEL_ROOM_IMAGES);
+}
+
 export function normalizeHotelRoomCore(raw = {}, { index = 0 } = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
   const persons = asPositiveNumber(source.persons ?? source.guests ?? source.capacity);
   const size = asPositiveNumber(source.size ?? source.sizeSqm ?? source.area);
+  const images = normalizeHotelRoomImagesCore(source);
   return {
     id: asText(source.id) || createHotelRoomIdCore(Date.now() + index),
     title: asText(source.title ?? source.name),
     description: asText(source.description ?? source.text).slice(0, 400),
-    imageUrl: asText(source.imageUrl ?? source.image ?? source.photoUrl),
+    imageUrl: images[0] || "",
+    images,
     price: asPositiveNumber(source.price ?? source.pricePerNight),
     currency: asText(source.currency ?? source.currencyCode).toUpperCase() || "EUR",
     persons: persons == null ? null : Math.min(20, Math.round(persons)),

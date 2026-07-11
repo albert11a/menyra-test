@@ -525,6 +525,12 @@ function normalizePublicOfferItem(value, index = 0) {
     "imageUrl",
     source.imageUrl || source.image || source.photoUrl || source.offerImageUrl,
   );
+  // Oferta-Galerie: mehrere Fotos fuers "Me shume"-Modal der Hotel-Details.
+  const offerImages = (Array.isArray(source.images) ? source.images : [])
+    .map((entry) => cleanUrl(entry))
+    .filter(Boolean)
+    .slice(0, 12);
+  if (offerImages.length) output.images = offerImages;
   assignUrl(output, "videoUrl", source.videoUrl || source.video || source.clipUrl);
   assignUrl(output, "posterUrl", source.posterUrl || source.poster || source.videoPoster);
   if (

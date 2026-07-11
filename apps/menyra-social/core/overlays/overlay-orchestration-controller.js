@@ -257,6 +257,13 @@ export function createOverlayOrchestrationController({
     const kind = String(options?.kind || item?.modalKind || item?.kind || "focus").trim().toLowerCase() === "ad"
       ? "ad"
       : "focus";
+    // Zusatzfotos der Oferta-Galerie: alle gespeicherten Bilder ausser dem
+    // Hauptbild (das weiter ueber den Hero-Upload laeuft).
+    const mainImageUrl = String(item?.imageUrl || "").trim();
+    const existingExtraImages = (Array.isArray(item?.images) ? item.images : [])
+      .map((url) => String(url || "").trim())
+      .filter((url) => url && url !== mainImageUrl)
+      .filter((url, index, list) => list.indexOf(url) === index);
     state.focusModal = {
       open: true,
       kind,
@@ -268,6 +275,9 @@ export function createOverlayOrchestrationController({
       cropY: crop.y,
       imageFile: null,
       imagePreview: "",
+      existingExtraImages,
+      extraImageFiles: [],
+      extraImagePreviews: [],
       videoFile: null,
       videoPreview: "",
       videoPosterPreview: ""
@@ -282,6 +292,15 @@ export function createOverlayOrchestrationController({
         URL.revokeObjectURL(staleFocusVideoPreview);
       } catch {}
     }
+    // Object-URLs der Oferta-Zusatzfotos freigeben.
+    (Array.isArray(state.focusModal?.extraImagePreviews) ? state.focusModal.extraImagePreviews : []).forEach((previewUrl) => {
+      const safeUrl = String(previewUrl || "").trim();
+      if (!safeUrl.startsWith("blob:")) return;
+      if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
+      try {
+        URL.revokeObjectURL(safeUrl);
+      } catch {}
+    });
     state.focusModal = {
       open: false,
       kind: "focus",
@@ -293,6 +312,9 @@ export function createOverlayOrchestrationController({
       cropY: 50,
       imageFile: null,
       imagePreview: "",
+      existingExtraImages: [],
+      extraImageFiles: [],
+      extraImagePreviews: [],
       videoFile: null,
       videoPreview: "",
       videoPosterPreview: ""

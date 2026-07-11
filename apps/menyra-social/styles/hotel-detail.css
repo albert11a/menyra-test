@@ -426,3 +426,40 @@
   font-size: 11px;
   font-weight: 800;
 }
+
+/* "Me shume"-Button auf Dhoma-/Oferta-Karten + Foto-Zaehler im Titelbild. */
+.mhd-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 13px;
+  padding: 0 14px;
+  color: var(--mhd-ink);
+  background: var(--mhd-soft);
+  border: 1px solid var(--mhd-border);
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.mhd-more:active { transform: scale(0.98); }
+.mhd-more .mhd-icon { width: 14px; height: 14px; }
+
+.mhd-photo-count {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  padding: 4px 9px;
+  color: #fff;
+  background: rgba(26, 29, 46, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}

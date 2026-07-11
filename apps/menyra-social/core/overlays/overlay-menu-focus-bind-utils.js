@@ -1,4 +1,5 @@
 import { isVideoFileCore, captureVideoPosterFileCore } from "../media/video-poster-utils.js";
+import { MAX_FOCUS_OFFER_EXTRA_IMAGES } from "../menu/customer-focus-modal-render-utils.js";
 
 function revokeObjectUrlSafe(url) {
   const safe = String(url || "").trim();
@@ -351,6 +352,55 @@ export function bindFocusOverlayEventsCore({
       reader.readAsDataURL(file);
     });
   }
+  // Zusatzfotos der Oferta-Galerie: mehrere Dateien pro Auswahl, Vorschau
+  // per Object-URL; Files und Previews bleiben index-synchron.
+  const focusExtraTrigger = doc.getElementById("focusExtraImagesTrigger");
+  const focusExtraInput = doc.getElementById("focusExtraImagesInput");
+  if (focusExtraTrigger && focusExtraInput) {
+    focusExtraTrigger.addEventListener("click", () => focusExtraInput.click());
+  }
+  if (focusExtraInput) {
+    focusExtraInput.addEventListener("change", (e) => {
+      const files = Array.from(e.target.files || []).filter((file) => file && !isVideoFileCore(file));
+      if (!files.length) return;
+      const existingCount = (state.focusModal.existingExtraImages || []).length;
+      const currentFiles = Array.isArray(state.focusModal.extraImageFiles) ? state.focusModal.extraImageFiles : [];
+      const currentPreviews = Array.isArray(state.focusModal.extraImagePreviews) ? state.focusModal.extraImagePreviews : [];
+      const freeSlots = Math.max(0, MAX_FOCUS_OFFER_EXTRA_IMAGES - existingCount - currentFiles.length);
+      const accepted = files.slice(0, freeSlots);
+      const newPreviews = accepted.map((file) => {
+        try {
+          return (typeof URL !== "undefined" && typeof URL.createObjectURL === "function")
+            ? URL.createObjectURL(file)
+            : "";
+        } catch {
+          return "";
+        }
+      });
+      state.focusModal.extraImageFiles = [...currentFiles, ...accepted];
+      state.focusModal.extraImagePreviews = [...currentPreviews, ...newPreviews];
+      if (accepted.length < files.length) {
+        state.focusModal.status = `Maksimumi ${MAX_FOCUS_OFFER_EXTRA_IMAGES} foto shtesë.`;
+      }
+      try { focusExtraInput.value = ""; } catch {}
+      renderOverlays({ updateFocus: true });
+    });
+  }
+  doc.querySelectorAll("[data-focus-extra-image-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-focus-extra-image-remove"));
+      const source = btn.getAttribute("data-focus-extra-image-source") || "existing";
+      if (!Number.isFinite(idx)) return;
+      if (source === "existing") {
+        state.focusModal.existingExtraImages = (state.focusModal.existingExtraImages || []).filter((_, i) => i !== idx);
+      } else {
+        revokeObjectUrlSafe((state.focusModal.extraImagePreviews || [])[idx]);
+        state.focusModal.extraImageFiles = (state.focusModal.extraImageFiles || []).filter((_, i) => i !== idx);
+        state.focusModal.extraImagePreviews = (state.focusModal.extraImagePreviews || []).filter((_, i) => i !== idx);
+      }
+      renderOverlays({ updateFocus: true });
+    });
+  });
   const focusVideoRemove = doc.getElementById("focusVideoRemove");
   if (focusVideoRemove) {
     focusVideoRemove.addEventListener("click", () => {

@@ -70,3 +70,27 @@ test("formatHotelRoomPriceLabelCore formats price with currency", () => {
   assert.equal(formatHotelRoomPriceLabelCore({ price: 4500, currency: "LEK" }), "4500 LEK");
   assert.equal(formatHotelRoomPriceLabelCore({ price: 0 }), "");
 });
+
+test("normalizeHotelRoomCore normalizes multi-image gallery", () => {
+  const room = normalizeHotelRoomCore({
+    id: "room_g",
+    title: "Suite",
+    images: ["https://one.jpg", " https://two.jpg ", "", "https://one.jpg"],
+    imageUrl: "https://legacy.jpg"
+  });
+  assert.deepEqual(room.images, ["https://one.jpg", "https://two.jpg", "https://legacy.jpg"]);
+  assert.equal(room.imageUrl, "https://one.jpg");
+});
+
+test("normalizeHotelRoomCore keeps legacy single imageUrl as gallery", () => {
+  const room = normalizeHotelRoomCore({ id: "room_l", title: "Basic", imageUrl: "https://legacy.jpg" });
+  assert.deepEqual(room.images, ["https://legacy.jpg"]);
+  assert.equal(room.imageUrl, "https://legacy.jpg");
+});
+
+test("normalizeHotelRoomCore caps gallery at 8 images", () => {
+  const many = Array.from({ length: 12 }, (_, index) => `https://img${index}.jpg`);
+  const room = normalizeHotelRoomCore({ id: "room_m", title: "Grande", images: many });
+  assert.equal(room.images.length, 8);
+  assert.equal(room.imageUrl, "https://img0.jpg");
+});

@@ -265,3 +265,43 @@ test("amenities section always comes second, right after rooms", () => {
   assert.ok(roomsIndex < amenitiesIndex, "Dhoma vor Përfshihet");
   assert.ok(amenitiesIndex < destinationIndex, "Përfshihet vor Destination-Sektionen");
 });
+
+test("renderHotelRoomsSectionCore shows offers when staySection is offers", () => {
+  const html = renderHotelRoomsSectionCore({
+    rooms: [{ id: "r1", title: "Dhome Deluxe", active: true }],
+    offers: [{ id: "o1", title: "Oferta Verore", priceLabel: "€145", priceSuffix: "/ person", active: true }],
+    staySection: "offers"
+  });
+  assert.match(html, /Oferta Verore/);
+  assert.match(html, /Oferta për ty/);
+  assert.doesNotMatch(html, /Dhome Deluxe/);
+  assert.match(html, /data-hotel-stay-more="o1"/);
+  assert.match(html, /data-hotel-stay-kind="offer"/);
+});
+
+test("renderHotelRoomsSectionCore falls back to rooms when offers empty", () => {
+  const html = renderHotelRoomsSectionCore({
+    rooms: [{ id: "r1", title: "Dhome Deluxe", active: true }],
+    offers: [],
+    staySection: "offers"
+  });
+  assert.match(html, /Dhome Deluxe/);
+  assert.match(html, /Qëndrimi yt/);
+  assert.match(html, /data-hotel-stay-kind="room"/);
+});
+
+test("renderHotelRoomsSectionCore adds Me shume button and photo count", () => {
+  const html = renderHotelRoomsSectionCore({
+    rooms: [{
+      id: "r1",
+      title: "Dhome Deluxe",
+      images: ["https://one.jpg", "https://two.jpg", "https://three.jpg"],
+      active: true
+    }]
+  });
+  assert.match(html, /Më shumë/);
+  assert.match(html, /data-hotel-stay-more="r1"/);
+  assert.match(html, /3 foto/);
+  assert.match(html, /https:\/\/one\.jpg/);
+  assert.doesNotMatch(html, /https:\/\/two\.jpg/);
+});

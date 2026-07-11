@@ -10,18 +10,24 @@ import {
   groupDestinationPlacesByCategoryCore,
   resolveLeadDestinationPlacesCore
 } from "../destinations/destination-merge-core.js";
+import {
+  HOTEL_STAY_SECTION_OFFERS,
+  collectHotelStayImagesCore,
+  resolveHotelStaySectionCore
+} from "./hotel-stay-section-utils.js";
 
-export const HOTEL_DETAIL_RENDER_UTILS_VERSION = "hotel-detail-render-utils.v1";
+export const HOTEL_DETAIL_RENDER_UTILS_VERSION = "hotel-detail-render-utils.v2";
 
 export const HOTEL_DESTINATION_SECTIONS_CONTAINER_ID = "mnyraHotelDestinationSections";
 
 const HOTEL_DETAIL_STYLE_ID = "mnyraHotelDetailStyles";
-const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v5";
+const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v6";
 
 const TRAVEL_LABELS_SQ = Object.freeze({ walk: "min në këmbë", drive: "min me makinë" });
 
 const SECTION_EYEBROWS_SQ = Object.freeze({
   rooms: "Qëndrimi yt",
+  offers: "Oferta për ty",
   city: "Përreth teje",
   beach: "Deti afër",
   sights: "Vlen të shihet",
@@ -297,36 +303,62 @@ function renderRoomMetaRow(metaParts = []) {
   `;
 }
 
+function filterActiveStayItems(list = []) {
+  return (Array.isArray(list) ? list : [])
+    .filter((item) => item && item.active !== false && asText(item.title));
+}
+
 export function renderHotelRoomsSectionCore({
   rooms = [],
   offers = [],
+  staySection = "",
   imageUrlFn = null
 } = {}) {
-  // Bevorzugt echte Zimmer (Dhomat-Editor); Angebote nur als Altbestand-Fallback.
-  const items = (Array.isArray(rooms) && rooms.length ? rooms : (Array.isArray(offers) ? offers : []))
-    .filter((item) => item && item.active !== false && asText(item.title));
+  const activeRooms = filterActiveStayItems(rooms);
+  const activeOffers = filterActiveStayItems(offers);
+  // Der Hotelier waehlt im Editor, ob die Sektion Dhomat oder Oferta zeigt;
+  // ohne Auswahl bleibt das alte Verhalten (Zimmer, Angebote als Fallback).
+  const effectiveSection = resolveHotelStaySectionCore({
+    preferred: staySection,
+    roomsCount: activeRooms.length,
+    offersCount: activeOffers.length
+  });
+  const showOffers = effectiveSection === HOTEL_STAY_SECTION_OFFERS;
+  const items = showOffers ? activeOffers : (activeRooms.length ? activeRooms : activeOffers);
+  const stayKind = showOffers || !activeRooms.length ? "offer" : "room";
   if (!items.length) return "";
   return `
     <section class="mhd-section">
-      ${renderSectionTitle({ iconName: "bed", eyebrow: SECTION_EYEBROWS_SQ.rooms, title: "Dhoma" })}
+      ${renderSectionTitle({
+        iconName: showOffers ? "sparkles" : "bed",
+        eyebrow: showOffers ? SECTION_EYEBROWS_SQ.offers : SECTION_EYEBROWS_SQ.rooms,
+        title: showOffers ? "Oferta" : "Dhoma"
+      })}
       <div class="mhd-rail">
         ${items.map((item) => {
-          const rawImage = asText(item.imageUrl);
+          const images = collectHotelStayImagesCore(item);
+          const rawImage = images[0] || "";
           const imageUrl = rawImage && typeof imageUrlFn === "function" ? asText(imageUrlFn(rawImage)) || rawImage : rawImage;
           const priceLabel = normalizeRoomPriceLabel(item);
+          const priceSuffix = asText(item.priceSuffix) || "/ natë";
           return `
             <article class="mhd-card">
               <div class="mhd-photo">
                 ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}" loading="lazy" decoding="async" />` : ""}
                 ${asText(item.tag || item.badge) ? `<span class="mhd-pill mhd-pill--overlay mhd-pill--accent">${escapeHtml(item.tag || item.badge)}</span>` : ""}
+                ${images.length > 1 ? `<span class="mhd-photo-count">${images.length} foto</span>` : ""}
               </div>
               <div class="mhd-card-body">
                 <div class="mhd-heading-price">
                   <h3>${escapeHtml(item.title)}</h3>
-                  ${priceLabel ? `<span class="mhd-price"><strong>${escapeHtml(priceLabel)}</strong><small>/ natë</small></span>` : ""}
+                  ${priceLabel ? `<span class="mhd-price"><strong>${escapeHtml(priceLabel)}</strong><small>${escapeHtml(priceSuffix)}</small></span>` : ""}
                 </div>
                 ${renderRoomMetaRow(item.metaParts)}
                 ${asText(item.text || item.description) ? `<p class="mhd-copy">${escapeHtml(item.text || item.description)}</p>` : ""}
+                <button type="button" class="mhd-more" data-hotel-stay-more="${escapeHtml(asText(item.id))}" data-hotel-stay-kind="${stayKind}">
+                  Më shumë
+                  ${mhdIcon("expand", "mhd-icon--sm")}
+                </button>
               </div>
             </article>
           `;
@@ -470,6 +502,7 @@ export function renderHotelRatingSectionCore({
 export function renderHotelDetailViewCore({
   rooms = [],
   offers = [],
+  staySection = "",
   amenities = [],
   address = "",
   city = "",
@@ -490,7 +523,7 @@ export function renderHotelDetailViewCore({
     || (hasDestination ? renderHotelDestinationSkeletonCore() : "");
   return `
     <div class="mhd">
-      ${renderHotelRoomsSectionCore({ rooms, offers, imageUrlFn })}
+      ${renderHotelRoomsSectionCore({ rooms, offers, staySection, imageUrlFn })}
       ${renderHotelAmenitiesSectionCore({ amenities })}
       <div id="${HOTEL_DESTINATION_SECTIONS_CONTAINER_ID}" data-destination-id="${escapeHtml(destinationId)}" style="display:contents">
         ${destinationContent}

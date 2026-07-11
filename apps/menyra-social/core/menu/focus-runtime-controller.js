@@ -212,6 +212,22 @@ export function createFocusRuntimeController({
     ].filter(Boolean).filter((entry, index, list) => list.indexOf(entry) === index);
   }
 
+  // Galerie einer Oferta: Hauptbild zuerst, danach die Zusatzfotos -
+  // dedupliziert und gedeckelt (fuers "Me shume"-Modal der Detailseite).
+  const MAX_OFFER_IMAGES = 12;
+  function collectOfferImages(item = {}, mainImageUrl = "") {
+    const list = [
+      cleanFocusText(mainImageUrl || item.imageUrl),
+      ...(Array.isArray(item.images) ? item.images : [])
+    ];
+    const unique = [];
+    list.forEach((entry) => {
+      const url = cleanFocusText(entry);
+      if (url && !unique.includes(url)) unique.push(url);
+    });
+    return unique.slice(0, MAX_OFFER_IMAGES);
+  }
+
   function normalizeFocusItem(data, fallbackId) {
     const item = data || {};
     const id = item.id || item._id || fallbackId || createFocusId();
@@ -238,6 +254,7 @@ export function createFocusRuntimeController({
     if (hasTravelOfferFields(item)) {
       const features = collectTravelOfferFeatures(item);
       normalized.isTravelOffer = true;
+      normalized.images = collectOfferImages(item, imageUrl);
       normalized.offerBadgeLabel = cleanFocusText(item.offerBadgeLabel || item.travelOfferBadgeLabel || item.badgeLabel || "OFERTA");
       normalized.offerDurationLabel = cleanFocusText(item.offerDurationLabel || item.nightsDaysLabel || item.durationLabel || "");
       normalized.distanceCenter = cleanFocusText(item.distanceCenter || item.distanceToCenter || item.centerDistance || "");
@@ -326,6 +343,7 @@ export function createFocusRuntimeController({
       if (hasTravelOfferFields(item)) {
         const features = collectTravelOfferFeatures(item);
         payload.isTravelOffer = true;
+        payload.images = collectOfferImages(item, payload.imageUrl);
         payload.offerBadgeLabel = cleanFocusText(item.offerBadgeLabel || item.travelOfferBadgeLabel || item.badgeLabel || "OFERTA");
         payload.offerDurationLabel = cleanFocusText(item.offerDurationLabel || item.nightsDaysLabel || item.durationLabel || "");
         payload.distanceCenter = cleanFocusText(item.distanceCenter || item.distanceToCenter || item.centerDistance || "");
@@ -633,6 +651,27 @@ export function createFocusRuntimeController({
         mediaType = videoUrl ? "video" : "image";
       }
 
+      // Zusatzfotos der Oferta-Galerie hochladen (Reihenfolge: bestehende
+      // URLs, dann neue Uploads); das Hauptbild bleibt images[0].
+      let extraImages = [];
+      if (isTravelOffer) {
+        extraImages = (Array.isArray(state.focusModal.existingExtraImages) ? state.focusModal.existingExtraImages : [])
+          .map(cleanFocusText)
+          .filter(Boolean);
+        const extraFiles = (Array.isArray(state.focusModal.extraImageFiles) ? state.focusModal.extraImageFiles : [])
+          .filter(Boolean);
+        for (const extraFile of extraFiles) {
+          const uploadedExtra = await uploadCompressedImage(
+            extraFile,
+            restaurantId,
+            { maxSize: 1080, quality: 0.8, mimeType: "image/jpeg" }
+          );
+          const extraUrl = cleanFocusText(uploadedExtra?.cdnUrl || uploadedExtra?.url);
+          if (!extraUrl) throw new Error("Fotoja shtesë nuk u ngarkua.");
+          extraImages.push(extraUrl);
+        }
+      }
+
       const id = state.focusModal.item?.id || createFocusId();
       const payload = {
         id,
@@ -648,6 +687,7 @@ export function createFocusRuntimeController({
       };
       if (isTravelOffer) {
         payload.isTravelOffer = true;
+        payload.images = collectOfferImages({ images: extraImages }, imageUrl);
         payload.offerBadgeLabel = offerBadgeLabel;
         payload.offerDurationLabel = offerDurationLabel;
         payload.distanceCenter = distanceCenter;

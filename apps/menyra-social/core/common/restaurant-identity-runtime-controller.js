@@ -256,6 +256,7 @@ function buildTravelOffersSignature(record = {}) {
       item.active === false ? "0" : "1",
       String(item.title || item.name || "").trim(),
       String(item.imageUrl || item.offerImageUrl || "").trim(),
+      (Array.isArray(item.images) ? item.images : []).map((url) => String(url || "").trim()).join("+"),
       String(item.offerBadgeLabel || item.badgeLabel || "").trim(),
       String(item.offerDurationLabel || item.nightsDaysLabel || "").trim(),
       String(item.distanceCenter || item.distanceToCenter || "").trim(),
