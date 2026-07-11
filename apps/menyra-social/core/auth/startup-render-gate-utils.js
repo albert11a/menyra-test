@@ -262,6 +262,10 @@ export function resolveStartupRenderGate(state = {}) {
     && profileTruthState !== "ready";
   const protectedSurfaceBlocked = isProtectedSurfaceBlockedDuringStartup(state);
   const trustedCachedAuthenticatedUi = hasTrustedCachedAuthenticatedUi(state);
+  // Nach einem expliziten Login ohne lokale Profil-Hints ist noch offen, ob
+  // die Session auf dem Business-Dashboard starten muss. Solange diese
+  // Entscheidung aussteht, darf kein Feed-Frame sichtbar werden.
+  const startTabDecisionPending = state?.__startTabDecisionPending === true;
 
   if (safePublicSurface) {
     return buildStartupGateResult({
@@ -319,13 +323,15 @@ export function resolveStartupRenderGate(state = {}) {
     });
   }
 
-  if (profilePending && protectedSurfaceBlocked) {
+  if (profilePending && (protectedSurfaceBlocked || startTabDecisionPending)) {
     return buildStartupGateResult({
       canRender: false,
       showNeutralShell: true,
       reason: profileTruthState === "error"
         ? "profile-truth-error"
-        : "profile-truth-pending-protected-surface",
+        : (startTabDecisionPending && !protectedSurfaceBlocked
+          ? "start-tab-decision-pending"
+          : "profile-truth-pending-protected-surface"),
       authRestoreState,
       profileTruthState,
       safePublicSurface,

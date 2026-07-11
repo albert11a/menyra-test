@@ -2229,8 +2229,12 @@ function normalizeLegacyHomeTab(tab) {
 
 // Business-Sessions starten auf dem Dashboard: pro UID genau eine
 // Entscheidung ("skip" ist final, "retry" wartet auf das Business-Profil).
+// Solange die Entscheidung offen ist ("retry" mit eingeloggtem User), haelt
+// state.__startTabDecisionPending den Startup-Render-Gate auf der neutralen
+// Shell - so wird beim Erst-Login ohne lokale Profil-Hints nie ein
+// Feed-Frame sichtbar, bevor das Dashboard feststeht.
 let dashboardStartTabDecidedUid = "";
-function maybeApplyBusinessDashboardStartTab() {
+function maybeApplyBusinessDashboardStartTab({ profileResolved = false } = {}) {
   const pendingRoute = pendingRouteState.getPendingState?.() || {};
   const decision = resolveBusinessDashboardStartTabCore({
     uid: state.user?.uid || "",
@@ -2243,9 +2247,16 @@ function maybeApplyBusinessDashboardStartTab() {
     pendingUserRouteId: pendingRoute.pendingUserRouteId || "",
     pendingPostId: pendingRoute.pendingPostId || "",
     pendingChatUid: pendingRoute.pendingChatUid || "",
-    pendingNotificationId: pendingRoute.pendingNotificationId || ""
+    pendingNotificationId: pendingRoute.pendingNotificationId || "",
+    profileResolved
   });
-  if (decision === "retry") return false;
+  if (decision === "retry") {
+    if (String(state.user?.uid || "").trim()) {
+      state.__startTabDecisionPending = true;
+    }
+    return false;
+  }
+  state.__startTabDecisionPending = false;
   dashboardStartTabDecidedUid = String(state.user?.uid || "").trim();
   if (decision !== "apply") return false;
   state.activeTab = "dashboard";
@@ -3922,8 +3933,9 @@ function loadGuestScopedPersisted() {
 }
 function resetUserScopedState() {
   // Nach Logout darf der naechste Login (auch derselbe User) wieder frisch
-  // auf dem Dashboard starten.
+  // auf dem Dashboard starten; ein offener Neutral-Shell-Halt wird geloest.
   dashboardStartTabDecidedUid = "";
+  state.__startTabDecisionPending = false;
   return sessionDataRuntimeController.resetUserScopedState(...arguments);
 }
 
@@ -5588,11 +5600,14 @@ startAppStartupRuntimeCluster({
       resumeRender,
       reportCriticalRuntimeFailure,
       runBootstrapUser: async (user) => {
-        const result = await sessionDataRuntimeController.bootstrapUser(user);
-        // Erst nach dem Bootstrap ist das Profil beim allerersten Login auf
-        // einem Geraet aufgeloest -> Business-Start-Tab hier nachziehen.
-        maybeApplyBusinessDashboardStartTab();
-        return result;
+        try {
+          return await sessionDataRuntimeController.bootstrapUser(user);
+        } finally {
+          // Nach dem Bootstrap ist das Profil endgueltig aufgeloest:
+          // Entscheidung abschliessen (Dashboard fuer Business, sonst skip)
+          // und den Neutral-Shell-Halt IMMER freigeben - auch im Fehlerfall.
+          maybeApplyBusinessDashboardStartTab({ profileResolved: true });
+        }
       }
     },
     startupTimelineMark: markStartupTimeline

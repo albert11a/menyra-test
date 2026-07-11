@@ -1,4 +1,4 @@
-import{f as x,r as Q,l as Y,s as j}from"./domain-analytics-CtgcV7sT.js";const R="mnyraDashboardStyles",Z=`
+import{f as x,r as Q,l as Y,s as j}from"./domain-analytics-BMDhPL9h.js";const R="mnyraDashboardStyles",Z=`
 .mnyra-dash {
   --dash-surface: #ffffff;
   --dash-plane: #f8fafc;

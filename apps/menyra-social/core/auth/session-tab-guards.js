@@ -29,7 +29,11 @@ export function resolveBusinessDashboardStartTabCore({
   pendingUserRouteId = "",
   pendingPostId = "",
   pendingChatUid = "",
-  pendingNotificationId = ""
+  pendingNotificationId = "",
+  // true = das Profil ist fertig geladen (Bootstrap abgeschlossen):
+  // eine fehlende restaurantId ist dann endgueltig "kein Business" (skip),
+  // nicht mehr "noch am Laden" (retry).
+  profileResolved = false
 } = {}) {
   const safeUid = String(uid || "").trim();
   if (!safeUid) return "retry";
@@ -49,7 +53,7 @@ export function resolveBusinessDashboardStartTabCore({
   const socialAccessMode = String(profile.socialAccessMode || "").trim().toLowerCase();
   if (socialAccessMode === "waiteronly" || socialAccessMode === "blocked") return "skip";
   const restaurantId = String(profile.restaurantId || profile.staffRestaurantId || "").trim();
-  if (!restaurantId) return "retry";
+  if (!restaurantId) return profileResolved ? "skip" : "retry";
   return "apply";
 }
 
