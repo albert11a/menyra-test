@@ -445,12 +445,12 @@
   background: var(--mhd-soft);
   border: 1px solid var(--mhd-border);
   border-radius: 13px;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 850;
   cursor: pointer;
 }
 .mhd-more:active { transform: scale(0.98); }
-.mhd-more .mhd-icon { width: 14px; height: 14px; }
+.mhd-more .mhd-icon { width: 12px; height: 12px; }
 
 .mhd-photo-count {
   position: absolute;
