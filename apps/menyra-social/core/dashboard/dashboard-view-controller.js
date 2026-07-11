@@ -127,6 +127,9 @@ export function createDashboardViewController({
   const resolveRestaurantLogo = typeof profileApi.resolveRestaurantLogoFn === "function"
     ? profileApi.resolveRestaurantLogoFn
     : (() => "");
+  const resolveOwnAvatarUrl = typeof profileApi.resolveOwnAvatarUrlFn === "function"
+    ? profileApi.resolveOwnAvatarUrlFn
+    : (() => "");
   let loadSeq = 0;
   let delegationBound = false;
 
@@ -294,11 +297,17 @@ export function createDashboardViewController({
     const rest = restaurantId ? (getRestaurantMetaById(restaurantId) || {}) : {};
     const type = getBusinessProfileType(profile);
     const name = String(rest.name || rest.restaurantName || profile.name || "").trim() || "Business";
+    // Erst die Shell-Kette (identisch zu Drawer/Header, inkl. Logo-Cache),
+    // dann das Restaurant-Logo aus den Metadaten; nie rohe avatar-Werte.
     let logoUrl = "";
     try {
-      logoUrl = String(resolveRestaurantLogo(rest) || "").trim();
+      logoUrl = String(resolveOwnAvatarUrl() || "").trim();
     } catch {}
-    if (!logoUrl) logoUrl = String(profile.avatar || "").trim();
+    if (!logoUrl) {
+      try {
+        logoUrl = String(resolveRestaurantLogo(rest) || "").trim();
+      } catch {}
+    }
     return {
       name,
       logoUrl,

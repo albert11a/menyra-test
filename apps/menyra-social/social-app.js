@@ -2056,7 +2056,17 @@ function getDashboardViewController() {
         isBusinessOwnerProfileFn: (...args) => isBusinessOwnerProfile(...args),
         canAccessRestaurantOrdersFn: (...args) => canAccessRestaurantOrders(...args),
         getRestaurantMetaByIdFn: (...args) => getRestaurantMetaById(...args),
-        resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args)
+        resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args),
+        // Gleiche Aufloesungskette wie Drawer/Header (resolveShellAvatarWithFallback):
+        // rohe profile.avatar-Werte sind nicht immer direkt ladbare URLs.
+        resolveOwnAvatarUrlFn: () => {
+          const primary = resolveShellAvatarUrl();
+          if (primary && !isPlaceholderUrl(primary)) return primary;
+          const fallback = resolveUserAvatar(
+            state.userProfile?.avatar || state.__shellSnapshotAvatar || state.user?.photoURL || ""
+          );
+          return fallback && !isPlaceholderUrl(fallback) ? fallback : "";
+        }
       },
       iconFn: (...args) => icon(...args)
     });
@@ -5563,6 +5573,9 @@ startAppStartupRuntimeCluster({
       loadUserScopedPersisted,
       loadGuestScopedPersisted,
       applyPendingInitialRouteState,
+      onAuthenticatedShellPrimed: () => {
+        maybeApplyBusinessDashboardStartTab();
+      },
       resetUserScopedState,
       render,
       schedulePerfWarmMark,

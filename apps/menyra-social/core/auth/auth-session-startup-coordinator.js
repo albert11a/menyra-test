@@ -24,6 +24,7 @@ export function createAuthSessionStartupCoordinator({
   loadUserScopedPersisted = () => {},
   loadGuestScopedPersisted = () => {},
   applyPendingInitialRouteState = () => {},
+  onAuthenticatedShellPrimed = () => {},
   resetUserScopedState = () => {},
   render = () => {},
   schedulePerfWarmMark = () => {},
@@ -593,6 +594,7 @@ export function createAuthSessionStartupCoordinator({
         markProfileTruthLoading();
       }
       primeAuthenticatedShell(user);
+      onAuthenticatedShellPrimed();
       requestRender("auth.sameUserShellSeed");
       return;
     }
@@ -608,6 +610,11 @@ export function createAuthSessionStartupCoordinator({
       markProfileTruthLoading();
       markBootstrapInFlight(nextUid);
       primeAuthenticatedShell(user);
+      // Nach dem Priming (persistierte Profil-Hints inkl. restaurantId sind
+      // jetzt angewendet) und VOR dem ersten authentifizierten Render:
+      // Start-Tab-Entscheidungen duerfen keinen sichtbaren Feed-Zwischenstand
+      // erzeugen.
+      onAuthenticatedShellPrimed();
       if (hasMeaningfulProfileHint(state?.userProfile)) {
         state.__trustedCachedAuthUid = nextUid;
       }

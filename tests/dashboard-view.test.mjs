@@ -305,6 +305,53 @@ test("controller renders hero and actions immediately for business, data as skel
   assert.equal(state.dashboardView.status, "loading");
 });
 
+test("controller resolves logo through shell avatar chain, never raw avatar", () => {
+  const state = {
+    userProfile: { restaurantId: "r1", name: "Bro Pizza", avatar: "users/u1/raw-avatar-ref" },
+    user: { uid: "u1" },
+    activeTab: "dashboard"
+  };
+  const controller = createDashboardViewController({
+    state,
+    documentObj: null,
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => false,
+      canAccessRestaurantOrdersFn: () => false,
+      getRestaurantMetaByIdFn: () => null,
+      resolveOwnAvatarUrlFn: () => "https://cdn.mnyra.com/logo-optimized.jpg"
+    }
+  });
+  const html = controller.renderDashboardView();
+  assert.ok(html.includes("https://cdn.mnyra.com/logo-optimized.jpg"));
+  assert.ok(!html.includes("raw-avatar-ref"));
+});
+
+test("controller falls back to restaurant logo when shell chain is empty", () => {
+  const state = {
+    userProfile: { restaurantId: "r1", name: "Bro Pizza", avatar: "users/u1/raw-avatar-ref" },
+    user: { uid: "u1" },
+    activeTab: "dashboard"
+  };
+  const controller = createDashboardViewController({
+    state,
+    documentObj: null,
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => false,
+      canAccessRestaurantOrdersFn: () => false,
+      getRestaurantMetaByIdFn: () => ({ name: "Bro Pizza" }),
+      resolveOwnAvatarUrlFn: () => "",
+      resolveRestaurantLogoFn: () => "https://cdn.mnyra.com/rest-logo.jpg"
+    }
+  });
+  const html = controller.renderDashboardView();
+  assert.ok(html.includes("https://cdn.mnyra.com/rest-logo.jpg"));
+  assert.ok(!html.includes("raw-avatar-ref"));
+});
+
 test("controller uses cached model for same day and renders data instantly", () => {
   const model = buildDashboardModelCore({ days: [], todayKey: "2099-01-01", rawPosts: [] });
   const todayKey = new Date();
