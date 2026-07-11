@@ -1,0 +1,585 @@
+================================================================================
+MENYRA - ABO-SYSTEM BASIC / PRO
+KOMPLETTANALYSE + UMSETZUNGS-MASTERPLAN
+================================================================================
+Stand: 2026-07-11
+Basis: Vollstaendige Code-Analyse des Repos menyra-test
+Zweck: Dieses Dokument in jeden neuen Chat/Auftrag einfuegen. Es enthaelt
+       (1) was Business-Profile heute koennen, (2) die exakte Basic/Pro-
+       Definition, (3) den kompletten technischen Umbauplan mit Dateipfaden,
+       Reihenfolge und Akzeptanzkriterien - so, dass ein Entwickler ohne
+       Rueckfragen fehlerfrei umsetzen kann.
+
+--------------------------------------------------------------------------------
+TEIL 0: ARBEITSREGELN (NICHT VERHANDELBAR)
+--------------------------------------------------------------------------------
+- Immer nur einen nummerierten Schritt aus TEIL 4 pro Auftrag umsetzen.
+- Keine Scope-Erweiterung, kein "wo ich schon mal dabei bin".
+- Bestehendes Nutzerverhalten nicht aendern, ausser der Schritt verlangt es.
+- Kein UI-Redesign. Safe-Area-/Modal-/Sticky-Verhalten nicht anfassen.
+- Jede Aenderung: Syntax-Check, Unit-Tests gruen (npm run test:unit),
+  keine neuen eager Firestore-Listener, keine neuen eager Bundle-Imports
+  (Bundle-Budget ist bereits kritisch: entry/social-app.js ~1.1 MB raw).
+- Keine falschen Zwischenzustaende: Jede Flaeche hat definierten
+  Loading- (Skeleton), Empty-, Error- und Locked-Zustand (Basic-Sperre).
+- 3G/4G-tauglich: minimale Doc-Reads, Aggregate statt Roh-Events,
+  localStorage-Snapshots wie im Rest der App (siehe TEIL 3.10).
+
+--------------------------------------------------------------------------------
+TEIL 1: IST-ANALYSE - WAS BUSINESS-PROFILE HEUTE KOENNEN
+--------------------------------------------------------------------------------
+
+1.1 BUSINESS-TYPEN (normalisierte Taxonomie)
+    Quelle: apps/menyra-social/core/leads/lead-type-utils.js
+            apps/menyra-social/core/profile/restaurant-type-utils.js
+    Typen:  restaurant, cafe, fastfood, hotel, motel, ecommerce,
+            tankstelle, lebensmittel, apotheken, services
+    Typ-Aufloesung eines Profils:
+            apps/menyra-social/core/profile/business-profile-type-utils.js
+            (liest rest.type/customerType/category/kind/restaurantType)
+    Katalog-Modus (Menue vs. Shop):
+            apps/menyra-social/core/menu/catalog-mode-utils.js
+            -> type "ecommerce" ODER profile.catalogMode="shop" => Shop,
+               alles andere => Menue.
+
+1.2 DISCOVERY-/SICHTBARKEITSFLAECHEN
+    Quelle: apps/menyra-social/core/marketplace/marketplace-view-render-utils.js
+    - Tab "Restaurants": Typen restaurant, cafe, coffee, fastfood, food
+    - Tab "Travel":      hotel, motel, hostel, resort, accommodation, travel
+                         (mit Sub-Tabs offers / hotels / map, Ziel-Suche)
+    - Tab "Shopping":    ecommerce (Landing-Kacheln, Kategorien)
+    - Tab "Karte" (map): alle Businesses mit Koordinaten
+    - Feed:              Business-Posts werden nach socialFeed gespiegelt
+    - Suche (search):    Businesses + Inhalte
+    - Public Web:        /:slug (Profil), /:slug/menu, Legacy /b/:slug,
+                         Aufloesung ueber publicRoutes/{slug}
+                         (core/router/public-business-route-utils.js,
+                          core/app-shell/route-runtime-registry.js)
+
+1.3 FEATURE-INVENTAR (KOMPLETT)
+
+    A) OEFFENTLICHES PROFIL
+       - Firestore: restaurants/{rid} (public lesbar) + Projektionen
+         restaurants/{rid}/public/{menu, meta, offers, ads}
+       - Public-Route-Doc: publicRoutes/{slug} (nur Server schreibt,
+         Cloud Function ensurePublicRouteOnRestaurantWrite)
+       - Profil-Rendering: core/profile/profile-menu-focus-render-controller.js
+         (>5000 Zeilen, rendert Profil/Menue/Hotel/Landing/Editor)
+       - Top-Tabs im Business-Profil: profile | menu | cart | favorites | landing
+         (resolveProfilePrimaryTopTab, Zeile ~1747)
+       - Kontakt: Telefon, Adresse, Karte, Oeffnungszeiten, Social Links
+
+    B) BEITRAEGE / POSTS
+       - Firestore: restaurants/{rid}/socialPosts/{postId}
+         + Spiegel-Doc socialFeed/{postId} (globaler Feed)
+       - Erstellung: CLIENTSEITIG in
+         core/media/media-upload-runtime-controller.js -> createBusinessPost()
+         (setDoc auf socialPosts + setDoc auf socialFeed)
+       - Likes/Kommentare als Subcollections, Zaehler-geschuetzt in Rules
+       - KEIN LIMIT vorhanden (weder UI noch Rules noch Function)
+
+    C) STORIES
+       - Firestore: restaurants/{rid}/stories, Upload via Cloud Function
+         uploadStoryImage; Viewer core/stories/story-viewer-runtime-controller.js
+       - Stories koennen Menue-Produkte taggen (Story-Tag, nur Business)
+
+    D) MENUE-SYSTEM (Restaurant/Cafe/Fastfood)
+       - Firestore: restaurants/{rid}/menuItems + publizierte Projektion
+         restaurants/{rid}/public/menu
+       - Editor: Tab "menu" (Drawer-Nav), Rendering in
+         profile-menu-focus-render-controller.js + core/menu/menu-save-utils.js,
+         menu-modal-render-utils.js, menu-layout-utils.js
+       - Public-Anzeige: core/menu/menu-public-runtime-controller.js
+         Route /:slug/menu
+       - Kategorien, Produktdetail, Favoriten, Menue-Social-Posts (menuSocial)
+
+    E) QR-TISCH + BESTELLUNGEN + WAITER (Restaurant-Slice)
+       - Tisch-QR-Konfiguration: core/menu/table-qr-runtime-controller.js,
+         Kontext ueber Query-Keys source=qr & table/t
+       - Bestellung: Cloud Function createRestaurantOrder ->
+         restaurants/{rid}/orders + Spiegel users/{uid}/orders + orderLookup
+       - Bestell-Tab "orders" fuer Business; Waiter-PWA unter apps/waiter
+         (waiterAccess, notifyWaiterOnRestaurantOrderCreate)
+       - Call-Waiter-Button im Public-Header (data-action="kellner")
+
+    F) SHOP-SYSTEM (E-Commerce)
+       - Gleiche menuItems-Struktur mit Produktfeldern: Marke, SKU, Lager,
+         Groessen, Farben, Varianten (core/shop/shop-variant-utils.js)
+       - Warenkorb + Checkout: core/shop/shop-cart-*,
+         shop-view-cart-orchestration-controller.js,
+         Checkout via submitShopCheckout (core/orders/orders-runtime-controller.js)
+       - Shopping-Landing (eigene Startkachel/Branding):
+         core/profile/shopping-landing-card-editor-bindings.js,
+         Landing-Top-Tab im Profil
+
+    G) HOTEL/MOTEL-SYSTEM ("Details")
+       - Hotel-Details-Editor im Profil (Features, Parken, Ausstattung,
+         Startpreis, Preiseinheit): profile-menu-focus-render-controller.js
+         (renderHotelCard-Editor ~Zeile 1700, "Ruaj Hotel Details")
+       - Zimmer-Editor: core/profile/hotel-rooms-utils.js (max 8 Bilder/Zimmer,
+         Preis-Label), hotel-rooms-editor-render-utils.js,
+         core/app-events/hotel-rooms-editor-bindings.js
+       - Hotel-Detailansicht (Public): core/profile/hotel-detail-render-utils.js
+         (Zimmer-Sektion, Amenities, Karte, Rating, Destination-Sektionen),
+         hotel-stay-detail-modal.js, hotel-detail-map-runtime.js
+       - Travel-Offers (Angebote): renderFocusAdminSection(variant
+         "travel-offers") -> restaurants/{rid}/public/offers
+
+    H) FOCUS / OFFERS (Angebote fuer alle Typen)
+       - Firestore: restaurants/{rid}/public/offers (+ public/meta)
+       - Runtime: core/menu/focus-runtime-controller.js,
+         customer-focus-modal-render-utils.js
+
+    I) ADS (Werbung)
+       - Firestore: restaurants/{rid}/public/ads als items[]-Array
+       - Owner erstellt/bearbeitet -> Status "pending";
+         Heart/CEO genehmigt/lehnt ab (Reviewer-Metadaten am Item)
+       - Runtime: core/menu/ads-runtime-controller.js
+       - Audit-Befund (docs/codex/generated/MNYRA_LEADS_ADS_ANALYTICS_AUDIT.md):
+         noch KEIN Targeting, KEINE Impression/Klick-Messung, Array statt
+         Einzel-Docs -> als Bezahlprodukt noch nicht fertig, als Feature ok.
+
+    J) ANALYTICS (fertig gebaut, Stand 2026-07-08)
+       - Doku: docs/mnyra-analytics-system.md
+       - Events: business_profile_view, profile_contact_click, post_impression,
+         post_click, post_like, post_share, menu_open, category_open,
+         product_view, product_like, qr_scan, call_waiter_click, order_started,
+         order_completed, feed_impression, feed_click
+       - Speicherung: restaurants/{rid}/analyticsEvents (Roh, create-only)
+         + restaurants/{rid}/analyticsDaily/{YYYY-MM-DD} (Tages-Aggregat,
+         Dashboard liest max ~92 Docs pro Zeitraum -> schnell/guenstig)
+       - Module: core/analytics/{analytics-event-schema, analytics-tracker,
+         analytics-daily-loader, analytics-dashboard-core,
+         analytics-dashboard-render-utils, analytics-view-controller}.js
+       - Business-Tab "analytics" existiert bereits (Drawer-Nav,
+         sichtbar wenn showMenuTab; Rules: Reads nur Owner/Staff/CEO)
+       - Heart hat eigene Analytics-Ansicht (Business-Auswahl)
+
+    K) STAFF-VERWALTUNG
+       - restaurants/{rid}/staff + owner-verwaltete User-Docs,
+         Tabs "businessAccounts" (Owner) / "staff", Rollen staff/waiter/manager,
+         Permissions businessAccess/waiterAccess, socialAccessMode
+         (waiteronly/blocked) sperrt Social-App fuer Staff
+
+    L) CHAT
+       - users/{uid}/chatThreads/.../messages; Business kann mit Usern chatten
+       - Feature-Flag: isChatEnabledForV1()
+
+    M) CRM / LEADS / HEART (nur CEO-intern)
+       - leads/{leadId} CEO-scoped; Lead-Konvertierung provisioniert
+         Business-Account (Owner-User, restaurants-Doc, publicRoute)
+       - PREISE EXISTIEREN BEREITS PRO TYP: leadSettings.pricing[typ] =
+         Monatspreis; billingCycle monthly/yearly; gespeichert am Lead/Kunden
+         (core/leads/lead-settings-utils.js, lead-save-utils.js,
+          core/crm/crm-runtime-controller.js ~Zeile 1017)
+       - Heart = CEO-Admin-PWA (apps/mnyra-heart): CRM, Ads-Moderation,
+         Analytics, Ops
+
+    N) SONSTIGES
+       - i18n: sq/de/en/sr (shared/i18n), Key menyra_lang
+       - PWA + aggressive localStorage-Caches/Snapshots (Feed, Restaurants,
+         Menue, Shell-Snapshot pro UID) -> Muster fuer Dashboard uebernehmen
+       - Sichtbarkeits-Filter: core/profile/business-visibility-utils.js
+         (deleted / hiddenFromDiscover / force-hidden)
+
+1.4 WAS ES HEUTE NICHT GIBT
+       - KEIN plan/tier/subscription-Feld irgendwo (Code + Rules geprueft)
+       - KEIN Post-Limit
+       - KEIN Billing/Stripe; Preise nur als CRM-Notiz (siehe M)
+       - KEIN Business-Dashboard-Tab (nur Einzel-Tabs: menu, orders,
+         analytics, staff/businessAccounts)
+       - KEIN Upgrade-Flow
+       - KEIN Feature-Gating nach Typ ausser der natuerlichen Typ-Logik
+         (Hotel zeigt Hotel-UI, ecommerce zeigt Shop-UI usw.)
+
+--------------------------------------------------------------------------------
+TEIL 2: ABO-DEFINITION - BASIC VS PRO
+--------------------------------------------------------------------------------
+
+2.1 GRUNDPRINZIP
+    - Jedes Business hat genau einen Plan: "basic" oder "pro".
+    - BASIC = Praesenz: sichtbar auf Karte + im eigenen Kategorie-Tab,
+      eigenes Profil, max. 10 Beitraege, Ads erlaubt, Mini-Analytics
+      im Dashboard, Upgrade-CTA.
+    - PRO = alles: das jeweilige Kern-Werkzeug des Typs (Menue / Shop /
+      Hotel-Details) plus alle Zusatzfunktionen.
+    - Der Plan wird NUR vom CEO (Heart/CRM) gesetzt - nie vom Client des
+      Owners. Kein Self-Service-Payment in Phase 1.
+
+2.2 MATRIX PRO BUSINESS-TYP
+
+    RESTAURANT / CAFE / FASTFOOD
+    ---------------------------------------------------------------
+    Feature                          | BASIC          | PRO
+    ---------------------------------------------------------------
+    Sichtbar auf Karte               | JA             | JA
+    Sichtbar im Restaurants-Tab      | JA             | JA
+    Oeffentliches Profil (/:slug)    | JA             | JA
+    Kontakt/Oeffnungszeiten/Logo     | JA             | JA
+    Beitraege (socialPosts+Feed)     | MAX 10         | Unbegrenzt
+    Stories                          | JA (Default)   | JA
+    Ads erstellen (mit Freigabe)     | JA             | JA
+    Menue (Editor + /:slug/menu)     | NEIN           | JA
+    Focus/Offers (Angebote)          | NEIN           | JA
+    QR-Tisch-System                  | NEIN           | JA
+    Bestellungen + Orders-Tab        | NEIN           | JA
+    Waiter-App / Call-Waiter         | NEIN           | JA
+    Staff-Accounts                   | NEIN           | JA
+    Analytics-Tab (voll)             | NEIN           | JA
+    Dashboard-Tab (mit Mini-Stats)   | JA             | JA
+    Chat                             | JA             | JA
+
+    HOTEL / MOTEL
+    ---------------------------------------------------------------
+    Sichtbar auf Karte + Travel-Tab  | JA             | JA
+    Oeffentliches Profil             | JA             | JA
+    Beitraege                        | MAX 10         | Unbegrenzt
+    Stories / Ads / Chat             | JA             | JA
+    Hotel-Details (Features, Preis,  | NEIN           | JA
+      Ausstattung, Parken)           |                |
+    Zimmer-Editor + Zimmer-Anzeige   | NEIN           | JA
+    Travel-Offers (Angebote)         | NEIN           | JA
+    Hotel-Detailansicht (Zimmer/     | reduziert:     | voll
+      Amenities/Preis-Sektionen)     | nur Basis-Info |
+    Staff / Analytics-Tab (voll)     | NEIN           | JA
+    Dashboard-Tab                    | JA             | JA
+
+    E-COMMERCE
+    ---------------------------------------------------------------
+    Sichtbar auf Karte + Shopping-Tab| JA             | JA
+    Oeffentliches Profil             | JA             | JA
+    Beitraege                        | MAX 10         | Unbegrenzt
+    Stories / Ads / Chat             | JA             | JA
+    Shop (Produkte, Warenkorb,       | NEIN           | JA
+      Checkout, Varianten, Lager)    |                |
+    Shopping-Landing-Editor          | NEIN           | JA
+    Focus/Offers                     | NEIN           | JA
+    Staff / Analytics-Tab (voll)     | NEIN           | JA
+    Dashboard-Tab                    | JA             | JA
+
+    UEBRIGE TYPEN (tankstelle, lebensmittel, apotheken, services, Rest)
+    ---------------------------------------------------------------
+    Verhalten wie Restaurant-Matrix: Basic = Praesenz + 10 Posts + Ads;
+    Pro = Katalog/Menue + Offers + volle Analytics + Staff.
+
+2.3 IN BEIDEN TIERS ENTHALTEN
+    - Karte, Kategorie-Tab, Suche, Feed-Verteilung der (erlaubten) Posts,
+      Profilseite mit Kontakt, Stories, Ads (mit Heart-Freigabe), Chat,
+      Dashboard-Tab, Push/Notifications, i18n.
+
+2.4 DEFAULTS + OFFENE ENTSCHEIDUNGEN (Empfehlung fett gesetzt)
+    E1  Post-Limit-Semantik: EMPFEHLUNG "max. 10 gleichzeitig aktive
+        Beitraege" (nicht pro Monat). Loeschen schafft Platz. Einfach zu
+        verstehen, einfach zu erzwingen (Zaehler).
+    E2  Stories in Basic: EMPFEHLUNG JA (ephemer, erzeugt Aktivitaet,
+        kein Dauer-Content). Alternativ Pro-only - eine Zeile im
+        Limits-Objekt (TEIL 3.2), spaeter umschaltbar.
+    E3  Bestandskunden-Migration: EMPFEHLUNG Backfill-Script setzt alle
+        existierenden Businesses auf "pro" (Grandfathering, kein Kunde
+        verliert am Launch-Tag Funktionen). Neue Businesses starten
+        "basic". Fehlendes plan-Feld wird zur Sicherheit als "basic"
+        interpretiert, DAHER Backfill VOR Gating-Aktivierung ausfuehren.
+    E4  Basic-Mini-Analytics im Dashboard: EMPFEHLUNG letzte 7 Tage
+        (Profilaufrufe, Post-Impressionen, Kontakt-Klicks). Pro: alles.
+    E5  Downgrade-Verhalten (pro -> basic, z.B. Zahlung endet):
+        Inhalte NIE loeschen. Menue/Shop/Hotel-Details werden nur nicht
+        mehr oeffentlich gerendert und Editor gesperrt; bei >10 Posts
+        bleiben alle sichtbar, aber keine neuen bis unter 10.
+    E6  Preise: existieren bereits pro Typ im CRM (leadSettings.pricing).
+        Basic-Preis (auch 0 EUR moeglich) muss der CEO geschaeftlich
+        festlegen - technisch nur ein zweiter Pricing-Eintrag im CRM.
+
+--------------------------------------------------------------------------------
+TEIL 3: TECHNISCHER UMBAUPLAN
+--------------------------------------------------------------------------------
+
+3.1 DATENMODELL
+    restaurants/{rid} bekommt neues Feld (Objekt):
+      plan: {
+        tier: "basic" | "pro",
+        activatedAt: <timestamp>,
+        validUntil: <timestamp|null>,     // null = unbefristet
+        billingCycle: "monthly"|"yearly"|null,
+        source: "crm" | "backfill",
+        updatedByUid: <uid>
+      }
+    Regeln:
+    - restaurants/{rid} ist public-lesbar -> Public-Rendering und Discovery
+      koennen den Tier ohne Zusatz-Read gaten. KEINE sensiblen Daten in plan.
+    - Schreiben von plan.* NUR durch isCeoActor() (Rules-Erweiterung in
+      firestore.rules match /restaurants/{restaurantId}: Owner-Update darf
+      plan nicht veraendern -> Feld-Diff-Check analog privilegedUserFields()).
+    - Zusaetzlich neues Zaehlerfeld am selben Doc:
+      postsCount: <number>  (nur Cloud Function schreibt, siehe 3.3)
+
+3.2 NEUES MODUL: apps/menyra-social/core/plan/business-plan-utils.js
+    Pure Functions, keine Firestore-Imports, voll unit-getestet
+    (Muster: catalog-mode-utils.js):
+      - PLAN_TIER_BASIC / PLAN_TIER_PRO Konstanten
+      - getBusinessPlanTierCore(rest) -> "basic"|"pro"
+        (fehlend/ungueltig => "basic"; validUntil abgelaufen => "basic")
+      - getPlanLimitsCore(tier, businessType) -> {
+          maxActivePosts: 10 | Infinity,
+          menuEnabled, shopEnabled, hotelDetailsEnabled,
+          offersEnabled, qrOrdersEnabled, staffEnabled,
+          fullAnalyticsEnabled, storiesEnabled, adsEnabled: true,
+          dashboardAnalyticsDays: 7 | 92
+        }
+      - isFeatureEnabledCore(rest, featureKey, { getBusinessProfileTypeFn })
+    Diese eine Datei ist die EINZIGE Wahrheitsquelle fuer Gating im Client.
+    Test: tests/business-plan-utils.test.mjs
+
+3.3 SERVER-ENFORCEMENT (Sicherheit, nicht nur UI)
+    a) firestore.rules (Datei: firestore.rules)
+       Neue Helper (bei den bestehenden Funktionen ~Zeile 59ff):
+         function restaurantPlanTier(restaurantId) ->
+           restaurantData(restaurantId).plan.tier mit Fallback "basic"
+         function restaurantIsPro(restaurantId)
+       Gating:
+       - match /restaurants/{rid}/socialPosts/{postId} (Zeile ~903):
+         create zusaetzlich: isCeoActor() || restaurantIsPro(rid)
+           || restaurantData(rid).postsCount < 10
+       - match /socialFeed/{postId} (Zeile ~977): create analog
+         (Spiegel-Doc; rid steckt im Payload-Feld rid -> gegen
+          request.resource.data.rid pruefen)
+       - match /restaurants/{rid}/menuItems (Zeile ~866):
+         create/update nur wenn restaurantIsPro(rid) || isCeoActor()
+       - match /restaurants/{rid}/public/{publicDocId} (Zeile ~861):
+         publicDocId == "menu" oder "offers": write nur pro/CEO.
+         publicDocId == "ads": weiterhin beide Tiers (Basic darf Ads).
+         publicDocId == "meta": Feld-Gating nur falls QR-Tisch-Konfig in
+         meta liegt -> QR-Felder nur pro (pruefen bei Umsetzung).
+       - match /restaurants/{rid}/staff (Zeile ~954): create nur pro/CEO.
+       - plan/postsCount am restaurants-Doc: Owner-Writes duerfen diese
+         Felder nicht aendern (Feld-Diff wie bei Countern, Zeile ~331ff).
+    b) Neue Cloud Function (functions/index.js, Muster
+       syncOrderMirrorsOnRestaurantOrderWrite Zeile ~3631):
+         syncBusinessPostsCountOnSocialPostWrite:
+         Firestore-Trigger auf restaurants/{rid}/socialPosts/{postId}
+         onWrite -> Transaktion: zaehlt aktive Posts (status!="deleted")
+         bzw. inkrementiert/dekrementiert postsCount am restaurants-Doc.
+       (Race beim exakt 10. Post ist akzeptabel: Rules-Check + Zaehler
+        sind gemeinsam ausreichend; UI blockt vorher.)
+    c) Bestehende Order-Function createRestaurantOrder (Zeile ~3553):
+       am Anfang Plan-Check -> Bestellungen nur fuer pro-Restaurants
+       (failed-precondition Fehlermeldung, i18n im Client).
+
+3.4 UI-GATING-PUNKTE (exakte Stellen im Client)
+    Prinzip: Gate am Einstiegspunkt, nicht tief in Renderern. Locked-State
+    = eigene kleine Karte "Pro-Funktion" mit Upgrade-CTA, KEIN leerer/
+    kaputter Screen.
+    a) Drawer-Nav (core/app-shell/shell-dom-runtime-controller.js,
+       navItems Zeile ~287-316):
+       - "menu"-Item: bei Basic sichtbar, aber mit Schloss-Badge; Klick
+         oeffnet Upgrade-Karte (kein hidden -> Feature-Entdeckung).
+       - "analytics"-Item: bei Basic hidden (Mini-Stats sind im Dashboard).
+       - "businessAccounts" (Staff): bei Basic hidden.
+       - NEU "dashboard"-Item als ERSTES Item fuer Business-Profile.
+    b) Menue-Admin-View (core/ui/main-shell-render-utils.js Zeile ~92 +
+       profile-menu-focus-render-controller.js renderMenuAdminView):
+       Basic => Locked-Karte statt Editor.
+    c) Hotel-Details- + Zimmer-Editor (profile-menu-focus-render-
+       controller.js ~Zeile 1600-1730 + hotel-rooms-editor-bindings.js):
+       Basic => Locked-Karte; Save-Buttons existieren dann nicht im DOM.
+    d) Shop/Landing (shopping-landing-card-editor-bindings.js + Shop-
+       Views): Basic => Locked-Karte; Cart/Checkout-Einstiege fuer
+       Basic-Shops nicht gerendert.
+    e) Upload-Flow (core/media/media-upload-runtime-controller.js,
+       createBusinessPost ~Zeile 284): VOR dem Schreiben Limit pruefen
+       (postsCount aus state.restaurants bzw. frischem Doc-Read);
+       bei Limit: freundlicher Hinweis "10/10 Beitraege - loesche einen
+       Beitrag oder upgrade auf Pro" + CTA. Kein stiller Fehler.
+    f) Orders-Tab / Table-QR (orders-runtime-controller.js,
+       table-qr-runtime-controller.js): Einstieg fuer Basic => Locked-Karte.
+    g) Focus/Offers-Admin (renderFocusAdminSection): Basic => Locked-Karte.
+
+3.5 PUBLIC-RENDERING-GATING (Gaeste sehen nie halbe Features)
+    a) Public-Profil-Top-Tabs (profile-menu-focus-render-controller.js
+       resolveProfilePrimaryTopTab ~1747 + Tab-Leisten-Rendering ~2555):
+       Basic-Business => Tab "menu"/"cart"/"favorites"/"landing" wird
+       nicht angeboten; Route /:slug/menu rendert Profil-Tab (Redirect
+       im public-route-Resolver, core/app-shell/public-route-runtime-
+       cluster.js), KEIN 404, KEIN leerer Menue-Screen.
+    b) Hotel-Detailansicht (hotel-detail-render-utils.js
+       renderHotelDetailViewCore ~503): Basic => Zimmer-/Preis-/Offers-
+       Sektionen nicht rendern; Basis-Infos (Name, Bilder, Kontakt,
+       Karte) bleiben.
+    c) Travel-/Shopping-/Restaurants-Karten (marketplace-view-render-
+       utils.js): Basic-Hotels ohne "ab X EUR"-Preisbadge; Basic-Shops
+       ohne Produkt-/Shop-Badges. Karten selbst bleiben sichtbar.
+    d) Public-Projektion-Builder (core/public-profile/public-projection-
+       builders.js): planTier mit projizieren, damit Snapshot-/SSR-Pfade
+       identisch gaten (kein Flackern Pro->Basic nach Hydration).
+    e) Call-Waiter-Button im Public-Header: nur pro.
+
+3.6 NEUER DASHBOARD-TAB (fuer ALLE Businesses, Basic + Pro)
+    Route/Tab-Id: "dashboard"; eigener lazy Chunk (Muster: analytics-
+    view-controller.js Registrierung in route-runtime-registry.js +
+    main-shell-render-utils.js + Drawer-Nav).
+    Neue Dateien:
+      core/dashboard/dashboard-view-controller.js      (Runtime/Events)
+      core/dashboard/dashboard-render-utils.js         (pur, getestet)
+      core/dashboard/dashboard-data-loader.js          (Reads/Cache)
+    Inhalt (eine Scroll-Seite, Karten):
+      1. Kopf: Logo, Name, Plan-Badge (BASIC/PRO), Link "Profil ansehen"
+      2. Schnellaktionen: Neuer Beitrag | Story | Ad erstellen |
+         [Pro] Menue/Shop/Hotel bearbeiten | [Pro] Bestellungen
+         (Basic sieht Pro-Aktionen mit Schloss -> Upgrade-Karte)
+      3. Beitrags-Kontingent (nur Basic): "7/10 Beitraege" + Fortschritt
+      4. Mini-Analytics: Heute + 7 Tage: Profilaufrufe, Post-Impressionen,
+         Kontakt-Klicks; Pro zusaetzlich: Bestellungen, Umsatz, QR-Scans
+         + Link "Alle Analytics" (Analytics-Tab)
+      5. Upgrade-Karte (nur Basic): Vorteile des Typs (Menue/Shop/Hotel-
+         Details, unbegrenzte Posts, Analytics, Staff) + CTA (3.7)
+      6. Letzte Aktivitaet: neueste 3 Posts mit Impressionen/Likes
+    Daten & Performance (3G-Pflicht):
+      - NUR analyticsDaily-Aggregate lesen (max 7 Docs) + restaurants-Doc
+        aus bereits geladenem state; KEINE Roh-Events, KEINE Listener.
+      - Ergebnis in localStorage cachen:
+        menyra_social_dashboard_cache_v1::rid (Stale-While-Revalidate:
+        sofort Cache rendern, still aktualisieren).
+      - Skeleton-Karten mit fixen Hoehen (kein Layout-Shift), Fehler-
+        Zustand mit Retry-Button, Empty-Zustand ("Noch keine Daten").
+    Sichtbarkeit: nur Business-Owner + Staff mit businessAccess;
+    Gaeste/User: Tab existiert nicht (Session-Guard wie analytics).
+
+3.7 UPGRADE-TO-PRO-FLOW (Phase 1, ohne Online-Payment)
+    - CTA erzeugt Dokument upgradeRequests/{autoId}:
+      { restaurantId, requestedByUid, requestedTier: "pro",
+        currentTier, createdAt, status: "open", note }
+      Rules: create nur durch Owner/Staff des Businesses; read/update CEO.
+    - Heart (apps/mnyra-heart): neue CRM-Liste "Upgrade-Anfragen";
+      Bestaetigen setzt restaurants/{rid}.plan auf pro (+ Preis aus
+      leadSettings.pricing) und schliesst den Request.
+    - Bestaetigung an Owner als Notification (bestehender
+      writeUserNotification-Pfad).
+    - Phase 2 (spaeter, NICHT jetzt bauen): Stripe/Payment + validUntil-
+      Automatik. Datenmodell ist dafuer schon vorbereitet (validUntil).
+
+3.8 HEART / CRM-ANPASSUNGEN
+    - Kunden-/Lead-Detail: Plan-Anzeige + Umschalter basic/pro
+      (heart-crm-admin-write-adapter.js: Write auf restaurants.plan)
+    - Lead-Konvertierung (lead-save-utils.js): Ziel-Plan waehlbar,
+      Default "basic"; schreibt plan beim Provisionieren.
+    - Pricing: leadSettings.pricing um Basic-Preise erweitern
+      (z.B. pricing_basic[typ]) - nur CRM-Anzeige, kein Billing.
+
+3.9 I18N
+    Neue Keys in shared/i18n/{sq,de,en,sr}.js:
+      nav.dashboard, plan.basicBadge, plan.proBadge, plan.lockedTitle,
+      plan.lockedBody.<feature>, plan.upgradeCta, plan.postLimitReached,
+      plan.postQuota (mit {used}/{max}), dashboard.* (Kartentitel),
+      plan.upgradeRequested
+    Albanisch (sq) ist Primaersprache der Kunden - alle 4 Sprachen pflegen.
+
+3.10 PERFORMANCE-/ZUVERLAESSIGKEITSREGELN (fuer JEDEN Schritt)
+    - Kein neuer eager Import in social-app.js; Dashboard/Locked-Karten
+      als lazy Chunk (npm run check:social-bundle muss gruen bleiben).
+    - Plan-Aufloesung ausschliesslich aus bereits vorhandenen Daten
+      (state.restaurants / Profil-Snapshot) - NIE ein zusaetzlicher
+      Blocking-Read nur fuer das Gating.
+    - Gating ist deterministisch beim ersten Render: Snapshot enthaelt
+      planTier (3.5d) -> kein "Pro-UI blitzt kurz auf und verschwindet".
+    - Offline/Fehler: Wenn Plan unbekannt UND kein Snapshot -> als basic
+      rendern (sicherer Default), still nachladen und einmalig patchen
+      (bestehendes profile-visible-patch-utils-Muster).
+    - Jede neue Flaeche: Skeleton/Empty/Error/Locked definiert + Test.
+
+--------------------------------------------------------------------------------
+TEIL 4: UMSETZUNGSREIHENFOLGE (je Schritt = ein Auftrag)
+--------------------------------------------------------------------------------
+SCHRITT 1: Plan-Fundament (Client, ohne sichtbare Aenderung)
+  - core/plan/business-plan-utils.js + Tests
+  - Plan-Feld in Restaurant-Normalisierung/Projektion durchreichen (3.5d)
+  Akzeptanz: Tests gruen, Bundle unveraendert, keine UI-Aenderung.
+
+SCHRITT 2: Server-Fundament
+  - firestore.rules: plan-Schutz (nur CEO schreibt plan/postsCount),
+    Helper restaurantIsPro; NOCH KEIN Feature-Gating aktiv
+  - Cloud Function syncBusinessPostsCountOnSocialPostWrite + Tests
+  - Backfill-Script (functions/scripts, Muster routes:backfill):
+    setzt plan {tier:"pro", source:"backfill"} auf ALLE bestehenden
+    Businesses + initialen postsCount. Check-Mode + Write-Mode.
+  Akzeptanz: Rules-Tests gruen, Backfill-Check-Report ok.
+
+SCHRITT 3: Backfill in Produktion ausfuehren (E3), verifizieren.
+  Ab hier ist "fehlender Plan = basic" gefahrlos.
+
+SCHRITT 4: Rules-Feature-Gating aktivieren (3.3a) + Order-Function-Check
+  (3.3c). Akzeptanz: Pro-Kunden unveraendert (alles pro nach Backfill);
+  Test-Basic-Restaurant kann Menue/Staff/11. Post nicht schreiben.
+
+SCHRITT 5: UI-Gating Editor-Seite (3.4 b,c,d,f,g + Upload-Limit e + Nav a)
+  Akzeptanz: Basic-Testprofil sieht ueberall saubere Locked-Karten,
+  Pro-Profil unveraendert; kein toter Button, kein leerer Screen.
+
+SCHRITT 6: Public-Rendering-Gating (3.5 a,b,c,e)
+  Akzeptanz: Gast auf Basic-Profil: kein Menue-Tab, /:slug/menu ->
+  Profil, Hotelkarte ohne Zimmer/Preise; kein Flackern beim Laden
+  (3G-Throttling manuell testen).
+
+SCHRITT 7: Dashboard-Tab (3.6) fuer Basic + Pro
+  Akzeptanz: <=8 Firestore-Reads beim Erstaufruf, Cache-Hit rendert
+  sofort, Skeleton ohne Layout-Shift, alle 4 Zustaende vorhanden.
+
+SCHRITT 8: Upgrade-Flow (3.7) + Heart-CRM-Plan-Umschalter (3.8)
+  Akzeptanz: Basic stellt Anfrage -> erscheint in Heart -> CEO schaltet
+  pro -> Owner bekommt Notification, Features sofort frei (ein Reload ok).
+
+SCHRITT 9: i18n-Komplettierung (3.9) + Texte-Review sq/de/en/sr.
+
+SCHRITT 10: Abschluss-Regression
+  - npm run test:all
+  - Manuelle Matrix: Gast/User/Basic-Owner/Pro-Owner/Staff/CEO x
+    Restaurant/Hotel/E-Commerce (9 Kernpfade, je mobil + 3G)
+  - Bundle-Report + Ladezeiten-Check Feed/Profil/Dashboard.
+
+--------------------------------------------------------------------------------
+TEIL 5: TESTS (Minimum je Schritt, Muster: tests/*.test.mjs)
+--------------------------------------------------------------------------------
+- tests/business-plan-utils.test.mjs: Tier-Fallbacks, validUntil-Ablauf,
+  Limits pro Typ, Feature-Keys.
+- tests/rules/plan-gating.test.mjs: Owner kann plan nicht schreiben;
+  Basic: menuItems/staff/public-menu/offers-Write verweigert, 11. Post
+  verweigert, Ads-Write erlaubt; Pro: alles erlaubt; CEO: alles.
+- tests/functions/posts-count.test.mjs: Zaehler bei create/delete/status.
+- tests/dashboard-render.test.mjs: 4 Zustaende, Quota-Anzeige, Pro/Basic-
+  Kartenunterschiede (pure Render-Utils).
+- E2E (tests/e2e): Basic-Profil public ohne Menue-Tab; /:slug/menu-
+  Redirect; Upgrade-Request-Flow.
+
+--------------------------------------------------------------------------------
+TEIL 6: NICHT KAPUTT MACHEN (Guardrails)
+--------------------------------------------------------------------------------
+- Casarita-Pilot (Restaurant Lzm6RpNu3ErSDtGCHxpi, Alias casarita) ist
+  Live-Kunde: muss nach Backfill pro sein, QR/Order/Waiter-Flow testen.
+- publicRoutes/Slug-System, QR-Query-Kontext (source/table), Waiter-PWA,
+  Order-Spiegelung: nicht umbauen, nur Plan-Check davorsetzen.
+- Bestehende localStorage-Keys nicht umbenennen; neue Keys nur mit
+  ::rid/::uid-Scope (Muster APP_MAP.md).
+- Analytics-System (analyticsDaily-Schema) nicht veraendern - Dashboard
+  liest nur.
+- socialAccessMode (waiteronly/blocked) hat Vorrang vor allem Plan-UI.
+- Keine Aenderung an Safe-Area/Modal/Sticky-CSS.
+- Force-hidden/deleted-Filter (business-visibility-utils.js) gelten
+  unabhaengig vom Plan weiter.
+
+--------------------------------------------------------------------------------
+TEIL 7: DEFINITION OF DONE (Gesamtprojekt)
+--------------------------------------------------------------------------------
+1. Jedes Business hat einen Plan; Owner kann ihn nicht selbst aendern.
+2. Basic: Karte + Kategorie-Tab + Profil + max 10 Posts + Stories + Ads
+   + Chat + Dashboard mit Mini-Analytics + Upgrade-CTA. Nicht mehr.
+3. Pro: alles, unveraendert zu heute.
+4. Gating dreifach: UI (Locked-Karten), Rules (Writes), Public-Render
+   (Gaeste) - alle drei konsistent, kein Weg daran vorbei.
+5. Kein falscher Zwischenzustand: kein Pro-UI-Aufblitzen, kein leerer
+   Screen, keine toten Buttons; Skeleton/Empty/Error/Locked ueberall.
+6. Performance: Dashboard-Erstaufruf <=8 Reads, Cache-Hit sofort,
+   Bundle-Budget nicht verschlechtert, 3G-tauglich verifiziert.
+7. npm run test:all gruen; Rules-, Functions-, E2E-Tests fuer Gating
+   vorhanden; manuelle Rollen-x-Typ-Matrix dokumentiert.
+8. Alle Texte in sq/de/en/sr.
+================================================================================
+ENDE DES DOKUMENTS
+================================================================================
