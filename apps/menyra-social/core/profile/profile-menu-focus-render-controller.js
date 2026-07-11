@@ -37,8 +37,10 @@ import {
 import {
   BUSINESS_TYPE_HINT_STORAGE_KEY,
   businessTypeHintKeysCore,
+  profileMatchesBusinessRouteSlugCore,
   readBusinessTypeHintCore,
   resolveStableBusinessTypeCore,
+  routePathHasDetailsCatalogSegmentCore,
   writeBusinessTypeHintCore
 } from "./business-type-hint-utils.js";
 
@@ -722,13 +724,30 @@ function resolveStableBusinessProfileType(profile = {}) {
   );
 }
 
+// Cold-Start-Signal aus der URL: "/musterhotel/details" sagt schon beim ersten
+// Paint synchron "Hotel/Motel" - ohne auf Profil, Meta oder localStorage zu
+// warten. Gilt nur, wenn das gerenderte Profil zur Route gehoert (Slug-Match
+// oder noch ohne Identitaetsfelder). Wird bewusst NICHT persistiert: die
+// Daten-Wahrheit (Live-Typ) korrigiert eine falsche URL beim naechsten Render.
+function routeCatalogSignalSaysHotel(profile = {}) {
+  try {
+    const pathname = String(globalThis?.location?.pathname || "");
+    if (!routePathHasDetailsCatalogSegmentCore(pathname)) return false;
+    return profileMatchesBusinessRouteSlugCore(profile, readRouteSlugForBusinessTypeHint());
+  } catch {
+    return false;
+  }
+}
+
 function isHotelBusinessProfile(profile = {}) {
   const type = resolveStableBusinessProfileType(profile);
   if (type === "hotel" || type === "motel") return true;
   if (type) return false;
-  // Typ (noch) unbekannt: Hotel-Beweis direkt aus dem Datensatz - Zimmer und
-  // Destination gibt es nur bei Hotels/Motels. So bleibt der Details-Tab auch
-  // dann stabil, wenn Meta/Hint nach einem iOS-Resume nicht greifbar sind.
+  // Typ (noch) unbekannt: erst das synchrone URL-Signal ("/details" im Pfad),
+  // dann Hotel-Beweis direkt aus dem Datensatz - Zimmer und Destination gibt
+  // es nur bei Hotels/Motels. So bleibt der Details-Tab auch dann stabil,
+  // wenn Meta/Hint beim Cold Start oder iOS-Resume nicht greifbar sind.
+  if (routeCatalogSignalSaysHotel(profile)) return true;
   const record = getHotelProfileRecord(profile);
   const hasHotelEvidence = collectHotelRoomsCore(record).length > 0
     || !!String(record.destinationId || "").trim();

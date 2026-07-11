@@ -68,3 +68,39 @@ export function resolveStableBusinessTypeCore(liveType = "", hintType = "") {
   if (live) return live;
   return asText(hintType).toLowerCase();
 }
+
+// Hotels/Motels tragen ihren Katalog-Tab im Pfad ("/musterhotel/details").
+// Dieses Signal ist beim Cold Start ab dem ersten Paint synchron verfuegbar -
+// noch bevor Profil, Meta oder localStorage-Hinweis greifbar sind.
+const ROUTE_DETAILS_CATALOG_SEGMENTS = new Set(["details", "detail", "detajet"]);
+
+export function routePathHasDetailsCatalogSegmentCore(pathname = "") {
+  const segments = String(pathname || "")
+    .split("?")[0]
+    .split("#")[0]
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment).trim().toLowerCase();
+      } catch {
+        return String(segment || "").trim().toLowerCase();
+      }
+    });
+  return segments.some((segment) => ROUTE_DETAILS_CATALOG_SEGMENTS.has(segment));
+}
+
+// Das Routen-Signal darf nur fuer das Profil gelten, das die Route meint:
+// entweder traegt das (Cold-Start-)Profil noch keine Identitaet, oder einer
+// seiner Slugs entspricht dem Slug aus der URL.
+export function profileMatchesBusinessRouteSlugCore(profile = {}, routeSlug = "") {
+  const safeRouteSlug = asText(routeSlug).replace(/^@+/, "").toLowerCase();
+  if (!safeRouteSlug) return false;
+  const source = profile && typeof profile === "object" ? profile : {};
+  const candidates = [source.publicSlug, source.landingSlug, source.handle, source.slug, source.businessSlug]
+    .map((value) => asText(value).replace(/^@+/, "").toLowerCase())
+    .filter(Boolean);
+  if (!candidates.length) return true;
+  return candidates.includes(safeRouteSlug);
+}

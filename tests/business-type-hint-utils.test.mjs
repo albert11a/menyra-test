@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 
 import {
   businessTypeHintKeysCore,
+  profileMatchesBusinessRouteSlugCore,
   readBusinessTypeHintCore,
   resolveStableBusinessTypeCore,
+  routePathHasDetailsCatalogSegmentCore,
   writeBusinessTypeHintCore
 } from "../apps/menyra-social/core/profile/business-type-hint-utils.js";
 
@@ -73,4 +75,36 @@ test("hint round trip resolves hotel on the next (cold) paint", () => {
   // 2. Naechster Paint ohne Live-Typ -> Hinweis liefert sofort "hotel"
   const stable = resolveStableBusinessTypeCore("", readBusinessTypeHintCore(store, keys));
   assert.equal(stable, "hotel");
+});
+
+test("routePathHasDetailsCatalogSegmentCore detects details paths", () => {
+  assert.equal(routePathHasDetailsCatalogSegmentCore("/musterhotel/details"), true);
+  assert.equal(routePathHasDetailsCatalogSegmentCore("/musterhotel/detail"), true);
+  assert.equal(routePathHasDetailsCatalogSegmentCore("/musterhotel/detajet"), true);
+  assert.equal(routePathHasDetailsCatalogSegmentCore("/b/musterhotel/details?src=qr"), true);
+  assert.equal(routePathHasDetailsCatalogSegmentCore("/musterhotel/menu"), false);
+  assert.equal(routePathHasDetailsCatalogSegmentCore("/musterhotel"), false);
+  assert.equal(routePathHasDetailsCatalogSegmentCore(""), false);
+});
+
+test("profileMatchesBusinessRouteSlugCore guards the route signal", () => {
+  // Cold-Start-Profil ohne Identitaet gehoert zur Route
+  assert.equal(profileMatchesBusinessRouteSlugCore({}, "musterhotel"), true);
+  // Slug-Match (case-insensitiv, @-Prefix egal)
+  assert.equal(profileMatchesBusinessRouteSlugCore({ publicSlug: "Musterhotel" }, "musterhotel"), true);
+  assert.equal(profileMatchesBusinessRouteSlugCore({ handle: "@musterhotel" }, "musterhotel"), true);
+  // Anderes Business -> Signal gilt nicht
+  assert.equal(profileMatchesBusinessRouteSlugCore({ publicSlug: "resto-x" }, "musterhotel"), false);
+  // Ohne Routen-Slug nie
+  assert.equal(profileMatchesBusinessRouteSlugCore({}, ""), false);
+});
+
+test("cold start on /slug/details resolves hotel without any stored data", () => {
+  // Simuliert den ersten Paint: leeres Profil, leerer Hint-Store - nur die URL
+  // traegt die Wahrheit. Das Signal ergibt sich aus Pfad + Slug-Guard.
+  const pathname = "/musterhotel/details";
+  const routeSlug = "musterhotel";
+  const signal = routePathHasDetailsCatalogSegmentCore(pathname)
+    && profileMatchesBusinessRouteSlugCore({}, routeSlug);
+  assert.equal(signal, true);
 });

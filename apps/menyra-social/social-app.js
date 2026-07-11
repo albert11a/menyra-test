@@ -1563,7 +1563,7 @@ function readBusinessTypeHintStoreForRoute() {
   }
 }
 
-function resolvePublicBusinessCatalogRouteSegment(routeState = {}) {
+function resolvePublicBusinessCatalogRouteSegment(routeState = {}, currentPathRoute = null) {
   const targetProfile = state.profileView?.profile && typeof state.profileView.profile === "object"
     ? state.profileView.profile
     : (state.userProfile && typeof state.userProfile === "object" ? state.userProfile : {});
@@ -1575,7 +1575,12 @@ function resolvePublicBusinessCatalogRouteSegment(routeState = {}) {
       extraSlugs: [String(routeState?.canonicalPublicSlug || "").trim()]
     })
   );
-  return resolveCatalogRouteSegmentForBusinessTypeCore(hintType);
+  if (hintType) return resolveCatalogRouteSegmentForBusinessTypeCore(hintType);
+  // Typ (noch) unbekannt: das Segment der aktuellen URL beibehalten, damit
+  // ein Erstbesuch auf /slug/details nicht faelschlich auf /menu
+  // zurueckgeschrieben wird, bevor Profil/Meta geladen sind.
+  const currentSegment = String(currentPathRoute?.profileCatalogSegment || "").trim().toLowerCase();
+  return currentSegment === "details" ? "details" : "menu";
 }
 
 function buildCurrentRouteSyncKey(url, routeState = {}) {
@@ -1639,7 +1644,10 @@ function syncActiveTabRouteQuery() {
         contentTab: routeState.profileContentTab,
         accessSource: routeState.profileAccessSource,
         pathnameHint: currentPathRoute.kind === "business" ? currentUrl.pathname : "",
-        catalogSegment: resolvePublicBusinessCatalogRouteSegment(routeState)
+        catalogSegment: resolvePublicBusinessCatalogRouteSegment(
+          routeState,
+          currentPathRoute.kind === "business" ? currentPathRoute : null
+        )
       }) || currentUrl.pathname;
       clearProfileRouteQueryParams(nextUrl.searchParams);
       setCanonicalRouteQueryParam(
