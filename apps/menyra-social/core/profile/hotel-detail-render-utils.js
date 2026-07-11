@@ -21,7 +21,7 @@ export const HOTEL_DETAIL_RENDER_UTILS_VERSION = "hotel-detail-render-utils.v2";
 export const HOTEL_DESTINATION_SECTIONS_CONTAINER_ID = "mnyraHotelDestinationSections";
 
 const HOTEL_DETAIL_STYLE_ID = "mnyraHotelDetailStyles";
-const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v8";
+const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v9";
 
 const TRAVEL_LABELS_SQ = Object.freeze({ walk: "min në këmbë", drive: "min me makinë" });
 
