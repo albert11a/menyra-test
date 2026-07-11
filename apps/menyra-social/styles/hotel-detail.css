@@ -177,6 +177,9 @@
   font-weight: 780;
 }
 .mhd-distance span { display: inline-flex; align-items: center; gap: 5px; }
+/* Dhoma-/Oferta-Karten: mehr Luft zwischen Titel/Preis-Zeile und Meta-Zeile
+   (persona/krevate/m2). Gilt nur direkt nach der Preiszeile. */
+.mhd-heading-price + .mhd-distance { margin-top: 18px; }
 .mhd-copy {
   margin: 11px 0 0;
   color: var(--mhd-muted);
