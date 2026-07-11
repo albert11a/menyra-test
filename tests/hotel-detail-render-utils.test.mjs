@@ -79,6 +79,28 @@ test("manual beach distance direct flag renders Në plazh", () => {
   assert.match(html, /Në plazh/);
 });
 
+test("manual beach walk time overrides the estimated minutes", () => {
+  const html = renderHotelDestinationSectionsCore({
+    template: TEMPLATE,
+    overrides: {},
+    hotelCoords: HOTEL_COORDS,
+    manualBeachDistance: { label: "300 m", direct: false, timeLabel: "7 min në këmbë" }
+  });
+  assert.match(html, />300 m</);
+  assert.match(html, /7 min në këmbë/);
+});
+
+test("manual beach walk time shows the clock also on Në plazh", () => {
+  const html = renderHotelDestinationSectionsCore({
+    template: TEMPLATE,
+    overrides: {},
+    hotelCoords: HOTEL_COORDS,
+    manualBeachDistance: { label: "", direct: true, timeLabel: "2 min në këmbë" }
+  });
+  assert.match(html, /Në plazh/);
+  assert.match(html, /2 min në këmbë/);
+});
+
 test("parseManualDistanceLabelToMetersCore parses m and km labels", () => {
   assert.equal(parseManualDistanceLabelToMetersCore("300 m"), 300);
   assert.equal(parseManualDistanceLabelToMetersCore("1,2 km"), 1200);
@@ -227,4 +249,19 @@ test("renderHotelMapSectionCore emits live map container with coords", () => {
   assert.match(html, /Harta e zbulimit/);
   const withoutCoords = renderHotelMapSectionCore({ address: "Rruga 1", city: "Velipoje", mapsUrl: "x" });
   assert.doesNotMatch(withoutCoords, new RegExp(HOTEL_DETAIL_MAP_CONTAINER_ID));
+});
+
+test("amenities section always comes second, right after rooms", () => {
+  const html = renderHotelDetailViewCore({
+    rooms: [{ id: "r1", title: "Dhome", price: 50 }],
+    amenities: ["WiFi", "Parkim"],
+    city: "Velipoje",
+    destinationId: "dest_1"
+  });
+  const roomsIndex = html.indexOf("Dhoma");
+  const amenitiesIndex = html.indexOf("Përfshihet");
+  const destinationIndex = html.indexOf(HOTEL_DESTINATION_SECTIONS_CONTAINER_ID);
+  assert.ok(roomsIndex >= 0 && amenitiesIndex >= 0 && destinationIndex >= 0);
+  assert.ok(roomsIndex < amenitiesIndex, "Dhoma vor Përfshihet");
+  assert.ok(amenitiesIndex < destinationIndex, "Përfshihet vor Destination-Sektionen");
 });

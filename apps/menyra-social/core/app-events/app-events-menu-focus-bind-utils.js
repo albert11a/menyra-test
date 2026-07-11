@@ -369,6 +369,9 @@ export function bindAppMenuFocusEventsCore({
     const distanceBeach = readHotelCardDistanceField("hotelCardDistanceBeach", "Në plazh", "nga plazhi");
     const distanceCenterDirect = isHotelCardChecked("hotelCardDistanceCenterDirect");
     const distanceBeachDirect = isHotelCardChecked("hotelCardDistanceBeachDirect");
+    // Manuell gepflegte Gehzeit zum Strand (Minuten); leer -> null (loeschen).
+    const beachWalkMinutesRaw = Math.round(Number(readHotelCardInput("hotelCardDistanceBeachTime").replace(",", ".")));
+    const beachWalkMinutes = Number.isFinite(beachWalkMinutesRaw) && beachWalkMinutesRaw > 0 ? beachWalkMinutesRaw : null;
     const startingPrice = readHotelCardInput("hotelCardStartingPrice").replace(/^\s*ab\s+/i, "").replace(/\s*(eur|€)\s*$/i, "").trim();
     const featureOne = readHotelCardInput("hotelCardFeatureOneText");
     const featureTwo = readHotelCardInput("hotelCardFeatureTwoText");
@@ -439,6 +442,8 @@ export function bindAppMenuFocusEventsCore({
         strandEntfernung: distanceBeach,
         beachfront: distanceBeachDirect,
         onBeach: distanceBeachDirect,
+        beachWalkMinutes,
+        distanceBeachWalkMinutes: beachWalkMinutes,
         hotelStartingPrice: startingPrice,
         startingPrice,
         priceFrom: startingPrice,

@@ -16,7 +16,7 @@ export const HOTEL_DETAIL_RENDER_UTILS_VERSION = "hotel-detail-render-utils.v1";
 export const HOTEL_DESTINATION_SECTIONS_CONTAINER_ID = "mnyraHotelDestinationSections";
 
 const HOTEL_DETAIL_STYLE_ID = "mnyraHotelDetailStyles";
-const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v4";
+const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v5";
 
 const TRAVEL_LABELS_SQ = Object.freeze({ walk: "min në këmbë", drive: "min me makinë" });
 
@@ -143,18 +143,24 @@ export function parseManualDistanceLabelToMetersCore(label = "") {
 
 function renderPlaceDistance(place = {}) {
   // Manuell gepflegte Distanz (z. B. Deti/Plazha aus dem Lead-Editor) hat
-  // Vorrang vor der automatisch berechneten Entfernung.
+  // Vorrang vor der automatisch berechneten Entfernung. Eine manuell
+  // gepflegte Gehzeit hat Vorrang vor der Schaetzung und erscheint auch
+  // bei "Në plazh" mit Uhr-Icon.
   const manual = place.manualDistance && typeof place.manualDistance === "object" ? place.manualDistance : null;
   if (manual) {
     const manualLabel = asText(manual.label);
-    if (!manualLabel) return "";
+    const manualTimeLabel = asText(manual.timeLabel);
+    const distanceText = manualLabel || formatDistanceLabelCore(place.distanceMeters);
     const manualMeters = parseManualDistanceLabelToMetersCore(manualLabel);
-    const travelLabel = manual.direct !== true && Number.isFinite(manualMeters)
-      ? formatTravelLabelCore(manualMeters, TRAVEL_LABELS_SQ)
-      : "";
+    const fallbackMeters = Number.isFinite(manualMeters) ? manualMeters : place.distanceMeters;
+    const travelLabel = manualTimeLabel
+      || (manual.direct !== true && Number.isFinite(fallbackMeters)
+        ? formatTravelLabelCore(fallbackMeters, TRAVEL_LABELS_SQ)
+        : "");
+    if (!distanceText && !travelLabel) return "";
     return `
       <div class="mhd-distance">
-        <span>${mhdIcon("nav", "mhd-icon--sm")}${escapeHtml(manualLabel)}</span>
+        ${distanceText ? `<span>${mhdIcon("nav", "mhd-icon--sm")}${escapeHtml(distanceText)}</span>` : ""}
         ${travelLabel ? `<span>${mhdIcon("clock", "mhd-icon--sm")}${escapeHtml(travelLabel)}</span>` : ""}
       </div>
     `;
@@ -219,12 +225,17 @@ export function renderHotelDestinationSectionsCore({
   const manualBeachLabel = manualBeach
     ? (manualBeach.direct === true ? "Në plazh" : asText(manualBeach.label))
     : "";
-  if (manualBeachLabel) {
+  const manualBeachTimeLabel = manualBeach ? asText(manualBeach.timeLabel) : "";
+  if (manualBeachLabel || manualBeachTimeLabel) {
     const beachGroup = groups.find((group) => group.key === "beach");
     if (beachGroup?.places?.length) {
       beachGroup.places[0] = {
         ...beachGroup.places[0],
-        manualDistance: { label: manualBeachLabel, direct: manualBeach.direct === true }
+        manualDistance: {
+          label: manualBeachLabel,
+          direct: manualBeach.direct === true,
+          timeLabel: manualBeachTimeLabel
+        }
       };
     }
   }
@@ -480,11 +491,11 @@ export function renderHotelDetailViewCore({
   return `
     <div class="mhd">
       ${renderHotelRoomsSectionCore({ rooms, offers, imageUrlFn })}
+      ${renderHotelAmenitiesSectionCore({ amenities })}
       <div id="${HOTEL_DESTINATION_SECTIONS_CONTAINER_ID}" data-destination-id="${escapeHtml(destinationId)}" style="display:contents">
         ${destinationContent}
       </div>
       ${hasDestination ? "" : renderHotelCityFallbackSectionCore({ city, address, imageUrl: cityImageUrl, imageUrlFn })}
-      ${renderHotelAmenitiesSectionCore({ amenities })}
       ${renderHotelMapSectionCore({ address, city, destinationName, mapsUrl, hotelCoords, hotelName })}
       ${renderHotelRatingSectionCore({ rating, reviewCount, summary: ratingSummary })}
     </div>

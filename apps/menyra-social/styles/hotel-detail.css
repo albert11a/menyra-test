@@ -14,6 +14,8 @@
   display: flex;
   flex-direction: column;
   gap: 44px;
+  /* Luft zwischen der Beitraege/Details-Tab-Leiste und der ersten Sektion. */
+  padding-top: 26px;
   padding-bottom: 8px;
   -webkit-font-smoothing: antialiased;
 }
@@ -37,32 +39,33 @@
 .mhd-section-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 17px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 .mhd-section-icon {
-  width: 44px;
-  height: 44px;
+  width: 37px;
+  height: 37px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   background: #fff;
   border: 1px solid var(--mhd-border);
-  border-radius: 15px;
+  border-radius: 13px;
   box-shadow: 0 2px 8px rgba(26, 29, 46, 0.025);
 }
+.mhd-section-icon .mhd-icon { width: 18px; height: 18px; }
 .mhd-section-title small {
   display: block;
   margin-bottom: 2px;
   color: var(--mhd-light-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 850;
   letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 .mhd-section-title h2 {
   margin: 0;
-  font-size: clamp(23px, 6vw, 30px);
+  font-size: clamp(19px, 5vw, 24px);
   line-height: 1;
   letter-spacing: -0.045em;
   font-weight: 800;
@@ -84,16 +87,16 @@
 .mhd-rail > * { scroll-snap-align: start; }
 
 .mhd-card {
-  flex: 0 0 min(70vw, 300px);
+  flex: 0 0 min(62vw, 258px);
   overflow: hidden;
   background: var(--mhd-card);
   border: 1px solid var(--mhd-border);
-  border-radius: 22px;
+  border-radius: 20px;
   box-shadow: var(--mhd-shadow);
 }
 .mhd-photo {
   position: relative;
-  height: 165px;
+  height: 145px;
   overflow: hidden;
   background: linear-gradient(135deg, #dcdad4, #f3f2ef);
 }
@@ -117,7 +120,7 @@
 .mhd-card-body {
   position: relative;
   z-index: 1;
-  padding: 6px 15px 16px;
+  padding: 4px 13px 14px;
 }
 .mhd-pill {
   display: inline-flex;
@@ -147,8 +150,8 @@
 }
 .mhd-pill--overlay.mhd-pill--accent { background: rgba(255, 255, 255, 0.92); color: var(--mhd-ink); }
 .mhd-card-body h3 {
-  margin: 10px 0 0;
-  font-size: 19px;
+  margin: 9px 0 0;
+  font-size: 17px;
   line-height: 1.15;
   letter-spacing: -0.035em;
   font-weight: 800;
@@ -159,9 +162,9 @@
   justify-content: space-between;
   gap: 12px;
 }
-.mhd-heading-price h3 { flex: 1; min-width: 0; margin-top: 10px; font-size: 18px; }
-.mhd-price { flex: 0 0 auto; margin-top: 12px; text-align: right; }
-.mhd-price strong { display: block; font-size: 19px; line-height: 1; }
+.mhd-heading-price h3 { flex: 1; min-width: 0; margin-top: 9px; font-size: 16px; }
+.mhd-price { flex: 0 0 auto; margin-top: 11px; text-align: right; }
+.mhd-price strong { display: block; font-size: 17px; line-height: 1; }
 .mhd-price small { color: var(--mhd-muted); font-size: 11px; }
 .mhd-distance {
   display: flex;
@@ -187,29 +190,30 @@
   gap: 10px;
 }
 .mhd-amenity {
-  min-height: 64px;
+  min-height: 56px;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 10px;
+  gap: 10px;
+  padding: 9px;
   background: #fff;
   border: 1px solid var(--mhd-border);
-  border-radius: 17px;
+  border-radius: 15px;
   box-shadow: 0 2px 8px rgba(26, 29, 46, 0.02);
 }
 .mhd-amenity-icon {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   color: var(--mhd-ink);
   background: var(--mhd-soft);
-  border-radius: 14px;
+  border-radius: 12px;
 }
+.mhd-amenity-icon .mhd-icon { width: 18px; height: 18px; }
 .mhd-amenity h3 {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.2;
   letter-spacing: -0.015em;
   font-weight: 800;
@@ -333,9 +337,9 @@
   padding: 2px 16px 14px;
 }
 .mhd-skeleton span {
-  flex: 0 0 min(70vw, 300px);
-  height: 240px;
-  border-radius: 22px;
+  flex: 0 0 min(62vw, 258px);
+  height: 214px;
+  border-radius: 20px;
   background: linear-gradient(110deg, #eef0f4 40%, #f7f8fa 50%, #eef0f4 60%);
   background-size: 200% 100%;
   animation: mhd-shimmer 1.4s linear infinite;
@@ -347,7 +351,7 @@
 @media (min-width: 720px) {
   .mhd { gap: 60px; }
   .mhd-rail, .mhd-skeleton { gap: 18px; }
-  .mhd-card, .mhd-skeleton span { flex-basis: min(36vw, 300px); }
+  .mhd-card, .mhd-skeleton span { flex-basis: min(32vw, 258px); }
   .mhd-amenities { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .mhd-map-card {
     display: grid;

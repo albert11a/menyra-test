@@ -1014,9 +1014,13 @@ function renderHotelDistanceEditorField({
   label = "",
   value = "",
   directLabel = "",
-  direct = false
+  direct = false,
+  withTime = false,
+  timeMinutes = 0
 } = {}) {
   const parsed = parseHotelDistanceEditorValue(value, { direct });
+  const safeTimeMinutes = Number(timeMinutes);
+  const timeValue = Number.isFinite(safeTimeMinutes) && safeTimeMinutes > 0 ? String(Math.round(safeTimeMinutes)) : "";
   return `
     <div class="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4 space-y-3">
       <div class="flex items-center gap-3">
@@ -1034,6 +1038,12 @@ function renderHotelDistanceEditorField({
           ${HOTEL_DISTANCE_UNITS.map((unit) => `<option value="${escapeHtml(unit.value)}" ${parsed.unit === unit.value ? "selected" : ""}>${escapeHtml(unit.label)}</option>`).join("")}
         </select>
       </div>
+      ${withTime ? `
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase ml-2" for="${escapeHtml(idPrefix)}Time">Koha në këmbë (min)</label>
+        <input id="${escapeHtml(idPrefix)}Time" type="number" min="0" step="1" value="${escapeHtml(timeValue)}" placeholder="4" inputmode="numeric" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+      </div>
+      ` : ""}
       <label class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white border border-slate-100">
         <span class="text-xs font-black text-slate-700">${escapeHtml(directLabel)}</span>
         <input id="${escapeHtml(idPrefix)}Direct" type="checkbox" class="w-5 h-5 accent-indigo-600" ${parsed.isDirect ? "checked" : ""} />
@@ -1233,9 +1243,21 @@ function collectHotelRoomOffers(record = {}) {
   return collectHotelEditorOfferItems(record).filter((item) => item.active !== false && String(item.title || "").trim());
 }
 
+// Manuell gepflegte Gehzeit zum Strand (Minuten) aus dem Hotel-/Lead-Editor.
+function readHotelBeachWalkMinutes(record = {}) {
+  const raw = readFirstHotelText(record, [
+    "beachWalkMinutes",
+    "distanceBeachWalkMinutes",
+    "beachTimeMinutes"
+  ]);
+  const minutes = Math.round(Number(String(raw).replace(",", ".")));
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 0;
+}
+
 // Deti/Plazha: manuell im Lead-/Hotel-Editor gepflegte Stranddistanz
 // ("300 m", "1.2 km") bzw. "Direkt am Strand" - ersetzt in der Plazha-Sektion
-// die automatisch aus dem Hotel-Pin berechneten Meter.
+// die automatisch aus dem Hotel-Pin berechneten Meter. Die Gehzeit kann
+// ebenfalls manuell gepflegt sein und hat dann Vorrang vor der Schaetzung.
 function readHotelManualBeachDistance(record = {}) {
   const direct = record.beachfront === true || record.onBeach === true || record.amStrand === true;
   const label = readFirstHotelText(record, [
@@ -1245,8 +1267,10 @@ function readHotelManualBeachDistance(record = {}) {
     "beachDistanceLabel",
     "strandEntfernung"
   ]);
-  if (!direct && !label) return null;
-  return { label, direct };
+  const walkMinutes = readHotelBeachWalkMinutes(record);
+  const timeLabel = walkMinutes > 0 ? `${walkMinutes} min në këmbë` : "";
+  if (!direct && !label && !timeLabel) return null;
+  return { label, direct, timeLabel };
 }
 
 function hotelRecordHasDetailContent(record = {}) {
@@ -1503,6 +1527,7 @@ function renderHotelCardAdminView(profile = {}) {
     "lakeDistance",
     "distanceToLake"
   ]);
+  const beachWalkMinutes = readHotelBeachWalkMinutes(record);
   const startingPrice = readFirstHotelText(record, [
     "hotelStartingPrice",
     "startingPrice",
@@ -1593,7 +1618,9 @@ function renderHotelCardAdminView(profile = {}) {
                 label: "Plazhi",
                 value: distanceBeach,
                 directLabel: HOTEL_BEACH_DIRECT_LABEL,
-                direct: directBeach
+                direct: directBeach,
+                withTime: true,
+                timeMinutes: beachWalkMinutes
               })}
               <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Çmimi më i mirë</label>
