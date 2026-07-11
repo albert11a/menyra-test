@@ -21,7 +21,7 @@ export const HOTEL_DETAIL_RENDER_UTILS_VERSION = "hotel-detail-render-utils.v2";
 export const HOTEL_DESTINATION_SECTIONS_CONTAINER_ID = "mnyraHotelDestinationSections";
 
 const HOTEL_DETAIL_STYLE_ID = "mnyraHotelDetailStyles";
-const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v6";
+const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v7";
 
 const TRAVEL_LABELS_SQ = Object.freeze({ walk: "min në këmbë", drive: "min me makinë" });
 
@@ -63,6 +63,7 @@ const ICON_PATHS = Object.freeze({
   clock: `<circle cx="12" cy="12" r="10"/><path d="M12 6v6h4"/>`,
   star: `<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>`,
   expand: `<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5M3 3l6 6M21 3l-6 6M3 21l6-6M21 21l-6-6"/>`,
+  arrowRight: `<path d="M5 12h14M13 6l6 6-6 6"/>`,
   check: `<path d="m20 6-11 11-5-5"/>`,
   wifi: `<path d="M5 12.55a11 11 0 0 1 14 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>`,
   car: `<path d="m5 17-2-1v-4l2-5h14l2 5v4l-2 1M5 17v2M19 17v2M3 13h18M7 13h.01M17 13h.01"/>`,
@@ -357,7 +358,7 @@ export function renderHotelRoomsSectionCore({
                 ${asText(item.text || item.description) ? `<p class="mhd-copy">${escapeHtml(item.text || item.description)}</p>` : ""}
                 <button type="button" class="mhd-more" data-hotel-stay-more="${escapeHtml(asText(item.id))}" data-hotel-stay-kind="${stayKind}">
                   Më shumë
-                  ${mhdIcon("expand", "mhd-icon--sm")}
+                  ${mhdIcon("arrowRight", "mhd-icon--sm")}
                 </button>
               </div>
             </article>
