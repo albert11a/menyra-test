@@ -16,7 +16,7 @@ export const HOTEL_DETAIL_RENDER_UTILS_VERSION = "hotel-detail-render-utils.v1";
 export const HOTEL_DESTINATION_SECTIONS_CONTAINER_ID = "mnyraHotelDestinationSections";
 
 const HOTEL_DETAIL_STYLE_ID = "mnyraHotelDetailStyles";
-const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-10-hotel-detail-v1";
+const HOTEL_DETAIL_STYLE_HREF = "/apps/menyra-social/styles/hotel-detail.css?v=2026-07-11-hotel-detail-v2";
 
 const TRAVEL_LABELS_SQ = Object.freeze({ walk: "min në këmbë", drive: "min me makinë" });
 
@@ -177,9 +177,11 @@ function renderPlaceCard(place = {}, { nearestPlaceId = "", imageUrlFn = null } 
   const imageUrl = rawImage && typeof imageUrlFn === "function" ? asText(imageUrlFn(rawImage)) || rawImage : rawImage;
   return `
     <article class="mhd-card">
-      <div class="mhd-photo">${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(place.name)}" loading="lazy" decoding="async" />` : ""}</div>
+      <div class="mhd-photo">
+        ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(place.name)}" loading="lazy" decoding="async" />` : ""}
+        ${pill ? `<span class="mhd-pill mhd-pill--overlay ${place.id === nearestPlaceId ? "mhd-pill--accent" : ""}">${escapeHtml(pill)}</span>` : ""}
+      </div>
       <div class="mhd-card-body">
-        ${pill ? `<span class="mhd-pill ${place.id === nearestPlaceId ? "mhd-pill--accent" : ""}">${escapeHtml(pill)}</span>` : ""}
         <h3>${escapeHtml(place.name)}</h3>
         ${renderPlaceDistance(place)}
         ${place.description ? `<p class="mhd-copy">${escapeHtml(place.description)}</p>` : ""}
@@ -303,9 +305,11 @@ export function renderHotelRoomsSectionCore({
           const priceLabel = normalizeRoomPriceLabel(item);
           return `
             <article class="mhd-card">
-              <div class="mhd-photo">${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}" loading="lazy" decoding="async" />` : ""}</div>
+              <div class="mhd-photo">
+                ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title)}" loading="lazy" decoding="async" />` : ""}
+                ${asText(item.tag || item.badge) ? `<span class="mhd-pill mhd-pill--overlay mhd-pill--accent">${escapeHtml(item.tag || item.badge)}</span>` : ""}
+              </div>
               <div class="mhd-card-body">
-                ${asText(item.tag || item.badge) ? `<span class="mhd-pill mhd-pill--accent">${escapeHtml(item.tag || item.badge)}</span>` : ""}
                 <div class="mhd-heading-price">
                   <h3>${escapeHtml(item.title)}</h3>
                   ${priceLabel ? `<span class="mhd-price"><strong>${escapeHtml(priceLabel)}</strong><small>/ natë</small></span>` : ""}
@@ -338,9 +342,11 @@ export function renderHotelCityFallbackSectionCore({
       ${renderSectionTitle({ iconName: "building", eyebrow: SECTION_EYEBROWS_SQ.city, title: SECTION_TITLES_SQ.city })}
       <div class="mhd-rail">
         <article class="mhd-card">
-          <div class="mhd-photo">${resolvedImage ? `<img src="${escapeHtml(resolvedImage)}" alt="${escapeHtml(safeCity)}" loading="lazy" decoding="async" />` : ""}</div>
+          <div class="mhd-photo">
+            ${resolvedImage ? `<img src="${escapeHtml(resolvedImage)}" alt="${escapeHtml(safeCity)}" loading="lazy" decoding="async" />` : ""}
+            <span class="mhd-pill mhd-pill--overlay">${escapeHtml(SECTION_TITLES_SQ.city)}</span>
+          </div>
           <div class="mhd-card-body">
-            <span class="mhd-pill">${escapeHtml(SECTION_TITLES_SQ.city)}</span>
             <h3>${escapeHtml(safeCity)}</h3>
             ${asText(address) ? `<p class="mhd-copy">${escapeHtml(address)}</p>` : ""}
           </div>

@@ -131,6 +131,19 @@
   text-transform: uppercase;
 }
 .mhd-pill--accent { color: var(--mhd-ink); background: var(--mhd-soft); }
+/* Badge oben rechts im Titelbild (Plazha, Vende për të parë, Më afër hotelit, ...) */
+.mhd-pill--overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  max-width: calc(100% - 20px);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.mhd-pill--overlay.mhd-pill--accent { background: rgba(255, 255, 255, 0.92); color: var(--mhd-ink); }
 .mhd-card-body h3 {
   margin: 10px 0 0;
   font-size: 19px;

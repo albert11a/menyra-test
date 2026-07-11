@@ -177,7 +177,40 @@ test("renderHotelDetailViewCore shows city fallback only without destination", (
   const withoutDestination = renderHotelDetailViewCore({ city: "Velipoje", address: "Rruga 1" });
   assert.match(withoutDestination, /Velipoje/);
   const withDestination = renderHotelDetailViewCore({ city: "Velipoje", destinationId: "dest_1" });
-  assert.doesNotMatch(withDestination, /mhd-pill">Qyteti/);
+  assert.doesNotMatch(withDestination, /mhd-pill[^>]*>Qyteti/);
+});
+
+test("category badges sit as overlay inside the title image, not in the card body", () => {
+  const html = renderHotelDestinationSectionsCore({
+    template: TEMPLATE,
+    overrides: {},
+    hotelCoords: HOTEL_COORDS
+  });
+  assert.match(html, /mhd-pill mhd-pill--overlay/);
+  // Kein Pill mehr im Karten-Body: zwischen Body-Start und Artikel-Ende
+  // darf keine mhd-pill-Klasse auftauchen.
+  const bodySegments = html.split('<div class="mhd-card-body">').slice(1);
+  assert.ok(bodySegments.length > 0);
+  bodySegments.forEach((segment) => {
+    const body = segment.split("</article>")[0];
+    assert.doesNotMatch(body, /mhd-pill/);
+  });
+});
+
+test("room tag badge renders as overlay on the room photo", () => {
+  const html = renderHotelRoomsSectionCore({
+    rooms: [{ id: "r1", title: "Dhome Deluxe", tag: "Oferta", price: 80 }]
+  });
+  assert.match(html, /mhd-pill mhd-pill--overlay mhd-pill--accent/);
+  const body = html.split('<div class="mhd-card-body">')[1].split("</article>")[0];
+  assert.doesNotMatch(body, /mhd-pill/);
+});
+
+test("city fallback badge renders as overlay on the city image", () => {
+  const html = renderHotelCityFallbackSectionCore({ city: "Velipoje", address: "Rruga 1" });
+  assert.match(html, /mhd-pill mhd-pill--overlay/);
+  const body = html.split('<div class="mhd-card-body">')[1].split("</article>")[0];
+  assert.doesNotMatch(body, /mhd-pill/);
 });
 
 test("renderHotelMapSectionCore emits live map container with coords", () => {
