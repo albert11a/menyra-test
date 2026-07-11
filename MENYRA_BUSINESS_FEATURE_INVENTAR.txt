@@ -1,0 +1,368 @@
+================================================================================
+MENYRA - VOLLSTAENDIGES BUSINESS-FEATURE-INVENTAR
+(Entscheidungsgrundlage fuer Basic / Pro)
+================================================================================
+Stand: 2026-07-11 | Basis: komplette Code-Analyse (Editoren bis Feld-Ebene)
+
+SO NUTZT DU DIESES DOKUMENT:
+Jede Funktion hat eine Nummer (F1, F2, ...) und eine Entscheidungszeile:
+   ENTSCHEIDUNG: [ ] BASIC  [ ] PRO
+Kreuze an bzw. schreibe B oder P dahinter. "BASIC" heisst: auch Basic-
+Kunden haben es. "PRO" heisst: nur Pro. Danach dieses Dokument + den
+Masterplan (MENYRA_ABO_BASIC_PRO_MASTERPLAN.txt) in den Umsetzungs-Chat
+geben - die Entscheidungen werden dann 1:1 ins Limits-Objekt uebernommen.
+Wo bereits ein Vorschlag aus dem Masterplan existiert, steht er als
+"Vorschlag: ..." - du kannst ihn jederzeit ueberstimmen.
+
+================================================================================
+BEREICH 1: PROFIL & IDENTITAET
+(was jedes Business ueber sich einstellen kann)
+================================================================================
+
+F1  Oeffentliche Profilseite unter eigener Web-Adresse
+    - Jede Business bekommt /:slug (z.B. menyra.com/casarita) + Legacy
+      /b/:slug. Slug wird automatisch verwaltet (publicRoutes).
+    - Fuer Gaeste OHNE Login erreichbar (auch per QR/Link teilbar).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F2  Profil-Grunddaten bearbeiten
+    Felder: Logo/Avatar, Name, Handle (@name), Bio, Stadt, Ortsteil/
+    Viertel, Adresse. (Settings-Tab)
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F3  Titelbild / Cover
+    Grosses Kopfbild auf der Profilkarte (Hotels: mehrere Cover-Fotos
+    mit Hero-Vorschau).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F4  Kontakt & Infos auf dem Profil
+    Telefon (Anruf-Button), Adresse (klickbar zur Karte), Karte-oeffnen-
+    Button, Instagram-Link, TikTok-Link. Wird Gaesten als "Kontakt &
+    Infos"-Karte gezeigt; jeder Klick wird gezaehlt (siehe F49).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F5  Verifiziert-Badge ("isPremium" blauer Haken)
+    Existiert im Code als Anzeige am Avatar. Wird aktuell manuell im
+    Datensatz gesetzt (kein Editor). Koennte als Pro-Erkennungszeichen
+    dienen.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO als Pro-Badge)
+
+F6  Follower / Fans
+    User koennen Business folgen; Follower-Zahl auf dem Profil; Follower
+    bekommen Inhalte in den Feed.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+================================================================================
+BEREICH 2: SICHTBARKEIT & DISCOVERY
+(wo Gaeste/Kunden das Business finden)
+================================================================================
+
+F7  Sichtbar auf der Karte (Map-Tab)
+    Pin mit Logo auf der Stadtkarte, klickbar zum Profil.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC - dein Wunsch)
+
+F8  Sichtbar im Kategorie-Tab
+    Restaurants-Tab (restaurant/cafe/fastfood), Travel-Tab (hotel/motel),
+    Shopping-Tab (ecommerce). Mit Stadt-/Entfernungslogik und
+    "Beste"-Sektion (Top 8) + Liste (24).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC - dein Wunsch)
+
+F9  Sichtbar in der Suche (Search-Tab)
+    Business-Name/Typ in der App-Suche.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F10 Beitraege erscheinen im globalen Feed
+    Jeder Business-Post wird in den oeffentlichen Feed gespiegelt
+    (Reichweite auch bei Nicht-Followern, stadtbasiert).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC, aber nur die
+    max. 10 erlaubten Posts)
+
+F11 Travel-Suche mit Ziel-Eingabe (nur Hotels)
+    Hotels erscheinen in der Reiseziel-Suche (Sub-Tabs Offers/Hotels/
+    Map, Destination-Aliase fuer Kosovo/Albanien-Orte).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC = gelistet,
+    aber ohne Preis/Zimmer-Badges; PRO = mit "ab X EUR" u. Details)
+
+F12 Preis-Badge auf Hotel-Karten ("ab 145 EUR")
+    Kommt aus Hotel-Details (F36). Ohne Pro kein Startpreis-Badge.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 3: BEITRAEGE & STORIES (Social)
+================================================================================
+
+F13 Beitraege erstellen (Foto ODER Video + Text)
+    Upload-Tab: Bild/Video mit Caption; Videos bekommen automatisch ein
+    Standbild (Poster) fuer schnelles Laden auf 3G. Posts landen auf dem
+    Profil + im Feed (F10). Likes + Kommentare inklusive.
+    HEUTE: KEIN LIMIT.
+    ENTSCHEIDUNG Anzahl BASIC: ____ (dein Wunsch: max 10)
+    ENTSCHEIDUNG Anzahl PRO:   ____ (Vorschlag: unbegrenzt)
+
+F14 Beitraege loeschen/verwalten
+    Eigene Posts loeschen (schafft bei Limit wieder Platz).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F15 Stories (24h-Format)
+    Foto-/Video-Stories mit eigenem Viewer (wie Instagram), Upload ueber
+    eigenen Server-Weg (uploadStoryImage).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F16 Produkt-Tag in Stories
+    Business kann in einer Story ein Menue-/Shop-Produkt verlinken
+    (Gast tippt drauf -> Produktdetail). Setzt Menue/Shop voraus.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO, da an
+    Menue/Shop gekoppelt)
+
+F17 Menue-Social-Posts (menuSocial)
+    Eigener Post-Typ, der ein Menue-Produkt als Social-Beitrag zeigt
+    (mit Likes/Kommentaren). Setzt Menue voraus.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 4: MENUE-SYSTEM (Restaurant / Cafe / Fastfood u.ae.)
+================================================================================
+
+F18 Menue-Editor (Tab "Menue")
+    Produkte anlegen/bearbeiten/loeschen mit diesen Feldern:
+    Name, Preis, Kategorie (frei anlegbar), Typ (Essen/Getraenk...),
+    Kurzbeschreibung, Lange Beschreibung, Zutaten, Allergene,
+    Bild(er), Verfuegbar ja/nein, Sichtbarkeit, Sortier-Position,
+    Karten-Stil (Layout der Produktkarte).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO - dein Wunsch)
+
+F19 Oeffentliches Menue unter /:slug/menu
+    Gaeste sehen das publizierte Menue (eigene schnelle Public-
+    Projektion, gecacht, 3G-optimiert) mit Kategorien, Produktdetail-
+    Modal, Favoriten-Funktion fuer eingeloggte User.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F20 Wolt-Bestell-Link pro Produkt
+    Feld "Wolt URL" am Produkt -> Gast kann direkt zu Wolt springen
+    (externe Bestellung). Klicks sind als Analytics-Metrik vorgesehen.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F21 Spezial-Karten im Menue (Aktions-Kacheln)
+    Produkt kann als Spezial-Kachel dargestellt werden: Sondergroesse,
+    Aktions-Typ, Aktions-Link ODER Verweis auf anderes Produkt
+    (Cross-Selling im Menue).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F22 Menue-Layout/Theme
+    Darstellungsvarianten des Public-Menues (Layout-Theme, Focus-Karten-
+    Stile), lokal gespeichert.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 5: BESTELLUNGEN / QR / WAITER (Restaurant-Betrieb)
+================================================================================
+
+F23 QR-Tisch-System
+    Business legt Tisch-Anzahl fest -> pro Tisch eigener QR-Code.
+    Gast scannt -> Menue oeffnet mit Tisch-Kontext (table=Nr), kann
+    direkt bestellen. QR-Scans werden pro Tisch gezaehlt.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F24 In-App-Bestellungen (Gast bestellt vom Tisch/extern)
+    Bestellung laeuft ueber sichere Server-Funktion (Preis wird gegen
+    Menue geprueft, Verfuegbarkeit geprueft, max 99 Stueck/Position).
+    Status-Kette: Neu -> bestellung -> angenommen -> fertig -> archiv.
+    Gast sieht seine Bestellung unter "Bestellungen" (auch als Gast
+    ohne Account via Session).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F25 Bestell-Tab fuers Business (Orders)
+    Eingehende Bestellungen sehen, Status aendern (angenommen/fertig/
+    archiviert).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F26 Waiter-App (eigene PWA unter /waiter)
+    Fuer Kellner-Accounts: Live-Bestelleingang mit Ton/Benachrichtigung,
+    Tisch-Uebersicht, Status-Buttons, Geraete-Bindung (Device-ID).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F27 "Kellner rufen"-Button fuer Gaeste
+    Im Public-Header des Restaurants; Klicks werden pro Tisch/Stunde
+    gezaehlt.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 6: SHOP (E-Commerce)
+================================================================================
+
+F28 Shop-Katalog statt Menue
+    Gleicher Editor wie F18, plus Shop-Felder pro Produkt:
+    Marke, SKU/Artikelnummer, Lagerbestand, Groessen (Liste),
+    Farben (Liste) -> Varianten-Auswahl im Produktdetail.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO - dein Wunsch)
+
+F29 Warenkorb + Checkout
+    Gaeste (auch ohne Login) legen Produkte mit Variante in den
+    Warenkorb; Checkout erzeugt Bestellung beim Business (gleicher
+    sicherer Server-Weg wie F24).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F30 Produkt-Favoriten fuer Kunden
+    Eingeloggte User speichern Produkte als Favoriten (eigener Tab).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO, folgt dem Shop)
+
+F31 Shopping-Landing-Karte (Marken-Startseite)
+    Eigene Kachel im Shopping-Tab: Titelbild, Titel, Aktiv-Schalter -
+    fuehrt zur Marken-Landing des Shops (mit Onboarding-Tour fuer
+    Gaeste: Identity/Follow/Chat-Hinweise).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 7: HOTEL / MOTEL
+================================================================================
+
+F32 Hotel-Cover-Galerie
+    Mehrere Cover-Fotos hochladen (Hero-Bild + Galerie).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC=1 Bild,
+    PRO=Galerie - oder komplett PRO, deine Wahl)
+
+F33 Hotel-Details ("Details"-Editor)
+    Felder: Startpreis ("ab 145"), Preiseinheit (pro Nacht/gesamt),
+    3 Highlight-Features (Texte), Parken-Option, freie Feature-Liste
+    (Pool, Spa, Rezeption 24/7, ...).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO - dein Wunsch)
+
+F34 Zimmer-Verwaltung
+    Zimmer anlegen mit: Name, Preis(-Label), bis zu 8 Fotos pro Zimmer,
+    Meta-Infos. Gaeste sehen Zimmer-Sektion mit Detail-Modal.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+F35 Hotel-Detailansicht fuer Gaeste (voll)
+    Sektionen: Zimmer, Ausstattung/Amenities, Karte mit Pin, Bewertung/
+    Rating, Umgebungs-/Destination-Sektionen (Straende, Sehenswuerdig-
+    keiten aus dem zentralen Destinations-System), Entfernungsangaben.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO;
+    BASIC sieht nur Basis: Name, Fotos, Kontakt, Karte)
+
+F36 Travel-Angebote (Oferta)
+    Angebots-Karten mit: Titel, Text, Bild, Preis, Preiseinheit,
+    Badge-Label ("OFERTA"), Dauer-Label ("3 Naechte/4 Tage"),
+    Feature-Liste (max 6 sichtbar). Erscheinen im Travel-Tab
+    unter "Offers" + auf dem Hotelprofil.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 8: ANGEBOTE / FOCUS (alle Typen)
+================================================================================
+
+F37 Focus/Angebots-Karten auf dem Profil
+    Business erstellt Angebots-Kacheln (Titel, Text, Bild, Bild-
+    Ausschnitt waehlbar) mit An/Aus-Schalter (offersEnabled).
+    Gaeste sehen sie prominent auf dem Profil/Menue (Focus-Modal).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 9: ADS (Werbung)
+================================================================================
+
+F38 Ad erstellen (Titel, Text, Bild, Bild-Ausschnitt)
+    Owner erstellt/bearbeitet Anzeige -> Status "pending" -> du (CEO,
+    Heart) genehmigst oder lehnst ab -> erst dann oeffentlich.
+    Jede Owner-Aenderung setzt wieder auf "pending".
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (dein Wunsch: BASIC darf auch)
+    WICHTIG ZU WISSEN: Ausspielung/Targeting/Impression-Zaehlung sind
+    noch nicht fertig gebaut - Ads sind aktuell Anzeige-Kacheln im
+    eigenen Umfeld, kein bezahltes Werbenetzwerk. Als eigenes Bezahl-
+    produkt (Ads-Booking) waere das ein separates Projekt.
+
+================================================================================
+BEREICH 10: ANALYTICS (fertig gebaut, Tab existiert)
+================================================================================
+
+F39 Analytics-Tab mit Zeitraeumen Heute / 7 / 30 / 90 Tage / Eigene
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO; BASIC bekommt
+    Mini-Version im Dashboard, siehe F40)
+
+    Was der Tab alles zeigt (komplett):
+    - Profilaufrufe + eindeutige Besucher (Session-dedupliziert)
+    - Woher die Besucher kamen: Feed / Restaurants-Tab / Suche / Karte /
+      QR / extern / direkt
+    - Kontakt-Klicks: Telefon, Adresse, Karte, Oeffnungszeiten, Social
+    - Post-Leistung pro Beitrag: Impressionen, Klicks, Likes, Shares
+    - Feed-Impressionen/-Klicks + CTR
+    - Menue geoeffnet, Kategorien geoeffnet, Produkt-Aufrufe/-Likes
+      (Top-Produkte mit Name)
+    - QR-Scans (gesamt, pro Tisch, pro Stunde)
+    - Kellner-Rufe (pro Tisch/Stunde)
+    - Bestellungen: gestartet, abgeschlossen, Umsatz, Warenkorb-
+      Durchschnitt, QR- vs. externe Bestellungen, pro Stunde
+    - Funnel: Menue geoeffnet -> Produkt angesehen -> Bestellung
+      gestartet -> abgeschlossen (Conversion-%)
+    - Trend-Chart mit Vergleich zur Vorperiode
+    Eigene Ansichten zaehlen nicht mit (Owner/Staff/CEO ausgenommen).
+
+F40 Dashboard-Mini-Analytics (geplant, Teil des neuen Dashboard-Tabs)
+    Vorschlag: BASIC sieht 7 Tage: Profilaufrufe, Post-Impressionen,
+    Kontakt-Klicks. PRO sieht zusaetzlich Bestellungen/Umsatz/QR + Link
+    zum vollen Tab.
+    ENTSCHEIDUNG BASIC-Umfang: ________________________
+
+================================================================================
+BEREICH 11: STAFF / TEAM
+================================================================================
+
+F41 Staff-Accounts anlegen/verwalten (Tab "Staff")
+    Pro Mitarbeiter: Name, Login, Rolle (waiter/staff/manager),
+    Rechte-Schalter: Business-Zugriff (App-Verwaltung) und/oder
+    Waiter-Zugriff (nur Kellner-App), aktiv/deaktiviert.
+    Staff kann auf "nur Waiter" beschraenkt oder komplett gesperrt
+    werden (socialAccessMode).
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: PRO)
+
+================================================================================
+BEREICH 12: KOMMUNIKATION
+================================================================================
+
+F42 Chat mit Kunden
+    User koennen dem Business schreiben (Chat-Button auf dem Profil);
+    Business antwortet im Chats-Tab. (Feature-Flag-gesteuert.)
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+F43 Push-Benachrichtigungen / Updates-Tab
+    Business bekommt Benachrichtigungen (neue Bestellung an Waiter,
+    Likes/Kommentare/Follows, Chat) inkl. Web-Push aufs Handy.
+    ENTSCHEIDUNG: [ ] BASIC  [ ] PRO   (Vorschlag: BASIC)
+
+================================================================================
+BEREICH 13: RAHMEN-FEATURES (gelten fuer alle, keine Tier-Frage)
+================================================================================
+
+F44 4 Sprachen: Albanisch, Deutsch, Englisch, Serbisch
+F45 PWA: App-Installation auf Homescreen, offline-tolerant, Caches
+F46 Schnelles Laden auf 3G/4G: Snapshots, Bild-Kompression, Poster-
+    Standbilder, lazy Chunks
+F47 Sicherheit: Bestellpreise werden serverseitig gegen das Menue
+    geprueft; Zaehler (Likes/Follower) manipulationsgeschuetzt
+
+================================================================================
+NUR-CEO-FUNKTIONEN (zur Abgrenzung - KEINE Business-Features)
+================================================================================
+- Heart-App: CRM (Leads, Kunden, Preise pro Typ monatlich/jaehrlich),
+  Ads-Freigabe, Analytics ueber alle Businesses, Staff-Admin, Ops
+- Leads-Konvertierung: legt Business-Account + Profil + Route an
+- Destinations-System (Straende/Orte fuer Hotel-Umgebungssektionen)
+- Account-Provisionierung, superadmins/staffAdmins
+
+================================================================================
+OFFENE PRODUKT-FRAGEN (bitte mitentscheiden)
+================================================================================
+Q1  Post-Limit: 10 gleichzeitig aktive Posts (loeschen schafft Platz)
+    ODER 10 pro Monat?   Antwort: ________
+Q2  Stories in Basic: unbegrenzt / limitiert / gar nicht?
+    Antwort: ________
+Q3  Bestandskunden bei Einfuehrung: alle erstmal PRO (Empfehlung,
+    niemand verliert Funktionen) oder alle BASIC? Antwort: ________
+Q4  Chat in Basic: ja/nein?   Antwort: ________
+Q5  Focus/Angebote (F37): wirklich PRO, oder 1 Angebot in Basic
+    erlaubt?   Antwort: ________
+Q6  Hotel-Cover-Galerie (F32): Basic 1 Bild / Pro Galerie?
+    Antwort: ________
+================================================================================
+ENDE - nach dem Ausfuellen zusammen mit dem MASTERPLAN in den
+Umsetzungs-Chat geben.
+================================================================================
