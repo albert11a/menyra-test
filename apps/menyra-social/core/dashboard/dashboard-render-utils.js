@@ -22,17 +22,14 @@ export const DASHBOARD_CSS = `
   font-family: inherit;
 }
 .mnyra-dash * { box-sizing: border-box; }
-.mnyra-dash__hero {
-  background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
-  border-radius: 24px;
-  padding: 16px;
+.mnyra-dash__greet {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 14px;
-  min-height: 96px;
+  min-height: 56px;
+  margin: 4px 2px 16px;
 }
-.mnyra-dash__hero-logo {
+.mnyra-dash__greet-logo {
   width: 56px;
   height: 56px;
   border-radius: 18px;
@@ -44,40 +41,34 @@ export const DASHBOARD_CSS = `
   justify-content: center;
   color: var(--dash-muted);
 }
-.mnyra-dash__hero-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.mnyra-dash__hero-main { min-width: 0; flex: 1; }
-.mnyra-dash__hero-name {
-  font-size: 17px;
+.mnyra-dash__greet-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mnyra-dash__greet-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+.mnyra-dash__greet-title {
+  font-size: 18px;
   font-weight: 900;
+  line-height: 1.1;
   margin: 0;
   color: var(--dash-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mnyra-dash__hero-meta {
-  font-size: 11px;
+.mnyra-dash__greet-sub {
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
   color: var(--dash-muted);
-  margin: 4px 0 0;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.mnyra-dash__hero-cta {
-  flex: 0 0 auto;
-  border: 1px solid var(--dash-border);
-  background: var(--dash-plane);
-  color: var(--dash-ink);
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  padding: 10px 14px;
-  border-radius: 999px;
-  cursor: pointer;
 }
 .mnyra-dash__section { margin-top: 14px; }
 .mnyra-dash__section-head {
@@ -385,20 +376,37 @@ function formatKpiValue(value = 0, unit = "") {
   return unit ? `${label} ${unit}` : label;
 }
 
-export function renderDashboardHero({ name = "", typeLabel = "", location = "", logoUrl = "", iconFn } = {}) {
-  const metaParts = [typeLabel, location].map((part) => String(part || "").trim()).filter(Boolean);
+// Tageszeit-Gruss auf Albanisch (Stundenbereiche lokal zum Geraet):
+// 05-10 mengjes, 11-17 dite, 18-21 mbremje, sonst nate.
+export function resolveDashboardGreetingCore(hour = new Date().getHours()) {
+  const safeHour = Number.isFinite(Number(hour)) ? ((Math.trunc(Number(hour)) % 24) + 24) % 24 : 12;
+  if (safeHour >= 5 && safeHour <= 10) {
+    return { dayPart: "mengjes", text: "Ju urojmë një mëngjes të mbarë!" };
+  }
+  if (safeHour >= 11 && safeHour <= 17) {
+    return { dayPart: "dite", text: "Ju urojmë një ditë të mbarë!" };
+  }
+  if (safeHour >= 18 && safeHour <= 21) {
+    return { dayPart: "mbremje", text: "Ju urojmë një mbrëmje të mbarë!" };
+  }
+  return { dayPart: "nate", text: "Ju urojmë një natë të mbarë!" };
+}
+
+// Begruessung ohne Card: Logo links, Titelzeile buendig mit der Logo-Oberkante,
+// Tageszeit-Gruss buendig mit der Logo-Unterkante.
+export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Date().getHours(), iconFn } = {}) {
+  const greeting = resolveDashboardGreetingCore(hour);
   return `
-    <div class="mnyra-dash__hero">
-      <div class="mnyra-dash__hero-logo">
+    <div class="mnyra-dash__greet">
+      <div class="mnyra-dash__greet-logo">
         ${logoUrl
           ? `<img src="${escapeHtml(logoUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
           : safeIcon(iconFn, "store", "w-6 h-6")}
       </div>
-      <div class="mnyra-dash__hero-main">
-        <p class="mnyra-dash__hero-name">${escapeHtml(name || "Business")}</p>
-        <p class="mnyra-dash__hero-meta">${escapeHtml(metaParts.join(" · ") || "Business")}</p>
+      <div class="mnyra-dash__greet-text">
+        <p class="mnyra-dash__greet-title">Përshëndetje, ${escapeHtml(name || "Business")}</p>
+        <p class="mnyra-dash__greet-sub">${escapeHtml(greeting.text)}</p>
       </div>
-      <button type="button" class="mnyra-dash__hero-cta" data-nav="profile">Profil ansehen</button>
     </div>
   `;
 }
@@ -515,8 +523,8 @@ export function renderDashboardDataSkeleton({ kpiCount = 6 } = {}) {
   `;
 }
 
-export function renderDashboardHeroSkeleton() {
-  return `<div class="mnyra-dash__skeleton" style="min-height:96px; border-radius:24px;"></div>`;
+export function renderDashboardGreetingSkeleton() {
+  return `<div class="mnyra-dash__skeleton" style="min-height:56px; border-radius:18px; margin: 4px 2px 16px;"></div>`;
 }
 
 export function renderDashboardErrorState({ message = "" } = {}) {

@@ -12,6 +12,47 @@ export function hasGuestScopeForSessionCore(guestScopeUid) {
   return !!String(guestScopeUid || "").trim();
 }
 
+const DASHBOARD_START_DEFAULT_TABS = new Set(["", "feed", "home"]);
+
+// Entscheidet, ob eine frisch angemeldete Business-Session auf dem
+// Dashboard starten soll. "apply" = jetzt umschalten, "retry" = Profil noch
+// nicht aufgeloest (spaeter erneut pruefen), "skip" = diese Session hat ein
+// explizites Ziel (Deep-Link/Navigation) und darf nie mehr umgeleitet werden.
+export function resolveBusinessDashboardStartTabCore({
+  uid = "",
+  appliedUid = "",
+  userProfile = null,
+  activeTab = "",
+  hasProfileView = false,
+  pendingInitialTab = "",
+  pendingProfileRestaurantId = "",
+  pendingUserRouteId = "",
+  pendingPostId = "",
+  pendingChatUid = "",
+  pendingNotificationId = ""
+} = {}) {
+  const safeUid = String(uid || "").trim();
+  if (!safeUid) return "retry";
+  if (safeUid === String(appliedUid || "").trim()) return "skip";
+  const safeActiveTab = String(activeTab || "").trim().toLowerCase();
+  const safePendingTab = String(pendingInitialTab || "").trim().toLowerCase();
+  const hasExplicitTarget = hasProfileView
+    || !DASHBOARD_START_DEFAULT_TABS.has(safeActiveTab)
+    || !DASHBOARD_START_DEFAULT_TABS.has(safePendingTab)
+    || !!String(pendingProfileRestaurantId || "").trim()
+    || !!String(pendingUserRouteId || "").trim()
+    || !!String(pendingPostId || "").trim()
+    || !!String(pendingChatUid || "").trim()
+    || !!String(pendingNotificationId || "").trim();
+  if (hasExplicitTarget) return "skip";
+  const profile = userProfile && typeof userProfile === "object" ? userProfile : {};
+  const socialAccessMode = String(profile.socialAccessMode || "").trim().toLowerCase();
+  if (socialAccessMode === "waiteronly" || socialAccessMode === "blocked") return "skip";
+  const restaurantId = String(profile.restaurantId || profile.staffRestaurantId || "").trim();
+  if (!restaurantId) return "retry";
+  return "apply";
+}
+
 export function sanitizeTabForSessionCore(tab, {
   user = null,
   hasProfileView = false,

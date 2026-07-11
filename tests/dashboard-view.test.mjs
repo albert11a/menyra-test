@@ -4,9 +4,10 @@ import assert from "node:assert/strict";
 import {
   resolveBusinessTypeLabelCore,
   resolveDashboardKindCore,
+  resolveDashboardGreetingCore,
   buildDashboardQuickActionsCore,
   buildDashboardKpiDefsCore,
-  renderDashboardHero,
+  renderDashboardGreeting,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -14,6 +15,7 @@ import {
   renderDashboardErrorState,
   renderDashboardNoBusinessState
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
+import { resolveBusinessDashboardStartTabCore } from "../apps/menyra-social/core/auth/session-tab-guards.js";
 import {
   normalizeDashboardPostCore,
   buildDashboardModelCore,
@@ -73,18 +75,76 @@ test("kpi defs are type aware", () => {
   assert.ok(shop.includes("revenue"));
 });
 
-test("hero renders name, meta and profile CTA", () => {
-  const html = renderDashboardHero({ name: "Casa Rita", typeLabel: "Restaurant", location: "Prishtina", logoUrl: "https://img/logo.jpg" });
-  assert.ok(html.includes("Casa Rita"));
-  assert.ok(html.includes("Restaurant · Prishtina"));
-  assert.ok(html.includes('data-nav="profile"'));
-  assert.ok(html.includes("https://img/logo.jpg"));
+test("greeting resolves albanian day part by hour", () => {
+  assert.deepEqual(resolveDashboardGreetingCore(5), { dayPart: "mengjes", text: "Ju urojmë një mëngjes të mbarë!" });
+  assert.equal(resolveDashboardGreetingCore(10).dayPart, "mengjes");
+  assert.deepEqual(resolveDashboardGreetingCore(11), { dayPart: "dite", text: "Ju urojmë një ditë të mbarë!" });
+  assert.equal(resolveDashboardGreetingCore(17).dayPart, "dite");
+  assert.deepEqual(resolveDashboardGreetingCore(18), { dayPart: "mbremje", text: "Ju urojmë një mbrëmje të mbarë!" });
+  assert.equal(resolveDashboardGreetingCore(21).dayPart, "mbremje");
+  assert.deepEqual(resolveDashboardGreetingCore(22), { dayPart: "nate", text: "Ju urojmë një natë të mbarë!" });
+  assert.equal(resolveDashboardGreetingCore(4).dayPart, "nate");
+  assert.equal(resolveDashboardGreetingCore(0).dayPart, "nate");
+  // Ungueltige Stunde -> sicherer Tages-Gruss.
+  assert.equal(resolveDashboardGreetingCore(NaN).dayPart, "dite");
 });
 
-test("hero escapes html in names", () => {
-  const html = renderDashboardHero({ name: "<script>x</script>", typeLabel: "Hotel" });
+test("greeting renders logo, name line and day-part line without card", () => {
+  const html = renderDashboardGreeting({ name: "Bro Pizza", logoUrl: "https://img/logo.jpg", hour: 12 });
+  assert.ok(html.includes("Përshëndetje, Bro Pizza"));
+  assert.ok(html.includes("Ju urojmë një ditë të mbarë!"));
+  assert.ok(html.includes("https://img/logo.jpg"));
+  assert.ok(html.includes("mnyra-dash__greet"));
+  // Bewusst keine Card-Klassen um den Gruss.
+  assert.ok(!html.includes("mnyra-dash__state"));
+});
+
+test("greeting escapes html in names", () => {
+  const html = renderDashboardGreeting({ name: "<script>x</script>", hour: 9 });
   assert.ok(!html.includes("<script>x"));
   assert.ok(html.includes("&lt;script&gt;"));
+});
+
+test("business dashboard start tab decision", () => {
+  const businessProfile = { restaurantId: "r1" };
+  // Business ohne Deep-Link auf Default-Tab -> anwenden.
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: businessProfile, activeTab: "feed"
+  }), "apply");
+  // Bereits fuer diese UID entschieden -> nie wieder umleiten.
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", appliedUid: "u1", userProfile: businessProfile, activeTab: "feed"
+  }), "skip");
+  // Kein User -> spaeter erneut pruefen.
+  assert.equal(resolveBusinessDashboardStartTabCore({ uid: "" }), "retry");
+  // Profil noch ohne restaurantId (laedt noch) -> retry.
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: {}, activeTab: "feed"
+  }), "retry");
+  // Expliziter Deep-Link/Tab gewinnt und beendet die Entscheidung.
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: businessProfile, activeTab: "orders"
+  }), "skip");
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: businessProfile, activeTab: "feed", pendingInitialTab: "menu"
+  }), "skip");
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: businessProfile, activeTab: "feed", pendingProfileRestaurantId: "r9"
+  }), "skip");
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: businessProfile, activeTab: "feed", pendingPostId: "p1"
+  }), "skip");
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: businessProfile, activeTab: "feed", hasProfileView: true
+  }), "skip");
+  // Waiter-only/blockierte Staff-Accounts nie umleiten.
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: { restaurantId: "r1", socialAccessMode: "waiteronly" }, activeTab: "feed"
+  }), "skip");
+  // Staff mit staffRestaurantId zaehlt als Business.
+  assert.equal(resolveBusinessDashboardStartTabCore({
+    uid: "u1", userProfile: { staffRestaurantId: "r1" }, activeTab: ""
+  }), "apply");
 });
 
 test("quick action tiles carry data-nav and upload intent", () => {

@@ -295,6 +295,7 @@ export function createShellDomRuntimeController({
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" }
       ]
       : [
+        { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
         { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
         { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), icon: "utensils" },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane" },
@@ -303,7 +304,6 @@ export function createShellDomRuntimeController({
         { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
         { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
         { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
-        { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
         { id: "analytics", label: tr("nav.analytics", "Analytics"), icon: "bar-chart-3", hidden: !showMenuTab },
         { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },

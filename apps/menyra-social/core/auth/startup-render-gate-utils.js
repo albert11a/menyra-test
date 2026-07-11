@@ -1,6 +1,7 @@
 const SAFE_PUBLIC_TOP_TABS = new Set(["profile", "menu"]);
 const PROTECTED_STARTUP_TABS = new Set([
   "profile",
+  "dashboard",
   "menu",
   "chat",
   "notifications",

@@ -206,6 +206,7 @@ import {
 } from "./core/notifications/post-notification-open-utils.js";
 import {
   isGuestSessionCore,
+  resolveBusinessDashboardStartTabCore,
   sanitizeTabForSessionCore
 } from "./core/auth/session-tab-guards.js";
 import {
@@ -1303,6 +1304,7 @@ const ROUTE_USER_HANDLE_QUERY_KEYS = ["handle"];
 const ROUTE_USER_CONTENT_QUERY_KEYS = ["content", "contentTab", "section"];
 const AUTH_RESTORE_PRESERVED_TABS = new Set([
   "profile",
+  "dashboard",
   "menu",
   "chat",
   "notifications",
@@ -2215,8 +2217,35 @@ function normalizeLegacyHomeTab(tab) {
   return "feed";
 }
 
+// Business-Sessions starten auf dem Dashboard: pro UID genau eine
+// Entscheidung ("skip" ist final, "retry" wartet auf das Business-Profil).
+let dashboardStartTabDecidedUid = "";
+function maybeApplyBusinessDashboardStartTab() {
+  const pendingRoute = pendingRouteState.getPendingState?.() || {};
+  const decision = resolveBusinessDashboardStartTabCore({
+    uid: state.user?.uid || "",
+    appliedUid: dashboardStartTabDecidedUid,
+    userProfile: state.userProfile,
+    activeTab: state.activeTab,
+    hasProfileView: !!state.profileView,
+    pendingInitialTab: pendingRoute.pendingInitialTab || "",
+    pendingProfileRestaurantId: pendingRoute.pendingProfileRestaurantId || "",
+    pendingUserRouteId: pendingRoute.pendingUserRouteId || "",
+    pendingPostId: pendingRoute.pendingPostId || "",
+    pendingChatUid: pendingRoute.pendingChatUid || "",
+    pendingNotificationId: pendingRoute.pendingNotificationId || ""
+  });
+  if (decision === "retry") return false;
+  dashboardStartTabDecidedUid = String(state.user?.uid || "").trim();
+  if (decision !== "apply") return false;
+  state.activeTab = "dashboard";
+  state.drawerOpen = false;
+  return true;
+}
+
 function applyPendingInitialRouteState() {
   applyPendingInitialRouteStateBase();
+  maybeApplyBusinessDashboardStartTab();
   const pendingInitialTab = String(pendingRouteState.getPendingInitialTab?.() || "").trim().toLowerCase();
   if (isAuthRestorePendingProtectedRoute(pendingInitialTab)) {
     state.activeTab = pendingInitialTab;
@@ -3400,7 +3429,10 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "send": Object.freeze([["path", { d: "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" }], ["path", { d: "m21.854 2.147-10.94 10.939" }]]),
   "utensils": Object.freeze([["path", { d: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" }], ["path", { d: "M7 2v20" }], ["path", { d: "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" }]]),
   "clock": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 6v6l4 2" }]]),
-  "bar-chart-3": Object.freeze([["path", { d: "M3 3v18h18" }], ["path", { d: "M18 17V9" }], ["path", { d: "M13 17V5" }], ["path", { d: "M8 17v-3" }]])
+  "bar-chart-3": Object.freeze([["path", { d: "M3 3v18h18" }], ["path", { d: "M18 17V9" }], ["path", { d: "M13 17V5" }], ["path", { d: "M8 17v-3" }]]),
+  "layout-dashboard": Object.freeze([["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1" }], ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1" }], ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1" }], ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1" }]]),
+  "bed-double": Object.freeze([["path", { d: "M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" }], ["path", { d: "M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" }], ["path", { d: "M12 4v6" }], ["path", { d: "M2 18h20" }]]),
+  "megaphone": Object.freeze([["path", { d: "m3 11 18-5v12L3 14v-3z" }], ["path", { d: "M11.6 16.8a3 3 0 1 1-5.8-1.6" }]])
 });
 
 function buildIconAttributeString(attributes = {}) {
@@ -3879,6 +3911,9 @@ function loadGuestScopedPersisted() {
   return sessionDataRuntimeController.loadGuestScopedPersisted(...arguments);
 }
 function resetUserScopedState() {
+  // Nach Logout darf der naechste Login (auch derselbe User) wieder frisch
+  // auf dem Dashboard starten.
+  dashboardStartTabDecidedUid = "";
   return sessionDataRuntimeController.resetUserScopedState(...arguments);
 }
 
@@ -5539,7 +5574,13 @@ startAppStartupRuntimeCluster({
       suspendRender,
       resumeRender,
       reportCriticalRuntimeFailure,
-      runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user)
+      runBootstrapUser: async (user) => {
+        const result = await sessionDataRuntimeController.bootstrapUser(user);
+        // Erst nach dem Bootstrap ist das Profil beim allerersten Login auf
+        // einem Geraet aufgeloest -> Business-Start-Tab hier nachziehen.
+        maybeApplyBusinessDashboardStartTab();
+        return result;
+      }
     },
     startupTimelineMark: markStartupTimeline
   },

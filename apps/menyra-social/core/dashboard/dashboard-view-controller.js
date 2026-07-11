@@ -14,12 +14,11 @@ import { resolveAnalyticsRange, summarizeAnalyticsDays } from "../analytics/anal
 import { loadAnalyticsDailyRange } from "../analytics/analytics-daily-loader.js";
 import {
   ensureDashboardStylesInjected,
-  resolveBusinessTypeLabelCore,
   resolveDashboardKindCore,
   buildDashboardQuickActionsCore,
   buildDashboardKpiDefsCore,
-  renderDashboardHero,
-  renderDashboardHeroSkeleton,
+  renderDashboardGreeting,
+  renderDashboardGreetingSkeleton,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -295,7 +294,6 @@ export function createDashboardViewController({
     const rest = restaurantId ? (getRestaurantMetaById(restaurantId) || {}) : {};
     const type = getBusinessProfileType(profile);
     const name = String(rest.name || rest.restaurantName || profile.name || "").trim() || "Business";
-    const location = String(profile.location || rest.city || "").trim();
     let logoUrl = "";
     try {
       logoUrl = String(resolveRestaurantLogo(rest) || "").trim();
@@ -303,9 +301,7 @@ export function createDashboardViewController({
     if (!logoUrl) logoUrl = String(profile.avatar || "").trim();
     return {
       name,
-      location,
       logoUrl,
-      typeLabel: resolveBusinessTypeLabelCore(type),
       kind: resolveDashboardKindCore({
         businessType: type,
         isShopCatalog: isShopCatalogProfile(profile)
@@ -322,7 +318,7 @@ export function createDashboardViewController({
     let body = "";
     if (!restaurantId) {
       body = isResolvingBusinessProfile()
-        ? `${renderDashboardHeroSkeleton()}${renderDashboardDataSkeleton({ kpiCount: 6 })}`
+        ? `${renderDashboardGreetingSkeleton()}${renderDashboardDataSkeleton({ kpiCount: 6 })}`
         : renderDashboardNoBusinessState();
     } else {
       const hero = resolveHeroData(restaurantId);
@@ -354,7 +350,7 @@ export function createDashboardViewController({
       }
 
       body = `
-        ${renderDashboardHero({ ...hero, iconFn })}
+        ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
         ${renderDashboardQuickActions({ actions, iconFn })}
         ${dataBody}
       `;
@@ -362,10 +358,6 @@ export function createDashboardViewController({
 
     return `
       <section class="p-4 pb-28 mnyra-dash" data-dashboard-root>
-        <div class="mb-4">
-          <h2 class="text-lg font-black tracking-tight text-slate-900" style="color:var(--dash-ink);">Dashboard</h2>
-          <p class="text-xs" style="color:var(--dash-muted); margin-top:2px;">Dein Business auf einen Blick: Aktionen, Zahlen, Beiträge.</p>
-        </div>
         ${body}
       </section>
     `;
