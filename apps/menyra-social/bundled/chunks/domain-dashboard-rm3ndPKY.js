@@ -42,8 +42,8 @@ import{f as x,r as Q,l as W,s as j}from"./domain-analytics-CHAXqWnD.js";const T=
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 2px 0;
+  justify-content: center;
+  gap: 4px;
 }
 .mnyra-dash__greet-title {
   font-size: 18px;

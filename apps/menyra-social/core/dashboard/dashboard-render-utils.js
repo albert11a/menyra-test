@@ -52,8 +52,8 @@ export const DASHBOARD_CSS = `
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 2px 0;
+  justify-content: center;
+  gap: 4px;
 }
 .mnyra-dash__greet-title {
   font-size: 18px;
