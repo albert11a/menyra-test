@@ -10,9 +10,11 @@ const STYLE_ELEMENT_ID = "mnyraDashboardStyles";
 
 export const DASHBOARD_CSS = `
 .mnyra-dash {
-  /* Horizontale Flucht exakt wie der Smart-Header (px-5 bzw. px-4 tight):
-     Menue-Button links und Warenkorb-/Action-Button rechts. */
-  padding: 16px 20px 112px;
+  /* Horizontale Flucht auf die SICHTBAREN Header-Icons (nicht die
+     unsichtbaren Touch-Kreise): Menue-Striche beginnen bei 28px,
+     Warenkorb-Symbol endet bei 30px vom rechten Rand - 28px beidseitig
+     trifft beide optisch (rechts 2px Toleranz, im Browser vermessen). */
+  padding: 16px 28px 112px;
   --dash-surface: #ffffff;
   --dash-plane: #f8fafc;
   --dash-ink: #0f172a;
@@ -23,9 +25,6 @@ export const DASHBOARD_CSS = `
   --dash-accent-soft: #eef2ff;
   color: var(--dash-ink);
   font-family: inherit;
-}
-@media (max-width: 360px) {
-  .mnyra-dash { padding-left: 16px; padding-right: 16px; }
 }
 .mnyra-dash * { box-sizing: border-box; }
 .mnyra-dash__greet {
