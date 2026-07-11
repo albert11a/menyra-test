@@ -82,6 +82,27 @@ test("startup render gate holds neutral shell while start tab decision is pendin
   assert.equal(gate.showNeutralShell, true);
   assert.equal(gate.reason, "start-tab-decision-pending");
 
+  // KRITISCH (echter Cold-Login): eine "vertraute gecachte" Identitaet
+  // (Name/Avatar vorhanden, __trustedCachedAuthUid gesetzt, aber keine
+  // restaurantId) darf den Halt NICHT umgehen - genau dieser Zweig hat
+  // vorher den Feed-Frame gemalt.
+  const trustedCachedState = {
+    ...pendingState,
+    userProfile: { uid: "u1", name: "Bro Pizza", avatar: "https://img/a.jpg" },
+    __trustedCachedAuthUid: "u1"
+  };
+  const trustedGate = resolveStartupRenderGate(trustedCachedState);
+  assert.equal(trustedGate.showNeutralShell, true);
+  assert.equal(trustedGate.reason, "start-tab-decision-pending");
+
+  // Ohne offene Entscheidung rendert die vertraute Identitaet weiterhin sofort.
+  const trustedConcluded = resolveStartupRenderGate({
+    ...trustedCachedState,
+    __startTabDecisionPending: false
+  });
+  assert.equal(trustedConcluded.showNeutralShell, false);
+  assert.equal(trustedConcluded.reason, "authenticated-profile-revalidating-cached-surface");
+
   // Entscheidung abgeschlossen -> Feed rendert normal weiter.
   const concludedState = { ...pendingState, __startTabDecisionPending: false };
   const concludedGate = resolveStartupRenderGate(concludedState);
@@ -148,8 +169,18 @@ test("first login without hints renders neutral shell then dashboard, never feed
     setTimeoutFn: () => 0,
     readAuthBootstrapSnapshot: () => null,
     applyAuthBootstrapSnapshot: () => false,
-    // Keine persistierten Hints auf diesem Geraet.
-    applyPersistedAuthProfileHints: () => false,
+    // Echter Cold-Login: keine restaurantId, aber Name/Avatar werden aus
+    // Firebase-User/Shell-Snapshot geseedet -> Identitaet gilt als
+    // "meaningful" und der Koordinator setzt __trustedCachedAuthUid.
+    // Genau diese Konstellation hat frueher den Feed-Frame erzeugt.
+    applyPersistedAuthProfileHints: () => {
+      state.userProfile = {
+        uid: "u1",
+        name: "Bro Pizza",
+        avatar: "https://img/business-logo.jpg"
+      };
+      return true;
+    },
     onAuthenticatedShellPrimed: () => applyDecision(),
     applyPendingInitialRouteState: () => {},
     render: () => {

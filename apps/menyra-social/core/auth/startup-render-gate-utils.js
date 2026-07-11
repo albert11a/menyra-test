@@ -309,6 +309,26 @@ export function resolveStartupRenderGate(state = {}) {
     });
   }
 
+  // Absolute Prioritaet: solange die Start-Tab-Entscheidung offen ist,
+  // wird KEINE Hauptflaeche gemalt - auch nicht die "vertraute gecachte"
+  // Identitaet (ein Name/Avatar allein sagt nichts darueber, ob die Session
+  // auf dem Business-Dashboard starten muss). Lieber die neutrale Shell
+  // einen Moment halten, als eine Flaeche zu zeigen, die gleich wechselt.
+  if (profilePending && startTabDecisionPending) {
+    return buildStartupGateResult({
+      canRender: false,
+      showNeutralShell: true,
+      reason: "start-tab-decision-pending",
+      authRestoreState,
+      profileTruthState,
+      safePublicSurface,
+      protectedSurfaceBlocked,
+      interactionSafety: "actionsDisabled",
+      actionsLocked: true,
+      currentSurface
+    });
+  }
+
   if (profilePending && trustedCachedAuthenticatedUi) {
     return buildStartupGateResult({
       reason: "authenticated-profile-revalidating-cached-surface",
@@ -323,15 +343,13 @@ export function resolveStartupRenderGate(state = {}) {
     });
   }
 
-  if (profilePending && (protectedSurfaceBlocked || startTabDecisionPending)) {
+  if (profilePending && protectedSurfaceBlocked) {
     return buildStartupGateResult({
       canRender: false,
       showNeutralShell: true,
       reason: profileTruthState === "error"
         ? "profile-truth-error"
-        : (startTabDecisionPending && !protectedSurfaceBlocked
-          ? "start-tab-decision-pending"
-          : "profile-truth-pending-protected-surface"),
+        : "profile-truth-pending-protected-surface",
       authRestoreState,
       profileTruthState,
       safePublicSurface,
