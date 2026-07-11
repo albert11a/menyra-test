@@ -10,6 +10,9 @@ const STYLE_ELEMENT_ID = "mnyraDashboardStyles";
 
 export const DASHBOARD_CSS = `
 .mnyra-dash {
+  /* Horizontale Flucht exakt wie der Smart-Header (px-5 bzw. px-4 tight):
+     Menue-Button links und Warenkorb-/Action-Button rechts. */
+  padding: 16px 20px 112px;
   --dash-surface: #ffffff;
   --dash-plane: #f8fafc;
   --dash-ink: #0f172a;
@@ -21,13 +24,16 @@ export const DASHBOARD_CSS = `
   color: var(--dash-ink);
   font-family: inherit;
 }
+@media (max-width: 360px) {
+  .mnyra-dash { padding-left: 16px; padding-right: 16px; }
+}
 .mnyra-dash * { box-sizing: border-box; }
 .mnyra-dash__greet {
   display: flex;
   align-items: stretch;
   gap: 14px;
   min-height: 56px;
-  margin: 4px 2px 16px;
+  margin: 4px 0 16px;
 }
 .mnyra-dash__greet-logo {
   width: 56px;
@@ -76,7 +82,7 @@ export const DASHBOARD_CSS = `
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin: 0 2px 10px;
+  margin: 0 0 10px;
 }
 .mnyra-dash__section-title {
   font-size: 12px;
@@ -524,7 +530,7 @@ export function renderDashboardDataSkeleton({ kpiCount = 6 } = {}) {
 }
 
 export function renderDashboardGreetingSkeleton() {
-  return `<div class="mnyra-dash__skeleton" style="min-height:56px; border-radius:18px; margin: 4px 2px 16px;"></div>`;
+  return `<div class="mnyra-dash__skeleton" style="min-height:56px; border-radius:18px; margin: 4px 0 16px;"></div>`;
 }
 
 export function renderDashboardErrorState({ message = "" } = {}) {
