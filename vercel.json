@@ -39,6 +39,7 @@
     { "source": "/map", "destination": "/apps/menyra-social/index.html" },
     { "source": "/location", "destination": "/apps/menyra-social/index.html" },
     { "source": "/profile", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/dashboard", "destination": "/apps/menyra-social/index.html" },
     { "source": "/menu", "destination": "/apps/menyra-social/index.html" },
     { "source": "/orders", "destination": "/apps/menyra-social/index.html" },
     { "source": "/notifications", "destination": "/apps/menyra-social/index.html" },

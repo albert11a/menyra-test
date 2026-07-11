@@ -131,6 +131,8 @@ const SOCIAL_DOMAIN_CHUNKS = [
   "app-events",
   // analytics hat keine Lazy-Cluster -> ganzer Ordner als eigener Chunk.
   "analytics",
+  // dashboard baut auf analytics auf und bleibt wie dieses ein eigener Chunk.
+  "dashboard",
 ];
 
 function socialManualChunks(id) {

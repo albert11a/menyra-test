@@ -160,6 +160,7 @@ import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-
 import { createMarketplaceRuntimeBoundary } from "./core/marketplace/marketplace-runtime-boundary.js";
 import { initAnalyticsTracker, observeAnalyticsState } from "./core/analytics/analytics-tracker.js";
 import { createAnalyticsViewController } from "./core/analytics/analytics-view-controller.js";
+import { createDashboardViewController } from "./core/dashboard/dashboard-view-controller.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createAdsRuntimeController } from "./core/menu/ads-runtime-controller.js";
 import {
@@ -1227,6 +1228,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderShoppingViewFn: (...args) => renderShoppingView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
     renderAnalyticsViewFn: (...args) => renderAnalyticsView(...args),
+    renderDashboardViewFn: (...args) => renderDashboardView(...args),
     renderBusinessAccountsViewFn: (...args) => renderBusinessAccountsView(...args),
     renderStaffViewFn: (...args) => renderStaffView(...args),
     bindBusinessAccountsEventsFn: (...args) => bindBusinessAccountsEvents(...args)
@@ -2027,6 +2029,41 @@ function getAnalyticsViewController() {
 
 function renderAnalyticsView() {
   return getAnalyticsViewController().renderAnalyticsView();
+}
+
+let dashboardViewController = null;
+function getDashboardViewController() {
+  if (!dashboardViewController) {
+    dashboardViewController = createDashboardViewController({
+      state,
+      renderFn: () => render(),
+      documentObj: typeof document === "undefined" ? null : document,
+      firestoreApi: {
+        db,
+        collectionFn: collection,
+        queryFn: query,
+        whereFn: where,
+        documentIdFn: documentId,
+        orderByFn: orderBy,
+        limitFn: limit,
+        getDocsFn: getDocs
+      },
+      profileApi: {
+        getBusinessProfileTypeFn: (...args) => getBusinessProfileType(...args),
+        isShopCatalogProfileFn: (...args) => isShopCatalogProfile(...args),
+        isBusinessOwnerProfileFn: (...args) => isBusinessOwnerProfile(...args),
+        canAccessRestaurantOrdersFn: (...args) => canAccessRestaurantOrders(...args),
+        getRestaurantMetaByIdFn: (...args) => getRestaurantMetaById(...args),
+        resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args)
+      },
+      iconFn: (...args) => icon(...args)
+    });
+  }
+  return dashboardViewController;
+}
+
+function renderDashboardView() {
+  return getDashboardViewController().renderDashboardView();
 }
 
 function renderTravelView() {
@@ -4916,7 +4953,7 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
     restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView,
-    analytics: renderAnalyticsView
+    analytics: renderAnalyticsView, dashboard: renderDashboardView
   }
 });
 let browserPopstateRouteSyncBound = false;

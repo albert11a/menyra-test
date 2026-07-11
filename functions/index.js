@@ -1360,6 +1360,7 @@ const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
   "story",
   "stories",
   "menu",
+  "dashboard",
   "search",
   "discover",
   "map",

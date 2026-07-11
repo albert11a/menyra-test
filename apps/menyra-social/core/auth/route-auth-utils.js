@@ -25,6 +25,7 @@ export function normalizeInitialTab(value) {
     "map",
     "location",
     "profile",
+    "dashboard",
     "menu",
     "orders",
     "notifications",

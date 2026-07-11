@@ -13,6 +13,7 @@ export function renderMainCore({
   renderMenuAdminViewFn,
   renderOrdersViewFn,
   renderAnalyticsViewFn,
+  renderDashboardViewFn,
   renderStaffViewFn,
   renderBusinessAccountsViewFn,
   renderSettingsViewFn,
@@ -42,6 +43,7 @@ export function renderMainCore({
   const renderMenuAdminView = typeof renderMenuAdminViewFn === "function" ? renderMenuAdminViewFn : (() => "");
   const renderOrdersView = typeof renderOrdersViewFn === "function" ? renderOrdersViewFn : (() => "");
   const renderAnalyticsView = typeof renderAnalyticsViewFn === "function" ? renderAnalyticsViewFn : (() => "");
+  const renderDashboardView = typeof renderDashboardViewFn === "function" ? renderDashboardViewFn : (() => "");
   const renderStaffView = typeof renderStaffViewFn === "function" ? renderStaffViewFn : (() => "");
   const renderBusinessAccountsView = typeof renderBusinessAccountsViewFn === "function" ? renderBusinessAccountsViewFn : (() => "");
   const renderSettingsView = typeof renderSettingsViewFn === "function" ? renderSettingsViewFn : (() => "");
@@ -92,6 +94,7 @@ export function renderMainCore({
     if (state?.activeTab === "menu") view = renderMenuAdminView();
     if (state?.activeTab === "orders") view = renderOrdersView();
     if (state?.activeTab === "analytics") view = renderAnalyticsView();
+    if (state?.activeTab === "dashboard") view = renderDashboardView();
     if (state?.activeTab === "staff") view = renderStaffView();
     if (state?.activeTab === "businessAccounts") view = renderBusinessAccountsView();
     if (state?.activeTab === "settings") view = renderSettingsView();

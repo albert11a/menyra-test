@@ -38,6 +38,7 @@ const SOCIAL_ROUTES = new Set([
   "/map",
   "/location",
   "/profile",
+  "/dashboard",
   "/menu",
   "/orders",
   "/notifications",

@@ -303,6 +303,7 @@ export function createShellDomRuntimeController({
         { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
         { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
         { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
+        { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
         { id: "analytics", label: tr("nav.analytics", "Analytics"), icon: "bar-chart-3", hidden: !showMenuTab },
         { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
@@ -439,6 +440,10 @@ export function createShellDomRuntimeController({
     const analyticsNavBtn = doc?.querySelector('[data-nav="analytics"]');
     if (analyticsNavBtn) {
       analyticsNavBtn.classList.toggle("hidden", !showMenuTab);
+    }
+    const dashboardNavBtn = doc?.querySelector('[data-nav="dashboard"]');
+    if (dashboardNavBtn) {
+      dashboardNavBtn.classList.toggle("hidden", !showMenuTab);
     }
     const favoritesNavBtn = doc?.querySelector('[data-nav="favorites"]');
     if (favoritesNavBtn) {

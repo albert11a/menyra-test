@@ -89,6 +89,7 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
   const renderMap = mapRuntime.render;
   const renderOrders = asRenderFn(renderers.orders);
   const renderAnalytics = asRenderFn(renderers.analytics);
+  const renderDashboard = asRenderFn(renderers.dashboard);
   const renderStaff = asRenderFn(renderers.staff);
   const renderBusinessAccounts = asRenderFn(renderers.businessAccounts);
   const renderSettings = asRenderFn(renderers.settings);
@@ -108,6 +109,7 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
     if (activeTab === "menu") return renderMenuAdmin();
     if (activeTab === "orders") return renderOrders();
     if (activeTab === "analytics") return renderAnalytics();
+    if (activeTab === "dashboard") return renderDashboard();
     if (activeTab === "staff") return renderStaff();
     if (activeTab === "businessaccounts") return renderBusinessAccounts();
     if (activeTab === "settings") return renderSettings();
