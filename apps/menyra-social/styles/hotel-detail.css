@@ -97,6 +97,16 @@
   overflow: hidden;
   background: linear-gradient(135deg, #dcdad4, #f3f2ef);
 }
+/* Leichtes Fade am unteren Bildrand: das Foto laeuft weich in den weissen
+   Karten-Body aus. Der Titel selbst steht unterhalb des Bilds. */
+.mhd-photo::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  content: "";
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.32) 55%, #fff 100%);
+  pointer-events: none;
+}
 .mhd-photo img {
   width: 100%;
   height: 100%;
