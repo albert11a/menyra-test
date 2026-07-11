@@ -34,19 +34,34 @@ export const DASHBOARD_CSS = `
   min-height: 56px;
   margin: 4px 0 16px;
 }
+/* Gleicher Rahmen wie das Profil-Avatar (100px, rounded-2rem, 3px
+   Indigo->Lila-Ring, weisser Innenrand), massstabsgetreu auf 56px. */
 .mnyra-dash__greet-logo {
   width: 56px;
   height: 56px;
   border-radius: 18px;
-  background: var(--dash-plane);
-  overflow: hidden;
+  padding: 3px;
+  background: linear-gradient(to bottom right, #6366f1, #a855f7);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   flex: 0 0 auto;
+}
+.mnyra-dash__greet-logo img,
+.mnyra-dash__greet-logo-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 15px;
+  border: 2px solid #ffffff;
+  background: #ffffff;
+  object-fit: cover;
+  display: block;
+}
+.mnyra-dash__greet-logo-fallback {
+  background: var(--dash-plane);
+  color: var(--dash-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--dash-muted);
 }
-.mnyra-dash__greet-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .mnyra-dash__greet-text {
   min-width: 0;
   flex: 1;
@@ -65,6 +80,7 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.mnyra-dash__greet-hello { color: var(--dash-accent); }
 .mnyra-dash__greet-sub {
   font-size: 12px;
   font-weight: 700;
@@ -406,10 +422,10 @@ export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Da
       <div class="mnyra-dash__greet-logo">
         ${logoUrl
           ? `<img src="${escapeHtml(logoUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
-          : safeIcon(iconFn, "store", "w-6 h-6")}
+          : `<span class="mnyra-dash__greet-logo-fallback">${safeIcon(iconFn, "store", "w-6 h-6")}</span>`}
       </div>
       <div class="mnyra-dash__greet-text">
-        <p class="mnyra-dash__greet-title">Përshëndetje, ${escapeHtml(name || "Business")}</p>
+        <p class="mnyra-dash__greet-title"><span class="mnyra-dash__greet-hello">Përshëndetje,</span> ${escapeHtml(name || "Business")}</p>
         <p class="mnyra-dash__greet-sub">${escapeHtml(greeting.text)}</p>
       </div>
     </div>

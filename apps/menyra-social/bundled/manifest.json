@@ -60,8 +60,8 @@
       "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js"
     ]
   },
-  "_domain-dashboard-rm3ndPKY.js": {
-    "file": "chunks/domain-dashboard-rm3ndPKY.js",
+  "_domain-dashboard-BN7kDe9L.js": {
+    "file": "chunks/domain-dashboard-BN7kDe9L.js",
     "name": "domain-dashboard",
     "imports": [
       "_domain-analytics-CHAXqWnD.js"
@@ -375,7 +375,7 @@
       "_domain-orders-eager-Bt23_niw.js",
       "_domain-marketplace-eager-CBrLQtO4.js",
       "_domain-analytics-CHAXqWnD.js",
-      "_domain-dashboard-rm3ndPKY.js",
+      "_domain-dashboard-BN7kDe9L.js",
       "_domain-chat-eager-Ccc3MLYd.js",
       "_domain-map-BjqpyoLm.js",
       "_domain-leads-DKLm0wNx.js",

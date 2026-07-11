@@ -91,7 +91,8 @@ test("greeting resolves albanian day part by hour", () => {
 
 test("greeting renders logo, name line and day-part line without card", () => {
   const html = renderDashboardGreeting({ name: "Bro Pizza", logoUrl: "https://img/logo.jpg", hour: 12 });
-  assert.ok(html.includes("Përshëndetje, Bro Pizza"));
+  // "Përshëndetje," traegt die Social-Blau-Farbe (eigener Span), Name dahinter.
+  assert.ok(html.includes('<span class="mnyra-dash__greet-hello">Përshëndetje,</span> Bro Pizza'));
   assert.ok(html.includes("Ju urojmë një ditë të mbarë!"));
   assert.ok(html.includes("https://img/logo.jpg"));
   assert.ok(html.includes("mnyra-dash__greet"));
