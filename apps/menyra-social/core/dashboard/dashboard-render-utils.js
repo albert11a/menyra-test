@@ -29,18 +29,19 @@ export const DASHBOARD_CSS = `
 .mnyra-dash * { box-sizing: border-box; }
 .mnyra-dash__greet {
   display: flex;
-  align-items: stretch;
-  gap: 14px;
-  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
   margin: 4px 0 16px;
 }
-/* Gleicher Rahmen wie das Profil-Avatar (100px, rounded-2rem, 3px
-   Indigo->Lila-Ring, weisser Innenrand), massstabsgetreu auf 56px. */
+/* Gleicher Rahmen wie das Profil-Avatar (Indigo->Lila-Ring, weisser
+   Innenrand, abgerundete Quadratform), auf 44px verkleinert, damit das
+   Bild zur Hoehe des zweizeiligen Textblocks passt. */
 .mnyra-dash__greet-logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  padding: 3px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  padding: 2px;
   background: linear-gradient(to bottom right, #6366f1, #a855f7);
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   flex: 0 0 auto;
@@ -49,7 +50,7 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__greet-logo-fallback {
   width: 100%;
   height: 100%;
-  border-radius: 15px;
+  border-radius: 12px;
   border: 2px solid #ffffff;
   background: #ffffff;
   object-fit: cover;
@@ -545,7 +546,7 @@ export function renderDashboardDataSkeleton({ kpiCount = 6 } = {}) {
 }
 
 export function renderDashboardGreetingSkeleton() {
-  return `<div class="mnyra-dash__skeleton" style="min-height:56px; border-radius:18px; margin: 4px 0 16px;"></div>`;
+  return `<div class="mnyra-dash__skeleton" style="min-height:44px; border-radius:14px; margin: 4px 0 16px;"></div>`;
 }
 
 export function renderDashboardErrorState({ message = "" } = {}) {
