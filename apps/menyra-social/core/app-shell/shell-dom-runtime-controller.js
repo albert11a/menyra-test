@@ -1,5 +1,9 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import { t } from "../../../../shared/i18n/i18n.js";
+import {
+  isShoppingTabEnabled,
+  isTravelTabEnabled
+} from "../../../../shared/config/marketplace-tabs.js";
 
 function getUnreadNotificationsCount(state = null) {
   if (!state) return 0;
@@ -288,8 +292,8 @@ export function createShellDomRuntimeController({
       ? [
         { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
         { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), icon: "utensils" },
-        { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane" },
-        { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag" },
+        { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
+        { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
         { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" }
@@ -298,8 +302,8 @@ export function createShellDomRuntimeController({
         { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
         { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
         { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), icon: "utensils" },
-        { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane" },
-        { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag" },
+        { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
+        { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "chat", label: tr("nav.chat", "Chats"), icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
         { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
         { id: "map", label: tr("nav.map", "Karte"), icon: "map" },

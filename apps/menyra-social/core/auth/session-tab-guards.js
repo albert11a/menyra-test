@@ -1,4 +1,5 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
+import { resolveVisibleAppTab } from "../../../../shared/config/marketplace-tabs.js";
 
 const GUEST_ALLOWED_TABS = new Set(["feed", "restaurants", "travel", "shopping", "search", "map", "orders", "profile"]);
 const SOCIAL_REMOVED_TABS = new Set(["leads", "customers"]);
@@ -63,9 +64,12 @@ export function sanitizeTabForSessionCore(tab, {
   guestScopeUid = undefined
 } = {}) {
   const requestedTab = String(tab || "").trim().toLowerCase();
-  const next = requestedTab === "location"
+  // Letzte Absicherung: auch programmatische Tab-Wechsel (nicht nur Routen)
+  // koennen keinen abgeschalteten Marktplatz-Tab mehr aktivieren.
+  const visibleTab = resolveVisibleAppTab(requestedTab);
+  const next = visibleTab === "location"
     ? "feed"
-    : (requestedTab || "feed");
+    : (visibleTab || "feed");
   if (SOCIAL_REMOVED_TABS.has(next)) return "feed";
   if (!isChatEnabledForV1() && next === "chat") return "chat";
   if (!isGuestSessionCore(user)) return next;

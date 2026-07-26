@@ -1,3 +1,5 @@
+import { resolveVisibleAppTab } from "../../../../shared/config/marketplace-tabs.js";
+
 export function normalizeInitialTab(value) {
   const key = String(value || "").trim().toLowerCase();
   if (!key) return "";
@@ -34,7 +36,10 @@ export function normalizeInitialTab(value) {
     "businessAccounts",
     "settings"
   ]);
-  return allowed.has(resolved) ? resolved : "";
+  if (!allowed.has(resolved)) return "";
+  // travel/shopping bleiben bekannte Ziele, werden aber auf den sichtbaren
+  // Ersatztab gefuehrt, solange ihr Feature-Flag aus ist.
+  return resolveVisibleAppTab(resolved);
 }
 
 export function normalizeAuthMode(value) {

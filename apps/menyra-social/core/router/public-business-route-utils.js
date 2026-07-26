@@ -1,3 +1,8 @@
+import {
+  isMarketplaceTabEnabled,
+  resolveVisibleAppTab
+} from "../../../../shared/config/marketplace-tabs.js";
+
 const SYSTEM_ROUTE_SEGMENT_TO_TAB = Object.freeze({
   feed: "feed",
   restaurants: "restaurants",
@@ -222,7 +227,10 @@ export function normalizeAppTabRouteCore(value = "", fallback = "") {
   };
   const resolved = aliases[key] || key;
   const allowed = new Set(Object.keys(CANONICAL_TAB_TO_PATH));
-  return allowed.has(resolved) ? resolved : safeLowerText(fallback);
+  if (!allowed.has(resolved)) return safeLowerText(fallback);
+  // Abgeschaltete Marktplatz-Tabs bleiben gueltige Routen, zeigen aber den
+  // Restaurants-Tab, damit alte Links nicht ins Leere laufen.
+  return resolveVisibleAppTab(resolved);
 }
 
 export function normalizePublicBusinessTopTabCore(value = "", fallback = "profile") {
@@ -386,15 +394,22 @@ export function parseSystemRoutePathCore(pathname = "") {
       aliasPath: `/${first}`
     };
   }
-  const tab = normalizeAppTabRouteCore(SYSTEM_ROUTE_SEGMENT_TO_TAB[first] || "");
+  const requestedTab = SYSTEM_ROUTE_SEGMENT_TO_TAB[first] || "";
+  const tab = normalizeAppTabRouteCore(requestedTab);
   if (tab) {
+    // Wurde ein abgeschalteter Tab angefragt, muss auch der Pfad auf den
+    // Ersatztab zeigen. Sonst bliebe die Adresszeile auf /travel bzw.
+    // /shopping stehen, waehrend die App Restaurants rendert.
+    const routePath = isMarketplaceTabEnabled(requestedTab)
+      ? `/${first}`
+      : (CANONICAL_TAB_TO_PATH[tab] || `/${first}`);
     return {
       matched: true,
       kind: "system",
       tab,
       authMode: "",
-      canonicalPath: `/${first}`,
-      aliasPath: `/${first}`
+      canonicalPath: routePath,
+      aliasPath: routePath
     };
   }
   if (isReservedPublicRouteSegment(first)) {

@@ -1,4 +1,4 @@
-import{f as x,r as Q,l as W,s as z}from"./domain-analytics-CHAXqWnD.js";const R="mnyraDashboardStyles",Y=`
+import{f as x,r as Q,l as W,s as z}from"./domain-analytics-DgN7VrnV.js";const R="mnyraDashboardStyles",Y=`
 .mnyra-dash {
   /* Horizontale Flucht auf die SICHTBAREN Header-Icons (nicht die
      unsichtbaren Touch-Kreise): Menue-Striche beginnen bei 28px,
