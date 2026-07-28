@@ -716,32 +716,50 @@ export function renderMenuDetailModalCore({
   const maxIndex = images.length ? images.length - 1 : 0;
   const safeIndex = Math.max(0, Math.min(state.menuDetail.index || 0, maxIndex));
   const restaurantId = getRestaurantId(item);
-  const detailImageKey = item?.id
-    ? `menu-detail:${String(restaurantId || "")}:${String(item.id)}:${safeIndex}`
-    : "";
-  const rawImg = images[safeIndex] || "";
-  const imgSrc = getOptimizedImage(rawImg, "large", {
-    stableKey: detailImageKey,
-    variantGroup: "menu-detail"
-  });
-  const safeImg = isPlaceholder(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
-  const firebaseFallback = getStorageUrl(rawImg);
-  const fallbackImg = isDirectUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+  const resolveDetailSlideMedia = (rawValue, idx) => {
+    const raw = String(rawValue || "");
+    const stableKey = item?.id
+      ? `menu-detail:${String(restaurantId || "")}:${String(item.id)}:${idx}`
+      : "";
+    const optimized = getOptimizedImage(raw, "large", {
+      stableKey,
+      variantGroup: "menu-detail"
+    });
+    const safe = isPlaceholder(optimized) ? PLACEHOLDER_IMAGE : optimized;
+    const firebaseFallback = getStorageUrl(raw);
+    const fallback = isDirectUrl(raw) && raw !== safe ? raw : firebaseFallback;
+    return { idx, safe, fallback };
+  };
+  const detailSlides = (images.length ? images : [""]).map(resolveDetailSlideMedia);
   // Video-Speisen im Detail: Video mit dem ersten Frame als Poster starten,
   // damit sofort ein Bild sichtbar ist. Nur im ersten Galerie-Slot.
-  const detailIsVideo = isVideoMediaItemCore(item) && safeIndex === 0;
+  const detailIsVideo = isVideoMediaItemCore(item);
   const detailVideoUrl = detailIsVideo ? String(item.videoUrl || "").trim() : "";
   const detailVideoPoster = detailIsVideo
-    ? (String(item.posterUrl || "").trim() ? getOptimizedImage(String(item.posterUrl).trim(), "large") : safeImg)
+    ? (String(item.posterUrl || "").trim()
+      ? getOptimizedImage(String(item.posterUrl).trim(), "large")
+      : (detailSlides[0]?.safe || PLACEHOLDER_IMAGE))
     : "";
   const videoToggleButtonHtml = `
     <button type="button" data-menu-video-toggle aria-label="Play/Pause" class="absolute top-3 left-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center z-20 active:scale-95 transition">
       <svg data-video-icon-play viewBox="0 0 24 24" class="w-4 h-4 fill-white block"><path d="M8 5v14l11-7z"></path></svg>
       <svg data-video-icon-pause viewBox="0 0 24 24" class="w-4 h-4 fill-white hidden"><path d="M6 5h4v14H6zM14 5h4v14h-4z"></path></svg>
     </button>`;
-  const detailHeroMediaHtml = (extraImgClass = "") => (detailIsVideo && detailVideoUrl
-    ? `<video id="menuDetailHeroVideo" data-menu-detail-video src="${esc(detailVideoUrl)}" ${detailVideoPoster ? `poster="${esc(detailVideoPoster)}"` : ""} class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" muted loop autoplay playsinline preload="metadata"></video>${videoToggleButtonHtml}`
-    : `<img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />`);
+  // Alle Galerie-Medien liegen gleichzeitig im DOM und werden sofort geladen.
+  // Beim Blaettern wird nur die Sichtbarkeit umgeschaltet, damit das naechste
+  // Bild ohne Nachladen erscheint und auch bei schwachem Netz kein grauer
+  // Platzhalter aufblitzt.
+  const detailSlideHtml = (slide, extraImgClass = "") => {
+    const isActive = slide.idx === safeIndex;
+    const isVideoSlot = detailIsVideo && !!detailVideoUrl && slide.idx === 0;
+    const mediaHtml = isVideoSlot
+      ? `<video id="menuDetailHeroVideo" data-menu-detail-video src="${esc(detailVideoUrl)}" ${detailVideoPoster ? `poster="${esc(detailVideoPoster)}"` : ""} class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" muted loop autoplay playsinline preload="metadata"></video>${videoToggleButtonHtml}`
+      : `<img ${isActive ? `id="menuDetailHeroImage" ` : ""}data-menu-detail-hero-image src="${esc(slide.safe)}" data-fallback-src="${esc(slide.fallback)}" class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="${isActive ? "high" : "low"}" decoding="${isActive ? "sync" : "async"}" />`;
+    return `<div data-menu-gallery-slide="${slide.idx}" class="absolute inset-0"${isActive ? "" : ` style="opacity:0;pointer-events:none;"`}>${mediaHtml}</div>`;
+  };
+  const detailHeroMediaHtml = (extraImgClass = "") => detailSlides
+    .map((slide) => detailSlideHtml(slide, extraImgClass))
+    .join("");
   const priceLabel = formatPriceLabel(item.price, item);
   const catalogProfile = getCatalogProfile(item);
   const isShop = isShopCatalog(catalogProfile);
@@ -952,13 +970,6 @@ export function renderMenuDetailModalCore({
           ` : ""}
         </div>
         <div class="modal-handoff-chrome">
-        ${images.length > 1 ? `
-          <div class="flex items-center justify-center gap-2">
-            ${images.map((_, idx) => `
-              <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
-            `).join("")}
-          </div>
-        ` : ""}
         <div class="mt-6 space-y-5">
           <div class="p-4 rounded-[1.3rem] border border-slate-100 bg-slate-50">
             <div class="flex items-center justify-between">

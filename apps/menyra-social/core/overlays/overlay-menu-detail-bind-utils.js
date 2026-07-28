@@ -439,6 +439,9 @@ export function bindMenuDetailOverlayEventsCore({
     let autoStarted = false;
     const autoStart = () => {
       if (autoStarted) return;
+      // Das Video liegt immer im ersten Galerie-Slot: nur starten, wenn dieser
+      // Slot gerade sichtbar ist.
+      if (Number(state?.menuDetail?.index || 0) !== 0) return;
       autoStarted = true;
       detailVideo.muted = true;
       const attempt = detailVideo.play();
@@ -464,22 +467,95 @@ export function bindMenuDetailOverlayEventsCore({
     syncVideoIcons();
   }
 
+  const gallery = doc.querySelector("[data-menu-gallery]");
+  const gallerySlides = gallery
+    ? Array.from(gallery.querySelectorAll("[data-menu-gallery-slide]"))
+    : [];
+  const galleryVideo = gallery ? gallery.querySelector("[data-menu-detail-video]") : null;
+
+  // Alle Galerie-Bilder liegen bereits im DOM. Beim Blaettern wird deshalb nur
+  // die Sichtbarkeit umgeschaltet statt das Modal neu zu rendern - so erscheint
+  // das naechste Bild sofort, ohne grauen Zwischenzustand.
+  const isGallerySlideReady = (slide) => {
+    if (!slide) return false;
+    const img = slide.querySelector("img");
+    if (!img) return true;
+    return !!img.complete && Number(img.naturalWidth || 0) > 0;
+  };
+
+  const showGallerySlide = (nextIndex) => {
+    const total = gallerySlides.length;
+    if (total < 2) return false;
+    if (!state?.menuDetail?.open || !state.menuDetail.item) return false;
+    let idx = Number(nextIndex);
+    if (!Number.isFinite(idx)) idx = 0;
+    idx = ((Math.trunc(idx) % total) + total) % total;
+    let prevIdx = Number(state.menuDetail.index);
+    if (!Number.isFinite(prevIdx) || prevIdx < 0 || prevIdx >= total) prevIdx = 0;
+    // Ist das Zielbild noch nicht geladen (schwaches Netz), bleibt das bisherige
+    // Bild als Hintergrund stehen - dadurch blitzt nie eine graue Flaeche auf.
+    const targetReady = isGallerySlideReady(gallerySlides[idx]);
+    const backdropIdx = !targetReady && prevIdx !== idx ? prevIdx : -1;
+    gallerySlides.forEach((slide, slideIdx) => {
+      const isActive = slideIdx === idx;
+      const isBackdrop = slideIdx === backdropIdx;
+      slide.style.opacity = isActive || isBackdrop ? "" : "0";
+      slide.style.pointerEvents = isActive ? "" : "none";
+      slide.style.zIndex = isActive ? "2" : (isBackdrop ? "1" : "");
+      const img = slide.querySelector("img");
+      if (!img) return;
+      if (isActive) {
+        img.id = "menuDetailHeroImage";
+        img.setAttribute("fetchpriority", "high");
+      } else if (img.id === "menuDetailHeroImage") {
+        img.removeAttribute("id");
+      }
+    });
+    if (backdropIdx >= 0) {
+      const targetImg = gallerySlides[idx]?.querySelector("img") || null;
+      const backdropSlide = gallerySlides[backdropIdx];
+      const hideBackdrop = () => {
+        if (Number(state?.menuDetail?.index) !== idx) return;
+        backdropSlide.style.opacity = "0";
+        backdropSlide.style.zIndex = "";
+      };
+      if (targetImg) {
+        targetImg.addEventListener("load", hideBackdrop, { once: true });
+        targetImg.addEventListener("error", hideBackdrop, { once: true });
+      }
+    }
+    if (galleryVideo) {
+      if (idx === 0) {
+        const played = galleryVideo.play?.();
+        if (played && typeof played.catch === "function") played.catch(() => {});
+      } else {
+        galleryVideo.pause?.();
+      }
+    }
+    state.menuDetail.index = idx;
+    return true;
+  };
+
+  const goToGalleryIndex = (nextIndex) => {
+    if (showGallerySlide(nextIndex)) return;
+    setMenuDetailIndex(nextIndex);
+  };
+
   doc.querySelectorAll("[data-menu-gallery-nav]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const dir = btn.dataset.menuGalleryNav || "next";
       const delta = dir === "prev" ? -1 : 1;
-      setMenuDetailIndex(state.menuDetail.index + delta);
+      goToGalleryIndex(state.menuDetail.index + delta);
     });
   });
 
   doc.querySelectorAll("[data-menu-gallery-dot]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const idx = Number(btn.dataset.menuGalleryDot || "0");
-      setMenuDetailIndex(idx);
+      goToGalleryIndex(idx);
     });
   });
 
-  const gallery = doc.querySelector("[data-menu-gallery]");
   if (gallery) {
     let startX = 0;
     let startY = 0;
@@ -497,8 +573,8 @@ export function bindMenuDetailOverlayEventsCore({
       const dx = evt.clientX - startX;
       const dy = evt.clientY - startY;
       if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy)) return;
-      if (dx < 0) setMenuDetailIndex(state.menuDetail.index + 1);
-      else setMenuDetailIndex(state.menuDetail.index - 1);
+      if (dx < 0) goToGalleryIndex(state.menuDetail.index + 1);
+      else goToGalleryIndex(state.menuDetail.index - 1);
     });
     gallery.addEventListener("pointercancel", () => { tracking = false; });
   }
