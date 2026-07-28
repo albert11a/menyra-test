@@ -56,6 +56,7 @@ export function createEmptyMenuDetailState() {
     item: null,
     index: 0,
     restaurantId: "",
+    previewImageSrc: "",
     selectedSize: "",
     selectedColor: "",
     infoTab: "info",

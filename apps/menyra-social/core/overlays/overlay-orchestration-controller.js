@@ -393,6 +393,9 @@ export function createOverlayOrchestrationController({
       item,
       index: initialIndex,
       restaurantId,
+      // Bereits geladenes Karten-Bild als Sofort-Hintergrund im Detail-Modal,
+      // damit beim Oeffnen keine graue Flaeche sichtbar wird.
+      previewImageSrc: String(options?.previewImageSrc || "").trim(),
       selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
       selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
       infoTab: "info",
@@ -579,7 +582,12 @@ export function createOverlayOrchestrationController({
   async function openMenuDetailFromTrigger(trigger) {
     const itemId = trigger?.dataset?.menuOpen || "";
     if (!itemId) return;
-    const { index: previewIndex } = resolveMenuCardPreviewFromTrigger(trigger);
+    const { index: previewIndex, imageEl: previewImageEl } = resolveMenuCardPreviewFromTrigger(trigger);
+    // Nur ein wirklich geladenes Karten-Bild taugt als Sofort-Hintergrund: es
+    // liegt dann im Cache und kostet keine zusaetzliche Anfrage.
+    const previewImageSrc = previewImageEl?.complete && Number(previewImageEl.naturalWidth || 0) > 0
+      ? resolvePreviewImageSrc(previewImageEl)
+      : "";
     const source = trigger?.dataset?.menuOpenSource || "menu";
     const parseMarketplaceProduct = () => {
       if (source !== "marketplace") return null;
@@ -628,7 +636,8 @@ export function createOverlayOrchestrationController({
         || state.userProfile.restaurantId
         || "",
       {
-        initialIndex: previewIndex
+        initialIndex: previewIndex,
+        previewImageSrc
       }
     );
   }

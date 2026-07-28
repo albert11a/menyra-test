@@ -745,17 +745,27 @@ export function renderMenuDetailModalCore({
       <svg data-video-icon-play viewBox="0 0 24 24" class="w-4 h-4 fill-white block"><path d="M8 5v14l11-7z"></path></svg>
       <svg data-video-icon-pause viewBox="0 0 24 24" class="w-4 h-4 fill-white hidden"><path d="M6 5h4v14H6zM14 5h4v14h-4z"></path></svg>
     </button>`;
-  // Alle Galerie-Medien liegen gleichzeitig im DOM und werden sofort geladen.
-  // Beim Blaettern wird nur die Sichtbarkeit umgeschaltet, damit das naechste
-  // Bild ohne Nachladen erscheint und auch bei schwachem Netz kein grauer
-  // Platzhalter aufblitzt.
+  // Bereits geladenes Karten-Bild: liegt im Browser-Cache und wird sofort
+  // gezeichnet, damit beim Oeffnen kein grauer Kasten sichtbar ist.
+  const previewImageSrc = String(state.menuDetail?.previewImageSrc || "").trim();
+  const previewBackdropStyle = previewImageSrc && !isPlaceholder(previewImageSrc)
+    ? `background-image:url("${esc(previewImageSrc.replace(/"/g, "%22"))}");background-size:cover;background-position:${getObjectPosition(item)};background-repeat:no-repeat;`
+    : "";
+  // Alle Galerie-Medien liegen gleichzeitig im DOM. Beim Blaettern wird nur die
+  // Sichtbarkeit umgeschaltet, damit das naechste Bild ohne Nachladen erscheint.
+  // Nur das aktive Bild startet sofort - die uebrigen werden erst nachgeladen,
+  // wenn das aktive Bild steht, damit es die Leitung nicht teilen muss.
   const detailSlideHtml = (slide, extraImgClass = "") => {
     const isActive = slide.idx === safeIndex;
     const isVideoSlot = detailIsVideo && !!detailVideoUrl && slide.idx === 0;
     const mediaHtml = isVideoSlot
       ? `<video id="menuDetailHeroVideo" data-menu-detail-video src="${esc(detailVideoUrl)}" ${detailVideoPoster ? `poster="${esc(detailVideoPoster)}"` : ""} class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" muted loop autoplay playsinline preload="metadata"></video>${videoToggleButtonHtml}`
-      : `<img ${isActive ? `id="menuDetailHeroImage" ` : ""}data-menu-detail-hero-image src="${esc(slide.safe)}" data-fallback-src="${esc(slide.fallback)}" class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="${isActive ? "high" : "low"}" decoding="${isActive ? "sync" : "async"}" />`;
-    return `<div data-menu-gallery-slide="${slide.idx}" class="absolute inset-0"${isActive ? "" : ` style="opacity:0;pointer-events:none;"`}>${mediaHtml}</div>`;
+      : `<img ${isActive ? `id="menuDetailHeroImage" ` : ""}data-menu-detail-hero-image ${isActive ? `src="${esc(slide.safe)}"` : `data-menu-gallery-src="${esc(slide.safe)}"`} data-fallback-src="${esc(slide.fallback)}" class="absolute inset-0 w-full h-full object-cover${extraImgClass ? ` ${extraImgClass}` : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="${isActive ? "high" : "low"}" decoding="${isActive ? "sync" : "async"}" />`;
+    const slideStyle = [
+      isActive ? previewBackdropStyle : "",
+      isActive ? "" : "opacity:0;pointer-events:none;"
+    ].join("");
+    return `<div data-menu-gallery-slide="${slide.idx}" class="absolute inset-0"${slideStyle ? ` style="${slideStyle}"` : ""}>${mediaHtml}</div>`;
   };
   const detailHeroMediaHtml = (extraImgClass = "") => detailSlides
     .map((slide) => detailSlideHtml(slide, extraImgClass))
@@ -889,10 +899,10 @@ export function renderMenuDetailModalCore({
         <div class="modal-handoff-hero relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y; aspect-ratio:4 / 5;">
           ${detailHeroMediaHtml()}
           ${images.length > 1 ? `
-            <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center" style="z-index:30;">
               ${iconFn("chevron-left", "w-4 h-4")}
             </button>
-            <button type="button" data-menu-gallery-nav="next" class="modal-handoff-chrome absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="next" class="modal-handoff-chrome absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center" style="z-index:30;">
               ${iconFn("chevron-right", "w-4 h-4")}
             </button>
           ` : ""}
@@ -961,10 +971,10 @@ export function renderMenuDetailModalCore({
         <div class="modal-handoff-hero relative h-56 rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
           ${detailHeroMediaHtml()}
           ${images.length > 1 ? `
-            <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center" style="z-index:30;">
               ${iconFn("chevron-left", "w-4 h-4")}
             </button>
-            <button type="button" data-menu-gallery-nav="next" class="modal-handoff-chrome absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="next" class="modal-handoff-chrome absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center" style="z-index:30;">
               ${iconFn("chevron-right", "w-4 h-4")}
             </button>
           ` : ""}

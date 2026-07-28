@@ -483,6 +483,48 @@ export function bindMenuDetailOverlayEventsCore({
     return !!img.complete && Number(img.naturalWidth || 0) > 0;
   };
 
+  // Die nicht sichtbaren Bilder starten erst, wenn das sichtbare Bild steht -
+  // sonst teilen sich alle Bilder die Leitung und das erste Bild kommt spaeter.
+  const hydrateGallerySlide = (slide) => {
+    const img = slide?.querySelector?.("img") || null;
+    if (!img) return null;
+    const pendingSrc = img.dataset?.menuGallerySrc
+      || img.getAttribute?.("data-menu-gallery-src")
+      || "";
+    if (pendingSrc && !img.getAttribute("src")) {
+      img.setAttribute("src", pendingSrc);
+      img.removeAttribute("data-menu-gallery-src");
+    }
+    return img;
+  };
+
+  const hydrateRemainingGallerySlides = (fromIndex = 0) => {
+    const total = gallerySlides.length;
+    for (let step = 1; step < total; step += 1) {
+      hydrateGallerySlide(gallerySlides[(fromIndex + step) % total]);
+    }
+  };
+
+  if (gallerySlides.length > 1) {
+    let activeIdx = Number(state?.menuDetail?.index);
+    if (!Number.isFinite(activeIdx) || activeIdx < 0 || activeIdx >= gallerySlides.length) activeIdx = 0;
+    const activeImg = gallerySlides[activeIdx]?.querySelector?.("img") || null;
+    let queuedPreload = false;
+    const startPreload = () => {
+      if (queuedPreload) return;
+      queuedPreload = true;
+      hydrateRemainingGallerySlides(activeIdx);
+    };
+    if (!activeImg || isGallerySlideReady(gallerySlides[activeIdx])) {
+      startPreload();
+    } else {
+      activeImg.addEventListener("load", startPreload, { once: true });
+      activeImg.addEventListener("error", startPreload, { once: true });
+      // Notbremse: haengt das aktive Bild, laden die uebrigen trotzdem nach.
+      if (typeof win?.setTimeout === "function") win.setTimeout(startPreload, 4000);
+    }
+  }
+
   const showGallerySlide = (nextIndex) => {
     const total = gallerySlides.length;
     if (total < 2) return false;
@@ -494,6 +536,8 @@ export function bindMenuDetailOverlayEventsCore({
     if (!Number.isFinite(prevIdx) || prevIdx < 0 || prevIdx >= total) prevIdx = 0;
     // Ist das Zielbild noch nicht geladen (schwaches Netz), bleibt das bisherige
     // Bild als Hintergrund stehen - dadurch blitzt nie eine graue Flaeche auf.
+    hydrateGallerySlide(gallerySlides[idx]);
+    hydrateRemainingGallerySlides(idx);
     const targetReady = isGallerySlideReady(gallerySlides[idx]);
     const backdropIdx = !targetReady && prevIdx !== idx ? prevIdx : -1;
     gallerySlides.forEach((slide, slideIdx) => {
