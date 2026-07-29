@@ -175,6 +175,8 @@ export function createAppShellRuntimeController(deps = {}) {
   // scrollbar ist (kurzer Feed): "open"/"closed" haelt den gewuenschten
   // Zustand fest, bis der Scroll-Zustand von selbst dort ankommt.
   let mainHeaderTabsManualState = null;
+  let mainHeaderTabsScrollSettleTimers = [];
+  let mainHeaderTabsSettleCancelCleanup = null;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1535,6 +1537,68 @@ export function createAppShellRuntimeController(deps = {}) {
     return true;
   }
 
+  function clearMainHeaderTabsScrollSettle() {
+    mainHeaderTabsScrollSettleTimers.forEach((timer) => {
+      try {
+        clearTimeout(timer);
+      } catch {}
+    });
+    mainHeaderTabsScrollSettleTimers = [];
+    if (typeof mainHeaderTabsSettleCancelCleanup === "function") {
+      try {
+        mainHeaderTabsSettleCancelCleanup();
+      } catch {}
+    }
+    mainHeaderTabsSettleCancelCleanup = null;
+  }
+
+  // Prueft nach dem Pfeil-Klick, ob der Smooth-Scroll wirklich angekommen ist.
+  // iOS (v.a. als PWA) ignoriert oder unterbricht window.scrollTo mit
+  // behavior:"smooth" gelegentlich - dann wuerde das Aufklappen haengen, weil
+  // die Tab-Zeile physisch hinter der Leiste bleibt. Der Nachlauf springt in
+  // dem Fall hart ans Ziel. Scrollt der Nutzer selbst, wird nichts erzwungen.
+  function armMainHeaderTabsScrollSettle(targetTop = 0) {
+    if (!win) return;
+    let cancelled = false;
+    const cancel = () => {
+      cancelled = true;
+    };
+    const cancelEvents = ["wheel", "touchmove"];
+    // Erst nach dem Tap scharf schalten: der ausloesende Finger erzeugt auf
+    // iOS gern selbst ein Mini-touchmove und wuerde den Nachlauf sonst killen.
+    const armCancelTimer = win.setTimeout(() => {
+      cancelEvents.forEach((eventName) => {
+        win.addEventListener(eventName, cancel, { passive: true });
+      });
+    }, 250);
+    mainHeaderTabsSettleCancelCleanup = () => {
+      try {
+        clearTimeout(armCancelTimer);
+      } catch {}
+      cancelEvents.forEach((eventName) => {
+        win.removeEventListener(eventName, cancel);
+      });
+    };
+    const safeTarget = Math.max(0, Math.round(Number(targetTop) || 0));
+    const check = () => {
+      if (cancelled) return;
+      const currentTop = Math.max(0, Math.round(Number(win.scrollY || 0)));
+      const maxTop = Math.max(0, Math.round(
+        Number(doc?.documentElement?.scrollHeight || 0) - Number(win.innerHeight || 0)
+      ));
+      const reachableTarget = Math.min(safeTarget, maxTop);
+      if (Math.abs(currentTop - reachableTarget) <= 4) return;
+      try {
+        win.scrollTo(0, reachableTarget);
+      } catch {}
+      syncMainHeaderTabsScrollProgress();
+    };
+    mainHeaderTabsScrollSettleTimers = [
+      win.setTimeout(check, 500),
+      win.setTimeout(check, 1100)
+    ];
+  }
+
   function applyMainHeaderTabsFade(fade, minimized) {
     // Auf dem Root, damit sowohl die Tab-Zeile als auch der Shell darauf
     // zugreifen koennen - der Header-Schatten blendet damit exakt mit um.
@@ -1574,6 +1638,9 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function stopMainHeaderTabsRuntime() {
+    // Der Scroll-Nachlauf (armMainHeaderTabsScrollSettle) bleibt hier bewusst
+    // aktiv: ein Re-Render kurz nach dem Pfeil-Klick darf die Ankunftskontrolle
+    // nicht abraeumen, sonst haengt das Aufklappen auf iOS wieder.
     if (win && typeof mainHeaderTabsScrollListener === "function") {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
@@ -1610,6 +1677,7 @@ export function createAppShellRuntimeController(deps = {}) {
       // minimiert -> zurueck nach oben, offen -> knapp an den Tabs vorbei.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
+        clearMainHeaderTabsScrollSettle();
         const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
         const minimized = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
         const nextTop = minimized ? 0 : slot + 2;
@@ -1622,6 +1690,11 @@ export function createAppShellRuntimeController(deps = {}) {
         } catch {
           win.scrollTo(0, nextTop);
         }
+        // iOS bricht programmatische Smooth-Scrolls gern ab; besonders das
+        // Aufklappen haengt aber daran, dass die Tab-Zeile wirklich wieder
+        // unter der Leiste hervorkommt. Deshalb nachpruefen und notfalls
+        // hart springen - es sei denn, der Nutzer scrollt selbst weiter.
+        armMainHeaderTabsScrollSettle(nextTop);
       };
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
     }
@@ -1658,6 +1731,7 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTabsEl = null;
     if (resetState) {
       mainHeaderTabsManualState = null;
+      clearMainHeaderTabsScrollSettle();
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;
