@@ -1552,18 +1552,20 @@ export function createAppShellRuntimeController(deps = {}) {
     mainHeaderTabsSettleCancelCleanup = null;
   }
 
-  // Prueft nach dem Pfeil-Klick, ob der Smooth-Scroll wirklich angekommen ist.
-  // iOS (v.a. als PWA) ignoriert oder unterbricht window.scrollTo mit
-  // behavior:"smooth" gelegentlich - dann wuerde das Aufklappen haengen, weil
-  // die Tab-Zeile physisch hinter der Leiste bleibt. Der Nachlauf springt in
-  // dem Fall hart ans Ziel. Scrollt der Nutzer selbst, wird nichts erzwungen.
+  // Haelt nach dem Pfeil-Klick das Scroll-Ziel aktiv fest, bis es wirklich
+  // erreicht ist. iOS (v.a. als PWA) verwirft window.scrollTo mit
+  // behavior:"smooth" gern, und beim Laden der Feed-Daten stellen Re-Renders
+  // zwischendurch alte Scroll-Positionen wieder her - beides liesse das
+  // Aufklappen haengen, weil die Tab-Zeile physisch hinter der Leiste bleibt.
+  // Die Schleife regelt deshalb bis zu ~3s lang nach (harter Sprung), bis das
+  // Ziel steht. Scrollt der Nutzer selbst, wird sofort losgelassen.
   function armMainHeaderTabsScrollSettle(targetTop = 0) {
     if (!win) return;
     let cancelled = false;
     const cancel = () => {
       cancelled = true;
     };
-    const cancelEvents = ["wheel", "touchmove"];
+    const cancelEvents = ["wheel", "touchmove", "mousedown"];
     // Erst nach dem Tap scharf schalten: der ausloesende Finger erzeugt auf
     // iOS gern selbst ein Mini-touchmove und wuerde den Nachlauf sonst killen.
     const armCancelTimer = win.setTimeout(() => {
@@ -1580,23 +1582,31 @@ export function createAppShellRuntimeController(deps = {}) {
       });
     };
     const safeTarget = Math.max(0, Math.round(Number(targetTop) || 0));
-    const check = () => {
+    const startedAt = Date.now();
+    const tick = () => {
       if (cancelled) return;
       const currentTop = Math.max(0, Math.round(Number(win.scrollY || 0)));
       const maxTop = Math.max(0, Math.round(
         Number(doc?.documentElement?.scrollHeight || 0) - Number(win.innerHeight || 0)
       ));
       const reachableTarget = Math.min(safeTarget, maxTop);
-      if (Math.abs(currentTop - reachableTarget) <= 4) return;
-      try {
-        win.scrollTo(0, reachableTarget);
-      } catch {}
-      syncMainHeaderTabsScrollProgress();
+      const arrived = Math.abs(currentTop - reachableTarget) <= 4;
+      if (!arrived) {
+        try {
+          win.scrollTo(0, reachableTarget);
+        } catch {}
+        syncMainHeaderTabsScrollProgress();
+      }
+      // Auch nach der Ankunft kurz weiter wachen: eine spaete
+      // Scroll-Wiederherstellung aus einem Re-Render darf den frisch
+      // gesetzten Zustand nicht wieder umwerfen.
+      if (Date.now() - startedAt < 3200) {
+        mainHeaderTabsScrollSettleTimers.push(win.setTimeout(tick, 300));
+      } else {
+        syncMainHeaderTabsScrollProgress();
+      }
     };
-    mainHeaderTabsScrollSettleTimers = [
-      win.setTimeout(check, 500),
-      win.setTimeout(check, 1100)
-    ];
+    mainHeaderTabsScrollSettleTimers = [win.setTimeout(tick, 350)];
   }
 
   function applyMainHeaderTabsFade(fade, minimized) {
