@@ -10,12 +10,15 @@ Stand dieses Commits:
 
 Haupt-Tabs im Header (`feed` / `restaurants`):
 
-- Unter der oberen Leiste (Location, Sprache, Login, Warenkorb) liegt eine Tab-Zeile mit `Feed` und `Restaurants`.
-- Die Tab-Zeile wird nur in den Tabs `feed`, `home` und `restaurants` gerendert (`renderMainHeaderTabs()`), Element-Id `smart-tabs`.
+- Unter der oberen Leiste (Location, Sprache, Login, Warenkorb) liegt eine Zeile mit den Pill-Buttons `Feed` und `Restaurants`.
+- Die Zeile erscheint erst, wenn eine Stadt gesetzt ist: `isMainHeaderTabsScope()` verlangt einen Location-Record und die Tabs `feed`, `home` oder `restaurants`. Im Location-Gate gibt es weder Tabs noch Collapse-Pfeil.
+- Gerendert wird sie von `renderMainHeaderTabs()` unter der Element-Id `smart-tabs`, Buttons mit `.smart-header-pill`.
+- Keine Trennlinie zwischen oberer Leiste und Buttons: solange die Tabs offen sind, wird `border-bottom-color` von `.smart-header-top` transparent geschaltet, die untere Header-Kante traegt dann die Tab-Zeile.
 - Die Tabs nutzen `data-nav`, laufen also ueber denselben Tab-Wechsel wie der Drawer.
 - Ganz rechts in der oberen Leiste (neben dem Warenkorb) minimiert ein Chevron-Button den Header auf die eine obere Zeile.
-- Der Collapse-State liegt in `state.headerTabsCollapsed` und wird unter `STORAGE_KEYS.headerTabs` persistiert.
-- Beim Umschalten wird die Klasse direkt am DOM getoggelt, damit die Hoehen-Transition laeuft; `--smart-header-tabs-height` wird dabei mitgesetzt.
+- Runterscrollen klappt die Tabs automatisch zu, ganz oben kommen sie zurueck. Das laeuft ueber `initMainHeaderTabsRuntime()` mit `mainHeaderTabsScrollCollapsed`; manuelles Aufklappen gewinnt bis zum naechsten Runterscrollen.
+- Die manuelle Praeferenz liegt in `state.headerTabsCollapsed` und wird unter `STORAGE_KEYS.headerTabs` persistiert; effektiv zu ist der Header, wenn Praeferenz oder Scroll-Collapse aktiv sind (`isMainHeaderTabsCollapsed()`).
+- Chevron-Klick und Scroll-Listener sitzen im App-Shell-Controller (nicht in den Event-Bind-Utils), damit sie sich denselben Runtime-State teilen. Umgeschaltet wird direkt am DOM, damit die Hoehen-Transition laeuft; `--smart-header-tabs-height` wird dabei mitgesetzt.
 - `--feed-location-gate-header-height` rechnet `--smart-header-tabs-height` mit ein, damit die Sticky-Offsets im Feed-Location-Gate stimmen.
 - `Restaurants` ist deshalb kein Drawer-Eintrag mehr.
 

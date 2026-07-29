@@ -1249,15 +1249,42 @@
       border-bottom-width: 0;
       pointer-events: none;
     }
+    /* Keine Trennlinie zwischen oberer Leiste und den Tab-Buttons: solange die
+       Tabs offen sind, traegt nur die Tab-Zeile die untere Header-Kante. */
+    .smart-header-shell:has(.smart-header-tabs--main:not(.smart-header-tabs--collapsed)) .smart-header-top {
+      border-bottom-color: transparent;
+    }
+    .smart-header-top {
+      transition: border-bottom-color 260ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
     .smart-header-tabs-row {
       display: flex;
-      align-items: stretch;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.1rem 1rem 0.7rem;
     }
-    .smart-header-tabs--main .smart-header-tab {
-      padding-top: 0.78rem;
-      padding-bottom: 0.78rem;
+    .smart-header-pill {
+      flex: 0 0 auto;
+      border-radius: 9999px;
+      border: 1px solid rgb(226 232 240 / 0.95);
+      background: #fff;
+      color: rgb(100 116 139);
+      padding: 0.44rem 1.05rem;
       font-size: 11px;
-      letter-spacing: 0.16em;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 120ms ease;
+    }
+    .smart-header-pill:active {
+      transform: scale(0.97);
+    }
+    .smart-header-pill--active {
+      background: #0f172a;
+      border-color: #0f172a;
+      color: #fff;
+      box-shadow: 0 10px 24px -16px rgb(15 23 42 / 0.55);
     }
     .smart-header-collapse-btn > svg,
     .smart-header-collapse-btn > i {
@@ -1269,6 +1296,8 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .smart-header-tabs--main,
+      .smart-header-top,
+      .smart-header-pill,
       .smart-header-collapse-btn > svg,
       .smart-header-collapse-btn > i {
         transition: none !important;
@@ -1291,6 +1320,8 @@
       }
     }
     body.fast-mode .smart-header-tabs--main,
+    body.fast-mode .smart-header-top,
+    body.fast-mode .smart-header-pill,
     body.fast-mode .smart-header-collapse-btn > svg,
     body.fast-mode .smart-header-collapse-btn > i {
       transition: none !important;
