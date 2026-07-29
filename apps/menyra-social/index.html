@@ -562,7 +562,8 @@
       --safe-area-bottom: 0px;
       --safe-area-left: 0px;
       --menu-detail-footer-gap: 0px;
-      --feed-location-gate-header-height: calc(var(--safe-area-top) + 4.5rem);
+      --smart-header-tabs-height: 0px;
+      --feed-location-gate-header-height: calc(var(--safe-area-top) + 4.5rem + var(--smart-header-tabs-height, 0px));
       --app-content-inline: 1.5rem;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
@@ -1235,6 +1236,64 @@
     }
     .smart-header-tabs--hidden {
       transform: none !important;
+    }
+    .smart-header-tabs--main {
+      overflow: hidden;
+      max-height: 4.5rem;
+      opacity: 1;
+      transition: max-height 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms ease, border-bottom-width 260ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .smart-header-tabs--main.smart-header-tabs--collapsed {
+      max-height: 0;
+      opacity: 0;
+      border-bottom-width: 0;
+      pointer-events: none;
+    }
+    .smart-header-tabs-row {
+      display: flex;
+      align-items: stretch;
+    }
+    .smart-header-tabs--main .smart-header-tab {
+      padding-top: 0.78rem;
+      padding-bottom: 0.78rem;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+    }
+    .smart-header-collapse-btn > svg,
+    .smart-header-collapse-btn > i {
+      transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .smart-header-collapse-btn--collapsed > svg,
+    .smart-header-collapse-btn--collapsed > i {
+      transform: rotate(180deg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .smart-header-tabs--main,
+      .smart-header-collapse-btn > svg,
+      .smart-header-collapse-btn > i {
+        transition: none !important;
+      }
+    }
+    /* Schmale Geraete: obere Header-Zeile bleibt einzeilig, das Location-Feld
+       behaelt trotz Collapse-Pfeil genug Schreibbreite. */
+    @media (max-width: 380px) {
+      .smart-header-actions:has(.smart-header-collapse-btn) > button { width: 2rem; }
+      .smart-header-actions:has(.smart-header-collapse-btn) > .smart-header-collapse-btn { width: 1.6rem; }
+      .smart-header-feed-location .loc-input {
+        padding-left: 1.7rem;
+        padding-right: 2.15rem;
+      }
+      .smart-header-feed-location .loc-pin { left: 0.58rem; }
+      .smart-header-feed-location .loc-request-wrap { right: 0.22rem; }
+      .smart-header-feed-location .loc-request-btn {
+        width: 1.55rem;
+        height: 1.55rem;
+      }
+    }
+    body.fast-mode .smart-header-tabs--main,
+    body.fast-mode .smart-header-collapse-btn > svg,
+    body.fast-mode .smart-header-collapse-btn > i {
+      transition: none !important;
     }
     html.feed-location-feed-stage-active,
     body.feed-location-feed-stage-active {

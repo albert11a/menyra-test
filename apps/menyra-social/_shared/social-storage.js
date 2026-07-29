@@ -25,7 +25,8 @@ export const STORAGE_KEYS = {
   logoCache: "menyra_social_logo_cache_v1",
   avatarCache: "menyra_social_avatar_cache_v1",
   menuLayout: "menyra_social_menu_layout_v1",
-  authSnapshot: "menyra_social_auth_snapshot_v1"
+  authSnapshot: "menyra_social_auth_snapshot_v1",
+  headerTabs: "menyra_social_header_tabs_collapsed_v1"
 };
 
 export const profileKey = (uid) => (uid ? `${STORAGE_KEYS.profile}::${uid}` : "");

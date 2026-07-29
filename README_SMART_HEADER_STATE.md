@@ -8,6 +8,17 @@ Stand dieses Commits:
 - Die untere Tab-Leiste im Business-Profil (`Profil`, `Menue`, `Call Waiter`) faehrt beim Scrollen hinter die obere Leiste.
 - Drawer, Login/Profile und Cart nutzen weiter die vorhandenen App-Flows.
 
+Haupt-Tabs im Header (`feed` / `restaurants`):
+
+- Unter der oberen Leiste (Location, Sprache, Login, Warenkorb) liegt eine Tab-Zeile mit `Feed` und `Restaurants`.
+- Die Tab-Zeile wird nur in den Tabs `feed`, `home` und `restaurants` gerendert (`renderMainHeaderTabs()`), Element-Id `smart-tabs`.
+- Die Tabs nutzen `data-nav`, laufen also ueber denselben Tab-Wechsel wie der Drawer.
+- Ganz rechts in der oberen Leiste (neben dem Warenkorb) minimiert ein Chevron-Button den Header auf die eine obere Zeile.
+- Der Collapse-State liegt in `state.headerTabsCollapsed` und wird unter `STORAGE_KEYS.headerTabs` persistiert.
+- Beim Umschalten wird die Klasse direkt am DOM getoggelt, damit die Hoehen-Transition laeuft; `--smart-header-tabs-height` wird dabei mitgesetzt.
+- `--feed-location-gate-header-height` rechnet `--smart-header-tabs-height` mit ein, damit die Sticky-Offsets im Feed-Location-Gate stimmen.
+- `Restaurants` ist deshalb kein Drawer-Eintrag mehr.
+
 Wichtige Eigenschaften:
 
 - Safe-Area und obere Leiste werden als zusammenhaengende Header-Flaeche behandelt.

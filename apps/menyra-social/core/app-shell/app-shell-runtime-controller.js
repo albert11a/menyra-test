@@ -954,6 +954,41 @@ export function createAppShellRuntimeController(deps = {}) {
     `;
   }
 
+  function isMainHeaderTabsScope() {
+    const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+    return activeTabKey === "feed" || activeTabKey === "home" || activeTabKey === "restaurants";
+  }
+
+  function isMainHeaderTabsCollapsed() {
+    return !!state.headerTabsCollapsed;
+  }
+
+  function renderMainHeaderTabs() {
+    if (!isMainHeaderTabsScope()) return "";
+    const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+    const collapsed = isMainHeaderTabsCollapsed();
+    const tabs = [
+      { id: "feed", label: tr("nav.feed", "Feed"), active: activeTabKey !== "restaurants" },
+      { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), active: activeTabKey === "restaurants" }
+    ];
+    return `
+      <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main${collapsed ? " smart-header-tabs--collapsed" : ""}" aria-hidden="${collapsed ? "true" : "false"}">
+        <div class="smart-header-tabs-row px-5">
+          ${tabs.map((tab) => `
+            <button
+              type="button"
+              data-nav="${escapeHtml(tab.id)}"
+              data-main-header-tab="${escapeHtml(tab.id)}"
+              aria-current="${tab.active ? "page" : "false"}"
+              tabindex="${collapsed ? "-1" : "0"}"
+              class="smart-header-tab ${tab.active ? "smart-header-tab--active" : "smart-header-tab--inactive"}"
+            >${escapeHtml(tab.label)}</button>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
   function shouldShowSmartHeaderTabs() {
     const overlayIsolationActive = !!state.profileModal?.open
       || !!state.postModal?.open
@@ -1007,7 +1042,16 @@ export function createAppShellRuntimeController(deps = {}) {
       || headerLocationRecord?.city
       || ""
     ).trim();
-    const compactHeaderIcons = !!showFeedLocationHeaderSearch;
+    const headerTabsHtml = renderMainHeaderTabs();
+    const hasHeaderTabs = !!headerTabsHtml;
+    const headerTabsCollapsed = isMainHeaderTabsCollapsed();
+    // Der Collapse-Pfeil braucht Platz in der oberen Zeile: Location-Feld und
+    // Abstaende werden dafuer nur in der Breite schmaler, nicht in der Hoehe.
+    const compactHeaderIcons = !!showFeedLocationHeaderSearch || hasHeaderTabs;
+    const tightHeaderRow = hasHeaderTabs;
+    const headerRowPaddingClass = tightHeaderRow ? "px-4" : "px-5";
+    const headerLeadGapClass = tightHeaderRow ? "gap-2" : "gap-3";
+    const headerActionsGapClass = tightHeaderRow ? "gap-1" : "gap-1.5";
     const drawerButtonClass = compactHeaderIcons
       ? "text-slate-700 hover:bg-slate-100 w-9 h-9 p-2 -ml-1.5 rounded-full transition-colors active:scale-95 flex items-center justify-center"
       : "text-slate-700 hover:bg-slate-100 p-2 -ml-2 rounded-full transition-colors active:scale-95 flex items-center justify-center";
@@ -1016,12 +1060,18 @@ export function createAppShellRuntimeController(deps = {}) {
       ? "w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
       : "w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
     const actionIconClass = "w-5 h-5";
+    const collapseButtonClass = compactHeaderIcons
+      ? "w-7 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
+      : "w-8 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
+    const collapseButtonLabel = headerTabsCollapsed
+      ? tr("header.expandTabs", "Tabs einblenden")
+      : tr("header.collapseTabs", "Header minimieren");
 
     return `
       <div class="smart-header-shell">
         <div id="smart-header-top" class="smart-header-top">
-          <div class="px-5 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3${showFeedLocationHeaderSearch ? " flex-1 min-w-0 pr-2" : ""}">
+          <div class="${headerRowPaddingClass} h-16 flex items-center justify-between">
+            <div class="flex items-center ${headerLeadGapClass}${showFeedLocationHeaderSearch ? " flex-1 min-w-0 pr-2" : ""}">
               <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="${drawerButtonClass}">
                 ${icon("menu", drawerIconClass)}
               </button>
@@ -1034,7 +1084,7 @@ export function createAppShellRuntimeController(deps = {}) {
                   </div>
                 `}
             </div>
-            <div class="flex shrink-0 items-center gap-1.5 text-slate-600">
+            <div class="smart-header-actions flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
               ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
               <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${actionButtonClass}">
                 ${icon("user", actionIconClass)}
@@ -1043,10 +1093,24 @@ export function createAppShellRuntimeController(deps = {}) {
                 ${icon("shopping-bag", actionIconClass)}
                 ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
               </button>
+              ${hasHeaderTabs ? `
+                <button
+                  type="button"
+                  data-main-header-tabs-toggle="true"
+                  aria-controls="smart-tabs"
+                  aria-expanded="${headerTabsCollapsed ? "false" : "true"}"
+                  aria-label="${escapeHtml(collapseButtonLabel)}"
+                  title="${escapeHtml(collapseButtonLabel)}"
+                  class="smart-header-collapse-btn ${collapseButtonClass}${headerTabsCollapsed ? " smart-header-collapse-btn--collapsed" : ""}"
+                >
+                  ${icon("chevron-down", "w-5 h-5")}
+                </button>
+              ` : ""}
             </div>
             </div>
             ${renderLanguagePickerPanel()}
           </div>
+          ${headerTabsHtml}
         </div>
     `;
   }

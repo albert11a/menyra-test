@@ -898,6 +898,37 @@ export function bindAppShellEventsCore({
     });
   });
 
+  doc.querySelectorAll("[data-main-header-tabs-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const collapsed = !state.headerTabsCollapsed;
+      state.headerTabsCollapsed = collapsed;
+      if (safeStorage && storageKeys.headerTabs) {
+        safeStorage.setItem(storageKeys.headerTabs, collapsed ? "1" : "0");
+      }
+      btn.classList.toggle("smart-header-collapse-btn--collapsed", collapsed);
+      btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      const tabsEl = doc.getElementById("smart-tabs");
+      if (!tabsEl) {
+        render();
+        return;
+      }
+      // Direkt am DOM umschalten, damit die Hoehen-Animation laeuft; ein
+      // Full-Render wuerde die Transition abschneiden.
+      tabsEl.classList.toggle("smart-header-tabs--collapsed", collapsed);
+      tabsEl.setAttribute("aria-hidden", collapsed ? "true" : "false");
+      tabsEl.querySelectorAll("[data-main-header-tab]").forEach((tabBtn) => {
+        tabBtn.setAttribute("tabindex", collapsed ? "-1" : "0");
+      });
+      const rootStyle = doc.documentElement?.style;
+      if (rootStyle) {
+        const nextTabsHeight = collapsed
+          ? 0
+          : Math.max(0, Math.round(Number(tabsEl.offsetHeight) || 0));
+        rootStyle.setProperty("--smart-header-tabs-height", `${nextTabsHeight}px`);
+      }
+    });
+  });
+
   doc.querySelectorAll("[data-marketplace-open-business]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const restaurantId = String(btn.dataset.marketplaceOpenBusiness || "").trim();
