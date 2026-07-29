@@ -32,7 +32,7 @@ export function renderCeoGuardCore({
         ${iconFn("lock", "w-8 h-8")}
       </div>
       <h2 class="text-lg font-black tracking-tight text-slate-900">${esc(title)}</h2>
-      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Nur CEO Zugriff</p>
+      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Vetem qasje CEO</p>
     </div>
   `;
 }

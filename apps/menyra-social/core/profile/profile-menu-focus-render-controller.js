@@ -2935,7 +2935,7 @@ function renderMenuLayoutSection() {
       <div class="flex items-center justify-between mb-4">
         <div>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Layouts</span>
-          <h3 class="text-xl font-black italic tracking-tighter">Farben</h3>
+          <h3 class="text-xl font-black italic tracking-tighter">Ngjyrat</h3>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Sot ne Fokus</p>
         </div>
       </div>
@@ -4436,7 +4436,7 @@ function renderMenuOrderSection(items = []) {
       <div class="mb-4">
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Special Position</span>
         <h3 class="text-xl font-black italic tracking-tighter">Drag &amp; Drop</h3>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Nur Special-Karten sind ziehbar. Andere Karten sind Ziel-Positionen.</p>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Vetem kartat Special mund te terhiqen. Kartat e tjera jane pozicione objektiv.</p>
       </div>
       <div class="space-y-2" data-menu-order-board="true">
         ${list.map((item) => {
@@ -4744,7 +4744,7 @@ function renderMenuAdminView() {
       ` : `
         <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
           <p class="text-sm font-bold text-slate-500 mb-4">Ju lutem zgjidh fillimisht biznesin tend ne llogari.</p>
-          <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Zu den Einstellungen</button>
+          <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Te cilesimet</button>
         </div>
       `)}
 

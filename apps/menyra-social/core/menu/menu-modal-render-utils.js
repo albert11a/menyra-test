@@ -308,7 +308,7 @@ export function renderMenuItemModalCore({
             <button type="button" data-menu-small-crop="center" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${cropPreset === "center" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}">Mitte</button>
             <button type="button" data-menu-small-crop="right" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${cropPreset === "right" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}">Rechts</button>
           </div>
-          <p class="text-[10px] font-bold text-slate-400 px-1">Nur fuer Small Drink Card (Public Menue).</p>
+          <p class="text-[10px] font-bold text-slate-400 px-1">Vetem per Small Drink Card (menuja publike).</p>
         </div>
         <div class="flex items-center justify-between">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Vertikal</p>
@@ -371,7 +371,7 @@ export function renderMenuItemModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
           <select id="menuItemVisibility" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="available" ${visibilityValue === "available" ? "selected" : ""}>Verfuegbar</option>
+            <option value="available" ${visibilityValue === "available" ? "selected" : ""}>E disponueshme</option>
             <option value="unavailable" ${visibilityValue === "unavailable" ? "selected" : ""}>Ausverkauft</option>
           </select>
         </div>
@@ -409,24 +409,24 @@ export function renderMenuItemModalCore({
         ${specialEnabled && showCardStyleSelector && isSpecialCard ? `
           <input id="menuItemCardStyle" type="hidden" value="testfirst_special" />
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Groesse</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Madhesia Special</label>
             <select id="menuItemSpecialSize" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
               <option value="default" ${specialSizeValue === "default" ? "selected" : ""}>Normal</option>
-              <option value="food" ${specialSizeValue === "food" ? "selected" : ""}>Food-Card Groesse</option>
+              <option value="food" ${specialSizeValue === "food" ? "selected" : ""}>Madhesia e Food-Card</option>
             </select>
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Nur relevant fuer Special-Card.</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Relevante vetem per Special-Card.</p>
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Klick-Aktion</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Veprimi i klikimit Special</label>
             <select id="menuItemSpecialActionType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-              <option value="product" ${specialActionType === "product" ? "selected" : ""}>Produkt-Modal oeffnen</option>
-              <option value="link" ${specialActionType === "link" ? "selected" : ""}>Weiterleitung / Link oeffnen</option>
+              <option value="product" ${specialActionType === "product" ? "selected" : ""}>Hap modalin e produktit</option>
+              <option value="link" ${specialActionType === "link" ? "selected" : ""}>Hap ridrejtimin / linkun</option>
             </select>
           </div>
           <div id="menuItemSpecialActionProductField" class="${specialActionType === "product" ? "" : "hidden"}">
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Ziel-Produkt</label>
             <select id="menuItemSpecialActionProductId" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-              <option value="">Kein Produkt</option>
+              <option value="">Pa produkt</option>
               ${specialTargetProducts.map((entry) => {
                 const id = String(entry?.id || "").trim();
                 const label = String(entry?.name || "Produkt").trim() || "Produkt";
@@ -442,7 +442,7 @@ export function renderMenuItemModalCore({
           </div>
         ` : ""}
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Beschreibung</label>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Pershkrimi</label>
           <textarea id="menuItemDesc" rows="3" placeholder="Pershkrimi..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(item.description || "")}</textarea>
         </div>
         ${!isShop ? `
@@ -465,7 +465,7 @@ export function renderMenuItemModalCore({
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Marke</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Marka</label>
               <input id="menuItemBrand" type="text" value="${esc(item.brand || "")}" placeholder="z.B. Nike" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
@@ -475,11 +475,11 @@ export function renderMenuItemModalCore({
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Groessen</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Madhesite</label>
               <input id="menuItemSizes" type="text" value="${esc(sizesValue)}" placeholder="XS, S, M, L" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farben</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyrat</label>
               <input id="menuItemColors" type="text" value="${esc(colorsValue)}" placeholder="E zeze, e bardhe" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
           </div>
@@ -930,7 +930,7 @@ export function renderMenuDetailModalCore({
         ` : ""}
         ${sizes.length ? `
           <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.sizes", "Groessen"))}</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.sizes", "Madhesite"))}</p>
             <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
               ${sizes.map((size) => `<option value="${esc(size)}" ${selectedSize === String(size) ? "selected" : ""}>${esc(size)}</option>`).join("")}
             </select>
@@ -938,7 +938,7 @@ export function renderMenuDetailModalCore({
         ` : ""}
         ${colors.length ? `
           <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.colors", "Farben"))}</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.colors", "Ngjyrat"))}</p>
             <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
               ${colors.map((color) => `<option value="${esc(color)}" ${selectedColor === String(color) ? "selected" : ""}>${esc(color)}</option>`).join("")}
             </select>

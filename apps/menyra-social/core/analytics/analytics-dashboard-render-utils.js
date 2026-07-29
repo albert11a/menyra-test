@@ -174,7 +174,7 @@ export function renderAnalyticsRangeFilter({ rangeKey = "7d", customFrom = "", c
     ? `
       <div class="mnyra-an__custom">
         <input type="date" data-analytics-custom-from value="${escapeHtml(customFrom)}" aria-label="Nga" />
-        <span style="color:var(--an-muted); font-size:11px; font-weight:700;">bis</span>
+        <span style="color:var(--an-muted); font-size:11px; font-weight:700;">deri</span>
         <input type="date" data-analytics-custom-to value="${escapeHtml(customTo)}" aria-label="Deri" />
         <button type="button" class="mnyra-an__chip mnyra-an__chip--active" data-analytics-custom-apply>Anwenden</button>
       </div>
@@ -519,7 +519,7 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
     { label: "Telefon", count: model.contacts.phone },
     { label: "Adresa", count: model.contacts.address },
     { label: "Harta", count: model.contacts.map },
-    { label: "Öffnungszeiten", count: model.contacts.hours },
+    { label: "Orari i punes", count: model.contacts.hours },
     { label: "Social Links", count: model.contacts.social }
   ].filter((row) => row.count > 0);
 
@@ -528,7 +528,7 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
 
     <div class="mnyra-an__section">
       <h3 class="mnyra-an__section-title">Trend</h3>
-      <div class="mnyra-an__card">${trend || `<p class="mnyra-an__empty-note">Kein Trend für diesen Zeitraum.</p>`}</div>
+      <div class="mnyra-an__card">${trend || `<p class="mnyra-an__empty-note">Nuk ka trend per kete periudhe.</p>`}</div>
     </div>
 
     <div class="mnyra-an__section">
@@ -558,7 +558,7 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
     ${categoriesSection}
 
     <div class="mnyra-an__section">
-      <h3 class="mnyra-an__section-title">QR-Scans nach Uhrzeit</h3>
+      <h3 class="mnyra-an__section-title">QR-skanime sipas ores</h3>
       <div class="mnyra-an__card">${renderHourlyChart({ rows: model.hourlyQr, label: "QR-Scans", chartId: "hourlyQr" })}</div>
     </div>
 

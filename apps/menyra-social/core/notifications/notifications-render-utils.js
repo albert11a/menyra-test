@@ -42,7 +42,7 @@ export function renderNotificationsViewCore({
     <div id="notificationsView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
       <div class="flex justify-between items-end mb-8 px-2">
         <h2 class="text-2xl font-black italic uppercase">Updates</h2>
-        <button id="markAllRead" class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-500">Alle gelesen</button>
+        <button id="markAllRead" class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-500">Te gjitha te lexuara</button>
       </div>
       <div id="notificationsList" class="space-y-3">
         ${renderNotificationsList(state?.notifications || [])}

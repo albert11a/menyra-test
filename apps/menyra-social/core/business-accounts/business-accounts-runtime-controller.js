@@ -400,7 +400,7 @@ export function createBusinessAccountsRuntimeController({
             ${iconFn("lock", "w-8 h-8")}
           </div>
           <h2 class="text-lg font-black tracking-tight text-slate-900">Staff</h2>
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Nur fuer Business Owner</p>
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Vetem per pronarin e biznesit</p>
         </div>
       </div>
     `;
@@ -442,7 +442,7 @@ export function createBusinessAccountsRuntimeController({
             <input id="businessAccountEmail" type="email" value="${esc(form.email || "")}" placeholder="staff@business.com" ${isEditing ? "readonly" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold ${isEditing ? "text-slate-500" : ""} border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Fjalekalimi</label>
             <input id="businessAccountPassword" type="password" value="" placeholder="${esc(isEditing ? "Fjalekalimi mbetet i pandryshuar" : "Shkruaj fjalekalimin")}" ${isEditing ? "disabled" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold ${isEditing ? "text-slate-400" : ""} border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
@@ -450,7 +450,7 @@ export function createBusinessAccountsRuntimeController({
             <div class="relative mt-2">
               <select id="businessAccountRole" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
                 <option value="manager" ${normalizeStaffRole(form.role) === "manager" ? "selected" : ""}>Manager</option>
-                <option value="waiter" ${normalizeStaffRole(form.role) === "waiter" ? "selected" : ""}>Kellner</option>
+                <option value="waiter" ${normalizeStaffRole(form.role) === "waiter" ? "selected" : ""}>Kamarier</option>
               </select>
               <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${iconFn("chevron-down", "w-4 h-4")}</div>
             </div>
@@ -469,7 +469,7 @@ export function createBusinessAccountsRuntimeController({
               <label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-4 border border-slate-100">
                 <div>
                   <p class="text-sm font-black text-slate-900">Waiter App</p>
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live Orders und Benachrichtigungen</p>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Porosite live dhe njoftimet</p>
                 </div>
                 <input id="businessAccountWaiterAccess" type="checkbox" ${form.waiterAccess ? "checked" : ""} class="w-5 h-5 accent-indigo-600" />
               </label>
@@ -503,7 +503,7 @@ export function createBusinessAccountsRuntimeController({
   function renderListView() {
     const items = Array.isArray(state.businessAccounts.items) ? state.businessAccounts.items : [];
     const listHtml = state.businessAccounts.loading
-      ? '<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Accounts laden...</div>'
+      ? '<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Llogarite po ngarkohen...</div>'
       : (items.length
         ? items.map((entry) => {
           const accessLabel = buildAccessLabel(entry);

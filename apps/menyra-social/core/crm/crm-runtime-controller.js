@@ -1349,7 +1349,7 @@ function ensureLocationPickerModal() {
       <div class="p-5 flex justify-between items-center bg-white z-20 shadow-sm">
         <div>
           <h3 class="font-black text-lg leading-none">Rregullo vendndodhjen</h3>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">Verschiebe die Karte unter den Pin</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">Zhvendos harten nen pin</p>
         </div>
         <button id="closeLocationPickerBtn" type="button" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">${icon("x", "w-5 h-5")}</button>
       </div>

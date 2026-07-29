@@ -132,11 +132,11 @@ export function renderLeadModalCore({
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 1</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyra pjesa 1</label>
             <input id="leadBusinessNameColorPart1" type="text" value="${esc(businessNameColors.part1)}" placeholder="#111827" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-black uppercase border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 2</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyra pjesa 2</label>
             <input id="leadBusinessNameColorPart2" type="text" value="${esc(businessNameColors.part2)}" placeholder="#4f46e5" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-black uppercase border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
@@ -167,7 +167,7 @@ export function renderLeadModalCore({
           <input id="leadEmail" type="email" value="${esc(leadEmail)}" placeholder="owner@mnyra.com" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort (optional)</label>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Fjalekalimi (opsional)</label>
           <input id="leadPassword" type="password" value="${esc(lead.password || "")}" placeholder="bosh = nuk krijohet login" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
@@ -224,7 +224,7 @@ export function renderLeadModalCore({
           <input id="leadTitleImageUrl" type="text" value="${esc(lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Oeffnungszeiten</label>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Orari i punes</label>
           <input id="leadOpeningHours" type="text" value="${esc(lead.openingHours || lead.hours || "")}" placeholder="Hene - Diel: 11:00 - 22:00" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>

@@ -26,13 +26,13 @@ export function renderSettingsViewCore({
   if (state.settingsView === "main") {
     return `
       <div class="p-6 animate-in slide-in-from-left-10 duration-500 app-main-content-safe">
-        <h2 class="text-2xl font-black italic uppercase mb-8 px-2">Einstellungen</h2>
+        <h2 class="text-2xl font-black italic uppercase mb-8 px-2">Cilesimet</h2>
         <div class="space-y-3 mb-8">
           ${[
             { id: "account", label: "Account", icon: "user", desc: "Ndrysho profilin" },
-            { id: "privacy", label: "Privatsphaere", icon: "lock", desc: "Sicherheit" },
-            { id: "notifs", label: "Benachrichtigungen", icon: "bell", desc: "Push & Email" },
-            { id: "saved", label: "Ruajtur", icon: "bookmark", desc: "Favoriten" }
+            { id: "privacy", label: "Privatesia", icon: "lock", desc: "Siguria" },
+            { id: "notifs", label: "Njoftimet", icon: "bell", desc: "Push & Email" },
+            { id: "saved", label: "Ruajtur", icon: "bookmark", desc: "Te preferuarat" }
           ].map((item) => `
             <button data-settings="${item.id}" class="w-full flex items-center justify-between p-5 bg-white rounded-[2.5rem] border border-slate-50 hover:bg-slate-50 transition-all">
               <div class="flex items-center gap-4">
@@ -123,7 +123,7 @@ export function renderSettingsViewCore({
           <div class="p-5 flex justify-between items-center bg-white z-20 shadow-sm">
             <div>
               <h3 class="font-black text-lg leading-none">Rregullo vendndodhjen</h3>
-              <p class="text-[10px] font-bold text-slate-400 mt-1">Verschiebe die Karte unter den Pin</p>
+              <p class="text-[10px] font-bold text-slate-400 mt-1">Zhvendos harten nen pin</p>
             </div>
             <button id="closeLocationPickerBtn" type="button" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">${iconFn("x", "w-5 h-5")}</button>
           </div>
@@ -154,13 +154,13 @@ export function renderSettingsViewCore({
       <div class="p-6 animate-in slide-in-from-right-10 duration-500">
         <header class="flex items-center gap-4 mb-8">
           <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${iconFn("arrow-left", "w-4 h-4")}</button>
-          <h2 class="text-xl font-black italic uppercase tracking-tighter">Privatsphaere</h2>
+          <h2 class="text-xl font-black italic uppercase tracking-tighter">Privatesia</h2>
         </header>
         <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 space-y-6">
           <div class="flex justify-between items-center">
             <div>
-              <p class="font-black text-slate-800 text-sm">Privates Konto</p>
-              <p class="text-[10px] font-bold text-slate-400">Nur Follower sehen Posts</p>
+              <p class="font-black text-slate-800 text-sm">Llogari private</p>
+              <p class="text-[10px] font-bold text-slate-400">Vetem ndjekesit i shohin postimet</p>
             </div>
             <button data-toggle="privateAccount" class="w-11 h-6 rounded-full relative transition-colors duration-300 ${settings.privateAccount ? "bg-indigo-600" : "bg-slate-200"}">
               <div class="absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 ${settings.privateAccount ? "right-1" : "left-1"}"></div>
@@ -168,7 +168,7 @@ export function renderSettingsViewCore({
           </div>
           <div class="flex justify-between items-center">
             <div>
-              <p class="font-black text-slate-800 text-sm">Online Status</p>
+              <p class="font-black text-slate-800 text-sm">Statusi online</p>
               <p class="text-[10px] font-bold text-slate-400">E dukshme per te tjeret</p>
             </div>
             <button data-toggle="showOnline" class="w-11 h-6 rounded-full relative transition-colors duration-300 ${settings.showOnline ? "bg-indigo-600" : "bg-slate-200"}">
@@ -185,13 +185,13 @@ export function renderSettingsViewCore({
       <div class="p-6 animate-in slide-in-from-right-10 duration-500">
         <header class="flex items-center gap-4 mb-8">
           <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${iconFn("arrow-left", "w-4 h-4")}</button>
-          <h2 class="text-xl font-black italic uppercase tracking-tighter">Mitteilungen</h2>
+          <h2 class="text-xl font-black italic uppercase tracking-tighter">Njoftimet</h2>
         </header>
         <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 space-y-6">
           <div class="flex justify-between items-center">
             <div>
               <p class="font-black text-slate-800 text-sm">Push Alerts</p>
-              <p class="text-[10px] font-bold text-slate-400">Auf diesem Geraet</p>
+              <p class="text-[10px] font-bold text-slate-400">Ne kete pajisje</p>
             </div>
             <button data-toggle="pushNotifs" class="w-11 h-6 rounded-full relative transition-colors duration-300 ${settings.pushNotifs ? "bg-indigo-600" : "bg-slate-200"}">
               <div class="absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 ${settings.pushNotifs ? "right-1" : "left-1"}"></div>
@@ -215,12 +215,12 @@ export function renderSettingsViewCore({
     <div class="p-6 animate-in slide-in-from-right-10 duration-500">
       <header class="flex items-center gap-4 mb-8">
         <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${iconFn("arrow-left", "w-4 h-4")}</button>
-        <h2 class="text-xl font-black italic uppercase tracking-tighter">U ruajt</h2>
+        <h2 class="text-xl font-black italic uppercase tracking-tighter">Te ruajtura</h2>
       </header>
       <div class="grid grid-cols-2 gap-4">
         <div class="aspect-square bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300">
           ${iconFn("bookmark", "w-8 h-8")}
-          <span class="text-[10px] font-black uppercase mt-2">Leer</span>
+          <span class="text-[10px] font-black uppercase mt-2">Bosh</span>
         </div>
       </div>
     </div>

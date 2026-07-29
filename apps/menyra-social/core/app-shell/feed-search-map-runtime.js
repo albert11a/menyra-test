@@ -149,7 +149,7 @@ export function createFeedSearchMapRouteRuntime({
         <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-500">
           <div class="mb-4 px-2 flex justify-between items-end">
             <div>
-              <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
+              <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Harta</h2>
               <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Harta po pergatitet</p>
             </div>
           </div>
@@ -164,7 +164,7 @@ export function createFeedSearchMapRouteRuntime({
     return `
       <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-500 h-full">
         <div class="mb-6 px-1">
-          <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Entdecken</p>
+          <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Zbulo</p>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kerkimi</h2>
         </div>
         <div class="relative mb-5">

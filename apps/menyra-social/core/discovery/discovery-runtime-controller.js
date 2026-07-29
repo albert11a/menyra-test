@@ -1786,8 +1786,8 @@ function renderMapView() {
     <div class="map-view-root animate-in fade-in duration-700">
       <div class="map-view-intro">
         <div>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
-          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">${travelMap ? "Hotels" : "Entdecke Lokale"}</p>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Harta</h2>
+          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">${travelMap ? "Hotele" : "Zbulo lokale"}</p>
         </div>
       </div>
       ${mapTruthState ? `<div class="map-view-truth">${mapTruthState}</div>` : ""}
@@ -1879,7 +1879,7 @@ function renderSearchView() {
   return `
     <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
       <div class="mb-6 px-1">
-        <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Entdecken</p>
+        <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Zbulo</p>
         <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kerkimi</h2>
       </div>
 

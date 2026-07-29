@@ -18,7 +18,7 @@ export function renderStoryMenuItemTagPickerCore({
   if (status === "loading" && !items.length) {
     return `
       <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
-        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren</p>
+        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Sheno produktin</p>
         <p class="text-xs font-medium text-slate-400 mt-2">Produktet po ngarkohen...</p>
       </div>
     `;
@@ -26,7 +26,7 @@ export function renderStoryMenuItemTagPickerCore({
   if (status === "error" && !items.length) {
     return `
       <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
-        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren</p>
+        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Sheno produktin</p>
         <p class="text-xs font-medium text-slate-400 mt-2">Produktet nuk mund te ngarkoheshin. Posto story funksionon gjithsesi.</p>
       </div>
     `;
@@ -41,9 +41,9 @@ export function renderStoryMenuItemTagPickerCore({
   }).join("");
   return `
     <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
-      <label for="uploadStoryMenuItemSelect" class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren (optional)</label>
+      <label for="uploadStoryMenuItemSelect" class="text-[10px] font-black uppercase tracking-widest text-slate-400">Sheno produktin (opsionale)</label>
       <select id="uploadStoryMenuItemSelect" class="w-full mt-2 bg-transparent text-sm font-medium outline-none">
-        <option value="">Kein Produkt</option>
+        <option value="">Pa produkt</option>
         ${options}
       </select>
     </div>

@@ -574,7 +574,7 @@ function getBusinessHours(record = {}) {
     const values = Object.values(raw).map(cleanText).filter(Boolean);
     if (values.length) return values[0];
   }
-  return "Oeffnungszeiten folgen";
+  return "Orari se shpejti";
 }
 
 function getBusinessPhone(record = {}) {
@@ -1681,7 +1681,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
               ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
             <span class="text-[11px] font-bold text-slate-800">${escapeHtml(displayRating)}</span>
-            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Bewertungen)</span>
+            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} vleresime)</span>
           </div>
 
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
@@ -1725,7 +1725,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
             class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all duration-150 active:scale-95 cursor-pointer"
           >
             ${icon("user", "w-3.5 h-3.5 text-slate-400")}
-            Profil
+            Profili
           </button>
 
           <button
@@ -2239,7 +2239,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             class="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[140px]"
             style="max-width:140px;"
           >
-            <span>Mehr</span>
+            <span>Me shume</span>
             ${icon("chevron-right", "w-3.5 h-3.5")}
           </button>
         </div>
@@ -2429,7 +2429,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             class="flex-1 flex items-center justify-center gap-1 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[130px]"
             style="max-width:130px;"
           >
-            <span>Mehr Details</span>
+            <span>Me shume detaje</span>
             ${icon("chevron-right", "w-3.5 h-3.5")}
           </button>
         </div>
@@ -2463,13 +2463,13 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
           </div>
 
           <div class="text-[11px] text-slate-600 leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-            <p class="font-extrabold text-slate-800 text-[10px] uppercase tracking-wider mb-1">Përshkrimi (Beschreibung)</p>
+            <p class="font-extrabold text-slate-800 text-[10px] uppercase tracking-wider mb-1">Përshkrimi</p>
             ${escapeHtml(description)}
           </div>
 
           ${details.length ? `
             <div class="flex flex-col gap-2">
-              <h4 class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Çfarë përfshihet (Inklusive):</h4>
+              <h4 class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Çfarë përfshihet:</h4>
               <div class="flex flex-col gap-1.5 pl-1">
                 ${details.map((detail) => `
                   <div class="flex items-start gap-2 text-[10px] text-slate-700">

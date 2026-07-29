@@ -5,11 +5,11 @@
 import { analyticsDayKey } from "./analytics-event-schema.js";
 
 export const ANALYTICS_RANGE_PRESETS = Object.freeze([
-  { key: "today", label: "Heute", days: 1 },
-  { key: "7d", label: "7 Tage", days: 7 },
-  { key: "30d", label: "30 Tage", days: 30 },
-  { key: "90d", label: "90 Tage", days: 90 },
-  { key: "custom", label: "Eigene", days: 0 }
+  { key: "today", label: "Sot", days: 1 },
+  { key: "7d", label: "7 dite", days: 7 },
+  { key: "30d", label: "30 dite", days: 30 },
+  { key: "90d", label: "90 dite", days: 90 },
+  { key: "custom", label: "Periudha ime", days: 0 }
 ]);
 
 const DAY_MS = 24 * 60 * 60 * 1000;

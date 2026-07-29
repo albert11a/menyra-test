@@ -224,11 +224,11 @@
       function scheduleCommentAvatarFetch() {}
       function formatDateTimeLabel(value) {
         const d = new Date(value || Date.now());
-        if (Number.isNaN(d.getTime())) return "Jetzt";
+        if (Number.isNaN(d.getTime())) return "Tani";
         const delta = Math.floor((Date.now() - d.getTime()) / 1000);
-        if (delta < 60) return "Jetzt";
-        if (delta < 3600) return `Vor ${Math.floor(delta / 60)} Min`;
-        if (delta < 86400) return `Vor ${Math.floor(delta / 3600)} Std`;
+        if (delta < 60) return "Tani";
+        if (delta < 3600) return `Para ${Math.floor(delta / 60)} min`;
+        if (delta < 86400) return `Para ${Math.floor(delta / 3600)} ore`;
         return d.toLocaleDateString("de-DE");
       }
       function renderMenuCommentItem(comment) {
@@ -250,9 +250,9 @@
         `;
       }
       function renderMenuDetailComments(comments = []) {
-        if (state.menuDetail.loading) return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
-        const sendingRow = state.menuDetail.sending ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>` : "";
-        if (!comments.length) return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
+        if (state.menuDetail.loading) return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Komentet po ngarkohen...</div>`;
+        const sendingRow = state.menuDetail.sending ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Duke derguar...</div>` : "";
+        if (!comments.length) return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Ende nuk ka komente</div>`;
         return `${sendingRow}${comments.map((comment) => renderMenuCommentItem(comment)).join("")}`;
       }
 
@@ -271,8 +271,8 @@
         const restaurantId = getMenuDetailRestaurantId(item);
         const catalogProfile = getMenuDetailCatalogProfile(item);
         const typeLabel = isShopCatalogProfile(catalogProfile)
-          ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
-          : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
+          ? (normalizeMenuType(item.type) === "drink" ? "Variant" : "Produkt")
+          : (normalizeMenuType(item.type) === "drink" ? "Pije" : "Ushqim");
         const category = item.category || "";
         const desc = item.longDescription || item.description || "";
         const allergens = item.allergens || "";
@@ -318,11 +318,11 @@
               <div class="flex items-center gap-2 min-w-0">
                 <button type="button" id="menuDetailHeaderCartBtn" class="inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black shadow-sm active:scale-95 ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
                   ${icon("shopping-cart", "w-4 h-4")}
-                  <span>In den Warenkorb</span>
+                  <span>Shto ne shporte</span>
                   ${shopCartCount ? `<span class="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-white/14 border border-white/20 text-white text-[9px] font-black items-center justify-center leading-none">${shopCartCount > 99 ? "99+" : shopCartCount}</span>` : ""}
                 </button>
                 ${canUseFavorites ? `
-                  <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isLiked ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
+                  <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Te preferuarat" title="Te preferuarat" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isLiked ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
                     ${icon("bookmark", "w-4 h-4")}
                   </button>
                 ` : ""}
@@ -372,13 +372,13 @@
             </div>
             ${brand || sku ? `
               <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
-                ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(brand)}</p></div>` : ""}
+                ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marka</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(brand)}</p></div>` : ""}
                 ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(sku)}</p></div>` : ""}
               </div>
             ` : ""}
             ${isShop && sizes.length ? `
               <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Madhesite</p>
                 <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
                   ${sizes.map((size) => `<option value="${escapeHtml(size)}" ${selectedSize === String(size) ? "selected" : ""}>${escapeHtml(size)}</option>`).join("")}
                 </select>
@@ -386,7 +386,7 @@
             ` : ""}
             ${isShop && colors.length ? `
               <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Ngjyrat</p>
                 <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
                   ${colors.map((color) => `<option value="${escapeHtml(color)}" ${selectedColor === String(color) ? "selected" : ""}>${escapeHtml(color)}</option>`).join("")}
                 </select>
@@ -395,7 +395,7 @@
             ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
             ${allergens ? `
               <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${isShop ? "Hinweise" : "Allergene"}</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${isShop ? "Shenime" : "Alergenet"}</p>
                 <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
               </div>
             ` : ""}
@@ -424,19 +424,19 @@
           : (showFavoriteOnlyAction
             ? `
               <button id="menuDetailFavoriteCtaBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all">
-                <span class="font-bold text-sm">Zu Favoriten</span>
+                <span class="font-bold text-sm">Te preferuarat</span>
                 ${icon("bookmark", "w-4 h-4")}
               </button>
             `
             : `
               <button id="menuDetailAddToCartBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
-                <span class="font-bold text-sm">${soldOut ? "Ausverkauft" : "In den Warenkorb"}</span>
+                <span class="font-bold text-sm">${soldOut ? "E shitur" : "Shto ne shporte"}</span>
                 ${icon("shopping-bag", "w-4 h-4")}
               </button>
             `);
         const footerBackToggleTitle = showWoltAction
-          ? "Zurueck zu Wolt"
-          : (showFavoriteOnlyAction ? "Zurueck zu Favoriten" : "Zurueck zum Warenkorb");
+          ? "Kthehu te Wolt"
+          : (showFavoriteOnlyAction ? "Kthehu te te preferuarat" : "Kthehu te shporta");
         const footerBackToggleClass = showWoltAction
           ? "text-white"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200";
@@ -468,7 +468,7 @@
               </button>
 
               <div class="flex-1 flex gap-2">
-                <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen"}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
+                <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Shkruaj nje koment..." : "Ju lutem hyni"}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
                 <button id="menuDetailCommentSend" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
                   ${icon("send", "w-4 h-4")}
                 </button>
@@ -891,7 +891,7 @@
             restaurantId: "rest-demo",
             name: "Coca Cola",
             price: 1.5,
-            category: "Getraenke",
+            category: "Pije",
             type: "drink",
             description: "Shije fantastike",
             available: true,

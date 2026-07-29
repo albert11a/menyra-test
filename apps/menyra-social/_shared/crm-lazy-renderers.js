@@ -208,25 +208,25 @@ export function renderLeadCreationView(ctx = {}) {
             <input id="leadEmail" type="email" value="${escapeHtml(lead.email || buildLeadAccountEmail(lead.businessName || ""))}" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Fjalekalimi</label>
             <input id="leadPassword" type="password" value="${escapeHtml(lead.password || "")}" placeholder="bosh = nuk krijohet login" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Business Name Farben</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ngjyrat e emrit te biznesit</p>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 1</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyra pjesa 1</label>
               <input id="leadBusinessNameColorPart1" type="text" value="${escapeHtml(businessNameColors.part1)}" placeholder="#111827" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-black uppercase border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 2</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyra pjesa 2</label>
               <input id="leadBusinessNameColorPart2" type="text" value="${escapeHtml(businessNameColors.part2)}" placeholder="#4f46e5" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-black uppercase border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kunden Daten</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Te dhenat e klientit</p>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vorname</label>
@@ -265,7 +265,7 @@ export function renderLeadCreationView(ctx = {}) {
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Restaurant Card</p>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Oeffnungszeiten</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Orari i punes</label>
             <input id="leadOpeningHours" type="text" value="${escapeHtml(lead.openingHours || lead.hours || "")}" placeholder="Hene - Diel: 11:00 - 22:00" class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div class="grid grid-cols-1 gap-3">
@@ -289,8 +289,8 @@ export function renderLeadCreationView(ctx = {}) {
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Laufzeit</label>
             <div class="relative mt-2">
               <select id="leadBillingCycle" class="w-full px-5 py-4 pr-12 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
-                <option value="monthly" ${billingCycle === "monthly" ? "selected" : ""}>Monatlich</option>
-                <option value="yearly" ${billingCycle === "yearly" ? "selected" : ""}>Jaehrlich</option>
+                <option value="monthly" ${billingCycle === "monthly" ? "selected" : ""}>Mujore</option>
+                <option value="yearly" ${billingCycle === "yearly" ? "selected" : ""}>Vjetore</option>
               </select>
               <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
             </div>
@@ -441,7 +441,7 @@ export function renderStaffEditorView(ctx = {}) {
             <input id="staffEmail" type="email" value="${escapeHtml(emailValue)}" placeholder="vornamenachname@mnyra.com" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Fjalekalimi</label>
             <input id="staffPassword" type="password" value="" placeholder="${escapeHtml(isEditing ? "Fjalekalimi mbetet i pandryshuar" : "Shkruaj fjalekalimin")}" ${isEditing ? "disabled" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 ${isEditing ? "text-slate-400" : ""}" />
           </div>
           <div>
@@ -583,7 +583,7 @@ export function renderLeadsView(ctx = {}) {
   const visibleLeadCount = leadRows.filter((row) => row.matches).length;
 
   const listHtml = state.leads.loading
-    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Leads laden...</div>`
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Leads po ngarkohen...</div>`
     : (leadRows.length ? `
       ${leadRows.map(({ lead, rest, searchKey, matches }) => {
       const tone = leadStatusTone(lead.status);
@@ -655,8 +655,8 @@ export function renderLeadsView(ctx = {}) {
         idPrefix: "lead-scope",
         active: scope,
         tabs: [
-          { key: "own", label: "Meine Leads", count: ownCount },
-          { key: "staff", label: "Staff Leads", count: staffCount },
+          { key: "own", label: "Leads te mi", count: ownCount },
+          { key: "staff", label: "Leads te stafit", count: staffCount },
           { key: "archived", label: "Archiviert", count: archivedCount }
         ]
       })}
@@ -668,7 +668,7 @@ export function renderLeadsView(ctx = {}) {
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
           ${icon("list-filter", "w-4 h-4 text-slate-400")}
           <select id="leadsStatusFilter" class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 outline-none appearance-none">
-            <option value="">Alle Status</option>
+            <option value="">Te gjitha statuset</option>
             ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde" && key !== "no_interest").map((key) => `
               <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
             `).join("")}
@@ -710,7 +710,7 @@ export function renderCustomersView(ctx = {}) {
     renderOwnershipPills,
     renderCeoScopeTabs
   } = ctx;
-  if (!isCeoUser()) return renderCeoGuard("Kunden");
+  if (!isCeoUser()) return renderCeoGuard("Klientet");
   const queryKey = normalizeSearchKey(state.customers.query || "");
   const scope = normalizeCustomerScopeKey(state.customers.scope);
   const scopePages = state.customers.pages || createCustomerScopeMap(() => []);
@@ -729,7 +729,7 @@ export function renderCustomersView(ctx = {}) {
     .filter((rest) => customerMatchesQuery(rest, queryKey))
     .sort((a, b) => (toDateSafe(b?.createdAt)?.getTime() || 0) - (toDateSafe(a?.createdAt)?.getTime() || 0));
   const listHtml = state.customers.loading
-    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Kunden laden...</div>`
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Klientet po ngarkohen...</div>`
     : (items.length ? items.map((rest) => {
       const logoRaw = rest.logoUrl || rest.logo || "";
       const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
@@ -763,15 +763,15 @@ export function renderCustomersView(ctx = {}) {
       <div class="flex items-center justify-between mb-6">
         <div>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kunden</h2>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Klientet</h2>
         </div>
       </div>
       ${renderCeoScopeTabs({
         idPrefix: "customer-scope",
         active: scope,
-        ownLabel: "Meine Kunden",
+        ownLabel: "Klientet e mi",
         ownCount,
-        staffLabel: "Staff Kunden",
+        staffLabel: "Klientet e stafit",
         staffCount
       })}
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
@@ -829,7 +829,7 @@ export function renderStaffView(ctx = {}) {
     ...(Array.isArray(state.customers.pages?.staff) ? state.customers.pages.staff : [])
   ];
   const listHtml = state.staff.loading
-    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Staff laden...</div>`
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Stafi po ngarkohet...</div>`
     : (items.length ? items.map((entry) => {
       const isSelf = String(entry.uid || "") === String(current.uid || "");
       const relation = isSelf ? "Du" : (String(entry.ceoParentUid || "") === String(current.uid || "") ? "Direkt" : "Unterstaff");
@@ -867,7 +867,7 @@ export function renderStaffView(ctx = {}) {
               <p class="text-sm font-black text-slate-900 mt-1">${escapeHtml(String(leadCount))}</p>
             </div>
             <div class="rounded-2xl bg-slate-50 px-4 py-3">
-              <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kunden</p>
+              <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Klientet</p>
               <p class="text-sm font-black text-slate-900 mt-1">${escapeHtml(String(customerCount))}</p>
             </div>
           </div>

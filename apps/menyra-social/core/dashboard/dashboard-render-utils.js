@@ -361,7 +361,7 @@ export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = 
   if (isOwner) {
     actions.push({ nav: "businessAccounts", iconName: "users-round", label: "Team & Staff", sub: "Zugänge verwalten" });
   }
-  actions.push({ nav: "settings", iconName: "settings", label: "Einstellungen", sub: "Profil & Kontakt" });
+  actions.push({ nav: "settings", iconName: "settings", label: "Cilesimet", sub: "Profili & Kontakti" });
   return actions;
 }
 
@@ -468,7 +468,7 @@ export function renderDashboardKpis({ kpiDefs = [], week = {}, today = {} } = {}
     <div class="mnyra-dash__section" data-dashboard-kpis>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
-        <button type="button" class="mnyra-dash__section-link" data-nav="analytics">Alle Analytics</button>
+        <button type="button" class="mnyra-dash__section-link" data-nav="analytics">Gjithe analitika</button>
       </div>
       <div class="mnyra-dash__kpis">${tiles}</div>
     </div>

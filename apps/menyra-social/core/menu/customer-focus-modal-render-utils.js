@@ -25,8 +25,8 @@ export function renderCustomerModalCore({
   const headerHtml = `
     <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
       <div>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Kunde</span>
-        <h3 class="text-xl font-black italic tracking-tighter">Kundenprofil</h3>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Klienti</span>
+        <h3 class="text-xl font-black italic tracking-tighter">Profili i klientit</h3>
       </div>
       <button id="customerModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
         ${icon("x", "w-4 h-4")}
