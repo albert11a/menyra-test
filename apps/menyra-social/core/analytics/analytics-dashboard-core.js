@@ -247,8 +247,8 @@ export function buildTopPosts(merged = {}, limitCount = 8) {
 const SOURCE_LABELS = Object.freeze({
   feed: "Feed",
   restaurants: "Restaurant-Tab",
-  search: "Suche",
-  map: "Karte",
+  search: "Kerkimi",
+  map: "Harta",
   qr: "QR-Code",
   external: "Externe Links",
   direct: "Direkt",
@@ -283,7 +283,7 @@ export function buildTableBreakdown(merged = {}, limitCount = 12) {
   return Object.entries(merged.tables || {})
     .map(([tableKey, data]) => ({
       tableKey,
-      label: /^t\d+$/.test(tableKey) ? `Tisch ${tableKey.slice(1)}` : tableKey,
+      label: /^t\d+$/.test(tableKey) ? `Tavolina ${tableKey.slice(1)}` : tableKey,
       qrScans: num(data?.qrScans),
       waiterCalls: num(data?.waiterCalls),
       ordersCompleted: num(data?.ordersCompleted)
@@ -305,10 +305,10 @@ export function buildCategoryBreakdown(merged = {}, limitCount = 10) {
 
 export function buildConversionFunnel(summary = {}) {
   const steps = [
-    { key: "menuOpens", label: "Menü geöffnet", value: num(summary.menuOpens) },
+    { key: "menuOpens", label: "Menuja u hap", value: num(summary.menuOpens) },
     { key: "productViews", label: "Produkt angesehen", value: num(summary.productViews) },
-    { key: "ordersStarted", label: "Bestellung gestartet", value: num(summary.ordersStarted) },
-    { key: "ordersCompleted", label: "Bestellung abgeschlossen", value: num(summary.ordersCompleted) }
+    { key: "ordersStarted", label: "Porosia filloi", value: num(summary.ordersStarted) },
+    { key: "ordersCompleted", label: "Porosia perfundoi", value: num(summary.ordersCompleted) }
   ];
   const base = steps[0].value;
   return steps.map((step, index) => {

@@ -64,13 +64,13 @@ export async function deleteLeadFromModalCore({
   if (!leadId) return false;
 
   const leadName = String(lead.businessName || lead.name || "").trim() || "diesen Lead";
-  if (!confirmAction(`Lead "${leadName}" wirklich loeschen?`)) {
+  if (!confirmAction(`Ta fshish vertet lead-in "${leadName}"?`)) {
     return false;
   }
 
   state.leadModal.actionsOpen = false;
   state.leadModal.deleting = true;
-  state.leadModal.status = "Loeschen...";
+  state.leadModal.status = "Duke fshire...";
   renderLeadEditorUi();
 
   try {
@@ -178,7 +178,7 @@ export async function deleteLeadFromModalCore({
   } catch (err) {
     console.error(err);
     state.leadModal.deleting = false;
-    state.leadModal.status = err?.message || "Loeschen fehlgeschlagen.";
+    state.leadModal.status = err?.message || "Fshirja deshtoi.";
     renderLeadEditorUi();
     return false;
   }

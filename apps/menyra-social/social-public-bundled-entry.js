@@ -26,7 +26,7 @@ async function loadBundledSocialApp() {
   } catch (err) {
     setDegraded("app-entry", {
       active: true,
-      message: "Website konnte nicht vollstaendig geladen werden."
+      message: "Faqja nuk mund te ngarkohej plotesisht."
     });
     console.error("[mnyra][public-entry] bundled social app import failed", err);
     throw err;

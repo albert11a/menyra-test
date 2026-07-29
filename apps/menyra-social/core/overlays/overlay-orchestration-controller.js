@@ -119,7 +119,7 @@ export function createOverlayOrchestrationController({
     if (!isChatEnabledForV1()) return false;
     if (!profile) return;
     if (!state.user) {
-      openGuestAuthPromptFn(tr("auth.chatsRequired", "Bitte einloggen, um Chats zu nutzen."));
+      openGuestAuthPromptFn(tr("auth.chatsRequired", "Ju lutem hyni per te perdorur chat-in."));
       return;
     }
     const nextProfile = normalizeChatOpenProfileCoreFn({

@@ -19,7 +19,7 @@ export function renderStoryMenuItemTagPickerCore({
     return `
       <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
         <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren</p>
-        <p class="text-xs font-medium text-slate-400 mt-2">Produkte werden geladen...</p>
+        <p class="text-xs font-medium text-slate-400 mt-2">Produktet po ngarkohen...</p>
       </div>
     `;
   }
@@ -27,7 +27,7 @@ export function renderStoryMenuItemTagPickerCore({
     return `
       <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
         <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Produkt markieren</p>
-        <p class="text-xs font-medium text-slate-400 mt-2">Produkte konnten nicht geladen werden. Story posten geht trotzdem.</p>
+        <p class="text-xs font-medium text-slate-400 mt-2">Produktet nuk mund te ngarkoheshin. Posto story funksionon gjithsesi.</p>
       </div>
     `;
   }
@@ -81,7 +81,7 @@ export function renderUploadViewCore({
       <div class="p-6 animate-in slide-in-from-bottom-10 duration-700 min-h-[70vh] flex flex-col">
         <header class="flex items-center justify-between mb-8">
           <button data-nav="feed" class="p-3 rounded-2xl bg-slate-100 text-slate-500">${icon("arrow-left", "w-4 h-4")}</button>
-          <h2 class="text-xl font-black italic uppercase text-slate-900">Post waehlen</h2>
+          <h2 class="text-xl font-black italic uppercase text-slate-900">Zgjidh postimin</h2>
           <div class="w-10"></div>
         </header>
         ${storySystemController?.renderUploadChooserView?.({ profile }) || ""}
@@ -118,13 +118,13 @@ export function renderUploadViewCore({
             selectedMenuItemId: state?.upload?.menuItemId || "",
             escapeHtmlFn: escapeHtml
           }) : ""}
-          <button id="uploadPostBtn" class="w-full bg-indigo-600 text-white py-4 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/30">${state?.upload?.status || (isStoryMode ? "Story posten" : "Posten")}</button>
+          <button id="uploadPostBtn" class="w-full bg-indigo-600 text-white py-4 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/30">${state?.upload?.status || (isStoryMode ? "Posto story" : "Posto")}</button>
           <div class="text-center text-[10px] font-bold text-slate-400">${escapeHtml(state?.upload?.status)}</div>
         </div>
       ` : `
         <div id="uploadFileTrigger" class="flex-1 flex flex-col items-center justify-center rounded-[3rem] border-4 border-dashed p-8 text-center cursor-pointer transition-all border-slate-200 bg-white">
           <div class="w-20 h-20 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 mb-6">${icon("upload", "w-8 h-8")}</div>
-          <h3 class="text-lg font-black mb-2 italic text-slate-900">${isStoryMode ? "Foto oder Video waehlen" : "Foto waehlen"}</h3>
+          <h3 class="text-lg font-black mb-2 italic text-slate-900">${isStoryMode ? "Zgjidh foto ose video" : "Zgjidh foto"}</h3>
           <p class="text-sm font-medium text-slate-500">Posten als ${isStoryMode ? "Business (Story)" : (isLocalBusinessProfile(profile) ? "Business (Feed)" : "User (Profil)")}</p>
         </div>
       `}

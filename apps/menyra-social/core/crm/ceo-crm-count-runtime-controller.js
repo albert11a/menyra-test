@@ -259,7 +259,7 @@ export function createCeoCrmCountRuntimeController(deps = {}) {
     return {
       own: false,
       label: "Staff",
-      creatorName: meta.creatorName || meta.creatorUid || "Unbekannt"
+      creatorName: meta.creatorName || meta.creatorUid || "I panjohur"
     };
   }
 

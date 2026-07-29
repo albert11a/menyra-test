@@ -25,7 +25,7 @@ test("crm domain runtime boundary renders fallback and loads lazily", async () =
     }
   });
 
-  assert.equal(boundary.renderStaffView(), "loading:Staff laden...");
+  assert.equal(boundary.renderStaffView(), "loading:Stafi po ngarkohet...");
   await boundary.ensureLoaded();
   assert.equal(boundary.renderStaffView(), "staff-view");
   assert.deepEqual(calls, [

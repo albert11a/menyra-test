@@ -43,14 +43,14 @@ export function renderChatMessagesPanelCore({
     if (status === "failed") {
       return {
         status,
-        label: "Fehlgeschlagen",
+        label: "Deshtoi",
         textClass: "text-rose-500",
         retry: true
       };
     }
     return {
       status,
-      label: "Gesendet",
+      label: "Derguar",
       textClass: "text-emerald-500",
       retry: false
     };
@@ -110,7 +110,7 @@ export function renderChatMessagesPanelCore({
               ${iconFn("heart", `w-3.5 h-3.5 ${message.liked ? "fill-rose-500 text-rose-500" : ""}`)}
             </button>
             <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-400" : "text-slate-300"}">
-              ${message.saved ? "Gespeichert" : "24h"}
+              ${message.saved ? "Ruajtur" : "24h"}
             </div>
             ${delivery.label ? `
               <div class="text-[9px] font-black uppercase tracking-widest ${delivery.textClass}">

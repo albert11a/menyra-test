@@ -88,13 +88,13 @@ export function renderPostCommentsCore({
     : (() => "");
   const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   if (state?.postModal?.loading) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.loading", "Kommentare laden...")}</div>`;
+    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.loading", "Komentet po ngarkohen...")}</div>`;
   }
   const sendingRow = state?.postModal?.sending && hasLiveComments
     ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.sending", "Senden...")}</div>`
     : "";
   if (!comments.length) {
-    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.empty", "Noch keine Kommentare")}</div>`;
+    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.empty", "Ende nuk ka komente")}</div>`;
   }
   const postId = state?.postModal?.post?.id || "";
   return `${sendingRow}${comments.map((comment) => `
@@ -164,13 +164,13 @@ export function renderMenuDetailCommentsCore({
     : (() => "");
   const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
   if (state?.menuDetail?.loading) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.loading", "Kommentare laden...")}</div>`;
+    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.loading", "Komentet po ngarkohen...")}</div>`;
   }
   const sendingRow = state?.menuDetail?.sending
     ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.sending", "Senden...")}</div>`
     : "";
   if (!comments.length) {
-    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.empty", "Noch keine Kommentare")}</div>`;
+    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">${tr("comments.empty", "Ende nuk ka komente")}</div>`;
   }
   return `${sendingRow}${comments.map((comment) => renderMenuCommentItem(comment)).join("")}`;
 }

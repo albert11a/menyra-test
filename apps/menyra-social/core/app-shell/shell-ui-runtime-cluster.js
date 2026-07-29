@@ -397,7 +397,7 @@ export function createShellUiRuntimeCluster({
     });
   }
 
-  function renderCrmLazyLoadingView(label = "CRM laden...") {
+  function renderCrmLazyLoadingView(label = "CRM po ngarkohet...") {
     return renderCrmLazyLoadingViewCore({
       label,
       icon,

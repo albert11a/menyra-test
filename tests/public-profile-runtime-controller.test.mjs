@@ -183,7 +183,7 @@ test("public profile header preserve does not keep loading bio as final bio", ()
         canonicalRestaurantId: "mama-id",
         name: "Mama Mantia",
         handle: "mama-mantia",
-        bio: "Profil wird geladen...",
+        bio: "Profili po ngarkohet...",
         identityTruthState: "ready",
         postsLoaded: false,
         truthState: "route-pending-loading"

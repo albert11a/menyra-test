@@ -596,13 +596,13 @@ export function createFocusRuntimeController({
     const crop = getFocusModalCrop();
 
     if (!title) {
-      state.focusModal.status = isTravelOffer ? "Shkruaj titullin." : "Bitte Titel eingeben.";
+      state.focusModal.status = isTravelOffer ? "Shkruaj titullin." : "Ju lutem shkruani titullin.";
       renderOverlaysFn({ updateFocus: true });
       return;
     }
 
     state.focusModal.loading = true;
-    state.focusModal.status = isTravelOffer ? "Po ruhet..." : "Speichern...";
+    state.focusModal.status = isTravelOffer ? "Po ruhet..." : "Duke ruajtur...";
     renderOverlaysFn({ updateFocus: true });
 
     try {
@@ -615,7 +615,7 @@ export function createFocusRuntimeController({
         // Fokus-Video wie ein Foto hochladen, erstes Frame als Poster.
         const videoResult = await uploadRawMediaFile(focusVideoFile, restaurantId);
         videoUrl = String(videoResult?.cdnUrl || videoResult?.url || "").trim();
-        if (!videoUrl) throw new Error(isTravelOffer ? "Videoja nuk u ngarkua." : "Video-Upload fehlgeschlagen.");
+        if (!videoUrl) throw new Error(isTravelOffer ? "Videoja nuk u ngarkua." : "Ngarkimi i videos deshtoi.");
         if (captureVideoPoster) {
           try {
             const posterFile = await captureVideoPoster(focusVideoFile);
@@ -721,12 +721,12 @@ export function createFocusRuntimeController({
       if (isTravelOffer) syncTravelOffersToRestaurantState(restaurantId, nextItems);
 
       state.focusModal.loading = false;
-      state.focusModal.status = isTravelOffer ? "U ruajt." : "Gespeichert.";
+      state.focusModal.status = isTravelOffer ? "U ruajt." : "U ruajt.";
       closeFocusModalFn();
       renderFn();
     } catch (err) {
       console.error(err);
-      state.focusModal.status = err?.message || (isTravelOffer ? "Nuk u ruajt." : "Speichern fehlgeschlagen.");
+      state.focusModal.status = err?.message || (isTravelOffer ? "Nuk u ruajt." : "Ruajtja deshtoi.");
       state.focusModal.loading = false;
       renderOverlaysFn({ updateFocus: true });
     }
@@ -736,7 +736,7 @@ export function createFocusRuntimeController({
     if (!state?.user || !itemId) return;
     const restaurantId = getCurrentRestaurantId(state.userProfile);
     if (!restaurantId) return;
-    if (!confirmFn("Fokus-Eintrag wirklich loeschen?")) return;
+    if (!confirmFn("Ta fshish vertet kete fokus?")) return;
     try {
       const removedItem = (state.focus.items || []).find((item) => String(item.id) === String(itemId));
       const nextItems = (state.focus.items || []).filter((item) => String(item.id) !== String(itemId));
@@ -748,7 +748,7 @@ export function createFocusRuntimeController({
       renderFn();
     } catch (err) {
       console.error(err);
-      alertFn("Loeschen fehlgeschlagen.");
+      alertFn("Fshirja deshtoi.");
     }
   }
 

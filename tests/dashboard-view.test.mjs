@@ -44,19 +44,19 @@ test("business type labels are human readable", () => {
 test("quick actions are type aware and role aware", () => {
   const restaurant = buildDashboardQuickActionsCore({ kind: "restaurant", isOwner: true, canAccessOrders: true });
   const restaurantNavs = restaurant.map((a) => `${a.nav}:${a.label}`);
-  assert.ok(restaurantNavs.some((entry) => entry.includes("Menü bearbeiten")));
+  assert.ok(restaurantNavs.some((entry) => entry.includes("Ndrysho menune")));
   assert.ok(restaurant.some((a) => a.nav === "orders"));
   assert.ok(restaurant.some((a) => a.nav === "businessAccounts"));
   assert.ok(restaurant.some((a) => a.nav === "upload" && a.uploadIntent === "chooser"));
   assert.ok(restaurant.some((a) => a.nav === "upload" && a.uploadIntent === "story"));
 
   const hotel = buildDashboardQuickActionsCore({ kind: "hotel", isOwner: false, canAccessOrders: false });
-  assert.ok(hotel.some((a) => a.label === "Hotel & Zimmer"));
+  assert.ok(hotel.some((a) => a.label === "Hotel & Dhoma"));
   assert.ok(!hotel.some((a) => a.nav === "orders"));
   assert.ok(!hotel.some((a) => a.nav === "businessAccounts"));
 
   const shop = buildDashboardQuickActionsCore({ kind: "shop", isOwner: false, canAccessOrders: true });
-  assert.ok(shop.some((a) => a.label === "Shop bearbeiten"));
+  assert.ok(shop.some((a) => a.label === "Ndrysho dyqanin"));
   assert.ok(shop.some((a) => a.nav === "orders"));
 });
 
@@ -190,7 +190,7 @@ test("recent posts render meta and empty state offers CTA", () => {
   assert.ok(filled.includes("480"));
 
   const empty = renderDashboardRecentPosts({ posts: [] });
-  assert.ok(empty.includes("Noch keine Beiträge"));
+  assert.ok(empty.includes("Ende nuk ka postime"));
   assert.ok(empty.includes('data-nav="upload"'));
 });
 
@@ -199,7 +199,7 @@ test("skeleton mirrors kpi count and states render", () => {
   const tiles = skeleton.match(/min-height:86px/g) || [];
   assert.equal(tiles.length, 6);
   assert.ok(renderDashboardErrorState({}).includes("data-dashboard-retry"));
-  assert.ok(renderDashboardNoBusinessState().includes("Kein Business-Profil verbunden"));
+  assert.ok(renderDashboardNoBusinessState().includes("Nuk ka profil biznesi te lidhur"));
 });
 
 test("post normalization handles media, dates and status", () => {
@@ -264,7 +264,7 @@ test("controller renders no-business state without restaurant id", () => {
   const state = { userProfile: {}, user: null, activeTab: "dashboard" };
   const controller = createDashboardViewController({ state, documentObj: null });
   const html = controller.renderDashboardView();
-  assert.ok(html.includes("Kein Business-Profil verbunden"));
+  assert.ok(html.includes("Nuk ka profil biznesi te lidhur"));
   assert.ok(html.includes("data-dashboard-root"));
 });
 
@@ -277,7 +277,7 @@ test("controller renders skeleton while auth bootstrap is resolving", () => {
   };
   const controller = createDashboardViewController({ state, documentObj: null });
   const html = controller.renderDashboardView();
-  assert.ok(!html.includes("Kein Business-Profil verbunden"));
+  assert.ok(!html.includes("Nuk ka profil biznesi te lidhur"));
   assert.ok(html.includes("mnyra-dash__skeleton"));
 });
 
@@ -300,7 +300,7 @@ test("controller renders hero and actions immediately for business, data as skel
   });
   const html = controller.renderDashboardView();
   assert.ok(html.includes("Casa Rita"));
-  assert.ok(html.includes("Menü bearbeiten"));
+  assert.ok(html.includes("Ndrysho menune"));
   assert.ok(html.includes('data-nav="orders"'));
   assert.ok(html.includes("mnyra-dash__skeleton"));
   assert.equal(state.dashboardView.status, "loading");

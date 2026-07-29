@@ -2,7 +2,7 @@ import { markMnyraLoadingEventCore as markLoadingEvent } from "../core/common/lo
 
 function formatBuildTimestamp(value = "") {
   const raw = String(value || "").trim();
-  if (!raw) return "unbekannt";
+  if (!raw) return "i panjohur";
   const parsed = new Date(raw);
   if (!Number.isFinite(parsed.getTime())) return raw;
   return parsed.toLocaleString("de-DE", {
@@ -64,7 +64,7 @@ export function renderLeadSettingsView(ctx = {}) {
       <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <div class="space-y-4">
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Standard Standort Land</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vendi standard i vendndodhjes</label>
             <div class="relative mt-2">
               <select id="leadSettingsDefaultCountry" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
                 ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${config.defaultCountry === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
@@ -75,7 +75,7 @@ export function renderLeadSettingsView(ctx = {}) {
         </div>
         <div class="mt-6">
           <div class="flex items-center justify-between mb-3">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lead Typen / Monatlicher Abo Preis</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Llojet e lead / Cmimi mujor i abonimit</p>
             <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">x12 = Jahr</span>
           </div>
           <div class="space-y-3">
@@ -95,7 +95,7 @@ export function renderLeadSettingsView(ctx = {}) {
         </div>
         ${state.leads.settingsStatus ? `<div class="mt-5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leads.settingsStatus)}</div>` : ""}
         <button id="leadSettingsSaveBtn" type="button" class="w-full mt-6 py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${state.leads.settingsSaving ? "disabled" : ""}>
-          ${escapeHtml(state.leads.settingsSaving ? "Speichern..." : "Leads Settings speichern")}
+          ${escapeHtml(state.leads.settingsSaving ? "Duke ruajtur..." : "Ruaj cilesimet e leads")}
         </button>
       </div>
     </div>
@@ -157,7 +157,7 @@ export function renderLeadCreationView(ctx = {}) {
         <div class="mb-6 flex items-start justify-between">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
-            <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(isEdit ? "Lead bearbeiten" : "Neuer Lead")}</h2>
+            <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(isEdit ? "Ndrysho lead-in" : "Lead i ri")}</h2>
           </div>
           ${isEdit ? `
             <div class="relative">
@@ -168,7 +168,7 @@ export function renderLeadCreationView(ctx = {}) {
               <div class="absolute right-0 top-14 z-10 min-w-[170px] rounded-2xl border border-slate-100 bg-white shadow-xl p-2 ${actionsOpen ? "" : "hidden"}">
                 <button id="leadInlineDeleteBtn" type="button" class="w-full px-4 py-3 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest text-left flex items-center gap-2 active:scale-95 ${deleting ? "opacity-60 cursor-not-allowed" : ""}" ${deleting ? "disabled" : ""}>
                   ${icon("trash-2", "w-3.5 h-3.5")}
-                  ${escapeHtml(deleting ? "Loeschen..." : "Lead loeschen")}
+                  ${escapeHtml(deleting ? "Duke fshire..." : "Fshi lead-in")}
                 </button>
               </div>
             </div>
@@ -178,17 +178,17 @@ export function renderLeadCreationView(ctx = {}) {
         <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
           <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
         </div>
-        <button id="leadLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Logo hochladen</button>
+        <button id="leadLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Ngarko logon</button>
         <input type="file" id="leadBestSpotLogoInput" class="hidden" accept="image/*" />
         <div class="mt-4 rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
           <img id="leadBestSpotLogoPreview" src="${escapeHtml(bestSpotLogoUrl)}" class="w-full h-44 object-cover bg-white" />
         </div>
-        <button id="leadBestSpotLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">Best-Spot-Logo hochladen</button>
+        <button id="leadBestSpotLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">Ngarko logon Best-Spot</button>
         <input type="file" id="leadTitleImageInput" class="hidden" accept="image/*" />
         <div class="mt-4 rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
           <img id="leadTitleImagePreview" src="${escapeHtml(titleImageUrl)}" class="w-full h-44 object-cover bg-white" />
         </div>
-        <button id="leadTitleImageTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">Titelbild hochladen</button>
+        <button id="leadTitleImageTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">Ngarko foton e titullit</button>
         <div class="mt-5 space-y-4">
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
@@ -209,7 +209,7 @@ export function renderLeadCreationView(ctx = {}) {
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
-            <input id="leadPassword" type="password" value="${escapeHtml(lead.password || "")}" placeholder="leer = kein Login wird erstellt" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="leadPassword" type="password" value="${escapeHtml(lead.password || "")}" placeholder="bosh = nuk krijohet login" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
@@ -230,11 +230,11 @@ export function renderLeadCreationView(ctx = {}) {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vorname</label>
-              <input id="leadCustomerFirstName" type="text" value="${escapeHtml(lead.contactFirstName || "")}" placeholder="Vorname" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="leadCustomerFirstName" type="text" value="${escapeHtml(lead.contactFirstName || "")}" placeholder="Emri" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Nachname</label>
-              <input id="leadCustomerLastName" type="text" value="${escapeHtml(lead.contactLastName || "")}" placeholder="Nachname" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="leadCustomerLastName" type="text" value="${escapeHtml(lead.contactLastName || "")}" placeholder="Mbiemri" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -266,20 +266,20 @@ export function renderLeadCreationView(ctx = {}) {
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Restaurant Card</p>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Oeffnungszeiten</label>
-            <input id="leadOpeningHours" type="text" value="${escapeHtml(lead.openingHours || lead.hours || "")}" placeholder="Mo - So: 11:00 - 22:00 Uhr" class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="leadOpeningHours" type="text" value="${escapeHtml(lead.openingHours || lead.hours || "")}" placeholder="Hene - Diel: 11:00 - 22:00" class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div class="grid grid-cols-1 gap-3">
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Garten / Terrasse</label>
-              <input id="leadGardenTerraceText" type="text" value="${escapeHtml(lead.gardenTerraceText || lead.restaurantFeatures?.gardenTerrace || "")}" placeholder="Gastgarten" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="leadGardenTerraceText" type="text" value="${escapeHtml(lead.gardenTerraceText || lead.restaurantFeatures?.gardenTerrace || "")}" placeholder="Kopsht / terrace" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Barrierefrei</label>
-              <input id="leadAccessibilityText" type="text" value="${escapeHtml(lead.accessibilityText || lead.restaurantFeatures?.accessibility || "")}" placeholder="Barrierefrei" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="leadAccessibilityText" type="text" value="${escapeHtml(lead.accessibilityText || lead.restaurantFeatures?.accessibility || "")}" placeholder="Pa pengesa" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vegane Optionen</label>
-              <input id="leadVeganOptionsText" type="text" value="${escapeHtml(lead.veganOptionsText || lead.restaurantFeatures?.veganOptions || "")}" placeholder="Vegane Optionen" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="leadVeganOptionsText" type="text" value="${escapeHtml(lead.veganOptionsText || lead.restaurantFeatures?.veganOptions || "")}" placeholder="Opsione vegane" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
           </div>
         </div>
@@ -297,34 +297,34 @@ export function renderLeadCreationView(ctx = {}) {
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis monatlich</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Cmimi mujor</label>
               <input id="leadMonthlyPrice" type="text" value="${escapeHtml(monthlyPrice ? `${monthlyPrice.toFixed(2)} ${currencyCode} / Monat` : `0.00 ${currencyCode} / Monat`)}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
             </div>
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis jaehrlich</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Cmimi vjetor</label>
               <input id="leadAnnualPrice" type="text" value="${escapeHtml(yearlyPrice ? `${yearlyPrice.toFixed(2)} ${currencyCode} / Jahr` : `0.00 ${currencyCode} / Jahr`)}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
             </div>
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Aktueller Preis</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Cmimi aktual</label>
             <input id="leadPriceValue" type="text" value="${escapeHtml(totalPrice ? `${totalPrice.toFixed(2)} ${currencyCode}` : `0.00 ${currencyCode}`)}" readonly class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
           <div class="flex items-center justify-between">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Standorte</p>
-            <button type="button" data-lead-location-add class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1">${icon("plus", "w-3.5 h-3.5")} Standort</button>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vendndodhjet</p>
+            <button type="button" data-lead-location-add class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1">${icon("plus", "w-3.5 h-3.5")} Shto vendndodhje</button>
           </div>
           ${locations.map((location, index) => {
             const hasCoords = hasLeadLocationCoords(location);
             return `
               <div class="bg-white p-4 rounded-2xl border border-slate-100 space-y-3">
                 <div class="flex items-center justify-between">
-                  <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Standort ${index + 1}</p>
+                  <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Vendndodhja ${index + 1}</p>
                   ${index > 0 ? `<button type="button" data-lead-location-remove="${index}" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center border border-slate-200">${icon("x", "w-3.5 h-3.5")}</button>` : ""}
                 </div>
-                <input id="leadLocationAddress_${index}" data-lead-location-address="${index}" type="text" value="${escapeHtml(location.address || "")}" placeholder="Plus Code oder Adresse" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                <div id="leadLocationCoords_${index}" class="text-[9px] font-bold text-emerald-600 flex items-center gap-1 ${hasCoords ? "" : "hidden"}">${icon("check-circle-2", "w-3 h-3")} Standort auf Karte fixiert</div>
+                <input id="leadLocationAddress_${index}" data-lead-location-address="${index}" type="text" value="${escapeHtml(location.address || "")}" placeholder="Plus Code ose adresa" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                <div id="leadLocationCoords_${index}" class="text-[9px] font-bold text-emerald-600 flex items-center gap-1 ${hasCoords ? "" : "hidden"}">${icon("check-circle-2", "w-3 h-3")} Vendndodhja u fiksua ne harte</div>
                 <button type="button" data-lead-location-pick="${index}" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">${icon("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen</button>
               </div>
             `;
@@ -348,12 +348,12 @@ export function renderLeadCreationView(ctx = {}) {
             <input id="leadCurrency" type="text" value="${escapeHtml(currencyCode)}" readonly class="w-full mt-2 px-5 py-4 bg-slate-100 rounded-2xl text-sm font-black text-slate-500 border-none outline-none" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Stadt</label>
-            <input id="leadCity" type="text" value="${escapeHtml(lead.city || "")}" placeholder="Stadt" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Qyteti</label>
+            <input id="leadCity" type="text" value="${escapeHtml(lead.city || "")}" placeholder="Qyteti" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
-            <input id="leadAddress" type="text" value="${escapeHtml(lead.address || "")}" placeholder="Adresse" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresa</label>
+            <input id="leadAddress" type="text" value="${escapeHtml(lead.address || "")}" placeholder="Adresa" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">ZIP Code</label>
@@ -361,10 +361,10 @@ export function renderLeadCreationView(ctx = {}) {
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
-            <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(lead.note || "")}</textarea>
+            <textarea id="leadNote" rows="3" placeholder="Shenim i shkurter..." class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(lead.note || "")}</textarea>
           </div>
           <label class="flex items-center justify-between gap-4 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100">
-            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Special aktivieren</span>
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo Special</span>
             <input id="leadSpecialEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${specialEnabled ? "checked" : ""} />
           </label>
         </div>
@@ -374,7 +374,7 @@ export function renderLeadCreationView(ctx = {}) {
         <input id="leadStatus" type="hidden" value="${escapeHtml(lead.status || "registered")}" />
         <input id="leadContactName" type="hidden" value="${escapeHtml(buildLeadContactName(lead.contactFirstName, lead.contactLastName, lead.contactName || ""))}" />
         <div class="mt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leadModal.status || "")}</div>
-        <button id="leadInlineSaveBtn" type="button" class="w-full mt-5 py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-transform" ${state.leadModal.loading ? "disabled" : ""}>${escapeHtml(state.leadModal.loading ? "Speichern..." : (isEdit ? "Lead speichern" : "Lead erstellen"))}</button>
+        <button id="leadInlineSaveBtn" type="button" class="w-full mt-5 py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-transform" ${state.leadModal.loading ? "disabled" : ""}>${escapeHtml(state.leadModal.loading ? "Duke ruajtur..." : (isEdit ? "Ruaj lead-in" : "Krijo lead"))}</button>
       </div>
     </div>
   `;
@@ -405,8 +405,8 @@ export function renderStaffEditorView(ctx = {}) {
   const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : PLACEHOLDER_IMAGE;
   const safeAvatar = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
   const saveLabel = state.staff.saving
-    ? (isEditing ? "Speichern..." : "Erstelle CEO...")
-    : (isEditing ? "CEO speichern" : "CEO erstellen");
+    ? (isEditing ? "Duke ruajtur..." : "Erstelle CEO...")
+    : (isEditing ? "Ruaj CEO-n" : "Krijo CEO");
 
   return `
     <div id="staffEditorView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
@@ -424,17 +424,17 @@ export function renderStaffEditorView(ctx = {}) {
               ${icon("camera", "w-4 h-4")}
             </div>
           </button>
-          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-4">Profilbild hochladen</p>
+          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-4">Ngarko foton e profilit</p>
         </div>
 
         <div class="space-y-4">
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vorname</label>
-            <input id="staffFirstName" type="text" value="${escapeHtml(form.firstName || "")}" placeholder="Vorname" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="staffFirstName" type="text" value="${escapeHtml(form.firstName || "")}" placeholder="Emri" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Nachname</label>
-            <input id="staffLastName" type="text" value="${escapeHtml(form.lastName || "")}" placeholder="Nachname" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="staffLastName" type="text" value="${escapeHtml(form.lastName || "")}" placeholder="Mbiemri" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
@@ -442,7 +442,7 @@ export function renderStaffEditorView(ctx = {}) {
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
-            <input id="staffPassword" type="password" value="" placeholder="${escapeHtml(isEditing ? "Passwort bleibt unveraendert" : "Passwort eingeben")}" ${isEditing ? "disabled" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 ${isEditing ? "text-slate-400" : ""}" />
+            <input id="staffPassword" type="password" value="" placeholder="${escapeHtml(isEditing ? "Fjalekalimi mbetet i pandryshuar" : "Shkruaj fjalekalimin")}" ${isEditing ? "disabled" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 ${isEditing ? "text-slate-400" : ""}" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Land</label>
@@ -454,13 +454,13 @@ export function renderStaffEditorView(ctx = {}) {
             </div>
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Standort</label>
-            <input id="staffLocationLabel" type="text" value="${escapeHtml(form.locationLabel || "")}" placeholder="Standort / Adresse" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vendndodhja</label>
+            <input id="staffLocationLabel" type="text" value="${escapeHtml(form.locationLabel || "")}" placeholder="Vendndodhja / Adresa" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
 
         <button id="staffLocationPickBtn" type="button" class="w-full mt-4 py-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform">
-          ${icon("map-pin", "w-4 h-4")} Standort mit Pin waehlen
+          ${icon("map-pin", "w-4 h-4")} Zgjidh vendndodhjen me pin
         </button>
         <div id="staffCoordsDisplay" class="mt-3 ${coords ? "" : "hidden"} px-3 py-3 rounded-2xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
           ${icon("check-circle-2", "w-4 h-4")} ${coords ? escapeHtml(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`) : ""}
@@ -474,7 +474,7 @@ export function renderStaffEditorView(ctx = {}) {
         </button>
         ${isEditing ? `
           <button id="staffDeleteBtn" type="button" class="w-full mt-3 py-4 rounded-[1.8rem] bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest border border-rose-100 active:scale-95 transition-transform ${isSelfEdit ? "opacity-60 cursor-not-allowed" : ""}" ${(state.staff.deleting || isSelfEdit) ? "disabled" : ""}>
-            ${escapeHtml(state.staff.deleting ? "Loeschen..." : "CEO loeschen")}
+            ${escapeHtml(state.staff.deleting ? "Duke fshire..." : "Fshi CEO-n")}
           </button>
         ` : ""}
       </div>
@@ -614,13 +614,13 @@ export function renderLeadsView(ctx = {}) {
           ${ownershipHtml}
           <div class="flex gap-2 mt-4">
             ${landingUrl ? `<a href="${escapeHtml(landingUrl)}" target="_blank" rel="noopener noreferrer" class="px-4 py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500">Profil</a>` : ""}
-            <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
+            <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Ndrysho</button>
           </div>
         </div>
       `;
       }).join("")}
-      <div id="leadsNoResults" class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16" ${visibleLeadCount ? "hidden" : ""}>Keine Leads</div>
-    ` : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Leads</div>`);
+      <div id="leadsNoResults" class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16" ${visibleLeadCount ? "hidden" : ""}>Nuk ka leads</div>
+    ` : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Nuk ka leads</div>`);
   const renderEndMs = (() => {
     try {
       return typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
@@ -662,7 +662,7 @@ export function renderLeadsView(ctx = {}) {
       })}
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-3 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
+        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Kerko lead..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
       </div>
       ${scope !== "archived" ? `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
@@ -752,11 +752,11 @@ export function renderCustomersView(ctx = {}) {
           </div>
           ${ownershipHtml}
           <div class="flex gap-2 mt-4">
-            <button data-customer-edit="${escapeHtml(rest.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
+            <button data-customer-edit="${escapeHtml(rest.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Ndrysho</button>
           </div>
         </div>
       `;
-    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Kunden</div>`);
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Nuk ka kliente</div>`);
 
   return `
     <div id="customersView" class="p-6 animate-in slide-in-from-right-10 duration-500">
@@ -776,7 +776,7 @@ export function renderCustomersView(ctx = {}) {
       })}
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
+        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kerko klient..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
       </div>
       ${state.customers.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.customers.error)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
@@ -811,10 +811,10 @@ export function renderStaffView(ctx = {}) {
   const buildStatus = staffBuildStatus && typeof staffBuildStatus === "object"
     ? staffBuildStatus
     : (state?.staff?.buildStatus || {});
-  const commitShort = String(buildStatus.commitShort || "").trim() || "unbekannt";
+  const commitShort = String(buildStatus.commitShort || "").trim() || "i panjohur";
   const buildTimestampLabel = formatBuildTimestamp(buildStatus.buildTimestamp || "");
-  const branchLabel = String(buildStatus.branch || "").trim() || "unbekannt";
-  const envLabel = String(buildStatus.environment || "").trim() || "unbekannt";
+  const branchLabel = String(buildStatus.branch || "").trim() || "i panjohur";
+  const envLabel = String(buildStatus.environment || "").trim() || "i panjohur";
   const showBuildLoading = Boolean(staffBuildStatusLoading ?? state?.staff?.buildStatusLoading);
   const buildLoadError = String(staffBuildStatusError ?? state?.staff?.buildStatusError ?? "").trim();
   const current = getCurrentCeoMeta();
@@ -872,12 +872,12 @@ export function renderStaffView(ctx = {}) {
             </div>
           </div>
           <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Tippen zum Bearbeiten</span>
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Prek per te ndryshuar</span>
             <span class="w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center">${icon("chevron-right", "w-4 h-4")}</span>
           </div>
         </button>
       `;
-    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Noch kein CEO Staff</div>`);
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Ende nuk ka CEO Staff</div>`);
 
   return `
     <div id="staffView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
@@ -904,7 +904,7 @@ export function renderStaffView(ctx = {}) {
           <span class="text-slate-400 uppercase">Env</span>
           <span class="text-slate-700 text-right">${escapeHtml(envLabel)}</span>
         </div>
-        ${showBuildLoading ? `<p class="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Build Info wird geladen...</p>` : ""}
+        ${showBuildLoading ? `<p class="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Build info po ngarkohet...</p>` : ""}
         ${buildLoadError ? `<p class="mt-2 text-[9px] font-bold text-amber-600 uppercase tracking-widest">${escapeHtml(buildLoadError)}</p>` : ""}
       </div>
       <div class="space-y-4">${listHtml}</div>

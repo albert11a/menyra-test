@@ -272,7 +272,7 @@ export function createDashboardViewController({
       console.error("[mnyra][dashboard] load failed", err);
       if (!view.model) {
         view.status = "error";
-        view.error = "Bitte prüfe deine Verbindung und versuche es erneut.";
+        view.error = "Ju lutem kontrollo lidhjen dhe provo perseri.";
       }
       // Mit vorhandenem Modell: stiller Refresh-Fehler, letzte Daten bleiben stehen.
     }

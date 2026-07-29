@@ -162,7 +162,7 @@ export function createNotificationsRuntimeFlowControllerCore({
   const syncNotificationsPushRuntime = async ({ user = state.user, interactive = false, enabled = state.settings?.pushNotifs } = {}) => {
     const ownerUid = String(user?.uid || "").trim();
     if (!ownerUid) {
-      setPushIssue("Kein angemeldeter User fuer Push-Registrierung.");
+      setPushIssue("Asnje perdorues i kycur per regjistrimin e push.");
       return false;
     }
 
@@ -184,7 +184,7 @@ export function createNotificationsRuntimeFlowControllerCore({
     const registered = await syncPushDeviceRegistrationFn({ interactive, force: interactive, enabled, silent: !interactive });
     if (!registered) {
       if (interactive && !readPushIssue()) {
-        setPushIssue("Push-Registrierung fehlgeschlagen.");
+        setPushIssue("Regjistrimi i push deshtoi.");
       }
       return false;
     }

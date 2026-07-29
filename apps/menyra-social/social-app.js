@@ -362,7 +362,7 @@ const DEFAULT_NOTIFICATIONS = [
     id: "n1",
     type: "like",
     user: "Marco",
-    text: "hat dein Foto geliked",
+    text: "pelqeu foton tende",
     time: "10m",
     img: "",
     read: false
@@ -380,7 +380,7 @@ const DEFAULT_NOTIFICATIONS = [
     id: "n3",
     type: "system",
     user: `${BRAND_UI.title} Team`,
-    text: "Willkommen zurueck!",
+    text: "Mire se erdhe perseri!",
     time: "2h",
     img: "",
     read: true
@@ -657,7 +657,7 @@ function scheduleMediaEdgeProbe() {
     } catch {
       setRuntimeDegradedFlag("media", {
         active: true,
-        message: "Media-Edge aktuell nicht erreichbar. Bilder/Uploads koennen reduziert sein."
+        message: "Media-Edge nuk arrihet per momentin. Fotot/ngarkimet mund te jene te reduktuara."
       });
     } finally {
       window.clearTimeout(timeout);
@@ -2185,7 +2185,7 @@ function tr(key, fallback = key, params = {}) {
 function openGuestAuthPrompt(message = "") {
   if (!isGuestSession()) return false;
   state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
-  state.auth.error = String(message || "").trim() || tr("auth.guestRequired", "Bitte registrieren oder einloggen, um diese Funktion zu nutzen.");
+  state.auth.error = String(message || "").trim() || tr("auth.guestRequired", "Ju lutem regjistrohuni ose hyni per ta perdorur kete funksion.");
   state.auth.open = true;
   state.drawerOpen = false;
   render();
@@ -5495,7 +5495,7 @@ function createDeferredMediaUploadRuntimeController() {
     renderUploadView() {
       // Der volle Upload-Controller (inkl. Produkt-Tag-Auswahl fuer Stories)
       // wird sofort beim ersten Render des Upload-Screens nachgeladen und
-      // ersetzt diesen Platzhalter – nicht erst beim Klick auf "Posten".
+      // ersetzt diesen Platzhalter – nicht erst beim Klick auf "Posto".
       if (!upgradeQueued) {
         upgradeQueued = true;
         void ensureMediaUploadRuntimeController()

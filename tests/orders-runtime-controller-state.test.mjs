@@ -150,7 +150,7 @@ test("order submit keeps one in-flight request for double clicks", async () => {
 
   assert.equal(createCalls, 1);
   assert.equal(state.shopCart.loading, true);
-  assert.equal(state.shopCart.status, "Bestellung wird gesendet...");
+  assert.equal(state.shopCart.status, "Porosia po dergohet...");
 
   deferred.resolve({
     data: {
@@ -217,7 +217,7 @@ test("order submit releases loading state after a real submit error", async () =
   assert.equal(state.shopCart.checkoutOpen, true);
   assert.equal(
     state.shopCart.status,
-    "Bestellung konnte nicht gesendet werden.",
+    "Porosia nuk mund te dergohej.",
   );
 
   await controller.submitShopCheckout();

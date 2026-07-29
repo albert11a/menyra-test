@@ -958,7 +958,7 @@ export function createFeedViewOrchestrationController({
     textarea.remove();
     return copied;
   };
-  const setShareButtonFeedback = (button, label = "Link kopiert") => {
+  const setShareButtonFeedback = (button, label = "Linku u kopjua") => {
     if (!(button instanceof HTMLElement)) return;
     const labelNode = button.querySelector("[data-feed-share-label]");
     if (!labelNode) return;
@@ -1956,11 +1956,11 @@ export function createFeedViewOrchestrationController({
           Object.freeze({ before: "", accent: "Live", after: " now." }),
           Object.freeze({ before: "Your ", accent: "Feed.", after: "" })
         ]),
-        description: "Discover daily deals, follow stories from your favorite spots, and stay up to date.",
+        description: "Zbulo oferta ditore, ndiq stories nga vendet e tua te preferuara dhe qendro i perditesuar.",
         cardTitle: "Stories & Feed",
-        cardDescription: "Never miss exclusive deals. See what's happening in your city through stories and discover fresh offers right away.",
-        cardImageAlt: "Feed and stories",
-        storiesAriaLabel: "Feed stories",
+        cardDescription: "Mos humb asnje oferte ekskluzive. Shiko cfare po ndodh ne qytetin tend permes stories dhe zbulo oferta te reja menjehere.",
+        cardImageAlt: "Feed dhe stories",
+        storiesAriaLabel: "Stories te feed-it",
         postBrand: "MOKI'S",
         postMeta: "2 hours ago • New offer",
         offerPill: "-20% off lunch",
@@ -2463,7 +2463,7 @@ export function createFeedViewOrchestrationController({
           <div class="feed-gate-social-card__media">
             <img
               src="https://i.postimg.cc/pXYTM3Hp/IMG-5082.jpg"
-              alt="${escapeHtmlFn(String(socialCopy?.cardImageAlt || "Feed and stories"))}"
+              alt="${escapeHtmlFn(String(socialCopy?.cardImageAlt || "Feed dhe stories"))}"
               loading="lazy"
               fetchpriority="low"
               decoding="async"
@@ -3165,7 +3165,7 @@ export function createFeedViewOrchestrationController({
     return `
       <div data-spot-story-track class="flex overflow-x-auto gap-2.5 pb-8 pt-2 snap-x snap-mandatory no-scrollbar scroll-pl-5" style="${buildTrackRowViewportStyle()}">
         ${renderSpotStoryIntroCard()}
-        ${cards || `<div class="flex items-center text-slate-400 text-xs font-bold uppercase px-2">Keine Spots vorhanden</div>`}
+        ${cards || `<div class="flex items-center text-slate-400 text-xs font-bold uppercase px-2">Nuk ka spote</div>`}
         <div class="flex-none w-1" aria-hidden="true"></div>
       </div>
     `;
@@ -3223,7 +3223,7 @@ export function createFeedViewOrchestrationController({
       ) || "").trim()
       : "";
     const heroMediaHtml = heroStoryUrl
-      ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Stories von ${escapeHtmlFn(post.business)} ansehen" class="block w-full h-full">${heroInner}</a>`
+      ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Shiko stories nga ${escapeHtmlFn(post.business)}" class="block w-full h-full">${heroInner}</a>`
       : heroInner;
     return `
     <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
@@ -3271,7 +3271,7 @@ export function createFeedViewOrchestrationController({
 
   function renderFeedList(feedPosts) {
     if (!feedPosts.length) {
-      return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>`;
+      return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Nuk ka postime</div>`;
     }
     return feedPosts.slice(0, 10).map((post, index) => renderFeedItem(post, index)).join("");
   }
@@ -4017,11 +4017,11 @@ export function createFeedViewOrchestrationController({
             .catch(async (err) => {
               if (String(err?.name || "").trim() === "AbortError") return;
               const copied = await copyTextToClipboard(url);
-              setShareButtonFeedback(shareBtn, copied ? "Kopiert" : "Link");
+              setShareButtonFeedback(shareBtn, copied ? "U kopjua" : "Link");
             });
         } else {
           void copyTextToClipboard(url).then((copied) => {
-            setShareButtonFeedback(shareBtn, copied ? "Kopiert" : "Link");
+            setShareButtonFeedback(shareBtn, copied ? "U kopjua" : "Link");
           });
         }
         return;
@@ -4031,7 +4031,7 @@ export function createFeedViewOrchestrationController({
         const tab = navBtn.dataset.nav;
         if (tab) {
           if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
-            openGuestAuthPromptFn("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+            openGuestAuthPromptFn("Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat.");
             return;
           }
           const uploadPatch = tab === "upload"

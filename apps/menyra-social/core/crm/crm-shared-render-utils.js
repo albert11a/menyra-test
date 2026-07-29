@@ -1,5 +1,5 @@
 export function renderCrmLazyLoadingViewCore({
-  label = "CRM laden...",
+  label = "CRM po ngarkohet...",
   icon,
   escapeHtml
 } = {}) {

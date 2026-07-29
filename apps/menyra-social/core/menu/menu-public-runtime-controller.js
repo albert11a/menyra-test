@@ -390,7 +390,7 @@ export function createMenuPublicRuntimeController({
       state.favoriteMenuItems = {
         ...state.favoriteMenuItems,
         loading: false,
-        error: tr("favorites.loadError", "Favoriten konnten nicht geladen werden."),
+        error: tr("favorites.loadError", "Te preferuarat nuk mund te ngarkoheshin."),
         loaded: true
       };
     }

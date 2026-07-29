@@ -94,9 +94,9 @@ export function createTableQrRuntimeController({
   function buildSaveErrorMessage(err) {
     const code = String(err?.code || "").trim().toLowerCase();
     if (code.includes("permission-denied")) {
-      return "Tisch-QR konnte nicht gespeichert werden. Schreibzugriff fehlt.";
+      return "QR i tavolines nuk mund te ruhej. Mungon e drejta e shkrimit.";
     }
-    return "Tisch-QR konnte nicht gespeichert werden.";
+    return "QR i tavolines nuk mund te ruhej.";
   }
 
   async function loadTableQrMeta(restaurantId, { preferServer = false } = {}) {
@@ -123,13 +123,13 @@ export function createTableQrRuntimeController({
         return {
           ...cached,
           restaurantId: safeRestaurantId,
-          error: "Tisch-QR konnte nicht live geladen werden."
+          error: "QR i tavolines nuk mund te ngarkohej live."
         };
       }
       return {
         ...createEmptyState(),
         restaurantId: safeRestaurantId,
-        error: "Tisch-QR konnte nicht geladen werden."
+        error: "QR i tavolines nuk mund te ngarkohej."
       };
     }
   }
@@ -168,7 +168,7 @@ export function createTableQrRuntimeController({
       count: cached ? normalizeTableQrCountCore(cached.count) : (current.restaurantId === restaurantId ? normalizeTableQrCountCore(current.count) : 0),
       loaded: !!cached,
       loading: true,
-      status: cached ? "Gespeicherte Tisch-QR werden geladen..." : ""
+      status: cached ? "QR te ruajtura te tavolinave po ngarkohen..." : ""
     };
     render();
     const loaded = await loadTableQrMeta(restaurantId);
@@ -179,7 +179,7 @@ export function createTableQrRuntimeController({
       loaded: true,
       loading: false,
       saving: false,
-      status: loaded?.verifiedAt ? "Tisch-QR synchronisiert." : ""
+      status: loaded?.verifiedAt ? "QR i tavolines u sinkronizua." : ""
     };
     render();
     return true;
@@ -209,8 +209,8 @@ export function createTableQrRuntimeController({
       saving: true,
       error: "",
       status: preservingExistingTables
-        ? `Vorhandene Tisch-QR bleiben erhalten. ${normalizedCount} Tische werden gespeichert...`
-        : "Tisch-QR wird gespeichert..."
+        ? `QR ekzistuese te tavolinave ruhen. ${normalizedCount} tavolina po ruhen...`
+        : "QR i tavolines po ruhet..."
     };
     render();
     try {
@@ -232,8 +232,8 @@ export function createTableQrRuntimeController({
         saving: false,
         error: "",
         status: preservingExistingTables
-          ? `Vorhandene Tisch-QR bleiben bestehen. ${normalizedCount} Tische gespeichert.`
-          : "Tisch-QR gespeichert.",
+          ? `QR ekzistuese te tavolinave mbeten. ${normalizedCount} tavolina u ruajten.`
+          : "QR i tavolines u ruajt.",
         verifiedAt: Number(confirmed?.verifiedAt || Date.now()) || Date.now()
       };
       writeCachedTableQrMeta(safeRestaurantId, state.tableQr);

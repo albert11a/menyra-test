@@ -58,6 +58,6 @@ export function buildFollowAcceptedNotificationPayloadCore({
     userHandle: actor?.handle || "",
     userUid: actor?.uid || "",
     avatar: actor?.avatar || "",
-    text: "hat deine Anfrage akzeptiert"
+    text: "pranoi kerkesen tende"
   };
 }

@@ -228,7 +228,7 @@ export function bindAppChatUploadEventsCore({
       const isImage = mime.startsWith("image/");
       const isVideo = mime.startsWith("video/");
       if (!isImage && !isVideo) {
-        state.upload.status = "Nur Bild oder Video moeglich.";
+        state.upload.status = "Vetem foto ose video jane te mundura.";
         render();
         uploadFileInput.value = "";
         return;

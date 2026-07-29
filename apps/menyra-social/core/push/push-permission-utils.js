@@ -13,16 +13,16 @@ export async function ensureNotificationPermissionCore({
     : (() => {});
 
   if (!canUse || !notify) {
-    setIssue("Browser unterstuetzt Notification API nicht.");
+    setIssue("Shfletuesi nuk mbeshtet Notification API.");
     return false;
   }
   if (notify.permission === "granted") return true;
   if (notify.permission === "denied") {
-    setIssue("Browser-Permission fuer Benachrichtigungen ist auf 'denied'.");
+    setIssue("Leja e shfletuesit per njoftime eshte 'denied'.");
     return false;
   }
   if (!interactive) {
-    setIssue("Browser-Permission noch nicht erteilt.");
+    setIssue("Leja e shfletuesit ende nuk eshte dhene.");
     return false;
   }
   try {
@@ -32,7 +32,7 @@ export async function ensureNotificationPermissionCore({
     }
     return permission === "granted";
   } catch (err) {
-    setIssue("Browser-Permission konnte nicht angefragt werden.", err);
+    setIssue("Leja e shfletuesit nuk mund te kerkohej.", err);
     return false;
   }
 }

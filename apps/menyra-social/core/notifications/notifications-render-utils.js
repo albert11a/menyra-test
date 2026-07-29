@@ -6,7 +6,7 @@ export function renderNotificationsListCore({
 } = {}) {
   const list = Array.isArray(items) ? items : [];
   if (!list.length) {
-    return "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>";
+    return "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Nuk ka njoftime te reja</div>";
   }
   const esc = typeof escapeHtml === "function"
     ? escapeHtml

@@ -73,13 +73,13 @@ export async function saveCustomerFromModalCore({
   const statusValue = docObj.getElementById("customerStatus")?.value || customer.status || "kunde";
 
   if (!name) {
-    state.customerModal.status = "Bitte Business Name eingeben.";
+    state.customerModal.status = "Ju lutem shkruani emrin e biznesit.";
     renderOverlays({ updateCustomer: true });
     return;
   }
 
   state.customerModal.loading = true;
-  state.customerModal.status = "Speichern...";
+  state.customerModal.status = "Duke ruajtur...";
   renderOverlays({ updateCustomer: true });
 
   try {
@@ -185,7 +185,7 @@ export async function saveCustomerFromModalCore({
     render();
   } catch (err) {
     console.error(err);
-    state.customerModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.customerModal.status = err?.message || "Ruajtja deshtoi.";
     state.customerModal.loading = false;
     renderOverlays({ updateCustomer: true });
   }

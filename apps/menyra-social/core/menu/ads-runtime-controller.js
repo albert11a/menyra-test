@@ -297,7 +297,7 @@ export function createAdsRuntimeController({
         restaurantId: safeRestaurantId,
         items: stableItems,
         loading: false,
-        error: err?.message || "Ads konnten nicht geladen werden.",
+        error: err?.message || "Reklamat nuk mund te ngarkoheshin.",
         truthSource: "public-ads",
         truthState: stableItems.length ? "seeded" : "unknown"
       };
@@ -348,13 +348,13 @@ export function createAdsRuntimeController({
     const crop = getAdsModalCrop();
 
     if (!title) {
-      state.focusModal.status = "Bitte Ad-Titel eingeben.";
+      state.focusModal.status = "Ju lutem shkruani titullin e reklames.";
       renderOverlaysFn({ updateFocus: true });
       return;
     }
 
     state.focusModal.loading = true;
-    state.focusModal.status = "Wird zur Freigabe gespeichert...";
+    state.focusModal.status = "Po ruhet per miratim...";
     renderOverlaysFn({ updateFocus: true });
 
     try {
@@ -408,12 +408,12 @@ export function createAdsRuntimeController({
       state.ads = { ...state.ads, restaurantId, items: nextItems, loading: false, error: "", truthSource: "public-ads", truthState };
       syncAdsToRestaurantState(restaurantId, nextItems);
       state.focusModal.loading = false;
-      state.focusModal.status = "Ad wartet auf Heart-Freigabe.";
+      state.focusModal.status = "Reklama pret miratimin nga Heart.";
       closeFocusModalFn();
       renderFn();
     } catch (err) {
       console.error(err);
-      state.focusModal.status = err?.message || "Ad konnte nicht gespeichert werden.";
+      state.focusModal.status = err?.message || "Reklama nuk mund te ruhej.";
       state.focusModal.loading = false;
       renderOverlaysFn({ updateFocus: true });
     }
@@ -424,7 +424,7 @@ export function createAdsRuntimeController({
     if (!state?.user || !safeItemId) return;
     const restaurantId = getCurrentRestaurantId(state.userProfile);
     if (!restaurantId) return;
-    if (!confirmFn("Ad wirklich loeschen?")) return;
+    if (!confirmFn("Ta fshish vertet reklamen?")) return;
     try {
       const nextItems = (Array.isArray(state.ads.items) ? state.ads.items : [])
         .filter((item) => String(item.id) !== String(safeItemId));
@@ -442,7 +442,7 @@ export function createAdsRuntimeController({
       renderFn();
     } catch (err) {
       console.error(err);
-      alertFn("Ad konnte nicht geloescht werden.");
+      alertFn("Reklama nuk mund te fshihej.");
     }
   }
 

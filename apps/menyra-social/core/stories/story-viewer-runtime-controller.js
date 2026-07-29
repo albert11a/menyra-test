@@ -204,13 +204,13 @@ export function createStoryViewerRuntimeController({
     const descNode = emptyState.querySelector(".emptyDesc");
     const iconNode = emptyState.querySelector(".emptyIcon");
     if (!fromFeedFallback) {
-      if (titleNode) titleNode.textContent = "Keine Stories";
-      if (descNode) descNode.textContent = "Aktive Stories werden hier angezeigt.";
+      if (titleNode) titleNode.textContent = "Nuk ka stories";
+      if (descNode) descNode.textContent = "Stories aktive shfaqen ketu.";
       if (iconNode) iconNode.textContent = "📹";
       return;
     }
-    if (titleNode) titleNode.textContent = "Keine veroeffentlichten Stories";
-    if (descNode) descNode.textContent = "Du bist aus dem Feed-Fallback gekommen. Oeffne das Profil fuer Posts.";
+    if (titleNode) titleNode.textContent = "Nuk ka stories te publikuara";
+    if (descNode) descNode.textContent = "Ke ardhur nga feed-fallback. Hap profilin per postimet.";
     if (iconNode) iconNode.textContent = "🧭";
   }
 
@@ -738,7 +738,7 @@ export function createStoryViewerRuntimeController({
     const nameEl = doc.createElement("div");
     nameEl.className = "productCardName";
     nameEl.dataset.storyProductName = "1";
-    nameEl.textContent = story.menuItemName || "Produkt ansehen";
+    nameEl.textContent = story.menuItemName || "Shiko produktin";
     info.appendChild(nameEl);
     const priceEl = doc.createElement("div");
     priceEl.className = "productCardPrice";

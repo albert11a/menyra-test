@@ -16,7 +16,7 @@ export async function ensurePushServiceWorkerRegistrationCore({
   try {
     return await nav.serviceWorker.register(serviceWorkerUrl, { scope: serviceWorkerScope });
   } catch (err) {
-    setIssue("Service Worker Registrierung fehlgeschlagen.", err);
+    setIssue("Regjistrimi i Service Worker deshtoi.", err);
     return null;
   }
 }
@@ -37,7 +37,7 @@ export async function waitForPushServiceWorkerReadyCore({
     });
     return await Promise.race([nav.serviceWorker.ready, timeoutPromise]);
   } catch (err) {
-    setIssue("Service Worker ist nicht ready.", err);
+    setIssue("Service Worker nuk eshte gati.", err);
     return null;
   }
 }

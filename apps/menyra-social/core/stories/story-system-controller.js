@@ -86,7 +86,7 @@ export function createStorySystemController({
         <button data-upload-mode="feed" class="w-full p-5 rounded-[2rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 bg-slate-900 text-white shadow-xl">
           ${iconFn("plus-square", "w-5 h-5")} Feed posten
         </button>
-        <div class="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">${canPostStory ? "Waehl deinen Posting Typ" : "Stories nur fuer Business Accounts"}</div>
+        <div class="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">${canPostStory ? "Zgjidh llojin e postimit" : "Stories vetem per llogari biznesi"}</div>
       </div>
     `;
   }
@@ -104,11 +104,11 @@ export function createStorySystemController({
     menuItemImage = ""
   } = {}) {
     if (!db || typeof collectionFn !== "function" || typeof docFn !== "function" || typeof setDocFn !== "function" || typeof serverTimestampFn !== "function") {
-      throw new Error("Story Runtime nicht bereit.");
+      throw new Error("Story runtime nuk eshte gati.");
     }
     const rid = String(restaurantId || "").trim();
     const media = String(mediaUrl || "").trim();
-    if (!rid || !media) throw new Error("Story Daten unvollstaendig.");
+    if (!rid || !media) throw new Error("Te dhenat e story-t jane te paplota.");
     const postRef = docFn(collectionFn(db, "restaurants", rid, "stories"));
     const nowTs = serverTimestampFn();
     const kind = String(mediaType || "image").trim().toLowerCase() === "video" ? "video" : "image";

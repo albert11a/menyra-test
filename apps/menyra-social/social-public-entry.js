@@ -35,7 +35,7 @@ async function loadSocialApp() {
   } catch (err) {
     setDegraded("app-entry", {
       active: true,
-      message: "Website konnte nicht vollstaendig geladen werden."
+      message: "Faqja nuk mund te ngarkohej plotesisht."
     });
     console.error("[mnyra][public-entry] social app import failed", err);
     throw err;

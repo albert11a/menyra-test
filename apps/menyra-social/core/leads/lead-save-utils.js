@@ -462,7 +462,7 @@ export async function saveLeadFromModalCore({
     });
 
   if (!businessName) {
-    state.leadModal.status = "Bitte Business Name eingeben.";
+    state.leadModal.status = "Ju lutem shkruani emrin e biznesit.";
     state.leadModal.saving = false;
     renderLeadEditor();
     return;
@@ -470,7 +470,7 @@ export async function saveLeadFromModalCore({
 
   state.leadModal.loading = true;
   state.leadModal.actionsOpen = false;
-  state.leadModal.status = "Speichern...";
+  state.leadModal.status = "Duke ruajtur...";
   renderLeadEditor();
 
   try {
@@ -482,7 +482,7 @@ export async function saveLeadFromModalCore({
     const originalLeadId = identity.existingLeadId;
     let leadId = identity.leadId;
     if (identity.isExistingUpdate && !leadId) {
-      throw new Error("Bestehende Lead-ID fehlt. Bitte neu oeffnen und erneut speichern.");
+      throw new Error("Mungon ID e lead-it ekzistues. Ju lutem hapeni perseri dhe ruajeni serish.");
     }
     const leadRef = leadId ? doc(db, "leads", leadId) : doc(collection(db, "leads"));
     if (!leadId) {
@@ -494,7 +494,7 @@ export async function saveLeadFromModalCore({
     const originalRestaurantId = identity.directRestaurantId || identity.linkedRestaurantId;
     let restaurantId = identity.restaurantId;
     if (identity.isExistingUpdate && !restaurantId) {
-      throw new Error("Bestehende Restaurant-ID fehlt. Es wurde kein neuer Restaurant-Datensatz angelegt.");
+      throw new Error("Mungon ID e restorantit ekzistues. Nuk u krijua asnje regjistrim i ri restoranti.");
     }
     let restRef = null;
     if (!restaurantId) {
@@ -791,7 +791,7 @@ export async function saveLeadFromModalCore({
           socialEmail = loginEmail;
         }
       } catch (err) {
-        loginError = err?.message || "Login fehlgeschlagen.";
+        loginError = err?.message || "Hyrja deshtoi.";
       }
     }
     if (restaurantId) {
@@ -937,18 +937,18 @@ export async function saveLeadFromModalCore({
       rerender();
     }
     if (loginError) {
-      notify(`Lead gespeichert. Login fehlgeschlagen: ${loginError}`);
+      notify(`Lead u ruajt. Krijimi i login deshtoi: ${loginError}`);
     }
   } catch (err) {
     console.error(err);
-    state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.leadModal.status = err?.message || "Ruajtja deshtoi.";
     state.leadModal.loading = false;
     state.leadModal.saving = false;
     renderLeadEditor();
   }
   } catch (err) {
     console.error(err);
-    state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.leadModal.status = err?.message || "Ruajtja deshtoi.";
     state.leadModal.loading = false;
     state.leadModal.saving = false;
     renderLeadEditor();

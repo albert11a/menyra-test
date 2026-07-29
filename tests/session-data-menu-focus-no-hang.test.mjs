@@ -158,7 +158,7 @@ test("public menu load leaves loading state when Firebase menu items do not retu
   assert.equal(result.truthState, "unknown");
   assert.equal(state.menu.restaurantId, "restaurant-a");
   assert.equal(state.menu.loading, false);
-  assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
+  assert.equal(state.menu.error, "Ngarkimi i menuse deshtoi.");
   assert.equal(state.menu.truthState, "unknown");
 });
 
@@ -256,7 +256,7 @@ test("menu editor collection load leaves loading state when Firebase products do
   assert.equal(result.truthState, "unknown");
   assert.equal(state.menu.restaurantId, "restaurant-a");
   assert.equal(state.menu.loading, false);
-  assert.equal(state.menu.error, "Menu laden fehlgeschlagen.");
+  assert.equal(state.menu.error, "Ngarkimi i menuse deshtoi.");
   assert.equal(state.menu.source, "collection");
 });
 
@@ -284,7 +284,7 @@ test("public focus load releases menu coordination when Firebase offers do not r
   assert.equal(result.truthState, "unknown");
   assert.equal(state.focus.restaurantId, "restaurant-a");
   assert.equal(state.focus.loading, false);
-  assert.equal(state.focus.error, "Fokus laden fehlgeschlagen.");
+  assert.equal(state.focus.error, "Ngarkimi i fokusit deshtoi.");
   assert.equal(state.focus.truthState, "unknown");
 });
 

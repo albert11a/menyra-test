@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="sq">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -171,7 +171,7 @@
     <div class="glow" aria-hidden="true"></div>
     <main class="card" aria-live="polite">
       <div class="greeting-wrap">
-        <h1 id="greeting" class="greeting is-visible">Willkommen</h1>
+        <h1 id="greeting" class="greeting is-visible">Mire se vini</h1>
       </div>
 
       <div class="brand-row">
@@ -182,11 +182,11 @@
       </div>
 
       <p class="copy" id="message">
-        <span>Dein Business ist bereits in Mnyra vorbereitet.</span>
-        <span>Deine digitale Praesenz ist bereit zur Aktivierung.</span>
+        <span>Biznesi yt eshte tashme i pergatitur ne Mnyra.</span>
+        <span>Prezenca jote digjitale eshte gati per aktivizim.</span>
       </p>
 
-      <div id="status" class="status">Landing wird geladen...</div>
+      <div id="status" class="status">Faqja po ngarkohet...</div>
     </main>
   </div>
 
@@ -304,8 +304,8 @@
       const legacyPart2Color = businessNameColor && businessNameColor.toLowerCase() !== "#111827" ? businessNameColor : "";
       const businessNameColorPart1 = normalizeBusinessNameColor(payload.businessNameColorPart1 || businessNameColor, "#111827");
       const businessNameColorPart2 = normalizeBusinessNameColor(payload.businessNameColorPart2 || legacyPart2Color, "#4f46e5");
-      const line1 = String(payload.messageLine1 || `${businessName} ist bereits in Mnyra vorbereitet.`).trim();
-      const line2 = String(payload.messageLine2 || "Deine digitale Praesenz ist bereit zur Aktivierung.").trim();
+      const line1 = String(payload.messageLine1 || `${businessName} eshte tashme i pergatitur ne Mnyra.`).trim();
+      const line2 = String(payload.messageLine2 || "Prezenca jote digjitale eshte gati per aktivizim.").trim();
 
       logoNode.src = logoUrl;
       logoNode.alt = `${businessName} Logo`;
@@ -317,13 +317,13 @@
       secondLineNode.textContent = line2;
       messageNode.appendChild(firstLineNode);
       messageNode.appendChild(secondLineNode);
-      setStatus("Lead Landing aktiv.");
+      setStatus("Lead Landing aktive.");
     }
 
     async function loadLanding() {
       const restaurantId = readRestaurantIdFromQuery() || readRestaurantIdFromPath();
       if (!restaurantId) {
-        setStatus("Keine Restaurant-ID gefunden.", true);
+        setStatus("Nuk u gjet ID e lokalit.", true);
         return;
       }
 
@@ -351,7 +351,7 @@
         });
       } catch (err) {
         console.error(err);
-        setStatus("Landing konnte nicht geladen werden.", true);
+        setStatus("Faqja nuk mund te ngarkohej.", true);
       }
     }
 

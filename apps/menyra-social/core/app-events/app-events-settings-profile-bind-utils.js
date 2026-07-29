@@ -72,7 +72,7 @@ export function bindAppSettingsProfileEventsCore({
   if (saveAccountBtn) {
     saveAccountBtn.addEventListener("click", async () => {
       if (saveAccountBtn.disabled || !saveAccountSettings) return;
-      saveAccountBtn.innerHTML = `${icon("loader-2", "w-4 h-4 animate-spin")} Speichere...`;
+      saveAccountBtn.innerHTML = `${icon("loader-2", "w-4 h-4 animate-spin")} Duke ruajtur...`;
       await saveAccountSettings();
       setState({ settingsView: "main" });
     });
@@ -113,7 +113,7 @@ export function bindAppSettingsProfileEventsCore({
             state.settings = { ...state.settings, pushNotifs: false };
             saveSettings(state.settings);
             render();
-            alertUser(`Push konnte nicht aktiviert werden.\n${getPushActivationIssueMessage()}`);
+            alertUser(`Push nuk mund te aktivizohej.\n${getPushActivationIssueMessage()}`);
             return;
           }
         } else {

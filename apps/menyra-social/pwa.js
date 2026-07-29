@@ -143,7 +143,7 @@ async function registerSW() {
   if (!('serviceWorker' in navigator)) {
     setVendorDegraded("push", {
       active: true,
-      message: "Service Worker wird nicht unterstuetzt. Push bleibt deaktiviert."
+      message: "Service Worker nuk mbeshtetet. Push mbetet i deaktivizuar."
     });
     return;
   }
@@ -154,7 +154,7 @@ async function registerSW() {
     log("service worker disabled by query param sw-off=1");
     setVendorDegraded("push", {
       active: true,
-      message: "Service Worker ist per sw-off=1 deaktiviert."
+      message: "Service Worker eshte i deaktivizuar me sw-off=1."
     });
     return;
   }
@@ -166,7 +166,7 @@ async function registerSW() {
     document.documentElement.dataset.pwaUpdateChannel = buildUpdateChannel("");
     setVendorDegraded("push", {
       active: true,
-      message: "Service Worker deaktiviert: Build-Version fehlt."
+      message: "Service Worker i deaktivizuar: mungon versioni i build-it."
     });
     return;
   }
@@ -214,7 +214,7 @@ async function registerSW() {
     console.warn('[PWA] SW registration failed', err);
     setVendorDegraded("push", {
       active: true,
-      message: "Service Worker Registrierung fehlgeschlagen. Push kann ausfallen."
+      message: "Regjistrimi i Service Worker deshtoi. Push mund te mos punoje."
     });
   }
 }

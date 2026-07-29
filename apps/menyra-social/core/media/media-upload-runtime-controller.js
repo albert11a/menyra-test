@@ -117,11 +117,11 @@ export function createMediaUploadRuntimeController({
 
   async function requestMediaActionTicket(action, { restaurantId = "", videoId = "" } = {}) {
     const safeAction = String(action || "").trim();
-    if (!safeAction) throw new Error("Media Aktion fehlt.");
-    if (!fetchMedia) throw new Error("Media Netzwerk fehlt.");
+    if (!safeAction) throw new Error("Mungon veprimi i medias.");
+    if (!fetchMedia) throw new Error("Mungon rrjeti i medias.");
     const user = auth?.currentUser || state?.user || null;
     if (!user || typeof user.getIdToken !== "function") {
-      throw new Error("Bitte zuerst anmelden.");
+      throw new Error("Ju lutem hyni fillimisht.");
     }
     const idToken = await user.getIdToken();
     const payload = { action: safeAction };
@@ -141,15 +141,15 @@ export function createMediaUploadRuntimeController({
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data?.ticket) {
-      throw new Error(data?.error || "Media Autorisierung fehlgeschlagen.");
+      throw new Error(data?.error || "Autorizimi i medias deshtoi.");
     }
     return String(data.ticket);
   }
 
   async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType }) {
-    if (!fetchMedia) throw new Error("Media Netzwerk fehlt.");
+    if (!fetchMedia) throw new Error("Mungon rrjeti i medias.");
     const maxBytes = 15 * 1024 * 1024;
-    if (file.size > maxBytes) throw new Error("Max 15MB pro Bild.");
+    if (file.size > maxBytes) throw new Error("Maksimumi 15MB per foto.");
     if (!String(file.type || "").startsWith("image/")) throw new Error("Nur Bilder erlaubt.");
 
     const compressedFile = await compressImage(file, maxSize, quality, mimeType);
@@ -178,7 +178,7 @@ export function createMediaUploadRuntimeController({
       body: form
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.url) throw new Error(data?.error || "Upload fehlgeschlagen.");
+    if (!res.ok || !data?.url) throw new Error(data?.error || "Ngarkimi deshtoi.");
     return {
       url: String(data.url || "").trim(),
       cdnUrl: String(data.cdnUrl || data.url || "").trim()
@@ -186,9 +186,9 @@ export function createMediaUploadRuntimeController({
   }
 
   async function uploadRawMediaFile(file, ownerId, { maxBytes = 50 * 1024 * 1024 } = {}) {
-    if (!fetchMedia) throw new Error("Media Netzwerk fehlt.");
-    if (!file) throw new Error("Datei fehlt.");
-    if (file.size > maxBytes) throw new Error("Max 50MB pro Story Video.");
+    if (!fetchMedia) throw new Error("Mungon rrjeti i medias.");
+    if (!file) throw new Error("Mungon skedari.");
+    if (file.size > maxBytes) throw new Error("Maksimumi 50MB per video story.");
     const ticket = await requestMediaActionTicket("story_upload", { restaurantId: ownerId });
     const form = new FormData();
     form.append("file", file, file.name || "media");
@@ -201,7 +201,7 @@ export function createMediaUploadRuntimeController({
       body: form
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.url) throw new Error(data?.error || "Upload fehlgeschlagen.");
+    if (!res.ok || !data?.url) throw new Error(data?.error || "Ngarkimi deshtoi.");
     return {
       url: String(data.url || "").trim(),
       cdnUrl: String(data.cdnUrl || data.url || "").trim(),
@@ -357,7 +357,7 @@ export function createMediaUploadRuntimeController({
     const caption = docObj?.getElementById("uploadCaption")?.value?.trim() || "";
     const uploadMode = resolveUploadMode();
     if (uploadMode === "chooser") {
-      state.upload.status = "Bitte zuerst Story oder Feed waehlen.";
+      state.upload.status = "Ju lutem zgjidhni fillimisht Story ose Feed.";
       render();
       return;
     }
@@ -366,12 +366,12 @@ export function createMediaUploadRuntimeController({
     const restaurantId = state.userProfile?.restaurantId || docObj?.getElementById("uploadRestaurantSelect")?.value || "";
 
     if (isBusiness && !restaurantId) {
-      state.upload.status = "Bitte Business im Account waehlen.";
+      state.upload.status = "Ju lutem zgjidhni biznesin ne llogari.";
       render();
       return;
     }
     if (isStoryMode && (!isBusiness || !restaurantId)) {
-      state.upload.status = "Story Upload nur mit Business Profil moeglich.";
+      state.upload.status = "Ngarkimi i story-t eshte i mundur vetem me profil biznesi.";
       render();
       return;
     }
@@ -383,7 +383,7 @@ export function createMediaUploadRuntimeController({
       const ownerId = isBusiness ? restaurantId : state.user.uid;
       const mediaType = detectUploadMediaType(state.upload.file);
       if (!mediaType) {
-        state.upload.status = "Nur Bild oder Video moeglich.";
+        state.upload.status = "Vetem foto ose video jane te mundura.";
         render();
         return;
       }
@@ -395,7 +395,7 @@ export function createMediaUploadRuntimeController({
           mimeType: "image/jpeg"
         });
       const cdnUrl = String(uploadResult?.cdnUrl || uploadResult?.url || "").trim();
-      if (!cdnUrl) throw new Error("Upload fehlgeschlagen.");
+      if (!cdnUrl) throw new Error("Ngarkimi deshtoi.");
 
       // Poster fuer ALLE Video-Uploads (Story, Feed, User-Post): erstes Frame
       // als JPEG. Die Kachel zeigt damit sofort ein Standbild (wichtig auf
@@ -517,7 +517,7 @@ export function createMediaUploadRuntimeController({
       setState({ activeTab: isBusiness ? "feed" : "profile" });
     } catch (err) {
       console.error(err);
-      state.upload.status = err?.message || "Upload fehlgeschlagen.";
+      state.upload.status = err?.message || "Ngarkimi deshtoi.";
       render();
     }
   }

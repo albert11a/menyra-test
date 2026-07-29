@@ -596,7 +596,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const safeReason = escapeHtml(String(gate?.reason || "startup-render-gate").trim() || "startup-render-gate");
     return `
       <div class="app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans" data-startup-render-gate="${safeReason}">
-        <main class="app-main-scroll" aria-busy="true" aria-label="${escapeHtml(tr("menu.loading", "Mnyra wird geladen", { label: "Mnyra" }))}">
+        <main class="app-main-scroll" aria-busy="true" aria-label="${escapeHtml(tr("menu.loading", "Mnyra po ngarkohet", { label: "Mnyra" }))}">
           <section class="p-6 pb-24">
             <div class="flex items-center justify-between mb-8">
               <div class="w-14 h-14 rounded-3xl bg-white border border-slate-100 shadow-sm overflow-hidden p-4">
@@ -829,9 +829,9 @@ export function createAppShellRuntimeController(deps = {}) {
         <div class="loc-search-wrap">
           <div class="loc-input-row">
             <span class="loc-pin">${icon("map-pin", "w-3.5 h-3.5")}</span>
-            <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtml(locationLabel)}" placeholder="${escapeHtml(tr("feed.locationPlaceholder", "Gib deine Stadt ein..."))}" class="loc-input" />
+            <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtml(locationLabel)}" placeholder="${escapeHtml(tr("feed.locationPlaceholder", "Vendos qytetin tend..."))}" class="loc-input" />
             <div class="loc-request-wrap">
-              <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="${escapeHtml(tr("header.useLocation", "Standort nutzen"))}">
+              <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="${escapeHtml(tr("header.useLocation", "Perdor vendndodhjen"))}">
                 <i id="locateIcon" data-lucide="crosshair" class="w-3.5 h-3.5 relative z-10"></i>
                 <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
               </button>
@@ -855,7 +855,7 @@ export function createAppShellRuntimeController(deps = {}) {
         type="button"
         data-language-toggle="true"
         class="${buttonClass}"
-        aria-label="${escapeHtml(tr("language.toggle", "Sprache waehlen"))}"
+        aria-label="${escapeHtml(tr("language.toggle", "Zgjidh gjuhen"))}"
         aria-expanded="${isLanguagePickerOpen() ? "true" : "false"}"
       >
         ${icon("globe", iconClass)}
@@ -960,7 +960,7 @@ export function createAppShellRuntimeController(deps = {}) {
           ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
         </button>
         ${menuActive ? `
-          <button type="button" data-action="kellner" title="${escapeHtml(tr("header.callWaiter", "Kellner rufen"))}" class="${primaryActionClass}">
+          <button type="button" data-action="kellner" title="${escapeHtml(tr("header.callWaiter", "Thirr kamarierin"))}" class="${primaryActionClass}">
             ${icon("bell", viewportUi.actionIconClass)}
           </button>
         ` : `
@@ -1079,7 +1079,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const collapseButtonClass = compactHeaderIcons
       ? "w-7 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
       : "w-8 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
-    const collapseButtonLabel = tr("header.toggleTabs", "Tabs ein- und ausblenden");
+    const collapseButtonLabel = tr("header.toggleTabs", "Shfaq ose fsheh tabet");
 
     // Die Tab-Zeile liegt bewusst ausserhalb des stickenden Shells: nur die
     // obere Leiste bleibt oben kleben, die Tabs scrollen normal mit dem Content
@@ -2009,7 +2009,7 @@ export function createAppShellRuntimeController(deps = {}) {
             await signInWithEmailAndPasswordFn(auth, email, password);
           } else {
             if (!name || !email || !password) {
-              throw new Error(tr("auth.fillAll", "Bitte alles ausfuellen."));
+              throw new Error(tr("auth.fillAll", "Ju lutem plotesoni gjithcka."));
             }
             const cred = await createUserWithEmailAndPasswordFn(auth, email, password);
             await updateProfileFn(cred.user, { displayName: name });
@@ -2030,7 +2030,7 @@ export function createAppShellRuntimeController(deps = {}) {
             }, { merge: true });
           }
         } catch (err) {
-          state.auth.error = err?.message || tr("auth.loginFailed", "Login fehlgeschlagen.");
+          state.auth.error = err?.message || tr("auth.loginFailed", "Hyrja deshtoi.");
         } finally {
           if (!auth?.currentUser) {
             state.auth.loading = false;
@@ -2240,7 +2240,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const userBtn = target.closest("[data-search-user]");
       if (userBtn) {
         if (isGuestSession()) {
-          openGuestAuthPromptFn(tr("auth.userProfilesRequired", "Bitte einloggen, um User-Profile zu sehen."));
+          openGuestAuthPromptFn(tr("auth.userProfilesRequired", "Ju lutem hyni per te pare profile perdoruesish."));
           return;
         }
         runBudgetWrapped("profile_open", () => openProfileFromUserFn({

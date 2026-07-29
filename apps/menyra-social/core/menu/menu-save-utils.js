@@ -217,13 +217,13 @@ export async function saveMenuItemFromModalCore({
   };
 
   if (!name) {
-    state.menuModal.status = "Bitte Namen eingeben.";
+    state.menuModal.status = "Ju lutem shkruani emrin.";
     renderOverlays({ updateMenu: true });
     return;
   }
 
   state.menuModal.loading = true;
-  state.menuModal.status = "Speichern...";
+  state.menuModal.status = "Duke ruajtur...";
   renderOverlays({ updateMenu: true });
 
   try {
@@ -253,7 +253,7 @@ export async function saveMenuItemFromModalCore({
     if (videoFile && typeof uploadRawMediaFile === "function") {
       const videoResult = await uploadRawMediaFile(videoFile, ownerId);
       videoUrl = String(videoResult?.cdnUrl || videoResult?.url || "").trim();
-      if (!videoUrl) throw new Error("Video-Upload fehlgeschlagen.");
+      if (!videoUrl) throw new Error("Ngarkimi i videos deshtoi.");
       if (typeof captureVideoPoster === "function") {
         try {
           const posterFile = await captureVideoPoster(videoFile);
@@ -388,13 +388,13 @@ export async function saveMenuItemFromModalCore({
     syncMenuCaches(restaurantId, orderedItems, { includePublic: true });
     await publishMenuToPublic(restaurantId, orderedItems);
 
-    state.menuModal.status = "Gespeichert.";
+    state.menuModal.status = "U ruajt.";
     state.menuModal.loading = false;
     closeMenuModal();
     render();
   } catch (err) {
     console.error(err);
-    state.menuModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.menuModal.status = err?.message || "Ruajtja deshtoi.";
     state.menuModal.loading = false;
     renderOverlays({ updateMenu: true });
   }

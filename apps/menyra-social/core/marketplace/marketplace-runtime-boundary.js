@@ -49,7 +49,7 @@ export function createMarketplaceRuntimeBoundary({
       <section class="p-6 pb-24 animate-in fade-in duration-300">
         <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
           ${icon("loader-2", "w-4 h-4 animate-spin")}
-          Daten werden vorbereitet ...
+          Te dhenat po pergatiten ...
         </div>
       </section>
     `;

@@ -74,8 +74,8 @@ export function createPublicProfileRuntimeController({
 
   function isProfileLoadingBioPlaceholder(value = "") {
     const key = normalizeProfileBioPlaceholderKey(value);
-    return key === "profil wird geladen"
-      || key === "profil wird geladen..."
+    return key === "profili po ngarkohet"
+      || key === "profili po ngarkohet..."
       || key === "profile is loading"
       || key === "profile is loading..."
       || key === "profile loading"

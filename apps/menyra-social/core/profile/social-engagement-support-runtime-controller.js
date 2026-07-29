@@ -847,7 +847,7 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
 
   async function deleteProfilePost(postId) {
     if (!postId || !state.user) return;
-    if (!confirmFn("Beitrag wirklich loeschen?")) return;
+    if (!confirmFn("Ta fshish vertet postimin?")) return;
     const { list, idx } = findProfilePost(postId);
     if (idx < 0) return;
     list.splice(idx, 1);

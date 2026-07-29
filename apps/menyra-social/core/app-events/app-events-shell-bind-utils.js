@@ -188,7 +188,7 @@ export function bindAppShellEventsCore({
       lat: coords.lat,
       lng: coords.lng,
       city: String(record.city || record.locationCity || record.primaryCity || "").trim(),
-      address: String(record.address || record.location || record.primaryAddress || record.city || "Standort folgt").trim(),
+      address: String(record.address || record.location || record.primaryAddress || record.city || "Vendndodhja se shpejti").trim(),
       hours: record.hours || record.openHours || record.openingHours || "08:00 - 23:00",
       rating: record.rating || record.score || 4.8,
       img: record.logoUrl || record.logo || record.heroUrl || record.coverUrl || "",
@@ -905,7 +905,7 @@ export function bindAppShellEventsCore({
         return;
       }
       if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
         return;
       }
       const uploadIntent = requestedTab === "upload"
@@ -1051,7 +1051,7 @@ export function bindAppShellEventsCore({
     const nextTab = String(tab || "").trim();
     if (!nextTab) return;
     if (nextTab === "favorites" && !String(state.user?.uid || "").trim()) {
-      openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
+      openGuestAuthPrompt(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
       return;
     }
     if (forceProfile) state.activeTab = "profile";

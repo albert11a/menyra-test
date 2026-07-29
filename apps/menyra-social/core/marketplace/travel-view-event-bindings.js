@@ -161,7 +161,7 @@ function getBusinessLocationLabel(record = {}) {
   const place = getBusinessPlaceLabel(record);
   if (city && place && normalizeLooseKey(city) !== normalizeLooseKey(place)) return `${city} - ${place}`;
   const address = cleanText(record.address || record.location || record.primaryAddress);
-  return city || place || cleanText(record.country || record.region || "") || address || "Standort folgt";
+  return city || place || cleanText(record.country || record.region || "") || address || "Vendndodhja se shpejti";
 }
 
 function collectTypeCandidates(record = {}) {
@@ -759,7 +759,7 @@ export function bindTravelViewEvents({
         if (!offerCard) return;
         showTravelOfferToast(
           offerCard,
-          success ? "Angebots-Link kopiert! Ideal fuer Instagram." : "Link konnte nicht kopiert werden."
+          success ? "Linku i ofertes u kopjua! Ideal per Instagram." : "Linku nuk mund te kopjohej."
         );
       });
     });

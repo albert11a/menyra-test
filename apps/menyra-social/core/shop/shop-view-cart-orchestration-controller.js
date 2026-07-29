@@ -125,7 +125,7 @@ export function createShopViewCartOrchestrationController({
       return `
       <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"${renderDebugAttrs(`${source}:no-products`)}>
         <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
-          ${escapeHtmlFn(tr("menu.noProducts", "Keine Produkte"))}
+          ${escapeHtmlFn(tr("menu.noProducts", "Nuk ka produkte"))}
         </div>
       </div>
     `;
@@ -231,10 +231,10 @@ export function createShopViewCartOrchestrationController({
           <div class="w-14 h-14 rounded-[1.4rem] bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
             ${iconFn("bookmark", "w-6 h-6")}
           </div>
-          <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${escapeHtmlFn(tr("favorites.userOnly", "Favoriten nur fuer User"))}</p>
-          <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(tr("auth.registerOrLogin", "Bitte registrieren oder einloggen."))}</p>
+          <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${escapeHtmlFn(tr("favorites.userOnly", "Te preferuarat vetem per perdorues"))}</p>
+          <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(tr("auth.registerOrLogin", "Ju lutem regjistrohuni ose hyni."))}</p>
           <button data-auth-open class="mt-5 px-5 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-            ${escapeHtmlFn(tr("auth.loginRegister", "Login / Registrieren"))}
+            ${escapeHtmlFn(tr("auth.loginRegister", "Login / Regjistrohu"))}
           </button>
         </div>
       </div>
@@ -256,7 +256,7 @@ export function createShopViewCartOrchestrationController({
       </div>
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtmlFn(tr("favorites.loading", "Favoriten werden geladen..."))}</div>
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtmlFn(tr("favorites.loading", "Te preferuarat po ngarkohen..."))}</div>
         </div>
       ` : favoriteState.error ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -269,8 +269,8 @@ export function createShopViewCartOrchestrationController({
           <div class="w-14 h-14 rounded-[1.4rem] bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
             ${iconFn("bookmark", "w-6 h-6")}
           </div>
-          <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${escapeHtmlFn(tr("favorites.empty", "Noch keine Favoriten"))}</p>
-          <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(tr("favorites.emptyHint", "Tippe im Produkt-Drawer auf das Bookmark-Icon."))}</p>
+          <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${escapeHtmlFn(tr("favorites.empty", "Ende nuk ka te preferuara"))}</p>
+          <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(tr("favorites.emptyHint", "Prek ikonen Bookmark ne dritaren e produktit."))}</p>
         </div>
       `}
     </div>
@@ -309,7 +309,7 @@ export function createShopViewCartOrchestrationController({
     return {
       ...base,
       tableNumber: menuAccessSource === "qr" ? routeTableNumber : 0,
-      tableLabel: menuAccessSource === "qr" && routeTableNumber ? `Tisch ${routeTableNumber}` : "",
+      tableLabel: menuAccessSource === "qr" && routeTableNumber ? `Tavolina ${routeTableNumber}` : "",
       serviceMode: menuAccessSource === "qr" && routeTableNumber ? "table" : ""
     };
   }
@@ -368,14 +368,14 @@ export function createShopViewCartOrchestrationController({
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtmlFn(tr("cart.title", "Warenkorb"))}</span>
             <h3 class="text-xl font-black italic tracking-tighter">${escapeHtmlFn(context.businessName || "Shop")}</h3>
-            ${isTableService ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mt-2">Tisch ${escapeHtmlFn(tableNumber)}</p>` : ""}
+            ${isTableService ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mt-2">Tavolina ${escapeHtmlFn(tableNumber)}</p>` : ""}
           </div>
           <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
             ${iconFn("shopping-cart", "w-5 h-5")}
           </div>
         </div>
         ${hasOtherCart ? `
-          <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">${escapeHtmlFn(tr("cart.otherShop", "Dein aktueller Warenkorb gehoert zu einem anderen Shop."))}</p>
+          <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">${escapeHtmlFn(tr("cart.otherShop", "Shporta jote aktuale i perket nje dyqani tjeter."))}</p>
         ` : confirmation ? `
           <div class="text-center py-10">
             <div class="relative w-24 h-24 mx-auto mb-6">
@@ -385,10 +385,10 @@ export function createShopViewCartOrchestrationController({
                 ${iconFn("check", "w-8 h-8")}
               </div>
             </div>
-            <p class="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-600">${escapeHtmlFn(tr("cart.sent", "Bestellung gesendet"))}</p>
-            <h4 class="text-[22px] font-black italic tracking-tight text-slate-900 mt-3">${escapeHtmlFn(confirmation.title || tr("cart.order", "Bestellung"))}</h4>
-            <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(confirmation.message || tr("cart.orderReadySoon", "Ihre Bestellung wird zubereitet und in Kuerze serviert."))}</p>
-            ${confirmation.tableNumber ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-700 mt-4">Tisch ${escapeHtmlFn(confirmation.tableNumber)}</p>` : ""}
+            <p class="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-600">${escapeHtmlFn(tr("cart.sent", "Porosia u dergua"))}</p>
+            <h4 class="text-[22px] font-black italic tracking-tight text-slate-900 mt-3">${escapeHtmlFn(confirmation.title || tr("cart.order", "Porosi"))}</h4>
+            <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(confirmation.message || tr("cart.orderReadySoon", "Porosia juaj po pergatitet dhe do te serviret se shpejti."))}</p>
+            ${confirmation.tableNumber ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-700 mt-4">Tavolina ${escapeHtmlFn(confirmation.tableNumber)}</p>` : ""}
           </div>
         ` : items.length ? `
           <div class="space-y-3">
@@ -414,9 +414,9 @@ export function createShopViewCartOrchestrationController({
                     data-cart-item-comment="${escapeHtmlFn(item.cartKey || item.itemId)}"
                     type="text"
                     maxlength="180"
-                    aria-label="${escapeHtmlFn(tr("cart.commentForWaiter", "Kommentar fuer den Kellner"))}"
+                    aria-label="${escapeHtmlFn(tr("cart.commentForWaiter", "Koment per kamarierin"))}"
                     value="${escapeHtmlFn(item.comment || "")}"
-                    placeholder="${escapeHtmlFn(tr("cart.commentPlaceholder", "Kommentar fuer den Kellner..."))}"
+                    placeholder="${escapeHtmlFn(tr("cart.commentPlaceholder", "Koment per kamarierin..."))}"
                     class="w-full h-11 rounded-[1.2rem] border border-slate-200 bg-white/90 px-4 text-[13px] font-semibold text-slate-700 placeholder:text-slate-400 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100/70"
                   />
                 </div>
@@ -427,9 +427,9 @@ export function createShopViewCartOrchestrationController({
               <span class="text-lg font-black text-slate-900">${escapeHtmlFn(formatPriceFn(total))}</span>
             </div>
             <button data-cart-checkout="${directOrderFlow ? "submit" : "open"}" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95 ${state.shopCart.loading ? "opacity-70 pointer-events-none" : ""}">
-              ${state.shopCart.loading ? escapeHtmlFn(tr("cart.sending", "Bestellung wird gesendet...")) : (directOrderFlow ? (isTableService ? escapeHtmlFn(tr("cart.tableOrderSubmit", "Tischbestellung absenden")) : escapeHtmlFn(tr("cart.orderSubmit", "Bestellung absenden"))) : escapeHtmlFn(tr("cart.checkoutStart", "Checkout starten")))}
+              ${state.shopCart.loading ? escapeHtmlFn(tr("cart.sending", "Porosia po dergohet...")) : (directOrderFlow ? (isTableService ? escapeHtmlFn(tr("cart.tableOrderSubmit", "Tischbestellung absenden")) : escapeHtmlFn(tr("cart.orderSubmit", "Bestellung absenden"))) : escapeHtmlFn(tr("cart.checkoutStart", "Checkout starten")))}
             </button>
-            ${directOrderFlow ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${isTableService ? escapeHtmlFn(tr("cart.directTable", "Direkt fuer deinen Tisch")) : escapeHtmlFn(tr("cart.directNoDetails", "Direkt ohne weitere Angaben"))}</p>` : ""}
+            ${directOrderFlow ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${isTableService ? escapeHtmlFn(tr("cart.directTable", "Direkt per tavolinen tende")) : escapeHtmlFn(tr("cart.directNoDetails", "Direkt pa te dhena shtese"))}</p>` : ""}
             ${state.shopCart.status && !state.shopCart.checkoutOpen ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtmlFn(state.shopCart.status)}</p>` : ""}
           </div>
         ` : `
@@ -438,7 +438,7 @@ export function createShopViewCartOrchestrationController({
               ${iconFn("shopping-bag", "w-6 h-6")}
             </div>
             <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${escapeHtmlFn(tr("cart.empty", "Warenkorb leer"))}</p>
-            <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(tr("cart.emptyHint", "Tippe auf das Plus bei einem Produkt."))}</p>
+            <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(tr("cart.emptyHint", "Prek plusin te nje produkt."))}</p>
           </div>
         `}
       </div>
@@ -447,22 +447,22 @@ export function createShopViewCartOrchestrationController({
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtmlFn(tr("cart.checkout", "Checkout"))}</span>
             <h3 class="text-xl font-black italic tracking-tighter">${isTableService ? escapeHtmlFn(tr("cart.tableOrder", "Tischbestellung")) : (hospitalityCheckout ? escapeHtmlFn(tr("cart.directOrder", "Direkt bestellen")) : escapeHtmlFn(tr("cart.deliveryData", "Lieferdaten")))}</h3>
-            ${isTableService ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-2">${escapeHtmlFn(tr("cart.tableOrderFor", "Bestellung fuer Tisch {table}", { table: tableNumber }))}</p>` : ""}
+            ${isTableService ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-2">${escapeHtmlFn(tr("cart.tableOrderFor", "Porosi per tavolinen {table}", { table: tableNumber }))}</p>` : ""}
           </div>
           <div class="grid grid-cols-1 gap-3">
             ${isTableService ? `
               <div class="rounded-[1.8rem] border border-emerald-100 bg-emerald-50 px-5 py-4">
-                <p class="text-[10px] font-black uppercase tracking-widest text-emerald-700">${escapeHtmlFn(tr("cart.tableDirect", "Direkt am Tisch"))}</p>
-                <p class="text-sm font-bold text-slate-700 mt-2">${escapeHtmlFn(tr("cart.tableDirectBody", "Keine Namen oder Telefonnummern noetig. Die Bestellung geht direkt an Tisch {table}.", { table: tableNumber }))}</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-emerald-700">${escapeHtmlFn(tr("cart.tableDirect", "Direkt ne tavoline"))}</p>
+                <p class="text-sm font-bold text-slate-700 mt-2">${escapeHtmlFn(tr("cart.tableDirectBody", "Nuk duhen emra apo numra telefoni. Porosia shkon direkt ne tavolinen {table}.", { table: tableNumber }))}</p>
               </div>
             ` : hospitalityCheckout ? `
               <div class="rounded-[1.8rem] border border-indigo-100 bg-indigo-50 px-5 py-4">
                 <p class="text-[10px] font-black uppercase tracking-widest text-indigo-700">${escapeHtmlFn(tr("cart.fastCheckout", "Schneller Checkout"))}</p>
-                <p class="text-sm font-bold text-slate-700 mt-2">${escapeHtmlFn(tr("cart.fastCheckoutBody", "Fuer {business} sind keine Namen oder Telefonnummern noetig. Bestellung direkt absenden.", { business: context.businessName || tr("common.thisBusiness", "dieses Lokal") }))}</p>
+                <p class="text-sm font-bold text-slate-700 mt-2">${escapeHtmlFn(tr("cart.fastCheckoutBody", "Per {business} nuk duhen emra apo numra telefoni. Dergo porosine direkt.", { business: context.businessName || tr("common.thisBusiness", "ky lokal") }))}</p>
               </div>
             ` : `
               <input data-cart-field="name" type="text" value="${escapeHtmlFn(state.shopCart.form.name || "")}" placeholder="${escapeHtmlFn(tr("common.name", "Name"))}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              <input data-cart-field="phone" type="text" value="${escapeHtmlFn(state.shopCart.form.phone || "")}" placeholder="${escapeHtmlFn(tr("common.phone", "Tel Nummer"))}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input data-cart-field="phone" type="text" value="${escapeHtmlFn(state.shopCart.form.phone || "")}" placeholder="${escapeHtmlFn(tr("common.phone", "Numri i telefonit"))}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
               <input data-cart-field="city" type="text" value="${escapeHtmlFn(state.shopCart.form.city || "")}" placeholder="${escapeHtmlFn(tr("common.city", "Qyteti"))}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
               <textarea data-cart-field="address" rows="3" placeholder="${escapeHtmlFn(tr("common.address", "Adresa"))}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtmlFn(state.shopCart.form.address || "")}</textarea>
             `}
@@ -504,14 +504,14 @@ export function createShopViewCartOrchestrationController({
     const forceAdd = options?.forceAdd === true;
     if (!item) {
       const nextCart = normalizeShopCartStateFn(state.shopCart);
-      nextCart.status = tr("cart.addFailed", "Produkt konnte nicht hinzugefuegt werden.");
+      nextCart.status = tr("cart.addFailed", "Produkti nuk mund te shtohej.");
       state.shopCart = nextCart;
       renderFn();
       return false;
     }
     if (!forceAdd && !canAddToShopCartFn(profile)) {
       const nextCart = normalizeShopCartStateFn(state.shopCart);
-      nextCart.status = tr("cart.reopenProduct", "Bitte Produkt erneut oeffnen und hinzufuegen.");
+      nextCart.status = tr("cart.reopenProduct", "Ju lutem hapeni produktin perseri dhe shtojeni.");
       state.shopCart = nextCart;
       renderFn();
       return false;
@@ -519,7 +519,7 @@ export function createShopViewCartOrchestrationController({
     const context = resolveCartContextForItem(item, profile);
     if (!context.restaurantId) {
       const nextCart = normalizeShopCartStateFn(state.shopCart);
-      nextCart.status = tr("cart.shopMissing", "Shop-Zuordnung fehlt. Bitte neu laden.");
+      nextCart.status = tr("cart.shopMissing", "Mungon lidhja me dyqanin. Ju lutem ngarkojeni perseri.");
       state.shopCart = nextCart;
       renderFn();
       return false;
@@ -533,17 +533,17 @@ export function createShopViewCartOrchestrationController({
     ).trim();
     if (!resolvedItemId) {
       const nextCart = normalizeShopCartStateFn(state.shopCart);
-      nextCart.status = tr("cart.productIdMissing", "Produkt-ID fehlt. Bitte neu laden.");
+      nextCart.status = tr("cart.productIdMissing", "Mungon ID e produktit. Ju lutem ngarkojeni perseri.");
       state.shopCart = nextCart;
       renderFn();
       return false;
     }
     const currentRestaurantId = String(state.shopCart?.restaurantId || "").trim();
     if (currentRestaurantId && currentRestaurantId !== context.restaurantId) {
-      const shouldReplace = confirmFn(tr("cart.otherShop", "Dein aktueller Warenkorb gehoert zu einem anderen Shop."));
+      const shouldReplace = confirmFn(tr("cart.otherShop", "Shporta jote aktuale i perket nje dyqani tjeter."));
       if (!shouldReplace) {
         const nextCart = normalizeShopCartStateFn(state.shopCart);
-        nextCart.status = tr("cart.otherShop", "Dein aktueller Warenkorb gehoert zu einem anderen Shop.");
+        nextCart.status = tr("cart.otherShop", "Shporta jote aktuale i perket nje dyqani tjeter.");
         state.shopCart = nextCart;
         renderFn();
         return false;
@@ -589,7 +589,7 @@ export function createShopViewCartOrchestrationController({
       tableNumber: nextCart.tableNumber,
       tableLabel: nextCart.tableLabel
     };
-    nextCart.status = tr("cart.added", "{name} wurde zum Warenkorb hinzugefuegt.", { name: entry.name });
+    nextCart.status = tr("cart.added", "{name} u shtua ne shporte.", { name: entry.name });
     state.shopCart = nextCart;
     saveShopCartToStorageFn();
     renderFn();

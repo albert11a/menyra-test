@@ -60,6 +60,6 @@ export function formatTravelLabelCore(meters, labels = {}) {
   const travel = estimateTravelCore(meters);
   if (!travel) return "";
   const walkLabel = String(labels.walk || "min in Gehweite");
-  const driveLabel = String(labels.drive || "min mit dem Auto");
+  const driveLabel = String(labels.drive || "min me makine");
   return `${travel.minutes} ${travel.mode === "walk" ? walkLabel : driveLabel}`;
 }

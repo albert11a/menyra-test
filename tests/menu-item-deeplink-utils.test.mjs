@@ -129,12 +129,12 @@ test("renderStoryMenuItemTagPickerCore shows a hint when loading failed", () => 
   const html = renderStoryMenuItemTagPickerCore({
     storyTag: { status: "error", items: [] }
   });
-  assert.match(html, /Produkte konnten nicht geladen werden/);
+  assert.match(html, /Produktet nuk mund te ngarkoheshin/);
 });
 
 test("renderStoryMenuItemTagPickerCore shows loading hint while items load", () => {
   const html = renderStoryMenuItemTagPickerCore({
     storyTag: { status: "loading", items: [] }
   });
-  assert.match(html, /Produkte werden geladen/);
+  assert.match(html, /Produktet po ngarkohen/);
 });
