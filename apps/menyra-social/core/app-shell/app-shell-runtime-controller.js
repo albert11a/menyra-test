@@ -171,6 +171,10 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
   let mainHeaderTabsRafId = 0;
+  // Der Pfeil muss auch dann schalten, wenn die Seite nicht weit genug
+  // scrollbar ist (kurzer Feed): "open"/"closed" haelt den gewuenschten
+  // Zustand fest, bis der Scroll-Zustand von selbst dort ankommt.
+  let mainHeaderTabsManualState = null;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1551,10 +1555,22 @@ export function createAppShellRuntimeController(deps = {}) {
     const slot = Math.max(1, Number(tabsRect.height) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX);
     const hidden = Math.max(0, Number(topEl.getBoundingClientRect().bottom || 0) - Number(tabsRect.top || 0));
     const progress = Math.min(1, hidden / slot);
+    const minimizedByScroll = progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS;
+    // Hat der Pfeil einen Zustand erzwungen, gilt der, bis der Scroll-Zustand
+    // dort ankommt (oder auf einer kaum scrollbaren Seite: dauerhaft).
+    if (mainHeaderTabsManualState) {
+      const wantsMinimized = mainHeaderTabsManualState === "closed";
+      if (minimizedByScroll === wantsMinimized) {
+        mainHeaderTabsManualState = null;
+      } else {
+        applyMainHeaderTabsFade(wantsMinimized ? 0 : 1, wantsMinimized);
+        return;
+      }
+    }
     // Etwas schneller ausblenden als die Zeile hinter die Leiste laeuft, damit
     // man nie halb abgeschnittene Buttons sieht.
     const fade = Math.min(1, Math.max(0, 1 - progress * MAIN_HEADER_TABS_FADE_FACTOR));
-    applyMainHeaderTabsFade(fade, progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS);
+    applyMainHeaderTabsFade(fade, minimizedByScroll);
   }
 
   function stopMainHeaderTabsRuntime() {
@@ -1597,6 +1613,10 @@ export function createAppShellRuntimeController(deps = {}) {
         const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
         const minimized = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
         const nextTop = minimized ? 0 : slot + 2;
+        // Der Klick schaltet den Zustand immer sofort und sicher um - auch
+        // wenn die Seite den Ziel-Scroll gar nicht erreichen kann.
+        mainHeaderTabsManualState = minimized ? "open" : "closed";
+        applyMainHeaderTabsFade(minimized ? 1 : 0, !minimized);
         try {
           win.scrollTo({ top: nextTop, behavior: "smooth" });
         } catch {
@@ -1637,6 +1657,7 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTopEl = null;
     smartHeaderBoundTabsEl = null;
     if (resetState) {
+      mainHeaderTabsManualState = null;
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;

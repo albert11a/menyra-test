@@ -2104,11 +2104,18 @@ export function createFeedViewOrchestrationController({
   const resolveFeedGateLocale = () => {
     const explicit = normalizeFeedGateLocale(readFeedGateLocaleParam());
     if (explicit) return explicit;
+    // Die im App-Sprachmenue gewaehlte Sprache hat Vorrang vor der
+    // Browser-Sprache; ohne Auswahl ist Albanisch die Hauptsprache.
+    let appLocale = "";
+    try {
+      appLocale = normalizeFeedGateLocale(String(win?.localStorage?.getItem("menyra_lang") || "").trim());
+    } catch {}
+    if (appLocale) return appLocale;
     const navigatorLocales = Array.isArray(win?.navigator?.languages) ? win.navigator.languages : [];
     const browserLocale = normalizeFeedGateLocale(
       String(navigatorLocales[0] || win?.navigator?.language || "").trim()
     );
-    return browserLocale || "en";
+    return browserLocale || "sq";
   };
   const resolveFeedGateCopy = () => FEED_GATE_I18N[resolveFeedGateLocale()] || FEED_GATE_I18N.en;
   const resolveLocationGateStatusText = () => {
@@ -2240,6 +2247,66 @@ export function createFeedViewOrchestrationController({
     locationGateStatus = String(status || "idle").trim().toLowerCase();
     locationGateMessage = String(message || "").trim();
     syncFeedLocationGateDom();
+  };
+  // Kennt die lokale Stadtliste die GPS-Position nicht (z.B. Diaspora), holt
+  // ein Reverse-Geocode den echten Stadtnamen nach und ersetzt das generische
+  // "Vendndodhja aktuale" im Feld und im gespeicherten Datensatz.
+  const refineViewerLocationCityFromCoords = async (coords = null) => {
+    const safeCoords = normalizeViewerCoords(coords);
+    if (!safeCoords) return;
+    const fetchClient = typeof win?.fetch === "function" ? win.fetch.bind(win) : null;
+    if (!fetchClient) return;
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timeoutHandle = null;
+    if (controller) {
+      timeoutHandle = setTimeoutFn(() => {
+        try {
+          controller.abort();
+        } catch {}
+      }, FEED_LOCATION_REMOTE_TIMEOUT_MS);
+    }
+    try {
+      const endpoint = new URL("https://photon.komoot.io/reverse");
+      endpoint.searchParams.set("lat", String(safeCoords.lat));
+      endpoint.searchParams.set("lon", String(safeCoords.lng));
+      endpoint.searchParams.set("limit", "1");
+      const response = await fetchClient(endpoint.toString(), {
+        method: "GET",
+        signal: controller?.signal,
+        headers: { "Accept-Language": "sq,sr,de,en" }
+      });
+      if (!response?.ok) return;
+      const payload = await response.json();
+      const properties = payload?.features?.[0]?.properties || {};
+      const cityName = String(properties.city || properties.town || properties.village || properties.name || "").trim();
+      if (!cityName || isGenericFeedLocationLabel(cityName)) return;
+      const record = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+      if (!record || String(record.source || "") !== "gps") return;
+      if (haversineDistanceKm(record, safeCoords) > 1) return;
+      if (record.city && !isGenericFeedLocationLabel(record.city)) return;
+      const updated = normalizeViewerLocationRecord({
+        ...record,
+        label: cityName,
+        city: cityName,
+        country: String(properties.country || record.country || "").trim(),
+        savedAt: Date.now()
+      });
+      if (!updated) return;
+      persistViewerLocation(updated);
+      const cityInput = doc?.getElementById("feedLocationCityInput");
+      if (cityInput instanceof HTMLInputElement && doc?.activeElement !== cityInput) {
+        const currentValue = String(cityInput.value || "").trim();
+        if (!currentValue || isGenericFeedLocationLabel(currentValue)) cityInput.value = cityName;
+      }
+      setStateFn({});
+    } catch {
+    } finally {
+      if (timeoutHandle) {
+        try {
+          clearTimeout(timeoutHandle);
+        } catch {}
+      }
+    }
   };
   const applyViewerLocationSelection = (record = null) => {
     const normalized = normalizeViewerLocationRecord(record);
@@ -2374,14 +2441,21 @@ export function createFeedViewOrchestrationController({
             setLocationGateState("error");
             return;
           }
+          // Der echte Stadtname gehoert ins Feld, nicht "Vendndodhja aktuale":
+          // erst die naechste bekannte Stadt aus den Koordinaten, sonst der
+          // getippte Text; ein Reverse-Geocode verfeinert danach asynchron.
+          const inferredCity = inferFeedCityLabelFromCoords(coords);
+          const typedCity = currentLabel && !isGenericFeedLocationLabel(currentLabel) ? currentLabel : "";
+          const resolvedCity = inferredCity || typedCity;
           applyViewerLocationSelection({
             lat: coords.lat,
             lng: coords.lng,
-            label: currentLabel || gateCopy.currentLocationLabel,
-            city: currentLabel || "",
+            label: resolvedCity || gateCopy.currentLocationLabel,
+            city: resolvedCity,
             countryCode: resolveCountryCodeFromCoords(coords),
             source: "gps"
           });
+          if (!inferredCity) void refineViewerLocationCityFromCoords(coords);
         });
       },
       (error) => {
@@ -3867,23 +3941,37 @@ export function createFeedViewOrchestrationController({
         return;
       }
       if (event.key !== "Enter") return;
-      const suggestion = getFeedLocationCitySuggestions(cityInput.value, 1)[0];
-      if (!suggestion) return;
       event.preventDefault();
-      cityInput.value = suggestion.label;
-      hideFeedLocationSuggestions();
-      const applied = applyViewerLocationSelection({
-        lat: suggestion.lat,
-        lng: suggestion.lng,
-        label: suggestion.label,
-        city: suggestion.city || suggestion.label,
-        country: suggestion.country,
-        countryCode: suggestion.countryCode,
-        source: "city-search"
-      });
-      if (!applied) {
-        requestViewerLocationAccess({ fallbackCity: suggestion });
-      }
+      const query = String(cityInput.value || "").trim();
+      if (!query) return;
+      const applySuggestion = (suggestion) => {
+        if (!suggestion) return false;
+        cityInput.value = suggestion.label;
+        hideFeedLocationSuggestions();
+        const applied = applyViewerLocationSelection({
+          lat: suggestion.lat,
+          lng: suggestion.lng,
+          label: suggestion.label,
+          city: suggestion.city || suggestion.label,
+          country: suggestion.country,
+          countryCode: suggestion.countryCode,
+          source: "city-search"
+        });
+        if (!applied) {
+          requestViewerLocationAccess({ fallbackCity: suggestion });
+        }
+        return true;
+      };
+      if (applySuggestion(getFeedLocationCitySuggestions(query, 1)[0])) return;
+      // Enter darf nie ins Leere laufen: sind die Vorschlaege noch nicht
+      // geladen, sofort remote suchen und das beste Ergebnis uebernehmen.
+      void (async () => {
+        await requestRemoteFeedLocationSuggestions(query);
+        const liveQuery = String(cityInput.value || "").trim();
+        if (normalizeLocationQuery(liveQuery) !== normalizeLocationQuery(query)) return;
+        if (applySuggestion(getFeedLocationCitySuggestions(query, 1)[0])) return;
+        syncFeedLocationSuggestionsDom(liveQuery, { skipRemoteFetch: true });
+      })();
     });
 
     doc.addEventListener("click", (event) => {
