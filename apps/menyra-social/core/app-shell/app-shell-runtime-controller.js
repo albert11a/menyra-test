@@ -172,6 +172,16 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsToggleHandler = null;
   let mainHeaderTabsRafId = 0;
   let mainHeaderTabsBootSyncPending = true;
+  let mainHeaderTabsBootLockActive = true;
+  let mainHeaderTabsBootLockBound = false;
+  let mainHeaderTabsBootCorrections = 0;
+  const MAIN_HEADER_TABS_BOOT_MAX_CORRECTIONS = 4;
+  const MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS = Object.freeze([
+    "pointerdown",
+    "touchstart",
+    "wheel",
+    "keydown"
+  ]);
   const MAIN_HEADER_TABS_SLOT_FALLBACK_PX = 40;
   const MAIN_HEADER_TABS_MINIMIZED_PROGRESS = 0.45;
   const MAIN_HEADER_TABS_FADE_FACTOR = 1.8;
@@ -1487,6 +1497,40 @@ export function createAppShellRuntimeController(deps = {}) {
   // Die Tab-Zeile bleibt immer in der gleichen Layout-Hoehe stehen und blendet
   // sich nur aus, waehrend sie hinter die obere Leiste scrollt. Dadurch wandert
   // der Content beim Scrollen nie nach oben oder unten.
+  function releaseMainHeaderTabsBootLock() {
+    if (!mainHeaderTabsBootLockActive) return;
+    mainHeaderTabsBootLockActive = false;
+    if (!win) return;
+    MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS.forEach((eventName) => {
+      win.removeEventListener(eventName, releaseMainHeaderTabsBootLock);
+    });
+  }
+
+  function bindMainHeaderTabsBootLockRelease() {
+    if (!win || !mainHeaderTabsBootLockActive || mainHeaderTabsBootLockBound) return;
+    mainHeaderTabsBootLockBound = true;
+    MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS.forEach((eventName) => {
+      win.addEventListener(eventName, releaseMainHeaderTabsBootLock, { passive: true });
+    });
+  }
+
+  // Solange der Nutzer die Seite noch nicht angefasst hat, wird eine
+  // ungewollte Scroll-Position an den Anfang zurueckgeholt. Begrenzt, damit es
+  // sich nicht mit einem legitimen Auto-Scroll gegenseitig hochschaukelt.
+  function resetMainHeaderTabsBootScroll() {
+    if (!win || !mainHeaderTabsBootLockActive) return false;
+    if (Math.max(0, Number(win.scrollY || 0)) <= 0) return false;
+    if (mainHeaderTabsBootCorrections >= MAIN_HEADER_TABS_BOOT_MAX_CORRECTIONS) {
+      releaseMainHeaderTabsBootLock();
+      return false;
+    }
+    mainHeaderTabsBootCorrections += 1;
+    try {
+      win.scrollTo(0, 0);
+    } catch {}
+    return true;
+  }
+
   function applyMainHeaderTabsFade(fade, minimized) {
     // Auf dem Root, damit sowohl die Tab-Zeile als auch der Shell darauf
     // zugreifen koennen - der Header-Schatten blendet damit exakt mit um.
@@ -1498,10 +1542,15 @@ export function createAppShellRuntimeController(deps = {}) {
   function syncMainHeaderTabsScrollProgress() {
     if (!doc || !win) return;
     const tabsEl = doc.getElementById("smart-tabs");
-    if (!tabsEl) return;
-    const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
-    const scrollY = Math.max(0, Number(win.scrollY || 0));
-    const progress = Math.min(1, scrollY / slot);
+    const topEl = doc.getElementById("smart-header-top");
+    if (!tabsEl || !topEl) return;
+    // Gemessen wird, wie weit die Tab-Zeile tatsaechlich hinter der oberen
+    // Leiste liegt - nicht scrollY. Steht die Zeile sichtbar unter der Leiste,
+    // ist sie offen, egal was der Scroll-Wert gerade behauptet.
+    const tabsRect = tabsEl.getBoundingClientRect();
+    const slot = Math.max(1, Number(tabsRect.height) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX);
+    const hidden = Math.max(0, Number(topEl.getBoundingClientRect().bottom || 0) - Number(tabsRect.top || 0));
+    const progress = Math.min(1, hidden / slot);
     // Etwas schneller ausblenden als die Zeile hinter die Leiste laeuft, damit
     // man nie halb abgeschnittene Buttons sieht.
     const fade = Math.min(1, Math.max(0, 1 - progress * MAIN_HEADER_TABS_FADE_FACTOR));
@@ -1528,16 +1577,13 @@ export function createAppShellRuntimeController(deps = {}) {
     stopMainHeaderTabsRuntime();
     if (!win || !doc || !tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) return;
 
-    // Beim App-Start sollen die Tabs immer offen stehen. Falls die Seite noch
-    // eine Scroll-Position aus einer frueheren Sitzung mitbringt, wird die
-    // einmalig auf den Anfang gesetzt.
+    // Beim App-Start sollen die Tabs offen stehen und offen bleiben, bis der
+    // Nutzer die Seite selbst anfasst. Ein Scroll, den niemand ausgeloest hat,
+    // darf sie nicht wegblenden.
+    bindMainHeaderTabsBootLockRelease();
     if (mainHeaderTabsBootSyncPending) {
       mainHeaderTabsBootSyncPending = false;
-      if (Math.max(0, Number(win.scrollY || 0)) > 0) {
-        try {
-          win.scrollTo(0, 0);
-        } catch {}
-      }
+      resetMainHeaderTabsBootScroll();
       applyMainHeaderTabsFade(1, false);
     }
 
@@ -1547,6 +1593,7 @@ export function createAppShellRuntimeController(deps = {}) {
       // Der Pfeil ist an denselben Scroll-Zustand gebunden, den er anzeigt:
       // minimiert -> zurueck nach oben, offen -> knapp an den Tabs vorbei.
       mainHeaderTabsToggleHandler = () => {
+        releaseMainHeaderTabsBootLock();
         const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
         const minimized = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
         const nextTop = minimized ? 0 : slot + 2;
@@ -1561,6 +1608,10 @@ export function createAppShellRuntimeController(deps = {}) {
 
     // Nur Opacity und eine Klasse - kein Layout, deshalb kein Ruckeln.
     mainHeaderTabsScrollListener = () => {
+      if (mainHeaderTabsBootLockActive && resetMainHeaderTabsBootScroll()) {
+        applyMainHeaderTabsFade(1, false);
+        return;
+      }
       if (mainHeaderTabsRafId) return;
       mainHeaderTabsRafId = win.requestAnimationFrame?.(() => {
         mainHeaderTabsRafId = 0;
