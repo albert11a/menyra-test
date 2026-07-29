@@ -783,7 +783,6 @@ const state = {
   user: null,
   activeTab: "feed",
   drawerOpen: false,
-  headerTabsCollapsed: String(safeStorage.getItem(STORAGE_KEYS.headerTabs) || "").trim() === "1",
   feedCategory: "all",
   settingsView: "main",
   selectedBusiness: null,

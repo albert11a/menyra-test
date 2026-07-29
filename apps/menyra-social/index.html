@@ -1237,75 +1237,46 @@
     .smart-header-tabs--hidden {
       transform: none !important;
     }
-    /* Auf- und Zuklappen ueber grid-template-rows: animiert exakt die echte
-       Inhaltshoehe, deshalb laeuft es durchgehend statt in einem Sprung wie
-       bei einer max-height-Schaetzung. */
+    /* Die Tab-Zeile steht ausserhalb des stickenden Shells und behaelt immer
+       dieselbe Layout-Hoehe. Beim Scrollen laeuft sie hinter die obere Leiste
+       und blendet sich dabei aus - der Content behaelt seinen Abstand nach oben
+       und wandert nie hoch oder runter. */
     .smart-header-tabs--main {
-      display: grid;
-      grid-template-rows: 1fr;
-      opacity: 1;
+      position: relative;
+      z-index: 90;
       border-bottom-width: 0;
       box-shadow: none;
-      transition: grid-template-rows 320ms cubic-bezier(0.42, 0, 0.58, 1), opacity 320ms cubic-bezier(0.42, 0, 0.58, 1);
     }
-    .smart-header-tabs--main.smart-header-tabs--collapsed {
-      grid-template-rows: 0fr;
-      opacity: 0;
-      pointer-events: none;
-    }
-    .smart-header-tabs-clip {
-      overflow: hidden;
-      min-height: 0;
-    }
-    /* Keine Linie zwischen oberer Leiste und den Tab-Buttons: der Header ist
-       dort eine durchgehende Flaeche, die Abgrenzung macht der weiche
-       Schatten unter der jeweils untersten Header-Kante. */
+    /* Kein Header-Schatten: er wuerde als Farbunterschied gelesen und den
+       Header optisch vom Content abtrennen. */
+    .smart-header-shell--split,
     .smart-header-shell--split .smart-header-top {
       border-bottom-color: transparent;
       box-shadow: none;
     }
-    /* Die Tab-Zeile steht ausserhalb des stickenden Shells und scrollt normal
-       mit dem Content weg. Dabei laeuft sie hinter die obere Leiste, ohne dass
-       sich eine Layout-Hoehe aendert - die Seite bleibt also ruhig. */
-    .smart-header-tabs--main {
-      position: relative;
-      z-index: 90;
-    }
-    .smart-header-tabs--main::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -16px;
-      height: 16px;
-      pointer-events: none;
-      background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
-      transition: opacity 220ms ease;
-    }
-    .smart-header-tabs--main.smart-header-tabs--collapsed::after,
-    html.smart-header-tabs-scrolled .smart-header-tabs--main::after {
-      opacity: 0;
-    }
-    /* Solange die Tabs oben stehen, tragen sie die Header-Kante; sind sie
-       weggescrollt oder zugeklappt, uebernimmt sie der Shell. */
     .smart-header-shell--split::after {
-      opacity: 0;
-      transition: opacity 220ms ease;
+      display: none;
     }
-    .smart-header-shell--split.smart-header-shell--tabs-collapsed::after,
-    html.smart-header-tabs-scrolled .smart-header-shell--split::after {
-      opacity: 1;
+    /* Die Ausblendung haengt direkt am Scroll-Fortschritt, laeuft also exakt
+       mit dem Finger statt als nachlaufende Animation. */
+    .smart-header-tabs--main .smart-header-tabs-row {
+      opacity: var(--smart-header-tabs-fade, 1);
     }
-    /* Der Pfeil schaltet nur die oben stehende Tab-Zeile. Ist sie ohnehin
-       weggescrollt, blendet er sich aus, damit ein Tap den Content nicht
-       unter dem Finger verschiebt. */
-    .smart-header-collapse-btn {
-      opacity: 1;
-      transition: opacity 220ms ease;
-    }
-    html.smart-header-tabs-scrolled .smart-header-collapse-btn {
-      opacity: 0;
+    html.smart-header-tabs-minimized .smart-header-tabs--main .smart-header-tabs-row {
       pointer-events: none;
+    }
+    /* Minimiert faerbt sich der Pfeil weich blau ein und dreht nach oben: das
+       ist der Hinweis, dass man die Tabs darueber wieder aufmachen kann. */
+    .smart-header-collapse-btn {
+      color: rgb(100 116 139);
+      transition: color 320ms cubic-bezier(0.42, 0, 0.58, 1), background-color 320ms ease;
+    }
+    html.smart-header-tabs-minimized .smart-header-collapse-btn {
+      color: rgb(79 70 229);
+    }
+    html.smart-header-tabs-minimized .smart-header-collapse-btn > svg,
+    html.smart-header-tabs-minimized .smart-header-collapse-btn > i {
+      transform: rotate(180deg);
     }
     .smart-header-tabs-row {
       display: flex;
@@ -1342,13 +1313,9 @@
     .smart-header-collapse-btn > i {
       transition: transform 320ms cubic-bezier(0.42, 0, 0.58, 1);
     }
-    .smart-header-collapse-btn--collapsed > svg,
-    .smart-header-collapse-btn--collapsed > i {
-      transform: rotate(180deg);
-    }
     @media (prefers-reduced-motion: reduce) {
-      .smart-header-tabs--main,
       .smart-header-pill,
+      .smart-header-collapse-btn,
       .smart-header-collapse-btn > svg,
       .smart-header-collapse-btn > i {
         transition: none !important;

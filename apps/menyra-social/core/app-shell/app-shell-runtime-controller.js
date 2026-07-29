@@ -170,7 +170,10 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsScrollListener = null;
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
-  const MAIN_HEADER_TABS_TOP_RESET_PX = 4;
+  let mainHeaderTabsRafId = 0;
+  const MAIN_HEADER_TABS_SLOT_FALLBACK_PX = 40;
+  const MAIN_HEADER_TABS_MINIMIZED_PROGRESS = 0.45;
+  const MAIN_HEADER_TABS_FADE_FACTOR = 1.8;
   const SMART_HEADER_TOP_RESET_PX = 50;
   const SMART_HEADER_HIDE_DELTA_PX = 18;
   const SMART_HEADER_SHOW_DELTA_PX = 14;
@@ -968,33 +971,25 @@ export function createAppShellRuntimeController(deps = {}) {
     return shouldShowFeedLocationHeaderSearch(locationRecord);
   }
 
-  function isMainHeaderTabsCollapsed() {
-    return !!state.headerTabsCollapsed;
-  }
-
   function renderMainHeaderTabs(locationRecord = readStoredFeedViewerLocation()) {
     if (!isMainHeaderTabsScope(locationRecord)) return "";
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-    const collapsed = isMainHeaderTabsCollapsed();
     const tabs = [
       { id: "feed", label: tr("nav.feed", "Feed"), active: activeTabKey !== "restaurants" },
       { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), active: activeTabKey === "restaurants" }
     ];
     return `
-      <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main${collapsed ? " smart-header-tabs--collapsed" : ""}" aria-hidden="${collapsed ? "true" : "false"}">
-        <div class="smart-header-tabs-clip">
-          <div class="smart-header-tabs-row">
-            ${tabs.map((tab) => `
-              <button
-                type="button"
-                data-nav="${escapeHtml(tab.id)}"
-                data-main-header-tab="${escapeHtml(tab.id)}"
-                aria-current="${tab.active ? "page" : "false"}"
-                tabindex="${collapsed ? "-1" : "0"}"
-                class="smart-header-pill ${tab.active ? "smart-header-pill--active" : ""}"
-              >${escapeHtml(tab.label)}</button>
-            `).join("")}
-          </div>
+      <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main">
+        <div class="smart-header-tabs-row">
+          ${tabs.map((tab) => `
+            <button
+              type="button"
+              data-nav="${escapeHtml(tab.id)}"
+              data-main-header-tab="${escapeHtml(tab.id)}"
+              aria-current="${tab.active ? "page" : "false"}"
+              class="smart-header-pill ${tab.active ? "smart-header-pill--active" : ""}"
+            >${escapeHtml(tab.label)}</button>
+          `).join("")}
         </div>
       </div>
     `;
@@ -1055,7 +1050,6 @@ export function createAppShellRuntimeController(deps = {}) {
     ).trim();
     const headerTabsHtml = renderMainHeaderTabs(headerLocationRecord);
     const hasHeaderTabs = !!headerTabsHtml;
-    const headerTabsCollapsed = isMainHeaderTabsCollapsed();
     // Der Collapse-Pfeil braucht Platz in der oberen Zeile: Location-Feld und
     // Abstaende werden dafuer nur in der Breite schmaler, nicht in der Hoehe.
     const compactHeaderIcons = !!showFeedLocationHeaderSearch || hasHeaderTabs;
@@ -1074,16 +1068,14 @@ export function createAppShellRuntimeController(deps = {}) {
     const collapseButtonClass = compactHeaderIcons
       ? "w-7 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
       : "w-8 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
-    const collapseButtonLabel = headerTabsCollapsed
-      ? tr("header.expandTabs", "Tabs einblenden")
-      : tr("header.collapseTabs", "Header minimieren");
+    const collapseButtonLabel = tr("header.toggleTabs", "Tabs ein- und ausblenden");
 
     // Die Tab-Zeile liegt bewusst ausserhalb des stickenden Shells: nur die
     // obere Leiste bleibt oben kleben, die Tabs scrollen normal mit dem Content
     // weg und wandern dabei hinter die Leiste. So aendert sich beim Scrollen
     // keine Layout-Hoehe und die Seite springt nicht.
     return `
-      <div class="smart-header-shell${hasHeaderTabs ? " smart-header-shell--split" : ""}${hasHeaderTabs && headerTabsCollapsed ? " smart-header-shell--tabs-collapsed" : ""}">
+      <div class="smart-header-shell${hasHeaderTabs ? " smart-header-shell--split" : ""}">
         <div id="smart-header-top" class="smart-header-top">
           <div class="${headerRowPaddingClass} h-16 flex items-center justify-between">
             <div class="flex items-center ${headerLeadGapClass}${showFeedLocationHeaderSearch ? " flex-1 min-w-0 pr-2" : ""}">
@@ -1113,10 +1105,10 @@ export function createAppShellRuntimeController(deps = {}) {
                   type="button"
                   data-main-header-tabs-toggle="true"
                   aria-controls="smart-tabs"
-                  aria-expanded="${headerTabsCollapsed ? "false" : "true"}"
+                  aria-expanded="true"
                   aria-label="${escapeHtml(collapseButtonLabel)}"
                   title="${escapeHtml(collapseButtonLabel)}"
-                  class="smart-header-collapse-btn ${collapseButtonClass}${headerTabsCollapsed ? " smart-header-collapse-btn--collapsed" : ""}"
+                  class="smart-header-collapse-btn ${collapseButtonClass}"
                 >
                   ${icon("chevron-down", "w-5 h-5")}
                 </button>
@@ -1491,43 +1483,23 @@ export function createAppShellRuntimeController(deps = {}) {
     return changed;
   }
 
-  function setMainHeaderTabsCollapsedUi(collapsed) {
-    if (!doc) return;
+  // Die Tab-Zeile bleibt immer in der gleichen Layout-Hoehe stehen und blendet
+  // sich nur aus, waehrend sie hinter die obere Leiste scrollt. Dadurch wandert
+  // der Content beim Scrollen nie nach oben oder unten.
+  function syncMainHeaderTabsScrollProgress() {
+    if (!doc || !win) return;
     const tabsEl = doc.getElementById("smart-tabs");
-    if (!tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) return;
-    const next = !!collapsed;
-    if (tabsEl.classList.contains("smart-header-tabs--collapsed") === next) return;
-    tabsEl.classList.toggle("smart-header-tabs--collapsed", next);
-    tabsEl.setAttribute("aria-hidden", next ? "true" : "false");
-    tabsEl.querySelectorAll("[data-main-header-tab]").forEach((tabBtn) => {
-      tabBtn.setAttribute("tabindex", next ? "-1" : "0");
-    });
-    const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
-    if (toggleEl) {
-      toggleEl.classList.toggle("smart-header-collapse-btn--collapsed", next);
-      toggleEl.setAttribute("aria-expanded", next ? "false" : "true");
-    }
-    // Die Tab-Zeile liegt ausserhalb des Shells, deshalb bekommt der Shell den
-    // Collapse-Zustand als eigene Klasse, damit er die Header-Kante uebernimmt.
-    doc.querySelector(".smart-header-shell--split")
-      ?.classList?.toggle?.("smart-header-shell--tabs-collapsed", next);
-    const rootStyle = doc.documentElement?.style;
-    if (rootStyle) {
-      const nextTabsHeight = next
-        ? 0
-        : Math.max(0, Math.round(Number(tabsEl.offsetHeight) || 0));
-      rootStyle.setProperty("--smart-header-tabs-height", `${nextTabsHeight}px`);
-    }
-  }
-
-  function persistMainHeaderTabsPreference(collapsed) {
-    const storageKey = String(storageKeys?.headerTabs || "").trim();
-    if (!storageKey || !safeStorageObj?.setItem) return;
-    safeStorageObj.setItem(storageKey, collapsed ? "1" : "0");
-  }
-
-  function setMainHeaderScrolledState(scrolled) {
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-scrolled", !!scrolled);
+    if (!tabsEl) return;
+    const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
+    const scrollY = Math.max(0, Number(win.scrollY || 0));
+    const progress = Math.min(1, scrollY / slot);
+    // Etwas schneller ausblenden als die Zeile hinter die Leiste laeuft, damit
+    // man nie halb abgeschnittene Buttons sieht.
+    const fade = Math.min(1, Math.max(0, 1 - progress * MAIN_HEADER_TABS_FADE_FACTOR));
+    tabsEl.style.setProperty("--smart-header-tabs-fade", fade.toFixed(3));
+    const minimized = progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS;
+    doc.documentElement?.classList?.toggle?.("smart-header-tabs-minimized", minimized);
+    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", minimized ? "false" : "true");
   }
 
   function stopMainHeaderTabsRuntime() {
@@ -1537,37 +1509,46 @@ export function createAppShellRuntimeController(deps = {}) {
     if (mainHeaderTabsToggleEl && typeof mainHeaderTabsToggleHandler === "function") {
       mainHeaderTabsToggleEl.removeEventListener("click", mainHeaderTabsToggleHandler);
     }
+    if (win && mainHeaderTabsRafId) win.cancelAnimationFrame?.(mainHeaderTabsRafId);
+    mainHeaderTabsRafId = 0;
     mainHeaderTabsScrollListener = null;
     mainHeaderTabsToggleEl = null;
     mainHeaderTabsToggleHandler = null;
-    setMainHeaderScrolledState(false);
+    doc?.documentElement?.classList?.remove?.("smart-header-tabs-minimized");
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
     stopMainHeaderTabsRuntime();
     if (!win || !doc || !tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) return;
-    setMainHeaderTabsCollapsedUi(isMainHeaderTabsCollapsed());
 
     const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
     if (toggleEl) {
       mainHeaderTabsToggleEl = toggleEl;
+      // Der Pfeil ist an denselben Scroll-Zustand gebunden, den er anzeigt:
+      // minimiert -> zurueck nach oben, offen -> knapp an den Tabs vorbei.
       mainHeaderTabsToggleHandler = () => {
-        const nextCollapsed = !isMainHeaderTabsCollapsed();
-        state.headerTabsCollapsed = nextCollapsed;
-        persistMainHeaderTabsPreference(nextCollapsed);
-        setMainHeaderTabsCollapsedUi(nextCollapsed);
+        const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
+        const minimized = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
+        const nextTop = minimized ? 0 : slot + 2;
+        try {
+          win.scrollTo({ top: nextTop, behavior: "smooth" });
+        } catch {
+          win.scrollTo(0, nextTop);
+        }
       };
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
     }
 
-    // Der Scroll-Listener aendert kein Layout, er markiert nur, dass die
-    // Tab-Zeile hinter die obere Leiste gescrollt ist: dann wandert der
-    // Header-Schatten an die Leiste und der Collapse-Pfeil blendet sich aus,
-    // weil er in dem Zustand nichts Sichtbares mehr schaltet.
+    // Nur Opacity und eine Klasse - kein Layout, deshalb kein Ruckeln.
     mainHeaderTabsScrollListener = () => {
-      setMainHeaderScrolledState(Math.max(0, Number(win.scrollY || 0)) > MAIN_HEADER_TABS_TOP_RESET_PX);
+      if (mainHeaderTabsRafId) return;
+      mainHeaderTabsRafId = win.requestAnimationFrame?.(() => {
+        mainHeaderTabsRafId = 0;
+        syncMainHeaderTabsScrollProgress();
+      }) || 0;
+      if (!mainHeaderTabsRafId) syncMainHeaderTabsScrollProgress();
     };
-    setMainHeaderScrolledState(Math.max(0, Number(win.scrollY || 0)) > MAIN_HEADER_TABS_TOP_RESET_PX);
+    syncMainHeaderTabsScrollProgress();
     win.addEventListener("scroll", mainHeaderTabsScrollListener, { passive: true });
   }
 
