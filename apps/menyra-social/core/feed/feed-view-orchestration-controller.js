@@ -1568,6 +1568,11 @@ export function createFeedViewOrchestrationController({
     if (!feedStageAutoPinScrollQueued) return;
     feedStageAutoPinScrollQueued = false;
     clearFeedStageAutoPinScrollFrame();
+    // Mit der Header-Tab-Zeile besteht dieser Einstiegs-Scroll praktisch nur
+    // noch daraus, genau diese Zeile wegzuschieben - man landet auf dem Feed
+    // und die Tabs blenden sich sofort wieder aus. Der Bento pinnt ohnehin,
+    // sobald der Nutzer selbst scrollt.
+    if (doc?.getElementById?.("smart-tabs")) return;
     let attempts = 0;
     const maxAttempts = 4;
     const initialRafPasses = 4;
