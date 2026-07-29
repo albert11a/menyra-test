@@ -1293,7 +1293,11 @@
        sich wieder und steht normal im Fluss. */
     html.smart-header-tabs-pinned .smart-header-tabs--main {
       position: fixed;
-      top: var(--smart-header-top-height, 4.5rem);
+      /* 1px Ueberlappung nach oben: die gemessene Leistenhoehe ist gerundet,
+         eine halbe Pixelzeile Rest wuerde als hauchduenner Spalt wirken, durch
+         den der scrollende Content blitzt. Die Leiste liegt darueber (z-index),
+         deckt die Ueberlappung also sauber ab - Kante auf Kante, kein Spalt. */
+      top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
       left: max(0px, calc(50% - 14rem));
       width: min(100%, 28rem);
       z-index: 95;

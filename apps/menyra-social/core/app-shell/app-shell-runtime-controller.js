@@ -1639,6 +1639,9 @@ export function createAppShellRuntimeController(deps = {}) {
       // die Leiste, statt die Seite nach oben zu reissen.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
+        // Leistenhoehe frisch messen, bevor die Zeile sich daran anheftet -
+        // ein veralteter Wert waere genau der Spalt, den man sonst sieht.
+        syncSmartHeaderMetrics();
         const minimizedByScroll = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
         const tabsHidden = mainHeaderTabsCollapsed || (!mainHeaderTabsPinned && minimizedByScroll);
         if (tabsHidden) {
