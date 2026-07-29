@@ -1241,18 +1241,23 @@
        dieselbe Layout-Hoehe. Beim Scrollen laeuft sie hinter die obere Leiste
        und blendet sich dabei aus - der Content behaelt seinen Abstand nach oben
        und wandert nie hoch oder runter. */
-    /* Die Zeile klebt dauerhaft unter der oberen Leiste. Ihren Platz im
-       Layout behaelt sie dabei - beim Scrollen aendert sich also weder die
-       Seitenhoehe noch ihre Sichtbarkeit. Es gibt schlicht keinen Zustand,
-       der irgendwann umspringen koennte. Die 1px Ueberlappung nach oben
-       schluckt Rundungsreste, damit an der Naht nie Content durchblitzt. */
+    /* Normalfall: die Zeile sitzt am Seitenanfang und scrollt mit dem Inhalt
+       weg - oben also sichtbar, unterwegs nicht, ganz ohne Zutun. */
     .smart-header-tabs--main {
-      position: -webkit-sticky;
-      position: sticky;
-      top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
+      position: relative;
       z-index: 90;
       border-bottom-width: 0;
       box-shadow: none;
+    }
+    /* Vom Pfeil unterwegs zurueckgeholt: die Zeile klebt unter der Leiste.
+       relative und sticky belegen denselben Layout-Platz, das Umschalten
+       aendert also nichts an der Seite - es kann nichts springen. Die 1px
+       Ueberlappung schluckt Rundungsreste, damit an der Naht nie Content
+       durchblitzt (die Leiste liegt im Stapel darueber und deckt sie ab). */
+    html.smart-header-tabs-stuck .smart-header-tabs--main {
+      position: -webkit-sticky;
+      position: sticky;
+      top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
     }
     /* Innerhalb des Headers weder Linie noch Schatten - ein Schatten zwischen
        oberer Leiste und Tab-Zeile wurde als Farbunterschied gelesen und liess
@@ -1284,7 +1289,7 @@
     .smart-header-shell--split::after {
       opacity: calc(1 - var(--smart-header-tabs-fade, 1));
     }
-    html.smart-header-tabs-collapsed .smart-header-shell--split {
+    html.smart-header-tabs-away .smart-header-shell--split {
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
     }
     /* Vom Pfeil eingeklappt: Zeile komplett raus aus dem Layout - der Klick
@@ -1292,7 +1297,8 @@
     html.smart-header-tabs-collapsed .smart-header-tabs--main {
       display: none;
     }
-    /* Zugeklappt faerbt sich der Pfeil weich blau ein und dreht nach oben: das
+    /* Ist die Zeile nicht zu sehen, faerbt sich der Pfeil weich blau ein und
+       dreht nach oben: das
        ist der Hinweis, dass man die Tabs darueber wieder aufmachen kann. */
     .smart-header-collapse-btn {
       color: rgb(100 116 139);
@@ -1300,11 +1306,11 @@
       -webkit-tap-highlight-color: transparent;
       transition: color 320ms cubic-bezier(0.42, 0, 0.58, 1), background-color 320ms ease;
     }
-    html.smart-header-tabs-collapsed .smart-header-collapse-btn {
+    html.smart-header-tabs-away .smart-header-collapse-btn {
       color: rgb(79 70 229);
     }
-    html.smart-header-tabs-collapsed .smart-header-collapse-btn > svg,
-    html.smart-header-tabs-collapsed .smart-header-collapse-btn > i {
+    html.smart-header-tabs-away .smart-header-collapse-btn > svg,
+    html.smart-header-tabs-away .smart-header-collapse-btn > i {
       transform: rotate(180deg);
     }
     .smart-header-tabs-row {
