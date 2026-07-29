@@ -1237,25 +1237,32 @@
     .smart-header-tabs--hidden {
       transform: none !important;
     }
+    /* Auf- und Zuklappen ueber grid-template-rows: animiert exakt die echte
+       Inhaltshoehe, deshalb laeuft es durchgehend statt in einem Sprung wie
+       bei einer max-height-Schaetzung. */
     .smart-header-tabs--main {
-      overflow: hidden;
-      max-height: 4.5rem;
+      display: grid;
+      grid-template-rows: 1fr;
       opacity: 1;
-      transition: max-height 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms ease, border-bottom-width 260ms cubic-bezier(0.4, 0, 0.2, 1);
+      border-bottom-width: 0;
+      box-shadow: none;
+      transition: grid-template-rows 320ms cubic-bezier(0.42, 0, 0.58, 1), opacity 320ms cubic-bezier(0.42, 0, 0.58, 1);
     }
     .smart-header-tabs--main.smart-header-tabs--collapsed {
-      max-height: 0;
+      grid-template-rows: 0fr;
       opacity: 0;
-      border-bottom-width: 0;
       pointer-events: none;
     }
-    /* Keine Trennlinie zwischen oberer Leiste und den Tab-Buttons: solange die
-       Tabs offen sind, traegt nur die Tab-Zeile die untere Header-Kante. */
-    .smart-header-shell:has(.smart-header-tabs--main:not(.smart-header-tabs--collapsed)) .smart-header-top {
-      border-bottom-color: transparent;
+    .smart-header-tabs-clip {
+      overflow: hidden;
+      min-height: 0;
     }
-    .smart-header-top {
-      transition: border-bottom-color 260ms cubic-bezier(0.4, 0, 0.2, 1);
+    /* Keine Linie zwischen oberer Leiste und den Tab-Buttons: der Header ist
+       dort eine durchgehende Flaeche, die Abgrenzung macht der weiche
+       Schatten unter dem Header-Shell. */
+    .smart-header-shell:has(.smart-header-tabs--main) .smart-header-top {
+      border-bottom-color: transparent;
+      box-shadow: none;
     }
     .smart-header-tabs-row {
       display: flex;
@@ -1265,6 +1272,8 @@
     }
     .smart-header-pill {
       flex: 0 0 auto;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
       border-radius: 9999px;
       border: 1px solid rgb(226 232 240 / 0.95);
       background: #fff;
@@ -1288,7 +1297,7 @@
     }
     .smart-header-collapse-btn > svg,
     .smart-header-collapse-btn > i {
-      transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1);
+      transition: transform 320ms cubic-bezier(0.42, 0, 0.58, 1);
     }
     .smart-header-collapse-btn--collapsed > svg,
     .smart-header-collapse-btn--collapsed > i {
@@ -1296,7 +1305,6 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .smart-header-tabs--main,
-      .smart-header-top,
       .smart-header-pill,
       .smart-header-collapse-btn > svg,
       .smart-header-collapse-btn > i {
@@ -1319,13 +1327,9 @@
         height: 1.55rem;
       }
     }
-    body.fast-mode .smart-header-tabs--main,
-    body.fast-mode .smart-header-top,
-    body.fast-mode .smart-header-pill,
-    body.fast-mode .smart-header-collapse-btn > svg,
-    body.fast-mode .smart-header-collapse-btn > i {
-      transition: none !important;
-    }
+    /* Bewusst kein fast-mode-Opt-out: das Auf- und Zuklappen im Header ist eine
+       einzelne kleine Flaeche und soll auch auf schwaecheren Geraeten weich
+       laufen statt zu springen. */
     html.feed-location-feed-stage-active,
     body.feed-location-feed-stage-active {
       background: var(--app-bg) !important;

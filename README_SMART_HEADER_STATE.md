@@ -13,8 +13,10 @@ Haupt-Tabs im Header (`feed` / `restaurants`):
 - Unter der oberen Leiste (Location, Sprache, Login, Warenkorb) liegt eine Zeile mit den Pill-Buttons `Feed` und `Restaurants`.
 - Die Zeile erscheint erst, wenn eine Stadt gesetzt ist: `isMainHeaderTabsScope()` verlangt einen Location-Record und die Tabs `feed`, `home` oder `restaurants`. Im Location-Gate gibt es weder Tabs noch Collapse-Pfeil.
 - Gerendert wird sie von `renderMainHeaderTabs()` unter der Element-Id `smart-tabs`, Buttons mit `.smart-header-pill`.
-- Keine Trennlinie zwischen oberer Leiste und Buttons: solange die Tabs offen sind, wird `border-bottom-color` von `.smart-header-top` transparent geschaltet, die untere Header-Kante traegt dann die Tab-Zeile.
-- Die Tabs nutzen `data-nav`, laufen also ueber denselben Tab-Wechsel wie der Drawer.
+- Keine Linie im Header, sobald die Tabs existieren: `.smart-header-top` und die Tab-Zeile verlieren Border und Inset-Shadow, die Abgrenzung zum Content macht der weiche Schatten von `.smart-header-shell::after`.
+- Auf- und Zuklappen laeuft ueber `grid-template-rows: 1fr -> 0fr` mit einem `.smart-header-tabs-clip`-Wrapper. Das animiert die echte Inhaltshoehe; die frueher genutzte `max-height`-Schaetzung sprang, weil der Grossteil der Strecke auf leeren Raum entfiel.
+- Diese Transition ist bewusst nicht im `fast-mode` deaktiviert, sonst klappt sie auf schwaecheren Geraeten hart um.
+- Die Tabs nutzen `data-nav`, haben aber eine eigene Bindung (`bindPillTap`): sie schalten auf `touchend` statt `click` und faerben sich sofort um, damit der Wechsel nicht erst nach dem Re-Render sichtbar wird. Ein Scroll-Gesture, das auf einem Pill startet, loest keinen Wechsel aus.
 - Ganz rechts in der oberen Leiste (neben dem Warenkorb) minimiert ein Chevron-Button den Header auf die eine obere Zeile.
 - Runterscrollen klappt die Tabs automatisch zu, ganz oben kommen sie zurueck. Das laeuft ueber `initMainHeaderTabsRuntime()` mit `mainHeaderTabsScrollCollapsed`; manuelles Aufklappen gewinnt bis zum naechsten Runterscrollen.
 - Die manuelle Praeferenz liegt in `state.headerTabsCollapsed` und wird unter `STORAGE_KEYS.headerTabs` persistiert; effektiv zu ist der Header, wenn Praeferenz oder Scroll-Collapse aktiv sind (`isMainHeaderTabsCollapsed()`).

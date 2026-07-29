@@ -985,17 +985,19 @@ export function createAppShellRuntimeController(deps = {}) {
     ];
     return `
       <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main${collapsed ? " smart-header-tabs--collapsed" : ""}" aria-hidden="${collapsed ? "true" : "false"}">
-        <div class="smart-header-tabs-row">
-          ${tabs.map((tab) => `
-            <button
-              type="button"
-              data-nav="${escapeHtml(tab.id)}"
-              data-main-header-tab="${escapeHtml(tab.id)}"
-              aria-current="${tab.active ? "page" : "false"}"
-              tabindex="${collapsed ? "-1" : "0"}"
-              class="smart-header-pill ${tab.active ? "smart-header-pill--active" : ""}"
-            >${escapeHtml(tab.label)}</button>
-          `).join("")}
+        <div class="smart-header-tabs-clip">
+          <div class="smart-header-tabs-row">
+            ${tabs.map((tab) => `
+              <button
+                type="button"
+                data-nav="${escapeHtml(tab.id)}"
+                data-main-header-tab="${escapeHtml(tab.id)}"
+                aria-current="${tab.active ? "page" : "false"}"
+                tabindex="${collapsed ? "-1" : "0"}"
+                class="smart-header-pill ${tab.active ? "smart-header-pill--active" : ""}"
+              >${escapeHtml(tab.label)}</button>
+            `).join("")}
+          </div>
         </div>
       </div>
     `;

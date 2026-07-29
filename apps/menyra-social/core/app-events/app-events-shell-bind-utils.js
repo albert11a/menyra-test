@@ -834,8 +834,68 @@ export function bindAppShellEventsCore({
     }
   });
 
+  // Header-Pills reagieren schon auf touchstart und faerben sich sofort um,
+  // damit der Wechsel nicht erst nach dem Re-Render sichtbar wird.
+  const syncMainHeaderPillState = (activeId = "") => {
+    doc.querySelectorAll("[data-main-header-tab]").forEach((pill) => {
+      const isActive = String(pill.dataset.mainHeaderTab || "") === activeId;
+      pill.classList.toggle("smart-header-pill--active", isActive);
+      pill.setAttribute("aria-current", isActive ? "page" : "false");
+    });
+  };
+
+  // Auf touchend statt click: reagiert sofort beim Loslassen, bricht aber ab,
+  // wenn der Finger scrollt.
+  const bindPillTap = (element, handler) => {
+    let touchStartY = 0;
+    let touchMoved = false;
+    let lastTouchTs = 0;
+    element.addEventListener("touchstart", (event) => {
+      touchStartY = Number(event.touches?.[0]?.clientY ?? 0);
+      touchMoved = false;
+      lastTouchTs = Date.now();
+    }, { passive: true });
+    element.addEventListener("touchmove", (event) => {
+      const currentY = Number(event.touches?.[0]?.clientY ?? touchStartY);
+      if (Math.abs(currentY - touchStartY) > 8) touchMoved = true;
+    }, { passive: true });
+    element.addEventListener("touchend", (event) => {
+      lastTouchTs = Date.now();
+      if (touchMoved) return;
+      if (event.cancelable) event.preventDefault();
+      handler();
+    });
+    element.addEventListener("click", () => {
+      if (Date.now() - lastTouchTs < 450) return;
+      handler();
+    });
+  };
+
+  doc.querySelectorAll("[data-main-header-tab]").forEach((btn) => {
+    const tab = String(btn.dataset.mainHeaderTab || "").trim();
+    if (!tab) return;
+    bindPillTap(btn, () => {
+      if (state.activeTab === tab) return;
+      syncMainHeaderPillState(tab);
+      setState({
+        activeTab: tab,
+        drawerOpen: false,
+        chatSettingsOpen: false,
+        chatListScope: "inbox",
+        chatThreadMenuId: "",
+        settingsView: "main",
+        selectedBusiness: null,
+        profileView: null,
+        profileModal: { open: false, profile: null },
+        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
+        likesModal: { open: false, postId: "", animate: false }
+      });
+    });
+  });
+
   doc.querySelectorAll("[data-nav]").forEach((btn) => {
     if (btn.closest("#feedView")) return;
+    if (btn.hasAttribute("data-main-header-tab")) return;
     btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
       if (!tab) return;
