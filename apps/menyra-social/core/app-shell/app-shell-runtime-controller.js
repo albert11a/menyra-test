@@ -171,12 +171,10 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
   let mainHeaderTabsRafId = 0;
-  // Der Pfeil muss auch dann schalten, wenn die Seite nicht weit genug
-  // scrollbar ist (kurzer Feed): "open"/"closed" haelt den gewuenschten
-  // Zustand fest, bis der Scroll-Zustand von selbst dort ankommt.
-  let mainHeaderTabsManualState = null;
-  let mainHeaderTabsScrollSettleTimers = [];
-  let mainHeaderTabsSettleCancelCleanup = null;
+  // Vom Pfeil gesteuert: eingeklappt = Tab-Zeile komplett ausgeblendet
+  // (display:none), unabhaengig von jeder Scroll-Position. Kein Timer,
+  // kein Scroll-Ziel - der Klick schaltet den Zustand direkt.
+  let mainHeaderTabsCollapsed = false;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1537,76 +1535,15 @@ export function createAppShellRuntimeController(deps = {}) {
     return true;
   }
 
-  function clearMainHeaderTabsScrollSettle() {
-    mainHeaderTabsScrollSettleTimers.forEach((timer) => {
-      try {
-        clearTimeout(timer);
-      } catch {}
-    });
-    mainHeaderTabsScrollSettleTimers = [];
-    if (typeof mainHeaderTabsSettleCancelCleanup === "function") {
-      try {
-        mainHeaderTabsSettleCancelCleanup();
-      } catch {}
+  function setMainHeaderTabsCollapsed(next) {
+    mainHeaderTabsCollapsed = !!next;
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
+    if (mainHeaderTabsCollapsed) {
+      // Der Header-Schatten wandert an die obere Leiste, solange die
+      // Tab-Zeile eingeklappt ist.
+      doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", "0.000");
     }
-    mainHeaderTabsSettleCancelCleanup = null;
-  }
-
-  // Haelt nach dem Pfeil-Klick das Scroll-Ziel aktiv fest, bis es wirklich
-  // erreicht ist. iOS (v.a. als PWA) verwirft window.scrollTo mit
-  // behavior:"smooth" gern, und beim Laden der Feed-Daten stellen Re-Renders
-  // zwischendurch alte Scroll-Positionen wieder her - beides liesse das
-  // Aufklappen haengen, weil die Tab-Zeile physisch hinter der Leiste bleibt.
-  // Die Schleife regelt deshalb bis zu ~3s lang nach (harter Sprung), bis das
-  // Ziel steht. Scrollt der Nutzer selbst, wird sofort losgelassen.
-  function armMainHeaderTabsScrollSettle(targetTop = 0) {
-    if (!win) return;
-    let cancelled = false;
-    const cancel = () => {
-      cancelled = true;
-    };
-    const cancelEvents = ["wheel", "touchmove", "mousedown"];
-    // Erst nach dem Tap scharf schalten: der ausloesende Finger erzeugt auf
-    // iOS gern selbst ein Mini-touchmove und wuerde den Nachlauf sonst killen.
-    const armCancelTimer = win.setTimeout(() => {
-      cancelEvents.forEach((eventName) => {
-        win.addEventListener(eventName, cancel, { passive: true });
-      });
-    }, 250);
-    mainHeaderTabsSettleCancelCleanup = () => {
-      try {
-        clearTimeout(armCancelTimer);
-      } catch {}
-      cancelEvents.forEach((eventName) => {
-        win.removeEventListener(eventName, cancel);
-      });
-    };
-    const safeTarget = Math.max(0, Math.round(Number(targetTop) || 0));
-    const startedAt = Date.now();
-    const tick = () => {
-      if (cancelled) return;
-      const currentTop = Math.max(0, Math.round(Number(win.scrollY || 0)));
-      const maxTop = Math.max(0, Math.round(
-        Number(doc?.documentElement?.scrollHeight || 0) - Number(win.innerHeight || 0)
-      ));
-      const reachableTarget = Math.min(safeTarget, maxTop);
-      const arrived = Math.abs(currentTop - reachableTarget) <= 4;
-      if (!arrived) {
-        try {
-          win.scrollTo(0, reachableTarget);
-        } catch {}
-        syncMainHeaderTabsScrollProgress();
-      }
-      // Auch nach der Ankunft kurz weiter wachen: eine spaete
-      // Scroll-Wiederherstellung aus einem Re-Render darf den frisch
-      // gesetzten Zustand nicht wieder umwerfen.
-      if (Date.now() - startedAt < 3200) {
-        mainHeaderTabsScrollSettleTimers.push(win.setTimeout(tick, 300));
-      } else {
-        syncMainHeaderTabsScrollProgress();
-      }
-    };
-    mainHeaderTabsScrollSettleTimers = [win.setTimeout(tick, 350)];
+    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", mainHeaderTabsCollapsed ? "false" : "true");
   }
 
   function applyMainHeaderTabsFade(fade, minimized) {
@@ -1625,32 +1562,23 @@ export function createAppShellRuntimeController(deps = {}) {
     // Gemessen wird, wie weit die Tab-Zeile tatsaechlich hinter der oberen
     // Leiste liegt - nicht scrollY. Steht die Zeile sichtbar unter der Leiste,
     // ist sie offen, egal was der Scroll-Wert gerade behauptet.
+    // Eingeklappt zaehlt nur der Pfeil - die Scroll-Position hat dann nichts
+    // mitzureden (die Zeile ist per display:none komplett draussen).
+    if (mainHeaderTabsCollapsed) return;
     const tabsRect = tabsEl.getBoundingClientRect();
     const slot = Math.max(1, Number(tabsRect.height) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX);
     const hidden = Math.max(0, Number(topEl.getBoundingClientRect().bottom || 0) - Number(tabsRect.top || 0));
     const progress = Math.min(1, hidden / slot);
-    const minimizedByScroll = progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS;
-    // Hat der Pfeil einen Zustand erzwungen, gilt der, bis der Scroll-Zustand
-    // dort ankommt (oder auf einer kaum scrollbaren Seite: dauerhaft).
-    if (mainHeaderTabsManualState) {
-      const wantsMinimized = mainHeaderTabsManualState === "closed";
-      if (minimizedByScroll === wantsMinimized) {
-        mainHeaderTabsManualState = null;
-      } else {
-        applyMainHeaderTabsFade(wantsMinimized ? 0 : 1, wantsMinimized);
-        return;
-      }
-    }
     // Etwas schneller ausblenden als die Zeile hinter die Leiste laeuft, damit
     // man nie halb abgeschnittene Buttons sieht.
     const fade = Math.min(1, Math.max(0, 1 - progress * MAIN_HEADER_TABS_FADE_FACTOR));
-    applyMainHeaderTabsFade(fade, minimizedByScroll);
+    applyMainHeaderTabsFade(fade, progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS);
   }
 
   function stopMainHeaderTabsRuntime() {
-    // Der Scroll-Nachlauf (armMainHeaderTabsScrollSettle) bleibt hier bewusst
-    // aktiv: ein Re-Render kurz nach dem Pfeil-Klick darf die Ankunftskontrolle
-    // nicht abraeumen, sonst haengt das Aufklappen auf iOS wieder.
+    // Der Collapsed-Zustand (mainHeaderTabsCollapsed) ueberlebt Re-Renders
+    // bewusst: was der Nutzer per Pfeil zugemacht hat, bleibt zu, bis er es
+    // selbst wieder aufmacht.
     if (win && typeof mainHeaderTabsScrollListener === "function") {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
@@ -1685,28 +1613,31 @@ export function createAppShellRuntimeController(deps = {}) {
       mainHeaderTabsToggleEl = toggleEl;
       // Der Pfeil ist an denselben Scroll-Zustand gebunden, den er anzeigt:
       // minimiert -> zurueck nach oben, offen -> knapp an den Tabs vorbei.
+      // Der Pfeil schaltet die Tab-Zeile direkt ein und aus - ohne jedes
+      // Scrollen. Zu = Zeile weg, auf = Zeile da. Nur wenn die Zeile beim
+      // Aufmachen durch normales Scrollen hinter der Leiste liegt, springt
+      // die Seite einmal hart an den Anfang, damit sie sichtbar ist.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
-        clearMainHeaderTabsScrollSettle();
-        const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
-        const minimized = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
-        const nextTop = minimized ? 0 : slot + 2;
-        // Der Klick schaltet den Zustand immer sofort und sicher um - auch
-        // wenn die Seite den Ziel-Scroll gar nicht erreichen kann.
-        mainHeaderTabsManualState = minimized ? "open" : "closed";
-        applyMainHeaderTabsFade(minimized ? 1 : 0, !minimized);
-        try {
-          win.scrollTo({ top: nextTop, behavior: "smooth" });
-        } catch {
-          win.scrollTo(0, nextTop);
+        const minimizedByScroll = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
+        const tabsHidden = mainHeaderTabsCollapsed || minimizedByScroll;
+        if (tabsHidden) {
+          setMainHeaderTabsCollapsed(false);
+          if (Math.max(0, Number(win.scrollY || 0)) > 0) {
+            try {
+              win.scrollTo(0, 0);
+            } catch {}
+          }
+        } else {
+          setMainHeaderTabsCollapsed(true);
         }
-        // iOS bricht programmatische Smooth-Scrolls gern ab; besonders das
-        // Aufklappen haengt aber daran, dass die Tab-Zeile wirklich wieder
-        // unter der Leiste hervorkommt. Deshalb nachpruefen und notfalls
-        // hart springen - es sei denn, der Nutzer scrollt selbst weiter.
-        armMainHeaderTabsScrollSettle(nextTop);
+        syncMainHeaderTabsScrollProgress();
+        syncSmartHeaderMetrics();
       };
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
+      // Zustand nach jedem Re-Render wieder ansagen (Klasse + aria bleiben
+      // so auch auf frisch gebautem DOM korrekt).
+      setMainHeaderTabsCollapsed(mainHeaderTabsCollapsed);
     }
 
     // Nur Opacity und eine Klasse - kein Layout, deshalb kein Ruckeln.
@@ -1740,8 +1671,7 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTopEl = null;
     smartHeaderBoundTabsEl = null;
     if (resetState) {
-      mainHeaderTabsManualState = null;
-      clearMainHeaderTabsScrollSettle();
+      setMainHeaderTabsCollapsed(false);
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;

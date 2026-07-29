@@ -1277,8 +1277,14 @@
     .smart-header-shell--split::after {
       opacity: calc(1 - var(--smart-header-tabs-fade, 1));
     }
-    html.smart-header-tabs-minimized .smart-header-shell--split {
+    html.smart-header-tabs-minimized .smart-header-shell--split,
+    html.smart-header-tabs-collapsed .smart-header-shell--split {
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
+    }
+    /* Vom Pfeil eingeklappt: Zeile komplett raus aus dem Layout - der Klick
+       auf den Pfeil bringt sie exakt so wieder zurueck. */
+    html.smart-header-tabs-collapsed .smart-header-tabs--main {
+      display: none;
     }
     /* Die Ausblendung haengt direkt am Scroll-Fortschritt, laeuft also exakt
        mit dem Finger statt als nachlaufende Animation. */
@@ -1296,11 +1302,14 @@
       -webkit-tap-highlight-color: transparent;
       transition: color 320ms cubic-bezier(0.42, 0, 0.58, 1), background-color 320ms ease;
     }
-    html.smart-header-tabs-minimized .smart-header-collapse-btn {
+    html.smart-header-tabs-minimized .smart-header-collapse-btn,
+    html.smart-header-tabs-collapsed .smart-header-collapse-btn {
       color: rgb(79 70 229);
     }
     html.smart-header-tabs-minimized .smart-header-collapse-btn > svg,
-    html.smart-header-tabs-minimized .smart-header-collapse-btn > i {
+    html.smart-header-tabs-minimized .smart-header-collapse-btn > i,
+    html.smart-header-tabs-collapsed .smart-header-collapse-btn > svg,
+    html.smart-header-tabs-collapsed .smart-header-collapse-btn > i {
       transform: rotate(180deg);
     }
     .smart-header-tabs-row {
