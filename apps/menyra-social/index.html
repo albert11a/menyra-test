@@ -1247,15 +1247,38 @@
       border-bottom-width: 0;
       box-shadow: none;
     }
-    /* Kein Header-Schatten: er wuerde als Farbunterschied gelesen und den
-       Header optisch vom Content abtrennen. */
+    /* Innerhalb des Headers weder Linie noch Schatten - ein Schatten zwischen
+       oberer Leiste und Tab-Zeile wurde als Farbunterschied gelesen und liess
+       die Tabs vom Header abgetrennt wirken. */
     .smart-header-shell--split,
     .smart-header-shell--split .smart-header-top {
       border-bottom-color: transparent;
       box-shadow: none;
+      transition: box-shadow 220ms ease;
+    }
+    /* Der gewohnte Header-Schatten sitzt immer an der untersten Header-Kante:
+       solange die Tabs sichtbar sind an der Tab-Zeile, danach an der oberen
+       Leiste. Beides blendet ueber denselben Fade-Wert um. */
+    .smart-header-tabs--main {
+      box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
+    }
+    .smart-header-tabs--main::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -16px;
+      height: 16px;
+      pointer-events: none;
+      z-index: 0;
+      background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
+      opacity: var(--smart-header-tabs-fade, 1);
     }
     .smart-header-shell--split::after {
-      display: none;
+      opacity: calc(1 - var(--smart-header-tabs-fade, 1));
+    }
+    html.smart-header-tabs-minimized .smart-header-shell--split {
+      box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
     }
     /* Die Ausblendung haengt direkt am Scroll-Fortschritt, laeuft also exakt
        mit dem Finger statt als nachlaufende Animation. */

@@ -171,6 +171,7 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
   let mainHeaderTabsRafId = 0;
+  let mainHeaderTabsBootSyncPending = true;
   const MAIN_HEADER_TABS_SLOT_FALLBACK_PX = 40;
   const MAIN_HEADER_TABS_MINIMIZED_PROGRESS = 0.45;
   const MAIN_HEADER_TABS_FADE_FACTOR = 1.8;
@@ -1486,6 +1487,14 @@ export function createAppShellRuntimeController(deps = {}) {
   // Die Tab-Zeile bleibt immer in der gleichen Layout-Hoehe stehen und blendet
   // sich nur aus, waehrend sie hinter die obere Leiste scrollt. Dadurch wandert
   // der Content beim Scrollen nie nach oben oder unten.
+  function applyMainHeaderTabsFade(fade, minimized) {
+    // Auf dem Root, damit sowohl die Tab-Zeile als auch der Shell darauf
+    // zugreifen koennen - der Header-Schatten blendet damit exakt mit um.
+    doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", fade.toFixed(3));
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-minimized", !!minimized);
+    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", minimized ? "false" : "true");
+  }
+
   function syncMainHeaderTabsScrollProgress() {
     if (!doc || !win) return;
     const tabsEl = doc.getElementById("smart-tabs");
@@ -1496,10 +1505,7 @@ export function createAppShellRuntimeController(deps = {}) {
     // Etwas schneller ausblenden als die Zeile hinter die Leiste laeuft, damit
     // man nie halb abgeschnittene Buttons sieht.
     const fade = Math.min(1, Math.max(0, 1 - progress * MAIN_HEADER_TABS_FADE_FACTOR));
-    tabsEl.style.setProperty("--smart-header-tabs-fade", fade.toFixed(3));
-    const minimized = progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS;
-    doc.documentElement?.classList?.toggle?.("smart-header-tabs-minimized", minimized);
-    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", minimized ? "false" : "true");
+    applyMainHeaderTabsFade(fade, progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS);
   }
 
   function stopMainHeaderTabsRuntime() {
@@ -1515,11 +1521,25 @@ export function createAppShellRuntimeController(deps = {}) {
     mainHeaderTabsToggleEl = null;
     mainHeaderTabsToggleHandler = null;
     doc?.documentElement?.classList?.remove?.("smart-header-tabs-minimized");
+    doc?.documentElement?.style?.removeProperty?.("--smart-header-tabs-fade");
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
     stopMainHeaderTabsRuntime();
     if (!win || !doc || !tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) return;
+
+    // Beim App-Start sollen die Tabs immer offen stehen. Falls die Seite noch
+    // eine Scroll-Position aus einer frueheren Sitzung mitbringt, wird die
+    // einmalig auf den Anfang gesetzt.
+    if (mainHeaderTabsBootSyncPending) {
+      mainHeaderTabsBootSyncPending = false;
+      if (Math.max(0, Number(win.scrollY || 0)) > 0) {
+        try {
+          win.scrollTo(0, 0);
+        } catch {}
+      }
+      applyMainHeaderTabsFade(1, false);
+    }
 
     const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
     if (toggleEl) {
