@@ -170,15 +170,10 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsScrollListener = null;
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
-  let mainHeaderTabsRafId = 0;
-  // Vom Pfeil gesteuert: eingeklappt = Tab-Zeile komplett ausgeblendet
-  // (display:none), unabhaengig von jeder Scroll-Position. Kein Timer,
-  // kein Scroll-Ziel - der Klick schaltet den Zustand direkt.
+  // Einziger Zustand der Tab-Zeile: eingeklappt (display:none) oder offen.
+  // Offen klebt sie per CSS dauerhaft unter der Leiste, deshalb gibt es beim
+  // Scrollen nichts umzuschalten - und damit auch nichts, das springen kann.
   let mainHeaderTabsCollapsed = false;
-  // Aufgeklappt, waehrend die Seite gescrollt ist: die Zeile haengt unter der
-  // Leiste (fixed), statt die Seite nach oben zu reissen. Beide Zustaende
-  // liegen ausserhalb des Layout-Flusses, deshalb ruckt beim Umschalten nichts.
-  let mainHeaderTabsPinned = false;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -190,9 +185,6 @@ export function createAppShellRuntimeController(deps = {}) {
     "wheel",
     "keydown"
   ]);
-  const MAIN_HEADER_TABS_SLOT_FALLBACK_PX = 40;
-  const MAIN_HEADER_TABS_MINIMIZED_PROGRESS = 0.45;
-  const MAIN_HEADER_TABS_FADE_FACTOR = 1.8;
   const SMART_HEADER_TOP_RESET_PX = 50;
   const SMART_HEADER_HIDE_DELTA_PX = 18;
   const SMART_HEADER_SHOW_DELTA_PX = 14;
@@ -1539,60 +1531,13 @@ export function createAppShellRuntimeController(deps = {}) {
     return true;
   }
 
-  function setMainHeaderTabsPinned(next) {
-    mainHeaderTabsPinned = !!next;
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-pinned", mainHeaderTabsPinned);
-  }
-
   function setMainHeaderTabsCollapsed(next) {
     mainHeaderTabsCollapsed = !!next;
     doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
-    if (mainHeaderTabsCollapsed) setMainHeaderTabsPinned(false);
-    if (mainHeaderTabsCollapsed) {
-      // Der Header-Schatten wandert an die obere Leiste, solange die
-      // Tab-Zeile eingeklappt ist.
-      doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", "0.000");
-    }
+    // Der Header-Schatten sitzt immer an der untersten sichtbaren Kante:
+    // offen an der Tab-Zeile, zugeklappt an der oberen Leiste.
+    doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", mainHeaderTabsCollapsed ? "0.000" : "1.000");
     mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", mainHeaderTabsCollapsed ? "false" : "true");
-  }
-
-  function applyMainHeaderTabsFade(fade, minimized) {
-    // Auf dem Root, damit sowohl die Tab-Zeile als auch der Shell darauf
-    // zugreifen koennen - der Header-Schatten blendet damit exakt mit um.
-    doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", fade.toFixed(3));
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-minimized", !!minimized);
-    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", minimized ? "false" : "true");
-  }
-
-  function syncMainHeaderTabsScrollProgress() {
-    if (!doc || !win) return;
-    const tabsEl = doc.getElementById("smart-tabs");
-    const topEl = doc.getElementById("smart-header-top");
-    if (!tabsEl || !topEl) return;
-    // Gemessen wird, wie weit die Tab-Zeile tatsaechlich hinter der oberen
-    // Leiste liegt - nicht scrollY. Steht die Zeile sichtbar unter der Leiste,
-    // ist sie offen, egal was der Scroll-Wert gerade behauptet.
-    // Eingeklappt zaehlt nur der Pfeil - die Scroll-Position hat dann nichts
-    // mitzureden (die Zeile ist per display:none komplett draussen).
-    if (mainHeaderTabsCollapsed) return;
-    // Angeheftet bleibt die Zeile sichtbar, bis der Pfeil sie wieder zumacht.
-    // Oben angekommen loest sie sich von selbst und steht wieder normal im
-    // Fluss - dort ist die angeheftete Position ohnehin dieselbe.
-    if (mainHeaderTabsPinned) {
-      if (Math.max(0, Number(win.scrollY || 0)) > 2) {
-        applyMainHeaderTabsFade(1, false);
-        return;
-      }
-      setMainHeaderTabsPinned(false);
-    }
-    const tabsRect = tabsEl.getBoundingClientRect();
-    const slot = Math.max(1, Number(tabsRect.height) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX);
-    const hidden = Math.max(0, Number(topEl.getBoundingClientRect().bottom || 0) - Number(tabsRect.top || 0));
-    const progress = Math.min(1, hidden / slot);
-    // Etwas schneller ausblenden als die Zeile hinter die Leiste laeuft, damit
-    // man nie halb abgeschnittene Buttons sieht.
-    const fade = Math.min(1, Math.max(0, 1 - progress * MAIN_HEADER_TABS_FADE_FACTOR));
-    applyMainHeaderTabsFade(fade, progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS);
   }
 
   function stopMainHeaderTabsRuntime() {
@@ -1605,13 +1550,9 @@ export function createAppShellRuntimeController(deps = {}) {
     if (mainHeaderTabsToggleEl && typeof mainHeaderTabsToggleHandler === "function") {
       mainHeaderTabsToggleEl.removeEventListener("click", mainHeaderTabsToggleHandler);
     }
-    if (win && mainHeaderTabsRafId) win.cancelAnimationFrame?.(mainHeaderTabsRafId);
-    mainHeaderTabsRafId = 0;
     mainHeaderTabsScrollListener = null;
     mainHeaderTabsToggleEl = null;
     mainHeaderTabsToggleHandler = null;
-    doc?.documentElement?.classList?.remove?.("smart-header-tabs-minimized");
-    doc?.documentElement?.style?.removeProperty?.("--smart-header-tabs-fade");
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
@@ -1625,74 +1566,51 @@ export function createAppShellRuntimeController(deps = {}) {
     if (mainHeaderTabsBootSyncPending) {
       mainHeaderTabsBootSyncPending = false;
       resetMainHeaderTabsBootScroll();
-      applyMainHeaderTabsFade(1, false);
     }
 
     const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
     if (toggleEl) {
       mainHeaderTabsToggleEl = toggleEl;
-      // Der Pfeil ist an denselben Scroll-Zustand gebunden, den er anzeigt:
-      // minimiert -> zurueck nach oben, offen -> knapp an den Tabs vorbei.
-      // Der Pfeil schaltet die Tab-Zeile direkt ein und aus - ohne jedes
-      // Scrollen. Zu = Zeile weg, auf = Zeile da, genau an der Stelle, an der
-      // man gerade steht: mitten auf der Seite haengt sie sich dafuer unter
-      // die Leiste, statt die Seite nach oben zu reissen.
+      // Die Tab-Zeile klebt per CSS dauerhaft unter der Leiste (sticky) -
+      // beim Scrollen aendert sich also gar nichts, es gibt keinen Zustand,
+      // der irgendwo umspringen koennte. Der Pfeil blendet sie nur ein und aus.
+      // Ein- und Ausblenden nimmt oben 40px Layout-Platz weg bzw. gibt ihn
+      // zurueck; die Scroll-Position zieht um genau diese Hoehe mit, damit der
+      // Content dabei optisch stehen bleibt.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
-        // Leistenhoehe frisch messen, bevor die Zeile sich daran anheftet -
-        // ein veralteter Wert waere genau der Spalt, den man sonst sieht.
         syncSmartHeaderMetrics();
-        const minimizedByScroll = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
-        const tabsHidden = mainHeaderTabsCollapsed || (!mainHeaderTabsPinned && minimizedByScroll);
-        if (tabsHidden) {
-          const scrollY = Math.max(0, Number(win.scrollY || 0));
-          const shouldPin = scrollY > 2;
-          // War die Zeile nur weggescrollt (nicht zugeklappt), belegt sie noch
-          // Layout-Platz. Beim Anheften faellt der weg - der Content wuerde um
-          // ihre Hoehe nach oben rutschen. Die Scroll-Position zieht deshalb um
-          // genau diese Hoehe mit, damit optisch nichts wandert.
-          const flowHeight = mainHeaderTabsCollapsed
-            ? 0
-            : Math.round(Number(tabsEl.getBoundingClientRect().height) || 0);
-          const compensatedTop = Math.max(0, scrollY - flowHeight);
-          // Erst anheften, dann einblenden: so kommt die Zeile nie
-          // zwischendurch in den Fluss zurueck.
-          setMainHeaderTabsPinned(shouldPin);
-          setMainHeaderTabsCollapsed(false);
-          applyMainHeaderTabsFade(1, false);
-          if (shouldPin && flowHeight > 0) {
-            try {
-              win.scrollTo(0, compensatedTop);
-            } catch {}
-          }
-        } else {
-          setMainHeaderTabsCollapsed(true);
+        const wasCollapsed = mainHeaderTabsCollapsed;
+        const scrollY = Math.max(0, Number(win.scrollY || 0));
+        const knownHeight = wasCollapsed
+          ? 0
+          : Math.round(Number(tabsEl.getBoundingClientRect().height) || 0);
+        setMainHeaderTabsCollapsed(!wasCollapsed);
+        const rowHeight = wasCollapsed
+          ? Math.round(Number(tabsEl.getBoundingClientRect().height) || 0)
+          : knownHeight;
+        if (scrollY > 0 && rowHeight > 0) {
+          try {
+            win.scrollTo(0, Math.max(0, wasCollapsed ? scrollY + rowHeight : scrollY - rowHeight));
+          } catch {}
         }
-        syncMainHeaderTabsScrollProgress();
         syncSmartHeaderMetrics();
       };
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
       // Zustand nach jedem Re-Render wieder ansagen (Klasse + aria bleiben
       // so auch auf frisch gebautem DOM korrekt).
-      const wasPinned = mainHeaderTabsPinned;
       setMainHeaderTabsCollapsed(mainHeaderTabsCollapsed);
-      setMainHeaderTabsPinned(!mainHeaderTabsCollapsed && wasPinned);
     }
 
-    // Nur Opacity und eine Klasse - kein Layout, deshalb kein Ruckeln.
+    // Einziger Scroll-Zweck: der Start-Schutz, der eine ungewollte
+    // Scroll-Position zurueckholt. Danach haengt der Listener sich selbst ab.
     mainHeaderTabsScrollListener = () => {
-      if (mainHeaderTabsBootLockActive && resetMainHeaderTabsBootScroll()) {
-        applyMainHeaderTabsFade(1, false);
+      if (!mainHeaderTabsBootLockActive) {
+        win.removeEventListener("scroll", mainHeaderTabsScrollListener);
         return;
       }
-      if (mainHeaderTabsRafId) return;
-      mainHeaderTabsRafId = win.requestAnimationFrame?.(() => {
-        mainHeaderTabsRafId = 0;
-        syncMainHeaderTabsScrollProgress();
-      }) || 0;
-      if (!mainHeaderTabsRafId) syncMainHeaderTabsScrollProgress();
+      resetMainHeaderTabsBootScroll();
     };
-    syncMainHeaderTabsScrollProgress();
     win.addEventListener("scroll", mainHeaderTabsScrollListener, { passive: true });
   }
 
@@ -1711,7 +1629,6 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTabsEl = null;
     if (resetState) {
       setMainHeaderTabsCollapsed(false);
-      setMainHeaderTabsPinned(false);
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;

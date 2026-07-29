@@ -1241,8 +1241,15 @@
        dieselbe Layout-Hoehe. Beim Scrollen laeuft sie hinter die obere Leiste
        und blendet sich dabei aus - der Content behaelt seinen Abstand nach oben
        und wandert nie hoch oder runter. */
+    /* Die Zeile klebt dauerhaft unter der oberen Leiste. Ihren Platz im
+       Layout behaelt sie dabei - beim Scrollen aendert sich also weder die
+       Seitenhoehe noch ihre Sichtbarkeit. Es gibt schlicht keinen Zustand,
+       der irgendwann umspringen koennte. Die 1px Ueberlappung nach oben
+       schluckt Rundungsreste, damit an der Naht nie Content durchblitzt. */
     .smart-header-tabs--main {
-      position: relative;
+      position: -webkit-sticky;
+      position: sticky;
+      top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
       z-index: 90;
       border-bottom-width: 0;
       box-shadow: none;
@@ -1277,7 +1284,6 @@
     .smart-header-shell--split::after {
       opacity: calc(1 - var(--smart-header-tabs-fade, 1));
     }
-    html.smart-header-tabs-minimized .smart-header-shell--split,
     html.smart-header-tabs-collapsed .smart-header-shell--split {
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
     }
@@ -1286,31 +1292,7 @@
     html.smart-header-tabs-collapsed .smart-header-tabs--main {
       display: none;
     }
-    /* Mitten auf der Seite aufgeklappt: die Zeile haengt sich unter die obere
-       Leiste, statt die Seite nach oben zu reissen. Sie liegt dabei - wie im
-       eingeklappten Zustand - ausserhalb des Layout-Flusses, deshalb bleibt
-       der Content beim Umschalten exakt stehen. Oben angekommen loest sie
-       sich wieder und steht normal im Fluss. */
-    html.smart-header-tabs-pinned .smart-header-tabs--main {
-      position: fixed;
-      /* 1px Ueberlappung nach oben: die gemessene Leistenhoehe ist gerundet,
-         eine halbe Pixelzeile Rest wuerde als hauchduenner Spalt wirken, durch
-         den der scrollende Content blitzt. Die Leiste liegt darueber (z-index),
-         deckt die Ueberlappung also sauber ab - Kante auf Kante, kein Spalt. */
-      top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
-      left: max(0px, calc(50% - 14rem));
-      width: min(100%, 28rem);
-      z-index: 95;
-    }
-    /* Die Ausblendung haengt direkt am Scroll-Fortschritt, laeuft also exakt
-       mit dem Finger statt als nachlaufende Animation. */
-    .smart-header-tabs--main .smart-header-tabs-row {
-      opacity: var(--smart-header-tabs-fade, 1);
-    }
-    html.smart-header-tabs-minimized .smart-header-tabs--main .smart-header-tabs-row {
-      pointer-events: none;
-    }
-    /* Minimiert faerbt sich der Pfeil weich blau ein und dreht nach oben: das
+    /* Zugeklappt faerbt sich der Pfeil weich blau ein und dreht nach oben: das
        ist der Hinweis, dass man die Tabs darueber wieder aufmachen kann. */
     .smart-header-collapse-btn {
       color: rgb(100 116 139);
@@ -1318,12 +1300,9 @@
       -webkit-tap-highlight-color: transparent;
       transition: color 320ms cubic-bezier(0.42, 0, 0.58, 1), background-color 320ms ease;
     }
-    html.smart-header-tabs-minimized .smart-header-collapse-btn,
     html.smart-header-tabs-collapsed .smart-header-collapse-btn {
       color: rgb(79 70 229);
     }
-    html.smart-header-tabs-minimized .smart-header-collapse-btn > svg,
-    html.smart-header-tabs-minimized .smart-header-collapse-btn > i,
     html.smart-header-tabs-collapsed .smart-header-collapse-btn > svg,
     html.smart-header-tabs-collapsed .smart-header-collapse-btn > i {
       transform: rotate(180deg);
