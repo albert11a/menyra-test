@@ -167,13 +167,10 @@ export function createAppShellRuntimeController(deps = {}) {
   let smartHeaderBoundTopEl = null;
   let smartHeaderBoundTabsEl = null;
   let smartHeaderIgnoreScrollUntilTs = 0;
-  let mainHeaderTabsScrollCollapsed = false;
-  let mainHeaderTabsLastScrollY = 0;
   let mainHeaderTabsScrollListener = null;
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
-  const MAIN_HEADER_TABS_TOP_RESET_PX = 8;
-  const MAIN_HEADER_TABS_COLLAPSE_DELTA_PX = 10;
+  const MAIN_HEADER_TABS_TOP_RESET_PX = 4;
   const SMART_HEADER_TOP_RESET_PX = 50;
   const SMART_HEADER_HIDE_DELTA_PX = 18;
   const SMART_HEADER_SHOW_DELTA_PX = 14;
@@ -972,7 +969,7 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function isMainHeaderTabsCollapsed() {
-    return !!state.headerTabsCollapsed || mainHeaderTabsScrollCollapsed;
+    return !!state.headerTabsCollapsed;
   }
 
   function renderMainHeaderTabs(locationRecord = readStoredFeedViewerLocation()) {
@@ -1081,8 +1078,12 @@ export function createAppShellRuntimeController(deps = {}) {
       ? tr("header.expandTabs", "Tabs einblenden")
       : tr("header.collapseTabs", "Header minimieren");
 
+    // Die Tab-Zeile liegt bewusst ausserhalb des stickenden Shells: nur die
+    // obere Leiste bleibt oben kleben, die Tabs scrollen normal mit dem Content
+    // weg und wandern dabei hinter die Leiste. So aendert sich beim Scrollen
+    // keine Layout-Hoehe und die Seite springt nicht.
     return `
-      <div class="smart-header-shell">
+      <div class="smart-header-shell${hasHeaderTabs ? " smart-header-shell--split" : ""}${hasHeaderTabs && headerTabsCollapsed ? " smart-header-shell--tabs-collapsed" : ""}">
         <div id="smart-header-top" class="smart-header-top">
           <div class="${headerRowPaddingClass} h-16 flex items-center justify-between">
             <div class="flex items-center ${headerLeadGapClass}${showFeedLocationHeaderSearch ? " flex-1 min-w-0 pr-2" : ""}">
@@ -1124,8 +1125,8 @@ export function createAppShellRuntimeController(deps = {}) {
             </div>
             ${renderLanguagePickerPanel()}
           </div>
-          ${headerTabsHtml}
         </div>
+        ${headerTabsHtml}
     `;
   }
 
@@ -1506,6 +1507,10 @@ export function createAppShellRuntimeController(deps = {}) {
       toggleEl.classList.toggle("smart-header-collapse-btn--collapsed", next);
       toggleEl.setAttribute("aria-expanded", next ? "false" : "true");
     }
+    // Die Tab-Zeile liegt ausserhalb des Shells, deshalb bekommt der Shell den
+    // Collapse-Zustand als eigene Klasse, damit er die Header-Kante uebernimmt.
+    doc.querySelector(".smart-header-shell--split")
+      ?.classList?.toggle?.("smart-header-shell--tabs-collapsed", next);
     const rootStyle = doc.documentElement?.style;
     if (rootStyle) {
       const nextTabsHeight = next
@@ -1521,7 +1526,11 @@ export function createAppShellRuntimeController(deps = {}) {
     safeStorageObj.setItem(storageKey, collapsed ? "1" : "0");
   }
 
-  function stopMainHeaderTabsRuntime({ resetState = true } = {}) {
+  function setMainHeaderScrolledState(scrolled) {
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-scrolled", !!scrolled);
+  }
+
+  function stopMainHeaderTabsRuntime() {
     if (win && typeof mainHeaderTabsScrollListener === "function") {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
@@ -1531,22 +1540,12 @@ export function createAppShellRuntimeController(deps = {}) {
     mainHeaderTabsScrollListener = null;
     mainHeaderTabsToggleEl = null;
     mainHeaderTabsToggleHandler = null;
-    if (resetState) {
-      mainHeaderTabsScrollCollapsed = false;
-      mainHeaderTabsLastScrollY = 0;
-    }
+    setMainHeaderScrolledState(false);
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
-    stopMainHeaderTabsRuntime({ resetState: false });
-    if (!win || !doc || !tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) {
-      mainHeaderTabsScrollCollapsed = false;
-      return;
-    }
-    mainHeaderTabsLastScrollY = Math.max(0, Number(win.scrollY || 0));
-    if (mainHeaderTabsLastScrollY <= MAIN_HEADER_TABS_TOP_RESET_PX) {
-      mainHeaderTabsScrollCollapsed = false;
-    }
+    stopMainHeaderTabsRuntime();
+    if (!win || !doc || !tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) return;
     setMainHeaderTabsCollapsedUi(isMainHeaderTabsCollapsed());
 
     const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
@@ -1555,37 +1554,25 @@ export function createAppShellRuntimeController(deps = {}) {
       mainHeaderTabsToggleHandler = () => {
         const nextCollapsed = !isMainHeaderTabsCollapsed();
         state.headerTabsCollapsed = nextCollapsed;
-        // Manuelles Aufklappen gewinnt gegen den Scroll-Auto-Collapse, bis
-        // erneut nach unten gescrollt wird.
-        mainHeaderTabsScrollCollapsed = false;
-        mainHeaderTabsLastScrollY = Math.max(0, Number(win.scrollY || 0));
         persistMainHeaderTabsPreference(nextCollapsed);
         setMainHeaderTabsCollapsedUi(nextCollapsed);
       };
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
     }
 
-    // Runterscrollen im Feed/Restaurants klappt die Tabs automatisch zu,
-    // ganz oben kommen sie wieder zurueck (sofern nicht manuell minimiert).
+    // Der Scroll-Listener aendert kein Layout, er markiert nur, dass die
+    // Tab-Zeile hinter die obere Leiste gescrollt ist: dann wandert der
+    // Header-Schatten an die Leiste und der Collapse-Pfeil blendet sich aus,
+    // weil er in dem Zustand nichts Sichtbares mehr schaltet.
     mainHeaderTabsScrollListener = () => {
-      const scrollY = Math.max(0, Number(win.scrollY || 0));
-      const delta = scrollY - mainHeaderTabsLastScrollY;
-      mainHeaderTabsLastScrollY = scrollY;
-      if (scrollY <= MAIN_HEADER_TABS_TOP_RESET_PX) {
-        if (!mainHeaderTabsScrollCollapsed) return;
-        mainHeaderTabsScrollCollapsed = false;
-        setMainHeaderTabsCollapsedUi(isMainHeaderTabsCollapsed());
-        return;
-      }
-      if (mainHeaderTabsScrollCollapsed || delta < MAIN_HEADER_TABS_COLLAPSE_DELTA_PX) return;
-      mainHeaderTabsScrollCollapsed = true;
-      setMainHeaderTabsCollapsedUi(true);
+      setMainHeaderScrolledState(Math.max(0, Number(win.scrollY || 0)) > MAIN_HEADER_TABS_TOP_RESET_PX);
     };
+    setMainHeaderScrolledState(Math.max(0, Number(win.scrollY || 0)) > MAIN_HEADER_TABS_TOP_RESET_PX);
     win.addEventListener("scroll", mainHeaderTabsScrollListener, { passive: true });
   }
 
   function stopSmartHeaderVisibilitySync({ resetState = true } = {}) {
-    stopMainHeaderTabsRuntime({ resetState });
+    stopMainHeaderTabsRuntime();
     if (win && typeof smartHeaderScrollListener === "function") {
       win.removeEventListener("scroll", smartHeaderScrollListener);
     }

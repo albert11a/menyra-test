@@ -563,7 +563,7 @@
       --safe-area-left: 0px;
       --menu-detail-footer-gap: 0px;
       --smart-header-tabs-height: 0px;
-      --feed-location-gate-header-height: calc(var(--safe-area-top) + 4.5rem + var(--smart-header-tabs-height, 0px));
+      --feed-location-gate-header-height: calc(var(--safe-area-top) + 4.5rem);
       --app-content-inline: 1.5rem;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
@@ -1259,10 +1259,53 @@
     }
     /* Keine Linie zwischen oberer Leiste und den Tab-Buttons: der Header ist
        dort eine durchgehende Flaeche, die Abgrenzung macht der weiche
-       Schatten unter dem Header-Shell. */
-    .smart-header-shell:has(.smart-header-tabs--main) .smart-header-top {
+       Schatten unter der jeweils untersten Header-Kante. */
+    .smart-header-shell--split .smart-header-top {
       border-bottom-color: transparent;
       box-shadow: none;
+    }
+    /* Die Tab-Zeile steht ausserhalb des stickenden Shells und scrollt normal
+       mit dem Content weg. Dabei laeuft sie hinter die obere Leiste, ohne dass
+       sich eine Layout-Hoehe aendert - die Seite bleibt also ruhig. */
+    .smart-header-tabs--main {
+      position: relative;
+      z-index: 90;
+    }
+    .smart-header-tabs--main::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -16px;
+      height: 16px;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
+      transition: opacity 220ms ease;
+    }
+    .smart-header-tabs--main.smart-header-tabs--collapsed::after,
+    html.smart-header-tabs-scrolled .smart-header-tabs--main::after {
+      opacity: 0;
+    }
+    /* Solange die Tabs oben stehen, tragen sie die Header-Kante; sind sie
+       weggescrollt oder zugeklappt, uebernimmt sie der Shell. */
+    .smart-header-shell--split::after {
+      opacity: 0;
+      transition: opacity 220ms ease;
+    }
+    .smart-header-shell--split.smart-header-shell--tabs-collapsed::after,
+    html.smart-header-tabs-scrolled .smart-header-shell--split::after {
+      opacity: 1;
+    }
+    /* Der Pfeil schaltet nur die oben stehende Tab-Zeile. Ist sie ohnehin
+       weggescrollt, blendet er sich aus, damit ein Tap den Content nicht
+       unter dem Finger verschiebt. */
+    .smart-header-collapse-btn {
+      opacity: 1;
+      transition: opacity 220ms ease;
+    }
+    html.smart-header-tabs-scrolled .smart-header-collapse-btn {
+      opacity: 0;
+      pointer-events: none;
     }
     .smart-header-tabs-row {
       display: flex;

@@ -17,11 +17,12 @@ Haupt-Tabs im Header (`feed` / `restaurants`):
 - Auf- und Zuklappen laeuft ueber `grid-template-rows: 1fr -> 0fr` mit einem `.smart-header-tabs-clip`-Wrapper. Das animiert die echte Inhaltshoehe; die frueher genutzte `max-height`-Schaetzung sprang, weil der Grossteil der Strecke auf leeren Raum entfiel.
 - Diese Transition ist bewusst nicht im `fast-mode` deaktiviert, sonst klappt sie auf schwaecheren Geraeten hart um.
 - Die Tabs nutzen `data-nav`, haben aber eine eigene Bindung (`bindPillTap`): sie schalten auf `touchend` statt `click` und faerben sich sofort um, damit der Wechsel nicht erst nach dem Re-Render sichtbar wird. Ein Scroll-Gesture, das auf einem Pill startet, loest keinen Wechsel aus.
-- Ganz rechts in der oberen Leiste (neben dem Warenkorb) minimiert ein Chevron-Button den Header auf die eine obere Zeile.
-- Runterscrollen klappt die Tabs automatisch zu, ganz oben kommen sie zurueck. Das laeuft ueber `initMainHeaderTabsRuntime()` mit `mainHeaderTabsScrollCollapsed`; manuelles Aufklappen gewinnt bis zum naechsten Runterscrollen.
-- Die manuelle Praeferenz liegt in `state.headerTabsCollapsed` und wird unter `STORAGE_KEYS.headerTabs` persistiert; effektiv zu ist der Header, wenn Praeferenz oder Scroll-Collapse aktiv sind (`isMainHeaderTabsCollapsed()`).
-- Chevron-Klick und Scroll-Listener sitzen im App-Shell-Controller (nicht in den Event-Bind-Utils), damit sie sich denselben Runtime-State teilen. Umgeschaltet wird direkt am DOM, damit die Hoehen-Transition laeuft; `--smart-header-tabs-height` wird dabei mitgesetzt.
-- `--feed-location-gate-header-height` rechnet `--smart-header-tabs-height` mit ein, damit die Sticky-Offsets im Feed-Location-Gate stimmen.
+- Die Tab-Zeile steht bewusst **ausserhalb** von `.smart-header-shell` (Geschwister-Element, `.smart-header-shell--split` markiert diesen Fall). Sticky ist nur der Shell mit der oberen Leiste; die Tabs scrollen normal mit dem Content weg und laufen dabei hinter die Leiste (`z-index` 90 gegen 100).
+- Damit aendert Scrollen keine Layout-Hoehe mehr. Ein frueherer Scroll-Auto-Collapse hat den Header in-flow zusammengezogen und dadurch den Content unter dem Finger verschoben - das ist raus.
+- Der Scroll-Listener in `initMainHeaderTabsRuntime()` schaltet nur noch die Klasse `smart-header-tabs-scrolled` am `<html>`. Sie verschiebt den weichen Header-Schatten von der Tab-Zeile an den Shell und blendet den Collapse-Pfeil aus, solange die Tabs weggescrollt sind - ein Tap koennte dort sonst den Content springen lassen. Kein Layout-Effekt.
+- Ganz rechts in der oberen Leiste (neben dem Warenkorb) minimiert ein Chevron-Button die Tab-Zeile. Die Praeferenz liegt in `state.headerTabsCollapsed`, wird unter `STORAGE_KEYS.headerTabs` persistiert und der Shell traegt sie zusaetzlich als `smart-header-shell--tabs-collapsed`, weil er die Tab-Zeile nicht mehr per `:has()` sieht.
+- Chevron-Klick und Scroll-Listener sitzen im App-Shell-Controller (nicht in den Event-Bind-Utils), damit sie sich denselben Runtime-State teilen. Umgeschaltet wird direkt am DOM, damit die Hoehen-Transition laeuft.
+- `--feed-location-gate-header-height` deckt nur die obere Leiste ab (`safe-area + 4.5rem`), weil die Tab-Zeile weggescrollt ist, bevor im Gate etwas sticky wird.
 - `Restaurants` ist deshalb kein Drawer-Eintrag mehr.
 
 Wichtige Eigenschaften:
