@@ -175,6 +175,10 @@ export function createAppShellRuntimeController(deps = {}) {
   // (display:none), unabhaengig von jeder Scroll-Position. Kein Timer,
   // kein Scroll-Ziel - der Klick schaltet den Zustand direkt.
   let mainHeaderTabsCollapsed = false;
+  // Aufgeklappt, waehrend die Seite gescrollt ist: die Zeile haengt unter der
+  // Leiste (fixed), statt die Seite nach oben zu reissen. Beide Zustaende
+  // liegen ausserhalb des Layout-Flusses, deshalb ruckt beim Umschalten nichts.
+  let mainHeaderTabsPinned = false;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1535,9 +1539,15 @@ export function createAppShellRuntimeController(deps = {}) {
     return true;
   }
 
+  function setMainHeaderTabsPinned(next) {
+    mainHeaderTabsPinned = !!next;
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-pinned", mainHeaderTabsPinned);
+  }
+
   function setMainHeaderTabsCollapsed(next) {
     mainHeaderTabsCollapsed = !!next;
     doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
+    if (mainHeaderTabsCollapsed) setMainHeaderTabsPinned(false);
     if (mainHeaderTabsCollapsed) {
       // Der Header-Schatten wandert an die obere Leiste, solange die
       // Tab-Zeile eingeklappt ist.
@@ -1565,6 +1575,16 @@ export function createAppShellRuntimeController(deps = {}) {
     // Eingeklappt zaehlt nur der Pfeil - die Scroll-Position hat dann nichts
     // mitzureden (die Zeile ist per display:none komplett draussen).
     if (mainHeaderTabsCollapsed) return;
+    // Angeheftet bleibt die Zeile sichtbar, bis der Pfeil sie wieder zumacht.
+    // Oben angekommen loest sie sich von selbst und steht wieder normal im
+    // Fluss - dort ist die angeheftete Position ohnehin dieselbe.
+    if (mainHeaderTabsPinned) {
+      if (Math.max(0, Number(win.scrollY || 0)) > 2) {
+        applyMainHeaderTabsFade(1, false);
+        return;
+      }
+      setMainHeaderTabsPinned(false);
+    }
     const tabsRect = tabsEl.getBoundingClientRect();
     const slot = Math.max(1, Number(tabsRect.height) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX);
     const hidden = Math.max(0, Number(topEl.getBoundingClientRect().bottom || 0) - Number(tabsRect.top || 0));
@@ -1614,18 +1634,32 @@ export function createAppShellRuntimeController(deps = {}) {
       // Der Pfeil ist an denselben Scroll-Zustand gebunden, den er anzeigt:
       // minimiert -> zurueck nach oben, offen -> knapp an den Tabs vorbei.
       // Der Pfeil schaltet die Tab-Zeile direkt ein und aus - ohne jedes
-      // Scrollen. Zu = Zeile weg, auf = Zeile da. Nur wenn die Zeile beim
-      // Aufmachen durch normales Scrollen hinter der Leiste liegt, springt
-      // die Seite einmal hart an den Anfang, damit sie sichtbar ist.
+      // Scrollen. Zu = Zeile weg, auf = Zeile da, genau an der Stelle, an der
+      // man gerade steht: mitten auf der Seite haengt sie sich dafuer unter
+      // die Leiste, statt die Seite nach oben zu reissen.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
         const minimizedByScroll = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
-        const tabsHidden = mainHeaderTabsCollapsed || minimizedByScroll;
+        const tabsHidden = mainHeaderTabsCollapsed || (!mainHeaderTabsPinned && minimizedByScroll);
         if (tabsHidden) {
+          const scrollY = Math.max(0, Number(win.scrollY || 0));
+          const shouldPin = scrollY > 2;
+          // War die Zeile nur weggescrollt (nicht zugeklappt), belegt sie noch
+          // Layout-Platz. Beim Anheften faellt der weg - der Content wuerde um
+          // ihre Hoehe nach oben rutschen. Die Scroll-Position zieht deshalb um
+          // genau diese Hoehe mit, damit optisch nichts wandert.
+          const flowHeight = mainHeaderTabsCollapsed
+            ? 0
+            : Math.round(Number(tabsEl.getBoundingClientRect().height) || 0);
+          const compensatedTop = Math.max(0, scrollY - flowHeight);
+          // Erst anheften, dann einblenden: so kommt die Zeile nie
+          // zwischendurch in den Fluss zurueck.
+          setMainHeaderTabsPinned(shouldPin);
           setMainHeaderTabsCollapsed(false);
-          if (Math.max(0, Number(win.scrollY || 0)) > 0) {
+          applyMainHeaderTabsFade(1, false);
+          if (shouldPin && flowHeight > 0) {
             try {
-              win.scrollTo(0, 0);
+              win.scrollTo(0, compensatedTop);
             } catch {}
           }
         } else {
@@ -1637,7 +1671,9 @@ export function createAppShellRuntimeController(deps = {}) {
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
       // Zustand nach jedem Re-Render wieder ansagen (Klasse + aria bleiben
       // so auch auf frisch gebautem DOM korrekt).
+      const wasPinned = mainHeaderTabsPinned;
       setMainHeaderTabsCollapsed(mainHeaderTabsCollapsed);
+      setMainHeaderTabsPinned(!mainHeaderTabsCollapsed && wasPinned);
     }
 
     // Nur Opacity und eine Klasse - kein Layout, deshalb kein Ruckeln.
@@ -1672,6 +1708,7 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTabsEl = null;
     if (resetState) {
       setMainHeaderTabsCollapsed(false);
+      setMainHeaderTabsPinned(false);
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;

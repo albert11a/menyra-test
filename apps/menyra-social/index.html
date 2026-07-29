@@ -1286,6 +1286,18 @@
     html.smart-header-tabs-collapsed .smart-header-tabs--main {
       display: none;
     }
+    /* Mitten auf der Seite aufgeklappt: die Zeile haengt sich unter die obere
+       Leiste, statt die Seite nach oben zu reissen. Sie liegt dabei - wie im
+       eingeklappten Zustand - ausserhalb des Layout-Flusses, deshalb bleibt
+       der Content beim Umschalten exakt stehen. Oben angekommen loest sie
+       sich wieder und steht normal im Fluss. */
+    html.smart-header-tabs-pinned .smart-header-tabs--main {
+      position: fixed;
+      top: var(--smart-header-top-height, 4.5rem);
+      left: max(0px, calc(50% - 14rem));
+      width: min(100%, 28rem);
+      z-index: 95;
+    }
     /* Die Ausblendung haengt direkt am Scroll-Fortschritt, laeuft also exakt
        mit dem Finger statt als nachlaufende Animation. */
     .smart-header-tabs--main .smart-header-tabs-row {
