@@ -1,3 +1,16 @@
+import {
+  isBackgroundPreloadDiscouragedCore,
+  scheduleIdleCore
+} from "../common/task-schedule-utils.js";
+
+// Der Karten-/Such-Chunk wird schon nach dem Start im Idle geholt, damit der
+// Tab-Wechsel direkt die finale Karte rendert statt erst einen Platzhalter.
+const DISCOVERY_RUNTIME_BOOT_PRELOAD_IDLE_TIMEOUT_MS = 2600;
+const DISCOVERY_RUNTIME_BOOT_PRELOAD_FALLBACK_MS = 1400;
+// Ein abgebrochener Chunk-Load (Tunnel, Netzwechsel) darf den Platzhalter nicht
+// dauerhaft stehen lassen - deshalb Wiederholungen mit steigendem Abstand.
+const DISCOVERY_RUNTIME_LOAD_RETRY_DELAYS_MS = [400, 1200, 2600, 6000];
+
 function normalizeDeferredDiscoveryCoords(value = null) {
   const lat = Number(value?.lat ?? value?.latitude ?? value?.y);
   const lng = Number(value?.lng ?? value?.lon ?? value?.longitude ?? value?.x);
@@ -122,17 +135,40 @@ export function createFeedSearchMapRouteRuntime({
     });
   };
 
+  let discoveryRuntimeLoadFailures = 0;
+  let discoveryRuntimeRetryQueued = false;
+
+  const resolveDiscoveryWindow = () => discovery.windowObj
+    || (typeof globalThis.window === "undefined" ? null : globalThis.window);
+
+  const scheduleDiscoveryRuntimeRetry = () => {
+    if (discoveryRuntimeController || discoveryRuntimeRetryQueued) return;
+    const delayMs = DISCOVERY_RUNTIME_LOAD_RETRY_DELAYS_MS[discoveryRuntimeLoadFailures - 1];
+    if (!Number.isFinite(delayMs)) return;
+    const win = resolveDiscoveryWindow();
+    if (!win || typeof win.setTimeout !== "function") return;
+    discoveryRuntimeRetryQueued = true;
+    win.setTimeout(() => {
+      discoveryRuntimeRetryQueued = false;
+      if (discoveryRuntimeController) return;
+      void ensureDiscoveryRuntimeController().catch(() => null);
+    }, delayMs);
+  };
+
   const ensureDiscoveryRuntimeController = async () => {
     if (discoveryRuntimeController) return discoveryRuntimeController;
     if (discoveryRuntimeControllerPromise) return discoveryRuntimeControllerPromise;
     discoveryRuntimeControllerPromise = createDiscoveryRuntimeControllerAsync()
       .then((controller) => {
         discoveryRuntimeController = controller;
+        discoveryRuntimeLoadFailures = 0;
         discovery.render?.();
         return controller;
       })
       .catch((err) => {
         discoveryRuntimeControllerPromise = null;
+        discoveryRuntimeLoadFailures += 1;
+        scheduleDiscoveryRuntimeRetry();
         throw err;
       });
     return discoveryRuntimeControllerPromise;
@@ -142,19 +178,41 @@ export function createFeedSearchMapRouteRuntime({
     void ensureDiscoveryRuntimeController().catch(() => null);
   };
 
+  // Nach dem Start im Idle vorladen: dadurch liegt der Controller schon bereit,
+  // wenn Karte oder Suche geoeffnet werden, und er kann Leaflet selbst
+  // vorwaermen. Public-Website-Start (QR/Menu) bleibt unangetastet.
+  const scheduleDiscoveryRuntimeBootPreload = () => {
+    const win = resolveDiscoveryWindow();
+    if (!win) return;
+    if (win.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true) return;
+    const navigatorObj = discovery.navigatorObj || win.navigator || null;
+    if (isBackgroundPreloadDiscouragedCore({ navigatorObj })) return;
+    scheduleIdleCore({
+      fn: queueDiscoveryRuntimeControllerLoad,
+      windowObj: win,
+      timeout: DISCOVERY_RUNTIME_BOOT_PRELOAD_IDLE_TIMEOUT_MS,
+      fallbackDelayMs: DISCOVERY_RUNTIME_BOOT_PRELOAD_FALLBACK_MS
+    });
+  };
+
   const renderDeferredDiscoveryView = (mode = "search") => {
     queueDiscoveryRuntimeControllerLoad();
     if (mode === "map") {
+      // Bewusst dieselbe Struktur wie renderMapView(): map-view-root /
+      // map-view-surface. Auf dem Handy ist die Flaeche damit sofort formatfuellend
+      // und der Wechsel auf die echte Karte bleibt unsichtbar - vorher sprang hier
+      // eine kleine gerundete Kachel auf die Vollbild-Karte.
       return `
-        <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-500">
-          <div class="mb-4 px-2 flex justify-between items-end">
+        <div class="map-view-root animate-in fade-in duration-700">
+          <div class="map-view-intro">
             <div>
               <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
-              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Karte wird vorbereitet</p>
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
             </div>
           </div>
-          <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden border border-slate-200/50 min-h-[500px]">
-            <div class="absolute inset-0 z-10 bg-slate-200 flex items-center justify-center text-slate-500 text-xs font-black uppercase tracking-widest">
+          <div class="map-view-surface">
+            <div class="absolute inset-0 z-10 bg-slate-200" data-map-deferred-surface="1"></div>
+            <div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">
               Karte wird geladen ...
             </div>
           </div>
@@ -249,6 +307,8 @@ export function createFeedSearchMapRouteRuntime({
       ensureLoaded: ensureDiscoveryRuntimeController
     })
   });
+
+  scheduleDiscoveryRuntimeBootPreload();
 
   return Object.freeze({
     routeRuntimes,

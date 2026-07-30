@@ -1,3 +1,5 @@
+import { isBackgroundPreloadDiscouragedCore } from "../common/task-schedule-utils.js";
+
 export function createDiscoveryRuntimeController(deps = {}) {
   const document = deps.documentObj || (typeof globalThis.document === "undefined" ? null : globalThis.document);
   const window = deps.windowObj || (typeof globalThis.window === "undefined" ? null : globalThis.window);
@@ -303,11 +305,15 @@ async function ensureLeafletLoaded() {
   return leafletLoadPromise;
 }
 
+// Leaflet + Karten-Stylesheet im Idle holen, sobald dieser Controller existiert.
+// Ohne das startet der Vendor-Download erst beim Oeffnen der Karte, und die
+// Flaeche stand sichtbar auf "Karte wird geladen ...".
 function scheduleLeafletWarmup() {
   if (leafletWarmupScheduled || !window) return;
+  if (isBackgroundPreloadDiscouragedCore({ navigatorObj: navigator })) return;
   leafletWarmupScheduled = true;
   const warmup = () => {
-    if (state.activeTab === "map" || window.L || leafletLoadFailed) return;
+    if (window.L || leafletLoadFailed) return;
     void ensureLeafletLoaded();
   };
   if (typeof window.requestIdleCallback === "function") {
@@ -1782,8 +1788,13 @@ function renderMapView() {
   const mapSearchPlaceholder = mapSearchExpanded
     ? MAP_SEARCH_PLACEHOLDER_EXPANDED
     : MAP_SEARCH_PLACEHOLDER_COLLAPSED;
+  // Einblenden nur beim ersten Aufbau. Steht die Kartenflaeche schon im DOM
+  // (Platzhalter oder Re-Render), wuerde die Animation erneut von Deckkraft 0
+  // starten und als Flackern sichtbar werden.
+  const mapSurfaceMounted = !!document?.querySelector?.(".map-view-surface");
+  const rootEnterClass = mapSurfaceMounted ? "" : " animate-in fade-in duration-700";
   return `
-    <div class="map-view-root animate-in fade-in duration-700">
+    <div class="map-view-root${rootEnterClass}">
       <div class="map-view-intro">
         <div>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
@@ -2070,6 +2081,8 @@ function patchSearchUserList(users) {
   users.forEach(updateSearchUserNodes);
   return true;
 }
+
+  scheduleLeafletWarmup();
 
   return {
     ensureLeafletStylesheet,
