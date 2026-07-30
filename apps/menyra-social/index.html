@@ -1232,7 +1232,6 @@
       border-bottom: 1px solid var(--smart-header-border);
       box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
       transition: none;
-      will-change: transform;
     }
     .smart-header-tabs--hidden {
       transform: none !important;
@@ -1284,13 +1283,27 @@
       pointer-events: none;
       z-index: 0;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
-      opacity: var(--smart-header-tabs-fade, 1);
     }
+    /* Mit Tab-Zeile darf der Schatten der Leiste nicht mitgemalt werden: er
+       raegt 16px nach unten und lag damit ueber der Zeile. Diese Kante
+       uebernimmt stattdessen .smart-header-underline - im Stapel UNTER der
+       Zeile, damit deren Hintergrund sie deckt, solange sie da ist. */
     .smart-header-shell--split::after {
-      opacity: calc(1 - var(--smart-header-tabs-fade, 1));
+      opacity: 0;
     }
-    html.smart-header-tabs-away .smart-header-shell--split {
-      box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
+    /* Schattenkante unter der Leiste. Sie klebt an derselben Stelle wie die
+       Tab-Zeile, liegt aber darunter: ist die Zeile da, ist die Kante verdeckt;
+       scrollt die Zeile weg, kommt sie zum Vorschein. Rein per CSS - kann beim
+       schnellen Scrollen also nie nachhinken oder ueber den Tabs aufblitzen. */
+    .smart-header-underline {
+      position: -webkit-sticky;
+      position: sticky;
+      top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
+      height: 16px;
+      margin-bottom: -16px;
+      z-index: 85;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
     }
     /* Vom Pfeil eingeklappt: Zeile komplett raus aus dem Layout - der Klick
        auf den Pfeil bringt sie exakt so wieder zurueck. */

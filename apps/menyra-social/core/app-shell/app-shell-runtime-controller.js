@@ -1139,6 +1139,7 @@ export function createAppShellRuntimeController(deps = {}) {
             ${renderLanguagePickerPanel()}
           </div>
         </div>
+        ${hasHeaderTabs ? `<div class="smart-header-underline" aria-hidden="true"></div>` : ""}
         ${headerTabsHtml}
     `;
   }
@@ -1556,13 +1557,15 @@ export function createAppShellRuntimeController(deps = {}) {
     return Math.max(0, Number(win?.scrollY || 0)) < mainHeaderTabsRowHeight;
   }
 
-  // Schatten, Pfeilrichtung und aria folgen dem, was man tatsaechlich sieht.
+  // Nur noch Pfeilrichtung und aria haengen am Zustand. Die Schattenkante
+  // regelt CSS allein (.smart-header-underline liegt unter der Zeile), damit
+  // beim schnellen Scrollen nichts nachhinken und ueber den Tabs aufblitzen
+  // kann - ein spaeter gedrehter Pfeil faellt dagegen niemandem auf.
   function syncMainHeaderTabsChrome(force = false) {
     const visible = isMainHeaderTabsRowVisible();
     if (!force && visible === mainHeaderTabsVisibleState) return;
     mainHeaderTabsVisibleState = visible;
     doc?.documentElement?.classList?.toggle?.("smart-header-tabs-away", !visible);
-    doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", visible ? "1.000" : "0.000");
     mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", visible ? "true" : "false");
   }
 
