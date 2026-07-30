@@ -173,14 +173,14 @@ export function renderAnalyticsRangeFilter({ rangeKey = "7d", customFrom = "", c
   const customRow = rangeKey === "custom"
     ? `
       <div class="mnyra-an__custom">
-        <input type="date" data-analytics-custom-from value="${escapeHtml(customFrom)}" aria-label="Von" />
-        <span style="color:var(--an-muted); font-size:11px; font-weight:700;">bis</span>
-        <input type="date" data-analytics-custom-to value="${escapeHtml(customTo)}" aria-label="Bis" />
+        <input type="date" data-analytics-custom-from value="${escapeHtml(customFrom)}" aria-label="Nga" />
+        <span style="color:var(--an-muted); font-size:11px; font-weight:700;">deri</span>
+        <input type="date" data-analytics-custom-to value="${escapeHtml(customTo)}" aria-label="Deri" />
         <button type="button" class="mnyra-an__chip mnyra-an__chip--active" data-analytics-custom-apply>Anwenden</button>
       </div>
     `
     : "";
-  return `<div class="mnyra-an__filters" role="group" aria-label="Zeitraum">${chips}</div>${customRow}`;
+  return `<div class="mnyra-an__filters" role="group" aria-label="Periudha">${chips}</div>${customRow}`;
 }
 
 function renderDelta(delta, { moreIsGood = true } = {}) {
@@ -292,7 +292,7 @@ export function renderHourlyChart({ rows = [], label = "", chartId = "hourly" } 
   const safeRows = Array.isArray(rows) ? rows : [];
   const total = safeRows.reduce((sum, row) => sum + (Number(row?.value) || 0), 0);
   if (total <= 0) {
-    return `<p class="mnyra-an__empty-note">Noch keine Daten für „${escapeHtml(label)}“ in diesem Zeitraum.</p>`;
+    return `<p class="mnyra-an__empty-note">Ende nuk ka te dhena per „${escapeHtml(label)}“ ne kete periudhe.</p>`;
   }
   const width = 640;
   const height = 120;
@@ -348,7 +348,7 @@ export function renderFunnel(funnel = []) {
 
 export function renderBreakdownBars(rows = [], { labelKey = "label", valueKey = "count", suffix = "" } = {}) {
   const safeRows = Array.isArray(rows) ? rows : [];
-  if (!safeRows.length) return `<p class="mnyra-an__empty-note">Noch keine Daten in diesem Zeitraum.</p>`;
+  if (!safeRows.length) return `<p class="mnyra-an__empty-note">Ende nuk ka te dhena ne kete periudhe.</p>`;
   const max = Math.max(1, ...safeRows.map((row) => Number(row?.[valueKey]) || 0));
   return safeRows.map((row) => {
     const value = Number(row?.[valueKey]) || 0;
@@ -366,7 +366,7 @@ export function renderBreakdownBars(rows = [], { labelKey = "label", valueKey = 
   }).join("");
 }
 
-export function renderAnalyticsTable({ columns = [], rows = [], emptyLabel = "Noch keine Daten." } = {}) {
+export function renderAnalyticsTable({ columns = [], rows = [], emptyLabel = "Ende nuk ka te dhena." } = {}) {
   if (!rows.length) return `<p class="mnyra-an__empty-note">${escapeHtml(emptyLabel)}</p>`;
   return `
     <div class="mnyra-an__table-scroll">
@@ -392,11 +392,11 @@ export function renderAnalyticsLoadingState() {
   `;
 }
 
-export function renderAnalyticsEmptyState({ title = "Noch keine Analytics-Daten", body = "" } = {}) {
+export function renderAnalyticsEmptyState({ title = "Ende nuk ka te dhena analitike", body = "" } = {}) {
   return `
     <div class="mnyra-an__card mnyra-an__state">
       <p class="mnyra-an__state-title">${escapeHtml(title)}</p>
-      <p class="mnyra-an__state-body">${escapeHtml(body || "Sobald Gäste dein Profil, Menü oder deine Beiträge ansehen, erscheinen hier deine Statistiken.")}</p>
+      <p class="mnyra-an__state-body">${escapeHtml(body || "Sapo vizitoret te shikojne profilin, menune ose postimet e tua, statistikat e tua shfaqen ketu.")}</p>
     </div>
   `;
 }
@@ -404,9 +404,9 @@ export function renderAnalyticsEmptyState({ title = "Noch keine Analytics-Daten"
 export function renderAnalyticsErrorState({ message = "" } = {}) {
   return `
     <div class="mnyra-an__card mnyra-an__state">
-      <p class="mnyra-an__state-title">Analytics konnten nicht geladen werden</p>
-      <p class="mnyra-an__state-body">${escapeHtml(message || "Bitte Verbindung prüfen und erneut versuchen.")}</p>
-      <button type="button" class="mnyra-an__retry" data-analytics-retry>Erneut versuchen</button>
+      <p class="mnyra-an__state-title">Analitika nuk mund te ngarkohej</p>
+      <p class="mnyra-an__state-body">${escapeHtml(message || "Ju lutem kontrolloni lidhjen dhe provoni perseri.")}</p>
+      <button type="button" class="mnyra-an__retry" data-analytics-retry>Provo perseri</button>
     </div>
   `;
 }
@@ -417,29 +417,29 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
   const { summary, deltas } = model;
   if (!model.hasAnyData) {
     return renderAnalyticsEmptyState({
-      body: `Im Zeitraum „${model.range.label}“ liegen noch keine Daten vor. Teile dein Profil, deine QR-Codes oder poste im Feed, um Reichweite aufzubauen.`
+      body: `Ne periudhen „${model.range.label}“ ende nuk ka te dhena. Ndaj profilin tend, QR kodet e tua ose posto ne feed per te rritur shtrirjen.`
     });
   }
   const kpis = [
-    renderKpiCard({ label: "Profilbesucher", value: summary.profileViews, delta: deltas.profileViews }),
-    renderKpiCard({ label: "Unique Besucher", value: summary.uniqueVisitors, delta: deltas.uniqueVisitors }),
-    renderKpiCard({ label: "Menü-Aufrufe", value: summary.menuOpens, delta: deltas.menuOpens }),
+    renderKpiCard({ label: "Vizitore te profilit", value: summary.profileViews, delta: deltas.profileViews }),
+    renderKpiCard({ label: "Vizitore unike", value: summary.uniqueVisitors, delta: deltas.uniqueVisitors }),
+    renderKpiCard({ label: "Shikime te menuse", value: summary.menuOpens, delta: deltas.menuOpens }),
     renderKpiCard({ label: "Produkt-Ansichten", value: summary.productViews, delta: deltas.productViews }),
     renderKpiCard({ label: "Beitrags-Impressionen", value: summary.postImpressions, delta: deltas.postImpressions }),
     renderKpiCard({ label: "QR-Scans", value: summary.qrScans, delta: deltas.qrScans }),
-    renderKpiCard({ label: "Kellner-Rufe", value: summary.waiterCalls, delta: deltas.waiterCalls }),
-    renderKpiCard({ label: "Bestellungen", value: summary.ordersCompleted, delta: deltas.ordersCompleted }),
+    renderKpiCard({ label: "Thirrje kamarieri", value: summary.waiterCalls, delta: deltas.waiterCalls }),
+    renderKpiCard({ label: "Porosite", value: summary.ordersCompleted, delta: deltas.ordersCompleted }),
     renderKpiCard({ label: "Umsatz", value: summary.revenue, delta: deltas.revenue, suffix: currency }),
     renderKpiCard({ label: "Ø Bestellwert", value: summary.avgOrderValue, suffix: currency }),
-    renderKpiCard({ label: "Feed-Reichweite", value: summary.feedImpressions, delta: deltas.feedImpressions }),
+    renderKpiCard({ label: "Shtrirja ne feed", value: summary.feedImpressions, delta: deltas.feedImpressions }),
     renderKpiCard({ label: "Feed-Klickrate", value: summary.feedCtr, suffix: "%" })
   ].join("");
 
   const trend = renderTrendChart({
     chartId: "profileTrend",
     series: [
-      { key: "profileViews", label: "Profilbesucher", color: "1", points: model.trend.profileViews },
-      { key: "menuOpens", label: "Menü-Aufrufe", color: "2", points: model.trend.menuOpens }
+      { key: "profileViews", label: "Vizitore te profilit", color: "1", points: model.trend.profileViews },
+      { key: "menuOpens", label: "Shikime te menuse", color: "2", points: model.trend.menuOpens }
     ]
   });
 
@@ -447,11 +447,11 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
     columns: [
       { key: "name", label: "Produkt" },
       { key: "views", label: "Ansichten" },
-      { key: "orders", label: "Bestellungen" },
+      { key: "orders", label: "Porosite" },
       { key: "revenue", label: `Umsatz (${currency})`, render: (row) => (row.revenue > 0 ? row.revenue.toLocaleString("de-DE") : "–") }
     ],
     rows: model.topProducts,
-    emptyLabel: "Noch keine Produkt-Daten in diesem Zeitraum."
+    emptyLabel: "Ende nuk ka te dhena produktesh ne kete periudhe."
   });
 
   const lowProductsTable = model.lowProducts.length && model.topProducts.length > model.lowProducts.length
@@ -463,11 +463,11 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
             columns: [
               { key: "name", label: "Produkt" },
               { key: "views", label: "Ansichten" },
-              { key: "orders", label: "Bestellungen" }
+              { key: "orders", label: "Porosite" }
             ],
             rows: model.lowProducts
           })}
-          <p class="mnyra-an__empty-note">Tipp: Diese Produkte bekommen wenig Aufmerksamkeit – bessere Fotos, Position im Menü oder ein Angebot können helfen.</p>
+          <p class="mnyra-an__empty-note">Keshille: Keto produkte marrin pak vemendje – foto me te mira, pozicioni ne menu ose nje oferte mund te ndihmojne.</p>
         </div>
       </div>
     `
@@ -482,20 +482,20 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
       { key: "ctr", label: "CTR %", render: (row) => row.ctr.toLocaleString("de-DE") }
     ],
     rows: model.topPosts,
-    emptyLabel: "Noch keine Beitrags-Daten in diesem Zeitraum."
+    emptyLabel: "Ende nuk ka te dhena postimesh ne kete periudhe."
   });
 
   const tablesTable = model.tables.length
     ? `
       <div class="mnyra-an__section">
-        <h3 class="mnyra-an__section-title">Tische</h3>
+        <h3 class="mnyra-an__section-title">Tavolinat</h3>
         <div class="mnyra-an__card">
           ${renderAnalyticsTable({
             columns: [
-              { key: "label", label: "Tisch" },
+              { key: "label", label: "Tavolina" },
               { key: "qrScans", label: "QR-Scans" },
-              { key: "waiterCalls", label: "Kellner-Rufe" },
-              { key: "ordersCompleted", label: "Bestellungen" }
+              { key: "waiterCalls", label: "Thirrje kamarieri" },
+              { key: "ordersCompleted", label: "Porosite" }
             ],
             rows: model.tables
           })}
@@ -517,9 +517,9 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
 
   const contactsRows = [
     { label: "Telefon", count: model.contacts.phone },
-    { label: "Adresse", count: model.contacts.address },
-    { label: "Karte", count: model.contacts.map },
-    { label: "Öffnungszeiten", count: model.contacts.hours },
+    { label: "Adresa", count: model.contacts.address },
+    { label: "Harta", count: model.contacts.map },
+    { label: "Orari i punes", count: model.contacts.hours },
     { label: "Social Links", count: model.contacts.social }
   ].filter((row) => row.count > 0);
 
@@ -528,14 +528,14 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
 
     <div class="mnyra-an__section">
       <h3 class="mnyra-an__section-title">Trend</h3>
-      <div class="mnyra-an__card">${trend || `<p class="mnyra-an__empty-note">Kein Trend für diesen Zeitraum.</p>`}</div>
+      <div class="mnyra-an__card">${trend || `<p class="mnyra-an__empty-note">Nuk ka trend per kete periudhe.</p>`}</div>
     </div>
 
     <div class="mnyra-an__section">
       <h3 class="mnyra-an__section-title">Conversion-Funnel</h3>
       <div class="mnyra-an__card">
         ${renderFunnel(model.funnel)}
-        <p class="mnyra-an__empty-note">Conversion Menü → Bestellung: ${escapeHtml(String(summary.orderConversion.toLocaleString("de-DE")))} % · QR-Bestellungen: ${escapeHtml(formatCompactNumber(summary.ordersQr))} · Externe: ${escapeHtml(formatCompactNumber(summary.ordersExternal))}</p>
+        <p class="mnyra-an__empty-note">Konvertimi menu → porosi: ${escapeHtml(String(summary.orderConversion.toLocaleString("de-DE")))} % · Porosi me QR: ${escapeHtml(formatCompactNumber(summary.ordersQr))} · Te jashtme: ${escapeHtml(formatCompactNumber(summary.ordersExternal))}</p>
       </div>
     </div>
 
@@ -558,13 +558,13 @@ export function renderAnalyticsDashboard(model = null, { currency = "€" } = {}
     ${categoriesSection}
 
     <div class="mnyra-an__section">
-      <h3 class="mnyra-an__section-title">QR-Scans nach Uhrzeit</h3>
+      <h3 class="mnyra-an__section-title">QR-skanime sipas ores</h3>
       <div class="mnyra-an__card">${renderHourlyChart({ rows: model.hourlyQr, label: "QR-Scans", chartId: "hourlyQr" })}</div>
     </div>
 
     <div class="mnyra-an__section">
-      <h3 class="mnyra-an__section-title">Kellner-Rufe nach Uhrzeit</h3>
-      <div class="mnyra-an__card">${renderHourlyChart({ rows: model.hourlyWaiter, label: "Kellner-Rufe", chartId: "hourlyWaiter" })}</div>
+      <h3 class="mnyra-an__section-title">Thirrjet e kamarierit sipas ores</h3>
+      <div class="mnyra-an__card">${renderHourlyChart({ rows: model.hourlyWaiter, label: "Thirrje kamarieri", chartId: "hourlyWaiter" })}</div>
     </div>
 
     ${contactsRows.length ? `

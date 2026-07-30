@@ -63,7 +63,7 @@ export function createAnalyticsViewController({
     });
     if (!range) {
       view.status = "error";
-      view.error = "Bitte einen gültigen Zeitraum wählen (Von-Datum vor Bis-Datum).";
+      view.error = "Ju lutem zgjidhni nje periudhe te vlefshme (data e fillimit para dates se mbarimit).";
       render();
       return;
     }
@@ -96,7 +96,7 @@ export function createAnalyticsViewController({
       if (seq !== loadSeq) return;
       console.error("[mnyra][analytics] dashboard load failed", err);
       view.status = "error";
-      view.error = "Analytics konnten nicht geladen werden.";
+      view.error = "Analitika nuk mund te ngarkohej.";
     }
     render();
   }
@@ -161,8 +161,8 @@ export function createAnalyticsViewController({
     let body = "";
     if (!restaurantId) {
       body = renderAnalyticsEmptyState({
-        title: "Kein Business-Profil verbunden",
-        body: "Analytics sind nur für Business-Konten verfügbar. Sobald dein Konto mit einem Restaurant oder Shop verbunden ist, erscheinen hier deine Statistiken."
+        title: "Nuk ka profil biznesi te lidhur",
+        body: "Analitika eshte e disponueshme vetem per llogari biznesi. Sapo llogaria jote te lidhet me nje restorant ose dyqan, statistikat e tua shfaqen ketu."
       });
     } else if (view.status === "idle" || (view.status === "loading" && !view.model)) {
       if (view.status === "idle") {
@@ -189,7 +189,7 @@ export function createAnalyticsViewController({
       <section class="p-4 pb-28 mnyra-an" data-analytics-root>
         <div class="mb-4">
           <h2 class="text-lg font-black tracking-tight text-slate-900" style="color:var(--an-ink);">Analytics</h2>
-          <p class="text-xs" style="color:var(--an-muted); margin-top:2px;">Deine Reichweite, Menü-Performance und Bestellungen auf einen Blick.</p>
+          <p class="text-xs" style="color:var(--an-muted); margin-top:2px;">Shtrirja jote, performanca e menuse dhe porosite me nje shikim.</p>
         </div>
         ${renderAnalyticsRangeFilter({
           rangeKey: view.rangeKey,

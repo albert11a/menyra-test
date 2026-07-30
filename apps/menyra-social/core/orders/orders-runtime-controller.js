@@ -365,7 +365,7 @@ export function createOrdersRuntimeController({
         state.orders = {
           ...state.orders,
           loading: false,
-          error: "Bestellungen konnten nicht wiederhergestellt werden."
+          error: "Porosite nuk mund te riktheheshin."
         };
       }
       renderOrdersTabIfVisible();
@@ -461,7 +461,7 @@ export function createOrdersRuntimeController({
         state.orders = {
           ...state.orders,
           loading: false,
-          error: "Bestellungen konnten nicht geladen werden."
+          error: "Porosite nuk mund te ngarkoheshin."
         };
       }
       renderOrdersTabIfVisible();
@@ -483,7 +483,7 @@ export function createOrdersRuntimeController({
           ...cart,
           loading: false,
           checkoutOpen: true,
-          status: "Bestellservice ist nicht verfuegbar."
+          status: "Sherbimi i porosive nuk eshte i disponueshem."
         };
       }
       renderFn();
@@ -498,7 +498,7 @@ export function createOrdersRuntimeController({
           ...cart,
           loading: false,
           checkoutOpen: true,
-          status: "Guest-Session konnte nicht initialisiert werden."
+          status: "Sesioni i vizitorit nuk mund te inicializohej."
         };
       }
       renderFn();
@@ -511,7 +511,7 @@ export function createOrdersRuntimeController({
           ...cart,
           loading: false,
           checkoutOpen: true,
-          status: "Guest-Session konnte nicht initialisiert werden."
+          status: "Sesioni i vizitorit nuk mund te inicializohej."
         };
       }
       renderFn();
@@ -526,7 +526,7 @@ export function createOrdersRuntimeController({
       city: String(cart.form?.city || "").trim(),
       address: String(cart.form?.address || "").trim(),
       tableNumber,
-      tableLabel: tableNumber ? `Tisch ${tableNumber}` : ""
+      tableLabel: tableNumber ? `Tavolina ${tableNumber}` : ""
     };
     const missingRequired = isTableService
       ? false
@@ -536,8 +536,8 @@ export function createOrdersRuntimeController({
         state.shopCart = {
           ...cart,
           status: isTableService
-            ? "Bestellung wird vorbereitet."
-            : "Bitte Name, Tel, Qyteti und Adresse eingeben."
+            ? "Porosia po pergatitet."
+            : "Ju lutem shkruani emrin, telefonin, qytetin dhe adresen."
         };
       }
       saveShopCartToStorage();
@@ -554,7 +554,7 @@ export function createOrdersRuntimeController({
       tableId: String(cart.tableId || "").trim(),
       contact,
       tableNumber,
-      tableLabel: tableNumber ? `Tisch ${tableNumber}` : "",
+      tableLabel: tableNumber ? `Tavolina ${tableNumber}` : "",
       items: cart.items.map((item) => ({
         itemId: String(item.itemId || item.id || "").trim(),
         quantity: Math.max(1, Number(item.quantity || 1) || 1),
@@ -573,7 +573,7 @@ export function createOrdersRuntimeController({
     };
 
     if (state) {
-      state.shopCart = { ...cart, loading: true, status: "Bestellung wird gesendet..." };
+      state.shopCart = { ...cart, loading: true, status: "Porosia po dergohet..." };
     }
     checkoutSubmitInFlight = true;
     renderFn();
@@ -620,7 +620,7 @@ export function createOrdersRuntimeController({
             businessAvatar,
             contact,
             tableNumber,
-            tableLabel: tableNumber ? `Tisch ${tableNumber}` : "",
+            tableLabel: tableNumber ? `Tavolina ${tableNumber}` : "",
             items: [],
             itemCount: 0,
             total: 0,
@@ -651,8 +651,8 @@ export function createOrdersRuntimeController({
             checkoutOpen: false,
             confirmation: {
               restaurantId: cart.restaurantId,
-              title: tableNumber ? `Tisch ${tableNumber}` : (cart.businessName || restaurant.name || restaurant.restaurantName || "Bestellung"),
-              message: "Ihre Bestellung wird zubereitet und in Kuerze serviert.",
+              title: tableNumber ? `Tavolina ${tableNumber}` : (cart.businessName || restaurant.name || restaurant.restaurantName || "Porosi"),
+              message: "Porosia juaj po pergatitet dhe do te serviret se shpejti.",
               tableNumber,
               createdAt: Date.now()
             }
@@ -670,7 +670,7 @@ export function createOrdersRuntimeController({
           ...cart,
           loading: false,
           checkoutOpen: true,
-          status: "Bestellung konnte nicht gesendet werden."
+          status: "Porosia nuk mund te dergohej."
         };
       }
       saveShopCartToStorage();

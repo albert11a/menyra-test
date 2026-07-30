@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="sq">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -326,12 +326,12 @@
       const navItems = [
         { id: "feed", label: "Feed", icon: "home" },
         { id: "chat", label: "Chats", icon: "messages-square", badge: state.chatUnread },
-        { id: "search", label: "Suche", icon: "search" },
-        { id: "map", label: "Karte", icon: "map" },
-        { id: "profile", label: "Profil", icon: "user" },
-        { id: "restaurant", label: "Restaurant", icon: "utensils-crossed" },
-        { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
-        { id: "notifications", label: "Updates", icon: "bell", badge: state.notificationsUnread },
+        { id: "search", label: "Kerko", icon: "search" },
+        { id: "map", label: "Harta", icon: "map" },
+        { id: "profile", label: "Profili", icon: "user" },
+        { id: "restaurant", label: "Restoranti", icon: "utensils-crossed" },
+        { id: "orders", label: "Porosite", icon: "shopping-cart" },
+        { id: "notifications", label: "Njoftime", icon: "bell", badge: state.notificationsUnread },
         { id: "settings", label: "Optionen", icon: "settings" }
       ];
       return `
@@ -397,7 +397,7 @@
         <div class="px-5 mb-4">
           <div class="bg-white/70 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center backdrop-blur-sm">
             ${[
-              { id: "profile", label: "Profil" },
+              { id: "profile", label: "Profili" },
               { id: "menu", label: "Restaurant" }
             ].map((tab) => `
               <button data-business-top-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${state.profileTopTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400"}">
@@ -414,8 +414,8 @@
         <div class="px-6 mb-6 mt-4">
           <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
             ${[
-              { id: "posts", label: "Beitraege" },
-              { id: "media", label: "Medien" },
+              { id: "posts", label: "Postimet" },
+              { id: "media", label: "Media" },
               { id: "checkins", label: "Check-ins" }
             ].map((tab) => `
               <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${state.profileContentTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400"}">
@@ -483,7 +483,7 @@
             <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
               ${icon("image", "w-9 h-9")}
             </div>
-            <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Inhalte gefunden</p>
+            <p class="text-slate-400 text-sm font-bold tracking-wide">Nuk u gjet permbajtje</p>
           </div>
         `;
       }
@@ -498,7 +498,7 @@
             <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
               ${icon("map-pin", "w-9 h-9")}
             </div>
-            <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Check-ins gefunden</p>
+            <p class="text-slate-400 text-sm font-bold tracking-wide">Nuk u gjeten check-ins</p>
           </div>
         `;
       }
@@ -510,9 +510,9 @@
                 <img src="${escapeHtml(place.image)}" class="w-full h-full object-cover" />
               </div>
               <div class="flex-1">
-                <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Ort")}</h4>
+                <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Vendi")}</h4>
                 <div class="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                  ${icon("map-pin", "w-3 h-3 text-indigo-500")} ${escapeHtml(place.city || "Stadt")}
+                  ${icon("map-pin", "w-3 h-3 text-indigo-500")} ${escapeHtml(place.city || "Qyteti")}
                 </div>
               </div>
               <button class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-300">
@@ -530,12 +530,12 @@
       const firebaseFallback = getFirebaseStorageUrl(rawImg);
       const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
       const priceLabel = formatPrice(item.price);
-      const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+      const typeLabel = normalizeMenuType(item.type) === "drink" ? "Pije" : "Ushqim";
       const category = item.category || "";
       const desc = item.description || "";
       const availability = item.available === false
-        ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
-        : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
+        ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Jo e disponueshme</span>`
+        : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">E disponueshme</span>`;
       const restaurantId = state.profileView?.profile?.restaurantId || "";
       const itemId = getMenuItemSocialId(item);
       const metaKey = menuItemMetaKey(restaurantId, itemId);
@@ -596,7 +596,7 @@
       if (!enabled) return "";
       if (!items.length && !loading) return "";
       if (loading && !items.length) {
-        return `<div class="${getFocusCardClass()} rounded-[2.5rem] p-6 border shadow-sm"><div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div></div>`;
+        return `<div class="${getFocusCardClass()} rounded-[2.5rem] p-6 border shadow-sm"><div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokusi po ngarkohet...</div></div>`;
       }
 
       const idx = getFocusIndex(items);
@@ -630,7 +630,7 @@
     function renderProfileMenuView(profile) {
       const restaurantId = profile?.restaurantId || "";
       if (!restaurantId) {
-        return `<div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">Keine Restaurant-ID gefunden</div>`;
+        return `<div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">Nuk u gjet ID e lokalit</div>`;
       }
 
       const items = state.menu.items || [];
@@ -644,11 +644,11 @@
           ${renderFocusCarousel(profile)}
           ${!hasItems ? `
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-              <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">Keine Produkte</div>
+              <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">Nuk ka produkte</div>
             </div>
           ` : `
-            ${drinkItems.length ? `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3></div>${renderMenuDrinkGrid(drinkItems)}</div>` : ""}
-            ${foodItems.length ? `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-black italic tracking-tighter">Speisen</h3></div>${renderMenuFoodList(foodItems)}</div>` : ""}
+            ${drinkItems.length ? `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-black italic tracking-tighter">Pije</h3></div>${renderMenuDrinkGrid(drinkItems)}</div>` : ""}
+            ${foodItems.length ? `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-black italic tracking-tighter">Ushqime</h3></div>${renderMenuFoodList(foodItems)}</div>` : ""}
           `}
           ${error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
         </div>
@@ -664,7 +664,7 @@
       const isLocked = !!profile.privateAccount && profile.uid && String(profile.uid) !== String(state.user?.uid || "") && !isFollowing;
       const hasPendingFollowRequest = !!profile.pendingFollowRequest && !isFollowing;
       const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
-      const bioHtml = escapeHtml(profile.bio || "").replace(/\n/g, "<br>") || "Noch keine Bio.";
+      const bioHtml = escapeHtml(profile.bio || "").replace(/\n/g, "<br>") || "Nuk ka bio.";
       const isMediaTab = state.profileContentTab === "media";
       const isCheckinTab = state.profileContentTab === "checkins";
       const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
@@ -705,7 +705,7 @@
                 </div>
               </div>
             </div>
-            ${!isLocked ? `${renderProfileTabs()}${renderProfileViewControls()}${isCheckinTab ? renderProfileCheckins() : `<div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}</div>`}` : `<div class="px-6 pt-4"><div class="bg-white rounded-[2.2rem] border border-slate-100 p-8 text-center"><div class="w-16 h-16 rounded-[1.6rem] bg-slate-100 text-slate-500 mx-auto flex items-center justify-center mb-4">${icon("lock", "w-7 h-7")}</div><h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Privates Profil</h3><p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">Folgen muss zuerst akzeptiert werden</p></div></div>`}
+            ${!isLocked ? `${renderProfileTabs()}${renderProfileViewControls()}${isCheckinTab ? renderProfileCheckins() : `<div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}</div>`}` : `<div class="px-6 pt-4"><div class="bg-white rounded-[2.2rem] border border-slate-100 p-8 text-center"><div class="w-16 h-16 rounded-[1.6rem] bg-slate-100 text-slate-500 mx-auto flex items-center justify-center mb-4">${icon("lock", "w-7 h-7")}</div><h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Profil privat</h3><p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">Ndjekja duhet pranuar fillimisht</p></div></div>`}
           ` : `${renderProfileMenuView(profile)}`}
         </div>
       `;

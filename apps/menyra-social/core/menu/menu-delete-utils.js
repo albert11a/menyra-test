@@ -24,6 +24,6 @@ export async function deleteMenuItemByIdCore({
     render();
   } catch (err) {
     console.error(err);
-    alertFn("Loeschen fehlgeschlagen.");
+    alertFn("Fshirja deshtoi.");
   }
 }

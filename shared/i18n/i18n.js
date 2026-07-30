@@ -1,10 +1,11 @@
 import en from "./en.js";
+import sq from "./sq.js";
 
-const dicts = { de: {}, en };
+const dicts = { sq, en };
 const KEY = "menyra_lang";
-const FALLBACK_LANG = "de";
+const FALLBACK_LANG = "sq";
 const languageLoaders = {
-  sq: () => import("./sq.js"),
+  de: () => import("./de.js"),
   sr: () => import("./sr.js")
 };
 const loadingLanguages = new Map();

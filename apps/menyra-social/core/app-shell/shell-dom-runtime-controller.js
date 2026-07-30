@@ -214,7 +214,7 @@ export function createShellDomRuntimeController({
           ${isRegister ? `
             <div class="bg-white p-4 rounded-3xl flex items-center gap-3 border border-slate-100 shadow-sm">
               ${icon("user", "w-5 h-5 text-slate-400 ml-2")}
-              <input id="authName" type="text" placeholder="${escapeHtml(tr("auth.namePlaceholder", "Dein Name"))}" class="bg-transparent w-full text-sm font-bold outline-none" />
+              <input id="authName" type="text" placeholder="${escapeHtml(tr("auth.namePlaceholder", "Emri yt"))}" class="bg-transparent w-full text-sm font-bold outline-none" />
             </div>
           ` : ""}
           <div class="bg-white p-4 rounded-3xl flex items-center gap-3 border border-slate-100 shadow-sm">
@@ -228,7 +228,7 @@ export function createShellDomRuntimeController({
 
           ${isRegister ? `
             <div class="pt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              ${escapeHtml(tr("auth.userRegistrationOnly", "Registrierung nur fuer User"))}
+              ${escapeHtml(tr("auth.userRegistrationOnly", "Regjistrimi vetem per perdorues"))}
             </div>
           ` : ""}
 
@@ -241,7 +241,7 @@ export function createShellDomRuntimeController({
 
         <div class="mt-8 text-center">
           <button id="authToggle" class="text-xs font-bold text-slate-400 hover:text-slate-900 transition-colors">
-            ${escapeHtml(isRegister ? tr("auth.alreadyRegistered", "Bereits registriert? Anmelden") : tr("auth.noAccount", "Noch kein Account? Erstellen"))}
+            ${escapeHtml(isRegister ? tr("auth.alreadyRegistered", "I regjistruar? Hyr") : tr("auth.noAccount", "Nuk ke llogari? Krijo"))}
           </button>
         </div>
       </div>
@@ -294,8 +294,8 @@ export function createShellDomRuntimeController({
         { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
-        { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
-        { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
+        { id: "search", label: tr("nav.search", "Kerkimi"), icon: "search" },
+        { id: "map", label: tr("nav.map", "Harta"), icon: "map" },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" }
       ]
       : [
@@ -305,8 +305,8 @@ export function createShellDomRuntimeController({
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "chat", label: tr("nav.chat", "Chats"), icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
-        { id: "search", label: tr("nav.search", "Suche"), icon: "search" },
-        { id: "map", label: tr("nav.map", "Karte"), icon: "map" },
+        { id: "search", label: tr("nav.search", "Kerkimi"), icon: "search" },
+        { id: "map", label: tr("nav.map", "Harta"), icon: "map" },
         { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
         { id: "analytics", label: tr("nav.analytics", "Analytics"), icon: "bar-chart-3", hidden: !showMenuTab },
@@ -369,7 +369,7 @@ export function createShellDomRuntimeController({
         </nav>
         <div id="drawerSwitchLinks">${switchLinks}</div>
         ${isGuest
-          ? `<button data-auth-open="true" class="mt-auto flex items-center justify-center gap-3 p-4 text-indigo-600 font-black uppercase text-[10px] tracking-widest bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors">${icon("log-in", "w-4 h-4")} ${escapeHtml(tr("auth.loginRegister", "Login / Registrieren"))}</button>`
+          ? `<button data-auth-open="true" class="mt-auto flex items-center justify-center gap-3 p-4 text-indigo-600 font-black uppercase text-[10px] tracking-widest bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors">${icon("log-in", "w-4 h-4")} ${escapeHtml(tr("auth.loginRegister", "Login / Regjistrohu"))}</button>`
           : `<button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} ${escapeHtml(tr("auth.logout", "Abmelden"))}</button>`
         }
       </div>

@@ -1,0 +1,8 @@
+import{_ as p}from"./domain-auth-QKHsxlWr.js";const g=()=>"";function c(t,e=g){return typeof t=="function"?t:e}function w(t=""){const e=String(t||"").trim().toLowerCase();return e==="restaurant"?"restaurants":e==="hotel"||e==="hotels"||e==="motel"||e==="motels"?"travel":e==="shop"||e==="ecommerce"||e==="e-commerce"?"shopping":e}function y({state:t=null,dataLoaded:e=null,renderFn:u=()=>{},helperApi:n={},profileApi:s={}}={}){const d=c(u,()=>{});let o=null,a=null;function l(){return o?Promise.resolve(o):a||(a=p(()=>import("./marketplace-view-render-utils-DRe2kjrb.js"),[]).then(r=>(o=r,d(),r)).catch(r=>{throw a=null,r}),a)}function m(){l().catch(()=>null)}function f(){return`
+      <section class="p-6 pb-24 animate-in fade-in duration-300">
+        <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
+          ${c(n.iconFn,()=>"")("loader-2","w-4 h-4 animate-spin")}
+          Te dhenat po pergatiten ...
+        </div>
+      </section>
+    `}function i(r=""){const F=w(r);return o?.renderMarketplaceViewCore?o.renderMarketplaceViewCore({state:t,dataLoaded:e,sectionKey:F,escapeHtmlFn:n.escapeHtmlFn,iconFn:n.iconFn,getOptimizedImageUrlFn:n.getOptimizedImageUrlFn,isPlaceholderUrlFn:n.isPlaceholderUrlFn,placeholderImage:n.placeholderImage,formatCountFn:n.formatCountFn,renderMapViewFn:n.renderMapViewFn,normalizeRestaurantTypeFn:s.normalizeRestaurantTypeFn,normalizeLeadTypeKeyFn:s.normalizeLeadTypeKeyFn,resolveRestaurantLogoFn:s.resolveRestaurantLogoFn}):(m(),f())}return Object.freeze({ensureRenderUtils:l,renderMarketplaceView:i,renderRestaurantsView:()=>i("restaurants"),renderTravelView:()=>i("travel"),renderShoppingView:()=>i("shopping")})}export{y as c};

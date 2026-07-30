@@ -43,7 +43,7 @@ export function customerStatusLabelCore(value, {
     : ((status) => String(status || "").trim());
   const key = normalizeStatus(value || "kunde") || "kunde";
   if (key === "testphase") return "Testphase";
-  if (key === "no_interest") return "Keine Interesse";
+  if (key === "no_interest") return "Pa interes";
   if (key === "registered") return "Registriert";
   if (key === "contacted") return "Kontaktiert";
   if (key === "kunde") return "Kunde";

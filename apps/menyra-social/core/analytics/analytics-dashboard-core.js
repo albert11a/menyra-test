@@ -5,11 +5,11 @@
 import { analyticsDayKey } from "./analytics-event-schema.js";
 
 export const ANALYTICS_RANGE_PRESETS = Object.freeze([
-  { key: "today", label: "Heute", days: 1 },
-  { key: "7d", label: "7 Tage", days: 7 },
-  { key: "30d", label: "30 Tage", days: 30 },
-  { key: "90d", label: "90 Tage", days: 90 },
-  { key: "custom", label: "Eigene", days: 0 }
+  { key: "today", label: "Sot", days: 1 },
+  { key: "7d", label: "7 dite", days: 7 },
+  { key: "30d", label: "30 dite", days: 30 },
+  { key: "90d", label: "90 dite", days: 90 },
+  { key: "custom", label: "Periudha ime", days: 0 }
 ]);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -247,8 +247,8 @@ export function buildTopPosts(merged = {}, limitCount = 8) {
 const SOURCE_LABELS = Object.freeze({
   feed: "Feed",
   restaurants: "Restaurant-Tab",
-  search: "Suche",
-  map: "Karte",
+  search: "Kerkimi",
+  map: "Harta",
   qr: "QR-Code",
   external: "Externe Links",
   direct: "Direkt",
@@ -283,7 +283,7 @@ export function buildTableBreakdown(merged = {}, limitCount = 12) {
   return Object.entries(merged.tables || {})
     .map(([tableKey, data]) => ({
       tableKey,
-      label: /^t\d+$/.test(tableKey) ? `Tisch ${tableKey.slice(1)}` : tableKey,
+      label: /^t\d+$/.test(tableKey) ? `Tavolina ${tableKey.slice(1)}` : tableKey,
       qrScans: num(data?.qrScans),
       waiterCalls: num(data?.waiterCalls),
       ordersCompleted: num(data?.ordersCompleted)
@@ -305,10 +305,10 @@ export function buildCategoryBreakdown(merged = {}, limitCount = 10) {
 
 export function buildConversionFunnel(summary = {}) {
   const steps = [
-    { key: "menuOpens", label: "Menü geöffnet", value: num(summary.menuOpens) },
+    { key: "menuOpens", label: "Menuja u hap", value: num(summary.menuOpens) },
     { key: "productViews", label: "Produkt angesehen", value: num(summary.productViews) },
-    { key: "ordersStarted", label: "Bestellung gestartet", value: num(summary.ordersStarted) },
-    { key: "ordersCompleted", label: "Bestellung abgeschlossen", value: num(summary.ordersCompleted) }
+    { key: "ordersStarted", label: "Porosia filloi", value: num(summary.ordersStarted) },
+    { key: "ordersCompleted", label: "Porosia perfundoi", value: num(summary.ordersCompleted) }
   ];
   const base = steps[0].value;
   return steps.map((step, index) => {

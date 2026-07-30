@@ -1,5 +1,5 @@
 // Deep-Link aus Story-Produkt-Tags: /menu?r=<restaurantId>&item=<menuItemId>
-// Der Story-Viewer erzeugt diese Links ("Produkt ansehen"); die Menue-Seite
+// Der Story-Viewer erzeugt diese Links ("Shiko produktin"); die Menue-Seite
 // soll damit exakt das markierte Produkt oeffnen.
 
 export function resolveMenuItemDeepLinkTargetCore({ search = "" } = {}) {

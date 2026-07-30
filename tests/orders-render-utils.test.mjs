@@ -56,21 +56,21 @@ test("orders view keeps existing rows visible during refresh loading", () => {
   });
 
   assert.match(html, /Local Breakfast Plate/);
-  assert.match(html, /Bestellungen werden aktualisiert/);
-  assert.doesNotMatch(html, /py-16[^>]*>Bestellungen werden geladen/);
-  assert.doesNotMatch(html, /Noch keine Bestellungen/);
+  assert.match(html, /Porosite po perditesohen/);
+  assert.doesNotMatch(html, /py-16[^>]*>Porosite po ngarkohen/);
+  assert.doesNotMatch(html, /Ende nuk ka porosi/);
 });
 
 test("orders view keeps existing rows visible when a refresh reports an error", () => {
   const html = renderOrders({
     orders: {
-      error: "Bestellungen konnten nicht geladen werden.",
+      error: "Porosite nuk mund te ngarkoheshin.",
     },
   });
 
   assert.match(html, /Local Breakfast Plate/);
-  assert.match(html, /Bestellungen konnten nicht geladen werden/);
-  assert.doesNotMatch(html, /Noch keine Bestellungen/);
+  assert.match(html, /Porosite nuk mund te ngarkoheshin/);
+  assert.doesNotMatch(html, /Ende nuk ka porosi/);
 });
 
 test("orders view still shows first-load loading and empty states", () => {
@@ -86,7 +86,7 @@ test("orders view still shows first-load loading and empty states", () => {
     },
   });
 
-  assert.match(firstLoadHtml, /Bestellungen werden geladen/);
-  assert.doesNotMatch(firstLoadHtml, /Bestellungen werden aktualisiert/);
-  assert.match(emptyHtml, /Noch keine Bestellungen/);
+  assert.match(firstLoadHtml, /Porosite po ngarkohen/);
+  assert.doesNotMatch(firstLoadHtml, /Porosite po perditesohen/);
+  assert.match(emptyHtml, /Ende nuk ka porosi/);
 });

@@ -1876,7 +1876,7 @@ export function createSessionDataRuntimeController({
         items: fallbackItems,
         enabled: fallbackPayload.enabled,
         loading: false,
-        error: hasFallbackItems ? "" : "Fokus laden fehlgeschlagen.",
+        error: hasFallbackItems ? "" : "Ngarkimi i fokusit deshtoi.",
         truthSource: fallbackPayload.truthSource,
         truthState: fallbackPayload.truthState
       };
@@ -2083,7 +2083,7 @@ export function createSessionDataRuntimeController({
           restaurantId: safeRestaurantId,
           items: retentionState ? retentionState.items : inFlightItems,
           loading: retentionState ? true : (inFlightUnknown && inFlightPendingCanonical),
-          error: inFlightUnknown && !inFlightPendingCanonical ? "Menu laden fehlgeschlagen." : "",
+          error: inFlightUnknown && !inFlightPendingCanonical ? "Ngarkimi i menuse deshtoi." : "",
           source: safeSource,
           statusBadgeVisible: typeof inFlightResult.statusBadgeVisible === "boolean"
             ? inFlightResult.statusBadgeVisible
@@ -2325,7 +2325,7 @@ export function createSessionDataRuntimeController({
           restaurantId: safeRestaurantId,
           items: fallbackItems,
           loading: false,
-          error: fallbackItems.length ? "" : "Menu laden fehlgeschlagen.",
+          error: fallbackItems.length ? "" : "Ngarkimi i menuse deshtoi.",
           source: safeSource,
           statusBadgeVisible: fallbackStatusBadgeVisible,
           routeSeed: fallbackItems.length > 0 && state.menu.routeSeed === true,

@@ -564,7 +564,7 @@ export function createSocialEngagementRuntimeController({
     const trimmed = String(text || "").trim();
     if (!trimmed) return;
     if (!state.user) {
-      openGuestAuthPrompt(tr("auth.commentsRequired", "Bitte registrieren oder einloggen, um Kommentare zu schreiben."));
+      openGuestAuthPrompt(tr("auth.commentsRequired", "Ju lutem regjistrohuni ose hyni per te shkruar komente."));
       return;
     }
     const submitPostId = String(postId || "");
@@ -700,7 +700,7 @@ export function createSocialEngagementRuntimeController({
             userHandle: user.handle,
             userUid: commenterUid,
             avatar: payload.avatar,
-            text: "hat deinen Beitrag kommentiert",
+            text: "komentoi postimin tend",
             postId: String(post.id || ""),
             commentId: String(commentRef.id || ""),
             ownerType: post.ownerType || "",
@@ -716,7 +716,7 @@ export function createSocialEngagementRuntimeController({
 
   async function togglePostLike(postId) {
     if (!state.user) {
-      openGuestAuthPrompt(tr("auth.postLikesRequired", "Bitte registrieren oder einloggen, um Beitraege zu liken."));
+      openGuestAuthPrompt(tr("auth.postLikesRequired", "Ju lutem regjistrohuni ose hyni per te pelqyer postime."));
       return;
     }
     const safePostId = String(postId || "").trim();
@@ -798,7 +798,7 @@ export function createSocialEngagementRuntimeController({
               userHandle: user.handle,
               userUid: likerUid,
               avatar: user.avatar,
-              text: "hat deinen Beitrag geliked",
+              text: "pelqeu postimin tend",
               postId: String(post.id || ""),
               ownerType: post.ownerType || "",
               ownerId: post.ownerId || "",
@@ -887,7 +887,7 @@ export function createSocialEngagementRuntimeController({
 
   async function toggleMenuItemFavorite(ctx) {
     if (!state.user) {
-      openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
+      openGuestAuthPrompt(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
       return;
     }
     if (!ctx) return;
@@ -936,8 +936,8 @@ export function createSocialEngagementRuntimeController({
     if (!state.user) {
       openGuestAuthPrompt(
         favoriteOnly
-          ? tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen.")
-          : tr("auth.productLikesRequired", "Bitte registrieren oder einloggen, um Produkte zu liken.")
+          ? tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat.")
+          : tr("auth.productLikesRequired", "Ju lutem regjistrohuni ose hyni per te pelqyer produkte.")
       );
       return;
     }
@@ -1008,7 +1008,7 @@ export function createSocialEngagementRuntimeController({
     const trimmed = String(text || "").trim();
     if (!trimmed) return;
     if (!state.user) {
-      openGuestAuthPrompt(tr("auth.commentsRequired", "Bitte registrieren oder einloggen, um Kommentare zu schreiben."));
+      openGuestAuthPrompt(tr("auth.commentsRequired", "Ju lutem regjistrohuni ose hyni per te shkruar komente."));
       return;
     }
     const ctx = getMenuDetailContext();
@@ -1110,7 +1110,7 @@ export function createSocialEngagementRuntimeController({
 
   async function toggleCommentLike(postId, commentId, replyId) {
     if (!state.user) {
-      openGuestAuthPrompt(tr("auth.commentLikesRequired", "Bitte registrieren oder einloggen, um Kommentare zu liken."));
+      openGuestAuthPrompt(tr("auth.commentLikesRequired", "Ju lutem regjistrohuni ose hyni per te pelqyer komente."));
       return;
     }
     const pendingKey = `${String(postId || "").trim()}::${String(commentId || "").trim()}::${String(replyId || "").trim()}`;

@@ -95,11 +95,11 @@ export function createDiscoveryRuntimeController(deps = {}) {
     deps.leafletTileFallbackUrl
     || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   ).trim();
-  const LOCATION_UNVERIFIED_LABEL = "Standort nicht verifiziert";
-  const MAP_TILES_DEGRADED_NOTICE = "Kartenkacheln konnten nicht geladen werden. Es werden nur verifizierte Daten gezeigt.";
-  const MAP_TILES_FALLBACK_NOTICE = "Primaere Kartenkacheln langsam. Fallback-Karte aktiv.";
-  const MAP_SEARCH_PLACEHOLDER_COLLAPSED = "Stadt, Lokal suchen...";
-  const MAP_SEARCH_PLACEHOLDER_EXPANDED = "Suche dein Lieblingslokal";
+  const LOCATION_UNVERIFIED_LABEL = "Vendndodhja e paverifikuar";
+  const MAP_TILES_DEGRADED_NOTICE = "Pllakat e hartes nuk mund te ngarkoheshin. Shfaqen vetem te dhena te verifikuara.";
+  const MAP_TILES_FALLBACK_NOTICE = "Pllakat kryesore te hartes jane te ngadalta. Harta rezerve aktive.";
+  const MAP_SEARCH_PLACEHOLDER_COLLAPSED = "Kerko qytet, lokal...";
+  const MAP_SEARCH_PLACEHOLDER_EXPANDED = "Kerko lokalin tend te preferuar";
   const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
 
 function emitVendorDegraded(kind = "map", active = false, message = "") {
@@ -203,7 +203,7 @@ function ensureLeafletStylesheet() {
         mountStylesheet();
         return;
       }
-      emitVendorDegraded("map", true, "Karten-Stylesheet konnte nicht geladen werden.");
+      emitVendorDegraded("map", true, "Stili i hartes nuk mund te ngarkohej.");
     }, { once: true });
     document.head.appendChild(link);
   };
@@ -224,7 +224,7 @@ async function ensureLeafletLoaded() {
   if (!document?.head) {
     leafletLoadFailed = true;
     leafletLastLoadFailureAt = Date.now();
-    emitVendorDegraded("map", true, "Kartenbibliothek konnte nicht initialisiert werden.");
+    emitVendorDegraded("map", true, "Biblioteka e hartes nuk mund te inicializohej.");
     return false;
   }
   ensureLeafletStylesheet();
@@ -236,7 +236,7 @@ async function ensureLeafletLoaded() {
     if (!sources.length) {
       leafletLoadFailed = true;
       leafletLastLoadFailureAt = Date.now();
-      emitVendorDegraded("map", true, "Kartenbibliothek ist nicht konfiguriert.");
+      emitVendorDegraded("map", true, "Biblioteka e hartes nuk eshte e konfiguruar.");
       resolve(false);
       return;
     }
@@ -245,7 +245,7 @@ async function ensureLeafletLoaded() {
       if (!src) {
         leafletLoadFailed = true;
         leafletLastLoadFailureAt = Date.now();
-        emitVendorDegraded("map", true, "Kartenbibliothek konnte nicht geladen werden.");
+        emitVendorDegraded("map", true, "Biblioteka e hartes nuk mund te ngarkohej.");
         resolve(false);
         return;
       }
@@ -734,7 +734,7 @@ function renderMapTruthState() {
     return `
       <div class="inline-flex max-w-full items-center gap-2 rounded-2xl bg-amber-50 border border-amber-200/80 shadow-sm px-4 py-3 text-[11px] font-bold text-amber-900">
         ${icon("map-pin-off", "w-4 h-4 text-amber-600 flex-shrink-0")}
-        <span class="min-w-0">Keine verifizierten ${travelMap ? "Hotel-" : ""}Standorte verfuegbar. Orte ohne Koordinaten werden nicht auf der Karte gezeigt.</span>
+        <span class="min-w-0">Nuk ka ${travelMap ? "vendndodhje hoteli" : "vendndodhje"} te verifikuara. Vendet pa koordinata nuk shfaqen ne harte.</span>
       </div>
     `;
   }
@@ -742,7 +742,7 @@ function renderMapTruthState() {
     return `
       <div class="inline-flex max-w-full items-center gap-2 rounded-2xl bg-slate-100/90 border border-slate-200/80 shadow-sm px-4 py-3 text-[11px] font-bold text-slate-700">
         ${icon("info", "w-4 h-4 text-slate-500 flex-shrink-0")}
-        <span class="min-w-0">${withoutCoordsCount} ${travelMap ? "Hotel(s)" : "Restaurant(s)"} ohne verifizierte Koordinaten sind ausgeblendet.</span>
+        <span class="min-w-0">${withoutCoordsCount} ${travelMap ? "hotel(e)" : "restorant(e)"} pa koordinata te verifikuara jane fshehur.</span>
       </div>
     `;
   }
@@ -905,8 +905,8 @@ function initLeafletIfNeeded() {
   if (!window.L) {
     void ensureLeafletLoaded().then((loaded) => {
       if (!loaded) {
-        setMapNotice("Kartenbibliothek nicht verfuegbar. Karte bleibt im reduzierten Modus.");
-        emitVendorDegraded("map", true, "Kartenbibliothek nicht verfuegbar. Karte im reduzierten Modus.");
+        setMapNotice("Biblioteka e hartes nuk eshte e disponueshme. Harta mbetet ne modalitet te reduktuar.");
+        emitVendorDegraded("map", true, "Biblioteka e hartes nuk eshte e disponueshme. Harta ne modalitet te reduktuar.");
         if (window && typeof window.setTimeout === "function") {
           window.setTimeout(() => {
             if (state.activeTab !== "map") return;
@@ -954,7 +954,7 @@ function initLeafletIfNeeded() {
     fitLeafletToLocations(visibleLocations, { force: false, animate: false });
     hydrateMapSearchFromVerifiedLocation({ recenter: false });
     const verified = resolveVerifiedMapCoords();
-    if (verified) setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
+    if (verified) setUserMarker(verified.lat, verified.lng, "Vendndodhja e caktuar");
     return;
   }
 
@@ -977,7 +977,7 @@ function initLeafletIfNeeded() {
     if (degradedNoticeShown) return;
     degradedNoticeShown = true;
     setMapNotice(MAP_TILES_DEGRADED_NOTICE);
-    emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
+    emitVendorDegraded("map", true, "Pllakat e hartes nuk arrihen. Harta shfaq gjendje te reduktuar.");
   };
   const onTileLoad = () => {
     primaryTileLoadCount += 1;
@@ -1030,7 +1030,7 @@ function initLeafletIfNeeded() {
   bindMapSearchInput();
   hydrateMapSearchFromVerifiedLocation({ force: true, recenter: false });
   const verified = resolveVerifiedMapCoords();
-  if (verified) setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
+  if (verified) setUserMarker(verified.lat, verified.lng, "Vendndodhja e caktuar");
 }
 
 function getSelectedMapMarkerKey() {
@@ -1249,7 +1249,7 @@ function bindMapSearchInput() {
   }
 }
 
-function setUserMarker(lat, lng, label = "Deine Position") {
+function setUserMarker(lat, lng, label = "Pozicioni yt") {
   if (!leafletMap || !window.L) return;
   
   let avatarUrl = getSelfAvatarUrl();
@@ -1352,7 +1352,7 @@ function hydrateMapSearchFromVerifiedLocation({ force = false, recenter = true }
     if (shouldRefocus) {
       focusLeafletMap(verified.lat, verified.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.24 });
     }
-    setUserMarker(verified.lat, verified.lng, "Gesetzter Standort");
+    setUserMarker(verified.lat, verified.lng, "Vendndodhja e caktuar");
   }
   if (state.selectedBusiness && !leafletBizMarkerMap.has(getSelectedMapMarkerKey())) {
     state.selectedBusiness = null;
@@ -1363,7 +1363,7 @@ function hydrateMapSearchFromVerifiedLocation({ force = false, recenter = true }
 
 function mapLocate(options = {}) {
   const preferVerified = !!(options && typeof options === "object" && options.preferVerified === true);
-  const applyVerifiedLocation = (label = "Gesetzter Standort") => {
+  const applyVerifiedLocation = (label = "Vendndodhja e caktuar") => {
     const verified = resolveVerifiedMapCoords();
     if (!verified || !leafletMap) return false;
     clearMapNotice({ refresh: true });
@@ -1379,13 +1379,13 @@ function mapLocate(options = {}) {
     clearMapNotice({ refresh: true });
     if (leafletMap) {
       focusLeafletMap(override.lat, override.lng);
-      setUserMarker(override.lat, override.lng, "Deine Position");
+      setUserMarker(override.lat, override.lng, "Pozicioni yt");
     }
     return;
   }
   if (!navigator.geolocation) {
     if (applyVerifiedLocation()) return;
-    setMapNotice("Standort ist auf diesem Geraet nicht verfuegbar.");
+    setMapNotice("Vendndodhja nuk eshte e disponueshme ne kete pajisje.");
     return;
   }
   navigator.geolocation.getCurrentPosition(
@@ -1395,12 +1395,12 @@ function mapLocate(options = {}) {
       clearMapNotice({ refresh: true });
       if (leafletMap) {
         focusLeafletMap(lat, lng);
-        setUserMarker(lat, lng, "Deine Position");
+        setUserMarker(lat, lng, "Pozicioni yt");
       }
     },
     () => {
       if (applyVerifiedLocation()) return;
-      setMapNotice("Standort konnte nicht abgerufen werden. Bitte Berechtigung pruefen.");
+      setMapNotice("Vendndodhja nuk mund te merrej. Ju lutem kontrolloni lejen.");
     },
     { enableHighAccuracy: false, timeout: 5500, maximumAge: 60000 }
   );
@@ -1627,7 +1627,7 @@ async function searchUsersRemote(queryRaw, token) {
     state.search.userResults = results;
   } catch (err) {
     if (token !== searchToken) return;
-    state.search.error = "Suche fehlgeschlagen.";
+    state.search.error = "Kerkimi deshtoi.";
   }
 }
 
@@ -1686,7 +1686,7 @@ async function searchBusinessesRemote(queryRaw, token) {
     }
   } catch (err) {
     if (token !== searchToken) return;
-    state.search.error = "Suche fehlgeschlagen.";
+    state.search.error = "Kerkimi deshtoi.";
   }
 }
 
@@ -1756,7 +1756,7 @@ function renderMapSheet(selected) {
             <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
             <div class="flex items-center gap-2 mt-1 text-[11px] font-black text-slate-700">
               <span class="flex items-center gap-1 text-indigo-600">${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)}</span>
-              <span class="text-emerald-500 flex items-center gap-1.5 ml-2"><div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div> Geoeffnet</span>
+              <span class="text-emerald-500 flex items-center gap-1.5 ml-2"><div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div> Hapur</span>
             </div>
             <div class="flex items-center gap-1.5 mt-2 text-slate-500 text-[10px] font-bold line-clamp-1">
               ${icon("map-pin", "w-3 h-3")} ${escapeHtml(selected.address)}
@@ -1781,8 +1781,8 @@ function renderMapView() {
   const travelMap = isTravelMapScopeActive();
   const hasLeaflet = !!window.L;
   const mapInfoLabel = leafletLoadFailed
-    ? "Karte konnte nicht geladen werden."
-    : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
+    ? "Harta nuk mund te ngarkohej."
+    : (leafletLoadPromise ? "Harta po ngarkohet ..." : "Harta po pergatitet ...");
   const mapTruthState = renderMapTruthState();
   const mapSearchExpanded = mapSearchUiExpanded === true;
   const mapSearchPlaceholder = mapSearchExpanded
@@ -1797,8 +1797,8 @@ function renderMapView() {
     <div class="map-view-root${rootEnterClass}">
       <div class="map-view-intro">
         <div>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
-          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">${travelMap ? "Hotels" : "Entdecke Lokale"}</p>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Harta</h2>
+          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">${travelMap ? "Hotele" : "Zbulo lokale"}</p>
         </div>
       </div>
       ${mapTruthState ? `<div class="map-view-truth">${mapTruthState}</div>` : ""}
@@ -1810,7 +1810,7 @@ function renderMapView() {
         <div class="map-view-overlay-top">
           <div id="mapNoticeSlot" class="mb-3">${renderMapNotice()}</div>
           <div id="mapSearchShell" class="map-search-shell${mapSearchExpanded ? " map-search-shell--expanded" : ""}">
-            <button id="mapSearchExpandBtn" type="button" aria-label="Suche oeffnen" aria-expanded="${mapSearchExpanded ? "true" : "false"}" class="map-search-expand-btn">
+            <button id="mapSearchExpandBtn" type="button" aria-label="Hap kerkimin" aria-expanded="${mapSearchExpanded ? "true" : "false"}" class="map-search-expand-btn">
               ${icon("search", "w-4 h-4")}
             </button>
             <input id="mapSearchInput" type="text" placeholder="${escapeHtml(mapSearchPlaceholder)}" class="map-search-input" />
@@ -1890,12 +1890,12 @@ function renderSearchView() {
   return `
     <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
       <div class="mb-6 px-1">
-        <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Entdecken</p>
-        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Suche</h2>
+        <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Zbulo</p>
+        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kerkimi</h2>
       </div>
 
       <div class="relative mb-5">
-        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Suche nach User, Name oder Lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
+        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Kerko perdorues, emer ose lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
         <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition">
           ${icon("x", "w-4 h-4")}
         </button>
@@ -1909,9 +1909,9 @@ function renderSearchView() {
         `).join("")}
       </div>
 
-      <div id="searchStatusLoading" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ${state.search.loading ? "" : "hidden"}">Suche...</div>
+      <div id="searchStatusLoading" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ${state.search.loading ? "" : "hidden"}">Duke kerkuar...</div>
       <div id="searchStatusError" class="text-xs font-bold text-rose-500 mb-4 ${state.search.error ? "" : "hidden"}">${escapeHtml(state.search.error || "")}</div>
-      <div id="searchEmptyState" class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em] ${!hasResults && !query ? "" : "hidden"}">Tippe, um zu suchen</div>
+      <div id="searchEmptyState" class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em] ${!hasResults && !query ? "" : "hidden"}">Prek per te kerkuar</div>
 
       <div id="searchUsersSection" class="space-y-4 mb-10 ${showUsers ? "" : "hidden"}">
         <div class="flex items-center justify-between px-1">
@@ -1919,7 +1919,7 @@ function renderSearchView() {
           <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${users.length}</p>
         </div>
         <div id="searchUsersList" class="space-y-4">
-          ${users.length ? users.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
+          ${users.length ? users.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Nuk u gjeten perdorues.</div>` : "")}
         </div>
       </div>
 
@@ -1929,7 +1929,7 @@ function renderSearchView() {
           <p id="searchBizCount" class="text-[10px] font-bold text-slate-300">${businesses.length}</p>
         </div>
         <div id="searchBizList" class="space-y-4">
-          ${businesses.length ? businesses.map(renderSearchBusinessItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>` : "")}
+          ${businesses.length ? businesses.map(renderSearchBusinessItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Nuk u gjeten ${localLabel}.</div>` : "")}
         </div>
       </div>
     </div>
@@ -1975,7 +1975,7 @@ function updateSearchDom() {
   if (usersList) {
     if (!users.length) {
       usersList.innerHTML = query
-        ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>`
+        ? `<div class="text-xs font-bold text-slate-300 px-2">Nuk u gjeten perdorues.</div>`
         : "";
     } else {
       patchSearchUserList(users);
@@ -1992,7 +1992,7 @@ function updateSearchDom() {
   if (bizList) {
     if (!businesses.length) {
       bizList.innerHTML = query
-        ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>`
+        ? `<div class="text-xs font-bold text-slate-300 px-2">Nuk u gjeten ${localLabel}.</div>`
         : "";
     } else {
       patchSearchBusinessList(businesses);

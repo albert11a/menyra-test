@@ -206,14 +206,14 @@ export function createFeedSearchMapRouteRuntime({
         <div class="map-view-root animate-in fade-in duration-700">
           <div class="map-view-intro">
             <div>
-              <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
-              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
+              <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Harta</h2>
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Zbulo lokale</p>
             </div>
           </div>
           <div class="map-view-surface">
             <div class="absolute inset-0 z-10 bg-slate-200" data-map-deferred-surface="1"></div>
             <div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">
-              Karte wird geladen ...
+              Harta po ngarkohet ...
             </div>
           </div>
         </div>
@@ -222,14 +222,14 @@ export function createFeedSearchMapRouteRuntime({
     return `
       <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-500 h-full">
         <div class="mb-6 px-1">
-          <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Entdecken</p>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Suche</h2>
+          <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Zbulo</p>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kerkimi</h2>
         </div>
         <div class="relative mb-5">
-          <input type="text" value="${String(discovery.state?.search?.query || "")}" placeholder="Suche wird vorbereitet ..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm" readonly />
+          <input type="text" value="${String(discovery.state?.search?.query || "")}" placeholder="Kerkimi po pergatitet ..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm" readonly />
         </div>
         <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-          Suche wird geladen ...
+          Kerkimi po ngarkohet ...
         </div>
       </div>
     `;

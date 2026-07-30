@@ -170,7 +170,20 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsScrollListener = null;
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
+  // Die Tab-Zeile sitzt am Seitenanfang und scrollt normal weg - deshalb ist
+  // sie oben zu sehen und unterwegs nicht, ganz ohne Zutun. Holt der Pfeil sie
+  // unterwegs zurueck, klebt sie unter der Leiste (sticky); beim naechsten
+  // Runterscrollen faellt sie in ihre normale Position zurueck. relative und
+  // sticky belegen denselben Layout-Platz, das Umschalten kann also nie
+  // springen. Nur der Pfeil oben blendet sie ganz aus (display:none).
+  let mainHeaderTabsCollapsed = false;
+  let mainHeaderTabsStuck = false;
+  let mainHeaderTabsRowHeight = 40;
+  let mainHeaderTabsLastScrollY = 0;
+  let mainHeaderTabsVisibleState = null;
   let mainHeaderTabsRafId = 0;
+  const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
+  const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -182,9 +195,6 @@ export function createAppShellRuntimeController(deps = {}) {
     "wheel",
     "keydown"
   ]);
-  const MAIN_HEADER_TABS_SLOT_FALLBACK_PX = 40;
-  const MAIN_HEADER_TABS_MINIMIZED_PROGRESS = 0.45;
-  const MAIN_HEADER_TABS_FADE_FACTOR = 1.8;
   const SMART_HEADER_TOP_RESET_PX = 50;
   const SMART_HEADER_HIDE_DELTA_PX = 18;
   const SMART_HEADER_SHOW_DELTA_PX = 14;
@@ -596,7 +606,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const safeReason = escapeHtml(String(gate?.reason || "startup-render-gate").trim() || "startup-render-gate");
     return `
       <div class="app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans" data-startup-render-gate="${safeReason}">
-        <main class="app-main-scroll" aria-busy="true" aria-label="${escapeHtml(tr("menu.loading", "Mnyra wird geladen", { label: "Mnyra" }))}">
+        <main class="app-main-scroll" aria-busy="true" aria-label="${escapeHtml(tr("menu.loading", "Mnyra po ngarkohet", { label: "Mnyra" }))}">
           <section class="p-6 pb-24">
             <div class="flex items-center justify-between mb-8">
               <div class="w-14 h-14 rounded-3xl bg-white border border-slate-100 shadow-sm overflow-hidden p-4">
@@ -829,9 +839,9 @@ export function createAppShellRuntimeController(deps = {}) {
         <div class="loc-search-wrap">
           <div class="loc-input-row">
             <span class="loc-pin">${icon("map-pin", "w-3.5 h-3.5")}</span>
-            <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtml(locationLabel)}" placeholder="${escapeHtml(tr("feed.locationPlaceholder", "Gib deine Stadt ein..."))}" class="loc-input" />
+            <input id="feedLocationCityInput" type="text" inputmode="search" autocomplete="off" autocapitalize="words" spellcheck="false" data-feed-location-city-input aria-autocomplete="list" aria-controls="feedLocationCitySuggestions" aria-expanded="false" value="${escapeHtml(locationLabel)}" placeholder="${escapeHtml(tr("feed.locationPlaceholder", "Vendos qytetin tend..."))}" class="loc-input" />
             <div class="loc-request-wrap">
-              <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="${escapeHtml(tr("header.useLocation", "Standort nutzen"))}">
+              <button id="btnLocateMe" type="button" data-feed-location-request class="loc-request-btn" aria-label="${escapeHtml(tr("header.useLocation", "Perdor vendndodhjen"))}">
                 <i id="locateIcon" data-lucide="crosshair" class="w-3.5 h-3.5 relative z-10"></i>
                 <span id="locatePulse" class="loc-request-pulse opacity-0"></span>
               </button>
@@ -855,7 +865,7 @@ export function createAppShellRuntimeController(deps = {}) {
         type="button"
         data-language-toggle="true"
         class="${buttonClass}"
-        aria-label="${escapeHtml(tr("language.toggle", "Sprache waehlen"))}"
+        aria-label="${escapeHtml(tr("language.toggle", "Zgjidh gjuhen"))}"
         aria-expanded="${isLanguagePickerOpen() ? "true" : "false"}"
       >
         ${icon("globe", iconClass)}
@@ -960,7 +970,7 @@ export function createAppShellRuntimeController(deps = {}) {
           ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
         </button>
         ${menuActive ? `
-          <button type="button" data-action="kellner" title="${escapeHtml(tr("header.callWaiter", "Kellner rufen"))}" class="${primaryActionClass}">
+          <button type="button" data-action="kellner" title="${escapeHtml(tr("header.callWaiter", "Thirr kamarierin"))}" class="${primaryActionClass}">
             ${icon("bell", viewportUi.actionIconClass)}
           </button>
         ` : `
@@ -1079,7 +1089,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const collapseButtonClass = compactHeaderIcons
       ? "w-7 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
       : "w-8 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
-    const collapseButtonLabel = tr("header.toggleTabs", "Tabs ein- und ausblenden");
+    const collapseButtonLabel = tr("header.toggleTabs", "Shfaq ose fsheh tabet");
 
     // Die Tab-Zeile liegt bewusst ausserhalb des stickenden Shells: nur die
     // obere Leiste bleibt oben kleben, die Tabs scrollen normal mit dem Content
@@ -1531,33 +1541,61 @@ export function createAppShellRuntimeController(deps = {}) {
     return true;
   }
 
-  function applyMainHeaderTabsFade(fade, minimized) {
-    // Auf dem Root, damit sowohl die Tab-Zeile als auch der Shell darauf
-    // zugreifen koennen - der Header-Schatten blendet damit exakt mit um.
-    doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", fade.toFixed(3));
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-minimized", !!minimized);
-    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", minimized ? "false" : "true");
+  function measureMainHeaderTabsRowHeight(tabsEl) {
+    const height = Math.round(Number(tabsEl?.getBoundingClientRect?.().height) || 0);
+    if (height > 0) mainHeaderTabsRowHeight = height;
+    return mainHeaderTabsRowHeight;
   }
 
-  function syncMainHeaderTabsScrollProgress() {
-    if (!doc || !win) return;
-    const tabsEl = doc.getElementById("smart-tabs");
-    const topEl = doc.getElementById("smart-header-top");
-    if (!tabsEl || !topEl) return;
-    // Gemessen wird, wie weit die Tab-Zeile tatsaechlich hinter der oberen
-    // Leiste liegt - nicht scrollY. Steht die Zeile sichtbar unter der Leiste,
-    // ist sie offen, egal was der Scroll-Wert gerade behauptet.
-    const tabsRect = tabsEl.getBoundingClientRect();
-    const slot = Math.max(1, Number(tabsRect.height) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX);
-    const hidden = Math.max(0, Number(topEl.getBoundingClientRect().bottom || 0) - Number(tabsRect.top || 0));
-    const progress = Math.min(1, hidden / slot);
-    // Etwas schneller ausblenden als die Zeile hinter die Leiste laeuft, damit
-    // man nie halb abgeschnittene Buttons sieht.
-    const fade = Math.min(1, Math.max(0, 1 - progress * MAIN_HEADER_TABS_FADE_FACTOR));
-    applyMainHeaderTabsFade(fade, progress >= MAIN_HEADER_TABS_MINIMIZED_PROGRESS);
+  // Sichtbar ist die Zeile, wenn sie nicht ausgeblendet ist und entweder unter
+  // der Leiste klebt oder die Seite noch so weit oben steht, dass ihr Platz am
+  // Seitenanfang im Blick liegt. Reine Rechnung auf scrollY - kein Messen.
+  function isMainHeaderTabsRowVisible() {
+    if (mainHeaderTabsCollapsed) return false;
+    if (mainHeaderTabsStuck) return true;
+    return Math.max(0, Number(win?.scrollY || 0)) < mainHeaderTabsRowHeight;
+  }
+
+  // Schatten, Pfeilrichtung und aria folgen dem, was man tatsaechlich sieht.
+  function syncMainHeaderTabsChrome(force = false) {
+    const visible = isMainHeaderTabsRowVisible();
+    if (!force && visible === mainHeaderTabsVisibleState) return;
+    mainHeaderTabsVisibleState = visible;
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-away", !visible);
+    doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-fade", visible ? "1.000" : "0.000");
+    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", visible ? "true" : "false");
+  }
+
+  function setMainHeaderTabsStuck(next) {
+    mainHeaderTabsStuck = !!next;
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-stuck", mainHeaderTabsStuck);
+    syncMainHeaderTabsChrome();
+  }
+
+  function setMainHeaderTabsCollapsed(next) {
+    mainHeaderTabsCollapsed = !!next;
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
+    if (mainHeaderTabsCollapsed) setMainHeaderTabsStuck(false);
+    syncMainHeaderTabsChrome();
+  }
+
+  function syncMainHeaderTabsOnScroll() {
+    const scrollY = Math.max(0, Number(win?.scrollY || 0));
+    const previous = mainHeaderTabsLastScrollY;
+    mainHeaderTabsLastScrollY = scrollY;
+    // Runterscrollen nimmt die per Pfeil geholte Zeile wieder weg; oben wird
+    // das Kleben ueberfluessig, weil dort die normale Position dieselbe ist.
+    if (mainHeaderTabsStuck
+      && (scrollY > previous + MAIN_HEADER_TABS_DOWN_DELTA_PX || scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX)) {
+      setMainHeaderTabsStuck(false);
+    }
+    syncMainHeaderTabsChrome();
   }
 
   function stopMainHeaderTabsRuntime() {
+    // Der Collapsed-Zustand (mainHeaderTabsCollapsed) ueberlebt Re-Renders
+    // bewusst: was der Nutzer per Pfeil zugemacht hat, bleibt zu, bis er es
+    // selbst wieder aufmacht.
     if (win && typeof mainHeaderTabsScrollListener === "function") {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
@@ -1569,8 +1607,6 @@ export function createAppShellRuntimeController(deps = {}) {
     mainHeaderTabsScrollListener = null;
     mainHeaderTabsToggleEl = null;
     mainHeaderTabsToggleHandler = null;
-    doc?.documentElement?.classList?.remove?.("smart-header-tabs-minimized");
-    doc?.documentElement?.style?.removeProperty?.("--smart-header-tabs-fade");
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
@@ -1584,42 +1620,77 @@ export function createAppShellRuntimeController(deps = {}) {
     if (mainHeaderTabsBootSyncPending) {
       mainHeaderTabsBootSyncPending = false;
       resetMainHeaderTabsBootScroll();
-      applyMainHeaderTabsFade(1, false);
     }
 
     const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
     if (toggleEl) {
       mainHeaderTabsToggleEl = toggleEl;
-      // Der Pfeil ist an denselben Scroll-Zustand gebunden, den er anzeigt:
-      // minimiert -> zurueck nach oben, offen -> knapp an den Tabs vorbei.
+      // Sichtbar -> wegnehmen, weg -> zurueckholen. Unterwegs heftet sich die
+      // Zeile dafuer unter die Leiste (kein Layout-Wechsel, kein Sprung); oben
+      // gibt es nur ganz aus- oder einblenden, dort rueckt der Content mit.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
-        const slot = Math.max(1, Math.round(Number(tabsEl.offsetHeight) || MAIN_HEADER_TABS_SLOT_FALLBACK_PX));
-        const minimized = !!doc.documentElement?.classList?.contains?.("smart-header-tabs-minimized");
-        const nextTop = minimized ? 0 : slot + 2;
-        try {
-          win.scrollTo({ top: nextTop, behavior: "smooth" });
-        } catch {
-          win.scrollTo(0, nextTop);
+        syncSmartHeaderMetrics();
+        const scrollY = Math.max(0, Number(win.scrollY || 0));
+        const atTop = scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX;
+        if (isMainHeaderTabsRowVisible()) {
+          if (mainHeaderTabsStuck) {
+            // Unterwegs geholt -> einfach wieder loslassen, sie faellt in ihre
+            // normale Position am Seitenanfang zurueck (kein Layout-Wechsel).
+            setMainHeaderTabsStuck(false);
+          } else {
+            // Sie steht in ihrer normalen Position im Blick (oben oder knapp
+            // darunter) - nur Ausblenden nimmt sie weg. Der frei werdende
+            // Platz wird per Scroll ausgeglichen, soweit moeglich.
+            const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
+            setMainHeaderTabsCollapsed(true);
+            if (scrollY > 0 && rowHeight > 0) {
+              try {
+                win.scrollTo(0, Math.max(0, scrollY - rowHeight));
+              } catch {}
+            }
+          }
+        } else {
+          if (mainHeaderTabsCollapsed) {
+            setMainHeaderTabsCollapsed(false);
+            // Die Zeile nimmt oben wieder Platz ein - Scroll-Position zieht um
+            // ihre Hoehe mit, damit der Content dabei stehen bleibt.
+            const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
+            if (scrollY > 0 && rowHeight > 0) {
+              try {
+                win.scrollTo(0, scrollY + rowHeight);
+              } catch {}
+            }
+          }
+          if (!atTop) setMainHeaderTabsStuck(true);
         }
+        measureMainHeaderTabsRowHeight(tabsEl);
+        // Nach einer eigenen Scroll-Korrektur den Bezugswert nachziehen, sonst
+        // liest der naechste Scroll-Tick das faelschlich als "runtergescrollt".
+        mainHeaderTabsLastScrollY = Math.max(0, Number(win.scrollY || 0));
+        syncMainHeaderTabsChrome(true);
+        syncSmartHeaderMetrics();
       };
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
+      // Zustand nach jedem Re-Render wieder ansagen (Klassen + aria bleiben
+      // so auch auf frisch gebautem DOM korrekt).
+      setMainHeaderTabsCollapsed(mainHeaderTabsCollapsed);
+      setMainHeaderTabsStuck(mainHeaderTabsStuck && !mainHeaderTabsCollapsed);
     }
 
-    // Nur Opacity und eine Klasse - kein Layout, deshalb kein Ruckeln.
+    measureMainHeaderTabsRowHeight(tabsEl);
+    mainHeaderTabsLastScrollY = Math.max(0, Number(win.scrollY || 0));
+    syncMainHeaderTabsChrome(true);
+
     mainHeaderTabsScrollListener = () => {
-      if (mainHeaderTabsBootLockActive && resetMainHeaderTabsBootScroll()) {
-        applyMainHeaderTabsFade(1, false);
-        return;
-      }
+      if (mainHeaderTabsBootLockActive && resetMainHeaderTabsBootScroll()) return;
       if (mainHeaderTabsRafId) return;
       mainHeaderTabsRafId = win.requestAnimationFrame?.(() => {
         mainHeaderTabsRafId = 0;
-        syncMainHeaderTabsScrollProgress();
+        syncMainHeaderTabsOnScroll();
       }) || 0;
-      if (!mainHeaderTabsRafId) syncMainHeaderTabsScrollProgress();
+      if (!mainHeaderTabsRafId) syncMainHeaderTabsOnScroll();
     };
-    syncMainHeaderTabsScrollProgress();
     win.addEventListener("scroll", mainHeaderTabsScrollListener, { passive: true });
   }
 
@@ -1637,6 +1708,8 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTopEl = null;
     smartHeaderBoundTabsEl = null;
     if (resetState) {
+      setMainHeaderTabsCollapsed(false);
+      setMainHeaderTabsStuck(false);
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;
@@ -2009,7 +2082,7 @@ export function createAppShellRuntimeController(deps = {}) {
             await signInWithEmailAndPasswordFn(auth, email, password);
           } else {
             if (!name || !email || !password) {
-              throw new Error(tr("auth.fillAll", "Bitte alles ausfuellen."));
+              throw new Error(tr("auth.fillAll", "Ju lutem plotesoni gjithcka."));
             }
             const cred = await createUserWithEmailAndPasswordFn(auth, email, password);
             await updateProfileFn(cred.user, { displayName: name });
@@ -2030,7 +2103,7 @@ export function createAppShellRuntimeController(deps = {}) {
             }, { merge: true });
           }
         } catch (err) {
-          state.auth.error = err?.message || tr("auth.loginFailed", "Login fehlgeschlagen.");
+          state.auth.error = err?.message || tr("auth.loginFailed", "Hyrja deshtoi.");
         } finally {
           if (!auth?.currentUser) {
             state.auth.loading = false;
@@ -2240,7 +2313,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const userBtn = target.closest("[data-search-user]");
       if (userBtn) {
         if (isGuestSession()) {
-          openGuestAuthPromptFn(tr("auth.userProfilesRequired", "Bitte einloggen, um User-Profile zu sehen."));
+          openGuestAuthPromptFn(tr("auth.userProfilesRequired", "Ju lutem hyni per te pare profile perdoruesish."));
           return;
         }
         runBudgetWrapped("profile_open", () => openProfileFromUserFn({

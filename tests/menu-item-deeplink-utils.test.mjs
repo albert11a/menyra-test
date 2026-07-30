@@ -112,7 +112,7 @@ test("renderStoryMenuItemTagPickerCore renders options with selection", () => {
     selectedMenuItemId: "item_2"
   });
   assert.match(html, /uploadStoryMenuItemSelect/);
-  assert.match(html, /<option value="">Kein Produkt<\/option>/);
+  assert.match(html, /<option value="">Pa produkt<\/option>/);
   assert.match(html, /<option value="item_1">Pizza Margherita<\/option>/);
   assert.match(html, /<option value="item_2" selected>Burger<\/option>/);
 });
@@ -129,12 +129,12 @@ test("renderStoryMenuItemTagPickerCore shows a hint when loading failed", () => 
   const html = renderStoryMenuItemTagPickerCore({
     storyTag: { status: "error", items: [] }
   });
-  assert.match(html, /Produkte konnten nicht geladen werden/);
+  assert.match(html, /Produktet nuk mund te ngarkoheshin/);
 });
 
 test("renderStoryMenuItemTagPickerCore shows loading hint while items load", () => {
   const html = renderStoryMenuItemTagPickerCore({
     storyTag: { status: "loading", items: [] }
   });
-  assert.match(html, /Produkte werden geladen/);
+  assert.match(html, /Produktet po ngarkohen/);
 });

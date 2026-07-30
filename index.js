@@ -75,7 +75,7 @@ function renderLinks(){
   const rid = ridInp.value.trim();
   const tid = tidInp.value.trim();
   if(!rid){
-    linksEl.innerHTML = "<div class='muted'>Bitte Kunde auswählen oder restaurantId eingeben.</div>";
+    linksEl.innerHTML = "<div class='muted'>Ju lutem zgjidhni klientin ose shkruani restaurantId.</div>";
     return;
   }
   const L = buildLinks(rid, tid);

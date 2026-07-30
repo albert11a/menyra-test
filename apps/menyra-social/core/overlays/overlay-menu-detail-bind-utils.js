@@ -157,7 +157,7 @@ export function bindMenuDetailOverlayEventsCore({
   if (menuDetailFavoriteCtaBtn) {
     menuDetailFavoriteCtaBtn.addEventListener("click", () => {
       if (!String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
         return;
       }
       if (!toggleMenuItemLike) return;
@@ -169,7 +169,7 @@ export function bindMenuDetailOverlayEventsCore({
   if (menuDetailHeaderFavoritesBtn) {
     menuDetailHeaderFavoritesBtn.addEventListener("click", () => {
       if (!String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt(tr("auth.favoritesRequired", "Bitte registrieren oder einloggen, um Favoriten zu nutzen."));
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
         return;
       }
       if (!toggleMenuItemLike) return;

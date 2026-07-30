@@ -23,26 +23,26 @@ export function mapPushActivationErrorCore(stage = "", err = null) {
   const code = String(err?.code || "").trim();
   const message = String(err?.message || "").trim();
   if (code === "permission-denied" && stage === "firestore-write") {
-    return "Firestore-Regeln blockieren users/{uid}/devices. Bitte Rules pruefen.";
+    return "Rregullat e Firestore bllokojne users/{uid}/devices. Ju lutem kontrolloni rules.";
   }
   if (code === "messaging/permission-blocked") {
-    return "Browser-Permission fuer Benachrichtigungen ist blockiert.";
+    return "Leja e shfletuesit per njoftime eshte e bllokuar.";
   }
   if (code === "messaging/unsupported-browser") {
-    return "Dieser Browser unterstuetzt FCM Web Push nicht.";
+    return "Ky shfletues nuk mbeshtet FCM Web Push.";
   }
   if (code === "messaging/failed-service-worker-registration") {
-    return "Service Worker konnte fuer FCM nicht verwendet werden.";
+    return "Service Worker nuk mund te perdorej per FCM.";
   }
   if (code === "messaging/invalid-sw-registration") {
-    return "Service Worker Registrierung ist fuer FCM ungueltig.";
+    return "Regjistrimi i Service Worker eshte i pavlefshem per FCM.";
   }
   if (code === "messaging/token-subscribe-failed") {
-    return "FCM Token-Abonnement fehlgeschlagen. VAPID-Key und Push-Service pruefen.";
+    return "Abonimi i FCM token deshtoi. Kontrolloni VAPID-Key dhe Push-Service.";
   }
-  if (code) return `${stage || "push"} fehlgeschlagen (${code}).`;
-  if (message) return `${stage || "push"} fehlgeschlagen: ${message}`;
-  return `${stage || "push"} fehlgeschlagen.`;
+  if (code) return `${stage || "push"} deshtoi (${code}).`;
+  if (message) return `${stage || "push"} deshtoi: ${message}`;
+  return `${stage || "push"} deshtoi.`;
 }
 
 export function canEmitNativePushAlertsCore({

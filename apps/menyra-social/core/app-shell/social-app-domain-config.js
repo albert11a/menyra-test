@@ -4,7 +4,7 @@ export const LEAD_STATUS_LABELS = {
   contacted: "Kontaktiert",
   testphase: "Testphase",
   kunde: "Kunde",
-  no_interest: "Keine Interesse"
+  no_interest: "Pa interes"
 };
 export const LEAD_TYPE_ORDER = ["restaurant", "cafe", "fastfood", "hotel", "motel", "ecommerce", "tankstelle", "lebensmittel", "apotheken", "services"];
 export const LEAD_TYPE_LABELS = {

@@ -92,8 +92,8 @@ export function renderLeadModalCore({
   const headerHtml = `
     <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
       <div>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
-        <h3 class="text-xl font-black italic tracking-tighter">${isEdit ? "Lead bearbeiten" : "Neuer Lead"}</h3>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Ndrysho" : "I ri"}</span>
+        <h3 class="text-xl font-black italic tracking-tighter">${isEdit ? "Ndrysho lead-in" : "Lead i ri"}</h3>
       </div>
       <button id="leadModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
         ${iconFn("x", "w-4 h-4")}
@@ -108,21 +108,21 @@ export function renderLeadModalCore({
         <img id="leadLogoPreview" src="${esc(logoUrl)}" class="w-full h-44 object-contain bg-white" />
       </div>
       <button id="leadLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-        Logo hochladen
+        Ngarko logon
       </button>
       <input type="file" id="leadBestSpotLogoInput" class="hidden" accept="image/*" />
       <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         <img id="leadBestSpotLogoPreview" src="${esc(bestSpotLogoUrl)}" class="w-full h-44 object-cover bg-white" />
       </div>
       <button id="leadBestSpotLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
-        Best-Spot-Logo hochladen
+        Ngarko logon Best-Spot
       </button>
       <input type="file" id="leadTitleImageInput" class="hidden" accept="image/*" />
       <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         <img id="leadTitleImagePreview" src="${esc(titleImageUrl)}" class="w-full h-44 object-cover bg-white" />
       </div>
       <button id="leadTitleImageTrigger" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
-        Titelbild hochladen
+        Ngarko foton e titullit
       </button>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
@@ -132,11 +132,11 @@ export function renderLeadModalCore({
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 1</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyra pjesa 1</label>
             <input id="leadBusinessNameColorPart1" type="text" value="${esc(businessNameColors.part1)}" placeholder="#111827" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-black uppercase border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farbe Teil 2</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyra pjesa 2</label>
             <input id="leadBusinessNameColorPart2" type="text" value="${esc(businessNameColors.part2)}" placeholder="#4f46e5" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-black uppercase border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
@@ -151,7 +151,7 @@ export function renderLeadModalCore({
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kontakt</label>
-            <input id="leadContactName" type="text" value="${esc(lead.contactName || lead.contact || "")}" placeholder="Kontaktname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="leadContactName" type="text" value="${esc(lead.contactName || lead.contact || "")}" placeholder="Emri i kontaktit" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
@@ -167,8 +167,8 @@ export function renderLeadModalCore({
           <input id="leadEmail" type="email" value="${esc(leadEmail)}" placeholder="owner@mnyra.com" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort (optional)</label>
-          <input id="leadPassword" type="password" value="${esc(lead.password || "")}" placeholder="leer = kein Login wird erstellt" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Fjalekalimi (opsional)</label>
+          <input id="leadPassword" type="password" value="${esc(lead.password || "")}" placeholder="bosh = nuk krijohet login" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
@@ -176,9 +176,9 @@ export function renderLeadModalCore({
         </div>
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Standorte</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vendndodhjet</label>
             <button type="button" data-lead-location-add class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
-              ${iconFn("plus", "w-3.5 h-3.5")} Standort
+              ${iconFn("plus", "w-3.5 h-3.5")} Shto vendndodhje
             </button>
           </div>
           ${locations.map((location, index) => {
@@ -186,7 +186,7 @@ export function renderLeadModalCore({
             return `
               <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 space-y-3">
                 <div class="flex items-center justify-between">
-                  <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Standort ${index + 1}</p>
+                  <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Vendndodhja ${index + 1}</p>
                   ${index > 0 ? `
                     <button type="button" data-lead-location-remove="${index}" class="w-8 h-8 rounded-lg bg-white text-slate-500 flex items-center justify-center border border-slate-200">
                       ${iconFn("x", "w-3.5 h-3.5")}
@@ -198,11 +198,11 @@ export function renderLeadModalCore({
                   data-lead-location-address="${index}"
                   type="text"
                   value="${esc(location.address || "")}"
-                  placeholder="Adresse fuer Standort ${index + 1}"
+                  placeholder="Adresa per vendndodhjen ${index + 1}"
                   class="w-full px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100"
                 />
                 <div id="leadLocationCoords_${index}" class="text-[9px] font-bold text-emerald-600 flex items-center gap-1 ${fixed ? "" : "hidden"}">
-                  ${iconFn("check-circle-2", "w-3 h-3")} Standort auf Karte fixiert!
+                  ${iconFn("check-circle-2", "w-3 h-3")} Vendndodhja u fiksua ne harte!
                 </div>
                 <button type="button" data-lead-location-pick="${index}" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
                   ${iconFn("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen
@@ -224,20 +224,20 @@ export function renderLeadModalCore({
           <input id="leadTitleImageUrl" type="text" value="${esc(lead.titleImageUrl || lead.coverImageUrl || lead.coverUrl || lead.heroUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Oeffnungszeiten</label>
-          <input id="leadOpeningHours" type="text" value="${esc(lead.openingHours || lead.hours || "")}" placeholder="Mo - So: 11:00 - 22:00 Uhr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Orari i punes</label>
+          <input id="leadOpeningHours" type="text" value="${esc(lead.openingHours || lead.hours || "")}" placeholder="Hene - Diel: 11:00 - 22:00" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Garten / Terrasse</label>
-          <input id="leadGardenTerraceText" type="text" value="${esc(lead.gardenTerraceText || lead.restaurantFeatures?.gardenTerrace || "")}" placeholder="Gastgarten" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="leadGardenTerraceText" type="text" value="${esc(lead.gardenTerraceText || lead.restaurantFeatures?.gardenTerrace || "")}" placeholder="Kopsht / terrace" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Barrierefrei</label>
-          <input id="leadAccessibilityText" type="text" value="${esc(lead.accessibilityText || lead.restaurantFeatures?.accessibility || "")}" placeholder="Barrierefrei" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="leadAccessibilityText" type="text" value="${esc(lead.accessibilityText || lead.restaurantFeatures?.accessibility || "")}" placeholder="Pa pengesa" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vegane Optionen</label>
-          <input id="leadVeganOptionsText" type="text" value="${esc(lead.veganOptionsText || lead.restaurantFeatures?.veganOptions || "")}" placeholder="Vegane Optionen" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="leadVeganOptionsText" type="text" value="${esc(lead.veganOptionsText || lead.restaurantFeatures?.veganOptions || "")}" placeholder="Opsione vegane" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
@@ -249,10 +249,10 @@ export function renderLeadModalCore({
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
-          <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(lead.note || "")}</textarea>
+          <textarea id="leadNote" rows="3" placeholder="Shenim i shkurter..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(lead.note || "")}</textarea>
         </div>
         <label class="flex items-center justify-between gap-4 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100">
-          <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Special aktivieren</span>
+          <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo Special</span>
           <input id="leadSpecialEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${specialEnabled ? "checked" : ""} />
         </label>
       </div>
@@ -267,7 +267,7 @@ export function renderLeadModalCore({
         </button>
       ` : ""}
       <button id="leadModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.leadModal.loading ? "disabled" : ""}>
-        ${state.leadModal.loading ? "Speichern..." : "Speichern"}
+        ${state.leadModal.loading ? "Duke ruajtur..." : "Ruaj"}
       </button>
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${esc(status)}</div>
     </div>

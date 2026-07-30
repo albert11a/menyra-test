@@ -64,7 +64,7 @@ export function renderChatListPanelCore({
                       <span class="text-[9px] font-bold uppercase tracking-widest text-slate-300">${esc(formatRel(new Date(Number(thread?.updatedAt || now))))}</span>
                     </div>
                     <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate mt-1">@${esc(String(thread?.handle || "user").replace(/^@/, ""))}</p>
-                    <p class="text-sm ${visibleUnreadCount ? "text-slate-800 font-semibold" : "text-slate-500"} truncate mt-2">${esc(thread?.lastMessage || "Chat oeffnen")}</p>
+                    <p class="text-sm ${visibleUnreadCount ? "text-slate-800 font-semibold" : "text-slate-500"} truncate mt-2">${esc(thread?.lastMessage || "Hap chat-in")}</p>
                     ${isMuted ? `<p class="text-[9px] font-black uppercase tracking-widest text-amber-500 mt-1">Ruhemodus aktiv</p>` : ""}
                     ${isBlocked ? `<p class="text-[9px] font-black uppercase tracking-widest text-rose-500 mt-1">Blockiert</p>` : ""}
                   </div>
@@ -76,7 +76,7 @@ export function renderChatListPanelCore({
                   <div class="absolute right-4 top-14 z-20 w-44 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-xl">
                     <button data-chat-thread-action="delete" data-chat-thread-id="${esc(thread?.id || "")}" class="w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-black">
                       ${iconFn("trash-2", "w-3.5 h-3.5")}
-                      Loeschen
+                      Fshi
                     </button>
                     <button data-chat-thread-action="${isArchivedScope ? "unarchive" : "archive"}" data-chat-thread-id="${esc(thread?.id || "")}" class="w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-black">
                       ${iconFn(isArchivedScope ? "inbox" : "archive", "w-3.5 h-3.5")}
@@ -95,8 +95,8 @@ export function renderChatListPanelCore({
             <div class="w-16 h-16 rounded-[1.8rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-5 shadow-sm">
               ${iconFn("messages-square", "w-7 h-7")}
             </div>
-            <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${isArchivedScope ? "Keine archivierten Chats" : "Noch keine Chats"}</p>
-            <p class="text-sm font-medium text-slate-500 mt-3">${isArchivedScope ? "Archivierte Chats erscheinen hier." : "Oeffne ein Profil und tippe auf das Chat-Icon."}</p>
+            <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${isArchivedScope ? "Nuk ka chat-e te arkivuara" : "Ende nuk ka chat-e"}</p>
+            <p class="text-sm font-medium text-slate-500 mt-3">${isArchivedScope ? "Archivierte Chats erscheinen hier." : "Hap nje profil dhe prek ikonen e chat-it."}</p>
           </div>
         </div>
       `}

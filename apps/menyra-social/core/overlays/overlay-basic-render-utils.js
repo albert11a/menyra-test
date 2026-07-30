@@ -54,7 +54,7 @@ export function renderChatModalCore({
                   <div class="w-14 h-14 rounded-[1.4rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
                     ${iconFn("message-circle", "w-6 h-6")}
                   </div>
-                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">${esc(tr("chat.empty", "Noch keine Nachrichten"))}</p>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">${esc(tr("chat.empty", "Ende nuk ka mesazhe"))}</p>
                 </div>
               </div>
             `}
@@ -209,7 +209,7 @@ export function renderLikesModalCore({
               </div>
             `;
             }).join("") : `
-              <div class="text-center text-[10px] font-bold uppercase text-slate-400">${esc(tr("likes.empty", "Noch keine Likes"))}</div>
+              <div class="text-center text-[10px] font-bold uppercase text-slate-400">${esc(tr("likes.empty", "Ende nuk ka likes"))}</div>
             `}
           </div>
         </div>
@@ -301,7 +301,7 @@ export function renderPostModalCore({
               <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100 relative">
                 ${(isVideoPost && videoSrc) ? `
                   <video id="postModalVideo" src="${esc(videoSrc)}" ${posterIsReal ? `poster="${esc(posterUrl)}"` : ""} preload="auto" autoplay muted loop playsinline webkit-playsinline class="w-full h-[22rem] object-cover block"></video>
-                  <button type="button" data-post-modal-video-toggle aria-label="Video pausieren" class="absolute top-4 left-4 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
+                  <button type="button" data-post-modal-video-toggle aria-label="Ndalo videon" class="absolute top-4 left-4 z-10 w-11 h-11 rounded-full bg-black/45 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center">
                     <span data-post-modal-video-icon="play" class="hidden">${iconFn("play", "w-4 h-4")}</span>
                     <span data-post-modal-video-icon="pause">${iconFn("pause", "w-4 h-4")}</span>
                   </button>

@@ -314,14 +314,14 @@ export function bindShoppingLandingCardEditorEvents({
       productImageFiles,
       productImagePreviews,
       saving: true,
-      status: "Wird gespeichert..."
+      status: "Po ruhet..."
     };
     render();
 
     try {
       let imageUrl = urlDraft || "";
       if (file) {
-        if (!uploadCompressedImage) throw new Error("Bild-Upload ist nicht bereit.");
+        if (!uploadCompressedImage) throw new Error("Ngarkimi i fotos nuk eshte gati.");
         const uploaded = await uploadCompressedImage(file, restaurantId, {
           maxSize: 1080,
           quality: 0.8,
@@ -331,7 +331,7 @@ export function bindShoppingLandingCardEditorEvents({
       }
       for (const [productId, productFile] of Object.entries(productImageFiles)) {
         if (!selectedSet.has(productId)) continue;
-        if (!uploadCompressedImage) throw new Error("Bild-Upload ist nicht bereit.");
+        if (!uploadCompressedImage) throw new Error("Ngarkimi i fotos nuk eshte gati.");
         const uploaded = await uploadCompressedImage(productFile, restaurantId, {
           maxSize: 1080,
           quality: 0.82,
@@ -378,7 +378,7 @@ export function bindShoppingLandingCardEditorEvents({
         productImageFiles: {},
         productImagePreviews: {},
         saving: false,
-        status: "Landing Card gespeichert."
+        status: "Landing card u ruajt."
       };
       render();
     } catch (err) {
@@ -395,7 +395,7 @@ export function bindShoppingLandingCardEditorEvents({
         productImageFiles,
         productImagePreviews,
         saving: false,
-        status: err?.message || "Landing Card konnte nicht gespeichert werden."
+        status: err?.message || "Landing card nuk mund te ruhej."
       };
       render();
     }

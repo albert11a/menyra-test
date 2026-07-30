@@ -118,7 +118,7 @@ export function renderMenuItemModalCore({
   const item = state.menuModal.item || {};
   const isEdit = state.menuModal.mode === "edit";
   const isShop = isShopCatalog(state.userProfile);
-  const title = isEdit ? "Produkt bearbeiten" : "Produkt hinzufuegen";
+  const title = isEdit ? "Ndrysho produktin" : "Shto produkt";
   const existingImages = Array.isArray(state.menuModal.existingImages) ? state.menuModal.existingImages : [];
   const newPreviews = Array.isArray(state.menuModal.imagePreviews) ? state.menuModal.imagePreviews : [];
   const imageUrlDraft = String(state.menuModal.imageUrlDraft || "").trim();
@@ -260,7 +260,7 @@ export function renderMenuItemModalCore({
   const headerHtml = `
     <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
       <div>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Ndrysho" : "I ri"}</span>
         <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${title}</h3>
       </div>
       <button id="menuModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
@@ -280,7 +280,7 @@ export function renderMenuItemModalCore({
         ` : `
           <img id="menuItemHeroPreview" src="${esc(safeImage)}" class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" />
         `}
-        <button type="button" id="menuItemImageTrigger" aria-label="Foto oder Video hochladen" class="absolute top-3 right-3 w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+        <button type="button" id="menuItemImageTrigger" aria-label="Ngarko foto ose video" class="absolute top-3 right-3 w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform">
           ${iconFn("camera", "w-5 h-5")}
           <span class="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center border border-white">
             ${iconFn("plus", "w-2.5 h-2.5")}
@@ -289,7 +289,7 @@ export function renderMenuItemModalCore({
       </div>
       ${heroIsVideo ? `
         <button type="button" id="menuItemVideoRemove" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform">
-          Video entfernen
+          Hiq videon
         </button>
       ` : ""}
       <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
@@ -308,7 +308,7 @@ export function renderMenuItemModalCore({
             <button type="button" data-menu-small-crop="center" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${cropPreset === "center" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}">Mitte</button>
             <button type="button" data-menu-small-crop="right" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${cropPreset === "right" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}">Rechts</button>
           </div>
-          <p class="text-[10px] font-bold text-slate-400 px-1">Nur fuer Small Drink Card (Public Menue).</p>
+          <p class="text-[10px] font-bold text-slate-400 px-1">Vetem per Small Drink Card (menuja publike).</p>
         </div>
         <div class="flex items-center justify-between">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Vertikal</p>
@@ -334,7 +334,7 @@ export function renderMenuItemModalCore({
           </div>
         ` : `
           <div class="h-20 rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300">
-            Noch keine Fotos
+            Ende nuk ka foto
           </div>
         `}
       </div>
@@ -342,16 +342,16 @@ export function renderMenuItemModalCore({
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Name</label>
-          <input id="menuItemName" type="text" value="${esc(item.name || "")}" placeholder="Produktname" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="menuItemName" type="text" value="${esc(item.name || "")}" placeholder="Emri i produktit" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Cmimi</label>
             <input id="menuItemPrice" type="text" value="${esc(item.price ?? "")}" placeholder="z.B. 4.50" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
-            <input id="menuItemCategory" list="${categoryListId}" type="text" value="${esc(categoryValue)}" placeholder="Kategorie eingeben" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="menuItemCategory" list="${categoryListId}" type="text" value="${esc(categoryValue)}" placeholder="Shkruaj kategorine" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             <datalist id="${categoryListId}">
               ${categoryOptions.map((category) => `<option value="${esc(category)}"></option>`).join("")}
             </datalist>
@@ -371,7 +371,7 @@ export function renderMenuItemModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
           <select id="menuItemVisibility" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="available" ${visibilityValue === "available" ? "selected" : ""}>Verfuegbar</option>
+            <option value="available" ${visibilityValue === "available" ? "selected" : ""}>E disponueshme</option>
             <option value="unavailable" ${visibilityValue === "unavailable" ? "selected" : ""}>Ausverkauft</option>
           </select>
         </div>
@@ -394,7 +394,7 @@ export function renderMenuItemModalCore({
                 return `<option value="${pos}" ${orderPositionValue === pos ? "selected" : ""}>Position ${pos}: ${esc(label)}${esc(helper)}</option>`;
               }).join("")}
             </select>
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Einfach auswaehlen statt Drag and Drop.</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Thjesht zgjidh ne vend te drag and drop.</p>
           </div>
         ` : ""}
         ${showCardStyleSelector && !isSpecialCard ? `
@@ -409,41 +409,41 @@ export function renderMenuItemModalCore({
         ${specialEnabled && showCardStyleSelector && isSpecialCard ? `
           <input id="menuItemCardStyle" type="hidden" value="testfirst_special" />
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Groesse</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Madhesia Special</label>
             <select id="menuItemSpecialSize" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
               <option value="default" ${specialSizeValue === "default" ? "selected" : ""}>Normal</option>
-              <option value="food" ${specialSizeValue === "food" ? "selected" : ""}>Food-Card Groesse</option>
+              <option value="food" ${specialSizeValue === "food" ? "selected" : ""}>Madhesia e Food-Card</option>
             </select>
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Nur relevant fuer Special-Card.</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Relevante vetem per Special-Card.</p>
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Klick-Aktion</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Veprimi i klikimit Special</label>
             <select id="menuItemSpecialActionType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-              <option value="product" ${specialActionType === "product" ? "selected" : ""}>Produkt-Modal oeffnen</option>
-              <option value="link" ${specialActionType === "link" ? "selected" : ""}>Weiterleitung / Link oeffnen</option>
+              <option value="product" ${specialActionType === "product" ? "selected" : ""}>Hap modalin e produktit</option>
+              <option value="link" ${specialActionType === "link" ? "selected" : ""}>Hap ridrejtimin / linkun</option>
             </select>
           </div>
           <div id="menuItemSpecialActionProductField" class="${specialActionType === "product" ? "" : "hidden"}">
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Ziel-Produkt</label>
             <select id="menuItemSpecialActionProductId" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-              <option value="">Kein Produkt</option>
+              <option value="">Pa produkt</option>
               ${specialTargetProducts.map((entry) => {
                 const id = String(entry?.id || "").trim();
                 const label = String(entry?.name || "Produkt").trim() || "Produkt";
                 return `<option value="${esc(id)}" ${specialActionProductId === id ? "selected" : ""}>${esc(label)}</option>`;
               }).join("")}
             </select>
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird genutzt, wenn Klick-Aktion = Produkt-Modal.</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Perdoret kur veprimi i klikimit = modal i produktit.</p>
           </div>
           <div id="menuItemSpecialActionLinkField" class="${specialActionType === "link" ? "" : "hidden"}">
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Link</label>
             <input id="menuItemSpecialActionUrl" type="text" value="${esc(specialActionUrl)}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird genutzt, wenn Klick-Aktion = Link.</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Perdoret kur veprimi i klikimit = link.</p>
           </div>
         ` : ""}
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Beschreibung</label>
-          <textarea id="menuItemDesc" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(item.description || "")}</textarea>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Pershkrimi</label>
+          <textarea id="menuItemDesc" rows="3" placeholder="Pershkrimi..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(item.description || "")}</textarea>
         </div>
         ${!isShop ? `
           <div>
@@ -455,17 +455,17 @@ export function renderMenuItemModalCore({
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Wolt Link</label>
             <input id="menuItemWoltUrl" type="url" value="${esc(woltUrl)}" placeholder="https://wolt.com/..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Optional: wird im Produkt-Drawer angezeigt, wenn kein QR-Menuezugang aktiv ist.</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Opsionale: shfaqet ne dritaren e produktit kur nuk ka qasje QR ne menu.</p>
           </div>
         ` : ""}
         ${isShop ? `
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Details</label>
-            <textarea id="menuItemLongDesc" rows="4" placeholder="Material, Zustand, Lieferdetails..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(item.longDescription || "")}</textarea>
+            <textarea id="menuItemLongDesc" rows="4" placeholder="Materiali, gjendja, detajet e dorezimit..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(item.longDescription || "")}</textarea>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Marke</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Marka</label>
               <input id="menuItemBrand" type="text" value="${esc(item.brand || "")}" placeholder="z.B. Nike" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
@@ -475,12 +475,12 @@ export function renderMenuItemModalCore({
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Groessen</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Madhesite</label>
               <input id="menuItemSizes" type="text" value="${esc(sizesValue)}" placeholder="XS, S, M, L" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farben</label>
-              <input id="menuItemColors" type="text" value="${esc(colorsValue)}" placeholder="Schwarz, Weiss" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Ngjyrat</label>
+              <input id="menuItemColors" type="text" value="${esc(colorsValue)}" placeholder="E zeze, e bardhe" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
           </div>
           <div>
@@ -489,8 +489,8 @@ export function renderMenuItemModalCore({
           </div>
         ` : ""}
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">${isShop ? "Hinweise" : "Allergene"}</label>
-          <input id="menuItemAllergens" type="text" value="${esc(item.allergens || "")}" placeholder="${isShop ? "z.B. limitierte Edition, ohne Rueckgabe" : "z.B. Milch, Gluten"}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">${isShop ? "Shenime" : "Alergenet"}</label>
+          <input id="menuItemAllergens" type="text" value="${esc(item.allergens || "")}" placeholder="${isShop ? "p.sh. edicion i limituar, pa kthim" : "z.B. Milch, Gluten"}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         ${!isShop && isFoodOrDrinkEditor ? `
           <div>
@@ -510,9 +510,9 @@ export function renderMenuItemModalCore({
                     </span>
                   </label>
                 `;
-              }).join("") : `<p class="text-[10px] font-bold uppercase tracking-wide text-slate-400 px-2 py-1">Keine weiteren Speisen/Getraenke verfuegbar</p>`}
+              }).join("") : `<p class="text-[10px] font-bold uppercase tracking-wide text-slate-400 px-2 py-1">Nuk ka me ushqime/pije te disponueshme</p>`}
             </div>
-            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird nur im Produkt-Drawer gezeigt, wenn das Menue per QR-Code geoeffnet wurde.</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Shfaqet vetem ne dritaren e produktit kur menuja hapet me QR kod.</p>
           </div>
         ` : ""}
       </div>
@@ -521,7 +521,7 @@ export function renderMenuItemModalCore({
   const footerHtml = `
     <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="menuModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.menuModal.loading ? "disabled" : ""}>
-        ${state.menuModal.loading ? "Speichern..." : "Speichern"}
+        ${state.menuModal.loading ? "Duke ruajtur..." : "Ruaj"}
       </button>
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${esc(status)}</div>
     </div>
@@ -775,7 +775,7 @@ export function renderMenuDetailModalCore({
   const isShop = isShopCatalog(catalogProfile);
   const typeLabel = isShop
     ? tr("menu.product", "Produkt")
-    : (normalizeType(item.type) === "drink" ? tr("menu.drinkItem", "Getraenk") : tr("menu.foodItem", "Speise"));
+    : (normalizeType(item.type) === "drink" ? tr("menu.drinkItem", "Pije") : tr("menu.foodItem", "Speise"));
   const category = isShop ? normalizeShopMenuCategoryLabel(item.category) : (item.category || "");
   const desc = item.longDescription || item.description || "";
   const ingredients = String(item.ingredients || item.ingredient || item.inhaltsstoffe || "").trim();
@@ -846,7 +846,7 @@ export function renderMenuDetailModalCore({
     ? "comment"
     : "cart";
   const isCommentFooter = footerView === "comment";
-  const noInfoFallbackLabel = tr("menu.noInfo", "Keine Informationen, bitte an das Lokal oder den Kellner wenden.");
+  const noInfoFallbackLabel = tr("menu.noInfo", "Nuk ka informacion, ju lutem kontaktoni lokalin ose kamarierin.");
   const infoTabInfoText = String(desc || "").trim() || noInfoFallbackLabel;
   const infoTabIngredientsText = ingredients || noInfoFallbackLabel;
   const infoTabAllergensText = String(allergens || "").trim() || noInfoFallbackLabel;
@@ -930,7 +930,7 @@ export function renderMenuDetailModalCore({
         ` : ""}
         ${sizes.length ? `
           <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.sizes", "Groessen"))}</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.sizes", "Madhesite"))}</p>
             <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
               ${sizes.map((size) => `<option value="${esc(size)}" ${selectedSize === String(size) ? "selected" : ""}>${esc(size)}</option>`).join("")}
             </select>
@@ -938,7 +938,7 @@ export function renderMenuDetailModalCore({
         ` : ""}
         ${colors.length ? `
           <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.colors", "Farben"))}</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">${esc(tr("menu.colors", "Ngjyrat"))}</p>
             <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
               ${colors.map((color) => `<option value="${esc(color)}" ${selectedColor === String(color) ? "selected" : ""}>${esc(color)}</option>`).join("")}
             </select>
@@ -1045,8 +1045,8 @@ export function renderMenuDetailModalCore({
         </button>
       `);
   const footerBackToggleTitle = showWoltAction
-    ? tr("menu.backToWolt", "Zurueck zu Wolt")
-    : (showFavoriteOnlyAction ? tr("menu.backToFavorites", "Zurueck zu Favoriten") : tr("menu.backToCart", "Zurueck zum Warenkorb"));
+    ? tr("menu.backToWolt", "Kthehu te Wolt")
+    : (showFavoriteOnlyAction ? tr("menu.backToFavorites", "Kthehu te te preferuarat") : tr("menu.backToCart", "Kthehu te shporta"));
   const footerBackToggleClass = showWoltAction
     ? "text-white"
     : "bg-slate-100 text-slate-600 hover:bg-slate-200";
@@ -1078,7 +1078,7 @@ export function renderMenuDetailModalCore({
         </button>
 
         <div class="flex-1 flex gap-2">
-          <textarea id="menuDetailCommentInput" placeholder="${canInteract ? esc(tr("menu.commentPlaceholder", "Schreib einen Kommentar...")) : esc(tr("menu.loginRequired", "Bitte einloggen"))}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
+          <textarea id="menuDetailCommentInput" placeholder="${canInteract ? esc(tr("menu.commentPlaceholder", "Schreib einen Kommentar...")) : esc(tr("menu.loginRequired", "Ju lutem hyni"))}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
           <button id="menuDetailCommentSend" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
             ${iconFn("send", "w-4 h-4")}
           </button>

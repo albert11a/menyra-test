@@ -343,25 +343,25 @@ export function resolveDashboardKindCore({ businessType = "", isShopCatalog = fa
 // bestehenden data-nav-Handler der Shell - hier entsteht keine neue Routing-Logik.
 export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = false, canAccessOrders = false } = {}) {
   const actions = [
-    { nav: "upload", uploadIntent: "chooser", iconName: "plus", label: "Neuer Beitrag", sub: "Foto oder Video posten" },
-    { nav: "upload", uploadIntent: "story", iconName: "camera", label: "Story", sub: "24h sichtbar" }
+    { nav: "upload", uploadIntent: "chooser", iconName: "plus", label: "Neuer Beitrag", sub: "Posto foto ose video" },
+    { nav: "upload", uploadIntent: "story", iconName: "camera", label: "Story", sub: "E dukshme 24h" }
   ];
   if (kind === "hotel") {
-    actions.push({ nav: "menu", iconName: "bed-double", label: "Hotel & Zimmer", sub: "Details, Zimmer, Angebote" });
+    actions.push({ nav: "menu", iconName: "bed-double", label: "Hotel & Dhoma", sub: "Detaje, dhoma, oferta" });
   } else if (kind === "shop") {
-    actions.push({ nav: "menu", iconName: "shopping-bag", label: "Shop bearbeiten", sub: "Produkte & Lager" });
+    actions.push({ nav: "menu", iconName: "shopping-bag", label: "Ndrysho dyqanin", sub: "Produkte & Stok" });
   } else {
-    actions.push({ nav: "menu", iconName: "utensils", label: "Menü bearbeiten", sub: "Produkte & Kategorien" });
+    actions.push({ nav: "menu", iconName: "utensils", label: "Ndrysho menune", sub: "Produkte & Kategorien" });
   }
-  actions.push({ nav: "menu", iconName: "megaphone", label: "Angebote & Werbung", sub: "Im Editor verwalten" });
+  actions.push({ nav: "menu", iconName: "megaphone", label: "Oferta & Reklama", sub: "Im Editor verwalten" });
   if (kind !== "hotel" && canAccessOrders) {
-    actions.push({ nav: "orders", iconName: "shopping-cart", label: "Bestellungen", sub: "Eingang & Status" });
+    actions.push({ nav: "orders", iconName: "shopping-cart", label: "Porosite", sub: "Hyrje & Status" });
   }
-  actions.push({ nav: "analytics", iconName: "bar-chart-3", label: "Analytics", sub: "Alle Statistiken" });
+  actions.push({ nav: "analytics", iconName: "bar-chart-3", label: "Analytics", sub: "Te gjitha statistikat" });
   if (isOwner) {
     actions.push({ nav: "businessAccounts", iconName: "users-round", label: "Team & Staff", sub: "Zugänge verwalten" });
   }
-  actions.push({ nav: "settings", iconName: "settings", label: "Einstellungen", sub: "Profil & Kontakt" });
+  actions.push({ nav: "settings", iconName: "settings", label: "Cilesimet", sub: "Profili & Kontakti" });
   return actions;
 }
 
@@ -369,25 +369,25 @@ export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = 
 export function buildDashboardKpiDefsCore(kind = "restaurant") {
   const common = [
     { key: "profileViews", label: "Profilaufrufe" },
-    { key: "postImpressions", label: "Beitrags-Reichweite" },
+    { key: "postImpressions", label: "Shtrirja e postimeve" },
     { key: "contactClicks", label: "Kontakt-Klicks" }
   ];
   if (kind === "shop") {
     return common.concat([
-      { key: "ordersCompleted", label: "Bestellungen" },
+      { key: "ordersCompleted", label: "Porosite" },
       { key: "revenue", label: "Umsatz", unit: "€" },
       { key: "productViews", label: "Produkt-Aufrufe" }
     ]);
   }
   if (kind === "hotel") {
     return common.concat([
-      { key: "uniqueVisitors", label: "Besucher" },
+      { key: "uniqueVisitors", label: "Vizitore" },
       { key: "postLikes", label: "Likes" },
-      { key: "feedImpressions", label: "Feed-Reichweite" }
+      { key: "feedImpressions", label: "Shtrirja ne feed" }
     ]);
   }
   return common.concat([
-    { key: "ordersCompleted", label: "Bestellungen" },
+    { key: "ordersCompleted", label: "Porosite" },
     { key: "revenue", label: "Umsatz", unit: "€" },
     { key: "qrScans", label: "QR-Scans" }
   ]);
@@ -468,7 +468,7 @@ export function renderDashboardKpis({ kpiDefs = [], week = {}, today = {} } = {}
     <div class="mnyra-dash__section" data-dashboard-kpis>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
-        <button type="button" class="mnyra-dash__section-link" data-nav="analytics">Alle Analytics</button>
+        <button type="button" class="mnyra-dash__section-link" data-nav="analytics">Gjithe analitika</button>
       </div>
       <div class="mnyra-dash__kpis">${tiles}</div>
     </div>
@@ -481,8 +481,8 @@ export function renderDashboardRecentPosts({ posts = [], iconFn } = {}) {
   if (!list.length) {
     body = `
       <div class="mnyra-dash__state" style="border:none;">
-        <p class="mnyra-dash__state-title">Noch keine Beiträge</p>
-        <p class="mnyra-dash__state-body">Poste dein erstes Foto oder Video, damit Gäste dich im Feed entdecken.</p>
+        <p class="mnyra-dash__state-title">Ende nuk ka postime</p>
+        <p class="mnyra-dash__state-body">Posto foton ose videon tende te pare qe vizitoret te te zbulojne ne feed.</p>
         <button type="button" class="mnyra-dash__retry" data-nav="upload" data-upload-intent="chooser">Neuer Beitrag</button>
       </div>
     `;
@@ -494,7 +494,7 @@ export function renderDashboardRecentPosts({ posts = [], iconFn } = {}) {
         `${formatCompactNumber(post.commentsCount || 0)} Kommentare`
       ];
       if (Number(post.impressions || 0) > 0) {
-        metaParts.push(`${formatCompactNumber(post.impressions)} Reichweite (7 T.)`);
+        metaParts.push(`${formatCompactNumber(post.impressions)} shtrirje (7 dite)`);
       }
       return `
         <div class="mnyra-dash__post">
@@ -504,7 +504,7 @@ export function renderDashboardRecentPosts({ posts = [], iconFn } = {}) {
               : safeIcon(iconFn, post.mediaType === "video" ? "play" : "image", "w-5 h-5")}
           </div>
           <div class="mnyra-dash__post-main">
-            <p class="mnyra-dash__post-caption">${escapeHtml(post.caption || "Ohne Text")}</p>
+            <p class="mnyra-dash__post-caption">${escapeHtml(post.caption || "Pa tekst")}</p>
             <p class="mnyra-dash__post-meta">${escapeHtml(metaParts.filter(Boolean).join(" · "))}</p>
           </div>
         </div>
@@ -553,9 +553,9 @@ export function renderDashboardErrorState({ message = "" } = {}) {
   return `
     <div class="mnyra-dash__section">
       <div class="mnyra-dash__state">
-        <p class="mnyra-dash__state-title">Daten konnten nicht geladen werden</p>
-        <p class="mnyra-dash__state-body">${escapeHtml(message || "Bitte prüfe deine Verbindung und versuche es erneut.")}</p>
-        <button type="button" class="mnyra-dash__retry" data-dashboard-retry>Erneut versuchen</button>
+        <p class="mnyra-dash__state-title">Te dhenat nuk mund te ngarkoheshin</p>
+        <p class="mnyra-dash__state-body">${escapeHtml(message || "Ju lutem kontrollo lidhjen dhe provo perseri.")}</p>
+        <button type="button" class="mnyra-dash__retry" data-dashboard-retry>Provo perseri</button>
       </div>
     </div>
   `;
@@ -564,8 +564,8 @@ export function renderDashboardErrorState({ message = "" } = {}) {
 export function renderDashboardNoBusinessState() {
   return `
     <div class="mnyra-dash__state" style="margin-top:8px;">
-      <p class="mnyra-dash__state-title">Kein Business-Profil verbunden</p>
-      <p class="mnyra-dash__state-body">Das Dashboard ist nur für Business-Konten verfügbar. Sobald dein Konto mit einem Restaurant, Hotel oder Shop verbunden ist, findest du hier alle Funktionen an einer Stelle.</p>
+      <p class="mnyra-dash__state-title">Nuk ka profil biznesi te lidhur</p>
+      <p class="mnyra-dash__state-body">Paneli eshte i disponueshem vetem per llogari biznesi. Sapo llogaria jote te lidhet me nje restorant, hotel ose dyqan, i gjen ketu te gjitha funksionet ne nje vend.</p>
     </div>
   `;
 }

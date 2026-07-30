@@ -14,7 +14,7 @@ export function resolveNativePushBodyCore(notif = {}) {
   }
   if (actor && text) return `${actor} ${text}`;
   if (text) return text;
-  return "Neue Mitteilung";
+  return "Njoftim i ri";
 }
 
 export function buildNativePushAlertPayloadCore({

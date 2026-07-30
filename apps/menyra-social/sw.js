@@ -160,8 +160,8 @@ self.addEventListener("push", (event) => {
   })();
 
   const notif = payload.notification || payload.webpush?.notification || {};
-  const title = notif.title || payload.title || "Benachrichtigung";
-  const body = notif.body || payload.body || "Neue Nachricht";
+  const title = notif.title || payload.title || "Njoftim";
+  const body = notif.body || payload.body || "Mesazh i ri";
   const icon = notif.icon || payload.icon || "/apps/menyra-social/assets/icon-192.png";
   const notificationId = payload.data?.notificationId || payload.data?.notifId || "";
   const link = buildNotificationTargetUrl(

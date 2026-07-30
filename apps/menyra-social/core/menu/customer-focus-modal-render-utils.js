@@ -25,8 +25,8 @@ export function renderCustomerModalCore({
   const headerHtml = `
     <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
       <div>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Kunde</span>
-        <h3 class="text-xl font-black italic tracking-tighter">Kundenprofil</h3>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Klienti</span>
+        <h3 class="text-xl font-black italic tracking-tighter">Profili i klientit</h3>
       </div>
       <button id="customerModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
         ${icon("x", "w-4 h-4")}
@@ -41,7 +41,7 @@ export function renderCustomerModalCore({
         <img id="customerLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
       </div>
       <button id="customerLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-        Logo hochladen
+        Ngarko logon
       </button>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
@@ -78,8 +78,8 @@ export function renderCustomerModalCore({
           </div>
         </div>
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
-          <input id="customerAddress" type="text" value="${escapeHtml(customer.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresa</label>
+          <input id="customerAddress" type="text" value="${escapeHtml(customer.address || "")}" placeholder="Rruga, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Instagram</label>
@@ -104,7 +104,7 @@ export function renderCustomerModalCore({
   const footerHtml = `
     <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="customerModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.customerModal.loading ? "disabled" : ""}>
-        ${state.customerModal.loading ? "Speichern..." : "Speichern"}
+        ${state.customerModal.loading ? "Duke ruajtur..." : "Ruaj"}
       </button>
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
     </div>
@@ -277,15 +277,15 @@ export function renderFocusModalCore({
     || hasTravelOfferFields
   );
   const title = isAdContext
-    ? (isEdit ? "Ad bearbeiten" : "Ad erstellen")
+    ? (isEdit ? "Ndrysho reklamen" : "Krijo reklame")
     : isTravelOfferContext
-    ? (isEdit ? "Oferta bearbeiten" : "Oferta hinzufuegen")
-    : (isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen");
-  const eyebrow = isAdContext ? "Ads" : (isTravelOfferContext ? (isEdit ? "Oferta" : "Neu") : (isEdit ? "Bearbeiten" : "Neu"));
-  const titlePlaceholder = isAdContext ? "Premium Highlight" : (isTravelOfferContext ? "Sommer-Angebot" : "Sot ne Fokus");
+    ? (isEdit ? "Ndrysho oferten" : "Shto oferte")
+    : (isEdit ? "Ndrysho fokusin" : "Shto fokus");
+  const eyebrow = isAdContext ? "Ads" : (isTravelOfferContext ? (isEdit ? "Oferta" : "E re") : (isEdit ? "Ndrysho" : "I ri"));
+  const titlePlaceholder = isAdContext ? "Premium Highlight" : (isTravelOfferContext ? "Oferta e veres" : "Sot ne Fokus");
   const activeHelper = isAdContext
-    ? "Nach Heart-Freigabe im Restaurant-Carousel sichtbar"
-    : (isTravelOfferContext ? "Sichtbar fuer Travel und Gaeste" : "Sichtbar fuer Gaeste");
+    ? "Pas miratimit nga Heart, e dukshme ne karuselin e restoranteve"
+    : (isTravelOfferContext ? "E dukshme per Travel dhe vizitoret" : "E dukshme per vizitoret");
   const collectTextList = (value) => {
     if (Array.isArray(value)) return value.map((entry) => String(entry || "").trim()).filter(Boolean);
     const raw = String(value || "").trim();
@@ -423,8 +423,8 @@ export function renderFocusModalCore({
   const adWoltEnabled = item.woltEnabled !== false;
   const adStatus = String(item.status || item.approvalStatus || "pending").trim().toLowerCase();
   const adStatusLabel = adStatus === "approved"
-    ? "Freigegeben"
-    : (adStatus === "rejected" ? "Abgelehnt" : "Wartet auf Heart-Freigabe");
+    ? "Miratuar"
+    : (adStatus === "rejected" ? "Refuzuar" : "Ne pritje te miratimit nga Heart");
   const preview = state.focusModal.imagePreview || item.imageUrl || "";
   const imageUrl = getOptimizedImageUrl(preview, "large");
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
@@ -475,11 +475,11 @@ export function renderFocusModalCore({
         `}
       </div>
       <button id="focusImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-        Foto oder Video hochladen
+        Ngarko foto ose video
       </button>
       ${focusHeroIsVideo ? `
         <button type="button" id="focusVideoRemove" class="w-full py-3 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform">
-          Video entfernen
+          Hiq videon
         </button>
       ` : ""}
       <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
@@ -502,7 +502,7 @@ export function renderFocusModalCore({
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
-          <textarea id="focusText" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
+          <textarea id="focusText" rows="3" placeholder="Pershkrimi..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
         </div>
         ${isAdContext ? `
           <div class="grid grid-cols-1 gap-3">
@@ -511,7 +511,7 @@ export function renderFocusModalCore({
               <input id="adCategory" type="text" value="${escapeHtml(adCategory)}" placeholder="RESTAURANT" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
             </div>
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preisspanne</label>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Gama e cmimeve</label>
               <input id="adPriceSegment" type="text" value="${escapeHtml(adPriceSegment)}" placeholder="€€ - €€€" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
             </div>
             <div class="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4 space-y-3">
@@ -618,8 +618,8 @@ export function renderFocusModalCore({
     <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
         ${state.focusModal.loading
-          ? (isAdContext ? "Speichern..." : (isTravelOfferContext ? "Po ruhet..." : "Speichern..."))
-          : (isAdContext ? "Zur Freigabe speichern" : (isTravelOfferContext ? "Ruaj" : "Speichern"))}
+          ? (isAdContext ? "Duke ruajtur..." : (isTravelOfferContext ? "Po ruhet..." : "Duke ruajtur..."))
+          : (isAdContext ? "Ruaj per miratim" : (isTravelOfferContext ? "Ruaj" : "Ruaj"))}
       </button>
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
     </div>

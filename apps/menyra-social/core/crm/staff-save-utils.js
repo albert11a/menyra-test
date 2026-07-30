@@ -93,13 +93,13 @@ export async function saveCeoStaffFromViewCore({
   const name = buildName({ firstName, lastName, email });
   if (!firstName || !lastName || !email || (!isEditing && !password)) {
     state.staff.status = isEditing
-      ? "Vorname, Nachname und Email sind erforderlich."
-      : "Vorname, Nachname, Email und Passwort sind erforderlich.";
+      ? "Emri, mbiemri dhe email jane te detyrueshme."
+      : "Emri, mbiemri, email dhe fjalekalimi jane te detyrueshme.";
     rerender();
     return;
   }
   if (!coords) {
-    state.staff.status = "Standort mit Pin waehlen.";
+    state.staff.status = "Zgjidh vendndodhjen me pin.";
     rerender();
     return;
   }
@@ -107,7 +107,7 @@ export async function saveCeoStaffFromViewCore({
   const current = currentMeta();
   state.staff.saving = true;
   state.staff.deleting = false;
-  state.staff.status = isEditing ? "CEO wird gespeichert..." : "CEO Staff wird erstellt...";
+  state.staff.status = isEditing ? "CEO po ruhet..." : "CEO Staff po krijohet...";
   rerender();
 
   try {
@@ -115,7 +115,7 @@ export async function saveCeoStaffFromViewCore({
     if (!isEditing) {
       const authUser = await createUser(email, password);
       uid = String(authUser?.uid || "").trim();
-      if (!uid) throw new Error("Account konnte nicht erstellt werden.");
+      if (!uid) throw new Error("Llogaria nuk mund te krijohej.");
     }
     let avatarUrl = String(form.avatarUrl || "").trim();
     if (form.avatarFile && uid) {
@@ -237,11 +237,11 @@ export async function saveCeoStaffFromViewCore({
       };
       persistProfile();
     }
-    resetForm(isEditing ? "CEO gespeichert." : "CEO Staff erstellt.");
+    resetForm(isEditing ? "CEO u ruajt." : "CEO Staff u krijua.");
     await loadStaff();
   } catch (err) {
     console.error(err);
-    state.staff.status = err?.message || (isEditing ? "CEO konnte nicht gespeichert werden." : "CEO Staff konnte nicht erstellt werden.");
+    state.staff.status = err?.message || (isEditing ? "CEO nuk mund te ruhej." : "CEO Staff nuk mund te krijohej.");
     state.staff.saving = false;
     state.staff.deleting = false;
     rerender();

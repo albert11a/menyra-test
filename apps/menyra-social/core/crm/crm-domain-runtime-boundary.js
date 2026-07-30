@@ -15,7 +15,7 @@ function callControllerMethod(controller, methodName = "", args = [], fallbackVa
   return method ? method(...args) : fallbackValue;
 }
 
-function resolveRenderFallback(deps = {}, label = "CRM laden...") {
+function resolveRenderFallback(deps = {}, label = "CRM po ngarkohet...") {
   const renderCrmLazyLoadingView = deps?.renderApi?.renderCrmLazyLoadingView;
   if (typeof renderCrmLazyLoadingView === "function") {
     return renderCrmLazyLoadingView(label);
@@ -87,7 +87,7 @@ export function createCrmDomainRuntimeBoundary(deps = {}) {
     return undefined;
   }
 
-  function callRender(methodName = "", args = [], label = "CRM laden...") {
+  function callRender(methodName = "", args = [], label = "CRM po ngarkohet...") {
     if (!controller) {
       preload();
       return resolveRenderFallback(deps, label);
@@ -108,12 +108,12 @@ export function createCrmDomainRuntimeBoundary(deps = {}) {
       if (controller) return callControllerMethod(controller, "queueCrmLazyRenderersPrefetch", args);
       return undefined;
     },
-    renderLeadsView: (...args) => callRender("renderLeadsView", args, "Leads laden..."),
+    renderLeadsView: (...args) => callRender("renderLeadsView", args, "Leads po ngarkohen..."),
     isLeadInlineCreateView: (...args) => callLoadedSync("isLeadInlineCreateView", args, false),
-    renderLeadEditorUi: (...args) => callRender("renderLeadEditorUi", args, "Lead laden..."),
+    renderLeadEditorUi: (...args) => callRender("renderLeadEditorUi", args, "Lead po ngarkohet..."),
     refineLeadLocationAddressIndex: (...args) => callLoadedSync("refineLeadLocationAddressIndex", args, -1),
-    renderLeadSettingsView: (...args) => callRender("renderLeadSettingsView", args, "Lead-Einstellungen laden..."),
-    renderLeadCreationView: (...args) => callRender("renderLeadCreationView", args, "Lead laden..."),
+    renderLeadSettingsView: (...args) => callRender("renderLeadSettingsView", args, "Cilesimet e leads po ngarkohen..."),
+    renderLeadCreationView: (...args) => callRender("renderLeadCreationView", args, "Lead po ngarkohet..."),
     resetLeadDraft: (...args) => callSyncWhenLoaded("resetLeadDraft", args),
     createLeadDraftState: (...args) => callLoadedSync("createLeadDraftState", args, {}),
     openLeadCreator: (...args) => callSyncWhenLoaded("openLeadCreator", args),
@@ -123,9 +123,9 @@ export function createCrmDomainRuntimeBoundary(deps = {}) {
     getLeadPlusCodeReference: (...args) => callLoadedSync("getLeadPlusCodeReference", args, ""),
     hydrateLeadGeoFieldsFromCoords: (...args) => callSyncWhenLoaded("hydrateLeadGeoFieldsFromCoords", args),
     syncLeadDerivedFields: (...args) => callSyncWhenLoaded("syncLeadDerivedFields", args),
-    renderCustomersView: (...args) => callRender("renderCustomersView", args, "Kunden laden..."),
-    renderStaffEditorView: (...args) => callRender("renderStaffEditorView", args, "Staff laden..."),
-    renderStaffView: (...args) => callRender("renderStaffView", args, "Staff laden..."),
+    renderCustomersView: (...args) => callRender("renderCustomersView", args, "Klientet po ngarkohen..."),
+    renderStaffEditorView: (...args) => callRender("renderStaffEditorView", args, "Stafi po ngarkohet..."),
+    renderStaffView: (...args) => callRender("renderStaffView", args, "Stafi po ngarkohet..."),
     ensureLocationPickerModal: (...args) => callSyncWhenLoaded("ensureLocationPickerModal", args),
     bindLocationPickerEvents: (...args) => callSyncWhenLoaded("bindLocationPickerEvents", args),
     openLocationPicker: (...args) => callSyncWhenLoaded("openLocationPicker", args),

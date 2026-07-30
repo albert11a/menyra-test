@@ -380,7 +380,7 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const menuItemTypeLabel = (item = {}, isShopMode = false) => {
     const type = normalizeMenuType(item?.type || "food");
     if (isShopMode) return tr("menu.product", "Produkt");
-    return type === "drink" ? tr("menu.drinkItem", "Getraenk") : tr("menu.foodItem", "Speise");
+    return type === "drink" ? tr("menu.drinkItem", "Pije") : tr("menu.foodItem", "Speise");
   };
   const normalizeBusinessNameColor = (value = "", fallback = "#111827") => {
     const raw = String(value || "").trim();
@@ -574,7 +574,7 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
           <div class="h-px bg-slate-100 w-full my-0.5"></div>
           <button type="button" data-profile-post-delete="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-colors text-left w-full">
             ${icon("trash-2", "w-3.5 h-3.5")}
-            Loeschen
+            Fshi
           </button>
         </div>
       ` : ""}
@@ -590,7 +590,7 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { includeIma
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
           ${icon("image", "w-9 h-9")}
         </div>
-        <p class="text-slate-400 text-sm font-bold tracking-wide">${escapeHtml(tr("profile.noContent", "Keine Inhalte gefunden"))}</p>
+        <p class="text-slate-400 text-sm font-bold tracking-wide">${escapeHtml(tr("profile.noContent", "Nuk u gjet permbajtje"))}</p>
       </div>
     `;
   }
@@ -615,7 +615,7 @@ function renderProfileCheckins() {
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
           ${icon("map-pin", "w-9 h-9")}
         </div>
-        <p class="text-slate-400 text-sm font-bold tracking-wide">${escapeHtml(tr("profile.noCheckins", "Keine Check-ins gefunden"))}</p>
+        <p class="text-slate-400 text-sm font-bold tracking-wide">${escapeHtml(tr("profile.noCheckins", "Nuk u gjeten check-ins"))}</p>
       </div>
     `;
   }
@@ -631,7 +631,7 @@ function renderProfileCheckins() {
           <div class="flex-1">
             <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Ort")}</h4>
             <div class="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-              ${icon("map-pin", "w-3 h-3 text-indigo-500 fill-indigo-500/20")} ${escapeHtml(place.city || "Stadt")}
+              ${icon("map-pin", "w-3 h-3 text-indigo-500 fill-indigo-500/20")} ${escapeHtml(place.city || "Qyteti")}
             </div>
           </div>
           <button class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-300 group-hover:text-indigo-500 group-hover:bg-indigo-50 transition-colors">
@@ -1595,7 +1595,7 @@ function renderHotelCardAdminView(profile = {}) {
     distanceBeach,
     startingPrice ? `${startingPrice} €` : ""
   ].filter(Boolean).join(" · ") || "Plotëso detajet";
-  const statusIsError = status.includes("fehl") || status.includes("Bitte") || status.includes("Nuk");
+  const statusIsError = status.includes("fehl") || status.includes("deshtoi") || status.includes("Bitte") || status.includes("Ju lutem") || status.includes("Nuk") || status.includes("nuk mund");
   return `
     <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
       <div class="flex items-end justify-between mb-6">
@@ -1721,7 +1721,7 @@ function renderHotelCardAdminView(profile = {}) {
         ${renderFocusAdminSection(restaurantId, { variant: "travel-offers", suppressLoading: true })}
       ` : `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
-          <p class="text-sm font-bold text-slate-500">Bitte zuerst dein Hotel-Business im Account auswaehlen.</p>
+          <p class="text-sm font-bold text-slate-500">Ju lutem zgjidh fillimisht hotel-biznesin tend ne llogari.</p>
         </div>
       `}
     </div>
@@ -1785,7 +1785,7 @@ function renderBusinessLandingScreenOne(profile = {}) {
   const greetings = [
     "Mirë se vini",
     "Welcome",
-    "Willkommen",
+    "Mire se vini",
     "Bienvenido",
     "Bienvenue",
     "Benvenuto",
@@ -2277,7 +2277,7 @@ function renderBusinessProfileCardHeightSizer({
           <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profileName)}</h1>
           <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${safeBio}</p>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(metaLine)}</p>
-          ${identityPending ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Profilkopf wird geladen..."))}</p>` : ""}
+          ${identityPending ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Koka e profilit po ngarkohet..."))}</p>` : ""}
         </div>
         <div class="flex items-center gap-4">
           <div class="flex-1 h-[56px] rounded-[1.2rem]"></div>
@@ -2315,7 +2315,7 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
   const typeLabel = normalizeBusinessProfileText(options.typeLabel || profile?.customerType || profile?.type || "Business");
   const locationLabel = normalizeBusinessProfileText(profile?.location || "-");
   const metaLine = mode === "public" ? `${locationLabel} / ${typeLabel}` : locationLabel;
-  const safeBio = options.bioHtml || (escapeHtml(profile?.bio || "").replace(/\n/g, "<br>") || escapeHtml(tr("profile.noBio", "Noch keine Bio.")));
+  const safeBio = options.bioHtml || (escapeHtml(profile?.bio || "").replace(/\n/g, "<br>") || escapeHtml(tr("profile.noBio", "Nuk ka bio.")));
   const titleImageKey = `business-cover:${cardKey}`;
   const titleImageCacheKeys = resolveBusinessTitleImageCacheKeys(profile, cardKey);
   const coverUrl = resolveBusinessTitleImageUrl(profile, {
@@ -2384,11 +2384,11 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(locationLabel)}</p>
           </div>
           <div class="mt-8 flex flex-col gap-4 min-w-0 max-w-full overflow-hidden">
-            ${infoRows || `<div class="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("profile.noContactInfo", "Noch keine Kontaktdaten"))}</div>`}
+            ${infoRows || `<div class="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(tr("profile.noContactInfo", "Ende nuk ka te dhena kontakti"))}</div>`}
           </div>
           <div class="mt-8 pt-6 border-t border-slate-100 min-w-0 max-w-full overflow-hidden">
             <button type="button" data-profile-card-info-close="${escapeHtml(cardKey)}" class="w-full h-[56px] rounded-[1.2rem] border border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all flex items-center justify-center" style="width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;">
-              ${escapeHtml(tr("profile.backToProfile", "Zurueck zum Profil"))}
+              ${escapeHtml(tr("profile.backToProfile", "Kthehu te profili"))}
             </button>
           </div>
         </div>
@@ -2441,7 +2441,7 @@ function renderBusinessProfileIdentityCard(profile = {}, options = {}) {
           <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profileName)}</h1>
           <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${safeBio}</p>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(metaLine)}</p>
-          ${identityPending ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Profilkopf wird geladen..."))}</p>` : ""}
+          ${identityPending ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Koka e profilit po ngarkohet..."))}</p>` : ""}
         </div>
         <div class="flex items-center gap-4">
           ${actionHtml}
@@ -2470,7 +2470,7 @@ function renderPublicProfileSurface(
   const typeLabel = profile.restaurantId ? "Business" : tr("nav.user", "User");
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
-  const bioHtml = safeBio || escapeHtml(tr("profile.noBio", "Noch keine Bio."));
+  const bioHtml = safeBio || escapeHtml(tr("profile.noBio", "Nuk ka bio."));
   const isBusinessProfile = isBusinessProfileEntity(profile);
   const topTab = String(topTabOverride || resolveProfilePrimaryTopTab(profile)).trim().toLowerCase() || "profile";
   const activeContentTab = String(contentTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
@@ -2610,7 +2610,7 @@ function renderPublicProfileSurface(
                 ${isBusinessProfile ? "" : `<p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>`}
                 <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
-                ${showIdentityPendingState ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Profilkopf wird geladen..."))}</p>` : ""}
+                ${showIdentityPendingState ? `<p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${escapeHtml(tr("profile.headLoading", "Koka e profilit po ngarkohet..."))}</p>` : ""}
               </div>
 
               <div class="flex gap-4">
@@ -2668,7 +2668,7 @@ function renderPublicProfileSurface(
             ${showPostsError ? `
               <div class="app-content-inline ${disabledBlockClass}">
                 <div class="py-16 text-center">
-                  <p class="text-[10px] font-black uppercase tracking-widest text-rose-500">${escapeHtml(tr("profile.contentLoadError", "Inhalte konnten nicht geladen werden"))}</p>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-rose-500">${escapeHtml(tr("profile.contentLoadError", "Permbajtja nuk mund te ngarkohej"))}</p>
                 </div>
               </div>
             ` : `
@@ -2679,7 +2679,7 @@ function renderPublicProfileSurface(
           ` : `
             <div class="app-content-inline ${disabledBlockClass}">
               <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm ${contentAnimationClass}">
-                <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.postsLoading", "Beitraege werden geladen..."))}</div>
+                <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.postsLoading", "Postimet po ngarkohen..."))}</div>
               </div>
             </div>
           `}
@@ -2691,7 +2691,7 @@ function renderPublicProfileSurface(
               ${icon("lock", "w-7 h-7")}
             </div>
             <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">${escapeHtml(tr("profile.private", "Privates Profil"))}</h3>
-            <p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">${escapeHtml(tr("profile.followAcceptedFirst", "Folgen muss zuerst akzeptiert werden"))}</p>
+            <p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">${escapeHtml(tr("profile.followAcceptedFirst", "Ndjekja duhet pranuar fillimisht"))}</p>
           </div>
         </div>
       `}
@@ -2935,7 +2935,7 @@ function renderMenuLayoutSection() {
       <div class="flex items-center justify-between mb-4">
         <div>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Layouts</span>
-          <h3 class="text-xl font-black italic tracking-tighter">Farben</h3>
+          <h3 class="text-xl font-black italic tracking-tighter">Ngjyrat</h3>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Sot ne Fokus</p>
         </div>
       </div>
@@ -3010,8 +3010,8 @@ function renderMenuItemCard(item, { mode = "profile", priorityIndex = -1 } = {})
             ${icon("more-horizontal", "w-4 h-4")}
           </summary>
           <div class="absolute right-0 top-12 w-40 bg-white border border-slate-100 rounded-2xl shadow-lg p-2 z-20">
-            <button data-menu-edit="${escapeHtml(item.id)}" class="w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
-            <button data-menu-delete="${escapeHtml(item.id)}" class="w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50">Loeschen</button>
+            <button data-menu-edit="${escapeHtml(item.id)}" class="w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Ndrysho</button>
+            <button data-menu-delete="${escapeHtml(item.id)}" class="w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50">Fshi</button>
           </div>
         </details>
       </div>
@@ -3691,7 +3691,7 @@ function renderTestfirstFoodCard(item, { mode = "profile", priorityIndex = -1 } 
             </div>
           </div>
           <button type="button" class="bg-slate-900 text-white pl-4 pr-2 py-2 rounded-2xl text-[13px] font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center gap-2 active:scale-95" style="padding-left:16px;padding-right:8px;padding-top:8px;padding-bottom:8px;">
-            <span>${escapeHtml(tr("menu.add", "Hinzufuegen"))}</span>
+            <span>${escapeHtml(tr("menu.add", "Shto"))}</span>
             <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center pointer-events-none">
               ${icon("plus", "w-4 h-4 text-white")}
             </div>
@@ -3880,7 +3880,7 @@ function renderMenuList(items, { mode = "profile" } = {}) {
               renderDecision: "admin-section-no-products",
               source: "admin-menu"
             });
-            return `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300"${renderDebugAttrs({ source: "admin-menu:no-products" })}>${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`;
+            return `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300"${renderDebugAttrs({ source: "admin-menu:no-products" })}>${escapeHtml(tr("menu.noProducts", "Nuk ka produkte"))}</div>`;
           })()
         }
       </div>
@@ -3926,7 +3926,7 @@ function renderMenuList(items, { mode = "profile" } = {}) {
     });
     return `
       <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]"${renderDebugAttrs({ source: `${mode}:no-products` })}>
-        ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
+        ${escapeHtml(tr("menu.noProducts", "Nuk ka produkte"))}
       </div>
     `;
   }
@@ -3944,9 +3944,9 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
   const isTravelOffers = String(variant || "").trim().toLowerCase() === "travel-offers";
   const eyebrow = isTravelOffers ? "Ofertat" : "Sot ne Fokus";
   const title = isTravelOffers ? "Oferta" : "Highlights";
-  const helper = isTravelOffers ? "Im Travel und Profil sichtbar" : "Im Profil sichtbar";
-  const loadingLabel = isTravelOffers ? "Ofertat werden geladen..." : tr("focus.loading", "Fokus wird geladen...");
-  const emptyLabel = isTravelOffers ? "Noch keine Oferta-Eintraege" : "Noch keine Fokus-Eintraege";
+  const helper = isTravelOffers ? "E dukshme ne Travel dhe profil" : "E dukshme ne profil";
+  const loadingLabel = isTravelOffers ? "Ofertat po ngarkohen..." : tr("focus.loading", "Fokusi po ngarkohet...");
+  const emptyLabel = isTravelOffers ? "Ende nuk ka oferta" : "Ende nuk ka fokus";
   return `
     <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
@@ -3962,7 +3962,7 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
 
       <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-4">
         <div>
-          <p class="text-xs font-black text-slate-800">${isTravelOffers ? "Oferta anzeigen" : "Im Fokus anzeigen"}</p>
+          <p class="text-xs font-black text-slate-800">${isTravelOffers ? "Shfaq ofertat" : "Shfaq ne fokus"}</p>
           <p class="text-[10px] font-bold text-slate-400">${escapeHtml(helper)}</p>
         </div>
         <input id="focusEnabledToggle" type="checkbox" class="w-5 h-5 accent-amber-500" ${enabled ? "checked" : ""} />
@@ -3987,7 +3987,7 @@ function renderFocusAdminSection(restaurantId, { variant = "focus", suppressLoad
                 </div>
                 <div class="flex flex-col gap-2">
                   <button data-focus-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>
-                  <button data-focus-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
+                  <button data-focus-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Fshi</button>
                 </div>
               </div>
             `;
@@ -4015,9 +4015,9 @@ function isAdsAdminProfile(profile = {}) {
 function getAdStatusView(item = {}) {
   if (item.active === false) return { label: "Inaktiv", className: "text-slate-400" };
   const status = String(item.status || item.approvalStatus || "pending").trim().toLowerCase();
-  if (status === "approved") return { label: "Freigegeben", className: "text-emerald-600" };
-  if (status === "rejected") return { label: "Abgelehnt", className: "text-rose-600" };
-  return { label: "Wartet auf Heart", className: "text-amber-600" };
+  if (status === "approved") return { label: "Miratuar", className: "text-emerald-600" };
+  if (status === "rejected") return { label: "Refuzuar", className: "text-rose-600" };
+  return { label: "Ne pritje te Heart", className: "text-amber-600" };
 }
 
 function renderAdsAdminSection(profile, restaurantId) {
@@ -4039,7 +4039,7 @@ function renderAdsAdminSection(profile, restaurantId) {
 
       <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-4">
         <p class="text-xs font-black text-slate-800">Swipe Ads</p>
-        <p class="text-[10px] font-bold text-slate-400">Neue oder geaenderte Ads werden erst nach Heart-Freigabe im Restaurant-Tab angezeigt.</p>
+        <p class="text-[10px] font-bold text-slate-400">Reklamat e reja ose te ndryshuara shfaqen ne tabin e restoranteve vetem pas miratimit nga Heart.</p>
       </div>
 
       ${items.length ? `
@@ -4063,16 +4063,16 @@ function renderAdsAdminSection(profile, restaurantId) {
                 </div>
                 <div class="flex flex-col gap-2">
                   <button data-ad-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>
-                  <button data-ad-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
+                  <button data-ad-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Fshi</button>
                 </div>
               </div>
             `;
           }).join("")}
         </div>
       ` : loading ? `
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">Ads werden geladen...</div>
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">Reklamat po ngarkohen...</div>
       ` : `
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Ads</div>
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Ende nuk ka reklama</div>
       `}
     </div>
   `;
@@ -4234,7 +4234,7 @@ function renderShoppingLandingCardAdminSection(profile = {}, restaurantId = "", 
     .filter(Boolean);
   const selectedCountLabel = selectedProductIds.size
     ? `${formatCount(selectedProductIds.size)} ausgewaehlt`
-    : "Keine Auswahl = alle Produkte";
+    : "Pa zgjedhje = te gjitha produktet";
   return `
     <div data-shopping-landing-card-editor="${escapeHtml(restaurantId)}" class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
@@ -4243,7 +4243,7 @@ function renderShoppingLandingCardAdminSection(profile = {}, restaurantId = "", 
           <h3 class="text-xl font-black italic tracking-tighter">Shopping Card</h3>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(selectedCountLabel)}</p>
         </div>
-        <button type="button" id="shoppingLandingImageTrigger" class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow active:scale-95" aria-label="Bild hochladen">
+        <button type="button" id="shoppingLandingImageTrigger" class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow active:scale-95" aria-label="Ngarko foto">
           ${icon("plus", "w-4 h-4")}
         </button>
       </div>
@@ -4269,8 +4269,8 @@ function renderShoppingLandingCardAdminSection(profile = {}, restaurantId = "", 
 
         <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <div>
-            <p class="text-xs font-black text-slate-800">Shopping-Tab anzeigen</p>
-            <p class="text-[10px] font-bold text-slate-400">Diese Card erscheint im Tab Shopping.</p>
+            <p class="text-xs font-black text-slate-800">Shfaq tabin Shopping</p>
+            <p class="text-[10px] font-bold text-slate-400">Kjo karte shfaqet ne tabin Shopping.</p>
           </div>
           <input id="shoppingLandingActiveToggle" type="checkbox" class="w-5 h-5 accent-amber-500" style="accent-color:#f97316;" ${active ? "checked" : ""} />
         </label>
@@ -4356,14 +4356,14 @@ function renderShoppingLandingCardAdminSection(profile = {}, restaurantId = "", 
               }).join("")}
             </div>
           ` : `
-            <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Produkte</div>
+            <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-300">Ende nuk ka produkte</div>
           `}
         </div>
 
         ${status ? `<div class="text-center text-[10px] font-black uppercase tracking-widest ${statusIsError ? "text-rose-500" : "text-slate-500"}">${escapeHtml(status)}</div>` : ""}
 
         <button id="shoppingLandingSaveBtn" type="button" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${saving ? "disabled" : ""}>
-          ${saving ? "Speichern..." : "Landing Card speichern"}
+          ${saving ? "Duke ruajtur..." : "Ruaj landing card"}
         </button>
       </div>
     </div>
@@ -4396,7 +4396,7 @@ function renderSpecialAdminSection(profile) {
             const action = resolveSpecialCardAction(item);
             const actionLabel = action.type === "link"
               ? "Link"
-              : (action.type === "product" ? "Produkt-Modal" : "Diese Karte");
+              : (action.type === "product" ? "Produkt-Modal" : "Kjo karte");
             const sizeLabel = resolveSpecialCardSize(item) === "food" ? "Food-Size" : "Normal";
             const sectionLabel = menuSectionLabel(resolveMenuDisplaySection(item));
             return `
@@ -4414,14 +4414,14 @@ function renderSpecialAdminSection(profile) {
                 </div>
                 <div class="flex flex-col gap-2">
                   <button data-menu-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>
-                  <button data-menu-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
+                  <button data-menu-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Fshi</button>
                 </div>
               </div>
             `;
           }).join("")}
         </div>
       ` : `
-        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Special-Karten</div>
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Ende nuk ka karta Special</div>
       `}
     </div>
   `;
@@ -4436,7 +4436,7 @@ function renderMenuOrderSection(items = []) {
       <div class="mb-4">
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Special Position</span>
         <h3 class="text-xl font-black italic tracking-tighter">Drag &amp; Drop</h3>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Nur Special-Karten sind ziehbar. Andere Karten sind Ziel-Positionen.</p>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Vetem kartat Special mund te terhiqen. Kartat e tjera jane pozicione objektiv.</p>
       </div>
       <div class="space-y-2" data-menu-order-board="true">
         ${list.map((item) => {
@@ -4499,7 +4499,7 @@ function renderFocusCarousel(profile, {
     const focusCardClass = getFocusCardClass();
     return `
       <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm">
-        <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("focus.loading", "Fokus wird geladen..."))}</div>
+        <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("focus.loading", "Fokusi po ngarkohet..."))}</div>
       </div>
     `;
   }
@@ -4601,18 +4601,18 @@ function renderTableQrAdminSection({
       table: tableNumber
     });
     return renderMenuQrCard({
-      label: `Tisch ${tableNumber}`,
+      label: `Tavolina ${tableNumber}`,
       url,
-      caption: `${catalogLabel} fuer Tisch ${tableNumber}`
+      caption: `${catalogLabel} per tavolinen ${tableNumber}`
     });
   }).join("");
   return `
     <div class="mt-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Tisch QR</span>
-          <h3 class="text-xl font-black italic tracking-tighter">Tische</h3>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Gib an, wie viele Tische du hast. Bereits erzeugte Tisch-QR bleiben dauerhaft unter denselben Links.</p>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">QR i tavolines</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Tavolinat</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Cakto sa tavolina ke. QR e krijuara te tavolinave mbeten perhere nen te njejtat linke.</p>
         </div>
         <label class="inline-flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100">
           <input id="tableQrEnabledToggle" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${tableQrState.enabled !== false ? "checked" : ""} />
@@ -4621,14 +4621,14 @@ function renderTableQrAdminSection({
       </div>
       <div class="mt-5 flex flex-col gap-3 md:flex-row md:items-end">
         <div class="flex-1">
-          <label for="tableQrCountInput" class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Anzahl Tische</label>
+          <label for="tableQrCountInput" class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Numri i tavolinave</label>
           <input id="tableQrCountInput" type="number" min="0" max="200" step="1" inputmode="numeric" value="${escapeHtml(String(tableQrState.count || 0))}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <button type="button" data-table-qr-save="true" class="h-14 px-6 rounded-[1.6rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.18em] shadow-xl shadow-slate-200/60 active:scale-95" ${tableQrState.saving ? "disabled" : ""}>
-          ${tableQrState.saving ? "Speichern..." : "Tische speichern"}
+          ${tableQrState.saving ? "Duke ruajtur..." : "Ruaj tavolinat"}
         </button>
       </div>
-      ${tableQrState.loading ? `<p class="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Tisch-QR wird geladen...</p>` : ""}
+      ${tableQrState.loading ? `<p class="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">QR i tavolines po ngarkohet...</p>` : ""}
       ${tableQrState.status ? `<p class="mt-4 text-[10px] font-bold uppercase tracking-widest text-emerald-500">${escapeHtml(tableQrState.status)}</p>` : ""}
       ${tableQrState.error ? `<p class="mt-4 text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tableQrState.error)}</p>` : ""}
       ${tableCards ? `
@@ -4637,7 +4637,7 @@ function renderTableQrAdminSection({
         </div>
       ` : `
         <div class="mt-6 rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
-          <p class="text-[10px] font-black uppercase tracking-widest text-slate-300">Noch keine Tisch-QR-Codes</p>
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-300">Ende nuk ka QR kode tavoline</p>
         </div>
       `}
     </div>
@@ -4714,7 +4714,7 @@ function renderMenuAdminView() {
             ${icon("lock", "w-6 h-6")}
           </div>
           <h2 class="text-lg font-black italic text-slate-900 mb-2">${catalogLabel}</h2>
-          <p class="text-sm text-slate-500">Diese Funktion ist nur fuer Business-Profile.</p>
+          <p class="text-sm text-slate-500">Ky funksion eshte vetem per profile biznesi.</p>
         </div>
       </div>
     `;
@@ -4739,12 +4739,12 @@ function renderMenuAdminView() {
         </div>
       ` : (isResolvingRestaurantId ? `
         <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
-          <p class="text-sm font-bold text-slate-500">Business wird geladen...</p>
+          <p class="text-sm font-bold text-slate-500">Biznesi po ngarkohet...</p>
         </div>
       ` : `
         <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
-          <p class="text-sm font-bold text-slate-500 mb-4">Bitte zuerst dein Business im Account auswaehlen.</p>
-          <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Zu den Einstellungen</button>
+          <p class="text-sm font-bold text-slate-500 mb-4">Ju lutem zgjidh fillimisht biznesin tend ne llogari.</p>
+          <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Te cilesimet</button>
         </div>
       `)}
 
@@ -4756,7 +4756,7 @@ function renderMenuAdminView() {
       ${restaurantId ? `
         <div class="mb-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">
           ${icon("search", "w-4 h-4 text-slate-400")}
-          <input id="menuSearchInput" type="text" value="${escapeHtml(state.menu.query || "")}" placeholder="Produkt suchen..." class="w-full bg-transparent text-sm font-bold outline-none" />
+          <input id="menuSearchInput" type="text" value="${escapeHtml(state.menu.query || "")}" placeholder="Kerko produkt..." class="w-full bg-transparent text-sm font-bold outline-none" />
         </div>
 
         ${renderMenuFilterRow()}
@@ -4789,7 +4789,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
   if (!restaurantId) {
     return `
       <div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
-        ${escapeHtml(tr("menu.noRestaurantId", "Keine Restaurant-ID gefunden"))}
+        ${escapeHtml(tr("menu.noRestaurantId", "Nuk u gjet ID e lokalit"))}
       </div>
     `;
   }
@@ -4948,7 +4948,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
               focusFallbackHtml: testfirstStableFocusSection
             })
             : (hasError
-              ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}</div>`
+              ? `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tr("menu.loadError", "Menuja nuk mund te ngarkohej"))}</div>`
                : (shouldRenderNoProducts
                 ? (() => {
                   logNoProductsRender({
@@ -4956,7 +4956,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
                     functionName: "renderProfileMenuView",
                     renderDecision: "testfirst-no-products"
                   });
-                  return `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300"${renderDebugAttrs({ source: "public-menu:no-products" })}>${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}</div>`;
+                  return `<div class="app-content-inline pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300"${renderDebugAttrs({ source: "public-menu:no-products" })}>${escapeHtml(tr("menu.noProducts", "Nuk ka produkte"))}</div>`;
                 })()
                 : renderTestfirstMenuSkeleton({
                   ...menuDebugContext,
@@ -4984,7 +4984,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
           ${hasError ? `
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
               <div class="text-center py-16 text-rose-500 font-black uppercase text-[10px] tracking-[0.3em]">
-                ${escapeHtml(tr("menu.loadError", "Menu konnte nicht geladen werden"))}
+                ${escapeHtml(tr("menu.loadError", "Menuja nuk mund te ngarkohej"))}
               </div>
             </div>
           ` : shouldRenderNoProducts ? `
@@ -4996,7 +4996,7 @@ function renderProfileMenuView(profile, { mode = "profile", allowAutoEnsure = tr
               });
               return `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"${renderDebugAttrs({ source: "public-menu:no-products" })}>
               <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
-                ${escapeHtml(tr("menu.noProducts", "Keine Produkte"))}
+                ${escapeHtml(tr("menu.noProducts", "Nuk ka produkte"))}
               </div>
             </div>`;
             })()}
@@ -5058,7 +5058,7 @@ function renderProfileView() {
     : (isUserPostsLoading || (isBootstrapPendingForProfile && !posts.length));
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
-  const bioHtml = safeBio || escapeHtml(tr("profile.noBio", "Noch keine Bio."));
+  const bioHtml = safeBio || escapeHtml(tr("profile.noBio", "Nuk ka bio."));
   const activeContentTab = resolveProfileContentTabForRendering(profile);
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
@@ -5149,7 +5149,7 @@ function renderProfileView() {
         ${isPostsLoading && !filteredPosts.length ? `
           <div class="app-content-inline">
             <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-              <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.postsLoading", "Beitraege werden geladen..."))}</div>
+              <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(tr("profile.postsLoading", "Postimet po ngarkohen..."))}</div>
             </div>
           </div>
         ` : `

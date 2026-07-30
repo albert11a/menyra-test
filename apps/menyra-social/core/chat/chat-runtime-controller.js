@@ -417,7 +417,7 @@ export function createChatRuntimeController(deps = {}) {
     if (!safeThreadId || !ownerUid) return;
     const windowObj = getWindowObj();
     const confirmed = windowObj && typeof windowObj.confirm === "function"
-      ? windowObj.confirm("Diesen Chat wirklich loeschen?")
+      ? windowObj.confirm("Ta fshish vertet kete chat?")
       : true;
     if (!confirmed) return;
 
@@ -1034,7 +1034,7 @@ export function createChatRuntimeController(deps = {}) {
       chatSendDispatchLock = false;
     });
     if (isActiveChatThreadBlocked()) {
-      alertFn("Dieser Chat ist blockiert. Entblocke ihn in der Chat-Uebersicht.");
+      alertFn("Ky chat eshte i bllokuar. Zhblloko ate ne listen e chat-eve.");
       return;
     }
     const retryMessageId = String(options?.retryMessageId || "").trim();
@@ -1380,7 +1380,7 @@ export function createChatRuntimeController(deps = {}) {
 
   async function toggleFollow(handle, target = {}) {
     if (!state.user) {
-      openGuestAuthPrompt("Bitte einloggen, um Profile zu folgen.");
+      openGuestAuthPrompt("Ju lutem hyni per te ndjekur profile.");
       return;
     }
     const rawHandle = String(handle || "").replace(/^@/, "").trim();
@@ -1651,7 +1651,7 @@ export function createChatRuntimeController(deps = {}) {
             <button id="chatAttachmentTrigger" ${blockedByOwner ? "disabled" : ""} class="w-[52px] h-[52px] shrink-0 rounded-2xl ${blockedByOwner ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-100 text-slate-600 active:scale-95"} flex items-center justify-center">
               ${icon("plus", "w-5 h-5")}
             </button>
-            <textarea id="chatMessageInput" rows="1" ${blockedByOwner ? "readonly" : ""} placeholder="${blockedByOwner ? "Chat ist blockiert" : "Nachricht..."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
+            <textarea id="chatMessageInput" rows="1" ${blockedByOwner ? "readonly" : ""} placeholder="${blockedByOwner ? "Chat-i eshte i bllokuar" : "Nachricht..."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
             <button id="chatSendBtn" ${blockedByOwner ? "disabled" : ""} class="px-5 h-[52px] rounded-2xl ${blockedByOwner ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white active:scale-95"} font-black text-[10px] uppercase tracking-widest">Send</button>
           </div>
         </div>

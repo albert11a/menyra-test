@@ -493,27 +493,27 @@ export async function loadAuthProfileCore({
     if (profile && state?.userProfile) {
       if (!staffActive) {
         state.userProfile.socialAccessMode = "blocked";
-        state.userProfile.socialAccessMessage = "Dieser Staff-Account ist deaktiviert.";
+        state.userProfile.socialAccessMessage = "Kjo llogari stafi eshte e deaktivizuar.";
         return;
       }
       if (staffBusinessAccess && !staffRestaurantId) {
         state.userProfile.socialAccessMode = "blocked";
-        state.userProfile.socialAccessMessage = "Diesem Staff-Account fehlt die Restaurant-Zuordnung fuer Menyra Social.";
+        state.userProfile.socialAccessMessage = "Kesaj llogarie stafi i mungon lidhja me restorantin per Menyra Social.";
         return;
       }
       if (staffBusinessAccess) {
         state.userProfile.socialAccessMode = "blocked";
-        state.userProfile.socialAccessMessage = "Der Business-Zugang dieses Staff-Accounts konnte nicht geladen werden.";
+        state.userProfile.socialAccessMessage = "Qasja e biznesit e kesaj llogarie stafi nuk mund te ngarkohej.";
         return;
       }
       if (staffWaiterAccess && !staffBusinessAccess) {
         state.userProfile.socialAccessMode = "waiterOnly";
-        state.userProfile.socialAccessMessage = "Dieser Staff-Account ist nur fuer die Waiter-App freigegeben.";
+        state.userProfile.socialAccessMessage = "Kjo llogari stafi eshte e lejuar vetem per Waiter-App.";
         return;
       }
       if (!staffBusinessAccess) {
         state.userProfile.socialAccessMode = "blocked";
-        state.userProfile.socialAccessMessage = "Dieser Staff-Account hat keinen Menyra-Social-Zugriff.";
+        state.userProfile.socialAccessMessage = "Kjo llogari stafi nuk ka qasje ne Menyra Social.";
         return;
       }
     }

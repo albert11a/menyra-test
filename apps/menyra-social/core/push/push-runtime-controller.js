@@ -302,14 +302,14 @@ export function createPushRuntimeController(deps = {}) {
 
     const reg = await ensurePushServiceWorkerRegistration({ silent });
     if (!reg) {
-      if (!pushActivationIssue) setPushActivationIssue("Service Worker konnte nicht registriert werden.", null, { silent });
+      if (!pushActivationIssue) setPushActivationIssue("Service Worker nuk mund te regjistrohej.", null, { silent });
       return false;
     }
 
     const readyReg = await waitForPushServiceWorkerReady({ silent });
     const pushReg = readyReg || reg;
     if (!pushReg) {
-      if (!pushActivationIssue) setPushActivationIssue("Service Worker Registrierung fuer Push fehlt.", null, { silent });
+      if (!pushActivationIssue) setPushActivationIssue("Mungon regjistrimi i Service Worker per Push.", null, { silent });
       return false;
     }
 
@@ -329,7 +329,7 @@ export function createPushRuntimeController(deps = {}) {
       return false;
     }
     if (!safeToken) {
-      setPushActivationIssue("FCM hat keinen Token geliefert.", null, { silent });
+      setPushActivationIssue("FCM nuk dha asnje token.", null, { silent });
       return false;
     }
 
@@ -347,7 +347,7 @@ export function createPushRuntimeController(deps = {}) {
 
     const deviceId = getOrCreatePushDeviceId();
     if (!db || !doc) {
-      setPushActivationIssue("Firestore Device-Referenz konnte nicht erstellt werden.", null, { silent });
+      setPushActivationIssue("Referenca e pajisjes ne Firestore nuk mund te krijohej.", null, { silent });
       return false;
     }
     const ref = doc(db, "users", uid, "devices", deviceId);

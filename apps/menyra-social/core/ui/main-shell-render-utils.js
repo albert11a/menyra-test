@@ -60,12 +60,12 @@ export function renderMainCore({
   let view = "";
   if (hasRestrictedSocialAccess) {
     const restrictedTitle = socialAccessMode === "waiteronly"
-      ? "Nur Waiter-App freigegeben"
+      ? "I lejuar vetem per Waiter-App"
       : "Account gesperrt";
     const restrictedBody = String(state?.userProfile?.socialAccessMessage || "").trim()
       || (socialAccessMode === "waiteronly"
-        ? "Dieser Staff-Account kann sich nicht im Business-Bereich von Menyra Social bewegen."
-        : "Dieser Staff-Account kann Menyra Social aktuell nicht nutzen.");
+        ? "Kjo llogari stafi nuk mund te levize ne zonen e biznesit te Menyra Social."
+        : "Kjo llogari stafi nuk mund ta perdore Menyra Social per momentin.");
     view = `
       <section class="p-6 pb-24">
         <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 text-center">

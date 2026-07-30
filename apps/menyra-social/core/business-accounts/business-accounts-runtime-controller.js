@@ -17,7 +17,7 @@ function buildAccessLabel({ businessAccess = false, waiterAccess = false } = {})
   if (businessAccess && waiterAccess) return "Beides";
   if (businessAccess) return "Business";
   if (waiterAccess) return "Waiter";
-  return "Kein Zugriff";
+  return "Pa qasje";
 }
 
 function createEmptyBusinessAccountForm() {
@@ -175,7 +175,7 @@ export function createBusinessAccountsRuntimeController({
     ensureState();
     const restaurantId = getManagedRestaurantId();
     if (!restaurantId) {
-      state.businessAccounts.error = "Staff-Bereich nicht verfuegbar.";
+      state.businessAccounts.error = "Zona e stafit nuk eshte e disponueshme.";
       rerender();
       return [];
     }
@@ -203,7 +203,7 @@ export function createBusinessAccountsRuntimeController({
     } catch (err) {
       console.error(err);
       state.businessAccounts.loading = false;
-      state.businessAccounts.error = err?.message || "Staff konnte nicht geladen werden.";
+      state.businessAccounts.error = err?.message || "Stafi nuk mund te ngarkohej.";
       rerender();
       return [];
     }
@@ -230,18 +230,18 @@ export function createBusinessAccountsRuntimeController({
 
     if (!firstName || !lastName || !email || (!isEditing && !password)) {
       state.businessAccounts.error = isEditing
-        ? "Vorname, Nachname und Email sind erforderlich."
-        : "Vorname, Nachname, Email und Passwort sind erforderlich.";
+        ? "Emri, mbiemri dhe email jane te detyrueshme."
+        : "Emri, mbiemri, email dhe fjalekalimi jane te detyrueshme.";
       rerender();
       return;
     }
     if (!email.includes("@")) {
-      state.businessAccounts.error = "Bitte eine gueltige Email eingeben.";
+      state.businessAccounts.error = "Ju lutem shkruani nje email te vlefshem.";
       rerender();
       return;
     }
     if (!businessAccess && !waiterAccess) {
-      state.businessAccounts.error = "Mindestens ein Zugriff muss aktiv sein.";
+      state.businessAccounts.error = "Te pakten nje qasje duhet te jete aktive.";
       rerender();
       return;
     }
@@ -249,7 +249,7 @@ export function createBusinessAccountsRuntimeController({
     state.businessAccounts.saving = true;
     state.businessAccounts.deleting = false;
     state.businessAccounts.error = "";
-    state.businessAccounts.status = isEditing ? "Account wird gespeichert..." : "Account wird erstellt...";
+    state.businessAccounts.status = isEditing ? "Llogaria po ruhet..." : "Llogaria po krijohet...";
     rerender();
 
     const currentAuthUser = auth?.currentUser || null;
@@ -259,7 +259,7 @@ export function createBusinessAccountsRuntimeController({
         const authUser = await createUser(email, password);
         uid = asText(authUser?.uid);
       }
-      if (!uid) throw new Error("Account konnte nicht erstellt werden.");
+      if (!uid) throw new Error("Llogaria nuk mund te krijohej.");
 
       const stamp = serverTimestamp();
       const permissions = {
@@ -323,13 +323,13 @@ export function createBusinessAccountsRuntimeController({
         persistProfile();
       }
 
-      resetForm(isEditing ? "Account gespeichert." : "Account erstellt.");
+      resetForm(isEditing ? "Llogaria u ruajt." : "Llogaria u krijua.");
       await loadBusinessAccounts({ force: true });
     } catch (err) {
       console.error(err);
       state.businessAccounts.saving = false;
       state.businessAccounts.deleting = false;
-      state.businessAccounts.error = err?.message || "Account konnte nicht gespeichert werden.";
+      state.businessAccounts.error = err?.message || "Llogaria nuk mund te ruhej.";
       state.businessAccounts.status = "";
       rerender();
     }
@@ -345,7 +345,7 @@ export function createBusinessAccountsRuntimeController({
     state.businessAccounts.deleting = true;
     state.businessAccounts.saving = false;
     state.businessAccounts.error = "";
-    state.businessAccounts.status = state.businessAccounts.form.active ? "Account wird aktiviert..." : "Account wird deaktiviert...";
+    state.businessAccounts.status = state.businessAccounts.form.active ? "Llogaria po aktivizohet..." : "Llogaria po deaktivizohet...";
     rerender();
     try {
       const active = state.businessAccounts.form.active !== false;
@@ -372,12 +372,12 @@ export function createBusinessAccountsRuntimeController({
         updatedAt: serverTimestamp()
       }, { merge: true });
       state.businessAccounts.deleting = false;
-      state.businessAccounts.status = active ? "Account aktiviert." : "Account deaktiviert.";
+      state.businessAccounts.status = active ? "Llogaria u aktivizua." : "Llogaria u deaktivizua.";
       await loadBusinessAccounts({ force: true });
     } catch (err) {
       console.error(err);
       state.businessAccounts.deleting = false;
-      state.businessAccounts.error = err?.message || "Status konnte nicht aktualisiert werden.";
+      state.businessAccounts.error = err?.message || "Statusi nuk mund te perditesohej.";
       state.businessAccounts.status = "";
       rerender();
     }
@@ -400,7 +400,7 @@ export function createBusinessAccountsRuntimeController({
             ${iconFn("lock", "w-8 h-8")}
           </div>
           <h2 class="text-lg font-black tracking-tight text-slate-900">Staff</h2>
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Nur fuer Business Owner</p>
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Vetem per pronarin e biznesit</p>
         </div>
       </div>
     `;
@@ -410,8 +410,8 @@ export function createBusinessAccountsRuntimeController({
     const form = state.businessAccounts.form || createEmptyBusinessAccountForm();
     const isEditing = !!asText(state.businessAccounts.editorUid);
     const saveLabel = state.businessAccounts.saving
-      ? (isEditing ? "Speichern..." : "Erstellen...")
-      : (isEditing ? "Account speichern" : "Account erstellen");
+      ? (isEditing ? "Duke ruajtur..." : "Duke krijuar...")
+      : (isEditing ? "Ruaj llogarine" : "Krijo llogari");
     const active = form.active !== false;
 
     return `
@@ -419,7 +419,7 @@ export function createBusinessAccountsRuntimeController({
         <div class="flex items-center justify-between mb-6">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Business</span>
-            <h2 class="text-2xl font-black italic uppercase tracking-tighter">${esc(isEditing ? "Staff bearbeiten" : "Neuer Staff")}</h2>
+            <h2 class="text-2xl font-black italic uppercase tracking-tighter">${esc(isEditing ? "Ndrysho stafin" : "Staf i ri")}</h2>
           </div>
           <button type="button" data-business-account-back="true" class="w-12 h-12 rounded-2xl bg-white text-slate-600 border border-slate-100 shadow-sm flex items-center justify-center active:scale-95">
             ${iconFn("arrow-left", "w-4 h-4")}
@@ -430,11 +430,11 @@ export function createBusinessAccountsRuntimeController({
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vorname</label>
-              <input id="businessAccountFirstName" type="text" value="${esc(form.firstName || "")}" placeholder="Vorname" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="businessAccountFirstName" type="text" value="${esc(form.firstName || "")}" placeholder="Emri" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Nachname</label>
-              <input id="businessAccountLastName" type="text" value="${esc(form.lastName || "")}" placeholder="Nachname" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="businessAccountLastName" type="text" value="${esc(form.lastName || "")}" placeholder="Mbiemri" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
           </div>
           <div>
@@ -442,15 +442,15 @@ export function createBusinessAccountsRuntimeController({
             <input id="businessAccountEmail" type="email" value="${esc(form.email || "")}" placeholder="staff@business.com" ${isEditing ? "readonly" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold ${isEditing ? "text-slate-500" : ""} border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
-            <input id="businessAccountPassword" type="password" value="" placeholder="${esc(isEditing ? "Passwort bleibt unveraendert" : "Passwort eingeben")}" ${isEditing ? "disabled" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold ${isEditing ? "text-slate-400" : ""} border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Fjalekalimi</label>
+            <input id="businessAccountPassword" type="password" value="" placeholder="${esc(isEditing ? "Fjalekalimi mbetet i pandryshuar" : "Shkruaj fjalekalimin")}" ${isEditing ? "disabled" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold ${isEditing ? "text-slate-400" : ""} border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Rolle</label>
             <div class="relative mt-2">
               <select id="businessAccountRole" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
                 <option value="manager" ${normalizeStaffRole(form.role) === "manager" ? "selected" : ""}>Manager</option>
-                <option value="waiter" ${normalizeStaffRole(form.role) === "waiter" ? "selected" : ""}>Kellner</option>
+                <option value="waiter" ${normalizeStaffRole(form.role) === "waiter" ? "selected" : ""}>Kamarier</option>
               </select>
               <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${iconFn("chevron-down", "w-4 h-4")}</div>
             </div>
@@ -469,7 +469,7 @@ export function createBusinessAccountsRuntimeController({
               <label class="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-4 border border-slate-100">
                 <div>
                   <p class="text-sm font-black text-slate-900">Waiter App</p>
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Live Orders und Benachrichtigungen</p>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Porosite live dhe njoftimet</p>
                 </div>
                 <input id="businessAccountWaiterAccess" type="checkbox" ${form.waiterAccess ? "checked" : ""} class="w-5 h-5 accent-indigo-600" />
               </label>
@@ -479,7 +479,7 @@ export function createBusinessAccountsRuntimeController({
           <label class="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-4">
             <div>
               <p class="text-sm font-black text-slate-900">Status</p>
-              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${active ? "Aktiv" : "Deaktiviert"}</p>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${active ? "Aktiv" : "Deaktivizuar"}</p>
             </div>
             <input id="businessAccountActive" type="checkbox" ${active ? "checked" : ""} class="w-5 h-5 accent-emerald-600" />
           </label>
@@ -492,7 +492,7 @@ export function createBusinessAccountsRuntimeController({
           </button>
           ${isEditing ? `
             <button id="businessAccountToggleStatusBtn" type="button" class="w-full py-4 rounded-[1.8rem] ${active ? "bg-amber-50 text-amber-700 border border-amber-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"} text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform" ${state.businessAccounts.deleting ? "disabled" : ""}>
-              ${esc(state.businessAccounts.deleting ? "Speichern..." : (active ? "Account deaktivieren" : "Account aktivieren"))}
+              ${esc(state.businessAccounts.deleting ? "Duke ruajtur..." : (active ? "Deaktivizo llogarine" : "Aktivizo llogarine"))}
             </button>
           ` : ""}
         </div>
@@ -503,7 +503,7 @@ export function createBusinessAccountsRuntimeController({
   function renderListView() {
     const items = Array.isArray(state.businessAccounts.items) ? state.businessAccounts.items : [];
     const listHtml = state.businessAccounts.loading
-      ? '<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Accounts laden...</div>'
+      ? '<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Llogarite po ngarkohen...</div>'
       : (items.length
         ? items.map((entry) => {
           const accessLabel = buildAccessLabel(entry);
@@ -517,17 +517,17 @@ export function createBusinessAccountsRuntimeController({
                 ${buildStatusBadge(entry)}
               </div>
               <div class="flex flex-wrap gap-2 mt-4">
-                <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">${esc(entry.role === "manager" ? "Manager" : "Kellner")}</span>
+                <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">${esc(entry.role === "manager" ? "Manager" : "Kamarier")}</span>
                 <span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-widest">${esc(accessLabel)}</span>
               </div>
               <div class="mt-4 flex items-center justify-between pt-3 border-t border-slate-100">
-                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Tippen zum Bearbeiten</span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Prek per te ndryshuar</span>
                 <span class="w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center">${iconFn("chevron-right", "w-4 h-4")}</span>
               </div>
             </button>
           `;
         }).join("")
-      : '<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Noch kein Staff vorhanden</div>');
+      : '<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Ende nuk ka staf</div>');
 
     return `
       <div id="businessAccountsView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">

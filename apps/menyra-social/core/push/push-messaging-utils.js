@@ -40,14 +40,14 @@ export async function ensureMessagingClientCore({
     const messagingModule = await ensureModule();
     const supported = await messagingModule.isSupported();
     if (!supported) {
-      setIssue("FCM wird in diesem Browser/Context nicht unterstuetzt.");
+      setIssue("FCM nuk mbeshtetet ne kete shfletues/kontekst.");
       return null;
     }
     const client = messagingModule.getMessaging(app);
     setClient(client);
     return client;
   } catch (err) {
-    setIssue("FCM Messaging konnte nicht initialisiert werden.", err);
+    setIssue("FCM Messaging nuk mund te inicializohej.", err);
     return null;
   }
 }

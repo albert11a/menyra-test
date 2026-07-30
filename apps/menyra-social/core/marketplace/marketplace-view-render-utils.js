@@ -2,24 +2,24 @@ const MARKETPLACE_SECTIONS = Object.freeze({
   restaurants: Object.freeze({
     key: "restaurants",
     title: "Restaurants",
-    emptyTitle: "Noch keine Restaurants",
-    emptyBody: "Keine passenden Profile gefunden.",
+    emptyTitle: "Ende nuk ka restorante",
+    emptyBody: "Nuk u gjeten profile te pershtatshme.",
     icon: "utensils",
     typeKeys: Object.freeze(["restaurant", "cafe", "coffee", "fastfood", "food"])
   }),
   travel: Object.freeze({
     key: "travel",
     title: "Travel",
-    emptyTitle: "Noch keine Travel-Profile",
-    emptyBody: "Keine passenden Profile gefunden.",
+    emptyTitle: "Ende nuk ka profile Travel",
+    emptyBody: "Nuk u gjeten profile te pershtatshme.",
     icon: "plane",
     typeKeys: Object.freeze(["hotel", "hotels", "motel", "motels", "travel", "hostel", "resort", "accommodation"])
   }),
   shopping: Object.freeze({
     key: "shopping",
     title: "Shopping",
-    emptyTitle: "Noch keine Shopping-Profile",
-    emptyBody: "Keine passenden Profile gefunden.",
+    emptyTitle: "Ende nuk ka profile Shopping",
+    emptyBody: "Nuk u gjeten profile te pershtatshme.",
     icon: "shopping-bag",
     typeKeys: Object.freeze(["ecommerce"])
   })
@@ -354,7 +354,7 @@ function getBusinessLocationLabel(record = {}) {
   const place = getBusinessPlaceLabel(record);
   if (city && place && normalizeLooseKey(city) !== normalizeLooseKey(place)) return `${city} - ${place}`;
   const address = cleanText(record.address || record.location || record.primaryAddress);
-  return city || place || inferLocationLabelFromCoords(record) || cleanText(record.country || record.region || "") || address || "Standort folgt";
+  return city || place || inferLocationLabelFromCoords(record) || cleanText(record.country || record.region || "") || address || "Vendndodhja se shpejti";
 }
 
 function normalizeLocationCoords(value = {}) {
@@ -395,7 +395,7 @@ function inferLocationLabelFromCoords(record = {}) {
   if (nearest && nearest.distanceKm <= RESTAURANT_COORD_CITY_MAX_DISTANCE_KM) {
     return nearest.label;
   }
-  return "Auf Karte markiert";
+  return "E shenuar ne harte";
 }
 
 function collectLocationTextCandidates(record = {}) {
@@ -574,7 +574,7 @@ function getBusinessHours(record = {}) {
     const values = Object.values(raw).map(cleanText).filter(Boolean);
     if (values.length) return values[0];
   }
-  return "Oeffnungszeiten folgen";
+  return "Orari se shpejti";
 }
 
 function getBusinessPhone(record = {}) {
@@ -1175,7 +1175,7 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
         <div class="pb-6" style="padding-bottom:1.5rem;">
           <button type="button" data-marketplace-open-business="${escapeHtml(id)}" data-tab="profile" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all text-xs flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]" style="width:100%;background:#0f172a;color:#fff;font-weight:700;padding-top:0.875rem;padding-bottom:0.875rem;border-radius:0.75rem;font-size:0.75rem;line-height:1rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
             ${cardIcon("user", "w-3.5 h-3.5 text-slate-300")}
-            <span>Profil ansehen</span>
+            <span>Shiko profilin</span>
           </button>
         </div>
       </div>
@@ -1499,7 +1499,7 @@ function renderShoppingLandingCard(record = {}, deps = {}) {
               data-marketplace-open-business="${escapeHtml(card.id)}"
               data-tab="profile"
               class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all duration-300 active:scale-95 flex-shrink-0"
-              aria-label="Shop oeffnen"
+              aria-label="Hap dyqanin"
             >
               ${icon("chevron-right", "w-4 h-4")}
             </button>
@@ -1585,16 +1585,16 @@ function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
     <section data-shopping-view class="min-h-full bg-slate-50 text-slate-900 animate-in slide-in-from-right-10 duration-500">
       <header class="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-md px-4 pt-6 pb-4 h-16 flex items-center justify-between overflow-hidden">
         <div data-shopping-search-title class="transition-all duration-300 ease-in-out flex-shrink-0 opacity-100" style="max-width:80%;">
-          <h1 class="text-[13px] font-black text-slate-800 tracking-tight whitespace-nowrap uppercase">Entdecke die besten shops</h1>
+          <h1 class="text-[13px] font-black text-slate-800 tracking-tight whitespace-nowrap uppercase">Zbulo dyqanet me te mira</h1>
         </div>
         <div data-shopping-search-shell class="flex items-center transition-all duration-300 ease-in-out w-9">
-          <button type="button" data-shopping-search-toggle class="p-2 hover:bg-slate-200 rounded-full text-slate-700 transition-all ml-auto active:scale-90 outline-none focus:outline-none focus-visible:outline-none focus:ring-0" style="outline:none;box-shadow:none;" aria-label="Shops suchen">
+          <button type="button" data-shopping-search-toggle class="p-2 hover:bg-slate-200 rounded-full text-slate-700 transition-all ml-auto active:scale-90 outline-none focus:outline-none focus-visible:outline-none focus:ring-0" style="outline:none;box-shadow:none;" aria-label="Kerko dyqane">
             ${icon("search", "w-4 h-4")}
           </button>
           <div data-shopping-search-panel class="hidden items-center w-full border-b border-slate-900 pb-1.5 outline-none focus-within:outline-none focus-within:ring-0" style="border-bottom-width:2px;box-shadow:none;">
             ${icon("search", "w-4 h-4 text-slate-400 flex-shrink-0 mr-2")}
-            <input type="text" data-shopping-search-input placeholder="Shops suchen..." class="bg-transparent text-xs font-bold text-slate-800 w-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder-slate-400" style="box-shadow:none;" autocomplete="off" />
-            <button type="button" data-shopping-search-close class="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors flex-shrink-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0" style="outline:none;box-shadow:none;" aria-label="Suche schliessen">
+            <input type="text" data-shopping-search-input placeholder="Kerko dyqane..." class="bg-transparent text-xs font-bold text-slate-800 w-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder-slate-400" style="box-shadow:none;" autocomplete="off" />
+            <button type="button" data-shopping-search-close class="p-1 hover:bg-slate-200 rounded-full text-slate-500 transition-colors flex-shrink-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0" style="outline:none;box-shadow:none;" aria-label="Mbyll kerkimin">
               ${icon("x", "w-3.5 h-3.5")}
             </button>
           </div>
@@ -1641,8 +1641,8 @@ function renderRestaurantListCard(record = {}, deps = {}) {
             type="button"
             data-marketplace-open-map="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
-            title="Auf Karte anzeigen"
-            aria-label="Auf Karte anzeigen"
+            title="Shfaq ne harte"
+            aria-label="Shfaq ne harte"
           >
             ${icon("map", "w-4 h-4")}
           </button>
@@ -1656,8 +1656,8 @@ function renderRestaurantListCard(record = {}, deps = {}) {
           <button
             type="button"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
-            title="Teilen"
-            aria-label="Teilen"
+            title="Ndaj"
+            aria-label="Ndaj"
           >
             ${cardIcon("share-2", "w-4 h-4")}
           </button>
@@ -1681,7 +1681,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
               ${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}
             </div>
             <span class="text-[11px] font-bold text-slate-800">${escapeHtml(displayRating)}</span>
-            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} Bewertungen)</span>
+            <span class="text-[11px] text-slate-400">(${escapeHtml(String(displayReviewsCount))} vleresime)</span>
           </div>
 
           <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${escapeHtml(name)}</h2>
@@ -1725,7 +1725,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
             class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all duration-150 active:scale-95 cursor-pointer"
           >
             ${icon("user", "w-3.5 h-3.5 text-slate-400")}
-            Profil
+            Profili
           </button>
 
           <button
@@ -1782,7 +1782,7 @@ function renderDataLoadingState(section = {}, deps = {}) {
   return `
     <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
       ${icon("loader-2", "w-4 h-4 animate-spin")}
-      Daten werden geladen ...
+      Te dhenat po ngarkohen ...
     </div>
   `;
 }
@@ -1836,7 +1836,7 @@ function renderRestaurantSearchGate({ deps } = {}) {
               id="restaurantLocationCityInput"
               data-restaurant-location-city-input="true"
               type="text"
-              placeholder="Enter your city..."
+              placeholder="Shkruaj qytetin tend..."
               class="loc-input"
               inputmode="search"
               autocomplete="off"
@@ -1847,7 +1847,7 @@ function renderRestaurantSearchGate({ deps } = {}) {
               aria-expanded="false"
             />
             <div class="loc-request-wrap">
-              <button id="btnRestaurantLocateMe" type="button" data-restaurant-location-request class="loc-request-btn" aria-label="Use location">
+              <button id="btnRestaurantLocateMe" type="button" data-restaurant-location-request class="loc-request-btn" aria-label="Perdor vendndodhjen">
                 ${icon("crosshair", "w-5 h-5 relative z-10")}
                 <span id="restaurantLocatePulse" class="loc-request-pulse opacity-0"></span>
               </button>
@@ -1879,13 +1879,13 @@ function renderRestaurantsContent({
         <div class="flex items-center justify-between px-0" style="padding-left:0;padding-right:0;">
           <div>
             <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
-            <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Premium Partner in deiner Umgebung")}</p>
+            <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Partner premium ne afersine tende")}</p>
           </div>
           <div class="hidden md:flex items-center gap-1.5">
-            <button type="button" data-restaurant-ads-scroll="left" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Nach links scrollen">
+            <button type="button" data-restaurant-ads-scroll="left" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize majtas">
               ${icon("chevron-left", "w-3.5 h-3.5")}
             </button>
-            <button type="button" data-restaurant-ads-scroll="right" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Nach rechts scrollen">
+            <button type="button" data-restaurant-ads-scroll="right" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize djathtas">
               ${icon("chevron-right", "w-3.5 h-3.5")}
             </button>
           </div>
@@ -1979,7 +1979,7 @@ function renderTravelSearchHero({ travel, deps } = {}) {
               data-travel-destination-input="true"
               type="text"
               value="${escapeHtml(travel.query)}"
-              placeholder="Enter your destination"
+              placeholder="Shkruaj destinacionin tend"
               class="loc-input"
               inputmode="search"
               autocomplete="off"
@@ -2010,7 +2010,7 @@ function renderTravelTabs({ activeTab, hasDestination, hotelCount, deps } = {}) 
   const tabs = [
     { id: "offers", label: "Ofertat" },
     { id: "hotels", label: "Hotels" },
-    { id: "map", label: "Karte" }
+    { id: "map", label: "Harta" }
   ];
   return `
     <div class="bg-white/70 p-1.5 border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm" style="border-radius:2rem;">
@@ -2095,7 +2095,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
         <img
           data-travel-hotel-main-image
           src="${escapeHtml(firstCoverImage)}"
-          alt="${escapeHtml(`${name} Ansicht 1`)}"
+          alt="${escapeHtml(`${name} pamja 1`)}"
           loading="lazy"
           class="w-full h-full object-cover transition-all duration-500 bg-slate-100"
         />
@@ -2114,7 +2114,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             data-travel-hotel-image-nav="prev"
             class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
             style="left:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
-            aria-label="Vorheriges Bild"
+            aria-label="Fotoja e meparshme"
           >
             ${icon("chevron-left", "w-4 h-4")}
           </button>
@@ -2124,7 +2124,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             data-travel-hotel-image-nav="next"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
             style="right:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
-            aria-label="Naechstes Bild"
+            aria-label="Fotoja tjeter"
           >
             ${icon("chevron-right", "w-4 h-4")}
           </button>
@@ -2149,8 +2149,8 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             type="button"
             data-marketplace-open-map="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
-            title="Auf Karte anzeigen"
-            aria-label="Auf Karte anzeigen"
+            title="Shfaq ne harte"
+            aria-label="Shfaq ne harte"
           >
             ${icon("map", "w-4 h-4")}
           </button>
@@ -2158,7 +2158,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-like="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-rose-500 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
-            aria-label="Zu Favoriten hinzufuegen"
+            aria-label="Shto te te preferuarat"
           >
             ${icon("heart", `w-4 h-4 ${isLiked ? "fill-rose-500 text-rose-500" : "text-slate-600"}`)}
           </button>
@@ -2166,8 +2166,8 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-share="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 border border-slate-200/50 shadow-sm cursor-pointer"
-            title="Teilen"
-            aria-label="Teilen"
+            title="Ndaj"
+            aria-label="Ndaj"
           >
             ${icon("share-2", "w-4 h-4")}
           </button>
@@ -2221,13 +2221,13 @@ function renderTravelHotelCard(record = {}, deps = {}) {
 
         <div class="flex items-center justify-between mt-0.5 gap-4">
           <div class="flex flex-col">
-            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Bestpreis</span>
+            <span class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Cmimi me i mire</span>
             <div class="flex items-baseline gap-1">
               ${startingPrice ? `
                 <span class="text-base font-black text-slate-900">ab ${escapeHtml(startingPrice)} €</span>
                 <span class="text-[9px] text-slate-500 font-bold">${escapeHtml(priceUnitLabel)}</span>
               ` : `
-                <span class="text-base font-black text-slate-900">Preis folgt</span>
+                <span class="text-base font-black text-slate-900">Cmimi se shpejti</span>
               `}
             </div>
           </div>
@@ -2239,7 +2239,7 @@ function renderTravelHotelCard(record = {}, deps = {}) {
             class="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[140px]"
             style="max-width:140px;"
           >
-            <span>Mehr</span>
+            <span>Me shume</span>
             ${icon("chevron-right", "w-3.5 h-3.5")}
           </button>
         </div>
@@ -2288,7 +2288,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
         <img
           data-travel-hotel-main-image
           src="${escapeHtml(firstCoverImage)}"
-          alt="${escapeHtml(`${name} Bild 1`)}"
+          alt="${escapeHtml(`${name} foto 1`)}"
           loading="lazy"
           class="w-full h-full object-cover transition-all duration-500 bg-slate-100"
         />
@@ -2300,7 +2300,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             data-travel-hotel-image-nav="prev"
             class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
             style="left:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
-            aria-label="Vorheriges Bild"
+            aria-label="Fotoja e meparshme"
           >
             ${icon("chevron-left", "w-4 h-4")}
           </button>
@@ -2310,7 +2310,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             data-travel-hotel-image-nav="next"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-slate-900 shadow-sm transition-all active:scale-90 cursor-pointer"
             style="right:0.75rem;top:50%;transform:translateY(-50%);z-index:20;"
-            aria-label="Naechstes Bild"
+            aria-label="Fotoja tjeter"
           >
             ${icon("chevron-right", "w-4 h-4")}
           </button>
@@ -2342,8 +2342,8 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             type="button"
             data-marketplace-open-map="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 shadow-sm cursor-pointer"
-            title="Auf Karte anzeigen"
-            aria-label="Auf Karte anzeigen"
+            title="Shfaq ne harte"
+            aria-label="Shfaq ne harte"
           >
             ${icon("map", "w-3.5 h-3.5")}
           </button>
@@ -2351,7 +2351,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-like="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 hover:text-rose-500 hover:bg-white transition-all active:scale-95 shadow-sm cursor-pointer"
-            aria-label="Zu Favoriten hinzufuegen"
+            aria-label="Shto te te preferuarat"
           >
             ${icon("heart", `w-4 h-4 ${isLiked ? "fill-rose-500 text-rose-500" : "text-slate-600"}`)}
           </button>
@@ -2359,8 +2359,8 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             type="button"
             data-travel-hotel-share="${escapeHtml(id)}"
             class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all active:scale-95 shadow-sm cursor-pointer"
-            title="Teilen"
-            aria-label="Teilen"
+            title="Ndaj"
+            aria-label="Ndaj"
           >
             ${icon("share-2", "w-3.5 h-3.5")}
           </button>
@@ -2418,7 +2418,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
                 <span class="text-xl font-black text-slate-900 leading-none">${escapeHtml(startingPrice)}€</span>
                 <span class="text-[9px] text-slate-400 font-bold ml-1 uppercase">${escapeHtml(priceSuffix)}</span>
               ` : `
-                <span class="text-base font-black text-slate-900 leading-none">Preis folgt</span>
+                <span class="text-base font-black text-slate-900 leading-none">Cmimi se shpejti</span>
               `}
             </div>
           </div>
@@ -2429,7 +2429,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             class="flex-1 flex items-center justify-center gap-1 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150 active:scale-95 cursor-pointer max-w-[130px]"
             style="max-width:130px;"
           >
-            <span>Mehr Details</span>
+            <span>Me shume detaje</span>
             ${icon("chevron-right", "w-3.5 h-3.5")}
           </button>
         </div>
@@ -2445,7 +2445,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
             type="button"
             data-travel-offer-close="true"
             class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-            aria-label="Schliessen"
+            aria-label="Mbyll"
           >
             ${icon("x", "w-3.5 h-3.5")}
           </button>
@@ -2463,13 +2463,13 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
           </div>
 
           <div class="text-[11px] text-slate-600 leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-            <p class="font-extrabold text-slate-800 text-[10px] uppercase tracking-wider mb-1">Përshkrimi (Beschreibung)</p>
+            <p class="font-extrabold text-slate-800 text-[10px] uppercase tracking-wider mb-1">Përshkrimi</p>
             ${escapeHtml(description)}
           </div>
 
           ${details.length ? `
             <div class="flex flex-col gap-2">
-              <h4 class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Çfarë përfshihet (Inklusive):</h4>
+              <h4 class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Çfarë përfshihet:</h4>
               <div class="flex flex-col gap-1.5 pl-1">
                 ${details.map((detail) => `
                   <div class="flex items-start gap-2 text-[10px] text-slate-700">
@@ -2484,7 +2484,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
           <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 mt-1">
             <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-800 mb-2.5 flex items-center gap-1">
               ${icon("calendar", "w-3.5 h-3.5 text-rose-500")}
-              Rezervo Online (Anfragen)
+              Rezervo Online
             </h4>
 
             <div data-travel-offer-booking-success class="hidden bg-emerald-50 text-emerald-800 text-center p-3 rounded-lg border border-emerald-200 text-[10px] font-semibold">
@@ -2495,13 +2495,13 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
               <input
                 type="text"
                 data-travel-offer-booking-name
-                placeholder="Emri e Mbiemri (Name)"
+                placeholder="Emri dhe Mbiemri"
                 class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:border-slate-900 transition-colors"
               />
               <input
                 type="tel"
                 data-travel-offer-booking-phone
-                placeholder="Numri i telefonit (Telefonnummer)"
+                placeholder="Numri i telefonit"
                 class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-800 focus:outline-none focus:border-slate-900 transition-colors"
               />
               <button
@@ -2509,7 +2509,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
                 class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer"
               >
                 ${icon("send", "w-3 h-3")}
-                Dërgo Kërkesën (Anfrage senden)
+                Dërgo Kërkesën
               </button>
             </form>
           </div>
@@ -2518,7 +2518,7 @@ function renderTravelOfertaPremiumCard(record = {}, deps = {}) {
         <div class="pt-3 border-t border-slate-100 flex items-center justify-between mt-2 gap-3">
           <div class="flex flex-col min-w-0">
             <span class="text-[8px] uppercase tracking-wider text-slate-400 font-bold">${priceSuffix === "Totali" ? "Total" : "Total për person"}</span>
-            <span class="text-sm font-black text-slate-900 truncate">${startingPrice ? `${escapeHtml(startingPrice)} €` : "Preis folgt"}${durationText ? ` (${escapeHtml(durationText)})` : ""}</span>
+            <span class="text-sm font-black text-slate-900 truncate">${startingPrice ? `${escapeHtml(startingPrice)} €` : "Cmimi se shpejti"}${durationText ? ` (${escapeHtml(durationText)})` : ""}</span>
           </div>
           <button
             type="button"
@@ -2608,8 +2608,8 @@ function renderTravelOffers(items = [], deps = {}) {
   if (!displayItems.length) {
     return renderEmptyState({
       title: "Ofertat",
-      emptyTitle: "Noch keine Angebote",
-      emptyBody: "Keine passenden Hotel-Angebote gefunden.",
+      emptyTitle: "Ende nuk ka oferta",
+      emptyBody: "Nuk u gjeten oferta hoteli te pershtatshme.",
       icon: "plane"
     }, deps);
   }
@@ -2623,8 +2623,8 @@ function renderTravelOffers(items = [], deps = {}) {
 function renderTravelHotels(items = [], deps = {}) {
   if (!items.length) {
     return renderEmptyState({
-      emptyTitle: "Keine Hotels gefunden",
-      emptyBody: "Keine passenden Hotels fuer dieses Reiseziel gefunden.",
+      emptyTitle: "Nuk u gjeten hotele",
+      emptyBody: "Nuk u gjeten hotele te pershtatshme per kete destinacion.",
       icon: "plane"
     }, deps);
   }
@@ -2678,7 +2678,7 @@ function renderTravelMap(items = [], deps = {}) {
       </div>
       ${!mapped.length ? `
         <div class="bg-white border border-slate-100 shadow-sm p-5 text-[11px] font-bold text-slate-400" style="border-radius:2rem;">
-          Keine Hotel-Koordinaten fuer dieses Reiseziel gefunden.
+          Nuk u gjeten koordinata hoteli per kete destinacion.
         </div>
       ` : ""}
     </div>

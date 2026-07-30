@@ -384,7 +384,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       const remoteConflict = await findLeadLandingSlugConflictDoc(candidate, { restaurantId: safeRestaurantId });
       if (!remoteConflict?.id) return candidate;
     }
-    throw new Error("Kein freier Public Slug gefunden.");
+    throw new Error("Nuk u gjet asnje public slug i lire.");
   }
 
   async function resolveLeadLandingSlugUnique(restaurantId = "", options = {}) {
@@ -488,7 +488,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
     const messageLine1 = locationLabel
       ? `${businessName} in ${locationLabel} ist bereits in Mnyra vorbereitet.`
       : `${businessName} ist bereits in Mnyra vorbereitet.`;
-    const messageLine2 = "Deine digitale Praesenz ist bereit zur Aktivierung.";
+    const messageLine2 = "Prezenca jote digjitale eshte gati per aktivizim.";
     return {
       version: 1,
       template: LEAD_LANDING_TEMPLATE_ID,
@@ -565,7 +565,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
       })
       .catch((err) => {
         buildStatusLoaded = true;
-        state.staff.buildStatusError = err?.message || "Build Status konnte nicht geladen werden.";
+        state.staff.buildStatusError = err?.message || "Statusi i build-it nuk mund te ngarkohej.";
         return state.staff.buildStatus;
       })
       .finally(() => {
@@ -901,7 +901,7 @@ function renderCeoGuard(title = "CRM") {
 function renderLeadsView() {
   if (!crmLazyRenderers?.renderLeadsView) {
     prefetchCrmLazyRenderers();
-    return renderCrmLazyLoadingView("Leads laden...");
+    return renderCrmLazyLoadingView("Leads po ngarkohen...");
   }
   return crmLazyRenderers.renderLeadsView(getCrmLazyRendererContext());
 }
@@ -962,7 +962,7 @@ async function refineLeadLocationAddressIndex(index, value, { hydratePrimary = f
 function renderLeadSettingsView() {
   if (!crmLazyRenderers?.renderLeadSettingsView) {
     prefetchCrmLazyRenderers();
-    return renderCrmLazyLoadingView("Lead Settings laden...");
+    return renderCrmLazyLoadingView("Cilesimet e leads po ngarkohen...");
   }
   return crmLazyRenderers.renderLeadSettingsView(getCrmLazyRendererContext());
 }
@@ -970,7 +970,7 @@ function renderLeadSettingsView() {
 function renderLeadCreationView() {
   if (!crmLazyRenderers?.renderLeadCreationView) {
     prefetchCrmLazyRenderers();
-    return renderCrmLazyLoadingView("Lead Formular laden...");
+    return renderCrmLazyLoadingView("Formulari i leads po ngarkohet...");
   }
   return crmLazyRenderers.renderLeadCreationView(getCrmLazyRendererContext());
 }
@@ -1145,7 +1145,7 @@ async function saveLeadSettings() {
   }, {});
 
   state.leads.settingsSaving = true;
-  state.leads.settingsStatus = "Speichern...";
+  state.leads.settingsStatus = "Duke ruajtur...";
   render();
 
   try {
@@ -1161,12 +1161,12 @@ async function saveLeadSettings() {
     };
     saveUserProfileToStorage();
     state.leads.settingsSaving = false;
-    state.leads.settingsStatus = "Leads Settings gespeichert.";
+    state.leads.settingsStatus = "Cilesimet e leads u ruajten.";
     render();
   } catch (err) {
     console.error(err);
     state.leads.settingsSaving = false;
-    state.leads.settingsStatus = err?.message || "Leads Settings konnten nicht gespeichert werden.";
+    state.leads.settingsStatus = err?.message || "Cilesimet e leads nuk mund te ruheshin.";
     render();
   }
 }
@@ -1314,7 +1314,7 @@ function syncLeadDerivedFields() {
 function renderCustomersView() {
   if (!crmLazyRenderers?.renderCustomersView) {
     prefetchCrmLazyRenderers();
-    return renderCrmLazyLoadingView("Kunden laden...");
+    return renderCrmLazyLoadingView("Klientet po ngarkohen...");
   }
   return crmLazyRenderers.renderCustomersView(getCrmLazyRendererContext());
 }
@@ -1322,7 +1322,7 @@ function renderCustomersView() {
 function renderStaffEditorView() {
   if (!crmLazyRenderers?.renderStaffEditorView) {
     prefetchCrmLazyRenderers();
-    return renderCrmLazyLoadingView("Staff Editor laden...");
+    return renderCrmLazyLoadingView("Editori i stafit po ngarkohet...");
   }
   return crmLazyRenderers.renderStaffEditorView(getCrmLazyRendererContext());
 }
@@ -1330,7 +1330,7 @@ function renderStaffEditorView() {
 function renderStaffView() {
   if (!crmLazyRenderers?.renderStaffView) {
     prefetchCrmLazyRenderers();
-    return renderCrmLazyLoadingView("Staff laden...");
+    return renderCrmLazyLoadingView("Stafi po ngarkohet...");
   }
   if (!buildStatusLoaded && !state.staff?.buildStatusLoading) {
     void ensureStaffBuildStatusLoaded();
@@ -1348,8 +1348,8 @@ function ensureLocationPickerModal() {
     <div class="bg-white rounded-[2.5rem] flex-1 flex flex-col overflow-hidden relative shadow-2xl transition-transform duration-300 translate-y-full" id="pickerPanel">
       <div class="p-5 flex justify-between items-center bg-white z-20 shadow-sm">
         <div>
-          <h3 class="font-black text-lg leading-none">Standort anpassen</h3>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">Verschiebe die Karte unter den Pin</p>
+          <h3 class="font-black text-lg leading-none">Rregullo vendndodhjen</h3>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">Zhvendos harten nen pin</p>
         </div>
         <button id="closeLocationPickerBtn" type="button" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">${icon("x", "w-5 h-5")}</button>
       </div>
@@ -1448,7 +1448,7 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
         targetCoords = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
       }
       if (!targetCoords && addressValue) {
-        alert("Standort konnte nicht aufgeloest werden. Bitte Plus-Code oder Adresse pruefen.");
+        alert("Vendndodhja nuk mund te gjendej. Ju lutem kontrolloni Plus-Code ose adresen.");
         return;
       }
       targetCoords = targetCoords || restFallback;
@@ -1474,7 +1474,7 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
   if (!window.L) {
     const leafletReady = await ensureLeafletLoaded();
     if (!leafletReady || !window.L) {
-      alert("Karte konnte nicht geladen werden. Bitte Verbindung pruefen.");
+      alert("Harta nuk mund te ngarkohej. Ju lutem kontrolloni lidhjen.");
       return;
     }
   }
@@ -1589,27 +1589,27 @@ function getSecondaryAuth() {
 function buildCreateAuthUserError(err) {
   const code = String(err?.code || "").trim().toLowerCase();
   if (code === "auth/email-already-in-use") {
-    return new Error("Diese Email hat bereits ein Login. Bitte nutze eine andere Email.");
+    return new Error("Ky email ka tashme nje llogari. Ju lutem perdorni nje email tjeter.");
   }
   if (code === "auth/invalid-email") {
-    return new Error("Bitte eine gueltige Email eingeben.");
+    return new Error("Ju lutem shkruani nje email te vlefshem.");
   }
   if (code === "auth/weak-password") {
-    return new Error("Das Passwort ist zu schwach. Bitte mindestens 6 Zeichen verwenden.");
+    return new Error("Fjalekalimi eshte shume i dobet. Ju lutem perdorni te pakten 6 karaktere.");
   }
   if (code === "auth/operation-not-allowed") {
-    return new Error("Email/Passwort-Login ist in Firebase nicht aktiviert.");
+    return new Error("Hyrja me email/fjalekalim nuk eshte aktivizuar ne Firebase.");
   }
   if (code === "auth/network-request-failed") {
-    return new Error("Netzwerkfehler beim Erstellen des Logins.");
+    return new Error("Gabim rrjeti gjate krijimit te llogarise.");
   }
   return err instanceof Error
     ? err
-    : new Error("Login konnte nicht erstellt werden.");
+    : new Error("Llogaria nuk mund te krijohej.");
 }
 
 async function createAuthUser(email, password) {
-  if (!email || !password) throw new Error("Email/Passwort fehlt.");
+  if (!email || !password) throw new Error("Mungon email/fjalekalimi.");
   const auth2 = getSecondaryAuth();
   try {
     await signOut(auth2).catch(() => {});
@@ -2407,7 +2407,7 @@ async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
     });
   } catch (err) {
     console.error(err);
-    state.leads.error = "Leads laden fehlgeschlagen.";
+    state.leads.error = "Ngarkimi i leads deshtoi.";
   } finally {
     state.leads.loading = false;
     state.leads.loadingMore = false;
@@ -2513,7 +2513,7 @@ async function loadCustomers({ scope = state.customers.scope, grow = false } = {
     });
   } catch (err) {
     console.error(err);
-    state.customers.error = "Kunden laden fehlgeschlagen.";
+    state.customers.error = "Ngarkimi i klienteve deshtoi.";
   } finally {
     state.customers.loading = false;
     state.customers.loadingMore = false;
@@ -2755,7 +2755,7 @@ async function loadCeoStaff({ grow = false } = {}) {
       }
     } catch (err) {
       console.error(err);
-      state.staff.error = "Staff laden fehlgeschlagen.";
+      state.staff.error = "Ngarkimi i stafit deshtoi.";
     } finally {
       state.staff.loading = false;
       state.staff.loadingMore = false;
@@ -2801,17 +2801,17 @@ async function deleteCeoStaffFromView() {
   const uid = String(state.staff.editorUid || "").trim();
   if (!uid) return;
   if (uid === String(state.user.uid || "")) {
-    state.staff.status = "Du kannst deinen eigenen CEO hier nicht loeschen.";
+    state.staff.status = "Nuk mund ta fshish ketu CEO-n tend.";
     render();
     return;
   }
   const entry = (state.staff.items || []).find((item) => String(item.uid || "") === uid);
   const label = entry?.name || "diesen CEO";
-  if (!confirm(`Willst du ${label} wirklich loeschen?`)) return;
+  if (!confirm(`Ta fshish vertet ${label}?`)) return;
 
   state.staff.deleting = true;
   state.staff.saving = false;
-  state.staff.status = "CEO wird geloescht...";
+  state.staff.status = "CEO po fshihet...";
   render();
 
   try {
@@ -2819,11 +2819,11 @@ async function deleteCeoStaffFromView() {
       deleteDoc(doc(db, "superadmins", uid)),
       deleteDoc(doc(db, "users", uid))
     ]);
-    resetStaffForm("CEO Staff geloescht.");
+    resetStaffForm("CEO Staff u fshi.");
     await loadCeoStaff();
   } catch (err) {
     console.error(err);
-    state.staff.status = err?.message || "CEO Staff konnte nicht geloescht werden.";
+    state.staff.status = err?.message || "CEO Staff nuk mund te fshihej.";
     state.staff.deleting = false;
     render();
   }

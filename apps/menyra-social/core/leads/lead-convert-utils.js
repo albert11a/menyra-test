@@ -84,7 +84,7 @@ export async function convertLeadToCustomerCore({
     confirmed = typeof confirmFn === "function" ? confirmFn("Lead als Kunde aktivieren?") : false;
   } catch (err) {
     console.error(err);
-    if (typeof alertFn === "function") alertFn(err?.message || "Umwandlung fehlgeschlagen.");
+    if (typeof alertFn === "function") alertFn(err?.message || "Konvertimi deshtoi.");
     state.leads.convertingIds.delete(convertingKey);
     return false;
   }
@@ -445,7 +445,7 @@ export async function convertLeadToCustomerCore({
     return true;
   } catch (err) {
     console.error(err);
-    alertFn(err?.message || "Umwandlung fehlgeschlagen.");
+    alertFn(err?.message || "Konvertimi deshtoi.");
     state.leads.convertingIds.delete(convertingKey);
     return false;
   }

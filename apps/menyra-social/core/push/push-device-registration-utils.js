@@ -12,15 +12,15 @@ export function hasPushDeviceRegistrationPrerequisitesCore({
   const safeUid = String(uid || "").trim();
   if (!safeUid || !enabled) return false;
   if (!isSecureContext) {
-    setIssue("Push benoetigt HTTPS oder localhost (secure context).");
+    setIssue("Push kerkon HTTPS ose localhost (secure context).");
     return false;
   }
   if (!String(vapidKey || "").trim()) {
-    setIssue("FCM VAPID-Key fehlt.");
+    setIssue("Mungon FCM VAPID-Key.");
     return false;
   }
   if (!hasServiceWorker) {
-    setIssue("Service Worker wird vom Browser nicht unterstuetzt.");
+    setIssue("Service Worker nuk mbeshtetet nga shfletuesi.");
     return false;
   }
   return true;

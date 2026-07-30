@@ -195,7 +195,7 @@ export function bindPostOverlayEventsCore({
     const setToggleUi = (playing) => {
       playIcon?.classList?.toggle("hidden", !!playing);
       pauseIcon?.classList?.toggle("hidden", !playing);
-      postModalVideoToggle.setAttribute("aria-label", playing ? "Video pausieren" : "Video abspielen");
+      postModalVideoToggle.setAttribute("aria-label", playing ? "Ndalo videon" : "Luaj videon");
     };
     postModalVideo.addEventListener("play", () => setToggleUi(true));
     postModalVideo.addEventListener("pause", () => setToggleUi(false));

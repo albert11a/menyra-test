@@ -44,7 +44,7 @@ export function renderOrdersViewCore({
   const errorMessage = String(state?.orders?.error || "").trim();
   const refreshNotice =
     hasOrders && isLoading
-      ? `<div class="mb-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Bestellungen werden aktualisiert...</div>`
+      ? `<div class="mb-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Porosite po perditesohen...</div>`
       : "";
   const retainedErrorNotice =
     hasOrders && errorMessage
@@ -56,13 +56,13 @@ export function renderOrdersViewCore({
       <div class="flex items-center justify-between mb-6">
         <div>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Orders</span>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Bestellungen</h2>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Porosite</h2>
         </div>
       </div>
       ${
         isLoading && !hasOrders
           ? `
-        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-400">Bestellungen werden geladen...</div>
+        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-400">Porosite po ngarkohen...</div>
       `
           : errorMessage && !hasOrders
             ? `
@@ -84,7 +84,7 @@ export function renderOrdersViewCore({
                 ? order?.contact?.name || order?.buyerName || "Kunde"
                 : order?.businessName || "Shop";
               const tableLabel = order?.tableNumber
-                ? `Tisch ${order.tableNumber}`
+                ? `Tavolina ${order.tableNumber}`
                 : order?.tableLabel || order?.contact?.tableLabel || "";
               const metaLine = isBusiness
                 ? [tableLabel, order?.contact?.phone, order?.contact?.city]
@@ -134,7 +134,7 @@ export function renderOrdersViewCore({
         </div>
       `
               : `
-        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-300">Noch keine Bestellungen</div>
+        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-300">Ende nuk ka porosi</div>
       `
       }
     </div>

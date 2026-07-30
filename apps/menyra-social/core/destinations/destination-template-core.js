@@ -1,7 +1,7 @@
 export const DESTINATION_TEMPLATE_CORE_VERSION = "destination-template-core.v1";
 
 export const DESTINATION_PLACE_CATEGORIES = Object.freeze([
-  Object.freeze({ key: "city", label: "Qyteti", labelDe: "Stadt" }),
+  Object.freeze({ key: "city", label: "Qyteti", labelDe: "Qyteti" }),
   Object.freeze({ key: "beach", label: "Plazha", labelDe: "Straende" }),
   Object.freeze({ key: "sights", label: "Vende per te pare", labelDe: "Sehenswuerdigkeiten" }),
   Object.freeze({ key: "activities", label: "Aktivitete", labelDe: "Aktivitaeten" }),

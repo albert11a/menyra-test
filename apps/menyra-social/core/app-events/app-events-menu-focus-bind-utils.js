@@ -92,7 +92,7 @@ export function bindAppMenuFocusEventsCore({
     } catch {}
     const clearStatus = () => {
       if (!state?.tableQr || typeof state.tableQr !== "object") return;
-      if (String(state.tableQr.status || "").trim() !== "Link kopiert.") return;
+      if (String(state.tableQr.status || "").trim() !== "Linku u kopjua.") return;
       state.tableQr = {
         ...state.tableQr,
         status: ""
@@ -353,7 +353,7 @@ export function bindAppMenuFocusEventsCore({
         imageUrlDraft: readHotelCardInput("hotelCardCoverImageUrl"),
         saving: false,
         detailsOpen: true,
-        status: "Bitte Hotel-Editor neu laden."
+        status: "Ju lutem ringarkoni editorin e hotelit."
       };
       render();
       return;
@@ -660,7 +660,7 @@ export function bindAppMenuFocusEventsCore({
     btn.addEventListener("click", () => {
       openMenuModal("create", {
         type: "food",
-        category: "Speisen",
+        category: "Ushqime",
         name: "",
         description: "",
         ingredients: "",
@@ -676,7 +676,7 @@ export function bindAppMenuFocusEventsCore({
     btn.addEventListener("click", () => {
       openMenuModal("create", {
         type: "drink",
-        category: "Getraenke",
+        category: "Pije",
         name: "",
         description: "",
         ingredients: "",
@@ -1144,8 +1144,8 @@ export function bindAppMenuFocusEventsCore({
       }
       state.tableQr = {
         ...state.tableQr,
-        error: copied ? "" : `Link fuer ${label} konnte nicht kopiert werden.`,
-        status: copied ? "Link kopiert." : ""
+        error: copied ? "" : `Linku per ${label} nuk mund te kopjohej.`,
+        status: copied ? "Linku u kopjua." : ""
       };
       render();
       if (copied) {

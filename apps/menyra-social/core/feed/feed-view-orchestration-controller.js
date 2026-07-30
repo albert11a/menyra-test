@@ -958,7 +958,7 @@ export function createFeedViewOrchestrationController({
     textarea.remove();
     return copied;
   };
-  const setShareButtonFeedback = (button, label = "Link kopiert") => {
+  const setShareButtonFeedback = (button, label = "Linku u kopjua") => {
     if (!(button instanceof HTMLElement)) return;
     const labelNode = button.querySelector("[data-feed-share-label]");
     if (!labelNode) return;
@@ -1956,11 +1956,11 @@ export function createFeedViewOrchestrationController({
           Object.freeze({ before: "", accent: "Live", after: " now." }),
           Object.freeze({ before: "Your ", accent: "Feed.", after: "" })
         ]),
-        description: "Discover daily deals, follow stories from your favorite spots, and stay up to date.",
+        description: "Zbulo oferta ditore, ndiq stories nga vendet e tua te preferuara dhe qendro i perditesuar.",
         cardTitle: "Stories & Feed",
-        cardDescription: "Never miss exclusive deals. See what's happening in your city through stories and discover fresh offers right away.",
-        cardImageAlt: "Feed and stories",
-        storiesAriaLabel: "Feed stories",
+        cardDescription: "Mos humb asnje oferte ekskluzive. Shiko cfare po ndodh ne qytetin tend permes stories dhe zbulo oferta te reja menjehere.",
+        cardImageAlt: "Feed dhe stories",
+        storiesAriaLabel: "Stories te feed-it",
         postBrand: "MOKI'S",
         postMeta: "2 hours ago • New offer",
         offerPill: "-20% off lunch",
@@ -2104,11 +2104,18 @@ export function createFeedViewOrchestrationController({
   const resolveFeedGateLocale = () => {
     const explicit = normalizeFeedGateLocale(readFeedGateLocaleParam());
     if (explicit) return explicit;
-    const navigatorLocales = Array.isArray(win?.navigator?.languages) ? win.navigator.languages : [];
-    const browserLocale = normalizeFeedGateLocale(
-      String(navigatorLocales[0] || win?.navigator?.language || "").trim()
-    );
-    return browserLocale || "en";
+    // Die im App-Sprachmenue gewaehlte Sprache hat Vorrang vor der
+    // Browser-Sprache; ohne Auswahl ist Albanisch die Hauptsprache.
+    let appLocale = "";
+    try {
+      appLocale = normalizeFeedGateLocale(String(win?.localStorage?.getItem("menyra_lang") || "").trim());
+    } catch {}
+    if (appLocale) return appLocale;
+    // Bewusst ohne Browser-Sprache: die uebrige App laeuft immer auf Albanisch,
+    // solange im Sprachmenue nichts anderes gewaehlt ist. Der Standort-Dialog
+    // muss demselben Stand folgen, sonst steht hier Englisch in einer sonst
+    // albanischen Oberflaeche.
+    return "sq";
   };
   const resolveFeedGateCopy = () => FEED_GATE_I18N[resolveFeedGateLocale()] || FEED_GATE_I18N.en;
   const resolveLocationGateStatusText = () => {
@@ -2240,6 +2247,66 @@ export function createFeedViewOrchestrationController({
     locationGateStatus = String(status || "idle").trim().toLowerCase();
     locationGateMessage = String(message || "").trim();
     syncFeedLocationGateDom();
+  };
+  // Kennt die lokale Stadtliste die GPS-Position nicht (z.B. Diaspora), holt
+  // ein Reverse-Geocode den echten Stadtnamen nach und ersetzt das generische
+  // "Vendndodhja aktuale" im Feld und im gespeicherten Datensatz.
+  const refineViewerLocationCityFromCoords = async (coords = null) => {
+    const safeCoords = normalizeViewerCoords(coords);
+    if (!safeCoords) return;
+    const fetchClient = typeof win?.fetch === "function" ? win.fetch.bind(win) : null;
+    if (!fetchClient) return;
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timeoutHandle = null;
+    if (controller) {
+      timeoutHandle = setTimeoutFn(() => {
+        try {
+          controller.abort();
+        } catch {}
+      }, FEED_LOCATION_REMOTE_TIMEOUT_MS);
+    }
+    try {
+      const endpoint = new URL("https://photon.komoot.io/reverse");
+      endpoint.searchParams.set("lat", String(safeCoords.lat));
+      endpoint.searchParams.set("lon", String(safeCoords.lng));
+      endpoint.searchParams.set("limit", "1");
+      const response = await fetchClient(endpoint.toString(), {
+        method: "GET",
+        signal: controller?.signal,
+        headers: { "Accept-Language": "sq,sr,de,en" }
+      });
+      if (!response?.ok) return;
+      const payload = await response.json();
+      const properties = payload?.features?.[0]?.properties || {};
+      const cityName = String(properties.city || properties.town || properties.village || properties.name || "").trim();
+      if (!cityName || isGenericFeedLocationLabel(cityName)) return;
+      const record = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+      if (!record || String(record.source || "") !== "gps") return;
+      if (haversineDistanceKm(record, safeCoords) > 1) return;
+      if (record.city && !isGenericFeedLocationLabel(record.city)) return;
+      const updated = normalizeViewerLocationRecord({
+        ...record,
+        label: cityName,
+        city: cityName,
+        country: String(properties.country || record.country || "").trim(),
+        savedAt: Date.now()
+      });
+      if (!updated) return;
+      persistViewerLocation(updated);
+      const cityInput = doc?.getElementById("feedLocationCityInput");
+      if (cityInput instanceof HTMLInputElement && doc?.activeElement !== cityInput) {
+        const currentValue = String(cityInput.value || "").trim();
+        if (!currentValue || isGenericFeedLocationLabel(currentValue)) cityInput.value = cityName;
+      }
+      setStateFn({});
+    } catch {
+    } finally {
+      if (timeoutHandle) {
+        try {
+          clearTimeout(timeoutHandle);
+        } catch {}
+      }
+    }
   };
   const applyViewerLocationSelection = (record = null) => {
     const normalized = normalizeViewerLocationRecord(record);
@@ -2374,14 +2441,21 @@ export function createFeedViewOrchestrationController({
             setLocationGateState("error");
             return;
           }
+          // Der echte Stadtname gehoert ins Feld, nicht "Vendndodhja aktuale":
+          // erst die naechste bekannte Stadt aus den Koordinaten, sonst der
+          // getippte Text; ein Reverse-Geocode verfeinert danach asynchron.
+          const inferredCity = inferFeedCityLabelFromCoords(coords);
+          const typedCity = currentLabel && !isGenericFeedLocationLabel(currentLabel) ? currentLabel : "";
+          const resolvedCity = inferredCity || typedCity;
           applyViewerLocationSelection({
             lat: coords.lat,
             lng: coords.lng,
-            label: currentLabel || gateCopy.currentLocationLabel,
-            city: currentLabel || "",
+            label: resolvedCity || gateCopy.currentLocationLabel,
+            city: resolvedCity,
             countryCode: resolveCountryCodeFromCoords(coords),
             source: "gps"
           });
+          if (!inferredCity) void refineViewerLocationCityFromCoords(coords);
         });
       },
       (error) => {
@@ -2463,7 +2537,7 @@ export function createFeedViewOrchestrationController({
           <div class="feed-gate-social-card__media">
             <img
               src="https://i.postimg.cc/pXYTM3Hp/IMG-5082.jpg"
-              alt="${escapeHtmlFn(String(socialCopy?.cardImageAlt || "Feed and stories"))}"
+              alt="${escapeHtmlFn(String(socialCopy?.cardImageAlt || "Feed dhe stories"))}"
               loading="lazy"
               fetchpriority="low"
               decoding="async"
@@ -3165,7 +3239,7 @@ export function createFeedViewOrchestrationController({
     return `
       <div data-spot-story-track class="flex overflow-x-auto gap-2.5 pb-8 pt-2 snap-x snap-mandatory no-scrollbar scroll-pl-5" style="${buildTrackRowViewportStyle()}">
         ${renderSpotStoryIntroCard()}
-        ${cards || `<div class="flex items-center text-slate-400 text-xs font-bold uppercase px-2">Keine Spots vorhanden</div>`}
+        ${cards || `<div class="flex items-center text-slate-400 text-xs font-bold uppercase px-2">Nuk ka spote</div>`}
         <div class="flex-none w-1" aria-hidden="true"></div>
       </div>
     `;
@@ -3223,7 +3297,7 @@ export function createFeedViewOrchestrationController({
       ) || "").trim()
       : "";
     const heroMediaHtml = heroStoryUrl
-      ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Stories von ${escapeHtmlFn(post.business)} ansehen" class="block w-full h-full">${heroInner}</a>`
+      ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Shiko stories nga ${escapeHtmlFn(post.business)}" class="block w-full h-full">${heroInner}</a>`
       : heroInner;
     return `
     <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
@@ -3271,7 +3345,7 @@ export function createFeedViewOrchestrationController({
 
   function renderFeedList(feedPosts) {
     if (!feedPosts.length) {
-      return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>`;
+      return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Nuk ka postime</div>`;
     }
     return feedPosts.slice(0, 10).map((post, index) => renderFeedItem(post, index)).join("");
   }
@@ -3867,23 +3941,37 @@ export function createFeedViewOrchestrationController({
         return;
       }
       if (event.key !== "Enter") return;
-      const suggestion = getFeedLocationCitySuggestions(cityInput.value, 1)[0];
-      if (!suggestion) return;
       event.preventDefault();
-      cityInput.value = suggestion.label;
-      hideFeedLocationSuggestions();
-      const applied = applyViewerLocationSelection({
-        lat: suggestion.lat,
-        lng: suggestion.lng,
-        label: suggestion.label,
-        city: suggestion.city || suggestion.label,
-        country: suggestion.country,
-        countryCode: suggestion.countryCode,
-        source: "city-search"
-      });
-      if (!applied) {
-        requestViewerLocationAccess({ fallbackCity: suggestion });
-      }
+      const query = String(cityInput.value || "").trim();
+      if (!query) return;
+      const applySuggestion = (suggestion) => {
+        if (!suggestion) return false;
+        cityInput.value = suggestion.label;
+        hideFeedLocationSuggestions();
+        const applied = applyViewerLocationSelection({
+          lat: suggestion.lat,
+          lng: suggestion.lng,
+          label: suggestion.label,
+          city: suggestion.city || suggestion.label,
+          country: suggestion.country,
+          countryCode: suggestion.countryCode,
+          source: "city-search"
+        });
+        if (!applied) {
+          requestViewerLocationAccess({ fallbackCity: suggestion });
+        }
+        return true;
+      };
+      if (applySuggestion(getFeedLocationCitySuggestions(query, 1)[0])) return;
+      // Enter darf nie ins Leere laufen: sind die Vorschlaege noch nicht
+      // geladen, sofort remote suchen und das beste Ergebnis uebernehmen.
+      void (async () => {
+        await requestRemoteFeedLocationSuggestions(query);
+        const liveQuery = String(cityInput.value || "").trim();
+        if (normalizeLocationQuery(liveQuery) !== normalizeLocationQuery(query)) return;
+        if (applySuggestion(getFeedLocationCitySuggestions(query, 1)[0])) return;
+        syncFeedLocationSuggestionsDom(liveQuery, { skipRemoteFetch: true });
+      })();
     });
 
     doc.addEventListener("click", (event) => {
@@ -4017,11 +4105,11 @@ export function createFeedViewOrchestrationController({
             .catch(async (err) => {
               if (String(err?.name || "").trim() === "AbortError") return;
               const copied = await copyTextToClipboard(url);
-              setShareButtonFeedback(shareBtn, copied ? "Kopiert" : "Link");
+              setShareButtonFeedback(shareBtn, copied ? "U kopjua" : "Link");
             });
         } else {
           void copyTextToClipboard(url).then((copied) => {
-            setShareButtonFeedback(shareBtn, copied ? "Kopiert" : "Link");
+            setShareButtonFeedback(shareBtn, copied ? "U kopjua" : "Link");
           });
         }
         return;
@@ -4031,7 +4119,7 @@ export function createFeedViewOrchestrationController({
         const tab = navBtn.dataset.nav;
         if (tab) {
           if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
-            openGuestAuthPromptFn("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+            openGuestAuthPromptFn("Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat.");
             return;
           }
           const uploadPatch = tab === "upload"

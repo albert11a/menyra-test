@@ -1031,7 +1031,7 @@ export function createSelfProfileRuntimeController({
         : null);
 
     const statusEl = docObj.getElementById("settingsStatus");
-    if (statusEl) statusEl.textContent = "Speichere Profil...";
+    if (statusEl) statusEl.textContent = "Profili po ruhet...";
 
     try {
       const isBusiness = isLocalBusinessProfile(state.userProfile);
@@ -1139,7 +1139,7 @@ export function createSelfProfileRuntimeController({
       saveUserProfileToStorage();
       attachCurrentUserProfileListener();
 
-      if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
+      if (statusEl) statusEl.textContent = "U ruajt me sukses!";
       if (win && typeof win.setTimeout === "function") {
         win.setTimeout(() => {
           if (statusEl) statusEl.textContent = "";
@@ -1147,7 +1147,7 @@ export function createSelfProfileRuntimeController({
       }
     } catch (err) {
       console.error(err);
-      if (statusEl) statusEl.textContent = "Fehler beim Speichern.";
+      if (statusEl) statusEl.textContent = "Gabim gjate ruajtjes.";
     }
   }
 
