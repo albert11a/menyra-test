@@ -826,6 +826,7 @@ img {
   overflow: hidden;
   aspect-ratio: 16 / 9;
   background: #f1f5f9;
+  flex: 0 0 auto;
 }
 
 .ll-focus__media img {
@@ -912,6 +913,9 @@ img {
   overflow: hidden;
   background: #f1f5f9;
   margin-bottom: 12px;
+  /* Nie stauchen: In einer Flex-Spalte wuerde das Bild sonst platt gedrueckt,
+     sobald die Karte weniger Hoehe bekommt - und das Foto wird beschnitten. */
+  flex: 0 0 auto;
 }
 
 .ll-menu-card__media img {
@@ -946,7 +950,7 @@ img {
   margin: 0 0 4px;
   font-size: 14px;
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.25;
   color: #0f172a;
 }
 
@@ -980,6 +984,135 @@ img {
   display: grid;
   place-items: center;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* ---------- Speisen-Karte 1:1 aus renderTestfirstFoodCard ----------
+   Speisen liegen in der echten App nicht in Kacheln, sondern untereinander
+   ueber die volle Breite - 16:9-Bild, darunter Name, Preis, Text und der
+   Shto-Knopf. */
+
+.ll-food-list {
+  display: block;
+}
+
+.ll-food-card {
+  display: block;
+  background: #fff;
+  padding: 14px;
+  border: 1px solid #f1f5f9;
+  border-radius: 2.2rem;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+  margin-bottom: 20px;
+}
+
+.ll-food-card:last-child {
+  margin-bottom: 0;
+}
+
+/* Karten, fuer die unter den Tabs kein voller Platz ist, werden von
+   fitMenuLists ausgeblendet - lieber eine weniger als eine angeschnittene. */
+.ll-food-card[hidden] {
+  display: none;
+}
+
+.ll-food-card__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 1.8rem;
+  overflow: hidden;
+  background: #f1f5f9;
+  margin-bottom: 16px;
+  flex: 0 0 auto;
+}
+
+.ll-food-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-food-card__like {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.9);
+  color: #cbd5e1;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--ll-shadow-sm);
+}
+
+.ll-food-card__body {
+  padding: 0 8px;
+}
+
+.ll-food-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.ll-food-card__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.375;
+  color: #0f172a;
+}
+
+.ll-food-card__price {
+  font-size: 17px;
+  font-weight: 900;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.ll-food-card__desc {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.625;
+  color: #64748b;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ll-food-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid #f8fafc;
+  padding: 16px 0 4px;
+}
+
+.ll-food-card__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 1rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.ll-food-card__addicon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
 }
 
 /* ---------- Speisen-Modal-Nachbildung ---------- */
@@ -1670,9 +1803,11 @@ img {
 }
 
 /* ---------- Kompakt fuer niedrige Bildschirme ----------
-   Die Szene eines Kapitels muss immer vollstaendig ins Bild passen, sonst
-   wuerde sie oben oder unten beschnitten (der Pin hat overflow: hidden).
-   Geprueft gegen 360x640. */
+   Nur der Erklaertext wird auf kurzen Bildschirmen kleiner. Die Szene selbst
+   bleibt unangetastet: Sie zeigt das echte Profil in echter Groesse und
+   faehrt bei Bedarf zu der Stelle, die gerade erklaert wird (siehe
+   panSceneToFocus). Frueher wurden hier Karten, Tabs und Bilder gestaucht -
+   dabei wurden die Produktfotos platt gedrueckt und abgeschnitten. */
 @media (max-height: 740px) {
   .ll-stage__caption {
     margin-bottom: 10px;
@@ -1689,106 +1824,6 @@ img {
 
   .ll-stage__step-body {
     font-size: 12.5px;
-  }
-
-  .ll-menu-card__media {
-    height: 72px;
-  }
-
-  .ll-menu-card__media img {
-    max-height: 72px;
-  }
-
-
-  .ll-dish__head {
-    padding: 10px 20px 8px;
-  }
-
-  .ll-dish__price {
-    padding: 10px 16px;
-  }
-
-  .ll-pillrow {
-    margin: 10px 20px;
-  }
-
-  .ll-dish__info {
-    margin: 0 20px 10px;
-    padding: 10px 16px;
-    min-height: 36px;
-  }
-
-  .ll-cross__media {
-    height: 40px;
-  }
-
-  .ll-cross__media img {
-    max-height: 40px;
-  }
-
-  .ll-crossrow {
-    padding: 0 20px 10px;
-  }
-
-  .ll-dish__foot {
-    padding: 8px 20px 12px;
-  }
-
-  .ll-dish__title {
-    font-size: 17px;
-  }
-
-  .ll-pill {
-    padding: 10px 4px;
-    font-size: 10px;
-  }
-
-  .ll-dish__crosshead {
-    margin: 0 20px 8px;
-  }
-
-  .ll-dish__crosstitle {
-    font-size: 14px;
-  }
-
-  .ll-cross {
-    padding: 6px;
-  }
-
-  .ll-focus__media {
-    aspect-ratio: 16 / 9;
-  }
-
-  .ll-focus {
-    padding: 9px;
-  }
-
-  .ll-focus__title {
-    margin: 10px 4px 4px;
-    font-size: 15px;
-  }
-
-  .ll-focus__body {
-    font-size: 12px;
-  }
-
-  .ll-tab {
-    padding: 11px 0;
-  }
-
-  .ll-menu-card {
-    padding: 11px;
-  }
-
-  .ll-dish__cart,
-  .ll-dish__wolt,
-  .ll-btn-ghost {
-    height: 48px;
-  }
-
-  .ll-btn-ghost {
-    width: 48px;
-    flex: 0 0 48px;
   }
 }
 

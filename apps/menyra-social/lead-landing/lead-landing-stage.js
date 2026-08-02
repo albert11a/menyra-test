@@ -91,6 +91,39 @@ function fitStageCaption(stage) {
   if (tallest > 0) caption.style.height = `${Math.ceil(tallest)}px`;
 }
 
+// Die Speisenkarten der echten App laufen ueber die volle Breite und sind
+// dadurch hoch. Verkleinert werden duerfen sie nicht (sie sollen 1:1 wie im
+// echten Menue aussehen), abgeschnitten werden duerfen sie auch nicht.
+// Deshalb wird gemessen, wie viele unter den Tabs vollstaendig Platz haben -
+// der Rest wird gar nicht erst gezeigt. Auf einem grossen Bildschirm sind
+// das zwei Karten, auf einem kleinen eine.
+function fitMenuLists(stage) {
+  const viewport = stage.querySelector(".ll-stage__viewport");
+  const scene = stage.querySelector(".ll-stage__scene");
+  const lists = Array.from(stage.querySelectorAll(".ll-food-list"));
+  if (!viewport || !scene || !lists.length) return;
+
+  const tabsEl = scene.querySelector(".ll-surface__tabs");
+  if (!tabsEl) return;
+  // panSceneToFocus setzt die Tabs bei Menue-Schritten auf 10px unter die
+  // Oberkante. Von dort bis zur Unterkante bleibt der Platz fuer die Karten.
+  const tabsTop = tabsEl.getBoundingClientRect().top;
+
+  lists.forEach((list) => {
+    const cards = Array.from(list.children);
+    cards.forEach((card) => card.removeAttribute("hidden"));
+    if (cards.length < 2) return;
+
+    const offset = list.getBoundingClientRect().top - tabsTop + 10;
+    const available = viewport.clientHeight - offset;
+    cards.forEach((card, index) => {
+      if (index === 0) return;
+      const bottom = card.getBoundingClientRect().bottom - list.getBoundingClientRect().top;
+      if (bottom > available) card.setAttribute("hidden", "");
+    });
+  });
+}
+
 // Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
 // Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
 // Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
@@ -182,6 +215,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   const fitAll = () => {
     stages.forEach((stage) => {
       fitStageCaption(stage);
+      fitMenuLists(stage);
       panSceneToFocus(stage);
     });
   };

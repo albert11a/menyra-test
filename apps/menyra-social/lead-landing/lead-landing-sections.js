@@ -289,7 +289,9 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       `).join("")}</div>`
     : "";
 
-  const menuCard = (item) => `
+  // Getraenke: 1:1 aus renderTestfirstDrinkGridCard - zwei Spalten,
+  // quadratisches Bild, Herz oben rechts, unten Preis und Plus.
+  const drinkCard = (item) => `
         <article class="ll-menu-card">
           <div class="ll-menu-card__media">
             ${img(item.imageUrl, item.name)}
@@ -297,7 +299,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
           </div>
           <div class="ll-menu-card__body">
             <h4 class="ll-menu-card__name">${esc(item.name)}</h4>
-            ${item.description ? `<p class="ll-menu-card__desc">${esc(item.description)}</p>` : ""}
+            <p class="ll-menu-card__desc">${esc(item.description)}</p>
             <div class="ll-menu-card__foot">
               <span class="ll-menu-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
               <span class="ll-menu-card__add">${icon("plus", { size: 16 })}</span>
@@ -306,21 +308,54 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
         </article>
   `;
 
-  // Getraenke und Speisen werden nacheinander gezeigt. Die Einteilung folgt
-  // menuSection wie in der App; fehlt sie, entscheidet die Kategorie.
-  const isDrink = (item) => {
-    if (item.menuSection === "drink") return true;
-    if (item.menuSection === "food") return false;
-    return /pije|drink|getr|beverage|kafe|coffee|cocktail|koktej|birr|vere|wine/i.test(item.category);
-  };
-  const drinkItems = menuItems.filter(isDrink).slice(0, 2);
-  const foodItems = menuItems.filter((item) => !isDrink(item)).slice(0, 2);
+  // Speisen: 1:1 aus renderTestfirstFoodCard - keine Kacheln, sondern eine
+  // Karte ueber die volle Breite mit 16:9-Bild und Shto-Knopf.
+  const foodCard = (item) => `
+        <article class="ll-food-card">
+          <div class="ll-food-card__media">
+            ${img(item.imageUrl, item.name)}
+            <span class="ll-food-card__like">${filledIcon("heart", { size: 16, color: "currentColor" })}</span>
+          </div>
+          <div class="ll-food-card__body">
+            <div class="ll-food-card__head">
+              <h4 class="ll-food-card__name">${esc(item.name)}</h4>
+              <span class="ll-food-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
+            </div>
+            <p class="ll-food-card__desc">${esc(item.description)}</p>
+            <div class="ll-food-card__foot">
+              <span class="ll-food-card__add">
+                <span>Shto</span>
+                <span class="ll-food-card__addicon">${icon("plus", { size: 16 })}</span>
+              </span>
+            </div>
+          </div>
+        </article>
+  `;
+
+  // Getraenke und Speisen werden nacheinander gezeigt. Die Einteilung in
+  // Pije/Ushqim kommt aus resolveMenuDisplaySection - genau wie in der App.
+  // Artikel, die als Fokus gepflegt sind, tauchen im Menue selbst nicht auf.
+  const contentItems = menuItems.filter((item) => item.cardStyle !== "testfirst_focus");
+  const shownItems = contentItems.length ? contentItems : menuItems;
+  const drinkItems = shownItems.filter((item) => item.section === "drink").slice(0, 2);
+  const foodItems = shownItems.filter((item) => item.section !== "drink").slice(0, 2);
   const emptyNote = `<div class="ll-card ll-card--pad" style="text-align:center;">
       <p class="ll-callout__body">Menuja vendoset një herë - dhe është e gjallë në çdo tavolinë.</p>
     </div>`;
-  const menuGridOf = (list) => (list.length
-    ? `<div class="ll-menu-grid">${list.map(menuCard).join("")}</div>`
-    : emptyNote);
+
+  // Welche Karte gezeichnet wird, entscheidet der Artikel selbst (cardStyle),
+  // nicht die Rubrik. Wer seine Speisen als Getraenkekachel gepflegt hat,
+  // sieht hier dieselbe Kachel wie im echten Menue.
+  const usesFoodCard = (item) => item.cardStyle === "testfirst_food";
+  const listOf = (list) => {
+    if (!list.length) return emptyNote;
+    const gridItems = list.filter((item) => !usesFoodCard(item));
+    const stackedItems = list.filter(usesFoodCard);
+    return [
+      gridItems.length ? `<div class="ll-menu-grid">${gridItems.map(drinkCard).join("")}</div>` : "",
+      stackedItems.length ? `<div class="ll-food-list">${stackedItems.map(foodCard).join("")}</div>` : ""
+    ].filter(Boolean).join("");
+  };
 
   const categories = Array.from(new Set(menuItems.map((item) => text(item.category)).filter(Boolean))).slice(0, 5);
 
@@ -398,8 +433,8 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
           <div class="ll-surface__posts"><div data-spot="grid">${postGrid}</div></div>
           <div class="ll-surface__menu">
             <div class="ll-menu-part ll-menu-part--focus"><div data-spot="mfocus">${focusRow || emptyNote}</div></div>
-            <div class="ll-menu-part ll-menu-part--drinks"><div data-spot="mdrinks">${menuGridOf(drinkItems)}</div></div>
-            <div class="ll-menu-part ll-menu-part--food"><div data-spot="mfood">${menuGridOf(foodItems)}</div></div>
+            <div class="ll-menu-part ll-menu-part--drinks"><div data-spot="mdrinks">${listOf(drinkItems)}</div></div>
+            <div class="ll-menu-part ll-menu-part--food"><div data-spot="mfood">${listOf(foodItems)}</div></div>
           </div>
         </div>
       </div>

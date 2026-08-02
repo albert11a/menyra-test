@@ -176,6 +176,36 @@ function resolveMenuImages(raw = {}) {
     .filter(Boolean);
 }
 
+// 1:1 aus core/menu/menu-input-utils.js (normalizeMenuTypeCore).
+function normalizeMenuType(value) {
+  const type = text(value).toLowerCase();
+  if (type === "drink" || type === "drinks" || type === "beverage" || type === "getraenke" || type === "getränke") {
+    return "drink";
+  }
+  return "food";
+}
+
+// 1:1 aus core/menu/menu-card-style-utils.js (normalizeMenuCardStyleCore).
+// Die Kartenform steht am Artikel selbst, nicht an Speise/Getraenk: Wer
+// seine Speisen als Getraenkekachel pflegt, bekommt genau diese Kachel.
+function normalizeMenuCardStyle(value = "", fallbackType = "food") {
+  const normalizedType = normalizeMenuType(fallbackType);
+  const raw = text(value).toLowerCase().replace(/[\s-]+/g, "_");
+  if (raw === "testfirst_focus" || raw === "focus") return "testfirst_focus";
+  if (raw === "testfirst_special" || raw === "special") return "testfirst_special";
+  if (raw === "testfirst_drink" || raw === "drink") return "testfirst_drink";
+  if (raw === "testfirst_food" || raw === "food") return "testfirst_food";
+  return normalizedType === "drink" ? "testfirst_drink" : "testfirst_food";
+}
+
+// 1:1 aus resolveMenuDisplaySection im Profil-Renderer.
+function resolveMenuDisplaySection(raw = {}) {
+  const section = text(raw.menuSection || raw.displaySection || raw.menuPlacement).toLowerCase();
+  if (section === "drink") return "drink";
+  if (section === "food") return "food";
+  return normalizeMenuType(raw.type) === "drink" ? "drink" : "food";
+}
+
 function normalizeMenuItem(raw = {}) {
   const images = resolveMenuImages(raw);
 
@@ -184,10 +214,16 @@ function normalizeMenuItem(raw = {}) {
     .map((entry) => text(entry))
     .filter(Boolean);
 
+  const type = normalizeMenuType(raw.type);
+  const menuVisibility = text(raw.menuVisibility).toLowerCase();
+
   return {
     id: text(raw.id),
     category: firstText(raw.category, "Sonstiges"),
-    menuSection: text(raw.menuSection || raw.displaySection || raw.menuPlacement).toLowerCase(),
+    section: resolveMenuDisplaySection(raw),
+    type,
+    // Entscheidet, welche Karte gezeichnet wird - genau wie in der App.
+    cardStyle: normalizeMenuCardStyle(raw.cardStyle, type),
     name: firstText(raw.name, raw.title, "Produkt"),
     description: firstText(raw.description, raw.desc),
     ingredients: firstText(raw.ingredients, raw.ingredient, raw.inhaltsstoffe),
@@ -197,7 +233,8 @@ function normalizeMenuItem(raw = {}) {
     woltUrl: firstText(raw.woltUrl, raw.wolt),
     crossSellItemIds,
     orderIndex: num(raw.orderIndex),
-    hidden: raw.hidden === true || raw.statusHidden === true,
+    // Wie isMenuItemHidden in der App - nicht "hidden", sondern menuHidden.
+    hidden: raw.menuHidden === true || menuVisibility === "hidden",
     available: raw.available !== false
   };
 }
