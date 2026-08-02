@@ -1,26 +1,19 @@
-// Read-only Datenzugriff der Lead-Landing.
+// Read-only Datenzugriff der Lead-Landing - ueber die Firestore-REST-API.
 //
-// WICHTIG: Dieses Modul liest ausschliesslich. Es gibt hier bewusst kein
-// setDoc/updateDoc/addDoc und keinen Import aus der Social-App. Die Landing
-// zeigt echte Profildaten, kann sie aber strukturell nicht veraendern - die
-// Firestore-Rules erlauben Schreibzugriff auf restaurants/** ohnehin nur
+// Kein Firebase-SDK, kein Import aus /shared/, kein Import aus core/.
+// Die Landing teilt dadurch weder Code noch Firebase-Instanz noch
+// IndexedDB-Persistenz mit der echten App und kann sie nicht beeinflussen.
+//
+// Es gibt hier ausschliesslich GET/runQuery. Geschrieben wird nichts - und
+// die Firestore-Rules erlauben Schreibzugriff auf restaurants/** ohnehin nur
 // Inhaber und CEO.
 
-import { db } from "/shared/firebase-config.js";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where
-} from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
+import { LEAD_LANDING_API_KEY, LEAD_LANDING_FIRESTORE_BASE } from "./lead-landing-config.js";
 import { firstText, num, text } from "./lead-landing-format.js";
 
 const POSTS_LIMIT = 12;
 const MENU_LIMIT = 120;
+const REQUEST_TIMEOUT_MS = 9000;
 
 function slugify(value = "") {
   let slug = text(value).toLowerCase();
@@ -34,94 +27,135 @@ function slugify(value = "") {
     .slice(0, 72);
 }
 
-function snapData(snapshot) {
-  if (!snapshot) return null;
-  const exists = typeof snapshot.exists === "function" ? snapshot.exists() : snapshot.exists;
-  if (!exists) return null;
-  const data = typeof snapshot.data === "function" ? snapshot.data() : snapshot.data;
-  return data && typeof data === "object" ? data : null;
+async function requestJson(url, init = null) {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => {
+      try { controller.abort(); } catch {}
+    }, REQUEST_TIMEOUT_MS)
+    : null;
+  try {
+    const response = await fetch(url, {
+      ...(init || {}),
+      signal: controller ? controller.signal : undefined
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
-// Slug -> restaurantId. Drei Wege, damit sowohl /oferta/<slug> als auch
-// /oferta/<restaurantId> funktionieren.
+function docUrl(path = "") {
+  return `${LEAD_LANDING_FIRESTORE_BASE}/${path}?key=${encodeURIComponent(LEAD_LANDING_API_KEY)}`;
+}
+
+function listUrl(path = "", pageSize = 50) {
+  return `${LEAD_LANDING_FIRESTORE_BASE}/${path}?key=${encodeURIComponent(LEAD_LANDING_API_KEY)}&pageSize=${pageSize}`;
+}
+
+// Firestore-REST liefert getypte Werte ({stringValue}, {integerValue}, ...).
+// Diese Funktion macht daraus normales JavaScript.
+function decodeValue(value) {
+  if (!value || typeof value !== "object") return null;
+  if ("stringValue" in value) return value.stringValue;
+  if ("integerValue" in value) return Number(value.integerValue);
+  if ("doubleValue" in value) return Number(value.doubleValue);
+  if ("booleanValue" in value) return !!value.booleanValue;
+  if ("nullValue" in value) return null;
+  if ("timestampValue" in value) return value.timestampValue;
+  if ("arrayValue" in value) {
+    const list = Array.isArray(value.arrayValue?.values) ? value.arrayValue.values : [];
+    return list.map(decodeValue);
+  }
+  if ("mapValue" in value) return decodeFields(value.mapValue?.fields);
+  if ("geoPointValue" in value) {
+    return {
+      lat: Number(value.geoPointValue?.latitude),
+      lng: Number(value.geoPointValue?.longitude)
+    };
+  }
+  if ("referenceValue" in value) return value.referenceValue;
+  return null;
+}
+
+function decodeFields(fields) {
+  if (!fields || typeof fields !== "object") return {};
+  const out = {};
+  Object.keys(fields).forEach((key) => {
+    out[key] = decodeValue(fields[key]);
+  });
+  return out;
+}
+
+function docIdFromName(name = "") {
+  const parts = String(name || "").split("/");
+  return parts[parts.length - 1] || "";
+}
+
+async function readDoc(path = "") {
+  const json = await requestJson(docUrl(path));
+  if (!json || json.error) return null;
+  return decodeFields(json.fields);
+}
+
+async function readCollection(path = "", pageSize = 50) {
+  const json = await requestJson(listUrl(path, pageSize));
+  if (!json || json.error || !Array.isArray(json.documents)) return [];
+  return json.documents.map((entry) => ({
+    id: docIdFromName(entry?.name),
+    ...decodeFields(entry?.fields)
+  }));
+}
+
+// Slug -> restaurantId. Erst der Routen-Index, dann die Doc-ID direkt,
+// zuletzt eine Feldsuche.
 async function resolveRestaurantId(rawKey = "") {
   const key = text(rawKey);
   if (!key) return "";
 
   const slug = slugify(key);
+
   if (slug) {
-    try {
-      const routeData = snapData(await getDoc(doc(db, "publicRoutes", slug)));
-      const routeRestaurantId = firstText(routeData?.restaurantId, routeData?.canonicalRestaurantId);
-      if (routeRestaurantId) return routeRestaurantId;
-    } catch {}
+    const routeDoc = await readDoc(`publicRoutes/${encodeURIComponent(slug)}`);
+    const routeRestaurantId = firstText(routeDoc?.restaurantId, routeDoc?.canonicalRestaurantId);
+    if (routeRestaurantId) return routeRestaurantId;
   }
 
-  try {
-    const direct = snapData(await getDoc(doc(db, "restaurants", key)));
-    if (direct) return key;
-  } catch {}
+  const direct = await readDoc(`restaurants/${encodeURIComponent(key)}`);
+  if (direct) return key;
+
+  if (!slug) return "";
 
   for (const field of ["publicSlug", "landingSlug"]) {
-    if (!slug) break;
-    try {
-      const snapshot = await getDocs(query(collection(db, "restaurants"), where(field, "==", slug), limit(1)));
-      const first = snapshot.docs?.[0];
-      if (first?.id) return first.id;
-    } catch {}
+    const json = await requestJson(
+      `${LEAD_LANDING_FIRESTORE_BASE}:runQuery?key=${encodeURIComponent(LEAD_LANDING_API_KEY)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: "restaurants" }],
+            where: {
+              fieldFilter: {
+                field: { fieldPath: field },
+                op: "EQUAL",
+                value: { stringValue: slug }
+              }
+            },
+            limit: 1
+          }
+        })
+      }
+    );
+    const row = Array.isArray(json) ? json.find((entry) => entry?.document) : null;
+    const foundId = docIdFromName(row?.document?.name);
+    if (foundId) return foundId;
   }
 
   return "";
-}
-
-async function readRestaurant(restaurantId = "") {
-  try {
-    return snapData(await getDoc(doc(db, "restaurants", restaurantId))) || {};
-  } catch {
-    return {};
-  }
-}
-
-async function readPublicDoc(restaurantId = "", docId = "") {
-  try {
-    return snapData(await getDoc(doc(db, "restaurants", restaurantId, "public", docId))) || {};
-  } catch {
-    return {};
-  }
-}
-
-async function readPosts(restaurantId = "") {
-  try {
-    const snapshot = await getDocs(query(
-      collection(db, "restaurants", restaurantId, "socialPosts"),
-      orderBy("createdAt", "desc"),
-      limit(POSTS_LIMIT)
-    ));
-    return snapshot.docs.map((entry) => ({ id: entry.id, ...(entry.data() || {}) }));
-  } catch {
-    // Ohne createdAt-Index/Feld faellt die Query aus - dann ungeordnet lesen.
-    try {
-      const snapshot = await getDocs(query(
-        collection(db, "restaurants", restaurantId, "socialPosts"),
-        limit(POSTS_LIMIT)
-      ));
-      return snapshot.docs.map((entry) => ({ id: entry.id, ...(entry.data() || {}) }));
-    } catch {
-      return [];
-    }
-  }
-}
-
-async function readMenuItems(restaurantId = "") {
-  try {
-    const snapshot = await getDocs(query(
-      collection(db, "restaurants", restaurantId, "menuItems"),
-      limit(MENU_LIMIT)
-    ));
-    return snapshot.docs.map((entry) => ({ id: entry.id, ...(entry.data() || {}) }));
-  } catch {
-    return [];
-  }
 }
 
 function normalizeMenuItem(raw = {}) {
@@ -168,7 +202,8 @@ function normalizePost(raw = {}) {
     imageUrl: images[0] || "",
     caption: firstText(raw.caption, raw.text, raw.description),
     likeCount: num(raw.likeCount ?? raw.likes) || 0,
-    commentCount: num(raw.commentCount ?? raw.comments) || 0
+    commentCount: num(raw.commentCount ?? raw.comments) || 0,
+    createdAt: text(raw.createdAt)
   };
 }
 
@@ -206,7 +241,7 @@ function normalizeLocations(restaurant = {}) {
   return [];
 }
 
-// Die im Lead/CRM gepflegten Verkaufs-Inhalte (QR-Fotos, Pakete, Notiz).
+// Im Lead/CRM gepflegte Verkaufs-Inhalte (QR-Fotos, Pakete, Kontakt).
 function normalizeSalesConfig(source = {}) {
   const raw = source && typeof source === "object" ? source : {};
   const photos = []
@@ -243,21 +278,22 @@ export async function loadLeadLandingData(routeKey = "") {
     return { ok: false, reason: "not-found", restaurantId: "" };
   }
 
+  const encodedId = encodeURIComponent(restaurantId);
   const [restaurant, meta, ads] = await Promise.all([
-    readRestaurant(restaurantId),
-    readPublicDoc(restaurantId, "meta"),
-    readPublicDoc(restaurantId, "ads")
+    readDoc(`restaurants/${encodedId}`),
+    readDoc(`restaurants/${encodedId}/public/meta`),
+    readDoc(`restaurants/${encodedId}/public/ads`)
   ]);
 
-  const merged = { ...restaurant, ...meta };
-  const hasAnyProfile = !!firstText(merged.name, merged.restaurantName);
-  if (!hasAnyProfile && !Object.keys(restaurant).length) {
+  if (!restaurant && !meta) {
     return { ok: false, reason: "not-found", restaurantId };
   }
 
-  const [posts, menuItemsRaw] = await Promise.all([
-    readPosts(restaurantId),
-    readMenuItems(restaurantId)
+  const merged = { ...(restaurant || {}), ...(meta || {}) };
+
+  const [postsRaw, menuItemsRaw] = await Promise.all([
+    readCollection(`restaurants/${encodedId}/socialPosts`, POSTS_LIMIT),
+    readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT)
   ]);
 
   const menuItems = menuItemsRaw
@@ -269,6 +305,11 @@ export async function loadLeadLandingData(routeKey = "") {
       if (ai !== bi) return ai - bi;
       return a.name.localeCompare(b.name);
     });
+
+  const posts = postsRaw
+    .map(normalizePost)
+    .filter((post) => post.imageUrl)
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
   const salesSource = merged.landingSales && typeof merged.landingSales === "object"
     ? merged.landingSales
@@ -301,9 +342,9 @@ export async function loadLeadLandingData(routeKey = "") {
       businessNameColorPart2: firstText(merged.businessNameColorPart2, merged.landingBusinessNameColorPart2),
       locations: normalizeLocations(merged)
     },
-    posts: posts.map(normalizePost).filter((post) => post.imageUrl),
+    posts,
     menuItems,
-    focusItems: normalizeFocusItems(ads),
+    focusItems: normalizeFocusItems(ads || {}),
     sales: normalizeSalesConfig(salesSource)
   };
 }
