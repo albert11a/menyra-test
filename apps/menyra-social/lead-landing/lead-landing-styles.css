@@ -761,7 +761,7 @@ img {
   border-radius: 1.5rem;
   overflow: hidden;
   background: #e2e8f0;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
 }
 
 .ll-post img {
@@ -1727,31 +1727,16 @@ img {
 /* Solange das Profil erklaert wird, steht die Kartela. Ab dem Tab-Schritt
    faellt sie zusammen und die Tabs ruecken nach oben - genau der Wechsel,
    den der Kunde in der App auch sieht. */
-.ll-surface__cardwrap {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows 620ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.ll-surface__cardwrap > * {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.ll-stage[data-view="tabs"] .ll-surface__cardwrap,
-.ll-stage[data-view="posts"] .ll-surface__cardwrap,
-.ll-stage[data-view="menu"] .ll-surface__cardwrap {
-  grid-template-rows: 0fr;
-}
-
-.ll-stage[data-view="tabs"] .ll-surface__card,
-.ll-stage[data-view="posts"] .ll-surface__card,
-.ll-stage[data-view="menu"] .ll-surface__card,
-.ll-stage[data-view="tabs"] .ll-surface__info,
-.ll-stage[data-view="posts"] .ll-surface__info,
-.ll-stage[data-view="menu"] .ll-surface__info {
+.ll-stage[data-view="tabs"] .ll-surface__cardinner,
+.ll-stage[data-view="posts"] .ll-surface__cardinner,
+.ll-stage[data-view="menu"] .ll-surface__cardinner {
   opacity: 0;
-  transform: translateY(-16px) scale(0.97);
+  transform: translateY(-14px);
+  pointer-events: none;
+}
+
+.ll-surface__cardinner {
+  transition: opacity 480ms ease, transform 560ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .ll-surface__cardinner {
@@ -1786,29 +1771,6 @@ img {
 
 .ll-surface__tabs {
   margin-top: 14px;
-  transition: margin-top 620ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.ll-stage[data-view="tabs"] .ll-surface__tabs,
-.ll-stage[data-view="posts"] .ll-surface__tabs,
-.ll-stage[data-view="menu"] .ll-surface__tabs {
-  margin-top: 0;
-}
-
-.ll-surface__contentwrap {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 620ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.ll-surface__contentwrap > * {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.ll-stage[data-view="posts"] .ll-surface__contentwrap,
-.ll-stage[data-view="menu"] .ll-surface__contentwrap {
-  grid-template-rows: 1fr;
 }
 
 .ll-surface__contentinner {

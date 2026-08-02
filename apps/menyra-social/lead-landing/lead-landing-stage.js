@@ -21,7 +21,7 @@ function readSteps(stage) {
 
 function applyStageState(stage, state) {
   const previous = Number(stage.getAttribute(STATE_ATTR) || -1);
-  if (previous === state) return;
+  if (previous === state) return false;
   stage.setAttribute(STATE_ATTR, String(state));
 
   const captions = Array.from(stage.querySelectorAll(".ll-stage__step"));
@@ -41,7 +41,7 @@ function applyStageState(stage, state) {
   if (!focusKey) {
     stage.removeAttribute("data-focus");
     spots.forEach((spot) => spot.removeAttribute("data-spot-active"));
-    return;
+    return true;
   }
 
   stage.setAttribute("data-focus", focusKey);
@@ -51,6 +51,7 @@ function applyStageState(stage, state) {
     if (keys.includes(focusKey)) spot.setAttribute("data-spot-active", "");
     else spot.removeAttribute("data-spot-active");
   });
+  return true;
 }
 
 function updateStage(stage, viewportHeight) {
@@ -60,12 +61,15 @@ function updateStage(stage, viewportHeight) {
   const progress = clamp(-rect.top / travel, 0, 1);
   // Zustaende: 0 = Gesamtansicht, 1..steps = einzelne Erklaerungen.
   const state = clamp(Math.floor(progress * (steps + 1)), 0, steps);
-  applyStageState(stage, state);
+  const changed = applyStageState(stage, state);
 
   const bar = stage.querySelector(".ll-stage__bar span");
   if (bar) bar.style.width = `${Math.round(progress * 100)}%`;
 
-  panSceneToFocus(stage);
+  // Nur bei echtem Schrittwechsel neu ausrichten. Jeder Frame wuerde sonst
+  // ein Layout erzwingen (getBoundingClientRect direkt vor einem Style-
+  // Schreibzugriff) und das Scrollen ins Stocken bringen.
+  if (changed) panSceneToFocus(stage);
 }
 
 // Die Schritt-Texte liegen absolut uebereinander, tragen also nichts zur
@@ -101,6 +105,22 @@ function panSceneToFocus(stage) {
     const slack = Math.round((viewport.clientHeight - scene.offsetHeight) / 2);
     scene.style.transform = `translateY(${Math.max(0, slack)}px)`;
     return;
+  }
+
+  // Ab dem Tab-Schritt ist die Kartela ausgeblendet. Statt sie aus dem
+  // Layout zu nehmen (das ruckelt, weil jeder Frame neu umbricht), faehrt
+  // die Szene so weit, dass die Tabs oben stehen - die unsichtbare Kartela
+  // liegt dann darueber ausserhalb des Bildes. Der Anker bleibt ueber alle
+  // Tab-Schritte derselbe, dadurch steht das Bild ruhig.
+  const view = String(stage.getAttribute("data-view") || "").trim();
+  if (view === "tabs" || view === "posts" || view === "menu") {
+    const tabs = scene.querySelector(".ll-surface__tabs");
+    if (tabs) {
+      const sceneTop = scene.getBoundingClientRect().top;
+      const tabsTop = tabs.getBoundingClientRect().top - sceneTop;
+      scene.style.transform = `translateY(${-clamp(Math.round(tabsTop - 10), 0, Math.round(tabsTop))}px)`;
+      return;
+    }
   }
 
   const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"));
@@ -165,19 +185,9 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     onScroll();
   };
 
-  // Beim Ansichtswechsel klappt die Kartela zusammen und die Szene wird
-  // niedriger. Waehrend dieser Bewegung waere eine berechnete Fahrt veraltet,
-  // deshalb wird nach dem Ende des Uebergangs neu ausgerichtet.
-  const onTransitionEnd = (event) => {
-    if (event.propertyName !== "grid-template-rows") return;
-    const stage = event.target.closest?.(".ll-stage");
-    if (stage) panSceneToFocus(stage);
-  };
-
   root.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onResize, { passive: true });
   window.addEventListener("orientationchange", onResize, { passive: true });
-  stages.forEach((stage) => stage.addEventListener("transitionend", onTransitionEnd));
 
   fitAll();
   run();
@@ -188,6 +198,5 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     root.removeEventListener("scroll", onScroll);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("orientationchange", onResize);
-    stages.forEach((stage) => stage.removeEventListener("transitionend", onTransitionEnd));
   };
 }
