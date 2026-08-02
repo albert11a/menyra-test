@@ -99,28 +99,35 @@ function panSceneToFocus(stage) {
   const scene = stage.querySelector(".ll-stage__scene");
   if (!viewport || !scene) return;
 
-  const maxOffset = Math.max(0, scene.offsetHeight - viewport.clientHeight);
-  if (maxOffset <= 0) {
-    // Passt die Szene ganz ins Bild, sitzt sie mittig statt oben zu kleben.
-    const slack = Math.round((viewport.clientHeight - scene.offsetHeight) / 2);
-    scene.style.transform = `translateY(${Math.max(0, slack)}px)`;
-    return;
-  }
+  const view = String(stage.getAttribute("data-view") || "").trim();
+  const tabsEl = scene.querySelector(".ll-surface__tabs");
+  const sceneTop = scene.getBoundingClientRect().top;
+  const tabsAnchored = view === "tabs" || view === "posts" || view === "menu";
 
   // Ab dem Tab-Schritt ist die Kartela ausgeblendet. Statt sie aus dem
   // Layout zu nehmen (das ruckelt, weil jeder Frame neu umbricht), faehrt
   // die Szene so weit, dass die Tabs oben stehen - die unsichtbare Kartela
   // liegt dann darueber ausserhalb des Bildes. Der Anker bleibt ueber alle
   // Tab-Schritte derselbe, dadurch steht das Bild ruhig.
-  const view = String(stage.getAttribute("data-view") || "").trim();
-  if (view === "tabs" || view === "posts" || view === "menu") {
-    const tabs = scene.querySelector(".ll-surface__tabs");
-    if (tabs) {
-      const sceneTop = scene.getBoundingClientRect().top;
-      const tabsTop = tabs.getBoundingClientRect().top - sceneTop;
-      scene.style.transform = `translateY(${-clamp(Math.round(tabsTop - 10), 0, Math.round(tabsTop))}px)`;
-      return;
-    }
+  if (tabsEl && tabsAnchored) {
+    const tabsTop = Math.round(tabsEl.getBoundingClientRect().top - sceneTop);
+    scene.style.transform = `translateY(${-Math.max(0, tabsTop - 10)}px)`;
+    return;
+  }
+
+  // Solange Profil oder Info erklaert werden, ist der Inhalt unter den Tabs
+  // noch unsichtbar. Die Szene endet fuer die Fahrt daher an der Unterkante
+  // der Tabs - sonst wuerde darunter eine Leerflaeche ins Bild rutschen.
+  const effectiveHeight = tabsEl
+    ? Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10
+    : scene.offsetHeight;
+
+  const maxOffset = Math.max(0, effectiveHeight - viewport.clientHeight);
+  if (maxOffset <= 0) {
+    // Passt alles ins Bild, sitzt es mittig statt oben zu kleben.
+    const slack = Math.round((viewport.clientHeight - effectiveHeight) / 2);
+    scene.style.transform = `translateY(${Math.max(0, slack)}px)`;
+    return;
   }
 
   const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"));
@@ -134,13 +141,12 @@ function panSceneToFocus(stage) {
   // unverschobene Position innerhalb der Szene. Ein Schritt kann mehrere
   // Teile hervorheben (z. B. Logo und Name) - dann zaehlt die Klammer um
   // alle, nicht nur das erste.
-  const sceneRect = scene.getBoundingClientRect();
   let top = Infinity;
   let bottom = -Infinity;
   active.forEach((node) => {
     const rect = node.getBoundingClientRect();
-    top = Math.min(top, rect.top - sceneRect.top);
-    bottom = Math.max(bottom, rect.bottom - sceneRect.top);
+    top = Math.min(top, rect.top - sceneTop);
+    bottom = Math.max(bottom, rect.bottom - sceneTop);
   });
 
   const centered = top + ((bottom - top) / 2) - (viewport.clientHeight / 2);

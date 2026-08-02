@@ -1773,6 +1773,20 @@ img {
   margin-top: 14px;
 }
 
+.ll-surface__contentwrap {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+.ll-stage[data-view="tabs"] .ll-surface__contentwrap,
+.ll-stage[data-view="posts"] .ll-surface__contentwrap,
+.ll-stage[data-view="menu"] .ll-surface__contentwrap {
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 260ms;
+}
+
 .ll-surface__contentinner {
   position: relative;
   padding-top: 14px;
