@@ -239,6 +239,14 @@ img {
   filter: none;
 }
 
+/* Die Fusszeile des Modals bleibt immer unangetastet. Sie stoesst unten an
+   den Bildschirmrand, und dahinter liegt reines Weiss - abgedunkelt gaebe
+   es dort eine sichtbare Farbkante. */
+.ll-stage[data-focus] .ll-md__foot[data-spot] {
+  opacity: 1;
+  filter: none;
+}
+
 /* Kein filter auf .ll-stage__scene: ein Filter am Elternteil wuerde den
    fokussierten Teil mitzeichnen, Kinder koennen ihn nicht aufheben. Deshalb
    traegt jeder Bestandteil der Szene ein eigenes data-spot. */
@@ -1201,7 +1209,6 @@ img {
 .ll-md__body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 28px;
   background: #fff;
   display: flex;
   flex-direction: column;
@@ -1209,7 +1216,11 @@ img {
 
 /* Die Schnittkante liegt genau dort, wo der Inhalt anfaengt - nicht am
    Rand des Innenabstands. Sonst lugt der vorherige Abschnitt in die 24px
-   ueber dem erklaerten Teil hinein. */
+   ueber dem erklaerten Teil hinein.
+   Seitlich reicht sie dagegen bis an den Bildschirmrand: Ein Weichzeichner
+   traegt ueber die Kante des Elements hinaus, und laege die Schnittkante
+   direkt darauf, wuerde dieser Saum links und rechts glatt abgeschnitten.
+   Der seitliche Abstand haengt deshalb am Inhalt, nicht am Rahmen. */
 .ll-md__clip {
   flex: 1 1 auto;
   min-height: 0;
@@ -1218,6 +1229,7 @@ img {
 }
 
 .ll-md__scroll {
+  padding: 0 28px;
   transition: transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
   will-change: transform;
 }
