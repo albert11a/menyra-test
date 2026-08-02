@@ -210,8 +210,17 @@ function panPane(stage, pane) {
   const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"))
     .filter((node) => pane.contains(node));
 
-  if (!active.length || maxOffset <= 0) {
+  if (maxOffset <= 0) {
     pane.style.transform = "translateY(0px)";
+    return;
+  }
+
+  if (!active.length) {
+    // Der erklaerte Teil liegt ausserhalb des fahrenden Bereichs - das ist
+    // die Fusszeile. Dann bleibt der Inhalt stehen, wo er gerade ist; nur
+    // die Fusszeile tritt hervor. Nichts springt an den Anfang zurueck.
+    // Nur ohne jeden Fokus - in der Gesamtansicht - faehrt er zurueck.
+    if (!stage.hasAttribute("data-focus")) pane.style.transform = "translateY(0px)";
     return;
   }
 
