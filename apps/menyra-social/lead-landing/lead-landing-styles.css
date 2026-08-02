@@ -806,6 +806,7 @@ img {
 
 .ll-focus__media {
   position: relative;
+  width: 100%;
   border-radius: 1.6rem;
   overflow: hidden;
   aspect-ratio: 16 / 10;
@@ -1664,7 +1665,7 @@ img {
   }
 
   .ll-focus__media {
-    max-height: 15svh;
+    aspect-ratio: 16 / 9;
   }
 
   .ll-focus {
@@ -1711,28 +1712,9 @@ img {
   flex-direction: column;
 }
 
-.ll-surface__cardwrap,
-.ll-surface__contentwrap {
-  display: grid;
-  transition: grid-template-rows 620ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.ll-surface__cardwrap > *,
-.ll-surface__contentwrap > * {
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* Kartela sichtbar in profile/info, eingeklappt in posts/menu. */
-.ll-surface__cardwrap {
-  grid-template-rows: 1fr;
-}
-
-.ll-stage[data-view="posts"] .ll-surface__cardwrap,
-.ll-stage[data-view="menu"] .ll-surface__cardwrap {
-  grid-template-rows: 0fr;
-}
-
+/* Das komplette Profil steht von Anfang an: Kartela, Tabs und der Inhalt
+   darunter. Nichts klappt weg, nichts erscheint stueckweise - der Fokus
+   wandert nur, und die Szene faehrt zu der Stelle, die erklaert wird. */
 .ll-surface__cardinner {
   position: relative;
 }
@@ -1763,38 +1745,19 @@ img {
   pointer-events: auto;
 }
 
-/* Kartela weicht nach oben, bevor sie zusammenfaellt. */
-.ll-stage[data-view="posts"] .ll-surface__card,
-.ll-stage[data-view="menu"] .ll-surface__card,
-.ll-stage[data-view="posts"] .ll-surface__info,
-.ll-stage[data-view="menu"] .ll-surface__info {
-  opacity: 0;
-  transform: translateY(-18px) scale(0.96);
-}
-
 .ll-surface__tabs {
   margin-top: 14px;
-  transition: margin-top 620ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.ll-stage[data-view="posts"] .ll-surface__tabs,
-.ll-stage[data-view="menu"] .ll-surface__tabs {
-  margin-top: 0;
-}
-
-/* Inhalt unter den Tabs: erst leer, dann Postimet, dann Menu. */
-.ll-surface__contentwrap {
-  grid-template-rows: 0fr;
-}
-
-.ll-stage[data-view="posts"] .ll-surface__contentwrap,
-.ll-stage[data-view="menu"] .ll-surface__contentwrap {
-  grid-template-rows: 1fr;
 }
 
 .ll-surface__contentinner {
   position: relative;
   padding-top: 14px;
+  display: grid;
+}
+
+.ll-surface__posts,
+.ll-surface__menu {
+  grid-area: 1 / 1;
 }
 
 .ll-surface__posts,
@@ -1802,19 +1765,7 @@ img {
   transition: opacity 420ms ease, transform 480ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.ll-surface__menu {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 14px;
-}
-
 .ll-surface__posts {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.ll-stage[data-view="posts"] .ll-surface__posts {
   opacity: 1;
   transform: translateY(0);
 }
