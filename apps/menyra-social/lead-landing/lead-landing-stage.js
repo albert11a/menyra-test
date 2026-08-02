@@ -201,9 +201,15 @@ function fitPaneTravel(stage) {
   pane.style.paddingBottom = `${Math.max(0, Math.round(lastTop + visible - natural))}px`;
 }
 
+// Gibt zurueck, wie weit der Bereich gefahren ist.
+function readPaneOffset(pane) {
+  const match = /translateY\(\s*(-?[\d.]+)px\s*\)/.exec(pane.style.transform || "");
+  return match ? Math.abs(Number(match[1])) : 0;
+}
+
 function panPane(stage, pane) {
   const frame = pane.parentElement;
-  if (!frame) return;
+  if (!frame) return 0;
 
   const visible = paneViewportHeight(frame);
   const maxOffset = Math.max(0, pane.offsetHeight - visible);
@@ -212,7 +218,7 @@ function panPane(stage, pane) {
 
   if (maxOffset <= 0) {
     pane.style.transform = "translateY(0px)";
-    return;
+    return 0;
   }
 
   if (!active.length) {
@@ -220,8 +226,9 @@ function panPane(stage, pane) {
     // die Fusszeile. Dann bleibt der Inhalt stehen, wo er gerade ist; nur
     // die Fusszeile tritt hervor. Nichts springt an den Anfang zurueck.
     // Nur ohne jeden Fokus - in der Gesamtansicht - faehrt er zurueck.
-    if (!stage.hasAttribute("data-focus")) pane.style.transform = "translateY(0px)";
-    return;
+    if (stage.hasAttribute("data-focus")) return readPaneOffset(pane);
+    pane.style.transform = "translateY(0px)";
+    return 0;
   }
 
   // Der Bereich ist bereits verschoben; die Differenz zu seiner Oberkante
@@ -236,6 +243,39 @@ function panPane(stage, pane) {
   // derselben Kante an, und darueber wird nie ein anderer angeschnitten.
   const offset = clamp(Math.round(top), 0, maxOffset);
   pane.style.transform = `translateY(${-offset}px)`;
+  return offset;
+}
+
+// Wird die Fusszeile erklaert, steht ueber ihr die leere Flaeche des
+// Kommentarbereichs. Statt dort stehen zu bleiben, rueckt sie hoch und
+// schliesst direkt an den Inhalt an - erklaert wird schliesslich sie.
+const FOOTER_LIFT_GAP = 24;
+
+// Gerechnet wird ohne die laufenden Bewegungen: getBoundingClientRect gibt
+// waehrend einer Animation die Zwischenposition zurueck. Die Abstaende
+// innerhalb des Bereichs sind davon unabhaengig, weil Bereich und Inhalt
+// gleich verschoben sind - und wie weit der Bereich gefahren ist, sagt
+// panPane.
+function liftFooter(stage, pane, paneOffset) {
+  const foot = stage.querySelector(".ll-md__foot");
+  const clip = pane.parentElement;
+  if (!foot || !clip) return;
+
+  if (String(stage.getAttribute("data-focus") || "") !== "dorder") {
+    foot.style.transform = "";
+    return;
+  }
+
+  const paneTop = pane.getBoundingClientRect().top;
+  let contentEnd = 0;
+  pane.querySelectorAll("[data-spot]").forEach((node) => {
+    contentEnd = Math.max(contentEnd, node.getBoundingClientRect().bottom - paneTop);
+  });
+
+  // Unterkante des Inhalts im Ausschnitt - tiefer als dessen Rand nicht.
+  const visibleEnd = Math.min(contentEnd - paneOffset, clip.clientHeight);
+  const lift = Math.round(clip.clientHeight - visibleEnd - FOOTER_LIFT_GAP);
+  foot.style.transform = lift > 0 ? `translateY(${-lift}px)` : "";
 }
 
 function panSceneToFocus(stage) {
@@ -254,7 +294,7 @@ function panSceneToFocus(stage) {
     // faellt der untere Innenabstand des Kapitels weg, der Rahmen ist also
     // hoeher als waehrend der Menue-Schritte.
     fitPaneTravel(stage);
-    panPane(stage, pane);
+    liftFooter(stage, pane, panPane(stage, pane));
     return;
   }
   const tabsEl = scene.querySelector(".ll-surface__tabs");
