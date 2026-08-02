@@ -253,16 +253,75 @@ function normalizePost(raw = {}) {
   };
 }
 
-function normalizeFocusItems(adsData = {}) {
-  const items = Array.isArray(adsData?.items) ? adsData.items : [];
+// Die Artikel im oeffentlichen Menue-Dokument koennen in mehreren Feldern
+// liegen (items, food, drinks, categories ...) - dieselben Buckets, die
+// core/menu/menu-item-coercion-utils.js kennt.
+function collectMenuDocItems(data = {}) {
+  const out = [];
+  const push = (list, categoryHint = "") => {
+    if (!Array.isArray(list)) return;
+    list.forEach((raw) => {
+      if (!raw || typeof raw !== "object") return;
+      out.push(categoryHint && !raw.category ? { ...raw, category: categoryHint } : raw);
+    });
+  };
+
+  push(data.items);
+  push(data.menuItems);
+  push(data.speisekarte);
+  push(data.food || data.foodItems || data.speisen, "Ushqim");
+  push(data.drinks || data.drinkItems || data.getraenke || data.beverages, "Pije");
+
+  const nested = data.menu && typeof data.menu === "object" && !Array.isArray(data.menu) ? data.menu : null;
+  if (Array.isArray(data.menu)) push(data.menu);
+  if (nested) {
+    push(nested.items);
+    push(nested.menuItems);
+    push(nested.food || nested.foodItems || nested.speisen, "Ushqim");
+    push(nested.drinks || nested.drinkItems || nested.getraenke || nested.beverages, "Pije");
+  }
+
+  if (Array.isArray(data.categories)) {
+    data.categories.forEach((cat) => {
+      if (!cat || typeof cat !== "object") return;
+      push(cat.items || cat.products || cat.entries, text(cat.name || cat.title || cat.category));
+    });
+  }
+
+  return out;
+}
+
+// "Sot ne fokus" kommt aus public/offers und verweist auf Menue-Artikel.
+// Fehlt am Fokus-Eintrag ein Bild, wird das des verknuepften Artikels
+// genommen - deshalb sah die Karte vorher anders aus als im echten Menue.
+function normalizeFocusItems(offersData = {}, menuItems = []) {
+  const items = Array.isArray(offersData?.items) ? offersData.items : [];
+  const byId = new Map();
+  menuItems.forEach((item) => {
+    if (item.id) byId.set(String(item.id), item);
+  });
+
   return items
     .filter((item) => item && item.active !== false)
-    .map((item) => ({
-      id: text(item.id),
-      title: text(item.title),
-      body: firstText(item.text, item.body),
-      imageUrl: text(item.imageUrl)
-    }))
+    .map((item) => {
+      const linkedId = firstText(item.menuItemId, item.targetMenuItemId, item.itemId, item.targetItemId, item.productId, item.targetProductId);
+      const linked = linkedId ? byId.get(String(linkedId)) : null;
+      const isVideo = String(item.mediaType || item.type || "").toLowerCase().startsWith("video") || item.isVideo === true;
+      const ownImage = firstText(
+        isVideo ? firstText(item.posterUrl, item.poster) : "",
+        item.imageUrl,
+        item.image,
+        item.photoUrl
+      );
+      return {
+        id: text(item.id),
+        title: firstText(item.title, item.name, linked?.name, "Sot në fokus"),
+        body: firstText(item.text, item.desc, item.description),
+        imageUrl: ownImage || text(linked?.imageUrl),
+        price: linked?.price ?? null,
+        category: text(linked?.category)
+      };
+    })
     .filter((item) => item.title || item.imageUrl);
 }
 
@@ -325,10 +384,11 @@ export async function loadLeadLandingData(routeKey = "") {
   }
 
   const encodedId = encodeURIComponent(restaurantId);
-  const [restaurant, meta, ads] = await Promise.all([
+  const [restaurant, meta, offers, publicMenu] = await Promise.all([
     readDoc(`restaurants/${encodedId}`),
     readDoc(`restaurants/${encodedId}/public/meta`),
-    readDoc(`restaurants/${encodedId}/public/ads`)
+    readDoc(`restaurants/${encodedId}/public/offers`),
+    readDoc(`restaurants/${encodedId}/public/menu`)
   ]);
 
   if (!restaurant && !meta) {
@@ -337,10 +397,14 @@ export async function loadLeadLandingData(routeKey = "") {
 
   const merged = { ...(restaurant || {}), ...(meta || {}) };
 
-  const [postsRaw, menuItemsRaw] = await Promise.all([
+  // Das oeffentliche Menue-Dokument ist die Hauptquelle; die Sammlung
+  // menuItems ist der Rueckfall, wenn es noch nicht veroeffentlicht wurde.
+  const menuDocItems = collectMenuDocItems(publicMenu || {});
+  const [postsRaw, menuCollectionItems] = await Promise.all([
     readCollection(`restaurants/${encodedId}/socialPosts`, POSTS_LIMIT),
-    readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT)
+    menuDocItems.length ? Promise.resolve([]) : readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT)
   ]);
+  const menuItemsRaw = menuDocItems.length ? menuDocItems : menuCollectionItems;
 
   const menuItems = menuItemsRaw
     .map(normalizeMenuItem)
@@ -390,7 +454,7 @@ export async function loadLeadLandingData(routeKey = "") {
     },
     posts,
     menuItems,
-    focusItems: normalizeFocusItems(ads || {}),
+    focusItems: normalizeFocusItems(offers || {}, menuItems),
     sales: normalizeSalesConfig(salesSource)
   };
 }

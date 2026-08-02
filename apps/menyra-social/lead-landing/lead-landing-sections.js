@@ -361,7 +361,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
         </div>
       </div>
 
-      <div class="ll-tabs ll-surface__tabs" data-spot="tabs">
+      <div class="ll-tabs ll-surface__tabs" data-spot="tabs grid mfocus mcards">
         <span class="ll-tab ll-tab--posts">Postimet</span>
         <span class="ll-tab ll-tab--menu">Menu</span>
       </div>
@@ -391,7 +391,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       { view: "profile", focus: "chat", label: "Kontakti", title: "Biseda direkt", body: "E çon klientin direkt te ju në WhatsApp. Rezervimet vijnë aty ku i lexoni gjithsesi." },
       { view: "profile", focus: "info", label: "Detajet", title: "Butoni Info", body: "Këtu klienti prek Info - dhe kartela hapet nga ana tjetër." },
       { view: "info", focus: "", label: "Kontakti & Info", title: "Gjithçka që duhet të dijë", body: "Telefoni, adresa, orari dhe rrjetet - në një ekran. Ju e ndryshoni një herë, ndryshon kudo." },
-      { view: "profile", focus: "tabs", label: "Dy tabe", title: "Postimet & Menu", body: "Këtu ndahet profili: Postimet tregojnë si ndihet lokali, Menu shet." },
+      { view: "tabs", focus: "tabs", label: "Dy tabe", title: "Postimet & Menu", body: "Kartela tërhiqet, tabet ngjiten lart. Këtu ndahet profili: Postimet tregojnë si ndihet lokali, Menu shet." },
       { view: "posts", focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Çdo postim shkon edhe në feed te ndjekësit tuaj." },
       { view: "menu", focus: "mfocus", label: "Rekomandimet", title: "Sot në fokus", body: "Klienti prek Menu. Kartat me shenjën TIPP janë rekomandimet e ditës - ju vendosni çfarë shitet më shumë." },
       {

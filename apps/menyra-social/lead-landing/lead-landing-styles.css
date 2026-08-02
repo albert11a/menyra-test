@@ -164,8 +164,8 @@ img {
 }
 
 .ll-stage[data-focus] [data-spot] {
-  opacity: 0.45;
-  filter: blur(4px) saturate(0.65);
+  opacity: 0.92;
+  filter: blur(4px) brightness(0.93) saturate(0.85);
 }
 
 .ll-stage[data-focus] [data-spot][data-spot-active] {
@@ -180,8 +180,8 @@ img {
 
 @media (prefers-reduced-motion: reduce) {
   .ll-stage[data-focus] [data-spot] {
-    filter: none;
-    opacity: 0.3;
+    filter: brightness(0.93);
+    opacity: 0.6;
   }
 }
 
@@ -1720,9 +1720,36 @@ img {
   flex-direction: column;
 }
 
-/* Das komplette Profil steht von Anfang an: Kartela, Tabs und der Inhalt
-   darunter. Nichts klappt weg, nichts erscheint stueckweise - der Fokus
-   wandert nur, und die Szene faehrt zu der Stelle, die erklaert wird. */
+/* Solange das Profil erklaert wird, steht die Kartela. Ab dem Tab-Schritt
+   faellt sie zusammen und die Tabs ruecken nach oben - genau der Wechsel,
+   den der Kunde in der App auch sieht. */
+.ll-surface__cardwrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 620ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-surface__cardwrap > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ll-stage[data-view="tabs"] .ll-surface__cardwrap,
+.ll-stage[data-view="posts"] .ll-surface__cardwrap,
+.ll-stage[data-view="menu"] .ll-surface__cardwrap {
+  grid-template-rows: 0fr;
+}
+
+.ll-stage[data-view="tabs"] .ll-surface__card,
+.ll-stage[data-view="posts"] .ll-surface__card,
+.ll-stage[data-view="menu"] .ll-surface__card,
+.ll-stage[data-view="tabs"] .ll-surface__info,
+.ll-stage[data-view="posts"] .ll-surface__info,
+.ll-stage[data-view="menu"] .ll-surface__info {
+  opacity: 0;
+  transform: translateY(-16px) scale(0.97);
+}
+
 .ll-surface__cardinner {
   position: relative;
 }
@@ -1755,6 +1782,13 @@ img {
 
 .ll-surface__tabs {
   margin-top: 14px;
+  transition: margin-top 620ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view="tabs"] .ll-surface__tabs,
+.ll-stage[data-view="posts"] .ll-surface__tabs,
+.ll-stage[data-view="menu"] .ll-surface__tabs {
+  margin-top: 0;
 }
 
 .ll-surface__contentwrap {
