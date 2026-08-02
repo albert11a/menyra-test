@@ -12,7 +12,6 @@ import {
   LEAD_LANDING_GREETINGS_COUNT,
   renderAnalytics,
   renderCta,
-  renderDish,
   renderHero,
   renderIntro,
   renderMap,
@@ -131,7 +130,6 @@ function renderPage(data) {
       ${renderHero(profile)}
       ${renderIntro(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
-      ${renderDish(profile, menuItems)}
       ${renderMap(profile)}
       ${renderQr(sales)}
       ${renderWaiter()}

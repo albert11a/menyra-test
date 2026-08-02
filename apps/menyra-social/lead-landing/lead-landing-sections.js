@@ -129,7 +129,12 @@ function sectionHead(eyebrow, title, lead) {
 //
 // steps: [{ focus, view, label, title, body }]
 //   focus "" laesst alles scharf, view schaltet die Szene um.
-function stage({ eyebrow, title, scene, steps = [] }) {
+//
+// scene ist der Normalfall (Szene im Standard-Viewport). Wer den Aufbau unter
+// der Erklaerung selbst bestimmen muss - wie das Vollbild-Modal, das eine
+// feste Fussleiste unter dem scrollenden Bereich hat - liefert stattdessen
+// body und setzt Viewport und Szene darin selbst.
+function stage({ eyebrow, title, scene = "", body = "", variant = "", steps = [] }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt Kapitelmarke und Titel. So gibt es nur einen Textblock
   // und er steht immer an derselben Stelle - die Szene bekommt den Rest.
@@ -137,8 +142,13 @@ function stage({ eyebrow, title, scene, steps = [] }) {
     ? { ...step, label: eyebrow, title }
     : step));
   const firstView = esc(allSteps[0]?.view || "");
+  const stageBody = body || `
+        <div class="ll-stage__viewport">
+          <div class="ll-stage__scene">${scene}</div>
+        </div>
+  `;
   return `
-    <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
+    <section class="ll-stage${variant ? ` ${variant}` : ""}" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
       <div class="ll-stage__pin">
         <div class="ll-stage__bar"><span></span></div>
 
@@ -152,9 +162,7 @@ function stage({ eyebrow, title, scene, steps = [] }) {
           `).join("")}
         </div>
 
-        <div class="ll-stage__viewport">
-          <div class="ll-stage__scene">${scene}</div>
-        </div>
+        ${stageBody}
 
       </div>
 
@@ -223,6 +231,295 @@ export function renderIntro(profile = {}) {
   `;
 }
 
+/* ------------------------------------------------ Menue-Karten (geteilt) */
+
+// Welche Karte gezeichnet wird, entscheidet der Artikel selbst (cardStyle),
+// nicht die Rubrik. Wer seine Speisen als Getraenkekachel gepflegt hat, sieht
+// hier dieselbe Kachel wie im echten Menue.
+function usesFoodCard(item = {}) {
+  return item.cardStyle === "testfirst_food";
+}
+
+// Getraenke: 1:1 aus renderTestfirstDrinkGridCard - zwei Spalten,
+// quadratisches Bild, Herz oben rechts, unten Preis und Plus.
+function drinkCard(item = {}, currency = "EUR", isOpened = false) {
+  return `
+        <article class="ll-menu-card"${isOpened ? " data-dish-card" : ""}>
+          <div class="ll-menu-card__media">
+            ${img(item.imageUrl, item.name)}
+            <span class="ll-menu-card__like">${filledIcon("heart", { size: 14, color: "currentColor" })}</span>
+          </div>
+          <div class="ll-menu-card__body">
+            <h4 class="ll-menu-card__name">${esc(item.name)}</h4>
+            <p class="ll-menu-card__desc">${esc(item.description)}</p>
+            <div class="ll-menu-card__foot">
+              <span class="ll-menu-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
+              <span class="ll-menu-card__add">${icon("plus", { size: 16 })}</span>
+            </div>
+          </div>
+        </article>
+  `;
+}
+
+// Speisen: 1:1 aus renderTestfirstFoodCard - keine Kacheln, sondern eine
+// Karte ueber die volle Breite mit 16:9-Bild und Shto-Knopf.
+function foodCard(item = {}, currency = "EUR", isOpened = false) {
+  return `
+        <article class="ll-food-card"${isOpened ? " data-dish-card" : ""}>
+          <div class="ll-food-card__media">
+            ${img(item.imageUrl, item.name)}
+            <span class="ll-food-card__like">${filledIcon("heart", { size: 16, color: "currentColor" })}</span>
+          </div>
+          <div class="ll-food-card__body">
+            <div class="ll-food-card__head">
+              <h4 class="ll-food-card__name">${esc(item.name)}</h4>
+              <span class="ll-food-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
+            </div>
+            <p class="ll-food-card__desc">${esc(item.description)}</p>
+            <div class="ll-food-card__foot">
+              <span class="ll-food-card__add">
+                <span>Shto</span>
+                <span class="ll-food-card__addicon">${icon("plus", { size: 16 })}</span>
+              </span>
+            </div>
+          </div>
+        </article>
+  `;
+}
+
+// Getraenke und Speisen werden nacheinander gezeigt. Die Einteilung in
+// Pije/Ushqim kommt aus resolveMenuDisplaySection - genau wie in der App.
+// Artikel, die als Fokus gepflegt sind, tauchen im Menue selbst nicht auf.
+// Dasselbe Ergebnis nutzt das Speisen-Kapitel: die Speise, die dort geoeffnet
+// wird, ist genau die erste Karte, die der Kunde im Menue gesehen hat.
+function resolveMenuBuckets(menuItems = []) {
+  const contentItems = menuItems.filter((item) => item.cardStyle !== "testfirst_focus");
+  const shownItems = contentItems.length ? contentItems : menuItems;
+  return {
+    shownItems,
+    drinkItems: shownItems.filter((item) => item.section === "drink").slice(0, 2),
+    foodItems: shownItems.filter((item) => item.section !== "drink").slice(0, 2)
+  };
+}
+
+/* ------------------------------------------------- Speisen-Modal (Vollbild)
+
+   Vollbild-Nachbau von renderMenuDetailModalCore (Zweig Speise/Getraenk, kein
+   Shop) aus core/menu/menu-modal-render-utils.js - mit den Modal-Regeln aus
+   apps/menyra-social/index.html: Sheet ueber den ganzen Bildschirm ohne
+   Radien, Koerper px-7 py-6 auf bg-white/98, feste Fussleiste px-7 pt-4 pb-6.
+   Die Beschriftungen sind die echten Labels aus shared/i18n/sq.js.
+
+   Das Modal gehoert zur Menue-Szene, nicht zu einem eigenen Kapitel: Es faehrt
+   ueber genau die Karte, die der Kunde gerade gesehen hat.
+
+   Zwei bewusste Abweichungen:
+   - Wo im Original Name, Kategorie und X-Knopf stehen, stehen hier der
+     Fortschrittsbalken und die Erklaerung - wir sind im Vollbild.
+   - Die Fussleiste zeigt nacheinander beide Zustaende, die das Original kennt.
+     Welchen die App zeigt, entscheidet dort hasQrMenuAccess (Menu-Tab +
+     menuAccessSource === "qr"): ohne QR Wolt bzw. "Te preferuarat", mit QR
+     "Shto ne shporte" und das Plus an den Vorschlaegen. */
+
+// Geoeffnet wird immer die erste Karte unter "Pjatat tuaja" - im Menue stehen
+// die Kacheln vor den breiten Speisenkarten.
+function pickOpenedDish(foodItems = [], shownItems = []) {
+  const ordered = [
+    ...foodItems.filter((item) => !usesFoodCard(item)),
+    ...foodItems.filter(usesFoodCard)
+  ];
+  return ordered[0] || shownItems[0] || null;
+}
+
+function buildDishModal(profile = {}, dish = null, menuItems = [], currency = "EUR") {
+  if (!dish) return null;
+
+  // Fallback-Text 1:1 aus menu.noInfo.
+  const noInfo = "Nuk ka informacion, ju lutem kontaktoni lokalin ose kamarierin.";
+  const gallery = (Array.isArray(dish.images) && dish.images.length ? dish.images : [dish.imageUrl])
+    .filter(Boolean);
+  const slides = gallery.length ? gallery : [""];
+  const infoText = text(dish.description) || noInfo;
+  const priceLabel = dish.price !== null ? formatPrice(dish.price, currency) : "";
+  const woltUrl = text(dish.woltUrl) || text(profile.woltUrl);
+
+  // Cross-Selling wie im Original: die am Artikel gepflegten Artikel-IDs.
+  const byId = new Map();
+  menuItems.forEach((item) => {
+    if (item.id) byId.set(String(item.id), item);
+  });
+  const configuredCross = (Array.isArray(dish.crossSellItemIds) ? dish.crossSellItemIds : [])
+    .map((entryId) => byId.get(String(entryId)))
+    .filter((item) => item && item.id !== dish.id);
+  const crossSell = (configuredCross.length
+    ? configuredCross
+    : menuItems.filter((item) => item.id !== dish.id && item.imageUrl)
+  ).slice(0, 3);
+  const crossCountLabel = crossSell.length === 1 ? "1 sugjerim" : `${crossSell.length} sugjerime`;
+
+  const homePrimary = woltUrl
+    ? `<span class="ll-dm__primary ll-dm__primary--wolt"><span>Wolt</span>${icon("external-link", { size: 16 })}</span>`
+    : `<span class="ll-dm__primary"><span>Te preferuarat</span>${icon("bookmark", { size: 16 })}</span>`;
+
+  const html = `
+          <div class="ll-dishmodal" aria-label="Dritarja e pjatës">
+            <div class="ll-stage__viewport ll-dishmodal__body">
+              <div class="ll-stage__scene">
+
+                <div class="ll-dm__hero" data-spot="dhero">
+                  ${slides.map((src, index) => `
+                    <span class="ll-dm__slide${index === 0 ? " is-active" : ""}">${img(src, dish.name)}</span>
+                  `).join("")}
+                  ${slides.length > 1 ? `
+                    <span class="ll-dm__nav ll-dm__nav--prev">${icon("chevron-left", { size: 16 })}</span>
+                    <span class="ll-dm__nav ll-dm__nav--next">${icon("chevron-right", { size: 16 })}</span>
+                  ` : ""}
+                </div>
+
+                <div class="ll-dm__stack">
+                  <div class="ll-dm__price" data-spot="dprice">
+                    <span class="ll-dm__price-label">Cmimi</span>
+                    <span class="ll-dm__price-value">${esc(priceLabel)}</span>
+                  </div>
+                  <div class="ll-dm__rule"></div>
+
+                  <div class="ll-dm__info" data-spot="dinfo">
+                    <div class="ll-dm__tabrow">
+                      <span class="ll-dm__tab is-active">Info</span>
+                      <span class="ll-dm__tab">Perberesit</span>
+                      <span class="ll-dm__tab">Alergenet</span>
+                    </div>
+                    <div class="ll-dm__panel">${esc(infoText)}</div>
+                  </div>
+                  <div class="ll-dm__rule"></div>
+
+                  ${crossSell.length ? `
+                    <div class="ll-dm__cross" data-spot="dcross">
+                      <div class="ll-dm__crosshead">
+                        <h4 class="ll-dm__crosstitle">Shkon shume mire me kete</h4>
+                        <span class="ll-dm__crosscount">${esc(crossCountLabel)}</span>
+                      </div>
+                      <div class="ll-dm__crossrow">
+                        ${crossSell.map((item) => `
+                          <article class="ll-dm__cs">
+                            <div class="ll-dm__cs-media">${img(item.imageUrl, item.name)}</div>
+                            <div class="ll-dm__cs-body">
+                              <p class="ll-dm__cs-eyebrow">${esc(text(item.category) || "Shkon me kete")}</p>
+                              <p class="ll-dm__cs-name">${esc(item.name)}</p>
+                              <div class="ll-dm__cs-foot">
+                                <span class="ll-dm__cs-price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
+                                <span class="ll-dm__cs-add">${icon("plus", { size: 16 })}</span>
+                              </div>
+                            </div>
+                          </article>
+                        `).join("")}
+                      </div>
+                    </div>
+                    <div class="ll-dm__rule"></div>
+                  ` : ""}
+
+                  <div class="ll-dm__social" data-spot="dsocial">
+                    <span class="ll-dm__like">${icon("heart", { size: 14 })}<span>Like</span></span>
+                    <span class="ll-dm__counts">
+                      <span>0 Likes</span>
+                      <span>0 Komente</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="ll-dm__comments" data-spot="dsocial">Ende nuk ka komente</div>
+
+              </div>
+            </div>
+
+            <div class="ll-dishmodal__foot" data-spot="dorder">
+              <div class="ll-dm__footrow ll-dm__footrow--home">
+                <span class="ll-dm__commentbtn">${icon("message-square", { size: 20 })}</span>
+                ${homePrimary}
+              </div>
+              <div class="ll-dm__footrow ll-dm__footrow--qr">
+                <span class="ll-dm__commentbtn">${icon("message-square", { size: 20 })}</span>
+                <span class="ll-dm__primary"><span>Shto ne shporte</span>${icon("shopping-bag", { size: 16 })}</span>
+              </div>
+            </div>
+          </div>
+  `;
+
+  const steps = [
+    {
+      // Ein Wisch, zwei Bewegungen: die Karte wird gedrueckt und umrandet,
+      // dann faehrt das Modal darueber.
+      view: "menu-dish",
+      focus: "",
+      label: "Prekja",
+      title: "Klienti prek pjatën",
+      body: "Pjata hapet në ekran të plotë. Lart rri emri, kategoria dhe X-i - këtu tani rri shpjegimi."
+    },
+    {
+      view: "menu-dish",
+      focus: "dhero",
+      label: "Fotoja",
+      title: slides.length > 1 ? "Foto e madhe, disa foto" : "Foto e madhe",
+      body: slides.length > 1
+        ? `${slides.length} foto - klienti i rrëshqet me gisht.`
+        : "Pjata e juaj e madhe. Më shumë foto? Klienti i rrëshqet."
+    },
+    {
+      view: "menu-dish",
+      focus: "dprice",
+      label: "Qartësi",
+      title: "Çmimi",
+      body: "Një rresht, gjithmonë i saktë. E ndryshoni një herë - ndryshon kudo."
+    },
+    {
+      view: "menu-dish",
+      focus: "dinfo",
+      label: "Detajet",
+      title: "Info, Perberesit, Alergenet",
+      body: "Tri tabe. Fusha bosh do të thotë: „Nuk ka informacion...“ - prandaj mbushen një herë."
+    },
+    ...(crossSell.length ? [{
+      view: "menu-dish",
+      focus: "dcross",
+      label: "Më shumë për porosi",
+      title: "Shkon shume mire me kete",
+      body: "Ju zgjidhni çfarë propozohet te çdo pjatë. Porosia rritet vetë."
+    }] : []),
+    {
+      view: "menu-dish",
+      focus: "dsocial",
+      label: "Reagimet",
+      title: "Like dhe komente",
+      body: "Klienti pëlqen dhe komenton pjatën. Ju shihni çfarë ecën."
+    },
+    {
+      view: "menu-dish-home",
+      focus: "dorder",
+      label: "Nga shtëpia",
+      title: woltUrl ? "Porosia përmes Wolt-it" : "Ruaje për më vonë",
+      body: woltUrl
+        ? "Pa tavolinë nuk ka shportë. Nga shtëpia porosia shkon përmes Wolt-it."
+        : "Pa tavolinë nuk ka shportë. Butoni e ruan pjatën; me Wolt-in e lidhur del Wolt."
+    },
+    {
+      view: "menu-dish-qr",
+      focus: "dorder",
+      label: "Me QR në tavolinë",
+      title: "Shto ne shporte",
+      body: "Pas skanimit të QR kodit e njëjta dritare jep shportën dhe + te sugjerimet."
+    },
+    {
+      view: "menu-dish-qr",
+      focus: "dorder",
+      label: "Te kamarieri",
+      title: "Porosia shkon te Waiter-i",
+      body: "Klienti dërgon nga tavolina, kamarieri e sheh menjëherë me numrin e tavolinës."
+    }
+  ];
+
+  return { html, steps };
+}
+
 /* -------------------------------------------------------------- Profil */
 
 /* ---------- Das Profil-Kapitel: Profil -> Info -> Postimet -> Menu ----------
@@ -289,71 +586,23 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       `).join("")}</div>`
     : "";
 
-  // Getraenke: 1:1 aus renderTestfirstDrinkGridCard - zwei Spalten,
-  // quadratisches Bild, Herz oben rechts, unten Preis und Plus.
-  const drinkCard = (item) => `
-        <article class="ll-menu-card">
-          <div class="ll-menu-card__media">
-            ${img(item.imageUrl, item.name)}
-            <span class="ll-menu-card__like">${filledIcon("heart", { size: 14, color: "currentColor" })}</span>
-          </div>
-          <div class="ll-menu-card__body">
-            <h4 class="ll-menu-card__name">${esc(item.name)}</h4>
-            <p class="ll-menu-card__desc">${esc(item.description)}</p>
-            <div class="ll-menu-card__foot">
-              <span class="ll-menu-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
-              <span class="ll-menu-card__add">${icon("plus", { size: 16 })}</span>
-            </div>
-          </div>
-        </article>
-  `;
-
-  // Speisen: 1:1 aus renderTestfirstFoodCard - keine Kacheln, sondern eine
-  // Karte ueber die volle Breite mit 16:9-Bild und Shto-Knopf.
-  const foodCard = (item) => `
-        <article class="ll-food-card">
-          <div class="ll-food-card__media">
-            ${img(item.imageUrl, item.name)}
-            <span class="ll-food-card__like">${filledIcon("heart", { size: 16, color: "currentColor" })}</span>
-          </div>
-          <div class="ll-food-card__body">
-            <div class="ll-food-card__head">
-              <h4 class="ll-food-card__name">${esc(item.name)}</h4>
-              <span class="ll-food-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
-            </div>
-            <p class="ll-food-card__desc">${esc(item.description)}</p>
-            <div class="ll-food-card__foot">
-              <span class="ll-food-card__add">
-                <span>Shto</span>
-                <span class="ll-food-card__addicon">${icon("plus", { size: 16 })}</span>
-              </span>
-            </div>
-          </div>
-        </article>
-  `;
-
-  // Getraenke und Speisen werden nacheinander gezeigt. Die Einteilung in
-  // Pije/Ushqim kommt aus resolveMenuDisplaySection - genau wie in der App.
-  // Artikel, die als Fokus gepflegt sind, tauchen im Menue selbst nicht auf.
-  const contentItems = menuItems.filter((item) => item.cardStyle !== "testfirst_focus");
-  const shownItems = contentItems.length ? contentItems : menuItems;
-  const drinkItems = shownItems.filter((item) => item.section === "drink").slice(0, 2);
-  const foodItems = shownItems.filter((item) => item.section !== "drink").slice(0, 2);
+  const { shownItems, drinkItems, foodItems } = resolveMenuBuckets(menuItems);
+  const openedDish = pickOpenedDish(foodItems, shownItems);
+  const dishModal = buildDishModal(profile, openedDish, menuItems, currency);
   const emptyNote = `<div class="ll-card ll-card--pad" style="text-align:center;">
       <p class="ll-callout__body">Menuja vendoset një herë - dhe është e gjallë në çdo tavolinë.</p>
     </div>`;
 
-  // Welche Karte gezeichnet wird, entscheidet der Artikel selbst (cardStyle),
-  // nicht die Rubrik. Wer seine Speisen als Getraenkekachel gepflegt hat,
-  // sieht hier dieselbe Kachel wie im echten Menue.
-  const usesFoodCard = (item) => item.cardStyle === "testfirst_food";
-  const listOf = (list) => {
+  // openedId markiert die Karte, die im naechsten Schritt gedrueckt wird und
+  // das Modal oeffnet - dieselbe Karte, die der Kunde gerade vor sich hat.
+  const listOf = (list, openedId = "") => {
     if (!list.length) return emptyNote;
     const gridItems = list.filter((item) => !usesFoodCard(item));
     const stackedItems = list.filter(usesFoodCard);
+    const isOpened = (item) => !!openedId && String(item.id) === String(openedId);
     return [
-      gridItems.length ? `<div class="ll-menu-grid">${gridItems.map(drinkCard).join("")}</div>` : "",
-      stackedItems.length ? `<div class="ll-food-list">${stackedItems.map(foodCard).join("")}</div>` : ""
+      gridItems.length ? `<div class="ll-menu-grid">${gridItems.map((item) => drinkCard(item, currency, isOpened(item))).join("")}</div>` : "",
+      stackedItems.length ? `<div class="ll-food-list">${stackedItems.map((item) => foodCard(item, currency, isOpened(item))).join("")}</div>` : ""
     ].filter(Boolean).join("");
   };
 
@@ -434,17 +683,29 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
           <div class="ll-surface__menu">
             <div class="ll-menu-part ll-menu-part--focus"><div data-spot="mfocus">${focusRow || emptyNote}</div></div>
             <div class="ll-menu-part ll-menu-part--drinks"><div data-spot="mdrinks">${listOf(drinkItems)}</div></div>
-            <div class="ll-menu-part ll-menu-part--food"><div data-spot="mfood">${listOf(foodItems)}</div></div>
+            <div class="ll-menu-part ll-menu-part--food"><div data-spot="mfood">${listOf(foodItems, openedDish?.id)}</div></div>
           </div>
         </div>
       </div>
     </div>
   `;
 
+  // Menue-Szene und Speisen-Modal liegen im selben Kapitel uebereinander: Aus
+  // "Pjatat tuaja" wird beim naechsten Wisch die gedrueckte Karte und darueber
+  // faehrt das Modal herein - ohne Bruch, ohne neues Kapitel.
+  const body = `
+        <div class="ll-stage__stack">
+          <div class="ll-stage__viewport">
+            <div class="ll-stage__scene">${scene}</div>
+          </div>
+          ${dishModal ? dishModal.html : ""}
+        </div>
+  `;
+
   return stage({
     eyebrow: "Hapi 1",
     title: "Kështu ju sheh klienti.",
-    scene,
+    body,
     steps: [
       { view: "profile", focus: "", body: "Kartela juaj publike dhe dy tabet - pikërisht ashtu siç e sheh klienti. Rrëshqitni: shpjegimi shkon te secila pjesë." },
       { view: "profile", focus: "identity", label: "Identiteti", title: "Logoja dhe emri juaj", body: "Ballina, logoja, emri dhe qyteti. Klienti e di menjëherë kush jeni dhe ku jeni." },
@@ -466,98 +727,8 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
         body: categories.length
           ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
           : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim."
-      }
-    ]
-  });
-}
-export function renderDish(profile = {}, menuItems = []) {
-  const currency = profile.currency || "EUR";
-  const dish = menuItems.find((item) => item.imageUrl && item.price !== null)
-    || menuItems.find((item) => item.imageUrl)
-    || menuItems[0];
-
-  if (!dish) {
-    return `
-      <section class="ll-section">
-        ${sectionHead("Hapi 4", "Dritarja e pjatës.", "Sapo të keni pjata në menu, çdo prekje hap një dritare me çmimin, përbërësit, alergjenët dhe rekomandimet që rrisin porosinë.")}
-      </section>
-    `;
-  }
-
-  const crossSell = menuItems.filter((item) => item.id !== dish.id && item.imageUrl).slice(0, 3);
-  const infoText = text(dish.description) || text(dish.ingredients) || "Përshkrimi i pjatës shfaqet këtu.";
-  const woltUrl = text(dish.woltUrl) || text(profile.woltUrl);
-
-  const scene = `
-    <div class="ll-card" aria-label="Dritarja e pjatës">
-      <div class="ll-dish__head" data-spot="dish">
-        <div>
-          <h4 class="ll-dish__title">${esc(dish.name)}</h4>
-          <span class="ll-dish__cat">${esc(text(dish.category).toUpperCase())}</span>
-        </div>
-        <span class="ll-dish__x">${icon("chevron-down", { size: 18 })}</span>
-      </div>
-
-      <div class="ll-dish__media" data-spot="dish">${img(dish.imageUrl, dish.name)}</div>
-
-      ${dish.price !== null ? `
-        <div class="ll-dish__price" data-spot="price">
-          <span class="ll-dish__price-label">Çmimi</span>
-          <span class="ll-dish__price-value">${esc(formatPrice(dish.price, currency))}</span>
-        </div>
-      ` : ""}
-
-      <div data-spot="info">
-        <div class="ll-pillrow">
-          <span class="ll-pill is-active">Info</span>
-          <span class="ll-pill">Përbërësit</span>
-          <span class="ll-pill">Alergjenët</span>
-        </div>
-        <div class="ll-dish__info">${esc(infoText)}</div>
-      </div>
-
-      ${crossSell.length ? `
-        <div data-spot="cross">
-          <div class="ll-dish__crosshead">
-            <span class="ll-dish__crosstitle">Shkon shkëlqyeshëm me</span>
-            <span class="ll-dish__crosscount">${crossSell.length} sugjerime</span>
-          </div>
-          <div class="ll-crossrow">
-            ${crossSell.map((item) => `
-              <article class="ll-cross">
-                <div class="ll-cross__media">${img(item.imageUrl, item.name)}</div>
-                <p class="ll-cross__name">${esc(item.name)}</p>
-              </article>
-            `).join("")}
-          </div>
-        </div>
-      ` : ""}
-
-      <div class="ll-dish__foot" data-spot="order">
-        <span class="ll-btn-ghost">${icon("message", { size: 20 })}</span>
-        <span class="ll-dish__cart">Shto në shportë ${icon("shopping-bag", { size: 18 })}</span>
-        ${woltUrl ? `<span class="ll-dish__wolt">Wolt</span>` : ""}
-      </div>
-    </div>
-  `;
-
-  return stage({
-    eyebrow: "Hapi 4",
-    title: "Një prekje - dhe porosia rritet.",
-    scene,
-    steps: [
-      { focus: "", body: "Kur klienti prek një pjatë, hapet kjo dritare. Këtu vendoset sa shpenzon." },
-      { focus: "price", label: "Qartësi", title: "Çmimi", body: "Çmimi qartë dhe gjithmonë i saktë - pa keqkuptime në tavolinë." },
-      { focus: "info", label: "Detajet", title: "Info, Përbërësit, Alergjenët", body: "Klienti gjen vetë përgjigjen. Pyet më pak, kamarieri fiton kohë." },
-      { focus: "cross", label: "Më shumë për porosi", title: "Cross-selling", body: "„Shkon shkëlqyeshëm me“ sugjeron pije ose ëmbëlsira te çdo pjatë - mënyra më e thjeshtë për të rritur vlerën mesatare të porosisë." },
-      {
-        focus: "order",
-        label: "Porosia",
-        title: woltUrl ? "Shportë, koment, Wolt" : "Shportë dhe koment",
-        body: woltUrl
-          ? "Në lokal porosia shkon te Waiter-i. Nga shtëpia klienti porosit përmes Wolt-it ose dërgesës suaj. Komentet ju sjellin reagime reale."
-          : "Në lokal porosia shkon direkt te Waiter-i. Komentet ju sjellin reagime reale - dhe pjatat e vlerësuara mirë shiten vetë."
-      }
+      },
+      ...(dishModal ? dishModal.steps : [])
     ]
   });
 }

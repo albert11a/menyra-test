@@ -230,6 +230,9 @@ function normalizeMenuItem(raw = {}) {
     allergens: firstText(raw.allergens, raw.allergen),
     price: num(raw.price),
     imageUrl: images[0] || "",
+    // Die ganze Galerie, nicht nur das erste Bild: das Speisen-Modal blaettert
+    // durch alle Fotos eines Artikels - genau wie getMenuItemImages in der App.
+    images: Array.from(new Set(images)).slice(0, 8),
     woltUrl: firstText(raw.woltUrl, raw.wolt),
     crossSellItemIds,
     orderIndex: num(raw.orderIndex),

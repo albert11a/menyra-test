@@ -1115,217 +1115,497 @@ img {
   place-items: center;
 }
 
-/* ---------- Speisen-Modal-Nachbildung ---------- */
+/* ---------- Speisen-Modal in Vollbild ----------
+   Werte 1:1 aus renderMenuDetailModalCore (Zweig Speise/Getraenk, kein Shop)
+   in core/menu/menu-modal-render-utils.js und den Modal-Regeln in
+   apps/menyra-social/index.html: Das Sheet nimmt den ganzen Bildschirm ein
+   (.modal-sheet: height 100%, kein Radius), der Koerper laeuft in px-7 py-6
+   auf bg-white/98, die Fussleiste steht fest in px-7 pt-4 pb-6 ueber einer
+   Trennlinie.
 
-.ll-dish__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 14px 22px 10px;
-  border-bottom: 1px solid var(--ll-line);
-}
+   Das Modal gehoert zur Menue-Szene: Es liegt im selben Kapitel darueber und
+   faehrt aus "Pjatat tuaja" herein. Die Stelle des Modalkopfes (Name,
+   Kategorie, X) nehmen der Fortschrittsbalken und die Erklaerung ein. */
 
-.ll-dish__title {
-  margin: 0 0 4px;
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-}
-
-.ll-dish__cat {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ll-faint);
-}
-
-.ll-dish__x {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  border-radius: 14px;
-  background: #f1f5f9;
-  color: var(--ll-muted);
-  display: grid;
-  place-items: center;
-}
-
-/* Bildhoehe an den Bildschirm gekoppelt: so passt die Szene auch auf
-   kleineren Geraeten ohne Beschnitt ins Bild. */
-.ll-dish__media {
-  margin: 12px 22px;
-  border-radius: 1.6rem;
+/* Menue-Szene und Modal liegen uebereinander und fuellen den Rest des
+   Bildschirms unter der Erklaerung. */
+.ll-stage__stack {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-left: calc(-1 * var(--ll-inline));
+  margin-right: calc(-1 * var(--ll-inline));
   overflow: hidden;
+  border-top: 1px solid transparent;
+  transition: border-color 420ms ease;
+}
+
+.ll-stage__stack > .ll-stage__viewport {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+}
+
+/* Sobald das Modal offen ist, ist der ganze Bildschirm das Sheet: weisser
+   Grund und die Trennlinie unter dem Kopfbereich. */
+.ll-stage[data-view^="menu-dish"] .ll-stage__pin {
+  background: #fff;
+}
+
+.ll-stage__pin {
+  transition: background 420ms ease;
+}
+
+.ll-stage[data-view^="menu-dish"] .ll-stage__stack {
+  border-top-color: #f1f5f9;
+}
+
+/* Der Druck auf die Karte: kurz kleiner, dann leicht groesser mit Umrandung -
+   und erst dann kommt das Modal. Die Karte bleibt umrandet stehen. */
+@keyframes ll-dish-tap {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+  }
+  30% {
+    transform: scale(0.972);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.05);
+  }
+  68% {
+    transform: scale(1.035);
+    box-shadow: 0 0 0 2px var(--ll-accent), 0 18px 44px -30px rgba(15, 23, 42, 0.45);
+  }
+  100% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 2px var(--ll-accent), 0 18px 44px -30px rgba(15, 23, 42, 0.45);
+  }
+}
+
+.ll-stage[data-view^="menu-dish"] [data-dish-card] {
+  animation: ll-dish-tap 520ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* Das Modal schiebt sich von rechts ueber die Karte - so ist zu sehen, dass
+   die Prekje sie geoeffnet hat. */
+.ll-dishmodal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  transform: translateX(100%);
+  pointer-events: none;
+  transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Die Verzoegerung ist der Druck auf die Karte. Den Schatten traegt das Modal
+   nur, solange es faehrt oder offen ist - sonst faellt er im Menue-Schritt
+   von rechts ins Bild. */
+.ll-stage[data-view^="menu-dish"] .ll-dishmodal {
+  transform: translateX(0);
+  pointer-events: auto;
+  box-shadow: -30px 0 60px -34px rgba(15, 23, 42, 0.5);
+  transition-delay: 560ms;
+}
+
+/* Der Koerper des Modals ist der Bereich, der beim Weiterrasten mitfaehrt -
+   im echten Modal ist es der scrollende Bereich zwischen Kopf und Fuss. */
+.ll-dishmodal .ll-stage__viewport {
+  margin: 0;
+  padding: 0;
+  background: rgb(255 255 255 / 0.98);
+}
+
+.ll-dishmodal .ll-stage__scene {
+  left: 0;
+  right: 0;
+  padding: 24px 28px;
+}
+
+/* h-56 mit rounded-[2.8rem], Rahmen slate-100 auf slate-50. */
+.ll-dm__hero {
+  position: relative;
+  height: 224px;
+  border-radius: 2.8rem;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
   background: #f8fafc;
-  aspect-ratio: 4 / 3;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-.ll-dish__media img {
-  height: 100%;
+.ll-dm__slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
 }
 
-.ll-dish__media img {
+.ll-dm__slide.is-active {
+  opacity: 1;
+}
+
+.ll-dm__slide img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.ll-dish__price {
-  margin: 0 22px;
-  padding: 12px 18px;
-  border-radius: var(--ll-radius-lg);
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.ll-dish__price-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.24em;
-  color: var(--ll-faint);
-}
-
-.ll-dish__price-value {
-  font-size: 16px;
-  font-weight: 900;
-}
-
-.ll-pillrow {
-  display: flex;
-  gap: 8px;
-  margin: 14px 22px;
-}
-
-.ll-pill {
-  flex: 1;
-  padding: 13px 6px;
-  border-radius: var(--ll-radius-md);
-  text-align: center;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border: 1px solid var(--ll-line-strong);
-  background: #fff;
-  color: var(--ll-muted);
-}
-
-.ll-pill.is-active {
-  background: var(--ll-dark);
-  border-color: var(--ll-dark);
-  color: #fff;
-}
-
-.ll-dish__info {
-  margin: 0 22px 14px;
-  padding: 14px 18px;
-  border-radius: var(--ll-radius-lg);
-  background: #f8fafc;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.6;
-  color: var(--ll-ink-soft);
-  min-height: 52px;
-}
-
-.ll-dish__crosshead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 0 22px 12px;
-}
-
-.ll-dish__crosstitle {
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-
-.ll-dish__crosscount {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ll-faint);
-}
-
-.ll-crossrow {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 0 22px 14px;
-  scrollbar-width: none;
-}
-
-.ll-crossrow::-webkit-scrollbar {
-  display: none;
-}
-
-.ll-cross {
-  flex: 0 0 30%;
-  border: 1px solid var(--ll-line);
-  border-radius: 1.3rem;
-  padding: 8px;
-  background: #fff;
-  text-align: center;
-}
-
-.ll-cross__media {
-  height: 50px;
+.ll-dm__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.9);
+  color: #475569;
   display: grid;
   place-items: center;
-  margin-bottom: 8px;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  z-index: 30;
 }
 
-.ll-cross__media img {
-  max-height: 50px;
-  width: auto;
-  object-fit: contain;
+.ll-dm__nav--prev {
+  left: 16px;
 }
 
-.ll-cross__name {
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.3;
+.ll-dm__nav--next {
+  right: 16px;
 }
 
-.ll-dish__foot {
+/* mt-6 und space-y-5 unter dem Bild. */
+.ll-dm__stack {
+  margin-top: 24px;
   display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 14px 22px 18px;
-  border-top: 1px solid var(--ll-line);
+  flex-direction: column;
+  gap: 20px;
 }
 
-.ll-dish__cart {
-  flex: 1;
-  height: 56px;
-  border-radius: var(--ll-radius-lg);
-  background: var(--ll-dark);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
+.ll-dm__rule {
+  height: 1px;
+  background: #f1f5f9;
+}
+
+.ll-dm__price {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 1.3rem;
+  border: 1px solid #f1f5f9;
+  background: #f8fafc;
 }
 
-.ll-dish__wolt {
-  height: 56px;
-  padding: 0 20px;
-  border-radius: var(--ll-radius-lg);
-  background: #18b9df;
-  color: #fff;
+.ll-dm__price-label {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.ll-dm__price-value {
+  font-size: 13px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.ll-dm__info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ll-dm__tabrow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ll-dm__tab {
+  height: 40px;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   display: flex;
   align-items: center;
+  justify-content: center;
+}
+
+.ll-dm__tab.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+/* Die Hoehe der Textflaeche haelt die App auf der des Info-Tabs fest,
+   mindestens 96px (lockMenuDetailInfoPanelsHeightFromInfo). */
+.ll-dm__panel {
+  min-height: 96px;
+  padding: 14px 16px;
+  border-radius: 1.3rem;
+  border: 1px solid #f1f5f9;
+  background: #f8fafc;
+  font-size: 14px;
+  line-height: 1.625;
+  color: #475569;
+  white-space: pre-line;
+}
+
+.ll-dm__cross {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ll-dm__crosshead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ll-dm__crosstitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+}
+
+.ll-dm__crosscount {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.ll-dm__crossrow {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.ll-dm__crossrow::-webkit-scrollbar {
+  display: none;
+}
+
+/* Feste Kartenbreite, damit Preis und Plus ueber alle Karten auf einer Linie
+   liegen - genau wie .menu-cross-sell-card in der App. */
+.ll-dm__cs {
+  flex: 0 0 9.25rem;
+  width: 9.25rem;
+  padding: 10px;
+  border: 1px solid #f1f5f9;
+  border-radius: 1.8rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.ll-dm__cs-media {
+  width: 6.5rem;
+  height: 6.5rem;
+  margin: 0 auto;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.ll-dm__cs-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-dm__cs-body {
+  padding: 12px 4px 0;
+  min-width: 0;
+}
+
+.ll-dm__cs-eyebrow,
+.ll-dm__cs-name,
+.ll-dm__cs-price {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ll-dm__cs-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.ll-dm__cs-name {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+}
+
+.ll-dm__cs-foot {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ll-dm__cs-price {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  color: #0f172a;
+}
+
+/* Das Plus an den Vorschlaegen gibt es nur mit QR-Zugang - im Original
+   entscheidet das showCrossSellAddAction. */
+.ll-dm__cs-add {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.85rem;
+  background: #0f172a;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 320ms ease, transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view="menu-dish-qr"] .ll-dm__cs-add {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ll-dm__social {
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ll-dm__like {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #334155;
+}
+
+.ll-dm__counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.ll-dm__comments {
+  margin-top: 48px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+/* Die Fussleiste steht fest unter dem scrollenden Koerper. Beide Zustaende
+   liegen uebereinander und werden gekreuzt geblendet. */
+.ll-dishmodal__foot {
+  flex: 0 0 auto;
+  display: grid;
+  padding: 16px 28px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: rgb(255 255 255 / 0.98);
+}
+
+.ll-dm__footrow {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 320ms ease, transform 320ms ease;
+}
+
+.ll-dm__footrow--qr {
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+}
+
+.ll-stage[data-view="menu-dish-qr"] .ll-dm__footrow--home {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+.ll-stage[data-view="menu-dish-qr"] .ll-dm__footrow--qr {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ll-dm__commentbtn {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  border-radius: 1.65rem;
+  background: #f1f5f9;
+  color: #475569;
+  display: grid;
+  place-items: center;
+}
+
+.ll-dm__primary {
+  flex: 1;
+  height: 52px;
+  border-radius: 1.65rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ll-dm__primary--wolt {
+  background: #18b9df;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-stage[data-view^="menu-dish"] [data-dish-card] {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--ll-accent);
+  }
+
+  .ll-dishmodal {
+    transition: none;
+  }
 }
 
 /* ---------- Kontakt-Modal ---------- */
@@ -1926,7 +2206,8 @@ img {
 
 .ll-stage[data-view="menu-focus"] .ll-menu-part--focus,
 .ll-stage[data-view="menu-drinks"] .ll-menu-part--drinks,
-.ll-stage[data-view="menu-food"] .ll-menu-part--food {
+.ll-stage[data-view="menu-food"] .ll-menu-part--food,
+.ll-stage[data-view^="menu-dish"] .ll-menu-part--food {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);

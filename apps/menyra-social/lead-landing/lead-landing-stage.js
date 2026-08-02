@@ -127,11 +127,19 @@ function fitMenuLists(stage) {
 // Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
 // Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
 // Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
+//
+// Ein Kapitel kann mehrere Szenen haben, die uebereinander liegen: die
+// Menue-Szene und darueber das Speisen-Modal mit seinem eigenen Koerper.
+// Jede faehrt zu ihrem eigenen Ziel; eine Szene ohne aktives Ziel bleibt
+// stehen, wo sie ist.
 function panSceneToFocus(stage) {
-  const viewport = stage.querySelector(".ll-stage__viewport");
-  const scene = stage.querySelector(".ll-stage__scene");
-  if (!viewport || !scene) return;
+  Array.from(stage.querySelectorAll(".ll-stage__viewport")).forEach((viewport) => {
+    const scene = viewport.querySelector(".ll-stage__scene");
+    if (scene) panSceneInViewport(stage, viewport, scene);
+  });
+}
 
+function panSceneInViewport(stage, viewport, scene) {
   const view = String(stage.getAttribute("data-view") || "").trim();
   const tabsEl = scene.querySelector(".ll-surface__tabs");
   const sceneTop = scene.getBoundingClientRect().top;
@@ -155,16 +163,27 @@ function panSceneToFocus(stage) {
     ? Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10
     : scene.offsetHeight;
 
+  // Der Koerper des Modals ist ein scrollender Bereich - er beginnt oben und
+  // wird nicht mittig gesetzt wie eine frei stehende Szene.
+  const anchorTop = !!viewport.closest(".ll-dishmodal");
+
   const maxOffset = Math.max(0, effectiveHeight - viewport.clientHeight);
   if (maxOffset <= 0) {
+    if (anchorTop) {
+      scene.style.transform = "translateY(0px)";
+      return;
+    }
     // Passt alles ins Bild, sitzt es mittig statt oben zu kleben.
     const slack = Math.round((viewport.clientHeight - effectiveHeight) / 2);
     scene.style.transform = `translateY(${Math.max(0, slack)}px)`;
     return;
   }
 
-  const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"));
+  // Nur Ziele innerhalb der Szene koennen angefahren werden. Teile ausserhalb
+  // - etwa die feste Fussleiste des Modals - stehen ohnehin schon im Bild.
+  const active = Array.from(scene.querySelectorAll("[data-spot][data-spot-active]"));
   if (!active.length) {
+    if (stage.hasAttribute("data-focus")) return;
     // Ohne Fokus: Anfang der Szene zeigen.
     scene.style.transform = "translateY(0px)";
     return;
