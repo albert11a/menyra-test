@@ -10,6 +10,37 @@
 
 const STATE_ATTR = "data-step";
 
+// Die Streifen hinter Statusleiste und Werkzeugleiste faerbt der Browser mit
+// dem Hintergrund der Seite, nicht mit dem des Kapitels. Fuellt ein Kapitel
+// mit eigener Farbe den Bildschirm, wird diese Farbe deshalb auf die Seite
+// gelegt - sonst bleibt oben und unten ein grauer Streifen stehen, obwohl
+// das Kapitel weiss ist.
+function readDefaultThemeColor() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  return meta ? String(meta.getAttribute("content") || "") : "";
+}
+
+function updateCanvasColor(stages, viewportHeight, defaultThemeColor) {
+  const middle = viewportHeight / 2;
+  let color = "";
+  stages.forEach((stage) => {
+    const declared = String(stage.getAttribute("data-canvas") || "").trim();
+    if (!declared) return;
+    const rect = stage.getBoundingClientRect();
+    // Das Kapitel, das die Bildschirmmitte belegt, gibt die Farbe vor.
+    if (rect.top <= middle && rect.bottom >= middle) color = declared;
+  });
+
+  const root = document.documentElement;
+  if (root.dataset.canvasColor === color) return;
+  root.dataset.canvasColor = color;
+  // Leerer Wert heisst: zurueck auf den Wert aus dem Stylesheet.
+  root.style.backgroundColor = color;
+  if (document.body) document.body.style.backgroundColor = color;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", color || defaultThemeColor);
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -244,6 +275,8 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   if (!root || !stages.length) return () => {};
 
   let ticking = false;
+  const defaultThemeColor = readDefaultThemeColor();
+  const canvasStages = stages.filter((stage) => stage.hasAttribute("data-canvas"));
 
   const run = () => {
     ticking = false;
@@ -254,6 +287,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
       if (rect.bottom < -viewportHeight || rect.top > viewportHeight * 2) return;
       updateStage(stage, viewportHeight);
     });
+    if (canvasStages.length) updateCanvasColor(canvasStages, viewportHeight, defaultThemeColor);
   };
 
   const onScroll = () => {

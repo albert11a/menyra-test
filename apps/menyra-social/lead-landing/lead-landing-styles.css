@@ -33,6 +33,10 @@ body {
   padding: 0;
   height: 100%;
   background: var(--ll-bg);
+  /* Kapitel mit eigener Farbe faerben die Seite mit (data-canvas). Der
+     Uebergang laeuft weich, damit die Streifen oben und unten nicht
+     springen. */
+  transition: background-color 240ms ease;
   color: var(--ll-ink);
   font-family: "Plus Jakarta Sans", "Segoe UI", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;

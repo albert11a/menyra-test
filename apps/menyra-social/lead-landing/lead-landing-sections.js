@@ -132,7 +132,12 @@ function sectionHead(eyebrow, title, lead) {
 // fullbleed: Die Szene laeuft von Bildschirmrand zu Bildschirmrand, ohne
 // Rahmen und ohne seitlichen Abstand - fuer Nachbauten, die in der App
 // selbst den ganzen Bildschirm einnehmen (das Speisen-Modal).
-function stage({ eyebrow, title, scene, steps = [], fullbleed = false }) {
+//
+// canvas: Farbe der Seite, solange dieses Kapitel den Bildschirm fuellt.
+// Damit faerben sich auch die Streifen hinter Statusleiste und
+// Werkzeugleiste mit - die nimmt der Browser von der Seite, nicht vom
+// Kapitel.
+function stage({ eyebrow, title, scene, steps = [], fullbleed = false, canvas = "" }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt Kapitelmarke und Titel. So gibt es nur einen Textblock
   // und er steht immer an derselben Stelle - die Szene bekommt den Rest.
@@ -141,7 +146,7 @@ function stage({ eyebrow, title, scene, steps = [], fullbleed = false }) {
     : step));
   const firstView = esc(allSteps[0]?.view || "");
   return `
-    <section class="ll-stage${fullbleed ? " ll-stage--full" : ""}" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
+    <section class="ll-stage${fullbleed ? " ll-stage--full" : ""}" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${canvas ? `data-canvas="${esc(canvas)}"` : ""} ${firstView ? `data-view="${firstView}"` : ""}>
       <div class="ll-stage__pin">
         <div class="ll-stage__bar"><span></span></div>
 
@@ -593,6 +598,7 @@ export function renderDish(profile = {}, menuItems = []) {
     title: "Një prekje - dhe porosia rritet.",
     scene,
     fullbleed: true,
+    canvas: "#ffffff",
     steps: [
       { view: "home", focus: "", body: "Klienti prek një pjatë - dhe hapet kjo dritare, në tërë ekranin." },
       { view: "home", focus: "hero", label: "Fotoja", title: "Galeria", body: "Foto e madhe. Me disa foto, klienti i shfleton me shigjetat." },
