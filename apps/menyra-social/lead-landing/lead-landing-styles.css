@@ -1536,10 +1536,11 @@ img {
   color: #94a3b8;
 }
 
-/* Beim Bestell-Schritt nimmt die Fusszeile seinen Platz ein - er tritt
-   dafuer ganz zurueck. Ausgeblendet statt entfernt, damit sich am Layout
-   nichts verschiebt. */
-.ll-stage[data-focus="dorder"] .ll-md__comments {
+/* Beim Bestell-Schritt nimmt die Fusszeile den Platz von Like-Zeile und
+   Kommentarbereich ein - beide treten dafuer ganz zurueck. Ausgeblendet
+   statt entfernt, damit sich am Layout nichts verschiebt. */
+.ll-stage[data-focus="dorder"] .ll-md__comments,
+.ll-stage[data-focus="dorder"] .ll-md__social {
   opacity: 0;
 }
 

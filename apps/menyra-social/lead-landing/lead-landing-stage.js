@@ -266,17 +266,20 @@ function liftFooter(stage, pane, paneOffset) {
     return;
   }
 
-  // Der Kommentarbereich zaehlt nicht mit: An seine Stelle tritt genau jetzt
-  // die Fusszeile (er wird dafuer ausgeblendet, siehe Stylesheet).
+  // Like-Zeile und Kommentarbereich zaehlen nicht mit: An ihre Stelle tritt
+  // genau jetzt die Fusszeile (beide werden dafuer ausgeblendet, siehe
+  // Stylesheet).
   const paneTop = pane.getBoundingClientRect().top;
   let contentEnd = 0;
   pane.querySelectorAll("[data-spot]").forEach((node) => {
     if (node.classList.contains("ll-md__comments")) return;
+    if (node.classList.contains("ll-md__social")) return;
     contentEnd = Math.max(contentEnd, node.getBoundingClientRect().bottom - paneTop);
   });
 
-  // Unterkante des Inhalts im Ausschnitt - tiefer als dessen Rand nicht.
-  const visibleEnd = Math.min(contentEnd - paneOffset, clip.clientHeight);
+  // Unterkante des Inhalts im Ausschnitt - weder ueber dessen Oberkante
+  // hinaus noch unter dessen Rand.
+  const visibleEnd = clamp(contentEnd - paneOffset, 0, clip.clientHeight);
   const lift = Math.round(clip.clientHeight - visibleEnd - FOOTER_LIFT_GAP);
   foot.style.transform = lift > 0 ? `translateY(${-lift}px)` : "";
 }
