@@ -60,6 +60,39 @@ function updateStage(stage, viewportHeight) {
   if (bar) bar.style.width = `${Math.round(progress * 100)}%`;
 }
 
+// Sicherheitsnetz gegen Beschnitt: Der Pin hat overflow: hidden, damit die
+// Szene bildschirmhoch bleibt. Passt sie auf einem sehr niedrigen Geraet
+// trotzdem nicht, wird sie so weit verkleinert, bis sie passt - statt oben
+// und unten abgeschnitten zu werden. Das negative margin nimmt den durch
+// die Skalierung frei gewordenen Layoutplatz wieder heraus.
+function fitStageScene(stage) {
+  const pin = stage.querySelector(".ll-stage__pin");
+  const scene = stage.querySelector(".ll-stage__scene");
+  if (!pin || !scene) return;
+
+  scene.style.transform = "";
+  scene.style.marginBottom = "";
+
+  const sceneHeight = scene.offsetHeight;
+  if (sceneHeight <= 0) return;
+  if (pin.scrollHeight - pin.clientHeight <= 1) return;
+
+  scene.style.transformOrigin = "center top";
+
+  // Eine Runde reicht nicht immer: durch das Verkleinern aendern sich
+  // Umbrueche und damit die Resthoehe. Deshalb bis zu drei Mal nachziehen.
+  let scale = 1;
+  for (let pass = 0; pass < 3; pass += 1) {
+    const overflow = pin.scrollHeight - pin.clientHeight;
+    if (overflow <= 1) break;
+    const next = Math.max(0.72, scale - (overflow + 2) / sceneHeight);
+    if (next >= scale) break;
+    scale = next;
+    scene.style.transform = `scale(${scale})`;
+    scene.style.marginBottom = `${-Math.ceil((1 - scale) * sceneHeight)}px`;
+  }
+}
+
 export function startLeadLandingStages({ scroller = null } = {}) {
   const root = scroller || document.querySelector(".ll-shell");
   const stages = Array.from(document.querySelectorAll(".ll-stage"));
@@ -84,14 +117,23 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     window.requestAnimationFrame(run);
   };
 
+  const onResize = () => {
+    stages.forEach(fitStageScene);
+    onScroll();
+  };
+
   root.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll, { passive: true });
-  window.addEventListener("orientationchange", onScroll, { passive: true });
+  window.addEventListener("resize", onResize, { passive: true });
+  window.addEventListener("orientationchange", onResize, { passive: true });
+
+  stages.forEach(fitStageScene);
   run();
+  // Nach dem Laden der Bilder koennen sich Hoehen noch aendern.
+  window.addEventListener("load", onResize, { once: true });
 
   return () => {
     root.removeEventListener("scroll", onScroll);
-    window.removeEventListener("resize", onScroll);
-    window.removeEventListener("orientationchange", onScroll);
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("orientationchange", onResize);
   };
 }

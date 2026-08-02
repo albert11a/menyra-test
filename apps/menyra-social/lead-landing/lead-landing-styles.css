@@ -47,15 +47,20 @@ img {
   height: 100%;
 }
 
-/* ---------- Layout: durchgehendes Scrollen mit fixierten Szenen ----------
-   Die Seite wird nur auf dem Handy gezeigt. Kein Snap: fruehere Versuche mit
-   scroll-snap-type: mandatory blieben haengen, sobald ein Abschnitt hoeher
-   als der Bildschirm war - man scrollte dann innerhalb des Abschnitts und
-   der Snap zog zurueck.
-   Stattdessen laeuft der Scroll durch. Erklaerende Kapitel ("Stage") halten
-   ihre Szene per position: sticky im Bild fest, waehrend die Scrollstrecke
-   darunter durchlaeuft. Der Scrollfortschritt bestimmt, welcher Teil gerade
-   hervorgehoben wird - runter vorwaerts, rauf rueckwaerts. */
+/* ---------- Layout: rastendes Scrollen mit fixierten Szenen ----------
+   Die Seite wird nur auf dem Handy gezeigt.
+
+   Erklaerende Kapitel ("Stage") halten ihre Szene per position: sticky im
+   Bild fest, waehrend die Scrollstrecke darunter durchlaeuft. Der
+   Scrollfortschritt bestimmt, welcher Teil hervorgehoben wird - runter
+   vorwaerts, rauf rueckwaerts.
+
+   Damit schnelles Wischen keine Erklaerung ueberspringt, rastet der Scroll
+   pro Schritt ein. Die Rastpunkte sind absolut positionierte, unsichtbare
+   Anker (.ll-stage__anchor) - kein scrollbarer Inhalt. Das ist der
+   Unterschied zum frueheren Versuch, bei dem Abschnitte hoeher als der
+   Bildschirm intern scrollten und der Snap zurueckzog: hier ist die Szene
+   immer genau bildschirmhoch, es gibt nichts, worin man haengen bleibt. */
 
 .ll-shell {
   height: 100svh;
@@ -64,6 +69,9 @@ img {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  /* Ein Wisch = ein Schritt. Ohne Snap wuerde schnelles Scrollen
+     Erklaerungen ueberspringen. */
+  scroll-snap-type: y mandatory;
 }
 
 .ll-shell::-webkit-scrollbar {
@@ -82,6 +90,8 @@ img {
   flex-direction: column;
   justify-content: center;
   gap: 12px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 /* ---------- Stage: Szene bleibt stehen, Scroll erklaert ---------- */
@@ -106,6 +116,22 @@ img {
   justify-content: center;
   padding: max(16px, env(safe-area-inset-top)) 18px calc(14px + env(safe-area-inset-bottom));
   overflow: hidden;
+  z-index: 2;
+}
+
+/* Unsichtbare Rastpunkte - einer je Schritt. Sie liegen absolut ueber der
+   Kapitelhoehe und beeinflussen das Layout nicht. Dadurch rastet jeder
+   Wisch auf genau einen Fokus, ohne dass ein scrollbarer Inhalt entsteht,
+   in dem man haengen bleiben koennte. */
+.ll-stage__anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 100svh;
+  height: 100dvh;
+  pointer-events: none;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .ll-stage__scene {
@@ -114,21 +140,33 @@ img {
   transition: transform 620ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Nicht fokussierte Teile treten zurueck, der fokussierte bleibt klar.
+/* Nicht fokussierte Teile werden unscharf, der fokussierte bleibt klar.
    So sieht man immer das ganze Profil - nur die Aufmerksamkeit wandert. */
 [data-spot] {
   transition: opacity 460ms ease, filter 460ms ease, transform 460ms ease;
+  will-change: filter, opacity;
 }
 
 .ll-stage[data-focus] [data-spot] {
-  opacity: 0.22;
-  filter: saturate(0.5);
+  opacity: 0.45;
+  filter: blur(4px) saturate(0.65);
 }
 
 .ll-stage[data-focus] [data-spot][data-spot-active] {
   opacity: 1;
   filter: none;
   transform: scale(1.04);
+}
+
+/* Kein filter auf .ll-stage__scene: ein Filter am Elternteil wuerde den
+   fokussierten Teil mitzeichnen, Kinder koennen ihn nicht aufheben. Deshalb
+   traegt jeder Bestandteil der Szene ein eigenes data-spot. */
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-stage[data-focus] [data-spot] {
+    filter: none;
+    opacity: 0.3;
+  }
 }
 
 .ll-stage__caption {
@@ -1509,5 +1547,144 @@ img {
 
   .ll-scroll-hint svg {
     animation: none;
+  }
+}
+
+.ll-profile__coverimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ll-profile__coverimg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------- Kompakt fuer niedrige Bildschirme ----------
+   Die Szene eines Kapitels muss immer vollstaendig ins Bild passen, sonst
+   wuerde sie oben oder unten beschnitten (der Pin hat overflow: hidden).
+   Geprueft gegen 360x640. */
+@media (max-height: 740px) {
+  .ll-stage__caption {
+    margin-top: 10px;
+    min-height: 72px;
+  }
+
+  .ll-stage__step-title {
+    font-size: 17px;
+  }
+
+  .ll-stage__step:first-child .ll-stage__step-title {
+    font-size: 21px;
+  }
+
+  .ll-stage__step-body {
+    font-size: 12.5px;
+  }
+
+  .ll-menu-card__media {
+    height: 72px;
+  }
+
+  .ll-menu-card__media img {
+    max-height: 72px;
+  }
+
+  .ll-dish__media {
+    max-height: 11svh;
+    margin: 8px 20px;
+  }
+
+  .ll-dish__head {
+    padding: 10px 20px 8px;
+  }
+
+  .ll-dish__price {
+    padding: 10px 16px;
+  }
+
+  .ll-pillrow {
+    margin: 10px 20px;
+  }
+
+  .ll-dish__info {
+    margin: 0 20px 10px;
+    padding: 10px 16px;
+    min-height: 36px;
+  }
+
+  .ll-cross__media {
+    height: 40px;
+  }
+
+  .ll-cross__media img {
+    max-height: 40px;
+  }
+
+  .ll-crossrow {
+    padding: 0 20px 10px;
+  }
+
+  .ll-dish__foot {
+    padding: 8px 20px 12px;
+  }
+
+  .ll-dish__title {
+    font-size: 17px;
+  }
+
+  .ll-pill {
+    padding: 10px 4px;
+    font-size: 10px;
+  }
+
+  .ll-dish__crosshead {
+    margin: 0 20px 8px;
+  }
+
+  .ll-dish__crosstitle {
+    font-size: 14px;
+  }
+
+  .ll-cross {
+    padding: 6px;
+  }
+
+  .ll-focus__media {
+    max-height: 15svh;
+  }
+
+  .ll-focus {
+    padding: 9px;
+  }
+
+  .ll-focus__title {
+    margin: 10px 4px 4px;
+    font-size: 15px;
+  }
+
+  .ll-focus__body {
+    font-size: 12px;
+  }
+
+  .ll-tab {
+    padding: 11px 0;
+  }
+
+  .ll-menu-card {
+    padding: 11px;
+  }
+
+  .ll-dish__cart,
+  .ll-dish__wolt,
+  .ll-btn-ghost {
+    height: 48px;
+  }
+
+  .ll-btn-ghost {
+    width: 48px;
+    flex: 0 0 48px;
   }
 }

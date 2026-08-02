@@ -152,6 +152,10 @@ function stage({ eyebrow, title, scene, steps = [] }) {
 
         <div class="ll-stage__bar"><span></span></div>
       </div>
+
+      ${allSteps.map((_, index) => `
+        <div class="ll-stage__anchor" aria-hidden="true" style="top: calc(${index} * 100svh);"></div>
+      `).join("")}
     </section>
   `;
 }
@@ -237,7 +241,7 @@ export function renderProfile(profile = {}) {
   const scene = `
     <div class="ll-card ll-profile" aria-label="Profili juaj">
       <div class="ll-profile__cover">
-        ${img(profile.coverUrl, "Ballina")}
+        <span data-spot="identity" class="ll-profile__coverimg">${img(profile.coverUrl, "Ballina")}</span>
         <span class="ll-profile__scrim"></span>
         <span class="ll-profile__fade"></span>
         ${socialButtons ? `<div class="ll-profile__socials" data-spot="social">${socialButtons}</div>` : ""}
@@ -457,7 +461,7 @@ export function renderDish(profile = {}, menuItems = []) {
 
   const scene = `
     <div class="ll-card" aria-label="Dritarja e pjatës">
-      <div class="ll-dish__head">
+      <div class="ll-dish__head" data-spot="dish">
         <div>
           <h4 class="ll-dish__title">${esc(dish.name)}</h4>
           <span class="ll-dish__cat">${esc(text(dish.category).toUpperCase())}</span>
@@ -465,7 +469,7 @@ export function renderDish(profile = {}, menuItems = []) {
         <span class="ll-dish__x">${icon("chevron-down", { size: 18 })}</span>
       </div>
 
-      <div class="ll-dish__media">${img(dish.imageUrl, dish.name)}</div>
+      <div class="ll-dish__media" data-spot="dish">${img(dish.imageUrl, dish.name)}</div>
 
       ${dish.price !== null ? `
         <div class="ll-dish__price" data-spot="price">
