@@ -2,7 +2,8 @@
 //
 // Eigenstaendige Seite: laedt die echten Profildaten read-only, rendert die
 // Verkaufs-Sections und haengt drei kleine Verhalten an (Begruessungs-
-// Wechsel, Reveal beim Scrollen, Karte). Kein Zugriff auf die Social-App.
+// Wechsel, Fortschrittspunkte, Karte). Das Einrasten pro Abschnitt macht
+// CSS-Scroll-Snap, nicht JavaScript. Kein Zugriff auf die Social-App.
 
 import { loadLeadLandingData } from "./lead-landing-data.js";
 import { mountLeadLandingMap } from "./lead-landing-map.js";
@@ -69,24 +70,38 @@ function startGreetingCycle() {
   }, GREETING_INTERVAL_MS);
 }
 
-function startRevealObserver() {
-  const targets = Array.from(document.querySelectorAll(".ll-reveal"));
-  if (!targets.length) return;
+// Fortschrittspunkte rechts: zeigen, an welchem Abschnitt man gerade ist.
+// Rein passiv - das Einrasten macht CSS-Scroll-Snap, hier wird nichts
+// gesteuert, damit das Scrollen nativ bleibt.
+function startProgressDots() {
+  const shell = document.querySelector(".ll-shell");
+  const sections = Array.from(document.querySelectorAll(".ll-section"));
+  if (!shell || sections.length < 2) return;
 
-  if (!("IntersectionObserver" in window)) {
-    targets.forEach((node) => node.classList.add("is-in"));
-    return;
-  }
+  const rail = document.createElement("div");
+  rail.className = "ll-progress";
+  rail.setAttribute("aria-hidden", "true");
+  rail.innerHTML = sections
+    .map((_, index) => `<span class="ll-progress__dot${index === 0 ? " is-active" : ""}"></span>`)
+    .join("");
+  document.body.appendChild(rail);
+
+  const dots = Array.from(rail.children);
+  const setActive = (index) => {
+    dots.forEach((dot, position) => dot.classList.toggle("is-active", position === index));
+  };
+
+  if (!("IntersectionObserver" in window)) return;
 
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (!entry.isIntersecting) return;
-      entry.target.classList.add("is-in");
-      observer.unobserve(entry.target);
+      const index = sections.indexOf(entry.target);
+      if (index >= 0) setActive(index);
     });
-  }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+  }, { root: shell, threshold: 0.55 });
 
-  targets.forEach((node) => observer.observe(node));
+  sections.forEach((section) => observer.observe(section));
 }
 
 function startMap() {
@@ -106,7 +121,7 @@ function startMap() {
       observer.disconnect();
       mountLeadLandingMap(container);
     });
-  }, { rootMargin: "300px 0px" });
+  }, { root: document.querySelector(".ll-shell"), rootMargin: "300px 0px" });
 
   observer.observe(container);
 }
@@ -162,7 +177,7 @@ async function boot() {
   document.title = `${data.profile.name} - Mnyra`;
 
   startGreetingCycle();
-  startRevealObserver();
+  startProgressDots();
   startMap();
 }
 

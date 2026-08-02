@@ -30,11 +30,12 @@ html,
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
   background: var(--ll-bg);
   color: var(--ll-ink);
   font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 img {
@@ -42,21 +43,85 @@ img {
   display: block;
 }
 
-/* ---------- Layout ---------- */
+#llRoot {
+  height: 100%;
+}
+
+/* ---------- Layout: ein Wisch = ein Abschnitt ----------
+   Die Seite wird ausschliesslich auf dem Handy gezeigt. Statt freiem
+   Scrollen rastet jeder Abschnitt formatfuellend ein. Umgesetzt mit
+   CSS-Scroll-Snap - also nativ vom Browser, ohne Touch-Handler, die das
+   Scrollverhalten kapern wuerden.
+   scroll-snap-stop: always verhindert, dass ein schneller Wisch mehrere
+   Abschnitte ueberspringt. */
 
 .ll-shell {
-  width: 100%;
-  max-width: var(--ll-shell);
-  margin: 0 auto;
-  padding: 0 18px 96px;
+  height: 100svh;
+  height: 100dvh;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.ll-shell::-webkit-scrollbar {
+  display: none;
 }
 
 .ll-section {
-  padding: 56px 0 8px;
+  position: relative;
+  height: 100svh;
+  height: 100dvh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  width: 100%;
+  max-width: var(--ll-shell);
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  /* "safe" zentriert nur solange der Inhalt passt. Ist er hoeher, richtet
+     der Browser oben aus statt oben abzuschneiden - sonst waere der Anfang
+     langer Abschnitte nicht mehr erreichbar. */
+  justify-content: safe center;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
 }
 
-.ll-section--tight {
-  padding-top: 34px;
+.ll-section::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fortschrittspunkte am rechten Rand. */
+.ll-progress {
+  position: fixed;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px 4px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.ll-progress__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.45);
+  transition: background 260ms ease, transform 260ms ease;
+}
+
+.ll-progress__dot.is-active {
+  background: var(--ll-accent);
+  transform: scale(1.35);
 }
 
 .ll-eyebrow {
@@ -65,24 +130,24 @@ img {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ll-accent);
-  margin: 0 0 10px;
+  margin: 0 0 6px;
 }
 
 .ll-h2 {
-  margin: 0 0 10px;
-  font-size: clamp(26px, 6.6vw, 34px);
+  margin: 0 0 8px;
+  font-size: clamp(22px, 5.8vw, 29px);
   font-weight: 900;
   font-style: italic;
   letter-spacing: -0.045em;
-  line-height: 1.05;
+  line-height: 1.08;
   color: var(--ll-ink);
 }
 
 .ll-lead {
-  margin: 0 0 22px;
-  font-size: 14px;
+  margin: 0 0 6px;
+  font-size: 13.5px;
   font-weight: 600;
-  line-height: 1.65;
+  line-height: 1.55;
   color: var(--ll-muted);
 }
 
@@ -105,13 +170,13 @@ img {
 }
 
 .ll-card--pad {
-  padding: 22px;
+  padding: 18px;
 }
 
 .ll-stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 /* Erklaerungs-Callout: sagt dem Kunden, was er gerade sieht. */
@@ -122,7 +187,7 @@ img {
   background: var(--ll-accent-soft);
   border: 1px solid rgba(79, 70, 229, 0.14);
   border-radius: var(--ll-radius-lg);
-  padding: 16px 18px;
+  padding: 13px 15px;
 }
 
 .ll-callout__num {
@@ -147,7 +212,7 @@ img {
 
 .ll-callout__body {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.6;
   color: var(--ll-muted);
@@ -156,12 +221,7 @@ img {
 /* ---------- Hero ---------- */
 
 .ll-hero {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  position: relative;
-  padding: 40px 0;
+  gap: 0;
 }
 
 .ll-hero__glow {
@@ -270,10 +330,19 @@ img {
 
 /* ---------- Profil-Nachbildung ---------- */
 
+/* Werte 1:1 aus core/profile/profile-menu-focus-render-controller.js
+   (renderBusinessProfileCard). Aendert sich dort etwas, muss es hier
+   nachgezogen werden. */
+
+.ll-profile {
+  min-height: 440px;
+}
+
 .ll-profile__cover {
   position: relative;
-  height: 168px;
-  background: #e2e8f0;
+  height: 160px;
+  background: #0f172a;
+  overflow: hidden;
 }
 
 .ll-profile__cover img {
@@ -282,130 +351,177 @@ img {
   object-fit: cover;
 }
 
+/* Abdunkelung plus weicher Weissverlauf nach unten - wie im Original. */
+.ll-profile__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.24);
+}
+
+.ll-profile__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4rem;
+  background: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.82) 42%, rgba(255, 255, 255, 0) 100%);
+}
+
 .ll-profile__socials {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 16px;
+  right: 16px;
   display: flex;
-  gap: 9px;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
 }
 
 .ll-socialbtn {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: #fff;
-  color: var(--ll-ink);
+  color: #0f172a;
   display: grid;
   place-items: center;
-  box-shadow: var(--ll-shadow-sm);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
 .ll-profile__body {
-  padding: 0 22px 22px;
+  padding: 0 32px 32px;
   position: relative;
+  z-index: 20;
+  margin-top: -3rem;
 }
 
 .ll-profile__toprow {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-top: -38px;
-  margin-bottom: 18px;
+  width: 100%;
 }
 
+/* Verlaufsrahmen indigo -> violett, innen 2px weiss. */
 .ll-profile__avatar {
-  width: 92px;
-  height: 92px;
-  flex: 0 0 92px;
-  border-radius: 26px;
-  overflow: hidden;
-  background: #7f1d2b;
-  border: 3px solid #8b5cf6;
-  box-shadow: var(--ll-shadow-md);
+  width: 100px;
+  height: 100px;
+  flex: 0 0 100px;
+  border-radius: 2rem;
+  padding: 3px;
+  background: linear-gradient(to bottom right, #6366f1, #a855f7);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
 .ll-profile__avatar img {
   width: 100%;
   height: 100%;
+  border-radius: 1.8rem;
   object-fit: cover;
+  border: 2px solid #fff;
+  background: #fff;
 }
 
 .ll-profile__meta {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding-bottom: 6px;
+  gap: 24px;
+  padding-bottom: 4px;
+  padding-right: 8px;
 }
 
 .ll-metric {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  min-width: 0;
 }
 
 .ll-metric__value {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 900;
-  letter-spacing: -0.03em;
-  color: var(--ll-ink);
+  line-height: 1;
+  margin-bottom: 4px;
+  color: #0f172a;
+}
+
+.ll-metric__icon {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f172a;
 }
 
 .ll-metric__label,
 .ll-metric__icon-label {
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ll-faint);
+  opacity: 0.8;
 }
 
 .ll-metric__divider {
   width: 1px;
-  height: 34px;
-  background: var(--ll-line-strong);
+  height: 32px;
+  background: #f1f5f9;
 }
 
+.ll-profile__nameblock {
+  margin-top: 24px;
+  margin-bottom: 32px;
+}
+
+/* Verlaufsschrift slate-900 -> indigo-600 wie im echten Profil. */
 .ll-profile__name {
-  margin: 0 0 6px;
-  font-size: 30px;
+  margin: 0 0 12px;
+  font-size: 28px;
   font-weight: 900;
-  letter-spacing: -0.04em;
-  color: #1e1b4b;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  background: linear-gradient(to bottom right, #0f172a, #4f46e5);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .ll-profile__bio {
-  margin: 0 0 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ll-muted);
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.625;
+  color: #64748b;
+  max-width: 300px;
 }
 
 .ll-profile__tag {
-  margin: 0 0 18px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  margin: 16px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ll-faint);
 }
 
 .ll-profile__actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 16px;
 }
 
 .ll-btn-primary {
   flex: 1;
   height: 56px;
-  border-radius: var(--ll-radius-md);
-  background: linear-gradient(90deg, #0f172a, #1e293b);
+  border-radius: 1.2rem;
+  background: linear-gradient(to right, #0f172a, #1e293b);
   color: #fff;
-  border: none;
+  border: 1px solid transparent;
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -417,10 +533,10 @@ img {
   width: 56px;
   height: 56px;
   flex: 0 0 56px;
-  border-radius: var(--ll-radius-md);
+  border-radius: 1.2rem;
   background: #fff;
-  border: 1px solid var(--ll-line-strong);
-  color: var(--ll-ink);
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
   display: grid;
   place-items: center;
   box-shadow: var(--ll-shadow-sm);
@@ -470,7 +586,7 @@ img {
   border-radius: 1.5rem;
   overflow: hidden;
   background: #e2e8f0;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
 }
 
 .ll-post img {
@@ -529,7 +645,7 @@ img {
   position: relative;
   border-radius: 1.6rem;
   overflow: hidden;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   background: #f1f5f9;
 }
 
@@ -820,40 +936,105 @@ img {
 
 /* ---------- Kontakt-Modal ---------- */
 
+/* Werte 1:1 aus renderBusinessInfoRow. */
+
+.ll-contact {
+  min-height: 440px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ll-contact__title {
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  background: linear-gradient(to bottom right, #0f172a, #4f46e5);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ll-contact__place {
+  margin: 16px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ll-faint);
+}
+
+.ll-contact__rows {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .ll-contact__row {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 14px 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .ll-contact__icon {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 52px;
-  border-radius: 999px;
-  background: #f1f5f9;
-  color: var(--ll-ink);
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 1rem;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  color: #0f172a;
   display: grid;
   place-items: center;
 }
 
 .ll-contact__label {
+  display: block;
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ll-faint);
-  margin-bottom: 3px;
+  line-height: 1;
 }
 
 .ll-contact__value {
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--ll-ink);
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ll-contact__foot {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ll-contact__back {
+  width: 100%;
+  height: 56px;
+  border-radius: 1.2rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ---------- Karte ---------- */
@@ -915,7 +1096,7 @@ img {
 
 .ll-qr img {
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
 }
 
@@ -932,7 +1113,7 @@ img {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  padding: 16px 0;
+  padding: 13px 0;
   border-bottom: 1px solid var(--ll-line);
 }
 
@@ -1020,11 +1201,31 @@ img {
 
 /* ---------- Preise ---------- */
 
+/* Drei Pakete nebeneinander, horizontal gewischt - so bleibt der Abschnitt
+   auf einem Bildschirm statt drei Karten hoch zu stapeln. */
+.ll-price-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 12px 0 4px;
+  margin: 0 -18px;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.ll-price-row::-webkit-scrollbar {
+  display: none;
+}
+
 .ll-price {
+  flex: 0 0 84%;
+  scroll-snap-align: center;
   background: #fff;
   border: 1px solid var(--ll-line);
   border-radius: var(--ll-radius-xl);
-  padding: 24px 22px;
+  padding: 22px 20px;
   box-shadow: var(--ll-shadow-sm);
   position: relative;
 }
@@ -1181,28 +1382,13 @@ img {
   color: #be123c;
 }
 
-/* Sanftes Einblenden beim Scrollen. */
-.ll-reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 620ms cubic-bezier(0.23, 1, 0.32, 1), transform 620ms cubic-bezier(0.23, 1, 0.32, 1);
-  will-change: opacity, transform;
-}
-
-.ll-reveal.is-in {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .ll-reveal,
   .ll-greet__item {
     transition: none;
   }
 
-  .ll-reveal {
-    opacity: 1;
-    transform: none;
+  .ll-shell {
+    scroll-behavior: auto;
   }
 
   .ll-scroll-hint svg {

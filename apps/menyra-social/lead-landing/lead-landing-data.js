@@ -158,13 +158,26 @@ async function resolveRestaurantId(rawKey = "") {
   return "";
 }
 
-function normalizeMenuItem(raw = {}) {
-  const images = []
-    .concat(Array.isArray(raw.imageUrls) ? raw.imageUrls : [])
-    .concat(Array.isArray(raw.images) ? raw.images : [])
-    .concat([raw.imageUrl, raw.image, raw.photoUrl])
-    .map((entry) => text(typeof entry === "string" ? entry : entry?.url))
+// Bildquellen exakt wie in core/menu/menu-doc-normalize-utils.js.
+function resolveMenuImages(raw = {}) {
+  const listed = [];
+  [raw.imageUrls, raw.images, raw.image, raw.gallery, raw.photos, raw.media, raw.mediaUrls, raw.photoUrls, raw.pictureUrls]
+    .forEach((entry) => {
+      if (Array.isArray(entry)) listed.push(...entry);
+      else if (typeof entry === "string" && entry.trim()) listed.push(entry);
+    });
+  const primary = firstText(
+    raw.imageUrl, raw.imageURL, raw.image_url, raw.image,
+    raw.photoUrl, raw.photoURL, raw.photo_url,
+    raw.img, raw.imgUrl, raw.imgURL,
+    raw.thumbnail, raw.thumb, raw.cover, raw.coverUrl, raw.coverURL
+  );
+  return [primary, ...listed.map((entry) => text(typeof entry === "string" ? entry : entry?.url))]
     .filter(Boolean);
+}
+
+function normalizeMenuItem(raw = {}) {
+  const images = resolveMenuImages(raw);
 
   const crossSellItemIds = []
     .concat(raw.crossSellItemIds || raw.crossSellIds || raw.crossSell || raw.crossSelling || [])
@@ -189,20 +202,53 @@ function normalizeMenuItem(raw = {}) {
   };
 }
 
-function normalizePost(raw = {}) {
-  const images = []
-    .concat(Array.isArray(raw.imageUrls) ? raw.imageUrls : [])
-    .concat(Array.isArray(raw.images) ? raw.images : [])
-    .concat([raw.imageUrl, raw.image, raw.mediaUrl, raw.posterUrl])
-    .map((entry) => text(typeof entry === "string" ? entry : entry?.url))
-    .filter(Boolean);
+// Feldreihenfolge exakt wie in core/feed/post-doc-normalize-utils.js, damit
+// die Vorschau dieselben Posts findet wie das echte Profil.
+function resolvePostMediaUrl(raw = {}) {
+  const media = Array.isArray(raw.media) ? raw.media : [];
+  return firstText(
+    raw.url,
+    raw.mediaUrl,
+    media[0]?.url,
+    media[0]?.thumbUrl,
+    raw.imageUrl,
+    raw.image,
+    raw.photoUrl,
+    raw.pictureUrl
+  );
+}
 
+function resolvePostPosterUrl(raw = {}) {
+  const media = Array.isArray(raw.media) ? raw.media : [];
+  return firstText(
+    raw.posterUrl,
+    raw.thumbUrl,
+    media[0]?.thumbUrl,
+    media[0]?.posterUrl,
+    raw.imageUrl,
+    raw.image
+  );
+}
+
+function isVideoPost(raw = {}) {
+  const media = Array.isArray(raw.media) ? raw.media : [];
+  const type = text(media[0]?.type || raw.mediaType || raw.type).toLowerCase();
+  return raw.isVideo === true || type === "video" || type.startsWith("video/");
+}
+
+function normalizePost(raw = {}) {
+  const mediaUrl = resolvePostMediaUrl(raw);
+  const posterUrl = resolvePostPosterUrl(raw);
+  const video = isVideoPost(raw);
   return {
     id: text(raw.id),
-    imageUrl: images[0] || "",
-    caption: firstText(raw.caption, raw.text, raw.description),
-    likeCount: num(raw.likeCount ?? raw.likes) || 0,
-    commentCount: num(raw.commentCount ?? raw.comments) || 0,
+    // Video-Posts zeigen das Standbild, nicht die Videodatei.
+    imageUrl: video ? (posterUrl || mediaUrl) : (mediaUrl || posterUrl),
+    isVideo: video,
+    caption: firstText(raw.caption, raw.title, raw.text, raw.description),
+    likeCount: num(raw.likesCount ?? raw.likes) || 0,
+    commentCount: num(raw.commentsCount ?? raw.comments) || 0,
+    status: firstText(raw.status, "active"),
     createdAt: text(raw.createdAt)
   };
 }
@@ -308,7 +354,7 @@ export async function loadLeadLandingData(routeKey = "") {
 
   const posts = postsRaw
     .map(normalizePost)
-    .filter((post) => post.imageUrl)
+    .filter((post) => post.status === "active" && post.imageUrl)
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
   const salesSource = merged.landingSales && typeof merged.landingSales === "object"

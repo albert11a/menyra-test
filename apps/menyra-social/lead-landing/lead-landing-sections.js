@@ -131,7 +131,7 @@ export function renderHero(profile = {}) {
   const c2 = text(profile.businessNameColorPart2) || "#4f46e5";
 
   return `
-    <header class="ll-hero">
+    <header class="ll-section ll-hero">
       <div class="ll-hero__glow" aria-hidden="true"></div>
 
       <div class="ll-greet" aria-live="polite">
@@ -165,7 +165,7 @@ export function renderHero(profile = {}) {
 export function renderIntro(profile = {}) {
   const city = text(profile.city) || "qytetin tuaj";
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead(
     "Çfarë është Mnyra",
     "Lokali juaj, digjital - në një vend.",
@@ -193,23 +193,25 @@ export function renderProfile(profile = {}) {
   const cityLabel = text(profile.city).toUpperCase();
 
   const socialButtons = [
-    geoUrl ? `<span class="ll-socialbtn">${icon("map", { size: 19 })}</span>` : "",
-    ttUrl ? `<span class="ll-socialbtn">${icon("music", { size: 19 })}</span>` : "",
-    igUrl ? `<span class="ll-socialbtn">${icon("instagram", { size: 19 })}</span>` : "",
-    fbUrl ? `<span class="ll-socialbtn">${icon("facebook", { size: 19 })}</span>` : ""
+    geoUrl ? `<span class="ll-socialbtn">${icon("map", { size: 16 })}</span>` : "",
+    ttUrl ? `<span class="ll-socialbtn">${icon("music", { size: 16 })}</span>` : "",
+    igUrl ? `<span class="ll-socialbtn">${icon("instagram", { size: 16 })}</span>` : "",
+    fbUrl ? `<span class="ll-socialbtn">${icon("facebook", { size: 16 })}</span>` : ""
   ].filter(Boolean).join("");
 
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead(
     "Hapi 1",
     "Kështu ju sheh klienti.",
-    "Kjo është kartela juaj publike - me të dhënat tuaja reale, ashtu siç duket sot në Mnyra."
+    "Kartela juaj publike - me të dhënat tuaja reale."
   )}
 
-      <div class="ll-card" aria-label="Parapamje e profilit">
+      <div class="ll-card ll-profile" aria-label="Parapamje e profilit">
         <div class="ll-profile__cover">
           ${img(profile.coverUrl, "Ballina")}
+          <span class="ll-profile__scrim"></span>
+          <span class="ll-profile__fade"></span>
           ${socialButtons ? `<div class="ll-profile__socials">${socialButtons}</div>` : ""}
         </div>
 
@@ -223,15 +225,17 @@ export function renderProfile(profile = {}) {
               </span>
               <span class="ll-metric__divider"></span>
               <span class="ll-metric">
-                ${icon("info", { size: 26 })}
+                <span class="ll-metric__icon">${icon("info", { size: 20 })}</span>
                 <span class="ll-metric__icon-label">Info</span>
               </span>
             </div>
           </div>
 
-          <p class="ll-profile__name">${esc(profile.name)}</p>
-          <p class="ll-profile__bio">${esc(text(profile.bio) || "Nuk ka bio.")}</p>
-          <p class="ll-profile__tag">${esc([cityLabel, typeLabel].filter(Boolean).join(" / "))}</p>
+          <div class="ll-profile__nameblock">
+            <h3 class="ll-profile__name">${esc(profile.name)}</h3>
+            <p class="ll-profile__bio">${esc(text(profile.bio) || "Nuk ka bio.")}</p>
+            <p class="ll-profile__tag">${esc([cityLabel, typeLabel].filter(Boolean).join(" / "))}</p>
+          </div>
 
           <div class="ll-profile__actions">
             <span class="ll-btn-primary">Ndiq</span>
@@ -240,12 +244,9 @@ export function renderProfile(profile = {}) {
         </div>
       </div>
 
-      <div class="ll-stack" style="margin-top:18px;">
-        ${callout(1, "Butonat lart", "Harta, TikTok, Instagram dhe Facebook - një klikim dhe klienti është te ju. Ju i vendosni një herë, punojnë përgjithmonë.")}
-        ${callout(2, "Fans", "Numri i njerëzve që ju ndjekin. Sa më shumë ndjekës, aq më shumë njerëz e shohin çdo postim tuajin.")}
-        ${callout(3, "Info", "Hap adresën, orarin dhe kontaktet tuaja - pa e lënë profilin.")}
-        ${callout(4, "NDIQ", "Klienti bëhet ndjekës me një prekje. Çdo postim i ri i shfaqet në feed - marketing që nuk paguhet dy herë.")}
-        ${callout(5, "Butoni i bisedës", "E çon klientin direkt te ju në WhatsApp. Rezervimet vijnë aty ku i lexoni gjithsesi.")}
+      <div class="ll-stack">
+        ${callout(1, "Butonat lart & Info", "Harta, TikTok, Instagram - një prekje dhe klienti është te ju. Info hap adresën dhe orarin.")}
+        ${callout(2, "NDIQ & biseda", "Klienti bëhet ndjekës me një prekje - çdo postim i ri i shfaqet në feed. Butoni i bisedës e çon direkt te ju.")}
       </div>
     </section>
   `;
@@ -267,24 +268,33 @@ export function renderContact(profile = {}) {
   if (!rows.length) return "";
 
   return `
-    <section class="ll-section ll-section--tight ll-reveal">
+    <section class="ll-section">
       ${sectionHead("Kontakti & Info", "Gjithçka që klienti duhet të dijë.", "Kur klienti prek INFO, hapet kjo dritare - me të dhënat tuaja.")}
 
-      <div class="ll-card ll-card--pad">
-        <h3 style="margin:0 0 4px;font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1e1b4b;">Kontakti &amp; Info</h3>
-        <p style="margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#94a3b8;">${esc(text(profile.city).toUpperCase())}</p>
-        ${rows.map((row) => `
-          <div class="ll-contact__row">
-            <span class="ll-contact__icon">${icon(row.iconName, { size: 20 })}</span>
-            <div style="min-width:0;">
-              <p class="ll-contact__label">${esc(row.label)}</p>
-              <p class="ll-contact__value">${esc(row.value)}</p>
+      <div class="ll-card ll-contact">
+        <div>
+          <h3 class="ll-contact__title">Kontakti &amp; Info</h3>
+          <p class="ll-contact__place">${esc(text(profile.city).toUpperCase())}</p>
+        </div>
+
+        <div class="ll-contact__rows">
+          ${rows.map((row) => `
+            <div class="ll-contact__row">
+              <span class="ll-contact__icon">${icon(row.iconName, { size: 16 })}</span>
+              <div style="min-width:0;flex:1;">
+                <span class="ll-contact__label">${esc(row.label)}</span>
+                <span class="ll-contact__value">${esc(row.value)}</span>
+              </div>
             </div>
-          </div>
-        `).join("")}
+          `).join("")}
+        </div>
+
+        <div class="ll-contact__foot">
+          <span class="ll-contact__back">Kthehu te profili</span>
+        </div>
       </div>
 
-      <div class="ll-stack" style="margin-top:18px;">
+      <div class="ll-stack">
         ${callout(1, "Ju e mbani të përditësuar", "Ndryshoni orarin ose adresën një herë - ndryshon kudo: në profil, në hartë, në QR kodin e tavolinës.")}
       </div>
     </section>
@@ -311,8 +321,8 @@ export function renderPosts(posts = []) {
       </div>`;
 
   return `
-    <section class="ll-section ll-reveal">
-      ${sectionHead("Hapi 2", "Postimet - atmosfera juaj.", "Dy tabe e ndajnë profilin: Postimet tregojnë si ndihet lokali, Menu shet.")}
+    <section class="ll-section">
+      ${sectionHead("Hapi 2", "Postimet - atmosfera juaj.", "Dy tabe e ndajnë profilin: Postimet tregojnë lokalin, Menu shet.")}
 
       <div class="ll-tabs" style="margin-bottom:18px;">
         <span class="ll-tab is-active">Postimet</span>
@@ -322,9 +332,8 @@ export function renderPosts(posts = []) {
       ${grid}
 
       <div class="ll-stack" style="margin-top:18px;">
-        ${callout(1, "Si Instagram - por brenda Mnyra", "Foto dhe video të lokalit, pjatave, mbrëmjeve. Klienti sheh atmosferën para se të vijë.")}
-        ${callout(2, "Feed-i kryesor", "Çdo postim shkon automatikisht te të gjithë ndjekësit tuaj në feed-in e Mnyra. Nuk paguani për shikime.")}
-        ${callout(3, "Pëlqime dhe komente", "Klientët reagojnë dhe komentojnë. Ju e shihni menjëherë çfarë funksionon.")}
+        ${callout(1, "Si Instagram - brenda Mnyra", "Foto e video të lokalit. Klienti sheh atmosferën para se të vijë.")}
+        ${callout(2, "Feed-i kryesor", "Çdo postim shkon te të gjithë ndjekësit tuaj. Nuk paguani për shikime.")}
       </div>
     </section>
   `;
@@ -334,7 +343,7 @@ export function renderPosts(posts = []) {
 
 export function renderMenu(profile = {}, menuItems = [], focusItems = []) {
   const currency = profile.currency || "EUR";
-  const cards = menuItems.slice(0, 4);
+  const cards = menuItems.slice(0, 2);
 
   const focusRow = focusItems.length
     ? `<div class="ll-focus-row">${focusItems.slice(0, 3).map((item) => `
@@ -364,8 +373,8 @@ export function renderMenu(profile = {}, menuItems = [], focusItems = []) {
   const categories = Array.from(new Set(menuItems.map((item) => text(item.category)).filter(Boolean))).slice(0, 6);
 
   return `
-    <section class="ll-section ll-reveal">
-      ${sectionHead("Hapi 3", "Menu - këtu shitet.", "Menuja digjitale me foto, çmime dhe kategori. Gjithmonë e saktë, kurrë e vjetruar.")}
+    <section class="ll-section">
+      ${sectionHead("Hapi 3", "Menu - këtu shitet.", "Menu me foto e çmime. Gjithmonë e saktë, kurrë e vjetruar.")}
 
       <div class="ll-tabs" style="margin-bottom:18px;">
         <span class="ll-tab">Postimet</span>
@@ -381,7 +390,6 @@ export function renderMenu(profile = {}, menuItems = [], focusItems = []) {
         ${callout(2, "Kategoritë", categories.length
     ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
     : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim.")}
-        ${callout(3, "Foto shesin", "Pjata me foto porositet dukshëm më shpesh se një rresht teksti në menu letre.")}
       </div>
     </section>
   `;
@@ -397,7 +405,7 @@ export function renderDish(profile = {}, menuItems = []) {
 
   if (!dish) {
     return `
-      <section class="ll-section ll-reveal">
+      <section class="ll-section">
         ${sectionHead("Hapi 4", "Dritarja e pjatës.", "Sapo të keni pjata në menu, çdo prekje hap një dritare me çmimin, përbërësit, alergjenët dhe rekomandimet që rrisin porosinë.")}
       </section>
     `;
@@ -408,7 +416,7 @@ export function renderDish(profile = {}, menuItems = []) {
   const woltUrl = text(dish.woltUrl) || text(profile.woltUrl);
 
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead("Hapi 4", "Një prekje - dhe porosia rritet.", "Kur klienti prek një pjatë, hapet kjo dritare. Këtu vendoset sa shpenzon.")}
 
       <div class="ll-card" aria-label="Parapamje e dritares se pjates">
@@ -481,7 +489,7 @@ export function renderMap(profile = {}) {
   const address = text(primaryLocation?.address) || text(profile.address);
 
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead("Hapi 5", "Harta e zbulimit.", "Klientët në qytet kërkojnë ku të hanë. Në hartën e Mnyra ju jeni njëri prej tyre - me logon tuaj si shenjë.")}
 
       <div
@@ -519,7 +527,7 @@ export function renderQr(sales = {}) {
     : "";
 
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead("Hapi 6", "QR kodi në tavolinë.", "Klienti ulet, skanon, sheh menunë. Pa aplikacion, pa shkarkim, pa pritur kamarierin.")}
 
       ${gallery}
@@ -528,12 +536,10 @@ export function renderQr(sales = {}) {
       <div class="ll-card ll-card--pad">
         ${feature("qr", "Një kod për çdo tavolinë", "Ne i përgatisim QR kodet. Ju i vendosni në tavolina - dhe menuja juaj është aty 24/7.")}
         ${feature("utensils", "Menu gjithmonë e saktë", "Ndryshoni një çmim në telefon - ndryshon në çdo tavolinë njëkohësisht. Pa printim, pa kosto.")}
-        ${feature("smartphone", "Pa instalim", "Kamera e telefonit mjafton. Funksionon në çdo iPhone dhe Android.")}
       </div>
 
       <div class="ll-stack" style="margin-top:18px;">
         ${callout(1, "Kursen kohë", "Klientët shohin menunë vetë. Kamarierët merren me shërbimin, jo me shpjegimin e menusë.")}
-        ${callout(2, "Tavolina e njohur", "Kodi e di në cilën tavolinë është klienti - kështu porosia vjen me numrin e saktë të tavolinës.")}
       </div>
     </section>
   `;
@@ -543,7 +549,7 @@ export function renderQr(sales = {}) {
 
 export function renderWaiter() {
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead("Hapi 7", "Porositë vijnë te ju.", "Kur klienti prek „Shto në shportë“ dhe dërgon porosinë, ajo shfaqet menjëherë në aplikacionin Waiter.")}
 
       <div class="ll-card ll-card--pad">
@@ -570,7 +576,7 @@ export function renderWaiter() {
 export function renderAnalytics() {
   const bars = [42, 58, 36, 74, 62, 88, 70];
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead("Hapi 8", "Ju shihni çfarë funksionon.", "Jo ndjesi - numra. Çfarë shikohet, çfarë porositet, kur vijnë klientët.")}
 
       <div class="ll-stats" style="margin-bottom:12px;">
@@ -612,10 +618,10 @@ export function renderPricing(sales = {}) {
     : DEFAULT_PACKAGES;
 
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       ${sectionHead("Paketat", "Zgjidhni si doni të filloni.", "Pa kontratë afatgjatë. Ndryshoni paketën kur të doni.")}
 
-      <div class="ll-stack" style="gap:18px;">
+      <div class="ll-price-row">
         ${packages.map((pkg) => `
           <article class="ll-price${pkg.highlight ? " ll-price--hot" : ""}">
             ${pkg.highlight ? '<span class="ll-price__flag">Më i zgjedhuri</span>' : ""}
@@ -647,7 +653,7 @@ export function renderCta(profile = {}, sales = {}) {
   const waUrl = whatsappUrl(phone, `Përshëndetje! Kam parë faqen e Mnyra për ${name} dhe dua të di më shumë.`);
 
   return `
-    <section class="ll-section ll-reveal">
+    <section class="ll-section">
       <div class="ll-cta">
         <h2 class="ll-cta__title">Profili juaj është gati.</h2>
         <p class="ll-cta__body">
