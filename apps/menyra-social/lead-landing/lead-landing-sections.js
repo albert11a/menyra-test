@@ -272,7 +272,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       </div>`;
 
   const focusRow = focusItems.length
-    ? `<div class="ll-focus-row">${focusItems.slice(0, 2).map((item) => `
+    ? `<div class="ll-focus-row">${focusItems.slice(0, 3).map((item) => `
         <article class="ll-focus">
           <div class="ll-focus__media">
             ${img(item.imageUrl, item.title)}
@@ -286,9 +286,18 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
   const menuGrid = menuItems.slice(0, 2).length
     ? `<div class="ll-menu-grid">${menuItems.slice(0, 2).map((item) => `
         <article class="ll-menu-card">
-          <div class="ll-menu-card__media">${img(item.imageUrl, item.name)}</div>
-          <p class="ll-menu-card__name">${esc(item.name)}</p>
-          ${item.price !== null ? `<p class="ll-menu-card__price">${esc(formatPrice(item.price, currency))}</p>` : ""}
+          <div class="ll-menu-card__media">
+            ${img(item.imageUrl, item.name)}
+            <span class="ll-menu-card__like">${filledIcon("heart", { size: 14, color: "currentColor" })}</span>
+          </div>
+          <div class="ll-menu-card__body">
+            <h4 class="ll-menu-card__name">${esc(item.name)}</h4>
+            ${item.description ? `<p class="ll-menu-card__desc">${esc(item.description)}</p>` : ""}
+            <div class="ll-menu-card__foot">
+              <span class="ll-menu-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
+              <span class="ll-menu-card__add">${icon("plus", { size: 16 })}</span>
+            </div>
+          </div>
         </article>
       `).join("")}</div>`
     : `<div class="ll-card ll-card--pad" style="text-align:center;">
