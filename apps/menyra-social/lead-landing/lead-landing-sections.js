@@ -123,6 +123,39 @@ function sectionHead(eyebrow, title, lead) {
   `;
 }
 
+// Ein erklaerendes Kapitel: die Szene bleibt beim Scrollen stehen und wird
+// Schritt fuer Schritt erlaeutert. steps[0] ist die Gesamtansicht (ohne
+// Fokus), danach hebt jeder Schritt einen Teil hervor.
+//
+// steps: [{ focus, label, title, body }] - focus "" laesst alles hell.
+function stage({ eyebrow, title, scene, steps = [] }) {
+  const focusSteps = Math.max(1, steps.length - 1);
+  // Schritt 0 traegt Kapitelmarke und Titel. So gibt es nur einen Textblock
+  // und er steht immer an derselben Stelle - die Szene bekommt den Rest.
+  const allSteps = steps.map((step, index) => (index === 0
+    ? { ...step, label: eyebrow, title }
+    : step));
+  return `
+    <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};">
+      <div class="ll-stage__pin">
+        <div class="ll-stage__scene">${scene}</div>
+
+        <div class="ll-stage__caption">
+          ${allSteps.map((step, index) => `
+            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}">
+              ${step.label ? `<p class="ll-stage__step-label">${esc(step.label)}</p>` : ""}
+              ${step.title ? `<p class="ll-stage__step-title">${esc(step.title)}</p>` : ""}
+              <p class="ll-stage__step-body">${esc(step.body || "")}</p>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="ll-stage__bar"><span></span></div>
+      </div>
+    </section>
+  `;
+}
+
 /* ---------------------------------------------------------------- Hero */
 
 export function renderHero(profile = {}) {
@@ -199,57 +232,60 @@ export function renderProfile(profile = {}) {
     fbUrl ? `<span class="ll-socialbtn">${icon("facebook", { size: 16 })}</span>` : ""
   ].filter(Boolean).join("");
 
-  return `
-    <section class="ll-section">
-      ${sectionHead(
-    "Hapi 1",
-    "Kështu ju sheh klienti.",
-    "Kartela juaj publike - me të dhënat tuaja reale."
-  )}
-
-      <div class="ll-card ll-profile" aria-label="Parapamje e profilit">
-        <div class="ll-profile__cover">
-          ${img(profile.coverUrl, "Ballina")}
-          <span class="ll-profile__scrim"></span>
-          <span class="ll-profile__fade"></span>
-          ${socialButtons ? `<div class="ll-profile__socials">${socialButtons}</div>` : ""}
-        </div>
-
-        <div class="ll-profile__body">
-          <div class="ll-profile__toprow">
-            <span class="ll-profile__avatar">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
-            <div class="ll-profile__meta">
-              <span class="ll-metric">
-                <span class="ll-metric__value">${esc(formatCount(profile.followers))}</span>
-                <span class="ll-metric__label">Fans</span>
-              </span>
-              <span class="ll-metric__divider"></span>
-              <span class="ll-metric">
-                <span class="ll-metric__icon">${icon("info", { size: 20 })}</span>
-                <span class="ll-metric__icon-label">Info</span>
-              </span>
-            </div>
-          </div>
-
-          <div class="ll-profile__nameblock">
-            <h3 class="ll-profile__name">${esc(profile.name)}</h3>
-            <p class="ll-profile__bio">${esc(text(profile.bio) || "Nuk ka bio.")}</p>
-            <p class="ll-profile__tag">${esc([cityLabel, typeLabel].filter(Boolean).join(" / "))}</p>
-          </div>
-
-          <div class="ll-profile__actions">
-            <span class="ll-btn-primary">Ndiq</span>
-            <span class="ll-btn-ghost">${icon("message", { size: 20 })}</span>
-          </div>
-        </div>
+  // Die ganze Karte bleibt sichtbar - data-spot markiert die Teile, die
+  // beim Scrollen nacheinander hervorgehoben werden.
+  const scene = `
+    <div class="ll-card ll-profile" aria-label="Profili juaj">
+      <div class="ll-profile__cover">
+        ${img(profile.coverUrl, "Ballina")}
+        <span class="ll-profile__scrim"></span>
+        <span class="ll-profile__fade"></span>
+        ${socialButtons ? `<div class="ll-profile__socials" data-spot="social">${socialButtons}</div>` : ""}
       </div>
 
-      <div class="ll-stack">
-        ${callout(1, "Butonat lart & Info", "Harta, TikTok, Instagram - një prekje dhe klienti është te ju. Info hap adresën dhe orarin.")}
-        ${callout(2, "NDIQ & biseda", "Klienti bëhet ndjekës me një prekje - çdo postim i ri i shfaqet në feed. Butoni i bisedës e çon direkt te ju.")}
+      <div class="ll-profile__body">
+        <div class="ll-profile__toprow">
+          <span class="ll-profile__avatar" data-spot="identity">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+          <div class="ll-profile__meta" data-spot="fans">
+            <span class="ll-metric">
+              <span class="ll-metric__value">${esc(formatCount(profile.followers))}</span>
+              <span class="ll-metric__label">Fans</span>
+            </span>
+            <span class="ll-metric__divider"></span>
+            <span class="ll-metric">
+              <span class="ll-metric__icon">${icon("info", { size: 20 })}</span>
+              <span class="ll-metric__icon-label">Info</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="ll-profile__nameblock" data-spot="identity">
+          <h3 class="ll-profile__name">${esc(profile.name)}</h3>
+          <p class="ll-profile__bio">${esc(text(profile.bio) || "Nuk ka bio.")}</p>
+          <p class="ll-profile__tag">${esc([cityLabel, typeLabel].filter(Boolean).join(" / "))}</p>
+        </div>
+
+        <div class="ll-profile__actions">
+          <span class="ll-btn-primary" data-spot="follow">Ndiq</span>
+          <span class="ll-btn-ghost" data-spot="chat">${icon("message", { size: 20 })}</span>
+        </div>
       </div>
-    </section>
+    </div>
   `;
+
+  return stage({
+    eyebrow: "Hapi 1",
+    title: "Kështu ju sheh klienti.",
+    scene,
+    steps: [
+      { focus: "", body: "Kjo është kartela juaj publike në Mnyra - me të dhënat tuaja reale. Rrëshqitni për ta parë pjesë pas pjese." },
+      { focus: "identity", label: "Identiteti", title: "Logoja dhe emri juaj", body: "Ballina, logoja, emri dhe qyteti. Klienti e di menjëherë kush jeni dhe ku jeni." },
+      { focus: "social", label: "Lidhjet", title: "Harta, TikTok, Instagram", body: "Një prekje - dhe klienti ka drejtimin në hartë ose rrjetet tuaja. Vendosen një herë, punojnë përgjithmonë." },
+      { focus: "fans", label: "Numrat", title: "Fans dhe Info", body: "Sa njerëz ju ndjekin. Info hap adresën, orarin dhe kontaktet - pa e lënë profilin." },
+      { focus: "follow", label: "Rritja", title: "NDIQ", body: "Klienti bëhet ndjekës me një prekje. Çdo postim i ri i shfaqet në feed - marketing që nuk paguhet dy herë." },
+      { focus: "chat", label: "Kontakti", title: "Biseda direkt", body: "E çon klientin direkt te ju në WhatsApp. Rezervimet vijnë aty ku i lexoni gjithsesi." }
+    ]
+  });
 }
 
 /* ------------------------------------------------------ Kontakti & Info */
@@ -320,26 +356,26 @@ export function renderPosts(posts = []) {
         <p class="ll-callout__body">Sapo të ngarkoni postimin e parë, ai shfaqet këtu - dhe njëkohësisht në feed-in kryesor te të gjithë ndjekësit tuaj.</p>
       </div>`;
 
-  return `
-    <section class="ll-section">
-      ${sectionHead("Hapi 2", "Postimet - atmosfera juaj.", "Dy tabe e ndajnë profilin: Postimet tregojnë lokalin, Menu shet.")}
-
-      <div class="ll-tabs" style="margin-bottom:18px;">
-        <span class="ll-tab is-active">Postimet</span>
-        <span class="ll-tab">Menu</span>
-      </div>
-
-      ${grid}
-
-      <div class="ll-stack" style="margin-top:18px;">
-        ${callout(1, "Si Instagram - brenda Mnyra", "Foto e video të lokalit. Klienti sheh atmosferën para se të vijë.")}
-        ${callout(2, "Feed-i kryesor", "Çdo postim shkon te të gjithë ndjekësit tuaj. Nuk paguani për shikime.")}
-      </div>
-    </section>
+  const scene = `
+    <div class="ll-tabs" data-spot="tabs" style="margin-bottom:14px;">
+      <span class="ll-tab is-active">Postimet</span>
+      <span class="ll-tab">Menu</span>
+    </div>
+    <div data-spot="grid">${grid}</div>
   `;
-}
 
-/* ---------------------------------------------------------------- Menu */
+  return stage({
+    eyebrow: "Hapi 2",
+    title: "Postimet - atmosfera juaj.",
+    scene,
+    steps: [
+      { focus: "", body: "Profili ka dy tabe. Këtu jeni te Postimet." },
+      { focus: "tabs", label: "Ndarja", title: "Postimet & Menu", body: "Dy tabe e ndajnë profilin: Postimet tregojnë si ndihet lokali, Menu shet." },
+      { focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Klienti sheh atmosferën para se të vijë." },
+      { focus: "", label: "Shpërndarja", title: "Feed-i kryesor", body: "Çdo postim shkon automatikisht te të gjithë ndjekësit tuaj në feed. Nuk paguani për shikime." }
+    ]
+  });
+}
 
 export function renderMenu(profile = {}, menuItems = [], focusItems = []) {
   const currency = profile.currency || "EUR";
@@ -372,30 +408,34 @@ export function renderMenu(profile = {}, menuItems = [], focusItems = []) {
 
   const categories = Array.from(new Set(menuItems.map((item) => text(item.category)).filter(Boolean))).slice(0, 6);
 
-  return `
-    <section class="ll-section">
-      ${sectionHead("Hapi 3", "Menu - këtu shitet.", "Menu me foto e çmime. Gjithmonë e saktë, kurrë e vjetruar.")}
-
-      <div class="ll-tabs" style="margin-bottom:18px;">
-        <span class="ll-tab">Postimet</span>
-        <span class="ll-tab is-active">Menu</span>
-      </div>
-
-      ${focusRow}
-      ${focusRow ? '<div style="height:18px"></div>' : ""}
-      ${menuGrid}
-
-      <div class="ll-stack" style="margin-top:18px;">
-        ${callout(1, "Sot në fokus", "Kartat me shenjën TIPP janë rekomandimet e ditës. Ju vendosni çfarë shitet më shumë - dhe e ndryshoni kur të doni.")}
-        ${callout(2, "Kategoritë", categories.length
-    ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
-    : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim.")}
-      </div>
-    </section>
+  const scene = `
+    <div class="ll-tabs" data-spot="tabs" style="margin-bottom:14px;">
+      <span class="ll-tab">Postimet</span>
+      <span class="ll-tab is-active">Menu</span>
+    </div>
+    ${focusRow ? `<div data-spot="focus" style="margin-bottom:14px;">${focusRow}</div>` : ""}
+    <div data-spot="cards">${menuGrid}</div>
   `;
-}
 
-/* -------------------------------------------------- Speisen-Modal (Detail) */
+  return stage({
+    eyebrow: "Hapi 3",
+    title: "Menu - këtu shitet.",
+    scene,
+    steps: [
+      { focus: "", body: "Menu me foto e çmime. Gjithmonë e saktë, kurrë e vjetruar." },
+      { focus: "focus", label: "Rekomandimet", title: "Sot në fokus", body: "Kartat me shenjën TIPP janë rekomandimet e ditës. Ju vendosni çfarë shitet më shumë - dhe e ndryshoni kur të doni." },
+      {
+        focus: "cards",
+        label: "Struktura",
+        title: "Kategoritë",
+        body: categories.length
+          ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
+          : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim."
+      },
+      { focus: "", label: "Efekti", title: "Foto shesin", body: "Një pjatë me foto porositet dukshëm më shpesh se një rresht teksti në menu letre." }
+    ]
+  });
+}
 
 export function renderDish(profile = {}, menuItems = []) {
   const currency = profile.currency || "EUR";
@@ -415,37 +455,36 @@ export function renderDish(profile = {}, menuItems = []) {
   const infoText = text(dish.description) || text(dish.ingredients) || "Përshkrimi i pjatës shfaqet këtu.";
   const woltUrl = text(dish.woltUrl) || text(profile.woltUrl);
 
-  return `
-    <section class="ll-section">
-      ${sectionHead("Hapi 4", "Një prekje - dhe porosia rritet.", "Kur klienti prek një pjatë, hapet kjo dritare. Këtu vendoset sa shpenzon.")}
-
-      <div class="ll-card" aria-label="Parapamje e dritares se pjates">
-        <div class="ll-dish__head">
-          <div>
-            <h4 class="ll-dish__title">${esc(dish.name)}</h4>
-            <span class="ll-dish__cat">${esc(text(dish.category).toUpperCase())}</span>
-          </div>
-          <span class="ll-dish__x">${icon("chevron-down", { size: 18 })}</span>
+  const scene = `
+    <div class="ll-card" aria-label="Dritarja e pjatës">
+      <div class="ll-dish__head">
+        <div>
+          <h4 class="ll-dish__title">${esc(dish.name)}</h4>
+          <span class="ll-dish__cat">${esc(text(dish.category).toUpperCase())}</span>
         </div>
+        <span class="ll-dish__x">${icon("chevron-down", { size: 18 })}</span>
+      </div>
 
-        <div class="ll-dish__media">${img(dish.imageUrl, dish.name)}</div>
+      <div class="ll-dish__media">${img(dish.imageUrl, dish.name)}</div>
 
-        ${dish.price !== null ? `
-          <div class="ll-dish__price">
-            <span class="ll-dish__price-label">Çmimi</span>
-            <span class="ll-dish__price-value">${esc(formatPrice(dish.price, currency))}</span>
-          </div>
-        ` : ""}
+      ${dish.price !== null ? `
+        <div class="ll-dish__price" data-spot="price">
+          <span class="ll-dish__price-label">Çmimi</span>
+          <span class="ll-dish__price-value">${esc(formatPrice(dish.price, currency))}</span>
+        </div>
+      ` : ""}
 
+      <div data-spot="info">
         <div class="ll-pillrow">
           <span class="ll-pill is-active">Info</span>
           <span class="ll-pill">Përbërësit</span>
           <span class="ll-pill">Alergjenët</span>
         </div>
-
         <div class="ll-dish__info">${esc(infoText)}</div>
+      </div>
 
-        ${crossSell.length ? `
+      ${crossSell.length ? `
+        <div data-spot="cross">
           <div class="ll-dish__crosshead">
             <span class="ll-dish__crosstitle">Shkon shkëlqyeshëm me</span>
             <span class="ll-dish__crosscount">${crossSell.length} sugjerime</span>
@@ -458,28 +497,37 @@ export function renderDish(profile = {}, menuItems = []) {
               </article>
             `).join("")}
           </div>
-        ` : ""}
-
-        <div class="ll-dish__foot">
-          <span class="ll-btn-ghost">${icon("message", { size: 20 })}</span>
-          <span class="ll-dish__cart">Shto në shportë ${icon("shopping-bag", { size: 18 })}</span>
-          ${woltUrl ? `<span class="ll-dish__wolt">Wolt</span>` : ""}
         </div>
-      </div>
+      ` : ""}
 
-      <div class="ll-stack" style="margin-top:18px;">
-        ${callout(1, "Çmimi dhe informacioni", "Çmimi qartë, pa keqkuptime. Info, Përbërësit dhe Alergjenët - klienti pyet më pak, kamarieri fiton kohë.")}
-        ${callout(2, "Cross-selling", "„Shkon shkëlqyeshëm me“ sugjeron pije ose ëmbëlsira te çdo pjatë. Kjo është mënyra më e thjeshtë për të rritur vlerën mesatare të porosisë.")}
-        ${callout(3, "Komentet", "Klientët lënë koment te pjata. Ju merrni reagime reale - dhe pjatat e vlerësuara mirë shiten vetë.")}
-        ${callout(4, "Porosia nga çdo vend", woltUrl
-    ? "Nëse klienti nuk është në lokal, porosit direkt përmes Wolt-it ose dërgesës suaj - nga shtëpia, nga puna, kudo."
-    : "Nëse klienti nuk është në lokal, mund të lidhim Wolt-in ose dërgesën tuaj - kështu porosia vjen edhe nga shtëpia.")}
+      <div class="ll-dish__foot" data-spot="order">
+        <span class="ll-btn-ghost">${icon("message", { size: 20 })}</span>
+        <span class="ll-dish__cart">Shto në shportë ${icon("shopping-bag", { size: 18 })}</span>
+        ${woltUrl ? `<span class="ll-dish__wolt">Wolt</span>` : ""}
       </div>
-    </section>
+    </div>
   `;
-}
 
-/* ---------------------------------------------------------------- Harta */
+  return stage({
+    eyebrow: "Hapi 4",
+    title: "Një prekje - dhe porosia rritet.",
+    scene,
+    steps: [
+      { focus: "", body: "Kur klienti prek një pjatë, hapet kjo dritare. Këtu vendoset sa shpenzon." },
+      { focus: "price", label: "Qartësi", title: "Çmimi", body: "Çmimi qartë dhe gjithmonë i saktë - pa keqkuptime në tavolinë." },
+      { focus: "info", label: "Detajet", title: "Info, Përbërësit, Alergjenët", body: "Klienti gjen vetë përgjigjen. Pyet më pak, kamarieri fiton kohë." },
+      { focus: "cross", label: "Më shumë për porosi", title: "Cross-selling", body: "„Shkon shkëlqyeshëm me“ sugjeron pije ose ëmbëlsira te çdo pjatë - mënyra më e thjeshtë për të rritur vlerën mesatare të porosisë." },
+      {
+        focus: "order",
+        label: "Porosia",
+        title: woltUrl ? "Shportë, koment, Wolt" : "Shportë dhe koment",
+        body: woltUrl
+          ? "Në lokal porosia shkon te Waiter-i. Nga shtëpia klienti porosit përmes Wolt-it ose dërgesës suaj. Komentet ju sjellin reagime reale."
+          : "Në lokal porosia shkon direkt te Waiter-i. Komentet ju sjellin reagime reale - dhe pjatat e vlerësuara mirë shiten vetë."
+      }
+    ]
+  });
+}
 
 export function renderMap(profile = {}) {
   const primaryLocation = Array.isArray(profile.locations) ? profile.locations[0] : null;

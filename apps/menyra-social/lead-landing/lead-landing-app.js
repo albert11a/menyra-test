@@ -1,12 +1,13 @@
 // Bootstrap der Lead-Landing.
 //
 // Eigenstaendige Seite: laedt die echten Profildaten read-only, rendert die
-// Verkaufs-Sections und haengt drei kleine Verhalten an (Begruessungs-
-// Wechsel, Fortschrittspunkte, Karte). Das Einrasten pro Abschnitt macht
-// CSS-Scroll-Snap, nicht JavaScript. Kein Zugriff auf die Social-App.
+// Verkaufs-Sections und haengt die Verhalten an: Begruessungs-Wechsel,
+// Fortschrittspunkte, scrollgesteuerte Kapitel und Karte. Kein Zugriff auf
+// die Social-App.
 
 import { loadLeadLandingData } from "./lead-landing-data.js";
 import { mountLeadLandingMap } from "./lead-landing-map.js";
+import { startLeadLandingStages } from "./lead-landing-stage.js";
 import {
   LEAD_LANDING_GREETINGS_COUNT,
   renderAnalytics,
@@ -75,7 +76,7 @@ function startGreetingCycle() {
 // gesteuert, damit das Scrollen nativ bleibt.
 function startProgressDots() {
   const shell = document.querySelector(".ll-shell");
-  const sections = Array.from(document.querySelectorAll(".ll-section"));
+  const sections = Array.from(document.querySelectorAll(".ll-section, .ll-stage"));
   if (!shell || sections.length < 2) return;
 
   const rail = document.createElement("div");
@@ -178,6 +179,7 @@ async function boot() {
 
   startGreetingCycle();
   startProgressDots();
+  startLeadLandingStages({ scroller: document.querySelector(".ll-shell") });
   startMap();
 }
 
