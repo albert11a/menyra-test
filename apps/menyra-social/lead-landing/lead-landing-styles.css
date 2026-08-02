@@ -239,11 +239,15 @@ img {
   filter: none;
 }
 
-/* Die Fusszeile des Modals bleibt immer unangetastet. Sie stoesst unten an
-   den Bildschirmrand, und dahinter liegt reines Weiss - abgedunkelt gaebe
-   es dort eine sichtbare Farbkante. */
+/* Die Fusszeile wird unscharf wie alles andere, aber nicht abgedunkelt: Sie
+   stoesst unten an den Bildschirmrand, und dahinter liegt reines Weiss -
+   abgedunkelt gaebe es dort eine sichtbare Farbkante. */
 .ll-stage[data-focus] .ll-md__foot[data-spot] {
   opacity: 1;
+  filter: blur(4px);
+}
+
+.ll-stage[data-focus] .ll-md__foot[data-spot][data-spot-active] {
   filter: none;
 }
 
