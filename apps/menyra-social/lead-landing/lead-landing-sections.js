@@ -302,12 +302,12 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       <div class="ll-surface__cardwrap">
         <div class="ll-surface__cardinner">
           <div class="ll-card ll-profile ll-surface__card" aria-label="Profili juaj">
-            <div class="ll-profile__cover">
-              <span data-spot="identity" class="ll-profile__coverimg">${img(profile.coverUrl, "Ballina")}</span>
+            <div class="ll-profile__cover" data-spot="identity">
+              <span class="ll-profile__coverimg">${img(profile.coverUrl, "Ballina")}</span>
               <span class="ll-profile__scrim"></span>
               <span class="ll-profile__fade"></span>
-              ${socialButtons ? `<div class="ll-profile__socials" data-spot="social">${socialButtons}</div>` : ""}
             </div>
+            ${socialButtons ? `<div class="ll-profile__socials" data-spot="social">${socialButtons}</div>` : ""}
 
             <div class="ll-profile__body">
               <div class="ll-profile__toprow">
@@ -383,7 +383,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     title: "Kështu ju sheh klienti.",
     scene,
     steps: [
-      { view: "profile", focus: "", body: "Kjo është faqja juaj e plotë: kartela, dy tabet dhe postimet. Rrëshqitni - shpjegimi shkon te secila pjesë." },
+      { view: "profile", focus: "", body: "Kartela juaj publike dhe dy tabet - pikërisht ashtu siç e sheh klienti. Rrëshqitni: shpjegimi shkon te secila pjesë." },
       { view: "profile", focus: "identity", label: "Identiteti", title: "Logoja dhe emri juaj", body: "Ballina, logoja, emri dhe qyteti. Klienti e di menjëherë kush jeni dhe ku jeni." },
       { view: "profile", focus: "social", label: "Lidhjet", title: "Harta, TikTok, Instagram", body: "Një prekje - dhe klienti ka drejtimin në hartë ose rrjetet tuaja. Vendosen një herë, punojnë përgjithmonë." },
       { view: "profile", focus: "fans", label: "Numrat", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet me çdo postim që u pëlqen." },
@@ -392,7 +392,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       { view: "profile", focus: "info", label: "Detajet", title: "Butoni Info", body: "Këtu klienti prek Info - dhe kartela hapet nga ana tjetër." },
       { view: "info", focus: "", label: "Kontakti & Info", title: "Gjithçka që duhet të dijë", body: "Telefoni, adresa, orari dhe rrjetet - në një ekran. Ju e ndryshoni një herë, ndryshon kudo." },
       { view: "profile", focus: "tabs", label: "Dy tabe", title: "Postimet & Menu", body: "Këtu ndahet profili: Postimet tregojnë si ndihet lokali, Menu shet." },
-      { view: "profile", focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Çdo postim shkon edhe në feed te ndjekësit tuaj." },
+      { view: "posts", focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Çdo postim shkon edhe në feed te ndjekësit tuaj." },
       { view: "menu", focus: "mfocus", label: "Rekomandimet", title: "Sot në fokus", body: "Klienti prek Menu. Kartat me shenjën TIPP janë rekomandimet e ditës - ju vendosni çfarë shitet më shumë." },
       {
         view: "menu",

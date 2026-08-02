@@ -97,7 +97,9 @@ function panSceneToFocus(stage) {
 
   const maxOffset = Math.max(0, scene.offsetHeight - viewport.clientHeight);
   if (maxOffset <= 0) {
-    scene.style.transform = "translateY(0px)";
+    // Passt die Szene ganz ins Bild, sitzt sie mittig statt oben zu kleben.
+    const slack = Math.round((viewport.clientHeight - scene.offsetHeight) / 2);
+    scene.style.transform = `translateY(${Math.max(0, slack)}px)`;
     return;
   }
 
