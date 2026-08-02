@@ -142,12 +142,16 @@ img {
   min-height: 0;
   position: relative;
   overflow: hidden;
+  margin-left: -18px;
+  margin-right: -18px;
+  padding-left: 18px;
+  padding-right: 18px;
 }
 
 .ll-stage__scene {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 18px;
+  right: 18px;
   top: 0;
   /* Luft am Rand: der hervorgehobene Teil waechst leicht (scale) und wuerde
      sonst am oberen oder unteren Rand angeschnitten. */
@@ -804,7 +808,7 @@ img {
 }
 
 .ll-focus {
-  flex: 0 0 78%;
+  flex: 0 0 100%;
   background: #fff;
   border: 1px solid var(--ll-line);
   border-radius: var(--ll-radius-xl);
