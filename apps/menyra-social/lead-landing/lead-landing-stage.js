@@ -66,6 +66,11 @@ function applyStageState(stage, state) {
   if (view) stage.setAttribute("data-view", view);
   else stage.removeAttribute("data-view");
 
+  // Ein Schritt darf die Seitenfarbe vorgeben (siehe updateCanvasColor).
+  const canvas = String(captions[state]?.dataset?.canvas || "").trim();
+  if (canvas) stage.setAttribute("data-canvas", canvas);
+  else stage.removeAttribute("data-canvas");
+
   const focusKey = String(captions[state]?.dataset?.focus || "").trim();
   const spots = Array.from(stage.querySelectorAll("[data-spot]"));
 
@@ -206,14 +211,16 @@ function panSceneToFocus(stage) {
   const scene = stage.querySelector(".ll-stage__scene");
   if (!viewport || !scene) return;
 
-  const pane = stage.querySelector("[data-pan]");
+  const view = String(stage.getAttribute("data-view") || "").trim();
+
+  // Liegt das Modal ueber der Szene, faehrt nur sein Koerper - Kopfzeile und
+  // Fusszeile stehen fest, so wie in der App. Die Szene darunter bleibt, wo
+  // sie war, damit sie beim Schliessen unveraendert wieder auftaucht.
+  const pane = view.startsWith("dish") ? stage.querySelector("[data-pan]") : null;
   if (pane) {
-    scene.style.transform = "translateY(0px)";
     panPane(stage, pane);
     return;
   }
-
-  const view = String(stage.getAttribute("data-view") || "").trim();
   const tabsEl = scene.querySelector(".ll-surface__tabs");
   const sceneTop = scene.getBoundingClientRect().top;
   const tabsAnchored = view === "tabs" || view === "posts" || view.startsWith("menu");
@@ -276,7 +283,6 @@ export function startLeadLandingStages({ scroller = null } = {}) {
 
   let ticking = false;
   const defaultThemeColor = readDefaultThemeColor();
-  const canvasStages = stages.filter((stage) => stage.hasAttribute("data-canvas"));
 
   const run = () => {
     ticking = false;
@@ -287,7 +293,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
       if (rect.bottom < -viewportHeight || rect.top > viewportHeight * 2) return;
       updateStage(stage, viewportHeight);
     });
-    if (canvasStages.length) updateCanvasColor(canvasStages, viewportHeight, defaultThemeColor);
+    updateCanvasColor(stages, viewportHeight, defaultThemeColor);
   };
 
   const onScroll = () => {

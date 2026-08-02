@@ -129,15 +129,14 @@ function sectionHead(eyebrow, title, lead) {
 //
 // steps: [{ focus, view, label, title, body }]
 //   focus "" laesst alles scharf, view schaltet die Szene um.
-// fullbleed: Die Szene laeuft von Bildschirmrand zu Bildschirmrand, ohne
-// Rahmen und ohne seitlichen Abstand - fuer Nachbauten, die in der App
-// selbst den ganzen Bildschirm einnehmen (das Speisen-Modal).
+// overlay: Eine zweite Szene, die sich ueber die erste legt - so wie sich in
+// der App ein Modal ueber das Profil legt. Sie ist nur sichtbar, solange ein
+// Schritt eine Ansicht dafuer verlangt.
 //
-// canvas: Farbe der Seite, solange dieses Kapitel den Bildschirm fuellt.
-// Damit faerben sich auch die Streifen hinter Statusleiste und
-// Werkzeugleiste mit - die nimmt der Browser von der Seite, nicht vom
-// Kapitel.
-function stage({ eyebrow, title, scene, steps = [], fullbleed = false, canvas = "" }) {
+// step.canvas: Farbe der Seite, solange dieser Schritt laeuft. Damit faerben
+// sich auch die Streifen hinter Statusleiste und Werkzeugleiste mit - die
+// nimmt der Browser von der Seite, nicht vom Kapitel.
+function stage({ eyebrow, title, scene, steps = [], overlay = "" }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt Kapitelmarke und Titel. So gibt es nur einen Textblock
   // und er steht immer an derselben Stelle - die Szene bekommt den Rest.
@@ -146,13 +145,13 @@ function stage({ eyebrow, title, scene, steps = [], fullbleed = false, canvas = 
     : step));
   const firstView = esc(allSteps[0]?.view || "");
   return `
-    <section class="ll-stage${fullbleed ? " ll-stage--full" : ""}" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${canvas ? `data-canvas="${esc(canvas)}"` : ""} ${firstView ? `data-view="${firstView}"` : ""}>
+    <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
       <div class="ll-stage__pin">
         <div class="ll-stage__bar"><span></span></div>
 
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
-            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}">
+            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}"${step.canvas ? ` data-canvas="${esc(step.canvas)}"` : ""}>
               ${step.label ? `<p class="ll-stage__step-label">${esc(step.label)}</p>` : ""}
               ${step.title ? `<p class="ll-stage__step-title">${esc(step.title)}</p>` : ""}
               <p class="ll-stage__step-body">${esc(step.body || "")}</p>
@@ -162,6 +161,7 @@ function stage({ eyebrow, title, scene, steps = [], fullbleed = false, canvas = 
 
         <div class="ll-stage__viewport">
           <div class="ll-stage__scene">${scene}</div>
+          ${overlay ? `<div class="ll-stage__overlay">${overlay}</div>` : ""}
         </div>
 
       </div>
@@ -449,10 +449,16 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     </div>
   `;
 
+  // Nach der Menuekarte geht es ohne Bruch weiter: Der Gast tippt eine
+  // Speise an, das Modal legt sich darueber. Deshalb haengt es als Overlay
+  // an diesem Kapitel und nicht als eigenes.
+  const dish = buildDishChapter(profile, menuItems);
+
   return stage({
     eyebrow: "Hapi 1",
     title: "Kështu ju sheh klienti.",
     scene,
+    overlay: dish.overlay,
     steps: [
       { view: "profile", focus: "", body: "Kartela juaj publike dhe dy tabet - pikërisht ashtu siç e sheh klienti. Rrëshqitni: shpjegimi shkon te secila pjesë." },
       { view: "profile", focus: "identity", label: "Identiteti", title: "Logoja dhe emri juaj", body: "Ballina, logoja, emri dhe qyteti. Klienti e di menjëherë kush jeni dhe ku jeni." },
@@ -474,23 +480,22 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
         body: categories.length
           ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
           : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim."
-      }
+      },
+      ...dish.steps
     ]
   });
 }
-export function renderDish(profile = {}, menuItems = []) {
+// Das Speisen-Modal ist kein eigenes Kapitel: In der App legt es sich ueber
+// das Menue, sobald der Gast eine Speise antippt. Deshalb liefert diese
+// Funktion nur Szene und Schritte - angehaengt werden sie an das
+// Menue-Kapitel, damit es dort direkt weitergeht.
+function buildDishChapter(profile = {}, menuItems = []) {
   const currency = profile.currency || "EUR";
   const dish = menuItems.find((item) => item.imageUrl && item.price !== null)
     || menuItems.find((item) => item.imageUrl)
     || menuItems[0];
 
-  if (!dish) {
-    return `
-      <section class="ll-section">
-        ${sectionHead("Hapi 4", "Dritarja e pjatës.", "Sapo të keni pjata në menu, çdo prekje hap një dritare me çmimin, përbërësit, alergjenët dhe rekomandimet që rrisin porosinë.")}
-      </section>
-    `;
-  }
+  if (!dish) return { overlay: "", steps: [] };
 
   const crossSell = menuItems.filter((item) => item.id !== dish.id && item.imageUrl).slice(0, 4);
   const woltUrl = text(dish.woltUrl) || text(profile.woltUrl);
@@ -524,11 +529,11 @@ export function renderDish(profile = {}, menuItems = []) {
   // Die Kopfzeile des Modals (Name, Kategorie, X) wird hier nicht gezeichnet:
   // an genau dieser Stelle steht der Erklaertext des Kapitels. Deshalb ist
   // das ganze Kapitel weiss - es ist von oben bis unten das Modal.
-  const scene = `
+  const overlay = `
     <div class="ll-md" aria-label="Dritarja e pjatës">
       <div class="ll-md__body">
        <div class="ll-md__scroll" data-pan>
-        <div class="ll-md__hero" data-spot="hero">
+        <div class="ll-md__hero" data-spot="dhero">
           ${img(dish.imageUrl, dish.name)}
           ${hasGallery ? `
             <span class="ll-md__nav ll-md__nav--prev">${icon("chevron-left", { size: 16 })}</span>
@@ -537,14 +542,14 @@ export function renderDish(profile = {}, menuItems = []) {
         </div>
 
         <div class="ll-md__stack">
-          <div class="ll-md__price" data-spot="price">
+          <div class="ll-md__price" data-spot="dprice">
             <span class="ll-md__price-label">Cmimi</span>
             <span class="ll-md__price-value">${dish.price !== null ? esc(formatPrice(dish.price, currency)) : ""}</span>
           </div>
 
           <div class="ll-md__rule"></div>
 
-          <div class="ll-md__info" data-spot="info">
+          <div class="ll-md__info" data-spot="dinfo">
             <div class="ll-md__tabs">
               <span class="ll-md__tab is-active" data-info-tab="info">Info</span>
               <span class="ll-md__tab" data-info-tab="ingredients">Perberesit</span>
@@ -560,7 +565,7 @@ export function renderDish(profile = {}, menuItems = []) {
           <div class="ll-md__rule"></div>
 
           ${crossSell.length ? `
-            <div data-spot="cross">
+            <div data-spot="dcross">
               <div class="ll-md__crosshead">
                 <h4 class="ll-md__crosstitle">Shkon shume mire me kete</h4>
                 <div class="ll-md__crosscount">${esc(countLabel)}</div>
@@ -570,7 +575,7 @@ export function renderDish(profile = {}, menuItems = []) {
             <div class="ll-md__rule"></div>
           ` : ""}
 
-          <div class="ll-md__social" data-spot="social">
+          <div class="ll-md__social" data-spot="dsocial">
             <span class="ll-md__like">${icon("heart", { size: 14 })} Like</span>
             <span class="ll-md__counts">
               <span>0 Likes</span>
@@ -581,7 +586,7 @@ export function renderDish(profile = {}, menuItems = []) {
        </div>
       </div>
 
-      <div class="ll-md__foot" data-spot="order">
+      <div class="ll-md__foot" data-spot="dorder">
         <span class="ll-md__ghost">${icon("message-square", { size: 20 })}</span>
         ${woltUrl
           ? `<span class="ll-md__cta ll-md__cta--wolt">Wolt ${icon("external-link", { size: 16 })}</span>`
@@ -593,33 +598,32 @@ export function renderDish(profile = {}, menuItems = []) {
 
   // Kurz und buendig, in der Reihenfolge, in der die Teile untereinander
   // stehen: Galerie, Preis, Info, Vorschlaege, Reaktionen, Bestellung.
-  return stage({
-    eyebrow: "Hapi 4",
-    title: "Një prekje - dhe porosia rritet.",
-    scene,
-    fullbleed: true,
-    canvas: "#ffffff",
-    steps: [
-      { view: "home", focus: "", body: "Klienti prek një pjatë - dhe hapet kjo dritare, në tërë ekranin." },
-      { view: "home", focus: "hero", label: "Fotoja", title: "Galeria", body: "Foto e madhe. Me disa foto, klienti i shfleton me shigjetat." },
-      { view: "home", focus: "price", label: "Çmimi", title: "Cmimi", body: "Gjithmonë i saktë - pa keqkuptime në tavolinë." },
-      { view: "home", focus: "info", label: "Detajet", title: "Info, Perberesit, Alergenet", body: "Tri skeda me përgjigjet. Klienti pyet më pak, kamarieri fiton kohë." },
-      ...(crossSell.length
-        ? [{ view: "home", focus: "cross", label: "Më shumë", title: "Shkon shume mire me kete", body: "Sugjeroni pije ose ëmbëlsira te çdo pjatë - porosia rritet vetë." }]
-        : []),
-      { view: "home", focus: "social", label: "Reagimet", title: "Like dhe komente", body: "Shihni saktë cilat pjata pëlqehen më shumë." },
-      {
-        view: "home",
-        focus: "order",
-        label: "Nga shtëpia",
-        title: woltUrl ? "Wolt" : "Te preferuarat",
-        body: woltUrl
-          ? "Nga shtëpia nuk ka shportë: klienti shikon dhe poroson te Wolt-i."
-          : "Nga shtëpia nuk ka shportë: klienti shikon dhe e ruan pjatën."
-      },
-      { view: "qr", focus: "order", label: "Në tavolinë", title: "Me kodin QR", body: "Skanon kodin, poroson vetë - porosia shkon te Waiter-i me numrin e tavolinës." }
-    ]
-  });
+  // Jeder Schritt faerbt die Seite weiss, damit auch die Streifen oben und
+  // unten zum Modal passen.
+  const white = "#ffffff";
+  const steps = [
+    { view: "dish-home", focus: "", canvas: white, label: "Dritarja", title: "Klienti prek pjatën", body: "Dhe hapet kjo dritare - në tërë ekranin, pikërisht kështu." },
+    { view: "dish-home", focus: "dhero", canvas: white, label: "Fotoja", title: "Galeria", body: "Foto e madhe. Me disa foto, klienti i shfleton me shigjetat." },
+    { view: "dish-home", focus: "dprice", canvas: white, label: "Çmimi", title: "Cmimi", body: "Gjithmonë i saktë - pa keqkuptime në tavolinë." },
+    { view: "dish-home", focus: "dinfo", canvas: white, label: "Detajet", title: "Info, Perberesit, Alergenet", body: "Tri skeda me përgjigjet. Klienti pyet më pak, kamarieri fiton kohë." },
+    ...(crossSell.length
+      ? [{ view: "dish-home", focus: "dcross", canvas: white, label: "Më shumë", title: "Shkon shume mire me kete", body: "Sugjeroni pije ose ëmbëlsira te çdo pjatë - porosia rritet vetë." }]
+      : []),
+    { view: "dish-home", focus: "dsocial", canvas: white, label: "Reagimet", title: "Like dhe komente", body: "Shihni saktë cilat pjata pëlqehen më shumë." },
+    {
+      view: "dish-home",
+      focus: "dorder",
+      canvas: white,
+      label: "Nga shtëpia",
+      title: woltUrl ? "Wolt" : "Te preferuarat",
+      body: woltUrl
+        ? "Nga shtëpia nuk ka shportë: klienti shikon dhe poroson te Wolt-i."
+        : "Nga shtëpia nuk ka shportë: klienti shikon dhe e ruan pjatën."
+    },
+    { view: "dish-qr", focus: "dorder", canvas: white, label: "Në tavolinë", title: "Me kodin QR", body: "Skanon kodin, poroson vetë - porosia shkon te Waiter-i me numrin e tavolinës." }
+  ];
+
+  return { overlay, steps };
 }
 
 export function renderMap(profile = {}) {
@@ -631,7 +635,7 @@ export function renderMap(profile = {}) {
 
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 5", "Harta e zbulimit.", "Klientët në qytet kërkojnë ku të hanë. Në hartën e Mnyra ju jeni njëri prej tyre - me logon tuaj si shenjë.")}
+      ${sectionHead("Hapi 2", "Harta e zbulimit.", "Klientët në qytet kërkojnë ku të hanë. Në hartën e Mnyra ju jeni njëri prej tyre - me logon tuaj si shenjë.")}
 
       <div
         class="ll-map"
@@ -669,7 +673,7 @@ export function renderQr(sales = {}) {
 
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 6", "QR kodi në tavolinë.", "Klienti ulet, skanon, sheh menunë. Pa aplikacion, pa shkarkim, pa pritur kamarierin.")}
+      ${sectionHead("Hapi 3", "QR kodi në tavolinë.", "Klienti ulet, skanon, sheh menunë. Pa aplikacion, pa shkarkim, pa pritur kamarierin.")}
 
       ${gallery}
       ${gallery ? '<div style="height:18px"></div>' : ""}
@@ -691,7 +695,7 @@ export function renderQr(sales = {}) {
 export function renderWaiter() {
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 7", "Porositë vijnë te ju.", "Kur klienti prek „Shto në shportë“ dhe dërgon porosinë, ajo shfaqet menjëherë në aplikacionin Waiter.")}
+      ${sectionHead("Hapi 4", "Porositë vijnë te ju.", "Kur klienti prek „Shto në shportë“ dhe dërgon porosinë, ajo shfaqet menjëherë në aplikacionin Waiter.")}
 
       <div class="ll-card ll-card--pad">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -718,7 +722,7 @@ export function renderAnalytics() {
   const bars = [42, 58, 36, 74, 62, 88, 70];
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 8", "Ju shihni çfarë funksionon.", "Jo ndjesi - numra. Çfarë shikohet, çfarë porositet, kur vijnë klientët.")}
+      ${sectionHead("Hapi 5", "Ju shihni çfarë funksionon.", "Jo ndjesi - numra. Çfarë shikohet, çfarë porositet, kur vijnë klientët.")}
 
       <div class="ll-stats" style="margin-bottom:12px;">
         <div class="ll-stat">

@@ -153,53 +153,61 @@ img {
   padding-right: var(--ll-inline);
 }
 
-/* ---------- Vollbild-Kapitel ----------
-   Das Speisen-Modal fuellt in der App den ganzen Bildschirm (.modal-sheet
-   setzt height: 100% und border-radius: 0). Damit die Vorschau das 1:1
-   zeigt, laeuft die Szene hier bis an den Bildschirmrand: kein seitlicher
-   Abstand, keine Rundung, keine Randluft. Nur Balken und Erklaertext
-   behalten ihren Abstand - sie gehoeren nicht zur Nachbildung. */
+/* ---------- Das Modal ueber der Szene ----------
+   In der App legt sich das Speisen-Modal ueber das Profil, sobald der Gast
+   eine Speise antippt. Genauso liegt es hier: als zweite Ebene ueber der
+   Szene, im selben Kapitel. Sichtbar wird sie erst bei den dish-Schritten.
 
-/* Das ganze Kapitel ist das Modal - von oben bis unten weiss. Der
-   Erklaertext steht an der Stelle, an der im Modal die Kopfzeile mit Name
-   und X sitzt, und traegt deren Trennlinie. Unten laeuft das Weiss bis an
-   den Bildschirmrand, damit kein grauer Streifen bleibt. */
-.ll-stage--full .ll-stage__pin {
-  /* 28px = px-7 des Modals, damit Balken und Text genau ueber der Kante
-     des Bildes darunter stehen. */
-  padding: 14px 28px 0;
+   Absolute Kinder richten sich am Polsterrand des Elternteils aus, nicht am
+   Inhaltsrand - inset: 0 spannt die Ebene deshalb ueber die volle Breite des
+   Rahmens, obwohl der seitlich gepolstert ist. Genau das braucht das Modal,
+   das in der App den ganzen Bildschirm fuellt (.modal-sheet setzt
+   height: 100% und border-radius: 0). */
+
+.ll-stage__overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(14px);
+  transition: opacity 320ms ease, transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view^="dish"] .ll-stage__overlay {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* Hinter dem Modal muss nichts mehr gezeichnet werden. */
+.ll-stage[data-view^="dish"] .ll-stage__scene {
+  visibility: hidden;
+}
+
+/* Solange das Modal offen ist, ist das Kapitel weiss - bis an die
+   Unterkante, damit unter der Fusszeile kein grauer Streifen bleibt. */
+.ll-stage[data-view^="dish"] .ll-stage__pin {
+  padding-bottom: 0;
   background: #fff;
 }
 
-.ll-stage--full .ll-stage__caption {
+/* Der Erklaertext steht an der Stelle, an der im Modal die Kopfzeile mit
+   Name und X sitzt, und traegt deren Trennlinie von Rand zu Rand. */
+.ll-stage[data-view^="dish"] .ll-stage__caption {
   margin-bottom: 0;
   padding-bottom: 20px;
   border-bottom: 1px solid #f1f5f9;
-  /* Die Trennlinie laeuft wie im Modal von Rand zu Rand. */
-  margin-left: -28px;
-  margin-right: -28px;
+  margin-left: calc(-1 * var(--ll-inline));
+  margin-right: calc(-1 * var(--ll-inline));
 }
 
 /* Der Abstand muss an den Schritten haengen, nicht an der Flaeche: Die
-   Schritte liegen absolut, und absolute Kinder richten sich am Polsterrand
-   des Elternteils aus - dessen padding bliebe also wirkungslos. */
-.ll-stage--full .ll-stage__step {
+   Schritte liegen absolut und wuerden sich sonst am verschobenen Rand der
+   Flaeche ausrichten. 28px = px-7 des Modals, damit der Text genau dort
+   steht, wo im Original der Name der Speise steht. */
+.ll-stage[data-view^="dish"] .ll-stage__step {
   padding-left: 28px;
   padding-right: 28px;
-}
-
-.ll-stage--full .ll-stage__viewport {
-  margin-left: -28px;
-  margin-right: -28px;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.ll-stage--full .ll-stage__scene {
-  left: 0;
-  right: 0;
-  padding: 0;
-  height: 100%;
 }
 
 .ll-stage__scene {
@@ -1534,9 +1542,9 @@ img {
 /* Zwei Zustaende derselben Fusszeile - genau die Verzweigung des echten
    Modals: ohne QR-Zugang Wolt bzw. Favoriten, mit QR-Zugang die Shporte.
    (hasQrMenuAccess in renderMenuDetailModalCore.) */
-.ll-stage:not([data-view="qr"]) .ll-md__cta--cart,
-.ll-stage[data-view="qr"] .ll-md__cta--wolt,
-.ll-stage[data-view="qr"] .ll-md__cta--fav {
+.ll-stage:not([data-view="dish-qr"]) .ll-md__cta--cart,
+.ll-stage[data-view="dish-qr"] .ll-md__cta--wolt,
+.ll-stage[data-view="dish-qr"] .ll-md__cta--fav {
   display: none;
 }
 /* ---------- Kontakt-Modal ---------- */
