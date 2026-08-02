@@ -60,24 +60,47 @@ function updateStage(stage, viewportHeight) {
   if (bar) bar.style.width = `${Math.round(progress * 100)}%`;
 }
 
+// Die Schritt-Texte liegen absolut uebereinander, tragen also nichts zur
+// Hoehe bei. Ohne reservierten Platz wuerde der laengste Text in die Szene
+// ragen. Deshalb wird der hoechste Schritt gemessen und die Textflaeche
+// darauf festgesetzt - so bleibt die Szene beim Umschalten auch ruhig
+// stehen, statt zwischen den Schritten zu springen.
+function fitStageCaption(stage) {
+  const caption = stage.querySelector(".ll-stage__caption");
+  if (!caption) return;
+
+  caption.style.height = "";
+  let tallest = 0;
+  stage.querySelectorAll(".ll-stage__step").forEach((step) => {
+    step.style.position = "static";
+    tallest = Math.max(tallest, step.offsetHeight);
+    step.style.position = "";
+  });
+  if (tallest > 0) caption.style.height = `${Math.ceil(tallest)}px`;
+}
+
 // Sicherheitsnetz gegen Beschnitt: Der Pin hat overflow: hidden, damit die
 // Szene bildschirmhoch bleibt. Passt sie auf einem sehr niedrigen Geraet
 // trotzdem nicht, wird sie so weit verkleinert, bis sie passt - statt oben
-// und unten abgeschnitten zu werden. Das negative margin nimmt den durch
-// die Skalierung frei gewordenen Layoutplatz wieder heraus.
+// und unten abgeschnitten zu werden.
+//
+// Verkleinert wird per transform; damit das auch den Platzbedarf senkt,
+// bekommt die Szene zusaetzlich eine passende Hoehe. Bewusst kein negatives
+// margin: die Szene wird ueber margin: auto im Restraum zentriert, ein
+// gesetztes margin wuerde das aushebeln.
 function fitStageScene(stage) {
   const pin = stage.querySelector(".ll-stage__pin");
   const scene = stage.querySelector(".ll-stage__scene");
   if (!pin || !scene) return;
 
   scene.style.transform = "";
-  scene.style.marginBottom = "";
+  scene.style.height = "";
 
   const sceneHeight = scene.offsetHeight;
   if (sceneHeight <= 0) return;
   if (pin.scrollHeight - pin.clientHeight <= 1) return;
 
-  scene.style.transformOrigin = "center top";
+  scene.style.transformOrigin = "top center";
 
   // Eine Runde reicht nicht immer: durch das Verkleinern aendern sich
   // Umbrueche und damit die Resthoehe. Deshalb bis zu drei Mal nachziehen.
@@ -89,7 +112,7 @@ function fitStageScene(stage) {
     if (next >= scale) break;
     scale = next;
     scene.style.transform = `scale(${scale})`;
-    scene.style.marginBottom = `${-Math.ceil((1 - scale) * sceneHeight)}px`;
+    scene.style.height = `${Math.ceil(sceneHeight * scale)}px`;
   }
 }
 
@@ -117,8 +140,15 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     window.requestAnimationFrame(run);
   };
 
+  const fitAll = () => {
+    stages.forEach((stage) => {
+      fitStageCaption(stage);
+      fitStageScene(stage);
+    });
+  };
+
   const onResize = () => {
-    stages.forEach(fitStageScene);
+    fitAll();
     onScroll();
   };
 
@@ -126,7 +156,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   window.addEventListener("resize", onResize, { passive: true });
   window.addEventListener("orientationchange", onResize, { passive: true });
 
-  stages.forEach(fitStageScene);
+  fitAll();
   run();
   // Nach dem Laden der Bilder koennen sich Hoehen noch aendern.
   window.addEventListener("load", onResize, { once: true });

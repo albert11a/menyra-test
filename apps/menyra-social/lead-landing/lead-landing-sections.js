@@ -138,8 +138,6 @@ function stage({ eyebrow, title, scene, steps = [] }) {
   return `
     <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};">
       <div class="ll-stage__pin">
-        <div class="ll-stage__scene">${scene}</div>
-
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
             <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}">
@@ -149,6 +147,8 @@ function stage({ eyebrow, title, scene, steps = [] }) {
             </div>
           `).join("")}
         </div>
+
+        <div class="ll-stage__scene">${scene}</div>
 
         <div class="ll-stage__bar"><span></span></div>
       </div>
