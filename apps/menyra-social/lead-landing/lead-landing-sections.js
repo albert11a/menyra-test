@@ -532,7 +532,8 @@ function buildDishChapter(profile = {}, menuItems = []) {
   const overlay = `
     <div class="ll-md" aria-label="Dritarja e pjatës">
       <div class="ll-md__body">
-       <div class="ll-md__scroll" data-pan>
+       <div class="ll-md__clip">
+        <div class="ll-md__scroll" data-pan>
         <div class="ll-md__hero" data-spot="dhero">
           ${img(dish.imageUrl, dish.name)}
           ${hasGallery ? `
@@ -582,6 +583,9 @@ function buildDishChapter(profile = {}, menuItems = []) {
               <span>0 Komente</span>
             </span>
           </div>
+        </div>
+
+        <div class="ll-md__comments" data-spot="dsocial">Ende nuk ka komente</div>
         </div>
        </div>
       </div>

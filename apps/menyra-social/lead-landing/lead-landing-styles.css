@@ -1201,8 +1201,19 @@ img {
 .ll-md__body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 24px 28px;
+  padding: 0 28px;
   background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Die Schnittkante liegt genau dort, wo der Inhalt anfaengt - nicht am
+   Rand des Innenabstands. Sonst lugt der vorherige Abschnitt in die 24px
+   ueber dem erklaerten Teil hinein. */
+.ll-md__clip {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 24px;
   overflow: hidden;
 }
 
@@ -1495,6 +1506,17 @@ img {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+/* Kommentarbereich - im echten Modal steht er mit 3rem Abstand unter der
+   Like-Zeile und zeigt ohne Kommentare genau diesen Hinweis. */
+.ll-md__comments {
+  margin-top: 3rem;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
   color: #94a3b8;
 }
 

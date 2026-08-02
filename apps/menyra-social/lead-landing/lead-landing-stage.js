@@ -169,18 +169,43 @@ function fitMenuLists(stage) {
 // Vollbild-Kapitel (das Speisen-Modal) fahren nicht die ganze Szene, sondern
 // nur den Bereich, der in der App der scrollende Koerper ist. Kopf und
 // Fusszeile bleiben dadurch stehen - genau wie im echten Modal.
+// Die sichtbare Hoehe des Rahmens. clientHeight enthaelt die Innenabstaende,
+// sichtbar ist aber nur die Flaeche dazwischen - sonst bleibt der letzte
+// Abschnitt genau um diese Abstaende unter der Kante haengen.
+function paneViewportHeight(frame) {
+  const frameStyle = window.getComputedStyle(frame);
+  const padTop = parseFloat(frameStyle.paddingTop) || 0;
+  const padBottom = parseFloat(frameStyle.paddingBottom) || 0;
+  return Math.max(1, frame.clientHeight - padTop - padBottom);
+}
+
+// Jeder erklaerte Abschnitt soll oben stehen - dort, wo beim ersten Schritt
+// die Galerie steht. Der letzte Abschnitt kaeme dort aber nie hin, weil die
+// Fahrt am Ende des Inhalts endet. Deshalb bekommt der Bereich unten so viel
+// Luft, dass auch er nach oben fahren kann.
+function fitPaneTravel(stage) {
+  const pane = stage.querySelector("[data-pan]");
+  const frame = pane ? pane.parentElement : null;
+  if (!pane || !frame) return;
+
+  pane.style.paddingBottom = "0px";
+  const visible = paneViewportHeight(frame);
+  const natural = pane.offsetHeight;
+  const paneTop = pane.getBoundingClientRect().top;
+
+  let lastTop = 0;
+  pane.querySelectorAll("[data-spot]").forEach((node) => {
+    lastTop = Math.max(lastTop, node.getBoundingClientRect().top - paneTop);
+  });
+
+  pane.style.paddingBottom = `${Math.max(0, Math.round(lastTop + visible - natural))}px`;
+}
+
 function panPane(stage, pane) {
   const frame = pane.parentElement;
   if (!frame) return;
 
-  // clientHeight enthaelt die Innenabstaende des Rahmens. Sichtbar ist aber
-  // nur die Flaeche dazwischen - sonst bleibt der letzte Abschnitt genau um
-  // diese Abstaende unter der Kante haengen.
-  const frameStyle = window.getComputedStyle(frame);
-  const padTop = parseFloat(frameStyle.paddingTop) || 0;
-  const padBottom = parseFloat(frameStyle.paddingBottom) || 0;
-  const visible = Math.max(1, frame.clientHeight - padTop - padBottom);
-
+  const visible = paneViewportHeight(frame);
   const maxOffset = Math.max(0, pane.offsetHeight - visible);
   const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"))
     .filter((node) => pane.contains(node));
@@ -194,15 +219,13 @@ function panPane(stage, pane) {
   // ergibt deshalb die unverschobene Position innerhalb des Bereichs.
   const paneTop = pane.getBoundingClientRect().top;
   let top = Infinity;
-  let bottom = -Infinity;
   active.forEach((node) => {
-    const rect = node.getBoundingClientRect();
-    top = Math.min(top, rect.top - paneTop);
-    bottom = Math.max(bottom, rect.bottom - paneTop);
+    top = Math.min(top, node.getBoundingClientRect().top - paneTop);
   });
 
-  const centered = top + ((bottom - top) / 2) - (visible / 2);
-  const offset = clamp(Math.round(centered), 0, maxOffset);
+  // Oben buendig statt mittig: So faengt der erklaerte Abschnitt immer an
+  // derselben Kante an, und darueber wird nie ein anderer angeschnitten.
+  const offset = clamp(Math.round(top), 0, maxOffset);
   pane.style.transform = `translateY(${-offset}px)`;
 }
 
@@ -218,6 +241,10 @@ function panSceneToFocus(stage) {
   // sie war, damit sie beim Schliessen unveraendert wieder auftaucht.
   const pane = view.startsWith("dish") ? stage.querySelector("[data-pan]") : null;
   if (pane) {
+    // Erst hier steht die endgueltige Hoehe fest: Sobald das Modal offen ist,
+    // faellt der untere Innenabstand des Kapitels weg, der Rahmen ist also
+    // hoeher als waehrend der Menue-Schritte.
+    fitPaneTravel(stage);
     panPane(stage, pane);
     return;
   }
@@ -306,6 +333,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     stages.forEach((stage) => {
       fitStageCaption(stage);
       fitMenuLists(stage);
+      // fitPaneTravel laeuft in panSceneToFocus - dort steht die Hoehe fest.
       panSceneToFocus(stage);
     });
   };
