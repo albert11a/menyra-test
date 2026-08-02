@@ -156,13 +156,37 @@ img {
    Abstand, keine Rundung, keine Randluft. Nur Balken und Erklaertext
    behalten ihren Abstand - sie gehoeren nicht zur Nachbildung. */
 
+/* Das ganze Kapitel ist das Modal - von oben bis unten weiss. Der
+   Erklaertext steht an der Stelle, an der im Modal die Kopfzeile mit Name
+   und X sitzt, und traegt deren Trennlinie. Unten laeuft das Weiss bis an
+   den Bildschirmrand, damit kein grauer Streifen bleibt. */
 .ll-stage--full .ll-stage__pin {
-  padding-bottom: 0;
+  /* 28px = px-7 des Modals, damit Balken und Text genau ueber der Kante
+     des Bildes darunter stehen. */
+  padding: 14px 28px 0;
+  background: #fff;
+}
+
+.ll-stage--full .ll-stage__caption {
+  margin-bottom: 0;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+  /* Die Trennlinie laeuft wie im Modal von Rand zu Rand. */
+  margin-left: -28px;
+  margin-right: -28px;
+}
+
+/* Der Abstand muss an den Schritten haengen, nicht an der Flaeche: Die
+   Schritte liegen absolut, und absolute Kinder richten sich am Polsterrand
+   des Elternteils aus - dessen padding bliebe also wirkungslos. */
+.ll-stage--full .ll-stage__step {
+  padding-left: 28px;
+  padding-right: 28px;
 }
 
 .ll-stage--full .ll-stage__viewport {
-  margin-left: calc(-1 * var(--ll-inline));
-  margin-right: calc(-1 * var(--ll-inline));
+  margin-left: -28px;
+  margin-right: -28px;
   padding-left: 0;
   padding-right: 0;
 }
@@ -1154,56 +1178,6 @@ img {
   height: 100%;
   background: #fff;
   overflow: hidden;
-}
-
-/* --- Kopf: px-7 pt-7 pb-5 border-b --- */
-
-.ll-md__head {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 28px 28px 20px;
-  border-bottom: 1px solid #f1f5f9;
-  background: #fff;
-}
-
-.ll-md__headtext {
-  min-width: 0;
-  flex: 1;
-}
-
-.ll-md__title {
-  margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.25;
-  font-weight: 900;
-  letter-spacing: -0.025em;
-  color: #0f172a;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.ll-md__cat {
-  margin-top: 4px;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #94a3b8;
-}
-
-.ll-md__close {
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  border-radius: 1rem;
-  background: #f8fafc;
-  color: #64748b;
-  display: grid;
-  place-items: center;
 }
 
 /* --- Koerper: flex-1 overflow-y-auto px-7 py-6 --- */

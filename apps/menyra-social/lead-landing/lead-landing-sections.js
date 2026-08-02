@@ -511,20 +511,16 @@ export function renderDish(profile = {}, menuItems = []) {
         </div>
   `;
 
-  // Aufbau 1:1 aus renderMenuDetailModalCore (Zweig !isShop):
-  // Kopf, scrollender Koerper mit Hero/Preis/Info-Tabs/Cross-Sell/Social,
-  // darunter die feste Fusszeile. Vollbild, ohne Rahmen und Rundungen -
-  // .modal-sheet setzt in der App border-radius: 0 und height: 100%.
+  // Aufbau 1:1 aus renderMenuDetailModalCore (Zweig !isShop): scrollender
+  // Koerper mit Hero/Preis/Info-Tabs/Cross-Sell/Social, darunter die feste
+  // Fusszeile. Vollbild, ohne Rahmen und Rundungen - .modal-sheet setzt in
+  // der App border-radius: 0 und height: 100%.
+  //
+  // Die Kopfzeile des Modals (Name, Kategorie, X) wird hier nicht gezeichnet:
+  // an genau dieser Stelle steht der Erklaertext des Kapitels. Deshalb ist
+  // das ganze Kapitel weiss - es ist von oben bis unten das Modal.
   const scene = `
     <div class="ll-md" aria-label="Dritarja e pjatës">
-      <div class="ll-md__head" data-spot="head">
-        <div class="ll-md__headtext">
-          <h3 class="ll-md__title">${esc(dish.name)}</h3>
-          ${dish.category ? `<div class="ll-md__cat">${esc(dish.category)}</div>` : ""}
-        </div>
-        <span class="ll-md__close">${icon("x", { size: 16 })}</span>
-      </div>
-
       <div class="ll-md__body">
        <div class="ll-md__scroll" data-pan>
         <div class="ll-md__hero" data-spot="hero">
@@ -590,28 +586,32 @@ export function renderDish(profile = {}, menuItems = []) {
     </div>
   `;
 
-  const homeTitle = woltUrl ? "Nga shtëpia: Wolt" : "Nga shtëpia: te të preferuarat";
-  const homeBody = woltUrl
-    ? "Kur klienti hyn nga shtëpia - nga feed-i, nga harta ose nga linku juaj - këtu nuk ka shportë. Ai sheh pjatën, çmimin dhe përbërësit, dhe poroson te Wolt-i ose ju shkruan. Menuja punon si vitrina juaj 24 orë."
-    : "Kur klienti hyn nga shtëpia - nga feed-i, nga harta ose nga linku juaj - këtu nuk ka shportë. Ai sheh pjatën, çmimin dhe përbërësit dhe e ruan te të preferuarat. Menuja punon si vitrina juaj 24 orë.";
-
+  // Kurz und buendig, in der Reihenfolge, in der die Teile untereinander
+  // stehen: Galerie, Preis, Info, Vorschlaege, Reaktionen, Bestellung.
   return stage({
     eyebrow: "Hapi 4",
     title: "Një prekje - dhe porosia rritet.",
     scene,
     fullbleed: true,
     steps: [
-      { view: "home", focus: "", body: "Kur klienti prek një pjatë, hapet kjo dritare - në tërë ekranin, pikërisht kështu. Rrëshqitni: shpjegimi shkon te secila pjesë." },
-      { view: "home", focus: "head", label: "Kreu", title: "Emri dhe kategoria", body: "Lart emri i pjatës dhe kategoria. Me një prekje mbyllet dhe klienti është prapë në menu - pa u humbur." },
-      { view: "home", focus: "hero", label: "Fotoja", title: "Fotoja e madhe", body: "Fotoja shitet e para. Nëse keni disa foto, klienti i shfleton me shigjetat - pjata shihet nga çdo anë." },
-      { view: "home", focus: "price", label: "Qartësi", title: "Cmimi", body: "Çmimi qartë dhe gjithmonë i saktë - pa keqkuptime në tavolinë dhe pa menu të vjetruara letre." },
-      { view: "home", focus: "info", label: "Detajet", title: "Info, Perberesit, Alergenet", body: "Tri skeda: përshkrimi, përbërësit dhe alergjenët. Klienti gjen vetë përgjigjen - pyet më pak, kamarieri fiton kohë." },
+      { view: "home", focus: "", body: "Klienti prek një pjatë - dhe hapet kjo dritare, në tërë ekranin." },
+      { view: "home", focus: "hero", label: "Fotoja", title: "Galeria", body: "Foto e madhe. Me disa foto, klienti i shfleton me shigjetat." },
+      { view: "home", focus: "price", label: "Çmimi", title: "Cmimi", body: "Gjithmonë i saktë - pa keqkuptime në tavolinë." },
+      { view: "home", focus: "info", label: "Detajet", title: "Info, Perberesit, Alergenet", body: "Tri skeda me përgjigjet. Klienti pyet më pak, kamarieri fiton kohë." },
       ...(crossSell.length
-        ? [{ view: "home", focus: "cross", label: "Më shumë për porosi", title: "Shkon shume mire me kete", body: "Te çdo pjatë sugjeroni pije ose ëmbëlsira. Kjo është mënyra më e thjeshtë për të rritur vlerën mesatare të porosisë - pa e pyetur askush." }]
+        ? [{ view: "home", focus: "cross", label: "Më shumë", title: "Shkon shume mire me kete", body: "Sugjeroni pije ose ëmbëlsira te çdo pjatë - porosia rritet vetë." }]
         : []),
-      { view: "home", focus: "social", label: "Reagimet", title: "Like dhe komente", body: "Klientët pëlqejnë dhe komentojnë pjatën vetë. Ju shihni saktë çfarë funksionon - dhe pjatat e vlerësuara mirë shiten vetë." },
-      { view: "home", focus: "order", label: "Nga shtëpia", title: homeTitle, body: homeBody },
-      { view: "qr", focus: "order", label: "Në tavolinë", title: "Me kodin QR: porosi nga tavolina", body: "Kur klienti skanon kodin QR në tavolinë, e njëjta dritare shfaq „Shto ne shporte“. Ai poroson vetë nga tavolina, porosia shkon direkt te Waiter-i me numrin e tavolinës - pa pritur kamarierin dhe pa gabime." }
+      { view: "home", focus: "social", label: "Reagimet", title: "Like dhe komente", body: "Shihni saktë cilat pjata pëlqehen më shumë." },
+      {
+        view: "home",
+        focus: "order",
+        label: "Nga shtëpia",
+        title: woltUrl ? "Wolt" : "Te preferuarat",
+        body: woltUrl
+          ? "Nga shtëpia nuk ka shportë: klienti shikon dhe poroson te Wolt-i."
+          : "Nga shtëpia nuk ka shportë: klienti shikon dhe e ruan pjatën."
+      },
+      { view: "qr", focus: "order", label: "Në tavolinë", title: "Me kodin QR", body: "Skanon kodin, poroson vetë - porosia shkon te Waiter-i me numrin e tavolinës." }
     ]
   });
 }

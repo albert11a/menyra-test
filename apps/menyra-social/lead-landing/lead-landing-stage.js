@@ -81,14 +81,17 @@ function fitStageCaption(stage) {
   const caption = stage.querySelector(".ll-stage__caption");
   if (!caption) return;
 
-  caption.style.height = "";
+  caption.style.minHeight = "";
   let tallest = 0;
   stage.querySelectorAll(".ll-stage__step").forEach((step) => {
     step.style.position = "static";
     tallest = Math.max(tallest, step.offsetHeight);
     step.style.position = "";
   });
-  if (tallest > 0) caption.style.height = `${Math.ceil(tallest)}px`;
+  // min-height statt height: Die Schritte liegen absolut, die Flaeche traegt
+  // also keine eigene Hoehe. So kommen Innenabstand und Trennlinie oben
+  // drauf, statt den Text zu beschneiden.
+  if (tallest > 0) caption.style.minHeight = `${Math.ceil(tallest)}px`;
 }
 
 // Die Speisenkarten der echten App laufen ueber die volle Breite und sind
