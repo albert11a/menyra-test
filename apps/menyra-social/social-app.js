@@ -2182,9 +2182,11 @@ function tr(key, fallback = key, params = {}) {
   return t(key, { fallback, params });
 }
 
-function openGuestAuthPrompt(message = "") {
+// `mode` erzwingt eine Ansicht ("register"/"login"). Ohne Angabe bleibt die
+// zuletzt genutzte Ansicht stehen.
+function openGuestAuthPrompt(message = "", { mode = "" } = {}) {
   if (!isGuestSession()) return false;
-  state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
+  state.auth.mode = normalizeAuthMode(mode) || normalizeAuthMode(state.auth.mode) || "login";
   state.auth.error = String(message || "").trim() || tr("auth.guestRequired", "Ju lutem regjistrohuni ose hyni per ta perdorur kete funksion.");
   state.auth.open = true;
   state.drawerOpen = false;

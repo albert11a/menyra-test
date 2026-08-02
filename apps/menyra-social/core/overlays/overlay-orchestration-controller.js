@@ -388,6 +388,17 @@ export function createOverlayOrchestrationController({
       || state.userProfile.restaurantId
       || ""
     ).trim();
+    // Hat ein Gast hier schon einen Kommentar getippt und wurde zur
+    // Registrierung geschickt, kommt der Entwurf beim erneuten Oeffnen zurueck.
+    const pendingComment = state.pendingMenuComment || null;
+    const pendingCommentText = pendingComment
+      && String(pendingComment.itemId || "") === String(item?.id || "")
+      && String(pendingComment.restaurantId || "") === restaurantId
+      ? String(pendingComment.text || "")
+      : "";
+    if (pendingComment && pendingCommentText) {
+      state.pendingMenuComment = { restaurantId: "", itemId: "", text: "" };
+    }
     state.menuDetail = {
       open: true,
       item,
@@ -399,8 +410,8 @@ export function createOverlayOrchestrationController({
       selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
       selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
       infoTab: "info",
-      footerView: "cart",
-      commentText: "",
+      footerView: pendingCommentText ? "comment" : "cart",
+      commentText: pendingCommentText,
       loading: true,
       sending: false
     };

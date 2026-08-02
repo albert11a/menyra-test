@@ -658,6 +658,9 @@ export function renderMenuDetailModalCore({
       return entryId === id;
     }) || null;
   };
+  // Cross-Sell-Karten stehen nebeneinander in einer Zeile. Damit Preis und
+  // Plus-Knopf ueber alle Karten hinweg auf einer Linie sitzen, bekommen
+  // Kategorie, Name und Preis je genau eine Zeile (Rest wird abgeschnitten).
   const renderCrossSellCard = (entry = {}, index = 0, { showAdd = false } = {}) => {
     const imageCandidates = Array.isArray(getImages(entry)) ? getImages(entry) : [];
     const rawEntryImage = imageCandidates[0] || entry.imageUrl || entry.image || "";
@@ -667,23 +670,29 @@ export function renderMenuDetailModalCore({
     const entryFallbackImg = isDirectUrl(rawEntryImage) && rawEntryImage !== entrySafeImg
       ? rawEntryImage
       : entryFirebaseFallback;
-    const entryName = String(entry.name || `Empfehlung ${index + 1}`).trim() || `Empfehlung ${index + 1}`;
-    const entryCategory = String(entry.category || "Passt dazu").trim() || "Passt dazu";
+    const fallbackName = tr("menu.crossSellSuggestion", "Empfehlung {index}", { index: index + 1 });
+    const entryName = String(entry.name || "").trim() || fallbackName;
+    const entryCategory = String(entry.category || "").trim()
+      || tr("menu.crossSellFallbackCategory", "Passt dazu");
     const entryPrice = formatPriceLabel(entry.price, entry);
+    const entryId = String(
+      entry.id || entry.itemId || entry.productId || entry.menuItemId || ""
+    ).trim();
+    const addLabel = tr("menu.crossSellAdd", "{name} in den Warenkorb", { name: entryName });
     return `
-      <div class="group shrink-0 rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all" style="width:132px;min-width:132px;max-width:132px;flex:0 0 132px;">
-        <div class="relative overflow-hidden rounded-[1.2rem] bg-slate-100 mx-auto" style="width:92px;height:92px;">
+      <div class="group menu-cross-sell-card rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all">
+        <div class="menu-cross-sell-media relative overflow-hidden rounded-[1.2rem] bg-slate-100 mx-auto">
           <img src="${esc(entrySafeImg)}" data-fallback-src="${esc(entryFallbackImg)}" data-image-reveal="menu" alt="${esc(entryName)}" class="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" fetchpriority="low" decoding="async" />
         </div>
-        <div class="pt-3 px-1">
-          <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(entryCategory)}</div>
-          <div class="mt-1 text-sm font-black tracking-tight text-slate-900 line-clamp-2">${esc(entryName)}</div>
-          <div class="mt-3 flex items-center justify-between gap-3">
-            <span class="text-sm font-black text-slate-900">${esc(entryPrice)}</span>
-            ${showAdd ? `
-              <span class="inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-slate-900 text-white">
+        <div class="menu-cross-sell-body pt-3 px-1">
+          <div class="menu-cross-sell-eyebrow">${esc(entryCategory)}</div>
+          <div class="menu-cross-sell-name" title="${esc(entryName)}">${esc(entryName)}</div>
+          <div class="menu-cross-sell-footer">
+            <span class="menu-cross-sell-price">${esc(entryPrice)}</span>
+            ${showAdd && entryId ? `
+              <button type="button" class="menu-cross-sell-add" data-menu-cross-sell-add="${esc(entryId)}" aria-label="${esc(addLabel)}" title="${esc(addLabel)}">
                 ${iconFn("plus", "w-4 h-4")}
-              </span>
+              </button>
             ` : ""}
           </div>
         </div>
@@ -692,16 +701,19 @@ export function renderMenuDetailModalCore({
   };
   const renderCrossSellSection = (items = [], { showAdd = false } = {}) => {
     if (!items.length) return "";
+    const countLabel = items.length === 1
+      ? tr("menu.crossSellCountOne", "{count} Vorschlag", { count: items.length })
+      : tr("menu.crossSellCount", "{count} Vorschlaege", { count: items.length });
     return `
       <section class="space-y-3">
         <div class="flex items-end justify-between gap-3">
           <div>
-            <h4 class="text-base font-black tracking-tight text-slate-900">Passt perfekt dazu</h4>
+            <h4 class="text-base font-black tracking-tight text-slate-900">${esc(tr("menu.crossSellTitle", "Passt perfekt dazu"))}</h4>
           </div>
-          <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">${items.length} Vorschlaege</div>
+          <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">${esc(countLabel)}</div>
         </div>
         <div class="overflow-x-auto no-scrollbar">
-          <div class="flex gap-3 pb-1">
+          <div class="menu-cross-sell-row flex gap-3 pb-1">
             ${items.map((entry, index) => renderCrossSellCard(entry, index, { showAdd })).join("")}
           </div>
         </div>
@@ -839,6 +851,9 @@ export function renderMenuDetailModalCore({
   const comments = (meta.comments || []).map(ensureComment);
   const canSocial = !!restaurantId && !!itemId;
   const canInteract = canSocial && !!state.user;
+  // Gaeste duerfen den Kommentar schon tippen. Erst beim Absenden fuehrt der
+  // Flow zur Registrierung - so bricht das Schreiben nicht kommentarlos ab.
+  const canWriteComment = canSocial;
   const canUseFavorites = !!String(state.user?.uid || "").trim();
   const titleId = "menuDetailTitle";
   const shopCartCount = isShop ? getCartCount(restaurantId || catalogProfile?.restaurantId || "") : 0;
@@ -1024,6 +1039,10 @@ export function renderMenuDetailModalCore({
         </div>
       </div>
     `;
+  // Die Zahl im Warenkorb-Badge steht bewusst nicht im gerenderten HTML: sonst
+  // wuerde jedes Hinzufuegen aus "Passt perfekt dazu" das komplette Modal neu
+  // schreiben (Scrollposition und Galerie waeren weg). Den Wert setzt der
+  // Bind-Schritt direkt im DOM.
   const footerPrimaryActionHtml = showWoltAction
     ? `
       <button type="button" id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;" title="${esc(tr("menu.openWolt", "Bei Wolt oeffnen"))}">
@@ -1041,7 +1060,10 @@ export function renderMenuDetailModalCore({
       : `
         <button id="menuDetailAddToCartBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
           <span class="font-bold text-sm">${soldOut ? esc(tr("menu.soldOut", "Ausverkauft")) : esc(tr("menu.addToCart", "In den Warenkorb"))}</span>
-          ${iconFn("shopping-bag", "w-4 h-4")}
+          <span class="menu-detail-cart-icon">
+            ${iconFn("shopping-bag", "w-4 h-4")}
+            <span id="menuDetailCartBadge" class="menu-detail-cart-badge" hidden></span>
+          </span>
         </button>
       `);
   const footerBackToggleTitle = showWoltAction
@@ -1078,8 +1100,8 @@ export function renderMenuDetailModalCore({
         </button>
 
         <div class="flex-1 flex gap-2">
-          <textarea id="menuDetailCommentInput" placeholder="${canInteract ? esc(tr("menu.commentPlaceholder", "Schreib einen Kommentar...")) : esc(tr("menu.loginRequired", "Ju lutem hyni"))}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
-          <button id="menuDetailCommentSend" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+          <textarea id="menuDetailCommentInput" placeholder="${esc(tr("menu.commentPlaceholder", "Schreib einen Kommentar..."))}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canWriteComment ? "" : "opacity-60"}" rows="1" ${canWriteComment ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
+          <button id="menuDetailCommentSend" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center ${canWriteComment ? "" : "opacity-60 cursor-not-allowed"}" ${canWriteComment ? "" : "disabled"}>
             ${iconFn("send", "w-4 h-4")}
           </button>
         </div>
