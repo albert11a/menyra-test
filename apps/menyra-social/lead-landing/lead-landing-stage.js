@@ -29,6 +29,12 @@ function applyStageState(stage, state) {
     node.classList.toggle("is-active", index === state);
   });
 
+  // Ein Schritt kann die Szene umschalten (Profil -> Info -> Postimet ->
+  // Menu). Das Umschalten selbst animiert CSS.
+  const view = String(captions[state]?.dataset?.view || "").trim();
+  if (view) stage.setAttribute("data-view", view);
+  else stage.removeAttribute("data-view");
+
   const focusKey = String(captions[state]?.dataset?.focus || "").trim();
   const spots = Array.from(stage.querySelectorAll("[data-spot]"));
 
@@ -88,6 +94,34 @@ function fitStageCaption(stage) {
 // bekommt die Szene zusaetzlich eine passende Hoehe. Bewusst kein negatives
 // margin: die Szene wird ueber margin: auto im Restraum zentriert, ein
 // gesetztes margin wuerde das aushebeln.
+// Die Szene kann mehrere Ansichten haben (Profil, Info, Postimet, Menu) und
+// ist in jeder unterschiedlich hoch. Gemessen wird deshalb die hoechste -
+// sonst passt eine Ansicht, eine andere wuerde beschnitten.
+function measureTallestSceneHeight(stage, scene) {
+  const views = Array.from(stage.querySelectorAll(".ll-stage__step"))
+    .map((step) => String(step.dataset.view || "").trim())
+    .filter(Boolean);
+
+  if (!views.length) return scene.offsetHeight;
+
+  const previous = stage.getAttribute("data-view");
+  // Uebergaenge waehrend der Messung abschalten, sonst wird ein Zwischen-
+  // zustand gemessen.
+  stage.classList.add("ll-stage--measuring");
+
+  let tallest = 0;
+  Array.from(new Set(views)).forEach((view) => {
+    stage.setAttribute("data-view", view);
+    tallest = Math.max(tallest, scene.offsetHeight);
+  });
+
+  if (previous === null) stage.removeAttribute("data-view");
+  else stage.setAttribute("data-view", previous);
+  stage.classList.remove("ll-stage--measuring");
+
+  return tallest || scene.offsetHeight;
+}
+
 function fitStageScene(stage) {
   const pin = stage.querySelector(".ll-stage__pin");
   const scene = stage.querySelector(".ll-stage__scene");
@@ -96,24 +130,22 @@ function fitStageScene(stage) {
   scene.style.transform = "";
   scene.style.height = "";
 
-  const sceneHeight = scene.offsetHeight;
+  const sceneHeight = measureTallestSceneHeight(stage, scene);
   if (sceneHeight <= 0) return;
-  if (pin.scrollHeight - pin.clientHeight <= 1) return;
 
+  // Verfuegbare Hoehe = Pin minus Polster und Textflaeche.
+  const available = pin.clientHeight
+    - parseFloat(getComputedStyle(pin).paddingTop || 0)
+    - parseFloat(getComputedStyle(pin).paddingBottom || 0)
+    - (stage.querySelector(".ll-stage__caption")?.offsetHeight || 0)
+    - 14;
+
+  if (available <= 0 || sceneHeight <= available) return;
+
+  const scale = Math.max(0.72, available / sceneHeight);
   scene.style.transformOrigin = "top center";
-
-  // Eine Runde reicht nicht immer: durch das Verkleinern aendern sich
-  // Umbrueche und damit die Resthoehe. Deshalb bis zu drei Mal nachziehen.
-  let scale = 1;
-  for (let pass = 0; pass < 3; pass += 1) {
-    const overflow = pin.scrollHeight - pin.clientHeight;
-    if (overflow <= 1) break;
-    const next = Math.max(0.72, scale - (overflow + 2) / sceneHeight);
-    if (next >= scale) break;
-    scale = next;
-    scene.style.transform = `scale(${scale})`;
-    scene.style.height = `${Math.ceil(sceneHeight * scale)}px`;
-  }
+  scene.style.transform = `scale(${scale})`;
+  scene.style.height = `${Math.ceil(sceneHeight * scale)}px`;
 }
 
 export function startLeadLandingStages({ scroller = null } = {}) {

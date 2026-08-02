@@ -11,17 +11,14 @@ import { startLeadLandingStages } from "./lead-landing-stage.js";
 import {
   LEAD_LANDING_GREETINGS_COUNT,
   renderAnalytics,
-  renderContact,
   renderCta,
   renderDish,
   renderHero,
   renderIntro,
   renderMap,
-  renderMenu,
-  renderPosts,
   renderPricing,
-  renderProfile,
   renderQr,
+  renderSurface,
   renderWaiter
 } from "./lead-landing-sections.js";
 
@@ -133,10 +130,7 @@ function renderPage(data) {
     <div class="ll-shell">
       ${renderHero(profile)}
       ${renderIntro(profile)}
-      ${renderProfile(profile)}
-      ${renderContact(profile)}
-      ${renderPosts(posts)}
-      ${renderMenu(profile, menuItems, focusItems)}
+      ${renderSurface(profile, posts, menuItems, focusItems)}
       ${renderDish(profile, menuItems)}
       ${renderMap(profile)}
       ${renderQr(sales)}

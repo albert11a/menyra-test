@@ -1690,3 +1690,184 @@ img {
     flex: 0 0 48px;
   }
 }
+
+/* ---------- Die verwandelbare Profil-Szene ----------
+   Eine Szene, vier Zustaende (data-view): profile, info, posts, menu.
+   Die Uebergaenge laufen ueber grid-template-rows von 1fr auf 0fr - das ist
+   animierbar und laesst die Tabs von selbst nach oben ruecken, sobald die
+   Kartela zusammenfaellt. */
+
+.ll-surface {
+  display: flex;
+  flex-direction: column;
+}
+
+.ll-surface__cardwrap,
+.ll-surface__contentwrap {
+  display: grid;
+  transition: grid-template-rows 620ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-surface__cardwrap > *,
+.ll-surface__contentwrap > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Kartela sichtbar in profile/info, eingeklappt in posts/menu. */
+.ll-surface__cardwrap {
+  grid-template-rows: 1fr;
+}
+
+.ll-stage[data-view="posts"] .ll-surface__cardwrap,
+.ll-stage[data-view="menu"] .ll-surface__cardwrap {
+  grid-template-rows: 0fr;
+}
+
+.ll-surface__cardinner {
+  position: relative;
+}
+
+/* Vorder- und Rueckseite der Kartela liegen uebereinander. */
+.ll-surface__info {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(0.94);
+  pointer-events: none;
+  transition: opacity 460ms ease, transform 560ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-surface__card {
+  transition: opacity 460ms ease, transform 560ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view="info"] .ll-surface__card {
+  opacity: 0;
+  transform: scale(1.04);
+  pointer-events: none;
+}
+
+.ll-stage[data-view="info"] .ll-surface__info {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* Kartela weicht nach oben, bevor sie zusammenfaellt. */
+.ll-stage[data-view="posts"] .ll-surface__card,
+.ll-stage[data-view="menu"] .ll-surface__card,
+.ll-stage[data-view="posts"] .ll-surface__info,
+.ll-stage[data-view="menu"] .ll-surface__info {
+  opacity: 0;
+  transform: translateY(-18px) scale(0.96);
+}
+
+.ll-surface__tabs {
+  margin-top: 14px;
+  transition: margin-top 620ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view="posts"] .ll-surface__tabs,
+.ll-stage[data-view="menu"] .ll-surface__tabs {
+  margin-top: 0;
+}
+
+/* Inhalt unter den Tabs: erst leer, dann Postimet, dann Menu. */
+.ll-surface__contentwrap {
+  grid-template-rows: 0fr;
+}
+
+.ll-stage[data-view="posts"] .ll-surface__contentwrap,
+.ll-stage[data-view="menu"] .ll-surface__contentwrap {
+  grid-template-rows: 1fr;
+}
+
+.ll-surface__contentinner {
+  position: relative;
+  padding-top: 14px;
+}
+
+.ll-surface__posts,
+.ll-surface__menu {
+  transition: opacity 420ms ease, transform 480ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-surface__menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+}
+
+.ll-surface__posts {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.ll-stage[data-view="posts"] .ll-surface__posts {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ll-surface__menu {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+.ll-stage[data-view="menu"] .ll-surface__menu {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ll-stage[data-view="menu"] .ll-surface__posts {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Aktiver Tab wandert von Postimet auf Menu. */
+.ll-tab--posts,
+.ll-tab--menu {
+  transition: background 420ms ease, color 420ms ease, box-shadow 420ms ease;
+}
+
+.ll-stage[data-view="menu"] .ll-tab--posts {
+  background: transparent;
+  color: var(--ll-faint);
+  box-shadow: none;
+}
+
+.ll-stage[data-view="menu"] .ll-tab--menu,
+.ll-stage:not([data-view="menu"]) .ll-tab--posts {
+  background: #fff;
+  color: var(--ll-ink);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+/* Info wird "gedrueckt": kurz kleiner, dann groesser und leichter. */
+@keyframes ll-press {
+  0% { transform: scale(1); }
+  35% { transform: scale(0.86); }
+  70% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+.ll-stage[data-view="info"] .ll-metric--info {
+  animation: ll-press 620ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-stage[data-view="info"] .ll-metric--info {
+    animation: none;
+  }
+}
+
+/* Waehrend des Messens der Ansichtshoehen duerfen keine Uebergaenge laufen -
+   sonst wuerde ein Zwischenzustand gemessen. */
+.ll-stage--measuring,
+.ll-stage--measuring * {
+  transition: none !important;
+  animation: none !important;
+}

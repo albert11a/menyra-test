@@ -127,7 +127,8 @@ function sectionHead(eyebrow, title, lead) {
 // Schritt fuer Schritt erlaeutert. steps[0] ist die Gesamtansicht (ohne
 // Fokus), danach hebt jeder Schritt einen Teil hervor.
 //
-// steps: [{ focus, label, title, body }] - focus "" laesst alles hell.
+// steps: [{ focus, view, label, title, body }]
+//   focus "" laesst alles scharf, view schaltet die Szene um.
 function stage({ eyebrow, title, scene, steps = [] }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt Kapitelmarke und Titel. So gibt es nur einen Textblock
@@ -135,12 +136,13 @@ function stage({ eyebrow, title, scene, steps = [] }) {
   const allSteps = steps.map((step, index) => (index === 0
     ? { ...step, label: eyebrow, title }
     : step));
+  const firstView = esc(allSteps[0]?.view || "");
   return `
-    <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};">
+    <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
       <div class="ll-stage__pin">
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
-            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}">
+            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}">
               ${step.label ? `<p class="ll-stage__step-label">${esc(step.label)}</p>` : ""}
               ${step.title ? `<p class="ll-stage__step-title">${esc(step.title)}</p>` : ""}
               <p class="ll-stage__step-body">${esc(step.body || "")}</p>
@@ -220,7 +222,14 @@ export function renderIntro(profile = {}) {
 
 /* -------------------------------------------------------------- Profil */
 
-export function renderProfile(profile = {}) {
+/* ---------- Das Profil-Kapitel: Profil -> Info -> Postimet -> Menu ----------
+   Eine einzige Szene, die sich beim Scrollen verwandelt. Der Kunde verliert
+   nie den Zusammenhang: erst die Kartela mit den Tabs darunter, dann wird
+   Info gedrueckt und die Karte dreht auf die Kontaktdaten, danach weicht die
+   Karte nach oben, die Tabs ruecken hoch und darunter erscheinen erst die
+   Postimet und dann die Menu. */
+
+export function renderSurface(profile = {}, posts = [], menuItems = [], focusItems = []) {
   const igUrl = socialUrl("instagram", profile.instagramUrl || profile.instagram);
   const ttUrl = socialUrl("tiktok", profile.tiktokUrl || profile.tiktok);
   const fbUrl = socialUrl("facebook", profile.facebookUrl || profile.facebook);
@@ -228,6 +237,7 @@ export function renderProfile(profile = {}) {
   const geoUrl = mapsUrl({ lat: primaryLocation?.lat, lng: primaryLocation?.lng, address: profile.address });
   const typeLabel = text(profile.type).toUpperCase() || "BUSINESS";
   const cityLabel = text(profile.city).toUpperCase();
+  const currency = profile.currency || "EUR";
 
   const socialButtons = [
     geoUrl ? `<span class="ll-socialbtn">${icon("map", { size: 16 })}</span>` : "",
@@ -236,42 +246,131 @@ export function renderProfile(profile = {}) {
     fbUrl ? `<span class="ll-socialbtn">${icon("facebook", { size: 16 })}</span>` : ""
   ].filter(Boolean).join("");
 
-  // Die ganze Karte bleibt sichtbar - data-spot markiert die Teile, die
-  // beim Scrollen nacheinander hervorgehoben werden.
-  const scene = `
-    <div class="ll-card ll-profile" aria-label="Profili juaj">
-      <div class="ll-profile__cover">
-        <span data-spot="identity" class="ll-profile__coverimg">${img(profile.coverUrl, "Ballina")}</span>
-        <span class="ll-profile__scrim"></span>
-        <span class="ll-profile__fade"></span>
-        ${socialButtons ? `<div class="ll-profile__socials" data-spot="social">${socialButtons}</div>` : ""}
-      </div>
+  const address = text(primaryLocation?.address) || text(profile.address);
+  const infoRows = [
+    text(profile.phone) ? { iconName: "message", label: "Telefon", value: profile.phone } : null,
+    address ? { iconName: "map-pin", label: "Adresa", value: address } : null,
+    text(profile.openingHours) ? { iconName: "clock", label: "Orari", value: profile.openingHours } : null,
+    text(profile.instagram) ? { iconName: "instagram", label: "Instagram", value: profile.instagram } : null,
+    text(profile.tiktok) ? { iconName: "music", label: "TikTok", value: profile.tiktok } : null
+  ].filter(Boolean).slice(0, 4);
 
-      <div class="ll-profile__body">
-        <div class="ll-profile__toprow">
-          <span class="ll-profile__avatar" data-spot="identity">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
-          <div class="ll-profile__meta" data-spot="fans">
-            <span class="ll-metric">
-              <span class="ll-metric__value">${esc(formatCount(profile.followers))}</span>
-              <span class="ll-metric__label">Fans</span>
-            </span>
-            <span class="ll-metric__divider"></span>
-            <span class="ll-metric">
-              <span class="ll-metric__icon">${icon("info", { size: 20 })}</span>
-              <span class="ll-metric__icon-label">Info</span>
-            </span>
+  const postGrid = posts.slice(0, 4).length
+    ? `<div class="ll-grid">${posts.slice(0, 4).map((post) => `
+        <div class="ll-post">
+          ${img(post.imageUrl, text(post.caption) || "Postim")}
+          <span class="ll-post__stats">
+            <span>${filledIcon("heart", { size: 13, color: "#f43f5e" })} ${esc(formatCount(post.likeCount))}</span>
+            <span>${icon("message", { size: 13 })} ${esc(formatCount(post.commentCount))}</span>
+          </span>
+        </div>
+      `).join("")}</div>`
+    : `<div class="ll-card ll-card--pad" style="text-align:center;">
+        <p class="ll-callout__body">Sapo të ngarkoni postimin e parë, ai shfaqet këtu dhe në feed te të gjithë ndjekësit tuaj.</p>
+      </div>`;
+
+  const focusRow = focusItems.length
+    ? `<div class="ll-focus-row">${focusItems.slice(0, 2).map((item) => `
+        <article class="ll-focus">
+          <div class="ll-focus__media">
+            ${img(item.imageUrl, item.title)}
+            <span class="ll-focus__badge">${icon("sparkles", { size: 13 })} Tipp</span>
+          </div>
+          <h4 class="ll-focus__title">${esc(item.title)}</h4>
+        </article>
+      `).join("")}</div>`
+    : "";
+
+  const menuGrid = menuItems.slice(0, 2).length
+    ? `<div class="ll-menu-grid">${menuItems.slice(0, 2).map((item) => `
+        <article class="ll-menu-card">
+          <div class="ll-menu-card__media">${img(item.imageUrl, item.name)}</div>
+          <p class="ll-menu-card__name">${esc(item.name)}</p>
+          ${item.price !== null ? `<p class="ll-menu-card__price">${esc(formatPrice(item.price, currency))}</p>` : ""}
+        </article>
+      `).join("")}</div>`
+    : `<div class="ll-card ll-card--pad" style="text-align:center;">
+        <p class="ll-callout__body">Menuja vendoset një herë - dhe është e gjallë në çdo tavolinë.</p>
+      </div>`;
+
+  const categories = Array.from(new Set(menuItems.map((item) => text(item.category)).filter(Boolean))).slice(0, 5);
+
+  const scene = `
+    <div class="ll-surface">
+      <div class="ll-surface__cardwrap">
+        <div class="ll-surface__cardinner">
+          <div class="ll-card ll-profile ll-surface__card" aria-label="Profili juaj">
+            <div class="ll-profile__cover">
+              <span data-spot="identity" class="ll-profile__coverimg">${img(profile.coverUrl, "Ballina")}</span>
+              <span class="ll-profile__scrim"></span>
+              <span class="ll-profile__fade"></span>
+              ${socialButtons ? `<div class="ll-profile__socials" data-spot="social">${socialButtons}</div>` : ""}
+            </div>
+
+            <div class="ll-profile__body">
+              <div class="ll-profile__toprow">
+                <span class="ll-profile__avatar" data-spot="identity">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+                <div class="ll-profile__meta">
+                  <span class="ll-metric" data-spot="fans">
+                    <span class="ll-metric__value">${esc(formatCount(profile.followers))}</span>
+                    <span class="ll-metric__label">Fans</span>
+                  </span>
+                  <span class="ll-metric__divider"></span>
+                  <span class="ll-metric ll-metric--info" data-spot="info">
+                    <span class="ll-metric__icon">${icon("info", { size: 20 })}</span>
+                    <span class="ll-metric__icon-label">Info</span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="ll-profile__nameblock" data-spot="identity">
+                <h3 class="ll-profile__name">${esc(profile.name)}</h3>
+                <p class="ll-profile__bio">${esc(text(profile.bio) || "Nuk ka bio.")}</p>
+                <p class="ll-profile__tag">${esc([cityLabel, typeLabel].filter(Boolean).join(" / "))}</p>
+              </div>
+
+              <div class="ll-profile__actions">
+                <span class="ll-btn-primary" data-spot="follow">Ndiq</span>
+                <span class="ll-btn-ghost" data-spot="chat">${icon("message", { size: 20 })}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ll-card ll-contact ll-surface__info" aria-label="Kontakti dhe Info">
+            <div>
+              <h3 class="ll-contact__title">Kontakti &amp; Info</h3>
+              <p class="ll-contact__place">${esc(cityLabel)}</p>
+            </div>
+            <div class="ll-contact__rows">
+              ${infoRows.map((row) => `
+                <div class="ll-contact__row">
+                  <span class="ll-contact__icon">${icon(row.iconName, { size: 16 })}</span>
+                  <div style="min-width:0;flex:1;">
+                    <span class="ll-contact__label">${esc(row.label)}</span>
+                    <span class="ll-contact__value">${esc(row.value)}</span>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+            <div class="ll-contact__foot">
+              <span class="ll-contact__back">Kthehu te profili</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="ll-profile__nameblock" data-spot="identity">
-          <h3 class="ll-profile__name">${esc(profile.name)}</h3>
-          <p class="ll-profile__bio">${esc(text(profile.bio) || "Nuk ka bio.")}</p>
-          <p class="ll-profile__tag">${esc([cityLabel, typeLabel].filter(Boolean).join(" / "))}</p>
-        </div>
+      <div class="ll-tabs ll-surface__tabs" data-spot="tabs">
+        <span class="ll-tab ll-tab--posts">Postimet</span>
+        <span class="ll-tab ll-tab--menu">Menu</span>
+      </div>
 
-        <div class="ll-profile__actions">
-          <span class="ll-btn-primary" data-spot="follow">Ndiq</span>
-          <span class="ll-btn-ghost" data-spot="chat">${icon("message", { size: 20 })}</span>
+      <div class="ll-surface__contentwrap">
+        <div class="ll-surface__contentinner">
+          <div class="ll-surface__posts" data-spot="grid">${postGrid}</div>
+          <div class="ll-surface__menu">
+            ${focusRow ? `<div data-spot="mfocus">${focusRow}</div>` : ""}
+            <div data-spot="mcards">${menuGrid}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -282,165 +381,29 @@ export function renderProfile(profile = {}) {
     title: "Kështu ju sheh klienti.",
     scene,
     steps: [
-      { focus: "", body: "Kjo është kartela juaj publike në Mnyra - me të dhënat tuaja reale. Rrëshqitni për ta parë pjesë pas pjese." },
-      { focus: "identity", label: "Identiteti", title: "Logoja dhe emri juaj", body: "Ballina, logoja, emri dhe qyteti. Klienti e di menjëherë kush jeni dhe ku jeni." },
-      { focus: "social", label: "Lidhjet", title: "Harta, TikTok, Instagram", body: "Një prekje - dhe klienti ka drejtimin në hartë ose rrjetet tuaja. Vendosen një herë, punojnë përgjithmonë." },
-      { focus: "fans", label: "Numrat", title: "Fans dhe Info", body: "Sa njerëz ju ndjekin. Info hap adresën, orarin dhe kontaktet - pa e lënë profilin." },
-      { focus: "follow", label: "Rritja", title: "NDIQ", body: "Klienti bëhet ndjekës me një prekje. Çdo postim i ri i shfaqet në feed - marketing që nuk paguhet dy herë." },
-      { focus: "chat", label: "Kontakti", title: "Biseda direkt", body: "E çon klientin direkt te ju në WhatsApp. Rezervimet vijnë aty ku i lexoni gjithsesi." }
-    ]
-  });
-}
-
-/* ------------------------------------------------------ Kontakti & Info */
-
-export function renderContact(profile = {}) {
-  const primaryLocation = Array.isArray(profile.locations) ? profile.locations[0] : null;
-  const address = text(primaryLocation?.address) || text(profile.address);
-  const rows = [
-    address ? { iconName: "map-pin", label: "Adresa", value: address } : null,
-    text(profile.openingHours) ? { iconName: "clock", label: "Orari", value: profile.openingHours } : null,
-    text(profile.instagram) ? { iconName: "instagram", label: "Instagram", value: profile.instagram } : null,
-    text(profile.tiktok) ? { iconName: "music", label: "TikTok", value: profile.tiktok } : null,
-    text(profile.phone) ? { iconName: "message", label: "Telefon", value: profile.phone } : null
-  ].filter(Boolean);
-
-  if (!rows.length) return "";
-
-  return `
-    <section class="ll-section">
-      ${sectionHead("Kontakti & Info", "Gjithçka që klienti duhet të dijë.", "Kur klienti prek INFO, hapet kjo dritare - me të dhënat tuaja.")}
-
-      <div class="ll-card ll-contact">
-        <div>
-          <h3 class="ll-contact__title">Kontakti &amp; Info</h3>
-          <p class="ll-contact__place">${esc(text(profile.city).toUpperCase())}</p>
-        </div>
-
-        <div class="ll-contact__rows">
-          ${rows.map((row) => `
-            <div class="ll-contact__row">
-              <span class="ll-contact__icon">${icon(row.iconName, { size: 16 })}</span>
-              <div style="min-width:0;flex:1;">
-                <span class="ll-contact__label">${esc(row.label)}</span>
-                <span class="ll-contact__value">${esc(row.value)}</span>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-
-        <div class="ll-contact__foot">
-          <span class="ll-contact__back">Kthehu te profili</span>
-        </div>
-      </div>
-
-      <div class="ll-stack">
-        ${callout(1, "Ju e mbani të përditësuar", "Ndryshoni orarin ose adresën një herë - ndryshon kudo: në profil, në hartë, në QR kodin e tavolinës.")}
-      </div>
-    </section>
-  `;
-}
-
-/* ------------------------------------------------------------ Postimet */
-
-export function renderPosts(posts = []) {
-  const visible = posts.slice(0, 4);
-
-  const grid = visible.length
-    ? `<div class="ll-grid">${visible.map((post) => `
-        <div class="ll-post">
-          ${img(post.imageUrl, text(post.caption) || "Postim")}
-          <span class="ll-post__stats">
-            <span>${filledIcon("heart", { size: 13, color: "#f43f5e" })} ${esc(formatCount(post.likeCount))}</span>
-            <span>${icon("message", { size: 13 })} ${esc(formatCount(post.commentCount))}</span>
-          </span>
-        </div>
-      `).join("")}</div>`
-    : `<div class="ll-card ll-card--pad" style="text-align:center;">
-        <p class="ll-callout__body">Sapo të ngarkoni postimin e parë, ai shfaqet këtu - dhe njëkohësisht në feed-in kryesor te të gjithë ndjekësit tuaj.</p>
-      </div>`;
-
-  const scene = `
-    <div class="ll-tabs" data-spot="tabs" style="margin-bottom:14px;">
-      <span class="ll-tab is-active">Postimet</span>
-      <span class="ll-tab">Menu</span>
-    </div>
-    <div data-spot="grid">${grid}</div>
-  `;
-
-  return stage({
-    eyebrow: "Hapi 2",
-    title: "Postimet - atmosfera juaj.",
-    scene,
-    steps: [
-      { focus: "", body: "Profili ka dy tabe. Këtu jeni te Postimet." },
-      { focus: "tabs", label: "Ndarja", title: "Postimet & Menu", body: "Dy tabe e ndajnë profilin: Postimet tregojnë si ndihet lokali, Menu shet." },
-      { focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Klienti sheh atmosferën para se të vijë." },
-      { focus: "", label: "Shpërndarja", title: "Feed-i kryesor", body: "Çdo postim shkon automatikisht te të gjithë ndjekësit tuaj në feed. Nuk paguani për shikime." }
-    ]
-  });
-}
-
-export function renderMenu(profile = {}, menuItems = [], focusItems = []) {
-  const currency = profile.currency || "EUR";
-  const cards = menuItems.slice(0, 2);
-
-  const focusRow = focusItems.length
-    ? `<div class="ll-focus-row">${focusItems.slice(0, 3).map((item) => `
-        <article class="ll-focus">
-          <div class="ll-focus__media">
-            ${img(item.imageUrl, item.title)}
-            <span class="ll-focus__badge">${icon("sparkles", { size: 13 })} Tipp</span>
-          </div>
-          <h4 class="ll-focus__title">${esc(item.title)}</h4>
-          ${item.body ? `<p class="ll-focus__body">${esc(item.body)}</p>` : ""}
-        </article>
-      `).join("")}</div>`
-    : "";
-
-  const menuGrid = cards.length
-    ? `<div class="ll-menu-grid">${cards.map((item) => `
-        <article class="ll-menu-card">
-          <div class="ll-menu-card__media">${img(item.imageUrl, item.name)}</div>
-          <p class="ll-menu-card__name">${esc(item.name)}</p>
-          ${item.price !== null ? `<p class="ll-menu-card__price">${esc(formatPrice(item.price, currency))}</p>` : ""}
-        </article>
-      `).join("")}</div>`
-    : `<div class="ll-card ll-card--pad" style="text-align:center;">
-        <p class="ll-callout__body">Menuja juaj vendoset një herë - ushqimi, pijet, koktejlet dhe kafeja - dhe është menjëherë e gjallë në çdo tavolinë.</p>
-      </div>`;
-
-  const categories = Array.from(new Set(menuItems.map((item) => text(item.category)).filter(Boolean))).slice(0, 6);
-
-  const scene = `
-    <div class="ll-tabs" data-spot="tabs" style="margin-bottom:14px;">
-      <span class="ll-tab">Postimet</span>
-      <span class="ll-tab is-active">Menu</span>
-    </div>
-    ${focusRow ? `<div data-spot="focus" style="margin-bottom:14px;">${focusRow}</div>` : ""}
-    <div data-spot="cards">${menuGrid}</div>
-  `;
-
-  return stage({
-    eyebrow: "Hapi 3",
-    title: "Menu - këtu shitet.",
-    scene,
-    steps: [
-      { focus: "", body: "Menu me foto e çmime. Gjithmonë e saktë, kurrë e vjetruar." },
-      { focus: "focus", label: "Rekomandimet", title: "Sot në fokus", body: "Kartat me shenjën TIPP janë rekomandimet e ditës. Ju vendosni çfarë shitet më shumë - dhe e ndryshoni kur të doni." },
+      { view: "profile", focus: "", body: "Kartela juaj publike me të dhënat tuaja reale - dhe poshtë saj dy tabe: Postimet dhe Menu." },
+      { view: "profile", focus: "identity", label: "Identiteti", title: "Logoja dhe emri juaj", body: "Ballina, logoja, emri dhe qyteti. Klienti e di menjëherë kush jeni dhe ku jeni." },
+      { view: "profile", focus: "social", label: "Lidhjet", title: "Harta, TikTok, Instagram", body: "Një prekje - dhe klienti ka drejtimin në hartë ose rrjetet tuaja. Vendosen një herë, punojnë përgjithmonë." },
+      { view: "profile", focus: "follow", label: "Rritja", title: "NDIQ", body: "Klienti bëhet ndjekës me një prekje. Çdo postim i ri i shfaqet në feed - marketing që nuk paguhet dy herë." },
+      { view: "profile", focus: "chat", label: "Kontakti", title: "Biseda direkt", body: "E çon klientin direkt te ju në WhatsApp. Rezervimet vijnë aty ku i lexoni gjithsesi." },
+      { view: "profile", focus: "fans", label: "Numrat", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet me çdo postim që u pëlqen." },
+      { view: "profile", focus: "info", label: "Detajet", title: "Butoni Info", body: "Këtu klienti prek Info - dhe kartela hapet nga ana tjetër." },
+      { view: "info", focus: "", label: "Kontakti & Info", title: "Gjithçka që duhet të dijë", body: "Telefoni, adresa, orari dhe rrjetet - në një ekran. Ju e ndryshoni një herë, ndryshon kudo." },
+      { view: "posts", focus: "tabs", label: "Dy tabe", title: "Postimet & Menu", body: "Kartela tërhiqet, tabet ngjiten lart. Këtu ndahet profili: Postimet tregojnë lokalin, Menu shet." },
+      { view: "posts", focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Çdo postim shkon edhe në feed te ndjekësit tuaj." },
+      { view: "menu", focus: "mfocus", label: "Rekomandimet", title: "Sot në fokus", body: "Kartat me shenjën TIPP janë rekomandimet e ditës. Ju vendosni çfarë shitet më shumë." },
       {
-        focus: "cards",
+        view: "menu",
+        focus: "mcards",
         label: "Struktura",
         title: "Kategoritë",
         body: categories.length
           ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
           : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim."
-      },
-      { focus: "", label: "Efekti", title: "Foto shesin", body: "Një pjatë me foto porositet dukshëm më shpesh se një rresht teksti në menu letre." }
+      }
     ]
   });
 }
-
 export function renderDish(profile = {}, menuItems = []) {
   const currency = profile.currency || "EUR";
   const dish = menuItems.find((item) => item.imageUrl && item.price !== null)
