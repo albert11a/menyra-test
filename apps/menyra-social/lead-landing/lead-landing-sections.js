@@ -271,20 +271,24 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
         <p class="ll-callout__body">Sapo të ngarkoni postimin e parë, ai shfaqet këtu dhe në feed te të gjithë ndjekësit tuaj.</p>
       </div>`;
 
+  // Aufbau 1:1 aus renderTestfirstFocusSection: Bild 16:9, TIPP-Plakette
+  // oben links, darunter Titel und zweizeiliger Beschreibungstext.
   const focusRow = focusItems.length
-    ? `<div class="ll-focus-row">${focusItems.slice(0, 3).map((item) => `
+    ? `<div class="ll-focus-row">${focusItems.slice(0, 4).map((item) => `
         <article class="ll-focus">
           <div class="ll-focus__media">
             ${img(item.imageUrl, item.title)}
-            <span class="ll-focus__badge">${icon("sparkles", { size: 13 })} Tipp</span>
+            <span class="ll-focus__badge">${icon("sparkles", { size: 12 })}<span>Tipp</span></span>
           </div>
-          <h4 class="ll-focus__title">${esc(item.title)}</h4>
+          <div class="ll-focus__text">
+            <h3 class="ll-focus__title">${esc(item.title)}</h3>
+            ${item.body ? `<p class="ll-focus__body">${esc(item.body)}</p>` : ""}
+          </div>
         </article>
       `).join("")}</div>`
     : "";
 
-  const menuGrid = menuItems.slice(0, 2).length
-    ? `<div class="ll-menu-grid">${menuItems.slice(0, 2).map((item) => `
+  const menuCard = (item) => `
         <article class="ll-menu-card">
           <div class="ll-menu-card__media">
             ${img(item.imageUrl, item.name)}
@@ -299,10 +303,23 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
             </div>
           </div>
         </article>
-      `).join("")}</div>`
-    : `<div class="ll-card ll-card--pad" style="text-align:center;">
-        <p class="ll-callout__body">Menuja vendoset një herë - dhe është e gjallë në çdo tavolinë.</p>
-      </div>`;
+  `;
+
+  // Getraenke und Speisen werden nacheinander gezeigt. Die Einteilung folgt
+  // menuSection wie in der App; fehlt sie, entscheidet die Kategorie.
+  const isDrink = (item) => {
+    if (item.menuSection === "drink") return true;
+    if (item.menuSection === "food") return false;
+    return /pije|drink|getr|beverage|kafe|coffee|cocktail|koktej|birr|vere|wine/i.test(item.category);
+  };
+  const drinkItems = menuItems.filter(isDrink).slice(0, 2);
+  const foodItems = menuItems.filter((item) => !isDrink(item)).slice(0, 2);
+  const emptyNote = `<div class="ll-card ll-card--pad" style="text-align:center;">
+      <p class="ll-callout__body">Menuja vendoset një herë - dhe është e gjallë në çdo tavolinë.</p>
+    </div>`;
+  const menuGridOf = (list) => (list.length
+    ? `<div class="ll-menu-grid">${list.map(menuCard).join("")}</div>`
+    : emptyNote);
 
   const categories = Array.from(new Set(menuItems.map((item) => text(item.category)).filter(Boolean))).slice(0, 5);
 
@@ -370,17 +387,18 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
         </div>
       </div>
 
-      <div class="ll-tabs ll-surface__tabs" data-spot="tabs grid mfocus mcards">
+      <div class="ll-tabs ll-surface__tabs" data-spot="tabs grid mfocus mdrinks mfood">
         <span class="ll-tab ll-tab--posts">Postimet</span>
         <span class="ll-tab ll-tab--menu">Menu</span>
       </div>
 
       <div class="ll-surface__contentwrap">
         <div class="ll-surface__contentinner">
-          <div class="ll-surface__posts" data-spot="grid">${postGrid}</div>
+          <div class="ll-surface__posts"><div data-spot="grid">${postGrid}</div></div>
           <div class="ll-surface__menu">
-            ${focusRow ? `<div data-spot="mfocus">${focusRow}</div>` : ""}
-            <div data-spot="mcards">${menuGrid}</div>
+            <div class="ll-menu-part ll-menu-part--focus"><div data-spot="mfocus">${focusRow || emptyNote}</div></div>
+            <div class="ll-menu-part ll-menu-part--drinks"><div data-spot="mdrinks">${menuGridOf(drinkItems)}</div></div>
+            <div class="ll-menu-part ll-menu-part--food"><div data-spot="mfood">${menuGridOf(foodItems)}</div></div>
           </div>
         </div>
       </div>
@@ -402,12 +420,13 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       { view: "info", focus: "", label: "Kontakti & Info", title: "Gjithçka që duhet të dijë", body: "Telefoni, adresa, orari dhe rrjetet - në një ekran. Ju e ndryshoni një herë, ndryshon kudo." },
       { view: "tabs", focus: "tabs", label: "Dy tabe", title: "Postimet & Menu", body: "Kartela tërhiqet, tabet ngjiten lart. Këtu ndahet profili: Postimet tregojnë si ndihet lokali, Menu shet." },
       { view: "posts", focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Çdo postim shkon edhe në feed te ndjekësit tuaj." },
-      { view: "menu", focus: "mfocus", label: "Rekomandimet", title: "Sot në fokus", body: "Klienti prek Menu. Kartat me shenjën TIPP janë rekomandimet e ditës - ju vendosni çfarë shitet më shumë." },
+      { view: "menu-focus", focus: "mfocus", label: "Rekomandimet", title: "Sot në fokus", body: "Klienti prek Menu. Kartat me shenjën TIPP janë rekomandimet e ditës - ju vendosni çfarë shitet më shumë." },
+      { view: "menu-drinks", focus: "mdrinks", label: "Pijet", title: "Pijet tuaja", body: "Poshtë rekomandimeve vijnë kategoritë. Çdo pije me foto, çmim dhe një prekje për në shportë." },
       {
-        view: "menu",
-        focus: "mcards",
-        label: "Struktura",
-        title: "Kategoritë",
+        view: "menu-food",
+        focus: "mfood",
+        label: "Ushqimi",
+        title: "Pjatat tuaja",
         body: categories.length
           ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
           : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim."

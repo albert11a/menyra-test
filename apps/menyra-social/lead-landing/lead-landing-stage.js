@@ -102,7 +102,7 @@ function panSceneToFocus(stage) {
   const view = String(stage.getAttribute("data-view") || "").trim();
   const tabsEl = scene.querySelector(".ll-surface__tabs");
   const sceneTop = scene.getBoundingClientRect().top;
-  const tabsAnchored = view === "tabs" || view === "posts" || view === "menu";
+  const tabsAnchored = view === "tabs" || view === "posts" || view.startsWith("menu");
 
   // Ab dem Tab-Schritt ist die Kartela ausgeblendet. Statt sie aus dem
   // Layout zu nehmen (das ruckelt, weil jeder Frame neu umbricht), faehrt
