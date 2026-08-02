@@ -10,6 +10,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const SOCIAL_INDEX = "/apps/menyra-social/index.html";
 const HEART_INDEX = "/apps/mnyra-heart/index.html";
 const WAITER_INDEX = "/apps/waiter/index.html";
+const LEAD_LANDING_INDEX = "/apps/menyra-social/lead-landing/index.html";
 
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -135,6 +136,8 @@ function rewritePath(pathname = "/") {
   if (SOCIAL_ROUTES.has(path)) return SOCIAL_INDEX;
   if (/^\/(ceo|admin|owner|staff|kitchen)\//.test(path)) return SOCIAL_INDEX;
   if (/^\/lp\/[^/]+$/.test(path)) return SOCIAL_INDEX;
+  // Lead-Landing: eigenstaendige Seite, nicht die Social-App.
+  if (/^\/oferta\/[^/]+$/.test(path)) return LEAD_LANDING_INDEX;
   if (/^\/user\/[^/]+(\/[^/]+)?$/.test(path)) return SOCIAL_INDEX;
 
   // Public business/profile routes like /moka-coffee or /moka-coffee/menu.

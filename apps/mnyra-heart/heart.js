@@ -1514,6 +1514,32 @@ const operations = {
       setToast("Upload", error?.message || "Bild konnte nicht vorbereitet werden.", "danger");
     }
   },
+  async copyLeadPitchLink(url = "") {
+    const link = String(url || "").trim();
+    if (!link) {
+      setToast("Link", "Fuer diesen Lead gibt es noch keinen Link.", "danger");
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        // Aelteres Safari/WebView ohne Clipboard-API.
+        const helper = document.createElement("textarea");
+        helper.value = link;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+      }
+      setToast("Link kopiert", link, "success");
+    } catch (error) {
+      setToast("Link", error?.message || "Link konnte nicht kopiert werden.", "danger");
+    }
+  },
   addCrmLeadLocation() {
     try {
       getCrmConsumerDomain("leads")?.addLocationRow?.();

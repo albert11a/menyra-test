@@ -109,6 +109,10 @@ export function bindHeartEvents({
     }
     if (!action) return;
 
+    if (action === "copy-lead-pitch-link") {
+      await operations.copyLeadPitchLink?.(target.getAttribute("data-pitch-url"));
+      return;
+    }
     if (action === "toggle-nav") {
       operations.toggleNav?.();
       return;

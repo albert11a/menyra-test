@@ -362,6 +362,18 @@ function resolveLeadProfileUrl(lead = {}) {
   return `/${slug.replace(/^\/+/, "")}`;
 }
 
+// Verkaufsseite des Leads: /oferta/<slug>. Absolut, damit der kopierte Link
+// direkt in WhatsApp verschickt werden kann.
+function resolveLeadPitchUrl(lead = {}) {
+  const slug = firstText(lead.publicSlug, lead.landingSlug, lead.landingRestaurantId, lead.restaurantId);
+  if (!slug) return "";
+  const path = `/oferta/${encodeURIComponent(slug.replace(/^\/+/, ""))}`;
+  const origin = typeof window !== "undefined" ? String(window.location?.origin || "").trim() : "";
+  const isLocalOrigin = /localhost|127\.0\.0\.1|::1|^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin);
+  if (origin && isLocalOrigin) return `${origin}${path}`;
+  return `https://mnyra.com${path}`;
+}
+
 function getStoredScopeCount(crmAdmin = {}, key = "") {
   const counts = crmAdmin?.userProfile?.crmCounts;
   if (!hasStoredCeoCrmCountsCore(counts)) return "";
@@ -485,6 +497,7 @@ function renderLeadCard(lead = {}, sectionState = {}) {
   const statusValue = firstText(lead.status, "registered");
   const statusLabel = labelFromMap(statusValue, LEAD_STATUS_LABELS);
   const profileUrl = resolveLeadProfileUrl(lead);
+  const pitchUrl = resolveLeadPitchUrl(lead);
   const leadId = firstText(lead.id, lead.leadId);
   return `
     <article class="heart-crm-card heart-crm-card--lead" data-heart-lead-card data-crm-domain="leads" data-crm-card-id="${escapeHtml(leadId)}">
@@ -499,6 +512,8 @@ function renderLeadCard(lead = {}, sectionState = {}) {
       ${renderOwnershipPills(lead, { hideOwn: sectionState.scope === "own" })}
       <div class="heart-crm-action-row">
         ${profileUrl ? `<a href="${escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary">Profil</a>` : ""}
+        ${pitchUrl ? `<a href="${escapeHtml(pitchUrl)}" target="_blank" rel="noopener noreferrer" class="heart-crm-action-placeholder">Oferta</a>` : ""}
+        ${pitchUrl ? `<button type="button" class="heart-crm-action-placeholder" data-action="copy-lead-pitch-link" data-pitch-url="${escapeHtml(pitchUrl)}">Kopjo linkun</button>` : ""}
         ${renderCrmEditButton("leads", leadId)}
       </div>
     </article>

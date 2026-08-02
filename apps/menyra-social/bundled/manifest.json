@@ -48,8 +48,8 @@
       "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js"
     ]
   },
-  "_domain-crm-eager-BO-EpAwy.js": {
-    "file": "chunks/domain-crm-eager-BO-EpAwy.js",
+  "_domain-crm-eager-BIANWUfV.js": {
+    "file": "chunks/domain-crm-eager-BIANWUfV.js",
     "name": "domain-crm-eager",
     "imports": [
       "_domain-leads-Dt-penIz.js",
@@ -159,7 +159,7 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-04-30-lead-search-light": {
-    "file": "chunks/crm-lazy-renderers-D0Mvyybu.js",
+    "file": "chunks/crm-lazy-renderers-DqbT42M1.js",
     "name": "crm-lazy-renderers",
     "src": "apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-04-30-lead-search-light",
     "isDynamicEntry": true,
@@ -180,7 +180,7 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js": {
-    "file": "chunks/crm-domain-runtime-cluster-ltAqUkUa.js",
+    "file": "chunks/crm-domain-runtime-cluster-CwZlQ_dN.js",
     "name": "crm-domain-runtime-cluster",
     "src": "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
     "isDynamicEntry": true,
@@ -194,7 +194,7 @@
     ]
   },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
-    "file": "chunks/discovery-runtime-controller-BpGI8rfD.js",
+    "file": "chunks/discovery-runtime-controller-WJSvE1Cp.js",
     "name": "discovery-runtime-controller",
     "src": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
     "isDynamicEntry": true,
@@ -215,7 +215,7 @@
       "_domain-stories-C71FyTqh.js",
       "_loading-diagnostics-utils-D9lcQexT.js",
       "_domain-business-accounts-DKP6evLg.js",
-      "_domain-crm-eager-BO-EpAwy.js",
+      "_domain-crm-eager-BIANWUfV.js",
       "_domain-leads-Dt-penIz.js",
       "_domain-map-BjqpyoLm.js",
       "_domain-orders-eager-B_q2gwm9.js",
@@ -398,7 +398,7 @@
       "_domain-menu-eager-DCykxit5.js",
       "_domain-media-eager-B3Bb4ghO.js",
       "_domain-business-accounts-DKP6evLg.js",
-      "_domain-crm-eager-BO-EpAwy.js",
+      "_domain-crm-eager-BIANWUfV.js",
       "_domain-orders-eager-B_q2gwm9.js",
       "_domain-marketplace-eager-DBotRolx.js",
       "_domain-analytics--WkLI5vx.js",

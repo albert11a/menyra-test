@@ -72,6 +72,7 @@
     { "source": "/waiter", "destination": "/apps/waiter/index.html" },
     { "source": "/waiter/:path*", "destination": "/apps/waiter/index.html" },
     { "source": "/lp/:restaurantId", "destination": "/apps/menyra-social/index.html?r=:restaurantId&top=landing" },
+    { "source": "/oferta/:slug", "destination": "/apps/menyra-social/lead-landing/index.html" },
     { "source": "/user/:id/:surface", "destination": "/apps/menyra-social/index.html" },
     { "source": "/user/:id", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
@@ -116,6 +117,12 @@
     },
     {
       "source": "/lp/:restaurantId",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/oferta/:slug",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
