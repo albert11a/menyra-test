@@ -129,7 +129,10 @@ function sectionHead(eyebrow, title, lead) {
 //
 // steps: [{ focus, view, label, title, body }]
 //   focus "" laesst alles scharf, view schaltet die Szene um.
-function stage({ eyebrow, title, scene, steps = [] }) {
+// fullbleed: Die Szene laeuft von Bildschirmrand zu Bildschirmrand, ohne
+// Rahmen und ohne seitlichen Abstand - fuer Nachbauten, die in der App
+// selbst den ganzen Bildschirm einnehmen (das Speisen-Modal).
+function stage({ eyebrow, title, scene, steps = [], fullbleed = false }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt Kapitelmarke und Titel. So gibt es nur einen Textblock
   // und er steht immer an derselben Stelle - die Szene bekommt den Rest.
@@ -138,7 +141,7 @@ function stage({ eyebrow, title, scene, steps = [] }) {
     : step));
   const firstView = esc(allSteps[0]?.view || "");
   return `
-    <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
+    <section class="ll-stage${fullbleed ? " ll-stage--full" : ""}" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
       <div class="ll-stage__pin">
         <div class="ll-stage__bar"><span></span></div>
 
@@ -484,80 +487,131 @@ export function renderDish(profile = {}, menuItems = []) {
     `;
   }
 
-  const crossSell = menuItems.filter((item) => item.id !== dish.id && item.imageUrl).slice(0, 3);
-  const infoText = text(dish.description) || text(dish.ingredients) || "Përshkrimi i pjatës shfaqet këtu.";
+  const crossSell = menuItems.filter((item) => item.id !== dish.id && item.imageUrl).slice(0, 4);
   const woltUrl = text(dish.woltUrl) || text(profile.woltUrl);
+  // Genau die Fallbacks des echten Modals (menu.noInfo aus shared/i18n/sq.js).
+  const noInfo = "Nuk ka informacion, ju lutem kontaktoni lokalin ose kamarierin.";
+  const infoText = text(dish.description) || noInfo;
+  const ingredientsText = text(dish.ingredients) || noInfo;
+  const allergensText = text(dish.allergens) || noInfo;
+  const countLabel = crossSell.length === 1 ? "1 sugjerim" : `${crossSell.length} sugjerime`;
+  const hasGallery = crossSell.length > 0;
 
+  const crossCard = (item) => `
+        <div class="ll-md-cross">
+          <div class="ll-md-cross__media">${img(item.imageUrl, item.name)}</div>
+          <div class="ll-md-cross__body">
+            <div class="ll-md-cross__eyebrow">${esc(text(item.category) || "Shkon me kete")}</div>
+            <div class="ll-md-cross__name">${esc(item.name)}</div>
+            <div class="ll-md-cross__footer">
+              <span class="ll-md-cross__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
+              <span class="ll-md-cross__add">${icon("plus", { size: 16 })}</span>
+            </div>
+          </div>
+        </div>
+  `;
+
+  // Aufbau 1:1 aus renderMenuDetailModalCore (Zweig !isShop):
+  // Kopf, scrollender Koerper mit Hero/Preis/Info-Tabs/Cross-Sell/Social,
+  // darunter die feste Fusszeile. Vollbild, ohne Rahmen und Rundungen -
+  // .modal-sheet setzt in der App border-radius: 0 und height: 100%.
   const scene = `
-    <div class="ll-card" aria-label="Dritarja e pjatës">
-      <div class="ll-dish__head" data-spot="dish">
-        <div>
-          <h4 class="ll-dish__title">${esc(dish.name)}</h4>
-          <span class="ll-dish__cat">${esc(text(dish.category).toUpperCase())}</span>
+    <div class="ll-md" aria-label="Dritarja e pjatës">
+      <div class="ll-md__head" data-spot="head">
+        <div class="ll-md__headtext">
+          <h3 class="ll-md__title">${esc(dish.name)}</h3>
+          ${dish.category ? `<div class="ll-md__cat">${esc(dish.category)}</div>` : ""}
         </div>
-        <span class="ll-dish__x">${icon("chevron-down", { size: 18 })}</span>
+        <span class="ll-md__close">${icon("x", { size: 16 })}</span>
       </div>
 
-      <div class="ll-dish__media" data-spot="dish">${img(dish.imageUrl, dish.name)}</div>
-
-      ${dish.price !== null ? `
-        <div class="ll-dish__price" data-spot="price">
-          <span class="ll-dish__price-label">Çmimi</span>
-          <span class="ll-dish__price-value">${esc(formatPrice(dish.price, currency))}</span>
+      <div class="ll-md__body">
+       <div class="ll-md__scroll" data-pan>
+        <div class="ll-md__hero" data-spot="hero">
+          ${img(dish.imageUrl, dish.name)}
+          ${hasGallery ? `
+            <span class="ll-md__nav ll-md__nav--prev">${icon("chevron-left", { size: 16 })}</span>
+            <span class="ll-md__nav ll-md__nav--next">${icon("chevron-right", { size: 16 })}</span>
+          ` : ""}
         </div>
-      ` : ""}
 
-      <div data-spot="info">
-        <div class="ll-pillrow">
-          <span class="ll-pill is-active">Info</span>
-          <span class="ll-pill">Përbërësit</span>
-          <span class="ll-pill">Alergjenët</span>
+        <div class="ll-md__stack">
+          <div class="ll-md__price" data-spot="price">
+            <span class="ll-md__price-label">Cmimi</span>
+            <span class="ll-md__price-value">${dish.price !== null ? esc(formatPrice(dish.price, currency)) : ""}</span>
+          </div>
+
+          <div class="ll-md__rule"></div>
+
+          <div class="ll-md__info" data-spot="info">
+            <div class="ll-md__tabs">
+              <span class="ll-md__tab is-active" data-info-tab="info">Info</span>
+              <span class="ll-md__tab" data-info-tab="ingredients">Perberesit</span>
+              <span class="ll-md__tab" data-info-tab="allergens">Alergenet</span>
+            </div>
+            <div class="ll-md__panels">
+              <p class="ll-md__panel is-active" data-info-panel="info">${esc(infoText)}</p>
+              <p class="ll-md__panel" data-info-panel="ingredients">${esc(ingredientsText)}</p>
+              <p class="ll-md__panel" data-info-panel="allergens">${esc(allergensText)}</p>
+            </div>
+          </div>
+
+          <div class="ll-md__rule"></div>
+
+          ${crossSell.length ? `
+            <div data-spot="cross">
+              <div class="ll-md__crosshead">
+                <h4 class="ll-md__crosstitle">Shkon shume mire me kete</h4>
+                <div class="ll-md__crosscount">${esc(countLabel)}</div>
+              </div>
+              <div class="ll-md__crossrow">${crossSell.map(crossCard).join("")}</div>
+            </div>
+            <div class="ll-md__rule"></div>
+          ` : ""}
+
+          <div class="ll-md__social" data-spot="social">
+            <span class="ll-md__like">${icon("heart", { size: 14 })} Like</span>
+            <span class="ll-md__counts">
+              <span>0 Likes</span>
+              <span>0 Komente</span>
+            </span>
+          </div>
         </div>
-        <div class="ll-dish__info">${esc(infoText)}</div>
+       </div>
       </div>
 
-      ${crossSell.length ? `
-        <div data-spot="cross">
-          <div class="ll-dish__crosshead">
-            <span class="ll-dish__crosstitle">Shkon shkëlqyeshëm me</span>
-            <span class="ll-dish__crosscount">${crossSell.length} sugjerime</span>
-          </div>
-          <div class="ll-crossrow">
-            ${crossSell.map((item) => `
-              <article class="ll-cross">
-                <div class="ll-cross__media">${img(item.imageUrl, item.name)}</div>
-                <p class="ll-cross__name">${esc(item.name)}</p>
-              </article>
-            `).join("")}
-          </div>
-        </div>
-      ` : ""}
-
-      <div class="ll-dish__foot" data-spot="order">
-        <span class="ll-btn-ghost">${icon("message", { size: 20 })}</span>
-        <span class="ll-dish__cart">Shto në shportë ${icon("shopping-bag", { size: 18 })}</span>
-        ${woltUrl ? `<span class="ll-dish__wolt">Wolt</span>` : ""}
+      <div class="ll-md__foot" data-spot="order">
+        <span class="ll-md__ghost">${icon("message-square", { size: 20 })}</span>
+        ${woltUrl
+          ? `<span class="ll-md__cta ll-md__cta--wolt">Wolt ${icon("external-link", { size: 16 })}</span>`
+          : `<span class="ll-md__cta ll-md__cta--fav">Te preferuarat ${icon("bookmark", { size: 16 })}</span>`}
+        <span class="ll-md__cta ll-md__cta--cart">Shto ne shporte ${icon("shopping-bag", { size: 16 })}</span>
       </div>
     </div>
   `;
+
+  const homeTitle = woltUrl ? "Nga shtëpia: Wolt" : "Nga shtëpia: te të preferuarat";
+  const homeBody = woltUrl
+    ? "Kur klienti hyn nga shtëpia - nga feed-i, nga harta ose nga linku juaj - këtu nuk ka shportë. Ai sheh pjatën, çmimin dhe përbërësit, dhe poroson te Wolt-i ose ju shkruan. Menuja punon si vitrina juaj 24 orë."
+    : "Kur klienti hyn nga shtëpia - nga feed-i, nga harta ose nga linku juaj - këtu nuk ka shportë. Ai sheh pjatën, çmimin dhe përbërësit dhe e ruan te të preferuarat. Menuja punon si vitrina juaj 24 orë.";
 
   return stage({
     eyebrow: "Hapi 4",
     title: "Një prekje - dhe porosia rritet.",
     scene,
+    fullbleed: true,
     steps: [
-      { focus: "", body: "Kur klienti prek një pjatë, hapet kjo dritare. Këtu vendoset sa shpenzon." },
-      { focus: "price", label: "Qartësi", title: "Çmimi", body: "Çmimi qartë dhe gjithmonë i saktë - pa keqkuptime në tavolinë." },
-      { focus: "info", label: "Detajet", title: "Info, Përbërësit, Alergjenët", body: "Klienti gjen vetë përgjigjen. Pyet më pak, kamarieri fiton kohë." },
-      { focus: "cross", label: "Më shumë për porosi", title: "Cross-selling", body: "„Shkon shkëlqyeshëm me“ sugjeron pije ose ëmbëlsira te çdo pjatë - mënyra më e thjeshtë për të rritur vlerën mesatare të porosisë." },
-      {
-        focus: "order",
-        label: "Porosia",
-        title: woltUrl ? "Shportë, koment, Wolt" : "Shportë dhe koment",
-        body: woltUrl
-          ? "Në lokal porosia shkon te Waiter-i. Nga shtëpia klienti porosit përmes Wolt-it ose dërgesës suaj. Komentet ju sjellin reagime reale."
-          : "Në lokal porosia shkon direkt te Waiter-i. Komentet ju sjellin reagime reale - dhe pjatat e vlerësuara mirë shiten vetë."
-      }
+      { view: "home", focus: "", body: "Kur klienti prek një pjatë, hapet kjo dritare - në tërë ekranin, pikërisht kështu. Rrëshqitni: shpjegimi shkon te secila pjesë." },
+      { view: "home", focus: "head", label: "Kreu", title: "Emri dhe kategoria", body: "Lart emri i pjatës dhe kategoria. Me një prekje mbyllet dhe klienti është prapë në menu - pa u humbur." },
+      { view: "home", focus: "hero", label: "Fotoja", title: "Fotoja e madhe", body: "Fotoja shitet e para. Nëse keni disa foto, klienti i shfleton me shigjetat - pjata shihet nga çdo anë." },
+      { view: "home", focus: "price", label: "Qartësi", title: "Cmimi", body: "Çmimi qartë dhe gjithmonë i saktë - pa keqkuptime në tavolinë dhe pa menu të vjetruara letre." },
+      { view: "home", focus: "info", label: "Detajet", title: "Info, Perberesit, Alergenet", body: "Tri skeda: përshkrimi, përbërësit dhe alergjenët. Klienti gjen vetë përgjigjen - pyet më pak, kamarieri fiton kohë." },
+      ...(crossSell.length
+        ? [{ view: "home", focus: "cross", label: "Më shumë për porosi", title: "Shkon shume mire me kete", body: "Te çdo pjatë sugjeroni pije ose ëmbëlsira. Kjo është mënyra më e thjeshtë për të rritur vlerën mesatare të porosisë - pa e pyetur askush." }]
+        : []),
+      { view: "home", focus: "social", label: "Reagimet", title: "Like dhe komente", body: "Klientët pëlqejnë dhe komentojnë pjatën vetë. Ju shihni saktë çfarë funksionon - dhe pjatat e vlerësuara mirë shiten vetë." },
+      { view: "home", focus: "order", label: "Nga shtëpia", title: homeTitle, body: homeBody },
+      { view: "qr", focus: "order", label: "Në tavolinë", title: "Me kodin QR: porosi nga tavolina", body: "Kur klienti skanon kodin QR në tavolinë, e njëjta dritare shfaq „Shto ne shporte“. Ai poroson vetë nga tavolina, porosia shkon direkt te Waiter-i me numrin e tavolinës - pa pritur kamarierin dhe pa gabime." }
     ]
   });
 }

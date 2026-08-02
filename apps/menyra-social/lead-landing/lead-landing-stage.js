@@ -127,10 +127,57 @@ function fitMenuLists(stage) {
 // Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
 // Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
 // Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
+// Vollbild-Kapitel (das Speisen-Modal) fahren nicht die ganze Szene, sondern
+// nur den Bereich, der in der App der scrollende Koerper ist. Kopf und
+// Fusszeile bleiben dadurch stehen - genau wie im echten Modal.
+function panPane(stage, pane) {
+  const frame = pane.parentElement;
+  if (!frame) return;
+
+  // clientHeight enthaelt die Innenabstaende des Rahmens. Sichtbar ist aber
+  // nur die Flaeche dazwischen - sonst bleibt der letzte Abschnitt genau um
+  // diese Abstaende unter der Kante haengen.
+  const frameStyle = window.getComputedStyle(frame);
+  const padTop = parseFloat(frameStyle.paddingTop) || 0;
+  const padBottom = parseFloat(frameStyle.paddingBottom) || 0;
+  const visible = Math.max(1, frame.clientHeight - padTop - padBottom);
+
+  const maxOffset = Math.max(0, pane.offsetHeight - visible);
+  const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"))
+    .filter((node) => pane.contains(node));
+
+  if (!active.length || maxOffset <= 0) {
+    pane.style.transform = "translateY(0px)";
+    return;
+  }
+
+  // Der Bereich ist bereits verschoben; die Differenz zu seiner Oberkante
+  // ergibt deshalb die unverschobene Position innerhalb des Bereichs.
+  const paneTop = pane.getBoundingClientRect().top;
+  let top = Infinity;
+  let bottom = -Infinity;
+  active.forEach((node) => {
+    const rect = node.getBoundingClientRect();
+    top = Math.min(top, rect.top - paneTop);
+    bottom = Math.max(bottom, rect.bottom - paneTop);
+  });
+
+  const centered = top + ((bottom - top) / 2) - (visible / 2);
+  const offset = clamp(Math.round(centered), 0, maxOffset);
+  pane.style.transform = `translateY(${-offset}px)`;
+}
+
 function panSceneToFocus(stage) {
   const viewport = stage.querySelector(".ll-stage__viewport");
   const scene = stage.querySelector(".ll-stage__scene");
   if (!viewport || !scene) return;
+
+  const pane = stage.querySelector("[data-pan]");
+  if (pane) {
+    scene.style.transform = "translateY(0px)";
+    panPane(stage, pane);
+    return;
+  }
 
   const view = String(stage.getAttribute("data-view") || "").trim();
   const tabsEl = scene.querySelector(".ll-surface__tabs");

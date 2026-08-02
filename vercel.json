@@ -278,6 +278,12 @@
       ]
     },
     {
+      "source": "/apps/menyra-social/lead-landing/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
       "source": "/apps/menyra-social/lead-landing/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }

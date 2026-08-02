@@ -149,6 +149,31 @@ img {
   padding-right: var(--ll-inline);
 }
 
+/* ---------- Vollbild-Kapitel ----------
+   Das Speisen-Modal fuellt in der App den ganzen Bildschirm (.modal-sheet
+   setzt height: 100% und border-radius: 0). Damit die Vorschau das 1:1
+   zeigt, laeuft die Szene hier bis an den Bildschirmrand: kein seitlicher
+   Abstand, keine Rundung, keine Randluft. Nur Balken und Erklaertext
+   behalten ihren Abstand - sie gehoeren nicht zur Nachbildung. */
+
+.ll-stage--full .ll-stage__pin {
+  padding-bottom: 0;
+}
+
+.ll-stage--full .ll-stage__viewport {
+  margin-left: calc(-1 * var(--ll-inline));
+  margin-right: calc(-1 * var(--ll-inline));
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.ll-stage--full .ll-stage__scene {
+  left: 0;
+  right: 0;
+  padding: 0;
+  height: 100%;
+}
+
 .ll-stage__scene {
   position: absolute;
   left: var(--ll-inline);
@@ -1115,219 +1140,427 @@ img {
   place-items: center;
 }
 
-/* ---------- Speisen-Modal-Nachbildung ---------- */
+/* ---------- Speisen-Modal (menu detail) 1:1 ----------
+   Nachbau von renderMenuDetailModalCore, Zweig !isShop. Die Klasse
+   .modal-sheet setzt in der App height: 100% und border-radius: 0 - das
+   Modal fuellt also den ganzen Bildschirm, ohne Rahmen und Rundungen.
+   Alle Werte hier sind die aufgeloesten Tailwind-Klassen des Originals:
+   px-7 = 28px, pt-7 = 28px, pb-5 = 20px, py-6 = 24px, h-56 = 224px,
+   rounded-[2.8rem] = 44.8px, w-11 = 44px, rounded-2xl = 16px. */
 
-.ll-dish__head {
+.ll-md {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+  overflow: hidden;
+}
+
+/* --- Kopf: px-7 pt-7 pb-5 border-b --- */
+
+.ll-md__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 14px 22px 10px;
-  border-bottom: 1px solid var(--ll-line);
+  gap: 16px;
+  padding: 28px 28px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
 }
 
-.ll-dish__title {
-  margin: 0 0 4px;
-  font-size: 20px;
+.ll-md__headtext {
+  min-width: 0;
+  flex: 1;
+}
+
+.ll-md__title {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.25;
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.ll-dish__cat {
+.ll-md__cat {
+  margin-top: 4px;
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  font-weight: 900;
   text-transform: uppercase;
-  color: var(--ll-faint);
+  letter-spacing: 0.18em;
+  color: #94a3b8;
 }
 
-.ll-dish__x {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  border-radius: 14px;
-  background: #f1f5f9;
-  color: var(--ll-muted);
+.ll-md__close {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 1rem;
+  background: #f8fafc;
+  color: #64748b;
   display: grid;
   place-items: center;
 }
 
-/* Bildhoehe an den Bildschirm gekoppelt: so passt die Szene auch auf
-   kleineren Geraeten ohne Beschnitt ins Bild. */
-.ll-dish__media {
-  margin: 12px 22px;
-  border-radius: 1.6rem;
+/* --- Koerper: flex-1 overflow-y-auto px-7 py-6 --- */
+
+/* Im echten Modal scrollt genau dieser Bereich zwischen Kopf und Fusszeile.
+   Hier wird nicht gescrollt, sondern gefahren: data-pan sagt der Stage,
+   dass sie diesen Inhalt bewegen soll statt der ganzen Szene - Kopf und
+   Fusszeile bleiben dadurch stehen, so wie in der App. */
+.ll-md__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 24px 28px;
+  background: #fff;
   overflow: hidden;
+}
+
+.ll-md__scroll {
+  transition: transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
+}
+
+.ll-md__hero {
+  position: relative;
+  height: 224px;
+  border-radius: 2.8rem;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
   background: #f8fafc;
-  aspect-ratio: 4 / 3;
+  box-shadow: var(--ll-shadow-sm);
+  flex: 0 0 auto;
 }
 
-.ll-dish__media img {
-  height: 100%;
-}
-
-.ll-dish__media img {
+.ll-md__hero img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.ll-dish__price {
-  margin: 0 22px;
-  padding: 12px 18px;
-  border-radius: var(--ll-radius-lg);
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.ll-dish__price-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.24em;
-  color: var(--ll-faint);
-}
-
-.ll-dish__price-value {
-  font-size: 16px;
-  font-weight: 900;
-}
-
-.ll-pillrow {
-  display: flex;
-  gap: 8px;
-  margin: 14px 22px;
-}
-
-.ll-pill {
-  flex: 1;
-  padding: 13px 6px;
-  border-radius: var(--ll-radius-md);
-  text-align: center;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border: 1px solid var(--ll-line-strong);
-  background: #fff;
-  color: var(--ll-muted);
-}
-
-.ll-pill.is-active {
-  background: var(--ll-dark);
-  border-color: var(--ll-dark);
-  color: #fff;
-}
-
-.ll-dish__info {
-  margin: 0 22px 14px;
-  padding: 14px 18px;
-  border-radius: var(--ll-radius-lg);
-  background: #f8fafc;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.6;
-  color: var(--ll-ink-soft);
-  min-height: 52px;
-}
-
-.ll-dish__crosshead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 0 22px 12px;
-}
-
-.ll-dish__crosstitle {
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-
-.ll-dish__crosscount {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ll-faint);
-}
-
-.ll-crossrow {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 0 22px 14px;
-  scrollbar-width: none;
-}
-
-.ll-crossrow::-webkit-scrollbar {
-  display: none;
-}
-
-.ll-cross {
-  flex: 0 0 30%;
-  border: 1px solid var(--ll-line);
-  border-radius: 1.3rem;
-  padding: 8px;
-  background: #fff;
-  text-align: center;
-}
-
-.ll-cross__media {
-  height: 50px;
+.ll-md__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
   display: grid;
   place-items: center;
-  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  z-index: 30;
 }
 
-.ll-cross__media img {
-  max-height: 50px;
-  width: auto;
-  object-fit: contain;
-}
+.ll-md__nav--prev { left: 16px; }
+.ll-md__nav--next { right: 16px; }
 
-.ll-cross__name {
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.3;
-}
-
-.ll-dish__foot {
+/* mt-6 space-y-5 */
+.ll-md__stack {
+  margin-top: 24px;
   display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 14px 22px 18px;
-  border-top: 1px solid var(--ll-line);
+  flex-direction: column;
+  gap: 20px;
 }
 
-.ll-dish__cart {
-  flex: 1;
-  height: 56px;
-  border-radius: var(--ll-radius-lg);
-  background: var(--ll-dark);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
+.ll-md__price {
+  padding: 16px;
+  border-radius: 1.3rem;
+  border: 1px solid #f1f5f9;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ll-md__price-label {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+}
+
+.ll-md__price-value {
+  font-size: 13px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.ll-md__rule {
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Info-Tabs: grid-cols-3 gap-2, darunter space-y-4 zum Panel. */
+
+.ll-md__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ll-md__tab {
+  height: 40px;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  transition: background 320ms ease, color 320ms ease, border-color 320ms ease;
 }
 
-.ll-dish__wolt {
-  height: 56px;
-  padding: 0 20px;
-  border-radius: var(--ll-radius-lg);
-  background: #18b9df;
+.ll-md__tab.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
   color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+}
+
+/* Die App friert die Hoehe dieser Flaeche auf die des Info-Textes ein,
+   mindestens aber 96px (lockMenuDetailInfoPanelsHeightFromInfo). Dadurch
+   springt beim Wechsel der Skeda nichts - genau das macht min-height hier. */
+.ll-md__panels {
+  position: relative;
+  border-radius: 1.3rem;
+  border: 1px solid #f1f5f9;
+  background: #f8fafc;
+  padding: 14px 16px;
+  min-height: 96px;
+}
+
+.ll-md__panel {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.625;
+  color: #475569;
+  white-space: pre-line;
+}
+
+.ll-md__panel:not(.is-active) {
+  display: none;
+}
+
+/* Cross-Sell: space-y-3, Karten 9.25rem breit, Bild 6.5rem quadratisch. */
+
+.ll-md__crosshead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ll-md__crosstitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+}
+
+.ll-md__crosscount {
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #cbd5e1;
+}
+
+.ll-md__crossrow {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ll-md__crossrow::-webkit-scrollbar {
+  display: none;
+}
+
+.ll-md-cross {
+  flex: 0 0 9.25rem;
+  width: 9.25rem;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-radius: 1.8rem;
+  border: 1px solid #f1f5f9;
+  background: #fff;
+  text-align: left;
+}
+
+.ll-md-cross__media {
+  width: 6.5rem;
+  height: 6.5rem;
+  flex: 0 0 auto;
+  margin: 0 auto;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.ll-md-cross__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-md-cross__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px 4px 0;
+}
+
+.ll-md-cross__eyebrow,
+.ll-md-cross__name,
+.ll-md-cross__price {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ll-md-cross__eyebrow {
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #94a3b8;
+}
+
+.ll-md-cross__name {
+  margin-top: 0.375rem;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+}
+
+.ll-md-cross__footer {
+  margin-top: 0.75rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
+.ll-md-cross__price {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.ll-md-cross__add {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.85rem;
+  background: #0f172a;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Like-Zeile: padding-top 1.25rem, Zaehler rechts. */
+
+.ll-md__social {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1.25rem;
+}
+
+.ll-md__like {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #334155;
+}
+
+.ll-md__counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+/* Fusszeile: px-7 pb-6 pt-4 border-t, Knoepfe 52px. */
+
+.ll-md__foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #fff;
+}
+
+.ll-md__ghost {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  border-radius: 1.65rem;
+  background: #f1f5f9;
+  color: #475569;
+  display: grid;
+  place-items: center;
+}
+
+.ll-md__cta {
+  flex: 1 1 auto;
+  height: 52px;
+  border-radius: 1.65rem;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--ll-shadow-sm);
+}
+
+.ll-md__cta--wolt { background: #18b9df; }
+.ll-md__cta--fav { background: #0f172a; }
+.ll-md__cta--cart { background: #0f172a; }
+
+/* Zwei Zustaende derselben Fusszeile - genau die Verzweigung des echten
+   Modals: ohne QR-Zugang Wolt bzw. Favoriten, mit QR-Zugang die Shporte.
+   (hasQrMenuAccess in renderMenuDetailModalCore.) */
+.ll-stage:not([data-view="qr"]) .ll-md__cta--cart,
+.ll-stage[data-view="qr"] .ll-md__cta--wolt,
+.ll-stage[data-view="qr"] .ll-md__cta--fav {
+  display: none;
+}
 /* ---------- Kontakt-Modal ---------- */
 
 /* Werte 1:1 aus renderBusinessInfoRow. */
