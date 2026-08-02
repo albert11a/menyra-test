@@ -115,9 +115,10 @@ function feature(iconName, title, body) {
   `;
 }
 
-function sectionHead(eyebrow, title, lead) {
+// Nur Titel und Fliesstext. Die kleine blaue Marke darueber ist weggefallen -
+// der Titel selbst ist jetzt blau, das spart eine Zeile.
+function sectionHead(title, lead) {
   return `
-    <p class="ll-eyebrow">${esc(eyebrow)}</p>
     <h2 class="ll-h2">${esc(title)}</h2>
     ${lead ? `<p class="ll-lead">${esc(lead)}</p>` : ""}
   `;
@@ -136,12 +137,12 @@ function sectionHead(eyebrow, title, lead) {
 // step.canvas: Farbe der Seite, solange dieser Schritt laeuft. Damit faerben
 // sich auch die Streifen hinter Statusleiste und Werkzeugleiste mit - die
 // nimmt der Browser von der Seite, nicht vom Kapitel.
-function stage({ eyebrow, title, scene, steps = [], overlay = "" }) {
+function stage({ title, scene, steps = [], overlay = "" }) {
   const focusSteps = Math.max(1, steps.length - 1);
-  // Schritt 0 traegt Kapitelmarke und Titel. So gibt es nur einen Textblock
-  // und er steht immer an derselben Stelle - die Szene bekommt den Rest.
+  // Schritt 0 traegt den Kapiteltitel. So gibt es nur einen Textblock und er
+  // steht immer an derselben Stelle - die Szene bekommt den Rest.
   const allSteps = steps.map((step, index) => (index === 0
-    ? { ...step, label: eyebrow, title }
+    ? { ...step, title }
     : step));
   const firstView = esc(allSteps[0]?.view || "");
   return `
@@ -152,7 +153,6 @@ function stage({ eyebrow, title, scene, steps = [], overlay = "" }) {
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
             <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}"${step.canvas ? ` data-canvas="${esc(step.canvas)}"` : ""}>
-              ${step.label ? `<p class="ll-stage__step-label">${esc(step.label)}</p>` : ""}
               ${step.title ? `<p class="ll-stage__step-title">${esc(step.title)}</p>` : ""}
               <p class="ll-stage__step-body">${esc(step.body || "")}</p>
             </div>
@@ -218,8 +218,7 @@ export function renderIntro(profile = {}) {
     <section class="ll-section">
       ${sectionHead(
     "Çfarë është Mnyra",
-    "Lokali juaj, digjital - në një vend.",
-    `Mnyra është rrjeti ku klientët në ${city} gjejnë ku të hanë, shohin menunë, porosisin dhe ju ndjekin. Ju nuk keni nevojë për ueb-faqe, aplikacion apo programues.`
+    `Mnyra është një aplikacion ku njerëzit në ${city} shohin ku të hanë. Aty është edhe lokali juaj: me menu, foto dhe porosi. Nuk ju duhet ueb-faqe dhe nuk ju duhet programues.`
   )}
       <div class="ll-card ll-card--pad">
         ${feature("smartphone", "Çfarë", "Një profil publik me menu, postime, porosi dhe hartë - i gatshëm sot.")}
@@ -454,32 +453,32 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
   // an diesem Kapitel und nicht als eigenes.
   const dish = buildDishChapter(profile, menuItems);
 
+  // Die Texte sind fuer jemanden geschrieben, der Mnyra zum ersten Mal sieht:
+  // ein Gedanke pro Satz, keine Fachwoerter, alles aus Sicht des Gastes.
   return stage({
-    eyebrow: "Hapi 1",
-    title: "Kështu ju sheh klienti.",
+    title: "Kështu ju sheh klienti",
     scene,
     overlay: dish.overlay,
     steps: [
-      { view: "profile", focus: "", body: "Kartela juaj publike dhe dy tabet - pikërisht ashtu siç e sheh klienti. Rrëshqitni: shpjegimi shkon te secila pjesë." },
-      { view: "profile", focus: "identity", label: "Identiteti", title: "Logoja dhe emri juaj", body: "Ballina, logoja, emri dhe qyteti. Klienti e di menjëherë kush jeni dhe ku jeni." },
-      { view: "profile", focus: "social", label: "Lidhjet", title: "Harta, TikTok, Instagram", body: "Një prekje - dhe klienti ka drejtimin në hartë ose rrjetet tuaja. Vendosen një herë, punojnë përgjithmonë." },
-      { view: "profile", focus: "fans", label: "Numrat", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet me çdo postim që u pëlqen." },
-      { view: "profile", focus: "follow", label: "Rritja", title: "NDIQ", body: "Klienti bëhet ndjekës me një prekje. Çdo postim i ri i shfaqet në feed - marketing që nuk paguhet dy herë." },
-      { view: "profile", focus: "chat", label: "Kontakti", title: "Biseda direkt", body: "E çon klientin direkt te ju në WhatsApp. Rezervimet vijnë aty ku i lexoni gjithsesi." },
-      { view: "profile", focus: "info", label: "Detajet", title: "Butoni Info", body: "Këtu klienti prek Info - dhe kartela hapet nga ana tjetër." },
-      { view: "info", focus: "", label: "Kontakti & Info", title: "Gjithçka që duhet të dijë", body: "Telefoni, adresa, orari dhe rrjetet - në një ekran. Ju e ndryshoni një herë, ndryshon kudo." },
-      { view: "tabs", focus: "tabs", label: "Dy tabe", title: "Postimet & Menu", body: "Kartela tërhiqet, tabet ngjiten lart. Këtu ndahet profili: Postimet tregojnë si ndihet lokali, Menu shet." },
-      { view: "posts", focus: "grid", label: "Përmbajtja", title: "Postimet tuaja", body: "Foto e video si në Instagram - por brenda Mnyra. Çdo postim shkon edhe në feed te ndjekësit tuaj." },
-      { view: "menu-focus", focus: "mfocus", label: "Rekomandimet", title: "Sot në fokus", body: "Klienti prek Menu. Kartat me shenjën TIPP janë rekomandimet e ditës - ju vendosni çfarë shitet më shumë." },
-      { view: "menu-drinks", focus: "mdrinks", label: "Pijet", title: "Pijet tuaja", body: "Poshtë rekomandimeve vijnë kategoritë. Çdo pije me foto, çmim dhe një prekje për në shportë." },
+      { view: "profile", focus: "", body: "Kjo është faqja juaj në Mnyra. Rrëshqitni poshtë - ju tregojmë çdo pjesë." },
+      { view: "profile", focus: "identity", title: "Logoja dhe emri", body: "Fotoja e lokalit, logoja, emri dhe qyteti. Klienti e sheh menjëherë kush jeni." },
+      { view: "profile", focus: "social", title: "Harta dhe rrjetet", body: "Këta butona hapin hartën, TikTok-un dhe Instagram-in tuaj. I vendosni një herë." },
+      { view: "profile", focus: "fans", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet vetë me çdo postim." },
+      { view: "profile", focus: "follow", title: "NDIQ", body: "Klienti prek një herë dhe ju ndjek. Pastaj sheh çdo postim tuajin." },
+      { view: "profile", focus: "chat", title: "Biseda", body: "Ky buton hap WhatsApp-in tuaj. Klienti ju shkruan direkt." },
+      { view: "profile", focus: "info", title: "Butoni Info", body: "Klienti e prek - dhe kartela kthehet nga ana tjetër." },
+      { view: "info", focus: "", title: "Kontakti dhe orari", body: "Telefoni, adresa dhe orari juaj. I ndryshoni një herë dhe ndryshojnë kudo." },
+      { view: "tabs", focus: "tabs", title: "Postimet & Menu", body: "Kartela hiqet dhe mbeten dy butona. Postimet tregojnë lokalin, Menu shet." },
+      { view: "posts", focus: "grid", title: "Postimet tuaja", body: "Fotot dhe videot tuaja - si në Instagram, por brenda Mnyra." },
+      { view: "menu-focus", focus: "mfocus", title: "Sot në fokus", body: "Kartat me shenjën TIPP janë ato që doni të shisni sot. I zgjidhni ju." },
+      { view: "menu-drinks", focus: "mdrinks", title: "Pijet tuaja", body: "Çdo pije me foto dhe çmim. Klienti sheh gjithçka pa pyetur." },
       {
         view: "menu-food",
         focus: "mfood",
-        label: "Ushqimi",
         title: "Pjatat tuaja",
         body: categories.length
-          ? `Menuja juaj është e ndarë në: ${categories.join(", ")}. Çdo kategori me foto dhe çmim.`
-          : "Ushqimi, pijet, koktejlet, kafeja - çdo kategori e ndarë, me foto dhe çmim."
+          ? `Menuja ndahet në kategori: ${categories.join(", ")}. Çdo pjatë me foto dhe çmim.`
+          : "Ushqimi, pijet dhe kafeja - secila kategori veç, me foto dhe çmim."
       },
       ...dish.steps
     ]
@@ -606,25 +605,24 @@ function buildDishChapter(profile = {}, menuItems = []) {
   // unten zum Modal passen.
   const white = "#ffffff";
   const steps = [
-    { view: "dish-home", focus: "", canvas: white, label: "Dritarja", title: "Klienti prek pjatën", body: "Dhe hapet kjo dritare - në tërë ekranin, pikërisht kështu." },
-    { view: "dish-home", focus: "dhero", canvas: white, label: "Fotoja", title: "Galeria", body: "Foto e madhe. Me disa foto, klienti i shfleton me shigjetat." },
-    { view: "dish-home", focus: "dprice", canvas: white, label: "Çmimi", title: "Cmimi", body: "Gjithmonë i saktë - pa keqkuptime në tavolinë." },
-    { view: "dish-home", focus: "dinfo", canvas: white, label: "Detajet", title: "Info, Perberesit, Alergenet", body: "Tri skeda me përgjigjet. Klienti pyet më pak, kamarieri fiton kohë." },
+    { view: "dish-home", focus: "", canvas: white, title: "Klienti prek pjatën", body: "Dhe hapet kjo dritare, në tërë ekranin." },
+    { view: "dish-home", focus: "dhero", canvas: white, title: "Fotoja", body: "Fotoja e madhe e pjatës. Nëse keni disa, klienti i shfleton." },
+    { view: "dish-home", focus: "dprice", canvas: white, title: "Cmimi", body: "Gjithmonë i saktë. Asnjë menu letre që vjetërohet." },
+    { view: "dish-home", focus: "dinfo", canvas: white, title: "Info, Perberesit, Alergenet", body: "Tre butona me përgjigjet. Klienti lexon vetë dhe pyet më pak." },
     ...(crossSell.length
-      ? [{ view: "dish-home", focus: "dcross", canvas: white, label: "Më shumë", title: "Shkon shume mire me kete", body: "Sugjeroni pije ose ëmbëlsira te çdo pjatë - porosia rritet vetë." }]
+      ? [{ view: "dish-home", focus: "dcross", canvas: white, title: "Shkon shume mire me kete", body: "Këtu sugjeroni një pije ose ëmbëlsirë. Klienti porosit më shumë." }]
       : []),
-    { view: "dish-home", focus: "dsocial", canvas: white, label: "Reagimet", title: "Like dhe komente", body: "Shihni saktë cilat pjata pëlqehen më shumë." },
+    { view: "dish-home", focus: "dsocial", canvas: white, title: "Like dhe komente", body: "Klientët pëlqejnë pjatat. Ju shihni cila pëlqehet më shumë." },
     {
       view: "dish-home",
       focus: "dorder",
       canvas: white,
-      label: "Nga shtëpia",
-      title: woltUrl ? "Wolt" : "Te preferuarat",
+      title: woltUrl ? "Nga shtëpia: Wolt" : "Nga shtëpia",
       body: woltUrl
-        ? "Nga shtëpia nuk ka shportë: klienti shikon dhe poroson te Wolt-i."
-        : "Nga shtëpia nuk ka shportë: klienti shikon dhe e ruan pjatën."
+        ? "Kur klienti nuk është në lokal, këtu nuk ka shportë. Ai poroson te Wolt-i."
+        : "Kur klienti nuk është në lokal, këtu nuk ka shportë. Ai vetëm e ruan pjatën."
     },
-    { view: "dish-qr", focus: "dorder", canvas: white, label: "Në tavolinë", title: "Me kodin QR", body: "Skanon kodin, poroson vetë - porosia shkon te Waiter-i me numrin e tavolinës." }
+    { view: "dish-qr", focus: "dorder", canvas: white, title: "Me kodin QR në tavolinë", body: "Klienti skanon kodin, poroson vetë - dhe porosia vjen te ju." }
   ];
 
   return { overlay, steps };
@@ -639,7 +637,7 @@ export function renderMap(profile = {}) {
 
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 2", "Harta e zbulimit.", "Klientët në qytet kërkojnë ku të hanë. Në hartën e Mnyra ju jeni njëri prej tyre - me logon tuaj si shenjë.")}
+      ${sectionHead("Harta", "Në hartë klienti sheh se ku jeni - me logon tuaj. Kështu ju gjejnë edhe ata që nuk ju njohin.")}
 
       <div
         class="ll-map"
@@ -677,7 +675,7 @@ export function renderQr(sales = {}) {
 
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 3", "QR kodi në tavolinë.", "Klienti ulet, skanon, sheh menunë. Pa aplikacion, pa shkarkim, pa pritur kamarierin.")}
+      ${sectionHead("Kodi QR në tavolinë", "Klienti ulet, e skanon me kamerën dhe menuja hapet. Pa shkarkuar asgjë.")}
 
       ${gallery}
       ${gallery ? '<div style="height:18px"></div>' : ""}
@@ -699,7 +697,7 @@ export function renderQr(sales = {}) {
 export function renderWaiter() {
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 4", "Porositë vijnë te ju.", "Kur klienti prek „Shto në shportë“ dhe dërgon porosinë, ajo shfaqet menjëherë në aplikacionin Waiter.")}
+      ${sectionHead("Porositë vijnë te ju", "Kur klienti dërgon porosinë, ajo shfaqet menjëherë në telefonin e kamarierit.")}
 
       <div class="ll-card ll-card--pad">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -726,7 +724,7 @@ export function renderAnalytics() {
   const bars = [42, 58, 36, 74, 62, 88, 70];
   return `
     <section class="ll-section">
-      ${sectionHead("Hapi 5", "Ju shihni çfarë funksionon.", "Jo ndjesi - numra. Çfarë shikohet, çfarë porositet, kur vijnë klientët.")}
+      ${sectionHead("Numrat e lokalit", "Sa njerëz e panë menunë, cila pjatë shitet më shumë, në cilat orë vijnë klientët.")}
 
       <div class="ll-stats" style="margin-bottom:12px;">
         <div class="ll-stat">
@@ -768,7 +766,7 @@ export function renderPricing(sales = {}) {
 
   return `
     <section class="ll-section">
-      ${sectionHead("Paketat", "Zgjidhni si doni të filloni.", "Pa kontratë afatgjatë. Ndryshoni paketën kur të doni.")}
+      ${sectionHead("Paketat", "Zgjidhni si doni të filloni. Pa kontratë të gjatë - paketën e ndryshoni kur të doni.")}
 
       <div class="ll-price-row">
         ${packages.map((pkg) => `
