@@ -266,9 +266,12 @@ function liftFooter(stage, pane, paneOffset) {
     return;
   }
 
+  // Der Kommentarbereich zaehlt nicht mit: An seine Stelle tritt genau jetzt
+  // die Fusszeile (er wird dafuer ausgeblendet, siehe Stylesheet).
   const paneTop = pane.getBoundingClientRect().top;
   let contentEnd = 0;
   pane.querySelectorAll("[data-spot]").forEach((node) => {
+    if (node.classList.contains("ll-md__comments")) return;
     contentEnd = Math.max(contentEnd, node.getBoundingClientRect().bottom - paneTop);
   });
 
