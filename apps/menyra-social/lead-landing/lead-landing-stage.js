@@ -64,6 +64,8 @@ function updateStage(stage, viewportHeight) {
 
   const bar = stage.querySelector(".ll-stage__bar span");
   if (bar) bar.style.width = `${Math.round(progress * 100)}%`;
+
+  panSceneToFocus(stage);
 }
 
 // Die Schritt-Texte liegen absolut uebereinander, tragen also nichts zur
@@ -85,67 +87,44 @@ function fitStageCaption(stage) {
   if (tallest > 0) caption.style.height = `${Math.ceil(tallest)}px`;
 }
 
-// Sicherheitsnetz gegen Beschnitt: Der Pin hat overflow: hidden, damit die
-// Szene bildschirmhoch bleibt. Passt sie auf einem sehr niedrigen Geraet
-// trotzdem nicht, wird sie so weit verkleinert, bis sie passt - statt oben
-// und unten abgeschnitten zu werden.
-//
-// Verkleinert wird per transform; damit das auch den Platzbedarf senkt,
-// bekommt die Szene zusaetzlich eine passende Hoehe. Bewusst kein negatives
-// margin: die Szene wird ueber margin: auto im Restraum zentriert, ein
-// gesetztes margin wuerde das aushebeln.
-// Die Szene kann mehrere Ansichten haben (Profil, Info, Postimet, Menu) und
-// ist in jeder unterschiedlich hoch. Gemessen wird deshalb die hoechste -
-// sonst passt eine Ansicht, eine andere wuerde beschnitten.
-function measureTallestSceneHeight(stage, scene) {
-  const views = Array.from(stage.querySelectorAll(".ll-stage__step"))
-    .map((step) => String(step.dataset.view || "").trim())
-    .filter(Boolean);
+// Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
+// Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
+// Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
+function panSceneToFocus(stage) {
+  const viewport = stage.querySelector(".ll-stage__viewport");
+  const scene = stage.querySelector(".ll-stage__scene");
+  if (!viewport || !scene) return;
 
-  if (!views.length) return scene.offsetHeight;
+  const maxOffset = Math.max(0, scene.offsetHeight - viewport.clientHeight);
+  if (maxOffset <= 0) {
+    scene.style.transform = "translateY(0px)";
+    return;
+  }
 
-  const previous = stage.getAttribute("data-view");
-  // Uebergaenge waehrend der Messung abschalten, sonst wird ein Zwischen-
-  // zustand gemessen.
-  stage.classList.add("ll-stage--measuring");
+  const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"));
+  if (!active.length) {
+    // Ohne Fokus: Anfang der Szene zeigen.
+    scene.style.transform = "translateY(0px)";
+    return;
+  }
 
-  let tallest = 0;
-  Array.from(new Set(views)).forEach((view) => {
-    stage.setAttribute("data-view", view);
-    tallest = Math.max(tallest, scene.offsetHeight);
+  // Szene und Ziele sind gleich verschoben, die Differenz ergibt also die
+  // unverschobene Position innerhalb der Szene. Ein Schritt kann mehrere
+  // Teile hervorheben (z. B. Logo und Name) - dann zaehlt die Klammer um
+  // alle, nicht nur das erste.
+  const sceneRect = scene.getBoundingClientRect();
+  let top = Infinity;
+  let bottom = -Infinity;
+  active.forEach((node) => {
+    const rect = node.getBoundingClientRect();
+    top = Math.min(top, rect.top - sceneRect.top);
+    bottom = Math.max(bottom, rect.bottom - sceneRect.top);
   });
 
-  if (previous === null) stage.removeAttribute("data-view");
-  else stage.setAttribute("data-view", previous);
-  stage.classList.remove("ll-stage--measuring");
+  const centered = top + ((bottom - top) / 2) - (viewport.clientHeight / 2);
+  const offset = clamp(Math.round(centered), 0, maxOffset);
 
-  return tallest || scene.offsetHeight;
-}
-
-function fitStageScene(stage) {
-  const pin = stage.querySelector(".ll-stage__pin");
-  const scene = stage.querySelector(".ll-stage__scene");
-  if (!pin || !scene) return;
-
-  scene.style.transform = "";
-  scene.style.height = "";
-
-  const sceneHeight = measureTallestSceneHeight(stage, scene);
-  if (sceneHeight <= 0) return;
-
-  // Verfuegbare Hoehe = Pin minus Polster und Textflaeche.
-  const available = pin.clientHeight
-    - parseFloat(getComputedStyle(pin).paddingTop || 0)
-    - parseFloat(getComputedStyle(pin).paddingBottom || 0)
-    - (stage.querySelector(".ll-stage__caption")?.offsetHeight || 0)
-    - 14;
-
-  if (available <= 0 || sceneHeight <= available) return;
-
-  const scale = Math.max(0.72, available / sceneHeight);
-  scene.style.transformOrigin = "top center";
-  scene.style.transform = `scale(${scale})`;
-  scene.style.height = `${Math.ceil(sceneHeight * scale)}px`;
+  scene.style.transform = `translateY(${-offset}px)`;
 }
 
 export function startLeadLandingStages({ scroller = null } = {}) {
@@ -175,7 +154,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   const fitAll = () => {
     stages.forEach((stage) => {
       fitStageCaption(stage);
-      fitStageScene(stage);
+      panSceneToFocus(stage);
     });
   };
 
@@ -184,9 +163,19 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     onScroll();
   };
 
+  // Beim Ansichtswechsel klappt die Kartela zusammen und die Szene wird
+  // niedriger. Waehrend dieser Bewegung waere eine berechnete Fahrt veraltet,
+  // deshalb wird nach dem Ende des Uebergangs neu ausgerichtet.
+  const onTransitionEnd = (event) => {
+    if (event.propertyName !== "grid-template-rows") return;
+    const stage = event.target.closest?.(".ll-stage");
+    if (stage) panSceneToFocus(stage);
+  };
+
   root.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onResize, { passive: true });
   window.addEventListener("orientationchange", onResize, { passive: true });
+  stages.forEach((stage) => stage.addEventListener("transitionend", onTransitionEnd));
 
   fitAll();
   run();
@@ -197,5 +186,6 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     root.removeEventListener("scroll", onScroll);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("orientationchange", onResize);
+    stages.forEach((stage) => stage.removeEventListener("transitionend", onTransitionEnd));
   };
 }

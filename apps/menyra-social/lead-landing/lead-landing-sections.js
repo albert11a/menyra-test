@@ -150,7 +150,9 @@ function stage({ eyebrow, title, scene, steps = [] }) {
           `).join("")}
         </div>
 
-        <div class="ll-stage__scene">${scene}</div>
+        <div class="ll-stage__viewport">
+          <div class="ll-stage__scene">${scene}</div>
+        </div>
 
         <div class="ll-stage__bar"><span></span></div>
       </div>

@@ -134,12 +134,26 @@ img {
   scroll-snap-stop: always;
 }
 
-.ll-stage__scene {
-  flex: 0 0 auto;
+/* Die Szene wird in voller, echter Groesse gezeigt - nichts wird
+   verkleinert. Ist sie hoeher als der Platz, faehrt sie beim Weiterrasten
+   einfach zu der Stelle, die gerade erklaert wird. */
+.ll-stage__viewport {
+  flex: 1 1 auto;
+  min-height: 0;
   position: relative;
-  margin-top: auto;
-  margin-bottom: auto;
-  transition: transform 620ms cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+
+.ll-stage__scene {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  /* Luft am Rand: der hervorgehobene Teil waechst leicht (scale) und wuerde
+     sonst am oberen oder unteren Rand angeschnitten. */
+  padding: 10px 0;
+  transition: transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
 }
 
 /* Nicht fokussierte Teile werden unscharf, der fokussierte bleibt klar.
@@ -919,8 +933,7 @@ img {
   border-radius: 1.6rem;
   overflow: hidden;
   background: #f8fafc;
-  aspect-ratio: 16 / 9;
-  max-height: 16svh;
+  aspect-ratio: 4 / 3;
 }
 
 .ll-dish__media img {
@@ -1594,10 +1607,6 @@ img {
     max-height: 72px;
   }
 
-  .ll-dish__media {
-    max-height: 11svh;
-    margin: 8px 20px;
-  }
 
   .ll-dish__head {
     padding: 10px 20px 8px;
@@ -1862,12 +1871,4 @@ img {
   .ll-stage[data-view="info"] .ll-metric--info {
     animation: none;
   }
-}
-
-/* Waehrend des Messens der Ansichtshoehen duerfen keine Uebergaenge laufen -
-   sonst wuerde ein Zwischenzustand gemessen. */
-.ll-stage--measuring,
-.ll-stage--measuring * {
-  transition: none !important;
-  animation: none !important;
 }
