@@ -140,6 +140,8 @@ function stage({ eyebrow, title, scene, steps = [] }) {
   return `
     <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
       <div class="ll-stage__pin">
+        <div class="ll-stage__bar"><span></span></div>
+
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
             <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}">
@@ -154,7 +156,6 @@ function stage({ eyebrow, title, scene, steps = [] }) {
           <div class="ll-stage__scene">${scene}</div>
         </div>
 
-        <div class="ll-stage__bar"><span></span></div>
       </div>
 
       ${allSteps.map((_, index) => `
