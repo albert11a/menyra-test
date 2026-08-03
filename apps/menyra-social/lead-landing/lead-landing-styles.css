@@ -2234,3 +2234,251 @@ img {
     animation: none;
   }
 }
+
+/* ---------- Mnyra im Web ----------
+   Nachbau von renderLocationGate: Kopfleiste, tuerkiser Bildschirm, Suchfeld.
+   Alle Masse stammen aus dem Stylesheet der echten Seite. */
+
+.ll-web {
+  border-radius: var(--ll-radius-xl);
+  overflow: hidden;
+  background: #f8fafc;
+  box-shadow: var(--ll-shadow-md);
+}
+
+.ll-web__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  background: #f8fafc;
+}
+
+.ll-web__burger {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 22px;
+}
+
+.ll-web__burger i {
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  background: #0f172a;
+}
+
+.ll-web__brand {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1;
+}
+
+.ll-web__brand b {
+  font-size: 22px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.04em;
+  color: #0f172a;
+}
+
+.ll-web__brand span {
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--ll-accent);
+  padding-top: 2px;
+}
+
+.ll-web__acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: #0f172a;
+}
+
+/* Tuerkiser Bildschirm - Farbe und Abstaende wie im Original. */
+.ll-web__hero {
+  background: #00cce5;
+  padding: 40px 24px 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.ll-web__title {
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 auto 2.15rem;
+  color: #fff;
+  font-size: clamp(1.35rem, 6.6vw, 2.2rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+}
+
+/* Die drei Zeilen wechseln sich ab - genau wie auf der echten Seite. */
+.ll-web__slider {
+  position: relative;
+  display: block;
+  height: 1.25em;
+  overflow: hidden;
+  margin-bottom: 0.2rem;
+}
+
+.ll-web__slider span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  opacity: 0;
+  animation: ll-web-slide 9s ease-in-out infinite;
+}
+
+.ll-web__slider span:nth-child(2) { animation-delay: 3s; }
+.ll-web__slider span:nth-child(3) { animation-delay: 6s; }
+
+@keyframes ll-web-slide {
+  0% { opacity: 0; transform: translateY(100%); }
+  5%, 28% { opacity: 1; transform: translateY(0); }
+  33%, 100% { opacity: 0; transform: translateY(-100%); }
+}
+
+.ll-web__cityline {
+  display: block;
+}
+
+.ll-web__search {
+  width: 100%;
+  max-width: 22rem;
+}
+
+.ll-web__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 9999px;
+  padding: 1rem 4.2rem 1rem 3rem;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.12);
+  min-height: 56px;
+}
+
+.ll-web__pin {
+  position: absolute;
+  left: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  display: inline-flex;
+}
+
+.ll-web__input {
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ll-web__hint {
+  color: #94a3b8;
+}
+
+/* Der Ort wird geschrieben, sobald der Schritt an der Reihe ist. */
+.ll-web__typed {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+.ll-stage[data-view="web-city"] .ll-web__hint {
+  display: none;
+}
+
+.ll-stage[data-view="web-city"] .ll-web__typed {
+  animation: ll-web-type 900ms steps(14, end) 240ms forwards;
+}
+
+@keyframes ll-web-type {
+  to { width: var(--ll-type-w, 8ch); }
+}
+
+.ll-web__locate {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: #eafbfe;
+  color: #00cce5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Vorschlagsliste - klappt auf, wenn der Ort geschrieben ist. */
+.ll-web__suggest {
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 1.4rem;
+  background: rgb(255 255 255 / 0.98);
+  border: 1px solid rgb(226 232 240 / 0.95);
+  box-shadow: 0 18px 44px rgb(15 23 42 / 0.16);
+  transform: translateY(-4px);
+  transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease, padding 220ms ease, transform 220ms ease;
+  transition-delay: 900ms;
+}
+
+.ll-stage[data-view="web-city"] .ll-web__suggest {
+  margin-top: 0.75rem;
+  max-height: 8rem;
+  opacity: 1;
+  padding: 0.5rem;
+  transform: translateY(0);
+}
+
+.ll-web__suggest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  padding: 0.85rem 0.95rem;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.ll-web__suggest-label {
+  font-size: 0.92rem;
+  line-height: 1.1rem;
+}
+
+.ll-web__suggest-meta {
+  min-width: 3.7rem;
+  text-align: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 9999px;
+  background: rgb(236 254 255);
+  color: rgb(8 145 178);
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}

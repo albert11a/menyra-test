@@ -631,6 +631,68 @@ function buildDishChapter(profile = {}, menuItems = []) {
   return { overlay, steps };
 }
 
+/* --------------------------------------------- Was Mnyra dem Lokal bringt
+   Nachbau der oeffentlichen Mnyra-Startseite: Kopfleiste und der tuerkise
+   Bildschirm mit dem Suchfeld. Werte 1:1 aus renderLocationGate
+   (core/feed/feed-view-orchestration-controller.js): Titel bis 22rem breit,
+   Feld mit Radius 9999px und 1rem/4.2rem/1rem/3rem Innenabstand, der
+   Ortungsknopf 2.5rem in #eafbfe auf #00cce5. */
+export function renderWeb(profile = {}) {
+  const city = text(profile.city) || "Prishtinë";
+  const country = "Kosovë";
+
+  const scene = `
+    <div class="ll-web" aria-label="Mnyra në web">
+      <div class="ll-web__head" data-spot="whead">
+        <span class="ll-web__burger" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="ll-web__brand"><b>MNYRA</b><span>Social</span></span>
+        <span class="ll-web__acts">
+          ${icon("globe", { size: 22 })}
+          ${icon("user", { size: 22 })}
+          ${icon("shopping-bag", { size: 22 })}
+        </span>
+      </div>
+
+      <div class="ll-web__hero">
+        <div class="ll-web__title" data-spot="wtitle">
+          <span class="ll-web__slider" aria-hidden="true">
+            <span>ZBULO SPOTET.</span>
+            <span>GJEJ OFERTA.</span>
+            <span>HAP MENYTE.</span>
+          </span>
+          <span class="ll-web__cityline">NE QYTETIN TEND.</span>
+        </div>
+
+        <div class="ll-web__search" data-spot="wcity">
+          <div class="ll-web__field">
+            <span class="ll-web__pin">${icon("map-pin", { size: 20 })}</span>
+            <span class="ll-web__input">
+              <span class="ll-web__hint">Shkruaj qytetin...</span>
+              <span class="ll-web__typed" style="--ll-type-w:${city.length}ch;">${esc(city)}</span>
+            </span>
+            <span class="ll-web__locate">${icon("crosshair", { size: 20 })}</span>
+          </div>
+          <div class="ll-web__suggest">
+            <span class="ll-web__suggest-row">
+              <span class="ll-web__suggest-label">${esc(city)}</span>
+              <span class="ll-web__suggest-meta">${esc(country)}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return stage({
+    title: "Çfarë ju sjell Mnyra",
+    scene,
+    steps: [
+      { view: "web", focus: "", body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
+      { view: "web-city", focus: "wcity", title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` }
+    ]
+  });
+}
+
 export function renderMap(profile = {}) {
   const primaryLocation = Array.isArray(profile.locations) ? profile.locations[0] : null;
   const lat = primaryLocation?.lat ?? null;
