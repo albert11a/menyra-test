@@ -2279,6 +2279,7 @@ img {
 }
 
 .ll-web__head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2533,6 +2534,90 @@ img {
   height: 100%;
 }
 
+/* ---------- Die Tab-Zeile unter der Kopfleiste ----------
+   Masse 1:1 aus .smart-header-tabs-row und .smart-header-pill. Sie klappt
+   erst auf, wenn der Schritt es sagt - vorher ist sie zugeklappt und nimmt
+   keinen Platz ein. Der Platz fuer sie wird trotzdem immer freigehalten
+   (fitFeedPost), damit der Beitrag beim Aufklappen nicht springt. */
+.ll-htabs {
+  /* Nicht schrumpfen: Auf niedrigen Bildschirmen wuerde die Flex-Verteilung
+     sonst die Zeile zusammendruecken, statt den Inhalt darunter kleiner zu
+     machen. */
+  flex: 0 0 auto;
+  background: #f8fafc;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: max-height 380ms cubic-bezier(0.23, 1, 0.32, 1), opacity 260ms ease, transform 380ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view="feed-tabs"] .ll-htabs,
+.ll-stage[data-view="feed-restaurants"] .ll-htabs,
+.ll-stage[data-view="feed-highlights"] .ll-htabs,
+.ll-stage[data-view="feed-card"] .ll-htabs {
+  max-height: 5rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ll-htabs__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1rem 1rem 0.7rem;
+}
+
+.ll-htab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(226 232 240 / 0.95);
+  background: #fff;
+  color: rgb(100 116 139);
+  padding: 0.44rem 0.82rem;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  transition: background-color 260ms ease, color 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+}
+
+.ll-htab__icon {
+  flex: 0 0 auto;
+  width: 0.86rem;
+  height: 0.86rem;
+}
+
+/* Aktiv ist Feed - bis der Schritt auf Restorante wechselt. */
+.ll-htab[data-tab="feed"] {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+  box-shadow: 0 10px 24px -16px rgb(15 23 42 / 0.55);
+}
+
+.ll-stage[data-view="feed-restaurants"] .ll-htab,
+.ll-stage[data-view="feed-highlights"] .ll-htab,
+.ll-stage[data-view="feed-card"] .ll-htab {
+  background: #fff;
+  border-color: rgb(226 232 240 / 0.95);
+  color: rgb(100 116 139);
+  box-shadow: none;
+}
+
+.ll-stage[data-view="feed-restaurants"] .ll-htab[data-tab="restaurants"],
+.ll-stage[data-view="feed-highlights"] .ll-htab[data-tab="restaurants"],
+.ll-stage[data-view="feed-card"] .ll-htab[data-tab="restaurants"] {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+  box-shadow: 0 10px 24px -16px rgb(15 23 42 / 0.55);
+}
+
 .ll-feed {
   display: grid;
   /* Eine Reihe, genau so hoch wie der Platz - nicht so hoch wie der Inhalt.
@@ -2553,8 +2638,16 @@ img {
   transition: opacity 380ms ease, transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* Beim Kopf und bei der Tab-Zeile bleibt der Beitrag stehen - erklaert wird
+   das, was darueber liegt. Erst der Wechsel auf Restorante tauscht den
+   Inhalt: zuerst die Highlights, dann die Karte des Lokals. */
 .ll-stage[data-view="feed-story"] .ll-feed-part--story,
-.ll-stage[data-view="feed-post"] .ll-feed-part--post {
+.ll-stage[data-view="feed-post"] .ll-feed-part--post,
+.ll-stage[data-view="feed-head"] .ll-feed-part--post,
+.ll-stage[data-view="feed-tabs"] .ll-feed-part--post,
+.ll-stage[data-view="feed-restaurants"] .ll-feed-part--highlights,
+.ll-stage[data-view="feed-highlights"] .ll-feed-part--highlights,
+.ll-stage[data-view="feed-card"] .ll-feed-part--card {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -2821,6 +2914,393 @@ img {
 }
 
 /* Der Feed liegt als zweite Ebene ueber der Startseite. */
+/* ---------- Highlights: die Reihe der Partner ueber der Liste ----------
+   Masse 1:1 aus renderRestaurantsContent und renderRestaurantAdCard. */
+
+.ll-hl__head {
+  padding-bottom: 4px;
+}
+
+.ll-hl__title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.ll-hl__sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.ll-hl__track {
+  display: flex;
+  gap: 1.5rem;
+  padding: 8px 0 20px;
+}
+
+.ll-ad {
+  flex: 0 0 auto;
+  width: 18rem;
+  height: 24rem;
+  max-width: 100%;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.ll-ad__media {
+  position: relative;
+  height: 11rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.ll-ad__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-ad__badges {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 82px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ll-ad__badge {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 6.5px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ll-ad__badge--best {
+  background: #c5a059;
+}
+
+.ll-ad__badge--delivery {
+  background: #1f5f4c;
+}
+
+.ll-ad__wolt {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  height: 25px;
+  padding: 0 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.375rem;
+  background: #00b4d8;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.ll-ad__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1.25rem;
+  background: #fff;
+}
+
+.ll-ad__title-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.ll-ad__category {
+  display: block;
+  margin-bottom: 0.125rem;
+  font-size: 10px;
+  font-weight: 800;
+  color: #c5a059;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ll-ad__title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 800;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ll-ad__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  border-top: 1px solid #f1f5f9;
+  padding: 0.875rem 0 1.25rem;
+}
+
+.ll-ad__chip {
+  flex: 0 0 auto;
+  width: 88px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.375rem;
+  background: #f8fafc;
+  border: 1px solid rgba(241, 245, 249, 0.5);
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.ll-ad__chip b {
+  font-size: 10px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ll-ad__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.875rem 0;
+  border-radius: 0.75rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---------- Die Karte des Lokals in der Liste ----------
+   Masse 1:1 aus renderRestaurantListCard. */
+
+.ll-rcard {
+  background: #fff;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(241, 245, 249, 0.6);
+  box-shadow: 0 10px 15px -3px rgba(226, 232, 240, 0.8), 0 4px 6px -4px rgba(226, 232, 240, 0.8);
+  display: flex;
+  flex-direction: column;
+}
+
+.ll-rcard__media {
+  position: relative;
+  height: 11rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.ll-rcard__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-rcard__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.2) 50%, rgba(0, 0, 0, 0.2) 100%);
+}
+
+.ll-rcard__acts {
+  position: absolute;
+  top: 0.875rem;
+  right: 0.875rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ll-rcard__act {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  box-shadow: var(--ll-shadow-sm);
+  color: #475569;
+}
+
+.ll-rcard__price {
+  position: absolute;
+  bottom: 0.875rem;
+  right: 1rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 0.375rem;
+  background: rgba(15, 23, 42, 0.9);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.ll-rcard__body {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 3rem 1.25rem 1.25rem;
+}
+
+/* Das Logo haengt ueber die Kante des Bildes - deshalb der grosse
+   Innenabstand oben im Koerper der Karte. */
+.ll-rcard__logo {
+  position: absolute;
+  top: -2.5rem;
+  left: 1.25rem;
+  width: 76px;
+  height: 76px;
+  border-radius: 999px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+}
+
+.ll-rcard__logo img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.ll-rcard__rating {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 4px;
+}
+
+.ll-rcard__rating b {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ll-rcard__rating span {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.ll-rcard__name {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.375;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.ll-rcard__category {
+  margin: 2px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #d97706;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ll-rcard__rule {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ll-rcard__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  color: #475569;
+}
+
+.ll-rcard__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 11px;
+}
+
+.ll-rcard__row svg {
+  flex: 0 0 auto;
+  color: #94a3b8;
+}
+
+.ll-rcard__acts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  margin-top: 2px;
+}
+
+.ll-rcard__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ll-rcard__btn svg {
+  color: #94a3b8;
+}
+
+.ll-rcard__btn--dark {
+  border-color: #0f172a;
+  background: #0f172a;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.ll-rcard__btn--dark svg {
+  color: #e2e8f0;
+}
+
 .ll-stage[data-view^="feed"] .ll-stage__overlay {
   opacity: 1;
   pointer-events: auto;

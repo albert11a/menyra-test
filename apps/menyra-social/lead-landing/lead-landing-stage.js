@@ -217,7 +217,21 @@ function boxExtra(style, sides) {
     + (parseFloat(style[`border${side}Width`]) || 0), 0);
 }
 
-function fitFeedPost(stage) {
+// Nachbauten mit festen Massen (Highlights, Karte des Lokals) lassen sich
+// nicht ueber die Breite regeln. Passen sie nicht in die Hoehe, werden sie
+// als Ganzes verkleinert: Die Verhaeltnisse bleiben, abgeschnitten wird
+// nichts. Passen sie, bleiben sie in echter Groesse.
+function fitFeedBlock(stage, selector, available) {
+  const block = stage.querySelector(selector);
+  if (!block) return;
+  block.style.transform = "";
+  const natural = block.offsetHeight;
+  if (!(natural > 0) || !(available > 0) || natural <= available) return;
+  block.style.transformOrigin = "top center";
+  block.style.transform = `scale(${(available / natural).toFixed(4)})`;
+}
+
+function fitFeedScene(stage) {
   const viewport = stage.querySelector(".ll-stage__viewport");
   const feed = stage.querySelector(".ll-web--feed .ll-feed");
   const post = stage.querySelector(".ll-fpost");
@@ -231,9 +245,16 @@ function fitFeedPost(stage) {
   // der Feed-Flaeche: Die haengt davon ab, wie eine Engine den Rest verteilt.
   // Der Rahmen des Kapitels ist dagegen ueberall gleich hoch.
   const webHead = stage.querySelector(".ll-web--feed .ll-web__head");
+  const tabs = stage.querySelector(".ll-web--feed .ll-htabs");
   const feedStyle = window.getComputedStyle(feed);
   const head = stage.querySelector(".ll-fpost__head");
   const frameStyle = window.getComputedStyle(frame);
+
+  // Die Tab-Zeile ist erst ab einem spaeteren Schritt zu sehen. Ihr Platz
+  // wird trotzdem immer abgezogen - sonst muesste beim Aufklappen alles
+  // darunter neu gerechnet werden und wuerde springen. scrollHeight liefert
+  // ihre Hoehe auch im zugeklappten Zustand.
+  const tabsSpace = tabs ? tabs.scrollHeight : 0;
 
   // Der Schatten des Rahmens reicht ueber ihn hinaus. Die Karte des Feeds
   // endet am Bildschirmrand und schneidet ihn dort ab - das gab unten einen
@@ -244,7 +265,14 @@ function fitFeedPost(stage) {
   const feedBottom = (parseFloat(feedStyle.paddingBottom) || 0)
     + (parseFloat(feedStyle.borderBottomWidth) || 0);
 
+  // Der Platz, den die Feed-Flaeche fuer ihren Inhalt hergibt.
+  const content = viewport.clientHeight
+    - (webHead ? webHead.offsetHeight : 0)
+    - tabsSpace
+    - boxExtra(feedStyle, ["Top", "Bottom"]);
+
   const used = (webHead ? webHead.offsetHeight : 0)
+    + tabsSpace
     + boxExtra(feedStyle, ["Top"])
     // Der Abstand unten und der Auslauf des Schattens ueberlagern sich - es
     // zaehlt der groessere von beiden, nicht die Summe.
@@ -255,13 +283,16 @@ function fitFeedPost(stage) {
   const frameWidth = boxExtra(frameStyle, ["Left", "Right"]);
   const fits = (viewport.clientHeight - used) / FPOST_IMAGE_RATIO;
   const full = post.clientWidth - frameWidth;
-  if (!(full > 0)) return;
 
   // Breiter als der Platz wird der Beitrag nie - schmaler nur, wenn er sonst
   // unten anstossen wuerde.
   const image = Math.min(full, fits);
-  if (!(image > 0)) return;
-  frame.style.width = `${Math.floor(image + frameWidth)}px`;
+  if (full > 0 && image > 0) {
+    frame.style.width = `${Math.floor(image + frameWidth)}px`;
+  }
+
+  fitFeedBlock(stage, ".ll-hl", content);
+  fitFeedBlock(stage, ".ll-rcard", content);
 }
 
 // Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
@@ -490,8 +521,8 @@ export function startLeadLandingStages({ scroller = null } = {}) {
       fitStageCaption(stage);
       fitMenuLists(stage);
       // Nach fitStageCaption: erst dann steht fest, wie hoch die Kopfzeile
-      // ist und wie viel Platz darunter fuer den Beitrag bleibt.
-      fitFeedPost(stage);
+      // ist und wie viel Platz darunter fuer den Feed bleibt.
+      fitFeedScene(stage);
       // fitPaneTravel laeuft in panSceneToFocus - dort steht die Hoehe fest.
       panSceneToFocus(stage);
     });

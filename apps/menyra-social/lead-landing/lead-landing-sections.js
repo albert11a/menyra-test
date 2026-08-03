@@ -671,6 +671,115 @@ function storyCard({ name, imageUrl, logoUrl, blurred = false }) {
   `;
 }
 
+// Die Tab-Zeile unter der Kopfleiste - 1:1 aus renderMainHeaderTabs. In der
+// App klappt sie unter dem Kopf auf, sobald der Klient dort ist. Der aktive
+// Tab kommt vom Schritt, nicht vom Markup (siehe Stylesheet).
+function feedTabs() {
+  const tabs = [
+    { key: "feed", icon: "home", label: "Feed" },
+    { key: "restaurants", icon: "utensils", label: "Restorante" },
+    { key: "ofertat", icon: "ticket", label: "Ofertat" }
+  ];
+  return `
+      <div class="ll-htabs" data-spot="ftabs">
+        <div class="ll-htabs__row">
+          ${tabs.map((tab) => `
+            <span class="ll-htab" data-tab="${esc(tab.key)}">
+              ${icon(tab.icon, { size: 14, className: "ll-htab__icon" })}
+              <span class="ll-htab__label">${esc(tab.label)}</span>
+            </span>
+          `).join("")}
+        </div>
+      </div>
+  `;
+}
+
+// Highlights: die Reihe der bezahlten Partner ganz oben unter Restorante -
+// Ueberschrift und Karte 1:1 aus renderRestaurantsContent und
+// renderRestaurantAdCard.
+function highlightsBlock(profile = {}, cover = "") {
+  const category = (text(profile.type) || "Restaurant").toUpperCase();
+  return `
+    <div class="ll-hl" data-spot="fhl">
+      <div class="ll-hl__head">
+        <p class="ll-hl__title">Highlights</p>
+        <p class="ll-hl__sub">Partner premium ne afersine tende</p>
+      </div>
+      <div class="ll-hl__track">
+        <article class="ll-ad">
+          <div class="ll-ad__media">
+            ${img(cover, `${profile.name}`)}
+            <div class="ll-ad__badges">
+              <span class="ll-ad__badge ll-ad__badge--best">Best Choice</span>
+              <span class="ll-ad__badge ll-ad__badge--delivery">For Delivery</span>
+            </div>
+            <span class="ll-ad__wolt">WOLT</span>
+          </div>
+          <div class="ll-ad__body">
+            <div class="ll-ad__title-wrap">
+              <span class="ll-ad__category">${esc(category)}</span>
+              <p class="ll-ad__title">${esc(profile.name)}</p>
+            </div>
+            <div class="ll-ad__meta">
+              <span class="ll-ad__chip">${filledIcon("star", { size: 12, color: "#f59e0b" })}<b>0.0</b></span>
+              <span class="ll-ad__chip">${icon("utensils", { size: 12 })}<b>€€ - €€€</b></span>
+            </div>
+            <span class="ll-ad__cta">${icon("user", { size: 14 })}<span>Shiko profilin</span></span>
+          </div>
+        </article>
+      </div>
+    </div>
+  `;
+}
+
+// Die Karte des Lokals in der Liste - 1:1 aus renderRestaurantListCard.
+function restaurantCard(profile = {}, cover = "") {
+  const category = (text(profile.type) || "Restaurant").toUpperCase();
+  const hours = text(profile.openingHours) || "Orari se shpejti";
+  return `
+    <article class="ll-rcard" data-spot="fcard">
+      <div class="ll-rcard__media">
+        ${img(cover, `${profile.name}`)}
+        <span class="ll-rcard__scrim"></span>
+        <div class="ll-rcard__acts">
+          <span class="ll-rcard__act">${icon("map", { size: 16 })}</span>
+          <span class="ll-rcard__act">${icon("heart", { size: 16 })}</span>
+          <span class="ll-rcard__act">${icon("share", { size: 16 })}</span>
+        </div>
+        <span class="ll-rcard__price">€€ - €€€</span>
+      </div>
+
+      <div class="ll-rcard__body">
+        <span class="ll-rcard__logo">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+
+        <div>
+          <div class="ll-rcard__rating">
+            ${filledIcon("star", { size: 14, color: "#f59e0b" })}
+            <b>0.0</b>
+            <span>(0 vleresime)</span>
+          </div>
+          <p class="ll-rcard__name">${esc(profile.name)}</p>
+          <p class="ll-rcard__category">${esc(category)}</p>
+        </div>
+
+        <hr class="ll-rcard__rule" />
+
+        <div class="ll-rcard__info">
+          <span class="ll-rcard__row">${icon("map-pin", { size: 16 })}<span>${esc(text(profile.city))}</span></span>
+          <span class="ll-rcard__row">${icon("clock", { size: 16 })}<span>${esc(hours)}</span></span>
+        </div>
+
+        <hr class="ll-rcard__rule" />
+
+        <div class="ll-rcard__acts-row">
+          <span class="ll-rcard__btn">${icon("user", { size: 14 })}Profili</span>
+          <span class="ll-rcard__btn ll-rcard__btn--dark">${icon("book-open", { size: 14 })}Menu</span>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 export function renderWeb(profile = {}, posts = [], neighbours = []) {
   const city = text(profile.city) || "Prishtinë";
   const country = "Kosovë";
@@ -714,9 +823,13 @@ export function renderWeb(profile = {}, posts = [], neighbours = []) {
   // an derselben Stelle, so wie der Klient nach unten scrollt.
   const post = posts[0] || null;
   const storyImage = text(post?.imageUrl);
+  // Titelbild fuer Highlights und Lokal-Karte - dasselbe wie in der App. Ohne
+  // Titelbild springt das erste Postim ein, damit die Karte nie leer wirkt.
+  const cardCover = text(profile.coverUrl) || storyImage;
   const feedScene = `
     <div class="ll-web ll-web--feed" aria-label="Feed-i i Mnyra">
       ${webHead("fhead")}
+      ${feedTabs()}
       <div class="ll-feed">
         <div class="ll-feed-part ll-feed-part--story">
           <div data-spot="fstory">
@@ -763,6 +876,14 @@ export function renderWeb(profile = {}, posts = [], neighbours = []) {
             </article>
           </div>
         </div>
+
+        <div class="ll-feed-part ll-feed-part--highlights">
+          ${highlightsBlock(profile, cardCover)}
+        </div>
+
+        <div class="ll-feed-part ll-feed-part--card">
+          ${restaurantCard(profile, cardCover)}
+        </div>
       </div>
     </div>
   `;
@@ -781,7 +902,15 @@ export function renderWeb(profile = {}, posts = [], neighbours = []) {
       { view: "web", focus: "", canvas: SURFACE, body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
       { view: "web-city", focus: "wcity", canvas: SURFACE, title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
       { view: "feed-story", focus: "fstory", full: true, canvas: SURFACE, title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
-      { view: "feed-post", focus: "fpost", full: true, canvas: SURFACE, title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." }
+      { view: "feed-post", focus: "fpost", full: true, canvas: SURFACE, title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." },
+      // Von hier an fuehrt der Weg vom Feed zur Liste der Lokale: erst der
+      // Kopf, dann die Tab-Zeile darunter, dann der Wechsel auf Restorante -
+      // und dort zuerst die Highlights, danach die Karte des Lokals.
+      { view: "feed-head", focus: "fhead", full: true, canvas: SURFACE, title: "Koka e faqes", body: "Lart qëndron koka e Mnyra. Prej saj klienti lëviz nëpër gjithë aplikacionin." },
+      { view: "feed-tabs", focus: "ftabs", full: true, canvas: SURFACE, title: "Skedat", body: "Poshtë saj hapen tri skeda: Feed, Restorante dhe Ofertat." },
+      { view: "feed-restaurants", focus: "ftabs", full: true, canvas: SURFACE, title: "Restorante", body: "Klienti prek Restorante - dhe sheh lokalet e qytetit të tij." },
+      { view: "feed-highlights", focus: "fhl", full: true, canvas: SURFACE, title: "Highlights", body: "Lart dalin partnerët premium. Aty shfaqeni ju - para të gjithë të tjerëve." },
+      { view: "feed-card", focus: "fcard", full: true, canvas: SURFACE, title: "Karta juaj", body: "Pastaj vjen karta juaj: fotoja, vlerësimi, qyteti dhe orari - me Profilin dhe Menynë një prekje larg." }
     ]
   });
 }
