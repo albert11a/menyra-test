@@ -1019,15 +1019,10 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
     scene,
     overlay: feedScene,
     steps: [
-      // Der Startbildschirm bleibt eine Karte. Randlos waere er unten
-      // tuerkis, und der Streifen hinter der Werkzeugleiste traegt die
-      // Seitenfarbe - dort schnitte eine Kante ab. Die Farbe der Streifen
-      // kommt vom Browser, oben und unten dieselbe: hell passt zur
-      // Kopfleiste, tuerkis wuerde oben abschneiden. Als Karte liegt der
-      // Grundton rundum, und keine der beiden Kanten faellt auf.
-      { view: "web", focus: "", canvas: SURFACE, body: `Klientët kërkojnë ku të hanë - sipas lokacionit të tyre.` },
-      { view: "web-city", focus: "wcity", canvas: SURFACE, title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
-      { view: "feed-story", focus: "fstory", full: true, canvas: SURFACE, title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
+      // Auf die Frage folgt sofort die Antwort: der Feed, so wie ihn der
+      // Klient sieht. Der Ort-Bildschirm davor ist entfallen - das Kapitel
+      // faengt dort an, wo es etwas zu zeigen gibt.
+      { view: "feed-story", focus: "fstory", full: true, canvas: SURFACE, body: "Feed-i i qytetit. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
       { view: "feed-post", focus: "fpost", full: true, canvas: SURFACE, title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." },
       // Von hier an fuehrt der Weg vom Feed zur Liste der Lokale: erst die
       // Tab-Zeile ganz oben, dann der Wechsel auf Restorante - und dort
