@@ -2721,6 +2721,11 @@ img {
   background: #fff;
   border: 1px solid #f8fafc;
   box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25);
+  /* Wie weit der Schatten unter den Rahmen reicht: Versatz + Weichzeichnung
+     - Ausdehnung, also 25 + 50 - 12. fitFeedPost haelt diesen Platz frei,
+     damit die Karte den Schatten nicht mit harter Kante abschneidet.
+     Aendert sich der Schatten, aendert sich dieser Wert mit. */
+  --ll-fpost-shadow-reach: 63px;
 }
 
 .ll-fpost__media {

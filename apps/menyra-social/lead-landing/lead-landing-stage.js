@@ -235,8 +235,20 @@ function fitFeedPost(stage) {
   const head = stage.querySelector(".ll-fpost__head");
   const frameStyle = window.getComputedStyle(frame);
 
+  // Der Schatten des Rahmens reicht ueber ihn hinaus. Die Karte des Feeds
+  // endet am Bildschirmrand und schneidet ihn dort ab - das gab unten einen
+  // grauen Streifen mit harter Kante. Deshalb bleibt unter dem Rahmen so viel
+  // frei, dass der Schatten vollstaendig auslaufen kann. Wie weit er reicht,
+  // steht im Stylesheet neben dem Schatten selbst.
+  const reach = parseFloat(frameStyle.getPropertyValue("--ll-fpost-shadow-reach")) || 0;
+  const feedBottom = (parseFloat(feedStyle.paddingBottom) || 0)
+    + (parseFloat(feedStyle.borderBottomWidth) || 0);
+
   const used = (webHead ? webHead.offsetHeight : 0)
-    + boxExtra(feedStyle, ["Top", "Bottom"])
+    + boxExtra(feedStyle, ["Top"])
+    // Der Abstand unten und der Auslauf des Schattens ueberlagern sich - es
+    // zaehlt der groessere von beiden, nicht die Summe.
+    + Math.max(feedBottom, reach)
     + (head ? head.offsetHeight + (parseFloat(window.getComputedStyle(head).marginBottom) || 0) : 0)
     + boxExtra(frameStyle, ["Top", "Bottom"]);
 
