@@ -201,12 +201,11 @@ export function renderHero(profile = {}) {
       </div>
 
       <p class="ll-lead" style="max-width:340px;margin-bottom:0;position:relative;z-index:2;">
-        Lokali juaj është përgatitur tashmë në Mnyra.<br />
-        Kjo faqe ju tregon saktësisht se çfarë keni marrë - dhe si funksionon.
+        Profili dhe menuja juaj digjitale janë tashmë gati në Mnyra. Zbuloni çfarë është Mnyra, si ju shohin e ju gjejnë klientët dhe si porosisin direkt nga tavolina.
       </p>
 
       <div class="ll-scroll-hint">
-        <span>Rrëshqit poshtë</span>
+        <span>Rrëshqitni Lart</span>
         ${icon("chevron-down", { size: 22 })}
       </div>
     </header>
