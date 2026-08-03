@@ -2406,9 +2406,12 @@ img {
 .ll-web__hero {
   flex: 1 1 auto;
   background: #00cce5;
-  /* Oben derselbe Abstand wie unten: Ueber dem Titel steht keine Kopfleiste
-     mehr, er soll aber nicht an der Kante der Karte kleben. */
-  padding: 44px 24px;
+  /* Oben mehr Luft als unten. Die erste Zeile des Titels wechselt staendig
+     und wird dabei am oberen Rand ihres Feldes abgeschnitten - das gehoert
+     zum Wechsel. Liegt dieser Schnitt zu nah an der Kante der Karte, sieht
+     die Karte selbst abgeschnitten aus. Mit dem Abstand ist er deutlich als
+     Bewegung zu erkennen. */
+  padding: 72px 24px 44px;
   justify-content: center;
   display: flex;
   flex-direction: column;
