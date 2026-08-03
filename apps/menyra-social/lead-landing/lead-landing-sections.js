@@ -265,8 +265,11 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     text(profile.tiktok) ? { iconName: "music", label: "TikTok", value: profile.tiktok } : null
   ].filter(Boolean).slice(0, 4);
 
-  const postGrid = posts.slice(0, 4).length
-    ? `<div class="ll-grid">${posts.slice(0, 4).map((post) => `
+  // Nur die zwei neuesten Postimet - eine Reihe reicht, um zu zeigen, wie
+  // es aussieht. Die Liste kommt schon nach Datum sortiert an.
+  const latestPosts = posts.slice(0, 2);
+  const postGrid = latestPosts.length
+    ? `<div class="ll-grid">${latestPosts.map((post) => `
         <div class="ll-post">
           ${img(post.imageUrl, text(post.caption) || "Postim")}
           <span class="ll-post__stats">
