@@ -655,7 +655,23 @@ function webHead(spot = "whead") {
   `;
 }
 
-export function renderWeb(profile = {}, posts = []) {
+// Eine Story-Karte der Reihe. Die des Kunden ist scharf, die der anderen
+// Lokale liegen unscharf daneben - erkennbar ist dort nichts, es geht nur
+// darum, dass die eigene Story nicht allein steht.
+function storyCard({ name, imageUrl, logoUrl, blurred = false }) {
+  return `
+    <article class="ll-story${blurred ? " ll-story--blur" : ""}"${blurred ? ' aria-hidden="true"' : ""}>
+      <div class="ll-story__media">
+        ${img(imageUrl, blurred ? "" : `Story ${name}`)}
+        <span class="ll-story__scrim"></span>
+        <span class="ll-story__ring">${img(logoUrl, blurred ? "" : `${name} logo`, LOGO_FALLBACK)}</span>
+        <span class="ll-story__name">${esc(name)}</span>
+      </div>
+    </article>
+  `;
+}
+
+export function renderWeb(profile = {}, posts = [], neighbours = []) {
   const city = text(profile.city) || "Prishtinë";
   const country = "Kosovë";
 
@@ -705,14 +721,13 @@ export function renderWeb(profile = {}, posts = []) {
         <div class="ll-feed-part ll-feed-part--story">
           <div data-spot="fstory">
             <div class="ll-feed__rail">
-              <article class="ll-story">
-                <div class="ll-story__media">
-                  ${img(storyImage, `Story ${profile.name}`)}
-                  <span class="ll-story__scrim"></span>
-                  <span class="ll-story__ring">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
-                  <span class="ll-story__name">${esc(profile.name)}</span>
-                </div>
-              </article>
+              ${storyCard({ name: profile.name, imageUrl: storyImage, logoUrl: profile.logoUrl })}
+              ${(Array.isArray(neighbours) ? neighbours : []).map((place) => storyCard({
+    name: place.name,
+    imageUrl: place.imageUrl,
+    logoUrl: place.logoUrl,
+    blurred: true
+  })).join("")}
             </div>
           </div>
         </div>

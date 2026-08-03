@@ -14,6 +14,10 @@ import { firstText, num, text } from "./lead-landing-format.js";
 const POSTS_LIMIT = 12;
 const MENU_LIMIT = 120;
 const REQUEST_TIMEOUT_MS = 9000;
+// Andere Lokale fuer die Story-Reihe. Gelesen werden ein paar mehr, als
+// gebraucht werden - ohne Titelbild taugt ein Lokal nicht als Story.
+const NEIGHBOUR_READ = 12;
+const NEIGHBOUR_LIMIT = 3;
 
 function slugify(value = "") {
   let slug = text(value).toLowerCase();
@@ -397,6 +401,25 @@ export function resolveTitleImage(source = {}) {
   );
 }
 
+// Andere Lokale fuer die Story-Reihe. In der App steht die Story des Kunden
+// zwischen denen der anderen - hier genauso. Gezeigt werden sie unscharf, es
+// geht nur um die Reihe: gebraucht werden Bild, Logo und Name.
+function normalizeNeighbour(raw = {}) {
+  return {
+    id: text(raw.id),
+    name: firstText(raw.name, raw.restaurantName),
+    imageUrl: resolveTitleImage(raw),
+    logoUrl: firstText(raw.logoUrl, raw.logo, raw.avatarUrl)
+  };
+}
+
+function pickNeighbours(rows = [], ownId = "") {
+  return rows
+    .map(normalizeNeighbour)
+    .filter((entry) => entry.id && entry.id !== ownId && entry.imageUrl)
+    .slice(0, NEIGHBOUR_LIMIT);
+}
+
 function normalizeLocations(restaurant = {}) {
   const list = Array.isArray(restaurant.locations) ? restaurant.locations : [];
   const mapped = list
@@ -472,9 +495,10 @@ export async function loadLeadLandingData(routeKey = "") {
   // Das oeffentliche Menue-Dokument ist die Hauptquelle; die Sammlung
   // menuItems ist der Rueckfall, wenn es noch nicht veroeffentlicht wurde.
   const menuDocItems = collectMenuDocItems(publicMenu || {});
-  const [postsRaw, menuCollectionItems] = await Promise.all([
+  const [postsRaw, menuCollectionItems, neighbourRows] = await Promise.all([
     readCollection(`restaurants/${encodedId}/socialPosts`, POSTS_LIMIT),
-    menuDocItems.length ? Promise.resolve([]) : readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT)
+    menuDocItems.length ? Promise.resolve([]) : readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT),
+    readCollection("restaurants", NEIGHBOUR_READ)
   ]);
   const menuItemsRaw = menuDocItems.length ? menuDocItems : menuCollectionItems;
 
@@ -525,6 +549,7 @@ export async function loadLeadLandingData(routeKey = "") {
       locations: normalizeLocations(merged)
     },
     posts,
+    neighbours: pickNeighbours(neighbourRows, restaurantId),
     menuItems,
     focusItems: normalizeFocusItems(offers || {}, menuItems),
     sales: normalizeSalesConfig(salesSource)

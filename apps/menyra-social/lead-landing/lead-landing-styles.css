@@ -2526,14 +2526,27 @@ img {
   border-bottom: 1px solid #f1f5f9;
 }
 
+/* Der Feed ist genau so hoch wie die Ebene, auf der er liegt - nicht so hoch
+   wie sein Inhalt. Erst dadurch steht die Hoehe fest, an der sich der
+   Beitrag ausrichten kann. */
+.ll-web--feed {
+  height: 100%;
+}
+
 .ll-feed {
   display: grid;
+  /* Eine Reihe, genau so hoch wie der Platz - nicht so hoch wie der Inhalt.
+     Daran richtet sich der Beitrag aus (siehe .ll-fpost__frame). */
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 16px 20px 20px;
   background: #f8fafc;
 }
 
 .ll-feed-part {
   grid-area: 1 / 1;
+  min-height: 0;
   opacity: 0;
   pointer-events: none;
   transform: translateY(8px);
@@ -2557,6 +2570,21 @@ img {
 .ll-story {
   flex: 0 0 29%;
   max-width: 120px;
+}
+
+/* Die Storys der anderen Lokale liegen unscharf daneben. Erkennbar ist dort
+   nichts - sie zeigen nur, dass die Story des Kunden nicht allein steht.
+   Die Unschaerfe liegt auf dem Inhalt, nicht auf der Karte: sonst wuerden
+   die abgerundeten Ecken mitverwischen. Das leicht vergroesserte Bild deckt
+   den weichen Rand ab, den die Unschaerfe sonst am Kartenrand hinterlaesst. */
+.ll-story--blur .ll-story__media img {
+  filter: blur(9px);
+  transform: scale(1.2);
+}
+
+.ll-story--blur .ll-story__ring,
+.ll-story--blur .ll-story__name {
+  filter: blur(4px);
 }
 
 .ll-story__media {
@@ -2671,9 +2699,40 @@ img {
   color: #94a3b8;
 }
 
+/* Der Beitrag richtet sich nach der Hoehe, nicht nach der Breite.
+   Das Bild ist 4:5 - ueber die volle Breite gerechnet braucht es mehr Hoehe,
+   als unter der Kopfzeile uebrig ist, und wurde unten abgeschnitten. Jetzt
+   gibt der Platz die Hoehe vor und die Breite folgt dem Seitenverhaeltnis.
+   Auf niedrigen Bildschirmen wird der Beitrag dadurch kleiner statt kuerzer. */
+.ll-feed-part--post {
+  display: flex;
+}
+
+.ll-feed-part--post > [data-spot] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.ll-fpost {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .ll-fpost__frame {
-  padding: 10px;
-  border-radius: 3.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Breite nach Inhalt: der weisse Rahmen liegt eng um das Bild. */
+  align-self: center;
+  max-width: 100%;
+  display: flex;
+  /* Auf niedrigen Bildschirmen wird der Beitrag klein - dann waeren die
+     Originalwerte fuer Rundung und Rand zu grob. Auf einem normalen Handy
+     kommen genau die Originalmasse heraus. */
+  padding: min(10px, 1.4vh);
+  border-radius: min(3.5rem, 7.6vh);
   background: #fff;
   border: 1px solid #f8fafc;
   box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25);
@@ -2681,10 +2740,17 @@ img {
 
 .ll-fpost__media {
   position: relative;
-  border-radius: 3rem;
+  border-radius: min(3rem, 6.5vh);
   overflow: hidden;
   background: #e2e8f0;
   aspect-ratio: 4 / 5;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  /* Bezugsgroesse fuer alles, was im Bild liegt: Wird der Beitrag kleiner,
+     schrumpft die Textflaeche darin mit. Die Prozentwerte unten sind die
+     Originalmasse der App, geteilt durch die Bildbreite von 378px. */
+  container-type: size;
 }
 
 .ll-fpost__media > img {
@@ -2695,11 +2761,11 @@ img {
 
 .ll-fpost__caption {
   position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: 24px;
-  padding: 24px;
-  border-radius: 2.5rem;
+  left: 6.35cqw;
+  right: 6.35cqw;
+  bottom: 6.35cqw;
+  padding: 6.35cqw;
+  border-radius: min(2.5rem, 10.6cqw);
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -2708,8 +2774,8 @@ img {
 }
 
 .ll-fpost__text {
-  margin: 0 0 16px;
-  font-size: 14px;
+  margin: 0 0 4.25cqw;
+  font-size: min(14px, 3.7cqw);
   font-weight: 500;
   line-height: 1.625;
   display: -webkit-box;
@@ -2728,17 +2794,23 @@ img {
 .ll-fpost__acts span {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 2.1cqw;
+}
+
+/* Auch die Symbole im Bild sind Originalmasse durch Bildbreite. */
+.ll-fpost__acts svg {
+  width: min(20px, 5.3cqw);
+  height: auto;
 }
 
 .ll-fpost__acts b {
-  font-size: 10px;
+  font-size: min(10px, 2.65cqw);
   font-weight: 900;
 }
 
 .ll-fpost__group {
   display: inline-flex;
-  gap: 16px;
+  gap: 4.25cqw;
 }
 
 .ll-fpost__acts span:last-child b {
