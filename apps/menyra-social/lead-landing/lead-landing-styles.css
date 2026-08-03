@@ -2350,61 +2350,6 @@ img {
   box-shadow: none;
 }
 
-.ll-web__head {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 20px;
-  background: #f8fafc;
-}
-
-.ll-web__burger {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  width: 22px;
-}
-
-.ll-web__burger i {
-  display: block;
-  height: 2px;
-  border-radius: 999px;
-  background: #0f172a;
-}
-
-.ll-web__brand {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 6px;
-  line-height: 1;
-}
-
-.ll-web__brand b {
-  font-size: 22px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.04em;
-  color: #0f172a;
-}
-
-.ll-web__brand span {
-  font-size: 9px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
-  color: var(--ll-accent);
-  padding-top: 2px;
-}
-
-.ll-web__acts {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  color: #0f172a;
-}
-
 /* Tuerkiser Bildschirm - Farbe und Abstaende wie im Original. */
 .ll-web__hero {
   flex: 1 1 auto;
@@ -2599,10 +2544,6 @@ img {
    liegen uebereinander, damit der Postim beim naechsten Wisch genau dort
    erscheint, wo vorher die Story stand. */
 
-.ll-web--feed .ll-web__head {
-  border-bottom: 1px solid #f1f5f9;
-}
-
 /* Der Feed ist genau so hoch wie die Ebene, auf der er liegt - nicht so hoch
    wie sein Inhalt. Erst dadurch steht die Hoehe fest, an der sich der
    Beitrag ausrichten kann. */
@@ -2610,33 +2551,19 @@ img {
   height: 100%;
 }
 
-/* ---------- Die Tab-Zeile unter der Kopfleiste ----------
-   Masse 1:1 aus .smart-header-tabs-row und .smart-header-pill. Sie klappt
-   erst auf, wenn der Schritt es sagt - vorher ist sie zugeklappt und nimmt
-   keinen Platz ein. Der Platz fuer sie wird trotzdem immer freigehalten
-   (fitFeedPost), damit der Beitrag beim Aufklappen nicht springt. */
+/* ---------- Die Tab-Zeile ganz oben ----------
+   Masse 1:1 aus .smart-header-tabs-row und .smart-header-pill. Sie steht vom
+   ersten Feed-Schritt an da, alle drei Skeda nebeneinander - eine Kopfleiste
+   gibt es hier nicht mehr. Der Abstand nach oben haengt an ihr und nicht am
+   Feed selbst: So zaehlt fitFeedScene ihn ueber die Hoehe der Zeile
+   automatisch mit. */
 .ll-htabs {
   /* Nicht schrumpfen: Auf niedrigen Bildschirmen wuerde die Flex-Verteilung
      sonst die Zeile zusammendruecken, statt den Inhalt darunter kleiner zu
      machen. */
   flex: 0 0 auto;
   background: #f8fafc;
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-6px);
-  transition: max-height 380ms cubic-bezier(0.23, 1, 0.32, 1), opacity 260ms ease, transform 380ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.ll-stage[data-view="feed-tabs"] .ll-htabs,
-.ll-stage[data-view="feed-restaurants"] .ll-htabs,
-.ll-stage[data-view="feed-highlights"] .ll-htabs,
-.ll-stage[data-view="feed-card"] .ll-htabs,
-.ll-stage[data-view="feed-ofertat"] .ll-htabs,
-.ll-stage[data-view="feed-offer"] .ll-htabs {
-  max-height: 5rem;
-  opacity: 1;
-  transform: translateY(0);
+  padding-top: 14px;
 }
 
 .ll-htabs__row {
@@ -2725,7 +2652,6 @@ img {
    Inhalt: zuerst die Highlights, dann die Karte des Lokals. */
 .ll-stage[data-view="feed-story"] .ll-feed-part--story,
 .ll-stage[data-view="feed-post"] .ll-feed-part--post,
-.ll-stage[data-view="feed-head"] .ll-feed-part--post,
 .ll-stage[data-view="feed-tabs"] .ll-feed-part--post,
 .ll-stage[data-view="feed-restaurants"] .ll-feed-part--highlights,
 .ll-stage[data-view="feed-highlights"] .ll-feed-part--highlights,

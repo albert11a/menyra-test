@@ -698,22 +698,6 @@ function buildDishChapter(profile = {}, menuItems = []) {
    (core/feed/feed-view-orchestration-controller.js): Titel bis 22rem breit,
    Feld mit Radius 9999px und 1rem/4.2rem/1rem/3rem Innenabstand, der
    Ortungsknopf 2.5rem in #eafbfe auf #00cce5. */
-// Die Kopfleiste des Feeds. Der Startbildschirm kommt ohne sie aus - dort
-// zaehlt nur die Frage nach dem Ort.
-function webHead(spot = "fhead") {
-  return `
-      <div class="ll-web__head" data-spot="${esc(spot)}">
-        <span class="ll-web__burger" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="ll-web__brand"><b>MNYRA</b><span>Social</span></span>
-        <span class="ll-web__acts">
-          ${icon("globe", { size: 22 })}
-          ${icon("user", { size: 22 })}
-          ${icon("shopping-bag", { size: 22 })}
-        </span>
-      </div>
-  `;
-}
-
 // Eine Story-Karte der Reihe. Die des Kunden ist scharf, die der anderen
 // Lokale liegen unscharf daneben - erkennbar ist dort nichts, es geht nur
 // darum, dass die eigene Story nicht allein steht.
@@ -730,9 +714,9 @@ function storyCard({ name, imageUrl, logoUrl, blurred = false }) {
   `;
 }
 
-// Die Tab-Zeile unter der Kopfleiste - 1:1 aus renderMainHeaderTabs. In der
-// App klappt sie unter dem Kopf auf, sobald der Klient dort ist. Der aktive
-// Tab kommt vom Schritt, nicht vom Markup (siehe Stylesheet).
+// Die Tab-Zeile - 1:1 aus renderMainHeaderTabs. Sie steht ganz oben und ist
+// von Anfang an da, alle drei Skeda nebeneinander; gedrueckt ist Feed. Der
+// aktive Tab kommt vom Schritt, nicht vom Markup (siehe Stylesheet).
 function feedTabs() {
   const tabs = [
     { key: "feed", icon: "home", label: "Feed" },
@@ -963,7 +947,6 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
   const cardCover = text(profile.coverUrl) || storyImage;
   const feedScene = `
     <div class="ll-web ll-web--feed" aria-label="Feed-i i Mnyra">
-      ${webHead("fhead")}
       ${feedTabs()}
       <div class="ll-feed">
         <div class="ll-feed-part ll-feed-part--story">
@@ -1042,11 +1025,10 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
       { view: "web-city", focus: "wcity", canvas: SURFACE, title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
       { view: "feed-story", focus: "fstory", full: true, canvas: SURFACE, title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
       { view: "feed-post", focus: "fpost", full: true, canvas: SURFACE, title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." },
-      // Von hier an fuehrt der Weg vom Feed zur Liste der Lokale: erst der
-      // Kopf, dann die Tab-Zeile darunter, dann der Wechsel auf Restorante -
-      // und dort zuerst die Highlights, danach die Karte des Lokals.
-      { view: "feed-head", focus: "fhead", full: true, canvas: SURFACE, title: "Koka e faqes", body: "Lart qëndron koka e Mnyra. Prej saj klienti lëviz nëpër gjithë aplikacionin." },
-      { view: "feed-tabs", focus: "ftabs", full: true, canvas: SURFACE, title: "Skedat", body: "Poshtë saj hapen tri skeda: Feed, Restorante dhe Ofertat." },
+      // Von hier an fuehrt der Weg vom Feed zur Liste der Lokale: erst die
+      // Tab-Zeile ganz oben, dann der Wechsel auf Restorante - und dort
+      // zuerst die Highlights, danach die Karte des Lokals.
+      { view: "feed-tabs", focus: "ftabs", full: true, canvas: SURFACE, title: "Skedat", body: "Lart qëndrojnë tri skeda: Feed, Restorante dhe Ofertat." },
       { view: "feed-restaurants", focus: "ftabs", full: true, canvas: SURFACE, title: "Restorante", body: "Klienti prek Restorante - dhe sheh lokalet e qytetit të tij." },
       { view: "feed-highlights", focus: "fhl", full: true, canvas: SURFACE, title: "Highlights", body: "Lart dalin partnerët premium. Aty shfaqeni ju - para të gjithë të tjerëve." },
       { view: "feed-card", focus: "fcard", full: true, canvas: SURFACE, title: "Karta juaj", body: "Pastaj vjen karta juaj: fotoja, vlerësimi, qyteti dhe orari - me Profilin dhe Menynë një prekje larg." },

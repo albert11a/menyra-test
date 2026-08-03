@@ -281,17 +281,14 @@ function fitFeedScene(stage) {
   // Der Platz wird aus den Bauteilen darueber gerechnet, nicht aus der Hoehe
   // der Feed-Flaeche: Die haengt davon ab, wie eine Engine den Rest verteilt.
   // Der Rahmen des Kapitels ist dagegen ueberall gleich hoch.
-  const webHead = stage.querySelector(".ll-web--feed .ll-web__head");
   const tabs = stage.querySelector(".ll-web--feed .ll-htabs");
   const feedStyle = window.getComputedStyle(feed);
   const head = stage.querySelector(".ll-fpost__head");
   const frameStyle = window.getComputedStyle(frame);
 
-  // Die Tab-Zeile ist erst ab einem spaeteren Schritt zu sehen. Ihr Platz
-  // wird trotzdem immer abgezogen - sonst muesste beim Aufklappen alles
-  // darunter neu gerechnet werden und wuerde springen. scrollHeight liefert
-  // ihre Hoehe auch im zugeklappten Zustand.
-  const tabsSpace = tabs ? tabs.scrollHeight : 0;
+  // Ueber dem Feed steht nur die Tab-Zeile - ihr Abstand nach oben gehoert zu
+  // ihrer Hoehe und ist damit schon mitgezaehlt.
+  const tabsSpace = tabs ? tabs.offsetHeight : 0;
 
   // Der Schatten des Rahmens reicht ueber ihn hinaus. Die Karte des Feeds
   // endet am Bildschirmrand und schneidet ihn dort ab - das gab unten einen
@@ -304,12 +301,10 @@ function fitFeedScene(stage) {
 
   // Der Platz, den die Feed-Flaeche fuer ihren Inhalt hergibt.
   const content = viewport.clientHeight
-    - (webHead ? webHead.offsetHeight : 0)
     - tabsSpace
     - boxExtra(feedStyle, ["Top", "Bottom"]);
 
-  const used = (webHead ? webHead.offsetHeight : 0)
-    + tabsSpace
+  const used = tabsSpace
     + boxExtra(feedStyle, ["Top"])
     // Der Abstand unten und der Auslauf des Schattens ueberlagern sich - es
     // zaehlt der groessere von beiden, nicht die Summe.
