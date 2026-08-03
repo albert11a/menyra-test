@@ -37,10 +37,6 @@ const GREETINGS = [
 // Grundton der App-Oberflaeche - bg-slate-50, wie die Kopfleiste in der App.
 const SURFACE = "#f8fafc";
 
-// Tuerkis des Startbildschirms im Web. Der Hero fuellt dort die ganze Hoehe,
-// also endet die Szene unten in dieser Farbe (siehe .ll-web__hero).
-const WEB_HERO = "#00cce5";
-
 const LOGO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%23f1f5f9'/%3E%3Ccircle cx='48' cy='48' r='30' fill='%2394a3b8'/%3E%3C/svg%3E";
 const IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180'%3E%3Crect width='240' height='180' fill='%23f1f5f9'/%3E%3C/svg%3E";
 
@@ -144,10 +140,6 @@ function sectionHead(title, lead) {
 // step.canvas: Farbe der Seite, solange dieser Schritt laeuft. Damit faerben
 // sich auch die Streifen hinter Statusleiste und Werkzeugleiste mit - die
 // nimmt der Browser von der Seite, nicht vom Kapitel.
-//
-// step.foot: Farbe des Streifens ganz unten, hinter der Werkzeugleiste des
-// Browsers. Ohne Angabe bleibt dort die Seitenfarbe. Noetig, wenn die Szene
-// unten anders endet als oben - sonst schneidet dort eine sichtbare Kante ab.
 function stage({ title, scene, steps = [], overlay = "" }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt den Kapiteltitel. So gibt es nur einen Textblock und er
@@ -163,7 +155,7 @@ function stage({ title, scene, steps = [], overlay = "" }) {
 
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
-            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}"${step.canvas ? ` data-canvas="${esc(step.canvas)}"` : ""}${step.foot ? ` data-foot="${esc(step.foot)}"` : ""}${step.full ? ` data-full="1"` : ""}>
+            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}"${step.canvas ? ` data-canvas="${esc(step.canvas)}"` : ""}${step.full ? ` data-full="1"` : ""}>
               ${step.title ? `<p class="ll-stage__step-title">${esc(step.title)}</p>` : ""}
               <p class="ll-stage__step-body">${esc(step.body || "")}</p>
             </div>
@@ -765,10 +757,14 @@ export function renderWeb(profile = {}, posts = []) {
     scene,
     overlay: feedScene,
     steps: [
-      // Startbildschirm: oben die helle Kopfleiste, unten der tuerkise Hero -
-      // deshalb traegt der Fuss hier eine eigene Farbe.
-      { view: "web", focus: "", full: true, canvas: SURFACE, foot: WEB_HERO, body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
-      { view: "web-city", focus: "wcity", full: true, canvas: SURFACE, foot: WEB_HERO, title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
+      // Der Startbildschirm bleibt eine Karte. Randlos waere er unten
+      // tuerkis, und der Streifen hinter der Werkzeugleiste traegt die
+      // Seitenfarbe - dort schnitte eine Kante ab. Die Farbe der Streifen
+      // kommt vom Browser, oben und unten dieselbe: hell passt zur
+      // Kopfleiste, tuerkis wuerde oben abschneiden. Als Karte liegt der
+      // Grundton rundum, und keine der beiden Kanten faellt auf.
+      { view: "web", focus: "", canvas: SURFACE, body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
+      { view: "web-city", focus: "wcity", canvas: SURFACE, title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
       { view: "feed-story", focus: "fstory", full: true, canvas: SURFACE, title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
       { view: "feed-post", focus: "fpost", full: true, canvas: SURFACE, title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." }
     ]

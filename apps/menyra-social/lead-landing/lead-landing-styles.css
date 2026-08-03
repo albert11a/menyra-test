@@ -97,10 +97,6 @@ img {
   gap: 12px;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  /* Der sichtbare Bildschirm traegt die Kapitelfarbe, nicht die Seitenfarbe -
-     die ist unten unter Umstaenden eine andere (siehe updateCanvasColor). */
-  background: var(--ll-canvas, transparent);
-  transition: background-color 240ms ease;
 }
 
 /* ---------- Stage: Szene bleibt stehen, Scroll erklaert ---------- */
@@ -126,10 +122,6 @@ img {
   padding: 14px var(--ll-inline) 18px;
   overflow: hidden;
   z-index: 2;
-  /* Wie bei .ll-section: der Rahmen deckt den Bildschirm mit der
-     Kapitelfarbe ab, damit die Seitenfarbe nur unten darunter hervorschaut. */
-  background: var(--ll-canvas, transparent);
-  transition: background-color 240ms ease;
 }
 
 /* Unsichtbare Rastpunkte - einer je Schritt. Sie liegen absolut ueber der
@@ -2270,6 +2262,20 @@ img {
   background: #f8fafc;
   display: flex;
   flex-direction: column;
+  /* Als Karte - so wie die uebrigen Szenen. Der Startbildschirm endet unten
+     tuerkis; liefe er bis an den Rand, stiesse er dort auf den Streifen
+     hinter der Werkzeugleiste, den der Browser mit der Seitenfarbe faerbt.
+     Mit dem Grundton rundum gibt es diese Kante nicht. */
+  border-radius: var(--ll-radius-xl);
+  overflow: hidden;
+  box-shadow: var(--ll-shadow-md);
+}
+
+/* Randlose Schritte fuellen den Bildschirm - dort waeren Rundung und
+   Schatten fehl am Platz (der Feed liegt wie ein Modal darueber). */
+.ll-stage[data-full] .ll-web {
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .ll-web__head {

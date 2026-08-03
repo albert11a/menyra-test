@@ -15,13 +15,6 @@ const STATE_ATTR = "data-step";
 // mit eigener Farbe den Bildschirm, wird diese Farbe deshalb auf die Seite
 // gelegt - sonst bleibt oben und unten ein grauer Streifen stehen, obwohl
 // das Kapitel weiss ist.
-//
-// Der Rahmen eines Kapitels ist genau bildschirmhoch, die Seite reicht
-// darueber hinaus. Unten schaut sie deshalb hervor - dort und hinter der
-// Werkzeugleiste. Endet die Szene unten in einer anderen Farbe als oben,
-// bekommt die Seite darum die Farbe der Unterkante (data-foot) und der
-// Rahmen die des Kapitels (--ll-canvas). Oben bleibt es damit hell, unten
-// laeuft die Szene ohne Kante weiter.
 function readDefaultThemeColor() {
   const meta = document.querySelector('meta[name="theme-color"]');
   return meta ? String(meta.getAttribute("content") || "") : "";
@@ -30,39 +23,22 @@ function readDefaultThemeColor() {
 function updateCanvasColor(stages, viewportHeight, defaultThemeColor) {
   const middle = viewportHeight / 2;
   let color = "";
-  let foot = "";
   stages.forEach((stage) => {
     const declared = String(stage.getAttribute("data-canvas") || "").trim();
     if (!declared) return;
     const rect = stage.getBoundingClientRect();
     // Das Kapitel, das die Bildschirmmitte belegt, gibt die Farbe vor.
-    if (rect.top <= middle && rect.bottom >= middle) {
-      color = declared;
-      foot = String(stage.getAttribute("data-foot") || "").trim();
-    }
+    if (rect.top <= middle && rect.bottom >= middle) color = declared;
   });
 
   const root = document.documentElement;
-  if (root.dataset.canvasColor !== color) {
-    root.dataset.canvasColor = color;
-    // Die Kapitelfarbe traegt jetzt das Kapitel selbst - Rahmen und
-    // Abschnitte greifen sie ueber diese Variable ab. Leer heisst:
-    // durchsichtig, dann bleibt es bei der Seitenfarbe.
-    root.style.setProperty("--ll-canvas", color || "transparent");
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", color || defaultThemeColor);
-  }
-
-  // Die Seite selbst traegt die Farbe der Unterkante. Sie ist es, die unter
-  // dem Rahmen und hinter der Werkzeugleiste sichtbar bleibt - der Rahmen ist
-  // nur bildschirmhoch, die Seite reicht weiter. Ohne eigene Fussfarbe bleibt
-  // es bei der Kapitelfarbe. Leerer Wert heisst: zurueck aufs Stylesheet.
-  const footColor = foot || color;
-  if (root.dataset.footColor !== footColor) {
-    root.dataset.footColor = footColor;
-    root.style.backgroundColor = footColor;
-    if (document.body) document.body.style.backgroundColor = footColor;
-  }
+  if (root.dataset.canvasColor === color) return;
+  root.dataset.canvasColor = color;
+  // Leerer Wert heisst: zurueck auf den Wert aus dem Stylesheet.
+  root.style.backgroundColor = color;
+  if (document.body) document.body.style.backgroundColor = color;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", color || defaultThemeColor);
 }
 
 function clamp(value, min, max) {
@@ -94,12 +70,6 @@ function applyStageState(stage, state) {
   const canvas = String(captions[state]?.dataset?.canvas || "").trim();
   if (canvas) stage.setAttribute("data-canvas", canvas);
   else stage.removeAttribute("data-canvas");
-
-  // Und die Farbe des Streifens ganz unten, falls die Szene dort anders
-  // endet als oben (siehe updateCanvasColor).
-  const foot = String(captions[state]?.dataset?.foot || "").trim();
-  if (foot) stage.setAttribute("data-foot", foot);
-  else stage.removeAttribute("data-foot");
 
   // Randlose Schritte: Die Szene laeuft bis an den Bildschirmrand, ohne
   // Rahmen und Rundung - fuer Nachbauten, die in der App den ganzen
