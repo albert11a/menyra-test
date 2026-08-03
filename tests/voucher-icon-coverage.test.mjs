@@ -31,6 +31,19 @@ function collectVoucherIconNames() {
   const shellText = read(path.join(socialRoot, "core", "app-shell", "shell-dom-runtime-controller.js"));
   const offersNav = shellText.match(/id:\s*"ofertatbiznes"[^}]*icon:\s*"([a-z0-9-]+)"/);
   if (offersNav) names.add(offersNav[1]);
+  collectHeaderPillIconNames().forEach((name) => names.add(name));
+  return names;
+}
+
+// Die Header-Pills Feed/Restorante/Ofertat tragen jetzt Icons und teilen
+// dieselbe Abhaengigkeit vom Inline-Register.
+function collectHeaderPillIconNames() {
+  const text = read(path.join(socialRoot, "core", "app-shell", "app-shell-runtime-controller.js"));
+  const start = text.indexOf("function renderMainHeaderTabs");
+  assert.ok(start >= 0, "renderMainHeaderTabs must be findable");
+  const block = text.slice(start, text.indexOf("function ", start + 30));
+  const names = new Set();
+  for (const match of block.matchAll(/\bicon:\s*"([a-z0-9-]+)"/g)) names.add(match[1]);
   return names;
 }
 
@@ -88,4 +101,16 @@ test("inline ofertat icons match the bundled lucide set", () => {
   const vendor = loadVendorLucideIconNames();
   const unknown = [...used].filter((name) => !vendor.has(toPascalIconName(name))).sort();
   assert.deepEqual(unknown, [], `unknown lucide icon names: ${unknown.join(", ")}`);
+});
+
+test("all three main header pills carry an icon", () => {
+  const pillIcons = collectHeaderPillIconNames();
+  assert.equal(
+    pillIcons.size,
+    3,
+    `feed, restorante and ofertat each need their own pill icon, found ${[...pillIcons].join(", ")}`
+  );
+  const inline = collectInlineIconRegistry();
+  const missing = [...pillIcons].filter((name) => !inline.has(name)).sort();
+  assert.deepEqual(missing, [], `header pill icons missing from the inline registry: ${missing.join(", ")}`);
 });

@@ -261,14 +261,14 @@ import{g as Qm,h as Jm,j as Xm,k as Ul,i as Zm,r as ep,_ as To,l as Gs,m as tp,o
     `}function Ii(c=Lr()){return!c||t.activeTab==="profile"&&String(t.profileTopTab||"").trim().toLowerCase()==="landing"?!1:bs(c)}function Ti(c=Lr()){if(!Ii(c))return"";const f=String(t.activeTab||"").trim().toLowerCase();return`
       <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main">
         <div class="smart-header-tabs-row">
-          ${[{id:"feed",label:$t("nav.feed","Feed"),active:f!=="restaurants"&&f!=="ofertat"},{id:"restaurants",label:$t("nav.restaurants","Restaurants"),active:f==="restaurants"},{id:"ofertat",label:$t("nav.offers","Ofertat"),active:f==="ofertat"}].map(W=>`
+          ${[{id:"feed",icon:"home",label:$t("nav.feed","Feed"),active:f!=="restaurants"&&f!=="ofertat"},{id:"restaurants",icon:"utensils",label:$t("nav.restaurants","Restaurants"),active:f==="restaurants"},{id:"ofertat",icon:"ticket",label:$t("nav.offers","Ofertat"),active:f==="ofertat"}].map(W=>`
             <button
               type="button"
               data-nav="${ie(W.id)}"
               data-main-header-tab="${ie(W.id)}"
               aria-current="${W.active?"page":"false"}"
               class="smart-header-pill ${W.active?"smart-header-pill--active":""}"
-            >${ie(W.label)}</button>
+            >${J(W.icon,"smart-header-pill__icon")}<span class="smart-header-pill__label">${ie(W.label)}</span></button>
           `).join("")}
         </div>
       </div>

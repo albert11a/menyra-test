@@ -1003,10 +1003,12 @@ export function createAppShellRuntimeController(deps = {}) {
   function renderMainHeaderTabs(locationRecord = readStoredFeedViewerLocation()) {
     if (!isMainHeaderTabsScope(locationRecord)) return "";
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+    // Die Icons liegen alle im Inline-Register von social-app.js: laedt das
+    // externe Lucide-Script nicht, bleiben die Pills trotzdem vollstaendig.
     const tabs = [
-      { id: "feed", label: tr("nav.feed", "Feed"), active: activeTabKey !== "restaurants" && activeTabKey !== "ofertat" },
-      { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), active: activeTabKey === "restaurants" },
-      { id: "ofertat", label: tr("nav.offers", "Ofertat"), active: activeTabKey === "ofertat" }
+      { id: "feed", icon: "home", label: tr("nav.feed", "Feed"), active: activeTabKey !== "restaurants" && activeTabKey !== "ofertat" },
+      { id: "restaurants", icon: "utensils", label: tr("nav.restaurants", "Restaurants"), active: activeTabKey === "restaurants" },
+      { id: "ofertat", icon: "ticket", label: tr("nav.offers", "Ofertat"), active: activeTabKey === "ofertat" }
     ];
     return `
       <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main">
@@ -1018,7 +1020,7 @@ export function createAppShellRuntimeController(deps = {}) {
               data-main-header-tab="${escapeHtml(tab.id)}"
               aria-current="${tab.active ? "page" : "false"}"
               class="smart-header-pill ${tab.active ? "smart-header-pill--active" : ""}"
-            >${escapeHtml(tab.label)}</button>
+            >${icon(tab.icon, "smart-header-pill__icon")}<span class="smart-header-pill__label">${escapeHtml(tab.label)}</span></button>
           `).join("")}
         </div>
       </div>

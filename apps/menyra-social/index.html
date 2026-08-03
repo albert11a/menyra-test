@@ -1437,22 +1437,45 @@
       align-items: center;
       gap: 0.5rem;
       padding: 0.1rem 1rem 0.7rem;
+      /* Auf sehr schmalen Geraeten (ca. 320px) passen drei Pills nicht mehr
+         nebeneinander. Statt sie abzuschneiden, laesst sich die Zeile
+         schieben - die Leiste selbst bleibt scrollbarfrei. */
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
+    .smart-header-tabs-row::-webkit-scrollbar { display: none; }
     .smart-header-pill {
       flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.34rem;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
       border-radius: 9999px;
       border: 1px solid rgb(226 232 240 / 0.95);
       background: #fff;
       color: rgb(100 116 139);
-      padding: 0.44rem 1.05rem;
+      /* Etwas schmaler als vorher: mit Icon bleiben die drei Pills auch auf
+         kleinen Geraeten in einer Zeile. */
+      padding: 0.44rem 0.82rem;
       font-size: 11px;
       font-weight: 800;
       line-height: 1;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 120ms ease;
+    }
+    /* Das Icon erbt die Pill-Farbe und wird im aktiven Zustand mit weiss. */
+    .smart-header-pill__icon {
+      flex: 0 0 auto;
+      width: 0.86rem;
+      height: 0.86rem;
+      stroke-width: 2.4;
+    }
+    .smart-header-pill__label {
+      display: block;
     }
     .smart-header-pill:active {
       transform: scale(0.97);
@@ -1489,6 +1512,17 @@
       .smart-header-feed-location .loc-request-btn {
         width: 1.55rem;
         height: 1.55rem;
+      }
+      /* Drei Pills mit Icon bleiben auch hier in einer Zeile. */
+      .smart-header-tabs-row {
+        gap: 0.36rem;
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+      }
+      .smart-header-pill {
+        padding-left: 0.66rem;
+        padding-right: 0.66rem;
+        letter-spacing: 0.08em;
       }
     }
     /* Bewusst kein fast-mode-Opt-out: das Auf- und Zuklappen im Header ist eine
