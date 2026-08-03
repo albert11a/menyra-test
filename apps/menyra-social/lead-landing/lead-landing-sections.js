@@ -222,26 +222,6 @@ export function renderHero(profile = {}) {
   `;
 }
 
-/* --------------------------------------------------------------- Intro */
-
-export function renderIntro(profile = {}) {
-  const city = text(profile.city) || "qytetin tuaj";
-  return `
-    <section class="ll-section">
-      ${sectionHead(
-    "Çfarë është Mnyra",
-    `Mnyra është një aplikacion ku njerëzit në ${city} shohin ku të hanë. Aty është edhe lokali juaj: me menu, foto dhe porosi. Nuk ju duhet ueb-faqe dhe nuk ju duhet programues.`
-  )}
-      <div class="ll-card ll-card--pad">
-        ${feature("smartphone", "Çfarë", "Një profil publik me menu, postime, porosi dhe hartë - i gatshëm sot.")}
-        ${feature("qr", "Si", "Klienti skanon QR kodin në tavolinë ose hap linkun tuaj. Pa shkarkim, pa regjistrim.")}
-        ${feature("map-pin", "Ku", `Në lokal, në hartën e zbulimit dhe kudo ku e ndani linkun - Instagram, TikTok, WhatsApp.`)}
-      </div>
-      <p class="ll-note">Çdo gjë që shihni më poshtë janë të dhënat tuaja reale. Kjo faqe vetëm i tregon - nuk ndryshon asgjë në profilin tuaj.</p>
-    </section>
-  `;
-}
-
 /* -------------------------------------------------------------- Profil */
 
 /* ---------- Das Profil-Kapitel: Profil -> Info -> Postimet -> Menu ----------
@@ -475,7 +455,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     scene,
     overlay: dish.overlay,
     steps: [
-      { view: "profile", focus: "", body: "Informacionet, postimet dhe menuja\ngjithçka që klientët kërkojnë, në një vend." },
+      { view: "profile", focus: "", body: "Informacion, postimet dhe menuja. Gjithçka, në një vend." },
       { view: "profile", focus: "identity", title: "Logoja dhe emri", body: "Fotoja e lokalit, logoja, emri dhe qyteti. Klienti e sheh menjëherë kush jeni." },
       { view: "profile", focus: "social", title: "Harta dhe rrjetet", body: "Këta butona hapin hartën, TikTok-un dhe Instagram-in tuaj. I vendosni një herë." },
       { view: "profile", focus: "fans", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet vetë me çdo postim." },

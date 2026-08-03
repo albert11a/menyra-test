@@ -2228,11 +2228,14 @@ img {
   box-shadow: none;
 }
 
+/* Der gewaehlte Tab ist dunkel - er soll aussehen, als haette der Klient ihn
+   gerade angetippt. Beide Tabs teilen sich diesen Zustand, damit der Wechsel
+   von Postimet auf Menu nur die Seite wechselt, nicht das Aussehen. */
 .ll-stage[data-view^="menu"] .ll-tab--menu,
 .ll-stage:not([data-view^="menu"]) .ll-tab--posts {
-  background: #fff;
-  color: var(--ll-ink);
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 10px 24px -14px rgb(15 23 42 / 0.6);
 }
 
 /* Info wird "gedrueckt": kurz kleiner, dann groesser und leichter. */

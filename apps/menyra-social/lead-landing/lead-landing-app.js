@@ -13,7 +13,6 @@ import {
   renderAnalytics,
   renderCta,
   renderHero,
-  renderIntro,
   renderMap,
   renderPricing,
   renderQr,
@@ -129,7 +128,6 @@ function renderPage(data) {
   return `
     <div class="ll-shell">
       ${renderHero(profile)}
-      ${renderIntro(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
       ${renderWeb(profile, posts, neighbours, offer)}
       ${renderMap(profile)}

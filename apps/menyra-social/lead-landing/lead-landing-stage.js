@@ -446,8 +446,26 @@ function panSceneToFocus(stage) {
   // liegt dann darueber ausserhalb des Bildes. Der Anker bleibt ueber alle
   // Tab-Schritte derselbe, dadurch steht das Bild ruhig.
   if (tabsEl && tabsAnchored) {
+    // Die Tabs halten genau dort an, wo die Kartela begonnen hat - nicht am
+    // oberen Rand. Dadurch sieht es aus, als waere die Kartela nach oben
+    // weggefahren und der Inhalt an ihre Stelle gerueckt.
+    //
+    // Gerechnet wird mit offsetTop, nicht mit der Bildschirmposition: Die
+    // Kartela traegt beim Wegfahren eine eigene Verschiebung, und die wuerde
+    // sonst in den Anker einfliessen.
+    const cardEl = scene.querySelector(".ll-surface__cardinner");
+    const sameFrame = cardEl && cardEl.offsetParent && cardEl.offsetParent === tabsEl.offsetParent;
+    let rest = 10;
+    if (sameFrame) {
+      // Im Profil-Schritt sitzt die Szene mittig im Rahmen. Dieser Ausgleich
+      // gehoert zur Ruheposition dazu - ohne ihn spraenge der Inhalt beim
+      // Wechsel um genau diesen Betrag nach oben.
+      const profileHeight = Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10;
+      const slack = Math.max(0, Math.round((viewport.clientHeight - profileHeight) / 2));
+      rest = cardEl.offsetTop + slack;
+    }
     const tabsTop = Math.round(tabsEl.getBoundingClientRect().top - sceneTop);
-    scene.style.transform = `translateY(${-Math.max(0, tabsTop - 10)}px)`;
+    scene.style.transform = `translateY(${-Math.max(0, tabsTop - rest)}px)`;
     return;
   }
 
