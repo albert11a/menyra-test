@@ -2699,35 +2699,20 @@ img {
   color: #94a3b8;
 }
 
-/* Der Beitrag richtet sich nach der Hoehe, nicht nach der Breite.
+/* Der Beitrag ist immer so gross, wie der Platz hergibt.
    Das Bild ist 4:5 - ueber die volle Breite gerechnet braucht es mehr Hoehe,
-   als unter der Kopfzeile uebrig ist, und wurde unten abgeschnitten. Jetzt
-   gibt der Platz die Hoehe vor und die Breite folgt dem Seitenverhaeltnis.
-   Auf niedrigen Bildschirmen wird der Beitrag dadurch kleiner statt kuerzer. */
-.ll-feed-part--post {
-  display: flex;
-}
+   als unter der Kopfzeile uebrig ist, und wurde unten abgeschnitten. Die
+   passende Breite rechnet fitFeedPost aus und setzt sie hier in Pixeln. Ohne
+   das Skript bleibt es bei voller Breite - der Stand von vorher.
 
-.ll-feed-part--post > [data-spot] {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-}
-
-.ll-fpost {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
+   Bewusst nicht ueber Seitenverhaeltnis und Flexbox geloest: Wie eine Engine
+   die Breite aus einer vorgegebenen Hoehe ableitet, ist verschieden. In
+   Safari kam dabei ein schmaler Streifen heraus. Gerechnete Pixel sehen
+   ueberall gleich aus. */
 .ll-fpost__frame {
-  flex: 1 1 auto;
-  min-height: 0;
-  /* Breite nach Inhalt: der weisse Rahmen liegt eng um das Bild. */
-  align-self: center;
+  margin-left: auto;
+  margin-right: auto;
   max-width: 100%;
-  display: flex;
   /* Auf niedrigen Bildschirmen wird der Beitrag klein - dann waeren die
      Originalwerte fuer Rundung und Rand zu grob. Auf einem normalen Handy
      kommen genau die Originalmasse heraus. */
@@ -2743,14 +2728,12 @@ img {
   border-radius: min(3rem, 6.5vh);
   overflow: hidden;
   background: #e2e8f0;
+  width: 100%;
   aspect-ratio: 4 / 5;
-  height: 100%;
-  width: auto;
-  max-width: 100%;
   /* Bezugsgroesse fuer alles, was im Bild liegt: Wird der Beitrag kleiner,
      schrumpft die Textflaeche darin mit. Die Prozentwerte unten sind die
      Originalmasse der App, geteilt durch die Bildbreite von 378px. */
-  container-type: size;
+  container-type: inline-size;
 }
 
 .ll-fpost__media > img {
@@ -2759,12 +2742,20 @@ img {
   object-fit: cover;
 }
 
+/* Erst die Originalmasse, dann dieselben Masse als Anteil der Bildbreite.
+   Kennt ein Browser die Container-Einheiten nicht, faellt er auf die erste
+   Zeile zurueck - dann sitzt die Textflaeche wie bisher. */
 .ll-fpost__caption {
   position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  padding: 24px;
   left: 6.35cqw;
   right: 6.35cqw;
   bottom: 6.35cqw;
   padding: 6.35cqw;
+  border-radius: 2.5rem;
   border-radius: min(2.5rem, 10.6cqw);
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(16px);
@@ -2774,7 +2765,9 @@ img {
 }
 
 .ll-fpost__text {
+  margin: 0 0 16px;
   margin: 0 0 4.25cqw;
+  font-size: 14px;
   font-size: min(14px, 3.7cqw);
   font-weight: 500;
   line-height: 1.625;
@@ -2794,22 +2787,26 @@ img {
 .ll-fpost__acts span {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   gap: 2.1cqw;
 }
 
 /* Auch die Symbole im Bild sind Originalmasse durch Bildbreite. */
 .ll-fpost__acts svg {
+  width: 20px;
   width: min(20px, 5.3cqw);
   height: auto;
 }
 
 .ll-fpost__acts b {
+  font-size: 10px;
   font-size: min(10px, 2.65cqw);
   font-weight: 900;
 }
 
 .ll-fpost__group {
   display: inline-flex;
+  gap: 16px;
   gap: 4.25cqw;
 }
 

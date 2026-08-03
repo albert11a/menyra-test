@@ -201,6 +201,57 @@ function fitMenuLists(stage) {
   });
 }
 
+// Der Beitrag im Feed: Das Bild ist 4:5 hoch. Ueber die volle Breite
+// gerechnet braucht es mehr Hoehe, als unter der Kopfzeile uebrig bleibt -
+// dann waere es unten abgeschnitten. Deshalb wird hier die Breite gesucht,
+// bei der der ganze Beitrag in den Platz passt.
+//
+// Gerechnet statt dem Stylesheet ueberlassen: Wie eine Engine aus einer
+// vorgegebenen Hoehe die Breite ableitet, ist verschieden - in Safari kam
+// dabei ein schmaler Streifen heraus. Pixel sehen ueberall gleich aus.
+const FPOST_IMAGE_RATIO = 5 / 4;
+
+function boxExtra(style, sides) {
+  return sides.reduce((sum, side) => sum
+    + (parseFloat(style[`padding${side}`]) || 0)
+    + (parseFloat(style[`border${side}Width`]) || 0), 0);
+}
+
+function fitFeedPost(stage) {
+  const viewport = stage.querySelector(".ll-stage__viewport");
+  const feed = stage.querySelector(".ll-web--feed .ll-feed");
+  const post = stage.querySelector(".ll-fpost");
+  const frame = stage.querySelector(".ll-fpost__frame");
+  if (!viewport || !feed || !post || !frame) return;
+
+  // Erst zuruecksetzen, sonst misst die naechste Rechnung den eigenen Stand.
+  frame.style.width = "";
+
+  // Der Platz wird aus den Bauteilen darueber gerechnet, nicht aus der Hoehe
+  // der Feed-Flaeche: Die haengt davon ab, wie eine Engine den Rest verteilt.
+  // Der Rahmen des Kapitels ist dagegen ueberall gleich hoch.
+  const webHead = stage.querySelector(".ll-web--feed .ll-web__head");
+  const feedStyle = window.getComputedStyle(feed);
+  const head = stage.querySelector(".ll-fpost__head");
+  const frameStyle = window.getComputedStyle(frame);
+
+  const used = (webHead ? webHead.offsetHeight : 0)
+    + boxExtra(feedStyle, ["Top", "Bottom"])
+    + (head ? head.offsetHeight + (parseFloat(window.getComputedStyle(head).marginBottom) || 0) : 0)
+    + boxExtra(frameStyle, ["Top", "Bottom"]);
+
+  const frameWidth = boxExtra(frameStyle, ["Left", "Right"]);
+  const fits = (viewport.clientHeight - used) / FPOST_IMAGE_RATIO;
+  const full = post.clientWidth - frameWidth;
+  if (!(full > 0)) return;
+
+  // Breiter als der Platz wird der Beitrag nie - schmaler nur, wenn er sonst
+  // unten anstossen wuerde.
+  const image = Math.min(full, fits);
+  if (!(image > 0)) return;
+  frame.style.width = `${Math.floor(image + frameWidth)}px`;
+}
+
 // Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
 // Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
 // Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
@@ -426,6 +477,9 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     stages.forEach((stage) => {
       fitStageCaption(stage);
       fitMenuLists(stage);
+      // Nach fitStageCaption: erst dann steht fest, wie hoch die Kopfzeile
+      // ist und wie viel Platz darunter fuer den Beitrag bleibt.
+      fitFeedPost(stage);
       // fitPaneTravel laeuft in panSceneToFocus - dort steht die Hoehe fest.
       panSceneToFocus(stage);
     });
