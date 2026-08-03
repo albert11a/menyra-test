@@ -34,6 +34,9 @@ const GREETINGS = [
   "Namaste"
 ];
 
+// Grundton der App-Oberflaeche - bg-slate-50, wie die Kopfleiste in der App.
+const SURFACE = "#f8fafc";
+
 const LOGO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%23f1f5f9'/%3E%3Ccircle cx='48' cy='48' r='30' fill='%2394a3b8'/%3E%3C/svg%3E";
 const IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180'%3E%3Crect width='240' height='180' fill='%23f1f5f9'/%3E%3C/svg%3E";
 
@@ -152,7 +155,7 @@ function stage({ title, scene, steps = [], overlay = "" }) {
 
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
-            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}"${step.canvas ? ` data-canvas="${esc(step.canvas)}"` : ""}>
+            <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}"${step.canvas ? ` data-canvas="${esc(step.canvas)}"` : ""}${step.full ? ` data-full="1"` : ""}>
               ${step.title ? `<p class="ll-stage__step-title">${esc(step.title)}</p>` : ""}
               <p class="ll-stage__step-body">${esc(step.body || "")}</p>
             </div>
@@ -754,10 +757,10 @@ export function renderWeb(profile = {}, posts = []) {
     scene,
     overlay: feedScene,
     steps: [
-      { view: "web", focus: "", body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
-      { view: "web-city", focus: "wcity", title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
-      { view: "feed-story", focus: "fstory", title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
-      { view: "feed-post", focus: "fpost", title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." }
+      { view: "web", focus: "", full: true, canvas: SURFACE, body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
+      { view: "web-city", focus: "wcity", full: true, canvas: SURFACE, title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
+      { view: "feed-story", focus: "fstory", full: true, canvas: SURFACE, title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
+      { view: "feed-post", focus: "fpost", full: true, canvas: SURFACE, title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." }
     ]
   });
 }

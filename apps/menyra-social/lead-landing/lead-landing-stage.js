@@ -71,6 +71,12 @@ function applyStageState(stage, state) {
   if (canvas) stage.setAttribute("data-canvas", canvas);
   else stage.removeAttribute("data-canvas");
 
+  // Randlose Schritte: Die Szene laeuft bis an den Bildschirmrand, ohne
+  // Rahmen und Rundung - fuer Nachbauten, die in der App den ganzen
+  // Bildschirm einnehmen.
+  if (captions[state]?.dataset?.full === "1") stage.setAttribute("data-full", "");
+  else stage.removeAttribute("data-full");
+
   const focusKey = String(captions[state]?.dataset?.focus || "").trim();
   const spots = Array.from(stage.querySelectorAll("[data-spot]"));
 

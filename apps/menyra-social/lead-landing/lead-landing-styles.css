@@ -184,11 +184,29 @@ img {
   visibility: hidden;
 }
 
-/* Solange das Modal offen ist, ist das Kapitel weiss - bis an die
-   Unterkante, damit unter der Fusszeile kein grauer Streifen bleibt. */
-.ll-stage[data-view^="dish"] .ll-stage__pin {
+/* Randlose Schritte: Die Szene laeuft bis an die Unterkante, damit dort
+   kein Streifen der Seitenfarbe stehen bleibt. Die Farbe des Kapitels
+   kommt vom Nachbau selbst - das Modal ist weiss, die Mnyra-Seite hat den
+   Grundton der App. */
+.ll-stage[data-full] .ll-stage__pin {
   padding-bottom: 0;
+}
+
+.ll-stage[data-view^="dish"] .ll-stage__pin {
   background: #fff;
+}
+
+/* Randlos heisst: von Bildschirmrand zu Bildschirmrand, ohne Rahmen und
+   ohne Rundung - der seitliche Abstand des Kapitels faellt weg. */
+.ll-stage[data-full] .ll-stage__scene {
+  left: 0;
+  right: 0;
+  padding: 0;
+  height: 100%;
+}
+
+.ll-stage[data-full] .ll-stage__overlay {
+  padding: 0;
 }
 
 .ll-stage__scene {
@@ -2240,10 +2258,10 @@ img {
    Alle Masse stammen aus dem Stylesheet der echten Seite. */
 
 .ll-web {
-  border-radius: var(--ll-radius-xl);
-  overflow: hidden;
+  min-height: 100%;
   background: #f8fafc;
-  box-shadow: var(--ll-shadow-md);
+  display: flex;
+  flex-direction: column;
 }
 
 .ll-web__head {
@@ -2302,8 +2320,10 @@ img {
 
 /* Tuerkiser Bildschirm - Farbe und Abstaende wie im Original. */
 .ll-web__hero {
+  flex: 1 1 auto;
   background: #00cce5;
   padding: 40px 24px 44px;
+  justify-content: center;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2712,17 +2732,11 @@ img {
   letter-spacing: 0.1em;
 }
 
-/* Der Feed liegt als zweite Ebene ueber der Startseite - anders als das
-   Speisen-Modal aber nicht randlos, sondern als Karte wie die uebrigen
-   Szenen. */
+/* Der Feed liegt als zweite Ebene ueber der Startseite. */
 .ll-stage[data-view^="feed"] .ll-stage__overlay {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 var(--ll-inline);
 }
 
 .ll-stage[data-view^="feed"] .ll-stage__scene {
