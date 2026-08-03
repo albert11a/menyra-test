@@ -126,6 +126,12 @@ function fitStageCaption(stage) {
   });
   if (tallest <= 0) return;
 
+  // Die Kopfzeile ist immer so hoch, dass zwei Textzeilen hineinpassen -
+  // auch wenn der aktuelle Schritt nur eine braucht. Sonst waere sie mal
+  // hoeher, mal niedriger, und die Szene darunter wuerde von Kapitel zu
+  // Kapitel springen.
+  tallest = Math.max(tallest, twoLineCaptionHeight(stage));
+
   // Innenabstand und Trennlinie kommen oben drauf. Sie zaehlen bei
   // border-box zur Hoehe, und die Schritte liegen absolut ueber der ganzen
   // Polsterflaeche - ohne diesen Zuschlag stiesse der laengste Text
@@ -137,6 +143,23 @@ function fitStageCaption(stage) {
     + (parseFloat(style.borderBottomWidth) || 0);
 
   caption.style.minHeight = `${Math.ceil(tallest + reserve)}px`;
+}
+
+// Hoehe einer Kopfzeile mit Ueberschrift und zwei Textzeilen - gerechnet aus
+// den Schriftmassen, nicht aus dem gerade sichtbaren Text.
+function twoLineCaptionHeight(stage) {
+  const title = stage.querySelector(".ll-stage__step-title");
+  const body = stage.querySelector(".ll-stage__step-body");
+  if (!title || !body) return 0;
+
+  const titleStyle = window.getComputedStyle(title);
+  const bodyStyle = window.getComputedStyle(body);
+  const bodyLine = parseFloat(bodyStyle.lineHeight) || 0;
+  if (!bodyLine) return 0;
+
+  return title.offsetHeight
+    + (parseFloat(titleStyle.marginBottom) || 0)
+    + (bodyLine * 2);
 }
 
 // Die Speisenkarten der echten App laufen ueber die volle Breite und sind
