@@ -417,6 +417,19 @@ function liftFooter(stage, pane, paneOffset) {
   foot.style.transform = lift > 0 ? `translateY(${-lift}px)` : "";
 }
 
+// Passt eine Szene ganz ins Bild, rueckt sie ein Stueck nach unten. Wie weit,
+// richtet sich nach der App: dort liegen zwischen Kopfleiste und Inhalt
+// 1.2rem (--smart-header-content-gap). Vorher sass die Szene mittig, dadurch
+// klaffte oben eine deutlich groessere Luecke als in der echten Seite.
+const SCENE_TOP_GAP = 19;
+
+function sceneSlack(scene, viewport, effectiveHeight) {
+  // Der eigene Innenabstand der Szene zaehlt zum Abstand nach oben dazu.
+  const padTop = parseFloat(window.getComputedStyle(scene).paddingTop) || 0;
+  const room = Math.round((viewport.clientHeight - effectiveHeight) / 2);
+  return clamp(room, 0, Math.max(0, SCENE_TOP_GAP - padTop));
+}
+
 function panSceneToFocus(stage) {
   const viewport = stage.querySelector(".ll-stage__viewport");
   const scene = stage.querySelector(".ll-stage__scene");
@@ -461,8 +474,7 @@ function panSceneToFocus(stage) {
       // gehoert zur Ruheposition dazu - ohne ihn spraenge der Inhalt beim
       // Wechsel um genau diesen Betrag nach oben.
       const profileHeight = Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10;
-      const slack = Math.max(0, Math.round((viewport.clientHeight - profileHeight) / 2));
-      rest = cardEl.offsetTop + slack;
+      rest = cardEl.offsetTop + sceneSlack(scene, viewport, profileHeight);
     }
     const tabsTop = Math.round(tabsEl.getBoundingClientRect().top - sceneTop);
     scene.style.transform = `translateY(${-Math.max(0, tabsTop - rest)}px)`;
@@ -478,9 +490,9 @@ function panSceneToFocus(stage) {
 
   const maxOffset = Math.max(0, effectiveHeight - viewport.clientHeight);
   if (maxOffset <= 0) {
-    // Passt alles ins Bild, sitzt es mittig statt oben zu kleben.
-    const slack = Math.round((viewport.clientHeight - effectiveHeight) / 2);
-    scene.style.transform = `translateY(${Math.max(0, slack)}px)`;
+    // Passt alles ins Bild, steht es oben - mit demselben Abstand wie in der
+    // App zwischen Kopfleiste und Inhalt.
+    scene.style.transform = `translateY(${sceneSlack(scene, viewport, effectiveHeight)}px)`;
     return;
   }
 
