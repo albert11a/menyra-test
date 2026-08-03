@@ -36,7 +36,13 @@ function formatValidUntil(endMs = 0) {
   return `Vlen deri me ${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 }
 
-function renderVoucherImage(url = "", alt = "", { escapeHtml, isPlaceholderUrl, cropX = 50, cropY = 50 } = {}) {
+function renderVoucherImage(url = "", alt = "", {
+  escapeHtml,
+  isPlaceholderUrl,
+  cropX = 50,
+  cropY = 50,
+  extraClass = ""
+} = {}) {
   const safeUrl = String(url || "").trim();
   const usePlaceholder = !safeUrl || (typeof isPlaceholderUrl === "function" && isPlaceholderUrl(safeUrl));
   return `
@@ -45,7 +51,7 @@ function renderVoucherImage(url = "", alt = "", { escapeHtml, isPlaceholderUrl, 
       alt="${esc(escapeHtml, alt)}"
       loading="lazy"
       decoding="async"
-      class="w-full h-full object-cover bg-slate-100"
+      class="w-full h-full object-cover bg-slate-100 ${extraClass}"
       style="object-position:${Number(cropX) || 50}% ${Number(cropY) || 50}%;"
       ${usePlaceholder ? 'data-placeholder-image="true"' : ""}
     />
@@ -123,7 +129,11 @@ export function renderVoucherCard({
           <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden" style="width:76px;height:76px;">
             ${renderVoucherImage(business.logoImage || "", `${businessName} Logo`, {
               escapeHtml,
-              isPlaceholderUrl: deps.isPlaceholderUrl
+              isPlaceholderUrl: deps.isPlaceholderUrl,
+              // Ohne eigenen Radius stehen die Ecken des Logos ueber und der
+              // weisse Kreis wird zur Squircle - wie in der Restorante-Karte
+              // bekommt das Bild denselben Radius wie sein Rahmen.
+              extraClass: "rounded-full"
             })}
           </div>
         </div>
