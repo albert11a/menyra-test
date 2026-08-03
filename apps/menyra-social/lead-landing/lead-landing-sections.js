@@ -780,7 +780,81 @@ function restaurantCard(profile = {}, cover = "") {
   `;
 }
 
-export function renderWeb(profile = {}, posts = [], neighbours = []) {
+// Die Karte einer Oferta - 1:1 aus renderVoucherCard. Sie teilt den Aufbau
+// mit der Lokal-Karte (Bild, Logo ueber der Kante, Trennlinien); eigen sind
+// der Ortungsknopf links, die Restlaufzeit rechts und der eine Knopf unten.
+function offerCard(profile = {}, offer = null, cover = "") {
+  // Hat das Lokal noch keine Oferta, steht hier ein Beispiel - der Schritt
+  // erklaert ja, was moeglich ist, nicht was schon eingerichtet wurde.
+  const title = text(offer?.title) || "-20% për të gjitha pijet";
+  const body = text(offer?.text) || "Oferta vlen ne lokal.";
+  const badge = text(offer?.badgeLabel) || "-20%";
+  const until = formatOfferUntil(offer?.endAt);
+  return `
+    <article class="ll-rcard ll-ocard" data-spot="foffer">
+      <div class="ll-rcard__media">
+        ${img(text(offer?.imageUrl) || cover, `${profile.name}`)}
+        <span class="ll-rcard__scrim"></span>
+        <span class="ll-ocard__map">${icon("map-pin", { size: 16 })}</span>
+        <span class="ll-ocard__time">${icon("clock", { size: 12 })}<span>${esc(formatOfferRemaining(offer?.endAt))}</span></span>
+        <span class="ll-ocard__badge">${esc(badge)}</span>
+      </div>
+
+      <div class="ll-rcard__body">
+        <span class="ll-rcard__logo">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+
+        <div>
+          <span class="ll-ocard__kicker">${icon("ticket", { size: 14 })}<b>Oferta</b></span>
+          <p class="ll-rcard__name">${esc(profile.name)}</p>
+          <p class="ll-ocard__title">${esc(title)}</p>
+        </div>
+
+        <hr class="ll-rcard__rule" />
+
+        <div class="ll-rcard__info">
+          <span class="ll-rcard__row">${icon("gift", { size: 16 })}<span>${esc(body)}</span></span>
+          <span class="ll-rcard__row">${icon("calendar-clock", { size: 16 })}<span>${esc(until)}</span></span>
+        </div>
+
+        <hr class="ll-rcard__rule" />
+
+        <span class="ll-ocard__cta">${icon("ticket", { size: 16 })}Aktivizo oferten</span>
+      </div>
+    </article>
+  `;
+}
+
+// Restlaufzeit oben rechts - Wortlaut aus formatVoucherRemaining. Ohne
+// Enddatum steht dort dasselbe wie in der App: "Pa afat".
+function formatOfferRemaining(endAt = "") {
+  const raw = text(endAt);
+  const end = raw ? new Date(raw).getTime() : 0;
+  const left = Number.isFinite(end) ? end - Date.now() : 0;
+  if (!(left > 0)) return "Pa afat";
+  const day = 86400000;
+  const hour = 3600000;
+  if (left >= day) {
+    const days = Math.floor(left / day);
+    return days === 1 ? "Edhe 1 dite" : `Edhe ${days} dite`;
+  }
+  if (left >= hour) {
+    const hours = Math.floor(left / hour);
+    return hours === 1 ? "Edhe 1 ore" : `Edhe ${hours} ore`;
+  }
+  const minutes = Math.max(1, Math.ceil(left / 60000));
+  return minutes === 1 ? "Edhe 1 minute" : `Edhe ${minutes} minuta`;
+}
+
+// Datumszeile der Oferta - Wortlaut und Schreibweise aus formatValidUntil.
+function formatOfferUntil(endAt = "") {
+  const raw = text(endAt);
+  const date = raw ? new Date(raw) : null;
+  if (!date || Number.isNaN(date.getTime())) return "Vlen sa te jete e hapur";
+  const pad = (num) => String(num).padStart(2, "0");
+  return `Vlen deri me ${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
+}
+
+export function renderWeb(profile = {}, posts = [], neighbours = [], offer = null) {
   const city = text(profile.city) || "Prishtinë";
   const country = "Kosovë";
 
@@ -884,6 +958,10 @@ export function renderWeb(profile = {}, posts = [], neighbours = []) {
         <div class="ll-feed-part ll-feed-part--card">
           ${restaurantCard(profile, cardCover)}
         </div>
+
+        <div class="ll-feed-part ll-feed-part--offer">
+          ${offerCard(profile, offer, cardCover)}
+        </div>
       </div>
     </div>
   `;
@@ -910,7 +988,10 @@ export function renderWeb(profile = {}, posts = [], neighbours = []) {
       { view: "feed-tabs", focus: "ftabs", full: true, canvas: SURFACE, title: "Skedat", body: "Poshtë saj hapen tri skeda: Feed, Restorante dhe Ofertat." },
       { view: "feed-restaurants", focus: "ftabs", full: true, canvas: SURFACE, title: "Restorante", body: "Klienti prek Restorante - dhe sheh lokalet e qytetit të tij." },
       { view: "feed-highlights", focus: "fhl", full: true, canvas: SURFACE, title: "Highlights", body: "Lart dalin partnerët premium. Aty shfaqeni ju - para të gjithë të tjerëve." },
-      { view: "feed-card", focus: "fcard", full: true, canvas: SURFACE, title: "Karta juaj", body: "Pastaj vjen karta juaj: fotoja, vlerësimi, qyteti dhe orari - me Profilin dhe Menynë një prekje larg." }
+      { view: "feed-card", focus: "fcard", full: true, canvas: SURFACE, title: "Karta juaj", body: "Pastaj vjen karta juaj: fotoja, vlerësimi, qyteti dhe orari - me Profilin dhe Menynë një prekje larg." },
+      // Und der dritte Tab: Ofertat. Erst der Wechsel, dann die Karte.
+      { view: "feed-ofertat", focus: "ftabs", full: true, canvas: SURFACE, title: "Ofertat", body: "Skeda e tretë mbledh ofertat e qytetit - dhe e juaja qëndron mes tyre." },
+      { view: "feed-offer", focus: "foffer", full: true, canvas: SURFACE, title: "Oferta juaj", body: "Ju vendosni çfarë ofroni dhe deri kur. Klienti e aktivizon me një prekje dhe vjen te ju." }
     ]
   });
 }

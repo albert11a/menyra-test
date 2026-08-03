@@ -420,6 +420,24 @@ function pickNeighbours(rows = [], ownId = "") {
     .slice(0, NEIGHBOUR_LIMIT);
 }
 
+// Die erste laufende Oferta aus restaurants/{id}/public/vouchers - Feldnamen
+// 1:1 aus normalizeVoucherItem. Hat das Lokal noch keine, bleibt es leer und
+// die Landing zeigt ein Beispiel (siehe renderWeb).
+function pickOffer(doc = null) {
+  const items = Array.isArray(doc?.items) ? doc.items : [];
+  const first = items
+    .map((raw) => (raw && typeof raw === "object" ? raw : {}))
+    .find((raw) => raw.active !== false && firstText(raw.title, raw.name));
+  if (!first) return null;
+  return {
+    title: firstText(first.title, first.name),
+    text: firstText(first.text, first.description, first.desc),
+    badgeLabel: firstText(first.badgeLabel, first.discountLabel, first.badge),
+    imageUrl: firstText(first.imageUrl, first.image, first.photoUrl),
+    endAt: firstText(first.endAt, first.endsAt, first.validUntil, first.expiresAt)
+  };
+}
+
 function normalizeLocations(restaurant = {}) {
   const list = Array.isArray(restaurant.locations) ? restaurant.locations : [];
   const mapped = list
@@ -479,11 +497,12 @@ export async function loadLeadLandingData(routeKey = "") {
   }
 
   const encodedId = encodeURIComponent(restaurantId);
-  const [restaurant, meta, offers, publicMenu] = await Promise.all([
+  const [restaurant, meta, offers, publicMenu, vouchers] = await Promise.all([
     readDoc(`restaurants/${encodedId}`),
     readDoc(`restaurants/${encodedId}/public/meta`),
     readDoc(`restaurants/${encodedId}/public/offers`),
-    readDoc(`restaurants/${encodedId}/public/menu`)
+    readDoc(`restaurants/${encodedId}/public/menu`),
+    readDoc(`restaurants/${encodedId}/public/vouchers`)
   ]);
 
   if (!restaurant && !meta) {
@@ -549,6 +568,7 @@ export async function loadLeadLandingData(routeKey = "") {
       locations: normalizeLocations(merged)
     },
     posts,
+    offer: pickOffer(vouchers),
     neighbours: pickNeighbours(neighbourRows, restaurantId),
     menuItems,
     focusItems: normalizeFocusItems(offers || {}, menuItems),

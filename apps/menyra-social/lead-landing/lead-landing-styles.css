@@ -2555,7 +2555,9 @@ img {
 .ll-stage[data-view="feed-tabs"] .ll-htabs,
 .ll-stage[data-view="feed-restaurants"] .ll-htabs,
 .ll-stage[data-view="feed-highlights"] .ll-htabs,
-.ll-stage[data-view="feed-card"] .ll-htabs {
+.ll-stage[data-view="feed-card"] .ll-htabs,
+.ll-stage[data-view="feed-ofertat"] .ll-htabs,
+.ll-stage[data-view="feed-offer"] .ll-htabs {
   max-height: 5rem;
   opacity: 1;
   transform: translateY(0);
@@ -2602,7 +2604,9 @@ img {
 
 .ll-stage[data-view="feed-restaurants"] .ll-htab,
 .ll-stage[data-view="feed-highlights"] .ll-htab,
-.ll-stage[data-view="feed-card"] .ll-htab {
+.ll-stage[data-view="feed-card"] .ll-htab,
+.ll-stage[data-view="feed-ofertat"] .ll-htab,
+.ll-stage[data-view="feed-offer"] .ll-htab {
   background: #fff;
   border-color: rgb(226 232 240 / 0.95);
   color: rgb(100 116 139);
@@ -2611,7 +2615,9 @@ img {
 
 .ll-stage[data-view="feed-restaurants"] .ll-htab[data-tab="restaurants"],
 .ll-stage[data-view="feed-highlights"] .ll-htab[data-tab="restaurants"],
-.ll-stage[data-view="feed-card"] .ll-htab[data-tab="restaurants"] {
+.ll-stage[data-view="feed-card"] .ll-htab[data-tab="restaurants"],
+.ll-stage[data-view="feed-ofertat"] .ll-htab[data-tab="ofertat"],
+.ll-stage[data-view="feed-offer"] .ll-htab[data-tab="ofertat"] {
   background: #0f172a;
   border-color: #0f172a;
   color: #fff;
@@ -2647,7 +2653,9 @@ img {
 .ll-stage[data-view="feed-tabs"] .ll-feed-part--post,
 .ll-stage[data-view="feed-restaurants"] .ll-feed-part--highlights,
 .ll-stage[data-view="feed-highlights"] .ll-feed-part--highlights,
-.ll-stage[data-view="feed-card"] .ll-feed-part--card {
+.ll-stage[data-view="feed-card"] .ll-feed-part--card,
+.ll-stage[data-view="feed-ofertat"] .ll-feed-part--offer,
+.ll-stage[data-view="feed-offer"] .ll-feed-part--offer {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -3299,6 +3307,106 @@ img {
 
 .ll-rcard__btn--dark svg {
   color: #e2e8f0;
+}
+
+/* ---------- Die Karte einer Oferta ----------
+   Masse 1:1 aus renderVoucherCard. Aufbau wie die Lokal-Karte - eigen sind
+   der Ortungsknopf links, die Restlaufzeit rechts und der eine Knopf unten. */
+
+.ll-ocard .ll-rcard__scrim {
+  background: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.2) 50%, rgba(0, 0, 0, 0.25) 100%);
+}
+
+.ll-ocard__map {
+  position: absolute;
+  top: 0.875rem;
+  left: 0.875rem;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  box-shadow: var(--ll-shadow-sm);
+  color: #475569;
+}
+
+.ll-ocard__time {
+  position: absolute;
+  top: 0.875rem;
+  right: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  /* Ruhige Restlaufzeit: dieselbe Farbe wie die Preisspanne der Lokal-Karte.
+     Knapp wird sie in der App orange, kritisch rot - hier zeigt der Nachbau
+     den ruhigen Fall. */
+  background: rgba(15, 23, 42, 0.9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.ll-ocard__badge {
+  position: absolute;
+  bottom: 0.875rem;
+  right: 1rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 0.375rem;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.ll-ocard__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 4px;
+  color: #f59e0b;
+}
+
+.ll-ocard__kicker b {
+  font-size: 10px;
+  font-weight: 900;
+  color: #d97706;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ll-ocard__title {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.375;
+  font-weight: 900;
+  color: #334155;
+}
+
+.ll-ocard__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2px;
+  padding: 0.875rem 0.75rem;
+  border-radius: 0.75rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ll-ocard__cta svg {
+  color: #fbbf24;
 }
 
 .ll-stage[data-view^="feed"] .ll-stage__overlay {

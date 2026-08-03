@@ -292,7 +292,8 @@ function fitFeedScene(stage) {
   }
 
   fitFeedBlock(stage, ".ll-hl", content);
-  fitFeedBlock(stage, ".ll-rcard", content);
+  fitFeedBlock(stage, ".ll-rcard:not(.ll-ocard)", content);
+  fitFeedBlock(stage, ".ll-ocard", content);
 }
 
 // Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.

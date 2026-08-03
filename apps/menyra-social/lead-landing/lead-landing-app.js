@@ -125,13 +125,13 @@ function startMap() {
 }
 
 function renderPage(data) {
-  const { profile, posts, neighbours, menuItems, focusItems, sales } = data;
+  const { profile, posts, neighbours, offer, menuItems, focusItems, sales } = data;
   return `
     <div class="ll-shell">
       ${renderHero(profile)}
       ${renderIntro(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
-      ${renderWeb(profile, posts, neighbours)}
+      ${renderWeb(profile, posts, neighbours, offer)}
       ${renderMap(profile)}
       ${renderQr(sales)}
       ${renderWaiter()}
