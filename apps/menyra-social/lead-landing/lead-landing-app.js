@@ -131,7 +131,7 @@ function renderPage(data) {
       ${renderHero(profile)}
       ${renderIntro(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
-      ${renderWeb(profile)}
+      ${renderWeb(profile, posts)}
       ${renderMap(profile)}
       ${renderQr(sales)}
       ${renderWaiter()}

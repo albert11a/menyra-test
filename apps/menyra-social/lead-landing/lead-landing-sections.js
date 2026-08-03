@@ -637,13 +637,10 @@ function buildDishChapter(profile = {}, menuItems = []) {
    (core/feed/feed-view-orchestration-controller.js): Titel bis 22rem breit,
    Feld mit Radius 9999px und 1rem/4.2rem/1rem/3rem Innenabstand, der
    Ortungsknopf 2.5rem in #eafbfe auf #00cce5. */
-export function renderWeb(profile = {}) {
-  const city = text(profile.city) || "Prishtinë";
-  const country = "Kosovë";
-
-  const scene = `
-    <div class="ll-web" aria-label="Mnyra në web">
-      <div class="ll-web__head" data-spot="whead">
+// Die Kopfleiste ist auf allen Mnyra-Bildschirmen dieselbe.
+function webHead(spot = "whead") {
+  return `
+      <div class="ll-web__head" data-spot="${esc(spot)}">
         <span class="ll-web__burger" aria-hidden="true"><i></i><i></i><i></i></span>
         <span class="ll-web__brand"><b>MNYRA</b><span>Social</span></span>
         <span class="ll-web__acts">
@@ -652,6 +649,16 @@ export function renderWeb(profile = {}) {
           ${icon("shopping-bag", { size: 22 })}
         </span>
       </div>
+  `;
+}
+
+export function renderWeb(profile = {}, posts = []) {
+  const city = text(profile.city) || "Prishtinë";
+  const country = "Kosovë";
+
+  const scene = `
+    <div class="ll-web" aria-label="Mnyra në web">
+      ${webHead("whead")}
 
       <div class="ll-web__hero">
         <div class="ll-web__title" data-spot="wtitle">
@@ -683,12 +690,74 @@ export function renderWeb(profile = {}) {
     </div>
   `;
 
+  // Feed: 1:1 aus renderStoriesRow und renderFeedItem. Story und Postim
+  // liegen uebereinander - erst die Story, beim naechsten Wisch der Postim
+  // an derselben Stelle, so wie der Klient nach unten scrollt.
+  const post = posts[0] || null;
+  const storyImage = text(post?.imageUrl);
+  const feedScene = `
+    <div class="ll-web ll-web--feed" aria-label="Feed-i i Mnyra">
+      ${webHead("fhead")}
+      <div class="ll-feed">
+        <div class="ll-feed-part ll-feed-part--story">
+          <div data-spot="fstory">
+            <div class="ll-feed__rail">
+              <article class="ll-story">
+                <div class="ll-story__media">
+                  ${img(storyImage, `Story ${profile.name}`)}
+                  <span class="ll-story__scrim"></span>
+                  <span class="ll-story__ring">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+                  <span class="ll-story__name">${esc(profile.name)}</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="ll-feed-part ll-feed-part--post">
+          <div data-spot="fpost">
+            <article class="ll-fpost">
+              <div class="ll-fpost__head">
+                <span class="ll-fpost__ident">
+                  <span class="ll-fpost__logo">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+                  <span>
+                    <span class="ll-fpost__name">${esc(profile.name)} ${filledIcon("star", { size: 12, color: "#6366f1" })}</span>
+                    <span class="ll-fpost__place">${esc(text(profile.city))}</span>
+                  </span>
+                </span>
+                ${icon("more-horizontal", { size: 20 })}
+              </div>
+              <div class="ll-fpost__frame">
+                <div class="ll-fpost__media">
+                  ${img(storyImage, text(post?.caption) || "Postim")}
+                  <div class="ll-fpost__caption">
+                    <p class="ll-fpost__text">${esc(text(post?.caption) || profile.name)}</p>
+                    <div class="ll-fpost__acts">
+                      <span class="ll-fpost__group">
+                        <span>${icon("heart", { size: 20 })} <b>${esc(formatCount(post?.likeCount || 0))}</b></span>
+                        <span>${icon("message-circle", { size: 20 })} <b>${esc(formatCount(post?.commentCount || 0))}</b></span>
+                      </span>
+                      <span>${icon("share", { size: 16 })} <b>Share</b></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
   return stage({
     title: "Çfarë ju sjell Mnyra",
     scene,
+    overlay: feedScene,
     steps: [
       { view: "web", focus: "", body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
-      { view: "web-city", focus: "wcity", title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` }
+      { view: "web-city", focus: "wcity", title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
+      { view: "feed-story", focus: "fstory", title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
+      { view: "feed-post", focus: "fpost", title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." }
     ]
   });
 }

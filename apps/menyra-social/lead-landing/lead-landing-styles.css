@@ -2482,3 +2482,249 @@ img {
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
+
+/* ---------- Feed: Story und Postim ----------
+   Masse 1:1 aus renderStoriesRow und renderFeedItem. Story und Postim
+   liegen uebereinander, damit der Postim beim naechsten Wisch genau dort
+   erscheint, wo vorher die Story stand. */
+
+.ll-web--feed .ll-web__head {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ll-feed {
+  display: grid;
+  padding: 16px 20px 20px;
+  background: #f8fafc;
+}
+
+.ll-feed-part {
+  grid-area: 1 / 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 380ms ease, transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view="feed-story"] .ll-feed-part--story,
+.ll-stage[data-view="feed-post"] .ll-feed-part--post {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* Story-Karte: h-52, Radius 1rem, Verlauf und Logo-Ring wie im Original. */
+.ll-feed__rail {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0 32px;
+}
+
+.ll-story {
+  flex: 0 0 29%;
+  max-width: 120px;
+}
+
+.ll-story__media {
+  position: relative;
+  height: 208px;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  background: #e2e8f0;
+}
+
+.ll-story__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-story__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0.2) 100%);
+}
+
+.ll-story__ring {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  padding: 2px;
+  background: linear-gradient(135deg, #f59e0b 0%, #db2777 100%);
+  box-shadow: var(--ll-shadow-sm);
+}
+
+.ll-story__ring img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.6);
+  object-fit: cover;
+  background: #fff;
+}
+
+.ll-story__name {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
+}
+
+/* Beitrag: Kopf, dann das Bild im 4:5-Rahmen mit der Textflaeche darin. */
+.ll-fpost__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 8px;
+  color: #94a3b8;
+}
+
+.ll-fpost__ident {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.ll-fpost__logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid #f8fafc;
+  background: #e2e8f0;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  flex: 0 0 48px;
+}
+
+.ll-fpost__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+
+.ll-fpost__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  color: #0f172a;
+}
+
+.ll-fpost__place {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.ll-fpost__frame {
+  padding: 10px;
+  border-radius: 3.5rem;
+  background: #fff;
+  border: 1px solid #f8fafc;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25);
+}
+
+.ll-fpost__media {
+  position: relative;
+  border-radius: 3rem;
+  overflow: hidden;
+  background: #e2e8f0;
+  aspect-ratio: 4 / 5;
+}
+
+.ll-fpost__media > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-fpost__caption {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  padding: 24px;
+  border-radius: 2.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.ll-fpost__text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.625;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ll-fpost__acts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.ll-fpost__acts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ll-fpost__acts b {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.ll-fpost__group {
+  display: inline-flex;
+  gap: 16px;
+}
+
+.ll-fpost__acts span:last-child b {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Der Feed liegt als zweite Ebene ueber der Startseite - anders als das
+   Speisen-Modal aber nicht randlos, sondern als Karte wie die uebrigen
+   Szenen. */
+.ll-stage[data-view^="feed"] .ll-stage__overlay {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--ll-inline);
+}
+
+.ll-stage[data-view^="feed"] .ll-stage__scene {
+  visibility: hidden;
+}
