@@ -452,49 +452,18 @@ function sceneSlack(scene, viewport, effectiveHeight) {
   return clamp(room, 0, Math.max(0, SCENE_TOP_GAP - padTop));
 }
 
-// Ab dem Tab-Schritt ist die Kartela weg und es bleibt ein Block: die beiden
-// Knoepfe und darunter das, was gerade gezeigt wird - Postimet, die Karten
-// im Fokus oder die Menue. Dieser Block steht mittig im Bild. Dadurch sieht
-// jeder Schritt auf jedem Bildschirm gleich aus: gleich viel Luft darueber
-// wie darunter, statt oben angeklebt und unten eine grosse Leere.
-//
-// Passt der Block nicht ganz ins Bild, faengt er bei TABS_TOP_MIN an -
-// abgeschnitten wird trotzdem nichts, weil fitMenuLists vorher nur so viele
-// Karten stehen laesst, wie hineinpassen.
-
-// Welcher Teil unter den Tabs gerade sichtbar ist. Alle liegen im selben
-// Raster uebereinander; nur einer ist eingeblendet, und nur seine Hoehe
-// zaehlt fuer den Block.
-//
-// Gemessen wird der Inhalt darin, nicht die Flaeche selbst: Im Raster sind
-// alle Faecher gleich hoch - so hoch wie das hoechste. Ihre eigene Hoehe
-// waere also fuer Postimet dieselbe wie fuer die Menue, und der kuerzere
-// Schritt saesse zu weit oben.
-function visibleContentPart(scene, view) {
-  const part = view.startsWith("menu-")
-    ? scene.querySelector(`.ll-menu-part--${view.slice("menu-".length)}`)
-    : scene.querySelector(".ll-surface__posts");
-  if (!part) return null;
-  return part.querySelector("[data-spot]") || part;
-}
-
-// Wohin die Oberkante der Tab-Zeile im Bild gehoert.
-function centeredTabsTop(scene, viewport, tabsEl, view) {
-  const content = visibleContentPart(scene, view);
-  if (!content) return TABS_TOP_MIN;
-
-  const tabsTop = offsetTopWithin(tabsEl, scene);
-  const blockHeight = offsetTopWithin(content, scene) + content.offsetHeight - tabsTop;
-  const room = viewport.clientHeight - blockHeight;
-  return Math.max(TABS_TOP_MIN, Math.round(room / 2));
-}
-
 function panSceneToFocus(stage) {
   const viewport = stage.querySelector(".ll-stage__viewport");
   const scene = stage.querySelector(".ll-stage__scene");
   if (!viewport || !scene) return;
 
   const view = String(stage.getAttribute("data-view") || "").trim();
+
+  // Der Frage-Bildschirm legt sich ueber das ganze Kapitel. Dahinter wird
+  // nichts bewegt: Die Szene bleibt stehen, wo sie war, und faehrt erst
+  // weiter, wenn die Frage wieder abtritt. Sonst liefe die Bewegung waehrend
+  // des Ein- und Ausblendens und waere durch die Deckflaeche zu sehen.
+  if (view === "ask") return;
 
   // Liegt das Modal ueber der Szene, faehrt nur sein Koerper - Kopfzeile und
   // Fusszeile stehen fest, so wie in der App. Die Szene darunter bleibt, wo
@@ -514,13 +483,24 @@ function panSceneToFocus(stage) {
 
   // Ab dem Tab-Schritt ist die Kartela ausgeblendet. Statt sie aus dem
   // Layout zu nehmen (das ruckelt, weil jeder Frame neu umbricht), faehrt
-  // die Szene so weit, dass die Tabs und der Inhalt darunter mittig im Bild
-  // stehen - die unsichtbare Kartela liegt dann darueber ausserhalb des
-  // Bildes.
+  // die Szene so weit, dass die Tabs oben stehen - die unsichtbare Kartela
+  // liegt dann darueber ausserhalb des Bildes. Der Anker bleibt ueber alle
+  // Tab-Schritte derselbe, dadurch steht das Bild ruhig.
   if (tabsEl && tabsAnchored) {
-    const tabsTop = offsetTopWithin(tabsEl, scene);
-    const target = centeredTabsTop(scene, viewport, tabsEl, view);
-    scene.style.transform = `translateY(${-Math.max(0, tabsTop - target)}px)`;
+    // Die Tabs halten genau dort an, wo die Kartela begonnen hat - nicht am
+    // oberen Rand. Dadurch sieht es aus, als waere die Kartela nach oben
+    // weggefahren und der Inhalt an ihre Stelle gerueckt.
+    const cardEl = scene.querySelector(".ll-surface__cardinner");
+    const sameFrame = cardEl && cardEl.offsetParent && cardEl.offsetParent === tabsEl.offsetParent;
+    let rest = TABS_TOP_MIN;
+    if (sameFrame) {
+      // Im Profil-Schritt sitzt die Szene mittig im Rahmen. Dieser Ausgleich
+      // gehoert zur Ruheposition dazu - ohne ihn spraenge der Inhalt beim
+      // Wechsel um genau diesen Betrag nach oben.
+      const profileHeight = Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10;
+      rest = cardEl.offsetTop + sceneSlack(scene, viewport, profileHeight);
+    }
+    scene.style.transform = `translateY(${-Math.max(0, offsetTopWithin(tabsEl, scene) - rest)}px)`;
     return;
   }
 

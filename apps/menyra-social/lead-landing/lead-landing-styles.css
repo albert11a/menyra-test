@@ -184,6 +184,32 @@ img {
   visibility: hidden;
 }
 
+/* ---------- Der eingeschobene Bildschirm ----------
+   Er deckt das ganze Kapitel ab - Balken, Text und Szene. Absolute Kinder
+   richten sich am Polsterrand aus, inset: 0 spannt ihn deshalb wirklich von
+   Kante zu Kante. Er traegt den Grundton der Seite, damit oben und unten
+   keine Kante entsteht. */
+
+.ll-stage__aside {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: var(--ll-bg);
+  opacity: 0;
+  pointer-events: none;
+  /* Beim Abtreten verzoegert: Dahinter faehrt die Szene zurueck an ihren
+     Platz. Bis die Deckflaeche durchsichtig wird, ist die Fahrt vorbei -
+     sichtbar bleibt nur das weiche Aufblenden. */
+  transition: opacity 360ms ease 80ms;
+}
+
+.ll-stage[data-view="ask"] .ll-stage__aside {
+  opacity: 1;
+  pointer-events: auto;
+  /* Beim Kommen schnell - sonst sieht man kurz die Szene darunter. */
+  transition: opacity 240ms ease;
+}
+
 /* Randlose Schritte: Die Szene laeuft bis an die Unterkante, damit dort
    kein Streifen der Seitenfarbe stehen bleibt. Die Farbe des Kapitels
    kommt vom Nachbau selbst - das Modal ist weiss, die Mnyra-Seite hat den
@@ -554,25 +580,42 @@ img {
   50% { transform: translateY(5px); }
 }
 
-/* ---------- Die Frage zwischen Begruessung und Erklaerung ----------
-   Ein Bildschirm mit einem einzigen Satz. Er steht genau in der Mitte -
-   waagrecht wie senkrecht - und traegt dieselbe Schrift wie die
-   Begruessung darueber, damit beide Bildschirme zusammengehoeren. */
+/* ---------- Die Frage mitten im Kapitel ----------
+   Ein Bildschirm mit einem einzigen Satz, genau in der Mitte. Geschrieben
+   wie der Name im Kopf der Seite: derselbe Schnitt, nur kleiner - der erste
+   Teil dunkel, der Name in Mnyra-Blau. Darunter derselbe Pfeil wie beim
+   Hinweis zum Wischen. */
 
 .ll-ask {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   text-align: center;
 }
 
 .ll-ask__text {
   margin: 0;
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: 32px;
-  line-height: 1.25;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--ll-ink);
+}
+
+.ll-ask__brand {
   color: var(--ll-accent);
+}
+
+.ll-ask__arrow {
+  display: block;
+  color: var(--ll-accent);
+}
+
+.ll-ask__arrow svg {
+  animation: ll-bounce 1.6s infinite;
 }
 
 /* ---------- Profil-Nachbildung ---------- */

@@ -150,7 +150,12 @@ function stepBody(body = "") {
 // step.canvas: Farbe der Seite, solange dieser Schritt laeuft. Damit faerben
 // sich auch die Streifen hinter Statusleiste und Werkzeugleiste mit - die
 // nimmt der Browser von der Seite, nicht vom Kapitel.
-function stage({ title, scene, steps = [], overlay = "" }) {
+//
+// aside: Eine Flaeche, die sich ueber das ganze Kapitel legt - ueber Balken,
+// Text und Szene. Damit laesst sich mitten in ein Kapitel ein Bildschirm
+// einschieben, auf dem nichts erklaert wird (die Frage nach der kurzen
+// Vorschau). Sichtbar wird sie beim Schritt mit view "ask".
+function stage({ title, scene, steps = [], overlay = "", aside = "" }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt den Kapiteltitel. So gibt es nur einen Textblock und er
   // steht immer an derselben Stelle - die Szene bekommt den Rest.
@@ -177,6 +182,7 @@ function stage({ title, scene, steps = [], overlay = "" }) {
           ${overlay ? `<div class="ll-stage__overlay">${overlay}</div>` : ""}
         </div>
 
+        ${aside ? `<div class="ll-stage__aside">${aside}</div>` : ""}
       </div>
 
       ${allSteps.map((_, index) => `
@@ -224,14 +230,16 @@ export function renderHero(profile = {}) {
 
 /* ------------------------------------------------------------ Die Frage */
 
-// Ein Bildschirm Pause zwischen der Begruessung und der Erklaerung: nur die
-// Frage, mittig, sonst nichts. Der Klient liest sie, wischt weiter - und ab
-// hier ist alles, was kommt, die Antwort darauf.
-export function renderQuestion() {
+// Ein Bildschirm Pause: erst die kurze Vorschau des Profils, dann die Frage,
+// dann die ausfuehrliche Erklaerung. Geschrieben wie der Name im Kopf der
+// Seite - der erste Teil dunkel, der Name in Mnyra-Blau -, darunter derselbe
+// Pfeil wie beim Hinweis zum Wischen.
+function askScreen() {
   return `
-    <section class="ll-section ll-ask">
-      <p class="ll-ask__text">Çka është Mnyra?</p>
-    </section>
+    <div class="ll-ask">
+      <p class="ll-ask__text">Çka është <span class="ll-ask__brand">Mnyra?</span></p>
+      <span class="ll-ask__arrow">${icon("chevron-down", { size: 22 })}</span>
+    </div>
   `;
 }
 
@@ -467,6 +475,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     title: "Profili juaj në Mnyra",
     scene,
     overlay: dish.overlay,
+    aside: askScreen(),
     steps: [
       // Der kurze Weg zuerst: Kartela, dann die beiden Seiten darunter. Hier
       // ist noch kein Tab gedrueckt - das passiert im naechsten Schritt von
@@ -475,6 +484,10 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
       { view: "posts", focus: "", title: "Postimet", body: "Kartela ngjitet lart dhe mbeten dy butona. Postimet hapet vetë - me fotot tuaja." },
       { view: "menu-focus", focus: "", title: "Sot në fokus", body: "Pastaj hapet Menu. Lart dalin pjatat që doni të shisni sot." },
       { view: "menu-food", focus: "", title: "Menyja juaj", body: "Dhe poshtë tyre e gjithë menyja - çdo pjatë me foto dhe çmim." },
+
+      // Ein Bildschirm Pause: die Vorschau ist vorbei, die Frage steht im
+      // Raum - und alles, was danach kommt, ist die Antwort darauf.
+      { view: "ask", focus: "", body: "" },
 
       // Danach dasselbe noch einmal in Ruhe, Teil fuer Teil.
       { view: "profile", focus: "identity", title: "Logoja dhe emri", body: "Fotoja e lokalit, logoja, emri dhe qyteti. Klienti e sheh menjëherë kush jeni." },
