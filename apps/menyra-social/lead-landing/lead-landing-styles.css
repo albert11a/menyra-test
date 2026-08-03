@@ -249,10 +249,10 @@ img {
    ersten bis zum letzten. */
 .ll-stage__caption {
   flex: 0 0 auto;
-  margin-bottom: 12px;
-  min-height: 72px;
+  margin-bottom: 10px;
+  min-height: 62px;
   position: relative;
-  padding-bottom: 14px;
+  padding-bottom: 12px;
   margin-left: calc(-1 * var(--ll-inline));
   margin-right: calc(-1 * var(--ll-inline));
   border-bottom: 1px solid #f1f5f9;
@@ -282,8 +282,8 @@ img {
    die ist weggefallen, damit oben mehr Platz fuer die Szene bleibt. Alle
    Schritte sehen gleich aus, auch der erste. */
 .ll-stage__step-title {
-  margin: 0 0 4px;
-  font-size: 17px;
+  margin: 0 0 3px;
+  font-size: 15px;
   font-weight: 900;
   letter-spacing: -0.03em;
   color: var(--ll-accent);
@@ -291,9 +291,9 @@ img {
 
 .ll-stage__step-body {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--ll-muted);
 }
 
@@ -351,8 +351,8 @@ img {
    Marke und der Titel war kursiv und groesser; beides ist weg, damit die
    Seite ruhig aussieht und oben mehr Platz bleibt. */
 .ll-h2 {
-  margin: 0 0 8px;
-  font-size: 17px;
+  margin: 0 0 6px;
+  font-size: 15px;
   font-weight: 900;
   letter-spacing: -0.03em;
   line-height: 1.2;
@@ -361,9 +361,9 @@ img {
 
 .ll-lead {
   margin: 0 0 6px;
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.55;
+  line-height: 1.45;
   color: var(--ll-muted);
 }
 
@@ -2061,16 +2061,16 @@ img {
    dabei wurden die Produktfotos platt gedrueckt und abgeschnitten. */
 @media (max-height: 740px) {
   .ll-stage__caption {
-    margin-bottom: 10px;
-    min-height: 64px;
+    margin-bottom: 8px;
+    min-height: 56px;
   }
 
   .ll-stage__step-title {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .ll-stage__step-body {
-    font-size: 12px;
+    font-size: 11.5px;
   }
 }
 
