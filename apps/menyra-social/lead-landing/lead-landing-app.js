@@ -16,6 +16,7 @@ import {
   renderMap,
   renderPricing,
   renderQr,
+  renderQuestion,
   renderSurface,
   renderWeb,
   renderWaiter
@@ -128,6 +129,7 @@ function renderPage(data) {
   return `
     <div class="ll-shell">
       ${renderHero(profile)}
+      ${renderQuestion()}
       ${renderSurface(profile, posts, menuItems, focusItems)}
       ${renderWeb(profile, posts, neighbours, offer)}
       ${renderMap(profile)}

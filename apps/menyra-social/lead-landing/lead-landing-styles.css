@@ -554,6 +554,27 @@ img {
   50% { transform: translateY(5px); }
 }
 
+/* ---------- Die Frage zwischen Begruessung und Erklaerung ----------
+   Ein Bildschirm mit einem einzigen Satz. Er steht genau in der Mitte -
+   waagrecht wie senkrecht - und traegt dieselbe Schrift wie die
+   Begruessung darueber, damit beide Bildschirme zusammengehoeren. */
+
+.ll-ask {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.ll-ask__text {
+  margin: 0;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 32px;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ll-accent);
+}
+
 /* ---------- Profil-Nachbildung ---------- */
 
 /* Werte 1:1 aus core/profile/profile-menu-focus-render-controller.js

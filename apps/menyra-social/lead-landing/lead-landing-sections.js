@@ -222,6 +222,19 @@ export function renderHero(profile = {}) {
   `;
 }
 
+/* ------------------------------------------------------------ Die Frage */
+
+// Ein Bildschirm Pause zwischen der Begruessung und der Erklaerung: nur die
+// Frage, mittig, sonst nichts. Der Klient liest sie, wischt weiter - und ab
+// hier ist alles, was kommt, die Antwort darauf.
+export function renderQuestion() {
+  return `
+    <section class="ll-section ll-ask">
+      <p class="ll-ask__text">Çka është Mnyra?</p>
+    </section>
+  `;
+}
+
 /* -------------------------------------------------------------- Profil */
 
 /* ---------- Das Profil-Kapitel: Profil -> Info -> Postimet -> Menu ----------

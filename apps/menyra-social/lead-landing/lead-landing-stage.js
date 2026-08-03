@@ -168,6 +168,26 @@ function twoLineCaptionHeight(stage) {
     + (bodyLine * 2);
 }
 
+// Abstand eines Bauteils von der Oberkante der Szene - ohne die laufenden
+// Bewegungen. getBoundingClientRect gibt waehrend einer Ueberblendung die
+// Zwischenposition zurueck (die Teile fahren dabei um ein paar Pixel), und
+// die Szene selbst traegt eine Verschiebung. offsetTop kennt beides nicht:
+// es misst im Layout, nicht auf dem Bildschirm.
+function offsetTopWithin(node, ancestor) {
+  let top = 0;
+  let el = node;
+  while (el && el !== ancestor) {
+    top += el.offsetTop;
+    el = el.offsetParent;
+  }
+  return top;
+}
+
+// Naeher als das an die Oberkante rueckt die Tab-Zeile nie - weder wenn der
+// Block darunter mittig steht (siehe centeredTabsTop) noch wenn er dafuer zu
+// hoch ist und oben anfaengt.
+const TABS_TOP_MIN = 10;
+
 // Die Speisenkarten der echten App laufen ueber die volle Breite und sind
 // dadurch hoch. Verkleinert werden duerfen sie nicht (sie sollen 1:1 wie im
 // echten Menue aussehen), abgeschnitten werden duerfen sie auch nicht.
@@ -182,20 +202,22 @@ function fitMenuLists(stage) {
 
   const tabsEl = scene.querySelector(".ll-surface__tabs");
   if (!tabsEl) return;
-  // panSceneToFocus setzt die Tabs bei Menue-Schritten auf 10px unter die
-  // Oberkante. Von dort bis zur Unterkante bleibt der Platz fuer die Karten.
-  const tabsTop = tabsEl.getBoundingClientRect().top;
+  // Enger als TABS_TOP_MIN unter der Oberkante faengt die Tab-Zeile nie an.
+  // Von dort bis zur Unterkante bleibt der Platz fuer die Karten - mehr gibt
+  // auch der mittig gestellte Block nicht her, er verteilt den Rest nur auf
+  // beide Seiten.
+  const tabsTop = offsetTopWithin(tabsEl, scene);
 
   lists.forEach((list) => {
     const cards = Array.from(list.children);
     cards.forEach((card) => card.removeAttribute("hidden"));
     if (cards.length < 2) return;
 
-    const offset = list.getBoundingClientRect().top - tabsTop + 10;
-    const available = viewport.clientHeight - offset;
+    const listTop = offsetTopWithin(list, scene);
+    const available = viewport.clientHeight - (listTop - tabsTop) - TABS_TOP_MIN;
     cards.forEach((card, index) => {
       if (index === 0) return;
-      const bottom = card.getBoundingClientRect().bottom - list.getBoundingClientRect().top;
+      const bottom = offsetTopWithin(card, scene) - listTop + card.offsetHeight;
       if (bottom > available) card.setAttribute("hidden", "");
     });
   });
@@ -430,6 +452,43 @@ function sceneSlack(scene, viewport, effectiveHeight) {
   return clamp(room, 0, Math.max(0, SCENE_TOP_GAP - padTop));
 }
 
+// Ab dem Tab-Schritt ist die Kartela weg und es bleibt ein Block: die beiden
+// Knoepfe und darunter das, was gerade gezeigt wird - Postimet, die Karten
+// im Fokus oder die Menue. Dieser Block steht mittig im Bild. Dadurch sieht
+// jeder Schritt auf jedem Bildschirm gleich aus: gleich viel Luft darueber
+// wie darunter, statt oben angeklebt und unten eine grosse Leere.
+//
+// Passt der Block nicht ganz ins Bild, faengt er bei TABS_TOP_MIN an -
+// abgeschnitten wird trotzdem nichts, weil fitMenuLists vorher nur so viele
+// Karten stehen laesst, wie hineinpassen.
+
+// Welcher Teil unter den Tabs gerade sichtbar ist. Alle liegen im selben
+// Raster uebereinander; nur einer ist eingeblendet, und nur seine Hoehe
+// zaehlt fuer den Block.
+//
+// Gemessen wird der Inhalt darin, nicht die Flaeche selbst: Im Raster sind
+// alle Faecher gleich hoch - so hoch wie das hoechste. Ihre eigene Hoehe
+// waere also fuer Postimet dieselbe wie fuer die Menue, und der kuerzere
+// Schritt saesse zu weit oben.
+function visibleContentPart(scene, view) {
+  const part = view.startsWith("menu-")
+    ? scene.querySelector(`.ll-menu-part--${view.slice("menu-".length)}`)
+    : scene.querySelector(".ll-surface__posts");
+  if (!part) return null;
+  return part.querySelector("[data-spot]") || part;
+}
+
+// Wohin die Oberkante der Tab-Zeile im Bild gehoert.
+function centeredTabsTop(scene, viewport, tabsEl, view) {
+  const content = visibleContentPart(scene, view);
+  if (!content) return TABS_TOP_MIN;
+
+  const tabsTop = offsetTopWithin(tabsEl, scene);
+  const blockHeight = offsetTopWithin(content, scene) + content.offsetHeight - tabsTop;
+  const room = viewport.clientHeight - blockHeight;
+  return Math.max(TABS_TOP_MIN, Math.round(room / 2));
+}
+
 function panSceneToFocus(stage) {
   const viewport = stage.querySelector(".ll-stage__viewport");
   const scene = stage.querySelector(".ll-stage__scene");
@@ -455,29 +514,13 @@ function panSceneToFocus(stage) {
 
   // Ab dem Tab-Schritt ist die Kartela ausgeblendet. Statt sie aus dem
   // Layout zu nehmen (das ruckelt, weil jeder Frame neu umbricht), faehrt
-  // die Szene so weit, dass die Tabs oben stehen - die unsichtbare Kartela
-  // liegt dann darueber ausserhalb des Bildes. Der Anker bleibt ueber alle
-  // Tab-Schritte derselbe, dadurch steht das Bild ruhig.
+  // die Szene so weit, dass die Tabs und der Inhalt darunter mittig im Bild
+  // stehen - die unsichtbare Kartela liegt dann darueber ausserhalb des
+  // Bildes.
   if (tabsEl && tabsAnchored) {
-    // Die Tabs halten genau dort an, wo die Kartela begonnen hat - nicht am
-    // oberen Rand. Dadurch sieht es aus, als waere die Kartela nach oben
-    // weggefahren und der Inhalt an ihre Stelle gerueckt.
-    //
-    // Gerechnet wird mit offsetTop, nicht mit der Bildschirmposition: Die
-    // Kartela traegt beim Wegfahren eine eigene Verschiebung, und die wuerde
-    // sonst in den Anker einfliessen.
-    const cardEl = scene.querySelector(".ll-surface__cardinner");
-    const sameFrame = cardEl && cardEl.offsetParent && cardEl.offsetParent === tabsEl.offsetParent;
-    let rest = 10;
-    if (sameFrame) {
-      // Im Profil-Schritt sitzt die Szene mittig im Rahmen. Dieser Ausgleich
-      // gehoert zur Ruheposition dazu - ohne ihn spraenge der Inhalt beim
-      // Wechsel um genau diesen Betrag nach oben.
-      const profileHeight = Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10;
-      rest = cardEl.offsetTop + sceneSlack(scene, viewport, profileHeight);
-    }
-    const tabsTop = Math.round(tabsEl.getBoundingClientRect().top - sceneTop);
-    scene.style.transform = `translateY(${-Math.max(0, tabsTop - rest)}px)`;
+    const tabsTop = offsetTopWithin(tabsEl, scene);
+    const target = centeredTabsTop(scene, viewport, tabsEl, view);
+    scene.style.transform = `translateY(${-Math.max(0, tabsTop - target)}px)`;
     return;
   }
 
