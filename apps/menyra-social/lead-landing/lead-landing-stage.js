@@ -23,22 +23,34 @@ function readDefaultThemeColor() {
 function updateCanvasColor(stages, viewportHeight, defaultThemeColor) {
   const middle = viewportHeight / 2;
   let color = "";
+  let foot = "";
   stages.forEach((stage) => {
     const declared = String(stage.getAttribute("data-canvas") || "").trim();
     if (!declared) return;
     const rect = stage.getBoundingClientRect();
     // Das Kapitel, das die Bildschirmmitte belegt, gibt die Farbe vor.
-    if (rect.top <= middle && rect.bottom >= middle) color = declared;
+    if (rect.top <= middle && rect.bottom >= middle) {
+      color = declared;
+      foot = String(stage.getAttribute("data-foot") || "").trim();
+    }
   });
 
   const root = document.documentElement;
-  if (root.dataset.canvasColor === color) return;
-  root.dataset.canvasColor = color;
-  // Leerer Wert heisst: zurueck auf den Wert aus dem Stylesheet.
-  root.style.backgroundColor = color;
-  if (document.body) document.body.style.backgroundColor = color;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", color || defaultThemeColor);
+  if (root.dataset.canvasColor !== color) {
+    root.dataset.canvasColor = color;
+    // Leerer Wert heisst: zurueck auf den Wert aus dem Stylesheet.
+    root.style.backgroundColor = color;
+    if (document.body) document.body.style.backgroundColor = color;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", color || defaultThemeColor);
+  }
+
+  // Endet die Szene unten in einer anderen Farbe, traegt der Streifen hinter
+  // der Werkzeugleiste diese Farbe - sonst schneidet dort eine Kante ab.
+  if (root.dataset.footColor !== foot) {
+    root.dataset.footColor = foot;
+    root.style.setProperty("--ll-foot", foot || "transparent");
+  }
 }
 
 function clamp(value, min, max) {
@@ -70,6 +82,12 @@ function applyStageState(stage, state) {
   const canvas = String(captions[state]?.dataset?.canvas || "").trim();
   if (canvas) stage.setAttribute("data-canvas", canvas);
   else stage.removeAttribute("data-canvas");
+
+  // Und die Farbe des Streifens ganz unten, falls die Szene dort anders
+  // endet als oben (siehe updateCanvasColor).
+  const foot = String(captions[state]?.dataset?.foot || "").trim();
+  if (foot) stage.setAttribute("data-foot", foot);
+  else stage.removeAttribute("data-foot");
 
   // Randlose Schritte: Die Szene laeuft bis an den Bildschirmrand, ohne
   // Rahmen und Rundung - fuer Nachbauten, die in der App den ganzen
