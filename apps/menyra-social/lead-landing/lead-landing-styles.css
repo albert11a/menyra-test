@@ -2406,7 +2406,9 @@ img {
 .ll-web__hero {
   flex: 1 1 auto;
   background: #00cce5;
-  padding: 40px 24px 44px;
+  /* Oben derselbe Abstand wie unten: Ueber dem Titel steht keine Kopfleiste
+     mehr, er soll aber nicht an der Kante der Karte kleben. */
+  padding: 44px 24px;
   justify-content: center;
   display: flex;
   flex-direction: column;

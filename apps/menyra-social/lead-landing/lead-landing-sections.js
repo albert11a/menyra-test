@@ -690,8 +690,9 @@ function buildDishChapter(profile = {}, menuItems = []) {
    (core/feed/feed-view-orchestration-controller.js): Titel bis 22rem breit,
    Feld mit Radius 9999px und 1rem/4.2rem/1rem/3rem Innenabstand, der
    Ortungsknopf 2.5rem in #eafbfe auf #00cce5. */
-// Die Kopfleiste ist auf allen Mnyra-Bildschirmen dieselbe.
-function webHead(spot = "whead") {
+// Die Kopfleiste des Feeds. Der Startbildschirm kommt ohne sie aus - dort
+// zaehlt nur die Frage nach dem Ort.
+function webHead(spot = "fhead") {
   return `
       <div class="ll-web__head" data-spot="${esc(spot)}">
         <span class="ll-web__burger" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -908,10 +909,12 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
   const city = text(profile.city) || "Prishtinë";
   const country = "Kosovë";
 
+  // Ohne Kopfleiste: Auf dem Startbildschirm zaehlt nur die eine Frage nach
+  // dem Ort. Die Kopfleiste kommt erst im Feed dazu - dort wird sie auch
+  // erklaert. So ist die Karte hier von oben bis unten tuerkis und rundum
+  // gerundet, und der Titel bekommt oben denselben Abstand wie unten.
   const scene = `
     <div class="ll-web" aria-label="Mnyra në web">
-      ${webHead("whead")}
-
       <div class="ll-web__hero">
         <div class="ll-web__title" data-spot="wtitle">
           <span class="ll-web__slider" aria-hidden="true">
