@@ -362,6 +362,41 @@ function normalizeFocusItems(offersData = {}, menuItems = []) {
     .filter((item) => item.title || item.imageUrl);
 }
 
+// public/meta wird beim Anlegen im CRM geschrieben und enthaelt Felder, die
+// damals leer waren, als leere Zeichenkette - zum Beispiel titleImageUrl,
+// wenn das Titelbild erst spaeter in der App hochgeladen wurde. Ein
+// einfaches Ueberschreiben wuerde den echten Wert aus restaurants/{id}
+// damit verdecken. Deshalb zaehlen leere Werte aus meta nicht.
+export function mergePublicMeta(restaurant = null, meta = null) {
+  const merged = { ...(restaurant || {}) };
+  const source = meta || {};
+  Object.keys(source).forEach((key) => {
+    const value = source[key];
+    if (value === null || value === undefined) return;
+    if (typeof value === "string" && !value.trim()) return;
+    if (Array.isArray(value) && !value.length) return;
+    merged[key] = value;
+  });
+  return merged;
+}
+
+// Feldreihenfolge 1:1 aus resolveBusinessTitleImageRaw der echten App -
+// inklusive der Listen coverImages/titleImages, aus denen sie das erste
+// gefuellte Bild nimmt.
+export function resolveTitleImage(source = {}) {
+  const list = Array.isArray(source.coverImages)
+    ? source.coverImages
+    : (Array.isArray(source.titleImages) ? source.titleImages : []);
+  const fromList = list.map((entry) => text(entry)).find(Boolean) || "";
+  return firstText(
+    source.titleImageUrl,
+    source.coverImageUrl,
+    source.coverUrl,
+    source.heroUrl,
+    fromList
+  );
+}
+
 function normalizeLocations(restaurant = {}) {
   const list = Array.isArray(restaurant.locations) ? restaurant.locations : [];
   const mapped = list
@@ -432,7 +467,7 @@ export async function loadLeadLandingData(routeKey = "") {
     return { ok: false, reason: "not-found", restaurantId };
   }
 
-  const merged = { ...(restaurant || {}), ...(meta || {}) };
+  const merged = mergePublicMeta(restaurant, meta);
 
   // Das oeffentliche Menue-Dokument ist die Hauptquelle; die Sammlung
   // menuItems ist der Rueckfall, wenn es noch nicht veroeffentlicht wurde.
@@ -475,7 +510,7 @@ export async function loadLeadLandingData(routeKey = "") {
       currency: firstText(merged.currencyCode, merged.currency, "EUR"),
       openingHours: firstText(merged.openingHours, merged.hours),
       logoUrl: firstText(merged.logoUrl, merged.logo, merged.avatarUrl),
-      coverUrl: firstText(merged.titleImageUrl, merged.coverImageUrl, merged.coverUrl, merged.heroUrl),
+      coverUrl: resolveTitleImage(merged) || resolveTitleImage(restaurant || {}),
       instagram: firstText(merged.instagram, merged.insta),
       instagramUrl: firstText(merged.instagramUrl),
       tiktok: firstText(merged.tiktok, merged.tikTok),

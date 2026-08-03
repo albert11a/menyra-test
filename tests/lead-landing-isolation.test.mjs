@@ -92,3 +92,34 @@ test("Landing-Firebase-Konfiguration bleibt mit der App synchron", () => {
     "apiKey weicht von shared/firebase-config.js ab"
   );
 });
+
+// public/meta wird beim Anlegen im CRM geschrieben. Felder, die damals leer
+// waren, stehen dort als leere Zeichenkette. Wird das Titelbild spaeter in
+// der App hochgeladen, liegt der echte Wert nur in restaurants/{id} - ein
+// einfaches Ueberschreiben haette ihn verdeckt, und das Lokal haette in der
+// Vorschau kein Titelbild gehabt.
+test("Leere Felder aus public/meta verdecken die echten Werte nicht", async () => {
+  const { mergePublicMeta } = await import("../apps/menyra-social/lead-landing/lead-landing-data.js");
+
+  const merged = mergePublicMeta(
+    { titleImageUrl: "https://cdn/echt.jpg", logoUrl: "https://cdn/logo.jpg", city: "Prishtinë" },
+    { titleImageUrl: "", logoUrl: "   ", city: "Prizren", coverImages: [] }
+  );
+
+  assert.equal(merged.titleImageUrl, "https://cdn/echt.jpg");
+  assert.equal(merged.logoUrl, "https://cdn/logo.jpg");
+  // Gefuellte Werte aus meta gelten weiterhin - sie sind die neueren.
+  assert.equal(merged.city, "Prizren");
+});
+
+test("Titelbild wird wie in der App aufgeloest, inklusive der Bildlisten", async () => {
+  const { resolveTitleImage } = await import("../apps/menyra-social/lead-landing/lead-landing-data.js");
+
+  assert.equal(resolveTitleImage({ titleImageUrl: "a.jpg", coverUrl: "b.jpg" }), "a.jpg");
+  assert.equal(resolveTitleImage({ coverImageUrl: "b.jpg" }), "b.jpg");
+  assert.equal(resolveTitleImage({ heroUrl: "d.jpg" }), "d.jpg");
+  // Fallback auf die Listen - genau wie resolveBusinessTitleImageRaw.
+  assert.equal(resolveTitleImage({ coverImages: ["", "c.jpg"] }), "c.jpg");
+  assert.equal(resolveTitleImage({ titleImages: ["t.jpg"] }), "t.jpg");
+  assert.equal(resolveTitleImage({}), "");
+});
