@@ -127,6 +127,16 @@ function sectionHead(title, lead) {
   `;
 }
 
+// Ein Zeilenumbruch im Erklaertext ("\n") bleibt erhalten. Gebraucht wird er
+// dort, wo zwei Halbsaetze untereinander gehoeren. Jede Zeile wird einzeln
+// maskiert - aus dem Text selbst kann also weiterhin kein Markup werden.
+function stepBody(body = "") {
+  return String(body || "")
+    .split("\n")
+    .map((line) => esc(line))
+    .join("<br />");
+}
+
 // Ein erklaerendes Kapitel: die Szene bleibt beim Scrollen stehen und wird
 // Schritt fuer Schritt erlaeutert. steps[0] ist die Gesamtansicht (ohne
 // Fokus), danach hebt jeder Schritt einen Teil hervor.
@@ -157,7 +167,7 @@ function stage({ title, scene, steps = [], overlay = "" }) {
           ${allSteps.map((step, index) => `
             <div class="ll-stage__step${index === 0 ? " is-active" : ""}" data-focus="${esc(step.focus || "")}" data-view="${esc(step.view || "")}"${step.canvas ? ` data-canvas="${esc(step.canvas)}"` : ""}${step.full ? ` data-full="1"` : ""}>
               ${step.title ? `<p class="ll-stage__step-title">${esc(step.title)}</p>` : ""}
-              <p class="ll-stage__step-body">${esc(step.body || "")}</p>
+              <p class="ll-stage__step-body">${stepBody(step.body)}</p>
             </div>
           `).join("")}
         </div>
@@ -461,11 +471,11 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
   // Die Texte sind fuer jemanden geschrieben, der Mnyra zum ersten Mal sieht:
   // ein Gedanke pro Satz, keine Fachwoerter, alles aus Sicht des Gastes.
   return stage({
-    title: "Kështu ju sheh klienti",
+    title: "Profili juaj në Mnyra",
     scene,
     overlay: dish.overlay,
     steps: [
-      { view: "profile", focus: "", body: "Kjo është faqja juaj në Mnyra. Rrëshqitni poshtë - ju tregojmë çdo pjesë." },
+      { view: "profile", focus: "", body: "Informacionet, postimet dhe menuja\ngjithçka që klientët kërkojnë, në një vend." },
       { view: "profile", focus: "identity", title: "Logoja dhe emri", body: "Fotoja e lokalit, logoja, emri dhe qyteti. Klienti e sheh menjëherë kush jeni." },
       { view: "profile", focus: "social", title: "Harta dhe rrjetet", body: "Këta butona hapin hartën, TikTok-un dhe Instagram-in tuaj. I vendosni një herë." },
       { view: "profile", focus: "fans", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet vetë me çdo postim." },
