@@ -2534,26 +2534,25 @@ img {
 }
 
 /* Vorschlagsliste - klappt auf, wenn der Ort geschrieben ist. */
+/* Der Vorschlag haelt seinen Platz von Anfang an frei - er wird nur ein- und
+   ausgeblendet, nie auf- und zugeklappt. Sonst wuerde die tuerkise Flaeche
+   in dem Moment wachsen, in dem der Ort erscheint, und der ganze
+   Startbildschirm ruckte nach. */
 .ll-web__suggest {
-  margin-top: 0;
-  max-height: 0;
+  margin-top: 0.75rem;
   opacity: 0;
-  padding: 0;
-  overflow: hidden;
+  padding: 0.5rem;
   border-radius: 1.4rem;
   background: rgb(255 255 255 / 0.98);
   border: 1px solid rgb(226 232 240 / 0.95);
   box-shadow: 0 18px 44px rgb(15 23 42 / 0.16);
-  transform: translateY(-4px);
-  transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease, padding 220ms ease, transform 220ms ease;
+  transform: translateY(-6px);
+  transition: opacity 220ms ease, transform 220ms ease;
   transition-delay: 900ms;
 }
 
 .ll-stage[data-view="web-city"] .ll-web__suggest {
-  margin-top: 0.75rem;
-  max-height: 8rem;
   opacity: 1;
-  padding: 0.5rem;
   transform: translateY(0);
 }
 

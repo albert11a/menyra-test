@@ -17,6 +17,7 @@ import {
   renderPricing,
   renderQr,
   renderSurface,
+  renderSurfaceDetail,
   renderWeb,
   renderWaiter
 } from "./lead-landing-sections.js";
@@ -130,6 +131,7 @@ function renderPage(data) {
       ${renderHero(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
       ${renderWeb(profile, posts, neighbours, offer)}
+      ${renderSurfaceDetail(profile, posts, menuItems, focusItems)}
       ${renderMap(profile)}
       ${renderQr(sales)}
       ${renderWaiter()}

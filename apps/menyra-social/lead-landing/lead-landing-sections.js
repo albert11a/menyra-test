@@ -250,9 +250,15 @@ function askScreen() {
    nie den Zusammenhang: erst die Kartela mit den Tabs darunter, dann wird
    Info gedrueckt und die Karte dreht auf die Kontaktdaten, danach weicht die
    Karte nach oben, die Tabs ruecken hoch und darunter erscheinen erst die
-   Postimet und dann die Menu. */
+   Postimet und dann die Menu.
 
-export function renderSurface(profile = {}, posts = [], menuItems = [], focusItems = []) {
+   Erzaehlt wird es in zwei Zuegen: erst die kurze Vorschau, die mit der
+   Frage endet - dazwischen liegt das Mnyra-Kapitel als Antwort -, dann
+   dasselbe noch einmal in Ruhe, Teil fuer Teil. Beide bauen dieselbe Szene;
+   sie stehen an zwei Stellen der Seite und koennen sie sich deshalb nicht
+   teilen. */
+
+function buildSurfaceScene(profile = {}, posts = [], menuItems = [], focusItems = []) {
   const igUrl = socialUrl("instagram", profile.instagramUrl || profile.instagram);
   const ttUrl = socialUrl("tiktok", profile.tiktokUrl || profile.tiktok);
   const fbUrl = socialUrl("facebook", profile.facebookUrl || profile.facebook);
@@ -464,22 +470,23 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     </div>
   `;
 
-  // Nach der Menuekarte geht es ohne Bruch weiter: Der Gast tippt eine
-  // Speise an, das Modal legt sich darueber. Deshalb haengt es als Overlay
-  // an diesem Kapitel und nicht als eigenes.
-  const dish = buildDishChapter(profile, menuItems);
+  return { scene, categories };
+}
 
-  // Die Texte sind fuer jemanden geschrieben, der Mnyra zum ersten Mal sieht:
-  // ein Gedanke pro Satz, keine Fachwoerter, alles aus Sicht des Gastes.
+// Die kurze Vorschau: Kartela, dann die beiden Seiten darunter. Sie endet mit
+// der Frage - beantwortet wird sie vom Mnyra-Kapitel, das gleich danach
+// kommt. Die Texte sind fuer jemanden geschrieben, der Mnyra zum ersten Mal
+// sieht: ein Gedanke pro Satz, keine Fachwoerter, alles aus Sicht des Gastes.
+export function renderSurface(profile = {}, posts = [], menuItems = [], focusItems = []) {
+  const { scene } = buildSurfaceScene(profile, posts, menuItems, focusItems);
+
   return stage({
     title: "Profili juaj në Mnyra",
     scene,
-    overlay: dish.overlay,
     aside: askScreen(),
     steps: [
-      // Der kurze Weg zuerst: Kartela, dann die beiden Seiten darunter. Hier
-      // ist noch kein Tab gedrueckt - das passiert im naechsten Schritt von
-      // selbst, so wie es der Klient in der App tut.
+      // Hier ist noch kein Tab gedrueckt - das passiert im naechsten Schritt
+      // von selbst, so wie es der Klient in der App tut.
       { view: "profile-idle", focus: "", body: "Informacion, postimet dhe menuja. Gjithçka, në një vend." },
       { view: "posts", focus: "", title: "Postimet", body: "Kartela ngjitet lart dhe mbeten dy butona. Postimet hapet vetë - me fotot tuaja." },
       { view: "menu-focus", focus: "", title: "Sot në fokus", body: "Pastaj hapet Menu. Lart dalin pjatat që doni të shisni sot." },
@@ -487,9 +494,29 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
 
       // Ein Bildschirm Pause: die Vorschau ist vorbei, die Frage steht im
       // Raum - und alles, was danach kommt, ist die Antwort darauf.
-      { view: "ask", focus: "", body: "" },
+      { view: "ask", focus: "", body: "" }
+    ]
+  });
+}
 
-      // Danach dasselbe noch einmal in Ruhe, Teil fuer Teil.
+// Und nach dem Mnyra-Kapitel dasselbe Profil noch einmal in Ruhe, Teil fuer
+// Teil - bis hin zum Speisen-Modal.
+export function renderSurfaceDetail(profile = {}, posts = [], menuItems = [], focusItems = []) {
+  const { scene, categories } = buildSurfaceScene(profile, posts, menuItems, focusItems);
+
+  // Nach der Menuekarte geht es ohne Bruch weiter: Der Gast tippt eine
+  // Speise an, das Modal legt sich darueber. Deshalb haengt es als Overlay
+  // an diesem Kapitel und nicht als eigenes.
+  const dish = buildDishChapter(profile, menuItems);
+
+  return stage({
+    title: "Profili juaj nga afër",
+    scene,
+    overlay: dish.overlay,
+    steps: [
+      // Wieder die ruhige Gesamtansicht wie am Anfang - noch ist kein Tab
+      // gedrueckt, es geht erst los.
+      { view: "profile-idle", focus: "", body: "Kthehemi te profili juaj - tani pjesë për pjesë." },
       { view: "profile", focus: "identity", title: "Logoja dhe emri", body: "Fotoja e lokalit, logoja, emri dhe qyteti. Klienti e sheh menjëherë kush jeni." },
       { view: "profile", focus: "social", title: "Harta dhe rrjetet", body: "Këta butona hapin hartën, TikTok-un dhe Instagram-in tuaj. I vendosni një herë." },
       { view: "profile", focus: "fans", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet vetë me çdo postim." },
