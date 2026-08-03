@@ -10,6 +10,7 @@ export default {
   "nav.switch": "Nderro",
   "nav.feed": "Feed",
   "nav.restaurants": "Restorante",
+  "nav.offers": "Ofertat",
   "nav.search": "Kerko",
   "nav.map": "Harta",
   "nav.orders": "Porosite",

@@ -10,6 +10,7 @@ export default {
   "nav.switch": "Wechseln",
   "nav.feed": "Feed",
   "nav.restaurants": "Restaurants",
+  "nav.offers": "Ofertat",
   "nav.search": "Suche",
   "nav.map": "Karte",
   "nav.orders": "Bestellungen",

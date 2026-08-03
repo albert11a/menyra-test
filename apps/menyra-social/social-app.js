@@ -163,6 +163,8 @@ import { createAnalyticsViewController } from "./core/analytics/analytics-view-c
 import { createDashboardViewController } from "./core/dashboard/dashboard-view-controller.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createAdsRuntimeController } from "./core/menu/ads-runtime-controller.js";
+import { createVoucherRuntimeController } from "./core/vouchers/voucher-runtime-controller.js";
+import { createVoucherViewController } from "./core/vouchers/voucher-view-controller.js";
 import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
@@ -891,6 +893,22 @@ const state = {
     error: "",
     truthState: "unknown"
   },
+  // Ofertat/Vouchers: Business-Editor (oben) und Kundentab (feed/activations).
+  vouchers: {
+    restaurantId: "",
+    items: [],
+    enabled: true,
+    loading: false,
+    error: "",
+    truthState: "unknown",
+    statsById: {},
+    statsLoading: false,
+    editor: null,
+    feed: { status: "idle", error: "", signature: "", entries: [] },
+    activations: {},
+    confirm: null,
+    notice: ""
+  },
   focusModal: {
     open: false,
     kind: "focus",
@@ -1225,6 +1243,8 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderPublicProfileViewFn: (...args) => renderPublicProfileView(...args),
     renderProfileViewFn: (...args) => renderProfileView(...args),
     renderRestaurantsViewFn: (...args) => renderRestaurantsView(...args),
+    renderVoucherFeedViewFn: (...args) => renderVoucherFeedView(...args),
+    renderVoucherAdminViewFn: (...args) => renderVoucherAdminView(...args),
     renderTravelViewFn: (...args) => renderTravelView(...args),
     renderShoppingViewFn: (...args) => renderShoppingView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
@@ -2076,6 +2096,73 @@ function getDashboardViewController() {
 
 function renderDashboardView() {
   return getDashboardViewController().renderDashboardView();
+}
+
+let voucherRuntimeController = null;
+function getVoucherRuntimeController() {
+  if (!voucherRuntimeController) {
+    voucherRuntimeController = createVoucherRuntimeController({
+      state,
+      db,
+      firestoreApi: {
+        docFn: doc,
+        collectionFn: collection,
+        getDocFn: getDoc,
+        getDocsFn: getDocs,
+        setDocFn: setDoc,
+        deleteDocFn: deleteDoc,
+        incrementFn: increment,
+        serverTimestampFn: serverTimestamp,
+        queryFn: query
+      },
+      storageObj: typeof localStorage === "undefined" ? null : localStorage,
+      renderFn: () => render(),
+      uploadCompressedImageFn: (...args) => uploadCompressedImage(...args)
+    });
+  }
+  return voucherRuntimeController;
+}
+
+let voucherViewController = null;
+function getVoucherViewController() {
+  if (!voucherViewController) {
+    voucherViewController = createVoucherViewController({
+      state,
+      runtime: getVoucherRuntimeController(),
+      renderFn: () => render(),
+      documentObj: typeof document === "undefined" ? null : document,
+      windowObj: typeof window === "undefined" ? null : window,
+      helperApi: {
+        escapeHtmlFn: escapeHtml,
+        iconFn: icon,
+        getOptimizedImageUrlFn: getOptimizedImageUrl,
+        isPlaceholderUrlFn: isPlaceholderUrl,
+        placeholderImage: PLACEHOLDER_IMAGE
+      },
+      profileApi: {
+        resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args),
+        normalizeRestaurantTypeFn: (...args) => normalizeRestaurantType(...args),
+        normalizeLeadTypeKeyFn: (...args) => normalizeLeadTypeKey(...args),
+        getRestaurantMetaByIdFn: (...args) => getRestaurantMetaById(...args),
+        // Ofertat gibt es fuer lokale Businesses (Restaurant/Cafe/Shop/Hotel),
+        // nicht fuer normale Nutzerprofile.
+        isBusinessOffersProfileFn: (profile) => isLocalBusinessProfile(profile)
+          || isRestaurantCafeProfile(profile)
+          || !!String(profile?.restaurantId || "").trim()
+      },
+      confirmFn: typeof confirm === "function" ? confirm : () => false,
+      alertFn: typeof alert === "function" ? alert : () => {}
+    });
+  }
+  return voucherViewController;
+}
+
+function renderVoucherFeedView() {
+  return getVoucherViewController().renderVoucherFeedView();
+}
+
+function renderVoucherAdminView() {
+  return getVoucherViewController().renderVoucherAdminView();
 }
 
 function renderTravelView() {
@@ -3938,6 +4025,9 @@ function resetUserScopedState() {
   // auf dem Dashboard starten; ein offener Neutral-Shell-Halt wird geloest.
   dashboardStartTabDecidedUid = "";
   state.__startTabDecisionPending = false;
+  // Ofertat sind user-gebunden: Aktivierungen und der Business-Editor duerfen
+  // beim Kontowechsel nicht in die naechste Session lecken.
+  voucherRuntimeController?.resetVoucherUserState?.();
   return sessionDataRuntimeController.resetUserScopedState(...arguments);
 }
 
@@ -4986,6 +5076,13 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
         void preloadMarketplaceRuntime().catch(() => null);
       }
     },
+    ofertat: {
+      render: renderVoucherFeedView,
+      preload: () => {
+        void preloadMarketplaceRuntime().catch(() => null);
+        getVoucherViewController().preloadVoucherFeed();
+      }
+    },
     travel: {
       render: renderTravelView,
       preload: () => {
@@ -5010,6 +5107,7 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
     restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
+    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView,
     analytics: renderAnalyticsView, dashboard: renderDashboardView

@@ -830,7 +830,15 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function shouldShowFeedLocationHeaderSearch(locationRecord = readStoredFeedViewerLocation()) {
     const activeTabKey = state.activeTab;
-    return !!locationRecord && (activeTabKey === "feed" || activeTabKey === "home" || activeTabKey === "restaurants");
+    // Ofertat gehoert zur selben stadtbezogenen Tab-Reihe wie Feed und
+    // Restorante: ohne diesen Eintrag verschwinden die Pills, sobald der
+    // Nutzer auf Ofertat wechselt.
+    return !!locationRecord && (
+      activeTabKey === "feed"
+      || activeTabKey === "home"
+      || activeTabKey === "restaurants"
+      || activeTabKey === "ofertat"
+    );
   }
 
   function renderFeedLocationHeaderSearch(locationLabel = "") {
@@ -996,8 +1004,9 @@ export function createAppShellRuntimeController(deps = {}) {
     if (!isMainHeaderTabsScope(locationRecord)) return "";
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
     const tabs = [
-      { id: "feed", label: tr("nav.feed", "Feed"), active: activeTabKey !== "restaurants" },
-      { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), active: activeTabKey === "restaurants" }
+      { id: "feed", label: tr("nav.feed", "Feed"), active: activeTabKey !== "restaurants" && activeTabKey !== "ofertat" },
+      { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), active: activeTabKey === "restaurants" },
+      { id: "ofertat", label: tr("nav.offers", "Ofertat"), active: activeTabKey === "ofertat" }
     ];
     return `
       <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main">

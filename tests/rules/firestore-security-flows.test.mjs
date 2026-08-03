@@ -789,3 +789,124 @@ test("private user data remains protected", async () => {
   await assertSucceeds(ownerDb.doc("users/waiter-demo").get());
   await assertSucceeds(heartDb.doc("users/waiter-demo").get());
 });
+
+test("voucher offers are public to read and owner-only to write", async () => {
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+
+  const payload = {
+    items: [
+      {
+        id: "ofr-001",
+        title: "20% zbritje",
+        active: true,
+        endAt: "2030-01-01T00:00:00.000Z",
+        activationMinutes: 60,
+      },
+    ],
+    enabled: true,
+    truthSource: "public-vouchers",
+    truthState: "seeded",
+  };
+
+  await assertSucceeds(
+    ownerDb.doc("restaurants/pidhi-madh/public/vouchers").set(payload, {
+      merge: true,
+    }),
+  );
+  await assertSucceeds(
+    heartDb.doc("restaurants/pidhi-madh/public/vouchers").set(payload, {
+      merge: true,
+    }),
+  );
+  await assertFails(
+    userDb.doc("restaurants/pidhi-madh/public/vouchers").set(payload, {
+      merge: true,
+    }),
+  );
+
+  // Kunden und Gaeste muessen die Ofertat lesen koennen.
+  await assertSucceeds(
+    guestDb.doc("restaurants/pidhi-madh/public/vouchers").get(),
+  );
+  await assertSucceeds(
+    userDb.doc("restaurants/pidhi-madh/public/vouchers").get(),
+  );
+});
+
+test("voucher stats accept single-step increments only", async () => {
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const statsPath = "restaurants/pidhi-madh/voucherStats/ofr-001";
+
+  // Gaeste zaehlen nicht mit: der Zaehler braucht eine Anmeldung.
+  await assertFails(
+    guestDb.doc(statsPath).set({ reachCount: 1 }, { merge: true }),
+  );
+
+  await assertSucceeds(
+    userDb
+      .doc(statsPath)
+      .set({ reachCount: 1, activationCount: 0 }, { merge: true }),
+  );
+  await assertSucceeds(
+    userDb.doc(statsPath).set({ reachCount: 2 }, { merge: true }),
+  );
+  // Mehr als +1 pro Schreibvorgang oder ein Ruecksetzen ist gesperrt.
+  await assertFails(
+    userDb.doc(statsPath).set({ reachCount: 999 }, { merge: true }),
+  );
+  await assertFails(
+    userDb.doc(statsPath).set({ reachCount: 0 }, { merge: true }),
+  );
+  // Fremde Felder gehoeren nicht in das Zaehler-Dokument.
+  await assertFails(
+    userDb.doc(statsPath).set({ ownerUid: "shopper-demo" }, { merge: true }),
+  );
+
+  await assertSucceeds(guestDb.doc(statsPath).get());
+  await assertSucceeds(ownerDb.doc(statsPath).delete());
+});
+
+test("voucher activations belong to the activating customer", async () => {
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+  const activationPath =
+    "restaurants/pidhi-madh/voucherActivations/ofr-001__shopper-demo";
+  const activation = {
+    restaurantId: "pidhi-madh",
+    voucherId: "ofr-001",
+    uid: "shopper-demo",
+    code: "AB2CD3",
+    activatedAt: "2026-08-03T12:00:00.000Z",
+    expiresAt: "2026-08-03T13:00:00.000Z",
+  };
+
+  await assertSucceeds(userDb.doc(activationPath).set(activation));
+  // Die Doc-ID muss zum Voucher und zum angemeldeten Nutzer passen.
+  await assertFails(
+    userDb
+      .doc("restaurants/pidhi-madh/voucherActivations/ofr-001__owner-demo")
+      .set({ ...activation, uid: "owner-demo" }),
+  );
+  await assertFails(
+    userDb
+      .doc("restaurants/pidhi-madh/voucherActivations/wrong-id")
+      .set(activation),
+  );
+  await assertFails(guestDb.doc(activationPath).set(activation));
+
+  await assertSucceeds(userDb.doc(activationPath).get());
+  await assertSucceeds(ownerDb.doc(activationPath).get());
+  // Nur das Lokal darf alle Aktivierungen auflisten (Ofertat-Analytics).
+  await assertSucceeds(
+    ownerDb.collection("restaurants/pidhi-madh/voucherActivations").get(),
+  );
+  await assertFails(
+    userDb.collection("restaurants/pidhi-madh/voucherActivations").get(),
+  );
+});

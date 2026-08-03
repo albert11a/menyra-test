@@ -1816,6 +1816,30 @@ function readStoredRestaurantLocation() {
   }
 }
 
+// Der Ofertat-Tab zeigt dieselben Lokale wie der Restorante-Tab und folgt
+// damit derselben Stadt-Wahrheit. Zurueck kommen nur die Felder, die eine
+// Oferta-Karte braucht - der Voucher-Tab muss die Marktplatz-Interna nicht
+// kennen.
+export function collectVoucherScopeBusinessesCore(state = {}, deps = {}) {
+  const section = MARKETPLACE_SECTIONS.restaurants;
+  const storedLocation = readStoredRestaurantLocation();
+  const scoped = filterMarketplaceBusinessesCore(state, section.key, deps)
+    .filter((record) => !storedLocation || matchesRestaurantViewerLocation(record, storedLocation));
+  return {
+    hasLocation: !!storedLocation,
+    cityLabel: cleanText(storedLocation?.city || storedLocation?.label || ""),
+    businesses: scoped
+      .map((record) => ({
+        id: getBusinessId(record),
+        name: getBusinessName(record),
+        logoImage: getBusinessImage(record, deps),
+        coverImage: getBusinessCoverImage(record, deps),
+        locationLabel: getBusinessLocationLabel(record)
+      }))
+      .filter((entry) => entry.id)
+  };
+}
+
 function renderRestaurantSearchGate({ deps } = {}) {
   const icon = deps.icon;
   return `

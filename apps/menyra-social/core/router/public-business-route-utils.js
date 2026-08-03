@@ -6,6 +6,8 @@ import {
 const SYSTEM_ROUTE_SEGMENT_TO_TAB = Object.freeze({
   feed: "feed",
   restaurants: "restaurants",
+  ofertat: "ofertat",
+  "ofertat-biznes": "ofertatbiznes",
   travel: "travel",
   shopping: "shopping",
   search: "search",
@@ -30,6 +32,8 @@ const SYSTEM_ROUTE_SEGMENT_TO_TAB = Object.freeze({
 const CANONICAL_TAB_TO_PATH = Object.freeze({
   feed: "/feed",
   restaurants: "/restaurants",
+  ofertat: "/ofertat",
+  ofertatbiznes: "/ofertat-biznes",
   travel: "/travel",
   shopping: "/shopping",
   search: "/search",
@@ -51,6 +55,8 @@ const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
   "b",
   "feed",
   "restaurants",
+  "ofertat",
+  "ofertat-biznes",
   "travel",
   "shopping",
   "search",
@@ -223,7 +229,8 @@ export function normalizeAppTabRouteCore(value = "", fallback = "") {
     owner: "profile",
     kitchen: "menu",
     "business-accounts": "businessAccounts",
-    businessaccounts: "businessAccounts"
+    businessaccounts: "businessAccounts",
+    "ofertat-biznes": "ofertatbiznes"
   };
   const resolved = aliases[key] || key;
   const allowed = new Set(Object.keys(CANONICAL_TAB_TO_PATH));

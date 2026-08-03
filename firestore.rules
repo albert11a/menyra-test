@@ -376,6 +376,17 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["followersCount", "followingCount"]);
     }
 
+    // Ofertat-Zaehler: nur diese drei Felder, nur +0 oder +1 pro Schreibvorgang.
+    function voucherStatsFieldsOnly() {
+      return request.resource.data.keys().hasOnly(["reachCount", "activationCount", "updatedAt"]);
+    }
+
+    function voucherStatsDeltaValid(previous, next) {
+      return next is number
+        && next >= previous
+        && next <= previous + 1;
+    }
+
     function protectedUserCountersValidOnCreate() {
       return socialCountersValidOnCreate() && followerCountersValidOnCreate();
     }
@@ -935,6 +946,50 @@ service cloud.firestore {
       match /stories/{storyId} {
         allow read: if true;
         allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+      }
+
+      // Ofertat/Voucher-Zaehler. Die Ofertat selbst liegen in
+      // restaurants/{id}/public/vouchers und sind schon oben abgedeckt.
+      // Hier zaehlen Kunden Reichweite und Aktivierungen hoch - jeweils nur
+      // um 1 und nur auf diesen beiden Feldern, damit niemand Zahlen faelscht.
+      match /voucherStats/{voucherId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && voucherStatsFieldsOnly()
+          && voucherStatsDeltaValid(0, request.resource.data.get('reachCount', 0))
+          && voucherStatsDeltaValid(0, request.resource.data.get('activationCount', 0));
+        allow update: if (signedIn()
+            && voucherStatsFieldsOnly()
+            && voucherStatsDeltaValid(
+              resource.data.get('reachCount', 0),
+              request.resource.data.get('reachCount', 0)
+            )
+            && voucherStatsDeltaValid(
+              resource.data.get('activationCount', 0),
+              request.resource.data.get('activationCount', 0)
+            ))
+          || canManageRestaurantDoc(restaurantId)
+          || isCeoActor();
+        allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+      }
+
+      // Eine Aktivierung gehoert genau einem Kunden. Der Kunde darf nur sein
+      // eigenes Dokument sehen und schreiben, das Lokal darf alle auflisten
+      // (Basis fuer die Ofertat-Analytics).
+      match /voucherActivations/{activationId} {
+        allow get: if signedIn() && (
+          resource.data.uid == authUid()
+          || canManageRestaurantDoc(restaurantId)
+          || isCeoActor()
+        );
+        allow list: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow create: if signedIn()
+          && request.resource.data.uid == authUid()
+          && activationId == request.resource.data.voucherId + '__' + authUid();
+        allow update: if signedIn()
+          && resource.data.uid == authUid()
+          && request.resource.data.uid == authUid();
+        allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
       }
 
       match /orders/{orderId} {

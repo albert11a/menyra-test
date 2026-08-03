@@ -1,7 +1,9 @@
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import { resolveVisibleAppTab } from "../../../../shared/config/marketplace-tabs.js";
 
-const GUEST_ALLOWED_TABS = new Set(["feed", "restaurants", "travel", "shopping", "search", "map", "orders", "profile"]);
+// "ofertat" ist der Kundentab und damit auch fuer Gaeste offen; der
+// Business-Editor "ofertatbiznes" bleibt angemeldeten Businesses vorbehalten.
+const GUEST_ALLOWED_TABS = new Set(["feed", "restaurants", "ofertat", "travel", "shopping", "search", "map", "orders", "profile"]);
 const SOCIAL_REMOVED_TABS = new Set(["leads", "customers"]);
 
 export function isGuestSessionCore(user = null) {

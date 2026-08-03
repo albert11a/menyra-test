@@ -3,6 +3,8 @@ export function renderMainCore({
   renderHomeViewFn,
   renderFeedViewFn,
   renderRestaurantsViewFn,
+  renderVoucherFeedViewFn,
+  renderVoucherAdminViewFn,
   renderTravelViewFn,
   renderShoppingViewFn,
   renderChatViewFn,
@@ -33,6 +35,8 @@ export function renderMainCore({
   const renderHomeView = typeof renderHomeViewFn === "function" ? renderHomeViewFn : (() => "");
   const renderFeedView = typeof renderFeedViewFn === "function" ? renderFeedViewFn : (() => "");
   const renderRestaurantsView = typeof renderRestaurantsViewFn === "function" ? renderRestaurantsViewFn : (() => "");
+  const renderVoucherFeedView = typeof renderVoucherFeedViewFn === "function" ? renderVoucherFeedViewFn : (() => "");
+  const renderVoucherAdminView = typeof renderVoucherAdminViewFn === "function" ? renderVoucherAdminViewFn : (() => "");
   const renderTravelView = typeof renderTravelViewFn === "function" ? renderTravelViewFn : (() => "");
   const renderShoppingView = typeof renderShoppingViewFn === "function" ? renderShoppingViewFn : (() => "");
   const renderChatView = typeof renderChatViewFn === "function" ? renderChatViewFn : (() => "");
@@ -85,6 +89,8 @@ export function renderMainCore({
     if (state?.activeTab === "home") view = renderFeedView();
     if (state?.activeTab === "feed") view = renderFeedView();
     if (state?.activeTab === "restaurants") view = renderRestaurantsView();
+    if (state?.activeTab === "ofertat") view = renderVoucherFeedView();
+    if (state?.activeTab === "ofertatbiznes") view = renderVoucherAdminView();
     if (state?.activeTab === "travel") view = renderTravelView();
     if (state?.activeTab === "shopping") view = renderShoppingView();
     if (state?.activeTab === "chat") view = renderChatView();

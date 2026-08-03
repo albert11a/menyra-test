@@ -10,6 +10,7 @@ export default {
   "nav.switch": "Promeni",
   "nav.feed": "Feed",
   "nav.restaurants": "Restorani",
+  "nav.offers": "Ofertat",
   "nav.search": "Pretraga",
   "nav.map": "Mapa",
   "nav.orders": "Porudzbine",
