@@ -1011,7 +1011,7 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
   `;
 
   return stage({
-    title: "Çfarë ju sjell Mnyra",
+    title: "Web faqe",
     scene,
     overlay: feedScene,
     steps: [
@@ -1021,7 +1021,7 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
       // kommt vom Browser, oben und unten dieselbe: hell passt zur
       // Kopfleiste, tuerkis wuerde oben abschneiden. Als Karte liegt der
       // Grundton rundum, und keine der beiden Kanten faellt auf.
-      { view: "web", focus: "", canvas: SURFACE, body: `Të gjithë që hapin Mnyra kërkojnë një vend ku të hanë - në qytetin ku ndodhen.` },
+      { view: "web", focus: "", canvas: SURFACE, body: `Klientët kërkojnë ku të hanë - sipas lokacionit të tyre.` },
       { view: "web-city", focus: "wcity", canvas: SURFACE, title: "Qyteti", body: `Klienti shkruan qytetin, për shembull ${city} - dhe Mnyra i tregon çfarë ka aty.` },
       { view: "feed-story", focus: "fstory", full: true, canvas: SURFACE, title: "Story-t", body: "Menjëherë pas kësaj hapet feed-i. Lart janë story-t e ditës - dhe e juaja është mes tyre." },
       { view: "feed-post", focus: "fpost", full: true, canvas: SURFACE, title: "Postimet", body: "Poshtë tyre vijnë postimet. Çdo foto që ngarkoni shfaqet këtu, te i gjithë qyteti." },
