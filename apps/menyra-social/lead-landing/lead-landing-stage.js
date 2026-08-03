@@ -276,7 +276,9 @@ function fitFeedScene(stage) {
   if (!viewport || !feed || !post || !frame) return;
 
   // Erst zuruecksetzen, sonst misst die naechste Rechnung den eigenen Stand.
+  const media = stage.querySelector(".ll-fpost__media");
   frame.style.width = "";
+  if (media) media.style.height = "";
 
   // Der Platz wird aus den Bauteilen darueber gerechnet, nicht aus der Hoehe
   // der Feed-Flaeche: Die haengt davon ab, wie eine Engine den Rest verteilt.
@@ -312,15 +314,15 @@ function fitFeedScene(stage) {
     + (head ? head.offsetHeight + (parseFloat(window.getComputedStyle(head).marginBottom) || 0) : 0)
     + boxExtra(frameStyle, ["Top", "Bottom"]);
 
+  // Der Beitrag behaelt seine echte Breite - die volle Breite der Flaeche, so
+  // wie in der App. Reicht die Hoehe nicht, wird nur das Bild flacher; das
+  // Foto darin bleibt formfuellend und wird oben und unten beschnitten,
+  // genauso wie es die App bei langen Fotos macht.
   const frameWidth = boxExtra(frameStyle, ["Left", "Right"]);
-  const fits = (viewport.clientHeight - used) / FPOST_IMAGE_RATIO;
   const full = post.clientWidth - frameWidth;
-
-  // Breiter als der Platz wird der Beitrag nie - schmaler nur, wenn er sonst
-  // unten anstossen wuerde.
-  const image = Math.min(full, fits);
-  if (full > 0 && image > 0) {
-    frame.style.width = `${Math.floor(image + frameWidth)}px`;
+  const room = viewport.clientHeight - used;
+  if (media && full > 0 && room > 0) {
+    media.style.height = `${Math.floor(Math.min(full * FPOST_IMAGE_RATIO, room))}px`;
   }
 
   // Wie weit die Feed-Spalte faehrt, damit die Story-Reihe unter den Skeda

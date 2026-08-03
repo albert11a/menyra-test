@@ -2681,7 +2681,9 @@ img {
 .ll-feed__rail {
   display: flex;
   gap: 10px;
-  padding: 8px 0 32px;
+  /* Unten mehr Luft: Zwischen der Story-Reihe und dem Beitrag darunter soll
+     eine deutliche Zaesur liegen, nicht nur ein Spalt. */
+  padding: 8px 0 52px;
 }
 
 .ll-story {
