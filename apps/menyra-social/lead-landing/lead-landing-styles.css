@@ -194,11 +194,9 @@ img {
 /* Der Erklaertext steht an der Stelle, an der im Modal die Kopfzeile mit
    Name und X sitzt, und traegt deren Trennlinie von Rand zu Rand. */
 .ll-stage[data-view^="dish"] .ll-stage__caption {
+  /* Am Modal schliesst der Koerper direkt an die Kopfzeile an. */
   margin-bottom: 0;
   padding-bottom: 20px;
-  border-bottom: 1px solid #f1f5f9;
-  margin-left: calc(-1 * var(--ll-inline));
-  margin-right: calc(-1 * var(--ll-inline));
 }
 
 /* Der Abstand muss an den Schritten haengen, nicht an der Flaeche: Die
@@ -262,16 +260,30 @@ img {
   }
 }
 
+/* Der Erklaertext ist die Kopfzeile des Kapitels: Er sitzt oben fest, und
+   darunter laeuft eine Linie von Rand zu Rand mit einem Hauch Schatten -
+   dieselbe Trennung wie im Kopf des Modals. Gilt fuer jeden Schritt, vom
+   ersten bis zum letzten. */
 .ll-stage__caption {
   flex: 0 0 auto;
   margin-bottom: 14px;
   min-height: 88px;
   position: relative;
+  padding-bottom: 18px;
+  margin-left: calc(-1 * var(--ll-inline));
+  margin-right: calc(-1 * var(--ll-inline));
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: 0 6px 12px -10px rgba(15, 23, 42, 0.35);
 }
 
+/* Der seitliche Abstand haengt an den Schritten, nicht an der Flaeche: Sie
+   liegen absolut und richten sich am Polsterrand des Elternteils aus - dessen
+   padding bliebe wirkungslos, und die Linie soll ja bis an den Rand laufen. */
 .ll-stage__step {
   position: absolute;
   inset: 0;
+  padding-left: var(--ll-inline);
+  padding-right: var(--ll-inline);
   opacity: 0;
   transform: translateY(-12px);
   transition: opacity 420ms ease, transform 420ms ease;
