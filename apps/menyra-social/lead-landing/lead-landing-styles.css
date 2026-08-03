@@ -43,30 +43,6 @@ body {
   overflow: hidden;
 }
 
-/* Der Streifen hinter der Werkzeugleiste des Browsers.
-   Der scrollende Rahmen ist genau bildschirmhoch (100dvh) - darunter, hinter
-   der Werkzeugleiste und ueber dem Home-Balken, bleibt ein Streifen der
-   Seitenfarbe stehen. Endet die Szene unten in einer anderen Farbe (der
-   tuerkise Startbildschirm etwa), sieht man dort eine Kante. Dieses Band
-   legt sich genau ueber diesen Streifen und traegt die Farbe der Unterkante.
-
-   Ohne data-foot ist es durchsichtig, also wirkungslos. Zieht sich die
-   Werkzeugleiste beim Scrollen zurueck, ueberlappt das Band die untersten
-   Pixel der Szene - dort ist es dieselbe Farbe, man sieht es nicht. */
-body::after {
-  content: "";
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: env(safe-area-inset-bottom, 0px);
-  height: calc(100lvh - 100svh + env(safe-area-inset-bottom, 0px));
-  background: var(--ll-foot, transparent);
-  transition: background-color 240ms ease;
-  pointer-events: none;
-  z-index: 40;
-}
-
 img {
   max-width: 100%;
   display: block;
@@ -121,6 +97,10 @@ img {
   gap: 12px;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  /* Der sichtbare Bildschirm traegt die Kapitelfarbe, nicht die Seitenfarbe -
+     die ist unten unter Umstaenden eine andere (siehe updateCanvasColor). */
+  background: var(--ll-canvas, transparent);
+  transition: background-color 240ms ease;
 }
 
 /* ---------- Stage: Szene bleibt stehen, Scroll erklaert ---------- */
@@ -146,6 +126,10 @@ img {
   padding: 14px var(--ll-inline) 18px;
   overflow: hidden;
   z-index: 2;
+  /* Wie bei .ll-section: der Rahmen deckt den Bildschirm mit der
+     Kapitelfarbe ab, damit die Seitenfarbe nur unten darunter hervorschaut. */
+  background: var(--ll-canvas, transparent);
+  transition: background-color 240ms ease;
 }
 
 /* Unsichtbare Rastpunkte - einer je Schritt. Sie liegen absolut ueber der
