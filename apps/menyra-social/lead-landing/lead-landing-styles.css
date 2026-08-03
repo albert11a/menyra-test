@@ -191,23 +191,6 @@ img {
   background: #fff;
 }
 
-/* Der Erklaertext steht an der Stelle, an der im Modal die Kopfzeile mit
-   Name und X sitzt, und traegt deren Trennlinie von Rand zu Rand. */
-.ll-stage[data-view^="dish"] .ll-stage__caption {
-  /* Am Modal schliesst der Koerper direkt an die Kopfzeile an. */
-  margin-bottom: 0;
-  padding-bottom: 20px;
-}
-
-/* Der Abstand muss an den Schritten haengen, nicht an der Flaeche: Die
-   Schritte liegen absolut und wuerden sich sonst am verschobenen Rand der
-   Flaeche ausrichten. 28px = px-7 des Modals, damit der Text genau dort
-   steht, wo im Original der Name der Speise steht. */
-.ll-stage[data-view^="dish"] .ll-stage__step {
-  padding-left: 28px;
-  padding-right: 28px;
-}
-
 .ll-stage__scene {
   position: absolute;
   left: var(--ll-inline);
