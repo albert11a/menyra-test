@@ -724,7 +724,7 @@ function feedTabs() {
     { key: "ofertat", icon: "ticket", label: "Ofertat" }
   ];
   return `
-      <div class="ll-htabs" data-spot="ftabs">
+      <div class="ll-htabs" data-spot="ftabs fstory fpost">
         <div class="ll-htabs__row">
           ${tabs.map((tab) => `
             <span class="ll-htab" data-tab="${esc(tab.key)}">
@@ -949,7 +949,12 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
     <div class="ll-web ll-web--feed" aria-label="Feed-i i Mnyra">
       ${feedTabs()}
       <div class="ll-feed">
-        <div class="ll-feed-part ll-feed-part--story">
+        <!-- Story-Reihe und Beitrag stehen untereinander wie im echten Feed.
+             Beim naechsten Schritt faehrt die Spalte um genau die Hoehe der
+             Reihe nach oben - die Storys gehen unter die Skeda, der Beitrag
+             rueckt an ihre Stelle. -->
+        <div class="ll-feed-part ll-feed-part--feed">
+          <div class="ll-feed__scroll">
           <div data-spot="fstory">
             <div class="ll-feed__rail">
               ${storyCard({ name: profile.name, imageUrl: storyImage, logoUrl: profile.logoUrl })}
@@ -961,9 +966,7 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
   })).join("")}
             </div>
           </div>
-        </div>
 
-        <div class="ll-feed-part ll-feed-part--post">
           <div data-spot="fpost">
             <article class="ll-fpost">
               <div class="ll-fpost__head">
@@ -992,6 +995,7 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
                 </div>
               </div>
             </article>
+          </div>
           </div>
         </div>
 

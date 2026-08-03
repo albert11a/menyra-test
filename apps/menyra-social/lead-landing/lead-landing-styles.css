@@ -2629,6 +2629,9 @@ img {
 
 .ll-feed {
   display: grid;
+  /* Die Spalte faehrt nach oben aus dem Bild - hier wird sie beschnitten,
+     damit die Story-Reihe unter den Skeda verschwindet statt darueber. */
+  overflow: hidden;
   /* Eine Reihe, genau so hoch wie der Platz - nicht so hoch wie der Inhalt.
      Daran richtet sich der Beitrag aus (siehe .ll-fpost__frame). */
   grid-template-rows: minmax(0, 1fr);
@@ -2636,6 +2639,17 @@ img {
   min-height: 0;
   padding: 16px 20px 20px;
   background: #f8fafc;
+}
+
+/* Die Spalte aus Story-Reihe und Beitrag. Wie weit sie faehrt, misst
+   fitFeedScene aus der Hoehe der Reihe (--ll-rail-h). */
+.ll-feed__scroll {
+  transition: transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ll-stage[data-view="feed-post"] .ll-feed__scroll,
+.ll-stage[data-view="feed-tabs"] .ll-feed__scroll {
+  transform: translateY(calc(-1 * var(--ll-rail-h, 0px)));
 }
 
 .ll-feed-part {
@@ -2650,9 +2664,9 @@ img {
 /* Beim Kopf und bei der Tab-Zeile bleibt der Beitrag stehen - erklaert wird
    das, was darueber liegt. Erst der Wechsel auf Restorante tauscht den
    Inhalt: zuerst die Highlights, dann die Karte des Lokals. */
-.ll-stage[data-view="feed-story"] .ll-feed-part--story,
-.ll-stage[data-view="feed-post"] .ll-feed-part--post,
-.ll-stage[data-view="feed-tabs"] .ll-feed-part--post,
+.ll-stage[data-view="feed-story"] .ll-feed-part--feed,
+.ll-stage[data-view="feed-post"] .ll-feed-part--feed,
+.ll-stage[data-view="feed-tabs"] .ll-feed-part--feed,
 .ll-stage[data-view="feed-restaurants"] .ll-feed-part--highlights,
 .ll-stage[data-view="feed-highlights"] .ll-feed-part--highlights,
 .ll-stage[data-view="feed-card"] .ll-feed-part--card,

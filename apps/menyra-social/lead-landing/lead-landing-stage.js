@@ -323,6 +323,12 @@ function fitFeedScene(stage) {
     frame.style.width = `${Math.floor(image + frameWidth)}px`;
   }
 
+  // Wie weit die Feed-Spalte faehrt, damit die Story-Reihe unter den Skeda
+  // verschwindet und der Beitrag genau an ihre Stelle rueckt.
+  const rail = stage.querySelector(".ll-feed__rail");
+  const scroll = stage.querySelector(".ll-feed__scroll");
+  if (rail && scroll) scroll.style.setProperty("--ll-rail-h", `${rail.offsetHeight}px`);
+
   fitFeedBlock(stage, ".ll-hl", content);
   fitFeedBlock(stage, ".ll-rcard:not(.ll-ocard)", content);
   fitFeedBlock(stage, ".ll-ocard", content);
