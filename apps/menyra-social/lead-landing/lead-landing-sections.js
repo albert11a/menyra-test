@@ -89,9 +89,14 @@ const DEFAULT_PACKAGES = [
   }
 ];
 
-function img(src, alt = "", fallback = IMG_FALLBACK) {
+// Bilder werden erst geladen, wenn sie in die Naehe des Bildes kommen. Die
+// beiden ersten Bildschirme sind die Ausnahme: Sie sind sofort zu sehen und
+// duerfen nicht hinter dem Rest anstehen (eager).
+// decoding="async" haelt das Entpacken aus dem Wischen heraus.
+function img(src, alt = "", fallback = IMG_FALLBACK, { eager = false } = {}) {
   const safeSrc = text(src) || fallback;
-  return `<img src="${esc(safeSrc)}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='${fallback}'" />`;
+  const priority = eager ? `loading="eager" fetchpriority="high"` : `loading="lazy"`;
+  return `<img src="${esc(safeSrc)}" alt="${esc(alt)}" ${priority} decoding="async" onerror="this.onerror=null;this.src='${fallback}'" />`;
 }
 
 function callout(index, title, body) {
@@ -210,7 +215,7 @@ export function renderHero(profile = {}) {
       </div>
 
       <div class="ll-brand">
-        <span class="ll-brand__logo">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+        <span class="ll-brand__logo">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK, { eager: true })}</span>
         <h2 class="ll-brand__name">
           <span style="color:${esc(c1)}">${esc(parts.part1)}</span>${parts.part2 ? `<span style="color:${esc(c2)}">${esc(parts.part2)}</span>` : ""}
         </h2>
@@ -258,7 +263,7 @@ function askScreen() {
    sie stehen an zwei Stellen der Seite und koennen sie sich deshalb nicht
    teilen. */
 
-function buildSurfaceScene(profile = {}, posts = [], menuItems = [], focusItems = []) {
+function buildSurfaceScene(profile = {}, posts = [], menuItems = [], focusItems = [], { eager = false } = {}) {
   const igUrl = socialUrl("instagram", profile.instagramUrl || profile.instagram);
   const ttUrl = socialUrl("tiktok", profile.tiktokUrl || profile.tiktok);
   const fbUrl = socialUrl("facebook", profile.facebookUrl || profile.facebook);
@@ -394,7 +399,7 @@ function buildSurfaceScene(profile = {}, posts = [], menuItems = [], focusItems 
         <div class="ll-surface__cardinner">
           <div class="ll-card ll-profile ll-surface__card" aria-label="Profili juaj">
             <div class="ll-profile__cover" data-spot="identity">
-              <span class="ll-profile__coverimg">${img(profile.coverUrl, "Ballina")}</span>
+              <span class="ll-profile__coverimg">${img(profile.coverUrl, "Ballina", IMG_FALLBACK, { eager })}</span>
               <span class="ll-profile__scrim"></span>
               <span class="ll-profile__fade"></span>
             </div>
@@ -402,7 +407,7 @@ function buildSurfaceScene(profile = {}, posts = [], menuItems = [], focusItems 
 
             <div class="ll-profile__body">
               <div class="ll-profile__toprow">
-                <span class="ll-profile__avatar" data-spot="identity">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK)}</span>
+                <span class="ll-profile__avatar" data-spot="identity">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK, { eager })}</span>
                 <div class="ll-profile__meta">
                   <span class="ll-metric" data-spot="fans">
                     <span class="ll-metric__value">${esc(formatCount(profile.followers))}</span>
@@ -478,7 +483,10 @@ function buildSurfaceScene(profile = {}, posts = [], menuItems = [], focusItems 
 // kommt. Die Texte sind fuer jemanden geschrieben, der Mnyra zum ersten Mal
 // sieht: ein Gedanke pro Satz, keine Fachwoerter, alles aus Sicht des Gastes.
 export function renderSurface(profile = {}, posts = [], menuItems = [], focusItems = []) {
-  const { scene } = buildSurfaceScene(profile, posts, menuItems, focusItems);
+  // Die Kartela ist der zweite Bildschirm - ihr Bild und ihre Logo laden
+  // sofort. Die zweite Ausfertigung weiter unten holt dieselben Adressen aus
+  // dem Zwischenspeicher.
+  const { scene } = buildSurfaceScene(profile, posts, menuItems, focusItems, { eager: true });
 
   return stage({
     title: "Profili juaj në Mnyra",

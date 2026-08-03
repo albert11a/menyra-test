@@ -57,15 +57,41 @@ function setBoot(message, isError = false) {
 function startGreetingCycle() {
   const items = Array.from(document.querySelectorAll("[data-greet]"));
   if (items.length < 2) return;
+
   let index = 0;
-  window.setInterval(() => {
+  let timer = 0;
+  const tick = () => {
     const previous = index;
     index = (index + 1) % LEAD_LANDING_GREETINGS_COUNT;
     items.forEach((node, position) => {
       node.classList.toggle("is-active", position === index);
       node.classList.toggle("is-prev", position === previous);
     });
-  }, GREETING_INTERVAL_MS);
+  };
+
+  const start = () => {
+    if (!timer) timer = window.setInterval(tick, GREETING_INTERVAL_MS);
+  };
+  const stop = () => {
+    if (!timer) return;
+    window.clearInterval(timer);
+    timer = 0;
+  };
+
+  // Der Wechsel laeuft nur, solange die Begruessung zu sehen ist. Sonst
+  // liefe er die ganze Sitzung weiter und wuerde alle 2,6 Sekunden mitten im
+  // Wischen die Stile neu berechnen lassen - fuer etwas, das laengst
+  // ausserhalb des Bildes liegt.
+  const hero = document.querySelector(".ll-hero");
+  if (!hero || !("IntersectionObserver" in window)) {
+    start();
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => (entry.isIntersecting ? start() : stop()));
+  }, { root: document.querySelector(".ll-shell") });
+  observer.observe(hero);
 }
 
 // Fortschrittspunkte rechts: zeigen, an welchem Abschnitt man gerade ist.

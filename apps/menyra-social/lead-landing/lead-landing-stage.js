@@ -63,6 +63,18 @@ function applyStageState(stage, state) {
   // Ein Schritt kann die Szene umschalten (Profil -> Info -> Postimet ->
   // Menu). Das Umschalten selbst animiert CSS.
   const view = String(captions[state]?.dataset?.view || "").trim();
+
+  // Der Frage-Bildschirm ist keine neue Ansicht: Er legt sich ueber das
+  // Kapitel, und dahinter bleibt alles genau so stehen, wie der Schritt davor
+  // es verlassen hat. Wuerde hier umgeschaltet, spraenge der gedrueckte Tab
+  // von Menu auf Postimet und die Szene blendete unter der Deckflaeche um -
+  // sichtbar beim Ein- und beim Ausblenden, und umsonst gerechnet.
+  if (view === "ask") {
+    stage.setAttribute("data-aside", "ask");
+    return true;
+  }
+  stage.removeAttribute("data-aside");
+
   if (view) stage.setAttribute("data-view", view);
   else stage.removeAttribute("data-view");
 
@@ -105,8 +117,11 @@ function updateStage(stage, viewportHeight) {
   const state = clamp(Math.floor(progress * (steps + 1)), 0, steps);
   const changed = applyStageState(stage, state);
 
+  // Nur schreiben, wenn sich der Wert wirklich aendert. Sonst wird bei jedem
+  // Frame der Stil des Balkens fuer nichts neu berechnet.
   const bar = stage.querySelector(".ll-stage__bar span");
-  if (bar) bar.style.width = `${Math.round(progress * 100)}%`;
+  const width = `${Math.round(progress * 100)}%`;
+  if (bar && bar.style.width !== width) bar.style.width = width;
 
   // Nur bei echtem Schrittwechsel neu ausrichten. Jeder Frame wuerde sonst
   // ein Layout erzwingen (getBoundingClientRect direkt vor einem Style-
@@ -457,13 +472,11 @@ function panSceneToFocus(stage) {
   const scene = stage.querySelector(".ll-stage__scene");
   if (!viewport || !scene) return;
 
-  const view = String(stage.getAttribute("data-view") || "").trim();
+  // Solange die Deckflaeche oben liegt, gibt es dahinter nichts zu fahren -
+  // die Szene steht genau da, wo der Schritt davor sie gelassen hat.
+  if (stage.hasAttribute("data-aside")) return;
 
-  // Der Frage-Bildschirm legt sich ueber das ganze Kapitel. Dahinter wird
-  // nichts bewegt: Die Szene bleibt stehen, wo sie war, und faehrt erst
-  // weiter, wenn die Frage wieder abtritt. Sonst liefe die Bewegung waehrend
-  // des Ein- und Ausblendens und waere durch die Deckflaeche zu sehen.
-  if (view === "ask") return;
+  const view = String(stage.getAttribute("data-view") || "").trim();
 
   // Liegt das Modal ueber der Szene, faehrt nur sein Koerper - Kopfzeile und
   // Fusszeile stehen fest, so wie in der App. Die Szene darunter bleibt, wo
@@ -582,9 +595,19 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     });
   };
 
+  // Beim Ein- und Ausblenden der Adressleiste meldet ein Handy-Browser eine
+  // ganze Folge von Groessenaenderungen - mitten im Wischen. Jede einzelne
+  // wuerde alle Kapitel neu vermessen und das Scrollen ins Stocken bringen.
+  // Deshalb wird erst gerechnet, wenn die Folge vorbei ist.
+  const RESIZE_SETTLE_MS = 160;
+  let resizeTimer = 0;
   const onResize = () => {
-    fitAll();
-    onScroll();
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      resizeTimer = 0;
+      fitAll();
+      onScroll();
+    }, RESIZE_SETTLE_MS);
   };
 
   root.addEventListener("scroll", onScroll, { passive: true });
@@ -597,6 +620,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   window.addEventListener("load", onResize, { once: true });
 
   return () => {
+    window.clearTimeout(resizeTimer);
     root.removeEventListener("scroll", onScroll);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("orientationchange", onResize);

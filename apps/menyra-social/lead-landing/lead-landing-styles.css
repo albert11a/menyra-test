@@ -197,17 +197,14 @@ img {
   background: var(--ll-bg);
   opacity: 0;
   pointer-events: none;
-  /* Beim Abtreten verzoegert: Dahinter faehrt die Szene zurueck an ihren
-     Platz. Bis die Deckflaeche durchsichtig wird, ist die Fahrt vorbei -
-     sichtbar bleibt nur das weiche Aufblenden. */
-  transition: opacity 360ms ease 80ms;
+  /* Kurz und in beide Richtungen gleich: Dahinter bewegt sich nichts, es gibt
+     also nichts zu ueberdecken - nur den Wechsel selbst. */
+  transition: opacity 260ms ease;
 }
 
-.ll-stage[data-view="ask"] .ll-stage__aside {
+.ll-stage[data-aside="ask"] .ll-stage__aside {
   opacity: 1;
   pointer-events: auto;
-  /* Beim Kommen schnell - sonst sieht man kurz die Szene darunter. */
-  transition: opacity 240ms ease;
 }
 
 /* Randlose Schritte: Die Szene laeuft bis an die Unterkante, damit dort
@@ -251,6 +248,12 @@ img {
    So sieht man immer das ganze Profil - nur die Aufmerksamkeit wandert. */
 [data-spot] {
   transition: opacity 460ms ease, filter 460ms ease, transform 460ms ease;
+}
+
+/* Die eigene Ebene bekommt ein Teil nur, solange in seinem Kapitel ueberhaupt
+   etwas hervorgehoben wird. Dauerhaft haetten alle Teile aller Kapitel eine -
+   das kostet auf dem Handy Speicher, ohne dass sich etwas bewegt. */
+.ll-stage[data-focus] [data-spot] {
   will-change: filter, opacity;
 }
 
