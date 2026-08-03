@@ -2231,8 +2231,10 @@ img {
 /* Der gewaehlte Tab ist dunkel - er soll aussehen, als haette der Klient ihn
    gerade angetippt. Beide Tabs teilen sich diesen Zustand, damit der Wechsel
    von Postimet auf Menu nur die Seite wechselt, nicht das Aussehen. */
+/* Im ersten Schritt ist noch nichts gedrueckt - beide Tabs liegen ruhig da.
+   Erst der naechste Schritt drueckt Postimet, und man sieht es passieren. */
 .ll-stage[data-view^="menu"] .ll-tab--menu,
-.ll-stage:not([data-view^="menu"]) .ll-tab--posts {
+.ll-stage:not([data-view^="menu"]):not([data-view="profile-idle"]) .ll-tab--posts {
   background: #0f172a;
   color: #fff;
   box-shadow: 0 10px 24px -14px rgb(15 23 42 / 0.6);

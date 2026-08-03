@@ -455,7 +455,15 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     scene,
     overlay: dish.overlay,
     steps: [
-      { view: "profile", focus: "", body: "Informacion, postimet dhe menuja. Gjithçka, në një vend." },
+      // Der kurze Weg zuerst: Kartela, dann die beiden Seiten darunter. Hier
+      // ist noch kein Tab gedrueckt - das passiert im naechsten Schritt von
+      // selbst, so wie es der Klient in der App tut.
+      { view: "profile-idle", focus: "", body: "Informacion, postimet dhe menuja. Gjithçka, në një vend." },
+      { view: "posts", focus: "", title: "Postimet", body: "Kartela ngjitet lart dhe mbeten dy butona. Postimet hapet vetë - me fotot tuaja." },
+      { view: "menu-focus", focus: "", title: "Sot në fokus", body: "Pastaj hapet Menu. Lart dalin pjatat që doni të shisni sot." },
+      { view: "menu-food", focus: "", title: "Menyja juaj", body: "Dhe poshtë tyre e gjithë menyja - çdo pjatë me foto dhe çmim." },
+
+      // Danach dasselbe noch einmal in Ruhe, Teil fuer Teil.
       { view: "profile", focus: "identity", title: "Logoja dhe emri", body: "Fotoja e lokalit, logoja, emri dhe qyteti. Klienti e sheh menjëherë kush jeni." },
       { view: "profile", focus: "social", title: "Harta dhe rrjetet", body: "Këta butona hapin hartën, TikTok-un dhe Instagram-in tuaj. I vendosni një herë." },
       { view: "profile", focus: "fans", title: "Fans", body: "Sa njerëz ju ndjekin. Numri rritet vetë me çdo postim." },
