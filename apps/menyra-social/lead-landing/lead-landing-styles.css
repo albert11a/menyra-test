@@ -210,25 +210,17 @@ img {
   will-change: filter, opacity;
 }
 
+/* Der erklaerte Teil bleibt unberuehrt, alles andere tritt deutlich
+   zurueck: unscharf, entfaerbt und stark durchsichtig. Auf hellem Grund
+   wirkt Ausblenden staerker als Abdunkeln - abgedunkelt haetten die Teile
+   mehr Kontrast zum Weiss und wuerden gerade dadurch auffallen. */
 .ll-stage[data-focus] [data-spot] {
-  opacity: 0.92;
-  filter: blur(4px) brightness(0.93) saturate(0.85);
+  opacity: 0.34;
+  filter: blur(5px) saturate(0.45);
 }
 
 .ll-stage[data-focus] [data-spot][data-spot-active] {
   opacity: 1;
-  filter: none;
-}
-
-/* Die Fusszeile wird unscharf wie alles andere, aber nicht abgedunkelt: Sie
-   stoesst unten an den Bildschirmrand, und dahinter liegt reines Weiss -
-   abgedunkelt gaebe es dort eine sichtbare Farbkante. */
-.ll-stage[data-focus] .ll-md__foot[data-spot] {
-  opacity: 1;
-  filter: blur(4px);
-}
-
-.ll-stage[data-focus] .ll-md__foot[data-spot][data-spot-active] {
   filter: none;
 }
 
