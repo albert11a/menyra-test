@@ -2414,7 +2414,7 @@ img {
      zum Wechsel. Liegt dieser Schnitt zu nah an der Kante der Karte, sieht
      die Karte selbst abgeschnitten aus. Mit dem Abstand ist er deutlich als
      Bewegung zu erkennen. */
-  padding: 72px 24px 44px;
+  padding: 96px 24px 44px;
   justify-content: center;
   display: flex;
   flex-direction: column;
