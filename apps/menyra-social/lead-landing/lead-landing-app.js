@@ -18,6 +18,10 @@ import {
 
 const GREETING_INTERVAL_MS = 2600;
 
+// Ab wieviel Deckung eine Aufnahme hereinfaehrt. Ein gutes Drittel: Frueher
+// liefe die Bewegung ab, bevor man sie sieht, spaeter kaeme sie zu spaet.
+const SHOT_REVEAL_RATIO = 0.35;
+
 function readRouteKey() {
   const path = String(window.location.pathname || "");
   const match = path.match(/\/(?:oferta|lp|pitch)\/([^/?#]+)/i);
@@ -138,14 +142,22 @@ function startShotReveal() {
   // ganzen Bildschirm ein und ragt mit ihrem leeren Rand lange vor dem Bild
   // ins Sichtfeld - die Bewegung liefe dann ab, waehrend das Bild noch gar
   // nicht zu sehen ist.
+  //
+  // Beobachtet wird auch weiter, nachdem eine Aufnahme einmal da war: Ist sie
+  // ganz aus dem Bild, faellt sie in ihre Startlage zurueck. Der naechste
+  // Wisch faehrt sie deshalb wieder herein - egal, aus welcher Richtung er
+  // kommt. Zurueckgesetzt wird erst bei Deckung null, also ausserhalb des
+  // Bildes; zu sehen ist der Ruecksprung nie.
+  //
+  // Zwei Schwellen, nicht eine: Dazwischen bleibt es, wie es ist. Mit nur
+  // einer Schwelle flackerte es genau an ihr.
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
       const shot = entry.target.closest("[data-shot]") || entry.target;
-      shot.classList.add("is-in");
-      observer.unobserve(entry.target);
+      if (entry.intersectionRatio >= SHOT_REVEAL_RATIO) shot.classList.add("is-in");
+      else if (!entry.isIntersecting) shot.classList.remove("is-in");
     });
-  }, { root: document.querySelector(".ll-shell"), threshold: 0.35 });
+  }, { root: document.querySelector(".ll-shell"), threshold: [0, SHOT_REVEAL_RATIO] });
 
   shots.forEach((shot) => observer.observe(shot.querySelector(".ll-shot__media") || shot));
 }
