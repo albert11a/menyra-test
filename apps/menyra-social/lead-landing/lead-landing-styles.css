@@ -21,6 +21,10 @@
   --ll-radius-md: 1.2rem;
   --ll-shell: 448px;
   --ll-inline: 24px;
+  /* Die Schrift des Geraets - auf dem iPhone SF Pro. -apple-system muss
+     zuerst stehen, sonst greift Safari es nicht. Sie traegt alles Erklaerende:
+     die Begruessung, die Fliesstexte und die Zeilen unter den Aufnahmen. */
+  --ll-font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
 }
 
 * {
@@ -191,7 +195,7 @@ img {
   max-width: 19em;
   margin: 0 auto;
   text-align: center;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  font-family: var(--ll-font-apple);
   opacity: 0;
   transform: translate3d(0, 16px, 0);
   transition: opacity 520ms ease 240ms, transform 640ms cubic-bezier(0.22, 1, 0.36, 1) 240ms;
@@ -531,9 +535,11 @@ img {
 
 .ll-lead {
   margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.45;
+  font-family: var(--ll-font-apple);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   color: var(--ll-muted);
 }
 
@@ -621,9 +627,12 @@ img {
   top: 2%;
   height: 68%;
   pointer-events: none;
-  background:
-    radial-gradient(76% 50% at 6% 44%, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.06) 46%, rgba(99, 102, 241, 0) 74%),
-    radial-gradient(62% 42% at 94% 14%, rgba(56, 189, 248, 0.10) 0%, rgba(56, 189, 248, 0) 72%);
+  background: radial-gradient(
+    76% 50% at 6% 44%,
+    rgba(99, 102, 241, 0.15) 0%,
+    rgba(99, 102, 241, 0.06) 46%,
+    rgba(99, 102, 241, 0) 74%
+  );
 }
 
 .ll-greet {
@@ -637,10 +646,11 @@ img {
   left: 0;
   top: 0;
   margin: 0;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: var(--ll-font-apple);
   font-size: 30px;
   line-height: 36px;
   font-weight: 500;
+  letter-spacing: -0.03em;
   color: var(--ll-accent);
   opacity: 0;
   transform: translateY(1.4rem) scale(0.96);
@@ -695,19 +705,15 @@ img {
   column-gap: 0.16em;
 }
 
+/* Nur der Pfeil. Die Zeile darueber stand da, wo der Blick ohnehin schon
+   war - der Pfeil allein sagt dasselbe und laesst dem Namen mehr Luft. */
 .ll-scroll-hint {
   position: relative;
   z-index: 2;
-  margin-top: 34px;
+  margin-top: 30px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
   color: var(--ll-accent);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
 }
 
 .ll-scroll-hint svg {

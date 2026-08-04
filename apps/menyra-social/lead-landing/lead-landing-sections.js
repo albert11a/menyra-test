@@ -194,9 +194,8 @@ export function renderHero(profile = {}) {
         Profili dhe menuja juaj digjitale janë tashmë gati në Mnyra. Zbuloni çfarë është Mnyra, si ju shohin e ju gjejnë klientët dhe si porosisin direkt nga tavolina.
       </p>
 
-      <div class="ll-scroll-hint">
-        <span>Rrëshqitni Lart</span>
-        ${icon("chevron-down", { size: 22 })}
+      <div class="ll-scroll-hint" aria-hidden="true">
+        ${icon("chevron-down", { size: 26 })}
       </div>
     </header>
   `;
