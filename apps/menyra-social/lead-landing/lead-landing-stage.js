@@ -183,6 +183,26 @@ function twoLineCaptionHeight(stage) {
     + (bodyLine * 2);
 }
 
+// Der Rahmen soll hochkant stehen wie ein Handy. Wie hoch er wird, gibt der
+// Bildschirm vor - er nimmt, was der Text uebrig laesst. Begrenzt wird
+// deshalb die Breite: hoechstens so breit wie hoch mal diesem Verhaeltnis.
+// Auf einem normalen Handy greift das gar nicht, dort ist er ohnehin
+// schlanker; erst auf kurzen Bildschirmen verhindert es, dass er quer wird.
+const FRAME_RATIO = 0.86;
+
+// Gerechnet wird in Pixeln, nicht ueber aspect-ratio: In einem Flex-Kind
+// loesen Safari und Chromium das unterschiedlich auf - genau daran ist der
+// Beitrag im Feed frueher zu einem Streifen zusammengefallen.
+function fitStageFrame(stage) {
+  const frame = stage.querySelector(".ll-stage__frame");
+  if (!frame) return;
+
+  frame.style.removeProperty("--ll-frame-w");
+  const hoch = frame.clientHeight;
+  if (!(hoch > 0)) return;
+  frame.style.setProperty("--ll-frame-w", `${Math.round(hoch * FRAME_RATIO)}px`);
+}
+
 // Abstand eines Bauteils von der Oberkante der Szene - ohne die laufenden
 // Bewegungen. getBoundingClientRect gibt waehrend einer Ueberblendung die
 // Zwischenposition zurueck (die Teile fahren dabei um ein paar Pixel), und
@@ -368,6 +388,9 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   const fitAll = () => {
     stages.forEach((stage) => {
       fitStageCaption(stage);
+      // Erst nach dem Text: Wie hoch der Rahmen wird, haengt daran, wie viel
+      // der Text unter ihm braucht.
+      fitStageFrame(stage);
       fitMenuLists(stage);
       panSceneToFocus(stage);
     });

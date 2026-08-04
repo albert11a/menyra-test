@@ -105,13 +105,22 @@ function sectionHead(title, lead) {
   `;
 }
 
+// Ein Satz traegt eine Aussage, die hervorsticht - die steht zwischen
+// Sternchen. Escaped wird stueckweise, damit aus dem Text selbst nie Markup
+// werden kann.
+function emphasise(line = "") {
+  return String(line)
+    .split(/\*([^*]+)\*/g)
+    .map((part, index) => (index % 2 ? `<b>${esc(part)}</b>` : esc(part)))
+    .join("");
+}
+
 // Ein Zeilenumbruch im Erklaertext ("\n") bleibt erhalten. Gebraucht wird er
-// dort, wo zwei Halbsaetze untereinander gehoeren. Jede Zeile wird einzeln
-// maskiert - aus dem Text selbst kann also weiterhin kein Markup werden.
+// dort, wo zwei Halbsaetze untereinander gehoeren.
 function stepBody(body = "") {
   return String(body || "")
     .split("\n")
-    .map((line) => esc(line))
+    .map(emphasise)
     .join("<br />");
 }
 
@@ -141,7 +150,11 @@ function stage({ title, scene, steps = [], aside = "" }) {
   return `
     <section class="ll-stage" data-steps="${focusSteps}" style="--ll-steps:${focusSteps};" ${firstView ? `data-view="${firstView}"` : ""}>
       <div class="ll-stage__pin">
-        <div class="ll-stage__bar"><span></span></div>
+        <div class="ll-stage__frame">
+          <div class="ll-stage__viewport">
+            <div class="ll-stage__scene">${scene}</div>
+          </div>
+        </div>
 
         <div class="ll-stage__caption">
           ${allSteps.map((step, index) => `
@@ -152,9 +165,7 @@ function stage({ title, scene, steps = [], aside = "" }) {
           `).join("")}
         </div>
 
-        <div class="ll-stage__viewport">
-          <div class="ll-stage__scene">${scene}</div>
-        </div>
+        <div class="ll-stage__bar"><span></span></div>
 
         ${aside ? `<div class="ll-stage__aside">${aside}</div>` : ""}
       </div>
@@ -464,10 +475,10 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
     steps: [
       // Hier ist noch kein Tab gedrueckt - das passiert im naechsten Schritt
       // von selbst, so wie es der Klient in der App tut.
-      { view: "profile-idle", focus: "", body: "Informacion, postimet dhe menuja. Gjithçka, në një vend." },
-      { view: "posts", focus: "", title: "Postimet", body: "Kartela ngjitet lart dhe mbeten dy butona. Postimet hapet vetë - me fotot tuaja." },
-      { view: "menu-focus", focus: "", title: "Sot në fokus", body: "Pastaj hapet Menu. Lart dalin pjatat që doni të shisni sot." },
-      { view: "menu-food", focus: "", title: "Menyja juaj", body: "Dhe poshtë tyre e gjithë menyja - çdo pjatë me foto dhe çmim." },
+      { view: "profile-idle", focus: "", body: "Fotoja, logoja, emri dhe qyteti. *Gjithçka në një vend* - ashtu si e sheh klienti." },
+      { view: "posts", focus: "", title: "Postimet", body: "Kartela ngjitet lart dhe mbeten dy butona. *Postimet hapet vetë* - me fotot tuaja." },
+      { view: "menu-focus", focus: "", title: "Sot në fokus", body: "Pastaj hapet Menu. Lart dalin *pjatat që doni të shisni sot.*" },
+      { view: "menu-food", focus: "", title: "Menyja juaj", body: "Dhe poshtë tyre e gjithë menyja - *çdo pjatë me foto dhe çmim.*" },
 
       // Ein Bildschirm Pause: die Vorschau ist vorbei, die Frage steht im
       // Raum - und alles, was danach kommt, ist die Antwort darauf.
@@ -551,15 +562,6 @@ const SHOTS = [
   }
 ];
 
-// Escaped wird stueckweise, damit aus dem Text selbst nie Markup werden kann -
-// hervorgehoben wird nur das, was zwischen Sternchen steht.
-function shotBody(body = "") {
-  return String(body)
-    .split(/\*([^*]+)\*/g)
-    .map((part, index) => (index % 2 ? `<b>${esc(part)}</b>` : esc(part)))
-    .join("");
-}
-
 export function renderShots() {
   return `
     <section class="ll-shots" data-canvas="#ffffff">
@@ -582,7 +584,7 @@ export function renderShots() {
           </span>
           <figcaption class="ll-shot__text">
             <p class="ll-shot__title">${esc(shot.title)}</p>
-            <p class="ll-shot__body">${shotBody(shot.body)}</p>
+            <p class="ll-shot__body">${emphasise(shot.body)}</p>
           </figcaption>
         </figure>
       `).join("")}
