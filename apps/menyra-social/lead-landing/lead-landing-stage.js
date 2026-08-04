@@ -183,24 +183,80 @@ function twoLineCaptionHeight(stage) {
     + (bodyLine * 2);
 }
 
-// Der Rahmen soll hochkant stehen wie ein Handy. Wie hoch er wird, gibt der
-// Bildschirm vor - er nimmt, was der Text uebrig laesst. Begrenzt wird
-// deshalb die Breite: hoechstens so breit wie hoch mal diesem Verhaeltnis.
-// Auf einem normalen Handy greift das gar nicht, dort ist er ohnehin
-// schlanker; erst auf kurzen Bildschirmen verhindert es, dass er quer wird.
-const FRAME_RATIO = 0.86;
+// Seitenverhaeltnis eines Handys (9:19.5) - der Rahmen soll eines sein, kein
+// breites Feld.
+const FRAME_RATIO = 9 / 19.5;
+
+// Und er soll so gross sein wie das Handy auf den Aufnahmen weiter unten:
+// gut die Haelfte der Kapitelhoehe, mit Luft darueber und darunter. Waere er
+// so hoch wie der Platz hergibt, fuellte er den Bildschirm - genau das war zu
+// gross.
+const FRAME_SHARE = 0.58;
+
+// Die Szene wird immer in dieser Breite gebaut und danach verkleinert. Fest,
+// nicht vom Geraet abhaengig: So sieht das Handy im Rahmen ueberall gleich
+// aus, nur eben mal groesser und mal kleiner.
+const SCENE_WIDTH = 360;
 
 // Gerechnet wird in Pixeln, nicht ueber aspect-ratio: In einem Flex-Kind
 // loesen Safari und Chromium das unterschiedlich auf - genau daran ist der
 // Beitrag im Feed frueher zu einem Streifen zusammengefallen.
 function fitStageFrame(stage) {
+  const pin = stage.querySelector(".ll-stage__pin");
   const frame = stage.querySelector(".ll-stage__frame");
-  if (!frame) return;
+  const scene = stage.querySelector(".ll-stage__scene");
+  if (!pin || !frame || !scene) return;
 
-  frame.style.removeProperty("--ll-frame-w");
-  const hoch = frame.clientHeight;
-  if (!(hoch > 0)) return;
-  frame.style.setProperty("--ll-frame-w", `${Math.round(hoch * FRAME_RATIO)}px`);
+  const pinStyle = window.getComputedStyle(pin);
+  const platzHoch = pin.clientHeight
+    - (parseFloat(pinStyle.paddingTop) || 0)
+    - (parseFloat(pinStyle.paddingBottom) || 0);
+  const platzBreit = pin.clientWidth
+    - (parseFloat(pinStyle.paddingLeft) || 0)
+    - (parseFloat(pinStyle.paddingRight) || 0);
+  if (!(platzHoch > 0) || !(platzBreit > 0)) return;
+
+  // Was der Text unter dem Rahmen braucht, ist keine Verhandlungssache - er
+  // darf nie abgeschnitten werden.
+  const caption = stage.querySelector(".ll-stage__caption");
+  const bar = stage.querySelector(".ll-stage__bar");
+  const darunter = [caption, bar].reduce((summe, node) => {
+    if (!node) return summe;
+    const style = window.getComputedStyle(node);
+    return summe + node.offsetHeight
+      + (parseFloat(style.marginTop) || 0)
+      + (parseFloat(style.marginBottom) || 0);
+  }, 0);
+
+  const hoch = Math.round(Math.min(
+    Math.max(0, platzHoch - darunter),
+    platzHoch * FRAME_SHARE,
+    platzBreit / FRAME_RATIO
+  ));
+  const breit = Math.round(hoch * FRAME_RATIO);
+  if (!(hoch > 0) || !(breit > 0)) return;
+
+  frame.style.setProperty("--ll-frame-w", `${breit}px`);
+  frame.style.setProperty("--ll-frame-h", `${hoch}px`);
+  frame.style.setProperty("--ll-frame-r", `${Math.round(breit * 0.12)}px`);
+  scene.style.setProperty("--ll-scene-w", `${SCENE_WIDTH}px`);
+  stage.dataset.sceneScale = String(breit / SCENE_WIDTH);
+}
+
+// Wie stark die Szene verkleinert ist. Alles, was in Szenen-Pixeln gerechnet
+// wird, muss damit multipliziert werden, bevor es auf den Bildschirm kommt.
+function sceneScale(stage) {
+  const value = Number(stage.dataset.sceneScale);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+// Die Szene traegt zwei Bewegungen zugleich: die Verkleinerung und die Fahrt
+// zu der Stelle, die gerade erklaert wird. Die Reihenfolge ist wichtig -
+// translateY steht vorn und wirkt damit in Bildschirm-Pixeln, nicht in den
+// verkleinerten der Szene.
+function setScenePan(scene, stage, offsetInScene) {
+  const skala = sceneScale(stage);
+  scene.style.transform = `translateY(${Math.round(offsetInScene * skala)}px) scale(${skala})`;
 }
 
 // Abstand eines Bauteils von der Oberkante der Szene - ohne die laufenden
@@ -216,6 +272,13 @@ function offsetTopWithin(node, ancestor) {
     el = el.offsetParent;
   }
   return top;
+}
+
+// Unterkante der Tab-Zeile in den Massen der Szene, plus etwas Luft. Das ist
+// die Hoehe, die das Profil im Bild einnimmt, solange darunter noch nichts
+// zu sehen ist.
+function tabsBottom(tabsEl, scene) {
+  return offsetTopWithin(tabsEl, scene) + tabsEl.offsetHeight + 10;
 }
 
 // Naeher als das an die Oberkante rueckt die Tab-Zeile nie - weder wenn der
@@ -243,13 +306,17 @@ function fitMenuLists(stage) {
   // beide Seiten.
   const tabsTop = offsetTopWithin(tabsEl, scene);
 
+  // Gerechnet wird in den Massen der Szene, nicht in denen des Bildschirms:
+  // Die Szene ist verkleinert, der Rahmen ist es nicht.
+  const sichtbar = viewport.clientHeight / sceneScale(stage);
+
   lists.forEach((list) => {
     const cards = Array.from(list.children);
     cards.forEach((card) => card.removeAttribute("hidden"));
     if (cards.length < 2) return;
 
     const listTop = offsetTopWithin(list, scene);
-    const available = viewport.clientHeight - (listTop - tabsTop) - TABS_TOP_MIN;
+    const available = sichtbar - (listTop - tabsTop) - TABS_TOP_MIN;
     cards.forEach((card, index) => {
       if (index === 0) return;
       const bottom = offsetTopWithin(card, scene) - listTop + card.offsetHeight;
@@ -264,16 +331,21 @@ function fitMenuLists(stage) {
 // klaffte oben eine deutlich groessere Luecke als in der echten Seite.
 const SCENE_TOP_GAP = 19;
 
-function sceneSlack(scene, viewport, effectiveHeight) {
+function sceneSlack(scene, sichtbar, effectiveHeight) {
   // Der eigene Innenabstand der Szene zaehlt zum Abstand nach oben dazu.
   const padTop = parseFloat(window.getComputedStyle(scene).paddingTop) || 0;
-  const room = Math.round((viewport.clientHeight - effectiveHeight) / 2);
+  const room = Math.round((sichtbar - effectiveHeight) / 2);
   return clamp(room, 0, Math.max(0, SCENE_TOP_GAP - padTop));
 }
 
-// Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
-// Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
-// Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
+// Ist die Szene hoeher als der Rahmen, faehrt sie zu der Stelle, die gerade
+// erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
+//
+// Gerechnet wird durchgehend in den Massen der Szene - also vor der
+// Verkleinerung, und mit offsetTop statt getBoundingClientRect. Rects gaeben
+// waehrend einer Ueberblendung die Zwischenposition zurueck und truegen die
+// Verkleinerung schon in sich; beides zusammen ergaebe krumme Werte. Auf den
+// Bildschirm gerechnet wird erst ganz am Ende, in setScenePan.
 function panSceneToFocus(stage) {
   const viewport = stage.querySelector(".ll-stage__viewport");
   const scene = stage.querySelector(".ll-stage__scene");
@@ -286,7 +358,7 @@ function panSceneToFocus(stage) {
   const view = String(stage.getAttribute("data-view") || "").trim();
 
   const tabsEl = scene.querySelector(".ll-surface__tabs");
-  const sceneTop = scene.getBoundingClientRect().top;
+  const sichtbar = viewport.clientHeight / sceneScale(stage);
   const tabsAnchored = view === "tabs" || view === "posts" || view.startsWith("menu");
 
   // Ab dem Tab-Schritt ist die Kartela ausgeblendet. Statt sie aus dem
@@ -305,51 +377,45 @@ function panSceneToFocus(stage) {
       // Im Profil-Schritt sitzt die Szene mittig im Rahmen. Dieser Ausgleich
       // gehoert zur Ruheposition dazu - ohne ihn spraenge der Inhalt beim
       // Wechsel um genau diesen Betrag nach oben.
-      const profileHeight = Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10;
-      rest = cardEl.offsetTop + sceneSlack(scene, viewport, profileHeight);
+      const profileHeight = tabsBottom(tabsEl, scene);
+      rest = cardEl.offsetTop + sceneSlack(scene, sichtbar, profileHeight);
     }
-    scene.style.transform = `translateY(${-Math.max(0, offsetTopWithin(tabsEl, scene) - rest)}px)`;
+    setScenePan(scene, stage, -Math.max(0, offsetTopWithin(tabsEl, scene) - rest));
     return;
   }
 
   // Solange Profil oder Info erklaert werden, ist der Inhalt unter den Tabs
   // noch unsichtbar. Die Szene endet fuer die Fahrt daher an der Unterkante
   // der Tabs - sonst wuerde darunter eine Leerflaeche ins Bild rutschen.
-  const effectiveHeight = tabsEl
-    ? Math.round(tabsEl.getBoundingClientRect().bottom - sceneTop) + 10
-    : scene.offsetHeight;
+  const effectiveHeight = tabsEl ? tabsBottom(tabsEl, scene) : scene.offsetHeight;
 
-  const maxOffset = Math.max(0, effectiveHeight - viewport.clientHeight);
+  const maxOffset = Math.max(0, effectiveHeight - sichtbar);
   if (maxOffset <= 0) {
     // Passt alles ins Bild, steht es oben - mit demselben Abstand wie in der
     // App zwischen Kopfleiste und Inhalt.
-    scene.style.transform = `translateY(${sceneSlack(scene, viewport, effectiveHeight)}px)`;
+    setScenePan(scene, stage, sceneSlack(scene, sichtbar, effectiveHeight));
     return;
   }
 
   const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"));
   if (!active.length) {
     // Ohne Fokus: Anfang der Szene zeigen.
-    scene.style.transform = "translateY(0px)";
+    setScenePan(scene, stage, 0);
     return;
   }
 
-  // Szene und Ziele sind gleich verschoben, die Differenz ergibt also die
-  // unverschobene Position innerhalb der Szene. Ein Schritt kann mehrere
-  // Teile hervorheben (z. B. Logo und Name) - dann zaehlt die Klammer um
-  // alle, nicht nur das erste.
+  // Ein Schritt kann mehrere Teile hervorheben (z. B. Logo und Name) - dann
+  // zaehlt die Klammer um alle, nicht nur das erste.
   let top = Infinity;
   let bottom = -Infinity;
   active.forEach((node) => {
-    const rect = node.getBoundingClientRect();
-    top = Math.min(top, rect.top - sceneTop);
-    bottom = Math.max(bottom, rect.bottom - sceneTop);
+    const oben = offsetTopWithin(node, scene);
+    top = Math.min(top, oben);
+    bottom = Math.max(bottom, oben + node.offsetHeight);
   });
 
-  const centered = top + ((bottom - top) / 2) - (viewport.clientHeight / 2);
-  const offset = clamp(Math.round(centered), 0, maxOffset);
-
-  scene.style.transform = `translateY(${-offset}px)`;
+  const centered = top + ((bottom - top) / 2) - (sichtbar / 2);
+  setScenePan(scene, stage, -clamp(Math.round(centered), 0, maxOffset));
 }
 
 export function startLeadLandingStages({ scroller = null } = {}) {

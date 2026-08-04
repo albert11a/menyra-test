@@ -262,7 +262,9 @@ img {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  /* Der Rahmen hat eine feste Groesse, keine gestreckte - deshalb mittig,
+     damit die Luft gleichmaessig ueber und unter ihm liegt. */
+  justify-content: center;
   padding: 14px var(--ll-inline) 18px;
   overflow: hidden;
   z-index: 2;
@@ -283,17 +285,15 @@ img {
   scroll-snap-stop: always;
 }
 
-/* Der Rahmen um die Szene: hochkant wie ein Handy, mit runden Ecken und
-   einem ganz leichten Schatten - dieselbe Handschrift wie bei den Aufnahmen
-   der App weiter unten. Er nimmt die Hoehe, die der Text uebrig laesst; wie
-   breit er dabei hoechstens werden darf, rechnet fitStageFrame in Pixeln aus.
-   In Prozent oder ueber aspect-ratio ginge es nicht: In einem Flex-Kind loesen
-   Safari und Chromium das unterschiedlich auf. */
+/* Der Rahmen um die Szene: ein Handy, so gross wie eines auf den Aufnahmen
+   weiter unten - schmal, hochkant, mit runden Ecken und einem ganz leichten
+   Schatten, und Luft rundherum. Breite und Hoehe rechnet fitStageFrame in
+   Pixeln aus; in Prozent oder ueber aspect-ratio ginge es nicht, denn in
+   einem Flex-Kind loesen Safari und Chromium das unterschiedlich auf. */
 .ll-stage__frame {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-  max-width: var(--ll-frame-w, 100%);
+  flex: 0 0 auto;
+  width: var(--ll-frame-w, 100%);
+  height: var(--ll-frame-h, auto);
   margin: 0 auto;
   /* Der Grundton der App-Oberflaeche, nicht Weiss: Die Kartela und die
      Tab-Zeile sind selbst weiss - auf Weiss verschwaemmen sie mit dem Rahmen
@@ -303,7 +303,9 @@ img {
      beieinander - ohne sie waere die Kante des Rahmens nur am Schatten zu
      erahnen. */
   border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 2rem;
+  /* Runde Ecken im Verhaeltnis eines echten Handys - rund 12 % der Breite.
+     Ein fester Wert saehe bei diesem kleinen Rahmen aus wie eine Kachel. */
+  border-radius: var(--ll-frame-r, 1.6rem);
   box-shadow: 0 10px 34px -22px rgba(15, 23, 42, 0.28);
   overflow: hidden;
 }
@@ -342,16 +344,21 @@ img {
   pointer-events: auto;
 }
 
+/* Die Szene wird immer in derselben Breite gebaut und danach als Ganzes
+   verkleinert - so wie ein Foto eines Handys. Wuerde sie stattdessen in der
+   schmalen Breite des Rahmens umbrechen, waere es kein Handy mehr, sondern
+   ein gequetschtes Profil: Zeilen brechen anders um, Knoepfe werden eng.
+   360px ist die Baubreite eines gewoehnlichen Handys; --ll-scene-scale
+   rechnet fitStageFrame aus. */
 .ll-stage__scene {
   position: absolute;
-  /* Innerhalb des Rahmens, mit demselben schmalen Rand, den das Profil in der
-     App zum Bildschirmrand hat. */
-  left: 12px;
-  right: 12px;
+  left: 0;
   top: 0;
+  width: var(--ll-scene-w, 360px);
   /* Luft am Rand: der hervorgehobene Teil waechst leicht (scale) und wuerde
      sonst am oberen oder unteren Rand angeschnitten. */
-  padding: 10px 0;
+  padding: 10px 12px;
+  transform-origin: top left;
   transition: transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
   will-change: transform;
 }
