@@ -2551,6 +2551,17 @@ img {
   height: 100%;
 }
 
+/* Links und rechts derselbe Abstand wie in den uebrigen Kapiteln
+   (--ll-inline): Skeda und Inhalt beginnen auf derselben Kante wie etwa die
+   Tab-Leiste im Profil-Kapitel. In der App ist der Abstand etwas knapper -
+   hier zaehlt, dass die Kapitel untereinander buendig stehen. Die Flaeche
+   selbst laeuft weiter von Rand zu Rand, damit der Grundton nicht abreisst. */
+.ll-web--feed .ll-htabs__row,
+.ll-web--feed .ll-feed {
+  padding-left: var(--ll-inline);
+  padding-right: var(--ll-inline);
+}
+
 /* ---------- Die Tab-Zeile ganz oben ----------
    Masse 1:1 aus .smart-header-tabs-row und .smart-header-pill. Sie steht vom
    ersten Feed-Schritt an da, alle drei Skeda nebeneinander - eine Kopfleiste
@@ -2589,6 +2600,16 @@ img {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   transition: background-color 260ms ease, color 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+}
+
+/* Schmale Geraete: Mit dem groesseren Seitenabstand passen drei Pillen sonst
+   nicht mehr nebeneinander. Dieselbe Regel wie in der App (max-width 380px). */
+@media (max-width: 380px) {
+  .ll-htab {
+    padding-left: 0.66rem;
+    padding-right: 0.66rem;
+    letter-spacing: 0.08em;
+  }
 }
 
 .ll-htab__icon {
