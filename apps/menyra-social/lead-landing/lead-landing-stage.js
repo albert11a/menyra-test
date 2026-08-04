@@ -89,12 +89,6 @@ function applyStageState(stage, state) {
   if (view) stage.setAttribute("data-view", view);
   else stage.removeAttribute("data-view");
 
-  // Randlose Schritte: Die Szene laeuft bis an den Bildschirmrand, ohne
-  // Rahmen und Rundung - fuer Nachbauten, die in der App den ganzen
-  // Bildschirm einnehmen.
-  if (captions[state]?.dataset?.full === "1") stage.setAttribute("data-full", "");
-  else stage.removeAttribute("data-full");
-
   const focusKey = String(captions[state]?.dataset?.focus || "").trim();
   const spots = Array.from(stage.querySelectorAll("[data-spot]"));
 
@@ -244,239 +238,6 @@ function fitMenuLists(stage) {
   });
 }
 
-// Der Beitrag im Feed: Das Bild ist 4:5 hoch. Ueber die volle Breite
-// gerechnet braucht es mehr Hoehe, als unter der Kopfzeile uebrig bleibt -
-// dann waere es unten abgeschnitten. Deshalb wird hier die Breite gesucht,
-// bei der der ganze Beitrag in den Platz passt.
-//
-// Gerechnet statt dem Stylesheet ueberlassen: Wie eine Engine aus einer
-// vorgegebenen Hoehe die Breite ableitet, ist verschieden - in Safari kam
-// dabei ein schmaler Streifen heraus. Pixel sehen ueberall gleich aus.
-const FPOST_IMAGE_RATIO = 5 / 4;
-
-function boxExtra(style, sides) {
-  return sides.reduce((sum, side) => sum
-    + (parseFloat(style[`padding${side}`]) || 0)
-    + (parseFloat(style[`border${side}Width`]) || 0), 0);
-}
-
-// Nachbauten mit festen Massen (Highlights, Karte des Lokals) lassen sich
-// nicht ueber die Breite regeln. Passen sie nicht in die Hoehe, werden sie
-// als Ganzes verkleinert: Die Verhaeltnisse bleiben, abgeschnitten wird
-// nichts. Passen sie, bleiben sie in echter Groesse.
-function fitFeedBlock(stage, selector, available) {
-  const block = stage.querySelector(selector);
-  if (!block) return;
-  block.style.transform = "";
-  const natural = block.offsetHeight;
-  if (!(natural > 0) || !(available > 0) || natural <= available) return;
-  // Von links oben verkleinern: Sonst ruecken die Bloecke beim Verkleinern
-  // von der linken Kante weg und stehen nicht mehr buendig mit dem Rest.
-  block.style.transformOrigin = "top left";
-  block.style.transform = `scale(${(available / natural).toFixed(4)})`;
-}
-
-function fitFeedScene(stage) {
-  const viewport = stage.querySelector(".ll-stage__viewport");
-  const feed = stage.querySelector(".ll-web--feed .ll-feed");
-  const post = stage.querySelector(".ll-fpost");
-  const frame = stage.querySelector(".ll-fpost__frame");
-  if (!viewport || !feed || !post || !frame) return;
-
-  // Erst zuruecksetzen, sonst misst die naechste Rechnung den eigenen Stand.
-  const media = stage.querySelector(".ll-fpost__media");
-  frame.style.width = "";
-  if (media) media.style.height = "";
-
-  // Der Platz wird aus den Bauteilen darueber gerechnet, nicht aus der Hoehe
-  // der Feed-Flaeche: Die haengt davon ab, wie eine Engine den Rest verteilt.
-  // Der Rahmen des Kapitels ist dagegen ueberall gleich hoch.
-  const tabs = stage.querySelector(".ll-web--feed .ll-htabs");
-  const feedStyle = window.getComputedStyle(feed);
-  const head = stage.querySelector(".ll-fpost__head");
-  const frameStyle = window.getComputedStyle(frame);
-
-  // Ueber dem Feed steht nur die Tab-Zeile - ihr Abstand nach oben gehoert zu
-  // ihrer Hoehe und ist damit schon mitgezaehlt.
-  const tabsSpace = tabs ? tabs.offsetHeight : 0;
-
-  // Der Schatten des Rahmens reicht ueber ihn hinaus. Die Karte des Feeds
-  // endet am Bildschirmrand und schneidet ihn dort ab - das gab unten einen
-  // grauen Streifen mit harter Kante. Deshalb bleibt unter dem Rahmen so viel
-  // frei, dass der Schatten vollstaendig auslaufen kann. Wie weit er reicht,
-  // steht im Stylesheet neben dem Schatten selbst.
-  const reach = parseFloat(frameStyle.getPropertyValue("--ll-fpost-shadow-reach")) || 0;
-  const feedBottom = (parseFloat(feedStyle.paddingBottom) || 0)
-    + (parseFloat(feedStyle.borderBottomWidth) || 0);
-
-  // Der Platz, den die Feed-Flaeche fuer ihren Inhalt hergibt.
-  const content = viewport.clientHeight
-    - tabsSpace
-    - boxExtra(feedStyle, ["Top", "Bottom"]);
-
-  const used = tabsSpace
-    + boxExtra(feedStyle, ["Top"])
-    // Der Abstand unten und der Auslauf des Schattens ueberlagern sich - es
-    // zaehlt der groessere von beiden, nicht die Summe.
-    + Math.max(feedBottom, reach)
-    + (head ? head.offsetHeight + (parseFloat(window.getComputedStyle(head).marginBottom) || 0) : 0)
-    + boxExtra(frameStyle, ["Top", "Bottom"]);
-
-  // Der Beitrag behaelt seine echte Breite - die volle Breite der Flaeche, so
-  // wie in der App. Reicht die Hoehe nicht, wird nur das Bild flacher; das
-  // Foto darin bleibt formfuellend und wird oben und unten beschnitten,
-  // genauso wie es die App bei langen Fotos macht.
-  const frameWidth = boxExtra(frameStyle, ["Left", "Right"]);
-  const full = post.clientWidth - frameWidth;
-  const room = viewport.clientHeight - used;
-  if (media && full > 0 && room > 0) {
-    media.style.height = `${Math.floor(Math.min(full * FPOST_IMAGE_RATIO, room))}px`;
-  }
-
-  // Wie weit die Feed-Spalte faehrt, damit die Story-Reihe unter den Skeda
-  // verschwindet und der Beitrag genau an ihre Stelle rueckt.
-  const rail = stage.querySelector(".ll-feed__rail");
-  const scroll = stage.querySelector(".ll-feed__scroll");
-  if (rail && scroll) scroll.style.setProperty("--ll-rail-h", `${rail.offsetHeight}px`);
-
-  fitFeedBlock(stage, ".ll-hl", content);
-  fitFeedBlock(stage, ".ll-rcard:not(.ll-ocard)", content);
-  fitFeedBlock(stage, ".ll-ocard", content);
-
-  // Dieselbe Fahrt bei Restorante. Gefahren wird genau bis zur Oberkante der
-  // Karte - nicht um die Hoehe der Highlights: Sind die verkleinert, sagt
-  // ihre sichtbare Hoehe nichts mehr darueber, wo die Karte im Layout steht.
-  // offsetTop ist von der Verkleinerung unberuehrt und trifft deshalb.
-  const highlights = stage.querySelector(".ll-hl");
-  const listCard = stage.querySelector(".ll-rcard:not(.ll-ocard)");
-  const places = stage.querySelector(".ll-feed__scroll--places");
-  if (highlights && listCard && places) {
-    const travel = Math.max(0, listCard.offsetTop - highlights.offsetTop);
-    places.style.setProperty("--ll-hl-h", `${travel}px`);
-  }
-}
-
-// Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
-// Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
-// Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
-// Vollbild-Kapitel (das Speisen-Modal) fahren nicht die ganze Szene, sondern
-// nur den Bereich, der in der App der scrollende Koerper ist. Kopf und
-// Fusszeile bleiben dadurch stehen - genau wie im echten Modal.
-// Die sichtbare Hoehe des Rahmens. clientHeight enthaelt die Innenabstaende,
-// sichtbar ist aber nur die Flaeche dazwischen - sonst bleibt der letzte
-// Abschnitt genau um diese Abstaende unter der Kante haengen.
-function paneViewportHeight(frame) {
-  const frameStyle = window.getComputedStyle(frame);
-  const padTop = parseFloat(frameStyle.paddingTop) || 0;
-  const padBottom = parseFloat(frameStyle.paddingBottom) || 0;
-  return Math.max(1, frame.clientHeight - padTop - padBottom);
-}
-
-// Jeder erklaerte Abschnitt soll oben stehen - dort, wo beim ersten Schritt
-// die Galerie steht. Der letzte Abschnitt kaeme dort aber nie hin, weil die
-// Fahrt am Ende des Inhalts endet. Deshalb bekommt der Bereich unten so viel
-// Luft, dass auch er nach oben fahren kann.
-function fitPaneTravel(stage) {
-  const pane = stage.querySelector("[data-pan]");
-  const frame = pane ? pane.parentElement : null;
-  if (!pane || !frame) return;
-
-  pane.style.paddingBottom = "0px";
-  const visible = paneViewportHeight(frame);
-  const natural = pane.offsetHeight;
-  const paneTop = pane.getBoundingClientRect().top;
-
-  let lastTop = 0;
-  pane.querySelectorAll("[data-spot]").forEach((node) => {
-    lastTop = Math.max(lastTop, node.getBoundingClientRect().top - paneTop);
-  });
-
-  pane.style.paddingBottom = `${Math.max(0, Math.round(lastTop + visible - natural))}px`;
-}
-
-// Gibt zurueck, wie weit der Bereich gefahren ist.
-function readPaneOffset(pane) {
-  const match = /translateY\(\s*(-?[\d.]+)px\s*\)/.exec(pane.style.transform || "");
-  return match ? Math.abs(Number(match[1])) : 0;
-}
-
-function panPane(stage, pane) {
-  const frame = pane.parentElement;
-  if (!frame) return 0;
-
-  const visible = paneViewportHeight(frame);
-  const maxOffset = Math.max(0, pane.offsetHeight - visible);
-  const active = Array.from(stage.querySelectorAll("[data-spot][data-spot-active]"))
-    .filter((node) => pane.contains(node));
-
-  if (maxOffset <= 0) {
-    pane.style.transform = "translateY(0px)";
-    return 0;
-  }
-
-  if (!active.length) {
-    // Der erklaerte Teil liegt ausserhalb des fahrenden Bereichs - das ist
-    // die Fusszeile. Dann bleibt der Inhalt stehen, wo er gerade ist; nur
-    // die Fusszeile tritt hervor. Nichts springt an den Anfang zurueck.
-    // Nur ohne jeden Fokus - in der Gesamtansicht - faehrt er zurueck.
-    if (stage.hasAttribute("data-focus")) return readPaneOffset(pane);
-    pane.style.transform = "translateY(0px)";
-    return 0;
-  }
-
-  // Der Bereich ist bereits verschoben; die Differenz zu seiner Oberkante
-  // ergibt deshalb die unverschobene Position innerhalb des Bereichs.
-  const paneTop = pane.getBoundingClientRect().top;
-  let top = Infinity;
-  active.forEach((node) => {
-    top = Math.min(top, node.getBoundingClientRect().top - paneTop);
-  });
-
-  // Oben buendig statt mittig: So faengt der erklaerte Abschnitt immer an
-  // derselben Kante an, und darueber wird nie ein anderer angeschnitten.
-  const offset = clamp(Math.round(top), 0, maxOffset);
-  pane.style.transform = `translateY(${-offset}px)`;
-  return offset;
-}
-
-// Wird die Fusszeile erklaert, steht ueber ihr die leere Flaeche des
-// Kommentarbereichs. Statt dort stehen zu bleiben, rueckt sie hoch und
-// schliesst direkt an den Inhalt an - erklaert wird schliesslich sie.
-const FOOTER_LIFT_GAP = 24;
-
-// Gerechnet wird ohne die laufenden Bewegungen: getBoundingClientRect gibt
-// waehrend einer Animation die Zwischenposition zurueck. Die Abstaende
-// innerhalb des Bereichs sind davon unabhaengig, weil Bereich und Inhalt
-// gleich verschoben sind - und wie weit der Bereich gefahren ist, sagt
-// panPane.
-function liftFooter(stage, pane, paneOffset) {
-  const foot = stage.querySelector(".ll-md__foot");
-  const clip = pane.parentElement;
-  if (!foot || !clip) return;
-
-  if (String(stage.getAttribute("data-focus") || "") !== "dorder") {
-    foot.style.transform = "";
-    return;
-  }
-
-  // Like-Zeile und Kommentarbereich zaehlen nicht mit: An ihre Stelle tritt
-  // genau jetzt die Fusszeile (beide werden dafuer ausgeblendet, siehe
-  // Stylesheet).
-  const paneTop = pane.getBoundingClientRect().top;
-  let contentEnd = 0;
-  pane.querySelectorAll("[data-spot]").forEach((node) => {
-    if (node.classList.contains("ll-md__comments")) return;
-    if (node.classList.contains("ll-md__social")) return;
-    contentEnd = Math.max(contentEnd, node.getBoundingClientRect().bottom - paneTop);
-  });
-
-  // Unterkante des Inhalts im Ausschnitt - weder ueber dessen Oberkante
-  // hinaus noch unter dessen Rand.
-  const visibleEnd = clamp(contentEnd - paneOffset, 0, clip.clientHeight);
-  const lift = Math.round(clip.clientHeight - visibleEnd - FOOTER_LIFT_GAP);
-  foot.style.transform = lift > 0 ? `translateY(${-lift}px)` : "";
-}
-
 // Passt eine Szene ganz ins Bild, rueckt sie ein Stueck nach unten. Wie weit,
 // richtet sich nach der App: dort liegen zwischen Kopfleiste und Inhalt
 // 1.2rem (--smart-header-content-gap). Vorher sass die Szene mittig, dadurch
@@ -490,6 +251,9 @@ function sceneSlack(scene, viewport, effectiveHeight) {
   return clamp(room, 0, Math.max(0, SCENE_TOP_GAP - padTop));
 }
 
+// Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
+// Ist sie hoeher als der sichtbare Bereich, faehrt sie stattdessen zu der
+// Stelle, die gerade erklaert wird. Beim Zurueckrasten faehrt sie zurueck.
 function panSceneToFocus(stage) {
   const viewport = stage.querySelector(".ll-stage__viewport");
   const scene = stage.querySelector(".ll-stage__scene");
@@ -501,18 +265,6 @@ function panSceneToFocus(stage) {
 
   const view = String(stage.getAttribute("data-view") || "").trim();
 
-  // Liegt das Modal ueber der Szene, faehrt nur sein Koerper - Kopfzeile und
-  // Fusszeile stehen fest, so wie in der App. Die Szene darunter bleibt, wo
-  // sie war, damit sie beim Schliessen unveraendert wieder auftaucht.
-  const pane = view.startsWith("dish") ? stage.querySelector("[data-pan]") : null;
-  if (pane) {
-    // Erst hier steht die endgueltige Hoehe fest: Sobald das Modal offen ist,
-    // faellt der untere Innenabstand des Kapitels weg, der Rahmen ist also
-    // hoeher als waehrend der Menue-Schritte.
-    fitPaneTravel(stage);
-    liftFooter(stage, pane, panPane(stage, pane));
-    return;
-  }
   const tabsEl = scene.querySelector(".ll-surface__tabs");
   const sceneTop = scene.getBoundingClientRect().top;
   const tabsAnchored = view === "tabs" || view === "posts" || view.startsWith("menu");
@@ -617,10 +369,6 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     stages.forEach((stage) => {
       fitStageCaption(stage);
       fitMenuLists(stage);
-      // Nach fitStageCaption: erst dann steht fest, wie hoch die Kopfzeile
-      // ist und wie viel Platz darunter fuer den Feed bleibt.
-      fitFeedScene(stage);
-      // fitPaneTravel laeuft in panSceneToFocus - dort steht die Hoehe fest.
       panSceneToFocus(stage);
     });
   };

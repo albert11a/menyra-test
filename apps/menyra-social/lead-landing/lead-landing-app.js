@@ -6,21 +6,14 @@
 // die Social-App.
 
 import { loadLeadLandingData } from "./lead-landing-data.js";
-import { mountLeadLandingMap } from "./lead-landing-map.js";
 import { startLeadLandingStages } from "./lead-landing-stage.js";
 import {
   LEAD_LANDING_GREETINGS_COUNT,
-  renderAnalytics,
   renderCta,
   renderHero,
-  renderMap,
   renderPricing,
-  renderQr,
   renderShots,
-  renderSurface,
-  renderSurfaceDetail,
-  renderWeb,
-  renderWaiter
+  renderSurface
 } from "./lead-landing-sections.js";
 
 const GREETING_INTERVAL_MS = 2600;
@@ -157,41 +150,13 @@ function startShotReveal() {
   shots.forEach((shot) => observer.observe(shot.querySelector(".ll-shot__media") || shot));
 }
 
-function startMap() {
-  const container = document.getElementById("llMap");
-  if (!(container instanceof HTMLElement)) return;
-  if (!container.dataset.lat || !container.dataset.lng) return;
-
-  if (!("IntersectionObserver" in window)) {
-    mountLeadLandingMap(container);
-    return;
-  }
-
-  // Karte erst laden, wenn sie in die Naehe des Viewports kommt.
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
-      observer.disconnect();
-      mountLeadLandingMap(container);
-    });
-  }, { root: document.querySelector(".ll-shell"), rootMargin: "300px 0px" });
-
-  observer.observe(container);
-}
-
 function renderPage(data) {
-  const { profile, posts, neighbours, offer, menuItems, focusItems, sales } = data;
+  const { profile, posts, menuItems, focusItems, sales } = data;
   return `
     <div class="ll-shell">
       ${renderHero(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
       ${renderShots()}
-      ${renderWeb(profile, posts, neighbours, offer)}
-      ${renderSurfaceDetail(profile, posts, menuItems, focusItems)}
-      ${renderMap(profile)}
-      ${renderQr(sales)}
-      ${renderWaiter()}
-      ${renderAnalytics()}
       ${renderPricing(sales)}
       ${renderCta(profile, sales)}
     </div>
@@ -231,7 +196,6 @@ async function boot() {
   startProgressDots();
   startShotReveal();
   startLeadLandingStages({ scroller: document.querySelector(".ll-shell") });
-  startMap();
 }
 
 boot();

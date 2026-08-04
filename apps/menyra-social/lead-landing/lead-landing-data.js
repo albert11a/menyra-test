@@ -16,8 +16,6 @@ const MENU_LIMIT = 120;
 const REQUEST_TIMEOUT_MS = 9000;
 // Andere Lokale fuer die Story-Reihe. Gelesen werden ein paar mehr, als
 // gebraucht werden - ohne Titelbild taugt ein Lokal nicht als Story.
-const NEIGHBOUR_READ = 12;
-const NEIGHBOUR_LIMIT = 3;
 
 function slugify(value = "") {
   let slug = text(value).toLowerCase();
@@ -401,43 +399,6 @@ export function resolveTitleImage(source = {}) {
   );
 }
 
-// Andere Lokale fuer die Story-Reihe. In der App steht die Story des Kunden
-// zwischen denen der anderen - hier genauso. Gezeigt werden sie unscharf, es
-// geht nur um die Reihe: gebraucht werden Bild, Logo und Name.
-function normalizeNeighbour(raw = {}) {
-  return {
-    id: text(raw.id),
-    name: firstText(raw.name, raw.restaurantName),
-    imageUrl: resolveTitleImage(raw),
-    logoUrl: firstText(raw.logoUrl, raw.logo, raw.avatarUrl)
-  };
-}
-
-function pickNeighbours(rows = [], ownId = "") {
-  return rows
-    .map(normalizeNeighbour)
-    .filter((entry) => entry.id && entry.id !== ownId && entry.imageUrl)
-    .slice(0, NEIGHBOUR_LIMIT);
-}
-
-// Die erste laufende Oferta aus restaurants/{id}/public/vouchers - Feldnamen
-// 1:1 aus normalizeVoucherItem. Hat das Lokal noch keine, bleibt es leer und
-// die Landing zeigt ein Beispiel (siehe renderWeb).
-function pickOffer(doc = null) {
-  const items = Array.isArray(doc?.items) ? doc.items : [];
-  const first = items
-    .map((raw) => (raw && typeof raw === "object" ? raw : {}))
-    .find((raw) => raw.active !== false && firstText(raw.title, raw.name));
-  if (!first) return null;
-  return {
-    title: firstText(first.title, first.name),
-    text: firstText(first.text, first.description, first.desc),
-    badgeLabel: firstText(first.badgeLabel, first.discountLabel, first.badge),
-    imageUrl: firstText(first.imageUrl, first.image, first.photoUrl),
-    endAt: firstText(first.endAt, first.endsAt, first.validUntil, first.expiresAt)
-  };
-}
-
 function normalizeLocations(restaurant = {}) {
   const list = Array.isArray(restaurant.locations) ? restaurant.locations : [];
   const mapped = list
@@ -497,12 +458,11 @@ export async function loadLeadLandingData(routeKey = "") {
   }
 
   const encodedId = encodeURIComponent(restaurantId);
-  const [restaurant, meta, offers, publicMenu, vouchers] = await Promise.all([
+  const [restaurant, meta, offers, publicMenu] = await Promise.all([
     readDoc(`restaurants/${encodedId}`),
     readDoc(`restaurants/${encodedId}/public/meta`),
     readDoc(`restaurants/${encodedId}/public/offers`),
-    readDoc(`restaurants/${encodedId}/public/menu`),
-    readDoc(`restaurants/${encodedId}/public/vouchers`)
+    readDoc(`restaurants/${encodedId}/public/menu`)
   ]);
 
   if (!restaurant && !meta) {
@@ -514,10 +474,9 @@ export async function loadLeadLandingData(routeKey = "") {
   // Das oeffentliche Menue-Dokument ist die Hauptquelle; die Sammlung
   // menuItems ist der Rueckfall, wenn es noch nicht veroeffentlicht wurde.
   const menuDocItems = collectMenuDocItems(publicMenu || {});
-  const [postsRaw, menuCollectionItems, neighbourRows] = await Promise.all([
+  const [postsRaw, menuCollectionItems] = await Promise.all([
     readCollection(`restaurants/${encodedId}/socialPosts`, POSTS_LIMIT),
-    menuDocItems.length ? Promise.resolve([]) : readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT),
-    readCollection("restaurants", NEIGHBOUR_READ)
+    menuDocItems.length ? Promise.resolve([]) : readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT)
   ]);
   const menuItemsRaw = menuDocItems.length ? menuDocItems : menuCollectionItems;
 
@@ -568,8 +527,6 @@ export async function loadLeadLandingData(routeKey = "") {
       locations: normalizeLocations(merged)
     },
     posts,
-    offer: pickOffer(vouchers),
-    neighbours: pickNeighbours(neighbourRows, restaurantId),
     menuItems,
     focusItems: normalizeFocusItems(offers || {}, menuItems),
     sales: normalizeSalesConfig(salesSource)
