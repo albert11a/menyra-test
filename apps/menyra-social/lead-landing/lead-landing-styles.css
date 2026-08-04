@@ -74,12 +74,14 @@ img {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* Ein Wisch = ein Schritt: Die Kapitel rasten ein, damit schnelles Scrollen
-     keine Erklaerung ueberspringt (scroll-snap-stop: always an den Ankern
-     sorgt dafuer). Bewusst proximity statt mandatory: Abschnitte ohne
-     Rastpunkte - die Aufnahmen der App - lassen sich dadurch frei
-     durchscrollen, statt bei jedem Loslassen weggezogen zu werden. */
-  scroll-snap-type: y proximity;
+  /* Ein Wisch = ein Schritt. Ohne Snap wuerde schnelles Scrollen
+     Erklaerungen ueberspringen.
+
+     Bewusst mandatory: Mit proximity blieb die Seite zwischen zwei
+     Abschnitten stehen - der erste Wisch endete auf halber Strecke. Jeder
+     Bereich braucht deshalb eigene Rastpunkte; die Aufnahmen der App haben
+     je einen in ihrer Mitte. */
+  scroll-snap-type: y mandatory;
 }
 
 .ll-shell::-webkit-scrollbar {
@@ -124,6 +126,11 @@ img {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* Jede Aufnahme rastet in der Bildschirmmitte ein: Der Wisch nach der Frage
+     stellt die erste mittig ins Bild. Bewusst ohne scroll-snap-stop - dadurch
+     traegt ein laengerer Wisch ueber mehrere Aufnahmen, es fuehlt sich wie
+     Scrollen an statt wie Schritt fuer Schritt. */
+  scroll-snap-align: center;
 }
 
 .ll-shot__img {
