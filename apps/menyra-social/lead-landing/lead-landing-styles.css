@@ -93,13 +93,8 @@ img {
   height: var(--ll-vh);
   overflow-y: scroll;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* Kein -webkit-overflow-scrolling: touch. Seit iOS 13 schwingt jeder
-     Scrollbereich von selbst nach, die Eigenschaft bringt also nichts mehr -
-     wird sie aber noch beachtet, legt sie den Bereich auf eine eigene Ebene,
-     und darauf rechnet iOS position: sticky erst am Ende der Bewegung neu.
-     Genau das sieht aus, als bliebe das Kapitel haengen: Der Nachbau steht
-     still, waehrend darunter weitergescrollt wird. */
   /* Ein Wisch = ein Schritt. Ohne Snap wuerde schnelles Scrollen
      Erklaerungen ueberspringen.
 

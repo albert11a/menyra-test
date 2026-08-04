@@ -118,18 +118,8 @@ function updateStage(stage, viewportHeight) {
   const rect = stage.getBoundingClientRect();
   const travel = Math.max(1, rect.height - viewportHeight);
   const progress = clamp(-rect.top / travel, 0, 1);
-
-  // Der Schritt kommt aus dem naechstgelegenen Rastpunkt, nicht aus dem
-  // Anteil der Strecke. Ein Kapitel ist (Schritte + 1) Bildschirme hoch, seine
-  // Rastpunkte liegen bei 0, 1, 2 ... Bildschirmen - der Anteil aber verteilt
-  // sich ueber die Strecke ohne den letzten Bildschirm. Beides zusammen hiess:
-  // Der Text sprang schon bei 80 % der Strecke um, und bleibt der Scroll aus
-  // irgendeinem Grund zwischen zwei Rastpunkten stehen, zeigte das Kapitel
-  // einen anderen Schritt als den, auf dem man steht.
-  //
-  // Ueber den Rastpunkt gerechnet kann das nicht mehr passieren: Der gezeigte
-  // Schritt ist immer der, bei dem man landet.
-  const state = clamp(Math.round(-rect.top / viewportHeight), 0, steps);
+  // Zustaende: 0 = Gesamtansicht, 1..steps = einzelne Erklaerungen.
+  const state = clamp(Math.floor(progress * (steps + 1)), 0, steps);
   const changed = applyStageState(stage, state);
 
   // Nur schreiben, wenn sich der Wert wirklich aendert. Sonst wird bei jedem
