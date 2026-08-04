@@ -16,6 +16,7 @@ import {
   renderMap,
   renderPricing,
   renderQr,
+  renderShots,
   renderSurface,
   renderSurfaceDetail,
   renderWeb,
@@ -128,6 +129,29 @@ function startProgressDots() {
   sections.forEach((section) => observer.observe(section));
 }
 
+// Die Aufnahmen fahren herein, sobald sie ins Bild kommen - einmalig, danach
+// beobachtet nichts mehr mit. Beim Zurueckscrollen bleiben sie stehen; ein
+// erneutes Ein- und Ausblenden waere Unruhe ohne Gewinn.
+function startShotReveal() {
+  const shots = Array.from(document.querySelectorAll("[data-shot]"));
+  if (!shots.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    shots.forEach((shot) => shot.classList.add("is-in"));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-in");
+      observer.unobserve(entry.target);
+    });
+  }, { root: document.querySelector(".ll-shell"), threshold: 0.35 });
+
+  shots.forEach((shot) => observer.observe(shot));
+}
+
 function startMap() {
   const container = document.getElementById("llMap");
   if (!(container instanceof HTMLElement)) return;
@@ -156,6 +180,7 @@ function renderPage(data) {
     <div class="ll-shell">
       ${renderHero(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
+      ${renderShots()}
       ${renderWeb(profile, posts, neighbours, offer)}
       ${renderSurfaceDetail(profile, posts, menuItems, focusItems)}
       ${renderMap(profile)}
@@ -199,6 +224,7 @@ async function boot() {
 
   startGreetingCycle();
   startProgressDots();
+  startShotReveal();
   startLeadLandingStages({ scroller: document.querySelector(".ll-shell") });
   startMap();
 }

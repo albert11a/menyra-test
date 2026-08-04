@@ -99,6 +99,92 @@ img {
   scroll-snap-stop: always;
 }
 
+/* ---------- Aufnahmen der App: Bild herein, dann der Text ----------
+   Ein Bildschirm je Aufnahme. Sichtbar wird sie ueber eine Klasse, die ein
+   IntersectionObserver setzt (startShotReveal) - animiert werden nur
+   Deckkraft und Verschiebung, das laeuft auf der GPU und ruckelt nicht. */
+
+.ll-shot {
+  /* Genau bildschirmhoch, nicht nur mindestens: Erst dadurch steht die Hoehe
+     fest, die sich Bild und Text teilen - sonst waechst der Abschnitt mit dem
+     Bild und beides laeuft aus dem Bild. */
+  height: 100svh;
+  height: 100dvh;
+  justify-content: center;
+  gap: 22px;
+}
+
+.ll-shot__frame {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Das Bild nimmt den ganzen Platz, den der Text darunter uebrig laesst -
+     ohne feste Hoehe, damit es auf jedem Bildschirm so gross wie moeglich
+     steht und trotzdem nie anstoesst. */
+  flex: 1 1 auto;
+  min-height: 0;
+  opacity: 0;
+  transform: translateY(26px) scale(0.97);
+  transition: opacity 620ms ease, transform 720ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: opacity, transform;
+}
+
+.ll-shot__frame img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* Die Aufnahmen stehen auf Weiss, die Seite ist einen Hauch grauer. Mit
+     der Rundung liest sich das als Karte statt als heller Fleck. */
+  border-radius: 1.5rem;
+}
+
+.ll-shot__text {
+  flex: 0 0 auto;
+}
+
+.ll-shot__text {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 520ms ease 180ms, transform 620ms cubic-bezier(0.23, 1, 0.32, 1) 180ms;
+  will-change: opacity, transform;
+}
+
+.ll-shot.is-in .ll-shot__frame,
+.ll-shot.is-in .ll-shot__text {
+  opacity: 1;
+  transform: none;
+}
+
+.ll-shot__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ll-accent);
+}
+
+.ll-shot__body {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ll-ink-soft);
+}
+
+/* Wer Bewegung reduziert haben will, bekommt sie nicht: Der Inhalt steht
+   dann sofort da, ohne Fahrt. */
+@media (prefers-reduced-motion: reduce) {
+  .ll-shot__frame,
+  .ll-shot__text {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* ---------- Stage: Szene bleibt stehen, Scroll erklaert ---------- */
 
 .ll-stage {
