@@ -20,10 +20,10 @@ function readDefaultThemeColor() {
   return meta ? String(meta.getAttribute("content") || "") : "";
 }
 
-function updateCanvasColor(stages, viewportHeight, defaultThemeColor) {
+function updateCanvasColor(painted, viewportHeight, defaultThemeColor) {
   const middle = viewportHeight / 2;
   let color = "";
-  stages.forEach((stage) => {
+  painted.forEach((stage) => {
     const declared = String(stage.getAttribute("data-canvas") || "").trim();
     if (!declared) return;
     const rect = stage.getBoundingClientRect();
@@ -577,6 +577,13 @@ function panSceneToFocus(stage) {
 export function startLeadLandingStages({ scroller = null } = {}) {
   const root = scroller || document.querySelector(".ll-shell");
   const stages = Array.from(document.querySelectorAll(".ll-stage"));
+  // Die Seitenfarbe darf auch von einem Abschnitt kommen, nicht nur von einem
+  // Kapitel - etwa vom weissen Block mit den Aufnahmen der App. Die Kapitel
+  // muessen dabei immer in der Liste stehen: Ihr data-canvas setzt erst der
+  // Schrittwechsel, zu diesem Zeitpunkt traegt noch keines eines.
+  const painted = stages.concat(
+    Array.from(document.querySelectorAll("[data-canvas]")).filter((node) => !node.classList.contains("ll-stage"))
+  );
   if (!root || !stages.length) return () => {};
 
   let ticking = false;
@@ -591,7 +598,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
       if (rect.bottom < -viewportHeight || rect.top > viewportHeight * 2) return;
       updateStage(stage, viewportHeight);
     });
-    updateCanvasColor(stages, viewportHeight, defaultThemeColor);
+    updateCanvasColor(painted, viewportHeight, defaultThemeColor);
   };
 
   const onScroll = () => {

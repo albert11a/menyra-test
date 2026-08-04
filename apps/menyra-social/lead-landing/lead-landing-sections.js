@@ -897,63 +897,59 @@ function formatOfferUntil(endAt = "") {
   return `Vlen deri me ${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 }
 
-// Vier Aufnahmen der echten App, eine je Bildschirm. Beim Scrollen faehrt
-// erst das Bild herein, kurz danach der Text darunter - dieselbe Dramaturgie
-// wie auf einer Produktseite. Bewegt werden nur Deckkraft und Verschiebung,
-// damit es auf jedem Geraet fluessig bleibt.
+// Vier Aufnahmen der echten App. Anders als die uebrigen Abschnitte rastet
+// hier nichts ein - es wird durchgescrollt, und Bild und Text blenden ein,
+// sobald sie ins Bild kommen: Bild, Text, Bild, Text.
 //
-// Die Masse stehen im Markup (width/height): So kennt der Browser das
-// Seitenverhaeltnis vor dem Laden und der Text springt nicht nach.
+// Die Aufnahmen sind quadratisch und stehen auf Weiss, genau wie der
+// Abschnitt selbst - dadurch ist kein Bildrand zu sehen. Die Masse stehen im
+// Markup, damit der Text beim Laden nicht nachspringt.
 const SHOTS = [
   {
     file: "mnyra-start.webp",
-    w: 804,
-    h: 1254,
     title: "Fillimi",
     body: "Klienti hap Mnyra dhe zgjedh qytetin. Prej këtu fillon gjithçka."
   },
   {
     file: "mnyra-feed.webp",
-    w: 647,
-    h: 1217,
     title: "Feed-i",
     body: "Story-t e ditës dhe postimet e lokaleve - i gjithë qyteti në një ekran."
   },
   {
     file: "mnyra-restorante.webp",
-    w: 765,
-    h: 1230,
     title: "Restorante",
     body: "Lart partnerët premium, poshtë tyre lokalet e qytetit."
   },
   {
     file: "mnyra-lista.webp",
-    w: 902,
-    h: 1235,
     title: "Lista",
     body: "Çdo lokal me foto, vlerësim dhe orar - Profili dhe Menyja një prekje larg."
   }
 ];
 
 export function renderShots() {
-  return SHOTS.map((shot) => `
-    <section class="ll-section ll-shot" data-shot>
-      <figure class="ll-shot__frame">
-        <img
-          src="/apps/menyra-social/lead-landing/media/${esc(shot.file)}"
-          alt="${esc(shot.title)}"
-          width="${shot.w}"
-          height="${shot.h}"
-          loading="lazy"
-          decoding="async"
-        />
-      </figure>
-      <div class="ll-shot__text">
-        <p class="ll-shot__title">${esc(shot.title)}</p>
-        <p class="ll-shot__body">${esc(shot.body)}</p>
-      </div>
+  return `
+    <section class="ll-shots" data-canvas="#ffffff">
+      ${SHOTS.map((shot) => `
+        <figure class="ll-shot">
+          <img
+            class="ll-shot__img"
+            data-shot
+            src="/apps/menyra-social/lead-landing/media/${esc(shot.file)}"
+            alt="${esc(shot.title)}"
+            width="880"
+            height="880"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption class="ll-shot__text" data-shot>
+            <p class="ll-shot__title">${esc(shot.title)}</p>
+            <p class="ll-shot__body">${esc(shot.body)}</p>
+          </figcaption>
+        </figure>
+      `).join("")}
     </section>
-  `).join("");
+  `;
 }
 
 export function renderWeb(profile = {}, posts = [], neighbours = [], offer = null) {

@@ -74,9 +74,12 @@ img {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* Ein Wisch = ein Schritt. Ohne Snap wuerde schnelles Scrollen
-     Erklaerungen ueberspringen. */
-  scroll-snap-type: y mandatory;
+  /* Ein Wisch = ein Schritt: Die Kapitel rasten ein, damit schnelles Scrollen
+     keine Erklaerung ueberspringt (scroll-snap-stop: always an den Ankern
+     sorgt dafuer). Bewusst proximity statt mandatory: Abschnitte ohne
+     Rastpunkte - die Aufnahmen der App - lassen sich dadurch frei
+     durchscrollen, statt bei jedem Loslassen weggezogen zu werden. */
+  scroll-snap-type: y proximity;
 }
 
 .ll-shell::-webkit-scrollbar {
@@ -99,61 +102,52 @@ img {
   scroll-snap-stop: always;
 }
 
-/* ---------- Aufnahmen der App: Bild herein, dann der Text ----------
-   Ein Bildschirm je Aufnahme. Sichtbar wird sie ueber eine Klasse, die ein
-   IntersectionObserver setzt (startShotReveal) - animiert werden nur
-   Deckkraft und Verschiebung, das laeuft auf der GPU und ruckelt nicht. */
+/* ---------- Aufnahmen der App ----------
+   Hier rastet nichts ein: Der Abschnitt hat keine Rastpunkte, es wird
+   durchgescrollt. Bild und Text blenden getrennt ein, sobald sie ins Bild
+   kommen - die Klasse dafuer setzt ein IntersectionObserver
+   (startShotReveal). Bewegt werden nur Deckkraft und Verschiebung. */
+
+.ll-shots {
+  width: 100%;
+  max-width: var(--ll-shell);
+  margin: 0 auto;
+  padding: 64px var(--ll-inline) 72px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+}
 
 .ll-shot {
-  /* Genau bildschirmhoch, nicht nur mindestens: Erst dadurch steht die Hoehe
-     fest, die sich Bild und Text teilen - sonst waechst der Abschnitt mit dem
-     Bild und beides laeuft aus dem Bild. */
-  height: 100svh;
-  height: 100dvh;
-  justify-content: center;
-  gap: 22px;
-}
-
-.ll-shot__frame {
   margin: 0;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  /* Das Bild nimmt den ganzen Platz, den der Text darunter uebrig laesst -
-     ohne feste Hoehe, damit es auf jedem Bildschirm so gross wie moeglich
-     steht und trotzdem nie anstoesst. */
-  flex: 1 1 auto;
-  min-height: 0;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ll-shot__img {
+  width: 78%;
+  max-width: 320px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  align-self: center;
+  object-fit: cover;
   opacity: 0;
-  transform: translateY(26px) scale(0.97);
+  transform: translateY(22px) scale(0.98);
   transition: opacity 620ms ease, transform 720ms cubic-bezier(0.23, 1, 0.32, 1);
   will-change: opacity, transform;
-}
-
-.ll-shot__frame img {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  /* Die Aufnahmen stehen auf Weiss, die Seite ist einen Hauch grauer. Mit
-     der Rundung liest sich das als Karte statt als heller Fleck. */
-  border-radius: 1.5rem;
-}
-
-.ll-shot__text {
-  flex: 0 0 auto;
 }
 
 .ll-shot__text {
   opacity: 0;
   transform: translateY(14px);
-  transition: opacity 520ms ease 180ms, transform 620ms cubic-bezier(0.23, 1, 0.32, 1) 180ms;
+  transition: opacity 520ms ease, transform 620ms cubic-bezier(0.23, 1, 0.32, 1);
   will-change: opacity, transform;
 }
 
-.ll-shot.is-in .ll-shot__frame,
-.ll-shot.is-in .ll-shot__text {
+.ll-shot__img.is-in,
+.ll-shot__text.is-in {
   opacity: 1;
   transform: none;
 }
@@ -177,7 +171,7 @@ img {
 /* Wer Bewegung reduziert haben will, bekommt sie nicht: Der Inhalt steht
    dann sofort da, ohne Fahrt. */
 @media (prefers-reduced-motion: reduce) {
-  .ll-shot__frame,
+  .ll-shot__img,
   .ll-shot__text {
     opacity: 1;
     transform: none;
