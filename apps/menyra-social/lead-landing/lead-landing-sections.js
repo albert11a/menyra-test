@@ -897,9 +897,13 @@ function formatOfferUntil(endAt = "") {
   return `Vlen deri me ${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 }
 
-// Vier Aufnahmen der echten App. Anders als die uebrigen Abschnitte rastet
-// hier nichts ein - es wird durchgescrollt, und Bild und Text blenden ein,
-// sobald sie ins Bild kommen: Bild, Text, Bild, Text.
+// Aufnahmen der echten App, eine je Wisch - Bild, Text, Bild, Text.
+//
+// Die Reihenfolge ist der Weg des Gastes: Er oeffnet Mnyra, sieht den Feed,
+// findet die Lokale, sucht auf der Karte, oeffnet die Menue, holt sich einen
+// Kupon - und sitzt am Ende im Lokal am Tisch. Die letzte Aufnahme ist
+// deshalb die einzige ohne Bildschirm: Dort geht es um den QR-Code auf dem
+// Tisch.
 //
 // Die Aufnahmen sind quadratisch und stehen auf Weiss, genau wie der
 // Abschnitt selbst - dadurch ist kein Bildrand zu sehen. Die Masse stehen im
@@ -935,6 +939,34 @@ const SHOTS = [
     kommt: { x: 60, dreh: 5 },
     title: "Lista",
     body: "Çdo lokal me foto, vlerësim dhe orar - Profili dhe Menyja një prekje larg."
+  },
+  {
+    file: "mnyra-harta.webp",
+    ruht: { x: -14, dreh: 0 },
+    kommt: { x: -66, dreh: 0 },
+    title: "Harta",
+    body: "Klienti sheh çka ka afër tij dhe hap profilin tuaj me një prekje."
+  },
+  {
+    file: "mnyra-menyja.webp",
+    ruht: { x: 20, dreh: 2.5 },
+    kommt: { x: 74, dreh: 6 },
+    title: "Menyja",
+    body: "Çdo pjatë me foto, çmim, përbërës dhe alergjenë - gjithmonë e përditësuar."
+  },
+  {
+    file: "mnyra-ofertat.webp",
+    ruht: { x: -20, dreh: -2 },
+    kommt: { x: -70, dreh: -5 },
+    title: "Ofertat",
+    body: "Kuponi juaj shfaqet te klientët e qytetit dhe aktivizohet me një prekje."
+  },
+  {
+    file: "mnyra-tavolina.webp",
+    ruht: { x: 0, dreh: 0 },
+    kommt: { x: 44, dreh: 0 },
+    title: "Në tavolinë",
+    body: "QR kodi për tavolinat tuaja: klienti skanon, porosit direkt nga menyja dhe thërret kamarierin nga profili."
   }
 ];
 
