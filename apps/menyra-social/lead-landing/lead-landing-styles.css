@@ -262,9 +262,7 @@ img {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  /* Der Rahmen hat eine feste Groesse, keine gestreckte - deshalb mittig,
-     damit die Luft gleichmaessig ueber und unter ihm liegt. */
-  justify-content: center;
+  justify-content: flex-start;
   padding: 14px var(--ll-inline) 18px;
   overflow: hidden;
   z-index: 2;
@@ -285,38 +283,18 @@ img {
   scroll-snap-stop: always;
 }
 
-/* Der Rahmen um die Szene: ein Handy, so gross wie eines auf den Aufnahmen
-   weiter unten - schmal, hochkant, mit runden Ecken und einem ganz leichten
-   Schatten, und Luft rundherum. Breite und Hoehe rechnet fitStageFrame in
-   Pixeln aus; in Prozent oder ueber aspect-ratio ginge es nicht, denn in
-   einem Flex-Kind loesen Safari und Chromium das unterschiedlich auf. */
-.ll-stage__frame {
-  flex: 0 0 auto;
-  width: var(--ll-frame-w, 100%);
-  height: var(--ll-frame-h, auto);
-  margin: 0 auto;
-  /* Der Grundton der App-Oberflaeche, nicht Weiss: Die Kartela und die
-     Tab-Zeile sind selbst weiss - auf Weiss verschwaemmen sie mit dem Rahmen
-     und man saehe nur noch ihre Schatten. */
-  background: #f8fafc;
-  /* Haarlinie dazu: Der Grundton der App und der der Seite liegen dicht
-     beieinander - ohne sie waere die Kante des Rahmens nur am Schatten zu
-     erahnen. */
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  /* Runde Ecken im Verhaeltnis eines echten Handys - rund 12 % der Breite.
-     Ein fester Wert saehe bei diesem kleinen Rahmen aus wie eine Kachel. */
-  border-radius: var(--ll-frame-r, 1.6rem);
-  box-shadow: 0 10px 34px -22px rgba(15, 23, 42, 0.28);
-  overflow: hidden;
-}
-
 /* Die Szene wird in voller, echter Groesse gezeigt - nichts wird
    verkleinert. Ist sie hoeher als der Platz, faehrt sie beim Weiterrasten
    einfach zu der Stelle, die gerade erklaert wird. */
 .ll-stage__viewport {
+  flex: 1 1 auto;
+  min-height: 0;
   position: relative;
-  height: 100%;
   overflow: hidden;
+  margin-left: calc(-1 * var(--ll-inline));
+  margin-right: calc(-1 * var(--ll-inline));
+  padding-left: var(--ll-inline);
+  padding-right: var(--ll-inline);
 }
 
 /* ---------- Der eingeschobene Bildschirm ----------
@@ -344,21 +322,14 @@ img {
   pointer-events: auto;
 }
 
-/* Die Szene wird immer in derselben Breite gebaut und danach als Ganzes
-   verkleinert - so wie ein Foto eines Handys. Wuerde sie stattdessen in der
-   schmalen Breite des Rahmens umbrechen, waere es kein Handy mehr, sondern
-   ein gequetschtes Profil: Zeilen brechen anders um, Knoepfe werden eng.
-   360px ist die Baubreite eines gewoehnlichen Handys; --ll-scene-scale
-   rechnet fitStageFrame aus. */
 .ll-stage__scene {
   position: absolute;
-  left: 0;
+  left: var(--ll-inline);
+  right: var(--ll-inline);
   top: 0;
-  width: var(--ll-scene-w, 360px);
   /* Luft am Rand: der hervorgehobene Teil waechst leicht (scale) und wuerde
      sonst am oberen oder unteren Rand angeschnitten. */
-  padding: 10px 12px;
-  transform-origin: top left;
+  padding: 10px 0;
   transition: transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
   will-change: transform;
 }
@@ -401,30 +372,32 @@ img {
   }
 }
 
-/* Der Erklaertext steht unter dem Rahmen - genau wie bei den Aufnahmen der
-   App, und in derselben Schrift: mittig, kleine gesperrte Zeile darueber, der
-   Satz zurueckhaltend mit einer hervorgehobenen Aussage darin.
-
-   Die Schritte liegen absolut uebereinander, tragen also nichts zur Hoehe
-   bei. Wie hoch die Flaeche ist, misst fitStageCaption am laengsten Schritt -
-   dadurch steht der Rahmen darueber ruhig, statt von Schritt zu Schritt zu
-   springen. */
+/* Der Erklaertext ist die Kopfzeile des Kapitels: Er sitzt oben fest, und
+   darunter laeuft eine Linie von Rand zu Rand mit einem Hauch Schatten -
+   dieselbe Trennung wie im Kopf des Modals. Gilt fuer jeden Schritt, vom
+   ersten bis zum letzten. */
 .ll-stage__caption {
   flex: 0 0 auto;
-  position: relative;
-  margin-top: 20px;
+  margin-bottom: 10px;
   min-height: 62px;
+  position: relative;
+  padding-bottom: 12px;
+  margin-left: calc(-1 * var(--ll-inline));
+  margin-right: calc(-1 * var(--ll-inline));
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: 0 6px 12px -10px rgba(15, 23, 42, 0.35);
 }
 
+/* Der seitliche Abstand haengt an den Schritten, nicht an der Flaeche: Sie
+   liegen absolut und richten sich am Polsterrand des Elternteils aus - dessen
+   padding bliebe wirkungslos, und die Linie soll ja bis an den Rand laufen. */
 .ll-stage__step {
   position: absolute;
   inset: 0;
-  max-width: 19em;
-  margin: 0 auto;
-  text-align: center;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  padding-left: var(--ll-inline);
+  padding-right: var(--ll-inline);
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(-12px);
   transition: opacity 420ms ease, transform 420ms ease;
   pointer-events: none;
 }
@@ -434,38 +407,34 @@ img {
   transform: translateY(0);
 }
 
+/* Ueberschrift des Schritts. Blau wie frueher die kleine Marke darueber -
+   die ist weggefallen, damit oben mehr Platz fuer die Szene bleibt. Alle
+   Schritte sehen gleich aus, auch der erste. */
 .ll-stage__step-title {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  margin: 0 0 3px;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
   color: var(--ll-accent);
 }
 
 .ll-stage__step-body {
   margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: -0.02em;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
   color: var(--ll-muted);
 }
 
-.ll-stage__step-body b {
-  font-weight: 600;
-  color: var(--ll-ink);
-}
-
-/* Fortschritt des Kapitels als feiner Strich unter dem Text - kurz und
-   mittig, damit er die Reihe nicht wie eine Kopfzeile anschneidet. */
+/* Fortschritt des aktuellen Kapitels als feine Linie. */
+/* Der Fortschritt sitzt oben ueber dem Text. Unten wuerde ihn die
+   Browserleiste ueberdecken. */
 .ll-stage__bar {
   flex: 0 0 auto;
-  width: 96px;
   height: 2px;
-  margin: 16px auto 0;
+  margin-bottom: 14px;
   border-radius: 2px;
-  background: rgba(100, 116, 139, 0.16);
+  background: rgba(100, 116, 139, 0.18);
   overflow: hidden;
 }
 
@@ -1674,21 +1643,16 @@ img {
    dabei wurden die Produktfotos platt gedrueckt und abgeschnitten. */
 @media (max-height: 740px) {
   .ll-stage__caption {
-    margin-top: 14px;
+    margin-bottom: 8px;
     min-height: 56px;
   }
 
   .ll-stage__step-title {
-    margin-bottom: 6px;
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .ll-stage__step-body {
-    font-size: 14.5px;
-  }
-
-  .ll-stage__bar {
-    margin-top: 12px;
+    font-size: 11.5px;
   }
 }
 
