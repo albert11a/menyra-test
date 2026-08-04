@@ -25,6 +25,7 @@ const browserGlobals = {
   MutationObserver: "readonly",
   Notification: "readonly",
   Request: "readonly",
+  ResizeObserver: "readonly",
   Response: "readonly",
   SVGElement: "readonly",
   TextDecoder: "readonly",

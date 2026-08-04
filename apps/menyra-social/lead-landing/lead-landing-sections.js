@@ -37,54 +37,28 @@ const GREETINGS = [
 const LOGO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%23f1f5f9'/%3E%3Ccircle cx='48' cy='48' r='30' fill='%2394a3b8'/%3E%3C/svg%3E";
 const IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180'%3E%3Crect width='240' height='180' fill='%23f1f5f9'/%3E%3C/svg%3E";
 
-const DEFAULT_PACKAGES = [
-  {
-    key: "start",
-    name: "Start",
-    price: "29",
-    period: "€ / muaj",
-    note: "Për të filluar digjitalisht - pa kosto fillestare.",
-    highlight: false,
-    features: [
-      "Profili juaj publik në Mnyra",
-      "Menu digjitale me foto e çmime",
-      "QR kodet për tavolinat",
-      "Postimet dhe feed-i social",
-      "Vendndodhja në hartën e zbulimit"
-    ]
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    price: "59",
-    period: "€ / muaj",
-    note: "Më i zgjedhuri - kur doni edhe porositë online.",
-    highlight: true,
-    features: [
-      "Gjithçka nga paketa Start",
-      "Porositë direkt te Waiter-i",
-      "Cross-selling: më shumë për porosi",
-      "Analitika e plotë e lokalit",
-      "Wolt dhe dërgesa juaj",
-      "Sot në fokus - rekomandimet e ditës"
-    ]
-  },
-  {
-    key: "premium",
-    name: "Premium",
-    price: "99",
-    period: "€ / muaj",
-    note: "Për lokalet që duan të dominojnë qytetin.",
-    highlight: false,
-    features: [
-      "Gjithçka nga paketa Pro",
-      "Prioritet në hartë dhe kërkim",
-      "Reklama brenda Mnyra",
-      "Menaxhim i plotë i menusë nga ne",
-      "Mbështetje me përparësi"
-    ]
-  }
-];
+// Ein Preis, ein Paket. Drei nebeneinander hiessen: erst vergleichen, dann
+// rechnen, dann zweifeln - und am Ende steht die Frage "welches denn?" statt
+// "ja". Der freie Monat steht vorne, weil er die einzige Frage beantwortet,
+// die ein Wirt zuerst stellt: was es kostet, wenn es nichts bringt.
+const DEFAULT_PLAN = {
+  price: "15.90",
+  currency: "€",
+  period: "muaj",
+  trial: "1 muaj falas",
+  note: "Pa kontratë. E anuloni kur të doni.",
+  features: [
+    "Profili juaj publik në Mnyra",
+    "Menu digjitale me foto dhe çmime",
+    "QR kodet për tavolinat",
+    "Porositë direkt nga tavolina",
+    "Postimet dhe feed-i social",
+    "Vendndodhja në hartën e zbulimit",
+    "Ofertat dhe kuponat për klientët",
+    "Analitika e lokalit"
+  ]
+};
+
 
 // Bilder werden erst geladen, wenn sie in die Naehe des Bildes kommen. Die
 // beiden ersten Bildschirme sind die Ausnahme: Sie sind sofort zu sehen und
@@ -160,7 +134,7 @@ function stage({ title, scene, steps = [], aside = "" }) {
       </div>
 
       ${allSteps.map((_, index) => `
-        <div class="ll-stage__anchor" aria-hidden="true" style="top: calc(${index} * 100svh);"></div>
+        <div class="ll-stage__anchor" aria-hidden="true" style="top: calc(${index} * var(--ll-vh));"></div>
       `).join("")}
     </section>
   `;
@@ -586,34 +560,33 @@ export function renderShots() {
 /* -------------------------------------------------------------- Preise */
 
 export function renderPricing(sales = {}) {
-  const packages = Array.isArray(sales.packages) && sales.packages.length
-    ? sales.packages
-    : DEFAULT_PACKAGES;
+  const plan = sales.plan && typeof sales.plan === "object" ? { ...DEFAULT_PLAN, ...sales.plan } : DEFAULT_PLAN;
+  const features = Array.isArray(plan.features) && plan.features.length ? plan.features : DEFAULT_PLAN.features;
 
   return `
     <section class="ll-section">
-      ${sectionHead("Paketat", "Zgjidhni si doni të filloni. Pa kontratë të gjatë - paketën e ndryshoni kur të doni.")}
+      ${sectionHead("Çmimi", "Një çmim, gjithçka brenda. Filloni me një muaj falas.")}
 
-      <div class="ll-price-row">
-        ${packages.map((pkg) => `
-          <article class="ll-price${pkg.highlight ? " ll-price--hot" : ""}">
-            ${pkg.highlight ? '<span class="ll-price__flag">Më i zgjedhuri</span>' : ""}
-            <p class="ll-price__name">${esc(pkg.name)}</p>
-            <div class="ll-price__amount">
-              <span class="ll-price__value">${esc(pkg.price)}</span>
-              <span class="ll-price__period">${esc(pkg.period || "€ / muaj")}</span>
-            </div>
-            ${pkg.note ? `<p class="ll-price__note">${esc(pkg.note)}</p>` : ""}
-            <ul class="ll-price__list">
-              ${(pkg.features || []).map((entry) => `
-                <li>${icon("check", { size: 16 })}<span>${esc(entry)}</span></li>
-              `).join("")}
-            </ul>
-          </article>
-        `).join("")}
-      </div>
+      <article class="ll-plan">
+        ${plan.trial ? `<span class="ll-plan__trial">${esc(plan.trial)}</span>` : ""}
 
-      <p class="ll-note">Çmimet janë pa TVSH. Vendosja e profilit, menuja e parë dhe QR kodet janë të përfshira në çdo paketë.</p>
+        <div class="ll-plan__amount">
+          <span class="ll-plan__value">${esc(plan.price)}</span>
+          <span class="ll-plan__unit">
+            <span class="ll-plan__currency">${esc(plan.currency || "€")}</span>
+            <span class="ll-plan__period">/ ${esc(plan.period || "muaj")}</span>
+          </span>
+        </div>
+        ${plan.note ? `<p class="ll-plan__note">${esc(plan.note)}</p>` : ""}
+
+        <ul class="ll-plan__list">
+          ${features.map((entry) => `
+            <li>${icon("check", { size: 15 })}<span>${esc(entry)}</span></li>
+          `).join("")}
+        </ul>
+      </article>
+
+      <p class="ll-note">Çmimi është pa TVSH. Vendosja e profilit, menuja e parë dhe QR kodet janë të përfshira.</p>
     </section>
   `;
 }
@@ -623,7 +596,7 @@ export function renderPricing(sales = {}) {
 export function renderCta(profile = {}, sales = {}) {
   const phone = text(sales.contactPhone) || text(profile.phone);
   const name = text(profile.name);
-  const waUrl = whatsappUrl(phone, `Përshëndetje! Kam parë faqen e Mnyra për ${name} dhe dua të di më shumë.`);
+  const waUrl = whatsappUrl(phone, `Përshëndetje! Kam parë faqen e Mnyra për ${name} dhe dua të filloj muajin falas.`);
 
   return `
     <section class="ll-section">
@@ -634,13 +607,15 @@ export function renderCta(profile = {}, sales = {}) {
           Mbetet vetëm ta aktivizoni - dhe klientët tuaj e kanë në xhep që sot.
         </p>
         ${waUrl
-    ? `<a class="ll-cta__btn" href="${esc(waUrl)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp", { size: 20 })} Na shkruani në WhatsApp</a>`
-    : `<span class="ll-cta__btn" style="background:#e2e8f0;color:#475569;">Na kontaktoni</span>`}
-        <p class="ll-cta__sub">Përgjigje brenda ditës. Pa detyrim.</p>
+    ? `<a class="ll-cta__btn" href="${esc(waUrl)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp", { size: 20 })} Filloni muajin falas</a>`
+    // Ohne Telefonnummer gibt es nichts anzutippen. Dann steht dort auch kein
+    // Knopf: Ein Knopf, der nichts tut, ist schlimmer als keiner.
+    : `<p class="ll-cta__plain">Na kontaktoni për ta aktivizuar profilin.</p>`}
+        <p class="ll-cta__sub">Një muaj falas, pastaj 15.90 € në muaj. Pa kontratë, pa kosto fillestare.</p>
       </div>
     </section>
   `;
 }
 
 export const LEAD_LANDING_GREETINGS_COUNT = GREETINGS.length;
-export { DEFAULT_PACKAGES };
+export { DEFAULT_PLAN };

@@ -25,6 +25,23 @@
      zuerst stehen, sonst greift Safari es nicht. Sie traegt alles Erklaerende:
      die Begruessung, die Fliesstexte und die Zeilen unter den Aufnahmen. */
   --ll-font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  /* Eine Bildschirmhoehe fuer die ganze Seite. Vorher stand sie ueberall
+     doppelt da (erst svh, dann dvh) - nur die Hoehe eines Kapitels kannte kein
+     dvh, waehrend seine Rastpunkte eines hatten. Laufen die beiden
+     auseinander, treffen die Rastpunkte die Schritte nicht mehr. */
+  --ll-vh: 100vh;
+}
+
+@supports (height: 100svh) {
+  :root {
+    --ll-vh: 100svh;
+  }
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --ll-vh: 100dvh;
+  }
 }
 
 * {
@@ -73,8 +90,7 @@ img {
    immer genau bildschirmhoch, es gibt nichts, worin man haengen bleibt. */
 
 .ll-shell {
-  height: 100svh;
-  height: 100dvh;
+  height: var(--ll-vh);
   overflow-y: scroll;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -95,8 +111,7 @@ img {
 
 .ll-section {
   position: relative;
-  min-height: 100svh;
-  min-height: 100dvh;
+  min-height: var(--ll-vh);
   width: 100%;
   max-width: var(--ll-shell);
   margin: 0 auto;
@@ -142,8 +157,7 @@ img {
    scroll-snap-stop verhindert, dass ein langer Wisch eine ueberspringt. */
 .ll-shot {
   margin: 0;
-  min-height: 100svh;
-  min-height: 100dvh;
+  min-height: var(--ll-vh);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -257,14 +271,13 @@ img {
   margin: 0 auto;
   /* Hoehe = (Schritte + 1) Bildschirme. Die zusaetzliche Hoehe ist die
      Strecke, ueber die die Szene fixiert bleibt. */
-  height: calc((var(--ll-steps, 4) + 1) * 100svh);
+  height: calc((var(--ll-steps, 4) + 1) * var(--ll-vh));
 }
 
 .ll-stage__pin {
   position: sticky;
   top: 0;
-  height: 100svh;
-  height: 100dvh;
+  height: var(--ll-vh);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -281,8 +294,7 @@ img {
   position: absolute;
   left: 0;
   right: 0;
-  height: 100svh;
-  height: 100dvh;
+  height: var(--ll-vh);
   pointer-events: none;
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -1485,117 +1497,188 @@ img {
   justify-content: center;
 }
 
-/* ---------- Preise ---------- */
+/* ---------- Der Preis ----------
+   Eine Karte, mittig. Zuerst der freie Monat, dann die Zahl, dann was man
+   dafuer bekommt - in dieser Reihenfolge, weil die erste Frage eines Wirtes
+   nicht "wie viel" ist, sondern "was, wenn es nichts bringt". */
 
-/* Drei Pakete nebeneinander, horizontal gewischt - so bleibt der Abschnitt
-   auf einem Bildschirm statt drei Karten hoch zu stapeln. */
-.ll-price-row {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  padding: 12px 0 4px;
-  margin: 0 calc(-1 * var(--ll-inline));
-  padding-left: var(--ll-inline);
-  padding-right: var(--ll-inline);
-}
-
-.ll-price-row::-webkit-scrollbar {
-  display: none;
-}
-
-.ll-price {
-  flex: 0 0 84%;
-  scroll-snap-align: center;
+.ll-plan {
+  position: relative;
+  margin: 10px 0 4px;
+  padding: 26px 22px 24px;
   background: #fff;
   border: 1px solid var(--ll-line);
   border-radius: var(--ll-radius-xl);
-  padding: 22px 20px;
-  box-shadow: var(--ll-shadow-sm);
-  position: relative;
+  box-shadow: 0 24px 54px -38px rgba(79, 70, 229, 0.7);
+  text-align: center;
 }
 
-.ll-price--hot {
-  border-color: var(--ll-accent);
-  box-shadow: 0 22px 50px -34px rgba(79, 70, 229, 0.85);
-}
-
-.ll-price__flag {
-  position: absolute;
-  top: -11px;
-  left: 22px;
-  padding: 5px 14px;
+.ll-plan__trial {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 15px;
   border-radius: 999px;
   background: var(--ll-accent);
   color: #fff;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-.ll-price__name {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ll-accent);
-  margin-bottom: 10px;
-}
-
-.ll-price__amount {
+/* Die Zahl gross, die Einheit klein daneben - und beide auf der Grundlinie,
+   damit das Komma nicht in der Luft haengt. */
+.ll-plan__amount {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin-bottom: 4px;
+  justify-content: center;
+  gap: 7px;
 }
 
-.ll-price__value {
-  font-size: 40px;
+.ll-plan__value {
+  font-size: 52px;
   font-weight: 900;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  color: var(--ll-ink);
 }
 
-.ll-price__period {
+.ll-plan__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
+.ll-plan__currency {
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ll-ink);
+}
+
+.ll-plan__period {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--ll-faint);
 }
 
-.ll-price__note {
-  margin: 0 0 16px;
-  font-size: 12px;
-  font-weight: 600;
+.ll-plan__note {
+  margin: 10px 0 20px;
+  font-family: var(--ll-font-apple);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--ll-muted);
 }
 
-.ll-price__list {
+/* Die Leistungen linksbuendig, auch wenn die Karte mittig ist: eine Liste
+   liest man an einer Kante entlang, nicht an einer Mittelachse. */
+.ll-plan__list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
+  text-align: left;
 }
 
-.ll-price__list li {
+.ll-plan__list li {
   display: flex;
-  gap: 10px;
+  gap: 9px;
   align-items: flex-start;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--ll-ink-soft);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
-.ll-price__list svg {
-  flex: 0 0 16px;
+.ll-plan__list svg {
+  flex: 0 0 15px;
   margin-top: 2px;
   color: #059669;
 }
 
+/* Auf kurzen Bildschirmen ruecken Zahl und Liste enger zusammen, statt dass
+   die Karte unten aus dem Bild laeuft. */
+@media (max-height: 700px) {
+  .ll-section {
+    padding: 14px var(--ll-inline);
+    gap: 8px;
+  }
+
+  /* Der eigene Abstand des Fliesstextes kaeme zum Abstand des Abschnitts noch
+     dazu - einer reicht. */
+  .ll-lead {
+    margin-bottom: 0;
+  }
+
+  .ll-plan {
+    margin: 4px 0 0;
+    padding: 16px 16px 15px;
+  }
+
+  .ll-plan__trial {
+    margin-bottom: 10px;
+    padding: 5px 12px;
+    font-size: 9px;
+  }
+
+  .ll-plan__value {
+    font-size: 40px;
+  }
+
+  .ll-plan__note {
+    margin: 8px 0 13px;
+    font-size: 12.5px;
+  }
+
+  .ll-plan__list {
+    gap: 6px;
+  }
+
+  .ll-plan__list li {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .ll-plan__list svg {
+    flex-basis: 14px;
+  }
+
+  .ll-note {
+    line-height: 1.4;
+  }
+}
+
+/* Noch kuerzere Bildschirme - dort passte die Karte samt Fussnote sonst nicht
+   mehr in einen Bildschirm, und der Abschnitt lief unten hinaus. */
+@media (max-height: 560px) {
+  .ll-plan {
+    padding: 13px 14px 12px;
+  }
+
+  .ll-plan__value {
+    font-size: 34px;
+  }
+
+  .ll-plan__list {
+    gap: 5px;
+  }
+}
+
 /* ---------- CTA ---------- */
+
+/* Steht keine Nummer bereit, tritt an die Stelle des Knopfes eine Zeile -
+   kein Knopf, den man drueckt und der nichts tut. */
+.ll-cta__plain {
+  margin: 18px 0 0;
+  font-family: var(--ll-font-apple);
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
 
 .ll-cta {
   background: linear-gradient(160deg, #111827, #312e81);
@@ -1648,7 +1731,7 @@ img {
 /* ---------- Zustaende ---------- */
 
 .ll-boot {
-  min-height: 100svh;
+  min-height: var(--ll-vh);
   display: grid;
   place-items: center;
   padding: 32px;

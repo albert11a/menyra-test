@@ -143,6 +143,7 @@ function fitStageCaption(stage) {
   const caption = stage.querySelector(".ll-stage__caption");
   if (!caption) return;
 
+  const vorher = caption.style.minHeight;
   caption.style.minHeight = "";
   let tallest = 0;
   stage.querySelectorAll(".ll-stage__step").forEach((step) => {
@@ -150,7 +151,12 @@ function fitStageCaption(stage) {
     tallest = Math.max(tallest, step.offsetHeight);
     step.style.position = "";
   });
-  if (tallest <= 0) return;
+  // Ohne Layout misst sich alles zu null. Dann bleibt die zuletzt gueltige
+  // Hoehe stehen, statt geloescht zu werden.
+  if (tallest <= 0) {
+    caption.style.minHeight = vorher;
+    return;
+  }
 
   // Die Kopfzeile ist immer so hoch, dass zwei Textzeilen hineinpassen -
   // auch wenn der aktuelle Schritt nur eine braucht. Sonst waere sie mal
@@ -235,6 +241,9 @@ function fitMenuLists(stage) {
 
     const listTop = offsetTopWithin(list, scene);
     const available = viewport.clientHeight - (listTop - tabsTop) - TABS_TOP_MIN;
+    // Kein Platz heisst hier: noch nicht messbar. Sonst wuerde jede Karte
+    // ausser der ersten ausgeblendet und bliebe es.
+    if (!(available > 0)) return;
     cards.forEach((card, index) => {
       if (index === 0) return;
       const bottom = offsetTopWithin(card, scene) - listTop + card.offsetHeight;
@@ -352,9 +361,20 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   let ticking = false;
   const defaultThemeColor = readDefaultThemeColor();
 
+  // Wechselt man die App und kommt zurueck, meldet der Browser eine
+  // Groessenaenderung, waehrend die Seite noch kein Layout hat: Jedes Mass ist
+  // in dem Moment null. Ein Kapitel ohne Hoehe sieht dann aus, als stuende man
+  // an seinem Anfang - jedes landete bei Schritt 0, und man kam zurueck und
+  // stand wieder beim Profil, obwohl der Scroll laengst weiter war.
+  //
+  // Deshalb wird nur gerechnet, solange die Seite wirklich eine Groesse hat.
+  // Alles andere wartet, bis sie eine hat.
+  const hatLayout = () => root.clientHeight > 0 && root.clientWidth > 0;
+
   const run = () => {
     ticking = false;
-    const viewportHeight = root.clientHeight || window.innerHeight || 1;
+    if (!hatLayout()) return;
+    const viewportHeight = root.clientHeight;
     stages.forEach((stage) => {
       const rect = stage.getBoundingClientRect();
       // Nur Kapitel in Sichtweite rechnen.
@@ -371,6 +391,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
   };
 
   const fitAll = () => {
+    if (!hatLayout()) return;
     stages.forEach((stage) => {
       fitStageCaption(stage);
       fitMenuLists(stage);
@@ -393,6 +414,27 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     }, RESIZE_SETTLE_MS);
   };
 
+  // Und wenn die Seite ihre Groesse wiederbekommt, wird nachgeholt, was
+  // waehrenddessen ausgefallen ist. Ein ResizeObserver auf dem Scrollbereich
+  // faengt das zuverlaessiger ab als jedes einzelne Ereignis: Er meldet sich
+  // genau dann, wenn der Kasten wirklich wieder eine Groesse hat - egal, ob
+  // das vom App-Wechsel kommt, von der Adressleiste oder vom Drehen.
+  let watcher = null;
+  if ("ResizeObserver" in window) {
+    watcher = new ResizeObserver(onResize);
+    watcher.observe(root);
+  }
+
+  // Zwei Guertel dazu, falls ein Browser den Kasten unveraendert zurueckgibt:
+  // die Rueckkehr in den Vordergrund und die Wiederherstellung aus dem
+  // Vor-/Zurueck-Speicher.
+  const onWakeup = () => {
+    if (document.hidden) return;
+    onResize();
+  };
+  document.addEventListener("visibilitychange", onWakeup);
+  window.addEventListener("pageshow", onWakeup);
+
   root.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onResize, { passive: true });
   window.addEventListener("orientationchange", onResize, { passive: true });
@@ -404,6 +446,9 @@ export function startLeadLandingStages({ scroller = null } = {}) {
 
   return () => {
     window.clearTimeout(resizeTimer);
+    if (watcher) watcher.disconnect();
+    document.removeEventListener("visibilitychange", onWakeup);
+    window.removeEventListener("pageshow", onWakeup);
     root.removeEventListener("scroll", onScroll);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("orientationchange", onResize);
