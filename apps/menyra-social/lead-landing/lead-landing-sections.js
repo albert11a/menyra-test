@@ -999,12 +999,14 @@ export function renderWeb(profile = {}, posts = [], neighbours = [], offer = nul
           </div>
         </div>
 
-        <div class="ll-feed-part ll-feed-part--highlights">
-          ${highlightsBlock(profile, cardCover)}
-        </div>
-
-        <div class="ll-feed-part ll-feed-part--card">
-          ${restaurantCard(profile, cardCover)}
+        <!-- Restorante steht genauso untereinander wie der Feed: oben die
+             Highlights, darunter die Karte des Lokals. Beim naechsten Schritt
+             faehrt die Spalte um die Hoehe der Highlights nach oben. -->
+        <div class="ll-feed-part ll-feed-part--places">
+          <div class="ll-feed__scroll ll-feed__scroll--places">
+            ${highlightsBlock(profile, cardCover)}
+            ${restaurantCard(profile, cardCover)}
+          </div>
         </div>
 
         <div class="ll-feed-part ll-feed-part--offer">

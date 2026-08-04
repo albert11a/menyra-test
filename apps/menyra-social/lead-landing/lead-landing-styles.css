@@ -2652,6 +2652,18 @@ img {
   transform: translateY(calc(-1 * var(--ll-rail-h, 0px)));
 }
 
+/* Bei Restorante dasselbe: Die Highlights gehen unter die Skeda, die Karte
+   des Lokals rueckt an ihre Stelle. */
+.ll-stage[data-view="feed-card"] .ll-feed__scroll--places {
+  transform: translateY(calc(-1 * var(--ll-hl-h, 0px)));
+}
+
+/* Luft zwischen den Highlights und der Karte darunter - dieselbe Zaesur wie
+   zwischen Story-Reihe und Beitrag. */
+.ll-feed__scroll--places .ll-rcard {
+  margin-top: 32px;
+}
+
 .ll-feed-part {
   grid-area: 1 / 1;
   min-height: 0;
@@ -2667,9 +2679,9 @@ img {
 .ll-stage[data-view="feed-story"] .ll-feed-part--feed,
 .ll-stage[data-view="feed-post"] .ll-feed-part--feed,
 .ll-stage[data-view="feed-tabs"] .ll-feed-part--feed,
-.ll-stage[data-view="feed-restaurants"] .ll-feed-part--highlights,
-.ll-stage[data-view="feed-highlights"] .ll-feed-part--highlights,
-.ll-stage[data-view="feed-card"] .ll-feed-part--card,
+.ll-stage[data-view="feed-restaurants"] .ll-feed-part--places,
+.ll-stage[data-view="feed-highlights"] .ll-feed-part--places,
+.ll-stage[data-view="feed-card"] .ll-feed-part--places,
 .ll-stage[data-view="feed-ofertat"] .ll-feed-part--offer,
 .ll-stage[data-view="feed-offer"] .ll-feed-part--offer {
   opacity: 1;

@@ -264,7 +264,9 @@ function fitFeedBlock(stage, selector, available) {
   block.style.transform = "";
   const natural = block.offsetHeight;
   if (!(natural > 0) || !(available > 0) || natural <= available) return;
-  block.style.transformOrigin = "top center";
+  // Von links oben verkleinern: Sonst ruecken die Bloecke beim Verkleinern
+  // von der linken Kante weg und stehen nicht mehr buendig mit dem Rest.
+  block.style.transformOrigin = "top left";
   block.style.transform = `scale(${(available / natural).toFixed(4)})`;
 }
 
@@ -334,6 +336,18 @@ function fitFeedScene(stage) {
   fitFeedBlock(stage, ".ll-hl", content);
   fitFeedBlock(stage, ".ll-rcard:not(.ll-ocard)", content);
   fitFeedBlock(stage, ".ll-ocard", content);
+
+  // Dieselbe Fahrt bei Restorante. Gefahren wird genau bis zur Oberkante der
+  // Karte - nicht um die Hoehe der Highlights: Sind die verkleinert, sagt
+  // ihre sichtbare Hoehe nichts mehr darueber, wo die Karte im Layout steht.
+  // offsetTop ist von der Verkleinerung unberuehrt und trifft deshalb.
+  const highlights = stage.querySelector(".ll-hl");
+  const listCard = stage.querySelector(".ll-rcard:not(.ll-ocard)");
+  const places = stage.querySelector(".ll-feed__scroll--places");
+  if (highlights && listCard && places) {
+    const travel = Math.max(0, listCard.offsetTop - highlights.offsetTop);
+    places.style.setProperty("--ll-hl-h", `${travel}px`);
+  }
 }
 
 // Die Szene wird nie verkleinert - sie soll in echter Groesse zu sehen sein.
