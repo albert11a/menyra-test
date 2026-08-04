@@ -49,66 +49,6 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-// ---------- Freies Scrollen im Block mit den Aufnahmen ----------
-//
-// Ueberall sonst gilt: ein Wisch = ein Schritt, die Seite rastet ein. Bei den
-// Aufnahmen der App soll man dagegen scrollen und ueberall stehenbleiben
-// koennen. In CSS allein geht beides nicht: mandatory laesst zwischen zwei
-// Rastpunkten keine Ruhelage zu, und proximity liess die Wische davor auf
-// halber Strecke stehen.
-//
-// Also wird der Snap nur fuer die Strecke des Blocks abgeschaltet. Der Wisch
-// nach der Frage rastet noch und stellt die erste Aufnahme mittig ins Bild;
-// ab da ist frei; ist der Block durchgescrollt, rastet das naechste Kapitel
-// wieder ein.
-function createSnapGate(root) {
-  const shots = document.querySelector(".ll-shots");
-  if (!shots) return null;
-
-  let einstieg = 0; // Scrollstand, an dem der Block oben anliegt
-  let unten = 0; // Unterkante des Blocks
-  let halb = 0; // ein halber Bildschirm
-
-  const measure = () => {
-    const hoehe = root.clientHeight || 1;
-    const rect = shots.getBoundingClientRect();
-    const rootRect = root.getBoundingClientRect();
-    einstieg = Math.round(rect.top - rootRect.top + root.scrollTop);
-    unten = einstieg + shots.offsetHeight;
-    halb = Math.min(Math.round(hoehe / 2), Math.max(1, Math.round((unten - einstieg) / 2)));
-  };
-
-  let letzterStand = -1;
-  let offen = null;
-
-  const update = () => {
-    const stand = root.scrollTop;
-    const runter = stand > letzterStand;
-    letzterStand = stand;
-
-    // Die Grenzen sind je Richtung andere - sonst zoege der Snap einen an
-    // beiden Enden gleich wieder heraus, statt hinein.
-    const frei = runter
-      // Nach unten: gleich hinter dem Rastpunkt am Anfang faengt das freie
-      // Scrollen an, und es endet einen halben Bildschirm vor dem Blockende -
-      // dann zieht das naechste Kapitel herein.
-      ? stand > einstieg + 2 && stand < unten - halb
-      // Nach oben: bis dicht an die Unterkante, damit man aus dem naechsten
-      // Kapitel ueberhaupt in den Block zurueckkommt, und nur bis einen halben
-      // Bildschirm nach dem Anfang - so rastet die erste Aufnahme wieder
-      // mittig ein, statt am Anfang vorbeizurutschen.
-      : stand > einstieg + halb && stand < unten - 8;
-
-    if (frei === offen) return;
-    offen = frei;
-    // Leerer Wert heisst: zurueck auf den Wert aus dem Stylesheet.
-    root.style.scrollSnapType = frei ? "none" : "";
-  };
-
-  measure();
-  return { measure, update };
-}
-
 function readSteps(stage) {
   const parsed = Math.round(Number(stage.dataset.steps || 0));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -654,11 +594,9 @@ export function startLeadLandingStages({ scroller = null } = {}) {
 
   let ticking = false;
   const defaultThemeColor = readDefaultThemeColor();
-  const snapGate = createSnapGate(root);
 
   const run = () => {
     ticking = false;
-    if (snapGate) snapGate.update();
     const viewportHeight = root.clientHeight || window.innerHeight || 1;
     stages.forEach((stage) => {
       const rect = stage.getBoundingClientRect();
@@ -685,9 +623,6 @@ export function startLeadLandingStages({ scroller = null } = {}) {
       // fitPaneTravel laeuft in panSceneToFocus - dort steht die Hoehe fest.
       panSceneToFocus(stage);
     });
-    // Zum Schluss: Die Kapitel davor bestimmen, wo der Block der Aufnahmen
-    // liegt.
-    if (snapGate) snapGate.measure();
   };
 
   // Beim Ein- und Ausblenden der Adressleiste meldet ein Handy-Browser eine

@@ -105,10 +105,11 @@ img {
 }
 
 /* ---------- Aufnahmen der App ----------
-   Bild, Text, Bild, Text - durch den Block wird gescrollt. Jede Aufnahme hat
-   ihre eigene Ruhelage (--ll-shot-x/-r) und kommt aus einer weiter aussen
-   liegenden Startlage (--ll-shot-x0/-r0) hereingefahren. Nicht alle sind
-   schief und nicht alle stehen mittig; die Unterschiede stehen im Markup.
+   Bild, Text, Bild, Text - eine Aufnahme je Wisch, wie ueberall sonst auf
+   der Seite. Jede hat ihre eigene Ruhelage (--ll-shot-x/-r) und kommt aus
+   einer weiter aussen liegenden Startlage (--ll-shot-x0/-r0) hereingefahren.
+   Nicht alle sind schief und nicht alle stehen mittig; die Unterschiede
+   stehen im Markup.
 
    Bewegt werden nur Deckkraft und Transform - beides ohne Layout, damit es
    auch auf schwaecheren Geraeten fluessig bleibt. */
@@ -121,25 +122,19 @@ img {
   background: #fff;
   display: flex;
   flex-direction: column;
-  /* Der Wisch nach der Frage endet genau hier - danach wird gescrollt.
-     Der Block ist der einzige Rastpunkt der Strecke; abgeschaltet wird der
-     Snap dahinter in lead-landing-stage.js.
-
-     Kein overflow hier: Das machte den Block zu einem eigenen Scrollbereich,
+  /* Kein overflow hier: Das machte den Block zu einem eigenen Scrollbereich,
      und Rastpunkte gehoeren immer dem naechsten Scrollbereich - der Wisch der
-     Seite kannte diesen dann nicht und sprang ueber den ganzen Block hinweg.
-     Seitlich beschneidet die Seite selbst (.ll-shell). */
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+     Seite kannte die der Aufnahmen dann gar nicht und sprang mit einem Wisch
+     ueber den ganzen Block hinweg. Seitlich beschneidet die Seite selbst
+     (.ll-shell). */
 }
 
-/* Jede Aufnahme bekommt einen eigenen Bildschirm und steht darin mittig.
-   Der Abstand dazwischen ergibt sich daraus von selbst - gleichmaessig und
-   auf jedem Geraet im selben Verhaeltnis.
-   Vorne heisst das: Der Wisch nach der Frage setzt die erste genau in die
-   Mitte, erst danach faengt das Scrollen an. Hinten: Die letzte ist ganz zu
-   sehen, bevor der naechste Wisch ins folgende Kapitel zieht - sonst endete
-   der Block mitten in ihrem Text. */
+/* Jede Aufnahme fuellt einen Bildschirm und steht darin mittig - ein Wisch
+   bringt genau eine, so wie ein Wisch sonst genau einen Schritt bringt. Der
+   Abstand dazwischen ergibt sich daraus von selbst und ist auf jedem Geraet
+   derselbe.
+
+   scroll-snap-stop verhindert, dass ein langer Wisch eine ueberspringt. */
 .ll-shot {
   margin: 0;
   min-height: 100svh;
@@ -148,6 +143,8 @@ img {
   flex-direction: column;
   justify-content: center;
   gap: 20px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 /* Eigene Flaeche fuer das Bild: Die Verschiebung und die Schraeglage wirken
