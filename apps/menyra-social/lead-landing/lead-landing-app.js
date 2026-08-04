@@ -126,12 +126,12 @@ function startProgressDots() {
   sections.forEach((section) => observer.observe(section));
 }
 
-// Die Aufnahmen fahren herein, sobald sie ins Bild kommen - einmalig, danach
-// beobachtet nichts mehr mit. Beim Zurueckscrollen bleiben sie stehen; ein
-// erneutes Ein- und Ausblenden waere Unruhe ohne Gewinn.
+// Die Aufnahmen fahren herein, sobald sie ins Bild kommen - jedes Mal, auch
+// beim Zurueckwischen.
 function startShotReveal() {
   const shots = Array.from(document.querySelectorAll("[data-shot]"));
-  if (!shots.length) return;
+  const shell = document.querySelector(".ll-shell");
+  if (!shots.length || !shell) return;
 
   if (!("IntersectionObserver" in window)) {
     shots.forEach((shot) => shot.classList.add("is-in"));
@@ -157,9 +157,43 @@ function startShotReveal() {
       if (entry.intersectionRatio >= SHOT_REVEAL_RATIO) shot.classList.add("is-in");
       else if (!entry.isIntersecting) shot.classList.remove("is-in");
     });
-  }, { root: document.querySelector(".ll-shell"), threshold: [0, SHOT_REVEAL_RATIO] });
+  }, { root: shell, threshold: [0, SHOT_REVEAL_RATIO] });
 
   shots.forEach((shot) => observer.observe(shot.querySelector(".ll-shot__media") || shot));
+
+  // Der Beobachter meldet sich zeitversetzt. Nach einem schnellen Wisch kann
+  // seine letzte Meldung von einer Zwischenstellung stammen - dann bleibt eine
+  // Aufnahme zurueckgesetzt, obwohl sie im Bild steht, und man sieht eine
+  // leere Seite. Deshalb wird nach jedem Scrollende selbst nachgemessen und
+  // nachgeholt, was nicht geliefert wurde.
+  //
+  // Gemessen wird nur im Ruhezustand, nicht bei jedem Bild der Bewegung: Das
+  // ist einmal pro Wisch statt sechzigmal pro Sekunde.
+  let settleTimer = 0;
+  const settle = () => {
+    const hoehe = shell.clientHeight;
+    if (!(hoehe > 0)) return;
+    shots.forEach((shot) => {
+      const media = shot.querySelector(".ll-shot__media") || shot;
+      const rect = media.getBoundingClientRect();
+      if (!(rect.height > 0)) return;
+      const sichtbar = Math.max(0, Math.min(rect.bottom, hoehe) - Math.max(rect.top, 0));
+      const anteil = sichtbar / rect.height;
+      if (anteil >= SHOT_REVEAL_RATIO) shot.classList.add("is-in");
+      else if (anteil <= 0) shot.classList.remove("is-in");
+    });
+  };
+
+  const onSettle = () => {
+    window.clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(settle, 140);
+  };
+
+  shell.addEventListener("scroll", onSettle, { passive: true });
+  window.addEventListener("resize", onSettle, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) onSettle();
+  });
 }
 
 function renderPage(data) {

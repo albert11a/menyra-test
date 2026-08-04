@@ -54,8 +54,7 @@ const DEFAULT_PLAN = {
     "Porositë direkt nga tavolina",
     "Postimet dhe feed-i social",
     "Vendndodhja në hartën e zbulimit",
-    "Ofertat dhe kuponat për klientët",
-    "Analitika e lokalit"
+    "Ofertat për klientët"
   ]
 };
 
@@ -499,14 +498,14 @@ const SHOTS = [
     ruht: { x: 8, dreh: 2 },
     kommt: { x: 38, dreh: 5 },
     title: "Menyja",
-    body: "Çdo pjatë me foto, çmim, përbërës dhe alergjenë. *E përditësoni vetë, kur të doni* - klienti e sheh menjëherë."
+    body: "Çdo produkt me foto, çmim, përbërës dhe alergjenë. *E përditësoni vetë, kur të doni* - klienti e sheh menjëherë."
   },
   {
     file: "mnyra-ofertat.webp",
     ruht: { x: -8, dreh: -1.5 },
     kommt: { x: -36, dreh: -4 },
     title: "Ofertat",
-    body: "Kuponi juaj shkon te klientët e qytetit dhe aktivizohet me një prekje. *Ju vendosni çka jepni dhe deri kur.*"
+    body: "Oferta juaj shkon te klientët e qytetit dhe aktivizohet në lokal. *Më shumë klientë.*"
   },
   {
     file: "mnyra-tavolina.webp",
