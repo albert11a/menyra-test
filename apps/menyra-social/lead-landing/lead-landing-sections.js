@@ -502,7 +502,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
 
       // Ein Bildschirm Pause: die Vorschau ist vorbei, die Frage steht im
       // Raum - und alles, was danach kommt, ist die Antwort darauf.
-      { view: "ask", focus: "", body: "" }
+      { view: "ask", focus: "", canvas: "#ffffff", body: "" }
     ]
   });
 }
@@ -907,21 +907,32 @@ function formatOfferUntil(endAt = "") {
 const SHOTS = [
   {
     file: "mnyra-start.webp",
+    // ruht: wo die Aufnahme stehen bleibt. kommt: wo sie herkommt.
+    // Nicht alle sind schief und nicht alle stehen mittig - erst die
+    // Unterschiede lassen die Reihe lebendig wirken.
+    ruht: { x: 0, dreh: 0 },
+    kommt: { x: -34, dreh: 0 },
     title: "Fillimi",
     body: "Klienti hap Mnyra dhe zgjedh qytetin. Prej këtu fillon gjithçka."
   },
   {
     file: "mnyra-feed.webp",
+    ruht: { x: 22, dreh: -2.5 },
+    kommt: { x: 76, dreh: -6 },
     title: "Feed-i",
     body: "Story-t e ditës dhe postimet e lokaleve - i gjithë qyteti në një ekran."
   },
   {
     file: "mnyra-restorante.webp",
+    ruht: { x: -18, dreh: 0 },
+    kommt: { x: -72, dreh: 0 },
     title: "Restorante",
     body: "Lart partnerët premium, poshtë tyre lokalet e qytetit."
   },
   {
     file: "mnyra-lista.webp",
+    ruht: { x: 12, dreh: 2 },
+    kommt: { x: 60, dreh: 5 },
     title: "Lista",
     body: "Çdo lokal me foto, vlerësim dhe orar - Profili dhe Menyja një prekje larg."
   }
@@ -931,18 +942,23 @@ export function renderShots() {
   return `
     <section class="ll-shots" data-canvas="#ffffff">
       ${SHOTS.map((shot) => `
-        <figure class="ll-shot">
-          <img
-            class="ll-shot__img"
-            data-shot
-            src="/apps/menyra-social/lead-landing/media/${esc(shot.file)}"
-            alt="${esc(shot.title)}"
-            width="880"
-            height="880"
-            loading="lazy"
-            decoding="async"
-          />
-          <figcaption class="ll-shot__text" data-shot>
+        <figure
+          class="ll-shot"
+          data-shot
+          style="--ll-shot-x:${shot.ruht.x}px;--ll-shot-r:${shot.ruht.dreh}deg;--ll-shot-x0:${shot.kommt.x}px;--ll-shot-r0:${shot.kommt.dreh}deg;"
+        >
+          <span class="ll-shot__media">
+            <img
+              class="ll-shot__img"
+              src="/apps/menyra-social/lead-landing/media/${esc(shot.file)}"
+              alt="${esc(shot.title)}"
+              width="880"
+              height="880"
+              loading="lazy"
+              decoding="async"
+            />
+          </span>
+          <figcaption class="ll-shot__text">
             <p class="ll-shot__title">${esc(shot.title)}</p>
             <p class="ll-shot__body">${esc(shot.body)}</p>
           </figcaption>

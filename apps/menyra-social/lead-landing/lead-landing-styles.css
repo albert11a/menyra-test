@@ -105,32 +105,58 @@ img {
 }
 
 /* ---------- Aufnahmen der App ----------
-   Hier rastet nichts ein: Der Abschnitt hat keine Rastpunkte, es wird
-   durchgescrollt. Bild und Text blenden getrennt ein, sobald sie ins Bild
-   kommen - die Klasse dafuer setzt ein IntersectionObserver
-   (startShotReveal). Bewegt werden nur Deckkraft und Verschiebung. */
+   Bild, Text, Bild, Text - durch den Block wird gescrollt. Jede Aufnahme hat
+   ihre eigene Ruhelage (--ll-shot-x/-r) und kommt aus einer weiter aussen
+   liegenden Startlage (--ll-shot-x0/-r0) hereingefahren. Nicht alle sind
+   schief und nicht alle stehen mittig; die Unterschiede stehen im Markup.
+
+   Bewegt werden nur Deckkraft und Transform - beides ohne Layout, damit es
+   auch auf schwaecheren Geraeten fluessig bleibt. */
 
 .ll-shots {
   width: 100%;
   max-width: var(--ll-shell);
   margin: 0 auto;
-  padding: 64px var(--ll-inline) 72px;
+  padding: 0 var(--ll-inline);
   background: #fff;
   display: flex;
   flex-direction: column;
-  gap: 72px;
+  /* Der Wisch nach der Frage endet genau hier - danach wird gescrollt.
+     Der Block ist der einzige Rastpunkt der Strecke; abgeschaltet wird der
+     Snap dahinter in lead-landing-stage.js.
+
+     Kein overflow hier: Das machte den Block zu einem eigenen Scrollbereich,
+     und Rastpunkte gehoeren immer dem naechsten Scrollbereich - der Wisch der
+     Seite kannte diesen dann nicht und sprang ueber den ganzen Block hinweg.
+     Seitlich beschneidet die Seite selbst (.ll-shell). */
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
+/* Jede Aufnahme bekommt einen eigenen Bildschirm und steht darin mittig.
+   Der Abstand dazwischen ergibt sich daraus von selbst - gleichmaessig und
+   auf jedem Geraet im selben Verhaeltnis.
+   Vorne heisst das: Der Wisch nach der Frage setzt die erste genau in die
+   Mitte, erst danach faengt das Scrollen an. Hinten: Die letzte ist ganz zu
+   sehen, bevor der naechste Wisch ins folgende Kapitel zieht - sonst endete
+   der Block mitten in ihrem Text. */
 .ll-shot {
   margin: 0;
+  min-height: 100svh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  /* Jede Aufnahme rastet in der Bildschirmmitte ein: Der Wisch nach der Frage
-     stellt die erste mittig ins Bild. Bewusst ohne scroll-snap-stop - dadurch
-     traegt ein laengerer Wisch ueber mehrere Aufnahmen, es fuehlt sich wie
-     Scrollen an statt wie Schritt fuer Schritt. */
-  scroll-snap-align: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* Eigene Flaeche fuer das Bild: Die Verschiebung und die Schraeglage wirken
+   nur hier. Der Text darunter bleibt davon unberuehrt und kann deshalb nie
+   verdeckt werden. */
+.ll-shot__media {
+  display: block;
+  text-align: center;
+  line-height: 0;
 }
 
 .ll-shot__img {
@@ -138,23 +164,31 @@ img {
   max-width: 320px;
   height: auto;
   aspect-ratio: 1 / 1;
-  align-self: center;
   object-fit: cover;
+  border-radius: 1.5rem;
   opacity: 0;
-  transform: translateY(22px) scale(0.98);
-  transition: opacity 620ms ease, transform 720ms cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translate3d(var(--ll-shot-x0, 0), 26px, 0) rotate(var(--ll-shot-r0, 0deg)) scale(0.96);
+  transition: opacity 640ms ease, transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform;
 }
 
+.ll-shot.is-in .ll-shot__img {
+  opacity: 1;
+  transform: translate3d(var(--ll-shot-x, 0), 0, 0) rotate(var(--ll-shot-r, 0deg));
+}
+
+/* Der Text kommt nach dem Bild - kurz versetzt, damit man erst sieht und
+   dann liest. */
 .ll-shot__text {
+  position: relative;
+  z-index: 1;
   opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 520ms ease, transform 620ms cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translate3d(0, 16px, 0);
+  transition: opacity 520ms ease 240ms, transform 640ms cubic-bezier(0.22, 1, 0.36, 1) 240ms;
   will-change: opacity, transform;
 }
 
-.ll-shot__img.is-in,
-.ll-shot__text.is-in {
+.ll-shot.is-in .ll-shot__text {
   opacity: 1;
   transform: none;
 }
@@ -176,9 +210,14 @@ img {
 }
 
 /* Wer Bewegung reduziert haben will, bekommt sie nicht: Der Inhalt steht
-   dann sofort da, ohne Fahrt. */
+   dann sofort da, in seiner Ruhelage. */
 @media (prefers-reduced-motion: reduce) {
-  .ll-shot__img,
+  .ll-shot__img {
+    opacity: 1;
+    transform: translate3d(var(--ll-shot-x, 0), 0, 0) rotate(var(--ll-shot-r, 0deg));
+    transition: none;
+  }
+
   .ll-shot__text {
     opacity: 1;
     transform: none;
@@ -281,7 +320,9 @@ img {
   position: absolute;
   inset: 0;
   z-index: 3;
-  background: var(--ll-bg);
+  /* Dieselbe Farbe wie die Seite in diesem Schritt - sonst stiessen die
+     Deckflaeche und der Streifen darum in zwei Toenen aneinander. */
+  background: var(--ll-canvas, var(--ll-bg));
   opacity: 0;
   pointer-events: none;
   /* Kurz und in beide Richtungen gleich: Dahinter bewegt sich nichts, es gibt

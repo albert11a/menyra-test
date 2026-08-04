@@ -141,15 +141,20 @@ function startShotReveal() {
     return;
   }
 
+  // Beobachtet wird das Bild, nicht die ganze Aufnahme: Die nimmt einen
+  // ganzen Bildschirm ein und ragt mit ihrem leeren Rand lange vor dem Bild
+  // ins Sichtfeld - die Bewegung liefe dann ab, waehrend das Bild noch gar
+  // nicht zu sehen ist.
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (!entry.isIntersecting) return;
-      entry.target.classList.add("is-in");
+      const shot = entry.target.closest("[data-shot]") || entry.target;
+      shot.classList.add("is-in");
       observer.unobserve(entry.target);
     });
   }, { root: document.querySelector(".ll-shell"), threshold: 0.35 });
 
-  shots.forEach((shot) => observer.observe(shot));
+  shots.forEach((shot) => observer.observe(shot.querySelector(".ll-shot__media") || shot));
 }
 
 function startMap() {
