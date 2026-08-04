@@ -314,7 +314,7 @@ img {
   pointer-events: none;
   /* Kurz und in beide Richtungen gleich: Dahinter bewegt sich nichts, es gibt
      also nichts zu ueberdecken - nur den Wechsel selbst. */
-  transition: opacity 260ms ease;
+  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ll-stage[data-aside="ask"] .ll-stage__aside {
@@ -330,14 +330,17 @@ img {
   /* Luft am Rand: der hervorgehobene Teil waechst leicht (scale) und wuerde
      sonst am oberen oder unteren Rand angeschnitten. */
   padding: 10px 0;
-  transition: transform 640ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
 /* Nicht fokussierte Teile werden unscharf, der fokussierte bleibt klar.
    So sieht man immer das ganze Profil - nur die Aufmerksamkeit wandert. */
 [data-spot] {
-  transition: opacity 460ms ease, filter 460ms ease, transform 460ms ease;
+  transition:
+    opacity 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Die eigene Ebene bekommt ein Teil nur, solange in seinem Kapitel ueberhaupt
@@ -353,7 +356,7 @@ img {
    mehr Kontrast zum Weiss und wuerden gerade dadurch auffallen. */
 .ll-stage[data-focus] [data-spot] {
   opacity: 0.34;
-  filter: blur(5px) saturate(0.45);
+  filter: blur(4px) saturate(0.5);
 }
 
 .ll-stage[data-focus] [data-spot][data-spot-active] {
@@ -384,8 +387,28 @@ img {
   padding-bottom: 12px;
   margin-left: calc(-1 * var(--ll-inline));
   margin-right: calc(-1 * var(--ll-inline));
-  border-bottom: 1px solid #f1f5f9;
-  box-shadow: 0 6px 12px -10px rgba(15, 23, 42, 0.35);
+}
+
+/* Die Kante darunter laeuft zu den Seiten aus, statt hart an den Rand zu
+   stossen. Vorher war es eine durchgehende Linie mit einem grauen Hauch
+   darunter - beides zusammen sah aus wie eine abgeschnittene Leiste. Jetzt
+   ist die Linie in der Mitte am staerksten und an beiden Enden nicht mehr da,
+   und der Schatten darunter ist nur noch zu ahnen. */
+.ll-stage__caption::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0) 0%,
+    rgba(15, 23, 42, 0.09) 18%,
+    rgba(15, 23, 42, 0.09) 82%,
+    rgba(15, 23, 42, 0) 100%
+  );
+  box-shadow: 0 8px 14px -14px rgba(15, 23, 42, 0.5);
 }
 
 /* Der seitliche Abstand haengt an den Schritten, nicht an der Flaeche: Sie
@@ -397,14 +420,23 @@ img {
   padding-left: var(--ll-inline);
   padding-right: var(--ll-inline);
   opacity: 0;
-  transform: translateY(-12px);
-  transition: opacity 420ms ease, transform 420ms ease;
+  transform: translateY(-10px);
+  /* Der abgehende Text geht schnell weg. Beide gleich lang, und zwei Texte
+     laegen die halbe Zeit ueber halb sichtbar uebereinander. */
+  transition:
+    opacity 170ms ease-in,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 
+/* Der kommende faengt erst an, wenn der alte weg ist - und laesst sich dann
+   Zeit. */
 .ll-stage__step.is-active {
   opacity: 1;
   transform: translateY(0);
+  transition:
+    opacity 320ms ease-out 150ms,
+    transform 540ms cubic-bezier(0.22, 1, 0.36, 1) 110ms;
 }
 
 /* Ueberschrift des Schritts. Blau wie frueher die kleine Marke darueber -
@@ -434,7 +466,15 @@ img {
   height: 2px;
   margin-bottom: 14px;
   border-radius: 2px;
-  background: rgba(100, 116, 139, 0.18);
+  /* Laeuft an den Enden aus wie die Kante unter dem Text - sonst stossen oben
+     und unten zwei verschiedene Kanten an denselben Rand. */
+  background: linear-gradient(
+    90deg,
+    rgba(100, 116, 139, 0) 0%,
+    rgba(100, 116, 139, 0.16) 10%,
+    rgba(100, 116, 139, 0.16) 90%,
+    rgba(100, 116, 139, 0) 100%
+  );
   overflow: hidden;
 }
 
@@ -444,7 +484,7 @@ img {
   width: 0%;
   border-radius: 2px;
   background: var(--ll-accent);
-  transition: width 220ms ease;
+  transition: width 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Fortschrittspunkte am rechten Rand. */
@@ -563,15 +603,26 @@ img {
   gap: 0;
 }
 
+/* Licht hinter der Begruessung, kein Fleck. Vorher war es ein einzelner
+   Kreis mit 0.75 Deckkraft auf 17rem - klein, dicht und dadurch als Scheibe
+   zu erkennen, die eher wie ein Schatten aussah als wie Licht.
+   Jetzt zwei weite, sehr blasse Ellipsen, die vollstaendig auslaufen: eine
+   in Mnyra-Blau hinter dem Namen, eine kuehlere darueber. Ohne filter: blur -
+   ein Verlauf, der bis auf null geht, braucht keinen, und ein Weichzeichner
+   ueber diese Flaeche kostet auf dem Handy jeden Frame. */
 .ll-hero__glow {
+  /* Bleibt im Abschnitt. Nach aussen gerueckt wird nicht die Flaeche, sondern
+     die Lichtquelle darin - sonst meldet die Seite eine Breite, die ueber den
+     Rand hinausgeht, auch wenn dort nichts zu sehen ist. */
   position: absolute;
-  width: 17rem;
-  height: 17rem;
-  left: -3rem;
-  top: 22%;
-  border-radius: 999px;
+  left: 0;
+  right: 0;
+  top: 2%;
+  height: 68%;
   pointer-events: none;
-  background: radial-gradient(circle at center, rgba(224, 231, 255, 0.75) 0%, rgba(224, 231, 255, 0.4) 45%, rgba(224, 231, 255, 0) 72%);
+  background:
+    radial-gradient(76% 50% at 6% 44%, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.06) 46%, rgba(99, 102, 241, 0) 74%),
+    radial-gradient(62% 42% at 94% 14%, rgba(56, 189, 248, 0.10) 0%, rgba(56, 189, 248, 0) 72%);
 }
 
 .ll-greet {
@@ -592,7 +643,7 @@ img {
   color: var(--ll-accent);
   opacity: 0;
   transform: translateY(1.4rem) scale(0.96);
-  transition: opacity 700ms cubic-bezier(0.23, 1, 0.32, 1), transform 700ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1), transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ll-greet__item.is-active {
@@ -1679,7 +1730,7 @@ img {
 }
 
 .ll-surface__cardinner {
-  transition: opacity 480ms ease, transform 560ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 480ms ease, transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ll-surface__cardinner {
@@ -1693,11 +1744,11 @@ img {
   opacity: 0;
   transform: scale(0.94);
   pointer-events: none;
-  transition: opacity 460ms ease, transform 560ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 460ms ease, transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ll-surface__card {
-  transition: opacity 460ms ease, transform 560ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 460ms ease, transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ll-surface__tabs {
@@ -1738,7 +1789,7 @@ img {
   opacity: 0;
   pointer-events: none;
   transform: translateY(8px);
-  transition: opacity 380ms ease, transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 380ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ll-stage[data-view="menu-focus"] .ll-menu-part--focus,
@@ -1751,7 +1802,7 @@ img {
 
 .ll-surface__posts,
 .ll-surface__menu {
-  transition: opacity 420ms ease, transform 480ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 420ms ease, transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ll-surface__posts {

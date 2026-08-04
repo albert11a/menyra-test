@@ -508,13 +508,6 @@ const SHOTS = [
     body: "Story-t dhe postimet e lokaleve, të freskëta çdo ditë. *Lokali juaj është mes tyre*, aty ku shikon i gjithë qyteti."
   },
   {
-    file: "mnyra-restorante.webp",
-    ruht: { x: -7, dreh: 0 },
-    kommt: { x: -38, dreh: 0 },
-    title: "Restorante",
-    body: "Lart qëndrojnë partnerët premium, poshtë tyre lokalet e qytetit. *Sa më lart, aq më shumë klientë ju gjejnë.*"
-  },
-  {
     file: "mnyra-lista.webp",
     ruht: { x: 5, dreh: 1.5 },
     kommt: { x: 32, dreh: 4 },
