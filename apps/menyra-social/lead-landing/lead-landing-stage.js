@@ -20,15 +20,20 @@ function readDefaultThemeColor() {
   return meta ? String(meta.getAttribute("content") || "") : "";
 }
 
-function updateCanvasColor(painted, viewportHeight, defaultThemeColor) {
-  const middle = viewportHeight / 2;
+// Gemessen wird dicht unter der Oberkante, nicht in der Bildschirmmitte: Der
+// Streifen liegt direkt ueber dieser Kante, also muss er die Farbe dessen
+// tragen, was dort anfaengt. Nach der Mitte gerichtet blieb er die halbe
+// Strecke lang in der alten Farbe, waehrend oben schon der naechste
+// Abschnitt stand - genau der Farbunterschied beim Wischen zu den Paketen.
+const CANVAS_PROBE = 1;
+
+function updateCanvasColor(painted, defaultThemeColor) {
   let color = "";
   painted.forEach((stage) => {
     const declared = String(stage.getAttribute("data-canvas") || "").trim();
     if (!declared) return;
     const rect = stage.getBoundingClientRect();
-    // Das Kapitel, das die Bildschirmmitte belegt, gibt die Farbe vor.
-    if (rect.top <= middle && rect.bottom >= middle) color = declared;
+    if (rect.top <= CANVAS_PROBE && rect.bottom > CANVAS_PROBE) color = declared;
   });
 
   const root = document.documentElement;
@@ -356,7 +361,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
       if (rect.bottom < -viewportHeight || rect.top > viewportHeight * 2) return;
       updateStage(stage, viewportHeight);
     });
-    updateCanvasColor(painted, viewportHeight, defaultThemeColor);
+    updateCanvasColor(painted, defaultThemeColor);
   };
 
   const onScroll = () => {

@@ -33,10 +33,11 @@ body {
   padding: 0;
   height: 100%;
   background: var(--ll-bg);
-  /* Kapitel mit eigener Farbe faerben die Seite mit (data-canvas). Der
-     Uebergang laeuft weich, damit die Streifen oben und unten nicht
-     springen. */
-  transition: background-color 240ms ease;
+  /* Kapitel mit eigener Farbe faerben die Seite mit (data-canvas). Bewusst
+     ohne Uebergang: Die Farbe wechselt genau dann, wenn die Kante zwischen
+     zwei Abschnitten die Oberkante erreicht. Eine Blende von 240ms liefe
+     dieser Kante hinterher - und genau daran war der Streifen oben noch
+     weiss, waehrend die Seite darunter schon grau war. */
   color: var(--ll-ink);
   font-family: "Plus Jakarta Sans", "Segoe UI", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
