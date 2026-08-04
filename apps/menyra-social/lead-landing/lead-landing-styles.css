@@ -152,13 +152,16 @@ img {
    verdeckt werden. */
 .ll-shot__media {
   display: block;
-  text-align: center;
   line-height: 0;
 }
 
+/* margin statt text-align: Bilder sind hier global display: block, da richtet
+   text-align nichts aus - sie stuenden alle links. Die paar Pixel nach links
+   oder rechts kommen erst aus --ll-shot-x, gerechnet ab der Mitte. */
 .ll-shot__img {
-  width: 78%;
-  max-width: 320px;
+  width: 84%;
+  max-width: 344px;
+  margin-inline: auto;
   height: auto;
   aspect-ratio: 1 / 1;
   object-fit: cover;
@@ -175,10 +178,19 @@ img {
 }
 
 /* Der Text kommt nach dem Bild - kurz versetzt, damit man erst sieht und
-   dann liest. */
+   dann liest. Mittig unter der Aufnahme, in einer Spalte, die schmaler ist
+   als die Seite: Zeilen, die von Kante zu Kante laufen, liest niemand gern.
+
+   Die Schrift ist hier eine andere als auf der uebrigen Seite - die des
+   Geraets. Auf dem iPhone ist das SF Pro; -apple-system muss dafuer zuerst
+   stehen, sonst greift Safari es nicht. */
 .ll-shot__text {
   position: relative;
   z-index: 1;
+  max-width: 19em;
+  margin: 0 auto;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   opacity: 0;
   transform: translate3d(0, 16px, 0);
   transition: opacity 520ms ease 240ms, transform 640ms cubic-bezier(0.22, 1, 0.36, 1) 240ms;
@@ -191,19 +203,28 @@ img {
 }
 
 .ll-shot__title {
-  margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--ll-accent);
 }
 
+/* Der Satz tritt zurueck, damit die eine Aussage darin hervorsticht - so
+   liest man zuerst, worum es geht, und dann den Rest. */
 .ll-shot__body {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  color: var(--ll-muted);
+}
+
+.ll-shot__body b {
   font-weight: 600;
-  line-height: 1.5;
-  color: var(--ll-ink-soft);
+  color: var(--ll-ink);
 }
 
 /* Wer Bewegung reduziert haben will, bekommt sie nicht: Der Inhalt steht

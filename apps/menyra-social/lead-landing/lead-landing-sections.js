@@ -908,67 +908,78 @@ function formatOfferUntil(endAt = "") {
 // Die Aufnahmen sind quadratisch und stehen auf Weiss, genau wie der
 // Abschnitt selbst - dadurch ist kein Bildrand zu sehen. Die Masse stehen im
 // Markup, damit der Text beim Laden nicht nachspringt.
+// Was zwischen Sternchen steht, traegt die Aussage und wird hervorgehoben;
+// der Rest des Satzes tritt zurueck.
 const SHOTS = [
   {
     file: "mnyra-start.webp",
     // ruht: wo die Aufnahme stehen bleibt. kommt: wo sie herkommt.
-    // Nicht alle sind schief und nicht alle stehen mittig - erst die
-    // Unterschiede lassen die Reihe lebendig wirken.
+    // Alle stehen fast mittig - ein paar Grad Schraeglage und ein paar Pixel
+    // nach links oder rechts reichen, damit die Reihe nicht starr wirkt.
     ruht: { x: 0, dreh: 0 },
-    kommt: { x: -34, dreh: 0 },
+    kommt: { x: -22, dreh: 0 },
     title: "Fillimi",
-    body: "Klienti hap Mnyra dhe zgjedh qytetin. Prej këtu fillon gjithçka."
+    body: "Klienti hap Mnyra dhe zgjedh qytetin. *Pa aplikacion, pa regjistrim* - mjafton linku."
   },
   {
     file: "mnyra-feed.webp",
-    ruht: { x: 22, dreh: -2.5 },
-    kommt: { x: 76, dreh: -6 },
+    ruht: { x: 8, dreh: -2 },
+    kommt: { x: 40, dreh: -5 },
     title: "Feed-i",
-    body: "Story-t e ditës dhe postimet e lokaleve - i gjithë qyteti në një ekran."
+    body: "Story-t dhe postimet e lokaleve, të freskëta çdo ditë. *Lokali juaj është mes tyre*, aty ku shikon i gjithë qyteti."
   },
   {
     file: "mnyra-restorante.webp",
-    ruht: { x: -18, dreh: 0 },
-    kommt: { x: -72, dreh: 0 },
+    ruht: { x: -7, dreh: 0 },
+    kommt: { x: -38, dreh: 0 },
     title: "Restorante",
-    body: "Lart partnerët premium, poshtë tyre lokalet e qytetit."
+    body: "Lart qëndrojnë partnerët premium, poshtë tyre lokalet e qytetit. *Sa më lart, aq më shumë klientë ju gjejnë.*"
   },
   {
     file: "mnyra-lista.webp",
-    ruht: { x: 12, dreh: 2 },
-    kommt: { x: 60, dreh: 5 },
+    ruht: { x: 5, dreh: 1.5 },
+    kommt: { x: 32, dreh: 4 },
     title: "Lista",
-    body: "Çdo lokal me foto, vlerësim dhe orar - Profili dhe Menyja një prekje larg."
+    body: "Foto, vlerësim dhe orar për secilin lokal. *Profili dhe menyja hapen me një prekje* - pa kërkuar më tutje."
   },
   {
     file: "mnyra-harta.webp",
-    ruht: { x: -14, dreh: 0 },
-    kommt: { x: -66, dreh: 0 },
+    ruht: { x: -6, dreh: 0 },
+    kommt: { x: -34, dreh: 0 },
     title: "Harta",
-    body: "Klienti sheh çka ka afër tij dhe hap profilin tuaj me një prekje."
+    body: "Klienti sheh çfarë ka afër tij. *Ju shfaqeni atje ku ai ndodhet*, në momentin kur ka uri."
   },
   {
     file: "mnyra-menyja.webp",
-    ruht: { x: 20, dreh: 2.5 },
-    kommt: { x: 74, dreh: 6 },
+    ruht: { x: 8, dreh: 2 },
+    kommt: { x: 38, dreh: 5 },
     title: "Menyja",
-    body: "Çdo pjatë me foto, çmim, përbërës dhe alergjenë - gjithmonë e përditësuar."
+    body: "Çdo pjatë me foto, çmim, përbërës dhe alergjenë. *E përditësoni vetë, kur të doni* - klienti e sheh menjëherë."
   },
   {
     file: "mnyra-ofertat.webp",
-    ruht: { x: -20, dreh: -2 },
-    kommt: { x: -70, dreh: -5 },
+    ruht: { x: -8, dreh: -1.5 },
+    kommt: { x: -36, dreh: -4 },
     title: "Ofertat",
-    body: "Kuponi juaj shfaqet te klientët e qytetit dhe aktivizohet me një prekje."
+    body: "Kuponi juaj shkon te klientët e qytetit dhe aktivizohet me një prekje. *Ju vendosni çka jepni dhe deri kur.*"
   },
   {
     file: "mnyra-tavolina.webp",
     ruht: { x: 0, dreh: 0 },
-    kommt: { x: 44, dreh: 0 },
+    kommt: { x: 24, dreh: 0 },
     title: "Në tavolinë",
-    body: "QR kodi për tavolinat tuaja: klienti skanon, porosit direkt nga menyja dhe thërret kamarierin nga profili."
+    body: "QR kodi në tavolinat tuaja: klienti skanon, *porosit direkt nga menyja* dhe thërret kamarierin nga profili."
   }
 ];
+
+// Escaped wird stueckweise, damit aus dem Text selbst nie Markup werden kann -
+// hervorgehoben wird nur das, was zwischen Sternchen steht.
+function shotBody(body = "") {
+  return String(body)
+    .split(/\*([^*]+)\*/g)
+    .map((part, index) => (index % 2 ? `<b>${esc(part)}</b>` : esc(part)))
+    .join("");
+}
 
 export function renderShots() {
   return `
@@ -992,7 +1003,7 @@ export function renderShots() {
           </span>
           <figcaption class="ll-shot__text">
             <p class="ll-shot__title">${esc(shot.title)}</p>
-            <p class="ll-shot__body">${esc(shot.body)}</p>
+            <p class="ll-shot__body">${shotBody(shot.body)}</p>
           </figcaption>
         </figure>
       `).join("")}
