@@ -14,6 +14,8 @@ CEO-only internal MENYRA control center.
 - `heart-state.js`: deterministic UI state store
 - `heart-render.js`: auth gate + shell composition
 - `heart-events.js`: delegated UI event wiring
+- `heart-async-utils.js`: bounded-parallel map and list chunking
+- `heart-single-flight.js`: single-flight, deadline and cache-then-fresh helpers
 - `heart-start-core.js`: pure start-screen logic (hourly motivation line, news feed)
 - `heart-start-render.js`: start view (motivation, profile, quick tiles, news)
 - `heart-landing-render.js`: lead-landing evaluation view
@@ -53,6 +55,32 @@ as the rest of MNYRA.
 - A view that is already loaded is not fetched again unless refresh is pressed
 - Start reuses the landing sessions and the leads/customers it loads anyway,
   so the start screen costs no extra reads
+
+### Cache first, then the server
+Firestore already keeps a persistent local cache (`persistentLocalCache` in
+`/shared/firebase-config.js`), but `getDocs` always asks the server first, so
+that cache only ever helped offline. Landing, leads and customers now read the
+device cache first with `getDocsFromCache`, paint it immediately, and replace
+it with the server result as soon as that arrives.
+
+`showCachedThenFresh` in `heart-single-flight.js` owns the ordering, and the
+ordering is the whole point: a cache result that arrives *after* the server
+result must never overwrite it. It is unit-tested for exactly that.
+
+Rules that go with it:
+- The cache pass is skipped when something is already on screen, and always
+  skipped on an explicit refresh - pressing refresh must hit the server.
+- A failed refresh never wipes data that is already on screen. Landing shows a
+  note above the list, CRM shows a toast; an empty page with an error message
+  is worse than yesterday's numbers with a hint next to them.
+- `landing.loadedFrom` says whether what you see came from the cache or the
+  server, and drives the "wird gerade abgeglichen" note.
+
+The other half of the first-load cost was `readNames` in the landing adapter:
+it fetched restaurant names in sequential batches of ten. With a hundred
+venues that was ten round trips, one after another. They now run side by side
+through `mapWithLimit` (`heart-async-utils.js`), bounded so a very large
+account does not fire hundreds of queries at once.
 
 ## Current real integrations
 - CEO auth guard: real

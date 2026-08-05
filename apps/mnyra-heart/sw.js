@@ -1,5 +1,5 @@
 const HEART_CACHE_PREFIX = "mnyra-heart-shell-";
-const HEART_CACHE = "mnyra-heart-shell-v9";
+const HEART_CACHE = "mnyra-heart-shell-v10";
 const SHELL_ASSETS = [
   "/heart/",
   "/heart/index.html",
@@ -11,6 +11,10 @@ const SHELL_ASSETS = [
   "/heart/heart-render.js",
   "/heart/heart-state.js",
   "/heart/heart-ui-utils.js",
+  "/heart/heart-async-utils.js",
+  "/heart/heart-single-flight.js",
+  "/heart/heart-landing-adapter.js",
+  "/heart/heart-landing-render.js",
   "/heart/heart-start-core.js",
   "/heart/heart-start-render.js",
   "/heart/heart-settings-render.js",
@@ -30,6 +34,10 @@ const SHELL_ASSETS = [
   "/apps/mnyra-heart/heart-render.js",
   "/apps/mnyra-heart/heart-state.js",
   "/apps/mnyra-heart/heart-ui-utils.js",
+  "/apps/mnyra-heart/heart-async-utils.js",
+  "/apps/mnyra-heart/heart-single-flight.js",
+  "/apps/mnyra-heart/heart-landing-adapter.js",
+  "/apps/mnyra-heart/heart-landing-render.js",
   "/apps/mnyra-heart/heart-start-core.js",
   "/apps/mnyra-heart/heart-start-render.js",
   "/apps/mnyra-heart/heart-settings-render.js",

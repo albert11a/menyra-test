@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createSingleFlight, withDeadline } from "../apps/mnyra-heart/heart-single-flight.js";
+import { createSingleFlight, showCachedThenFresh, withDeadline } from "../apps/mnyra-heart/heart-single-flight.js";
 
 // Diese Tests halten den Fehler fest, der den Landing-Bereich zweimal auf
 // "wird geladen" stehen liess: Mehrfaches Antippen warf das Ergebnis des
@@ -77,4 +77,92 @@ test("wer rechtzeitig antwortet, kommt durch - und die Uhr wird abgeraeumt", asy
 
 test("ohne Frist bleibt alles, wie es war", async () => {
   assert.equal(await withDeadline(Promise.resolve("da"), 0, "egal", uhrAttrappe()), "da");
+});
+
+// showCachedThenFresh: erst der Geraetespeicher, dann der Server. Die
+// Reihenfolge ist der Grund, warum es das ueberhaupt gibt - ein Speicherstand,
+// der nach der Server-Antwort eintrifft, darf sie nicht ueberschreiben.
+
+function steuerbar() {
+  let aufloesen;
+  let ablehnen;
+  const versprechen = new Promise((ja, nein) => { aufloesen = ja; ablehnen = nein; });
+  return { versprechen, aufloesen, ablehnen };
+}
+
+test("der Speicherstand kommt zuerst auf den Schirm, der Server ersetzt ihn", async () => {
+  const speicher = steuerbar();
+  const server = steuerbar();
+  const gezeigt = [];
+
+  const fertig = showCachedThenFresh({
+    cached: () => speicher.versprechen,
+    fresh: () => server.versprechen,
+    onCached: (wert) => gezeigt.push(`speicher:${wert}`),
+    onFresh: (wert) => gezeigt.push(`server:${wert}`)
+  });
+
+  speicher.aufloesen("alt");
+  await new Promise((weiter) => setTimeout(weiter, 0));
+  assert.deepEqual(gezeigt, ["speicher:alt"], "der Speicherstand haette sofort erscheinen muessen");
+
+  server.aufloesen("neu");
+  await fertig;
+  assert.deepEqual(gezeigt, ["speicher:alt", "server:neu"]);
+});
+
+test("ist der Server zuerst da, wird der Speicherstand gar nicht mehr gezeigt", async () => {
+  const speicher = steuerbar();
+  const server = steuerbar();
+  const gezeigt = [];
+
+  const fertig = showCachedThenFresh({
+    cached: () => speicher.versprechen,
+    fresh: () => server.versprechen,
+    onCached: (wert) => gezeigt.push(`speicher:${wert}`),
+    onFresh: (wert) => gezeigt.push(`server:${wert}`)
+  });
+
+  server.aufloesen("neu");
+  await fertig;
+  speicher.aufloesen("alt");
+  await new Promise((weiter) => setTimeout(weiter, 0));
+
+  assert.deepEqual(gezeigt, ["server:neu"], "der alte Stand hat den neuen ueberschrieben");
+});
+
+test("ein leerer Speicher haelt nichts auf", async () => {
+  const gezeigt = [];
+  await showCachedThenFresh({
+    cached: async () => null,
+    fresh: async () => "neu",
+    onCached: (wert) => gezeigt.push(`speicher:${wert}`),
+    onFresh: (wert) => gezeigt.push(`server:${wert}`)
+  });
+  assert.deepEqual(gezeigt, ["server:neu"]);
+});
+
+test("ein kaputter Speicher wirft den Server nicht um", async () => {
+  const gezeigt = [];
+  await showCachedThenFresh({
+    cached: async () => { throw new Error("Speicher kaputt"); },
+    fresh: async () => "neu",
+    onCached: () => gezeigt.push("speicher"),
+    onFresh: (wert) => gezeigt.push(`server:${wert}`)
+  });
+  assert.deepEqual(gezeigt, ["server:neu"]);
+});
+
+test("scheitert der Server, wird der Fehler gemeldet und nicht geworfen", async () => {
+  const gemeldet = [];
+  const ergebnis = await showCachedThenFresh({
+    cached: async () => "alt",
+    fresh: async () => { throw new Error("keine Verbindung"); },
+    onCached: (wert) => gemeldet.push(`speicher:${wert}`),
+    onFresh: () => gemeldet.push("server"),
+    onError: (fehler) => gemeldet.push(`fehler:${fehler.message}`)
+  });
+  assert.equal(ergebnis, undefined);
+  assert.ok(gemeldet.includes("fehler:keine Verbindung"));
+  assert.ok(!gemeldet.includes("server"));
 });

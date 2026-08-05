@@ -259,9 +259,33 @@ function renderDetail(entry, tab = "active") {
   `;
 }
 
+// Beim allerersten Laden gibt es noch nichts zu zeigen. Statt einer Zeile
+// "wird geladen" stehen hier Platzhalter in der Form der spaeteren Liste - man
+// sieht, dass etwas kommt, und die Seite springt nachher nicht.
+function renderListSkeleton() {
+  // Eigene Box und nicht die Klasse der echten Zeile: Die ist ein
+  // Flex-Container, in dem die Platzhalterbalken auf null Breite
+  // zusammenfielen.
+  return `
+    <div class="heart-landing-skeleton" aria-hidden="true">
+      ${[0, 1, 2, 3].map(() => `
+        <div class="heart-landing-skeleton__row">
+          <span class="heart-start__skeleton heart-start__skeleton--title"></span>
+          <span class="heart-start__skeleton heart-start__skeleton--detail"></span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 export function renderHeartLandingView(landing = {}) {
   if (landing.status === "loading") {
-    return `<section class="heart-section"><div class="heart-loading-block">Landings werden geladen...</div></section>`;
+    return `
+      <section class="heart-section">
+        <h2 class="heart-section__title">Landings</h2>
+        ${renderListSkeleton()}
+      </section>
+    `;
   }
   if (landing.status === "error") {
     return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(landing.error || "Landings konnten nicht geladen werden.")}</div></section>`;
@@ -287,8 +311,22 @@ export function renderHeartLandingView(landing = {}) {
     <section class="heart-section">
       <h2 class="heart-section__title">Landings</h2>
       <p class="heart-section__hint">Wer hat welche Landing gesehen, wie weit ist er gekommen, und was hat er geantwortet.</p>
+      ${renderStaleNote(landing)}
       ${renderTabs(tab, anzahlAktiv, alle.length - anzahlAktiv)}
       ${renderList(sichtbar, tab)}
     </section>
   `;
+}
+
+// Was gerade zu sehen ist, kommt aus dem Geraetespeicher oder ist beim
+// Abgleich stehen geblieben. Beides gehoert dazugesagt - aber leise, unter der
+// Ueberschrift, ohne die Zahlen wegzunehmen.
+function renderStaleNote(landing = {}) {
+  if (landing.error) {
+    return `<p class="heart-landing-note heart-landing-note--warn">${escapeHtml(landing.error)} Angezeigt wird der letzte bekannte Stand.</p>`;
+  }
+  if (landing.loadedFrom === "cache") {
+    return `<p class="heart-landing-note">Letzter bekannter Stand &middot; wird gerade abgeglichen</p>`;
+  }
+  return "";
 }

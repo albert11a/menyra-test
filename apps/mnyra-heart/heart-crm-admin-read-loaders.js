@@ -7,6 +7,7 @@ import {
   documentId,
   getDoc,
   getDocs,
+  getDocsFromCache,
   limit,
   query,
   where
@@ -524,6 +525,12 @@ export function createHeartCrmAdminReadLoaderDeps({
     };
   };
 
+  // Firestore haelt schon einen Speicher auf dem Geraet, aber getDocs fragt
+  // trotzdem immer erst den Server. Mit "fromCache" wird derselbe Abruf gegen
+  // den Geraetespeicher gefahren: Er antwortet ohne Netz und damit sofort.
+  // Gedacht ist das als erster Wurf, dem der echte Stand gleich nachfolgt.
+  const getDocsFor = (options = {}) => (options.fromCache === true ? getDocsFromCache : getDocs);
+
   return Object.freeze({
     version: HEART_CRM_ADMIN_READ_LOADERS_VERSION,
     async loadLeads(options = {}) {
@@ -536,7 +543,7 @@ export function createHeartCrmAdminReadLoaderDeps({
         queryFn: query,
         whereFn: where,
         limitFn: limit,
-        getDocsFn: getDocs,
+        getDocsFn: getDocsFor(options),
         scope: options.scope || "own",
         desiredCount: options.limit || HEART_CRM_READ_PAGE_SIZE,
         pageSize: HEART_CRM_READ_PAGE_SIZE,
@@ -562,7 +569,7 @@ export function createHeartCrmAdminReadLoaderDeps({
         queryFn: query,
         whereFn: where,
         limitFn: limit,
-        getDocsFn: getDocs,
+        getDocsFn: getDocsFor(options),
         scope: options.scope || "own",
         desiredCount: options.limit || HEART_CRM_READ_PAGE_SIZE,
         pageSize: HEART_CRM_READ_PAGE_SIZE,

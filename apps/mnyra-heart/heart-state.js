@@ -129,7 +129,10 @@ export function createHeartInitialState() {
       archived: [],
       tab: "active",
       selectedId: "",
-      loadedAt: ""
+      loadedAt: "",
+      // "cache", solange nur der Geraetespeicher gelesen wurde, "network",
+      // sobald der echte Stand da ist. Daran haengt, ob noch nachgeladen wird.
+      loadedFrom: ""
     },
     destinations: createHeartDestinationsInitialState(),
     crmAdmin: {
@@ -494,13 +497,14 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
-  function setLandingData({ sessions = [], archived = [] } = {}) {
+  function setLandingData({ sessions = [], archived = [], fromCache = false } = {}) {
     patch((draft) => {
       draft.landing.status = "ready";
       draft.landing.error = "";
       draft.landing.sessions = sanitizeStateValue(Array.isArray(sessions) ? sessions : []);
       draft.landing.archived = sanitizeStateValue(Array.isArray(archived) ? archived : []);
       draft.landing.loadedAt = new Date().toISOString();
+      draft.landing.loadedFrom = fromCache ? "cache" : "network";
     });
   }
 
@@ -525,10 +529,13 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  // Steht schon etwas auf dem Schirm - etwa aus dem Geraetespeicher -, wird es
+  // von einem gescheiterten Nachladen nicht weggeraeumt. Eine leere Seite mit
+  // Fehlermeldung ist schlechter als gestrige Zahlen mit einem Hinweis daneben.
   function setLandingError(message = "") {
     patch((draft) => {
-      draft.landing.status = "error";
       draft.landing.error = String(message || "Landings konnten nicht geladen werden.");
+      if (!draft.landing.sessions.length) draft.landing.status = "error";
     });
   }
 

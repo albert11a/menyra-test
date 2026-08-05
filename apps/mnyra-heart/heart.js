@@ -9,6 +9,7 @@ import {
 } from "./heart-events.js";
 import {
   createSingleFlight,
+  showCachedThenFresh,
   withDeadline
 } from "./heart-single-flight.js";
 import {
@@ -32,6 +33,14 @@ import {
 import {
   createHeartDestinationsAdapter
 } from "./heart-destinations-adapter.js";
+// Statisch und nicht per import() bei Bedarf: Start zeigt die Landing-Zahlen
+// mit, der Adapter wird also bei jedem Boot gebraucht. Nachladen haette nur
+// eine weitere Wartezeit vor die erste Anzeige gesetzt.
+import {
+  loadLandingSessions,
+  loadLandingSessionsFromCache,
+  setLandingArchived as schreibeLandingAblage
+} from "./heart-landing-adapter.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -103,6 +112,11 @@ let motivationTimer = null;
 // jedem Neuzeichnen eine neue Uhrzeit einsetzt (und dadurch neu geschrieben
 // wird), steht die Zeit hier fest und wird genau einmal pro Stunde bewegt.
 let renderClock = Date.now();
+// Wo sich der Umweg ueber den Geraetespeicher lohnt: Leads und Kunden sind die
+// Listen, die taeglich geoeffnet werden, und Start zeigt sie mit. Ads liest je
+// Lokal zwei weitere Dokumente und Staff ist eine kurze Liste - dort waere der
+// zusaetzliche Durchlauf mehr Aufwand als Gewinn.
+const CRM_CACHE_FIRST_DOMAINS = new Set(["leads", "customers"]);
 const CRM_ADMIN_DEFAULT_READ_LIMIT = 20;
 const CRM_ADMIN_MAX_READ_LIMIT = 160;
 const CRM_ADMIN_SCOPE_COUNT_KEYS = Object.freeze({
@@ -358,22 +372,41 @@ async function loadCrmDomain(domainKey = "", { force = false, scope = "", limit 
   }
 
   const readLimit = resolveCrmReadLimit(key, nextScope, { limit });
+  const leseArgumente = { limit: readLimit, ...(nextScope ? { scope: nextScope } : {}) };
+  const hatSchonZeilen = (section.items || []).length > 0;
   actions.setCrmAdminLoading(key, { scope: nextScope });
-  try {
-    const [payload, buildStatusPayload] = await Promise.all([
-      domain.load({
-        limit: readLimit,
-        ...(nextScope ? { scope: nextScope } : {})
-      }),
-      key === "staff" ? loadCrmBuildStatus() : Promise.resolve({})
-    ]);
-    actions.setCrmAdminData(key, {
-      ...(payload || {}),
-      ...(buildStatusPayload || {})
-    });
-  } catch (error) {
-    actions.setCrmAdminError(key, error?.message || "CRM/Admin Daten konnten nicht geladen werden.");
-  }
+
+  await showCachedThenFresh({
+    // Nur Leads und Kunden koennen aus dem Geraetespeicher lesen, nur wenn noch
+    // nichts auf dem Schirm steht, und nie beim ausdruecklichen Aktualisieren -
+    // wer darauf tippt, will den echten Stand und nicht den von vorhin.
+    cached: CRM_CACHE_FIRST_DOMAINS.has(key) && !hatSchonZeilen && !force
+      ? async () => {
+        const payload = await domain.load({ ...leseArgumente, fromCache: true });
+        const zeilen = payload?.rows?.length ? payload.rows : (payload?.items || []);
+        return zeilen.length ? payload : null;
+      }
+      : null,
+    fresh: async () => {
+      const [payload, buildStatusPayload] = await Promise.all([
+        domain.load(leseArgumente),
+        key === "staff" ? loadCrmBuildStatus() : Promise.resolve({})
+      ]);
+      return { ...(payload || {}), ...(buildStatusPayload || {}) };
+    },
+    onCached: (payload) => actions.setCrmAdminData(key, payload),
+    onFresh: (payload) => actions.setCrmAdminData(key, payload),
+    onError: (error) => {
+      const meldung = error?.message || "CRM/Admin Daten konnten nicht geladen werden.";
+      // Steht schon eine Liste da - etwa aus dem Geraetespeicher -, wird sie
+      // nicht gegen eine Fehlermeldung getauscht. Gesagt wird es trotzdem.
+      if ((store.getState().crmAdmin?.sections?.[key]?.items || []).length) {
+        setToast("Aktualisieren", meldung, "warning");
+        return;
+      }
+      actions.setCrmAdminError(key, meldung);
+    }
+  });
 }
 
 function loadCrmDomains(domainKeys = [], options = {}) {
@@ -740,24 +773,37 @@ async function refreshAnalytics({ force = false } = {}) {
 // Firestore wartet von sich aus unbegrenzt. Ohne diese Grenze dreht sich der
 // Bereich bei einer haengenden Verbindung endlos, statt zu sagen, was los ist.
 const LANDING_TIMEOUT_MS = 15000;
+const LANDING_TIMEOUT_TEXT = "Die Verbindung antwortet nicht. Bitte noch einmal aktualisieren.";
 
+// Zwei Wege gleichzeitig: der Geraetespeicher, der sofort antwortet, und der
+// Server, der die Wahrheit hat. Was zuerst da ist, wird gezeigt - der Server
+// gewinnt aber immer, auch wenn er spaeter kommt. Vorher wurde nur der Server
+// gefragt, und der Bereich stand bis zu seiner Antwort auf "wird geladen".
 const ladeLandings = createSingleFlight(async () => {
-  actions.setLandingLoading();
-  try {
-    const { loadLandingSessions } = await import("./heart-landing-adapter.js");
-    actions.setLandingData(await withDeadline(
-      loadLandingSessions(),
-      LANDING_TIMEOUT_MS,
-      "Die Verbindung antwortet nicht. Bitte noch einmal aktualisieren."
-    ));
-  } catch (error) {
-    actions.setLandingError(error?.message || "Landings konnten nicht geladen werden.");
-  }
+  const hatteSchonEtwas = (store.getState().landing.sessions || []).length > 0;
+  if (!hatteSchonEtwas) actions.setLandingLoading();
+
+  await showCachedThenFresh({
+    // Steht schon etwas auf dem Schirm, ist der Umweg ueber den Speicher
+    // ueberfluessig.
+    cached: hatteSchonEtwas
+      ? null
+      : async () => {
+        const ausSpeicher = await loadLandingSessionsFromCache();
+        return ausSpeicher.sessions.length ? ausSpeicher : null;
+      },
+    fresh: () => withDeadline(loadLandingSessions(), LANDING_TIMEOUT_MS, LANDING_TIMEOUT_TEXT),
+    onCached: (ausSpeicher) => actions.setLandingData({ ...ausSpeicher, fromCache: true }),
+    onFresh: (ausDemNetz) => actions.setLandingData(ausDemNetz),
+    onError: (error) => actions.setLandingError(error?.message || "Landings konnten nicht geladen werden.")
+  });
 });
 
 async function refreshLanding({ force = false } = {}) {
   const landing = store.getState().landing || {};
-  if (!force && landing.status === "ready") return;
+  // Aus dem Geraetespeicher gelesen heisst noch nicht fertig: Dann laeuft der
+  // Abgleich mit dem Server ohnehin noch oder muss nachgeholt werden.
+  if (!force && landing.status === "ready" && landing.loadedFrom === "network") return;
   await ladeLandings();
 }
 
@@ -838,8 +884,7 @@ const operations = {
     if (!id) return;
     actions.setLandingArchived(id, archived);
     try {
-      const { setLandingArchived } = await import("./heart-landing-adapter.js");
-      await setLandingArchived(id, archived);
+      await schreibeLandingAblage(id, archived);
     } catch (error) {
       actions.setLandingArchived(id, !archived);
       setToast("Landing", error?.message || "Konnte nicht abgelegt werden.", "danger");
@@ -1494,7 +1539,7 @@ scheduleMotivationTick();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const serviceWorkerUrl = new URL("./sw.js?v=2026-08-05-heart-start-v9", import.meta.url);
+    const serviceWorkerUrl = new URL("./sw.js?v=2026-08-05-heart-start-v10", import.meta.url);
     navigator.serviceWorker.register(serviceWorkerUrl).catch(() => {});
   });
 }

@@ -142,8 +142,52 @@ test("ohne Aufrufe steht ein Hinweis statt einer leeren Seite", () => {
 });
 
 test("Ladefehler werden gezeigt, nicht verschluckt", () => {
-  assert.match(renderHeartLandingView({ status: "loading" }), /werden geladen/);
   assert.match(renderHeartLandingView({ status: "error", error: "Kein Zugriff" }), /Kein Zugriff/);
+});
+
+// Beim allerersten Laden gibt es noch nichts zu zeigen. Statt einer Zeile
+// "wird geladen" stehen Platzhalter in der Form der spaeteren Liste da.
+test("das erste Laden zeigt Platzhalter in Listenform", () => {
+  const html = renderHeartLandingView({ status: "loading" });
+  assert.match(html, /heart-landing-skeleton__row/);
+  assert.match(html, /Landings/);
+});
+
+// Der Bereich stand frueher bis zur Antwort des Servers auf "wird geladen".
+// Jetzt kommt zuerst der Stand aus dem Geraetespeicher - mit dem Hinweis, dass
+// noch abgeglichen wird, damit niemand alte Zahlen fuer neue haelt.
+test("der Stand aus dem Geraetespeicher wird sofort gezeigt und als solcher benannt", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    loadedFrom: "cache",
+    sessions: [session({ name: "Casarita" })]
+  });
+  assert.match(html, /Casarita/);
+  assert.match(html, /wird gerade abgeglichen/);
+});
+
+test("nach dem Abgleich verschwindet der Hinweis", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    loadedFrom: "network",
+    sessions: [session({ name: "Casarita" })]
+  });
+  assert.match(html, /Casarita/);
+  assert.ok(!html.includes("wird gerade abgeglichen"), "der Hinweis blieb stehen");
+});
+
+// Scheitert das Nachladen, waere eine leere Seite mit Fehlermeldung schlechter
+// als die letzten bekannten Zahlen mit einem Hinweis daneben.
+test("ein gescheiterter Abgleich raeumt die vorhandenen Zahlen nicht weg", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    loadedFrom: "cache",
+    error: "Die Verbindung antwortet nicht.",
+    sessions: [session({ name: "Casarita" })]
+  });
+  assert.match(html, /Casarita/);
+  assert.match(html, /Die Verbindung antwortet nicht/);
+  assert.match(html, /letzte bekannte Stand/);
 });
 
 test("ein Name mit Auszeichnung darin bricht die Ansicht nicht auf", () => {

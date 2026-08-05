@@ -118,3 +118,33 @@ test("Laeufe, Meldungen und Bereiche sind aus der Navigation verschwunden", () =
   assert.equal(state.incidents, undefined);
   assert.equal(state.dashboard, undefined);
 });
+
+test("der Speicherstand wird als solcher vermerkt, der Serverstand auch", () => {
+  const store = createHeartStore(createHeartInitialState());
+  store.actions.setLandingData({ sessions: [{ restaurantId: "r1" }], archived: [], fromCache: true });
+  assert.equal(store.getState().landing.loadedFrom, "cache");
+  assert.equal(store.getState().landing.status, "ready");
+
+  store.actions.setLandingData({ sessions: [{ restaurantId: "r1" }], archived: [] });
+  assert.equal(store.getState().landing.loadedFrom, "network");
+});
+
+// Eine leere Seite mit Fehlermeldung ist schlechter als gestrige Zahlen mit
+// einem Hinweis daneben.
+test("ein gescheiterter Abgleich raeumt vorhandene Landings nicht weg", () => {
+  const store = createHeartStore(createHeartInitialState());
+  store.actions.setLandingData({ sessions: [{ restaurantId: "r1" }], archived: [], fromCache: true });
+
+  store.actions.setLandingError("Die Verbindung antwortet nicht.");
+  const state = store.getState();
+  assert.equal(state.landing.status, "ready", "die vorhandenen Zahlen wurden weggeraeumt");
+  assert.equal(state.landing.sessions.length, 1);
+  assert.equal(state.landing.error, "Die Verbindung antwortet nicht.");
+});
+
+test("ohne vorhandene Landings ist ein Fehler ein Fehler", () => {
+  const store = createHeartStore(createHeartInitialState());
+  store.actions.setLandingError("Kein Zugriff");
+  assert.equal(store.getState().landing.status, "error");
+  assert.equal(store.getState().landing.error, "Kein Zugriff");
+});

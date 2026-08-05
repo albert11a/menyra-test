@@ -3626,3 +3626,33 @@ der Balken zeigt es. */
     padding: 18px 16px;
   }
 }
+
+/* Landing: leiser Hinweis unter der Ueberschrift, wenn das Gezeigte aus dem
+   Geraetespeicher kommt oder der Abgleich gescheitert ist. */
+.heart-landing-note {
+  margin: 0 0 12px;
+  color: var(--heart-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.heart-landing-note--warn {
+  color: #fda4af;
+}
+
+/* Platzhalter fuer das allererste Laden. Eigene Box, weil die echte Zeile ein
+   Flex-Container ist - darin fielen die Balken auf null Breite zusammen. */
+.heart-landing-skeleton {
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.heart-landing-skeleton__row {
+  display: grid;
+  gap: 10px;
+  padding: 18px 16px;
+  border: 1px solid var(--heart-border);
+  border-radius: 20px;
+  background: var(--heart-surface);
+}
