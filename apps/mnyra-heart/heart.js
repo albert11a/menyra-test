@@ -8,6 +8,10 @@ import {
   bindHeartEvents
 } from "./heart-events.js";
 import {
+  createSingleFlight,
+  withDeadline
+} from "./heart-single-flight.js";
+import {
   createHeartCrmAdminShellConsumer
 } from "./heart-crm-admin-shell-consumer.js";
 import {
@@ -965,27 +969,36 @@ async function refreshAnalyticsDashboard({ force = false } = {}) {
 
 // Die Landings werden erst geladen, wenn man den Bereich oeffnet, und danach
 // nur auf Verlangen neu. Es sind Zahlen von gestern, keine, die im Sekundentakt
-// wandern. Der Zaehler sorgt dafuer, dass eine langsame alte Antwort keine
-// neuere ueberschreibt - dasselbe Muster wie bei den Analytics darueber.
-let landingLoadSeq = 0;
+// wandern.
+//
+// Wer waehrend des Ladens noch einmal auf Aktualisieren tippt, bekommt
+// denselben Ladevorgang zurueck und keinen zweiten. Vorher stand hier ein
+// Zaehler, der das spaetere Tippen gewinnen liess und das Ergebnis des frueheren
+// wegwarf - wer aus Ungeduld mehrfach tippte, verlaengerte damit das Warten,
+// und blieb das letzte Ergebnis aus, stand der Bereich fuer immer auf "wird
+// geladen". Genau das ist passiert.
+// Firestore wartet von sich aus unbegrenzt. Ohne diese Grenze dreht sich der
+// Bereich bei einer haengenden Verbindung endlos, statt zu sagen, was los ist.
+const LANDING_TIMEOUT_MS = 15000;
 
-async function refreshLanding({ force = false } = {}) {
-  const landing = store.getState().landing || {};
-  if (!force && landing.status === "loading") return;
-  if (!force && landing.status === "ready" && landing.sessions.length) return;
-
-  landingLoadSeq += 1;
-  const seq = landingLoadSeq;
+const ladeLandings = createSingleFlight(async () => {
   actions.setLandingLoading();
   try {
     const { loadLandingSessions } = await import("./heart-landing-adapter.js");
-    const sessions = await loadLandingSessions();
-    if (seq !== landingLoadSeq) return;
-    actions.setLandingData(sessions);
+    actions.setLandingData(await withDeadline(
+      loadLandingSessions(),
+      LANDING_TIMEOUT_MS,
+      "Die Verbindung antwortet nicht. Bitte noch einmal aktualisieren."
+    ));
   } catch (error) {
-    if (seq !== landingLoadSeq) return;
     actions.setLandingError(error?.message || "Landings konnten nicht geladen werden.");
   }
+});
+
+async function refreshLanding({ force = false } = {}) {
+  const landing = store.getState().landing || {};
+  if (!force && landing.status === "ready" && landing.sessions.length) return;
+  await ladeLandings();
 }
 
 const operations = {
