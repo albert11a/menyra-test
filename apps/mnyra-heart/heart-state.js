@@ -3,18 +3,44 @@ const CRM_ADMIN_DOMAIN_KEYS = Object.freeze(["leads", "customers", "ads", "staff
 
 export const HEART_NAV_ITEMS = Object.freeze([
   { key: "dashboard", label: "Start" },
-  { key: "runs", label: "Laeufe" },
-  { key: "incidents", label: "Meldungen" },
-  { key: "modules", label: "Bereiche" },
-  { key: "analytics", label: "Analytics" },
   { key: "landing", label: "Landing" },
   { key: "crmLeads", label: "Leads" },
   { key: "crmCustomers", label: "Kunden" },
   { key: "crmAds", label: "Ads" },
   { key: "crmStaff", label: "Staff" },
   { key: "destinations", label: "Orte" },
+  { key: "analytics", label: "Analytics" },
   { key: "connections", label: "Einrichtung" }
 ]);
+
+// Die Scheiben des Zustands. Sie stehen hier, weil jede Aenderung sie einzeln
+// kopiert: So bekommt jeder Zustand neue Objekte an genau den Stellen, die sich
+// geaendert haben, und der Rest wird weitergegeben statt nachgebaut.
+const STATE_SLICE_KEYS = Object.freeze([
+  "boot",
+  "auth",
+  "shell",
+  "connections",
+  "setup",
+  "analytics",
+  "landing",
+  "destinations",
+  "crmAdmin"
+]);
+
+const EMPTY_MODAL = Object.freeze({
+  kind: "",
+  packKey: "",
+  runId: "",
+  crmDomain: "",
+  itemId: "",
+  mode: "",
+  draft: {}
+});
+
+function createEmptyModal() {
+  return { ...EMPTY_MODAL, draft: {} };
+}
 
 export function createHeartDestinationsInitialState() {
   return {
@@ -62,50 +88,9 @@ export function createHeartInitialState() {
     shell: {
       activeView: "dashboard",
       navOpen: false,
-      quickActionsOpen: false,
       standalone: false,
-      mobileNavHidden: false,
       toast: null,
-      modal: {
-        kind: "",
-        packKey: "",
-        runId: "",
-        crmDomain: "",
-        itemId: "",
-        mode: "",
-        draft: {}
-      }
-    },
-    dashboard: {
-      status: DEFAULT_STATUS,
-      error: "",
-      data: null
-    },
-    runs: {
-      status: DEFAULT_STATUS,
-      error: "",
-      items: [],
-      selectedRunId: "",
-      detailStatus: DEFAULT_STATUS,
-      detailError: "",
-      detail: null,
-      pendingAction: "",
-      lastRefreshAt: "",
-      launcherExpanded: false,
-      detailExpanded: false,
-      historyTab: "current",
-      historyEditMode: false,
-      historySelectedRunIds: []
-    },
-    incidents: {
-      status: DEFAULT_STATUS,
-      error: "",
-      items: [],
-      filters: {
-        severity: "all",
-        source: "all",
-        status: "all"
-      }
+      modal: createEmptyModal()
     },
     connections: {
       status: DEFAULT_STATUS,
@@ -185,7 +170,7 @@ export function createHeartInitialState() {
   };
 }
 
-function sanitizeStateValue(value) {
+export function sanitizeStateValue(value) {
   if (value === null || value === undefined) return value;
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
   if (value instanceof Date) return value.toISOString();
@@ -209,27 +194,28 @@ function sanitizeStateValue(value) {
   return null;
 }
 
-function cloneState(state) {
-  return sanitizeStateValue(state);
-}
-
-function sanitizeAuthUser(user) {
-  if (!user) return null;
-  return {
-    uid: String(user.uid || "").trim(),
-    email: String(user.email || "").trim(),
-    displayName: String(user.displayName || "").trim(),
-    photoURL: String(user.photoURL || "").trim()
-  };
-}
-
-function sanitizeAuthProfile(profile) {
-  if (!profile || typeof profile !== "object") return null;
-  return sanitizeStateValue(profile);
+// Ein Entwurf des naechsten Zustands. Kopiert wird die Huelle und jede Scheibe,
+// nicht der Inhalt: Vorher wurde bei jeder Aenderung der komplette Zustand
+// tief kopiert - mit hunderten Landing-Sitzungen und Leads darin war das bei
+// jedem Tastendruck im Suchfeld sofort zu spueren.
+function createStateDraft(state) {
+  const draft = { ...state };
+  STATE_SLICE_KEYS.forEach((key) => {
+    const slice = draft[key];
+    if (slice && typeof slice === "object" && !Array.isArray(slice)) {
+      draft[key] = { ...slice };
+    }
+  });
+  // Die CRM-Abschnitte werden einzeln ersetzt, also braucht auch ihre Mappe
+  // eine eigene Kopie.
+  if (draft.crmAdmin?.sections && typeof draft.crmAdmin.sections === "object") {
+    draft.crmAdmin.sections = { ...draft.crmAdmin.sections };
+  }
+  return draft;
 }
 
 export function createHeartStore(initialState = createHeartInitialState()) {
-  let state = cloneState(initialState);
+  let state = sanitizeStateValue(initialState);
   const listeners = new Set();
 
   function notify() {
@@ -247,12 +233,16 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   }
 
   function setState(nextState) {
-    state = cloneState(nextState);
+    state = sanitizeStateValue(nextState);
     notify();
   }
 
+  // Ein Mutator darf die Scheiben des Entwurfs neu belegen
+  // (`draft.landing.tab = ...`). Was tiefer liegt, wird als ganzes Objekt
+  // ersetzt, nicht von innen geaendert - sonst traegt der vorige Zustand die
+  // Aenderung mit, und der Vergleich "hat sich etwas getan" geht daneben.
   function patch(mutator) {
-    const draft = cloneState(state);
+    const draft = createStateDraft(state);
     mutator(draft);
     state = draft;
     notify();
@@ -273,28 +263,15 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.shell.activeView = String(viewKey || "dashboard");
       draft.shell.navOpen = false;
-      draft.shell.quickActionsOpen = false;
-      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "", draft: {} };
-      if (draft.shell.activeView !== "runs") {
-        draft.runs.launcherExpanded = false;
-        draft.runs.detailExpanded = false;
-      }
+      draft.shell.modal = createEmptyModal();
     });
   }
 
   function setNavOpen(open) {
-    patch((draft) => {
-      draft.shell.navOpen = !!open;
-      if (draft.shell.navOpen) draft.shell.quickActionsOpen = false;
-    });
-  }
-
-  function setQuickActionsOpen(open) {
     const nextValue = !!open;
-    if (state.shell.quickActionsOpen === nextValue) return;
+    if (state.shell.navOpen === nextValue) return;
     patch((draft) => {
-      draft.shell.quickActionsOpen = nextValue;
-      if (nextValue) draft.shell.navOpen = false;
+      draft.shell.navOpen = nextValue;
     });
   }
 
@@ -310,17 +287,12 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         draft: sanitizeStateValue(modal.draft && typeof modal.draft === "object" ? modal.draft : {})
       };
       draft.shell.navOpen = false;
-      draft.shell.quickActionsOpen = false;
-      draft.runs.detailExpanded = false;
-      draft.runs.historyEditMode = false;
-      draft.runs.historySelectedRunIds = [];
     });
   }
 
   function closeModal() {
     patch((draft) => {
-      draft.shell.modal = { kind: "", packKey: "", runId: "", crmDomain: "", itemId: "", mode: "", draft: {} };
-      draft.runs.detailExpanded = false;
+      draft.shell.modal = createEmptyModal();
     });
   }
 
@@ -337,11 +309,15 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setCrmEditorDraft(draftPatch = {}) {
     if (!draftPatch || typeof draftPatch !== "object") return;
     patch((draft) => {
-      if (draft.shell.modal?.kind !== "crm-editor") return;
-      draft.shell.modal.draft = sanitizeStateValue({
-        ...(draft.shell.modal.draft && typeof draft.shell.modal.draft === "object" ? draft.shell.modal.draft : {}),
-        ...draftPatch
-      });
+      const modal = draft.shell.modal || {};
+      if (modal.kind !== "crm-editor") return;
+      draft.shell.modal = {
+        ...modal,
+        draft: sanitizeStateValue({
+          ...(modal.draft && typeof modal.draft === "object" ? modal.draft : {}),
+          ...draftPatch
+        })
+      };
     });
   }
 
@@ -350,15 +326,6 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     if (state.shell.standalone === nextValue) return;
     patch((draft) => {
       draft.shell.standalone = nextValue;
-      if (!nextValue) draft.shell.mobileNavHidden = false;
-    });
-  }
-
-  function setMobileNavHidden(hidden) {
-    const nextValue = !!hidden;
-    if (state.shell.mobileNavHidden === nextValue) return;
-    patch((draft) => {
-      draft.shell.mobileNavHidden = nextValue;
     });
   }
 
@@ -405,7 +372,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.auth.status = "denied";
       draft.auth.user = sanitizeAuthUser(user);
-      draft.auth.profile = sanitizeAuthProfile(profile);
+      draft.auth.profile = sanitizeStateValue(profile && typeof profile === "object" ? profile : null);
       draft.auth.access = { allowed: false, reason: String(reason || "").trim() || "CEO-Zugang erforderlich." };
       draft.auth.error = "";
     });
@@ -415,7 +382,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.auth.status = "authenticated";
       draft.auth.user = sanitizeAuthUser(user);
-      draft.auth.profile = sanitizeAuthProfile(profile);
+      draft.auth.profile = sanitizeStateValue(profile && typeof profile === "object" ? profile : null);
       draft.auth.access = { allowed: true, reason: accessReason };
       draft.auth.error = "";
     });
@@ -425,171 +392,6 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.auth.status = "error";
       draft.auth.error = String(message || "").trim() || "Anmeldung fehlgeschlagen.";
-    });
-  }
-
-  function setDashboardLoading() {
-    patch((draft) => {
-      draft.dashboard.status = "loading";
-      draft.dashboard.error = "";
-    });
-  }
-
-  function setDashboardData(data) {
-    patch((draft) => {
-      draft.dashboard.status = "ready";
-      draft.dashboard.error = "";
-      draft.dashboard.data = data || null;
-      draft.boot.lastUpdatedAt = new Date().toISOString();
-    });
-  }
-
-  function setDashboardError(message) {
-    patch((draft) => {
-      draft.dashboard.status = "error";
-      draft.dashboard.error = String(message || "").trim() || "Startansicht konnte nicht geladen werden.";
-    });
-  }
-
-  function setRunsLoading() {
-    patch((draft) => {
-      draft.runs.status = "loading";
-      draft.runs.error = "";
-    });
-  }
-
-  function setRunsData(items) {
-    patch((draft) => {
-      draft.runs.status = "ready";
-      draft.runs.error = "";
-      draft.runs.items = Array.isArray(items) ? items.slice() : [];
-      const selectedExists = draft.runs.items.some((item) => String(item?.id || "") === String(draft.runs.selectedRunId || ""));
-      if (!selectedExists) {
-        draft.runs.selectedRunId = draft.runs.items.length ? String(draft.runs.items[0].id || "") : "";
-      }
-      draft.runs.historySelectedRunIds = draft.runs.historySelectedRunIds.filter((runId) => (
-        draft.runs.items.some((item) => String(item?.id || "") === String(runId || ""))
-      ));
-      draft.runs.lastRefreshAt = new Date().toISOString();
-    });
-  }
-
-  function setRunsError(message) {
-    patch((draft) => {
-      draft.runs.status = "error";
-      draft.runs.error = String(message || "").trim() || "Laufliste konnte nicht geladen werden.";
-    });
-  }
-
-  function setSelectedRun(runId) {
-    patch((draft) => {
-      draft.runs.selectedRunId = String(runId || "").trim();
-      draft.runs.detailError = "";
-      draft.runs.detailExpanded = false;
-    });
-  }
-
-  function setRunDetailLoading() {
-    patch((draft) => {
-      draft.runs.detailStatus = "loading";
-      draft.runs.detailError = "";
-    });
-  }
-
-  function setRunDetailData(detail) {
-    patch((draft) => {
-      draft.runs.detailStatus = "ready";
-      draft.runs.detailError = "";
-      draft.runs.detail = detail || null;
-      draft.runs.detailExpanded = false;
-      if (detail?.id) draft.runs.selectedRunId = String(detail.id);
-    });
-  }
-
-  function setRunDetailError(message) {
-    patch((draft) => {
-      draft.runs.detailStatus = "error";
-      draft.runs.detailError = String(message || "").trim() || "Laufdetails konnten nicht geladen werden.";
-    });
-  }
-
-  function setPendingRunAction(actionKey) {
-    patch((draft) => {
-      draft.runs.pendingAction = String(actionKey || "").trim();
-    });
-  }
-
-  function setRunsLauncherExpanded(expanded) {
-    patch((draft) => {
-      draft.runs.launcherExpanded = !!expanded;
-    });
-  }
-
-  function setRunDetailExpanded(expanded) {
-    patch((draft) => {
-      draft.runs.detailExpanded = !!expanded;
-    });
-  }
-
-  function setRunsHistoryTab(tabKey) {
-    patch((draft) => {
-      draft.runs.historyTab = String(tabKey || "current").trim() || "current";
-      draft.runs.historyEditMode = false;
-      draft.runs.historySelectedRunIds = [];
-    });
-  }
-
-  function setRunsHistoryEditMode(enabled) {
-    patch((draft) => {
-      draft.runs.historyEditMode = !!enabled;
-      if (!draft.runs.historyEditMode) {
-        draft.runs.historySelectedRunIds = [];
-      }
-    });
-  }
-
-  function toggleRunsHistorySelection(runId) {
-    const safeRunId = String(runId || "").trim();
-    if (!safeRunId) return;
-    patch((draft) => {
-      const current = new Set(draft.runs.historySelectedRunIds || []);
-      if (current.has(safeRunId)) current.delete(safeRunId);
-      else current.add(safeRunId);
-      draft.runs.historySelectedRunIds = Array.from(current);
-    });
-  }
-
-  function clearRunsHistorySelection() {
-    patch((draft) => {
-      draft.runs.historySelectedRunIds = [];
-    });
-  }
-
-  function setIncidentsLoading() {
-    patch((draft) => {
-      draft.incidents.status = "loading";
-      draft.incidents.error = "";
-    });
-  }
-
-  function setIncidentsData(items) {
-    patch((draft) => {
-      draft.incidents.status = "ready";
-      draft.incidents.error = "";
-      draft.incidents.items = Array.isArray(items) ? items.slice() : [];
-    });
-  }
-
-  function setIncidentsError(message) {
-    patch((draft) => {
-      draft.incidents.status = "error";
-      draft.incidents.error = String(message || "").trim() || "Meldungen konnten nicht geladen werden.";
-    });
-  }
-
-  function setIncidentFilter(key, value) {
-    patch((draft) => {
-      draft.incidents.filters[String(key || "").trim()] = String(value || "").trim() || "all";
     });
   }
 
@@ -604,7 +406,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.connections.status = "ready";
       draft.connections.error = "";
-      draft.connections.items = Array.isArray(items) ? items.slice() : [];
+      draft.connections.items = sanitizeStateValue(Array.isArray(items) ? items : []);
     });
   }
 
@@ -626,7 +428,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.setup.status = "ready";
       draft.setup.error = "";
-      draft.setup.data = data || null;
+      draft.setup.data = sanitizeStateValue(data || null);
       draft.setup.searchQuery = String(data?.restaurantQuery || data?.restaurantName || data?.restaurantId || "").trim();
     });
   }
@@ -656,7 +458,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.setup.searchStatus = "ready";
       draft.setup.searchError = "";
-      draft.setup.searchResults = Array.isArray(items) ? items.slice() : [];
+      draft.setup.searchResults = sanitizeStateValue(Array.isArray(items) ? items : []);
       draft.setup.searchQuery = String(query || "").trim();
     });
   }
@@ -672,9 +474,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function patchAnalytics(patchValue = {}) {
     if (!patchValue || typeof patchValue !== "object") return;
     patch((draft) => {
-      draft.analytics = sanitizeStateValue({
-        ...(draft.analytics && typeof draft.analytics === "object" ? draft.analytics : {}),
-        ...patchValue
+      Object.entries(patchValue).forEach(([key, value]) => {
+        draft.analytics[key] = sanitizeStateValue(value);
       });
     });
   }
@@ -697,8 +498,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.landing.status = "ready";
       draft.landing.error = "";
-      draft.landing.sessions = Array.isArray(sessions) ? sessions : [];
-      draft.landing.archived = Array.isArray(archived) ? archived : [];
+      draft.landing.sessions = sanitizeStateValue(Array.isArray(sessions) ? sessions : []);
+      draft.landing.archived = sanitizeStateValue(Array.isArray(archived) ? archived : []);
       draft.landing.loadedAt = new Date().toISOString();
     });
   }
@@ -750,7 +551,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       const slice = ensureDestinationsSlice(draft);
       slice.status = "ready";
       slice.error = "";
-      slice.items = sanitizeStateValue(Array.isArray(items) ? items.slice() : []);
+      slice.items = sanitizeStateValue(Array.isArray(items) ? items : []);
       slice.loadedAt = new Date().toISOString();
     });
   }
@@ -821,6 +622,13 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  function patchCrmSection(draft, key, sectionPatch) {
+    draft.crmAdmin.sections[key] = {
+      ...draft.crmAdmin.sections[key],
+      ...sectionPatch
+    };
+  }
+
   function setCrmAdminContract(contract = {}) {
     patch((draft) => {
       draft.crmAdmin.readLoadersReady = contract.readLoadersReady === true;
@@ -837,14 +645,13 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.crmAdmin.status = "loading";
       draft.crmAdmin.error = "";
-      draft.crmAdmin.sections[key] = {
-        ...draft.crmAdmin.sections[key],
+      patchCrmSection(draft, key, {
         status: "loading",
         error: "",
         missingDeps: [],
         missingContext: "",
         ...(nextScope ? { scope: nextScope } : {})
-      };
+      });
     });
   }
 
@@ -852,8 +659,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     const key = String(domainKey || "").trim();
     if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
     patch((draft) => {
-      draft.crmAdmin.sections[key] = {
-        ...draft.crmAdmin.sections[key],
+      patchCrmSection(draft, key, {
         status: "missing",
         error: "",
         missingDeps: Array.isArray(missingDeps) ? missingDeps.slice() : [],
@@ -866,27 +672,33 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         scopeCountExact: {},
         scopeLoaded: {},
         scope: key === "staff" || key === "businessAccounts" || key === "ads" ? "" : "own"
-      };
+      });
     });
   }
 
   function setCrmAdminData(domainKey = "", payload = {}) {
     const key = String(domainKey || "").trim();
     if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
-    const payloadItems = Array.isArray(payload.items) ? payload.items.slice() : [];
-    const payloadRows = Array.isArray(payload.rows) ? payload.rows.slice() : [];
-    const items = (key === "leads" || key === "customers")
+    const payloadItems = Array.isArray(payload.items) ? payload.items : [];
+    const payloadRows = Array.isArray(payload.rows) ? payload.rows : [];
+    const rawItems = (key === "leads" || key === "customers")
       ? (payloadRows.length ? payloadRows : payloadItems)
       : (payloadItems.length ? payloadItems : payloadRows);
+    // Hier ist die Grenze: Was aus Firestore kommt, wird einmal in schlichte
+    // Werte umgewandelt. Danach kann jede Aenderung den Zustand
+    // weiterverwenden, ohne ihn erneut durchzugehen.
+    const items = sanitizeStateValue(rawItems);
     patch((draft) => {
+      const previous = draft.crmAdmin.sections[key];
       const loadedAt = new Date().toISOString();
-      const nextScope = String(payload.scope || draft.crmAdmin.sections[key].scope || "").trim();
-      const nextKnownCount = Number.isFinite(Number(payload.knownCount)) ? Math.max(0, Number(payload.knownCount)) : items.length;
+      const nextScope = String(payload.scope || previous.scope || "").trim();
+      const nextKnownCount = Number.isFinite(Number(payload.knownCount))
+        ? Math.max(0, Number(payload.knownCount))
+        : items.length;
       draft.crmAdmin.status = "ready";
       draft.crmAdmin.error = "";
       draft.crmAdmin.lastRefreshAt = loadedAt;
-      draft.crmAdmin.sections[key] = {
-        ...draft.crmAdmin.sections[key],
+      patchCrmSection(draft, key, {
         status: "ready",
         error: "",
         missingDeps: [],
@@ -896,33 +708,26 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         knownCount: nextKnownCount,
         countExact: payload.countExact !== false,
         scopeCounts: nextScope
-          ? {
-            ...(draft.crmAdmin.sections[key].scopeCounts || {}),
-            [nextScope]: nextKnownCount
-          }
-          : { ...(draft.crmAdmin.sections[key].scopeCounts || {}) },
+          ? { ...(previous.scopeCounts || {}), [nextScope]: nextKnownCount }
+          : { ...(previous.scopeCounts || {}) },
         scopeCountExact: nextScope
-          ? {
-            ...(draft.crmAdmin.sections[key].scopeCountExact || {}),
-            [nextScope]: payload.countExact !== false
-          }
-          : { ...(draft.crmAdmin.sections[key].scopeCountExact || {}) },
+          ? { ...(previous.scopeCountExact || {}), [nextScope]: payload.countExact !== false }
+          : { ...(previous.scopeCountExact || {}) },
         scopeLoaded: nextScope
-          ? {
-            ...(draft.crmAdmin.sections[key].scopeLoaded || {}),
-            [nextScope]: true
-          }
-          : { ...(draft.crmAdmin.sections[key].scopeLoaded || {}) },
+          ? { ...(previous.scopeLoaded || {}), [nextScope]: true }
+          : { ...(previous.scopeLoaded || {}) },
         loadedAt,
         scope: nextScope,
         ...(key === "staff"
           ? {
-            buildStatus: payload.buildStatus && typeof payload.buildStatus === "object" ? sanitizeStateValue(payload.buildStatus) : {},
+            buildStatus: payload.buildStatus && typeof payload.buildStatus === "object"
+              ? sanitizeStateValue(payload.buildStatus)
+              : {},
             buildStatusLoading: payload.buildStatusLoading === true,
             buildStatusError: String(payload.buildStatusError || "").trim()
           }
           : {})
-      };
+      });
     });
   }
 
@@ -930,8 +735,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     const key = String(domainKey || "").trim();
     if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
     patch((draft) => {
-      draft.crmAdmin.sections[key] = {
-        ...draft.crmAdmin.sections[key],
+      patchCrmSection(draft, key, {
         ...(Object.prototype.hasOwnProperty.call(patchValue, "scope")
           ? { scope: String(patchValue.scope || "").trim() }
           : {}),
@@ -944,30 +748,23 @@ export function createHeartStore(initialState = createHeartInitialState()) {
         ...(Object.prototype.hasOwnProperty.call(patchValue, "statusFilter")
           ? { statusFilter: String(patchValue.statusFilter || "").trim() }
           : {})
-      };
+      });
     });
   }
 
   function setCrmAdminError(domainKey = "", message = "") {
     const key = String(domainKey || "").trim();
     const safeMessage = String(message || "").trim() || "CRM/Admin Daten konnten nicht geladen werden.";
-    if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) {
-      patch((draft) => {
-        draft.crmAdmin.status = "error";
-        draft.crmAdmin.error = safeMessage;
-      });
-      return;
-    }
     patch((draft) => {
       draft.crmAdmin.status = "error";
       draft.crmAdmin.error = safeMessage;
-      draft.crmAdmin.sections[key] = {
-        ...draft.crmAdmin.sections[key],
+      if (!CRM_ADMIN_DOMAIN_KEYS.includes(key)) return;
+      patchCrmSection(draft, key, {
         status: "error",
         error: safeMessage,
         missingDeps: [],
         missingContext: ""
-      };
+      });
     });
   }
 
@@ -980,13 +777,11 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setToast,
       setActiveView,
       setNavOpen,
-      setQuickActionsOpen,
       setModal,
       closeModal,
       patchAuthProfile,
       setCrmEditorDraft,
       setStandaloneMode,
-      setMobileNavHidden,
       setBootReady,
       setBootError,
       setAuthChecking,
@@ -995,27 +790,6 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setAuthDenied,
       setAuthReady,
       setAuthError,
-      setDashboardLoading,
-      setDashboardData,
-      setDashboardError,
-      setRunsLoading,
-      setRunsData,
-      setRunsError,
-      setSelectedRun,
-      setRunDetailLoading,
-      setRunDetailData,
-      setRunDetailError,
-      setPendingRunAction,
-      setRunsLauncherExpanded,
-      setRunDetailExpanded,
-      setRunsHistoryTab,
-      setRunsHistoryEditMode,
-      toggleRunsHistorySelection,
-      clearRunsHistorySelection,
-      setIncidentsLoading,
-      setIncidentsData,
-      setIncidentsError,
-      setIncidentFilter,
       setConnectionsLoading,
       setConnectionsData,
       setConnectionsError,
@@ -1047,5 +821,15 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setCrmAdminSectionUi,
       setCrmAdminError
     }
+  };
+}
+
+function sanitizeAuthUser(user) {
+  if (!user) return null;
+  return {
+    uid: String(user.uid || "").trim(),
+    email: String(user.email || "").trim(),
+    displayName: String(user.displayName || "").trim(),
+    photoURL: String(user.photoURL || "").trim()
   };
 }

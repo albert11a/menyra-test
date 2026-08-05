@@ -4,12 +4,6 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   // nichts damit anzufangen - man landete wieder auf Start.
   dashboard: "dashboard",
   start: "dashboard",
-  runs: "runs",
-  laeufe: "runs",
-  incidents: "incidents",
-  meldungen: "incidents",
-  modules: "modules",
-  bereiche: "modules",
   connections: "connections",
   einrichtung: "connections",
   crmleads: "crmLeads",

@@ -177,26 +177,18 @@ function renderSetupNotes(setupData = {}) {
     <section class="heart-section">
       <div class="heart-section__head">
         <div>
-          <p class="heart-eyebrow">Runner</p>
-          <h2>Was Heart jetzt selbst liefern kann</h2>
+          <p class="heart-eyebrow">Hinweise</p>
+          <h2>Was diese Einrichtung bewirkt</h2>
         </div>
       </div>
       <div class="heart-note-grid">
-        <article class="heart-note-card">
-          <strong>GitHub-Runs koennen Heart-Setup direkt lesen</strong>
-          <p>Heart speichert jetzt Konten, QR-Link und Pack-Konfiguration so, dass der Runner sie ueber das Heart-Backend abrufen kann.</p>
-        </article>
         <article class="heart-note-card">
           <strong>Zielkonten bleiben bestehen</strong>
           <p>CEO, Business und Nutzer werden als feste Heart-Zielkonten wiederverwendet. Heart aktualisiert sie bei Bedarf, statt sie jedes Mal neu zu loeschen.</p>
         </article>
         <article class="heart-note-card">
-          <strong>Live-Zahlen brauchen weiterhin echte Quellen</strong>
-          <p>Aktive Nutzer, QR-Scans und Live-Besucher erscheinen erst dann, wenn Heart dafuer eine vorhandene Analytics- oder Presence-Quelle lesen darf.</p>
-        </article>
-        <article class="heart-note-card">
-          <strong>Nachweise bleiben sichtbar</strong>
-          <p>Beweisbilder und Run-Berichte bleiben erhalten und koennen direkt aus dem Run geloescht werden. Fuer ein komplettes Clear von echten App-Inhalten braucht Heart weiterhin gezielte Delete-Flows pro Bereich.</p>
+          <strong>Das gewaehlte Restaurant ist das Ziel</strong>
+          <p>Karte, Suche, Menue, QR und Bestellungen von Heart beziehen sich auf das hier verbundene Restaurant. Ohne Verbindung bleiben diese Wege leer.</p>
         </article>
         ${setupData.syntheticIsolationKeyReady ? `
           <article class="heart-note-card">

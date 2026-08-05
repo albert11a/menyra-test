@@ -14,14 +14,15 @@ CEO-only internal MENYRA control center.
 - `heart-state.js`: deterministic UI state store
 - `heart-render.js`: auth gate + shell composition
 - `heart-events.js`: delegated UI event wiring
-- `heart-dashboard-render.js`: overview view
-- `heart-runs-render.js`: run history and report view
-- `heart-incidents-render.js`: incidents view
-- `heart-modules-render.js`: module health view
+- `heart-start-core.js`: pure start-screen logic (hourly motivation line, news feed)
+- `heart-start-render.js`: start view (motivation, profile, quick tiles, news)
+- `heart-landing-render.js`: lead-landing evaluation view
+- `heart-analytics-render.js`: business analytics view
+- `heart-destinations-render.js`: destination templates view
+- `heart-crm-admin-read-view.js`: CRM leads/customers/ads/staff views
 - `heart-settings-render.js`: connections/settings view
-- `heart-monitoring-adapter.js`: dashboard/incidents/connections provider adapter
-- `heart-test-runner-adapter.js`: run trigger/history/detail adapter
-- `heart-test-report-normalizer.js`: normalized UI model mapping
+- `heart-monitoring-adapter.js`: connections provider adapter
+- `heart-test-report-normalizer.js`: normalized UI model mapping for connections and setup
 - `sw.js` / `manifest.json`: standalone PWA shell
 
 ## Auth model
@@ -32,25 +33,32 @@ CEO-only internal MENYRA control center.
 - Denied users see a denied screen and can sign out manually
 
 ## Backend model
-Frontend never talks directly to GitHub Actions.
+Heart reads most of its data straight from Firestore with the signed-in CEO
+session, and only connections and setup through the Heart API.
 
-Flow:
+Flow for connections and setup:
 1. Heart frontend calls `/api/heart/...`
 2. Vercel rewrites to secure Firebase Functions
 3. Functions verify Firebase bearer token and CEO access
-4. Functions dispatch GitHub Actions with env-backed secret on server side only
-5. GitHub Actions runner posts secure status/report/incident webhooks back to Functions
-6. Heart frontend reads normalized runs/incidents/dashboard state from Functions
+4. Heart frontend reads the normalized connection/setup state from Functions
+
+Everything else - landing sessions, leads, customers, ads, staff, destinations
+and analytics - is read directly from Firestore under the same security rules
+as the rest of MNYRA.
+
+## Data loading
+- Each view declares what it needs in the `VIEW_LOADERS` map in `heart.js`
+- `ensureViewData(view)` is the only entry point, used both when a view is
+  opened and when a reload restores a view from the address
+- A view that is already loaded is not fetched again unless refresh is pressed
+- Start reuses the landing sessions and the leads/customers it loads anyway,
+  so the start screen costs no extra reads
 
 ## Current real integrations
 - CEO auth guard: real
-- Firebase-backed secure Heart API: real
-- Firestore-backed run history and incident storage: real
-- GitHub Actions dispatch adapter: real if `HEART_GITHUB_*` env vars are configured in Functions
-- Heart webhook ingest endpoints for workflow status/report/incident: real
+- Firebase-backed secure Heart API for connections and setup: real
+- Firestore-backed CRM, landing and destination reads: real
 - Relative frontend API base `/api/heart/`: real
-- Multi-pack runner architecture: real
-- Persona-aware Playwright runner foundation: real
 
 ## Current adapter / placeholder boundaries
 - Sentry connection: placeholder adapter slot only
@@ -106,6 +114,12 @@ Variables as needed for deeper smoke/synthetic UI actions:
 - `MNYRA_SMOKE_ORDER_SUCCESS_TEXT`
 
 ## Runner packs
+
+> The Playwright runner below still exists as a standalone test harness under
+> `tests/mnyra-heart-runner/`. It is no longer reachable from the Heart UI:
+> the Laeufe, Meldungen and Bereiche views were removed, so runs are started
+> and read through the runner and its Functions endpoints, not through Heart.
+
 Location:
 - `tests/mnyra-heart-runner/`
 
@@ -140,7 +154,6 @@ Heart run controls:
 
 Safety model:
 - Live mutations are off by default
-- Heart Runs bleiben read-only; Live-Schreibaktionen sind nur fuer den expliziten `mutation-pack` freischaltbar
 - Full synthetic requires `MNYRA_ALLOW_LIVE_MUTATIONS=true` and `MNYRA_SYNTHETIC_ISOLATION_KEY`
 - Synthetic entities use clearly marked prefixes like `mnyra-heart-synth-*`
 - Runtime diagnostics are enabled by default (JS errors, request/http failures, cold start, FCP)
@@ -191,9 +204,13 @@ Still setup-dependent per environment:
 - safe business/staff/user synthetic accounts
 
 ## Notes
-- `shared/github-execution-state.js` is the single source of truth for GitHub execution-state normalization.
-- Heart frontend imports that module directly.
+- `shared/github-execution-state.js` is still the single source of truth for
+  GitHub execution-state normalization on the Functions side. The Heart
+  frontend no longer imports it.
 - Heart Functions use a generated CJS mirror where Node module format requires it.
 - Protected `*.vercel.app` previews intentionally skip manifest injection to avoid preview-auth `401` noise; the PWA manifest remains active on real routes/domains.
-- GitHub `workflow_dispatch` must exist on the repository default branch for Heart to trigger runner workflows reliably.
-- Heart preview URLs can be protected by Vercel authentication; configure `HEART_SOCIAL_BASE_URL` to a public social deployment so GitHub-hosted runners do not hit the preview auth wall.
+- The drawer is `position: fixed` and sized with `100dvh`. With `inset: 0` it
+  followed the layout viewport instead of the visible one, which pushed its
+  footer behind the iOS toolbar - do not change it back.
+- `heart-main-content` always keeps `safe-area-inset-bottom` of padding. A
+  `padding-bottom: 0` there is what made the bottom of the app look cut off.

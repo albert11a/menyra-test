@@ -27,7 +27,16 @@ test("was sich nicht zurueckholen laesst, wird nicht in die Adresse geschrieben"
 });
 
 test("die Adresse schlaegt weiterhin den Pfad, der Pfad den Rest", () => {
-  assert.equal(resolveHeartRouteView({ search: "?view=landing", hash: "#runs", pathname: "/heart" }), "landing");
-  assert.equal(resolveHeartRouteView({ search: "", hash: "#runs", pathname: "/heart/landings" }), "runs");
+  assert.equal(resolveHeartRouteView({ search: "?view=landing", hash: "#analytics", pathname: "/heart" }), "landing");
+  assert.equal(resolveHeartRouteView({ search: "", hash: "#analytics", pathname: "/heart/landings" }), "analytics");
   assert.equal(resolveHeartRouteView({ search: "", hash: "", pathname: "/heart/landings" }), "landing");
+});
+
+// Laeufe, Meldungen und Bereiche gibt es nicht mehr. Eine alte Adresse darf
+// jetzt nicht mehr irgendwo hinfuehren, sondern faellt auf Start zurueck.
+test("alte Adressen geloeschter Bereiche fuehren nach Start", () => {
+  for (const alt of ["#runs", "#laeufe", "#incidents", "#meldungen", "#modules", "#bereiche"]) {
+    assert.equal(resolveHeartRouteView({ search: "", hash: alt, pathname: "/heart" }), "");
+    assert.equal(canRestoreHeartView(alt.slice(1)), false);
+  }
 });

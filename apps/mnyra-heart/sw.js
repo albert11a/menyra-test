@@ -1,5 +1,5 @@
 const HEART_CACHE_PREFIX = "mnyra-heart-shell-";
-const HEART_CACHE = "mnyra-heart-shell-v8";
+const HEART_CACHE = "mnyra-heart-shell-v9";
 const SHELL_ASSETS = [
   "/heart/",
   "/heart/index.html",
@@ -11,13 +11,10 @@ const SHELL_ASSETS = [
   "/heart/heart-render.js",
   "/heart/heart-state.js",
   "/heart/heart-ui-utils.js",
-  "/heart/heart-dashboard-render.js",
-  "/heart/heart-runs-render.js",
-  "/heart/heart-incidents-render.js",
-  "/heart/heart-modules-render.js",
+  "/heart/heart-start-core.js",
+  "/heart/heart-start-render.js",
   "/heart/heart-settings-render.js",
   "/heart/heart-monitoring-adapter.js",
-  "/heart/heart-test-runner-adapter.js",
   "/heart/heart-test-report-normalizer.js",
   "/heart/manifest.json",
   "/apps/mnyra-heart/assets/apple-touch-icon.png?v=2026-03-20-heart-icon-normal-2",
@@ -33,17 +30,13 @@ const SHELL_ASSETS = [
   "/apps/mnyra-heart/heart-render.js",
   "/apps/mnyra-heart/heart-state.js",
   "/apps/mnyra-heart/heart-ui-utils.js",
-  "/apps/mnyra-heart/heart-dashboard-render.js",
-  "/apps/mnyra-heart/heart-runs-render.js",
-  "/apps/mnyra-heart/heart-incidents-render.js",
-  "/apps/mnyra-heart/heart-modules-render.js",
+  "/apps/mnyra-heart/heart-start-core.js",
+  "/apps/mnyra-heart/heart-start-render.js",
   "/apps/mnyra-heart/heart-settings-render.js",
   "/apps/mnyra-heart/heart-monitoring-adapter.js",
-  "/apps/mnyra-heart/heart-test-runner-adapter.js",
   "/apps/mnyra-heart/heart-test-report-normalizer.js",
   "/apps/mnyra-heart/manifest.json",
-  "/shared/ceo-access.js",
-  "/shared/github-execution-state.js"
+  "/shared/ceo-access.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -78,8 +71,7 @@ self.addEventListener("fetch", (event) => {
 
   const isHeartShellAsset = url.pathname.startsWith("/heart/")
     || url.pathname.startsWith("/apps/mnyra-heart/")
-    || url.pathname === "/shared/ceo-access.js"
-    || url.pathname === "/shared/github-execution-state.js";
+    || url.pathname === "/shared/ceo-access.js";
   const isHeartDocumentOrModule = isHeartShellAsset
     && (
       url.pathname.endsWith("/")
