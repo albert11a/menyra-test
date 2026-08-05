@@ -7,8 +7,8 @@
 
 import { loadLeadLandingData } from "./lead-landing-data.js";
 import { startLeadLandingStages } from "./lead-landing-stage.js";
+import { startLeadLandingTracking } from "./lead-landing-track.js";
 import {
-  ASK_FLOW,
   LEAD_LANDING_GREETINGS_COUNT,
   renderAsk,
   renderClosing,
@@ -202,7 +202,7 @@ function startShotReveal() {
 // Welche Frage auf welche folgt, steht in ASK_FLOW - hier wird nur
 // umgeschaltet. Dadurch gibt es keinen Ablauf, der an zwei Stellen gepflegt
 // werden muesste.
-function startAskFlow() {
+function startAskFlow(tracker) {
   const section = document.querySelector("[data-ask]");
   if (!section) return;
 
@@ -234,20 +234,13 @@ function startAskFlow() {
     const from = section.dataset.askView || "q1";
     const next = String(button.dataset.next || "");
     if (!views.has(next)) return;
-    recordAnswer(from, String(button.dataset.answer || ""));
+    const answer = String(button.dataset.answer || "");
+    if (tracker) tracker.answer(from, answer);
+    if (tracker && (next === "yes" || next === "no")) tracker.finish(next);
     show(next);
   });
 
   show("q1");
-}
-
-// Bis die Aufzeichnung steht, bleiben die Antworten im Fenster liegen. So ist
-// der Ablauf schon vollstaendig und das Messen kann danach angeschlossen
-// werden, ohne ihn noch einmal anzufassen.
-function recordAnswer(question, answer) {
-  if (!ASK_FLOW[question]) return;
-  const store = window.__llAnswers || (window.__llAnswers = []);
-  store.push({ question, answer, at: Date.now() });
 }
 
 function renderPage(data) {
@@ -296,7 +289,13 @@ async function boot() {
   startGreetingCycle();
   startProgressDots();
   startShotReveal();
-  startAskFlow();
+
+  // Die Messung braucht die fertige Seite: Sie sucht die Rastpunkte im Markup.
+  const tracker = startLeadLandingTracking({
+    scroller: document.querySelector(".ll-shell"),
+    slug: routeKey
+  });
+  startAskFlow(tracker);
   startLeadLandingStages({ scroller: document.querySelector(".ll-shell") });
 }
 

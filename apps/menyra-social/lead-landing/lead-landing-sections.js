@@ -103,7 +103,7 @@ function stepBody(body = "") {
 // Text und Szene. Damit laesst sich mitten in ein Kapitel ein Bildschirm
 // einschieben, auf dem nichts erklaert wird (die Frage nach der kurzen
 // Vorschau). Sichtbar wird sie beim Schritt mit view "ask".
-function stage({ title, scene, steps = [], aside = "" }) {
+function stage({ title, scene, steps = [], aside = "", track = "" }) {
   const focusSteps = Math.max(1, steps.length - 1);
   // Schritt 0 traegt den Kapiteltitel. So gibt es nur einen Textblock und er
   // steht immer an derselben Stelle - die Szene bekommt den Rest.
@@ -133,7 +133,7 @@ function stage({ title, scene, steps = [], aside = "" }) {
       </div>
 
       ${allSteps.map((_, index) => `
-        <div class="ll-stage__anchor" aria-hidden="true" style="top: calc(${index} * var(--ll-vh));"></div>
+        <div class="ll-stage__anchor" aria-hidden="true"${track ? ` data-track="${esc(track)}-${index}"` : ""} style="top: calc(${index} * var(--ll-vh));"></div>
       `).join("")}
     </section>
   `;
@@ -147,7 +147,7 @@ export function renderHero(profile = {}) {
   const c2 = text(profile.businessNameColorPart2) || "#4f46e5";
 
   return `
-    <header class="ll-section ll-hero">
+    <header class="ll-section ll-hero" data-track="hyrje">
       <div class="ll-hero__glow" aria-hidden="true"></div>
 
       <div class="ll-greet" aria-live="polite">
@@ -430,6 +430,7 @@ export function renderSurface(profile = {}, posts = [], menuItems = [], focusIte
   const { scene } = buildSurfaceScene(profile, posts, menuItems, focusItems, { eager: true });
 
   return stage({
+    track: "profil",
     title: "Profili juaj në Mnyra",
     scene,
     aside: askScreen(),
@@ -528,10 +529,11 @@ function shotBody(body = "") {
 export function renderShots() {
   return `
     <section class="ll-shots" data-canvas="#ffffff">
-      ${SHOTS.map((shot) => `
+      ${SHOTS.map((shot, index) => `
         <figure
           class="ll-shot"
           data-shot
+          data-track="pamja-${index + 1}"
           style="--ll-shot-x:${shot.ruht.x}px;--ll-shot-r:${shot.ruht.dreh}deg;--ll-shot-x0:${shot.kommt.x}px;--ll-shot-r0:${shot.kommt.dreh}deg;"
         >
           <span class="ll-shot__media">
@@ -563,7 +565,7 @@ export function renderPricing(sales = {}) {
   const features = Array.isArray(plan.features) && plan.features.length ? plan.features : DEFAULT_PLAN.features;
 
   return `
-    <section class="ll-section">
+    <section class="ll-section" data-track="cmimi">
       ${sectionHead("Çmimi", "Një çmim, gjithçka brenda. Filloni me një muaj falas.")}
 
       <article class="ll-plan">
@@ -620,7 +622,7 @@ const CLOSING_CARDS = [
 
 export function renderClosing() {
   return `
-    <section class="ll-section">
+    <section class="ll-section" data-track="si-funksionon">
       ${sectionHead("Si funksionon", "Katër gjëra që duhet t'i dini para se të fillojmë.")}
 
       <div class="ll-cards">
@@ -695,7 +697,7 @@ export function renderAsk(profile = {}, sales = {}) {
   const profileUrl = slug ? `https://www.mnyra.com/${encodeURIComponent(slug)}` : "";
 
   return `
-    <section class="ll-section ll-ask3" data-ask>
+    <section class="ll-section ll-ask3" data-ask data-track="pyetjet">
       <p class="ll-ask3__lead">Ju lutem, vetëm 3 pyetje.</p>
 
       <div class="ll-ask3__card">
