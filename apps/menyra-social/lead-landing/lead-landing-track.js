@@ -5,16 +5,24 @@
 // Dazu die Antworten auf die drei Fragen. Mehr nicht - kein Fingerabdruck,
 // keine fremden Dienste, keine Kennung, die den Aufruf ueberdauert.
 //
-// Zwei Entscheidungen, die alles andere tragen:
+// Drei Entscheidungen, die alles andere tragen:
 //
 // 1. Geschickt wird immer der ganze Stand, nie die Aenderung seit dem letzten
 //    Mal. Geht eine Sendung verloren - und beim Schliessen der Seite geht schon
-//    mal eine verloren -, traegt die naechste alles nach. Der Server legt sie
-//    unter derselben Sitzung ab; sie darf beliebig oft ankommen.
+//    mal eine verloren -, traegt die naechste alles nach. Sie landet unter
+//    derselben Sitzung und darf beliebig oft ankommen.
 //
 // 2. Der aktuelle Wisch ist der, der die Oberkante belegt - dieselbe Regel wie
 //    fuer die Seitenfarbe. Nach der Bildschirmmitte gerechnet zaehlte die Zeit
 //    dem falschen Wisch zu, solange man zwischen zweien steht.
+//
+// 3. Geschrieben wird direkt nach Firestore, nicht ueber einen eigenen Dienst.
+//    Der Aufrufer ist nicht angemeldet; was er schreiben darf, steht in den
+//    Firestore-Regeln und nur dort. Das kostet die Moeglichkeit, dem Absender
+//    zu glauben - dafuer braucht die Seite kein Geheimnis, das irgendwo
+//    hinterlegt sein muesste, und faellt nicht aus, wenn es fehlt.
+
+import { LEAD_LANDING_API_KEY, LEAD_LANDING_FIRESTORE_BASE } from "./lead-landing-config.js";
 
 const FLUSH_EVERY_MS = 15000;
 const SETTLE_MS = 160;
@@ -22,7 +30,11 @@ const SETTLE_MS = 160;
 // dem Tisch. Ohne diese Grenze machte eine vergessene Seite aus zehn Sekunden
 // Aufmerksamkeit eine halbe Stunde.
 const MAX_STEP_MS = 120000;
-const ENDPOINT = "/api/landing-track";
+// Dieselben Grenzen wie in den Regeln. Was hier durchrutscht, wuerde dort
+// abgewiesen - dann ginge die ganze Sitzung verloren statt eines Wertes.
+const MAX_TOTAL_MS = 6 * 60 * 60 * 1000;
+const MAX_STEPS = 40;
+const STEP_NAME = /^[a-z0-9-]+$/;
 
 function newSessionId() {
   try {
@@ -33,12 +45,25 @@ function newSessionId() {
   return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function startLeadLandingTracking({ scroller = null, slug = "" } = {}) {
+// Firestore-REST nimmt getypte Werte entgegen. Ganzzahlen muessen als Text
+// stehen, sonst kommen sie als Kommazahl an und die Regel weist sie ab.
+function int(value) {
+  return { integerValue: String(Math.max(0, Math.round(Number(value) || 0))) };
+}
+
+function text(value) {
+  return { stringValue: String(value || "") };
+}
+
+export function startLeadLandingTracking({ scroller = null, slug = "", restaurantId = "" } = {}) {
   const root = scroller || document.querySelector(".ll-shell");
   const marks = Array.from(document.querySelectorAll("[data-track]"));
-  if (!root || !marks.length || !slug) return null;
+  if (!root || !marks.length || !slug || !restaurantId) return null;
 
   const sessionId = newSessionId();
+  const startedAt = new Date().toISOString();
+  const target = `${LEAD_LANDING_FIRESTORE_BASE}/restaurants/${encodeURIComponent(restaurantId)}`
+    + `/landingSessions/${encodeURIComponent(sessionId)}?key=${encodeURIComponent(LEAD_LANDING_API_KEY)}`;
   const steps = Object.create(null);
   const answers = Object.create(null);
   let outcome = "";
@@ -82,38 +107,52 @@ export function startLeadLandingTracking({ scroller = null, slug = "" } = {}) {
     return found;
   };
 
-  const send = (useBeacon) => {
+  const send = () => {
     if (closed) return;
     closeCurrent();
     if (current) since = now();
     if (!dirty) return;
     dirty = false;
 
-    const total = Object.keys(steps).reduce((sum, key) => sum + steps[key], 0);
-    const payload = JSON.stringify({
-      sessionId,
-      slug,
-      steps,
-      answers,
-      outcome,
-      totalMs: total
+    const stepFields = {};
+    let total = 0;
+    Object.keys(steps).forEach((key) => {
+      if (!STEP_NAME.test(key) || Object.keys(stepFields).length >= MAX_STEPS) return;
+      const spent = Math.min(Math.max(0, steps[key]), MAX_TOTAL_MS);
+      stepFields[key] = int(spent);
+      total += spent;
     });
 
-    // Beim Schliessen der Seite ist fetch nicht mehr verlaesslich - sendBeacon
-    // gibt der Browser dem Betriebssystem mit. Wo es das nicht gibt, bleibt
-    // keepalive.
-    try {
-      if (useBeacon && navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: "text/plain;charset=UTF-8" });
-        if (navigator.sendBeacon(ENDPOINT, blob)) return;
-      }
-    } catch {}
+    const answerFields = {};
+    ["q1", "q2", "q3"].forEach((key) => {
+      if (answers[key] === "po" || answers[key] === "jo") answerFields[key] = text(answers[key]);
+    });
 
+    const body = JSON.stringify({
+      fields: {
+        slug: text(slug.slice(0, 120)),
+        steps: { mapValue: { fields: stepFields } },
+        answers: { mapValue: { fields: answerFields } },
+        outcome: text(outcome),
+        totalMs: int(Math.min(total, MAX_TOTAL_MS)),
+        stepCount: int(Object.keys(stepFields).length),
+        startedAt: text(startedAt),
+        updatedAt: text(new Date().toISOString())
+      }
+    });
+
+    // Beim Schliessen der Seite ist ein gewoehnliches fetch nicht mehr
+    // verlaesslich; keepalive gibt der Browser dem Betriebssystem mit.
+    // sendBeacon kaeme hier nicht in Frage - es kann nur POST, und ein
+    // bestimmtes Dokument beschreibt man mit PATCH. Verloren geht dabei
+    // hoechstens die zuletzt verstrichene Zeit: Geschickt wird immer der ganze
+    // Stand, und die vorige Sendung liegt nie mehr als ein paar Sekunden
+    // zurueck.
     try {
-      fetch(ENDPOINT, {
-        method: "POST",
+      fetch(target, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: payload,
+        body,
         keepalive: true
       }).catch(() => {});
     } catch {}
@@ -127,21 +166,21 @@ export function startLeadLandingTracking({ scroller = null, slug = "" } = {}) {
     }, SETTLE_MS);
   };
 
-  const flushTimer = window.setInterval(() => send(false), FLUSH_EVERY_MS);
+  const flushTimer = window.setInterval(() => send(), FLUSH_EVERY_MS);
 
   // Wechselt der Wirt die App, laeuft die Uhr nicht weiter - er sieht die
   // Seite ja nicht. Beim Zurueckkommen faengt sie wieder an.
   const onVisibility = () => {
     if (document.hidden) {
       closeCurrent();
-      send(true);
+      send();
     } else {
       since = current ? now() : 0;
       onScroll();
     }
   };
 
-  const onLeave = () => send(true);
+  const onLeave = () => send();
 
   root.addEventListener("scroll", onScroll, { passive: true });
   document.addEventListener("visibilitychange", onVisibility);
@@ -157,15 +196,15 @@ export function startLeadLandingTracking({ scroller = null, slug = "" } = {}) {
       if (!question || !value) return;
       answers[question] = value;
       dirty = true;
-      send(false);
+      send();
     },
     finish(result) {
       outcome = result === "yes" || result === "no" ? result : "";
       dirty = true;
-      send(false);
+      send();
     },
     stop() {
-      send(true);
+      send();
       closed = true;
       window.clearInterval(flushTimer);
       window.clearTimeout(settleTimer);

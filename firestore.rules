@@ -874,14 +874,50 @@ service cloud.firestore {
         allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
       }
 
-      // Was der Wirt auf seiner Lead-Landing getan hat. Geschrieben wird
-      // ausschliesslich vom Server mit dem Dienstkonto - das geht an diesen
-      // Regeln vorbei und braucht hier deshalb nichts. Lesen duerfen nur der
-      // Inhaber und das CEO-Konto: Es steht darin, wie jemand auf ein Angebot
-      // reagiert hat, und das geht sonst niemanden etwas an.
+      // Was der Wirt auf seiner Lead-Landing getan hat.
+      //
+      // Geschrieben wird von der Landing selbst, ohne Anmeldung - wer sie
+      // aufruft, hat kein Konto. Ein Geheimnis auf einem Server waere sauberer,
+      // aber es braucht dann auch einen Server, der es hat; das hier laeuft
+      // ohne. Der Preis dafuer: Wer die Adresse kennt, kann erfundene Aufrufe
+      // eintragen. Was dabei schiefgehen kann, ist auf falsche Zahlen im
+      // eigenen Bericht begrenzt - lesen darf hier niemand ausser dem Inhaber
+      // und dem CEO-Konto, loeschen niemand, und in andere Sammlungen kommt man
+      // ueber diese Regel nicht.
+      //
+      // Deshalb steht unten genau, was ein solcher Eintrag enthalten darf:
+      // keine anderen Felder, keine fremden Fragen, keine anderen Antworten als
+      // po und jo, und keine Zeiten ausserhalb dessen, was ein Mensch an einem
+      // Bildschirm verbringt. Der Startzeitpunkt wird einmal gesetzt und danach
+      // festgehalten, sonst saehe eine alte Sitzung aus wie eine von eben.
+      function landingSessionShapeOk() {
+        let data = request.resource.data;
+        return data.keys().hasOnly([
+          "slug", "steps", "answers", "outcome", "totalMs", "stepCount", "startedAt", "updatedAt"
+        ])
+          && data.slug is string && data.slug.size() <= 120
+          && data.steps is map && data.steps.size() <= 40
+          && data.answers is map && data.answers.keys().hasOnly(["q1", "q2", "q3"])
+          && data.outcome is string && data.outcome in ["yes", "no", ""]
+          && data.totalMs is int && data.totalMs >= 0 && data.totalMs <= 21600000
+          && data.stepCount is int && data.stepCount >= 0 && data.stepCount <= 40
+          && data.startedAt is string && data.startedAt.size() <= 40
+          && data.updatedAt is string && data.updatedAt.size() <= 40;
+      }
+
+      function landingAnswersOk() {
+        let answers = request.resource.data.answers;
+        return (!("q1" in answers) || answers.q1 in ["po", "jo"])
+          && (!("q2" in answers) || answers.q2 in ["po", "jo"])
+          && (!("q3" in answers) || answers.q3 in ["po", "jo"]);
+      }
+
       match /landingSessions/{sessionId} {
         allow read: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-        allow write: if false;
+        allow create: if landingSessionShapeOk() && landingAnswersOk();
+        allow update: if landingSessionShapeOk() && landingAnswersOk()
+          && request.resource.data.startedAt == resource.data.startedAt;
+        allow delete: if false;
       }
 
       match /menuItems/{itemId} {

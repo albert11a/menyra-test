@@ -293,7 +293,8 @@ async function boot() {
   // Die Messung braucht die fertige Seite: Sie sucht die Rastpunkte im Markup.
   const tracker = startLeadLandingTracking({
     scroller: document.querySelector(".ll-shell"),
-    slug: routeKey
+    slug: routeKey,
+    restaurantId: data.restaurantId
   });
   startAskFlow(tracker);
   startLeadLandingStages({ scroller: document.querySelector(".ll-shell") });

@@ -1,8 +1,9 @@
 // Liest, was auf den Lead-Landings passiert ist.
 //
-// Geschrieben werden die Sitzungen vom Server (api/landing-track.js) mit dem
-// Dienstkonto. Hier wird nur gelesen - mit den Rechten des angemeldeten
-// Kontos, also ueber dieselben Firestore-Regeln wie alles andere in Heart.
+// Geschrieben werden die Sitzungen von der Landing selbst, ohne Anmeldung und
+// eng begrenzt durch die Firestore-Regeln. Hier wird nur gelesen - mit den
+// Rechten des angemeldeten Kontos, also ueber dieselben Regeln wie alles
+// andere in Heart.
 //
 // Eine einzige Abfrage ueber alle Sitzungen aller Lokale, ohne Sortierung und
 // ohne Filter: So braucht sie keinen zusammengesetzten Index, den erst jemand
