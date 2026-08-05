@@ -4224,3 +4224,201 @@ body {
   height: 16px;
   flex: 0 0 auto;
 }
+
+/* ---------- Landing: Liste und Auswertung ---------- */
+
+.heart-landing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.heart-landing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--heart-surface, #fff);
+  cursor: pointer;
+  text-align: left;
+}
+
+.heart-landing-row:hover {
+  border-color: var(--heart-accent, #4f46e5);
+}
+
+.heart-landing-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.heart-landing-row__name {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.heart-landing-row__meta {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.heart-landing-row__stats {
+  display: flex;
+  gap: 14px;
+  flex: 0 0 auto;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.heart-landing-stat b {
+  font-size: 15px;
+}
+
+.heart-landing-stat--yes b {
+  color: #059669;
+}
+
+.heart-landing-back {
+  align-self: flex-start;
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.heart-landing-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+
+.heart-landing-kpi {
+  padding: 12px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.heart-landing-kpi b {
+  display: block;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.heart-landing-kpi span {
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+.heart-landing-subtitle {
+  margin: 22px 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+
+/* Ein Balken je Wisch: Wo er abbricht, springen die Leute ab. Zahlen allein
+   schreiben das nur auf, der Balken zeigt es. */
+.heart-landing-step {
+  display: grid;
+  grid-template-columns: 118px 1fr 84px;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.heart-landing-step__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.16);
+  overflow: hidden;
+}
+
+.heart-landing-step__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--heart-accent, #4f46e5);
+}
+
+.heart-landing-step__value {
+  text-align: right;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.heart-landing-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heart-landing-answer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.heart-landing-answer__counts {
+  display: flex;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.heart-landing-answer__po { color: #059669; }
+.heart-landing-answer__jo { color: #b91c1c; }
+
+.heart-landing-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.heart-landing-session {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr 46px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(100, 116, 139, 0.06);
+}
+
+.heart-landing-session__outcome--yes { color: #059669; font-weight: 700; }
+.heart-landing-session__outcome--no { color: #b91c1c; font-weight: 700; }
+
+@media (max-width: 640px) {
+  .heart-landing-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heart-landing-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .heart-landing-step {
+    grid-template-columns: 96px 1fr 70px;
+  }
+
+  .heart-landing-session {
+    grid-template-columns: 1fr 1fr;
+  }
+}

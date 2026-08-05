@@ -113,6 +113,14 @@ export function bindHeartEvents({
       await operations.copyLeadPitchLink?.(target.getAttribute("data-pitch-url"));
       return;
     }
+    if (action === "open-landing") {
+      operations.openLanding?.(target.getAttribute("data-landing-id"));
+      return;
+    }
+    if (action === "close-landing") {
+      operations.closeLanding?.();
+      return;
+    }
     if (action === "toggle-nav") {
       operations.toggleNav?.();
       return;

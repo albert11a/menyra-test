@@ -22,6 +22,9 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   staff: "crmStaff",
   analytics: "analytics",
   analytic: "analytics",
+  landing: "landing",
+  landings: "landing",
+  oferta: "landing",
   statistik: "analytics",
   statistiken: "analytics",
   destinations: "destinations",
@@ -32,6 +35,8 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
 });
 
 const PATH_VIEW_ALIASES = Object.freeze({
+  landing: "landing",
+  landings: "landing",
   destinations: "destinations",
   destinationen: "destinations",
   orte: "destinations",

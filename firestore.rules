@@ -874,6 +874,16 @@ service cloud.firestore {
         allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
       }
 
+      // Was der Wirt auf seiner Lead-Landing getan hat. Geschrieben wird
+      // ausschliesslich vom Server mit dem Dienstkonto - das geht an diesen
+      // Regeln vorbei und braucht hier deshalb nichts. Lesen duerfen nur der
+      // Inhaber und das CEO-Konto: Es steht darin, wie jemand auf ein Angebot
+      // reagiert hat, und das geht sonst niemanden etwas an.
+      match /landingSessions/{sessionId} {
+        allow read: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow write: if false;
+      }
+
       match /menuItems/{itemId} {
         allow read: if true;
         allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
@@ -1095,6 +1105,17 @@ service cloud.firestore {
     // ohnehin oeffentlich lesbar (siehe nested rule), daher identische Bedingung.
     match /{path=**}/stories/{storyId} {
       allow read: if true;
+    }
+
+    // Dasselbe fuer die Landing-Sitzungen: Heart laedt sie per
+    // collectionGroup("landingSessions") ueber alle Lokale hinweg, und die
+    // verschachtelte Regel weiter oben deckt das nicht ab. Anders als bei den
+    // Stories darf hier aber nur das CEO-Konto lesen - ueber alle Lokale
+    // hinweg schauen darf ohnehin nur, wer Heart bedient. Ein Wirt liest seine
+    // eigenen Sitzungen weiter ueber den verschachtelten Pfad.
+    match /{path=**}/landingSessions/{sessionId} {
+      allow read: if isCeoActor();
+      allow write: if false;
     }
 
     match /{document=**} {

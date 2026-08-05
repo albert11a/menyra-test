@@ -963,6 +963,31 @@ async function refreshAnalyticsDashboard({ force = false } = {}) {
   }
 }
 
+// Die Landings werden erst geladen, wenn man den Bereich oeffnet, und danach
+// nur auf Verlangen neu. Es sind Zahlen von gestern, keine, die im Sekundentakt
+// wandern. Der Zaehler sorgt dafuer, dass eine langsame alte Antwort keine
+// neuere ueberschreibt - dasselbe Muster wie bei den Analytics darueber.
+let landingLoadSeq = 0;
+
+async function refreshLanding({ force = false } = {}) {
+  const landing = store.getState().landing || {};
+  if (!force && landing.status === "loading") return;
+  if (!force && landing.status === "ready" && landing.sessions.length) return;
+
+  landingLoadSeq += 1;
+  const seq = landingLoadSeq;
+  actions.setLandingLoading();
+  try {
+    const { loadLandingSessions } = await import("./heart-landing-adapter.js");
+    const sessions = await loadLandingSessions();
+    if (seq !== landingLoadSeq) return;
+    actions.setLandingData(sessions);
+  } catch (error) {
+    if (seq !== landingLoadSeq) return;
+    actions.setLandingError(error?.message || "Landings konnten nicht geladen werden.");
+  }
+}
+
 const operations = {
   async login({ email, password }) {
     try {
@@ -984,6 +1009,10 @@ const operations = {
       if (store.getState().shell.activeView === "analytics") {
         await refreshAnalyticsBusinesses({ force: true });
         await refreshAnalyticsDashboard({ force: true });
+        return;
+      }
+      if (store.getState().shell.activeView === "landing") {
+        await refreshLanding({ force: true });
         return;
       }
       if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView)) {
@@ -1022,6 +1051,12 @@ const operations = {
   async cancelRun(runId) {
     await cancelRun(runId);
   },
+  openLanding(restaurantId) {
+    actions.setLandingSelected(restaurantId);
+  },
+  closeLanding() {
+    actions.setLandingSelected("");
+  },
   openView(viewKey) {
     actions.setActiveView(viewKey);
     if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(String(viewKey || "").trim())) {
@@ -1031,6 +1066,9 @@ const operations = {
     }
     if (String(viewKey || "").trim() === "analytics") {
       queueMicrotask(() => refreshAnalyticsBusinesses().catch(() => {}));
+    }
+    if (String(viewKey || "").trim() === "landing") {
+      queueMicrotask(() => refreshLanding().catch(() => {}));
     }
     if (String(viewKey || "").trim() === "destinations") {
       queueMicrotask(() => refreshDestinations().catch(() => {}));

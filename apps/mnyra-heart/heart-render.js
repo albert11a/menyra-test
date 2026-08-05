@@ -33,6 +33,7 @@ import {
 import {
   renderHeartAnalyticsView
 } from "./heart-analytics-render.js";
+import { renderHeartLandingView } from "./heart-landing-render.js";
 import {
   renderHeartDestinationsView
 } from "./heart-destinations-render.js";
@@ -43,6 +44,7 @@ const NAV_HINTS = Object.freeze({
   incidents: "Warnungen und Stoerungen",
   modules: "Bereiche und Gesundheitsstatus",
   analytics: "Business-Analytics und Reichweite",
+  landing: "Lead-Landings: Wische, Abbrueche, Antworten",
   crmLeads: "CRM Leads",
   crmCustomers: "CRM Kunden",
   crmAds: "CRM Ads",
@@ -71,6 +73,7 @@ function getNavIcon(key = "") {
     incidents: "bell",
     modules: "grid",
     analytics: "activity",
+    landing: "image",
     crmLeads: "list",
     crmCustomers: "user",
     crmAds: "image",
@@ -215,6 +218,9 @@ function renderViewBody(state, runtime = {}) {
   }
   if (state.shell.activeView === "analytics") {
     return renderHeartAnalyticsView(state.analytics || {});
+  }
+  if (state.shell.activeView === "landing") {
+    return renderHeartLandingView(state.landing || {});
   }
   if (state.shell.activeView === "destinations") {
     return renderHeartDestinationsView(state.destinations || {});

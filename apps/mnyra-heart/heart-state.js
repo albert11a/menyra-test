@@ -7,6 +7,7 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "incidents", label: "Meldungen" },
   { key: "modules", label: "Bereiche" },
   { key: "analytics", label: "Analytics" },
+  { key: "landing", label: "Landing" },
   { key: "crmLeads", label: "Leads" },
   { key: "crmCustomers", label: "Kunden" },
   { key: "crmAds", label: "Ads" },
@@ -135,6 +136,13 @@ export function createHeartInitialState() {
       error: "",
       model: null,
       lastLoadedAt: ""
+    },
+    landing: {
+      status: DEFAULT_STATUS,
+      error: "",
+      sessions: [],
+      selectedId: "",
+      loadedAt: ""
     },
     destinations: createHeartDestinationsInitialState(),
     crmAdmin: {
@@ -676,6 +684,35 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     return draft.destinations;
   }
 
+  function setLandingLoading() {
+    patch((draft) => {
+      draft.landing.status = "loading";
+      draft.landing.error = "";
+    });
+  }
+
+  function setLandingData(sessions = []) {
+    patch((draft) => {
+      draft.landing.status = "ready";
+      draft.landing.error = "";
+      draft.landing.sessions = Array.isArray(sessions) ? sessions : [];
+      draft.landing.loadedAt = new Date().toISOString();
+    });
+  }
+
+  function setLandingError(message = "") {
+    patch((draft) => {
+      draft.landing.status = "error";
+      draft.landing.error = String(message || "Landings konnten nicht geladen werden.");
+    });
+  }
+
+  function setLandingSelected(restaurantId = "") {
+    patch((draft) => {
+      draft.landing.selectedId = String(restaurantId || "");
+    });
+  }
+
   function setDestinationsLoading() {
     patch((draft) => {
       const slice = ensureDestinationsSlice(draft);
@@ -966,6 +1003,10 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setSetupSearchResults,
       setSetupSearchError,
       patchAnalytics,
+      setLandingLoading,
+      setLandingData,
+      setLandingError,
+      setLandingSelected,
       setDestinationsLoading,
       setDestinationsData,
       setDestinationsError,
