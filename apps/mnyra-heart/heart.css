@@ -3656,3 +3656,136 @@ der Balken zeigt es. */
   border-radius: 20px;
   background: var(--heart-surface);
 }
+
+/* ---------------------------------------------------------------------------
+   Keine Rahmen um Rahmen
+   ---------------------------------------------------------------------------
+   Heart hatte drei Kaesten ineinander: ein Kasten um den ganzen Bereich, darin
+   ein Kasten je Abschnitt, darin erst das Feld. Jeder davon nahm links und
+   rechts Platz weg, ohne etwas zu sagen - am Ende blieb auf dem Handy weniger
+   als die Haelfte der Breite fuer den Inhalt uebrig.
+
+   Weg kommt darum die aeussere Huelle. Was ein Ding ist, das man antippt oder
+   ausfuellt, behaelt seinen Rand: Zeilen, Karten, Felder, Knoepfe. Was nur eine
+   Gruppe zusammenhaelt, ist ab jetzt unsichtbar und laesst dem Inhalt die volle
+   Breite.
+
+   Fuer die Leads- und Staff-Liste galt das schon laenger
+   (.heart-crm-social-view--leads); hier bekommt es der Rest auch.
+--------------------------------------------------------------------------- */
+
+.heart-section,
+.heart-crm-social-view,
+.heart-crm-inline-editor,
+.heart-crm-modal-fieldset,
+.heart-sidebar__panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Der Editor schnitt mit overflow:hidden und runder Ecke die Zeile "CRM" oben
+   links ab. Ohne Rundung braucht er das Beschneiden nicht mehr. */
+.heart-crm-inline-editor {
+  overflow: visible;
+}
+
+/* Die Innenabstaende hingen an der weggefallenen Huelle. Seitlich braucht es
+   sie nicht mehr - der Bereich hat seinen eigenen Rand -, nach unten schon,
+   damit Abschnitte nicht aneinanderkleben. */
+.heart-crm-modal-body,
+.heart-crm-inline-editor .heart-crm-modal-body {
+  padding: 0 0 18px;
+}
+
+/* Nur diese beiden sind Grid bzw. Flex - auf .heart-section (Block) waere ein
+   row-gap wirkungslos. Die Abschnitte untereinander trennt der Stapel. */
+.heart-crm-social-view,
+.heart-crm-inline-editor {
+  row-gap: 16px;
+}
+
+/* Ohne Rahmen muss der Abstand die Abschnitte trennen, vorher tat das die
+   Kastenkante. */
+.heart-view-stack {
+  gap: 26px;
+}
+
+/* ---------------------------------------------------------------------------
+   Modal-Teile
+   ---------------------------------------------------------------------------
+   Diese vier Klassen sind in Benutzung (Kunden- und Ads-Editor als Overlay,
+   Lead- und Staff-Editor als ganze Seite). Beim Ausmisten der Stile fuer die
+   entfernten Bereiche sind sie ueber einen zu weit gefassten Praefix
+   mitgegangen - ohne sie stand der Schliessen-Knopf unter dem Titel und das
+   Overlay hatte weder Abdunklung noch Blatt.
+--------------------------------------------------------------------------- */
+
+/* Titel links, Schliessen rechts - auch auf dem Handy. Die alte Regel stellte
+   unter 780px beides untereinander; dadurch bekam der Knopf eine eigene Zeile
+   und ass eine Bildschirmhoehe auf, in der nichts stand. */
+.heart-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.heart-modal__header h2 {
+  margin: 0;
+}
+
+.heart-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.74);
+  backdrop-filter: blur(8px);
+}
+
+.heart-modal__sheet {
+  position: relative;
+  width: min(100%, 840px);
+  max-height: min(90dvh, 860px);
+  overflow: auto;
+  background: #0b0b0d;
+  border: 1px solid rgba(39, 39, 42, 0.9);
+  border-radius: 30px;
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.heart-modal__sheet::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.heart-modal__sheet--detail {
+  max-width: 920px;
+}
+
+/* Der Kopf des rahmenlosen Editors sitzt jetzt direkt auf der Seite. Die
+   Trennlinie bleibt - sie kostet keine Breite und ordnet die Seite. */
+.heart-crm-inline-editor .heart-modal__header {
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--heart-border);
+}
+
+.heart-crm-inline-editor .heart-modal__footer {
+  position: sticky;
+  bottom: 0;
+  padding: 14px 0 calc(var(--heart-safe-bottom) + 14px);
+  border-top: 1px solid var(--heart-border);
+  background: #000000;
+}
+
+@media (min-width: 780px) {
+  .heart-modal__sheet {
+    padding: 24px;
+  }
+}

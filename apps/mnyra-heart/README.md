@@ -237,6 +237,12 @@ Still setup-dependent per environment:
   frontend no longer imports it.
 - Heart Functions use a generated CJS mirror where Node module format requires it.
 - Protected `*.vercel.app` previews intentionally skip manifest injection to avoid preview-auth `401` noise; the PWA manifest remains active on real routes/domains.
+- No frames around frames. `.heart-section`, `.heart-crm-social-view`,
+  `.heart-crm-inline-editor`, `.heart-crm-modal-fieldset` and
+  `.heart-sidebar__panel` are grouping containers only - no border, no
+  background, no side padding. Things you tap or fill in (rows, cards, fields,
+  buttons) keep their own border. Three nested boxes used to eat more than half
+  the width on a phone.
 - The drawer is `position: fixed` and sized with `100dvh`. With `inset: 0` it
   followed the layout viewport instead of the visible one, which pushed its
   footer behind the iOS toolbar - do not change it back.
