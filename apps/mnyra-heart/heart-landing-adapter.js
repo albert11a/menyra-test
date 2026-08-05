@@ -12,7 +12,9 @@
 // im Betrieb fehlen kann.
 
 import {
-  db,
+  db
+} from "/shared/firebase-config.js";
+import {
   collectionGroup,
   collection,
   documentId,
