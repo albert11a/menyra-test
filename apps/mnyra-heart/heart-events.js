@@ -121,6 +121,17 @@ export function bindHeartEvents({
       operations.closeLanding?.();
       return;
     }
+    if (action === "set-landing-tab") {
+      operations.setLandingTab?.(target.getAttribute("data-landing-tab"));
+      return;
+    }
+    if (action === "toggle-landing-archive") {
+      await operations.toggleLandingArchive?.(
+        target.getAttribute("data-landing-id"),
+        target.getAttribute("data-landing-archived") !== "1"
+      );
+      return;
+    }
     if (action === "toggle-nav") {
       operations.toggleNav?.();
       return;

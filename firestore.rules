@@ -863,6 +863,14 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Welche Landings in Heart abgelegt sind. Reine Ordnung fuer den, der
+    // Heart bedient - der Wirt hat damit nichts zu tun und sieht es auch
+    // nicht. Es steht bewusst nicht im Restaurant-Dokument: Dort darf der
+    // Wirt schreiben, und was hier abgelegt ist, geht nur das CEO-Konto an.
+    match /landingArchive/{restaurantId} {
+      allow read, write: if isCeoActor();
+    }
+
     match /restaurants/{restaurantId} {
       allow read: if true;
       allow create: if canCreateRestaurantDoc(restaurantId);

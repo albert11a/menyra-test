@@ -83,6 +83,59 @@ test("die Antworten werden gezaehlt", () => {
   assert.match(html, /2 po[\s\S]*?1 jo/, "die erste Frage wurde falsch gezaehlt");
 });
 
+test("abgelegte Landings verschwinden aus Aktiv und stehen im Archiv", () => {
+  const daten = {
+    status: "ready",
+    archived: ["lokal-2"],
+    sessions: [
+      session({ id: "a", restaurantId: "lokal-1", name: "Bro Pizza" }),
+      session({ id: "b", restaurantId: "lokal-2", name: "Moa" })
+    ]
+  };
+
+  const aktiv = renderHeartLandingView({ ...daten, tab: "active" });
+  assert.match(aktiv, /Bro Pizza/);
+  assert.ok(!aktiv.includes("Moa"), "das Abgelegte steht noch unter Aktiv");
+
+  const archiv = renderHeartLandingView({ ...daten, tab: "archived" });
+  assert.match(archiv, /Moa/);
+  assert.ok(!archiv.includes("Bro Pizza"), "das Aktive steht im Archiv");
+  assert.match(archiv, /Zurueckholen/, "aus dem Archiv fuehrt kein Weg zurueck");
+});
+
+test("die Reiter zeigen, wie viel in jedem liegt", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    tab: "active",
+    archived: ["lokal-2"],
+    sessions: [
+      session({ id: "a", restaurantId: "lokal-1" }),
+      session({ id: "b", restaurantId: "lokal-2" }),
+      session({ id: "c", restaurantId: "lokal-3" })
+    ]
+  });
+  assert.match(html, /Aktiv <span class="heart-landing-tab__count">2<\/span>/);
+  assert.match(html, /Archiviert <span class="heart-landing-tab__count">1<\/span>/);
+});
+
+test("die Auswertung eines abgelegten Lokals oeffnet sich nicht im Aktiv-Reiter", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    tab: "active",
+    archived: ["lokal-1"],
+    selectedId: "lokal-1",
+    sessions: [session({ id: "a", restaurantId: "lokal-1", name: "Bro Pizza" })]
+  });
+  // Statt der Auswertung kommt die Liste - und die ist hier leer.
+  assert.ok(!html.includes("Sa larg kane ardhur"), "die Auswertung wurde trotzdem geoeffnet");
+  assert.match(html, /Noch keine Aufrufe/);
+});
+
+test("im Archiv steht ein eigener Hinweis, wenn nichts abgelegt ist", () => {
+  const html = renderHeartLandingView({ status: "ready", tab: "archived", sessions: [session()] });
+  assert.match(html, /nichts abgelegt/);
+});
+
 test("ohne Aufrufe steht ein Hinweis statt einer leeren Seite", () => {
   const html = renderHeartLandingView({ status: "ready", sessions: [] });
   assert.match(html, /Noch keine Aufrufe/);

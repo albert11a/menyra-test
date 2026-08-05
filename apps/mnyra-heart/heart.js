@@ -47,6 +47,7 @@ import {
   renderHeartApp
 } from "./heart-render.js";
 import {
+  canRestoreHeartView,
   resolveHeartRouteView
 } from "./heart-route-view-resolver.js";
 import {
@@ -1070,6 +1071,24 @@ const operations = {
   closeLanding() {
     actions.setLandingSelected("");
   },
+  setLandingTab(tab) {
+    actions.setLandingTab(tab);
+  },
+  // Erst umschalten, dann schreiben. Geht das Schreiben daneben, wird es
+  // zurueckgedreht und gesagt, was los ist - sonst sieht es aus, als waere es
+  // abgelegt, und beim naechsten Laden ist es wieder da.
+  async toggleLandingArchive(restaurantId, archived) {
+    const id = String(restaurantId || "").trim();
+    if (!id) return;
+    actions.setLandingArchived(id, archived);
+    try {
+      const { setLandingArchived } = await import("./heart-landing-adapter.js");
+      await setLandingArchived(id, archived);
+    } catch (error) {
+      actions.setLandingArchived(id, !archived);
+      setToast("Landing", error?.message || "Konnte nicht abgelegt werden.", "danger");
+    }
+  },
   openView(viewKey) {
     actions.setActiveView(viewKey);
     if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(String(viewKey || "").trim())) {
@@ -1692,11 +1711,30 @@ const operations = {
 
 bindHeartEvents({ root, operations });
 
+// Damit ein Neuladen dort bleibt, wo man war. Vorher wurde die Ansicht beim
+// Start aus der Adresse gelesen, beim Wechseln aber nie hineingeschrieben -
+// nach jedem Neuladen stand man wieder auf Start. replaceState und nicht
+// pushState: Der Zurueck-Knopf soll aus Heart hinausfuehren und nicht erst
+// durch jede Ansicht, die man unterwegs geoeffnet hat.
+function syncViewInAddress(state) {
+  const view = state?.shell?.activeView || "";
+  if (!canRestoreHeartView(view)) return;
+  const gewuenscht = `#${view}`;
+  if (window.location.hash === gewuenscht) return;
+  try {
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${gewuenscht}`);
+  } catch {
+    // Manche Browser mauern beim Umschreiben der Adresse. Das ist kein Grund,
+    // die Ansicht nicht zu zeigen.
+  }
+}
+
 store.subscribe((state) => {
   const priorState = previousState;
   previousState = state;
 
   renderHeartApp(root, state, renderRuntime);
+  syncViewInAddress(state);
   if (state.shell.activeView === "analytics") {
     try {
       bindAnalyticsChartInteractions(root);
@@ -1734,6 +1772,7 @@ store.subscribe((state) => {
 });
 
 renderHeartApp(root, store.getState(), renderRuntime);
+syncViewInAddress(store.getState());
 syncViewportSurface(store.getState());
 authController.initialize().catch((error) => {
   actions.setAuthError(error?.message || "Anmeldung konnte nicht vorbereitet werden.");

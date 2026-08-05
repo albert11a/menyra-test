@@ -141,6 +141,8 @@ export function createHeartInitialState() {
       status: DEFAULT_STATUS,
       error: "",
       sessions: [],
+      archived: [],
+      tab: "active",
       selectedId: "",
       loadedAt: ""
     },
@@ -691,12 +693,34 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
-  function setLandingData(sessions = []) {
+  function setLandingData({ sessions = [], archived = [] } = {}) {
     patch((draft) => {
       draft.landing.status = "ready";
       draft.landing.error = "";
       draft.landing.sessions = Array.isArray(sessions) ? sessions : [];
+      draft.landing.archived = Array.isArray(archived) ? archived : [];
       draft.landing.loadedAt = new Date().toISOString();
+    });
+  }
+
+  function setLandingTab(tab = "active") {
+    patch((draft) => {
+      draft.landing.tab = tab === "archived" ? "archived" : "active";
+      // Beim Wechseln des Reiters die geoeffnete Auswertung schliessen: Sonst
+      // steht man in der Auswertung eines Lokals, das im anderen Reiter liegt.
+      draft.landing.selectedId = "";
+    });
+  }
+
+  // Sofort umschalten, ohne auf Firestore zu warten - der Griff soll sich
+  // anfuehlen, als haette er gewirkt. Geht das Schreiben daneben, wird es von
+  // aussen wieder zurueckgedreht.
+  function setLandingArchived(restaurantId = "", archived = true) {
+    patch((draft) => {
+      const id = String(restaurantId || "");
+      const ohne = draft.landing.archived.filter((eintrag) => eintrag !== id);
+      draft.landing.archived = archived ? ohne.concat(id) : ohne;
+      if (archived && draft.landing.selectedId === id) draft.landing.selectedId = "";
     });
   }
 
@@ -1007,6 +1031,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setLandingData,
       setLandingError,
       setLandingSelected,
+      setLandingTab,
+      setLandingArchived,
       setDestinationsLoading,
       setDestinationsData,
       setDestinationsError,

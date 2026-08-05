@@ -91,29 +91,61 @@ export function groupLandings(sessions = []) {
     .sort((a, b) => String(b.last).localeCompare(String(a.last)));
 }
 
-function renderList(landings) {
+function renderTabs(tab, aktiv, abgelegt) {
+  const reiter = [
+    { key: "active", label: "Aktiv", count: aktiv },
+    { key: "archived", label: "Archiviert", count: abgelegt }
+  ];
+  return `
+    <div class="heart-landing-tabs" role="tablist">
+      ${reiter.map((eintrag) => `
+        <button type="button" role="tab"
+          class="heart-landing-tab${tab === eintrag.key ? " is-active" : ""}"
+          aria-selected="${tab === eintrag.key ? "true" : "false"}"
+          data-action="set-landing-tab" data-landing-tab="${eintrag.key}">
+          ${escapeHtml(eintrag.label)} <span class="heart-landing-tab__count">${eintrag.count}</span>
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderList(landings, tab) {
   if (!landings.length) {
     return `
       <div class="heart-empty-block">
-        Noch keine Aufrufe. Sobald jemand eine Landing oeffnet, steht sie hier.
+        ${tab === "archived"
+    ? "Hier ist nichts abgelegt. Was Sie nicht mehr brauchen, legen Sie mit &bdquo;Ablegen&ldquo; hierher."
+    : "Noch keine Aufrufe. Sobald jemand eine Landing oeffnet, steht sie hier."}
       </div>
     `;
   }
 
+  // Die Zeile ist bewusst kein Knopf mehr: Darin steckt jetzt ein zweiter, und
+  // ein Knopf in einem Knopf ist kein gueltiges Markup - manche Browser
+  // zeigen ihn dann gar nicht erst an.
   return `
     <div class="heart-landing-list">
       ${landings.map((entry) => `
-        <button type="button" class="heart-landing-row" data-action="open-landing" data-landing-id="${escapeHtml(entry.restaurantId)}">
-          <span class="heart-landing-row__main">
-            <span class="heart-landing-row__name">${escapeHtml(entry.name)}</span>
-            <span class="heart-landing-row__meta">${escapeHtml(entry.city || entry.publicSlug || "")} &middot; ${escapeHtml(relativeDay(entry.last))}</span>
-          </span>
-          <span class="heart-landing-row__stats">
-            <span class="heart-landing-stat"><b>${entry.total}</b> hapje</span>
-            <span class="heart-landing-stat"><b>${entry.answered}</b> pergjigje</span>
-            <span class="heart-landing-stat heart-landing-stat--yes"><b>${entry.yes}</b> po</span>
-          </span>
-        </button>
+        <div class="heart-landing-row">
+          <button type="button" class="heart-landing-row__open" data-action="open-landing" data-landing-id="${escapeHtml(entry.restaurantId)}">
+            <span class="heart-landing-row__main">
+              <span class="heart-landing-row__name">${escapeHtml(entry.name)}</span>
+              <span class="heart-landing-row__meta">${escapeHtml(entry.city || entry.publicSlug || "")} &middot; ${escapeHtml(relativeDay(entry.last))}</span>
+            </span>
+            <span class="heart-landing-row__stats">
+              <span class="heart-landing-stat"><b>${entry.total}</b> hapje</span>
+              <span class="heart-landing-stat"><b>${entry.answered}</b> pergjigje</span>
+              <span class="heart-landing-stat heart-landing-stat--yes"><b>${entry.yes}</b> po</span>
+            </span>
+          </button>
+          <button type="button" class="heart-landing-archive"
+            data-action="toggle-landing-archive"
+            data-landing-id="${escapeHtml(entry.restaurantId)}"
+            data-landing-archived="${tab === "archived" ? "1" : "0"}">
+            ${tab === "archived" ? "Zurueckholen" : "Ablegen"}
+          </button>
+        </div>
       `).join("")}
     </div>
   `;
@@ -192,7 +224,7 @@ function renderSessions(sessions) {
   `;
 }
 
-function renderDetail(entry) {
+function renderDetail(entry, tab = "active") {
   const sessions = entry.sessions;
   return `
     <section class="heart-section">
@@ -200,6 +232,12 @@ function renderDetail(entry) {
         <button type="button" class="heart-landing-back" data-action="close-landing">&larr; Alle Landings</button>
         <h2 class="heart-section__title">${escapeHtml(entry.name)}</h2>
         <p class="heart-section__hint">${escapeHtml(entry.city || "")}${entry.publicSlug ? ` &middot; /oferta/${escapeHtml(entry.publicSlug)}` : ""}</p>
+        <button type="button" class="heart-landing-archive"
+          data-action="toggle-landing-archive"
+          data-landing-id="${escapeHtml(entry.restaurantId)}"
+          data-landing-archived="${tab === "archived" ? "1" : "0"}">
+          ${tab === "archived" ? "Zurueckholen" : "Ablegen"}
+        </button>
       </div>
 
       <div class="heart-landing-kpis">
@@ -229,18 +267,28 @@ export function renderHeartLandingView(landing = {}) {
     return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(landing.error || "Landings konnten nicht geladen werden.")}</div></section>`;
   }
 
-  const landings = groupLandings(landing.sessions || []);
+  const alle = groupLandings(landing.sessions || []);
+  const abgelegt = new Set(landing.archived || []);
+  const tab = landing.tab === "archived" ? "archived" : "active";
+  const sichtbar = alle.filter((entry) => abgelegt.has(entry.restaurantId) === (tab === "archived"));
+
+  // Die Auswertung wird nur gezeigt, wenn das Lokal auch im offenen Reiter
+  // liegt - sonst stuende man in der Auswertung von etwas, das man gerade
+  // weggelegt hat.
   const selected = landing.selectedId
-    ? landings.find((entry) => entry.restaurantId === landing.selectedId)
+    ? sichtbar.find((entry) => entry.restaurantId === landing.selectedId)
     : null;
 
-  if (selected) return renderDetail(selected);
+  if (selected) return renderDetail(selected, tab);
+
+  const anzahlAktiv = alle.length - alle.filter((entry) => abgelegt.has(entry.restaurantId)).length;
 
   return `
     <section class="heart-section">
       <h2 class="heart-section__title">Landings</h2>
       <p class="heart-section__hint">Wer hat welche Landing gesehen, wie weit ist er gekommen, und was hat er geantwortet.</p>
-      ${renderList(landings)}
+      ${renderTabs(tab, anzahlAktiv, alle.length - anzahlAktiv)}
+      ${renderList(sichtbar, tab)}
     </section>
   `;
 }

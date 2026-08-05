@@ -17,15 +17,19 @@ import {
 import {
   collectionGroup,
   collection,
+  deleteDoc,
+  doc,
   documentId,
   getDocs,
   limit,
   query,
+  setDoc,
   where
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 
 const SESSION_LIMIT = 1500;
 const NAME_CHUNK = 10;
+const ARCHIVE_COLLECTION = "landingArchive";
 
 function asText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -88,19 +92,52 @@ async function readNames(ids) {
   return out;
 }
 
+// Welche Landings abgelegt sind. Faellt das weg - etwa weil die Regel es
+// verbietet -, ist das kein Grund, die Auswertung nicht zu zeigen: Dann ist
+// eben nichts abgelegt.
+async function readArchive() {
+  try {
+    const snap = await getDocs(query(collection(db, ARCHIVE_COLLECTION), limit(SESSION_LIMIT)));
+    const abgelegt = [];
+    snap.forEach((eintrag) => {
+      if (eintrag.data()?.archived === true) abgelegt.push(eintrag.id);
+    });
+    return abgelegt;
+  } catch {
+    return [];
+  }
+}
+
 export async function loadLandingSessions() {
-  const snap = await getDocs(query(collectionGroup(db, "landingSessions"), limit(SESSION_LIMIT)));
+  const [snap, archived] = await Promise.all([
+    getDocs(query(collectionGroup(db, "landingSessions"), limit(SESSION_LIMIT))),
+    readArchive()
+  ]);
   const sessions = [];
-  snap.forEach((doc) => sessions.push(normalizeSession(doc)));
+  snap.forEach((eintrag) => sessions.push(normalizeSession(eintrag)));
 
   const names = await readNames(sessions.map((session) => session.restaurantId));
-  return sessions.map((session) => {
-    const info = names.get(session.restaurantId) || null;
-    return {
-      ...session,
-      name: info ? info.name : session.slug || session.restaurantId,
-      city: info ? info.city : "",
-      publicSlug: info ? info.slug : session.slug
-    };
-  });
+  return {
+    archived,
+    sessions: sessions.map((session) => {
+      const info = names.get(session.restaurantId) || null;
+      return {
+        ...session,
+        name: info ? info.name : session.slug || session.restaurantId,
+        city: info ? info.city : "",
+        publicSlug: info ? info.slug : session.slug
+      };
+    })
+  };
+}
+
+// Ablegen und zurueckholen. Zurueckgeholt wird durch Loeschen des Eintrags -
+// dann steht im Archiv nur, was auch wirklich abgelegt ist, statt einer
+// wachsenden Liste von "nein, doch nicht".
+export async function setLandingArchived(restaurantId = "", archived = true) {
+  const id = String(restaurantId || "").trim();
+  if (!id) throw new Error("Ohne Lokal laesst sich nichts ablegen.");
+  const ziel = doc(db, ARCHIVE_COLLECTION, id);
+  if (archived) await setDoc(ziel, { archived: true, updatedAt: new Date().toISOString() });
+  else await deleteDoc(ziel);
 }
