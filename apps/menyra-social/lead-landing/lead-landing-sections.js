@@ -590,27 +590,146 @@ export function renderPricing(sales = {}) {
   `;
 }
 
-/* ----------------------------------------------------------------- CTA */
+/* ------------------------------------------------------- Abschluss: Karten */
 
-export function renderCta(profile = {}, sales = {}) {
+// Vier Karten statt eines Kontaktfeldes. Sie beantworten die Fragen, die nach
+// dem Preis kommen - und keine, die vorher schon beantwortet wurde. Der Preis
+// steht direkt darueber, er gehoert deshalb nicht noch einmal hierher.
+const CLOSING_CARDS = [
+  {
+    icon: "sparkles",
+    title: "Vendosja",
+    body: "Profilin dhe menunë e parë i ndërtojmë ne. Ju vetëm konfirmoni."
+  },
+  {
+    icon: "check",
+    title: "Pa rrezik",
+    body: "Një muaj falas, pa kontratë. E anuloni kur të doni."
+  },
+  {
+    icon: "message",
+    title: "Mbështetje",
+    body: "Jemi në WhatsApp për çdo pyetje, çdo ditë."
+  },
+  {
+    icon: "clock",
+    title: "Përditësime",
+    body: "Menunë, ofertat dhe postimet i ndryshoni vetë, kurdo."
+  }
+];
+
+export function renderClosing() {
+  return `
+    <section class="ll-section">
+      ${sectionHead("Si funksionon", "Katër gjëra që duhet t'i dini para se të fillojmë.")}
+
+      <div class="ll-cards">
+        ${CLOSING_CARDS.map((card) => `
+          <article class="ll-card2">
+            <span class="ll-card2__icon">${icon(card.icon, { size: 18 })}</span>
+            <div>
+              <p class="ll-card2__title">${esc(card.title)}</p>
+              <p class="ll-card2__body">${esc(card.body)}</p>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+/* ----------------------------------------------------------- Drei Fragen */
+
+// Die Fragen liegen auf einem einzigen Bildschirm und tauschen ihren Inhalt,
+// sobald geantwortet wird. Nicht drei Abschnitte untereinander: Die dritte
+// Frage kommt nur, wenn die zweite mit Nein beantwortet wird - stuenden sie
+// im Layout, muesste beim Antworten etwas eingeblendet und hingescrollt
+// werden. So bewegt sich nichts, und es gibt nichts, wo man haengen bleibt.
+//
+// Der Ablauf steht als Daten da, nicht als Verzweigung im Code: Jede Antwort
+// nennt den naechsten Schritt. Eine weitere Frage einzufuegen heisst, einen
+// Eintrag zu ergaenzen.
+export const ASK_FLOW = {
+  q1: {
+    step: 1,
+    question: "Ju pëlqen Mnyra si platformë?",
+    answers: [
+      { key: "po", label: "Po", next: "q2" },
+      { key: "jo", label: "Jo", next: "q2" }
+    ]
+  },
+  q2: {
+    step: 2,
+    question: "Dëshironi të jeni pjesë e Mnyrës për vetëm 15.90 € në muaj?",
+    note: "Fillimisht bisedojmë dhe ju tregojmë çdo detaj - kemi ende shumë funksione.",
+    answers: [
+      { key: "po", label: "Po", next: "yes" },
+      { key: "jo", label: "Jo", next: "q3" }
+    ]
+  },
+  q3: {
+    step: 3,
+    question: "Dëshironi të bëni test një muaj falas?",
+    answers: [
+      { key: "po", label: "Po", next: "yes" },
+      { key: "jo", label: "Jo", next: "no" }
+    ]
+  },
+  yes: {
+    done: true,
+    title: "Ju faleminderit!",
+    body: "Ju presim në WhatsApp për çdo pyetje dhe për të përfunduar gjithë menunë."
+  },
+  no: {
+    done: true,
+    title: "Faleminderit për kohën tuaj.",
+    body: "Nëse ndryshoni mendje, profili juaj ju pret."
+  }
+};
+
+export function renderAsk(profile = {}, sales = {}) {
   const phone = text(sales.contactPhone) || text(profile.phone);
   const name = text(profile.name);
   const waUrl = whatsappUrl(phone, `Përshëndetje! Kam parë faqen e Mnyra për ${name} dhe dua të filloj muajin falas.`);
+  const slug = text(profile.publicSlug);
+  const profileUrl = slug ? `https://www.mnyra.com/${encodeURIComponent(slug)}` : "";
 
   return `
-    <section class="ll-section">
-      <div class="ll-cta">
-        <h2 class="ll-cta__title">Profili juaj është gati.</h2>
-        <p class="ll-cta__body">
-          Gjithçka që patë është ndërtuar tashmë për ${esc(name)}.
-          Mbetet vetëm ta aktivizoni - dhe klientët tuaj e kanë në xhep që sot.
-        </p>
-        ${waUrl
-    ? `<a class="ll-cta__btn" href="${esc(waUrl)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp", { size: 20 })} Filloni muajin falas</a>`
-    // Ohne Telefonnummer gibt es nichts anzutippen. Dann steht dort auch kein
-    // Knopf: Ein Knopf, der nichts tut, ist schlimmer als keiner.
-    : `<p class="ll-cta__plain">Na kontaktoni për ta aktivizuar profilin.</p>`}
-        <p class="ll-cta__sub">Një muaj falas, pastaj 15.90 € në muaj. Pa kontratë, pa kosto fillestare.</p>
+    <section class="ll-section ll-ask3" data-ask>
+      <p class="ll-ask3__lead">Ju lutem, vetëm 3 pyetje.</p>
+
+      <div class="ll-ask3__card">
+        ${Object.keys(ASK_FLOW).map((key) => {
+    const node = ASK_FLOW[key];
+    if (node.done) {
+      return `
+            <div class="ll-ask3__view" data-view="${esc(key)}" hidden>
+              <p class="ll-ask3__done-title">${esc(node.title)}</p>
+              <p class="ll-ask3__done-body">${esc(node.body)}</p>
+              <div class="ll-ask3__links">
+                ${key === "yes" && waUrl
+    ? `<a class="ll-ask3__btn ll-ask3__btn--wa" href="${esc(waUrl)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp", { size: 18 })} WhatsApp</a>`
+    : ""}
+                ${profileUrl
+    ? `<a class="ll-ask3__btn ll-ask3__btn--ghost" href="${esc(profileUrl)}" target="_blank" rel="noopener noreferrer">Vizito profilin</a>`
+    : ""}
+              </div>
+            </div>
+          `;
+    }
+    return `
+          <div class="ll-ask3__view" data-view="${esc(key)}" hidden>
+            <p class="ll-ask3__count">Pyetja ${node.step}</p>
+            <p class="ll-ask3__q">${esc(node.question)}</p>
+            ${node.note ? `<p class="ll-ask3__note">${esc(node.note)}</p>` : ""}
+            <div class="ll-ask3__btns">
+              ${node.answers.map((answer) => `
+                <button type="button" class="ll-ask3__answer" data-answer="${esc(answer.key)}" data-next="${esc(answer.next)}">${esc(answer.label)}</button>
+              `).join("")}
+            </div>
+          </div>
+        `;
+  }).join("")}
       </div>
     </section>
   `;

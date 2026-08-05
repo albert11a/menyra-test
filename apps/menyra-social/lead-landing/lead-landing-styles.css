@@ -1668,64 +1668,228 @@ img {
   }
 }
 
-/* ---------- CTA ---------- */
+/* ---------- Abschluss: die vier Karten ---------- */
 
-/* Steht keine Nummer bereit, tritt an die Stelle des Knopfes eine Zeile -
-   kein Knopf, den man drueckt und der nichts tut. */
-.ll-cta__plain {
-  margin: 18px 0 0;
+.ll-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.ll-card2 {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  padding: 15px 16px;
+  background: var(--ll-panel);
+  border: 1px solid var(--ll-line);
+  border-radius: var(--ll-radius-lg);
+  box-shadow: var(--ll-shadow-sm);
+}
+
+.ll-card2__icon {
+  flex: 0 0 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--ll-accent-soft);
+  color: var(--ll-accent);
+}
+
+.ll-card2__title {
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ll-ink);
+}
+
+.ll-card2__body {
+  margin: 0;
+  font-family: var(--ll-font-apple);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ll-muted);
+}
+
+/* ---------- Drei Fragen ----------
+   Ein Bildschirm, der beim Antworten seinen Inhalt tauscht. Die Karte behaelt
+   dabei ihre Hoehe: Die Ansichten liegen nicht uebereinander, aber die Karte
+   bekommt eine Mindesthoehe, damit der Wechsel von einer kurzen zu einer
+   langen Frage sie nicht springen laesst. */
+
+.ll-ask3 {
+  justify-content: center;
+}
+
+.ll-ask3__lead {
+  margin: 0 0 14px;
+  text-align: center;
+  font-family: var(--ll-font-apple);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ll-accent);
+}
+
+.ll-ask3__card {
+  min-height: 232px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 26px 22px;
+  background: var(--ll-panel);
+  border: 1px solid var(--ll-line);
+  border-radius: var(--ll-radius-xl);
+  box-shadow: 0 24px 54px -38px rgba(79, 70, 229, 0.7);
+  text-align: center;
+}
+
+.ll-ask3__view[hidden] {
+  display: none;
+}
+
+.ll-ask3__count {
+  margin: 0 0 10px;
+  font-family: var(--ll-font-apple);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ll-faint);
+}
+
+.ll-ask3__q {
+  margin: 0;
+  font-family: var(--ll-font-apple);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+  color: var(--ll-ink);
+}
+
+.ll-ask3__note {
+  margin: 10px 0 0;
+  font-family: var(--ll-font-apple);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ll-muted);
+}
+
+/* Zwei gleich grosse Flaechen. Kein "Ja" gross und "Nein" klein: Wer die
+   Antwort lenkt, bekommt eine Antwort, die nichts wert ist. */
+.ll-ask3__btns {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ll-ask3__answer {
+  appearance: none;
+  padding: 15px 10px;
+  border: 1px solid var(--ll-line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ll-ink);
+  font-family: var(--ll-font-apple);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    background 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ll-ask3__answer:active {
+  transform: scale(0.97);
+  background: var(--ll-accent-soft);
+  border-color: var(--ll-accent);
+}
+
+.ll-ask3__answer:focus-visible {
+  outline: 2px solid var(--ll-accent);
+  outline-offset: 2px;
+}
+
+.ll-ask3__done-title {
+  margin: 0 0 8px;
+  font-family: var(--ll-font-apple);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--ll-ink);
+}
+
+.ll-ask3__done-body {
+  margin: 0;
+  font-family: var(--ll-font-apple);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ll-muted);
+}
+
+.ll-ask3__links {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ll-ask3__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: 999px;
+  text-decoration: none;
   font-family: var(--ll-font-apple);
   font-size: 15px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: -0.01em;
 }
 
-.ll-cta {
-  background: linear-gradient(160deg, #111827, #312e81);
+.ll-ask3__btn--wa {
+  background: #111827;
   color: #fff;
-  border-radius: var(--ll-radius-xl);
-  padding: 32px 24px;
-  text-align: center;
-  box-shadow: var(--ll-shadow-md);
 }
 
-.ll-cta__title {
-  margin: 0 0 10px;
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: -0.04em;
+.ll-ask3__btn--ghost {
+  background: #fff;
+  border: 1px solid var(--ll-line-strong);
+  color: var(--ll-ink);
 }
 
-.ll-cta__body {
-  margin: 0 0 22px;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.65;
-  color: rgba(255, 255, 255, 0.78);
-}
+@media (max-height: 700px) {
+  .ll-ask3__card {
+    min-height: 200px;
+    padding: 20px 18px;
+  }
 
-.ll-cta__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  height: 58px;
-  border-radius: var(--ll-radius-lg);
-  background: #25d366;
-  color: #04381a;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  text-decoration: none;
-}
+  .ll-ask3__q {
+    font-size: 18px;
+  }
 
-.ll-cta__sub {
-  margin: 14px 0 0;
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.55);
+  .ll-card2 {
+    padding: 12px 14px;
+  }
+
+  .ll-cards {
+    gap: 8px;
+  }
 }
 
 /* ---------- Zustaende ---------- */

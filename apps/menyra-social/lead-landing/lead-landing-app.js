@@ -8,8 +8,10 @@
 import { loadLeadLandingData } from "./lead-landing-data.js";
 import { startLeadLandingStages } from "./lead-landing-stage.js";
 import {
+  ASK_FLOW,
   LEAD_LANDING_GREETINGS_COUNT,
-  renderCta,
+  renderAsk,
+  renderClosing,
   renderHero,
   renderPricing,
   renderShots,
@@ -196,6 +198,58 @@ function startShotReveal() {
   });
 }
 
+// Der Fragebogen: Ein Bildschirm, der beim Antworten seinen Inhalt tauscht.
+// Welche Frage auf welche folgt, steht in ASK_FLOW - hier wird nur
+// umgeschaltet. Dadurch gibt es keinen Ablauf, der an zwei Stellen gepflegt
+// werden muesste.
+function startAskFlow() {
+  const section = document.querySelector("[data-ask]");
+  if (!section) return;
+
+  const views = new Map();
+  section.querySelectorAll(".ll-ask3__view").forEach((node) => {
+    views.set(node.dataset.view, node);
+  });
+  if (!views.size) return;
+
+  const show = (key) => {
+    const node = views.get(key);
+    if (!node) return;
+    views.forEach((view, name) => {
+      view.hidden = name !== key;
+    });
+    section.dataset.askView = key;
+    // Nach dem Umschalten liegt die Antwort woanders. Wer mit der Tastatur
+    // unterwegs ist, soll dort weitermachen, wo es weitergeht - nicht am
+    // Anfang der Seite.
+    const first = node.querySelector(".ll-ask3__answer, .ll-ask3__btn");
+    if (first && document.activeElement && section.contains(document.activeElement)) {
+      first.focus({ preventScroll: true });
+    }
+  };
+
+  section.addEventListener("click", (event) => {
+    const button = event.target.closest(".ll-ask3__answer");
+    if (!button || !section.contains(button)) return;
+    const from = section.dataset.askView || "q1";
+    const next = String(button.dataset.next || "");
+    if (!views.has(next)) return;
+    recordAnswer(from, String(button.dataset.answer || ""));
+    show(next);
+  });
+
+  show("q1");
+}
+
+// Bis die Aufzeichnung steht, bleiben die Antworten im Fenster liegen. So ist
+// der Ablauf schon vollstaendig und das Messen kann danach angeschlossen
+// werden, ohne ihn noch einmal anzufassen.
+function recordAnswer(question, answer) {
+  if (!ASK_FLOW[question]) return;
+  const store = window.__llAnswers || (window.__llAnswers = []);
+  store.push({ question, answer, at: Date.now() });
+}
+
 function renderPage(data) {
   const { profile, posts, menuItems, focusItems, sales } = data;
   return `
@@ -204,7 +258,8 @@ function renderPage(data) {
       ${renderSurface(profile, posts, menuItems, focusItems)}
       ${renderShots()}
       ${renderPricing(sales)}
-      ${renderCta(profile, sales)}
+      ${renderClosing()}
+      ${renderAsk(profile, sales)}
     </div>
   `;
 }
@@ -241,6 +296,7 @@ async function boot() {
   startGreetingCycle();
   startProgressDots();
   startShotReveal();
+  startAskFlow();
   startLeadLandingStages({ scroller: document.querySelector(".ll-shell") });
 }
 
