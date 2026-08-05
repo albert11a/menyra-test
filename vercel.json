@@ -719,7 +719,6 @@
       ]
     },
     {
-      "//": "Die Aufnahmen der App aendern sich nie - eine andere Aufnahme bekommt einen anderen Dateinamen. Unter der allgemeinen Regel darueber musste der Browser sie trotzdem bei jedem Aufruf nachfragen: sieben Rundreisen im schwachen Netz, nur um siebenmal 'unveraendert' zu hoeren.",
       "source": "/apps/menyra-social/lead-landing/media/:path*",
       "headers": [
         {
