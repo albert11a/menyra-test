@@ -204,6 +204,7 @@ async function readProfile(slug) {
 
   const merged = mergePublicMeta(restaurant, meta);
   return {
+    restaurantId,
     name: firstText(merged.name, merged.restaurantName),
     city: firstText(merged.city),
     bio: firstText(merged.bio, merged.description),
@@ -242,6 +243,23 @@ function buildTags(profile, url) {
     `<meta name="twitter:description" content="${esc(description)}" />`,
     `<meta name="twitter:image" content="${esc(image)}" />`
   ].join("\n  ");
+}
+
+// Die Kennung des Lokals, die hier ohnehin schon ermittelt wurde, wandert mit
+// in die Seite.
+//
+// Ohne sie faengt die Landing im Browser von vorne an: erst den Routen-Index
+// fragen, wer dieses Lokal ist, und erst mit der Antwort die eigentlichen
+// Daten holen. Das ist eine volle Rundreise, die nur dazu dient, etwas
+// herauszufinden, was der Server in derselben Sekunde schon wusste - im
+// schwachen Netz eine halbe Sekunde Warten vor einer leeren Seite.
+//
+// Steht die Zeile nicht da - weil das Lesen ausfiel oder die Datei ohne diesen
+// Weg ausgeliefert wird -, sucht die Landing wie bisher selbst. Es ist eine
+// Abkuerzung, kein Ersatz.
+function buildRestaurantHint(profile) {
+  const id = text(profile && profile.restaurantId);
+  return id ? `<meta name="ll-restaurant" content="${esc(id)}" />` : "";
 }
 
 // Der Rahmen der Seite kommt aus derselben Datei, die auch sonst ausgeliefert
@@ -313,7 +331,7 @@ export default async function ofertaHandler(req, res) {
 
   const shell = readShell() || FALLBACK_SHELL;
   const title = profile && profile.name ? `${profile.name} - Mnyra` : "";
-  const html = injectTags(shell, buildTags(profile, url), title);
+  const html = injectTags(shell, `${buildTags(profile, url)}\n  ${buildRestaurantHint(profile)}`, title);
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // Die Dienste merken sich eine Vorschau lange. Kurz zwischenspeichern

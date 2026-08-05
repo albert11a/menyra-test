@@ -113,18 +113,46 @@ function applyStageState(stage, state) {
   return true;
 }
 
-function updateStage(stage, viewportHeight) {
-  const steps = readSteps(stage);
+// Aus der Lage eines Kapitels wird der Schritt, der gerade gilt.
+//
+// Zwei Dinge stehen hier bewusst so:
+//
+// 1. Der Bildschirm kommt aus dem Kapitel selbst (Hoehe / (Schritte + 1)) und
+//    nicht aus einer zweiten Messung am Fenster. Beide Zahlen meinen dasselbe,
+//    kommen aber aus verschiedenen Quellen und koennen darum auseinanderlaufen
+//    - und solange sie das tun, zeigt das Kapitel den falschen Schritt. Aus
+//    der eigenen Hoehe gerechnet kann das nicht passieren.
+//
+// 2. Der Schritt ist der naechstgelegene Rastpunkt, nicht ein Anteil der
+//    Strecke. Ein Kapitel ist (Schritte + 1) Bildschirme hoch, seine
+//    Rastpunkte liegen bei 0, 1, 2 ... Bildschirmen - die Strecke aber ist
+//    einen Bildschirm kuerzer als das Kapitel. Ueber den Anteil gerechnet
+//    sprang der Text deshalb schon bei 80 % des Weges zwischen zwei
+//    Rastpunkten um. Wer dazwischen stehen bleibt, las die Erklaerung eines
+//    Schritts, auf dem er gar nicht steht. Ueber den Rastpunkt gerechnet ist
+//    der gezeigte Schritt immer der, bei dem man landet, und der Wechsel liegt
+//    auf halbem Weg - dort, wo man ihn erwartet.
+//
+// Der Anteil bleibt daneben bestehen, aber nur noch fuer den Fortschrittsbalken.
+export function stageStateFromRect(top, height, steps) {
+  const anzahl = Math.max(1, Math.round(Number(steps) || 0));
+  const screen = height / (anzahl + 1);
+  if (!(screen > 0)) return { state: 0, progress: 0 };
+  return {
+    state: clamp(Math.round(-top / screen), 0, anzahl),
+    progress: clamp(-top / (screen * anzahl), 0, 1)
+  };
+}
+
+function updateStage(stage) {
   const rect = stage.getBoundingClientRect();
-  const travel = Math.max(1, rect.height - viewportHeight);
-  const progress = clamp(-rect.top / travel, 0, 1);
-  // Zustaende: 0 = Gesamtansicht, 1..steps = einzelne Erklaerungen.
-  const state = clamp(Math.floor(progress * (steps + 1)), 0, steps);
+  const { state, progress } = stageStateFromRect(rect.top, rect.height, readSteps(stage));
   const changed = applyStageState(stage, state);
 
   // Nur schreiben, wenn sich der Wert wirklich aendert. Sonst wird bei jedem
-  // Frame der Stil des Balkens fuer nichts neu berechnet.
-  const bar = stage.querySelector(".ll-stage__bar span");
+  // Frame der Stil des Balkens fuer nichts neu berechnet. Gesucht wird der
+  // Balken einmal beim Start und nicht bei jedem Frame - er wechselt nicht.
+  const bar = stageBar(stage);
   const width = `${Math.round(progress * 100)}%`;
   if (bar && bar.style.width !== width) bar.style.width = width;
 
@@ -132,6 +160,17 @@ function updateStage(stage, viewportHeight) {
   // ein Layout erzwingen (getBoundingClientRect direkt vor einem Style-
   // Schreibzugriff) und das Scrollen ins Stocken bringen.
   if (changed) panSceneToFocus(stage);
+}
+
+// Die Teile eines Kapitels, die bei jedem Frame gebraucht werden - einmal
+// gesucht statt sechzigmal pro Sekunde.
+const bars = new WeakMap();
+
+function stageBar(stage) {
+  if (bars.has(stage)) return bars.get(stage);
+  const bar = stage.querySelector(".ll-stage__bar span");
+  bars.set(stage, bar);
+  return bar;
 }
 
 // Die Schritt-Texte liegen absolut uebereinander, tragen also nichts zur
@@ -346,7 +385,7 @@ function panSceneToFocus(stage) {
   scene.style.transform = `translateY(${-offset}px)`;
 }
 
-export function startLeadLandingStages({ scroller = null } = {}) {
+export function startLeadLandingStages({ scroller = null, viewport = null } = {}) {
   const root = scroller || document.querySelector(".ll-shell");
   const stages = Array.from(document.querySelectorAll(".ll-stage"));
   // Die Seitenfarbe darf auch von einem Abschnitt kommen, nicht nur von einem
@@ -379,7 +418,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
       const rect = stage.getBoundingClientRect();
       // Nur Kapitel in Sichtweite rechnen.
       if (rect.bottom < -viewportHeight || rect.top > viewportHeight * 2) return;
-      updateStage(stage, viewportHeight);
+      updateStage(stage);
     });
     updateCanvasColor(painted, defaultThemeColor);
   };
@@ -399,6 +438,28 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     });
   };
 
+  // Bilder in der Szene kommen nachtraeglich (loading="lazy"). Bis dahin misst
+  // sich die Szene niedriger, als sie am Ende ist - und die Fahrt zu der
+  // Stelle, die gerade erklaert wird, ist um genau diesen Unterschied daneben.
+  // Nachgerechnet wird erst, wenn eine Reihe von Bildern durch ist: Bei sieben
+  // Bildern kurz hintereinander waeren es sonst sieben Neuvermessungen.
+  let bilderTimer = 0;
+  const onBild = () => {
+    window.clearTimeout(bilderTimer);
+    bilderTimer = window.setTimeout(() => {
+      bilderTimer = 0;
+      fitAll();
+      onScroll();
+    }, 80);
+  };
+  stages.forEach((stage) => {
+    stage.querySelectorAll("img").forEach((bild) => {
+      if (bild.complete) return;
+      bild.addEventListener("load", onBild);
+      bild.addEventListener("error", onBild);
+    });
+  });
+
   // Beim Ein- und Ausblenden der Adressleiste meldet ein Handy-Browser eine
   // ganze Folge von Groessenaenderungen - mitten im Wischen. Jede einzelne
   // wuerde alle Kapitel neu vermessen und das Scrollen ins Stocken bringen.
@@ -409,6 +470,12 @@ export function startLeadLandingStages({ scroller = null } = {}) {
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       resizeTimer = 0;
+      // Erst die Bildschirmhoehe nachziehen, dann vermessen. Andersherum
+      // wuerde alles gegen den alten Wert gerechnet und beim naechsten Mal
+      // wieder verworfen. Die Sperre gibt die neue Hoehe nur heraus, wenn es
+      // wirklich eine ist - eine ein- und ausfahrende Leiste kommt hier gar
+      // nicht erst an.
+      if (viewport) viewport.pruefen();
       fitAll();
       onScroll();
     }, RESIZE_SETTLE_MS);
@@ -446,6 +513,7 @@ export function startLeadLandingStages({ scroller = null } = {}) {
 
   return () => {
     window.clearTimeout(resizeTimer);
+    window.clearTimeout(bilderTimer);
     if (watcher) watcher.disconnect();
     document.removeEventListener("visibilitychange", onWakeup);
     window.removeEventListener("pageshow", onWakeup);

@@ -141,6 +141,33 @@ test("ohne Aufrufe steht ein Hinweis statt einer leeren Seite", () => {
   assert.match(html, /Noch keine Aufrufe/);
 });
 
+test("eine unvollstaendige Auswertung sagt, dass sie unvollstaendig ist", () => {
+  // Die Abfrage liest hoechstens eine feste Zahl von Sitzungen und ist dabei
+  // unsortiert. Ist die Grenze erreicht, fehlt ein beliebiger Teil - dann darf
+  // hier keine Zahl stehen, die aussieht, als waere sie vollstaendig.
+  const daten = {
+    status: "ready",
+    abgeschnitten: true,
+    grenze: 1500,
+    sessions: [session()]
+  };
+
+  const liste = renderHeartLandingView(daten);
+  assert.match(liste, /1500/);
+  assert.match(liste, /unvollst/i);
+
+  // Auch in der Auswertung eines einzelnen Lokals - dort stehen die Zahlen,
+  // auf die es ankommt.
+  const detail = renderHeartLandingView({ ...daten, selectedId: "lokal-1" });
+  assert.match(detail, /unvollst/i);
+  assert.match(detail, /Sa larg kane ardhur/, "die Auswertung fehlt");
+});
+
+test("eine vollstaendige Auswertung warnt nicht ohne Grund", () => {
+  const html = renderHeartLandingView({ status: "ready", sessions: [session()] });
+  assert.ok(!html.includes("heart-landing-warn"), "gewarnt wird, obwohl nichts fehlt");
+});
+
 test("Ladefehler werden gezeigt, nicht verschluckt", () => {
   assert.match(renderHeartLandingView({ status: "loading" }), /werden geladen/);
   assert.match(renderHeartLandingView({ status: "error", error: "Kein Zugriff" }), /Kein Zugriff/);

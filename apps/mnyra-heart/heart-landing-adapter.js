@@ -116,9 +116,19 @@ export async function loadLandingSessions() {
   const sessions = [];
   snap.forEach((eintrag) => sessions.push(normalizeSession(eintrag)));
 
+  // Die Abfrage holt hoechstens SESSION_LIMIT Sitzungen, und sie ist bewusst
+  // unsortiert - sonst braeuchte sie einen Index, den erst jemand anlegen
+  // muesste. Ist die Grenze erreicht, fehlt also ein beliebiger Teil, und
+  // jede Zahl darunter ist zu klein. Das muss dann auch dastehen: Eine
+  // Auswertung, die stillschweigend die Haelfte weglaesst, ist schlimmer als
+  // gar keine, weil man ihr glaubt.
+  const abgeschnitten = sessions.length >= SESSION_LIMIT;
+
   const names = await readNames(sessions.map((session) => session.restaurantId));
   return {
     archived,
+    abgeschnitten,
+    grenze: SESSION_LIMIT,
     sessions: sessions.map((session) => {
       const info = names.get(session.restaurantId) || null;
       return {

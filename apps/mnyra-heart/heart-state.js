@@ -142,6 +142,8 @@ export function createHeartInitialState() {
       error: "",
       sessions: [],
       archived: [],
+      abgeschnitten: false,
+      grenze: 0,
       tab: "active",
       selectedId: "",
       loadedAt: ""
@@ -693,12 +695,14 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
-  function setLandingData({ sessions = [], archived = [] } = {}) {
+  function setLandingData({ sessions = [], archived = [], abgeschnitten = false, grenze = 0 } = {}) {
     patch((draft) => {
       draft.landing.status = "ready";
       draft.landing.error = "";
       draft.landing.sessions = Array.isArray(sessions) ? sessions : [];
       draft.landing.archived = Array.isArray(archived) ? archived : [];
+      draft.landing.abgeschnitten = abgeschnitten === true;
+      draft.landing.grenze = Number(grenze) || 0;
       draft.landing.loadedAt = new Date().toISOString();
     });
   }

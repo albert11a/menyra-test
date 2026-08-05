@@ -12,7 +12,37 @@
        Teilen doppelt vor - und beim Lokal ohne Logo stuende das falsche Bild. -->
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <!-- Verbindungen aufbauen, solange noch geladen wird.
+       Auf dem Handy kostet jede neue Gegenstelle DNS, TCP und TLS - im
+       schwachen Netz zusammen eine halbe Sekunde und mehr. Bisher fing das
+       erst an, wenn das Skript da war und die erste Abfrage stellte; jetzt
+       laeuft es neben dem Laden her. Firestore liefert die Daten des Lokals,
+       der Media-Worker seine Bilder. -->
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+  <link rel="dns-prefetch" href="//firestore.googleapis.com" />
+  <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin />
+  <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev" />
+
   <link rel="stylesheet" href="/apps/menyra-social/lead-landing/lead-landing-styles.css" />
+
+  <!-- Alle Module auf einmal holen statt in drei Wellen.
+       Ohne diese Zeilen findet der Browser lead-landing-data.js erst, wenn er
+       lead-landing-app.js gelesen hat, und lead-landing-format.js erst nach
+       lead-landing-sections.js. Jede Welle kostet im schwachen Netz eine volle
+       Rundreise, bevor ueberhaupt die erste Abfrage rausgeht. So stehen alle
+       Dateien nebeneinander in der Warteschlange.
+       Die Liste muss vollstaendig bleiben: Was hier fehlt, wird wieder
+       nachgeladen statt mitgeladen. tests/lead-landing-preload.test.mjs haelt
+       sie gegen die Importe. -->
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-data.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-sections.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-stage.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-viewport.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-track.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-format.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-icons.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing/lead-landing-config.js" />
 </head>
 <body>
   <main id="llRoot">

@@ -8,6 +8,7 @@
 import { loadLeadLandingData } from "./lead-landing-data.js";
 import { startLeadLandingStages } from "./lead-landing-stage.js";
 import { startLeadLandingTracking } from "./lead-landing-track.js";
+import { lockLeadLandingViewport } from "./lead-landing-viewport.js";
 import {
   LEAD_LANDING_GREETINGS_COUNT,
   renderAsk,
@@ -151,13 +152,27 @@ function startShotReveal() {
   // kommt. Zurueckgesetzt wird erst bei Deckung null, also ausserhalb des
   // Bildes; zu sehen ist der Ruecksprung nie.
   //
+  // Die naechste Aufnahme wird geholt, sobald diese zu sehen ist. Ohne das
+  // faengt der Browser erst an zu laden, wenn sie schon fast im Bild steht -
+  // und bei einem schnellen Wisch landet man dann auf einer leeren Seite und
+  // sieht das Bild erst hereinploppen. Geholt wird immer nur eine im Voraus:
+  // alle auf einmal waeren sieben grosse Bilder gleichzeitig, und dann steht
+  // die erste hinter den sechs an, die noch niemand sehen will.
+  const naechste = (index) => {
+    const img = shots[index + 1]?.querySelector("img");
+    if (img && img.getAttribute("loading") === "lazy") img.setAttribute("loading", "eager");
+  };
+  naechste(-1);
+
   // Zwei Schwellen, nicht eine: Dazwischen bleibt es, wie es ist. Mit nur
   // einer Schwelle flackerte es genau an ihr.
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       const shot = entry.target.closest("[data-shot]") || entry.target;
-      if (entry.intersectionRatio >= SHOT_REVEAL_RATIO) shot.classList.add("is-in");
-      else if (!entry.isIntersecting) shot.classList.remove("is-in");
+      if (entry.intersectionRatio >= SHOT_REVEAL_RATIO) {
+        shot.classList.add("is-in");
+        naechste(shots.indexOf(shot));
+      } else if (!entry.isIntersecting) shot.classList.remove("is-in");
     });
   }, { root: shell, threshold: [0, SHOT_REVEAL_RATIO] });
 
@@ -175,14 +190,16 @@ function startShotReveal() {
   const settle = () => {
     const hoehe = shell.clientHeight;
     if (!(hoehe > 0)) return;
-    shots.forEach((shot) => {
+    shots.forEach((shot, index) => {
       const media = shot.querySelector(".ll-shot__media") || shot;
       const rect = media.getBoundingClientRect();
       if (!(rect.height > 0)) return;
       const sichtbar = Math.max(0, Math.min(rect.bottom, hoehe) - Math.max(rect.top, 0));
       const anteil = sichtbar / rect.height;
-      if (anteil >= SHOT_REVEAL_RATIO) shot.classList.add("is-in");
-      else if (anteil <= 0) shot.classList.remove("is-in");
+      if (anteil >= SHOT_REVEAL_RATIO) {
+        shot.classList.add("is-in");
+        naechste(index);
+      } else if (anteil <= 0) shot.classList.remove("is-in");
     });
   };
 
@@ -266,9 +283,13 @@ async function boot() {
 
   setBoot("Po ngarkohet...");
 
+  // Hat der Server die Kennung des Lokals schon ermittelt, steht sie in der
+  // Seite - dann muss sie nicht noch einmal erfragt werden.
+  const hint = document.querySelector('meta[name="ll-restaurant"]')?.getAttribute("content") || "";
+
   let data = null;
   try {
-    data = await loadLeadLandingData(routeKey);
+    data = await loadLeadLandingData(routeKey, { hint });
   } catch (err) {
     console.error(err);
     setBoot("Faqja nuk mund të ngarkohej.", true);
@@ -286,6 +307,12 @@ async function boot() {
 
   document.title = `${data.profile.name} - Mnyra`;
 
+  // Zuerst die Bildschirmhoehe festnageln, dann alles andere: Ab hier misst
+  // sich jeder Abschnitt gegen eine Zahl, die sich nicht mehr bewegt. Wuerde
+  // sie erst spaeter gesetzt, waeren die ersten Messungen gegen den alten Wert
+  // gerechnet und muessten gleich wieder verworfen werden.
+  const viewport = lockLeadLandingViewport({ scroller: document.querySelector(".ll-shell") });
+
   startGreetingCycle();
   startProgressDots();
   startShotReveal();
@@ -297,7 +324,7 @@ async function boot() {
     restaurantId: data.restaurantId
   });
   startAskFlow(tracker);
-  startLeadLandingStages({ scroller: document.querySelector(".ll-shell") });
+  startLeadLandingStages({ scroller: document.querySelector(".ll-shell"), viewport });
 }
 
 boot();
