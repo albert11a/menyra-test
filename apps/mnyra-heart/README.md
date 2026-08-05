@@ -237,6 +237,10 @@ Still setup-dependent per environment:
   frontend no longer imports it.
 - Heart Functions use a generated CJS mirror where Node module format requires it.
 - Protected `*.vercel.app` previews intentionally skip manifest injection to avoid preview-auth `401` noise; the PWA manifest remains active on real routes/domains.
+- One gutter for everything: `--heart-gutter` (8px on phones, 24px from
+  tablet width) is shared by `.heart-topbar` and `.heart-main-content`, so the
+  cards always line up with the menu button. Do not set a side padding on
+  either of them directly.
 - No frames around frames. `.heart-section`, `.heart-crm-social-view`,
   `.heart-crm-inline-editor`, `.heart-crm-modal-fieldset` and
   `.heart-sidebar__panel` are grouping containers only - no border, no

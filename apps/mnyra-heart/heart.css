@@ -3789,3 +3789,35 @@ der Balken zeigt es. */
     padding: 24px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Seitenrand
+   ---------------------------------------------------------------------------
+   Ein Wert fuer den Abstand zur Bildschirmkante, den sich Kopfzeile und Inhalt
+   teilen. Vorher stand die 18 an beiden Stellen einzeln - wer nur eine davon
+   aendert, bekommt Karten, die gegenueber dem Menue-Knopf verspringen.
+
+   Auf dem Handy sind es 8px: Der Platz ist dort knapp, und die Karten bringen
+   ihren eigenen Innenabstand mit, also klebt kein Text an der Kante. Ab
+   Tablet-Breite darf es wieder mehr sein, dort fehlt die Breite nicht.
+--------------------------------------------------------------------------- */
+
+:root {
+  --heart-gutter: 8px;
+}
+
+.heart-topbar {
+  padding-left: max(var(--heart-gutter), var(--heart-safe-left, 0px));
+  padding-right: max(var(--heart-gutter), var(--heart-safe-right, 0px));
+}
+
+.heart-main-content {
+  padding-left: max(var(--heart-gutter), var(--heart-safe-left, 0px));
+  padding-right: max(var(--heart-gutter), var(--heart-safe-right, 0px));
+}
+
+@media (min-width: 780px) {
+  :root {
+    --heart-gutter: 24px;
+  }
+}

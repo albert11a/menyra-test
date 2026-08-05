@@ -63,8 +63,11 @@ function renderQuickTiles(counts = {}) {
   return `
     <div class="heart-start__quick">
       ${QUICK_TILES.map((tile) => {
+    // Number.isFinite direkt auf dem Wert, nicht auf Number(wert): Number(null)
+    // ist 0 und damit endlich - dadurch stand auf der Kachel "null" statt des
+    // Strichs, solange die Zahl noch nicht geladen war.
     const count = counts[tile.viewKey];
-    const value = Number.isFinite(Number(count)) ? String(count) : "–";
+    const value = Number.isFinite(count) ? String(count) : "–";
     return `
           <button type="button" class="heart-start__tile" data-nav-key="${escapeHtml(tile.viewKey)}">
             <span class="heart-start__tile-icon">${renderHeartIcon(tile.icon)}</span>
