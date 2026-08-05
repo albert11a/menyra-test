@@ -215,10 +215,6 @@
       "destination": "https://us-central1-menyra-c0e68.cloudfunctions.net/:path*"
     },
     {
-      "source": "/api/landing-track",
-      "destination": "https://us-central1-menyra-c0e68.cloudfunctions.net/landingTrack"
-    },
-    {
       "source": "/feed",
       "destination": "/apps/menyra-social/index.html"
     },
