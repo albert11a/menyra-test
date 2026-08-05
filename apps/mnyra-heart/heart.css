@@ -3069,6 +3069,19 @@ damit Lead- und Destination-Confirm sich nie mischen.
 
 /* ---------- Landing: Liste und Auswertung ---------- */
 
+/* Steht ueber den Zahlen, wenn sie unvollstaendig sind. Bewusst auffaellig:
+   Wer das uebersieht, rechnet mit einer Auswertung, der die Haelfte fehlt. */
+.heart-landing-warn {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--heart-radius-md, 12px);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--heart-text, inherit);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 .heart-landing-list {
   display: flex;
   flex-direction: column;

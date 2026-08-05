@@ -114,19 +114,30 @@ async function readCollection(path = "", pageSize = 50) {
 
 // Slug -> restaurantId. Erst der Routen-Index, dann die Doc-ID direkt,
 // zuletzt eine Feldsuche.
+//
+// Die ersten beiden laufen nebeneinander, nicht nacheinander. Der Reihe nach
+// gefragt kostete jeder Weg eine eigene Rundreise, und der zweite wurde immer
+// dann gebraucht, wenn die Adresse schon die Kennung des Lokals war
+// (/lp/{id}) - dort wartete man also erst eine volle Rundreise auf ein "gibt
+// es nicht". Im schwachen Netz ist das eine halbe Sekunde, bevor ueberhaupt
+// die erste Zeile Inhalt angefragt wird. Nebeneinander gefragt kostet der
+// zweite nichts extra: Er laeuft in derselben Zeit mit.
+//
+// Welcher gewinnt, entscheidet weiterhin die Reihenfolge und nicht, wer zuerst
+// antwortet - der Routen-Index bleibt die erste Wahl.
 async function resolveRestaurantId(rawKey = "") {
   const key = text(rawKey);
   if (!key) return "";
 
   const slug = slugify(key);
 
-  if (slug) {
-    const routeDoc = await readDoc(`publicRoutes/${encodeURIComponent(slug)}`);
-    const routeRestaurantId = firstText(routeDoc?.restaurantId, routeDoc?.canonicalRestaurantId);
-    if (routeRestaurantId) return routeRestaurantId;
-  }
+  const [routeDoc, direct] = await Promise.all([
+    slug ? readDoc(`publicRoutes/${encodeURIComponent(slug)}`) : Promise.resolve(null),
+    readDoc(`restaurants/${encodeURIComponent(key)}`)
+  ]);
 
-  const direct = await readDoc(`restaurants/${encodeURIComponent(key)}`);
+  const routeRestaurantId = firstText(routeDoc?.restaurantId, routeDoc?.canonicalRestaurantId);
+  if (routeRestaurantId) return routeRestaurantId;
   if (direct) return key;
 
   if (!slug) return "";
@@ -451,18 +462,28 @@ function normalizeSalesConfig(source = {}) {
   };
 }
 
-export async function loadLeadLandingData(routeKey = "") {
-  const restaurantId = await resolveRestaurantId(routeKey);
+// hint: Die Kennung des Lokals, wenn der Server sie schon mitgeschickt hat
+// (api/oferta.js, <meta name="ll-restaurant">). Sie erspart die Suche danach -
+// eine volle Rundreise, bevor ueberhaupt die erste Zeile Inhalt angefragt
+// wird. Fehlt sie, wird gesucht wie bisher.
+export async function loadLeadLandingData(routeKey = "", { hint = "" } = {}) {
+  const restaurantId = text(hint) || await resolveRestaurantId(routeKey);
   if (!restaurantId) {
     return { ok: false, reason: "not-found", restaurantId: "" };
   }
 
   const encodedId = encodeURIComponent(restaurantId);
-  const [restaurant, meta, offers, publicMenu] = await Promise.all([
+
+  // Die Postimet haengen an nichts ausser der Kennung des Lokals - die steht
+  // hier schon fest. Sie standen trotzdem hinter den vier Dokumenten in der
+  // Schlange und kosteten damit eine eigene Rundreise, in der nichts anderes
+  // passierte. Jetzt laufen sie daneben.
+  const [restaurant, meta, offers, publicMenu, postsRaw] = await Promise.all([
     readDoc(`restaurants/${encodedId}`),
     readDoc(`restaurants/${encodedId}/public/meta`),
     readDoc(`restaurants/${encodedId}/public/offers`),
-    readDoc(`restaurants/${encodedId}/public/menu`)
+    readDoc(`restaurants/${encodedId}/public/menu`),
+    readCollection(`restaurants/${encodedId}/socialPosts`, POSTS_LIMIT)
   ]);
 
   if (!restaurant && !meta) {
@@ -473,12 +494,13 @@ export async function loadLeadLandingData(routeKey = "") {
 
   // Das oeffentliche Menue-Dokument ist die Hauptquelle; die Sammlung
   // menuItems ist der Rueckfall, wenn es noch nicht veroeffentlicht wurde.
+  // Nur dieser Rueckfall braucht noch eine eigene Rundreise - er kommt selten
+  // vor, und ohne das Menue-Dokument laesst sich nicht wissen, ob er noetig
+  // ist.
   const menuDocItems = collectMenuDocItems(publicMenu || {});
-  const [postsRaw, menuCollectionItems] = await Promise.all([
-    readCollection(`restaurants/${encodedId}/socialPosts`, POSTS_LIMIT),
-    menuDocItems.length ? Promise.resolve([]) : readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT)
-  ]);
-  const menuItemsRaw = menuDocItems.length ? menuDocItems : menuCollectionItems;
+  const menuItemsRaw = menuDocItems.length
+    ? menuDocItems
+    : await readCollection(`restaurants/${encodedId}/menuItems`, MENU_LIMIT);
 
   const menuItems = menuItemsRaw
     .map(normalizeMenuItem)

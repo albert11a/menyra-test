@@ -13,7 +13,14 @@ import { escapeHtml } from "./heart-ui-utils.js";
 // Die Reihenfolge der Wische, wie sie auf der Seite vorkommen. Sie steht hier,
 // weil die Auswertung sonst alphabetisch sortieren muesste - und "cmimi" kaeme
 // vor "hyrje", obwohl es am Ende steht.
-const STEP_ORDER = [
+//
+// Die Schluessel muessen genau die sein, die die Landing mitschickt (dort die
+// data-track-Marken). Kommt auf der Landing ein Bildschirm dazu und hier
+// nicht, faellt er aus der Auswertung heraus, ohne dass etwas kaputtgeht -
+// die Zahlen waeren dann still falsch. Deshalb wird die Liste exportiert und
+// von tests/heart-landing-step-contract.test.mjs gegen die echte Landing
+// gehalten.
+export const STEP_ORDER = [
   { key: "hyrje", label: "Fillimi" },
   { key: "profil-0", label: "Profili" },
   { key: "profil-1", label: "Postimet" },
@@ -224,10 +231,11 @@ function renderSessions(sessions) {
   `;
 }
 
-function renderDetail(entry, tab = "active") {
+function renderDetail(entry, tab = "active", hinweis = "") {
   const sessions = entry.sessions;
   return `
     <section class="heart-section">
+      ${hinweis}
       <div class="heart-landing-detail__head">
         <button type="button" class="heart-landing-back" data-action="close-landing">&larr; Alle Landings</button>
         <h2 class="heart-section__title">${escapeHtml(entry.name)}</h2>
@@ -296,6 +304,13 @@ export function renderHeartLandingView(landing = {}) {
   const tab = landing.tab === "archived" ? "archived" : "active";
   const sichtbar = alle.filter((entry) => abgelegt.has(entry.restaurantId) === (tab === "archived"));
 
+  // Ist die Abfrage an ihre Grenze gestossen, fehlt ein beliebiger Teil der
+  // Sitzungen - dann steht das ueber den Zahlen, statt dass man ihnen glaubt.
+  const abgeschnitten = landing.abgeschnitten === true
+    ? `<div class="heart-landing-warn">Es werden nur ${Number(landing.grenze) || 0} Sitzungen gelesen, und diese Grenze ist erreicht.
+        Die Zahlen unten sind deshalb unvollstaendig.</div>`
+    : "";
+
   // Die Auswertung wird nur gezeigt, wenn das Lokal auch im offenen Reiter
   // liegt - sonst stuende man in der Auswertung von etwas, das man gerade
   // weggelegt hat.
@@ -303,7 +318,7 @@ export function renderHeartLandingView(landing = {}) {
     ? sichtbar.find((entry) => entry.restaurantId === landing.selectedId)
     : null;
 
-  if (selected) return renderDetail(selected, tab);
+  if (selected) return renderDetail(selected, tab, abgeschnitten);
 
   const anzahlAktiv = alle.length - alle.filter((entry) => abgelegt.has(entry.restaurantId)).length;
 
@@ -311,6 +326,7 @@ export function renderHeartLandingView(landing = {}) {
     <section class="heart-section">
       <h2 class="heart-section__title">Landings</h2>
       <p class="heart-section__hint">Wer hat welche Landing gesehen, wie weit ist er gekommen, und was hat er geantwortet.</p>
+      ${abgeschnitten}
       ${renderStaleNote(landing)}
       ${renderTabs(tab, anzahlAktiv, alle.length - anzahlAktiv)}
       ${renderList(sichtbar, tab)}

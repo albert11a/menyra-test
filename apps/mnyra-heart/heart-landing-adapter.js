@@ -151,10 +151,23 @@ async function ladeMit(leser) {
   ]);
   const sessions = [];
   snap.forEach((eintrag) => sessions.push(normalizeSession(eintrag)));
-  if (!sessions.length) return { archived, sessions: [] };
+  if (!sessions.length) return { archived, sessions: [], abgeschnitten: false, grenze: SESSION_LIMIT };
+
+  // Die Abfrage holt hoechstens SESSION_LIMIT Sitzungen, und sie ist bewusst
+  // unsortiert - sonst braeuchte sie einen Index, den erst jemand anlegen
+  // muesste. Ist die Grenze erreicht, fehlt also ein beliebiger Teil, und
+  // jede Zahl darunter ist zu klein. Das muss dann auch dastehen: Eine
+  // Auswertung, die stillschweigend die Haelfte weglaesst, ist schlimmer als
+  // gar keine, weil man ihr glaubt.
+  const abgeschnitten = sessions.length >= SESSION_LIMIT;
 
   const names = await readNames(leser, sessions.map((session) => session.restaurantId));
-  return { archived, sessions: benennen(sessions, names) };
+  return {
+    archived,
+    abgeschnitten,
+    grenze: SESSION_LIMIT,
+    sessions: benennen(sessions, names)
+  };
 }
 
 // Was schon auf dem Geraet liegt. Liegt nichts da, kommt eine leere Liste
@@ -163,7 +176,7 @@ export async function loadLandingSessionsFromCache() {
   try {
     return await ladeMit(getDocsFromCache);
   } catch {
-    return { archived: [], sessions: [] };
+    return { archived: [], sessions: [], abgeschnitten: false, grenze: SESSION_LIMIT };
   }
 }
 

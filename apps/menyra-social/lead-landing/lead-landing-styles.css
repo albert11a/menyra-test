@@ -28,7 +28,15 @@
   /* Eine Bildschirmhoehe fuer die ganze Seite. Vorher stand sie ueberall
      doppelt da (erst svh, dann dvh) - nur die Hoehe eines Kapitels kannte kein
      dvh, waehrend seine Rastpunkte eines hatten. Laufen die beiden
-     auseinander, treffen die Rastpunkte die Schritte nicht mehr. */
+     auseinander, treffen die Rastpunkte die Schritte nicht mehr.
+
+     Was hier steht, gilt nur bis das Skript einmal gemessen hat: Danach setzt
+     lead-landing-viewport.js einen festen Wert in Pixeln auf :root, und der
+     sticht diese Regel. Der Grund steht dort - kurz: 100dvh ist auf dem Handy
+     kein fester Wert, sondern die gerade sichtbare Hoehe. Blendet der Browser
+     mitten im Wischen seine Leisten ein oder aus, wuerde jeder Abschnitt in
+     derselben Bewegung seine Hoehe aendern und die Rastpunkte wanderten unter
+     dem Finger weg. */
   --ll-vh: 100vh;
 }
 
@@ -41,6 +49,34 @@
 @supports (height: 100dvh) {
   :root {
     --ll-vh: 100dvh;
+  }
+}
+
+/* Das Massband. Es traegt genau die Hoehenangabe, die --ll-vh ohne die Sperre
+   haette - deshalb steht sie hier ein zweites Mal und nicht als var(--ll-vh),
+   das waere nach dem ersten Messen ja der feste Wert und das Band wuerde nur
+   noch sich selbst bestaetigen. Es nimmt keinen Platz ein, faengt keine
+   Beruehrung ab und ist nicht zu sehen. */
+.ll-vh-probe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100vh;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@supports (height: 100svh) {
+  .ll-vh-probe {
+    height: 100svh;
+  }
+}
+
+@supports (height: 100dvh) {
+  .ll-vh-probe {
+    height: 100dvh;
   }
 }
 

@@ -148,6 +148,39 @@ test("der Rahmen kommt aus derselben Datei, die auch sonst ausgeliefert wird", a
   }
 });
 
+// Der Server hat das Lokal fuer die Vorschau ohnehin schon herausgesucht.
+// Sagt er es nicht mit, faengt die Landing im Browser von vorne an - eine
+// volle Rundreise, bevor die erste Zeile Inhalt angefragt wird. Im schwachen
+// Netz ist genau das die halbe Sekunde vor der leeren Seite.
+test("der Server sagt mit, welches Lokal es ist", async () => {
+  const res = await serve(
+    { query: { slug: "bro-pizza" }, url: "/oferta/bro-pizza" },
+    fetchWithRestaurant()
+  );
+  assert.equal(metaContent(res.body, "ll-restaurant"), "id-1");
+});
+
+test("ohne gefundenes Lokal steht die Abkuerzung nicht da", async () => {
+  // Lieber gar keine Angabe als eine falsche: Steht sie nicht da, sucht die
+  // Landing selbst - das dauert laenger, stimmt aber.
+  const res = await serve(
+    { query: { slug: "gibt-es-nicht" }, url: "/oferta/gibt-es-nicht" },
+    async () => ({ ok: false, json: async () => ({}) })
+  );
+  assert.equal(res.statusCode, 200, "die Seite wird trotzdem ausgeliefert");
+  assert.equal(metaContent(res.body, "ll-restaurant"), "");
+});
+
+test("faellt das Lesen ganz aus, bleibt die Seite trotzdem heil", async () => {
+  const res = await serve(
+    { query: { slug: "bro-pizza" }, url: "/oferta/bro-pizza" },
+    async () => { throw new Error("Netz weg"); }
+  );
+  assert.equal(res.statusCode, 200);
+  assert.equal(metaContent(res.body, "ll-restaurant"), "");
+  assert.match(res.body, /lead-landing-app\.js/, "das Skript der Seite fehlt");
+});
+
 test("die Route zeigt auf die Funktion, sonst wird sie nie aufgerufen", () => {
   const config = JSON.parse(readFileSync(join(repoRoot, "vercel.json"), "utf8"));
   const route = config.rewrites.find((entry) => entry.source === "/oferta/:slug");

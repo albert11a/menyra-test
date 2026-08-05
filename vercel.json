@@ -719,6 +719,15 @@
       ]
     },
     {
+      "source": "/apps/menyra-social/lead-landing/media/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
       "source": "/apps/mnyra-heart/index.html",
       "headers": [
         {
