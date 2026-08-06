@@ -1617,20 +1617,32 @@ function buildRestaurantSearchKey(record = {}) {
     .join("_");
 }
 
+// Kopfzeile der Lokalet-Liste. Die Suchleiste liegt bewusst absolut ueber der
+// Zeile statt in ihr: die Zeile behaelt damit in jedem Zustand exakt dieselbe
+// Hoehe, und beim Oeffnen rutscht weder die Partner-Spur noch die Liste. Ihre
+// Kanten sitzen auf den Kanten der Zeile, die Leiste beginnt also genau dort,
+// wo auch "Highlights" beginnt.
 function renderRestaurantsListHeader({ hasAds = false, scopeLabel = "", deps = {} } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
+  const fadeClass = "transition-opacity duration-300 ease-out";
   return `
-    <div class="flex items-center justify-between gap-3 px-0" style="padding-left:0;padding-right:0;">
-      <div data-restaurant-search-title class="min-w-0 overflow-hidden transition-all duration-300 ease-in-out opacity-100" style="max-width:80%;">
+    <div
+      data-restaurant-search-shell
+      data-restaurant-search-scope="${escapeHtml(normalizeLooseKey(scopeLabel))}"
+      class="relative flex items-center gap-3"
+      style="min-height:2.75rem;"
+    >
+      <div data-restaurant-search-title class="min-w-0 flex-1 ${fadeClass} opacity-100">
         ${hasAds ? `
           <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
           <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Partner premium ne afersine tende")}</p>
         ` : ""}
       </div>
-      <div data-restaurant-search-shell data-restaurant-search-scope="${escapeHtml(normalizeLooseKey(scopeLabel))}" class="flex items-center justify-end shrink-0 transition-all duration-300 ease-in-out w-10">
+
+      <div data-restaurant-search-controls class="flex items-center gap-1.5 shrink-0 ${fadeClass} opacity-100">
         ${hasAds ? `
-          <div data-restaurant-ads-arrows class="hidden md:flex items-center gap-1.5 mr-1.5">
+          <div class="hidden md:flex items-center gap-1.5">
             <button type="button" data-restaurant-ads-scroll="left" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize majtas">
               ${icon("chevron-left", "w-3.5 h-3.5")}
             </button>
@@ -1644,25 +1656,32 @@ function renderRestaurantsListHeader({ hasAds = false, scopeLabel = "", deps = {
           data-restaurant-search-toggle
           aria-expanded="false"
           aria-label="Kerko lokale"
-          class="bg-white hover:bg-slate-50 text-slate-800 p-2.5 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95 ml-auto shrink-0"
+          class="bg-white hover:bg-slate-50 text-slate-800 p-2.5 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95 shrink-0"
         >
           ${icon("search", "w-4 h-4")}
         </button>
-        <div data-restaurant-search-panel class="hidden items-center gap-2 w-full bg-white rounded-full border border-slate-100 shadow-sm px-4 py-2.5">
-          ${icon("search", "w-4 h-4 text-slate-400 shrink-0")}
-          <input
-            type="text"
-            data-restaurant-search-input
-            placeholder="Kerko lokale..."
-            autocomplete="off"
-            enterkeyhint="search"
-            class="bg-transparent text-xs font-bold text-slate-800 w-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder-slate-400"
-            style="box-shadow:none;"
-          />
-          <button type="button" data-restaurant-search-close class="p-1 hover:bg-slate-100 rounded-full text-slate-500 transition-colors shrink-0" aria-label="Mbyll kerkimin">
-            ${icon("x", "w-3.5 h-3.5")}
-          </button>
-        </div>
+      </div>
+
+      <div
+        data-restaurant-search-panel
+        aria-hidden="true"
+        class="absolute flex items-center gap-2 bg-white rounded-full border border-slate-100 shadow-sm px-4 opacity-0 pointer-events-none ${fadeClass}"
+        style="left:0;right:0;top:50%;transform:translateY(-50%);height:2.75rem;"
+      >
+        ${icon("search", "w-4 h-4 text-slate-400 shrink-0")}
+        <input
+          type="text"
+          data-restaurant-search-input
+          placeholder="Kerko lokale..."
+          autocomplete="off"
+          enterkeyhint="search"
+          tabindex="-1"
+          class="bg-transparent text-xs font-bold text-slate-800 w-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0"
+          style="box-shadow:none;"
+        />
+        <button type="button" data-restaurant-search-close class="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-all shrink-0" aria-label="Mbyll kerkimin">
+          ${icon("x", "w-4 h-4")}
+        </button>
       </div>
     </div>
   `;

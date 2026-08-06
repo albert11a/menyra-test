@@ -322,25 +322,26 @@ function normalizeSearchKey(value = "") {
 let activeRestaurantSearchQuery = "";
 let activeRestaurantSearchScope = "";
 
+// Auf- und Zuklappen ist reines Ein- und Ausblenden: nichts aendert seine
+// Groesse, nichts wird aus dem Layout genommen. Die Klassen "hidden" und
+// "md:flex" der Pfeil-Leiste werden bewusst nicht angefasst - wer sie hier
+// umschaltet, holt die Pfeile beim Schliessen dauerhaft aufs Handy zurueck.
 function setRestaurantSearchOpen(doc, open = false) {
   const title = doc.querySelector("[data-restaurant-search-title]");
-  const shell = doc.querySelector("[data-restaurant-search-shell]");
-  const arrows = doc.querySelector("[data-restaurant-ads-arrows]");
+  const controls = doc.querySelector("[data-restaurant-search-controls]");
   const toggle = doc.querySelector("[data-restaurant-search-toggle]");
   const panel = doc.querySelector("[data-restaurant-search-panel]");
   const input = doc.querySelector("[data-restaurant-search-input]");
-  if (title?.style) title.style.maxWidth = open ? "0" : "80%";
-  title?.classList.toggle("opacity-0", !!open);
-  title?.classList.toggle("opacity-100", !open);
-  title?.classList.toggle("pointer-events-none", !!open);
-  shell?.classList.toggle("w-full", !!open);
-  shell?.classList.toggle("w-10", !open);
-  arrows?.classList.toggle("hidden", !!open);
-  arrows?.classList.toggle("md:flex", !open);
-  toggle?.classList.toggle("hidden", !!open);
+  [title, controls].forEach((node) => {
+    node?.classList.toggle("opacity-0", !!open);
+    node?.classList.toggle("opacity-100", !open);
+    node?.classList.toggle("pointer-events-none", !!open);
+  });
   toggle?.setAttribute?.("aria-expanded", open ? "true" : "false");
-  panel?.classList.toggle("hidden", !open);
-  panel?.classList.toggle("flex", !!open);
+  panel?.classList.toggle("opacity-0", !open);
+  panel?.classList.toggle("pointer-events-none", !open);
+  panel?.setAttribute?.("aria-hidden", open ? "false" : "true");
+  if (input) input.tabIndex = open ? 0 : -1;
   if (open && input && typeof input.focus === "function") {
     try {
       input.focus({ preventScroll: true });
