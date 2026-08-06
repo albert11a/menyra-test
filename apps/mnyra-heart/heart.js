@@ -39,7 +39,8 @@ import {
 import {
   loadLandingSessions,
   loadLandingSessionsFromCache,
-  setLandingArchived as schreibeLandingAblage
+  setLandingArchived as schreibeLandingAblage,
+  setLandingNext as schreibeLandingNext
 } from "./heart-landing-adapter.js";
 import {
   createEmptyDestinationPlace,
@@ -794,10 +795,33 @@ const ladeLandings = createSingleFlight(async () => {
       },
     fresh: () => withDeadline(loadLandingSessions(), LANDING_TIMEOUT_MS, LANDING_TIMEOUT_TEXT),
     onCached: (ausSpeicher) => actions.setLandingData({ ...ausSpeicher, fromCache: true }),
-    onFresh: (ausDemNetz) => actions.setLandingData(ausDemNetz),
+    onFresh: (ausDemNetz) => {
+      actions.setLandingData(ausDemNetz);
+      raeumeVorgemerkteAuf(ausDemNetz);
+    },
     onError: (error) => actions.setLandingError(error?.message || "Landings konnten nicht geladen werden.")
   });
 });
+
+// Vorgemerkt heisst "noch nicht geoeffnet". Sobald ein Lokal unter Aktiv
+// auftaucht, verschwindet es sofort aus der Anzeige - hier wird zusaetzlich der
+// Eintrag geloescht, damit er nicht ewig mitgelesen wird. Geht das daneben,
+// bleibt es bei der Anzeige; ein Fehler ist das fuer niemanden.
+function raeumeVorgemerkteAuf({ sessions = [], archived = [], next = [] } = {}) {
+  if (!next.length) return;
+  const abgelegt = new Set(archived);
+  const aktiv = new Set(
+    sessions
+      .map((session) => session.restaurantId)
+      .filter((id) => id && !abgelegt.has(id))
+  );
+  const ueberfaellig = next.filter((eintrag) => aktiv.has(eintrag.restaurantId));
+  if (!ueberfaellig.length) return;
+  actions.dropLandingNextEntries(ueberfaellig.map((eintrag) => eintrag.restaurantId));
+  ueberfaellig.forEach((eintrag) => {
+    schreibeLandingNext({ restaurantId: eintrag.restaurantId }, false).catch(() => {});
+  });
+}
 
 async function refreshLanding({ force = false } = {}) {
   const landing = store.getState().landing || {};
@@ -875,6 +899,41 @@ const operations = {
   },
   setLandingTab(tab) {
     actions.setLandingTab(tab);
+    // Das Suchfeld unter "Next" sucht in den Leads. Sie werden erst geholt,
+    // wenn der Reiter das erste Mal offen ist - wer nie dorthin geht, zahlt
+    // dafuer auch nichts.
+    if (tab === "next") loadCrmDomain("leads").catch(() => {});
+  },
+  setLandingNextQuery(value) {
+    actions.setLandingNextQuery(value);
+  },
+  // Vormerken: erst in die Liste, dann schreiben. Geht das Schreiben daneben,
+  // wird es zurueckgedreht - sonst steht es da und ist beim naechsten Laden weg.
+  async addLandingNext(entry = {}) {
+    const id = String(entry?.restaurantId || "").trim();
+    if (!id) return;
+    const eintrag = { ...entry, restaurantId: id, addedAt: new Date().toISOString() };
+    actions.setLandingNextEntry(eintrag, true);
+    // Das Suchfeld leeren: Was vorgemerkt ist, steht jetzt darunter.
+    actions.setLandingNextQuery("");
+    try {
+      await schreibeLandingNext(eintrag, true);
+    } catch (error) {
+      actions.setLandingNextEntry(eintrag, false);
+      setToast("Next", error?.message || "Konnte nicht vorgemerkt werden.", "danger");
+    }
+  },
+  async removeLandingNext(restaurantId) {
+    const id = String(restaurantId || "").trim();
+    if (!id) return;
+    const vorher = (store.getState().landing?.next || []).find((eintrag) => eintrag.restaurantId === id);
+    actions.setLandingNextEntry({ restaurantId: id }, false);
+    try {
+      await schreibeLandingNext({ restaurantId: id }, false);
+    } catch (error) {
+      if (vorher) actions.setLandingNextEntry(vorher, true);
+      setToast("Next", error?.message || "Konnte nicht entfernt werden.", "danger");
+    }
   },
   // Erst umschalten, dann schreiben. Geht das Schreiben daneben, wird es
   // zurueckgedreht und gesagt, was los ist - sonst sieht es aus, als waere es

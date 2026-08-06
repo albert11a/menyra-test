@@ -120,9 +120,83 @@ export function groupLandings(sessions = []) {
     .sort((a, b) => String(b.last).localeCompare(String(a.last)));
 }
 
-function renderTabs(tab, aktiv, abgelegt) {
+// Der Suchtext und die Namen werden gleich behandelt, bevor sie verglichen
+// werden: klein, ohne Akzente, ohne doppelte Leerzeichen. Sonst findet "prish"
+// das "Prishtinë" nicht, und wer "Bro  Pizza" tippt, findet gar nichts.
+export function normalizeLandingSearch(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Die Verkaufsseite des Lokals. Absolut, damit der kopierte Link direkt in
+// WhatsApp verschickt werden kann - genau wie bei den Leads im CRM.
+export function landingPitchUrl(entry = {}) {
+  const slug = String(entry.publicSlug || entry.restaurantId || "").trim();
+  if (!slug) return "";
+  const path = `/oferta/${encodeURIComponent(slug.replace(/^\/+/, ""))}`;
+  const origin = typeof window !== "undefined" ? String(window.location?.origin || "").trim() : "";
+  const istLokal = /localhost|127\.0\.0\.1|::1|^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin);
+  if (origin && istLokal) return `${origin}${path}`;
+  return `https://mnyra.com${path}`;
+}
+
+// Aus einem Lead wird ein Eintrag fuer Next. Welches Feld den Namen traegt,
+// haengt davon ab, woher der Lead kommt - deshalb hier an einer Stelle.
+export function leadToNextEntry(lead = {}) {
+  const restaurantId = String(lead.restaurantId || lead.landingRestaurantId || lead.id || "").trim();
+  if (!restaurantId) return null;
+  return {
+    restaurantId,
+    name: String(lead.businessName || lead.name || lead.restaurantName || restaurantId).trim(),
+    city: String(lead.city || "").trim(),
+    publicSlug: String(lead.publicSlug || lead.landingSlug || "").trim(),
+    logoUrl: String(lead.logoUrl || lead.logo || lead.imageUrl || "").trim()
+  };
+}
+
+const NEXT_SUGGESTION_LIMIT = 8;
+const NEXT_SEARCH_MIN = 2;
+
+// Was das Suchfeld vorschlaegt: Leads, die zum Getippten passen und noch nicht
+// vorgemerkt sind. Lokale, die unter Aktiv stehen, kommen gar nicht erst vor -
+// dort ist die Landing schon geoeffnet worden, Vormerken waere sinnlos.
+export function suggestLandingNext(leads = [], { query = "", vorhanden = [], aktiv = [] } = {}) {
+  const gesucht = normalizeLandingSearch(query);
+  if (gesucht.length < NEXT_SEARCH_MIN) return [];
+  const raus = new Set([...vorhanden, ...aktiv].map((id) => String(id || "")).filter(Boolean));
+
+  const treffer = [];
+  for (const lead of Array.isArray(leads) ? leads : []) {
+    const eintrag = leadToNextEntry(lead);
+    if (!eintrag || raus.has(eintrag.restaurantId)) continue;
+    const name = normalizeLandingSearch(eintrag.name);
+    if (!name) continue;
+    // Wer vorn im Namen trifft, steht oben - danach sucht man zuerst.
+    const rang = name.startsWith(gesucht)
+      ? 0
+      : (name.includes(gesucht) ? 1 : (normalizeLandingSearch(eintrag.city).startsWith(gesucht) ? 2 : -1));
+    if (rang < 0) continue;
+    raus.add(eintrag.restaurantId);
+    treffer.push({ ...eintrag, rang });
+    // Frueh genug aufhoeren: Mehr als ein paar Vorschlaege liest niemand, und
+    // bei tausend Leads soll das Tippen nicht ins Stocken geraten.
+    if (treffer.length >= NEXT_SUGGESTION_LIMIT * 4) break;
+  }
+
+  return treffer
+    .sort((a, b) => a.rang - b.rang || a.name.localeCompare(b.name))
+    .slice(0, NEXT_SUGGESTION_LIMIT)
+    .map(({ rang: _rang, ...eintrag }) => eintrag);
+}
+
+function renderTabs(tab, aktiv, vorgemerkt, abgelegt) {
   const reiter = [
     { key: "active", label: "Aktiv", count: aktiv },
+    { key: "next", label: "Next", count: vorgemerkt },
     { key: "archived", label: "Archiviert", count: abgelegt }
   ];
   return `
@@ -144,7 +218,7 @@ function renderList(landings, tab) {
     return `
       <div class="heart-empty-block">
         ${tab === "archived"
-    ? "Hier ist nichts abgelegt. Was Sie nicht mehr brauchen, legen Sie mit &bdquo;Ablegen&ldquo; hierher."
+    ? "Hier ist nichts abgelegt. Was Sie nicht mehr brauchen, legen Sie unten in der Auswertung mit &bdquo;Archivieren&ldquo; hierher."
     : "Noch keine Aufrufe. Sobald jemand eine Landing oeffnet, steht sie hier."}
       </div>
     `;
@@ -172,6 +246,96 @@ function renderList(landings, tab) {
         </button>
       `).join("")}
     </div>
+  `;
+}
+
+// Der Reiter "Next": oben das Suchfeld mit seinen Vorschlaegen, darunter die
+// vorgemerkten Lokale. Jede Karte bringt den Link zu ihrer Landing mit, damit
+// er ohne Umweg in WhatsApp geht.
+function renderNext(next, { leads = [], query = "", aktiveIds = [], leadsStatus = "" } = {}) {
+  const vorschlaege = suggestLandingNext(leads, {
+    query,
+    vorhanden: next.map((eintrag) => eintrag.restaurantId),
+    aktiv: aktiveIds
+  });
+  const gesucht = normalizeLandingSearch(query);
+  const sucheLaeuft = gesucht.length >= NEXT_SEARCH_MIN;
+
+  const suchfeld = `
+    <div class="heart-landing-search">
+      <span class="heart-landing-search__icon" aria-hidden="true">${renderHeartIcon("search")}</span>
+      <input id="landingNextSearch" type="search" class="heart-landing-search__input"
+        data-landing-next-search autocomplete="off" autocapitalize="off" spellcheck="false"
+        placeholder="Lokal suchen" aria-label="Lokal suchen"
+        value="${escapeHtml(query)}" />
+    </div>
+  `;
+
+  // Was es zum Getippten zu sagen gibt: die Treffer, oder warum keine da sind.
+  let vorschlagBlock = "";
+  if (sucheLaeuft && vorschlaege.length) {
+    vorschlagBlock = `
+      <div class="heart-landing-suggestions" role="listbox">
+        ${vorschlaege.map((eintrag) => `
+          <button type="button" class="heart-landing-suggestion" role="option"
+            data-action="add-landing-next"
+            data-landing-id="${escapeHtml(eintrag.restaurantId)}"
+            data-landing-name="${escapeHtml(eintrag.name)}"
+            data-landing-city="${escapeHtml(eintrag.city)}"
+            data-landing-slug="${escapeHtml(eintrag.publicSlug)}"
+            data-landing-logo="${escapeHtml(eintrag.logoUrl)}">
+            ${renderAvatar(eintrag)}
+            <span class="heart-landing-suggestion__text">
+              <span class="heart-landing-suggestion__name">${escapeHtml(eintrag.name)}</span>
+              <span class="heart-landing-suggestion__meta">${escapeHtml(eintrag.city || eintrag.publicSlug || "")}</span>
+            </span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+  } else if (sucheLaeuft && leadsStatus === "loading" && !leads.length) {
+    vorschlagBlock = `<div class="heart-landing-suggestions-note">Leads werden geladen...</div>`;
+  } else if (sucheLaeuft) {
+    vorschlagBlock = `<div class="heart-landing-suggestions-note">Kein Lokal gefunden. Wer schon unter Aktiv steht, taucht hier nicht auf.</div>`;
+  }
+
+  const liste = next.length
+    ? `
+      <div class="heart-landing-list">
+        ${next.map((eintrag) => {
+    const link = landingPitchUrl(eintrag);
+    return `
+            <div class="heart-landing-card heart-landing-card--next">
+              <span class="heart-landing-card__head">
+                ${renderAvatar(eintrag)}
+                <span class="heart-landing-card__title">
+                  <span class="heart-landing-card__name">${escapeHtml(eintrag.name)}</span>
+                  <span class="heart-landing-card__meta">${escapeHtml(eintrag.city || eintrag.publicSlug || "")}</span>
+                </span>
+                <button type="button" class="heart-landing-next-remove"
+                  data-action="remove-landing-next"
+                  data-landing-id="${escapeHtml(eintrag.restaurantId)}"
+                  aria-label="${escapeHtml(eintrag.name)} aus Next entfernen">
+                  ${renderHeartIcon("x")}
+                </button>
+              </span>
+              <button type="button" class="heart-landing-copy"
+                data-action="copy-lead-pitch-link"
+                data-pitch-url="${escapeHtml(link)}">
+                ${renderHeartIcon("copy")}
+                <span>Link kopieren</span>
+              </button>
+            </div>
+          `;
+  }).join("")}
+      </div>
+    `
+    : `<div class="heart-empty-block">Hier ist noch nichts vorgemerkt. Suchen Sie oben ein Lokal und waehlen Sie es aus.</div>`;
+
+  return `
+    ${suchfeld}
+    ${vorschlagBlock}
+    ${liste}
   `;
 }
 
@@ -312,7 +476,7 @@ function renderListSkeleton() {
   `;
 }
 
-export function renderHeartLandingView(landing = {}) {
+export function renderHeartLandingView(landing = {}, options = {}) {
   if (landing.status === "loading") {
     return `
       <section class="heart-section">
@@ -327,8 +491,17 @@ export function renderHeartLandingView(landing = {}) {
 
   const alle = groupLandings(landing.sessions || []);
   const abgelegt = new Set(landing.archived || []);
-  const tab = landing.tab === "archived" ? "archived" : "active";
+  const tab = ["active", "next", "archived"].includes(landing.tab) ? landing.tab : "active";
   const sichtbar = alle.filter((entry) => abgelegt.has(entry.restaurantId) === (tab === "archived"));
+
+  // Was unter Aktiv steht, ist geoeffnet worden und gehoert damit nicht mehr
+  // nach Next. Hier wird es herausgefiltert, statt auf das Loeschen im Hinter-
+  // grund zu warten: Sonst stuende ein Lokal kurz in beiden Reitern.
+  const aktiveIds = alle
+    .filter((entry) => !abgelegt.has(entry.restaurantId))
+    .map((entry) => entry.restaurantId);
+  const aktiveIdSet = new Set(aktiveIds);
+  const vorgemerkt = (landing.next || []).filter((eintrag) => !aktiveIdSet.has(eintrag.restaurantId));
 
   // Ist die Abfrage an ihre Grenze gestossen, fehlt ein beliebiger Teil der
   // Sitzungen - dann steht das ueber den Zahlen, statt dass man ihnen glaubt.
@@ -340,13 +513,20 @@ export function renderHeartLandingView(landing = {}) {
   // Die Auswertung wird nur gezeigt, wenn das Lokal auch im offenen Reiter
   // liegt - sonst stuende man in der Auswertung von etwas, das man gerade
   // weggelegt hat.
-  const selected = landing.selectedId
+  const selected = tab !== "next" && landing.selectedId
     ? sichtbar.find((entry) => entry.restaurantId === landing.selectedId)
     : null;
 
   if (selected) return renderDetail(selected, tab, abgeschnitten);
 
-  const anzahlAktiv = alle.length - alle.filter((entry) => abgelegt.has(entry.restaurantId)).length;
+  const inhalt = tab === "next"
+    ? renderNext(vorgemerkt, {
+      leads: options.leads || [],
+      leadsStatus: options.leadsStatus || "",
+      query: landing.nextQuery || "",
+      aktiveIds
+    })
+    : renderList(sichtbar, tab);
 
   return `
     <section class="heart-section">
@@ -354,8 +534,8 @@ export function renderHeartLandingView(landing = {}) {
       <p class="heart-section__hint">Wer hat welche Landing gesehen, wie weit ist er gekommen, und was hat er geantwortet.</p>
       ${abgeschnitten}
       ${renderStaleNote(landing)}
-      ${renderTabs(tab, anzahlAktiv, alle.length - anzahlAktiv)}
-      ${renderList(sichtbar, tab)}
+      ${renderTabs(tab, aktiveIds.length, vorgemerkt.length, alle.length - aktiveIds.length)}
+      ${inhalt}
     </section>
   `;
 }

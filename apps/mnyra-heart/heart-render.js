@@ -184,7 +184,13 @@ function renderViewBody(state, runtime = {}) {
     return renderHeartAnalyticsView(state.analytics || {});
   }
   if (activeView === "landing") {
-    return renderHeartLandingView(state.landing || {});
+    // Das Suchfeld im Reiter "Next" sucht in den Leads, die das CRM ohnehin
+    // schon geladen hat - keine zweite Liste und keine zweite Abfrage.
+    const leadsSection = state.crmAdmin?.sections?.leads || {};
+    return renderHeartLandingView(state.landing || {}, {
+      leads: leadsSection.items || [],
+      leadsStatus: leadsSection.status || ""
+    });
   }
   if (activeView === "destinations") {
     return renderHeartDestinationsView(state.destinations || {});

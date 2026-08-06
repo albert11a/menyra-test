@@ -127,6 +127,11 @@ export function createHeartInitialState() {
       error: "",
       sessions: [],
       archived: [],
+      // Vorgemerkt fuer "Next": Lokale, deren Landing noch niemand geoeffnet
+      // hat. Jeder Eintrag traegt Name, Ort, Slug und Bild bei sich - es gibt
+      // keine Sitzung, aus der sich das ableiten liesse.
+      next: [],
+      nextQuery: "",
       abgeschnitten: false,
       grenze: 0,
       tab: "active",
@@ -502,6 +507,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setLandingData({
     sessions = [],
     archived = [],
+    next = [],
     abgeschnitten = false,
     grenze = 0,
     fromCache = false
@@ -511,6 +517,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.landing.error = "";
       draft.landing.sessions = sanitizeStateValue(Array.isArray(sessions) ? sessions : []);
       draft.landing.archived = sanitizeStateValue(Array.isArray(archived) ? archived : []);
+      draft.landing.next = sanitizeStateValue(Array.isArray(next) ? next : []);
       draft.landing.abgeschnitten = abgeschnitten === true;
       draft.landing.grenze = Number(grenze) || 0;
       draft.landing.loadedAt = new Date().toISOString();
@@ -518,9 +525,11 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  const LANDING_TABS = ["active", "next", "archived"];
+
   function setLandingTab(tab = "active") {
     patch((draft) => {
-      draft.landing.tab = tab === "archived" ? "archived" : "active";
+      draft.landing.tab = LANDING_TABS.includes(tab) ? tab : "active";
       // Beim Wechseln des Reiters die geoeffnete Auswertung schliessen: Sonst
       // steht man in der Auswertung eines Lokals, das im anderen Reiter liegt.
       draft.landing.selectedId = "";
@@ -552,6 +561,36 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setLandingSelected(restaurantId = "") {
     patch((draft) => {
       draft.landing.selectedId = String(restaurantId || "");
+    });
+  }
+
+  function setLandingNextQuery(value = "") {
+    patch((draft) => {
+      draft.landing.nextQuery = String(value || "");
+    });
+  }
+
+  // Sofort in die Liste, ohne auf Firestore zu warten - wie beim Ablegen.
+  // Geht das Schreiben daneben, wird es von aussen zurueckgedreht.
+  function setLandingNextEntry(entry = {}, vorgemerkt = true) {
+    patch((draft) => {
+      const id = String(entry?.restaurantId || "").trim();
+      if (!id) return;
+      const ohne = (draft.landing.next || []).filter((eintrag) => eintrag.restaurantId !== id);
+      draft.landing.next = vorgemerkt
+        ? [sanitizeStateValue({ ...entry, restaurantId: id }), ...ohne]
+        : ohne;
+    });
+  }
+
+  // Sobald ein vorgemerktes Lokal unter Aktiv auftaucht, gehoert es nicht mehr
+  // nach Next: Vorgemerkt heisst "noch nicht geoeffnet".
+  function dropLandingNextEntries(ids = []) {
+    const weg = new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || "")).filter(Boolean));
+    if (!weg.size) return;
+    patch((draft) => {
+      const bleibt = (draft.landing.next || []).filter((eintrag) => !weg.has(eintrag.restaurantId));
+      if (bleibt.length !== (draft.landing.next || []).length) draft.landing.next = bleibt;
     });
   }
 
@@ -824,6 +863,9 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setLandingSelected,
       setLandingTab,
       setLandingArchived,
+      setLandingNextQuery,
+      setLandingNextEntry,
+      dropLandingNextEntries,
       setDestinationsLoading,
       setDestinationsData,
       setDestinationsError,

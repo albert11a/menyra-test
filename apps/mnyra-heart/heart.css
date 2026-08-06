@@ -3261,6 +3261,167 @@ damit Lead- und Destination-Confirm sich nie mischen.
   color: var(--heart-success, #059669);
 }
 
+/* ---------- Landing: der Reiter "Next" ---------- */
+
+.heart-landing-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 0 10px;
+}
+
+.heart-landing-search__icon {
+  position: absolute;
+  left: 14px;
+  display: inline-flex;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.heart-landing-search__icon .heart-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.heart-landing-search__input {
+  width: 100%;
+  padding: 13px 14px 13px 42px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--heart-surface, #fff);
+  color: var(--heart-text, inherit);
+  /* 16px, damit iOS beim Antippen nicht in das Feld hineinzoomt. */
+  font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.heart-landing-search__input:focus {
+  outline: none;
+  border-color: var(--heart-accent-2, #e11d48);
+}
+
+.heart-landing-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding: 6px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--heart-surface-strong, #fff);
+}
+
+.heart-landing-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-landing-suggestion:active {
+  background: var(--heart-surface-soft, #f1f5f9);
+}
+
+.heart-landing-suggestion .heart-landing-card__avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+
+.heart-landing-suggestion__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.heart-landing-suggestion__name {
+  font-weight: 700;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heart-landing-suggestion__meta {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.heart-landing-suggestions-note {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--heart-surface-soft, #f1f5f9);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* Die vorgemerkte Karte ist kein Knopf - darin sitzen zwei. */
+.heart-landing-card--next .heart-landing-card__head {
+  gap: 12px;
+}
+
+.heart-landing-card--next .heart-landing-card__title {
+  flex: 1 1 auto;
+}
+
+.heart-landing-next-remove {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 999px;
+  background: none;
+  color: var(--heart-text-muted, #64748b);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-landing-next-remove .heart-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.heart-landing-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--heart-border-strong, #cbd5e1);
+  border-radius: 12px;
+  background: var(--heart-surface-soft, #f8fafc);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-landing-copy:active {
+  transform: scale(0.99);
+}
+
+.heart-landing-copy .heart-icon {
+  width: 16px;
+  height: 16px;
+}
+
 /* Der Kopf der Auswertung: links das Bild des Lokals, daneben sein Name. */
 .heart-landing-detail__head {
   display: flex;

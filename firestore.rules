@@ -871,6 +871,13 @@ service cloud.firestore {
       allow read, write: if isCeoActor();
     }
 
+    // Die Merkliste "Next": Lokale, deren Landing verschickt werden soll,
+    // bevor sie jemand geoeffnet hat. Dieselbe Ueberlegung wie beim Archiv -
+    // es ist Ordnung fuer das CEO-Konto und geht den Wirt nichts an.
+    match /landingNext/{restaurantId} {
+      allow read, write: if isCeoActor();
+    }
+
     match /restaurants/{restaurantId} {
       allow read: if true;
       allow create: if canCreateRestaurantDoc(restaurantId);

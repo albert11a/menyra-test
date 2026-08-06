@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { groupLandings, renderHeartLandingView } from "../apps/mnyra-heart/heart-landing-render.js";
+import {
+  groupLandings,
+  landingPitchUrl,
+  renderHeartLandingView,
+  suggestLandingNext
+} from "../apps/mnyra-heart/heart-landing-render.js";
 
 // Die Auswertung soll drei Fragen beantworten: Wie viele haben geoeffnet, wo
 // springen sie ab, und was haben sie geantwortet. Diese Tests halten fest,
@@ -168,6 +173,7 @@ test("die Reiter zeigen, wie viel in jedem liegt", () => {
     status: "ready",
     tab: "active",
     archived: ["lokal-2"],
+    next: [{ restaurantId: "lokal-9", name: "Noch nicht offen" }],
     sessions: [
       session({ id: "a", restaurantId: "lokal-1" }),
       session({ id: "b", restaurantId: "lokal-2" }),
@@ -175,7 +181,113 @@ test("die Reiter zeigen, wie viel in jedem liegt", () => {
     ]
   });
   assert.match(html, /Aktiv <span class="heart-landing-tab__count">2<\/span>/);
+  assert.match(html, /Next <span class="heart-landing-tab__count">1<\/span>/);
   assert.match(html, /Archiviert <span class="heart-landing-tab__count">1<\/span>/);
+
+  // Die Reihenfolge ist Aktiv, Next, Archiviert.
+  assert.ok(html.indexOf(`data-landing-tab="active"`) < html.indexOf(`data-landing-tab="next"`));
+  assert.ok(html.indexOf(`data-landing-tab="next"`) < html.indexOf(`data-landing-tab="archived"`));
+});
+
+// ---------------------------------------------------------------------------
+// Der Reiter "Next": vorgemerkte Lokale, deren Landing noch niemand geoeffnet
+// hat. Von dort geht der Link direkt in die Zwischenablage.
+// ---------------------------------------------------------------------------
+
+function lead(over = {}) {
+  return {
+    id: "lead-1",
+    restaurantId: "lokal-7",
+    businessName: "Casarita",
+    city: "Prishtine",
+    publicSlug: "casarita",
+    logoUrl: "",
+    ...over
+  };
+}
+
+test("die Suche schlaegt Leads vor, sobald zwei Zeichen getippt sind", () => {
+  const leads = [lead(), lead({ id: "lead-2", restaurantId: "lokal-8", businessName: "Bro Pizza" })];
+
+  assert.deepEqual(suggestLandingNext(leads, { query: "c" }), [], "ein Zeichen ist zu wenig");
+
+  const treffer = suggestLandingNext(leads, { query: "casa" });
+  assert.equal(treffer.length, 1);
+  assert.equal(treffer[0].restaurantId, "lokal-7");
+  assert.equal(treffer[0].name, "Casarita");
+});
+
+test("Akzente und Gross-/Kleinschreibung stehen der Suche nicht im Weg", () => {
+  const treffer = suggestLandingNext([lead({ businessName: "Prishtinë Grill" })], { query: "prishtine g" });
+  assert.equal(treffer.length, 1);
+});
+
+// Wer unter Aktiv steht, hat die Landing schon geoeffnet - den vormerken zu
+// koennen waere sinnlos, also taucht er in der Suche gar nicht erst auf.
+test("was unter Aktiv oder schon in Next steht, wird nicht vorgeschlagen", () => {
+  const leads = [lead(), lead({ id: "lead-2", restaurantId: "lokal-8", businessName: "Casa Nova" })];
+
+  assert.equal(suggestLandingNext(leads, { query: "casa", aktiv: ["lokal-7"] }).length, 1);
+  assert.equal(suggestLandingNext(leads, { query: "casa", vorhanden: ["lokal-8"] }).length, 1);
+  assert.equal(suggestLandingNext(leads, { query: "casa", aktiv: ["lokal-7"], vorhanden: ["lokal-8"] }).length, 0);
+});
+
+test("der Link zeigt auf die Verkaufsseite des Lokals", () => {
+  assert.equal(landingPitchUrl({ publicSlug: "bro-pizza" }), "https://mnyra.com/oferta/bro-pizza");
+  // Ohne Slug bleibt die Kennung des Lokals - besser als gar kein Link.
+  assert.equal(landingPitchUrl({ restaurantId: "lokal-7" }), "https://mnyra.com/oferta/lokal-7");
+  assert.equal(landingPitchUrl({}), "");
+});
+
+test("der Reiter Next zeigt Suchfeld, Karte, Link und ein Kreuz zum Entfernen", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    tab: "next",
+    next: [{ restaurantId: "lokal-7", name: "Casarita", city: "Prishtine", publicSlug: "casarita" }],
+    sessions: [session()]
+  }, { leads: [] });
+
+  assert.match(html, /id="landingNextSearch"/, "das Suchfeld fehlt");
+  assert.match(html, /Casarita/);
+  assert.match(html, /data-action="copy-lead-pitch-link"[\s\S]{0,60}data-pitch-url="https:\/\/mnyra\.com\/oferta\/casarita"/);
+  assert.match(html, /data-action="remove-landing-next"/);
+  // Und die Auswertungen der aktiven Lokale stehen hier nicht mit drin.
+  assert.ok(!html.includes("Bro Pizza"), "der Aktiv-Reiter blutet in Next hinein");
+});
+
+test("ein vorgemerktes Lokal verschwindet aus Next, sobald es unter Aktiv auftaucht", () => {
+  const daten = {
+    status: "ready",
+    tab: "next",
+    next: [{ restaurantId: "lokal-1", name: "Bro Pizza" }],
+    sessions: [session({ restaurantId: "lokal-1", name: "Bro Pizza" })]
+  };
+
+  const html = renderHeartLandingView(daten);
+  assert.ok(!html.includes("Bro Pizza"), "das Lokal steht in beiden Reitern");
+  assert.match(html, /Next <span class="heart-landing-tab__count">0<\/span>/);
+
+  // Ist es abgelegt, ist es nicht mehr aktiv - dann darf es wieder vorgemerkt sein.
+  const abgelegt = renderHeartLandingView({ ...daten, archived: ["lokal-1"] });
+  assert.match(abgelegt, /Bro Pizza/);
+});
+
+test("im leeren Next steht, was zu tun ist", () => {
+  const html = renderHeartLandingView({ status: "ready", tab: "next", sessions: [] });
+  assert.match(html, /noch nichts vorgemerkt/);
+});
+
+test("die Vorschlaege lassen sich mit einem Tipp uebernehmen", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    tab: "next",
+    nextQuery: "casa",
+    sessions: []
+  }, { leads: [lead()] });
+
+  assert.match(html, /data-action="add-landing-next"/);
+  assert.match(html, /data-landing-id="lokal-7"/);
+  assert.match(html, /data-landing-slug="casarita"/);
 });
 
 test("die Auswertung eines abgelegten Lokals oeffnet sich nicht im Aktiv-Reiter", () => {

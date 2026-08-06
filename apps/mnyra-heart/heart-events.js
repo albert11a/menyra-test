@@ -136,6 +136,20 @@ export function bindHeartEvents({
       operations.setLandingTab?.(target.getAttribute("data-landing-tab"));
       return;
     }
+    if (action === "add-landing-next") {
+      await operations.addLandingNext?.({
+        restaurantId: target.getAttribute("data-landing-id"),
+        name: target.getAttribute("data-landing-name"),
+        city: target.getAttribute("data-landing-city"),
+        publicSlug: target.getAttribute("data-landing-slug"),
+        logoUrl: target.getAttribute("data-landing-logo")
+      });
+      return;
+    }
+    if (action === "remove-landing-next") {
+      await operations.removeLandingNext?.(target.getAttribute("data-landing-id"));
+      return;
+    }
     if (action === "toggle-landing-archive") {
       await operations.toggleLandingArchive?.(
         target.getAttribute("data-landing-id"),
@@ -382,6 +396,14 @@ export function bindHeartEvents({
       return;
     }
 
+    // Das kleine Kreuz in einem Suchfeld meldet sich je nach Browser als
+    // "change" statt als "input" - beides muss den Text wegnehmen.
+    const landingNextSearch = event.target?.closest?.("[data-landing-next-search]");
+    if (landingNextSearch) {
+      operations.setLandingNextQuery?.(landingNextSearch.value);
+      return;
+    }
+
     const crmSearch = event.target?.closest?.("[data-crm-search]");
     if (crmSearch) {
       operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
@@ -407,6 +429,12 @@ export function bindHeartEvents({
   }
 
   function handleInput(event) {
+    const landingNextSearch = event.target?.closest?.("[data-landing-next-search]");
+    if (landingNextSearch) {
+      operations.setLandingNextQuery?.(landingNextSearch.value);
+      return;
+    }
+
     const crmSearch = event.target?.closest?.("[data-crm-search]");
     if (crmSearch) {
       operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
