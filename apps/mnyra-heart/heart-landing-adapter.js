@@ -50,8 +50,22 @@ const NAME_CHUNK = 10;
 // Wie viele Namenspakete gleichzeitig unterwegs sein duerfen. Alle auf einmal
 // waere bei sehr vielen Lokalen unhoeflich; einzeln war zu langsam.
 const NAME_PARALLEL = 8;
+// Abgelegt und vorgemerkt liegen in derselben Sammlung.
+//
+// Der Grund ist kein schoener, aber ein tragfaehiger: Eine eigene Sammlung
+// braeuchte eine eigene Firestore-Regel, und die wird von Hand deployt - bis
+// dahin lehnt der Server jeden Zugriff ab, und "Next" waere eine Ansicht, die
+// beim ersten Antippen einen Rechtefehler zeigt. Diese Sammlung hat ihre Regel
+// schon lange (nur das CEO-Konto darf lesen und schreiben), und es ist dieselbe
+// Art von Notiz: Ordnung fuer den, der Heart bedient.
+//
+// Damit sich beides nicht ins Gehege kommt, tragen die Vormerkungen ein
+// Praefix in der Dokumentkennung. Ein Lokal kann also gleichzeitig abgelegt und
+// vorgemerkt sein, ohne dass ein Schreibvorgang den anderen ueberschreibt - und
+// beides kommt mit einer einzigen Abfrage herein statt mit zweien, was auf
+// langsamer Verbindung den Unterschied macht.
 const ARCHIVE_COLLECTION = "landingArchive";
-const NEXT_COLLECTION = "landingNext";
+const NEXT_PREFIX = "next__";
 
 function asText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -120,45 +134,47 @@ async function readNames(leser, ids) {
   return new Map(gelesen.flat());
 }
 
-// Welche Landings abgelegt sind. Faellt das weg - etwa weil die Regel es
-// verbietet -, ist das kein Grund, die Auswertung nicht zu zeigen: Dann ist
-// eben nichts abgelegt.
-async function readArchive(leser) {
+// Was abgelegt und was vorgemerkt ist, in einer Abfrage.
+//
+// Die Vormerkungen tragen Name, Ort, Slug und Bild bei sich: Was vorgemerkt
+// ist, hat noch niemand geoeffnet, es gibt also keine Sitzung, aus der sich das
+// ableiten liesse. So ist die Karte sofort vollstaendig, ohne zweite Runde zum
+// Server.
+//
+// Faellt das hier weg - etwa weil die Regel es verbietet -, ist das kein Grund,
+// die Auswertung nicht zu zeigen: Dann ist eben nichts abgelegt und nichts
+// vorgemerkt.
+async function readBoard(leser) {
   try {
     const snap = await leser(query(collection(db, ARCHIVE_COLLECTION), limit(SESSION_LIMIT)));
-    const abgelegt = [];
-    snap.forEach((eintrag) => {
-      if (eintrag.data()?.archived === true) abgelegt.push(eintrag.id);
-    });
-    return abgelegt;
-  } catch {
-    return [];
-  }
-}
-
-// Die Merkliste "Next". Was hier steht, hat noch niemand geoeffnet - es gibt
-// also keine Sitzung, aus der sich Name oder Bild ableiten liessen. Deshalb
-// steht beides im Eintrag selbst: Die Karte ist damit sofort vollstaendig, ohne
-// eine zweite Runde zum Server.
-async function readNext(leser) {
-  try {
-    const snap = await leser(query(collection(db, NEXT_COLLECTION), limit(SESSION_LIMIT)));
-    const eintraege = [];
+    const archived = [];
+    const next = [];
     snap.forEach((eintrag) => {
       const data = eintrag.data() || {};
-      eintraege.push({
-        restaurantId: eintrag.id,
-        name: asText(data.name) || eintrag.id,
-        city: asText(data.city),
-        publicSlug: asText(data.publicSlug),
-        logoUrl: asText(data.logoUrl),
-        addedAt: asText(data.addedAt)
-      });
+      if (eintrag.id.startsWith(NEXT_PREFIX)) {
+        if (data.next !== true) return;
+        next.push({
+          restaurantId: eintrag.id.slice(NEXT_PREFIX.length),
+          name: asText(data.name),
+          city: asText(data.city),
+          publicSlug: asText(data.publicSlug),
+          logoUrl: asText(data.logoUrl),
+          addedAt: asText(data.addedAt)
+        });
+        return;
+      }
+      if (data.archived === true) archived.push(eintrag.id);
     });
-    // Zuletzt vorgemerkt steht oben - das ist das, woran man gerade arbeitet.
-    return eintraege.sort((a, b) => String(b.addedAt).localeCompare(String(a.addedAt)));
+    return {
+      archived,
+      // Zuletzt vorgemerkt steht oben - das ist das, woran man gerade arbeitet.
+      next: next
+        .filter((eintrag) => eintrag.restaurantId)
+        .map((eintrag) => ({ ...eintrag, name: eintrag.name || eintrag.restaurantId }))
+        .sort((a, b) => String(b.addedAt).localeCompare(String(a.addedAt)))
+    };
   } catch {
-    return [];
+    return { archived: [], next: [] };
   }
 }
 
@@ -176,10 +192,9 @@ function benennen(sessions, names) {
 }
 
 async function ladeMit(leser) {
-  const [snap, archived, next] = await Promise.all([
+  const [snap, { archived, next }] = await Promise.all([
     leser(query(collectionGroup(db, "landingSessions"), limit(SESSION_LIMIT))),
-    readArchive(leser),
-    readNext(leser)
+    readBoard(leser)
   ]);
   const sessions = [];
   snap.forEach((eintrag) => sessions.push(normalizeSession(eintrag)));
@@ -234,12 +249,13 @@ export async function setLandingArchived(restaurantId = "", archived = true) {
 export async function setLandingNext(entry = {}, vorgemerkt = true) {
   const id = String(entry?.restaurantId || "").trim();
   if (!id) throw new Error("Ohne Lokal laesst sich nichts vormerken.");
-  const ziel = doc(db, NEXT_COLLECTION, id);
+  const ziel = doc(db, ARCHIVE_COLLECTION, `${NEXT_PREFIX}${id}`);
   if (!vorgemerkt) {
     await deleteDoc(ziel);
     return;
   }
   await setDoc(ziel, {
+    next: true,
     name: asText(entry.name) || id,
     city: asText(entry.city),
     publicSlug: asText(entry.publicSlug),

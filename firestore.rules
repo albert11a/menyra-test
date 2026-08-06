@@ -863,18 +863,13 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
-    // Welche Landings in Heart abgelegt sind. Reine Ordnung fuer den, der
-    // Heart bedient - der Wirt hat damit nichts zu tun und sieht es auch
-    // nicht. Es steht bewusst nicht im Restaurant-Dokument: Dort darf der
-    // Wirt schreiben, und was hier abgelegt ist, geht nur das CEO-Konto an.
-    match /landingArchive/{restaurantId} {
-      allow read, write: if isCeoActor();
-    }
-
-    // Die Merkliste "Next": Lokale, deren Landing verschickt werden soll,
-    // bevor sie jemand geoeffnet hat. Dieselbe Ueberlegung wie beim Archiv -
-    // es ist Ordnung fuer das CEO-Konto und geht den Wirt nichts an.
-    match /landingNext/{restaurantId} {
+    // Welche Landings in Heart abgelegt sind, und welche fuer "Next"
+    // vorgemerkt sind (deren Kennung traegt dann ein "next__" davor). Reine
+    // Ordnung fuer den, der Heart bedient - der Wirt hat damit nichts zu tun
+    // und sieht es auch nicht. Es steht bewusst nicht im Restaurant-Dokument:
+    // Dort darf der Wirt schreiben, und was hier steht, geht nur das
+    // CEO-Konto an.
+    match /landingArchive/{documentId} {
       allow read, write: if isCeoActor();
     }
 
