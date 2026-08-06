@@ -8,89 +8,111 @@ import {
   BUSINESS_COMPOSER_CSS
 } from "../apps/menyra-social/core/composer/business-composer-controller.js";
 import {
-  renderDashboardComposerHeading,
-  renderDashboardComposerCards,
+  renderDashboardComposerCard,
+  renderDashboardComposerSplitCards,
   DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 
-test("heading reads Posto n'MNYRA in the brand's own lettering", () => {
-  const html = renderDashboardComposerHeading();
+test("composer card offers postim and story with mnyra accent", () => {
+  const html = renderDashboardComposerCard({ iconFn: (name) => `<i data-icon="${name}"></i>` });
+  // Ueberschrift und Untertitel bleiben Wort fuer Wort, wie sie waren.
   assert.ok(html.includes("Posto n'"));
-  assert.ok(html.includes('<span class="mnyra-dash__brandline-mark">MNYRA</span>'));
-  // Die Schrift des Kopfzeilen-Logos: schwarz, kursiv, eng gesetzt.
-  const block = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__brandline-mark {"));
-  const rules = block.slice(0, block.indexOf("}"));
-  assert.ok(rules.includes("font-style: italic;"), rules);
-  assert.ok(rules.includes("letter-spacing: -0.05em;"), rules);
-  // Und die Zeile selbst steht schwarz, nicht im Akzent.
-  const line = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__brandline {"));
-  assert.ok(line.slice(0, line.indexOf("}")).includes("color: var(--dash-ink);"));
+  assert.ok(html.includes('<span class="mnyra-dash__composer-accent">Zbulo</span>'));
+  assert.ok(html.includes("Ndaj një postim ose një story me klientët e tu."));
+  assert.ok(html.includes('data-dashboard-composer="post"'));
+  assert.ok(html.includes('data-dashboard-composer="story"'));
+  assert.ok(html.includes(">Postim<"));
+  assert.ok(html.includes(">Story<"));
+  // Kein Punkt vor der Ueberschrift, keine "Quick Create"-Pille.
+  assert.ok(!html.includes("composer-dot"));
+  assert.ok(!html.includes("composer-badge"));
+  assert.ok(!html.includes("Quick Create"));
+  // Postim ist der ausgefuellte Knopf mit Plus, Story traegt den Ring-Punkt.
+  assert.ok(html.includes('class="mnyra-dash__composer-btn mnyra-dash__composer-btn--primary" data-dashboard-composer="post"'));
+  assert.equal((html.match(/data-icon="plus"/g) || []).length, 1);
+  assert.ok(html.includes('<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle>'));
 });
 
-test("greeting says Përshëndetje in black", () => {
+test("composer card styles keep the mockup layout", () => {
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-btn--primary {"));
+  // Abstand zur Begruessung darueber, kleinere Knoepfe.
+  assert.ok(DASHBOARD_CSS.includes("margin-top: 34px;"));
+  assert.ok(DASHBOARD_CSS.includes("min-height: 46px;"));
+  // Der ausgefuellte Knopf wirft keinen eigenen Schatten mehr.
+  assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
+  // Das Logo neben der Begruessung steht flach in der Seite, ohne Schatten.
+  const greetLogoBlock = DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf(".mnyra-dash__greet-logo {"),
+    DASHBOARD_CSS.indexOf(".mnyra-dash__greet-logo img,")
+  );
+  assert.ok(!greetLogoBlock.includes("box-shadow"), greetLogoBlock);
+  // "Përshëndetje," steht in derselben Farbe wie der Name des Lokals daneben.
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__greet-hello { color: var(--dash-ink); }"));
-  assert.ok(!DASHBOARD_CSS.includes(".mnyra-dash__greet-hello { color: var(--dash-accent); }"));
-});
-
-test("three posting cards sit side by side, each with its own colour", () => {
-  const html = renderDashboardComposerCards();
-  assert.ok(html.startsWith('<div class="mnyra-dash__post-cards"'));
-  // Genau drei Karten, in dieser Reihenfolge.
-  assert.equal((html.match(/mnyra-dash__post-card"/g) || []).length, 3);
-  // Der Apostroph steht als Entity im Markup - genau so kommt er aus escapeHtml.
-  const labels = ["n&#39;Zbulo", "n&#39;Story", "n&#39;Profil"];
-  labels.forEach((label, index) => {
-    assert.ok(html.includes(`>${label}</span>`), `${label} fehlt`);
-    if (index > 0) {
-      assert.ok(
-        html.indexOf(labels[index - 1]) < html.indexOf(label),
-        `${label} steht in der falschen Reihenfolge`
-      );
-    }
-  });
-  // Zbulo und Profil oeffnen den Beitrag, Story die Story.
-  assert.equal((html.match(/data-dashboard-composer="post"/g) || []).length, 2);
-  assert.equal((html.match(/data-dashboard-composer="story"/g) || []).length, 1);
-  // Jede Karte hat ihren eigenen Farbton.
-  ["zbulo", "story", "profil"].forEach((tone) => {
-    assert.ok(html.includes(`data-tone="${tone}"`), tone);
-    const block = DASHBOARD_CSS.includes(`[data-tone="${tone}"]`) || tone === "zbulo";
-    assert.ok(block, `Farbton ${tone} fehlt in der CSS`);
-  });
-  assert.ok(DASHBOARD_CSS.includes('--tone: #db2777'));
-  assert.ok(DASHBOARD_CSS.includes('--tone: #059669'));
-  // Und je ein schlichtes Plus.
-  assert.equal((html.match(/mnyra-dash__post-card-plus/g) || []).length, 3);
-});
-
-test("card icons are inline svg and can never fail to load", () => {
-  const html = renderDashboardComposerCards();
-  // Kein <i data-lucide>, kein Nachladen - vier eingebettete SVG je Karte-Satz.
-  assert.ok(!html.includes("data-lucide"), "Symbole duerfen nicht nachgeladen werden");
-  assert.equal((html.match(/<svg /g) || []).length, 6, "3 Symbole + 3 Plus");
-  assert.ok(html.includes('viewBox="0 0 24 24"'));
-  // Zbulo traegt das Feed-Blatt, Story den Ring mit Punkt, Profil die Person.
-  assert.ok(html.includes('<path d="M18 14h-8"></path>'), "Feed-Symbol fehlt");
-  assert.ok(html.includes('<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle>'), "Story-Symbol fehlt");
-  assert.ok(html.includes('<circle cx="12" cy="7" r="4"></circle>'), "Profil-Symbol fehlt");
+  const titleBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__greet-title {"));
+  assert.ok(titleBlock.slice(0, titleBlock.indexOf("}")).includes("color: var(--dash-ink);"));
 });
 
 test("every panel card shares one radius, casts no shadow and wears the profile hairline", () => {
+  // Eine Zahl fuer alle Karten - aendert man sie, aendern sich alle zugleich.
   assert.ok(DASHBOARD_CSS.includes("--dash-card-radius: 25px;"));
   // Die Haarlinie der Profil-Karten (border-slate-100).
   assert.ok(DASHBOARD_CSS.includes("--dash-hairline: #f1f5f9;"));
-  // Im ganzen Panel wirft nichts einen Schatten.
+  // Im ganzen Panel wirft nichts mehr einen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("box-shadow"), "im Panel darf kein box-shadow stehen");
-  const flaechen = ["mnyra-dash__post-card {", "mnyra-dash__action {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {"];
+  const flaechen = ["mnyra-dash__composer {", "mnyra-dash__action {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {"];
   flaechen.forEach((sel) => {
     const start = DASHBOARD_CSS.indexOf(`.${sel}`);
     assert.ok(start > -1, `${sel} fehlt`);
     const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
-    assert.ok(block.includes("border-radius: var(--dash-card-radius);"), `${sel}: Rundung ${block}`);
-    assert.ok(block.includes("border: 1px solid var(--dash-hairline);"), `${sel}: Haarlinie ${block}`);
+    assert.ok(
+      block.includes("border-radius: var(--dash-card-radius);"),
+      `${sel} nutzt nicht die gemeinsame Rundung: ${block}`
+    );
+    // Dieselbe Haarlinie wie die Profil-Karten - ausdruecklich gesetzt, weil
+    // die Kacheln <button> sind und der Browser sonst seinen eigenen dicken
+    // Standardrahmen zeichnet.
+    assert.ok(block.includes("border: 1px solid var(--dash-hairline);"), `${sel}: Haarlinie fehlt: ${block}`);
   });
+  // Der Lade-Platzhalter hat dieselbe Rundung, damit nichts springt.
   const skel = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__skeleton {"));
   assert.ok(skel.slice(0, skel.indexOf("}")).includes("border-radius: var(--dash-card-radius);"));
+  // Die Knoepfe behalten ihren Umriss - sie sind keine Karten.
+  const btn = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-btn {"));
+  assert.ok(btn.slice(0, btn.indexOf("}")).includes("border: 1px solid var(--dash-border);"));
+});
+
+test("two half cards sit under the composer card and share its width", () => {
+  const html = renderDashboardComposerSplitCards({ iconFn: (name) => `<i data-icon="${name}"></i>` });
+  // Eine Zeile mit zwei Karten - zusammen so breit wie "Posto n'Zbulo".
+  assert.ok(html.startsWith('<div class="mnyra-dash__composer-row">'));
+  assert.equal((html.match(/mnyra-dash__composer--split/g) || []).length, 2);
+  // Links Profil, rechts Meny - Wortbild wie bei "Posto n'Zbulo".
+  const left = html.indexOf(">Profil<");
+  const right = html.indexOf(">Meny<");
+  assert.ok(left > -1 && right > left, `${left}/${right}`);
+  assert.ok(html.includes(`Posto n'<span class="mnyra-dash__composer-accent">Profil</span>`));
+  assert.ok(html.includes(`Posto n'<span class="mnyra-dash__composer-accent">Meny</span>`));
+  assert.ok(html.includes("Postim që shfaqet në profilin tënd."));
+  assert.ok(html.includes("Produktet dhe kategoritë e menysë."));
+  // Profil oeffnet denselben Composer wie "Postim", Meny fuehrt in den
+  // Menue-Editor - beides ueber die schon vorhandenen Handler.
+  assert.ok(html.includes('data-dashboard-composer="post"'));
+  assert.ok(html.includes('data-nav="menu"'));
+  assert.ok(html.includes('data-icon="plus"'));
+  assert.ok(html.includes('data-icon="utensils"'));
+  // Genau ein Knopf je Karte.
+  assert.equal((html.match(/<button/g) || []).length, 2);
+});
+
+test("half card styles share the composer surface and stack their button", () => {
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-row {"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer--split {"));
+  // Eine Spalte statt zwei, Knopf unten buendig.
+  assert.ok(DASHBOARD_CSS.includes("grid-template-columns: minmax(0, 1fr);"));
+  assert.ok(DASHBOARD_CSS.includes("margin-top: auto;"));
+  // Schrift der beiden vorgegebenen Texte bleibt unveraendert.
+  assert.ok(DASHBOARD_CSS.includes("font-size: 17px;\n  font-weight: 900;\n  letter-spacing: -0.01em;"));
+  assert.ok(DASHBOARD_CSS.includes("margin: 5px 0 0;\n  font-size: 11px;\n  font-weight: 700;\n  line-height: 1.45;"));
 });
 
 test("publish is only possible with caption and image and never while posting", () => {

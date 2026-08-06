@@ -19,8 +19,8 @@ import {
   buildDashboardKpiDefsCore,
   renderDashboardGreeting,
   renderDashboardGreetingSkeleton,
-  renderDashboardComposerHeading,
-  renderDashboardComposerCards,
+  renderDashboardComposerCard,
+  renderDashboardComposerSplitCards,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -495,8 +495,8 @@ export function createDashboardViewController({
 
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
-        ${renderDashboardComposerHeading()}
-        ${renderDashboardComposerCards()}
+        ${renderDashboardComposerCard({ iconFn })}
+        ${renderDashboardComposerSplitCards({ iconFn })}
         ${renderDashboardQuickActions({ actions, iconFn })}
         ${dataBody}
       `;
