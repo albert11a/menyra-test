@@ -19,6 +19,7 @@ import {
   buildDashboardKpiDefsCore,
   renderDashboardGreeting,
   renderDashboardGreetingSkeleton,
+  renderDashboardComposerCard,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -103,6 +104,7 @@ export function createDashboardViewController({
   documentObj,
   firestoreApi = {},
   profileApi = {},
+  composerApi = {},
   iconFn,
   storageObj
 } = {}) {
@@ -132,6 +134,117 @@ export function createDashboardViewController({
     : (() => "");
   let loadSeq = 0;
   let delegationBound = false;
+  let composerController = null;
+  let composerLoadPromise = null;
+  let composerOpenIntent = "";
+  // Wird beim Nachladen des Composers gesetzt (reine Normalisierung eines
+  // menuItems-Dokuments fuer die Produkt-Auswahl).
+  let normalizeComposerProductFn = () => null;
+  const MENU_ITEMS_LIMIT = 300;
+
+  async function loadComposerProducts(restaurantId = "") {
+    const { db, collectionFn, queryFn, limitFn, getDocsFn } = firestoreApi;
+    const rid = String(restaurantId || "").trim();
+    if (
+      !rid
+      || !db
+      || typeof collectionFn !== "function"
+      || typeof getDocsFn !== "function"
+    ) {
+      throw new Error("Produktet nuk u ngarkuan.");
+    }
+    const itemsRef = collectionFn(db, "restaurants", rid, "menuItems");
+    const itemsQuery = (typeof queryFn === "function" && typeof limitFn === "function")
+      ? queryFn(itemsRef, limitFn(MENU_ITEMS_LIMIT))
+      : itemsRef;
+    const snap = await getDocsFn(itemsQuery);
+    const items = [];
+    snap.forEach((docSnap) => {
+      const normalized = normalizeComposerProductFn(docSnap?.id, docSnap?.data?.() || {});
+      if (normalized) items.push(normalized);
+    });
+    // Speisen und Getraenke gemeinsam, alphabetisch - so findet man ein
+    // Produkt im Popup ohne Nachdenken.
+    items.sort((a, b) => a.name.localeCompare(b.name, "sq"));
+    return items;
+  }
+
+  // Der Composer wird erst beim ersten Klick geladen (eigener Chunk): der
+  // Dashboard-Start bleibt damit unveraendert leicht.
+  function ensureComposerLoaded() {
+    if (composerController) return Promise.resolve(composerController);
+    if (!composerLoadPromise) {
+      composerLoadPromise = import("../composer/business-composer-controller.js")
+        .then((module) => {
+          normalizeComposerProductFn = typeof module?.normalizeComposerProductCore === "function"
+            ? module.normalizeComposerProductCore
+            : (() => null);
+          composerController = module.createBusinessComposerController({
+            documentObj: doc,
+            windowObj: doc?.defaultView || null,
+            api: {
+              getRestaurantIdFn: () => resolveOwnRestaurantId(),
+              getBusinessMetaFn: () => {
+                const restaurantId = resolveOwnRestaurantId();
+                if (!restaurantId) return { name: "", logoUrl: "" };
+                const hero = resolveHeroData(restaurantId);
+                return { name: hero.name, logoUrl: hero.logoUrl };
+              },
+              loadProductsFn: (rid) => loadComposerProducts(rid),
+              uploadImageFn: composerApi.uploadImageFn,
+              createPostFn: composerApi.createPostFn,
+              createStoryFn: composerApi.createStoryFn,
+              formatPriceFn: composerApi.formatPriceFn,
+              getOptimizedImageUrlFn: composerApi.getOptimizedImageUrlFn,
+              afterPublishFn: async (publishedMode) => {
+                // Dashboard zuerst auffrischen (die Karte "Letzte Beitraege"
+                // steht direkt darunter), Feed/Stories danach im Hintergrund.
+                try {
+                  await loadDashboard({ force: true });
+                } catch {}
+                if (typeof composerApi.afterPublishFn === "function") {
+                  await composerApi.afterPublishFn(publishedMode);
+                }
+              }
+            }
+          });
+          return composerController;
+        })
+        .catch((err) => {
+          composerLoadPromise = null;
+          console.error("[mnyra][dashboard] composer load failed", err);
+          throw err;
+        });
+    }
+    return composerLoadPromise;
+  }
+
+  function openComposer(nextMode = "post") {
+    const normalized = String(nextMode || "").trim().toLowerCase() === "story" ? "story" : "post";
+    // Upload-Runtime schon beim Oeffnen anwerfen (laeuft parallel zum
+    // Composer-Chunk): auf 3G wartet der "Posto"-Klick spaeter nicht darauf.
+    if (typeof composerApi.prewarmFn === "function") {
+      try {
+        composerApi.prewarmFn();
+      } catch {}
+    }
+    if (composerController) {
+      composerController.open(normalized);
+      return;
+    }
+    // Doppel-Taps waehrend des Nachladens starten keinen zweiten Import und
+    // oeffnen am Ende genau ein Modal.
+    composerOpenIntent = normalized;
+    void ensureComposerLoaded()
+      .then((controller) => {
+        const intent = composerOpenIntent || normalized;
+        composerOpenIntent = "";
+        controller?.open?.(intent);
+      })
+      .catch(() => {
+        composerOpenIntent = "";
+      });
+  }
 
   function ensureViewState() {
     if (!state.dashboardView || typeof state.dashboardView !== "object") {
@@ -287,6 +400,12 @@ export function createDashboardViewController({
         if (String(state?.activeTab || "").trim().toLowerCase() !== "dashboard") return;
         if (event.target?.closest?.("[data-dashboard-retry]")) {
           void loadDashboard({ force: true });
+          return;
+        }
+        const composerBtn = event.target?.closest?.("[data-dashboard-composer]");
+        if (composerBtn) {
+          event.preventDefault();
+          openComposer(composerBtn.getAttribute("data-dashboard-composer"));
         }
       } catch {}
     });
@@ -360,6 +479,7 @@ export function createDashboardViewController({
 
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
+        ${renderDashboardComposerCard({ iconFn })}
         ${renderDashboardQuickActions({ actions, iconFn })}
         ${dataBody}
       `;

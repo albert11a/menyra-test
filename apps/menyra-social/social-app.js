@@ -2096,6 +2096,36 @@ function getDashboardViewController() {
           return fallback && !isPlaceholderUrl(fallback) ? fallback : "";
         }
       },
+      // "Posto n'Zbulo": derselbe Upload-/Schreibweg wie der Upload-Screen,
+      // nur ohne Tab-Wechsel. Der Composer-Chunk laedt erst beim ersten Klick.
+      composerApi: {
+        prewarmFn: () => {
+          void ensureMediaUploadRuntimeController().catch(() => {});
+        },
+        uploadImageFn: (file, ownerId) => uploadCompressedImage(file, ownerId, {
+          maxSize: 1080,
+          quality: 0.78,
+          mimeType: "image/jpeg"
+        }),
+        createPostFn: async (payload = {}) => {
+          const controller = await ensureMediaUploadRuntimeController();
+          return controller.createBusinessPost(payload);
+        },
+        createStoryFn: async (payload = {}) => storySystemController.createBusinessStory({
+          ...payload,
+          createdByUid: state.user?.uid || ""
+        }),
+        formatPriceFn: (...args) => formatPrice(...args),
+        getOptimizedImageUrlFn: (...args) => getOptimizedImageUrl(...args),
+        afterPublishFn: async (publishedMode = "post") => {
+          if (publishedMode === "story") {
+            await loadStoriesForFeed({ force: true, refreshUi: true });
+            return;
+          }
+          await loadFeedPosts({ force: true });
+          await loadBusinessPosts({ force: true });
+        }
+      },
       iconFn: (...args) => icon(...args)
     });
   }

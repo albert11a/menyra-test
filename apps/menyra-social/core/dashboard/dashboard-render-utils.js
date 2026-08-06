@@ -92,6 +92,77 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* "Posto n'Zbulo": eigene Karte direkt unter der Begruessung, bewusst mit
+   etwas mehr Luft nach oben als die uebrigen Sektionen. */
+.mnyra-dash__composer {
+  margin-top: 22px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 26px;
+  padding: 16px;
+  box-shadow: 0 12px 30px -22px rgba(15, 23, 42, 0.45);
+}
+.mnyra-dash__composer-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--dash-ink);
+}
+.mnyra-dash__composer-accent { color: var(--dash-accent); }
+.mnyra-dash__composer-sub {
+  margin: 5px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--dash-muted);
+}
+.mnyra-dash__composer-actions {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.mnyra-dash__composer-btn {
+  min-height: 76px;
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
+  background: var(--dash-plane);
+  color: var(--dash-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+  min-width: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.mnyra-dash__composer-btn:active { transform: scale(0.97); }
+.mnyra-dash__composer-btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--dash-accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.mnyra-dash__composer-btn-label {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mnyra-dash__section { margin-top: 14px; }
 .mnyra-dash__section-head {
   display: flex;
@@ -429,6 +500,27 @@ export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Da
         <p class="mnyra-dash__greet-title"><span class="mnyra-dash__greet-hello">Përshëndetje,</span> ${escapeHtml(name || "Business")}</p>
         <p class="mnyra-dash__greet-sub">${escapeHtml(greeting.text)}</p>
       </div>
+    </div>
+  `;
+}
+
+// Posting-Karte unter der Begruessung: ein Einstieg fuer Feed-Beitrag
+// ("Postim") und Story. Beide Knoepfe oeffnen dasselbe Vollbild-Modal.
+export function renderDashboardComposerCard({ iconFn } = {}) {
+  const buttons = [
+    { mode: "post", label: "Postim" },
+    { mode: "story", label: "Story" }
+  ].map((entry) => `
+    <button type="button" class="mnyra-dash__composer-btn" data-dashboard-composer="${escapeHtml(entry.mode)}">
+      <span class="mnyra-dash__composer-btn-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
+      <span class="mnyra-dash__composer-btn-label">${escapeHtml(entry.label)}</span>
+    </button>
+  `).join("");
+  return `
+    <div class="mnyra-dash__composer" data-dashboard-composer-card>
+      <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">Zbulo</span></p>
+      <p class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</p>
+      <div class="mnyra-dash__composer-actions">${buttons}</div>
     </div>
   `;
 }
