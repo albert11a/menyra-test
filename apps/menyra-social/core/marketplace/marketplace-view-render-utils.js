@@ -1901,7 +1901,15 @@ function renderRestaurantsContent({
           </div>
         </div>
         <div class="relative">
-          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-5 pt-2 px-0 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;gap:1.5rem;overflow-x:auto;padding:0.5rem 0 1.25rem;scroll-snap-type:x mandatory;scroll-behavior:smooth;">
+          <!--
+            Die Spur laeuft ueber die Polsterung der Sektion (p-6 = 1.5rem)
+            hinaus bis an beide Bildschirmraender - wie die Story-Reihe im Feed.
+            Die negativen Aussenabstaende heben die Polsterung auf, die
+            Innenpolsterung gibt sie den Karten zurueck: die erste steht auf
+            Hoehe der Ueberschrift, die letzte behaelt am Ende denselben Rand.
+            Angeschnitten wird dadurch am Bildschirmrand statt schon davor.
+          -->
+          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-5 pt-2 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;gap:1.5rem;overflow-x:auto;margin-left:-1.5rem;margin-right:-1.5rem;padding:0.5rem 1.5rem 1.25rem;scroll-padding-left:1.5rem;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;">
             ${adItems.map((entry) => renderRestaurantAdCard(entry, deps)).join("")}
           </div>
         </div>
