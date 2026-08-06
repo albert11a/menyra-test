@@ -5,6 +5,7 @@ import {
   normalizeComposerProductCore,
   filterComposerProductsCore,
   canPublishComposerDraftCore,
+  normalizeComposerModeCore,
   BUSINESS_COMPOSER_CSS
 } from "../apps/menyra-social/core/composer/business-composer-controller.js";
 import {
@@ -30,12 +31,25 @@ test("composer card has one button - the choice is made in the modal", () => {
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-actions--single { grid-template-columns: minmax(0, 1fr); }"));
 });
 
-test("modal carries its own bottom bar to switch between postim and story", () => {
+test("composer knows exactly three sides", () => {
+  assert.equal(normalizeComposerModeCore("post"), "post");
+  assert.equal(normalizeComposerModeCore("story"), "story");
+  assert.equal(normalizeComposerModeCore("profile"), "profile");
+  assert.equal(normalizeComposerModeCore("PROFILE"), "profile");
+  // Alles Unbekannte landet beim Beitrag - nie bei Story oder Profil.
+  assert.equal(normalizeComposerModeCore("quatsch"), "post");
+  assert.equal(normalizeComposerModeCore(""), "post");
+  assert.equal(normalizeComposerModeCore(), "post");
+});
+
+test("modal carries its own bottom bar to switch between postim, story and profil", () => {
   // Die Leiste sitzt unten im Modal, ueber der Browserleiste des Telefons.
   assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__foot {"));
   assert.ok(BUSINESS_COMPOSER_CSS.includes("padding: 10px 16px calc(var(--safe-area-bottom, 0px) + 10px);"));
   assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__switch {"));
-  // Zwei gleich breite Felder, das aktive hebt sich weiss ab.
+  // Drei gleich breite Felder, das aktive hebt sich weiss ab.
+  const sw = BUSINESS_COMPOSER_CSS.slice(BUSINESS_COMPOSER_CSS.indexOf(".mnyra-bc__switch {"));
+  assert.ok(sw.slice(0, sw.indexOf("}")).includes("grid-template-columns: repeat(3, minmax(0, 1fr));"));
   assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__switch-btn[aria-selected=\"true\"] {"));
   // Waehrend des Postens ist die Leiste gesperrt.
   assert.ok(BUSINESS_COMPOSER_CSS.includes('.mnyra-bc[data-busy="1"] .mnyra-bc__foot,'));
@@ -102,9 +116,9 @@ test("two half cards sit under the composer card and share its width", () => {
   assert.ok(html.includes(`Posto n'<span class="mnyra-dash__composer-accent">Meny</span>`));
   assert.ok(html.includes("Postim që shfaqet në profilin tënd."));
   assert.ok(html.includes("Produktet dhe kategoritë e menysë."));
-  // Profil oeffnet denselben Composer wie "Postim", Meny fuehrt in den
+  // Profil oeffnet den Composer auf seiner eigenen Seite, Meny fuehrt in den
   // Menue-Editor - beides ueber die schon vorhandenen Handler.
-  assert.ok(html.includes('data-dashboard-composer="post"'));
+  assert.ok(html.includes('data-dashboard-composer="profile"'));
   assert.ok(html.includes('data-nav="menu"'));
   assert.ok(html.includes('data-icon="plus"'));
   assert.ok(html.includes('data-icon="utensils"'));

@@ -25,6 +25,7 @@
 import {
   renderFeedCardMarkupCore
 } from "../feed/feed-card-markup-utils.js";
+import { renderProfilePostCardMarkupCore } from "../profile/profile-post-card-markup-utils.js";
 import {
   renderStoryTileMarkupCore,
   renderStoryTileMediaFallbackCore,
@@ -59,11 +60,13 @@ const MODAL_CHROME_COLOR = "#ffffff";
 const TEXT = Object.freeze({
   titlePost: "Postim i ri",
   titleStory: "Story e re",
+  titleProfile: "Postim për profilin",
   submit: "Posto",
   submitBusy: "Duke postuar…",
   close: "Mbyll",
   placeholderPost: "Shkruaj diçka për postimin tënd…",
   placeholderStory: "Shkruaj diçka për story-n tënde…",
+  placeholderProfile: "Shkruaj diçka për profilin tënd…",
   addPhoto: "Shto foto/video",
   changePhoto: "Ndrysho median",
   tagProduct: "Etiketo produkt",
@@ -73,10 +76,12 @@ const TEXT = Object.freeze({
   hintReady: "Gati për t'u postuar.",
   switchPost: "Postim",
   switchStory: "Story",
+  switchProfile: "Profil",
   switchLabel: "Zgjidh llojin e postimit",
   previewTitle: "Parapamje",
   previewPost: "Si duket në Zbulo",
   previewStory: "Në rreshtin e story-ve",
+  previewProfile: "Si duket në profilin tënd",
   pickerTitle: "Zgjidh një produkt",
   pickerSearch: "Kërko ushqime ose pije…",
   pickerConfirm: "Zgjidh produktin",
@@ -92,6 +97,7 @@ const TEXT = Object.freeze({
   errorOffline: "Nuk ka lidhje me internetin. Provo përsëri.",
   successPost: "Postimi u publikua.",
   successStory: "Story u publikua.",
+  successProfile: "Postimi u publikua në profil.",
   businessFallback: "Biznesi im"
 });
 
@@ -106,7 +112,8 @@ const ICON = Object.freeze({
   check: `<svg ${SVG_ATTRS}><path d="M20 6 9 17l-5-5"></path></svg>`,
   search: `<svg ${SVG_ATTRS}><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>`,
   heart: `<svg ${SVG_ATTRS}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>`,
-  comment: `<svg ${SVG_ATTRS}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>`
+  comment: `<svg ${SVG_ATTRS}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>`,
+  user: `<svg ${SVG_ATTRS}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
 });
 
 export const BUSINESS_COMPOSER_CSS = `
@@ -232,7 +239,7 @@ export const BUSINESS_COMPOSER_CSS = `
 }
 .mnyra-bc__switch {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
@@ -710,6 +717,14 @@ export function filterComposerProductsCore(products = [], term = "") {
   });
 }
 
+// Die drei Seiten des Composers. Alles Unbekannte landet beim Beitrag.
+export function normalizeComposerModeCore(value = "") {
+  const mode = String(value || "").trim().toLowerCase();
+  if (mode === "story") return "story";
+  if (mode === "profile") return "profile";
+  return "post";
+}
+
 // Einzige Wahrheit fuer den "Posto"-Knopf: Text UND Foto muessen da sein.
 export function canPublishComposerDraftCore({ caption = "", hasImage = false, submitting = false } = {}) {
   if (submitting) return false;
@@ -755,7 +770,8 @@ export function createBusinessComposerController({
 
   const drafts = {
     post: { caption: "", file: null, previewUrl: "", mediaType: "", product: null },
-    story: { caption: "", file: null, previewUrl: "", mediaType: "", product: null }
+    story: { caption: "", file: null, previewUrl: "", mediaType: "", product: null },
+    profile: { caption: "", file: null, previewUrl: "", mediaType: "", product: null }
   };
   const productState = { status: "idle", items: [], restaurantId: "" };
 
@@ -824,6 +840,13 @@ export function createBusinessComposerController({
               </div>
             </div>
 
+            <div class="mnyra-bc__pane" data-bc-pane="profile">
+              <p class="mnyra-bc__preview-caption">${TEXT.previewProfile}</p>
+              <div class="mnyra-bc__stage" data-bc-stage="profile">
+                <div class="mnyra-bc__stage-inner" data-bc-stage-inner="profile"></div>
+              </div>
+            </div>
+
             <div class="mnyra-bc__pane" data-bc-pane="story">
               <p class="mnyra-bc__preview-caption">${TEXT.previewStory}</p>
               <div class="mnyra-bc__stage mnyra-bc__stage--bleed" data-bc-stage="story">
@@ -840,6 +863,9 @@ export function createBusinessComposerController({
             </button>
             <button type="button" class="mnyra-bc__switch-btn" role="tab" data-bc-mode="story" aria-selected="false">
               ${ICON.camera}<span>${TEXT.switchStory}</span>
+            </button>
+            <button type="button" class="mnyra-bc__switch-btn" role="tab" data-bc-mode="profile" aria-selected="false">
+              ${ICON.user}<span>${TEXT.switchProfile}</span>
             </button>
           </div>
         </footer>
@@ -896,6 +922,9 @@ export function createBusinessComposerController({
       error: q("[data-bc-error]"),
       panePost: q('[data-bc-pane="post"]'),
       paneStory: q('[data-bc-pane="story"]'),
+      paneProfile: q('[data-bc-pane="profile"]'),
+      stageProfile: q('[data-bc-stage="profile"]'),
+      stageProfileInner: q('[data-bc-stage-inner="profile"]'),
       stagePost: q('[data-bc-stage="post"]'),
       stagePostInner: q('[data-bc-stage-inner="post"]'),
       stageStory: q('[data-bc-stage="story"]'),
@@ -973,7 +1002,33 @@ export function createBusinessComposerController({
     });
   }
 
-  // --- Vorschau 2: die Story-Reihe von Zbulo --------------------------------
+  // --- Vorschau 2: die Kachel auf dem eigenen Profil ------------------------
+  // Gleicher Baustein wie im Profil, gleiche Klassen, gleiche Masse. Ohne
+  // Datenattribute und ohne das Drei-Punkte-Menue: die Vorschau ist nicht
+  // bedienbar. Im Profil stehen die Kacheln zu zweit nebeneinander, darum
+  // steht auch die Vorschau in einem Raster mit zwei Spalten.
+  function buildProfilePreviewMarkup() {
+    const draft = drafts.profile;
+    const previewUrl = String(draft.previewUrl || "").trim();
+    const mediaHtml = previewUrl
+      ? (draft.mediaType === "video"
+        ? `<video src="${escapeAttr(previewUrl)}" preload="metadata" muted playsinline width="400" height="500" class="w-full h-full object-cover pointer-events-none"></video>`
+        : `<img src="${escapeAttr(previewUrl)}" decoding="async" width="400" height="500" class="w-full h-full object-cover" />`)
+      : `<div class="w-full h-full bg-slate-200"></div>`;
+    const card = renderProfilePostCardMarkupCore({
+      mediaHtml,
+      isVideo: draft.mediaType === "video",
+      playIconHtml: appIcon("play", "w-3.5 h-3.5 fill-white block"),
+      likeLabel: "0",
+      commentLabel: "0",
+      heartIconHtml: appIcon("heart", "w-3 h-3 fill-rose-500 text-rose-500"),
+      commentIconHtml: appIcon("message-circle", "w-3 h-3 text-indigo-200"),
+      escapeHtmlFn: escapeHtml
+    });
+    return `<div class="grid grid-cols-2 gap-3" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.75rem;">${card}</div>`;
+  }
+
+  // --- Vorschau 3: die Story-Reihe von Zbulo --------------------------------
   // Eine Kachel gehoert dem Nutzer, zwei stehen unscharf daneben. Alle drei
   // kommen aus demselben Baustein wie die echten Kacheln im Feed und tragen
   // dieselben Masse - die Reihe ist damit 1:1 die aus Zbulo.
@@ -1057,6 +1112,10 @@ export function createBusinessComposerController({
       applyBleedStage(nodes.stageStory, nodes.stageStoryInner, shellWidth);
       return;
     }
+    if (mode === "profile") {
+      applyBleedStage(nodes.stageProfile, nodes.stageProfileInner, shellWidth);
+      return;
+    }
     applyBleedStage(nodes.stagePost, nodes.stagePostInner, shellWidth);
   }
 
@@ -1064,6 +1123,10 @@ export function createBusinessComposerController({
     if (!nodes) return;
     if (mode === "story") {
       if (nodes.stageStoryInner) nodes.stageStoryInner.innerHTML = buildStoryTrackPreviewMarkup();
+    } else if (mode === "profile") {
+      if (nodes.stageProfileInner) {
+        nodes.stageProfileInner.innerHTML = `<div class="app-content-inline py-4">${buildProfilePreviewMarkup()}</div>`;
+      }
     } else if (nodes.stagePostInner) {
       nodes.stagePostInner.innerHTML = `<div class="app-content-inline py-4">${buildPostPreviewMarkup()}</div>`;
     }
@@ -1075,9 +1138,9 @@ export function createBusinessComposerController({
 
   function syncCaptionPreview() {
     if (!nodes) return;
-    // Die Story-Reihe zeigt den Namen des Betriebs, nicht den Text der Story -
-    // beim Tippen aendert sich an ihr nichts.
-    if (mode === "story") return;
+    // Story-Reihe und Profil-Kachel zeigen den Text nicht - beim Tippen
+    // aendert sich an ihnen nichts.
+    if (mode === "story" || mode === "profile") return;
     const caption = String(currentDraft().caption || "").trim();
     const captionNode = nodes.stagePostInner?.querySelector(".feed-card p.line-clamp-2");
     if (captionNode) captionNode.textContent = caption;
@@ -1149,17 +1212,23 @@ export function createBusinessComposerController({
 
   function syncMode() {
     const isStory = mode === "story";
+    const isProfile = mode === "profile";
     const draft = currentDraft();
-    if (nodes.title) nodes.title.textContent = isStory ? TEXT.titleStory : TEXT.titlePost;
+    if (nodes.title) {
+      nodes.title.textContent = isStory ? TEXT.titleStory : (isProfile ? TEXT.titleProfile : TEXT.titlePost);
+    }
     if (nodes.text) {
-      nodes.text.placeholder = isStory ? TEXT.placeholderStory : TEXT.placeholderPost;
+      nodes.text.placeholder = isStory
+        ? TEXT.placeholderStory
+        : (isProfile ? TEXT.placeholderProfile : TEXT.placeholderPost);
       if (nodes.text.value !== draft.caption) nodes.text.value = draft.caption;
     }
     if (nodes.tag) nodes.tag.hidden = !isStory;
     if (nodes.photoLabel) nodes.photoLabel.textContent = draft.file ? TEXT.changePhoto : TEXT.addPhoto;
     if (nodes.photo) nodes.photo.setAttribute("data-active", draft.file ? "1" : "0");
-    if (nodes.panePost) nodes.panePost.setAttribute("data-visible", isStory ? "0" : "1");
+    if (nodes.panePost) nodes.panePost.setAttribute("data-visible", mode === "post" ? "1" : "0");
     if (nodes.paneStory) nodes.paneStory.setAttribute("data-visible", isStory ? "1" : "0");
+    if (nodes.paneProfile) nodes.paneProfile.setAttribute("data-visible", isProfile ? "1" : "0");
     (nodes.switchButtons || []).forEach((button) => {
       const selected = button.getAttribute("data-bc-mode") === mode;
       button.setAttribute("aria-selected", selected ? "true" : "false");
@@ -1428,7 +1497,7 @@ export function createBusinessComposerController({
     (nodes.switchButtons || []).forEach((button) => {
       button.addEventListener("click", () => {
         if (submitting) return;
-        const next = button.getAttribute("data-bc-mode") === "story" ? "story" : "post";
+        const next = normalizeComposerModeCore(button.getAttribute("data-bc-mode"));
         if (next === mode) return;
         closePicker();
         mode = next;
@@ -1557,7 +1626,9 @@ export function createBusinessComposerController({
       setBusy(false);
       closeComposer();
       clearDraft(publishMode);
-      showToast(publishMode === "story" ? TEXT.successStory : TEXT.successPost);
+      showToast(publishMode === "story"
+        ? TEXT.successStory
+        : (publishMode === "profile" ? TEXT.successProfile : TEXT.successPost));
       try {
         await afterPublish(publishMode);
       } catch {}
@@ -1570,7 +1641,7 @@ export function createBusinessComposerController({
 
   function openComposer(nextMode = "post") {
     if (!doc) return;
-    const normalized = String(nextMode || "").trim().toLowerCase() === "story" ? "story" : "post";
+    const normalized = normalizeComposerModeCore(nextMode);
     ensureNode();
     if (!root) return;
     bindEscape();

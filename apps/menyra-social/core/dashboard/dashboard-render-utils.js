@@ -585,7 +585,7 @@ export function renderDashboardComposerSplitCards({ iconFn } = {}) {
     {
       accent: "Profil",
       sub: "Postim që shfaqet në profilin tënd.",
-      action: 'data-dashboard-composer="post"',
+      action: 'data-dashboard-composer="profile"',
       iconName: "plus",
       label: "Posto",
       primary: true

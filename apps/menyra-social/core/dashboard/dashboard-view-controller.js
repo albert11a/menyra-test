@@ -236,7 +236,9 @@ export function createDashboardViewController({
   }
 
   function openComposer(nextMode = "post") {
-    const normalized = String(nextMode || "").trim().toLowerCase() === "story" ? "story" : "post";
+    // Drei Seiten: Beitrag, Story, Profil. Alles Unbekannte wird zum Beitrag.
+    const raw = String(nextMode || "").trim().toLowerCase();
+    const normalized = (raw === "story" || raw === "profile") ? raw : "post";
     // Upload-Runtime schon beim Oeffnen anwerfen (laeuft parallel zum
     // Composer-Chunk): auf 3G wartet der "Posto"-Klick spaeter nicht darauf.
     if (typeof composerApi.prewarmFn === "function") {

@@ -14,6 +14,10 @@ import {
   buildStoryTileInnerStyleCore,
   buildStoryTileShellStyleCore
 } from "../apps/menyra-social/core/feed/story-tile-markup-utils.js";
+import {
+  renderProfilePostCardMarkupCore,
+  resolveProfilePostAspectClassCore
+} from "../apps/menyra-social/core/profile/profile-post-card-markup-utils.js";
 
 const repoUrl = (path) => new URL(`../${path}`, import.meta.url);
 
@@ -106,6 +110,45 @@ test("composer story preview is the zbulo story row: own story sharp, neighbours
   // Die geoeffnete Story wird nicht mehr nachgebaut.
   assert.ok(!composerSource.includes('class="reel"'));
   assert.ok(!composerSource.includes("story-viewer-surface-css"));
+});
+
+test("profile renderer and composer preview share one card builder", async () => {
+  const profileSource = await readFile(repoUrl("apps/menyra-social/core/profile/profile-menu-focus-render-controller.js"), "utf8");
+  const composerSource = await readFile(repoUrl("apps/menyra-social/core/composer/business-composer-controller.js"), "utf8");
+  // Beide Seiten rufen denselben Baustein auf - kein zweiter Kachelaufbau.
+  assert.ok(profileSource.includes("renderProfilePostCardMarkupCore({"));
+  assert.ok(composerSource.includes("renderProfilePostCardMarkupCore({"));
+  // Und keine Seite baut die Kachel noch einmal von Hand.
+  const marker = "shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer";
+  assert.ok(!profileSource.includes(marker));
+  assert.ok(!composerSource.includes(marker));
+});
+
+test("profile post card markup keeps geometry and layers", () => {
+  const html = renderProfilePostCardMarkupCore({
+    mediaHtml: '<img src="m.jpg" />',
+    isVideo: true,
+    playIconHtml: '<i data-icon="play"></i>',
+    likeLabel: "12",
+    commentLabel: "3",
+    heartIconHtml: '<i data-icon="heart"></i>',
+    commentIconHtml: '<i data-icon="message-circle"></i>',
+    menuHtml: '<button data-menu></button>',
+    escapeHtmlFn: (value) => String(value ?? "")
+  });
+  assert.ok(html.includes("rounded-[2rem]"));
+  assert.ok(html.includes("aspect-[4/5]"));
+  assert.ok(html.includes('data-icon="play"'), "Video-Marker fehlt");
+  assert.ok(html.includes(">12</span>"));
+  assert.ok(html.includes(">3</span>"));
+  assert.ok(html.includes("<button data-menu></button>"));
+  // Ohne Menue - so rendert die Vorschau - bleibt die Kachel unbedienbar.
+  const preview = renderProfilePostCardMarkupCore({ mediaHtml: "<img />" });
+  assert.ok(!preview.includes("data-profile-menu"));
+  assert.ok(!preview.includes("data-open-post"));
+  assert.equal(resolveProfilePostAspectClassCore({ isGrid: true, isWide: true }), "aspect-[1.8/1]");
+  assert.equal(resolveProfilePostAspectClassCore({ isGrid: true }), "aspect-[4/5]");
+  assert.equal(resolveProfilePostAspectClassCore({ isGrid: false, isWide: true }), "aspect-[4/5]");
 });
 
 test("composer posts videos the same way the upload screen does", async () => {
