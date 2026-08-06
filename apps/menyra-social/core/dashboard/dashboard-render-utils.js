@@ -20,12 +20,13 @@ export const DASHBOARD_CSS = `
   --dash-ink: #0f172a;
   --dash-ink-2: #475569;
   --dash-muted: #94a3b8;
+  /* Nur noch fuer Knopf-Umrisse - die Karten selbst tragen keinen Rand. */
   --dash-border: rgba(15, 23, 42, 0.08);
   --dash-accent: #4f46e5;
   --dash-accent-soft: #eef2ff;
   /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
-     (25px) - und bewusst kein Schatten: die Karte hebt sich allein durch
-     Weiss auf hellem Grund ab. Das wirkt ruhiger als jeder Schlagschatten. */
+     (25px). Die Karten tragen weder Schatten noch Rand: sie heben sich
+     allein durch Weiss auf hellem Grund ab, genau wie die Profil-Karten. */
   --dash-card-radius: 25px;
   color: var(--dash-ink);
   font-family: inherit;
@@ -102,7 +103,9 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__composer {
   margin-top: 34px;
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 18px;
 }
@@ -232,7 +235,9 @@ export const DASHBOARD_CSS = `
 @media (min-width: 720px) { .mnyra-dash__actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .mnyra-dash__action {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 12px;
   min-height: 92px;
@@ -279,7 +284,9 @@ export const DASHBOARD_CSS = `
 @media (min-width: 720px) { .mnyra-dash__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .mnyra-dash__kpi {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 12px 14px;
   min-height: 86px;
@@ -312,7 +319,9 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__posts {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 6px;
 }
@@ -357,7 +366,9 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__state {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 28px 18px;
   text-align: center;

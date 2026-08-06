@@ -48,13 +48,13 @@ test("composer card styles keep the mockup layout", () => {
   assert.ok(!greetLogoBlock.includes("box-shadow"), greetLogoBlock);
 });
 
-test("every panel card shares one radius and casts no shadow", () => {
+test("every panel card shares one radius, casts no shadow and has no border", () => {
   // Eine Zahl fuer alle Karten - aendert man sie, aendern sich alle zugleich.
   assert.ok(DASHBOARD_CSS.includes("--dash-card-radius: 25px;"));
   // Im ganzen Panel wirft nichts mehr einen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("box-shadow"), "im Panel darf kein box-shadow stehen");
-  // Und keine Kartenflaeche traegt noch eine eigene Rundung.
-  ["mnyra-dash__composer {", "mnyra-dash__action {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {", "mnyra-dash__skeleton {"].forEach((sel) => {
+  const flaechen = ["mnyra-dash__composer {", "mnyra-dash__action {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {"];
+  flaechen.forEach((sel) => {
     const start = DASHBOARD_CSS.indexOf(`.${sel}`);
     assert.ok(start > -1, `${sel} fehlt`);
     const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
@@ -62,7 +62,17 @@ test("every panel card shares one radius and casts no shadow", () => {
       block.includes("border-radius: var(--dash-card-radius);"),
       `${sel} nutzt nicht die gemeinsame Rundung: ${block}`
     );
+    // Kein Rand - und ausdruecklich "none", weil die Kacheln <button> sind
+    // und der Browser sonst seinen eigenen Standardrahmen zeichnet.
+    assert.ok(block.includes("border: none;"), `${sel} braucht "border: none": ${block}`);
+    assert.ok(!block.includes("border: 1px"), `${sel} traegt noch einen Rand: ${block}`);
   });
+  // Der Lade-Platzhalter hat dieselbe Rundung, damit nichts springt.
+  const skel = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__skeleton {"));
+  assert.ok(skel.slice(0, skel.indexOf("}")).includes("border-radius: var(--dash-card-radius);"));
+  // Die Knoepfe behalten ihren Umriss - sie sind keine Karten.
+  const btn = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-btn {"));
+  assert.ok(btn.slice(0, btn.indexOf("}")).includes("border: 1px solid var(--dash-border);"));
 });
 
 test("two half cards sit under the composer card and share its width", () => {

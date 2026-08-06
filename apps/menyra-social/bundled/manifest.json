@@ -61,8 +61,8 @@
       "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js"
     ]
   },
-  "_domain-dashboard-Bo3cpuRM.js": {
-    "file": "chunks/domain-dashboard-Bo3cpuRM.js",
+  "_domain-dashboard-UO4mtR3U.js": {
+    "file": "chunks/domain-dashboard-UO4mtR3U.js",
     "name": "domain-dashboard",
     "imports": [
       "_domain-auth-Aq-4Vdvh.js",
@@ -212,7 +212,7 @@
     ]
   },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
-    "file": "chunks/discovery-runtime-controller-C3P7z4dg.js",
+    "file": "chunks/discovery-runtime-controller-xGxVMchu.js",
     "name": "discovery-runtime-controller",
     "src": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
     "isDynamicEntry": true,
@@ -239,7 +239,7 @@
       "_domain-orders-eager-B_q2gwm9.js",
       "_domain-marketplace-eager-h1O0CZTt.js",
       "_domain-analytics-jv5B-kA2.js",
-      "_domain-dashboard-Bo3cpuRM.js",
+      "_domain-dashboard-UO4mtR3U.js",
       "_domain-chat-eager-CVLX32J1.js",
       "_domain-app-events-HY42mRmb.js"
     ]
@@ -429,7 +429,7 @@
       "_domain-orders-eager-B_q2gwm9.js",
       "_domain-marketplace-eager-h1O0CZTt.js",
       "_domain-analytics-jv5B-kA2.js",
-      "_domain-dashboard-Bo3cpuRM.js",
+      "_domain-dashboard-UO4mtR3U.js",
       "_domain-chat-eager-CVLX32J1.js",
       "_domain-map-BjqpyoLm.js",
       "_domain-leads-Dt-penIz.js",

@@ -1,5 +1,5 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-DSnLaCwi.js","chunks/domain-feed-social-eager-CAMxL9w6.js","chunks/domain-auth-Aq-4Vdvh.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-B3Bb4ghO.js","chunks/domain-menu-eager-Ca3mC5Kt.js"])))=>i.map(i=>d[i]);
-import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s as U}from"./domain-analytics-jv5B-kA2.js";const M="mnyraDashboardStyles",le=`
+import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as $,r as ie,l as de,s as K}from"./domain-analytics-jv5B-kA2.js";const U="mnyraDashboardStyles",le=`
 .mnyra-dash {
   /* Horizontale Flucht auf die SICHTBAREN Header-Icons (nicht die
      unsichtbaren Touch-Kreise): Menue-Striche beginnen bei 28px,
@@ -11,12 +11,13 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
   --dash-ink: #0f172a;
   --dash-ink-2: #475569;
   --dash-muted: #94a3b8;
+  /* Nur noch fuer Knopf-Umrisse - die Karten selbst tragen keinen Rand. */
   --dash-border: rgba(15, 23, 42, 0.08);
   --dash-accent: #4f46e5;
   --dash-accent-soft: #eef2ff;
   /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
-     (25px) - und bewusst kein Schatten: die Karte hebt sich allein durch
-     Weiss auf hellem Grund ab. Das wirkt ruhiger als jeder Schlagschatten. */
+     (25px). Die Karten tragen weder Schatten noch Rand: sie heben sich
+     allein durch Weiss auf hellem Grund ab, genau wie die Profil-Karten. */
   --dash-card-radius: 25px;
   color: var(--dash-ink);
   font-family: inherit;
@@ -93,7 +94,9 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
 .mnyra-dash__composer {
   margin-top: 34px;
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 18px;
 }
@@ -223,7 +226,9 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
 @media (min-width: 720px) { .mnyra-dash__actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .mnyra-dash__action {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 12px;
   min-height: 92px;
@@ -270,7 +275,9 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
 @media (min-width: 720px) { .mnyra-dash__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .mnyra-dash__kpi {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 12px 14px;
   min-height: 86px;
@@ -303,7 +310,9 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
 }
 .mnyra-dash__posts {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 6px;
 }
@@ -348,7 +357,9 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
 }
 .mnyra-dash__state {
   background: var(--dash-surface);
-  border: 1px solid var(--dash-border);
+  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
+     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
+  border: none;
   border-radius: var(--dash-card-radius);
   padding: 28px 18px;
   text-align: center;
@@ -377,10 +388,10 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
   border: 1px solid transparent;
 }
 @keyframes mnyraDashPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-`;function ce(e=typeof document>"u"?null:document){if(!(!e||e.getElementById(M)))try{const a=e.createElement("style");a.id=M,a.textContent=le,e.head?.appendChild(a)}catch{}}function c(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function w(e,a,s=""){if(typeof e!="function")return"";try{return e(a,s)||""}catch{return""}}const me=Object.freeze(["hotel","motel","hostel","resort","accommodation","travel"]);function ue({businessType:e="",isShopCatalog:a=!1}={}){if(a)return"shop";const s=String(e||"").trim().toLowerCase();return me.includes(s)?"hotel":"restaurant"}function pe({kind:e="restaurant",isOwner:a=!1,canAccessOrders:s=!1}={}){const r=[{nav:"upload",uploadIntent:"chooser",iconName:"plus",label:"Neuer Beitrag",sub:"Posto foto ose video"},{nav:"upload",uploadIntent:"story",iconName:"camera",label:"Story",sub:"E dukshme 24h"}];return e==="hotel"?r.push({nav:"menu",iconName:"bed-double",label:"Hotel & Dhoma",sub:"Detaje, dhoma, oferta"}):e==="shop"?r.push({nav:"menu",iconName:"shopping-bag",label:"Ndrysho dyqanin",sub:"Produkte & Stok"}):r.push({nav:"menu",iconName:"utensils",label:"Ndrysho menune",sub:"Produkte & Kategorien"}),r.push({nav:"menu",iconName:"megaphone",label:"Oferta & Reklama",sub:"Im Editor verwalten"}),e!=="hotel"&&s&&r.push({nav:"orders",iconName:"shopping-cart",label:"Porosite",sub:"Hyrje & Status"}),r.push({nav:"analytics",iconName:"bar-chart-3",label:"Analytics",sub:"Te gjitha statistikat"}),a&&r.push({nav:"businessAccounts",iconName:"users-round",label:"Team & Staff",sub:"Zugänge verwalten"}),r.push({nav:"settings",iconName:"settings",label:"Cilesimet",sub:"Profili & Kontakti"}),r}function he(e="restaurant"){const a=[{key:"profileViews",label:"Profilaufrufe"},{key:"postImpressions",label:"Shtrirja e postimeve"},{key:"contactClicks",label:"Kontakt-Klicks"}];return e==="shop"?a.concat([{key:"ordersCompleted",label:"Porosite"},{key:"revenue",label:"Umsatz",unit:"€"},{key:"productViews",label:"Produkt-Aufrufe"}]):e==="hotel"?a.concat([{key:"uniqueVisitors",label:"Vizitore"},{key:"postLikes",label:"Likes"},{key:"feedImpressions",label:"Shtrirja ne feed"}]):a.concat([{key:"ordersCompleted",label:"Porosite"},{key:"revenue",label:"Umsatz",unit:"€"},{key:"qrScans",label:"QR-Scans"}])}function H(e=0,a=""){const s=z(e);return a?`${s} ${a}`:s}function fe(e=new Date().getHours()){const a=Number.isFinite(Number(e))?(Math.trunc(Number(e))%24+24)%24:12;return a>=5&&a<=10?{dayPart:"mengjes",text:"Ju urojmë një mëngjes të mbarë!"}:a>=11&&a<=17?{dayPart:"dite",text:"Ju urojmë një ditë të mbarë!"}:a>=18&&a<=21?{dayPart:"mbremje",text:"Ju urojmë një mbrëmje të mbarë!"}:{dayPart:"nate",text:"Ju urojmë një natë të mbarë!"}}function ye({name:e="",logoUrl:a="",hour:s=new Date().getHours(),iconFn:r}={}){const o=fe(s);return`
+`;function ce(e=typeof document>"u"?null:document){if(!(!e||e.getElementById(U)))try{const a=e.createElement("style");a.id=U,a.textContent=le,e.head?.appendChild(a)}catch{}}function c(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function w(e,a,s=""){if(typeof e!="function")return"";try{return e(a,s)||""}catch{return""}}const me=Object.freeze(["hotel","motel","hostel","resort","accommodation","travel"]);function ue({businessType:e="",isShopCatalog:a=!1}={}){if(a)return"shop";const s=String(e||"").trim().toLowerCase();return me.includes(s)?"hotel":"restaurant"}function he({kind:e="restaurant",isOwner:a=!1,canAccessOrders:s=!1}={}){const n=[{nav:"upload",uploadIntent:"chooser",iconName:"plus",label:"Neuer Beitrag",sub:"Posto foto ose video"},{nav:"upload",uploadIntent:"story",iconName:"camera",label:"Story",sub:"E dukshme 24h"}];return e==="hotel"?n.push({nav:"menu",iconName:"bed-double",label:"Hotel & Dhoma",sub:"Detaje, dhoma, oferta"}):e==="shop"?n.push({nav:"menu",iconName:"shopping-bag",label:"Ndrysho dyqanin",sub:"Produkte & Stok"}):n.push({nav:"menu",iconName:"utensils",label:"Ndrysho menune",sub:"Produkte & Kategorien"}),n.push({nav:"menu",iconName:"megaphone",label:"Oferta & Reklama",sub:"Im Editor verwalten"}),e!=="hotel"&&s&&n.push({nav:"orders",iconName:"shopping-cart",label:"Porosite",sub:"Hyrje & Status"}),n.push({nav:"analytics",iconName:"bar-chart-3",label:"Analytics",sub:"Te gjitha statistikat"}),a&&n.push({nav:"businessAccounts",iconName:"users-round",label:"Team & Staff",sub:"Zugänge verwalten"}),n.push({nav:"settings",iconName:"settings",label:"Cilesimet",sub:"Profili & Kontakti"}),n}function pe(e="restaurant"){const a=[{key:"profileViews",label:"Profilaufrufe"},{key:"postImpressions",label:"Shtrirja e postimeve"},{key:"contactClicks",label:"Kontakt-Klicks"}];return e==="shop"?a.concat([{key:"ordersCompleted",label:"Porosite"},{key:"revenue",label:"Umsatz",unit:"€"},{key:"productViews",label:"Produkt-Aufrufe"}]):e==="hotel"?a.concat([{key:"uniqueVisitors",label:"Vizitore"},{key:"postLikes",label:"Likes"},{key:"feedImpressions",label:"Shtrirja ne feed"}]):a.concat([{key:"ordersCompleted",label:"Porosite"},{key:"revenue",label:"Umsatz",unit:"€"},{key:"qrScans",label:"QR-Scans"}])}function M(e=0,a=""){const s=$(e);return a?`${s} ${a}`:s}function fe(e=new Date().getHours()){const a=Number.isFinite(Number(e))?(Math.trunc(Number(e))%24+24)%24:12;return a>=5&&a<=10?{dayPart:"mengjes",text:"Ju urojmë një mëngjes të mbarë!"}:a>=11&&a<=17?{dayPart:"dite",text:"Ju urojmë një ditë të mbarë!"}:a>=18&&a<=21?{dayPart:"mbremje",text:"Ju urojmë një mbrëmje të mbarë!"}:{dayPart:"nate",text:"Ju urojmë një natë të mbarë!"}}function ye({name:e="",logoUrl:a="",hour:s=new Date().getHours(),iconFn:n}={}){const o=fe(s);return`
     <div class="mnyra-dash__greet">
       <div class="mnyra-dash__greet-logo">
-        ${a?`<img src="${c(a)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:`<span class="mnyra-dash__greet-logo-fallback">${w(r,"store","w-6 h-6")}</span>`}
+        ${a?`<img src="${c(a)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:`<span class="mnyra-dash__greet-logo-fallback">${w(n,"store","w-6 h-6")}</span>`}
       </div>
       <div class="mnyra-dash__greet-text">
         <p class="mnyra-dash__greet-title"><span class="mnyra-dash__greet-hello">Përshëndetje,</span> ${c(e||"Business")}</p>
@@ -414,12 +425,12 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Schnellzugriff</p>
       </div>
-      <div class="mnyra-dash__actions">${(Array.isArray(e)?e:[]).map(r=>{const o=r.uploadIntent?` data-upload-intent="${c(r.uploadIntent)}"`:"";return`
-      <button type="button" class="mnyra-dash__action" data-nav="${c(r.nav)}"${o}>
-        <span class="mnyra-dash__action-icon">${w(a,r.iconName,"w-4 h-4")}</span>
+      <div class="mnyra-dash__actions">${(Array.isArray(e)?e:[]).map(n=>{const o=n.uploadIntent?` data-upload-intent="${c(n.uploadIntent)}"`:"";return`
+      <button type="button" class="mnyra-dash__action" data-nav="${c(n.nav)}"${o}>
+        <span class="mnyra-dash__action-icon">${w(a,n.iconName,"w-4 h-4")}</span>
         <span>
-          <span class="mnyra-dash__action-label" style="display:block;">${c(r.label)}</span>
-          <span class="mnyra-dash__action-sub" style="display:block;">${c(r.sub||"")}</span>
+          <span class="mnyra-dash__action-label" style="display:block;">${c(n.label)}</span>
+          <span class="mnyra-dash__action-sub" style="display:block;">${c(n.sub||"")}</span>
         </span>
       </button>
     `}).join("")}</div>
@@ -433,12 +444,12 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
       <div class="mnyra-dash__kpis">${(Array.isArray(e)?e:[]).map(o=>`
     <div class="mnyra-dash__kpi">
       <p class="mnyra-dash__kpi-label">${c(o.label)}</p>
-      <p class="mnyra-dash__kpi-value">${c(H(a?.[o.key]||0,o.unit||""))}</p>
-      <p class="mnyra-dash__kpi-today">Heute: ${c(H(s?.[o.key]||0,o.unit||""))}</p>
+      <p class="mnyra-dash__kpi-value">${c(M(a?.[o.key]||0,o.unit||""))}</p>
+      <p class="mnyra-dash__kpi-today">Heute: ${c(M(s?.[o.key]||0,o.unit||""))}</p>
     </div>
   `).join("")}</div>
     </div>
-  `}function ke({posts:e=[],iconFn:a}={}){const s=Array.isArray(e)?e:[];let r="";return s.length?(r=s.map(o=>{const l=[o.dateLabel,`${z(o.likesCount||0)} Likes`,`${z(o.commentsCount||0)} Kommentare`];return Number(o.impressions||0)>0&&l.push(`${z(o.impressions)} shtrirje (7 dite)`),`
+  `}function ke({posts:e=[],iconFn:a}={}){const s=Array.isArray(e)?e:[];let n="";return s.length?(n=s.map(o=>{const l=[o.dateLabel,`${$(o.likesCount||0)} Likes`,`${$(o.commentsCount||0)} Kommentare`];return Number(o.impressions||0)>0&&l.push(`${$(o.impressions)} shtrirje (7 dite)`),`
         <div class="mnyra-dash__post">
           <div class="mnyra-dash__post-thumb">
             ${o.thumbUrl?`<img src="${c(o.thumbUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:w(a,o.mediaType==="video"?"play":"image","w-5 h-5")}
@@ -448,7 +459,7 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
             <p class="mnyra-dash__post-meta">${c(l.filter(Boolean).join(" · "))}</p>
           </div>
         </div>
-      `}).join(""),r=`<div class="mnyra-dash__posts">${r}</div>`):r=`
+      `}).join(""),n=`<div class="mnyra-dash__posts">${n}</div>`):n=`
       <div class="mnyra-dash__state" style="border:none;">
         <p class="mnyra-dash__state-title">Ende nuk ka postime</p>
         <p class="mnyra-dash__state-body">Posto foton ose videon tende te pare qe vizitoret te te zbulojne ne feed.</p>
@@ -460,9 +471,9 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
         <p class="mnyra-dash__section-title">Letzte Beiträge</p>
         <button type="button" class="mnyra-dash__section-link" data-nav="profile">Profil öffnen</button>
       </div>
-      ${r}
+      ${n}
     </div>
-  `}function K({kpiCount:e=6}={}){return`
+  `}function H({kpiCount:e=6}={}){return`
     <div class="mnyra-dash__section" data-dashboard-kpis>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
@@ -488,17 +499,17 @@ import{_ as oe}from"./domain-auth-Aq-4Vdvh.js";import{f as z,r as ie,l as de,s a
       <p class="mnyra-dash__state-title">Nuk ka profil biznesi te lidhur</p>
       <p class="mnyra-dash__state-body">Paneli eshte i disponueshem vetem per llogari biznesi. Sapo llogaria jote te lidhet me nje restorant, hotel ose dyqan, i gjen ketu te gjitha funksionet ne nje vend.</p>
     </div>
-  `}const De="menyra_social_dashboard_cache_v1::",Ce=6,je=3;function N(e){const a=Number(e);return Number.isFinite(a)?a:0}function Fe(e={}){const a=String(e.createdAtClient||"").trim();if(a){const r=new Date(a);if(!Number.isNaN(r.getTime()))return r}const s=e.createdAt;if(s&&typeof s.toDate=="function")try{const r=s.toDate();if(r instanceof Date&&!Number.isNaN(r.getTime()))return r}catch{}return null}function $e(e="",a={}){const s=Array.isArray(a.media)&&a.media.length?a.media[0]:{},r=String(s.type||a.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",o=String(s.thumbUrl||(r==="image"?s.url:"")||a.thumbUrl||"").trim(),l=Fe(a);return{id:String(e||"").trim(),caption:String(a.caption||"").trim(),mediaType:r,thumbUrl:o,likesCount:N(a.likesCount),commentsCount:N(a.commentsCount),impressions:0,dateLabel:l?l.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:l?l.getTime():0}}function ze({days:e=[],todayKey:a="",rawPosts:s=[]}={}){const r=Array.isArray(e)?e:[],o=U(r),l=r.find(m=>String(m?.date||m?.id||"").trim()===String(a||"").trim()),g=U(l?[l]:[]),I=o.merged?.posts&&typeof o.merged.posts=="object"?o.merged.posts:{},b=(Array.isArray(s)?s:[]).map(m=>$e(m?.id,m?.data||{})).filter(m=>m.id).sort((m,_)=>_.createdAtMs-m.createdAtMs).slice(0,je).map(m=>({...m,impressions:N(I[m.id]?.impressions)}));return{day:String(a||"").trim(),week:o.summary,today:g.summary,posts:b}}function Te({state:e,renderFn:a,documentObj:s,firestoreApi:r={},profileApi:o={},composerApi:l={},iconFn:g,storageObj:I}={}){const b=s||(typeof document>"u"?null:document),m=typeof a=="function"?a:()=>{},_=I||(typeof localStorage>"u"?null:localStorage),V=typeof o.getBusinessProfileTypeFn=="function"?o.getBusinessProfileTypeFn:(()=>""),A=typeof o.isShopCatalogProfileFn=="function"?o.isShopCatalogProfileFn:(()=>!1),q=typeof o.isBusinessOwnerProfileFn=="function"?o.isBusinessOwnerProfileFn:(()=>!1),J=typeof o.canAccessRestaurantOrdersFn=="function"?o.canAccessRestaurantOrdersFn:(()=>!1),T=typeof o.getRestaurantMetaByIdFn=="function"?o.getRestaurantMetaByIdFn:(()=>null),G=typeof o.resolveRestaurantLogoFn=="function"?o.resolveRestaurantLogoFn:(()=>""),Z=typeof o.resolveOwnAvatarUrlFn=="function"?o.resolveOwnAvatarUrlFn:(()=>"");let S=0,R=!1,v=null,P=null,D="",B=()=>null;const Q=300;async function Y(n=""){const{db:t,collectionFn:d,queryFn:i,limitFn:p,getDocsFn:u}=r,h=String(n||"").trim();if(!h||!t||typeof d!="function"||typeof u!="function")throw new Error("Produktet nuk u ngarkuan.");const f=d(t,"restaurants",h,"menuItems"),x=typeof i=="function"&&typeof p=="function"?i(f,p(Q)):f,y=await u(x),k=[];return y.forEach(F=>{const $=B(F?.id,F?.data?.()||{});$&&k.push($)}),k.sort((F,$)=>F.name.localeCompare($.name,"sq")),k}function W(){return v?Promise.resolve(v):(P||(P=oe(()=>import("./business-composer-controller-DSnLaCwi.js"),__vite__mapDeps([0,1,2,3,4,5])).then(n=>(B=typeof n?.normalizeComposerProductCore=="function"?n.normalizeComposerProductCore:(()=>null),v=n.createBusinessComposerController({documentObj:b,windowObj:b?.defaultView||null,api:{getRestaurantIdFn:()=>C(),getBusinessMetaFn:()=>{const t=C();if(!t)return{name:"",logoUrl:"",city:""};const d=L(t),i=T(t)||{};return{name:d.name,logoUrl:d.logoUrl,city:String(i.city||"").trim()}},loadProductsFn:t=>Y(t),uploadImageFn:l.uploadImageFn,uploadVideoFn:l.uploadVideoFn,captureVideoPosterFn:l.captureVideoPosterFn,createPostFn:l.createPostFn,createStoryFn:l.createStoryFn,formatPriceFn:l.formatPriceFn,getOptimizedImageUrlFn:l.getOptimizedImageUrlFn,escapeHtmlFn:l.escapeHtmlFn,iconFn:typeof g=="function"?g:void 0,afterPublishFn:async t=>{try{await j({force:!0})}catch{}typeof l.afterPublishFn=="function"&&await l.afterPublishFn(t)}}}),v)).catch(n=>{throw P=null,console.error("[mnyra][dashboard] composer load failed",n),n})),P)}function X(n="post"){const t=String(n||"").trim().toLowerCase()==="story"?"story":"post";if(typeof l.prewarmFn=="function")try{l.prewarmFn()}catch{}if(v){v.open(t);return}D=t,W().then(d=>{const i=D||t;D="",d?.open?.(i)}).catch(()=>{D=""})}function E(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:""}),e.dashboardView}function C(){const n=e?.userProfile||{};return String(n.restaurantId||n.staffRestaurantId||"").trim()}function ee(){const n=String(e?.user?.uid||"").trim();if(!n)return!1;const t=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||t===n}function O(n=""){return`${De}${n}`}function ae(n="",t=""){if(!_||!n)return null;try{const d=_.getItem(O(n));if(!d)return null;const i=JSON.parse(d);return!i||typeof i!="object"||String(i.day||"").trim()!==String(t||"").trim()||!i.model||typeof i.model!="object"?null:i.model}catch{return null}}function te(n="",t=null){if(!(!_||!n||!t))try{_.setItem(O(n),JSON.stringify({day:t.day,model:t}))}catch{}}async function re(n=""){const{db:t,collectionFn:d,queryFn:i,orderByFn:p,limitFn:u,getDocsFn:h}=r;if(!t||typeof d!="function"||typeof i!="function"||typeof p!="function"||typeof u!="function"||typeof h!="function")return[];const f=d(t,"restaurants",n,"socialPosts");return(await h(i(f,p("createdAt","desc"),u(Ce)))).docs.map(y=>({id:y.id,data:y.data()||{}})).filter(y=>{const k=String(y.data.status||"active").trim().toLowerCase();return k!=="deleted"&&k!=="hidden"})}async function j({force:n=!1}={}){const t=E(),d=C();if(!d)return;const i=ie({rangeKey:"7d"});if(!i)return;const p=`${d}::${i.toDay}`;if(!n&&t.loadedSignature===p&&t.status==="ready")return;if(!t.model){const f=ae(d,i.toDay);f&&(t.model=f,t.status="ready",m())}S+=1;const u=S;t.model||(t.status="loading",t.error="",m());try{const f={db:r.db,collectionFn:r.collectionFn,queryFn:r.queryFn,whereFn:r.whereFn,documentIdFn:r.documentIdFn,getDocsFn:r.getDocsFn,restaurantId:d},[x,y]=await Promise.allSettled([de({...f,fromDay:i.fromDay,toDay:i.toDay}),re(d)]);if(u!==S)return;if(x.status==="rejected")throw x.reason;y.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",y.reason),t.model=ze({days:x.value,todayKey:i.toDay,rawPosts:y.status==="fulfilled"?y.value:[]}),t.status="ready",t.error="",t.loadedSignature=p,te(d,t.model)}catch(f){if(u!==S)return;console.error("[mnyra][dashboard] load failed",f),t.model||(t.status="error",t.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}m()}function ne(){R||!b||(R=!0,b.addEventListener("click",n=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(n.target?.closest?.("[data-dashboard-retry]")){j({force:!0});return}const t=n.target?.closest?.("[data-dashboard-composer]");t&&(n.preventDefault(),X(t.getAttribute("data-dashboard-composer")))}catch{}}))}function L(n=""){const t=e?.userProfile||{},d=n?T(n)||{}:{},i=V(t),p=String(d.name||d.restaurantName||t.name||"").trim()||"Business";let u="";try{u=String(Z()||"").trim()}catch{}if(!u)try{u=String(G(d)||"").trim()}catch{}return{name:p,logoUrl:u,kind:ue({businessType:i,isShopCatalog:A(t)})}}function se(){ce(b),ne();const n=E(),t=C();let d="";if(!t)d=ee()?`${we()}${K({kpiCount:6})}`:Pe();else{const i=L(t),p=pe({kind:i.kind,isOwner:q(e?.userProfile),canAccessOrders:J(e?.userProfile)}),u=he(i.kind);n.status==="idle"&&(n.status="loading",queueMicrotask(()=>{j({force:!1})}));let h="";n.model?h=`
-          ${xe({kpiDefs:u,week:n.model.week,today:n.model.today})}
-          ${ke({posts:n.model.posts,iconFn:g})}
-        `:n.status==="error"?h=Se({message:n.error}):h=K({kpiCount:u.length}),d=`
+  `}const De="menyra_social_dashboard_cache_v1::",Ce=6,ze=3;function N(e){const a=Number(e);return Number.isFinite(a)?a:0}function Fe(e={}){const a=String(e.createdAtClient||"").trim();if(a){const n=new Date(a);if(!Number.isNaN(n.getTime()))return n}const s=e.createdAt;if(s&&typeof s.toDate=="function")try{const n=s.toDate();if(n instanceof Date&&!Number.isNaN(n.getTime()))return n}catch{}return null}function je(e="",a={}){const s=Array.isArray(a.media)&&a.media.length?a.media[0]:{},n=String(s.type||a.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",o=String(s.thumbUrl||(n==="image"?s.url:"")||a.thumbUrl||"").trim(),l=Fe(a);return{id:String(e||"").trim(),caption:String(a.caption||"").trim(),mediaType:n,thumbUrl:o,likesCount:N(a.likesCount),commentsCount:N(a.commentsCount),impressions:0,dateLabel:l?l.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:l?l.getTime():0}}function $e({days:e=[],todayKey:a="",rawPosts:s=[]}={}){const n=Array.isArray(e)?e:[],o=K(n),l=n.find(m=>String(m?.date||m?.id||"").trim()===String(a||"").trim()),g=K(l?[l]:[]),I=o.merged?.posts&&typeof o.merged.posts=="object"?o.merged.posts:{},b=(Array.isArray(s)?s:[]).map(m=>je(m?.id,m?.data||{})).filter(m=>m.id).sort((m,_)=>_.createdAtMs-m.createdAtMs).slice(0,ze).map(m=>({...m,impressions:N(I[m.id]?.impressions)}));return{day:String(a||"").trim(),week:o.summary,today:g.summary,posts:b}}function Re({state:e,renderFn:a,documentObj:s,firestoreApi:n={},profileApi:o={},composerApi:l={},iconFn:g,storageObj:I}={}){const b=s||(typeof document>"u"?null:document),m=typeof a=="function"?a:()=>{},_=I||(typeof localStorage>"u"?null:localStorage),A=typeof o.getBusinessProfileTypeFn=="function"?o.getBusinessProfileTypeFn:(()=>""),V=typeof o.isShopCatalogProfileFn=="function"?o.isShopCatalogProfileFn:(()=>!1),q=typeof o.isBusinessOwnerProfileFn=="function"?o.isBusinessOwnerProfileFn:(()=>!1),Z=typeof o.canAccessRestaurantOrdersFn=="function"?o.canAccessRestaurantOrdersFn:(()=>!1),R=typeof o.getRestaurantMetaByIdFn=="function"?o.getRestaurantMetaByIdFn:(()=>null),J=typeof o.resolveRestaurantLogoFn=="function"?o.resolveRestaurantLogoFn:(()=>""),G=typeof o.resolveOwnAvatarUrlFn=="function"?o.resolveOwnAvatarUrlFn:(()=>"");let S=0,B=!1,v=null,P=null,D="",T=()=>null;const Q=300;async function Y(r=""){const{db:t,collectionFn:d,queryFn:i,limitFn:h,getDocsFn:u}=n,p=String(r||"").trim();if(!p||!t||typeof d!="function"||typeof u!="function")throw new Error("Produktet nuk u ngarkuan.");const f=d(t,"restaurants",p,"menuItems"),x=typeof i=="function"&&typeof h=="function"?i(f,h(Q)):f,y=await u(x),k=[];return y.forEach(F=>{const j=T(F?.id,F?.data?.()||{});j&&k.push(j)}),k.sort((F,j)=>F.name.localeCompare(j.name,"sq")),k}function W(){return v?Promise.resolve(v):(P||(P=oe(()=>import("./business-composer-controller-DSnLaCwi.js"),__vite__mapDeps([0,1,2,3,4,5])).then(r=>(T=typeof r?.normalizeComposerProductCore=="function"?r.normalizeComposerProductCore:(()=>null),v=r.createBusinessComposerController({documentObj:b,windowObj:b?.defaultView||null,api:{getRestaurantIdFn:()=>C(),getBusinessMetaFn:()=>{const t=C();if(!t)return{name:"",logoUrl:"",city:""};const d=L(t),i=R(t)||{};return{name:d.name,logoUrl:d.logoUrl,city:String(i.city||"").trim()}},loadProductsFn:t=>Y(t),uploadImageFn:l.uploadImageFn,uploadVideoFn:l.uploadVideoFn,captureVideoPosterFn:l.captureVideoPosterFn,createPostFn:l.createPostFn,createStoryFn:l.createStoryFn,formatPriceFn:l.formatPriceFn,getOptimizedImageUrlFn:l.getOptimizedImageUrlFn,escapeHtmlFn:l.escapeHtmlFn,iconFn:typeof g=="function"?g:void 0,afterPublishFn:async t=>{try{await z({force:!0})}catch{}typeof l.afterPublishFn=="function"&&await l.afterPublishFn(t)}}}),v)).catch(r=>{throw P=null,console.error("[mnyra][dashboard] composer load failed",r),r})),P)}function X(r="post"){const t=String(r||"").trim().toLowerCase()==="story"?"story":"post";if(typeof l.prewarmFn=="function")try{l.prewarmFn()}catch{}if(v){v.open(t);return}D=t,W().then(d=>{const i=D||t;D="",d?.open?.(i)}).catch(()=>{D=""})}function E(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:""}),e.dashboardView}function C(){const r=e?.userProfile||{};return String(r.restaurantId||r.staffRestaurantId||"").trim()}function ee(){const r=String(e?.user?.uid||"").trim();if(!r)return!1;const t=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||t===r}function O(r=""){return`${De}${r}`}function ae(r="",t=""){if(!_||!r)return null;try{const d=_.getItem(O(r));if(!d)return null;const i=JSON.parse(d);return!i||typeof i!="object"||String(i.day||"").trim()!==String(t||"").trim()||!i.model||typeof i.model!="object"?null:i.model}catch{return null}}function te(r="",t=null){if(!(!_||!r||!t))try{_.setItem(O(r),JSON.stringify({day:t.day,model:t}))}catch{}}async function ne(r=""){const{db:t,collectionFn:d,queryFn:i,orderByFn:h,limitFn:u,getDocsFn:p}=n;if(!t||typeof d!="function"||typeof i!="function"||typeof h!="function"||typeof u!="function"||typeof p!="function")return[];const f=d(t,"restaurants",r,"socialPosts");return(await p(i(f,h("createdAt","desc"),u(Ce)))).docs.map(y=>({id:y.id,data:y.data()||{}})).filter(y=>{const k=String(y.data.status||"active").trim().toLowerCase();return k!=="deleted"&&k!=="hidden"})}async function z({force:r=!1}={}){const t=E(),d=C();if(!d)return;const i=ie({rangeKey:"7d"});if(!i)return;const h=`${d}::${i.toDay}`;if(!r&&t.loadedSignature===h&&t.status==="ready")return;if(!t.model){const f=ae(d,i.toDay);f&&(t.model=f,t.status="ready",m())}S+=1;const u=S;t.model||(t.status="loading",t.error="",m());try{const f={db:n.db,collectionFn:n.collectionFn,queryFn:n.queryFn,whereFn:n.whereFn,documentIdFn:n.documentIdFn,getDocsFn:n.getDocsFn,restaurantId:d},[x,y]=await Promise.allSettled([de({...f,fromDay:i.fromDay,toDay:i.toDay}),ne(d)]);if(u!==S)return;if(x.status==="rejected")throw x.reason;y.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",y.reason),t.model=$e({days:x.value,todayKey:i.toDay,rawPosts:y.status==="fulfilled"?y.value:[]}),t.status="ready",t.error="",t.loadedSignature=h,te(d,t.model)}catch(f){if(u!==S)return;console.error("[mnyra][dashboard] load failed",f),t.model||(t.status="error",t.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}m()}function re(){B||!b||(B=!0,b.addEventListener("click",r=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(r.target?.closest?.("[data-dashboard-retry]")){z({force:!0});return}const t=r.target?.closest?.("[data-dashboard-composer]");t&&(r.preventDefault(),X(t.getAttribute("data-dashboard-composer")))}catch{}}))}function L(r=""){const t=e?.userProfile||{},d=r?R(r)||{}:{},i=A(t),h=String(d.name||d.restaurantName||t.name||"").trim()||"Business";let u="";try{u=String(G()||"").trim()}catch{}if(!u)try{u=String(J(d)||"").trim()}catch{}return{name:h,logoUrl:u,kind:ue({businessType:i,isShopCatalog:V(t)})}}function se(){ce(b),re();const r=E(),t=C();let d="";if(!t)d=ee()?`${we()}${H({kpiCount:6})}`:Pe();else{const i=L(t),h=he({kind:i.kind,isOwner:q(e?.userProfile),canAccessOrders:Z(e?.userProfile)}),u=pe(i.kind);r.status==="idle"&&(r.status="loading",queueMicrotask(()=>{z({force:!1})}));let p="";r.model?p=`
+          ${xe({kpiDefs:u,week:r.model.week,today:r.model.today})}
+          ${ke({posts:r.model.posts,iconFn:g})}
+        `:r.status==="error"?p=Se({message:r.error}):p=H({kpiCount:u.length}),d=`
         ${ye({name:i.name,logoUrl:i.logoUrl,iconFn:g})}
         ${be({iconFn:g})}
         ${_e({iconFn:g})}
-        ${ve({actions:p,iconFn:g})}
-        ${h}
+        ${ve({actions:h,iconFn:g})}
+        ${p}
       `}return`
       <section class="mnyra-dash" data-dashboard-root>
         ${d}
       </section>
-    `}return Object.freeze({renderDashboardView:se,loadDashboard:j})}export{Te as c};
+    `}return Object.freeze({renderDashboardView:se,loadDashboard:z})}export{Re as c};
