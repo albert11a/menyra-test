@@ -61,7 +61,10 @@ class FakeElement {
 }
 
 // Nur so viel Umgebung, wie die Pin-Mechanik der Kopfzeile anfasst.
-function createHarness({ location = { lat: 42.66, lng: 21.16, label: "Pristina", city: "Pristina" } } = {}) {
+function createHarness({
+  location = { lat: 42.66, lng: 21.16, label: "Pristina", city: "Pristina" },
+  guest = false
+} = {}) {
   const toggleEl = new FakeElement("button");
   const scopeEl = new FakeElement("div");
   const inputEl = new FakeElement("input");
@@ -107,24 +110,25 @@ function createHarness({ location = { lat: 42.66, lng: 21.16, label: "Pristina",
     removeEventListener: () => {}
   };
 
+  const state = {
+    activeTab: "feed",
+    userProfile: {},
+    notifications: [],
+    shopCart: { items: [] }
+  };
   const controller = createAppShellRuntimeController({
-    state: {
-      activeTab: "feed",
-      userProfile: {},
-      notifications: [],
-      shopCart: { items: [] }
-    },
+    state,
     documentObj,
     windowObj,
     escapeHtml: (value = "") => String(value || ""),
     icon: (name = "") => `<svg data-icon="${name}"></svg>`,
-    isGuestSession: () => false,
+    isGuestSession: () => guest,
     getChatUnreadCount: () => 0,
     resolveHeaderBranding: () => ({ title: "MNYRA", subtitle: "Social", logoUrl: "", isBusinessLogo: false }),
     logoFitClass: () => "object-cover"
   });
 
-  return { controller, documentObj, windowObj, toggleEl, inputEl, suggestionsEl, store };
+  return { controller, state, documentObj, windowObj, toggleEl, inputEl, suggestionsEl, store };
 }
 
 function firePinClick(documentObj, toggleEl) {
@@ -157,12 +161,47 @@ test("zbulo header keeps the text logo and offers the pin as first action icon",
   const actionsHtml = html.slice(html.indexOf('class="smart-header-actions'));
   const pinIndex = actionsHtml.indexOf("data-smart-header-location-toggle");
   const globeIndex = actionsHtml.indexOf("data-language-toggle");
-  const userIndex = actionsHtml.indexOf('data-nav="profile"');
   const cartIndex = actionsHtml.indexOf('data-action="cart"');
   assert.ok(pinIndex > -1, "pin toggle is rendered");
   assert.ok(pinIndex < globeIndex, "pin stands before the language icon");
-  assert.ok(globeIndex < userIndex && userIndex < cartIndex, "remaining icon order is untouched");
+  assert.ok(globeIndex < cartIndex, "remaining icon order is untouched");
   assert.match(actionsHtml, /<svg data-icon="map-pin"><\/svg>/);
+});
+
+test("no account icon is left in the header", () => {
+  const { controller } = createHarness();
+
+  const html = controller.renderHeader();
+
+  assert.equal(html.includes('data-icon="user"'), false);
+  assert.equal(html.includes('data-nav="profile"'), false);
+  assert.equal(html.includes('data-auth-open'), false);
+});
+
+test("no account icon is left in the business profile header either", () => {
+  const { controller, state } = createHarness();
+  state.activeTab = "profile";
+  state.userProfile = { uid: "biz-1", name: "Casa Rita", role: "business", restaurantId: "rest-1" };
+
+  const html = controller.renderHeader();
+
+  assert.match(html, /data-business-profile-home="true"/, "business header is rendered");
+  assert.equal(html.includes('data-icon="user"'), false);
+  assert.equal(html.includes('data-nav="profile"'), false);
+  assert.equal(html.includes('data-auth-open'), false);
+  // Sprache und Warenkorb bleiben unangetastet.
+  assert.match(html, /data-language-toggle/);
+  assert.match(html, /data-action="cart"/);
+});
+
+test("guest smart header offers no login icon anymore", () => {
+  const { controller } = createHarness({ guest: true });
+
+  const html = controller.renderHeader();
+
+  assert.equal(html.includes('data-auth-open'), false);
+  assert.equal(html.includes('data-icon="user"'), false);
+  assert.equal(html.includes('data-icon="log-in"'), false);
 });
 
 test("pin icon uses the same button and icon size as the other header icons", () => {
@@ -174,8 +213,8 @@ test("pin icon uses the same button and icon size as the other header icons", ()
 
   assert.ok(pinButton, "pin button carries the shared action button size");
   assert.match(pinButton, /w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full/);
-  // Alle vier Aktions-Icons in derselben Groesse.
-  ["map-pin", "globe", "user", "shopping-bag"].forEach((name) => {
+  // Alle Aktions-Icons in derselben Groesse.
+  ["map-pin", "globe", "shopping-bag"].forEach((name) => {
     assert.match(html, new RegExp(`<svg data-icon="${name}"></svg>`));
   });
   assert.equal(html.includes('class="smart-header-location-btn w-9 h-9'), true);

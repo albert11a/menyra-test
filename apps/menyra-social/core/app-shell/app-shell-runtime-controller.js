@@ -1003,7 +1003,6 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function renderBusinessHeaderActions(profile = getActiveHeaderProfile()) {
     const viewportUi = resolveBusinessHeaderViewportUi();
-    const guestSession = isGuestSession();
     const menuActive = isBusinessMenuHeaderContext(profile);
     const cartCount = Array.isArray(state.shopCart?.items)
       ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
@@ -1021,11 +1020,7 @@ export function createAppShellRuntimeController(deps = {}) {
           <button type="button" data-action="kellner" title="${escapeHtml(tr("header.callWaiter", "Thirr kamarierin"))}" class="${primaryActionClass}">
             ${icon("bell", viewportUi.actionIconClass)}
           </button>
-        ` : `
-          <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${primaryActionClass}">
-            ${icon("user", viewportUi.actionIconClass)}
-          </button>
-        `}
+        ` : ""}
       </div>
     `;
   }
@@ -1112,7 +1107,6 @@ export function createAppShellRuntimeController(deps = {}) {
     const cartCount = Array.isArray(state.shopCart?.items)
       ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
       : 0;
-    const guestSession = isGuestSession();
     const headerLocationRecord = readStoredFeedViewerLocation();
     const showFeedLocationHeaderSearch = !isLandingTopTab && shouldShowFeedLocationHeaderSearch(headerLocationRecord);
     const feedLocationLabel = String(
@@ -1160,9 +1154,6 @@ export function createAppShellRuntimeController(deps = {}) {
             <div class="smart-header-actions flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
               ${showFeedLocationHeaderSearch ? renderSmartHeaderLocationToggle(actionButtonClass, actionIconClass) : ""}
               ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
-              <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${actionButtonClass}">
-                ${icon("user", actionIconClass)}
-              </button>
               <button type="button" data-action="cart" class="smart-header-cart-btn ${actionButtonClass} text-slate-900">
                 ${icon("shopping-bag", actionIconClass)}
                 ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}

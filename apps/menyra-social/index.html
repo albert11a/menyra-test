@@ -1521,19 +1521,11 @@
     /* Schmale Geraete: obere Header-Zeile bleibt einzeilig, das Location-Feld
        behaelt trotz Collapse-Pfeil genug Schreibbreite. */
     @media (max-width: 380px) {
-      /* Mit dem Pin steht ein Icon mehr in der Zeile. Die Icons bleiben untereinander
-         gleich gross, nur ihre Breite und die Abstaende geben etwas nach - der Platz
-         geht an das Textlogo, damit es nicht abgeschnitten wird. */
-      .smart-header-actions:has(.smart-header-collapse-btn) { gap: 0.15rem; }
-      .smart-header-actions:has(.smart-header-collapse-btn) > button { width: 1.9rem; }
-      .smart-header-actions:has(.smart-header-collapse-btn) > .smart-header-collapse-btn { width: 1.5rem; }
-      /* Schmale Geraete: das Logo eine Stufe enger, damit es neben den fuenf
-         Icons ganz zu lesen bleibt. */
-      .smart-header-lead--location .smart-header-brand > h1 { font-size: 1.1rem; }
-      .smart-header-lead--location .smart-header-brand > span {
-        font-size: 8px;
-        letter-spacing: 0.06em;
-      }
+      .smart-header-actions:has(.smart-header-collapse-btn) > button { width: 2rem; }
+      .smart-header-actions:has(.smart-header-collapse-btn) > .smart-header-collapse-btn { width: 1.6rem; }
+      /* Schmale Geraete: nur die Laufweite des Zusatzes gibt nach, damit das Logo
+         neben Pin, Globus, Tasche und Pfeil ganz zu lesen bleibt. */
+      .smart-header-lead--location .smart-header-brand > span { letter-spacing: 0.18em; }
       .smart-header-feed-location .loc-input {
         padding-left: 1.7rem;
         padding-right: 2.15rem;
@@ -1575,10 +1567,9 @@
       .smart-header-pill__label {
         margin-right: -0.06em;
       }
-      /* Unter ca. 345px ist neben Hamburger und fuenf Icons kein Platz mehr fuer
-         beide Worte. Dann bleibt "MNYRA" ganz stehen und der Zusatz entfaellt -
-         besser als ein abgeschnittenes Logo. */
-      .smart-header-lead--location .smart-header-brand > h1 { font-size: 1.15rem; }
+      /* Unter ca. 345px ist neben Hamburger und Icon-Reihe kein Platz mehr fuer
+         beide Worte. Dann bleibt "MNYRA" in voller Groesse stehen und nur der
+         Zusatz entfaellt - besser als ein abgeschnittenes Logo. */
       .smart-header-lead--location .smart-header-brand > span { display: none; }
     }
     /* Bewusst kein fast-mode-Opt-out: das Auf- und Zuklappen im Header ist eine
@@ -1661,16 +1652,6 @@
     }
     html.smart-header-location-open .smart-header-lead--location .smart-header-brand {
       display: none;
-    }
-    /* In dieser Zeile steht mit dem Pin ein Icon mehr als in den anderen
-       Kopfzeilen. Das Textlogo ist darum eine Stufe kleiner gesetzt - auf jedem
-       Telefon gleich, damit es nie am Rand haengt und nicht von Geraet zu Geraet
-       eine andere Groesse hat. */
-    .smart-header-lead--location .smart-header-brand > h1 {
-      font-size: 1.25rem;
-    }
-    .smart-header-lead--location .smart-header-brand > span {
-      letter-spacing: 0.14em;
     }
     /* Notbremse fuer sehr schmale Geraete: das Logo wird abgeschnitten, statt die
        Icons aus der Zeile zu schieben. */
