@@ -1,7 +1,7 @@
 // Die Vorschau im Business-Composer muss 1:1 dem echten Beitrag und der
-// echten Story entsprechen. Diese Tests halten das fest: sie schlagen fehl,
-// sobald Feed, Story-Kachel oder Story-Seite sich aendern, ohne dass die
-// gemeinsamen Bausteine mitgezogen werden.
+// echten Story-Reihe entsprechen. Diese Tests halten das fest: sie schlagen
+// fehl, sobald Feed oder Story-Kachel sich aendern, ohne dass die gemeinsamen
+// Bausteine mitgezogen werden.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -14,12 +14,6 @@ import {
   buildStoryTileInnerStyleCore,
   buildStoryTileShellStyleCore
 } from "../apps/menyra-social/core/feed/story-tile-markup-utils.js";
-import { STORY_VIEWER_SURFACE_CSS, STORY_VIEWER_SURFACE_CLASS } from "../apps/menyra-social/core/stories/story-viewer-surface-css.js";
-import {
-  buildStoryViewerSurfaceModuleCore,
-  STORY_SURFACE_SELECTORS,
-  SURFACE_SCOPE
-} from "../scripts/generate-story-viewer-surface-css.mjs";
 
 const repoUrl = (path) => new URL(`../${path}`, import.meta.url);
 
@@ -43,6 +37,9 @@ test("story tile renderer and composer preview share one tile builder", async ()
   const ring = "linear-gradient(135deg,#f59e0b 0%,#db2777 100%)";
   assert.ok(!feedSource.includes(ring));
   assert.ok(!composerSource.includes(ring));
+  // Auch die Masse kommen aus dem Baustein, nicht aus eigenen Zahlen.
+  assert.ok(composerSource.includes("buildStoryTileShellStyleCore({ withMarginLeft: first })"));
+  assert.ok(composerSource.includes("buildStoryTileInnerStyleCore()"));
 });
 
 test("feed card markup keeps the classes the shipped stylesheet knows", () => {
@@ -83,67 +80,30 @@ test("story tile markup keeps geometry and layers", () => {
   assert.ok(html.includes("linear-gradient(135deg,#f59e0b 0%,#db2777 100%)"));
   assert.ok(html.includes("Casa Rita"));
   assert.equal(buildStoryTileShellStyleCore(), "flex:0 0 29%;width:29%;max-width:120px;");
+  // Die erste Kachel der Reihe steht eingerueckt - im Feed wie in der Vorschau.
+  assert.equal(
+    buildStoryTileShellStyleCore({ withMarginLeft: true }),
+    "flex:0 0 29%;width:29%;max-width:120px;margin-left:1.25rem;"
+  );
   assert.ok(buildStoryTileInnerStyleCore().startsWith("height:13rem;border-radius:1rem;"));
   assert.ok(renderStoryTileMediaFallbackCore({ iconFn: (n) => n }).includes("camera"));
 });
 
-test("story viewer surface css is in sync with story/index.html", async () => {
-  const html = await readFile(repoUrl("apps/menyra-social/story/index.html"), "utf8");
-  const current = await readFile(repoUrl("apps/menyra-social/core/stories/story-viewer-surface-css.js"), "utf8");
-  // Regeneriert man aus der Story-Seite, muss exakt das committete Modul
-  // herauskommen. Aendert jemand story/index.html, faellt dieser Test.
-  assert.equal(current, buildStoryViewerSurfaceModuleCore(html));
-});
-
-test("story viewer surface css covers every visible reel layer", () => {
-  assert.equal(STORY_VIEWER_SURFACE_CLASS, SURFACE_SCOPE.slice(1));
-  STORY_SURFACE_SELECTORS.forEach((selector) => {
-    const first = selector.split(",")[0].trim();
-    assert.ok(
-      STORY_VIEWER_SURFACE_CSS.includes(`${SURFACE_SCOPE} ${first}`),
-      `Regel fehlt: ${first}`
-    );
-  });
-  // Die Buehne darf genau zwei Dinge anders machen: Hoehe und Klickbarkeit.
-  assert.ok(STORY_VIEWER_SURFACE_CSS.includes(`${SURFACE_SCOPE} .reel {\n  height: 100%;`));
-  assert.ok(STORY_VIEWER_SURFACE_CSS.includes("pointer-events: none;"));
-});
-
-test("composer reel preview uses the same nodes the story viewer builds", async () => {
-  const viewerSource = await readFile(repoUrl("apps/menyra-social/core/stories/story-viewer-runtime-controller.js"), "utf8");
+test("composer story preview is the zbulo story row: own story sharp, neighbours blurred", async () => {
   const composerSource = await readFile(repoUrl("apps/menyra-social/core/composer/business-composer-controller.js"), "utf8");
-  const layers = [
-    "reel",
-    "vignette",
-    "topbar",
-    "topbarLeft",
-    "topbarRight",
-    "btnIcon",
-    "brandPill",
-    "brandLogo",
-    "brandName",
-    "content",
-    "contentDesc",
-    "rail",
-    "railBtn",
-    "railIcon",
-    "productCard",
-    "productCardThumb",
-    "productCardThumbImg",
-    "productCardInfo",
-    "productCardName",
-    "productCardPrice",
-    "productCardBtn",
-    "reel-image"
-  ];
-  layers.forEach((layer) => {
-    assert.ok(
-      viewerSource.includes(`"${layer}"`) || viewerSource.includes(`class=\\"${layer}\\"`),
-      `Story-Viewer kennt "${layer}" nicht mehr - Vorschau anpassen`
-    );
-    assert.ok(
-      composerSource.includes(`class="${layer}"`) || composerSource.includes(`class="${layer} `),
-      `Vorschau rendert "${layer}" nicht`
-    );
-  });
+  const feedSource = await readFile(repoUrl("apps/menyra-social/core/feed/feed-view-orchestration-controller.js"), "utf8");
+  // Genau drei Kacheln: die eigene und zwei Nachbarn.
+  assert.ok(composerSource.includes("${buildOwnStoryTileMarkup()}"));
+  assert.equal((composerSource.match(/\$\{buildNeighbourStoryTileMarkup\(\d\)\}/g) || []).length, 2);
+  // Nur die eigene Kachel ist scharf, die Nachbarn traegt der Blur-Marker.
+  assert.ok(composerSource.includes('shellAttrs: "data-bc-story-own"'));
+  assert.ok(composerSource.includes("data-bc-story-blur="));
+  assert.ok(composerSource.includes(".mnyra-bc__story-track > [data-bc-story-blur] > div > * {"));
+  assert.ok(composerSource.includes("filter: blur("));
+  // Der Abstand der Reihe ist derselbe wie im Feed (gap-2.5 = 10px).
+  assert.ok(feedSource.includes("gap-2.5"));
+  assert.ok(composerSource.includes("const STORY_TRACK_GAP = 10;"));
+  // Die geoeffnete Story wird nicht mehr nachgebaut.
+  assert.ok(!composerSource.includes('class="reel"'));
+  assert.ok(!composerSource.includes("story-viewer-surface-css"));
 });

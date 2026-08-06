@@ -13,10 +13,14 @@
 // gesperrt (ein Submit-Guard verhindert Doppel-Posts auch bei Doppel-Taps).
 //
 // Die Vorschau ist kein Nachbau: sie rendert mit denselben Bausteinen wie das
-// Original (renderFeedCardMarkupCore, renderStoryTileMarkupCore) und mit den
-// aus story/index.html abgeleiteten Story-Viewer-Regeln. Angezeigt wird sie in
-// einer Buehne, die das Original in Originalbreite aufbaut und nur als Ganzes
-// herunterskaliert - dadurch stimmt jedes Mass proportional exakt.
+// Original (renderFeedCardMarkupCore, renderStoryTileMarkupCore). Angezeigt
+// wird sie in einer Buehne, die das Original in Originalbreite aufbaut und nur
+// als Ganzes herunterskaliert - dadurch stimmt jedes Mass proportional exakt.
+//
+// Die Story-Vorschau zeigt genau das, was der Nutzer nachher sieht: die
+// Story-Reihe von Zbulo. Die eigene Story steht vorne scharf, dahinter stehen
+// zwei weitere Kacheln unscharf - dieselbe Reihe, dieselben Masse, nur der
+// Blick liegt auf der eigenen.
 
 import {
   renderFeedCardMarkupCore
@@ -24,35 +28,22 @@ import {
 import {
   renderStoryTileMarkupCore,
   renderStoryTileMediaFallbackCore,
+  buildStoryTileShellStyleCore,
   buildStoryTileInnerStyleCore
 } from "../feed/story-tile-markup-utils.js";
-import {
-  STORY_VIEWER_SURFACE_CSS,
-  STORY_VIEWER_SURFACE_CLASS
-} from "../stories/story-viewer-surface-css.js";
 
 const STYLE_ELEMENT_ID = "mnyraBusinessComposerStyles";
 // Die App-Shell ist max-w-md breit; darin steht der echte Feed.
 const APP_SHELL_MAX_WIDTH = 448;
-const STORY_TILE_TRACK_RATIO = 0.29;
-const STORY_TILE_MAX_WIDTH = 120;
-const STORY_TILE_HEIGHT = 208;
-// Die geoeffnete Story ist eine Vollbild-Flaeche im Hochformat des Geraets
-// (.reel ist 100dvh auf einer Seite, die nichts anderes zeigt). Die Vorschau
-// nimmt dieses Verhaeltnis vom BILDSCHIRM, nicht vom Browserfenster:
-//  - das Fenster ist um die Safari-Leisten kuerzer und viel breiter geschnitten,
-//    dadurch bekam ein Hochformat-Foto in der Vorschau dicke schwarze Balken,
-//    die es in der echten Story so nie hat,
-//  - und es schrumpft, sobald die Tastatur aufgeht - die Vorschau sprang dann
-//    beim Tippen in ein anderes Format.
-const STORY_FRAME_MIN_RATIO = 0.4;
-const STORY_FRAME_MAX_RATIO = 0.7;
-const STORY_FRAME_FALLBACK_RATIO = 9 / 16;
-const STORY_FRAME_MIN_WIDTH = 320;
-const STORY_FRAME_MAX_WIDTH = 480;
-// Beide Story-Vorschauen stehen nebeneinander und sind exakt gleich hoch.
-const STORY_PREVIEW_GAP = 12;
-const STORY_PREVIEW_MAX_HEIGHT = 420;
+// Die Story-Reihe im Feed haelt ihre Kacheln mit gap-2.5 auseinander; die
+// Kachelmasse selbst kommen aus story-tile-markup-utils.
+const STORY_TRACK_GAP = 10;
+// Die beiden unscharfen Nachbarkacheln tragen kein fremdes Bild, sondern zwei
+// ruhige Flaechen - unscharf sieht man ohnehin nur, dass da noch etwas steht.
+const STORY_TRACK_NEIGHBOUR_SHADES = Object.freeze([
+  "linear-gradient(150deg,#94a3b8 0%,#475569 55%,#1e293b 100%)",
+  "linear-gradient(150deg,#a5b4fc 0%,#6366f1 55%,#312e81 100%)"
+]);
 const ROOT_ELEMENT_ID = "businessComposerOverlayRoot";
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const CAPTION_MAX_LENGTH = 600;
@@ -77,10 +68,8 @@ const TEXT = Object.freeze({
   hintReady: "Gati për t'u postuar.",
   previewTitle: "Parapamje",
   previewPost: "Si duket në Zbulo",
-  previewStoryTile: "Në Zbulo",
-  previewStoryFull: "Kur hapet story-a",
+  previewStory: "Në rreshtin e story-ve",
   previewEmpty: "Zgjidh një foto për ta parë parapamjen.",
-  productMore: "Mehr",
   pickerTitle: "Zgjidh një produkt",
   pickerSearch: "Kërko ushqime ose pije…",
   pickerConfirm: "Zgjidh produktin",
@@ -382,16 +371,6 @@ export const BUSINESS_COMPOSER_CSS = `
 }
 .mnyra-bc__pane { display: none; }
 .mnyra-bc__pane[data-visible="1"] { display: block; }
-/* Zwei gleich grosse Spalten: die Kachel und die geoeffnete Story stehen
-   nebeneinander und sind exakt gleich hoch - es ist eine Vorschau, keine
-   Gegenueberstellung von gross und klein. */
-.mnyra-bc__story-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: ${STORY_PREVIEW_GAP}px;
-  align-items: start;
-}
-.mnyra-bc__story-col { min-width: 0; }
 /* Buehne: das Original steht darin in Originalbreite und wird als Ganzes
    skaliert. Nichts im Inneren wird umgerechnet - alle Verhaeltnisse bleiben
    exakt so, wie der Nutzer sie spaeter sieht. */
@@ -400,15 +379,25 @@ export const BUSINESS_COMPOSER_CSS = `
   overflow: hidden;
   width: 100%;
 }
-/* Die beiden Story-Buehnen bekommen ihre Masse aus der Geometrie (gleiche
-   Hoehe, eigenes Seitenverhaeltnis) und stehen mittig in ihrer Spalte. */
-.mnyra-bc__stage--frame {
-  margin-left: auto;
-  margin-right: auto;
+/* Die Story-Reihe von Zbulo: dieselbe Flex-Reihe, derselbe Abstand, derselbe
+   Einzug. Sie scrollt hier nicht - es sind genau die drei Kacheln zu sehen,
+   die auch im Feed nebeneinander stehen. */
+.mnyra-bc__story-track {
+  display: flex;
+  align-items: flex-start;
+  gap: ${STORY_TRACK_GAP}px;
+  padding: 8px 0;
+  overflow: hidden;
 }
-.mnyra-bc__stage--reel {
-  border-radius: 18px;
-  background: #000;
+/* Die fremden Kacheln stehen unscharf daneben: die Reihe bleibt vollstaendig,
+   der Blick liegt auf der eigenen Story. Unscharf gestellt wird der INHALT der
+   Kachel, nicht die Kachel selbst - so bleibt ihre abgerundete Form scharf.
+   Das leichte Vergroessern haelt den weichen Rand des Blurs ausserhalb des
+   Ausschnitts, sonst wuerde die Flaeche zum Rand hin durchsichtig. */
+.mnyra-bc__story-track > [data-bc-story-blur] { opacity: 0.6; }
+.mnyra-bc__story-track > [data-bc-story-blur] > div > * {
+  filter: blur(4px) saturate(0.85);
+  transform: scale(1.12);
 }
 .mnyra-bc__stage-inner {
   transform-origin: top left;
@@ -621,9 +610,7 @@ function ensureStylesInjected(doc) {
   try {
     const style = doc.createElement("style");
     style.id = STYLE_ELEMENT_ID;
-    // Zuerst die Story-Viewer-Regeln (aus story/index.html abgeleitet), dann
-    // die Composer-Regeln - so kann die Buehne einzelne Werte gezielt setzen.
-    style.textContent = `${STORY_VIEWER_SURFACE_CSS}\n${BUSINESS_COMPOSER_CSS}`;
+    style.textContent = BUSINESS_COMPOSER_CSS;
     doc.head?.appendChild(style);
   } catch {}
 }
@@ -672,63 +659,6 @@ export function filterComposerProductsCore(products = [], term = "") {
     const haystack = `${product?.name || ""} ${product?.category || ""}`.toLowerCase();
     return haystack.includes(needle);
   });
-}
-
-// Das Seitenverhaeltnis der geoeffneten Story: das Hochformat des Geraets.
-// Bewusst aus screen.width/screen.height - die Browserleisten und die Tastatur
-// aendern daran nichts, die Vorschau steht also still und zeigt dasselbe
-// Format wie die Story-Seite, die den ganzen Bildschirm fuellt.
-export function resolveStoryFrameRatioCore(screenWidth = 0, screenHeight = 0) {
-  const width = Number(screenWidth) > 0 ? Number(screenWidth) : 0;
-  const height = Number(screenHeight) > 0 ? Number(screenHeight) : 0;
-  if (width <= 0 || height <= 0) return STORY_FRAME_FALLBACK_RATIO;
-  const ratio = Math.min(width, height) / Math.max(width, height);
-  if (ratio < STORY_FRAME_MIN_RATIO || ratio > STORY_FRAME_MAX_RATIO) return STORY_FRAME_FALLBACK_RATIO;
-  return ratio;
-}
-
-// Die Buehne der geoeffneten Story in Originalmassen: so breit wie das Geraet
-// im Hochformat (auf dem Desktop auf Telefonbreite begrenzt), so hoch, wie es
-// das Seitenverhaeltnis verlangt.
-export function resolveStoryFrameSizeCore({ screenWidth = 0, screenHeight = 0, viewportWidth = 0 } = {}) {
-  const ratio = resolveStoryFrameRatioCore(screenWidth, screenHeight);
-  const raw = Number(viewportWidth) > 0 ? Number(viewportWidth) : STORY_FRAME_MIN_WIDTH;
-  const width = Math.round(Math.min(STORY_FRAME_MAX_WIDTH, Math.max(STORY_FRAME_MIN_WIDTH, raw)));
-  return { width, height: Math.round(width / ratio) };
-}
-
-function scalePreviewBoxCore(width = 0, height = 0, targetHeight = 0) {
-  const safeWidth = Number(width) > 0 ? Number(width) : 0;
-  const safeHeight = Number(height) > 0 ? Number(height) : 0;
-  if (safeWidth <= 0 || safeHeight <= 0) return { width: 0, height: 0, scale: 1 };
-  const scale = targetHeight / safeHeight;
-  return { width: safeWidth * scale, height: targetHeight, scale };
-}
-
-// Beide Story-Vorschauen sind exakt gleich hoch. Die Hoehe ist die groesste,
-// bei der BEIDE noch in ihre halbe Spalte passen - dadurch behaelt jede ihr
-// eigenes Seitenverhaeltnis und trotzdem ist keine kleiner als die andere.
-export function resolveStoryPreviewLayoutCore({
-  rowWidth = 0,
-  gap = STORY_PREVIEW_GAP,
-  tileWidth = 0,
-  tileHeight = 0,
-  reelWidth = 0,
-  reelHeight = 0,
-  maxHeight = STORY_PREVIEW_MAX_HEIGHT
-} = {}) {
-  const columnWidth = Math.max(1, ((Number(rowWidth) || 0) - (Number(gap) || 0)) / 2);
-  const limits = [];
-  if (Number(maxHeight) > 0) limits.push(Number(maxHeight));
-  if (tileWidth > 0 && tileHeight > 0) limits.push(columnWidth * (tileHeight / tileWidth));
-  if (reelWidth > 0 && reelHeight > 0) limits.push(columnWidth * (reelHeight / reelWidth));
-  const height = limits.length ? Math.max(1, Math.min(...limits)) : 1;
-  return {
-    height,
-    columnWidth,
-    tile: scalePreviewBoxCore(tileWidth, tileHeight, height),
-    reel: scalePreviewBoxCore(reelWidth, reelHeight, height)
-  };
 }
 
 // Einzige Wahrheit fuer den "Posto"-Knopf: Text UND Foto muessen da sein.
@@ -843,19 +773,9 @@ export function createBusinessComposerController({
             </div>
 
             <div class="mnyra-bc__pane" data-bc-pane="story">
-              <div class="mnyra-bc__story-grid" data-bc-story-grid>
-                <div class="mnyra-bc__story-col">
-                  <p class="mnyra-bc__preview-caption">${TEXT.previewStoryTile}</p>
-                  <div class="mnyra-bc__stage mnyra-bc__stage--frame" data-bc-stage="tile">
-                    <div class="mnyra-bc__stage-inner" data-bc-stage-inner="tile"></div>
-                  </div>
-                </div>
-                <div class="mnyra-bc__story-col">
-                  <p class="mnyra-bc__preview-caption">${TEXT.previewStoryFull}</p>
-                  <div class="mnyra-bc__stage mnyra-bc__stage--frame mnyra-bc__stage--reel" data-bc-stage="reel">
-                    <div class="mnyra-bc__stage-inner" data-bc-stage-inner="reel"></div>
-                  </div>
-                </div>
+              <p class="mnyra-bc__preview-caption">${TEXT.previewStory}</p>
+              <div class="mnyra-bc__stage mnyra-bc__stage--bleed" data-bc-stage="story">
+                <div class="mnyra-bc__stage-inner" data-bc-stage-inner="story"></div>
               </div>
             </div>
           </section>
@@ -913,13 +833,10 @@ export function createBusinessComposerController({
       error: q("[data-bc-error]"),
       panePost: q('[data-bc-pane="post"]'),
       paneStory: q('[data-bc-pane="story"]'),
-      storyGrid: q("[data-bc-story-grid]"),
       stagePost: q('[data-bc-stage="post"]'),
       stagePostInner: q('[data-bc-stage-inner="post"]'),
-      stageTile: q('[data-bc-stage="tile"]'),
-      stageTileInner: q('[data-bc-stage-inner="tile"]'),
-      stageReel: q('[data-bc-stage="reel"]'),
-      stageReelInner: q('[data-bc-stage-inner="reel"]'),
+      stageStory: q('[data-bc-stage="story"]'),
+      stageStoryInner: q('[data-bc-stage-inner="story"]'),
       picker: q("[data-bc-picker]"),
       pickerClose: q("[data-bc-picker-close]"),
       pickerSearch: q("[data-bc-picker-search]"),
@@ -960,28 +877,6 @@ export function createBusinessComposerController({
     return Math.min(viewport, APP_SHELL_MAX_WIDTH);
   }
 
-  function resolveStoryTileWidth() {
-    return Math.min(resolveShellWidth() * STORY_TILE_TRACK_RATIO, STORY_TILE_MAX_WIDTH);
-  }
-
-  function resolveStoryFrameSize() {
-    return resolveStoryFrameSizeCore({
-      screenWidth: Number(win?.screen?.width) || 0,
-      screenHeight: Number(win?.screen?.height) || 0,
-      viewportWidth: Number(win?.innerWidth) || 0
-    });
-  }
-
-  // Breite der Vorschau-Zeile. Solange die Story-Seite eingeblendet ist, misst
-  // sie sich selbst; ist sie es (noch) nicht, rechnet die Breite aus dem Body.
-  function resolvePreviewRowWidth() {
-    const gridWidth = Number(nodes?.storyGrid?.clientWidth) || 0;
-    if (gridWidth > 0) return gridWidth;
-    const bodyWidth = Number(nodes?.body?.clientWidth) || 0;
-    if (bodyWidth > 0) return Math.max(1, bodyWidth - 32);
-    return Math.max(1, resolveShellWidth() - 32);
-  }
-
   // --- Vorschau 1: der echte Feed-Beitrag ------------------------------------
   // Gleicher Baustein wie im Feed, gleiche Klassen, gleiche Masse. Nur die
   // Datenattribute fehlen, damit die Vorschau keine App-Handler ausloest.
@@ -1011,97 +906,69 @@ export function createBusinessComposerController({
     });
   }
 
-  // --- Vorschau 2: die Story-Kachel im Zbulo-Track ---------------------------
-  function buildStoryTilePreviewMarkup() {
-    const draft = drafts.story;
-    const meta = resolveBusinessMeta();
-    const previewUrl = String(draft.previewUrl || "").trim();
-    const tileWidth = resolveStoryTileWidth();
-    const mediaHtml = previewUrl
-      ? `<img src="${escapeAttr(previewUrl)}" decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />`
-      : renderStoryTileMediaFallbackCore({ iconFn: appIcon });
-    const logoImgHtml = `<img src="${escapeAttr(meta.logoUrl)}" decoding="async" width="28" height="28" class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />`;
+  // --- Vorschau 2: die Story-Reihe von Zbulo --------------------------------
+  // Eine Kachel gehoert dem Nutzer, zwei stehen unscharf daneben. Alle drei
+  // kommen aus demselben Baustein wie die echten Kacheln im Feed und tragen
+  // dieselben Masse - die Reihe ist damit 1:1 die aus Zbulo.
+  function buildStoryTileMarkup({ label, mediaHtml, logoImgHtml, first = false, shellAttrs = "" }) {
     return renderStoryTileMarkupCore({
-      label: meta.name,
+      label,
       mediaHtml,
       logoImgHtml,
-      // Die im Feed prozentual berechnete Breite hier als fester Wert: die
-      // Buehne ist genau so breit wie die echte Kachel auf diesem Geraet.
-      shellStyle: `flex:0 0 ${tileWidth}px;width:${tileWidth}px;max-width:${tileWidth}px;`,
+      shellAttrs,
+      // Exakt die Masse aus dem Feed - inklusive des Einzugs, mit dem die
+      // erste Kachel der Reihe steht (ml-5).
+      shellStyle: buildStoryTileShellStyleCore({ withMarginLeft: first }),
       innerStyle: buildStoryTileInnerStyleCore(),
       escapeHtmlFn: escapeHtml
     });
   }
 
-  // --- Vorschau 3: die geoeffnete Story -------------------------------------
-  // Gleiche Knoten, gleiche Reihenfolge und gleiche Klassen wie der echte
-  // Story-Viewer sie baut (createTopbarElement/renderReels/mountMedia), dazu
-  // die aus story/index.html abgeleiteten Regeln.
-  function buildStoryReelPreviewMarkup() {
+  // Die eigene Story: vorne in der Reihe, scharf, mit Foto, Logo und Namen.
+  function buildOwnStoryTileMarkup() {
     const draft = drafts.story;
     const meta = resolveBusinessMeta();
     const previewUrl = String(draft.previewUrl || "").trim();
-    const caption = String(draft.caption || "").trim();
-    const product = draft.product;
     const mediaHtml = previewUrl
-      ? `<img class="reel-image" src="${escapeAttr(previewUrl)}" decoding="async" />`
-      : "";
-    const priceLabel = product ? formatComposerPrice(product.price) : "";
-    const productThumb = product?.imageUrl ? optimizeImageUrl(product.imageUrl, "thumb") : "";
-    const productHtml = product
-      ? `<span class="productCard">
-            <div class="productCardThumb">🍽${productThumb ? `<img class="productCardThumbImg" src="${escapeAttr(productThumb)}" alt="" decoding="async" />` : ""}</div>
-            <div class="productCardInfo">
-              <div class="productCardName">${escapeHtml(product.name)}</div>
-              ${priceLabel ? `<div class="productCardPrice">${escapeHtml(priceLabel)}</div>` : ""}
-            </div>
-            <span class="productCardBtn">${TEXT.productMore}</span>
-          </span>`
-      : "";
+      ? `<img src="${escapeAttr(previewUrl)}" decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />`
+      : renderStoryTileMediaFallbackCore({ iconFn: appIcon });
+    const logoImgHtml = `<img src="${escapeAttr(meta.logoUrl)}" decoding="async" width="28" height="28" class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />`;
+    return buildStoryTileMarkup({
+      label: meta.name,
+      mediaHtml,
+      logoImgHtml,
+      first: true,
+      shellAttrs: "data-bc-story-own"
+    });
+  }
+
+  // Die Nachbarn in der Reihe: dieselbe Kachel, aber ohne fremde Daten - sie
+  // stehen unscharf da und zeigen nur, dass die eigene Story in einer Reihe
+  // steht. Ohne Namen, ohne Logo, ohne Vorlesen.
+  function buildNeighbourStoryTileMarkup(index = 0) {
+    const shade = STORY_TRACK_NEIGHBOUR_SHADES[index % STORY_TRACK_NEIGHBOUR_SHADES.length];
+    return buildStoryTileMarkup({
+      label: "",
+      mediaHtml: `<div class="absolute inset-0" style="position:absolute;inset:0;background:${shade};"></div>`,
+      logoImgHtml: "",
+      shellAttrs: `data-bc-story-blur="${index}" aria-hidden="true"`
+    });
+  }
+
+  // Die Reihe: eigene Story vorne, zwei unscharfe Nachbarn dahinter.
+  function buildStoryTrackPreviewMarkup() {
     return `
-      <div class="reel" data-index="0">
-        ${mediaHtml}
-        <div class="vignette"></div>
-        <div class="topbar">
-          <div class="topbarLeft">
-            <button type="button" class="btnIcon" tabindex="-1">←</button>
-            <div class="brandPill">
-              <div class="brandLogo" data-bc-brand-logo></div>
-              <div class="brandName">${escapeHtml(meta.name)}</div>
-            </div>
-          </div>
-          <div class="topbarRight">
-            <button type="button" class="btnIcon" data-story-sound-state="off" aria-pressed="false" tabindex="-1">🔇</button>
-          </div>
-        </div>
-        <div class="content">
-          ${caption ? `<div class="contentDesc">${escapeHtml(caption)}</div>` : ""}
-          ${productHtml}
-        </div>
-        <div class="rail">
-          <div class="railBtn"><div class="railIcon">1/1</div></div>
-        </div>
+      <div class="mnyra-bc__story-track">
+        ${buildOwnStoryTileMarkup()}
+        ${buildNeighbourStoryTileMarkup(0)}
+        ${buildNeighbourStoryTileMarkup(1)}
       </div>
     `;
   }
 
-  // Buehne mit fester Zielhoehe: das Original steht darin in Originalmassen und
-  // wird als Ganzes skaliert. Nichts im Inneren wird umgerechnet, deshalb
-  // stimmen alle Verhaeltnisse exakt. Die Buehne ist danach genau so gross wie
-  // das skalierte Original - kein Rand, nichts abgeschnitten.
-  function applyFrameStage(stage, inner, naturalWidth, naturalHeight, box) {
-    if (!stage || !inner || !box || !(box.scale > 0)) return;
-    inner.style.width = `${naturalWidth}px`;
-    inner.style.height = `${naturalHeight}px`;
-    inner.style.marginLeft = "0px";
-    inner.style.transform = `scale(${box.scale})`;
-    stage.style.width = `${Math.round(box.width)}px`;
-    stage.style.height = `${Math.round(box.height)}px`;
-  }
-
-  // Der Feed-Beitrag steht randlos in der App-Shell: Originalbreite, nur
-  // herunterskaliert, wenn das Modal schmaler ist als die Shell.
-  function applyPostStage(stage, inner, naturalWidth) {
+  // Feed-Beitrag und Story-Reihe stehen beide randlos in der App-Shell:
+  // Originalbreite, nur herunterskaliert, wenn das Modal schmaler ist.
+  function applyBleedStage(stage, inner, naturalWidth) {
     if (!stage || !inner) return;
     const available = stage.clientWidth || naturalWidth;
     inner.style.width = `${naturalWidth}px`;
@@ -1116,39 +983,18 @@ export function createBusinessComposerController({
 
   function syncPreviewGeometry() {
     if (!nodes || !root?.isConnected) return;
+    const shellWidth = resolveShellWidth();
     if (mode === "story") {
-      const tileWidth = resolveStoryTileWidth();
-      const frame = resolveStoryFrameSize();
-      const layout = resolveStoryPreviewLayoutCore({
-        rowWidth: resolvePreviewRowWidth(),
-        tileWidth,
-        tileHeight: STORY_TILE_HEIGHT,
-        reelWidth: frame.width,
-        reelHeight: frame.height
-      });
-      applyFrameStage(nodes.stageTile, nodes.stageTileInner, tileWidth, STORY_TILE_HEIGHT, layout.tile);
-      applyFrameStage(nodes.stageReel, nodes.stageReelInner, frame.width, frame.height, layout.reel);
+      applyBleedStage(nodes.stageStory, nodes.stageStoryInner, shellWidth);
       return;
     }
-    applyPostStage(nodes.stagePost, nodes.stagePostInner, resolveShellWidth());
+    applyBleedStage(nodes.stagePost, nodes.stagePostInner, shellWidth);
   }
 
   function buildPreview() {
     if (!nodes) return;
     if (mode === "story") {
-      if (nodes.stageTileInner) nodes.stageTileInner.innerHTML = buildStoryTilePreviewMarkup();
-      if (nodes.stageReelInner) {
-        nodes.stageReelInner.className = `mnyra-bc__stage-inner ${STORY_VIEWER_SURFACE_CLASS}`;
-        nodes.stageReelInner.innerHTML = buildStoryReelPreviewMarkup();
-        // Logo genauso setzen wie applyTopbarMeta im echten Story-Viewer.
-        const brandLogo = nodes.stageReelInner.querySelector("[data-bc-brand-logo]");
-        if (brandLogo) {
-          const logoUrl = resolveBusinessMeta().logoUrl;
-          brandLogo.style.backgroundImage = logoUrl
-            ? `url(${logoUrl})`
-            : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-        }
-      }
+      if (nodes.stageStoryInner) nodes.stageStoryInner.innerHTML = buildStoryTrackPreviewMarkup();
     } else if (nodes.stagePostInner) {
       nodes.stagePostInner.innerHTML = `<div class="app-content-inline py-4">${buildPostPreviewMarkup()}</div>`;
     }
@@ -1160,23 +1006,10 @@ export function createBusinessComposerController({
 
   function syncCaptionPreview() {
     if (!nodes) return;
+    // Die Story-Reihe zeigt den Namen des Betriebs, nicht den Text der Story -
+    // beim Tippen aendert sich an ihr nichts.
+    if (mode === "story") return;
     const caption = String(currentDraft().caption || "").trim();
-    if (mode === "story") {
-      const content = nodes.stageReelInner?.querySelector(".content");
-      if (!content) return;
-      let desc = content.querySelector(".contentDesc");
-      if (caption && !desc) {
-        desc = doc.createElement("div");
-        desc.className = "contentDesc";
-        content.insertBefore(desc, content.firstChild);
-      }
-      if (!caption && desc) {
-        desc.remove();
-        return;
-      }
-      if (desc) desc.textContent = caption;
-      return;
-    }
     const captionNode = nodes.stagePostInner?.querySelector(".feed-card p.line-clamp-2");
     if (captionNode) captionNode.textContent = caption;
     syncPreviewGeometry();
