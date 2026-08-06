@@ -170,10 +170,16 @@ test("video previews follow the same poster rule as the real renderers", async (
   // Das Standbild entsteht genau einmal und geht auch so hoch.
   assert.ok(composerSource.includes("draft.posterFile = posterFile;"));
   assert.ok(composerSource.includes("uploadVideoPoster(file, restaurantId, draft.posterFile)"));
-  // Und es wird eingefangen, BEVOR eine Vorschau ein zweites Video aufmacht.
-  const capture = composerSource.indexOf("await captureThumbForVideo(draft, file);");
-  const preview = composerSource.indexOf("buildPreview();", capture);
-  assert.ok(capture > 0 && preview > capture);
+  // Die Vorschau wartet NICHT auf das Standbild: sie steht sofort, das
+  // Standbild laeuft daneben und wird nachgetragen.
+  const preview = composerSource.indexOf("buildPreview();\n    if (isVideo) void captureThumbForVideo(draft, file);");
+  assert.ok(preview > 0, "Vorschau steht vor dem Einfangen und wartet nicht darauf");
+  assert.equal(composerSource.includes("await captureThumbForVideo("), false);
+  // Nachgetragen wird ueber das poster-Attribut, damit das laufende Video
+  // nicht neu startet.
+  assert.ok(composerSource.includes('video.setAttribute("poster", posterUrl);'));
+  // Und wenn das eigene Einfangen nichts liefert, hilft das Bild der Vorschau.
+  assert.ok(composerSource.includes("captureVideoPosterFromElementCore"));
 });
 
 test("composer posts videos the same way the upload screen does", async () => {

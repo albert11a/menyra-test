@@ -34,6 +34,9 @@ import {
 } from "../feed/story-tile-markup-utils.js";
 // Foto oder Video wird ueberall in der App mit derselben Regel erkannt.
 import { detectUploadMediaTypeCore } from "../media/media-upload-view-render-utils.js";
+// Zweiter Weg zum Standbild: das Video der Vorschau laeuft schon, sein Bild
+// kostet kein zweites Dekodieren.
+import { captureVideoPosterFromElementCore } from "../media/video-poster-utils.js";
 
 const STYLE_ELEMENT_ID = "mnyraBusinessComposerStyles";
 // Die App-Shell ist max-w-md breit; darin steht der echte Feed.
@@ -58,6 +61,11 @@ const ROOT_ELEMENT_ID = "businessComposerOverlayRoot";
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const CAPTION_MAX_LENGTH = 600;
+// Zweiter Weg zum Standbild (aus der laufenden Vorschau): so oft und in
+// diesem Abstand wird nachgesehen, ob die Vorschau schon ein Bild zeigt.
+// Zusammen gut eine Sekunde - danach bleibt es beim Symbol.
+const POSTER_PREVIEW_ATTEMPTS = 8;
+const POSTER_PREVIEW_STEP_MS = 140;
 const TOAST_ELEMENT_ID = "mnyraBusinessComposerToast";
 const APP_CHROME_COLOR = "#f8fafc";
 const MODAL_CHROME_COLOR = "#ffffff";
@@ -1437,16 +1445,12 @@ export function createBusinessComposerController({
     // Sofort sichtbar: Miniatur (beim Video erst als Symbol) und Knopf.
     syncMediaState();
     syncSubmitState();
-    // Beim Video zuerst das Standbild einfangen und erst danach die Vorschau
-    // bauen: solange kein zweites Video im Dokument haengt, gelingt das
-    // Einfangen zuverlaessig. Genau daran scheiterte die Miniatur bei Story,
-    // wo die Vorschau-Kachel sofort losspielt.
-    if (isVideo) {
-      await captureThumbForVideo(draft, file);
-      if (draft.file !== file) return;
-      syncMediaState();
-    }
+    // Die Vorschau steht sofort - sie braucht nur die Datei selbst. Das
+    // Standbild laeuft daneben und wird nachgetragen, sobald es da ist.
+    // Frueher wartete die Vorschau darauf; auf schwachen Geraeten waren das
+    // mehrere Sekunden, in denen nichts passierte.
     buildPreview();
+    if (isVideo) void captureThumbForVideo(draft, file);
   }
 
   // Miniatur der gewaehlten Datei in der Knopfzeile. Kommt kein Standbild
@@ -1469,18 +1473,75 @@ export function createBusinessComposerController({
     setImageNode(nodes.thumbImg, thumbUrl);
   }
 
+  // Das Video der Vorschau, sofern eines steht: aus ihm laesst sich das
+  // Standbild ohne zweites Dekodieren zeichnen.
+  function findPreviewVideoEl() {
+    if (!nodes) return null;
+    const stage = mode === "story"
+      ? nodes.stageStoryInner
+      : (mode === "profile" ? nodes.stageProfileInner : nodes.stagePostInner);
+    return stage?.querySelector?.("video") || null;
+  }
+
+  // Zweiter Weg zum Standbild. Die Vorschau braucht einen Moment, bis ihr
+  // erstes Bild steht - laenger als ein paar Anlaeufe wird nicht gewartet,
+  // das Standbild ist Beiwerk und darf nie etwas aufhalten.
+  async function capturePosterFromPreview(draft, file) {
+    for (let attempt = 0; attempt < POSTER_PREVIEW_ATTEMPTS; attempt += 1) {
+      await new Promise((resolve) => {
+        if (typeof win?.setTimeout === "function") win.setTimeout(resolve, POSTER_PREVIEW_STEP_MS);
+        else resolve();
+      });
+      if (draft.file !== file) return null;
+      const video = findPreviewVideoEl();
+      if (!video) continue;
+      const posterFile = await captureVideoPosterFromElementCore(video, { documentObj: doc });
+      if (posterFile) return posterFile;
+    }
+    return null;
+  }
+
   // Standbild des Videos: Miniatur in der Leiste UND poster der Vorschau.
-  // Scheitert es, bleibt es beim Symbol - posten laesst sich trotzdem.
+  // Scheitert beides, bleibt es beim Symbol - posten laesst sich trotzdem.
   async function captureThumbForVideo(draft, file) {
-    if (!captureVideoPoster || !win?.URL?.createObjectURL) return;
+    if (!win?.URL?.createObjectURL) return;
+    let posterFile = null;
     try {
-      const posterFile = await captureVideoPoster(file);
-      if (!posterFile || draft.file !== file) return;
-      // Dasselbe Standbild geht spaeter mit hoch - kein zweites Einfangen
-      // beim Posten (das kann scheitern, waehrend die Vorschau laeuft).
-      draft.posterFile = posterFile;
-      draft.thumbUrl = win.URL.createObjectURL(posterFile);
+      if (captureVideoPoster) posterFile = await captureVideoPoster(file);
     } catch {}
+    if (draft.file !== file) return;
+    if (!posterFile) {
+      try {
+        posterFile = await capturePosterFromPreview(draft, file);
+      } catch {}
+    }
+    if (!posterFile || draft.file !== file) return;
+    // Dasselbe Standbild geht spaeter mit hoch - kein zweites Einfangen
+    // beim Posten (das kann scheitern, waehrend die Vorschau laeuft).
+    draft.posterFile = posterFile;
+    draft.thumbUrl = win.URL.createObjectURL(posterFile);
+    syncMediaState();
+    applyPosterToPreview(draft);
+  }
+
+  // Standbild in die stehende Vorschau nachtragen. Beim Feed-Beitrag und in
+  // der Story-Reihe reicht das poster-Attribut - so laeuft das Video weiter,
+  // statt neu zu starten. Die Profil-Kachel wechselt mit Standbild von <video>
+  // auf <img>, sie baut deshalb einmal neu.
+  function applyPosterToPreview(draft) {
+    if (!nodes) return;
+    const posterUrl = String(draft.thumbUrl || "").trim();
+    if (!posterUrl || draft !== currentDraft()) return;
+    if (mode === "profile") {
+      buildPreview();
+      return;
+    }
+    const video = findPreviewVideoEl();
+    if (!video) {
+      buildPreview();
+      return;
+    }
+    video.setAttribute("poster", posterUrl);
   }
 
   // Das x auf der Miniatur: die Datei fliegt aus dem Entwurf, alles andere

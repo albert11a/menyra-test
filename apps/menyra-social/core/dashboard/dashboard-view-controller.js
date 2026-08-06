@@ -32,6 +32,9 @@ import {
 
 const DASHBOARD_CACHE_PREFIX = "menyra_social_dashboard_cache_v1::";
 const COMPOSER_PRODUCTS_CACHE_PREFIX = "menyra_social_composer_products_v1::";
+// Stiller Vorabruf des Composer-Chunks, sobald der Browser Luft hat.
+const COMPOSER_PREFETCH_TIMEOUT_MS = 2500;
+const COMPOSER_PREFETCH_DELAY_MS = 1200;
 const RECENT_POSTS_FETCH_LIMIT = 6;
 const RECENT_POSTS_SHOW_LIMIT = 3;
 
@@ -112,6 +115,7 @@ export function createDashboardViewController({
   storageObj
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
+  const win = doc?.defaultView || (typeof window === "undefined" ? null : window);
   const render = typeof renderFn === "function" ? renderFn : () => {};
   const storage = storageObj || (typeof localStorage === "undefined" ? null : localStorage);
   const getBusinessProfileType = typeof profileApi.getBusinessProfileTypeFn === "function"
@@ -140,6 +144,7 @@ export function createDashboardViewController({
   let composerController = null;
   let composerLoadPromise = null;
   let composerOpenIntent = "";
+  let composerPrefetchScheduled = false;
   // Wird beim Nachladen des Composers gesetzt (reine Normalisierung eines
   // menuItems-Dokuments fuer die Produkt-Auswahl).
   let normalizeComposerProductFn = () => null;
@@ -307,6 +312,39 @@ export function createDashboardViewController({
         });
     }
     return composerLoadPromise;
+  }
+
+  // Der Composer ist ein eigener Chunk. Beim ersten Tap auf "+ Posto" waere
+  // das eine Netzrunde mitten in der Geste - genau das laesst das Modal
+  // "spaeter" aufgehen. Steht das Dashboard und hat der Browser nichts zu tun,
+  // wird er still vorgeladen; danach oeffnet der Tap ohne Netz.
+  // Bei ausdruecklich sparsamer Verbindung (Datensparmodus, 2G) bleibt es beim
+  // Nachladen auf Klick - dort ist gespartes Datenvolumen mehr wert.
+  function isDataSaverConnection() {
+    const connection = win?.navigator?.connection;
+    if (!connection || typeof connection !== "object") return false;
+    if (connection.saveData === true) return true;
+    return /(^|-)2g$/.test(String(connection.effectiveType || "").trim().toLowerCase());
+  }
+
+  function scheduleComposerPrefetch() {
+    if (composerPrefetchScheduled || composerController || !win) return;
+    if (isDataSaverConnection()) return;
+    composerPrefetchScheduled = true;
+    const run = () => {
+      void ensureComposerLoaded().catch(() => {});
+      // Die Upload-Runtime gehoert zum Posten dazu (Video, Standbild, Schreiben).
+      if (typeof composerApi.prewarmFn === "function") {
+        try {
+          composerApi.prewarmFn();
+        } catch {}
+      }
+    };
+    if (typeof win.requestIdleCallback === "function") {
+      win.requestIdleCallback(run, { timeout: COMPOSER_PREFETCH_TIMEOUT_MS });
+      return;
+    }
+    win.setTimeout?.(run, COMPOSER_PREFETCH_DELAY_MS);
   }
 
   function openComposer(nextMode = "post") {
@@ -537,6 +575,9 @@ export function createDashboardViewController({
         ? `${renderDashboardGreetingSkeleton()}${renderDashboardDataSkeleton({ kpiCount: 6 })}`
         : renderDashboardNoBusinessState();
     } else {
+      // Das Dashboard steht: den Composer im Leerlauf nachladen, damit der
+      // erste Tap auf "+ Posto" ohne Netzrunde aufgeht.
+      scheduleComposerPrefetch();
       const hero = resolveHeroData(restaurantId);
       const actions = buildDashboardQuickActionsCore({
         kind: hero.kind,
