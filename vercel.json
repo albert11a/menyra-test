@@ -1,4 +1,11 @@
 {
+  "installCommand": "npm ci --omit=dev",
+  "git": {
+    "deploymentEnabled": {
+      "claude/**": false,
+      "codex/**": false
+    }
+  },
   "outputDirectory": "dist",
   "redirects": [
     {
