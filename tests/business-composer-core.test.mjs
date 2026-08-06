@@ -9,6 +9,7 @@ import {
 } from "../apps/menyra-social/core/composer/business-composer-controller.js";
 import {
   renderDashboardComposerCard,
+  renderDashboardComposerSplitCards,
   DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 
@@ -40,6 +41,43 @@ test("composer card styles keep the mockup layout", () => {
   assert.ok(DASHBOARD_CSS.includes("min-height: 46px;"));
   // Der ausgefuellte Knopf wirft keinen eigenen Schatten mehr.
   assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
+  // Das Logo neben der Begruessung steht flach in der Seite, ohne Schatten.
+  const greetLogoBlock = DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf(".mnyra-dash__greet-logo {"),
+    DASHBOARD_CSS.indexOf(".mnyra-dash__greet-logo img,")
+  );
+  assert.ok(!greetLogoBlock.includes("box-shadow"), greetLogoBlock);
+});
+
+test("two half cards sit under the composer card and share its width", () => {
+  const html = renderDashboardComposerSplitCards({ iconFn: (name) => `<i data-icon="${name}"></i>` });
+  // Eine Zeile mit zwei Karten - zusammen so breit wie "Posto n'Zbulo".
+  assert.ok(html.startsWith('<div class="mnyra-dash__composer-row">'));
+  assert.equal((html.match(/mnyra-dash__composer--split/g) || []).length, 2);
+  // Links Profil, rechts Meny - Wortbild wie bei "Posto n'Zbulo".
+  const left = html.indexOf(">Profil<");
+  const right = html.indexOf(">Meny<");
+  assert.ok(left > -1 && right > left, `${left}/${right}`);
+  assert.ok(html.includes(`Posto n'<span class="mnyra-dash__composer-accent">Profil</span>`));
+  assert.ok(html.includes(`Posto n'<span class="mnyra-dash__composer-accent">Meny</span>`));
+  assert.ok(html.includes("Postim që shfaqet në profilin tënd."));
+  assert.ok(html.includes("Produktet dhe kategoritë e menysë."));
+  // Profil oeffnet denselben Composer wie "Postim", Meny fuehrt in den
+  // Menue-Editor - beides ueber die schon vorhandenen Handler.
+  assert.ok(html.includes('data-dashboard-composer="post"'));
+  assert.ok(html.includes('data-nav="menu"'));
+  assert.ok(html.includes('data-icon="plus"'));
+  assert.ok(html.includes('data-icon="utensils"'));
+  // Genau ein Knopf je Karte.
+  assert.equal((html.match(/<button/g) || []).length, 2);
+});
+
+test("half card styles share the composer surface and stack their button", () => {
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-row {"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer--split {"));
+  // Eine Spalte statt zwei, Knopf unten buendig.
+  assert.ok(DASHBOARD_CSS.includes("grid-template-columns: minmax(0, 1fr);"));
+  assert.ok(DASHBOARD_CSS.includes("margin-top: auto;"));
   // Schrift der beiden vorgegebenen Texte bleibt unveraendert.
   assert.ok(DASHBOARD_CSS.includes("font-size: 17px;\n  font-weight: 900;\n  letter-spacing: -0.01em;"));
   assert.ok(DASHBOARD_CSS.includes("margin: 5px 0 0;\n  font-size: 11px;\n  font-weight: 700;\n  line-height: 1.45;"));

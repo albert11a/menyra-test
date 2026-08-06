@@ -20,6 +20,7 @@ import {
   renderDashboardGreeting,
   renderDashboardGreetingSkeleton,
   renderDashboardComposerCard,
+  renderDashboardComposerSplitCards,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -495,6 +496,7 @@ export function createDashboardViewController({
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
         ${renderDashboardComposerCard({ iconFn })}
+        ${renderDashboardComposerSplitCards({ iconFn })}
         ${renderDashboardQuickActions({ actions, iconFn })}
         ${dataBody}
       `;
