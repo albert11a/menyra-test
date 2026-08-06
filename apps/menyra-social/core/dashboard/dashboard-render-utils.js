@@ -20,13 +20,13 @@ export const DASHBOARD_CSS = `
   --dash-ink: #0f172a;
   --dash-ink-2: #475569;
   --dash-muted: #94a3b8;
-  /* Nur noch fuer Knopf-Umrisse - die Karten selbst tragen keinen Rand. */
   --dash-border: rgba(15, 23, 42, 0.08);
+  /* Genau die Linie, die auch die Profil-Karten tragen (border-slate-100). */
+  --dash-hairline: #f1f5f9;
   --dash-accent: #4f46e5;
   --dash-accent-soft: #eef2ff;
   /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
-     (25px). Die Karten tragen weder Schatten noch Rand: sie heben sich
-     allein durch Weiss auf hellem Grund ab, genau wie die Profil-Karten. */
+     (25px). Kein Schatten, und als Rand dieselbe Haarlinie wie im Profil. */
   --dash-card-radius: 25px;
   color: var(--dash-ink);
   font-family: inherit;
@@ -86,7 +86,8 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mnyra-dash__greet-hello { color: var(--dash-accent); }
+/* Auf Wunsch schwarz wie der Name daneben, nicht mehr im Akzent. */
+.mnyra-dash__greet-hello { color: var(--dash-ink); }
 .mnyra-dash__greet-sub {
   font-size: 12px;
   font-weight: 700;
@@ -97,105 +98,84 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* "Posto n'Zbulo": eigene Karte, mit deutlichem Abstand zur Begruessung
-   darueber. Ueberschrift, Untertitel, darunter zwei Knoepfe nebeneinander -
-   der linke ausgefuellt, der rechte ruhig. */
-.mnyra-dash__composer {
-  margin-top: 34px;
-  background: var(--dash-surface);
-  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
-     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
-  border: none;
-  border-radius: var(--dash-card-radius);
-  padding: 18px;
-}
-/* Schrift der Ueberschrift bleibt unveraendert. */
-.mnyra-dash__composer-title {
-  margin: 0;
-  font-size: 17px;
+/* Zeile "Posto n'MNYRA" direkt unter der Begruessung, linksbuendig mit dem
+   Logo darueber. "MNYRA" traegt die Schrift des Kopfzeilen-Logos: schwarz,
+   kursiv, eng gesetzt. */
+.mnyra-dash__brandline {
+  margin: 22px 0 0;
+  font-size: 18px;
   font-weight: 900;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: 1.1;
   color: var(--dash-ink);
+  white-space: nowrap;
 }
-.mnyra-dash__composer-accent { color: var(--dash-accent); }
-/* Schrift des Untertitels bleibt unveraendert. */
-.mnyra-dash__composer-sub {
-  margin: 5px 0 0;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.45;
-  color: var(--dash-muted);
+.mnyra-dash__brandline-mark {
+  font-style: italic;
+  letter-spacing: -0.05em;
 }
-.mnyra-dash__composer-actions {
-  margin-top: 16px;
+/* Drei Karten nebeneinander: Zbulo, Story, Profil. Jede traegt ihre eigene
+   Farbe, ein eingebettetes Symbol und ein schlichtes Plus. Die Symbole stehen
+   als SVG direkt im Markup - sie koennen damit nie fehlen, egal ob eine
+   Icon-Bibliothek geladen ist oder nicht. */
+.mnyra-dash__post-cards {
+  margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
-/* Zwei halbe Karten unter "Posto n'Zbulo": zusammen genau so breit wie die
-   Karte darueber, gleiche Oberflaeche, nur je ein Knopf. */
-.mnyra-dash__composer-row {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.mnyra-dash__composer--split {
-  margin-top: 0;
-  padding: 14px;
+.mnyra-dash__post-card {
+  --tone: var(--dash-accent);
+  --tone-soft: var(--dash-accent-soft);
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-hairline);
+  border-radius: var(--dash-card-radius);
+  padding: 14px 12px;
+  min-height: 108px;
   display: flex;
   flex-direction: column;
-}
-/* Auf halber Breite steht die Ueberschrift eine Spur kleiner - so bleibt
-   "Posto n'Profil" auf einer Zeile. */
-.mnyra-dash__composer--split .mnyra-dash__composer-title { font-size: 15px; }
-.mnyra-dash__composer--split .mnyra-dash__composer-actions {
-  margin-top: auto;
-  padding-top: 14px;
-  grid-template-columns: minmax(0, 1fr);
-}
-.mnyra-dash__composer-btn {
-  min-height: 46px;
-  border: 1px solid var(--dash-border);
-  border-radius: 14px;
-  background: var(--dash-plane);
-  color: var(--dash-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 9px 12px;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   min-width: 0;
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  color: var(--dash-ink);
+  transition: transform 0.15s ease;
 }
-.mnyra-dash__composer-btn--primary {
-  background: var(--dash-accent);
-  border-color: var(--dash-accent);
-  color: #ffffff;
+.mnyra-dash__post-card[data-tone="story"] { --tone: #db2777; --tone-soft: #fdf2f8; }
+.mnyra-dash__post-card[data-tone="profil"] { --tone: #059669; --tone-soft: #ecfdf5; }
+.mnyra-dash__post-card:active { transform: scale(0.97); }
+.mnyra-dash__post-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 }
-.mnyra-dash__composer-btn:active { transform: scale(0.97); }
-.mnyra-dash__composer-btn-icon {
+.mnyra-dash__post-card-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--tone-soft);
+  color: var(--tone);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  color: var(--dash-accent);
 }
-.mnyra-dash__composer-btn--primary .mnyra-dash__composer-btn-icon { color: #ffffff; }
-/* Die Karte kommt ohne den Tailwind-Build aus: Symbolgroesse steht hier. */
-.mnyra-dash__composer-btn-icon svg,
-.mnyra-dash__composer-btn-icon i {
-  width: 16px;
-  height: 16px;
-  display: block;
+.mnyra-dash__post-card-icon svg { width: 18px; height: 18px; display: block; }
+/* Das Plus bleibt eine reine Linie - kein Kreis, keine Flaeche. */
+.mnyra-dash__post-card-plus {
+  color: var(--tone);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
-.mnyra-dash__composer-btn-label {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
+.mnyra-dash__post-card-plus svg { width: 15px; height: 15px; display: block; }
+.mnyra-dash__post-card-label {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
   line-height: 1.2;
   max-width: 100%;
   overflow: hidden;
@@ -235,9 +215,9 @@ export const DASHBOARD_CSS = `
 @media (min-width: 720px) { .mnyra-dash__actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .mnyra-dash__action {
   background: var(--dash-surface);
-  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
-     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
-  border: none;
+  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
+     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-hairline);
   border-radius: var(--dash-card-radius);
   padding: 12px;
   min-height: 92px;
@@ -284,9 +264,9 @@ export const DASHBOARD_CSS = `
 @media (min-width: 720px) { .mnyra-dash__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .mnyra-dash__kpi {
   background: var(--dash-surface);
-  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
-     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
-  border: none;
+  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
+     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-hairline);
   border-radius: var(--dash-card-radius);
   padding: 12px 14px;
   min-height: 86px;
@@ -319,9 +299,9 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__posts {
   background: var(--dash-surface);
-  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
-     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
-  border: none;
+  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
+     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-hairline);
   border-radius: var(--dash-card-radius);
   padding: 6px;
 }
@@ -366,9 +346,9 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__state {
   background: var(--dash-surface);
-  /* Ausdruecklich kein Rand: die Kacheln sind <button>, und ohne diese Zeile
-     zeichnet der Browser seinen eigenen dicken Standardrahmen. */
-  border: none;
+  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
+     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-hairline);
   border-radius: var(--dash-card-radius);
   padding: 28px 18px;
   text-align: center;
@@ -553,69 +533,50 @@ export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Da
   `;
 }
 
-// Story-Symbol der Posting-Karte: Ring mit gefuelltem Punkt. Liegt hier und
-// nicht im Icon-Satz der App, weil der ihn nicht kennt - so bleibt die Karte
-// auch ohne nachgeladene Icon-Bibliothek vollstaendig.
-const COMPOSER_STORY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle></svg>';
+// Die Symbole der drei Posting-Karten stehen als SVG direkt hier (Umrisse aus
+// dem Lucide-Satz, den die App sonst nachlaedt). So sind sie beim ersten Bild
+// da und koennen nie fehlen - auch dann nicht, wenn die Icon-Bibliothek noch
+// nicht geladen ist.
+const SVG_HEAD = 'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"';
 
-// Posting-Karte unter der Begruessung: ein Einstieg fuer Feed-Beitrag
-// ("Postim") und Story. Beide Knoepfe oeffnen dasselbe Vollbild-Modal.
-export function renderDashboardComposerCard({ iconFn } = {}) {
-  const buttons = [
-    { mode: "post", label: "Postim", iconHtml: safeIcon(iconFn, "plus", "w-4 h-4"), primary: true },
-    { mode: "story", label: "Story", iconHtml: COMPOSER_STORY_ICON, primary: false }
-  ].map((entry) => `
-    <button type="button" class="mnyra-dash__composer-btn${entry.primary ? " mnyra-dash__composer-btn--primary" : ""}" data-dashboard-composer="${escapeHtml(entry.mode)}">
-      <span class="mnyra-dash__composer-btn-icon">${entry.iconHtml}</span>
-      <span class="mnyra-dash__composer-btn-label">${escapeHtml(entry.label)}</span>
-    </button>
-  `).join("");
+const POST_CARD_ICON = Object.freeze({
+  // Zbulo: der Feed - Blatt mit Zeilen.
+  zbulo: `<svg ${SVG_HEAD}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>`,
+  // Story: der Ring mit dem gefuellten Punkt.
+  story: `<svg ${SVG_HEAD}><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle></svg>`,
+  // Profil: die Person.
+  profil: `<svg ${SVG_HEAD}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
+  plus: `<svg ${SVG_HEAD}><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>`
+});
+
+// Die Zeile "Posto n'MNYRA" direkt unter der Begruessung. "MNYRA" traegt die
+// Schrift des Kopfzeilen-Logos (schwarz, kursiv, eng gesetzt).
+export function renderDashboardComposerHeading() {
   return `
-    <div class="mnyra-dash__composer" data-dashboard-composer-card>
-      <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">Zbulo</span></p>
-      <p class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</p>
-      <div class="mnyra-dash__composer-actions">${buttons}</div>
-    </div>
+    <p class="mnyra-dash__brandline">Posto n'<span class="mnyra-dash__brandline-mark">MNYRA</span></p>
   `;
 }
 
-// Zwei halbe Karten direkt unter "Posto n'Zbulo". Zusammen sind sie genau so
-// breit wie die Karte darueber und tragen dieselbe Oberflaeche.
-//  - "Posto n'Profil" oeffnet denselben Composer wie "Postim"; der Beitrag
-//    steht danach auf dem Profil des Betriebs.
-//  - "Posto n'Meny" fuehrt in den Menue-Editor - ueber den bestehenden
-//    data-nav-Handler der Shell, hier entsteht keine neue Routing-Logik.
-export function renderDashboardComposerSplitCards({ iconFn } = {}) {
+// Drei Karten nebeneinander. Alle drei oeffnen dasselbe Vollbild-Modal:
+//  - n'Zbulo  -> Beitrag fuer den Zbulo-Feed
+//  - n'Story  -> Story
+//  - n'Profil -> Beitrag, der auf dem Profil des Betriebs steht
+// Der Klick laeuft ueber den schon vorhandenen data-dashboard-composer-Handler.
+export function renderDashboardComposerCards() {
   const cards = [
-    {
-      accent: "Profil",
-      sub: "Postim që shfaqet në profilin tënd.",
-      action: 'data-dashboard-composer="post"',
-      iconName: "plus",
-      label: "Posto",
-      primary: true
-    },
-    {
-      accent: "Meny",
-      sub: "Produktet dhe kategoritë e menysë.",
-      action: 'data-nav="menu"',
-      iconName: "utensils",
-      label: "Ndrysho",
-      primary: false
-    }
+    { tone: "zbulo", label: "n'Zbulo", mode: "post", icon: POST_CARD_ICON.zbulo },
+    { tone: "story", label: "n'Story", mode: "story", icon: POST_CARD_ICON.story },
+    { tone: "profil", label: "n'Profil", mode: "post", icon: POST_CARD_ICON.profil }
   ].map((card) => `
-    <div class="mnyra-dash__composer mnyra-dash__composer--split">
-      <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">${escapeHtml(card.accent)}</span></p>
-      <p class="mnyra-dash__composer-sub">${escapeHtml(card.sub)}</p>
-      <div class="mnyra-dash__composer-actions">
-        <button type="button" class="mnyra-dash__composer-btn${card.primary ? " mnyra-dash__composer-btn--primary" : ""}" ${card.action}>
-          <span class="mnyra-dash__composer-btn-icon">${safeIcon(iconFn, card.iconName, "w-4 h-4")}</span>
-          <span class="mnyra-dash__composer-btn-label">${escapeHtml(card.label)}</span>
-        </button>
-      </div>
-    </div>
+    <button type="button" class="mnyra-dash__post-card" data-tone="${escapeHtml(card.tone)}" data-dashboard-composer="${escapeHtml(card.mode)}" aria-label="Posto ${escapeHtml(card.label)}">
+      <span class="mnyra-dash__post-card-top">
+        <span class="mnyra-dash__post-card-icon">${card.icon}</span>
+        <span class="mnyra-dash__post-card-plus">${POST_CARD_ICON.plus}</span>
+      </span>
+      <span class="mnyra-dash__post-card-label">${escapeHtml(card.label)}</span>
+    </button>
   `).join("");
-  return `<div class="mnyra-dash__composer-row">${cards}</div>`;
+  return `<div class="mnyra-dash__post-cards" data-dashboard-composer-cards>${cards}</div>`;
 }
 
 export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
