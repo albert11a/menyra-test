@@ -92,37 +92,17 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* "Posto n'Zbulo": eigene Karte direkt unter der Begruessung, bewusst mit
-   etwas mehr Luft nach oben als die uebrigen Sektionen. Kopfzeile mit Punkt
-   und "Quick Create"-Pille, darunter zwei Knoepfe nebeneinander - der linke
-   ausgefuellt, der rechte ruhig. */
+/* "Posto n'Zbulo": eigene Karte, mit deutlichem Abstand zur Begruessung
+   darueber. Ueberschrift, Untertitel, darunter zwei Knoepfe nebeneinander -
+   der linke ausgefuellt, der rechte ruhig. Beide Flaechen tragen nur einen
+   leisen Schatten. */
 .mnyra-dash__composer {
-  margin-top: 22px;
+  margin-top: 34px;
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
   border-radius: 22px;
   padding: 18px;
-  box-shadow: 0 12px 30px -22px rgba(15, 23, 42, 0.45);
-}
-.mnyra-dash__composer-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.mnyra-dash__composer-heading {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-  overflow: hidden;
-}
-.mnyra-dash__composer-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--dash-accent);
-  flex: 0 0 auto;
+  box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.3);
 }
 /* Schrift der Ueberschrift bleibt unveraendert. */
 .mnyra-dash__composer-title {
@@ -134,19 +114,6 @@ export const DASHBOARD_CSS = `
   color: var(--dash-ink);
 }
 .mnyra-dash__composer-accent { color: var(--dash-accent); }
-.mnyra-dash__composer-badge {
-  flex: 0 0 auto;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--dash-accent-soft);
-  color: var(--dash-accent);
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  line-height: 1;
-  white-space: nowrap;
-}
 /* Schrift des Untertitels bleibt unveraendert. */
 .mnyra-dash__composer-sub {
   margin: 5px 0 0;
@@ -162,16 +129,16 @@ export const DASHBOARD_CSS = `
   gap: 10px;
 }
 .mnyra-dash__composer-btn {
-  min-height: 52px;
+  min-height: 46px;
   border: 1px solid var(--dash-border);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--dash-plane);
   color: var(--dash-ink);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 9px 12px;
   cursor: pointer;
   text-align: center;
   min-width: 0;
@@ -181,7 +148,6 @@ export const DASHBOARD_CSS = `
   background: var(--dash-accent);
   border-color: var(--dash-accent);
   color: #ffffff;
-  box-shadow: 0 12px 24px -16px rgba(79, 70, 229, 0.9);
 }
 .mnyra-dash__composer-btn:active { transform: scale(0.97); }
 .mnyra-dash__composer-btn-icon {
@@ -195,12 +161,12 @@ export const DASHBOARD_CSS = `
 /* Die Karte kommt ohne den Tailwind-Build aus: Symbolgroesse steht hier. */
 .mnyra-dash__composer-btn-icon svg,
 .mnyra-dash__composer-btn-icon i {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: block;
 }
 .mnyra-dash__composer-btn-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1.2;
@@ -569,13 +535,7 @@ export function renderDashboardComposerCard({ iconFn } = {}) {
   `).join("");
   return `
     <div class="mnyra-dash__composer" data-dashboard-composer-card>
-      <div class="mnyra-dash__composer-head">
-        <span class="mnyra-dash__composer-heading">
-          <span class="mnyra-dash__composer-dot" aria-hidden="true"></span>
-          <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">Zbulo</span></p>
-        </span>
-        <span class="mnyra-dash__composer-badge">Quick Create</span>
-      </div>
+      <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">Zbulo</span></p>
       <p class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</p>
       <div class="mnyra-dash__composer-actions">${buttons}</div>
     </div>

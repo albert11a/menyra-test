@@ -22,9 +22,10 @@ test("composer card offers postim and story with mnyra accent", () => {
   assert.ok(html.includes('data-dashboard-composer="story"'));
   assert.ok(html.includes(">Postim<"));
   assert.ok(html.includes(">Story<"));
-  // Kopfzeile: Punkt vor der Ueberschrift, "Quick Create" rechts daneben.
-  assert.ok(html.includes('class="mnyra-dash__composer-dot"'));
-  assert.ok(html.includes('<span class="mnyra-dash__composer-badge">Quick Create</span>'));
+  // Kein Punkt vor der Ueberschrift, keine "Quick Create"-Pille.
+  assert.ok(!html.includes("composer-dot"));
+  assert.ok(!html.includes("composer-badge"));
+  assert.ok(!html.includes("Quick Create"));
   // Postim ist der ausgefuellte Knopf mit Plus, Story traegt den Ring-Punkt.
   assert.ok(html.includes('class="mnyra-dash__composer-btn mnyra-dash__composer-btn--primary" data-dashboard-composer="post"'));
   assert.equal((html.match(/data-icon="plus"/g) || []).length, 1);
@@ -32,9 +33,13 @@ test("composer card offers postim and story with mnyra accent", () => {
 });
 
 test("composer card styles keep the mockup layout", () => {
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-head {"));
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-badge {"));
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-btn--primary {"));
+  // Abstand zur Begruessung darueber, leiser Schatten, kleinere Knoepfe.
+  assert.ok(DASHBOARD_CSS.includes("margin-top: 34px;"));
+  assert.ok(DASHBOARD_CSS.includes("box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.3);"));
+  assert.ok(DASHBOARD_CSS.includes("min-height: 46px;"));
+  // Der ausgefuellte Knopf wirft keinen eigenen Schatten mehr.
+  assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
   // Schrift der beiden vorgegebenen Texte bleibt unveraendert.
   assert.ok(DASHBOARD_CSS.includes("font-size: 17px;\n  font-weight: 900;\n  letter-spacing: -0.01em;"));
   assert.ok(DASHBOARD_CSS.includes("margin: 5px 0 0;\n  font-size: 11px;\n  font-weight: 700;\n  line-height: 1.45;"));
