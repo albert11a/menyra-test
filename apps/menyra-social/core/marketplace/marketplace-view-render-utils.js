@@ -693,10 +693,6 @@ function getRestaurantCuisineLabel(record = {}) {
   );
 }
 
-function getRestaurantPriceRange(record = {}) {
-  return cleanText(record.priceRange || record.priceLevel || record.priceLabel || record.budget || "");
-}
-
 function normalizeFeatureText(value, fallback = "") {
   if (typeof value === "string") return cleanText(value);
   if (value === true) return cleanText(fallback);
@@ -1117,7 +1113,6 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
   const title = cleanText(ad.title || businessName);
   const category = cleanText(ad.category || getRestaurantCuisineLabel(record) || record.__marketplaceTypeLabel || "RESTAURANT").toUpperCase();
   const rating = getBusinessRating(record) || "0.0";
-  const priceSegment = cleanText(ad.priceSegment || getRestaurantPriceRange(record) || "€€ - €€€");
   const rawImage = cleanText(ad.imageUrl || getBusinessCoverImage(record, deps));
   const image = typeof deps.getOptimizedImageUrl === "function"
     ? cleanText(deps.getOptimizedImageUrl(rawImage, "large"))
@@ -1161,14 +1156,10 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
           <h3 class="text-xl font-extrabold text-slate-800 line-clamp-1 group-hover:text-slate-900 transition-colors duration-200" style="font-size:1.25rem;line-height:1.75rem;font-weight:800;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(title)}</h3>
         </div>
 
-        <div class="flex items-center justify-between text-[10px] text-slate-600 font-semibold border-t border-slate-100 pt-3.5 pb-5" style="display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#475569;font-weight:600;border-top:1px solid #f1f5f9;padding-top:0.875rem;padding-bottom:1.25rem;gap:0.625rem;">
+        <div class="flex items-center justify-center text-[10px] text-slate-600 font-semibold border-t border-slate-100 pt-3.5 pb-5" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;font-weight:600;border-top:1px solid #f1f5f9;padding-top:0.875rem;padding-bottom:1.25rem;gap:0.625rem;">
           <div class="flex items-center justify-center gap-1 bg-slate-50 rounded-md border border-slate-100/50" style="width:88px;height:24px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.25rem;min-width:0;">
             ${cardIcon("star", "w-3 h-3 text-amber-500 fill-amber-500 flex-shrink-0")}
             <span class="font-bold text-slate-800">${escapeHtml(rating)}</span>
-          </div>
-          <div class="flex items-center justify-center gap-1 bg-slate-50 rounded-md border border-slate-100/50" style="width:88px;height:24px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.25rem;min-width:0;">
-            ${cardIcon("utensils", "w-3 h-3 text-slate-400 flex-shrink-0")}
-            <span class="font-bold text-[10px] truncate" style="font-size:10px;font-weight:700;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(priceSegment)}</span>
           </div>
         </div>
 
@@ -1624,7 +1615,6 @@ function renderRestaurantListCard(record = {}, deps = {}) {
   const displayRating = rating || "0.0";
   const displayReviewsCount = Number.isFinite(reviewsCount) && reviewsCount > 0 ? reviewsCount : 0;
   const cuisine = getRestaurantCuisineLabel(record);
-  const priceRange = getRestaurantPriceRange(record) || "€€ - €€€";
   const location = getBusinessLocationLabel(record);
   const phone = getBusinessPhone(record);
   const hours = getBusinessHours(record);
@@ -1661,10 +1651,6 @@ function renderRestaurantListCard(record = {}, deps = {}) {
           >
             ${cardIcon("share-2", "w-4 h-4")}
           </button>
-        </div>
-
-        <div class="absolute bottom-3.5 right-4 bg-slate-900/90 text-white font-medium px-2.5 py-0.5 rounded-md text-[9px] tracking-wider shadow" style="bottom:0.875rem;background-color:rgba(15,23,42,0.9);">
-          ${escapeHtml(priceRange)}
         </div>
       </div>
 
