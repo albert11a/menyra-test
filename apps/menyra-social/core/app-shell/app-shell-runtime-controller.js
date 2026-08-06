@@ -1834,7 +1834,11 @@ export function createAppShellRuntimeController(deps = {}) {
     const mainEl = doc.querySelector("main");
     if (mainEl) {
       mainEl.classList.toggle("feed-location-gate-main", !!isFeedLocationGate);
-      if (isFeedLocationGate) {
+      // Nur der Stadt-Auswahlschirm klebt oben am Header: seine farbige Flaeche
+      // soll ohne Fuge unter der Leiste anfangen. Steht der Feed selbst da,
+      // gilt wieder der normale Kopfabstand des Inhalts - sonst sitzt die
+      // Ueberschrift eine Spur hoeher als bei Lokalet und Ofertat.
+      if (isFeedLocationGate && !isFeedLocationFeedStage) {
         mainEl.style.setProperty("padding-top", "0px", "important");
       } else {
         mainEl.style.removeProperty("padding-top");
