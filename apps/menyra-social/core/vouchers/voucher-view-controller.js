@@ -238,11 +238,8 @@ export function createVoucherViewController({
     return `
       <section class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500" data-voucher-feed>
         <div class="mb-5">
-          <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Ofertat</span>
-          <h1 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Kupona per ty</h1>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-            ${escapeHtml(scope.cityLabel || "Qyteti yt")} &middot; ${rows.length} oferta
-          </p>
+          <h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Ofertat</h1>
+          <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Ofertat speciale vetëm në mnyra")}</p>
         </div>
         ${body}
         ${renderVoucherConfirmModal({ confirm: current.confirm, deps: renderDeps })}
