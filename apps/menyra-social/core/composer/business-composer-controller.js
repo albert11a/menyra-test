@@ -37,10 +37,22 @@ const APP_SHELL_MAX_WIDTH = 448;
 const STORY_TILE_TRACK_RATIO = 0.29;
 const STORY_TILE_MAX_WIDTH = 120;
 const STORY_TILE_HEIGHT = 208;
-// Die geoeffnete Story fuellt echt den ganzen Bildschirm. In der Vorschau
-// steht sie neben der Kachel, darum bekommt sie eine Hoehen-Obergrenze und
-// wird als Ganzes darauf herunterskaliert - die Proportionen bleiben exakt.
-const STORY_REEL_PREVIEW_MAX_HEIGHT = 440;
+// Die geoeffnete Story ist eine Vollbild-Flaeche im Hochformat des Geraets
+// (.reel ist 100dvh auf einer Seite, die nichts anderes zeigt). Die Vorschau
+// nimmt dieses Verhaeltnis vom BILDSCHIRM, nicht vom Browserfenster:
+//  - das Fenster ist um die Safari-Leisten kuerzer und viel breiter geschnitten,
+//    dadurch bekam ein Hochformat-Foto in der Vorschau dicke schwarze Balken,
+//    die es in der echten Story so nie hat,
+//  - und es schrumpft, sobald die Tastatur aufgeht - die Vorschau sprang dann
+//    beim Tippen in ein anderes Format.
+const STORY_FRAME_MIN_RATIO = 0.4;
+const STORY_FRAME_MAX_RATIO = 0.7;
+const STORY_FRAME_FALLBACK_RATIO = 9 / 16;
+const STORY_FRAME_MIN_WIDTH = 320;
+const STORY_FRAME_MAX_WIDTH = 480;
+// Beide Story-Vorschauen stehen nebeneinander und sind exakt gleich hoch.
+const STORY_PREVIEW_GAP = 12;
+const STORY_PREVIEW_MAX_HEIGHT = 420;
 const ROOT_ELEMENT_ID = "businessComposerOverlayRoot";
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const CAPTION_MAX_LENGTH = 600;
@@ -370,10 +382,13 @@ export const BUSINESS_COMPOSER_CSS = `
 }
 .mnyra-bc__pane { display: none; }
 .mnyra-bc__pane[data-visible="1"] { display: block; }
+/* Zwei gleich grosse Spalten: die Kachel und die geoeffnete Story stehen
+   nebeneinander und sind exakt gleich hoch - es ist eine Vorschau, keine
+   Gegenueberstellung von gross und klein. */
 .mnyra-bc__story-grid {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: ${STORY_PREVIEW_GAP}px;
   align-items: start;
 }
 .mnyra-bc__story-col { min-width: 0; }
@@ -384,6 +399,16 @@ export const BUSINESS_COMPOSER_CSS = `
   position: relative;
   overflow: hidden;
   width: 100%;
+}
+/* Die beiden Story-Buehnen bekommen ihre Masse aus der Geometrie (gleiche
+   Hoehe, eigenes Seitenverhaeltnis) und stehen mittig in ihrer Spalte. */
+.mnyra-bc__stage--frame {
+  margin-left: auto;
+  margin-right: auto;
+}
+.mnyra-bc__stage--reel {
+  border-radius: 18px;
+  background: #000;
 }
 .mnyra-bc__stage-inner {
   transform-origin: top left;
@@ -649,6 +674,63 @@ export function filterComposerProductsCore(products = [], term = "") {
   });
 }
 
+// Das Seitenverhaeltnis der geoeffneten Story: das Hochformat des Geraets.
+// Bewusst aus screen.width/screen.height - die Browserleisten und die Tastatur
+// aendern daran nichts, die Vorschau steht also still und zeigt dasselbe
+// Format wie die Story-Seite, die den ganzen Bildschirm fuellt.
+export function resolveStoryFrameRatioCore(screenWidth = 0, screenHeight = 0) {
+  const width = Number(screenWidth) > 0 ? Number(screenWidth) : 0;
+  const height = Number(screenHeight) > 0 ? Number(screenHeight) : 0;
+  if (width <= 0 || height <= 0) return STORY_FRAME_FALLBACK_RATIO;
+  const ratio = Math.min(width, height) / Math.max(width, height);
+  if (ratio < STORY_FRAME_MIN_RATIO || ratio > STORY_FRAME_MAX_RATIO) return STORY_FRAME_FALLBACK_RATIO;
+  return ratio;
+}
+
+// Die Buehne der geoeffneten Story in Originalmassen: so breit wie das Geraet
+// im Hochformat (auf dem Desktop auf Telefonbreite begrenzt), so hoch, wie es
+// das Seitenverhaeltnis verlangt.
+export function resolveStoryFrameSizeCore({ screenWidth = 0, screenHeight = 0, viewportWidth = 0 } = {}) {
+  const ratio = resolveStoryFrameRatioCore(screenWidth, screenHeight);
+  const raw = Number(viewportWidth) > 0 ? Number(viewportWidth) : STORY_FRAME_MIN_WIDTH;
+  const width = Math.round(Math.min(STORY_FRAME_MAX_WIDTH, Math.max(STORY_FRAME_MIN_WIDTH, raw)));
+  return { width, height: Math.round(width / ratio) };
+}
+
+function scalePreviewBoxCore(width = 0, height = 0, targetHeight = 0) {
+  const safeWidth = Number(width) > 0 ? Number(width) : 0;
+  const safeHeight = Number(height) > 0 ? Number(height) : 0;
+  if (safeWidth <= 0 || safeHeight <= 0) return { width: 0, height: 0, scale: 1 };
+  const scale = targetHeight / safeHeight;
+  return { width: safeWidth * scale, height: targetHeight, scale };
+}
+
+// Beide Story-Vorschauen sind exakt gleich hoch. Die Hoehe ist die groesste,
+// bei der BEIDE noch in ihre halbe Spalte passen - dadurch behaelt jede ihr
+// eigenes Seitenverhaeltnis und trotzdem ist keine kleiner als die andere.
+export function resolveStoryPreviewLayoutCore({
+  rowWidth = 0,
+  gap = STORY_PREVIEW_GAP,
+  tileWidth = 0,
+  tileHeight = 0,
+  reelWidth = 0,
+  reelHeight = 0,
+  maxHeight = STORY_PREVIEW_MAX_HEIGHT
+} = {}) {
+  const columnWidth = Math.max(1, ((Number(rowWidth) || 0) - (Number(gap) || 0)) / 2);
+  const limits = [];
+  if (Number(maxHeight) > 0) limits.push(Number(maxHeight));
+  if (tileWidth > 0 && tileHeight > 0) limits.push(columnWidth * (tileHeight / tileWidth));
+  if (reelWidth > 0 && reelHeight > 0) limits.push(columnWidth * (reelHeight / reelWidth));
+  const height = limits.length ? Math.max(1, Math.min(...limits)) : 1;
+  return {
+    height,
+    columnWidth,
+    tile: scalePreviewBoxCore(tileWidth, tileHeight, height),
+    reel: scalePreviewBoxCore(reelWidth, reelHeight, height)
+  };
+}
+
 // Einzige Wahrheit fuer den "Posto"-Knopf: Text UND Foto muessen da sein.
 export function canPublishComposerDraftCore({ caption = "", hasImage = false, submitting = false } = {}) {
   if (submitting) return false;
@@ -761,16 +843,16 @@ export function createBusinessComposerController({
             </div>
 
             <div class="mnyra-bc__pane" data-bc-pane="story">
-              <div class="mnyra-bc__story-grid">
+              <div class="mnyra-bc__story-grid" data-bc-story-grid>
                 <div class="mnyra-bc__story-col">
                   <p class="mnyra-bc__preview-caption">${TEXT.previewStoryTile}</p>
-                  <div class="mnyra-bc__stage" data-bc-stage="tile">
+                  <div class="mnyra-bc__stage mnyra-bc__stage--frame" data-bc-stage="tile">
                     <div class="mnyra-bc__stage-inner" data-bc-stage-inner="tile"></div>
                   </div>
                 </div>
                 <div class="mnyra-bc__story-col">
                   <p class="mnyra-bc__preview-caption">${TEXT.previewStoryFull}</p>
-                  <div class="mnyra-bc__stage" data-bc-stage="reel">
+                  <div class="mnyra-bc__stage mnyra-bc__stage--frame mnyra-bc__stage--reel" data-bc-stage="reel">
                     <div class="mnyra-bc__stage-inner" data-bc-stage-inner="reel"></div>
                   </div>
                 </div>
@@ -831,6 +913,7 @@ export function createBusinessComposerController({
       error: q("[data-bc-error]"),
       panePost: q('[data-bc-pane="post"]'),
       paneStory: q('[data-bc-pane="story"]'),
+      storyGrid: q("[data-bc-story-grid]"),
       stagePost: q('[data-bc-stage="post"]'),
       stagePostInner: q('[data-bc-stage-inner="post"]'),
       stageTile: q('[data-bc-stage="tile"]'),
@@ -879,6 +962,24 @@ export function createBusinessComposerController({
 
   function resolveStoryTileWidth() {
     return Math.min(resolveShellWidth() * STORY_TILE_TRACK_RATIO, STORY_TILE_MAX_WIDTH);
+  }
+
+  function resolveStoryFrameSize() {
+    return resolveStoryFrameSizeCore({
+      screenWidth: Number(win?.screen?.width) || 0,
+      screenHeight: Number(win?.screen?.height) || 0,
+      viewportWidth: Number(win?.innerWidth) || 0
+    });
+  }
+
+  // Breite der Vorschau-Zeile. Solange die Story-Seite eingeblendet ist, misst
+  // sie sich selbst; ist sie es (noch) nicht, rechnet die Breite aus dem Body.
+  function resolvePreviewRowWidth() {
+    const gridWidth = Number(nodes?.storyGrid?.clientWidth) || 0;
+    if (gridWidth > 0) return gridWidth;
+    const bodyWidth = Number(nodes?.body?.clientWidth) || 0;
+    if (bodyWidth > 0) return Math.max(1, bodyWidth - 32);
+    return Math.max(1, resolveShellWidth() - 32);
   }
 
   // --- Vorschau 1: der echte Feed-Beitrag ------------------------------------
@@ -984,38 +1085,52 @@ export function createBusinessComposerController({
     `;
   }
 
-  // Buehne: Original in Originalbreite aufbauen, als Ganzes skalieren. Nichts
-  // im Inneren wird umgerechnet, deshalb stimmen alle Verhaeltnisse exakt.
-  function applyStage(stage, inner, naturalWidth, naturalHeight, { maxHeight = 0 } = {}) {
+  // Buehne mit fester Zielhoehe: das Original steht darin in Originalmassen und
+  // wird als Ganzes skaliert. Nichts im Inneren wird umgerechnet, deshalb
+  // stimmen alle Verhaeltnisse exakt. Die Buehne ist danach genau so gross wie
+  // das skalierte Original - kein Rand, nichts abgeschnitten.
+  function applyFrameStage(stage, inner, naturalWidth, naturalHeight, box) {
+    if (!stage || !inner || !box || !(box.scale > 0)) return;
+    inner.style.width = `${naturalWidth}px`;
+    inner.style.height = `${naturalHeight}px`;
+    inner.style.marginLeft = "0px";
+    inner.style.transform = `scale(${box.scale})`;
+    stage.style.width = `${Math.round(box.width)}px`;
+    stage.style.height = `${Math.round(box.height)}px`;
+  }
+
+  // Der Feed-Beitrag steht randlos in der App-Shell: Originalbreite, nur
+  // herunterskaliert, wenn das Modal schmaler ist als die Shell.
+  function applyPostStage(stage, inner, naturalWidth) {
     if (!stage || !inner) return;
     const available = stage.clientWidth || naturalWidth;
-    const height = Number(naturalHeight) > 0 ? Number(naturalHeight) : inner.scrollHeight;
-    // Nie vergroessern: die Vorschau zeigt hoechstens Originalgroesse.
-    let scale = Math.min(1, naturalWidth > 0 ? available / naturalWidth : 1);
-    if (maxHeight > 0 && height > 0) scale = Math.min(scale, maxHeight / height);
-    if (!Number.isFinite(scale) || scale <= 0) scale = 1;
     inner.style.width = `${naturalWidth}px`;
+    inner.style.height = "";
+    let scale = Math.min(1, naturalWidth > 0 ? available / naturalWidth : 1);
+    if (!Number.isFinite(scale) || scale <= 0) scale = 1;
     inner.style.transform = `scale(${scale})`;
+    const height = inner.scrollHeight;
     stage.style.height = `${Math.round(height * scale)}px`;
-    // Die skalierte Buehne in ihrer Spalte zentrieren.
     inner.style.marginLeft = `${Math.max(0, (available - naturalWidth * scale) / 2)}px`;
   }
 
   function syncPreviewGeometry() {
     if (!nodes || !root?.isConnected) return;
-    const shellWidth = resolveShellWidth();
     if (mode === "story") {
-      applyStage(nodes.stageTile, nodes.stageTileInner, resolveStoryTileWidth(), STORY_TILE_HEIGHT);
-      const reelWidth = Number(win?.innerWidth) || shellWidth;
-      const reelHeight = Number(win?.innerHeight) || Math.round(reelWidth * 16 / 9);
-      if (nodes.stageReelInner) nodes.stageReelInner.style.height = `${reelHeight}px`;
-      applyStage(nodes.stageReel, nodes.stageReelInner, reelWidth, reelHeight, {
-        maxHeight: STORY_REEL_PREVIEW_MAX_HEIGHT
+      const tileWidth = resolveStoryTileWidth();
+      const frame = resolveStoryFrameSize();
+      const layout = resolveStoryPreviewLayoutCore({
+        rowWidth: resolvePreviewRowWidth(),
+        tileWidth,
+        tileHeight: STORY_TILE_HEIGHT,
+        reelWidth: frame.width,
+        reelHeight: frame.height
       });
+      applyFrameStage(nodes.stageTile, nodes.stageTileInner, tileWidth, STORY_TILE_HEIGHT, layout.tile);
+      applyFrameStage(nodes.stageReel, nodes.stageReelInner, frame.width, frame.height, layout.reel);
       return;
     }
-    if (nodes.stagePostInner) nodes.stagePostInner.style.height = "";
-    applyStage(nodes.stagePost, nodes.stagePostInner, shellWidth, nodes.stagePostInner?.scrollHeight || 0);
+    applyPostStage(nodes.stagePost, nodes.stagePostInner, resolveShellWidth());
   }
 
   function buildPreview() {
