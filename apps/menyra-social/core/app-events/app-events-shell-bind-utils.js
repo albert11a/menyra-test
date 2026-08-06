@@ -989,6 +989,13 @@ export function bindAppShellEventsCore({
       }));
   }
 
+  if (doc.querySelector("[data-restaurant-search-shell]")) {
+    void import("../marketplace/restaurant-view-event-bindings.js")
+      .then((module) => module?.bindRestaurantListSearchEvents?.({
+        documentObj: doc
+      }));
+  }
+
   if (doc.querySelector("[data-shopping-view]")) {
     void import("../marketplace/shopping-view-event-bindings.js")
       .then((module) => module?.bindShoppingViewEvents?.({

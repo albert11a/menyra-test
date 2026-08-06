@@ -1602,6 +1602,72 @@ function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
   `;
 }
 
+// Der Suchtext einer Karte: Name, Kueche, Ort und Typ in einem Schluessel.
+// Er wird mit derselben Normalisierung gebaut, mit der die Suchleiste die
+// Eingabe normalisiert - "Prishtinë" findet man also auch als "prishtine".
+function buildRestaurantSearchKey(record = {}) {
+  return [
+    getBusinessName(record),
+    getRestaurantCuisineLabel(record),
+    getBusinessLocationLabel(record),
+    cleanText(record.__marketplaceTypeLabel || record.__marketplaceType || "")
+  ]
+    .map((part) => normalizeLooseKey(part))
+    .filter(Boolean)
+    .join("_");
+}
+
+function renderRestaurantsListHeader({ hasAds = false, scopeLabel = "", deps = {} } = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  return `
+    <div class="flex items-center justify-between gap-3 px-0" style="padding-left:0;padding-right:0;">
+      <div data-restaurant-search-title class="min-w-0 overflow-hidden transition-all duration-300 ease-in-out opacity-100" style="max-width:80%;">
+        ${hasAds ? `
+          <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
+          <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Partner premium ne afersine tende")}</p>
+        ` : ""}
+      </div>
+      <div data-restaurant-search-shell data-restaurant-search-scope="${escapeHtml(normalizeLooseKey(scopeLabel))}" class="flex items-center justify-end shrink-0 transition-all duration-300 ease-in-out w-10">
+        ${hasAds ? `
+          <div data-restaurant-ads-arrows class="hidden md:flex items-center gap-1.5 mr-1.5">
+            <button type="button" data-restaurant-ads-scroll="left" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize majtas">
+              ${icon("chevron-left", "w-3.5 h-3.5")}
+            </button>
+            <button type="button" data-restaurant-ads-scroll="right" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize djathtas">
+              ${icon("chevron-right", "w-3.5 h-3.5")}
+            </button>
+          </div>
+        ` : ""}
+        <button
+          type="button"
+          data-restaurant-search-toggle
+          aria-expanded="false"
+          aria-label="Kerko lokale"
+          class="bg-white hover:bg-slate-50 text-slate-800 p-2.5 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95 ml-auto shrink-0"
+        >
+          ${icon("search", "w-4 h-4")}
+        </button>
+        <div data-restaurant-search-panel class="hidden items-center gap-2 w-full bg-white rounded-full border border-slate-100 shadow-sm px-4 py-2.5">
+          ${icon("search", "w-4 h-4 text-slate-400 shrink-0")}
+          <input
+            type="text"
+            data-restaurant-search-input
+            placeholder="Kerko lokale..."
+            autocomplete="off"
+            enterkeyhint="search"
+            class="bg-transparent text-xs font-bold text-slate-800 w-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0 placeholder-slate-400"
+            style="box-shadow:none;"
+          />
+          <button type="button" data-restaurant-search-close class="p-1 hover:bg-slate-100 rounded-full text-slate-500 transition-colors shrink-0" aria-label="Mbyll kerkimin">
+            ${icon("x", "w-3.5 h-3.5")}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderRestaurantListCard(record = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
@@ -1621,7 +1687,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
   const features = getRestaurantFeatureChips(record);
   const isLiked = record.isLiked === true || record.liked === true || record.favorite === true || record.favorited === true;
   return `
-    <article class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
+    <article data-restaurant-card data-restaurant-search-text="${escapeHtml(buildRestaurantSearchKey(record))}" class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
       <div class="h-44 relative overflow-hidden group">
         ${renderImage(coverImage, name, { ...deps, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
         <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-black/20" style="background:linear-gradient(to top,#fff 0%,rgba(255,255,255,0.2) 50%,rgba(0,0,0,0.2) 100%);"></div>
@@ -1876,31 +1942,18 @@ function renderRestaurantsContent({
   items = [],
   adItems = [],
   section = {},
+  scopeLabel = "",
   deps = {}
 } = {}) {
   const escapeHtml = deps.escapeHtml;
-  const icon = deps.icon;
   if (!items.length) {
     return renderEmptyState(section, deps);
   }
   return `
-    ${adItems.length ? `
-      <div class="w-full space-y-5 mb-6" style="width:100%;margin-bottom:1.5rem;">
-        <div class="flex items-center justify-between px-0" style="padding-left:0;padding-right:0;">
-          <div>
-            <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
-            <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Partner premium ne afersine tende")}</p>
-          </div>
-          <div class="hidden md:flex items-center gap-1.5">
-            <button type="button" data-restaurant-ads-scroll="left" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize majtas">
-              ${icon("chevron-left", "w-3.5 h-3.5")}
-            </button>
-            <button type="button" data-restaurant-ads-scroll="right" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize djathtas">
-              ${icon("chevron-right", "w-3.5 h-3.5")}
-            </button>
-          </div>
-        </div>
-        <div class="relative">
+    <div class="w-full space-y-5 mb-6" style="width:100%;margin-bottom:1.5rem;">
+      ${renderRestaurantsListHeader({ hasAds: !!adItems.length, scopeLabel, deps })}
+      ${adItems.length ? `
+        <div data-restaurant-ads-block class="relative">
           <!--
             Die Spur laeuft ueber die Polsterung der Sektion (p-6 = 1.5rem)
             hinaus bis an beide Bildschirmraender - wie die Story-Reihe im Feed.
@@ -1913,10 +1966,14 @@ function renderRestaurantsContent({
             ${adItems.map((entry) => renderRestaurantAdCard(entry, deps)).join("")}
           </div>
         </div>
-      </div>
-    ` : ""}
+      ` : ""}
+    </div>
 
-    <div class="space-y-4">
+    <p data-restaurant-search-empty class="hidden text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 py-10">
+      ${escapeHtml("Nuk u gjet asnje lokal")}
+    </p>
+
+    <div data-restaurant-list class="space-y-4">
       ${items.map((record) => renderRestaurantListCard(record, deps)).join("")}
     </div>
   `;
@@ -1940,6 +1997,7 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
     items: visibleItems,
     adItems,
     section,
+    scopeLabel: cleanText(storedLocation?.city || storedLocation?.label || ""),
     deps
   }) : renderDataLoadingState(section, deps);
 

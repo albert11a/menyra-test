@@ -181,6 +181,7 @@ export function bindRestaurantViewEvents({
     }
     hideSuggestions();
     setStatus("");
+    resetRestaurantListSearch();
     render();
   };
   const applySuggestion = (suggestion = null) => {
@@ -297,4 +298,129 @@ export function bindRestaurantViewEvents({
       });
     });
   });
+}
+
+// Dieselbe Normalisierung wie beim Aufbau des Suchtexts der Karten in
+// marketplace-view-render-utils.js: "Prishtinë" und "prishtine" landen auf
+// demselben Schluessel, gesucht wird dann als Teilstring darin.
+function normalizeSearchKey(value = "") {
+  const raw = cleanText(value).toLowerCase();
+  if (!raw) return "";
+  return raw
+    .replace(/[ëèéê]/g, "e")
+    .replace(/[çćč]/g, "c")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+// Die Suche lebt im DOM, der Tab rendert aber komplett neu (etwa wenn Daten
+// nachladen). Damit die Eingabe dabei nicht verloren geht, haelt das Modul den
+// letzten Suchbegriff und stellt ihn beim naechsten Binden wieder her.
+let activeRestaurantSearchQuery = "";
+let activeRestaurantSearchScope = "";
+
+function setRestaurantSearchOpen(doc, open = false) {
+  const title = doc.querySelector("[data-restaurant-search-title]");
+  const shell = doc.querySelector("[data-restaurant-search-shell]");
+  const arrows = doc.querySelector("[data-restaurant-ads-arrows]");
+  const toggle = doc.querySelector("[data-restaurant-search-toggle]");
+  const panel = doc.querySelector("[data-restaurant-search-panel]");
+  const input = doc.querySelector("[data-restaurant-search-input]");
+  if (title?.style) title.style.maxWidth = open ? "0" : "80%";
+  title?.classList.toggle("opacity-0", !!open);
+  title?.classList.toggle("opacity-100", !open);
+  title?.classList.toggle("pointer-events-none", !!open);
+  shell?.classList.toggle("w-full", !!open);
+  shell?.classList.toggle("w-10", !open);
+  arrows?.classList.toggle("hidden", !!open);
+  arrows?.classList.toggle("md:flex", !open);
+  toggle?.classList.toggle("hidden", !!open);
+  toggle?.setAttribute?.("aria-expanded", open ? "true" : "false");
+  panel?.classList.toggle("hidden", !open);
+  panel?.classList.toggle("flex", !!open);
+  if (open && input && typeof input.focus === "function") {
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+      input.focus();
+    }
+  }
+}
+
+function applyRestaurantSearch(doc, query = "") {
+  const key = normalizeSearchKey(query);
+  activeRestaurantSearchQuery = cleanText(query);
+  let visibleCount = 0;
+  const cards = doc.querySelectorAll("[data-restaurant-card]");
+  cards.forEach((card) => {
+    const haystack = cleanText(card.getAttribute("data-restaurant-search-text") || "");
+    const visible = !key || haystack.includes(key);
+    card.classList.toggle("hidden", !visible);
+    if (visible) visibleCount += 1;
+  });
+  // Waehrend gesucht wird, tritt die Partner-Spur zur Seite: das gesuchte
+  // Lokal steht sonst erst unterhalb des Karussells und man sieht es nicht.
+  const adsBlock = doc.querySelector("[data-restaurant-ads-block]");
+  adsBlock?.classList.toggle("hidden", !!key);
+  const emptyState = doc.querySelector("[data-restaurant-search-empty]");
+  emptyState?.classList.toggle("hidden", !key || visibleCount > 0);
+}
+
+export function resetRestaurantListSearch() {
+  activeRestaurantSearchQuery = "";
+}
+
+export function bindRestaurantListSearchEvents({ documentObj } = {}) {
+  const doc = documentObj || null;
+  if (!doc) return;
+  const shell = doc.querySelector("[data-restaurant-search-shell]");
+  if (!shell) return;
+
+  // Die Liste zeigt immer nur die Lokale der gewaehlten Stadt. Wechselt die
+  // Stadt, passt ein alter Suchbegriff nicht mehr dazu und faellt weg.
+  const scope = cleanText(shell.getAttribute("data-restaurant-search-scope") || "");
+  if (scope !== activeRestaurantSearchScope) {
+    activeRestaurantSearchScope = scope;
+    activeRestaurantSearchQuery = "";
+  }
+
+  const toggle = doc.querySelector("[data-restaurant-search-toggle]");
+  const close = doc.querySelector("[data-restaurant-search-close]");
+  const input = doc.querySelector("[data-restaurant-search-input]");
+
+  if (toggle && markBound(toggle, "ListSearchToggle")) {
+    toggle.addEventListener("click", () => setRestaurantSearchOpen(doc, true));
+  }
+
+  if (close && markBound(close, "ListSearchClose")) {
+    close.addEventListener("click", () => {
+      if (input) input.value = "";
+      applyRestaurantSearch(doc, "");
+      setRestaurantSearchOpen(doc, false);
+    });
+  }
+
+  if (input && markBound(input, "ListSearchInput")) {
+    input.addEventListener("input", () => applyRestaurantSearch(doc, input.value || ""));
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        return;
+      }
+      if (event.key !== "Escape") return;
+      input.value = "";
+      applyRestaurantSearch(doc, "");
+      setRestaurantSearchOpen(doc, false);
+    });
+  }
+
+  // Nach einem Neuaufbau des Tabs steht die Suche wieder offen und gefiltert da.
+  if (activeRestaurantSearchQuery) {
+    if (input) input.value = activeRestaurantSearchQuery;
+    setRestaurantSearchOpen(doc, true);
+    applyRestaurantSearch(doc, activeRestaurantSearchQuery);
+  }
 }
