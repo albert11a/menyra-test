@@ -241,7 +241,7 @@ function renderList(landings, tab) {
           <span class="heart-landing-card__stats">
             <span class="heart-landing-card__stat"><b>${entry.total}</b><small>Besucht</small></span>
             <span class="heart-landing-card__stat"><b>${entry.answered}</b><small>Fragen</small></span>
-            <span class="heart-landing-card__stat heart-landing-card__stat--yes"><b>${entry.yes}</b><small>Kunde?</small></span>
+            <span class="heart-landing-card__stat heart-landing-card__stat--yes"><b>${entry.yes}</b><small>Kunde</small></span>
           </span>
         </button>
       `).join("")}

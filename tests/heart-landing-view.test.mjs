@@ -156,7 +156,7 @@ test("die Karte in der Liste ist ein einziger Knopf mit Bild, Name und drei Zahl
   assert.match(html, /https:\/\/example\.test\/logo\.png/, "das Profilbild fehlt");
   assert.match(html, /Besucht/);
   assert.match(html, /Fragen/);
-  assert.match(html, /Kunde\?/);
+  assert.match(html, /<small>Kunde<\/small>/);
   assert.ok(!html.includes("Ablegen"), "in der Liste steht noch ein Ablegen");
 });
 
