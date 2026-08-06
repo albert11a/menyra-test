@@ -110,8 +110,25 @@ export const DASHBOARD_CSS = `
   border-radius: var(--dash-card-radius);
   padding: 18px;
 }
-/* Schrift der Ueberschrift bleibt unveraendert. */
+/* Die ganze Karte ist der Knopf. Sie sieht aus wie vorher - nur nimmt jetzt
+   jede Stelle den Tipp an, nicht nur ein Streifen darin. */
+.mnyra-dash__composer--tap {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--dash-ink);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+.mnyra-dash__composer--tap:active { transform: scale(0.99); }
+/* Schrift der Ueberschrift bleibt unveraendert. Als Kind eines <button> steht
+   sie in einem <span> - der braucht die Blockform ausdruecklich. */
 .mnyra-dash__composer-title {
+  display: block;
   margin: 0;
   font-size: 17px;
   font-weight: 900;
@@ -122,11 +139,66 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__composer-accent { color: var(--dash-accent); }
 /* Schrift des Untertitels bleibt unveraendert. */
 .mnyra-dash__composer-sub {
+  display: block;
   margin: 5px 0 0;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.45;
   color: var(--dash-muted);
+}
+/* Die Aktionszeile der grossen Karte: eine Haarlinie trennt sie vom Text,
+   darunter das Plus im Kreis, die Beschriftung und rechtsbuendig der Pfeil.
+   Kein zweiter Knopf - die Karte selbst nimmt den Tipp an. */
+.mnyra-dash__composer-cta {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--dash-hairline);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mnyra-dash__composer-cta-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--dash-border);
+  background: var(--dash-surface);
+  color: var(--dash-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Die Karte kommt ohne den Tailwind-Build aus: Symbolgroessen stehen hier. */
+.mnyra-dash__composer-cta-icon svg,
+.mnyra-dash__composer-cta-icon i {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.mnyra-dash__composer-cta-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: var(--dash-accent);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mnyra-dash__composer-cta-chevron {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  color: var(--dash-muted);
+}
+.mnyra-dash__composer-cta-chevron svg,
+.mnyra-dash__composer-cta-chevron i {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 .mnyra-dash__composer-actions {
   margin-top: 16px;
@@ -134,9 +206,6 @@ export const DASHBOARD_CSS = `
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
-/* Ein Knopf ueber die ganze Breite: die Wahl zwischen Postim und Story
-   trifft man im Modal an der Leiste unten. */
-.mnyra-dash__composer-actions--single { grid-template-columns: minmax(0, 1fr); }
 /* Zwei halbe Karten unter "Posto n'Zbulo": zusammen genau so breit wie die
    Karte darueber, gleiche Oberflaeche, nur je ein Knopf. */
 .mnyra-dash__composer-row {
@@ -559,18 +628,22 @@ export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Da
 
 // Posting-Karte unter der Begruessung. Ein Knopf reicht: zwischen Postim und
 // Story schaltet man im Modal selbst um, an der Leiste unten.
+// Die ganze Karte ist der Knopf: egal wo man sie antippt, das Modal geht auf.
+// Deshalb steht hier ein <button> und darin nur noch Textbausteine - ein
+// zweiter Knopf in einem Knopf waere weder gueltig noch bedienbar.
+// Der Titel ist umgedreht: "Posto" traegt die Farbe, "n'Mnyra" steht ruhig
+// daneben.
 export function renderDashboardComposerCard({ iconFn } = {}) {
   return `
-    <div class="mnyra-dash__composer" data-dashboard-composer-card>
-      <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">Zbulo</span></p>
-      <p class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</p>
-      <div class="mnyra-dash__composer-actions mnyra-dash__composer-actions--single">
-        <button type="button" class="mnyra-dash__composer-btn mnyra-dash__composer-btn--primary" data-dashboard-composer="post">
-          <span class="mnyra-dash__composer-btn-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
-          <span class="mnyra-dash__composer-btn-label">Posto</span>
-        </button>
-      </div>
-    </div>
+    <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap" data-dashboard-composer-card data-dashboard-composer="post">
+      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Posto</span> n'Mnyra</span>
+      <span class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</span>
+      <span class="mnyra-dash__composer-cta">
+        <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">Posto</span>
+        <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
+      </span>
+    </button>
   `;
 }
 

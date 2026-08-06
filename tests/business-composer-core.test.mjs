@@ -20,21 +20,48 @@ import {
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 import { collectHotelRoomsCore } from "../apps/menyra-social/core/profile/hotel-rooms-utils.js";
 
-test("composer card has one button - the choice is made in the modal", () => {
+test("the whole composer card is the button, with the new title", () => {
   const html = renderDashboardComposerCard({ iconFn: (name) => `<i data-icon="${name}"></i>` });
-  // Ueberschrift und Untertitel bleiben Wort fuer Wort, wie sie waren.
-  assert.ok(html.includes("Posto n'"));
-  assert.ok(html.includes('<span class="mnyra-dash__composer-accent">Zbulo</span>'));
+  // Titel: "Posto" traegt die Farbe, "n'Mnyra" steht ruhig daneben.
+  assert.ok(html.includes(`<span class="mnyra-dash__composer-accent">Posto</span> n'Mnyra`));
+  assert.equal(html.includes("Zbulo"), false);
+  // Untertitel bleibt Wort fuer Wort, wie er war.
   assert.ok(html.includes("Ndaj një postim ose një story me klientët e tu."));
-  // Genau ein Knopf, ausgefuellt, mit Plus - und er oeffnet den Beitrag.
+  // Genau ein Knopf - und das ist die Karte selbst. Egal wo man tippt, es
+  // oeffnet den Beitrag.
   assert.equal((html.match(/<button/g) || []).length, 1);
-  assert.ok(html.includes('class="mnyra-dash__composer-btn mnyra-dash__composer-btn--primary" data-dashboard-composer="post"'));
-  assert.ok(html.includes(">Posto<"));
+  assert.ok(html.includes('<button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap" data-dashboard-composer-card data-dashboard-composer="post">'));
+  // Kein Knopf mehr im Knopf: das waere weder gueltig noch bedienbar.
+  assert.equal(html.includes("mnyra-dash__composer-btn"), false);
+  // Kein Plus oben in der Karte - nur unten in der Zeile, mit Pfeil rechts.
   assert.equal((html.match(/data-icon="plus"/g) || []).length, 1);
-  // Kein zweiter Knopf mehr fuer Story - dafuer gibt es die Leiste im Modal.
+  assert.equal((html.match(/data-icon="chevron-right"/g) || []).length, 1);
+  const plusIndex = html.indexOf('data-icon="plus"');
+  assert.ok(html.indexOf("mnyra-dash__composer-sub") < plusIndex, "das Plus steht unter dem Text");
+  assert.ok(html.includes(">Posto</span>"));
+  // Kein zweiter Knopf fuer Story - dafuer gibt es die Leiste im Modal.
   assert.ok(!html.includes('data-dashboard-composer="story"'));
-  assert.ok(html.includes("mnyra-dash__composer-actions--single"));
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-actions--single { grid-template-columns: minmax(0, 1fr); }"));
+});
+
+test("the composer card action row is a divided line, not a filled button", () => {
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer--tap {"));
+  const tap = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer--tap {"));
+  const tapBlock = tap.slice(0, tap.indexOf("}"));
+  // Als Knopf braucht die Karte die Textausrichtung und die Breite explizit.
+  assert.ok(tapBlock.includes("text-align: left;"));
+  assert.ok(tapBlock.includes("width: 100%;"));
+  // Die Zeile haengt an einer Haarlinie, der Pfeil steht rechts aussen.
+  const cta = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-cta {"));
+  assert.ok(cta.slice(0, cta.indexOf("}")).includes("border-top: 1px solid var(--dash-hairline);"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-cta-chevron {"));
+  const chevron = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-cta-chevron {"));
+  assert.ok(chevron.slice(0, chevron.indexOf("}")).includes("margin-left: auto;"));
+  // Titel und Untertitel stehen jetzt in <span> - ohne Blockform saessen sie
+  // in einer Zeile.
+  const title = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-title {"));
+  assert.ok(title.slice(0, title.indexOf("}")).includes("display: block;"));
+  const sub = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-sub {"));
+  assert.ok(sub.slice(0, sub.indexOf("}")).includes("display: block;"));
 });
 
 test("composer knows exactly three sides", () => {
