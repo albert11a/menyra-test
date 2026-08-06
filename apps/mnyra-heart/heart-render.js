@@ -61,7 +61,7 @@ const CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW = Object.freeze({
 
 // Ansichten, die ihren Titel selbst setzen. Fuer alle anderen schreibt die
 // Shell eine schlichte Ueberschrift darueber.
-const VIEWS_WITH_OWN_HEADER = new Set(["dashboard", "crmLeads", "destinations"]);
+const VIEWS_WITH_OWN_HEADER = new Set(["dashboard", "crmLeads", "destinations", "landing"]);
 
 function renderHeaderBrand(extraClass = "", eyebrow = "heart") {
   return `

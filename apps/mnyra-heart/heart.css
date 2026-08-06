@@ -3117,89 +3117,118 @@ damit Lead- und Destination-Confirm sich nie mischen.
   font-variant-numeric: tabular-nums;
 }
 
-.heart-landing-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px 8px 16px;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 14px;
-  background: var(--heart-surface, #fff);
-  text-align: left;
-}
+/* Die Karte in der Liste: oben das Bild des Lokals und daneben sein Name,
+   darunter die drei Zahlen nebeneinander.
 
-.heart-landing-row:hover {
-  border-color: var(--heart-accent, #4f46e5);
-}
-
-/* Der Griff zum Oeffnen nimmt den ganzen Platz,
-der uebrig bleibt - so trifft
-   man ihn auch mit dem Daumen und nicht nur den Text. */
-.heart-landing-row__open {
+   Sie hat bewusst keinen Hover-Zustand. Auf dem iPhone gibt es kein Zeigen
+   ohne Tippen: Der erste Tipp hat dort nur die Umrandung gesetzt, erst der
+   zweite hat geoeffnet. Wer das nicht weiss, haelt die App fuer kaputt. */
+.heart-landing-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 6px 0;
-  border: 0;
-  background: none;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 16px;
+  background: var(--heart-surface, #fff);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.heart-landing-archive {
+/* Beim Tippen darf sie kurz nachgeben - das ist die Rueckmeldung, die die
+   Umrandung geben sollte, nur ohne haengenzubleiben. */
+.heart-landing-card:active {
+  transform: scale(0.995);
+  background: var(--heart-surface-soft, #f8fafc);
+}
+
+.heart-landing-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.heart-landing-card__avatar {
   flex: 0 0 auto;
-  padding: 8px 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--heart-surface-soft, #e2e8f0);
   border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 10px;
-  background: none;
-  color: var(--heart-muted, #64748b);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--heart-text-soft, #64748b);
 }
 
-.heart-landing-archive:hover {
-  border-color: var(--heart-accent, #4f46e5);
-  color: var(--heart-accent, #4f46e5);
+.heart-landing-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.heart-landing-row__main {
+.heart-landing-card__title {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.heart-landing-row__name {
-  font-weight: 700;
-  font-size: 15px;
+.heart-landing-card__name {
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.heart-landing-row__meta {
+.heart-landing-card__meta {
   font-size: 12px;
-  opacity: 0.65;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.heart-landing-row__stats {
+/* Drei gleich breite Spalten: links besucht, in der Mitte die Fragen, rechts
+   die Kundenfrage. Gleich breit, damit die Zahlen untereinander stehen, wenn
+   mehrere Karten uebereinander liegen. */
+.heart-landing-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.heart-landing-card__stat {
   display: flex;
-  gap: 14px;
-  flex: 0 0 auto;
-  font-size: 12px;
-  opacity: 0.8;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
-.heart-landing-stat b {
-  font-size: 15px;
+.heart-landing-card__stat b {
+  font-size: 18px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
-.heart-landing-stat--yes b {
-  color: #059669;
+.heart-landing-card__stat small {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.heart-landing-card__stat--yes b {
+  color: var(--heart-success, #059669);
 }
 
 .heart-landing-back {
@@ -3325,11 +3354,6 @@ der Balken zeigt es. */
 .heart-landing-session__outcome--no { color: #b91c1c; font-weight: 700; }
 
 @media (max-width: 640px) {
-  .heart-landing-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .heart-landing-kpis {
     grid-template-columns: repeat(2, 1fr);
   }

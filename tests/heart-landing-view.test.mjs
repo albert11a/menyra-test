@@ -100,7 +100,30 @@ test("abgelegte Landings verschwinden aus Aktiv und stehen im Archiv", () => {
   const archiv = renderHeartLandingView({ ...daten, tab: "archived" });
   assert.match(archiv, /Moa/);
   assert.ok(!archiv.includes("Bro Pizza"), "das Aktive steht im Archiv");
-  assert.match(archiv, /Zurueckholen/, "aus dem Archiv fuehrt kein Weg zurueck");
+});
+
+// Der erste Tipp auf eine Karte hat auf dem iPhone frueher nur die Umrandung
+// gesetzt, weil die Karte einen Hover-Zustand hatte. Die Karte ist deshalb ein
+// einziger Knopf ohne zweiten darin - und in der Liste steht kein Ablegen mehr.
+test("die Karte in der Liste ist ein einziger Knopf mit Bild, Name und drei Zahlen", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    sessions: [session({ logoUrl: "https://example.test/logo.png" })]
+  });
+  assert.match(html, /class="heart-landing-card" data-action="open-landing"/);
+  assert.match(html, /https:\/\/example\.test\/logo\.png/, "das Profilbild fehlt");
+  assert.match(html, /Besucht/);
+  assert.match(html, /Fragen/);
+  assert.match(html, /Kunde\?/);
+  assert.ok(!html.includes("Ablegen"), "in der Liste steht noch ein Ablegen");
+});
+
+test("ohne Bild stehen die Anfangsbuchstaben in der Karte", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    sessions: [session({ name: "Bro Pizza", logoUrl: "" })]
+  });
+  assert.match(html, /<span>BP<\/span>/);
 });
 
 test("die Reiter zeigen, wie viel in jedem liegt", () => {

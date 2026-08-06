@@ -65,6 +65,26 @@ function relativeDay(iso) {
   return then.toLocaleDateString("de-DE");
 }
 
+// Die ersten Buchstaben des Namens, wenn es kein Bild gibt. Zwei reichen -
+// mehr wird in dem kleinen Kreis ohnehin nur eng.
+function initials(name = "") {
+  const parts = String(name || "").trim().split(/[\s._-]+/).filter(Boolean).slice(0, 2);
+  return parts.map((part) => part[0].toUpperCase()).join("") || "M";
+}
+
+// Das Profilbild des Lokals, links in der Karte. Ohne Bild stehen dort die
+// Anfangsbuchstaben - eine leere Flaeche waere ein Loch in der Reihe.
+function renderAvatar(entry = {}) {
+  const url = String(entry.logoUrl || "").trim();
+  return `
+    <span class="heart-landing-card__avatar" aria-hidden="true">
+      ${url
+    ? `<img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async" />`
+    : `<span>${escapeHtml(initials(entry.name))}</span>`}
+    </span>
+  `;
+}
+
 // Aus den Sitzungen eines Lokals wird eine Zeile fuer die Liste.
 function summarize(sessions) {
   const total = sessions.length;
@@ -92,6 +112,7 @@ export function groupLandings(sessions = []) {
       name: list[0].name || restaurantId,
       city: list[0].city || "",
       publicSlug: list[0].publicSlug || "",
+      logoUrl: (list.find((session) => session.logoUrl) || {}).logoUrl || "",
       sessions: list.slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))),
       ...summarize(list)
     }))
@@ -128,31 +149,26 @@ function renderList(landings, tab) {
     `;
   }
 
-  // Die Zeile ist bewusst kein Knopf mehr: Darin steckt jetzt ein zweiter, und
-  // ein Knopf in einem Knopf ist kein gueltiges Markup - manche Browser
-  // zeigen ihn dann gar nicht erst an.
+  // Die ganze Karte ist ein einziger Knopf. Vorher steckte darin noch das
+  // Ablegen, also ein Knopf im Knopf - das ist jetzt weg und wandert in die
+  // Auswertung, wo man ohnehin nachsieht, bevor man etwas weglegt.
   return `
     <div class="heart-landing-list">
       ${landings.map((entry) => `
-        <div class="heart-landing-row">
-          <button type="button" class="heart-landing-row__open" data-action="open-landing" data-landing-id="${escapeHtml(entry.restaurantId)}">
-            <span class="heart-landing-row__main">
-              <span class="heart-landing-row__name">${escapeHtml(entry.name)}</span>
-              <span class="heart-landing-row__meta">${escapeHtml(entry.city || entry.publicSlug || "")} &middot; ${escapeHtml(relativeDay(entry.last))}</span>
+        <button type="button" class="heart-landing-card" data-action="open-landing" data-landing-id="${escapeHtml(entry.restaurantId)}">
+          <span class="heart-landing-card__head">
+            ${renderAvatar(entry)}
+            <span class="heart-landing-card__title">
+              <span class="heart-landing-card__name">${escapeHtml(entry.name)}</span>
+              <span class="heart-landing-card__meta">${escapeHtml(entry.city || entry.publicSlug || "")} &middot; ${escapeHtml(relativeDay(entry.last))}</span>
             </span>
-            <span class="heart-landing-row__stats">
-              <span class="heart-landing-stat"><b>${entry.total}</b> hapje</span>
-              <span class="heart-landing-stat"><b>${entry.answered}</b> pergjigje</span>
-              <span class="heart-landing-stat heart-landing-stat--yes"><b>${entry.yes}</b> po</span>
-            </span>
-          </button>
-          <button type="button" class="heart-landing-archive"
-            data-action="toggle-landing-archive"
-            data-landing-id="${escapeHtml(entry.restaurantId)}"
-            data-landing-archived="${tab === "archived" ? "1" : "0"}">
-            ${tab === "archived" ? "Zurueckholen" : "Ablegen"}
-          </button>
-        </div>
+          </span>
+          <span class="heart-landing-card__stats">
+            <span class="heart-landing-card__stat"><b>${entry.total}</b><small>Besucht</small></span>
+            <span class="heart-landing-card__stat"><b>${entry.answered}</b><small>Fragen</small></span>
+            <span class="heart-landing-card__stat heart-landing-card__stat--yes"><b>${entry.yes}</b><small>Kunde?</small></span>
+          </span>
+        </button>
       `).join("")}
     </div>
   `;

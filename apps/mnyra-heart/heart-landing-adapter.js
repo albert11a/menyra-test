@@ -103,7 +103,10 @@ async function readNames(leser, ids) {
         eintraege.push([eintrag.id, {
           name: asText(data.name) || asText(data.restaurantName) || eintrag.id,
           city: asText(data.city),
-          slug: asText(data.publicSlug) || asText(data.landingSlug)
+          slug: asText(data.publicSlug) || asText(data.landingSlug),
+          // Das Profilbild fuer die Karte. Kommt es aus derselben Abfrage wie
+          // der Name, kostet es keine einzige zusaetzliche Runde.
+          logoUrl: asText(data.logoUrl) || asText(data.logo) || asText(data.imageUrl)
         }]);
       });
       return eintraege;
@@ -139,7 +142,8 @@ function benennen(sessions, names) {
       ...session,
       name: info ? info.name : session.slug || session.restaurantId,
       city: info ? info.city : "",
-      publicSlug: info ? info.slug : session.slug
+      publicSlug: info ? info.slug : session.slug,
+      logoUrl: info ? info.logoUrl : ""
     };
   });
 }
