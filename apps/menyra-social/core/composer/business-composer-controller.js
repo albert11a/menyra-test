@@ -11,8 +11,36 @@
 // Langsame Verbindungen: Vorschau laeuft komplett lokal (Object-URL), der
 // Upload startet erst beim Posten. Waehrend des Postens sind alle Bedienelemente
 // gesperrt (ein Submit-Guard verhindert Doppel-Posts auch bei Doppel-Taps).
+//
+// Die Vorschau ist kein Nachbau: sie rendert mit denselben Bausteinen wie das
+// Original (renderFeedCardMarkupCore, renderStoryTileMarkupCore) und mit den
+// aus story/index.html abgeleiteten Story-Viewer-Regeln. Angezeigt wird sie in
+// einer Buehne, die das Original in Originalbreite aufbaut und nur als Ganzes
+// herunterskaliert - dadurch stimmt jedes Mass proportional exakt.
+
+import {
+  renderFeedCardMarkupCore
+} from "../feed/feed-card-markup-utils.js";
+import {
+  renderStoryTileMarkupCore,
+  renderStoryTileMediaFallbackCore,
+  buildStoryTileInnerStyleCore
+} from "../feed/story-tile-markup-utils.js";
+import {
+  STORY_VIEWER_SURFACE_CSS,
+  STORY_VIEWER_SURFACE_CLASS
+} from "../stories/story-viewer-surface-css.js";
 
 const STYLE_ELEMENT_ID = "mnyraBusinessComposerStyles";
+// Die App-Shell ist max-w-md breit; darin steht der echte Feed.
+const APP_SHELL_MAX_WIDTH = 448;
+const STORY_TILE_TRACK_RATIO = 0.29;
+const STORY_TILE_MAX_WIDTH = 120;
+const STORY_TILE_HEIGHT = 208;
+// Die geoeffnete Story fuellt echt den ganzen Bildschirm. In der Vorschau
+// steht sie neben der Kachel, darum bekommt sie eine Hoehen-Obergrenze und
+// wird als Ganzes darauf herunterskaliert - die Proportionen bleiben exakt.
+const STORY_REEL_PREVIEW_MAX_HEIGHT = 440;
 const ROOT_ELEMENT_ID = "businessComposerOverlayRoot";
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const CAPTION_MAX_LENGTH = 600;
@@ -40,6 +68,7 @@ const TEXT = Object.freeze({
   previewStoryTile: "Në Zbulo",
   previewStoryFull: "Kur hapet story-a",
   previewEmpty: "Zgjidh një foto për ta parë parapamjen.",
+  productMore: "Mehr",
   pickerTitle: "Zgjidh një produkt",
   pickerSearch: "Kërko ushqime ose pije…",
   pickerConfirm: "Zgjidh produktin",
@@ -343,266 +372,32 @@ export const BUSINESS_COMPOSER_CSS = `
 .mnyra-bc__pane[data-visible="1"] { display: block; }
 .mnyra-bc__story-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
-.mnyra-bc__card {
-  border: 1px solid var(--bc-line);
-  border-radius: 26px;
-  background: #ffffff;
-  padding: 10px;
-}
-.mnyra-bc__card-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 2px 4px 10px;
-}
-.mnyra-bc__card-logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  object-fit: cover;
-  background: var(--bc-plane);
-  flex: 0 0 auto;
-}
-.mnyra-bc__card-name {
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--bc-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.mnyra-bc__media {
+.mnyra-bc__story-col { min-width: 0; }
+/* Buehne: das Original steht darin in Originalbreite und wird als Ganzes
+   skaliert. Nichts im Inneren wird umgerechnet - alle Verhaeltnisse bleiben
+   exakt so, wie der Nutzer sie spaeter sieht. */
+.mnyra-bc__stage {
   position: relative;
   overflow: hidden;
-  border-radius: 22px;
-  background: #e2e8f0;
-}
-.mnyra-bc__media--post { aspect-ratio: 4 / 5; }
-.mnyra-bc__media--tile { aspect-ratio: 5 / 8; border-radius: 18px; }
-.mnyra-bc__media--full { aspect-ratio: 9 / 16; }
-.mnyra-bc__media > img[data-bc-media-img] {
-  position: absolute;
-  inset: 0;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: none;
 }
-.mnyra-bc__media[data-has-media="1"] > img[data-bc-media-img] { display: block; }
-.mnyra-bc__media-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  text-align: center;
-  color: #94a3b8;
-  background: linear-gradient(150deg, #f1f5f9 0%, #e2e8f0 100%);
-}
-.mnyra-bc__media[data-has-media="1"] .mnyra-bc__media-empty { display: none; }
-.mnyra-bc__media-empty svg { width: 26px; height: 26px; }
-.mnyra-bc__media-empty span {
-  font-size: 9px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  line-height: 1.35;
-}
-.mnyra-bc__post-caption {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  padding: 12px 14px;
-  border-radius: 20px;
-  background: rgba(15, 23, 42, 0.55);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #ffffff;
-}
-.mnyra-bc__post-caption-text {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.45;
-  margin: 0 0 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-}
-.mnyra-bc__post-caption-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 9px;
-  font-weight: 900;
-}
-.mnyra-bc__post-caption-row span { display: inline-flex; align-items: center; gap: 5px; }
-.mnyra-bc__post-caption-row svg { width: 13px; height: 13px; }
-.mnyra-bc__tile-shade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0.2) 100%);
+.mnyra-bc__stage-inner {
+  transform-origin: top left;
+  will-change: transform;
   pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
-.mnyra-bc__tile-logo {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  padding: 2px;
-  background: linear-gradient(135deg, #f59e0b 0%, #db2777 100%);
-}
-.mnyra-bc__tile-logo img {
-  position: static;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  object-fit: cover;
-  background: #ffffff;
-  border: 1.5px solid rgba(0, 0, 0, 0.6);
-}
-.mnyra-bc__tile-name {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mnyra-bc__full-top {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.mnyra-bc__full-bar {
-  height: 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
-}
-.mnyra-bc__full-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  align-self: flex-start;
-  max-width: 100%;
-  padding: 6px 10px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.28);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-.mnyra-bc__full-brand img {
-  position: static;
-  display: block;
-  width: 22px;
-  height: 22px;
-  border-radius: 8px;
-  object-fit: cover;
-  background: rgba(255, 255, 255, 0.12);
-  flex: 0 0 auto;
-}
-.mnyra-bc__full-brand-name {
-  font-size: 11px;
-  font-weight: 800;
-  color: #ffffff;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.mnyra-bc__full-bottom {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.mnyra-bc__full-caption {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.94);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-}
-.mnyra-bc__full-product {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 7px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.55);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-}
-.mnyra-bc__full-product[data-visible="1"] { display: flex; }
-.mnyra-bc__full-product img {
-  position: static;
-  display: block;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  object-fit: cover;
-  background: rgba(255, 255, 255, 0.1);
-  flex: 0 0 auto;
-}
-.mnyra-bc__full-product-main { flex: 1; min-width: 0; }
-.mnyra-bc__full-product-name {
-  font-size: 11px;
-  font-weight: 900;
-  color: #ffffff;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mnyra-bc__full-product-price {
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.85);
-  margin-top: 1px;
-}
-.mnyra-bc__full-product-btn {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  border-radius: 11px;
-  background: #ffffff;
-  color: #0f172a;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+/* Der Feed-Beitrag steht im echten Feed randlos in der App-Shell. Die Buehne
+   hebt darum die Innenabstaende des Modals auf und zeigt ihn 1:1. */
+.mnyra-bc__stage--bleed {
+  margin-left: -16px;
+  margin-right: -16px;
+  width: calc(100% + 32px);
 }
 .mnyra-bc__picker {
   position: absolute;
@@ -801,7 +596,9 @@ function ensureStylesInjected(doc) {
   try {
     const style = doc.createElement("style");
     style.id = STYLE_ELEMENT_ID;
-    style.textContent = BUSINESS_COMPOSER_CSS;
+    // Zuerst die Story-Viewer-Regeln (aus story/index.html abgeleitet), dann
+    // die Composer-Regeln - so kann die Buehne einzelne Werte gezielt setzen.
+    style.textContent = `${STORY_VIEWER_SURFACE_CSS}\n${BUSINESS_COMPOSER_CSS}`;
     doc.head?.appendChild(style);
   } catch {}
 }
@@ -879,6 +676,18 @@ export function createBusinessComposerController({
   const optimizeImageUrl = typeof api.getOptimizedImageUrlFn === "function"
     ? api.getOptimizedImageUrlFn
     : ((value) => String(value || "").trim());
+  // Escape und Icons kommen aus der App: die Vorschau soll dieselben Symbole
+  // zeichnen wie der echte Feed, nicht nachgemalte.
+  const escapeHtml = typeof api.escapeHtmlFn === "function"
+    ? api.escapeHtmlFn
+    : ((value) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;"));
+  const appIcon = typeof api.iconFn === "function" ? api.iconFn : (() => "");
+  const escapeAttr = (value = "") => escapeHtml(String(value ?? ""));
 
   const drafts = {
     post: { caption: "", file: null, previewUrl: "", product: null },
@@ -893,6 +702,7 @@ export function createBusinessComposerController({
   let submitting = false;
   let pickerSelection = null;
   let keydownBound = false;
+  let viewportSyncBound = false;
   let toastTimer = 0;
 
   function currentDraft() {
@@ -945,59 +755,23 @@ export function createBusinessComposerController({
 
             <div class="mnyra-bc__pane" data-bc-pane="post">
               <p class="mnyra-bc__preview-caption">${TEXT.previewPost}</p>
-              <div class="mnyra-bc__card">
-                <div class="mnyra-bc__card-head">
-                  <img class="mnyra-bc__card-logo" data-bc-logo alt="" decoding="async" />
-                  <div class="mnyra-bc__card-name" data-bc-name></div>
-                </div>
-                <div class="mnyra-bc__media mnyra-bc__media--post" data-bc-media="post">
-                  <img data-bc-media-img alt="" decoding="async" />
-                  <div class="mnyra-bc__media-empty">${ICON.camera}<span>${TEXT.previewEmpty}</span></div>
-                  <div class="mnyra-bc__post-caption">
-                    <p class="mnyra-bc__post-caption-text" data-bc-post-caption></p>
-                    <div class="mnyra-bc__post-caption-row">
-                      <span>${ICON.heart}0</span><span>${ICON.comment}0</span>
-                    </div>
-                  </div>
-                </div>
+              <div class="mnyra-bc__stage mnyra-bc__stage--bleed" data-bc-stage="post">
+                <div class="mnyra-bc__stage-inner" data-bc-stage-inner="post"></div>
               </div>
             </div>
 
             <div class="mnyra-bc__pane" data-bc-pane="story">
               <div class="mnyra-bc__story-grid">
-                <div>
+                <div class="mnyra-bc__story-col">
                   <p class="mnyra-bc__preview-caption">${TEXT.previewStoryTile}</p>
-                  <div class="mnyra-bc__media mnyra-bc__media--tile" data-bc-media="tile">
-                    <img data-bc-media-img alt="" decoding="async" />
-                    <div class="mnyra-bc__media-empty">${ICON.camera}<span>${TEXT.previewEmpty}</span></div>
-                    <div class="mnyra-bc__tile-shade"></div>
-                    <div class="mnyra-bc__tile-logo"><img data-bc-tile-logo alt="" decoding="async" /></div>
-                    <div class="mnyra-bc__tile-name" data-bc-tile-name></div>
+                  <div class="mnyra-bc__stage" data-bc-stage="tile">
+                    <div class="mnyra-bc__stage-inner" data-bc-stage-inner="tile"></div>
                   </div>
                 </div>
-                <div>
+                <div class="mnyra-bc__story-col">
                   <p class="mnyra-bc__preview-caption">${TEXT.previewStoryFull}</p>
-                  <div class="mnyra-bc__media mnyra-bc__media--full" data-bc-media="full">
-                    <img data-bc-media-img alt="" decoding="async" />
-                    <div class="mnyra-bc__media-empty">${ICON.camera}<span>${TEXT.previewEmpty}</span></div>
-                    <div class="mnyra-bc__full-top">
-                      <div class="mnyra-bc__full-bar"></div>
-                      <div class="mnyra-bc__full-brand">
-                        <img data-bc-full-logo alt="" decoding="async" />
-                        <div class="mnyra-bc__full-brand-name" data-bc-full-name></div>
-                      </div>
-                    </div>
-                    <div class="mnyra-bc__full-bottom">
-                      <div class="mnyra-bc__full-caption" data-bc-full-caption></div>
-                      <div class="mnyra-bc__full-product" data-bc-full-product>
-                        <img data-bc-full-product-img alt="" decoding="async" />
-                        <div class="mnyra-bc__full-product-main">
-                          <div class="mnyra-bc__full-product-name" data-bc-full-product-name></div>
-                          <div class="mnyra-bc__full-product-price" data-bc-full-product-price></div>
-                        </div>
-                        <span class="mnyra-bc__full-product-btn">Shiko</span>
-                      </div>
-                    </div>
+                  <div class="mnyra-bc__stage" data-bc-stage="reel">
+                    <div class="mnyra-bc__stage-inner" data-bc-stage-inner="reel"></div>
                   </div>
                 </div>
               </div>
@@ -1057,21 +831,12 @@ export function createBusinessComposerController({
       error: q("[data-bc-error]"),
       panePost: q('[data-bc-pane="post"]'),
       paneStory: q('[data-bc-pane="story"]'),
-      logo: q("[data-bc-logo]"),
-      name: q("[data-bc-name]"),
-      mediaPost: q('[data-bc-media="post"]'),
-      mediaTile: q('[data-bc-media="tile"]'),
-      mediaFull: q('[data-bc-media="full"]'),
-      postCaption: q("[data-bc-post-caption]"),
-      tileLogo: q("[data-bc-tile-logo]"),
-      tileName: q("[data-bc-tile-name]"),
-      fullLogo: q("[data-bc-full-logo]"),
-      fullName: q("[data-bc-full-name]"),
-      fullCaption: q("[data-bc-full-caption]"),
-      fullProduct: q("[data-bc-full-product]"),
-      fullProductImg: q("[data-bc-full-product-img]"),
-      fullProductName: q("[data-bc-full-product-name]"),
-      fullProductPrice: q("[data-bc-full-product-price]"),
+      stagePost: q('[data-bc-stage="post"]'),
+      stagePostInner: q('[data-bc-stage-inner="post"]'),
+      stageTile: q('[data-bc-stage="tile"]'),
+      stageTileInner: q('[data-bc-stage-inner="tile"]'),
+      stageReel: q('[data-bc-stage="reel"]'),
+      stageReelInner: q('[data-bc-stage-inner="reel"]'),
       picker: q("[data-bc-picker]"),
       pickerClose: q("[data-bc-picker-close]"),
       pickerSearch: q("[data-bc-picker-search]"),
@@ -1081,22 +846,6 @@ export function createBusinessComposerController({
     };
     bindNodeEvents();
     return root;
-  }
-
-  function setMediaSource(url = "") {
-    const safe = String(url || "").trim();
-    [nodes.mediaPost, nodes.mediaTile, nodes.mediaFull].forEach((wrap) => {
-      if (!wrap) return;
-      const img = wrap.querySelector("[data-bc-media-img]");
-      if (img) {
-        if (safe) {
-          if (img.getAttribute("src") !== safe) img.setAttribute("src", safe);
-        } else {
-          img.removeAttribute("src");
-        }
-      }
-      wrap.setAttribute("data-has-media", safe ? "1" : "0");
-    });
   }
 
   function setImageNode(node, url = "") {
@@ -1111,33 +860,218 @@ export function createBusinessComposerController({
     }
   }
 
-  function syncBusinessIdentity() {
+  function resolveBusinessMeta() {
     let meta = {};
     try {
       meta = getBusinessMeta() || {};
     } catch {}
-    const name = String(meta.name || "").trim() || TEXT.businessFallback;
-    const logoUrl = String(meta.logoUrl || "").trim();
-    if (nodes.name) nodes.name.textContent = name;
-    if (nodes.tileName) nodes.tileName.textContent = name;
-    if (nodes.fullName) nodes.fullName.textContent = name;
-    setImageNode(nodes.logo, logoUrl);
-    setImageNode(nodes.tileLogo, logoUrl);
-    setImageNode(nodes.fullLogo, logoUrl);
+    return {
+      name: String(meta.name || "").trim() || TEXT.businessFallback,
+      logoUrl: String(meta.logoUrl || "").trim(),
+      city: String(meta.city || "").trim()
+    };
+  }
+
+  function resolveShellWidth() {
+    const viewport = Number(win?.innerWidth) || APP_SHELL_MAX_WIDTH;
+    return Math.min(viewport, APP_SHELL_MAX_WIDTH);
+  }
+
+  function resolveStoryTileWidth() {
+    return Math.min(resolveShellWidth() * STORY_TILE_TRACK_RATIO, STORY_TILE_MAX_WIDTH);
+  }
+
+  // --- Vorschau 1: der echte Feed-Beitrag ------------------------------------
+  // Gleicher Baustein wie im Feed, gleiche Klassen, gleiche Masse. Nur die
+  // Datenattribute fehlen, damit die Vorschau keine App-Handler ausloest.
+  function buildPostPreviewMarkup() {
+    const draft = drafts.post;
+    const meta = resolveBusinessMeta();
+    const previewUrl = String(draft.previewUrl || "").trim();
+    const heroInner = previewUrl
+      ? `<img src="${escapeAttr(previewUrl)}" decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`
+      : "";
+    const heroMediaHtml = `<span class="block w-full h-full appearance-none bg-transparent text-left" style="display:block;width:100%;height:100%;padding:0;margin:0;border:0;background:transparent;">${heroInner}</span>`;
+    const logoImgHtml = meta.logoUrl
+      ? `<img src="${escapeAttr(meta.logoUrl)}" decoding="async" width="48" height="48" class="w-full h-full object-contain bg-white" />`
+      : "";
+    return renderFeedCardMarkupCore({
+      business: meta.name,
+      location: meta.city,
+      content: String(draft.caption || "").trim(),
+      likes: 0,
+      comments: 0,
+      isLive: false,
+      logoImgHtml,
+      heroMediaHtml,
+      heroReady: !!previewUrl,
+      escapeHtmlFn: escapeHtml,
+      iconFn: appIcon
+    });
+  }
+
+  // --- Vorschau 2: die Story-Kachel im Zbulo-Track ---------------------------
+  function buildStoryTilePreviewMarkup() {
+    const draft = drafts.story;
+    const meta = resolveBusinessMeta();
+    const previewUrl = String(draft.previewUrl || "").trim();
+    const tileWidth = resolveStoryTileWidth();
+    const mediaHtml = previewUrl
+      ? `<img src="${escapeAttr(previewUrl)}" decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />`
+      : renderStoryTileMediaFallbackCore({ iconFn: appIcon });
+    const logoImgHtml = `<img src="${escapeAttr(meta.logoUrl)}" decoding="async" width="28" height="28" class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />`;
+    return renderStoryTileMarkupCore({
+      label: meta.name,
+      mediaHtml,
+      logoImgHtml,
+      // Die im Feed prozentual berechnete Breite hier als fester Wert: die
+      // Buehne ist genau so breit wie die echte Kachel auf diesem Geraet.
+      shellStyle: `flex:0 0 ${tileWidth}px;width:${tileWidth}px;max-width:${tileWidth}px;`,
+      innerStyle: buildStoryTileInnerStyleCore(),
+      escapeHtmlFn: escapeHtml
+    });
+  }
+
+  // --- Vorschau 3: die geoeffnete Story -------------------------------------
+  // Gleiche Knoten, gleiche Reihenfolge und gleiche Klassen wie der echte
+  // Story-Viewer sie baut (createTopbarElement/renderReels/mountMedia), dazu
+  // die aus story/index.html abgeleiteten Regeln.
+  function buildStoryReelPreviewMarkup() {
+    const draft = drafts.story;
+    const meta = resolveBusinessMeta();
+    const previewUrl = String(draft.previewUrl || "").trim();
+    const caption = String(draft.caption || "").trim();
+    const product = draft.product;
+    const mediaHtml = previewUrl
+      ? `<img class="reel-image" src="${escapeAttr(previewUrl)}" decoding="async" />`
+      : "";
+    const priceLabel = product ? formatComposerPrice(product.price) : "";
+    const productThumb = product?.imageUrl ? optimizeImageUrl(product.imageUrl, "thumb") : "";
+    const productHtml = product
+      ? `<span class="productCard">
+            <div class="productCardThumb">🍽${productThumb ? `<img class="productCardThumbImg" src="${escapeAttr(productThumb)}" alt="" decoding="async" />` : ""}</div>
+            <div class="productCardInfo">
+              <div class="productCardName">${escapeHtml(product.name)}</div>
+              ${priceLabel ? `<div class="productCardPrice">${escapeHtml(priceLabel)}</div>` : ""}
+            </div>
+            <span class="productCardBtn">${TEXT.productMore}</span>
+          </span>`
+      : "";
+    return `
+      <div class="reel" data-index="0">
+        ${mediaHtml}
+        <div class="vignette"></div>
+        <div class="topbar">
+          <div class="topbarLeft">
+            <button type="button" class="btnIcon" tabindex="-1">←</button>
+            <div class="brandPill">
+              <div class="brandLogo" data-bc-brand-logo></div>
+              <div class="brandName">${escapeHtml(meta.name)}</div>
+            </div>
+          </div>
+          <div class="topbarRight">
+            <button type="button" class="btnIcon" data-story-sound-state="off" aria-pressed="false" tabindex="-1">🔇</button>
+          </div>
+        </div>
+        <div class="content">
+          ${caption ? `<div class="contentDesc">${escapeHtml(caption)}</div>` : ""}
+          ${productHtml}
+        </div>
+        <div class="rail">
+          <div class="railBtn"><div class="railIcon">1/1</div></div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Buehne: Original in Originalbreite aufbauen, als Ganzes skalieren. Nichts
+  // im Inneren wird umgerechnet, deshalb stimmen alle Verhaeltnisse exakt.
+  function applyStage(stage, inner, naturalWidth, naturalHeight, { maxHeight = 0 } = {}) {
+    if (!stage || !inner) return;
+    const available = stage.clientWidth || naturalWidth;
+    const height = Number(naturalHeight) > 0 ? Number(naturalHeight) : inner.scrollHeight;
+    // Nie vergroessern: die Vorschau zeigt hoechstens Originalgroesse.
+    let scale = Math.min(1, naturalWidth > 0 ? available / naturalWidth : 1);
+    if (maxHeight > 0 && height > 0) scale = Math.min(scale, maxHeight / height);
+    if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+    inner.style.width = `${naturalWidth}px`;
+    inner.style.transform = `scale(${scale})`;
+    stage.style.height = `${Math.round(height * scale)}px`;
+    // Die skalierte Buehne in ihrer Spalte zentrieren.
+    inner.style.marginLeft = `${Math.max(0, (available - naturalWidth * scale) / 2)}px`;
+  }
+
+  function syncPreviewGeometry() {
+    if (!nodes || !root?.isConnected) return;
+    const shellWidth = resolveShellWidth();
+    if (mode === "story") {
+      applyStage(nodes.stageTile, nodes.stageTileInner, resolveStoryTileWidth(), STORY_TILE_HEIGHT);
+      const reelWidth = Number(win?.innerWidth) || shellWidth;
+      const reelHeight = Number(win?.innerHeight) || Math.round(reelWidth * 16 / 9);
+      if (nodes.stageReelInner) nodes.stageReelInner.style.height = `${reelHeight}px`;
+      applyStage(nodes.stageReel, nodes.stageReelInner, reelWidth, reelHeight, {
+        maxHeight: STORY_REEL_PREVIEW_MAX_HEIGHT
+      });
+      return;
+    }
+    if (nodes.stagePostInner) nodes.stagePostInner.style.height = "";
+    applyStage(nodes.stagePost, nodes.stagePostInner, shellWidth, nodes.stagePostInner?.scrollHeight || 0);
+  }
+
+  function buildPreview() {
+    if (!nodes) return;
+    if (mode === "story") {
+      if (nodes.stageTileInner) nodes.stageTileInner.innerHTML = buildStoryTilePreviewMarkup();
+      if (nodes.stageReelInner) {
+        nodes.stageReelInner.className = `mnyra-bc__stage-inner ${STORY_VIEWER_SURFACE_CLASS}`;
+        nodes.stageReelInner.innerHTML = buildStoryReelPreviewMarkup();
+        // Logo genauso setzen wie applyTopbarMeta im echten Story-Viewer.
+        const brandLogo = nodes.stageReelInner.querySelector("[data-bc-brand-logo]");
+        if (brandLogo) {
+          const logoUrl = resolveBusinessMeta().logoUrl;
+          brandLogo.style.backgroundImage = logoUrl
+            ? `url(${logoUrl})`
+            : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+        }
+      }
+    } else if (nodes.stagePostInner) {
+      nodes.stagePostInner.innerHTML = `<div class="app-content-inline py-4">${buildPostPreviewMarkup()}</div>`;
+    }
+    // Erst nach dem Layout messen; ein zweiter Durchgang faengt spaet
+    // geladene Schriften und Bilder ab.
+    syncPreviewGeometry();
+    win?.requestAnimationFrame?.(() => syncPreviewGeometry());
   }
 
   function syncCaptionPreview() {
+    if (!nodes) return;
     const caption = String(currentDraft().caption || "").trim();
-    const shown = caption || TEXT.captionFallback;
-    if (nodes.postCaption) nodes.postCaption.textContent = shown;
-    if (nodes.fullCaption) nodes.fullCaption.textContent = shown;
+    if (mode === "story") {
+      const content = nodes.stageReelInner?.querySelector(".content");
+      if (!content) return;
+      let desc = content.querySelector(".contentDesc");
+      if (caption && !desc) {
+        desc = doc.createElement("div");
+        desc.className = "contentDesc";
+        content.insertBefore(desc, content.firstChild);
+      }
+      if (!caption && desc) {
+        desc.remove();
+        return;
+      }
+      if (desc) desc.textContent = caption;
+      return;
+    }
+    const captionNode = nodes.stagePostInner?.querySelector(".feed-card p.line-clamp-2");
+    if (captionNode) captionNode.textContent = caption;
+    syncPreviewGeometry();
   }
 
-  function syncProductPreview() {
+  // Die Produkt-Zeile im Bedienteil (nicht in der Vorschau).
+  function syncProductChip() {
     const product = mode === "story" ? currentDraft().product : null;
     const visible = product ? "1" : "0";
     if (nodes.chip) nodes.chip.setAttribute("data-visible", visible);
-    if (nodes.fullProduct) nodes.fullProduct.setAttribute("data-visible", visible);
     if (nodes.tag) nodes.tag.setAttribute("data-active", visible);
     if (nodes.tagLabel) nodes.tagLabel.textContent = product ? product.name : TEXT.tagProduct;
     if (!product) return;
@@ -1146,9 +1080,11 @@ export function createBusinessComposerController({
     if (nodes.chipName) nodes.chipName.textContent = product.name;
     if (nodes.chipPrice) nodes.chipPrice.textContent = priceLabel;
     setImageNode(nodes.chipImg, thumb);
-    if (nodes.fullProductName) nodes.fullProductName.textContent = product.name;
-    if (nodes.fullProductPrice) nodes.fullProductPrice.textContent = priceLabel;
-    setImageNode(nodes.fullProductImg, thumb);
+  }
+
+  function syncProductPreview() {
+    syncProductChip();
+    if (mode === "story") buildPreview();
   }
 
   function formatComposerPrice(value) {
@@ -1207,10 +1143,8 @@ export function createBusinessComposerController({
     if (nodes.photo) nodes.photo.setAttribute("data-active", draft.file ? "1" : "0");
     if (nodes.panePost) nodes.panePost.setAttribute("data-visible", isStory ? "0" : "1");
     if (nodes.paneStory) nodes.paneStory.setAttribute("data-visible", isStory ? "1" : "0");
-    setMediaSource(draft.previewUrl);
-    syncBusinessIdentity();
-    syncCaptionPreview();
-    syncProductPreview();
+    syncProductChip();
+    buildPreview();
     syncSubmitState();
     showError("");
   }
@@ -1245,7 +1179,7 @@ export function createBusinessComposerController({
       draft.previewUrl = "";
     }
     showError("");
-    setMediaSource(draft.previewUrl);
+    buildPreview();
     if (nodes.photoLabel) nodes.photoLabel.textContent = TEXT.changePhoto;
     if (nodes.photo) nodes.photo.setAttribute("data-active", "1");
     syncSubmitState();
@@ -1580,16 +1514,32 @@ export function createBusinessComposerController({
     mode = normalized;
     closePicker();
     setBusy(false);
-    syncMode();
+    // Erst einhaengen, dann aufbauen: die Buehne kann ihre Breite nur messen,
+    // wenn sie im Dokument steht.
     if (!open) {
       const host = ensureOverlayHost(doc);
       if (host && root.parentNode !== host) host.appendChild(root);
       open = true;
     }
+    syncMode();
+    bindViewportSync();
     if (nodes.body) nodes.body.scrollTop = 0;
     syncChrome();
     // Produkte im Hintergrund vorladen, damit das Produkt-Popup sofort steht.
     if (mode === "story") ensureProductsLoaded();
+  }
+
+  // Drehen oder Fenstergroesse aendern: die Buehne rechnet ihren Massstab neu,
+  // damit die Vorschau weiter exakt der echten Ansicht entspricht.
+  function bindViewportSync() {
+    if (viewportSyncBound || !win?.addEventListener) return;
+    viewportSyncBound = true;
+    const onViewportChange = () => {
+      if (!open) return;
+      syncPreviewGeometry();
+    };
+    win.addEventListener("resize", onViewportChange, { passive: true });
+    win.addEventListener("orientationchange", onViewportChange, { passive: true });
   }
 
   function closeComposer() {

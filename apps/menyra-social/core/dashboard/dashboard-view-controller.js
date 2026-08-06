@@ -186,9 +186,16 @@ export function createDashboardViewController({
               getRestaurantIdFn: () => resolveOwnRestaurantId(),
               getBusinessMetaFn: () => {
                 const restaurantId = resolveOwnRestaurantId();
-                if (!restaurantId) return { name: "", logoUrl: "" };
+                if (!restaurantId) return { name: "", logoUrl: "", city: "" };
                 const hero = resolveHeroData(restaurantId);
-                return { name: hero.name, logoUrl: hero.logoUrl };
+                // Die Stadt steht im echten Feed-Beitrag unter dem Namen; der
+                // Schreibweg setzt genau dieselbe Quelle (base.city).
+                const rest = getRestaurantMetaById(restaurantId) || {};
+                return {
+                  name: hero.name,
+                  logoUrl: hero.logoUrl,
+                  city: String(rest.city || "").trim()
+                };
               },
               loadProductsFn: (rid) => loadComposerProducts(rid),
               uploadImageFn: composerApi.uploadImageFn,
@@ -196,6 +203,10 @@ export function createDashboardViewController({
               createStoryFn: composerApi.createStoryFn,
               formatPriceFn: composerApi.formatPriceFn,
               getOptimizedImageUrlFn: composerApi.getOptimizedImageUrlFn,
+              // Escape + Icons der App: die Vorschau zeichnet dieselben
+              // Symbole wie der echte Feed.
+              escapeHtmlFn: composerApi.escapeHtmlFn,
+              iconFn: typeof iconFn === "function" ? iconFn : undefined,
               afterPublishFn: async (publishedMode) => {
                 // Dashboard zuerst auffrischen (die Karte "Letzte Beitraege"
                 // steht direkt darunter), Feed/Stories danach im Hintergrund.

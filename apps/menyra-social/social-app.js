@@ -2117,6 +2117,7 @@ function getDashboardViewController() {
         }),
         formatPriceFn: (...args) => formatPrice(...args),
         getOptimizedImageUrlFn: (...args) => getOptimizedImageUrl(...args),
+        escapeHtmlFn: (...args) => escapeHtml(...args),
         afterPublishFn: async (publishedMode = "post") => {
           if (publishedMode === "story") {
             await loadStoriesForFeed({ force: true, refreshUi: true });

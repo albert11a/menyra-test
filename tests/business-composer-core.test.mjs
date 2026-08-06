@@ -74,9 +74,13 @@ test("product search matches name and category, empty term keeps all", () => {
   assert.deepEqual(filterComposerProductsCore(null, "a"), []);
 });
 
-test("composer styles cover both story previews and the fullscreen sheet", () => {
-  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__media--tile"));
-  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__media--full"));
-  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__media--post"));
+test("composer styles carry the preview stage and the fullscreen sheet", () => {
+  // Die Vorschauen bringen kein eigenes Aussehen mit: sie stellen das
+  // Original nur auf eine Buehne und skalieren es als Ganzes.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__stage {"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__stage-inner {"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("transform-origin: top left;"));
+  // Der Feed-Beitrag steht randlos, damit er in Originalbreite passt.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__stage--bleed {"));
   assert.ok(BUSINESS_COMPOSER_CSS.includes("--safe-area-top"));
 });
