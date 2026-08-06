@@ -1469,7 +1469,7 @@
       letter-spacing: 0.12em;
       transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 120ms ease;
     }
-    /* Das Icon erbt die Pill-Farbe und wird im aktiven Zustand mit weiss. */
+    /* Das Icon erbt die Pill-Farbe und faerbt sich im aktiven Zustand mit. */
     .smart-header-pill__icon {
       flex: 0 0 auto;
       width: 0.82rem;
@@ -1495,11 +1495,15 @@
     .smart-header-pill:active {
       transform: scale(0.97);
     }
+    /* Der ausgewaehlte Tab bleibt offen wie die anderen - nur die Kontur zieht
+       an. Schrift und Icon gehen dieselbe Farbe mit: auf dem hellen Header
+       waere Weiss ohne Fuellung nicht mehr zu lesen. Der Schlagschatten faellt
+       weg, er gehoerte zur gefuellten Flaeche. */
     .smart-header-pill--active {
-      background: #0f172a;
+      background: transparent;
       border-color: #0f172a;
-      color: #fff;
-      box-shadow: 0 10px 24px -16px rgb(15 23 42 / 0.55);
+      color: #0f172a;
+      box-shadow: none;
     }
     .smart-header-collapse-btn > svg,
     .smart-header-collapse-btn > i {
