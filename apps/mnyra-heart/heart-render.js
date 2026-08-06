@@ -263,6 +263,11 @@ function renderShell(state, runtime = {}) {
   const activeView = state.shell.activeView;
   const userName = getHeartDisplayNameCore(state.auth.profile, state.auth.user) || "CEO";
   const isLeadsView = activeView === "crmLeads";
+  // In der Auswertung einer einzelnen Landing fuehrt der Weg zurueck oben im
+  // Kopf, nicht mitten im Text: Dort sucht man ihn, und dort steht er immer -
+  // auch wenn man weit nach unten gescrollt ist.
+  const isLandingDetail = activeView === "landing"
+    && String(state.landing?.selectedId || "").trim() !== "";
   const navItem = HEART_NAV_ITEMS.find((item) => item.key === activeView);
   const shellClasses = [
     "heart-shell",
@@ -287,6 +292,12 @@ function renderShell(state, runtime = {}) {
               <button id="leadSettingsBtn" class="heart-icon-button" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="settings" aria-label="Lead Settings">${renderHeartIcon("settings")}</button>
               <button id="newLeadBtn" class="heart-icon-button heart-icon-button--lead-create" data-action="open-crm-editor" data-crm-domain="leads" data-crm-mode="create" aria-label="Lead erstellen">${renderHeartIcon("plus")}</button>
             ` : `
+              ${isLandingDetail ? `
+                <button class="heart-topbar-back" data-action="close-landing" aria-label="Zurueck zu allen Landings">
+                  ${renderHeartIcon("arrowLeft")}
+                  <span>Landings</span>
+                </button>
+              ` : ""}
               <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>
             `}
           </div>

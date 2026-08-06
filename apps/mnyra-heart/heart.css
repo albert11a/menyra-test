@@ -881,6 +881,36 @@ body {
   height: 44px;
 }
 
+/* Der Weg zurueck aus einer einzelnen Landing. So hoch wie der
+   Aktualisieren-Knopf daneben, nur breiter, weil ein Wort darin steht. */
+.heart-topbar-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--heart-accent-2, #e11d48);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-topbar-back:active {
+  transform: scale(0.98);
+}
+
+.heart-topbar-back .heart-icon {
+  width: 17px;
+  height: 17px;
+}
+
 .heart-icon-button:hover,
 .heart-icon-button:focus-visible,
 .heart-drawer-action:hover,
@@ -3231,15 +3261,77 @@ damit Lead- und Destination-Confirm sich nie mischen.
   color: var(--heart-success, #059669);
 }
 
-.heart-landing-back {
-  align-self: flex-start;
-  margin-bottom: 8px;
-  padding: 6px 12px;
-  border: 1px solid var(--heart-border, #e2e8f0);
+/* Der Kopf der Auswertung: links das Bild des Lokals, daneben sein Name. */
+.heart-landing-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 4px;
+}
+
+.heart-landing-detail__head .heart-landing-card__avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 17px;
+}
+
+.heart-landing-detail__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.heart-landing-detail__name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heart-landing-detail__meta {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Archivieren steht ganz unten rechts - nach den Zahlen, nicht vor ihnen. */
+.heart-landing-detail__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin: 26px 0 8px;
+}
+
+.heart-landing-archive-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: var(--heart-accent-2, #e11d48);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  font-size: 13px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-landing-archive-button:active {
+  transform: scale(0.98);
+}
+
+.heart-landing-archive-button .heart-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .heart-landing-kpis {

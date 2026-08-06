@@ -70,6 +70,43 @@ test("die Auswertung zeigt, wo abgesprungen wird", () => {
   assert.match(html, /2 &middot; 3s/, "die mittlere Dauer stimmt nicht");
 });
 
+// Die Auswertung ist auf Deutsch beschriftet, nicht mehr auf Albanisch, und
+// weggelegt wird unten - nachdem man nachgesehen hat, nicht davor.
+test("die Auswertung nennt die Zahlen auf Deutsch und legt erst unten ab", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    selectedId: "lokal-1",
+    sessions: [session({ logoUrl: "https://example.test/logo.png" })]
+  });
+
+  assert.match(html, /Besucher/);
+  assert.match(html, /Antworten/);
+  assert.match(html, /<span>Ja<\/span>/);
+  assert.match(html, /<span>Nein<\/span>/);
+  assert.ok(!html.includes("Hapje"), "die albanische Beschriftung steht noch da");
+  assert.ok(!html.includes("Kane pergjigjur"), "die albanische Beschriftung steht noch da");
+
+  // Das Bild des Lokals steht neben dem Namen.
+  assert.match(html, /https:\/\/example\.test\/logo\.png/);
+  // Und der Weg zurueck steht nicht mehr im Text - er sitzt oben im Kopf.
+  assert.ok(!html.includes("Alle Landings"), "der Zurueck-Knopf steht noch im Text");
+
+  const archivIndex = html.indexOf("Archivieren");
+  assert.ok(archivIndex > 0, "der Archivieren-Knopf fehlt");
+  assert.ok(archivIndex > html.indexOf("Sa larg kane ardhur"), "Archivieren steht ueber den Zahlen statt darunter");
+});
+
+test("aus dem Archiv fuehrt ein Weg zurueck", () => {
+  const html = renderHeartLandingView({
+    status: "ready",
+    tab: "archived",
+    archived: ["lokal-1"],
+    selectedId: "lokal-1",
+    sessions: [session()]
+  });
+  assert.match(html, /Zurueckholen/);
+});
+
 test("die Antworten werden gezaehlt", () => {
   const html = renderHeartLandingView({
     status: "ready",

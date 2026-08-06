@@ -12,6 +12,19 @@ const ICONS = Object.freeze({
     <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
     <path d="M21 3v6h-6"></path>
   `,
+  arrowLeft: `
+    <path d="M19 12H5"></path>
+    <path d="m12 19-7-7 7-7"></path>
+  `,
+  archive: `
+    <path d="M3 4h18v4H3z"></path>
+    <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"></path>
+    <path d="M10 12h4"></path>
+  `,
+  copy: `
+    <rect x="9" y="9" width="12" height="12" rx="2"></rect>
+    <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"></path>
+  `,
   logout: `
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
     <path d="m16 17 5-5-5-5"></path>

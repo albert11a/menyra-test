@@ -9,6 +9,7 @@
 // 3. Was haben sie geantwortet?
 
 import { escapeHtml } from "./heart-ui-utils.js";
+import { renderHeartIcon } from "./heart-icons.js";
 
 // Die Reihenfolge der Wische, wie sie auf der Seite vorkommen. Sie steht hier,
 // weil die Auswertung sonst alphabetisch sortieren muesste - und "cmimi" kaeme
@@ -249,26 +250,23 @@ function renderSessions(sessions) {
 
 function renderDetail(entry, tab = "active", hinweis = "") {
   const sessions = entry.sessions;
+  const istAbgelegt = tab === "archived";
   return `
     <section class="heart-section">
       ${hinweis}
       <div class="heart-landing-detail__head">
-        <button type="button" class="heart-landing-back" data-action="close-landing">&larr; Alle Landings</button>
-        <h2 class="heart-section__title">${escapeHtml(entry.name)}</h2>
-        <p class="heart-section__hint">${escapeHtml(entry.city || "")}${entry.publicSlug ? ` &middot; /oferta/${escapeHtml(entry.publicSlug)}` : ""}</p>
-        <button type="button" class="heart-landing-archive"
-          data-action="toggle-landing-archive"
-          data-landing-id="${escapeHtml(entry.restaurantId)}"
-          data-landing-archived="${tab === "archived" ? "1" : "0"}">
-          ${tab === "archived" ? "Zurueckholen" : "Ablegen"}
-        </button>
+        ${renderAvatar(entry)}
+        <div class="heart-landing-detail__title">
+          <h2 class="heart-landing-detail__name">${escapeHtml(entry.name)}</h2>
+          <p class="heart-landing-detail__meta">${escapeHtml(entry.city || "")}${entry.publicSlug ? ` &middot; /oferta/${escapeHtml(entry.publicSlug)}` : ""}</p>
+        </div>
       </div>
 
       <div class="heart-landing-kpis">
-        <div class="heart-landing-kpi"><b>${entry.total}</b><span>Hapje</span></div>
-        <div class="heart-landing-kpi"><b>${entry.answered}</b><span>Kane pergjigjur</span></div>
-        <div class="heart-landing-kpi"><b>${entry.yes}</b><span>Po</span></div>
-        <div class="heart-landing-kpi"><b>${entry.finished - entry.yes}</b><span>Jo</span></div>
+        <div class="heart-landing-kpi"><b>${entry.total}</b><span>Besucher</span></div>
+        <div class="heart-landing-kpi"><b>${entry.answered}</b><span>Antworten</span></div>
+        <div class="heart-landing-kpi"><b>${entry.yes}</b><span>Ja</span></div>
+        <div class="heart-landing-kpi"><b>${entry.finished - entry.yes}</b><span>Nein</span></div>
       </div>
 
       <h3 class="heart-landing-subtitle">Sa larg kane ardhur</h3>
@@ -279,6 +277,18 @@ function renderDetail(entry, tab = "active", hinweis = "") {
 
       <h3 class="heart-landing-subtitle">Vizitat</h3>
       ${renderSessions(sessions)}
+
+      <!-- Ganz unten, nicht oben: Weggelegt wird, nachdem man nachgesehen
+           hat, nicht bevor man es getan hat. -->
+      <div class="heart-landing-detail__foot">
+        <button type="button" class="heart-landing-archive-button"
+          data-action="toggle-landing-archive"
+          data-landing-id="${escapeHtml(entry.restaurantId)}"
+          data-landing-archived="${istAbgelegt ? "1" : "0"}">
+          ${renderHeartIcon(istAbgelegt ? "refresh" : "archive")}
+          <span>${istAbgelegt ? "Zurueckholen" : "Archivieren"}</span>
+        </button>
+      </div>
     </section>
   `;
 }
