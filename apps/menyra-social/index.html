@@ -1435,8 +1435,12 @@
     .smart-header-tabs-row {
       display: flex;
       align-items: stretch;
-      gap: 0.5rem;
-      padding: 0.1rem 1rem 0.7rem;
+      /* Groesserer Abstand zwischen den Pills - jede einzelne wird dadurch
+         schmaler, die Zeile bleibt trotzdem randlos gefuellt. */
+      gap: 0.85rem;
+      /* Seitlich buendig mit der Zeile darueber: links auf Hoehe der Striche im
+         Menue-Icon, rechts auf Hoehe des Pfeils. */
+      padding: 0.1rem 1.5rem 0.7rem;
     }
     .smart-header-pill {
       /* Die drei Pills teilen sich die Zeile zu gleichen Teilen und fuellen sie
@@ -1450,9 +1454,12 @@
       white-space: nowrap;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      border-radius: 9999px;
+      /* Abgerundetes Rechteck statt Kapselform - die Ecken laufen weniger weit. */
+      border-radius: 0.7rem;
       border: 1px solid rgb(226 232 240 / 0.95);
-      background: #fff;
+      /* Ohne Fuellung: die Leiste steht offen auf dem Header, nur die Kontur
+         zeichnet die Pill. Erst der aktive Tab bekommt eine Flaeche. */
+      background: transparent;
       color: rgb(100 116 139);
       padding: 0.44rem 0.6rem;
       font-size: 11px;
@@ -1523,9 +1530,9 @@
       }
       /* Drei Pills mit Icon bleiben auch hier in einer Zeile. */
       .smart-header-tabs-row {
-        gap: 0.36rem;
-        padding-left: 0.7rem;
-        padding-right: 0.7rem;
+        gap: 0.5rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
       }
       .smart-header-pill {
         padding-left: 0.5rem;
@@ -1534,6 +1541,23 @@
       }
       .smart-header-pill__label {
         margin-right: -0.08em;
+      }
+    }
+    /* Die schmalsten Geraete (ab ca. 320px): Abstaende und Laufweite noch eine
+       Stufe enger, damit "Lokalet" und "Ofertat" ganz in die Pill passen. */
+    @media (max-width: 345px) {
+      .smart-header-tabs-row {
+        gap: 0.4rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+      .smart-header-pill {
+        padding-left: 0.38rem;
+        padding-right: 0.38rem;
+        letter-spacing: 0.06em;
+      }
+      .smart-header-pill__label {
+        margin-right: -0.06em;
       }
     }
     /* Bewusst kein fast-mode-Opt-out: das Auf- und Zuklappen im Header ist eine
