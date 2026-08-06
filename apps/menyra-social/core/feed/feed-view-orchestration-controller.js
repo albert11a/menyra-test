@@ -1047,6 +1047,25 @@ export function createFeedViewOrchestrationController({
     link.dataset.storyPrefetch = "1";
     doc.head.appendChild(link);
   };
+  // Sofort-Hintergrund fuer das Beitrags-Modal: das Medium der Feed-Karte liegt
+  // bereits im Cache, das Modal steht damit ohne zweite Anfrage. Bei Video-
+  // Beitraegen ist das Poster die Bildquelle - die Video-URL an ein <img> zu
+  // geben kostet auf 3G nur eine Leeranfrage und zwei Wartefenster.
+  const resolveFeedHeroPreview = (trigger, postId) => {
+    const card = trigger?.closest?.("[data-feed-id]") || null;
+    const node = card?.querySelector?.(`[data-img-key="feed-hero:${postId}"]`) || null;
+    if (!node) return { previewImageEl: null, previewImageSrc: "" };
+    if (String(node.tagName || "").toLowerCase() === "video") {
+      return {
+        previewImageEl: null,
+        previewImageSrc: String(node.getAttribute?.("poster") || "").trim()
+      };
+    }
+    return {
+      previewImageEl: node,
+      previewImageSrc: String(node.currentSrc || node.getAttribute?.("src") || "").trim()
+    };
+  };
   const focusPostCommentComposer = () => {
     setTimeoutFn(() => {
       const input = doc?.getElementById("postCommentInput");
@@ -3286,18 +3305,19 @@ export function createFeedViewOrchestrationController({
     const heroInner = (post.isVideo && post.videoUrl)
       ? `<video src="${escapeHtmlFn(post.videoUrl)}" poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline preload="none" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
       : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
-    // Klick auf das Beitragsbild/-video oeffnet die Stories des Business
-    // (gleiche Reels-Ansicht wie die Story-Vorschau). Video-Beitraege springen
-    // im Viewer direkt zu ihrem Video (?post=...). Die Like/Kommentar/Share-
-    // Buttons liegen als absolute Overlay-Geschwister darueber und bleiben klickbar.
-    const heroStoryUrl = post.restaurantId
-      ? String(buildStoryViewerUrlFn(
-        post.restaurantId,
-        post.isVideo && post.videoUrl && postId ? { postId } : {}
-      ) || "").trim()
+    // Klick auf das Beitragsbild/-video oeffnet den Beitrag im Modal - dort
+    // stehen Text, Likes und Kommentare. Die Stories bleiben ueber die
+    // Story-Kreise oben erreichbar; der Beitrag fuehrt nicht mehr dorthin.
+    // Die Like/Kommentar/Share-Buttons liegen als absolute Overlay-Geschwister
+    // darueber und bleiben klickbar.
+    const heroTrackAttr = post.restaurantId
+      ? `data-feed-post-open="${escapeHtmlFn(post.restaurantId)}"`
       : "";
-    const heroMediaHtml = heroStoryUrl
-      ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Shiko stories nga ${escapeHtmlFn(post.business)}" class="block w-full h-full">${heroInner}</a>`
+    // Der Button traegt seinen Reset inline: p-0/m-0/border-0 liegen nicht im
+    // ausgelieferten Tailwind-Build, sonst kaeme die Browser-Voreinstellung
+    // durch und das Medium saesse mit Rand und Rahmen in der Karte.
+    const heroMediaHtml = postId
+      ? `<button type="button" data-feed-post-open-modal="${escapeHtmlFn(postId)}" ${heroTrackAttr} aria-label="Hap postimin nga ${escapeHtmlFn(post.business)}" class="block w-full h-full appearance-none bg-transparent text-left cursor-pointer" style="display:block;width:100%;height:100%;padding:0;margin:0;border:0;background:transparent;">${heroInner}</button>`
       : heroInner;
     return `
     <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
@@ -4034,15 +4054,18 @@ export function createFeedViewOrchestrationController({
       return;
     }
     const isLocationView = () => String(feedView.dataset.feedViewMode || "").trim().toLowerCase() !== "feed";
+    // Nur noch die Story-Kreise fuehren in den Viewer - der Beitrag oeffnet das
+    // Modal. Ihn weiter vorzuladen wuerde auf 3G ein Dokument holen, das
+    // niemand mehr aufruft.
     const handleStoryWarmup = (target) => {
       if (isLocationView()) return;
       if (!(target instanceof Element)) return;
-      const storyLink = target.closest("[data-story-item]") || target.closest("[data-feed-post-open]");
+      const storyLink = target.closest("[data-story-item]");
       if (!(storyLink instanceof Element)) return;
       const storyTruth = String(storyLink.getAttribute("data-story-truth") || "").trim().toLowerCase();
       if (storyTruth === "feed-fallback") return;
       warmStoryViewer(
-        storyLink.getAttribute("data-story-item") || storyLink.getAttribute("data-feed-post-open") || "",
+        storyLink.getAttribute("data-story-item") || "",
         storyLink.getAttribute("data-story-url") || storyLink.getAttribute("href") || ""
       );
     };
@@ -4068,24 +4091,24 @@ export function createFeedViewOrchestrationController({
         }
         return;
       }
+      const postOpenBtn = target.closest("[data-feed-post-open-modal]");
+      if (postOpenBtn) {
+        const postId = postOpenBtn.dataset.feedPostOpenModal || "";
+        const post = findFeedPostById(postId);
+        if (post) {
+          void openPostModalFn(post, resolveFeedHeroPreview(postOpenBtn, postId));
+        }
+        return;
+      }
       const commentBtn = target.closest("[data-feed-post-comment]");
       if (commentBtn) {
         const postId = commentBtn.dataset.feedPostComment || "";
         const post = findFeedPostById(postId);
         if (post) {
-          const feedCard = commentBtn.closest("[data-feed-id]");
-          const previewImage = feedCard?.querySelector?.(`[data-img-key="feed-hero:${postId}"]`) || null;
-          const previewImageSrc = String(
-            previewImage?.currentSrc
-            || previewImage?.getAttribute?.("src")
-            || ""
-          ).trim();
-          void Promise.resolve(openPostModalFn(post, {
-            previewImageEl: previewImage,
-            previewImageSrc
-          })).then(() => {
-            focusPostCommentComposer();
-          });
+          void Promise.resolve(openPostModalFn(post, resolveFeedHeroPreview(commentBtn, postId)))
+            .then(() => {
+              focusPostCommentComposer();
+            });
         }
         return;
       }

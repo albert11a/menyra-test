@@ -1434,32 +1434,27 @@
     }
     .smart-header-tabs-row {
       display: flex;
-      align-items: center;
+      align-items: stretch;
       gap: 0.5rem;
       padding: 0.1rem 1rem 0.7rem;
-      /* Auf sehr schmalen Geraeten (ca. 320px) passen drei Pills nicht mehr
-         nebeneinander. Statt sie abzuschneiden, laesst sich die Zeile
-         schieben - die Leiste selbst bleibt scrollbarfrei. */
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      -ms-overflow-style: none;
-      scrollbar-width: none;
     }
-    .smart-header-tabs-row::-webkit-scrollbar { display: none; }
     .smart-header-pill {
-      flex: 0 0 auto;
+      /* Die drei Pills teilen sich die Zeile zu gleichen Teilen und fuellen sie
+         von Rand zu Rand - kein Rest, der rechts leer stehen bleibt. */
+      flex: 1 1 0;
+      min-width: 0;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.34rem;
+      white-space: nowrap;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
       border-radius: 9999px;
       border: 1px solid rgb(226 232 240 / 0.95);
       background: #fff;
       color: rgb(100 116 139);
-      /* Etwas schmaler als vorher: mit Icon bleiben die drei Pills auch auf
-         kleinen Geraeten in einer Zeile. */
-      padding: 0.44rem 0.82rem;
+      padding: 0.44rem 0.6rem;
       font-size: 11px;
       font-weight: 800;
       line-height: 1;
@@ -1473,9 +1468,22 @@
       width: 0.86rem;
       height: 0.86rem;
       stroke-width: 2.4;
+      /* align-items zentriert die Boxen, nicht die Schrift: bei Versalien sitzt
+         die Zeilenbox rund einen halben Pixel unter den Buchstaben. Der Versatz
+         holt das Icon auf dieselbe Mittellinie wie der Text. */
+      position: relative;
+      top: -0.7px;
     }
     .smart-header-pill__label {
       display: block;
+      /* Das nachlaufende Letter-Spacing des letzten Zeichens wieder abziehen,
+         sonst sitzt Icon + Text minimal links neben der Pill-Mitte. */
+      margin-right: -0.12em;
+      /* Reicht der Platz auf sehr schmalen Geraeten doch nicht, kuerzt der Text
+         innerhalb der Pill - er laeuft nicht ueber den Rand hinaus. */
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .smart-header-pill:active {
       transform: scale(0.97);
@@ -1520,9 +1528,12 @@
         padding-right: 0.7rem;
       }
       .smart-header-pill {
-        padding-left: 0.66rem;
-        padding-right: 0.66rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
         letter-spacing: 0.08em;
+      }
+      .smart-header-pill__label {
+        margin-right: -0.08em;
       }
     }
     /* Bewusst kein fast-mode-Opt-out: das Auf- und Zuklappen im Header ist eine

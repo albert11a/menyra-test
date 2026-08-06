@@ -291,7 +291,7 @@ export function createShellDomRuntimeController({
     const navItems = isGuest
       ? [
         // Restaurants ist kein Drawer-Eintrag mehr, sondern ein Header-Tab neben Feed.
-        { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
+        { id: "feed", label: tr("nav.feed", "Zbulo"), icon: "home" },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "search", label: tr("nav.search", "Kerkimi"), icon: "search" },
@@ -301,7 +301,7 @@ export function createShellDomRuntimeController({
       : [
         { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
         // Restaurants ist kein Drawer-Eintrag mehr, sondern ein Header-Tab neben Feed.
-        { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
+        { id: "feed", label: tr("nav.feed", "Zbulo"), icon: "home" },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "chat", label: tr("nav.chat", "Chats"), icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },

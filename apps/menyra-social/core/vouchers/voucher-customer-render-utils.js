@@ -322,7 +322,7 @@ export function renderVoucherLocationGate({ deps = {} } = {}) {
       </div>
       <h2 class="text-lg font-black italic tracking-tight text-slate-900">Zgjidh qytetin</h2>
       <p class="mt-2 text-[12px] text-slate-500 leading-5">
-        Ofertat shfaqen sipas qytetit. Zgjidh qytetin tend ne tabin Restorante ose Feed.
+        Ofertat shfaqen sipas qytetit. Zgjidh qytetin tend ne tabin Lokalet ose Zbulo.
       </p>
       <button
         type="button"
