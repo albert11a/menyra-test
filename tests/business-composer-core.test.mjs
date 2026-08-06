@@ -13,24 +13,32 @@ import {
   DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 
-test("composer card offers postim and story with mnyra accent", () => {
+test("composer card has one button - the choice is made in the modal", () => {
   const html = renderDashboardComposerCard({ iconFn: (name) => `<i data-icon="${name}"></i>` });
   // Ueberschrift und Untertitel bleiben Wort fuer Wort, wie sie waren.
   assert.ok(html.includes("Posto n'"));
   assert.ok(html.includes('<span class="mnyra-dash__composer-accent">Zbulo</span>'));
   assert.ok(html.includes("Ndaj një postim ose një story me klientët e tu."));
-  assert.ok(html.includes('data-dashboard-composer="post"'));
-  assert.ok(html.includes('data-dashboard-composer="story"'));
-  assert.ok(html.includes(">Postim<"));
-  assert.ok(html.includes(">Story<"));
-  // Kein Punkt vor der Ueberschrift, keine "Quick Create"-Pille.
-  assert.ok(!html.includes("composer-dot"));
-  assert.ok(!html.includes("composer-badge"));
-  assert.ok(!html.includes("Quick Create"));
-  // Postim ist der ausgefuellte Knopf mit Plus, Story traegt den Ring-Punkt.
+  // Genau ein Knopf, ausgefuellt, mit Plus - und er oeffnet den Beitrag.
+  assert.equal((html.match(/<button/g) || []).length, 1);
   assert.ok(html.includes('class="mnyra-dash__composer-btn mnyra-dash__composer-btn--primary" data-dashboard-composer="post"'));
+  assert.ok(html.includes(">Posto<"));
   assert.equal((html.match(/data-icon="plus"/g) || []).length, 1);
-  assert.ok(html.includes('<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle>'));
+  // Kein zweiter Knopf mehr fuer Story - dafuer gibt es die Leiste im Modal.
+  assert.ok(!html.includes('data-dashboard-composer="story"'));
+  assert.ok(html.includes("mnyra-dash__composer-actions--single"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-actions--single { grid-template-columns: minmax(0, 1fr); }"));
+});
+
+test("modal carries its own bottom bar to switch between postim and story", () => {
+  // Die Leiste sitzt unten im Modal, ueber der Browserleiste des Telefons.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__foot {"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("padding: 10px 16px calc(var(--safe-area-bottom, 0px) + 10px);"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__switch {"));
+  // Zwei gleich breite Felder, das aktive hebt sich weiss ab.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__switch-btn[aria-selected=\"true\"] {"));
+  // Waehrend des Postens ist die Leiste gesperrt.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes('.mnyra-bc[data-busy="1"] .mnyra-bc__foot,'));
 });
 
 test("composer card styles keep the mockup layout", () => {

@@ -134,6 +134,9 @@ export const DASHBOARD_CSS = `
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
+/* Ein Knopf ueber die ganze Breite: die Wahl zwischen Postim und Story
+   trifft man im Modal an der Leiste unten. */
+.mnyra-dash__composer-actions--single { grid-template-columns: minmax(0, 1fr); }
 /* Zwei halbe Karten unter "Posto n'Zbulo": zusammen genau so breit wie die
    Karte darueber, gleiche Oberflaeche, nur je ein Knopf. */
 .mnyra-dash__composer-row {
@@ -554,28 +557,19 @@ export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Da
   `;
 }
 
-// Story-Symbol der Posting-Karte: Ring mit gefuelltem Punkt. Liegt hier und
-// nicht im Icon-Satz der App, weil der ihn nicht kennt - so bleibt die Karte
-// auch ohne nachgeladene Icon-Bibliothek vollstaendig.
-const COMPOSER_STORY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle></svg>';
-
-// Posting-Karte unter der Begruessung: ein Einstieg fuer Feed-Beitrag
-// ("Postim") und Story. Beide Knoepfe oeffnen dasselbe Vollbild-Modal.
+// Posting-Karte unter der Begruessung. Ein Knopf reicht: zwischen Postim und
+// Story schaltet man im Modal selbst um, an der Leiste unten.
 export function renderDashboardComposerCard({ iconFn } = {}) {
-  const buttons = [
-    { mode: "post", label: "Postim", iconHtml: safeIcon(iconFn, "plus", "w-4 h-4"), primary: true },
-    { mode: "story", label: "Story", iconHtml: COMPOSER_STORY_ICON, primary: false }
-  ].map((entry) => `
-    <button type="button" class="mnyra-dash__composer-btn${entry.primary ? " mnyra-dash__composer-btn--primary" : ""}" data-dashboard-composer="${escapeHtml(entry.mode)}">
-      <span class="mnyra-dash__composer-btn-icon">${entry.iconHtml}</span>
-      <span class="mnyra-dash__composer-btn-label">${escapeHtml(entry.label)}</span>
-    </button>
-  `).join("");
   return `
     <div class="mnyra-dash__composer" data-dashboard-composer-card>
       <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">Zbulo</span></p>
       <p class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</p>
-      <div class="mnyra-dash__composer-actions">${buttons}</div>
+      <div class="mnyra-dash__composer-actions mnyra-dash__composer-actions--single">
+        <button type="button" class="mnyra-dash__composer-btn mnyra-dash__composer-btn--primary" data-dashboard-composer="post">
+          <span class="mnyra-dash__composer-btn-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
+          <span class="mnyra-dash__composer-btn-label">Posto</span>
+        </button>
+      </div>
     </div>
   `;
 }

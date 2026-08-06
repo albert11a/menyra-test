@@ -71,6 +71,9 @@ const TEXT = Object.freeze({
   productOptional: "Produkti nuk është i detyrueshëm.",
   hintNeedBoth: "Që të postosh, duhen edhe teksti edhe fotoja ose videoja.",
   hintReady: "Gati për t'u postuar.",
+  switchPost: "Postim",
+  switchStory: "Story",
+  switchLabel: "Zgjidh llojin e postimit",
   previewTitle: "Parapamje",
   previewPost: "Si duket në Zbulo",
   previewStory: "Në rreshtin e story-ve",
@@ -216,8 +219,49 @@ export const BUSINESS_COMPOSER_CSS = `
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 16px 16px calc(var(--safe-area-bottom, 0px) + 32px);
+  padding: 16px 16px 24px;
 }
+/* Eigene Leiste am unteren Rand des Modals: hier wird zwischen Postim und
+   Story umgeschaltet, ohne das Modal zu schliessen. Sie sitzt ueber der
+   Browserleiste des Telefons, darum der Sicherheitsabstand unten. */
+.mnyra-bc__foot {
+  flex: 0 0 auto;
+  padding: 10px 16px calc(var(--safe-area-bottom, 0px) + 10px);
+  border-top: 1px solid var(--bc-line);
+  background: #ffffff;
+}
+.mnyra-bc__switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--bc-plane);
+}
+.mnyra-bc__switch-btn {
+  min-height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bc-ink-2);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mnyra-bc__switch-btn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.mnyra-bc__switch-btn[aria-selected="true"] {
+  background: #ffffff;
+  color: var(--bc-accent);
+}
+.mnyra-bc__switch-btn:disabled { cursor: not-allowed; }
 .mnyra-bc__compose {
   display: flex;
   align-items: stretch;
@@ -581,6 +625,7 @@ export const BUSINESS_COMPOSER_CSS = `
 }
 .mnyra-bc__picker-confirm:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
 .mnyra-bc[data-busy="1"] .mnyra-bc__body,
+.mnyra-bc[data-busy="1"] .mnyra-bc__foot,
 .mnyra-bc[data-busy="1"] .mnyra-bc__x { opacity: 0.55; pointer-events: none; }
 #${TOAST_ELEMENT_ID} {
   position: fixed;
@@ -788,6 +833,17 @@ export function createBusinessComposerController({
           </section>
         </div>
 
+        <footer class="mnyra-bc__foot">
+          <div class="mnyra-bc__switch" role="tablist" aria-label="${TEXT.switchLabel}">
+            <button type="button" class="mnyra-bc__switch-btn" role="tab" data-bc-mode="post" aria-selected="true">
+              ${ICON.image}<span>${TEXT.switchPost}</span>
+            </button>
+            <button type="button" class="mnyra-bc__switch-btn" role="tab" data-bc-mode="story" aria-selected="false">
+              ${ICON.camera}<span>${TEXT.switchStory}</span>
+            </button>
+          </div>
+        </footer>
+
         <div class="mnyra-bc__picker" data-bc-picker>
           <div class="mnyra-bc__picker-sheet">
             <div class="mnyra-bc__picker-head">
@@ -844,6 +900,7 @@ export function createBusinessComposerController({
       stagePostInner: q('[data-bc-stage-inner="post"]'),
       stageStory: q('[data-bc-stage="story"]'),
       stageStoryInner: q('[data-bc-stage-inner="story"]'),
+      switchButtons: Array.from(root.querySelectorAll("[data-bc-mode]")),
       picker: q("[data-bc-picker]"),
       pickerClose: q("[data-bc-picker-close]"),
       pickerSearch: q("[data-bc-picker-search]"),
@@ -1103,6 +1160,10 @@ export function createBusinessComposerController({
     if (nodes.photo) nodes.photo.setAttribute("data-active", draft.file ? "1" : "0");
     if (nodes.panePost) nodes.panePost.setAttribute("data-visible", isStory ? "0" : "1");
     if (nodes.paneStory) nodes.paneStory.setAttribute("data-visible", isStory ? "1" : "0");
+    (nodes.switchButtons || []).forEach((button) => {
+      const selected = button.getAttribute("data-bc-mode") === mode;
+      button.setAttribute("aria-selected", selected ? "true" : "false");
+    });
     syncProductChip();
     buildPreview();
     syncSubmitState();
@@ -1115,6 +1176,7 @@ export function createBusinessComposerController({
     if (nodes.submitLabel) nodes.submitLabel.textContent = submitting ? TEXT.submitBusy : TEXT.submit;
     if (nodes.close) nodes.close.disabled = submitting;
     if (nodes.text) nodes.text.readOnly = submitting;
+    (nodes.switchButtons || []).forEach((button) => { button.disabled = submitting; });
     syncSubmitState();
   }
 
@@ -1360,6 +1422,20 @@ export function createBusinessComposerController({
       handleFileSelection(file);
       // Zuruecksetzen, damit dieselbe Datei erneut waehlbar bleibt.
       if (nodes.file) nodes.file.value = "";
+    });
+    // Umschalten in der Leiste: der Entwurf der anderen Seite bleibt stehen -
+    // Text, Foto und Produkt liegen je Modus getrennt im Speicher.
+    (nodes.switchButtons || []).forEach((button) => {
+      button.addEventListener("click", () => {
+        if (submitting) return;
+        const next = button.getAttribute("data-bc-mode") === "story" ? "story" : "post";
+        if (next === mode) return;
+        closePicker();
+        mode = next;
+        syncMode();
+        if (nodes.body) nodes.body.scrollTop = 0;
+        if (mode === "story") ensureProductsLoaded();
+      });
     });
     nodes.tag?.addEventListener("click", () => openPicker());
     nodes.chipRemove?.addEventListener("click", () => {
