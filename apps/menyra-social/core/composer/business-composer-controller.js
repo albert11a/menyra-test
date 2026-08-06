@@ -517,7 +517,13 @@ export const BUSINESS_COMPOSER_CSS = `
    exakt so, wie der Nutzer sie spaeter sieht. */
 .mnyra-bc__stage {
   position: relative;
-  overflow: hidden;
+  /* Der weiche Schatten gehoert zur Kachel. Die Buehne ist genau so hoch wie
+     ihr Inhalt - schnitte sie ab, endete der Schatten unten mit einer harten
+     Kante statt auszulaufen. Er darf deshalb ueberstehen; am Layout aendert
+     das nichts, ein Schatten nimmt keinen Platz ein.
+     Nur die randlose Story-Reihe schneidet weiter ab: die steht absichtlich
+     breiter als die Buehne. */
+  overflow: visible;
   width: 100%;
 }
 /* Die Story-Reihe von Zbulo: dieselbe Flex-Reihe, derselbe Abstand, derselbe
@@ -553,6 +559,7 @@ export const BUSINESS_COMPOSER_CSS = `
   margin-left: -16px;
   margin-right: -16px;
   width: calc(100% + 32px);
+  overflow: hidden;
 }
 .mnyra-bc__picker {
   position: absolute;

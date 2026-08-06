@@ -390,3 +390,22 @@ test("product list is shown at once and never doubled", async () => {
   assert.notEqual(buildComposerProductsSignatureCore(a), buildComposerProductsSignatureCore([{ id: "m1", name: "Cola", price: 3, imageUrl: "x" }]));
   assert.notEqual(buildComposerProductsSignatureCore(a), buildComposerProductsSignatureCore([]));
 });
+
+test("the preview stage does not cut the card shadow off at its bottom edge", () => {
+  // Die Buehne ist genau so hoch wie ihr Inhalt. Schnitte sie ab, endete der
+  // weiche Schatten der Kachel unten mit einer harten Kante - genau so sah es
+  // in der Profil-Vorschau aus.
+  const stageBlock = BUSINESS_COMPOSER_CSS.slice(
+    BUSINESS_COMPOSER_CSS.indexOf(".mnyra-bc__stage {"),
+    BUSINESS_COMPOSER_CSS.indexOf(".mnyra-bc__story-track {")
+  );
+  assert.ok(stageBlock.includes("overflow: visible;"));
+  assert.equal(stageBlock.includes("overflow: hidden;"), false);
+  // Die randlose Story-Reihe schneidet weiter ab: sie steht absichtlich
+  // breiter als die Buehne.
+  const bleedBlock = BUSINESS_COMPOSER_CSS.slice(
+    BUSINESS_COMPOSER_CSS.indexOf(".mnyra-bc__stage--bleed {"),
+    BUSINESS_COMPOSER_CSS.indexOf(".mnyra-bc__picker {")
+  );
+  assert.ok(bleedBlock.includes("overflow: hidden;"));
+});

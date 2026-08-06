@@ -48,6 +48,14 @@ Sekunden - obwohl `uploadCompressedImage` das Bild vor dem Upload ohnehin auf
 erst beim Klick auf `+ Posto` geladen - auf schwacher Verbindung eine volle
 Netzrunde mitten in der Geste.
 
+### 5. Der Schatten der Profil-Kachel wurde unten abgeschnitten
+
+`.mnyra-bc__stage` stand auf `overflow: hidden`, und die Buehne ist genau so
+hoch wie ihr Inhalt (`scrollHeight * scale`). Ein Schatten zaehlt dabei nicht
+mit - der weiche Schatten der Kachel
+(`0 30px 60px -12px`) endete deshalb unten mit einer harten Kante statt
+auszulaufen. Nachgestellt und im Vorher/Nachher-Screenshot bestaetigt.
+
 ## Geaendert
 
 `core/media/video-poster-utils.js`
@@ -73,6 +81,10 @@ Netzrunde mitten in der Geste.
 - Zweiter Weg zum Standbild: liefert das eigene Einfangen nichts, wird das
   Bild aus der laufenden Vorschau gezeichnet (gut eine Sekunde lang in
   Schritten von 140ms nachgesehen, danach bleibt es beim Symbol).
+- Die Buehne laesst den Schatten jetzt ueberstehen (`overflow: visible`); am
+  Layout aendert das nichts, ein Schatten nimmt keinen Platz ein. Nur die
+  randlose Story-Reihe (`.mnyra-bc__stage--bleed`) schneidet weiter ab - die
+  steht absichtlich breiter als die Buehne.
 
 `core/dashboard/dashboard-view-controller.js`
 
@@ -120,7 +132,9 @@ in einen eigenen Schritt mit eigener Absicherung.
   einmal, und unterbleibt bei Datensparmodus/2g.
 - `tests/composer-preview-fidelity.test.mjs`: neuer Vertrag - die Vorschau
   wartet nicht auf das Standbild, das Nachtragen laeuft ueber `poster`.
-- `npm run test:unit` (551 gruen), `npm run lint`, `npm run arch:check`,
+- `tests/business-composer-core.test.mjs`: die Buehne schneidet den Schatten
+  nicht ab, die randlose Story-Reihe schon.
+- `npm run test:unit` (552 gruen), `npm run lint`, `npm run arch:check`,
   `npm run build`.
 
 ## Nicht geprueft
