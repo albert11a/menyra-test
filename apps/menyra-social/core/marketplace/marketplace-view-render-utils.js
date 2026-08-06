@@ -1658,7 +1658,7 @@ function renderRestaurantsListHeader({ hasAds = false, scopeLabel = "", deps = {
           aria-label="Kerko lokale"
           class="bg-white hover:bg-slate-50 text-slate-800 p-2.5 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95 shrink-0"
         >
-          ${icon("search", "w-4 h-4")}
+          ${icon("search", "w-5 h-5")}
         </button>
       </div>
 
