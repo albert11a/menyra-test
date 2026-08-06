@@ -1,18 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   normalizeComposerProductCore,
   filterComposerProductsCore,
   canPublishComposerDraftCore,
   normalizeComposerModeCore,
+  resolveComposerProductTextCore,
   BUSINESS_COMPOSER_CSS
 } from "../apps/menyra-social/core/composer/business-composer-controller.js";
 import {
   renderDashboardComposerCard,
   renderDashboardComposerSplitCards,
+  resolveDashboardKindCore,
   DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
+import { collectHotelRoomsCore } from "../apps/menyra-social/core/profile/hotel-rooms-utils.js";
 
 test("composer card has one button - the choice is made in the modal", () => {
   const html = renderDashboardComposerCard({ iconFn: (name) => `<i data-icon="${name}"></i>` });
@@ -205,4 +209,93 @@ test("composer styles carry the preview stage and the fullscreen sheet", () => {
   assert.ok(BUSINESS_COMPOSER_CSS.includes("gap: 10px;"));
   assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__story-track > [data-bc-story-blur] { opacity: 0.6; }"));
   assert.ok(BUSINESS_COMPOSER_CSS.includes("filter: blur(4px) saturate(0.85);"));
+});
+
+test("product label follows the kind of business", () => {
+  // Lokal mit Essen -> Meny, Shop -> Produkte, Hotel/Motel -> Dhoma.
+  assert.equal(resolveComposerProductTextCore("restaurant").tag, "Tag nga meny");
+  assert.equal(resolveComposerProductTextCore("shop").tag, "Tag nga produktet");
+  assert.equal(resolveComposerProductTextCore("hotel").tag, "Tag nga dhomat");
+  // Die Art kommt aus derselben Zuordnung wie die Dashboard-Kacheln.
+  const kindOf = (businessType, isShopCatalog = false) => resolveDashboardKindCore({ businessType, isShopCatalog });
+  assert.equal(resolveComposerProductTextCore(kindOf("cafe")).tag, "Tag nga meny");
+  assert.equal(resolveComposerProductTextCore(kindOf("bar")).tag, "Tag nga meny");
+  assert.equal(resolveComposerProductTextCore(kindOf("fastfood")).tag, "Tag nga meny");
+  assert.equal(resolveComposerProductTextCore(kindOf("motel")).tag, "Tag nga dhomat");
+  assert.equal(resolveComposerProductTextCore(kindOf("hostel")).tag, "Tag nga dhomat");
+  assert.equal(resolveComposerProductTextCore(kindOf("ecommerce", true)).tag, "Tag nga produktet");
+  // Auch Popup-Titel, Suchfeld und Leermeldung sprechen dieselbe Sprache.
+  assert.equal(resolveComposerProductTextCore("hotel").pickerTitle, "Zgjidh nga dhomat");
+  assert.equal(resolveComposerProductTextCore("hotel").pickerSearch, "Kërko dhoma…");
+  assert.equal(resolveComposerProductTextCore("hotel").pickerEmpty, "Nuk u gjet asnjë dhomë.");
+  assert.equal(resolveComposerProductTextCore("shop").pickerTitle, "Zgjidh nga produktet");
+  // Unbekanntes bleibt beim Lokal - nie leer.
+  assert.equal(resolveComposerProductTextCore("").tag, "Tag nga meny");
+  assert.equal(resolveComposerProductTextCore("quatsch").tag, "Tag nga meny");
+  assert.equal(resolveComposerProductTextCore().tag, "Tag nga meny");
+});
+
+test("input field and upload buttons are one rounded block", async () => {
+  const source = await readFile(
+    new URL("../apps/menyra-social/core/composer/business-composer-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Ein Rahmen aussen, die Textflaeche selbst traegt keinen mehr.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__compose {\n  border: 1px solid var(--bc-line);\n  border-radius: 24px;"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__text {\n  display: block;\n  width: 100%;"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("  border: 0;\n  border-radius: 0;"));
+  // Duenne Trennlinie, darunter die Knopfzeile mit dem Zaehler rechts.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__compose-bar {"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("  border-top: 1px solid var(--bc-line);\n}"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__count {"));
+  // Die Knoepfe sind Pillen, nicht mehr zwei hohe Kacheln neben dem Feld.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("  border-radius: 999px;\n  background: var(--bc-plane);"));
+  assert.ok(!BUSINESS_COMPOSER_CSS.includes("flex: 0 0 100px;"));
+  // Der Produkt-Knopf ist in allen drei Modi da - kein hidden mehr.
+  assert.ok(source.includes("<button type=\"button\" class=\"mnyra-bc__tool\" data-bc-tag>"));
+  assert.ok(!source.includes("nodes.tag.hidden"));
+  assert.ok(!source.includes('if (mode !== "story" || submitting) return;'));
+  // Zaehler zeigt die echte Grenze, nicht eine erfundene.
+  assert.ok(source.includes("`${used}/${CAPTION_MAX_LENGTH}`"));
+});
+
+test("hotels tag their rooms, not menu items", async () => {
+  const source = await readFile(
+    new URL("../apps/menyra-social/core/dashboard/dashboard-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Zimmer stehen am Restaurant-Datensatz - kein zweiter Firestore-Lesezugriff.
+  assert.ok(source.includes("collectHotelRoomsCore(record)"));
+  assert.ok(source.includes('resolveHeroData(rid).kind === "hotel"'));
+  // Und die Art wandert bis in den Composer.
+  assert.ok(source.includes("getBusinessKindFn:"));
+
+  const rooms = collectHotelRoomsCore({
+    hotelRooms: [
+      { id: "r1", title: "Suita", price: 90, beds: "1 krevat dopio", images: ["https://img/r1.jpg"] },
+      { id: "r2", title: "", price: 40 }
+    ]
+  });
+  // Zimmer ohne Namen zaehlen nicht mit.
+  assert.deepEqual(rooms.map((room) => room.id), ["r1"]);
+  assert.equal(rooms[0].title, "Suita");
+  assert.equal(rooms[0].imageUrl, "https://img/r1.jpg");
+});
+
+test("a tagged product survives the post, not only the story", async () => {
+  const composerSource = await readFile(
+    new URL("../apps/menyra-social/core/composer/business-composer-controller.js", import.meta.url),
+    "utf8"
+  );
+  const uploadSource = await readFile(
+    new URL("../apps/menyra-social/core/media/media-upload-runtime-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Ein Satz Felder fuer beide Schreibwege - keine zweite Schreibweise.
+  assert.ok(composerSource.includes("const productFields = {"));
+  assert.ok(composerSource.includes("...productFields"));
+  assert.equal((composerSource.match(/\.\.\.productFields/g) || []).length, 2);
+  // Der Beitrag speichert sie im Dokument und in der Feed-Spiegelung.
+  assert.equal((uploadSource.match(/\.\.\.tagged/g) || []).length, 2);
+  assert.ok(uploadSource.includes("menuItemId: String(menuItemId || \"\").trim()"));
 });

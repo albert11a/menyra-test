@@ -281,7 +281,17 @@ export function createMediaUploadRuntimeController({
     });
   }
 
-  async function createBusinessPost({ restaurantId, caption, mediaUrl, mediaType, posterUrl = "" }) {
+  async function createBusinessPost({
+    restaurantId,
+    caption,
+    mediaUrl,
+    mediaType,
+    posterUrl = "",
+    menuItemId = "",
+    menuItemName = "",
+    menuItemPrice = "",
+    menuItemImage = ""
+  }) {
     if (!collection || !makeDocRef || !db) return;
     const base = (state?.restaurants || []).find((row) => String(row?.id || "") === String(restaurantId)) || {};
     const postRef = makeDocRef(collection(db, "restaurants", restaurantId, "socialPosts"));
@@ -290,9 +300,18 @@ export function createMediaUploadRuntimeController({
     // thumbUrl speist im Feed post.poster: Bilder nutzen sich selbst,
     // Videos das beim Upload eingefangene Poster-Standbild.
     const safePosterUrl = String(posterUrl || "").trim();
+    // Getaggtes Produkt (Meny / Produkte / Dhoma): dieselben Feldnamen wie
+    // bei der Story, damit es nur eine Schreibweise gibt.
+    const tagged = {
+      menuItemId: String(menuItemId || "").trim(),
+      menuItemName: String(menuItemName || "").trim(),
+      menuItemPrice: menuItemPrice ?? "",
+      menuItemImage: String(menuItemImage || "").trim()
+    };
     const payload = {
       postType: "food",
       caption,
+      ...tagged,
       media: [{
         url: mediaUrl,
         type: mediaType,
@@ -326,6 +345,7 @@ export function createMediaUploadRuntimeController({
       commentsCount: 0,
       status: "active",
       businessName: base.name || base.restaurantName || "",
+      ...tagged,
       canonicalPath: `restaurants/${restaurantId}/socialPosts/${postId}`
     };
     await setDoc(postRef, payload);

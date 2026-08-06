@@ -67,11 +67,9 @@ const TEXT = Object.freeze({
   placeholderPost: "Shkruaj diçka për postimin tënd…",
   placeholderStory: "Shkruaj diçka për story-n tënde…",
   placeholderProfile: "Shkruaj diçka për profilin tënd…",
-  addPhoto: "Shto foto/video",
+  addPhoto: "Foto / Video",
   changePhoto: "Ndrysho median",
-  tagProduct: "Etiketo produkt",
   removeProduct: "Hiq produktin",
-  productOptional: "Produkti nuk është i detyrueshëm.",
   hintNeedBoth: "Që të postosh, duhen edhe teksti edhe fotoja ose videoja.",
   hintReady: "Gati për t'u postuar.",
   switchPost: "Postim",
@@ -82,12 +80,9 @@ const TEXT = Object.freeze({
   previewPost: "Si duket në Zbulo",
   previewStory: "Në rreshtin e story-ve",
   previewProfile: "Si duket në profilin tënd",
-  pickerTitle: "Zgjidh një produkt",
-  pickerSearch: "Kërko ushqime ose pije…",
-  pickerConfirm: "Zgjidh produktin",
-  pickerEmpty: "Nuk u gjet asnjë produkt.",
-  pickerLoading: "Duke ngarkuar produktet…",
-  pickerError: "Produktet nuk u ngarkuan.",
+  pickerConfirm: "Zgjidh",
+  pickerLoading: "Duke ngarkuar…",
+  pickerError: "Lista nuk u ngarkua.",
   pickerRetry: "Provo përsëri",
   errorMediaType: "Lejohen vetëm foto ose video.",
   errorImageSize: "Fotoja duhet të jetë deri në 15MB.",
@@ -100,6 +95,40 @@ const TEXT = Object.freeze({
   successProfile: "Postimi u publikua në profil.",
   businessFallback: "Biznesi im"
 });
+
+// Der Produkt-Knopf heisst so, wie das Geschaeft seine Sachen nennt: ein
+// Restaurant taggt aus der Meny, ein Shop aus den Produkten, ein Hotel aus
+// den Dhoma. Die Art kommt aus derselben Quelle wie die Dashboard-Kacheln
+// (resolveDashboardKindCore), damit hier keine zweite Wahrheit entsteht.
+const PRODUCT_TEXT = Object.freeze({
+  restaurant: Object.freeze({
+    tag: "Tag nga meny",
+    pickerTitle: "Zgjidh nga meny",
+    pickerSearch: "Kërko ushqime ose pije…",
+    pickerEmpty: "Nuk u gjet asnjë produkt.",
+    optional: "Produkti nuk është i detyrueshëm."
+  }),
+  shop: Object.freeze({
+    tag: "Tag nga produktet",
+    pickerTitle: "Zgjidh nga produktet",
+    pickerSearch: "Kërko produkte…",
+    pickerEmpty: "Nuk u gjet asnjë produkt.",
+    optional: "Produkti nuk është i detyrueshëm."
+  }),
+  hotel: Object.freeze({
+    tag: "Tag nga dhomat",
+    pickerTitle: "Zgjidh nga dhomat",
+    pickerSearch: "Kërko dhoma…",
+    pickerEmpty: "Nuk u gjet asnjë dhomë.",
+    optional: "Dhoma nuk është e detyrueshme."
+  })
+});
+
+// Reine Zuordnung Art -> Beschriftungen. Alles Unbekannte ist ein Lokal.
+export function resolveComposerProductTextCore(kind = "") {
+  const key = String(kind || "").trim().toLowerCase();
+  return PRODUCT_TEXT[key] || PRODUCT_TEXT.restaurant;
+}
 
 const SVG_ATTRS = 'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"';
 
@@ -269,54 +298,61 @@ export const BUSINESS_COMPOSER_CSS = `
   color: var(--bc-accent);
 }
 .mnyra-bc__switch-btn:disabled { cursor: not-allowed; }
+/* Ein Feld: Textflaeche, duenne Trennlinie, darunter die Knoepfe und der
+   Zaehler. Der Rahmen sitzt nur aussen, damit es wie ein Stueck wirkt. */
 .mnyra-bc__compose {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-}
-.mnyra-bc__text {
-  flex: 1;
-  min-width: 0;
-  min-height: 132px;
-  resize: none;
   border: 1px solid var(--bc-line);
-  border-radius: 20px;
-  padding: 14px;
+  border-radius: 24px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.mnyra-bc__compose[data-focus="1"] { border-color: var(--bc-accent); }
+.mnyra-bc__text {
+  display: block;
+  width: 100%;
+  min-height: 128px;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  padding: 16px;
   font-family: inherit;
   font-size: 14px;
   line-height: 1.5;
   font-weight: 600;
   color: var(--bc-ink);
-  background: #ffffff;
+  background: transparent;
   outline: none;
 }
 .mnyra-bc__text::placeholder { color: var(--bc-muted); font-weight: 600; }
-.mnyra-bc__text:focus { border-color: var(--bc-accent); }
-.mnyra-bc__tools {
-  flex: 0 0 100px;
-  width: 100px;
+.mnyra-bc__compose-bar {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--bc-line);
+}
+.mnyra-bc__tools {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .mnyra-bc__tool {
-  flex: 1;
-  min-height: 61px;
-  border: 1px solid var(--bc-line);
-  border-radius: 20px;
-  background: #ffffff;
-  color: var(--bc-ink-2);
-  display: flex;
-  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 8px 6px;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 1px solid var(--bc-line);
+  border-radius: 999px;
+  background: var(--bc-plane);
+  color: var(--bc-ink-2);
   cursor: pointer;
-  text-align: center;
-  overflow: hidden;
+  font-family: inherit;
 }
-.mnyra-bc__tool svg { width: 20px; height: 20px; flex: 0 0 auto; }
+.mnyra-bc__tool svg { width: 16px; height: 16px; flex: 0 0 auto; }
 .mnyra-bc__tool[hidden] { display: none; }
 .mnyra-bc__tool:active { transform: scale(0.97); }
 .mnyra-bc__tool[data-active="1"] {
@@ -324,21 +360,24 @@ export const BUSINESS_COMPOSER_CSS = `
   background: var(--bc-accent-soft);
   color: var(--bc-accent);
 }
-/* Zwei Zeilen statt Abschneiden: "Ndrysho foton" und lange Produktnamen
-   bleiben lesbar, die Kachelhoehe aendert sich dadurch nicht. */
+/* Lange Produktnamen kuerzen statt die Zeile zu sprengen. */
 .mnyra-bc__tool-label {
-  font-size: 9px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  line-height: 1.25;
-  max-width: 100%;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  min-width: 0;
   overflow: hidden;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.mnyra-bc__count {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--bc-muted);
+  font-variant-numeric: tabular-nums;
+}
+.mnyra-bc__count[data-tone="full"] { color: var(--bc-accent); }
 .mnyra-bc__product-chip {
   display: none;
   align-items: center;
@@ -744,6 +783,10 @@ export function createBusinessComposerController({
     ? api.getBusinessMetaFn
     : (() => ({ name: "", logoUrl: "" }));
   const loadProducts = typeof api.loadProductsFn === "function" ? api.loadProductsFn : null;
+  // Art des Geschaefts (restaurant | shop | hotel) - dieselbe Quelle wie im
+  // Dashboard. Wird synchron gelesen, damit die Beschriftung schon beim
+  // ersten Zeichnen stimmt und nicht nachtraeglich umspringt.
+  const getBusinessKind = typeof api.getBusinessKindFn === "function" ? api.getBusinessKindFn : (() => "");
   const uploadImage = typeof api.uploadImageFn === "function" ? api.uploadImageFn : null;
   // Videos gehen roh zum Media-Worker; das Poster ist das erste Bild daraus.
   const uploadVideo = typeof api.uploadVideoFn === "function" ? api.uploadVideoFn : null;
@@ -789,6 +832,16 @@ export function createBusinessComposerController({
     return drafts[mode] || drafts.post;
   }
 
+  function resolveProductText() {
+    let kind = "";
+    try {
+      kind = String(getBusinessKind() || "");
+    } catch {
+      kind = "";
+    }
+    return resolveComposerProductTextCore(kind);
+  }
+
   function releasePreviewUrl(url = "") {
     const safe = String(url || "").trim();
     if (!safe.startsWith("blob:")) return;
@@ -798,6 +851,7 @@ export function createBusinessComposerController({
   }
 
   function buildMarkup() {
+    const productText = resolveProductText();
     return `
       <div class="mnyra-bc__sheet">
         <header class="mnyra-bc__head">
@@ -808,15 +862,18 @@ export function createBusinessComposerController({
           </button>
         </header>
         <div class="mnyra-bc__body" data-bc-body>
-          <div class="mnyra-bc__compose">
+          <div class="mnyra-bc__compose" data-bc-compose>
             <textarea class="mnyra-bc__text" data-bc-text maxlength="${CAPTION_MAX_LENGTH}" rows="5" enterkeyhint="done"></textarea>
-            <div class="mnyra-bc__tools">
-              <button type="button" class="mnyra-bc__tool" data-bc-photo>
-                ${ICON.image}<span class="mnyra-bc__tool-label" data-bc-photo-label>${TEXT.addPhoto}</span>
-              </button>
-              <button type="button" class="mnyra-bc__tool" data-bc-tag hidden>
-                ${ICON.tag}<span class="mnyra-bc__tool-label" data-bc-tag-label>${TEXT.tagProduct}</span>
-              </button>
+            <div class="mnyra-bc__compose-bar">
+              <div class="mnyra-bc__tools">
+                <button type="button" class="mnyra-bc__tool" data-bc-photo>
+                  ${ICON.image}<span class="mnyra-bc__tool-label" data-bc-photo-label>${TEXT.addPhoto}</span>
+                </button>
+                <button type="button" class="mnyra-bc__tool" data-bc-tag>
+                  ${ICON.tag}<span class="mnyra-bc__tool-label" data-bc-tag-label>${productText.tag}</span>
+                </button>
+              </div>
+              <span class="mnyra-bc__count" data-bc-count>0/${CAPTION_MAX_LENGTH}</span>
             </div>
           </div>
           <div class="mnyra-bc__product-chip" data-bc-chip>
@@ -873,16 +930,16 @@ export function createBusinessComposerController({
         <div class="mnyra-bc__picker" data-bc-picker>
           <div class="mnyra-bc__picker-sheet">
             <div class="mnyra-bc__picker-head">
-              <span class="mnyra-bc__picker-title">${TEXT.pickerTitle}</span>
+              <span class="mnyra-bc__picker-title" data-bc-picker-title>${productText.pickerTitle}</span>
               <button type="button" class="mnyra-bc__x" data-bc-picker-close aria-label="${TEXT.close}" title="${TEXT.close}">${ICON.close}</button>
             </div>
             <div class="mnyra-bc__picker-search">
               ${ICON.search}
-              <input type="search" data-bc-picker-search placeholder="${TEXT.pickerSearch}" autocomplete="off" />
+              <input type="search" data-bc-picker-search placeholder="${productText.pickerSearch}" autocomplete="off" />
             </div>
             <div class="mnyra-bc__picker-list" data-bc-picker-list></div>
             <div class="mnyra-bc__picker-foot">
-              <p class="mnyra-bc__picker-note">${TEXT.productOptional}</p>
+              <p class="mnyra-bc__picker-note" data-bc-picker-note>${productText.optional}</p>
               <button type="button" class="mnyra-bc__picker-confirm" data-bc-picker-confirm disabled>${TEXT.pickerConfirm}</button>
             </div>
           </div>
@@ -908,7 +965,9 @@ export function createBusinessComposerController({
       submit: q("[data-bc-submit]"),
       submitLabel: q("[data-bc-submit-label]"),
       body: q("[data-bc-body]"),
+      compose: q("[data-bc-compose]"),
       text: q("[data-bc-text]"),
+      count: q("[data-bc-count]"),
       photo: q("[data-bc-photo]"),
       photoLabel: q("[data-bc-photo-label]"),
       tag: q("[data-bc-tag]"),
@@ -931,6 +990,8 @@ export function createBusinessComposerController({
       stageStoryInner: q('[data-bc-stage-inner="story"]'),
       switchButtons: Array.from(root.querySelectorAll("[data-bc-mode]")),
       picker: q("[data-bc-picker]"),
+      pickerTitle: q("[data-bc-picker-title]"),
+      pickerNote: q("[data-bc-picker-note]"),
       pickerClose: q("[data-bc-picker-close]"),
       pickerSearch: q("[data-bc-picker-search]"),
       pickerList: q("[data-bc-picker-list]"),
@@ -1149,11 +1210,11 @@ export function createBusinessComposerController({
 
   // Die Produkt-Zeile im Bedienteil (nicht in der Vorschau).
   function syncProductChip() {
-    const product = mode === "story" ? currentDraft().product : null;
+    const product = currentDraft().product;
     const visible = product ? "1" : "0";
     if (nodes.chip) nodes.chip.setAttribute("data-visible", visible);
     if (nodes.tag) nodes.tag.setAttribute("data-active", visible);
-    if (nodes.tagLabel) nodes.tagLabel.textContent = product ? product.name : TEXT.tagProduct;
+    if (nodes.tagLabel) nodes.tagLabel.textContent = product ? product.name : resolveProductText().tag;
     if (!product) return;
     const priceLabel = formatComposerPrice(product.price);
     const thumb = product.imageUrl ? optimizeImageUrl(product.imageUrl, "thumb") : "";
@@ -1165,6 +1226,14 @@ export function createBusinessComposerController({
   function syncProductPreview() {
     syncProductChip();
     if (mode === "story") buildPreview();
+  }
+
+  // Zeichenzaehler unter dem Textfeld.
+  function syncCaptionCount() {
+    if (!nodes.count) return;
+    const used = String(currentDraft().caption || "").length;
+    nodes.count.textContent = `${used}/${CAPTION_MAX_LENGTH}`;
+    nodes.count.setAttribute("data-tone", used >= CAPTION_MAX_LENGTH ? "full" : "idle");
   }
 
   function formatComposerPrice(value) {
@@ -1223,7 +1292,12 @@ export function createBusinessComposerController({
         : (isProfile ? TEXT.placeholderProfile : TEXT.placeholderPost);
       if (nodes.text.value !== draft.caption) nodes.text.value = draft.caption;
     }
-    if (nodes.tag) nodes.tag.hidden = !isStory;
+    // Der Produkt-Knopf steht in allen drei Modi; nur die Beschriftung
+    // richtet sich nach der Art des Geschaefts.
+    const productText = resolveProductText();
+    if (nodes.pickerTitle) nodes.pickerTitle.textContent = productText.pickerTitle;
+    if (nodes.pickerNote) nodes.pickerNote.textContent = productText.optional;
+    if (nodes.pickerSearch) nodes.pickerSearch.placeholder = productText.pickerSearch;
     if (nodes.photoLabel) nodes.photoLabel.textContent = draft.file ? TEXT.changePhoto : TEXT.addPhoto;
     if (nodes.photo) nodes.photo.setAttribute("data-active", draft.file ? "1" : "0");
     if (nodes.panePost) nodes.panePost.setAttribute("data-visible", mode === "post" ? "1" : "0");
@@ -1234,6 +1308,7 @@ export function createBusinessComposerController({
       button.setAttribute("aria-selected", selected ? "true" : "false");
     });
     syncProductChip();
+    syncCaptionCount();
     buildPreview();
     syncSubmitState();
     showError("");
@@ -1343,7 +1418,7 @@ export function createBusinessComposerController({
     const term = String(nodes.pickerSearch?.value || "");
     const list = filterComposerProductsCore(productState.items, term);
     if (!list.length) {
-      renderPickerState(TEXT.pickerEmpty);
+      renderPickerState(resolveProductText().pickerEmpty);
       syncPickerConfirm();
       return;
     }
@@ -1392,7 +1467,7 @@ export function createBusinessComposerController({
   }
 
   function openPicker() {
-    if (mode !== "story" || submitting) return;
+    if (submitting) return;
     pickerSelection = currentDraft().product || null;
     if (nodes.pickerSearch) nodes.pickerSearch.value = "";
     if (nodes.picker) nodes.picker.setAttribute("data-visible", "1");
@@ -1478,8 +1553,16 @@ export function createBusinessComposerController({
     nodes.text?.addEventListener("input", () => {
       const draft = currentDraft();
       draft.caption = String(nodes.text.value || "");
+      syncCaptionCount();
       syncCaptionPreview();
       syncSubmitState();
+    });
+    // Der Rahmen des ganzen Feldes reagiert, nicht nur die Textflaeche.
+    nodes.text?.addEventListener("focus", () => {
+      nodes.compose?.setAttribute("data-focus", "1");
+    });
+    nodes.text?.addEventListener("blur", () => {
+      nodes.compose?.setAttribute("data-focus", "0");
     });
     nodes.photo?.addEventListener("click", () => {
       if (submitting) return;
@@ -1503,7 +1586,7 @@ export function createBusinessComposerController({
         mode = next;
         syncMode();
         if (nodes.body) nodes.body.scrollTop = 0;
-        if (mode === "story") ensureProductsLoaded();
+        ensureProductsLoaded();
       });
     });
     nodes.tag?.addEventListener("click", () => openPicker());
@@ -1598,18 +1681,23 @@ export function createBusinessComposerController({
       if (!mediaUrl) throw new Error(TEXT.errorGeneric);
       const posterUrl = mediaType === "video" ? await uploadVideoPoster(file, restaurantId) : "";
 
+      // Das getaggte Produkt haengt am Entwurf und geht denselben Weg mit,
+      // egal ob Story, Beitrag oder Profil-Beitrag.
+      const product = draft.product;
+      const productFields = {
+        menuItemId: product?.id || "",
+        menuItemName: product?.name || "",
+        menuItemPrice: product?.price ?? "",
+        menuItemImage: product?.imageUrl || ""
+      };
       if (publishMode === "story") {
-        const product = draft.product;
         await createStory({
           restaurantId,
           caption,
           mediaUrl,
           mediaType,
           posterUrl,
-          menuItemId: product?.id || "",
-          menuItemName: product?.name || "",
-          menuItemPrice: product?.price ?? "",
-          menuItemImage: product?.imageUrl || ""
+          ...productFields
         });
       } else {
         await createPost({
@@ -1617,7 +1705,8 @@ export function createBusinessComposerController({
           caption,
           mediaUrl,
           mediaType,
-          posterUrl
+          posterUrl,
+          ...productFields
         });
       }
 
@@ -1660,7 +1749,7 @@ export function createBusinessComposerController({
     if (nodes.body) nodes.body.scrollTop = 0;
     syncChrome();
     // Produkte im Hintergrund vorladen, damit das Produkt-Popup sofort steht.
-    if (mode === "story") ensureProductsLoaded();
+    ensureProductsLoaded();
   }
 
   // Drehen oder Fenstergroesse aendern: die Buehne rechnet ihren Massstab neu,

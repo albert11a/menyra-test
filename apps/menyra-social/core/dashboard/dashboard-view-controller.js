@@ -12,6 +12,7 @@
 
 import { resolveAnalyticsRange, summarizeAnalyticsDays } from "../analytics/analytics-dashboard-core.js";
 import { loadAnalyticsDailyRange } from "../analytics/analytics-daily-loader.js";
+import { collectHotelRoomsCore } from "../profile/hotel-rooms-utils.js";
 import {
   ensureDashboardStylesInjected,
   resolveDashboardKindCore,
@@ -143,9 +144,24 @@ export function createDashboardViewController({
   let normalizeComposerProductFn = () => null;
   const MENU_ITEMS_LIMIT = 300;
 
+  // Hotels taggen keine Menue-Eintraege, sondern ihre Dhoma. Die stehen als
+  // Feld am Restaurant-Datensatz (hotelRooms) - also kein zusaetzlicher Lesezugriff.
+  function collectComposerRooms(restaurantId = "") {
+    const record = getRestaurantMetaById(restaurantId) || {};
+    return collectHotelRoomsCore(record).map((room) => ({
+      id: room.id,
+      name: room.title,
+      price: room.price ?? "",
+      category: room.beds || room.tag || "",
+      type: "room",
+      imageUrl: room.imageUrl || ""
+    }));
+  }
+
   async function loadComposerProducts(restaurantId = "") {
     const { db, collectionFn, queryFn, limitFn, getDocsFn } = firestoreApi;
     const rid = String(restaurantId || "").trim();
+    if (rid && resolveHeroData(rid).kind === "hotel") return collectComposerRooms(rid);
     if (
       !rid
       || !db
@@ -199,6 +215,9 @@ export function createDashboardViewController({
                 };
               },
               loadProductsFn: (rid) => loadComposerProducts(rid),
+              // Art des Geschaefts: steuert, ob der Knopf "Tag nga meny",
+              // "Tag nga produktet" oder "Tag nga dhomat" heisst.
+              getBusinessKindFn: () => resolveHeroData(resolveOwnRestaurantId()).kind,
               uploadImageFn: composerApi.uploadImageFn,
               // Video-Upload + Poster-Standbild: derselbe Weg wie im
               // Upload-Screen.
