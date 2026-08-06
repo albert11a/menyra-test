@@ -35,9 +35,8 @@ test("composer card offers postim and story with mnyra accent", () => {
 
 test("composer card styles keep the mockup layout", () => {
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-btn--primary {"));
-  // Abstand zur Begruessung darueber, leiser Schatten, kleinere Knoepfe.
+  // Abstand zur Begruessung darueber, kleinere Knoepfe.
   assert.ok(DASHBOARD_CSS.includes("margin-top: 34px;"));
-  assert.ok(DASHBOARD_CSS.includes("box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.3);"));
   assert.ok(DASHBOARD_CSS.includes("min-height: 46px;"));
   // Der ausgefuellte Knopf wirft keinen eigenen Schatten mehr.
   assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
@@ -47,6 +46,23 @@ test("composer card styles keep the mockup layout", () => {
     DASHBOARD_CSS.indexOf(".mnyra-dash__greet-logo img,")
   );
   assert.ok(!greetLogoBlock.includes("box-shadow"), greetLogoBlock);
+});
+
+test("every panel card shares one radius and casts no shadow", () => {
+  // Eine Zahl fuer alle Karten - aendert man sie, aendern sich alle zugleich.
+  assert.ok(DASHBOARD_CSS.includes("--dash-card-radius: 25px;"));
+  // Im ganzen Panel wirft nichts mehr einen Schatten.
+  assert.ok(!DASHBOARD_CSS.includes("box-shadow"), "im Panel darf kein box-shadow stehen");
+  // Und keine Kartenflaeche traegt noch eine eigene Rundung.
+  ["mnyra-dash__composer {", "mnyra-dash__action {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {", "mnyra-dash__skeleton {"].forEach((sel) => {
+    const start = DASHBOARD_CSS.indexOf(`.${sel}`);
+    assert.ok(start > -1, `${sel} fehlt`);
+    const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
+    assert.ok(
+      block.includes("border-radius: var(--dash-card-radius);"),
+      `${sel} nutzt nicht die gemeinsame Rundung: ${block}`
+    );
+  });
 });
 
 test("two half cards sit under the composer card and share its width", () => {

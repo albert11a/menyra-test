@@ -23,6 +23,10 @@ export const DASHBOARD_CSS = `
   --dash-border: rgba(15, 23, 42, 0.08);
   --dash-accent: #4f46e5;
   --dash-accent-soft: #eef2ff;
+  /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
+     (25px) - und bewusst kein Schatten: die Karte hebt sich allein durch
+     Weiss auf hellem Grund ab. Das wirkt ruhiger als jeder Schlagschatten. */
+  --dash-card-radius: 25px;
   color: var(--dash-ink);
   font-family: inherit;
 }
@@ -94,15 +98,13 @@ export const DASHBOARD_CSS = `
 }
 /* "Posto n'Zbulo": eigene Karte, mit deutlichem Abstand zur Begruessung
    darueber. Ueberschrift, Untertitel, darunter zwei Knoepfe nebeneinander -
-   der linke ausgefuellt, der rechte ruhig. Beide Flaechen tragen nur einen
-   leisen Schatten. */
+   der linke ausgefuellt, der rechte ruhig. */
 .mnyra-dash__composer {
   margin-top: 34px;
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
-  border-radius: 22px;
+  border-radius: var(--dash-card-radius);
   padding: 18px;
-  box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.3);
 }
 /* Schrift der Ueberschrift bleibt unveraendert. */
 .mnyra-dash__composer-title {
@@ -231,7 +233,7 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__action {
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
-  border-radius: 20px;
+  border-radius: var(--dash-card-radius);
   padding: 12px;
   min-height: 92px;
   display: flex;
@@ -278,7 +280,7 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__kpi {
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
-  border-radius: 20px;
+  border-radius: var(--dash-card-radius);
   padding: 12px 14px;
   min-height: 86px;
   min-width: 0;
@@ -311,7 +313,7 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__posts {
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
-  border-radius: 20px;
+  border-radius: var(--dash-card-radius);
   padding: 6px;
 }
 .mnyra-dash__post {
@@ -356,7 +358,7 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__state {
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
-  border-radius: 20px;
+  border-radius: var(--dash-card-radius);
   padding: 28px 18px;
   text-align: center;
 }
@@ -375,8 +377,10 @@ export const DASHBOARD_CSS = `
   border-radius: 999px;
   cursor: pointer;
 }
+/* Der Platzhalter beim Laden steht dort, wo gleich eine Karte steht - gleiche
+   Rundung, damit beim Erscheinen nichts springt. */
 .mnyra-dash__skeleton {
-  border-radius: 20px;
+  border-radius: var(--dash-card-radius);
   background: var(--dash-plane);
   animation: mnyraDashPulse 1.4s ease-in-out infinite;
   border: 1px solid transparent;
