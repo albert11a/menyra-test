@@ -872,9 +872,9 @@ export function createBusinessComposerController({
   const escapeAttr = (value = "") => escapeHtml(String(value ?? ""));
 
   const drafts = {
-    post: { caption: "", file: null, previewUrl: "", thumbUrl: "", mediaType: "", product: null },
-    story: { caption: "", file: null, previewUrl: "", thumbUrl: "", mediaType: "", product: null },
-    profile: { caption: "", file: null, previewUrl: "", thumbUrl: "", mediaType: "", product: null }
+    post: { caption: "", file: null, previewUrl: "", thumbUrl: "", posterFile: null, mediaType: "", product: null },
+    story: { caption: "", file: null, previewUrl: "", thumbUrl: "", posterFile: null, mediaType: "", product: null },
+    profile: { caption: "", file: null, previewUrl: "", thumbUrl: "", posterFile: null, mediaType: "", product: null }
   };
   const productState = { status: "idle", items: [], restaurantId: "", fresh: false };
 
@@ -1101,6 +1101,12 @@ export function createBusinessComposerController({
     return Math.min(viewport, APP_SHELL_MAX_WIDTH);
   }
 
+  // Standbild des Videos als poster - dieselbe Rolle wie post.poster im Feed.
+  function buildPosterAttr(draft) {
+    const posterUrl = draft?.mediaType === "video" ? String(draft?.thumbUrl || "").trim() : "";
+    return posterUrl ? `poster="${escapeAttr(posterUrl)}"` : "";
+  }
+
   // --- Vorschau 1: der echte Feed-Beitrag ------------------------------------
   // Gleicher Baustein wie im Feed, gleiche Klassen, gleiche Masse. Nur die
   // Datenattribute fehlen, damit die Vorschau keine App-Handler ausloest.
@@ -1108,10 +1114,13 @@ export function createBusinessComposerController({
     const draft = drafts.post;
     const meta = resolveBusinessMeta();
     const previewUrl = String(draft.previewUrl || "").trim();
-    // Videos genau wie im Feed: stumm, in Schleife, ohne Bedienelemente.
+    // Videos genau wie im Feed: stumm, in Schleife, ohne Bedienelemente - und
+    // mit Standbild als poster, damit die Karte auch dann ein Bild zeigt,
+    // wenn das Telefon das Abspielen verweigert.
+    const posterAttr = buildPosterAttr(draft);
     const heroInner = previewUrl
       ? (draft.mediaType === "video"
-        ? `<video src="${escapeAttr(previewUrl)}" autoplay muted loop playsinline preload="metadata" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
+        ? `<video src="${escapeAttr(previewUrl)}" ${posterAttr} autoplay muted loop playsinline preload="metadata" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
         : `<img src="${escapeAttr(previewUrl)}" decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`)
       : "";
     const heroMediaHtml = `<span class="block w-full h-full appearance-none bg-transparent text-left" style="display:block;width:100%;height:100%;padding:0;margin:0;border:0;background:transparent;">${heroInner}</span>`;
@@ -1141,11 +1150,21 @@ export function createBusinessComposerController({
   function buildProfilePreviewMarkup() {
     const draft = drafts.profile;
     const previewUrl = String(draft.previewUrl || "").trim();
-    const mediaHtml = previewUrl
-      ? (draft.mediaType === "video"
-        ? `<video src="${escapeAttr(previewUrl)}" preload="metadata" muted playsinline width="400" height="500" class="w-full h-full object-cover pointer-events-none"></video>`
-        : `<img src="${escapeAttr(previewUrl)}" decoding="async" width="400" height="500" class="w-full h-full object-cover" />`)
-      : `<div class="w-full h-full bg-slate-200"></div>`;
+    const posterUrl = String(draft.thumbUrl || "").trim();
+    const isVideo = draft.mediaType === "video";
+    // Dieselbe Regel wie der Profil-Renderer: ein Video-Beitrag zeigt in der
+    // Kachel sein Standbild als <img>. Nur ohne Standbild steht dort ein
+    // statisches <video>, und dann mit #t=0.001 - ohne dieses Zeit-Fragment
+    // bleibt die Kachel auf iOS-Safari weiss.
+    const staticPreviewSrc = previewUrl && !previewUrl.includes("#")
+      ? `${previewUrl}#t=0.001`
+      : previewUrl;
+    let mediaHtml = `<div class="w-full h-full bg-slate-200"></div>`;
+    if (previewUrl && isVideo && !posterUrl) {
+      mediaHtml = `<video src="${escapeAttr(staticPreviewSrc)}" preload="metadata" muted playsinline webkit-playsinline width="400" height="500" class="w-full h-full object-cover pointer-events-none"></video>`;
+    } else if (previewUrl) {
+      mediaHtml = `<img src="${escapeAttr(isVideo ? posterUrl : previewUrl)}" decoding="async" width="400" height="500" class="w-full h-full object-cover" />`;
+    }
     const card = renderProfilePostCardMarkupCore({
       mediaHtml,
       isVideo: draft.mediaType === "video",
@@ -1184,7 +1203,7 @@ export function createBusinessComposerController({
     const previewUrl = String(draft.previewUrl || "").trim();
     const mediaHtml = previewUrl
       ? (draft.mediaType === "video"
-        ? `<video src="${escapeAttr(previewUrl)}" autoplay muted loop playsinline preload="metadata" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>`
+        ? `<video src="${escapeAttr(previewUrl)}" ${buildPosterAttr(draft)} autoplay muted loop playsinline preload="metadata" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>`
         : `<img src="${escapeAttr(previewUrl)}" decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />`)
       : renderStoryTileMediaFallbackCore({ iconFn: appIcon });
     const logoImgHtml = `<img src="${escapeAttr(meta.logoUrl)}" decoding="async" width="28" height="28" class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />`;
@@ -1387,7 +1406,7 @@ export function createBusinessComposerController({
     syncSubmitState();
   }
 
-  function handleFileSelection(file) {
+  async function handleFileSelection(file) {
     if (!file) return;
     // Foto oder Video - erkannt mit derselben Regel wie im Upload-Screen.
     const mediaType = detectUploadMediaTypeCore(file);
@@ -1406,18 +1425,28 @@ export function createBusinessComposerController({
     draft.mediaType = mediaType;
     draft.previewUrl = "";
     draft.thumbUrl = "";
+    draft.posterFile = null;
     try {
       draft.previewUrl = win?.URL?.createObjectURL ? win.URL.createObjectURL(file) : "";
     } catch {
       draft.previewUrl = "";
     }
-    // Foto ist seine eigene Miniatur; beim Video wird das Standbild geholt.
+    // Foto ist seine eigene Miniatur.
     if (!isVideo) draft.thumbUrl = draft.previewUrl;
-    else captureThumbForVideo(draft, file);
     showError("");
-    buildPreview();
+    // Sofort sichtbar: Miniatur (beim Video erst als Symbol) und Knopf.
     syncMediaState();
     syncSubmitState();
+    // Beim Video zuerst das Standbild einfangen und erst danach die Vorschau
+    // bauen: solange kein zweites Video im Dokument haengt, gelingt das
+    // Einfangen zuverlaessig. Genau daran scheiterte die Miniatur bei Story,
+    // wo die Vorschau-Kachel sofort losspielt.
+    if (isVideo) {
+      await captureThumbForVideo(draft, file);
+      if (draft.file !== file) return;
+      syncMediaState();
+    }
+    buildPreview();
   }
 
   // Miniatur der gewaehlten Datei in der Knopfzeile. Kommt kein Standbild
@@ -1440,18 +1469,18 @@ export function createBusinessComposerController({
     setImageNode(nodes.thumbImg, thumbUrl);
   }
 
-  // Standbild des Videos fuer die Miniatur - laeuft nebenher und wird nur
-  // uebernommen, solange dieselbe Datei noch im Entwurf steht.
-  function captureThumbForVideo(draft, file) {
+  // Standbild des Videos: Miniatur in der Leiste UND poster der Vorschau.
+  // Scheitert es, bleibt es beim Symbol - posten laesst sich trotzdem.
+  async function captureThumbForVideo(draft, file) {
     if (!captureVideoPoster || !win?.URL?.createObjectURL) return;
-    void (async () => {
-      try {
-        const posterFile = await captureVideoPoster(file);
-        if (!posterFile || draft.file !== file) return;
-        draft.thumbUrl = win.URL.createObjectURL(posterFile);
-        if (currentDraft() === draft) syncMediaState();
-      } catch {}
-    })();
+    try {
+      const posterFile = await captureVideoPoster(file);
+      if (!posterFile || draft.file !== file) return;
+      // Dasselbe Standbild geht spaeter mit hoch - kein zweites Einfangen
+      // beim Posten (das kann scheitern, waehrend die Vorschau laeuft).
+      draft.posterFile = posterFile;
+      draft.thumbUrl = win.URL.createObjectURL(posterFile);
+    } catch {}
   }
 
   // Das x auf der Miniatur: die Datei fliegt aus dem Entwurf, alles andere
@@ -1464,6 +1493,7 @@ export function createBusinessComposerController({
     draft.file = null;
     draft.previewUrl = "";
     draft.thumbUrl = "";
+    draft.posterFile = null;
     draft.mediaType = "";
     showError("");
     syncMediaState();
@@ -1708,7 +1738,7 @@ export function createBusinessComposerController({
     nodes.thumbRemove?.addEventListener("click", () => clearDraftMedia());
     nodes.file?.addEventListener("change", () => {
       const file = nodes.file?.files?.[0] || null;
-      handleFileSelection(file);
+      void handleFileSelection(file);
       // Zuruecksetzen, damit dieselbe Datei erneut waehlbar bleibt.
       if (nodes.file) nodes.file.value = "";
     });
@@ -1764,6 +1794,7 @@ export function createBusinessComposerController({
     draft.file = null;
     draft.previewUrl = "";
     draft.thumbUrl = "";
+    draft.posterFile = null;
     draft.mediaType = "";
     draft.product = null;
   }
@@ -1772,10 +1803,11 @@ export function createBusinessComposerController({
   // Foto. Die Feed-Karte und die Story-Kachel zeigen damit sofort ein
   // Standbild, auch wenn Autoplay blockiert ist. Fehler blockieren nie das
   // Posten - dann bleibt das Poster eben leer.
-  async function uploadVideoPoster(file, restaurantId) {
-    if (!captureVideoPoster || !uploadImage) return "";
+  async function uploadVideoPoster(file, restaurantId, readyPoster = null) {
+    if (!uploadImage) return "";
     try {
-      const posterFile = await captureVideoPoster(file);
+      // Das Standbild der Vorschau ist schon da - dann geht genau dieses hoch.
+      const posterFile = readyPoster || (captureVideoPoster ? await captureVideoPoster(file) : null);
       if (!posterFile) return "";
       const uploaded = await uploadImage(posterFile, restaurantId);
       return String(uploaded?.cdnUrl || uploaded?.url || "").trim();
@@ -1817,7 +1849,9 @@ export function createBusinessComposerController({
         : await uploadImage(file, restaurantId);
       const mediaUrl = String(uploaded?.cdnUrl || uploaded?.url || "").trim();
       if (!mediaUrl) throw new Error(TEXT.errorGeneric);
-      const posterUrl = mediaType === "video" ? await uploadVideoPoster(file, restaurantId) : "";
+      const posterUrl = mediaType === "video"
+        ? await uploadVideoPoster(file, restaurantId, draft.posterFile)
+        : "";
 
       // Das getaggte Produkt haengt am Entwurf und geht denselben Weg mit,
       // egal ob Story, Beitrag oder Profil-Beitrag.

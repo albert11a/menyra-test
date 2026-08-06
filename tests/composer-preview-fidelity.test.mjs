@@ -151,6 +151,31 @@ test("profile post card markup keeps geometry and layers", () => {
   assert.equal(resolveProfilePostAspectClassCore({ isGrid: false, isWide: true }), "aspect-[4/5]");
 });
 
+test("video previews follow the same poster rule as the real renderers", async () => {
+  const composerSource = await readFile(repoUrl("apps/menyra-social/core/composer/business-composer-controller.js"), "utf8");
+  const profileSource = await readFile(repoUrl("apps/menyra-social/core/profile/profile-menu-focus-render-controller.js"), "utf8");
+  const feedSource = await readFile(repoUrl("apps/menyra-social/core/feed/feed-view-orchestration-controller.js"), "utf8");
+
+  // Profil: ein Video-Beitrag zeigt in der Kachel sein Standbild als <img>.
+  // Nur ohne Standbild steht dort ein statisches <video> mit #t=0.001 - genau
+  // diese Regel steht im Profil-Renderer, und die Vorschau folgt ihr.
+  assert.ok(profileSource.includes("#t=0.001"));
+  assert.ok(composerSource.includes("`${previewUrl}#t=0.001`"));
+  assert.ok(composerSource.includes('preload="metadata" muted playsinline webkit-playsinline width="400" height="500"'));
+  assert.ok(composerSource.includes("if (previewUrl && isVideo && !posterUrl) {"));
+  // Feed und Story-Reihe spielen das Video - beide mit Standbild als poster.
+  assert.ok(feedSource.includes('poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline'));
+  assert.ok(composerSource.includes("const posterAttr = buildPosterAttr(draft);"));
+  assert.ok(composerSource.includes("${buildPosterAttr(draft)} autoplay muted loop playsinline"));
+  // Das Standbild entsteht genau einmal und geht auch so hoch.
+  assert.ok(composerSource.includes("draft.posterFile = posterFile;"));
+  assert.ok(composerSource.includes("uploadVideoPoster(file, restaurantId, draft.posterFile)"));
+  // Und es wird eingefangen, BEVOR eine Vorschau ein zweites Video aufmacht.
+  const capture = composerSource.indexOf("await captureThumbForVideo(draft, file);");
+  const preview = composerSource.indexOf("buildPreview();", capture);
+  assert.ok(capture > 0 && preview > capture);
+});
+
 test("composer posts videos the same way the upload screen does", async () => {
   const composerSource = await readFile(repoUrl("apps/menyra-social/core/composer/business-composer-controller.js"), "utf8");
   const uploadSource = await readFile(repoUrl("apps/menyra-social/core/media/media-upload-runtime-controller.js"), "utf8");
