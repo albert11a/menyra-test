@@ -495,6 +495,77 @@ export function createFeedViewOrchestrationController({
       stories: scopedStories
     };
   };
+  // Die Frage steht in jeder Sprachfassung auf Albanisch - sie ist der Name
+  // der Zbulo-Startzeile, kein uebersetzter Satz. Geschrieben in korrekter
+  // Rechtschreibung mit "C-cedille", nicht in der SMS-Form "Qka".
+  const FEED_CITY_HEADLINE = "Çka ka sot?";
+  // Die Stadtgrafik ueber dem Feed. Bisher gibt es nur Prishtina - fuer jede
+  // weitere Stadt kommt ein Eintrag dazu, der Rest der Zeile (Titel + Filter)
+  // bleibt fuer alle Staedte gleich.
+  const FEED_CITY_ART = Object.freeze({
+    prishtina: Object.freeze({
+      src: "/apps/menyra-social/assets/city-prishtina.svg",
+      label: "Prishtina",
+      width: 1651,
+      height: 348
+    })
+  });
+  // Welche Stadt der Betrachter sieht, steht schon in der Ortsliste des Feeds:
+  // erst der Name (mit ihren Schreibvarianten), sonst - bei einer reinen
+  // GPS-Position ohne Ortsnamen - die naechstgelegene Stadt.
+  const resolveFeedCityArtKey = () => {
+    const record = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    if (!record) return "";
+    const cityName = resolveFeedViewerCityQuery(record) || inferFeedCityLabelFromCoords(record);
+    if (!cityName) return "";
+    const cityKeys = expandFeedCityKeys(cityName);
+    if (!cityKeys.length) return "";
+    return Object.keys(FEED_CITY_ART).find((artKey) => {
+      const option = FEED_LOCATION_CITY_OPTIONS.find((entry) => String(entry?.id || "") === artKey);
+      const aliases = [artKey, option?.id, option?.label, option?.city, ...(Array.isArray(option?.aliases) ? option.aliases : [])]
+        .map(normalizeFeedCityKey)
+        .filter(Boolean);
+      return cityKeys.some((cityKey) => aliases.includes(cityKey));
+    }) || "";
+  };
+  // Reihenfolge im Zbulo-Feed: erst ein Beitrag, dann die Story-Reihe, dann
+  // die restlichen Beitraege.
+  const FEED_LEAD_POST_COUNT = 1;
+  const FEED_VISIBLE_POST_LIMIT = 10;
+  // Zbulo-Filter: die Auswahl entsteht aus den Beitraegen, die nach der
+  // Geo-Pruefung uebrig bleiben - in der Liste steht nur, was der Ort hergibt.
+  const FEED_FILTER_ALL = "all";
+  const FEED_FILTER_ALL_LABEL = "Te gjitha";
+  const normalizeFeedCategoryValue = (value = "") => String(value || "").trim();
+  const resolveFeedFilterOptions = (feedPosts = []) => {
+    const safePosts = Array.isArray(feedPosts) ? feedPosts : [];
+    const options = new Map();
+    safePosts.forEach((post) => {
+      const value = normalizeFeedCategoryValue(post?.category);
+      if (!value) return;
+      const key = value.toLowerCase();
+      const existing = options.get(key);
+      if (existing) {
+        existing.count += 1;
+        return;
+      }
+      options.set(key, { value, label: value, count: 1 });
+    });
+    const sorted = Array.from(options.values())
+      .sort((a, b) => a.label.localeCompare(b.label, "sq", { sensitivity: "base" }));
+    return [
+      { value: FEED_FILTER_ALL, label: FEED_FILTER_ALL_LABEL, count: safePosts.length },
+      ...sorted
+    ];
+  };
+  // Verschwindet die gewaehlte Kategorie (anderer Ort, geloeschter Beitrag),
+  // faellt der Filter auf "alle" zurueck statt auf eine leere Liste.
+  const resolveActiveFeedCategory = (options = []) => {
+    const current = normalizeFeedCategoryValue(state.feedCategory);
+    if (!current || current === FEED_FILTER_ALL) return FEED_FILTER_ALL;
+    const safeOptions = Array.isArray(options) ? options : [];
+    return safeOptions.some((option) => option.value === current) ? current : FEED_FILTER_ALL;
+  };
   const compareDistanceValues = (aDistance = Number.POSITIVE_INFINITY, bDistance = Number.POSITIVE_INFINITY) => {
     const aFinite = Number.isFinite(aDistance);
     const bFinite = Number.isFinite(bDistance);
@@ -2782,6 +2853,159 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .feed-stage-bento-scroll {
             flex: 1 1 auto;
           }
+          /* Kopfzeile des Feeds: die Frage links, der Filter rechts, darunter
+             die Silhouette der Stadt. */
+          #feedLocationGate .feed-city-head {
+            position: relative;
+            z-index: 8;
+            padding-top: 1.6rem;
+          }
+          #feedLocationGate .feed-city-head__row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+          }
+          #feedLocationGate .feed-city-head__title {
+            margin: 0;
+            min-width: 0;
+            color: #0f172a;
+            font-size: clamp(1.35rem, 5.6vw, 1.75rem);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+          }
+          /* Die Silhouette laeuft von Rand zu Rand: die Polsterung der Zeile
+             wird aufgehoben, damit die Stadt nicht in der Spalte klebt. */
+          #feedLocationGate .feed-city-head__art {
+            margin: 0.9rem calc(var(--app-content-inline) * -1) 0;
+            width: calc(100% + var(--app-content-inline) * 2);
+            color: #0f172a;
+          }
+          #feedLocationGate .feed-city-head__art img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: bottom center;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+          }
+          #feedLocationGate .feed-city-filter {
+            position: relative;
+            flex: 0 0 auto;
+          }
+          /* Gleiche Sprache wie die Header-Pills: offene Flaeche, nur die
+             Kontur zeichnet den Knopf. */
+          #feedLocationGate .feed-city-filter__btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.34rem;
+            max-width: 11rem;
+            border: 1px solid rgb(226 232 240 / 0.95);
+            border-radius: 0.7rem;
+            background: transparent;
+            color: rgb(100 116 139);
+            padding: 0.42rem 0.7rem;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            white-space: nowrap;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 220ms ease, border-color 220ms ease, transform 120ms ease;
+          }
+          #feedLocationGate .feed-city-filter__btn:active {
+            transform: scale(0.97);
+          }
+          #feedLocationGate .feed-city-filter__btn--active,
+          #feedLocationGate .feed-city-filter--open .feed-city-filter__btn {
+            border-color: #0f172a;
+            color: #0f172a;
+          }
+          #feedLocationGate .feed-city-filter__icon {
+            flex: 0 0 auto;
+            width: 0.82rem;
+            height: 0.82rem;
+            stroke-width: 2.4;
+            position: relative;
+            top: -0.7px;
+          }
+          #feedLocationGate .feed-city-filter__label {
+            display: block;
+            min-width: 0;
+            margin-right: -0.12em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          #feedLocationGate .feed-city-filter__panel {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            z-index: 40;
+            min-width: 11rem;
+            max-width: min(16rem, 70vw);
+            max-height: 17rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            padding: 0.4rem;
+            border-radius: 1rem;
+            border: 1px solid rgb(226 232 240 / 0.95);
+            background: #fff;
+            box-shadow: 0 18px 44px rgb(15 23 42 / 0.16);
+          }
+          #feedLocationGate .feed-city-filter__panel[hidden] {
+            display: none;
+          }
+          #feedLocationGate .feed-city-filter__option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            width: 100%;
+            border: 0;
+            border-radius: 0.7rem;
+            background: transparent;
+            padding: 0.55rem 0.6rem;
+            color: rgb(71 85 105);
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-align: left;
+          }
+          #feedLocationGate .feed-city-filter__option:hover,
+          #feedLocationGate .feed-city-filter__option:focus-visible {
+            background: rgb(241 245 249);
+            outline: none;
+          }
+          #feedLocationGate .feed-city-filter__option--active {
+            background: #0f172a;
+            color: #fff;
+          }
+          #feedLocationGate .feed-city-filter__option-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          #feedLocationGate .feed-city-filter__option-count {
+            flex: 0 0 auto;
+            font-size: 0.62rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            opacity: 0.7;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            #feedLocationGate .feed-city-filter__btn {
+              transition: none;
+            }
+          }
           #feedLocationGate .feed-gate-hero-shell {
             --feed-gate-hero-accent: #3f46e5;
             position: relative;
@@ -3089,6 +3313,120 @@ export function createFeedViewOrchestrationController({
     `;
   }
 
+  const buildFeedFilterSignature = (filterOptions = [], activeCategory = FEED_FILTER_ALL) => [
+    String(activeCategory || FEED_FILTER_ALL),
+    (Array.isArray(filterOptions) ? filterOptions : [])
+      .map((option) => `${option?.value || ""}:${option?.count || 0}`)
+      .join(",")
+  ].join("|");
+
+  // Der Filter fuer Zbulo: die Schaltflaeche traegt den aktiven Namen, die
+  // Liste darunter alle Kategorien, die es am Ort wirklich gibt.
+  function renderFeedCityFilter({ filterOptions = [], activeCategory = FEED_FILTER_ALL } = {}) {
+    const options = Array.isArray(filterOptions) ? filterOptions : [];
+    const activeOption = options.find((option) => option.value === activeCategory) || null;
+    const isFiltered = activeCategory !== FEED_FILTER_ALL;
+    const buttonLabel = isFiltered
+      ? String(activeOption?.label || activeCategory)
+      : "Filtro";
+    return `
+      <div class="feed-city-filter" data-feed-filter data-feed-filter-sig="${escapeHtmlFn(buildFeedFilterSignature(options, activeCategory))}">
+        <button
+          type="button"
+          class="feed-city-filter__btn${isFiltered ? " feed-city-filter__btn--active" : ""}"
+          data-feed-filter-toggle
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          aria-controls="feedFilterPanel"
+        >
+          ${iconFn("sliders-horizontal", "feed-city-filter__icon")}
+          <span class="feed-city-filter__label">${escapeHtmlFn(buttonLabel)}</span>
+        </button>
+        <div id="feedFilterPanel" class="feed-city-filter__panel" data-feed-filter-panel role="listbox" aria-label="${escapeHtmlFn(FEED_CITY_HEADLINE)}" hidden>
+          ${options.map((option) => {
+            const isActive = option.value === activeCategory;
+            return `
+              <button
+                type="button"
+                class="feed-city-filter__option${isActive ? " feed-city-filter__option--active" : ""}"
+                data-feed-filter-option="${escapeHtmlFn(option.value)}"
+                role="option"
+                aria-selected="${isActive ? "true" : "false"}"
+              >
+                <span class="feed-city-filter__option-label">${escapeHtmlFn(option.label)}</span>
+                <span class="feed-city-filter__option-count">${escapeHtmlFn(String(option.count || 0))}</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // Die Silhouette der Stadt, in der der Betrachter steht. Prishtina ist die
+  // erste - jede weitere Stadt braucht nur einen Eintrag in FEED_CITY_ART.
+  function renderFeedCityArt(cityKey = "") {
+    const art = cityKey ? FEED_CITY_ART[cityKey] : null;
+    if (!art) return "";
+    return `
+      <div class="feed-city-head__art" style="aspect-ratio:${art.width} / ${art.height};">
+        <img
+          src="${escapeHtmlFn(art.src)}"
+          alt="${escapeHtmlFn(art.label)}"
+          width="${escapeHtmlFn(String(art.width))}"
+          height="${escapeHtmlFn(String(art.height))}"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          draggable="false"
+        />
+      </div>
+    `;
+  }
+
+  // Kopfzeile des Zbulo-Feeds: links die Frage des Tages, rechts der Filter.
+  // Darunter die Silhouette der Stadt - hat die Stadt noch keine Grafik,
+  // bleibt die Zeile allein stehen.
+  function renderFeedCityHeader({ filterOptions = [], activeCategory = FEED_FILTER_ALL } = {}) {
+    const cityKey = resolveFeedCityArtKey();
+    return `
+      <section class="feed-city-head app-content-inline" data-feed-city="${escapeHtmlFn(cityKey || "none")}">
+        <div class="feed-city-head__row">
+          <h2 class="feed-city-head__title">${escapeHtmlFn(FEED_CITY_HEADLINE)}</h2>
+          ${renderFeedCityFilter({ filterOptions, activeCategory })}
+        </div>
+        ${renderFeedCityArt(cityKey)}
+      </section>
+    `;
+  }
+
+  // Nach einer Filterauswahl bleibt der bestehende Feed-Knoten stehen - die
+  // Kopfzeile muss deshalb nachgezogen werden. Wechselt nur der Filter, wird
+  // auch nur er ersetzt: das Stadtbild bleibt stehen und flackert nicht.
+  function patchFeedCityHeader({ filterOptions = [], activeCategory = FEED_FILTER_ALL } = {}) {
+    const head = doc?.querySelector("[data-feed-city]");
+    if (!head) return false;
+    const cityKey = resolveFeedCityArtKey();
+    if (String(head.dataset.feedCity || "") !== (cityKey || "none")) {
+      const tpl = doc.createElement("template");
+      tpl.innerHTML = renderFeedCityHeader({ filterOptions, activeCategory });
+      const nextHead = tpl.content.firstElementChild;
+      if (!nextHead) return false;
+      head.replaceWith(nextHead);
+      return true;
+    }
+    const filter = head.querySelector("[data-feed-filter]");
+    if (!filter) return false;
+    const nextSignature = buildFeedFilterSignature(filterOptions, activeCategory);
+    if (String(filter.dataset.feedFilterSig || "") === nextSignature) return false;
+    const tpl = doc.createElement("template");
+    tpl.innerHTML = renderFeedCityFilter({ filterOptions, activeCategory });
+    const nextFilter = tpl.content.firstElementChild;
+    if (!nextFilter) return false;
+    filter.replaceWith(nextFilter);
+    return true;
+  }
+
   function renderSpotStoryIntroCard() {
     return `
       <div class="flex-none w-[29%] sm:w-[120px] snap-start ml-5" style="${buildTrackCardShellStyle({ withMarginLeft: true })}">
@@ -3363,18 +3701,26 @@ export function createFeedViewOrchestrationController({
   `;
   }
 
-  function renderFeedList(feedPosts) {
-    if (!feedPosts.length) {
+  // Der erste Beitrag steht ueber der Story-Reihe, der Rest darunter. Beide
+  // Listen rendern dieselbe Karte; startIndex haelt die Ladepriorisierung
+  // (die ersten Bilder eager) ueber den Schnitt hinweg richtig.
+  function renderFeedList(feedPosts, { startIndex = 0, limit = FEED_VISIBLE_POST_LIMIT, emptyState = true } = {}) {
+    const safePosts = Array.isArray(feedPosts) ? feedPosts : [];
+    if (!safePosts.length) {
+      if (!emptyState) return "";
       return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Nuk ka postime</div>`;
     }
-    return feedPosts.slice(0, 10).map((post, index) => renderFeedItem(post, index)).join("");
+    return safePosts
+      .slice(0, limit)
+      .map((post, index) => renderFeedItem(post, startIndex + index))
+      .join("");
   }
 
-  function patchFeedList(feedPosts) {
-    const feedList = doc?.getElementById("feedList");
+  function patchFeedListContainer(containerId, feedPosts, { startIndex = 0, emptyState = true } = {}) {
+    const feedList = doc?.getElementById(containerId);
     if (!feedList) return false;
     if (!feedPosts.length) {
-      const nextHtml = renderFeedList(feedPosts);
+      const nextHtml = renderFeedList(feedPosts, { startIndex, emptyState });
       if (feedList.innerHTML !== nextHtml) {
         feedList.innerHTML = nextHtml;
         return true;
@@ -3393,7 +3739,7 @@ export function createFeedViewOrchestrationController({
         const currentSignature = String(existing.getAttribute("data-feed-render-sig") || "").trim();
         if (currentSignature === nextSignature) return;
         const tpl = doc.createElement("template");
-        tpl.innerHTML = renderFeedItem(post, index);
+        tpl.innerHTML = renderFeedItem(post, startIndex + index);
         const nextNode = tpl.content.firstElementChild;
         if (!nextNode) return;
         existing.replaceWith(nextNode);
@@ -3414,7 +3760,7 @@ export function createFeedViewOrchestrationController({
         fragment.appendChild(existing);
       } else {
         const tpl = doc.createElement("template");
-        tpl.innerHTML = renderFeedItem(post, index);
+        tpl.innerHTML = renderFeedItem(post, startIndex + index);
         const node = tpl.content.firstElementChild;
         if (node) fragment.appendChild(node);
       }
@@ -3423,6 +3769,23 @@ export function createFeedViewOrchestrationController({
     feedPosts.forEach(updatePostCountNodesFn);
     feedPosts.forEach(updateFeedLogoNodesFn);
     return true;
+  }
+
+  // Der erste Beitrag liegt in einer eigenen Liste ueber der Story-Reihe -
+  // beide Container werden im selben Durchgang nachgezogen.
+  function patchFeedList(feedPosts) {
+    const safePosts = Array.isArray(feedPosts) ? feedPosts : [];
+    const leadPosts = safePosts.slice(0, FEED_LEAD_POST_COUNT);
+    const restPosts = safePosts.slice(FEED_LEAD_POST_COUNT);
+    const didPatchLead = patchFeedListContainer("feedLeadList", leadPosts, {
+      startIndex: 0,
+      emptyState: true
+    });
+    const didPatchRest = patchFeedListContainer("feedList", restPosts, {
+      startIndex: FEED_LEAD_POST_COUNT,
+      emptyState: false
+    });
+    return didPatchLead || didPatchRest;
   }
 
   function bindStoryPreviewBoomerang(video) {
@@ -3735,6 +4098,32 @@ export function createFeedViewOrchestrationController({
     return true;
   }
 
+  // Eine Quelle fuer beide Wege in den Feed: Erstaufbau und Nachziehen sehen
+  // dieselbe Liste. Erst die Geo-Pruefung, dann der Filter - so bleiben in der
+  // Filterliste die Kategorien stehen, die der Ort ueberhaupt hergibt.
+  function resolveFeedRenderCollections() {
+    const feedPostsSource = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
+    const sortedFeedPosts = feedPostsSource
+      .slice()
+      .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
+    const baseStories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
+    const scoped = resolveFeedGeoScopedCollections({
+      feedPosts: sortedFeedPosts,
+      stories: baseStories
+    });
+    const filterOptions = resolveFeedFilterOptions(scoped.feedPosts);
+    const activeCategory = resolveActiveFeedCategory(filterOptions);
+    const feedPosts = activeCategory === FEED_FILTER_ALL
+      ? scoped.feedPosts
+      : scoped.feedPosts.filter((post) => normalizeFeedCategoryValue(post?.category) === activeCategory);
+    return {
+      feedPosts,
+      stories: scoped.stories,
+      filterOptions,
+      activeCategory
+    };
+  }
+
   function updateFeedDom() {
     const feedView = doc?.getElementById("feedView");
     if (!feedView) return false;
@@ -3745,16 +4134,13 @@ export function createFeedViewOrchestrationController({
       if (win?.lucide?.createIcons) win.lucide.createIcons();
       return true;
     }
-    const feedPostsSource = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
-    const categoryFeedPosts = feedPostsSource
-      .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
-      .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-    const baseStories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
-    const { feedPosts, stories } = resolveFeedGeoScopedCollections({
-      feedPosts: categoryFeedPosts,
-      stories: baseStories
-    });
-    const trackStories = stories;
+    const {
+      feedPosts,
+      stories: trackStories,
+      filterOptions,
+      activeCategory
+    } = resolveFeedRenderCollections();
+    const didHeaderMutate = patchFeedCityHeader({ filterOptions, activeCategory });
     const storyTrackItems = resolveStoryTrackItems(trackStories, trackStories);
     const bestSpotItems = resolveBestSpotTrackItems(
       feedPosts,
@@ -3795,7 +4181,7 @@ export function createFeedViewOrchestrationController({
       lastFeedHeroPreloadSignature = preloadSignature;
       preloadFeedHeroImagesFn(feedPosts);
     }
-    if ((didPatchStoriesRow || didComposerMutate || didFeedListMutate) && win?.lucide?.createIcons) {
+    if ((didHeaderMutate || didPatchStoriesRow || didComposerMutate || didFeedListMutate) && win?.lucide?.createIcons) {
       win.lucide.createIcons();
     }
     return true;
@@ -3806,17 +4192,22 @@ export function createFeedViewOrchestrationController({
     const feedViewMode = hasViewerLocation ? "feed" : "feed-gate";
     let feedBentoContent = renderFeedGateBentoContent();
     if (hasViewerLocation) {
-      const feedPostsSource = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
-      const categoryFeedPosts = feedPostsSource
-        .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
-        .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-      const baseStories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
-      const { feedPosts, stories } = resolveFeedGeoScopedCollections({
-        feedPosts: categoryFeedPosts,
-        stories: baseStories
-      });
-      const trackStories = stories;
+      const {
+        feedPosts,
+        stories: trackStories,
+        filterOptions,
+        activeCategory
+      } = resolveFeedRenderCollections();
+      // Ein Beitrag steht vor der Story-Reihe: der Feed beginnt mit einem
+      // Gesicht - Profilbild und Name links oben in der Karte - statt mit
+      // einer Reihe Kacheln.
+      const leadPosts = feedPosts.slice(0, FEED_LEAD_POST_COUNT);
+      const restPosts = feedPosts.slice(FEED_LEAD_POST_COUNT);
       feedBentoContent = `
+        ${renderFeedCityHeader({ filterOptions, activeCategory })}
+        <div id="feedLeadList" class="app-content-inline pt-5 space-y-12">
+          ${renderFeedList(leadPosts, { startIndex: 0, emptyState: true })}
+        </div>
         <div id="storiesRow" class="app-content-inline pt-6">
           ${renderStoriesRow(trackStories, feedPosts, {
             fallbackFeedPosts: feedPosts,
@@ -3825,7 +4216,11 @@ export function createFeedViewOrchestrationController({
         </div>
         ${renderFeedComposer()}
         <div id="feedList" class="app-content-inline py-4 space-y-12">
-          ${renderFeedList(feedPosts)}
+          ${renderFeedList(restPosts, {
+            startIndex: FEED_LEAD_POST_COUNT,
+            limit: FEED_VISIBLE_POST_LIMIT - FEED_LEAD_POST_COUNT,
+            emptyState: false
+          })}
         </div>
       `;
     }
@@ -4031,6 +4426,26 @@ export function createFeedViewOrchestrationController({
     });
   }
 
+  // Die Filterliste lebt allein im DOM: sie auf- und zuzuklappen soll den
+  // Feed nicht neu rendern.
+  function setFeedFilterPanelOpen(wrap, nextOpen = null) {
+    if (!(wrap instanceof Element)) return false;
+    const toggle = wrap.querySelector("[data-feed-filter-toggle]");
+    const panel = wrap.querySelector("[data-feed-filter-panel]");
+    if (!toggle || !panel) return false;
+    const isOpen = wrap.classList.contains("feed-city-filter--open");
+    const shouldOpen = nextOpen === null ? !isOpen : !!nextOpen;
+    wrap.classList.toggle("feed-city-filter--open", shouldOpen);
+    toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    panel.hidden = !shouldOpen;
+    return shouldOpen;
+  }
+
+  function closeFeedFilterPanels() {
+    const wraps = Array.from(doc?.querySelectorAll?.("[data-feed-filter]") || []);
+    wraps.forEach((wrap) => setFeedFilterPanelOpen(wrap, false));
+  }
+
   function bindFeedDelegation() {
     bindFeedLocationControlsDelegation();
     if (isFeedLocationScopeActive()) syncFeedLocationGateDom();
@@ -4078,6 +4493,21 @@ export function createFeedViewOrchestrationController({
     feedView.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      const filterToggle = target.closest("[data-feed-filter-toggle]");
+      if (filterToggle) {
+        setFeedFilterPanelOpen(filterToggle.closest("[data-feed-filter]"), null);
+        return;
+      }
+      const filterOption = target.closest("[data-feed-filter-option]");
+      if (filterOption) {
+        const nextCategory = normalizeFeedCategoryValue(filterOption.dataset.feedFilterOption) || FEED_FILTER_ALL;
+        setFeedFilterPanelOpen(filterOption.closest("[data-feed-filter]"), false);
+        const currentCategory = normalizeFeedCategoryValue(state.feedCategory) || FEED_FILTER_ALL;
+        if (currentCategory !== nextCategory) setStateFn({ feedCategory: nextCategory });
+        return;
+      }
+      // Ein Klick daneben schliesst die Liste - sie liegt ueber dem Feed.
+      if (!target.closest("[data-feed-filter]")) closeFeedFilterPanels();
       const storyLink = target.closest("[data-story-item]");
       if (storyLink) {
         handleStoryWarmup(storyLink);
