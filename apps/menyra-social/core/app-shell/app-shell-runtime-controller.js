@@ -189,9 +189,15 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsLastScrollY = 0;
   let mainHeaderTabsVisibleState = null;
   let mainHeaderTabsRafId = 0;
+  // Kommt die ausgeblendete Zeile zurueck, nimmt sie oben wieder ihren Platz
+  // ein und schiebt den Content um ihre Hoehe nach unten. Am Seitenanfang laesst
+  // sich das durch keine Scroll-Korrektur ausgleichen - dort wird der Platz
+  // deshalb aufgezogen statt gesetzt.
+  let mainHeaderTabsRevealTimerId = 0;
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
   const MAIN_HEADER_TABS_REOPEN_ARM_PX = 6;
+  const MAIN_HEADER_TABS_REVEAL_MS = 260;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1620,6 +1626,33 @@ export function createAppShellRuntimeController(deps = {}) {
     syncMainHeaderTabsChrome();
   }
 
+  // Sonst waere das Zurueckholen ein Ruck: die Zeile ist per display:none aus
+  // dem Layout, mit ihr steht der Content um ihre Hoehe weiter oben. Am
+  // Seitenanfang gibt es keinen Scroll-Weg mehr, ueber den sich dieser
+  // Unterschied ausgleichen liesse - also zieht die Zeile ihren Platz in einem
+  // kurzen Lauf auf, statt ihn in einem Bild zu setzen. Damit fuehlt sich das
+  // Zurueckholen an wie das gewohnte Wiederauftauchen beim Hochscrollen, wo die
+  // Zeile ihren Platz nie verloren hat.
+  function playMainHeaderTabsReveal() {
+    const root = doc?.documentElement;
+    if (!root || typeof win?.setTimeout !== "function") return;
+    const rowHeight = Math.max(0, Number(mainHeaderTabsRowHeight) || 0);
+    if (rowHeight <= 0) return;
+    if (mainHeaderTabsRevealTimerId) win.clearTimeout?.(mainHeaderTabsRevealTimerId);
+    root.style?.setProperty?.("--smart-header-tabs-reveal-height", `${rowHeight}px`);
+    // Haengt die Klasse noch von einem vorigen Lauf, startet die Animation nur
+    // nach einem Layout-Lesen neu.
+    root.classList?.remove?.("smart-header-tabs-revealing");
+    void root.offsetHeight;
+    root.classList?.add?.("smart-header-tabs-revealing");
+    mainHeaderTabsRevealTimerId = win.setTimeout(() => {
+      mainHeaderTabsRevealTimerId = 0;
+      root.classList?.remove?.("smart-header-tabs-revealing");
+      root.style?.removeProperty?.("--smart-header-tabs-reveal-height");
+      syncSmartHeaderMetrics();
+    }, MAIN_HEADER_TABS_REVEAL_MS + 40);
+  }
+
   function setMainHeaderTabsCollapsed(next) {
     mainHeaderTabsCollapsed = !!next;
     mainHeaderTabsReopenAtTopArmed = false;
@@ -1645,7 +1678,11 @@ export function createAppShellRuntimeController(deps = {}) {
         return;
       }
     }
-    if (scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX) setMainHeaderTabsCollapsed(false);
+    if (scrollY > MAIN_HEADER_TABS_TOP_EPS_PX) return;
+    // Erst den Lauf ansagen, dann die Zeile ins Layout zurueckgeben: sie faengt
+    // damit bei Hoehe 0 an und waechst auf ihren Platz, statt ihn zu nehmen.
+    playMainHeaderTabsReveal();
+    setMainHeaderTabsCollapsed(false);
   }
 
   function syncMainHeaderTabsOnScroll() {
@@ -1722,6 +1759,9 @@ export function createAppShellRuntimeController(deps = {}) {
           }
         } else {
           if (mainHeaderTabsCollapsed) {
+            // Am Seitenanfang bleibt kein Scroll-Weg zum Ausgleichen - dort
+            // zieht die Zeile ihren Platz auf, sonst springt der Content.
+            if (scrollY <= 0) playMainHeaderTabsReveal();
             setMainHeaderTabsCollapsed(false);
             // Die Zeile nimmt oben wieder Platz ein - Scroll-Position zieht um
             // ihre Hoehe mit, damit der Content dabei stehen bleibt.

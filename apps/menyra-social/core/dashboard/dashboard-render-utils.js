@@ -200,81 +200,6 @@ export const DASHBOARD_CSS = `
   height: 16px;
   display: block;
 }
-.mnyra-dash__composer-actions {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-/* Zwei halbe Karten unter "Posto n'Zbulo": zusammen genau so breit wie die
-   Karte darueber, gleiche Oberflaeche, nur je ein Knopf. */
-.mnyra-dash__composer-row {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.mnyra-dash__composer--split {
-  margin-top: 0;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-}
-/* Auf halber Breite steht die Ueberschrift eine Spur kleiner - so bleibt
-   "Posto n'Profil" auf einer Zeile. */
-.mnyra-dash__composer--split .mnyra-dash__composer-title { font-size: 15px; }
-.mnyra-dash__composer--split .mnyra-dash__composer-actions {
-  margin-top: auto;
-  padding-top: 14px;
-  grid-template-columns: minmax(0, 1fr);
-}
-.mnyra-dash__composer-btn {
-  min-height: 46px;
-  border: 1px solid var(--dash-border);
-  border-radius: 14px;
-  background: var(--dash-plane);
-  color: var(--dash-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 9px 12px;
-  cursor: pointer;
-  text-align: center;
-  min-width: 0;
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-.mnyra-dash__composer-btn--primary {
-  background: var(--dash-accent);
-  border-color: var(--dash-accent);
-  color: #ffffff;
-}
-.mnyra-dash__composer-btn:active { transform: scale(0.97); }
-.mnyra-dash__composer-btn-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  color: var(--dash-accent);
-}
-.mnyra-dash__composer-btn--primary .mnyra-dash__composer-btn-icon { color: #ffffff; }
-/* Die Karte kommt ohne den Tailwind-Build aus: Symbolgroesse steht hier. */
-.mnyra-dash__composer-btn-icon svg,
-.mnyra-dash__composer-btn-icon i {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-.mnyra-dash__composer-btn-label {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .mnyra-dash__section { margin-top: 14px; }
 .mnyra-dash__section-head {
   display: flex;
@@ -647,44 +572,10 @@ export function renderDashboardComposerCard({ iconFn } = {}) {
   `;
 }
 
-// Zwei halbe Karten direkt unter "Posto n'Zbulo". Zusammen sind sie genau so
-// breit wie die Karte darueber und tragen dieselbe Oberflaeche.
-//  - "Posto n'Profil" oeffnet denselben Composer wie "Postim"; der Beitrag
-//    steht danach auf dem Profil des Betriebs.
-//  - "Posto n'Meny" fuehrt in den Menue-Editor - ueber den bestehenden
-//    data-nav-Handler der Shell, hier entsteht keine neue Routing-Logik.
-export function renderDashboardComposerSplitCards({ iconFn } = {}) {
-  const cards = [
-    {
-      accent: "Profil",
-      sub: "Postim që shfaqet në profilin tënd.",
-      action: 'data-dashboard-composer="profile"',
-      iconName: "plus",
-      label: "Posto",
-      primary: true
-    },
-    {
-      accent: "Meny",
-      sub: "Produktet dhe kategoritë e menysë.",
-      action: 'data-nav="menu"',
-      iconName: "utensils",
-      label: "Ndrysho",
-      primary: false
-    }
-  ].map((card) => `
-    <div class="mnyra-dash__composer mnyra-dash__composer--split">
-      <p class="mnyra-dash__composer-title">Posto n'<span class="mnyra-dash__composer-accent">${escapeHtml(card.accent)}</span></p>
-      <p class="mnyra-dash__composer-sub">${escapeHtml(card.sub)}</p>
-      <div class="mnyra-dash__composer-actions">
-        <button type="button" class="mnyra-dash__composer-btn${card.primary ? " mnyra-dash__composer-btn--primary" : ""}" ${card.action}>
-          <span class="mnyra-dash__composer-btn-icon">${safeIcon(iconFn, card.iconName, "w-4 h-4")}</span>
-          <span class="mnyra-dash__composer-btn-label">${escapeHtml(card.label)}</span>
-        </button>
-      </div>
-    </div>
-  `).join("");
-  return `<div class="mnyra-dash__composer-row">${cards}</div>`;
-}
+// Die beiden halben Karten "Posto n'Profil" und "Posto n'Meny" standen frueher
+// hier unter der Composer-Karte. Beide Wege gibt es weiter, nur ohne eigene
+// Karte im Panel: das Profil ist die dritte Seite in der Leiste des Composers,
+// die Menue-Pflege steht als "Ndrysho menune" im Schnellzugriff.
 
 export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
   const tiles = (Array.isArray(actions) ? actions : []).map((action) => {

@@ -97,6 +97,7 @@ function createHarness() {
   // Der Browser meldet den Scroll erst im naechsten Tick - genau darauf kommt
   // es hier an, weil das Ausblenden selbst die Position korrigiert.
   const frames = [];
+  const timers = [];
   const winListeners = new Map();
   const windowObj = {
     scrollY: 0,
@@ -108,6 +109,16 @@ function createHarness() {
       return frames.length;
     },
     cancelAnimationFrame() {},
+    // Der Lauf, mit dem die Zeile ihren Platz wieder aufzieht, raeumt sich am
+    // Ende selbst weg - hier von Hand abgearbeitet.
+    setTimeout(callback) {
+      timers.push(callback);
+      return timers.length;
+    },
+    clearTimeout(id) {
+      const index = Number(id) - 1;
+      if (index >= 0 && index < timers.length) timers[index] = null;
+    },
     addEventListener(type, handler) {
       if (!winListeners.has(type)) winListeners.set(type, []);
       winListeners.get(type).push(handler);
@@ -144,6 +155,14 @@ function createHarness() {
     while (frames.length) frames.shift()();
   }
 
+  function flushTimers() {
+    while (timers.length) timers.shift()?.();
+  }
+
+  function readStyle(name) {
+    return styleValues.get(name) || "";
+  }
+
   // Ein Scroll des Nutzers: Position setzen, Ereignis melden, Frame abarbeiten.
   function scrollTo(y) {
     windowObj.scrollY = Math.max(0, y);
@@ -168,11 +187,22 @@ function createHarness() {
     fireWindow("pointerdown");
   }
 
-  return { controller, documentObj, windowObj, start, clickToggle, scrollTo, settleOwnScroll };
+  return {
+    controller,
+    documentObj,
+    windowObj,
+    start,
+    clickToggle,
+    scrollTo,
+    settleOwnScroll,
+    flushTimers,
+    readStyle
+  };
 }
 
 const isCollapsed = (harness) => harness.controller.isMainHeaderTabsCollapsed();
 const isAway = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-away");
+const isRevealing = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-revealing");
 
 test("pills hidden by the chevron come back once the page is at the very top again", () => {
   const harness = createHarness();
@@ -222,6 +252,51 @@ test("the chevron mid scroll still retrieves the row instead of hiding it", () =
 
   assert.equal(isCollapsed(harness), false, "unterwegs holt der Pfeil die Zeile zurueck");
   assert.equal(isAway(harness), false);
+});
+
+// Ausgeblendet ist die Zeile ganz aus dem Layout - der Content steht also um
+// ihre Hoehe weiter oben. Am Seitenanfang laesst sich dieser Unterschied durch
+// keine Scroll-Korrektur mehr ausgleichen: die Zeile muss ihren Platz aufziehen,
+// sonst rutscht der Content in einem Bild nach unten. Genau dieser Ruck faellt
+// gegen das ruhige Wiederauftauchen beim Hochscrollen sofort auf.
+test("back at the top the hidden row grows into its place instead of jumping into it", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  harness.scrollTo(400);
+  assert.equal(isRevealing(harness), false, "unterwegs zieht nichts auf");
+
+  harness.scrollTo(0);
+  assert.equal(isCollapsed(harness), false);
+  assert.equal(isRevealing(harness), true, "die Zeile zieht ihren Platz auf");
+  assert.equal(
+    harness.readStyle("--smart-header-tabs-reveal-height"),
+    "40px",
+    "aufgezogen wird auf die gemessene Zeilenhoehe"
+  );
+
+  harness.flushTimers();
+  assert.equal(isRevealing(harness), false, "nach dem Lauf raeumt sich die Zeile selbst auf");
+  assert.equal(harness.readStyle("--smart-header-tabs-reveal-height"), "");
+  assert.equal(isCollapsed(harness), false);
+});
+
+// Unterwegs gibt es Scroll-Weg zum Ausgleichen: dort bleibt der Content ohnehin
+// stehen, ein Aufziehen waere nur unnoetige Bewegung.
+test("mid scroll the chevron brings the row back by scroll, without growing it", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  harness.scrollTo(300);
+  harness.clickToggle();
+
+  assert.equal(isCollapsed(harness), false);
+  assert.equal(isRevealing(harness), false, "der Ausgleich laeuft ueber die Scroll-Position");
+  assert.equal(harness.windowObj.scrollY, 340, "die Seite zieht um die Zeilenhoehe mit");
 });
 
 test("after the row is back the normal scroll rule hides it again", () => {

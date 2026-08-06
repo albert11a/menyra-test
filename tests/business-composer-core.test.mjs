@@ -14,10 +14,10 @@ import {
 } from "../apps/menyra-social/core/composer/business-composer-controller.js";
 import {
   renderDashboardComposerCard,
-  renderDashboardComposerSplitCards,
   resolveDashboardKindCore,
   DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
+import * as dashboardRenderUtils from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 import { collectHotelRoomsCore } from "../apps/menyra-social/core/profile/hotel-rooms-utils.js";
 
 test("the whole composer card is the button, with the new title", () => {
@@ -89,11 +89,9 @@ test("modal carries its own bottom bar to switch between postim, story and profi
 });
 
 test("composer card styles keep the mockup layout", () => {
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-btn--primary {"));
-  // Abstand zur Begruessung darueber, kleinere Knoepfe.
+  // Abstand zur Begruessung darueber.
   assert.ok(DASHBOARD_CSS.includes("margin-top: 34px;"));
-  assert.ok(DASHBOARD_CSS.includes("min-height: 46px;"));
-  // Der ausgefuellte Knopf wirft keinen eigenen Schatten mehr.
+  // Im Panel wirft nichts einen eigenen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
   // Das Logo neben der Begruessung steht flach in der Seite, ohne Schatten.
   const greetLogoBlock = DASHBOARD_CSS.slice(
@@ -131,43 +129,17 @@ test("every panel card shares one radius, casts no shadow and wears the profile 
   // Der Lade-Platzhalter hat dieselbe Rundung, damit nichts springt.
   const skel = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__skeleton {"));
   assert.ok(skel.slice(0, skel.indexOf("}")).includes("border-radius: var(--dash-card-radius);"));
-  // Die Knoepfe behalten ihren Umriss - sie sind keine Karten.
-  const btn = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-btn {"));
-  assert.ok(btn.slice(0, btn.indexOf("}")).includes("border: 1px solid var(--dash-border);"));
 });
 
-test("two half cards sit under the composer card and share its width", () => {
-  const html = renderDashboardComposerSplitCards({ iconFn: (name) => `<i data-icon="${name}"></i>` });
-  // Eine Zeile mit zwei Karten - zusammen so breit wie "Posto n'Zbulo".
-  assert.ok(html.startsWith('<div class="mnyra-dash__composer-row">'));
-  assert.equal((html.match(/mnyra-dash__composer--split/g) || []).length, 2);
-  // Links Profil, rechts Meny - Wortbild wie bei "Posto n'Zbulo".
-  const left = html.indexOf(">Profil<");
-  const right = html.indexOf(">Meny<");
-  assert.ok(left > -1 && right > left, `${left}/${right}`);
-  assert.ok(html.includes(`Posto n'<span class="mnyra-dash__composer-accent">Profil</span>`));
-  assert.ok(html.includes(`Posto n'<span class="mnyra-dash__composer-accent">Meny</span>`));
-  assert.ok(html.includes("Postim që shfaqet në profilin tënd."));
-  assert.ok(html.includes("Produktet dhe kategoritë e menysë."));
-  // Profil oeffnet den Composer auf seiner eigenen Seite, Meny fuehrt in den
-  // Menue-Editor - beides ueber die schon vorhandenen Handler.
-  assert.ok(html.includes('data-dashboard-composer="profile"'));
-  assert.ok(html.includes('data-nav="menu"'));
-  assert.ok(html.includes('data-icon="plus"'));
-  assert.ok(html.includes('data-icon="utensils"'));
-  // Genau ein Knopf je Karte.
-  assert.equal((html.match(/<button/g) || []).length, 2);
-});
-
-test("half card styles share the composer surface and stack their button", () => {
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-row {"));
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer--split {"));
-  // Eine Spalte statt zwei, Knopf unten buendig.
-  assert.ok(DASHBOARD_CSS.includes("grid-template-columns: minmax(0, 1fr);"));
-  assert.ok(DASHBOARD_CSS.includes("margin-top: auto;"));
-  // Schrift der beiden vorgegebenen Texte bleibt unveraendert.
-  assert.ok(DASHBOARD_CSS.includes("font-size: 17px;\n  font-weight: 900;\n  letter-spacing: -0.01em;"));
-  assert.ok(DASHBOARD_CSS.includes("margin: 5px 0 0;\n  font-size: 11px;\n  font-weight: 700;\n  line-height: 1.45;"));
+// "Posto n'Profil" und "Posto n'Meny" sind als Karten raus: das Profil ist die
+// dritte Seite in der Leiste des Composers, die Menue-Pflege steht im
+// Schnellzugriff. Weder Markup noch Stile duerfen davon uebrig bleiben.
+test("the two half cards are gone from the panel, markup and styles alike", () => {
+  assert.equal(typeof dashboardRenderUtils.renderDashboardComposerSplitCards, "undefined");
+  assert.equal(DASHBOARD_CSS.includes("mnyra-dash__composer-row"), false);
+  assert.equal(DASHBOARD_CSS.includes("mnyra-dash__composer--split"), false);
+  assert.equal(DASHBOARD_CSS.includes("mnyra-dash__composer-actions"), false);
+  assert.equal(DASHBOARD_CSS.includes("mnyra-dash__composer-btn"), false);
 });
 
 test("publish is only possible with caption and image and never while posting", () => {
