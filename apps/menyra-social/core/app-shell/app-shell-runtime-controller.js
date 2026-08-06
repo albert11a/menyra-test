@@ -177,6 +177,13 @@ export function createAppShellRuntimeController(deps = {}) {
   // sticky belegen denselben Layout-Platz, das Umschalten kann also nie
   // springen. Nur der Pfeil oben blendet sie ganz aus (display:none).
   let mainHeaderTabsCollapsed = false;
+  // Ausgeblendet gilt nur fuer die Strecke nach unten: wer wieder ganz an den
+  // Seitenanfang scrollt, sieht die Zeile dort wieder stehen. Scharf gestellt
+  // wird das erst, wenn der Nutzer nach dem Ausblenden selbst gescrollt hat -
+  // sonst wuerde die eigene Scroll-Korrektur direkt nach dem Ausblenden schon
+  // als "wieder oben" gelesen und die Zeile sofort wieder aufklappen.
+  let mainHeaderTabsReopenAtTopArmed = false;
+  let mainHeaderTabsCollapseAnchorY = 0;
   let mainHeaderTabsStuck = false;
   let mainHeaderTabsRowHeight = 40;
   let mainHeaderTabsLastScrollY = 0;
@@ -184,6 +191,7 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsRafId = 0;
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
+  const MAIN_HEADER_TABS_REOPEN_ARM_PX = 6;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1614,15 +1622,37 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function setMainHeaderTabsCollapsed(next) {
     mainHeaderTabsCollapsed = !!next;
+    mainHeaderTabsReopenAtTopArmed = false;
+    mainHeaderTabsCollapseAnchorY = Math.max(0, Number(win?.scrollY || 0));
     doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
     if (mainHeaderTabsCollapsed) setMainHeaderTabsStuck(false);
     syncMainHeaderTabsChrome();
+  }
+
+  // Ausgeblendet heisst "unterwegs weg", nicht "fuer immer weg": scrollt der
+  // Nutzer nach dem Ausblenden wieder ganz an den Seitenanfang, steht die Zeile
+  // dort wieder - so als haette er sie nie zugemacht. Ab dann gilt die normale
+  // Regel: runterscrollen nimmt sie mit weg.
+  // Scharf wird das erst nach einem echten Scroll des Nutzers. Der Anker ist die
+  // Position direkt nach dem Ausblenden; die eigene Scroll-Korrektur von dort
+  // aendert nichts daran und kann die Zeile deshalb nicht sofort zurueckholen.
+  function syncMainHeaderTabsReopenAtTop(scrollY) {
+    if (!mainHeaderTabsCollapsed) return;
+    if (!mainHeaderTabsReopenAtTopArmed) {
+      if (Math.abs(scrollY - mainHeaderTabsCollapseAnchorY) > MAIN_HEADER_TABS_REOPEN_ARM_PX) {
+        mainHeaderTabsReopenAtTopArmed = true;
+      } else {
+        return;
+      }
+    }
+    if (scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX) setMainHeaderTabsCollapsed(false);
   }
 
   function syncMainHeaderTabsOnScroll() {
     const scrollY = Math.max(0, Number(win?.scrollY || 0));
     const previous = mainHeaderTabsLastScrollY;
     mainHeaderTabsLastScrollY = scrollY;
+    syncMainHeaderTabsReopenAtTop(scrollY);
     // Runterscrollen nimmt die per Pfeil geholte Zeile wieder weg; oben wird
     // das Kleben ueberfluessig, weil dort die normale Position dieselbe ist.
     if (mainHeaderTabsStuck
@@ -1705,9 +1735,11 @@ export function createAppShellRuntimeController(deps = {}) {
           if (!atTop) setMainHeaderTabsStuck(true);
         }
         measureMainHeaderTabsRowHeight(tabsEl);
-        // Nach einer eigenen Scroll-Korrektur den Bezugswert nachziehen, sonst
-        // liest der naechste Scroll-Tick das faelschlich als "runtergescrollt".
+        // Nach einer eigenen Scroll-Korrektur die Bezugswerte nachziehen, sonst
+        // liest der naechste Scroll-Tick das faelschlich als "runtergescrollt"
+        // bzw. als eigener Scroll des Nutzers.
         mainHeaderTabsLastScrollY = Math.max(0, Number(win.scrollY || 0));
+        mainHeaderTabsCollapseAnchorY = mainHeaderTabsLastScrollY;
         syncMainHeaderTabsChrome(true);
         syncSmartHeaderMetrics();
       };
@@ -2566,6 +2598,10 @@ export function createAppShellRuntimeController(deps = {}) {
     bindSearchEvents,
     bindCrmAutoLoadObserver,
     bindImageFallbacks,
+    // Fuer den Regressionstest der Header-Pills: die Scroll-Runtime der
+    // Tab-Zeile haengt sonst nur an echtem DOM.
+    initMainHeaderTabsRuntime,
+    isMainHeaderTabsCollapsed: () => mainHeaderTabsCollapsed,
     // Fuer den Regressionstest der Pin-Kopfzeile: Auf- und Zuklappen wird sonst
     // nur ueber den delegierten Klick am Dokument angestossen.
     syncSmartHeaderLocationRuntime,
