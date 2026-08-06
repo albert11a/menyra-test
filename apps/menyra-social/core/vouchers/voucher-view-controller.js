@@ -237,7 +237,7 @@ export function createVoucherViewController({
 
     return `
       <section class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500" data-voucher-feed>
-        <div class="mb-5">
+        <div class="mb-7" style="margin-bottom:1.75rem;">
           <h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Ofertat</h1>
           <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Ofertat speciale vetëm në mnyra")}</p>
         </div>
