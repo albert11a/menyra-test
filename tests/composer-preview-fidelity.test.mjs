@@ -107,3 +107,32 @@ test("composer story preview is the zbulo story row: own story sharp, neighbours
   assert.ok(!composerSource.includes('class="reel"'));
   assert.ok(!composerSource.includes("story-viewer-surface-css"));
 });
+
+test("composer posts videos the same way the upload screen does", async () => {
+  const composerSource = await readFile(repoUrl("apps/menyra-social/core/composer/business-composer-controller.js"), "utf8");
+  const uploadSource = await readFile(repoUrl("apps/menyra-social/core/media/media-upload-runtime-controller.js"), "utf8");
+  const appSource = await readFile(repoUrl("apps/menyra-social/social-app.js"), "utf8");
+  const dashboardSource = await readFile(repoUrl("apps/menyra-social/core/dashboard/dashboard-view-controller.js"), "utf8");
+
+  // Das Dateifeld nimmt Video an und die Medienart kommt aus derselben Regel
+  // wie im Upload-Screen - kein zweiter Erkenner.
+  assert.ok(composerSource.includes('accept="image/*,video/*"'));
+  assert.ok(composerSource.includes("detectUploadMediaTypeCore(file)"));
+  // Video geht roh hoch, Foto komprimiert - genau wie im Upload-Screen.
+  assert.ok(uploadSource.includes("uploadRawMediaFile"));
+  assert.ok(composerSource.includes("await uploadVideo(file, restaurantId)"));
+  // Poster (erstes Bild) wird mitgeschickt, damit die Kachel ohne Autoplay
+  // trotzdem ein Standbild hat.
+  assert.ok(composerSource.includes("uploadVideoPoster"));
+  assert.ok(composerSource.includes("posterUrl"));
+  // Die App reicht beide Funktionen durch bis zum Composer.
+  assert.ok(appSource.includes("uploadVideoFn:"));
+  assert.ok(appSource.includes("captureVideoPosterFn:"));
+  assert.ok(dashboardSource.includes("uploadVideoFn: composerApi.uploadVideoFn"));
+  assert.ok(dashboardSource.includes("captureVideoPosterFn: composerApi.captureVideoPosterFn"));
+  // Die Vorschau zeigt Videos wie der Feed: stumm, in Schleife, ohne Regler.
+  assert.equal((composerSource.match(/autoplay muted loop playsinline/g) || []).length, 2);
+  // Grenzen wie im Upload-Screen: 15MB Foto, 50MB Video.
+  assert.ok(composerSource.includes("const MAX_VIDEO_BYTES = 50 * 1024 * 1024;"));
+  assert.ok(uploadSource.includes("maxBytes = 50 * 1024 * 1024"));
+});

@@ -7,18 +7,37 @@ import {
   canPublishComposerDraftCore,
   BUSINESS_COMPOSER_CSS
 } from "../apps/menyra-social/core/composer/business-composer-controller.js";
-import { renderDashboardComposerCard } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
+import {
+  renderDashboardComposerCard,
+  DASHBOARD_CSS
+} from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 
 test("composer card offers postim and story with mnyra accent", () => {
   const html = renderDashboardComposerCard({ iconFn: (name) => `<i data-icon="${name}"></i>` });
+  // Ueberschrift und Untertitel bleiben Wort fuer Wort, wie sie waren.
   assert.ok(html.includes("Posto n'"));
   assert.ok(html.includes('<span class="mnyra-dash__composer-accent">Zbulo</span>'));
+  assert.ok(html.includes("Ndaj një postim ose një story me klientët e tu."));
   assert.ok(html.includes('data-dashboard-composer="post"'));
   assert.ok(html.includes('data-dashboard-composer="story"'));
   assert.ok(html.includes(">Postim<"));
   assert.ok(html.includes(">Story<"));
-  // Beide Knoepfe tragen ein Plus-Symbol.
-  assert.equal((html.match(/data-icon="plus"/g) || []).length, 2);
+  // Kopfzeile: Punkt vor der Ueberschrift, "Quick Create" rechts daneben.
+  assert.ok(html.includes('class="mnyra-dash__composer-dot"'));
+  assert.ok(html.includes('<span class="mnyra-dash__composer-badge">Quick Create</span>'));
+  // Postim ist der ausgefuellte Knopf mit Plus, Story traegt den Ring-Punkt.
+  assert.ok(html.includes('class="mnyra-dash__composer-btn mnyra-dash__composer-btn--primary" data-dashboard-composer="post"'));
+  assert.equal((html.match(/data-icon="plus"/g) || []).length, 1);
+  assert.ok(html.includes('<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle>'));
+});
+
+test("composer card styles keep the mockup layout", () => {
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-head {"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-badge {"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-btn--primary {"));
+  // Schrift der beiden vorgegebenen Texte bleibt unveraendert.
+  assert.ok(DASHBOARD_CSS.includes("font-size: 17px;\n  font-weight: 900;\n  letter-spacing: -0.01em;"));
+  assert.ok(DASHBOARD_CSS.includes("margin: 5px 0 0;\n  font-size: 11px;\n  font-weight: 700;\n  line-height: 1.45;"));
 });
 
 test("publish is only possible with caption and image and never while posting", () => {

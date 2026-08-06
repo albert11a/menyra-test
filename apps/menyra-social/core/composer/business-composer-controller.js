@@ -31,6 +31,8 @@ import {
   buildStoryTileShellStyleCore,
   buildStoryTileInnerStyleCore
 } from "../feed/story-tile-markup-utils.js";
+// Foto oder Video wird ueberall in der App mit derselben Regel erkannt.
+import { detectUploadMediaTypeCore } from "../media/media-upload-view-render-utils.js";
 
 const STYLE_ELEMENT_ID = "mnyraBusinessComposerStyles";
 // Die App-Shell ist max-w-md breit; darin steht der echte Feed.
@@ -45,7 +47,10 @@ const STORY_TRACK_NEIGHBOUR_SHADES = Object.freeze([
   "linear-gradient(150deg,#a5b4fc 0%,#6366f1 55%,#312e81 100%)"
 ]);
 const ROOT_ELEMENT_ID = "businessComposerOverlayRoot";
+// Dieselben Grenzen wie im Upload-Screen: Fotos werden komprimiert, Videos
+// gehen roh zum Media-Worker.
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const CAPTION_MAX_LENGTH = 600;
 const TOAST_ELEMENT_ID = "mnyraBusinessComposerToast";
 const APP_CHROME_COLOR = "#f8fafc";
@@ -59,17 +64,16 @@ const TEXT = Object.freeze({
   close: "Mbyll",
   placeholderPost: "Shkruaj diçka për postimin tënd…",
   placeholderStory: "Shkruaj diçka për story-n tënde…",
-  addPhoto: "Shto foto",
-  changePhoto: "Ndrysho foton",
+  addPhoto: "Shto foto/video",
+  changePhoto: "Ndrysho median",
   tagProduct: "Etiketo produkt",
   removeProduct: "Hiq produktin",
   productOptional: "Produkti nuk është i detyrueshëm.",
-  hintNeedBoth: "Që të postosh, duhen edhe teksti edhe fotoja.",
+  hintNeedBoth: "Që të postosh, duhen edhe teksti edhe fotoja ose videoja.",
   hintReady: "Gati për t'u postuar.",
   previewTitle: "Parapamje",
   previewPost: "Si duket në Zbulo",
   previewStory: "Në rreshtin e story-ve",
-  previewEmpty: "Zgjidh një foto për ta parë parapamjen.",
   pickerTitle: "Zgjidh një produkt",
   pickerSearch: "Kërko ushqime ose pije…",
   pickerConfirm: "Zgjidh produktin",
@@ -77,14 +81,14 @@ const TEXT = Object.freeze({
   pickerLoading: "Duke ngarkuar produktet…",
   pickerError: "Produktet nuk u ngarkuan.",
   pickerRetry: "Provo përsëri",
-  errorImageType: "Lejohet vetëm foto (JPG, PNG ose WEBP).",
+  errorMediaType: "Lejohen vetëm foto ose video.",
   errorImageSize: "Fotoja duhet të jetë deri në 15MB.",
+  errorVideoSize: "Videoja duhet të jetë deri në 50MB.",
   errorNoBusiness: "Kjo llogari nuk është e lidhur me një biznes.",
   errorGeneric: "Postimi dështoi. Provo përsëri.",
   errorOffline: "Nuk ka lidhje me internetin. Provo përsëri.",
   successPost: "Postimi u publikua.",
   successStory: "Story u publikua.",
-  captionFallback: "Pa tekst",
   businessFallback: "Biznesi im"
 });
 
@@ -681,6 +685,9 @@ export function createBusinessComposerController({
     : (() => ({ name: "", logoUrl: "" }));
   const loadProducts = typeof api.loadProductsFn === "function" ? api.loadProductsFn : null;
   const uploadImage = typeof api.uploadImageFn === "function" ? api.uploadImageFn : null;
+  // Videos gehen roh zum Media-Worker; das Poster ist das erste Bild daraus.
+  const uploadVideo = typeof api.uploadVideoFn === "function" ? api.uploadVideoFn : null;
+  const captureVideoPoster = typeof api.captureVideoPosterFn === "function" ? api.captureVideoPosterFn : null;
   const createPost = typeof api.createPostFn === "function" ? api.createPostFn : null;
   const createStory = typeof api.createStoryFn === "function" ? api.createStoryFn : null;
   const afterPublish = typeof api.afterPublishFn === "function" ? api.afterPublishFn : (() => {});
@@ -702,8 +709,8 @@ export function createBusinessComposerController({
   const escapeAttr = (value = "") => escapeHtml(String(value ?? ""));
 
   const drafts = {
-    post: { caption: "", file: null, previewUrl: "", product: null },
-    story: { caption: "", file: null, previewUrl: "", product: null }
+    post: { caption: "", file: null, previewUrl: "", mediaType: "", product: null },
+    story: { caption: "", file: null, previewUrl: "", mediaType: "", product: null }
   };
   const productState = { status: "idle", items: [], restaurantId: "" };
 
@@ -799,7 +806,7 @@ export function createBusinessComposerController({
           </div>
         </div>
       </div>
-      <input type="file" accept="image/*" data-bc-file hidden />
+      <input type="file" accept="image/*,video/*" data-bc-file hidden />
     `;
   }
 
@@ -884,8 +891,11 @@ export function createBusinessComposerController({
     const draft = drafts.post;
     const meta = resolveBusinessMeta();
     const previewUrl = String(draft.previewUrl || "").trim();
+    // Videos genau wie im Feed: stumm, in Schleife, ohne Bedienelemente.
     const heroInner = previewUrl
-      ? `<img src="${escapeAttr(previewUrl)}" decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`
+      ? (draft.mediaType === "video"
+        ? `<video src="${escapeAttr(previewUrl)}" autoplay muted loop playsinline preload="metadata" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
+        : `<img src="${escapeAttr(previewUrl)}" decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`)
       : "";
     const heroMediaHtml = `<span class="block w-full h-full appearance-none bg-transparent text-left" style="display:block;width:100%;height:100%;padding:0;margin:0;border:0;background:transparent;">${heroInner}</span>`;
     const logoImgHtml = meta.logoUrl
@@ -930,7 +940,9 @@ export function createBusinessComposerController({
     const meta = resolveBusinessMeta();
     const previewUrl = String(draft.previewUrl || "").trim();
     const mediaHtml = previewUrl
-      ? `<img src="${escapeAttr(previewUrl)}" decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />`
+      ? (draft.mediaType === "video"
+        ? `<video src="${escapeAttr(previewUrl)}" autoplay muted loop playsinline preload="metadata" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;"></video>`
+        : `<img src="${escapeAttr(previewUrl)}" decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />`)
       : renderStoryTileMediaFallbackCore({ iconFn: appIcon });
     const logoImgHtml = `<img src="${escapeAttr(meta.logoUrl)}" decoding="async" width="28" height="28" class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />`;
     return buildStoryTileMarkup({
@@ -1108,18 +1120,21 @@ export function createBusinessComposerController({
 
   function handleFileSelection(file) {
     if (!file) return;
-    const type = String(file.type || "").toLowerCase();
-    if (!type.startsWith("image/")) {
-      showError(TEXT.errorImageType);
+    // Foto oder Video - erkannt mit derselben Regel wie im Upload-Screen.
+    const mediaType = detectUploadMediaTypeCore(file);
+    if (!mediaType) {
+      showError(TEXT.errorMediaType);
       return;
     }
-    if (Number(file.size || 0) > MAX_IMAGE_BYTES) {
-      showError(TEXT.errorImageSize);
+    const isVideo = mediaType === "video";
+    if (Number(file.size || 0) > (isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
+      showError(isVideo ? TEXT.errorVideoSize : TEXT.errorImageSize);
       return;
     }
     const draft = currentDraft();
     releasePreviewUrl(draft.previewUrl);
     draft.file = file;
+    draft.mediaType = mediaType;
     draft.previewUrl = "";
     try {
       draft.previewUrl = win?.URL?.createObjectURL ? win.URL.createObjectURL(file) : "";
@@ -1383,7 +1398,24 @@ export function createBusinessComposerController({
     draft.caption = "";
     draft.file = null;
     draft.previewUrl = "";
+    draft.mediaType = "";
     draft.product = null;
+  }
+
+  // Poster fuer Video-Uploads: erstes Bild des Videos, hochgeladen wie ein
+  // Foto. Die Feed-Karte und die Story-Kachel zeigen damit sofort ein
+  // Standbild, auch wenn Autoplay blockiert ist. Fehler blockieren nie das
+  // Posten - dann bleibt das Poster eben leer.
+  async function uploadVideoPoster(file, restaurantId) {
+    if (!captureVideoPoster || !uploadImage) return "";
+    try {
+      const posterFile = await captureVideoPoster(file);
+      if (!posterFile) return "";
+      const uploaded = await uploadImage(posterFile, restaurantId);
+      return String(uploaded?.cdnUrl || uploaded?.url || "").trim();
+    } catch {
+      return "";
+    }
   }
 
   // Ein Guard, eine Wahrheit: der zweite Tap auf "Posto" faellt hier heraus,
@@ -1401,7 +1433,9 @@ export function createBusinessComposerController({
       showError(TEXT.errorOffline);
       return;
     }
-    if (!uploadImage || (mode === "story" ? !createStory : !createPost)) {
+    const mediaType = draft.mediaType === "video" ? "video" : "image";
+    const needsUploader = mediaType === "video" ? uploadVideo : uploadImage;
+    if (!needsUploader || (mode === "story" ? !createStory : !createPost)) {
       showError(TEXT.errorGeneric);
       return;
     }
@@ -1412,9 +1446,12 @@ export function createBusinessComposerController({
     setBusy(true);
     showError("");
     try {
-      const uploaded = await uploadImage(file, restaurantId);
+      const uploaded = mediaType === "video"
+        ? await uploadVideo(file, restaurantId)
+        : await uploadImage(file, restaurantId);
       const mediaUrl = String(uploaded?.cdnUrl || uploaded?.url || "").trim();
       if (!mediaUrl) throw new Error(TEXT.errorGeneric);
+      const posterUrl = mediaType === "video" ? await uploadVideoPoster(file, restaurantId) : "";
 
       if (publishMode === "story") {
         const product = draft.product;
@@ -1422,7 +1459,8 @@ export function createBusinessComposerController({
           restaurantId,
           caption,
           mediaUrl,
-          mediaType: "image",
+          mediaType,
+          posterUrl,
           menuItemId: product?.id || "",
           menuItemName: product?.name || "",
           menuItemPrice: product?.price ?? "",
@@ -1433,7 +1471,8 @@ export function createBusinessComposerController({
           restaurantId,
           caption,
           mediaUrl,
-          mediaType: "image"
+          mediaType,
+          posterUrl
         });
       }
 

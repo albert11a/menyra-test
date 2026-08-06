@@ -199,6 +199,10 @@ export function createDashboardViewController({
               },
               loadProductsFn: (rid) => loadComposerProducts(rid),
               uploadImageFn: composerApi.uploadImageFn,
+              // Video-Upload + Poster-Standbild: derselbe Weg wie im
+              // Upload-Screen.
+              uploadVideoFn: composerApi.uploadVideoFn,
+              captureVideoPosterFn: composerApi.captureVideoPosterFn,
               createPostFn: composerApi.createPostFn,
               createStoryFn: composerApi.createStoryFn,
               formatPriceFn: composerApi.formatPriceFn,

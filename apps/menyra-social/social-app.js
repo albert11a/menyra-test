@@ -2107,6 +2107,16 @@ function getDashboardViewController() {
           quality: 0.78,
           mimeType: "image/jpeg"
         }),
+        // Videos: derselbe Weg wie im Upload-Screen - roh zum Media-Worker,
+        // dazu das erste Bild als Poster.
+        uploadVideoFn: async (file, ownerId) => {
+          const controller = await ensureMediaUploadRuntimeController();
+          return controller.uploadRawMediaFile(file, ownerId);
+        },
+        captureVideoPosterFn: async (file) => {
+          const controller = await ensureMediaUploadRuntimeController();
+          return controller.captureVideoPosterFile(file);
+        },
         createPostFn: async (payload = {}) => {
           const controller = await ensureMediaUploadRuntimeController();
           return controller.createBusinessPost(payload);

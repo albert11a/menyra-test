@@ -61,8 +61,8 @@
       "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js"
     ]
   },
-  "_domain-dashboard-CZtYQNeK.js": {
-    "file": "chunks/domain-dashboard-CZtYQNeK.js",
+  "_domain-dashboard-DUZpW8mN.js": {
+    "file": "chunks/domain-dashboard-DUZpW8mN.js",
     "name": "domain-dashboard",
     "imports": [
       "_domain-auth-Aq-4Vdvh.js",
@@ -185,15 +185,15 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/composer/business-composer-controller.js": {
-    "file": "chunks/business-composer-controller-DHSx00x3.js",
+    "file": "chunks/business-composer-controller-DSnLaCwi.js",
     "name": "business-composer-controller",
     "src": "apps/menyra-social/core/composer/business-composer-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "_domain-feed-social-eager-CAMxL9w6.js",
+      "_domain-media-eager-B3Bb4ghO.js",
       "_domain-auth-Aq-4Vdvh.js",
       "_domain-public-profile-mLQti0eH.js",
-      "_domain-media-eager-B3Bb4ghO.js",
       "_domain-menu-eager-Ca3mC5Kt.js"
     ]
   },
@@ -212,7 +212,7 @@
     ]
   },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
-    "file": "chunks/discovery-runtime-controller-9ZdcZgCi.js",
+    "file": "chunks/discovery-runtime-controller-Sp7kTOT1.js",
     "name": "discovery-runtime-controller",
     "src": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
     "isDynamicEntry": true,
@@ -239,7 +239,7 @@
       "_domain-orders-eager-B_q2gwm9.js",
       "_domain-marketplace-eager-h1O0CZTt.js",
       "_domain-analytics-jv5B-kA2.js",
-      "_domain-dashboard-CZtYQNeK.js",
+      "_domain-dashboard-DUZpW8mN.js",
       "_domain-chat-eager-CVLX32J1.js",
       "_domain-app-events-HY42mRmb.js"
     ]
@@ -429,7 +429,7 @@
       "_domain-orders-eager-B_q2gwm9.js",
       "_domain-marketplace-eager-h1O0CZTt.js",
       "_domain-analytics-jv5B-kA2.js",
-      "_domain-dashboard-CZtYQNeK.js",
+      "_domain-dashboard-DUZpW8mN.js",
       "_domain-chat-eager-CVLX32J1.js",
       "_domain-map-BjqpyoLm.js",
       "_domain-leads-Dt-penIz.js",
