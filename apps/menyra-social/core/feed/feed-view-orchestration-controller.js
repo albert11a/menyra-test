@@ -3817,7 +3817,11 @@ export function createFeedViewOrchestrationController({
       });
       const trackStories = stories;
       feedBentoContent = `
-        <div id="storiesRow" class="app-content-inline pt-6">
+        <div class="app-content-inline pt-6 mb-5" style="margin-bottom:1.25rem;">
+          <h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">${escapeHtmlFn("Qa ka t're?")}</h1>
+          <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtmlFn("Bëhu njo me qytetin tonë")}</p>
+        </div>
+        <div id="storiesRow" class="app-content-inline">
           ${renderStoriesRow(trackStories, feedPosts, {
             fallbackFeedPosts: feedPosts,
             fallbackStories: trackStories
