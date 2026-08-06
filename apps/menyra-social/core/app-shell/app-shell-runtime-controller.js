@@ -189,6 +189,14 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsBootLockBound = false;
   let mainHeaderTabsBootCorrections = 0;
   const MAIN_HEADER_TABS_BOOT_MAX_CORRECTIONS = 4;
+  // Der Pin in der Kopfzeile klappt das Location-Feld auf. Der Zustand lebt hier
+  // im Modul und nicht im gerenderten HTML: dadurch ueberlebt er jeden
+  // Re-Render, das Umschalten kostet keinen Neuaufbau der Kopfzeile und der
+  // getippte Stadtname bleibt beim Tippen stehen.
+  let smartHeaderLocationExpanded = false;
+  let smartHeaderLocationKey = "";
+  let smartHeaderLocationDelegationBound = false;
+  let smartHeaderLocationFocusRafId = 0;
   const MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS = Object.freeze([
     "pointerdown",
     "touchstart",
@@ -841,6 +849,38 @@ export function createAppShellRuntimeController(deps = {}) {
     );
   }
 
+  // Das Textlogo der Kopfzeile. Es steht in beiden Zustaenden im DOM: zu ist es
+  // zu sehen, offen nimmt das Location-Feld seinen Platz ein (CSS entscheidet).
+  function renderSmartHeaderBrandLogo() {
+    return `
+      <div class="smart-header-brand flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
+        <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
+      </div>
+    `;
+  }
+
+  function renderSmartHeaderLocationToggle(buttonClass = "", iconClass = "w-5 h-5") {
+    const label = tr("header.changeLocation", "Ndrysho vendndodhjen");
+    // aria-expanded steht hier bewusst fest auf "false": den echten Zustand
+    // setzt applySmartHeaderLocationChrome() direkt am DOM. So bleibt das
+    // gerenderte HTML beim Auf- und Zuklappen gleich und der Re-Render-Vergleich
+    // der App-Shell wirft die Kopfzeile (und getippten Text) nicht weg.
+    return `
+      <button
+        type="button"
+        data-smart-header-location-toggle="true"
+        aria-controls="feedLocationCityInput"
+        aria-expanded="false"
+        aria-label="${escapeHtml(label)}"
+        title="${escapeHtml(label)}"
+        class="smart-header-location-btn ${buttonClass}"
+      >
+        ${icon("map-pin", iconClass)}
+      </button>
+    `;
+  }
+
   function renderFeedLocationHeaderSearch(locationLabel = "") {
     return `
       <div class="smart-header-feed-location" data-feed-location-scope="header">
@@ -1110,20 +1150,15 @@ export function createAppShellRuntimeController(deps = {}) {
       <div class="smart-header-shell${hasHeaderTabs ? " smart-header-shell--split" : ""}">
         <div id="smart-header-top" class="smart-header-top">
           <div class="${headerRowPaddingClass} h-16 flex items-center justify-between">
-            <div class="flex items-center ${headerLeadGapClass}${showFeedLocationHeaderSearch ? " flex-1 min-w-0 pr-2" : ""}">
+            <div class="smart-header-lead${showFeedLocationHeaderSearch ? " smart-header-lead--location" : ""} flex items-center ${headerLeadGapClass}${showFeedLocationHeaderSearch ? " flex-1 min-w-0" : ""}">
               <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="${drawerButtonClass}">
                 ${icon("menu", drawerIconClass)}
               </button>
-              ${showFeedLocationHeaderSearch
-                ? renderFeedLocationHeaderSearch(feedLocationLabel)
-                : `
-                  <div class="flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
-                    <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
-                    <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
-                  </div>
-                `}
+              ${renderSmartHeaderBrandLogo()}
+              ${showFeedLocationHeaderSearch ? renderFeedLocationHeaderSearch(feedLocationLabel) : ""}
             </div>
             <div class="smart-header-actions flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
+              ${showFeedLocationHeaderSearch ? renderSmartHeaderLocationToggle(actionButtonClass, actionIconClass) : ""}
               ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
               <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${actionButtonClass}">
                 ${icon("user", actionIconClass)}
@@ -1708,6 +1743,177 @@ export function createAppShellRuntimeController(deps = {}) {
     win.addEventListener("scroll", mainHeaderTabsScrollListener, { passive: true });
   }
 
+  // ---------------------------------------------------------------------------
+  // Pin in der Kopfzeile: zu zeigt die Zeile das Textlogo, offen das
+  // Location-Feld. Beides liegt gleichzeitig im DOM, umgeschaltet wird nur eine
+  // Klasse am <html>. Deshalb ist der Wechsel sofort da (kein Re-Render), das
+  // Feld verliert nie seinen Inhalt und der Zustand kann nicht auseinanderlaufen.
+  // ---------------------------------------------------------------------------
+  function getSmartHeaderLocationScopeEl() {
+    return doc?.querySelector?.('[data-feed-location-scope="header"]') || null;
+  }
+
+  // Bewusst ohne instanceof-Pruefungen auf Browser-Globals: die Kopfzeile prueft
+  // nur, was sie wirklich benutzt. Das kann in keiner Umgebung werfen.
+  function getSmartHeaderLocationInputEl() {
+    const input = doc?.getElementById?.("feedLocationCityInput");
+    return input && typeof input === "object" && "value" in input ? input : null;
+  }
+
+  function isSmartHeaderEventTarget(target) {
+    return !!target && typeof target.closest === "function";
+  }
+
+  // Dieselben vier DOM-Schritte wie hideFeedLocationSuggestions() im
+  // Feed-Controller. Bewusst hier nachgebaut, damit die Kopfzeile ihre
+  // Aufklapp-Mechanik ohne Abhaengigkeit zum Feed-Modul zumachen kann.
+  function hideSmartHeaderLocationSuggestions() {
+    const suggestionsRoot = doc?.getElementById?.("feedLocationCitySuggestions");
+    if (suggestionsRoot) {
+      suggestionsRoot.classList?.remove?.("feed-location-suggestions--open");
+      suggestionsRoot.setAttribute?.("aria-hidden", "true");
+      suggestionsRoot.innerHTML = "";
+    }
+    getSmartHeaderLocationInputEl()?.setAttribute?.("aria-expanded", "false");
+  }
+
+  // Halb getippte Eingaben duerfen nicht stehen bleiben: beim Auf- und Zumachen
+  // steht im Feld immer die Stadt, die wirklich gesetzt ist.
+  function resetSmartHeaderLocationInputValue() {
+    const input = getSmartHeaderLocationInputEl();
+    if (!input) return;
+    const record = readStoredFeedViewerLocation();
+    const label = String(record?.label || record?.city || "").trim();
+    if (input.value !== label) input.value = label;
+  }
+
+  function clearSmartHeaderLocationFocusFrame() {
+    if (win && smartHeaderLocationFocusRafId) {
+      win.cancelAnimationFrame?.(smartHeaderLocationFocusRafId);
+    }
+    smartHeaderLocationFocusRafId = 0;
+  }
+
+  function applySmartHeaderLocationChrome() {
+    // Ohne Location-Feld in der Zeile kann nichts offen sein - dann bleibt das
+    // Textlogo stehen, egal was der Zustand vorher sagte.
+    const open = smartHeaderLocationExpanded && !!getSmartHeaderLocationScopeEl();
+    doc?.documentElement?.classList?.toggle?.("smart-header-location-open", open);
+    const toggleEl = doc?.querySelector?.("[data-smart-header-location-toggle]");
+    toggleEl?.setAttribute?.("aria-expanded", open ? "true" : "false");
+    toggleEl?.classList?.toggle?.("smart-header-location-btn--active", open);
+  }
+
+  function focusSmartHeaderLocationInput() {
+    const input = getSmartHeaderLocationInputEl();
+    if (!input) return;
+    const focusInput = () => {
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        try {
+          input.focus();
+        } catch {}
+      }
+      try {
+        input.select?.();
+      } catch {}
+    };
+    // Erster Versuch noch im Klick des Nutzers: nur so oeffnet iOS die Tastatur.
+    focusInput();
+    if (doc?.activeElement === input) return;
+    // Zweiter Versuch im naechsten Frame, falls das Feld beim Klick noch nicht
+    // sichtbar gerechnet war.
+    clearSmartHeaderLocationFocusFrame();
+    if (!win?.requestAnimationFrame) return;
+    smartHeaderLocationFocusRafId = win.requestAnimationFrame(() => {
+      smartHeaderLocationFocusRafId = 0;
+      if (!smartHeaderLocationExpanded) return;
+      const nextInput = getSmartHeaderLocationInputEl();
+      if (!nextInput || doc?.activeElement === nextInput) return;
+      focusInput();
+    }) || 0;
+  }
+
+  function setSmartHeaderLocationExpanded(next, { focusInput = false } = {}) {
+    const wanted = !!next && !!getSmartHeaderLocationScopeEl();
+    if (wanted === smartHeaderLocationExpanded) {
+      applySmartHeaderLocationChrome();
+      return;
+    }
+    smartHeaderLocationExpanded = wanted;
+    clearSmartHeaderLocationFocusFrame();
+    hideSmartHeaderLocationSuggestions();
+    resetSmartHeaderLocationInputValue();
+    applySmartHeaderLocationChrome();
+    if (!wanted) {
+      const input = getSmartHeaderLocationInputEl();
+      if (input && doc?.activeElement === input) {
+        try {
+          input.blur();
+        } catch {}
+      }
+      return;
+    }
+    if (focusInput) focusSmartHeaderLocationInput();
+  }
+
+  function bindSmartHeaderLocationDelegation() {
+    if (!doc || smartHeaderLocationDelegationBound) return;
+    smartHeaderLocationDelegationBound = true;
+
+    // Delegiert am Dokument und nur ein einziges Mal gebunden: der Pin
+    // funktioniert damit auch nach jedem Neuaufbau der Kopfzeile weiter.
+    doc.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!isSmartHeaderEventTarget(target)) return;
+      if (!target.closest("[data-smart-header-location-toggle]")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setSmartHeaderLocationExpanded(!smartHeaderLocationExpanded, { focusInput: true });
+    });
+
+    // Tippen ausserhalb macht das Feld wieder zu. So kann das Textlogo nie
+    // dauerhaft verdeckt bleiben, auch wenn jemand den Pin nicht mehr trifft.
+    // Capture-Phase, damit ein stopPropagation des getroffenen Elements den
+    // Griff nicht verschluckt; verhindert wird dabei nichts.
+    doc.addEventListener("pointerdown", (event) => {
+      if (!smartHeaderLocationExpanded) return;
+      const target = event.target;
+      if (!isSmartHeaderEventTarget(target)) return;
+      if (target.closest('[data-feed-location-scope="header"]')) return;
+      if (target.closest("[data-smart-header-location-toggle]")) return;
+      setSmartHeaderLocationExpanded(false);
+    }, true);
+  }
+
+  // Laeuft nach jedem Render. Haelt Klasse und aria am DOM richtig und macht das
+  // Feld zu, sobald die Stadt wirklich gewechselt hat - dann ist der Auftrag des
+  // Pins erledigt und das Textlogo darf zurueck.
+  function syncSmartHeaderLocationRuntime() {
+    bindSmartHeaderLocationDelegation();
+    if (!getSmartHeaderLocationScopeEl()) {
+      smartHeaderLocationExpanded = false;
+      smartHeaderLocationKey = "";
+      clearSmartHeaderLocationFocusFrame();
+      applySmartHeaderLocationChrome();
+      return;
+    }
+    const currentKey = buildFeedLocationRenderKey();
+    const didLocationChange = !!smartHeaderLocationKey && currentKey !== smartHeaderLocationKey;
+    smartHeaderLocationKey = currentKey;
+    if (didLocationChange && smartHeaderLocationExpanded) {
+      const input = getSmartHeaderLocationInputEl();
+      // Schreibt der Nutzer gerade noch, bleibt das Feld offen - zugemacht wird
+      // es dann durch den Pin oder durch Tippen ausserhalb.
+      if (!input || doc?.activeElement !== input) {
+        setSmartHeaderLocationExpanded(false);
+        return;
+      }
+    }
+    applySmartHeaderLocationChrome();
+  }
+
   function stopSmartHeaderVisibilitySync({ resetState = true } = {}) {
     stopMainHeaderTabsRuntime();
     if (win && typeof smartHeaderScrollListener === "function") {
@@ -2025,6 +2231,9 @@ export function createAppShellRuntimeController(deps = {}) {
       }
       lastHeaderRuntimeMode = nextHeaderRuntimeMode;
     }
+    // Bewusst bei jedem Render und ausserhalb des Blocks oben: der Pin-Zustand
+    // muss auch dann am DOM stehen, wenn die Kopfzeile unverandert geblieben ist.
+    syncSmartHeaderLocationRuntime();
 
     const nextOverlayRenderSignature = buildOverlayRenderSignature();
     if (changed || nextOverlayRenderSignature !== lastOverlayRenderSignature) {
@@ -2365,6 +2574,11 @@ export function createAppShellRuntimeController(deps = {}) {
     bindAppEvents,
     bindSearchEvents,
     bindCrmAutoLoadObserver,
-    bindImageFallbacks
+    bindImageFallbacks,
+    // Fuer den Regressionstest der Pin-Kopfzeile: Auf- und Zuklappen wird sonst
+    // nur ueber den delegierten Klick am Dokument angestossen.
+    syncSmartHeaderLocationRuntime,
+    setSmartHeaderLocationExpanded,
+    isSmartHeaderLocationExpanded: () => smartHeaderLocationExpanded
   };
 }

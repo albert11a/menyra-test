@@ -56,6 +56,7 @@ export default {
   "auth.fillAll": "Molimo popunite sve.",
   "auth.loginFailed": "Prijava nije uspela.",
   "header.useLocation": "Koristi lokaciju",
+  "header.changeLocation": "Promeni lokaciju",
   "header.callWaiter": "Pozovi konobara",
   "header.toggleTabs": "Prikazi ili sakrij tabove",
   "feed.locationPlaceholder": "Unesi svoj grad...",

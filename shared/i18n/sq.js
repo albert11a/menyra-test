@@ -56,6 +56,7 @@ export default {
   "auth.fillAll": "Ju lutem plotesoni gjithcka.",
   "auth.loginFailed": "Hyrja deshtoi.",
   "header.useLocation": "Perdor vendndodhjen",
+  "header.changeLocation": "Ndrysho vendndodhjen",
   "header.callWaiter": "Thirr kamarierin",
   "header.toggleTabs": "Shfaq ose fsheh tabet",
   "feed.locationPlaceholder": "Vendos qytetin tend...",

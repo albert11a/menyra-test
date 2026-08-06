@@ -56,6 +56,7 @@ export default {
   "auth.fillAll": "Bitte alles ausfuellen.",
   "auth.loginFailed": "Login fehlgeschlagen.",
   "header.useLocation": "Standort nutzen",
+  "header.changeLocation": "Standort aendern",
   "header.callWaiter": "Kellner rufen",
   "header.toggleTabs": "Tabs ein- und ausblenden",
   "feed.locationPlaceholder": "Gib deine Stadt ein...",
