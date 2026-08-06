@@ -1,3 +1,7 @@
+import { isImageUrlLoaded } from "../../_shared/image-resolver.js";
+
+const FEED_EAGER_POST_LIMIT = 6;
+
 export function createFeedViewOrchestrationController({
   state = null,
   toDateSafeFn = (value) => value,
@@ -3273,13 +3277,6 @@ export function createFeedViewOrchestrationController({
     const logoKeyAttr = postId ? `data-img-key="feed-logo:${escapeHtmlFn(postId)}"` : "";
     const heroKeyAttr = postId ? `data-img-key="feed-hero:${escapeHtmlFn(postId)}"` : "";
     const feedRenderAttr = `data-feed-render-sig="${escapeHtmlFn(buildFeedRenderSignature(post))}"`;
-    const eager = index < 2;
-    const heroAttrs = eager
-      ? `loading="eager" fetchpriority="high"`
-      : `loading="lazy" fetchpriority="low"`;
-    const logoAttrs = eager
-      ? `loading="eager"`
-      : `loading="lazy" fetchpriority="low"`;
     const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || post.logo || "";
     const logoUrl = resolveRestaurantLogoFn(post.restaurantId || post.ownerId, logoSource, "avatar");
@@ -3288,11 +3285,29 @@ export function createFeedViewOrchestrationController({
     });
     // Responsive Kandidaten (kleines Display / 3G laedt kleines Bild). Ohne
     // stableKey, damit der Last-Good-Cache nur an der src-Variante haengt.
+    const heroSmallUrl = getOptimizedImageUrlFn(post.image, "small");
+    const heroLargeUrl = getOptimizedImageUrlFn(post.image, "large");
     const heroSrcset = escapeHtmlFn(
-      `${getOptimizedImageUrlFn(post.image, "small")} 480w, `
+      `${heroSmallUrl} 480w, `
       + `${imageUrl} 768w, `
-      + `${getOptimizedImageUrlFn(post.image, "large")} 1280w`
+      + `${heroLargeUrl} 1280w`
     );
+    // Beim Wechsel zwischen den Kopf-Tabs wird der Feed neu aufgebaut. Bilder,
+    // die in dieser Sitzung schon einmal standen, liegen beim Browser bereit
+    // und werden sofort geholt statt erst beim Heranscrollen - sonst blitzt
+    // die graue Flaeche darunter auf. Welche der drei Groessen das Geraet
+    // genommen hat, entscheidet es selbst, also zaehlt jede von ihnen.
+    // Sofort holen duerfen nur die vordersten Beitraege: sonst forderte ein
+    // schon einmal durchgescrollter Feed beim Zurueckkommen alle Bilder auf
+    // einen Schlag an.
+    const heroReady = [imageUrl, heroSmallUrl, heroLargeUrl].some((entry) => isImageUrlLoaded(entry));
+    const eager = index < 2 || (heroReady && index < FEED_EAGER_POST_LIMIT);
+    const heroAttrs = eager
+      ? `loading="eager" fetchpriority="high"`
+      : `loading="lazy" fetchpriority="low"`;
+    const logoAttrs = (index < 2 || (isImageUrlLoaded(logoUrl) && index < FEED_EAGER_POST_LIMIT))
+      ? `loading="eager"`
+      : `loading="lazy" fetchpriority="low"`;
     const heroSizes = "(max-width: 640px) 100vw, 600px";
     // Video-Posts: Loop-Autoplay (stumm) statt statischem Bild. Bild-Posts
     // rendern exakt wie zuvor (unveraendert). Poster = Titelbild fuer Cold/3G.
@@ -3304,7 +3319,7 @@ export function createFeedViewOrchestrationController({
     // (dort Standbild + Play-Button, siehe Profil-/Modal-Renderer).
     const heroInner = (post.isVideo && post.videoUrl)
       ? `<video src="${escapeHtmlFn(post.videoUrl)}" poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline preload="none" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
-      : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
+      : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="${heroReady ? "sync" : "async"}" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
     // Klick auf das Beitragsbild/-video oeffnet den Beitrag im Modal - dort
     // stehen Text, Likes und Kommentare. Die Stories bleiben ueber die
     // Story-Kreise oben erreichbar; der Beitrag fuehrt nicht mehr dorthin.
@@ -3334,7 +3349,7 @@ export function createFeedViewOrchestrationController({
         ${iconFn("more-horizontal", "w-5 h-5 text-slate-400")}
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
-        <div class="relative rounded-[3rem] overflow-hidden bg-slate-200" style="aspect-ratio:4/5">
+        <div class="relative rounded-[3rem] overflow-hidden ${heroReady ? "" : "bg-slate-200"}" style="aspect-ratio:4/5">
           ${heroMediaHtml}
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">

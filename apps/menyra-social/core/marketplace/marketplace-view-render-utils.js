@@ -1007,16 +1007,32 @@ export function filterMarketplaceBusinessesCore(state = {}, sectionKey = "", dep
 function renderImage(url = "", alt = "", {
   escapeHtml,
   isPlaceholderUrl,
+  isImageReady,
+  allowEager = false,
   extraClass = ""
 } = {}) {
   const safeUrl = cleanText(url);
   const usePlaceholder = !safeUrl || (typeof isPlaceholderUrl === "function" && isPlaceholderUrl(safeUrl));
+  // War dieses Bild in dieser Sitzung schon einmal da, liegt es beim Browser
+  // fertig bereit: dann wird es im selben Bild gezeichnet statt erst spaeter
+  // nachzupoppen, und die graue Flaeche darunter entfaellt - beim Wechsel
+  // zwischen den Kopf-Tabs blitzt so nichts auf. Neue Bilder bleiben
+  // unveraendert sparsam.
+  const isReady = !usePlaceholder
+    && typeof isImageReady === "function"
+    && !!isImageReady(safeUrl);
+  // Sofort holen duerfen nur die vordersten Karten. Sonst wuerde eine lange,
+  // schon einmal durchgescrollte Liste beim Zurueckkommen auf einen Schlag
+  // alle ihre Bilder anfordern - das waere schlechter als das kurze Grau.
+  const eager = isReady && !!allowEager;
   return `
     <img
       src="${escapeHtml(safeUrl)}"
       alt="${escapeHtml(alt)}"
-      loading="lazy"
-      class="w-full h-full object-cover bg-slate-100 ${extraClass}"
+      loading="${eager ? "eager" : "lazy"}"
+      decoding="${isReady ? "sync" : "async"}"
+      ${eager ? 'fetchpriority="high"' : ""}
+      class="w-full h-full object-cover ${isReady ? "" : "bg-slate-100"} ${extraClass}"
       ${usePlaceholder ? 'data-placeholder-image="true"' : ""}
     />
   `;
@@ -1122,15 +1138,22 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
   const showBestChoice = ad.bestChoiceBadgeEnabled !== false;
   const showDelivery = ad.deliveryBadgeEnabled !== false;
   const showWolt = ad.woltEnabled !== false;
+  // Stand dieses Partnerbild in dieser Sitzung schon einmal da, wird es sofort
+  // geholt und gezeichnet - und die graue Flaeche darunter bleibt weg, damit
+  // beim Wechsel zwischen den Kopf-Tabs nichts aufblitzt.
+  const adImageReady = !!image
+    && typeof deps.isImageReady === "function"
+    && !!deps.isImageReady(image);
   return `
     <article class="w-72 h-[24rem] flex-shrink-0 bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden border border-slate-100 snap-start relative group" style="width:min(18rem, calc(100vw - 4.5rem));height:24rem;flex:0 0 auto;border-radius:1.5rem;border:1px solid #f1f5f9;background:#fff;">
-      <div class="relative h-44 flex-shrink-0 overflow-hidden bg-slate-100" style="height:11rem;flex:0 0 auto;background:#f1f5f9;">
+      <div class="relative h-44 flex-shrink-0 overflow-hidden ${adImageReady ? "" : "bg-slate-100"}" style="height:11rem;flex:0 0 auto;${adImageReady ? "" : "background:#f1f5f9;"}">
         ${image ? `
           <img
             src="${escapeHtml(image)}"
             alt="${escapeHtml(title)}"
-            loading="lazy"
-            decoding="async"
+            loading="${adImageReady ? "eager" : "lazy"}"
+            decoding="${adImageReady ? "sync" : "async"}"
+            ${adImageReady ? 'fetchpriority="high"' : ""}
             class="w-full h-full object-cover"
             style="width:100%;height:100%;object-fit:cover;object-position:${cropX}% ${cropY}%;"
           />
@@ -1687,7 +1710,11 @@ function renderRestaurantsListHeader({ hasAds = false, scopeLabel = "", deps = {
   `;
 }
 
-function renderRestaurantListCard(record = {}, deps = {}) {
+// Die vordersten Karten stehen beim Betreten des Tabs sichtbar da - nur sie
+// duerfen bekannte Bilder sofort holen.
+const RESTAURANT_EAGER_CARD_LIMIT = 6;
+
+function renderRestaurantListCard(record = {}, deps = {}, index = 0) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   const cardIcon = (name, className) => renderRestaurantCardIcon(name, className, deps);
@@ -1708,7 +1735,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
   return `
     <article data-restaurant-card data-restaurant-search-text="${escapeHtml(buildRestaurantSearchKey(record))}" class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
       <div class="h-44 relative overflow-hidden group">
-        ${renderImage(coverImage, name, { ...deps, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
+        ${renderImage(coverImage, name, { ...deps, allowEager: index < RESTAURANT_EAGER_CARD_LIMIT, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
         <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-black/20" style="background:linear-gradient(to top,#fff 0%,rgba(255,255,255,0.2) 50%,rgba(0,0,0,0.2) 100%);"></div>
 
         <div class="absolute top-3.5 right-3.5 flex gap-2 z-10" style="top:0.875rem;right:0.875rem;">
@@ -1742,7 +1769,7 @@ function renderRestaurantListCard(record = {}, deps = {}) {
       <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5" style="padding-top:3rem;gap:0.875rem;">
         <div class="absolute -top-10 left-5 z-10" style="top:-2.5rem;left:1.25rem;">
           <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden" style="width:76px;height:76px;">
-            ${renderImage(logoImage, `${name} Logo`, { ...deps, extraClass: "rounded-full" })}
+            ${renderImage(logoImage, `${name} Logo`, { ...deps, allowEager: index < RESTAURANT_EAGER_CARD_LIMIT, extraClass: "rounded-full" })}
           </div>
         </div>
 
@@ -1993,7 +2020,7 @@ function renderRestaurantsContent({
     </p>
 
     <div data-restaurant-list class="space-y-4">
-      ${items.map((record) => renderRestaurantListCard(record, deps)).join("")}
+      ${items.map((record, index) => renderRestaurantListCard(record, deps, index)).join("")}
     </div>
   `;
 }
@@ -2829,7 +2856,8 @@ export function renderMarketplaceViewCore({
   normalizeRestaurantTypeFn,
   normalizeLeadTypeKeyFn,
   resolveRestaurantLogoFn,
-  renderMapViewFn
+  renderMapViewFn,
+  isImageReadyFn
 } = {}) {
   const section = MARKETPLACE_SECTIONS[normalizeSectionKey(sectionKey)] || MARKETPLACE_SECTIONS.restaurants;
   const escapeHtml = asFn(escapeHtmlFn, (value = "") => String(value || ""));
@@ -2839,6 +2867,7 @@ export function renderMarketplaceViewCore({
     icon,
     getOptimizedImageUrl: getOptimizedImageUrlFn,
     isPlaceholderUrl: isPlaceholderUrlFn,
+    isImageReady: isImageReadyFn,
     placeholderImage,
     resolveRestaurantLogo: resolveRestaurantLogoFn,
     renderMapView: renderMapViewFn,

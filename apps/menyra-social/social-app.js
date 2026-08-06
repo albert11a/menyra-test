@@ -48,7 +48,14 @@ import {
   buildUrl,
   qs
 } from "./_shared/social-core.js";
-import { getOptimizedImageUrl, getFirebaseStorageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
+import {
+  getOptimizedImageUrl,
+  getFirebaseStorageUrl,
+  isPlaceholderUrl,
+  isImageUrlLoaded,
+  installImageLoadTracking,
+  PLACEHOLDER_IMAGE
+} from "./_shared/image-resolver.js";
 import {
   safeStorage,
   STORAGE_KEYS,
@@ -2008,6 +2015,7 @@ function getMarketplaceRuntimeBoundary() {
       escapeHtmlFn: escapeHtml,
       getOptimizedImageUrlFn: getOptimizedImageUrl,
       isPlaceholderUrlFn: isPlaceholderUrl,
+      isImageReadyFn: isImageUrlLoaded,
       placeholderImage: PLACEHOLDER_IMAGE,
       formatCountFn: formatCount,
       renderMapViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderMapView?.(...args) || ""
@@ -5658,6 +5666,11 @@ async function captureVideoPosterFile(file) {
   const controller = await ensureMediaUploadRuntimeController();
   return controller.captureVideoPosterFile(file);
 }
+
+// Muss vor dem ersten Bild stehen: von hier an weiss die App, welche Bilder
+// schon einmal fertig geladen waren, und kann sie beim Tab-Wechsel ohne
+// graues Aufblitzen wieder zeichnen.
+installImageLoadTracking(typeof document === "undefined" ? null : document);
 
 startAppStartupRuntimeCluster({
   loadPersistedFn: loadPersisted,

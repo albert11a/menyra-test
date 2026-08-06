@@ -22,6 +22,53 @@ const LAST_GOOD_IMAGE_BY_KEY = new Map();
 const LAST_GOOD_IMAGE_MAX_ENTRIES = 500;
 const LAST_GOOD_IMAGE_TTL_MS = 6000;
 
+// Beim Wechsel zwischen den Kopf-Tabs baut die App ihren Inhalt komplett neu
+// auf, jedes <img> ist danach ein frisches Element. Der Browser hat die Datei
+// zwar noch (die Kanten liefern sie mit "immutable"), er laedt und dekodiert
+// sie aber erneut - und bis das Bild steht, sieht man die graue Flaeche
+// darunter. Deshalb merkt sich die App, welche Bild-Adressen in dieser
+// Sitzung schon einmal fertig geladen waren: die duerfen beim naechsten Mal
+// sofort und ohne Umweg gezeichnet werden.
+const LOADED_IMAGE_URLS = new Set();
+const LOADED_IMAGE_MAX_ENTRIES = 800;
+let imageLoadTrackingBound = false;
+
+function normalizeImageTrackKey(url = "") {
+  const raw = String(url || "").trim();
+  if (!raw || raw === PLACEHOLDER_IMAGE) return "";
+  if (raw.startsWith("data:") || raw.startsWith("blob:")) return "";
+  return raw;
+}
+
+export function markImageUrlLoaded(url = "") {
+  const key = normalizeImageTrackKey(url);
+  if (!key || LOADED_IMAGE_URLS.has(key)) return;
+  if (LOADED_IMAGE_URLS.size >= LOADED_IMAGE_MAX_ENTRIES) {
+    const oldest = LOADED_IMAGE_URLS.values().next().value;
+    if (oldest) LOADED_IMAGE_URLS.delete(oldest);
+  }
+  LOADED_IMAGE_URLS.add(key);
+}
+
+export function isImageUrlLoaded(url = "") {
+  const key = normalizeImageTrackKey(url);
+  return !!key && LOADED_IMAGE_URLS.has(key);
+}
+
+// "load" steigt nicht auf, in der Erfassungsphase kommt es aber an: ein
+// einziger Zuhoerer am Dokument reicht damit fuer alle Bilder der App.
+export function installImageLoadTracking(documentObj = null) {
+  const doc = documentObj || (typeof document === "undefined" ? null : document);
+  if (!doc || imageLoadTrackingBound) return false;
+  imageLoadTrackingBound = true;
+  doc.addEventListener("load", (event) => {
+    const target = event?.target;
+    if (!target || String(target.tagName || "").toLowerCase() !== "img") return;
+    markImageUrlLoaded(target.currentSrc || target.src || "");
+  }, true);
+  return true;
+}
+
 export function isPlaceholderUrl(url) {
   if (!url) return true;
   return url === PLACEHOLDER_IMAGE;
