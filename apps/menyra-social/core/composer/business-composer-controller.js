@@ -38,6 +38,11 @@ import { detectUploadMediaTypeCore } from "../media/media-upload-view-render-uti
 const STYLE_ELEMENT_ID = "mnyraBusinessComposerStyles";
 // Die App-Shell ist max-w-md breit; darin steht der echte Feed.
 const APP_SHELL_MAX_WIDTH = 448;
+// Seitlicher Rand der App-Shell (--app-content-inline: 1.5rem in index.html).
+// Die Vorschau zeigt die Karte in genau der Breite, die sie in der App hat -
+// nur ohne diesen leeren Rand, damit sie links so beginnt wie alles andere
+// im Modal.
+const APP_CONTENT_INLINE = 24;
 // Die Story-Reihe im Feed haelt ihre Kacheln mit gap-2.5 auseinander; die
 // Kachelmasse selbst kommen aus story-tile-markup-utils.
 const STORY_TRACK_GAP = 10;
@@ -67,11 +72,11 @@ const TEXT = Object.freeze({
   placeholderPost: "Shkruaj diçka për postimin tënd…",
   placeholderStory: "Shkruaj diçka për story-n tënde…",
   placeholderProfile: "Shkruaj diçka për profilin tënd…",
-  addPhoto: "Foto / Video",
-  changePhoto: "Ndrysho median",
+  addPhoto: "Foto ose video",
+  changeImage: "Ndrysho foton",
+  changeVideo: "Ndrysho videon",
+  removeMedia: "Hiq median",
   removeProduct: "Hiq produktin",
-  hintNeedBoth: "Që të postosh, duhen edhe teksti edhe fotoja ose videoja.",
-  hintReady: "Gati për t'u postuar.",
   switchPost: "Postim",
   switchStory: "Story",
   switchProfile: "Profil",
@@ -102,21 +107,21 @@ const TEXT = Object.freeze({
 // (resolveDashboardKindCore), damit hier keine zweite Wahrheit entsteht.
 const PRODUCT_TEXT = Object.freeze({
   restaurant: Object.freeze({
-    tag: "Tag nga meny",
-    pickerTitle: "Zgjidh nga meny",
+    tag: "Etiketo nga menuja",
+    pickerTitle: "Zgjidh nga menuja",
     pickerSearch: "Kërko ushqime ose pije…",
     pickerEmpty: "Nuk u gjet asnjë produkt.",
     optional: "Produkti nuk është i detyrueshëm."
   }),
   shop: Object.freeze({
-    tag: "Tag nga produktet",
+    tag: "Etiketo nga produktet",
     pickerTitle: "Zgjidh nga produktet",
     pickerSearch: "Kërko produkte…",
     pickerEmpty: "Nuk u gjet asnjë produkt.",
     optional: "Produkti nuk është i detyrueshëm."
   }),
   hotel: Object.freeze({
-    tag: "Tag nga dhomat",
+    tag: "Etiketo nga dhomat",
     pickerTitle: "Zgjidh nga dhomat",
     pickerSearch: "Kërko dhoma…",
     pickerEmpty: "Nuk u gjet asnjë dhomë.",
@@ -327,17 +332,58 @@ export const BUSINESS_COMPOSER_CSS = `
 .mnyra-bc__compose-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 10px 12px;
   border-top: 1px solid var(--bc-line);
 }
-.mnyra-bc__tools {
-  flex: 1;
-  min-width: 0;
+/* Die hochgeladene Datei sitzt als Miniatur in derselben Leiste; das x
+   darauf wirft sie wieder heraus. */
+.mnyra-bc__thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--bc-line);
+  background: var(--bc-plane);
+}
+.mnyra-bc__thumb[hidden] { display: none; }
+.mnyra-bc__thumb-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 11px;
+  object-fit: cover;
+}
+.mnyra-bc__thumb-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--bc-muted);
+}
+.mnyra-bc__thumb-fallback svg { width: 18px; height: 18px; }
+.mnyra-bc__thumb[data-empty="1"] .mnyra-bc__thumb-fallback { display: flex; }
+.mnyra-bc__thumb-x {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: var(--bc-ink);
+  color: #ffffff;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  cursor: pointer;
 }
+.mnyra-bc__thumb-x svg { width: 10px; height: 10px; stroke-width: 3; }
+.mnyra-bc__thumb-x:active { transform: scale(0.92); }
 .mnyra-bc__tool {
   min-width: 0;
   max-width: 100%;
@@ -372,6 +418,7 @@ export const BUSINESS_COMPOSER_CSS = `
 }
 .mnyra-bc__count {
   flex: 0 0 auto;
+  margin-left: auto;
   font-size: 11px;
   font-weight: 800;
   color: var(--bc-muted);
@@ -426,14 +473,6 @@ export const BUSINESS_COMPOSER_CSS = `
   letter-spacing: 0.04em;
   cursor: pointer;
 }
-.mnyra-bc__hint {
-  margin: 12px 0 0;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--bc-muted);
-  line-height: 1.5;
-}
-.mnyra-bc__hint[data-tone="ready"] { color: #059669; }
 .mnyra-bc__error {
   display: none;
   margin-top: 12px;
@@ -513,7 +552,7 @@ export const BUSINESS_COMPOSER_CSS = `
   z-index: 5;
   display: none;
   background: rgba(15, 23, 42, 0.45);
-  padding: 24px 12px calc(var(--safe-area-bottom, 0px) + 12px);
+  padding: 0;
 }
 .mnyra-bc__picker[data-visible="1"] { display: flex; align-items: flex-end; }
 .mnyra-bc__picker-sheet {
@@ -522,7 +561,7 @@ export const BUSINESS_COMPOSER_CSS = `
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border-radius: 28px;
+  border-radius: 28px 28px 0 0;
   overflow: hidden;
   box-shadow: 0 -24px 80px rgba(15, 23, 42, 0.28);
 }
@@ -646,7 +685,7 @@ export const BUSINESS_COMPOSER_CSS = `
 }
 .mnyra-bc__picker-foot {
   flex: 0 0 auto;
-  padding: 10px 16px 16px;
+  padding: 10px 16px calc(var(--safe-area-bottom, 0px) + 16px);
   border-top: 1px solid var(--bc-line);
 }
 .mnyra-bc__picker-note {
@@ -695,7 +734,6 @@ export const BUSINESS_COMPOSER_CSS = `
 #${TOAST_ELEMENT_ID}[data-visible="1"] { opacity: 1; }
 @media (min-width: 640px) {
   .mnyra-bc__sheet { max-width: 560px; margin: 0 auto; }
-  .mnyra-bc__picker { padding-bottom: 24px; }
   .mnyra-bc__picker-sheet { max-width: 520px; margin: 0 auto; }
 }
 `;
@@ -743,6 +781,28 @@ export function normalizeComposerProductCore(id = "", raw = {}) {
     type,
     imageUrl: typeof imageCandidate === "string" ? imageCandidate.trim() : ""
   };
+}
+
+// Ein Eintrag pro Id: der Zwischenspeicher und die frische Liste koennen
+// dieselbe Sache melden - doppelt darf sie nie in der Auswahl stehen.
+export function dedupeComposerProductsCore(items = []) {
+  const seen = new Set();
+  const out = [];
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const id = String(item?.id || "").trim();
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    out.push(item);
+  });
+  return out;
+}
+
+// Fingerabdruck einer Produktliste: sagt, ob sich beim stillen Nachladen
+// ueberhaupt etwas geaendert hat.
+export function buildComposerProductsSignatureCore(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => `${item?.id || ""}|${item?.name || ""}|${item?.price ?? ""}|${item?.imageUrl || ""}`)
+    .join("~");
 }
 
 // Reiner Filter fuer das Suchfeld der Produkt-Auswahl.
@@ -812,11 +872,11 @@ export function createBusinessComposerController({
   const escapeAttr = (value = "") => escapeHtml(String(value ?? ""));
 
   const drafts = {
-    post: { caption: "", file: null, previewUrl: "", mediaType: "", product: null },
-    story: { caption: "", file: null, previewUrl: "", mediaType: "", product: null },
-    profile: { caption: "", file: null, previewUrl: "", mediaType: "", product: null }
+    post: { caption: "", file: null, previewUrl: "", thumbUrl: "", mediaType: "", product: null },
+    story: { caption: "", file: null, previewUrl: "", thumbUrl: "", mediaType: "", product: null },
+    profile: { caption: "", file: null, previewUrl: "", thumbUrl: "", mediaType: "", product: null }
   };
-  const productState = { status: "idle", items: [], restaurantId: "" };
+  const productState = { status: "idle", items: [], restaurantId: "", fresh: false };
 
   let root = null;
   let nodes = null;
@@ -850,6 +910,12 @@ export function createBusinessComposerController({
     } catch {}
   }
 
+  function releaseDraftUrls(draft) {
+    if (!draft) return;
+    releasePreviewUrl(draft.previewUrl);
+    if (draft.thumbUrl && draft.thumbUrl !== draft.previewUrl) releasePreviewUrl(draft.thumbUrl);
+  }
+
   function buildMarkup() {
     const productText = resolveProductText();
     return `
@@ -865,14 +931,17 @@ export function createBusinessComposerController({
           <div class="mnyra-bc__compose" data-bc-compose>
             <textarea class="mnyra-bc__text" data-bc-text maxlength="${CAPTION_MAX_LENGTH}" rows="5" enterkeyhint="done"></textarea>
             <div class="mnyra-bc__compose-bar">
-              <div class="mnyra-bc__tools">
-                <button type="button" class="mnyra-bc__tool" data-bc-photo>
-                  ${ICON.image}<span class="mnyra-bc__tool-label" data-bc-photo-label>${TEXT.addPhoto}</span>
-                </button>
-                <button type="button" class="mnyra-bc__tool" data-bc-tag>
-                  ${ICON.tag}<span class="mnyra-bc__tool-label" data-bc-tag-label>${productText.tag}</span>
-                </button>
+              <div class="mnyra-bc__thumb" data-bc-thumb data-empty="1" hidden>
+                <img class="mnyra-bc__thumb-img" data-bc-thumb-img alt="" decoding="async" />
+                <span class="mnyra-bc__thumb-fallback">${ICON.image}</span>
+                <button type="button" class="mnyra-bc__thumb-x" data-bc-thumb-remove aria-label="${TEXT.removeMedia}" title="${TEXT.removeMedia}">${ICON.close}</button>
               </div>
+              <button type="button" class="mnyra-bc__tool" data-bc-photo>
+                ${ICON.image}<span class="mnyra-bc__tool-label" data-bc-photo-label>${TEXT.addPhoto}</span>
+              </button>
+              <button type="button" class="mnyra-bc__tool" data-bc-tag>
+                ${ICON.tag}<span class="mnyra-bc__tool-label" data-bc-tag-label>${productText.tag}</span>
+              </button>
               <span class="mnyra-bc__count" data-bc-count>0/${CAPTION_MAX_LENGTH}</span>
             </div>
           </div>
@@ -884,7 +953,6 @@ export function createBusinessComposerController({
             </div>
             <button type="button" class="mnyra-bc__product-chip-remove" data-bc-chip-remove>${TEXT.removeProduct}</button>
           </div>
-          <p class="mnyra-bc__hint" data-bc-hint></p>
           <div class="mnyra-bc__error" data-bc-error role="alert"></div>
 
           <section class="mnyra-bc__preview">
@@ -892,7 +960,7 @@ export function createBusinessComposerController({
 
             <div class="mnyra-bc__pane" data-bc-pane="post">
               <p class="mnyra-bc__preview-caption">${TEXT.previewPost}</p>
-              <div class="mnyra-bc__stage mnyra-bc__stage--bleed" data-bc-stage="post">
+              <div class="mnyra-bc__stage" data-bc-stage="post">
                 <div class="mnyra-bc__stage-inner" data-bc-stage-inner="post"></div>
               </div>
             </div>
@@ -970,6 +1038,9 @@ export function createBusinessComposerController({
       count: q("[data-bc-count]"),
       photo: q("[data-bc-photo]"),
       photoLabel: q("[data-bc-photo-label]"),
+      thumb: q("[data-bc-thumb]"),
+      thumbImg: q("[data-bc-thumb-img]"),
+      thumbRemove: q("[data-bc-thumb-remove]"),
       tag: q("[data-bc-tag]"),
       tagLabel: q("[data-bc-tag-label]"),
       chip: q("[data-bc-chip]"),
@@ -977,7 +1048,6 @@ export function createBusinessComposerController({
       chipName: q("[data-bc-chip-name]"),
       chipPrice: q("[data-bc-chip-price]"),
       chipRemove: q("[data-bc-chip-remove]"),
-      hint: q("[data-bc-hint]"),
       error: q("[data-bc-error]"),
       panePost: q('[data-bc-pane="post"]'),
       paneStory: q('[data-bc-pane="story"]'),
@@ -1153,7 +1223,7 @@ export function createBusinessComposerController({
 
   // Feed-Beitrag und Story-Reihe stehen beide randlos in der App-Shell:
   // Originalbreite, nur herunterskaliert, wenn das Modal schmaler ist.
-  function applyBleedStage(stage, inner, naturalWidth) {
+  function applyBleedStage(stage, inner, naturalWidth, { centered = true } = {}) {
     if (!stage || !inner) return;
     const available = stage.clientWidth || naturalWidth;
     inner.style.width = `${naturalWidth}px`;
@@ -1163,21 +1233,27 @@ export function createBusinessComposerController({
     inner.style.transform = `scale(${scale})`;
     const height = inner.scrollHeight;
     stage.style.height = `${Math.round(height * scale)}px`;
-    inner.style.marginLeft = `${Math.max(0, (available - naturalWidth * scale) / 2)}px`;
+    inner.style.marginLeft = centered
+      ? `${Math.max(0, (available - naturalWidth * scale) / 2)}px`
+      : "0px";
   }
 
   function syncPreviewGeometry() {
     if (!nodes || !root?.isConnected) return;
     const shellWidth = resolveShellWidth();
+    // Die Story-Reihe laeuft in der App von Rand zu Rand - sie bleibt randlos.
     if (mode === "story") {
       applyBleedStage(nodes.stageStory, nodes.stageStoryInner, shellWidth);
       return;
     }
+    // Beitrag und Profil-Kachel stehen in Originalbreite, aber linksbuendig
+    // mit dem uebrigen Modal.
+    const cardWidth = Math.max(1, shellWidth - APP_CONTENT_INLINE * 2);
     if (mode === "profile") {
-      applyBleedStage(nodes.stageProfile, nodes.stageProfileInner, shellWidth);
+      applyBleedStage(nodes.stageProfile, nodes.stageProfileInner, cardWidth, { centered: false });
       return;
     }
-    applyBleedStage(nodes.stagePost, nodes.stagePostInner, shellWidth);
+    applyBleedStage(nodes.stagePost, nodes.stagePostInner, cardWidth, { centered: false });
   }
 
   function buildPreview() {
@@ -1186,10 +1262,10 @@ export function createBusinessComposerController({
       if (nodes.stageStoryInner) nodes.stageStoryInner.innerHTML = buildStoryTrackPreviewMarkup();
     } else if (mode === "profile") {
       if (nodes.stageProfileInner) {
-        nodes.stageProfileInner.innerHTML = `<div class="app-content-inline py-4">${buildProfilePreviewMarkup()}</div>`;
+        nodes.stageProfileInner.innerHTML = `<div class="py-4">${buildProfilePreviewMarkup()}</div>`;
       }
     } else if (nodes.stagePostInner) {
-      nodes.stagePostInner.innerHTML = `<div class="app-content-inline py-4">${buildPostPreviewMarkup()}</div>`;
+      nodes.stagePostInner.innerHTML = `<div class="py-4">${buildPostPreviewMarkup()}</div>`;
     }
     // Erst nach dem Layout messen; ein zweiter Durchgang faengt spaet
     // geladene Schriften und Bilder ab.
@@ -1258,18 +1334,6 @@ export function createBusinessComposerController({
       nodes.submit.disabled = !ready;
       nodes.submit.setAttribute("aria-disabled", ready ? "false" : "true");
     }
-    if (nodes.hint) {
-      if (submitting) {
-        nodes.hint.textContent = TEXT.submitBusy;
-        nodes.hint.setAttribute("data-tone", "busy");
-      } else if (ready) {
-        nodes.hint.textContent = TEXT.hintReady;
-        nodes.hint.setAttribute("data-tone", "ready");
-      } else {
-        nodes.hint.textContent = TEXT.hintNeedBoth;
-        nodes.hint.setAttribute("data-tone", "idle");
-      }
-    }
   }
 
   function showError(message = "") {
@@ -1298,8 +1362,7 @@ export function createBusinessComposerController({
     if (nodes.pickerTitle) nodes.pickerTitle.textContent = productText.pickerTitle;
     if (nodes.pickerNote) nodes.pickerNote.textContent = productText.optional;
     if (nodes.pickerSearch) nodes.pickerSearch.placeholder = productText.pickerSearch;
-    if (nodes.photoLabel) nodes.photoLabel.textContent = draft.file ? TEXT.changePhoto : TEXT.addPhoto;
-    if (nodes.photo) nodes.photo.setAttribute("data-active", draft.file ? "1" : "0");
+    syncMediaState();
     if (nodes.panePost) nodes.panePost.setAttribute("data-visible", mode === "post" ? "1" : "0");
     if (nodes.paneStory) nodes.paneStory.setAttribute("data-visible", isStory ? "1" : "0");
     if (nodes.paneProfile) nodes.paneProfile.setAttribute("data-visible", isProfile ? "1" : "0");
@@ -1338,24 +1401,80 @@ export function createBusinessComposerController({
       return;
     }
     const draft = currentDraft();
-    releasePreviewUrl(draft.previewUrl);
+    releaseDraftUrls(draft);
     draft.file = file;
     draft.mediaType = mediaType;
     draft.previewUrl = "";
+    draft.thumbUrl = "";
     try {
       draft.previewUrl = win?.URL?.createObjectURL ? win.URL.createObjectURL(file) : "";
     } catch {
       draft.previewUrl = "";
     }
+    // Foto ist seine eigene Miniatur; beim Video wird das Standbild geholt.
+    if (!isVideo) draft.thumbUrl = draft.previewUrl;
+    else captureThumbForVideo(draft, file);
     showError("");
     buildPreview();
-    if (nodes.photoLabel) nodes.photoLabel.textContent = TEXT.changePhoto;
-    if (nodes.photo) nodes.photo.setAttribute("data-active", "1");
+    syncMediaState();
+    syncSubmitState();
+  }
+
+  // Miniatur der gewaehlten Datei in der Knopfzeile. Kommt kein Standbild
+  // zustande, bleibt das Symbol stehen - posten laesst sich trotzdem.
+  function syncMediaState() {
+    const draft = currentDraft();
+    const hasMedia = !!draft.file;
+    const isVideo = draft.mediaType === "video";
+    if (nodes.photoLabel) {
+      nodes.photoLabel.textContent = hasMedia
+        ? (isVideo ? TEXT.changeVideo : TEXT.changeImage)
+        : TEXT.addPhoto;
+    }
+    if (nodes.photo) nodes.photo.setAttribute("data-active", hasMedia ? "1" : "0");
+    const thumbUrl = hasMedia ? String(draft.thumbUrl || "").trim() : "";
+    if (nodes.thumb) {
+      nodes.thumb.hidden = !hasMedia;
+      nodes.thumb.setAttribute("data-empty", thumbUrl ? "0" : "1");
+    }
+    setImageNode(nodes.thumbImg, thumbUrl);
+  }
+
+  // Standbild des Videos fuer die Miniatur - laeuft nebenher und wird nur
+  // uebernommen, solange dieselbe Datei noch im Entwurf steht.
+  function captureThumbForVideo(draft, file) {
+    if (!captureVideoPoster || !win?.URL?.createObjectURL) return;
+    void (async () => {
+      try {
+        const posterFile = await captureVideoPoster(file);
+        if (!posterFile || draft.file !== file) return;
+        draft.thumbUrl = win.URL.createObjectURL(posterFile);
+        if (currentDraft() === draft) syncMediaState();
+      } catch {}
+    })();
+  }
+
+  // Das x auf der Miniatur: die Datei fliegt aus dem Entwurf, alles andere
+  // (Text, Produkt) bleibt stehen.
+  function clearDraftMedia() {
+    if (submitting) return;
+    const draft = currentDraft();
+    if (!draft.file) return;
+    releaseDraftUrls(draft);
+    draft.file = null;
+    draft.previewUrl = "";
+    draft.thumbUrl = "";
+    draft.mediaType = "";
+    showError("");
+    syncMediaState();
+    buildPreview();
     syncSubmitState();
   }
 
   // Produkte einmal pro Restaurant laden und im Speicher halten: das Popup
-  // oeffnet danach sofort, auch bei langsamer Verbindung.
+  // oeffnet danach sofort, auch bei langsamer Verbindung. Der Lader darf die
+  // Liste zweimal melden - erst aus seinem Zwischenspeicher, dann frisch aus
+  // der Datenbank; die zweite Meldung kommt ueber onFresh herein.
   function ensureProductsLoaded({ force = false } = {}) {
     const rid = String(getRestaurantId() || "").trim();
     if (!rid || !loadProducts) {
@@ -1367,22 +1486,39 @@ export function createBusinessComposerController({
       productState.restaurantId = rid;
       productState.status = "idle";
       productState.items = [];
+      productState.fresh = false;
     }
     if (!force && (productState.status === "loading" || productState.status === "ready")) return;
     productState.status = "loading";
     renderPickerList();
+    const applyItems = (list, isFresh = false) => {
+      if (productState.restaurantId !== rid) return;
+      // Die frische Liste gewinnt immer: eine spaet eintreffende Meldung aus
+      // dem Zwischenspeicher darf sie nie wieder ueberschreiben.
+      if (!isFresh && productState.fresh) return;
+      productState.fresh = productState.fresh || isFresh;
+      const next = dedupeComposerProductsCore(list);
+      const changed = buildComposerProductsSignatureCore(next)
+        !== buildComposerProductsSignatureCore(productState.items);
+      // Die erste Meldung loest immer das "Duke ngarkuar" ab - auch wenn die
+      // Liste leer bleibt. Danach nur noch bei echter Aenderung neu zeichnen,
+      // sonst springt eine offene Liste beim stillen Nachladen nach oben.
+      const wasLoading = productState.status !== "ready";
+      productState.items = next;
+      productState.status = "ready";
+      if (changed || wasLoading) renderPickerList();
+    };
     void (async () => {
       try {
-        const items = await loadProducts(rid);
-        if (productState.restaurantId !== rid) return;
-        productState.items = Array.isArray(items) ? items : [];
-        productState.status = "ready";
+        const items = await loadProducts(rid, (fresh) => applyItems(fresh, true));
+        applyItems(items);
       } catch {
         if (productState.restaurantId !== rid) return;
+        if (productState.status === "ready") return;
         productState.items = [];
         productState.status = "error";
+        renderPickerList();
       }
-      renderPickerList();
     })();
   }
 
@@ -1569,6 +1705,7 @@ export function createBusinessComposerController({
       showError("");
       nodes.file?.click();
     });
+    nodes.thumbRemove?.addEventListener("click", () => clearDraftMedia());
     nodes.file?.addEventListener("change", () => {
       const file = nodes.file?.files?.[0] || null;
       handleFileSelection(file);
@@ -1622,10 +1759,11 @@ export function createBusinessComposerController({
   function clearDraft(target) {
     const draft = drafts[target];
     if (!draft) return;
-    releasePreviewUrl(draft.previewUrl);
+    releaseDraftUrls(draft);
     draft.caption = "";
     draft.file = null;
     draft.previewUrl = "";
+    draft.thumbUrl = "";
     draft.mediaType = "";
     draft.product = null;
   }

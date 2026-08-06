@@ -31,6 +31,7 @@ import {
 } from "./dashboard-render-utils.js";
 
 const DASHBOARD_CACHE_PREFIX = "menyra_social_dashboard_cache_v1::";
+const COMPOSER_PRODUCTS_CACHE_PREFIX = "menyra_social_composer_products_v1::";
 const RECENT_POSTS_FETCH_LIMIT = 6;
 const RECENT_POSTS_SHOW_LIMIT = 3;
 
@@ -144,6 +145,16 @@ export function createDashboardViewController({
   let normalizeComposerProductFn = () => null;
   const MENU_ITEMS_LIMIT = 300;
 
+  // Art des Geschaefts (restaurant | shop | hotel). Steht sofort aus dem
+  // Profil fest - dieselbe Zuordnung, die auch die Kacheln steuert.
+  function resolveBusinessKind() {
+    const profile = state?.userProfile || {};
+    return resolveDashboardKindCore({
+      businessType: getBusinessProfileType(profile),
+      isShopCatalog: isShopCatalogProfile(profile)
+    });
+  }
+
   // Hotels taggen keine Menue-Eintraege, sondern ihre Dhoma. Die stehen als
   // Feld am Restaurant-Datensatz (hotelRooms) - also kein zusaetzlicher Lesezugriff.
   function collectComposerRooms(restaurantId = "") {
@@ -158,19 +169,39 @@ export function createDashboardViewController({
     }));
   }
 
-  async function loadComposerProducts(restaurantId = "") {
+  function readComposerProductsCache(restaurantId = "") {
+    if (!storage) return null;
+    try {
+      const raw = storage.getItem(`${COMPOSER_PRODUCTS_CACHE_PREFIX}${restaurantId}`);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const items = Array.isArray(parsed?.items) ? parsed.items : null;
+      return items && items.length ? items : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeComposerProductsCache(restaurantId = "", items = []) {
+    if (!storage) return;
+    try {
+      storage.setItem(
+        `${COMPOSER_PRODUCTS_CACHE_PREFIX}${restaurantId}`,
+        JSON.stringify({ savedAt: Date.now(), items })
+      );
+    } catch {}
+  }
+
+  async function fetchComposerProducts(restaurantId = "") {
     const { db, collectionFn, queryFn, limitFn, getDocsFn } = firestoreApi;
-    const rid = String(restaurantId || "").trim();
-    if (rid && resolveHeroData(rid).kind === "hotel") return collectComposerRooms(rid);
     if (
-      !rid
-      || !db
+      !db
       || typeof collectionFn !== "function"
       || typeof getDocsFn !== "function"
     ) {
       throw new Error("Produktet nuk u ngarkuan.");
     }
-    const itemsRef = collectionFn(db, "restaurants", rid, "menuItems");
+    const itemsRef = collectionFn(db, "restaurants", restaurantId, "menuItems");
     const itemsQuery = (typeof queryFn === "function" && typeof limitFn === "function")
       ? queryFn(itemsRef, limitFn(MENU_ITEMS_LIMIT))
       : itemsRef;
@@ -184,6 +215,30 @@ export function createDashboardViewController({
     // Produkt im Popup ohne Nachdenken.
     items.sort((a, b) => a.name.localeCompare(b.name, "sq"));
     return items;
+  }
+
+  // Die Auswahl soll sofort stehen: was zuletzt geladen wurde, liegt lokal
+  // bereit und wird ohne Warten zurueckgegeben. Die frische Liste kommt
+  // danach still hinterher (onFresh) und ersetzt sie.
+  async function loadComposerProducts(restaurantId = "", onFresh) {
+    const rid = String(restaurantId || "").trim();
+    if (!rid) throw new Error("Produktet nuk u ngarkuan.");
+    // Hotels lesen ihre Dhoma aus dem bereits geladenen Datensatz - schon
+    // sofort da, kein Zwischenspeicher noetig.
+    if (resolveBusinessKind() === "hotel") return collectComposerRooms(rid);
+
+    const pending = fetchComposerProducts(rid).then((items) => {
+      writeComposerProductsCache(rid, items);
+      return items;
+    });
+    const cached = readComposerProductsCache(rid);
+    if (!cached) return pending;
+    if (typeof onFresh === "function") {
+      pending.then((items) => onFresh(items)).catch(() => {});
+    } else {
+      pending.catch(() => {});
+    }
+    return cached;
   }
 
   // Der Composer wird erst beim ersten Klick geladen (eigener Chunk): der
@@ -214,10 +269,10 @@ export function createDashboardViewController({
                   city: String(rest.city || "").trim()
                 };
               },
-              loadProductsFn: (rid) => loadComposerProducts(rid),
-              // Art des Geschaefts: steuert, ob der Knopf "Tag nga meny",
-              // "Tag nga produktet" oder "Tag nga dhomat" heisst.
-              getBusinessKindFn: () => resolveHeroData(resolveOwnRestaurantId()).kind,
+              loadProductsFn: (rid, onFresh) => loadComposerProducts(rid, onFresh),
+              // Art des Geschaefts: steuert, ob der Knopf "Etiketo nga
+              // menuja", "... nga produktet" oder "... nga dhomat" heisst.
+              getBusinessKindFn: () => resolveBusinessKind(),
               uploadImageFn: composerApi.uploadImageFn,
               // Video-Upload + Poster-Standbild: derselbe Weg wie im
               // Upload-Screen.
@@ -451,7 +506,6 @@ export function createDashboardViewController({
   function resolveHeroData(restaurantId = "") {
     const profile = state?.userProfile || {};
     const rest = restaurantId ? (getRestaurantMetaById(restaurantId) || {}) : {};
-    const type = getBusinessProfileType(profile);
     const name = String(rest.name || rest.restaurantName || profile.name || "").trim() || "Business";
     // Erst die Shell-Kette (identisch zu Drawer/Header, inkl. Logo-Cache),
     // dann das Restaurant-Logo aus den Metadaten; nie rohe avatar-Werte.
@@ -467,10 +521,7 @@ export function createDashboardViewController({
     return {
       name,
       logoUrl,
-      kind: resolveDashboardKindCore({
-        businessType: type,
-        isShopCatalog: isShopCatalogProfile(profile)
-      })
+      kind: resolveBusinessKind()
     };
   }
 

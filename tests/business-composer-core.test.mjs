@@ -8,6 +8,8 @@ import {
   canPublishComposerDraftCore,
   normalizeComposerModeCore,
   resolveComposerProductTextCore,
+  dedupeComposerProductsCore,
+  buildComposerProductsSignatureCore,
   BUSINESS_COMPOSER_CSS
 } from "../apps/menyra-social/core/composer/business-composer-controller.js";
 import {
@@ -213,26 +215,26 @@ test("composer styles carry the preview stage and the fullscreen sheet", () => {
 
 test("product label follows the kind of business", () => {
   // Lokal mit Essen -> Meny, Shop -> Produkte, Hotel/Motel -> Dhoma.
-  assert.equal(resolveComposerProductTextCore("restaurant").tag, "Tag nga meny");
-  assert.equal(resolveComposerProductTextCore("shop").tag, "Tag nga produktet");
-  assert.equal(resolveComposerProductTextCore("hotel").tag, "Tag nga dhomat");
+  assert.equal(resolveComposerProductTextCore("restaurant").tag, "Etiketo nga menuja");
+  assert.equal(resolveComposerProductTextCore("shop").tag, "Etiketo nga produktet");
+  assert.equal(resolveComposerProductTextCore("hotel").tag, "Etiketo nga dhomat");
   // Die Art kommt aus derselben Zuordnung wie die Dashboard-Kacheln.
   const kindOf = (businessType, isShopCatalog = false) => resolveDashboardKindCore({ businessType, isShopCatalog });
-  assert.equal(resolveComposerProductTextCore(kindOf("cafe")).tag, "Tag nga meny");
-  assert.equal(resolveComposerProductTextCore(kindOf("bar")).tag, "Tag nga meny");
-  assert.equal(resolveComposerProductTextCore(kindOf("fastfood")).tag, "Tag nga meny");
-  assert.equal(resolveComposerProductTextCore(kindOf("motel")).tag, "Tag nga dhomat");
-  assert.equal(resolveComposerProductTextCore(kindOf("hostel")).tag, "Tag nga dhomat");
-  assert.equal(resolveComposerProductTextCore(kindOf("ecommerce", true)).tag, "Tag nga produktet");
+  assert.equal(resolveComposerProductTextCore(kindOf("cafe")).tag, "Etiketo nga menuja");
+  assert.equal(resolveComposerProductTextCore(kindOf("bar")).tag, "Etiketo nga menuja");
+  assert.equal(resolveComposerProductTextCore(kindOf("fastfood")).tag, "Etiketo nga menuja");
+  assert.equal(resolveComposerProductTextCore(kindOf("motel")).tag, "Etiketo nga dhomat");
+  assert.equal(resolveComposerProductTextCore(kindOf("hostel")).tag, "Etiketo nga dhomat");
+  assert.equal(resolveComposerProductTextCore(kindOf("ecommerce", true)).tag, "Etiketo nga produktet");
   // Auch Popup-Titel, Suchfeld und Leermeldung sprechen dieselbe Sprache.
   assert.equal(resolveComposerProductTextCore("hotel").pickerTitle, "Zgjidh nga dhomat");
   assert.equal(resolveComposerProductTextCore("hotel").pickerSearch, "Kërko dhoma…");
   assert.equal(resolveComposerProductTextCore("hotel").pickerEmpty, "Nuk u gjet asnjë dhomë.");
   assert.equal(resolveComposerProductTextCore("shop").pickerTitle, "Zgjidh nga produktet");
   // Unbekanntes bleibt beim Lokal - nie leer.
-  assert.equal(resolveComposerProductTextCore("").tag, "Tag nga meny");
-  assert.equal(resolveComposerProductTextCore("quatsch").tag, "Tag nga meny");
-  assert.equal(resolveComposerProductTextCore().tag, "Tag nga meny");
+  assert.equal(resolveComposerProductTextCore("").tag, "Etiketo nga menuja");
+  assert.equal(resolveComposerProductTextCore("quatsch").tag, "Etiketo nga menuja");
+  assert.equal(resolveComposerProductTextCore().tag, "Etiketo nga menuja");
 });
 
 test("input field and upload buttons are one rounded block", async () => {
@@ -266,7 +268,9 @@ test("hotels tag their rooms, not menu items", async () => {
   );
   // Zimmer stehen am Restaurant-Datensatz - kein zweiter Firestore-Lesezugriff.
   assert.ok(source.includes("collectHotelRoomsCore(record)"));
-  assert.ok(source.includes('resolveHeroData(rid).kind === "hotel"'));
+  assert.ok(source.includes('resolveBusinessKind() === "hotel"'));
+  // Eine Zuordnung fuer Kacheln, Beschriftung und Datenquelle.
+  assert.equal((source.match(/resolveDashboardKindCore\(\{/g) || []).length, 1);
   // Und die Art wandert bis in den Composer.
   assert.ok(source.includes("getBusinessKindFn:"));
 
@@ -298,4 +302,91 @@ test("a tagged product survives the post, not only the story", async () => {
   // Der Beitrag speichert sie im Dokument und in der Feed-Spiegelung.
   assert.equal((uploadSource.match(/\.\.\.tagged/g) || []).length, 2);
   assert.ok(uploadSource.includes("menuItemId: String(menuItemId || \"\").trim()"));
+});
+
+test("no status sentences under the input field", async () => {
+  const source = await readFile(
+    new URL("../apps/menyra-social/core/composer/business-composer-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Weder der Hinweis noch die Fertig-Meldung stehen noch irgendwo.
+  assert.ok(!source.includes("duhen edhe teksti"));
+  assert.ok(!source.includes("Gati për t'u postuar"));
+  assert.ok(!source.includes("data-bc-hint"));
+  assert.ok(!BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__hint"));
+  // Der Posto-Knopf bleibt die einzige Rueckmeldung: er ist scharf oder nicht.
+  assert.equal(canPublishComposerDraftCore({ caption: "hi", hasImage: true }), true);
+  assert.equal(canPublishComposerDraftCore({ caption: "hi", hasImage: false }), false);
+  assert.equal(canPublishComposerDraftCore({ caption: "", hasImage: true }), false);
+});
+
+test("preview starts at the same left edge as everything else", async () => {
+  const source = await readFile(
+    new URL("../apps/menyra-social/core/composer/business-composer-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Beitrag und Profil-Kachel stehen linksbuendig, ohne den leeren Rand der
+  // App-Shell - aber in genau der Breite, die sie in der App haben.
+  assert.ok(source.includes("const APP_CONTENT_INLINE = 24;"));
+  assert.ok(source.includes("const cardWidth = Math.max(1, shellWidth - APP_CONTENT_INLINE * 2);"));
+  assert.ok(source.includes("applyBleedStage(nodes.stagePost, nodes.stagePostInner, cardWidth, { centered: false });"));
+  assert.ok(source.includes("applyBleedStage(nodes.stageProfile, nodes.stageProfileInner, cardWidth, { centered: false });"));
+  assert.ok(!source.includes('`<div class="app-content-inline py-4">'));
+  // Die Story-Reihe laeuft in der App von Rand zu Rand - sie bleibt randlos.
+  assert.ok(source.includes("applyBleedStage(nodes.stageStory, nodes.stageStoryInner, shellWidth);"));
+  assert.ok(source.includes('<div class="mnyra-bc__stage mnyra-bc__stage--bleed" data-bc-stage="story">'));
+});
+
+test("the chosen file sits as a thumbnail with an x in the button row", async () => {
+  const source = await readFile(
+    new URL("../apps/menyra-social/core/composer/business-composer-controller.js", import.meta.url),
+    "utf8"
+  );
+  assert.ok(source.includes("data-bc-thumb-remove"));
+  assert.ok(source.includes("clearDraftMedia()"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__thumb {"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes(".mnyra-bc__thumb-x {"));
+  // Das x sitzt auf der oberen Ecke der Miniatur.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("  top: -7px;\n  right: -7px;"));
+  // Video bekommt sein Standbild ueber denselben Weg wie beim Posten.
+  assert.ok(source.includes("captureThumbForVideo(draft, file)"));
+  assert.ok(source.includes("draft.file !== file"));
+  // Beide Object-URLs eines Entwurfs werden freigegeben - kein Leck.
+  assert.ok(source.includes("function releaseDraftUrls(draft)"));
+  assert.ok(!source.includes("releasePreviewUrl(draft.previewUrl);\n    draft.file = null;"));
+});
+
+test("the product sheet sits flush at the bottom", () => {
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("  background: rgba(15, 23, 42, 0.45);\n  padding: 0;"));
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("border-radius: 28px 28px 0 0;"));
+  // Der Bestaetigen-Knopf haelt Abstand zur Browserleiste des Telefons.
+  assert.ok(BUSINESS_COMPOSER_CSS.includes("padding: 10px 16px calc(var(--safe-area-bottom, 0px) + 16px);"));
+});
+
+test("product list is shown at once and never doubled", async () => {
+  const loaderSource = await readFile(
+    new URL("../apps/menyra-social/core/dashboard/dashboard-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Gemerkte Liste sofort, frische Liste still hinterher.
+  assert.ok(loaderSource.includes("readComposerProductsCache"));
+  assert.ok(loaderSource.includes("writeComposerProductsCache"));
+  assert.ok(loaderSource.includes("if (!cached) return pending;"));
+  assert.ok(loaderSource.includes("pending.then((items) => onFresh(items)).catch(() => {});"));
+
+  // Jede Id genau einmal - egal aus welcher Quelle.
+  const doppelt = [
+    { id: "m1", name: "Coca Cola" },
+    { id: "m1", name: "Coca Cola" },
+    { id: "m2", name: "Uje" },
+    { id: "", name: "ohne Id" },
+    null
+  ];
+  assert.deepEqual(dedupeComposerProductsCore(doppelt).map((p) => p.id), ["m1", "m2"]);
+  assert.deepEqual(dedupeComposerProductsCore(null), []);
+  // Der Fingerabdruck erkennt Aenderungen an Name, Preis und Bild.
+  const a = [{ id: "m1", name: "Cola", price: 2, imageUrl: "x" }];
+  assert.equal(buildComposerProductsSignatureCore(a), buildComposerProductsSignatureCore([{ id: "m1", name: "Cola", price: 2, imageUrl: "x" }]));
+  assert.notEqual(buildComposerProductsSignatureCore(a), buildComposerProductsSignatureCore([{ id: "m1", name: "Cola", price: 3, imageUrl: "x" }]));
+  assert.notEqual(buildComposerProductsSignatureCore(a), buildComposerProductsSignatureCore([]));
 });
