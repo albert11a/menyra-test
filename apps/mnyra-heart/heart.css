@@ -969,10 +969,10 @@ body {
   max-height: 100dvh;
   width: 100vw;
   max-width: none;
-  padding: calc(var(--heart-safe-top) + 18px) 20px calc(var(--heart-safe-bottom) + 22px);
+  padding: calc(var(--heart-safe-top) + 14px) 16px calc(var(--heart-safe-bottom) + 16px);
   background: #000000;
   border-right: 0;
-  gap: 18px;
+  gap: 12px;
   overflow: hidden;
 }
 
@@ -992,7 +992,7 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -1010,14 +1010,14 @@ body {
 .heart-sidebar__footer {
   background: var(--heart-surface);
   border: 1px solid var(--heart-border);
-  border-radius: 28px;
-  padding: 18px;
+  border-radius: 22px;
+  padding: 12px;
   box-shadow: var(--heart-shadow);
 }
 
 .heart-sidebar__label {
-  margin: 0 0 14px;
-  font-size: 0.74rem;
+  margin: 0 0 10px;
+  font-size: 0.7rem;
   font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -1048,27 +1048,31 @@ body {
   backdrop-filter: blur(2px);
 }
 
+/* Die Schublade hat neun Eintraege. Waren sie so hoch wie die Karten im
+   Inhalt, passte der letzte nicht mehr auf den Bildschirm - man musste in einem
+   Menue scrollen, um zu sehen, was es ueberhaupt gibt. Darum sind die Zeilen
+   hier bewusst niedriger als alles andere in Heart. */
 .heart-nav {
-  gap: 12px;
+  gap: 8px;
 }
 
 .heart-nav-link {
-  min-height: 74px;
+  min-height: 54px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 11px;
+  padding: 8px 12px;
   background: var(--heart-surface-soft);
   border: 1px solid var(--heart-border);
-  border-radius: 24px;
+  border-radius: 16px;
   color: var(--heart-text);
   text-align: left;
 }
 
 .heart-nav-link__icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 18px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   background: #111113;
   border: 1px solid var(--heart-border);
   display: inline-flex;
@@ -1077,21 +1081,31 @@ body {
   flex: 0 0 auto;
 }
 
+.heart-nav-link__icon .heart-icon {
+  width: 17px;
+  height: 17px;
+}
+
 .heart-nav-link__body {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 1px;
 }
 
 .heart-nav-link__label {
   color: var(--heart-text);
-  font-size: 1rem;
+  font-size: 0.94rem;
   font-weight: 800;
 }
 
+/* Eine Zeile, notfalls mit Punkten. Umgebrochen machte allein der
+   Landing-Eintrag die ganze Liste um eine Zeile hoeher als die anderen. */
 .heart-nav-link__hint {
-  font-size: 0.8rem;
-  line-height: 1.4;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .heart-nav-link--active {
@@ -1105,6 +1119,50 @@ body {
   background: var(--heart-accent);
   border-color: transparent;
   color: #ffffff;
+}
+
+/* Auf einem Telefon bleibt nach Safaris Leisten weniger uebrig, als der
+   Bildschirm hoch ist. Dort faellt der erklaerende Halbsatz weg und die Zeilen
+   ruecken zusammen: Lieber neun Eintraege ohne Beschreibung sehen als sechs
+   mit. Ab Tablet-Hoehe steht wieder alles da. */
+@media (max-height: 860px) {
+  .heart-nav-link__hint {
+    display: none;
+  }
+
+  .heart-nav {
+    gap: 6px;
+  }
+
+  .heart-nav-link {
+    min-height: 44px;
+    padding: 6px 10px;
+    gap: 10px;
+    border-radius: 14px;
+  }
+
+  .heart-nav-link__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .heart-sidebar__panel {
+    padding: 10px;
+  }
+
+  .heart-sidebar__label {
+    margin: 0 0 8px;
+  }
+
+  .heart-sidebar__avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .heart-drawer-action {
+    min-height: 42px;
+  }
 }
 
 .heart-drawer-action {
@@ -1150,7 +1208,7 @@ body {
 
 .heart-sidebar__footer {
   margin-top: auto;
-  padding: 18px 0 0;
+  padding: 12px 0 0;
   border: 0;
   border-top: 1px solid rgba(63, 63, 70, 0.74);
   border-radius: 0;
@@ -3115,7 +3173,7 @@ damit Lead- und Destination-Confirm sich nie mischen.
 .heart-landing-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
 }
 
 .heart-landing-tabs {
@@ -3156,9 +3214,9 @@ damit Lead- und Destination-Confirm sich nie mischen.
 .heart-landing-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid var(--heart-border, #e2e8f0);
   border-radius: 16px;
   background: var(--heart-surface, #fff);
@@ -3230,31 +3288,48 @@ damit Lead- und Destination-Confirm sich nie mischen.
   white-space: nowrap;
 }
 
-/* Drei gleich breite Spalten: links besucht, in der Mitte die Fragen, rechts
-   die Kundenfrage. Gleich breit, damit die Zahlen untereinander stehen, wenn
-   mehrere Karten uebereinander liegen. */
+/* Drei gleich breite Spalten in einem eigenen Feld: besucht, Fragen, Kunde.
+   Jede Zahl steht mittig ueber ihrem Wort und nicht linksbuendig am Rand ihrer
+   Spalte - so bilden die drei eine Reihe statt drei angeschnittener Bloecke,
+   und ueber mehrere Karten hinweg stehen sie sauber untereinander. */
 .heart-landing-card__stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  padding: 8px 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .heart-landing-card__stat {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 3px;
   min-width: 0;
+  padding: 0 6px;
+  text-align: center;
+}
+
+/* Ein Haarstrich zwischen den Spalten. Er trennt gerade genug, dass man die
+   Zahl dem Wort darunter zuordnet, ohne dass die Karte nach Tabelle aussieht. */
+.heart-landing-card__stat + .heart-landing-card__stat {
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .heart-landing-card__stat b {
-  font-size: 18px;
-  line-height: 1.1;
+  font-size: 19px;
+  line-height: 1.05;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .heart-landing-card__stat small {
   font-size: 11px;
-  opacity: 0.6;
+  opacity: 0.55;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .heart-landing-card__stat--yes b {
@@ -4087,13 +4162,14 @@ der Balken zeigt es. */
    teilen. Vorher stand die 18 an beiden Stellen einzeln - wer nur eine davon
    aendert, bekommt Karten, die gegenueber dem Menue-Knopf verspringen.
 
-   Auf dem Handy sind es 8px: Der Platz ist dort knapp, und die Karten bringen
-   ihren eigenen Innenabstand mit, also klebt kein Text an der Kante. Ab
-   Tablet-Breite darf es wieder mehr sein, dort fehlt die Breite nicht.
+   Auf dem Handy sind es 16px. Vorher waren es 8, und die Karten klebten sicht-
+   bar an der Kante - der Rand soll man sehen, sonst wirkt die Seite wie
+   abgeschnitten. Ab Tablet-Breite darf es mehr sein, dort fehlt die Breite
+   nicht.
 --------------------------------------------------------------------------- */
 
 :root {
-  --heart-gutter: 8px;
+  --heart-gutter: 16px;
 }
 
 .heart-topbar {
