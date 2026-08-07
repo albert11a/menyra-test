@@ -179,27 +179,22 @@ export function createAppShellRuntimeController(deps = {}) {
   // sticky belegen denselben Layout-Platz, das Umschalten kann also nie
   // springen.
   let mainHeaderTabsStuck = false;
+  // Der einzige Zustand des Pfeils: zu oder auf. Er ueberlebt jeden Re-Render,
+  // weil er hier im Modul liegt - und er haengt an keiner Scroll-Position.
+  let mainHeaderTabsCollapsed = false;
   let mainHeaderTabsRowHeight = 40;
   let mainHeaderTabsLastScrollY = 0;
   let mainHeaderTabsVisibleState = null;
   let mainHeaderTabsRafId = 0;
-  let mainHeaderTabsRevealTimerId = 0;
   let mainHeaderTabsScrollAssertTimers = [];
   let mainHeaderTabsScrollAssertTarget = -1;
   let mainHeaderTabsScrollAssertRelease = null;
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
-  // So weit unter dem Seitenanfang holt der Pfeil die Zeile noch per Scroll
-  // zurueck. Weiter unten waere der Weg an den Anfang zu teuer - dort heftet
-  // sich die Zeile stattdessen unter die Leiste.
-  const MAIN_HEADER_TABS_NEAR_TOP_ROWS = 2;
   // So oft setzt der Pfeil sein Scroll-Ziel nach, damit ein Re-Render es ihm
   // nicht wieder wegnimmt. Der letzte Wert deckt auch einen Render ab, der erst
   // ein paar Frames spaeter kommt.
   const MAIN_HEADER_TABS_SCROLL_ASSERT_DELAYS_MS = Object.freeze([0, 60, 160, 320]);
-  // Danach wird nachgesehen, ob die Zeile wirklich wieder dasteht. Der Scroll
-  // ist dann durch - was hier noch fehlt, holt kein Scroll mehr.
-  const MAIN_HEADER_TABS_REVEAL_VERIFY_MS = 520;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1601,10 +1596,11 @@ export function createAppShellRuntimeController(deps = {}) {
     return mainHeaderTabsRowHeight;
   }
 
-  // Sichtbar ist die Zeile, wenn sie unter der Leiste klebt oder die Seite noch
-  // so weit oben steht, dass ihr Platz am Seitenanfang im Blick liegt. Reine
-  // Rechnung auf scrollY - kein Messen.
+  // Sichtbar ist die Zeile, wenn der Pfeil sie nicht zugemacht hat und sie
+  // entweder unter der Leiste klebt oder die Seite noch so weit oben steht,
+  // dass ihr Platz im Blick liegt. Reine Rechnung - kein Messen.
   function isMainHeaderTabsRowVisible() {
+    if (mainHeaderTabsCollapsed) return false;
     if (mainHeaderTabsStuck) return true;
     return Math.max(0, Number(win?.scrollY || 0)) < mainHeaderTabsRowHeight;
   }
@@ -1627,6 +1623,17 @@ export function createAppShellRuntimeController(deps = {}) {
     syncMainHeaderTabsChrome();
   }
 
+  // Zugemacht ist die Zeile nicht mehr im Layout. Das ist der ganze Zustand,
+  // den der Pfeil hat - er haengt an keiner Scroll-Position und kann deshalb
+  // auch von keiner kaputtgemacht werden.
+  function setMainHeaderTabsCollapsed(next) {
+    mainHeaderTabsCollapsed = !!next;
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
+    if (mainHeaderTabsCollapsed) setMainHeaderTabsStuck(false);
+    syncSmartHeaderMetrics();
+    syncMainHeaderTabsChrome(true);
+  }
+
   function clearMainHeaderTabsScrollAssert() {
     mainHeaderTabsScrollAssertTimers.forEach((timerId) => win?.clearTimeout?.(timerId));
     mainHeaderTabsScrollAssertTimers = [];
@@ -1638,19 +1645,20 @@ export function createAppShellRuntimeController(deps = {}) {
     mainHeaderTabsScrollAssertRelease = null;
   }
 
-  // Der Pfeil bewegt nur die Seite - dasselbe, was der Nutzer sonst mit dem
-  // Finger tut. Genau daran haengt, dass die Zeile beim Hochscrollen wieder
-  // auftaucht, als haette er den Pfeil nie angefasst: es gibt fuer sie nur
-  // diesen einen Weg, weg und wieder her zu kommen.
+  // Der Pfeil scrollt nicht mehr, um die Zeile weg- oder herzuholen - er macht
+  // sie zu und auf. Gescrollt wird nur noch zum Ausgleich: verschwindet die
+  // Zeile aus dem Layout, wandert alles darunter um ihre Hoehe hoch. Steht man
+  // weiter unten, wuerde das den Text unter dem Finger verschieben; die
+  // Scroll-Position geht deshalb um denselben Betrag mit, und es bewegt sich
+  // nichts.
   //
   // Ein einzelnes scrollTo ist dabei nur eine Bitte an den Browser. Der
   // Render-Pfad setzt die Scroll-Position beim naechsten Re-Render im selben
   // Tab wieder auf ihren alten Wert (setViewportScrollTop, dazu im naechsten
-  // Frame und im naechsten Tick) - faellt das mit dem Pfeil zusammen, stand die
-  // Seite danach wieder genau dort, wo sie war. Deshalb besteht der Pfeil auf
-  // seinem Ziel und setzt es ueber ein paar Frames nach: wer zuletzt schreibt,
-  // gewinnt. Faengt der Nutzer selbst an zu scrollen, laesst der Pfeil sofort
-  // los - seine Hand hat Vorrang.
+  // Frame und im naechsten Tick). Deshalb besteht der Ausgleich auf seinem Ziel
+  // und setzt es ueber ein paar Frames nach: wer zuletzt schreibt, gewinnt.
+  // Faengt der Nutzer selbst an zu scrollen, laesst er sofort los - dessen Hand
+  // hat Vorrang. Auf den Zustand der Zeile hat all das keinen Einfluss mehr.
   function scrollMainHeaderTabsTo(targetY) {
     const top = Math.max(0, Math.round(Number(targetY) || 0));
     clearMainHeaderTabsScrollAssert();
@@ -1674,38 +1682,6 @@ export function createAppShellRuntimeController(deps = {}) {
       }, delay);
       mainHeaderTabsScrollAssertTimers.push(timerId);
     });
-  }
-
-  function clearMainHeaderTabsRevealVerify() {
-    if (win && mainHeaderTabsRevealTimerId) win.clearTimeout?.(mainHeaderTabsRevealTimerId);
-    mainHeaderTabsRevealTimerId = 0;
-  }
-
-  // Nachschau nach dem Zurueckholen am Seitenanfang: steht die Zeile wirklich
-  // wieder da? Der Weg dorthin ist die Seite an den Anfang - dort ist der
-  // Abstand ueber der Zeile derselbe wie beim Start, nichts liegt uebereinander.
-  // Kommt die Seite trotz aller Versuche nicht hoch, ist Kleben die Notloesung:
-  // die Zeile ist dann wenigstens da. Wichtig ist, dass das die Ausnahme bleibt
-  // und nicht der normale Weg - genau deshalb wird hier erst nochmal gescrollt.
-  function verifyMainHeaderTabsReveal(requestedFromY = 0) {
-    clearMainHeaderTabsRevealVerify();
-    if (typeof win?.setTimeout !== "function") return;
-    const fromY = Math.max(0, Number(requestedFromY) || 0);
-    mainHeaderTabsRevealTimerId = win.setTimeout(() => {
-      mainHeaderTabsRevealTimerId = 0;
-      // Nach einem Seitenwechsel gibt es keine Zeile mehr, um die es ginge.
-      if (!doc?.getElementById?.("smart-tabs")) return;
-      if (isMainHeaderTabsRowVisible()) return;
-      // Ist die Seite inzwischen weiter nach unten gegangen, war das der
-      // Finger des Nutzers - und Runterscrollen nimmt die Zeile weg. Dann hat
-      // der Pfeil nichts mehr zu holen.
-      const scrollY = Math.max(0, Number(win?.scrollY || 0));
-      if (scrollY > fromY + MAIN_HEADER_TABS_DOWN_DELTA_PX) return;
-      // Ein letzter, harter Versuch - Scroll-Position setzen wirkt sofort.
-      setViewportScrollTop(0);
-      if (isMainHeaderTabsRowVisible()) return;
-      setMainHeaderTabsStuck(true);
-    }, MAIN_HEADER_TABS_REVEAL_VERIFY_MS);
   }
 
   function syncMainHeaderTabsOnScroll() {
@@ -1758,40 +1734,45 @@ export function createAppShellRuntimeController(deps = {}) {
       // immer - hochscrollen, und sie steht wieder da, als haette niemand den
       // Pfeil angefasst. Die Zeile verlaesst dafuer nie das Layout, es gibt
       // also auch nichts, was beim Zurueckkommen springen koennte.
+      // Der Pfeil macht die Zeile zu und wieder auf - an derselben Stelle,
+      // egal wo man steht. Er scrollt die Seite nicht mehr dorthin, wo die
+      // Zeile gerade zufaellig waere: das hat sie am Seitenanfang unter die
+      // Leiste geschoben (die Seite rutschte mit) und war jedes Mal davon
+      // abhaengig, ob der Browser den Scroll auch wirklich ausfuehrt. Jetzt
+      // haengt der Zustand an einer Klasse, nicht an einer Scroll-Position.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
-        clearMainHeaderTabsRevealVerify();
         syncSmartHeaderMetrics();
         const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
         const scrollY = Math.max(0, Number(win.scrollY || 0));
         if (isMainHeaderTabsRowVisible()) {
-          // Unterwegs geholt? Dann zuerst wieder loslassen - sie faellt in ihre
-          // normale Position zurueck (kein Layout-Wechsel).
-          if (mainHeaderTabsStuck) setMainHeaderTabsStuck(false);
-          // Steht ihr Platz noch im Blick, faehrt die Seite knapp an ihr
-          // vorbei und die Zeile laeuft hinter die Leiste - dasselbe Bild wie
-          // beim Wegscrollen mit dem Finger. Genau dieser Schritt hat beim
-          // Loslassen nahe am Anfang gefehlt: dort blieb die Zeile stehen und
-          // der Tipp sah aus, als haette er nichts getan.
-          if (scrollY < rowHeight) scrollMainHeaderTabsTo(rowHeight);
-        } else if (scrollY <= rowHeight * MAIN_HEADER_TABS_NEAR_TOP_ROWS) {
-          // Knapp unter dem Seitenanfang: die Seite scrollt zurueck an den
-          // Anfang und nimmt die Zeile von selbst mit. Kein Sonderweg, kein
-          // Sprung - genau das Bild vom Hochscrollen. Kommt der Scroll nicht
-          // an, heftet die Nachschau die Zeile unter die Leiste.
-          scrollMainHeaderTabsTo(0);
-          verifyMainHeaderTabsReveal(scrollY);
+          // Zu: die Zeile geht aus dem Layout. Alles darunter wandert um ihre
+          // Hoehe hoch - am Seitenanfang ist genau das das Zumachen. Steht man
+          // weiter unten, gleicht die Scroll-Position das aus, damit der Text
+          // unter dem Finger stehen bleibt.
+          setMainHeaderTabsCollapsed(true);
+          if (scrollY > 0) scrollMainHeaderTabsTo(Math.max(0, scrollY - rowHeight));
         } else {
-          // Tief in der Seite waere ein Sprung an den Anfang der falsche Preis
-          // fuer die Tabs: die Zeile heftet sich stattdessen unter die Leiste,
-          // die Leseposition bleibt stehen.
-          setMainHeaderTabsStuck(true);
+          // Auf: die Zeile kommt zurueck ins Layout, alles darunter geht um
+          // ihre Hoehe runter. Am Seitenanfang ist das wieder genau das
+          // Startbild. Weiter unten wuerde sie ausserhalb des Blicks landen -
+          // dort heftet sie sich unter die Leiste, damit man sie sieht, und die
+          // Scroll-Position gleicht den Layout-Zuwachs aus.
+          const wasCollapsed = mainHeaderTabsCollapsed;
+          setMainHeaderTabsCollapsed(false);
+          if (scrollY > 0) {
+            setMainHeaderTabsStuck(true);
+            if (wasCollapsed) scrollMainHeaderTabsTo(scrollY + rowHeight);
+          } else {
+            setMainHeaderTabsStuck(false);
+          }
         }
         syncMainHeaderTabsChrome(true);
       };
       toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
       // Zustand nach jedem Re-Render wieder ansagen (Klassen + aria bleiben
       // so auch auf frisch gebautem DOM korrekt).
+      setMainHeaderTabsCollapsed(mainHeaderTabsCollapsed);
       setMainHeaderTabsStuck(mainHeaderTabsStuck);
     }
 

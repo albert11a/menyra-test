@@ -220,208 +220,139 @@ function createHarness() {
 const isVisible = (harness) => harness.controller.isMainHeaderTabsRowVisible();
 const isAway = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-away");
 const isStuck = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-stuck");
+const isCollapsed = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-collapsed");
 
-// Der Kern der ganzen Mechanik: der Pfeil nimmt die Zeile nicht aus dem Layout,
-// er scrollt sie weg. Deshalb gibt es fuer sie nur einen einzigen Weg zurueck -
-// hochscrollen - und der sieht aus wie immer, egal ob der Pfeil im Spiel war.
-test("the chevron scrolls the row away instead of taking it out of the layout", () => {
+// Der Kern: der Pfeil macht die Zeile zu und wieder auf - an derselben Stelle.
+// Er scrollt die Seite nicht mehr dorthin, wo die Zeile gerade zufaellig waere.
+// Deshalb haengt sein Zustand an nichts, was ein Browser oder ein Re-Render
+// ihm wegnehmen koennte.
+test("at the top the chevron closes and opens the row without moving the page", () => {
   const harness = createHarness();
   harness.start();
 
   assert.equal(isVisible(harness), true);
-  harness.clickToggle();
+  assert.equal(harness.windowObj.scrollY, 0);
 
-  assert.equal(
-    harness.windowObj.scrollY,
-    TABS_ROW_HEIGHT,
-    "die Seite faehrt knapp an der Zeile vorbei, mehr passiert nicht"
-  );
-  harness.settleOwnScroll();
+  harness.clickToggle();
+  assert.equal(isCollapsed(harness), true, "die Zeile ist aus dem Layout");
   assert.equal(isVisible(harness), false);
-  assert.equal(isAway(harness), true);
-  assert.equal(isStuck(harness), false, "weggescrollt ist nicht geklebt");
+  assert.equal(isAway(harness), true, "der Pfeil dreht nach oben");
+  assert.equal(harness.windowObj.scrollY, 0, "die Seite steht still");
+
+  harness.clickToggle();
+  assert.equal(isCollapsed(harness), false, "die Zeile ist wieder da");
+  assert.equal(isVisible(harness), true);
+  assert.equal(isAway(harness), false);
+  assert.equal(isStuck(harness), false, "am Anfang klebt nichts");
+  assert.equal(harness.windowObj.scrollY, 0, "die Seite steht immer noch still");
 });
 
-// Genau die Beschwerde aus dem Video: nach dem Pfeil soll das Hochscrollen
-// dasselbe Bild geben wie ohne Pfeil. Beide Wege enden bei scrollY 0 mit
-// sichtbarer Zeile - und keiner von beiden fasst dabei das Layout an.
-test("after the chevron, scrolling back to the top is the same as if it had never been touched", () => {
-  const withChevron = createHarness();
-  withChevron.start();
-  withChevron.clickToggle();
-  withChevron.settleOwnScroll();
-  withChevron.scrollTo(600);
-  withChevron.scrollTo(0);
-
-  const withoutChevron = createHarness();
-  withoutChevron.start();
-  withoutChevron.scrollTo(600);
-  withoutChevron.scrollTo(0);
-
-  assert.equal(isVisible(withChevron), isVisible(withoutChevron));
-  assert.equal(isAway(withChevron), isAway(withoutChevron));
-  assert.equal(isStuck(withChevron), isStuck(withoutChevron));
-  assert.equal(withChevron.windowObj.scrollY, withoutChevron.windowObj.scrollY);
-  assert.equal(isVisible(withChevron), true, "oben steht die Zeile, ganz normal");
-});
-
-// Und auf halbem Weg nach oben ebenso: die Zeile taucht rein nach
-// Scroll-Position auf, nicht nach einem gemerkten Zustand.
-test("halfway back up the row behaves the same with and without the chevron", () => {
-  const withChevron = createHarness();
-  withChevron.start();
-  withChevron.clickToggle();
-  withChevron.settleOwnScroll();
-  withChevron.scrollTo(600);
-  withChevron.scrollTo(120);
-
-  const withoutChevron = createHarness();
-  withoutChevron.start();
-  withoutChevron.scrollTo(600);
-  withoutChevron.scrollTo(120);
-
-  assert.equal(isVisible(withChevron), false);
-  assert.equal(isVisible(withChevron), isVisible(withoutChevron));
-  assert.equal(isAway(withChevron), isAway(withoutChevron));
-});
-
-// Knapp unter dem Anfang - so steht die Seite direkt nach dem Wegschalten -
-// holt der Pfeil die Zeile ueber denselben Weg zurueck: die Seite scrollt an
-// den Anfang, die Zeile kommt von selbst mit.
-test("near the top the chevron brings the row back by scrolling to the top", () => {
+// Zehnmal getippt ist zehnmal dasselbe - kein Zustand, der sich aufschaukelt.
+test("the chevron stays a plain switch, tap after tap", () => {
   const harness = createHarness();
   harness.start();
 
-  harness.clickToggle();
-  harness.settleOwnScroll();
-  assert.equal(isVisible(harness), false);
-
-  harness.clickToggle();
-  assert.equal(harness.windowObj.scrollY, 0, "zurueck an den Anfang, sonst nichts");
-  harness.settleOwnScroll();
-  assert.equal(isVisible(harness), true);
-  assert.equal(isAway(harness), false);
-  assert.equal(isStuck(harness), false, "am Anfang braucht nichts zu kleben");
+  for (let round = 0; round < 5; round += 1) {
+    harness.clickToggle();
+    assert.equal(isVisible(harness), false, `Runde ${round}: zu`);
+    assert.equal(harness.windowObj.scrollY, 0);
+    harness.clickToggle();
+    assert.equal(isVisible(harness), true, `Runde ${round}: auf`);
+    assert.equal(harness.windowObj.scrollY, 0);
+  }
 });
 
-// Tief in der Seite waere ein Sprung an den Anfang der falsche Preis fuer die
-// Tabs: dort heftet sich die Zeile unter die Leiste, die Leseposition bleibt.
-test("deep in the page the chevron sticks the row under the top bar instead", () => {
-  const harness = createHarness();
-  harness.start();
-
-  harness.scrollTo(600);
-  harness.clickToggle();
-
-  assert.equal(harness.windowObj.scrollY, 600, "die Leseposition bleibt stehen");
-  assert.equal(isStuck(harness), true);
-  assert.equal(isVisible(harness), true);
-  assert.equal(isAway(harness), false);
-});
-
-// Die zweite Beschwerde, aus den Bildern: nach "zu" und wieder "auf" stand die
-// Zeile zwar da, aber der Abstand darunter fehlte - die Seite war noch um eine
-// Zeilenhoehe verschoben und die Zeile lag ueber dem Inhalt. Zurueck heisst
-// deshalb: Seite an den Anfang, nichts klebt. Auch dann, wenn ein Re-Render den
-// Scroll unterwegs auf seinen alten Wert zurueckstellt.
-test("back open means the page is at the top again, not the row on top of the content", () => {
-  const harness = createHarness();
-  harness.start();
-
-  harness.clickToggle();
-  harness.settleOwnScroll();
-  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT);
-
-  harness.clickToggle();
-  harness.renderRestoresScroll(TABS_ROW_HEIGHT);
-  harness.runTimers();
-
-  assert.equal(harness.windowObj.scrollY, 0, "die Seite steht wieder am Anfang");
-  assert.equal(isStuck(harness), false, "nichts liegt ueber dem Inhalt");
-  assert.equal(isVisible(harness), true);
-  assert.equal(isAway(harness), false);
-});
-
-// Dasselbe fuer das Wegnehmen: auch dahin bringt der Pfeil die Seite gegen
-// einen Re-Render, sonst blieben die Pills einfach stehen.
-test("taking the row away survives a re-render that restores the scroll", () => {
+// Genau die Beschwerde: ein Re-Render setzt die Scroll-Position zurueck. Das
+// darf den Pfeil nicht mehr interessieren - er haengt nicht mehr daran.
+test("a re-render restoring the scroll cannot break the chevron", () => {
   const harness = createHarness();
   harness.start();
 
   harness.clickToggle();
   harness.renderRestoresScroll(0);
   harness.runTimers();
+  assert.equal(isVisible(harness), false, "zu bleibt zu");
 
-  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT);
-  assert.equal(isVisible(harness), false);
+  harness.clickToggle();
+  harness.renderRestoresScroll(0);
+  harness.runTimers();
+  assert.equal(isVisible(harness), true, "auf bleibt auf");
+  assert.equal(harness.windowObj.scrollY, 0);
   assert.equal(isStuck(harness), false);
 });
 
-// Die erste Beschwerde: Zeile weg, Pfeil oben - und der Pfeil holt sie nicht
-// mehr zurueck. Sein Scroll ist nur eine Bitte an den Browser; ein Re-Render setzt
-// die Position unterwegs zurueck, ein kurzer Weg wird gekappt. Bleibt die
-// Bitte unbeantwortet, muss die Zeile trotzdem kommen: sie heftet sich dann
-// unter die Leiste - dafuer braucht es keinen Scroll.
-test("the chevron brings the row back even when the page refuses to scroll", () => {
+// Auch wenn der Browser gar nicht scrollt, schaltet der Pfeil - der Scroll ist
+// nur noch Ausgleich, nicht mehr der Weg.
+test("the chevron switches even when the browser refuses to scroll", () => {
   const harness = createHarness();
   harness.start();
-
-  harness.clickToggle();
-  harness.settleOwnScroll();
-  assert.equal(isVisible(harness), false, "erst mal ist sie weg");
-
   harness.windowObj.scrollRequestsIgnored = true;
-  harness.clickToggle();
-  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT, "der Scroll kommt nicht an");
-  assert.equal(isVisible(harness), false, "im selben Bild steht sie noch nicht da");
-
-  harness.runTimers();
-  assert.equal(isVisible(harness), true, "die Zeile ist trotzdem zurueck");
-  assert.equal(isStuck(harness), true, "geholt wird sie dann ueber die Leiste");
-  assert.equal(isAway(harness), false);
-});
-
-// Und der Pfeil bleibt dabei ein Schalter: nach dem Zurueckholen ohne Scroll
-// nimmt der naechste Tipp die Zeile wieder weg.
-test("after the scroll-less reveal the next tap takes the row away again", () => {
-  const harness = createHarness();
-  harness.start();
 
   harness.clickToggle();
-  harness.settleOwnScroll();
-  harness.windowObj.scrollRequestsIgnored = true;
+  assert.equal(isVisible(harness), false);
   harness.clickToggle();
-  harness.runTimers();
   assert.equal(isVisible(harness), true);
-
-  harness.windowObj.scrollRequestsIgnored = false;
-  harness.clickToggle();
-  harness.settleOwnScroll();
-  assert.equal(isVisible(harness), false, "nochmal getippt ist sie wieder weg");
-  assert.equal(isStuck(harness), false);
 });
 
-// Wer selbst weiterscrollt, will die Zeile nicht: die Nachschau haelt sich
-// dann heraus, sonst kaeme sie unter dem Finger von selbst zurueck.
-test("the check keeps out of the way when the user scrolls on themselves", () => {
+// Weiter unten in der Seite: die Zeile ist ohnehin weggescrollt. Ein Tipp holt
+// sie unter die Leiste, ohne die Leseposition zu verruecken - das war schon
+// vorher so und bleibt.
+test("further down the row comes back under the top bar, the reading spot stays", () => {
   const harness = createHarness();
   harness.start();
 
-  harness.clickToggle();
-  harness.settleOwnScroll();
-  harness.windowObj.scrollRequestsIgnored = true;
-  harness.clickToggle();
   harness.scrollTo(600);
-  harness.runTimers();
+  assert.equal(isVisible(harness), false);
 
-  assert.equal(isStuck(harness), false, "nichts klebt unter der Leiste");
+  harness.clickToggle();
+  assert.equal(isVisible(harness), true);
+  assert.equal(isStuck(harness), true);
+  assert.equal(harness.windowObj.scrollY, 600, "die Leseposition bleibt stehen");
+
+  harness.clickToggle();
+  assert.equal(isVisible(harness), false);
+  assert.equal(isStuck(harness), false);
+  assert.equal(harness.windowObj.scrollY, 600 - TABS_ROW_HEIGHT, "der Ausgleich haelt den Text still");
+});
+
+// Zumachen weiter unten nimmt der Seite eine Zeilenhoehe an Layout weg. Damit
+// der Text unter dem Finger stehen bleibt, geht die Scroll-Position mit - und
+// beim Aufmachen wieder zurueck.
+test("closing and opening further down keeps the content under the finger", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.scrollTo(600);
+  harness.clickToggle();
+  harness.clickToggle();
+  const nachZu = harness.windowObj.scrollY;
+  assert.equal(nachZu, 600 - TABS_ROW_HEIGHT);
+  assert.equal(isCollapsed(harness), true);
+
+  harness.clickToggle();
+  assert.equal(isCollapsed(harness), false);
+  assert.equal(harness.windowObj.scrollY, 600, "zurueck auf dieselbe Stelle");
+  assert.equal(isStuck(harness), true, "und sichtbar unter der Leiste");
+});
+
+// Weitergescrollt laesst die geholte Zeile wieder los - sonst haette man
+// dauerhaft eine zweite Leiste im Bild.
+test("scrolling on releases the row that the chevron brought back", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.scrollTo(600);
+  harness.clickToggle();
+  assert.equal(isStuck(harness), true);
+
+  harness.scrollTo(660);
+  assert.equal(isStuck(harness), false);
   assert.equal(isVisible(harness), false);
 });
 
-// Geklebt und dabei nahe am Anfang: Loslassen allein nimmt die Zeile dort
-// nicht weg - ihr normaler Platz liegt ja noch im Blick. Ein Tipp muss
-// reichen, sonst sieht der erste aus, als haette er nichts getan.
-test("near the top one tap is enough to take the stuck row away", () => {
+// Am Seitenanfang ist die offene Zeile einfach da - ohne Kleben, ohne dass
+// etwas uebereinander liegt. Genau das Startbild.
+test("scrolling back to the top shows the open row in its normal place", () => {
   const harness = createHarness();
   harness.start();
 
@@ -429,32 +360,43 @@ test("near the top one tap is enough to take the stuck row away", () => {
   harness.clickToggle();
   assert.equal(isStuck(harness), true);
 
-  // Mit dem Finger zurueck nach oben, aber nicht ganz an den Anfang.
-  harness.scrollTo(6);
-  assert.equal(isStuck(harness), true, "oben angekommen ist sie noch nicht");
-
-  harness.clickToggle();
-  harness.settleOwnScroll();
-  assert.equal(isStuck(harness), false);
-  assert.equal(isVisible(harness), false, "ein Tipp nimmt sie weg");
-  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT);
+  harness.scrollTo(0);
+  assert.equal(isStuck(harness), false, "am Anfang klebt nichts");
+  assert.equal(isVisible(harness), true);
+  assert.equal(isCollapsed(harness), false);
 });
 
-test("the stuck row is released again by the chevron and by scrolling on", () => {
+// Zugemacht bleibt zugemacht, auch wenn man scrollt: der Pfeil ist der
+// einzige, der die Zeile wieder aufmacht.
+test("a closed row stays closed while scrolling", () => {
   const harness = createHarness();
   harness.start();
 
-  harness.scrollTo(600);
   harness.clickToggle();
-  assert.equal(isStuck(harness), true);
-
-  harness.clickToggle();
-  assert.equal(isStuck(harness), false, "nochmal getippt laesst sie wieder los");
   assert.equal(isVisible(harness), false);
 
-  harness.scrollTo(400);
+  harness.scrollTo(600);
+  assert.equal(isCollapsed(harness), true);
+  harness.scrollTo(0);
+  assert.equal(isCollapsed(harness), true, "sie kommt nicht von selbst zurueck");
+  assert.equal(isVisible(harness), false);
+
   harness.clickToggle();
-  assert.equal(isStuck(harness), true);
-  harness.scrollTo(460);
-  assert.equal(isStuck(harness), false, "weiterscrollen nimmt sie ebenfalls wieder mit");
+  assert.equal(isVisible(harness), true);
+});
+
+// Der Zustand liegt im Modul, nicht im HTML: ein Re-Render baut die Kopfzeile
+// neu und die Zeile muss trotzdem zu bleiben.
+test("the closed state survives a re-render of the header", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  assert.equal(isCollapsed(harness), true);
+
+  harness.documentObj.documentElement.classList.remove("smart-header-tabs-collapsed");
+  harness.start();
+
+  assert.equal(isCollapsed(harness), true, "nach dem Re-Render wieder zu");
+  assert.equal(isVisible(harness), false);
 });

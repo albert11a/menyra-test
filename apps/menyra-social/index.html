@@ -823,13 +823,6 @@
     .app-main-scroll--with-smart-header-tabs {
       min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-top-height, 4.5rem));
     }
-    /* Dieselbe Mindesthoehe dort, wo die Pill-Zeile wirklich steht: sie liegt
-       im Shell direkt vor dem Hauptbereich. Ohne diesen Scroll-Weg koennte der
-       Pfeil die Zeile auf einer kurzen Seite nicht wegscrollen und taete
-       nichts. */
-    .smart-header-tabs--main ~ .app-main-scroll:not(.app-main-scroll--map-fill) {
-      min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-top-height, 4.5rem));
-    }
     .app-main-scroll--with-smart-header:has(> #restaurantsView),
     .app-main-scroll--with-smart-header:has(> #travelView),
     .app-main-scroll--with-smart-header-tabs:has(> #restaurantsView),
@@ -1428,6 +1421,14 @@
        gibt deshalb keinen Ausgeblendet-Zustand mehr, den man hier abbilden
        muesste - und beim Hochscrollen kommt die Zeile zurueck, als haette
        niemand den Pfeil angefasst. */
+    /* Zugemacht ist die Zeile aus dem Layout. Mehr passiert beim Pfeil nicht:
+       kein Scroll, kein Zwischenzustand. Alles darunter wandert um ihre Hoehe
+       hoch - genau das ist das Zumachen. Steht die Seite nicht am Anfang, geht
+       die Scroll-Position um denselben Betrag mit, damit der Text unter dem
+       Finger stehen bleibt. */
+    html.smart-header-tabs-collapsed .smart-header-tabs--main {
+      display: none;
+    }
     /* Ist die Zeile nicht zu sehen, faerbt sich der Pfeil weich blau ein und
        dreht nach oben: das
        ist der Hinweis, dass man die Tabs darueber wieder aufmachen kann. */
