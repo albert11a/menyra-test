@@ -1436,7 +1436,9 @@
       color: rgb(100 116 139);
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      transition: color 320ms cubic-bezier(0.42, 0, 0.58, 1), background-color 320ms ease;
+      /* Kurz genug, dass der Knopf sofort antwortet: bei 320ms zog die Farbe
+         dem Finger sichtbar hinterher und der Pfeil wirkte zaeh. */
+      transition: color 140ms ease-out, background-color 140ms ease-out;
     }
     html.smart-header-tabs-away .smart-header-collapse-btn {
       color: rgb(79 70 229);

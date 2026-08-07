@@ -170,6 +170,7 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsScrollListener = null;
   let mainHeaderTabsToggleEl = null;
   let mainHeaderTabsToggleHandler = null;
+  let mainHeaderTabsToggleUnbind = null;
   // Die Tab-Zeile sitzt am Seitenanfang und scrollt normal weg - deshalb ist
   // sie oben zu sehen und unterwegs nicht, ganz ohne Zutun. Der Pfeil schaltet
   // sie nicht weg, er scrollt sie weg: die Zeile verlaesst nie das Layout, und
@@ -1663,6 +1664,9 @@ export function createAppShellRuntimeController(deps = {}) {
     const top = Math.max(0, Math.round(Number(targetY) || 0));
     clearMainHeaderTabsScrollAssert();
     setViewportScrollTop(top);
+    // Der Ausgleich ist die neue Ausgangslage - sonst liest der naechste
+    // Scroll-Vergleich die eigene Bewegung als Geste des Nutzers.
+    mainHeaderTabsLastScrollY = top;
     if (!win || typeof win.setTimeout !== "function") return;
     mainHeaderTabsScrollAssertTarget = top;
     mainHeaderTabsScrollAssertRelease = () => clearMainHeaderTabsScrollAssert();
@@ -1673,6 +1677,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const timerId = win.setTimeout(() => {
         if (mainHeaderTabsScrollAssertTarget !== top) return;
         setViewportScrollTop(top);
+        mainHeaderTabsLastScrollY = top;
         // Nicht auf das Scroll-Ereignis warten: Pfeilrichtung und aria haengen
         // an der Position, und die steht hier schon fest.
         syncMainHeaderTabsChrome(true);
@@ -1688,9 +1693,16 @@ export function createAppShellRuntimeController(deps = {}) {
     const scrollY = Math.max(0, Number(win?.scrollY || 0));
     const previous = mainHeaderTabsLastScrollY;
     mainHeaderTabsLastScrollY = scrollY;
+    // Der eigene Ausgleich zaehlt nicht als Scrollen des Nutzers. Aufgemacht
+    // wandert die Position um eine Zeilenhoehe nach unten, damit der Text
+    // stehen bleibt - als Geste gelesen hat genau das die gerade geholte Zeile
+    // sofort wieder weggenommen, und jeder zweite Tipp sah aus, als taete der
+    // Pfeil nichts. Ein Finger auf dem Glas beendet den Ausgleich ohnehin.
+    const eigenerAusgleich = mainHeaderTabsScrollAssertTarget >= 0;
     // Runterscrollen nimmt die per Pfeil geholte Zeile wieder weg; oben wird
     // das Kleben ueberfluessig, weil dort die normale Position dieselbe ist.
     if (mainHeaderTabsStuck
+      && !eigenerAusgleich
       && (scrollY > previous + MAIN_HEADER_TABS_DOWN_DELTA_PX || scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX)) {
       setMainHeaderTabsStuck(false);
     }
@@ -1703,14 +1715,57 @@ export function createAppShellRuntimeController(deps = {}) {
     if (win && typeof mainHeaderTabsScrollListener === "function") {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
-    if (mainHeaderTabsToggleEl && typeof mainHeaderTabsToggleHandler === "function") {
-      mainHeaderTabsToggleEl.removeEventListener("click", mainHeaderTabsToggleHandler);
-    }
+    if (typeof mainHeaderTabsToggleUnbind === "function") mainHeaderTabsToggleUnbind();
     if (win && mainHeaderTabsRafId) win.cancelAnimationFrame?.(mainHeaderTabsRafId);
     mainHeaderTabsRafId = 0;
     mainHeaderTabsScrollListener = null;
     mainHeaderTabsToggleEl = null;
     mainHeaderTabsToggleHandler = null;
+    mainHeaderTabsToggleUnbind = null;
+  }
+
+  // Der Pfeil reagiert auf das Loslassen des Fingers, nicht erst auf den
+  // Klick: nach dem Scrollen laesst iOS den Klick gern auf sich warten oder
+  // schluckt ihn ganz, und genau weiter unten in der Seite hat man eben
+  // gescrollt - der Knopf fuehlte sich dort zaeh an. Ein Wisch, der auf dem
+  // Knopf beginnt, schaltet nichts: bewegt sich der Finger, ist es kein Tipp.
+  // Dieselbe Bindung haben die Pills daneben schon.
+  function bindMainHeaderTabsToggleTap(element, run) {
+    if (!element || typeof run !== "function") return null;
+    let startY = 0;
+    let moved = false;
+    let lastTouchTs = 0;
+    const onTouchStart = (event) => {
+      startY = Number(event?.touches?.[0]?.clientY ?? 0);
+      moved = false;
+      lastTouchTs = Date.now();
+    };
+    const onTouchMove = (event) => {
+      const currentY = Number(event?.touches?.[0]?.clientY ?? startY);
+      if (Math.abs(currentY - startY) > 8) moved = true;
+    };
+    const onTouchEnd = (event) => {
+      lastTouchTs = Date.now();
+      if (moved) return;
+      if (event?.cancelable) event.preventDefault();
+      run();
+    };
+    // Maus und Tastatur laufen weiter ueber den Klick; nach einem Tipp wird er
+    // uebersprungen, damit nicht beides zaehlt.
+    const onClick = () => {
+      if (Date.now() - lastTouchTs < 450) return;
+      run();
+    };
+    element.addEventListener("touchstart", onTouchStart, { passive: true });
+    element.addEventListener("touchmove", onTouchMove, { passive: true });
+    element.addEventListener("touchend", onTouchEnd);
+    element.addEventListener("click", onClick);
+    return () => {
+      element.removeEventListener("touchstart", onTouchStart);
+      element.removeEventListener("touchmove", onTouchMove);
+      element.removeEventListener("touchend", onTouchEnd);
+      element.removeEventListener("click", onClick);
+    };
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
@@ -1769,7 +1824,7 @@ export function createAppShellRuntimeController(deps = {}) {
         }
         syncMainHeaderTabsChrome(true);
       };
-      toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
+      mainHeaderTabsToggleUnbind = bindMainHeaderTabsToggleTap(toggleEl, mainHeaderTabsToggleHandler);
       // Zustand nach jedem Re-Render wieder ansagen (Klassen + aria bleiben
       // so auch auf frisch gebautem DOM korrekt).
       setMainHeaderTabsCollapsed(mainHeaderTabsCollapsed);

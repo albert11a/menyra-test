@@ -189,6 +189,20 @@ function createHarness() {
     (toggleEl.listeners.get("click") || []).slice().forEach((handler) => handler({}));
   }
 
+  const fireOn = (element, type, event = {}) => {
+    (element.listeners.get(type) || []).slice().forEach((handler) => handler(event));
+  };
+
+  // Ein Tipp mit dem Finger, so wie ihn der Browser meldet: touchstart,
+  // touchend - und danach der Klick, den iOS hinterherschickt.
+  function tapToggle({ moveBy = 0, withClick = true } = {}) {
+    fireOn(toggleEl, "touchstart", { touches: [{ clientY: 100 }] });
+    if (moveBy) fireOn(toggleEl, "touchmove", { touches: [{ clientY: 100 + moveBy }] });
+    fireOn(toggleEl, "touchend", { cancelable: true, preventDefault() {} });
+    // iOS schluckt den Klick nach dem Scrollen gern - dann bleibt nur der Finger.
+    if (withClick) fireOn(toggleEl, "click", {});
+  }
+
   // Die Nachschau des Pfeils laeuft ueber einen Timer - hier wird er von Hand
   // abgearbeitet, statt wirklich zu warten.
   function runTimers() {
@@ -210,6 +224,7 @@ function createHarness() {
     windowObj,
     start,
     clickToggle,
+    tapToggle,
     scrollTo,
     renderRestoresScroll,
     settleOwnScroll,
@@ -399,4 +414,53 @@ test("the closed state survives a re-render of the header", () => {
 
   assert.equal(isCollapsed(harness), true, "nach dem Re-Render wieder zu");
   assert.equal(isVisible(harness), false);
+});
+
+// Weiter unten hat jeder zweite Tipp nichts getan: aufgemacht geht die
+// Scroll-Position um eine Zeilenhoehe mit, damit der Text stehen bleibt - und
+// genau das las die Scroll-Regel als "der Nutzer scrollt nach unten" und nahm
+// die gerade geholte Zeile sofort wieder weg. Der eigene Ausgleich ist keine
+// Geste.
+test("further down every tap counts, the compensation is not read as a swipe", () => {
+  const harness = createHarness();
+  harness.start();
+  harness.scrollTo(1200);
+
+  for (let round = 0; round < 4; round += 1) {
+    harness.clickToggle();
+    harness.settleOwnScroll();
+    harness.runTimers();
+    assert.equal(isVisible(harness), true, `Runde ${round}: der Tipp holt die Zeile`);
+    assert.equal(isStuck(harness), true, `Runde ${round}: und sie bleibt auch da`);
+
+    harness.clickToggle();
+    harness.settleOwnScroll();
+    harness.runTimers();
+    assert.equal(isVisible(harness), false, `Runde ${round}: der naechste Tipp nimmt sie weg`);
+  }
+});
+
+// Der Finger zaehlt beim Loslassen - nicht erst beim Klick, den iOS nach dem
+// Scrollen gern verspaetet oder gar nicht schickt.
+test("the chevron reacts on the finger lifting, and only once", () => {
+  const harness = createHarness();
+  harness.start();
+
+  // Ohne nachfolgenden Klick - genau der Fall, in dem der Knopf vorher stumm
+  // blieb.
+  harness.tapToggle({ withClick: false });
+  assert.equal(isVisible(harness), false, "das Loslassen allein schaltet schon");
+
+  // Und mit Klick zaehlt der Tipp trotzdem nur einmal.
+  harness.tapToggle();
+  assert.equal(isVisible(harness), true, "ein Tipp, ein Wechsel");
+});
+
+// Ein Wisch, der auf dem Knopf beginnt, ist kein Tipp.
+test("a swipe starting on the chevron does not switch anything", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.tapToggle({ moveBy: 40 });
+  assert.equal(isVisible(harness), true, "gewischt heisst nicht getippt");
 });
