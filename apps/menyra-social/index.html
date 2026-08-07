@@ -570,6 +570,10 @@
       --active-modal-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
       --smart-header-content-gap: 1.2rem;
+      /* Hoehe der Schattenkante unter dem Header. Sie steht hier, weil die
+         Pill-Zeile genau um diesen Betrag weiter faehrt, wenn sie zumacht -
+         nur dann liegt auch ihr eigener Schatten hinter der Leiste. */
+      --smart-header-edge-height: 16px;
       --viewport-height: 1vh;
       --map-shell-height: calc(var(--viewport-height) * 100);
       color-scheme: light;
@@ -817,11 +821,14 @@
     }
     .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
     .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
-    /* Der Pfeil scrollt die Tab-Zeile weg - dafuer muss immer mindestens ihre
-       Hoehe an Scroll-Weg da sein. Auf einer kurzen Seite (leere Liste zum
-       Beispiel) gaebe es den sonst nicht und der Pfeil taete nichts. */
-    .app-main-scroll--with-smart-header-tabs,
-    .app-shell:has(.smart-header-tabs--main) > main.app-main-scroll {
+    /* Die Business-Tab-Leiste faehrt beim Scrollen hinter die obere Leiste -
+       dafuer muss mindestens ihre Hoehe an Scroll-Weg da sein.
+       Die Pill-Zeile im Hauptheader braucht das ausdruecklich NICHT: sie wird
+       vom Pfeil nur noch verschoben, nie gescrollt. Eine solche Mindesthoehe
+       haengt an --viewport-height, und das aendert sich auf iOS waehrend des
+       Scrollens (die Adressleiste faehrt ein) - das Dokument wuchs dann unter
+       dem Finger und die Seite sprang. */
+    .app-main-scroll--with-smart-header-tabs {
       min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-top-height, 4.5rem));
     }
     .app-main-scroll--with-smart-header:has(> #restaurantsView),
@@ -1390,8 +1397,8 @@
       position: absolute;
       left: 0;
       right: 0;
-      bottom: -16px;
-      height: 16px;
+      bottom: calc(-1 * var(--smart-header-edge-height));
+      height: var(--smart-header-edge-height);
       pointer-events: none;
       z-index: 0;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
@@ -1411,18 +1418,34 @@
       position: -webkit-sticky;
       position: sticky;
       top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
-      height: 16px;
-      margin-bottom: -16px;
+      height: var(--smart-header-edge-height);
+      margin-bottom: calc(-1 * var(--smart-header-edge-height));
       z-index: 85;
       pointer-events: none;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
     }
-    /* Eingesteckt: die geheftete Zeile liegt hinter der Leiste. Nur ein
-       transform - Hoehe und Platz im Dokument bleiben unangetastet, damit sich
-       darunter nichts bewegt. Die Leiste liegt im Stapel darueber und ist
-       deckend, die Zeile ist dort also wirklich weg.
-       Bewusst nur zusammen mit dem Kleben: die Zeile im normalen Fluss darf nie
-       verschoben werden, sonst laeuft sie dem Scroll davon. */
+    /* Zugemacht: die Zeile faehrt um ihre eigene Hoehe nach oben hinter die
+       Leiste. Nur ein transform - Hoehe und Platz im Dokument bleiben
+       unangetastet, die Seite bewegt sich nicht und der Abstand bleibt
+       derselbe. Die Leiste liegt im Stapel darueber und ist deckend, die Zeile
+       ist dort also wirklich weg.
+       Weil der Versatz konstant ist, gilt er auf jeder Scroll-Position: die
+       zugemachte Zeile liegt oben wie unterwegs hinter der Leiste. */
+    html.smart-header-tabs-closed .smart-header-tabs--main {
+      /* Um ihre Hoehe PLUS die Schattenkante: dann liegt auch der eigene
+         Schatten der Zeile hinter der Leiste, und unter der Leiste malt allein
+         .smart-header-underline. Sonst laegen beide uebereinander und der
+         Schatten waere dort doppelt so dunkel.
+         Bewusst ueber die Geometrie geloest und nicht ueber eine
+         Deckkraft-Fahrt der Schattenkante: Uebergaenge auf Pseudo-Elementen
+         laufen auf WebKit dem transform hinterher, und dann zog der Schatten
+         sichtbar nach. Was gar nicht geschaltet wird, kann nicht nachziehen. */
+      transform: translateY(calc(-1 * var(--smart-header-tabs-row-height, 41px) - var(--smart-header-edge-height)));
+      pointer-events: none;
+    }
+    /* Eingesteckt: dasselbe fuer die geheftete Zeile, waehrend sie hinter der
+       Leiste hervorkommt oder wieder dahinter zurueckfaehrt. Bewusst nur
+       zusammen mit dem Kleben - im normalen Fluss regelt das "zugemacht". */
     html.smart-header-tabs-stuck.smart-header-tabs-tucked .smart-header-tabs--main {
       transform: translateY(calc(-1 * var(--smart-header-tabs-row-height, 41px)));
       pointer-events: none;

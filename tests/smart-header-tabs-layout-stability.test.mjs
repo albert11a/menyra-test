@@ -48,25 +48,51 @@ test("no rule ever takes the pill row out of the layout", () => {
 
 // Verschoben wird sie nur, wenn sie unter der Leiste klebt. Im normalen Fluss
 // wuerde ein transform sie dem Scroll davonlaufen lassen.
-test("the row is only moved while it is pinned under the top bar", () => {
-  zeilenRegeln()
-    .filter(({ inhalt }) => /transform\s*:/.test(inhalt))
-    .forEach(({ selektor, inhalt }) => {
-      assert.match(inhalt, /translateY/, `${selektor} verschiebt nicht senkrecht`);
-      assert.match(
-        selektor,
-        /html\.smart-header-tabs-stuck\.smart-header-tabs-tucked/,
-        `${selektor} verschiebt die Zeile auch ohne Kleben`
-      );
-    });
+test("the row is only ever moved by exactly its own height", () => {
+  const verschiebend = zeilenRegeln().filter(({ inhalt }) => /transform\s*:/.test(inhalt));
+  assert.ok(verschiebend.length > 0, "keine Regel verschiebt die Zeile");
+  verschiebend.forEach(({ selektor, inhalt }) => {
+    // Genau eine Strecke, und die endet hinter der Leiste. Alles andere waere
+    // eine Bewegung, die dem Scroll davonlaeuft.
+    assert.match(
+      inhalt,
+      /transform:\s*translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height/,
+      `${selektor} verschiebt anders als um eine Zeilenhoehe nach oben`
+    );
+    assert.doesNotMatch(inhalt, /translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height[^)]*\)\s*\*/,
+      `${selektor} rechnet die Zeilenhoehe hoch`);
+    // Zwei Zustaende duerfen das: der zugemachte und der eingesteckte.
+    assert.match(
+      selektor,
+      /html\.smart-header-tabs-closed|html\.smart-header-tabs-stuck\.smart-header-tabs-tucked/,
+      `${selektor} verschiebt die Zeile in einem dritten Zustand`
+    );
+  });
+});
+
+// Der Pfeil bewegt nur die Zeile. Nichts an ihr darf davon abhaengen, wie hoch
+// das Bild gerade ist - auf iOS aendert sich das beim Scrollen laufend, weil
+// die Adressleiste einfaehrt. Eine Mindesthoehe am Hauptbereich liess das
+// Dokument dabei wachsen, und die Seite sprang unter dem Finger.
+test("nothing about the pill row makes the document height follow the viewport", () => {
+  const treffer = [...css.matchAll(/([^{}]*)\{([^}]*)\}/g)]
+    .filter(([, selektor, inhalt]) =>
+      /smart-header-tabs--main/.test(selektor)
+      && /min-height|max-height|height\s*:/.test(inhalt)
+      && /--viewport-height|vh\b|dvh|lvh/.test(inhalt))
+    .map(([, selektor]) => selektor.trim());
+  assert.deepEqual(treffer, [], `haengt an der Bildhoehe: ${treffer.join(" | ")}`);
 });
 
 // Eingesteckt faehrt sie genau um ihre eigene Hoehe - dann liegt sie ganz hinter
 // der Leiste und blitzt nirgends hervor.
-test("the pinned row tucks away by exactly its own height", () => {
-  const regel = regelInhalt("html.smart-header-tabs-stuck.smart-header-tabs-tucked .smart-header-tabs--main");
-  assert.match(regel, /translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height/);
-  assert.match(regel, /pointer-events:\s*hidden|pointer-events:\s*none/, "und faengt dort keine Tipps mehr ab");
+test("both moved states tuck the row behind the top bar", () => {
+  ["html.smart-header-tabs-closed .smart-header-tabs--main",
+   "html.smart-header-tabs-stuck.smart-header-tabs-tucked .smart-header-tabs--main"].forEach((selektor) => {
+    const regel = regelInhalt(selektor);
+    assert.match(regel, /translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height/, selektor);
+    assert.match(regel, /pointer-events:\s*none/, `${selektor} faengt dort noch Tipps ab`);
+  });
 });
 
 // Gefahren wird ueber transform, nicht ueber die Hoehe: Hoehe faerbt das Layout
@@ -77,33 +103,64 @@ test("the row glides on transform alone, and only while it is gliding", () => {
   assert.doesNotMatch(regel, /transition:[^;]*height/, "und nie der Hoehe");
 });
 
-// Die Schattenkante der Zeile wird nie ein- oder ausgeblendet: sie sitzt an der
-// Zeile und faehrt mit demselben transform mit. Etwas, das gar nicht erst
-// geschaltet wird, kann auch nicht nachziehen - und genau das tat sie vorher,
-// als ein Timer am Ende der Fahrt sie wieder einschaltete.
-test("the row's shadow rides along instead of being switched", () => {
+// Die Schattenkante der Zeile wird nie geschaltet: sie sitzt an der Zeile und
+// faehrt mit demselben transform mit. Was gar nicht erst geschaltet wird, kann
+// auch nicht nachziehen - und ein Deckkraft-Uebergang auf einem Pseudo-Element
+// lief auf WebKit dem transform sichtbar hinterher.
+test("the row's shadow is never switched, it just rides along", () => {
   const geschaltet = [...css.matchAll(/([^{}]*\.smart-header-tabs--main::after[^{}]*)\{([^}]*)\}/g)]
     .filter(([, , inhalt]) => /(opacity|display|visibility|transition)\s*:/.test(inhalt))
     .map(([, selektor]) => ohneKommentare(selektor));
   assert.deepEqual(geschaltet, [], `keine Regel schaltet sie: ${geschaltet.join(" | ")}`);
 });
 
-// Solange die Zeile klebt, malt ihre eigene Kante - die unter der Leiste tritt
-// zurueck, sonst waere der Schatten dort doppelt so dunkel.
-test("the underline yields while the row is pinned", () => {
+// Doppelt duerfen die beiden Kanten trotzdem nie liegen - das loest die
+// Geometrie, in beide Richtungen.
+test("the two shadow edges never overlap, in either direction", () => {
+  // Geklebt malt die Kante der Zeile; die unter der Leiste tritt zurueck.
   assert.match(regelInhalt("html.smart-header-tabs-stuck .smart-header-underline"), /opacity:\s*0/);
+  // Zugemacht ist es umgekehrt: die Zeile faehrt um ihre Hoehe PLUS die
+  // Kantenhoehe, damit auch ihr eigener Schatten hinter der Leiste landet.
+  const regel = regelInhalt("html.smart-header-tabs-closed .smart-header-tabs--main");
+  assert.match(regel, /--smart-header-tabs-row-height/, "die Zeilenhoehe");
+  assert.match(regel, /--smart-header-edge-height/, "und die Kantenhoehe dazu");
+});
+
+// Verschachtelte calc() haben sich auf WebKit nicht zuverlaessig aufgeloest -
+// die Zeile stand dann still statt zu fahren. Flach halten.
+test("the transform keeps its calc flat, the way WebKit needs it", () => {
+  zeilenRegeln()
+    .filter(({ inhalt }) => /transform\s*:/.test(inhalt))
+    .forEach(({ selektor, inhalt }) => {
+      // var(...) zaehlt nicht als Verschachtelung - erst raus damit, dann darf
+      // im calc() keine weitere Klammer mehr stehen.
+      let ohneVar = inhalt;
+      let vorher = "";
+      while (ohneVar !== vorher) {
+        vorher = ohneVar;
+        ohneVar = ohneVar.replace(/var\([^()]*\)/g, "V");
+      }
+      const calc = ohneVar.slice(ohneVar.indexOf("calc("));
+      assert.doesNotMatch(
+        calc.slice("calc(".length, calc.indexOf(")")),
+        /\(/,
+        `${selektor} verschachtelt calc()`
+      );
+    });
 });
 
 // Der Wechsel zwischen beiden ist nur deshalb unsichtbar, weil es dieselbe
 // Kante an derselben Stelle ist: gleicher Verlauf, gleiche Hoehe. Laufen die
 // Werte auseinander, blitzt beim Loslassen ein Sprung auf.
-test("both shadow edges are the very same 16px gradient", () => {
+test("both shadow edges are the very same gradient, from one shared height", () => {
   const zeile = regelInhalt(".smart-header-tabs--main::after");
   const kante = regelInhalt(".smart-header-underline {");
   const verlauf = /background:\s*(linear-gradient\([^;]+\))/;
-  const hoehe = /height:\s*(\S+?);/;
   assert.equal(zeile.match(verlauf)?.[1], kante.match(verlauf)?.[1], "derselbe Verlauf");
-  assert.equal(zeile.match(hoehe)?.[1], kante.match(hoehe)?.[1], "dieselbe Hoehe");
+  // Eine Zahl, ein Name - sonst laufen Kante und Fahrstrecke auseinander.
+  [zeile, kante].forEach((regel) => {
+    assert.match(regel, /height:\s*var\(--smart-header-edge-height\)/);
+  });
 });
 
 // Die Pills muessen sofort antworten. Der Tipp faerbt sie schon beim Loslassen
@@ -120,12 +177,13 @@ test("the pills answer a tap as quickly as the chevron does", () => {
   });
 });
 
-// Der Pfeil scrollt die Zeile oben hinter die Leiste - dafuer muss mindestens
-// ihre Hoehe an Scroll-Weg da sein. Auf einer kurzen Seite gaebe es den sonst
-// nicht und der Pfeil taete nichts.
-test("a page with pills always has at least one row height of scroll room", () => {
-  const regel = regelInhalt(".app-shell:has(.smart-header-tabs--main) > main.app-main-scroll");
-  assert.match(regel, /min-height:\s*calc\(/);
-  assert.match(regel, /--viewport-height/);
-  assert.match(regel, /--smart-header-top-height/);
+// Der Pfeil scrollt nicht mehr - also braucht die Seite auch keinen
+// garantierten Scroll-Weg mehr, und darf ihn schon gar nicht an die Bildhoehe
+// haengen.
+test("the pill row no longer forces a minimum page height", () => {
+  assert.equal(
+    css.includes(".app-shell:has(.smart-header-tabs--main) > main.app-main-scroll"),
+    false,
+    "die Regel fuer den Scroll-Weg ist raus"
+  );
 });
