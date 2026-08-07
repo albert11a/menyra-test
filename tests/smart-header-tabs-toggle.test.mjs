@@ -161,8 +161,18 @@ function createHarness() {
   }
 
 
-  // Ein Scroll des Nutzers: Position setzen, Ereignis melden, Frame abarbeiten.
+  // Ein Scroll des Nutzers: der faengt mit dem Finger an, deshalb erst die
+  // Geste melden - der Pfeil laesst daraufhin sein Scroll-Ziel los.
   function scrollTo(y) {
+    fireWindow("pointerdown");
+    windowObj.scrollY = Math.max(0, y);
+    fireWindow("scroll");
+    flushFrames();
+  }
+
+  // Ein Re-Render mitten im Pfeil-Scroll: der Render-Pfad setzt die
+  // Scroll-Position wieder auf den Wert, den er sich gemerkt hat.
+  function renderRestoresScroll(y) {
     windowObj.scrollY = Math.max(0, y);
     fireWindow("scroll");
     flushFrames();
@@ -194,7 +204,17 @@ function createHarness() {
     fireWindow("pointerdown");
   }
 
-  return { controller, documentObj, windowObj, start, clickToggle, scrollTo, settleOwnScroll, runTimers };
+  return {
+    controller,
+    documentObj,
+    windowObj,
+    start,
+    clickToggle,
+    scrollTo,
+    renderRestoresScroll,
+    settleOwnScroll,
+    runTimers
+  };
 }
 
 const isVisible = (harness) => harness.controller.isMainHeaderTabsRowVisible();
@@ -299,8 +319,46 @@ test("deep in the page the chevron sticks the row under the top bar instead", ()
   assert.equal(isAway(harness), false);
 });
 
-// Die Beschwerde: Zeile weg, Pfeil oben - und der Pfeil holt sie nicht mehr
-// zurueck. Sein Scroll ist nur eine Bitte an den Browser; ein Re-Render setzt
+// Die zweite Beschwerde, aus den Bildern: nach "zu" und wieder "auf" stand die
+// Zeile zwar da, aber der Abstand darunter fehlte - die Seite war noch um eine
+// Zeilenhoehe verschoben und die Zeile lag ueber dem Inhalt. Zurueck heisst
+// deshalb: Seite an den Anfang, nichts klebt. Auch dann, wenn ein Re-Render den
+// Scroll unterwegs auf seinen alten Wert zurueckstellt.
+test("back open means the page is at the top again, not the row on top of the content", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT);
+
+  harness.clickToggle();
+  harness.renderRestoresScroll(TABS_ROW_HEIGHT);
+  harness.runTimers();
+
+  assert.equal(harness.windowObj.scrollY, 0, "die Seite steht wieder am Anfang");
+  assert.equal(isStuck(harness), false, "nichts liegt ueber dem Inhalt");
+  assert.equal(isVisible(harness), true);
+  assert.equal(isAway(harness), false);
+});
+
+// Dasselbe fuer das Wegnehmen: auch dahin bringt der Pfeil die Seite gegen
+// einen Re-Render, sonst blieben die Pills einfach stehen.
+test("taking the row away survives a re-render that restores the scroll", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.renderRestoresScroll(0);
+  harness.runTimers();
+
+  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT);
+  assert.equal(isVisible(harness), false);
+  assert.equal(isStuck(harness), false);
+});
+
+// Die erste Beschwerde: Zeile weg, Pfeil oben - und der Pfeil holt sie nicht
+// mehr zurueck. Sein Scroll ist nur eine Bitte an den Browser; ein Re-Render setzt
 // die Position unterwegs zurueck, ein kurzer Weg wird gekappt. Bleibt die
 // Bitte unbeantwortet, muss die Zeile trotzdem kommen: sie heftet sich dann
 // unter die Leiste - dafuer braucht es keinen Scroll.

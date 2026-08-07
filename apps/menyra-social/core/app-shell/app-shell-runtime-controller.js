@@ -184,15 +184,21 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsVisibleState = null;
   let mainHeaderTabsRafId = 0;
   let mainHeaderTabsRevealTimerId = 0;
+  let mainHeaderTabsScrollAssertTimers = [];
+  let mainHeaderTabsScrollAssertTarget = -1;
+  let mainHeaderTabsScrollAssertRelease = null;
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
   // So weit unter dem Seitenanfang holt der Pfeil die Zeile noch per Scroll
   // zurueck. Weiter unten waere der Weg an den Anfang zu teuer - dort heftet
   // sich die Zeile stattdessen unter die Leiste.
   const MAIN_HEADER_TABS_NEAR_TOP_ROWS = 2;
-  // So lange darf der Scroll des Pfeils brauchen. Danach wird nachgesehen, ob
-  // die Zeile wirklich wieder dasteht - ein Scroll ist nur eine Bitte an den
-  // Browser, und ein Re-Render setzt die Scroll-Position unterwegs zurueck.
+  // So oft setzt der Pfeil sein Scroll-Ziel nach, damit ein Re-Render es ihm
+  // nicht wieder wegnimmt. Der letzte Wert deckt auch einen Render ab, der erst
+  // ein paar Frames spaeter kommt.
+  const MAIN_HEADER_TABS_SCROLL_ASSERT_DELAYS_MS = Object.freeze([0, 60, 160, 320]);
+  // Danach wird nachgesehen, ob die Zeile wirklich wieder dasteht. Der Scroll
+  // ist dann durch - was hier noch fehlt, holt kein Scroll mehr.
   const MAIN_HEADER_TABS_REVEAL_VERIFY_MS = 520;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
@@ -1621,19 +1627,53 @@ export function createAppShellRuntimeController(deps = {}) {
     syncMainHeaderTabsChrome();
   }
 
+  function clearMainHeaderTabsScrollAssert() {
+    mainHeaderTabsScrollAssertTimers.forEach((timerId) => win?.clearTimeout?.(timerId));
+    mainHeaderTabsScrollAssertTimers = [];
+    mainHeaderTabsScrollAssertTarget = -1;
+    if (!win || !mainHeaderTabsScrollAssertRelease) return;
+    MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS.forEach((eventName) => {
+      win.removeEventListener(eventName, mainHeaderTabsScrollAssertRelease);
+    });
+    mainHeaderTabsScrollAssertRelease = null;
+  }
+
   // Der Pfeil bewegt nur die Seite - dasselbe, was der Nutzer sonst mit dem
   // Finger tut. Genau daran haengt, dass die Zeile beim Hochscrollen wieder
   // auftaucht, als haette er den Pfeil nie angefasst: es gibt fuer sie nur
   // diesen einen Weg, weg und wieder her zu kommen.
+  //
+  // Ein einzelnes scrollTo ist dabei nur eine Bitte an den Browser. Der
+  // Render-Pfad setzt die Scroll-Position beim naechsten Re-Render im selben
+  // Tab wieder auf ihren alten Wert (setViewportScrollTop, dazu im naechsten
+  // Frame und im naechsten Tick) - faellt das mit dem Pfeil zusammen, stand die
+  // Seite danach wieder genau dort, wo sie war. Deshalb besteht der Pfeil auf
+  // seinem Ziel und setzt es ueber ein paar Frames nach: wer zuletzt schreibt,
+  // gewinnt. Faengt der Nutzer selbst an zu scrollen, laesst der Pfeil sofort
+  // los - seine Hand hat Vorrang.
   function scrollMainHeaderTabsTo(targetY) {
     const top = Math.max(0, Math.round(Number(targetY) || 0));
-    try {
-      win.scrollTo({ top, left: 0, behavior: "smooth" });
-    } catch {
-      try {
-        win.scrollTo(0, top);
-      } catch {}
-    }
+    clearMainHeaderTabsScrollAssert();
+    setViewportScrollTop(top);
+    if (!win || typeof win.setTimeout !== "function") return;
+    mainHeaderTabsScrollAssertTarget = top;
+    mainHeaderTabsScrollAssertRelease = () => clearMainHeaderTabsScrollAssert();
+    MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS.forEach((eventName) => {
+      win.addEventListener(eventName, mainHeaderTabsScrollAssertRelease, { passive: true });
+    });
+    MAIN_HEADER_TABS_SCROLL_ASSERT_DELAYS_MS.forEach((delay) => {
+      const timerId = win.setTimeout(() => {
+        if (mainHeaderTabsScrollAssertTarget !== top) return;
+        setViewportScrollTop(top);
+        // Nicht auf das Scroll-Ereignis warten: Pfeilrichtung und aria haengen
+        // an der Position, und die steht hier schon fest.
+        syncMainHeaderTabsChrome(true);
+        if (delay === MAIN_HEADER_TABS_SCROLL_ASSERT_DELAYS_MS[MAIN_HEADER_TABS_SCROLL_ASSERT_DELAYS_MS.length - 1]) {
+          clearMainHeaderTabsScrollAssert();
+        }
+      }, delay);
+      mainHeaderTabsScrollAssertTimers.push(timerId);
+    });
   }
 
   function clearMainHeaderTabsRevealVerify() {
@@ -1641,13 +1681,12 @@ export function createAppShellRuntimeController(deps = {}) {
     mainHeaderTabsRevealTimerId = 0;
   }
 
-  // Der Pfeil holt die Zeile per Scroll zurueck - das ist das gewohnte Bild,
-  // aber es ist nur eine Bitte an den Browser. Ein Re-Render setzt die
-  // Scroll-Position mitten im Lauf wieder auf ihren alten Wert, ein kurzer
-  // Scroll-Weg wird gekappt: die Zeile blieb dann weg, und jeder weitere Tipp
-  // schickte dieselbe wirkungslose Bitte hinterher - der Pfeil war tot.
-  // Deshalb wird nachgesehen: steht sie danach immer noch nicht da, heftet sie
-  // sich unter die Leiste. Das braucht keinen Scroll und kann nicht ausbleiben.
+  // Nachschau nach dem Zurueckholen am Seitenanfang: steht die Zeile wirklich
+  // wieder da? Der Weg dorthin ist die Seite an den Anfang - dort ist der
+  // Abstand ueber der Zeile derselbe wie beim Start, nichts liegt uebereinander.
+  // Kommt die Seite trotz aller Versuche nicht hoch, ist Kleben die Notloesung:
+  // die Zeile ist dann wenigstens da. Wichtig ist, dass das die Ausnahme bleibt
+  // und nicht der normale Weg - genau deshalb wird hier erst nochmal gescrollt.
   function verifyMainHeaderTabsReveal(requestedFromY = 0) {
     clearMainHeaderTabsRevealVerify();
     if (typeof win?.setTimeout !== "function") return;
@@ -1662,6 +1701,9 @@ export function createAppShellRuntimeController(deps = {}) {
       // der Pfeil nichts mehr zu holen.
       const scrollY = Math.max(0, Number(win?.scrollY || 0));
       if (scrollY > fromY + MAIN_HEADER_TABS_DOWN_DELTA_PX) return;
+      // Ein letzter, harter Versuch - Scroll-Position setzen wirkt sofort.
+      setViewportScrollTop(0);
+      if (isMainHeaderTabsRowVisible()) return;
       setMainHeaderTabsStuck(true);
     }, MAIN_HEADER_TABS_REVEAL_VERIFY_MS);
   }
