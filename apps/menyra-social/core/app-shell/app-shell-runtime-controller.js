@@ -182,7 +182,14 @@ export function createAppShellRuntimeController(deps = {}) {
   // Und "eingesteckt": die geheftete Zeile liegt gerade hinter der Leiste -
   // entweder auf dem Weg hervor oder auf dem Weg dahinter zurueck.
   let mainHeaderTabsTucked = false;
+  // Die Zeile ist krumm hoch (rund 40.67px). Entscheidungen fallen an der
+  // krummen Hoehe: an der gerundeten galt eine laengst weggescrollte Zeile
+  // schon einmal weiter als sichtbar. Gerundet wird nur die Fahrstrecke.
+  let mainHeaderTabsRowHeightRaw = 40;
   let mainHeaderTabsRowHeight = 40;
+  // Was zuletzt als CSS-Variable am <html> steht - damit derselbe Wert nicht
+  // wieder und wieder geschrieben wird.
+  let mainHeaderTabsRowHeightVar = "";
   let mainHeaderTabsLastScrollY = 0;
   let mainHeaderTabsVisibleState = null;
   // Ob der Platz der Zeile weggescrollt ist - daran haengt, ob es den Pfeil
@@ -1614,50 +1621,57 @@ export function createAppShellRuntimeController(deps = {}) {
     return doc?.getElementById?.("smart-tabs") || null;
   }
 
-  function getMainHeaderTopEl() {
-    return doc?.getElementById?.("smart-header-top") || null;
-  }
-
-  // Die eine Messung, an der alles haengt.
+  // Wo die Zeile gerade steht - abgeleitet, nicht gemessen.
   //
-  //  hoehe    - die Zeile selbst, wie sie wirklich ist (krumm).
-  //  sichtbar - wie weit sie JETZT unter der Leiste hervorschaut. Geklebt oder
-  //             im Fluss, mitten in einer Fahrt oder in Ruhe: was zu sehen ist,
-  //             steht hier.
+  //  hoehe    - die Zeile selbst, wie sie wirklich ist (krumm). Gemessen wird
+  //             sie beim Aufbau der Kopfzeile und bei einer Drehung, also
+  //             genau dann, wenn sie sich aendern kann.
   //  imFluss  - wie weit sie zu sehen waere, wenn weder Pfeil noch Kleben
   //             mitredeten - also allein nach der Scroll-Position. Ihr Platz im
   //             Dokument beginnt genau an der Unterkante der Leiste, deshalb
   //             ist das schlicht "Hoehe minus Scroll-Position".
-  function measureMainHeaderTabsRow() {
+  //  sichtbar - wie weit sie JETZT hervorschaut. Im Fluss ist das imFluss;
+  //             geheftet steht sie ganz da oder ganz dahinter. Waehrend einer
+  //             Fahrt fragt hier ohnehin niemand, dort zaehlt ihr Ziel
+  //             (mainHeaderTabsIntent).
+  //
+  // Frueher stand hier eine echte Messung - zwei getBoundingClientRect() pro
+  // Scroll-Bild. Das erzwingt Bild fuer Bild ein Layout des ganzen Dokuments,
+  // und der Feed rechnet mit content-visibility ohnehin schon nach. Genau da
+  // blieb der erste Wisch nach einem Neuladen kurz haengen. Gerechnet wird mit
+  // der KRUMMEN Hoehe: an der gerundeten ist die Entscheidung frueher schon
+  // einmal danebengegangen.
+  function readMainHeaderTabsRow() {
     const scrollY = readMainHeaderTabsScrollY();
-    const tabsEl = getMainHeaderTabsEl();
-    const zeile = tabsEl?.getBoundingClientRect?.();
-    const hoehe = Number(zeile?.height) || mainHeaderTabsRowHeight;
-    const unterkante = Number(getMainHeaderTopEl()?.getBoundingClientRect?.().bottom);
-    const sichtbar = zeile && Number.isFinite(unterkante)
-      ? Math.max(0, Math.min(hoehe, Number(zeile.bottom) - unterkante))
-      : 0;
+    const hoehe = mainHeaderTabsRowHeightRaw;
+    const imFluss = Math.max(0, Math.min(hoehe, hoehe - scrollY));
     return {
-      da: !!tabsEl,
       hoehe,
-      sichtbar,
-      imFluss: Math.max(0, Math.min(hoehe, hoehe - scrollY)),
+      sichtbar: mainHeaderTabsStuck ? (mainHeaderTabsTucked ? 0 : hoehe) : imFluss,
+      imFluss,
       scrollY
     };
   }
 
-  // Die Zeilenhoehe als ganze Pixelzahl: so weit faehrt die Zeile hinter die
-  // Leiste. Aufgerundet, damit dort kein Streifen stehen bleibt - fuer diese
-  // eine Strecke ist Runden harmlos, sie endet ohnehin hinter der Leiste.
-  // Entscheidungen faellt sie nie, dafuer wird gemessen.
+  // Die Zeilenhoehe messen: krumm fuer jede Entscheidung, aufgerundet als
+  // Fahrstrecke. Aufgerundet, damit hinter der Leiste kein Streifen stehen
+  // bleibt - fuer diese eine Strecke ist Runden harmlos, sie endet ohnehin
+  // dahinter.
+  //
+  // Die CSS-Variable wird nur geschrieben, wenn sich der Wert wirklich aendert:
+  // ein setProperty schreibt das style-Attribut am <html> auch dann neu, wenn
+  // derselbe Wert schon dort steht - und daran haengt der MutationObserver, der
+  // die Browser-Leiste neu einfaerbt.
   function measureMainHeaderTabsRowHeight(tabsEl = getMainHeaderTabsEl()) {
     const roh = Number(tabsEl?.getBoundingClientRect?.().height) || 0;
     if (roh > 0) {
+      mainHeaderTabsRowHeightRaw = roh;
       mainHeaderTabsRowHeight = Math.ceil(roh);
-      doc?.documentElement?.style?.setProperty?.(
-        "--smart-header-tabs-row-height",
-        `${mainHeaderTabsRowHeight}px`
-      );
+      const wert = `${mainHeaderTabsRowHeight}px`;
+      if (wert !== mainHeaderTabsRowHeightVar) {
+        mainHeaderTabsRowHeightVar = wert;
+        doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-row-height", wert);
+      }
     }
     return mainHeaderTabsRowHeight;
   }
@@ -1665,10 +1679,9 @@ export function createAppShellRuntimeController(deps = {}) {
   // Zu sehen oder nicht. Laeuft gerade eine Fahrt, zaehlt ihr Ziel: der Pfeil
   // soll sich sofort drehen und nicht erst, wenn sie angekommen ist - und ein
   // Tipp mittendrin soll die Bewegung umdrehen, statt ihre Mitte abzulesen.
-  // Sonst entscheidet allein die Messung.
   function isMainHeaderTabsRowVisible() {
     if (mainHeaderTabsIntent !== null) return mainHeaderTabsIntent;
-    return measureMainHeaderTabsRow().sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
+    return readMainHeaderTabsRow().sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
   }
 
   function setMainHeaderTabsIntent(next) {
@@ -1676,7 +1689,7 @@ export function createAppShellRuntimeController(deps = {}) {
     syncMainHeaderTabsChrome(true);
   }
 
-  // Zwei Klassen, eine Messung. Beide sagen etwas ueber den Pfeil:
+  // Zwei Klassen, ein Blick. Beide sagen etwas ueber den Pfeil:
   //
   //  -offscreen: ob es ihn ueberhaupt gibt. Er hat nur etwas zu tun, wenn der
   //              Platz der Zeile weggescrollt ist - oben steht sie ja da, wo
@@ -1688,7 +1701,7 @@ export function createAppShellRuntimeController(deps = {}) {
   // Die Schattenkante regelt CSS allein, damit beim schnellen Scrollen nichts
   // nachhinken kann.
   function syncMainHeaderTabsChrome(force = false) {
-    const blick = measureMainHeaderTabsRow();
+    const blick = readMainHeaderTabsRow();
     const weggescrollt = blick.imFluss <= MAIN_HEADER_TABS_VISIBLE_EPS_PX;
     if (force || weggescrollt !== mainHeaderTabsOffscreenState) {
       mainHeaderTabsOffscreenState = weggescrollt;
@@ -1838,7 +1851,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const tabsEl = getMainHeaderTabsEl();
     if (!tabsEl) return;
     measureMainHeaderTabsRowHeight(tabsEl);
-    const blick = measureMainHeaderTabsRow();
+    const blick = readMainHeaderTabsRow();
     // Oben gibt es nichts zu holen und nichts wegzuraeumen - dort ist der Pfeil
     // auch nicht da. Ein Tipp, der es doch bis hierher schafft (etwa waehrend
     // die Seite gerade nach oben laeuft), darf nichts anrichten: eine Zeile,
@@ -1878,8 +1891,7 @@ export function createAppShellRuntimeController(deps = {}) {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
     if (win && typeof mainHeaderTabsResizeListener === "function") {
-      win.removeEventListener("resize", mainHeaderTabsResizeListener);
-      win.visualViewport?.removeEventListener?.("resize", mainHeaderTabsResizeListener);
+      win.removeEventListener("orientationchange", mainHeaderTabsResizeListener);
     }
     if (typeof mainHeaderTabsToggleUnbind === "function") mainHeaderTabsToggleUnbind();
     if (win && mainHeaderTabsRafId) win.cancelAnimationFrame?.(mainHeaderTabsRafId);
@@ -1966,15 +1978,24 @@ export function createAppShellRuntimeController(deps = {}) {
     };
     win.addEventListener("scroll", mainHeaderTabsScrollListener, { passive: true });
 
-    // Groessere Schrift, Drehung, eingeblendete Browser-Leiste: die Zeilenhoehe
-    // ist die Strecke beider Fahrten und muss dann neu gemessen werden.
+    // Nachmessen nur bei einer Drehung - da wird die Zeile wirklich anders
+    // hoch, weil die Pills auf einer anderen Breite anders umbrechen.
+    //
+    // Ausdruecklich NICHT an "resize" und schon gar nicht an visualViewport:
+    // beide melden sich auf iOS mitten im Scrollen, sobald die Adressleiste
+    // einfaehrt - also genau beim ersten Wisch nach einem Neuladen. Hier hingen
+    // drei erzwungene Layouts und zwei Schreibvorgaenge am <html> daran, und
+    // der Wisch blieb sichtbar haengen. Die Zeilenhoehe aendert sich dabei
+    // ohnehin nicht: die Adressleiste macht das Bild niedriger, nicht schmaler.
+    //
+    // Die Fahrt selbst misst vor jedem Tipp neu (toggleMainHeaderTabs), damit
+    // die Strecke auch nach einem Schriftgroessen-Wechsel stimmt.
     mainHeaderTabsResizeListener = () => {
       syncSmartHeaderMetrics();
       measureMainHeaderTabsRowHeight(tabsEl);
       syncMainHeaderTabsChrome(true);
     };
-    win.addEventListener("resize", mainHeaderTabsResizeListener);
-    win.visualViewport?.addEventListener?.("resize", mainHeaderTabsResizeListener);
+    win.addEventListener("orientationchange", mainHeaderTabsResizeListener);
   }
   // ---------------------------------------------------------------------------
   // Pin in der Kopfzeile: zu zeigt die Zeile das Textlogo, offen das

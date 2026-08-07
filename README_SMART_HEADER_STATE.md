@@ -30,16 +30,21 @@ Haupt-Tabs im Header (`Zbulo` / `Lokalet` / `Ofertat`):
 
 - Kein Boot-Scroll, kein Ausgleich, keine eigene Fahrt. Wo die Seite steht, bestimmen allein der Nutzer und der Browser.
 - Jedes Zerren daran hat sich frueher mit der Scroll-Wiederherstellung beim Neuladen und mit dem Render-Pfad gestritten - und genau so sah es aus: **die Seite sprang beim Refresh.**
-- Ebenso raus ist die Mindesthoehe, die dem Hauptbereich frueher einen Scroll-Weg garantierte. Sie hing an `--viewport-height`, und das aendert sich auf iOS **waehrend des Scrollens**, weil die Adressleiste einfaehrt (`visualViewport`-`scroll`/`resize`). Das Dokument wuchs dann unter dem Finger - der zweite Grund fuer das Springen nach einem Neuladen.
+- Ebenso raus ist die Mindesthoehe, die dem Hauptbereich frueher einen Scroll-Weg garantierte. Sie hing an `--viewport-height`, und das aendert sich auf iOS **waehrend des Scrollens**, weil die Adressleiste einfaehrt (`visualViewport`-`scroll`/`resize`). Das Dokument wuchs dann unter dem Finger - der zweite Grund fuer das Springen nach einem Neuladen. `tests/smart-header-tabs-layout-stability.test.mjs` haelt beides fest: weder die Zeile noch `.app-main-scroll` darf ihre Hoehe aus der Bildhoehe beziehen.
 
-**3. Was von ihr zu sehen ist, wird gemessen und nie gerechnet.**
+**3. Der erste Wisch nach einem Neuladen darf nichts kosten.**
 
-- `measureMainHeaderTabsRow()` misst, wie weit die Zeile unter der Leiste hervorschaut (`zeile.bottom - leiste.bottom`), dazu wie weit sie ohne Kleben hervorschauen wuerde (`imFluss` = `hoehe - scrollY`; ihr Platz im Dokument beginnt genau an der Unterkante der Leiste).
-- Vorher wurde `scrollY < gerundete Zeilenhoehe` gerechnet. Die Zeile ist aber krumm hoch (40.67px) und Scroll-Positionen sind auf dem Geraet gebrochen: blieb die Seite einen Bruchteil unter dem gerundeten Wert stehen, galt die laengst verschwundene Zeile weiter als sichtbar - und der Pfeil machte wieder zu, statt aufzumachen.
+- Was von der Zeile zu sehen ist, sagt `readMainHeaderTabsRow()` - abgeleitet aus Zustand und Scroll-Position, ohne das DOM anzufassen: im Fluss `hoehe - scrollY`, geheftet ganz da oder ganz dahinter, waehrend einer Fahrt zaehlt ohnehin ihr Ziel (`mainHeaderTabsIntent`).
+- Gemessen (`measureMainHeaderTabsRowHeight()`) wird nur dann, wenn sich die Hoehe wirklich aendern kann: beim Aufbau der Kopfzeile, vor jeder Fahrt des Pfeils und bei `orientationchange`.
+- **Ausdruecklich nicht** an `resize` und schon gar nicht an `visualViewport`. Beide melden sich auf iOS mitten im Scrollen, sobald die Adressleiste einfaehrt - also genau beim ersten Wisch nach einem Neuladen. Daran hingen einmal drei erzwungene Layouts und zwei Schreibvorgaenge am `<html>`; der Wisch blieb sichtbar haengen und sprang nach. Die Zeilenhoehe aendert sich dabei ohnehin nicht: die Adressleiste macht das Bild niedriger, nicht schmaler.
+- Ebenso wenig misst der Scroll-Listener. Zwei `getBoundingClientRect()` pro Bild erzwingen jedes Mal ein Layout des ganzen Dokuments, und der Feed rechnet mit `content-visibility` ohnehin schon nach.
+- `--smart-header-tabs-row-height` wird nur geschrieben, wenn sich der Wert aendert: `setProperty` schreibt das `style`-Attribut am `<html>` auch mit unveraendertem Wert neu, und daran haengt der MutationObserver aus `index.html`.
+- Gerechnet wird mit der **krummen** Hoehe (40.67px). An der gerundeten ist es schon einmal danebengegangen: blieb die Seite einen Bruchteil unter dem gerundeten Wert stehen, galt die laengst verschwundene Zeile weiter als sichtbar - und der Pfeil machte zu, statt aufzumachen. Gerundet wird nur die Fahrstrecke, die endet ohnehin hinter der Leiste.
+- Die vier Punkte haelt `tests/smart-header-tabs-toggle.test.mjs` fest (Abschnitt "Was das Scrollen kosten darf"): woran die Zeile haengt, dass Scrollen nicht misst, dass dieselbe Hoehe nie zweimal geschrieben wird, und dass die Entscheidung an der krummen Hoehe faellt.
 
 **4. Der Pfeil erscheint erst, wenn er etwas zu tun hat.**
 
-- Oben steht die Zeile ohnehin da, wo sie hingehoert. Dort gibt es nichts zu holen und nichts wegzuraeumen - also ist der Pfeil dort auch nicht da. Er blendet sich ein, sobald ihr Platz weggescrollt ist (`html.smart-header-tabs-offscreen`, gesetzt aus derselben Messung), und wieder aus, sobald man oben ankommt. Geholt bleibt er stehen, sonst koennte man die Zeile nicht wieder wegraeumen.
+- Oben steht die Zeile ohnehin da, wo sie hingehoert. Dort gibt es nichts zu holen und nichts wegzuraeumen - also ist der Pfeil dort auch nicht da. Er blendet sich ein, sobald ihr Platz weggescrollt ist (`html.smart-header-tabs-offscreen`, gesetzt aus demselben Blick), und wieder aus, sobald man oben ankommt. Geholt bleibt er stehen, sonst koennte man die Zeile nicht wieder wegraeumen.
 - Er nimmt dabei **keinen** Platz: die Icons daneben (Pin, Globus, Tasche) stehen buendig an der rechten Kante. Kommt er dazu, ruecken sie um seine Breite nach links; geht er wieder, ruecken sie zurueck.
 - Gefahren wird ueber die **Breite** (dazu den negativen Aussenabstand, der die Luecke der Reihe mitnimmt) - `display` laesst sich nicht fahren, und mit `display: none` sprangen die Icons. Breite 0 plus weggenommener Luecke nimmt ihm genau denselben Platz wie `display: none`, aber die Strecke dorthin ist eine Fahrt.
 - Damit die Breite wirklich bei 0 ankommt, stehen `min-width: 0`, `padding-left/right: 0` und `border-left/right-width: 0` ausdruecklich dabei: ein Flex-Kind faellt von Haus aus nie unter die Groesse seines Inhalts, und mit `box-sizing: border-box` stecken Polsterung und Rahmen in der Breite. Beides ist gemessen aufgefallen - der Pfeil blieb erst bei 16px, dann bei 4px stehen. Es steht hier und nicht im Reset des anderen Stylesheets, weil die Fahrt daran haengt.
@@ -74,7 +79,8 @@ Chrome und Bindung:
 - Der Pfeil haengt an `touchend`, nicht am `click` (`bindMainHeaderTabsToggleTap()`, dieselbe Bindung wie `bindPillTap` bei den Pills): nach dem Scrollen laesst iOS den Klick warten oder schluckt ihn. Ein Wisch, der auf dem Knopf beginnt, schaltet nichts; der Klick danach wird 450ms lang uebersprungen.
 - Die Pills nutzen `data-nav`, haben aber eine eigene Bindung (`bindPillTap`): sie schalten auf `touchend` statt `click` und faerben sich sofort um. Ihr Farb-Uebergang ist deshalb auch kurz (140ms, wie beim Pfeil daneben): bei 220ms zog die Farbe dem Finger sichtbar hinterher.
 - Chevron-Handler und Scroll-Listener sitzen im App-Shell-Controller (nicht in den Event-Bind-Utils), damit sie sich denselben Runtime-State teilen. Der Scroll-Listener ist rAF-gedrosselt und misst einmal pro Bild.
-- Die Zeilenhoehe wird bei `resize` und `visualViewport`-`resize` neu gemessen.
+- Die Zeilenhoehe wird bei `orientationchange` neu gemessen - nicht bei `resize`, siehe Grundsatz 3.
+- `forceLightUiChrome()` in `index.html` schreibt seine Meta-Tags nur noch bei echter Aenderung. Es haengt am MutationObserver auf `<html>` (Klasse und Style), und den weckt jeder Zustandswechsel der Zeile. `theme-color` neu zu setzen laesst Safari seine eigene Leiste neu einfaerben - das sah nach einem Neuladen wie ein kurz verschwindender Header aus.
 - `--feed-location-gate-header-height` deckt nur die obere Leiste ab, weil die Tab-Zeile weggescrollt ist, bevor im Gate etwas sticky wird.
 - `Restaurants` ist deshalb kein Drawer-Eintrag mehr.
 

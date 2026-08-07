@@ -85,6 +85,26 @@ test("nothing about the pill row makes the document height follow the viewport",
   assert.deepEqual(treffer, [], `haengt an der Bildhoehe: ${treffer.join(" | ")}`);
 });
 
+// Und dasselbe eine Ebene weiter, wo es wirklich weh tut: der Hauptbereich ist
+// das Element, das dem Dokument seine Laenge gibt. Haengt seine Hoehe an der
+// Bildhoehe, waechst und schrumpft das Dokument unter dem Finger - auf iOS
+// faehrt die Adressleiste beim ersten Wisch nach einem Neuladen ein, und
+// --viewport-height wird bei jedem visualViewport-Ereignis neu geschrieben.
+// Genau so entstand das kurze Stehenbleiben mit Nachsprung.
+//
+// Die Karte ist ausgenommen: sie scrollt nicht (overflow: hidden), sie fuellt
+// nur.
+test("the main scroll area never gets its length from the viewport", () => {
+  const treffer = [...css.matchAll(/([^{}]*)\{([^}]*)\}/g)]
+    .filter(([, selektor, inhalt]) =>
+      /\.app-main-scroll/.test(selektor)
+      && !/--map-fill/.test(selektor)
+      && /(min-|max-)?height\s*:/.test(inhalt)
+      && /--viewport-height|\d\s*(vh|dvh|lvh|svh)\b/.test(inhalt))
+    .map(([, selektor]) => selektor.trim());
+  assert.deepEqual(treffer, [], `haengt an der Bildhoehe: ${treffer.join(" | ")}`);
+});
+
 // Eingesteckt faehrt sie genau um ihre eigene Hoehe - dann liegt sie ganz hinter
 // der Leiste und blitzt nirgends hervor.
 test("the tucked row hides behind the top bar by exactly its own height", () => {

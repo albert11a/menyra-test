@@ -271,6 +271,16 @@
         return LIGHT_UI_COLOR;
       };
       const resolveStatusBarStyle = () => "black-translucent";
+      // Schreiben nur, wenn sich wirklich etwas aendert. Der MutationObserver
+      // weiter unten haengt an jeder Klassen- und Style-Aenderung am <html>,
+      // und davon gibt es beim Scrollen mehrere (Header-Zustand, Bildhoehe).
+      // theme-color neu zu setzen laesst Safari seine eigene Leiste neu
+      // einfaerben - genau das sah nach einem Neuladen wie ein kurz
+      // verschwindender Header aus.
+      const setMetaContent = (meta, content) => {
+        if (!meta || meta.getAttribute("content") === content) return;
+        meta.setAttribute("content", content);
+      };
       const ensureMeta = (name, content) => {
         let meta = document.querySelector(`meta[name="${name}"]`);
         if (!meta) {
@@ -278,14 +288,14 @@
           meta.setAttribute("name", name);
           document.head.appendChild(meta);
         }
-        meta.setAttribute("content", content);
+        setMetaContent(meta, content);
       };
       const forceLightUiChrome = () => {
         const uiChromeColor = resolveUiChromeColor();
         const themeMetas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
         if (themeMetas.length) {
-          themeMetas[0].setAttribute("content", uiChromeColor);
-          themeMetas[0].removeAttribute("media");
+          setMetaContent(themeMetas[0], uiChromeColor);
+          if (themeMetas[0].hasAttribute("media")) themeMetas[0].removeAttribute("media");
           for (let i = 1; i < themeMetas.length; i += 1) themeMetas[i].remove();
         } else {
           ensureMeta("theme-color", uiChromeColor);
@@ -821,16 +831,15 @@
     }
     .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
     .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
-    /* Die Business-Tab-Leiste faehrt beim Scrollen hinter die obere Leiste -
-       dafuer muss mindestens ihre Hoehe an Scroll-Weg da sein.
-       Die Pill-Zeile im Hauptheader braucht das ausdruecklich NICHT: sie wird
-       vom Pfeil nur noch verschoben, nie gescrollt. Eine solche Mindesthoehe
-       haengt an --viewport-height, und das aendert sich auf iOS waehrend des
-       Scrollens (die Adressleiste faehrt ein) - das Dokument wuchs dann unter
-       dem Finger und die Seite sprang. */
-    .app-main-scroll--with-smart-header-tabs {
-      min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-top-height, 4.5rem));
-    }
+    /* Hier stand einmal eine Mindesthoehe auf --viewport-height, damit der
+       Pfeil der Pill-Zeile immer genug Scroll-Weg vorfindet. Sie ist raus, und
+       zwar ersatzlos:
+       --viewport-height wird bei jedem visualViewport-"scroll"/"resize" neu
+       geschrieben, und genau das passiert auf iOS beim ersten Wisch nach einem
+       Neuladen, wenn die Adressleiste einfaehrt. Das Dokument wuchs dann unter
+       dem Finger - die Seite blieb kurz stehen und sprang weiter.
+       Scroll-Weg braucht der Pfeil auch nicht mehr: er verschiebt nur die Zeile
+       (transform), er scrollt die Seite nicht. */
     .app-main-scroll--with-smart-header:has(> #restaurantsView),
     .app-main-scroll--with-smart-header:has(> #travelView),
     .app-main-scroll--with-smart-header-tabs:has(> #restaurantsView),

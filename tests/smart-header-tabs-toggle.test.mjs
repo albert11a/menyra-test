@@ -79,12 +79,22 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
   const toggleEl = new FakeElement();
   const mainEl = new FakeElement();
   const styleValues = new Map();
+  // Jedes Schreiben am <html> - auch das mit unveraendertem Wert. Im Browser
+  // schreibt setProperty das style-Attribut jedes Mal neu, und daran haengt ein
+  // MutationObserver, der Safari seine eigene Leiste neu einfaerben laesst.
+  const styleWrites = [];
 
-  // Die Geometrie wie im Browser - die Laufzeit MISST sie, sie rechnet nicht
-  // mit der Scroll-Position.
+  // Jedes Ablesen der Geometrie wird mitgezaehlt: im Browser erzwingt es ein
+  // Layout des ganzen Dokuments, und beim Scrollen ist genau das zu teuer.
+  const rectReads = [];
+
+  // Die Geometrie wie im Browser.
   //
   // Die obere Leiste klebt bei 0 und ist immer gleich hoch.
-  topEl.getBoundingClientRect = () => ({ top: 0, bottom: TOP_BAR_HEIGHT, height: TOP_BAR_HEIGHT });
+  topEl.getBoundingClientRect = () => {
+    rectReads.push("top");
+    return { top: 0, bottom: TOP_BAR_HEIGHT, height: TOP_BAR_HEIGHT };
+  };
   // Die Zeile sitzt im Fluss direkt darunter und scrollt hinter sie weg.
   // Geheftet klebt sie 1px hoeher als die Unterkante der Leiste; eingesteckt
   // steht sie um ihre eigene Hoehe weiter oben, also ganz dahinter.
@@ -92,6 +102,7 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
   // dort darf ein Tipp nicht den Zwischenstand ablesen.
   let fahrtStand = null;
   tabsEl.getBoundingClientRect = () => {
+    rectReads.push("tabs");
     const hoehe = tabsEl.height;
     const klassen = documentObj.documentElement.classList;
     const geheftet = klassen.contains("smart-header-tabs-stuck");
@@ -117,7 +128,10 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
         // die Fahrt dem Browser ueberlassen kann.
         scrollBehavior: "",
         getPropertyValue: (name) => styleValues.get(name) || "",
-        setProperty: (name, value) => styleValues.set(name, String(value)),
+        setProperty: (name, value) => {
+          styleWrites.push([name, String(value)]);
+          styleValues.set(name, String(value));
+        },
         removeProperty: (name) => styleValues.delete(name)
       }
     },
@@ -142,8 +156,24 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
   let nextTimerId = 1;
   let clock = 0;
   const winListeners = new Map();
+  // Auf iOS meldet sich visualViewport mitten im Scrollen, sobald die
+  // Adressleiste einfaehrt. Hier steht es nur da, damit sichtbar wird, wenn
+  // sich jemand daran haengt.
+  const viewportListeners = new Map();
   const windowObj = {
     scrollY: 0,
+    visualViewport: {
+      height: 800,
+      addEventListener(type, handler) {
+        if (!viewportListeners.has(type)) viewportListeners.set(type, []);
+        viewportListeners.get(type).push(handler);
+      },
+      removeEventListener(type, handler) {
+        const list = viewportListeners.get(type) || [];
+        const index = list.indexOf(handler);
+        if (index > -1) list.splice(index, 1);
+      }
+    },
     // Ein Scroll ist nur eine Bitte an den Browser. Bleibt sie unbeantwortet -
     // gekappt oder von einem Re-Render zurueckgesetzt - bewegt sich nichts.
     scrollRequestsIgnored: false,
@@ -286,11 +316,26 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
     fahrtStand = wert;
   }
 
+  // Woran die Laufzeit haengt, und was sie das Zeichnen kostet.
+  const boundWindowEvents = () => [...winListeners.entries()]
+    .filter(([, handlers]) => handlers.length > 0)
+    .map(([type]) => type)
+    .sort();
+  const boundViewportEvents = () => [...viewportListeners.entries()]
+    .filter(([, handlers]) => handlers.length > 0)
+    .map(([type]) => type)
+    .sort();
+
   return {
     controller,
     documentObj,
     windowObj,
     styleValues,
+    styleWrites,
+    rectReads,
+    boundWindowEvents,
+    boundViewportEvents,
+    fireWindow,
     start,
     tabsEl,
     mainEl,
@@ -730,4 +775,120 @@ test("a swipe starting on the chevron does not switch anything", () => {
   harness.tapToggle({ moveBy: 40 });
   harness.settle();
   assert.equal(isVisible(harness), false, "gewischt heisst nicht getippt");
+});
+// ===========================================================================
+// Was das Scrollen kosten darf
+//
+// Alles hier drunter haelt eine Sache fest: der erste Wisch nach einem
+// Neuladen soll nichts kosten. Genau dort blieb er sichtbar haengen - die
+// Zeile mass sich Bild fuer Bild nach, und die Adressleiste, die dabei
+// einfaehrt, stiess noch eine zweite Runde davon an.
+// ===========================================================================
+
+// Die Zeilenhoehe aendert sich nur, wenn die Zeile anders umbricht - also bei
+// einer Drehung. "resize" und visualViewport melden sich auf iOS dagegen
+// mitten im Scrollen, sobald die Adressleiste einfaehrt. Wer daran haengt,
+// misst und schreibt genau dann, wenn der Finger sich bewegt.
+test("the row never listens where iOS reports mid-scroll", () => {
+  const harness = createHarness();
+  harness.start();
+
+  assert.deepEqual(
+    harness.boundWindowEvents(),
+    ["orientationchange", "scroll"],
+    "scrollen und drehen - sonst nichts"
+  );
+  assert.deepEqual(
+    harness.boundViewportEvents(),
+    [],
+    "an visualViewport haengt die Zeile gar nicht"
+  );
+});
+
+// Beim Scrollen wird nichts nachgemessen. Ein getBoundingClientRect erzwingt
+// im Browser ein Layout des ganzen Dokuments, und der Feed rechnet mit
+// content-visibility ohnehin schon nach.
+test("scrolling never measures the row again", () => {
+  const harness = createHarness();
+  harness.start();
+  harness.rectReads.length = 0;
+
+  [10, 40, 120, 400, 900, 400, 40, 0].forEach((y) => harness.scrollTo(y));
+
+  assert.deepEqual(harness.rectReads, [], "kein einziges erzwungenes Layout");
+});
+
+// Und geschrieben wird am <html> auch nichts: setProperty schreibt das
+// style-Attribut selbst mit unveraendertem Wert neu, und daran haengt der
+// MutationObserver, der Safari seine Leiste neu einfaerben laesst - das sah
+// nach einem Neuladen wie ein kurz verschwindender Header aus.
+test("the row height is only ever written when it really changed", () => {
+  const harness = createHarness();
+  const hoehenSchreibungen = () => harness.styleWrites
+    .filter(([name]) => name === "--smart-header-tabs-row-height");
+  harness.start();
+  assert.deepEqual(
+    hoehenSchreibungen(),
+    [["--smart-header-tabs-row-height", `${TABS_ROW_HEIGHT}px`]],
+    "einmal beim Aufbau, mit der gemessenen Hoehe"
+  );
+
+  harness.styleWrites.length = 0;
+  // Der Pfeil misst vor jeder Fahrt nach, und eine Drehung tut es auch - nur
+  // schreiben darf keines von beiden, solange dasselbe herauskommt.
+  [10, 40, 120, 400, 900, 0].forEach((y) => harness.scrollTo(y));
+  harness.scrollTo(900);
+  harness.clickToggle();
+  harness.settle();
+  harness.clickToggle();
+  harness.settle();
+  harness.fireWindow("orientationchange");
+  harness.fireWindow("orientationchange");
+  assert.deepEqual(hoehenSchreibungen(), [], "derselbe Wert wird nie noch einmal geschrieben");
+
+  harness.tabsEl.height = 52;
+  harness.fireWindow("orientationchange");
+  assert.deepEqual(
+    hoehenSchreibungen(),
+    [["--smart-header-tabs-row-height", "52px"]],
+    "eine wirklich andere Hoehe schon"
+  );
+});
+
+// Auch der Pfeil misst nur einmal pro Tipp nach - dort ist das richtig, denn
+// die Fahrstrecke muss auch nach einem Schriftgroessen-Wechsel stimmen.
+test("only a tap and a turn measure the row again", () => {
+  const harness = createHarness();
+  harness.start();
+  harness.scrollTo(900);
+  harness.rectReads.length = 0;
+
+  harness.clickToggle();
+  harness.settle();
+  assert.ok(harness.rectReads.length > 0, "vor der Fahrt wird gemessen");
+
+  harness.rectReads.length = 0;
+  harness.tabsEl.height = 52;
+  harness.fireWindow("orientationchange");
+  assert.ok(harness.rectReads.includes("tabs"), "und nach einer Drehung");
+  assert.equal(harness.styleValues.get("--smart-header-tabs-row-height"), "52px");
+});
+
+// Und der Pfeil selbst rechnet mit der krummen Hoehe weiter: eine gerundete
+// hat schon einmal eine laengst weggescrollte Zeile als sichtbar gelten lassen,
+// und der Pfeil machte dann zu, statt aufzumachen.
+test("the decision runs on the fractional height, the glide on the rounded one", () => {
+  const harness = createHarness({ rowHeight: 40.671875 });
+  harness.start();
+
+  harness.scrollTo(38);
+  assert.equal(gibtEsDenPfeil(harness), false, "ein Stueck der Zeile steht noch da");
+  // Zwischen der echten Hoehe (40.671875) und der gerundeten (41): ihr Platz ist
+  // hier laengst weg. "scrollY < gerundete Hoehe" hielt sie hier noch fuer zu
+  // sehen - und der Pfeil machte zu, statt aufzumachen.
+  harness.scrollTo(40.5);
+  assert.equal(gibtEsDenPfeil(harness), true, "ihr Platz ist weg, der Pfeil ist da");
+  assert.equal(isVisible(harness), false, "und er weiss auch, in welche Richtung");
+  // Gerundet wird nur die Fahrstrecke - sie endet ohnehin hinter der Leiste.
+  assert.equal(harness.styleValues.get("--smart-header-tabs-row-height"), "41px");
 });
