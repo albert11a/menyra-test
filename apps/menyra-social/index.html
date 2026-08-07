@@ -1467,37 +1467,24 @@
       color: rgb(100 116 139);
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      /* Oben hat der Pfeil nichts zu tun: die Zeile steht da, wo sie
-         hingehoert - es gibt nichts zu holen und nichts wegzuraeumen. Also ist
-         er dort auch nicht da. Er erscheint erst, wenn ihr Platz weggescrollt
-         ist.
-         visibility statt display: seinen Platz in der Kopfzeile behaelt er,
-         sonst rutschte die Icon-Reihe daneben bei jedem Scrollen hin und her.
-         Und visibility ist es ueberhaupt, nicht nur opacity: nur so ist der
-         Knopf wirklich weg - nicht anfassbar, nicht anspringbar, nicht
-         vorgelesen.
-         Die Deckkraft-Fahrt kommt zuerst, die Sichtbarkeit springt erst danach
-         (Verzoegerung) - sonst waere er weg, bevor er ausgeblendet ist. */
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-      /* Farbe kurz genug, dass der Knopf sofort antwortet: bei 320ms zog sie
+      /* Kurz genug, dass der Knopf sofort antwortet: bei 320ms zog die Farbe
          dem Finger sichtbar hinterher und der Pfeil wirkte zaeh. */
-      transition:
-        opacity 160ms ease-out,
-        visibility 0s linear 160ms,
-        color 140ms ease-out,
-        background-color 140ms ease-out;
+      transition: color 140ms ease-out, background-color 140ms ease-out;
     }
-    html.smart-header-tabs-offscreen .smart-header-collapse-btn {
-      opacity: 1;
-      visibility: visible;
-      pointer-events: auto;
-      transition:
-        opacity 160ms ease-out,
-        visibility 0s linear 0s,
-        color 140ms ease-out,
-        background-color 140ms ease-out;
+    /* Oben hat der Pfeil nichts zu tun: die Zeile steht da, wo sie hingehoert -
+       es gibt nichts zu holen und nichts wegzuraeumen. Also ist er dort auch
+       nicht da, und zwar ganz: aus dem Layout, damit die Icons daneben buendig
+       rechts stehen. Kommt er dazu, ruecken sie ein Stueck nach links; geht er
+       wieder, ruecken sie zurueck.
+       display statt visibility - mit visibility hielte er seinen Platz frei,
+       und neben der Tasche klaffte dauerhaft eine Luecke.
+       Eingegrenzt auf .smart-header-actions, damit die Regeln die Klasse .flex
+       aus dem Utility-Stylesheet sicher schlagen. */
+    .smart-header-actions > .smart-header-collapse-btn {
+      display: none;
+    }
+    html.smart-header-tabs-offscreen .smart-header-actions > .smart-header-collapse-btn {
+      display: flex;
     }
     html.smart-header-tabs-away .smart-header-collapse-btn {
       color: rgb(79 70 229);

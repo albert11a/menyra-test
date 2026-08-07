@@ -40,7 +40,9 @@ Haupt-Tabs im Header (`Zbulo` / `Lokalet` / `Ofertat`):
 **4. Der Pfeil erscheint erst, wenn er etwas zu tun hat.**
 
 - Oben steht die Zeile ohnehin da, wo sie hingehoert. Dort gibt es nichts zu holen und nichts wegzuraeumen - also ist der Pfeil dort auch nicht da. Er blendet sich ein, sobald ihr Platz weggescrollt ist (`html.smart-header-tabs-offscreen`, gesetzt aus derselben Messung), und wieder aus, sobald man oben ankommt. Geholt bleibt er stehen, sonst koennte man die Zeile nicht wieder wegraeumen.
-- Er behaelt dabei seinen Platz in der Kopfzeile: `visibility` statt `display`, sonst rutschte die Icon-Reihe daneben bei jedem Scrollen hin und her. Und es ist `visibility`, nicht nur `opacity` - nur so ist er wirklich weg: nicht anfassbar, nicht anspringbar, nicht vorgelesen. Beim Ausblenden faehrt die Deckkraft zuerst und die Sichtbarkeit springt erst danach (`transition-delay`), beim Erscheinen umgekehrt.
+- Er ist dabei **ganz** weg: `display: none`, nicht `visibility: hidden`. Nur so stehen die Icons daneben (Pin, Globus, Tasche) buendig an der rechten Kante; mit `visibility` hielte er seinen Platz frei und neben der Tasche klaffte dauerhaft eine Luecke. Kommt er dazu, ruecken die Icons um seine Breite nach links, geht er wieder, ruecken sie zurueck.
+- Die beiden Regeln sind auf `.smart-header-actions` eingegrenzt, damit sie die Utility-Klasse `.flex` sicher schlagen - die kommt aus einem eigenen Stylesheet und traegt dieselbe eine Klasse.
+- Die Icon-Breiten selbst bleiben unveraendert (`.smart-header-actions:has(.smart-header-collapse-btn)` greift weiter, der Knopf steht ja im DOM): es rutscht nur, es waechst nichts.
 - **Damit gibt es kein "zugemacht" mehr.** Ein Zustand, den der Nutzer oben herstellen, aber mangels Knopf nicht mehr aufloesen koennte, waere eine Falle - also ist er raus. Ein Tipp, der es doch bis in den Handler schafft (etwa waehrend die Seite gerade nach oben laeuft), tut oben nichts.
 
 Damit bleibt genau eine Bewegung, eine reine `transform`-Fahrt:

@@ -181,38 +181,25 @@ test("the pill row no longer forces a minimum page height", () => {
   );
 });
 
-// Oben hat der Pfeil nichts zu tun - dort ist er auch nicht da. Wichtig dabei:
-// er behaelt seinen Platz in der Kopfzeile (visibility statt display), sonst
-// rutschte die Icon-Reihe daneben bei jedem Scrollen hin und her. Und es muss
-// visibility sein, nicht nur opacity - nur so ist er wirklich weg: nicht
-// anfassbar, nicht anspringbar, nicht vorgelesen.
+// Oben hat der Pfeil nichts zu tun - dort ist er auch nicht da, und zwar ganz
+// aus dem Layout. Nur so stehen die Icons daneben buendig rechts; mit
+// visibility hielte er seinen Platz frei und neben der Tasche klaffte eine
+// Luecke.
 test("the chevron is only there when it has something to do", () => {
-  const zu = regelInhalt(".smart-header-collapse-btn {");
-  assert.match(zu, /opacity:\s*0/, "oben unsichtbar");
-  assert.match(zu, /visibility:\s*hidden/, "und wirklich weg");
-  assert.match(zu, /pointer-events:\s*none/);
-  assert.doesNotMatch(zu, /display:\s*none/, "aber nicht aus dem Layout - das verschoebe die Icon-Reihe");
+  const zu = regelInhalt(".smart-header-actions > .smart-header-collapse-btn");
+  assert.match(zu, /display:\s*none/, "oben ganz aus dem Layout");
+  assert.doesNotMatch(zu, /visibility:\s*hidden/, "nicht nur unsichtbar - sonst bleibt die Luecke");
 
-  const auf = regelInhalt("html.smart-header-tabs-offscreen .smart-header-collapse-btn");
-  assert.match(auf, /opacity:\s*1/);
-  assert.match(auf, /visibility:\s*visible/);
-  assert.match(auf, /pointer-events:\s*auto/);
+  const auf = regelInhalt("html.smart-header-tabs-offscreen .smart-header-actions > .smart-header-collapse-btn");
+  assert.match(auf, /display:\s*flex/);
 });
 
-// Die Deckkraft faehrt, die Sichtbarkeit springt - und zwar erst NACH der
-// Fahrt, sonst waere der Knopf weg, bevor er ausgeblendet ist.
-test("the chevron fades out before it is taken away", () => {
-  const zu = regelInhalt(".smart-header-collapse-btn {");
-  const dauer = zu.match(/opacity\s+(\d+)ms/);
-  assert.ok(dauer, "die Deckkraft faehrt");
-  assert.match(
-    zu,
-    new RegExp(`visibility\\s+0s\\s+linear\\s+${dauer[1]}ms`),
-    "und die Sichtbarkeit wartet genau so lange"
-  );
-  assert.match(
-    regelInhalt("html.smart-header-tabs-offscreen .smart-header-collapse-btn"),
-    /visibility\s+0s\s+linear\s+0s/,
-    "beim Erscheinen dagegen sofort"
-  );
+// Beide Regeln muessen die Utility-Klasse .flex schlagen - die kommt aus einem
+// eigenen Stylesheet und traegt dieselbe eine Klasse.
+test("the chevron rules outweigh the utility class", () => {
+  ["  .smart-header-actions > .smart-header-collapse-btn",
+   "html.smart-header-tabs-offscreen .smart-header-actions > .smart-header-collapse-btn"].forEach((selektor) => {
+    const klassen = (selektor.match(/\./g) || []).length;
+    assert.ok(klassen >= 2, `${selektor.trim()} braucht mehr als eine Klasse`);
+  });
 });
