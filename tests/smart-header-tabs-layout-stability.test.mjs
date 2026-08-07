@@ -181,25 +181,80 @@ test("the pill row no longer forces a minimum page height", () => {
   );
 });
 
-// Oben hat der Pfeil nichts zu tun - dort ist er auch nicht da, und zwar ganz
-// aus dem Layout. Nur so stehen die Icons daneben buendig rechts; mit
-// visibility hielte er seinen Platz frei und neben der Tasche klaffte eine
-// Luecke.
-test("the chevron is only there when it has something to do", () => {
-  const zu = regelInhalt(".smart-header-actions > .smart-header-collapse-btn");
-  assert.match(zu, /display:\s*none/, "oben ganz aus dem Layout");
-  assert.doesNotMatch(zu, /visibility:\s*hidden/, "nicht nur unsichtbar - sonst bleibt die Luecke");
-
-  const auf = regelInhalt("html.smart-header-tabs-offscreen .smart-header-actions > .smart-header-collapse-btn");
-  assert.match(auf, /display:\s*flex/);
+// Oben hat der Pfeil nichts zu tun - dort ist er auch nicht da, und zwar ohne
+// jeden Platz: die Icons daneben stehen buendig an der rechten Kante. Gefahren
+// wird ueber die Breite, denn display laesst sich nicht fahren - sonst
+// sprangen die Icons.
+test("the chevron takes no space at all when it has nothing to do", () => {
+  const zu = regelInhalt("html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn");
+  assert.match(zu, /width:\s*0/, "keine Breite");
+  // Ohne min-width:0 kaeme die Breite nie bei 0 an - ein Flex-Kind faellt von
+  // Haus aus nie unter die Groesse seines Inhalts.
+  // Zwei Dinge lassen die Breite sonst nie bei 0 ankommen: min-width:auto am
+  // Flex-Kind, und die Innenpolsterung, die bei border-box in der Breite
+  // steckt. Beides gemessen aufgefallen - der Pfeil blieb 16px breit stehen.
+  const basis = regelInhalt(".smart-header-actions > .smart-header-collapse-btn");
+  assert.match(basis, /min-width:\s*0/, "sonst bleibt die Breite des Icons stehen");
+  assert.match(basis, /padding-left:\s*0/, "sonst bleibt die Polsterung stehen");
+  assert.match(basis, /padding-right:\s*0/);
+  assert.match(basis, /border-left-width:\s*0/, "und der Rahmen ebenso");
+  assert.match(basis, /border-right-width:\s*0/);
+  assert.match(zu, /margin-left:\s*calc\(-1 \* var\(--smart-header-actions-gap/, "und auch die Luecke der Reihe nicht");
+  assert.doesNotMatch(zu, /display:\s*none/, "display waere nicht fahrbar");
 });
 
-// Beide Regeln muessen die Utility-Klasse .flex schlagen - die kommt aus einem
-// eigenen Stylesheet und traegt dieselbe eine Klasse.
-test("the chevron rules outweigh the utility class", () => {
-  ["  .smart-header-actions > .smart-header-collapse-btn",
-   "html.smart-header-tabs-offscreen .smart-header-actions > .smart-header-collapse-btn"].forEach((selektor) => {
-    const klassen = (selektor.match(/\./g) || []).length;
-    assert.ok(klassen >= 2, `${selektor.trim()} braucht mehr als eine Klasse`);
-  });
+// Beide Strecken fahren, und zwar gleich lang - sonst zoege die eine der
+// anderen hinterher und die Icons ruckelten.
+test("width and gap travel together", () => {
+  const auf = regelInhalt(".smart-header-actions > .smart-header-collapse-btn");
+  const dauerUndKurve = /width\s+(\d+)ms\s+(cubic-bezier\([^)]+\))[\s\S]*?margin-left\s+(\d+)ms\s+(cubic-bezier\([^)]+\))/;
+  const treffer = auf.match(dauerUndKurve);
+  assert.ok(treffer, "beide fahren mit Dauer und Kurve");
+  assert.equal(treffer[3], treffer[1], "dieselbe Dauer");
+  assert.equal(treffer[4], treffer[2], "dieselbe Kurve");
+});
+
+// Am Ende der Fahrt ist er trotzdem wirklich weg: nicht anfassbar, nicht
+// anspringbar, nicht vorgelesen. visibility springt dafuer erst, wenn die
+// Fahrt durch ist - sonst waere er weg, bevor man es sieht.
+test("the chevron is properly gone once it has finished leaving", () => {
+  const zu = regelInhalt("html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn");
+  assert.match(zu, /visibility:\s*hidden/);
+  assert.match(zu, /pointer-events:\s*none/);
+  const fahrt = zu.match(/width\s+(\d+)ms/);
+  assert.ok(fahrt);
+  assert.match(
+    zu,
+    new RegExp(`visibility\\s+0s\\s+linear\\s+${fahrt[1]}ms`),
+    "die Sichtbarkeit wartet genau die Fahrt ab"
+  );
+  assert.match(
+    regelInhalt(".smart-header-actions > .smart-header-collapse-btn"),
+    /visibility\s+0s\s+linear\s+0s/,
+    "beim Erscheinen dagegen sofort"
+  );
+});
+
+// Die Breite auf schmalen Geraeten kommt ueber den Namen, nicht ueber eine
+// zweite width-Regel - sonst schluege sie die Fahrt.
+test("the narrow-device width only changes the value, not the property", () => {
+  // Auf schmalen Geraeten wird nur der Wert gesetzt - eine zweite width-Regel
+  // schluege die Fahrt.
+  assert.match(css, /\.smart-header-collapse-btn \{ --smart-header-collapse-width: 1\.6rem; \}/);
+  // Und die Reihe nimmt den Pfeil von ihrer Breiten-Regel aus.
+  assert.match(css, /> button:not\(\.smart-header-collapse-btn\) \{ width: 2rem/);
+  // Genau eine Stelle darf dem Pfeil eine Breite geben, und das ist die
+  // fahrende oben.
+  // :not(...) und :has(...) nennen den Pfeil, zielen aber nicht auf ihn - erst
+  // raus damit, dann zaehlt nur, was ihn wirklich trifft.
+  const zieltAufDenPfeil = (selektor) => selektor
+    .replace(/:(not|has)\([^()]*\)/g, "")
+    .includes(".smart-header-collapse-btn");
+  const breitenRegeln = [...css.matchAll(/([^{}]*\.smart-header-collapse-btn[^{}]*)\{([^}]*)\}/g)]
+    .filter(([, selektor, inhalt]) => /(^|[;\s])width\s*:/.test(inhalt) && zieltAufDenPfeil(selektor))
+    .map(([, selektor]) => selektor.trim().replace(/\s+/g, " "));
+  assert.deepEqual(breitenRegeln, [
+    ".smart-header-actions > .smart-header-collapse-btn",
+    "html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn"
+  ], breitenRegeln.join(" | "));
 });

@@ -1463,28 +1463,75 @@
     /* Ist die Zeile nicht zu sehen, faerbt sich der Pfeil weich blau ein und
        dreht nach oben: das
        ist der Hinweis, dass man die Tabs darueber wieder aufmachen kann. */
+    /* Die Luecke, die die Icon-Reihe zwischen ihren Knoepfen laesst. Sie steht
+       hier als Name, weil der Pfeil sie beim Zufahren mitnehmen muss - sonst
+       bliebe sie als Rest stehen und die Icons staenden nicht buendig rechts. */
+    .smart-header-actions:has(.smart-header-collapse-btn) {
+      --smart-header-actions-gap: 0.25rem;
+      gap: var(--smart-header-actions-gap);
+    }
     .smart-header-collapse-btn {
       color: rgb(100 116 139);
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      /* Kurz genug, dass der Knopf sofort antwortet: bei 320ms zog die Farbe
-         dem Finger sichtbar hinterher und der Pfeil wirkte zaeh. */
-      transition: color 140ms ease-out, background-color 140ms ease-out;
     }
     /* Oben hat der Pfeil nichts zu tun: die Zeile steht da, wo sie hingehoert -
        es gibt nichts zu holen und nichts wegzuraeumen. Also ist er dort auch
-       nicht da, und zwar ganz: aus dem Layout, damit die Icons daneben buendig
-       rechts stehen. Kommt er dazu, ruecken sie ein Stueck nach links; geht er
-       wieder, ruecken sie zurueck.
-       display statt visibility - mit visibility hielte er seinen Platz frei,
-       und neben der Tasche klaffte dauerhaft eine Luecke.
-       Eingegrenzt auf .smart-header-actions, damit die Regeln die Klasse .flex
-       aus dem Utility-Stylesheet sicher schlagen. */
+       nicht da, und zwar ohne jeden Platz: die Icons daneben stehen buendig an
+       der rechten Kante.
+       Gefahren wird ueber die BREITE, nicht ueber display - display laesst sich
+       nicht fahren. Breite 0 plus der weggenommenen Luecke nimmt ihm genau
+       denselben Platz, aber die Strecke dorthin ist eine Fahrt: die Icons
+       gleiten, statt zu springen.
+       Danach ist er trotzdem wirklich weg - visibility springt am Ende der
+       Fahrt (Verzoegerung) auf hidden: nicht anfassbar, nicht anspringbar,
+       nicht vorgelesen. Beim Erscheinen umgekehrt, sofort sichtbar.
+       Eingegrenzt auf .smart-header-actions, damit die Regeln die Breiten aus
+       dem Utility-Stylesheet und aus der Regel fuer schmale Geraete schlagen. */
     .smart-header-actions > .smart-header-collapse-btn {
-      display: none;
+      --smart-header-collapse-width: 1.75rem;
+      width: var(--smart-header-collapse-width);
+      flex: 0 0 auto;
+      /* Zwei Dinge, die die Breite sonst nie bei 0 ankommen lassen:
+         - ein Flex-Kind hat von Haus aus min-width:auto und faellt damit nie
+           unter die Groesse seines Inhalts;
+         - mit box-sizing:border-box stecken Innenpolsterung und Rahmen in der
+           Breite, und kleiner als deren Summe kann die Box nicht werden.
+         Beides steht hier ausdruecklich, statt sich auf den Reset im anderen
+         Stylesheet zu verlassen: die Fahrt haengt daran. Gemittelt wird der
+         Pfeil ohnehin per flex, nicht per Polsterung. */
+      min-width: 0;
+      padding-left: 0;
+      padding-right: 0;
+      border-left-width: 0;
+      border-right-width: 0;
+      /* Waehrend die Breite faellt, wird das Icon beschnitten statt gequetscht. */
+      overflow: hidden;
+      transition:
+        width 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        margin-left 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        opacity 160ms ease-out,
+        color 140ms ease-out,
+        background-color 140ms ease-out,
+        visibility 0s linear 0s;
     }
-    html.smart-header-tabs-offscreen .smart-header-actions > .smart-header-collapse-btn {
-      display: flex;
+    .smart-header-actions > .smart-header-collapse-btn > svg,
+    .smart-header-actions > .smart-header-collapse-btn > i {
+      flex: 0 0 auto;
+    }
+    html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn {
+      width: 0;
+      margin-left: calc(-1 * var(--smart-header-actions-gap, 0.25rem));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        width 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        margin-left 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+        opacity 160ms ease-out,
+        color 140ms ease-out,
+        background-color 140ms ease-out,
+        visibility 0s linear 200ms;
     }
     html.smart-header-tabs-away .smart-header-collapse-btn {
       color: rgb(79 70 229);
@@ -1579,15 +1626,18 @@
       .smart-header-collapse-btn,
       .smart-header-location-btn,
       .smart-header-collapse-btn > svg,
-      .smart-header-collapse-btn > i {
+      .smart-header-collapse-btn > i,
+      .smart-header-actions > .smart-header-collapse-btn,
+      html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn {
         transition: none !important;
       }
     }
     /* Schmale Geraete: obere Header-Zeile bleibt einzeilig, das Location-Feld
        behaelt trotz Collapse-Pfeil genug Schreibbreite. */
     @media (max-width: 380px) {
-      .smart-header-actions:has(.smart-header-collapse-btn) > button { width: 2rem; }
-      .smart-header-actions:has(.smart-header-collapse-btn) > .smart-header-collapse-btn { width: 1.6rem; }
+      .smart-header-actions:has(.smart-header-collapse-btn) > button:not(.smart-header-collapse-btn) { width: 2rem; }
+      /* Nur der Wert, nicht die Breite selbst: die faehrt (siehe oben). */
+      .smart-header-actions > .smart-header-collapse-btn { --smart-header-collapse-width: 1.6rem; }
       /* Schmale Geraete: nur die Laufweite des Zusatzes gibt nach, damit das Logo
          neben Pin, Globus, Tasche und Pfeil ganz zu lesen bleibt. */
       .smart-header-lead--location .smart-header-brand > span { letter-spacing: 0.18em; }
