@@ -1359,6 +1359,10 @@
       z-index: 90;
       border-bottom-width: 0;
       box-shadow: none;
+      /* Die Laufzeit setzt hier eine ganze Pixelhoehe (siehe
+         measureMainHeaderTabsRowHeight) - mit border-box bleibt das Innenleben
+         davon unberuehrt. */
+      box-sizing: border-box;
     }
     /* Vom Pfeil unterwegs zurueckgeholt: die Zeile klebt unter der Leiste.
        relative und sticky belegen denselben Layout-Platz, das Umschalten

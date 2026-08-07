@@ -1591,9 +1591,20 @@ export function createAppShellRuntimeController(deps = {}) {
     return true;
   }
 
+  // Die Zeile bekommt eine ganze Pixelhoehe. Von sich aus ist sie krumm
+  // (40.67px), und eine krumme Hoehe laesst sich nicht ausgleichen: Scroll-
+  // Positionen rundet der Browser auf ganze Pixel. Der Rest blieb als winziger
+  // Versatz stehen - bei jedem Tipp sah man die Seite leicht zucken. Gemessen
+  // wird weiter, damit groessere Schrift oder ein anderes Geraet passen.
   function measureMainHeaderTabsRowHeight(tabsEl) {
-    const height = Math.round(Number(tabsEl?.getBoundingClientRect?.().height) || 0);
-    if (height > 0) mainHeaderTabsRowHeight = height;
+    const raw = Number(tabsEl?.getBoundingClientRect?.().height) || 0;
+    if (raw > 0) {
+      const ganzeHoehe = Math.round(raw);
+      if (ganzeHoehe > 0 && Math.abs(raw - ganzeHoehe) > 0.01 && tabsEl?.style) {
+        tabsEl.style.height = `${ganzeHoehe}px`;
+      }
+      mainHeaderTabsRowHeight = ganzeHoehe;
+    }
     return mainHeaderTabsRowHeight;
   }
 
@@ -1660,8 +1671,11 @@ export function createAppShellRuntimeController(deps = {}) {
   // und setzt es ueber ein paar Frames nach: wer zuletzt schreibt, gewinnt.
   // Faengt der Nutzer selbst an zu scrollen, laesst er sofort los - dessen Hand
   // hat Vorrang. Auf den Zustand der Zeile hat all das keinen Einfluss mehr.
+  // Bewusst ohne Runden: die Zeile ist 40.67px hoch, nicht 41. Mit gerundeter
+  // Hoehe blieb bei jedem Tipp ein Drittel Pixel Versatz stehen - man sah die
+  // Seite ganz leicht zucken.
   function scrollMainHeaderTabsTo(targetY) {
-    const top = Math.max(0, Math.round(Number(targetY) || 0));
+    const top = Math.max(0, Number(targetY) || 0);
     clearMainHeaderTabsScrollAssert();
     setViewportScrollTop(top);
     // Der Ausgleich ist die neue Ausgangslage - sonst liest der naechste
@@ -1705,6 +1719,16 @@ export function createAppShellRuntimeController(deps = {}) {
       && !eigenerAusgleich
       && (scrollY > previous + MAIN_HEADER_TABS_DOWN_DELTA_PX || scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX)) {
       setMainHeaderTabsStuck(false);
+    }
+    // Ganz nach oben gescrollt gehoeren die Pills hin - dort ist ihr Platz, und
+    // niemand sucht dort einen Pfeil, um sie zurueckzuholen. Ausgeloest wird das
+    // nur beim Ankommen von weiter unten: sonst wuerde ein Zumachen am
+    // Seitenanfang im selben Atemzug wieder aufgehen.
+    if (mainHeaderTabsCollapsed
+      && !eigenerAusgleich
+      && scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX
+      && previous > MAIN_HEADER_TABS_TOP_EPS_PX) {
+      setMainHeaderTabsCollapsed(false);
     }
     syncMainHeaderTabsChrome();
   }
@@ -1798,26 +1822,36 @@ export function createAppShellRuntimeController(deps = {}) {
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
         syncSmartHeaderMetrics();
-        const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
+        measureMainHeaderTabsRowHeight(tabsEl);
         const scrollY = Math.max(0, Number(win.scrollY || 0));
+        // Wieviel sich der Inhalt wirklich verschiebt, wird gemessen statt
+        // gerechnet: die Zeilenhoehe ist krumm, und ein gerundeter Ausgleich
+        // laesst bei jedem Tipp einen Bruchteil Pixel stehen.
+        const ausgleichAnker = doc.querySelector("main") || tabsEl.parentElement || null;
+        const ankerVorher = Number(ausgleichAnker?.getBoundingClientRect?.().top ?? 0);
+        const gleicheVerschiebungAus = () => {
+          if (scrollY <= 0 || !ausgleichAnker) return;
+          const verschiebung = Number(ausgleichAnker.getBoundingClientRect().top) - ankerVorher;
+          if (Math.abs(verschiebung) < 0.01) return;
+          scrollMainHeaderTabsTo(scrollY + verschiebung);
+        };
         if (isMainHeaderTabsRowVisible()) {
           // Zu: die Zeile geht aus dem Layout. Alles darunter wandert um ihre
           // Hoehe hoch - am Seitenanfang ist genau das das Zumachen. Steht man
           // weiter unten, gleicht die Scroll-Position das aus, damit der Text
           // unter dem Finger stehen bleibt.
           setMainHeaderTabsCollapsed(true);
-          if (scrollY > 0) scrollMainHeaderTabsTo(Math.max(0, scrollY - rowHeight));
+          gleicheVerschiebungAus();
         } else {
           // Auf: die Zeile kommt zurueck ins Layout, alles darunter geht um
           // ihre Hoehe runter. Am Seitenanfang ist das wieder genau das
           // Startbild. Weiter unten wuerde sie ausserhalb des Blicks landen -
           // dort heftet sie sich unter die Leiste, damit man sie sieht, und die
           // Scroll-Position gleicht den Layout-Zuwachs aus.
-          const wasCollapsed = mainHeaderTabsCollapsed;
           setMainHeaderTabsCollapsed(false);
           if (scrollY > 0) {
             setMainHeaderTabsStuck(true);
-            if (wasCollapsed) scrollMainHeaderTabsTo(scrollY + rowHeight);
+            gleicheVerschiebungAus();
           } else {
             setMainHeaderTabsStuck(false);
           }

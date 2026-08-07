@@ -34,12 +34,16 @@ class FakeElement {
   constructor({ classes = [], height = 0 } = {}) {
     this.classList = new FakeClassList(classes);
     this.height = height;
+    this.style = {};
     this.attributes = new Map();
     this.listeners = new Map();
   }
 
   getBoundingClientRect() {
-    return { height: this.height };
+    // Eine gesetzte Hoehe gilt, wie im Browser auch.
+    const gesetzt = parseFloat(this.style.height);
+    const height = Number.isFinite(gesetzt) ? gesetzt : this.height;
+    return { top: 0, height };
   }
 
   addEventListener(type, handler) {
@@ -68,7 +72,24 @@ function createHarness() {
   const tabsEl = new FakeElement({ classes: ["smart-header-tabs", "smart-header-tabs--main"], height: TABS_ROW_HEIGHT });
   const topEl = new FakeElement({ height: TOP_BAR_HEIGHT });
   const toggleEl = new FakeElement();
+  const mainEl = new FakeElement();
   const styleValues = new Map();
+
+  const istZu = () => documentObj.documentElement.classList.contains("smart-header-tabs-collapsed");
+
+  // Zugemacht ist die Zeile aus dem Layout - genau wie im Browser hat sie dann
+  // keine Hoehe mehr.
+  const echteZeilenhoehe = () => {
+    const gesetzt = parseFloat(tabsEl.style.height);
+    return Number.isFinite(gesetzt) ? gesetzt : tabsEl.height;
+  };
+  tabsEl.getBoundingClientRect = () => ({ top: 0, height: istZu() ? 0 : echteZeilenhoehe() });
+  // Der Hauptbereich sitzt unter Leiste und Zeile und wandert mit dem Scroll -
+  // daran misst die Laufzeit, wie weit sich der Inhalt verschoben hat.
+  mainEl.getBoundingClientRect = () => ({
+    top: TOP_BAR_HEIGHT + (istZu() ? 0 : echteZeilenhoehe()) - windowObj.scrollY,
+    height: 4000
+  });
 
   const documentObj = {
     documentElement: {
@@ -89,6 +110,7 @@ function createHarness() {
     },
     querySelector(selector) {
       if (selector === "[data-main-header-tabs-toggle]") return toggleEl;
+      if (selector === "main") return mainEl;
       return null;
     },
     querySelectorAll: () => []
@@ -223,6 +245,8 @@ function createHarness() {
     documentObj,
     windowObj,
     start,
+    tabsEl,
+    mainEl,
     clickToggle,
     tapToggle,
     scrollTo,
@@ -381,9 +405,9 @@ test("scrolling back to the top shows the open row in its normal place", () => {
   assert.equal(isCollapsed(harness), false);
 });
 
-// Zugemacht bleibt zugemacht, auch wenn man scrollt: der Pfeil ist der
-// einzige, der die Zeile wieder aufmacht.
-test("a closed row stays closed while scrolling", () => {
+// Zugemacht bleibt zugemacht, solange man unterwegs ist - nur der Pfeil oder
+// der Weg ganz nach oben macht sie wieder auf.
+test("a closed row stays closed while scrolling around", () => {
   const harness = createHarness();
   harness.start();
 
@@ -392,8 +416,10 @@ test("a closed row stays closed while scrolling", () => {
 
   harness.scrollTo(600);
   assert.equal(isCollapsed(harness), true);
-  harness.scrollTo(0);
-  assert.equal(isCollapsed(harness), true, "sie kommt nicht von selbst zurueck");
+  harness.scrollTo(1400);
+  assert.equal(isCollapsed(harness), true, "sie kommt unterwegs nicht von selbst zurueck");
+  harness.scrollTo(300);
+  assert.equal(isCollapsed(harness), true, "auch auf halbem Weg nach oben nicht");
   assert.equal(isVisible(harness), false);
 
   harness.clickToggle();
@@ -463,4 +489,59 @@ test("a swipe starting on the chevron does not switch anything", () => {
 
   harness.tapToggle({ moveBy: 40 });
   assert.equal(isVisible(harness), true, "gewischt heisst nicht getippt");
+});
+
+// Ganz nach oben gescrollt gehoeren die Pills hin. Zugemacht und dann komplett
+// hochgescrollt standen sie vorher nicht da - man suchte oben einen Pfeil, um
+// etwas zurueckzuholen, das dort sowieso hingehoert.
+test("scrolling all the way back to the top brings the closed row back", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  assert.equal(isVisible(harness), false, "zugemacht");
+
+  harness.scrollTo(900);
+  assert.equal(isVisible(harness), false, "unterwegs bleibt sie weg");
+
+  harness.scrollTo(0);
+  assert.equal(isCollapsed(harness), false, "ganz oben ist sie wieder da");
+  assert.equal(isVisible(harness), true);
+});
+
+// Aber am Seitenanfang zumachen darf nicht im selben Atemzug wieder aufgehen.
+test("closing at the top stays closed", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  harness.runTimers();
+  assert.equal(isVisible(harness), false, "zu bleibt zu");
+
+  // Auch ein weiteres Scroll-Ereignis am Anfang aendert daran nichts.
+  harness.scrollTo(0);
+  assert.equal(isVisible(harness), false);
+});
+
+// Der Ausgleich muss die Zeilenhoehe exakt treffen. Krumm gerundet blieb bei
+// jedem Tipp ein Bruchteil Pixel stehen und die Seite zuckte.
+test("the row gets a whole pixel height so the compensation lands exactly", () => {
+  const harness = createHarness();
+  // So krumm ist sie im Browser wirklich.
+  harness.tabsEl.height = 40.671875;
+  harness.start();
+
+  harness.scrollTo(1200);
+  // Erst holt der Pfeil die weggescrollte Zeile ...
+  harness.clickToggle();
+  assert.equal(harness.tabsEl.style.height, "41px", "die Zeile bekommt eine ganze Hoehe");
+  assert.equal(harness.windowObj.scrollY, 1200, "geholt wird ohne die Seite zu bewegen");
+
+  // ... und der naechste Tipp nimmt sie weg, mit genauem Ausgleich.
+  harness.clickToggle();
+  assert.equal(harness.windowObj.scrollY, 1200 - 41, "der Ausgleich trifft die Hoehe genau");
+
+  harness.clickToggle();
+  assert.equal(harness.windowObj.scrollY, 1200, "und zurueck auf dieselbe Stelle");
 });
