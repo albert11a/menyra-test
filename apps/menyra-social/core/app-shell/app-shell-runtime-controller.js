@@ -183,12 +183,17 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsLastScrollY = 0;
   let mainHeaderTabsVisibleState = null;
   let mainHeaderTabsRafId = 0;
+  let mainHeaderTabsRevealTimerId = 0;
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
   // So weit unter dem Seitenanfang holt der Pfeil die Zeile noch per Scroll
   // zurueck. Weiter unten waere der Weg an den Anfang zu teuer - dort heftet
   // sich die Zeile stattdessen unter die Leiste.
   const MAIN_HEADER_TABS_NEAR_TOP_ROWS = 2;
+  // So lange darf der Scroll des Pfeils brauchen. Danach wird nachgesehen, ob
+  // die Zeile wirklich wieder dasteht - ein Scroll ist nur eine Bitte an den
+  // Browser, und ein Re-Render setzt die Scroll-Position unterwegs zurueck.
+  const MAIN_HEADER_TABS_REVEAL_VERIFY_MS = 520;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1631,6 +1636,36 @@ export function createAppShellRuntimeController(deps = {}) {
     }
   }
 
+  function clearMainHeaderTabsRevealVerify() {
+    if (win && mainHeaderTabsRevealTimerId) win.clearTimeout?.(mainHeaderTabsRevealTimerId);
+    mainHeaderTabsRevealTimerId = 0;
+  }
+
+  // Der Pfeil holt die Zeile per Scroll zurueck - das ist das gewohnte Bild,
+  // aber es ist nur eine Bitte an den Browser. Ein Re-Render setzt die
+  // Scroll-Position mitten im Lauf wieder auf ihren alten Wert, ein kurzer
+  // Scroll-Weg wird gekappt: die Zeile blieb dann weg, und jeder weitere Tipp
+  // schickte dieselbe wirkungslose Bitte hinterher - der Pfeil war tot.
+  // Deshalb wird nachgesehen: steht sie danach immer noch nicht da, heftet sie
+  // sich unter die Leiste. Das braucht keinen Scroll und kann nicht ausbleiben.
+  function verifyMainHeaderTabsReveal(requestedFromY = 0) {
+    clearMainHeaderTabsRevealVerify();
+    if (typeof win?.setTimeout !== "function") return;
+    const fromY = Math.max(0, Number(requestedFromY) || 0);
+    mainHeaderTabsRevealTimerId = win.setTimeout(() => {
+      mainHeaderTabsRevealTimerId = 0;
+      // Nach einem Seitenwechsel gibt es keine Zeile mehr, um die es ginge.
+      if (!doc?.getElementById?.("smart-tabs")) return;
+      if (isMainHeaderTabsRowVisible()) return;
+      // Ist die Seite inzwischen weiter nach unten gegangen, war das der
+      // Finger des Nutzers - und Runterscrollen nimmt die Zeile weg. Dann hat
+      // der Pfeil nichts mehr zu holen.
+      const scrollY = Math.max(0, Number(win?.scrollY || 0));
+      if (scrollY > fromY + MAIN_HEADER_TABS_DOWN_DELTA_PX) return;
+      setMainHeaderTabsStuck(true);
+    }, MAIN_HEADER_TABS_REVEAL_VERIFY_MS);
+  }
+
   function syncMainHeaderTabsOnScroll() {
     const scrollY = Math.max(0, Number(win?.scrollY || 0));
     const previous = mainHeaderTabsLastScrollY;
@@ -1683,25 +1718,27 @@ export function createAppShellRuntimeController(deps = {}) {
       // also auch nichts, was beim Zurueckkommen springen koennte.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
+        clearMainHeaderTabsRevealVerify();
         syncSmartHeaderMetrics();
         const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
         const scrollY = Math.max(0, Number(win.scrollY || 0));
         if (isMainHeaderTabsRowVisible()) {
-          if (mainHeaderTabsStuck) {
-            // Unterwegs geholt -> einfach wieder loslassen, sie faellt in ihre
-            // normale Position am Seitenanfang zurueck (kein Layout-Wechsel).
-            setMainHeaderTabsStuck(false);
-          } else {
-            // Sie steht in ihrer normalen Position im Blick: die Seite scrollt
-            // knapp an ihr vorbei, die Zeile laeuft dabei hinter die Leiste.
-            // Dasselbe Bild wie beim Wegscrollen mit dem Finger.
-            scrollMainHeaderTabsTo(rowHeight);
-          }
+          // Unterwegs geholt? Dann zuerst wieder loslassen - sie faellt in ihre
+          // normale Position zurueck (kein Layout-Wechsel).
+          if (mainHeaderTabsStuck) setMainHeaderTabsStuck(false);
+          // Steht ihr Platz noch im Blick, faehrt die Seite knapp an ihr
+          // vorbei und die Zeile laeuft hinter die Leiste - dasselbe Bild wie
+          // beim Wegscrollen mit dem Finger. Genau dieser Schritt hat beim
+          // Loslassen nahe am Anfang gefehlt: dort blieb die Zeile stehen und
+          // der Tipp sah aus, als haette er nichts getan.
+          if (scrollY < rowHeight) scrollMainHeaderTabsTo(rowHeight);
         } else if (scrollY <= rowHeight * MAIN_HEADER_TABS_NEAR_TOP_ROWS) {
           // Knapp unter dem Seitenanfang: die Seite scrollt zurueck an den
           // Anfang und nimmt die Zeile von selbst mit. Kein Sonderweg, kein
-          // Sprung - genau das Bild vom Hochscrollen.
+          // Sprung - genau das Bild vom Hochscrollen. Kommt der Scroll nicht
+          // an, heftet die Nachschau die Zeile unter die Leiste.
           scrollMainHeaderTabsTo(0);
+          verifyMainHeaderTabsReveal(scrollY);
         } else {
           // Tief in der Seite waere ein Sprung an den Anfang der falsche Preis
           // fuer die Tabs: die Zeile heftet sich stattdessen unter die Leiste,

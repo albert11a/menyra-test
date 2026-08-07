@@ -97,13 +97,27 @@ function createHarness() {
   // Der Browser meldet den Scroll erst im naechsten Tick - genau darauf kommt
   // es hier an, weil der Pfeil selbst scrollt.
   const frames = [];
+  const timers = new Map();
+  let nextTimerId = 1;
   const winListeners = new Map();
   const windowObj = {
     scrollY: 0,
+    // Ein Scroll ist nur eine Bitte an den Browser. Bleibt sie unbeantwortet -
+    // gekappt oder von einem Re-Render zurueckgesetzt - bewegt sich nichts.
+    scrollRequestsIgnored: false,
     // Beide Formen wie im Browser: scrollTo(x, y) und scrollTo({ top }).
     scrollTo(first, second) {
+      if (this.scrollRequestsIgnored) return;
       const y = first && typeof first === "object" ? first.top : second;
       this.scrollY = Math.max(0, Number(y) || 0);
+    },
+    setTimeout(callback, delay = 0) {
+      const id = nextTimerId++;
+      timers.set(id, { callback, delay });
+      return id;
+    },
+    clearTimeout(id) {
+      timers.delete(id);
     },
     requestAnimationFrame(callback) {
       frames.push(callback);
@@ -165,13 +179,22 @@ function createHarness() {
     (toggleEl.listeners.get("click") || []).slice().forEach((handler) => handler({}));
   }
 
+  // Die Nachschau des Pfeils laeuft ueber einen Timer - hier wird er von Hand
+  // abgearbeitet, statt wirklich zu warten.
+  function runTimers() {
+    const pending = [...timers.entries()].sort((a, b) => a[1].delay - b[1].delay);
+    timers.clear();
+    pending.forEach(([, timer]) => timer.callback());
+    flushFrames();
+  }
+
   function start() {
     controller.initMainHeaderTabsRuntime(tabsEl);
     // Erste Nutzer-Geste: der Boot-Lock haelt die Zeile sonst am Seitenanfang.
     fireWindow("pointerdown");
   }
 
-  return { controller, documentObj, windowObj, start, clickToggle, scrollTo, settleOwnScroll };
+  return { controller, documentObj, windowObj, start, clickToggle, scrollTo, settleOwnScroll, runTimers };
 }
 
 const isVisible = (harness) => harness.controller.isMainHeaderTabsRowVisible();
@@ -274,6 +297,89 @@ test("deep in the page the chevron sticks the row under the top bar instead", ()
   assert.equal(isStuck(harness), true);
   assert.equal(isVisible(harness), true);
   assert.equal(isAway(harness), false);
+});
+
+// Die Beschwerde: Zeile weg, Pfeil oben - und der Pfeil holt sie nicht mehr
+// zurueck. Sein Scroll ist nur eine Bitte an den Browser; ein Re-Render setzt
+// die Position unterwegs zurueck, ein kurzer Weg wird gekappt. Bleibt die
+// Bitte unbeantwortet, muss die Zeile trotzdem kommen: sie heftet sich dann
+// unter die Leiste - dafuer braucht es keinen Scroll.
+test("the chevron brings the row back even when the page refuses to scroll", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  assert.equal(isVisible(harness), false, "erst mal ist sie weg");
+
+  harness.windowObj.scrollRequestsIgnored = true;
+  harness.clickToggle();
+  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT, "der Scroll kommt nicht an");
+  assert.equal(isVisible(harness), false, "im selben Bild steht sie noch nicht da");
+
+  harness.runTimers();
+  assert.equal(isVisible(harness), true, "die Zeile ist trotzdem zurueck");
+  assert.equal(isStuck(harness), true, "geholt wird sie dann ueber die Leiste");
+  assert.equal(isAway(harness), false);
+});
+
+// Und der Pfeil bleibt dabei ein Schalter: nach dem Zurueckholen ohne Scroll
+// nimmt der naechste Tipp die Zeile wieder weg.
+test("after the scroll-less reveal the next tap takes the row away again", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  harness.windowObj.scrollRequestsIgnored = true;
+  harness.clickToggle();
+  harness.runTimers();
+  assert.equal(isVisible(harness), true);
+
+  harness.windowObj.scrollRequestsIgnored = false;
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  assert.equal(isVisible(harness), false, "nochmal getippt ist sie wieder weg");
+  assert.equal(isStuck(harness), false);
+});
+
+// Wer selbst weiterscrollt, will die Zeile nicht: die Nachschau haelt sich
+// dann heraus, sonst kaeme sie unter dem Finger von selbst zurueck.
+test("the check keeps out of the way when the user scrolls on themselves", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  harness.windowObj.scrollRequestsIgnored = true;
+  harness.clickToggle();
+  harness.scrollTo(600);
+  harness.runTimers();
+
+  assert.equal(isStuck(harness), false, "nichts klebt unter der Leiste");
+  assert.equal(isVisible(harness), false);
+});
+
+// Geklebt und dabei nahe am Anfang: Loslassen allein nimmt die Zeile dort
+// nicht weg - ihr normaler Platz liegt ja noch im Blick. Ein Tipp muss
+// reichen, sonst sieht der erste aus, als haette er nichts getan.
+test("near the top one tap is enough to take the stuck row away", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.scrollTo(600);
+  harness.clickToggle();
+  assert.equal(isStuck(harness), true);
+
+  // Mit dem Finger zurueck nach oben, aber nicht ganz an den Anfang.
+  harness.scrollTo(6);
+  assert.equal(isStuck(harness), true, "oben angekommen ist sie noch nicht");
+
+  harness.clickToggle();
+  harness.settleOwnScroll();
+  assert.equal(isStuck(harness), false);
+  assert.equal(isVisible(harness), false, "ein Tipp nimmt sie weg");
+  assert.equal(harness.windowObj.scrollY, TABS_ROW_HEIGHT);
 });
 
 test("the stuck row is released again by the chevron and by scrolling on", () => {

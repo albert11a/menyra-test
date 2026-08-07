@@ -823,6 +823,13 @@
     .app-main-scroll--with-smart-header-tabs {
       min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-top-height, 4.5rem));
     }
+    /* Dieselbe Mindesthoehe dort, wo die Pill-Zeile wirklich steht: sie liegt
+       im Shell direkt vor dem Hauptbereich. Ohne diesen Scroll-Weg koennte der
+       Pfeil die Zeile auf einer kurzen Seite nicht wegscrollen und taete
+       nichts. */
+    .smart-header-tabs--main ~ .app-main-scroll:not(.app-main-scroll--map-fill) {
+      min-height: calc((var(--viewport-height, 1vh) * 100) - var(--smart-header-top-height, 4.5rem));
+    }
     .app-main-scroll--with-smart-header:has(> #restaurantsView),
     .app-main-scroll--with-smart-header:has(> #travelView),
     .app-main-scroll--with-smart-header-tabs:has(> #restaurantsView),
