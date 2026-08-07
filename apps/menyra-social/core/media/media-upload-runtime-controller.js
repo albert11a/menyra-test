@@ -4,6 +4,10 @@ import {
 } from "./media-upload-view-render-utils.js";
 import { captureVideoPosterFileCore } from "./video-poster-utils.js";
 import { compressImageThumb } from "../../_shared/image-compressor.js";
+import {
+  POST_SURFACE_FEED,
+  normalizePostSurfaceCore
+} from "../common/post-surface-utils.js";
 
 export function createMediaUploadRuntimeController({
   state = null,
@@ -287,6 +291,7 @@ export function createMediaUploadRuntimeController({
     mediaUrl,
     mediaType,
     posterUrl = "",
+    surface = POST_SURFACE_FEED,
     menuItemId = "",
     menuItemName = "",
     menuItemPrice = "",
@@ -308,8 +313,10 @@ export function createMediaUploadRuntimeController({
       menuItemPrice: menuItemPrice ?? "",
       menuItemImage: String(menuItemImage || "").trim()
     };
+    const postSurface = normalizePostSurfaceCore(surface) || POST_SURFACE_FEED;
     const payload = {
       postType: "food",
+      surface: postSurface,
       caption,
       ...tagged,
       media: [{
@@ -327,6 +334,11 @@ export function createMediaUploadRuntimeController({
       commentsCount: 0,
       status: "active"
     };
+    await setDoc(postRef, payload);
+    // Ein Profil-Beitrag bekommt keinen Eintrag in socialFeed und taucht
+    // damit nirgends im Feed auf. Der Beitrag selbst liegt trotzdem unter
+    // socialPosts - dort haengen Loeschen und Aufraeumen dran.
+    if (postSurface !== POST_SURFACE_FEED) return;
     const feedPayload = {
       rid: restaurantId,
       postType: payload.postType,
@@ -348,7 +360,6 @@ export function createMediaUploadRuntimeController({
       ...tagged,
       canonicalPath: `restaurants/${restaurantId}/socialPosts/${postId}`
     };
-    await setDoc(postRef, payload);
     await setDoc(makeDocRef(db, "socialFeed", postId), feedPayload, { merge: true });
   }
 
@@ -517,7 +528,10 @@ export function createMediaUploadRuntimeController({
           caption,
           mediaUrl: cdnUrl,
           mediaType,
-          posterUrl: videoPosterUrl
+          posterUrl: videoPosterUrl,
+          // Der Upload-Screen ist der Feed-Weg; das Profil hat seine eigene
+          // Seite im Composer.
+          surface: POST_SURFACE_FEED
         });
         await loadFeedPosts({ force: true });
         await loadBusinessPosts({ force: true });

@@ -876,6 +876,38 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
     }
   }
 
+  // Loeschen direkt von der Feed-Karte.
+  //
+  // Ein "Postim" steht seit der Trennung von Feed und Profil nicht mehr im
+  // Profil-Grid. Damit ist die Karte im Feed fuer den Inhaber der einzige
+  // Ort, an dem er den Beitrag wieder loswird. Es fallen beide Dokumente:
+  // der Eintrag in socialFeed und der Beitrag selbst unter socialPosts.
+  async function deleteOwnFeedPost(postId) {
+    const safePostId = String(postId || "").trim();
+    if (!safePostId || !state?.user) return;
+    const restaurantId = String(state.userProfile?.restaurantId || "").trim();
+    if (!restaurantId) return;
+    const post = (state.feedPosts || []).find((row) => String(row?.id || "") === safePostId);
+    // Fremde Karten tragen den Knopf gar nicht erst - der Weg hierher haelt
+    // trotzdem selbst dicht, statt sich auf die Ansicht zu verlassen.
+    if (post && String(post.restaurantId || "").trim() !== restaurantId) return;
+    if (!confirmFn("Ta fshish vertet postimin?")) return;
+
+    state.feedPosts = (state.feedPosts || []).filter((row) => String(row?.id || "") !== safePostId);
+    saveFeedPosts(state.feedPosts);
+    if (Array.isArray(state.businessPosts)) {
+      state.businessPosts = state.businessPosts.filter((row) => String(row?.id || "") !== safePostId);
+      writeCache(businessPostsKey(restaurantId), state.businessPosts);
+    }
+    render();
+    try {
+      await deleteDoc(doc(db, "socialFeed", safePostId));
+      await deleteDoc(doc(db, "restaurants", restaurantId, "socialPosts", safePostId));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   function toggleProfilePostMenu(postId) {
     if (!postId) return;
     const next = String(state.profilePostMenuId) === String(postId) ? null : String(postId);
@@ -937,6 +969,7 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
     updateProfilePostType,
     toggleProfilePostWidth,
     deleteProfilePost,
+    deleteOwnFeedPost,
     toggleProfilePostMenu,
     setProfileMenuOpen
   };

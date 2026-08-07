@@ -39,6 +39,7 @@ export function createFeedViewOrchestrationController({
   openProfileViewFromBusinessFn = () => {},
   openPostModalFn = async () => {},
   togglePostLikeFn = async () => {},
+  deleteOwnFeedPostFn = async () => {},
   setTimeoutFn = (fn, ms) => setTimeout(fn, ms)
 } = {}) {
   if (!state) {
@@ -3315,6 +3316,17 @@ export function createFeedViewOrchestrationController({
     const heroMediaHtml = postId
       ? `<button type="button" data-feed-post-open-modal="${escapeHtmlFn(postId)}" ${heroTrackAttr} aria-label="Hap postimin nga ${escapeHtmlFn(post.business)}" class="block w-full h-full appearance-none bg-transparent text-left cursor-pointer" style="display:block;width:100%;height:100%;padding:0;margin:0;border:0;background:transparent;">${heroInner}</button>`
       : heroInner;
+    // Der eigene Beitrag traegt oben rechts den Loeschen-Knopf. Seit "Postim"
+    // und "Profil" getrennt sind, steht ein Feed-Beitrag nicht mehr im
+    // Profil-Grid - das war der einzige Ort mit Loeschen. Fremde Karten
+    // behalten das stumme Zeichen.
+    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const isOwnFeedPost = !!postId
+      && !!ownRestaurantId
+      && String(post.restaurantId || "").trim() === ownRestaurantId;
+    const menuHtml = isOwnFeedPost
+      ? `<button type="button" data-feed-post-delete="${escapeHtmlFn(postId)}" aria-label="Fshi postimin" class="p-2 -m-2 rounded-full text-slate-400 hover:text-rose-500 active:text-rose-600 transition-colors">${iconFn("trash-2", "w-5 h-5")}</button>`
+      : "";
     // Markup kommt aus dem gemeinsamen Baustein: der Composer rendert seine
     // Vorschau mit exakt derselben Funktion.
     return renderFeedCardMarkupCore({
@@ -3328,6 +3340,7 @@ export function createFeedViewOrchestrationController({
       heroMediaHtml,
       heroReady,
       rootAttrs: `${feedAttr} ${feedRenderAttr}`,
+      menuHtml,
       profileButtonAttrs: `data-profile-business="${escapeHtmlFn(post.business)}" data-profile-id="${escapeHtmlFn(post.restaurantId || "")}"`,
       likeButtonAttrs: `data-feed-post-like="${escapeHtmlFn(postId)}" data-post-like-btn="${escapeHtmlFn(postId)}"`,
       likeCountAttrs: likeAttr,
@@ -4047,6 +4060,14 @@ export function createFeedViewOrchestrationController({
       const storyLink = target.closest("[data-story-item]");
       if (storyLink) {
         handleStoryWarmup(storyLink);
+        return;
+      }
+      const deleteBtn = target.closest("[data-feed-post-delete]");
+      if (deleteBtn) {
+        const postId = deleteBtn.dataset.feedPostDelete || "";
+        if (postId) {
+          void deleteOwnFeedPostFn(postId);
+        }
         return;
       }
       const likeBtn = target.closest("[data-feed-post-like]");

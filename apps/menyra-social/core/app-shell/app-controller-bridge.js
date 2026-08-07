@@ -297,7 +297,6 @@ export function createAppControllerBridge({
     buildStoriesRowSignatureFn: feed.buildStoriesRowSignature,
     documentObj: feed.documentObj,
     windowObj: feed.windowObj,
-    isLocalBusinessProfileFn: feed.isLocalBusinessProfile,
     iconFn: feed.icon,
     escapeHtmlFn: feed.escapeHtml,
     buildUrlFn: feed.buildUrl,
@@ -322,6 +321,7 @@ export function createAppControllerBridge({
     openProfileViewFromBusinessFn: (input, options = {}) => openProfileViewFromBusiness(input, options),
     openPostModalFn: async (post) => openPostModalBridge(post),
     togglePostLikeFn: async (postId) => overlay.togglePostLike(postId),
+    deleteOwnFeedPostFn: async (postId) => feed.deleteOwnFeedPost(postId),
     setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
   });
 

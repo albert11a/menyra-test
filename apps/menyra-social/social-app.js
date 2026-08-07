@@ -2133,7 +2133,9 @@ function getDashboardViewController() {
             await loadStoriesForFeed({ force: true, refreshUi: true });
             return;
           }
-          await loadFeedPosts({ force: true });
+          // Ein Profil-Beitrag steht nie im Feed - den muss hier auch
+          // niemand neu ziehen.
+          if (publishedMode !== "profile") await loadFeedPosts({ force: true });
           await loadBusinessPosts({ force: true });
         }
       },
@@ -4439,6 +4441,10 @@ async function deleteProfilePost(postId) {
   return getSocialEngagementSupportRuntimeController().deleteProfilePost(...arguments);
 }
 
+async function deleteOwnFeedPost(postId) {
+  return getSocialEngagementSupportRuntimeController().deleteOwnFeedPost(...arguments);
+}
+
 function toggleProfilePostMenu(postId) {
   return getSocialEngagementSupportRuntimeController().toggleProfilePostMenu(...arguments);
 }
@@ -5076,6 +5082,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     toggleProfilePostMenu,
     toggleProfilePostWidth,
     deleteProfilePost,
+    deleteOwnFeedPost,
     setProfileMenuOpen,
     bindNotificationsDelegation,
     bindAppSettingsProfileEventsCore,

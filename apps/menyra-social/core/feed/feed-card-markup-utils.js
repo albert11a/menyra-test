@@ -29,6 +29,10 @@ export function renderFeedCardMarkupCore({
   // Datenattribute: im Feed gesetzt, in der Vorschau leer (rein visuell
   // wirkungslos, damit die Vorschau keine App-Handler ausloest).
   rootAttrs = "",
+  // Ecke oben rechts. Der Feed setzt hier fuer den Inhaber seinen
+  // Loeschen-Knopf ein; Vorschau und fremde Karten lassen das Feld leer und
+  // behalten das stumme Zeichen von vorher.
+  menuHtml = "",
   profileButtonAttrs = "",
   likeButtonAttrs = "",
   likeCountAttrs = "",
@@ -52,7 +56,7 @@ export function renderFeedCardMarkupCore({
             <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${esc(location)}</p>
           </div>
         </button>
-        ${icon("more-horizontal", "w-5 h-5 text-slate-400")}
+        ${menuHtml || icon("more-horizontal", "w-5 h-5 text-slate-400")}
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative rounded-[3rem] overflow-hidden ${heroReady ? "" : "bg-slate-200"}" style="aspect-ratio:4/5">

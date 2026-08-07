@@ -1,6 +1,7 @@
 import { normalizeMenuCardStyleCore } from "../menu/menu-card-style-utils.js";
 import { renderProfilePostCardMarkupCore } from "./profile-post-card-markup-utils.js";
 import { isVideoMediaItemCore } from "../media/video-poster-utils.js";
+import { filterProfileSurfacePostsCore } from "../common/post-surface-utils.js";
 import {
   isSettlingProfileSurfaceStatus,
   resolveVisibleProfileSurface
@@ -2471,7 +2472,9 @@ function renderPublicProfileSurface(
   const activeContentTab = String(contentTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
-  const filteredPosts = posts;
+  // Feed-Beitraege ("Postim") bleiben im Feed und stehen nicht im Profil.
+  // Beitraege ohne Flaeche sind von frueher und bleiben sichtbar.
+  const filteredPosts = filterProfileSurfacePostsCore(posts);
   const baseProfileView = state?.profileView && typeof state.profileView === "object"
     ? state.profileView
     : {};
@@ -5057,7 +5060,9 @@ function renderProfileView() {
   const activeContentTab = resolveProfileContentTabForRendering(profile);
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
-  const filteredPosts = posts;
+  // Feed-Beitraege ("Postim") bleiben im Feed und stehen nicht im Profil.
+  // Beitraege ohne Flaeche sind von frueher und bleiben sichtbar.
+  const filteredPosts = filterProfileSurfacePostsCore(posts);
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(isBusiness);
   const topTab = resolveProfilePrimaryTopTab(profile);

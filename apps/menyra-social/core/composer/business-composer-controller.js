@@ -26,6 +26,7 @@ import {
   renderFeedCardMarkupCore
 } from "../feed/feed-card-markup-utils.js";
 import { renderProfilePostCardMarkupCore } from "../profile/profile-post-card-markup-utils.js";
+import { resolvePostSurfaceForComposerModeCore } from "../common/post-surface-utils.js";
 import {
   renderStoryTileMarkupCore,
   renderStoryTileMediaFallbackCore,
@@ -1946,6 +1947,8 @@ export function createBusinessComposerController({
           mediaUrl,
           mediaType,
           posterUrl,
+          // "Postim" geht in den Feed, "Profil" ins Profil-Grid - nie beides.
+          surface: resolvePostSurfaceForComposerModeCore(publishMode),
           ...productFields
         });
       }
