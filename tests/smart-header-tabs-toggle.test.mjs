@@ -80,10 +80,32 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
   const mainEl = new FakeElement();
   const styleValues = new Map();
 
+  // Die Geometrie wie im Browser - die Laufzeit MISST sie, sie rechnet nicht
+  // mit der Scroll-Position.
+  //
+  // Die obere Leiste klebt bei 0 und ist immer gleich hoch.
+  topEl.getBoundingClientRect = () => ({ top: 0, bottom: TOP_BAR_HEIGHT, height: TOP_BAR_HEIGHT });
+  // Die Zeile sitzt im Fluss direkt darunter und scrollt hinter sie weg.
+  // Geheftet klebt sie 1px hoeher als die Unterkante der Leiste; eingesteckt
+  // steht sie um ihre eigene Hoehe weiter oben, also ganz dahinter.
+  // Mitten in der Fahrt steht die geheftete Zeile irgendwo dazwischen. Genau
+  // dort darf ein Tipp nicht den Zwischenstand ablesen.
+  let fahrtStand = null;
+  tabsEl.getBoundingClientRect = () => {
+    const hoehe = tabsEl.height;
+    const klassen = documentObj.documentElement.classList;
+    const geheftet = klassen.contains("smart-header-tabs-stuck");
+    const eingesteckt = klassen.contains("smart-header-tabs-tucked");
+    const heraus = fahrtStand === null ? (eingesteckt ? 0 : 1) : fahrtStand;
+    const top = geheftet
+      ? TOP_BAR_HEIGHT - 1 - hoehe * (1 - heraus)
+      : TOP_BAR_HEIGHT - windowObj.scrollY;
+    return { top, bottom: top + hoehe, height: hoehe };
+  };
   // Der Hauptbereich sitzt unter Leiste und Zeile. Die Zeile behaelt ihren
   // Platz immer - deshalb haengt seine Position an nichts als am Scroll.
   mainEl.getBoundingClientRect = () => ({
-    top: TOP_BAR_HEIGHT + tabsEl.getBoundingClientRect().height - windowObj.scrollY,
+    top: TOP_BAR_HEIGHT + tabsEl.height - windowObj.scrollY,
     height: 4000
   });
 
@@ -256,8 +278,12 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
 
   function start() {
     controller.initMainHeaderTabsRuntime(tabsEl);
-    // Erste Nutzer-Geste: der Boot-Lock haelt die Zeile sonst am Seitenanfang.
-    fireWindow("pointerdown");
+  }
+
+  // Wie weit die geheftete Zeile gerade hervorgefahren ist: 0 = ganz hinter der
+  // Leiste, 1 = ganz da, null = am Ziel (was die Klassen sagen).
+  function setFahrtStand(wert) {
+    fahrtStand = wert;
   }
 
   return {
@@ -274,7 +300,8 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
     renderRestoresScroll,
     settleOwnScroll,
     settle,
-    runTimers
+    runTimers,
+    setFahrtStand
   };
 }
 
@@ -285,7 +312,7 @@ const isTucked = (harness) => harness.documentObj.documentElement.classList.cont
 const isSliding = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-sliding");
 // Der Platz der Zeile im Dokument - der Kern der ganzen Loesung. Er darf sich
 // nie aendern, egal was Pfeil oder Scroll tun.
-const layoutHeight = (harness) => harness.tabsEl.getBoundingClientRect().height;
+const layoutHeight = (harness) => harness.tabsEl.height;
 const contentTop = (harness) => harness.mainEl.getBoundingClientRect().top;
 
 // Beim Start stehen die Pills da - so wie im Bild des Nutzers.
@@ -622,19 +649,84 @@ test("the pinned state survives a re-render of the header", () => {
   assert.equal(isVisible(harness), true);
 });
 
-// Die Zeilenhoehe ist der Massstab fuer beide Bewegungen - sie muss als ganze
-// Pixelzahl herauskommen. Krumm gerundet blieb ein Streifen unter der Leiste
-// stehen.
-test("the row height is measured up to a whole pixel", () => {
-  const harness = createHarness({ rowHeight: 40.671875 });
+// DIE Beschwerde: oben liess sich die Zeile nur noch zumachen, nicht wieder
+// auf. Die Zeile ist krumm hoch (40.67px). Gerechnet wurde mit der gerundeten
+// Hoehe - blieb die Seite einen Bruchteil unter dem gerundeten Ziel stehen,
+// galt die laengst verschwundene Zeile weiter als sichtbar, und der Pfeil
+// machte wieder zu. Gemessen wird jetzt, was wirklich unter der Leiste
+// hervorschaut, und gefahren wird um genau diesen Betrag.
+test("a fractional row height cannot lock the chevron into closing", () => {
+  const KRUMM = 40.671875;
+  const harness = createHarness({ rowHeight: KRUMM });
   harness.start();
-
-  assert.equal(harness.styleValues.get("--smart-header-tabs-row-height"), "41px");
+  assert.equal(isVisible(harness), true);
 
   harness.clickToggle();
   harness.settle();
-  assert.equal(harness.windowObj.scrollY, 41, "die Fahrt bringt die Zeile ganz hinter die Leiste");
-  assert.equal(isVisible(harness), false);
+  assert.equal(
+    harness.windowObj.scrollY,
+    KRUMM,
+    "gefahren wird um genau den Teil, der zu sehen war - nicht um eine gerundete Hoehe"
+  );
+  assert.equal(isVisible(harness), false, "und danach ist sie weg");
+
+  // Genau hier hing es vorher fest.
+  harness.clickToggle();
+  harness.settle();
+  assert.equal(harness.windowObj.scrollY, 0, "der naechste Tipp macht wieder auf");
+  assert.equal(isVisible(harness), true);
+
+  // Und zwar dauerhaft, nicht nur einmal.
+  for (let runde = 0; runde < 4; runde += 1) {
+    harness.clickToggle();
+    harness.settle();
+    assert.equal(isVisible(harness), false, `Runde ${runde}: zu`);
+    harness.clickToggle();
+    harness.settle();
+    assert.equal(isVisible(harness), true, `Runde ${runde}: auf`);
+  }
+});
+
+// Die gerundete Zeilenhoehe gibt es weiter - aber nur noch als Strecke, um die
+// die geheftete Zeile hinter die Leiste faehrt. Dort ist Aufrunden harmlos, die
+// Fahrt endet ohnehin hinter der Leiste. Entscheidungen faellt sie keine mehr.
+test("the rounded row height is only the tuck distance, never a decision", () => {
+  const harness = createHarness({ rowHeight: 40.671875 });
+  harness.start();
+  assert.equal(harness.styleValues.get("--smart-header-tabs-row-height"), "41px");
+});
+
+// Beim Neuladen stellt der Browser die Scroll-Position wieder her. Die Zeile
+// zerrt sie nicht mehr an den Anfang zurueck - genau dieses Zerren gegen den
+// Browser und gegen den Render-Pfad sah beim Refresh aus wie Springen.
+test("a reload keeps the scroll position the browser restored", () => {
+  const harness = createHarness();
+  harness.windowObj.scrollY = 600;
+  harness.start();
+
+  assert.equal(harness.windowObj.scrollY, 600, "die Seite wird nicht an den Anfang gezerrt");
+  assert.equal(harness.windowObj.scrollCalls.length, 0, "und gar nicht erst gescrollt");
+  assert.equal(isVisible(harness), false, "dort gehoeren die Pills auch nicht hin");
+
+  // Und weitere Scroll-Ereignisse aendern daran nichts.
+  harness.scrollTo(620);
+  harness.scrollTo(300);
+  assert.equal(harness.windowObj.scrollY, 300);
+  assert.equal(harness.windowObj.scrollCalls.length, 0, "die Zeile scrollt nie von sich aus");
+
+  harness.scrollTo(0);
+  assert.equal(isVisible(harness), true, "am Anfang sind sie wieder da");
+});
+
+// Frisch geladen steht die Seite am Anfang - dort sind die Pills zu sehen, ohne
+// dass jemand nachhelfen muesste.
+test("a fresh load starts with the pills in view, without any scrolling", () => {
+  const harness = createHarness();
+  harness.start();
+
+  assert.equal(harness.windowObj.scrollY, 0);
+  assert.equal(harness.windowObj.scrollCalls.length, 0);
+  assert.equal(isVisible(harness), true);
 });
 
 // Der Finger zaehlt beim Loslassen - nicht erst beim Klick, den iOS nach dem
@@ -775,4 +867,32 @@ test("the chevron's own scroll is not read as a swipe", () => {
     harness.settle();
     assert.equal(isVisible(harness), false, `Runde ${round}: der naechste Tipp nimmt sie weg`);
   }
+});
+
+// Ein Tipp mitten in der Fahrt muss sie umdrehen. Gemessen wird sonst der
+// Zwischenstand - die halb hervorgefahrene Zeile gilt dann als "zu sehen", der
+// Tipp macht sie ein zweites Mal zu, und sichtbar tut er nichts.
+test("a tap in mid-glide reverses it instead of reading its middle", () => {
+  const harness = createHarness();
+  harness.start();
+  harness.scrollTo(900);
+
+  // Aufmachen - und mittendrin wieder tippen.
+  harness.clickToggle();
+  assert.equal(isTucked(harness), false, "sie faehrt hervor");
+  harness.setFahrtStand(0.25);
+  harness.clickToggle();
+  assert.equal(isTucked(harness), true, "der Tipp dreht sie um, statt sie erneut zuzumachen");
+  assert.equal(isVisible(harness), false);
+
+  // Und zurueck.
+  harness.setFahrtStand(0.7);
+  harness.clickToggle();
+  assert.equal(isTucked(harness), false, "und wieder hervor");
+  assert.equal(isVisible(harness), true);
+
+  harness.setFahrtStand(null);
+  harness.settle();
+  assert.equal(isVisible(harness), true);
+  assert.equal(isStuck(harness), true);
 });
