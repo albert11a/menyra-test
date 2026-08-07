@@ -1723,15 +1723,18 @@ export function createAppShellRuntimeController(deps = {}) {
     // Wieder hochgescrollt gehoeren die Pills hin - als haette man den Pfeil nie
     // gedrueckt. Ausgeloest wird das beim Hochkommen in den obersten Streifen,
     // nicht erst auf den letzten zwei Pixeln: ein Wisch bleibt oft ein paar
-    // Pixel darueber stehen, und dann kam die Zeile nie zurueck. Die Seite geht
-    // dabei an den Anfang, damit sie genau im Startbild landet statt die Zeile
-    // ueber den Inhalt zu schieben.
+    // Pixel darueber stehen, und dann kam die Zeile nie zurueck.
+    //
+    // Die Scroll-Position wird dabei bewusst nicht angefasst. Sie an den Anfang
+    // zu ziehen hat unter dem Finger gerissen - die Zeile geht einfach auf, wie
+    // sie es ohne Pfeil auch taete: sie nimmt ihren Platz wieder ein, und was
+    // von ihr zu sehen ist, sagt allein die Scroll-Position. Steht die Seite auf
+    // 20px, sieht man genau den unteren Teil - dasselbe Bild wie ohne Pfeil.
     if (mainHeaderTabsCollapsed
       && !eigenerAusgleich
       && scrollY <= mainHeaderTabsRowHeight
       && scrollY < previous) {
       setMainHeaderTabsCollapsed(false);
-      scrollMainHeaderTabsTo(0);
     }
     syncMainHeaderTabsChrome();
   }

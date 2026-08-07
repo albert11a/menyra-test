@@ -527,7 +527,9 @@ test("coming up near the top is enough to bring the closed row back", () => {
   harness.scrollTo(12);
   assert.equal(isCollapsed(harness), false, "die Zeile ist wieder da");
   assert.equal(isVisible(harness), true);
-  assert.equal(harness.windowObj.scrollY, 0, "und die Seite landet im Startbild");
+  // Nicht an den Anfang gezogen: das hat unter dem Finger gerissen. Die Zeile
+  // geht einfach auf, die Seite bleibt, wo der Finger sie gelassen hat.
+  assert.equal(harness.windowObj.scrollY, 12, "die Seite bleibt stehen, nichts snapt");
 });
 
 // Aber am Seitenanfang zumachen darf nicht im selben Atemzug wieder aufgehen.
