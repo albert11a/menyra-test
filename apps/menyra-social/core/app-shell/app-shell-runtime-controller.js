@@ -1720,15 +1720,18 @@ export function createAppShellRuntimeController(deps = {}) {
       && (scrollY > previous + MAIN_HEADER_TABS_DOWN_DELTA_PX || scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX)) {
       setMainHeaderTabsStuck(false);
     }
-    // Ganz nach oben gescrollt gehoeren die Pills hin - dort ist ihr Platz, und
-    // niemand sucht dort einen Pfeil, um sie zurueckzuholen. Ausgeloest wird das
-    // nur beim Ankommen von weiter unten: sonst wuerde ein Zumachen am
-    // Seitenanfang im selben Atemzug wieder aufgehen.
+    // Wieder hochgescrollt gehoeren die Pills hin - als haette man den Pfeil nie
+    // gedrueckt. Ausgeloest wird das beim Hochkommen in den obersten Streifen,
+    // nicht erst auf den letzten zwei Pixeln: ein Wisch bleibt oft ein paar
+    // Pixel darueber stehen, und dann kam die Zeile nie zurueck. Die Seite geht
+    // dabei an den Anfang, damit sie genau im Startbild landet statt die Zeile
+    // ueber den Inhalt zu schieben.
     if (mainHeaderTabsCollapsed
       && !eigenerAusgleich
-      && scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX
-      && previous > MAIN_HEADER_TABS_TOP_EPS_PX) {
+      && scrollY <= mainHeaderTabsRowHeight
+      && scrollY < previous) {
       setMainHeaderTabsCollapsed(false);
+      scrollMainHeaderTabsTo(0);
     }
     syncMainHeaderTabsChrome();
   }

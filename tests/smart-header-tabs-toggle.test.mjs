@@ -509,6 +509,27 @@ test("scrolling all the way back to the top brings the closed row back", () => {
   assert.equal(isVisible(harness), true);
 });
 
+// Ein Wisch endet selten exakt auf 0. Vorher griff die Rueckkehr nur auf den
+// letzten zwei Pixeln - blieb der Wisch knapp darueber stehen, kam die Zeile
+// nie zurueck. Der oberste Streifen zaehlt jetzt ganz.
+test("coming up near the top is enough to bring the closed row back", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  assert.equal(isVisible(harness), false);
+
+  harness.scrollTo(1500);
+  harness.scrollTo(600);
+  assert.equal(isCollapsed(harness), true, "unterwegs bleibt sie weg");
+
+  // Der Wisch kommt oben an, bleibt aber ein paar Pixel ueber dem Anfang stehen.
+  harness.scrollTo(12);
+  assert.equal(isCollapsed(harness), false, "die Zeile ist wieder da");
+  assert.equal(isVisible(harness), true);
+  assert.equal(harness.windowObj.scrollY, 0, "und die Seite landet im Startbild");
+});
+
 // Aber am Seitenanfang zumachen darf nicht im selben Atemzug wieder aufgehen.
 test("closing at the top stays closed", () => {
   const harness = createHarness();
