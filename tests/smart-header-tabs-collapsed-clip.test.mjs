@@ -28,3 +28,22 @@ test("the gliding row clips while it moves", () => {
   assert.match(regel, /overflow:\s*hidden/);
   assert.match(regel, /transition:\s*height/);
 });
+
+// Beim Scrollen faehrt die Zeile nach oben hinter die Leiste - die Pills wandern
+// mit. Schrumpfte hier nur die Hoehe, blieben sie stehen und wuerden von unten
+// abgeschnitten: dieselbe Zeit, aber sichtbar eine andere Bewegung. Deshalb
+// faehrt die Pill-Reihe dieselbe Strecke nach oben, die die Zeile an Hoehe
+// verliert - mit derselben Dauer und derselben Kurve.
+test("the pills travel up with the row, exactly like scrolling does", () => {
+  const zeile = regelInhalt("html.smart-header-tabs-collapsed .smart-header-tabs-row");
+  assert.match(zeile, /translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height/);
+
+  const fahrtReihe = regelInhalt("html.smart-header-tabs-animating .smart-header-tabs-row");
+  const fahrtZeile = regelInhalt("html.smart-header-tabs-animating .smart-header-tabs--main");
+  const dauerUndKurve = /(\d+)ms\s+(cubic-bezier\([^)]+\))/;
+  const a = fahrtReihe.match(dauerUndKurve);
+  const b = fahrtZeile.match(dauerUndKurve);
+  assert.ok(a && b, "beide fahren mit Dauer und Kurve");
+  assert.equal(a[1], b[1], "dieselbe Dauer");
+  assert.equal(a[2], b[2], "dieselbe Kurve");
+});

@@ -1448,13 +1448,26 @@
        es sonst keinen Header-Schatten mehr. */
     html.smart-header-tabs-animating .smart-header-tabs--main {
       overflow: hidden;
-      transition: height 240ms cubic-bezier(0.33, 0, 0.2, 1);
+      transition: height 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
     html.smart-header-tabs-animating .smart-header-tabs--main::after {
       opacity: 0;
     }
+    /* Beim Scrollen faehrt die Zeile nach oben hinter die Leiste - die Pills
+       wandern also mit, und zu sehen bleibt jeweils ihr unteres Stueck. Wuerde
+       hier nur die Hoehe schrumpfen, blieben die Pills stehen und wuerden von
+       unten abgeschnitten: dieselbe Zeit, aber eine andere Bewegung. Deshalb
+       faehrt die Pill-Reihe dieselbe Strecke nach oben, die die Zeile an Hoehe
+       verliert. */
+    html.smart-header-tabs-collapsed .smart-header-tabs-row {
+      transform: translateY(calc(-1 * var(--smart-header-tabs-row-height, 41px)));
+    }
+    html.smart-header-tabs-animating .smart-header-tabs-row {
+      transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
     @media (prefers-reduced-motion: reduce) {
-      html.smart-header-tabs-animating .smart-header-tabs--main {
+      html.smart-header-tabs-animating .smart-header-tabs--main,
+      html.smart-header-tabs-animating .smart-header-tabs-row {
         transition: none;
       }
     }

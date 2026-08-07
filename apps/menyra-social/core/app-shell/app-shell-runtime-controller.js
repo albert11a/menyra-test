@@ -195,7 +195,7 @@ export function createAppShellRuntimeController(deps = {}) {
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
   // So lange faehrt die Zeile heraus und herein. Muss zur CSS-Dauer passen.
-  const MAIN_HEADER_TABS_COLLAPSE_ANIM_MS = 240;
+  const MAIN_HEADER_TABS_COLLAPSE_ANIM_MS = 260;
   // So lange muss die Seite still stehen, bevor die zugemachte Zeile sich ihren
   // Platz im Layout still zurueckholt. Im Stillstand laeuft kein Schwung mehr,
   // den ein Scroll-Ausgleich abwuergen koennte.
@@ -1604,14 +1604,30 @@ export function createAppShellRuntimeController(deps = {}) {
   // Positionen rundet der Browser auf ganze Pixel. Der Rest blieb als winziger
   // Versatz stehen - bei jedem Tipp sah man die Seite leicht zucken. Gemessen
   // wird weiter, damit groessere Schrift oder ein anderes Geraet passen.
+  //
+  // Gemessen wird dabei die Pill-Reihe darin, nicht die Zeile selbst: die Zeile
+  // faehrt beim Zu- und Aufmachen ueber ihre Hoehe, ein Blick darauf mitten in
+  // der Fahrt haette also die halbe Hoehe als "die" Hoehe festgehalten - und
+  // das Setzen der Hoehe haette die Fahrt zugleich abgebrochen. Die Reihe darin
+  // behaelt ihre Hoehe die ganze Zeit.
   function measureMainHeaderTabsRowHeight(tabsEl) {
-    const raw = Number(tabsEl?.getBoundingClientRect?.().height) || 0;
+    const innereReihe = tabsEl?.querySelector?.(".smart-header-tabs-row") || null;
+    const raw = Number(innereReihe?.getBoundingClientRect?.().height)
+      || Number(tabsEl?.getBoundingClientRect?.().height)
+      || 0;
     if (raw > 0) {
       const ganzeHoehe = Math.round(raw);
-      if (ganzeHoehe > 0 && Math.abs(raw - ganzeHoehe) > 0.01 && tabsEl?.style) {
+      // Am Element selbst nachsehen, nicht am gemerkten Wert: nach einem
+      // Re-Render steht die Zeile ohne gesetzte Hoehe da, und ohne die faehrt
+      // sie nicht - sie wuerde springen. Derselbe Wert nochmal geschrieben
+      // aendert nichts und bricht deshalb auch keine laufende Fahrt ab.
+      if (ganzeHoehe > 0 && tabsEl?.style && tabsEl.style.height !== `${ganzeHoehe}px`) {
         tabsEl.style.height = `${ganzeHoehe}px`;
       }
       mainHeaderTabsRowHeight = ganzeHoehe;
+      // Dieselbe Strecke faehrt die Pill-Reihe nach oben, waehrend die Zeile
+      // sie verliert - so sieht das Zumachen aus wie das Wegscrollen.
+      doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-row-height", `${ganzeHoehe}px`);
     }
     return mainHeaderTabsRowHeight;
   }
