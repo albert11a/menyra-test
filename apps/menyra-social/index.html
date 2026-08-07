@@ -1436,6 +1436,10 @@
        ihre ganze Hoehe in einem Bild sieht daneben hart aus. */
     html.smart-header-tabs-collapsed .smart-header-tabs--main {
       height: 0 !important;
+      /* Ohne Beschneiden quillt die Pill-Reihe aus der Zeile ohne Hoehe heraus
+         und liegt auf dem Inhalt - die Zeile waere zwar "zu", man saehe sie
+         aber weiter, ohne jeden Abstand zum Text darunter. */
+      overflow: hidden;
       pointer-events: none;
     }
     /* Nur waehrend der Fahrt: die Zeile beschneidet ihren Inhalt, und ihre
