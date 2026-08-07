@@ -23,7 +23,6 @@ export function createFeedViewOrchestrationController({
   buildStoriesRowSignatureFn = () => "",
   documentObj = null,
   windowObj = null,
-  isLocalBusinessProfileFn = () => false,
   iconFn = () => "",
   escapeHtmlFn = (value) => String(value || ""),
   buildUrlFn = () => "",
@@ -61,12 +60,6 @@ export function createFeedViewOrchestrationController({
   const win = windowObj || (typeof window !== "undefined" ? window : null);
   const HtmlVideoElementCtor = typeof HTMLVideoElement === "function" ? HTMLVideoElement : null;
   const storyViewerHintPrefix = "mnyra_story_viewer_hint_v1:";
-  const hasProfileUid = () => !!String(state.userProfile?.uid || "").trim();
-  const hasBusinessProfileHint = () => !!String(state.userProfile?.restaurantId || "").trim();
-  const shouldShowFeedComposer = () => (
-    !!isLocalBusinessProfileFn(state.userProfile)
-    || (hasBusinessProfileHint() && (!!state.user || hasProfileUid()))
-  );
   const sanitizeStoryBusinessName = (value = "") => {
     const label = String(value || "").trim();
     if (!label) return "";
@@ -3087,17 +3080,6 @@ export function createFeedViewOrchestrationController({
     return renderFeedView();
   }
 
-  function renderFeedComposer() {
-    if (!shouldShowFeedComposer()) return "";
-    return `
-      <div data-feed-composer-wrap class="app-content-inline mb-6">
-        <button data-nav="upload" data-upload-intent="feed" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
-          ${iconFn("plus-square", "w-4 h-4")} Neuer Feed Post
-        </button>
-      </div>
-    `;
-  }
-
   function renderSpotStoryIntroCard() {
     return `
       <div class="flex-none w-[29%] sm:w-[120px] snap-start ml-5" style="${buildTrackCardShellStyle({ withMarginLeft: true })}">
@@ -3707,25 +3689,12 @@ export function createFeedViewOrchestrationController({
     return true;
   }
 
-  function ensureFeedComposerVisibility(feedView) {
-    if (!doc || !feedView) return false;
-    const feedList = doc.getElementById("feedList");
-    if (!feedList) return false;
+  // Entfernt veraltete Feed-Composer-Knoten aus bereits gerendertem Markup.
+  function removeLegacyFeedComposer(feedView) {
+    if (!feedView) return false;
     const existingComposer = feedView.querySelector("[data-feed-composer-wrap]");
-    const showComposer = shouldShowFeedComposer();
-    if (!showComposer) {
-      if (existingComposer) {
-        existingComposer.remove();
-        return true;
-      }
-      return false;
-    }
-    if (existingComposer) return false;
-    const tpl = doc.createElement("template");
-    tpl.innerHTML = renderFeedComposer();
-    const node = tpl.content.firstElementChild;
-    if (!node) return false;
-    feedList.parentNode?.insertBefore(node, feedList);
+    if (!existingComposer) return false;
+    existingComposer.remove();
     return true;
   }
 
@@ -3780,7 +3749,7 @@ export function createFeedViewOrchestrationController({
         storiesRow.dataset.storyPreviewMotionSig = previewSyncSig;
       }
     }
-    const didComposerMutate = ensureFeedComposerVisibility(feedView);
+    const didComposerMutate = removeLegacyFeedComposer(feedView);
     const didFeedListMutate = patchFeedList(feedPosts);
     ensureFeedRestaurantMetaListenersFn(feedPosts);
     bindFeedDelegation();
@@ -3821,7 +3790,6 @@ export function createFeedViewOrchestrationController({
             fallbackStories: trackStories
           })}
         </div>
-        ${renderFeedComposer()}
         <div id="feedList" class="app-content-inline py-4 space-y-12">
           ${renderFeedList(feedPosts)}
         </div>
