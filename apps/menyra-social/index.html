@@ -1424,28 +1424,13 @@
       pointer-events: none;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
     }
-    /* Zugemacht: die Zeile faehrt um ihre eigene Hoehe nach oben hinter die
-       Leiste. Nur ein transform - Hoehe und Platz im Dokument bleiben
-       unangetastet, die Seite bewegt sich nicht und der Abstand bleibt
-       derselbe. Die Leiste liegt im Stapel darueber und ist deckend, die Zeile
+    /* Eingesteckt: die geheftete Zeile liegt hinter der Leiste, waehrend sie
+       hervorkommt oder wieder dahinter zurueckfaehrt. Nur ein transform -
+       Hoehe und Platz im Dokument bleiben unangetastet, die Seite bewegt sich
+       nicht. Die Leiste liegt im Stapel darueber und ist deckend, die Zeile
        ist dort also wirklich weg.
-       Weil der Versatz konstant ist, gilt er auf jeder Scroll-Position: die
-       zugemachte Zeile liegt oben wie unterwegs hinter der Leiste. */
-    html.smart-header-tabs-closed .smart-header-tabs--main {
-      /* Um ihre Hoehe PLUS die Schattenkante: dann liegt auch der eigene
-         Schatten der Zeile hinter der Leiste, und unter der Leiste malt allein
-         .smart-header-underline. Sonst laegen beide uebereinander und der
-         Schatten waere dort doppelt so dunkel.
-         Bewusst ueber die Geometrie geloest und nicht ueber eine
-         Deckkraft-Fahrt der Schattenkante: Uebergaenge auf Pseudo-Elementen
-         laufen auf WebKit dem transform hinterher, und dann zog der Schatten
-         sichtbar nach. Was gar nicht geschaltet wird, kann nicht nachziehen. */
-      transform: translateY(calc(-1 * var(--smart-header-tabs-row-height, 41px) - var(--smart-header-edge-height)));
-      pointer-events: none;
-    }
-    /* Eingesteckt: dasselbe fuer die geheftete Zeile, waehrend sie hinter der
-       Leiste hervorkommt oder wieder dahinter zurueckfaehrt. Bewusst nur
-       zusammen mit dem Kleben - im normalen Fluss regelt das "zugemacht". */
+       Bewusst nur zusammen mit dem Kleben: die Zeile im normalen Fluss darf
+       nie verschoben werden, sonst laeuft sie dem Scroll davon. */
     html.smart-header-tabs-stuck.smart-header-tabs-tucked .smart-header-tabs--main {
       transform: translateY(calc(-1 * var(--smart-header-tabs-row-height, 41px)));
       pointer-events: none;
@@ -1482,9 +1467,37 @@
       color: rgb(100 116 139);
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      /* Kurz genug, dass der Knopf sofort antwortet: bei 320ms zog die Farbe
+      /* Oben hat der Pfeil nichts zu tun: die Zeile steht da, wo sie
+         hingehoert - es gibt nichts zu holen und nichts wegzuraeumen. Also ist
+         er dort auch nicht da. Er erscheint erst, wenn ihr Platz weggescrollt
+         ist.
+         visibility statt display: seinen Platz in der Kopfzeile behaelt er,
+         sonst rutschte die Icon-Reihe daneben bei jedem Scrollen hin und her.
+         Und visibility ist es ueberhaupt, nicht nur opacity: nur so ist der
+         Knopf wirklich weg - nicht anfassbar, nicht anspringbar, nicht
+         vorgelesen.
+         Die Deckkraft-Fahrt kommt zuerst, die Sichtbarkeit springt erst danach
+         (Verzoegerung) - sonst waere er weg, bevor er ausgeblendet ist. */
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      /* Farbe kurz genug, dass der Knopf sofort antwortet: bei 320ms zog sie
          dem Finger sichtbar hinterher und der Pfeil wirkte zaeh. */
-      transition: color 140ms ease-out, background-color 140ms ease-out;
+      transition:
+        opacity 160ms ease-out,
+        visibility 0s linear 160ms,
+        color 140ms ease-out,
+        background-color 140ms ease-out;
+    }
+    html.smart-header-tabs-offscreen .smart-header-collapse-btn {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition:
+        opacity 160ms ease-out,
+        visibility 0s linear 0s,
+        color 140ms ease-out,
+        background-color 140ms ease-out;
     }
     html.smart-header-tabs-away .smart-header-collapse-btn {
       color: rgb(79 70 229);

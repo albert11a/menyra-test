@@ -61,11 +61,12 @@ test("the row is only ever moved by exactly its own height", () => {
     );
     assert.doesNotMatch(inhalt, /translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height[^)]*\)\s*\*/,
       `${selektor} rechnet die Zeilenhoehe hoch`);
-    // Zwei Zustaende duerfen das: der zugemachte und der eingesteckte.
+    // Genau ein Zustand darf das: die geheftete Zeile auf ihrem Weg hinter die
+    // Leiste. Im normalen Fluss wuerde ein transform dem Scroll davonlaufen.
     assert.match(
       selektor,
-      /html\.smart-header-tabs-closed|html\.smart-header-tabs-stuck\.smart-header-tabs-tucked/,
-      `${selektor} verschiebt die Zeile in einem dritten Zustand`
+      /html\.smart-header-tabs-stuck\.smart-header-tabs-tucked/,
+      `${selektor} verschiebt die Zeile in einem zweiten Zustand`
     );
   });
 });
@@ -86,13 +87,10 @@ test("nothing about the pill row makes the document height follow the viewport",
 
 // Eingesteckt faehrt sie genau um ihre eigene Hoehe - dann liegt sie ganz hinter
 // der Leiste und blitzt nirgends hervor.
-test("both moved states tuck the row behind the top bar", () => {
-  ["html.smart-header-tabs-closed .smart-header-tabs--main",
-   "html.smart-header-tabs-stuck.smart-header-tabs-tucked .smart-header-tabs--main"].forEach((selektor) => {
-    const regel = regelInhalt(selektor);
-    assert.match(regel, /translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height/, selektor);
-    assert.match(regel, /pointer-events:\s*none/, `${selektor} faengt dort noch Tipps ab`);
-  });
+test("the tucked row hides behind the top bar by exactly its own height", () => {
+  const regel = regelInhalt("html.smart-header-tabs-stuck.smart-header-tabs-tucked .smart-header-tabs--main");
+  assert.match(regel, /translateY\(calc\(-1 \* var\(--smart-header-tabs-row-height/);
+  assert.match(regel, /pointer-events:\s*none/, "und faengt dort keine Tipps mehr ab");
 });
 
 // Gefahren wird ueber transform, nicht ueber die Hoehe: Hoehe faerbt das Layout
@@ -116,14 +114,9 @@ test("the row's shadow is never switched, it just rides along", () => {
 
 // Doppelt duerfen die beiden Kanten trotzdem nie liegen - das loest die
 // Geometrie, in beide Richtungen.
-test("the two shadow edges never overlap, in either direction", () => {
+test("the two shadow edges never overlap", () => {
   // Geklebt malt die Kante der Zeile; die unter der Leiste tritt zurueck.
   assert.match(regelInhalt("html.smart-header-tabs-stuck .smart-header-underline"), /opacity:\s*0/);
-  // Zugemacht ist es umgekehrt: die Zeile faehrt um ihre Hoehe PLUS die
-  // Kantenhoehe, damit auch ihr eigener Schatten hinter der Leiste landet.
-  const regel = regelInhalt("html.smart-header-tabs-closed .smart-header-tabs--main");
-  assert.match(regel, /--smart-header-tabs-row-height/, "die Zeilenhoehe");
-  assert.match(regel, /--smart-header-edge-height/, "und die Kantenhoehe dazu");
 });
 
 // Verschachtelte calc() haben sich auf WebKit nicht zuverlaessig aufgeloest -
@@ -185,5 +178,41 @@ test("the pill row no longer forces a minimum page height", () => {
     css.includes(".app-shell:has(.smart-header-tabs--main) > main.app-main-scroll"),
     false,
     "die Regel fuer den Scroll-Weg ist raus"
+  );
+});
+
+// Oben hat der Pfeil nichts zu tun - dort ist er auch nicht da. Wichtig dabei:
+// er behaelt seinen Platz in der Kopfzeile (visibility statt display), sonst
+// rutschte die Icon-Reihe daneben bei jedem Scrollen hin und her. Und es muss
+// visibility sein, nicht nur opacity - nur so ist er wirklich weg: nicht
+// anfassbar, nicht anspringbar, nicht vorgelesen.
+test("the chevron is only there when it has something to do", () => {
+  const zu = regelInhalt(".smart-header-collapse-btn {");
+  assert.match(zu, /opacity:\s*0/, "oben unsichtbar");
+  assert.match(zu, /visibility:\s*hidden/, "und wirklich weg");
+  assert.match(zu, /pointer-events:\s*none/);
+  assert.doesNotMatch(zu, /display:\s*none/, "aber nicht aus dem Layout - das verschoebe die Icon-Reihe");
+
+  const auf = regelInhalt("html.smart-header-tabs-offscreen .smart-header-collapse-btn");
+  assert.match(auf, /opacity:\s*1/);
+  assert.match(auf, /visibility:\s*visible/);
+  assert.match(auf, /pointer-events:\s*auto/);
+});
+
+// Die Deckkraft faehrt, die Sichtbarkeit springt - und zwar erst NACH der
+// Fahrt, sonst waere der Knopf weg, bevor er ausgeblendet ist.
+test("the chevron fades out before it is taken away", () => {
+  const zu = regelInhalt(".smart-header-collapse-btn {");
+  const dauer = zu.match(/opacity\s+(\d+)ms/);
+  assert.ok(dauer, "die Deckkraft faehrt");
+  assert.match(
+    zu,
+    new RegExp(`visibility\\s+0s\\s+linear\\s+${dauer[1]}ms`),
+    "und die Sichtbarkeit wartet genau so lange"
+  );
+  assert.match(
+    regelInhalt("html.smart-header-tabs-offscreen .smart-header-collapse-btn"),
+    /visibility\s+0s\s+linear\s+0s/,
+    "beim Erscheinen dagegen sofort"
   );
 });

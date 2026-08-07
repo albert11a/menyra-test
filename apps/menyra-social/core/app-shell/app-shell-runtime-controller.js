@@ -175,10 +175,6 @@ export function createAppShellRuntimeController(deps = {}) {
   // noch das Scrollen nimmt ihn ihr. Damit steht oben unveraenderlich derselbe
   // Abstand, und nichts kann springen.
   //
-  // Zugemacht heisst: der Nutzer hat sie per Pfeil hinter die Leiste gefahren.
-  // Reiner transform-Versatz um ihre eigene Hoehe, auf jeder Scroll-Position
-  // derselbe - und deshalb bleibt sie zu, bis er wieder tippt.
-  let mainHeaderTabsClosed = false;
   // Geheftet heisst: der Pfeil hat sie weiter unten unter die Leiste geholt
   // (sticky). relative und sticky belegen denselben Layout-Platz, das
   // Umschalten aendert also nichts an der Seite.
@@ -189,6 +185,9 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsRowHeight = 40;
   let mainHeaderTabsLastScrollY = 0;
   let mainHeaderTabsVisibleState = null;
+  // Ob der Platz der Zeile weggescrollt ist - daran haengt, ob es den Pfeil
+  // ueberhaupt gibt.
+  let mainHeaderTabsOffscreenState = null;
   let mainHeaderTabsRafId = 0;
   let mainHeaderTabsSlideTimerId = 0;
   let mainHeaderTabsResizeListener = null;
@@ -1580,21 +1579,24 @@ export function createAppShellRuntimeController(deps = {}) {
   //     gebrochen; "scrollY < gerundete Hoehe" trifft daneben und hat den Pfeil
   //     schon einmal dauerhaft aufs Zumachen festgelegt.
   //
-  // Damit gibt es genau zwei Bewegungen, beide reine transform-Fahrten:
+  //  4. Der Pfeil erscheint erst, wenn er etwas zu tun hat. Oben steht die
+  //     Zeile ohnehin da, wo sie hingehoert - dort gibt es nichts zu holen und
+  //     nichts wegzuraeumen, also ist der Pfeil auch nicht da
+  //     (`html.smart-header-tabs-offscreen`). Er blendet sich ein, sobald ihr
+  //     Platz weggescrollt ist, und wieder aus, sobald man oben ankommt.
+  //     Seinen Platz in der Kopfzeile behaelt er dabei (visibility statt
+  //     display), sonst rutschte die Icon-Reihe daneben hin und her.
   //
-  //  - ZU / AUF (`html.smart-header-tabs-closed`): die Zeile faehrt um ihre
-  //    eigene Hoehe nach oben hinter die Leiste und wieder hervor. Ihr Platz im
-  //    Dokument bleibt dabei stehen - die Seite bewegt sich nicht, der Abstand
-  //    bleibt derselbe. Weil der Versatz konstant ist, bleibt sie auf jeder
-  //    Scroll-Position zu: hinter der Leiste liegt sie oben wie unterwegs.
+  // Damit bleibt genau eine Bewegung, eine reine transform-Fahrt:
+  //
   //  - GEHOLT / LOSGELASSEN (`html.smart-header-tabs-stuck`): weiter unten, wo
-  //    ihr Platz laengst weggescrollt ist, klebt sie per sticky unter der
-  //    Leiste. Sticky belegt exakt denselben Layout-Platz wie relative.
+  //    ihr Platz laengst weggescrollt ist, holt der Pfeil die Zeile unter die
+  //    Leiste und laesst sie wieder los. Sie klebt dort per sticky, und das
+  //    belegt exakt denselben Layout-Platz wie relative.
   //
-  // Dazwischen macht der Browser die Arbeit allein: offen sitzt die Zeile im
-  // Fluss unter der Leiste und scrollt hinter sie weg - kein Zustand, kein
-  // Timer. Ganz oben sind die Pills deshalb da, sofern der Nutzer sie nicht
-  // selbst zugemacht hat. Zu bleibt zu, bis er wieder auf den Pfeil tippt.
+  // Sonst macht der Browser die Arbeit allein: die Zeile sitzt im Fluss unter
+  // der Leiste und scrollt hinter sie weg - kein Zustand, kein Timer. Ganz oben
+  // sind die Pills deshalb immer da, ausnahmslos.
   // ===========================================================================
   function readMainHeaderTabsScrollY() {
     return Math.max(0, Number(win?.scrollY || 0));
@@ -1674,19 +1676,31 @@ export function createAppShellRuntimeController(deps = {}) {
     syncMainHeaderTabsChrome(true);
   }
 
-  // Nur Pfeilrichtung und aria haengen am Zustand. Die Schattenkante regelt CSS
-  // allein, damit beim schnellen Scrollen nichts nachhinken kann.
+  // Zwei Klassen, eine Messung. Beide sagen etwas ueber den Pfeil:
+  //
+  //  -offscreen: ob es ihn ueberhaupt gibt. Er hat nur etwas zu tun, wenn der
+  //              Platz der Zeile weggescrollt ist - oben steht sie ja da, wo
+  //              sie hingehoert. Das haengt allein an der Scroll-Position, nie
+  //              am Ziel einer laufenden Fahrt.
+  //  -away:      wohin er zeigt. Hier zaehlt das Ziel einer Fahrt, damit er
+  //              sich sofort dreht.
+  //
+  // Die Schattenkante regelt CSS allein, damit beim schnellen Scrollen nichts
+  // nachhinken kann.
   function syncMainHeaderTabsChrome(force = false) {
-    const visible = isMainHeaderTabsRowVisible();
+    const blick = measureMainHeaderTabsRow();
+    const weggescrollt = blick.imFluss <= MAIN_HEADER_TABS_VISIBLE_EPS_PX;
+    if (force || weggescrollt !== mainHeaderTabsOffscreenState) {
+      mainHeaderTabsOffscreenState = weggescrollt;
+      doc?.documentElement?.classList?.toggle?.("smart-header-tabs-offscreen", weggescrollt);
+    }
+    const visible = mainHeaderTabsIntent !== null
+      ? mainHeaderTabsIntent
+      : blick.sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
     if (!force && visible === mainHeaderTabsVisibleState) return;
     mainHeaderTabsVisibleState = visible;
     doc?.documentElement?.classList?.toggle?.("smart-header-tabs-away", !visible);
     mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", visible ? "true" : "false");
-  }
-
-  function setMainHeaderTabsClosed(next) {
-    mainHeaderTabsClosed = !!next;
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-closed", mainHeaderTabsClosed);
   }
 
   function setMainHeaderTabsStuck(next) {
@@ -1752,26 +1766,6 @@ export function createAppShellRuntimeController(deps = {}) {
     }, MAIN_HEADER_TABS_SLIDE_MS + MAIN_HEADER_TABS_SLIDE_SETTLE_MS);
   }
 
-  // ZU und AUF: die Zeile faehrt um ihre eigene Hoehe hinter die Leiste und
-  // wieder hervor. Ihr Platz im Dokument bleibt dabei unberuehrt - die Seite
-  // bewegt sich nicht, der Abstand bleibt derselbe.
-  function setMainHeaderTabsClosedAnimated(next) {
-    clearMainHeaderTabsSlideTimer();
-    setMainHeaderTabsIntent(!next);
-    if (mainHeaderTabsPrefersReducedMotion()) {
-      setMainHeaderTabsSliding(false);
-      setMainHeaderTabsClosed(next);
-      setMainHeaderTabsIntent(null);
-      return;
-    }
-    // Der Uebergang muss im berechneten Stil stehen, BEVOR der Wert wechselt -
-    // sonst faehrt auf WebKit nichts, die Zeile springt.
-    setMainHeaderTabsSliding(true);
-    forceMainHeaderTabsReflow();
-    setMainHeaderTabsClosed(next);
-    scheduleMainHeaderTabsSlideEnd();
-  }
-
   // Die Zeile ganz loslassen: kein Kleben, keine Fahrt, kein Rest. Danach steht
   // sie wieder normal im Fluss.
   function releaseMainHeaderTabsRow() {
@@ -1796,9 +1790,6 @@ export function createAppShellRuntimeController(deps = {}) {
       setMainHeaderTabsSliding(false);
       setMainHeaderTabsStuck(true);
       setMainHeaderTabsTucked(true);
-      // Zugemacht und geheftet-eingesteckt sind derselbe Versatz - der Wechsel
-      // ist deshalb in diesem Bild nicht zu sehen.
-      setMainHeaderTabsClosed(false);
       if (!sofort) forceMainHeaderTabsReflow();
     }
     setMainHeaderTabsIntent(true);
@@ -1840,33 +1831,27 @@ export function createAppShellRuntimeController(deps = {}) {
     });
   }
 
-  // Der ganze Pfeil. Zwei Fragen, beide gemessen: ist die Zeile zu sehen, und
-  // liegt ihr Platz ueberhaupt noch im Bild?
+  // Der ganze Pfeil. Er ist nur da, wo er etwas zu tun hat, also bleibt genau
+  // eine Frage: ist die Zeile gerade zu sehen?
   function toggleMainHeaderTabs() {
     syncSmartHeaderMetrics();
     const tabsEl = getMainHeaderTabsEl();
     if (!tabsEl) return;
     measureMainHeaderTabsRowHeight(tabsEl);
     const blick = measureMainHeaderTabsRow();
+    // Oben gibt es nichts zu holen und nichts wegzuraeumen - dort ist der Pfeil
+    // auch nicht da. Ein Tipp, der es doch bis hierher schafft (etwa waehrend
+    // die Seite gerade nach oben laeuft), darf nichts anrichten: eine Zeile,
+    // die der Nutzer nicht mehr zurueckholen kann, waere eine Falle.
+    if (blick.imFluss > MAIN_HEADER_TABS_VISIBLE_EPS_PX) {
+      syncMainHeaderTabsChrome(true);
+      return;
+    }
     const istZuSehen = mainHeaderTabsIntent !== null
       ? mainHeaderTabsIntent
       : blick.sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
-
-    if (istZuSehen) {
-      // Zumachen. Geheftet heisst loslassen; sonst faehrt sie schlicht hinter
-      // die Leiste - ohne dass die Seite sich bewegt.
-      if (mainHeaderTabsStuck) slideMainHeaderTabsOut();
-      else setMainHeaderTabsClosedAnimated(true);
-      return;
-    }
-    // Aufmachen. Liegt ihr Platz noch im Bild, faehrt sie dort hervor. Weiter
-    // unten ist dort nichts zu holen - dann klebt sie unter der Leiste.
-    if (blick.imFluss > MAIN_HEADER_TABS_VISIBLE_EPS_PX) {
-      if (mainHeaderTabsStuck) releaseMainHeaderTabsRow();
-      setMainHeaderTabsClosedAnimated(false);
-      return;
-    }
-    slideMainHeaderTabsIn();
+    if (istZuSehen) slideMainHeaderTabsOut();
+    else slideMainHeaderTabsIn();
   }
 
   function syncMainHeaderTabsOnScroll() {
@@ -1964,7 +1949,6 @@ export function createAppShellRuntimeController(deps = {}) {
     // auch auf frisch gebautem DOM korrekt). Ohne Uebergang: ein Re-Render ist
     // keine Bewegung.
     setMainHeaderTabsSliding(false);
-    setMainHeaderTabsClosed(mainHeaderTabsClosed);
     setMainHeaderTabsStuck(mainHeaderTabsStuck);
     setMainHeaderTabsTucked(mainHeaderTabsTucked);
 
@@ -2179,9 +2163,11 @@ export function createAppShellRuntimeController(deps = {}) {
     if (resetState) {
       // Ohne Zeile im DOM darf am <html> auch keine Klasse von ihr stehen
       // bleiben - sonst faengt der naechste Aufbau mitten in einer Fahrt an.
-      // Das ausdrueckliche "zu" des Nutzers ueberlebt dagegen: es gehoert ihm,
-      // nicht dem DOM.
       releaseMainHeaderTabsRow();
+      doc?.documentElement?.classList?.remove?.("smart-header-tabs-offscreen");
+      doc?.documentElement?.classList?.remove?.("smart-header-tabs-away");
+      mainHeaderTabsOffscreenState = null;
+      mainHeaderTabsVisibleState = null;
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;
