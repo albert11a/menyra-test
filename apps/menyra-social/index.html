@@ -1427,14 +1427,24 @@
       transform: translateY(calc(-1 * var(--smart-header-tabs-row-height, 41px)));
       pointer-events: none;
     }
-    /* Nur waehrend der Fahrt liegt der Uebergang an - und die eigene
-       Schattenkante der Zeile tritt solange zurueck, weil die Kante unter der
-       Leiste (.smart-header-underline) sie in dieser Zeit doppeln wuerde. */
+    /* Nur waehrend der Fahrt liegt der Uebergang an: ausserhalb muss die Zeile
+       sofort sitzen, wo sie hingehoert. */
     html.smart-header-tabs-sliding .smart-header-tabs--main {
       transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
       will-change: transform;
     }
-    html.smart-header-tabs-sliding .smart-header-tabs--main::after {
+    /* Solange die Zeile unter der Leiste klebt, malt ihre eigene Schattenkante
+       (.smart-header-tabs--main::after). Die sitzt an der Zeile und faehrt mit
+       demselben transform mit - sie KANN gar nicht nachziehen, sie ist Teil
+       derselben Bewegung. Die Kante unter der Leiste tritt solange zurueck:
+       eingesteckt liegt die Zeile genau auf ihr, und beide zusammen waeren
+       doppelt so dunkel.
+       Der Wechsel ist unsichtbar, weil beide dieselbe Kante an derselben Stelle
+       sind: ganz eingesteckt sitzt die Schattenkante der Zeile Pixel fuer Pixel
+       dort, wo .smart-header-underline sitzt - gleicher Verlauf, gleiche Hoehe.
+       Ein Ein- und Ausblenden per Uebergang braucht es dafuer nicht, und genau
+       das hat vorher am Ende der Fahrt sichtbar nachgezogen. */
+    html.smart-header-tabs-stuck .smart-header-underline {
       opacity: 0;
     }
     @media (prefers-reduced-motion: reduce) {
@@ -1495,7 +1505,11 @@
       line-height: 1;
       text-transform: uppercase;
       letter-spacing: 0.12em;
-      transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 120ms ease;
+      /* Kurz genug, dass die Pill sofort antwortet. Der Tipp faerbt sie schon
+         beim Loslassen des Fingers um (syncMainHeaderPillState), bei 220ms zog
+         die Farbe dem Finger aber sichtbar hinterher und der Wechsel wirkte
+         verzoegert - dieselbe Dauer wie beim Pfeil daneben. */
+      transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out, transform 90ms ease-out;
     }
     /* Das Icon erbt die Pill-Farbe und faerbt sich im aktiven Zustand mit. */
     .smart-header-pill__icon {

@@ -200,12 +200,26 @@ export function createAppShellRuntimeController(deps = {}) {
   // So lange faehrt die geheftete Zeile hinter der Leiste hervor und wieder
   // zurueck. Muss zur CSS-Dauer passen.
   const MAIN_HEADER_TABS_SLIDE_MS = 260;
-  // So lange faehrt der Pfeil oben die Seite um eine Zeilenhoehe.
-  const MAIN_HEADER_TABS_SCROLL_MS = 260;
-  // Und so lange besteht er danach noch auf seinem Ziel: ein Re-Render setzt
-  // die Scroll-Position auf den Wert zurueck, den er sich vor dem Bauen gemerkt
-  // hat. Wer zuletzt schreibt, gewinnt.
-  const MAIN_HEADER_TABS_SCROLL_HOLD_MS = 260;
+  // Zulage, bevor die Laufzeit nach der Fahrt aufraeumt: genau auf der Dauer
+  // koennte der Timer einen Frame zu frueh kommen und die letzten Pixel saehe
+  // man springen.
+  const MAIN_HEADER_TABS_SLIDE_SETTLE_MS = 60;
+  // So nah am Ziel gilt die Fahrt der Seite als angekommen.
+  const MAIN_HEADER_TABS_SCROLL_ARRIVED_PX = 1;
+  // So lange haelt die Laufzeit das Ziel danach noch: ein Re-Render setzt die
+  // Scroll-Position auf den Wert zurueck, den er sich vor dem Bauen gemerkt hat
+  // (im naechsten Frame und im naechsten Tick).
+  const MAIN_HEADER_TABS_SCROLL_HOLD_MS = 320;
+  // Und so lange wartet sie hoechstens darauf, dass die Fahrt ankommt.
+  const MAIN_HEADER_TABS_SCROLL_WATCH_MS = 1200;
+  // Wird die Strecke zum Ziel um so viel wieder laenger, hat nicht der Browser
+  // gefahren, sondern jemand die Position weggenommen.
+  const MAIN_HEADER_TABS_SCROLL_REGRESSION_PX = 4;
+  // Steht sie so lange still, ohne angekommen zu sein, faehrt der Browser
+  // nicht mehr. Lang genug, dass die ersten Frames einer eben angesetzten
+  // Fahrt nicht als Stillstand durchgehen.
+  const MAIN_HEADER_TABS_SCROLL_STALL_MS = 160;
+  const MAIN_HEADER_TABS_SCROLL_MAX_RETRIES = 3;
   let mainHeaderTabsBootSyncPending = true;
   let mainHeaderTabsBootLockActive = true;
   let mainHeaderTabsBootLockBound = false;
@@ -1738,21 +1752,33 @@ export function createAppShellRuntimeController(deps = {}) {
   // denselben wie relative.
   function slideMainHeaderTabsIn() {
     clearMainHeaderTabsSlideTimer();
-    setMainHeaderTabsSliding(false);
-    setMainHeaderTabsStuck(true);
-    setMainHeaderTabsTucked(true);
-    if (mainHeaderTabsPrefersReducedMotion() || typeof win?.setTimeout !== "function") {
+    const sofort = mainHeaderTabsPrefersReducedMotion() || typeof win?.setTimeout !== "function";
+    // Faehrt die Zeile schon (der Nutzer tippt schnell hin und her), wird nur
+    // die Richtung umgedreht: der Uebergang bleibt liegen und rechnet von der
+    // Stelle weiter, an der sie gerade steht. Ihn hier abzuschalten hat sie
+    // erst hart nach hinter die Leiste springen lassen und von dort neu
+    // anfahren - genau das Ruckeln beim schnellen Auf und Zu.
+    if (!mainHeaderTabsStuck) {
+      // Von aussen: erst still hinter die Leiste stellen, dann von dort
+      // hervorfahren. Ohne den Reflow dazwischen faengt die Fahrt beim Ziel an.
+      setMainHeaderTabsSliding(false);
+      setMainHeaderTabsStuck(true);
+      setMainHeaderTabsTucked(true);
+      if (!sofort) forceMainHeaderTabsReflow();
+    }
+    if (sofort) {
+      setMainHeaderTabsSliding(false);
+      setMainHeaderTabsStuck(true);
       setMainHeaderTabsTucked(false);
       syncMainHeaderTabsChrome(true);
       return;
     }
-    forceMainHeaderTabsReflow();
     setMainHeaderTabsSliding(true);
     setMainHeaderTabsTucked(false);
     mainHeaderTabsSlideTimerId = win.setTimeout(() => {
       mainHeaderTabsSlideTimerId = 0;
       setMainHeaderTabsSliding(false);
-    }, MAIN_HEADER_TABS_SLIDE_MS + 60);
+    }, MAIN_HEADER_TABS_SLIDE_MS + MAIN_HEADER_TABS_SLIDE_SETTLE_MS);
     syncMainHeaderTabsChrome(true);
   }
 
@@ -1770,10 +1796,13 @@ export function createAppShellRuntimeController(deps = {}) {
     setMainHeaderTabsSliding(true);
     setMainHeaderTabsTucked(true);
     syncMainHeaderTabsChrome(true);
+    // Erst ein Stueck nach der Fahrt loslassen. Genau auf der Dauer koennte der
+    // Timer einen Frame zu frueh kommen, und die letzten Pixel saehe man
+    // springen; in der Zulage bewegt sich nichts mehr.
     mainHeaderTabsSlideTimerId = win.setTimeout(() => {
       mainHeaderTabsSlideTimerId = 0;
       releaseMainHeaderTabsRow();
-    }, MAIN_HEADER_TABS_SLIDE_MS);
+    }, MAIN_HEADER_TABS_SLIDE_MS + MAIN_HEADER_TABS_SLIDE_SETTLE_MS);
   }
 
   function clearMainHeaderTabsScrollAnim() {
@@ -1793,14 +1822,43 @@ export function createAppShellRuntimeController(deps = {}) {
   // danach bleibt kein Zustand zurueck, den ein spaeteres Hochscrollen erst
   // aufloesen muesste - und genau deshalb kann dort auch nichts mehr snappen.
   //
-  // Gefahren wird von Hand statt mit behavior:"smooth": ein Re-Render setzt die
-  // Scroll-Position auf den Wert zurueck, den er sich vor dem Bauen gemerkt hat
-  // (setViewportScrollTop, dazu im naechsten Frame und im naechsten Tick). Wer
-  // jeden Frame schreibt, gewinnt - und haelt danach noch kurz dagegen. Ein
-  // Finger auf dem Glas bricht sofort ab: dessen Hand hat Vorrang.
+  // Gefahren wird mit der Scroll-Animation des Browsers selbst
+  // (`behavior: "smooth"`). Das ist dieselbe Mechanik wie ein Wisch, laeuft
+  // ausserhalb des Hauptfadens und ist damit genauso weich wie das Wegscrollen
+  // von Hand - was der Pfeil oben macht, sieht dann auch aus wie Scrollen.
+  // Eine selbstgebaute Fahrt, die jeden Frame `scrollTop` schreibt, kann das
+  // nicht: ueber die kurze Strecke einer Zeilenhoehe bewegen sich die letzten
+  // Frames um Bruchteile eines Pixels, der Browser rundet auf ganze - und die
+  // Bewegung stockt sichtbar.
+  //
+  // Die Laufzeit schaut deshalb nur zu und greift genau dort ein, wo der
+  // Browser allein nicht durchkommt: ein Re-Render setzt die Scroll-Position
+  // auf den Wert zurueck, den er sich vor dem Bauen gemerkt hat
+  // (`setViewportScrollTop()`, dazu im naechsten Frame und im naechsten Tick).
+  // Laeuft die Position dem Ziel davon, wird die Fahrt neu angesetzt; nach der
+  // Ankunft wird das Ziel noch kurz gehalten. Solange nichts dazwischenkommt,
+  // schreibt die Laufzeit gar nichts - jeder eigene Schreibvorgang wuerde die
+  // Fahrt des Browsers abwuergen.
+  //
+  // Ein `pointerdown`/`touchstart`/`wheel`/`keydown` bricht sofort alles ab:
+  // die Hand des Nutzers hat Vorrang.
+  function supportsSmoothScroll() {
+    return typeof doc?.documentElement?.style?.scrollBehavior === "string";
+  }
+
+  function requestMainHeaderTabsScroll(top) {
+    if (!win) return;
+    if (!mainHeaderTabsPrefersReducedMotion() && supportsSmoothScroll() && typeof win.scrollTo === "function") {
+      try {
+        win.scrollTo({ top, left: 0, behavior: "smooth" });
+        return;
+      } catch {}
+    }
+    setViewportScrollTop(top);
+  }
+
   function animateMainHeaderTabsScrollTo(targetY) {
     if (!win) return;
-    const from = readMainHeaderTabsScrollY();
     const to = Math.max(0, Number(targetY) || 0);
     clearMainHeaderTabsScrollAnim();
     mainHeaderTabsScrollAnimTarget = to;
@@ -1808,41 +1866,89 @@ export function createAppShellRuntimeController(deps = {}) {
     MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS.forEach((eventName) => {
       win.addEventListener(eventName, mainHeaderTabsScrollAnimRelease, { passive: true });
     });
+    // Der Pfeil dreht sich sofort und nicht erst, wenn die Fahrt angekommen ist.
     syncMainHeaderTabsChrome(true);
+    requestMainHeaderTabsScroll(to);
 
-    const haltePosition = (top) => {
-      setViewportScrollTop(top);
-      // Die eigene Fahrt ist die neue Ausgangslage - sonst liest der naechste
-      // Scroll-Vergleich sie als Wisch des Nutzers.
-      mainHeaderTabsLastScrollY = Math.max(0, top);
-    };
-
-    const startedAt = mainHeaderTabsNowMs();
-    const fahrt = mainHeaderTabsPrefersReducedMotion() || Math.abs(to - from) < 1
-      ? 0
-      : MAIN_HEADER_TABS_SCROLL_MS;
-
-    const step = () => {
-      mainHeaderTabsScrollAnimRafId = 0;
-      if (mainHeaderTabsScrollAnimTarget !== to) return;
-      const elapsed = Math.max(0, mainHeaderTabsNowMs() - startedAt);
-      const progress = fahrt > 0 ? Math.min(1, elapsed / fahrt) : 1;
-      // ease-out: schnell los, weich an. Dieselbe Handschrift wie die Fahrt der
-      // gehefteten Zeile.
-      const eased = 1 - Math.pow(1 - progress, 3);
-      haltePosition(from + (to - from) * eased);
-      syncMainHeaderTabsChrome();
-      if (elapsed < fahrt + MAIN_HEADER_TABS_SCROLL_HOLD_MS
-        && typeof win.requestAnimationFrame === "function") {
-        mainHeaderTabsScrollAnimRafId = win.requestAnimationFrame(step) || 0;
-        if (mainHeaderTabsScrollAnimRafId) return;
-      }
-      haltePosition(to);
+    if (typeof win.requestAnimationFrame !== "function") {
+      mainHeaderTabsLastScrollY = readMainHeaderTabsScrollY();
       clearMainHeaderTabsScrollAnim();
       syncMainHeaderTabsChrome(true);
+      return;
+    }
+
+    const startedAt = mainHeaderTabsNowMs();
+    // Der kuerzeste Abstand, den die Fahrt bisher erreicht hat. Sie faehrt auf
+    // das Ziel zu, der Wert wird also immer kleiner - wird er wieder groesser,
+    // hat nicht der Browser gefahren.
+    let besterAbstand = Math.abs(readMainHeaderTabsScrollY() - to);
+    let letzteY = readMainHeaderTabsScrollY();
+    let letzteBewegung = startedAt;
+    let angekommenSeit = 0;
+    let neuAngesetzt = 0;
+    const setzeNeuAn = (jetzt) => {
+      if (neuAngesetzt >= MAIN_HEADER_TABS_SCROLL_MAX_RETRIES) return;
+      neuAngesetzt += 1;
+      besterAbstand = Math.abs(readMainHeaderTabsScrollY() - to);
+      letzteBewegung = jetzt;
+      requestMainHeaderTabsScroll(to);
     };
 
-    step();
+    const schauZu = () => {
+      mainHeaderTabsScrollAnimRafId = 0;
+      if (mainHeaderTabsScrollAnimTarget !== to) return;
+      const jetzt = mainHeaderTabsNowMs();
+      const y = readMainHeaderTabsScrollY();
+      const abstand = Math.abs(y - to);
+      // Die eigene Fahrt ist die neue Ausgangslage - sonst liest der naechste
+      // Scroll-Vergleich sie als Wisch des Nutzers.
+      mainHeaderTabsLastScrollY = y;
+      syncMainHeaderTabsChrome();
+      if (y !== letzteY) {
+        letzteY = y;
+        letzteBewegung = jetzt;
+      }
+
+      if (abstand <= MAIN_HEADER_TABS_SCROLL_ARRIVED_PX) {
+        if (!angekommenSeit) angekommenSeit = jetzt;
+      } else if (angekommenSeit) {
+        // Angekommen und wieder weg: das war kein Scrollen, das war ein
+        // Re-Render. Zurueck auf das Ziel, ohne Fahrt - es ist derselbe Frame,
+        // zu sehen ist davon nichts.
+        angekommenSeit = jetzt;
+        setViewportScrollTop(to);
+        mainHeaderTabsLastScrollY = to;
+      } else if (abstand > besterAbstand + MAIN_HEADER_TABS_SCROLL_REGRESSION_PX) {
+        // Noch unterwegs und die Strecke wird wieder laenger: die Fahrt wurde
+        // abgeraeumt. Neu ansetzen, weiter weich.
+        setzeNeuAn(jetzt);
+      } else if (jetzt - letzteBewegung >= MAIN_HEADER_TABS_SCROLL_STALL_MS) {
+        // Oder sie steht still, ohne angekommen zu sein: dann hat der Browser
+        // sie abgebrochen, bevor sie ueberhaupt losgefahren ist.
+        setzeNeuAn(jetzt);
+      }
+      if (abstand < besterAbstand) besterAbstand = abstand;
+
+      const fertig = angekommenSeit
+        ? jetzt - angekommenSeit >= MAIN_HEADER_TABS_SCROLL_HOLD_MS
+        : jetzt - startedAt >= MAIN_HEADER_TABS_SCROLL_WATCH_MS;
+      if (fertig) {
+        clearMainHeaderTabsScrollAnim();
+        syncMainHeaderTabsChrome(true);
+        return;
+      }
+      mainHeaderTabsScrollAnimRafId = win.requestAnimationFrame(schauZu) || 0;
+      if (!mainHeaderTabsScrollAnimRafId) {
+        clearMainHeaderTabsScrollAnim();
+        syncMainHeaderTabsChrome(true);
+      }
+    };
+
+    mainHeaderTabsScrollAnimRafId = win.requestAnimationFrame(schauZu) || 0;
+    if (!mainHeaderTabsScrollAnimRafId) {
+      clearMainHeaderTabsScrollAnim();
+      syncMainHeaderTabsChrome(true);
+    }
   }
 
   function syncMainHeaderTabsOnScroll() {

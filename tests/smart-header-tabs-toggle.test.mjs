@@ -8,6 +8,9 @@ const TOP_BAR_HEIGHT = 72;
 class FakeClassList {
   constructor(initial = []) {
     this.values = new Set(initial);
+    // Jede Schaltung mitschreiben: beim schnellen Auf und Zu kommt es darauf
+    // an, was zwischendurch passiert - nicht nur, was am Ende dasteht.
+    this.log = [];
   }
 
   add(name) {
@@ -24,6 +27,7 @@ class FakeClassList {
 
   toggle(name, force) {
     const next = force === undefined ? !this.values.has(name) : !!force;
+    if (next !== this.values.has(name)) this.log.push([name, next]);
     if (next) this.values.add(name);
     else this.values.delete(name);
     return next;
@@ -87,6 +91,9 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
     documentElement: {
       classList: new FakeClassList(),
       style: {
+        // Wie in jedem heutigen Browser: die Laufzeit erkennt daran, dass sie
+        // die Fahrt dem Browser ueberlassen kann.
+        scrollBehavior: "",
         getPropertyValue: (name) => styleValues.get(name) || "",
         setProperty: (name, value) => styleValues.set(name, String(value)),
         removeProperty: (name) => styleValues.delete(name)
@@ -119,10 +126,15 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
     // gekappt oder von einem Re-Render zurueckgesetzt - bewegt sich nichts.
     scrollRequestsIgnored: false,
     performance: { now: () => clock },
+    // Jede Scroll-Bitte mitschreiben: die Fahrt soll der Browser machen, nicht
+    // die Laufzeit Bild fuer Bild.
+    scrollCalls: [],
     // Beide Formen wie im Browser: scrollTo(x, y) und scrollTo({ top }).
     scrollTo(first, second) {
-      if (this.scrollRequestsIgnored) return;
       const y = first && typeof first === "object" ? first.top : second;
+      const behavior = first && typeof first === "object" ? String(first.behavior || "auto") : "auto";
+      this.scrollCalls.push({ top: Math.max(0, Number(y) || 0), behavior });
+      if (this.scrollRequestsIgnored) return;
       this.scrollY = Math.max(0, Number(y) || 0);
     },
     setTimeout(callback, delay = 0) {
@@ -653,6 +665,95 @@ test("a swipe starting on the chevron does not switch anything", () => {
   harness.settle();
   assert.equal(isVisible(harness), true, "gewischt heisst nicht getippt");
   assert.equal(harness.windowObj.scrollY, 0);
+});
+
+// Oben faehrt der Browser, nicht die Laufzeit: eine selbstgebaute Fahrt, die
+// jeden Frame scrollTop schreibt, stockt ueber die kurze Strecke einer
+// Zeilenhoehe sichtbar. Angesetzt wird sie einmal, danach wird nur zugeschaut.
+test("at the top the browser drives the scroll, the runtime only watches", () => {
+  const harness = createHarness();
+  harness.start();
+  harness.windowObj.scrollCalls.length = 0;
+
+  harness.clickToggle();
+  harness.settle();
+
+  const bitten = harness.windowObj.scrollCalls;
+  assert.equal(bitten.length, 1, `nur eine Scroll-Bitte, nicht ${bitten.length}`);
+  assert.equal(bitten[0].behavior, "smooth", "und zwar die weiche Fahrt des Browsers");
+  assert.equal(bitten[0].top, TABS_ROW_HEIGHT);
+});
+
+// Und wenn ein Re-Render die Position wegnimmt, greift die Laufzeit ein - aber
+// erst dann.
+test("the runtime only writes the scroll when something takes it away", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  harness.windowObj.scrollCalls.length = 0;
+  harness.settle();
+  assert.equal(harness.windowObj.scrollCalls.length, 0, "ohne Stoerung schreibt sie gar nichts");
+
+  harness.clickToggle();
+  harness.renderRestoresScroll(TABS_ROW_HEIGHT);
+  harness.settle();
+  assert.equal(harness.windowObj.scrollY, 0, "der geklaute Scroll wird zurueckgeholt");
+});
+
+// Schnell hin und her getippt darf die Zeile nicht erst hart hinter die Leiste
+// springen und von dort neu anfahren - der Uebergang bleibt liegen und rechnet
+// von der Stelle weiter, an der sie gerade steht.
+test("tapping back and forth reverses the glide instead of restarting it", () => {
+  const harness = createHarness();
+  harness.start();
+  harness.scrollTo(900);
+
+  harness.clickToggle();
+  harness.settle();
+  assert.equal(isStuck(harness), true);
+
+  // Zumachen - und mitten in der Fahrt wieder aufmachen.
+  harness.clickToggle();
+  assert.equal(isSliding(harness), true);
+  const log = harness.documentObj.documentElement.classList.log;
+  log.length = 0;
+  harness.clickToggle();
+
+  assert.equal(
+    log.some(([name, next]) => name === "smart-header-tabs-sliding" && next === false),
+    false,
+    "der Uebergang wird nicht abgeschaltet"
+  );
+  assert.equal(
+    log.some(([name, next]) => name === "smart-header-tabs-stuck" && next === false),
+    false,
+    "und das Kleben auch nicht"
+  );
+  assert.equal(isTucked(harness), false, "sie faehrt sofort wieder hervor");
+
+  harness.settle();
+  assert.equal(isVisible(harness), true);
+  assert.equal(isSliding(harness), false, "am Ende liegt kein Uebergang mehr an");
+});
+
+// Von aussen dagegen muss sie erst still hinter die Leiste gestellt werden,
+// sonst faengt die Fahrt beim Ziel an und ist nicht zu sehen.
+test("a fresh glide starts from behind the top bar, without a transition", () => {
+  const harness = createHarness();
+  harness.start();
+  harness.scrollTo(900);
+
+  const log = harness.documentObj.documentElement.classList.log;
+  log.length = 0;
+  harness.clickToggle();
+
+  const folge = log.filter(([name]) => name === "smart-header-tabs-sliding" || name === "smart-header-tabs-tucked");
+  assert.deepEqual(folge, [
+    ["smart-header-tabs-tucked", true],
+    ["smart-header-tabs-sliding", true],
+    ["smart-header-tabs-tucked", false]
+  ], "erst still eingesteckt, dann mit Uebergang hervor");
 });
 
 // Der eigene Scroll des Pfeils ist keine Geste - sonst naehme er sich die Zeile
