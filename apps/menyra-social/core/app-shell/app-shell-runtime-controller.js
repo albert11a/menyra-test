@@ -191,8 +191,11 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsScrollAssertTarget = -1;
   let mainHeaderTabsScrollAssertRelease = null;
   let mainHeaderTabsLayoutRestoreTimerId = 0;
+  let mainHeaderTabsCollapseAnimTimerId = 0;
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
+  // So lange faehrt die Zeile heraus und herein. Muss zur CSS-Dauer passen.
+  const MAIN_HEADER_TABS_COLLAPSE_ANIM_MS = 240;
   // So lange muss die Seite still stehen, bevor die zugemachte Zeile sich ihren
   // Platz im Layout still zurueckholt. Im Stillstand laeuft kein Schwung mehr,
   // den ein Scroll-Ausgleich abwuergen koennte.
@@ -1640,10 +1643,28 @@ export function createAppShellRuntimeController(deps = {}) {
     syncMainHeaderTabsChrome();
   }
 
+  // Die Fahrt laeuft ueber eine Klasse am <html>: nur waehrend sie liegt, hat
+  // die Zeile einen Uebergang. Ohne sie wechselt die Hoehe sofort - das braucht
+  // der stille Layout-Wechsel weiter unten, bei dem der Scroll-Ausgleich im
+  // selben Bild gegenhalten muss.
+  function startMainHeaderTabsCollapseAnimation() {
+    const root = doc?.documentElement;
+    if (!root || !win || typeof win.setTimeout !== "function") return;
+    root.classList?.add?.("smart-header-tabs-animating");
+    if (mainHeaderTabsCollapseAnimTimerId) win.clearTimeout?.(mainHeaderTabsCollapseAnimTimerId);
+    mainHeaderTabsCollapseAnimTimerId = win.setTimeout(() => {
+      mainHeaderTabsCollapseAnimTimerId = 0;
+      root.classList?.remove?.("smart-header-tabs-animating");
+    }, MAIN_HEADER_TABS_COLLAPSE_ANIM_MS + 60);
+  }
+
   // Zugemacht ist die Zeile nicht mehr im Layout. Das ist der ganze Zustand,
   // den der Pfeil hat - er haengt an keiner Scroll-Position und kann deshalb
   // auch von keiner kaputtgemacht werden.
-  function setMainHeaderTabsCollapsed(next) {
+  function setMainHeaderTabsCollapsed(next, { animate = false } = {}) {
+    const wechselt = mainHeaderTabsCollapsed !== !!next;
+    // Die Klasse muss vor dem Wechsel liegen, sonst faehrt nichts.
+    if (wechselt && animate) startMainHeaderTabsCollapseAnimation();
     mainHeaderTabsCollapsed = !!next;
     doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
     if (mainHeaderTabsCollapsed) setMainHeaderTabsStuck(false);
@@ -1765,7 +1786,7 @@ export function createAppShellRuntimeController(deps = {}) {
       && !eigenerAusgleich
       && scrollY <= mainHeaderTabsRowHeight
       && scrollY < previous) {
-      setMainHeaderTabsCollapsed(false);
+      setMainHeaderTabsCollapsed(false, { animate: true });
     }
     if (mainHeaderTabsCollapsed && !eigenerAusgleich) scheduleMainHeaderTabsLayoutRestore();
     syncMainHeaderTabsChrome();
@@ -1873,10 +1894,10 @@ export function createAppShellRuntimeController(deps = {}) {
           // Geholt war sie nur angeheftet - loslassen genuegt.
           if (mainHeaderTabsStuck) setMainHeaderTabsStuck(false);
           // Steht ihr Platz im Bild, wuerde sie dort weiter zu sehen sein.
-          if (platzImBild) setMainHeaderTabsCollapsed(true);
+          if (platzImBild) setMainHeaderTabsCollapsed(true, { animate: true });
         } else if (platzImBild) {
           // Oben wieder auf: die Zeile nimmt ihren Platz zurueck.
-          setMainHeaderTabsCollapsed(false);
+          setMainHeaderTabsCollapsed(false, { animate: true });
         } else {
           // Weiter unten holen: anheften, damit man sie sieht. War sie noch aus
           // dem Layout, kommt sie zurueck - der Ausgleich haelt den Text still.

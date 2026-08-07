@@ -595,3 +595,37 @@ test("the row gets a whole pixel height so the compensation lands exactly", () =
   harness.runTimers();
   assert.equal(harness.windowObj.scrollY, 1200 + 41, "der Ausgleich trifft die Hoehe genau");
 });
+
+// Oben faehrt die Zeile heraus und herein, statt in einem Bild um ihre ganze
+// Hoehe zu springen - ohne Pfeil bewegt sie sich schliesslich auch immer mit
+// dem Finger. Weiter unten muss der Wechsel dagegen sofort sitzen: dort haelt
+// der Scroll-Ausgleich im selben Bild dagegen, eine Fahrt wuerde dabei zittern.
+const faehrt = (harness) =>
+  harness.documentObj.documentElement.classList.contains("smart-header-tabs-animating");
+
+test("at the top the row glides, further down the layout change is instant", () => {
+  const harness = createHarness();
+  harness.start();
+
+  harness.clickToggle();
+  assert.equal(isCollapsed(harness), true);
+  assert.equal(faehrt(harness), true, "oben faehrt sie heraus");
+
+  harness.runTimers();
+  assert.equal(faehrt(harness), false, "nach der Fahrt ist die Klasse wieder weg");
+
+  harness.clickToggle();
+  assert.equal(isCollapsed(harness), false);
+  assert.equal(faehrt(harness), true, "und wieder herein");
+  harness.runTimers();
+
+  // Weiter unten: stiller Layout-Wechsel, keine Fahrt.
+  const tief = createHarness();
+  tief.start();
+  tief.clickToggle();
+  tief.runTimers();
+  tief.scrollTo(900);
+  tief.runTimers();
+  assert.equal(isCollapsed(tief), false, "das Layout ist still zurueckgeholt");
+  assert.equal(faehrt(tief), false, "und zwar ohne Fahrt");
+});
