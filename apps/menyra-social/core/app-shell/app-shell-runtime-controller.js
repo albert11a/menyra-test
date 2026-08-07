@@ -190,8 +190,13 @@ export function createAppShellRuntimeController(deps = {}) {
   let mainHeaderTabsScrollAssertTimers = [];
   let mainHeaderTabsScrollAssertTarget = -1;
   let mainHeaderTabsScrollAssertRelease = null;
+  let mainHeaderTabsLayoutRestoreTimerId = 0;
   const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
+  // So lange muss die Seite still stehen, bevor die zugemachte Zeile sich ihren
+  // Platz im Layout still zurueckholt. Im Stillstand laeuft kein Schwung mehr,
+  // den ein Scroll-Ausgleich abwuergen koennte.
+  const MAIN_HEADER_TABS_LAYOUT_RESTORE_REST_MS = 180;
   // So oft setzt der Pfeil sein Scroll-Ziel nach, damit ein Re-Render es ihm
   // nicht wieder wegnimmt. Der letzte Wert deckt auch einen Render ab, der erst
   // ein paar Frames spaeter kommt.
@@ -1703,6 +1708,32 @@ export function createAppShellRuntimeController(deps = {}) {
     });
   }
 
+  // Zugemacht braucht die Zeile nur zu sein, solange ihr Platz im Bild liegt.
+  // Weiter unten holt sie sich ihren Platz im Layout still zurueck, sobald die
+  // Seite steht: der Ausgleich haelt den Inhalt dabei exakt still, sichtbar
+  // aendert sich nichts. Danach ist das Dokument wieder wie ohne Pfeil - und
+  // beim Hochscrollen faehrt die Zeile genau so herein wie sonst auch.
+  function scheduleMainHeaderTabsLayoutRestore() {
+    if (!win || typeof win.setTimeout !== "function") return;
+    if (mainHeaderTabsLayoutRestoreTimerId) win.clearTimeout?.(mainHeaderTabsLayoutRestoreTimerId);
+    mainHeaderTabsLayoutRestoreTimerId = win.setTimeout(() => {
+      mainHeaderTabsLayoutRestoreTimerId = 0;
+      if (!mainHeaderTabsCollapsed) return;
+      const tabsEl = doc?.getElementById?.("smart-tabs");
+      if (!tabsEl) return;
+      const scrollY = Math.max(0, Number(win?.scrollY || 0));
+      // Nur wenn ihr Platz ausser Sicht ist - oben soll zugemacht zu bleiben.
+      if (scrollY <= mainHeaderTabsRowHeight) return;
+      const ausgleichAnker = doc?.querySelector?.("main") || null;
+      const ankerVorher = Number(ausgleichAnker?.getBoundingClientRect?.().top ?? 0);
+      setMainHeaderTabsCollapsed(false);
+      if (!ausgleichAnker) return;
+      const verschiebung = Number(ausgleichAnker.getBoundingClientRect().top) - ankerVorher;
+      if (Math.abs(verschiebung) < 0.01) return;
+      scrollMainHeaderTabsTo(scrollY + verschiebung);
+    }, MAIN_HEADER_TABS_LAYOUT_RESTORE_REST_MS);
+  }
+
   function syncMainHeaderTabsOnScroll() {
     const scrollY = Math.max(0, Number(win?.scrollY || 0));
     const previous = mainHeaderTabsLastScrollY;
@@ -1736,6 +1767,7 @@ export function createAppShellRuntimeController(deps = {}) {
       && scrollY < previous) {
       setMainHeaderTabsCollapsed(false);
     }
+    if (mainHeaderTabsCollapsed && !eigenerAusgleich) scheduleMainHeaderTabsLayoutRestore();
     syncMainHeaderTabsChrome();
   }
 
@@ -1814,53 +1846,50 @@ export function createAppShellRuntimeController(deps = {}) {
     const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
     if (toggleEl) {
       mainHeaderTabsToggleEl = toggleEl;
-      // Der Pfeil schaltet die Zeile nicht weg, er scrollt sie weg: die Seite
-      // faehrt knapp an ihr vorbei. Damit ist der Weg zurueck derselbe wie
-      // immer - hochscrollen, und sie steht wieder da, als haette niemand den
-      // Pfeil angefasst. Die Zeile verlaesst dafuer nie das Layout, es gibt
-      // also auch nichts, was beim Zurueckkommen springen koennte.
-      // Der Pfeil macht die Zeile zu und wieder auf - an derselben Stelle,
-      // egal wo man steht. Er scrollt die Seite nicht mehr dorthin, wo die
-      // Zeile gerade zufaellig waere: das hat sie am Seitenanfang unter die
-      // Leiste geschoben (die Seite rutschte mit) und war jedes Mal davon
-      // abhaengig, ob der Browser den Scroll auch wirklich ausfuehrt. Jetzt
-      // haengt der Zustand an einer Klasse, nicht an einer Scroll-Position.
+      // Der Pfeil macht die Pill-Zeile zu und auf - und fasst dabei nur an, was
+      // wirklich im Bild ist.
+      //
+      // Weiter unten in der Seite ist die Zeile ohnehin weggescrollt. Dort
+      // heftet der Pfeil sie unter die Leiste und laesst sie wieder los, mehr
+      // nicht: kein Layout-Wechsel, kein Ausgleich, kein Scroll. Das Dokument
+      // bleibt Zeile fuer Zeile, wie es ohne Pfeil waere - deshalb faehrt die
+      // Zeile beim Hochscrollen danach exakt so herein wie sonst auch. Vorher
+      // nahm der Pfeil sie auch dort aus dem Layout und verschob die Position
+      // um ihre Hoehe; alles darunter war danach versetzt, und das Hereinfahren
+      // sah anders aus als ohne Pfeil.
+      //
+      // Nur oben, wo ihr Platz im Bild liegt, geht die Zeile wirklich aus dem
+      // Layout: dort ist genau das das Zumachen. Auch dabei bleibt die
+      // Scroll-Position unangetastet.
       mainHeaderTabsToggleHandler = () => {
         releaseMainHeaderTabsBootLock();
         syncSmartHeaderMetrics();
-        measureMainHeaderTabsRowHeight(tabsEl);
+        const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
         const scrollY = Math.max(0, Number(win.scrollY || 0));
-        // Wieviel sich der Inhalt wirklich verschiebt, wird gemessen statt
-        // gerechnet: die Zeilenhoehe ist krumm, und ein gerundeter Ausgleich
-        // laesst bei jedem Tipp einen Bruchteil Pixel stehen.
-        const ausgleichAnker = doc.querySelector("main") || tabsEl.parentElement || null;
-        const ankerVorher = Number(ausgleichAnker?.getBoundingClientRect?.().top ?? 0);
-        const gleicheVerschiebungAus = () => {
-          if (scrollY <= 0 || !ausgleichAnker) return;
-          const verschiebung = Number(ausgleichAnker.getBoundingClientRect().top) - ankerVorher;
-          if (Math.abs(verschiebung) < 0.01) return;
-          scrollMainHeaderTabsTo(scrollY + verschiebung);
-        };
+        // Liegt der Platz der Zeile im Bild? Nur dann ist ein Layout-Wechsel
+        // ueberhaupt zu sehen.
+        const platzImBild = scrollY < rowHeight;
         if (isMainHeaderTabsRowVisible()) {
-          // Zu: die Zeile geht aus dem Layout. Alles darunter wandert um ihre
-          // Hoehe hoch - am Seitenanfang ist genau das das Zumachen. Steht man
-          // weiter unten, gleicht die Scroll-Position das aus, damit der Text
-          // unter dem Finger stehen bleibt.
-          setMainHeaderTabsCollapsed(true);
-          gleicheVerschiebungAus();
-        } else {
-          // Auf: die Zeile kommt zurueck ins Layout, alles darunter geht um
-          // ihre Hoehe runter. Am Seitenanfang ist das wieder genau das
-          // Startbild. Weiter unten wuerde sie ausserhalb des Blicks landen -
-          // dort heftet sie sich unter die Leiste, damit man sie sieht, und die
-          // Scroll-Position gleicht den Layout-Zuwachs aus.
+          // Geholt war sie nur angeheftet - loslassen genuegt.
+          if (mainHeaderTabsStuck) setMainHeaderTabsStuck(false);
+          // Steht ihr Platz im Bild, wuerde sie dort weiter zu sehen sein.
+          if (platzImBild) setMainHeaderTabsCollapsed(true);
+        } else if (platzImBild) {
+          // Oben wieder auf: die Zeile nimmt ihren Platz zurueck.
           setMainHeaderTabsCollapsed(false);
-          if (scrollY > 0) {
-            setMainHeaderTabsStuck(true);
-            gleicheVerschiebungAus();
-          } else {
-            setMainHeaderTabsStuck(false);
+        } else {
+          // Weiter unten holen: anheften, damit man sie sieht. War sie noch aus
+          // dem Layout, kommt sie zurueck - der Ausgleich haelt den Text still.
+          if (mainHeaderTabsCollapsed) {
+            const ausgleichAnker = doc.querySelector("main") || tabsEl.parentElement || null;
+            const ankerVorher = Number(ausgleichAnker?.getBoundingClientRect?.().top ?? 0);
+            setMainHeaderTabsCollapsed(false);
+            const verschiebung = Number(ausgleichAnker?.getBoundingClientRect?.().top ?? 0) - ankerVorher;
+            if (ausgleichAnker && Math.abs(verschiebung) >= 0.01) {
+              scrollMainHeaderTabsTo(scrollY + verschiebung);
+            }
           }
+          setMainHeaderTabsStuck(true);
         }
         syncMainHeaderTabsChrome(true);
       };

@@ -333,9 +333,8 @@ test("the chevron switches even when the browser refuses to scroll", () => {
   assert.equal(isVisible(harness), true);
 });
 
-// Weiter unten in der Seite: die Zeile ist ohnehin weggescrollt. Ein Tipp holt
-// sie unter die Leiste, ohne die Leseposition zu verruecken - das war schon
-// vorher so und bleibt.
+// Weiter unten in der Seite ist die Zeile ohnehin weggescrollt. Ein Tipp holt
+// sie unter die Leiste und der naechste laesst sie wieder los - mehr nicht.
 test("further down the row comes back under the top bar, the reading spot stays", () => {
   const harness = createHarness();
   harness.start();
@@ -351,27 +350,59 @@ test("further down the row comes back under the top bar, the reading spot stays"
   harness.clickToggle();
   assert.equal(isVisible(harness), false);
   assert.equal(isStuck(harness), false);
-  assert.equal(harness.windowObj.scrollY, 600 - TABS_ROW_HEIGHT, "der Ausgleich haelt den Text still");
+  assert.equal(harness.windowObj.scrollY, 600, "und bleibt auch beim Loslassen stehen");
 });
 
-// Zumachen weiter unten nimmt der Seite eine Zeilenhoehe an Layout weg. Damit
-// der Text unter dem Finger stehen bleibt, geht die Scroll-Position mit - und
-// beim Aufmachen wieder zurueck.
-test("closing and opening further down keeps the content under the finger", () => {
+// Der Kern der Beschwerde: weiter unten auf- und wieder zumachen darf das
+// Dokument nicht anfassen. Sonst ist danach alles um eine Zeilenhoehe versetzt
+// und die Zeile faehrt beim Hochscrollen anders herein als ohne Pfeil.
+test("open and close further down leaves the document exactly as it was", () => {
   const harness = createHarness();
   harness.start();
 
   harness.scrollTo(600);
   harness.clickToggle();
   harness.clickToggle();
-  const nachZu = harness.windowObj.scrollY;
-  assert.equal(nachZu, 600 - TABS_ROW_HEIGHT);
-  assert.equal(isCollapsed(harness), true);
+  harness.runTimers();
+
+  assert.equal(harness.windowObj.scrollY, 600, "die Seite steht, wo sie stand");
+  assert.equal(isCollapsed(harness), false, "die Zeile bleibt im Layout");
+  assert.equal(isStuck(harness), false);
+
+  // Und der Weg nach oben ist danach Bild fuer Bild derselbe wie ohne Pfeil.
+  const ohnePfeil = createHarness();
+  ohnePfeil.start();
+  ohnePfeil.scrollTo(600);
+
+  [400, 200, 60, 20, 0].forEach((y) => {
+    harness.scrollTo(y);
+    ohnePfeil.scrollTo(y);
+    assert.equal(harness.windowObj.scrollY, ohnePfeil.windowObj.scrollY, `bei ${y}: dieselbe Position`);
+    assert.equal(isVisible(harness), isVisible(ohnePfeil), `bei ${y}: dasselbe Bild`);
+    assert.equal(isCollapsed(harness), isCollapsed(ohnePfeil), `bei ${y}: dasselbe Layout`);
+  });
+});
+
+// Oben zugemacht und dann weiter unten zur Ruhe gekommen: die Zeile holt sich
+// ihren Platz im Layout still zurueck, der Ausgleich haelt den Inhalt still.
+// Danach faehrt sie beim Hochscrollen herein wie ohne Pfeil.
+test("a row closed at the top quietly takes its layout place back further down", () => {
+  const harness = createHarness();
+  harness.start();
 
   harness.clickToggle();
-  assert.equal(isCollapsed(harness), false);
-  assert.equal(harness.windowObj.scrollY, 600, "zurueck auf dieselbe Stelle");
-  assert.equal(isStuck(harness), true, "und sichtbar unter der Leiste");
+  assert.equal(isCollapsed(harness), true);
+
+  harness.scrollTo(600);
+  harness.runTimers();
+
+  assert.equal(isCollapsed(harness), false, "das Layout ist wieder wie ohne Pfeil");
+  assert.equal(
+    harness.windowObj.scrollY,
+    600 + TABS_ROW_HEIGHT,
+    "der Ausgleich haelt den Inhalt dabei still"
+  );
+  assert.equal(isVisible(harness), false, "zu sehen ist sie deswegen noch nicht");
 });
 
 // Weitergescrollt laesst die geholte Zeile wieder los - sonst haette man
@@ -555,16 +586,12 @@ test("the row gets a whole pixel height so the compensation lands exactly", () =
   harness.tabsEl.height = 40.671875;
   harness.start();
 
-  harness.scrollTo(1200);
-  // Erst holt der Pfeil die weggescrollte Zeile ...
+  // Oben zumachen, dann weiter unten zur Ruhe kommen - dort gleicht die
+  // Laufzeit die Zeilenhoehe aus, und die muss genau passen.
   harness.clickToggle();
   assert.equal(harness.tabsEl.style.height, "41px", "die Zeile bekommt eine ganze Hoehe");
-  assert.equal(harness.windowObj.scrollY, 1200, "geholt wird ohne die Seite zu bewegen");
 
-  // ... und der naechste Tipp nimmt sie weg, mit genauem Ausgleich.
-  harness.clickToggle();
-  assert.equal(harness.windowObj.scrollY, 1200 - 41, "der Ausgleich trifft die Hoehe genau");
-
-  harness.clickToggle();
-  assert.equal(harness.windowObj.scrollY, 1200, "und zurueck auf dieselbe Stelle");
+  harness.scrollTo(1200);
+  harness.runTimers();
+  assert.equal(harness.windowObj.scrollY, 1200 + 41, "der Ausgleich trifft die Hoehe genau");
 });
