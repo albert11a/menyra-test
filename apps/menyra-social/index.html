@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-stability-03";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-04";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim() || "2026-08-08-header-stability-03";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim() || "2026-08-08-header-stability-04";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -1414,12 +1414,42 @@
       z-index: 0;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
     }
-    /* Hier stand ein Ueberstand nach oben, an der Ebene der Kopfzeile.
-       Er half nur, wenn sie zu TIEF gezeichnet wurde - wurde sie zu hoch
-       gezeichnet, lag der Spalt unter ihr, und ein Ueberstand nach oben ist
-       dort wirkungslos. Auf dem Geraet blieb der Fehler deshalb stehen.
-       Beide Richtungen deckt .smart-header-backdrop ab: die haengt am Bild
-       statt an der Kopfzeile und liegt immer genau auf deren Sollflaeche. */
+    /* Der Ueberstand nach OBEN - der zweite von zwei Griffen, und er deckt den
+       Fall ab, den die feste Blende NICHT abdecken kann.
+       ===================================================================
+       Die Bildschirmaufnahme vom Geraet zeigt es Bild fuer Bild: waehrend
+       Chrome iOS am Seitenende seine Adressleiste ausfaehrt, wird die ganze
+       Seite rund 25px zu tief gezeichnet. Im Streifen darueber steht genau
+       der Inhalt, der oberhalb der SOLLposition der Kopfzeile liegt - der
+       Inhalt hat sich also nicht bewegt, die Kopfzeile wurde versetzt.
+       Wird die ganze Seite versetzt, wandert alles mit, was in ihr steht -
+       auch ein Element mit position: fixed. Die Blende allein greift dann
+       nicht. Was hier hilft, ist Flaeche: die Kopfzeile malt ueber ihre
+       Oberkante hinaus weiter, und der Versatz laeuft in diese Flaeche
+       hinein statt in den Seiteninhalt.
+       Beide Griffe stehen bewusst nebeneinander, sie decken verschiedene
+       Faelle:
+         - Ueberstand: die ganze Seite ist versetzt (Fall der Aufnahme).
+         - Blende: nur die klebende Kopfzeile ist aus einem veralteten
+           Scroll-Offset gerechnet, der Inhalt steht richtig.
+       Beide sind unsichtbar, solange nichts hinkt: der Ueberstand liegt dann
+       ausserhalb des Bildes, die Blende hinter der Kopfzeile.
+       320px decken den groessten am Geraet gemessenen Versatz ab. */
+    .smart-header-shell::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 100%;
+      height: 320px;
+      pointer-events: none;
+      background: var(--smart-header-surface);
+    }
+    /* Auf der Karte steht die Kopfzeile im Fluss ihres Wrappers - dort gibt es
+       nichts zu ueberdecken, und der Ueberstand laege ueber dem Inhalt. */
+    .map-fixed-page-header .smart-header-shell::before {
+      content: none;
+    }
     .smart-header-top {
       position: relative;
       z-index: 2;
@@ -3000,7 +3030,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3249,7 +3279,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {

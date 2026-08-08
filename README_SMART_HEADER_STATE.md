@@ -44,9 +44,19 @@ Der letzte Rest des Fehlers zeigte sich **nur am Seitenende**: ganz unten stehen
 
 Genau dort faehrt Chrome iOS seine Adressleiste ein und aus. `position: sticky` wird aus dem Scroll-Offset gerechnet, und fuer diese Bilder ist der Offset veraltet - die Kopfzeile wird versetzt gezeichnet, waehrend der Inhalt schon an der neuen Stelle steht.
 
-**Was daran nicht half, und warum:** ein Ueberstand nach oben an der Kopfzeile selbst (`.smart-header-shell::before`, ein Versuch vom 08.08.). Er haengt an *ihrer* Compositing-Ebene und hinkt deshalb exakt mit ihr mit. Er deckte den Spalt nur, wenn sie zu **tief** gezeichnet wurde; wurde sie zu **hoch** gezeichnet, lag der Spalt unter ihr, und ein Ueberstand nach oben ist dort wirkungslos. Er ist wieder raus.
+**Was die Bildschirmaufnahme zeigt.** Eine Aufnahme vom Geraet (60 fps), Bild fuer Bild ausgewertet, hat den Fall entschieden. Ueber rund sieben aufeinanderfolgende Bilder steht zwischen der Adressleiste des Browsers und der Kopfzeile ein Streifen Seiteninhalt - erst der Rand des Avatars mit `FANS`/`INFO`, dann die Ueberschrift, dann `PRISHTINA / BUSINESS`, dann der `NDIQ`-Knopf. Der Inhalt steht dabei jeweils **unveraendert** da, wo er auch im Bild davor stand; die **Kopfzeile** ist rund 25px nach unten versetzt und gibt den Streifen frei, den sie sonst verdeckt. Es ist also kein Sprung des Inhalts, sondern ein Versatz der Kopfzeile gegen ihn.
 
-**Was hilft:** etwas, das gar nicht erst am Scroll haengt. `.smart-header-backdrop` ist `position: fixed` - viewport-gebunden, vom Compositor an der Ansicht gehalten statt aus einem Offset gerechnet - mit eigener Ebene (`translateZ(0)`), damit auch sie nicht am Hauptthread haengt. Sie liegt immer genau auf der **Soll**flaeche der oberen Leiste, egal wohin diese gerade verrutscht ist, und deckt damit beide Richtungen ab.
+**Zwei Griffe, zwei verschiedene Faelle.** Ein Versatz kann in beide Richtungen gehen, und kein einzelner Griff deckt beide ab:
+
+| | Kopfzeile zu **tief** (Fall der Aufnahme) | Kopfzeile zu **hoch** |
+|---|---|---|
+| `.smart-header-shell::before` (Ueberstand) | deckt | deckt **nicht** |
+| `.smart-header-backdrop` (feste Blende) | deckt | deckt |
+
+- **Der Ueberstand** laesst die Kopfzeile ueber ihre Oberkante hinaus weitermalen (320px). Er haengt an *ihrer* Ebene, faehrt also mit ihr mit - genau deshalb faengt er einen Versatz nach unten auf, egal ob nur sie oder die ganze Seite versetzt gezeichnet wird.
+- **Die feste Blende** haengt am Bild statt am Scroll (`position: fixed`, eigene Ebene) und liegt immer auf der **Soll**flaeche der oberen Leiste - sie faengt den Fall auf, in dem nur die klebende Kopfzeile aus einem veralteten Scroll-Offset gerechnet wird, der Inhalt aber richtig steht.
+
+Der Ueberstand war zwischenzeitlich entfernt worden, weil er den Fall "zu hoch" nicht deckt. Die Aufnahme zeigt aber genau den anderen Fall - deshalb stehen jetzt **beide** nebeneinander. Nachgemessen wird das am Bildpunkt: der Versatz wird in beide Richtungen simuliert und jeder Griff einzeln abgeschaltet; die Tabelle oben ist genau dieses Messergebnis.
 
 Vier Eigenschaften tragen sie, alle vier in `tests/e2e/smart-header-stability.spec.ts` festgehalten:
 
