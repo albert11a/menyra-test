@@ -1369,10 +1369,10 @@
       }
     }
     .smart-header-shell {
-      --smart-header-surface: var(--smart-header-theme-color);
-      --smart-header-surface-top: rgb(248 250 252 / 0.995);
-      --smart-header-surface-mid: rgb(248 250 252 / 0.965);
-      --smart-header-surface-dense: rgb(248 250 252 / 0.9);
+      /* Eine Farbe fuer die ganze Kopfzeile. Vorher standen hier vier
+         Flaechen-Variablen, die nie jemand gelesen hat - und die Shell selbst
+         hatte gar keinen Hintergrund. */
+      --smart-header-surface: #f8fafc;
       --smart-header-border: rgb(226 232 240 / 0.82);
       position: -webkit-sticky;
       position: sticky;
@@ -1382,6 +1382,15 @@
       z-index: 100;
       pointer-events: none;
       isolation: isolate;
+      /* Das klebende Element malt selbst deckend.
+         Es ist das Element, aus dem der Browser die eigene Ebene baut, auf der
+         die Kopfzeile beim Scrollen mitfaehrt. War sie durchsichtig, musste der
+         Compositor sie gegen den Inhalt dahinter blenden statt ihn einfach zu
+         ueberdecken - und wo dabei etwas fehlte, sah man den Inhalt. Deckend
+         kann dort nichts mehr durch.
+         Sichtbar aendert sich nichts: dieselbe Farbe malt darin schon
+         .smart-header-top, ueber genau dieselbe Flaeche. */
+      background: var(--smart-header-surface);
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
     }
     .smart-header-shell::after {
@@ -1402,7 +1411,7 @@
       /* Bewusst die eingefrorene Safe-Area, nicht --safe-area-top: die Hoehe
          der Kopfzeile darf sich beim Scrollen nicht aendern. */
       padding-top: max(0.5rem, var(--smart-header-safe-top));
-      background: #f8fafc;
+      background: var(--smart-header-surface);
       border-bottom: 1px solid var(--smart-header-border);
       box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
     }

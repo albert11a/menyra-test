@@ -143,6 +143,22 @@ test("die Hoehe der Kopfzeile aendert sich beim Scrollen nicht", async ({ page }
   for (const hoehe of hoehen) expect(hoehe).toBeCloseTo(hoehen[0], 1);
 });
 
+// Das klebende Element ist das, aus dem der Browser die eigene Ebene baut.
+// War es durchsichtig, musste der Compositor es gegen den Inhalt dahinter
+// blenden statt ihn zu ueberdecken - und wo dabei etwas fehlte, sah man den
+// Inhalt. Deckend kann dort nichts mehr durch.
+test("die klebende Kopfzeile malt selbst deckend", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+
+  const farbe = await page.evaluate(
+    () => getComputedStyle(document.querySelector(".smart-header-shell")!).backgroundColor
+  );
+
+  expect(farbe, "die Shell selbst hat einen Hintergrund").not.toBe("rgba(0, 0, 0, 0)");
+  expect(farbe, "und der ist ganz deckend, nicht halb").not.toMatch(/^rgba\(/);
+});
+
 // Der Grund, warum die Hoehe ueberhaupt wandern konnte: iOS aendert
 // env(safe-area-inset-top) waehrend des Scrollens, sobald die Adressleiste
 // ein- oder ausfaehrt. Seit die Polsterung an der eingefrorenen Variable
